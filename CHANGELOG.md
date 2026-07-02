@@ -3,6 +3,23 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.69] — Research: Sparse Distributed Memory (Kanerva) — distributed content-addressable store (2026-07-02)
+### Added
+- **`research/sparse_distributed_memory.py`** (zero-dep): Kanerva's SDM (1988) — a large set of
+  random D-bit hard-location addresses, each holding D integer bit-counters; write activates every
+  location within Hamming radius r and nudges its counters by the data bits, read sums the activated
+  counters and thresholds (a distributed majority vote). The classical distributed alternative to the
+  repo's Hopfield-energy stores, and the natural memory behind the v0.68 FlyHash index. Deterministic
+  self-check: 100% clean recall, a 15%-corrupted cue cleaned to ~90% via 2 read iterations, graceful
+  degradation 98%->67% across 10%->30% corruption. Refs: Kanerva, "Sparse Distributed Memory" (MIT
+  Press 1988); Bricken & Pehlevan, "Attention Approximates SDM" (NeurIPS 2021, arXiv:2111.05498).
+### Changed
+- `run_selfchecks.py`: +1 module -> **55/55** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. Distinct mechanism from
+  dense_associative_memory / hopfield_baseline (distributed hard-location addressing, not an energy
+  model) — a foundational baseline, not a duplicate.
+
 ## [v0.68] — Research: FlyHash — bio-inspired LSH for the store's similarity search (2026-07-02)
 ### Added
 - **`research/fly_hash.py`** (zero-dep): the fruit-fly olfactory hashing algorithm as an
