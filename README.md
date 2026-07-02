@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 64/64 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.85** · 85 tagged releases (through v0.85). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.86** · 86 tagged releases (through v0.86). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,9 +234,10 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (33 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (34 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
+    short_term_plasticity.py      additive onset/novelty filter over a streamed channel (Tsodyks-Markram, opt-in)
     paradigm_b_matcher.py         Paradigm B: coincidence matcher (CPU reference)
     paradigm_b_engine.py          Paradigm B: coincidence + temporal-sequence query engine
     spike_preprocessing.py        deterministic latency encode + Van Rossum + Silver denoise
@@ -290,7 +291,6 @@ spiking-neural-data-lake/
     homeostatic_scaling.py                            Turrigiano synaptic scaling: rate set-point stability for the STDP stores (zero-dep)
     izhikevich_neuron.py                              Izhikevich 2-eq neuron: RS/IB/CH/FS cortical spiking regimes (zero-dep)
     bcm_plasticity.py                                 BCM sliding-threshold rule: rate-based selectivity development (zero-dep)
-    short_term_plasticity.py                          Tsodyks-Markram dynamic synapses: depression/facilitation temporal filters (zero-dep)
     intrinsic_plasticity.py                           Triesch intrinsic plasticity: info-max gain/bias self-tuning, scale-invariant (zero-dep)
     loop_latency.py                                   end-to-end sensor→command latency p50/p95/p99 (zero-dep)
     temporal_coding_storage.py                        TTFS latency coding, 83.5× fewer ops (zero-dep)
@@ -333,6 +333,12 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.86, product integration):_ **Short-term plasticity promoted into the product**
+(`src/snn_data_lake/short_term_plasticity.py`) — `novelty_filter` runs a streamed channel through a
+Tsodyks-Markram depressing synapse so onsets ring out (0.48) and sustained bursts fade (0.04); an
+additive, opt-in onset detector over `streaming_hub` channels — the default store/query path is
+unchanged.
 
 _Landed (v0.85, product integration):_ **FlyHash index promoted into the product**
 (`src/snn_data_lake/fly_hash.py`) — `FlyHashIndex` returns the most tag-similar stored windows for a

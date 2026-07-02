@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.86] — Integration: short-term plasticity promoted as an additive streaming onset filter (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/short_term_plasticity.py`** (promoted from research/, zero-dep): `novelty_filter`
+  runs a streamed channel's spike times through a Tsodyks-Markram DEPRESSING synapse, returning a
+  per-spike novelty weight — spikes after a gap (onsets) ring out at full strength while sustained
+  bursts fade. Wired to a real `StreamingHub` in the self-check: burst onset 0.48 vs sustained 0.04,
+  sparse-onset mean 0.44 > burst mean 0.15, deterministic. Additive, opt-in; streaming_hub's default
+  store/query path is untouched. Moved RESEARCH -> CORE; PoC removed. Refs: Tsodyks & Markram, PNAS 94
+  (1997).
+### Notes
+- Fourth "force the rest" additive integration. Defaults, arm safety envelope, and determinism
+  preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
+
 ## [v0.85] — Integration: FlyHash LSH index promoted as an additive candidate filter (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/fly_hash.py`** (promoted from research/, zero-dep): `FlyHashIndex` turns each
