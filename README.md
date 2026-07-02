@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 45/45 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.64** · 63 tagged releases (through v0.63). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.65** · 64 tagged releases (through v0.64). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -78,7 +78,7 @@ in the CHANGELOG for the stated config). Compute = synaptic operations; storage 
 | Telemetry hub (Paradigm A) | sparse `.spk` store | size / query I/O | **61× smaller** than a dense raster; windowed query reads **2%** of the file |
 | In-storage query (Paradigm B) | coincidence **+ temporal order** | host transfer | **162× less** data to host; order-discriminating (FAR→NEAR ≠ NEAR→FAR) |
 | Relational KG (Paradigm C) | link prediction | Hits@1 | **50% TransE · 100% RotatE** (cyclic relations; relation algebra verified) |
-| Associative memory (dense) | capacity vs the classical bound | patterns stored | classical **0.138·N** → **dense n=4 recalls clean past 2·N** (super-linear capacity) |
+| Associative memory (dense) | capacity vs the classical bound | patterns stored | classical **0.138·N** → **dense n=4 clean past 2·N**; **log-sum-ReLU energy** matches softmax capacity, exp-free (no overflow) |
 | Reasoning (Paradigm C, VSA) | hyperdimensional bind/bundle/permute | compositional query | **context-steered arm command** (`bind(APPROACH,NEAR)`→GRIP vs …FAR→WAIT) + role–filler recall |
 | Sequence model (LSM) | temporal-pattern classification | accuracy | **96%** (chance 33%), event-driven; trained deep SSM on real **SHD → 32% @ 20-class** (torch) |
 

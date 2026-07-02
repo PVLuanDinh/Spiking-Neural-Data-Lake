@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.65] — Research: modern-Hopfield energies (softmax + log-sum-ReLU) in dense AM (2026-07-02)
+### Added
+- **`research/dense_associative_memory.py`**: the two modern (continuous) energies alongside the
+  polynomial spectrum — softmax / log-sum-exp (Ramsauer 2020, ↔ attention) and **log-sum-ReLU /
+  Epanechnikov** (arXiv:2506.10801). Both reach dense capacity at P=2·N; LSR matches softmax **exp-free**,
+  needing none of the max-subtraction/clamping softmax requires (naive `exp(β·dot)` overflows past ~709).
+  Top pick of the cycle-3 research scan.
+- **`docs/RESEARCH_SCAN.md`**: cycle-3 multi-source research memo — 49 candidates → 16 ranked / 19
+  rejected, deduped against the built cycles 1–2.
+### Notes
+- Pure-stdlib, deterministic, CI-covered (dense_associative_memory already in run_selfchecks); 45/45
+  self-checks stay green; core `dependencies` stays `[]`.
+
 ## [v0.64] — Research: drift monitor (D3), spike compression, loop latency (D2) (2026-07-02)
 ### Added
 - **`src/snn_data_lake/drift_monitor.py`** (core, zero-dep): online drift + novelty watch on the encoded
