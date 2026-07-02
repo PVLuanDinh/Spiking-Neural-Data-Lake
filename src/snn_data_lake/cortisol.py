@@ -17,11 +17,10 @@ the fast/slow neuromodulator pair the brain actually uses.
   python cortisol.py
 """
 import math
-import os
 
-TAU = float(os.environ.get("CORT_TAU", 200.0))      # slow decay (steps) — the "minutes" scale
-GAIN = float(os.environ.get("CORT_GAIN", 0.30))     # how much one aversive event raises stress
-MAXMOD = float(os.environ.get("CORT_MAXMOD", 0.60)) # cap on how strongly stress modulates
+TAU = 200.0        # slow decay (steps) — the "minutes" scale
+GAIN = 0.30        # how much one aversive event raises stress
+MAXMOD = 0.60      # cap on how strongly stress modulates
 
 
 class Cortisol:

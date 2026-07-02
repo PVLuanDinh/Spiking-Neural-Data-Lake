@@ -24,13 +24,12 @@ neuromodulator pair.
   python valence_stdp.py
 """
 import math
-import os
 import random
 
 from snn_data_lake.spike_preprocessing import N, encode_latency
 
-LR = float(os.environ.get("VAL_LR", 0.05))
-THETA = float(os.environ.get("VAL_THETA", 0.30))   # |valence| above this -> act
+LR = 0.05
+THETA = 0.30       # |valence| above this -> act
 
 
 class ValenceLearner:

@@ -69,9 +69,9 @@ from snn_data_lake.valence_stdp import (
 SIG_PATH = os.path.join(".", "data", "signatures.json")
 LAKE_PATH = os.path.join(".", "data", "lake.spc")
 UNK_PATH = os.path.join(".", "data", "unknowns.jsonl")   # novel signals, awaiting learning
-RATIO = float(os.environ.get("LOOP_RATIO", 0.85))   # match only if best < RATIO*second
-NOISE = float(os.environ.get("LOOP_NOISE", 0.08))   # simulated sensor jitter
-MIN_SUPPORT = int(os.environ.get("LOOP_MIN_SUPPORT", 3))  # repeats before a novel -> new signature
+RATIO = 0.85               # match only if best < RATIO*second
+NOISE = 0.08               # simulated sensor jitter
+MIN_SUPPORT = 3            # repeats before a novel -> new signature
 
 # Default command library (the Interpreter maps these labels -> JOINT_A_ROTATE, etc.)
 COMMANDS = ["JOINT_A_ROTATE", "JOINT_B_ROTATE", "GRIPPER_CLOSE", "GRIPPER_OPEN", "HOME"]
