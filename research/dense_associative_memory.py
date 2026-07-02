@@ -18,8 +18,15 @@ So one demo places the repo's associative-memory story on a named spectrum:
   clean recall well past P=2·N). The prototype's storage win (FACTORING) and this capacity win
   (the DENSE nonlinearity) are orthogonal levers — both beat the classical baseline, differently.
 
+v0.65 — also contrasts the two MODERN (continuous) energies at the dense load: the softmax / log-sum-exp
+form (Ramsauer 2020, ↔ Transformer attention) and the log-sum-ReLU / Epanechnikov energy
+(arXiv:2506.10801). LSR matches softmax's high capacity but is exp-FREE, so it needs none of the
+max-subtraction / clamping the softmax requires to avoid overflow — a real robustness win for a
+pure-stdlib recall path (naive exp(β·dot) overflows once β·dot > ~709).
+
   Run: python dense_associative_memory.py       # (also run by run_selfchecks.py)
 """
+import math
 import random
 
 import stats_bounds as sb  # research/ is on sys.path when run as a script (B5: mean±std bands)
@@ -81,6 +88,50 @@ def mean_recall(p, degree, n, seed):
     return sum(ov) / len(ov)
 
 
+# ---- modern (continuous) energies: retrieval = Σ_p ξ_p · w_p, w_p a kernel over dot_p = ξ_p·s ----
+def softmax_weights(dots, beta, guard=True):
+    """Modern-Hopfield softmax (log-sum-exp) weights. Needs the max-subtraction guard, else
+    exp(β·dot) overflows once β·dot > ~709 (raises OverflowError in pure Python)."""
+    z = [beta * d for d in dots]
+    m = max(z) if guard else 0.0
+    e = [math.exp(zi - m) for zi in z]                 # guard=False -> may raise OverflowError
+    tot = sum(e) or 1.0
+    return [ei / tot for ei in e]
+
+
+def lsr_weights(dots, beta, window=1.0):
+    """Log-sum-ReLU / Epanechnikov weights (arXiv:2506.10801): a bounded ReLU top-band, NO exp.
+    Concentrates weight on patterns within `window` of the best match — softmax-like retrieval,
+    overflow-free (no max-subtraction needed)."""
+    z = [beta * d for d in dots]
+    mz = max(z)
+    r = [max(0.0, zi - (mz - window)) for zi in z]     # bounded; exp-free
+    tot = sum(r) or 1.0
+    return [ri / tot for ri in r]
+
+
+def modern_recall(patterns, cue, weights_fn, steps):
+    """Synchronous modern-Hopfield retrieval with a pluggable weight kernel; sign for bipolar."""
+    s = list(cue)
+    n = len(cue)
+    for _ in range(steps):
+        dots = [sum(pat[j] * s[j] for j in range(n)) for pat in patterns]
+        w = weights_fn(dots)
+        nxt = [1 if sum(patterns[p][j] * w[p] for p in range(len(patterns))) >= 0 else -1
+               for j in range(n)]
+        if nxt == s:
+            break
+        s = nxt
+    return s
+
+
+def mean_recall_modern(patterns, weights_fn, n, rng):
+    tested = patterns if len(patterns) <= SAMPLE else rng.sample(patterns, SAMPLE)
+    ov = [overlap(modern_recall(patterns, corrupt(x, n, FLIP, rng), weights_fn, STEPS), x, n)
+          for x in tested]
+    return sum(ov) / len(ov)
+
+
 def main():
     # sweep both interaction degrees over the same loads, averaged over seeds
     table = {}
@@ -116,6 +167,25 @@ def main():
           " nonlinearity are orthogonal wins.")
     print("=" * 64)
 
+    # ---- modern energies at the dense load (P=2·N): softmax vs log-sum-ReLU (arXiv:2506.10801) ----
+    rng = random.Random(0)
+    pats = make_patterns(round(2 * N), N, rng)
+    sm = mean_recall_modern(pats, lambda d: softmax_weights(d, beta=1.0), N, rng)
+    lsr = mean_recall_modern(pats, lambda d: lsr_weights(d, beta=1.0), N, rng)
+    big = 20.0                                          # β·dot up to 20·48=960 -> exp overflows
+    try:
+        softmax_weights([float(N), 0.0], beta=big, guard=False)
+        overflowed = False
+    except OverflowError:
+        overflowed = True
+    sm_big = mean_recall_modern(pats, lambda d: softmax_weights(d, beta=big), N, rng)
+    lsr_big = mean_recall_modern(pats, lambda d: lsr_weights(d, beta=big), N, rng)
+
+    print(f"modern energies @ P=2·N: softmax {sm:.1%} | log-sum-ReLU {lsr:.1%}  (both dense-capacity)")
+    print(f"robustness @ beta={big:.0f}: naive exp overflows={overflowed} | guarded-softmax {sm_big:.1%}"
+          f" | LSR {lsr_big:.1%} (exp-free, no clamp)")
+    print("=" * 64)
+
     # ---- self-check (ponytail: one runnable assert-based check; deterministic seeds) ----
     assert round(0.03 * N) <= classical_cap <= round(0.30 * N), \
         f"n=2 should behave ~linearly (capacity {classical_cap} not near 0.138·N)"
@@ -125,7 +195,11 @@ def main():
     d_lo, _ = sb.bound(dense_hi, k=3.0)
     _, c_hi = sb.bound(classical_hi, k=3.0)
     assert d_lo > c_hi, f"dense/classical capacity bands overlap at 2·N ({d_lo:.2f} !> {c_hi:.2f})"
-    print("self-check OK: n=2 == classical bound; n=4 stores past 2·N with a clean seed-band gap")
+    assert sm >= THRESH and lsr >= THRESH, f"modern energies not dense-capacity: sm={sm:.2f} lsr={lsr:.2f}"
+    assert overflowed, "naive exp(beta*dot) should overflow at large beta (this is why LSR/guard matter)"
+    assert lsr_big >= THRESH, f"log-sum-ReLU must stay robust (exp-free) at large beta: {lsr_big:.2f}"
+    print("self-check OK: n=2 == classical; n=4 + modern softmax/LSR store past 2·N; "
+          "LSR matches softmax capacity exp-free (robust where naive exp overflows)")
 
 
 if __name__ == "__main__":
