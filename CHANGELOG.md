@@ -3,6 +3,22 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.72] — Research: rank-order coding (Thorpe) — gain-invariant classification by spike order (2026-07-02)
+### Added
+- **`research/rank_order_coding.py`** (zero-dep): Thorpe's rank-order code — classify a pattern by the
+  ORDER its afferents first fire (strongest input spikes first), discarding magnitude. One spike per
+  afferent, ultra-sparse, and INVARIANT to any monotonic gain/contrast change (firing order unchanged)
+  — the property latency (TTFS) and rate codes lack. Deterministic self-check: the rank-order
+  classifier scores 100% clean and 100% after a monotonic contrast change f(v)=exp(1.5v) (exactly
+  invariant), while a nearest-centroid magnitude baseline collapses 100% -> 67% under the same change.
+  Refs: Thorpe, Delorme & VanRullen, Neural Networks 14 (2001).
+### Changed
+- `run_selfchecks.py`: +1 module -> **58/58** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. Distinct from
+  temporal_coding_storage (TTFS latency ~ magnitude) — rank-order keeps only order, gaining contrast
+  invariance.
+
 ## [v0.71] — Research: tempotron — supervised spike-timing learning in one neuron (2026-07-02)
 ### Added
 - **`research/tempotron.py`** (zero-dep): the Gutig-Sompolinsky tempotron (Nat. Neurosci. 2006) — one

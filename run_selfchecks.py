@@ -43,7 +43,7 @@ RESEARCH = [
     "research/srm_neuron", "research/stats_bounds", "research/loop_latency", "research/delay_learning",
     "research/free_energy_control", "research/nir_export", "research/fly_hash",
     "research/sparse_distributed_memory", "research/spiking_som", "research/tempotron",
-    "research/make_results_plot",
+    "research/rank_order_coding", "research/make_results_plot",
 ]
 MODULES = CORE + RESEARCH
 
