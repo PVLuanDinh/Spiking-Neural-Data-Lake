@@ -1,4 +1,4 @@
-"""
+r"""
 Trainable spiking classifier  (stdlib-only, zero deps) — first trainable model
 for the project. Same aim: less compute, less storage than a dense ANN.
 

@@ -17,6 +17,9 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 ### Changed
 - `run_selfchecks.py`: +2 modules → **39/39** stdlib self-checks (energy in CORE, hopfield_baseline
   in RESEARCH). README refreshed (39-module count, repo layout, energy claim now landed not roadmap).
+### Fixed
+- `snn_classifier.py`: raw-string the module docstring to silence an invalid-escape SyntaxWarning
+  from the backslash shape glyph — clean on Python 3.12/3.13+ where it would become a hard error.
 ### Notes
 - Both additions are pure-stdlib, deterministic, and CI-covered; core `dependencies` stays `[]`.
 - Reviewed SpikingJelly + the awesome-snn corpus — no framework adopted (the zero-dep core is the
