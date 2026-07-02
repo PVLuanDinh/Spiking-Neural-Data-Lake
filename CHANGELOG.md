@@ -3,6 +3,20 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.83] — Integration: SDM associative-recall matcher promoted into the product (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/sparse_distributed_memory.py`** (promoted from research/, zero-dep): `SDMMatcher`
+  recognizes a window by Kanerva distributed associative recall — it writes each command's binarized
+  `encode_latency`-domain windows to a Hamming-radius hard-location set with the command's one-hot id
+  as data, then reads back the distributed vote for a query. An additive, noise-robust matcher option
+  beside the Van Rossum / delta-rule / tempotron readouts (not the live default). Self-check on the real
+  library: 100% on 150 jittered windows, 5/5 clean, deterministic. Moved RESEARCH -> CORE; PoC removed.
+  Refs: Kanerva, "Sparse Distributed Memory" (MIT Press 1988).
+### Notes
+- First of the "force the rest" additive integrations (user opted in). Every default behavior, the arm
+  safety envelope, and determinism are preserved. Pure-stdlib, CI-covered; core `dependencies` stays
+  `[]`. 64/64.
+
 ## [v0.82] — Integration: tempotron gesture matcher promoted into the product (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/tempotron.py`** (promoted from research/, zero-dep): `TempotronMatcher` enrolls
