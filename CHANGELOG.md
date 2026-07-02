@@ -3,6 +3,18 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.84] — Integration: spiking SOM promoted as an additive clustering backend (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/spiking_som.py`** (promoted from research/, zero-dep): `som_cluster` lays
+  unknown windows onto a Kohonen map (competitive WTA BMU + lateral neighbourhood) and groups them by
+  best-matching unit — an additive alternative to `signal_loop.cluster_unknowns`' greedy single-link
+  discovery. Self-check on real library gestures: 100% cluster purity over the BMU cells, deterministic.
+  Opt-in; the default single-link path is unchanged. Moved RESEARCH -> CORE; PoC removed. Refs: Kohonen,
+  Proc. IEEE 78 (1990).
+### Notes
+- Second "force the rest" additive integration. Defaults, arm safety envelope, and determinism
+  preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
+
 ## [v0.83] — Integration: SDM associative-recall matcher promoted into the product (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/sparse_distributed_memory.py`** (promoted from research/, zero-dep): `SDMMatcher`
