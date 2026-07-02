@@ -3,6 +3,21 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.70] — Research: spiking self-organizing map — unsupervised topographic store index (2026-07-02)
+### Added
+- **`research/spiking_som.py`** (zero-dep): a Kohonen SOM built from the repo's own primitives — a
+  winner-take-all BMU spike + a decaying Gaussian lateral-neighbourhood update — that lays stored
+  patterns onto a 2-D map so nearby units answer to similar inputs, giving the lake an unsupervised
+  cluster index (which region a live window lands in). Completes the store arc alongside v0.68
+  FlyHash (index) and v0.69 SDM (memory). Deterministic self-check: quantization error 0.49 -> 0.07,
+  topographic ratio 0.36 (neighbour/random weight-distance, <1 = ordered), 100% BMU class purity on
+  3 separable clusters. Refs: Kohonen, Proc. IEEE 78 (1990); Rumbell et al., Neural Networks 2014.
+### Changed
+- `run_selfchecks.py`: +1 module -> **56/56** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. New capability (unsupervised
+  organization), distinct from the WTA routing in snn_moe_classifier and the FlyHash/SDM store line.
+
 ## [v0.69] — Research: Sparse Distributed Memory (Kanerva) — distributed content-addressable store (2026-07-02)
 ### Added
 - **`research/sparse_distributed_memory.py`** (zero-dep): Kanerva's SDM (1988) — a large set of

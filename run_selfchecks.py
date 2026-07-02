@@ -42,7 +42,7 @@ RESEARCH = [
     "research/resonator_network", "research/mcr_hdc", "research/bayesian_snn", "research/nmnist_ingest",
     "research/srm_neuron", "research/stats_bounds", "research/loop_latency", "research/delay_learning",
     "research/free_energy_control", "research/nir_export", "research/fly_hash",
-    "research/sparse_distributed_memory", "research/make_results_plot",
+    "research/sparse_distributed_memory", "research/spiking_som", "research/make_results_plot",
 ]
 MODULES = CORE + RESEARCH
 
