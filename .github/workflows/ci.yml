@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
+          # no `cache: pip` — this job installs nothing (zero-dep), so there is no pip cache to save
       - name: Run every pure-stdlib script's assert-based self-check (zero deps)
         run: python run_selfchecks.py       # canonical module list lives in run_selfchecks.py
 
