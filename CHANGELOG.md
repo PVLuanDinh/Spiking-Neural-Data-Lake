@@ -3,6 +3,25 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.62] — Research: energy claim + classical-Hopfield baseline (2026-07-02)
+### Added
+- **`energy.py`** (core, zero-dep): converts measured SynOps to an estimated Joules/inference vs a
+  dense-ANN baseline, with cited per-op constants (45 nm MAC/AC, Horowitz 2014; Loihi per-SynOp,
+  arXiv:2210.13107). Turns the repo's op-count ratios into an energy claim — e.g. the supervised
+  classifier's 3.6× fewer ops ≈ 18× less energy (op-count × the MAC/AC asymmetry). Idea taken from
+  SpikingJelly's `compute_energy`/`synop` counters, kept pure-stdlib. Roadmap B3.
+- **`research/hopfield_baseline.py`** (zero-dep): the classical dense Hopfield capacity baseline
+  (0.138·N, Amit-Gutfreund-Sompolinsky) the associative-memory result should be read against —
+  recall is clean below ~0.138·N and collapses above; dense storage is O(N²) vs the prototype's
+  factored O(P·k). Names the yardstick for the "80 patterns @ 99.6%, 874× smaller" claim (B4).
+### Changed
+- `run_selfchecks.py`: +2 modules → **39/39** stdlib self-checks (energy in CORE, hopfield_baseline
+  in RESEARCH). README refreshed (39-module count, repo layout, energy claim now landed not roadmap).
+### Notes
+- Both additions are pure-stdlib, deterministic, and CI-covered; core `dependencies` stays `[]`.
+- Reviewed SpikingJelly + the awesome-snn corpus — no framework adopted (the zero-dep core is the
+  thesis); only the energy-accounting idea was worth taking.
+
 ## [v0.61] — Engineering: pytest suite, ruff + pre-commit, CI matrix (2026-07-01)
 ### Added
 - **`tests/` pytest suite** beside the zero-dep `run_selfchecks.py` (the smoke gate stays): edge-case

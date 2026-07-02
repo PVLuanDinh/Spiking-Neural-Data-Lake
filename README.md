@@ -58,7 +58,7 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 37/37 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 39/39 self-checks · pytest 84% · ruff · CI matrix |
 
 Current version: **v0.61** · 61 tagged releases. See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
@@ -195,13 +195,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 37 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 39 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 37-module list is canonical in
+plus separate lint and coverage jobs. The 39-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -237,6 +237,7 @@ spiking-neural-data-lake/
     paradigm_b_matcher.py         Paradigm B: coincidence matcher (CPU reference)
     paradigm_b_engine.py          Paradigm B: coincidence + temporal-sequence query engine
     spike_preprocessing.py        deterministic latency encode + Van Rossum + Silver denoise
+    energy.py                     SynOps -> estimated Joules/inference vs a dense-ANN baseline (cited)
     population_encoding.py        RBF/Gaussian population rate encoder
     signal_loop.py                real-time loop: encode → lake → match → Interpreter (+ continual learn)
     interpreter.py                matched label → robot command + outcome feedback
@@ -263,6 +264,7 @@ spiking-neural-data-lake/
 
   research/                     QUARANTINED — benchmarks & experiments, kept for reproducibility (NOT the product)
     spiking_storage_prototype.py, test_prototype.py   factored associative memory + stress sweeps (zero-dep)
+    hopfield_baseline.py                              classical Hopfield 0.138·N capacity baseline (zero-dep)
     temporal_coding_storage.py                        TTFS latency coding, 83.5× fewer ops (zero-dep)
     snn_moe_classifier.py                             spike-driven MoE, 0-param router (zero-dep)
     spike_knowledge_graph{,_rotate}.py, spike_kg_relations.py   Paradigm C: SpikE / RotatE / algebra (zero-dep)
@@ -275,7 +277,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (37 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (39 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -295,7 +297,9 @@ spiking-neural-data-lake/
   attractor memory) scaled down to small, _verifiable_ demos.
 - **Path to neuromorphic silicon** — the in-storage query (Paradigm B) and the spiking control
   loop are architected for event-driven hardware (Loihi 2 / Lava, Akida); on-chip, SynOps convert
-  directly to a Joules-per-inference energy claim (roadmap).
+  directly to a Joules-per-inference energy claim — the stdlib `energy.py` already estimates it from
+  measured SynOps (≈18× for the supervised classifier under cited 45 nm constants: the 3.6× op-count
+  win × the MAC/AC energy asymmetry).
 
 ---
 
@@ -309,8 +313,8 @@ Near-term, from the cited audit in [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md):
   as a scientific control against unsupervised STDP.
 - **DVS128 Gesture as the flagship event benchmark** (loadable via Tonic) — on-theme, replaces
   off-theme N-MNIST, and drives the same Interpreter→arm loop from a real event camera.
-- **SynOps → Joules** — multiply measured SynOps by a cited per-op energy to report
-  Joules/inference vs a dense-MAC baseline.
+- **SynOps → Joules** *(analytical helper landed — `energy.py`)* — fold an energy column into
+  the results table and validate against measured neuromorphic silicon.
 - **Loihi 2 / Lava port of Paradigm B** — validate on the Lava CPU backend, then measure real
   silicon energy under INRC access.
 - **Actuator safety hardening** — host↔arm heartbeat/dead-man timeout, command rate limit,
