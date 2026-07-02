@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.87] — Integration: BCM plasticity promoted (competitive selectivity on the classifier shapes) (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/bcm_plasticity.py`** (promoted from research/, zero-dep): `develop_selectivity`
+  runs BCM's sliding-threshold rule on `snn_classifier`'s distinct 8x8 shape inputs; one unit
+  self-organizes to a single shape (selectivity 0.11 -> 0.67, winner 1.99 vs 0.25 others), deterministic.
+  BCM is genuinely unsupervised (a single repeated pattern is depressed, and near-identical/overlapping
+  windows collapse it — so it runs on the separable, magnitude-normalized shape inputs, not the
+  overlapping gesture windows). Additive/opt-in; the recognition path is unchanged. Moved RESEARCH ->
+  CORE; PoC removed. Refs: Bienenstock, Cooper & Munro, J. Neurosci. 2 (1982).
+### Notes
+- Fifth "force the rest" additive integration. Defaults, arm safety envelope, and determinism
+  preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
+
 ## [v0.86] — Integration: short-term plasticity promoted as an additive streaming onset filter (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/short_term_plasticity.py`** (promoted from research/, zero-dep): `novelty_filter`
