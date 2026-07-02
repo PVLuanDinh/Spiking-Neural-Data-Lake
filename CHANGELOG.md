@@ -3,6 +3,20 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.82] — Integration: tempotron gesture matcher promoted into the product (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/tempotron.py`** (promoted from research/, zero-dep): `TempotronMatcher` enrolls
+  one Gutig-Sompolinsky tempotron per command on the live `build_default_library`, training each to
+  fire for its command's `encode_latency` spike pattern and stay silent for the others; a window is
+  classified by the highest peak sub-threshold voltage. A third, spike-TIMING matcher mechanism beside
+  the Van Rossum distance (signal_loop) and delta-rule rate (learned_matcher) readouts. Self-check on
+  the real library: 100% on 150 jittered windows, 5/5 clean, deterministic. Moved RESEARCH -> CORE;
+  research/ PoC removed. Kept a self-contained matcher option (not the live default). Refs: Gutig &
+  Sompolinsky, Nature Neuroscience 9 (2006).
+### Notes
+- Fourth integration of the "primitives into the main program" arc (recognition x2, arm motor, deploy).
+  Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. 64/64.
+
 ## [v0.81] — Integration: NIR export promoted into the product (deploy the trained recognizer) (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/nir_export.py`** (promoted from research/, zero-dep): the NIR-graph emitter is

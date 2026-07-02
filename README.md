@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 64/64 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.81** · 81 tagged releases (through v0.81). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.82** · 82 tagged releases (through v0.82). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,7 +234,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (29 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (30 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
     paradigm_b_matcher.py         Paradigm B: coincidence matcher (CPU reference)
@@ -265,6 +265,7 @@ spiking-neural-data-lake/
     nir_export.py                 export the trained classifier to a NIR graph (Loihi 2 / SpiNNaker 2 / Speck deploy)
     learned_matcher.py            learned classifier + Van Rossum novelty gate (hybrid matcher)
     rank_order_coding.py          gain-invariant recognition (Thorpe rank code) — robust to sensor gain / rig change
+    tempotron.py                  supervised spike-timing gesture matcher (one tempotron per command)
     demo.py                       the whole loop in one runnable file  (snn-demo)
     lakehouse/medallion.py        Bronze→Silver→Gold PoC (Parquet + polars)
     lakehouse/delta_demo.py       Delta Lake PoC (transaction log + OPTIMIZE + time-travel)
@@ -286,7 +287,6 @@ spiking-neural-data-lake/
     fly_hash.py                                       fly-olfaction LSH: sparse expansion + WTA -> approx-NN index over the store (zero-dep)
     sparse_distributed_memory.py                      Kanerva SDM: distributed hard-location content-addressable store (zero-dep)
     spiking_som.py                                    Kohonen self-organizing map: unsupervised topographic index over the store (zero-dep)
-    tempotron.py                                      Gutig-Sompolinsky supervised spike-timing classifier (one leaky neuron) (zero-dep)
     homeostatic_scaling.py                            Turrigiano synaptic scaling: rate set-point stability for the STDP stores (zero-dep)
     izhikevich_neuron.py                              Izhikevich 2-eq neuron: RS/IB/CH/FS cortical spiking regimes (zero-dep)
     bcm_plasticity.py                                 BCM sliding-threshold rule: rate-based selectivity development (zero-dep)
@@ -333,6 +333,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.82, product integration):_ **Tempotron matcher promoted into the product**
+(`src/snn_data_lake/tempotron.py`) — `TempotronMatcher` enrolls one supervised spike-timing tempotron
+per command on the live library and recognizes jittered windows at 100%; a third matcher mechanism
+(spike timing) beside the distance and rate readouts.
 
 _Landed (v0.81, product integration):_ **NIR export promoted into the product**
 (`src/snn_data_lake/nir_export.py`) — `export_classifier` maps the trained snn_classifier weights to a
