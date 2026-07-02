@@ -5,7 +5,9 @@ The prototypes across this repo already MEASURE synaptic operations (SynOps) and
 op-count ratios ("3.6-83x fewer ops"). This converts those into an estimated ENERGY figure —
 the number reviewers and an INRC/neuromorphic proposal actually ask for. It is analytical, not
 measured silicon: multiply an op count by a cited per-op energy. Idea borrowed from
-SpikingJelly's compute_energy/synop counters, kept pure-stdlib here (zero deps).
+SpikingJelly's compute_energy/synop counters, kept pure-stdlib here (zero deps). The NeuroBench
+(arXiv:2304.04640, Nat.Comms 2025) metric definitions — effective ACs, activation sparsity, model
+footprint — are exposed too, so the efficiency claims are externally comparable (leaderboard-legible).
 
 Model (the standard SNN-vs-ANN energy argument):
   - a dense ANN does a multiply-accumulate (MAC) per connection;
@@ -57,6 +59,27 @@ def compare(synops, dense_macs, e_op=E_AC_FP32_45NM, e_mac=E_MAC_FP32_45NM):
     }
 
 
+# ---- NeuroBench-style metrics (arXiv:2304.04640) — definitions only, no torch harness ----
+def activation_sparsity(active_slots, total_slots):
+    """Fraction of neuron-activation slots that did NOT spike (higher = sparser = cheaper)."""
+    return 1.0 - active_slots / total_slots
+
+
+def footprint_bytes(n_params, bytes_per_param=4):
+    """Model memory footprint = parameter count x bytes/param (NeuroBench 'footprint')."""
+    return n_params * bytes_per_param
+
+
+def neurobench(synops, dense_macs, n_params):
+    """Leaderboard-legible summary: effective ACs (= the measured SynOps), the dense Eff-MAC
+    baseline, and footprint. Adopts the NeuroBench definitions; leaves out its torch harness."""
+    return {
+        "eff_acs": synops,                # spiking effective accumulate ops = measured SynOps
+        "eff_macs_dense": dense_macs,      # dense-ANN multiply-accumulate baseline
+        "footprint_bytes": footprint_bytes(n_params),
+    }
+
+
 def main():
     # real measured numbers from this repo's supervised spiking classifier (snn_classifier.py):
     # 113,676 SynOps vs a 409,600-MAC dense ANN of the same shape.
@@ -76,10 +99,15 @@ def main():
           f"(= {r['ops_ratio']:.1f}x ops x {E_MAC_FP32_45NM / E_AC_FP32_45NM:.1f}x MAC/AC)")
     print(f"  Loihi lens (SynOp 23.6 pJ) : {loihi_nj:.1f} nJ  (incl. routing overhead;")
     print("                               its win amortises at scale + sparsity, not this toy size)")
+    nb = neurobench(synops, dense_macs, n_params=4 * 64)          # classifier: 4 classes x 64 features
+    print(f"  NeuroBench   : Eff_ACs {nb['eff_acs']:,} vs dense Eff_MACs {nb['eff_macs_dense']:,};"
+          f" footprint {nb['footprint_bytes'] / 1024:.1f} KB  (defs: arXiv:2304.04640)")
     print("=" * 60)
 
     # ---- self-check (ponytail: one runnable assert-based check) ----
     assert r["snn_nj"] < r["ann_nj"], "spiking energy should beat dense ANN at 45 nm"
+    assert nb["eff_acs"] == synops and nb["footprint_bytes"] > 0, "NeuroBench metrics wrong"
+    assert activation_sparsity(1, 4) == 0.75, "activation-sparsity definition wrong"
     exp = r["ops_ratio"] * (E_MAC_FP32_45NM / E_AC_FP32_45NM)
     assert abs(r["energy_ratio"] - exp) < 1e-6, "energy_ratio must be ops_ratio x MAC/AC asymmetry"
     assert r["energy_ratio"] > r["ops_ratio"], "energy win must exceed the op-count win (MAC > AC)"
