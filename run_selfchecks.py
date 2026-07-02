@@ -39,7 +39,7 @@ RESEARCH = [
     "research/event_quadtree_compression", "research/spiking_ssm",
     "research/spike_knowledge_graph",
     "research/spike_knowledge_graph_rotate", "research/spike_kg_relations", "research/spiking_vsa",
-    "research/resonator_network", "research/mcr_hdc", "research/nmnist_ingest",
+    "research/resonator_network", "research/mcr_hdc", "research/bayesian_snn", "research/nmnist_ingest",
     "research/srm_neuron", "research/stats_bounds", "research/loop_latency", "research/delay_learning",
     "research/make_results_plot",
 ]
