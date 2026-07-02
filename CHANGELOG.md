@@ -24,6 +24,11 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
   `yield`→`yield from`, and unused/unsorted imports. Hand-alignment preserved — pure-style rules
   (E501/E702/E731/E741/B905) are relaxed for the existing modules via `per-file-ignores`; new tests are
   fully formatted. `research/`, `gcp/`, `infra/`, and `robot arm/` are out of ruff scope for now.
+- Inlined 8 dead env-var tuning knobs (`VAL_*`/`LOOP_*`/`CORT_*`) to plain constants — nothing set them.
+### Removed
+- **`requirements.txt`** — duplicated the pyproject extras and had already drifted; pyproject is now the
+  single source of truth (`pip install -e ".[gpu]"`, plus `[lake]`/`[nmnist]`/`[genn]`/`[all]`). New
+  `genn` extra carries `pygenn`.
 ### Notes
 - 37/37 stdlib self-checks stay green on Windows + Python 3.11 and 3.13 (3.12 exercised in CI); `pytest`
   green at 84% coverage. Implements the P0 items A1/A2/A4 from `docs/IMPROVEMENTS.md`; A3 (static typing)
