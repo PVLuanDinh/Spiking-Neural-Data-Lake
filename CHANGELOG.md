@@ -3,6 +3,22 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.74] — Research: homeostatic synaptic scaling (Turrigiano) — rate-stable learning (2026-07-02)
+### Added
+- **`research/homeostatic_scaling.py`** (zero-dep): homeostatic synaptic scaling — a neuron measures
+  its own rate and MULTIPLICATIVELY rescales all synapses toward a set-point, the stabilizer the
+  repo's Hebbian learners (valence_stdp, tempotron, delay_learning) lack. Multiplicative is the point:
+  it holds the rate at target while preserving the RELATIVE weight pattern Hebbian carved (unlike
+  subtractive normalization). Deterministic self-check: with scaling the rate settles at 1.07 (target
+  1.0) with bounded weights, while Hebbian-only runs away to ~2.4e9; a scale step leaves every weight
+  ratio unchanged (drift 2e-16); learned selectivity (strongest input -> largest weight) is kept.
+  Refs: Turrigiano et al., Nature 391 (1998); Turrigiano, "The self-tuning neuron", Cell 135 (2008).
+### Changed
+- `run_selfchecks.py`: +1 module -> **60/60** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. Stability mechanism on the
+  plasticity axis, distinct from the STDP/tempotron learning rules it stabilizes.
+
 ## [v0.73] — Research: spiking CPG (Matsuoka half-center oscillator) — rhythmic motor drive (2026-07-02)
 ### Added
 - **`research/cpg_oscillator.py`** (zero-dep): a Matsuoka central pattern generator — two mutually-
