@@ -38,7 +38,7 @@ RESEARCH = [
     "research/temporal_coding_storage", "research/spike_compression", "research/spiking_ssm",
     "research/spike_knowledge_graph",
     "research/spike_knowledge_graph_rotate", "research/spike_kg_relations", "research/spiking_vsa",
-    "research/nmnist_ingest",
+    "research/resonator_network", "research/nmnist_ingest",
     "research/srm_neuron", "research/stats_bounds", "research/loop_latency",
     "research/make_results_plot",
 ]
