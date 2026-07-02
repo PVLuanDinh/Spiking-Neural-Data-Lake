@@ -18,6 +18,7 @@ Constants (45 nm CMOS, Horowitz, "Computing's Energy Problem", ISSCC 2014):
   32-bit FP MAC = 3.7 pJ (mult) + 0.9 pJ (add) = 4.6 pJ ; 32-bit FP add (AC) = 0.9 pJ.
 A neuromorphic-silicon reference point (per-SynOp on Loihi, incl. routing overhead) is offered
 as a second lens: ~23.6 pJ (An Analytical Estimation of SNN Energy Efficiency, arXiv:2210.13107).
+At system scale, Intel's Hala Point (1,152 Loihi 2 chips) reports ~15 TOPS/W INT8.
 NOTE: the Loihi per-SynOp figure bundles fixed routing/overhead, so at TINY models it can exceed
 the idealised CMOS AC — its win amortises with scale and sparsity. Reported honestly, not hidden.
 

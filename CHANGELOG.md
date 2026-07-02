@@ -3,6 +3,27 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.63] — Research: dense associative memory, spiking VSA, LSM sequence model (2026-07-02)
+### Added
+- **`research/dense_associative_memory.py`** (zero-dep): higher-order Hopfield where degree n=2 recovers
+  the classical 0.138·N bound and n=4 stores cleanly past P=2·N — placing the repo's associative-memory
+  result on the classical → k-WTA-factored → distributed-dense capacity spectrum (Krotov-Hopfield;
+  arXiv:2601.00984, 2507.06211). Reports mean ± std over ≥5 seeds (roadmap B5).
+- **`research/spiking_vsa.py`** (zero-dep): hyperdimensional / Vector-Symbolic reasoning —
+  bind/bundle/permute/cleanup over bipolar hypervectors; role–filler record queries + a context-steered
+  arm-command algebra (`bind(APPROACH,NEAR)`→GRIP vs `…FAR`→WAIT). A spike-native relational algebra for
+  Paradigm C (arXiv:2303.00066; Nature Sci Rep 2022; arXiv:2405.01305). Capacity as mean ± std (B5).
+- **`research/spiking_ssm.py`** (zero-dep): a Liquid State Machine (fixed random spiking reservoir +
+  delta-rule readout) for temporal sequences — 96% on a 3-class temporal task (chance 33%), event-driven
+  SynOps piped through `energy.py`. The trained deep SpikingSSM/P-SpikeSSM (SHD/SSC, torch) is the
+  referenced accuracy upgrade (SpikingSSMs AAAI 2025; P-SpikeSSM ICLR 2025).
+### Changed
+- `run_selfchecks.py`: +3 modules → **42/42** stdlib self-checks; README count/layout + energy/silicon
+  citations refreshed; `energy.py` docstring notes Hala Point (15 TOPS/W INT8).
+### Notes
+- All three are pure-stdlib, deterministic, and CI-covered; core `dependencies` stays `[]`. Sourced from
+  a 2024–2026 literature scan mapped onto the store/search/reason thesis — no framework adopted.
+
 ## [v0.62] — Research: energy claim + classical-Hopfield baseline (2026-07-02)
 ### Added
 - **`energy.py`** (core, zero-dep): converts measured SynOps to an estimated Joules/inference vs a

@@ -34,9 +34,10 @@ CORE = [
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [
     "research/spiking_storage_prototype", "research/test_prototype", "research/hopfield_baseline",
-    "research/snn_moe_classifier",
-    "research/temporal_coding_storage", "research/spike_knowledge_graph",
-    "research/spike_knowledge_graph_rotate", "research/spike_kg_relations", "research/nmnist_ingest",
+    "research/dense_associative_memory", "research/snn_moe_classifier",
+    "research/temporal_coding_storage", "research/spiking_ssm", "research/spike_knowledge_graph",
+    "research/spike_knowledge_graph_rotate", "research/spike_kg_relations", "research/spiking_vsa",
+    "research/nmnist_ingest",
     "research/srm_neuron", "research/stats_bounds", "research/make_results_plot",
 ]
 MODULES = CORE + RESEARCH
