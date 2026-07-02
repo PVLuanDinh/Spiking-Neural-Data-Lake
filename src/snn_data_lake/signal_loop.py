@@ -48,18 +48,23 @@ Arduino wire contract (full spec + example sketch in docs/arduino_contract.md):
   C raw channel samples -> one window. Values any range (auto-normalized); '#' and
   unparseable lines skipped.
 """
-import os
-import sys
-import json
 import gzip
+import json
 import math
+import os
 import random
+import sys
 import zlib
 
-from snn_data_lake.spike_preprocessing import encode_latency, van_rossum_distance, N, T
-from snn_data_lake.reflex import Reflex, reflex_guard      # #2 instinctive fast-path (no cycle: reflex is leaf)
-from snn_data_lake.valence_stdp import ValenceLearner      # #3 RPE dopamine (leaf: only imports spike_preprocessing)
-from snn_data_lake.cortisol import Cortisol                # slow tonic stress (leaf: only os/math)
+from snn_data_lake.cortisol import Cortisol  # slow tonic stress (leaf: only os/math)
+from snn_data_lake.reflex import (  # #2 instinctive fast-path (no cycle: reflex is leaf)
+    Reflex,
+    reflex_guard,
+)
+from snn_data_lake.spike_preprocessing import N, encode_latency, van_rossum_distance
+from snn_data_lake.valence_stdp import (
+    ValenceLearner,  # #3 RPE dopamine (leaf: only imports spike_preprocessing)
+)
 
 SIG_PATH = os.path.join(".", "data", "signatures.json")
 LAKE_PATH = os.path.join(".", "data", "lake.spc")
@@ -198,7 +203,9 @@ def build_learned_matcher(library):
     """Stronger: supervised spiking classifier picks the command, Van Rossum
     distance gate vetoes novel signals (hybrid — see learned_matcher.py). Trains
     at build time. Returns the same (label, dist, ref, encoded) shape as build_matcher."""
-    from snn_data_lake import learned_matcher as L          # lazy: avoids the signal_loop<->learned_matcher cycle
+    from snn_data_lake import (
+        learned_matcher as L,  # lazy: avoids the signal_loop<->learned_matcher cycle
+    )
     labels = list(library)
     nC = len(labels)
     refs_enc = [encode_latency(v) for v in library.values()]

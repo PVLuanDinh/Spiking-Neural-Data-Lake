@@ -18,8 +18,16 @@ CI-safe: real CSVs if present, else an inline synthetic 3-gesture set.
 """
 import os
 
+from snn_data_lake.arm_config import (  # calibration lives in arm_config
+    FAR,
+    MID,
+    NEAR,
+    STRIDE,
+    W,
+    dbin,
+    present,
+)
 from snn_data_lake.paradigm_b_engine import match_sequence
-from snn_data_lake.arm_config import dbin, present, NEAR, MID, FAR, W, STRIDE   # calibration lives in arm_config
 
 DIR = "robot arm"
 GESTURES = ["IDLE", "HAND_APPROACH", "HAND_RETREAT"]

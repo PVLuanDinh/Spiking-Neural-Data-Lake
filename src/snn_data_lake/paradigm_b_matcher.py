@@ -24,7 +24,8 @@ Run:  python paradigm_b_matcher.py   (builds telemetry via the v0.12 hub first)
 """
 import os
 from collections import deque
-from snn_data_lake.spike_telemetry_hub import SpikeTelemetryHub, disk_query, synth
+
+from snn_data_lake.spike_telemetry_hub import disk_query, synth
 
 
 def compile_query(channels, window, k):
@@ -144,8 +145,8 @@ def main():
     print("DISTINCT-CHANNEL COUNTING (the GeNN sub-detector net, v0.14):")
     print(f"  sub-detector net matches : {len(sub)} ({len(sub_burst)} in burst)")
     print(f"    (deque reference was {len(matches)}; the delta is the sub-detector's one-shot-")
-    print(f"     per-window refractory vs raw-distinct re-triggering — both count DISTINCT")
-    print(f"     channels. The GeNN port mirrors the sub-detector net exactly.)")
+    print("     per-window refractory vs raw-distinct re-triggering — both count DISTINCT")
+    print("     channels. The GeNN port mirrors the sub-detector net exactly.)")
     print(f"  spam test (channel 7 x{q['k'] + 2} in a window):")
     print(f"    total-count detector (wrong): {len(total_count_match(spam, q))} match(es) — false positive")
     print(f"    sub-detector  (distinct)    : {len(subdetector_match(spam, q))} match(es) — correct")

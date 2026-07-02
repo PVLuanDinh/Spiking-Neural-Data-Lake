@@ -23,10 +23,10 @@ Capabilities:
 Run:  python spike_telemetry_hub.py
 """
 import os
-import struct
 import random
+import struct
 from array import array
-from bisect import bisect_left, bisect_right
+from bisect import bisect_left
 
 random.seed(0)
 
@@ -119,7 +119,7 @@ class SpikeTelemetryHub:
 def disk_query(path, t0, t1, channels):
     """Windowed query that reads ONLY the requested channels from disk — the
     'don't load the whole dataset' path. Returns (events, bytes_read)."""
-    out, bytes_read = [], 0
+    bytes_read = 0
     with open(path, "rb") as f:
         magic, n, _ = _HEADER.unpack(f.read(_HEADER.size))
         if magic != _MAGIC:

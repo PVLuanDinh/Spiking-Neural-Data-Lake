@@ -21,8 +21,8 @@ streaming path (dataflow_ingest WriteToParquet -> would become a Delta sink). Th
 local stores stay the stdlib .spk/.spc/.spkl formats (see docs/STORAGE_FORMATS.md).
 """
 import os
-import shutil
 import random
+import shutil
 
 import polars as pl
 from deltalake import DeltaTable
@@ -55,7 +55,6 @@ def main():
     dt = DeltaTable(TABLE)
     files_before = len(dt.file_uris())
     rows_before = pl.read_delta(TABLE).height
-    ver_before = dt.version()
 
     # time-travel: read the table AS OF version 0 (only the first append was committed then)
     v0_rows = pl.read_delta(TABLE, version=0).height

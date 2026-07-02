@@ -20,11 +20,11 @@ Implements the three recommended next steps:
 
 Run:  python spike_preprocessing.py
 """
-import os
 import math
-import time
-import struct
+import os
 import random
+import struct
+import time
 from array import array
 
 T = 32          # time steps
@@ -210,7 +210,7 @@ def main():
     img = dataset[0]
     d_det = van_rossum_distance(encode_latency(img), encode_latency(img))
     d_poi = van_rossum_distance(encode_poisson(img), encode_poisson(img))
-    print(f"4. query identity         : SAME image encoded twice ->")
+    print("4. query identity         : SAME image encoded twice ->")
     print(f"     deterministic latency : Van Rossum dist = {d_det:.3f}  (recognised as SAME query)")
     print(f"     Poisson (stochastic)  : Van Rossum dist = {d_poi:.2f}  (looks like DIFFERENT data!)")
 

@@ -19,8 +19,8 @@ production versions, tests, lakehouse, GPU training, and the live `--serial` pat
 Optional live hardware (needs `pip install pyserial`):
     python demo.py --serial COM8
 """
-import sys
 import math
+import sys
 
 W = 8                                  # samples per window
 CONTACT = 0.04                         # distance (m) -> reflex EMERGENCY_STOP
@@ -106,7 +106,7 @@ def sample_stream():
 
 
 def serial_stream(port, baud=115200):
-    import serial                                          # only for --serial
+    import serial  # only for --serial
     ser = serial.Serial(port, baud)
     while True:
         parts = ser.readline().decode("ascii", "ignore").strip().split(",")

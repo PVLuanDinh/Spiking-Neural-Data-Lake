@@ -18,8 +18,8 @@ pure-stdlib and run in CI.
 
   python serial_arm.py        # self-check (fake serial, no hardware, no pyserial)
 """
-from snn_data_lake.arm_sim import ArmSim
 from snn_data_lake import arm_config
+from snn_data_lake.arm_sim import ArmSim
 
 
 def assert_calibrated(allow_uncalibrated=False):
@@ -41,7 +41,7 @@ class SerialArm:
     def __init__(self, port=None, baud=115200, writer=None, allow_uncalibrated=False):
         if writer is None:
             assert_calibrated(allow_uncalibrated)
-            import serial                        # pyserial — only needed on real hardware
+            import serial  # pyserial — only needed on real hardware
             writer = serial.Serial(port, baud, timeout=1)
         self.w = writer
         self.mirror = ArmSim()                   # local twin so state()/gripper still work
@@ -80,7 +80,7 @@ def main():
 
         def write(self, b):
             if self.fail:
-                raise IOError("cable yanked")
+                raise OSError("cable yanked")
             self.lines.append(b.decode("ascii").strip())
 
         def flush(self):

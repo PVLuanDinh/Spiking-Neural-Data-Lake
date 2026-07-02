@@ -14,10 +14,10 @@ Backends:
 
   python arm_sim.py
 """
-import re
 import math
+import re
 
-from snn_data_lake.arm_config import TRAJ_DEV_MAX        # trajectory-deviation reflex bound (calibration)
+from snn_data_lake.arm_config import TRAJ_DEV_MAX  # trajectory-deviation reflex bound (calibration)
 
 DEG = math.pi / 180.0
 FLOOR_Y = -0.20                 # end-effector below this = ground collision

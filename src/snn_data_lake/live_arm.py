@@ -16,14 +16,16 @@ Gesture -> command map (sensor domain): approach = grab the incoming object, ret
 """
 import os
 import sys
-
 import time
 
 from snn_data_lake import signal_loop as S
-from snn_data_lake.gesture_recognition import classify, load_csv, windows, W
-from snn_data_lake.interpreter import Interpreter
+from snn_data_lake.arm_config import (  # reflex distance + window stride: calibration in arm_config
+    CONTACT,
+    STRIDE,
+)
 from snn_data_lake.arm_sim import ArmSim
-from snn_data_lake.arm_config import CONTACT, STRIDE          # reflex distance + window stride: calibration in arm_config
+from snn_data_lake.gesture_recognition import W, classify, load_csv
+from snn_data_lake.interpreter import Interpreter
 
 SENSOR_COMMANDS = {"HAND_APPROACH": "GRIPPER_CLOSE",   # grab the approaching object
                    "HAND_RETREAT":  "GRIPPER_OPEN",    # release as it leaves
@@ -64,8 +66,7 @@ def _serial_samples_from(ser):
 
 def replay_samples(paths):
     for p in paths:
-        for d, t in load_csv(p):
-            yield d, t
+        yield from load_csv(p)
 
 
 def run(samples, arm, interp, emit, stride=STRIDE):

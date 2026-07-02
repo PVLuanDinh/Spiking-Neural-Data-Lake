@@ -15,8 +15,8 @@ depends on a committed data file.
   python sensor_csv_ingest.py --stream | python signal_loop.py --stdin --window 8
 """
 import os
-import sys
 import random
+import sys
 
 from snn_data_lake import signal_loop as S
 

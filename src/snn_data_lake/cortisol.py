@@ -16,8 +16,8 @@ the fast/slow neuromodulator pair the brain actually uses.
 
   python cortisol.py
 """
-import os
 import math
+import os
 
 TAU = float(os.environ.get("CORT_TAU", 200.0))      # slow decay (steps) — the "minutes" scale
 GAIN = float(os.environ.get("CORT_GAIN", 0.30))     # how much one aversive event raises stress
@@ -57,11 +57,9 @@ def demo_episode():
     """Reflex + valence + cortisol coupled through a stress episode:
     quiet -> danger burst (stress rises, reflex sharpens, aversive learning amplified)
     -> quiet (recovery)."""
-    from snn_data_lake.reflex import Reflex
-    from snn_data_lake.valence_stdp import ValenceLearner, _pattern, _jitter
-    import random
 
-    rng = random.Random(0)
+    from snn_data_lake.reflex import Reflex
+
     cort = Cortisol(tau=40.0)            # short tau so the demo runs quickly
     base_threshold = 0.10
     danger = [500, 500, 500, 500, 500, 500, 950, 0]   # collision on ch6

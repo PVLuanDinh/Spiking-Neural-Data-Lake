@@ -15,9 +15,9 @@ Gates:
 
   python data_quality.py
 """
+import hashlib
 import math
 import struct
-import hashlib
 
 _REC = "<qi"                       # one event = int64 time + int32 channel (12 bytes)
 _SZ = struct.calcsize(_REC)

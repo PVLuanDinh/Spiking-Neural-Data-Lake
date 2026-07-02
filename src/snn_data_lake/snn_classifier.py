@@ -20,8 +20,8 @@ Learning rule (ponytail): supervised local delta rule on per-input spike counts
 Task: 4 distinct 8x8 binary shapes (bar | / - / \ / box), recognised under
 bit-flip noise. Synthetic + self-contained so it trains offline in seconds.
 """
-import random
 import math
+import random
 
 random.seed(0)  # ponytail: deterministic run + self-check. Not a calibration knob.
 
@@ -226,7 +226,7 @@ def main():
     print("STORAGE (lower = less space):")
     print(f"  weights        : {weight_vals} values; int8 quantisable -> "
           f"{weight_vals} B vs {weight_vals*4} B float32 (4x)")
-    print(f"  activations    : spikes are 1-bit events vs 32-bit floats (32x)")
+    print("  activations    : spikes are 1-bit events vs 32-bit floats (32x)")
     print("=" * 56)
 
     # ---- self-check (ponytail: one runnable check) ----

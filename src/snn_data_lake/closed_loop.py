@@ -11,10 +11,10 @@ into dopamine + cortisol every tick. This is the schematic's full reaction loop 
 Run:
   python closed_loop.py        # scripted episode + self-check
 """
-from snn_data_lake import signal_loop as S
-from snn_data_lake.reflex import Reflex
-from snn_data_lake.interpreter import Interpreter
 from snn_data_lake import arm_bridge as AB
+from snn_data_lake import signal_loop as S
+from snn_data_lake.interpreter import Interpreter
+from snn_data_lake.reflex import Reflex
 
 
 def run_episode(signals, lib=None, assume_success=True, base_threshold=0.10, trace=None,
@@ -27,7 +27,6 @@ def run_episode(signals, lib=None, assume_success=True, base_threshold=0.10, tra
     valence = S.ValenceLearner()
     cort = S.Cortisol(tau=30.0)
     itp = Interpreter(assume_success=assume_success)
-    last_window = None
 
     for raw in signals:
         p = S.parse_line(raw) if isinstance(raw, str) else raw
@@ -54,7 +53,6 @@ def run_episode(signals, lib=None, assume_success=True, base_threshold=0.10, tra
         v_action, v = valence.act(window, bias=cort.caution_bias())
         cmd, reward = itp.interpret({"match": label, "instinct": v_action,
                                      "valence": round(v, 3), "stress": round(cort.level, 3)})
-        last_window = window
         # feed the Interpreter's outcome straight back into dopamine + cortisol.
         # bridge set -> route the reward over the arm_bridge UDP back-channel first (the
         # split-process deployment: Interpreter and loop on different processes). Transparent.

@@ -51,7 +51,7 @@ class OutcomeBridge:
         """Next reward float, or None on timeout / malformed packet. Non-blocking past timeout."""
         try:
             data, _ = self.sock.recvfrom(256)
-        except socket.timeout:
+        except TimeoutError:
             return None
         return parse_outcome(data.decode("ascii", "ignore"))
 

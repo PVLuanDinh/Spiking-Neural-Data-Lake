@@ -20,8 +20,8 @@ is a bad outcome), AVOID veto -> -0.3, executed command -> 0.0 (neutral, await r
   signal_loop.py --serial COM3 --feedback | python interpreter.py --pipe --outcome loop_in
   python interpreter.py                    # run the self-check (no stdin)
 """
-import sys
 import json
+import sys
 
 # matched signature label -> concrete robot command (params are placeholders to tune)
 COMMANDS = {

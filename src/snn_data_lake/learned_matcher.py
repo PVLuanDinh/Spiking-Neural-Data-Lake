@@ -16,7 +16,7 @@ windows across a rising-noise sweep and reports who wins where. Low noise: a tie
 """
 import random
 
-from snn_data_lake import snn_classifier as C            # train/forward/softmax + globals N, STEPS, EPOCHS
+from snn_data_lake import snn_classifier as C  # train/forward/softmax + globals N, STEPS, EPOCHS
 from snn_data_lake.signal_loop import build_default_library
 from snn_data_lake.spike_preprocessing import encode_latency, van_rossum_distance
 
