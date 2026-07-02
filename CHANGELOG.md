@@ -3,6 +3,32 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.66] — Research: cycle-3 scan builds (reason / store / control / metrics) (2026-07-02)
+### Added
+- **`research/resonator_network.py`** — VSA factorization (decompose a bound product) the built VSA
+  lacked: 2-factor 100%, 3-factor 70% via superposition search + restarts. Refs: arXiv:2208.12880.
+- **`research/delay_learning.py`** — three-factor synaptic-DELAY learning (timing, not weight): learns
+  a delay ~GAP, temporal-order accuracy 50%→100%. Refs: arXiv:2601.00668.
+- **`research/mcr_hdc.py`** — Modular Composite Representation HDC substrate: 100% record recovery at
+  1.52× fewer bits than bipolar. Refs: arXiv:2511.09708.
+- **`research/event_quadtree_compression.py`** — 2-D quadtree lossless event codec: 3.6× on bursty
+  co-firing data, beats gzip + the 1-D delta+varint. Refs: arXiv:2411.07155.
+- **`research/index_compression.py`** — order-invariant id/edge-list compression (d-gap+varint): 3.0×,
+  beats gzip; compresses the query index metadata, not the payload. Refs: arXiv:2501.10479.
+- **`research/bayesian_snn.py`** — calibrated uncertainty via Bernoulli-masked passes: in-dist 98% at
+  0.02 uncertainty, OOD 0.28 (15×). Refs: arXiv:2401.15453.
+- **`research/free_energy_control.py`** — predictive-coding spiking control (precision dead-band):
+  converges at 5/60 spikes, steadier + far sparser than bang-bang under noise. Refs: arXiv:2603.09729.
+- **`energy.py`** — NeuroBench (arXiv:2304.04640) metric definitions (effective ACs, activation
+  sparsity, footprint) so the efficiency claims are leaderboard-legible.
+### Changed
+- `run_selfchecks.py`: +7 modules → **52/52** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- All pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. Built from the cycle-3
+  research scan (docs/RESEARCH_SCAN.md); #5 (distributed non-WTA AM) skipped as redundant with the
+  v0.65 softmax/LSR energies. Research-tier items (NIR/Loihi/DVS128/surrogate baselines) remain
+  torch/hardware, not built.
+
 ## [v0.65] — Research: modern-Hopfield energies (softmax + log-sum-ReLU) in dense AM (2026-07-02)
 ### Added
 - **`research/dense_associative_memory.py`**: the two modern (continuous) energies alongside the

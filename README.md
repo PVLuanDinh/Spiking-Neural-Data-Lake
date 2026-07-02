@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 45/45 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 52/52 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.65** · 64 tagged releases (through v0.64). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.66** · 64 tagged releases (through v0.64). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -198,13 +198,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 45 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 52 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 45-module list is canonical in
+plus separate lint and coverage jobs. The 52-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -271,8 +271,15 @@ spiking-neural-data-lake/
     hopfield_baseline.py                              classical Hopfield 0.138·N capacity baseline (zero-dep)
     dense_associative_memory.py                       modern/dense associative memory: super-linear capacity (zero-dep)
     spiking_vsa.py                                    hyperdimensional/VSA reasoning: bind/bundle/permute (zero-dep)
+    resonator_network.py                              VSA factorization: decompose a bound product (zero-dep)
+    mcr_hdc.py                                        modular-composite HDC: denser codebook, ~1.5x fewer bits (zero-dep)
+    bayesian_snn.py                                   calibrated uncertainty via Bernoulli-masked passes (zero-dep)
     spiking_ssm.py                                    Liquid State Machine reservoir: temporal sequence memory (zero-dep)
     spike_compression.py                              spike-native lossless codec (delta+varint) vs gzip (zero-dep)
+    event_quadtree_compression.py                     2-D quadtree event codec: exploits burst clustering (zero-dep)
+    index_compression.py                              order-invariant id/edge-list compression (zero-dep)
+    delay_learning.py                                 three-factor synaptic-delay learning (timing, not weight) (zero-dep)
+    free_energy_control.py                            predictive-coding spiking control: sparse, noise-robust (zero-dep)
     loop_latency.py                                   end-to-end sensor→command latency p50/p95/p99 (zero-dep)
     temporal_coding_storage.py                        TTFS latency coding, 83.5× fewer ops (zero-dep)
     snn_moe_classifier.py                             spike-driven MoE, 0-param router (zero-dep)
@@ -286,7 +293,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (45 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (52 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -315,7 +322,12 @@ spiking-neural-data-lake/
 
 ## Roadmap
 
-_Landed this cycle (v0.64, zero-dep):_ **live drift/novelty monitor** (D3, `drift_monitor.py`),
+_Landed (v0.65–v0.66, zero-dep):_ modern-Hopfield energies incl. **log-sum-ReLU** (dense AM),
+**resonator** VSA factorization, **MCR** HDC substrate, three-factor **delay learning**, **quadtree** +
+order-invariant **index** compression, **Bayesian uncertainty**, **free-energy control**, NeuroBench
+metrics — the cycle-3 research scan ([docs/RESEARCH_SCAN.md](docs/RESEARCH_SCAN.md)).
+
+_Landed (v0.64, zero-dep):_ **live drift/novelty monitor** (D3, `drift_monitor.py`),
 **end-to-end loop latency** p50/p95/p99 (D2, `loop_latency.py`), and a **spike-native lossless codec**
 (`spike_compression.py`, ~5× vs gzip on the sparse store).
 
