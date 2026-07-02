@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 42/42 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 45/45 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.63** · 63 tagged releases. See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.64** · 63 tagged releases (through v0.63). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -198,13 +198,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 42 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 45 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 42-module list is canonical in
+plus separate lint and coverage jobs. The 45-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -241,6 +241,7 @@ spiking-neural-data-lake/
     paradigm_b_engine.py          Paradigm B: coincidence + temporal-sequence query engine
     spike_preprocessing.py        deterministic latency encode + Van Rossum + Silver denoise
     energy.py                     SynOps -> estimated Joules/inference vs a dense-ANN baseline (cited)
+    drift_monitor.py              online drift/novelty watch (PSI + novelty rate) — warn before collapse
     population_encoding.py        RBF/Gaussian population rate encoder
     signal_loop.py                real-time loop: encode → lake → match → Interpreter (+ continual learn)
     interpreter.py                matched label → robot command + outcome feedback
@@ -271,6 +272,8 @@ spiking-neural-data-lake/
     dense_associative_memory.py                       modern/dense associative memory: super-linear capacity (zero-dep)
     spiking_vsa.py                                    hyperdimensional/VSA reasoning: bind/bundle/permute (zero-dep)
     spiking_ssm.py                                    Liquid State Machine reservoir: temporal sequence memory (zero-dep)
+    spike_compression.py                              spike-native lossless codec (delta+varint) vs gzip (zero-dep)
+    loop_latency.py                                   end-to-end sensor→command latency p50/p95/p99 (zero-dep)
     temporal_coding_storage.py                        TTFS latency coding, 83.5× fewer ops (zero-dep)
     snn_moe_classifier.py                             spike-driven MoE, 0-param router (zero-dep)
     spike_knowledge_graph{,_rotate}.py, spike_kg_relations.py   Paradigm C: SpikE / RotatE / algebra (zero-dep)
@@ -283,7 +286,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (42 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (45 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -312,7 +315,11 @@ spiking-neural-data-lake/
 
 ## Roadmap
 
-Near-term, from the cited audit in [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md):
+_Landed this cycle (v0.64, zero-dep):_ **live drift/novelty monitor** (D3, `drift_monitor.py`),
+**end-to-end loop latency** p50/p95/p99 (D2, `loop_latency.py`), and a **spike-native lossless codec**
+(`spike_compression.py`, ~5× vs gzip on the sparse store).
+
+Still near-term, from the cited audit in [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md):
 
 - **Unblock the ~95% GPU leg** — clear the GCP billing hold, run the tuned 6400n/L4 Vertex job
   with checkpoint/resume on Spot, write the result back as an artifact.

@@ -24,7 +24,7 @@ _ENV = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "PYTHONPAT
 
 # CORE — the product: arm-loop + data-lake, clone-and-run (root).
 CORE = [
-    "snn_classifier", "spike_telemetry_hub", "streaming_hub", "data_quality",
+    "snn_classifier", "spike_telemetry_hub", "streaming_hub", "data_quality", "drift_monitor",
     "paradigm_b_matcher", "paradigm_b_engine", "spike_preprocessing", "energy",
     "signal_loop", "learned_matcher", "reflex", "valence_stdp", "cortisol",
     "interpreter", "closed_loop", "make_sensor_dataset", "sensor_demo",
@@ -35,10 +35,12 @@ CORE = [
 RESEARCH = [
     "research/spiking_storage_prototype", "research/test_prototype", "research/hopfield_baseline",
     "research/dense_associative_memory", "research/snn_moe_classifier",
-    "research/temporal_coding_storage", "research/spiking_ssm", "research/spike_knowledge_graph",
+    "research/temporal_coding_storage", "research/spike_compression", "research/spiking_ssm",
+    "research/spike_knowledge_graph",
     "research/spike_knowledge_graph_rotate", "research/spike_kg_relations", "research/spiking_vsa",
     "research/nmnist_ingest",
-    "research/srm_neuron", "research/stats_bounds", "research/make_results_plot",
+    "research/srm_neuron", "research/stats_bounds", "research/loop_latency",
+    "research/make_results_plot",
 ]
 MODULES = CORE + RESEARCH
 

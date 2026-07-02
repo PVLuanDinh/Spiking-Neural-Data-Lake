@@ -3,6 +3,26 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.64] — Research: drift monitor (D3), spike compression, loop latency (D2) (2026-07-02)
+### Added
+- **`src/snn_data_lake/drift_monitor.py`** (core, zero-dep): online drift + novelty watch on the encoded
+  stream — Population Stability Index vs an enrolled reference + an OeSNN-style novelty rate — warns
+  before a rig/lighting shift silently collapses recognition, and signals a `bins_from_capture()`
+  re-derivation. Closes roadmap **D3**. Edge-tested (`tests/test_drift_monitor.py`). Refs: OeSNN streaming
+  anomaly (PeerJ 2025 HABCOeSNN; Springer 2022).
+- **`research/spike_compression.py`** (zero-dep): a spike-native lossless codec — delta-coded inter-spike
+  intervals + LEB128 varint — beating the fixed-uint32 `.spk` store **4×** and gzip **5.1×** (lossless
+  round-trip). Sharpens the storage thesis. Refs: lossless event coding (arXiv:2411.07155, 2411.03010).
+- **`research/loop_latency.py`** (zero-dep): end-to-end sensor→command latency (**p50/p95/p99**) — p50
+  ~2 ms for the template path, well under the ~20 ms neuromorphic-control benchmark. Closes roadmap **D2**.
+  Refs: real-time neuromorphic control (arXiv:2503.09636).
+### Changed
+- `run_selfchecks.py`: +3 modules → **45/45** stdlib self-checks; README count/layout/roadmap refreshed;
+  pytest at 85% coverage.
+### Notes
+- All three pure-stdlib, deterministic, and CI-covered (the latency check asserts structure, not flaky
+  timings); core `dependencies` stays `[]`. Cycle 2 of the literature-driven scan — no framework adopted.
+
 ## [v0.63] — Research: dense associative memory, spiking VSA, LSM sequence model (2026-07-02)
 ### Added
 - **`research/dense_associative_memory.py`** (zero-dep): higher-order Hopfield where degree n=2 recovers
