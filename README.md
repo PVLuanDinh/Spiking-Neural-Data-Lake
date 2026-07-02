@@ -1,277 +1,348 @@
 # Spiking Neural Data Lake
 
 [![CI](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/actions/workflows/ci.yml/badge.svg)](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/tag/Aighluvsekks/Spiking-Neural-Data-Lake?label=release)](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/tag/Aighluvsekks/Spiking-Neural-Data-Lake?label=release)](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases)
-[![Core: zero deps](https://img.shields.io/badge/core-zero%20dependencies-success.svg)](#quickstart)
-[![GPU: CUDA 12.8](https://img.shields.io/badge/GPU-CUDA%2012.8%20%2F%20RTX%205070-76B900.svg)](#gpu)
+[![Core: zero deps](https://img.shields.io/badge/core-zero%20dependencies-success.svg)](#clone--run)
+[![Tests: 84% coverage](https://img.shields.io/badge/tests-84%25%20coverage-success.svg)](#tests--ci)
+[![CI matrix: Linux + Windows](https://img.shields.io/badge/CI-Linux%20%2B%20Windows%20%C2%B7%20py3.11--3.13-success.svg)](#tests--ci)
 
-Store, search, and reason over data **in spike timing** — using sparse, binary,
-event-driven spiking neural networks instead of dense floating-point tensors.
+**Store, search, and reason over data _in spike timing_ — and drive a robot arm with the same
+event-driven spiking networks, instead of dense floating-point tensors.**
 
-The question: **can we store and recall data with less computational power and less
-storage space using spikes?** Every prototype here both demonstrates a mechanism and
-*measures* the two target metrics (compute = synaptic operations, storage = bytes) against
-a dense baseline. All results are reproducible — clone, run, read the printed metrics.
-The pure-Python core has **zero dependencies**; only the real-data (MNIST) models use
-PyTorch + snnTorch / BindsNET.
+Two systems on one thesis: (1) a **neuromorphic data lake** that stores, queries, and reasons
+over sparse spike events, and (2) a **real-time robot-arm control loop** — sense → think → act —
+whose reflex, reward learning, stress state, motor controller, and model-based-RL policy are
+_all_ spiking networks. The product core is **pure Python standard library, zero runtime
+dependencies**, `pip install`-able, and every efficiency claim is _measured_ against a dense
+baseline and reproducible from the printed metrics.
+
+---
+
+## Why this matters
+
+- **The question, made measurable.** Can we store, recall, and act on data with **less compute
+  and less storage** using spikes? Every prototype measures the two target metrics — compute
+  (synaptic operations) and storage (bytes) — against a dense baseline. Numbers below are
+  reproduced by running the file.
+- **Efficiency, quantified.** Spiking inference does a synaptic op only when a neuron fires:
+  **3.6–83.5× fewer operations** across these models, with 1-bit spike events vs 32-bit
+  activations, and **61–162× less data moved** for storage/query.
+- **A complete neuromorphic sense→think→act loop, not a slide.** A real ESP32 arm is driven end
+  to end: the reflex, the reward learning (RPE dopamine), the stress state (cortisol), the
+  population-coded PID, and a model-based-RL policy+critic are all spiking — through a **fail-safe
+  serial actuator path gated on an explicit `SAFETY_CALIBRATED` flag** — recognizing the builder's
+  real captured gestures at **95%**.
+- **It scales unchanged.** The local Medallion lakehouse PoC was lifted to GCP and **run
+  end-to-end (Phase 1 verified)**: Terraform → GCS Bronze → Dataproc Serverless → BigLake/BigQuery
+  reproduced the local Gold features exactly.
+- **Engineered like a product.** Zero-dependency core, `pip install -e .`, console entry points,
+  **84% test coverage**, and a CI matrix of `{Linux, Windows} × {3.11, 3.12, 3.13}` — the
+  Windows-first hardware product is actually tested on Windows.
+
+> **Honesty policy (read the [Limitations](#limitations--open-problems)).** Numbers are
+> fixed-seed and the CHANGELOG documents negative results. Where a figure is a _target_ rather
+> than achieved (the MNIST ~95% leg), or an abstraction rather than biophysics (the
+> neuromodulators), or a plumbing demo rather than a benchmark (N-MNIST), it says so.
+
+---
+
+## Status at a glance
+
+| Area | State |
+|------|-------|
+| **Data-lake paradigms A / B / C** (store · in-storage search · relational reason) | ✅ complete, zero-dep |
+| **Robot-arm neuromorphic control loop** (reflex · dopamine · cortisol · PID · interpreter) | ✅ complete in sim; real-arm actuator path shipped (safety-gated) |
+| **Spiking model-based RL** (surrogate-gradient policy → world-model → 6-DOF Dreamer) | ✅ research lineage complete (needs torch, own venv) |
+| **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
+| **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
+| **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
+| **Engineering** | ✅ zero-dep core · `pip install` · 37/37 self-checks · pytest 84% · ruff · CI matrix |
+
+Current version: **v0.61** · 61 tagged releases. See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+
+---
+
+## Results (measured)
+
+All figures are reproduced by running the referenced file (or, for the GPU/torch rows, recorded
+in the CHANGELOG for the stated config). Compute = synaptic operations; storage = bytes.
+
+### Data lake — store, search, reason (pure stdlib, in CI)
+
+| Component | Task | Metric | Result |
+|-----------|------|--------|--------|
+| Associative memory | recall from 40%-corrupted cue | capacity / robustness | **80 patterns @ 99.6%**, recall holds through **60% corruption** |
+| Associative memory | memory footprint | factored vs dense | **874× smaller** (600 B vs 512 KB; O(P·k), not N²) |
+| Telemetry hub (Paradigm A) | sparse `.spk` store | size / query I/O | **61× smaller** than a dense raster; windowed query reads **2%** of the file |
+| In-storage query (Paradigm B) | coincidence **+ temporal order** | host transfer | **162× less** data to host; order-discriminating (FAR→NEAR ≠ NEAR→FAR) |
+| Relational KG (Paradigm C) | link prediction | Hits@1 | **50% TransE · 100% RotatE** (cyclic relations; relation algebra verified) |
+
+### Compute-efficiency prototypes (pure stdlib, in CI)
+
+| Component | Task | Metric | Result |
+|-----------|------|--------|--------|
+| Supervised spiking classifier | 4-shape recognition | accuracy / compute | **100%**, **3.6× fewer ops** (113.7k SynOps vs 409.6k dense MACs) |
+| Temporal (TTFS) coding | latency inference + early exit | SynOps vs rate | **83.5× fewer** (5.3k vs 442.8k), 100% accuracy |
+| Spike-driven MoE | firing-rate routing | router params / compute | **0 learned router-net params** (8 biases vs 512), **4× compute cut** (top-2 of 8 experts) |
+
+### Robot-arm neuromorphic loop (real hardware data)
+
+| Component | Task | Metric | Result |
+|-----------|------|--------|--------|
+| Gesture recognition (order-aware Paradigm B) | builder's real ESP32 captures | accuracy | **95%** (APPROACH 98% · RETREAT 85% · IDLE 100%) — up from 63% with a direction-blind template matcher |
+| Closed control loop | gesture → command → reward → learn | behavior | rewarded gesture's value rises to **APPROACH**; collision → **EMERGENCY_STOP** + cortisol stress → sharpened reflex |
+
+### Spiking model-based RL (research lineage; needs torch, own venv, not in CI)
+
+| Component | Task | Metric | Result |
+|-----------|------|--------|--------|
+| Surrogate-gradient spiking policy | 2-DOF reach | reach error | **0.319 → 0.053 m** (BPTT through differentiable FK) |
+| Spiking forward-dynamics + MPC | 2-DOF reach through a learned model | reach error | **0.073 m** (world-model loss 1.34 → 0.004) |
+| Joint spiking world-model RL (Dreamer) | 2-DOF, both nets spiking | reach distance | **2.695 → 0.116 m (23×)** via imagined rollouts |
+| Dreamer-lite, 6-DOF redundant arm | high-dim, imagination-trained actor-critic | reach / critic | **1.03 → 0.48 m**; critic loss 31.6 → 0.45 *(world model is an MLP; actor+critic spiking — see limitations)* |
+
+### Trainable MNIST models (needs torch/GPU, own venv, not in CI)
+
+| Model | Mechanism | Result |
+|-------|-----------|--------|
+| Unsupervised STDP (CPU) | rate-coded, adaptive threshold, hard-WTA | **82.3%** (300 neurons / 6k) |
+| Conductance Diehl & Cook (GPU, RTX 5070) | BindsNET, exc/inh populations | **90.0% @ 1600n** (scale-tuned) · 86.4% @400n · 6400/default 47.8% |
+| N-MNIST event-camera ingest | 1.25M real DVS events → Bronze → nearest-prototype | 71.0% (200/100, _no learning_) — a pipeline/plumbing demo, off-theme; see limitations |
+
+> **The two "95%"s are different.** The robot-arm **gesture** 95% is _achieved_ on real data.
+> The MNIST conductance-D&C **95%** is the _literature target_ (Diehl & Cook, 6400n + full 60k);
+> best measured here is **90.0%**, and the tuned 6400n GPU run is currently blocked by a billing
+> hold (below), not a method gap.
+
+---
+
+## Architecture
+
+### The three data-system paradigms (all complete)
+
+| Paradigm | Capability | Implementation | Since |
+|----------|------------|----------------|:----:|
+| **A** — telemetry hub | store + query multi-channel spike trains as sparse events (batch **and** streaming) | `snn_data_lake/spike_telemetry_hub.py`, `streaming_hub.py` | v0.12 |
+| **B** — in-storage search | compile a query into an SNN, stream stored spikes, emit only matches — **coincidence + temporal order** | `snn_data_lake/paradigm_b_engine.py` (+ `research/paradigm_b_genn.py` GPU) | v0.20 |
+| **C** — relational embeddings | a knowledge graph _in spike timing_: link prediction, anomaly scoring, full relation algebra | `research/spike_knowledge_graph*.py` (TransE / RotatE / algebra) | v0.21–25 |
+
+### The robot-arm brain-stack (sense → think → act)
+
+A biologically-motivated, layered controller — every box is a spiking network:
+
+```
+ESP32 sensor ─▶ encode ─▶ spike data lake ─▶ order-aware match ─▶ Interpreter ─▶ command ─▶ arm
+                              ▲                     │                   │            (sim or real servos)
+   reflex (ms, hardwired) ────┘  preempts cognition │                   ▼
+   dopamine RPE (fast) ◀───── reward ◀── outcome ◀──┴──────── cortisol (slow stress state)
+```
+
+| Layer | Module | Role |
+|-------|--------|------|
+| Reflex (instinct) | `reflex.py` | sign-aware fast LIF on nociceptor channels — fires STOP/WITHDRAW _before_ the slow path |
+| Reward learning | `valence_stdp.py` | reward-prediction-error (dopamine) STDP → learned APPROACH/AVOID |
+| Stress state | `cortisol.py` | slow tonic scalar → hypervigilance (lower reflex threshold), harder aversive learning, caution bias |
+| Recognition | `signal_loop.py`, `gesture_recognition.py`, `learned_matcher.py` | encode → in-lake match (order-aware) → label; continual "grow-your-own-vocabulary" learning |
+| Command | `interpreter.py`, `closed_loop.py` | matched label → concrete command (`JOINT_A_ROTATE`, `GRIPPER_CLOSE`, `EMERGENCY_STOP`) + reward feedback |
+| Low-level control | `population_encoding.py` (RBF), `spiking_pid.py` (NEF) | population-coded spiking PID + trajectory-deviation comparator |
+| Body | `arm_sim.py` | 2-link planar arm — exact stdlib FK+collision (CI-green) or optional headless PyBullet physics |
+| Actuator (real HW) | `serial_arm.py`, `arm_bridge.py`, `deploy/command_arm.ino` | command-out to ESP32 servos, **fail-safe** (write error raises), refuses an uncalibrated port; UDP back-channel closes the split-process reward loop |
+
+### Lakehouse + cloud path
+
+Local **Medallion** topology (`lakehouse/medallion.py`): Bronze raw events → Silver
+binned/aligned → Gold features (firing rate, population synchrony, inverse-compression ratio,
+co-firing view), over columnar Parquet, with a `data_quality.gate()` blocking promotion to Gold;
+a **Delta Lake PoC** (`lakehouse/delta_demo.py`) adds a transaction log + `OPTIMIZE` compaction +
+time-travel. The **same path runs on GCP** (`gcp/`, `infra/`): **Phase 1 verified end-to-end** on
+a live project — Terraform → GCS Bronze → Dataproc Serverless Medallion → BigLake/BigQuery
+reproduced the local Gold exactly (synchrony_cv 0.399, burst channels 7 & 42). Pay-per-use, no
+standing cluster.
 
 ---
 
 ## Clone & run
 
-Python 3.11+. Install the package (editable) — the core pulls **no runtime deps**:
+Python 3.11+. The core pulls **no runtime dependencies**:
 
 ```bash
 git clone https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake.git
 cd Spiking-Neural-Data-Lake
 pip install -e .                 # editable install; core = zero runtime deps
 
-snn-demo                                       # whole loop in one file: sensor -> recognize -> command -> arm + reflex
+snn-demo                                       # whole loop in one file: sensor → recognize → command → arm + reflex
 snn-arm                                        # live loop on the builder's REAL captured gestures (95%)
-snn-loop                                       # full closed loop: gesture -> command -> reward -> learn
+snn-loop                                       # full closed loop: gesture → command → reward → learn
 python -m snn_data_lake.gesture_recognition    # order-aware recognition + confusion table
 ```
 
-**Every addon:** `pip install -e ".[all]"` adds every optional dependency (arm+lake+gpu+nmnist)
-in one env; or pick a path — `.[arm]` `.[lake]` `.[gpu]` `.[nmnist]` `.[genn]`.
-
-Run the **full zero-dep self-check suite** (exactly what CI runs — the 37 stdlib modules; the
-MNIST/GPU models are excluded as they need PyTorch). The canonical list lives in
-[`run_selfchecks.py`](run_selfchecks.py) (CI just runs it) and [docs/RUNNING.md](docs/RUNNING.md):
-```bash
-python research/spiking_storage_prototype.py   # storage
-python -m snn_data_lake.paradigm_b_engine           # in-storage order-aware query
-python -m snn_data_lake.closed_loop                 # the full brain-stack loop (encode→match→reward→learn)
-# ...full list (37) in docs/RUNNING.md §1
-```
-
-Contributor tooling (v0.61): `pip install -e ".[dev]" && pytest` runs the coverable suite (84%
-line coverage); `ruff check .` lints. `run_selfchecks.py` stays the zero-dep smoke gate.
-
-Optional extras (own venv each; see [docs/RUNNING.md](docs/RUNNING.md)): `polars` for the
-Medallion lakehouse, `tonic` for real N-MNIST, `torch`+`snntorch`+`bindsnet` for the MNIST/GPU
-models, `pybullet` for arm physics, `pyserial` for the live ESP32 (`python -m snn_data_lake.live_arm --serial COM8`).
-
----
-
-## What is this?
-
-A "lake" of runnable spiking-network prototypes covering the three things a data system
-does — **store** (associative memory, telemetry hub), **search** (in-storage SNN query
-engine), and **reason** (relational spike-time embeddings) — plus the trainable models
-(unsupervised STDP, spike-driven MoE) that learn the representations. Each file prints a
-metrics block and ends with an `assert`-based self-check; CI runs every stdlib self-check
-on each push.
-
----
-
-## Results
-
-| Component | Task | Metric | Result |
-|-----------|------|--------|--------|
-| Associative memory | recall from 40%-corrupted cue | capacity / robustness | **80 patterns @ 99.6%**, 60% noise tolerated |
-| Associative memory | memory footprint | factored vs dense | **874× smaller** (O(P·k), not N²) |
-| Supervised classifier | 4-shape, spiking | accuracy / compute | **100%**, 3.6× fewer ops than dense |
-| Unsupervised STDP MNIST (CPU) | no labels, no backprop | test accuracy | **82.3%** (300 neurons / 6k) |
-| Conductance D&C (GPU, RTX 5070) | BindsNET, measured | test accuracy | **90.0% @ 1600n** (scale-tuned); 86.4% @400n; 6400/default 47.8% |
-| Spike-driven MoE | firing-rate routing | router parameters | **0 learned** (vs 512), 3× compute cut |
-| Temporal (TTFS) coding | latency inference + early exit | SynOps vs rate | **83.5× fewer** |
-| Telemetry hub (Paradigm A) | sparse `.spk` store | size / query I/O | **61× smaller** than raster, query reads 2% |
-| In-storage query (Paradigm B) | coincidence + sequence | host transfer | **162× less**, order-discriminating |
-| Relational KG (Paradigm C) | link prediction | Hits@1 | **50%** TransE · **100%** RotatE (cyclic) |
-| N-MNIST ingestion (real DVS) | 1.25M real events → Bronze → raster → classify | accuracy (no learning) | **71.0%** (200/100, nearest-prototype, chance 10%) · ICR 0.10 · 35% active |
-
----
-
-## Architecture at a Glance
-
-The three data-system paradigms (after an external architectural assessment), all complete:
-
-| Paradigm | Capability | Implementation | Status |
-|----------|------------|----------------|--------|
-| **A** — telemetry hub | store + query multi-channel spike trains as sparse events | `snn_data_lake/spike_telemetry_hub.py` | ✅ complete (v0.12) |
-| **B** — in-storage search | compile a query into an SNN, stream stored spikes, emit only matches (coincidence **and** temporal sequence) | `snn_data_lake/paradigm_b_engine.py` (+ `research/paradigm_b_genn.py` GPU) | ✅ complete (v0.20) |
-| **C** — relational embeddings | a knowledge graph in spike timing; link prediction, anomaly scoring, full relation algebra (symmetric / inverse / composition) | `research/spike_knowledge_graph.py` (TransE), `research/spike_knowledge_graph_rotate.py` (RotatE), `research/spike_kg_relations.py` (algebra) | ✅ complete (v0.21–25) |
-
-Trainable models (learn the representations):
-
-| Model | Mechanism | File | Headline |
-|-------|-----------|------|----------|
-| Unsupervised STDP | rate-coded, adaptive threshold, hard-WTA | `research/snn_mnist_stdp.py` | 82.3% CPU |
-| Conductance Diehl & Cook | exc/inh populations, BindsNET, GPU | `research/eth_mnist_bindsnet.py` | **90.0% @1600n** (scale-tuned); 95% via 6400 + multi-epoch |
-| Latency STDP | deterministic, precomputed, burst+x_tar | `research/snn_mnist_stdp_fast.py` | 76%, 2.1× faster |
-| Spike-driven MoE + STDP | firing-rate routing over expert pops | `research/snn_moe_stdp_mnist.py` | 0-param router |
-| GeNN custom plasticity | v0.17 rule as a CUDA weight-update model | `research/snn_mnist_stdp_genn.py` | GPU port |
-
-![Results by version](assets/results.svg?v=0.30)
-
----
-
-## Scope: one unified project
-
-**Core — the spiking data lake + SNN:** storage prototypes, the three paradigms (telemetry hub,
-in-storage query, relational embeddings), the streaming hub (live append + record-while-query),
-the trainable STDP / D&C models, N-MNIST event-camera ingestion, the Medallion lakehouse, and
-the GCP scale-out.
-
-**Robot-arm application** (built on those primitives): the real-time closed loop — signal
-encoding, in-lake matching, continual learning, instinct (reflex), neuromodulators (RPE dopamine
-+ cortisol), the Interpreter (matched label → robot command), and the Arduino wire contract +
-the builder's sensor work. All on `main`. (The `robot-arm` branch remains on the remote for
-collaborator hardware work; its contents are merged here.)
-
----
-
-## Directory structure
-
-```
-spiking-neural-data-lake/
-  research/spiking_storage_prototype.py     associative memory (factored O(P·k) storage)
-  research/test_prototype.py                capacity / noise stress sweeps
-  snn_data_lake/snn_classifier.py                supervised spiking classifier (+ `sweep` mode)
-  research/snn_moe_classifier.py            spike-driven MoE routing
-  research/temporal_coding_storage.py       time-to-first-spike (TTFS) latency coding
-  snn_data_lake/spike_telemetry_hub.py           Paradigm A — sparse .spk store + windowed queries
-  snn_data_lake/paradigm_b_matcher.py            Paradigm B — coincidence matcher (CPU, verified)
-  snn_data_lake/paradigm_b_engine.py             Paradigm B — coincidence + temporal-sequence engine
-  research/paradigm_b_genn.py               Paradigm B — GeNN GPU port
-  snn_data_lake/spike_preprocessing.py           deterministic encode + precompute cache + Van Rossum
-  research/spike_knowledge_graph.py         Paradigm C — SpikE relational embeddings (TransE)
-  research/spike_knowledge_graph_rotate.py  Paradigm C — RotatE (cyclic relations, phase coding)
-  research/snn_mnist_stdp.py                unsupervised STDP on MNIST (rate, snnTorch)
-  research/snn_mnist_stdp_fast.py           latency STDP (deterministic, precomputed) + rate compare
-  research/snn_mnist_dc.py                  from-scratch Diehl & Cook (documented negative result)
-  research/snn_moe_stdp_mnist.py            MoE + STDP hybrid
-  research/eth_mnist_bindsnet.py            BindsNET conductance Diehl & Cook (GPU via --gpu)
-  research/snn_mnist_stdp_genn.py           GeNN custom-plasticity GPU port
-  research/snn_storage_core_snntorch.py     extracted snnTorch blueprint (reference)
-  research/nmnist_ingest.py                 N-MNIST event-camera ingestion (Tonic opt; synth fallback)
-  research/make_results_plot.py             regenerates assets/results.svg
-  docs/RUNNING.md                  local + cloud runbook
-  snn_data_lake/lakehouse/medallion.py           Medallion Bronze/Silver/Gold PoC (Parquet + polars)
-  infra/                           Terraform — GCP-native lakehouse infrastructure
-  gcp/                             Dataproc/Vertex scaffold + deploy guide (gcp/README.md)
-  research/                        source research briefs (the designs)
-  assets/results.svg               results chart
-```
-
----
-
-## Quickstart
-
-> **Full local + cloud runbook: [docs/RUNNING.md](docs/RUNNING.md)** — zero-dep core, the
-> robot-arm closed loop, the Medallion lakehouse, real N-MNIST, GPU training, and the GCP path.
+**Optional extras** — opt in per path, or all at once:
 
 ```bash
-# Pure-stdlib — no install needed (these run in CI):
-python research/spiking_storage_prototype.py      # associative memory + savings
-python -m snn_data_lake.snn_classifier                 # supervised spiking classifier
-python research/temporal_coding_storage.py        # TTFS latency coding (83× fewer ops)
-python -m snn_data_lake.spike_telemetry_hub            # Paradigm A — sparse spike-train store
-python -m snn_data_lake.paradigm_b_engine              # Paradigm B — coincidence + sequence queries
-python research/spike_knowledge_graph.py          # Paradigm C — SpikE relational embeddings
-python research/spike_knowledge_graph_rotate.py   # Paradigm C — RotatE cyclic relations
-python research/spike_kg_relations.py             # Paradigm C — relation algebra (sym/inverse/composition)
-
-# Real-data models — need deps (CPU build is fine):
-pip install -e ".[gpu]"          # torch + snntorch + bindsnet + numpy  (add [genn] for the GeNN ports)
-python research/snn_mnist_stdp.py                                          # 74.6%
-NORD_M=300 NORD_TRAIN=6000 NORD_TDECAY=0.99999 NORD_TPLUS=0.8 \
-  python research/snn_mnist_stdp.py                                        # 82.3% (best CPU)
+pip install -e ".[arm]"     # pyserial — live ESP32 / real actuator (python -m snn_data_lake.live_arm --serial COM8)
+pip install -e ".[lake]"    # polars + pyarrow + deltalake — Medallion + Delta PoC
+pip install -e ".[gpu]"     # torch + snntorch + bindsnet + numpy — MNIST / GPU + spiking-MBRL research
+pip install -e ".[nmnist]"  # tonic — real N-MNIST event data
+pip install -e ".[genn]"    # pygenn — GeNN GPU ports (needs a C++ compiler + CUDA)
+pip install -e ".[dev]"     # pytest + pytest-cov + ruff + pre-commit
+pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs a compiler)
 ```
+
+### Tests & CI
+
+Two complementary gates — a zero-dep smoke gate and a coverable suite:
+
+```bash
+python run_selfchecks.py                 # the 37 pure-stdlib module self-checks (exactly what CI runs)
+pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
+ruff check .                             # lint
+```
+
+CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
+plus separate lint and coverage jobs. The 37-module list is canonical in
+[`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
+design and live in `research/`.
 
 ### GPU
 
-Verified on an RTX 5070 (Blackwell sm_120, `torch 2.11.0+cu128`). Install the CUDA build,
-then one switch:
+Verified on an RTX 5070 (Blackwell sm_120, `torch 2.11.0+cu128`):
 
 ```bash
 pip install --force-reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install bindsnet
-python research/eth_mnist_bindsnet.py --gpu        # default 400 neurons / 20k → 86.4% (verified)
-```
-
-**Measured GPU results (honest):**
-- **400 neurons / 20k → 86.4%** — matches Diehl & Cook 2015 (~87%). Pipeline confirmed.
-- **1600 neurons / 60k, scale-tuned → 90.0%** (new best) with `NORD_INH=60 NORD_THETA_PLUS=0.20`.
-  The scaling recipe: as neurons grow, *lower* the per-synapse inhibition (more neurons already
-  deliver more total inhibition) and *raise* theta_plus (spread firing across more cells).
-- **6400 neurons / 60k, 1 epoch, default hyperparameters → 47.8%** — naive scale-up *regresses*
-  (under-inhibited + under-trained). With the recipe above + multiple epochs it should reach the
-  paper's ~95%, but one 6400 epoch is ~day-scale on a single GPU → best as parallel Vertex jobs.
-
-So: **90.0% reproduced locally (1600n); 95% is the next leg (6400n + recipe + multi-epoch, on Vertex).**
-Knobs: `NORD_INH`, `NORD_THETA_PLUS`, `NORD_EXC`, `NORD_NORM`, `NORD_EPOCHS`.
-
-```bash
-# the verified 90% run:
+python research/eth_mnist_bindsnet.py --gpu     # 400n/20k → 86.4% (verified)
+# the verified 90% run (scale-tuned):
 NORD_M=1600 NORD_TRAIN=60000 NORD_INH=60 NORD_THETA_PLUS=0.20 python research/eth_mnist_bindsnet.py --gpu
 ```
-Chart the scaling law (400 → 1600 → 6400) with `bash gpu_scaling_sweep.sh` (unbuffered).
+
+The scaling recipe: as neurons grow, _lower_ per-synapse inhibition and _raise_ theta_plus. A
+naive 6400/default run collapses to 47.8%; the tuned 6400n + multi-epoch (~day-scale, best as
+parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limitations).
+
+> **Full local + cloud runbook:** [docs/RUNNING.md](docs/RUNNING.md).
+> **Hardware bring-up (BOM, wiring, firmware, safety):** [docs/HARDWARE_SETUP.md](docs/HARDWARE_SETUP.md).
+> **Prioritized engineering/research audit:** [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md).
+
+---
+
+## Repository layout
+
+```
+spiking-neural-data-lake/
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (26 modules + lakehouse)
+    spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
+    streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
+    paradigm_b_matcher.py         Paradigm B: coincidence matcher (CPU reference)
+    paradigm_b_engine.py          Paradigm B: coincidence + temporal-sequence query engine
+    spike_preprocessing.py        deterministic latency encode + Van Rossum + Silver denoise
+    population_encoding.py        RBF/Gaussian population rate encoder
+    signal_loop.py                real-time loop: encode → lake → match → Interpreter (+ continual learn)
+    interpreter.py                matched label → robot command + outcome feedback
+    closed_loop.py                full in-process loop: signal → reflex → match → reward → learn  (snn-loop)
+    arm_config.py                 arm calibration in one place (distance bins, IR gate, SAFETY_CALIBRATED)
+    reflex.py                     fast-path instinct (STOP/WITHDRAW before cognition)
+    valence_stdp.py               reward-prediction-error (dopamine) STDP → APPROACH/AVOID
+    cortisol.py                   slow tonic stress-state neuromodulation
+    gesture_recognition.py        order-aware recognition of the builder's real gestures (95%)
+    arm_sim.py                    2-link planar arm (stdlib FK+collision, optional PyBullet)
+    spiking_pid.py                NEF-style population-coded spiking PID controller
+    live_arm.py                   live hardware loop: ESP32 → recognize → Interpreter → arm  (snn-arm)
+    serial_arm.py                 real-servo actuator sink: fail-safe + SAFETY_CALIBRATED gate
+    arm_bridge.py                 UDP OUTCOME back-channel (closes the split-process loop)
+    sensor_csv_ingest.py          adapter for the builder's timestamped serial CSV
+    make_sensor_dataset.py        synthetic sensor dataset (ultrasonic + IR)
+    sensor_demo.py                end-to-end sensor demo
+    data_quality.py               Gold-promotion gates (schema/encodability/immutability/sanity)
+    snn_classifier.py             trainable spiking classifier (weights = long-term storage)
+    learned_matcher.py            learned classifier + Van Rossum novelty gate (hybrid matcher)
+    demo.py                       the whole loop in one runnable file  (snn-demo)
+    lakehouse/medallion.py        Bronze→Silver→Gold PoC (Parquet + polars)
+    lakehouse/delta_demo.py       Delta Lake PoC (transaction log + OPTIMIZE + time-travel)
+
+  research/                     QUARANTINED — benchmarks & experiments, kept for reproducibility (NOT the product)
+    spiking_storage_prototype.py, test_prototype.py   factored associative memory + stress sweeps (zero-dep)
+    temporal_coding_storage.py                        TTFS latency coding, 83.5× fewer ops (zero-dep)
+    snn_moe_classifier.py                             spike-driven MoE, 0-param router (zero-dep)
+    spike_knowledge_graph{,_rotate}.py, spike_kg_relations.py   Paradigm C: SpikE / RotatE / algebra (zero-dep)
+    srm_neuron.py, stats_bounds.py, nmnist_ingest.py, make_results_plot.py   (zero-dep)
+    snn_mnist_stdp*.py, snn_mnist_dc.py, eth_mnist_bindsnet.py               MNIST STDP / D&C (torch/GPU)
+    snn_moe_stdp_mnist.py, snn_storage_core_snntorch.py, paradigm_b_genn.py  (torch/GPU)
+    snn_motor_control.py, snn_world_model_rl.py, snn_dreamer_6dof.py         spiking-MBRL lineage (torch)
+
+  gcp/          Dataproc / Vertex / BigQuery / BigLake / Pub-Sub-Dataflow scaffold + deploy guide (Phase 1 verified)
+  infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
+  deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
+  docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
+  run_selfchecks.py             canonical zero-dep self-check runner (37 modules)
+  pyproject.toml                installable package, zero-dep core, optional extras, console scripts
+```
 
 ---
 
 ## Competitive context
 
-- **vs dense ANNs** — spiking inference does a synaptic op only when a neuron fires:
-  3.6–83× fewer operations across these models, and spikes are 1-bit events vs 32-bit
-  activations.
-- **vs rate coding** — deterministic temporal (TTFS) coding cuts inference ~83×; latency
-  STDP trains 2.1× faster at 7.9× fewer SynOps (at a measured −6.2 pt accuracy tradeoff).
-- **vs the literature** — unsupervised STDP MNIST tops out at ~95% with 6400 neurons +
-  full 60k (Diehl & Cook 2015). This repo reaches **82.3% on CPU** (300n) and **90.0% on
-  GPU** (1600n, scale-tuned — vs the paper's ~92% at that size). The 6400/95% point needs
-  the same recipe + multiple epochs at day-scale compute (Vertex), see GPU section.
+- **vs dense ANNs** — a synaptic op only when a neuron fires: **3.6–83.5× fewer operations**
+  here, and 1-bit spike events vs 32-bit activations.
+- **vs rate coding** — deterministic temporal (TTFS) coding cuts inference ~83×; latency STDP
+  trains 2.1× faster at 7.9× fewer SynOps (measured −6.2 pt accuracy tradeoff).
+- **vs the literature** — unsupervised STDP MNIST tops out at ~95% (Diehl & Cook 2015, 6400n +
+  60k). This repo reaches **82.3% CPU** (300n) and **90.0% GPU** (1600n, scale-tuned); the
+  6400n/~95% leg is a compute/ops task, not a method gap.
 - **vs [Project Nord](https://github.com/gtausa197-svg/-Project-Nord-Spiking-Neural-Network-Language-Model)**
-  (a 1B-param pure-SNN LLM) — the same primitives (LIF, STDP, sparse WTA / firing-rate
-  MoE, attractor memory), scaled down to small, verifiable demos.
+  (a 1B-param pure-SNN LLM) — the same primitives (LIF, STDP, sparse WTA / firing-rate MoE,
+  attractor memory) scaled down to small, _verifiable_ demos.
+- **Path to neuromorphic silicon** — the in-storage query (Paradigm B) and the spiking control
+  loop are architected for event-driven hardware (Loihi 2 / Lava, Akida); on-chip, SynOps convert
+  directly to a Joules-per-inference energy claim (roadmap).
 
 ---
 
-## Scope & roadmap
+## Roadmap
 
-**What this is:** small, runnable, mostly-stdlib SNN prototypes that demonstrate and
-measure the spike-based data-storage thesis. All three assessment paradigms (A/B/C) have
-complete implementations.
+Near-term, from the cited audit in [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md):
 
-**Lakehouse path (v0.26):** `snn_data_lake/lakehouse/medallion.py` follows the *single-node-feasible*
-slice of a production "spiking neural data lakehouse" roadmap — the **Medallion**
-topology (Bronze raw events → Silver binned/aligned → Gold features: firing rate,
-population synchrony, inverse-compression ratio) over **columnar Parquet**, queried with
-polars (the local Spark/Delta substitute), ending in a deterministic latency encoding =
-the SNN handoff. **Production scale-out** (Spark clusters, Delta Lake/Iceberg ACID +
-time-travel, Kafka streaming, Liquid Clustering, Unity Catalog, Delta Sharing,
-format-preserving encryption, federated learning) needs cloud infrastructure and is
-documented as the next-scale path. A **GCP-native scaffold** for the first slice of that
-path (GCS + BigLake/Iceberg + BigQuery + Dataproc Serverless + Vertex AI GPU training)
-lives in [`infra/`](infra/) (Terraform) and [`gcp/`](gcp/README.md) (PySpark Medallion,
-training container, submit scripts, deploy guide).
-
-See [CHANGELOG.md](CHANGELOG.md) for the full per-version history (every version is a git
-tag + GitHub release).
+- **Unblock the ~95% GPU leg** — clear the GCP billing hold, run the tuned 6400n/L4 Vertex job
+  with checkpoint/resume on Spot, write the result back as an artifact.
+- **Surrogate-gradient (BPTT) MNIST baseline** via snnTorch — the ~98–99% supervised upper bound
+  as a scientific control against unsupervised STDP.
+- **DVS128 Gesture as the flagship event benchmark** (loadable via Tonic) — on-theme, replaces
+  off-theme N-MNIST, and drives the same Interpreter→arm loop from a real event camera.
+- **SynOps → Joules** — multiply measured SynOps by a cited per-op energy to report
+  Joules/inference vs a dense-MAC baseline.
+- **Loihi 2 / Lava port of Paradigm B** — validate on the Lava CPU backend, then measure real
+  silicon energy under INRC access.
+- **Actuator safety hardening** — host↔arm heartbeat/dead-man timeout, command rate limit,
+  firmware-side joint/velocity clamps.
 
 ---
 
 ## Limitations & open problems
 
-- **95% is the last leg — 90% is reproduced.** The conductance D&C path verifies at
-  **86.4% (400n)** and **90.0% (1600n, scale-tuned: `NORD_INH=60 NORD_THETA_PLUS=0.20`)** on
-  the GPU. A naive 6400/60k/1-epoch run with *default* hyperparameters measured only 47.8%
-  (under-inhibited + under-trained); the scaling recipe (lower inhibition, higher theta_plus
-  as neurons grow) fixes that. Reaching ~95% needs 6400 neurons + the recipe + multiple
-  epochs — ~day-scale on one GPU, so best as parallel Vertex jobs. An open compute task, not
-  a method gap.
-- **Latency↔rate gap (−6.2 pts).** Deterministic latency STDP (76%) trails rate (82.3%) —
-  an information gap (one deterministic pass vs many stochastic samples). A pair-based
-  STDP kernel did **not** help (v0.18, kept opt-in, default off).
-- **Determinism is mandatory for the query path.** Poisson re-encoding the same input
-  gives different spike trains (Van Rossum ~13 vs 0), so stochastic encoding can't be used
-  for identity/matching.
-- **Paradigm B's real win needs neuromorphic silicon.** The CPU matcher is verified; the
-  GeNN GPU port needs CUDA + a C++ compiler; line-rate in-storage search needs an NPU.
-- **TransE can't do cyclic relations** — RotatE (phase coding) does (v0.22).
+Stated plainly — a researcher should be able to trust the numbers:
+
+- **~95% MNIST is a target, not achieved.** Best measured is **90.0%** (1600n, scale-tuned). The
+  6400n/~95% run needs the recipe + multiple epochs (day-scale); the tuned Vertex job is currently
+  **blocked by a GCP billing "dunning" hold**, not a code gap.
+- **The 6-DOF Dreamer's world model is a plain MLP.** A fully-spiking world model measurably
+  failed to regress 6-joint FK (recon ~0.9 m); the **actor and critic are spiking**, the world
+  model is not. The arm is a **planar** redundant arm, not a 3D manipulator.
+- **Real-arm "learning" is partly simulated pending the builder.** Reward/success is an
+  `--assume-success` placeholder and IR sensor fusion is **off** (`arm_config.IR_PRESENT = None`)
+  until a calibration capture and a real success signal land; distance alone decides presence.
+- **N-MNIST 71% is a plumbing demo, not a benchmark.** Real DVS data, nearest-prototype, no
+  learning — off-theme vs the storage/robotics thesis (SOTA ~99.3%); the audit recommends
+  replacing it with DVS128 Gesture.
+- **The streaming cloud Bronze leg is unverified.** Batch Phase 1 is verified end-to-end; the
+  Pub/Sub→Dataflow streaming sink still writes vanilla Parquet (small-file problem) — the Delta
+  fix is proven _locally_, to be applied on first cloud streaming run.
+- **Latency↔rate gap (−6.2 pts)** and **determinism is mandatory for the query path** (Poisson
+  re-encoding gives different spike trains, so stochastic encoding can't be used for matching).
+- **Neuromodulators are abstractions**, not biophysics — single global scalars for
+  dopamine/cortisol, no D1/D2 or HPA-axis detail. **Paradigm B's real win needs neuromorphic
+  silicon**; the GeNN GPU ports need CUDA + a C++ compiler and are drop-in accelerators, not
+  independently re-validated.
 
 Numbers are fixed-seed; rerun to reproduce.
 
@@ -279,7 +350,7 @@ Numbers are fixed-seed; rerun to reproduce.
 
 ## Provenance
 
-Designs come from two research briefs (in [`research/`](research/)) surveying SNN
-data-storage methods, plus an external architectural assessment that mapped the concept to
-the three paradigms above. The spike-driven MoE is a port of Project Nord's
-`SpikeDrivenMoE`. License: [MIT](LICENSE).
+Designs come from two research briefs (in [`research/`](research/)) surveying SNN data-storage
+methods, plus an external architectural assessment that mapped the concept to the three paradigms.
+The spike-driven MoE is a port of Project Nord's `SpikeDrivenMoE`. Every version is a git tag +
+GitHub release ([CHANGELOG.md](CHANGELOG.md)). License: [MIT](LICENSE).
