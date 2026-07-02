@@ -3,6 +3,25 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.68] — Research: FlyHash — bio-inspired LSH for the store's similarity search (2026-07-02)
+### Added
+- **`research/fly_hash.py`** (zero-dep): the fruit-fly olfactory hashing algorithm as an
+  approximate-nearest-neighbour index over the spike store — sparse random EXPANSION (d -> 20d
+  Kenyon units, each summing a few random inputs) + winner-take-all (~5% top-k) -> a sparse binary
+  tag, so tag-overlap is a cheap LSH proxy that turns the store's O(N) brute-force query
+  (`learned_matcher` nearest-distance scan) into a candidate-set lookup, using the repo's own
+  primitives (random projection + WTA). Deterministic self-check: near-duplicate tags overlap
+  **45.6** winners vs **2.4** for random pairs (~19x), and a 5%-jittered query recovers its source
+  item at **recall@1 100%** over 100 queries. Refs: Dasgupta, Stevens & Navlakha, "A neural
+  algorithm for a fundamental computing problem", Science 358 (2017) 10.1126/science.aam9868;
+  BioHash, Ryali et al., ICML 2020 (arXiv:2001.04907).
+### Changed
+- `run_selfchecks.py`: +1 module -> **54/54** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. Fresh literature sweep
+  (fly-olfaction LSH), deduped against the built store/search/memory modules — complements, not
+  duplicates, `index_compression` (compresses ids) and the associative-memory recall path.
+
 ## [v0.67] — Research: NIR export — spiking models -> Neuromorphic Intermediate Representation (2026-07-02)
 ### Added
 - **`research/nir_export.py`** (zero-dep): emit the repo's spiking models (LIF / Affine / Linear /
