@@ -3,6 +3,32 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.61] — Engineering: pytest suite, ruff + pre-commit, CI matrix (2026-07-01)
+### Added
+- **`tests/` pytest suite** beside the zero-dep `run_selfchecks.py` (the smoke gate stays): edge-case
+  unit tests for the safety-critical paths — `serial_arm` calibration gate + fail-safe raise, `reflex`
+  firing exactly at threshold + reverse-sign danger, `arm_config` dbin/present/bins_from_capture
+  boundaries, `data_quality` schema/gold gates, and `signal_loop` normalize/resize edges + the Lowe
+  ratio test — plus an in-process harness that runs every CORE module's `__main__` self-check so
+  coverage.py can see it. 84% line coverage on `src/snn_data_lake/`, enforced by a `--cov-fail-under=70`
+  gate. `pytest` + `pytest-cov` live in a new `[project.optional-dependencies] dev` group; core
+  `dependencies` stays `[]` — the zero-dep guarantee holds.
+- **ruff** (`[tool.ruff]`: select E,F,I,UP,B, line-length 100) + **`.pre-commit-config.yaml`** (ruff
+  check + ruff-format on `tests/`). `ruff` and `pre-commit` are in the same `dev` extra.
+### Changed
+- **CI is now a matrix**: `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}` running the stdlib
+  self-checks — the Windows-first product (`record_and_run.ps1`, `--serial COMx`) is finally tested on
+  Windows and on 3.12/3.13. Adds pip caching, a `concurrency` cancel-in-progress block, and separate
+  `lint` (ruff) and `test` (pytest --cov) jobs. No mypy job yet (typing is A3, deferred).
+- ruff-driven cleanup of the core: removed dead locals (`last_window`, `rng`, `out`, `ver_before`), a
+  `yield`→`yield from`, and unused/unsorted imports. Hand-alignment preserved — pure-style rules
+  (E501/E702/E731/E741/B905) are relaxed for the existing modules via `per-file-ignores`; new tests are
+  fully formatted. `research/`, `gcp/`, `infra/`, and `robot arm/` are out of ruff scope for now.
+### Notes
+- 37/37 stdlib self-checks stay green on Windows + Python 3.11 and 3.13 (3.12 exercised in CI); `pytest`
+  green at 84% coverage. Implements the P0 items A1/A2/A4 from `docs/IMPROVEMENTS.md`; A3 (static typing)
+  is intentionally left for a follow-up.
+
 ## [v0.60] — Product: actuator path, research quarantine, installable src/ package
 ### Added
 - **Actuator path** (`serial_arm.py`): `SerialArm` — drop-in for `ArmSim` that also writes each
