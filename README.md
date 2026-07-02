@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 60/60 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 61/61 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.74** · 74 tagged releases (through v0.74). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.75** · 75 tagged releases (through v0.75). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -198,13 +198,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 60 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 61 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 60-module list is canonical in
+plus separate lint and coverage jobs. The 61-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -288,6 +288,7 @@ spiking-neural-data-lake/
     rank_order_coding.py                              Thorpe rank-order code: gain-invariant classification by spike order (zero-dep)
     cpg_oscillator.py                                 Matsuoka CPG: anti-phase rhythmic motor drive (tempo + vigor knobs) (zero-dep)
     homeostatic_scaling.py                            Turrigiano synaptic scaling: rate set-point stability for the STDP stores (zero-dep)
+    izhikevich_neuron.py                              Izhikevich 2-eq neuron: RS/IB/CH/FS cortical spiking regimes (zero-dep)
     loop_latency.py                                   end-to-end sensor→command latency p50/p95/p99 (zero-dep)
     temporal_coding_storage.py                        TTFS latency coding, 83.5× fewer ops (zero-dep)
     snn_moe_classifier.py                             spike-driven MoE, 0-param router (zero-dep)
@@ -301,7 +302,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (60 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (61 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -329,6 +330,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.75, zero-dep):_ **Izhikevich neuron** (`izhikevich_neuron.py`) — the 2-equation model
+reproducing cortical firing regimes (RS/IB/CH/FS) from four params at ~13 flops/step: fast-spiking 38
+vs regular-spiking 8 spikes, chattering bursts at ISI-CV 1.63 vs 0.18. A richer, still-cheap neuron
+primitive beside the repo's LIF.
 
 _Landed (v0.74, zero-dep):_ **Homeostatic scaling** (`homeostatic_scaling.py`) — Turrigiano synaptic
 scaling: a neuron multiplicatively rescales its synapses toward a rate set-point, holding the rate at

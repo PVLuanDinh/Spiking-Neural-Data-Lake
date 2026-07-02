@@ -3,6 +3,20 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.75] — Research: Izhikevich neuron — cortical spiking regimes from a 2-eq model (2026-07-02)
+### Added
+- **`research/izhikevich_neuron.py`** (zero-dep): the Izhikevich model — membrane v + recovery u and
+  four params (a,b,c,d) reproduce the cortical firing zoo the repo's LIF cannot (regular-spiking,
+  intrinsically-bursting, chattering, fast-spiking) at ~13 flops/step. Deterministic self-check over
+  300 ms at I=10: fast-spiking 38 vs regular-spiking 8 spikes; chattering bursts at ISI-CV 1.63 and
+  intrinsically-bursting 0.44 vs regular-spiking 0.18. Refs: Izhikevich, IEEE Trans. Neural Networks
+  14 (2003); "Which model to use for cortical spiking neurons?" (2004).
+### Changed
+- `run_selfchecks.py`: +1 module -> **61/61** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. A richer neuron primitive
+  (bursting, adaptation) beside the LIF and srm_neuron models, at LIF-like cost.
+
 ## [v0.74] — Research: homeostatic synaptic scaling (Turrigiano) — rate-stable learning (2026-07-02)
 ### Added
 - **`research/homeostatic_scaling.py`** (zero-dep): homeostatic synaptic scaling — a neuron measures
