@@ -173,7 +173,7 @@ python research/spike_knowledge_graph_rotate.py   # Paradigm C — RotatE cyclic
 python research/spike_kg_relations.py             # Paradigm C — relation algebra (sym/inverse/composition)
 
 # Real-data models — need deps (CPU build is fine):
-pip install -r requirements.txt
+pip install -e ".[gpu]"          # torch + snntorch + bindsnet + numpy  (add [genn] for the GeNN ports)
 python research/snn_mnist_stdp.py                                          # 74.6%
 NORD_M=300 NORD_TRAIN=6000 NORD_TDECAY=0.99999 NORD_TPLUS=0.8 \
   python research/snn_mnist_stdp.py                                        # 82.3% (best CPU)

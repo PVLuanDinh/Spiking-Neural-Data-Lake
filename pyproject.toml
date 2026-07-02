@@ -27,8 +27,9 @@ arm = ["pyserial"]                                                       # live_
 lake = ["polars", "pyarrow", "deltalake"]                               # lakehouse/medallion + delta_demo
 gpu = ["torch", "torchvision", "snntorch==1.0.0", "bindsnet", "numpy"]   # research/ GPU training
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
+genn = ["pygenn"]                                                        # research/*_genn GPU port (needs a C++ compiler + CUDA)
 dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.6", "pre-commit"]           # tests + lint/format (NOT runtime)
-all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist]"]                   # every addon in one install
+all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist]"]                   # every addon (genn excluded — needs a compiler)
 
 [project.scripts]
 snn-demo = "snn_data_lake.demo:main"         # one-file demo loop
