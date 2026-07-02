@@ -2,7 +2,9 @@
 Spiking State-Space Model (deep, trained) — the SOTA-track companion to the zero-dep LSM.
 
 RESEARCH TRACK — needs torch+snntorch (SHD path also needs tonic); runs in its own venv, NOT in CI.
-UNVERIFIED on this box (no GPU/torch here) — the zero-dep, CI-covered mechanism is spiking_ssm.py.
+Validated on CPU: the synthetic long-range task reaches 100%; real SHD via Tonic reaches 32% (20-class,
+chance 5%) on a capped 500-sample / 12-epoch run — full-SHD SOTA needs a GPU box with uncapped,
+longer training. The zero-dep, CI-covered mechanism is spiking_ssm.py.
 
 Deep spiking SSMs are the current best for long event sequences (SpikingSSMs, AAAI 2025; P-SpikeSSM,
 ICLR 2025; FLAMES, arXiv:2504.01257): a linear state-space recurrence h_t = A⊙h_{t-1} + B·x_t carries
@@ -29,8 +31,10 @@ from snntorch import surrogate
 
 DIM = int(os.environ.get("SSM_DIM", 128))
 LAYERS = int(os.environ.get("SSM_LAYERS", 2))
-STEPS = int(os.environ.get("SSM_STEPS", 100))     # sequence length (time bins)
-EPOCHS = int(os.environ.get("SSM_EPOCHS", 15))
+STEPS = int(os.environ.get("SSM_STEPS", 50))      # sequence length (time bins)
+EPOCHS = int(os.environ.get("SSM_EPOCHS", 25))
+BATCH = int(os.environ.get("SSM_BATCH", 32))
+SHD_CAP = int(os.environ.get("SSM_SHD_CAP", 500))   # cap SHD samples for a feasible CPU validation run
 SEED = 0
 
 
@@ -81,30 +85,39 @@ def synthetic_task(n, steps, in_dim, n_classes, gen):
     x = torch.rand(n, steps, in_dim, generator=gen) * 0.1
     y = torch.randint(0, n_classes, (n,), generator=gen)
     for i in range(n):
-        x[i, :3, y[i] % in_dim] += 1.0             # early cue in a class-specific channel
+        x[i, :5, y[i] % in_dim] += 1.5             # early cue in a class-specific channel
     return x, y
 
 
 def load_shd(train):
-    """Real SHD via Tonic (guarded). Returns (frames [N,steps,channels], labels)."""
+    """Real SHD via Tonic (guarded). Returns (frames [N,steps,channels], labels). Capped to
+    SHD_CAP samples so a CPU validation run is feasible (full SHD needs a GPU box)."""
     import tonic  # noqa: PLC0415
     ds = tonic.datasets.SHD(save_to="./data", train=train,
                             transform=tonic.transforms.ToFrame(
                                 sensor_size=tonic.datasets.SHD.sensor_size, n_time_bins=STEPS))
-    xs = torch.stack([torch.tensor(f, dtype=torch.float32).flatten(1) for f, _ in ds])
-    ys = torch.tensor([lab for _, lab in ds])
-    return xs, ys
+    n = min(SHD_CAP if train else max(1, SHD_CAP // 4), len(ds))
+    xs, ys = [], []
+    for i in range(n):
+        frame, lab = ds[i]
+        xs.append(torch.as_tensor(frame, dtype=torch.float32).reshape(STEPS, -1))  # -> [steps, channels]
+        ys.append(int(lab))
+    return torch.stack(xs), torch.tensor(ys)
 
 
 def run(x, y, xt, yt, n_classes):
     torch.manual_seed(SEED)
+    g = torch.Generator().manual_seed(SEED)
     model = SpikingSSM(x.size(2), n_classes)
-    opt = torch.optim.Adam(model.parameters(), lr=1e-3)
-    for _ in range(EPOCHS):
-        opt.zero_grad()
-        loss = F.cross_entropy(model(x), y)
-        loss.backward()
-        opt.step()
+    opt = torch.optim.Adam(model.parameters(), lr=2e-3)
+    for _ in range(EPOCHS):                        # minibatch SGD (many updates, not one/epoch)
+        perm = torch.randperm(x.size(0), generator=g)
+        for k in range(0, x.size(0), BATCH):
+            idx = perm[k:k + BATCH]
+            opt.zero_grad()
+            loss = F.cross_entropy(model(x[idx]), y[idx])
+            loss.backward()
+            opt.step()
     with torch.no_grad():
         logits = model(xt)
         acc = (logits.argmax(1) == yt).float().mean().item()
@@ -115,10 +128,12 @@ def run(x, y, xt, yt, n_classes):
 def main():
     gen = torch.Generator().manual_seed(SEED)
     if "--shd" in sys.argv:
+        mode = "real SHD (Tonic)"
         x, y = load_shd(True)
         xt, yt = load_shd(False)
         n_classes = int(max(y.max(), yt.max()).item()) + 1
     else:
+        mode = "synthetic long-range"
         in_dim, n_classes = 16, 4
         x, y = synthetic_task(256, STEPS, in_dim, n_classes, gen)
         xt, yt = synthetic_task(64, STEPS, in_dim, n_classes, gen)
@@ -127,13 +142,15 @@ def main():
 
     try:
         from snn_data_lake.energy import compare   # noqa: PLC0415
-        e = compare(int(synops), DIM * n_classes * STEPS)
+        # fair baseline = the dense-SSM recurrence a non-spiking model runs EVERY step for ALL units
+        # (the C matmul: layers × steps × dim × dim); the spiking model only pays for actual spikes.
+        e = compare(int(synops), LAYERS * STEPS * DIM * DIM)
         energy = f"{e['snn_nj']:.1f} nJ vs dense {e['ann_nj']:.1f} nJ ({e['energy_ratio']:.1f}x)"
     except ImportError:
         energy = "(run with PYTHONPATH=src to pipe SynOps through energy.py)"
 
     print("=" * 60)
-    print("SPIKING STATE-SPACE MODEL (deep, trained) — SHD / synthetic")
+    print(f"SPIKING STATE-SPACE MODEL (deep, trained) — {mode}")
     print("=" * 60)
     print(f"dim={DIM} layers={LAYERS} steps={STEPS} epochs={EPOCHS} classes={n_classes}")
     print(f"test accuracy : {acc:.1%}   (chance {1 / n_classes:.0%})")

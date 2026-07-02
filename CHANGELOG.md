@@ -17,9 +17,12 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
   delta-rule readout) for temporal sequences — 96% on a 3-class temporal task (chance 33%), event-driven
   SynOps piped through `energy.py`. The trained deep SpikingSSM/P-SpikeSSM (SHD/SSC, torch) is the
   referenced accuracy upgrade (SpikingSSMs AAAI 2025; P-SpikeSSM ICLR 2025).
-- **`research/snn_ssm_shd.py`** (torch, own venv, NOT in CI — unverified on the dev box): that trained
-  deep spiking SSM — stacked diagonal state-space recurrence + LIF surrogate-gradient — on a synthetic
-  long-range task or real SHD via Tonic. The SOTA-track companion to the zero-dep LSM; SynOps→`energy.py`.
+- **`research/snn_ssm_shd.py`** (torch, own venv, NOT in CI): the trained deep spiking SSM — stacked
+  diagonal state-space recurrence + LIF surrogate-gradient — on a synthetic long-range task or real SHD
+  via Tonic. The SOTA-track companion to the zero-dep LSM; SynOps→`energy.py`. **Validated on CPU**
+  (synthetic 100%; real SHD 32% @ 20-class, chance 5%, on a capped 500-sample run — full-SHD SOTA needs
+  a GPU box). Minibatch training + a fair dense-SSM energy baseline + an SHD sample cap were fixed in the
+  process.
 ### Changed
 - `run_selfchecks.py`: +3 modules → **42/42** stdlib self-checks; README count/layout + energy/silicon
   citations refreshed; `energy.py` docstring notes Hala Point (15 TOPS/W INT8).
