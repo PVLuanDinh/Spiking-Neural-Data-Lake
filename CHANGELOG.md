@@ -3,6 +3,21 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.73] — Research: spiking CPG (Matsuoka half-center oscillator) — rhythmic motor drive (2026-07-02)
+### Added
+- **`research/cpg_oscillator.py`** (zero-dep): a Matsuoka central pattern generator — two mutually-
+  inhibiting neurons with slow adaptation produce a sustained ANTI-PHASE rhythm from a single tonic
+  command, the motor primitive the arm loop lacked (spiking_pid/reflex are reactive, not rhythmic).
+  Two independent knobs: the adaptation time-constant sets tempo, the tonic drive sets vigor.
+  Deterministic self-check: 23 stable cycles, anti-phase corr -0.85, tempo tau_a 1.0->0.5 = 23->40
+  cycles, vigor drive 1.0->2.0 = amplitude 1.00->1.57, bounded. Refs: Matsuoka, Biol. Cybern. 52
+  (1985); Ijspeert, "Central pattern generators for locomotion", Neural Networks 21 (2008).
+### Changed
+- `run_selfchecks.py`: +1 module -> **59/59** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. New motor primitive on the
+  robot-loop axis, distinct from the reactive spiking_pid controller.
+
 ## [v0.72] — Research: rank-order coding (Thorpe) — gain-invariant classification by spike order (2026-07-02)
 ### Added
 - **`research/rank_order_coding.py`** (zero-dep): Thorpe's rank-order code — classify a pattern by the
