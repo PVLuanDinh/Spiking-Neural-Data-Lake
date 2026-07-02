@@ -3,6 +3,22 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.78] — Research: intrinsic plasticity (Triesch) — info-max excitability self-tuning (2026-07-02)
+### Added
+- **`research/intrinsic_plasticity.py`** (zero-dep): Triesch's intrinsic plasticity — a neuron adapts
+  its transfer-function gain a and bias b to drive its output firing-rate DISTRIBUTION toward an
+  exponential (the max-entropy distribution for a fixed mean, so it maximizes information per spike
+  under a metabolic budget). The intrinsic-excitability counterpart to the synaptic homeostatic
+  scaling (v0.74). Deterministic self-check: output mean 0.50 -> 0.148 (target 0.15); input-scale
+  invariant -- on a 3x-amplified input the gain shrinks 1.27 -> 0.35 to compensate and the output mean
+  still holds at ~mu. Refs: Triesch, ICANN 2005; Stemmler & Koch, Nat. Neurosci. 2 (1999).
+### Changed
+- `run_selfchecks.py`: +1 module -> **64/64** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. Intrinsic (excitability)
+  homeostasis, distinct from the synaptic homeostatic_scaling — regulates the whole output
+  distribution, not just the mean, and is input-scale invariant.
+
 ## [v0.77] — Research: short-term plasticity (Tsodyks-Markram dynamic synapses) (2026-07-02)
 ### Added
 - **`research/short_term_plasticity.py`** (zero-dep): the Tsodyks-Markram dynamic synapse — utilization

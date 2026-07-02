@@ -45,7 +45,7 @@ RESEARCH = [
     "research/sparse_distributed_memory", "research/spiking_som", "research/tempotron",
     "research/rank_order_coding", "research/cpg_oscillator", "research/homeostatic_scaling",
     "research/izhikevich_neuron", "research/bcm_plasticity", "research/short_term_plasticity",
-    "research/make_results_plot",
+    "research/intrinsic_plasticity", "research/make_results_plot",
 ]
 MODULES = CORE + RESEARCH
 
