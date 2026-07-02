@@ -35,17 +35,20 @@ python -m snn_data_lake.gesture_recognition    # order-aware recognition + confu
 ```
 
 **Every addon:** `pip install -e ".[all]"` adds every optional dependency (arm+lake+gpu+nmnist)
-in one env; or pick a path — `.[arm]` `.[lake]` `.[gpu]` `.[nmnist]`.
+in one env; or pick a path — `.[arm]` `.[lake]` `.[gpu]` `.[nmnist]` `.[genn]`.
 
-Run the **full zero-dep self-check suite** (exactly what CI runs — the 32 stdlib modules; the
-MNIST/GPU models are excluded as they need PyTorch). The list lives in
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) and [docs/RUNNING.md](docs/RUNNING.md):
+Run the **full zero-dep self-check suite** (exactly what CI runs — the 37 stdlib modules; the
+MNIST/GPU models are excluded as they need PyTorch). The canonical list lives in
+[`run_selfchecks.py`](run_selfchecks.py) (CI just runs it) and [docs/RUNNING.md](docs/RUNNING.md):
 ```bash
 python research/spiking_storage_prototype.py   # storage
 python -m snn_data_lake.paradigm_b_engine           # in-storage order-aware query
 python -m snn_data_lake.closed_loop                 # the full brain-stack loop (encode→match→reward→learn)
-# ...full list (32) in docs/RUNNING.md §1
+# ...full list (37) in docs/RUNNING.md §1
 ```
+
+Contributor tooling (v0.61): `pip install -e ".[dev]" && pytest` runs the coverable suite (84%
+line coverage); `ruff check .` lints. `run_selfchecks.py` stays the zero-dep smoke gate.
 
 Optional extras (own venv each; see [docs/RUNNING.md](docs/RUNNING.md)): `polars` for the
 Medallion lakehouse, `tonic` for real N-MNIST, `torch`+`snntorch`+`bindsnet` for the MNIST/GPU
