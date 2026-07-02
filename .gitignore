@@ -33,6 +33,10 @@ infra/.terraform.lock.hcl
 # Tooling output
 graphify-out/
 .graphify*/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # OS
 .DS_Store

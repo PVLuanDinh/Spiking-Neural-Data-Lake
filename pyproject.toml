@@ -27,6 +27,7 @@ arm = ["pyserial"]                                                       # live_
 lake = ["polars", "pyarrow", "deltalake"]                               # lakehouse/medallion + delta_demo
 gpu = ["torch", "torchvision", "snntorch==1.0.0", "bindsnet", "numpy"]   # research/ GPU training
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
+dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.6", "pre-commit"]           # tests + lint/format (NOT runtime)
 all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist]"]                   # every addon in one install
 
 [project.scripts]
@@ -39,3 +40,38 @@ Homepage = "https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/snn_data_lake"]
+
+# ---- dev tooling (all in the `dev` extra; core stays zero-dep) ------------------
+# pytest: the debuggable/coverable suite beside run_selfchecks.py's zero-dep smoke gate.
+# src on path so `snn_data_lake.*` imports without an install; "." so tests can reuse the
+# canonical run_selfchecks.CORE list. cov gate enforces the >=70% acceptance bar.
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-q --cov=snn_data_lake --cov-report=term-missing --cov-fail-under=70"
+# test_selfchecks runs each module via runpy after the package is already imported; that emits a
+# benign "found in sys.modules" RuntimeWarning. Silence only that one.
+filterwarnings = ["ignore:.*found in sys.modules.*:RuntimeWarning"]
+
+[tool.coverage.run]
+source = ["snn_data_lake"]
+
+# ruff: scoped to the zero-dep core + tests. research/, gcp/, infra/ and the standalone
+# "robot arm/" sketch are excluded on purpose (linting them means editing quarantined /
+# optional-dep code — out of scope here; see docs/IMPROVEMENTS.md A4).
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["research", "gcp", "infra", "robot arm"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+# The existing modules are hand-aligned (~100-col lines, deliberate `a; b` compaction, short
+# l/I loop vars, a couple of lambdas). Relax those pure-style rules on the existing code rather
+# than reflowing it; genuine findings (unused/unsorted imports, dead vars, deprecated aliases,
+# yield-from) are still fixed. New code under tests/ is held to the full ruleset.
+[tool.ruff.lint.per-file-ignores]
+"src/**" = ["E501", "E702", "E731", "E741", "B905"]
+"run_selfchecks.py" = ["E501", "I001"]   # kept byte-for-byte as-is (A1: the zero-dep smoke gate)
