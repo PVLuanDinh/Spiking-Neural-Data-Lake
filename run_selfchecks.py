@@ -39,7 +39,7 @@ RESEARCH = [
     "research/spike_knowledge_graph",
     "research/spike_knowledge_graph_rotate", "research/spike_kg_relations", "research/spiking_vsa",
     "research/resonator_network", "research/nmnist_ingest",
-    "research/srm_neuron", "research/stats_bounds", "research/loop_latency",
+    "research/srm_neuron", "research/stats_bounds", "research/loop_latency", "research/delay_learning",
     "research/make_results_plot",
 ]
 MODULES = CORE + RESEARCH
