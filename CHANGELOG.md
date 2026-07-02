@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.85] — Integration: FlyHash LSH index promoted as an additive candidate filter (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/fly_hash.py`** (promoted from research/, zero-dep): `FlyHashIndex` turns each
+  stored window into a sparse binary tag (fly-olfaction expansion + WTA) so tag-overlap is a
+  locality-sensitive proxy for similarity; `query` returns the most tag-similar entries as a candidate
+  set (the exact matcher then rescoring only those). Self-check on real library windows: approx-NN
+  recall@1 100%, same-command vs different-command tag overlap 59.6 vs 2.5, deterministic. Additive,
+  opt-in; the default matcher/cluster scan is unchanged. Moved RESEARCH -> CORE; PoC removed. Refs:
+  Dasgupta, Stevens & Navlakha, Science 358 (2017).
+### Notes
+- Third "force the rest" additive integration. Defaults, arm safety envelope, and determinism
+  preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
+
 ## [v0.84] — Integration: spiking SOM promoted as an additive clustering backend (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/spiking_som.py`** (promoted from research/, zero-dep): `som_cluster` lays

@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 64/64 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.84** · 84 tagged releases (through v0.84). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.85** · 85 tagged releases (through v0.85). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,7 +234,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (32 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (33 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
     paradigm_b_matcher.py         Paradigm B: coincidence matcher (CPU reference)
@@ -268,6 +268,7 @@ spiking-neural-data-lake/
     tempotron.py                  supervised spike-timing gesture matcher (one tempotron per command)
     sparse_distributed_memory.py  distributed associative-recall matcher option (Kanerva SDM)
     spiking_som.py                additive SOM clustering backend for gesture discovery (opt-in)
+    fly_hash.py                   FlyHash LSH index — fast candidate filter over stored windows (opt-in)
     demo.py                       the whole loop in one runnable file  (snn-demo)
     lakehouse/medallion.py        Bronze→Silver→Gold PoC (Parquet + polars)
     lakehouse/delta_demo.py       Delta Lake PoC (transaction log + OPTIMIZE + time-travel)
@@ -286,7 +287,6 @@ spiking-neural-data-lake/
     index_compression.py                              order-invariant id/edge-list compression (zero-dep)
     delay_learning.py                                 three-factor synaptic-delay learning (timing, not weight) (zero-dep)
     free_energy_control.py                            predictive-coding spiking control: sparse, noise-robust (zero-dep)
-    fly_hash.py                                       fly-olfaction LSH: sparse expansion + WTA -> approx-NN index over the store (zero-dep)
     homeostatic_scaling.py                            Turrigiano synaptic scaling: rate set-point stability for the STDP stores (zero-dep)
     izhikevich_neuron.py                              Izhikevich 2-eq neuron: RS/IB/CH/FS cortical spiking regimes (zero-dep)
     bcm_plasticity.py                                 BCM sliding-threshold rule: rate-based selectivity development (zero-dep)
@@ -333,6 +333,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.85, product integration):_ **FlyHash index promoted into the product**
+(`src/snn_data_lake/fly_hash.py`) — `FlyHashIndex` returns the most tag-similar stored windows for a
+query (bio-inspired LSH, recall@1 100%, same/different-command tag overlap 59.6 vs 2.5); an additive,
+opt-in candidate filter — the default matcher/cluster scan is unchanged.
 
 _Landed (v0.84, product integration):_ **Spiking SOM promoted into the product**
 (`src/snn_data_lake/spiking_som.py`) — `som_cluster` is an additive Kohonen clustering backend for
