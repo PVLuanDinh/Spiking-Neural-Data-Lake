@@ -3,6 +3,21 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.71] — Research: tempotron — supervised spike-timing learning in one neuron (2026-07-02)
+### Added
+- **`research/tempotron.py`** (zero-dep): the Gutig-Sompolinsky tempotron (Nat. Neurosci. 2006) — one
+  leaky neuron trained to fire for one class of spatiotemporal spike patterns and stay silent for
+  another, by nudging weights along the gradient of its peak sub-threshold voltage at the instant it
+  peaks (decision by spike timing, not rate). Fills the supervised-temporal gap next to the
+  unsupervised valence_stdp, the delay_learning rule, and the surrogate-gradient (torch) models.
+  Deterministic self-check: 50% -> 100% accuracy on 10 patterns (20 afferents), learned peak-voltage
+  margin 1.06 > threshold 1.00 > 0.85. Refs: Gutig & Sompolinsky, Nature Neuroscience 9 (2006).
+### Changed
+- `run_selfchecks.py`: +1 module -> **57/57** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. Distinct rule from the
+  rate/STDP/delay/surrogate learners already in the repo — supervised, timing-based.
+
 ## [v0.70] — Research: spiking self-organizing map — unsupervised topographic store index (2026-07-02)
 ### Added
 - **`research/spiking_som.py`** (zero-dep): a Kohonen SOM built from the repo's own primitives — a
