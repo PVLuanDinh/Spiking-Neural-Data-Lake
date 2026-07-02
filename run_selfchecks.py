@@ -29,7 +29,7 @@ CORE = [
     "signal_loop", "learned_matcher", "rank_order_coding", "reflex", "valence_stdp", "cortisol",
     "interpreter", "closed_loop", "make_sensor_dataset", "sensor_demo",
     "arm_sim", "arm_config", "population_encoding", "sensor_csv_ingest",
-    "gesture_recognition", "live_arm", "serial_arm", "arm_bridge", "spiking_pid", "demo",
+    "gesture_recognition", "live_arm", "serial_arm", "arm_bridge", "spiking_pid", "cpg_oscillator", "demo",
 ]
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [
@@ -43,7 +43,7 @@ RESEARCH = [
     "research/srm_neuron", "research/stats_bounds", "research/loop_latency", "research/delay_learning",
     "research/free_energy_control", "research/nir_export", "research/fly_hash",
     "research/sparse_distributed_memory", "research/spiking_som", "research/tempotron",
-    "research/cpg_oscillator", "research/homeostatic_scaling",
+    "research/homeostatic_scaling",
     "research/izhikevich_neuron", "research/bcm_plasticity", "research/short_term_plasticity",
     "research/intrinsic_plasticity", "research/make_results_plot",
 ]

@@ -3,6 +3,21 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.80] — Integration: spiking CPG promoted into the product (rhythmic arm motor primitive) (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/cpg_oscillator.py`** (promoted from research/, zero-dep): the Matsuoka
+  half-center CPG is now a PRODUCT motor primitive. `cpg_sweep(arm, ...)` drives ArmSim joint A with
+  the oscillator's anti-phase rhythm via rate-limited JOINT_A_ROTATE commands, so the arm sweeps
+  smoothly through a bounded band — and because it goes through arm.apply(), collision detection and
+  EMERGENCY_STOP still gate it. Self-check: 14 direction reversals in a 29..61 deg band, collision-free
+  end to end (the sweep breaks on any collision), EMERGENCY_STOP freezes the sweep, deterministic.
+  Moved RESEARCH -> CORE; research/ PoC removed. Refs: Matsuoka, Biol. Cybern. 52 (1985); Ijspeert,
+  Neural Networks 21 (2008).
+### Notes
+- Second integration of the "primitives into the main program" arc (v0.79 rank-order = data-lake
+  recognition; this = arm motor). Pure-stdlib, deterministic, CI-covered; core `dependencies` stays
+  `[]`; the arm's safety envelope (collision + E-STOP) is preserved. 64/64 self-checks.
+
 ## [v0.79] — Integration: rank-order coding promoted into the product (gain-invariant matcher) (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/rank_order_coding.py`** (promoted from research/, zero-dep): the Thorpe

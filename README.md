@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 64/64 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.79** · 79 tagged releases (through v0.79). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.80** · 80 tagged releases (through v0.80). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,7 +234,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (27 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (28 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
     paradigm_b_matcher.py         Paradigm B: coincidence matcher (CPU reference)
@@ -253,6 +253,7 @@ spiking-neural-data-lake/
     gesture_recognition.py        order-aware recognition of the builder's real gestures (95%)
     arm_sim.py                    2-link planar arm (stdlib FK+collision, optional PyBullet)
     spiking_pid.py                NEF-style population-coded spiking PID controller
+    cpg_oscillator.py             Matsuoka CPG rhythmic motor primitive — drives the arm in a safe bounded sweep
     live_arm.py                   live hardware loop: ESP32 → recognize → Interpreter → arm  (snn-arm)
     serial_arm.py                 real-servo actuator sink: fail-safe + SAFETY_CALIBRATED gate
     arm_bridge.py                 UDP OUTCOME back-channel (closes the split-process loop)
@@ -286,7 +287,6 @@ spiking-neural-data-lake/
     sparse_distributed_memory.py                      Kanerva SDM: distributed hard-location content-addressable store (zero-dep)
     spiking_som.py                                    Kohonen self-organizing map: unsupervised topographic index over the store (zero-dep)
     tempotron.py                                      Gutig-Sompolinsky supervised spike-timing classifier (one leaky neuron) (zero-dep)
-    cpg_oscillator.py                                 Matsuoka CPG: anti-phase rhythmic motor drive (tempo + vigor knobs) (zero-dep)
     homeostatic_scaling.py                            Turrigiano synaptic scaling: rate set-point stability for the STDP stores (zero-dep)
     izhikevich_neuron.py                              Izhikevich 2-eq neuron: RS/IB/CH/FS cortical spiking regimes (zero-dep)
     bcm_plasticity.py                                 BCM sliding-threshold rule: rate-based selectivity development (zero-dep)
@@ -333,6 +333,12 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.80, product integration):_ **Spiking CPG promoted into the product**
+(`src/snn_data_lake/cpg_oscillator.py`) — a Matsuoka half-center CPG now drives ArmSim as a rhythmic
+motor primitive: `cpg_sweep` sweeps joint A smoothly through a bounded 29..61 deg band via the
+safety-gated command API (collision + EMERGENCY_STOP still apply), 14 reversals, collision-free. The
+robot-arm counterpart to v0.79's data-lake integration.
 
 _Landed (v0.79, product integration):_ **Rank-order coding promoted into the product**
 (`src/snn_data_lake/rank_order_coding.py`) — a gain-invariant `RankOrderMatcher` enrolled on the live
