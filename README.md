@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 64/64 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.80** · 80 tagged releases (through v0.80). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.81** · 81 tagged releases (through v0.81). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,7 +234,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (28 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (29 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
     paradigm_b_matcher.py         Paradigm B: coincidence matcher (CPU reference)
@@ -262,6 +262,7 @@ spiking-neural-data-lake/
     sensor_demo.py                end-to-end sensor demo
     data_quality.py               Gold-promotion gates (schema/encodability/immutability/sanity)
     snn_classifier.py             trainable spiking classifier (weights = long-term storage)
+    nir_export.py                 export the trained classifier to a NIR graph (Loihi 2 / SpiNNaker 2 / Speck deploy)
     learned_matcher.py            learned classifier + Van Rossum novelty gate (hybrid matcher)
     rank_order_coding.py          gain-invariant recognition (Thorpe rank code) — robust to sensor gain / rig change
     demo.py                       the whole loop in one runnable file  (snn-demo)
@@ -282,7 +283,6 @@ spiking-neural-data-lake/
     index_compression.py                              order-invariant id/edge-list compression (zero-dep)
     delay_learning.py                                 three-factor synaptic-delay learning (timing, not weight) (zero-dep)
     free_energy_control.py                            predictive-coding spiking control: sparse, noise-robust (zero-dep)
-    nir_export.py                                     export spiking models -> NIR graph JSON (Loihi2/SpiNNaker2/Speck) (zero-dep)
     fly_hash.py                                       fly-olfaction LSH: sparse expansion + WTA -> approx-NN index over the store (zero-dep)
     sparse_distributed_memory.py                      Kanerva SDM: distributed hard-location content-addressable store (zero-dep)
     spiking_som.py                                    Kohonen self-organizing map: unsupervised topographic index over the store (zero-dep)
@@ -333,6 +333,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.81, product integration):_ **NIR export promoted into the product**
+(`src/snn_data_lake/nir_export.py`) — `export_classifier` maps the trained snn_classifier weights to a
+NIR graph Input(64)->Linear->LIF(4)->Output(4), validated + round-tripped, portable to Loihi 2 /
+SpiNNaker 2 / Speck / Xylo. The neuromorphic-deploy path (roadmap C1) now exports the real recognizer.
 
 _Landed (v0.80, product integration):_ **Spiking CPG promoted into the product**
 (`src/snn_data_lake/cpg_oscillator.py`) — a Matsuoka half-center CPG now drives ArmSim as a rhythmic

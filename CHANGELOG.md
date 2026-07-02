@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.81] — Integration: NIR export promoted into the product (deploy the trained recognizer) (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/nir_export.py`** (promoted from research/, zero-dep): the NIR-graph emitter is
+  now a PRODUCT module with `export_classifier(W)` that maps a trained `snn_classifier` weight matrix
+  W[class][input] to a NIR graph Input(N) -> Linear(W) -> LIF(C) -> Output(C) — the deploy shape for
+  the gesture/shape recognizer on neuromorphic silicon. Self-check trains the real classifier (4x64)
+  and exports it: valid NIR graph, lossless round-trip, validate() catches corruption; `to_nir_graph`
+  lifts the JSON into canonical NIR (nir+numpy) for nir.write -> HDF5. Moved RESEARCH -> CORE;
+  research/ PoC removed. Advances roadmap C1 (the NIR / Loihi / SpiNNaker deploy path).
+### Notes
+- Third integration of the "primitives into the main program" arc (v0.79 recognition, v0.80 arm motor,
+  this = deploy). Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. 64/64.
+
 ## [v0.80] — Integration: spiking CPG promoted into the product (rhythmic arm motor primitive) (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/cpg_oscillator.py`** (promoted from research/, zero-dep): the Matsuoka
