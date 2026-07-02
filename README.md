@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 62/62 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 63/63 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.76** · 76 tagged releases (through v0.76). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.77** · 77 tagged releases (through v0.77). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -198,13 +198,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 62 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 63 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 62-module list is canonical in
+plus separate lint and coverage jobs. The 63-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -290,6 +290,7 @@ spiking-neural-data-lake/
     homeostatic_scaling.py                            Turrigiano synaptic scaling: rate set-point stability for the STDP stores (zero-dep)
     izhikevich_neuron.py                              Izhikevich 2-eq neuron: RS/IB/CH/FS cortical spiking regimes (zero-dep)
     bcm_plasticity.py                                 BCM sliding-threshold rule: rate-based selectivity development (zero-dep)
+    short_term_plasticity.py                          Tsodyks-Markram dynamic synapses: depression/facilitation temporal filters (zero-dep)
     loop_latency.py                                   end-to-end sensor→command latency p50/p95/p99 (zero-dep)
     temporal_coding_storage.py                        TTFS latency coding, 83.5× fewer ops (zero-dep)
     snn_moe_classifier.py                             spike-driven MoE, 0-param router (zero-dep)
@@ -303,7 +304,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (62 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (63 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -331,6 +332,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.77, zero-dep):_ **Short-term plasticity** (`short_term_plasticity.py`) — Tsodyks-Markram
+dynamic synapses: each spike transiently depletes resources (depression) and raises release
+probability (facilitation), making a synapse a temporal filter. Depressing synapse fades to 0.05x
+over a train; facilitating builds to 1.98x; recovers to baseline after a gap.
 
 _Landed (v0.76, zero-dep):_ **BCM plasticity** (`bcm_plasticity.py`) — the Bienenstock-Cooper-Munro
 sliding-threshold rule: a neuron self-organizes to respond to ONE input pattern (selectivity

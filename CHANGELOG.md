@@ -3,6 +3,22 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.77] — Research: short-term plasticity (Tsodyks-Markram dynamic synapses) (2026-07-02)
+### Added
+- **`research/short_term_plasticity.py`** (zero-dep): the Tsodyks-Markram dynamic synapse — utilization
+  u (facilitation) and resources R (depression) evolve per spike, so a single synapse's gain depends on
+  recent spike history: a depressing synapse high-passes (onset/novelty), a facilitating one low-passes
+  (builds over a burst). The millisecond synaptic dynamics behind adaptation and gain control, missing
+  next to the static-weight synapses. Deterministic self-check (8 spikes at 50 Hz): depressing EPSC
+  fades 0.5 -> 0.025 (monotone, last/first 0.05), facilitating builds 0.15 -> 0.297 (peak/first 1.98),
+  and a 3 s gap restores baseline (0.98x). Refs: Tsodyks & Markram, PNAS 94 (1997); Markram, Wang &
+  Tsodyks, PNAS 95 (1998).
+### Changed
+- `run_selfchecks.py`: +1 module -> **63/63** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. Transient (millisecond)
+  synaptic dynamics, distinct from the long-term STDP/BCM learning rules.
+
 ## [v0.76] — Research: BCM plasticity — selectivity development via a sliding threshold (2026-07-02)
 ### Added
 - **`research/bcm_plasticity.py`** (zero-dep): the Bienenstock-Cooper-Munro rule — dw = lr*x*y*(y-theta)
