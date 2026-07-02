@@ -3,6 +3,23 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.76] — Research: BCM plasticity — selectivity development via a sliding threshold (2026-07-02)
+### Added
+- **`research/bcm_plasticity.py`** (zero-dep): the Bienenstock-Cooper-Munro rule — dw = lr*x*y*(y-theta)
+  with a modification threshold theta that tracks the neuron's own <y^2>, so responses above theta
+  potentiate and below depress, and the neuron self-organizes to respond to a SINGLE input pattern
+  (the classic ocular-dominance / orientation-selectivity mechanism). The rate-based selectivity rule
+  the repo lacked next to STDP (timing) and homeostatic scaling (stability). Deterministic self-check:
+  selectivity 0.15 -> 0.67 over 4000 presentations, the winning pattern's response 2.66 vs 0.27 for
+  the rest (~10x), theta bounded at 2.55. Refs: Bienenstock, Cooper & Munro, J. Neurosci. 2 (1982);
+  Cooper & Bear, Nat. Rev. Neurosci. 13 (2012).
+### Changed
+- `run_selfchecks.py`: +1 module -> **62/62** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. Distinct rule — rate-based
+  competitive selectivity, complementary to the timing-based STDP and the stability-based homeostatic
+  scaling.
+
 ## [v0.75] — Research: Izhikevich neuron — cortical spiking regimes from a 2-eq model (2026-07-02)
 ### Added
 - **`research/izhikevich_neuron.py`** (zero-dep): the Izhikevich model — membrane v + recovery u and
