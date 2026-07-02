@@ -3,6 +3,20 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.79] — Integration: rank-order coding promoted into the product (gain-invariant matcher) (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/rank_order_coding.py`** (promoted from research/, zero-dep): the Thorpe
+  rank-order code is now a PRODUCT module with a `RankOrderMatcher` enrolled on the real command
+  library (`signal_loop.build_default_library`). It classifies a window by firing ORDER, discarding
+  magnitude, so it is invariant to the sensor gain / contrast / rig change that `arm_config` warns
+  collapses the 95% recognition. Self-check on the live library: rank-order 100% clean and 100% under
+  a per-capture monotonic rig-gain change (exactly invariant), while the Van Rossum template matcher
+  drops 100% -> 92%. Moved from RESEARCH to CORE in run_selfchecks; the research/ PoC is removed.
+### Notes
+- Starts the "build the research primitives into the main program" arc (data-lake + arm). Pure-stdlib,
+  deterministic, CI-covered; core `dependencies` stays `[]`. Available as a live matcher option; wiring
+  it as the default recognizer is a follow-up. 64/64 self-checks (promotion, not a new count).
+
 ## [v0.78] — Research: intrinsic plasticity (Triesch) — info-max excitability self-tuning (2026-07-02)
 ### Added
 - **`research/intrinsic_plasticity.py`** (zero-dep): Triesch's intrinsic plasticity — a neuron adapts

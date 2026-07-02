@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 64/64 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.78** · 78 tagged releases (through v0.78). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.79** · 79 tagged releases (through v0.79). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,7 +234,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (26 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (27 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
     paradigm_b_matcher.py         Paradigm B: coincidence matcher (CPU reference)
@@ -262,6 +262,7 @@ spiking-neural-data-lake/
     data_quality.py               Gold-promotion gates (schema/encodability/immutability/sanity)
     snn_classifier.py             trainable spiking classifier (weights = long-term storage)
     learned_matcher.py            learned classifier + Van Rossum novelty gate (hybrid matcher)
+    rank_order_coding.py          gain-invariant recognition (Thorpe rank code) — robust to sensor gain / rig change
     demo.py                       the whole loop in one runnable file  (snn-demo)
     lakehouse/medallion.py        Bronze→Silver→Gold PoC (Parquet + polars)
     lakehouse/delta_demo.py       Delta Lake PoC (transaction log + OPTIMIZE + time-travel)
@@ -285,7 +286,6 @@ spiking-neural-data-lake/
     sparse_distributed_memory.py                      Kanerva SDM: distributed hard-location content-addressable store (zero-dep)
     spiking_som.py                                    Kohonen self-organizing map: unsupervised topographic index over the store (zero-dep)
     tempotron.py                                      Gutig-Sompolinsky supervised spike-timing classifier (one leaky neuron) (zero-dep)
-    rank_order_coding.py                              Thorpe rank-order code: gain-invariant classification by spike order (zero-dep)
     cpg_oscillator.py                                 Matsuoka CPG: anti-phase rhythmic motor drive (tempo + vigor knobs) (zero-dep)
     homeostatic_scaling.py                            Turrigiano synaptic scaling: rate set-point stability for the STDP stores (zero-dep)
     izhikevich_neuron.py                              Izhikevich 2-eq neuron: RS/IB/CH/FS cortical spiking regimes (zero-dep)
@@ -333,6 +333,12 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.79, product integration):_ **Rank-order coding promoted into the product**
+(`src/snn_data_lake/rank_order_coding.py`) — a gain-invariant `RankOrderMatcher` enrolled on the live
+command library: 100% recognition, exactly invariant under a per-capture rig-gain change where the
+Van Rossum template matcher drops to 92%. First step of building the research primitives into the
+data-lake / arm program.
 
 _Landed (v0.78, zero-dep):_ **Intrinsic plasticity** (`intrinsic_plasticity.py`) — Triesch's rule: a
 neuron tunes its own gain/bias to drive its output distribution toward an exponential (info-max)
