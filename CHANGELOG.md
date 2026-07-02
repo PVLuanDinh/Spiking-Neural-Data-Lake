@@ -3,6 +3,27 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.67] — Research: NIR export — spiking models -> Neuromorphic Intermediate Representation (2026-07-02)
+### Added
+- **`research/nir_export.py`** (zero-dep): emit the repo's spiking models (LIF / Affine / Linear /
+  Delay / Threshold + I/O) as a **NIR graph** — the cross-platform IR that Loihi 2, SpiNNaker 2, Speck
+  and Xylo all import, so one export reaches every neuromorphic backend instead of a per-chip
+  translator (research scan #10, roadmap C1 — the "highest-leverage C1 move"). The zero-dep half is a
+  faithful JSON rendering of the NIR primitives (node types + parameter names match the spec:
+  Affine=(weight,bias), Linear=(weight), LIF=(tau,r,v_leak,v_threshold), Delay=(delay)); build /
+  emit / parse / `validate()` with a deterministic self-check that round-trips losslessly and proves
+  `validate()` catches dangling edges, Affine bias/weight mismatches, and missing I/O. `to_nir_graph()`
+  is the optional bridge: with `nir`+numpy installed it lifts the JSON into real `nir` dataclasses so
+  `nir.write()` produces the canonical HDF5 the chips load. Refs: NIR, Nat. Commun. 15 (2024)
+  s41467-024-52259-9 / arXiv:2311.14641; SpiNNaker2 DVS-NIR deployment arXiv:2504.06748.
+### Changed
+- `run_selfchecks.py`: +1 module → **53/53** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. The `nir`/numpy bridge is
+  optional and not in CI (field names track the NIR spec; adjust per your nir version). Remaining
+  research-tier scan items (DLL-S baselines, DVS128, Loihi delay pipeline, firmware watchdog) stay
+  torch/hardware, not built.
+
 ## [v0.66] — Research: cycle-3 scan builds (reason / store / control / metrics) (2026-07-02)
 ### Added
 - **`research/resonator_network.py`** — VSA factorization (decompose a bound product) the built VSA

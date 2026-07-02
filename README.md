@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 52/52 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 53/53 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.66** · 64 tagged releases (through v0.64). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.67** · 67 tagged releases (through v0.67). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -198,13 +198,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 52 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 53 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 52-module list is canonical in
+plus separate lint and coverage jobs. The 53-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -280,6 +280,7 @@ spiking-neural-data-lake/
     index_compression.py                              order-invariant id/edge-list compression (zero-dep)
     delay_learning.py                                 three-factor synaptic-delay learning (timing, not weight) (zero-dep)
     free_energy_control.py                            predictive-coding spiking control: sparse, noise-robust (zero-dep)
+    nir_export.py                                     export spiking models -> NIR graph JSON (Loihi2/SpiNNaker2/Speck) (zero-dep)
     loop_latency.py                                   end-to-end sensor→command latency p50/p95/p99 (zero-dep)
     temporal_coding_storage.py                        TTFS latency coding, 83.5× fewer ops (zero-dep)
     snn_moe_classifier.py                             spike-driven MoE, 0-param router (zero-dep)
@@ -293,7 +294,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (52 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (53 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -321,6 +322,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.67, zero-dep):_ **NIR export** (`nir_export.py`) — emit the spiking models as a
+Neuromorphic Intermediate Representation graph (JSON core + optional bridge to canonical NIR), so
+Paradigm B/C export to Loihi 2 / SpiNNaker 2 / Speck / Xylo at once instead of a per-chip translator
+(research scan #10, roadmap C1).
 
 _Landed (v0.65–v0.66, zero-dep):_ modern-Hopfield energies incl. **log-sum-ReLU** (dense AM),
 **resonator** VSA factorization, **MCR** HDC substrate, three-factor **delay learning**, **quadtree** +
