@@ -6,14 +6,50 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   stdlib-self-checks:
-    name: stdlib self-checks (zero deps)
+    name: self-checks ${{ matrix.os }} py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false                       # one cell failing must not mask the others
+      matrix:
+        os: [ubuntu-latest, windows-latest]  # the product is Windows-first (record_and_run.ps1, COMx)
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Run every pure-stdlib script's assert-based self-check (zero deps)
+        run: python run_selfchecks.py       # canonical module list lives in run_selfchecks.py
+
+  lint:
+    name: lint (ruff)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Run every pure-stdlib script's assert-based self-check
-        run: python run_selfchecks.py   # canonical module list lives in run_selfchecks.py
+          cache: pip
+      - run: python -m pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check tests   # tests/ are fully formatted; the hand-aligned core is not
+
+  test:
+    name: tests + coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install -e ".[dev]"
+      - run: pytest   # addopts in pyproject run --cov with a >=70% gate

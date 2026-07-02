@@ -1,0 +1,12 @@
+# Local git hooks. Install: pip install -e ".[dev]" && pre-commit install
+# Run on demand:            pre-commit run --all-files
+# Config for both hooks lives in pyproject.toml ([tool.ruff]); rev is kept in sync with the
+# ruff pin in the `dev` extra.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.20
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+        files: ^tests/   # only the fully-formatted tests/; the core is intentionally hand-aligned
