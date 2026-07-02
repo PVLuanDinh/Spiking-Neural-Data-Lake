@@ -23,8 +23,10 @@
 
 Takes the local Medallion PoC (`lakehouse/medallion.py`) to a cloud lakehouse:
 **GCS + BigLake/Iceberg + BigQuery + Dataproc Serverless + Vertex AI**. Pay-per-use;
-near-zero at rest. You run these with your own auth/billing — nothing here provisions
-your cloud for you.
+near-zero at rest. **Phase 1 (steps 0–4: infra → Bronze → Dataproc Medallion → BigQuery)
+is verified end-to-end** (see the banner above); steps 5–7 (Vertex GPU, streaming, Composer)
+are scripted and wired but not all run yet — see the per-step notes. You run these with your
+own auth/billing; nothing here provisions your cloud for you.
 
 ## 0. Project + APIs
 ```bash
@@ -70,10 +72,14 @@ bq query --use_legacy_sql=false \
 ```
 
 ## 5. GPU training — Vertex AI custom job
+> ⚠️ **Not yet run — blocked by a GCP billing "dunning" hold** on `snn-data-lake-prod` (all
+> `aiplatform` calls are denied until the overdue invoice clears). The image + job config are
+> wired; the **~95% is the Diehl & Cook literature _target_** at this config, not an achieved
+> result — best measured is **90.0%** at 1600n (see the repo README).
 ```bash
 PROJECT=$PROJECT bash gcp/submit_vertex.sh
 # builds gcp/Dockerfile -> Artifact Registry, runs eth_mnist_bindsnet.py --gpu
-# at NORD_M=6400 / 60k on an L4 -> ~95% (the run that was impractical on CPU)
+# at NORD_M=6400 / 60k on an L4 -> ~95% TARGET (the run that was impractical on CPU)
 ```
 
 ## 6. Streaming ingest — Pub/Sub + Dataflow
