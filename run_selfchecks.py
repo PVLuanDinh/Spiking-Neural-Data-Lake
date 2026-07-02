@@ -36,7 +36,7 @@ RESEARCH = [
     "research/spiking_storage_prototype", "research/test_prototype", "research/hopfield_baseline",
     "research/dense_associative_memory", "research/snn_moe_classifier",
     "research/temporal_coding_storage", "research/spike_compression",
-    "research/event_quadtree_compression", "research/spiking_ssm",
+    "research/event_quadtree_compression", "research/index_compression", "research/spiking_ssm",
     "research/spike_knowledge_graph",
     "research/spike_knowledge_graph_rotate", "research/spike_kg_relations", "research/spiking_vsa",
     "research/resonator_network", "research/mcr_hdc", "research/bayesian_snn", "research/nmnist_ingest",
