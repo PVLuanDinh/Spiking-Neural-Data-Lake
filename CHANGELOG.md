@@ -3,6 +3,20 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.95] — Ring attractor: angular path integration for joint-state dead-reckoning (2026-07-03)
+### Added
+- **`research/ring_attractor.py`** — a zero-dep continuous attractor network (CAN): N rate units on a ring
+  hold a single self-sustaining activity bump via local excitation + global inhibition. With no input the bump
+  **persists** (analog memory of one angle); a velocity input **shifts** it at a rate proportional to angular
+  velocity, so the bump position **integrates velocity into absolute angle** — dead-reckoning with no encoder.
+  The velocity shift uses the standard McNaughton/Zhang asymmetric weight (the angular derivative of the bump
+  kernel). Self-check: bump persists (0 deg drift / 60 steps, width 31 deg — single localized attractor);
+  constant velocity → decoded angle ramps **linearly (R^2 1.000)**; out-and-back (+40 then −40 steps) returns to
+  start (**0.0 deg** error — the path-integration hallmark); ±velocity move opposite ways; deterministic. The
+  arm-facing use is a spiking joint-angle estimator (arXiv:2604.14021, 2026); on-thesis with `population_encoding`
+  / `arm_sim` / `spiking_pid` (a future opt-in proprioceptive dead-reckoner for a revolute joint).
+- Registered in `run_selfchecks.py` RESEARCH (**72/72** self-checks). Core `dependencies` still `[]`.
+
 ## [v0.94] — Polychronization: memory stored in spike timing (delay-matched neuronal groups) (2026-07-03)
 ### Added
 - **`research/polychronization.py`** — a zero-dep demonstration of Izhikevich (2006) Polychronous Neuronal
