@@ -9,6 +9,7 @@ __pycache__/
 .venv-lake/
 .venv-nmnist/
 .venv-arm/
+**/.venv-*/     # any nested per-subproject venv (e.g. research/neuromorphic_torch/.venv-neuro)
 venv/
 env/
 
