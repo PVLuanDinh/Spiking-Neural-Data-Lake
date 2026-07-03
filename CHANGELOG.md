@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.89] — Integration: intrinsic plasticity promoted as an additive excitability self-tuner (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/intrinsic_plasticity.py`** (promoted from research/, zero-dep): an
+  `IntrinsicPlasticity` neuron whose `adapt` (Triesch rule) tunes gain a and bias b so the output
+  firing-rate distribution approaches a target exponential (max-entropy for a fixed mean -> info-max).
+  The intrinsic-excitability counterpart to homeostatic_scaling's synaptic path. Self-check driven by
+  scalar projections of noisy classifier shapes: output mean 0.50 -> 0.16 (target 0.15); input-scale
+  invariant (a 1.34 -> 0.43 on 3x input, mean holds at ~mu); deterministic. Additive/opt-in; no default
+  changes. Moved RESEARCH -> CORE; PoC removed. Refs: Triesch, ICANN 2005.
+### Notes
+- Seventh "force the rest" additive integration. Defaults, arm safety envelope, and determinism
+  preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
+
 ## [v0.88] — Integration: homeostatic scaling promoted as an additive rate-stabilizer (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/homeostatic_scaling.py`** (promoted from research/, zero-dep): a

@@ -28,7 +28,8 @@ CORE = [
     "data_quality", "drift_monitor",
     "paradigm_b_matcher", "paradigm_b_engine", "spike_preprocessing", "energy",
     "signal_loop", "learned_matcher", "rank_order_coding", "tempotron", "sparse_distributed_memory",
-    "spiking_som", "fly_hash", "reflex", "valence_stdp", "bcm_plasticity", "homeostatic_scaling", "cortisol",
+    "spiking_som", "fly_hash", "reflex", "valence_stdp", "bcm_plasticity", "homeostatic_scaling",
+    "intrinsic_plasticity", "cortisol",
     "interpreter", "closed_loop", "make_sensor_dataset", "sensor_demo",
     "arm_sim", "arm_config", "population_encoding", "sensor_csv_ingest",
     "gesture_recognition", "live_arm", "serial_arm", "arm_bridge", "spiking_pid", "cpg_oscillator", "demo",
@@ -44,8 +45,7 @@ RESEARCH = [
     "research/resonator_network", "research/mcr_hdc", "research/bayesian_snn", "research/nmnist_ingest",
     "research/srm_neuron", "research/stats_bounds", "research/loop_latency", "research/delay_learning",
     "research/free_energy_control",
-    "research/izhikevich_neuron",
-    "research/intrinsic_plasticity", "research/make_results_plot",
+    "research/izhikevich_neuron", "research/make_results_plot",
 ]
 MODULES = CORE + RESEARCH
 
