@@ -3,6 +3,26 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.91] — Neuromorphic phases: Victor-Purpura distance + VP proximity index (stdlib); torch subproject scaffold (2026-07-02)
+### Added
+- **`src/snn_data_lake/spike_preprocessing.py`**: `victor_purpura_distance(ev_a, ev_b, q)` (+ `_victor_purpura_1d`)
+  — the Victor-Purpura spike-train edit distance, tunable cost `q` (q->0 = spike-count/rate difference; large q =
+  coincidence detection), labelled-line multi-channel sum. Pure stdlib, deterministic, complements the existing
+  Van Rossum distance. Refs: Victor & Purpura, J. Neurophysiol. 76 (1996); Aronov 2003.
+- **`src/snn_data_lake/proximity_index.py`**: `ProximityIndex` — a two-level hierarchical index over the VP distance
+  (farthest-point medoids -> nearest-medoid probe -> exact VP rescoring) for backend indexing, NO Euclidean/cosine/
+  HNSW/IVF. Self-check: VP axioms (identity/symmetry/q-monotone/count-limit), index recall@1 100% scanning ~25% of
+  patterns (sublinear), full-probe == brute-force. Reuses `encode_latency` (TTFS) and `van_rossum_distance` (tau).
+- **`research/neuromorphic_torch/`** (scaffold): a quarantined torch + SpikingJelly subproject (own venv +
+  requirements.txt with spikingjelly/torch/cupy) for the trained-SNN phases — SpikeSlicer+SPA-Loss, IS-SNN via
+  surrogate-gradient STBP, LT-Gate, Max-Former. NOT core deps, NOT in run_selfchecks / CI; the core stays zero-dep.
+### Changed
+- `run_selfchecks.py`: +1 CORE module -> **65/65** stdlib self-checks; README count/version/layout/roadmap.
+### Notes
+- Van Rossum / TTFS / population coding already existed in stdlib and are REUSED, not reimplemented. Core
+  `dependencies` stays `[]`. The stdlib Phase-1 items are CI-covered; the torch phases live only in the research
+  subproject with their own venv. Implements the "quarantine the frameworks in research/" plan.
+
 ## [v0.90] — Integration: Izhikevich neuron promoted as an additive richer neuron option (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/izhikevich_neuron.py`** (promoted from research/, zero-dep): the Izhikevich

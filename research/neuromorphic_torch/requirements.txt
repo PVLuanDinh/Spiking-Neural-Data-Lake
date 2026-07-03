@@ -1,0 +1,16 @@
+# research/neuromorphic_torch — torch + SpikingJelly subproject.
+# NOT core dependencies. The product core (src/snn_data_lake) stays zero-dependency
+# (pyproject.toml: dependencies = []). Install ONLY into a dedicated venv:
+#   python -m venv .venv-neuro
+#   .venv-neuro\Scripts\activate            (Windows)   |   source .venv-neuro/bin/activate  (Linux/mac)
+#   pip install -r requirements.txt
+# This subproject is NOT run by run_selfchecks.py and NOT part of the GitHub CI matrix.
+
+torch>=2.1
+torchvision
+spikingjelly>=0.0.0.0.14
+numpy
+
+# Optional GPU acceleration (SpikingJelly `cupy` backend / custom CUDA kernels). Needs CUDA 12.x.
+# Everything falls back to the CPU backend if cupy is absent. Uncomment to install:
+# cupy-cuda12x

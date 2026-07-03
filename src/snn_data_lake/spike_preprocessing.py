@@ -129,6 +129,44 @@ def van_rossum_distance(ev_a, ev_b, n_features=N, t_steps=T, tau=TAU):
     return math.sqrt(total / tau)
 
 
+# ---- Victor-Purpura spike-train edit distance -------------------------------
+def _victor_purpura_1d(a, b, q):
+    """VP edit distance between two sorted spike-time lists: insert/delete cost 1, move cost q*|dt|.
+    Dynamic program, O(len(a) * len(b))."""
+    n, m = len(a), len(b)
+    if n == 0:
+        return float(m)
+    if m == 0:
+        return float(n)
+    prev = [float(j) for j in range(m + 1)]              # D[0][j] = j
+    for i in range(1, n + 1):
+        cur = [float(i)] + [0.0] * m                     # D[i][0] = i
+        ai = a[i - 1]
+        for j in range(1, m + 1):
+            cur[j] = min(prev[j] + 1.0,                  # delete a spike
+                         cur[j - 1] + 1.0,               # insert a spike
+                         prev[j - 1] + q * abs(ai - b[j - 1]))   # shift a[i] onto b[j]
+        prev = cur
+    return prev[m]
+
+
+def victor_purpura_distance(ev_a, ev_b, q=1.0, n_features=N):
+    """Multi-channel Victor-Purpura distance = sum of per-feature VP edit distances (labelled-line).
+    Events are [(time, feature), ...]; `q` (>=0) is the cost per unit time to SHIFT a spike:
+    q -> 0 collapses to the spike-COUNT difference (rate code, timing ignored); large q -> coincidence
+    detection (a spike is cheaper to move than delete+insert only within ~2/q of a target). Monotone
+    non-decreasing in q. A true metric on spike trains, complementary to the continuous Van Rossum
+    distance (which this module also provides). Pure stdlib, deterministic. Refs: Victor & Purpura,
+    J. Neurophysiol. 76 (1996); Aronov, J. Neurosci. Methods 124 (2003) for the labelled-line sum."""
+    by_a = [[] for _ in range(n_features)]
+    by_b = [[] for _ in range(n_features)]
+    for t, i in ev_a:
+        by_a[i].append(t)
+    for t, i in ev_b:
+        by_b[i].append(t)
+    return sum(_victor_purpura_1d(sorted(by_a[i]), sorted(by_b[i]), q) for i in range(n_features))
+
+
 # ---- Silver-tier temporal denoise -------------------------------------------
 def denoise(events, window=2, min_neighbors=1):
     """Silver-tier noise filter (Gemini brief): drop ISOLATED spikes — events with fewer

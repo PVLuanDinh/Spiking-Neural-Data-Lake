@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 64/64 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.90** · 90 tagged releases (through v0.90). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.91** · 91 tagged releases (through v0.91). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,13 +234,14 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (38 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (39 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
     short_term_plasticity.py      additive onset/novelty filter over a streamed channel (Tsodyks-Markram, opt-in)
     paradigm_b_matcher.py         Paradigm B: coincidence matcher (CPU reference)
     paradigm_b_engine.py          Paradigm B: coincidence + temporal-sequence query engine
-    spike_preprocessing.py        deterministic latency encode + Van Rossum + Silver denoise
+    spike_preprocessing.py        deterministic latency encode + Van Rossum + Victor-Purpura (q) + Silver denoise
+    proximity_index.py            hierarchical Victor-Purpura proximity index for spike queries (no Euclidean/HNSW)
     energy.py                     SynOps -> estimated Joules/inference vs a dense-ANN baseline (cited)
     drift_monitor.py              online drift/novelty watch (PSI + novelty rate) — warn before collapse
     population_encoding.py        RBF/Gaussian population rate encoder
@@ -333,6 +334,13 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.91, stdlib):_ **Victor-Purpura distance + hierarchical proximity index**
+(`spike_preprocessing.victor_purpura_distance`, `proximity_index.py`) — a tunable-q spike-train edit
+distance (q->0 = rate/count, large q = coincidence) + a medoid-hierarchical VP index (recall@1 100%,
+scans ~25% of patterns), no Euclidean/HNSW/IVF. Also scaffolds `research/neuromorphic_torch/` — a
+quarantined torch+SpikingJelly subproject (own venv, NOT core deps, NOT CI) for the trained-SNN phases
+(SpikeSlicer / IS-SNN / LT-Gate / Max-Former). Reuses the existing stdlib Van Rossum / TTFS / population.
 
 _Landed (v0.90, product integration):_ **Izhikevich neuron promoted into the product**
 (`src/snn_data_lake/izhikevich_neuron.py`) — an additive richer neuron option reproducing the RS / IB /
