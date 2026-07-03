@@ -46,6 +46,19 @@ def main():
     print("=" * 66)
     if torch is None or sj is None:
         print("NOTE: install requirements.txt into .venv-neuro to run the phase modules.")
+        return
+
+    print("per-phase smokes:")
+    from embedding.is_snn import smoke as p3
+    from encoding.spikeslicer import smoke as p2
+    from memory.lt_gate import smoke as p4a
+    from memory.maxformer_pool import smoke as p4b
+    for label, fn in (("P2 SpikeSlicer", p2), ("P3 IS-SNN", p3),
+                      ("P4a LT-Gate", p4a), ("P4b Max-Former", p4b)):
+        print(f"[{label}] ", end="")
+        fn()
+    print("=" * 66)
+    print("all phase smokes passed.")
 
 
 if __name__ == "__main__":

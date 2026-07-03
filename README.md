@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 64/64 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.91** · 91 tagged releases (through v0.91). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.92** · 92 tagged releases (through v0.92). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -301,6 +301,7 @@ spiking-neural-data-lake/
     snn_mnist_stdp*.py, snn_mnist_dc.py, eth_mnist_bindsnet.py               MNIST STDP / D&C (torch/GPU)
     snn_moe_stdp_mnist.py, snn_storage_core_snntorch.py, paradigm_b_genn.py  (torch/GPU)
     snn_motor_control.py, snn_world_model_rl.py, snn_dreamer_6dof.py         spiking-MBRL lineage (torch)
+    neuromorphic_torch/           SpikeSlicer / IS-SNN / LT-Gate / Max-Former — torch+SpikingJelly subproject (own venv, not core/CI)
 
   gcp/          Dataproc / Vertex / BigQuery / BigLake / Pub-Sub-Dataflow scaffold + deploy guide (Phase 1 verified)
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
@@ -334,6 +335,12 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.92, research/torch — quarantined):_ **Trained-SNN subproject** (`research/neuromorphic_torch/`)
+— the framework phases of the neuromorphic-DB brief as an isolated torch+SpikingJelly subproject (own venv,
+NOT core deps / CI): SpikeSlicer+SPA-Loss, IS-SNN (native surrogate-gradient STBP, no ANN->SNN, cupy-default
+w/ CPU fallback), LT-Gate dual-timescale anti-forgetting, Max-Former max-pool anti-low-pass. All
+CPU-smoke-verified (`smoke_check.py`); reuses the stdlib core encoders/metrics; core stays zero-dep.
 
 _Landed (v0.91, stdlib):_ **Victor-Purpura distance + hierarchical proximity index**
 (`spike_preprocessing.victor_purpura_distance`, `proximity_index.py`) — a tunable-q spike-train edit

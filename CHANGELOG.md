@@ -3,6 +3,27 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.92] — Trained-SNN subproject complete: SpikeSlicer / IS-SNN / LT-Gate / Max-Former (torch, quarantined) (2026-07-03)
+### Added
+- **`research/neuromorphic_torch/`** — the framework-heavy neuromorphic phases (brief Phases 2-4) as a
+  quarantined torch + SpikingJelly subproject (own venv; NOT core deps, NOT in run_selfchecks / CI; the core
+  stays zero-dep). All CPU-smoke-verified via `smoke_check.py`:
+  - **`encoding/spikeslicer.py`** — SpikeSlicer + Spiking Position-aware Loss (SPA-Loss): a multi-step LIF
+    net that learns event-stream slice boundaries (membrane-potential-driven term + cut-count regularizer).
+    Smoke: SPA-loss 0.789 -> 0.572.
+  - **`embedding/is_snn.py`** — IS-SNN embedding trained natively by surrogate-gradient STBP (no ANN->SNN
+    conversion); variance-preserving orthogonal init keeps firing rate stable across depth without BatchNorm;
+    `cupy` backend default with torch/CPU fallback. Smoke: STBP loss 1.13 -> 0.01, acc 100%, rates [0.10,0.19,0.20].
+  - **`memory/lt_gate.py`** — LT-Gate dual-time-constant neuron: fast (reset) + slow (non-reset memory trace)
+    branches with a learnable gate. Smoke: post-input retention 49 steps vs 0 for fast-only (anti-forgetting).
+  - **`memory/maxformer_pool.py`** — Max-Former max-pool downsampling: preserves high-frequency peaks
+    (1.00 vs 0.33 avg-pool, 3.1x) the SNN's low-pass bias would smear.
+### Notes
+- Reuses the stdlib core encoders/metrics (Van Rossum, TTFS encode_latency, population_encoding, and the
+  v0.91 Victor-Purpura distance) rather than reimplementing them in torch. Core `dependencies` stays `[]`;
+  the torch stack lives only in the subproject's requirements.txt / .venv-neuro (gitignored). Completes the
+  brief's 4-phase neuromorphic-DB spec under the "quarantine the frameworks in research/" plan.
+
 ## [v0.91] — Neuromorphic phases: Victor-Purpura distance + VP proximity index (stdlib); torch subproject scaffold (2026-07-02)
 ### Added
 - **`src/snn_data_lake/spike_preprocessing.py`**: `victor_purpura_distance(ev_a, ev_b, q)` (+ `_victor_purpura_1d`)
