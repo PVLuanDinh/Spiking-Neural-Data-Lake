@@ -1,16 +1,16 @@
 """
-Izhikevich neuron — rich cortical spiking regimes from a 2-equation model (neuron primitive)
-Pure-stdlib.
+Izhikevich neuron — an additive richer spiking-neuron option for the arm/reflex path.
 
-Every neuron in the repo is LIF: integrate, fire, reset — one regime, no bursting or adaptation.
-Izhikevich's model (2003) reproduces the full zoo of cortical firing patterns — regular spiking,
-fast spiking, chattering, intrinsically bursting — from just two variables (membrane v, recovery u)
-and four parameters (a,b,c,d), at ~13 flops/step. That is the efficiency-vs-richness sweet spot a
-neuromorphic project cares about: LIF-cheap, but able to express bursts and spike-frequency
-adaptation the temporal codes here rely on. Refs: Izhikevich, "Simple model of spiking neurons",
-IEEE Trans. Neural Networks 14 (2003); "Which model to use for cortical spiking neurons?" (2004).
+PROMOTED from research/ into the product (v0.90, additive). Every neuron in the product is LIF:
+integrate, fire, reset — one regime, no bursting or spike-frequency adaptation. Izhikevich's model
+(2003) reproduces the full zoo of cortical firing patterns — regular-spiking, intrinsically-bursting,
+chattering, fast-spiking — from two variables (membrane v, recovery u) and four parameters (a,b,c,d)
+at ~13 flops/step. It is available here as an ALTERNATIVE neuron the arm loop can use where bursting or
+adaptation helps; the safety-critical reflex keeps its LIF as the DEFAULT (reflex.py is untouched).
+Refs: Izhikevich, "Simple model of spiking neurons", IEEE Trans. Neural Networks 14 (2003); "Which
+model to use for cortical spiking neurons?" (2004).
 
-  Run: python izhikevich_neuron.py        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.izhikevich_neuron        # (also run by run_selfchecks.py)
 """
 
 
@@ -39,10 +39,10 @@ def _isi_cv(spikes):
 
 # canonical Izhikevich parameter sets (a, b, c, d)
 REGIMES = {
-    "regular-spiking":      (0.02, 0.2, -65.0, 8.0),
+    "regular-spiking":        (0.02, 0.2, -65.0, 8.0),
     "intrinsically-bursting": (0.02, 0.2, -55.0, 4.0),
-    "chattering":           (0.02, 0.2, -50.0, 2.0),
-    "fast-spiking":         (0.10, 0.2, -65.0, 2.0),
+    "chattering":             (0.02, 0.2, -50.0, 2.0),
+    "fast-spiking":           (0.10, 0.2, -65.0, 2.0),
 }
 
 
@@ -52,7 +52,7 @@ def main():
     cvs = {name: _isi_cv(s) for name, s in out.items()}
 
     print("=" * 62)
-    print("IZHIKEVICH NEURON — cortical spiking regimes from a 2-eq model")
+    print("IZHIKEVICH NEURON — additive richer neuron option (arm/reflex path)")
     print("=" * 62)
     print(f"{'regime':<24}{'spikes/300ms':>13}{'ISI CV':>10}")
     for name in REGIMES:
@@ -69,7 +69,7 @@ def main():
         "intrinsically-bursting must show burst structure vs regular-spiking"
     assert simulate(*REGIMES["chattering"]) == simulate(*REGIMES["chattering"]), "deterministic"
     print(f"self-check OK: 4 distinct regimes; FS {counts['fast-spiking']} > RS {counts['regular-spiking']} spikes; "
-          f"bursting CV CH {cvs['chattering']:.2f} > RS {cvs['regular-spiking']:.2f}; deterministic")
+          f"bursting CV CH {cvs['chattering']:.2f} > RS {cvs['regular-spiking']:.2f}; additive; deterministic")
 
 
 if __name__ == "__main__":

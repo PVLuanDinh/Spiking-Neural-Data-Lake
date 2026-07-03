@@ -3,6 +3,21 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.90] — Integration: Izhikevich neuron promoted as an additive richer neuron option (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/izhikevich_neuron.py`** (promoted from research/, zero-dep): the Izhikevich
+  2-equation model as an ADDITIVE alternative neuron, reproducing the cortical firing zoo the repo's LIF
+  cannot (regular-spiking, intrinsically-bursting, chattering, fast-spiking) at ~13 flops/step.
+  Available to the arm/reflex path where bursting/adaptation helps; the safety-critical reflex keeps its
+  LIF as the default (reflex.py untouched). Self-check: FS 38 vs RS 8 spikes, chattering ISI-CV 1.63 vs
+  RS 0.18, deterministic. Moved RESEARCH -> CORE; PoC removed. Refs: Izhikevich, IEEE TNN 14 (2003).
+### Notes
+- Eighth and final "force the rest" additive integration. This completes the "research primitives into
+  the main program" arc: all 8 primitives integrated across the product (v0.83 SDM, v0.84 SOM, v0.85
+  FlyHash, v0.86 short-term plasticity, v0.87 BCM, v0.88 homeostatic, v0.89 intrinsic, v0.90 Izhikevich),
+  each additive with defaults / arm safety envelope / determinism preserved. Pure-stdlib, CI-covered;
+  core `dependencies` stays `[]`. 64/64.
+
 ## [v0.89] — Integration: intrinsic plasticity promoted as an additive excitability self-tuner (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/intrinsic_plasticity.py`** (promoted from research/, zero-dep): an
