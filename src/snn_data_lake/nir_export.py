@@ -109,8 +109,8 @@ def to_nir_graph(g):
     `nir.write(path, to_nir_graph(g))` -> canonical NIR HDF5 for Loihi 2 / SpiNNaker 2 / Speck / Xylo.
     Field names track the NIR spec; raises ImportError with an install hint if the stack is absent."""
     try:
-        import numpy as np
         import nir
+        import numpy as np
     except ImportError as e:
         raise ImportError("to_nir_graph needs the neuromorphic stack: pip install nir numpy") from e
     arr = lambda x: np.array(x, dtype=float)

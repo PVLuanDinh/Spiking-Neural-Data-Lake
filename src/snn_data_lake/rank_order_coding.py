@@ -13,7 +13,6 @@ VanRullen, Neural Networks 14 (2001).
 
   python -m snn_data_lake.rank_order_coding        # (also run by run_selfchecks.py)
 """
-import math
 import random
 
 from snn_data_lake.signal_loop import build_default_library
@@ -90,7 +89,7 @@ def main():
     print("RANK-ORDER CODING — gain-invariant recognition on the command library")
     print("=" * 66)
     print(f"{len(labels)} commands, {trials} jittered windows")
-    print(f"                     clean    under a per-capture rig gain change")
+    print("                     clean    under a per-capture rig gain change")
     print(f"  rank-order match : {rank_clean:.0%}     {rank_gain:.0%}   (order unchanged -> invariant)")
     print(f"  template (VanR)  : {tmpl_clean:.0%}     {tmpl_gain:.0%}   (magnitude drifts -> degrades)")
     print("=" * 66)
