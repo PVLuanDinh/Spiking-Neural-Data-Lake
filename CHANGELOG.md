@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.88] — Integration: homeostatic scaling promoted as an additive rate-stabilizer (2026-07-02)
+### Added / Changed
+- **`src/snn_data_lake/homeostatic_scaling.py`** (promoted from research/, zero-dep): a
+  `HomeostaticNeuron` with `stabilize` — multiplicative synaptic scaling toward a rate set-point, an
+  additive stabilizer other learners can opt into. Self-check driven by a real classifier shape: with
+  scaling the rate holds at 1.08 while a Hebbian-only control runs away to ~4.5e11; a scale step
+  preserves every relative weight ratio (drift 6e-27); deterministic. The repo's own learners
+  (valence_stdp RPE, snn_classifier delta rule) already self-stabilize, so no default changes. Moved
+  RESEARCH -> CORE; PoC removed. Refs: Turrigiano et al., Nature 391 (1998).
+### Notes
+- Sixth "force the rest" additive integration. Defaults, arm safety envelope, and determinism
+  preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
+
 ## [v0.87] — Integration: BCM plasticity promoted (competitive selectivity on the classifier shapes) (2026-07-02)
 ### Added / Changed
 - **`src/snn_data_lake/bcm_plasticity.py`** (promoted from research/, zero-dep): `develop_selectivity`

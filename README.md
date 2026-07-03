@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 64/64 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.87** · 87 tagged releases (through v0.87). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.88** · 88 tagged releases (through v0.88). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,7 +234,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (35 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (36 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
     short_term_plasticity.py      additive onset/novelty filter over a streamed channel (Tsodyks-Markram, opt-in)
@@ -251,6 +251,7 @@ spiking-neural-data-lake/
     reflex.py                     fast-path instinct (STOP/WITHDRAW before cognition)
     valence_stdp.py               reward-prediction-error (dopamine) STDP → APPROACH/AVOID
     bcm_plasticity.py             BCM competitive selectivity on the classifier shapes (opt-in)
+    homeostatic_scaling.py        additive rate-stabilizer (multiplicative synaptic scaling, opt-in)
     cortisol.py                   slow tonic stress-state neuromodulation
     gesture_recognition.py        order-aware recognition of the builder's real gestures (95%)
     arm_sim.py                    2-link planar arm (stdlib FK+collision, optional PyBullet)
@@ -289,7 +290,6 @@ spiking-neural-data-lake/
     index_compression.py                              order-invariant id/edge-list compression (zero-dep)
     delay_learning.py                                 three-factor synaptic-delay learning (timing, not weight) (zero-dep)
     free_energy_control.py                            predictive-coding spiking control: sparse, noise-robust (zero-dep)
-    homeostatic_scaling.py                            Turrigiano synaptic scaling: rate set-point stability for the STDP stores (zero-dep)
     izhikevich_neuron.py                              Izhikevich 2-eq neuron: RS/IB/CH/FS cortical spiking regimes (zero-dep)
     intrinsic_plasticity.py                           Triesch intrinsic plasticity: info-max gain/bias self-tuning, scale-invariant (zero-dep)
     loop_latency.py                                   end-to-end sensor→command latency p50/p95/p99 (zero-dep)
@@ -333,6 +333,12 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.88, product integration):_ **Homeostatic scaling promoted into the product**
+(`src/snn_data_lake/homeostatic_scaling.py`) — an additive multiplicative rate-stabilizer: driven by a
+real classifier shape it holds the rate at 1.08 while a Hebbian-only control runs away to ~4.5e11,
+preserving relative weights (drift 6e-27). Optional tool; the product's learners already self-stabilize,
+so no default changes.
 
 _Landed (v0.87, product integration):_ **BCM plasticity promoted into the product**
 (`src/snn_data_lake/bcm_plasticity.py`) — `develop_selectivity` runs BCM's sliding-threshold rule on
