@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 64/64 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 70/70 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.92** · 92 tagged releases (through v0.92). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.93** · 93 tagged releases (through v0.93). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -198,13 +198,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 64 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 70 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 64-module list is canonical in
+plus separate lint and coverage jobs. The 70-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -234,7 +234,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (39 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (44 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
     short_term_plasticity.py      additive onset/novelty filter over a streamed channel (Tsodyks-Markram, opt-in)
@@ -242,6 +242,11 @@ spiking-neural-data-lake/
     paradigm_b_engine.py          Paradigm B: coincidence + temporal-sequence query engine
     spike_preprocessing.py        deterministic latency encode + Van Rossum + Victor-Purpura (q) + Silver denoise
     proximity_index.py            hierarchical Victor-Purpura proximity index for spike queries (no Euclidean/HNSW)
+    lif_neuron.py                 canonical leaky integrate-and-fire neuron (leak/threshold/reset/refractory)
+    spike_slicer.py               spike-density event-stream segmenter (LIF boundary neuron, min-segment aware)
+    is_snn_forward.py             depth-stable multi-layer LIF forward pass (rate fixed-point init, no BatchNorm)
+    lt_gate.py                    dual-time-constant neuron: fast reset + slow non-reset memory trace (anti-forget)
+    spike_pooling.py              max-pool for spike maps — keeps sparse high-freq spikes avg-pool would smear
     energy.py                     SynOps -> estimated Joules/inference vs a dense-ANN baseline (cited)
     drift_monitor.py              online drift/novelty watch (PSI + novelty rate) — warn before collapse
     population_encoding.py        RBF/Gaussian population rate encoder
@@ -307,7 +312,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (64 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (70 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -335,6 +340,12 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.93, stdlib core):_ **Neuromorphic phases in pure Python** — the zero-dep twin of the v0.92 torch
+subproject, as CI-covered core modules: `lif_neuron` (canonical LIF), `spike_slicer` (density-based stream
+segmenter), `is_snn_forward` (depth-stable multi-layer forward pass, rate fixed-point init, no BatchNorm),
+`lt_gate` (dual-timescale anti-forgetting), `spike_pooling` (high-freq-preserving max-pool). Reuses the
+existing Van Rossum / Victor-Purpura / TTFS / population encoders. 70/70 self-checks, core stays zero-dep.
 
 _Landed (v0.92, research/torch — quarantined):_ **Trained-SNN subproject** (`research/neuromorphic_torch/`)
 — the framework phases of the neuromorphic-DB brief as an isolated torch+SpikingJelly subproject (own venv,

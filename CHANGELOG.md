@@ -3,6 +3,31 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.93] — Neuromorphic phases in pure stdlib: LIF / SpikeSlicer / IS-SNN forward / LT-Gate / max-pool (2026-07-03)
+### Added
+- The pure-Python (zero-dep, no-tensor) twin of the v0.92 torch subproject — the same neuromorphic phases as
+  CI-covered **core** `src/snn_data_lake/` modules (the repo core IS pure stdlib, so this brief lands on-thesis):
+  - **`lif_neuron.py`** — canonical `LIFNeuron` class the repo lacked (its LIF dynamics were duplicated inside
+    reflex/tempotron/paradigm_b). Membrane leak (decay=exp(-1/tau_m)) + threshold/reset + optional refractory;
+    `step()`/`run()`. Reused by spike_slicer, is_snn_forward. Self-check: leak, threshold+reset, monotone F-I,
+    refractory spacing, deterministic.
+  - **`spike_slicer.py`** — pure-Python event-stream segmenter: a LIF "boundary" neuron integrates the
+    spike-DENSITY change (reused `encode_latency`) and fires a cut; refractory enforces a min segment length,
+    threshold set to mu+k*sd. Self-check: 100% boundary recall on a synthetic multi-segment stream.
+  - **`is_snn_forward.py`** — multi-layer LIF **forward pass** with a hard-coded intrinsically-stable init:
+    sparse (FlyHash-style) excitatory weights scaled to the LIF rate fixed point keep the firing rate
+    DEPTH-INVARIANT (alive + bounded) with **no BatchNorm**; a weak-init control decays to zero. The first
+    hidden layer is a discriminative random projection — 95% nearest-centroid class separation.
+  - **`lt_gate.py`** — `LTGateNeuron`: fast (resetting) + slow (**non-reset memory trace**) branches, gated.
+    Activity retains 58 steps into silence vs 0 for a fast-only neuron (anti-forgetting).
+  - **`spike_pooling.py`** — custom `max_pool_1d`/`max_pool_2d`: keep the sparse high-frequency spike (peak 1.0)
+    that average pooling low-passes away (0.5). 1-D and 2-D, arbitrary kernel/stride.
+- Registered all 5 in `run_selfchecks.py` CORE (**70/70** self-checks). Ruff-clean, core `dependencies` still `[]`.
+### Notes
+- Reuses the existing stdlib metrics/encoders (Van Rossum, Victor-Purpura, TTFS `encode_latency`,
+  `population_encoding`, `proximity_index`) rather than reimplementing them. Both twins now coexist: this
+  zero-dep core (clone-and-run + CI matrix) and the v0.92 torch subproject (optional GPU research).
+
 ## [v0.92] — Trained-SNN subproject complete: SpikeSlicer / IS-SNN / LT-Gate / Max-Former (torch, quarantined) (2026-07-03)
 ### Added
 - **`research/neuromorphic_torch/`** — the framework-heavy neuromorphic phases (brief Phases 2-4) as a

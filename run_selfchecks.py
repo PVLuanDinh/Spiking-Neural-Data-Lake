@@ -26,6 +26,7 @@ _ENV = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "PYTHONPAT
 CORE = [
     "snn_classifier", "nir_export", "spike_telemetry_hub", "streaming_hub", "short_term_plasticity",
     "data_quality", "drift_monitor",
+    "lif_neuron", "spike_slicer", "is_snn_forward", "lt_gate", "spike_pooling",
     "paradigm_b_matcher", "paradigm_b_engine", "spike_preprocessing", "proximity_index", "energy",
     "signal_loop", "learned_matcher", "rank_order_coding", "tempotron", "sparse_distributed_memory",
     "spiking_som", "fly_hash", "reflex", "valence_stdp", "bcm_plasticity", "homeostatic_scaling",
