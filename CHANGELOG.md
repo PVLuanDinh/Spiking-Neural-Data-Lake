@@ -3,6 +3,20 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.94] — Polychronization: memory stored in spike timing (delay-matched neuronal groups) (2026-07-03)
+### Added
+- **`research/polychronization.py`** — a zero-dep demonstration of Izhikevich (2006) Polychronous Neuronal
+  Groups (PNGs): a `DelayNetwork` of `LIFNeuron` coincidence detectors wired with per-synapse **conduction
+  delays**. A group ignites only when its anchor neurons fire in the exact relative order the delays
+  complement, so their delayed spikes CONVERGE on a shared target — memory keyed by spike TIMING, not by which
+  neurons fire (rate-blind) nor by weights. Self-check builds **2 distinct PNGs over one shared 4-anchor pool**:
+  key `[0,1,2]` ignites the G1 sequence (T1@3 → D1@5), the reversed key `[2,1,0]` ignites a different group
+  (T2@3 → D2@5), and firing the same anchors simultaneously (`[0,0,0]`, a pure rate pattern) ignites nothing —
+  timing-selective, combinatorial capacity > neuron count. Deterministic. On-thesis with `delay_learning` /
+  `izhikevich_neuron`; the network-scale form of the repo's "reason in spike timing" thesis.
+- Registered in `run_selfchecks.py` RESEARCH (**71/71** self-checks). Core `dependencies` still `[]`; research/
+  is ruff-excluded (reuses the stdlib `LIFNeuron` from `src/` via a path shim, the established research/ idiom).
+
 ## [v0.93] — Neuromorphic phases in pure stdlib: LIF / SpikeSlicer / IS-SNN forward / LT-Gate / max-pool (2026-07-03)
 ### Added
 - The pure-Python (zero-dep, no-tensor) twin of the v0.92 torch subproject — the same neuromorphic phases as
