@@ -3,6 +3,21 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.96] — LCA sparse coding: lateral-inhibition network finds the sparse code (2026-07-03)
+### Added
+- **`research/lca_sparse_coding.py`** — the Rozell (2008) Locally Competitive Algorithm as a zero-dep
+  lateral-inhibition network. Each dictionary atom is a leaky neuron driven by its match to the signal
+  (`b = Phi^T x`); active atoms inhibit neighbours in proportion to dictionary overlap (`G − I`), so
+  correlated atoms compete and only a few survive → a sparse code `x ≈ Phi·a` using only neuromorphic-native
+  ops (leaky integration, thresholding, lateral inhibition — the same dynamics that map onto Loihi 2,
+  arXiv:2606.08584). Self-check on an overcomplete **24-atom / R^16** incoherent dictionary (built by rejecting
+  atoms above 0.35 mutual coherence — the standard condition under which LCA provably recovers): a 3-atom signal
+  is coded back to its **exact 3-atom support** (coeffs 0.92/0.72/0.52, soft-threshold shrinkage), recon error
+  0.14, **3-sparse vs the dense 11-atom correlation code** — lateral competition earns the sparsity. Deterministic.
+- Sparsity is the substrate this lake stores/recalls over (fly_hash / sparse_distributed_memory / spike codes all
+  assume it); LCA is the encoder that produces it. Registered in `run_selfchecks.py` RESEARCH (**73/73**). Core
+  `dependencies` still `[]`. On-thesis with `spike_compression` / `sparse_distributed_memory` / `fly_hash`.
+
 ## [v0.95] — Ring attractor: angular path integration for joint-state dead-reckoning (2026-07-03)
 ### Added
 - **`research/ring_attractor.py`** — a zero-dep continuous attractor network (CAN): N rate units on a ring

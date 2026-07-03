@@ -38,7 +38,7 @@ CORE = [
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [
     "research/spiking_storage_prototype", "research/test_prototype", "research/hopfield_baseline",
-    "research/dense_associative_memory", "research/snn_moe_classifier",
+    "research/dense_associative_memory", "research/lca_sparse_coding", "research/snn_moe_classifier",
     "research/temporal_coding_storage", "research/spike_compression",
     "research/event_quadtree_compression", "research/index_compression", "research/spiking_ssm",
     "research/spike_knowledge_graph",
