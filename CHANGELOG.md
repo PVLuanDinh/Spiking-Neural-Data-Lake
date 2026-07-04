@@ -3,6 +3,21 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.98] — Spike-stream sketch: Count-Min heavy-hitter motif detection in fixed memory (2026-07-04)
+### Added
+- **`research/spike_stream_sketch.py`** — the lake's streaming-analytics answer to "which spike motifs recur
+  most?" over an unbounded stream, in memory that is FIXED regardless of how many distinct patterns arrive. A
+  zero-dep **Count-Min Sketch** (d hash rows x w counters; estimate = min across rows → one-sided over-estimate
+  only, error ≤ ε·N) paired with a small top-K tracker → a streaming **heavy-hitter** detector that keeps neither
+  the rare tail nor the full key set. Self-check: 3 frequent motifs buried in **1503 distinct patterns** are
+  recovered exactly by a **1024-counter** sketch + top-3; estimates are one-sided (173/143/115 ≥ true 170/140/110)
+  and within the ε·N bound (max over-est 5 ≤ 20). Deterministic (seeded Carter-Wegman hashes).
+- Correctness needed two fixes (loop investigate phase): a top-K **stale-eviction** guard (refresh tracked
+  estimates so an inflated rare can't evict a true heavy motif), and proper **universal hashing** — `(a·h+b) mod
+  Mersenne-prime mod w`, not `& mask` (mod-2^k multiplicative hashing is weak in the low bits and let rare
+  patterns fully collide with a heavy motif). Registered RESEARCH (**75/75**). Core `dependencies` still `[]`.
+  On-thesis with `streaming_hub` / `spike_telemetry_hub` / `drift_monitor` (the data-lake / analytics side).
+
 ## [v0.97] — HTM temporal memory: high-order sequence prediction over SDRs (2026-07-04)
 ### Added
 - **`research/htm_sequence_memory.py`** — a zero-dep Numenta HTM temporal memory: the lake can store/recall spike
