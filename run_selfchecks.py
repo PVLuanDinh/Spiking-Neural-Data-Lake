@@ -27,6 +27,7 @@ CORE = [
     "snn_classifier", "nir_export", "spike_telemetry_hub", "streaming_hub", "short_term_plasticity",
     "data_quality", "drift_monitor",
     "lif_neuron", "spike_slicer", "is_snn_forward", "lt_gate", "spike_pooling", "ring_attractor",
+    "htm_sequence_memory",
     "paradigm_b_matcher", "paradigm_b_engine", "spike_preprocessing", "proximity_index", "energy",
     "signal_loop", "learned_matcher", "rank_order_coding", "tempotron", "sparse_distributed_memory",
     "spiking_som", "fly_hash", "reflex", "valence_stdp", "bcm_plasticity", "homeostatic_scaling",
@@ -38,7 +39,7 @@ CORE = [
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [
     "research/spiking_storage_prototype", "research/test_prototype", "research/hopfield_baseline",
-    "research/dense_associative_memory", "research/lca_sparse_coding", "research/htm_sequence_memory",
+    "research/dense_associative_memory", "research/lca_sparse_coding",
     "research/snn_moe_classifier",
     "research/temporal_coding_storage", "research/spike_compression",
     "research/event_quadtree_compression", "research/index_compression", "research/spike_stream_sketch",

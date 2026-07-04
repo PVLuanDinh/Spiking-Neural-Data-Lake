@@ -3,6 +3,23 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v1.2] — Integration: HTM temporal memory → core, lake sequence-anomaly monitor (2026-07-04)
+### Changed (research → product)
+- **`research/htm_sequence_memory.py` → `src/snn_data_lake/htm_sequence_memory.py`** — promoted the v0.97 HTM
+  temporal memory into the CI-covered zero-dep core and wired it into the data lake as an ADDITIVE, opt-in,
+  READ-ONLY observer:
+  - **`SequenceAnomalyMonitor`** runs the temporal memory over the lake's OWN encoder
+    (`spike_preprocessing.encode_latency`) — each window's active features are the SDR columns. It learns the
+    normal SEQUENCE of windows and scores every transition, so a signal that is individually valid but arrives in
+    the wrong ORDER bursts as a **temporal anomaly** — complementing `drift_monitor` (distributional drift) and
+    `streaming_hub`'s onset filter. Drop-in for `signal_loop`'s per-window stream.
+  - Self-check: learns A→B→C→D (trained transitions anomaly **0.00**); a valid window presented out of order after
+    ABC bursts (**1.00 → flagged**). The high-order prediction check is retained (ABC→D 1.00, XBC→E 1.00). Pure
+    observer: never alters recognition or control. Deterministic.
+- Moved `htm_sequence_memory` RESEARCH → CORE in `run_selfchecks.py` (**77/77**, a move not a new module).
+  Ruff-clean under the enforced `src/` ruleset. Core `dependencies` still `[]`. Second slice of the research→core
+  integration pass (this one on the data-lake side); one coherent, safety-preserving slice per cycle.
+
 ## [v1.1] — Integration: ring attractor → core, spiking proprioception for the arm (2026-07-04)
 ### Changed (research → product)
 - **`research/ring_attractor.py` → `src/snn_data_lake/ring_attractor.py`** — promoted the v0.95 continuous

@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 77/77 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v1.1** · 101 tagged releases (v0.1 → v1.1). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v1.2** · 102 tagged releases (v0.1 → v1.2). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,7 +234,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (45 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (46 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
     short_term_plasticity.py      additive onset/novelty filter over a streamed channel (Tsodyks-Markram, opt-in)
@@ -249,6 +249,7 @@ spiking-neural-data-lake/
     spike_pooling.py              max-pool for spike maps — keeps sparse high-freq spikes avg-pool would smear
     energy.py                     SynOps -> estimated Joules/inference vs a dense-ANN baseline (cited)
     drift_monitor.py              online drift/novelty watch (PSI + novelty rate) — warn before collapse
+    htm_sequence_memory.py        HTM temporal memory + opt-in lake SequenceAnomalyMonitor (out-of-order = temporal anomaly)
     population_encoding.py        RBF/Gaussian population rate encoder
     signal_loop.py                real-time loop: encode → lake → match → Interpreter (+ continual learn)
     interpreter.py                matched label → robot command + outcome feedback
@@ -341,6 +342,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v1.2, integration):_ **HTM temporal memory → core** — the v0.97 HTM promoted into the product with
+`SequenceAnomalyMonitor`: a read-only lake observer that runs over the product encoder (`encode_latency`), learns
+the normal window order, and flags a valid signal arriving out of sequence as a temporal anomaly (trained
+transitions 0.00, out-of-order burst 1.00) — complements `drift_monitor`. Second slice of the research→core pass.
 
 _Landed (v1.1, integration):_ **Ring attractor → core** — the v0.95 CAN promoted from research into the zero-dep
 product core with `ProprioceptiveEstimator`: a read-only spiking observer that integrates the arm's commanded
