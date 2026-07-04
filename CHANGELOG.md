@@ -3,6 +3,22 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v1.1] — Integration: ring attractor → core, spiking proprioception for the arm (2026-07-04)
+### Changed (research → product)
+- **`research/ring_attractor.py` → `src/snn_data_lake/ring_attractor.py`** — promoted the v0.95 continuous
+  attractor network into the CI-covered zero-dep core and wired it into the arm as an ADDITIVE, opt-in,
+  READ-ONLY observer:
+  - **`ProprioceptiveEstimator`** drives the ring from the arm's COMMANDED joint deltas → a spiking, encoder-free
+    estimate of the joint angle (dead-reckoning; never reads the joint sensor). Self-check on a live `ArmSim`: six
+    commanded +12° rotations → estimate 71.8° vs actual 72.0° (**mismatch 0.2°**, tracks the motion); then an
+    uncommanded `perturb(+30°)` is NOT fed to it → estimate vs truth **diverge (mismatch 30.2°) → joint-level slip
+    detected**, complementing the end-effector-level `ArmSim.deviation()`.
+  - Pure observer: issues no commands, never touches the collision / EMERGENCY_STOP / trajectory-reflex path — the
+    arm's safety envelope and default behaviour are unchanged (asserted: the estimator does not move the arm).
+- Moved `ring_attractor` from RESEARCH to CORE in `run_selfchecks.py` (**77/77**, count unchanged — a move, not a
+  new module). Ruff-clean under the enforced `src/` ruleset. Core `dependencies` still `[]`. First slice of the
+  research→core integration pass (data lake + arm); one coherent, safety-preserving slice per cycle.
+
 ## [v1.0] — NEF integrator: spiking working memory via recurrent dynamics (100th release) (2026-07-04)
 ### Added
 - **`research/nef_integrator.py`** — the third NEF principle, DYNAMICS: wire a population's decoded output back

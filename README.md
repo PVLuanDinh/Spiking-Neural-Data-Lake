@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 77/77 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v1.0** · 100 tagged releases (v0.1 → v1.0). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v1.1** · 101 tagged releases (v0.1 → v1.1). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,7 +234,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (44 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (45 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl)
     short_term_plasticity.py      additive onset/novelty filter over a streamed channel (Tsodyks-Markram, opt-in)
@@ -265,6 +265,7 @@ spiking-neural-data-lake/
     arm_sim.py                    2-link planar arm (stdlib FK+collision, optional PyBullet)
     spiking_pid.py                NEF-style population-coded spiking PID controller
     cpg_oscillator.py             Matsuoka CPG rhythmic motor primitive — drives the arm in a safe bounded sweep
+    ring_attractor.py             CAN angle integrator + opt-in spiking proprioception (encoder-free joint estimate, slip detect)
     live_arm.py                   live hardware loop: ESP32 → recognize → Interpreter → arm  (snn-arm)
     serial_arm.py                 real-servo actuator sink: fail-safe + SAFETY_CALIBRATED gate
     arm_bridge.py                 UDP OUTCOME back-channel (closes the split-process loop)
@@ -340,6 +341,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v1.1, integration):_ **Ring attractor → core** — the v0.95 CAN promoted from research into the zero-dep
+product core with `ProprioceptiveEstimator`: a read-only spiking observer that integrates the arm's commanded
+joint deltas into an encoder-free angle estimate and flags uncommanded joint slip (tracks a live `ArmSim` to
+0.2°, catches a 30° disturbance) — additive, safety-envelope untouched. First slice of the research→core pass.
 
 _Landed (v1.0, research):_ **NEF integrator** (`research/nef_integrator.py`) — the third NEF principle,
 dynamics: a recurrent LIF population becomes a neural integrator / line attractor that HOLDS its state (working
