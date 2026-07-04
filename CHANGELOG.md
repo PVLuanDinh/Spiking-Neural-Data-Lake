@@ -3,6 +3,22 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.97] — HTM temporal memory: high-order sequence prediction over SDRs (2026-07-04)
+### Added
+- **`research/htm_sequence_memory.py`** — a zero-dep Numenta HTM temporal memory: the lake can store/recall spike
+  patterns, this PREDICTS the next one from context. Each input is a sparse set of active columns; each column
+  has several cells so the same column can be active in different temporal CONTEXTS. A cell turns predictive when
+  one of its distal segments matches the previous step's active cells; unpredicted columns BURST (all cells fire =
+  "unexpected") and grow a segment linking the context to a winner cell. Payoff = **high-order prediction**: two
+  sequences sharing a middle (`ABCD` vs `XBCE`) are told apart because B/C are represented by different cells per
+  context. Self-check: after training, **`ABC`→D (overlap 1.00, E 0.00)** and **`XBC`→E (1.00, D 0.00)** — a
+  first-order model would predict both endings; **anomaly** = a novel transition bursts (1.00 vs 0.00 for a known
+  one). Deterministic.
+- Correctness came from two principled Numenta mechanisms (found via the loop's investigate phase): near-orthogonal
+  sparse SDRs (256 columns) + **predicted-inactive punishment** (drop a segment that predicted a column which then
+  didn't fire) — the latter is what removes spurious cross-context segments. Registered RESEARCH (**74/74**).
+  Core `dependencies` still `[]`. On-thesis with `sparse_distributed_memory` / `drift_monitor` / `lca_sparse_coding`.
+
 ## [v0.96] — LCA sparse coding: lateral-inhibition network finds the sparse code (2026-07-03)
 ### Added
 - **`research/lca_sparse_coding.py`** — the Rozell (2008) Locally Competitive Algorithm as a zero-dep
