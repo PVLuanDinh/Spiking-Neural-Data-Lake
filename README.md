@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 75/75 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 76/76 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v0.98** · 98 tagged releases (through v0.98). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v0.99** · 99 tagged releases (through v0.99). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -198,13 +198,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 75 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 76 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 75-module list is canonical in
+plus separate lint and coverage jobs. The 76-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -312,7 +312,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (75 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (76 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -340,6 +340,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v0.99, research):_ **NEF compute** (`research/nef_compute.py`) — the Neural Engineering Framework:
+a heterogeneous LIF population represents a scalar (decode RMSE 0.012) and computes a nonlinear function of it
+(x², RMSE 0.030) from the same spikes by choosing least-squares decoders — the spiking-computation substrate
+(Nengo/Loihi). Zero-dep, deterministic.
 
 _Landed (v0.98, research):_ **Spike-stream sketch** (`research/spike_stream_sketch.py`) — a zero-dep Count-Min
 Sketch + top-K tracker: heavy-hitter **motif detection** over an unbounded spike-pattern stream in fixed memory

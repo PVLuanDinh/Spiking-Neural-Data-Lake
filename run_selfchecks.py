@@ -46,7 +46,8 @@ RESEARCH = [
     "research/spike_knowledge_graph",
     "research/spike_knowledge_graph_rotate", "research/spike_kg_relations", "research/spiking_vsa",
     "research/resonator_network", "research/mcr_hdc", "research/bayesian_snn", "research/nmnist_ingest",
-    "research/srm_neuron", "research/stats_bounds", "research/loop_latency", "research/delay_learning",
+    "research/srm_neuron", "research/nef_compute", "research/stats_bounds", "research/loop_latency",
+    "research/delay_learning",
     "research/polychronization", "research/ring_attractor", "research/free_energy_control",
     "research/make_results_plot",
 ]

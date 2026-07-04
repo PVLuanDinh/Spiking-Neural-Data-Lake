@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v0.99] — NEF compute: represent + transform a value in a spiking population (2026-07-04)
+### Added
+- **`research/nef_compute.py`** — the Neural Engineering Framework (Eliasmith & Anderson) in zero-dep Python:
+  how to COMPUTE with spiking neurons. A scalar x is REPRESENTED by a heterogeneous population of LIF cells
+  (each with its own gain/bias/preferred direction → a distinct tuning curve); the value is read back by a linear
+  decode whose weights are solved once by LEAST SQUARES. The TRANSFORMATION principle is the payoff: solving the
+  decoders against a target f(x) instead of x makes the SAME spikes compute f — a downstream synapse reads x or
+  x² for free by choosing decoders. Self-check on an 80-neuron ensemble: represents x (**RMSE 0.012**), computes
+  **x² (RMSE 0.030)** from the same activity, decode(0.5²) ≈ 0.25; a 12-neuron population is worse (0.070 — the
+  NEF ~1/N error scaling). Includes a pure-stdlib Gaussian-elimination least-squares solve. Deterministic.
+- The spiking-computation substrate the stack sits on (Nengo/Loihi use it). Registered RESEARCH (**76/76**).
+  Core `dependencies` still `[]`. On-thesis with `population_encoding` / `spike_preprocessing`.
+
 ## [v0.98] — Spike-stream sketch: Count-Min heavy-hitter motif detection in fixed memory (2026-07-04)
 ### Added
 - **`research/spike_stream_sketch.py`** — the lake's streaming-analytics answer to "which spike motifs recur
