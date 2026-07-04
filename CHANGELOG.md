@@ -3,6 +3,21 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v1.0] — NEF integrator: spiking working memory via recurrent dynamics (100th release) (2026-07-04)
+### Added
+- **`research/nef_integrator.py`** — the third NEF principle, DYNAMICS: wire a population's decoded output back
+  to its own input (identity recurrent transform) and it becomes a neural INTEGRATOR / line attractor. Every
+  value in range is a fixed point, so the population HOLDS whatever it represents (working memory) while any
+  input drives it along that line, accumulating — the decoded state integrates the input. Reuses the v0.99
+  `NEFEnsemble`, adds the recurrent loop. Self-check: 8 steps of u=0.5 integrate to ~0.40 (monotone); the state
+  then HOLDS through 30 zero-input steps (drift −0.004 — bounded, as a real neural integrator leaks); +8 then −8
+  steps returns near 0. Deterministic. Completes the NEF trio (represent → transform → dynamics) with v0.99.
+- Registered RESEARCH (**77/77**). Core `dependencies` still `[]`. On-thesis with `nef_compute` / `ring_attractor`
+  / `spiking_pid`.
+
+_Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep self-checks, CI green across
+{ubuntu,windows}×{3.11,3.12,3.13}. The core remains pure standard library (`dependencies = []`)._
+
 ## [v0.99] — NEF compute: represent + transform a value in a spiking population (2026-07-04)
 ### Added
 - **`research/nef_compute.py`** — the Neural Engineering Framework (Eliasmith & Anderson) in zero-dep Python:
