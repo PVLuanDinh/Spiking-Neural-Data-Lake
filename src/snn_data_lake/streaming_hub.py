@@ -61,6 +61,25 @@ class StreamingHub:
     def n_events(self):
         return sum(len(a) for a in self.ch)
 
+    # ---- opt-in fixed-memory analytics (read-only) --------------------------
+    def hot_motifs(self, window, top_k=3, depth=4, width=256):
+        """Top-`top_k` most frequent channel-COACTIVATION motifs (the set of channels firing together within a
+        `window`-length time bin) over the recorded stream, via a Count-Min heavy-hitter sketch. Fixed memory
+        regardless of how many distinct motifs occur -> the scale-out analytics primitive (the single-machine
+        index could exact-count; the sketch is what carries to the cloud path). Read-only: does not touch the
+        log, index, or any append/query behaviour. Returns a list of channel frozensets, most frequent first."""
+        from snn_data_lake.spike_stream_sketch import HeavyHitters
+        bins = {}
+        for c in range(self.n):
+            for t in self.ch[c]:
+                bins.setdefault(t // window, set()).add(c)
+        hh = HeavyHitters(k=top_k, depth=depth, width=width)
+        for b in sorted(bins):
+            motif = frozenset(bins[b])
+            if motif:
+                hh.add(motif)
+        return hh.heavy()
+
     def close(self):
         self._f.close()
 
@@ -108,6 +127,23 @@ def main():
     total = hub.n_events()
     hub.close()
 
+    # ---- opt-in analytics: a recurring channel-coactivation motif surfaces as a hot motif -----
+    motif_path = os.path.join(".", "data", "motif.spkl")
+    if os.path.exists(motif_path):
+        os.remove(motif_path)
+    mhub = StreamingHub(motif_path, N)
+    W = 10
+    tt = 0
+    for _ in range(40):                                      # channels {1,4,7} co-fire, 40 times, distinct bins
+        for c in (1, 4, 7):
+            mhub.append(c, tt + rng.randint(0, W - 1))
+        tt += W
+    for _ in range(300):                                    # background: lone random channels in later bins
+        mhub.append(rng.randrange(N), tt + rng.randint(0, W - 1))
+        tt += W
+    hot = mhub.hot_motifs(window=W, top_k=3)
+    mhub.close()
+
     # ---- restart: replay the durable log -----------------------------------
     hub2 = StreamingHub(path, N, resume=True)
     replayed = hub2.n_events()
@@ -121,6 +157,7 @@ def main():
     print(f"mid-stream q : window [1000,2000) ch3 -> {len(q1)} events (during recording)")
     print(f"after burst2 : same window still {len(q2_old)}; new window [3000,4000) -> {len(q2_new)}")
     print(f"partial query: ch3 over full range -> {len(partial)} events (touched 1 of {N} channels)")
+    print(f"hot motifs   : top coactivation {sorted(hot[0])} (recurring {{1,4,7}}) via fixed-memory sketch")
     print(f"replay       : restart from log -> {replayed:,} events, window q -> {len(q_after)}")
     print("=" * 60)
 
@@ -131,8 +168,9 @@ def main():
     assert len(partial) == 200 + 150 + 30, "partial query miscounted ch3"
     assert disk_bytes == total * _REC.size, "durable log size != events x 8"
     assert replayed == total and q_after == q_final, "replay did not reconstruct the store"
+    assert hot and set(hot[0]) == {1, 4, 7}, f"hot_motifs must surface the recurring coactivation motif ({hot})"
     print("self-check OK: record-while-query works, queries are partial + live, "
-          "durable log replays exactly")
+          "durable log replays exactly; hot_motifs surfaces the recurring coactivation motif")
 
 
 if __name__ == "__main__":

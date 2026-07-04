@@ -3,6 +3,24 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v1.3] — Integration: Count-Min sketch → core, streaming_hub.hot_motifs analytics (2026-07-04)
+### Changed (research → product)
+- **`research/spike_stream_sketch.py` → `src/snn_data_lake/spike_stream_sketch.py`** — promoted the v0.98
+  Count-Min heavy-hitter sketch into the CI-covered zero-dep core and wired it into the streaming lake as an
+  ADDITIVE, opt-in, READ-ONLY analytics method:
+  - **`StreamingHub.hot_motifs(window, top_k)`** reports the most frequent channel-COACTIVATION motifs (the set
+    of channels firing together within a time bin) over the recorded stream, via the sketch — fixed memory
+    regardless of distinct-motif count. Self-check: a `{1,4,7}` co-activation recurring 40× amid 300 lone-channel
+    background bins is surfaced as the top hot motif. Read-only: does not touch the log, index, or any
+    append/query/replay behaviour (the existing record-while-query + durable-replay self-checks still pass).
+  - ponytail ceiling (named honestly): the single-machine hub keeps every event, so it *could* exact-count motifs
+    in a dict; the sketch's win is fixed memory independent of distinct-motif count — the analytics primitive that
+    carries to the documented scale-out path (Pub/Sub → Dataflow → GCS), not a saving on the local index.
+- Moved `spike_stream_sketch` RESEARCH → CORE in `run_selfchecks.py` (**77/77**, a move not a new module).
+  Ruff-clean under the enforced `src/` ruleset. Core `dependencies` still `[]`. Third slice of the research→core
+  integration pass (data-lake analytics). Assessed-and-**rejected** this cycle: `nef_integrator` → spiking PID
+  I-term (the controller already has an integral population — a forced fit; left in research/).
+
 ## [v1.2] — Integration: HTM temporal memory → core, lake sequence-anomaly monitor (2026-07-04)
 ### Changed (research → product)
 - **`research/htm_sequence_memory.py` → `src/snn_data_lake/htm_sequence_memory.py`** — promoted the v0.97 HTM

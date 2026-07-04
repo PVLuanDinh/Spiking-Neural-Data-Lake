@@ -1,17 +1,21 @@
 """
-Spike-stream sketch — Count-Min heavy-hitter motif detection in fixed memory (pure Python, no tensors).
+Spike-stream sketch — Count-Min heavy-hitter motif analytics in fixed memory (pure stdlib).
 
-The streaming lake ingests an unbounded flood of spike patterns; a common question is "which motifs recur most
-often?" (frequent gestures, hot channels) -- but you cannot store every distinct pattern. The Count-Min Sketch
-(Cormode-Muthukrishnan 2005) answers frequency queries in memory that is FIXED regardless of how many distinct
-patterns stream through: d hash rows x w counters; add() bumps one counter per row, estimate() takes the MIN
-across rows (collisions only ever inflate a count, never deflate -> one-sided error <= eps*N). Paired with a
-small top-K heap it becomes a streaming HEAVY-HITTER detector that surfaces the few frequent motifs while
-storing neither the rare tail nor the full key set. Pure standard library, deterministic (seeded hashes). The
-data-lake / streaming-analytics counterpart to the neural modules; on-thesis with streaming_hub /
+A common streaming-lake question is "which spike motifs recur most?" (frequent gestures, hot channel
+co-activations). The Count-Min Sketch (Cormode-Muthukrishnan 2005) answers frequency queries in memory that is
+FIXED regardless of how many DISTINCT motifs stream through: d hash rows x w counters; add() bumps one counter
+per row, estimate() takes the MIN across rows (collisions only ever inflate -> one-sided error <= eps*N). Paired
+with a small top-K tracker it is a streaming HEAVY-HITTER detector that keeps neither the rare tail nor the full
+key set. Deterministic (seeded Carter-Wegman hashes).
+
+PRODUCT integration (additive, opt-in, read-only): `StreamingHub.hot_motifs()` uses this to report the most
+frequent channel-coactivation motifs over the live log without a per-motif table. ponytail ceiling: the
+single-machine hub keeps every event, so it COULD exact-count motifs in a dict; the sketch's win is fixed memory
+independent of distinct-motif count -- it is the analytics primitive that carries to the documented scale-out
+path (Pub/Sub -> Dataflow -> GCS), not a saving on the local index. On-thesis with streaming_hub /
 spike_telemetry_hub / drift_monitor.
 
-  python -m research.spike_stream_sketch        # (also run by run_selfchecks.py, root on PYTHONPATH)
+  python -m snn_data_lake.spike_stream_sketch        # (also run by run_selfchecks.py)
 """
 import random
 
