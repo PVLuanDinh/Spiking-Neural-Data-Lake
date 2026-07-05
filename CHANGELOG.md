@@ -3,6 +3,37 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.2] — Arm primitives wired into the loop (opt-in) (2026-07-05)
+### Added (product wiring; the advertised arm primitives are now genuine, opt-in features)
+The built-but-unwired arm primitives are now reachable from the product entry point
+(`src/snn_data_lake/live_arm.py`) as **opt-in, off-by-default** modes. Every one of them routes
+motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**, so collision /
+`EMERGENCY_STOP` / reflex / calibration still gate all movement. All three fit `live_arm` cleanly
+(it is the arm-control entry point) — none were force-fitted.
+
+- **`ring_attractor.ProprioceptiveEstimator` → `--proprioception`** (wired). A **read-only** observer
+  on the live `--serial` / `--csv` loops. Each *commanded* joint-A delta is fed to the estimator and
+  the encoder-free joint-angle estimate + slip mismatch are logged into the emitted JSON
+  (`joint_est_deg`, `joint_mismatch_deg`, `slip`). It issues **no command** and never touches the
+  arm — a genuine encoder-free proprioception / uncommanded-slip watchdog. `run()` gained an optional
+  `observer=None` param; with the default `None` the loop is byte-for-byte unchanged.
+- **`spiking_pid.drive_to` → `--reach DEG`** (wired). Drives joint A to a target angle with the
+  NEF-style spiking PID, through the gated `apply()`. Off by default.
+- **`cpg_oscillator.cpg_sweep` → `--sweep`** (wired). Runs the Matsuoka-CPG rhythmic, bounded,
+  collision-free joint sweep through the gated `apply()`. Off by default.
+
+### Safety / regression
+- **Safety envelope untouched.** `reflex.py`, `serial_arm.py`, `arm_sim.py`, `arm_config.py`,
+  `interpreter.py` are **unchanged** (`git diff --stat` shows zero lines). No new actuator path was
+  added — every mode still goes through the existing gated command API.
+- **Defaults unchanged.** The no-arg `live_arm` self-check output and every existing `run()` caller
+  are unaffected. New self-checks in `live_arm.main()` assert the default path is unchanged, that the
+  proprioception observer is read-only (the same stream drives the arm identically with vs without
+  it), that the slip watchdog flags an uncommanded joint move, and that `--reach` / `--sweep` converge
+  and remain `EMERGENCY_STOP`-safe.
+- 81/81 self-checks pass, 103 pytest tests pass (coverage 89%), ruff clean, CI green. No new modules
+  (pure wiring), so the self-check count is unchanged.
+
 ## [v2.1] — Paradigm-C reasoning promoted to core: VSA / HD compositional reasoning (2026-07-05)
 ### Added (research → product; fills the "reason" verb)
 - Promoted the VSA / hyperdimensional (HDC) reasoner from `research/` into the shipped core as

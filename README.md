@@ -60,7 +60,11 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 81/81 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.1** · 111 tagged releases (v0.1 → v2.1). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.2** · 112 tagged releases (v0.1 → v2.2). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+
+The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
+`apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
+joint positioning), `--sweep` (CPG rhythmic bounded sweep). Defaults and the arm safety envelope are unchanged.
 
 ---
 
@@ -341,6 +345,15 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.2, product):_ **Arm primitives wired into the loop (opt-in).** The built-but-unwired arm
+primitives are now genuine, off-by-default features on `live_arm`, all routed through the safety-gated
+`apply()`: `ring_attractor.ProprioceptiveEstimator` → `--proprioception` (read-only encoder-free joint
+estimate + uncommanded-slip watchdog; `run()` gained an optional `observer=None`), `spiking_pid.drive_to`
+→ `--reach DEG` (spiking-PID joint positioning), and `cpg_oscillator.cpg_sweep` → `--sweep` (CPG rhythmic
+bounded sweep). Defaults are byte-for-byte unchanged and the safety envelope (`reflex` / `serial_arm` /
+`arm_sim` / `arm_config` / `interpreter`) is untouched. No new modules — 81/81 self-checks, core
+`dependencies = []` unchanged.
 
 _Landed (v2.1, product):_ **Paradigm-C reasoning promoted to core** — `vsa_reasoning.py` (renamed from
 `research/spiking_vsa.py`) fills the "reason" verb with VSA / hyperdimensional bind·bundle·permute

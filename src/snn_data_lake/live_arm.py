@@ -12,9 +12,15 @@ Sources (same downstream, sim-to-real):
   python live_arm.py --serial COM8   # live off the ESP32 (needs `pip install pyserial`)
   python live_arm.py --csv FILE      # replay one capture
 
+Opt-in arm primitives (OFF by default; every motion still goes through the safety-gated apply()):
+  python live_arm.py --serial COM8 --proprioception  # + encoder-free joint estimate & slip watchdog (read-only)
+  python live_arm.py --reach 30      # spiking-PID drive joint A to 30 deg (spiking_pid.drive_to)
+  python live_arm.py --sweep         # CPG rhythmic bounded joint sweep (cpg_oscillator.cpg_sweep)
+
 Gesture -> command map (sensor domain): approach = grab the incoming object, retreat = release.
 """
 import os
+import re
 import sys
 import time
 
@@ -30,6 +36,21 @@ from snn_data_lake.interpreter import Interpreter
 SENSOR_COMMANDS = {"HAND_APPROACH": "GRIPPER_CLOSE",   # grab the approaching object
                    "HAND_RETREAT":  "GRIPPER_OPEN",    # release as it leaves
                    "IDLE":          "HOLD"}
+
+SLIP_DEG = 15.0                                         # |estimate - actual| above this flags an uncommanded slip
+_JOINT_A = re.compile(r"JOINT_A_ROTATE\(([+-]?\d+(?:\.\d+)?)deg\)")
+
+
+def _joint_a_delta(command):
+    """Commanded joint-A delta (deg) from an Interpreter command; 0.0 for gripper / HOLD / stop."""
+    m = _JOINT_A.fullmatch(command or "")
+    return float(m.group(1)) if m else 0.0
+
+
+def _make_observer():
+    """Opt-in read-only proprioceptive observer: encoder-free joint-angle estimate + slip watchdog."""
+    from snn_data_lake.ring_attractor import ProprioceptiveEstimator
+    return ProprioceptiveEstimator()
 
 
 def serial_samples(port, baud=115200, reconnect=True):
@@ -69,10 +90,15 @@ def replay_samples(paths):
         yield from load_csv(p)
 
 
-def run(samples, arm, interp, emit, stride=STRIDE):
+def run(samples, arm, interp, emit, stride=STRIDE, observer=None):
     """Stream (d,ir) -> windowed recognition -> command -> arm. Returns action stats.
     stride < W slides the window (acts every `stride` samples) for lower live latency;
-    stride == W (default) is non-overlapping, identical to before."""
+    stride == W (default) is non-overlapping, identical to before.
+
+    observer (opt-in, default None -> loop is byte-for-byte unchanged): a read-only
+    ProprioceptiveEstimator. Each COMMANDED joint delta is fed to it and the encoder-free
+    joint-angle estimate + slip mismatch are logged. It issues NO command and never touches
+    the arm, so collision / EMERGENCY_STOP / reflex still gate every motion."""
     buf = []
     stats = {"windows": 0, "GRIPPER_CLOSE": 0, "GRIPPER_OPEN": 0, "HOLD": 0, "reflex": 0}
     for d, t in samples:
@@ -90,8 +116,15 @@ def run(samples, arm, interp, emit, stride=STRIDE):
             arm.apply(cmd)
             stats["windows"] += 1
             stats[cmd] = stats.get(cmd, 0) + 1
-            emit({"gesture": gesture, "command": cmd, "gripper": arm.gripper,
-                  "ee": arm.state()["ee"]})
+            ev = {"gesture": gesture, "command": cmd, "gripper": arm.gripper,
+                  "ee": arm.state()["ee"]}
+            if observer is not None:                       # opt-in read-only proprioception
+                est = observer.command(_joint_a_delta(cmd))
+                mism = observer.mismatch_deg(arm.state()["theta_deg"][0])
+                ev["joint_est_deg"] = round(est, 1)
+                ev["joint_mismatch_deg"] = round(mism, 1)
+                ev["slip"] = mism > SLIP_DEG               # joint moved WITHOUT a command
+            emit(ev)
             buf = buf[stride:]                             # slide (stride==W -> full reset)
     return stats
 
@@ -105,6 +138,24 @@ def main():
 
     stride = int(args[args.index("--stride") + 1]) if "--stride" in args else STRIDE
     actuate = args[args.index("--actuate") + 1] if "--actuate" in args else None
+    proprio = "--proprioception" in args                  # opt-in read-only observer (default off)
+
+    # opt-in: drive joint A to a target with the spiking PID, THROUGH the safety-gated apply() (off by default)
+    if "--reach" in args:
+        from snn_data_lake.spiking_pid import drive_to
+        target = float(args[args.index("--reach") + 1])
+        errs, final, breaches = drive_to(target)          # drive_to uses ArmSim().apply() (gated)
+        print(f"reach: spiking PID -> joint A {final:.2f} deg (target {target:.1f}) via gated apply(); "
+              f"start err {errs[0]:+.1f} deg, trajectory breaches {breaches}")
+        return
+
+    # opt-in: rhythmic bounded joint sweep from the CPG, THROUGH the safety-gated apply() (off by default)
+    if "--sweep" in args:
+        from snn_data_lake.cpg_oscillator import cpg_sweep
+        trace = cpg_sweep(ArmSim())                       # cpg_sweep drives arm.apply() (gated); stops on collision
+        print(f"sweep: CPG rhythm -> joint A in [{min(trace):.1f}, {max(trace):.1f}] deg via gated apply() "
+              f"({len(trace)} steps)")
+        return
 
     if "--serial" in args:
         port = args[args.index("--serial") + 1]
@@ -123,13 +174,16 @@ def main():
         else:
             arm = ArmSim()
             samples = serial_samples(port, baud)
-        sys.stderr.write(f"live: sensor={port}@{baud} actuate={actuate or 'sim'} stride={stride}\n")
-        run(samples, arm, interp, emit, stride)           # until interrupted
+        sys.stderr.write(f"live: sensor={port}@{baud} actuate={actuate or 'sim'} stride={stride} "
+                         f"proprioception={proprio}\n")
+        run(samples, arm, interp, emit, stride,
+            observer=_make_observer() if proprio else None)   # until interrupted
         return
 
     arm = ArmSim()                                        # stdlib backend (pybullet if installed)
     if "--csv" in args:
-        run(replay_samples([args[args.index("--csv") + 1]]), arm, interp, emit, stride)
+        run(replay_samples([args[args.index("--csv") + 1]]), arm, interp, emit, stride,
+            observer=_make_observer() if proprio else None)
         return
 
     # default: replay the builder's labeled captures (hardware-free) + self-check
@@ -201,6 +255,43 @@ def main():
 
     print("self-check OK: approach->GRIPPER_CLOSE, retreat->GRIPPER_OPEN, contact->reflex STOP, "
           "post-STOP commands frozen off the wire, one-UART duplex read+write (loop closed)")
+
+    # ---- opt-in arm-primitive wiring (v2.2): defaults above are unchanged; each is proven safe ----
+    from snn_data_lake.ring_attractor import ProprioceptiveEstimator
+
+    # 1. --proprioception observer is READ-ONLY: the SAME stream, with vs without the observer,
+    #    must drive the arm identically (it issues no command and never moves the joint).
+    obs_stream = [(0.9 - 0.11 * i, 295.0) for i in range(W)] * 3 + [(0.02, 298.0)]
+    base_arm = ArmSim(); base_stats = run(iter(obs_stream), base_arm, interp, quiet)
+    obs_arm = ArmSim(); events = []
+    obs_stats = run(iter(obs_stream), obs_arm, interp, events.append,
+                    observer=ProprioceptiveEstimator())
+    assert obs_stats == base_stats, "proprioception observer changed the loop's actions"
+    assert obs_arm.state() == base_arm.state(), "proprioception observer moved the arm (must be read-only)"
+    assert any("joint_est_deg" in e for e in events), "observer logged no encoder-free joint estimate"
+    # slip watchdog: a joint that moves with NO command must diverge estimate from truth
+    watchdog = ProprioceptiveEstimator()                  # estimate stays home (no commands issued to it)
+    slipped_arm = ArmSim(); slipped_arm.perturb(da_deg=25.0)   # joint moved WITHOUT a command
+    assert watchdog.mismatch_deg(slipped_arm.state()["theta_deg"][0]) > SLIP_DEG, \
+        "slip watchdog did not flag an uncommanded joint move"
+
+    # 2. --reach: spiking PID drives joint A to the target THROUGH the gated apply().
+    from snn_data_lake.spiking_pid import drive_to
+    _errs, reach_final, _ = drive_to(30.0)
+    assert abs(reach_final - 30.0) < 1.5, f"--reach did not converge through gated apply(): {reach_final:.2f}"
+
+    # 3. --sweep: CPG rhythmic bounded motion THROUGH the gated apply(), and E-STOP still freezes it.
+    from snn_data_lake.cpg_oscillator import cpg_sweep
+    sweep_trace = cpg_sweep(ArmSim(), steps=400)
+    assert max(sweep_trace) - min(sweep_trace) > 15.0, "--sweep produced no rhythmic joint motion"
+    estop_arm = ArmSim(); cpg_sweep(estop_arm, steps=120); estop_arm.apply("EMERGENCY_STOP")
+    frozen = estop_arm.theta[0]
+    for _ in range(50):
+        estop_arm.apply("JOINT_A_ROTATE(+5deg)")
+    assert abs(estop_arm.theta[0] - frozen) < 1e-9, "EMERGENCY_STOP failed to freeze the CPG-driven arm"
+
+    print("opt-in self-check OK: proprioception observer read-only + slip watchdog; "
+          f"--reach PID -> {reach_final:.1f}deg; --sweep CPG rhythmic + E-STOP-safe (all via the gated arm API)")
 
 
 if __name__ == "__main__":
