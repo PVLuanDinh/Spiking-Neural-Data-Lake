@@ -26,6 +26,7 @@ import random
 from snn_data_lake.arm_config import CONTACT
 from snn_data_lake.arm_sim import ArmSim
 from snn_data_lake.cortisol import Cortisol
+from snn_data_lake.experience_replay import ReplayBuffer
 from snn_data_lake.growing_learner import GrowingLearner
 from snn_data_lake.multimodal_encoder import encode_multimodal
 
@@ -36,7 +37,7 @@ SAFE_ACTION = "HOLD"                                  # what caution biases towa
 class AutonomousArm:
     """Grows units from multimodal context + learns context->action by reward; every motion gated."""
 
-    def __init__(self, lr=0.3, explore=0.15, seed=0):
+    def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16):
         self.arm = ArmSim()
         self.learner = GrowingLearner()
         self.cort = Cortisol(tau=40.0)
@@ -44,6 +45,9 @@ class AutonomousArm:
         self.lr = lr
         self.explore = explore
         self.rng = random.Random(seed)
+        self.replay = replay              # opt-in SWR consolidation; default OFF -> behaviour unchanged
+        self.replay_batch = replay_batch
+        self.buffer = ReplayBuffer(seed=seed) if replay else None
 
     def _select(self, unit):
         qa = self.q[unit]
@@ -75,6 +79,10 @@ class AutonomousArm:
             r = reward_fn(unit, action)
             self.q[unit][action] += self.lr * self.cort.learn_rate_scale(r) * (r - self.q[unit][action])
             self.cort.step(max(0.0, -r))
+            if self.replay:                                 # SWR consolidation: value table ONLY, no motor command
+                self.buffer.add(unit, action, r)
+                if not grew:                                # quiescent (familiar) tick -> replay past experience
+                    self.buffer.replay(self.q, self.lr, batch=self.replay_batch)
         return {"unit": unit, "grew": grew, "action": action, "reflex": False, "state": state}
 
 
@@ -118,6 +126,28 @@ def main():
         bot = AutonomousArm(seed=seed)
         return [bot.step(**ctx)["action"] for _ in range(3) for ctx in (a, b, c)], bot.learner.n_units
 
+    # 6. REPLAY (opt-in SWR consolidation): sample-efficient value learning, safety intact.
+    def ticks_to_open_margin(replay, target=1.2):
+        bot = AutonomousArm(seed=3, replay=replay)
+        for t in range(1, 200):
+            ev = bot.step(**a, reward_fn=reward)
+            row = bot.q[ev["unit"]]
+            if row["GRIPPER_OPEN"] - max(row["GRIPPER_CLOSE"], row["HOLD"]) >= target:
+                return t
+        return 200
+    live_ticks = ticks_to_open_margin(replay=False)
+    replay_ticks = ticks_to_open_margin(replay=True)
+
+    rguard = AutonomousArm(seed=2, replay=True)                 # danger, then a rewarded action, replay ON
+    rev = rguard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
+    ree = rguard.arm.state()["ee"]
+    rguard.step(**a, reward_fn=reward)                          # replay-eligible tick after the E-STOP
+    replay_frozen = rguard.arm.state()["stopped"] and rguard.arm.state()["ee"] == ree
+
+    def run_replay(seed):
+        bot = AutonomousArm(seed=seed, replay=True)
+        return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
+
     print("=" * 62)
     print("AUTONOMOUS ARM — grows from multimodal data + learns actions, safely")
     print("=" * 62)
@@ -125,6 +155,8 @@ def main():
     print(f"learning    : rewarded GRIPPER_OPEN -> policy went {default_before} -> {learned} (learned, not fixed)")
     print(f"safety      : object at sensor -> {ev['action']} (reflex={ev['reflex']}), arm stopped={stopped}; "
           f"post-STOP action frozen={still_frozen}")
+    print(f"replay      : SWR consolidation -> decisive value in {replay_ticks} live ticks vs {live_ticks} "
+          f"(value table only; safety gate holds with replay={replay_frozen})")
     print("=" * 62)
 
     # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
@@ -134,8 +166,14 @@ def main():
     assert still_frozen, "a learned action after E-STOP must NOT move the arm (safety gate holds through the loop)"
     assert learned == "GRIPPER_OPEN", f"the arm must LEARN the rewarded action, not use a fixed map ({learned})"
     assert run(7) == run(7), "same seed -> identical autonomous behaviour (deterministic)"
+    # replay (opt-in SWR) is sample-efficient AND safety-preserving:
+    assert replay_ticks < live_ticks, f"replay must learn in fewer live ticks ({replay_ticks} vs {live_ticks})"
+    assert rev["action"] == "EMERGENCY_STOP" and rev["reflex"], "danger must E-STOP even with replay on"
+    assert replay_frozen, "replay must NOT move the E-STOP-frozen arm (safety gate holds with replay)"
+    assert run_replay(11) == run_replay(11), "replay path must be deterministic"
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
-          f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic")
+          f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "
+          f"replay: decisive in {replay_ticks}<{live_ticks} live ticks, value-only, gate holds")
 
 
 if __name__ == "__main__":

@@ -3,6 +3,30 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.10] — Hippocampal SWR replay: sample-efficient value learning (2026-07-05)
+### Added
+- **`src/snn_data_lake/experience_replay.py`** — a **sharp-wave-ripple (SWR) style experience-replay**
+  buffer, grounded in Nasrin et al. 2021, *"Spiking Neural Networks and Hippocampal Function"*
+  ([DOI](https://doi.org/10.1016/j.cogsys.2021.07.008)): during quiescence the hippocampus replays stored
+  experience FORWARD and REVERSE at a compressed timescale, consolidating memory so more is learned per real
+  interaction (= RL experience replay, Lin 1992 / Mnih 2015). `ReplayBuffer` is a fixed-capacity ring of
+  `(unit, action, reward)` transitions; `replay(q, ...)` re-applies the loop's own RPE update to a sampled
+  batch, swept forward then reverse, over the value table. Self-check: replay sharpens the rewarded-action
+  value gap and reaches a decisive margin in **fewer live ticks** (6 vs 8 standalone), value-table-only,
+  deterministic.
+- **Wired into `autonomous_loop.py` as a default-OFF opt-in** (`AutonomousArm(replay=True)`): on quiescent
+  (familiar-context) ticks the arm consolidates past experience, learning the rewarded action in **~2× fewer
+  live interactions** (self-check: decisive value in **3 live ticks vs 7**). The default path (`replay=False`)
+  is byte-for-byte unchanged.
+- **SAFETY (verified): replay only ever mutates the value table.** It never selects an action, never calls the
+  arm, never emits a motor command; it runs strictly after the safety-gated `ArmSim.apply()` and never on a
+  danger tick (the reflex → `EMERGENCY_STOP` path returns upstream). The self-check asserts danger → E-STOP and
+  a frozen arm **with replay on**, and that the replay path is deterministic. The 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched (`git diff --stat` empty).
+- Registered CORE (**87/87** self-checks). Core `dependencies = []` unchanged. ponytail ceiling: uniform-sampled
+  tabular replay over discrete grown units (no prioritization, no model, no generative rollouts) — **not
+  planning / not a world model**; synthetic streams.
+
 ## [v2.9] — Hippocampal DG→CA3 memory: pattern separation + completion (2026-07-05)
 ### Added
 - **`src/snn_data_lake/hippocampus.py`** — a complementary **dentate-gyrus pattern-SEPARATION → CA3
