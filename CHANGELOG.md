@@ -3,6 +3,23 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v1.8] — AdEx: adaptive exponential integrate-and-fire, spike-frequency adaptation (research) (2026-07-04)
+### Added
+- **`research/adex_neuron.py`** — the adaptive exponential integrate-and-fire neuron (Brette & Gerstner 2005,
+  J. Neurophysiol. 94:3637-3642; firing-pattern taxonomy Naud et al. 2008, Biol. Cybern. 99:335-347). The repo's
+  neurons cover leaky-integrate (LIF), quadratic-with-recovery (Izhikevich), kernel (SRM) and resonator
+  (resonate-and-fire) dynamics; none had the sharp exponential spike upswing plus a slow ADAPTATION current. AdEx
+  adds both to LIF: an exponential term `g_L*DeltaT*exp((V-V_T)/DeltaT)` reproducing real Na+ spike initiation, and
+  a second variable `w` (subthreshold coupling `a`, spike-triggered jump `b`) that makes the cell fire fast then
+  slow down. Two coupled ODEs, fixed-step forward Euler, pure stdlib. Self-check: the adapting cell (a=2 nS,
+  b=60 pA) shows spike-frequency adaptation — ISI grows monotonically (within one dt grid cell) from **11.6 -> 76 ms**
+  and fires **17** spikes/s vs the non-adapting twin's **103** under identical 500 pA drive; the f-I curve is strictly
+  increasing (**39 -> 103 -> 160** spikes/s at 300/500/700 pA); current below rheobase (100 pA) stays silent; same
+  params reproduce the identical spike train (deterministic). On-thesis: adaptation is the spike-domain way a sensor
+  neuron reports CHANGE rather than absolute level.
+- Registered RESEARCH (**81/81**, up from 80). Core `dependencies` still `[]`. Self-refuel research cycle (the
+  research->core integration pass is complete at 4 clean slices, v1.1-v1.4; this primitive ships to the research tier).
+
 ## [v1.7] — Resonate-and-fire: a frequency-selective spiking neuron (research) (2026-07-04)
 ### Added
 - **`research/resonate_and_fire.py`** — Izhikevich's (2001) resonate-and-fire neuron: where the repo's LIF /
