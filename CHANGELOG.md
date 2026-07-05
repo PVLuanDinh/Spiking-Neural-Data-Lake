@@ -3,6 +3,25 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.12] — Installable Windows .exe: the tkinter desktop app, packaged (2026-07-05)
+### Added
+- **`packaging/`** — build the zero-dep tkinter control panel (`control_panel`) into a **standalone Windows
+  `.exe`** with PyInstaller:
+  - `snn_ui_main.py` — the frozen entry point; calls `control_panel.main()` so the `.exe` opens the GUI directly
+    (the bare `control_panel` script defaults to the headless `--smoke` self-check; the launcher overrides that).
+  - `snn-ui.spec` — PyInstaller onefile/windowed spec: `collect_submodules("snn_data_lake")`, optional-dep addons
+    (torch/polars/pyserial/airllm/...) explicitly excluded so the bundle carries **Python + tkinter only — no
+    third-party runtime dependency**.
+  - `build_exe.py` — one command: `pip install ".[exe]"` then `python packaging/build_exe.py` → `dist/snn-ui.exe`
+    (verified here: **10.6 MB**, launches; `dist/snn-ui.exe --smoke` runs the control-panel self-check and exits 0).
+  - `snn-ui.iss` — optional [Inno Setup](https://jrsoftware.org/isinfo.php) script wrapping the `.exe` into a
+    `setup.exe` (Program Files install, Start-Menu entry, uninstaller, optional desktop shortcut).
+- **`docs/BUILD_EXE.md`** — build guide. PyInstaller is a **build-time** extra (`[project.optional-dependencies]
+  exe`); the core stays `dependencies = []`. `build/` and `dist/` are git-ignored (only packaging sources committed);
+  `packaging/` is ruff-excluded.
+- No module or self-check change (**88/88** unchanged) — this is packaging only. The arm safety envelope is untouched:
+  every GUI button still routes through the safety-gated `ArmSim.apply()`.
+
 ## [v2.11] — Run locally, no cloud: optional AirLLM natural-language interface (2026-07-05)
 ### Added
 - **`src/snn_data_lake/nl_interface.py`** (zero-dep, CORE) — a LOCAL natural-language front-end that turns English

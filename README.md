@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 88/88 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.11** · 121 tagged releases (v0.1 → v2.11). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.12** · 122 tagged releases (v0.1 → v2.12). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -257,6 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 spiking-neural-data-lake/
   src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (53 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
+  packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl) + opt-in hot_motifs analytics
     spike_stream_sketch.py        Count-Min heavy-hitter sketch — fixed-memory hot-motif analytics for the stream
@@ -367,6 +368,16 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.12, product):_ **Installable Windows `.exe` — the desktop app packaged with PyInstaller.** The
+zero-dep tkinter control panel (`control_panel`) builds into a standalone `dist/snn-ui.exe` (onefile, windowed,
+~10 MB) via `pip install ".[exe]"` + `python packaging/build_exe.py` — Python + tkinter bundled, **no third-party
+runtime dependency** (the torch/polars/pyserial/airllm addons are excluded). Double-click to run the full GUI on a
+machine with no Python; verify headlessly with `snn-ui.exe --smoke`. An optional
+[Inno Setup](https://jrsoftware.org/isinfo.php) script (`packaging/snn-ui.iss`) wraps it into a `setup.exe` with a
+Start-Menu entry + uninstaller. PyInstaller is a build-time extra — the core stays `dependencies = []`; the arm
+safety envelope is untouched (every GUI button still routes through `ArmSim.apply()`). Guide:
+[docs/BUILD_EXE.md](docs/BUILD_EXE.md).
 
 _Landed (v2.11, product):_ **Run the entire stack locally, no cloud — optional AirLLM natural-language interface.**
 `src/snn_data_lake/nl_interface.py` (zero-dep, CORE) turns English into a SAFE intent: it maps a phrase to an
