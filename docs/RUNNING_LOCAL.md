@@ -43,9 +43,11 @@ Or with the flag:
 python local_llm/run_local.py --llm
 ```
 
-**First run:** downloads and caches the model (Qwen2.5-0.5B, ~500MB). Subsequent runs reuse the cache.
+**First run:** downloads and caches the model (Qwen2.5-0.5B, ~1 GB of bf16 weights on Hugging Face). Subsequent runs reuse the cache and are offline.
 
-**Hardware:** Runs on CPU (slow, ~5-10s per inference). GPU with 4GB+ VRAM recommended for real-time use.
+**Hardware:** Runs on CPU (slow — seconds per inference, hardware-dependent and unmeasured here). A CUDA GPU with 4GB+ VRAM helps. For picking one of ~10 command labels, the default `StubBackend` (zero-dep, deterministic) is usually the better choice — see the trade-off analysis below.
+
+> **Is a local LLM worth it here?** AirLLM is engineered to stream 70B–671B models through tiny VRAM at the cost of disk-bound per-token latency; the NL front-end only classifies a phrase into one of ~10 labels. See **[docs/AIRLLM_ANALYSIS.md](AIRLLM_ANALYSIS.md)** for the honest infrastructure analysis and a decision table (StubBackend vs small model vs AirLLM).
 
 ## Safety Guarantee
 
