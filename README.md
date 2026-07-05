@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 85/85 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 86/86 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.8** · 118 tagged releases (v0.1 → v2.8). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.9** · 119 tagged releases (v0.1 → v2.9). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -219,13 +219,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 85 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 86 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 82-module list is canonical in
+plus separate lint and coverage jobs. The 86-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -255,7 +255,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (50 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (51 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl) + opt-in hot_motifs analytics
     spike_stream_sketch.py        Count-Min heavy-hitter sketch — fixed-memory hot-motif analytics for the stream
@@ -366,6 +366,16 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.9, product):_ **Hippocampal DG→CA3 memory — pattern separation + completion.** `hippocampus.py`
+adds a dentate-gyrus **pattern-SEPARATION** stage (sparse random expansion + k-WTA → near-orthogonal codes for
+similar inputs) feeding a CA3 **pattern-COMPLETION** attractor (a partial/noisy cue falls into the basin of the
+stored trace it overlaps most), grounded in Nasrin et al. 2021 *"Spiking Neural Networks and Hippocampal
+Function"* ([DOI](https://doi.org/10.1016/j.cogsys.2021.07.008)). Self-check: separation ratio **2.01**,
+completion **0.997** on 30%-masked cues, and it is **additive & non-degrading** (`recall()` recognizes noisy
+cues at least as well as the raw `GrowingLearner` cosine, which stays the default). Pure stdlib, core
+`dependencies = []`, **86/86 self-checks**, safety envelope untouched. Ceiling: single-shot autoassociative
+attractor, no temporal sequence, not cognition; synthetic streams.
 
 _Landed (v2.8, product):_ **Autonomous adaptive arm — grows from multimodal data + learns actions, safely.**
 `autonomous_loop.py` ties the arc together: multimodal sensing → the growing learner (a unit per novel context)

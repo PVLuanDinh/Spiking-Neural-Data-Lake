@@ -3,6 +3,28 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.9] — Hippocampal DG→CA3 memory: pattern separation + completion (2026-07-05)
+### Added
+- **`src/snn_data_lake/hippocampus.py`** — a complementary **dentate-gyrus pattern-SEPARATION → CA3
+  pattern-COMPLETION** memory over the `[0,1]^N=64` multimodal substrate, grounded in Nasrin et al. 2021,
+  *"Spiking Neural Networks and Hippocampal Function"* (Cognitive Systems Research,
+  [DOI](https://doi.org/10.1016/j.cogsys.2021.07.008)): DG uses sparse random expansion + k-WTA to build
+  near-orthogonal codes for similar inputs (reducing interference), and CA3 completes a stored trace from a
+  partial/noisy cue via a single-shot max-overlap attractor. Self-check (deterministic, ASCII): DG
+  **separation ratio 2.01** (halves the code-similarity of two similar inputs); **completion 0.997** on
+  30%-masked partial cues over 300 trials; **additive & non-degrading** — routing noisy cues through
+  completion recognizes at least as well as the raw nearest-prototype cosine (`hip ≥ raw`); deterministic
+  across fresh same-seed instances.
+- **Additive / opt-in.** The default `GrowingLearner` cosine path is unchanged; `recall()` is a robustness
+  add-on you route noisy/partial cues through. No existing file's behavior changes.
+- Registered CORE (**86/86** self-checks). Core `dependencies = []` unchanged. The 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a single-shot
+  autoassociative attractor (max-overlap vote over sparse codes) — no temporal sequence, no episodic ordering,
+  no online plasticity; **not cognition**; the streams are synthetic. Honest scope note: on this RBF-banded
+  substrate dense cosine is already a very strong baseline, so DG max-overlap does not strictly *beat* it under
+  jitter — the demonstrated value is free pattern separation + robust completion from *partial* cues (0.997),
+  not a headline accuracy win.
+
 ## [v2.8] — Autonomous adaptive arm loop: grow from multimodal data + learn actions, safely (2026-07-05)
 ### Added
 - **`src/snn_data_lake/autonomous_loop.py`** — ties the multimodal pieces into one loop the arm runs on its
