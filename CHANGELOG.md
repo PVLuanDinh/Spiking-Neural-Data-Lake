@@ -3,6 +3,27 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.7] — Growing spiking learner: novelty-triggered neurogenesis (2026-07-05)
+### Added
+The GROWTH engine on top of the v2.6 multimodal substrate: an online prototype learner that recruits capacity as
+multimodal data streams in. Zero new deps (core `dependencies = []`), 84/84 self-checks, deterministic, ASCII
+prints. The safety envelope (`reflex` / `serial_arm` / `arm_sim` / `arm_config` / `interpreter`) is untouched.
+Honest scope: this is online prototype recruitment (ART-like), NOT deep / gradient learning; the multimodal
+streams are SYNTHETIC.
+
+- **`growing_learner.py` — `GrowingLearner.observe(pattern) -> (unit_id, grew)`.** An adaptive-resonance-style
+  online learner over the fused `[0,1]^N=64` multimodal spike-feature vectors (built by REUSING
+  `multimodal_encoder.encode_multimodal`). It STARTS SMALL (zero prototypes) and grows: on each pattern it takes
+  the best cosine similarity to existing prototypes; below `vigilance` (0.85) the pattern is NOVEL, so it RECRUITS
+  a new prototype initialized to the pattern (neurogenesis, `grew=True`); otherwise it assigns to the nearest unit
+  and REFINES it toward the pattern by a small learning rate (running-average / Hebbian, `grew=False`).
+  `classify(pattern)` is recognition-only (nearest prototype, never grows); `n_units` reports capacity. This is the
+  first-class ONLINE version of `signal_loop.cluster_unknowns` (which already grows the gesture vocabulary in
+  batch). Deterministic (no RNG in the learner), pure stdlib. Self-check in `main()` streams 5 distinct multimodal
+  patterns (repeated + jittered) and asserts it grows to EXACTLY 5 units, recognizes fresh jittered copies (1.00
+  accuracy), grows to 6 on a genuinely novel pattern, stays stable on familiar re-observation, and is deterministic
+  across two identical-seed runs. The growth engine for a robot arm that expands its capacity from multimodal data.
+
 ## [v2.6] — Multimodal spike encoder: fuse visual/temperature/audio/distance into the spike substrate (2026-07-05)
 ### Added
 An encoder/fusion FOUNDATION for multimodal growth — the front-end a real sensor array would feed. Zero new
