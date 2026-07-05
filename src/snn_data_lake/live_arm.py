@@ -168,7 +168,9 @@ def main():
 
     # duplex smoke test: sensor-read + command-write share ONE serial handle (no hardware).
     from snn_data_lake.serial_arm import SerialArm
-    lines = ([f"{0.9 - 0.11 * i}, 295.0\n".encode() for i in range(W)] * 3) + [b"0.02, 298.0\n"]
+    approach = [f"{0.9 - 0.11 * i}, 295.0\n".encode() for i in range(W)]
+    # approach (x3) -> contact (E-STOP) -> approach again: the trailing approach must NOT re-drive the wire
+    lines = (approach * 3) + [b"0.02, 298.0\n"] + approach
 
     class _FakeDuplex:
         def __init__(self, ls): self._it = iter(ls); self.sent = []
@@ -178,7 +180,7 @@ def main():
         def close(self): pass
 
     fd = _FakeDuplex(lines)
-    darm = SerialArm(writer=fd)                              # SerialArm as the arm, writing to fd
+    darm = SerialArm(writer=fd, allow_uncalibrated=True)    # bench duplex: opt in past the calibration gate
 
     def _bounded():                                          # _serial_samples_from, but stops at EOF
         while True:
@@ -192,9 +194,13 @@ def main():
     run(_bounded(), darm, interp, quiet)                     # read + recognize + write on one handle
     assert "GRIPPER_CLOSE" in fd.sent, f"duplex: approach did not send GRIPPER_CLOSE ({fd.sent})"
     assert "EMERGENCY_STOP" in fd.sent, "duplex: contact did not send EMERGENCY_STOP over serial"
+    # the E-STOP freeze must hold end-to-end: the post-contact approach must NOT reach the wire
+    estop_i = fd.sent.index("EMERGENCY_STOP")
+    assert "GRIPPER_CLOSE" not in fd.sent[estop_i + 1:], \
+        f"a command after EMERGENCY_STOP reached the wire through live_arm ({fd.sent})"
 
     print("self-check OK: approach->GRIPPER_CLOSE, retreat->GRIPPER_OPEN, contact->reflex STOP, "
-          "one-UART duplex read+write — sensor recognized, Interpreter mapped, arm moved (loop closed)")
+          "post-STOP commands frozen off the wire, one-UART duplex read+write (loop closed)")
 
 
 if __name__ == "__main__":

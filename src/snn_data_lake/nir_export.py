@@ -92,6 +92,8 @@ def export_classifier(weights, tau=0.02, v_threshold=1.0):
     """Map a trained snn_classifier weight matrix W[class][input] (C x N) to a NIR graph:
     Input(N) -> Linear(W) -> LIF(C) -> Output(C). This is the deploy shape for the gesture/shape
     recognizer — the spiking readout's weights are the Linear layer, one LIF neuron per class."""
+    if not weights or not weights[0]:
+        raise ValueError("export_classifier needs a non-empty C x N weight matrix")
     n_class = len(weights)
     n_in = len(weights[0])
     g = NIRGraph()

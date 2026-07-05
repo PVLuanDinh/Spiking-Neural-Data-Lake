@@ -23,7 +23,9 @@ bit-flip noise. Synthetic + self-contained so it trains offline in seconds.
 import math
 import random
 
-random.seed(0)  # ponytail: deterministic run + self-check. Not a calibration knob.
+# NOTE: no import-time random.seed() — that is a process-global side effect. forward() below is
+# deterministic per sample (seeded from the sample), and main() seeds the module RNG locally for
+# its own data generation. So importing this module never perturbs the global RNG.
 
 GRID = 8
 N = GRID * GRID          # input neurons (pixels)
@@ -77,22 +79,36 @@ def dataset(per_class, temps):
 
 
 # ---- spiking forward pass (rate code -> sparse spikes -> class currents) -----
-def encode_step(sample):
+def _seed_of(sample):
+    """Stable per-sample seed: the sample's bits as an int. Makes forward() a DETERMINISTIC function
+    of (W, sample) — identical windows give identical spikes -> identical class currents -> reproducible
+    recognition on the live command path (previously this used the process-global RNG, so the default
+    matcher could return different arm commands for the same input)."""
+    s = 0
+    for px in sample:
+        s = (s << 1) | (1 if px else 0)
+    return s
+
+
+def encode_step(sample, rng):
     """one timestep: each pixel fires with prob ON_RATE if lit else OFF_RATE.
     Returns the list of firing input-neuron indices (sparse event set)."""
     return [i for i, px in enumerate(sample)
-            if random.random() < (ON_RATE if px else OFF_RATE)]
+            if rng.random() < (ON_RATE if px else OFF_RATE)]
 
 
-def forward(W, sample, n_classes):
+def forward(W, sample, n_classes, rng=None):
     """Run STEPS timesteps. Accumulate class currents from spike-driven synapses
     and the per-input spike counts (needed by the learning rule).
+    rng=None -> a per-sample seeded RNG, so recognition is deterministic (see _seed_of).
     Returns (currents[C], spikecount[N], synops)."""
+    if rng is None:
+        rng = random.Random(_seed_of(sample))
     currents = [0.0] * n_classes
     counts = [0] * N
     synops = 0
     for _ in range(STEPS):
-        for i in encode_step(sample):     # sparse: only firing inputs do work
+        for i in encode_step(sample, rng):   # sparse: only firing inputs do work
             counts[i] += 1
             for c in range(n_classes):
                 currents[c] += W[c][i]
@@ -193,6 +209,7 @@ def difficulty_sweep():
 
 # ---- run + measure ----------------------------------------------------------
 def main():
+    random.seed(0)                    # local, deterministic data generation (not an import-time side effect)
     temps = templates()
     C = len(temps)
     train_data = dataset(TRAIN_PER_CLASS, temps)
@@ -232,7 +249,14 @@ def main():
     # ---- self-check (ponytail: one runnable check) ----
     assert test_acc >= 0.85, f"model did not learn: test_acc={test_acc:.2f}"
     assert test_synops < dense_macs, "spiking did not beat dense on compute"
-    print("self-check OK: test_acc>=85%, SynOps<dense MACs")
+    # determinism: recognition is a pure function of (W, sample) and does NOT touch the global RNG
+    s0 = test_data[0][0]
+    c1, _, _ = forward(W, s0, C)
+    for _ in range(5):
+        random.random()                       # perturb the global RNG between calls
+    c2, _, _ = forward(W, s0, C)
+    assert c1 == c2, "forward() is not deterministic for identical input (leaks global randomness)"
+    print("self-check OK: test_acc>=85%, SynOps<dense MACs, forward() deterministic per input")
 
 
 if __name__ == "__main__":

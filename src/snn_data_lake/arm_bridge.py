@@ -21,11 +21,13 @@ PREFIX = "OUTCOME"
 
 
 def parse_outcome(msg):
-    """'OUTCOME <reward>' -> float, else None (malformed / non-outcome packets are ignored)."""
+    """'OUTCOME <reward>' -> reward clamped to [-1, 1], else None (malformed / non-outcome ignored).
+    Clamping matches signal_loop.parse_outcome so a malformed/hostile localhost datagram can't inject
+    an out-of-range reward into the valence/cortisol learners on the split-process path."""
     parts = msg.strip().split()
     if len(parts) == 2 and parts[0] == PREFIX:
         try:
-            return float(parts[1])
+            return max(-1.0, min(1.0, float(parts[1])))
         except ValueError:
             return None
     return None
@@ -97,7 +99,9 @@ def main():
     assert r3 is None, "malformed packet must be ignored, not parsed as a reward"
     assert abs(value - (-0.25)) < 1e-9, f"rewards did not reach the learner: {value}"
     assert parse_outcome("OUTCOME 0.3") == 0.3 and parse_outcome("HELLO") is None
-    print("self-check OK: OUTCOME round-trips over UDP, malformed ignored, reward reaches the loop")
+    # a hostile/out-of-range datagram is clamped to [-1, 1], not injected raw into the learners
+    assert parse_outcome("OUTCOME 9999") == 1.0 and parse_outcome("OUTCOME -9999") == -1.0, "reward must be clamped"
+    print("self-check OK: OUTCOME round-trips over UDP, malformed ignored, reward clamped, reaches the loop")
 
 
 if __name__ == "__main__":

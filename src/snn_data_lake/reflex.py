@@ -14,6 +14,7 @@ The arm stops on a collision NOW and classifies later.
   python reflex.py
 """
 import math
+import sys
 
 # channel -> (lo, hi, action): a raw sample outside [lo, hi] is dangerous on that channel.
 # Example for the robot arm (raw ADC-ish). lo < 0 catches reverse-direction danger.
@@ -27,13 +28,19 @@ class Reflex:
     """One fast LIF. Each violated priority channel injects current proportional to how
     far past its limit (as a fraction of the channel's range); when the membrane crosses
     threshold the reflex fires the most-severe channel's action, then resets (refractory).
-    Severe breaches fire in a single step; marginal ones must persist to fire."""
+    Severe breaches fire in a single step; a marginal breach whose current stays below the
+    membrane's leaky steady state still fires once it PERSISTS `persist` consecutive samples
+    (a dead-band-free latch — a sustained moderate overload can never be ignored). A rule
+    channel that is absent from a frame is reported (once) instead of silently skipped."""
 
-    def __init__(self, rules=None, tau=2.0, threshold=0.10):
+    def __init__(self, rules=None, tau=2.0, threshold=0.10, persist=10):
         self.rules = DEFAULT_RULES if rules is None else rules
         self.decay = math.exp(-1.0 / tau)
         self.threshold = threshold
+        self.persist = persist
         self.v = 0.0
+        self._breach = 0            # consecutive-breach counter (the persistence latch)
+        self.missing = set()        # rule channels seen absent from a frame (observability + test hook)
 
     def step(self, raw):
         """Feed one raw sample (list of channel values). Return an action string the
@@ -41,6 +48,10 @@ class Reflex:
         current, worst, worst_sev = 0.0, None, 0.0
         for ch, (lo, hi, action) in self.rules.items():
             if ch >= len(raw):
+                if ch not in self.missing:           # surface a disabled safety channel, don't hide it
+                    self.missing.add(ch)
+                    sys.stderr.write(f"reflex: safety channel {ch} absent from a {len(raw)}-wide "
+                                     f"frame — its '{action}' rule is INACTIVE\n")
                 continue
             x = raw[ch]
             over = (lo - x) if x < lo else (x - hi if x > hi else 0.0)
@@ -49,9 +60,12 @@ class Reflex:
                 current += sev
                 if sev > worst_sev:
                     worst_sev, worst = sev, action
+        self._breach = self._breach + 1 if worst is not None else 0
         self.v = self.v * self.decay + current
-        if self.v >= self.threshold and worst is not None:
-            self.v = 0.0                              # fire + refractory reset
+        # fire on a fast severe crossing OR a sustained (persistent) breach the leaky term would miss
+        if worst is not None and (self.v >= self.threshold or self._breach >= self.persist):
+            self.v = 0.0                             # fire + refractory reset
+            self._breach = 0
             return worst
         return None
 
@@ -99,6 +113,20 @@ def main():
     rows = [[500, 500, 500, 500, 500, 500, 400, 0]] * 3 + [[0, 0, 0, 0, 0, 0, 1500, 0]]
     list(reflex_guard(rows, Reflex(), lambda act, seq: fired.append((seq, act))))
     assert fired and fired[0][1] == "STOP", f"guard did not surface the reflex: {fired}"
+
+    # 6. persistence: a MARGINAL sustained breach (below the leaky steady state) still fires -- no dead-band
+    r6 = Reflex(persist=10)
+    marginal = [500, 500, 500, 500, 500, 500, 815, 0]     # ch6 = 815: over=15, sev~0.018 -> membrane never crosses
+    steps = [r6.step(marginal) for _ in range(15)]
+    fire_at = next((i for i, a in enumerate(steps) if a), None)
+    assert fire_at is not None and steps[fire_at] == "STOP", f"a sustained marginal breach never fired (dead-band): {steps}"
+    assert fire_at >= 5, f"marginal breach should need to PERSIST, not fire instantly ({fire_at})"
+
+    # 7. a rule channel absent from a short frame is reported, and present channels still protect
+    r7 = Reflex()
+    a7 = r7.step([0, 0, 0, 0, 0, 0, 950])                 # 7-wide: ch6 present (breach->STOP), ch7 absent
+    assert a7 == "STOP", f"present safety channel must still fire on a short frame ({a7})"
+    assert 7 in r7.missing, "an absent safety channel must be recorded, not silently skipped"
 
     print("=" * 56)
     print("REFLEX FAST-PATH (instinctive withdraw / stop)")

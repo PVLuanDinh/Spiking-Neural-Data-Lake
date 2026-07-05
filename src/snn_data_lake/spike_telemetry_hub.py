@@ -28,7 +28,8 @@ import struct
 from array import array
 from bisect import bisect_left
 
-random.seed(0)
+# no import-time random.seed() (a process-global side effect); main() seeds locally for its own
+# synthetic-store generation. The store format + query paths themselves use no randomness.
 
 _MAGIC = b"SPK1"
 _HEADER = struct.Struct("<4sII")     # magic, n_channels, duration
@@ -157,6 +158,7 @@ def synth(n_channels, duration, rate, burst_channels, burst_win):
 
 
 def main():
+    random.seed(0)                               # local, deterministic synthetic store (not an import-time side effect)
     N, DUR, RATE = 256, 100_000, 0.004          # 256 channels, ~400 spikes each
     BURST_CH, BURST = {7, 99}, (50_000, 52_000)
     hub = synth(N, DUR, RATE, BURST_CH, BURST)

@@ -48,7 +48,7 @@ def test_assert_calibrated_gate_toggles(monkeypatch):
 
 def test_commands_sent_verbatim_and_mirrored():
     w = FakeWriter()
-    arm = SerialArm(writer=w)  # fake writer -> gate not exercised
+    arm = SerialArm(writer=w, allow_uncalibrated=True)  # bench: opt in past the gate
     arm.apply("GRIPPER_CLOSE")
     arm.apply("JOINT_A_ROTATE(+15deg)")
     arm.apply("EMERGENCY_STOP")
@@ -57,9 +57,39 @@ def test_commands_sent_verbatim_and_mirrored():
     assert arm.state()["stopped"] is True  # EMERGENCY_STOP froze the mirror
 
 
+def test_injected_writer_is_still_calibration_gated():
+    # closing the bypass: an injected writer with no calibration + no opt-in must be refused too
+    w = FakeWriter()
+    with pytest.raises(RuntimeError, match="refuses to drive real servos"):
+        SerialArm(writer=w)
+
+
+def test_emergency_stop_freezes_the_wire():
+    # once latched, nothing but stop/home/retract reaches the servos — enforced before the write
+    w = FakeWriter()
+    arm = SerialArm(writer=w, allow_uncalibrated=True)
+    arm.apply("EMERGENCY_STOP")
+    arm.apply("GRIPPER_CLOSE")  # blocked by the freeze -> not transmitted
+    arm.apply("JOINT_A_ROTATE(+10deg)")  # blocked -> not transmitted
+    assert w.lines == ["EMERGENCY_STOP"]
+    arm.apply("HOME")  # allowed while stopped -> clears the latch
+    arm.apply("GRIPPER_OPEN")  # latch cleared -> transmitted again
+    assert w.lines == ["EMERGENCY_STOP", "HOME", "GRIPPER_OPEN"]
+    assert arm.state()["stopped"] is False
+
+
+def test_unknown_command_is_not_transmitted():
+    # allow-list: only recognised tokens ever reach the wire
+    w = FakeWriter()
+    arm = SerialArm(writer=w, allow_uncalibrated=True)
+    arm.apply("DROP_EVERYTHING")
+    arm.apply(None)
+    assert w.lines == []
+
+
 def test_write_error_is_failsafe():
     w = FakeWriter()
-    arm = SerialArm(writer=w)
+    arm = SerialArm(writer=w, allow_uncalibrated=True)
     w.fail = True
     with pytest.raises(RuntimeError, match="actuator serial write failed"):
         arm.apply("GRIPPER_OPEN")
@@ -67,6 +97,6 @@ def test_write_error_is_failsafe():
 
 def test_close_swallows_writer_errors():
     w = FakeWriter()
-    arm = SerialArm(writer=w)
+    arm = SerialArm(writer=w, allow_uncalibrated=True)
     arm.close()
     assert w.closed is True

@@ -170,7 +170,8 @@ def stdin_stream(window=1, reflex=None, on_reflex=None):
 # ---- signature library (data lake of enrolled references) -------------------
 def load_library():
     if os.path.exists(SIG_PATH):
-        return {k: v for k, v in json.load(open(SIG_PATH)).items()}
+        with open(SIG_PATH) as f:
+            return {k: v for k, v in json.load(f).items()}
     return build_default_library()
 
 
@@ -180,7 +181,8 @@ def build_default_library():
 
 def save_library(lib):
     os.makedirs(os.path.dirname(SIG_PATH), exist_ok=True)
-    json.dump(lib, open(SIG_PATH, "w"), indent=2)
+    with open(SIG_PATH, "w") as f:
+        json.dump(lib, f, indent=2)
 
 
 # ---- match: encoded live signal -> nearest enrolled reference ---------------
@@ -278,7 +280,8 @@ def learn_unknowns(library, persist=True, label=None):
     library (the 'learned' step). Optional `label` names the largest new cluster."""
     if not os.path.exists(UNK_PATH):
         return {}, 0, 0
-    rows = [json.loads(l) for l in open(UNK_PATH, encoding="utf-8") if l.strip()]
+    with open(UNK_PATH, encoding="utf-8") as f:
+        rows = [json.loads(line) for line in f if line.strip()]
     promoted, n_clusters, _ = cluster_unknowns(rows, library)
     base = sum(1 for k in library if k.startswith("DISCOVERED_"))
     added = {}

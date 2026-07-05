@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 81/81 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v1.8** · 108 tagged releases (v0.1 → v1.8). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v1.9** · 109 tagged releases (v0.1 → v1.9). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 

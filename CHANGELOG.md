@@ -3,6 +3,39 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v1.9] — Core hardening: actuator safety, determinism, robustness (from the core review) (2026-07-04)
+### Fixed (safety-critical, real-hardware boundary)
+- **EMERGENCY_STOP now freezes the WIRE, not just the sim mirror** (`serial_arm.py`). `SerialArm.apply` gates the
+  serial write on the stop latch *before* transmitting: once stopped, nothing but EMERGENCY_STOP/HOME/RETRACT_ALL
+  reaches the servos, so the freeze no longer depends on the ESP32 firmware. Previously a post-E-STOP command was
+  transmitted verbatim. `live_arm` now proves this end-to-end (a post-contact approach is dropped off the wire).
+- **Calibration gate is no longer bypassable via `writer=`** (`serial_arm.py`). `assert_calibrated` runs for every
+  construction, not just the auto-open branch; a bench/echo test must opt in explicitly with `allow_uncalibrated=True`.
+- **Command allow-list at the actuator boundary** (`serial_arm.py`): only recognised tokens (the fixed set +
+  `JOINT_[AB]_ROTATE(...)`) are ever put on the wire; an unmapped/`None` command is dropped, not sent as raw bytes.
+- **Reflex no longer has a silent dead-band or silently-disabled channels** (`reflex.py`): a sustained *marginal*
+  breach now fires via a persistence latch (making the "marginal ones must persist to fire" docstring true), and a
+  rule channel absent from a short frame is reported (once) instead of silently skipped.
+### Fixed (correctness / robustness)
+- `closed_loop` no longer crashes on a dropped UDP datagram — a `None` from `recv_outcome()` skips learning that
+  tick instead of `TypeError`-ing into the valence/cortisol learners.
+- `arm_bridge.parse_outcome` clamps reward to `[-1, 1]` (matching `signal_loop`) so a malformed/hostile localhost
+  datagram can't inject an out-of-range reward.
+### Fixed (determinism)
+- **The default command classifier is now deterministic.** `snn_classifier.forward` seeds a per-sample RNG
+  (`_seed_of`), so identical windows give identical recognition — the live matcher no longer draws from the
+  process-global RNG (which could return different arm commands for the same input). Removed the import-time
+  `random.seed(0)` side effects in `snn_classifier` and `spike_telemetry_hub` (moved into their `main()`s).
+### Fixed (quality)
+- File handles opened via `with` (`signal_loop` library load/save + unknowns read); `nir_export.export_classifier`
+  guards an empty weight matrix; `StreamingHub` gained a context manager (`with`).
+### Notes
+- Every fix carries a regression check: `test_serial_arm.py` was updated to the hardened behavior and gained
+  E-STOP-freeze / injected-writer-gate / allow-list tests; the module self-checks assert the new behavior. Verified
+  green: **81/81 self-checks**, **pytest all pass @ 90% coverage**, ruff clean, CI matrix. Core `dependencies = []`
+  untouched; no default *behaviour* changed except the safety envelope becoming stricter. Found by the v1.8 Fable 5
+  read-only core review.
+
 ## [v1.8] — AdEx: adaptive exponential integrate-and-fire, spike-frequency adaptation (research) (2026-07-04)
 ### Added
 - **`research/adex_neuron.py`** — the adaptive exponential integrate-and-fire neuron (Brette & Gerstner 2005,

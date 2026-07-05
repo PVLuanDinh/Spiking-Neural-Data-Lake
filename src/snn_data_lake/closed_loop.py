@@ -56,14 +56,14 @@ def run_episode(signals, lib=None, assume_success=True, base_threshold=0.10, tra
         # feed the Interpreter's outcome straight back into dopamine + cortisol.
         # bridge set -> route the reward over the arm_bridge UDP back-channel first (the
         # split-process deployment: Interpreter and loop on different processes). Transparent.
+        if reward is not None and bridge is not None:
+            AB.send_outcome(reward, bridge.port)
+            reward = bridge.recv_outcome()               # UDP back-channel: may be None on loss/timeout
         if reward is not None:
-            if bridge is not None:
-                AB.send_outcome(reward, bridge.port)
-                reward = bridge.recv_outcome()
             valence.learn(window, reward, lr_scale=cort.learn_rate_scale(reward))
             cort.step(max(0.0, -reward))
         else:
-            cort.step(0.0)
+            cort.step(0.0)                               # no outcome (unmapped, or a dropped datagram) -> no learning
         if trace is not None:
             trace.append({"match": label, "command": cmd, "instinct": v_action,
                           "reward": reward, "value": round(valence.valence(window), 3),

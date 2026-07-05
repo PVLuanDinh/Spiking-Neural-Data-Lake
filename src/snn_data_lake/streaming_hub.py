@@ -83,6 +83,13 @@ class StreamingHub:
     def close(self):
         self._f.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()                                       # release the append handle even on an exception
+        return False
+
     # ---- recovery -----------------------------------------------------------
     def _replay(self):
         """Rebuild the in-memory index from the durable log (called on resume)."""
