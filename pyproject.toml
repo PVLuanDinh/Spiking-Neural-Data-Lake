@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "spiking-neural-data-lake"
-version = "2.2.0"
+version = "2.3.0"
 description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Zero-dep core, clone-and-run."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,6 +35,7 @@ all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist]"]                   # ever
 snn-demo = "snn_data_lake.demo:main"         # one-file demo loop
 snn-arm  = "snn_data_lake.live_arm:main"     # live gesture -> arm (add --serial/--actuate for hardware)
 snn-loop = "snn_data_lake.closed_loop:main"  # full closed loop: gesture -> command -> reward -> learn
+snn-ui   = "snn_data_lake.control_panel:main"  # zero-dep tkinter desktop control panel (arm + recognition + lake)
 
 [project.urls]
 Homepage = "https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake"

@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 81/81 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 82/82 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.2** · 112 tagged releases (v0.1 → v2.2). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.3** · 113 tagged releases (v0.1 → v2.3). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -182,7 +182,24 @@ pip install -e .                 # editable install; core = zero runtime deps
 snn-demo                                       # whole loop in one file: sensor → recognize → command → arm + reflex
 snn-arm                                        # live loop on the builder's REAL captured gestures (95%)
 snn-loop                                       # full closed loop: gesture → command → reward → learn
+snn-ui                                         # zero-dep tkinter desktop control panel (arm + recognition + lake)
 python -m snn_data_lake.gesture_recognition    # order-aware recognition + confusion table
+```
+
+### Desktop control panel
+
+The product's full UX is a **zero-dependency tkinter desktop app** (tkinter ships with Python, so
+the core stays dependency-free). One window with three tabs, each driving the already-verified code
+paths — **Arm Control** (a live 2-link arm on a canvas; every button, including a red
+EMERGENCY_STOP, routes motion through the safety-gated `ArmSim.apply()`), **Live Recognition** (step
+/ auto-play a captured gesture through the same `classify → Interpreter → arm` path `live_arm` uses),
+and **Lake Browser** (open a `.spk` store and run windowed `(channel, [t0,t1))` queries with a
+"reads X% of the file" partial-read stat).
+
+```bash
+snn-ui                                          # launch the control panel
+python -m snn_data_lake.control_panel --gui     # same, as a module
+python -m snn_data_lake.control_panel --smoke   # headless-safe self-check (what CI runs; no display needed)
 ```
 
 **Optional extras** — opt in per path, or all at once:
@@ -202,13 +219,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 81 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 82 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 81-module list is canonical in
+plus separate lint and coverage jobs. The 82-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -238,7 +255,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (46 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (47 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl) + opt-in hot_motifs analytics
     spike_stream_sketch.py        Count-Min heavy-hitter sketch — fixed-memory hot-motif analytics for the stream
@@ -287,6 +304,7 @@ spiking-neural-data-lake/
     tempotron.py                  supervised spike-timing gesture matcher (one tempotron per command)
     lca_sparse_coding.py          LCA sparse coding + opt-in LCAMatcher (sparse-coding recognition over the library)
     demo.py                       the whole loop in one runnable file  (snn-demo)
+    control_panel.py              zero-dep tkinter desktop control panel: arm + recognition + lake tabs  (snn-ui)
     lakehouse/medallion.py        Bronze→Silver→Gold PoC (Parquet + polars)
     lakehouse/delta_demo.py       Delta Lake PoC (transaction log + OPTIMIZE + time-travel)
 
@@ -345,6 +363,18 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.3, product):_ **Desktop control panel — the zero-dep tkinter UX.** A single-window
+`ttk.Notebook` (`control_panel.py`, `snn-ui`) with three tabs: **Arm Control** (a live 2-link arm on
+a `tk.Canvas` from `ArmSim` forward kinematics — links, end-effector, floor, obstacle; red on
+`collision()`; buttons incl. a big red EMERGENCY_STOP that move the arm **only** through the
+safety-gated `apply()`), **Live Recognition** (step / auto-play a builder capture through the same
+`gesture_recognition.classify → Interpreter → arm` path `live_arm` uses), and **Lake Browser** (open
+a `.spk` store, run windowed `spike_telemetry_hub` queries with the "reads X% of file" stat). tkinter
+is stdlib, so core `dependencies = []` is unchanged; the smoke is headless-safe (asserts the
+display-free logic, then constructs+destroys the widgets, skipping on `tk.TclError`) and runs in CI —
+**82/82 self-checks**. The safety envelope (`reflex` / `serial_arm` / `arm_sim` / `arm_config` /
+`interpreter`) is untouched.
 
 _Landed (v2.2, product):_ **Arm primitives wired into the loop (opt-in).** The built-but-unwired arm
 primitives are now genuine, off-by-default features on `live_arm`, all routed through the safety-gated

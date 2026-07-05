@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.3] — Desktop control panel: zero-dep tkinter UX (arm + recognition + lake) (2026-07-05)
+### Added
+The product's flagship UX lands as a **zero-dependency tkinter desktop control panel**
+(`src/snn_data_lake/control_panel.py`) — tkinter is Python's standard library, so the core
+`dependencies = []` is unchanged. One window, a `ttk.Notebook` with three tabs, each driving the
+already-verified code paths (nothing reimplemented):
+
+- **Arm Control** — a `tk.Canvas` renders the 2-link planar arm via `ArmSim` forward kinematics
+  (links, end-effector, floor, and the obstacle from `arm_sim`), turning red on `collision()`.
+  Buttons (JOINT_A/B +/-, GRIPPER OPEN/CLOSE, HOME, RETRACT_ALL, a large red **EMERGENCY_STOP**)
+  issue motion **only** through the safety-gated `ArmSim.apply()`; a live status line shows theta,
+  ee, gripper, stopped, collision, and deviation.
+- **Live Recognition** — pick one of the builder's labeled captures and Step / Auto-play its
+  windows through the **same** path `live_arm` uses: `gesture_recognition.classify` -> `Interpreter`
+  (the `live_arm` sensor command map) -> gated arm reaction, with a scrolling event log.
+- **Lake Browser** — open a `.spk` telemetry store (or build a tiny demo one), show channels /
+  events / bytes, run a windowed `(channel, [t0,t1))` query via `spike_telemetry_hub.disk_query`,
+  and report the events plus the "reads X% of the file" partial-read stat.
+
+- **`snn-ui` console entry point** (`snn_data_lake.control_panel:main`) launches the app;
+  `python -m snn_data_lake.control_panel --gui` does the same as a module.
+- **Headless-safe smoke** — `--smoke` (and the bare `python -m` invocation CI runs) asserts the
+  display-free logic (canvas FK transform, capture discovery, lake partial-read stats, gated-apply
+  command validity), then **tries** to construct the Tk root + all widgets and destroys them without
+  `mainloop`, printing a skip line on `tk.TclError`. Exits 0 with or without a display. Registered in
+  `run_selfchecks.py` CORE -> suite is now **82/82**.
+- The safety envelope (`reflex` / `serial_arm` / `arm_sim` / `arm_config` / `interpreter`) is
+  **untouched**; all arm motion still flows through the existing gated `apply()`.
+
 ## [v2.2] — Arm primitives wired into the loop (opt-in) (2026-07-05)
 ### Added (product wiring; the advertised arm primitives are now genuine, opt-in features)
 The built-but-unwired arm primitives are now reachable from the product entry point
