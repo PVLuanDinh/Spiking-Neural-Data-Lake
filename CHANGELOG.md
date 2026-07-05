@@ -3,6 +3,24 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v1.5] — Spike Bloom filter: fixed-memory pattern membership (research) (2026-07-04)
+### Added
+- **`research/spike_bloom.py`** — a zero-dep Bloom filter (Bloom 1970) for set membership over spike patterns:
+  "have I EVER seen this exact pattern?" in memory FIXED regardless of how many distinct patterns arrive. m bits,
+  k independent Carter-Wegman hashes; **never** a false negative, false positives only at a small, tunable,
+  analytically-known rate. Self-check: 500 patterns in 4096 bits → **0 false negatives**, observed FP **0.021** vs
+  the analytic bound **0.022**. Deterministic. The membership counterpart to the v1.3 Count-Min FREQUENCY sketch —
+  together the lake's fixed-memory analytics pair.
+- Registered RESEARCH (**78/78**). Core `dependencies` still `[]`.
+### Notes
+- The research→core integration pass reached its clean limit at **4 slices** (v1.1 ring-attractor → arm
+  proprioception, v1.2 HTM → lake sequence-anomaly, v1.3 Count-Min → `streaming_hub.hot_motifs`, v1.4 LCA →
+  sparse-coding matcher). The remaining recent primitives have no non-forced home in the zero-dep core
+  (`nef_integrator` — the PID already has an integral population; `nef_compute` — `population_encoding` covers
+  encode/decode; `polychronization` — no clean recognition/storage path), so per the no-force policy this cycle
+  **self-refuels** with fresh research rather than force a fit. `spike_bloom` is a natural future integration
+  candidate (fixed-memory dedup of recurring novel patterns in the continual-learning path).
+
 ## [v1.4] — Integration: LCA sparse coding → core, sparse-coding command matcher (2026-07-04)
 ### Changed (research → product)
 - **`research/lca_sparse_coding.py` → `src/snn_data_lake/lca_sparse_coding.py`** — promoted the v0.96 Locally

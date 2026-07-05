@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 77/77 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 78/78 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v1.4** · 104 tagged releases (v0.1 → v1.4). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v1.5** · 105 tagged releases (v0.1 → v1.5). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -198,13 +198,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 77 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 78 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 77-module list is canonical in
+plus separate lint and coverage jobs. The 78-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -316,7 +316,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (77 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (78 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -344,6 +344,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v1.5, research):_ **Spike Bloom filter** (`research/spike_bloom.py`) — fixed-memory pattern membership
+("have I seen this exact pattern?"): 500 patterns in 4096 bits, 0 false negatives, FP 0.021 ≈ the 0.022 analytic
+bound. The membership counterpart to v1.3's Count-Min frequency sketch. The research→core integration pass
+reached its clean limit at 4 slices (v1.1–v1.4); per the no-force policy this cycle self-refuels with new research.
 
 _Landed (v1.4, integration):_ **LCA sparse coding → core** — the v0.96 Locally Competitive Algorithm promoted
 into the product as `LCAMatcher`: an opt-in sparse-coding recognizer that uses the enrolled command references as
