@@ -33,7 +33,7 @@ CORE = [
     "reflex", "valence_stdp", "bcm_plasticity", "homeostatic_scaling",
     "intrinsic_plasticity", "izhikevich_neuron", "cortisol",
     "interpreter", "closed_loop", "make_sensor_dataset", "sensor_demo",
-    "arm_sim", "arm_config", "population_encoding", "sensor_csv_ingest",
+    "arm_sim", "arm_config", "population_encoding", "multimodal_encoder", "sensor_csv_ingest",
     "gesture_recognition", "live_arm", "serial_arm", "arm_bridge", "spiking_pid", "cpg_oscillator", "demo",
     "control_panel",
 ]

@@ -3,6 +3,26 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.6] — Multimodal spike encoder: fuse visual/temperature/audio/distance into the spike substrate (2026-07-05)
+### Added
+An encoder/fusion FOUNDATION for multimodal growth — the front-end a real sensor array would feed. Zero new
+deps (core `dependencies = []`), 83/83 self-checks, deterministic, ASCII prints. The safety envelope
+(`reflex` / `serial_arm` / `arm_sim` / `arm_config` / `interpreter`) is untouched. Honest scope: this is a spike
+ENCODER, not "thinking"; the four streams are SYNTHETIC here (no real camera / thermistor / mic / rangefinder).
+
+- **`multimodal_encoder.py` — `encode_multimodal(visual, temperature, audio, distance) -> [0,1]^N`.** Fuses four
+  sensor modalities into the repo's EXISTING N=64 spike feature substrate, BANDED by modality so each stays
+  separable in the code: visual -> features `[0:16]`, temperature -> `[16:32]`, audio -> `[32:48]`, distance ->
+  `[48:64]` (16 features each). Each modality's raw input (scalar or vector) is clamped to `[0,1]` then
+  population-encoded into its band by REUSING `population_encoding.PopulationEncoder.activations` (overlapping
+  Gaussian receptive fields); per-element activations are averaged so the band stays in `[0,1]` for any input
+  length. A modality passed as `None` is a graceful dropout -> its band is all zeros, the rest still encode
+  (missing-modality-safe). The fused vector feeds `spike_preprocessing.encode_latency` UNCHANGED, so the fused
+  code flows through the existing matcher / learner pipeline exactly like today's single-modality window.
+  Deterministic (no RNG), pure stdlib. Self-check in `main()` asserts fixed `N`-float `[0,1]` shape, per-band
+  isolation (a distinct value in one modality changes ONLY its band), missing-modality safety, `encode_latency`
+  pipeline-compatibility, and determinism. This is the foundation for a robot arm that grows from multimodal data.
+
 ## [v2.5] — Performance: closed-form Van Rossum fast path + opt-in stream group-commit (2026-07-05)
 ### Changed
 Two measured wins in the zero-dep core. No algorithm changed — one is a closed-form identity, the other is

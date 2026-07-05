@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 82/82 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 83/83 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.5** · 115 tagged releases (v0.1 → v2.5). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.6** · 116 tagged releases (v0.1 → v2.6). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -219,7 +219,7 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 82 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 83 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
@@ -255,7 +255,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (47 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (48 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl) + opt-in hot_motifs analytics
     spike_stream_sketch.py        Count-Min heavy-hitter sketch — fixed-memory hot-motif analytics for the stream
@@ -274,6 +274,7 @@ spiking-neural-data-lake/
     drift_monitor.py              online drift/novelty watch (PSI + novelty rate) — warn before collapse
     htm_sequence_memory.py        HTM temporal memory + opt-in lake SequenceAnomalyMonitor (out-of-order = temporal anomaly)
     population_encoding.py        RBF/Gaussian population rate encoder
+    multimodal_encoder.py         fuse visual/temperature/audio/distance into the N=64 banded spike substrate (reuses population_encoding + encode_latency)
     signal_loop.py                real-time loop: encode → lake → match → Interpreter (+ continual learn)
     interpreter.py                matched label → robot command + outcome feedback
     closed_loop.py                full in-process loop: signal → reflex → match → reward → learn  (snn-loop)
@@ -363,6 +364,17 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.6, product):_ **Multimodal spike encoder — the fusion front-end.** `multimodal_encoder.py`:
+`encode_multimodal(visual, temperature, audio, distance) → [0,1]^N` fuses four sensor modalities into the
+existing N=64 spike substrate, BANDED by modality (visual `[0:16]`, temperature `[16:32]`, audio `[32:48]`,
+distance `[48:64]`). Each modality is clamped to `[0,1]` then population-encoded into its band by REUSING
+`population_encoding.PopulationEncoder.activations` (per-element Gaussian activations averaged, so the band
+stays in `[0,1]`); a `None` modality is a graceful dropout (zeroed band, others still encode). The fused vector
+feeds `spike_preprocessing.encode_latency` UNCHANGED, so the code flows through the existing matcher/learner
+pipeline like today's single-modality window. Honest scope: a spike ENCODER (not "thinking"), synthetic streams,
+the foundation for a robot arm that grows from multimodal data. Deterministic, pure stdlib, core `dependencies =
+[]`, **83/83 self-checks**, safety envelope untouched.
 
 _Landed (v2.5, performance):_ **Two measured wins, behaviour identical.** No algorithm changed.
 **Closed-form Van Rossum fast path** (`spike_preprocessing.py`): `encode_latency` emits ≤1 spike/channel, so
