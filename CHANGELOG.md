@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v1.6] — Oja's rule: unsupervised principal-component extraction (research) (2026-07-04)
+### Added
+- **`research/oja_pca.py`** — Oja's rule (1982): a single linear neuron whose weight converges to the TOP
+  PRINCIPAL COMPONENT of its input stream using only a local Hebbian update with a self-normalizing decay
+  (`w += lr·y·(x − y·w)`), no explicit renormalization. Stacked with Gram-Schmidt deflation (Sanger's rule) the
+  same local update extracts the top-k components in order. The neuromorphic route to unsupervised feature
+  learning / whitening — distinct from `bcm_plasticity` (which learns selectivity, not variance directions).
+  Self-check: on 8-D data with a planted dominant variance direction, the Oja neuron aligns to it (**|cos| 0.999**,
+  weight self-normalized to ‖w‖ 1.006); Sanger recovers **PC1 and PC2 in order** (0.999 / 0.997). Deterministic.
+- Registered RESEARCH (**79/79**). Core `dependencies` still `[]`. Self-refuel research cycle (the research→core
+  integration pass is complete at 4 clean slices, v1.1–v1.4; assessed-and-rejected this cycle: dense associative
+  memory → a matcher would overlap the already-integrated SDM matcher — left in research/).
+
 ## [v1.5] — Spike Bloom filter: fixed-memory pattern membership (research) (2026-07-04)
 ### Added
 - **`research/spike_bloom.py`** — a zero-dep Bloom filter (Bloom 1970) for set membership over spike patterns:
