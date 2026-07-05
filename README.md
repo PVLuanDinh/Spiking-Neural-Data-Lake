@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 77/77 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v1.3** · 103 tagged releases (v0.1 → v1.3). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v1.4** · 104 tagged releases (v0.1 → v1.4). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,7 +234,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (47 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (48 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl) + opt-in hot_motifs analytics
     spike_stream_sketch.py        Count-Min heavy-hitter sketch — fixed-memory hot-motif analytics for the stream
@@ -280,6 +280,7 @@ spiking-neural-data-lake/
     learned_matcher.py            learned classifier + Van Rossum novelty gate (hybrid matcher)
     rank_order_coding.py          gain-invariant recognition (Thorpe rank code) — robust to sensor gain / rig change
     tempotron.py                  supervised spike-timing gesture matcher (one tempotron per command)
+    lca_sparse_coding.py          LCA sparse coding + opt-in LCAMatcher (sparse-coding recognition over the library)
     sparse_distributed_memory.py  distributed associative-recall matcher option (Kanerva SDM)
     spiking_som.py                additive SOM clustering backend for gesture discovery (opt-in)
     fly_hash.py                   FlyHash LSH index — fast candidate filter over stored windows (opt-in)
@@ -343,6 +344,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v1.4, integration):_ **LCA sparse coding → core** — the v0.96 Locally Competitive Algorithm promoted
+into the product as `LCAMatcher`: an opt-in sparse-coding recognizer that uses the enrolled command references as
+its dictionary and reads the command off the dominant atom (clean 5/5, jittered 100%) — a matcher option beside
+rank-order/tempotron, recognition-only. Fourth slice of the research→core pass.
 
 _Landed (v1.3, integration):_ **Count-Min sketch → core** — the v0.98 heavy-hitter sketch promoted into the
 product as `StreamingHub.hot_motifs(window, top_k)`: a read-only, fixed-memory analytics method surfacing the

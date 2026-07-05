@@ -3,6 +3,22 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v1.4] — Integration: LCA sparse coding → core, sparse-coding command matcher (2026-07-04)
+### Changed (research → product)
+- **`research/lca_sparse_coding.py` → `src/snn_data_lake/lca_sparse_coding.py`** — promoted the v0.96 Locally
+  Competitive Algorithm into the CI-covered zero-dep core and wired it into recognition as an ADDITIVE, opt-in
+  matcher OPTION:
+  - **`LCAMatcher`** uses the enrolled command references AS the LCA dictionary and reads the command off the
+    DOMINANT atom of the sparse code — recognition by lateral competition, an alternative to the Van Rossum /
+    rank-order / tempotron matchers (not the live default), enrolled on the same `build_default_library()`.
+    Self-check on the 5-command library: **clean 5/5, jittered 100% over 200** noisy captures. The LCA
+    sparse-coding check is retained (3-sparse code recovered, err 0.139). Recognition-only: never touches the arm
+    / control / safety path. Deterministic.
+- Moved `lca_sparse_coding` RESEARCH → CORE in `run_selfchecks.py` (**77/77**, a move not a new module).
+  Ruff-clean under the enforced `src/` ruleset. Core `dependencies` still `[]`. Fourth slice of the research→core
+  integration pass — the non-forced home found this cycle (references as the sparse-coding dictionary), following
+  the established matcher-option pattern (rank-order v0.79 / tempotron v0.82).
+
 ## [v1.3] — Integration: Count-Min sketch → core, streaming_hub.hot_motifs analytics (2026-07-04)
 ### Changed (research → product)
 - **`research/spike_stream_sketch.py` → `src/snn_data_lake/spike_stream_sketch.py`** — promoted the v0.98
