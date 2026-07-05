@@ -3,6 +3,27 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.1] — Paradigm-C reasoning promoted to core: VSA / HD compositional reasoning (2026-07-05)
+### Added (research → product; fills the "reason" verb)
+- Promoted the VSA / hyperdimensional (HDC) reasoner from `research/` into the shipped core as
+  **`src/snn_data_lake/vsa_reasoning.py`** (renamed from `research/spiking_vsa.py` to drop the misleading
+  "spiking" prefix). This fills the Paradigm-C **reason** verb of the store / search / reason thesis with
+  compositional, relational queries: bind a role to a filler and query it back by unbinding; bind a
+  gesture to a context to steer an arm command (`bind(APPROACH,NEAR)`→GRIP vs `…FAR`→WAIT). Keeps the
+  role–filler DATA RECORD capacity demo and the in-`__main__` assert self-check.
+- **Honestly labelled.** This is dense bipolar (+/-1) hypervector algebra — a balanced HD *code*, NOT
+  spike timing. HDC is a neuromorphic-**adjacent** primitive; the module does not compute in spikes. It
+  **complements** `paradigm_b_engine`, which reasons in genuine spike timing (temporal-order queries).
+  The rename + docstring make the substrate explicit so this does not become a decoratively-"spiking"
+  module (the exact thing v2.0 removed).
+- Applied the v1.9 determinism lessons on the way in: removed the import-time `random.seed(0)`
+  module-global side effect (atomic hypervectors stay deterministic via `random.Random(crc32(label))`,
+  the capacity demo seeds locally); dropped the `research/stats_bounds` dependency for a 2-line local
+  `mean_std`. The module now imports **only the Python standard library** (`random`, `zlib`).
+- `run_selfchecks.py`: `vsa_reasoning` moved from the RESEARCH tier to the CORE tier. `research/resonator_network.py`
+  (VSA factorization) now imports the reasoner from its new core location. **81/81 self-checks** unchanged
+  (a tier move, not an addition); core `dependencies = []` unchanged.
+
 ## [v2.0] — Scope realignment: core refocused on genuinely-spiking modules (2026-07-04)
 ### Changed (product → research; breaking: package surface shrank)
 - Moved three modules that were "spiking in name only" out of the installable `snn_data_lake` core into

@@ -52,7 +52,7 @@ baseline and reproducible from the printed metrics.
 
 | Area | State |
 |------|-------|
-| **Data-lake paradigms A / B / C** (store · in-storage search · relational reason) | ✅ complete, zero-dep |
+| **Data-lake paradigms A / B / C** (store · in-storage search · relational reason) | ✅ complete, zero-dep; Paradigm-C **reason** ships in-core two ways — spike-timing (`paradigm_b_engine`) + VSA/HD algebra (`vsa_reasoning`, neuromorphic-adjacent, not spike-timing) |
 | **Robot-arm neuromorphic control loop** (reflex · dopamine · cortisol · PID · interpreter) | ✅ complete in sim; real-arm actuator path shipped (safety-gated) |
 | **Spiking model-based RL** (surrogate-gradient policy → world-model → 6-DOF Dreamer) | ✅ research lineage complete (needs torch, own venv) |
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 81/81 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.0** · 110 tagged releases (v0.1 → v2.0). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.1** · 111 tagged releases (v0.1 → v2.1). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,13 +234,14 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (45 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (46 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl) + opt-in hot_motifs analytics
     spike_stream_sketch.py        Count-Min heavy-hitter sketch — fixed-memory hot-motif analytics for the stream
     short_term_plasticity.py      additive onset/novelty filter over a streamed channel (Tsodyks-Markram, opt-in)
     paradigm_b_matcher.py         Paradigm B: coincidence matcher (CPU reference)
     paradigm_b_engine.py          Paradigm B: coincidence + temporal-sequence query engine
+    vsa_reasoning.py              Paradigm C reason: VSA/HD bind·bundle·permute compositional queries (dense HD vectors, NOT spike-timing; complements paradigm_b_engine)
     spike_preprocessing.py        deterministic latency encode + Van Rossum + Victor-Purpura (q) + Silver denoise
     proximity_index.py            hierarchical Victor-Purpura proximity index for spike queries (no Euclidean/HNSW)
     lif_neuron.py                 canonical leaky integrate-and-fire neuron (leak/threshold/reset/refractory)
@@ -289,7 +290,6 @@ spiking-neural-data-lake/
     spiking_storage_prototype.py, test_prototype.py   factored associative memory + stress sweeps (zero-dep)
     hopfield_baseline.py                              classical Hopfield 0.138·N capacity baseline (zero-dep)
     dense_associative_memory.py                       modern/dense associative memory: super-linear capacity (zero-dep)
-    spiking_vsa.py                                    hyperdimensional/VSA reasoning: bind/bundle/permute (zero-dep)
     resonator_network.py                              VSA factorization: decompose a bound product (zero-dep)
     mcr_hdc.py                                        modular-composite HDC: denser codebook, ~1.5x fewer bits (zero-dep)
     bayesian_snn.py                                   calibrated uncertainty via Bernoulli-masked passes (zero-dep)
@@ -341,6 +341,13 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.1, product):_ **Paradigm-C reasoning promoted to core** — `vsa_reasoning.py` (renamed from
+`research/spiking_vsa.py`) fills the "reason" verb with VSA / hyperdimensional bind·bundle·permute
+compositional queries (context-steered arm command, role–filler recall). Honestly labelled: it is dense
+bipolar (+/-1) HD-vector algebra, neuromorphic-**adjacent**, NOT spike-timing — it complements
+`paradigm_b_engine`, which reasons in genuine spike timing. Stdlib-only (dropped the `stats_bounds` /
+seed side-effect); core `dependencies = []` unchanged, 81/81 self-checks (a tier move, not an addition).
 
 _Landed (v2.0, scope realignment):_ **Core refocused on genuinely-spiking modules.** Moved the three
 "spiking-in-name-only" modules — `spiking_som` (a plain Kohonen SOM), `sparse_distributed_memory` (binary

@@ -1,7 +1,7 @@
 """
-Resonator network — VSA FACTORIZATION (the decode spiking_vsa.py lacks).
+Resonator network — VSA FACTORIZATION (the decode vsa_reasoning lacks).
 
-spiking_vsa.py can bind/bundle/permute/cleanup, but it cannot INVERT a bound product back into its
+vsa_reasoning can bind/bundle/permute/cleanup, but it cannot INVERT a bound product back into its
 factors: given c = bind(role, filler) it recovers a filler only when you already hold the role. A
 resonator network (Frady, Kent, Olshausen, Sommer 2020; Kleyko; Nat.Mach.Intell. 2024 arXiv:2208.12880)
 solves the factorization c = x1 ⊛ x2 ⊛ … by superposition search: each factor estimate is unbound from
@@ -13,7 +13,7 @@ composite / answer analogy queries" over the exact bipolar HD vectors the repo a
 """
 import random
 
-import spiking_vsa as vsa  # research/ on sys.path; reuse hv/bind/sim/D
+from snn_data_lake import vsa_reasoning as vsa  # core module (PYTHONPATH=src); reuse hv/bind/sim/D
 
 random.seed(0)
 
@@ -107,7 +107,7 @@ def main():
     assert acc2 >= 0.9, f"2-factor resonator should recover reliably: {acc2:.2f}"
     assert acc3 >= 0.6, f"3-factor recovery should beat chance ({1 / M ** 3:.1e}) clearly: {acc3:.2f}"
     print(f"self-check OK: resonator factorizes 2-factor at {acc2:.0%}, 3-factor at {acc3:.0%} "
-          f"(vs chance {1 / M ** 3:.1e}) — the unbind spiking_vsa lacked")
+          f"(vs chance {1 / M ** 3:.1e}) — the unbind vsa_reasoning lacked")
 
 
 if __name__ == "__main__":

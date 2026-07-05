@@ -1,40 +1,47 @@
 """
-Spiking hyperdimensional / Vector-Symbolic Architecture (VSA) — reasoning in spike codes.
+Vector-Symbolic Architecture (VSA) / hyperdimensional (HDC) reasoning — neuromorphic-ADJACENT,
+NOT spike-timing.
 
-Paradigm C ("reason" in spike timing) is a spiking knowledge graph today (spike_knowledge_graph*.py,
-TransE/RotatE). VSA/HDC is the established, principled algebra for the same job: represent symbols,
-records, and relations as high-dimensional vectors and COMPOSE them with a few algebraic ops. On a
-spiking substrate a hypervector is a balanced spike code (bipolar ±1 = spike polarity; the phase-coded
-variant is "spiking-phasor" neurons). Refs: spiking-phasor HDC (arXiv:2303.00066); spiking HD network
-(Nature Sci Rep s41598-022-11073-3); robust multi-timescale symbolic computation on neuromorphic
-hardware (arXiv:2405.01305).
+This is dense bipolar-hypervector algebra: symbols, records, and relations are represented as
+high-dimensional +/-1 vectors (a balanced code) and COMPOSED with a few O(D) algebraic ops. The
+substrate is a DENSE HD vector, not a spike train — nothing here computes in spike timing. HDC is a
+recognised neuromorphic-computing primitive (and a bipolar hypervector maps onto a balanced spike-
+polarity / phasor code), so the paradigm is neuromorphic-ADJACENT — but the honest label for THIS
+module is HD/VSA reasoning, not "spiking".
+
+On-thesis value: it fills the *reason* verb of the thesis (store / search / reason) with
+compositional, relational queries — bind a role to a filler and query it back by unbinding; bind a
+gesture to a context to steer a command. It COMPLEMENTS `paradigm_b_engine`, which reasons in genuine
+spike timing (temporal-order queries); this module reasons in HD-vector algebra instead. Both give
+Paradigm C a "reason" path; only paradigm_b_engine computes in spikes.
 
 The algebra (all pure-stdlib, all O(D)):
   bind(a,b)   = elementwise product  — associates a role with a filler; SELF-INVERSE (bind again to
-                unbind), and the result is dissimilar to both inputs (protects/​randomises).
+                unbind), and the result is dissimilar to both inputs (protects/randomises).
   bundle(v..) = elementwise majority sign — superposes items into one vector similar to each member.
   permute(v)  = cyclic shift — encodes order/position without collisions.
   cleanup(v)  = nearest stored symbol — snaps a noisy composite back to a clean codebook entry.
 
 Atomic hypervectors are seeded by crc32(label) (the same deterministic-across-process trick
-signal_loop._proto uses), so the demo is reproducible. Two on-thesis demos: a role–filler DATA RECORD
-you query by unbinding, and a context-dependent ARM COMMAND algebra (bind(gesture, context) -> command).
-Capacity (how many pairs one vector holds before cleanup fails) is reported as mean ± std over seeds
-(stats_bounds.py — roadmap B5).
+signal_loop._proto uses), so the demo is reproducible with NO module-level random seeding. Two
+on-thesis demos: a role-filler DATA RECORD you query by unbinding, and a context-dependent ARM
+COMMAND algebra (bind(gesture, context) -> command). Capacity (how many pairs one vector holds before
+cleanup fails) is reported as mean +/- population std over seeds via a tiny local mean_std.
 
-  Run: python spiking_vsa.py       # (also run by run_selfchecks.py)
+  Run: python -m snn_data_lake.vsa_reasoning       # (also run by run_selfchecks.py)
 """
 import random
 import zlib
 
-import stats_bounds as sb  # research/ is on sys.path when run as a script
-
-random.seed(0)
-
-D = 512           # hypervector dimensionality (bipolar ±1 spike-polarity code)
+D = 512           # hypervector dimensionality (bipolar +/-1 balanced code)
 VOCAB = 128       # filler vocabulary cleanup searches over (distractors make capacity finite)
-SEEDS = range(5)  # ≥5 seeds -> mean ± std (B5)
+SEEDS = range(5)  # >=5 seeds -> mean +/- std
 THRESH = 0.95     # filler-recovery fraction counted as "clean"
+
+
+def mean_std(xs):
+    m = sum(xs) / len(xs)
+    return m, (sum((x - m) ** 2 for x in xs) / len(xs)) ** 0.5   # population std
 
 
 def hv(label):
@@ -66,7 +73,7 @@ def cleanup(v, codebook):
 
 
 def record_recovery(k_pairs, seed):
-    """Bundle k_pairs role↦filler bindings into ONE vector, then query each role back out.
+    """Bundle k_pairs role->filler bindings into ONE vector, then query each role back out.
     Cleanup searches the FULL filler vocabulary (distractors), so recovery degrades as the record
     is overloaded — the finite-capacity point. Returns the fraction recovered correctly."""
     rng = random.Random(seed)
@@ -93,7 +100,7 @@ def main():
     near_cmd = decide("APPROACH", "NEAR")
     far_cmd = decide("APPROACH", "FAR")
 
-    # ---- demo 2: role–filler record capacity vs load (cleanup over a 128-filler vocab) ----
+    # ---- demo 2: role-filler record capacity vs load (cleanup over a 128-filler vocab) ----
     loads = (4, 24, 64)
     cap = {k: [record_recovery(k, s) for s in SEEDS] for k in loads}
 
@@ -104,19 +111,20 @@ def main():
     permute_roundtrip = permute(permute(a, 1), D - 1) == a
 
     print("=" * 62)
-    print("SPIKING VSA / HDC — compositional reasoning in a spike code")
+    print("VSA / HDC reasoning (dense HD vectors) -- neuromorphic-adjacent, NOT spike-timing")
     print("=" * 62)
-    print(f"D={D}  seeds={len(list(SEEDS))}")
+    print(f"D={D}  seeds={len(list(SEEDS))}  substrate=dense bipolar +/-1 hypervectors")
     print(f"arm algebra: bind(APPROACH,NEAR) -> {near_cmd} | bind(APPROACH,FAR) -> {far_cmd}"
           "  (same gesture, context flips the command)")
-    print("\n role-filler record recovery vs load (mean ± std):")
+    print("\n role-filler record recovery vs load (mean +/- std):")
     for k in loads:
-        m, s = sb.mean_std(cap[k])
-        print(f"   {k:>2} pairs : {m:>6.1%} ± {s:>4.1%}")
+        m, s = mean_std(cap[k])
+        print(f"   {k:>2} pairs : {m:>6.1%} +/- {s:>4.1%}")
     print(f"\nstructure: unbind exact={unbind_exact}  bound-pair-hides-factors={bind_dissimilar}"
           f"  permute-roundtrip={permute_roundtrip}")
-    print("VSA gives Paradigm C a role/relation algebra (bind/bundle/permute) native to spike codes;"
-          " the arm interpreter's label->command map becomes compositional.")
+    print("VSA gives Paradigm C a role/relation algebra (bind/bundle/permute) over dense HD vectors;"
+          " the arm interpreter's label->command map becomes compositional. It COMPLEMENTS"
+          " paradigm_b_engine, which reasons in genuine spike timing.")
     print("=" * 62)
 
     # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
@@ -125,8 +133,8 @@ def main():
     assert permute_roundtrip, "permute/unpermute must round-trip"
     assert near_cmd == "GRIP" and far_cmd == "WAIT", \
         f"context did not steer the command: NEAR->{near_cmd} FAR->{far_cmd}"
-    lo_m, _ = sb.mean_std(cap[4])
-    hi_m, _ = sb.mean_std(cap[64])
+    lo_m, _ = mean_std(cap[4])
+    hi_m, _ = mean_std(cap[64])
     assert lo_m >= THRESH, f"small record should recover cleanly: {lo_m:.2f}"
     assert lo_m > hi_m, "recovery should degrade as the record is overloaded (finite capacity)"
     print("self-check OK: bind/bundle/permute algebra holds, context-steered command, "
