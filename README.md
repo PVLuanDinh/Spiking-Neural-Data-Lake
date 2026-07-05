@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 79/79 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 80/80 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v1.6** · 106 tagged releases (v0.1 → v1.6). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v1.7** · 107 tagged releases (v0.1 → v1.7). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -198,13 +198,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 79 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 80 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 79-module list is canonical in
+plus separate lint and coverage jobs. The 80-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -316,7 +316,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (79 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (80 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -344,6 +344,11 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v1.7, research):_ **Resonate-and-fire neuron** (`research/resonate_and_fire.py`) — a frequency-selective
+spiking neuron: where LIF/Izhikevich/SRM integrate on amplitude, this resonates only near its natural frequency
+(band-pass); a bank decomposes a 10+20 Hz signal to exactly {10, 20} — neuromorphic spectral analysis, no FFT.
+Zero-dep, deterministic.
 
 _Landed (v1.6, research):_ **Oja's rule PCA** (`research/oja_pca.py`) — a single linear neuron whose weight
 converges to the top principal component via a local Hebbian + self-normalizing update (|cos| 0.999, ‖w‖ ≈ 1);

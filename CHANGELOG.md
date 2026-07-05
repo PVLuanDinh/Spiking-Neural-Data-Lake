@@ -3,6 +3,20 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v1.7] — Resonate-and-fire: a frequency-selective spiking neuron (research) (2026-07-04)
+### Added
+- **`research/resonate_and_fire.py`** — Izhikevich's (2001) resonate-and-fire neuron: where the repo's LIF /
+  Izhikevich / SRM neurons are INTEGRATORS (fire on summed amplitude), this is a RESONATOR — a damped 2-D
+  subthreshold oscillation (`dz/dt = (b + i·ω)z + input`) that builds up only when driven near its natural
+  frequency ω, so it fires selectively for that frequency and ignores others: a spiking band-pass filter. A BANK
+  of them is a neuromorphic spectral analyser that reads the oscillation content of a spike/signal stream (a CPG
+  gait rhythm, a periodic telemetry channel) directly in spikes, no FFT. Self-check: a 10 Hz-tuned neuron fires
+  at 10 Hz only (2 spikes; **0** at 4/7/13/18 Hz); a bank at 5/10/15/20 Hz decomposes a 10+20 Hz signal to
+  exactly **{10, 20}** (a lone onset-transient spike on the 15 Hz unit is correctly excluded by the
+  sustained-resonance criterion). Deterministic.
+- Registered RESEARCH (**80/80**). Core `dependencies` still `[]`. Self-refuel research cycle (the research→core
+  integration pass is complete at 4 clean slices, v1.1–v1.4).
+
 ## [v1.6] — Oja's rule: unsupervised principal-component extraction (research) (2026-07-04)
 ### Added
 - **`research/oja_pca.py`** — Oja's rule (1982): a single linear neuron whose weight converges to the TOP
