@@ -3,6 +3,24 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.14] — NL Command tab: the natural-language addon, in the desktop app (2026-07-05)
+### Added
+- **`control_panel.py` gains a fourth tab, "NL Command"** — the natural-language addon exposed in the GUI. Type
+  an English phrase; `nl_interface` maps it to a **safe, allow-listed** intent: an arm command, a lake query, or a
+  reject. Arm intents are driven through the **same safety-gated path as the Arm Control tab** (`ArmTab.send()` →
+  `ArmSim.apply()`, so reflex / E-STOP / collision still hold and the motion shows up on the Arm Control canvas);
+  lake intents run a windowed `disk_query`. The backend can only pick a fixed **label** — never a raw command.
+- **Default backend is the zero-dep `StubBackend`** (deterministic keyword router), so the GUI + the smoke gate stay
+  zero-dependency; the optional on-device **AirLLM** backend remains CLI-opt-in (`SNN_LLM=1 python
+  local_llm/run_local.py`), consistent with `docs/AIRLLM_ANALYSIS.md` (a small/stub backend is the pragmatic default
+  for ~10-label routing).
+- The headless `--smoke` self-check now also asserts the NL wiring (an English phrase maps to a gated-apply-valid
+  command; an unsafe phrase is rejected). Rebuilt into the downloadable `snn-ui.exe` + release zip (QUICKSTART now
+  lists four tabs).
+- Zero-dep core (`dependencies = []`), **88/88** self-checks; the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched — every arm motion still routes through
+  the gated `ArmSim.apply()`.
+
 ## [v2.13] — One-click download: the Windows app bundled as a release asset (2026-07-05)
 ### Added
 - **`packaging/make_release_bundle.py`** (stdlib-only: `zipfile` + `tomllib`) — assembles the end-user download:

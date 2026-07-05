@@ -1,5 +1,5 @@
 """
-v2.3 — Desktop control panel: the product's zero-dep tkinter UX (arm + recognition + lake).
+v2.14 — Desktop control panel: the product's zero-dep tkinter UX (arm + recognition + lake + NL command).
 
 tkinter is Python's standard-library GUI, so this ships the "full UX" with NO new dependency:
 one window, a ttk.Notebook with three tabs that drive the exact same verified code paths the
@@ -12,6 +12,10 @@ headless demos use —
                        uses — gesture_recognition.classify -> Interpreter -> arm reaction.
   3. Lake Browser    : open a .spk telemetry store, show channels / events / bytes, run a windowed
                        (channel, [t0,t1)) query via spike_telemetry_hub and report "reads X% of file".
+  4. NL Command      : type an English command; nl_interface maps it to an allow-listed arm command
+                       (driven through the SAME gated ArmSim.apply() as tab 1) or a lake query, or
+                       REJECTS it. Zero-dep StubBackend; the backend can only pick a label, never a
+                       raw command (an optional on-device AirLLM backend stays CLI-opt-in via run_local).
 
 No arm motion bypasses the envelope: every button calls ArmSim.apply(cmd) (reflex / E-STOP /
 collision gate untouched). Nothing here reimplements recognition, the interpreter, or the store.
@@ -28,6 +32,7 @@ from tkinter import ttk
 from snn_data_lake import arm_sim, gesture_recognition, spike_telemetry_hub
 from snn_data_lake.interpreter import Interpreter
 from snn_data_lake.live_arm import SENSOR_COMMANDS
+from snn_data_lake.nl_interface import NLInterface, StubBackend
 
 STEP_DEG = 15                                  # per-click joint increment
 DEMO_SPK = os.path.join("data", "telemetry.spk")
@@ -300,15 +305,85 @@ class LakeTab(ttk.Frame):
         self.result.configure(state="disabled")
 
 
+# ---- tab 4: NL Command ----------------------------------------------------------
+class NLTab(ttk.Frame):
+    """Type an English command; nl_interface maps it to a SAFE intent that drives the SAME gated
+    paths as the other tabs. Arm intents route through the Arm Control tab's ArmSim.apply() (reflex /
+    E-STOP / collision gate); lake intents run a windowed disk_query. The backend can only pick an
+    allow-listed LABEL, never a raw command. Default backend is the zero-dep StubBackend (a local
+    on-device AirLLM backend stays CLI-opt-in: SNN_LLM=1 python local_llm/run_local.py)."""
+
+    def __init__(self, master, armtab):
+        super().__init__(master, padding=8)
+        self.nl = NLInterface(backend=StubBackend())   # zero-dep, deterministic keyword router
+        self.armtab = armtab                           # arm intents drive the SAME gated arm as tab 1
+
+        top = ttk.Frame(self); top.grid(row=0, column=0, columnspan=3, sticky="ew")
+        ttk.Label(top, text="command:").pack(side="left")
+        self.entry = ttk.Entry(top, width=48)
+        self.entry.pack(side="left", padx=4)
+        self.entry.bind("<Return>", lambda _e: self.run())
+        ttk.Button(top, text="Run", command=self.run).pack(side="left", padx=2)
+
+        ttk.Label(self, foreground="#555", font=("TkDefaultFont", 8),
+                  text="examples:  close the gripper   open   rotate joint A   go home   STOP   "
+                       "read telemetry channel 7 window 1000").grid(row=1, column=0, columnspan=3,
+                                                                    sticky="w", pady=(4, 0))
+        ttk.Label(self, foreground="#555", font=("TkDefaultFont", 8),
+                  text="backend: StubBackend (zero-dep). Optional on-device AirLLM: "
+                       "SNN_LLM=1 python local_llm/run_local.py").grid(row=2, column=0, columnspan=3, sticky="w")
+
+        self.log = tk.Text(self, width=78, height=15, font=("TkFixedFont", 9), state="disabled")
+        self.log.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(6, 0))
+        sb = ttk.Scrollbar(self, command=self.log.yview); sb.grid(row=3, column=2, sticky="ns", pady=(6, 0))
+        self.log.configure(yscrollcommand=sb.set)
+        self._logline("Type an English command and press Run (or Enter). Arm actions appear on the Arm Control tab.")
+
+    def run(self):
+        text = self.entry.get().strip()
+        if not text:
+            return
+        intent = self.nl.interpret(text)               # -> allow-listed arm cmd / lake query / reject
+        kind = intent["kind"]
+        if kind == "arm":
+            self.armtab.send(intent["command"])        # SAME gated apply as tab 1 (reflex / E-STOP / collision)
+            s = self.armtab.arm.state()
+            self._logline(f"> {text}\n    ARM  {intent['command']}  -> ee=({s['ee'][0]:+.2f},{s['ee'][1]:+.2f}) "
+                          f"stopped={s['stopped']} collision={s['collision']}")
+        elif kind == "lake":
+            self._lake(text, intent["query"])
+        else:
+            self._logline(f"> {text}\n    REJECTED ({intent.get('reason', '')}) -- no action taken")
+        self.entry.delete(0, "end")
+
+    def _lake(self, text, q):
+        path = ensure_demo_store()
+        chans = q["channels"] or [0]
+        t1 = q["window"]
+        try:
+            events, read = spike_telemetry_hub.disk_query(path, 0, t1, chans)
+        except (IndexError, ValueError) as e:
+            self._logline(f"> {text}\n    LAKE query error: {e}")
+            return
+        self._logline(f"> {text}\n    LAKE channels={chans} window=[0,{t1}) -> {len(events)} events, "
+                      f"{read} bytes read")
+
+    def _logline(self, text):
+        self.log.configure(state="normal"); self.log.insert("end", text + "\n"); self.log.see("end")
+        self.log.configure(state="disabled")
+
+
 # ---- app ------------------------------------------------------------------------
 class App:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Spiking Neural Data Lake — Control Panel")
         nb = ttk.Notebook(self.root)
-        nb.add(ArmTab(nb), text="Arm Control")
+        arm_tab = ArmTab(nb)                           # kept: the NL tab drives this same gated arm
+        nb.add(arm_tab, text="Arm Control")
         nb.add(RecognitionTab(nb), text="Live Recognition")
         nb.add(LakeTab(nb), text="Lake Browser")
+        nb.add(NLTab(nb, arm_tab), text="NL Command")
         nb.pack(fill="both", expand=True)
 
     def mainloop(self):
@@ -337,6 +412,13 @@ def _smoke():
     arm.apply(f"JOINT_A_ROTATE(+{STEP_DEG}deg)")
     assert arm.state()["theta_deg"][0] == float(STEP_DEG), "arm button command is not gated-apply valid"
 
+    # NL Command tab (display-free): an English phrase maps to a gated-apply-valid command; unsafe -> reject
+    nlx = NLInterface(backend=StubBackend())
+    assert nlx.interpret("close the gripper")["command"] == "GRIPPER_CLOSE", "NL 'close' phrase mis-mapped"
+    assert nlx.interpret("delete everything")["kind"] == "reject", "unsafe NL phrase must be rejected"
+    arm2 = arm_sim.ArmSim(); arm2.apply(nlx.interpret("close the gripper")["command"])
+    assert arm2.state()["gripper"], "an NL-mapped command must drive the gated arm"
+
     # (b) TRY to construct the whole GUI, then destroy WITHOUT mainloop ----------
     try:
         app = App()
@@ -348,7 +430,7 @@ def _smoke():
         print("control_panel smoke: GUI construction skipped (no display)")
 
     print("self-check OK: canvas FK transform, capture discovery, lake partial-read stats, "
-          f"gated-apply commands; {mode}")
+          f"gated-apply commands, NL command routing; {mode}")
 
 
 def main():

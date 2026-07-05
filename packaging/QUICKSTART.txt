@@ -9,7 +9,7 @@ HOW TO RUN
 1. Unzip this archive to a folder.
 2. Double-click snn-ui.exe to launch.
 
-THE THREE TABS
+THE FOUR TABS
   Arm Control      Live 2-link simulated arm. Every button is safety-gated:
                    collision detection, EMERGENCY_STOP, command allow-list.
 
@@ -18,6 +18,12 @@ THE THREE TABS
 
   Lake Browser     Open a .spk telemetry store and run windowed queries
                    over multi-channel spike-event telemetry.
+
+  NL Command       Type an English command ("close the gripper", "go home",
+                   "STOP", "read telemetry channel 7 window 1000"). It maps to a
+                   safe allow-listed arm action (driven through the same gated
+                   Arm Control path) or a lake query, or is rejected. Zero-dep
+                   keyword backend by default.
 
 SMOKE TEST (No Display)
   If you have no GUI display, verify the app works:

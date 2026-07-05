@@ -60,9 +60,9 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 88/88 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.13** · 123 tagged releases (v0.1 → v2.13). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.14** · 124 tagged releases (v0.1 → v2.14). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.13.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.13.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. (Or clone and run the zero-dep source: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.14.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.14.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. Four tabs: Arm Control, Live Recognition, Lake Browser, **NL Command** (type English commands). (Or clone and run the zero-dep source: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -370,6 +370,14 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.14, product):_ **NL Command tab — the natural-language addon, in the desktop app.** The
+tkinter control panel (`control_panel`) gains a fourth tab: type an English command and `nl_interface` maps it
+to a **safe allow-listed** arm action — driven through the **same gated `ArmSim.apply()`** as the Arm Control
+buttons (reflex / E-STOP / collision) — or a lake query, or a reject. The backend can only pick a label, never a
+raw command. Default is the zero-dep `StubBackend` (deterministic, in the smoke gate); an optional on-device
+AirLLM backend stays CLI-opt-in (`SNN_LLM=1 python local_llm/run_local.py`). Rebuilt into the downloadable
+`.exe`/zip. Zero-dep core (`dependencies = []`), **88/88** self-checks, the 5 safety-envelope files untouched.
 
 _Landed (v2.13, product):_ **One-click download — the Windows app bundled as a release asset.**
 `packaging/make_release_bundle.py` (stdlib-only) zips the built `dist/snn-ui.exe` with `QUICKSTART.txt`, `LICENSE`,
