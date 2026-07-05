@@ -3,6 +3,25 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.8] — Autonomous adaptive arm loop: grow from multimodal data + learn actions, safely (2026-07-05)
+### Added
+- **`src/snn_data_lake/autonomous_loop.py`** — ties the multimodal pieces into one loop the arm runs on its
+  own: multimodal sensing (`multimodal_encoder`) → a GROWING learner that recruits a unit per novel context
+  (`growing_learner`) → reward-modulated action selection (a contextual action-value table shaped by dopamine-
+  style RPE + slow `cortisol` stress) → the arm reacts. **Autonomous** = there is NO hardcoded gesture→command
+  map; the arm grows its own repertoire from the stream AND learns which action each context should trigger from
+  reward. Self-check: 3 distinct multimodal contexts → 3 grown units; a rewarded action is LEARNED (policy moves
+  GRIPPER_CLOSE → GRIPPER_OPEN, proving it is learned not fixed); deterministic.
+- **SAFETY (the whole point): the network only chooses — it never bypasses the envelope.** An object at the
+  sensor (`distance < CONTACT`) trips the reflex → gated `EMERGENCY_STOP` BEFORE any learned action, and EVERY
+  motor command is issued through the safety-gated `ArmSim.apply()`. Self-check asserts danger → E-STOP and that a
+  learned action AFTER the stop does NOT move the frozen arm (the gate holds through the autonomous loop). The 5
+  safety-envelope files (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched.
+- Registered CORE (**85/85** self-checks, pytest 89% coverage). Core `dependencies = []` unchanged. Completes the
+  multimodal growth arc (v2.6 fuse → v2.7 grow → v2.8 autonomous). ponytail ceiling: online prototype-recruitment
+  + a reward-modulated action-value table + neuromodulation over fused spike codes — adaptive and growing, **not
+  cognition**; the four modality streams are synthetic.
+
 ## [v2.7] — Growing spiking learner: novelty-triggered neurogenesis (2026-07-05)
 ### Added
 The GROWTH engine on top of the v2.6 multimodal substrate: an online prototype learner that recruits capacity as

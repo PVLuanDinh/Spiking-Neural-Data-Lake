@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 84/84 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 85/85 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.7** · 117 tagged releases (v0.1 → v2.7). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.8** · 118 tagged releases (v0.1 → v2.8). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -219,7 +219,7 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 84 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 85 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
@@ -255,7 +255,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (49 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (50 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl) + opt-in hot_motifs analytics
     spike_stream_sketch.py        Count-Min heavy-hitter sketch — fixed-memory hot-motif analytics for the stream
@@ -276,6 +276,7 @@ spiking-neural-data-lake/
     population_encoding.py        RBF/Gaussian population rate encoder
     multimodal_encoder.py         fuse visual/temperature/audio/distance into the N=64 banded spike substrate (reuses population_encoding + encode_latency)
     growing_learner.py            online growing prototype learner — novelty-triggered neurogenesis over the fused multimodal spikes (ART-like, reuses encode_multimodal)
+    autonomous_loop.py            autonomous adaptive arm — grow from multimodal data + learn actions by reward; every motion safety-gated (reflex/E-STOP)
     signal_loop.py                real-time loop: encode → lake → match → Interpreter (+ continual learn)
     interpreter.py                matched label → robot command + outcome feedback
     closed_loop.py                full in-process loop: signal → reflex → match → reward → learn  (snn-loop)
@@ -366,6 +367,14 @@ spiking-neural-data-lake/
 
 ## Roadmap
 
+_Landed (v2.8, product):_ **Autonomous adaptive arm — grows from multimodal data + learns actions, safely.**
+`autonomous_loop.py` ties the arc together: multimodal sensing → the growing learner (a unit per novel context)
+→ reward-modulated action selection (RPE + cortisol) → the arm. Autonomous = no hardcoded gesture→command map;
+it grows its own repertoire AND learns which action each context should trigger from reward (self-check: policy
+moves GRIPPER_CLOSE → GRIPPER_OPEN by reward). SAFETY holds: danger → gated `EMERGENCY_STOP` before any action,
+every motion through `ArmSim.apply()`, and a learned action after the stop does not move the frozen arm — the 5
+safety-envelope files untouched. 85/85 self-checks. Ceiling: adaptive + growing, not cognition; synthetic streams.
+
 _Landed (v2.7, product):_ **Growing spiking learner — novelty-triggered neurogenesis.** `growing_learner.py`:
 `GrowingLearner.observe(pattern) → (unit_id, grew)` is an online, adaptive-resonance-style learner over the fused
 `[0,1]^N=64` multimodal spike-feature vectors (REUSING `multimodal_encoder.encode_multimodal`). It STARTS SMALL
@@ -388,7 +397,7 @@ stays in `[0,1]`); a `None` modality is a graceful dropout (zeroed band, others 
 feeds `spike_preprocessing.encode_latency` UNCHANGED, so the code flows through the existing matcher/learner
 pipeline like today's single-modality window. Honest scope: a spike ENCODER (not "thinking"), synthetic streams,
 the foundation for a robot arm that grows from multimodal data. Deterministic, pure stdlib, core `dependencies =
-[]`, **84/84 self-checks**, safety envelope untouched.
+[]`, **83/83 self-checks**, safety envelope untouched.
 
 _Landed (v2.5, performance):_ **Two measured wins, behaviour identical.** No algorithm changed.
 **Closed-form Van Rossum fast path** (`spike_preprocessing.py`): `encode_latency` emits ≤1 spike/channel, so
