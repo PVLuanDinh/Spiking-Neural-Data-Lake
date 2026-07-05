@@ -51,8 +51,16 @@ class SpikeTelemetryHub:
         if not 0 <= channel < self.n:
             raise IndexError(f"channel {channel} out of range [0,{self.n})")
         a = self.ch[channel]
-        a.extend(int(t) for t in times)
-        if any(a[i] > a[i + 1] for i in range(len(a) - 1)):   # keep sorted
+        prev_last = a[-1] if a else None            # O(1) max: the stored array is kept sorted
+        new = [int(t) for t in times]
+        a.extend(new)
+        # v2.4 perf: the stored array is ALWAYS sorted (invariant maintained here), so an
+        # appended batch keeps it sorted iff the batch is itself sorted AND its first element
+        # is >= the previous last. Only re-sort when that boundary is actually broken --
+        # incremental ingest is O(batch) per call, not an O(n) full rescan every time (which
+        # was O(n^2) overall). The stored array is byte-identical to the old full-rescan path.
+        in_order = all(new[i] <= new[i + 1] for i in range(len(new) - 1))
+        if new and not (in_order and (prev_last is None or prev_last <= new[0])):
             self.ch[channel] = array("I", sorted(a))
 
     def n_events(self):

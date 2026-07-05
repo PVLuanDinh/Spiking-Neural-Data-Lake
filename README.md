@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 82/82 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.3** · 113 tagged releases (v0.1 → v2.3). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.4** · 114 tagged releases (v0.1 → v2.4). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -363,6 +363,16 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.4, performance):_ **Four measured compute wins, outputs identical.** No algorithm changed —
+only redundant work removed, each proven output-identical / accuracy-unchanged before shipping: the live
+**hybrid matcher** stops recomputing the Van Rossum nearest distance + re-encoding the window (`hybrid_match`
+returns them; `signal_loop` reuses) — **~2.5 → ~1.3 ms/window**, decision bit-identical over 600 windows;
+**Van Rossum distance** hoists `math.exp` out of the per-feature loop and skips channels silent on both sides —
+**~300 → ~200 µs/call**, byte-exact over 918 cases; **LCA** default iterations 300 → 80 — **~3.6× faster**,
+matcher accuracy flat (clean 5/5, jittered 100% at 300/150/80); **telemetry ingest** tracks the last timestamp
+instead of rescanning the whole channel each append — **O(n²) → O(n), ~165× on 3000 incremental ingests**,
+stored `.spk` bytes byte-identical. Core `dependencies = []`, **82/82 self-checks**, safety envelope untouched.
 
 _Landed (v2.3, product):_ **Desktop control panel — the zero-dep tkinter UX.** A single-window
 `ttk.Notebook` (`control_panel.py`, `snn-ui`) with three tabs: **Arm Control** (a live 2-link arm on

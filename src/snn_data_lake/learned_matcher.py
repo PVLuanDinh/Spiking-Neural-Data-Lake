@@ -68,9 +68,16 @@ def learned_label(W, n_classes, window):
 
 
 # ---- novelty gate: Van Rossum distance to the nearest enrolled reference -----
-def nearest_dist(refs_enc, window):
+def nearest_dist_enc(refs_enc, window):
+    """Nearest Van Rossum distance to any enrolled reference AND the encoded window.
+    Callers reuse both instead of re-encoding + re-distancing; since encode_latency is
+    deterministic the returned distance equals nearest_dist(refs_enc, window)."""
     q = encode_latency(window)
-    return min(van_rossum_distance(q, ev) for ev in refs_enc)
+    return min(van_rossum_distance(q, ev) for ev in refs_enc), q
+
+
+def nearest_dist(refs_enc, window):
+    return nearest_dist_enc(refs_enc, window)[0]
 
 
 def calibrate_gate(library, refs_enc, seed=7):
@@ -86,10 +93,16 @@ def calibrate_gate(library, refs_enc, seed=7):
 
 
 def hybrid_match(W, nC, refs_enc, gate, window):
-    """Learned classifier picks the command; distance gate vetoes novel signals."""
-    if nearest_dist(refs_enc, window) > gate:
-        return None
-    return learned_label(W, nC, window)
+    """Learned classifier picks the command; distance gate vetoes novel signals.
+
+    v2.4 perf (decision-identical): returns (idx_or_None, nearest_dist, encoded_window).
+    The distance and the latency encoding are computed ONCE here so callers (signal_loop)
+    reuse them instead of recomputing nearest_dist + encode_latency per live window
+    (was ~2 extra Van Rossum sweeps + ~3 re-encodes). The gate/label decision is unchanged."""
+    dist, q = nearest_dist_enc(refs_enc, window)
+    if dist > gate:
+        return None, dist, q
+    return learned_label(W, nC, window), dist, q
 
 
 # ---- score the three matchers: accuracy on known, rejection on novel --------
@@ -128,7 +141,7 @@ def main():
         labs, known, novel = make_windows(library, 40, noise, seed=100 + int(noise * 100))
         t_acc, t_rej = acc_rej(template_label, labs, known, novel)
         l_acc, l_rej = acc_rej(lambda w: learned_label(W, nC, w), labs, known, novel)
-        h_acc, h_rej = acc_rej(lambda w: hybrid_match(W, nC, refs_enc, gate, w),
+        h_acc, h_rej = acc_rej(lambda w: hybrid_match(W, nC, refs_enc, gate, w)[0],
                                labs, known, novel)
         rows.append((noise, t_acc, t_rej, l_acc, l_rej, h_acc, h_rej))
         print(f"{noise:>5.0%} | {t_acc:>6.0%}{t_rej:>7.0%} | {l_acc:>6.0%}{l_rej:>7.0%} "

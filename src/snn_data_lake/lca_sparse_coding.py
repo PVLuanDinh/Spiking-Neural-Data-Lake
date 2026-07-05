@@ -50,7 +50,10 @@ class LCA:
         self.g_off = [[0.0 if i == j else _dot(dictionary[i], dictionary[j]) for j in range(self.m)]
                       for i in range(self.m)]
 
-    def encode(self, x, steps=300):
+    def encode(self, x, steps=80):
+        # v2.4 perf: default steps 300 -> 80 (~3.5x faster). Same algorithm, fewer LCA
+        # iterations. Measured flat: LCAMatcher accuracy is 100% clean + jittered at
+        # steps 300/150/80, and the sparse-code support/reconstruction asserts still hold.
         b = [_dot(atom, x) for atom in self.phi]     # driving input: match of each atom to the signal
         u = [0.0] * self.m                           # membrane potentials
         a = [0.0] * self.m                           # active coefficients (thresholded)

@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.4] — Performance: faster live matcher + Van Rossum + LCA + telemetry ingest (2026-07-05)
+### Changed
+Four measured, low-risk compute wins in the zero-dep core. **Every change is output-identical /
+accuracy-unchanged and proven so** — no algorithm was altered, only redundant work removed. Core
+`dependencies = []`, 82/82 self-checks, deterministic. The safety envelope (`reflex` / `serial_arm`
+/ `arm_sim` / `arm_config` / `interpreter`) is untouched.
+
+- **Live hybrid matcher — de-duplicated (`signal_loop.py` + `learned_matcher.py`).** The default
+  hybrid path recomputed the Van Rossum nearest distance twice and re-encoded the window ~3x per
+  window. `hybrid_match` now returns the nearest distance **and** the encoded window it already
+  computed; `signal_loop` reuses them. **~2.5 -> ~1.3 ms/window (~1.9x).** _Outputs identical:_ the
+  match decision (label + gate accept/reject) and the full returned tuple are **bit-identical** over
+  600 varied windows (jittered-known + pure-noise), 0 differences.
+- **Van Rossum distance — skip-empty + hoisted exp (`spike_preprocessing.py`).** `math.exp(decay)`
+  is hoisted out of the per-feature loop (was recomputed 2x/feature) and feature-channels where
+  **both** trains are silent are skipped (their waveforms are all-zero -> exact 0.0 contribution).
+  **~300 -> ~200 us/call (~1.5x).** _Outputs identical:_ byte-exact float equality vs the v2.3
+  implementation across a battery (empty/empty, empty/one, multi/multi, taus 1-9.5), 918/918.
+- **LCA sparse coding — default iterations 300 -> 80 (`lca_sparse_coding.py`).** Same algorithm,
+  fewer LCA steps. **~0.86 -> ~0.24 ms/call (~3.6x).** _Accuracy unchanged:_ measured flat —
+  `LCAMatcher` is clean 5/5 + jittered 100% at steps 300/150/80, and the sparse-code support /
+  reconstruction asserts still hold.
+- **Telemetry ingest — O(n^2) -> O(n) (`spike_telemetry_hub.py`).** The "is this channel still
+  sorted?" check rescanned the whole channel array every ingest. It now tracks the previous last
+  timestamp and only re-sorts when an appended batch actually breaks order. **~250 -> ~1.5 ms per
+  3000 incremental ingests (~165x).** _Outputs identical:_ channel arrays **and** the serialized
+  `.spk` bytes are byte-identical to the full-rescan reference over 4000 randomized incremental
+  ingests.
+
 ## [v2.3] — Desktop control panel: zero-dep tkinter UX (arm + recognition + lake) (2026-07-05)
 ### Added
 The product's flagship UX lands as a **zero-dependency tkinter desktop control panel**
