@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "spiking-neural-data-lake"
-version = "2.10.0"
+version = "2.11.0"
 description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Zero-dep core, clone-and-run."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -27,6 +27,7 @@ arm = ["pyserial"]                                                       # live_
 lake = ["polars", "pyarrow", "deltalake"]                               # lakehouse/medallion + delta_demo
 gpu = ["torch", "torchvision", "snntorch==1.0.0", "bindsnet", "numpy"]   # research/ GPU training
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
+llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
 genn = ["pygenn"]                                                        # research/*_genn GPU port (needs a C++ compiler + CUDA)
 dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.6", "pre-commit"]           # tests + lint/format (NOT runtime)
 all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist]"]                   # every addon (genn excluded — needs a compiler)
@@ -65,7 +66,7 @@ source = ["snn_data_lake"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["research", "gcp", "infra", "robot arm"]
+extend-exclude = ["research", "gcp", "infra", "robot arm", "local_llm"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

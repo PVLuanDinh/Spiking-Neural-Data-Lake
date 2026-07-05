@@ -3,6 +3,31 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.11] — Run locally, no cloud: optional AirLLM natural-language interface (2026-07-05)
+### Added
+- **`src/snn_data_lake/nl_interface.py`** (zero-dep, CORE) — a LOCAL natural-language front-end that turns English
+  into a SAFE intent for the arm or a structured query for the data lake. It is the safety FIREWALL between a
+  language model and the robot: a backend returns only a short LABEL, which this module maps to a command the wire
+  allow-list (`serial_arm.is_valid_command`) ALREADY accepts, or to a `spike_telemetry_hub` query, or REJECTS.
+  The LLM never emits a motor command — the concrete command string is this module's own constant, never the
+  model's text; every arm command is re-validated (defense in depth); `interpret()` only parses/validates/classifies
+  and never drives the arm or reads the lake (execution stays in the existing gated paths). Self-check (deterministic,
+  ASCII): English phrases map to the right allow-listed commands, a lake phrase parses to a structured query, and
+  **an adversarial backend returning raw commands / injection strings is rejected** (the model can only pick among
+  fixed allow-listed labels).
+- **`local_llm/` (optional `[llm]` extra, quarantined, NOT in the zero-dep CI):** `airllm_backend.py` wraps
+  [AirLLM](https://github.com/lyogavin/airllm) (layer-by-layer on-device inference; runs 70B+ models on a small GPU,
+  CPU-capable) as a drop-in backend returning the same labels — imported lazily, so it is import-safe without
+  torch/airllm and its smoke check skips cleanly in CI. `run_local.py` runs the ENTIRE stack locally with **no
+  cloud** — core + local lakehouse + NL interface — defaulting to the stdlib `StubBackend` (zero deps, zero network)
+  and opting into the local LLM via `SNN_LLM=1` / `--llm`. See **`docs/RUNNING_LOCAL.md`**.
+- Core stays `dependencies = []`; AirLLM is an opt-in extra following the established quarantine pattern
+  (`gpu`/`nmnist`/`genn` + `research/neuromorphic_torch/`). Registered CORE (**88/88** self-checks); `local_llm/` is
+  ruff-excluded and not in the self-check gate. The 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched — every motor command still flows
+  through the safety-gated `ArmSim.apply()`. ponytail ceiling: keyword/label routing + a fixed allow-list — **not
+  language understanding**; fixed intents (no free-form arm parameters).
+
 ## [v2.10] — Hippocampal SWR replay: sample-efficient value learning (2026-07-05)
 ### Added
 - **`src/snn_data_lake/experience_replay.py`** — a **sharp-wave-ripple (SWR) style experience-replay**
