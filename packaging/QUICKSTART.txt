@@ -1,0 +1,36 @@
+SPIKING NEURAL DATA LAKE - QUICKSTART
+=====================================
+
+WHAT IS THIS?
+A zero-dependency neuromorphic robot-arm control panel + spiking data lakehouse.
+Desktop app for Windows 64-bit.  No Python install required.
+
+HOW TO RUN
+1. Unzip this archive to a folder.
+2. Double-click snn-ui.exe to launch.
+
+THE THREE TABS
+  Arm Control      Live 2-link simulated arm. Every button is safety-gated:
+                   collision detection, EMERGENCY_STOP, command allow-list.
+
+  Live Recognition Replay recorded gesture captures as live arm commands
+                   (step or auto-play) through recognition -> interpreter -> arm.
+
+  Lake Browser     Open a .spk telemetry store and run windowed queries
+                   over multi-channel spike-event telemetry.
+
+SMOKE TEST (No Display)
+  If you have no GUI display, verify the app works:
+    snn-ui.exe --smoke
+  Should print a self-check line and exit with code 0.
+
+SAFETY NOTES
+  The arm is SIMULATED by default (no hardware connected).
+  All motor commands pass through collision detection and EMERGENCY_STOP.
+  The allow-list gate restricts which commands can be sent.
+
+SOURCE, DOCS, ISSUES
+  https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake
+
+LICENSE
+  MIT (see LICENSE in this archive)

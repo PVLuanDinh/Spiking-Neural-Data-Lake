@@ -60,7 +60,9 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 88/88 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.12** · 122 tagged releases (v0.1 → v2.12). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.13** · 123 tagged releases (v0.1 → v2.13). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.13.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.13.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. (Or clone and run the zero-dep source: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -368,6 +370,13 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.13, product):_ **One-click download — the Windows app bundled as a release asset.**
+`packaging/make_release_bundle.py` (stdlib-only) zips the built `dist/snn-ui.exe` with `QUICKSTART.txt`, `LICENSE`,
+and the docs into `spiking-neural-data-lake-<ver>-windows-x64.zip`, attached to the GitHub release — so users
+**download and run with no build step and no Python** (unzip → double-click `snn-ui.exe`; verify with
+`snn-ui.exe --smoke`). Verified end-to-end here: the bundled exe extracted from the zip runs `--smoke` and exits 0.
+Build-time only; core stays `dependencies = []`, the safety envelope is untouched, **88/88** self-checks.
 
 _Landed (v2.12, product):_ **Installable Windows `.exe` — the desktop app packaged with PyInstaller.** The
 zero-dep tkinter control panel (`control_panel`) builds into a standalone `dist/snn-ui.exe` (onefile, windowed,

@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.13] — One-click download: the Windows app bundled as a release asset (2026-07-05)
+### Added
+- **`packaging/make_release_bundle.py`** (stdlib-only: `zipfile` + `tomllib`) — assembles the end-user download:
+  reads the version from `pyproject.toml` and zips the built `dist/snn-ui.exe` together with `QUICKSTART.txt`,
+  `LICENSE`, `BUILD_EXE.md` and `RUNNING_LOCAL.md` into `dist/spiking-neural-data-lake-<version>-windows-x64.zip`.
+- **`packaging/QUICKSTART.txt`** — the end-user quickstart shipped inside the zip (what it is, unzip + double-click
+  `snn-ui.exe`, the three tabs, `--smoke` verify, safety note, source link, MIT license).
+- **Download link:** the `…-windows-x64.zip` is attached to the GitHub release, so users can **download and run with
+  no build step and no Python** — see the ⬇ Download link in the README (`releases/latest/download/…`). Verified
+  end-to-end: the exe extracted from the published zip runs `snn-ui.exe --smoke` and exits 0.
+- Packaging/distribution only — no module or self-check change (**88/88** unchanged); build artifacts (`dist/`) stay
+  git-ignored; the 5 safety-envelope files are untouched.
+
 ## [v2.12] — Installable Windows .exe: the tkinter desktop app, packaged (2026-07-05)
 ### Added
 - **`packaging/`** — build the zero-dep tkinter control panel (`control_panel`) into a **standalone Windows
