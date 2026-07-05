@@ -30,8 +30,7 @@ CORE = [
     "htm_sequence_memory", "spike_stream_sketch",
     "paradigm_b_matcher", "paradigm_b_engine", "spike_preprocessing", "proximity_index", "energy",
     "signal_loop", "learned_matcher", "rank_order_coding", "tempotron", "lca_sparse_coding",
-    "sparse_distributed_memory",
-    "spiking_som", "fly_hash", "reflex", "valence_stdp", "bcm_plasticity", "homeostatic_scaling",
+    "reflex", "valence_stdp", "bcm_plasticity", "homeostatic_scaling",
     "intrinsic_plasticity", "izhikevich_neuron", "cortisol",
     "interpreter", "closed_loop", "make_sensor_dataset", "sensor_demo",
     "arm_sim", "arm_config", "population_encoding", "sensor_csv_ingest",
@@ -40,7 +39,8 @@ CORE = [
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [
     "research/spiking_storage_prototype", "research/test_prototype", "research/hopfield_baseline",
-    "research/dense_associative_memory",
+    "research/dense_associative_memory", "research/sparse_distributed_memory", "research/fly_hash",
+    "research/spiking_som",
     "research/snn_moe_classifier",
     "research/temporal_coding_storage", "research/spike_compression",
     "research/event_quadtree_compression", "research/index_compression", "research/spike_bloom",

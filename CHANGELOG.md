@@ -3,6 +3,26 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.0] — Scope realignment: core refocused on genuinely-spiking modules (2026-07-04)
+### Changed (product → research; breaking: package surface shrank)
+- Moved three modules that were "spiking in name only" out of the installable `snn_data_lake` core into
+  `research/` — they compute over dense/binary vectors, not spike events, so they don't belong in a core whose
+  thesis is *compute in spike timing*:
+  - **`spiking_som`** — a textbook Kohonen SOM (Euclidean BMU + Gaussian-neighbourhood update; no membrane, spike,
+    or time). The "spiking" label was decorative.
+  - **`sparse_distributed_memory`** — Kanerva SDM: Hamming-radius address activation + integer-counter votes over
+    bit-vectors. Neuromorphic-adjacent, but not spike-timing.
+  - **`fly_hash`** — random-projection LSH + winner-take-all over continuous vectors. Bio-inspired, no spikes.
+- The shipped core (`import snn_data_lake.*`) now contains only genuinely-spiking + supporting-infra modules; the
+  three moved modules remain zero-dep, CI-tested research modules (run as `research/<name>.py`). This is a tier
+  move, not a deletion — **81/81 self-checks** unchanged; core `dependencies = []` unchanged.
+### Notes
+- Acts on the v1.9 Fable 5 read-only scope-alignment review, which found the core aligned at its center but
+  drifting at the edges (a large penumbra of unwired, academic bolt-ons; a redundant matcher family; three
+  spiking-in-name-only members). First of a sequence realigning the core to the two-pillar thesis. Major version
+  bump because the installable package surface changed. (Follow-ups: wire the built arm primitives into the loop;
+  promote a Paradigm-C reasoner into the core; a zero-dep desktop control panel.)
+
 ## [v1.9] — Core hardening: actuator safety, determinism, robustness (from the core review) (2026-07-04)
 ### Fixed (safety-critical, real-hardware boundary)
 - **EMERGENCY_STOP now freezes the WIRE, not just the sim mirror** (`serial_arm.py`). `SerialArm.apply` gates the

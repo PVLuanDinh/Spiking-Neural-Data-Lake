@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 81/81 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v1.9** · 109 tagged releases (v0.1 → v1.9). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.0** · 110 tagged releases (v0.1 → v2.0). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 ---
 
@@ -234,7 +234,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (48 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (45 modules + lakehouse)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
     streaming_hub.py              streaming Paradigm A: live append + record-while-query (.spkl) + opt-in hot_motifs analytics
     spike_stream_sketch.py        Count-Min heavy-hitter sketch — fixed-memory hot-motif analytics for the stream
@@ -281,9 +281,6 @@ spiking-neural-data-lake/
     rank_order_coding.py          gain-invariant recognition (Thorpe rank code) — robust to sensor gain / rig change
     tempotron.py                  supervised spike-timing gesture matcher (one tempotron per command)
     lca_sparse_coding.py          LCA sparse coding + opt-in LCAMatcher (sparse-coding recognition over the library)
-    sparse_distributed_memory.py  distributed associative-recall matcher option (Kanerva SDM)
-    spiking_som.py                additive SOM clustering backend for gesture discovery (opt-in)
-    fly_hash.py                   FlyHash LSH index — fast candidate filter over stored windows (opt-in)
     demo.py                       the whole loop in one runnable file  (snn-demo)
     lakehouse/medallion.py        Bronze→Silver→Gold PoC (Parquet + polars)
     lakehouse/delta_demo.py       Delta Lake PoC (transaction log + OPTIMIZE + time-travel)
@@ -344,6 +341,17 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.0, scope realignment):_ **Core refocused on genuinely-spiking modules.** Moved the three
+"spiking-in-name-only" modules — `spiking_som` (a plain Kohonen SOM), `sparse_distributed_memory` (binary
+Hamming recall), `fly_hash` (continuous-vector LSH) — out of the installable `snn_data_lake` core into
+`research/`, since they compute over dense/binary vectors, not spike events. The shipped core now contains only
+genuinely-spiking + supporting-infra modules. Followed the v1.9 Fable 5 scope-alignment review; core `dependencies
+= []` unchanged, 81/81 self-checks (a tier move, not a removal).
+
+_Landed (v1.9, core hardening):_ **Actuator safety + determinism + robustness** — EMERGENCY_STOP now freezes the
+serial wire, calibration gate is non-bypassable, the default matcher is deterministic (see CHANGELOG). From the
+Fable 5 core review.
 
 _Landed (v1.8, research):_ **AdEx neuron** (`research/adex_neuron.py`) — the adaptive exponential integrate-and-fire
 neuron (Brette & Gerstner 2005): LIF plus an exponential spike-initiation term and a slow adaptation current `w`
