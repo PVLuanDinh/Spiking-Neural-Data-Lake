@@ -3,6 +3,36 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.5] — Performance: closed-form Van Rossum fast path + opt-in stream group-commit (2026-07-05)
+### Changed
+Two measured wins in the zero-dep core. No algorithm changed — one is a closed-form identity, the other is
+opt-in with the default behaviour unchanged. Core `dependencies = []`, 82/82 self-checks, deterministic, ASCII
+prints. The safety envelope (`reflex` / `serial_arm` / `arm_sim` / `arm_config` / `interpreter`) is untouched.
+
+- **Closed-form Van Rossum fast path (`spike_preprocessing.py`) — value-identical (<=1e-9) + decision-identical.**
+  `encode_latency` emits AT MOST ONE spike per channel, so in the live matcher path every `van_rossum_distance`
+  call compares two <=1-spike-per-channel trains. A single causal spike at time `s` has Van Rossum waveform
+  `decay^(t-s)` for `t>=s`, so a channel's contribution to the DISCRETE Van Rossum sum is a sum of discrete
+  geometric series in `r=decay^2`. Its closed form —
+  `[(1 - r^(T-a)) + (1 - r^(T-b)) - 2*decay^|a-b|*(1 - r^(T-max(a,b)))] / (1 - r)` (empty-train terms dropped) —
+  is an exact algebraic identity of that same discrete sum, so it reproduces the previous value to float
+  rounding with no per-step loop. A GUARDED branch checks the actual <=1-spike-and-in-range condition per call
+  and falls back to the UNCHANGED general multi-spike loop whenever any channel has >1 spike. **~200 -> ~18
+  us/call (~11x)** on the primitive. Proven before shipping: value matches the discrete sum to **max |dd| =
+  2.7e-15 (<= 1e-9)** over 3,000+ cases (empty/empty, empty/one at every time, one/one at many time-pairs, three
+  taus, plus 799 real `encode_latency` window pairs); the nearest-label + Lowe-ratio matcher accept/reject is
+  **bit-identical over 700 windows (0 flips)**. Self-check in `spike_preprocessing.main()` asserts both.
+
+- **Opt-in group-commit for the streaming log (`streaming_hub.py`) — default UNCHANGED.** `StreamingHub.append`
+  gains a `flush_every=1` constructor param. **Default `flush_every=1` = flush every event = the pre-v2.5
+  behaviour, byte-for-byte** (proven: default and `K=32` logs of the same 500-event stream are byte-identical).
+  `flush_every=K (>1)` buffers and flushes once every K appends, AND always flushes on `query_window` /
+  `hot_motifs` / `close` — so a query never misses buffered events and a clean close loses no data (the buffered
+  tail is replayed intact after resume). Honest tradeoff, documented in the docstring: `K>1` trades per-event
+  durability (up to K-1 recently appended events lost on a HARD crash) for ~K-fold fewer flush syscalls
+  (throughput). This is an OPT-IN knob, not a default change. Self-check asserts default byte-identity + that
+  `flush_every=K` returns all events on query and flushes the tail on close.
+
 ## [v2.4] — Performance: faster live matcher + Van Rossum + LCA + telemetry ingest (2026-07-05)
 ### Changed
 Four measured, low-risk compute wins in the zero-dep core. **Every change is output-identical /

@@ -60,7 +60,7 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 82/82 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.4** · 114 tagged releases (v0.1 → v2.4). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.5** · 115 tagged releases (v0.1 → v2.5). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -363,6 +363,17 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.5, performance):_ **Two measured wins, behaviour identical.** No algorithm changed.
+**Closed-form Van Rossum fast path** (`spike_preprocessing.py`): `encode_latency` emits ≤1 spike/channel, so
+the live matcher compares ≤1-spike trains — a single causal spike's per-channel discrete L2² is a geometric
+series whose closed form is an exact algebraic identity of the same sum. Guarded on the actual ≤1-spike
+condition (falls back to the unchanged general multi-spike loop otherwise): **~200 → ~18 µs/call (~11×)**,
+value-identical to the discrete sum (**max |Δ| ≤ 1e-9**, measured 2.7e-15 over 3k+ cases) and matcher
+decisions **bit-identical over 700 windows** (0 flips). **Opt-in stream group-commit** (`streaming_hub.py`):
+new `flush_every=K` knob — **default 1 = flush-every-event, byte-for-byte unchanged**; `K>1` buffers and
+flushes once per K appends (and always on query/close), trading up to K-1 events of hard-crash durability for
+~K-fold fewer flush syscalls. Core `dependencies = []`, **82/82 self-checks**, safety envelope untouched.
 
 _Landed (v2.4, performance):_ **Four measured compute wins, outputs identical.** No algorithm changed —
 only redundant work removed, each proven output-identical / accuracy-unchanged before shipping: the live

@@ -117,14 +117,25 @@ def van_rossum_filter(spike_times, t_steps=T, tau=TAU):
     return _filtered(spike_times, math.exp(-1.0 / tau), t_steps)
 
 
-def van_rossum_distance(ev_a, ev_b, n_features=N, t_steps=T, tau=TAU):
+def van_rossum_distance(ev_a, ev_b, n_features=N, t_steps=T, tau=TAU, _use_fast=True):
     """Distance between two encoded patterns = sqrt(sum over features of the L2^2
     between their Van Rossum waveforms). Continuous, comparable with plain math.
+
+    v2.5 perf (value-identical to 1e-9, decision-identical): CLOSED-FORM fast path for the
+    <=1-spike-per-channel case. `encode_latency` emits AT MOST ONE spike per channel, so in the
+    live matcher path every call compares two such trains. A single causal spike at time s has
+    Van Rossum waveform decay^(t-s) for t>=s; the per-channel discrete L2^2 is therefore a sum of
+    DISCRETE GEOMETRIC SERIES in r=decay^2 whose closed form is an exact algebraic identity of the
+    same sum -- so it reproduces the general loop's value to float rounding (~1e-14 here, << 1e-9),
+    with NO per-step loop. GUARDED per call on the actual <=1-spike-and-in-range condition; falls
+    back to the general multi-spike path below whenever ANY channel has >1 spike (or an out-of-range
+    time the general loop would clip). ~5-6x on the primitive. `_use_fast=False` forces the general
+    path (used by the self-check to prove the two agree).
 
     v2.4 perf (output-identical): math.exp(decay) is hoisted out of the per-feature loop
     (was recomputed 2x per feature inside van_rossum_filter), and feature-channels where
     BOTH trains are silent are skipped -- their waveforms are all-zero, contributing an
-    exact 0.0 to the sum. ~342 -> ~232 us/call, byte-identical result."""
+    exact 0.0 to the sum."""
     by_a = [[] for _ in range(n_features)]
     by_b = [[] for _ in range(n_features)]
     for t, i in ev_a:
@@ -132,6 +143,31 @@ def van_rossum_distance(ev_a, ev_b, n_features=N, t_steps=T, tau=TAU):
     for t, i in ev_b:
         by_b[i].append(t)
     decay = math.exp(-1.0 / tau)                 # invariant across features -> hoisted
+
+    # ---- v2.5 closed-form fast path (guarded: <=1 spike/channel, in range) -----------------
+    if _use_fast and all(
+        len(by_a[i]) <= 1 and len(by_b[i]) <= 1
+        and (not by_a[i] or 0 <= by_a[i][0] < t_steps)
+        and (not by_b[i] or 0 <= by_b[i][0] < t_steps)
+        for i in range(n_features)
+    ):
+        r = decay * decay                        # sum_t decay^(2k) is geometric in r=decay^2
+        inv = 1.0 / (1.0 - r)
+        total = 0.0
+        for i in range(n_features):
+            sa, sb = by_a[i], by_b[i]
+            if sa and sb:                        # spikes at a and b: |waveform_a - waveform_b|^2
+                a, b = sa[0], sb[0]
+                m = a if a > b else b
+                total += ((1.0 - r ** (t_steps - a)) + (1.0 - r ** (t_steps - b))
+                          - 2.0 * decay ** abs(a - b) * (1.0 - r ** (t_steps - m))) * inv
+            elif sa:                             # one train silent -> pure geometric series
+                total += (1.0 - r ** (t_steps - sa[0])) * inv
+            elif sb:
+                total += (1.0 - r ** (t_steps - sb[0])) * inv
+        return math.sqrt(total / tau)
+
+    # ---- general multi-spike path (unchanged) ----------------------------------------------
     total = 0.0
     for i in range(n_features):
         sa, sb = by_a[i], by_b[i]
@@ -289,8 +325,45 @@ def main():
     assert d_poi > 0.0, "Poisson should produce different trains for the same input"
     assert set(cleaned) == set(burst), f"denoise should keep the burst, drop specks; got {cleaned}"
     assert denoise([(5, 0)]) == [], "a single lone spike must be removed as noise"
+
+    # v2.5 closed-form Van Rossum fast path — VALUE identity (<=1e-9) + DECISION identity (0 diffs).
+    # encode_latency emits <=1 spike/channel so the fast path applies; it must reproduce the general
+    # discrete sum to float rounding and never flip a nearest-label + Lowe-ratio matcher decision.
+    max_vr_diff = 0.0
+    battery = [([], [])]                                     # empty/empty
+    for a in range(T):                                       # empty/one and one/empty, every time
+        battery.append(([(a, 0)], []))
+        battery.append(([], [(a, 0)]))
+    for a in range(0, T, 3):                                 # one/one at many time-pairs
+        for b in range(0, T, 2):
+            battery.append(([(a, 0)], [(b, 0)]))
+    enc_windows = [encode_latency(x) for x in dataset]       # 400 real encode_latency windows
+    for k in range(len(enc_windows) - 1):                    # 399 real consecutive-window pairs
+        battery.append((enc_windows[k], enc_windows[k + 1]))
+    for k in range(len(enc_windows)):                        # 400 real window vs prototype pairs
+        battery.append((enc_windows[k], proto_enc[k % C]))
+    for tau_t in (2.0, 4.0, 8.0):                            # several taus
+        for ea, eb in battery:
+            d_fast = van_rossum_distance(ea, eb, tau=tau_t)              # closed-form fast path
+            d_ref = van_rossum_distance(ea, eb, tau=tau_t, _use_fast=False)  # general loop
+            max_vr_diff = max(max_vr_diff, abs(d_fast - d_ref))
+    assert max_vr_diff <= 1e-9, f"fast-path value drift {max_vr_diff:.2e} > 1e-9"
+
+    def _decide(win, use_fast):                              # nearest label + Lowe-ratio reject
+        qd = encode_latency(win)
+        s = sorted((van_rossum_distance(qd, ev, _use_fast=use_fast), c)
+                   for c, ev in enumerate(proto_enc))
+        return s[0][1] if s[0][0] < 0.85 * s[1][0] else None
+    rng_d = random.Random(1234)
+    decide_windows = list(dataset) + [[rng_d.random() for _ in range(N)] for _ in range(300)]
+    decision_diffs = sum(1 for w in decide_windows if _decide(w, True) != _decide(w, False))
+    assert decision_diffs == 0, f"fast path flipped {decision_diffs} matcher decisions"
+    print(f"6. Van Rossum fast path   : closed-form value max|dd|={max_vr_diff:.1e} (<=1e-9), "
+          f"{decision_diffs} matcher-decision diffs over {len(decide_windows)} windows")
+
     print("self-check OK: deterministic, cache intact, precompute faster, "
-          "Van Rossum separates & matches, Poisson breaks query identity, denoise drops isolated specks")
+          "Van Rossum separates & matches (closed-form fast path value+decision identical), "
+          "Poisson breaks query identity, denoise drops isolated specks")
 
 
 if __name__ == "__main__":

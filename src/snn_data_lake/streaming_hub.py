@@ -23,25 +23,51 @@ _REC = struct.Struct("<II")     # (channel, time) = 8 bytes per event
 
 
 class StreamingHub:
-    def __init__(self, path, n_channels, resume=False):
+    def __init__(self, path, n_channels, resume=False, flush_every=1):
+        """`flush_every` (opt-in group-commit knob; DEFAULT 1 = the original behaviour, unchanged):
+
+          - flush_every == 1 : flush() after EVERY append -> durable-per-event crash recovery
+            (at most 0 events lost on a hard crash). This is the default and is byte-for-byte
+            identical to the pre-v2.5 hub.
+          - flush_every == K > 1 : buffer writes and flush() only once per K appends (and always
+            on query_window / hot_motifs / close). Trades per-event durability (up to K-1 recently
+            appended events can be lost on a HARD crash before the group flush) for ~K-fold fewer
+            flush syscalls -> higher append throughput. The in-memory index still updates on every
+            append, so a query is never stale; a clean close() always flushes the buffered tail
+            (no data lost on a normal shutdown)."""
         if n_channels <= 0:
             raise ValueError("n_channels must be positive")
+        if flush_every < 1:
+            raise ValueError("flush_every must be >= 1")
         self.path = path
         self.n = n_channels
+        self.flush_every = int(flush_every)
+        self._pending = 0                                   # appends written but not yet flushed
         self.ch = [array("I") for _ in range(n_channels)]   # in-memory sorted spike times
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         if resume and os.path.exists(path):
             self._replay()
         self._f = open(path, "ab")                          # durable append-only handle
 
+    def _flush_pending(self):
+        """Flush buffered appends (no-op when nothing is pending -> the default path never adds a
+        flush at a query/close point, keeping flush_every=1 byte-for-byte identical to before)."""
+        if self._pending:
+            self._f.flush()
+            self._pending = 0
+
     # ---- record (live) ------------------------------------------------------
     def append(self, channel, t):
-        """Record one spike now: write to the durable log, update the live index."""
+        """Record one spike now: write to the durable log, update the live index.
+        Flush cadence is governed by `flush_every` (default 1 = flush every event)."""
         if not 0 <= channel < self.n:
             raise IndexError(f"channel {channel} out of range [0,{self.n})")
         t = int(t)
         self._f.write(_REC.pack(channel, t))
-        self._f.flush()                                     # durable per event
+        self._pending += 1
+        if self._pending >= self.flush_every:               # default flush_every=1 -> durable per event
+            self._f.flush()
+            self._pending = 0
         a = self.ch[channel]
         if a and t < a[-1]:                                 # out-of-order arrival
             a.insert(bisect_left(a, t), t)                  # ponytail: O(n) insert; spikes are
@@ -51,6 +77,7 @@ class StreamingHub:
     # ---- query (any time, while still recording) ----------------------------
     def query_window(self, t0, t1, channels=None):
         """events with t0 <= t < t1; touches only the requested channels (no full scan)."""
+        self._flush_pending()                               # a query never misses buffered events
         out = []
         for c in (channels if channels is not None else range(self.n)):
             a = self.ch[c]
@@ -68,6 +95,7 @@ class StreamingHub:
         regardless of how many distinct motifs occur -> the scale-out analytics primitive (the single-machine
         index could exact-count; the sketch is what carries to the cloud path). Read-only: does not touch the
         log, index, or any append/query behaviour. Returns a list of channel frozensets, most frequent first."""
+        self._flush_pending()                               # durable up to this analytics read
         from snn_data_lake.spike_stream_sketch import HeavyHitters
         bins = {}
         for c in range(self.n):
@@ -81,6 +109,7 @@ class StreamingHub:
         return hh.heavy()
 
     def close(self):
+        self._flush_pending()                               # clean close always flushes the tail
         self._f.close()
 
     def __enter__(self):
@@ -176,8 +205,42 @@ def main():
     assert disk_bytes == total * _REC.size, "durable log size != events x 8"
     assert replayed == total and q_after == q_final, "replay did not reconstruct the store"
     assert hot and set(hot[0]) == {1, 4, 7}, f"hot_motifs must surface the recurring coactivation motif ({hot})"
+
+    # ---- v2.5 opt-in group-commit: default byte-identical; K>1 loses nothing on query/close ----
+    gc_events = [(rng.randrange(N), rng.randrange(DUR)) for _ in range(500)]
+    p1 = os.path.join(".", "data", "gc_default.spkl")       # flush_every=1 (current behaviour)
+    pk = os.path.join(".", "data", "gc_group.spkl")         # flush_every=K (opt-in group-commit)
+    for p in (p1, pk):
+        if os.path.exists(p):
+            os.remove(p)
+    h1 = StreamingHub(p1, N)                                 # DEFAULT: flush every event
+    hk = StreamingHub(pk, N, flush_every=32)                 # K=32: buffer, flush every 32
+    for c, t in gc_events:
+        h1.append(c, t)
+        hk.append(c, t)
+    q1 = h1.query_window(0, DUR)                             # query flushes hk's buffered tail
+    qk = hk.query_window(0, DUR)                             # ...so K>1 misses nothing on a query
+    tail_pending = len(gc_events) % 32                       # 500 % 32 = 20 buffered before close
+    h1.close(); hk.close()                                   # clean close flushes hk's last group
+    with open(p1, "rb") as f:
+        b1 = f.read()
+    with open(pk, "rb") as f:
+        bk = f.read()
+    hk2 = StreamingHub(pk, N, resume=True)                   # reload K-hub log from disk
+    replayed_k = hk2.n_events()
+    hk2.close()
+    expected = sorted((t, c) for c, t in gc_events)
+    print(f"group-commit : default {len(b1):,}B vs K=32 {len(bk):,}B "
+          f"(byte-identical={b1 == bk}); {tail_pending}-event tail flushed on close; "
+          f"query saw all {len(qk)} events")
+
+    assert len(b1) == len(gc_events) * _REC.size, "default (flush_every=1) on-disk log size drifted"
+    assert b1 == bk, "group-commit changed the on-disk bytes vs flush-every-event default"
+    assert sorted(q1) == sorted(qk) == expected, "group-commit dropped/reordered events in a query"
+    assert replayed_k == len(gc_events), "clean close did not flush the buffered tail to the durable log"
     print("self-check OK: record-while-query works, queries are partial + live, "
-          "durable log replays exactly; hot_motifs surfaces the recurring coactivation motif")
+          "durable log replays exactly; hot_motifs surfaces the recurring coactivation motif; "
+          "group-commit default is byte-identical and flush_every=K loses nothing on query/close")
 
 
 if __name__ == "__main__":
