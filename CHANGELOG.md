@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.34] — Synfire chain: stable feedforward propagation of a synchronous spike volley (Abeles/Diesmann) (2026-07-06)
+### Added
+- **`src/snn_data_lake/synfire_chain.py`** — a precise-timing network phenomenon: the **synfire chain** (Abeles,
+  *Corticonics*, 1991; Diesmann, Gewaltig & Aertsen, *Nature* 402:529, 1999). A feedforward chain of L pools of w
+  coincidence neurons; a synchronous **pulse packet** (`a` spikes with temporal jitter `σ`) injected into layer 1
+  either **propagates** — its `(a, σ)` converging to a stable attractor (near-full activation, sharpened timing) — or
+  **extinguishes** (`a → 0`), with a **separatrix** in the `(a, σ)` plane dividing the two. Realized as an explicit
+  LIF-pool coincidence simulation: each pool neuron leaky-integrates the previous pool's actual output spike times
+  (the leak time-constant *is* the coincidence window), fires at its (heterogeneous) threshold crossing, and the
+  output jitter follows the membrane slope — so coincident rises sharpen timing and dispersed ones smear it.
+  `SynfireChain(n_layers, width, threshold, window, jitter_gain, seed)` exposes `propagate(a0, σ0)` (per-layer `(a,σ)`
+  trace), `survives`, `final_state`, `sharpening`.
+- Self-check (deterministic, ASCII; 12 pools × 100 neurons, seed 0) shows the **survival/extinction separatrix**: a
+  strong synchronous packet `(a0=90, σ0=3)` propagates to **full activation (100/100)** and its jitter
+  **self-sharpens 2.91 → 0.01** (locking to an attractor, tail activity constant at 100); a weak packet `(a0=35, σ0=3)`
+  **extinguishes to 0** by layer 1; and a strong-but-**dispersed** packet `(a0=90, σ0=9)` **also dies (0)** — so it is
+  **synchrony, not spike count, that carries the packet**; two fresh instances give an identical trace.
+- **Genuinely distinct** (stated in the docstring): `kuramoto_sync` synchronizes coupled *phase* oscillators (order
+  parameter r) — a coherence transition, not a propagating spike packet; `neuronal_avalanches` is a *stochastic*
+  branching cascade with a power-law size distribution — the opposite of a stable locked volley; the research
+  `delay_learning`/`polychronization` are *delay*-based coincidence groups (matched conduction delays), whereas a
+  synfire chain is **feedforward synchrony** (a zero-lag volley pool-to-pool). Not `htm_sequence_memory` (SDR sequence
+  prediction), not `theta_gamma_code` (phase slots).
+- Registered CORE (**105/105** self-checks; the Core Runner tab / `--run-core` now runs 71 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a reduced LIF-pool
+  coincidence chain on a homogeneous feedforward chain — **no recurrence, no plasticity, no real cortical
+  connectivity**; the packet-propagation level of synchrony, not spiking biophysics, not cognition.
+
 ## [v2.33] — Neuronal avalanches: critical branching + scale-free cascade statistics (Beggs-Plenz) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/neuronal_avalanches.py`** — a network-level **criticality** axis (absent until now): the
