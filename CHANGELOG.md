@@ -3,6 +3,31 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.26] — Theta-gamma code: ordered working memory by phase multiplexing (Lisman) (2026-07-06)
+### Added
+- **`src/snn_data_lake/theta_gamma_code.py`** — the canonical **theta-gamma neural code** for short-term working
+  memory (Lisman & Idiart, *Science* 267:1512, 1995; Lisman & Jensen, *Neuron* 77:1002, 2013). Several items are
+  multiplexed **in time**: each item is the cell ensemble that fires in a distinct **gamma** sub-cycle, and one slow
+  **theta** cycle nests K gamma cycles — so the held items are ordered by theta **phase** (item i at phase `2πi/K`).
+  The gamma-per-theta ratio *is* the working-memory capacity (~**7±2**): pushing a K+1-th item **evicts the oldest**.
+  `ThetaGammaCode(capacity=7)` exposes `encode`/`encode_sequence`, `readout` (items in phase order), `slot_phase`/
+  `phases`/`phase_of`, `slot_of`, and `spike_raster`/`raster_with_ensembles` (one deterministic sparse SDR per gamma
+  window).
+- Self-check (deterministic, ASCII): a fitting sequence reads back **in order** by phase; phases are strictly
+  **monotonic + distinct** (position → phase, `slot_of(item i) == i`); overflow past K=7 **evicts the oldest**
+  (`push 0..9 → keep [3..9]`, `evict [0,1,2]`); each gamma slot reads back exactly its own item with **distinct**
+  ensembles (max cross-ensemble overlap `1 < w=8` → clean separation); two fresh instances give identical
+  buffer/readout/phases/raster.
+- **Genuinely distinct** (stated in the docstring): `ring_attractor` holds ONE self-sustaining spatial bump;
+  `htm_sequence_memory` does next-SDR *prediction*; `hippocampus`/hopfield do pattern completion of ONE attractor.
+  This holds **several** items at once and reads back their **order** by phase — a phase-multiplexed buffer, not a
+  bump, a predictor, or an attractor.
+- Registered CORE (**97/97** self-checks; the Core Runner tab / `--run-core` now runs 63 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a discrete phase-slot
+  buffer with integer slots + deterministic SDR ensembles — a reduced model of the theta-gamma code on synthetic
+  items, **no biophysical oscillators / LFP / inhibition dynamics**, not cognition.
+
 ## [v2.25] — Acetylcholine: the encode-vs-retrieve neuromodulator (Hasselmo) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/acetylcholine.py`** — completes the neuromodulator set (dopamine RPE in `valence_stdp`, tonic
