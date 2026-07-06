@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.45] — Reservoir sampling: a uniform one-pass sample of an unbounded stream (Vitter) (2026-07-06)
+### Added
+- **`src/snn_data_lake/reservoir_sampling.py`** — the canonical streaming *sampling* algorithm (Knuth's Algorithm R;
+  Vitter, "Random Sampling with a Reservoir", *ACM TOMS* 11:37, 1985): keep a reservoir of size `k` — the first `k`
+  items fill it, then the i-th item (1-indexed, `i>k`) is kept with probability `k/i` and, if kept, overwrites a
+  uniformly-random reservoir slot — so after one pass over `N` items in **O(k)** memory (never O(N)) the reservoir is
+  a **uniform** sample of `k` of them (every item present with probability exactly `k/N`), with `N` never known in
+  advance. The `k/i` acceptance is the whole trick: it exactly cancels the extra chances a late item has to survive
+  later draws, so there is **no position bias** (the naive "keep the first k" or "keep the last k" both fail this).
+  `Reservoir(k, seed)` — `add` (returns kept/passed), `add_all`, `sample`, `n_seen`, `reset` — plus a
+  `reservoir_sample(stream, k, seed)` helper.
+- Self-check (deterministic, ASCII; k=10, N=50, 5000 seeded runs): the empirical inclusion frequency of **every** id
+  sits within the tolerance band of `k/N = 0.2000` — mean exactly **0.20000**, **max deviation 0.01480** (~2.6 std
+  errors); the **first item (0.1928) ≈ the last item (0.2010)**, both ~0.20 — no early/late bias; a huge stream
+  leaves the reservoir at exactly **k=10 for N=100000** (O(k) not O(N) — a full copy would hold 100000); `N≥k` gives
+  exactly `k` real stream items and `N<k` returns the whole stream in order; two fresh instances give an identical
+  sample.
+- **Genuinely distinct** (stated in the docstring): `spike_cardinality` (HyperLogLog) and `spike_stream_sketch`
+  (Count-Min) are **sketches** — they estimate a *statistic* (distinct count / frequency) in fixed memory and retain
+  **no** items; this retains an actual uniform *sample* of the items themselves (k real stream elements you can read
+  and pass on — sampling, not sketching). `experience_replay` is a **bounded** buffer that samples from what it has
+  already *stored*; reservoir sampling is the **one-pass** algorithm for sampling uniformly from an *unbounded* stream
+  of unknown length without storing it all.
+- Registered CORE (**116/116** self-checks; the Core Runner tab / `--run-core` now runs 82 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: classic Algorithm-R
+  reservoir sampling — a single unweighted reservoir over synthetic ids — the stream-sampling level; **no weighted
+  (A-Res/A-ExpJ), distributed, or time-decayed variants**, not a spiking implementation, not cognition.
+
 ## [v2.44] — HyperLogLog cardinality: count distinct spike-motifs in fixed tiny memory (Flajolet) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/spike_cardinality.py`** — completes the lake's fixed-memory streaming-sketch trio with the
