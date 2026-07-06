@@ -3,6 +3,30 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.19] — Frequency-gated cell-assembly memory (FIP/FID) (2026-07-06)
+### Added
+- **`src/snn_data_lake/frequency_memory.py`** — implements the **frequency-induced mechanism** of Lei, Li, Li, Chen,
+  Zhang, Jin & Yang, *"How to form brain-like memory in spiking neural networks with the help of frequency-induced
+  mechanism"* (Neurocomputing 623:129361, 2025, [DOI](https://doi.org/10.1016/j.neucom.2025.129361)). Firing
+  **frequency gates plasticity**: a recurrent rate-net tracks each neuron's firing-frequency EMA; neurons crossing a
+  high threshold enter **FIP** (plastic) and their co-active pairs are bound by Hebbian + structural potentiation into
+  a recurrent **cell assembly** (the memory), while low-frequency neurons enter **FID** (frozen), which protects
+  earlier assemblies.
+- Self-check (deterministic, ASCII) demonstrates the paper's claimed properties on synthetic patterns: **frequency-
+  gating** (a one-shot pattern potentiates nothing — the FIP gate stays closed — while a *repeated* pattern crosses
+  into FIP and forms an assembly), **formation** (assembly weight 1.0 vs baseline 0.0), **recollection** (a 40%
+  partial cue completes the full 12-neuron pattern, 0 spurious), **separation** (two distinct patterns → low-overlap
+  assemblies, Jaccard 0.20), and **interference-immunity** (recall of A survives learning B, with A's neurons
+  FID-frozen and their weights bit-for-bit unchanged).
+- **Genuinely distinct** (stated in the docstring) from `bcm_plasticity` (scales LTP/LTD magnitude, no on/off gate,
+  no recurrence), `growing_learner` (feed-forward prototype neurogenesis), and `hippocampus` (fixed random DG/CA3, not
+  frequency-gated formation): the headline is frequency gating plasticity on/off → recurrent assemblies →
+  interference-immune recall.
+- Registered CORE (**92/92** self-checks; the Core Runner tab / `--run-core` now runs 58 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a rate-based caricature
+  of the paper's FIP/FID + structural plasticity (exact equations paywalled), synthetic patterns — **not cognition**.
+
 ## [v2.18] — Out-of-core streaming: emulate chips bigger than memory (AirLLM-inspired) (2026-07-05)
 ### Added
 - **`src/snn_data_lake/neuro_chip_stream.py`** — applies **AirLLM's layer-streaming architecture** to the

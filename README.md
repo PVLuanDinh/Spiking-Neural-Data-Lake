@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 91/91 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 92/92 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.18** · 128 tagged releases (v0.1 → v2.18). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.19** · 129 tagged releases (v0.1 → v2.19). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.18.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.18.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. Five tabs: Arm Control, Live Recognition, Lake Browser, NL Command, and **Core Runner** — which runs the *entire* zero-dep core (every module's self-check) inside the app (`snn-ui.exe --run-core` to run it headless). (Or clone the source: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.19.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.19.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. Five tabs: Arm Control, Live Recognition, Lake Browser, NL Command, and **Core Runner** — which runs the *entire* zero-dep core (every module's self-check) inside the app (`snn-ui.exe --run-core` to run it headless). (Or clone the source: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 91 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 92 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 91-module list is canonical in
+plus separate lint and coverage jobs. The 92-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (56 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (57 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,18 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.19, product):_ **Frequency-gated cell-assembly memory (FIP/FID).** `frequency_memory.py` implements
+the frequency-induced mechanism of Lei et al. 2025 (*Neurocomputing* 623:129361,
+[DOI](https://doi.org/10.1016/j.neucom.2025.129361)): firing **frequency gates plasticity** — high-frequency neurons
+enter **FIP** (plastic) and bind into a recurrent **cell assembly** via Hebbian + structural potentiation, while
+low-frequency neurons enter **FID** (frozen), protecting earlier memories. Self-check demonstrates the paper's claimed
+properties on synthetic patterns: **frequency-gating** (a one-shot pattern forms nothing; a *repeated* one forms an
+assembly), formation, **recollection** (a 40% partial cue completes the full pattern, 0 spurious), **separation**
+(distinct patterns → low-overlap assemblies, Jaccard 0.20), and **interference-immunity** (recall of A survives
+learning B, its neurons FID-frozen). Distinct from `bcm`/`growing_learner`/`hippocampus` (frequency gates plasticity
+on/off → recurrent assemblies). Pure-stdlib core (`dependencies = []`), **92/92** self-checks; the 5 safety-envelope
+files untouched. Honest ceiling: rate-based caricature (exact paper equations paywalled), synthetic patterns, not cognition.
 
 _Landed (v2.18, product):_ **Out-of-core streaming — emulate chips bigger than memory (AirLLM-inspired).**
 `neuro_chip_stream.py` applies AirLLM's layer-streaming idea to the chip emulator: the chip's **cores are streamed
