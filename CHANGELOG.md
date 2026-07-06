@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.43] — Population vector decoder: read a direction out of a tuned population (Georgopoulos) (2026-07-06)
+### Added
+- **`src/snn_data_lake/population_vector.py`** — the read-out counterpart to the RBF encoder: the **population
+  vector** decode (Georgopoulos, Schwartz & Kettner, *Science* 233:1416, 1986 — how motor cortex encodes movement
+  direction). A population of N neurons each with a preferred direction φᵢ and rectified-cosine tuning
+  `rᵢ(θ) = baseline + gain·max(0, cos(θ − φᵢ))` encodes a direction; the population vector decodes it as the
+  baseline-subtracted, rate-weighted vector sum of preferred directions,
+  `θ̂ = atan2(Σᵢ (rᵢ − baseline)·(cos φᵢ, sin φᵢ))`. (In the continuum this is exact — integrating
+  `max(0,cos(θ−φ))·(cosφ,sinφ)` over φ gives `(π/2)·(cosθ,sinθ)` — so an evenly-spread population is unbiased.)
+  `PopulationVector(n_neurons, baseline, gain, jitter, seed)` exposes `rates(theta, noise)`, `decode(rates)`,
+  `decode_direction`, `best_neuron_direction`, and `angular_error`.
+- Self-check (deterministic, ASCII; 2000 directions): a spread population decodes to **mean 0.404° / max 0.811°**
+  error (noise-free, **odd N=15** — flagged honestly, because an *even* evenly-spread rectified-cosine population
+  cancels every contaminating harmonic and decodes exact to machine precision, which would read as rigged); accuracy
+  **improves with N** under a fixed noise (N=8 → **11.111°**, N=64 → **3.818°**, the √N averaging effect); under noise
+  the population (**7.672°**) clearly beats reading the single most-active neuron's preferred direction (**18.730°**);
+  the decode is **unbiased** (signed bias **+0.0013°**); two fresh instances give identical decoded directions.
+- **Genuinely distinct** (stated in the docstring): `population_encoding` is an *encoder* — it maps a scalar input to
+  a vector of RBF/Gaussian activations and decodes by an activation-weighted centroid of bin centres on a *line*; this
+  is the inverse operation on a *circular* variable — mapping cosine-tuned rates back to an angle by the rate-weighted
+  *vector sum* of preferred directions (Georgopoulos), not an RBF scalar centroid. `cue_integration` fuses independent
+  scalar estimates by inverse-variance weighting — this decodes one direction from many tuned cells by vector
+  summation (no variances, no reliability weights).
+- Registered CORE (**114/114** self-checks; the Core Runner tab / `--run-core` now runs 80 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a static cosine-tuned
+  population with the Georgopoulos vector-sum decode on synthetic 2-D directions — the population-readout level, **not
+  a spiking-network implementation, no learning of the tuning curves, 2-D directions only**; not cognition.
+
 ## [v2.42] — Kalman filter: recursive optimal state estimation (Kalman 1960) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/kalman_filter.py`** — *dynamic* optimal estimation: the linear **Kalman filter** (Kalman,
