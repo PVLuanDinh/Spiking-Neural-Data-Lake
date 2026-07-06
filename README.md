@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 106/106 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 107/107 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.35** · 145 tagged releases (v0.1 → v2.35). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.36** · 146 tagged releases (v0.1 → v2.36). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.35.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.35.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.36.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.36.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 106 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 107 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 106-module list is canonical in
+plus separate lint and coverage jobs. The 107-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (71 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (72 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,25 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.36, product):_ **Efference copy / forward model — cancel reafference, flag exafference (von Holst / Wolpert).**
+`forward_model.py` adds action-conditioned sensory prediction: an **efference copy** of the motor command feeds an
+internal **forward model** that predicts the next sensory state `ŝ_{t+1} = s_t + dt·(â·s_t + b̂·u_t)`, and the
+residual `e = s_{t+1} − ŝ_{t+1}` **cancels self-generated sensation** (reafference) while **flagging external
+perturbations** (exafference) — the reafference principle (von Holst & Mittelstaedt 1950) + internal forward models
+(Wolpert, Ghahramani & Jordan, *Science* 269:1880, 1995). Self-check on a self-contained abstract linear plant: a
+matched model **cancels reafference** (mean self-generated error −2.9e-04, down to the real sensor-noise floor 4.9e-03);
+an injected external perturbation **spikes the error to 0.198 vs a 0.005 baseline** and is flagged at exactly the
+perturbed step; the **same sensory change (Δs=0.044)** is read as **self** (`e≈0`, not flagged) when commanded but as
+**external** (`e=0.056`, flagged) when it comes from an equal unmodeled force — same Δs, opposite interpretation,
+because only the command carries an efference copy; an online delta rule **learns a mismatched plant** (error 0.013 →
+0.000007, 1876× lower; `â,b̂` converge to the true −0.3, 0.8); deterministic. It is a **read-only** predictor +
+comparator — it emits no motor command and drives no hardware (the 5 safety-envelope files are neither touched nor
+imported). Distinct from `predictive_coding` (static latent-cause inference, no action/efference copy), `spiking_pid`
+(feedback control that emits a command), `ring_attractor`'s proprioceptive dead-reckoning (state integration, not
+sensory-feedback prediction), and `drift_monitor` (statistical, not action-conditioned). Pure-stdlib core
+(`dependencies = []`), **107/107** self-checks. Ceiling: a reduced linear forward model + comparator on a synthetic
+plant — the efference-copy level, not a spiking motor-control network, not cognition.
 
 _Landed (v2.35, product):_ **Astrocyte / tripartite synapse — slow, local, activity-driven glial gain (Araque).**
 `astrocyte_modulation.py` adds the **third element** of the synapse — an astrocyte that wraps a group of synapses,

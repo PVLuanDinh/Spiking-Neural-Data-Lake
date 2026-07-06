@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.36] — Efference copy / forward model: cancel reafference, flag exafference (von Holst / Wolpert) (2026-07-06)
+### Added
+- **`src/snn_data_lake/forward_model.py`** — action-conditioned sensory prediction: an **efference copy** of the
+  motor command `u_t` feeds an internal **forward model** that predicts the next sensory state
+  `ŝ_{t+1} = s_t + dt·(â·s_t + b̂·u_t)`; the residual `e = s_{t+1} − ŝ_{t+1}` **cancels self-generated sensation**
+  (reafference → `e≈0`) while **flagging external perturbations** (exafference → `e` large). The reafference principle
+  (von Holst & Mittelstaedt 1950) + internal forward models (Wolpert, Ghahramani & Jordan, *Science* 269:1880, 1995;
+  Sperry's corollary discharge). A self-contained abstract `Plant(a, b, noise, dt, seed)` holds the true dynamics with
+  an `external` channel; `ForwardModel(a, b, dt, seed)` exposes `predict`, `residual`, `detect(thresh)`, and an online
+  `update(lr)` (delta/LMS on `â, b̂`). **Read-only** — emits no motor command, drives no hardware.
+- Self-check (deterministic, ASCII): a matched model **cancels reafference** (mean self-generated error −2.93e-04,
+  down to the real sensor-noise floor mean|e| 4.86e-03); an injected external perturbation **spikes the error to
+  0.198 vs a 0.005 baseline** (thresh 0.05) and `detect` flags exactly the perturbed step `[30]`; the **same sensory
+  change Δs=0.044** is read as **self** (`e=0`, not flagged) when commanded but as **external** (`e=0.056`, flagged)
+  when produced by an equal unmodeled force — same Δs, opposite interpretation, because only the command carries an
+  efference copy; an online delta rule **learns a mismatched plant** (mean|e| 0.0131 → 0.000007, 1876× lower; `â,b̂`
+  converge to the true −0.3, 0.8); two fresh instances give identical residual traces.
+- **Genuinely distinct** (stated in the docstring): `predictive_coding` infers latent causes of a *static* input with
+  no action/efference copy; `spiking_pid` is feedback *control* that emits a command (this emits none — a read-only
+  predictor/comparator); `ring_attractor`'s ProprioceptiveEstimator dead-reckons commanded deltas into a state angle
+  (state integration, not sensory-feedback prediction + reafference cancellation); `drift_monitor` is statistical, not
+  action-conditioned.
+- Registered CORE (**107/107** self-checks; the Core Runner tab / `--run-core` now runs 73 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are **neither touched nor imported** — this module is a
+  standalone read-only forward model + comparator. ponytail ceiling: a reduced linear forward-model + comparator on a
+  synthetic abstract plant with delta-rule learning — the efference-copy / reafference level, **not a spiking
+  motor-control network, not biophysics**; not cognition.
+
 ## [v2.35] — Astrocyte / tripartite synapse: slow, local, activity-driven glial gain (Araque) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/astrocyte_modulation.py`** — the **third element** of the synapse: an astrocyte that wraps a
