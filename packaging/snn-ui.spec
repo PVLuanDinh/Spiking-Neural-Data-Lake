@@ -15,11 +15,12 @@ ROOT = os.path.dirname(SPECPATH)                 # packaging/ -> repo root  (SPE
 SRC = os.path.join(ROOT, "src")
 sys.path.insert(0, SRC)                          # so collect_submodules can import the package
 
-hiddenimports = collect_submodules("snn_data_lake")   # bundle every snn_data_lake module
+hiddenimports = collect_submodules("snn_data_lake") + ["run_selfchecks"]   # bundle every snn_data_lake
+# module + run_selfchecks (the canonical CORE list) so the Core Runner tab / --run-core work in the .exe
 
 a = Analysis(
     [os.path.join(SPECPATH, "snn_ui_main.py")],
-    pathex=[SRC, SPECPATH],
+    pathex=[SRC, SPECPATH, ROOT],                # ROOT so PyInstaller finds run_selfchecks.py
     binaries=[],
     datas=[],
     hiddenimports=hiddenimports,

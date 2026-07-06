@@ -3,6 +3,24 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.15] — Core Runner: the entire core runs inside the app (and the .exe) (2026-07-05)
+### Added
+- **`control_panel.py` gains a fifth tab, "Core Runner"** — runs the **ENTIRE core project from inside the app**:
+  every CORE module's own self-check, executed **in-process** (`runpy.run_module(run_name="__main__")` with isolated
+  `sys.argv`), PASS/FAIL live with a running summary. No `python` subprocess is spawned, so it works inside the
+  frozen `.exe` where there is no interpreter to shell out to. Answers "does the app actually contain and run the
+  core?" — yes, demonstrably.
+- **`--run-core` CLI** (`snn-ui.exe --run-core` / `python -m snn_data_lake.control_panel --run-core`) runs the whole
+  core headlessly and exits 0/1. Verified in the packaged exe: **54/54 core self-checks passed**.
+- The module list is `run_selfchecks.CORE` (minus `control_panel` itself) — the **single source of truth**, now
+  **bundled into the exe** (`packaging/snn-ui.spec`: added the repo root to `pathex` + `run_selfchecks` to
+  `hiddenimports`), so the Core Runner shows the same list CI runs, not a drifting copy.
+- The headless `--smoke` self-check now also asserts the runner (the core list is non-empty and a representative
+  module runs to completion in-process). Rebuilt into the downloadable `snn-ui.exe` + release zip (QUICKSTART now
+  lists five tabs).
+- Zero-dep core (`dependencies = []`), **88/88** self-checks; the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched.
+
 ## [v2.14] — NL Command tab: the natural-language addon, in the desktop app (2026-07-05)
 ### Added
 - **`control_panel.py` gains a fourth tab, "NL Command"** — the natural-language addon exposed in the GUI. Type

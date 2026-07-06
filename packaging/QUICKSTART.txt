@@ -9,7 +9,7 @@ HOW TO RUN
 1. Unzip this archive to a folder.
 2. Double-click snn-ui.exe to launch.
 
-THE FOUR TABS
+THE FIVE TABS
   Arm Control      Live 2-link simulated arm. Every button is safety-gated:
                    collision detection, EMERGENCY_STOP, command allow-list.
 
@@ -24,6 +24,10 @@ THE FOUR TABS
                    safe allow-listed arm action (driven through the same gated
                    Arm Control path) or a lake query, or is rejected. Zero-dep
                    keyword backend by default.
+
+  Core Runner      Run the ENTIRE core project from inside the app: every core
+                   module's self-check, PASS/FAIL live. The whole core is bundled
+                   in this .exe -- no Python needed. Headless too: snn-ui.exe --run-core
 
 SMOKE TEST (No Display)
   If you have no GUI display, verify the app works:

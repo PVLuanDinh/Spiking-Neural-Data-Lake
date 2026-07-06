@@ -16,6 +16,9 @@ headless demos use —
                        (driven through the SAME gated ArmSim.apply() as tab 1) or a lake query, or
                        REJECTS it. Zero-dep StubBackend; the backend can only pick a label, never a
                        raw command (an optional on-device AirLLM backend stays CLI-opt-in via run_local).
+  5. Core Runner     : run the ENTIRE core project from inside the app — every CORE module's own
+                       self-check, in-process (no python subprocess), PASS/FAIL live. Proves the whole
+                       core is bundled and runnable in the packaged .exe. Also headless: snn-ui --run-core.
 
 No arm motion bypasses the envelope: every button calls ArmSim.apply(cmd) (reflex / E-STOP /
 collision gate untouched). Nothing here reimplements recognition, the interpreter, or the store.
@@ -23,6 +26,7 @@ collision gate untouched). Nothing here reimplements recognition, the interprete
   snn-ui                                        # console entry point (pip install -e .)
   python -m snn_data_lake.control_panel --gui   # launch the window as a module
   python -m snn_data_lake.control_panel --smoke # headless-safe CI self-check (no display needed)
+  python -m snn_data_lake.control_panel --run-core  # run the ENTIRE core in-process (headless), exit 0/1
 """
 import math
 import os
@@ -373,6 +377,114 @@ class NLTab(ttk.Frame):
         self.log.configure(state="disabled")
 
 
+# ---- core runner: run the ENTIRE core project in-process (no python subprocess) --
+def core_modules():
+    """The canonical CORE self-check list (single source of truth: run_selfchecks.CORE),
+    minus control_panel itself (this IS the running app). run_selfchecks is bundled into the
+    .exe so the whole core is runnable from the packaged app, not just from a source tree."""
+    try:
+        from run_selfchecks import CORE
+    except Exception:
+        return []
+    return [m for m in CORE if m != "control_panel"]
+
+
+def run_core_selfcheck(mod):
+    """Run one CORE module's own self-check IN-PROCESS (its __main__ block, via runpy) and
+    capture output. Returns (ok, text). No subprocess -> works inside the frozen .exe. sys.argv
+    is isolated to [mod] so a module sees no stray app flags (mimics `python -m ...`)."""
+    import io
+    import runpy
+    import sys
+    from contextlib import redirect_stderr, redirect_stdout
+    buf = io.StringIO()
+    saved_argv = sys.argv
+    sys.argv = [mod]
+    try:
+        with redirect_stdout(buf), redirect_stderr(buf):
+            runpy.run_module(f"snn_data_lake.{mod}", run_name="__main__")
+        return True, buf.getvalue()
+    except SystemExit as e:                            # a module may sys.exit(0) on success
+        return (e.code in (0, None)), buf.getvalue()
+    except BaseException as e:                          # AssertionError / any self-check failure
+        return False, f"{buf.getvalue()}\n{type(e).__name__}: {e}"
+    finally:
+        sys.argv = saved_argv
+
+
+def run_all_core(emit=print):
+    """Run EVERY core module's self-check in-process; emit 'PASS/FAIL <mod>' + a summary.
+    Returns True iff all passed. Backs both the --run-core CLI and the Core Runner tab."""
+    mods = core_modules()
+    failed = [m for m in mods if not _emit_result(m, emit)]
+    emit("=" * 56)
+    emit(f"{len(mods) - len(failed)}/{len(mods)} core self-checks passed"
+         + (f"   FAILED: {', '.join(failed)}" if failed else ""))
+    return not failed
+
+
+def _emit_result(mod, emit):
+    ok, _out = run_core_selfcheck(mod)
+    emit(f"{'PASS' if ok else 'FAIL'}  {mod}")
+    return ok
+
+
+# ---- tab 5: Core Runner ---------------------------------------------------------
+class CoreTab(ttk.Frame):
+    """Run the ENTIRE core project from inside the app: every CORE module's own self-check,
+    in-process, PASS/FAIL live. Proves the whole core is bundled and runnable in the packaged
+    .exe (no python interpreter / subprocess needed)."""
+
+    def __init__(self, master):
+        super().__init__(master, padding=8)
+        self.mods = core_modules()
+        top = ttk.Frame(self); top.grid(row=0, column=0, columnspan=2, sticky="ew")
+        self.run_btn = ttk.Button(top, text=f"Run all {len(self.mods)} core self-checks", command=self.run_all)
+        self.run_btn.pack(side="left")
+        self.summary = ttk.Label(top, text=f"{len(self.mods)} core modules", font=("TkFixedFont", 9))
+        self.summary.pack(side="left", padx=10)
+
+        self.log = tk.Text(self, width=78, height=20, font=("TkFixedFont", 9), state="disabled")
+        self.log.grid(row=1, column=0, sticky="nsew", pady=(6, 0))
+        sb = ttk.Scrollbar(self, command=self.log.yview); sb.grid(row=1, column=1, sticky="ns", pady=(6, 0))
+        self.log.configure(yscrollcommand=sb.set)
+        self.rowconfigure(1, weight=1); self.columnconfigure(0, weight=1)
+        self._logline(f"{len(self.mods)} core modules discovered. "
+                      "Press Run to execute the entire core in-process.")
+
+    def run_all(self):
+        self._queue = list(self.mods); self._passed = 0; self._failed = []
+        self.run_btn.configure(state="disabled")
+        self._clear(); self._logline("=" * 60)
+        self._logline(f"running {len(self._queue)} core self-checks in-process...")
+        self.after(1, self._next)
+
+    def _next(self):
+        if not self._queue:
+            self.run_btn.configure(state="normal")
+            self._logline("=" * 60)
+            self._logline(f"{self._passed}/{len(self.mods)} core self-checks passed"
+                          + (f"   FAILED: {', '.join(self._failed)}" if self._failed else ""))
+            return
+        mod = self._queue.pop(0)
+        ok, _out = run_core_selfcheck(mod)
+        if ok:
+            self._passed += 1
+        else:
+            self._failed.append(mod)
+        self._logline(f"{'PASS' if ok else 'FAIL'}  {mod}")
+        self.summary.configure(text=f"{self._passed} passed, {len(self._failed)} failed, {len(self._queue)} left",
+                               foreground=("#c00" if self._failed else "#080"))
+        self.after(1, self._next)
+
+    def _clear(self):
+        self.log.configure(state="normal"); self.log.delete("1.0", "end"); self.log.configure(state="disabled")
+
+    def _logline(self, text):
+        self.log.configure(state="normal"); self.log.insert("end", text + "\n"); self.log.see("end")
+        self.log.configure(state="disabled")
+
+
 # ---- app ------------------------------------------------------------------------
 class App:
     def __init__(self):
@@ -384,6 +496,7 @@ class App:
         nb.add(RecognitionTab(nb), text="Live Recognition")
         nb.add(LakeTab(nb), text="Lake Browser")
         nb.add(NLTab(nb, arm_tab), text="NL Command")
+        nb.add(CoreTab(nb), text="Core Runner")
         nb.pack(fill="both", expand=True)
 
     def mainloop(self):
@@ -419,6 +532,12 @@ def _smoke():
     arm2 = arm_sim.ArmSim(); arm2.apply(nlx.interpret("close the gripper")["command"])
     assert arm2.state()["gripper"], "an NL-mapped command must drive the gated arm"
 
+    # Core Runner (display-free): the whole core is discoverable + runnable in-process
+    core = core_modules()
+    assert core and "control_panel" not in core, "core module list empty or includes the app itself"
+    ok, _out = run_core_selfcheck("lif_neuron")
+    assert ok, "a core module must run to completion in-process (lif_neuron)"
+
     # (b) TRY to construct the whole GUI, then destroy WITHOUT mainloop ----------
     try:
         app = App()
@@ -430,7 +549,7 @@ def _smoke():
         print("control_panel smoke: GUI construction skipped (no display)")
 
     print("self-check OK: canvas FK transform, capture discovery, lake partial-read stats, "
-          f"gated-apply commands, NL command routing; {mode}")
+          f"gated-apply commands, NL command routing, core runner ({len(core)} modules); {mode}")
 
 
 def main():
@@ -439,6 +558,8 @@ def main():
     if "--smoke" in sys.argv:
         _smoke()
         return
+    if "--run-core" in sys.argv:                    # run the ENTIRE core in-process (headless) -> exit 0/1
+        sys.exit(0 if run_all_core() else 1)
     try:
         App().mainloop()
     except tk.TclError as e:
@@ -449,8 +570,9 @@ def main():
 if __name__ == "__main__":
     import sys
     # `python -m snn_data_lake.control_panel` (what run_selfchecks.py / CI runs, no args) defaults
-    # to the headless-safe self-check so the runner never blocks on a window; --gui launches it.
-    if "--gui" in sys.argv:
+    # to the headless-safe self-check so the runner never blocks on a window; a recognised flag
+    # (--gui / --smoke / --run-core) routes to main() instead.
+    if any(f in sys.argv for f in ("--gui", "--smoke", "--run-core")):
         main()
     else:
         _smoke()

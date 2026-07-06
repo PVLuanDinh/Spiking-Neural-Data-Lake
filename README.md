@@ -60,9 +60,9 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 88/88 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.14** · 124 tagged releases (v0.1 → v2.14). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.15** · 125 tagged releases (v0.1 → v2.15). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.14.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.14.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. Four tabs: Arm Control, Live Recognition, Lake Browser, **NL Command** (type English commands). (Or clone and run the zero-dep source: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.15.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.15.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. Five tabs: Arm Control, Live Recognition, Lake Browser, NL Command, and **Core Runner** — which runs the *entire* zero-dep core (every module's self-check) inside the app (`snn-ui.exe --run-core` to run it headless). (Or clone the source: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -370,6 +370,15 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.15, product):_ **Core Runner — the ENTIRE core runs inside the app (and the .exe).** The tkinter
+control panel gains a fifth tab that runs **every CORE module's own self-check in-process** (via `runpy`, isolated
+`sys.argv`), PASS/FAIL live — no `python` subprocess, so it works inside the frozen `.exe`. The canonical list is
+`run_selfchecks.CORE` (bundled into the exe), so this is the single-source-of-truth core, not a duplicate. A
+`--run-core` CLI runs the whole core headlessly (`snn-ui.exe --run-core` → **54/54 core self-checks passed**,
+verified in the packaged exe). The `--smoke` gate now also asserts the runner. Confirms the download genuinely
+contains and runs the complete core. Zero-dep core (`dependencies = []`), **88/88** self-checks, the 5
+safety-envelope files untouched.
 
 _Landed (v2.14, product):_ **NL Command tab — the natural-language addon, in the desktop app.** The
 tkinter control panel (`control_panel`) gains a fourth tab: type an English command and `nl_interface` maps it
