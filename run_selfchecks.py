@@ -38,7 +38,7 @@ CORE = [
     "interpreter", "closed_loop", "make_sensor_dataset", "sensor_demo",
     "arm_sim", "arm_config", "population_encoding", "multimodal_encoder", "growing_learner",
     "autonomous_loop", "hippocampus", "frequency_memory", "experience_replay", "nl_interface", "sensor_csv_ingest",
-    "gesture_recognition", "live_arm", "serial_arm", "arm_bridge", "spiking_pid", "cpg_oscillator", "kuramoto_sync", "demo",
+    "gesture_recognition", "live_arm", "serial_arm", "arm_bridge", "spiking_pid", "cpg_oscillator", "kuramoto_sync", "wilson_cowan", "demo",
     "control_panel",
 ]
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.

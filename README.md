@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 101/101 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 102/102 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.30** · 140 tagged releases (v0.1 → v2.30). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.31** · 141 tagged releases (v0.1 → v2.31). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.30.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.30.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.31.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.31.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 101 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 102 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 101-module list is canonical in
+plus separate lint and coverage jobs. The 102-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (66 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (67 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,23 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.31, product):_ **Wilson-Cowan neural mass — E/I population dynamics + bifurcation repertoire.**
+`wilson_cowan.py` adds a mesoscale dynamical-systems axis: two coupled mean firing rates, E (excitatory) and I
+(inhibitory), each relaxing toward a sigmoid of its net input (Wilson & Cowan, *Biophys J* 12:1, 1972):
+`τ_E·dE/dt = −E + f(w_EE·E − w_EI·I + P)`, `τ_I·dI/dt = −I + f(w_IE·E − w_II·I + Q)`. The **same** equations, under
+three parameter presets, exhibit three qualitatively different attractors — the model's hallmark. Self-check (forward
+Euler, `[0,1]²` invariant so rates stay bounded): a **stable fixed point** (6 random initial conditions all converge
+to one steady `(E,I)=(0.065,0.032)`, spread `3e-17`, final `|dE/dt|=6e-17`); a **limit-cycle oscillation** (E→I→E
+loop with slower inhibition — tail peak-to-peak amp **0.934**, 21 mean-crossings, bounded in [0.02,0.95], mid-run amp
+= end amp so it's sustained not decaying, and dt-robust so not an Euler artifact); and **bistability + hysteresis**
+(strong E self-excitation — ramping the drive P up vs down traces two branches, max gap **0.976** at P=2.0, 8 of 25 P
+values with two coexisting stable states = a history-dependent switch/memory). Distinct from `cpg_oscillator` (a
+Matsuoka half-center — one *designed* locomotor rhythm with an adaptation variable), `kuramoto_sync` (*phase*
+oscillators + synchronization order parameter), and `divisive_normalization` (an *instantaneous* algebraic gain, no
+dynamics). Pure-stdlib core (`dependencies = []`), **102/102** self-checks; the 5 safety-envelope files untouched.
+Ceiling: the classic 2-population mean-field ODEs with a fixed Euler step and hand-picked presets — not spiking
+biophysics, no spatial extent/delays, not cognition.
 
 _Landed (v2.30, product):_ **Hierarchical predictive coding — perceptual inference by prediction-error (Rao-Ballard).**
 `predictive_coding.py` adds the second dominant theory of cortical inference (alongside v2.28's neural sampling): a

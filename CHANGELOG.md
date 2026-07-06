@@ -3,6 +3,37 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.31] — Wilson-Cowan neural mass: E/I population dynamics + bifurcation repertoire (2026-07-06)
+### Added
+- **`src/snn_data_lake/wilson_cowan.py`** — the canonical mesoscale cortical **neural mass model** (Wilson & Cowan,
+  *Biophys J* 12:1, 1972): two coupled mean firing rates, E (excitatory) and I (inhibitory), each relaxing (time
+  constants τ_E, τ_I) toward a logistic transfer of its net input —
+  `τ_E·dE/dt = −E + f(w_EE·E − w_EI·I + P)`, `τ_I·dI/dt = −I + f(w_IE·E − w_II·I + Q)`, forward-Euler integrated with
+  `[0,1]²` an invariant region (rates stay bounded by construction, so regime differences are genuine attractor
+  structure, not blow-up). The **same** equations under three parameter presets exhibit the three hallmark attractors.
+  `WilsonCowan(...)` exposes `step`/`run`, `settle`/`fixed_point`, `sweep_drive(p_values, up)` (history-dependent
+  drive ramp → hysteresis), `rate_of_change`, `reset`/`state`, and the static `oscillation_amplitude`/`mean_crossings`
+  witnesses; classmethod presets `fixed_point_regime`/`limit_cycle_regime`/`bistable_regime`.
+- Self-check (deterministic, ASCII): a **stable fixed point** — 6 random initial conditions all converge to one
+  steady `(E,I)=(0.0647,0.0318)` (spread across ICs `3.47e-17`, final `|dE/dt|=5.55e-17`); a **limit-cycle
+  oscillation** (E→I→E loop, slower inhibition) — tail peak-to-peak amplitude **0.934**, 21 mean-crossings, bounded in
+  [0.017,0.950], mid-run amp = end amp (sustained, no decay, dt-robust so not an Euler artifact); **bistability +
+  hysteresis** (strong E self-excitation) — ramping drive P up vs down traces two branches with max gap **0.976** at
+  P=2.0 (up-branch E=0.010 vs down-branch E=0.986), **8 of 25** P values with two coexisting stable states (a
+  history-dependent switch/memory); two fresh instances give identical trajectories.
+- **Genuinely distinct** (stated in the docstring): `cpg_oscillator` is a Matsuoka **half-center** — a *specific*
+  two-cell mutual-inhibition-plus-adaptation circuit emitting one *designed* locomotor rhythm; Wilson-Cowan is the
+  *general* E/I rate field whose same equations give a fixed point, a limit cycle, OR bistable hysteresis (a
+  bifurcation repertoire, no adaptation variable). `kuramoto_sync` couples **phase** oscillators and measures
+  synchronization; this is **firing-rate** population dynamics (attractor structure, not phase coherence).
+  `divisive_normalization` is an **instantaneous** algebraic gain (no dynamics); this is a time-evolving system with
+  fixed points and limit cycles. A **population** rate model, not a single neuron (`lif`/`izhikevich`).
+- Registered CORE (**102/102** self-checks; the Core Runner tab / `--run-core` now runs 68 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: the classic
+  2-population Wilson-Cowan mean-field ODEs with a fixed forward-Euler step and hand-picked parameter presets — a
+  reduced rate model, **not spiking biophysics, no spatial extent, no conduction delays**; not cognition.
+
 ## [v2.30] — Hierarchical predictive coding: perceptual inference by prediction-error (Rao-Ballard) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/predictive_coding.py`** — the second dominant theory of cortical inference (alongside v2.28's
