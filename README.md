@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 105/105 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 106/106 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.34** · 144 tagged releases (v0.1 → v2.34). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.35** · 145 tagged releases (v0.1 → v2.35). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.34.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.34.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.35.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.35.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 105 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 106 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 105-module list is canonical in
+plus separate lint and coverage jobs. The 106-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (70 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (71 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,24 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.35, product):_ **Astrocyte / tripartite synapse — slow, local, activity-driven glial gain (Araque).**
+`astrocyte_modulation.py` adds the **third element** of the synapse — an astrocyte that wraps a group of synapses,
+slowly integrates their local activity into intracellular calcium, and once Ca crosses a threshold releases
+gliotransmitters that scale synaptic efficacy on a slow timescale (Araque, Parpura, Sanzgiri & Haydon,
+*Trends Neurosci* 22:208, 1999; Volterra & Meldolesi, *Nat Rev Neurosci* 6:626, 2005). Per-domain Ca
+`ca += ca_rise·activity − ca_decay·ca` (τ_ca = 50 ticks ≫ the LIF membrane τ_m = 10); a threshold gates
+gliotransmission; a potentiating gain `1 + gain·(ca − ca_thresh)` follows Ca slowly and relaxes slowly back to 1.
+Self-check: **sustained** high activity ramps Ca past threshold (crossing at tick 34 — a slow integrator, not a
+per-spike response) and engages the gain to **1.52**, while a **brief** burst stays subthreshold (gain **1.00**); the
+gain **persists 1.49 fifteen ticks after the drive stops** (slow); it is **local** — an active domain (gain 1.50) and
+a quiet domain (gain 1.00) coexist in the same astrocyte, which a global scalar cannot represent; and it changes
+downstream transmission (a LIF fires **5 → 13** spikes under the modulated gain); deterministic. Distinct from the
+**global scalar** neuromodulators `cortisol`/`acetylcholine` (one value for the whole network), the **fast per-spike**
+`short_term_plasticity` (Tsodyks-Markram), and the neuron's own `homeostatic_scaling`/`intrinsic_plasticity`
+set-points. Pure-stdlib core (`dependencies = []`), **106/106** self-checks; the 5 safety-envelope files untouched.
+Ceiling: a reduced slow-Ca + threshold-gliotransmission model on synthetic activity — phenomenological glial gain,
+not IP₃/Ca-induced-Ca-release biophysics, no astrocyte network, not cognition.
 
 _Landed (v2.34, product):_ **Synfire chain — stable feedforward propagation of a synchronous spike volley (Abeles / Diesmann).**
 `synfire_chain.py` adds a precise-timing network phenomenon: a feedforward chain of coincidence-neuron pools through

@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.35] — Astrocyte / tripartite synapse: slow, local, activity-driven glial gain (Araque) (2026-07-06)
+### Added
+- **`src/snn_data_lake/astrocyte_modulation.py`** — the **third element** of the synapse: an astrocyte that wraps a
+  group of synapses, slowly integrates their local activity into intracellular calcium, and once Ca crosses a
+  threshold releases gliotransmitters that scale synaptic efficacy on a slow timescale (Araque, Parpura, Sanzgiri &
+  Haydon, *Trends Neurosci* 22:208, 1999; Volterra & Meldolesi, *Nat Rev Neurosci* 6:626, 2005). Per-domain slow Ca
+  `ca += ca_rise·activity − ca_decay·ca` (τ_ca = 1/ca_decay = 50 ticks, ≫ the LIF membrane τ_m = 10); gliotransmission
+  engages only when `ca ≥ ca_thresh`; a potentiating gain `1 + gain·(ca − ca_thresh)` follows the Ca-driven target
+  slowly and relaxes slowly back to 1. Multiple domains live in one astrocyte so locality is representable.
+  `Astrocyte(n_domains, ca_rise, ca_decay, ca_thresh, gain, tau_gain, seed)` exposes `step(activity_per_domain)`,
+  `calcium`/`gains`, `modulated_transmission(domain, drive)`, `reset`.
+- Self-check (deterministic, ASCII): **sustained** high activity ramps Ca past threshold (crossing at tick 34 — a
+  slow integrator, not a per-spike response) and engages the gain to **1.52**, while a **brief** burst stays
+  subthreshold (max Ca 0.096, gain **1.00**) and a low-drive input also stays at 1.00; the gain **persists 1.49
+  fifteen ticks after the drive stops** (τ_ca=50 ≫ τ_m=10); it is **local** — in one astrocyte an active domain
+  (Ca 0.867, gain 1.50) and a quiet domain (Ca 0.0, gain 1.00) coexist, which a single global scalar cannot
+  represent; and it **changes downstream transmission** — a LIF neuron fires **5 → 13** spikes under the modulated
+  gain; two fresh instances give identical Ca/gain traces.
+- **Genuinely distinct** (stated in the docstring): `cortisol`/`acetylcholine` are **global scalar** neuromodulators
+  (one value for the whole network) — the astrocyte is **local** (per-domain) and **slow**, with different domains
+  holding different modulation at once; `short_term_plasticity` is a **fast per-spike** presynaptic resource dynamic —
+  the astrocyte is a separate third element integrating activity over a long window; `homeostatic_scaling`/
+  `intrinsic_plasticity` are the neuron's own rate/excitability set-points, not glial synaptic gain.
+- Registered CORE (**106/106** self-checks; the Core Runner tab / `--run-core` now runs 72 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a reduced slow-Ca +
+  threshold-gliotransmission model on synthetic activity — a phenomenological glial gain, **not IP₃/Ca-induced-Ca-
+  release biophysics, no diffusion or astrocyte network**; not cognition.
+
 ## [v2.34] — Synfire chain: stable feedforward propagation of a synchronous spike volley (Abeles/Diesmann) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/synfire_chain.py`** — a precise-timing network phenomenon: the **synfire chain** (Abeles,

@@ -33,7 +33,7 @@ CORE = [
     "signal_loop", "learned_matcher", "rank_order_coding", "tempotron", "lca_sparse_coding", "evidence_accumulation",
     "reflex", "valence_stdp", "r_stdp", "bcm_plasticity", "homeostatic_scaling", "inhibitory_stdp",
     "divisive_normalization",
-    "intrinsic_plasticity", "izhikevich_neuron", "cortisol", "acetylcholine",
+    "intrinsic_plasticity", "izhikevich_neuron", "cortisol", "acetylcholine", "astrocyte_modulation",
     "neural_sampling",
     "interpreter", "closed_loop", "make_sensor_dataset", "sensor_demo",
     "arm_sim", "arm_config", "population_encoding", "multimodal_encoder", "growing_learner",
