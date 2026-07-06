@@ -3,6 +3,29 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.24] — Divisive normalization: the canonical gain-control computation (2026-07-06)
+### Added
+- **`src/snn_data_lake/divisive_normalization.py`** — divisive normalization, "the canonical neural computation"
+  (Carandini & Heeger, *Nat Rev Neurosci* 13:51, 2012). Each unit's response is its own drive divided by the summed
+  activity of a normalization **pool**: `r_i = d_i**n / (sigma**n + sum_j d_j**n)` — fast, instantaneous, stateless
+  gain control (distinct from slow homeostasis). `DivisiveNormalization(sigma, n).normalize(drives)` plus an optional
+  `spike_rates()` view that drives LIF units at the normalized gains.
+- Self-check (deterministic, ASCII) demonstrates the canonical signatures on a small pool: **saturation** (input up
+  8x → the winner's normalized response grows only **1.56x**, approaching the asymptote 0.575 = `d_win**n / sum
+  d_j**n`); **contrast-invariant tuning** (the argmax winner and full rank order are preserved across contrast, and
+  the peak-normalized tuning shape is identical — drift **6.9e-18**, because the shared denominator cancels);
+  **cross-suppression** (a strong pool competitor drops a target response **0.725 → 0.096**); and a **bounded** pool
+  output (sum stays < 1, rising toward 1 as contrast grows).
+- **Genuinely distinct** (stated in the docstring): `homeostatic_scaling` is slow *multiplicative* scaling toward a
+  rate set-point (stateful, many steps); `intrinsic_plasticity` adapts a *single neuron's* own gain/bias over time;
+  the lateral inhibition in `lca_sparse_coding` is *subtractive* competition. This is instantaneous *division* by the
+  pool sum — the operation that yields contrast-invariant tuning and saturation.
+- Registered CORE (**95/95** self-checks; the Core Runner tab / `--run-core` now runs 61 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a rate-level pool
+  operation on synthetic drives — a reduced model of the canonical computation, not a full cortical circuit, **not
+  cognition**.
+
 ## [v2.23] — Dendritic neuron: two-compartment BAC firing (Larkum) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/dendritic_neuron.py`** — the neuron-model family's first **nonlinear dendritic** unit (every
