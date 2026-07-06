@@ -36,7 +36,7 @@ CORE = [
     "intrinsic_plasticity", "izhikevich_neuron", "cortisol", "acetylcholine", "astrocyte_modulation",
     "neural_sampling", "restricted_boltzmann",
     "interpreter", "closed_loop", "make_sensor_dataset", "sensor_demo",
-    "arm_sim", "arm_config", "population_encoding", "multimodal_encoder", "growing_learner",
+    "arm_sim", "arm_config", "population_encoding", "multimodal_encoder", "cue_integration", "growing_learner",
     "autonomous_loop", "hippocampus", "frequency_memory", "experience_replay", "nl_interface", "sensor_csv_ingest",
     "gesture_recognition", "live_arm", "serial_arm", "arm_bridge", "spiking_pid", "cpg_oscillator", "kuramoto_sync", "wilson_cowan", "neuronal_avalanches", "synfire_chain", "stochastic_resonance", "forward_model", "demo",
     "control_panel",

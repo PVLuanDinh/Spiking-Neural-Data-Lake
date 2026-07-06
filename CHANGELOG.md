@@ -3,6 +3,34 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.40] — Bayesian cue integration: reliability-weighted optimal fusion (Ernst-Banks) (2026-07-06)
+### Added
+- **`src/snn_data_lake/cue_integration.py`** — optimal multisensory integration: given N independent noisy Gaussian
+  estimates `xᵢ ± σᵢ` of the *same* latent value, the maximum-likelihood (Bayesian-optimal) combination is closed
+  form — `x̂ = Σ(xᵢ/σᵢ²)/Σ(1/σᵢ²)`, `var̂ = 1/Σ(1/σᵢ²)`, weight `wᵢ = (1/σᵢ²)/Σ(1/σⱼ²)` (proportional to
+  **reliability = 1/variance**) — from Ernst & Banks (*Nature* 415:429, 2002, visual-haptic) and Alais & Burr
+  (*Curr Biol* 14:257, 2004, audio-visual). Two consequences are the point: the more **reliable** (lower-variance) cue
+  **dominates**, and the fused estimate is **more precise than every single cue** (`var̂ < minᵢ σᵢ²`). `fuse(estimates,
+  variances)`, `weights(variances)`, and a `CueIntegrator(true_value, sigmas, seed)` (`sample`/`fuse_sample`) for the
+  empirical check.
+- Self-check (deterministic, ASCII): reliability weights are **0.900 / 0.100** for σ 1.0 vs 3.0 (reliable dominates)
+  and **0.500 / 0.500** for equal σ; over **40 000** trials the **empirical** fused variance (0.7929) matches the
+  **analytic** `var̂` (0.8000) within 5% and beats the best single-cue variance (1.0000); the fused **RMSE** to the
+  true value (0.8905) is lower than **each** single cue's (0.9929, 1.9993); the closed form is exact on a hand example
+  (`fuse([10,12],[1,4]) → x̂ 10.400, var̂ 0.800`, between the cues and below both variances); two fresh instances give
+  identical sampled+fused trials.
+- **Genuinely distinct** (stated in the docstring): `multimodal_encoder` **bands/concatenates** sensor modalities into
+  the N=64 spike substrate — an encoder with no reliability weighting and no precision/variance claim; this fuses
+  several noisy estimates of *one* quantity by inverse-variance weighting into an estimate provably more precise than
+  any single cue (optimal Bayesian *estimation*, not modality concatenation). `evidence_accumulation` integrates *one*
+  noisy stream over time to a decision bound; this fuses *several* simultaneous estimates in closed form (no time, no
+  bound). Not `population_encoding` (an encoder), not `neural_sampling`/`predictive_coding` (different inference).
+- Registered CORE (**111/111** self-checks; the Core Runner tab / `--run-core` now runs 77 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: closed-form Gaussian
+  MLE cue combination on synthetic noisy cues — the optimal-integration level, **not a spiking population
+  implementation, not a full Bayesian network**; not cognition.
+
 ## [v2.39] — Stochastic resonance: optimal noise maximizes weak-signal detection (Benzi/Wiesenfeld-Moss) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/stochastic_resonance.py`** — the counterintuitive result that **noise is a resource**: a weak
