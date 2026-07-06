@@ -3,6 +3,30 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.25] — Acetylcholine: the encode-vs-retrieve neuromodulator (Hasselmo) (2026-07-06)
+### Added
+- **`src/snn_data_lake/acetylcholine.py`** — completes the neuromodulator set (dopamine RPE in `valence_stdp`, tonic
+  stress in `cortisol`, and now acetylcholine): the canonical Hasselmo **encode-vs-retrieve mode switch**
+  ("Neuromodulation: acetylcholine and memory consolidation", TiCS 3:351, 1999; encode/retrieve scheduling, J
+  Neurosci 33:8689, 2013). `Acetylcholine` is a tonic level in [0,1] (a leaky EMA that rises on **novelty** and decays
+  with familiarity/quiescence); it exposes `feedforward_gain()` (up with ACh), `recurrent_gain()` (up as ACh drops),
+  `plasticity_scale()` (up with ACh) and `mode()` — HIGH ACh = **ENCODE** (afferent input enhanced, recurrent
+  suppressed, plasticity on → write new memories), LOW ACh = **RETRIEVE/consolidate** (feedforward attenuated,
+  recurrent reactivation, plasticity off → recall stored). Directly complements the v2.9 hippocampus DG/CA3.
+- Self-check (deterministic, ASCII) on a tiny Hebbian recurrent associative store: the gains **flip** with ACh
+  (`ff 0.99 / rec 0.01 / plast 0.99` at high ACh → `ff 0.20 / rec 1.00 / plast 0.00` at low); the headline
+  **encode-then-retrieve** — a pattern written under high ACh (recurrent suppressed → clean write) is recalled from a
+  25%-degraded partial cue under low ACh (recall **1.00**); ACh **habituates** (higher on novel than familiar input);
+  and high-ACh writes stay clean so encoding a second pattern doesn't corrupt recall of the first (A 1.00, B 1.00).
+- **Genuinely distinct** (stated in the docstring): `cortisol` is a tonic *stress* scalar (danger → caution / reflex
+  threshold / learn-rate); `valence_stdp` is *phasic dopamine* (reward-prediction-error → value learning). ACh carries
+  neither stress nor reward — it is a novelty-driven **mode switch** gating *how* input is processed (encode new vs
+  recall old).
+- Registered CORE (**96/96** self-checks; the Core Runner tab / `--run-core` now runs 62 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a scalar ACh level
+  gating a tiny toy recurrent store on synthetic patterns — a reduced model of cholinergic dynamics, **not cognition**.
+
 ## [v2.24] — Divisive normalization: the canonical gain-control computation (2026-07-06)
 ### Added
 - **`src/snn_data_lake/divisive_normalization.py`** — divisive normalization, "the canonical neural computation"
