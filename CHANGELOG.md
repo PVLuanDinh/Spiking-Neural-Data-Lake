@@ -3,6 +3,36 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.39] — Stochastic resonance: optimal noise maximizes weak-signal detection (Benzi/Wiesenfeld-Moss) (2026-07-06)
+### Added
+- **`src/snn_data_lake/stochastic_resonance.py`** — the counterintuitive result that **noise is a resource**: a weak
+  periodic signal `s(t) = amp·sin(2πft)` whose amplitude is *below* a detector's threshold almost never crosses it, so
+  it is nearly invisible; adding zero-mean Gaussian noise of amplitude `σ` makes the noise push signal+noise over
+  threshold — preferentially near the signal's peaks — so the output spike train becomes correlated with the signal.
+  Detection quality is **non-monotonic** in `σ`: ~0 at σ=0 (subthreshold), rising to a peak at an intermediate optimal
+  `σ`, then falling at large `σ` (Benzi, Sutera & Vulpiani 1981; in neurons Wiesenfeld & Moss, *Nature* 373:33, 1995;
+  review Gammaitoni, Hänggi, Jung & Marchesoni, *Rev Mod Phys* 70:223, 1998). Detector: a bare upward-threshold-crossing
+  unit (the canonical SR device, no leak/refractory to contaminate the optimum). Metric: a spectral **SNR** = spike-train
+  power at the signal frequency bin / mean background power at neighbouring off-bins (the signal fits a whole number of
+  cycles, so its energy sits in one clean integer bin), averaged over a few noise realizations. `StochasticResonance(
+  threshold, amp, freq, dt, n_steps, seed, repeats)` exposes `detect(sigma)`, `snr(sigma)`, `sweep(sigmas)`.
+- Self-check (deterministic, ASCII; amp 0.7 < threshold 1.0, n_steps 3000, 6 realizations): the **subthreshold signal
+  alone is undetected** (0 crossings, SNR 0.00 at σ=0); the SNR curve **rises to a clear interior peak at σ=0.6
+  (SNR 273.44)** then falls to 13.26 at σ=2.2 — the classic inverted-U — with the peak **20.6×** the high-noise end and
+  the argmax strictly interior; two fresh instances give an identical sweep.
+- **Genuinely distinct** (stated in the docstring): `reflex` does threshold detection but treats noise only as
+  something to be robust to — there is no noise-as-a-resource, no optimal-noise level, no SNR-vs-noise curve;
+  `neuronal_avalanches` also has an "optimal operating point" (criticality) but that is a branching-cascade / power-law
+  phenomenon over a whole network, whereas SR is an optimal *noise level* for weak-signal detection in a single
+  threshold unit (an SNR-vs-noise peak, not an avalanche-size power law). Not `intrinsic_plasticity`/`homeostatic_scaling`
+  (gain/rate set-points), not `bayesian_snn` (uncertainty).
+- Registered CORE (**110/110** self-checks; the Core Runner tab / `--run-core` now runs 76 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a reduced
+  upward-threshold-crossing detector with additive Gaussian noise on a synthetic subthreshold sinusoid, scored by a
+  spectral SNR — the stochastic-resonance level (an SNR-vs-noise peak), **not a full spiking network / biophysics**; not
+  cognition.
+
 ## [v2.38] — Legendre Memory Unit: optimal linear window memory / delay network (Voelker-Eliasmith) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/legendre_memory.py`** — a continuous rolling-window memory: the **Legendre Memory Unit**

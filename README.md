@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 109/109 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 110/110 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.38** · 148 tagged releases (v0.1 → v2.38). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.39** · 149 tagged releases (v0.1 → v2.39). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.38.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.38.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.39.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.39.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 109 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 110 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 109-module list is canonical in
+plus separate lint and coverage jobs. The 110-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (74 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (75 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,21 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.39, product):_ **Stochastic resonance — optimal noise maximizes weak-signal detection (Benzi/Wiesenfeld-Moss).**
+`stochastic_resonance.py` adds the counterintuitive result that **noise is a resource**: a periodic signal whose
+amplitude is *below* a threshold detector is nearly invisible, but adding an *optimal* amount of noise makes the
+output spike train track the signal — because noise pushes signal+noise over threshold preferentially near the
+signal's peaks. Detection quality is **non-monotonic** in the noise level `σ`, peaking at an interior optimum (Benzi,
+Sutera & Vulpiani 1981; in neurons Wiesenfeld & Moss, *Nature* 373:33, 1995; review Gammaitoni et al., *Rev Mod Phys*
+70:223, 1998). A bare upward-threshold-crossing detector scored by a spectral **SNR** (signal-band power / off-band
+background). Self-check (amp 0.7 < threshold 1.0): the subthreshold signal alone is undetected (0 crossings, SNR 0.00
+at σ=0); the SNR curve **rises to a clear interior peak at σ=0.6 (SNR 273)** then falls to 13 at σ=2.2 — the classic
+inverted-U, with the peak **20.6×** the high-noise end; deterministic. Distinct from `reflex` (threshold detection that
+treats noise only as an adversary — no optimal-noise peak) and `neuronal_avalanches` (network criticality / power-law,
+not a single-unit SNR-vs-noise peak). Pure-stdlib core (`dependencies = []`), **110/110** self-checks; the 5
+safety-envelope files untouched. Ceiling: a reduced level-crossing detector with additive Gaussian noise on a
+synthetic subthreshold sinusoid — the stochastic-resonance level, not a full spiking network / biophysics; not cognition.
 
 _Landed (v2.38, product):_ **Legendre Memory Unit — optimal linear window memory / delay network (Voelker-Eliasmith).**
 `legendre_memory.py` adds a continuous rolling-window memory: an LMU maintains the last `θ` of a scalar input by
