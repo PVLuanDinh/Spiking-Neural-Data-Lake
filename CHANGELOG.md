@@ -3,6 +3,30 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.23] — Dendritic neuron: two-compartment BAC firing (Larkum) (2026-07-06)
+### Added
+- **`src/snn_data_lake/dendritic_neuron.py`** — the neuron-model family's first **nonlinear dendritic** unit (every
+  other neuron is a single-compartment point cell): a reduced **two-compartment pyramidal neuron** (soma/basal +
+  apical tuft) exhibiting **BAC firing** ("backpropagation-activated Ca2+ spike", Larkum, *"A cellular mechanism for
+  cortical associations"*, Trends Neurosci 2013; reduced computational models arXiv:2107.05336 and arXiv:2311.06074).
+  The soma integrates basal feed-forward current; the apical compartment integrates top-down/context current; a
+  somatic spike **backpropagates** a bump into the apical dendrite, and only when it lands on **coincident** apical
+  input does `V_a` cross the Ca2+ threshold → a sustained dendritic **plateau** injects boost into the soma → a
+  **burst**. `DendriticNeuron.step(basal, apical) -> 1/0` (+ `.plateau_active`, `.ca_spikes`).
+- Self-check (deterministic, ASCII) demonstrates the Larkum apical-amplification signature: basal-only fires at a
+  saturating max rate (**0.167**, 0 plateaus); apical-only is **silent** (0.000, 0 plateaus — sub-threshold without
+  backprop); apical + basal **coincident** bursts at **0.950 — a 5.7x supralinear gain** over the basal-only maximum,
+  with the Ca2+ plateau firing (36 spikes). A truth-table check confirms it bursts only when apical AND basal co-occur.
+- **Genuinely distinct** (stated in the docstring): `lif_neuron` / `izhikevich_neuron` (+ srm/adex/resonate in
+  research) are single-compartment point neurons with no dendritic nonlinearity; `htm_sequence_memory` uses binary
+  distal segments predicting the next SDR (a point cell, no membrane/plateau). This is a two-compartment membrane
+  model whose apical+basal coincidence fires a Ca2+ plateau/burst above the basal-only rate.
+- Registered CORE (**94/94** self-checks; the Core Runner tab / `--run-core` now runs 60 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a reduced rate/spike
+  caricature of the Larkum mechanism (not conductance-based Hodgkin-Huxley, no real ion channels), synthetic input,
+  **not cognition**.
+
 ## [v2.22] — Inhibitory STDP: excitation/inhibition balance (Vogels 2011) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/inhibitory_stdp.py`** — the plasticity family's first **inhibitory** rule: the canonical
