@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 111/111 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 112/112 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.40** · 150 tagged releases (v0.1 → v2.40). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.41** · 151 tagged releases (v0.1 → v2.41). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.40.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.40.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.41.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.41.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 111 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 112 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 111-module list is canonical in
+plus separate lint and coverage jobs. The 112-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (76 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (77 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,23 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.41, product):_ **Hodgkin-Huxley neuron — the conductance-based biophysical action potential (HH 1952).**
+`hodgkin_huxley.py` adds the neuron family's first *biophysical* member: the classic single-compartment
+space-clamped squid-axon model (Hodgkin & Huxley, *J Physiol* 117:500, 1952) where **nothing is imposed** — the
+membrane voltage and three gating variables (m, h sodium activation/inactivation; n potassium activation) obey coupled
+ODEs, `C·dV/dt = I − g_Na·m³h·(V−E_Na) − g_K·n⁴·(V−E_K) − g_L·(V−E_L)`, and the overshoot, repolarization,
+afterhyperpolarization, all-or-none threshold, refractory period and f-I curve **all emerge** from the Na/K channel
+kinetics (standard params, forward-Euler at dt=0.01 ms; the α_n/α_m 0/0 singularities L'Hôpital-guarded; gates
+initialised to steady state). Self-check: a brief pulse fires a **real biphasic AP** (peak **+39.3 mV** overshoot,
+trough **−76.2 mV** AHP); it is **all-or-none** — a 0.5 ms subthreshold pulse gives **0** spikes, a slightly stronger
+one gives **1** full spike whose height is stereotyped (**+38.0** vs **+40.6 mV** for a 2× stimulus); it is
+**refractory** — two pulses 8 ms apart fire once, 18 ms apart fire twice; the **f-I curve** is silent at I=2 and rises
+monotonically **60 → 73 → 87 Hz**; deterministic. Distinct from `lif_neuron` (integrate-and-fire — a fixed threshold +
+imposed reset, no channels), `izhikevich_neuron` (a 2-variable reduced phenomenological model), and `dendritic_neuron`
+(explicitly *not* HH). Pure-stdlib core (`dependencies = []`), **112/112** self-checks; the 5 safety-envelope files
+untouched. Ceiling: the single-compartment space-clamped HH ODEs — not multi-compartment, no Q10/temperature scaling,
+no channel noise; not cognition.
 
 _Landed (v2.40, product):_ **Bayesian cue integration — reliability-weighted optimal fusion (Ernst-Banks).**
 `cue_integration.py` adds optimal multisensory integration: given several noisy Gaussian estimates `xᵢ ± σᵢ` of the

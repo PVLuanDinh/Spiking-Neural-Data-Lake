@@ -3,6 +3,34 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.41] — Hodgkin-Huxley neuron: the conductance-based biophysical action potential (HH 1952) (2026-07-06)
+### Added
+- **`src/snn_data_lake/hodgkin_huxley.py`** — the neuron family's first *biophysical* member: the classic
+  single-compartment space-clamped squid-axon model (Hodgkin & Huxley, *J Physiol* 117:500, 1952). Nothing is imposed
+  — the membrane voltage V and three gating variables (m, h = sodium activation/inactivation; n = potassium activation)
+  obey coupled ODEs, `C·dV/dt = I_ext − g_Na·m³h·(V−E_Na) − g_K·n⁴·(V−E_K) − g_L·(V−E_L)`,
+  `dx/dt = α_x(V)(1−x) − β_x(V)x`, and the overshoot, sharp repolarization, afterhyperpolarization, all-or-none
+  threshold, refractory period and f-I curve **all emerge** from the Na (m³h) and K (n⁴) channel kinetics. Standard
+  squid params (C=1, g_Na=120, g_K=36, g_L=0.3; E_Na=50, E_K=−77, E_L=−54.4), forward-Euler at dt=0.01 ms; the α_n/α_m
+  removable 0/0 singularities (V=−55, −40) are L'Hôpital-guarded; gates start at steady state. `HodgkinHuxley(dt)`
+  exposes `step(i_ext)`, `run`/`run_const`, and static `spike_count`.
+- Self-check (deterministic, ASCII): a brief suprathreshold pulse fires a **real biphasic action potential** (peak
+  **+39.3 mV** overshoot, trough **−76.2 mV** afterhyperpolarization); it is **all-or-none** — a 0.5 ms subthreshold
+  pulse evokes **0** spikes, a slightly stronger one evokes **1** full spike whose height is stereotyped (**+38.0 mV**
+  vs **+40.6 mV** for a 2× stimulus, diff 2.6 mV); it is **refractory** — two identical pulses 8 ms apart fire once
+  (2nd peak −64.5 mV), 18 ms apart fire twice; the **f-I curve** is silent at I=2 (below rheobase) and rises
+  monotonically **60 → 73 → 87 Hz** at I=7/12/20; two fresh instances give an identical V trace.
+- **Genuinely distinct** (stated in the docstring): `lif_neuron` is leaky integrate-and-fire — a fixed threshold plus
+  a hard reset, the "spike" is a rule the code applies, no ion channels and no real AP shape; `izhikevich_neuron` is a
+  2-variable *reduced* phenomenological model; `dendritic_neuron`'s own docstring says it is *not* Hodgkin-Huxley.
+  This is the conductance-based biophysical model where the action potential *emerges* from the channel gating,
+  nothing imposed.
+- Registered CORE (**112/112** self-checks; the Core Runner tab / `--run-core` now runs 78 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: the classic
+  single-compartment space-clamped HH squid-axon ODEs, forward-Euler integrated — the biophysical-neuron level, **not
+  multi-compartment, no temperature/Q10 scaling, no channel noise**; not cognition.
+
 ## [v2.40] — Bayesian cue integration: reliability-weighted optimal fusion (Ernst-Banks) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/cue_integration.py`** — optimal multisensory integration: given N independent noisy Gaussian
