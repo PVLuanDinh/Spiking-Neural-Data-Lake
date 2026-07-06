@@ -3,6 +3,30 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.17] — Neuromorphic-chip emulator: run the whole SNN locally without silicon (2026-07-05)
+### Added
+- **`src/snn_data_lake/neuro_chip.py`** — a functional/architectural **emulator of an event-driven neuromorphic
+  processor**. Multiple `Core`s (each a population of `LIFNeuron`s + a per-tick current accumulator) are wired by an
+  on-chip **AER spike router** (`add_core`/`connect`/`map_feedforward`); `run()` is a time-stepped loop with a 1-tick
+  router hop per synapse that accounts spikes / SynOps / **energy** (reusing `energy.py`, both the 45nm-AC and Loihi
+  lenses) / latency. It runs the existing spiking workloads on an *emulated* chip — the software twin of the
+  Loihi/Akida silicon the repo targets via `nir_export` — so the whole neuromorphic stack runs locally, no physical
+  chip and no cloud. Self-check (deterministic, zero-randomness, ASCII): AER packets cross cores; a mapped feedforward
+  net computes correctly; **mapping-invariance** — the same net on 1 core vs N cores produces identical spikes (the
+  router does not change the computation); and SynOps/energy accounting matches `energy.snn_energy`.
+- **`research/neuromorphic_torch/neuro_chip_gpu.py`** (optional `[gpu]` extra, quarantined, NOT in CI) — a
+  torch/GPU-vectorized twin of the same execution model (neuron populations + AER routing as tensors) for emulating
+  **larger** chips fast (4096-neuron / 16-core scale demo). Its LIF dynamics and energy constants match the stdlib
+  reference exactly; torch is imported lazily so the file is import-safe without it and its smoke skips cleanly. CPU
+  and CUDA (auto-selects the GPU when present).
+- **Honesty:** this is a *functional/architectural* emulator — not cycle-accurate silicon, no analog dynamics, no
+  place-and-route. And it is emphatically **not AirLLM**: AirLLM runs large *language* models and cannot emulate a
+  spiking neuromorphic chip (see `docs/AIRLLM_ANALYSIS.md`); the core was already fully local — the emulator makes the
+  *chip execution model* local too.
+- Registered CORE (**90/90** self-checks; the Core Runner tab / `--run-core` now runs 56 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched.
+
 ## [v2.16] — R-STDP: reward-modulated STDP with an eligibility trace (distal reward) (2026-07-05)
 ### Added
 - **`src/snn_data_lake/r_stdp.py`** — a new member of the plasticity family: **reward-modulated STDP (R-STDP)**
