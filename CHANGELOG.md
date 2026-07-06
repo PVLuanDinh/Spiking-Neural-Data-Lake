@@ -3,6 +3,36 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.33] — Neuronal avalanches: critical branching + scale-free cascade statistics (Beggs-Plenz) (2026-07-06)
+### Added
+- **`src/snn_data_lake/neuronal_avalanches.py`** — a network-level **criticality** axis (absent until now): the
+  reduced Galton-Watson / mean-field branching reading of cortical **neuronal avalanches** (Beggs & Plenz,
+  *J Neurosci* 23:11167, 2003). On a homogeneous network of N units, an avalanche is a cascade from one seed unit —
+  each active unit spawns `Binomial(fanout, σ/fanout)` descendants (mean exactly the **branching ratio σ**), the next
+  generation's active count capped at N — running until extinction; its **size** = total activations, **duration** =
+  generations. σ is the control parameter: `σ<1` subcritical (cascades die fast, small sizes), `σ=1` critical
+  (scale-free, `P(s) ~ s^-1.5`), `σ>1` supercritical (giant cascades bounded by N / a runaway cutoff).
+  `BranchingNetwork(n, sigma, fanout, seed, max_size)` exposes `avalanche()`/`run(k)`, and the static
+  `measured_branching_ratio`, `size_distribution`, `powerlaw_slope` (log-log **density** fit — count/bin-width, which
+  recovers the true exponent where raw log-binned counts would be off by +1).
+- Self-check (deterministic, ASCII; N=1000, fanout=4, 20k avalanches, seed 0): the **measured** branching ratio
+  matches the set σ (0.807 / 1.001 / 1.200, err < 0.05 — proving σ controls the dynamics, not a hardcode); mean
+  avalanche size grows with σ (**5.19 ≪ 117.72 ≪ 1758.08**); at criticality the size distribution is an approximate
+  **power law** — log-log density slope **−1.509** over `s∈[4,256]` (12 bins), on the mean-field exponent −1.5 — and
+  the critical max avalanche (4134) is **27.6×** the subcritical max (150); two fresh instances give identical
+  records.
+- **Genuinely distinct** (stated in the docstring): `wilson_cowan` is a *deterministic* two-population rate ODE whose
+  signature is attractor structure (fixed point / limit cycle / bistability); this is a *stochastic* branching
+  process whose signature is the avalanche-size distribution and its power law at criticality, with σ as an explicit
+  subcritical→critical→supercritical control parameter — a different object (critical statistics of random cascades,
+  not fixed points of a rate field). `kuramoto_sync` is phase-oscillator synchronization (order parameter r), not
+  cascade statistics.
+- Registered CORE (**104/104** self-checks; the Core Runner tab / `--run-core` now runs 70 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a reduced mean-field
+  Galton-Watson branching process on a homogeneous network — **no spatial structure, no synaptic weights, no
+  refractory dynamics**; the avalanche-statistics level of criticality, not spiking biophysics, not cognition.
+
 ## [v2.32] — Evidence accumulation: perceptual decision-making by drift-diffusion (Gold-Shadlen) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/evidence_accumulation.py`** — a *decision-making* capability the core lacked: the algorithmic
