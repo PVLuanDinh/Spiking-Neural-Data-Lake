@@ -3,6 +3,37 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.30] — Hierarchical predictive coding: perceptual inference by prediction-error (Rao-Ballard) (2026-07-06)
+### Added
+- **`src/snn_data_lake/predictive_coding.py`** — the second dominant theory of cortical inference (alongside v2.28's
+  neural sampling): hierarchical **predictive coding** (Rao & Ballard, *Nat Neurosci* 2:79, 1999; Friston free-energy
+  view). A 2-level generative hierarchy where each level predicts the one below and **only the prediction error
+  propagates up**. With causes r1, r2 and generative weights W1, W2: `x_hat = W1·r1`, `e0 = x − x_hat`;
+  `r1_hat = W2·r2`, `e1 = r1 − r1_hat`. **Inference** (weights fixed) descends the total error energy
+  `E = |e0|² + |e1|²` via `r1 += lr·(W1ᵀe0 − e1)`, `r2 += lr·W2ᵀe1` — exact gradient descent on a convex quadratic,
+  so E is monotone non-increasing and → 0 for a representable input. **Learning** takes a Hebbian weight step
+  (`W1 += lr_w·outer(e0,r1)`, `W2 += lr_w·outer(e1,r2)`), lowering the average post-inference reconstruction error —
+  it learns a generative dictionary. `PredictiveCodingNetwork(dims=(8,4,2), seed)` exposes `infer`/`infer_step`,
+  `reconstruct`/`predict_r1`, `errors`/`energy`, `learn(dataset, epochs)`, `state`/`set_state`, `reset`,
+  `representable_input`; module helper `synth_dataset`.
+- Self-check (deterministic, ASCII): for a **representable** input `x = W1·(W2·r2_true)`, inference drives
+  `E → 5.4e-09` **monotonically** (reconstruction MSE 5.3e-10); the hierarchy is genuinely 2-level — with a matched
+  top-down prediction (`e1 = 0`) `r2` is **frozen (moves 0.0e+00)**, but a residual `e1` **moves it (0.039)**
+  (proving the layer-2 update is driven only by the layer-1 error, not a flat autoencoder); **learning lowers** the
+  per-epoch post-inference reconstruction MSE `0.145 → 0.030` (4.8×, monotone across all 12 epochs); two fresh
+  instances with the same seed give identical weights + E traces.
+- **Genuinely distinct** (stated in the docstring): `lca_sparse_coding` is a single-layer lateral-inhibition sparse
+  coder (one dictionary, atoms compete) — no top-down/bottom-up hierarchy; `valence_stdp`/`r_stdp` carry **reward**
+  prediction error (dopamine RPE) driving *value* learning, whereas this is **sensory/perceptual** prediction error
+  driving *inference of latent causes*; `htm_sequence_memory` is temporal next-SDR prediction, not a static
+  generative hierarchy; `dendritic_neuron` is one cell's apical coincidence, not a network generative model.
+  (`research/free_energy_control` is a spiking *controller*; this is perceptual representation/inference.)
+- Registered CORE (**101/101** self-checks; the Core Runner tab / `--run-core` now runs 67 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a small linear
+  2-level Rao-Ballard net on synthetic data (gradient inference + Hebbian learning), tiny dims so the
+  representable-input test is exact — **not spiking biophysics, no precision/attention weighting**; not cognition.
+
 ## [v2.29] — Kuramoto synchronization: emergent phase-locking of coupled oscillators (2026-07-06)
 ### Added
 - **`src/snn_data_lake/kuramoto_sync.py`** — the canonical model of collective synchronization (Kuramoto 1975;

@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 100/100 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 101/101 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.29** · 139 tagged releases (v0.1 → v2.29). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.30** · 140 tagged releases (v0.1 → v2.30). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.29.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.29.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.30.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.30.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 100 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 101 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 100-module list is canonical in
+plus separate lint and coverage jobs. The 101-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (65 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (66 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,23 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.30, product):_ **Hierarchical predictive coding — perceptual inference by prediction-error (Rao-Ballard).**
+`predictive_coding.py` adds the second dominant theory of cortical inference (alongside v2.28's neural sampling): a
+2-level generative hierarchy (Rao & Ballard, *Nat Neurosci* 2:79, 1999; Friston free-energy view) where each level
+**predicts the level below and only the prediction error propagates up**. With causes r1, r2 and generative weights
+W1, W2: `x_hat = W1·r1`, `e0 = x − x_hat`; `r1_hat = W2·r2`, `e1 = r1 − r1_hat`. **Inference** descends the total
+error energy `E = |e0|² + |e1|²` (`r1 += lr(W1ᵀe0 − e1)`, `r2 += lr·W2ᵀe1`) until it settles; **learning** then takes
+a Hebbian step on the weights (`W1 += outer(e0,r1)`, `W2 += outer(e1,r2)`) — it learns a generative dictionary.
+Self-check: for a **representable** input inference drives `E → 5.4e-09` monotonically (recon MSE 5.3e-10); the
+hierarchy is genuinely 2-level — with a matched top-down prediction (`e1=0`) `r2` is **frozen (moves 0.0)**, but a
+residual `e1` **moves it (0.039)**; **learning lowers** the per-epoch reconstruction MSE `0.145 → 0.030` (4.8×,
+monotone); deterministic. Distinct from `lca_sparse_coding` (single-layer lateral inhibition — no top-down/bottom-up
+hierarchy), `valence_stdp`/`r_stdp` (*reward* prediction error, not *sensory*), and `htm_sequence_memory` (temporal
+next-SDR prediction, not a static generative hierarchy). Pure-stdlib core (`dependencies = []`), **101/101**
+self-checks; the 5 safety-envelope files untouched. Ceiling: a small linear 2-level Rao-Ballard net on synthetic
+data (gradient inference + Hebbian learning), tiny dims so the representable-input test is exact — not spiking
+biophysics, no precision/attention weighting, not cognition.
 
 _Landed (v2.29, product):_ **Kuramoto synchronization — emergent phase-locking of coupled oscillators.**
 `kuramoto_sync.py` adds the canonical model of collective synchronization (Kuramoto 1975; Strogatz, *Physica D*
