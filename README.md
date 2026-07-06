@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 90/90 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 91/91 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.17** · 127 tagged releases (v0.1 → v2.17). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.18** · 128 tagged releases (v0.1 → v2.18). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.17.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.17.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. Five tabs: Arm Control, Live Recognition, Lake Browser, NL Command, and **Core Runner** — which runs the *entire* zero-dep core (every module's self-check) inside the app (`snn-ui.exe --run-core` to run it headless). (Or clone the source: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.18.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.18.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. Five tabs: Arm Control, Live Recognition, Lake Browser, NL Command, and **Core Runner** — which runs the *entire* zero-dep core (every module's self-check) inside the app (`snn-ui.exe --run-core` to run it headless). (Or clone the source: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 90 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 91 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 90-module list is canonical in
+plus separate lint and coverage jobs. The 91-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (55 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (56 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,17 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.18, product):_ **Out-of-core streaming — emulate chips bigger than memory (AirLLM-inspired).**
+`neuro_chip_stream.py` applies AirLLM's layer-streaming idea to the chip emulator: the chip's **cores are streamed
+from disk one at a time** (load a core's weights + membrane state → step → save → free → next), so peak resident
+memory is **one core** and the neuron count is bounded by **disk, not RAM**. Self-check proves **streaming-invariance**
+(bit-for-bit identical spikes to the in-memory `neuro_chip`) and `max_resident_cores == 1`. A torch/GPU weight-streaming
+twin (`research/neuromorphic_torch/neuro_chip_gpu_stream.py`, optional `[gpu]`) streams per-core weight blocks disk→VRAM
+so a chip can exceed VRAM (demo: emulated chip 16× larger than peak resident weights), agreeing bit-for-bit with the
+in-VRAM version. This is AirLLM's *architecture* (streaming to bypass the memory wall) applied honestly — **not** the
+AirLLM library and not an LLM. Trades memory for per-tick disk I/O. Pure-stdlib core (`dependencies = []`), **91/91**
+self-checks; the 5 safety-envelope files untouched.
 
 _Landed (v2.17, product):_ **Neuromorphic-chip emulator — run the whole SNN locally without silicon.** `neuro_chip.py`
 is a functional/architectural emulator of an event-driven neuromorphic processor: multiple **cores** (populations of

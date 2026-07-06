@@ -3,6 +3,29 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.18] — Out-of-core streaming: emulate chips bigger than memory (AirLLM-inspired) (2026-07-05)
+### Added
+- **`src/snn_data_lake/neuro_chip_stream.py`** — applies **AirLLM's layer-streaming architecture** to the
+  neuromorphic-chip emulator so a chip with far more neurons than fit in RAM can be emulated. The chip's **cores are
+  streamed from disk one at a time** (per tick: load a core's weights + membrane state from its shard, apply the AER
+  packets addressed to it, step its `LIFNeuron`s, save state back, free it, move to the next core), with a small
+  sparse in-RAM AER packet queue. **Peak resident memory = one core** (`max_resident_cores == 1`), so the neuron
+  count is bounded by **disk, not RAM**. It reproduces `neuro_chip`'s exact tick semantics, so the self-check proves
+  **streaming-invariance** — bit-for-bit identical `spikes`/`synops`/`output_trace` to the in-memory `NeuroChip` —
+  plus the `max_resident_cores == 1` bound and a 192-neuron / 48-core scale run. Zero-dep (`array`/`struct`/`tempfile`
+  shards), deterministic, temp files cleaned up.
+- **`research/neuromorphic_torch/neuro_chip_gpu_stream.py`** (optional `[gpu]` extra, quarantined, NOT in CI) — the
+  torch/GPU weight-streaming twin: the `[N×N]` weight matrix is **sharded by core and streamed disk→VRAM one block at
+  a time**, so peak VRAM = one core's weight block and the chip can exceed VRAM (smoke: emulated chip **16× larger**
+  than peak resident weights). Agrees bit-for-bit with the in-VRAM `neuro_chip_gpu`; torch imported lazily
+  (import-safe without it; smoke skips); CPU + CUDA.
+- **Honesty:** this is AirLLM's *architecture* (streaming to bypass the memory wall), applied honestly — **not** the
+  AirLLM library and not an LLM (AirLLM runs LLMs; see `docs/AIRLLM_ANALYSIS.md`). It trades memory for per-tick disk
+  I/O and adds no new physical fidelity (same functional/architectural ceiling as `neuro_chip`, not cycle-accurate).
+- Registered CORE (**91/91** self-checks; the Core Runner tab / `--run-core` now runs 57 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched.
+
 ## [v2.17] — Neuromorphic-chip emulator: run the whole SNN locally without silicon (2026-07-05)
 ### Added
 - **`src/snn_data_lake/neuro_chip.py`** — a functional/architectural **emulator of an event-driven neuromorphic
