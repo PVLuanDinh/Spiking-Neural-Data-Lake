@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.32] — Evidence accumulation: perceptual decision-making by drift-diffusion (Gold-Shadlen) (2026-07-06)
+### Added
+- **`src/snn_data_lake/evidence_accumulation.py`** — a *decision-making* capability the core lacked: the algorithmic
+  **drift-diffusion / bounded-accumulator** model of two-choice perceptual decisions (Ratcliff, *Psychol Rev* 85:59,
+  1978; Gold & Shadlen, *Annu Rev Neurosci* 30:535, 2007; the spiking attractor realization is Wang, *Neuron* 36:955,
+  2002). Noisy sensory evidence is **integrated over time to a decision bound**; the crossing yields both a **choice**
+  and a **reaction time**. `DriftDiffusion(drift, bound, noise, dt, seed)` integrates `x += drift·dt + noise·N(0,1)·√dt`
+  (Euler-Maruyama on a Wiener process) until `x ≥ +bound` (+1) or `x ≤ −bound` (−1); `sign(drift)` = correct option,
+  `|drift|` = stimulus strength. A `RaceAccumulator(drifts, bound, leak, inhibition, ...)` gives the N-alternative
+  leaky-competing-accumulator race (Usher & McClelland 2001; named to avoid colliding with `lca_sparse_coding`).
+  Helpers `accuracy`/`mean_rt`/`psychometric`/`chronometric`.
+- Self-check (deterministic, ASCII; 400 trials/drift, seed 0) shows the three signatures that *define* the model: a
+  **psychometric** curve — accuracy `0.53` at zero drift (chance) rising monotonically to `1.00` at strong drift; a
+  **speed-accuracy tradeoff** — at a fixed drift, a low bound gives `(accuracy 0.75, RT 26.8 steps)` vs a high bound
+  `(accuracy 0.97, RT 139.1 steps)` (more accurate AND slower); a **chronometric** curve — mean RT falls from `98.9`
+  (weak drift) to `30.0` steps (strong drift); the strongest of three racers wins the majority (174/300); two fresh
+  instances with the same seed give identical (choice, RT) trials.
+- **Genuinely distinct** (stated in the docstring): `valence_stdp`/`closed_loop` do **value-based** action selection —
+  they *learn* a scalar value from reward prediction error (dopamine RPE) and pick the higher-valued action, with no
+  time-integration of evidence, no bound, no reaction time, no speed-accuracy tradeoff. `spiking_pid` is closed-loop
+  *control* to a setpoint. This is a **decision** — an irreversible commit to one option at a threshold, timestamped
+  by the step the bound was reached — distinct too from `predictive_coding` (inference of latent causes) and
+  `neural_sampling` (posterior sampling of a joint).
+- Registered CORE (**103/103** self-checks; the Core Runner tab / `--run-core` now runs 69 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a reduced
+  Euler-Maruyama drift-diffusion / bounded-accumulator model with Gaussian noise on synthetic evidence — the
+  algorithmic level of the decision, **not a spiking attractor network (Wang 2002), not biophysics**; not cognition.
+
 ## [v2.31] — Wilson-Cowan neural mass: E/I population dynamics + bifurcation repertoire (2026-07-06)
 ### Added
 - **`src/snn_data_lake/wilson_cowan.py`** — the canonical mesoscale cortical **neural mass model** (Wilson & Cowan,

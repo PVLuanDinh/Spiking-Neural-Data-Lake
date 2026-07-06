@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 102/102 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 103/103 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.31** · 141 tagged releases (v0.1 → v2.31). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.32** · 142 tagged releases (v0.1 → v2.32). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.31.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.31.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.32.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.32.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 102 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 103 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 102-module list is canonical in
+plus separate lint and coverage jobs. The 103-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (67 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (68 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,23 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.32, product):_ **Evidence accumulation — perceptual decision-making by drift-diffusion (Gold-Shadlen).**
+`evidence_accumulation.py` adds a *decision-making* capability the core lacked: noisy sensory evidence is
+**integrated over time to a decision bound**, and the crossing yields both a **choice** and a **reaction time** —
+the algorithmic drift-diffusion / bounded-accumulator model of two-choice perceptual decisions (Ratcliff, *Psychol
+Rev* 85:59, 1978; Gold & Shadlen, *Annu Rev Neurosci* 30:535, 2007; the spiking realization is Wang, *Neuron* 36:955,
+2002). `DriftDiffusion(drift, bound, noise, dt, seed)` integrates `x += drift·dt + noise·N(0,1)·√dt` (Euler-Maruyama)
+until `|x| ≥ bound`; a `RaceAccumulator` gives the N-alternative leaky-competing-accumulator race. Self-check shows
+the three defining signatures: a **psychometric** curve (accuracy rises with evidence strength — **0.53 at zero drift
+→ 1.00 at strong drift**, monotone); a **speed-accuracy tradeoff** (fixed drift, raising the bound buys accuracy at
+the cost of latency — low bound `(acc 0.75, RT 26.8)` vs high bound `(acc 0.97, RT 139.1)`); a **chronometric** curve
+(stronger evidence is decided faster — RT `98.9 → 30.0` steps); and the strongest of three racers wins the majority
+(174/300); deterministic. Distinct from `valence_stdp`/`closed_loop` (value-based action selection — *learns* a value
+via reward RPE, no time-integration/bound/RT/speed-accuracy) and `spiking_pid` (continuous control to a setpoint, not
+a discrete commitment). Pure-stdlib core (`dependencies = []`), **103/103** self-checks; the 5 safety-envelope files
+untouched. Ceiling: a reduced Euler-Maruyama drift-diffusion model on synthetic evidence — the algorithmic level of
+the decision, not a Wang-2002 spiking attractor network, not cognition.
 
 _Landed (v2.31, product):_ **Wilson-Cowan neural mass — E/I population dynamics + bifurcation repertoire.**
 `wilson_cowan.py` adds a mesoscale dynamical-systems axis: two coupled mean firing rates, E (excitatory) and I

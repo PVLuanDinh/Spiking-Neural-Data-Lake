@@ -30,7 +30,7 @@ CORE = [
     "htm_sequence_memory", "theta_gamma_code", "predictive_coding", "spike_stream_sketch",
     "paradigm_b_matcher", "paradigm_b_engine", "vsa_reasoning", "spike_preprocessing", "proximity_index", "energy",
     "neuro_chip", "neuro_chip_stream",
-    "signal_loop", "learned_matcher", "rank_order_coding", "tempotron", "lca_sparse_coding",
+    "signal_loop", "learned_matcher", "rank_order_coding", "tempotron", "lca_sparse_coding", "evidence_accumulation",
     "reflex", "valence_stdp", "r_stdp", "bcm_plasticity", "homeostatic_scaling", "inhibitory_stdp",
     "divisive_normalization",
     "intrinsic_plasticity", "izhikevich_neuron", "cortisol", "acetylcholine",
