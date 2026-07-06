@@ -3,6 +3,28 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.22] — Inhibitory STDP: excitation/inhibition balance (Vogels 2011) (2026-07-06)
+### Added
+- **`src/snn_data_lake/inhibitory_stdp.py`** — the plasticity family's first **inhibitory** rule: the canonical
+  Vogels, Sprekeler, Zenke, Clopath & Gerstner mechanism, *"Inhibitory Plasticity Balances Excitation and Inhibition
+  in Sensory Pathways and Memory Networks"* (Science 334:1569, 2011). A LIF neuron gets fixed excitatory drive plus N
+  plastic **inhibitory** synapses; each adapts by spike timing — `w += eta*(x_post - alpha)` on a presynaptic spike and
+  `w += eta*x_pre` on a postsynaptic spike, with `alpha = 2*rho0*tau` — a negative-feedback controller (mean
+  `dw ~ 2*eta*tau*r_pre*(r_post - rho0)`) that drives the firing rate to a target `rho0` and meets excitation with
+  co-tuned inhibition (detailed **E/I balance** / network stability).
+- Self-check (deterministic, ASCII): a runaway rate (**0.143**, ~2.9x rho0) is pulled to **0.050 ≈ rho0** as the
+  inhibitory weights grow from 0 (mean 0.036); under **weak** drive the pre-primed inhibitory weights **shrink** (0.02
+  → 0.004, so the neuron isn't over-suppressed); the balanced rate sits well below the un-inhibited runaway;
+  deterministic (same seed → identical weights + rate).
+- **Genuinely distinct** (stated in the docstring) from `homeostatic_scaling` (slow *multiplicative* scaling of
+  *excitatory* weights, not spike-timing) and `intrinsic_plasticity` (adapts the *neuron's own* gain/bias, not
+  synapses): this is spike-timing plasticity of *inhibitory* synapses producing detailed balance.
+- Registered CORE (**93/93** self-checks; the Core Runner tab / `--run-core` now runs 59 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a single postsynaptic
+  neuron with Poisson-synthetic input — a rate/timing caricature of the Vogels rule, not a full recurrent E/I network,
+  **not cognition**.
+
 ## [v2.21] — Real serial arm + an ingest wizard, in the app (2026-07-06)
 ### Added
 - **Connect a real serial arm from Arm Control.** A `serial:` COM-port field + **Connect** button: on connect, the

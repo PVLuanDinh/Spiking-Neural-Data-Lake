@@ -31,7 +31,7 @@ CORE = [
     "paradigm_b_matcher", "paradigm_b_engine", "vsa_reasoning", "spike_preprocessing", "proximity_index", "energy",
     "neuro_chip", "neuro_chip_stream",
     "signal_loop", "learned_matcher", "rank_order_coding", "tempotron", "lca_sparse_coding",
-    "reflex", "valence_stdp", "r_stdp", "bcm_plasticity", "homeostatic_scaling",
+    "reflex", "valence_stdp", "r_stdp", "bcm_plasticity", "homeostatic_scaling", "inhibitory_stdp",
     "intrinsic_plasticity", "izhikevich_neuron", "cortisol",
     "interpreter", "closed_loop", "make_sensor_dataset", "sensor_demo",
     "arm_sim", "arm_config", "population_encoding", "multimodal_encoder", "growing_learner",

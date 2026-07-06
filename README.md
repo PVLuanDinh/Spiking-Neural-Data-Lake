@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 92/92 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 93/93 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.21** · 131 tagged releases (v0.1 → v2.21). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.22** · 132 tagged releases (v0.1 → v2.22). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.21.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.21.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.22.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.22.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 92 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 93 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 92-module list is canonical in
+plus separate lint and coverage jobs. The 93-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (57 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (58 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,16 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.22, product):_ **Inhibitory STDP — excitation/inhibition balance (Vogels 2011).** `inhibitory_stdp.py`
+adds the plasticity family's first **inhibitory** rule: the canonical Vogels, Sprekeler, Zenke, Clopath & Gerstner
+mechanism (*Science* 334:1569, 2011). Inhibitory synapses onto a LIF neuron adapt by spike timing (`Δw = η(x_post − α)`
+on a pre-spike, `η·x_pre` on a post-spike, `α = 2·ρ0·τ`) — a negative-feedback controller that drives the neuron's
+firing rate to a target ρ0 and meets excitation with co-tuned inhibition (detailed E/I balance / network stability).
+Self-check: a runaway rate (0.143, ~2.9× ρ0) is pulled to **0.050 ≈ ρ0** as inhibition grows from 0; under weak drive
+the inhibitory weights **shrink** (not over-suppressed); deterministic. Distinct from `homeostatic_scaling`
+(multiplicative excitatory scaling) and `intrinsic_plasticity` (neuron gain). Pure-stdlib core (`dependencies = []`),
+**93/93** self-checks; the 5 safety-envelope files untouched.
 
 _Landed (v2.21, product):_ **Real hardware + an ingest wizard in the app.** Two follow-ups to the usability pass:
 (1) **Connect a real serial arm** — Arm Control gets a `serial:` COM field + **Connect**; on connect the buttons route
