@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 107/107 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 108/108 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.36** · 146 tagged releases (v0.1 → v2.36). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.37** · 147 tagged releases (v0.1 → v2.37). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.36.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.36.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.37.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.37.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 107 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 108 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 107-module list is canonical in
+plus separate lint and coverage jobs. The 108-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (72 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (73 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,23 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.37, product):_ **Restricted Boltzmann machine — learn an energy-based generative model by CD (Smolensky/Hinton).**
+`restricted_boltzmann.py` adds unsupervised generative-model *learning* — the companion to v2.28's neural sampling
+(which *samples* a given Boltzmann joint; the RBM *learns* one from data). A bipartite visible/hidden Markov random
+field with energy `E(v,h) = −b_v·v − b_h·h − vᵀWh`; the missing intra-layer edges make the conditionals factorize
+(`p(h_j|v)=σ(b_h_j + Σᵢ vᵢ W_ij)`), so a whole layer samples in one shot. **Contrastive divergence (CD-1)** trains it:
+positive phase from the data vs a one-step Gibbs reconstruction (Smolensky 1986; Hinton, *Neural Comput* 14:1771,
+2002). Self-check (nv=16, nh=8, 24 noisy 3-prototype vectors): **CD lowers reconstruction error** (0.237 → 0.105 over
+40 epochs); the model **learned the distribution** — mean free energy of the data (**−15.28**) sits well below random
+binary vectors (**−4.85**), margin **10.4** (lower F = higher modelled probability); it **denoises** — a prototype
+corrupted by 3 bits reconstructs to Hamming **1** of the true pattern; deterministic. Distinct from `neural_sampling`
+(a fixed-weight Gibbs sampler of a *given*, fully-visible joint — no learning, no hidden units, no CD), from
+`predictive_coding` (a *directed* hierarchy trained by prediction-error gradient), and from the research
+`hopfield_baseline`/`dense_associative_memory` (deterministic one-shot attractor recall, not a learned stochastic
+generative model). Pure-stdlib core (`dependencies = []`), **108/108** self-checks; the 5 safety-envelope files
+untouched. Ceiling: a small CD-1 RBM on synthetic patterns — the energy-based-generative-learning level, no deep
+belief net / persistent-CD / annealed importance sampling; not cognition.
 
 _Landed (v2.36, product):_ **Efference copy / forward model — cancel reafference, flag exafference (von Holst / Wolpert).**
 `forward_model.py` adds action-conditioned sensory prediction: an **efference copy** of the motor command feeds an

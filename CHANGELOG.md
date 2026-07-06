@@ -3,6 +3,34 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.37] — Restricted Boltzmann machine: learn an energy-based generative model by CD (Smolensky/Hinton) (2026-07-06)
+### Added
+- **`src/snn_data_lake/restricted_boltzmann.py`** — unsupervised *learning* of an undirected energy-based generative
+  model, the companion to v2.28's neural sampling (which *samples* a given Boltzmann joint; this *learns* one from
+  data). A bipartite visible/hidden Markov random field (Smolensky 1986; Hinton, "Training Products of Experts by
+  Minimizing Contrastive Divergence", *Neural Comput* 14:1771, 2002): energy `E(v,h) = −b_v·v − b_h·h − vᵀWh`; with no
+  intra-layer edges the conditionals factorize (`p(h_j=1|v)=σ(b_h_j + Σᵢ vᵢW_ij)`, `p(v_i=1|h)=σ(b_v_i + Σⱼ W_ij h_j)`)
+  so each layer samples in one shot. **Contrastive divergence (CD-1)** learns W, b_v, b_h by contrasting the data
+  statistics against a one-step Gibbs reconstruction. `RBM(n_visible, n_hidden, seed)` exposes `hidden_probs`/
+  `visible_probs`, `sample_hidden`/`sample_visible`, `reconstruct` (mean-field denoise), `gibbs(v0, k)` (generation),
+  `free_energy(v)` (`F(v) = −b_v·v − Σⱼ softplus(b_h_j + Σᵢ vᵢW_ij)`), and `train(data, epochs, lr)`.
+- Self-check (deterministic, ASCII; nv=16, nh=8, 24 noisy vectors from 3 prototypes, 40 epochs): **CD lowers the
+  reconstruction error** (0.2368 → 0.1054, 2.2×); the model **learned the distribution** — mean free energy of the
+  training data (**−15.278**) is well below that of random binary vectors (**−4.847**), margin **+10.431** (lower F =
+  higher modelled probability); it **denoises** — a prototype corrupted by 3 bits reconstructs to Hamming **1** of the
+  true pattern; two fresh instances give an identical curve **and** identical trained weights.
+- **Genuinely distinct** (stated in the docstring): `neural_sampling`'s `BoltzmannSampler` is a fixed-weight Gibbs
+  sampler of a *given*, fully-visible joint — nothing is learned, no hidden units, no CD; this is a bipartite
+  visible/hidden RBM whose weights are **learned** by contrastive divergence (a learned latent-variable generative
+  model vs sampling a known joint). `predictive_coding` is a *directed* hierarchy trained by prediction-error gradient
+  (this is an *undirected* energy-based model trained by CD). The research `hopfield_baseline`/`dense_associative_memory`
+  are deterministic one-shot attractor recall, not a learned stochastic generative model.
+- Registered CORE (**108/108** self-checks; the Core Runner tab / `--run-core` now runs 74 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a small binary RBM
+  trained by CD-1 on synthetic prototype patterns — the energy-based-generative-learning level, **no deep belief net,
+  no persistent-CD, no annealed importance sampling** for the true partition function; not cognition.
+
 ## [v2.36] — Efference copy / forward model: cancel reafference, flag exafference (von Holst / Wolpert) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/forward_model.py`** — action-conditioned sensory prediction: an **efference copy** of the
