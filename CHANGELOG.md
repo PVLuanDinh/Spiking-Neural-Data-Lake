@@ -3,6 +3,32 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.38] — Legendre Memory Unit: optimal linear window memory / delay network (Voelker-Eliasmith) (2026-07-06)
+### Added
+- **`src/snn_data_lake/legendre_memory.py`** — a continuous rolling-window memory: the **Legendre Memory Unit**
+  (Voelker, Kajić & Eliasmith, "Legendre Memory Units: Continuous-Time Representation in Recurrent Neural Networks",
+  *NeurIPS* 2019). It maintains the last `θ` of a scalar input by projecting that history onto the first `d`
+  shifted-Legendre polynomials — the state is the vector of Legendre coefficients, evolving by the delay-network state
+  space `θ·ṁ = A·m + B·u` with Voelker's shifted-Legendre realization (`A[i][j] = (2i+1)·(−1 if i<j else
+  (−1)^(i−j+1))`, `B[i] = (2i+1)·(−1)^i`), forward-Euler integrated. Because the whole window lives on a polynomial
+  basis, the input at **any** lag `θ′∈[0,θ]` is decoded by one linear read-out `û(θ′) = Σᵢ mᵢ·Pᵢ(2r−1)`, `r=θ′/θ`
+  (the decode convention was fixed empirically — only `r=θ′/θ` makes the full-delay decode match `u(t−θ)`).
+  `LegendreMemory(order, theta, dt)` exposes `step`/`run`, `reconstruct(lag_fraction)`, `window(n_points)`, `reset`.
+- Self-check (deterministic, ASCII; order d=8, θ=1, dt=0.002, sinusoidal input): the **delay line** `reconstruct(1.0)`
+  tracks `u(t−θ)` with **correlation 1.0000, nrmse 0.0244**; the **whole window** is readable — reconstructing at lags
+  0.25/0.50/0.75/1.00 matches `u(t−lag·θ)` (worst nrmse 0.0244, all corr 1.0000); **order raises capacity** — the
+  full-delay RMSE falls **0.2935 (d=3) → 0.0173 (d=8), 17× finer**; two fresh instances give an identical state trace.
+- **Genuinely distinct** (stated in the docstring): the research `nef_integrator` holds a *single* scalar (a
+  line-attractor working memory of one value) — the LMU holds the *entire* recent window, reconstructable at any lag,
+  by projecting it onto `d` Legendre coefficients (a window vs a point); `htm_sequence_memory` *predicts* the next SDR
+  (the LMU compresses and reconstructs, it doesn't predict); `theta_gamma_code` holds K *discrete* items in phase
+  slots (the LMU is a continuous polynomial-basis window); `ring_attractor` is a single spatial bump.
+- Registered CORE (**109/109** self-checks; the Core Runner tab / `--run-core` now runs 75 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a discretized linear
+  LMU delay network (forward-Euler shifted-Legendre state space) reconstructing a synthetic input window — the
+  continuous-memory level, **not the trained recurrent LMU cell, not spiking**; not cognition.
+
 ## [v2.37] — Restricted Boltzmann machine: learn an energy-based generative model by CD (Smolensky/Hinton) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/restricted_boltzmann.py`** — unsupervised *learning* of an undirected energy-based generative
