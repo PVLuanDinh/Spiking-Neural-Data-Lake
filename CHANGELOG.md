@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.29] — Kuramoto synchronization: emergent phase-locking of coupled oscillators (2026-07-06)
+### Added
+- **`src/snn_data_lake/kuramoto_sync.py`** — the canonical model of collective synchronization (Kuramoto 1975;
+  Strogatz, *Physica D* 143:1, 2000). N phase oscillators θᵢ with seeded natural frequencies ωᵢ (Gaussian, centered),
+  all-to-all sine-coupled: `dθᵢ/dt = ωᵢ + (K/N)Σⱼsin(θⱼ−θᵢ)`. The collective state is the **order parameter**
+  `r·e^{iψ} = (1/N)Σⱼe^{iθⱼ}` (`r∈[0,1]`: 0 = incoherent, 1 = phase-locked). Above a **critical coupling** `K_c` the
+  population spontaneously synchronizes — a phase transition, not a designed rhythm. `KuramotoNetwork(n, coupling,
+  freq_spread, seed, dt)` integrates the **exact mean-field** form `dθᵢ/dt = ωᵢ + K·r·sin(ψ−θᵢ)` (an exact identity
+  for all-to-all coupling, O(N)/step) with fixed Euler steps; exposes `step`/`run`, `order_parameter`,
+  `mean_r(last_frac)`, `instantaneous_frequencies`, `reset`, `phases`/`frequencies`; module helper
+  `critical_coupling(freq_spread)` returns the analytic Gaussian `K_c = 2σ√(2/π) ≈ 1.596·σ`.
+- Self-check (deterministic, ASCII; N=256, Gaussian spread 1.0, `K_c≈1.60`, floor `1/√N=0.062`): the **coupling
+  transition** — `mean_r=0.080` at low K=0.40 (near the incoherent floor) vs **0.976** at high K=5.00; steady-state
+  `r` is **monotone in K** across a sweep spanning `K_c` (`K=[0,0.8,1.6,3.2,6.4] → r=[0.070,0.073,0.104,0.930,
+  0.986]`); **identical oscillators** (zero spread) fully phase-lock (`r=1.000`); at high K the **instantaneous
+  frequency spread collapses** from 1.042 (K=0) to 0.000 (entrainment to a common frequency); two fresh instances
+  with the same seed give an identical r series.
+- **Genuinely distinct** (stated in the docstring): `cpg_oscillator` is a Matsuoka **half-center** — two
+  mutually-inhibiting adapting neurons producing one anti-phase rhythm to drive the arm (a designed 2-cell rhythm
+  *generator*). This is a **population** of N coupled phase oscillators whose collective synchronization *emerges*
+  above a coupling threshold, measured by the order parameter r (an emergent phase transition). Not `ring_attractor`
+  (one spatial bump), not `theta_gamma_code` (discrete WM phase slots) — this is continuous coupled-oscillator
+  dynamics + the sync order parameter (neural-oscillation coherence / communication-through-coherence).
+- Registered CORE (**100/100** self-checks; the Core Runner tab / `--run-core` now runs 66 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: reduced mean-field /
+  all-to-all Kuramoto phase oscillators with a fixed Euler step on synthetic frequencies — **not biophysical spiking
+  neurons, no conduction delays, no topology beyond all-to-all**; not cognition.
+
 ## [v2.28] — Neural sampling: probabilistic inference in spikes (Buesing/Maass) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/neural_sampling.py`** — a genuinely new capability class for the lake: **posterior sampling
