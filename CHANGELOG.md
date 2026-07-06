@@ -3,6 +3,25 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.21] — Real serial arm + an ingest wizard, in the app (2026-07-06)
+### Added
+- **Connect a real serial arm from Arm Control.** A `serial:` COM-port field + **Connect** button: on connect, the
+  arm buttons route through `serial_arm.SerialArm` (the real actuator sink) instead of the simulator; the canvas keeps
+  rendering because the `SerialArm` mirrors an `ArmSim` (new `ArmTab.sim` property). **Off by default; no safety
+  bypass** — `SerialArm` enforces the calibration gate + wire allow-list + E-STOP freeze, so an **uncalibrated rig is
+  refused** with an honest message and the app stays on the simulator (verified: uncalibrated `SerialArm(port=...)` ->
+  `RuntimeError`; connected bench test -> E-STOP still freezes the wire and the mirror geometry updates). Real-arm
+  serial needs a **source install** with the `arm` extra (`pip install ".[arm]"`, pyserial); the frozen exe reports
+  that requirement (serial is excluded from the bundle by design).
+- **Ingest wizard in the Lake tab.** "Import data..." opens a guided `IngestDialog` that converts a **spike-event
+  CSV** (rows `channel,time`, via `_csv_to_store`) *or* a **dense sensor CSV** (rows = time steps, columns = channels;
+  a value `>=` a threshold becomes a spike, via the new `_dense_csv_to_store`) into a queryable `.spk`, then loads it
+  back into the tab — the ingest → store → query loop end to end, in the GUI, for a user's own raw data.
+- The headless `--smoke` now also exercises the dense-CSV import and asserts the serial calibration gate refuses an
+  uncalibrated arm. No module / self-check count change (**92/92**). Core `dependencies = []` unchanged; the 5
+  safety-envelope files (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are **untouched** — the GUI only
+  *uses* `SerialArm`; it does not modify the envelope, and every arm action still flows through a gated `apply()`.
+
 ## [v2.20] — Usable desktop app: load your own data, not just demos (2026-07-06)
 ### Changed / Fixed (usability)
 After an adversarial usability review (the app was "just a shell" — every button ran real code, but a fresh user

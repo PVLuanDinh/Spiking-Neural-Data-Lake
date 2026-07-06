@@ -60,9 +60,9 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 92/92 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.20** · 130 tagged releases (v0.1 → v2.20). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.21** · 131 tagged releases (v0.1 → v2.21). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.20.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.20.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data:** replay the bundled sample gesture captures (or **Open** your own capture CSV), **Open** your own `.spk` telemetry store or **Import** a CSV of spike events (`channel,time`) into a queryable store, drive the arm, type natural-language commands, and run Diagnostics. (Or clone the source: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.21.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.21.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -370,6 +370,17 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.21, product):_ **Real hardware + an ingest wizard in the app.** Two follow-ups to the usability pass:
+(1) **Connect a real serial arm** — Arm Control gets a `serial:` COM field + **Connect**; on connect the buttons route
+through `serial_arm.SerialArm` (the real actuator sink) *instead of* the simulator, and the canvas still renders (the
+SerialArm mirrors an `ArmSim`). **No safety bypass:** `SerialArm` enforces the calibration gate + wire allow-list +
+E-STOP freeze, so an uncalibrated rig is **refused** with an honest message (verified: uncalibrated → `RuntimeError`,
+stays on the sim; connected → E-STOP still freezes the wire). Real-arm serial needs a source install with `.[arm]`
+(pyserial); the exe reports that. (2) **Ingest wizard** — the Lake tab's "Import data..." opens a guided dialog that
+turns a **spike-event CSV** (`channel,time`) *or* a **dense sensor CSV** (rows = time, columns = channels, thresholded)
+into a queryable `.spk` — the ingest → store → query loop, end to end, in the GUI. **92/92** self-checks (`--smoke` now
+exercises the dense import + the serial gate); the 5 safety-envelope files are untouched.
 
 _Landed (v2.20, product):_ **Usable desktop app — load your own data, not just demos.** After an honest usability
 review found the app was largely a demo shell (no way to bring your own data anywhere; Live Recognition **empty** on

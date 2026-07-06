@@ -10,14 +10,15 @@ HOW TO RUN
 2. Double-click snn-ui.exe to launch.
 
 THE FIVE TABS
-  Arm Control      Live 2-link simulated arm. Every button is safety-gated:
-                   collision detection, EMERGENCY_STOP, command allow-list.
+  Arm Control      Live 2-link arm (simulated by default). Every button is safety-gated:
+                   collision, EMERGENCY_STOP, allow-list. Connect serial (COM) to drive
+                   a REAL arm -- calibration-gated, no bypass.
 
   Live Recognition Replay the bundled sample gesture captures as live arm commands
                    (step or auto-play); Open CSV... to load your OWN capture.
 
-  Lake Browser     Load the demo store, Open your OWN .spk, or Import a CSV of spike
-                   events (channel,time) into a queryable store; run windowed queries.
+  Lake Browser     Load the demo store, Open your OWN .spk, or use Import data... (a wizard
+                   for spike-event OR dense sensor CSV -> a queryable store); run queries.
 
   NL Command       Type an English command ("close the gripper", "go home",
                    "STOP", "read telemetry channel 7 window 1000"). It maps to a

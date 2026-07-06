@@ -5,15 +5,15 @@ tkinter is Python's standard-library GUI, so this ships the "full UX" with NO ne
 one window, a ttk.Notebook with three tabs that drive the exact same verified code paths the
 headless demos use —
 
-  1. Arm Control     : a live 2-link arm on a tk.Canvas (forward kinematics from ArmSim), driven
-                       ONLY through the safety-gated ArmSim.apply(); collision turns it red; a big
-                       red EMERGENCY_STOP freezes it.
+  1. Arm Control     : a live 2-link arm on a tk.Canvas (forward kinematics), every button through
+                       the safety-gated apply(); collision turns it red; EMERGENCY_STOP freezes it.
+                       Connect serial to drive a REAL arm via serial_arm (calibration-gated; no bypass).
   2. Live Recognition: step / auto-play a sample (or your OWN, via Open CSV...) capture's windows
                        through the SAME path live_arm uses — gesture_recognition.classify ->
                        Interpreter -> arm reaction.
-  3. Lake Browser    : load the demo store, Open your OWN .spk, or Import a CSV of spike events
-                       (channel,time) -> a queryable .spk; then run a windowed (channel, [t0,t1))
-                       query via spike_telemetry_hub and report "reads X% of file".
+  3. Lake Browser    : load the demo store, Open your OWN .spk, or Import your data via a wizard
+                       (spike-event or dense sensor CSV -> a queryable .spk); then run a windowed
+                       (channel, [t0,t1)) query and report "reads X% of file".
   4. NL Command      : type an English command; nl_interface maps it to an allow-listed arm command
                        (driven through the SAME gated ArmSim.apply() as tab 1) or a lake query, or
                        REJECTS it. Zero-dep StubBackend; the backend can only pick a label, never a
@@ -127,6 +127,29 @@ def _csv_to_store(path):
     return hub
 
 
+def _dense_csv_to_store(path, threshold=0.5):
+    """Build a store from a DENSE sensor CSV: each row is one time step, each column a channel's
+    numeric value; a value >= threshold emits a spike at (column, row). Non-numeric header rows
+    are skipped. The 'I have a table of sensor readings over time' import path."""
+    rows = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip().replace(";", ",")
+            if not line:
+                continue
+            try:
+                rows.append([float(x) for x in line.split(",")])
+            except ValueError:
+                continue                                   # header / non-numeric row -> skip
+    if not rows:
+        raise ValueError("no numeric rows found")
+    n_ch = max(len(r) for r in rows)
+    hub = spike_telemetry_hub.SpikeTelemetryHub(n_ch, len(rows))
+    for c in range(n_ch):
+        hub.ingest(c, [t for t, r in enumerate(rows) if c < len(r) and r[c] >= threshold])
+    return hub
+
+
 # ---- tab 1: Arm Control ---------------------------------------------------------
 class ArmTab(ttk.Frame):
     """2-link arm on a Canvas; every button routes through the safety-gated ArmSim.apply()."""
@@ -160,14 +183,70 @@ class ArmTab(ttk.Frame):
 
         self.status = ttk.Label(self, text="", font=("TkFixedFont", 9), justify="left")
         self.status.grid(row=9, column=0, columnspan=2, sticky="w", pady=(8, 0))
+
+        # optional REAL-hardware sink: route the buttons through serial_arm.SerialArm, which enforces
+        # the calibration gate + wire allow-list + E-STOP freeze. OFF by default (buttons drive the
+        # simulator until you Connect); an uncalibrated rig is refused -- no bypass.
+        sr = ttk.Frame(self); sr.grid(row=10, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        ttk.Label(sr, text="serial:").pack(side="left")
+        self.port_entry = ttk.Entry(sr, width=10)
+        self.port_entry.insert(0, "COM3")
+        self.port_entry.pack(side="left", padx=2)
+        self.conn_btn = ttk.Button(sr, text="Connect", command=self.connect_serial)
+        self.conn_btn.pack(side="left", padx=2)
+        self.serial_status = ttk.Label(sr, text="SIM (not connected)", font=("TkFixedFont", 8),
+                                       foreground="#555")
+        self.serial_status.pack(side="left", padx=6)
         self.render()
 
     def send(self, cmd):
         self.arm.apply(cmd)                        # ONLY path to motion -> reflex / E-STOP gate holds
         self.render()
 
+    @property
+    def sim(self):
+        """The ArmSim used to render geometry: the simulator itself, or the SerialArm's mirror."""
+        return self.arm if isinstance(self.arm, arm_sim.ArmSim) else self.arm.mirror
+
+    def connect_serial(self):
+        """Toggle: route the buttons through the REAL arm over serial (serial_arm.SerialArm, which
+        enforces the calibration gate + wire allow-list + E-STOP freeze), or back to the simulator.
+        No bypass -- an uncalibrated rig is refused."""
+        if not isinstance(self.arm, arm_sim.ArmSim):        # connected -> disconnect
+            self._disconnect(); return
+        port = self.port_entry.get().strip()
+        if not port:
+            self._serial_msg("enter a COM port (e.g. COM3)", err=True); return
+        try:
+            from snn_data_lake.serial_arm import SerialArm
+            arm = SerialArm(port=port)                       # calibration gate + allow-list on the WIRE
+        except ImportError:
+            self._serial_msg("needs pyserial: pip install \".[arm]\" (run from source)", err=True); return
+        except RuntimeError:                                 # calibration gate refused -> stay on sim
+            self._serial_msg("refused: set arm_config.SAFETY_CALIBRATED=True for your rig first", err=True)
+            return
+        except Exception as e:                               # port open failed
+            self._serial_msg(f"could not open {port}: {e}", err=True); return
+        self.arm = arm
+        self.conn_btn.configure(text="Disconnect")
+        self._serial_msg(f"REAL arm on {port} -- buttons drive hardware (gated)")
+        self.render()
+
+    def _disconnect(self):
+        try:
+            self.arm.close()
+        except Exception:
+            pass
+        self.arm = arm_sim.ArmSim()
+        self.conn_btn.configure(text="Connect")
+        self._serial_msg("SIM (not connected)")
+        self.render()
+
+    def _serial_msg(self, text, err=False):
+        self.serial_status.configure(text=text, foreground=("#c00" if err else "#080"))
+
     def render(self):
-        c, arm = self.canvas, self.arm
+        c, arm = self.canvas, self.sim             # geometry from the sim (or the SerialArm's mirror)
         c.delete("all")
         colliding = arm.collision()
         # floor
@@ -319,7 +398,7 @@ class LakeTab(ttk.Frame):
         top = ttk.Frame(self); top.grid(row=0, column=0, columnspan=6, sticky="ew")
         ttk.Button(top, text="Load demo store", command=self.open_store).pack(side="left")
         ttk.Button(top, text="Open .spk...", command=self.open_file).pack(side="left", padx=2)
-        ttk.Button(top, text="Import CSV -> .spk...", command=self.import_csv).pack(side="left", padx=2)
+        ttk.Button(top, text="Import data...", command=self.import_data).pack(side="left", padx=2)
         self.summary = ttk.Label(top, text="no store loaded", font=("TkFixedFont", 9))
         self.summary.pack(side="left", padx=10)
 
@@ -353,26 +432,10 @@ class LakeTab(ttk.Frame):
             except Exception as e:
                 self._show(f"could not open {os.path.basename(p)}: {e}")
 
-    def import_csv(self):
-        """Import YOUR data: a CSV of spike events (rows 'channel,time') -> a queryable .spk."""
-        p = filedialog.askopenfilename(title="Import CSV of spike events (rows: channel,time)",
-                                       filetypes=[("CSV", "*.csv"), ("All files", "*.*")])
-        if not p:
-            return
-        try:
-            hub = _csv_to_store(p)
-        except Exception as e:
-            self._show(f"import failed: {e}\nexpected CSV rows of 'channel,time' (integers).")
-            return
-        out = filedialog.asksaveasfilename(title="Save imported store as .spk",
-                                           defaultextension=".spk", filetypes=[("Spike store", "*.spk")])
-        if not out:
-            return
-        try:
-            hub.save(out)
-            self._load_store(out)
-        except OSError as e:
-            self._show(f"could not save {out}: {e}")
+    def import_data(self):
+        """Guided import of YOUR data: the ingest wizard (spike-event OR dense sensor CSV ->
+        a queryable .spk), which loads the built store back into this tab."""
+        IngestDialog(self, self._load_store)
 
     def _load_store(self, path):
         self.path = path
@@ -588,6 +651,69 @@ class CoreTab(ttk.Frame):
         self.log.configure(state="disabled")
 
 
+# ---- ingest wizard --------------------------------------------------------------
+class IngestDialog(tk.Toplevel):
+    """Guided ingest: pick a CSV, choose how to read it, build a .spk store, hand the saved path
+    back to the Lake tab. Two formats: 'events' (rows 'channel,time') and 'dense' (rows = time
+    steps, columns = channels; a value >= threshold is a spike). Reuses _csv_to_store /
+    _dense_csv_to_store -- the 'bring your own data' on-ramp end to end, in the GUI."""
+
+    def __init__(self, master, on_built):
+        super().__init__(master)
+        self.title("Import sensor data -> .spk")
+        self.on_built = on_built
+        self.csv = None
+        self.fmt = tk.StringVar(value="events")
+        pad = {"padx": 8, "pady": 4}
+
+        row = ttk.Frame(self); row.pack(fill="x", **pad)
+        ttk.Button(row, text="Choose CSV...", command=self._pick).pack(side="left")
+        self.file_lbl = ttk.Label(row, text="(no file chosen)", font=("TkFixedFont", 9))
+        self.file_lbl.pack(side="left", padx=6)
+
+        fr = ttk.LabelFrame(self, text="how to read it"); fr.pack(fill="x", **pad)
+        ttk.Radiobutton(fr, text="spike events -- each row 'channel,time' (integers)",
+                        value="events", variable=self.fmt).pack(anchor="w")
+        ttk.Radiobutton(fr, text="dense sensor -- each row = a time step, each column a channel",
+                        value="dense", variable=self.fmt).pack(anchor="w")
+        tr = ttk.Frame(fr); tr.pack(anchor="w", pady=2)
+        ttk.Label(tr, text="   dense: spike when value >=").pack(side="left")
+        self.thr = ttk.Entry(tr, width=6); self.thr.insert(0, "0.5"); self.thr.pack(side="left")
+
+        br = ttk.Frame(self); br.pack(fill="x", **pad)
+        ttk.Button(br, text="Build .spk", command=self._build).pack(side="left")
+        ttk.Button(br, text="Cancel", command=self.destroy).pack(side="left", padx=4)
+        self.msg = ttk.Label(self, text="pick a CSV, choose a format, then Build.",
+                             font=("TkFixedFont", 9), justify="left")
+        self.msg.pack(fill="x", **pad)
+
+    def _pick(self):
+        p = filedialog.askopenfilename(parent=self, title="Choose a CSV",
+                                       filetypes=[("CSV", "*.csv"), ("All files", "*.*")])
+        if p:
+            self.csv = p
+            self.file_lbl.configure(text=os.path.basename(p))
+
+    def _build(self):
+        if not self.csv:
+            self.msg.configure(text="choose a CSV first."); return
+        try:
+            hub = (_csv_to_store(self.csv) if self.fmt.get() == "events"
+                   else _dense_csv_to_store(self.csv, float(self.thr.get())))
+        except Exception as e:
+            self.msg.configure(text=f"could not read it: {e}"); return
+        out = filedialog.asksaveasfilename(parent=self, title="Save built store as .spk",
+                                           defaultextension=".spk", filetypes=[("Spike store", "*.spk")])
+        if not out:
+            return
+        try:
+            hub.save(out)
+        except OSError as e:
+            self.msg.configure(text=f"save failed: {e}"); return
+        self.on_built(out)             # hand the store to the Lake tab
+        self.destroy()
+
+
 # ---- app ------------------------------------------------------------------------
 class App:
     def __init__(self):
@@ -650,6 +776,23 @@ def _smoke():
     assert _imp.n == 3 and _imp.n_events() == 3, "CSV import must build the right channels/events"
     os.remove(_csvp)
 
+    # dense sensor CSV import (display-free): rows = time, cols = channels, threshold -> events
+    _dp = os.path.join(tempfile.gettempdir(), "snn_dense_test.csv")
+    with open(_dp, "w", encoding="utf-8") as _f:
+        _f.write("0.1,0.9\n0.8,0.2\n")        # ch0 spikes at t=1, ch1 at t=0 (threshold 0.5)
+    _d = _dense_csv_to_store(_dp, 0.5)
+    assert _d.n == 2 and _d.n_events() == 2, "dense CSV import must threshold to the right events"
+    os.remove(_dp)
+
+    # serial-connect gate (display-free): driving a REAL arm on an uncalibrated rig must be REFUSED
+    from snn_data_lake.serial_arm import SerialArm
+    try:
+        SerialArm(port="COM_TEST_NONEXISTENT")
+        refused = False
+    except Exception:
+        refused = True                        # calibration gate / import / port error -> not driven
+    assert refused, "an uncalibrated real arm must be refused (the serial safety gate holds)"
+
     # (b) TRY to construct the whole GUI, then destroy WITHOUT mainloop ----------
     try:
         app = App()
@@ -661,8 +804,8 @@ def _smoke():
         print("control_panel smoke: GUI construction skipped (no display)")
 
     print(f"self-check OK: canvas FK transform, capture discovery ({len(caps)} found), lake "
-          f"partial-read stats, gated-apply commands, NL command routing, CSV import, core "
-          f"runner ({len(core)} modules); {mode}")
+          f"partial-read stats, gated-apply commands, NL command routing, CSV+dense import, "
+          f"serial gate, core runner ({len(core)} modules); {mode}")
 
 
 def main():
