@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 97/97 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 98/98 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.26** · 136 tagged releases (v0.1 → v2.26). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.27** · 137 tagged releases (v0.1 → v2.27). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.26.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.26.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.27.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.27.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 97 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 98 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 97-module list is canonical in
+plus separate lint and coverage jobs. The 98-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (62 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (63 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,21 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.27, product):_ **Grid cells — 2D path integration on a hexagonal lattice (entorhinal cortex).**
+`grid_cells.py` implements the oscillatory-interference grid-cell model (Hafting, Fyhn, Molden, Moser & Moser,
+*Nature* 436:801, 2005; Burgess, Barry & O'Keefe, *Hippocampus* 17:801, 2007). A grid cell fires on a **hexagonal
+lattice** of locations as an agent crosses a plane: the rate field is the interference of three plane waves whose
+wave-vectors point **60° apart** (`|b_k| = 4π/(√3·λ)`), so the nearest-peak spacing is exactly the grid period λ,
+rotated by the orientation and translated by the spatial phase. `step(velocity, dt)` accumulates 2D position, so
+integrating a velocity trajectory **dead-reckons** the true displacement; a `GridModulePopulation` at ≥2 spacings
+mirrors the multi-scale entorhinal modules. Self-check (measured from the rate map, not assumed): the 6 nearest
+peaks sit at **mean distance 0.997 vs set λ=1.00** and **60.0° apart** (hexagonal); a straight leg lands at `v·t`
+(err **2e-16**) and a closed square loop returns to the start (err **8e-17**); spacing/orientation/phase set the
+measured geometry (0.6→0.598, +15°→rotates 15.0°, phase 0.2→translates 0.200, period unchanged); deterministic.
+Distinct from `ring_attractor` (a single **1D** heading bump integrating angular velocity) — this is **2D** spatial
+position on a periodic lattice. Pure-stdlib core (`dependencies = []`), **98/98** self-checks; the 5 safety-envelope
+files untouched. Completes the spatial-navigation set: head-direction ring + grid path-integration + hippocampus.
 
 _Landed (v2.26, product):_ **Theta-gamma code — ordered working memory by phase multiplexing (Lisman).**
 `theta_gamma_code.py` implements the canonical theta-gamma neural code (Lisman & Idiart, *Science* 267:1512, 1995;

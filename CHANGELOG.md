@@ -3,6 +3,34 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.27] — Grid cells: 2D path integration on a hexagonal lattice (entorhinal) (2026-07-06)
+### Added
+- **`src/snn_data_lake/grid_cells.py`** — the entorhinal **grid cell** via the oscillatory-interference model
+  (Hafting, Fyhn, Molden, Moser & Moser, *Nature* 436:801, 2005; Burgess, Barry & O'Keefe, *Hippocampus* 17:801,
+  2007). A grid cell fires on a **hexagonal lattice** of locations as an agent crosses a plane: the analytic rate
+  field `r(p) = exp(gain·(mean_k cos(b_k·(p−phase)) − 1))` is the interference of three plane waves whose
+  wave-vectors point **60° apart** with magnitude `4π/(√3·λ)`, so the nearest-peak spacing is exactly the grid
+  period λ — rotated by the orientation, translated by the spatial phase. `GridCell(spacing, orientation, phase,
+  gain, seed)` exposes `rate`/`rate_at`, `step(velocity, dt)` (accumulates 2D position → path integration),
+  `position`/`reset`, `rate_map`; `GridModulePopulation` runs ≥2 spacings (the multi-scale entorhinal modules).
+- Self-check (deterministic, ASCII; **measured from the rate map, not assumed**): peaks are found in the rate map
+  and the **6 nearest neighbours of the central peak sit at mean distance 0.997 vs set λ=1.00 and 60.0° apart**
+  (hexagonal); **path integration is exact** — a straight leg lands at `v·t` (err **2.3e-16**), a closed square
+  velocity loop returns to the start (err **7.9e-17**); the **geometry follows the parameters** (spacing 0.60 →
+  measured 0.598, 1.00 → 0.997; orientation +15° rotates the lattice 15.0°; phase (0.2,0) translates the peak
+  0.200 with the period unchanged at 0.997); two fresh cells with the same params/seed give identical rate map +
+  trajectory.
+- **Genuinely distinct** (stated in the docstring): `ring_attractor` is a **1D** ring continuous-attractor — one
+  bump = a heading angle, integrating a scalar *angular* velocity into a 1D angle. This is **2D spatial** path
+  integration whose firing is a hexagonal lattice tiling a plane (position, not heading). Not `hippocampus` (DG/CA3
+  separation/completion) and not `theta_gamma_code` (phase-multiplexed WM buffer). Together with the head-direction
+  ring and the hippocampus DG/CA3 it completes a **spatial-navigation set**.
+- Registered CORE (**98/98** self-checks; the Core Runner tab / `--run-core` now runs 64 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a reduced/idealized
+  interference model on synthetic trajectories — analytic plane-wave rate fields + literal velocity accumulation, **no
+  real VCO spiking dynamics, no neural noise, no phase drift/correction**; a mathematical grid-cell twin, not cognition.
+
 ## [v2.26] — Theta-gamma code: ordered working memory by phase multiplexing (Lisman) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/theta_gamma_code.py`** — the canonical **theta-gamma neural code** for short-term working
