@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 114/114 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 115/115 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.43** · 153 tagged releases (v0.1 → v2.43). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.44** · 154 tagged releases (v0.1 → v2.44). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.43.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.43.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.44.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.44.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 114 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 115 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 114-module list is canonical in
+plus separate lint and coverage jobs. The 115-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (79 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (80 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,23 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.44, product):_ **HyperLogLog cardinality — count distinct spike-motifs in fixed tiny memory (Flajolet).**
+`spike_cardinality.py` completes the streaming-sketch trio: the lake now answers all three fixed-memory questions —
+**frequency** ("how often?" → `spike_stream_sketch` Count-Min), **membership** ("seen this exact motif?" →
+research `spike_bloom`), and now **cardinality** ("how *many distinct* motifs?" → HyperLogLog, Flajolet, Fusy,
+Gandouet & Meunier 2007). Each item is hashed (deterministic `blake2b`); the top `p` bits pick one of `m=2ᵖ`
+one-byte registers, and the register keeps the max leading-zero rank of the remainder — rare long zero-runs proxy
+the distinct count, recovered by the harmonic-mean estimate `α_m·m²/Σ2⁻ʳ` (+ a linear-counting correction at low
+load). Self-check (p=14, m=16384 bytes, 0.81% std error): the estimate lands within the 3σ bound (2.44%) across four
+orders of magnitude — N=100→**100.3**, 1000→**998.8**, 10000→**10016.8**, 100000→**101542** (worst 1.54%); it is
+**duplicate-insensitive** (re-adding every item 20× more leaves the estimate byte-identical, unlike a frequency
+counter); it uses the **same 16384 bytes** whether N=100 or N=100000 (a real id-set would need 100000 entries); it is
+**mergeable** (register-wise max of two overlapping streams estimates the union to 1.13%); deterministic. Distinct
+from `spike_stream_sketch` (Count-Min *frequency*, duplicate-driven counters) and research `spike_bloom` (*membership*,
+one-motif yes/no). Pure-stdlib core (`dependencies = []`), **115/115** self-checks; the 5 safety-envelope files
+untouched. Ceiling: standard HLL + linear-counting only (no large-range/sparse correction) on synthetic motif ids —
+the cardinality-sketch level, not a spiking implementation, not cognition.
 
 _Landed (v2.43, product):_ **Population vector decoder — read a direction out of a tuned population (Georgopoulos).**
 `population_vector.py` adds the read-out counterpart to the RBF *encoder*: a population of N cosine-tuned neurons

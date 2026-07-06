@@ -3,6 +3,36 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.44] — HyperLogLog cardinality: count distinct spike-motifs in fixed tiny memory (Flajolet) (2026-07-06)
+### Added
+- **`src/snn_data_lake/spike_cardinality.py`** — completes the lake's fixed-memory streaming-sketch trio with the
+  third distinct question, **cardinality** ("how *many distinct* motifs has the stream contained?"), via **HyperLogLog**
+  (Flajolet, Fusy, Gandouet & Meunier, "HyperLogLog: the analysis of a near-optimal cardinality estimation algorithm",
+  2007). Each item is hashed to a wide integer with a deterministic `blake2b` (seed folded into the bytes — never the
+  per-process-salted builtin `hash()`); the top `p` bits pick one of `m=2ᵖ` one-byte registers, the leading-zero rank
+  `ρ` of the remaining bits is taken, and `register[j]` keeps the running max `ρ`. The cardinality is the harmonic-mean
+  estimate `E = α_m·m²/Σ_j 2^{−register[j]}`, with a **linear-counting** small-range correction `E = m·ln(m/V)` at low
+  load (V empty registers); relative standard error `~1.04/√m`. `HyperLogLog(p, seed)` exposes `add`/`add_all`,
+  `count`/`__len__`, `merge` (register-wise max → the union), and `relative_error`.
+- Self-check (deterministic, ASCII; p=14 → m=16384 bytes, std error 0.81%, 3σ bound 2.44%): the estimate lands within
+  the bound across four orders of magnitude — N=100 → **100.3**, 1000 → **998.8**, 10000 → **10016.8**, 100000 →
+  **101542.1** (worst 1.54%); it is **duplicate-insensitive** — after re-adding every one of 5000 items 20× more, the
+  estimate is byte-identical (5014.8 → 5014.8), because ρ is a property of the item's hash, not of how often it
+  arrived (unlike the duplicate-driven Count-Min); it uses the **same 16384 registers** for N=100 and N=100000 (O(m)
+  memory independent of the count — a real id-set would need 100000 entries); **merge = union** — register-wise max of
+  two overlapping HLLs estimates `|[0,30000)∪[20000,50000)|` to 50565.9 vs 50000 (1.13%); two fresh instances give
+  identical registers + estimate.
+- **Genuinely distinct** (stated in the docstring): `spike_stream_sketch` is a Count-Min sketch of **frequency**
+  (duplicate-driven counters — "how often does each motif fire?"); research `spike_bloom` answers **membership** ("seen
+  this exact motif?"). Cardinality is neither — it is the size of the distinct set, in fixed memory, and it is
+  duplicate-*insensitive* where Count-Min is duplicate-driven. Together the three (frequency / membership /
+  cardinality) cover the standard streaming-analytics questions.
+- Registered CORE (**115/115** self-checks; the Core Runner tab / `--run-core` now runs 81 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`; uses only `hashlib` + `math`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a standard HyperLogLog
+  with the linear-counting small-range correction only — **no 64-bit/large-range bias correction, no sparse
+  representation** — over synthetic motif ids; the cardinality-sketch level, not a spiking implementation, not cognition.
+
 ## [v2.43] — Population vector decoder: read a direction out of a tuned population (Georgopoulos) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/population_vector.py`** — the read-out counterpart to the RBF encoder: the **population
