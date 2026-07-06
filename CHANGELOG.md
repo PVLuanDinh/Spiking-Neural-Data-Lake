@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.42] — Kalman filter: recursive optimal state estimation (Kalman 1960) (2026-07-06)
+### Added
+- **`src/snn_data_lake/kalman_filter.py`** — *dynamic* optimal estimation: the linear **Kalman filter** (Kalman,
+  "A New Approach to Linear Filtering and Prediction Problems", *J Basic Eng* 82:35, 1960). A linear-Gaussian
+  state-space system (`x_{k+1}=Fx_k+w`, `Q`; `z_k=Hx_k+v`, `R`) is optimally estimated by a two-step recursion that
+  carries a state estimate `x` and its covariance `P` forward: **predict** `x⁻=Fx`, `P⁻=FPFᵀ+Q`; **update** `y=z−Hx⁻`,
+  `S=HP⁻Hᵀ+R`, `K=P⁻Hᵀ/S`, `x=x⁻+Ky`, `P=(I−KH)P⁻`. The Kalman gain `K` optimally weights the model's prediction
+  against the measurement by their relative uncertainties. `KalmanFilter(F,H,Q,R,x0,P0)` (`predict`/`update`/`step`,
+  `state`/`covariance`) plus a `ConstantVelocityTracker(dt, process_var, meas_var, seed)` (`simulate`/`run`); the tiny
+  linear algebra is plain nested lists (a scalar measurement → scalar `S`).
+- Self-check (deterministic, ASCII; 2-D constant-velocity tracker, 3000 steps, seed 7): the Kalman position estimate's
+  RMSE to the truth (**0.5889**) beats **both** the raw sensor (0.9992) **and** prediction-only dead-reckoning
+  (727.0237, which drifts as the unmodeled accelerations accumulate) — the optimal combination; `P[0][0]` **converges**
+  to the Riccati fixed point (late max Δ = 0.00e+00) and is **calibrated** — reported 0.3600 matches the empirical
+  estimation-error variance 0.3526 (within 15%); the **gain balances noise** — a noisy sensor (R=100) earns a small
+  gain (0.1319, trust the model) while a precise one (R=0.01) earns a large gain (0.7500, trust the measurement); two
+  fresh instances give an identical filtered trajectory.
+- **Genuinely distinct** (stated in the docstring): `cue_integration` is **static** — closed-form inverse-variance
+  fusion of independent estimates of one quantity, no time / state / recursion (the KF *update* step is its dynamic
+  generalization, but the filter adds the temporal recursion + covariance propagation it lacks); `forward_model`
+  predicts the next state and flags exafference but never optimally *corrects* with a gain/covariance; `ring_attractor`
+  dead-reckons commanded deltas (integration only, no measurement update, no uncertainty). This tracks uncertainty and
+  optimally blends prediction with measurement.
+- Registered CORE (**113/113** self-checks; the Core Runner tab / `--run-core` now runs 79 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a linear-Gaussian
+  Kalman filter on a small constant-velocity model with synthetic noise — the optimal-linear-estimation level, **not an
+  extended/unscented KF, no model-mismatch handling, not spiking**; not cognition.
+
 ## [v2.41] — Hodgkin-Huxley neuron: the conductance-based biophysical action potential (HH 1952) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/hodgkin_huxley.py`** — the neuron family's first *biophysical* member: the classic
