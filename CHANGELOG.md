@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.28] — Neural sampling: probabilistic inference in spikes (Buesing/Maass) (2026-07-06)
+### Added
+- **`src/snn_data_lake/neural_sampling.py`** — a genuinely new capability class for the lake: **posterior sampling
+  from a defined generative joint** (probabilistic inference in spikes). A recurrent network of stochastic spiking
+  neurons z∈{0,1}ᴺ with symmetric weights W (W_ij=W_ji, W_ii=0) and biases b implements the **neural-sampling
+  hypothesis** (Buesing, Bill, Nessler & Maass, *PLoS Comput Biol* 7:e1002211, 2011): to update neuron i, form
+  `u_i = b_i + Σ_j W_ij z_j` and spike (`z_i:=1`) with probability `σ(u_i)` — **exactly** the Boltzmann conditional
+  `p(z_i=1 | z_rest)` — so asynchronous single-site (Gibbs) updates leave `p(z) ∝ exp(Σ b_i z_i + ½ Σ W_ij z_i z_j)`
+  invariant and the spike train is an MCMC sample of that Boltzmann joint. `BoltzmannSampler(weights, biases, seed)`
+  exposes `step`/`run`/`sample(n, burn_in, thin)`, `state`, `clamp`/`unclamp` (evidence → posterior sampling
+  `p(z_free | z_clamped)`), and the exact-enumeration `energy`/`prob`/`analytic_distribution`; module helpers
+  `empirical_distribution`/`marginals`.
+- Self-check (deterministic, ASCII; a 3-neuron net with all 2³ states enumerated for the exact distribution): the
+  empirical distribution matches the Boltzmann joint to **TV 0.0066** (< 0.03; 40 000 samples, burn-in 3000, thin 3);
+  per-neuron **marginals** match (max err 0.0064) and the pairwise **E[z₀z₁]** matches (err 0.0066); **clamping
+  z₂=1** recovers the exact posterior `p(z₀,z₁ | z₂=1)` (**conditional TV 0.0046**, max marginal err 0.0040) with the
+  clamped unit provably fixed; a twin with the same seed produces a byte-identical 40 000-sample chain.
+- **Genuinely distinct** (stated in the docstring): `research/bayesian_snn` does MC-dropout-style *calibrated
+  uncertainty* — a discriminative readout run under random Bernoulli masks, reporting output variance as an error
+  bar; it never defines or samples a joint. This is the opposite object — the recurrent stochastic dynamics **are**
+  an MCMC chain whose stationary distribution is a defined Boltzmann `p(z)`, returning posterior samples. Not
+  `valence_stdp`/plasticity (no learning here — W,b are given), not `htm_sequence_memory` (sequence prediction).
+- Registered CORE (**99/99** self-checks; the Core Runner tab / `--run-core` now runs 65 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: the abstract
+  discrete-time stochastic-binary-neuron neural-sampling chain (single-site Gibbs, sigmoid firing) — the reduced
+  Buesing 2011 model, **no continuous-time absolute-refractory spiking dynamics, no biophysics, no learning**; nets
+  kept small so the exact 2ᴺ Boltzmann distribution grounds the correctness test.
+
 ## [v2.27] — Grid cells: 2D path integration on a hexagonal lattice (entorhinal) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/grid_cells.py`** — the entorhinal **grid cell** via the oscillatory-interference model
