@@ -3,6 +3,31 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.20] — Usable desktop app: load your own data, not just demos (2026-07-06)
+### Changed / Fixed (usability)
+After an adversarial usability review (the app was "just a shell" — every button ran real code, but a fresh user
+could not use it on their own problem), the tkinter desktop app (`control_panel.py`) and packaging were fixed:
+- **Load your own data (the core gap):** the Lake Browser gains **Open .spk…** (open your own store) and
+  **Import CSV → .spk…** (a CSV of `channel,time` spike events → a queryable store, via a new zero-dep `_csv_to_store`
+  importer); Live Recognition gains **Open CSV…** (replay your own gesture capture). All wired to the existing
+  loaders (`SpikeTelemetryHub.load`, `gesture_recognition.load_csv`) via `tkinter.filedialog`. Previously there were
+  **zero** file dialogs anywhere in the GUI.
+- **Sample data now ships**, so tabs aren't empty on first launch: the 3 sample gesture captures are bundled into the
+  exe (`packaging/snn-ui.spec` `datas`) and resolved via a `resource_path()` helper (`sys._MEIPASS` when frozen).
+  Verified: the exe run from an **empty folder** discovers **3 captures** (Live Recognition was previously empty on a
+  fresh unzip — `datas=[]`).
+- **Crash fix:** `ensure_demo_store()` (called in `LakeTab.__init__`) previously wrote to a relative `data/` dir with
+  no guard — a read-only install (e.g. Program Files) could throw and take the whole app down. It now prefers a
+  bundled/existing store and falls back to a temp dir on `OSError`.
+- **Honest UX:** the misleading "Open / build demo .spk" button is split into "Load demo store" + real "Open…" /
+  "Import…"; the dev-only self-test tab "Core Runner" is reframed as **Diagnostics**; Live Recognition shows a
+  helpful hint instead of an inert empty dropdown.
+- The headless `--smoke` self-check now also exercises the CSV-import path and reports the capture-discovery count.
+  No module or self-check count change (**92/92**); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched — every arm action still flows through
+  the gated `ArmSim.apply()`. Core `dependencies = []` unchanged. (Deferred, offered as follow-ups: real-serial-arm
+  "Connect COM" in the GUI, and an in-GUI ingest→store→query wizard.)
+
 ## [v2.19] — Frequency-gated cell-assembly memory (FIP/FID) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/frequency_memory.py`** — implements the **frequency-induced mechanism** of Lei, Li, Li, Chen,

@@ -60,9 +60,9 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 92/92 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.19** · 129 tagged releases (v0.1 → v2.19). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.20** · 130 tagged releases (v0.1 → v2.20). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.19.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.19.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. Five tabs: Arm Control, Live Recognition, Lake Browser, NL Command, and **Core Runner** — which runs the *entire* zero-dep core (every module's self-check) inside the app (`snn-ui.exe --run-core` to run it headless). (Or clone the source: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.20.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.20.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data:** replay the bundled sample gesture captures (or **Open** your own capture CSV), **Open** your own `.spk` telemetry store or **Import** a CSV of spike events (`channel,time`) into a queryable store, drive the arm, type natural-language commands, and run Diagnostics. (Or clone the source: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -370,6 +370,16 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.20, product):_ **Usable desktop app — load your own data, not just demos.** After an honest usability
+review found the app was largely a demo shell (no way to bring your own data anywhere; Live Recognition **empty** on
+a fresh unzip; a read-only-install crash), the tkinter app now lets you **Open your own `.spk`**, **Import a CSV of
+spike events (`channel,time`) into a queryable store**, and **Open your own gesture-capture CSV** — via file dialogs
+wired to the existing loaders. The release now **ships the sample gesture captures** (bundled in the exe, resolved via
+`sys._MEIPASS`) so Live Recognition is populated on first launch; `ensure_demo_store` is crash-guarded (temp-dir
+fallback on a read-only install); buttons are honestly labelled; and the dev self-test tab is reframed as
+**Diagnostics**. Verified: the exe launched from an empty folder finds **3 captures** and builds a demo store. **92/92**
+self-checks; the 5 safety-envelope files untouched.
 
 _Landed (v2.19, product):_ **Frequency-gated cell-assembly memory (FIP/FID).** `frequency_memory.py` implements
 the frequency-induced mechanism of Lei et al. 2025 (*Neurocomputing* 623:129361,

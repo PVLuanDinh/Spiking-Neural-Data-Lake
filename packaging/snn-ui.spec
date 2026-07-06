@@ -22,7 +22,8 @@ a = Analysis(
     [os.path.join(SPECPATH, "snn_ui_main.py")],
     pathex=[SRC, SPECPATH, ROOT],                # ROOT so PyInstaller finds run_selfchecks.py
     binaries=[],
-    datas=[],
+    datas=[(os.path.join(ROOT, "robot arm", f"{g}.csv"), "robot arm")   # ship sample gesture
+           for g in ("IDLE", "HAND_APPROACH", "HAND_RETREAT")],          # captures -> populated on first launch
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},

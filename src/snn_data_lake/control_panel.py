@@ -8,15 +8,17 @@ headless demos use —
   1. Arm Control     : a live 2-link arm on a tk.Canvas (forward kinematics from ArmSim), driven
                        ONLY through the safety-gated ArmSim.apply(); collision turns it red; a big
                        red EMERGENCY_STOP freezes it.
-  2. Live Recognition: step / auto-play a builder capture's windows through the SAME path live_arm
-                       uses — gesture_recognition.classify -> Interpreter -> arm reaction.
-  3. Lake Browser    : open a .spk telemetry store, show channels / events / bytes, run a windowed
-                       (channel, [t0,t1)) query via spike_telemetry_hub and report "reads X% of file".
+  2. Live Recognition: step / auto-play a sample (or your OWN, via Open CSV...) capture's windows
+                       through the SAME path live_arm uses — gesture_recognition.classify ->
+                       Interpreter -> arm reaction.
+  3. Lake Browser    : load the demo store, Open your OWN .spk, or Import a CSV of spike events
+                       (channel,time) -> a queryable .spk; then run a windowed (channel, [t0,t1))
+                       query via spike_telemetry_hub and report "reads X% of file".
   4. NL Command      : type an English command; nl_interface maps it to an allow-listed arm command
                        (driven through the SAME gated ArmSim.apply() as tab 1) or a lake query, or
                        REJECTS it. Zero-dep StubBackend; the backend can only pick a label, never a
                        raw command (an optional on-device AirLLM backend stays CLI-opt-in via run_local).
-  5. Core Runner     : run the ENTIRE core project from inside the app — every CORE module's own
+  5. Diagnostics     : run the ENTIRE core project from inside the app — every CORE module's own
                        self-check, in-process (no python subprocess), PASS/FAIL live. Proves the whole
                        core is bundled and runnable in the packaged .exe. Also headless: snn-ui --run-core.
 
@@ -30,8 +32,9 @@ collision gate untouched). Nothing here reimplements recognition, the interprete
 """
 import math
 import os
+import sys
 import tkinter as tk
-from tkinter import ttk
+from tkinter import filedialog, ttk
 
 from snn_data_lake import arm_sim, gesture_recognition, spike_telemetry_hub
 from snn_data_lake.interpreter import Interpreter
@@ -50,10 +53,23 @@ def world_to_canvas(x, y, w, h, scale):
     return ox + int(round(x * scale)), oy - int(round(y * scale))
 
 
+def resource_path(rel):
+    """Resolve a bundled data path: the PyInstaller onefile unpack dir (sys._MEIPASS) when
+    frozen, else the working dir -- so the shipped .exe finds the sample data it carries."""
+    return os.path.join(getattr(sys, "_MEIPASS", os.path.abspath(".")), rel)
+
+
 def find_captures():
-    """The builder's labeled captures gesture_recognition replays, as existing CSV paths."""
-    paths = [os.path.join(gesture_recognition.DIR, f"{g}.csv") for g in gesture_recognition.GESTURES]
-    return [p for p in paths if os.path.exists(p)]
+    """Labeled gesture captures to replay: the sample CSVs shipped with the app (resolved from
+    the bundle), then any present in the working dir. Returns existing CSV paths."""
+    out = []
+    for g in gesture_recognition.GESTURES:
+        for cand in (resource_path(os.path.join(gesture_recognition.DIR, f"{g}.csv")),
+                     os.path.join(gesture_recognition.DIR, f"{g}.csv")):
+            if os.path.exists(cand):
+                out.append(cand)
+                break
+    return out
 
 
 def pct_read(bytes_read, total_bytes):
@@ -62,15 +78,53 @@ def pct_read(bytes_read, total_bytes):
 
 
 def ensure_demo_store(path=DEMO_SPK):
-    """Return a .spk store path, building a tiny deterministic one if none exists (zero random)."""
+    """Return a .spk store to browse: a bundled sample if shipped, else an existing working-dir
+    store, else build a tiny deterministic one -- falling back to a temp dir if the working dir
+    is read-only, so a read-only install (e.g. Program Files) can NEVER crash the tab."""
+    bundled = resource_path(path)
+    if os.path.exists(bundled):
+        return bundled
     if os.path.exists(path):
         return path
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     hub = spike_telemetry_hub.SpikeTelemetryHub(8, 1000)
     for c in range(8):
-        hub.ingest(c, range(c, 1000, 10 + c))     # regular, sorted, reproducible
-    hub.save(path)
-    return path
+        hub.ingest(c, range(c, 1000, 10 + c))         # regular, sorted, reproducible
+    try:
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        hub.save(path)
+        return path
+    except OSError:                                    # read-only install -> build in temp instead
+        import tempfile
+        tmp = os.path.join(tempfile.gettempdir(), "snn_demo_telemetry.spk")
+        if not os.path.exists(tmp):
+            hub.save(tmp)
+        return tmp
+
+
+def _csv_to_store(path):
+    """Build a SpikeTelemetryHub from a CSV of spike events -- each row 'channel,time' (integers;
+    ';' also accepted; header / comment / blank rows skipped). Channels + duration are inferred.
+    The zero-dep 'bring your own data' import path behind the Lake tab's Import button."""
+    events = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip().replace(";", ",")
+            if not line or not (line[0].isdigit() or line[0] in "+-"):
+                continue                               # skip header / comment / blank
+            parts = line.split(",")
+            if len(parts) >= 2:
+                events.append((int(float(parts[0])), int(float(parts[1]))))
+    if not events:
+        raise ValueError("no 'channel,time' rows found")
+    n_ch = max(c for c, _ in events) + 1
+    dur = max(t for _, t in events) + 1
+    by_ch = {}
+    for c, t in events:
+        by_ch.setdefault(c, []).append(t)
+    hub = spike_telemetry_hub.SpikeTelemetryHub(n_ch, dur)
+    for c in range(n_ch):
+        hub.ingest(c, sorted(by_ch.get(c, [])))
+    return hub
 
 
 # ---- tab 1: Arm Control ---------------------------------------------------------
@@ -176,8 +230,10 @@ class RecognitionTab(ttk.Frame):
         ttk.Button(top, text="Step", command=self.step).pack(side="left", padx=2)
         self.play_btn = ttk.Button(top, text="Auto-play", command=self.toggle)
         self.play_btn.pack(side="left", padx=2)
+        ttk.Button(top, text="Open CSV...", command=self.open_csv).pack(side="left", padx=2)
 
-        self.head = ttk.Label(self, text="load a capture to begin", font=("TkFixedFont", 10))
+        hint = "Pick a sample capture and Step / Auto-play, or Open CSV... to load your own."
+        self.head = ttk.Label(self, text=hint, font=("TkFixedFont", 10))
         self.head.grid(row=1, column=0, sticky="w", pady=6)
 
         self.log = tk.Text(self, width=78, height=16, font=("TkFixedFont", 9), state="disabled")
@@ -198,6 +254,17 @@ class RecognitionTab(ttk.Frame):
         self._logline("=" * 60)
         self._logline(f"loaded {os.path.basename(path)} -> {len(self.windows)} windows")
         self.head.configure(text=f"windows: {len(self.windows)}   (Step or Auto-play)")
+
+    def open_csv(self):
+        """Load YOUR OWN gesture-capture CSV (same numeric format as the sample captures)."""
+        p = filedialog.askopenfilename(title="Open a gesture-capture CSV",
+                                       filetypes=[("CSV", "*.csv"), ("All files", "*.*")])
+        if p:
+            vals = list(self.pick["values"])
+            if p not in vals:
+                self.pick.configure(values=vals + [p])
+            self.pick.set(p)
+            self.load()
 
     def step(self):
         if self.idx >= len(self.windows):
@@ -250,7 +317,9 @@ class LakeTab(ttk.Frame):
         self.nbytes = 0
 
         top = ttk.Frame(self); top.grid(row=0, column=0, columnspan=6, sticky="ew")
-        ttk.Button(top, text="Open / build demo .spk", command=self.open_store).pack(side="left")
+        ttk.Button(top, text="Load demo store", command=self.open_store).pack(side="left")
+        ttk.Button(top, text="Open .spk...", command=self.open_file).pack(side="left", padx=2)
+        ttk.Button(top, text="Import CSV -> .spk...", command=self.import_csv).pack(side="left", padx=2)
         self.summary = ttk.Label(top, text="no store loaded", font=("TkFixedFont", 9))
         self.summary.pack(side="left", padx=10)
 
@@ -272,12 +341,46 @@ class LakeTab(ttk.Frame):
         return e
 
     def open_store(self):
-        self.path = ensure_demo_store()
-        self.nbytes = os.path.getsize(self.path)
-        hub = spike_telemetry_hub.SpikeTelemetryHub.load(self.path)
-        self.summary.configure(text=f"{os.path.basename(self.path)}   channels={hub.n}   "
+        self._load_store(ensure_demo_store())
+
+    def open_file(self):
+        """Open YOUR OWN .spk telemetry store."""
+        p = filedialog.askopenfilename(title="Open a .spk telemetry store",
+                                       filetypes=[("Spike store", "*.spk"), ("All files", "*.*")])
+        if p:
+            try:
+                self._load_store(p)
+            except Exception as e:
+                self._show(f"could not open {os.path.basename(p)}: {e}")
+
+    def import_csv(self):
+        """Import YOUR data: a CSV of spike events (rows 'channel,time') -> a queryable .spk."""
+        p = filedialog.askopenfilename(title="Import CSV of spike events (rows: channel,time)",
+                                       filetypes=[("CSV", "*.csv"), ("All files", "*.*")])
+        if not p:
+            return
+        try:
+            hub = _csv_to_store(p)
+        except Exception as e:
+            self._show(f"import failed: {e}\nexpected CSV rows of 'channel,time' (integers).")
+            return
+        out = filedialog.asksaveasfilename(title="Save imported store as .spk",
+                                           defaultextension=".spk", filetypes=[("Spike store", "*.spk")])
+        if not out:
+            return
+        try:
+            hub.save(out)
+            self._load_store(out)
+        except OSError as e:
+            self._show(f"could not save {out}: {e}")
+
+    def _load_store(self, path):
+        self.path = path
+        self.nbytes = os.path.getsize(path)
+        hub = spike_telemetry_hub.SpikeTelemetryHub.load(path)
+        self.summary.configure(text=f"{os.path.basename(path)}   channels={hub.n}   "
                                     f"events={hub.n_events()}   bytes={self.nbytes}")
-        self._show(f"opened {self.path}: {hub.n} channels, {hub.n_events()} events, "
+        self._show(f"opened {path}: {hub.n} channels, {hub.n_events()} events, "
                    f"{self.nbytes} bytes\nenter channel + [t0,t1) and Run query.")
 
     def query(self):
@@ -496,7 +599,7 @@ class App:
         nb.add(RecognitionTab(nb), text="Live Recognition")
         nb.add(LakeTab(nb), text="Lake Browser")
         nb.add(NLTab(nb, arm_tab), text="NL Command")
-        nb.add(CoreTab(nb), text="Core Runner")
+        nb.add(CoreTab(nb), text="Diagnostics")
         nb.pack(fill="both", expand=True)
 
     def mainloop(self):
@@ -538,6 +641,15 @@ def _smoke():
     ok, _out = run_core_selfcheck("lif_neuron")
     assert ok, "a core module must run to completion in-process (lif_neuron)"
 
+    # Lake "Import CSV -> .spk" (display-free): a channel,time CSV builds a queryable store
+    import tempfile
+    _csvp = os.path.join(tempfile.gettempdir(), "snn_import_test.csv")
+    with open(_csvp, "w", encoding="utf-8") as _f:
+        _f.write("channel,time\n0,5\n0,9\n2,3\n")
+    _imp = _csv_to_store(_csvp)
+    assert _imp.n == 3 and _imp.n_events() == 3, "CSV import must build the right channels/events"
+    os.remove(_csvp)
+
     # (b) TRY to construct the whole GUI, then destroy WITHOUT mainloop ----------
     try:
         app = App()
@@ -548,8 +660,9 @@ def _smoke():
         mode = "GUI construction skipped (no display)"
         print("control_panel smoke: GUI construction skipped (no display)")
 
-    print("self-check OK: canvas FK transform, capture discovery, lake partial-read stats, "
-          f"gated-apply commands, NL command routing, core runner ({len(core)} modules); {mode}")
+    print(f"self-check OK: canvas FK transform, capture discovery ({len(caps)} found), lake "
+          f"partial-read stats, gated-apply commands, NL command routing, CSV import, core "
+          f"runner ({len(core)} modules); {mode}")
 
 
 def main():

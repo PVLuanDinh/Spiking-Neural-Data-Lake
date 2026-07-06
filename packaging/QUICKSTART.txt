@@ -13,11 +13,11 @@ THE FIVE TABS
   Arm Control      Live 2-link simulated arm. Every button is safety-gated:
                    collision detection, EMERGENCY_STOP, command allow-list.
 
-  Live Recognition Replay recorded gesture captures as live arm commands
-                   (step or auto-play) through recognition -> interpreter -> arm.
+  Live Recognition Replay the bundled sample gesture captures as live arm commands
+                   (step or auto-play); Open CSV... to load your OWN capture.
 
-  Lake Browser     Open a .spk telemetry store and run windowed queries
-                   over multi-channel spike-event telemetry.
+  Lake Browser     Load the demo store, Open your OWN .spk, or Import a CSV of spike
+                   events (channel,time) into a queryable store; run windowed queries.
 
   NL Command       Type an English command ("close the gripper", "go home",
                    "STOP", "read telemetry channel 7 window 1000"). It maps to a
@@ -25,9 +25,9 @@ THE FIVE TABS
                    Arm Control path) or a lake query, or is rejected. Zero-dep
                    keyword backend by default.
 
-  Core Runner      Run the ENTIRE core project from inside the app: every core
-                   module's self-check, PASS/FAIL live. The whole core is bundled
-                   in this .exe -- no Python needed. Headless too: snn-ui.exe --run-core
+  Diagnostics      Run the ENTIRE core from inside the app: every core module's
+                   self-check, PASS/FAIL live (a build / self-test diagnostic). The
+                   whole core is bundled in this .exe. Headless: snn-ui.exe --run-core
 
 SMOKE TEST (No Display)
   If you have no GUI display, verify the app works:
