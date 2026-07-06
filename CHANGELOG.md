@@ -3,6 +3,27 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.16] — R-STDP: reward-modulated STDP with an eligibility trace (distal reward) (2026-07-05)
+### Added
+- **`src/snn_data_lake/r_stdp.py`** — a new member of the plasticity family: **reward-modulated STDP (R-STDP)**
+  with a slowly-decaying per-synapse **eligibility trace**. Spike-timing STDP (`dt = t_post - t_pre`, exponential
+  LTP/LTD windows) writes to the eligibility trace, not the weight; the trace decays over a long `tau_e`; a
+  **delayed** reward `d` then gates it into the weights (`w += lr * d * e`). This is the Izhikevich-2007 solution to
+  the **distal-reward problem**, integrated from **BrainCog** (Zeng et al., *"BrainCog: ... brain-inspired cognitive
+  intelligence engine"*, Patterns 2023, [DOI](https://doi.org/10.1016/j.patter.2023.100789)) learning-rule #5.
+- **Genuinely distinct from `valence_stdp`** (verified, stated in the docstring): `ValenceLearner` is a
+  reward-prediction-error rule over *feature presence* with an *immediate* reward — not spike-timing-dependent and
+  bridging no delay. R-STDP differs on both axes (keys on pre/post spike timing; bridges a temporal delay via the
+  eligibility trace). Additive/opt-in — no existing behaviour changes.
+- Self-check (deterministic, ASCII): causal pre→post pairing + reward **potentiates** (+0.078), anti-causal
+  **depresses** (−0.078), a negative reward **flips** the sign, and — the headline — after a **100-step delay** the
+  causally-paired synapse is still reinforced (**+0.070**) far more than a distractor active at reward time
+  (**−0.001**), the distal-reward hallmark `valence_stdp` cannot do.
+- Registered CORE (**89/89** self-checks; the Core Runner tab / `--run-core` now runs 55 modules). Pure stdlib,
+  core `dependencies = []`; the 5 safety-envelope files (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`)
+  are untouched. ponytail ceiling: single-layer, few-synapse rate-timing caricature on synthetic spike trains — **not
+  cognition**; no deep multi-step credit assignment.
+
 ## [v2.15] — Core Runner: the entire core runs inside the app (and the .exe) (2026-07-05)
 ### Added
 - **`control_panel.py` gains a fifth tab, "Core Runner"** — runs the **ENTIRE core project from inside the app**:
