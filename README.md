@@ -60,9 +60,9 @@ baseline and reproducible from the printed metrics.
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
 | **Engineering** | ✅ zero-dep core · `pip install` · 123/123 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.52** · 162 tagged releases (v0.1 → v2.52). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.53.2** · 164 tagged releases (v0.1 → v2.53.2). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.52.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.52.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -247,8 +247,10 @@ The scaling recipe: as neurons grow, _lower_ per-synapse inhibition and _raise_ 
 naive 6400/default run collapses to 47.8%; the tuned 6400n + multi-epoch (~day-scale, best as
 parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limitations).
 
+> **Architectural overview / elaborated project summary:** [docs/OVERVIEW.md](docs/OVERVIEW.md).
 > **Full local + cloud runbook:** [docs/RUNNING.md](docs/RUNNING.md).
 > **Hardware bring-up (BOM, wiring, firmware, safety):** [docs/HARDWARE_SETUP.md](docs/HARDWARE_SETUP.md).
+> **Robot-arm hardware spec & scope (what the arm can and cannot do):** [docs/HARDWARE_SCOPE.md](docs/HARDWARE_SCOPE.md).
 > **Prioritized engineering/research audit:** [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md).
 
 ---
@@ -927,8 +929,7 @@ _Landed (v2.15, product):_ **Core Runner — the ENTIRE core runs inside the app
 control panel gains a fifth tab that runs **every CORE module's own self-check in-process** (via `runpy`, isolated
 `sys.argv`), PASS/FAIL live — no `python` subprocess, so it works inside the frozen `.exe`. The canonical list is
 `run_selfchecks.CORE` (bundled into the exe), so this is the single-source-of-truth core, not a duplicate. A
-`--run-core` CLI runs the whole core headlessly (`snn-ui.exe --run-core` → **54/54 core self-checks passed**,
-verified in the packaged exe). The `--smoke` gate now also asserts the runner. Confirms the download genuinely
+`--run-core` CLI runs the whole core headlessly (`snn-ui.exe --run-core` → **54/54 core self-checks passed**, verified in the packaged exe). The `--smoke` gate now also asserts the runner. Confirms the download genuinely
 contains and runs the complete core. Zero-dep core (`dependencies = []`), **88/88** self-checks, the 5
 safety-envelope files untouched.
 
