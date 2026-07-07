@@ -3,6 +3,15 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.53.1] — Patch: lint-green re-tag of the v2.53 audit fixes (2026-07-07)
+Identical code to v2.53.0 plus a test-only lint fix. v2.53.0 tagged a commit whose CI lint gate was
+red: the new `tests/test_arm_sim.py` / `tests/test_interpreter.py` tripped ruff's full ruleset (unused
+`pytest` import, unsorted imports, over-long assert messages — test files only; all tests passed). This
+tag points at the lint-green commit.
+### Fixed
+- ruff lint in `tests/test_arm_sim.py` + `tests/test_interpreter.py` (F401 / I001 / E501). Behavior
+  unchanged; 20 tests pass, `ruff check .` clean across the repo.
+
 ## [v2.53] — Audit fixes: NaN fail-CLOSED + trajectory comparator + authenticated UDP (2026-07-07)
 Surfaced by a turbo `/audit` (report at `.turbo/audit.md`). Verified: **123/123** self-checks, 75 pytest
 (55 existing + 20 new), ruff clean. Safety-envelope files (`reflex`, `arm_sim`) changed under approval;
