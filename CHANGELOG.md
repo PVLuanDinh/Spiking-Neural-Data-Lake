@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.50] — Morris approximate counter: one big total in ~log₂log₂n bits (Morris 1978) (2026-07-06)
+### Added
+- **`src/snn_data_lake/morris_counter.py`** — the historical *root* of the whole streaming-sketch field: count how
+  many times a single event has happened using a register **exponentially smaller than the count** (Morris, "Counting
+  Large Numbers of Events in Small Registers", *CACM* 21:840, 1978 — the first probabilistic counting algorithm). Keep
+  a small log-register `c`; on each event increment it only with probability `a⁻ᶜ` (base a>1, classically 2), so
+  increments get exponentially rarer as `c` grows and `c` only ever reaches `~logₐn`; the estimate `(aᶜ−1)/(a−1)` is
+  exactly unbiased (`E[aᶜ] = n(a−1)+1`; for a=2 the classic `2ᶜ−1`). A single register is high-variance (~71% at a=2),
+  cut both standard ways — **averaging m independent registers** (rel std error `~√((a−1)/(2m))`) and a **base closer
+  to 1**. `add(k)` fast-forwards k events per register by sampling the geometric gap to the next increment (memoryless
+  → identical distribution to k coin flips, in O(increments) draws). `MorrisCounter(m, a, seed)` — `increment`/`add`,
+  `count`, `register_bits`, `relative_error`, `reset`.
+- Self-check (deterministic, ASCII; m=64 base-2, rel std error 8.84%, bound 15%): the estimate lands within the bound
+  across three orders of magnitude — **n=1000 → 979.0** (2.10%, via `increment()`), **100000 → 104447.0** (4.45%, via
+  `add()` fast-forward), **1000000 → 991231.0** (0.88%); counting a **million** events leaves the largest register at
+  **c=22 → `register_bits()` = 5 bits** (`~log₂log₂n ≈ 4.3`) vs **20 bits** for an exact counter (the register is
+  exponentially smaller than the count); the **mean estimate over 200 seeded runs** of n=100000 is **100031.0** (rel
+  0.03% — unbiased, not one lucky seed); two fresh instances give identical registers + estimate.
+- **Genuinely distinct** (stated in the docstring — four different questions): `spike_cardinality` (HyperLogLog) counts
+  **distinct** items (F₀); `spike_stream_sketch` (Count-Min) counts **per-item frequency**; `sliding_window_count`
+  (DGIM) counts events in a **sliding window**; this counts **one total** — how many times a single event has happened
+  over all time — in an exponentially smaller register via a probabilistic log-counter. It is the 1978 root of the
+  sketch family none of the others is.
+- Registered CORE (**121/121** self-checks; the Core Runner tab / `--run-core` now runs 87 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`; `math`/`random`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: the classic Morris
+  probabilistic counter (base-a increment probability `a⁻ᶜ`, m averaged registers) counting synthetic events — **no
+  Morris⁺/Csűrös bias-corrected variants** — the approximate-counting level, not a spiking implementation, not cognition.
+
 ## [v2.49] — MinHash: Jaccard set resemblance from fixed-size signatures (Broder) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/minhash.py`** — pairwise **set-similarity** estimation (the complement to HLL's single-set
