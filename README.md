@@ -64,6 +64,8 @@ Current version: **v2.53.2** · 164 tagged releases (v0.1 → v2.53.2). See [CHA
 
 **⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
+**⬇ Full source install (Python 3.11+ — installs every dependency + runs the whole repo):** [spiking-neural-data-lake-2.53.2-full-src.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-full-src.zip) — unzip, then run **`install.bat`** (Windows) or **`./install.sh`** (Linux/macOS). It builds a `.venv` and installs the package plus every optional extra it can — `arm`, `lake`, `nmnist`, `llm`, `dev`, `gpu`/torch, and (best-effort) `genn`. Only the zero-dep core is required, so the base install never fails; the summary reports exactly which extras are available on your machine. `genn` needs a C++ compiler + CUDA and `gpu` pulls ~2 GB of torch — both are best-effort and skippable (`--skip gpu,genn`). Full guide: [docs/INSTALL.md](docs/INSTALL.md).
+
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
 joint positioning), `--sweep` (CPG rhythmic bounded sweep). Defaults and the arm safety envelope are unchanged.
@@ -248,6 +250,7 @@ naive 6400/default run collapses to 47.8%; the tuned 6400n + multi-epoch (~day-s
 parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limitations).
 
 > **Architectural overview / elaborated project summary:** [docs/OVERVIEW.md](docs/OVERVIEW.md).
+> **Install everything (full source, all deps, Python 3.11+):** [docs/INSTALL.md](docs/INSTALL.md).
 > **Full local + cloud runbook:** [docs/RUNNING.md](docs/RUNNING.md).
 > **Hardware bring-up (BOM, wiring, firmware, safety):** [docs/HARDWARE_SETUP.md](docs/HARDWARE_SETUP.md).
 > **Robot-arm hardware spec & scope (what the arm can and cannot do):** [docs/HARDWARE_SCOPE.md](docs/HARDWARE_SCOPE.md).
