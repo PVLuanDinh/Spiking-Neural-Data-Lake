@@ -9,7 +9,6 @@ Tests mirror the self-check in interpreter.py:selfcheck() to verify:
 - Outcome echo passthrough (None, None)
 - Reward policy: default 0.0 vs assume_success +0.5
 """
-import pytest
 from snn_data_lake.interpreter import Interpreter
 
 
@@ -107,7 +106,7 @@ def test_joint_b_rotate_match():
     """Match JOINT_B_ROTATE -> command "JOINT_B_ROTATE(-10deg)" (default mapping)."""
     itp = Interpreter()
     cmd, reward = itp.interpret({"match": "JOINT_B_ROTATE"})
-    assert cmd == "JOINT_B_ROTATE(-10deg)", f"JOINT_B_ROTATE should map to default command, got {cmd}"
+    assert cmd == "JOINT_B_ROTATE(-10deg)", f"JOINT_B_ROTATE mapped wrong, got {cmd}"
 
 
 def test_custom_commands_dict():

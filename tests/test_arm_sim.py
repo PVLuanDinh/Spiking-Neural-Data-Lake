@@ -8,7 +8,6 @@ Tests mirror the self-check in arm_sim.py:main() to verify:
 - EMERGENCY_STOP freeze behavior
 - Trajectory-deviation reflex (audit P1: no-op commands must NOT clear breach)
 """
-import pytest
 from snn_data_lake.arm_sim import ArmSim
 
 
@@ -57,12 +56,12 @@ def test_emergency_stop_freezes_motion():
 
     # Try to move while stopped
     frozen = arm.apply("JOINT_A_ROTATE(+30deg)")
-    assert frozen["theta_deg"][0] == 0.0, f"Arm should stay at 0.0 deg while stopped, got {frozen['theta_deg'][0]}"
+    assert frozen["theta_deg"][0] == 0.0, f"frozen at 0deg, got {frozen['theta_deg'][0]}"
     assert frozen["stopped"] is True, f"stopped flag should be True, got {frozen['stopped']}"
 
     # Recover with RETRACT_ALL
     back = arm.apply("RETRACT_ALL")
-    assert not back["stopped"], f"stopped flag should be False after RETRACT_ALL, got {back['stopped']}"
+    assert not back["stopped"], f"RETRACT_ALL must clear stopped, got {back['stopped']}"
     assert back["ee"] == (2.0, 0.0), f"ee should be back at HOME (2.0, 0.0), got {back['ee']}"
 
 
@@ -98,7 +97,7 @@ def test_trajectory_breach_audit_p1():
 
     # No-op: gripper command (no joint motion) must NOT clear the breach
     arm.apply("GRIPPER_CLOSE")
-    assert arm.trajectory_breach(), "GRIPPER_CLOSE (no joint motion) must NOT clear trajectory breach"
+    assert arm.trajectory_breach(), "GRIPPER_CLOSE (no motion) must NOT clear breach"
 
     # Real joint motion: HOME recommits the path and clears the breach
     arm.apply("HOME")
