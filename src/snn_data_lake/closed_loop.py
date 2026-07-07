@@ -57,7 +57,7 @@ def run_episode(signals, lib=None, assume_success=True, base_threshold=0.10, tra
         # bridge set -> route the reward over the arm_bridge UDP back-channel first (the
         # split-process deployment: Interpreter and loop on different processes). Transparent.
         if reward is not None and bridge is not None:
-            AB.send_outcome(reward, bridge.port)
+            AB.send_outcome(reward, bridge.port, token=bridge.token)
             reward = bridge.recv_outcome()               # UDP back-channel: may be None on loss/timeout
         if reward is not None:
             valence.learn(window, reward, lr_scale=cort.learn_rate_scale(reward))

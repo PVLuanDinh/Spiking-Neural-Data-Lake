@@ -30,7 +30,7 @@ nmnist = ["tonic"]                                                       # resea
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
 genn = ["pygenn"]                                                        # research/*_genn GPU port (needs a C++ compiler + CUDA)
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe of the tkinter GUI (build-time only; core stays zero-dep)
-dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.6", "pre-commit"]           # tests + lint/format (NOT runtime)
+dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.15.20", "pre-commit"]       # tests + lint/format (NOT runtime; ruff floor matches .pre-commit-config)
 all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist]"]                   # every addon (genn excluded — needs a compiler)
 
 [project.scripts]

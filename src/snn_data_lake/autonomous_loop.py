@@ -21,6 +21,7 @@ arm. This is adaptive + GROWING, NOT cognition. The four modality streams here a
 
   python -m snn_data_lake.autonomous_loop
 """
+import math
 import random
 
 from snn_data_lake.arm_config import CONTACT
@@ -62,7 +63,7 @@ class AutonomousArm:
     def step(self, visual, temperature, audio, distance, reward_fn=None):
         """One autonomous tick. distance is the proximity scalar; reward_fn(unit, action)->[-1,1]."""
         # 1. SAFETY FIRST: an object at the sensor trips the reflex -> gated EMERGENCY_STOP, no action
-        if distance is not None and distance < CONTACT:
+        if distance is not None and (not math.isfinite(distance) or distance < CONTACT):
             self.cort.step(1.0)                                 # danger -> stress up (sharpens future response)
             return {"unit": None, "action": "EMERGENCY_STOP", "reflex": True,
                     "state": self.arm.apply("EMERGENCY_STOP")}  # ONLY path to motion -> gate holds
@@ -164,6 +165,10 @@ def main():
     assert ev["action"] == "EMERGENCY_STOP" and ev["reflex"], "danger must trip the reflex E-STOP before any action"
     assert stopped, "E-STOP must freeze the arm"
     assert still_frozen, "a learned action after E-STOP must NOT move the arm (safety gate holds through the loop)"
+    # audit P1: a NaN distance must FAIL CLOSED (reflex E-STOP), not slip past `distance < CONTACT`
+    nanguard = AutonomousArm(seed=9)
+    nev = nanguard.step(**_ctx(0.5, 0.5, 0.5, float("nan")))
+    assert nev["action"] == "EMERGENCY_STOP" and nev["reflex"], "NaN distance must trip the E-STOP (fail-closed)"
     assert learned == "GRIPPER_OPEN", f"the arm must LEARN the rewarded action, not use a fixed map ({learned})"
     assert run(7) == run(7), "same seed -> identical autonomous behaviour (deterministic)"
     # replay (opt-in SWR) is sample-efficient AND safety-preserving:

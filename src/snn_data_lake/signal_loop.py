@@ -119,9 +119,14 @@ def parse_line(line):
     if not line or line.startswith("#"):
         return None
     try:
-        return [float(x) for x in line.replace(",", " ").split()]
+        vals = [float(x) for x in line.replace(",", " ").split()]
     except ValueError:
         return None
+    # nan/inf ARE valid Python floats but not valid samples: they make every downstream danger
+    # comparison (reflex, distance < CONTACT) False -> fail OPEN. Reject the whole line. (audit P1)
+    if not all(math.isfinite(v) for v in vals):
+        return None
+    return vals
 
 
 def resize_to_n(vec, n=N):
@@ -517,6 +522,8 @@ def main():
     assert parse_line("# comment") is None and parse_line("   ") is None
     assert parse_line("0.1, 0.2 0.3") == [0.1, 0.2, 0.3], "CSV/space parse"
     assert parse_line("nope,nan?") is None, "malformed line must be skipped"
+    assert parse_line("1, nan, 2") is None, "a non-finite (nan) sample must skip the whole line (audit P1)"
+    assert parse_line("inf") is None and parse_line("1,-inf") is None, "inf samples must be skipped"
     assert len(resize_to_n([1.0] * 9)) == N and len(resize_to_n([1.0] * 999)) == N
     wins = list(line_windows([[float(i)] for i in range(3 * N)], window=N))
     assert len(wins) == 3 and all(len(w[1]) == N for w in wins), "windower shape wrong"

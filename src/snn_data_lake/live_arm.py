@@ -19,6 +19,7 @@ Opt-in arm primitives (OFF by default; every motion still goes through the safet
 
 Gesture -> command map (sensor domain): approach = grab the incoming object, retreat = release.
 """
+import math
 import os
 import re
 import sys
@@ -102,7 +103,7 @@ def run(samples, arm, interp, emit, stride=STRIDE, observer=None):
     buf = []
     stats = {"windows": 0, "GRIPPER_CLOSE": 0, "GRIPPER_OPEN": 0, "HOLD": 0, "reflex": 0}
     for d, t in samples:
-        if d < CONTACT:                                   # reflex: instinct preempts cognition
+        if not math.isfinite(d) or d < CONTACT:           # reflex preempts cognition (fail-closed on non-finite)
             cmd, _ = interp.interpret({"reflex": "STOP"})
             arm.apply(cmd)
             stats["reflex"] += 1
@@ -203,6 +204,11 @@ def main():
         stats_r = run(iter(retr), ArmSim(), interp, quiet)
         a_arm = ArmSim(); run(iter(appr), a_arm, interp, quiet)
         source = "synthetic fallback"
+
+    # audit P1 regression: a non-finite sensor sample must trip the contact reflex (fail-closed),
+    # not slip past `d < CONTACT` (NaN < x is False). Runs in the CI/default path.
+    nan_stats = run(iter([(float("nan"), 298.0)]), ArmSim(), interp, quiet)
+    assert nan_stats["reflex"] == 1, "a NaN distance sample must trigger the contact reflex (fail-closed)"
 
     print("=" * 62)
     print("LIVE ARM LOOP — sensor -> recognize -> Interpreter -> arm sim")

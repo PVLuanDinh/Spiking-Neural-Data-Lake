@@ -8,10 +8,23 @@ Usage:
 The resulting .zip is ready to attach to a GitHub release as the end-user download.
 """
 
+import re
 import sys
-import zipfile
 import tomllib
+import zipfile
 from pathlib import Path
+
+
+def _sync_iss_version(iss_path: Path, version: str) -> None:
+    """Keep the Inno Setup installer version in lockstep with pyproject (audit P2: AppVersion had
+    gone stale at 2.12 vs 2.52.0). Rewrite AppVersion so a release never ships a mismatched installer."""
+    if not iss_path.exists():
+        return
+    text = iss_path.read_text(encoding="utf-8")
+    new_text = re.sub(r"(?m)^AppVersion=.*$", f"AppVersion={version}", text)
+    if new_text != text:
+        iss_path.write_text(new_text, encoding="utf-8")
+        print(f"synced {iss_path.name} AppVersion -> {version}")
 
 
 def main():
@@ -29,6 +42,9 @@ def main():
     except Exception as e:
         print(f"Error reading {pyproject_path}: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # Keep the installer version in lockstep with pyproject before bundling (audit P2).
+    _sync_iss_version(packaging_dir / "snn-ui.iss", version)
 
     # Check that snn-ui.exe exists
     exe_path = repo_root / "dist" / "snn-ui.exe"

@@ -11,7 +11,7 @@
 
 [Setup]
 AppName=Spiking Neural Data Lake
-AppVersion=2.12
+AppVersion=2.52.0
 AppPublisher=Aighluvsekks
 DefaultDirName={autopf}\SpikingNeuralDataLake
 DefaultGroupName=Spiking Neural Data Lake

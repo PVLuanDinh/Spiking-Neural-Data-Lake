@@ -54,9 +54,12 @@ class Reflex:
                                      f"frame — its '{action}' rule is INACTIVE\n")
                 continue
             x = raw[ch]
-            over = (lo - x) if x < lo else (x - hi if x > hi else 0.0)
-            if over > 0.0:
-                sev = over / max(1e-9, hi - lo)      # scale-free severity
+            if not math.isfinite(x):
+                sev = float("inf")                   # non-finite reading on a safety channel = sensor fault: max danger, never ignore
+            else:
+                over = (lo - x) if x < lo else (x - hi if x > hi else 0.0)
+                sev = over / max(1e-9, hi - lo) if over > 0.0 else 0.0   # scale-free severity
+            if sev > 0.0:
                 current += sev
                 if sev > worst_sev:
                     worst_sev, worst = sev, action
@@ -127,6 +130,13 @@ def main():
     a7 = r7.step([0, 0, 0, 0, 0, 0, 950])                 # 7-wide: ch6 present (breach->STOP), ch7 absent
     assert a7 == "STOP", f"present safety channel must still fire on a short frame ({a7})"
     assert 7 in r7.missing, "an absent safety channel must be recorded, not silently skipped"
+
+    # 8. sensor-fault FAIL-CLOSED (audit P1): a non-finite reading on a safety channel must fire,
+    #    never be silently ignored (NaN/inf make every < / > comparison False -> old code failed OPEN)
+    assert Reflex().step([500, 500, 500, 500, 500, 500, float("nan"), 0]) == "STOP", \
+        "NaN on a danger channel must fire (fail-closed), not be ignored"
+    assert Reflex().step([500, 500, 500, 500, 500, 500, 400, float("inf")]) == "WITHDRAW", \
+        "inf on the force channel must fire (fail-closed)"
 
     print("=" * 56)
     print("REFLEX FAST-PATH (instinctive withdraw / stop)")

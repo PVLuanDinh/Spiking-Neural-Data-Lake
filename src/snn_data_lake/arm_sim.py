@@ -63,10 +63,12 @@ class ArmSim:
             return self.state()
         if self.stopped and command not in ("RETRACT_ALL", "HOME"):
             return self.state()                       # frozen until retract / home
+        moved = False
         m = _JOINT.fullmatch(command or "")
         if m:
             j = 0 if m.group(1) == "A" else 1
             self.theta[j] += float(m.group(2)) * DEG
+            moved = True
         elif command == "GRIPPER_CLOSE":
             self.gripper = 1.0
         elif command == "GRIPPER_OPEN":
@@ -75,8 +77,12 @@ class ArmSim:
             self.theta = [0.0, 0.0]
             self.gripper = 0.0
             self.stopped = False
-        # HOLD / unknown -> no motion
-        self.expected_ee = self.ee()       # a command defines where the arm intends to be
+            moved = True
+        # HOLD / unknown / gripper -> no joint motion, so the commanded trajectory reference stays put.
+        # (audit P1) recommitting expected_ee on a no-op would zero deviation() and silently clear a
+        # trajectory_breach() after an external perturb, with NO corrective motion. Only real motion recommits.
+        if moved:
+            self.expected_ee = self.ee()   # a MOTION command defines where the arm intends to be
         if self._p is not None:
             self._sync_pybullet()
         return self.state()
@@ -195,6 +201,21 @@ def main():
     dev = arm.deviation()
     arm.apply("HOME")                                   # corrective re-home recommits the path
     assert not arm.trajectory_breach(), "corrective HOME did not clear the trajectory breach"
+
+    # audit P1: a no-op command (HOLD / unknown token / gripper) must NOT clear a trajectory breach --
+    # only real joint motion recommits the path. Previously apply() recommitted expected_ee on EVERY
+    # command, so a HOLD after a perturb silently masked the safety comparator with no corrective motion.
+    arm.apply("HOME")
+    arm.perturb(da_deg=20)
+    assert arm.trajectory_breach(), "perturb should trip the comparator"
+    arm.apply("HOLD")
+    assert arm.trajectory_breach(), "a HOLD no-op must NOT clear a trajectory breach"
+    arm.apply("ZZZ_UNKNOWN")
+    assert arm.trajectory_breach(), "an unknown no-op token must NOT clear a trajectory breach"
+    arm.apply("GRIPPER_CLOSE")
+    assert arm.trajectory_breach(), "a gripper command (no joint motion) must NOT clear a trajectory breach"
+    arm.apply("HOME")
+    assert not arm.trajectory_breach(), "corrective HOME after the no-ops must clear the breach"
 
     # integration: Interpreter command -> arm motion
     from snn_data_lake.interpreter import Interpreter
