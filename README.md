@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 118/118 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 119/119 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.47** · 157 tagged releases (v0.1 → v2.47). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.48** · 158 tagged releases (v0.1 → v2.48). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.47.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.47.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.48.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.48.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 118 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 119 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 118-module list is canonical in
+plus separate lint and coverage jobs. The 119-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (83 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (84 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,23 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.48, product):_ **Streaming quantiles — any percentile online in O(1) memory (P²).**
+`streaming_quantile.py` adds the toolkit's missing *order statistic*: estimate any percentile of a stream **online in
+O(1) memory** — 5 markers, never storing the observations — via the P² algorithm (Jain & Chlamtac, "The P-square
+Algorithm for Dynamic Calculation of Quantiles and Histograms Without Storing Observations", *CACM* 28:1076, 1985).
+Five (height, position) markers ride the empirical CDF at 0, p/2, p, (1+p)/2, 1 and slide with a parabolic prediction
+(linear fallback if the parabola would break marker order) as each value arrives; the middle marker's height is the
+p-quantile. Self-check (N=100000): against a sorted oracle the estimate is within **0.03%** for p50/p90/p95/p99 of a
+normal stream, and within **0.06%** for the p50/p90/p99 of a heavy-tailed **exponential** stream (mean 1.00 ≫ median
+0.70 — not fooled by skew); it uses exactly **5 markers for N=100000** (the exact oracle stores all 100000); a `<5`
+buffer returns the exact quantile; deterministic. Distinct from research `loop_latency` (exact p50/p95/p99 by
+**storing** every sample and sorting — O(N), quarantined) and from the counting sketches `frequency_moment` (F₂
+moment), `spike_cardinality` (distinct count), `spike_stream_sketch` (frequency), `sliding_window_count` (windowed
+count) — a quantile is an **order statistic**, a different kind of statistic none of them computes. Pure-stdlib core
+(`dependencies = []`), **119/119** self-checks; the 5 safety-envelope files untouched. Ceiling: the classic P² 5-marker
+single-quantile estimator (small transient error before convergence, one quantile per estimator) — not a spiking
+implementation, not cognition.
 
 _Landed (v2.47, product):_ **AMS frequency-moment sketch — F₂ (the "surprise number" / skew) in sublinear memory (Alon-Matias-Szegedy).**
 `frequency_moment.py` estimates the **second frequency moment** `F₂ = Σᵢ fᵢ²` of the motif stream — one number for the

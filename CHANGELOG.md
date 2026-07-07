@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.48] — Streaming quantiles: any percentile online in O(1) memory (P²) (2026-07-06)
+### Added
+- **`src/snn_data_lake/streaming_quantile.py`** — the streaming toolkit's missing *order statistic*: estimate any
+  percentile of a stream **online in O(1) memory** (5 markers, never storing the observations) via the **P² algorithm**
+  (Jain & Chlamtac, "The P-square Algorithm for Dynamic Calculation of Quantiles and Histograms Without Storing
+  Observations", *CACM* 28:1076, 1985). Five (height `qᵢ`, position `nᵢ`) markers ride the empirical CDF at
+  0, p/2, p, (1+p)/2, 1; on each observation the cell it lands in is found (end markers stretch on a new extreme),
+  positions advance, and each interior marker that has drifted a full step from its desired position moves one step
+  using the **parabolic** P² prediction (falling back to **linear** if the parabola would break marker order) — the
+  middle marker's height is the p-quantile. `P2Quantile(p)` (`add`/`add_all`/`quantile`/`n_seen`/`n_markers`/`reset`)
+  plus a `StreamingQuantiles(ps)` wrapper for several p's at once.
+- Self-check (deterministic, ASCII; N=100000, sorted oracle): P² is within **0.03%** of the exact quantile for
+  p50/p90/p95/p99 of a normal(100,15) stream, and within **0.06%** for p50/p90/p99 of a heavy-tailed **exponential**
+  stream (mean 1.002 ≫ median 0.697 — the estimator is not fooled by skew and the sparse p99 tail is still accurate);
+  it holds exactly **5 markers for N=100000** (the exact oracle stores all 100000); a fewer-than-5 buffer returns the
+  exact quantile; two fresh instances give an identical estimate.
+- **Genuinely distinct** (stated in the docstring): `research/loop_latency` computes **exact** p50/p95/p99 by *storing*
+  every sample and sorting — O(N) memory, quarantined, latency-specific; this is the opposite trade — an O(1)-memory
+  (5-marker) approximate estimator that never stores the data, a core general p-quantile estimator. And a quantile is
+  an **order statistic** (the value at rank p through the sorted data) — distinct from the aggregate moment
+  `frequency_moment` (F₂), the distinct count `spike_cardinality` (F₀), the point frequency `spike_stream_sketch`, and
+  the windowed count `sliding_window_count` — none of the sketches computes it.
+- Registered CORE (**119/119** self-checks; the Core Runner tab / `--run-core` now runs 85 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`; `math`/`random`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: the classic P² 5-marker
+  single-quantile estimator (parabolic prediction + linear fallback) on synthetic streams — **a small transient error
+  before the markers converge, one quantile per estimator** — the streaming-quantile level, not a spiking
+  implementation, not cognition.
+
 ## [v2.47] — AMS frequency-moment sketch: F₂ (the surprise number / skew) in sublinear memory (2026-07-06)
 ### Added
 - **`src/snn_data_lake/frequency_moment.py`** — estimates the **second frequency moment** `F₂ = Σᵢ fᵢ²` of the motif
