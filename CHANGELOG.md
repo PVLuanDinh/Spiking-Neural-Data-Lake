@@ -3,6 +3,34 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.51] — Arithmetic / range entropy coder: lossless compression to the Shannon bound (2026-07-06)
+### Added
+- **`src/snn_data_lake/entropy_coder.py`** — an *entropy* coder, complementary to the research spike-native integer
+  codec: a static-model **range coder** (the byte-renormalized form of arithmetic coding; Rissanen 1976; Witten, Neal
+  & Cleary, "Arithmetic Coding for Data Compression", *CACM* 30:520, 1987) that packs a length-N symbol stream into
+  about **N·H** bits, where `H = −Σᵢ pᵢ log₂ pᵢ` is the entropy of the symbol distribution — each symbol costs
+  `~−log₂ pᵢ` bits, so a frequent symbol costs a fraction of a bit, reaching the information-theoretic limit no
+  fixed-width or byte-per-symbol layout can. Integer 32-bit low/range, byte renormalization with Subbotin carryless
+  underflow handling; the decoder mirrors the encoder arithmetic exactly so they stay in lockstep. `RangeCoder(
+  frequencies)` — `encode(symbols)` → `bytes`, `decode(data, n_symbols)` → the symbol list, `entropy()`,
+  `encoded_bits`; plus a module helper `shannon_entropy(symbols)`.
+- Self-check (deterministic, ASCII): **lossless bit-exact round-trips** on four stream shapes — skewed (N=40000,
+  alphabet 8), uniform (N=40000, alphabet 16), all-one (N=4000), and a 7-symbol short stream (the all-one and short
+  cases catch edge-case renormalization bugs); on the skewed stream it achieves **1.674 bits/symbol vs the Shannon
+  entropy H=1.671** (overhead +0.003), which is **1.79× smaller than the 3-bit fixed width** (8371 B vs 15000 B) and
+  **4.78× smaller than a byte per symbol** (vs 40000 B); a **uniform** source lands at **4.004 ≈ log₂(16)** (entropy
+  coding cannot beat the entropy — no free lunch); two fresh coders emit identical bytes.
+- **Genuinely distinct** (stated in the docstring): `research/spike_compression` is a delta + LEB128 varint **integer**
+  codec — it stores a sorted list of spike ids compactly by writing the *gaps* between consecutive integers, exploiting
+  monotone integer *structure*; it is probability-agnostic and does not approach the Shannon bound for a general symbol
+  distribution. This is an **entropy** coder — it exploits probability *skew* and reaches `~N·H` bits for any
+  distribution; the two are complementary compressors (integer monotonicity vs probability skew).
+- Registered CORE (**122/122** self-checks; the Core Runner tab / `--run-core` now runs 88 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`; `math`/`random`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: a classic static-model
+  integer range coder (byte renormalization) on synthetic symbol streams — **a static frequency model, no
+  adaptive/context modelling** — the entropy-coding level, not a spiking implementation, not cognition.
+
 ## [v2.50] — Morris approximate counter: one big total in ~log₂log₂n bits (Morris 1978) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/morris_counter.py`** — the historical *root* of the whole streaming-sketch field: count how
