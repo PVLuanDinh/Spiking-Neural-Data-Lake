@@ -26,7 +26,7 @@ If you just want to click and use the app, grab the **Standalone GUI** zip — u
 1. **Unzip** `spiking-neural-data-lake-<ver>-full-src.zip`.
 2. **Run the installer** from the unzipped folder:
    - **Windows:** double-click **`install.bat`** (or run it in a terminal).
-   - **Linux / macOS:** `./install.sh`
+   - **Linux / macOS:** `bash install.sh`
 3. That's it. The installer:
    - creates a virtual environment at `./.venv`,
    - installs the package **editable** (`pip install -e .`) plus every optional extra it can, **in stages**, and
@@ -57,7 +57,7 @@ compiler-gated dependency can never break the base install:
   kicks in if you have a CUDA-capable NVIDIA GPU + drivers. A slow network or low disk can fail
   this stage; the core and the other extras are unaffected.
 
-To skip the heavy stages: `install.bat --skip gpu,genn` (Windows) or `./install.sh --skip gpu,genn`.
+To skip the heavy stages: `install.bat --skip gpu,genn` (Windows) or `bash install.sh --skip gpu,genn`.
 
 ### Run it
 
