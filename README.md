@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 117/117 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 118/118 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.46** · 156 tagged releases (v0.1 → v2.46). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.47** · 157 tagged releases (v0.1 → v2.47). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.46.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.46.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.47.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.47.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 117 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 118 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 117-module list is canonical in
+plus separate lint and coverage jobs. The 118-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (82 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (83 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -370,6 +370,23 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.47, product):_ **AMS frequency-moment sketch — F₂ (the "surprise number" / skew) in sublinear memory (Alon-Matias-Szegedy).**
+`frequency_moment.py` estimates the **second frequency moment** `F₂ = Σᵢ fᵢ²` of the motif stream — one number for the
+whole distribution's **skew / self-join size** — via the Gödel-Prize AMS "tug-of-war" sketch (Alon, Matias & Szegedy,
+STOC 1996 / *JCSS* 58:137, 1999). Each motif is hashed to a sign `s∈{+1,−1}`; a running counter `X = Σ fᵢ·sᵢ` makes
+**X² an unbiased estimator of F₂** (the cross terms cancel in expectation); variance is cut by **median-of-means** —
+average X² over `d` counters per group, take the median over `g` groups (`d·g` counters total, independent of the
+distinct-item count). Self-check (d=16, g=15 → 240 counters): the estimate is within **1.02%** of the exact
+`F₂=1,895,804` while summarizing **4001 distinct** motifs in just 240 counters; it stays accurate (4.25%) over **8709
+distinct** motifs with the same 240 counters (an exact F₂ needs a counter per distinct item); and it captures the
+*meaning* of F₂ — a **skewed** stream (a few heavy hitters) estimates **1169×** the F₂ of a uniform stream of the same
+length, tracking both exact values; deterministic. Distinct from `spike_stream_sketch` (Count-Min *point* frequency
+`fᵢ`), `spike_cardinality` (HyperLogLog *distinct count* F₀), and `sliding_window_count` (DGIM *windowed count*) — this
+is the aggregate second moment none of them computes. Pure-stdlib core (`dependencies = []`), **118/118** self-checks;
+the 5 safety-envelope files untouched. Ceiling: the AMS tug-of-war F₂ estimator with median-of-means using hashlib
+pseudo-random signs (a demonstration — not a provably 4-wise-independent hash family), F₂ only; not a spiking
+implementation, not cognition.
 
 _Landed (v2.46, product):_ **DGIM sliding-window count — spikes in the last W ticks in O(log²W) memory.**
 `sliding_window_count.py` adds a *windowed* streaming statistic: how many spikes fired in the **last W ticks**,

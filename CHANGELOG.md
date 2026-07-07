@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.47] — AMS frequency-moment sketch: F₂ (the surprise number / skew) in sublinear memory (2026-07-06)
+### Added
+- **`src/snn_data_lake/frequency_moment.py`** — estimates the **second frequency moment** `F₂ = Σᵢ fᵢ²` of the motif
+  stream (the "surprise number" — one number for the whole frequency distribution's **skew / self-join size**) via the
+  **AMS "tug-of-war" sketch** (Alon, Matias & Szegedy, "The Space Complexity of Approximating the Frequency Moments",
+  STOC 1996 / *JCSS* 58:137, 1999; Gödel Prize 2005). Each motif is hashed deterministically to a sign `s∈{+1,−1}`; a
+  running counter `X = Σ over the stream of s = Σᵢ fᵢ·sᵢ` has `E[X²] = Σᵢ fᵢ² = F₂` (the diagonal `Σ fᵢ²·sᵢ²` since
+  `sᵢ²=1`, all cross terms zero-mean). A single counter is unbiased but high-variance, so **median-of-means**: average
+  X² over `d` independent counters per group, take the median over `g` groups — `d·g` counters total, **independent of
+  the number of distinct motifs**. `AMSSketch(d, g, seed)` — `add`/`add_all`, `estimate`, `n_counters`, `reset` — plus
+  an `exact_f2(items)` oracle for the check.
+- Self-check (deterministic, ASCII; d=16, g=15 → 240 counters, seed 7): the estimate is within **1.02%** of the exact
+  `F₂ = 1,895,804` while summarizing **4001** distinct motifs in only 240 counters; it stays accurate (**4.25%**) over
+  **8709** distinct motifs with the same 240 counters (an exact F₂ needs a counter per distinct motif); it captures the
+  *meaning* of F₂ — a **skewed** stream (three heavy hitters) estimates **1169×** the F₂ of a uniform stream of the
+  same length, tracking both exact values (uniform 179,722 / skewed 194,012,056); two fresh instances give an identical
+  estimate.
+- **Genuinely distinct** (stated in the docstring): `spike_stream_sketch` (Count-Min) estimates a **point** frequency
+  `fᵢ` of one heavy hitter; `spike_cardinality` (HyperLogLog) estimates **F₀** = the number of distinct motifs;
+  `sliding_window_count` (DGIM) estimates a **windowed count**. This estimates the **aggregate second moment** `F₂ =
+  Σ fᵢ²` — one number summarizing the whole distribution's skew / self-join size — which none of the others computes,
+  via signed tug-of-war counters + median-of-means (not per-item counters, leading-zero ranks, or bucket histograms).
+- Registered CORE (**118/118** self-checks; the Core Runner tab / `--run-core` now runs 84 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`; `hashlib` only); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: the AMS tug-of-war F₂
+  estimator with median-of-means using **hashlib pseudo-random signs (a demonstration — not a provably
+  4-wise-independent hash family), F₂ only (no general F_k)** — the frequency-moment-sketch level; not a spiking
+  implementation, not cognition.
+
 ## [v2.46] — DGIM sliding-window count: spikes in the last W ticks in O(log²W) memory (2026-07-06)
 ### Added
 - **`src/snn_data_lake/sliding_window_count.py`** — a *windowed* streaming statistic: "how many spikes fired in the
