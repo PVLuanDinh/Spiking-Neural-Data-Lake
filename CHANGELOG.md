@@ -3,6 +3,36 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.53] — Audit fixes: NaN fail-CLOSED + trajectory comparator + authenticated UDP (2026-07-07)
+Surfaced by a turbo `/audit` (report at `.turbo/audit.md`). Verified: **123/123** self-checks, 75 pytest
+(55 existing + 20 new), ruff clean. Safety-envelope files (`reflex`, `arm_sim`) changed under approval;
+each module self-check re-run green.
+### Fixed
+- **P1 — non-finite fail-open closed across every safety fast-path.** `nan`/`inf` parse as valid Python
+  floats, then made every `x < bound` danger comparison `False`, so the reflex and contact gates silently
+  failed *open* on a faulting sensor. Now fail-**CLOSED**: `signal_loop.parse_line` rejects a line carrying
+  any non-finite sample; `reflex.step` treats a non-finite reading on a safety channel as maximal danger
+  (fires `STOP`/`WITHDRAW`); `autonomous_loop.step` and `live_arm.run` treat a non-finite distance as danger
+  (reflex `EMERGENCY_STOP`). Regression self-checks added to each.
+- **P1 — `arm_sim` trajectory-comparator masking.** `apply()` recommitted `expected_ee` on *every* command,
+  so a no-op `HOLD`/unknown/gripper token after an external `perturb()` zeroed `deviation()` and silently
+  cleared `trajectory_breach()` with no corrective motion. Now only real joint motion
+  (`JOINT_*`/`HOME`/`RETRACT_ALL`) recommits the trajectory reference. Regression self-check added.
+### Security
+- **`arm_bridge` UDP OUTCOME back-channel authenticated by default.** A per-session token (read via
+  `.token`; share via env `SNN_OUTCOME_TOKEN` for the split-process deployment) is now required — an
+  unauthenticated or forged localhost datagram that could poison the valence/cortisol learners is rejected
+  (`secrets.compare_digest`). `closed_loop` wired to pass the token; legacy `token=""` opt-out retained.
+### Changed
+- `snn-ui.iss` `AppVersion` de-staled (was pinned at `2.12`); `make_release_bundle.py` now syncs the
+  installer `AppVersion` from `pyproject` at bundle time so it can never drift again.
+- `dev` extra pins `ruff>=0.15.20` to match `.pre-commit-config` (removes local/CI lint drift).
+### Added
+- Repo-local **`CLAUDE.md`** + fleshed-out **`AGENTS.md`** (agentic onboarding: zero-dep invariant, the three
+  gates, the safety-envelope file list, determinism rules).
+- **`tests/test_arm_sim.py`** + **`tests/test_interpreter.py`** — dedicated pytest for the two safety modules
+  that previously had only in-module self-check coverage (each includes the P1 regression above).
+
 ## [v2.52] — Live ESP32 → spike encoder data path: real hardware into the fusion front-end (2026-07-06)
 ### Added
 - **`src/snn_data_lake/esp32_encoder_path.py`** — a data path from the builder's real ESP32 Dev Module (ultrasonic
