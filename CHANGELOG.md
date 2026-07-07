@@ -3,6 +3,33 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.46] — DGIM sliding-window count: spikes in the last W ticks in O(log²W) memory (2026-07-06)
+### Added
+- **`src/snn_data_lake/sliding_window_count.py`** — a *windowed* streaming statistic: "how many spikes fired in the
+  **last W ticks**?", answered continuously in **O(log²W)** memory that never stores the events, via **DGIM** (Datar,
+  Gionis, Indyk & Motwani, "Maintaining Stream Statistics over Sliding Windows", *SIAM J Comput* 31:1794, 2002). An
+  exponential histogram of buckets — each a timestamp + a power-of-2 size (the number of 1s it aggregates), sizes
+  non-decreasing into the past, at most `k` per size. Each tick expires the oldest out-of-window bucket; on a 1 it
+  adds a size-1 bucket and cascade-merges the two oldest of any over-full size into one of double size. The estimate
+  is the sum of all in-window bucket sizes minus half the oldest (which straddles the window boundary), bounding the
+  relative error to `≤ 1/(k−1)` (k=2 recovers the classic ≤50% DGIM bound; larger k is tighter). `SlidingWindowCounter(
+  window, max_buckets)` — `add(bit)` (returns the estimate), `add_all`, `count`, `n_buckets`, `reset`.
+- Self-check (deterministic, ASCII; W=4096, k=8, 20000-tick P(spike)=0.4 stream, exact ring-buffer oracle): every one
+  of **15905** queries is within the guaranteed bound (**14.29%**) and empirically far tighter — **mean 1.937%, max
+  3.965%**; the histogram uses a **peak of 62 buckets vs 4096 stored bits** (O(log²W) not O(W) — bound k·log₂(W)²=1152);
+  a burst of 1000 spikes lifts the estimate to **968** then **decays to exactly 0** once W zeros slide it out; bucket
+  sizes are all powers of 2 and non-decreasing into the past; two fresh instances give identical estimates.
+- **Genuinely distinct** (stated in the docstring): `streaming_hub` answers windowed queries by **storing every
+  event** and binary-searching the boundaries — O(N) memory, exact; DGIM answers the same question in O(log²W) memory
+  that never stores the events (a memory-vs-exactness trade). `spike_cardinality` (distinct count), `spike_stream_sketch`
+  (frequency) and `reservoir_sampling` (uniform sample) are all **whole-stream** — none is windowed. DGIM is the
+  sliding-window, recency-scoped count: "how many in the last W ticks, right now".
+- Registered CORE (**117/117** self-checks; the Core Runner tab / `--run-core` now runs 83 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`; `math`/`random`/`collections.deque`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: the classic DGIM
+  exponential histogram for a binary event/no-event stream — the sliding-window-count level, **count queries only (no
+  sum-of-values or other windowed aggregate)**, not a spiking implementation, not cognition.
+
 ## [v2.45] — Reservoir sampling: a uniform one-pass sample of an unbounded stream (Vitter) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/reservoir_sampling.py`** — the canonical streaming *sampling* algorithm (Knuth's Algorithm R;
