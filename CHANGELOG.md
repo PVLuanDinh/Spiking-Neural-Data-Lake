@@ -3,6 +3,34 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.49] — MinHash: Jaccard set resemblance from fixed-size signatures (Broder) (2026-07-06)
+### Added
+- **`src/snn_data_lake/minhash.py`** — pairwise **set-similarity** estimation (the complement to HLL's single-set
+  cardinality): the Jaccard resemblance `J(A,B) = |A∩B|/|A∪B|` estimated *without ever intersecting the sets*
+  (Broder, "On the resemblance and containment of documents", *Proc. Compression and Complexity of Sequences*, 1997).
+  Pick K deterministic hash functions (a per-permutation seed folded into a `blake2b` digest — never the salted builtin
+  `hash()`); the **MinHash signature** of a set is `sigₖ(S) = minₛ hₖ(s)` for each k — K numbers regardless of set
+  size — and since `P(sigₖ(A) = sigₖ(B)) = J(A,B)` (the per-permutation minimum collides exactly when the
+  overall-minimum element is in the intersection), the **fraction of the K signature slots where A and B agree is an
+  unbiased estimator of J**, standard error `~1/√K`. `MinHash(num_perm, seed)` — `signature`, `similarity(sig_a,
+  sig_b)`, `jaccard(set_a, set_b)` — plus an `exact_jaccard` oracle.
+- Self-check (deterministic, ASCII; K=128, std error 0.088, 3/√K bound 0.265): across true `J ∈ {0.10, 0.30, 0.50,
+  0.70, 0.90}` every estimate lands inside the bound (worst abs err 0.13 at J=0.30, 1.47 std errors); **identical
+  sets estimate 1.0000** (> 0.99) and **disjoint sets 0.0000** (< 0.02); the signature is exactly **128 numbers for a
+  50000-element set** and for a 10-element set (independent of |set|); two fresh instances give identical signatures
+  and estimates.
+- **Genuinely distinct** (stated in the docstring): `spike_cardinality` (HyperLogLog) estimates the **distinct count**
+  of one stream (a size F₀, not a comparison — "how many distinct in A?"); MinHash answers "how similar are A and B?"
+  — a resemblance in [0,1] from per-permutation minima. Research `fly_hash` is a fruit-fly-LSH sparse-tag
+  approximate-**nearest-neighbour retrieval index** over stored windows; MinHash is not an index and does no retrieval
+  — it estimates a similarity *value* between two given sets by comparing their min-wise signatures slot-by-slot.
+- Registered CORE (**120/120** self-checks; the Core Runner tab / `--run-core` now runs 86 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`; `hashlib`/`math`); the 5 safety-envelope files
+  (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched. ponytail ceiling: classic K-permutation
+  MinHash (one hashlib digest per permutation) estimating Jaccard on synthetic sets — **no bottom-k /
+  one-permutation-MinHash optimization, no LSH banding for retrieval** — the set-similarity-sketch level, not a
+  spiking implementation, not cognition.
+
 ## [v2.48] — Streaming quantiles: any percentile online in O(1) memory (P²) (2026-07-06)
 ### Added
 - **`src/snn_data_lake/streaming_quantile.py`** — the streaming toolkit's missing *order statistic*: estimate any
