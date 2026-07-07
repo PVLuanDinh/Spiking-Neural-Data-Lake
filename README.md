@@ -251,6 +251,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 > **Architectural overview / elaborated project summary:** [docs/OVERVIEW.md](docs/OVERVIEW.md).
 > **Install everything (full source, all deps, Python 3.11+):** [docs/INSTALL.md](docs/INSTALL.md).
+> **Researcher pitch (contribution, measured results, reproducibility, positioning):** [docs/PITCH.md](docs/PITCH.md).
 > **Full local + cloud runbook:** [docs/RUNNING.md](docs/RUNNING.md).
 > **Hardware bring-up (BOM, wiring, firmware, safety):** [docs/HARDWARE_SETUP.md](docs/HARDWARE_SETUP.md).
 > **Robot-arm hardware spec & scope (what the arm can and cannot do):** [docs/HARDWARE_SCOPE.md](docs/HARDWARE_SCOPE.md).
