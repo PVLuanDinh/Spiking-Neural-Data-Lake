@@ -8,6 +8,7 @@ Tests mirror the self-check in arm_sim.py:main() to verify:
 - EMERGENCY_STOP freeze behavior
 - Trajectory-deviation reflex (audit P1: no-op commands must NOT clear breach)
 """
+
 from snn_data_lake.arm_sim import ArmSim
 
 

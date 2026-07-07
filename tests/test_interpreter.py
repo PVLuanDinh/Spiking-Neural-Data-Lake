@@ -9,6 +9,7 @@ Tests mirror the self-check in interpreter.py:selfcheck() to verify:
 - Outcome echo passthrough (None, None)
 - Reward policy: default 0.0 vs assume_success +0.5
 """
+
 from snn_data_lake.interpreter import Interpreter
 
 

@@ -3,6 +3,13 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.53.2] — Patch: ruff-format the test files (CI lint gate, part 2) (2026-07-07)
+The CI `lint` job runs TWO commands — `ruff check .` **and** `ruff format --check tests`. v2.53.1 fixed the
+first, but the two new test files were not `ruff format`-clean, so the second command failed. This tag
+reformats them. Behavior unchanged; 20 tests pass; both lint commands + 123/123 self-checks green locally.
+### Fixed
+- `ruff format` applied to `tests/test_arm_sim.py` + `tests/test_interpreter.py`.
+
 ## [v2.53.1] — Patch: lint-green re-tag of the v2.53 audit fixes (2026-07-07)
 Identical code to v2.53.0 plus a test-only lint fix. v2.53.0 tagged a commit whose CI lint gate was
 red: the new `tests/test_arm_sim.py` / `tests/test_interpreter.py` tripped ruff's full ruleset (unused
