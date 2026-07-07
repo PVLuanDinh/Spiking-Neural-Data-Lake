@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.52] — Live ESP32 → spike encoder data path: real hardware into the fusion front-end (2026-07-06)
+### Added
+- **`src/snn_data_lake/esp32_encoder_path.py`** — a data path from the builder's real ESP32 Dev Module (ultrasonic
+  rangefinder + MLX90614 IR thermometer, printing `distance_m, temp_k` over serial at 115200 baud) into the existing
+  `multimodal_encoder`. `parse_esp32_line(line)` parses `"0.41, 297.14" → (0.41, 297.14)` and returns `None` for the
+  `STOPPED`/`RESUMED` control lines, the boot banner, and any non-numeric/blank line; `normalize(distance_m, temp_k)`
+  maps to `[0,1]` — distance `d/3.0` clamped (3 m is the firmware's object-present gate), object IR temperature over a
+  20–40 °C (293.15–313.15 K) band clamped, and the firmware's **`-1` idle sentinel** (printed when `distance > 3 m`) →
+  a **missing** temperature (`None`); `encode_reading(line)` feeds `encode_multimodal(distance=…, temperature=…,
+  visual=None, audio=None)` → the N=64 banded spike vector; `encode_stream(lines)` and `spikes_for(feats)` (via
+  `encode_latency`) complete the path. `read_serial_lines(port, baud=115200)` reads a live port with **pyserial imported
+  lazily** (the `[arm]` extra) so the module import stays zero-dep and CI never opens a port.
+- Self-check (deterministic, ASCII; the exact captured hardware lines): parse of the captured line and of the control
+  lines is correct; an **object-present** reading (`0.41, 297.14`) lights the temperature band `[16:32]` and distance
+  band `[48:64]` while visual `[0:16]` and audio `[32:48]` stay zero (absent modalities); an **idle** reading
+  (`4.20, -1.00`) zeros the temperature band (sentinel → missing) while distance still encodes; the normalization
+  endpoints clamp (distance 0→0, 3→1, 6→1; temp 293.15 K→0, 313.15 K→1, 273.15 K→0, ≤0 K→None); `encode_stream` over
+  the six lines yields six N=64 vectors and one feeds `encode_latency` to a valid spike list; same line → identical
+  vector.
+- **Complements** `sensor_csv_ingest` (which adapts the builder's *timestamped CSV log* into the `signal_loop`
+  matcher): this is the **live raw-serial → encoder** path (no timestamp column, driving the `multimodal_encoder`
+  fusion front-end rather than the matcher). The video/audio modalities are held `None` (their bands zero) until the
+  builder's video module lands — the path is ready for them.
+- Registered CORE (**123/123** self-checks; the Core Runner tab / `--run-core` now runs 89 modules, rebuilt into the
+  exe). Pure-stdlib core (`dependencies = []`; pyserial lazy, `[arm]`-extra, live-read only); the 5 safety-envelope
+  files (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched — this is a read-only **input** path
+  that drives no actuator. ponytail ceiling: static normalization bands (distance 0–3 m gate, temp 20–40 °C), video/
+  audio absent until that module lands — a data path, not a spiking model of the sensor, not cognition.
+
 ## [v2.51] — Arithmetic / range entropy coder: lossless compression to the Shannon bound (2026-07-06)
 ### Added
 - **`src/snn_data_lake/entropy_coder.py`** — an *entropy* coder, complementary to the research spike-native integer

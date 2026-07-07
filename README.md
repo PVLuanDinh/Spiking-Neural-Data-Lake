@@ -58,11 +58,11 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 122/122 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 123/123 self-checks · pytest 85% · ruff · CI matrix |
 
-Current version: **v2.51** · 161 tagged releases (v0.1 → v2.51). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.52** · 162 tagged releases (v0.1 → v2.52). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
-**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.51.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.51.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
+**⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.52.0-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.52.0-windows-x64.zip) — unzip and double-click `snn-ui.exe`. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
 The arm primitives ship as **opt-in, off-by-default** modes on `live_arm` — all routed through the safety-gated
 `apply()`: `--proprioception` (read-only encoder-free joint estimate + slip watchdog), `--reach DEG` (spiking-PID
@@ -221,13 +221,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 122 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 123 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 122-module list is canonical in
+plus separate lint and coverage jobs. The 123-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -257,7 +257,7 @@ parallel Vertex jobs) is the ~95% leg — currently gated on billing (see limita
 
 ```
 spiking-neural-data-lake/
-  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (87 modules + lakehouse)
+  src/snn_data_lake/            SHIPPED PRODUCT — installable, zero-dep core (88 modules + lakehouse)
   local_llm/                    OPTIONAL local-first NL interface — AirLLM on-device backend ([llm] extra, no cloud)
   packaging/                    build the tkinter GUI into a standalone Windows .exe (PyInstaller spec + Inno Setup installer)
     spike_telemetry_hub.py        Paradigm A: sparse .spk store + windowed queries
@@ -301,6 +301,7 @@ spiking-neural-data-lake/
     serial_arm.py                 real-servo actuator sink: fail-safe + SAFETY_CALIBRATED gate
     arm_bridge.py                 UDP OUTCOME back-channel (closes the split-process loop)
     sensor_csv_ingest.py          adapter for the builder's timestamped serial CSV
+    esp32_encoder_path.py         LIVE ESP32 serial (distance,temp) -> normalize -> multimodal spike encoder
     make_sensor_dataset.py        synthetic sensor dataset (ultrasonic + IR)
     sensor_demo.py                end-to-end sensor demo
     data_quality.py               Gold-promotion gates (schema/encodability/immutability/sanity)
@@ -370,6 +371,23 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.52, product):_ **Live ESP32 → spike encoder data path — real hardware into the fusion front-end.**
+`esp32_encoder_path.py` wires the builder's real ESP32 Dev Module (an ultrasonic rangefinder + an MLX90614 IR
+thermometer, printing `distance_m, temp_k` over serial at 115200 baud) straight into the existing `multimodal_encoder`.
+Each raw line is parsed (`parse_esp32_line`), the firmware quirks handled — the `-1` idle sentinel the firmware prints
+when `distance > 3 m` becomes a **missing** temperature, and the `STOPPED`/`RESUMED` control lines and boot-banner are
+skipped — then **normalized to [0,1]** (`normalize`: distance `d/3.0` clamped to the firmware's object-present gate;
+object IR temperature over a 20–40 °C / 293.15–313.15 K band, clamped) and fed to
+`encode_multimodal(distance=…, temperature=…, visual=None, audio=None)` → the **N=64 banded spike vector** → optional
+`encode_latency` spikes. The video/audio modalities are held `None` (their bands stay zero) until the builder's video
+module lands. Self-check on the exact captured lines: an object-present reading lights the **temperature [16:32] and
+distance [48:64]** bands (visual/audio zero), an idle `4.20, -1.00` reading zeros the temperature band while distance
+still encodes, the normalization endpoints clamp correctly, and the stream + spike output round-trips; deterministic.
+The live-serial reader (`read_serial_lines`) imports **pyserial lazily** (the `[arm]` extra), so the core import stays
+zero-dep and CI never opens a port. Pure-stdlib core (`dependencies = []`), **123/123** self-checks; the 5
+safety-envelope files untouched (this is a read-only *input* path — it drives no actuator). Ceiling: static
+normalization bands; a data path, not a spiking model of the sensor.
 
 _Landed (v2.51, product):_ **Arithmetic / range entropy coder — lossless compression to the Shannon bound.**
 `entropy_coder.py` adds an *entropy* coder (complementary to the research delta+varint integer codec): a static-model
