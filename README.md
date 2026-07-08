@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 124/124 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 125/125 self-checks · pytest 84% · ruff · CI matrix |
 
-Current version: **v2.54** · 165 tagged releases (v0.1 → v2.54). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.55** · 166 tagged releases (v0.1 → v2.55). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 **⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
@@ -223,13 +223,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 124 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 125 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 124-module list is canonical in
+plus separate lint and coverage jobs. The 125-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -379,6 +379,19 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.55, research):_ **Spiking Neural P system — membrane computing meets spiking neurons (Ionescu-Paun-Yokomori 2006).**
+`research/sn_p_system.py` puts the P-systems (membrane-computing) formalism onto spiking neurons: each neuron is a membrane
+holding a single integer spike count and fires rules `E / a^c -> a^p ; d` — when the count matches predicate E, consume `c`
+spikes, emit `p` onto every synapse, then stay CLOSED for `d` steps (dropping arrivals). Neurons update maximally in
+parallel, at most one rule each, and the output is the emission-time train of a distinguished neuron. The textbook example
+is a *nondeterministic* generator (rival rules on one predicate → emit any natural), which has no single result to assert
+and clashes with the repo's zero-RNG contract, so it is deliberately replaced by two deterministic closed-form machines: an
+unary **adder** (output emits exactly n+m spikes) and a two-neuron **delay generator** (output train perfectly periodic at
+interval dA+dB+2). `step()` asserts at most one rule is applicable per neuron, so a nondeterministic configuration fails
+loudly rather than silently choosing. Distinct from the repo's timing-store `polychronization` (convergent delays) — here
+the delay window is a *refractory gate* and the answer is the output neuron's spike train. Research-tier (`research/`,
+ruff-excluded); pure-stdlib core (`dependencies = []`), **125/125** self-checks; the 5 safety-envelope files untouched.
 
 _Landed (v2.54, research):_ **Triplet STDP — the spike-timing rule that gets pairing-frequency dependence right (Pfister-Gerstner 2006).**
 `research/triplet_stdp.py` adds the minimal triplet spike-timing-dependent plasticity model: four eligibility traces

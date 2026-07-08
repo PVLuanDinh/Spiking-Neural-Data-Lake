@@ -56,7 +56,7 @@ RESEARCH = [
     "research/srm_neuron", "research/nef_compute", "research/nef_integrator", "research/stats_bounds",
     "research/loop_latency",
     "research/delay_learning",
-    "research/polychronization", "research/oja_pca", "research/resonate_and_fire",
+    "research/polychronization", "research/sn_p_system", "research/oja_pca", "research/resonate_and_fire",
     "research/free_energy_control", "research/adex_neuron", "research/triplet_stdp",
     "research/make_results_plot",
 ]

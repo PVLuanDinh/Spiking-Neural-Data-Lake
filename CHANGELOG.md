@@ -3,6 +3,29 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.55] — Spiking Neural P system: membrane computing meets spiking neurons (Ionescu-Paun-Yokomori 2006) (2026-07-08)
+Self-refuel research cycle. Adds `research/sn_p_system.py`, a **Spiking Neural P system** — the membrane-computing
+(P-systems) formalism placed onto spiking neurons. Each neuron is a membrane holding a single nonnegative INTEGER spike
+count `a`, and fires rules of the form `E / a^c -> a^p ; d`: when the count matches the regular-expression predicate E the
+rule consumes `c` spikes, produces `p` spikes onto every outgoing synapse, and imposes a refractory DELAY `d` during which
+the neuron is CLOSED (steps t+1..t+d) — it emits nothing and DROPS every spike that arrives. Neurons update MAXIMALLY in
+PARALLEL, at most one rule per neuron per step, and the machine's output is the emission-time train of a distinguished
+output neuron. The port is **deterministic by construction**: the paper's canonical example is a NONDETERMINISTIC generator
+(two rules sharing one predicate compete so the machine can emit any natural number), which has no single result to assert
+against and clashes with this repo's zero-RNG contract, so that generator is intentionally NOT ported. Instead the same
+engine drives two closed-form constructions with provable trains — an unary **adder** (output emits exactly n+m spikes) and
+a two-neuron **delay generator** (output train perfectly periodic at interval dA+dB+2) — and `step()` asserts at most one
+rule is applicable per neuron, so a nondeterministic configuration fails loudly rather than silently picking one. Pure
+standard library (`collections` only), no randomness, ASCII-only output. Self-check delta **124 → 125**; both lint gates
+clean, 20 pytest unchanged, 5 safety-envelope files untouched, core `dependencies = []` still empty.
+Paper: Ionescu, M., Paun, Gh., Yokomori, T. (2006), "Spiking Neural P Systems", *Fundamenta Informaticae* 71(2-3):279-308.
+### Added
+- `research/sn_p_system.py` — Spiking Neural P system engine (`SNPSystem`, `Rule` namedtuple, `at_least`/`exactly`
+  predicate factories) plus two deterministic builders (`build_adder`, `build_delay_gen`). Self-check asserts: (1) the
+  unary adder's output neuron emits exactly n+m spikes across six operand pairs; (2) the delay generator's output train is
+  perfectly periodic with interval dA+dB+2 across five delay pairs; (3) determinism (identical result on a repeat run).
+  Registered in `run_selfchecks.py` RESEARCH tuple (124 → 125). Research-tier, ruff-excluded.
+
 ## [v2.54] — Triplet STDP: the spike-timing rule pair-STDP predicts backwards (Pfister-Gerstner 2006) (2026-07-08)
 Self-refuel research cycle. Adds `research/triplet_stdp.py`, the minimal **triplet spike-timing-dependent plasticity**
 model (Pfister & Gerstner 2006). Pair-based STDP updates a synapse from spike PAIRS only, so for a fixed +10 ms
