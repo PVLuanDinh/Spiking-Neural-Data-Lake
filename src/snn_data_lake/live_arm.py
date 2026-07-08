@@ -158,6 +158,27 @@ def main():
               f"({len(trace)} steps)")
         return
 
+    # opt-in: plan a collision-free path around the obstacle to a Cartesian end-effector goal (--plan-xy X Y)
+    # or a joint config (--plan A B), executed THROUGH the safety-gated apply() -- a reaction-diffusion
+    # wavefront in configuration space (off by default; adds no new command token, moves via JOINT_*_ROTATE)
+    if "--plan-xy" in args or "--plan" in args:
+        from snn_data_lake.wavefront_planner import plan_to_config, plan_to_xy
+        arm = ArmSim()
+        if "--plan-xy" in args:
+            gx = float(args[args.index("--plan-xy") + 1])
+            gy = float(args[args.index("--plan-xy") + 2])
+            res = plan_to_xy(arm, gx, gy)
+            goal = f"EE ({gx:.3f}, {gy:.3f})"
+        else:
+            ga = float(args[args.index("--plan") + 1])
+            gb = float(args[args.index("--plan") + 2])
+            res = plan_to_config(arm, ga, gb)
+            goal = f"config ({ga:.1f}, {gb:.1f}) deg"
+        ex, ey = arm.ee()
+        print(f"plan: {goal} -> status {res['status']}, {res['waypoints']} waypoints, "
+              f"{res['steps']} gated commands; final EE ({ex:.3f}, {ey:.3f}) via gated apply()")
+        return
+
     if "--serial" in args:
         port = args[args.index("--serial") + 1]
         baud = int(args[args.index("--baud") + 1]) if "--baud" in args else 115200

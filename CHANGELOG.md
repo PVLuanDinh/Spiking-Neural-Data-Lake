@@ -3,6 +3,40 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.59] — Wavefront arm path planner: reaction-diffusion computing routes the arm around the obstacle (2026-07-08)
+Product-feature integration + promotion. This gives `reaction_diffusion_compute` (the v2.58 excitable-medium wave) a genuine core home
+by building the arm path-planning stage it feeds: **`src/snn_data_lake/wavefront_planner.py`**, a configuration-space wavefront planner
+for the 2-DOF arm. `reaction_diffusion_compute.py` is promoted `research/` -> `src/snn_data_lake/` (a move, net-zero to the module
+total) so the core module `wavefront_planner` can consume its `excite_wave` / `bfs_dist` / `backtrace`. The planner discretizes the
+arm's (theta_A, theta_B) CONFIGURATION SPACE into a grid, labels a cell WALL iff the arm placed there collides — reusing
+`ArmSim.collision()`, the ONE collision authority (end-effector point vs the OBSTACLE circle and the floor) — ignites the excitable wave
+at the GOAL config so arrival time equals geodesic distance, and steepest-descends from the START config into a collision-free
+joint-space path that routes AROUND the C-space obstacle. Closed-form 2-link inverse kinematics (`ik(x, y)`, law of cosines, elbow
+up/down) resolves a Cartesian end-effector goal to a joint config, so `snn-arm --plan-xy X Y` (or `--plan A B` for a joint config) plans
+to a POINT. **Safety:** every waypoint executes as bounded, rate-limited relative `JOINT_[AB]_ROTATE` commands THROUGH the existing
+gated `ArmSim.apply()`, so the E-STOP freeze, the trajectory-deviation comparator, and — on real hardware via `SerialArm.apply()` — the
+calibration gate and command allow-list all stay in force. The planner adds NO new command token, never writes the wire, and modifies
+NONE of the five safety-envelope files (reflex, serial_arm, arm_sim, arm_config, interpreter) — it only calls their public surface
+read-only. Execution aborts on a mid-plan E-STOP (a frozen arm no-ops `apply()`), with an independent `collision()` guard and a hard
+step-budget cap. Off by default (the `--plan-xy` / `--plan` flags are lazy-import + early-return in `live_arm.main()`; the default path
+and `run(observer=None)` stay byte-identical). **Honest ceiling:** collision labelling inherits `ArmSim.collision()` verbatim — an
+EE-POINT vs a point obstacle, no link-body sweep, no joint limits, sampled only at grid cells; small `step_deg` shrinks the gap and the
+day the collision authority gains link-body checking the planner improves for free (it deliberately does not implement its own divergent
+model). Self-check delta **128 -> 129**; both lint gates clean, core `dependencies = []` still empty, the 5 safety-envelope files
+untouched.
+Reference: Steinbock, O., Toth, A. & Showalter, K. (1995), "Navigating complex labyrinths: optimal paths from chemical waves",
+Science 267(5199):868-871 (the wave engine); closed-form 2-link planar inverse kinematics (law of cosines).
+### Added
+- `src/snn_data_lake/wavefront_planner.py` — C-space wavefront arm path planner (`ik`, `CSpaceGrid`, `plan`, `execute`,
+  `plan_to_config`, `plan_to_xy`) consuming `reaction_diffusion_compute`. Self-check: IK round-trip + out-of-reach rejection; a
+  collision-free, 4-adjacent, genuine-detour plan (geodesic > Manhattan, straight path blocked); reaches the Cartesian goal through the
+  gated `apply()` with the trajectory invariants intact; mid-plan E-STOP freeze/abort; disconnected-goal handling; wave == BFS geodesic;
+  determinism. Registered CORE (128 -> 129).
+- `snn-arm --plan-xy X Y` / `--plan A B` — off-by-default opt-in flags in `live_arm.main()` (lazy import, early return).
+### Changed
+- Promoted `reaction_diffusion_compute.py` `research/` -> `src/snn_data_lake/` (RESEARCH -> CORE in `run_selfchecks.py`; net-zero to the
+  module total) — it now has a core consumer (`wavefront_planner`). Docstring usage line updated to `python -m ...`.
+
 ## [v2.58] — Reaction-diffusion wave computer: shortest paths from excitable-medium fronts (Steinbock-Showalter 1995) (2026-07-08)
 Self-refuel research cycle. Adds `research/reaction_diffusion_compute.py`, a **reaction-diffusion wave computer** — an EXCITABLE
 cellular automaton (each cell REST / EXCITED / REFRACTORY(k) / WALL) that solves a maze the way a Belousov-Zhabotinsky chemical

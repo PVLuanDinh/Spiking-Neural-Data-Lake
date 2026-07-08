@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 128/128 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 129/129 self-checks · pytest 84% · ruff · CI matrix |
 
-Current version: **v2.58** · 169 tagged releases (v0.1 → v2.58). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.59** · 170 tagged releases (v0.1 → v2.59). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 **⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
@@ -223,13 +223,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 128 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 129 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 128-module list is canonical in
+plus separate lint and coverage jobs. The 129-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -349,7 +349,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (81 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (129 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -379,6 +379,18 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.59, product):_ **Wavefront arm path planner — reaction-diffusion computing routes the arm around the obstacle.**
+`src/snn_data_lake/wavefront_planner.py` promotes the v2.58 excitable-medium wave into the core and gives it a real job: it discretizes
+the 2-DOF arm's (theta_A, theta_B) configuration space into a grid, labels a cell blocked iff the arm placed there collides (reusing
+`ArmSim.collision()`, the one collision authority — end-effector point vs the OBSTACLE circle + floor), ignites the wave at the goal
+config, and steepest-descends from the start into a collision-free joint-space path that routes AROUND the C-space obstacle. Closed-form
+2-link inverse kinematics `ik(x, y)` (law of cosines, elbow up/down) lets `snn-arm --plan-xy X Y` request an end-effector POINT; each
+waypoint executes as bounded, rate-limited `JOINT_[AB]_ROTATE` commands THROUGH the existing gated `apply()`, so the E-STOP freeze,
+calibration gate, and command allow-list all stay in force — the planner adds no new command token and modifies none of the five
+safety-envelope files. Off by default (`--plan-xy` / `--plan`); execution aborts on a mid-plan E-STOP. Honest ceiling: it inherits
+`collision()`'s EE-point model (no link-body sweep or joint limits) and improves for free when that authority does. Pure-stdlib core
+(`dependencies = []`), **129/129** self-checks; the 5 safety-envelope files untouched.
 
 _Landed (v2.58, research):_ **Reaction-diffusion wave computer — shortest paths from excitable-medium fronts (Steinbock-Showalter 1995).**
 `research/reaction_diffusion_compute.py` is an EXCITABLE cellular automaton (each cell REST / EXCITED / REFRACTORY(k) / WALL) that

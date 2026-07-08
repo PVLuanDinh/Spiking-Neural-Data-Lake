@@ -39,6 +39,7 @@ CORE = [
     "arm_sim", "arm_config", "population_encoding", "population_vector", "multimodal_encoder", "cue_integration", "growing_learner",
     "autonomous_loop", "hippocampus", "frequency_memory", "experience_replay", "nl_interface", "sensor_csv_ingest", "esp32_encoder_path",
     "gesture_recognition", "live_arm", "serial_arm", "arm_bridge", "spiking_pid", "cpg_oscillator", "kuramoto_sync", "wilson_cowan", "neuronal_avalanches", "synfire_chain", "stochastic_resonance", "forward_model", "kalman_filter", "demo",
+    "reaction_diffusion_compute", "wavefront_planner",
     "control_panel",
 ]
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
@@ -59,7 +60,6 @@ RESEARCH = [
     "research/polychronization", "research/sn_p_system", "research/oja_pca", "research/resonate_and_fire",
     "research/free_energy_control", "research/adex_neuron", "research/triplet_stdp",
     "research/cellular_neural_network", "research/random_boolean_network",
-    "research/reaction_diffusion_compute",
     "research/make_results_plot",
 ]
 MODULES = CORE + RESEARCH

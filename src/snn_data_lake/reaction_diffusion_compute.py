@@ -37,7 +37,7 @@ over an occupancy grid and steer the end effector down the arrival-time gradient
 Pure standard library (collections.deque), no randomness -- a FIXED hand-designed maze
 and a deterministic synchronous update. ASCII-only output.
 
-  python research/reaction_diffusion_compute.py     # (also run by run_selfchecks.py)
+  python -m snn_data_lake.reaction_diffusion_compute     # (also run by run_selfchecks.py)
 
 Papers:
   Steinbock, O., Toth, A. & Showalter, K. (1995), "Navigating complex labyrinths:
