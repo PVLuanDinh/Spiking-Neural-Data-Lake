@@ -3,6 +3,37 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.60] -- DishBrain free-energy embodied learning: a culture learns Pong from feedback predictability (Kagan 2022) (2026-07-08)
+Research distillation from the Cortical Labs corpus. **`research/dishbrain_learning.py`** puts a minimal spiking agent inside a
+1-D Pong world and has it LEARN to hit the ball, driven ENTIRELY by the FREE ENERGY PRINCIPLE via the PREDICTABILITY of its sensory
+feedback -- reproducing Cortical Labs' "DishBrain" result (a neural culture embodied in a Pong-like game learns to rally). The world is
+a vertical play-field: a ball at a place-coded position, a paddle the agent moves, a HIT if the paddle overlaps the ball when it
+arrives. The agent is place-coded sensory offset (ball - paddle) -> two plastic motor pathways (UP / DOWN) read out by a winner-take-all
+of two threshold units; the winning unit spikes and nudges the paddle one cell. **The plasticity is the DishBrain feedback rule -- and
+the learning signal is NOT a scalar reward, it is the ENTROPY STRUCTURE of the post-rally stimulation:** a HIT delivers PREDICTABLE
+(consistent, low-entropy) stimulation that Hebbian-CONSOLIDATES the pathway just used; a MISS delivers RANDOM (high-entropy) stimulation
+that dissipates. A homeostatic synaptic decay relaxes every weight toward a neutral prior each rally, so ONLY the consistent
+predictable-on-hit stimulation accumulates -- random stimulation averages to nothing and washes out. The culture therefore drifts toward
+whatever keeps its feedback predictable (i.e. toward hitting), and the hit-rate RISES as an EMERGENT property -- nothing about the
+winning policy is coded in. **The defining, falsifiable control (the paper's own):** a STRUCTURED agent whose feedback is CONTINGENT on
+performance (predictable-on-hit / random-on-miss) LEARNS; a CONTROL given RANDOM feedback REGARDLESS of outcome does NOT improve --
+proving it is the CONTINGENCY between action-outcome and feedback-structure, not stimulation per se, that drives learning. Measured
+(seed 7, deterministic): structured hit-rate **0.58 -> 0.99** (early -> late window, well above the 0.27 geometric chance); control
+**0.30 -> 0.28** (flat). **DISTINCT from the repo's other free-energy / reward modules:** `research/free_energy_control` is spike-level
+control (a spike fires only if it lowers prediction error) with NO embodiment / NO task; `closed_loop` learns from a graded SCALAR
+reward; `r_stdp` / `valence_stdp` are reward-modulated STDP with an explicit scalar reward / reward-prediction-error -- here the network
+never sees a reward number, only whether its feedback is a consistent replay or a scrambled random pattern. Pure-stdlib (`random` seeded
++ nothing else), one per-instance `random.Random(seed)` threaded through init / ball starts / exploration / the random-feedback
+stimulation -> byte-identical across CPython 3.11-3.13; ASCII-only output. Self-check delta **129 -> 130**; core `dependencies = []` still
+empty, the 5 safety-envelope files (reflex, serial_arm, arm_sim, arm_config, interpreter) untouched, no `src/` change.
+Reference: Kagan, B.J., Kitchen, A.C., Tran, N.T., et al. (2022), "In vitro neurons learn and exhibit sentience when embodied in a
+simulated game-world", Neuron 110(23):3952-3969, DOI 10.1016/j.neuron.2022.09.001.
+### Added
+- `research/dishbrain_learning.py` -- embodied spiking Pong learned from feedback predictability (free-energy principle). Self-check:
+  the structured (contingent-feedback) agent's late hit-rate rises clearly above its early baseline and above chance; the random-feedback
+  control stays flat (proving contingency, not stimulation, drives learning); byte-identical trajectory on a repeat run. Registered
+  RESEARCH (129 -> 130).
+
 ## [v2.59] — Wavefront arm path planner: reaction-diffusion computing routes the arm around the obstacle (2026-07-08)
 Product-feature integration + promotion. This gives `reaction_diffusion_compute` (the v2.58 excitable-medium wave) a genuine core home
 by building the arm path-planning stage it feeds: **`src/snn_data_lake/wavefront_planner.py`**, a configuration-space wavefront planner
