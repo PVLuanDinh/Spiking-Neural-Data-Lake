@@ -58,7 +58,7 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 123/123 self-checks · pytest 85% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 123/123 self-checks · pytest 84% · ruff · CI matrix |
 
 Current version: **v2.53.2** · 164 tagged releases (v0.1 → v2.53.2). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
@@ -94,7 +94,7 @@ in the CHANGELOG for the stated config). Compute = synaptic operations; storage 
 
 | Component | Task | Metric | Result |
 |-----------|------|--------|--------|
-| Supervised spiking classifier | 4-shape recognition | accuracy / compute | **100%**, **3.6× fewer ops** (113.7k SynOps vs 409.6k dense MACs) |
+| Supervised spiking classifier | 4-shape recognition | accuracy / compute | **100%**, **3.6× fewer ops** (113.8k SynOps vs 409.6k dense MACs) |
 | Temporal (TTFS) coding | latency inference + early exit | SynOps vs rate | **83.5× fewer** (5.3k vs 442.8k), 100% accuracy |
 | Spike-driven MoE | firing-rate routing | router params / compute | **0 learned router-net params** (8 biases vs 512), **4× compute cut** (top-2 of 8 experts) |
 
@@ -359,8 +359,10 @@ spiking-neural-data-lake/
 
 - **vs dense ANNs** — a synaptic op only when a neuron fires: **3.6–83.5× fewer operations**
   here, and 1-bit spike events vs 32-bit activations.
-- **vs rate coding** — deterministic temporal (TTFS) coding cuts inference ~83×; latency STDP
-  trains 2.1× faster at 7.9× fewer SynOps (measured −6.2 pt accuracy tradeoff).
+- **vs rate coding** — deterministic temporal (TTFS) coding cuts inference ~83×; latency STDP has
+  two distinct measured operating points — a tuned run (2.1× faster training, −6.2 pt accuracy) and
+  an untuned run (7.9× fewer SynOps, −13.5 pt) — the large SynOps saving and the small accuracy cost
+  come from *different* configurations, not one run.
 - **vs the literature** — unsupervised STDP MNIST tops out at ~95% (Diehl & Cook 2015, 6400n +
   60k). This repo reaches **82.3% CPU** (300n) and **90.0% GPU** (1600n, scale-tuned); the
   6400n/~95% leg is a compute/ops task, not a method gap.
