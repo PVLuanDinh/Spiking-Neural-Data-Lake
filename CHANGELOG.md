@@ -3,6 +3,37 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.56] — Cellular Neural Network: locally-coupled analog array, template-programmed (Chua-Yang 1988) (2026-07-08)
+Self-refuel research cycle. Adds `research/cellular_neural_network.py`, a **Cellular Neural Network** — a 2-D grid of
+identical analog cells, each carrying a real state x_ij that evolves by the locally-coupled ODE
+`dx_ij/dt = -x_ij + sum A_kl*y_kl + sum B_kl*u_kl + z` over a fixed 3x3 neighbourhood, with output
+`y = f(x) = 0.5*(|x+1| - |x-1|)` (piecewise-linear saturation, clamped to +-1). The machine is "programmed" purely by the
+template triple (A feedback, B control, z bias); swapping templates turns the same array into an edge detector, an inverter,
+an eroder, etc. On-thesis for this repo as a neuromorphic ANALOG array / early-vision operator (compute at the sensor, no
+clock). **Determinism by construction:** a general CNN with off-center feedback is a bistable relaxation network whose
+settled state can depend on inter-cell convergence order — no clean closed form to assert against. We restrict the FEEDBACK
+template to a positive center only (A = [[0,0,0],[0,1,0],[0,0,0]]), which decouples the cells: writing
+w_ij = (B*u)_ij + z (a constant, since u is fixed), each cell obeys `dx/dt = -x + f(x) + w` and settles to the per-cell
+CLOSED FORM `y_ij(inf) = sign((B*u)_ij + z)` — independent of every neighbour's output and of integration order, zero RNG.
+The classic EDGE-DETECT template (A = center-1; B = [[-1,-1,-1],[-1,8,-1],[-1,-1,-1]]; z = -1) gives
+w_ij = 8*u_ij - (sum of the 8 neighbour inputs) - 1 on a binary image (pixels in {-1=white,+1=black}): a black pixel with an
+all-black neighbourhood nets w = 8-8-1 = -1 < 0 (interior erased), a black pixel touching any white neighbour nets w > 0
+(boundary kept), every white pixel nets w < 0 (background stays white) — so the settled grid is exactly the black region's
+outline. Fixed Dirichlet boundary (virtual cells hold u=y=-1); the test image's 4x4 block never touches the border, so the
+outline is exact. A second center-only-A INVERSION template (w = -u) gives the pixelwise complement as an independent
+closed-form assert. The expected bitmaps are HAND-DERIVED from sign((B*u)+z), not copied from a code run. Pure standard
+library (no imports), no randomness, ASCII-only output. Self-check delta **125 → 126**; both lint gates clean, 20 pytest
+unchanged, 5 safety-envelope files untouched, core `dependencies = []` still empty.
+Papers: Chua, L.O. & Yang, L. (1988), "Cellular Neural Networks: Theory", *IEEE Trans. Circuits and Systems* 35(10):1257-1272.
+Roska, T. & Chua, L.O. (1993), "The CNN Universal Machine", *IEEE Trans. Circuits and Systems II* 40(3):163-173.
+### Added
+- `research/cellular_neural_network.py` — base Cellular Neural Network array (`cnn_settle` Euler integrator, `f` PWL
+  saturation, `_conv3x3` template convolution with fixed Dirichlet boundary, `render` ASCII printer) plus two center-only-A
+  templates. Self-check asserts: (1) the edge-detect output equals the hand-computed block outline; (2) an interior black
+  pixel nets w = -1 < 0 and is erased; (3) an edge black corner nets w = 9 > 0 and is kept; (4) the inversion output equals
+  the pixelwise complement of the input; (5) determinism (identical bitmap on a repeat run). Registered in
+  `run_selfchecks.py` RESEARCH tuple (125 → 126). Research-tier, ruff-excluded.
+
 ## [v2.55] — Spiking Neural P system: membrane computing meets spiking neurons (Ionescu-Paun-Yokomori 2006) (2026-07-08)
 Self-refuel research cycle. Adds `research/sn_p_system.py`, a **Spiking Neural P system** — the membrane-computing
 (P-systems) formalism placed onto spiking neurons. Each neuron is a membrane holding a single nonnegative INTEGER spike

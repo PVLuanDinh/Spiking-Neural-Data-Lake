@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 125/125 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 126/126 self-checks · pytest 84% · ruff · CI matrix |
 
-Current version: **v2.55** · 166 tagged releases (v0.1 → v2.55). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.56** · 167 tagged releases (v0.1 → v2.56). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 **⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
@@ -223,13 +223,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 125 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 126 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 125-module list is canonical in
+plus separate lint and coverage jobs. The 126-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -379,6 +379,19 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.56, research):_ **Cellular Neural Network — locally-coupled analog array (Chua-Yang 1988).**
+`research/cellular_neural_network.py` implements the base CNN: a 2-D grid of analog cells evolving by
+`dx_ij/dt = -x_ij + A*y + B*u + z` over a 3x3 neighbourhood, output `y = f(x) = 0.5*(|x+1| - |x-1|)` (PWL saturation). The
+array is "programmed" purely by the template triple (A feedback, B control, z bias) — the same silicon does edge-detection,
+inversion, erosion by swapping templates; a neuromorphic ANALOG array / early-vision operator. To stay deterministic we
+restrict feedback to a positive center only (A = [[0,0,0],[0,1,0],[0,0,0]]), which decouples the cells so each settles to
+the per-cell closed form `y_ij(inf) = sign((B*u)_ij + z)` — no inter-cell convergence race, zero RNG. The classic
+edge-detect template (B = [[-1,-1,-1],[-1,8,-1],[-1,-1,-1]], z = -1) nets w = 8*u - (sum of 8 neighbours) - 1: black
+interior (w=-1) erased, black boundary (w>0) kept, white background (w<0) unchanged → the black region's outline; a second
+inversion template (w = -u) gives the pixelwise complement. Expected bitmaps are hand-derived from sign((B*u)+z), fixed
+Dirichlet boundary (u=y=-1). Research-tier (`research/`, ruff-excluded); pure-stdlib core (`dependencies = []`), **126/126**
+self-checks; the 5 safety-envelope files untouched.
 
 _Landed (v2.55, research):_ **Spiking Neural P system — membrane computing meets spiking neurons (Ionescu-Paun-Yokomori 2006).**
 `research/sn_p_system.py` puts the P-systems (membrane-computing) formalism onto spiking neurons: each neuron is a membrane
