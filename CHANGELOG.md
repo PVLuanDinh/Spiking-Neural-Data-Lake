@@ -3,6 +3,40 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.58] — Reaction-diffusion wave computer: shortest paths from excitable-medium fronts (Steinbock-Showalter 1995) (2026-07-08)
+Self-refuel research cycle. Adds `research/reaction_diffusion_compute.py`, a **reaction-diffusion wave computer** — an EXCITABLE
+cellular automaton (each cell REST / EXCITED / REFRACTORY(k) / WALL) that solves a maze the way a Belousov-Zhabotinsky chemical
+medium does: ignite a wave at the start and, because the wavefront travels at a CONSTANT speed, the step it FIRST arrives at any
+cell equals the GEODESIC distance from the start through the free space. Synchronous 4-neighbour (von Neumann) update: a REST
+non-wall cell becomes EXCITED iff a neighbour is EXCITED; an EXCITED cell becomes REFRACTORY(r); REFRACTORY(k) counts down to REST.
+The refractory tail is the whole point — a cell that just fired cannot be re-excited, so the front is ONE-DIRECTIONAL (it never
+re-enters its own wake) and two head-on fronts ANNIHILATE on contact instead of crossing. This is the classic Steinbock-Toth-Showalter
+labyrinth result realized honestly as a discrete excitable medium, and it is on thesis for the repo as a future arm-loop path
+planner (ignite a wave from the goal over an occupancy grid, steer down the arrival-time gradient). **Why it is a genuine
+reaction-diffusion computation and not flood-fill relabeled:** an INDEPENDENT breadth-first search (`collections.deque`, a plain FIFO
+queue) computes the geodesic over the same 4-connected free grid by a completely different code path, and the PRIMARY assert is
+`arrival_time == bfs_dist` for every reachable cell — two unrelated algorithms agreeing that the first-arrival front equals the
+geodesic is a real correctness result, not a tautology. The excitable-medium SIGNATURE that plain diffusion lacks — every cell fires
+on exactly one step (the refractory wake blocks re-excitation; head-on fronts annihilate) — is asserted directly for both a single
+source and two sources. The maze is a FIXED hand-designed 9x9 grid whose two single-cell gaps force a serpentine detour: the geodesic
+`S(1,1) -> T(7,7)` is **24 steps** while the Manhattan distance is only 12, so the shortest path recovered by steepest descent on the
+arrival-time field (back-trace from the target to a 4-neighbour whose arrival is exactly one less, down to the source) is provably a
+real detour, not a straight line — the self-check confirms the 24-step back-trace is 4-adjacent, non-wall, and runs target -> source.
+**Determinism by construction:** no RNG anywhere — a fixed maze and a deterministic synchronous update give a byte-identical arrival
+field on a repeat run (asserted). Pure standard library (`collections.deque`), ASCII-only output. Self-check delta **127 → 128**;
+both lint gates clean, 5 safety-envelope files untouched, core `dependencies = []` still empty.
+Papers: Steinbock, O., Toth, A. & Showalter, K. (1995), "Navigating complex labyrinths: optimal paths from chemical waves", *Science* 267(5199):868-871; Adamatzky, A. (2005), "Reaction-Diffusion Computers", Elsevier.
+### Added
+- `research/reaction_diffusion_compute.py` — excitable-medium wave computer on a fixed maze (`excite_wave` synchronous
+  REST/EXCITED/REFRACTORY CA recording first-arrival times, `bfs_dist` independent `collections.deque` geodesic oracle, `backtrace`
+  steepest-descent shortest path, `render` ASCII maze/path overlay). Self-check asserts: (1) PRIMARY — `arrival_time == bfs_dist` for
+  every reachable cell (the wave computes the geodesic, verified against an independent BFS); (2) one-directional propagation — each
+  reachable cell fires on exactly one step (the refractory tail blocks re-excitation); (3) the steepest-descent back-trace recovers
+  the known 24-step geodesic (a real detour, Manhattan 12), 4-adjacent, non-wall, target -> source; (4) ANNIHILATION — with two
+  head-on sources every cell still fires exactly once and is claimed by its nearer front (arrival == min-distance BFS); (5)
+  determinism (identical arrival field on a repeat run, zero RNG). Registered in `run_selfchecks.py` RESEARCH tuple (127 → 128).
+  Research-tier, ruff-excluded.
+
 ## [v2.57] — Random Boolean Network: the order-chaos transition as a reservoir substrate (Kauffman 1969) (2026-07-08)
 Self-refuel research cycle. Adds `research/random_boolean_network.py`, a **Random Boolean Network** (Kauffman's NK model) —
 N binary nodes, each with exactly K seeded inputs and a FIXED random Boolean truth table over those K inputs (2^K entries, each

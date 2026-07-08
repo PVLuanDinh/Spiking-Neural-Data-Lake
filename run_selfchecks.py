@@ -59,6 +59,7 @@ RESEARCH = [
     "research/polychronization", "research/sn_p_system", "research/oja_pca", "research/resonate_and_fire",
     "research/free_energy_control", "research/adex_neuron", "research/triplet_stdp",
     "research/cellular_neural_network", "research/random_boolean_network",
+    "research/reaction_diffusion_compute",
     "research/make_results_plot",
 ]
 MODULES = CORE + RESEARCH

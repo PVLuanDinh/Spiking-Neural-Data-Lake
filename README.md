@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 127/127 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 128/128 self-checks · pytest 84% · ruff · CI matrix |
 
-Current version: **v2.57** · 168 tagged releases (v0.1 → v2.57). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.58** · 169 tagged releases (v0.1 → v2.58). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 **⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
@@ -223,13 +223,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 127 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 128 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 127-module list is canonical in
+plus separate lint and coverage jobs. The 128-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -379,6 +379,22 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.58, research):_ **Reaction-diffusion wave computer — shortest paths from excitable-medium fronts (Steinbock-Showalter 1995).**
+`research/reaction_diffusion_compute.py` is an EXCITABLE cellular automaton (each cell REST / EXCITED / REFRACTORY(k) / WALL) that
+solves a maze the way a Belousov-Zhabotinsky chemical medium does: ignite a wave at the start and, because the front travels at a
+CONSTANT speed, the step it FIRST arrives at any cell equals the GEODESIC distance from the start. Synchronous 4-neighbour update; the
+REFRACTORY tail makes the front ONE-DIRECTIONAL (it never re-enters its own wake) so two head-on fronts ANNIHILATE instead of crossing.
+This is the classic Steinbock-Toth-Showalter labyrinth result as an honest discrete medium, on thesis as a future arm-loop path
+planner (ignite from the goal, steer down the arrival-time gradient). Genuinely a reaction-diffusion computation, not flood-fill
+relabeled: an INDEPENDENT breadth-first search (`collections.deque`) computes the geodesic by a different code path, and the PRIMARY
+assert is `arrival_time == bfs_dist` for every reachable cell — two unrelated algorithms agreeing that the first-arrival front equals
+the geodesic. The signature plain diffusion lacks — every cell fires on exactly one step (the refractory wake blocks re-excitation;
+head-on fronts annihilate) — is asserted for one source and two. On a FIXED hand-designed 9x9 maze whose two single-cell gaps force a
+serpentine, the geodesic `S -> T` is 24 steps while Manhattan is 12, and steepest descent on the arrival-time field back-traces that
+provable detour (4-adjacent, non-wall, target -> source). No RNG — a fixed maze and deterministic update give a byte-identical arrival
+field on a repeat run. Research-tier (`research/`, ruff-excluded); pure-stdlib core (`dependencies = []`), **128/128** self-checks;
+the 5 safety-envelope files untouched.
 
 _Landed (v2.57, research):_ **Random Boolean Network — Kauffman NK order-chaos transition, reservoir substrate (Kauffman 1969).**
 `research/random_boolean_network.py` implements the classic NK model: N binary nodes, each with exactly K seeded inputs and a
