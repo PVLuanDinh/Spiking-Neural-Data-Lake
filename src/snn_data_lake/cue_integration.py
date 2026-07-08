@@ -28,7 +28,7 @@ DISTINCTNESS (this is reliability-weighted ESTIMATION, not encoding or time-inte
   - not population_encoding (an RBF scalar encoder), not neural_sampling / predictive_coding
     (different inference machinery).
 
-ponytail: the ceiling is the closed-form Gaussian MLE cue combination on SYNTHETIC noisy
+The ceiling is the closed-form Gaussian MLE cue combination on SYNTHETIC noisy
 cues -- the optimal-integration level, NOT a spiking population implementation and not a
 full Bayesian network. Small fixed cue counts and a fixed-seed empirical variance keep the
 demonstration reproducible. Not cognition.

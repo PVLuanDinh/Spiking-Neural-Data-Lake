@@ -20,7 +20,7 @@ the arm, NEVER emits a motor command -- it is value consolidation, not control. 
 loop it runs on quiescent ticks only, strictly after the safety-gated action has already
 been applied; the reflex / E-STOP / collision gate is entirely upstream and untouched.
 
-ponytail: this improves SAMPLE EFFICIENCY of the value table -- it is NOT cognition /
+This improves SAMPLE EFFICIENCY of the value table -- it is NOT cognition /
 planning / a world model. Ceiling: uniform-sampled tabular replay over discrete grown
 units (no prioritization, no model, no generative rollouts); the streams are synthetic.
 Additive / opt-in: nothing replays unless you build a buffer and call replay().

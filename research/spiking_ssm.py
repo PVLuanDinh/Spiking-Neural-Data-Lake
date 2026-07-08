@@ -148,7 +148,7 @@ def main():
           " long-range accuracy; this fixed-reservoir LSM is the zero-dep, CI-able mechanism.")
     print("=" * 62)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
+    # ---- self-check: one runnable assert-based check; deterministic ----
     assert acc_m > 1.0 / CLASSES + 0.2, f"reservoir readout no better than chance: {acc_m:.2f}"
     assert acc_m >= 0.8, f"temporal classes should be well separated by the reservoir: {acc_m:.2f}"
     assert syn_mean > 0, "reservoir produced no synaptic operations"

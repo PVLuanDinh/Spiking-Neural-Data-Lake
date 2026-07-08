@@ -22,7 +22,7 @@ So: inhibitory-synapse spike-timing plasticity that drives the postsynaptic rate
 excitation with co-tuned inhibition. Additive/opt-in -- a new member of the plasticity family that changes
 no existing default. Ref: Vogels et al., Science 334 (2011).
 
-ponytail: this is a single postsynaptic neuron with small, Poisson-synthetic presynaptic input -- a rate/
+This is a single postsynaptic neuron with small, Poisson-synthetic presynaptic input -- a rate/
 timing caricature of the Vogels 2011 rule, NOT a full recurrent E/I network and NOT cognition/AGI. It is
 inhibitory plasticity for E/I balance and network stability only. Zero-dep stdlib; deterministic (seeded);
 additive (no existing behaviour touched).
@@ -121,7 +121,7 @@ def main():
     print(f"mean inhib weight      : strong {wmean_strong:.4f} (grew from 0)  vs  weak {wmean_weak:.4f} (shrank from {w_prime:.2f})")
     print("=" * 72)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep, ASCII only) ----
+    # ---- self-check: deterministic asserts, zero-dep, ASCII only ----
     assert abs(rate_strong - rho0) < 0.01, \
         f"iSTDP must drive the strong-drive rate to rho0 ({rate_strong:.4f} vs {rho0})"
     assert abs(rate_strong - rho0) < 0.25 * abs(uninhib_strong - rho0), \

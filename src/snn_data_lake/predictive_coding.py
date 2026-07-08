@@ -39,7 +39,7 @@ DISTINCT from siblings in this repo (stated, having read them):
   (research/free_energy_control.py is a spiking CONTROLLER for action selection; this is perceptual
   representation / inference -- a different domain of the free-energy idea.)
 
-ponytail: a small linear (rectified-linear optional) 2-level Rao-Ballard predictive-coding network
+A small linear (rectified-linear optional) 2-level Rao-Ballard predictive-coding network
 on synthetic data with gradient inference + Hebbian weight learning -- a reduced model, NOT spiking
 biophysics, no precision/attention weighting, tiny dims so the representable-input test is exact;
 not cognition.
@@ -229,7 +229,7 @@ def main():
     print(f"determinism: identical weights {same_weights}; identical E traces {same_trace}")
     print("=" * 68)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep stdlib, ASCII-only prints) ----
+    # ---- self-check: deterministic asserts, zero-dep stdlib, ASCII-only prints ----
     assert monotone, "inference must be monotone: E non-increasing across steps"
     assert final_e < 1e-6, f"inference must drive E to ~0 for a representable input ({final_e:.3e})"
     assert recon_mse < 1e-6, f"reconstruction of a representable input must be near-exact ({recon_mse:.3e})"

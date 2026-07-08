@@ -29,7 +29,7 @@ DISTINCTNESS (this is not any other repo module):
     different observable (an SNR-vs-noise peak, not an avalanche-size power law). Not intrinsic_plasticity
     / homeostatic_scaling (gain / rate set-points, not noise), not bayesian_snn (uncertainty).
 
-ponytail: minimal faithful core -- a reduced upward-threshold-crossing detector with additive Gaussian
+Minimal faithful core -- a reduced upward-threshold-crossing detector with additive Gaussian
 noise on a synthetic subthreshold sinusoid, scored by a spectral SNR, to exhibit the stochastic-resonance
 level (an SNR-vs-noise peak). NOT a full spiking network / biophysics; small fixed sizes for a
 reproducible fixed-seed curve; not cognition.
@@ -134,7 +134,7 @@ def main():
     print(f"margin: peak/low-end = {ratio_low} , peak/high-end = {ratio_high:.1f}x")
     print("=" * 64)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     # 1. subthreshold signal alone is (nearly) undetected: no crossings, no signal-band response
     assert zero_spikes == 0, f"subthreshold signal must not cross threshold at sigma=0 ({zero_spikes})"
     assert m0 < 1.0, f"no signal-band response without noise ({m0:.3f})"

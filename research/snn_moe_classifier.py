@@ -13,7 +13,7 @@ three faithful pieces:
   3. load balance         — Nord uses an aux gradient loss to spread usage; with
      a local learning rule we can't backprop it, so we use the homeostatic
      equivalent: nudge each expert's bias toward an even usage share (same role
-     Nord's expert_bias + EMA play). [ponytail: local-rule analog of the aux loss]
+     Nord's expert_bias + EMA play). [local-rule analog of the aux loss]
 
 Differences from Nord (by necessity, all stdlib, no torch):
   - experts trained by the project's local delta rule, not surrogate-grad BPTT.
@@ -210,7 +210,7 @@ def main():
     print("  " + "  ".join(f"e{e}:{s:.0%}" for e, s in enumerate(share)))
     print("=" * 60)
 
-    # ---- self-check (ponytail: one runnable check) ----
+    # ---- self-check: one runnable check ----
     assert acc >= 0.85, f"MoE did not learn: acc={acc:.2f}"
     assert moe_synops < dense_all_synops, "top-k routing not cheaper than all-experts"
     assert fr_router < learned_router, "firing-rate router not smaller than learned"

@@ -96,7 +96,7 @@ def main():
     print(f"algebra: bind/unbind round-trip lossless = {roundtrip}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
+    # ---- self-check: one runnable assert-based check; deterministic ----
     assert roundtrip, "MCR bind must be invertible by modular unbind"
     assert rec_mcr >= 0.9, f"MCR record recovery should be clean: {rec_mcr:.2f}"
     assert bits_mcr < bits_bip and rec_mcr >= rec_bip - 0.05, \

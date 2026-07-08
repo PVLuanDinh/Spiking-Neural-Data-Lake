@@ -33,7 +33,7 @@ DISTINCTNESS (read wilson_cowan / kuramoto_sync before writing this):
   network-level CRITICALITY / scale-free cascade statistics (Beggs-Plenz), the regime that maximizes
   dynamic range -- absent from the core until now.
 
-ponytail: a REDUCED Galton-Watson / mean-field branching process on a HOMOGENEOUS network -- no spatial
+A REDUCED Galton-Watson / mean-field branching process on a HOMOGENEOUS network -- no spatial
 structure, no real synaptic weights, no refractory dynamics -- the avalanche-STATISTICS level of
 criticality, not spiking biophysics. Small enough scale (modest N and avalanche counts) that the
 fixed-seed statistics are reproducible; a runaway size cutoff terminates supercritical cascades. Not
@@ -221,7 +221,7 @@ def main():
     print(f"one-cascade API: largest of 20 avalanche() draws (size, duration) = {biggest}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep, ASCII-only) ----
+    # ---- self-check: deterministic asserts, zero-dep, ASCII-only ----
     for sg, meas, _mean_s, _max_s in rows:
         assert abs(meas - sg) < 0.05, f"measured sigma must match set sigma ({meas:.3f} vs {sg})"
     assert sub_mean < crit_mean < super_mean, \

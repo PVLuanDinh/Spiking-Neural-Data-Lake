@@ -73,7 +73,7 @@ def main():
     print("delay is a LEARNED parameter (three-factor: eligibility × reward) — timing, not weight.")
     print("=" * 58)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
+    # ---- self-check: one runnable assert-based check; deterministic ----
     assert pre <= 0.6, f"a zero-delay coincidence detector can't classify order: pre={pre:.2f}"
     assert post >= 0.9, f"learned delay should classify temporal order: post={post:.2f}"
     assert abs(d0 - GAP) <= 1.5, f"learned delay {d0:.2f} should converge near GAP={GAP}"

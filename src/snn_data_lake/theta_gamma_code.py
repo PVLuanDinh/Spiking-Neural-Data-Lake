@@ -17,7 +17,7 @@ DISTINCT from existing core modules (read them):
 - hippocampus.py / hopfield attractor recall: pattern completion of ONE stored attractor. This multiplexes
   SEVERAL items by phase and reads back their ORDER.
 
-ponytail: ceiling -- a discrete phase-slot buffer, a reduced model of the theta-gamma code on synthetic items
+Ceiling -- a discrete phase-slot buffer, a reduced model of the theta-gamma code on synthetic items
 (integer slots + deterministic SDR ensembles; NO biophysical oscillators, no LFP, no real inhibition dynamics).
 Additive / opt-in: a new memory/coding primitive; imports nothing and changes no existing behaviour. Deterministic
 (seeded via random.Random; no module-level seed; no builtin hash()). Credit Lisman & Idiart 1995 / Lisman & Jensen 2013.
@@ -151,7 +151,7 @@ def main():
     print(f"overflow: push 0..9 into K=7        : survivors {survivors}, evicted oldest {dropped}")
     print("=" * 72)
 
-    # ---- self-check (ponytail: deterministic asserts, ASCII-only) ----
+    # ---- self-check: deterministic asserts, ASCII-only ----
     assert recovered == seq, f"order by phase: readout must equal input order ({recovered} != {seq})"
     assert slots == list(range(len(seq))), f"a fitting sequence fills gamma slots 0..n-1 in order ({slots})"
     assert slot_ok, "phase->position: item i must occupy gamma slot i"

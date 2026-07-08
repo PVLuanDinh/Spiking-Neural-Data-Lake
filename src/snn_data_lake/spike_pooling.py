@@ -59,7 +59,7 @@ def main():
     print(f"anti-low-pass: max keeps {peak_max} where avg smears to {peak_avg}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert peak_max == 1.0, f"max-pool must preserve the sparse spike at full amplitude ({peak_max})"
     assert peak_avg < peak_max, f"avg-pool must smear (low-pass) the sparse spike ({peak_avg} vs {peak_max})"
     assert len(mx) == exp_len, f"1-D downsample shape wrong ({len(mx)} != {exp_len})"

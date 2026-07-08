@@ -24,7 +24,7 @@ DISTINCTNESS (this is a different neural code from the repo's other attractor / 
   - NOT hippocampus.py (DG/CA3 pattern separation / completion of discrete memories).
   - NOT theta_gamma_code.py (phase-multiplexed working-memory buffer of ordered items).
 
-ponytail: a reduced/idealized interference model on synthetic trajectories -- analytic plane-wave rate
+A reduced/idealized interference model on synthetic trajectories -- analytic plane-wave rate
 fields with literal velocity accumulation, NO real VCO spiking dynamics, no neural noise, no phase drift
 or drift correction. A mathematical grid-cell twin (geometry + dead-reckoning), not biophysics, not cognition.
 
@@ -200,7 +200,7 @@ def main():
           f"[{pop_rates[0]:.3f}, {pop_rates[1]:.3f}]")
     print("=" * 68)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert abs(spacing_m - 1.0) < 0.05, f"measured grid spacing must match lambda ({spacing_m:.3f})"
     assert abs(angle_step - 60.0) < 3.0, f"6 nearest peaks must sit 60deg apart -> hexagonal ({angle_step:.2f})"
     assert abs(small_m - 0.6) < 0.05 and abs(big_m - 1.0) < 0.05 and big_m > small_m, \

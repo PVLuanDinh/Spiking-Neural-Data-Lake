@@ -31,7 +31,7 @@ DISTINCTNESS (why this is a new primitive, not a duplicate):
 
   python -m snn_data_lake.astrocyte_modulation        # (also run by run_selfchecks.py)
 
-ponytail: a reduced slow-Ca + threshold-gliotransmission model of tripartite synapse on synthetic
+A reduced slow-Ca + threshold-gliotransmission model of tripartite synapse on synthetic
 activity -- phenomenological glial gain, NOT IP3 / Ca-induced-Ca-release biophysics, no diffusion or
 astrocyte network, not cognition.
 """
@@ -157,7 +157,7 @@ def main():
           f"  (gain {mod_astro.gains[0]:.2f} on drive {drive})")
     print("=" * 68)
 
-    # ---- self-checks (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-checks: deterministic asserts, zero-dep ----
     # 1. slow activity-dependent threshold gliotransmission
     assert sus_peak_g - 1.0 > 0.2, \
         f"sustained-high must engage gliotransmission (gain {sus_peak_g:.3f} >> 1)"

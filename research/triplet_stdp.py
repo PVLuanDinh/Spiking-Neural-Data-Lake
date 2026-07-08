@@ -90,7 +90,7 @@ def main():
     print(f"@40 Hz         : triplet {tri_dw[i40]:+.3f} vs pair {pair_dw[i40]:+.3f}  (opposite sign)")
     print("=" * 64)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     mono_up = all(tri_dw[i] < tri_dw[i + 1] for i in range(len(freqs) - 1))
     mono_down = all(pair_dw[i] > pair_dw[i + 1] for i in range(len(freqs) - 1))
     assert mono_up, f"defining property: triplet LTP must INCREASE with pairing frequency ({tri_dw})"

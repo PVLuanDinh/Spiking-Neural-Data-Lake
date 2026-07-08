@@ -10,7 +10,7 @@ it raises the *effective* firing threshold:
 
     V_th_eff(t) = v_threshold + beta * a(t)
 
-Two consequences give the LSNN its name. (1) SPIKE-FREQUENCY ADAPTATION: each spike lifts the threshold, so a
+Two consequences give the LSNN its name. (1) spike-frequency adaptation: each spike lifts the threshold, so a
 constant input makes the neuron fire fast then progressively slower -- its inter-spike intervals grow, where a
 plain LIF's stay flat. (2) LONG SHORT-TERM MEMORY: because tau_a >> tau_m, the elevated threshold OUTLASTS the
 membrane by many membrane time constants -- after the input (and the fast membrane) have decayed back to rest,
@@ -18,7 +18,7 @@ a(t) is still clearly elevated, a slow trace of recent activity the plain LIF me
 threshold state is the working memory recurrent LSNNs use to bridge long delays, and the neuron model on which
 this repo's e-prop (research/eprop.py) learns.
 
-DISTINCT from the AdEx neuron (research/adex_neuron.py): AdEx adapts a subthreshold + spike-triggered CURRENT w
+Distinct from the AdEx neuron (research/adex_neuron.py): AdEx adapts a subthreshold + spike-triggered CURRENT w
 that is SUBTRACTED from the membrane; ALIF adapts the THRESHOLD itself. Different mechanism, same headline
 behaviour (fire-fast-then-slow). Reduces EXACTLY to lif_neuron.LIFNeuron when beta = 0. Pure standard library,
 deterministic by construction (no RNG, no wall-clock).
@@ -82,7 +82,7 @@ def _isis(train):
 def main():
     tau_m, v_th, drive = 10.0, 1.0, 0.7
 
-    # (a) SPIKE-FREQUENCY ADAPTATION: identical constant supra-threshold input into an ALIF and a plain LIF.
+    # (a) spike-frequency adaptation: identical constant supra-threshold input into an ALIF and a plain LIF.
     #     The ALIF threshold climbs with each spike -> inter-spike intervals GROW; the LIF's ISI stays flat.
     alif = ALIFNeuron(tau_m=tau_m, tau_a=300.0, v_threshold=v_th, beta=1.2)
     alif_train = alif.run([drive] * 250)

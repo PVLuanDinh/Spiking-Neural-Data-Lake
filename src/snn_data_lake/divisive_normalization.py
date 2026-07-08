@@ -20,7 +20,7 @@ DISTINCT from the repo's other gain/competition modules (different timescale AND
     that division is precisely what makes the tuning shape contrast-INVARIANT and the response
     SATURATE. Different operation, not just different parameters.
 
-ponytail: a rate-level pool operation -- a reduced model of the canonical divisive-normalization
+A rate-level pool operation -- a reduced model of the canonical divisive-normalization
 computation on synthetic nonnegative drives, NOT a full cortical circuit and NOT cognition/AGI. It is
 purely additive/opt-in (a new normalization/gain-control primitive; changes no existing behaviour).
 Credit: Carandini & Heeger, "Normalization as a canonical neural computation", Nat Rev Neurosci 13 (2012).
@@ -100,7 +100,7 @@ def main():
     print(f"spiking view : LIF rates {[round(r, 2) for r in rates]}, max at unit {rates.index(max(rates))}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep, ASCII-only) ----
+    # ---- self-check: deterministic asserts, zero-dep, ASCII-only ----
     assert grow < 2.0 and grow < raw_ratio, f"winner must saturate, growing far sub-linearly (x{grow:.2f} vs input x{raw_ratio:.0f})"
     assert abs(high[win] - asymptote) < 0.02, f"high-contrast response must approach the asymptote ({high[win]:.3f} vs {asymptote:.3f})"
     assert huge[win] > high[win] and abs(huge[win] - asymptote) < 1e-3, f"response must keep rising toward the asymptote ({huge[win]:.4f})"

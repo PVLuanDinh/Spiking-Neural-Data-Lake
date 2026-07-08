@@ -66,7 +66,7 @@ def main():
     print("attaches 'answer + how sure' to KG queries / the novelty gate; composes with drift_monitor.")
     print("=" * 58)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
+    # ---- self-check: one runnable assert-based check; deterministic ----
     assert accuracy >= 0.95, f"in-distribution recall should stay accurate: {accuracy:.2f}"
     assert m_in < 0.2, f"clean cues should be confident (low uncertainty): {m_in:.2f}"
     assert m_ood > m_in + 0.2, f"OOD cues should be measurably less certain: ood={m_ood:.2f} in={m_in:.2f}"

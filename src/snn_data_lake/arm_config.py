@@ -2,7 +2,7 @@
 v0.50 — robot-arm calibration in ONE place.
 
 Every distance/IR threshold the arm pipeline depends on was hardcoded across
-gesture_recognition.py and live_arm.py, tuned to the builder's specific sensor mount.
+gesture_recognition.py and live_arm.py, tuned to one specific reference sensor mount.
 Move the rig + the 95% recognition collapses. This centralizes them so a re-mount is a
 one-file edit, and `bins_from_capture()` can derive them from real data instead of guessing.
 
@@ -23,7 +23,7 @@ CONTACT = 0.04         # d < CONTACT -> imminent-contact reflex EMERGENCY_STOP
 TRAJ_DEV_MAX = 0.15    # end-effector deviation (m) from the intended pose that trips the
                        # trajectory-deviation reflex (the "differential position comparator":
                        # an external perturbation knocks the arm off its commanded path).
-                       # ponytail: tied to arm reach (l1+l2=2m); re-tune per real rig/gripper.
+                       # tied to arm reach (l1+l2=2m); re-tune per real rig/gripper.
 
 # ---- real-hardware safety gate -------------------------------------------------
 # CONTACT / joint-limit / reflex values here are PLACEHOLDERS tuned to the sim, NOT your rig.
@@ -36,7 +36,7 @@ W = 8                  # samples per recognition window
 STRIDE = W             # W = non-overlapping; < W = sliding (lower live latency)
 
 # ---- IR fusion (Sensor_2) ------------------------------------------------------
-# ponytail: IR polarity/scale is sensor-specific and UNCALIBRATED, so fusion is OFF by
+# IR polarity/scale is sensor-specific and uncalibrated, so fusion is OFF by
 # default (None) — distance alone decides presence, exactly as before. Ceiling: idle vs
 # far-but-present object is distance-only. Upgrade: capture IR with/without a hand in
 # range, set IR_PRESENT to (">", v) or ("<", v) so IR confirms presence.

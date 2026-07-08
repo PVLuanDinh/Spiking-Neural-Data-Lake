@@ -23,7 +23,7 @@ Contrast with the sibling sketches, made explicit (having read both):
     between two GIVEN sets by comparing their min-wise signatures slot-by-slot -- the min-wise-independent-
     permutation estimator of Jaccard, a different algorithm and a different output.
 
-ponytail: classic K-permutation MinHash (one hashlib digest per permutation) estimating Jaccard on synthetic
+Classic K-permutation MinHash (one hashlib digest per permutation) estimating Jaccard on synthetic
 sets -- the set-similarity-sketch level; no bottom-k / one-permutation-MinHash optimization, no LSH banding for
 retrieval; not a spiking implementation, not cognition.
 
@@ -143,7 +143,7 @@ def main():
     print(f"determinism: two fresh instances -> identical signature {det_sig} and estimate {det_est}")
     print("=" * 68)
 
-    # ---- asserts (ponytail: deterministic, zero-dep; genuine estimates, not rigged) ----
+    # ---- asserts: deterministic, zero-dep; genuine estimates, not rigged ----
     for true_j, _est, err in rows:
         assert err < bound, f"J(A,B)={true_j:.4f}: abs err {err:.4f} exceeds 3/sqrt(K) bound {bound:.4f}"
     assert ident > 0.99, f"identical sets must estimate ~1.0 ({ident:.4f})"

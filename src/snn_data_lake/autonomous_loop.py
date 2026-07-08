@@ -15,7 +15,7 @@ sensor (distance < CONTACT) trips the reflex -> EMERGENCY_STOP BEFORE any learne
 motor command is issued through the safety-gated ArmSim.apply() (collision / E-STOP / stopped freeze).
 Cortisol rises on danger and, while stressed, biases selection toward the safe action.
 
-ponytail: online prototype-recruitment (growing_learner) + a reward-modulated action-value table
+Online prototype-recruitment (growing_learner) + a reward-modulated action-value table
 (a contextual bandit over grown units, RPE update) + cortisol neuromodulation, all through the gated
 arm. This is adaptive + GROWING, NOT cognition. The four modality streams here are synthetic.
 
@@ -160,7 +160,7 @@ def main():
           f"(value table only; safety gate holds with replay={replay_frozen})")
     print("=" * 62)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert grew_to == 3, f"must grow one unit per distinct multimodal context ({grew_to})"
     assert ev["action"] == "EMERGENCY_STOP" and ev["reflex"], "danger must trip the reflex E-STOP before any action"
     assert stopped, "E-STOP must freeze the arm"

@@ -27,7 +27,7 @@ HOW THIS DIFFERS from the reward-learning already in the repo (do not confuse th
     no timing trace; it ESTIMATES the gradient stochastically from (reward, noise) correlations.
     The only information used is the scalar R and the noise xi that was injected.
 
-THE UN-RIGGABLE ANCHOR (why this is a real gradient estimator, not a heuristic): at a fixed w we
+the un-riggable anchor (why this is a real gradient estimator, not a heuristic): at a fixed w we
 estimate g_hat = mean over many xi of (R(w+xi)-R(w)) xi / sigma^2, and INDEPENDENTLY compute the
 true gradient by CENTRAL FINITE DIFFERENCES g_fd[i] = (R(w+eps e_i) - R(w-eps e_i)) / (2 eps) --
 a completely separate code path that touches no noise. If perturbation really estimates dR/dw the
@@ -45,7 +45,7 @@ reward gradient and solves a small spiking task WITHOUT backprop. It is a single
 on synthetic spike trains -- no hidden layers, no deep credit assignment. NOTHING is rigged: the
 finite-difference gradient is an independent ground truth, w is NOT initialised near the optimum,
 and the cosine threshold was fixed before measuring.
-ponytail: pure stdlib (random + math), additive research module, zero-dep, deterministic.
+Pure stdlib (random + math), additive research module, zero-dep, deterministic.
 Ref: Fiete, I.R. & Seung, H.S. (2006), "Gradient Learning in Spiking Neural Networks by Dynamic
 Perturbation of Conductances", Physical Review Letters 97:048104, DOI 10.1103/PhysRevLett.97.048104.
 
@@ -219,7 +219,7 @@ def main():
     # (a) LEARNS: reward rises substantially and task error drops, by perturbation alone.
     assert r_final > r_init + 1.0, f"perturbation must raise the reward substantially ({r_init:+.4f} -> {r_final:+.4f})"
     assert e_final < 0.5 * e_init, f"task error must drop clearly ({e_init:.4f} -> {e_final:.4f})"
-    # (b) UN-RIGGABLE ANCHOR: perturbation estimate aligns with the independent finite-diff gradient.
+    # (b) un-riggable anchor: perturbation estimate aligns with the independent finite-diff gradient.
     #     Threshold 0.6 fixed a priori (task spec); finite differences are a separate code path.
     assert cos > 0.6, f"perturbation must estimate the true gradient (cos {cos:.4f} <= 0.6)"
     # (c) NO-BACKPROP (structural): train() and perturbation_gradient() use only forward reward()

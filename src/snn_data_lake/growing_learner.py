@@ -22,7 +22,7 @@ Mechanism (ART-like, cosine match):
       rate (running average / Hebbian), return (that_id, grew=False).
   classify(pattern): nearest existing prototype (recognition only, never grows).
 
-ponytail: online prototype recruitment + running-average refinement (ART-like), NOT
+Online prototype recruitment + running-average refinement (ART-like), NOT
 deep / gradient learning; cosine is the whole match rule. Deterministic (no RNG in the
 learner). The multimodal streams the self-check drives it with are SYNTHETIC. This
 GROWS capacity as data arrives; it does not "think".

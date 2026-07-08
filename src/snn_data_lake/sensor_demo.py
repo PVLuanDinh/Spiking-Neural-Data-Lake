@@ -1,14 +1,14 @@
 """
-v0.39 — end-to-end demo on the builder's sensor (ultrasonic distance + IR temp).
+v0.39 — end-to-end demo on the reference sensor (ultrasonic distance + IR temp).
 
 Wires the synthetic sensor dataset (make_sensor_dataset.py, modelling sensor.ino) through
-the whole stack on HIS 2-channel domain:
+the whole stack on the 2-channel domain:
   enroll 5 gestures (mean window per gesture)  ->  recognize held-out windows
   -> Interpreter maps gesture -> a sensor-appropriate command
   -> reflex fires on danger raw samples (too close / too hot), ahead of recognition
   -> a rewarded gesture's value rises (dopamine), under cortisol modulation.
 
-Self-contained (generates its own data) so it runs in CI. Swap in the builder's real
+Self-contained (generates its own data) so it runs in CI. Swap in the reference
 captures (same format) and nothing else changes.
 
   python sensor_demo.py
@@ -18,7 +18,7 @@ from snn_data_lake import signal_loop as S
 from snn_data_lake.interpreter import Interpreter
 from snn_data_lake.reflex import Reflex
 
-# his gestures -> commands appropriate to a proximity/temperature arm (illustrative)
+# gestures -> commands appropriate to a proximity/temperature arm (illustrative)
 SENSOR_COMMANDS = {
     "HAND_APPROACH": "PREPARE_GRASP",
     "HAND_RETREAT":  "RELEASE",
@@ -64,7 +64,7 @@ def main():
             correct += 1
     acc = correct / len(test)
 
-    # 2. recognition -> command (Interpreter on his gestures)
+    # 2. recognition -> command (Interpreter on the gestures)
     examples = {}
     for g in library:
         label = matcher(library[g])[0]
@@ -85,7 +85,7 @@ def main():
     v1 = val.valence(appr)
 
     print("=" * 60)
-    print("SENSOR DEMO — builder's ultrasonic+IR rig, end to end")
+    print("SENSOR DEMO — reference ultrasonic+IR rig, end to end")
     print("=" * 60)
     print(f"enrolled : {list(library)}")
     print(f"recognition (held-out windows) : {acc:.0%}  (chance {1/len(library):.0%})")
@@ -97,13 +97,13 @@ def main():
     print("=" * 60)
 
     # ---- self-checks --------------------------------------------------------
-    assert acc >= 0.9, f"gesture recognition too weak on his domain: {acc:.2f}"
+    assert acc >= 0.9, f"gesture recognition too weak on the reference domain: {acc:.2f}"
     assert examples["HAND_APPROACH"] == "PREPARE_GRASP", "command map not applied"
     assert close_hit == "STOP" and hot_hit == "WITHDRAW", "reflex missed a danger sample"
     assert safe is None, "reflex fired on a safe sample"
     assert v1 > v0, "dopamine did not raise the rewarded gesture's value"
     print("self-check OK: gestures recognized + commanded, reflex catches close/hot, "
-          "dopamine learns — full stack runs on the builder's sensor")
+          "dopamine learns — full stack runs on the reference sensor")
 
 
 if __name__ == "__main__":

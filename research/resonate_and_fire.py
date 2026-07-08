@@ -72,7 +72,7 @@ def main():
     print(f"detected frequencies : {detected} Hz (the two tones present)")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert peak > 0 and off == 0, f"the neuron must resonate at its tuned frequency only ({tuning})"
     assert set(detected) == {10, 20}, f"the bank must detect exactly the two tones present ({detected})"
     assert response[bank_freqs.index(10)] >= 2 and response[bank_freqs.index(15)] < 2, "off-tone neurons stay below sustained resonance"

@@ -10,7 +10,7 @@ of x yields a population that computes f -- the SAME spikes, different read-out 
 can read x, x^2, or 2x for free. This is the spiking-computation substrate the whole stack sits on (Nengo / Loihi
 use it). Pure standard library, deterministic. On-thesis with population_encoding / spike_preprocessing.
 
-ponytail: rate-mode NEF (steady-state LIF tuning curves + least-squares decoders) -- the representation and
+Rate-mode NEF (steady-state LIF tuning curves + least-squares decoders) -- the representation and
 transformation principles, minus the temporal spike-filtering and the dynamics principle. Enough to show a
 population represent a value and compute a nonlinear function of it; not full Nengo.
 
@@ -107,7 +107,7 @@ def main():
     print(f"spot: x=0.5 -> decode(x)={ens.decode(d_id, 0.5):.3f}, decode(x^2)={ens.decode(d_sq, 0.5):.3f} (want 0.25)")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert rmse_id < 0.05, f"the population must represent x accurately ({rmse_id:.4f})"
     assert rmse_sq < 0.05, f"the population must compute x^2 by decoding ({rmse_sq:.4f})"
     assert rmse_small > rmse_id, f"fewer neurons must decode worse (NEF error scaling) ({rmse_small:.4f} vs {rmse_id:.4f})"

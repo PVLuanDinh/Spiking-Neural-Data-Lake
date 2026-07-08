@@ -117,7 +117,7 @@ def main():
     print(f"recognition accuracy: {acc:.0%}  (chance {1 / len(labels):.0%})")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert acc >= 0.9, f"tempotron matcher must recognize the commands ({acc:.2f})"
     clean = sum(matcher.label(library[lab]) == lab for lab in labels)
     assert clean == len(labels), "every clean command must be recognized exactly"

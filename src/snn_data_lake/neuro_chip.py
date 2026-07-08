@@ -19,7 +19,7 @@ inter-core), which is exactly what makes the mapped computation invariant to cor
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuro_chip
 """
-# ponytail: additive/opt-in emulator, changes no existing behaviour; reuses LIFNeuron + energy.py.
+# additive/opt-in emulator, changes no existing behaviour; reuses LIFNeuron + energy.py.
 # Ceiling: functional/architectural twin (AER-routed, time-stepped), NOT cycle-accurate silicon --
 # no analog dynamics, no place-and-route, synthetic workload; software side of the nir_export target.
 from snn_data_lake import energy

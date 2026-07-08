@@ -28,7 +28,7 @@ DISTINCTNESS (read cpg_oscillator / ring_attractor / theta_gamma_code before wri
   for working memory). This is continuous coupled-oscillator dynamics plus the synchronization order
   parameter -- neural-oscillation coherence / communication-through-coherence.
 
-ponytail: mean-field / all-to-all Kuramoto phase oscillators with a fixed Euler step on synthetic
+Mean-field / all-to-all Kuramoto phase oscillators with a fixed Euler step on synthetic
 (seeded Gaussian) natural frequencies -- a reduced synchronization model, NOT biophysical spiking
 neurons, no conduction delays, no network topology beyond all-to-all; not cognition.
 
@@ -176,7 +176,7 @@ def main():
           f"{spread_locked:.3f} (locked), collapse x{collapse:.3f}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert r_low < 0.30, f"below K_c the population must stay near the incoherent floor ({r_low:.3f})"
     assert r_high > 0.80, f"above K_c the population must synchronize ({r_high:.3f})"
     assert r_high > 3.0 * r_low, f"high-K r must be far above low-K r ({r_high:.3f} vs {r_low:.3f})"

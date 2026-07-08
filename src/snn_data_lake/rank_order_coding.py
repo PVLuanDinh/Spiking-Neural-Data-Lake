@@ -94,7 +94,7 @@ def main():
     print(f"  template (VanR)  : {tmpl_clean:.0%}     {tmpl_gain:.0%}   (magnitude drifts -> degrades)")
     print("=" * 66)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert rank_clean >= 0.9, f"rank-order matcher must recognize the commands ({rank_clean:.2f})"
     assert rank_gain == rank_clean, "rank-order recognition must be EXACTLY gain-invariant"
     assert tmpl_gain < tmpl_clean - 0.05, f"the magnitude template must degrade under rig gain ({tmpl_clean:.2f}->{tmpl_gain:.2f})"

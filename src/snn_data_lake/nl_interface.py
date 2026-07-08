@@ -23,7 +23,7 @@ keyword router (no model, no network) -- so this module and its self-check run i
 no torch and no weights. The AirLLM backend (local_llm/airllm_backend.py, optional [llm]
 extra) is a drop-in that returns the same labels from an on-device model.
 
-ponytail: keyword/label routing + a fixed allow-list map -- NOT language understanding.
+Keyword/label routing + a fixed allow-list map -- NOT language understanding.
 Ceiling: fixed intents (no free-form arm parameters; rotations are fixed increments like the
 Interpreter's), single-label output, English keyword cues only. Additive / opt-in: nothing
 here runs unless you call it; the arm/lake code paths are unchanged.

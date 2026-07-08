@@ -32,7 +32,7 @@ DISTINCTNESS (read cpg_oscillator / kuramoto_sync / divisive_normalization befor
   attractors. This is a time-evolving dynamical system with fixed points and limit cycles. And it is a
   POPULATION rate model, not a single-neuron model (`lif_neuron` / `izhikevich`).
 
-ponytail: the classic 2-population Wilson-Cowan mean-field ODEs with a fixed forward-Euler step and
+The classic 2-population Wilson-Cowan mean-field ODEs with a fixed forward-Euler step and
 hand-picked parameter presets for each regime -- a REDUCED rate model, not spiking biophysics, no
 spatial extent and no conduction delays; presets are chosen so each bifurcation regime is clearly
 exhibited. Not cognition/AGI.
@@ -214,7 +214,7 @@ def main():
     print(f"4 determinism : identical limit-cycle series across fresh instances = {identical}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep, ASCII-only) ----
+    # ---- self-check: deterministic asserts, zero-dep, ASCII-only ----
     assert ic_spread < 1e-6, f"all ICs must converge to ONE fixed point (spread {ic_spread:.2e})"
     assert final_change < 1e-6, f"a true fixed point must have per-step change ~0 (|dE/dt|={final_change:.2e})"
     assert amp > 0.05, f"limit cycle must sustain a bounded oscillation (amp {amp:.3f})"

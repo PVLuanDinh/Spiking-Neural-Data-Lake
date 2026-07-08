@@ -90,7 +90,7 @@ def main():
     print(f"unit became selective to '{winner}'; theta settled at {neuron.theta:.2f}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert sel_after > 0.5, f"BCM must develop selectivity to one shape ({sel_after:.2f})"
     assert sel_after > sel_before + 0.2, f"selectivity must sharpen with exposure ({sel_before:.2f} -> {sel_after:.2f})"
     assert responses[winner] > 1.5 * max(responses[n] for n in names if n != winner), \

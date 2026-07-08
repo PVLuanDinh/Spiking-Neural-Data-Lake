@@ -1,7 +1,7 @@
 """
-v0.45 — adapter: the builder's timestamped serial CSV -> the signal loop.
+v0.45 — adapter: the reference timestamped serial CSV -> the signal loop.
 
-MakiKuri00's `robot arm/serial_sensor_log.csv` logs `Timestamp,Sensor_1,Sensor_2`
+The reference `robot arm/serial_sensor_log.csv` logs `Timestamp,Sensor_1,Sensor_2`
 (distance m, temp K with -1 idle) plus ESP32 boot-banner lines captured from serial start.
 Our wire contract is numeric-only, so the prepended timestamp makes EVERY row unparseable
 (0/812). This adapter strips the timestamp column, skips the header/banner, and feeds clean
@@ -25,7 +25,7 @@ WINDOW = 8                       # 8 ticks x 2 channels -> 16 features (resized 
 
 
 def _synthetic_lines(n=48, seed=0):
-    """Stand-in for the builder's CSV when it is absent: SAME format — a header, ESP32
+    """Stand-in for the reference CSV when it is absent: SAME format — a header, ESP32
     boot-banner lines, then timestamped numeric rows alternating idle and object-approach."""
     rng = random.Random(seed)
     lines = ["Timestamp,Sensor_1,Sensor_2",

@@ -21,7 +21,7 @@ stays in [0,1] regardless of how many elements the modality carries. A modality
 passed as None is a graceful dropout -> its band is all zeros; the other bands still
 encode (missing-modality-safe).
 
-ponytail: the four streams are SYNTHETIC here — no real camera / thermistor / mic /
+The four streams are SYNTHETIC here — no real camera / thermistor / mic /
 rangefinder. This is the fusion + encoding architecture a real sensor array would
 feed; the banding keeps each modality separable in the 64-feature spike code. Inputs
 are expected already normalized to [0,1] (a real driver scales raw physical units

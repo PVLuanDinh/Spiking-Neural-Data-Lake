@@ -39,7 +39,7 @@ DISTINCTNESS (kuramoto_sync / neuronal_avalanches / delay_learning / polychroniz
   volley propagating pool to pool with no delay lines. Not `htm_sequence_memory.py` (SDR sequence
   prediction), not `theta_gamma_code.py` (discrete phase slots).
 
-ponytail: a REDUCED feedforward synfire model -- an LIF-pool coincidence chain on a HOMOGENEOUS chain
+A REDUCED feedforward synfire model -- an LIF-pool coincidence chain on a HOMOGENEOUS chain
 (no recurrence, no plasticity, no real cortical connectivity), the packet-propagation LEVEL of
 synchrony, not spiking biophysics; not cognition.
 
@@ -210,7 +210,7 @@ def main():
           f"(synchrony, not count, carries the packet)")
     print("=" * 68)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep, ASCII-only) ----
+    # ---- self-check: deterministic asserts, zero-dep, ASCII-only ----
     assert strong_a > 0.7 * w, f"strong synchronous packet must propagate near saturation ({strong_a}/{w})"
     assert weak_a == 0, f"weak packet must extinguish to zero activity ({weak_a})"
     assert strong_a > 0.7 * w and weak_a == 0, "same chain must give opposite fates for strong vs weak"

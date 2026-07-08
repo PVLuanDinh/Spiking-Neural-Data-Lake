@@ -29,7 +29,7 @@ Contrast with the sibling streaming primitives, made explicit:
     None of those is windowed. DGIM is the SLIDING-WINDOW count -- a recency-scoped statistic, the new axis: not
     "how many distinct / how often / which samples over all time" but "how many in the last W ticks, right now".
 
-ponytail: the classic DGIM exponential-histogram for a BINARY (event / no-event) stream -- the sliding-window-COUNT
+The classic DGIM exponential-histogram for a BINARY (event / no-event) stream -- the sliding-window-COUNT
 level, count queries only (no sum-of-values or other windowed aggregate), timestamps kept as plain ints rather
 than mod-2W. Not a spiking implementation, not cognition.
 
@@ -176,7 +176,7 @@ def main():
     print(f"determinism: two fresh instances, same W/k/seeded stream -> identical estimates: {deterministic}")
     print("=" * 68)
 
-    # ---- asserts (ponytail: deterministic, zero-dep; genuine estimates vs a real oracle, nothing rigged) ----
+    # ---- asserts: deterministic, zero-dep; genuine estimates vs a real oracle, nothing rigged ----
     assert max_rel <= bound, f"a query broke the DGIM guarantee: max rel err {max_rel:.4f} > 1/(k-1) {bound:.4f}"
     assert mean_rel < bound / 3, f"mean rel err {mean_rel:.4f} should be far under the bound {bound:.4f}"
     assert peak_buckets <= mem_bound, f"buckets {peak_buckets} exceed O(log^2 W) bound k*log2(W)^2={mem_bound}"

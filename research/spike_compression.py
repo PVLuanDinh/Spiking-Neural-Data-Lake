@@ -104,7 +104,7 @@ def main():
     print(f"  gzip(delta+varint)        : {len(gz_var):>8,} B  ({len(raw) / len(gz_var):.1f}× vs fixed)")
     print("=" * 60)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
+    # ---- self-check: one runnable assert-based check; deterministic ----
     assert decode(var) == spikes, "codec not lossless (round-trip mismatch)"
     assert len(var) < len(raw), "delta+varint should beat the fixed-precision store"
     assert len(gz_var) < len(gz_raw), "spike-native codec should beat generic gzip on the fixed store"

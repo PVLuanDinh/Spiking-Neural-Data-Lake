@@ -1,5 +1,5 @@
 """
-v0.46 — gesture recognition on the builder's REAL captures, ORDER-AWARE (Paradigm B).
+v0.46 — gesture recognition on the reference captures, ORDER-AWARE (Paradigm B).
 
 First pass used a template / Van Rossum matcher on min-max-normalized windows: IDLE separated
 (82%) but APPROACH and RETREAT collapsed (~63% overall) — they are time-REVERSED (distance

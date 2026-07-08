@@ -127,7 +127,7 @@ def main():
           " paradigm_b_engine, which reasons in genuine spike timing.")
     print("=" * 62)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
+    # ---- self-check: one runnable assert-based check; deterministic ----
     assert unbind_exact, "bind must be self-inverse for bipolar hypervectors"
     assert bind_dissimilar, "a bound pair must be ~orthogonal to its factors"
     assert permute_roundtrip, "permute/unpermute must round-trip"

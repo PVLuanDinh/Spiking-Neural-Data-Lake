@@ -9,7 +9,7 @@ with a small top-K tracker it is a streaming HEAVY-HITTER detector that keeps ne
 key set. Deterministic (seeded Carter-Wegman hashes).
 
 PRODUCT integration (additive, opt-in, read-only): `StreamingHub.hot_motifs()` uses this to report the most
-frequent channel-coactivation motifs over the live log without a per-motif table. ponytail ceiling: the
+frequent channel-coactivation motifs over the live log without a per-motif table. Ceiling: the
 single-machine hub keeps every event, so it COULD exact-count motifs in a dict; the sketch's win is fixed memory
 independent of distinct-motif count -- it is the analytics primitive that carries to the documented scale-out
 path (Pub/Sub -> Dataflow -> GCS), not a saving on the local index. On-thesis with streaming_hub /
@@ -117,7 +117,7 @@ def main():
     print(f"heavy-hitters match : {set(recovered) == set(true_top3)}; max over-est {max_err} (bound {eps_bound:.0f})")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert set(recovered) == set(true_top3), f"must recover the true heavy motifs ({recovered} vs {true_top3})"
     assert one_sided, "Count-Min error is one-sided: every estimate must be >= the true count"
     assert max_err <= eps_bound, f"over-estimation must respect the eps*N bound ({max_err} > {eps_bound:.0f})"

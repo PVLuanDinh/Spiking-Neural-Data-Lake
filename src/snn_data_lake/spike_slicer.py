@@ -77,7 +77,7 @@ def main():
     print(f"boundary recall : {recall:.0%} (+-{tol} steps); {len(cuts)} cuts")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert recall == 1.0, f"SpikeSlicer must recover every segment boundary ({matched}/{len(true_bounds)})"
     assert len(cuts) <= len(true_bounds) + 1, f"must not over-segment ({len(cuts)} cuts)"
     assert all(cuts[i + 1] - cuts[i] >= 5 for i in range(len(cuts) - 1)), "cuts must respect min segment length"

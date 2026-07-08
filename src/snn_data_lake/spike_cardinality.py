@@ -28,7 +28,7 @@ Fixed-memory analytics family: like spike_stream_sketch and research/spike_bloom
 primitive that fits streaming_hub's live log -- "how many distinct motifs have streamed?" in O(m) memory that is
 independent of the count and carries to the documented scale-out path, not a saving on the local index.
 
-ponytail: a standard HyperLogLog with the linear-counting small-range correction only (no 64-bit/large-range
+A standard HyperLogLog with the linear-counting small-range correction only (no 64-bit/large-range
 bias correction, no sparse representation) over synthetic motif ids -- the cardinality-sketch level; not a
 spiking implementation, not cognition. (A 64-bit hash puts the large-range regime near ~10^8 distinct items,
 far above anything the lake counts here, so that correction is deliberately omitted.)
@@ -196,7 +196,7 @@ def main():
     print(f"determinism: two fresh instances -> identical registers + estimate: {deterministic}")
     print("=" * 64)
 
-    # ---- asserts (ponytail: deterministic, zero-dep; genuine estimates, not rigged) ----
+    # ---- asserts: deterministic, zero-dep; genuine estimates, not rigged ----
     for n, _est, rel in rows:
         assert rel < bound, f"N={n}: rel err {rel * 100:.2f}% exceeds 3 sigma bound {bound * 100:.2f}%"
     assert after == before, f"cardinality must ignore duplicates ({before} -> {after})"

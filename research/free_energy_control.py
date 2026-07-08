@@ -84,7 +84,7 @@ def main():
     print("free-energy gating -> sparse spikes + graceful degradation the PID/MPC path lacks.")
     print("=" * 60)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
+    # ---- self-check: one runnable assert-based check; deterministic ----
     assert fe_err < 0.05, f"free-energy controller should converge to the setpoint: {fe_err:.3f}"
     assert fe_sp < STEPS, f"should be sparse (silent near setpoint), not fire every step: {fe_sp}"
     assert fe_sp < bb_sp_n, f"free-energy controller should spike less than always-act ({fe_sp} vs {bb_sp_n})"

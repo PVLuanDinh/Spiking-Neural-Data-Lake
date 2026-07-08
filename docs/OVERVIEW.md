@@ -196,9 +196,9 @@ not "cognition." Specific ceilings called out in the project's own voice:
   (nearest-prototype, no learning), off-theme from the project's core claims.
 - The arm control loop is **sim-first**; the real-hardware path exists and is
   safety-gated, but most iteration and the fullest test coverage happens in `arm_sim.py`.
-- The project follows a "ponytail" / laziest-that-works ethos — modules explicitly avoid
-  speculative abstraction, and each CHANGELOG entry names a concrete "ceiling" for what
-  was *not* built, on the theory that an honest limitation beats an inflated claim.
+- Modules explicitly avoid speculative abstraction, and each CHANGELOG entry names a
+  concrete "ceiling" for what was *not* built, on the theory that an honest limitation
+  beats an inflated claim.
 
 ## Where to start
 

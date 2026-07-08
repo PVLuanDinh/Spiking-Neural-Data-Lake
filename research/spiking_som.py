@@ -98,7 +98,7 @@ def main():
     print(f"active BMU cells: {len(groups)};  cluster purity: {purity:.0%}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert purity >= 0.9, f"SOM clustering must separate the gestures ({purity:.2f})"
     assert len(groups) >= len(gestures), "distinct gestures must land in distinct BMU cells"
     assert som_cluster(vectors)[1].keys() == groups.keys(), "same seed -> identical clustering"

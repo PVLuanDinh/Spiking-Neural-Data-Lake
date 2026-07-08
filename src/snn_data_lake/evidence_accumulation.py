@@ -28,7 +28,7 @@ DISTINCTNESS (this is perceptual DECISION-MAKING, not value learning or control)
     (posterior sampling of a joint): this is a DECISION -- an irreversible commit to one option at
     a threshold, timestamped by the step at which the bound was reached.
 
-ponytail: the ceiling is a REDUCED drift-diffusion / bounded-accumulator decision model -- Gaussian
+The ceiling is a REDUCED drift-diffusion / bounded-accumulator decision model -- Gaussian
 noise on synthetic scalar evidence integrated by a fixed Euler (Euler-Maruyama) step to a bound.
 This is the algorithmic level of the decision only; NOT a spiking attractor network (Wang 2002),
 not biophysics, not cognition.

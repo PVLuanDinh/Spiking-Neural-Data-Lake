@@ -21,7 +21,7 @@ units. Under HIGH ACh feedforward clamps a pattern and plasticity writes it whil
 low (clean, interference-free write); under LOW ACh feedforward is attenuated and the recurrent
 weights (scaled by recurrent_gain) complete a PARTIAL cue back to the stored pattern (recall).
 
-ponytail: the ceiling is a single scalar ACh level (a leaky EMA of a novelty signal) gating a tiny
+The ceiling is a single scalar ACh level (a leaky EMA of a novelty signal) gating a tiny
 toy recurrent store on synthetic bipolar patterns -- a reduced model of cholinergic encode/retrieve
 dynamics, NOT a cortical circuit, NOT cognition/AGI. Additive/opt-in: a new neuromodulator that
 changes no existing behaviour. Credit Hasselmo (Neuromodulation: acetylcholine and memory

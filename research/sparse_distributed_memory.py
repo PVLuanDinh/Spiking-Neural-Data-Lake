@@ -92,7 +92,7 @@ def main():
     print(f"recognition accuracy: {acc:.0%} on {trials} jittered windows; clean {clean}/{len(labels)}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert acc >= 0.9, f"SDM matcher must recognize the commands ({acc:.2f})"
     assert clean == len(labels), "every clean command must be recognized exactly"
     assert SDMMatcher(library).label(library[labels[0]]) == \

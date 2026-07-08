@@ -22,7 +22,7 @@ pairing and a LATER raw reward d via the decaying eligibility trace. Different o
 
 Honesty: this improves temporal CREDIT ASSIGNMENT (distal reward) via a synaptic eligibility
 trace. It is not cognition/AGI.
-ponytail: single-layer, few-synapse rate-timing caricature on synthetic spike trains -- no
+Single-layer, few-synapse rate-timing caricature on synthetic spike trains -- no
 deep multi-step credit assignment, no hidden layers. Additive/opt-in new plasticity member.
 Refs: Zeng et al., BrainCog, Patterns 2023 (rule #5, R-STDP); Izhikevich, "Solving the distal
 reward problem through STDP and dopamine", Cereb. Cortex 2007.

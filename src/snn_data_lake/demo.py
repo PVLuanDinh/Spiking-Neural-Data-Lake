@@ -6,7 +6,7 @@ Download this single file and run it. No dependencies, no other files, no hardwa
     python demo.py
 
 It walks the full reaction loop on embedded sample sensor data (an ultrasonic-distance +
-IR-temperature rig, the builder's real format):
+IR-temperature rig, the reference format):
 
     sensor (distance, temp)  ->  window  ->  ORDER-AWARE gesture recognition
         ->  Interpreter (gesture -> robot command)  ->  arm motion
@@ -90,7 +90,7 @@ class Arm:
         return cmd
 
 
-# ---- sample data (embedded: the builder's real gesture shapes) ---------------
+# ---- sample data (embedded: the reference gesture shapes) ---------------
 def sample_stream():
     """A scripted run: idle, an approach, a retreat, then a contact event."""
     idle = [(3.13, -1.0)] * W

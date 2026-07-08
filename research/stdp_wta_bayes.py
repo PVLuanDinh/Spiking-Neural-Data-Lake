@@ -247,7 +247,7 @@ def main():
     print(f"bias recovery corr(exp(b) -> P(k)) : {r['prior_corr']:.3f}")
     print("=" * 72)
 
-    # ---- self-check (ponytail: deterministic asserts; unsupervised, nothing rigged) ----
+    # ---- self-check: deterministic asserts; unsupervised, nothing rigged ----
     # (a) specialization: unsupervised clustering well above chance
     assert r["accuracy"] > 0.8, f"WTA must specialize (acc {r['accuracy']:.3f} vs chance {chance:.3f})"
     assert all(rec > 0.5 for rec in r["recall"]), f"every component must be covered: {r['recall']}"

@@ -70,7 +70,7 @@ class StreamingHub:
             self._pending = 0
         a = self.ch[channel]
         if a and t < a[-1]:                                 # out-of-order arrival
-            a.insert(bisect_left(a, t), t)                  # ponytail: O(n) insert; spikes are
+            a.insert(bisect_left(a, t), t)                  # O(n) insert; spikes are
         else:                                               #   normally monotonic so this is rare
             a.append(t)
 

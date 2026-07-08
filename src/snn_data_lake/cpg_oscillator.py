@@ -102,7 +102,7 @@ def main():
     print(f"collision-free whole sweep: {collision_free};  EMERGENCY_STOP freezes the sweep: {stayed}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert rev >= 4, f"CPG must drive a sustained rhythmic sweep ({rev} reversals)"
     assert hi - lo >= 20.0, f"the sweep must have real amplitude, not a twitch ({lo:.1f}..{hi:.1f})"
     assert 15.0 <= lo and hi <= 75.0, f"sweep must stay in the safe joint band ({lo:.1f}..{hi:.1f})"

@@ -25,7 +25,7 @@ the symbol whose cumulative interval contains (code - low) // (range // total), 
 renormalizes with the identical arithmetic, so encoder and decoder stay in lockstep. Lossless
 round-trip is the non-negotiable core signature; near-N*H size is the point.
 
-ponytail: the ceiling here is a classic STATIC-model integer range coder (byte renormalization) on
+The ceiling here is a classic STATIC-model integer range coder (byte renormalization) on
 synthetic symbol streams -- the entropy-coding level. Static frequency model (count queries only);
 no adaptive / context modelling, no arithmetic beyond the standard renorm. Not a spiking
 implementation, not cognition.

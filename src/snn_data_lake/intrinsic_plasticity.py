@@ -82,7 +82,7 @@ def main():
     print(f"scale invariance: output mean on x3 input still {mean_scaled:.3f} (~mu)")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert abs(mean_after - mu) < 0.03, f"IP must pull the output mean to the target ({mean_after:.3f})"
     assert abs(mean_before - mu) > 0.1, f"the un-adapted neuron must start off-target ({mean_before:.3f})"
     assert abs(mean_scaled - mu) < 0.03, f"IP must hold the mean under a 3x input scale ({mean_scaled:.3f})"

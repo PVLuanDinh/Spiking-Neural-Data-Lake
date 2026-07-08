@@ -26,7 +26,7 @@ Contrast with the sibling streaming primitives, made explicit:
 Fixed-memory streaming family: like the sketches this is a zero-dep, read-only primitive sized in k, not in N --
 "give me k fair samples of whatever streamed" in O(k) memory independent of the (unknown, unbounded) stream length.
 
-ponytail: classic Algorithm-R reservoir sampling -- a SINGLE reservoir, uniform, UNWEIGHTED -- over synthetic ids;
+Classic Algorithm-R reservoir sampling -- a SINGLE reservoir, uniform, UNWEIGHTED -- over synthetic ids;
 the stream-sampling level. No weighted (A-Res / A-ExpJ), distributed, or time-decayed variants; not a spiking
 implementation, not cognition.
 
@@ -137,7 +137,7 @@ def main():
     print(f"determinism: two fresh instances, same k/seed/stream -> identical sample: {det_a == det_b}")
     print("=" * 64)
 
-    # ---- asserts (ponytail: deterministic, zero-dep; genuine uniform result, nothing rigged) ----
+    # ---- asserts: deterministic, zero-dep; genuine uniform result, nothing rigged ----
     assert abs(mean_freq - target) < 1e-9, f"mean inclusion freq {mean_freq} must equal k/N {target}"
     for _id, dev in enumerate(deviations):
         assert dev < band, f"id {_id}: inclusion freq off by {dev:.5f} (> band {band}) -- position bias?"

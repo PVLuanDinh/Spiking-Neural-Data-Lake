@@ -66,7 +66,7 @@ def main():
     print(f"anti-forgetting gain : {ret_lt}x vs fast-only {ret_fast}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert ret_fast <= 3, f"fast-only neuron must forget almost immediately after the burst ({ret_fast})"
     assert ret_lt >= 20, f"LT-Gate must retain activity long into the silence ({ret_lt})"
     assert ret_lt > 5 * max(1, ret_fast), f"LT-Gate retention must dwarf fast-only ({ret_lt} vs {ret_fast})"

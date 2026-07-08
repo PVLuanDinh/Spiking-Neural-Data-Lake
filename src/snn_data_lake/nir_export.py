@@ -160,7 +160,7 @@ def main():
           f"portable to Loihi 2 / SpiNNaker 2 / Speck / Xylo (via nir.write)")
     print("=" * 62)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert validate(g) == [], f"exported classifier must be a valid NIR graph: {validate(g)}"
     assert g.nodes["readout"]["type"] == "Linear" and len(g.nodes["readout"]["weight"]) == 4, \
         "readout Linear must carry the C x N weight matrix"

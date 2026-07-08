@@ -190,7 +190,7 @@ def main():
     print(f"control (untrained neuron) van Rossum distance : {control:.3f}")
     print("=" * 64)
 
-    # ---- self-checks (ponytail: deterministic asserts, fixed a priori, zero-dep) ----
+    # ---- self-checks: deterministic asserts, fixed a priori, zero-dep ----
     # (a) LEARNS: the reused van Rossum distance drops substantially, in both relative and
     #     absolute terms. Fixed thresholds chosen before running.
     assert df < 0.35 * d0, f"van Rossum distance must drop a lot: {df:.3f} vs 0.35*{d0:.3f}"

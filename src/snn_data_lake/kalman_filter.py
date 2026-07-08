@@ -40,7 +40,7 @@ DISTINCTNESS (stated, having read the siblings):
     angle -- integration only, no measurement update, no uncertainty. THIS filter corrects with
     measurements and reports calibrated uncertainty.
 
-ponytail: the ceiling is a linear-Gaussian Kalman filter on a small constant-velocity model
+The ceiling is a linear-Gaussian Kalman filter on a small constant-velocity model
 with synthetic noise -- the optimal-linear-estimation level. NOT an extended/unscented KF, no
 model-mismatch handling, no spiking implementation; not cognition.
 

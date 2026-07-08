@@ -150,9 +150,9 @@ def main():
     print(f"supralinear gain             : both / basal-max = {gain:.2f}x")
     print("=" * 66)
 
-    # ---- self-check (ponytail: additive -- a new member of the neuron-model family (lif/izhikevich),
+    # ---- self-check: additive -- a new member of the neuron-model family (lif/izhikevich),
     # changes no existing behaviour; ceiling: reduced rate/spike caricature, not conductance-based HH.
-    # Deterministic asserts, zero-dep stdlib, ASCII-only prints) ----
+    # Deterministic asserts, zero-dep stdlib, ASCII-only prints ----
     assert basal_rate > 0.0, "basal drive alone must make the soma fire (basal-max rate)"
     assert basal_plateaus == 0, "basal drive alone must NOT ignite a Ca2+ plateau (no apical drive)"
     assert apical_rate <= 0.02, f"apical input alone must leave the soma near-silent (got {apical_rate:.3f})"

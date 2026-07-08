@@ -10,7 +10,7 @@ How it embodies the project's storage method:
     synaptic operation happens ONLY when an input neuron fires, so work scales
     with spikes, not with the dense N*C*T matvec a normal ANN would do.
 
-Learning rule (ponytail): supervised local delta rule on per-input spike counts
+Learning rule: supervised local delta rule on per-input spike counts
   W[c][i] += lr * (target_c - p_c) * spikecount_i / T
   This is the stable, reliably-converging cousin of the docs' unsupervised STDP.
   Upgrade path: swap in pre/post-trace STDP + lateral-inhibition WTA (the docs'
@@ -240,7 +240,7 @@ def main():
     print("  activations    : spikes are 1-bit events vs 32-bit floats (32x)")
     print("=" * 56)
 
-    # ---- self-check (ponytail: one runnable check) ----
+    # ---- self-check: one runnable check ----
     assert test_acc >= 0.85, f"model did not learn: test_acc={test_acc:.2f}"
     assert test_synops < dense_macs, "spiking did not beat dense on compute"
     # determinism: recognition is a pure function of (W, sample) and does NOT touch the global RNG

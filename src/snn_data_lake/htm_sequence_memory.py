@@ -15,7 +15,7 @@ It learns the normal SEQUENCE of windows and scores every transition, so a signa
 arrives in the wrong ORDER is flagged (temporal anomaly), complementing `drift_monitor`'s distributional drift
 and `streaming_hub`'s onset filter. A pure observer: it never changes recognition or control. Deterministic.
 
-ponytail: minimal faithful core -- binary synapses (a segment fires when overlap with active cells >= threshold,
+Minimal faithful core -- binary synapses (a segment fires when overlap with active cells >= threshold,
 no permanence floats), one segment grown per bursting winner, plus Numenta's predicted-inactive punishment (drop
 a segment that predicted a column which then didn't fire). Not the full Numenta permanence / spatial-pooler model.
 
@@ -184,7 +184,7 @@ def main():
     print(f"out-of-order window after ABC: anomaly {out_of_order:.2f} -> TEMPORAL ANOMALY flagged")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert d_from_abc > 0.6 and d_from_abc > 2 * e_from_abc, f"ABC must predict D not E ({d_from_abc:.2f}/{e_from_abc:.2f})"
     assert e_from_xbc > 0.6, f"XBC must predict E ({e_from_xbc:.2f})"
     assert trained_transition < 0.2, f"learned transitions must be low-anomaly ({trained_transition:.2f})"

@@ -34,7 +34,7 @@ Recall math (so the factored form is exact, not an approximation):
 import random
 from array import array
 
-random.seed(0)  # ponytail: fixed seed -> deterministic self-check. Not a calibration knob.
+random.seed(0)  # fixed seed -> deterministic self-check. Not a calibration knob.
 
 # ---- problem size -----------------------------------------------------------
 N = 256          # neurons (== data dimensionality, bits per pattern)
@@ -170,7 +170,7 @@ def main():
     print(f"        recall is the value over a plain pattern list.")
     print("=" * 60)
 
-    # ---- self-check (ponytail: one runnable check, assert-based) ----
+    # ---- self-check: one runnable check, assert-based ----
     assert mean_recall >= 0.95, f"recall too weak: {mean_recall:.2f}"
     assert total_synops < dense_macs, "factored compute did not beat dense matvec"
     assert factored_bytes < dense_w_bytes, "factored storage not smaller than dense W"

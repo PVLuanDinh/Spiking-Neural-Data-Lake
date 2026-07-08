@@ -22,7 +22,7 @@ delivers the gains. No SNN here on purpose — this is the yardstick, not the me
 """
 import random
 
-random.seed(0)  # ponytail: fixed seed -> deterministic self-check. Not a calibration knob.
+random.seed(0)  # fixed seed -> deterministic self-check. Not a calibration knob.
 
 N = 128                 # neurons; small enough that the O(N²) dense matvec sweep stays fast in CI
 FLIP = round(0.10 * N)  # cue corruption: bits flipped before recall (10%)
@@ -135,7 +135,7 @@ def main():
           f"at N={proto_n} — the sparse code lifts capacity too.")
     print("=" * 62)
 
-    # ---- self-check (ponytail: one runnable assert-based check) ----
+    # ---- self-check: one runnable assert-based check ----
     assert p_lo[2] >= 0.98, f"below capacity should recall near-perfectly: {p_lo[2]:.2f}"
     assert p_hi[2] <= 0.90, f"above capacity should break down, got overlap {p_hi[2]:.2f}"
     assert p_hi[2] < p_lo[2] - 0.05, "no capacity cliff — recall did not degrade with load"

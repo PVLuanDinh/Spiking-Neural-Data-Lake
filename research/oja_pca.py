@@ -85,7 +85,7 @@ def main():
     print(f"Sanger k=2 : PC1.e1 = {cos_top:.3f}, PC2.e2 = {cos_2nd:.3f} (top-2 in order)")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert cos1 > 0.95, f"Oja neuron must converge to the top principal component ({cos1:.3f})"
     assert 0.9 < norm < 1.1, f"Oja must self-normalize the weight to ~unit norm ({norm:.3f})"
     assert cos_top > 0.95 and cos_2nd > 0.9, f"Sanger must extract PC1,PC2 in order ({cos_top:.3f}, {cos_2nd:.3f})"

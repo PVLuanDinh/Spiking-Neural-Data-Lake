@@ -35,7 +35,7 @@ DISTINCT from siblings in this repo (stated, having read them):
   * drift_monitor.py is statistical distribution drift -- not action-conditioned. THIS is
     conditioned on the efference copy of the command.
 
-ponytail: a reduced LINEAR forward-model + comparator on a synthetic abstract plant (delta-rule
+A reduced LINEAR forward-model + comparator on a synthetic abstract plant (delta-rule
 online learning) -- the efference-copy / reafference level, NOT a spiking motor-control network,
 not biophysics; not cognition.
 Refs: von Holst & Mittelstaedt (1950); Wolpert, Ghahramani & Jordan, Science 269:1880 (1995).
@@ -224,7 +224,7 @@ def main():
     print(f"determinism : identical residual traces {same_trace}")
     print("=" * 70)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep stdlib, ASCII-only prints) ----
+    # ---- self-check: deterministic asserts, zero-dep stdlib, ASCII-only prints ----
     assert abs(mean_self) < 5e-3, \
         f"matched model must cancel reafference: mean self-generated e ~0 ({mean_self:.2e})"
     assert mean_abs_self > 1e-4, \

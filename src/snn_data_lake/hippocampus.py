@@ -17,7 +17,7 @@ basin of the stored pattern whose sparse code it overlaps most). Chosen over a H
 settle because it is exactly the nearest-attractor rule, fully deterministic, and needs
 no convergence proof -- the simplest thing that completes honestly.
 
-ponytail: this improves representational SEPARATION and recall ROBUSTNESS -- it is NOT
+This improves representational SEPARATION and recall ROBUSTNESS -- it is NOT
 cognition / thinking / AGI. Ceiling: a single-shot autoassociative attractor (max-overlap
 vote over sparse codes) -- no temporal sequence, no episodic ordering, no online
 plasticity; the streams the self-check drives it with are SYNTHETIC. Additive / opt-in:

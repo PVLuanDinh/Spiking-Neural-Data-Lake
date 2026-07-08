@@ -33,7 +33,7 @@ DISTINCT from existing modules (read them):
   window on a polynomial basis. ring_attractor.py is a single SPATIAL bump / angle integrator --
   again one value, not a window.
 
-ponytail: ceiling -- a discretized linear LMU delay network (forward-Euler-integrated shifted-
+Ceiling -- a discretized linear LMU delay network (forward-Euler-integrated shifted-
 Legendre state space) reconstructing a synthetic input window at the continuous-memory level. NOT
 the trained recurrent LMU cell and NOT spiking; small order / step so it is stable and reproducible;
 not cognition. Deterministic (no randomness; seed kept only for API symmetry). Credit Voelker, Kajic
@@ -203,7 +203,7 @@ def main():
     print(f"determinism  two fresh instances identical trace : {deterministic}")
     print("=" * 72)
 
-    # ---- self-check (ponytail: deterministic asserts, ASCII-only) ----
+    # ---- self-check: deterministic asserts, ASCII-only ----
     assert corr_full > 0.99 and nrmse_full < 0.08, (
         f"delay line: reconstruct(1.0) must track u(t-theta) (corr {corr_full:.4f}, nrmse {nrmse_full:.4f})")
     worst_nrmse = max(per_lag[lf][1] for lf in lags)

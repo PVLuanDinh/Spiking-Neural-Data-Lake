@@ -15,7 +15,7 @@ Distance band [48:64]: distance_m / 3.0 m, clamped [0,1] (3 m is object-present 
 Temperature band [16:32]: (temp_k - 293.15 K) / 20 K, clamped [0,1] (20-40 C band).
 Visual [0:16] and audio [32:48]: absent (None) -> zeros until video module lands.
 
-ponytail: raw-serial -> normalize -> multimodal-encoder data path. Static normalization
+Raw-serial -> normalize -> multimodal-encoder data path. Static normalization
 bands (distance 0-3 m gate, temp 20-40 C). Not a spiking implementation of the sensor,
 not cognition.
 
@@ -159,7 +159,7 @@ def read_serial_lines(port, baud=115200, timeout=1.0):
 
 def main():
     """Self-check: deterministic, ASCII-only, genuine asserts on captured hardware data."""
-    # Exact lines captured from the builder's ESP32 @ 115200 baud.
+    # Exact lines captured from the reference ESP32 @ 115200 baud.
     captured_lines = [
         "0.62, 297.00",
         "0.61, 297.00",

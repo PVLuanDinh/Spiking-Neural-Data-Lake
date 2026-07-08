@@ -34,7 +34,7 @@ DISTINCTNESS from the sibling fixed-memory sketches / the exact latency percenti
     sketches computes. Different question, different machinery: five CDF-riding markers with a parabolic update,
     not signed counters, leading-zero ranks, bucket histograms, or timestamp bins.
 
-ponytail: the classic P2 5-marker single-quantile estimator (parabolic prediction with a linear fallback) on
+The classic P2 5-marker single-quantile estimator (parabolic prediction with a linear fallback) on
 synthetic streams -- the streaming-quantile level; a small transient error before the markers converge, one
 quantile per estimator (StreamingQuantiles just wraps several independent P2 estimators), not a spiking
 implementation, not cognition.

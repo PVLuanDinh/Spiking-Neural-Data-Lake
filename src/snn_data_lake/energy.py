@@ -104,7 +104,7 @@ def main():
           f" footprint {nb['footprint_bytes'] / 1024:.1f} KB  (defs: arXiv:2304.04640)")
     print("=" * 60)
 
-    # ---- self-check (ponytail: one runnable assert-based check) ----
+    # ---- self-check: one runnable assert-based check ----
     assert r["snn_nj"] < r["ann_nj"], "spiking energy should beat dense ANN at 45 nm"
     assert nb["eff_acs"] == synops and nb["footprint_bytes"] > 0, "NeuroBench metrics wrong"
     assert activation_sparsity(1, 4) == 0.75, "activation-sparsity definition wrong"

@@ -33,7 +33,7 @@ DISTINCTNESS (read population_encoding.py and cue_integration.py -- this is neit
     -- a different mechanism (tuned-population readout, not reliability-weighted fusion; no
     variances, no reliability weights).
 
-ponytail: the ceiling is a STATIC cosine-tuned population with the Georgopoulos vector-sum
+The ceiling is a STATIC cosine-tuned population with the Georgopoulos vector-sum
 decode on SYNTHETIC 2-D directions -- the population-readout level. NOT a spiking-network
 implementation, no learning of the tuning curves, 2-D directions only. Not cognition.
 

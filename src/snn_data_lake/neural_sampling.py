@@ -25,7 +25,7 @@ defined generative joint), distinct from every existing module:
   - Not valence_stdp / plasticity (no learning rule here -- W and b are given).
   - Not htm_sequence_memory (sequence prediction), not ring_attractor / population coding.
 
-ponytail: the ceiling is the abstract discrete-time stochastic-binary-neuron neural-sampling chain
+The ceiling is the abstract discrete-time stochastic-binary-neuron neural-sampling chain
 (single-site Gibbs updates with sigmoid firing) -- the reduced model of Buesing 2011, NOT the full
 continuous-time absolute-refractory spiking dynamics; no biophysics, no learning. Networks are kept
 small so the exact Boltzmann distribution can be enumerated (2^N states) for the correctness test.
@@ -242,7 +242,7 @@ def main():
     print(f"  conditional TV                = {cond_tv:.4f}   (max marg err {cond_marg_err:.4f})")
     print("=" * 66)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) --------------------------------
+    # ---- self-check: deterministic asserts, zero-dep --------------------------------
     # 1. stationary distribution IS the Boltzmann distribution (the headline correctness test).
     assert tv < 0.03, f"empirical must match Boltzmann p(z): TV {tv:.4f}"
     # 2. marginals and one pairwise correlation match the analytic values.

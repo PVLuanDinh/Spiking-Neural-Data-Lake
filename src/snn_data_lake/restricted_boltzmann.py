@@ -43,7 +43,7 @@ DISTINCT from siblings in this repo (stated, having read them):
     STOCHASTIC bipartite generative model that is SAMPLED (Gibbs) and LEARNED (CD), not one-shot
     recall of hand-stored memories.
 
-ponytail: the ceiling is a small binary RBM trained by CD-1 on synthetic prototype patterns -- the
+The ceiling is a small binary RBM trained by CD-1 on synthetic prototype patterns -- the
 energy-based-generative-LEARNING level, NOT a deep belief net; no persistent-CD, no annealed
 importance sampling for the true partition function; dims kept tiny so it trains in a couple
 seconds and the signatures are stable at a fixed seed. Not cognition.
@@ -234,7 +234,7 @@ def main():
     print(f"determinism: identical curve {same_curve}; identical weights {same_weights}")
     print("=" * 68)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep stdlib, ASCII-only prints) ----
+    # ---- self-check: deterministic asserts, zero-dep stdlib, ASCII-only prints ----
     # 1. CD lowers reconstruction error clearly (the headline learning test).
     assert last_err < 0.5 * first_err, \
         f"CD must clearly lower reconstruction error ({first_err:.4f} -> {last_err:.4f})"

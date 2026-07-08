@@ -68,7 +68,7 @@ def main():
           f"(depression); mean sparse {sum(base_w) / len(base_w):.3f} > mean burst {sum(burst_w) / len(burst_w):.3f}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert burst_w[0] > burst_w[-1] * 1.5, f"a sustained burst must fade (onset >> tail: {burst_w[0]:.3f} vs {burst_w[-1]:.3f})"
     assert sum(base_w) / len(base_w) > sum(burst_w) / len(burst_w), \
         "sparse onsets must carry more novelty weight than sustained burst spikes"

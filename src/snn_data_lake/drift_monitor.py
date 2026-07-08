@@ -1,7 +1,7 @@
 """
 v0.64 — online drift + novelty monitor: warn BEFORE recognition silently collapses.
 
-arm_config.py states the ceiling plainly: recognition is tuned to the builder's exact sensor mount —
+arm_config.py states the ceiling plainly: recognition is tuned to one specific reference sensor mount —
 "move the rig + the 95% recognition collapses". The loop already REJECTS novel signals (the Van Rossum
 gate) and derives bins from a capture (arm_config.bins_from_capture), but nothing watches the LIVE stream
 for slow distribution drift — so a gradual rig/lighting shift degrades accuracy silently. This adds that
@@ -133,7 +133,7 @@ def main():
           f"{tuple(round(b, 2) for b in bins_after)}  (shifted capture -> new cut points)")
     print("=" * 60)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
+    # ---- self-check: one runnable assert-based check; deterministic ----
     assert not warn_stable, f"stable stream should not warn (PSI={psi_stable:.3f}, nov={nov_stable:.2f})"
     assert warn_drift, f"drifted stream should warn (PSI={psi_drift:.3f}, nov={nov_drift:.2f})"
     assert psi_drift > psi_stable, "drift PSI should exceed stable PSI"

@@ -141,7 +141,7 @@ def main():
           f"(mismatch {slip_mismatch:.1f}) -> SLIP DETECTED")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert persist_drift < 5.0 and width < 45.0, f"bump must persist as a single localized attractor ({persist_drift=}, {width=})"
     assert tracked_mismatch < 8.0, f"estimate must track the commanded joint motion ({tracked_mismatch:.1f} deg)"
     assert slip_mismatch > 20.0, f"an uncommanded disturbance must diverge estimate from truth ({slip_mismatch:.1f} deg)"

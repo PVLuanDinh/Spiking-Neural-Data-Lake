@@ -87,7 +87,7 @@ def main():
     print(f"false positives : {fp_rate:.3f} observed vs {fp_theory:.3f} analytic bound")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert false_neg == 0, f"a Bloom filter must never give a false negative ({false_neg})"
     assert fp_rate < 3 * fp_theory + 0.01, f"false-positive rate must track the analytic bound ({fp_rate:.3f} vs {fp_theory:.3f})"
     assert bloom.contains(inserted[0]) and not BloomFilter(m=m, k=k).contains(inserted[0]), "empty filter contains nothing; add works"

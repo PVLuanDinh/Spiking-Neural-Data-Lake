@@ -59,7 +59,7 @@ def main():
         print(f"{name:<24}{counts[name]:>13}{cvs[name]:>10.2f}")
     print("=" * 62)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert all(n >= 3 for n in counts.values()), f"every regime must fire under drive ({counts})"
     assert counts["fast-spiking"] > counts["regular-spiking"], \
         f"fast-spiking must fire faster than regular-spiking ({counts['fast-spiking']} vs {counts['regular-spiking']})"

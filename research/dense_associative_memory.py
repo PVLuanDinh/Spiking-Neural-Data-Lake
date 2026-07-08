@@ -31,7 +31,7 @@ import random
 
 import stats_bounds as sb  # research/ is on sys.path when run as a script (B5: mean±std bands)
 
-random.seed(0)  # ponytail: module-level determinism; per-run seeds below are fixed too
+random.seed(0)  # module-level determinism; per-run seeds below are fixed too
 
 N = 48                         # neurons; small enough that the n=4 sweep stays fast in CI
 FLIP = round(0.10 * N)         # cue corruption before recall
@@ -186,7 +186,7 @@ def main():
           f" | LSR {lsr_big:.1%} (exp-free, no clamp)")
     print("=" * 64)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic seeds) ----
+    # ---- self-check: one runnable assert-based check; deterministic seeds ----
     assert round(0.03 * N) <= classical_cap <= round(0.30 * N), \
         f"n=2 should behave ~linearly (capacity {classical_cap} not near 0.138·N)"
     assert dm >= THRESH, f"dense (n=4) should still recall cleanly at 2·N: {dm:.2f}"

@@ -1,14 +1,14 @@
 """
 v0.47 — live real-hardware loop: ESP32 sensor -> recognize -> Interpreter -> arm sim.
 
-Closes the loop end to end on the builder's sensor:
+Closes the loop end to end on the reference sensor:
 
   (d, t) samples  ->  buffer W  ->  ORDER-AWARE gesture recognition (Paradigm B, v0.46)
                   ->  Interpreter (gesture -> robot command)  ->  arm_sim (joint / gripper motion)
   + a contact reflex that EMERGENCY_STOPs the arm the instant the object is at the sensor.
 
 Sources (same downstream, sim-to-real):
-  python live_arm.py                 # replay the builder's labeled CSVs (hardware-free) + self-check
+  python live_arm.py                 # replay the reference labeled CSVs (hardware-free) + self-check
   python live_arm.py --serial COM8   # live off the ESP32 (needs `pip install pyserial`)
   python live_arm.py --csv FILE      # replay one capture
 
@@ -208,7 +208,7 @@ def main():
             observer=_make_observer() if proprio else None)
         return
 
-    # default: replay the builder's labeled captures (hardware-free) + self-check
+    # default: replay the reference labeled captures (hardware-free) + self-check
     gestures = {g: os.path.join("robot arm", f"{g}.csv") for g in SENSOR_COMMANDS}
     have_real = all(os.path.exists(p) for p in gestures.values())
     quiet = lambda d: None

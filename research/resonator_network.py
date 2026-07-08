@@ -103,7 +103,7 @@ def main():
     print("factors of a composite by superposition search over the existing bipolar codebook.")
     print("=" * 58)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
+    # ---- self-check: one runnable assert-based check; deterministic ----
     assert acc2 >= 0.9, f"2-factor resonator should recover reliably: {acc2:.2f}"
     assert acc3 >= 0.6, f"3-factor recovery should beat chance ({1 / M ** 3:.1e}) clearly: {acc3:.2f}"
     print(f"self-check OK: resonator factorizes 2-factor at {acc2:.0%}, 3-factor at {acc3:.0%} "

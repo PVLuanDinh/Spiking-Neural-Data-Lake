@@ -77,7 +77,7 @@ def main():
     print(f"ratio drift under a scale step: {drift:.1e} (multiplicative = pattern preserved)")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert abs(conv - hn.target) < 0.15, f"scaling must hold the rate near the set-point ({conv:.3f})"
     assert runaway > 5 * hn.target, f"Hebbian alone must run away without homeostasis ({runaway:.1f})"
     assert wmax < wmax_free, f"homeostatic weights must stay bounded far below runaway ({wmax:.2f} vs {wmax_free:.1f})"

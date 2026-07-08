@@ -115,7 +115,7 @@ def main():
           f"({avg_scanned / len(patterns):.0%}, sublinear)")
     print("=" * 62)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert identity == 0.0, f"VP(a,a) must be 0 (identity), got {identity}"
     assert symmetric, "VP must be symmetric"
     assert vp_q0 <= vp_lo <= vp_hi, f"VP must be non-decreasing in q ({vp_q0} {vp_lo} {vp_hi})"

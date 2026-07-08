@@ -122,7 +122,7 @@ def main():
     print(f"LCA matcher : {len(labels)} commands; clean {clean}/{len(labels)}, jittered {acc:.0%} over {trials}")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert set(active) == set(support), f"LCA must recover the true 3-atom support ({active} vs {support})"
     assert len(active) < len(corr_active) and err < 0.2, f"LCA must be sparse + accurate ({len(active)}/{err:.3f})"
     assert clean == len(labels), f"sparse-coding matcher must recognize every clean reference ({clean}/{len(labels)})"

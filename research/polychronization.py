@@ -87,7 +87,7 @@ def main():
     print("combinatorial: same 4 anchors, timing alone selects which of 2 groups ignites")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     # 1. delay-matched key ignites its OWN group as a time-locked sequence (T then D)
     assert g1.get(T1) and g1.get(D1) and g1[T1][0] < g1[D1][0], f"G1 key must ignite the G1 sequence: {g1}"
     assert g2.get(T2) and g2.get(D2) and g2[T2][0] < g2[D2][0], f"G2 key must ignite the G2 sequence: {g2}"

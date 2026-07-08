@@ -78,7 +78,7 @@ def main():
     print(f"refractory=5 gaps  : {gaps} (>= refractory)")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert leaks, "membrane must leak toward rest with no input"
     assert fired > 0, "strong constant input must fire the neuron"
     assert monotone and rates[-1] > rates[0], f"firing rate must rise with input current ({rates})"

@@ -10,7 +10,7 @@ represent and transform values (Eliasmith & Anderson 2003; spiking attractor net
 `NEFEnsemble` (represent/transform) and adds the recurrent loop. Pure standard library, deterministic. On-thesis
 with nef_compute / ring_attractor / spiking_pid (a spiking hold-and-integrate the control loop can use).
 
-ponytail: rate-mode recurrent integrator (identity feedback + input, per-timestep decode) -- the dynamics
+Rate-mode recurrent integrator (identity feedback + input, per-timestep decode) -- the dynamics
 principle in discrete rate form. The finite-population decode error shows up as a small, bounded memory DRIFT,
 exactly as a real neural integrator leaks; not the continuous-time spiking simulation Nengo runs.
 
@@ -75,7 +75,7 @@ def main():
     print(f"reversible  : +8 then -8 steps -> {back:+.3f} (~0)")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert monotone and abs(ramp[-1] - expected) < 0.1, f"state must integrate the input ({ramp[-1]:.3f} vs {expected:.2f})"
     assert abs(drift) < 0.12, f"working memory must HOLD the value with only bounded drift ({drift:+.3f})"
     assert abs(back) < 0.1, f"integrating +u then -u must return near the start ({back:+.3f})"

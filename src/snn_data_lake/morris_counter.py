@@ -31,7 +31,7 @@ Contrast with the sibling counting sketches, made explicit -- four DIFFERENT que
     ROOT of the whole sketch family (1978): the different question is "what is this one big
     count, approximately, in almost no memory?".
 
-ponytail: the classic Morris probabilistic counter (base-a increment probability a^-c, m
+The classic Morris probabilistic counter (base-a increment probability a^-c, m
 averaged registers) counting synthetic events -- the approximate-counting level; no Morris+ /
 Csuros bias-corrected variants, not a spiking implementation, not cognition.
 
@@ -181,7 +181,7 @@ def main():
           f"{deterministic}")
     print("=" * 68)
 
-    # ---- asserts (ponytail: deterministic, zero-dep; genuine estimates, nothing rigged) ----
+    # ---- asserts: deterministic, zero-dep; genuine estimates, nothing rigged ----
     for n, _est, rel, _path in rows:
         assert rel < bound, f"n={n}: rel err {rel * 100:.2f}% exceeds bound {bound * 100:.0f}%"
     assert 15 <= max_c <= 28, f"register c={max_c} should sit near log2(n)~{math.log2(n_big):.0f}"

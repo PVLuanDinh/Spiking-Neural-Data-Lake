@@ -30,7 +30,7 @@ DISTINCTNESS from the sibling fixed-memory sketches (made explicit):
     / self-join size ("surprise number"), which none of the others computes. Different statistic, different sketch:
     signed tug-of-war counters + median-of-means, not per-item counters, leading-zero ranks, or bucket histograms.
 
-ponytail: the AMS tug-of-war F2 estimator with median-of-means, using hashlib pseudo-random signs (a demonstration
+The AMS tug-of-war F2 estimator with median-of-means, using hashlib pseudo-random signs (a demonstration
 -- NOT a provably 4-wise-independent hash family), F2 only (no general F_k) -- the frequency-moment-sketch level;
 not a spiking implementation, not cognition.
 
@@ -217,7 +217,7 @@ def main():
     print(f"determinism: two fresh instances, same d/g/seed/stream -> identical estimate: {det_a == det_b}")
     print("=" * 70)
 
-    # ---- asserts (ponytail: deterministic, zero-dep; genuine estimates vs a real F2 oracle, nothing rigged) ----
+    # ---- asserts: deterministic, zero-dep; genuine estimates vs a real F2 oracle, nothing rigged ----
     assert rel < acc_bound, f"AMS F2 estimate off by {rel * 100:.2f}% (> {acc_bound * 100:.0f}% bound)"
     assert sk.n_counters < n_distinct, f"sketch must be sublinear in distinct motifs ({sk.n_counters} vs {n_distinct})"
     assert mem_sk.n_counters < mem_distinct, f"memory {mem_sk.n_counters} must be below distinct {mem_distinct}"

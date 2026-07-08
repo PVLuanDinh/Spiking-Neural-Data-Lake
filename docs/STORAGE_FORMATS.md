@@ -19,7 +19,7 @@ one place that says which is which, so the `.spk / .spc / .spkl` sprawl isn't gu
 - `.spk` and `.spkl` both store raw spike events; `.spk` is **index-optimized for reads**, `.spkl`
   is **append-optimized for writes**. They are not interchangeable — pick by access pattern.
 
-## ponytail note
+## Scope
 Convergence to a single format isn't worth it: each format earns its place by a distinct access
 pattern (partial-read vs append vs compress vs columnar). The cost was *documentation*, not *count* —
 that's what this file fixes.

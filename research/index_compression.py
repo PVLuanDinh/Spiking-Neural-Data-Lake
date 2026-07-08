@@ -82,7 +82,7 @@ def main():
     print("compresses the query INDEX metadata (edges/ids), complementary to spike_compression's payload.")
     print("=" * 58)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
+    # ---- self-check: one runnable assert-based check; deterministic ----
     assert decode(var) == lists, "index codec must be lossless (round-trip mismatch)"
     assert len(var) < len(raw), "d-gap+varint should beat fixed 4-byte ids"
     assert len(var) < gz, f"order-invariant codec should beat generic gzip ({len(var)} !< {gz})"

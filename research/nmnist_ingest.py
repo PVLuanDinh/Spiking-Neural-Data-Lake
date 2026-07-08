@@ -43,7 +43,7 @@ SEED = int(os.environ.get("NMNIST_SEED", 0))
 # ---- data source: real N-MNIST via Tonic, else synthetic events -------------
 def _synth_sample(label, rng, n_events=600):
     """Deterministic class-separable event blob: each digit fires around a unique
-    grid centroid, drifting over time. ponytail: synthetic stand-in — proves the
+    grid centroid, drifting over time. Synthetic stand-in — proves the
     ingest->feature->classify path; swap for tonic.datasets.NMNIST for real data."""
     cx = 4 + (label % 5) * 6              # 5 columns of centroids
     cy = 8 + (label // 5) * 16            # 2 rows

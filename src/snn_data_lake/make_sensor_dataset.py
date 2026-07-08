@@ -1,14 +1,14 @@
 """
-v0.39 — synthetic dataset modeling the builder's sensor.ino (ultrasonic distance + IR temp).
+v0.39 — synthetic dataset modeling the reference sensor.ino (ultrasonic distance + IR temp).
 
-The builder shipped only the sketch (2 channels: distance in metres + MLX90614 object temp,
-115200, 10 Hz, temp = -1 when nothing within 3 m — the agreed idle fix for his "___" token).
-No recorded data yet. This generates a labelled dataset in HIS exact wire format so we can
-enroll / train / test the pipeline now, then swap in his real captures unchanged.
+Only the sketch was shipped (2 channels: distance in metres + MLX90614 object temp,
+115200, 10 Hz, temp = -1 when nothing within 3 m — the idle sentinel).
+No recorded data yet. This generates a labelled dataset in that exact wire format so we can
+enroll / train / test the pipeline now, then swap in real captures unchanged.
 
-HONEST: synthetic — models the sensor's physics + noise, not real readings. It proves the
-pipeline on his 2-channel domain and is class-separable by construction; real numbers need
-his hardware. Gestures are what THIS sensor can actually sense (proximity + temperature):
+Note: synthetic — models the sensor's physics + noise, not real readings. It proves the
+pipeline on the 2-channel domain and is class-separable by construction; real numbers need
+real hardware. Gestures are what this sensor can actually sense (proximity + temperature):
 
   HAND_APPROACH : distance falls 3.5 -> 0.1 m, a ~33 C hand enters range
   HAND_RETREAT  : distance rises 0.1 -> 3.5 m, temp drops out of range (-1)
@@ -18,7 +18,7 @@ his hardware. Gestures are what THIS sensor can actually sense (proximity + temp
 
 Outputs:
   data/sensor_dataset.csv : label,distance,temp   (for enroll/train)
-  data/sensor_stream.csv  : "distance, temp"       (his exact serial format, for --stdin --window)
+  data/sensor_stream.csv  : "distance, temp"       (the sensor's exact serial format, for --stdin --window)
 
   python make_sensor_dataset.py
 """
@@ -26,7 +26,7 @@ import os
 import random
 
 GESTURES = ["HAND_APPROACH", "HAND_RETREAT", "HOT_OBJECT", "COLD_OBJECT", "IDLE"]
-W = 16          # samples per gesture instance (~1.6 s at his 10 Hz)
+W = 16          # samples per gesture instance (~1.6 s at 10 Hz)
 R = 25          # instances per gesture
 SEED = 0
 IDLE_TEMP = -1.0
@@ -82,7 +82,7 @@ def main():
         f.write("label,distance,temp\n")
         for g, d, t in rows:
             f.write(f"{g},{d},{t}\n")
-    # his exact serial format ("d, t"), gestures concatenated — a realistic raw stream
+    # the sensor's exact serial format ("d, t"), gestures concatenated — a realistic raw stream
     with open("data/sensor_stream.csv", "w", encoding="utf-8") as f:
         for _, d, t in rows:
             f.write(f"{d}, {t}\n")
@@ -102,12 +102,12 @@ def main():
     acc = sum(nearest(v) == lab for v, lab in test) / len(test)
 
     print("=" * 58)
-    print("SENSOR DATASET (synthetic, modelling builder's sensor.ino)")
+    print("SENSOR DATASET (synthetic, modelling the reference sensor.ino)")
     print("=" * 58)
     print(f"gestures : {GESTURES}")
     print(f"rows     : {len(rows)} samples ({R} x {W} per gesture), 2 channels (distance, temp)")
     print(f"windows  : {len(feats)} of {W} samples; hold-out nearest-centroid acc = {acc:.0%}")
-    print("files    : data/sensor_dataset.csv (labelled), data/sensor_stream.csv (his format)")
+    print("files    : data/sensor_dataset.csv (labelled), data/sensor_stream.csv (serial format)")
     print("=" * 58)
 
     assert len(rows) == len(GESTURES) * R * W, "row count wrong"

@@ -101,7 +101,7 @@ def main():
     print(f"embedding classification: {acc:.0%} nearest-centroid over {K} classes")
     print("=" * 60)
 
-    # ---- self-check (ponytail: deterministic asserts, zero-dep) ----
+    # ---- self-check: deterministic asserts, zero-dep ----
     assert min(stable_rates) > 0.2 and max(stable_rates) < 0.75, \
         f"stable init must keep the rate ALIVE and BOUNDED across depth (no death, no saturation): {stable_rates}"
     assert stable_rates[-1] > 0.7 * stable_rates[0], f"stable rate must not decay across depth: {stable_rates}"

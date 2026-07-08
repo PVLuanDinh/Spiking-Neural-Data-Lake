@@ -25,7 +25,7 @@ larger than RAM; it adds no new physical fidelity.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuro_chip_stream
 """
-# ponytail: additive/opt-in out-of-core wrapper over neuro_chip; changes no existing behaviour and
+# additive/opt-in out-of-core wrapper over neuro_chip; changes no existing behaviour and
 # reuses LIFNeuron + energy + NeuroChip. Ceiling: functional/architectural twin, NOT cycle-accurate
 # silicon -- no analog dynamics/place-and-route; trades RAM for per-tick disk I/O (AirLLM streaming).
 import os

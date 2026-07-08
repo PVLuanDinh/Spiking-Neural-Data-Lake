@@ -29,7 +29,7 @@ recurrent cell assemblies -> interference-immune recall:
   * hippocampus: FIXED random DG expansion + CA3 max-overlap attractor; the assemblies
     here are FORMED by frequency-gated plasticity, not pre-wired.
 
-ponytail: a small rate-based caricature of the paper's FIP/FID + structural plasticity
+A small rate-based caricature of the paper's FIP/FID + structural plasticity
 -- exact paper equations are paywalled, patterns are synthetic, and this is no brain-
 scale sparse memory or cognition/AGI. Additive / opt-in: a new member of the memory /
 plasticity family; it changes no existing behaviour. Credit: Lei et al. 2025 (DOI

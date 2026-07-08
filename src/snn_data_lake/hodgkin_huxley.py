@@ -21,7 +21,7 @@ The alpha_n rate has a removable 0/0 singularity at V=-55 mV and alpha_m at V=-4
 both are guarded with their L'Hopital limits (alpha_n -> 0.1, alpha_m -> 1.0) so the model never divides
 by zero. m, h, n start at their steady-state values x_inf = alpha/(alpha+beta) at the resting voltage.
 
-Honesty / ponytail ceiling: the classic single-compartment space-clamped HH squid-axon ODEs, forward-Euler
+Honesty ceiling: the classic single-compartment space-clamped HH squid-axon ODEs, forward-Euler
 integrated -- the biophysical-neuron level. NOT multi-compartment; no temperature / Q10 scaling; no channel
 noise (deterministic); a caricature of one axon patch, not cognition. Pure standard library, zero deps.
 
@@ -198,8 +198,8 @@ def main():
           + ", ".join(f"I={int(c)} -> {r:.0f} Hz" for c, r in zip(fi_currents, fi_rates)))
     print("=" * 68)
 
-    # ---- self-check (ponytail: a new BIOPHYSICAL member of the neuron-model family; conductance-based,
-    # nothing imposed. Deterministic asserts, zero-dep stdlib, ASCII-only prints) ----
+    # ---- self-check: a new BIOPHYSICAL member of the neuron-model family; conductance-based,
+    # nothing imposed. Deterministic asserts, zero-dep stdlib, ASCII-only prints ----
     # 1. a real biphasic action potential: overshoot well above 0, then afterhyperpolarization below rest
     assert ap_peak > 20.0, f"AP must overshoot well above 0 mV (got {ap_peak:.1f})"
     assert ap_trough < V_REST, f"AP must repolarize below rest -- afterhyperpolarization (got {ap_trough:.1f})"

@@ -107,7 +107,7 @@ def main():
     print("quadtree exploits spatial burst clustering the per-channel 1-D codec cannot.")
     print("=" * 60)
 
-    # ---- self-check (ponytail: one runnable assert-based check; deterministic) ----
+    # ---- self-check: one runnable assert-based check; deterministic ----
     assert lossless, "quadtree codec must be lossless (decoded event set != original)"
     assert len(qbytes) < gz_raw, f"quadtree ({len(qbytes)} B) should beat gzip(raw) ({gz_raw} B)"
     assert len(qbytes) < onedim, f"on bursty data quadtree ({len(qbytes)} B) should beat 1-D ({onedim} B)"
