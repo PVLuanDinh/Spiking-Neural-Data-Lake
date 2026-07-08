@@ -320,7 +320,7 @@ latency crosses a budget.
 
 ### D3 — Live drift detection and re-calibration (P1)
 
-**Why.** `arm_config.py` states plainly that recognition is tuned to the builder's exact sensor
+**Why.** `arm_config.py` states plainly that recognition is tuned to a specific reference sensor
 mount — "move the rig + the 95% recognition collapses" — and IR fusion is disabled because it's
 uncalibrated. The repo already has `bins_from_capture()` (derive bins from real data) and
 `data_quality` gates; the missing piece is applying them to _live_ input to notice drift before it

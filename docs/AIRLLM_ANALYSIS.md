@@ -1,4 +1,4 @@
-# AirLLM and the Spiking Neural Data Lake: an honest infrastructure analysis
+# AirLLM and the Spiking Neural Data Lake: an infrastructure analysis
 
 **Question:** can AirLLM (https://github.com/lyogavin/airllm) infrastructure run the
 "full core program" of this repo locally, and what does that actually require?

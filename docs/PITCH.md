@@ -1,7 +1,7 @@
 # Spiking Neural Data Lake: a zero-dependency, reproducible artifact for spike-native data systems and safety-gated neuromorphic robotics
 
 **Repository:** https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake
-**Version:** v2.53.2 (164 tagged releases, v0.1 → v2.53.2)
+**Version:** v2.70 (v0.1 → v2.70; see CHANGELOG.md)
 **License:** MIT
 **Core dependencies:** none (`dependencies = []`)
 
@@ -17,7 +17,7 @@ one set of shared primitives (leaky-integrate-and-fire neurons, spike-timing cod
 Hebbian/STDP learning): a **spiking data-lakehouse** with three storage/query/reasoning
 paradigms implemented directly over spike trains, a **closed-loop, safety-gated robot-arm
 controller** whose reflex, reward learning, stress state, and motor control are themselves
-spiking networks, and a **library of ~90 pure-standard-library neuromorphic primitives**
+spiking networks, and a **library of ~95 pure-standard-library neuromorphic primitives**
 (neuron models, plasticity rules, coding schemes, streaming sketches, cognitive-map
 mechanisms) that both systems are built from. The product core has **zero runtime
 dependencies**, runs on Python 3.11+ with no GPU and no compiled extensions, is covered by a
@@ -25,7 +25,7 @@ CI matrix of `{ubuntu, windows} × {3.11, 3.12, 3.13}`, and treats "every claim 
 running the file that makes it" as a design invariant rather than an afterthought. Measured
 results include 61–162× less data moved for spike-native storage and query versus dense
 baselines, 3.6–83.5× fewer synaptic operations across compute-efficiency prototypes, and
-**95% gesture recognition on the builder's own captured ESP32 hardware data**. The project is
+**95% gesture recognition on real captured ESP32 hardware data**. The project is
 equally explicit about what it has *not* achieved: the unsupervised-STDP MNIST ~95% figure
 quoted in the literature (Diehl & Cook 2015, 6400 neurons) is a target, not a result — the
 best measured accuracy here is **90.0% at 1600 neurons**, and the tuned 6400-neuron run is
@@ -230,7 +230,7 @@ configuration. Compute = synaptic operations (SynOps); storage = bytes.
 | Zero-dep self-checks | 123/123 modules pass | — | README.md "Status at a glance"; `run_selfchecks.py` |
 
 **The honest distinction that matters most:** the robot-arm **gesture** 95% is *achieved* on
-the builder's own real ESP32 hardware captures. The MNIST conductance-Diehl-and-Cook "~95%" is
+real ESP32 hardware captures. The MNIST conductance-Diehl-and-Cook "~95%" is
 a *literature target* the project has not yet reached — the best number actually measured
 here is 90.0% at 1600 neurons, and the recipe for the tuned 6400-neuron/~95% run is known and
 wired but currently blocked by a cloud billing hold, which the project states plainly is a
@@ -398,7 +398,7 @@ collaborator:
   wiring, firmware, safety envelope in depth).
 - **Suggested citation stub:**
   ```
-  Aighluvsekks. Spiking Neural Data Lake (v2.53.2) [Software]. 2026.
+  Aighluvsekks. Spiking Neural Data Lake (v2.70) [Software]. 2026.
   https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake
   ```
   (No formal paper or DOI exists at time of writing — cite the tagged software release and

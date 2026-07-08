@@ -92,7 +92,7 @@ Concretely, across the modules that implement each stage:
   proprioception) provide rhythmic motion and self-state estimation primitives.
 
 Measured headline results (see README for the full, reproducible table): gesture
-recognition on the builder's real captured ESP32 gestures at **95%** (order-aware, up from
+recognition on real captured ESP32 gestures at **95%** (order-aware, up from
 63% direction-blind); associative-memory recall through 60% cue corruption; 61-162x less
 data moved for lake storage/query versus dense baselines; 3.6-83.5x fewer synaptic
 operations than dense-ANN equivalents across the classifier/temporal-coding prototypes.
@@ -182,7 +182,7 @@ This project is explicit, in its own README and CHANGELOG, about what it is *not
 **adaptive, growing, biologically-inspired control** — not artificial general intelligence,
 not "cognition." Specific ceilings called out in the project's own voice:
 
-- The robot-arm gesture-recognition 95% is *achieved* on the builder's real captured
+- The robot-arm gesture-recognition 95% is *achieved* on real captured
   ESP32 data; the unsupervised-STDP MNIST ~95% figure is a *literature target*
   (Diehl & Cook 2015, 6400 neurons + full 60k) — the best measured result here is
   **90.0%** at 1600 neurons, and the tuned 6400-neuron run is currently blocked by a GCP

@@ -5,13 +5,13 @@
 **Spiking Neural Data Lake** is a pure-stdlib, zero-dependency neuromorphic + robot-arm control loop + spiking data-lakehouse. Core codebase: ZERO runtime dependencies (`dependencies = []` in pyproject). That design is intentional and non-negotiable—never add a runtime dependency to core.
 
 **Core entrypoints:**
-- `src/snn_data_lake/` — 94 modules, importable as `snn_data_lake.<module>`
+- `src/snn_data_lake/` — 95 modules, importable as `snn_data_lake.<module>`
 - Console scripts: `snn-demo`, `snn-arm`, `snn-loop`, `snn-ui`
 
 ## Layout
 
 ```
-src/snn_data_lake/          94 core modules (zero-dep, vendored/stdlib only)
+src/snn_data_lake/          95 core modules (zero-dep, vendored/stdlib only)
 tests/                      pytest suite, >=70% coverage
 research/                   optional research code, ruff-excluded
 gcp/, infra/, robot arm/    optional integrations, ruff-excluded

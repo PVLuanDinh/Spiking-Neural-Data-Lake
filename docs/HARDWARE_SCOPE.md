@@ -2,7 +2,7 @@
 
 This document is the authoritative statement of what the Spiking Neural Data Lake
 robot-arm subsystem CAN and CANNOT do, as implemented in code today (repo version
-2.53.2, `pyproject.toml:11`). Every claim below cites `file:line`. Where the code
+2.70, `pyproject.toml:11`). Every claim below cites `file:line`. Where the code
 was not read closely enough to be certain, that is flagged explicitly rather than
 asserted. This is a safety-critical system - if this document and the code ever
 disagree, the code is correct and this document is stale.
