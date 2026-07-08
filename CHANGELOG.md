@@ -3,6 +3,36 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.69] -- Weight perturbation: gradient-free reward learning in a spiking net (Fiete-Seung 2006) (2026-07-08)
+Fresh research distillation. **`research/weight_perturbation.py`** implements weight/node perturbation (Fiete, I.R. & Seung, H.S.,
+Phys. Rev. Lett. 97:048104, 2006): a spiking readout learns a task from a single SCALAR reward `R` with NO backprop and NO analytic
+gradient. Each step it perturbs the weights by small iid noise `xi ~ Normal(0, sigma^2)`, runs the network forward, reads the one
+number `R(w+xi)`, and moves along the perturbation reward-weighted: `dw = eta*(R(w+xi) - R_bar)*xi/sigma^2` (`R_bar` a running-mean
+baseline). Averaged over perturbations this is an UNBIASED estimate of the reward gradient `dR/dw` (to first order `R(w+xi)-R(w) ~
+grad.xi` and `E[(grad.xi) xi_i/sigma^2] = grad_i`): the network ASCENDS the true gradient while only ever running forward and reading
+a scalar -- REINFORCE / node-perturbation, biologically plausible (global reward + local synaptic noise), unlike backprop's symmetric
+backward pass. **DISTINCT from the repo's other reward learners:** `src/snn_data_lake/r_stdp.py` is reward-modulated STDP -- a LOCAL
+spike-timing eligibility trace merely GATED by a delayed reward (estimates no gradient); `research/eprop.py` is e-prop, an online
+rule that computes the TRUE analytic gradient forward-in-time. This is GRADIENT-FREE: it forms no gradient analytically and uses no
+timing trace, only (reward, noise) correlations. The task is kept smooth-a.e. in `w` so a finite-difference gradient is meaningful:
+a leaky integrate-and-fire readout (peer of `snn_data_lake.lif_neuron.LIFNeuron`, sub-threshold / tempotron regime) scored on its PEAK
+membrane potential (the tempotron decision variable; peak >= threshold <=> fire) over 4 fixed seeded input spike patterns, reward
+`= -sum (peak - target)^2` with targets encoding fire vs. quiet. **THE UN-RIGGABLE ANCHOR** proves it is a real gradient estimator and
+not a heuristic: at a fixed `w` we estimate `g_hat = mean over samples of (R(w+xi)-R(w)) xi/sigma^2`, and INDEPENDENTLY compute the
+ground-truth gradient by CENTRAL FINITE DIFFERENCES `g_fd[i] = (R(w+eps e_i) - R(w-eps e_i))/(2 eps)` -- a separate code path touching
+no noise -- then assert `cos(g_hat, g_fd) > 0.6` (threshold fixed a priori). MEASURED (seed 7): perturbation learned by reward alone,
+**reward -2.2801 -> -0.0647 (task error 2.2801 -> 0.0647, a 97% drop)**, and the estimator matched the independent finite-difference
+gradient at **cos(g_hat, g_fd) = 0.9928 over 3000 perturbation samples**. Honest: `w` was NOT initialised near the optimum (small
+random init, peaks ~0 vs targets 0.4/1.5), the finite-difference gradient is a fully independent computation, and the cosine threshold
+was fixed before measuring. Deterministic (per-instance `random.Random(seed)` threaded through inputs, init, and both noise sources;
+verified byte-identical on a repeat run). Research module (ruff-excluded), runs as `python research/weight_perturbation.py`. Self-check
+count 138 -> 139; `dependencies = []` intact; the 5 safety-envelope files untouched. Ref: Fiete, I.R. & Seung, H.S. (2006), "Gradient
+Learning in Spiking Neural Networks by Dynamic Perturbation of Conductances", Physical Review Letters 97:048104, DOI
+10.1103/PhysRevLett.97.048104.
+
+### Added
+- `weight_perturbation` (RESEARCH): gradient-free reward learning via weight perturbation (Fiete-Seung 2006) -- perturb weights with noise, correlate with a scalar reward, ascend the reward with no backprop. Un-riggable anchor: the perturbation estimate matches an independent central-finite-difference gradient at cos 0.9928 (3000 samples); measured learning reward -2.2801 -> -0.0647 (error -97%). Distinct from `r_stdp` (local eligibility trace) and `eprop` (true-gradient online).
+
 ## [v2.68] -- Adaptive sigma-delta spike coding: fewer spikes at equal fidelity (Zambrano-Bohte) (2026-07-08)
 New CORE encoder `src/snn_data_lake/adaptive_spiking.py` -- an Adaptive Spiking Neuron (ASN) that encodes a continuous analog
 signal predictively: it holds an internal reconstruction `s_hat` (the running sum of the impulses it has already emitted) and an
