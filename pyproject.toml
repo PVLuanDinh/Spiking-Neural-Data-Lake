@@ -1,5 +1,5 @@
 # Installable src/ package (snn_data_lake). Core is pure-stdlib (empty `dependencies`); optional
-# groups mirror requirements.txt. `pip install .` makes every module importable as
+# extras below add integrations. `pip install .` makes every module importable as
 # `snn_data_lake.<mod>` + installs the console commands below; `pip install ".[all]"` adds every
 # addon (arm+lake+gpu+nmnist). Namespaced -> no top-level collisions (reflex/interpreter/etc).
 [build-system]

@@ -14,7 +14,8 @@ packaging/installer/
 .venv-lake/
 .venv-nmnist/
 .venv-arm/
-**/.venv-*/     # any nested per-subproject venv (e.g. research/neuromorphic_torch/.venv-neuro)
+# any nested per-subproject venv (e.g. research/neuromorphic_torch/.venv-neuro)
+**/.venv-*/
 venv/
 env/
 
@@ -27,7 +28,9 @@ captures/          # live gesture recordings from record_and_run.ps1
 *.pt
 *.pth
 *.npz
+*.npy
 MNIST/
+lakehouse/
 
 # Terraform (local state + provider cache — never commit state, it can hold sensitive detail)
 infra/.terraform/
@@ -43,6 +46,10 @@ graphify-out/
 .ruff_cache/
 .coverage
 htmlcov/
+.turbo/
+
+# Local tool config (mcporter etc.) that lands in the working dir, not a project dir
+/config/
 
 # OS
 .DS_Store
