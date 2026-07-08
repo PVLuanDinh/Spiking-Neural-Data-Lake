@@ -3,6 +3,26 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.54] — Triplet STDP: the spike-timing rule pair-STDP predicts backwards (Pfister-Gerstner 2006) (2026-07-08)
+Self-refuel research cycle. Adds `research/triplet_stdp.py`, the minimal **triplet spike-timing-dependent plasticity**
+model (Pfister & Gerstner 2006). Pair-based STDP updates a synapse from spike PAIRS only, so for a fixed +10 ms
+pre→post lag it predicts the pairing-frequency dependence *backwards* — cross-pair post-before-pre interactions pile up
+at high rate and drive net LTD, whereas the cortical data (Sjostrom, Turrigiano & Nelson 2001) show potentiation that
+GROWS with frequency. The triplet rule fixes this by gating LTP on a post-pre-post TRIPLET: a second slow post-synaptic
+trace `o2` (tau_y = 125 ms) accumulates with pairing rate, so LTP grows with frequency as measured, and the rule maps
+onto a BCM-like sliding threshold. Four eligibility traces (fast/slow pre `r1`/`r2`, fast/slow post `o1`/`o2`),
+event-driven exact-exponential decay → fully deterministic, zero randomness, offline. Self-check delta **123 → 124**;
+both lint gates clean, 20 pytest unchanged, 5 safety-envelope files untouched, core `dependencies = []` still empty.
+Paper: Pfister, J.-P. & Gerstner, W. (2006), "Triplets of Spikes in a Model of Spike Timing-Dependent Plasticity",
+*J. Neurosci.* 26(38):9673-9682, DOI 10.1523/JNEUROSCI.1425-06.2006.
+### Added
+- `research/triplet_stdp.py` — Pfister-Gerstner minimal triplet STDP (`TripletSTDP`, `.triplet()`/`.pair()` factories,
+  `pairing_dw()`). Self-check runs a 1–50 Hz pairing-frequency sweep and asserts: (1) the triplet rule's Δw rises
+  monotonically to decisive net LTP (+0.80 at 50 Hz) — the defining frequency dependence; (2) the pair-STDP control
+  falls monotonically and flips sign to net LTD (−0.27), the *opposite* trend, with opposite signs at 40 Hz; (3) the
+  triplet rule reduces exactly to pair-STDP when the triplet amplitudes are zeroed; (4) determinism. Registered in
+  `run_selfchecks.py` RESEARCH tuple (123 → 124). Research-tier, ruff-excluded.
+
 ## [v2.53.2] — Patch: ruff-format the test files (CI lint gate, part 2) (2026-07-07)
 The CI `lint` job runs TWO commands — `ruff check .` **and** `ruff format --check tests`. v2.53.1 fixed the
 first, but the two new test files were not `ruff format`-clean, so the second command failed. This tag

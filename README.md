@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 123/123 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 124/124 self-checks · pytest 84% · ruff · CI matrix |
 
-Current version: **v2.53.2** · 164 tagged releases (v0.1 → v2.53.2). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.54** · 165 tagged releases (v0.1 → v2.54). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 **⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
@@ -223,13 +223,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 123 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 124 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 123-module list is canonical in
+plus separate lint and coverage jobs. The 124-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -379,6 +379,19 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.54, research):_ **Triplet STDP — the spike-timing rule that gets pairing-frequency dependence right (Pfister-Gerstner 2006).**
+`research/triplet_stdp.py` adds the minimal triplet spike-timing-dependent plasticity model: four eligibility traces
+(fast/slow pre `r1`/`r2`, fast/slow post `o1`/`o2`) where LTP requires a post-pre-post TRIPLET gated by the slow post
+trace `o2` (tau_y = 125 ms). This fixes the one thing pair-based STDP predicts backwards — for a fixed +10 ms pre→post
+lag the cortical data (Sjostrom, Turrigiano & Nelson 2001) show potentiation that GROWS with pairing frequency, but a
+pair rule's cross-pair interactions drive it the other way into net LTD. The self-check runs a 1–50 Hz pairing sweep and
+asserts the triplet rule's Δw rises monotonically to decisive LTP (+0.80) while the pair-STDP control falls monotonically
+and flips sign to LTD (−0.27) — opposite signs at 40 Hz — and that the rule reduces *exactly* to pair-STDP when the
+triplet amplitudes are zeroed; fully deterministic (event-driven exact-decay, no RNG). Distinct from `bcm_plasticity`
+(the rate/threshold form of the same selectivity) and the repo's pair-based `valence_stdp`/`r_stdp`/`inhibitory_stdp`.
+Research-tier (`research/`, ruff-excluded); pure-stdlib core (`dependencies = []`), **124/124** self-checks; the 5
+safety-envelope files untouched.
 
 _Landed (v2.52, product):_ **Live ESP32 → spike encoder data path — real hardware into the fusion front-end.**
 `esp32_encoder_path.py` wires the builder's real ESP32 Dev Module (an ultrasonic rangefinder + an MLX90614 IR
