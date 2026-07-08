@@ -3,6 +3,37 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.65] -- ALIF: adaptive-threshold LIF neuron with long-memory threshold adaptation (Bellec 2018, LSNN) (2026-07-08)
+New **CORE** module (shipped zero-dep package, ruff-enforced): **`src/snn_data_lake/alif_neuron.py`** -- an `ALIFNeuron`
+that mirrors the canonical `LIFNeuron` API (`.step(current) -> spike`, `.run(currents)`) but adds the ONE slow state
+variable of Bellec, Salaj, Subramoney, Legenstein & Maass (NeurIPS 2018, the LSNN): an adaptation variable `a(t)` that
+jumps up by 1 on every spike and decays with a SLOW time constant `tau_a >> tau_m`, raising the *effective* firing
+threshold `V_th_eff(t) = v_threshold + beta * a(t)`. Two consequences give the LSNN its name. (1) SPIKE-FREQUENCY
+ADAPTATION: every spike lifts the threshold, so a constant supra-threshold input makes the neuron fire fast then
+progressively slower -- its inter-spike intervals GROW where a plain LIF's stay flat. (2) LONG SHORT-TERM MEMORY:
+because `tau_a >> tau_m`, the elevated threshold OUTLASTS the membrane by many membrane time constants -- after the input
+and the fast membrane have decayed to rest, `a(t)` is still clearly elevated, a slow trace of recent activity the plain
+LIF membrane cannot hold. That slow threshold state is the working memory recurrent LSNNs use to bridge long delays, and
+the neuron model on which this repo's e-prop (`research/eprop.py`, v2.62) learns. **DISTINCT from AdEx**
+(`research/adex_neuron.py`): AdEx adapts a subthreshold + spike-triggered CURRENT `w` that is SUBTRACTED from the
+membrane; ALIF adapts the THRESHOLD itself -- different mechanism, same headline fire-fast-then-slow behaviour. Reduces
+EXACTLY to `lif_neuron.LIFNeuron` when `beta = 0`. Measured (deterministic, `tau_m=10`, `tau_a=300`, `beta=1.2`, constant
+input `I=0.7`): the ALIF's inter-spike intervals grow **4 -> 7 -> 10 -> 14 -> 20 -> 28 -> 39 -> 49 -> 52** steps
+(strictly increasing, 13x) while the identically-driven plain LIF holds a flat ISI of **2** throughout; the threshold
+memory persists **`a=5.705` at input-stop -> `4.829` after 5*tau_m (85% held)** while the membrane has collapsed to
+`v=0.046` (~0), then recovers to `a=0.006` after many `tau_a`; and the `beta=0` ALIF spike train equals the plain LIF
+spike train byte-for-byte (clean, non-riggable correctness anchor). Pure-stdlib (`math` only, no RNG, no wall-clock),
+deterministic by construction (two runs produce identical stdout), ASCII-only output. Self-check delta **134 -> 135**;
+core `dependencies = []` still empty, the 5 safety-envelope files (reflex, serial_arm, arm_sim, arm_config, interpreter)
+untouched, `ruff check .` clean (this is `src/`, so ruff is enforced).
+Reference: Bellec, G., Salaj, D., Subramoney, A., Legenstein, R. & Maass, W. (2018), "Long short-term memory and
+Learning-to-learn in networks of spiking neurons", Advances in Neural Information Processing Systems 31 (NeurIPS 2018).
+### Added
+- `src/snn_data_lake/alif_neuron.py` -- CORE adaptive-threshold LIF neuron (Bellec 2018, LSNN): firing threshold adapts
+  as `V_th + beta*a`, giving spike-frequency adaptation and a slow (`tau_a >> tau_m`) threshold trace = long short-term
+  memory. Self-check: ALIF ISI grows 4->52 (strictly) vs flat LIF ISI 2, threshold memory 85% held after 5*tau_m (v~0)
+  then recovers, `beta=0` ALIF == plain LIF exactly, deterministic. Registered CORE (134 -> 135).
+
 ## [v2.64] -- STDP-WTA Bayesian computation: unsupervised EM emerges from spike-timing plasticity (Nessler 2013) (2026-07-08)
 Fresh research distillation. **`research/stdp_wta_bayes.py`** reproduces Nessler et al. (2013): a generic winner-take-all (WTA)
 microcircuit with soft-max lateral inhibition and a simple STDP rule performs UNSUPERVISED online expectation-maximization for a
