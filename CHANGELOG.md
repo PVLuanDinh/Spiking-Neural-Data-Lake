@@ -3,6 +3,17 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.70] -- Repo cleanup: dedup helpers, Keep-a-Changelog, technical README (2026-07-08)
+
+### Changed
+- Merged duplicated math helpers into `src/snn_data_lake/_mathutils.py` (softmax, pearson, mean, sigmoid, dot, unit), byte-equivalent to the copies they replace; consolidated the three spiking-KG modules into `research/spike_kg.py` with a `--model {transe,rotate,relations}` switch. Behavior byte-identical; self-check count 139 -> 138.
+- Stripped leaked build-process markers and emphasis noise from source docstrings/comments (comment/docstring text only, no logic change); neutralized personal sensor-rig narration to factual references.
+- Rewrote `README.md` (1517 -> ~140 lines) as a technical overview and collapsed `CHANGELOG.md` to Keep-a-Changelog (dropped per-release narration, kept every version header and `###` bullet verbatim). Reconciled counts across README and docs to canonical: 138 self-checks, 95 core modules, v2.70.
+- Consolidated the two release bundlers into `packaging/make_bundle.py --exe|--full`; fixed the `.gitignore` `**/.venv-*/` rule (an inline comment had disabled it); added `CONTRIBUTING.md` and `SECURITY.md`.
+
+### Removed
+- Stray working-tree dirs `config/`, `lakehouse/`, `.turbo/`; the three merged KG modules (`spike_knowledge_graph{,_rotate}.py`, `spike_kg_relations.py`); the two merged bundlers (`make_release_bundle.py`, `make_full_bundle.py`).
+
 ## [v2.69] -- Weight perturbation: gradient-free reward learning in a spiking net (Fiete-Seung 2006) (2026-07-08)
 
 ### Added
