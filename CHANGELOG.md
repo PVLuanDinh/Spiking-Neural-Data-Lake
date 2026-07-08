@@ -3,6 +3,39 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.61] -- Neural heterogeneity: diverse time constants beat homogeneous on temporal tasks (Perez-Nieves 2021) (2026-07-08)
+Fresh research distillation. **`research/neural_heterogeneity.py`** reproduces the paper's defining result: a spiking population whose
+neurons carry a DISTRIBUTION of membrane time constants learns a temporal task BETTER than a homogeneous population of the SAME size
+with the SAME MEAN tau -- because a spread of tau TILES the temporal input (short-tau neurons resolve WHEN energy arrives, long-tau
+neurons integrate a sustained level), giving a richer, more linearly-separable representation. The task is a 2-D-in-timescale grid: each
+1-D current stimulus carries two INDEPENDENT bits -- a CONCENTRATION bit (a fixed 5-pulse packet, of identical total energy, either
+packed into consecutive early steps or diffused across the early window -- legible only to a SHORT-tau neuron, whose narrow memory lets
+the packed pulses summate to threshold while the spread ones decay between arrivals) and a LEVEL bit (a sustained sub-threshold offset,
+hi/lo, over the whole window -- legible only to a LONG-tau neuron, which accumulates it; a short-tau neuron leaks it away). The 4 classes
+are the (concentration x level) cross-product. **Why heterogeneity is required, not merely helpful:** at a SINGLE tau the response to a
+concentrated packet and the response to a higher sustained level are nearly the SAME spike count -- one filter cannot tell "energy packed
+in time" from "energy held at a higher level" -- so a homogeneous population CONFUSES the concentrated-low class with the diffuse-high
+class. A DIVERSITY of taus supplies both a short-tau sub-population (reads concentration) and a long-tau sub-population (reads level), so
+the grid separates. The readout is a plain spike-COUNT linear classifier over the canonical `snn_data_lake.lif_neuron.LIFNeuron` (reused;
+no hand-coded timing features), so the temporal discrimination has to live in the neuron dynamics == in tau. **The fair control isolates
+spread as the sole cause:** both populations use unit input and the identical readout/training budget, the neurons differ ONLY in tau, and
+homo_tau is set to the arithmetic MEAN of the heterogeneous draws -- so the ONLY difference between the two populations is the SPREAD of
+tau. Measured (seed 0, deterministic, held-out): HETEROGENEOUS **100.0%** vs HOMOGENEOUS-at-mean-tau **70.2%** (margin **+29.8%**), both
+far above the 25% chance (the control learns one timescale-bit cleanly -- it is not crippled). And NO single tau matches the diverse
+population -- tau=min alone 56.0%, tau=max alone 81.0%, mean 70.2% -- so it is the DIVERSITY that wins, not simply picking a longer tau. A
+selectivity-spread probe confirms the mechanism: the heterogeneous population's per-neuron concentration-vs-level selectivity spans a wide
+range (stdev 0.27) while the homogeneous one is uniform (0.00). Pure-stdlib (`random` seeded + `math`), one per-instance
+`random.Random(seed)` threaded through the tau draws / stimuli / dataset shuffle -> byte-identical across CPython 3.11-3.13 (verified: two
+runs produce identical stdout); ASCII-only output. Self-check delta **130 -> 131**; core `dependencies = []` still empty, the 5
+safety-envelope files (reflex, serial_arm, arm_sim, arm_config, interpreter) untouched, no `src/` change.
+Reference: Perez-Nieves, N., Leung, V.C.H., Dragotti, P.L. & Goodman, D.F.M. (2021), "Neural heterogeneity promotes robust learning",
+Nature Communications 12:5791, DOI 10.1038/s41467-021-26022-3.
+### Added
+- `research/neural_heterogeneity.py` -- heterogeneous-tau vs homogeneous-same-mean-tau LIF populations on a multi-timescale temporal
+  task. Self-check: the heterogeneous population's held-out accuracy (100.0%) clearly beats the fair homogeneous control (70.2%, +29.8%)
+  and even the best single tau (81.0%), both stay above chance (the control is not crippled), the heterogeneous population tiles a wider
+  range of timescales, and a repeat run is byte-identical. Registered RESEARCH (130 -> 131).
+
 ## [v2.60] -- DishBrain free-energy embodied learning: a culture learns Pong from feedback predictability (Kagan 2022) (2026-07-08)
 Research distillation from the Cortical Labs corpus. **`research/dishbrain_learning.py`** puts a minimal spiking agent inside a
 1-D Pong world and has it LEARN to hit the ball, driven ENTIRELY by the FREE ENERGY PRINCIPLE via the PREDICTABILITY of its sensory

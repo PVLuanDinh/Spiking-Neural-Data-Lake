@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 130/130 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 131/131 self-checks · pytest 84% · ruff · CI matrix |
 
-Current version: **v2.60** · 171 tagged releases (v0.1 → v2.60). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.61** · 172 tagged releases (v0.1 → v2.61). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 **⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
@@ -223,13 +223,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 130 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 131 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 130-module list is canonical in
+plus separate lint and coverage jobs. The 131-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -349,7 +349,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (130 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (131 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -379,6 +379,19 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.61, research):_ **Neural heterogeneity -- diverse time constants beat homogeneous on temporal tasks (Perez-Nieves 2021).**
+`research/neural_heterogeneity.py` pits a HETEROGENEOUS-tau LIF population against a HOMOGENEOUS one of the SAME size and SAME MEAN tau
+on a task that needs two timescales at once: each 1-D current stimulus carries a CONCENTRATION bit (a fixed 5-pulse packet, identical
+total energy, packed vs diffused -- legible only to a short-tau neuron that can summate the packed pulses) and a LEVEL bit (a sustained
+sub-threshold offset -- legible only to a long-tau neuron that accumulates it). At a single tau the concentrated-packet response and the
+higher-level response are nearly the same spike count, so the homogeneous population confuses the concentrated-low and diffuse-high
+classes; a spread of tau supplies both a short-tau sub-population (reads concentration) and a long-tau one (reads level), so the grid
+separates. The readout is a plain spike-count linear classifier over the canonical `lif_neuron.LIFNeuron` (reused; no hand-coded timing),
+so the discrimination has to live in tau. Measured (seed 0, deterministic, held-out): heterogeneous **100.0%** vs homogeneous-at-mean-tau
+**70.2%** (margin **+29.8%**), both above the 25% chance -- and no single tau matches the diverse population (tau=min 56.0%, tau=max
+81.0%), so it is the DIVERSITY that wins. The fair control isolates spread as the sole cause: unit input and the identical readout/budget,
+neurons differ ONLY in tau. Pure-stdlib core (`dependencies = []`), **131/131** self-checks; the 5 safety-envelope files untouched.
 
 _Landed (v2.60, research):_ **DishBrain free-energy embodied learning -- a culture learns Pong from feedback predictability (Kagan 2022).**
 `research/dishbrain_learning.py` puts a minimal spiking agent inside a 1-D Pong world and has it LEARN to hit the ball, driven ENTIRELY
