@@ -29,6 +29,7 @@ import os
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))  # repo root -> product modules
 from snn_data_lake.snn_classifier import templates, noisy, dataset, N, STEPS, ON_RATE, OFF_RATE
+from snn_data_lake._mathutils import softmax
 
 random.seed(0)  # deterministic run + self-check
 
@@ -99,13 +100,6 @@ def expert_forward(W_e, steps, n_classes):
                 cur[c] += W_e[c][i]
             synops += n_classes
     return cur, synops
-
-
-def softmax(xs):
-    m = max(xs)
-    es = [math.exp(x - m) for x in xs]
-    s = sum(es)
-    return [e / s for e in es]
 
 
 def forward(experts, expert_bias, sample, n_classes):

@@ -35,13 +35,7 @@ small so the exact Boltzmann distribution can be enumerated (2^N states) for the
 import math
 import random
 
-
-def _sigmoid(u):
-    """Numerically stable logistic 1 / (1 + exp(-u))."""
-    if u >= 0.0:
-        return 1.0 / (1.0 + math.exp(-u))
-    e = math.exp(u)
-    return e / (1.0 + e)
+from snn_data_lake._mathutils import sigmoid
 
 
 class BoltzmannSampler:
@@ -96,7 +90,7 @@ class BoltzmannSampler:
         if not self._free:
             return None
         i = self._free[self.rng.randrange(len(self._free))]
-        self._z[i] = 1 if self.rng.random() < _sigmoid(self._potential(i)) else 0
+        self._z[i] = 1 if self.rng.random() < sigmoid(self._potential(i)) else 0
         return i if self._z[i] == 1 else None
 
     def run(self, n_steps):

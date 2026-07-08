@@ -23,6 +23,8 @@ and reports accuracy + the synaptic-operation (SynOps) reduction.
 """
 import random
 
+from snn_data_lake._mathutils import softmax
+
 random.seed(0)  # deterministic run + self-check
 
 N = 64           # input neurons
@@ -56,14 +58,6 @@ def dataset(per, protos):
 
 
 # ---- train a linear readout (analog delta rule) -----------------------------
-def softmax(xs):
-    import math
-    m = max(xs)
-    es = [math.exp(x - m) for x in xs]
-    s = sum(es)
-    return [e / s for e in es]
-
-
 def train(data):
     W = [[0.0] * N for _ in range(C)]
     for _ in range(EPOCHS):

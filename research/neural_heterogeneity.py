@@ -37,6 +37,7 @@ Measured (seed 0, deterministic, held-out): HETEROGENEOUS 100.0% vs HOMOGENEOUS-
 import math
 import random
 
+from snn_data_lake._mathutils import softmax
 from snn_data_lake.lif_neuron import LIFNeuron  # canonical zero-dep LIF (PYTHONPATH=src under run_selfchecks)
 
 SEED = 0
@@ -103,13 +104,6 @@ def standardize(train, test):
     std = [math.sqrt(sum((f[i] - mean[i]) ** 2 for f, _ in train) / len(train)) or 1.0 for i in range(N)]
     z = lambda rows: [([(f[i] - mean[i]) / std[i] for i in range(N)] + [1.0], y) for f, y in rows]  # +bias
     return z(train), z(test)
-
-
-def softmax(xs):
-    m = max(xs)
-    es = [math.exp(x - m) for x in xs]
-    s = sum(es)
-    return [e / s for e in es]
 
 
 def train_readout(train):

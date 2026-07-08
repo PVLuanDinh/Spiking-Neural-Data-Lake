@@ -44,10 +44,7 @@ Refs: von Holst & Mittelstaedt (1950); Wolpert, Ghahramani & Jordan, Science 269
 """
 import random
 
-
-def _mean(xs):
-    """Arithmetic mean of a non-empty sequence."""
-    return sum(xs) / len(xs)
+from snn_data_lake._mathutils import mean
 
 
 class Plant:
@@ -153,8 +150,8 @@ def main():
         u = rng_u.uniform(-1.0, 1.0)
         nxt = plant1.step(u, external=0.0)
         err1.append(fm1.residual(s, u, nxt))
-    mean_self = _mean(err1)
-    mean_abs_self = _mean([abs(v) for v in err1])
+    mean_self = mean(err1)
+    mean_abs_self = mean([abs(v) for v in err1])
 
     # ---- 2. EXAFFERENCE detection: inject an unmodeled external displacement at a KNOWN step ----
     thresh = 0.05
@@ -204,8 +201,8 @@ def main():
         u = rng_l.uniform(-1.0, 1.0)
         nxt = plant_l.step(u, external=0.0)
         abs_err_l.append(abs(fm_l.update(s, u, nxt, lr)))
-    first_err = _mean(abs_err_l[:20])
-    last_err = _mean(abs_err_l[-20:])
+    first_err = mean(abs_err_l[:20])
+    last_err = mean(abs_err_l[-20:])
 
     # ---- 5. DETERMINISM: same params/seed -> identical residual traces from two fresh instances ----
     trace_a = _exafference_trace(a_true, b_true, dt, 0.005, 2, cmds2, perturb_step, external)

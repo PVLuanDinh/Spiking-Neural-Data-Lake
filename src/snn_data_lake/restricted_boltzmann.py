@@ -53,13 +53,7 @@ seconds and the signatures are stable at a fixed seed. Not cognition.
 import math
 import random
 
-
-def _sigmoid(u):
-    """Numerically stable logistic 1 / (1 + exp(-u))."""
-    if u >= 0.0:
-        return 1.0 / (1.0 + math.exp(-u))
-    e = math.exp(u)
-    return e / (1.0 + e)
+from snn_data_lake._mathutils import sigmoid
 
 
 def _softplus(x):
@@ -91,12 +85,12 @@ class RBM:
     # ---- conditionals (the factorized layer distributions) -------------------------------------
     def hidden_probs(self, v):
         """p(h_j = 1 | v) for every hidden unit j."""
-        return [_sigmoid(self.b_h[j] + sum(v[i] * self.W[i][j] for i in range(self.nv)))
+        return [sigmoid(self.b_h[j] + sum(v[i] * self.W[i][j] for i in range(self.nv)))
                 for j in range(self.nh)]
 
     def visible_probs(self, h):
         """p(v_i = 1 | h) for every visible unit i."""
-        return [_sigmoid(self.b_v[i] + sum(self.W[i][j] * h[j] for j in range(self.nh)))
+        return [sigmoid(self.b_v[i] + sum(self.W[i][j] * h[j] for j in range(self.nh)))
                 for i in range(self.nv)]
 
     def _sample(self, probs):

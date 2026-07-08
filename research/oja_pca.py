@@ -15,14 +15,7 @@ On-thesis with bcm_plasticity / intrinsic_plasticity / population_encoding.
 import math
 import random
 
-
-def _dot(a, b):
-    return sum(x * y for x, y in zip(a, b))
-
-
-def _unit(v):
-    n = math.sqrt(sum(c * c for c in v)) or 1.0
-    return [c / n for c in v]
+from snn_data_lake._mathutils import dot, unit
 
 
 class OjaNeuron:
@@ -30,11 +23,11 @@ class OjaNeuron:
 
     def __init__(self, dim, lr=0.01, seed=0):
         rng = random.Random(seed)
-        self.w = _unit([rng.uniform(-1, 1) for _ in range(dim)])
+        self.w = unit([rng.uniform(-1, 1) for _ in range(dim)])
         self.lr = lr
 
     def learn(self, x):
-        y = _dot(self.w, x)
+        y = dot(self.w, x)
         self.w = [wi + self.lr * y * (xi - y * wi) for wi, xi in zip(self.w, x)]  # Oja: Hebb + self-normalizing decay
         return y
 
@@ -48,10 +41,10 @@ class OjaNeuron:
 def sanger(data, k, dim, lr=0.01, epochs=6, seed=0):
     """Sanger's rule (Generalized Hebbian): k Oja neurons + deflation -> the top-k components in order."""
     rng = random.Random(seed)
-    w = [_unit([rng.uniform(-1, 1) for _ in range(dim)]) for _ in range(k)]
+    w = [unit([rng.uniform(-1, 1) for _ in range(dim)]) for _ in range(k)]
     for _ in range(epochs):
         for x in data:
-            y = [_dot(w[j], x) for j in range(k)]
+            y = [dot(w[j], x) for j in range(k)]
             for j in range(k):
                 deflate = [sum(y[m] * w[m][i] for m in range(j + 1)) for i in range(dim)]  # subtract higher PCs
                 w[j] = [w[j][i] + lr * y[j] * (x[i] - deflate[i]) for i in range(dim)]
@@ -59,15 +52,15 @@ def sanger(data, k, dim, lr=0.01, epochs=6, seed=0):
 
 
 def _abs_cos(a, b):
-    return abs(_dot(_unit(a), _unit(b)))
+    return abs(dot(unit(a), unit(b)))
 
 
 def main():
     rng = random.Random(1)
     dim = 8
-    e1 = _unit([1.0, 0.6, -0.3, 0.2, -0.8, 0.1, 0.4, -0.5])     # planted dominant variance direction
-    e2 = _unit([-0.5, 0.4, 0.7, -0.1, 0.2, 0.3, -0.6, 0.1])
-    e2 = _unit([e2[i] - _dot(e2, e1) * e1[i] for i in range(dim)])  # orthogonalize the 2nd direction
+    e1 = unit([1.0, 0.6, -0.3, 0.2, -0.8, 0.1, 0.4, -0.5])     # planted dominant variance direction
+    e2 = unit([-0.5, 0.4, 0.7, -0.1, 0.2, 0.3, -0.6, 0.1])
+    e2 = unit([e2[i] - dot(e2, e1) * e1[i] for i in range(dim)])  # orthogonalize the 2nd direction
 
     # samples: big variance along e1, medium along e2, small isotropic noise
     data = []
@@ -78,7 +71,7 @@ def main():
     oja = OjaNeuron(dim, lr=0.01, seed=0)
     w = oja.run(data, epochs=8)
     cos1 = _abs_cos(w, e1)
-    norm = math.sqrt(_dot(w, w))
+    norm = math.sqrt(dot(w, w))
 
     comps = sanger(data, k=2, dim=dim, lr=0.01, epochs=8, seed=0)
     cos_top = _abs_cos(comps[0], e1)

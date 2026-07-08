@@ -17,11 +17,8 @@ path. On-thesis with sparse_distributed_memory / fly_hash / rank_order_coding.
 """
 import random
 
+from snn_data_lake._mathutils import dot
 from snn_data_lake.signal_loop import build_default_library
-
-
-def _dot(u, v):
-    return sum(x * y for x, y in zip(u, v))
 
 
 def _soft(x, lam):
@@ -47,14 +44,14 @@ class LCA:
         self.lam = lam
         self.dt = dt
         # Gram matrix with zeroed diagonal = lateral-inhibition weights (overlap between atoms)
-        self.g_off = [[0.0 if i == j else _dot(dictionary[i], dictionary[j]) for j in range(self.m)]
+        self.g_off = [[0.0 if i == j else dot(dictionary[i], dictionary[j]) for j in range(self.m)]
                       for i in range(self.m)]
 
     def encode(self, x, steps=80):
         # v2.4 perf: default steps 300 -> 80 (~3.5x faster). Same algorithm, fewer LCA
         # iterations. Measured flat: LCAMatcher accuracy is 100% clean + jittered at
         # steps 300/150/80, and the sparse-code support/reconstruction asserts still hold.
-        b = [_dot(atom, x) for atom in self.phi]     # driving input: match of each atom to the signal
+        b = [dot(atom, x) for atom in self.phi]     # driving input: match of each atom to the signal
         u = [0.0] * self.m                           # membrane potentials
         a = [0.0] * self.m                           # active coefficients (thresholded)
         for _ in range(steps):
@@ -90,7 +87,7 @@ def main():
     phi = [[1.0 if k == i else 0.0 for k in range(d)] for i in range(d)]
     while len(phi) < d + n_rand:
         cand = _unit([rng.uniform(-1, 1) for _ in range(d)])
-        if all(abs(_dot(cand, atom)) < max_coherence for atom in phi):       # incoherent-frame condition
+        if all(abs(dot(cand, atom)) < max_coherence for atom in phi):       # incoherent-frame condition
             phi.append(cand)
     support, coeffs = [1, 3, 6], [1.0, 0.8, 0.6]
     x = [0.0] * d
@@ -100,7 +97,7 @@ def main():
     lca = LCA(phi, lam=0.08)
     a = lca.encode(x)
     active = [i for i, ai in enumerate(a) if abs(ai) > 0.05]
-    corr_active = [i for i in range(len(phi)) if abs(_dot(phi[i], x)) > 0.05]   # dense correlation baseline
+    corr_active = [i for i in range(len(phi)) if abs(dot(phi[i], x)) > 0.05]   # dense correlation baseline
     err = sum((x[k] - lca.reconstruct(a)[k]) ** 2 for k in range(d)) ** 0.5
 
     # ---- 2. PRODUCT integration: sparse-coding matcher over the enrolled command library ----

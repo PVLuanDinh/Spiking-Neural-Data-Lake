@@ -41,6 +41,8 @@ Refs:
 """
 import math
 
+from snn_data_lake._mathutils import pearson
+
 THETA0 = 0.05       # baseline / resting threshold (fine tracking resolution)
 BUMP = 1.4          # multiplicative theta bump applied AFTER each spike (> 1)
 DECAY = 0.5         # per-step relaxation of (theta - theta0) toward the baseline (0..1)
@@ -108,13 +110,7 @@ def rmse(a, b):
 
 def correlation(a, b):
     """Pearson correlation of signal `a` and reconstruction `b` (fidelity of shape, 1.0 = perfect)."""
-    n = len(a)
-    ma = sum(a) / n
-    mb = sum(b) / n
-    cov = sum((a[i] - ma) * (b[i] - mb) for i in range(n))
-    va = sum((v - ma) ** 2 for v in a)
-    vb = sum((v - mb) ** 2 for v in b)
-    return cov / math.sqrt(va * vb)
+    return pearson(a, b)
 
 
 def fixed_control_at_error(signal, target_rmse, s_hat0=0.0, iters=90):

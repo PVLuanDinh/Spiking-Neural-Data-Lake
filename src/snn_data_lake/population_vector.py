@@ -42,6 +42,8 @@ implementation, no learning of the tuning curves, 2-D directions only. Not cogni
 import math
 import random
 
+from snn_data_lake._mathutils import mean
+
 
 def angular_error(a, b):
     """Smallest SIGNED angle a - b, wrapped to (-pi, pi], in RADIANS."""
@@ -109,10 +111,6 @@ class PopulationVector:
         return self.preferred[best]
 
 
-def _mean(values):
-    return sum(values) / len(values)
-
-
 def _test_directions(k, seed=12345):
     """k directions drawn uniformly on [0, 2*pi) (fixed seed -> reproducible sweep)."""
     rng = random.Random(seed)
@@ -129,16 +127,16 @@ def main():
     # would make the numbers look rigged; the odd population shows real, small error.
     pop = PopulationVector(n_neurons=15, baseline=5.0, gain=20.0, seed=0)
     errs = [angular_error(pop.decode_direction(t), t) for t in dirs]
-    mean_abs = _mean([abs(e) for e in errs]) * deg
+    mean_abs = mean([abs(e) for e in errs]) * deg
     max_abs = max(abs(e) for e in errs) * deg
-    signed_bias = _mean(errs) * deg                  # ~0 for evenly-spread preferred dirs
+    signed_bias = mean(errs) * deg                  # ~0 for evenly-spread preferred dirs
 
     # ---- 2. accuracy improves with N (fixed noise -> more cells average out the noise) --
     noise = 5.0                                      # std vs peak drive gain=20 (moderate)
     small = PopulationVector(n_neurons=8, baseline=5.0, gain=20.0, seed=0)
     large = PopulationVector(n_neurons=64, baseline=5.0, gain=20.0, seed=0)
-    small_err = _mean([abs(angular_error(small.decode_direction(t, noise), t)) for t in dirs]) * deg
-    large_err = _mean([abs(angular_error(large.decode_direction(t, noise), t)) for t in dirs]) * deg
+    small_err = mean([abs(angular_error(small.decode_direction(t, noise), t)) for t in dirs]) * deg
+    large_err = mean([abs(angular_error(large.decode_direction(t, noise), t)) for t in dirs]) * deg
 
     # ---- 3. noise robustness: population beats reading the single most-active neuron ----
     npop = PopulationVector(n_neurons=16, baseline=5.0, gain=20.0, seed=7)
@@ -147,8 +145,8 @@ def main():
         r = npop.rates(t, noise=noise)               # one noisy rate vector, shared by both
         pop_noisy.append(abs(angular_error(npop.decode(r), t)))
         single_noisy.append(abs(angular_error(npop.best_neuron_direction(r), t)))
-    pop_noisy_err = _mean(pop_noisy) * deg
-    single_noisy_err = _mean(single_noisy) * deg
+    pop_noisy_err = mean(pop_noisy) * deg
+    single_noisy_err = mean(single_noisy) * deg
 
     # ---- 5. determinism: same n/seed/noise -> identical decoded directions --------------
     a = PopulationVector(n_neurons=16, seed=3)

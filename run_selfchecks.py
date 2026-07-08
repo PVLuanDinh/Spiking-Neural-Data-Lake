@@ -24,6 +24,7 @@ _ENV = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "PYTHONPAT
 
 # CORE — the product: arm-loop + data-lake, clone-and-run (root).
 CORE = [
+    "_mathutils",
     "snn_classifier", "nir_export", "spike_telemetry_hub", "streaming_hub", "short_term_plasticity",
     "data_quality", "drift_monitor",
     "lif_neuron", "dendritic_neuron", "spike_slicer", "is_snn_forward", "lt_gate", "spike_pooling", "ring_attractor", "grid_cells",
@@ -51,8 +52,7 @@ RESEARCH = [
     "research/temporal_coding_storage", "research/spike_compression",
     "research/event_quadtree_compression", "research/index_compression", "research/spike_bloom",
     "research/spiking_ssm",
-    "research/spike_knowledge_graph",
-    "research/spike_knowledge_graph_rotate", "research/spike_kg_relations",
+    "research/spike_kg",
     "research/resonator_network", "research/mcr_hdc", "research/bayesian_snn", "research/nmnist_ingest",
     "research/srm_neuron", "research/nef_compute", "research/nef_integrator", "research/stats_bounds",
     "research/loop_latency",

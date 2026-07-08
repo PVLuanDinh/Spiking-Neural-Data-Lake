@@ -42,6 +42,8 @@ import itertools
 import math
 import random
 
+from snn_data_lake._mathutils import softmax
+
 K = 4              # WTA neurons == planted mixture components
 D = 25             # binary features (a 5x5 field)
 N_TRAIN = 8000     # online stream length (single pass)
@@ -101,13 +103,6 @@ def sample_dataset(templates, prior, n, rng):
         x = [1 if rng.random() < templates[c][i] else 0 for i in range(D)]
         data.append((x, c))
     return data
-
-
-def softmax(u):
-    m = max(u)
-    e = [math.exp(v - m) for v in u]
-    s = sum(e)
-    return [v / s for v in e]
 
 
 def membrane(x, w_on, w_off, b):

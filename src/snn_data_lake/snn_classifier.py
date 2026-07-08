@@ -20,8 +20,9 @@ Learning rule (ponytail): supervised local delta rule on per-input spike counts
 Task: 4 distinct 8x8 binary shapes (bar | / - / \ / box), recognised under
 bit-flip noise. Synthetic + self-contained so it trains offline in seconds.
 """
-import math
 import random
+
+from snn_data_lake._mathutils import softmax
 
 # NOTE: no import-time random.seed() — that is a process-global side effect. forward() below is
 # deterministic per sample (seeded from the sample), and main() seeds the module RNG locally for
@@ -114,13 +115,6 @@ def forward(W, sample, n_classes, rng=None):
                 currents[c] += W[c][i]
             synops += n_classes           # one spike -> n_classes synaptic ops
     return currents, counts, synops
-
-
-def softmax(xs):
-    m = max(xs)
-    es = [math.exp(x - m) for x in xs]
-    s = sum(es)
-    return [e / s for e in es]
 
 
 # ---- train (local delta rule) -----------------------------------------------

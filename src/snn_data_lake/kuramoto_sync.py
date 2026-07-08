@@ -37,6 +37,8 @@ neurons, no conduction delays, no network topology beyond all-to-all; not cognit
 import math
 import random
 
+from snn_data_lake._mathutils import mean
+
 
 def critical_coupling(freq_spread):
     """Analytic K_c for a Gaussian natural-frequency distribution (std = freq_spread).
@@ -48,12 +50,8 @@ def critical_coupling(freq_spread):
     return 2.0 * freq_spread * math.sqrt(2.0 / math.pi)
 
 
-def _mean(xs):
-    return sum(xs) / len(xs)
-
-
 def _stdev(xs):
-    m = _mean(xs)
+    m = mean(xs)
     return math.sqrt(sum((x - m) ** 2 for x in xs) / len(xs))
 
 
@@ -123,7 +121,7 @@ class KuramotoNetwork:
         if not self._series:
             raise RuntimeError("call run() before mean_r()")
         tail = max(1, int(len(self._series) * last_frac))
-        return _mean(self._series[-tail:])
+        return mean(self._series[-tail:])
 
 
 def _steady_r(n, coupling, freq_spread, seed, steps, dt, last_frac=0.25):
