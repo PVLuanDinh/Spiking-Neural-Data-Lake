@@ -3,6 +3,31 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.68] -- Adaptive sigma-delta spike coding: fewer spikes at equal fidelity (Zambrano-Bohte) (2026-07-08)
+New CORE encoder `src/snn_data_lake/adaptive_spiking.py` -- an Adaptive Spiking Neuron (ASN) that encodes a continuous analog
+signal predictively: it holds an internal reconstruction `s_hat` (the running sum of the impulses it has already emitted) and an
+ADAPTIVE threshold `theta`, and while the residual `|s - s_hat| >= theta` it emits a signed impulse of `kappa*theta` toward `s`
+(asynchronous sigma-delta -- it only spikes for the part of the signal it has not yet explained). After every spike `theta` is
+bumped UP MULTIPLICATIVELY (`theta *= bump`), then each step relaxes back toward the baseline (`theta = theta0 + (theta-theta0)*decay`).
+The multiplicative bump is the point: a large fast excursion is covered by a handful of ever-bigger spikes (logarithmic, not linear,
+in the jump size), while smooth or constant stretches relax to the fine baseline resolution -- so the SPIKE COUNT SCALES WITH SIGNAL
+VARIATION, not with magnitude or duration (a constant hold, once caught, costs ZERO spikes however long it lasts). This is a peer to
+the `encode_latency`/`encode_poisson` fixed-rate encoders in `spike_preprocessing.py`, which have no reconstruction feedback; here
+the closed-loop predictive coding embodies the neuromorphic efficiency thesis. Deterministic by construction (no RNG). The FAIR
+efficiency claim is measured at MATCHED reconstruction error, NOT matched threshold: the non-adaptive control is the SAME coder with
+`theta` frozen, its fixed threshold BISECTION-TUNED to the same reconstruction RMSE (its best fixed step for that fidelity, not a
+crippled one). Measured on the mixed-dynamics test signal (slow sinusoid + constant hold + fast burst + big square jumps, 600
+samples): the ADAPTIVE coder uses **241 spikes at RMSE 0.0612 (corr 0.9929)** vs the NON-ADAPTIVE control's **411 spikes at RMSE
+0.0611** (matched to 0.21%, `theta_fix` 0.0982) -- **170 fewer spikes, a 1.71x saving at equal fidelity**. Variation-scaling holds:
+an equal-length (120) constant segment costs **0 spikes** vs **195** for a fast segment. CORE module (ruff-enforced under `src/`),
+runs as `python -m snn_data_lake.adaptive_spiking`. Self-check count 137 -> 138; `dependencies = []` intact; the 5 safety-envelope
+files untouched. Refs: Zambrano, D. & Bohte, S.M. (2016), "Fast and Efficient Asynchronous Neural Computation with Adapting Spiking
+Neural Networks", arXiv:1609.02053; Bohte, S.M. (2012), "Efficient Spike-Coding with Multiplicative Adaptation in a Spike Response
+Model", NeurIPS 2012.
+
+### Added
+- `adaptive_spiking` (CORE): ASN sigma-delta / predictive analog-signal encoder with a multiplicative adaptive threshold; `encode` -> signed-impulse train, `reconstruct` -> staircase s_hat, `fixed_control_at_error` for the fair matched-error baseline. Spike count tracks signal variation; 1.71x fewer spikes than a non-adaptive fixed-threshold control at equal reconstruction error.
+
 ## [v2.67] -- ReSuMe: supervised learning of a precise target output spike train (Ponulak-Kasinski 2010) (2026-07-08)
 Fresh research distillation. **`research/resume_learning.py`** implements ReSuMe (Remote Supervised Method; Ponulak & Kasinski,
 Neural Computation 22(2):467-510, 2010): a readout leaky integrate-and-fire neuron with `N_SYN=200` plastic synapses learns to

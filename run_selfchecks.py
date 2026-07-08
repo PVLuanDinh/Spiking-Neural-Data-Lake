@@ -28,7 +28,7 @@ CORE = [
     "data_quality", "drift_monitor",
     "lif_neuron", "dendritic_neuron", "spike_slicer", "is_snn_forward", "lt_gate", "spike_pooling", "ring_attractor", "grid_cells",
     "htm_sequence_memory", "theta_gamma_code", "legendre_memory", "predictive_coding", "spike_stream_sketch", "spike_cardinality", "reservoir_sampling", "sliding_window_count", "frequency_moment", "streaming_quantile", "minhash", "morris_counter", "entropy_coder",
-    "paradigm_b_matcher", "paradigm_b_engine", "vsa_reasoning", "spike_preprocessing", "proximity_index", "energy",
+    "paradigm_b_matcher", "paradigm_b_engine", "vsa_reasoning", "spike_preprocessing", "adaptive_spiking", "proximity_index", "energy",
     "neuro_chip", "neuro_chip_stream",
     "signal_loop", "learned_matcher", "rank_order_coding", "tempotron", "lca_sparse_coding", "evidence_accumulation",
     "reflex", "valence_stdp", "r_stdp", "bcm_plasticity", "homeostatic_scaling", "inhibitory_stdp",
