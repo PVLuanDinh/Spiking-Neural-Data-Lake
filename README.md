@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 131/131 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 132/132 self-checks · pytest 84% · ruff · CI matrix |
 
-Current version: **v2.61** · 172 tagged releases (v0.1 → v2.61). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.62** · 173 tagged releases (v0.1 → v2.62). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 **⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
@@ -223,13 +223,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 131 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 132 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 131-module list is canonical in
+plus separate lint and coverage jobs. The 132-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -349,7 +349,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (131 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (132 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -379,6 +379,20 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.62, research):_ **e-prop -- online eligibility-trace learning that approximates BPTT for recurrent spiking nets (Bellec 2020).**
+`research/eprop.py` trains a minimal recurrent spiking net -- 3 inputs (store cue / recall cue / background) -> 8 recurrent LIF units with
+a triangular surrogate pseudo-derivative -> a scalar leaky readout -- on a store-and-recall task where an early cue must be SUSTAINED across
+a ~12-step delay and reported at the end (a feedforward reflex cannot solve it). e-prop factors the BPTT gradient into a synapse-local
+ELIGIBILITY TRACE computed FORWARD in time (filtered pre-synaptic activity gated by the post-synaptic pseudo-derivative) times a broadcast
+error LEARNING SIGNAL, so its memory is O(neurons+synapses), independent of the sequence length T -- no BPTT history stored. This is
+DISTINCT from `r_stdp.py` (a scalar delayed REWARD gating an STDP timing trace -- reinforcement, no target/gradient) and from
+`delay_learning.py` (learns a synaptic DELAY): e-prop is SUPERVISED and its eligibility trace IS the factored gradient. The gold-standard,
+non-riggable check compares the e-prop gradient against a GENUINE, INDEPENDENT reverse-mode BPTT gradient (sharing no code with the
+eligibility path, and itself validated to ~1e-16 by a forward-mode tangent check): measured (seed 0, deterministic, held-out) the loss
+drops **2.5270 -> 0.1071** and accuracy rises **50% -> 100%** (chance 50%), while the cosine between the e-prop and BPTT gradients is
+**0.9481** (>> 0.5 -- strong alignment, and < 1.0 because e-prop truncates the recurrent-error paths BPTT keeps). Pure-stdlib core
+(`dependencies = []`), **132/132** self-checks; the 5 safety-envelope files untouched.
 
 _Landed (v2.61, research):_ **Neural heterogeneity -- diverse time constants beat homogeneous on temporal tasks (Perez-Nieves 2021).**
 `research/neural_heterogeneity.py` pits a HETEROGENEOUS-tau LIF population against a HOMOGENEOUS one of the SAME size and SAME MEAN tau

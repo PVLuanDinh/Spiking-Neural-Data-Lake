@@ -56,7 +56,7 @@ RESEARCH = [
     "research/resonator_network", "research/mcr_hdc", "research/bayesian_snn", "research/nmnist_ingest",
     "research/srm_neuron", "research/nef_compute", "research/nef_integrator", "research/stats_bounds",
     "research/loop_latency",
-    "research/delay_learning",
+    "research/delay_learning", "research/eprop",
     "research/polychronization", "research/sn_p_system", "research/oja_pca", "research/resonate_and_fire",
     "research/free_energy_control", "research/dishbrain_learning", "research/adex_neuron", "research/triplet_stdp",
     "research/cellular_neural_network", "research/random_boolean_network", "research/neural_heterogeneity",

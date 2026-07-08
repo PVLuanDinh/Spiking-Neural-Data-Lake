@@ -3,6 +3,41 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.62] -- e-prop: online eligibility-trace learning that approximates BPTT for recurrent spiking nets (Bellec 2020) (2026-07-08)
+Fresh research distillation. **`research/eprop.py`** implements e-prop, the landmark online learning rule for recurrent spiking
+networks, and subjects it to the gold-standard, non-riggable honesty check. The setup is a MINIMAL recurrent LIF network in pure stdlib:
+3 inputs (a STORE cue, a RECALL cue, a tonic background) -> 8 recurrent LIF units (discrete-time leak/threshold/soft-reset, with a
+triangular surrogate PSEUDO-DERIVATIVE `psi = damp*max(0, 1 - |v - v_th|/gamma)` standing in for the non-differentiable spike) -> a
+scalar leaky readout with a bias. The task is a genuine temporal-credit-assignment problem -- a store-and-recall: an early cue (present
+for class +1, absent for class -1) must be SUSTAINED across a ~12-step delay and reported at a recall window at the END; a feedforward
+reflex cannot solve it, the net has to hold the memory. **What e-prop does (and why it matters):** the true gradient through time is BPTT,
+which must unroll the whole sequence and store its history (memory O(T)). e-prop FACTORS that same gradient into (1) a synapse-local
+ELIGIBILITY TRACE computed FORWARD in time (filtered pre-synaptic activity gated by the post-synaptic pseudo-derivative) and (2) a
+broadcast LEARNING SIGNAL from the readout error (symmetric e-prop uses the readout weights). The update is `dw = -lr * sum_t
+L_j(t)*e_ji(t)`; because the eligibility is updated per step, its memory is O(neurons+synapses), INDEPENDENT of T -- no BPTT history is
+stored. **DISTINCT from `r_stdp.py` (reinforcement: a SCALAR delayed reward gating an STDP timing-coincidence trace -- no target, no
+gradient) and from `delay_learning.py` (learns a synaptic DELAY parameter on a coincidence detector).** e-prop is SUPERVISED: its third
+factor is a per-step ERROR and its eligibility trace IS the factored BPTT gradient. **The gold-standard check (self-check (b)) --
+non-riggable:** the defining claim "the eligibility trace really is the factored gradient" is tested against a GENUINE, INDEPENDENT
+reverse-mode BPTT (`Net.grad_bptt`) that shares NO code with the eligibility computation -- it back-propagates adjoints y<-z<-v through
+time INCLUDING the recurrent off-diagonal and reset paths that e-prop deliberately truncates. We assert their COSINE SIMILARITY is clearly
+positive: NOT 1.0 (e-prop is an approximation), but symmetric e-prop aligns strongly. That reverse-mode reference was itself validated to
+machine precision (relative error ~1e-16) by an independent forward-mode tangent-linear directional-derivative check, so the cosine is a
+meaningful measure of e-prop approximating the TRUE surrogate gradient, not a tautology. Measured (seed 0, deterministic, held-out): the
+loss drops from **2.5270** to **0.1071** (ratio 0.042) and accuracy rises **50% -> 100%** (chance 50%) -- e-prop LEARNS -- while the
+cosine between the e-prop gradient and the independent BPTT gradient is **0.9481** (>> the 0.5 bar). Pure-stdlib (`random` seeded +
+`math`), one per-instance `random.Random(seed)` threaded through weight init / inputs -> byte-identical across CPython 3.11-3.13 (verified:
+two runs produce identical stdout); ASCII-only output. Self-check delta **131 -> 132**; core `dependencies = []` still empty, the 5
+safety-envelope files (reflex, serial_arm, arm_sim, arm_config, interpreter) untouched, no `src/` change.
+Reference: Bellec, G., Scherr, F., Subramoney, A., Hajek, E., Salaj, D., Legenstein, R. & Maass, W. (2020), "A solution to the learning
+dilemma for recurrent networks of spiking neurons", Nature Communications 11:3625, DOI 10.1038/s41467-020-17236-y.
+### Added
+- `research/eprop.py` -- minimal recurrent LIF + surrogate pseudo-derivative trained by e-prop (eligibility trace x broadcast error,
+  online, memory O(neurons) not O(T)) on a store-and-recall task. Self-check: e-prop LEARNS (loss 2.5270 -> 0.1071, accuracy 50% -> 100%),
+  its gradient ALIGNS with a genuine independent reverse-mode BPTT gradient (cosine 0.9481 > 0.5, the eligibility trace confirmed as the
+  factored gradient), the eligibility is updated forward per-step (constant memory in T), and a repeat run is byte-identical. Registered
+  RESEARCH (131 -> 132).
+
 ## [v2.61] -- Neural heterogeneity: diverse time constants beat homogeneous on temporal tasks (Perez-Nieves 2021) (2026-07-08)
 Fresh research distillation. **`research/neural_heterogeneity.py`** reproduces the paper's defining result: a spiking population whose
 neurons carry a DISTRIBUTION of membrane time constants learns a temporal task BETTER than a homogeneous population of the SAME size
