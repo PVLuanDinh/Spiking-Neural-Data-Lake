@@ -3,6 +3,37 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.63] -- Burst multiplexing: one spike train carries two signals via event-rate and burst-fraction (Naud-Sprekeler 2018) (2026-07-08)
+Fresh research distillation. **`research/burst_multiplexing.py`** builds a genuine MULTIPLEXED neural code -- a single spike train
+carrying TWO independent signals at once -- and subjects it to the defining, non-riggable crosstalk honesty check. Naud & Sprekeler
+(2018) showed that a burst-capable neuron has two nearly-independent degrees of freedom on one axon: the **EVENT RATE** (how often it
+fires an event -- an isolated spike OR a burst onset) and the **BURST FRACTION** (of those events, what fraction are BURSTS of >=2 tight
+spikes rather than singles). Somatic drive sets the event rate; apical/dendritic drive sets the burst probability -- so two input streams
+share one output train. **What this module does:** TWO genuinely independent source signals are generated -- **channel A** and **channel
+B** are sinusoids at DIFFERENT integer frequencies (5 vs 7 cycles), which are ORTHOGONAL over the record (measured corr(A_true, B_true)
+= **+0.000**), with phases drawn from the seeded rng; **B is NOT derived from A**. The ENCODER emits, per time-bin, an event with
+probability affine in A, and (given an event) makes it a burst with probability affine in B, else a single spike -- writing an actual
+spike-TIME train (bursts appear as tight clustered spikes, singles as isolated spikes, events spaced a bin apart). The DECODER sees ONLY
+the spike times: it re-detects events by grouping spikes within a short gap, counts bursts (groups of >=2), and reads event-rate ->
+**A_decoded** and burst-fraction (bursts/events) -> **B_decoded**. The only decoder freedom is a FIXED affine rescale by the code's KNOWN
+range (never a fit to the true signals; Pearson correlation is affine-invariant regardless). **Why it is a real multiplexed code (the
+defining LOW-CROSSTALK check):** each decoded channel must track ITS OWN source far better than the other, proving the two channels share
+one train with little interference. Because event-rate is estimated from event COUNTS (independent of whether events burst) and
+burst-fraction is a RATIO (independent of the absolute rate), the two carriers are separable degrees of freedom. Measured (seed 7,
+deterministic, held-out): channel A (event-rate) corr with its own signal **0.958** vs crosstalk **-0.012**; channel B (burst-fraction)
+corr with its own signal **0.943** vs crosstalk **-0.017** -- each own >> cross, so TWO independent signals were multiplexed through ONE
+spike train and pulled back out cleanly. Pure-stdlib (`random` seeded + `math`), one per-instance `random.Random(seed)` threaded through
+signal phases / event firing / burst firing -> byte-identical across CPython 3.11-3.13 (verified: two runs produce identical stdout);
+ASCII-only output. Self-check delta **132 -> 133**; core `dependencies = []` still empty, the 5 safety-envelope files (reflex, serial_arm,
+arm_sim, arm_config, interpreter) untouched, no `src/` change.
+Reference: Naud, R. & Sprekeler, H. (2018), "Sparse bursts optimize information transmission in a multiplexed neural code", PNAS
+115(27):E6329-E6338, DOI 10.1073/pnas.1720995115.
+### Added
+- `research/burst_multiplexing.py` -- a multiplexed spike code: event-rate carries channel A, burst-fraction carries channel B, decoded
+  independently from ONE spike train. Two independent source sinusoids (5 vs 7 cycles, corr +0.000); decoder re-detects events/bursts from
+  spike TIMES alone with only a fixed known-range rescale. Self-check: A corr 0.958 own vs -0.012 cross, B corr 0.943 own vs -0.017 cross
+  (own >> cross = low-crosstalk multiplexing), and a repeat run is byte-identical. Registered RESEARCH (132 -> 133).
+
 ## [v2.62] -- e-prop: online eligibility-trace learning that approximates BPTT for recurrent spiking nets (Bellec 2020) (2026-07-08)
 Fresh research distillation. **`research/eprop.py`** implements e-prop, the landmark online learning rule for recurrent spiking
 networks, and subjects it to the gold-standard, non-riggable honesty check. The setup is a MINIMAL recurrent LIF network in pure stdlib:

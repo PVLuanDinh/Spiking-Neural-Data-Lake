@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 132/132 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 133/133 self-checks · pytest 84% · ruff · CI matrix |
 
-Current version: **v2.62** · 173 tagged releases (v0.1 → v2.62). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.63** · 174 tagged releases (v0.1 → v2.63). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 **⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
@@ -223,13 +223,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 132 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 133 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 132-module list is canonical in
+plus separate lint and coverage jobs. The 133-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -349,7 +349,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (132 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (133 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -379,6 +379,20 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.63, research):_ **Burst multiplexing -- one spike train carries two signals via event-rate and burst-fraction (Naud-Sprekeler 2018).**
+`research/burst_multiplexing.py` builds a genuine MULTIPLEXED neural code: a single spike train carries TWO independent signals at once --
+**channel A** rides the EVENT RATE (how often the neuron fires an event: an isolated spike OR a burst onset) and **channel B** rides the
+BURST FRACTION (of those events, what fraction are BURSTS of >=2 tight spikes rather than singles). Somatic drive sets the rate, dendritic
+drive sets the burst probability -- two input streams, one axon (Naud & Sprekeler 2018). Two genuinely independent sources -- sinusoids at
+DIFFERENT integer frequencies (5 vs 7 cycles, orthogonal over the record, measured corr(A_true, B_true) **+0.000**, B not derived from A --
+are encoded into ONE spike-TIME train; a decoder that sees ONLY the spike times re-detects events (grouping spikes within a short gap) and
+bursts (groups of >=2) and reads event-rate -> A_decoded, burst-fraction -> B_decoded, with only a FIXED affine rescale by the code's known
+range (no fit to the true signals). The defining, non-riggable check is LOW CROSSTALK: each decoded channel must track ITS OWN source far
+better than the other. Measured (seed 7, deterministic): channel A corr **0.958** own vs **-0.012** crosstalk, channel B corr **0.943** own
+vs **-0.017** crosstalk -- own >> cross, so two independent signals were multiplexed through one train and pulled back out cleanly. Distinct
+from `spike_preprocessing` / `temporal_coding_storage` (each reads ONE scalar per train) -- this is a two-channel spike-CODING primitive, not
+a plasticity rule. Pure-stdlib core (`dependencies = []`), **133/133** self-checks; the 5 safety-envelope files untouched.
 
 _Landed (v2.62, research):_ **e-prop -- online eligibility-trace learning that approximates BPTT for recurrent spiking nets (Bellec 2020).**
 `research/eprop.py` trains a minimal recurrent spiking net -- 3 inputs (store cue / recall cue / background) -> 8 recurrent LIF units with
