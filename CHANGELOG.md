@@ -3,6 +3,35 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.64] -- STDP-WTA Bayesian computation: unsupervised EM emerges from spike-timing plasticity (Nessler 2013) (2026-07-08)
+Fresh research distillation. **`research/stdp_wta_bayes.py`** reproduces Nessler et al. (2013): a generic winner-take-all (WTA)
+microcircuit with soft-max lateral inhibition and a simple STDP rule performs UNSUPERVISED online expectation-maximization for a
+generative mixture model -- Bayesian inference is not programmed in, it EMERGES from the plasticity. Over a binary input, neuron k's
+membrane `u_k = b_k + sum_i (w_on_ki if x_i else w_off_ki)` uses a complementary on/off population code, so u is a proper log-likelihood
+`log P(x|k) + log P(k)`; the WTA soft-max `p(k|x) = softmax(u)` IS the posterior over hidden causes; and the STDP winner update
+`dw_ki ~ eta*(y_i*exp(-w_ki) - 1)` -- whose fixed point is `exp(w_ki) = P(y_i=1|k)` -- drives the weights to conditional probabilities and
+the bias to `exp(b_k) = P(k)`. Training is LABEL-FREE (the true component is never read during learning); the demo plants a K=4 Bernoulli
+mixture (distinct 5x5 prototype masks + a non-uniform prior), streams 8000 samples through the WTA in one online pass, and only AFTER
+training uses the labels to score, via a best-match neuron<->component assignment brute-forced over the K! permutations from the
+learned-weight-vs-template correlation (no test labels). Weights start at the uninformative `log(1/2)` (exp(w)=1/2, equidistant from the
+0.15/0.85 template levels -- not the answer). **DISTINCT from the other Bayesian/sampling modules:** `bayesian_snn` is MC-dropout-style
+uncertainty calibration on a fixed recall (no generative learning); `neural_sampling` is MCMC over a fixed distribution; and
+`restricted_boltzmann` fits a density by contrastive-divergence gradients -- here the density (a mixture) is discovered unsupervised by
+LOCAL STDP in a WTA. Measured (seed 7, deterministic, held-out): unsupervised clustering accuracy **97.9%** (chance 1/K = 25%); the
+learned `exp(w)` tracks the true templates at correlation **0.996** for the matched component vs **0.230** for mismatched ones -- proving
+the weights became `log P(x_i|k)`, not a heuristic; a clean prototype fires its matched neuron with posterior mass 1.00; and the bias
+recovers the prior at corr 0.73. Pure-stdlib (`random` seeded + `math` + `itertools`), one per-instance `random.Random(seed)` threaded
+through the planted mixture / data / weight init / winner sampling -> byte-identical across CPython 3.11-3.13 (verified: two runs produce
+identical stdout); ASCII-only output. Self-check delta **133 -> 134**; core `dependencies = []` still empty, the 5 safety-envelope files
+(reflex, serial_arm, arm_sim, arm_config, interpreter) untouched, no `src/` change.
+Reference: Nessler, B., Pfeiffer, M., Buesing, L. & Maass, W. (2013), "Bayesian Computation Emerges in Generic Cortical Microcircuits
+through Spike-Timing-Dependent Plasticity", PLoS Comput Biol 9(4):e1003037, DOI 10.1371/journal.pcbi.1003037.
+### Added
+- `research/stdp_wta_bayes.py` -- unsupervised STDP-WTA online EM (Nessler 2013): a WTA soft-max posterior + the Nessler winner update
+  learn a planted Bernoulli mixture label-free. Self-check: 97.9% unsupervised clustering (chance 25%), learned exp(w) vs true templates
+  corr 0.996 matched / 0.230 mismatched (weights became log P(x|k)), clean-prototype posterior mass 1.00, deterministic. Registered
+  RESEARCH (133 -> 134).
+
 ## [v2.63] -- Burst multiplexing: one spike train carries two signals via event-rate and burst-fraction (Naud-Sprekeler 2018) (2026-07-08)
 Fresh research distillation. **`research/burst_multiplexing.py`** builds a genuine MULTIPLEXED neural code -- a single spike train
 carrying TWO independent signals at once -- and subjects it to the defining, non-riggable crosstalk honesty check. Naud & Sprekeler

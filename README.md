@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 133/133 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 134/134 self-checks · pytest 84% · ruff · CI matrix |
 
-Current version: **v2.63** · 174 tagged releases (v0.1 → v2.63). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.64** · 175 tagged releases (v0.1 → v2.64). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 **⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
@@ -223,13 +223,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 133 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 134 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 133-module list is canonical in
+plus separate lint and coverage jobs. The 134-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -349,7 +349,7 @@ spiking-neural-data-lake/
   infra/        Terraform — GCP-native lakehouse infrastructure (GCS, BQ, BigLake, Artifact Registry, Pub/Sub)
   deploy/       command_arm.ino — ESP32 actuator firmware (ECHO_ONLY default, fail-safe E-STOP)
   docs/         RUNNING.md · HARDWARE_SETUP.md · IMPROVEMENTS.md · STORAGE_FORMATS.md · arduino_contract.md
-  run_selfchecks.py             canonical zero-dep self-check runner (133 modules)
+  run_selfchecks.py             canonical zero-dep self-check runner (134 modules)
   pyproject.toml                installable package, zero-dep core, optional extras, console scripts
 ```
 
@@ -379,6 +379,15 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.64, research):_ **STDP-WTA Bayesian computation -- unsupervised EM emerges from spike-timing plasticity (Nessler 2013).**
+`research/stdp_wta_bayes.py` reproduces Nessler et al. 2013: a winner-take-all microcircuit with soft-max inhibition + a simple STDP rule
+does UNSUPERVISED online EM for a generative mixture -- the WTA soft-max IS the posterior over hidden causes, and the STDP winner update
+drives `exp(w_ki) -> P(x_i|k)` and `exp(b_k) -> P(k)`. Label-free training on a planted K=4 Bernoulli mixture; measured (deterministic,
+held-out): 97.9% unsupervised clustering accuracy (chance 25%), learned exp(w) vs true templates corr 0.996 matched vs 0.230 mismatched
+(the weights became log-probabilities), clean-prototype posterior mass 1.00. Distinct from `bayesian_snn` (uncertainty calibration),
+`neural_sampling` (MCMC), `restricted_boltzmann` (CD gradients). Pure-stdlib core (`dependencies = []`), **134/134** self-checks; the 5
+safety-envelope files untouched.
 
 _Landed (v2.63, research):_ **Burst multiplexing -- one spike train carries two signals via event-rate and burst-fraction (Naud-Sprekeler 2018).**
 `research/burst_multiplexing.py` builds a genuine MULTIPLEXED neural code: a single spike train carries TWO independent signals at once --
