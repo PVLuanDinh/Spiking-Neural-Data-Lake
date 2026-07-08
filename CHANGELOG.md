@@ -4,89 +4,17 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
 ## [v2.69] -- Weight perturbation: gradient-free reward learning in a spiking net (Fiete-Seung 2006) (2026-07-08)
-Fresh research distillation. **`research/weight_perturbation.py`** implements weight/node perturbation (Fiete, I.R. & Seung, H.S.,
-Phys. Rev. Lett. 97:048104, 2006): a spiking readout learns a task from a single SCALAR reward `R` with NO backprop and NO analytic
-gradient. Each step it perturbs the weights by small iid noise `xi ~ Normal(0, sigma^2)`, runs the network forward, reads the one
-number `R(w+xi)`, and moves along the perturbation reward-weighted: `dw = eta*(R(w+xi) - R_bar)*xi/sigma^2` (`R_bar` a running-mean
-baseline). Averaged over perturbations this is an UNBIASED estimate of the reward gradient `dR/dw` (to first order `R(w+xi)-R(w) ~
-grad.xi` and `E[(grad.xi) xi_i/sigma^2] = grad_i`): the network ASCENDS the true gradient while only ever running forward and reading
-a scalar -- REINFORCE / node-perturbation, biologically plausible (global reward + local synaptic noise), unlike backprop's symmetric
-backward pass. **DISTINCT from the repo's other reward learners:** `src/snn_data_lake/r_stdp.py` is reward-modulated STDP -- a LOCAL
-spike-timing eligibility trace merely GATED by a delayed reward (estimates no gradient); `research/eprop.py` is e-prop, an online
-rule that computes the TRUE analytic gradient forward-in-time. This is GRADIENT-FREE: it forms no gradient analytically and uses no
-timing trace, only (reward, noise) correlations. The task is kept smooth-a.e. in `w` so a finite-difference gradient is meaningful:
-a leaky integrate-and-fire readout (peer of `snn_data_lake.lif_neuron.LIFNeuron`, sub-threshold / tempotron regime) scored on its PEAK
-membrane potential (the tempotron decision variable; peak >= threshold <=> fire) over 4 fixed seeded input spike patterns, reward
-`= -sum (peak - target)^2` with targets encoding fire vs. quiet. **THE UN-RIGGABLE ANCHOR** proves it is a real gradient estimator and
-not a heuristic: at a fixed `w` we estimate `g_hat = mean over samples of (R(w+xi)-R(w)) xi/sigma^2`, and INDEPENDENTLY compute the
-ground-truth gradient by CENTRAL FINITE DIFFERENCES `g_fd[i] = (R(w+eps e_i) - R(w-eps e_i))/(2 eps)` -- a separate code path touching
-no noise -- then assert `cos(g_hat, g_fd) > 0.6` (threshold fixed a priori). MEASURED (seed 7): perturbation learned by reward alone,
-**reward -2.2801 -> -0.0647 (task error 2.2801 -> 0.0647, a 97% drop)**, and the estimator matched the independent finite-difference
-gradient at **cos(g_hat, g_fd) = 0.9928 over 3000 perturbation samples**. Honest: `w` was NOT initialised near the optimum (small
-random init, peaks ~0 vs targets 0.4/1.5), the finite-difference gradient is a fully independent computation, and the cosine threshold
-was fixed before measuring. Deterministic (per-instance `random.Random(seed)` threaded through inputs, init, and both noise sources;
-verified byte-identical on a repeat run). Research module (ruff-excluded), runs as `python research/weight_perturbation.py`. Self-check
-count 138 -> 139; `dependencies = []` intact; the 5 safety-envelope files untouched. Ref: Fiete, I.R. & Seung, H.S. (2006), "Gradient
-Learning in Spiking Neural Networks by Dynamic Perturbation of Conductances", Physical Review Letters 97:048104, DOI
-10.1103/PhysRevLett.97.048104.
 
 ### Added
 - `weight_perturbation` (RESEARCH): gradient-free reward learning via weight perturbation (Fiete-Seung 2006) -- perturb weights with noise, correlate with a scalar reward, ascend the reward with no backprop. Un-riggable anchor: the perturbation estimate matches an independent central-finite-difference gradient at cos 0.9928 (3000 samples); measured learning reward -2.2801 -> -0.0647 (error -97%). Distinct from `r_stdp` (local eligibility trace) and `eprop` (true-gradient online).
 
 ## [v2.68] -- Adaptive sigma-delta spike coding: fewer spikes at equal fidelity (Zambrano-Bohte) (2026-07-08)
-New CORE encoder `src/snn_data_lake/adaptive_spiking.py` -- an Adaptive Spiking Neuron (ASN) that encodes a continuous analog
-signal predictively: it holds an internal reconstruction `s_hat` (the running sum of the impulses it has already emitted) and an
-ADAPTIVE threshold `theta`, and while the residual `|s - s_hat| >= theta` it emits a signed impulse of `kappa*theta` toward `s`
-(asynchronous sigma-delta -- it only spikes for the part of the signal it has not yet explained). After every spike `theta` is
-bumped UP MULTIPLICATIVELY (`theta *= bump`), then each step relaxes back toward the baseline (`theta = theta0 + (theta-theta0)*decay`).
-The multiplicative bump is the point: a large fast excursion is covered by a handful of ever-bigger spikes (logarithmic, not linear,
-in the jump size), while smooth or constant stretches relax to the fine baseline resolution -- so the SPIKE COUNT SCALES WITH SIGNAL
-VARIATION, not with magnitude or duration (a constant hold, once caught, costs ZERO spikes however long it lasts). This is a peer to
-the `encode_latency`/`encode_poisson` fixed-rate encoders in `spike_preprocessing.py`, which have no reconstruction feedback; here
-the closed-loop predictive coding embodies the neuromorphic efficiency thesis. Deterministic by construction (no RNG). The FAIR
-efficiency claim is measured at MATCHED reconstruction error, NOT matched threshold: the non-adaptive control is the SAME coder with
-`theta` frozen, its fixed threshold BISECTION-TUNED to the same reconstruction RMSE (its best fixed step for that fidelity, not a
-crippled one). Measured on the mixed-dynamics test signal (slow sinusoid + constant hold + fast burst + big square jumps, 600
-samples): the ADAPTIVE coder uses **241 spikes at RMSE 0.0612 (corr 0.9929)** vs the NON-ADAPTIVE control's **411 spikes at RMSE
-0.0611** (matched to 0.21%, `theta_fix` 0.0982) -- **170 fewer spikes, a 1.71x saving at equal fidelity**. Variation-scaling holds:
-an equal-length (120) constant segment costs **0 spikes** vs **195** for a fast segment. CORE module (ruff-enforced under `src/`),
-runs as `python -m snn_data_lake.adaptive_spiking`. Self-check count 137 -> 138; `dependencies = []` intact; the 5 safety-envelope
-files untouched. Refs: Zambrano, D. & Bohte, S.M. (2016), "Fast and Efficient Asynchronous Neural Computation with Adapting Spiking
-Neural Networks", arXiv:1609.02053; Bohte, S.M. (2012), "Efficient Spike-Coding with Multiplicative Adaptation in a Spike Response
-Model", NeurIPS 2012.
 
 ### Added
 - `adaptive_spiking` (CORE): ASN sigma-delta / predictive analog-signal encoder with a multiplicative adaptive threshold; `encode` -> signed-impulse train, `reconstruct` -> staircase s_hat, `fixed_control_at_error` for the fair matched-error baseline. Spike count tracks signal variation; 1.71x fewer spikes than a non-adaptive fixed-threshold control at equal reconstruction error.
 
 ## [v2.67] -- ReSuMe: supervised learning of a precise target output spike train (Ponulak-Kasinski 2010) (2026-07-08)
-Fresh research distillation. **`research/resume_learning.py`** implements ReSuMe (Remote Supervised Method; Ponulak & Kasinski,
-Neural Computation 22(2):467-510, 2010): a readout leaky integrate-and-fire neuron with `N_SYN=200` plastic synapses learns to
-fire at a PRECISE target set of output times `S_d`. The weight update is a Widrow-Hoff ("delta") rule lifted onto spikes,
-`dw_i(t) = eta*(S_d(t) - S_out(t))*(a + INT K(s) x_i(t-s) ds)` -- read the sign factor `(S_d - S_out)`: at a DESIRED time it
-POTENTIATES synapses that were recently active (STDP driven by the teacher spike), at a WRONG output time it DEPRESSES synapses
-that just fired (anti-STDP driven by the actual output), and where the two trains agree it does nothing. `K` is an exponential
-learning kernel (`TAU_K=5`) and `a=0.05` a small non-Hebbian offset. The only fixed point is `S_out == S_d`: the neuron reproduces
-the exact target spike train. **DISTINCT from `src/snn_data_lake/tempotron.py`** (Gutig-Sompolinsky 2006), which learns a BINARY
-fire/no-fire DECISION by pushing the peak sub-threshold voltage across (or below) threshold and says nothing about WHEN a spike
-lands; ReSuMe learns the precise output TIMING, the whole target train. Each epoch runs the LIF forward (membrane
-`V[t] = V[t-1]*exp(-1/TAU_M) + sum_i w_i*psc_i[t]`, fire+reset at `THR=1`, `REFRAC=4`) to get the actual output `S_out`, then
-applies the ReSuMe delta summed over all `T_WIN=100` steps. The HONEST metric is the van Rossum spike-train distance -- REUSED
-directly from `snn_data_lake.spike_preprocessing.van_rossum_distance` (the module's standard distance, imported not re-implemented),
-computed between the output and target trains on a single channel. Measured (seed 0, deterministic): the target train is
-`[14, 22, 48, 60, 72]`; the untrained neuron is over-driven and fires 20 wrong spikes `[1, 6, 11, ..., 96]` at van Rossum distance
-**3.905**; after `EPOCHS=80` of ReSuMe it fires exactly `[14, 22, 48, 60, 72]` and nothing else, van Rossum distance **0.000**
-(ratio **0.000**), **5/5** target spikes matched within `+/-3` steps with **0** false positives. An independent random-weight
-(untrained) control neuron on the same inputs sits at van Rossum distance **3.905** -- genuinely far -- so the drop is learning,
-not a trivially-close init or target. This is the true ReSuMe fixed point (an integer time grid with well-separated targets lets
-`S_out` land exactly on `S_d`), reached by a genuine descent (3.905 -> ~1.08 by epoch 10 -> 0.0 by epoch ~20). Honest note: weights
-init small-random and maximally WRONG (20 spikes vs a 5-spike target), spikes are never hand-placed, and the match tolerance
-(`+/-3` steps) and distance thresholds were fixed a priori -- nothing rigged to flatter the metric. Pure-stdlib (`random` seeded +
-`math`; NO numpy/torch), one per-instance `random.Random(seed)` threaded through the input trains / target / weight init ->
-byte-identical across CPython 3.11-3.13 (verified: two runs produce identical stdout); ASCII-only output; runs in ~1s. Self-check
-delta **136 -> 137**; core `dependencies = []` still empty, the 5 safety-envelope files (reflex, serial_arm, arm_sim, arm_config,
-interpreter) untouched, no `src/` change.
-Reference: Ponulak, F. & Kasinski, A. (2010), "Supervised Learning in Spiking Neural Networks with ReSuMe: Sequence Learning,
-Classification, and Spike Shifting", Neural Computation 22(2):467-510, DOI 10.1162/neco.2009.11-08-901.
+
 ### Added
 - `research/resume_learning.py` -- ReSuMe supervised precise-spike-train learning (Ponulak-Kasinski 2010): an LIF readout with
   `N_SYN=200` plastic synapses learns to fire at an exact target train via a Widrow-Hoff spike rule (STDP-from-desired +
@@ -94,37 +22,7 @@ Classification, and Spike Shifting", Neural Computation 22(2):467-510, DOI 10.11
   0 false positives) vs a 3.905 untrained control. Registered in `run_selfchecks.py` (136 -> 137).
 
 ## [v2.66] -- SORN: a self-organizing recurrent reservoir that beats a static one on sequence prediction (Lazar-Pipa-Triesch 2009) (2026-07-08)
-Fresh research distillation. **`research/sorn.py`** builds the Self-Organizing Recurrent Network of Lazar, Pipa & Triesch (2009):
-a recurrent net of `N_E=100` excitatory + `N_I=20` inhibitory BINARY threshold units, `x_E(t+1) = Theta(W_EE x_E - W_EI x_I -
-T_E + u)`, `x_I(t+1) = Theta(W_IE x_E - T_I)`, whose sparse excitatory `W_EE` and thresholds are reshaped online by THREE
-interacting plasticity rules run together during a self-organization phase: (1) STDP on `W_EE` (`dW_ij = eta*(x_i(t)x_j(t-1) -
-x_i(t-1)x_j(t))`); (2) synaptic normalization (each unit's incoming excitatory weights re-scale to sum 1); (3) intrinsic
-plasticity (`T_E_i += eta_ip*(x_i(t) - H_IP)`, pushing every unit toward a target rate `H_IP=0.10`). The FAIR control is an
-identical-architecture STATIC reservoir -- same size, same random wiring and init, same ridge readout trained on the same data,
-plasticity OFF -- so the ONLY difference is whether the three rules ran. The task is next-symbol prediction on a structured stream
-of two words that share a middle of `SHARED_LEN=4` distinct symbols (word1 = `A [g0..g3] D`, word2 = `E [same g0..g3] F`): the
-next-after-shared symbol is `D` or `F` depending on the start seen 5 steps earlier, so it REQUIRES recurrent memory of the word
-identity, and the stream carries seeded per-step INPUT NOISE (4 spurious spikes/step, identical for both nets). That noisy regime
-is where self-organization matters: a static random reservoir sits in a high-activity CHAOTIC regime that amplifies the noise and
-scrambles the stored identity, whereas SORN's three rules pull it to a sparse, homeostatic, NEAR-CRITICAL regime (branching ratio
-`~1`) that carries the signal through the noise. **DISTINCT from `research/spiking_ssm.py`** (a FROZEN random Liquid State Machine
--- the static control here) and from the repo's standalone single-rule primitives (`intrinsic_plasticity`, `homeostatic_scaling`,
-`valence_stdp`/`bcm_plasticity`): SORN is the INTEGRATED self-organizing network those rules build together. Measured (seed 7,
-deterministic, held-out test): SORN next-symbol accuracy **89.1%** vs the fair static reservoir **84.4%** (**+4.7%**; both well above
-chance `1/8 = 12.5%` and the memoryless ceiling `75.0%`, near the full ceiling `91.7%`), and the win is robust -- SORN beat the static
-control on **8/8** seeds (mean margin `+4.6%`). Homeostasis signature: intrinsic plasticity drove the mean E-rate from **0.277 ->
-0.094** (`~ H_IP=0.10`) and collapsed the across-unit rate variance **0.0525 -> 0.0006**; structure signature: STDP broadened the
-(initially normalized) `W_EE` weight std **0.068 -> 0.161** and the network reached a near-critical branching ratio **1.03 -> 1.10**.
-Honest note: SORN's advantage is task-specific -- on a pure counting task with a repeated middle symbol the static chaotic reservoir
-wins because SORN's homeostatic sparsification goes quiescent under sustained identical drive; the shipped task is the noisy
-memory regime where SORN's near-critical code genuinely helps, and the numbers above are the real ones (no readout fit to test
-labels, no crippled control). Pure-stdlib (`random` seeded + `math`; NO numpy/torch), one per-instance `random.Random(seed)` threaded
-through wiring / init / the input+noise stream and NO noise in the dynamics themselves (faithful to Hartmann et al.: SORN's richness
-comes from LEARNING in a deterministic net) -> byte-identical across CPython 3.11-3.13 (verified: two runs produce identical stdout);
-ASCII-only output; runs in ~2s. Self-check delta **135 -> 136**; core `dependencies = []` still empty, the 5 safety-envelope files
-(reflex, serial_arm, arm_sim, arm_config, interpreter) untouched, no `src/` change.
-Reference: Lazar, A., Pipa, G. & Triesch, J. (2009), "SORN: a self-organizing recurrent neural network", Frontiers in Computational
-Neuroscience 3:23, DOI 10.3389/neuro.10.023.2009.
+
 ### Added
 - `research/sorn.py` -- self-organizing recurrent network (Lazar-Pipa-Triesch 2009): `N_E`+`N_I` binary threshold units whose
   sparse `W_EE` and thresholds self-organize via STDP + synaptic normalization + intrinsic plasticity, beating a FAIR static-reservoir
@@ -133,30 +31,7 @@ Neuroscience 3:23, DOI 10.3389/neuro.10.023.2009.
   the static LSM `spiking_ssm`. Registered RESEARCH (135 -> 136).
 
 ## [v2.65] -- ALIF: adaptive-threshold LIF neuron with long-memory threshold adaptation (Bellec 2018, LSNN) (2026-07-08)
-New **CORE** module (shipped zero-dep package, ruff-enforced): **`src/snn_data_lake/alif_neuron.py`** -- an `ALIFNeuron`
-that mirrors the canonical `LIFNeuron` API (`.step(current) -> spike`, `.run(currents)`) but adds the ONE slow state
-variable of Bellec, Salaj, Subramoney, Legenstein & Maass (NeurIPS 2018, the LSNN): an adaptation variable `a(t)` that
-jumps up by 1 on every spike and decays with a SLOW time constant `tau_a >> tau_m`, raising the *effective* firing
-threshold `V_th_eff(t) = v_threshold + beta * a(t)`. Two consequences give the LSNN its name. (1) SPIKE-FREQUENCY
-ADAPTATION: every spike lifts the threshold, so a constant supra-threshold input makes the neuron fire fast then
-progressively slower -- its inter-spike intervals GROW where a plain LIF's stay flat. (2) LONG SHORT-TERM MEMORY:
-because `tau_a >> tau_m`, the elevated threshold OUTLASTS the membrane by many membrane time constants -- after the input
-and the fast membrane have decayed to rest, `a(t)` is still clearly elevated, a slow trace of recent activity the plain
-LIF membrane cannot hold. That slow threshold state is the working memory recurrent LSNNs use to bridge long delays, and
-the neuron model on which this repo's e-prop (`research/eprop.py`, v2.62) learns. **DISTINCT from AdEx**
-(`research/adex_neuron.py`): AdEx adapts a subthreshold + spike-triggered CURRENT `w` that is SUBTRACTED from the
-membrane; ALIF adapts the THRESHOLD itself -- different mechanism, same headline fire-fast-then-slow behaviour. Reduces
-EXACTLY to `lif_neuron.LIFNeuron` when `beta = 0`. Measured (deterministic, `tau_m=10`, `tau_a=300`, `beta=1.2`, constant
-input `I=0.7`): the ALIF's inter-spike intervals grow **4 -> 7 -> 10 -> 14 -> 20 -> 28 -> 39 -> 49 -> 52** steps
-(strictly increasing, 13x) while the identically-driven plain LIF holds a flat ISI of **2** throughout; the threshold
-memory persists **`a=5.705` at input-stop -> `4.829` after 5*tau_m (85% held)** while the membrane has collapsed to
-`v=0.046` (~0), then recovers to `a=0.006` after many `tau_a`; and the `beta=0` ALIF spike train equals the plain LIF
-spike train byte-for-byte (clean, non-riggable correctness anchor). Pure-stdlib (`math` only, no RNG, no wall-clock),
-deterministic by construction (two runs produce identical stdout), ASCII-only output. Self-check delta **134 -> 135**;
-core `dependencies = []` still empty, the 5 safety-envelope files (reflex, serial_arm, arm_sim, arm_config, interpreter)
-untouched, `ruff check .` clean (this is `src/`, so ruff is enforced).
-Reference: Bellec, G., Salaj, D., Subramoney, A., Legenstein, R. & Maass, W. (2018), "Long short-term memory and
-Learning-to-learn in networks of spiking neurons", Advances in Neural Information Processing Systems 31 (NeurIPS 2018).
+
 ### Added
 - `src/snn_data_lake/alif_neuron.py` -- CORE adaptive-threshold LIF neuron (Bellec 2018, LSNN): firing threshold adapts
   as `V_th + beta*a`, giving spike-frequency adaptation and a slow (`tau_a >> tau_m`) threshold trace = long short-term
@@ -164,28 +39,7 @@ Learning-to-learn in networks of spiking neurons", Advances in Neural Informatio
   then recovers, `beta=0` ALIF == plain LIF exactly, deterministic. Registered CORE (134 -> 135).
 
 ## [v2.64] -- STDP-WTA Bayesian computation: unsupervised EM emerges from spike-timing plasticity (Nessler 2013) (2026-07-08)
-Fresh research distillation. **`research/stdp_wta_bayes.py`** reproduces Nessler et al. (2013): a generic winner-take-all (WTA)
-microcircuit with soft-max lateral inhibition and a simple STDP rule performs UNSUPERVISED online expectation-maximization for a
-generative mixture model -- Bayesian inference is not programmed in, it EMERGES from the plasticity. Over a binary input, neuron k's
-membrane `u_k = b_k + sum_i (w_on_ki if x_i else w_off_ki)` uses a complementary on/off population code, so u is a proper log-likelihood
-`log P(x|k) + log P(k)`; the WTA soft-max `p(k|x) = softmax(u)` IS the posterior over hidden causes; and the STDP winner update
-`dw_ki ~ eta*(y_i*exp(-w_ki) - 1)` -- whose fixed point is `exp(w_ki) = P(y_i=1|k)` -- drives the weights to conditional probabilities and
-the bias to `exp(b_k) = P(k)`. Training is LABEL-FREE (the true component is never read during learning); the demo plants a K=4 Bernoulli
-mixture (distinct 5x5 prototype masks + a non-uniform prior), streams 8000 samples through the WTA in one online pass, and only AFTER
-training uses the labels to score, via a best-match neuron<->component assignment brute-forced over the K! permutations from the
-learned-weight-vs-template correlation (no test labels). Weights start at the uninformative `log(1/2)` (exp(w)=1/2, equidistant from the
-0.15/0.85 template levels -- not the answer). **DISTINCT from the other Bayesian/sampling modules:** `bayesian_snn` is MC-dropout-style
-uncertainty calibration on a fixed recall (no generative learning); `neural_sampling` is MCMC over a fixed distribution; and
-`restricted_boltzmann` fits a density by contrastive-divergence gradients -- here the density (a mixture) is discovered unsupervised by
-LOCAL STDP in a WTA. Measured (seed 7, deterministic, held-out): unsupervised clustering accuracy **97.9%** (chance 1/K = 25%); the
-learned `exp(w)` tracks the true templates at correlation **0.996** for the matched component vs **0.230** for mismatched ones -- proving
-the weights became `log P(x_i|k)`, not a heuristic; a clean prototype fires its matched neuron with posterior mass 1.00; and the bias
-recovers the prior at corr 0.73. Pure-stdlib (`random` seeded + `math` + `itertools`), one per-instance `random.Random(seed)` threaded
-through the planted mixture / data / weight init / winner sampling -> byte-identical across CPython 3.11-3.13 (verified: two runs produce
-identical stdout); ASCII-only output. Self-check delta **133 -> 134**; core `dependencies = []` still empty, the 5 safety-envelope files
-(reflex, serial_arm, arm_sim, arm_config, interpreter) untouched, no `src/` change.
-Reference: Nessler, B., Pfeiffer, M., Buesing, L. & Maass, W. (2013), "Bayesian Computation Emerges in Generic Cortical Microcircuits
-through Spike-Timing-Dependent Plasticity", PLoS Comput Biol 9(4):e1003037, DOI 10.1371/journal.pcbi.1003037.
+
 ### Added
 - `research/stdp_wta_bayes.py` -- unsupervised STDP-WTA online EM (Nessler 2013): a WTA soft-max posterior + the Nessler winner update
   learn a planted Bernoulli mixture label-free. Self-check: 97.9% unsupervised clustering (chance 25%), learned exp(w) vs true templates
@@ -193,30 +47,7 @@ through Spike-Timing-Dependent Plasticity", PLoS Comput Biol 9(4):e1003037, DOI 
   RESEARCH (133 -> 134).
 
 ## [v2.63] -- Burst multiplexing: one spike train carries two signals via event-rate and burst-fraction (Naud-Sprekeler 2018) (2026-07-08)
-Fresh research distillation. **`research/burst_multiplexing.py`** builds a genuine MULTIPLEXED neural code -- a single spike train
-carrying TWO independent signals at once -- and subjects it to the defining, non-riggable crosstalk honesty check. Naud & Sprekeler
-(2018) showed that a burst-capable neuron has two nearly-independent degrees of freedom on one axon: the **EVENT RATE** (how often it
-fires an event -- an isolated spike OR a burst onset) and the **BURST FRACTION** (of those events, what fraction are BURSTS of >=2 tight
-spikes rather than singles). Somatic drive sets the event rate; apical/dendritic drive sets the burst probability -- so two input streams
-share one output train. **What this module does:** TWO genuinely independent source signals are generated -- **channel A** and **channel
-B** are sinusoids at DIFFERENT integer frequencies (5 vs 7 cycles), which are ORTHOGONAL over the record (measured corr(A_true, B_true)
-= **+0.000**), with phases drawn from the seeded rng; **B is NOT derived from A**. The ENCODER emits, per time-bin, an event with
-probability affine in A, and (given an event) makes it a burst with probability affine in B, else a single spike -- writing an actual
-spike-TIME train (bursts appear as tight clustered spikes, singles as isolated spikes, events spaced a bin apart). The DECODER sees ONLY
-the spike times: it re-detects events by grouping spikes within a short gap, counts bursts (groups of >=2), and reads event-rate ->
-**A_decoded** and burst-fraction (bursts/events) -> **B_decoded**. The only decoder freedom is a FIXED affine rescale by the code's KNOWN
-range (never a fit to the true signals; Pearson correlation is affine-invariant regardless). **Why it is a real multiplexed code (the
-defining LOW-CROSSTALK check):** each decoded channel must track ITS OWN source far better than the other, proving the two channels share
-one train with little interference. Because event-rate is estimated from event COUNTS (independent of whether events burst) and
-burst-fraction is a RATIO (independent of the absolute rate), the two carriers are separable degrees of freedom. Measured (seed 7,
-deterministic, held-out): channel A (event-rate) corr with its own signal **0.958** vs crosstalk **-0.012**; channel B (burst-fraction)
-corr with its own signal **0.943** vs crosstalk **-0.017** -- each own >> cross, so TWO independent signals were multiplexed through ONE
-spike train and pulled back out cleanly. Pure-stdlib (`random` seeded + `math`), one per-instance `random.Random(seed)` threaded through
-signal phases / event firing / burst firing -> byte-identical across CPython 3.11-3.13 (verified: two runs produce identical stdout);
-ASCII-only output. Self-check delta **132 -> 133**; core `dependencies = []` still empty, the 5 safety-envelope files (reflex, serial_arm,
-arm_sim, arm_config, interpreter) untouched, no `src/` change.
-Reference: Naud, R. & Sprekeler, H. (2018), "Sparse bursts optimize information transmission in a multiplexed neural code", PNAS
-115(27):E6329-E6338, DOI 10.1073/pnas.1720995115.
+
 ### Added
 - `research/burst_multiplexing.py` -- a multiplexed spike code: event-rate carries channel A, burst-fraction carries channel B, decoded
   independently from ONE spike train. Two independent source sinusoids (5 vs 7 cycles, corr +0.000); decoder re-detects events/bursts from
@@ -224,33 +55,7 @@ Reference: Naud, R. & Sprekeler, H. (2018), "Sparse bursts optimize information 
   (own >> cross = low-crosstalk multiplexing), and a repeat run is byte-identical. Registered RESEARCH (132 -> 133).
 
 ## [v2.62] -- e-prop: online eligibility-trace learning that approximates BPTT for recurrent spiking nets (Bellec 2020) (2026-07-08)
-Fresh research distillation. **`research/eprop.py`** implements e-prop, the landmark online learning rule for recurrent spiking
-networks, and subjects it to the gold-standard, non-riggable honesty check. The setup is a MINIMAL recurrent LIF network in pure stdlib:
-3 inputs (a STORE cue, a RECALL cue, a tonic background) -> 8 recurrent LIF units (discrete-time leak/threshold/soft-reset, with a
-triangular surrogate PSEUDO-DERIVATIVE `psi = damp*max(0, 1 - |v - v_th|/gamma)` standing in for the non-differentiable spike) -> a
-scalar leaky readout with a bias. The task is a genuine temporal-credit-assignment problem -- a store-and-recall: an early cue (present
-for class +1, absent for class -1) must be SUSTAINED across a ~12-step delay and reported at a recall window at the END; a feedforward
-reflex cannot solve it, the net has to hold the memory. **What e-prop does (and why it matters):** the true gradient through time is BPTT,
-which must unroll the whole sequence and store its history (memory O(T)). e-prop FACTORS that same gradient into (1) a synapse-local
-ELIGIBILITY TRACE computed FORWARD in time (filtered pre-synaptic activity gated by the post-synaptic pseudo-derivative) and (2) a
-broadcast LEARNING SIGNAL from the readout error (symmetric e-prop uses the readout weights). The update is `dw = -lr * sum_t
-L_j(t)*e_ji(t)`; because the eligibility is updated per step, its memory is O(neurons+synapses), INDEPENDENT of T -- no BPTT history is
-stored. **DISTINCT from `r_stdp.py` (reinforcement: a SCALAR delayed reward gating an STDP timing-coincidence trace -- no target, no
-gradient) and from `delay_learning.py` (learns a synaptic DELAY parameter on a coincidence detector).** e-prop is SUPERVISED: its third
-factor is a per-step ERROR and its eligibility trace IS the factored BPTT gradient. **The gold-standard check (self-check (b)) --
-non-riggable:** the defining claim "the eligibility trace really is the factored gradient" is tested against a GENUINE, INDEPENDENT
-reverse-mode BPTT (`Net.grad_bptt`) that shares NO code with the eligibility computation -- it back-propagates adjoints y<-z<-v through
-time INCLUDING the recurrent off-diagonal and reset paths that e-prop deliberately truncates. We assert their COSINE SIMILARITY is clearly
-positive: NOT 1.0 (e-prop is an approximation), but symmetric e-prop aligns strongly. That reverse-mode reference was itself validated to
-machine precision (relative error ~1e-16) by an independent forward-mode tangent-linear directional-derivative check, so the cosine is a
-meaningful measure of e-prop approximating the TRUE surrogate gradient, not a tautology. Measured (seed 0, deterministic, held-out): the
-loss drops from **2.5270** to **0.1071** (ratio 0.042) and accuracy rises **50% -> 100%** (chance 50%) -- e-prop LEARNS -- while the
-cosine between the e-prop gradient and the independent BPTT gradient is **0.9481** (>> the 0.5 bar). Pure-stdlib (`random` seeded +
-`math`), one per-instance `random.Random(seed)` threaded through weight init / inputs -> byte-identical across CPython 3.11-3.13 (verified:
-two runs produce identical stdout); ASCII-only output. Self-check delta **131 -> 132**; core `dependencies = []` still empty, the 5
-safety-envelope files (reflex, serial_arm, arm_sim, arm_config, interpreter) untouched, no `src/` change.
-Reference: Bellec, G., Scherr, F., Subramoney, A., Hajek, E., Salaj, D., Legenstein, R. & Maass, W. (2020), "A solution to the learning
-dilemma for recurrent networks of spiking neurons", Nature Communications 11:3625, DOI 10.1038/s41467-020-17236-y.
+
 ### Added
 - `research/eprop.py` -- minimal recurrent LIF + surrogate pseudo-derivative trained by e-prop (eligibility trace x broadcast error,
   online, memory O(neurons) not O(T)) on a store-and-recall task. Self-check: e-prop LEARNS (loss 2.5270 -> 0.1071, accuracy 50% -> 100%),
@@ -259,32 +64,7 @@ dilemma for recurrent networks of spiking neurons", Nature Communications 11:362
   RESEARCH (131 -> 132).
 
 ## [v2.61] -- Neural heterogeneity: diverse time constants beat homogeneous on temporal tasks (Perez-Nieves 2021) (2026-07-08)
-Fresh research distillation. **`research/neural_heterogeneity.py`** reproduces the paper's defining result: a spiking population whose
-neurons carry a DISTRIBUTION of membrane time constants learns a temporal task BETTER than a homogeneous population of the SAME size
-with the SAME MEAN tau -- because a spread of tau TILES the temporal input (short-tau neurons resolve WHEN energy arrives, long-tau
-neurons integrate a sustained level), giving a richer, more linearly-separable representation. The task is a 2-D-in-timescale grid: each
-1-D current stimulus carries two INDEPENDENT bits -- a CONCENTRATION bit (a fixed 5-pulse packet, of identical total energy, either
-packed into consecutive early steps or diffused across the early window -- legible only to a SHORT-tau neuron, whose narrow memory lets
-the packed pulses summate to threshold while the spread ones decay between arrivals) and a LEVEL bit (a sustained sub-threshold offset,
-hi/lo, over the whole window -- legible only to a LONG-tau neuron, which accumulates it; a short-tau neuron leaks it away). The 4 classes
-are the (concentration x level) cross-product. **Why heterogeneity is required, not merely helpful:** at a SINGLE tau the response to a
-concentrated packet and the response to a higher sustained level are nearly the SAME spike count -- one filter cannot tell "energy packed
-in time" from "energy held at a higher level" -- so a homogeneous population CONFUSES the concentrated-low class with the diffuse-high
-class. A DIVERSITY of taus supplies both a short-tau sub-population (reads concentration) and a long-tau sub-population (reads level), so
-the grid separates. The readout is a plain spike-COUNT linear classifier over the canonical `snn_data_lake.lif_neuron.LIFNeuron` (reused;
-no hand-coded timing features), so the temporal discrimination has to live in the neuron dynamics == in tau. **The fair control isolates
-spread as the sole cause:** both populations use unit input and the identical readout/training budget, the neurons differ ONLY in tau, and
-homo_tau is set to the arithmetic MEAN of the heterogeneous draws -- so the ONLY difference between the two populations is the SPREAD of
-tau. Measured (seed 0, deterministic, held-out): HETEROGENEOUS **100.0%** vs HOMOGENEOUS-at-mean-tau **70.2%** (margin **+29.8%**), both
-far above the 25% chance (the control learns one timescale-bit cleanly -- it is not crippled). And NO single tau matches the diverse
-population -- tau=min alone 56.0%, tau=max alone 81.0%, mean 70.2% -- so it is the DIVERSITY that wins, not simply picking a longer tau. A
-selectivity-spread probe confirms the mechanism: the heterogeneous population's per-neuron concentration-vs-level selectivity spans a wide
-range (stdev 0.27) while the homogeneous one is uniform (0.00). Pure-stdlib (`random` seeded + `math`), one per-instance
-`random.Random(seed)` threaded through the tau draws / stimuli / dataset shuffle -> byte-identical across CPython 3.11-3.13 (verified: two
-runs produce identical stdout); ASCII-only output. Self-check delta **130 -> 131**; core `dependencies = []` still empty, the 5
-safety-envelope files (reflex, serial_arm, arm_sim, arm_config, interpreter) untouched, no `src/` change.
-Reference: Perez-Nieves, N., Leung, V.C.H., Dragotti, P.L. & Goodman, D.F.M. (2021), "Neural heterogeneity promotes robust learning",
-Nature Communications 12:5791, DOI 10.1038/s41467-021-26022-3.
+
 ### Added
 - `research/neural_heterogeneity.py` -- heterogeneous-tau vs homogeneous-same-mean-tau LIF populations on a multi-timescale temporal
   task. Self-check: the heterogeneous population's held-out accuracy (100.0%) clearly beats the fair homogeneous control (70.2%, +29.8%)
@@ -292,30 +72,7 @@ Nature Communications 12:5791, DOI 10.1038/s41467-021-26022-3.
   range of timescales, and a repeat run is byte-identical. Registered RESEARCH (130 -> 131).
 
 ## [v2.60] -- DishBrain free-energy embodied learning: a culture learns Pong from feedback predictability (Kagan 2022) (2026-07-08)
-Research distillation from the Cortical Labs corpus. **`research/dishbrain_learning.py`** puts a minimal spiking agent inside a
-1-D Pong world and has it LEARN to hit the ball, driven ENTIRELY by the FREE ENERGY PRINCIPLE via the PREDICTABILITY of its sensory
-feedback -- reproducing Cortical Labs' "DishBrain" result (a neural culture embodied in a Pong-like game learns to rally). The world is
-a vertical play-field: a ball at a place-coded position, a paddle the agent moves, a HIT if the paddle overlaps the ball when it
-arrives. The agent is place-coded sensory offset (ball - paddle) -> two plastic motor pathways (UP / DOWN) read out by a winner-take-all
-of two threshold units; the winning unit spikes and nudges the paddle one cell. **The plasticity is the DishBrain feedback rule -- and
-the learning signal is NOT a scalar reward, it is the ENTROPY STRUCTURE of the post-rally stimulation:** a HIT delivers PREDICTABLE
-(consistent, low-entropy) stimulation that Hebbian-CONSOLIDATES the pathway just used; a MISS delivers RANDOM (high-entropy) stimulation
-that dissipates. A homeostatic synaptic decay relaxes every weight toward a neutral prior each rally, so ONLY the consistent
-predictable-on-hit stimulation accumulates -- random stimulation averages to nothing and washes out. The culture therefore drifts toward
-whatever keeps its feedback predictable (i.e. toward hitting), and the hit-rate RISES as an EMERGENT property -- nothing about the
-winning policy is coded in. **The defining, falsifiable control (the paper's own):** a STRUCTURED agent whose feedback is CONTINGENT on
-performance (predictable-on-hit / random-on-miss) LEARNS; a CONTROL given RANDOM feedback REGARDLESS of outcome does NOT improve --
-proving it is the CONTINGENCY between action-outcome and feedback-structure, not stimulation per se, that drives learning. Measured
-(seed 7, deterministic): structured hit-rate **0.58 -> 0.99** (early -> late window, well above the 0.27 geometric chance); control
-**0.30 -> 0.28** (flat). **DISTINCT from the repo's other free-energy / reward modules:** `research/free_energy_control` is spike-level
-control (a spike fires only if it lowers prediction error) with NO embodiment / NO task; `closed_loop` learns from a graded SCALAR
-reward; `r_stdp` / `valence_stdp` are reward-modulated STDP with an explicit scalar reward / reward-prediction-error -- here the network
-never sees a reward number, only whether its feedback is a consistent replay or a scrambled random pattern. Pure-stdlib (`random` seeded
-+ nothing else), one per-instance `random.Random(seed)` threaded through init / ball starts / exploration / the random-feedback
-stimulation -> byte-identical across CPython 3.11-3.13; ASCII-only output. Self-check delta **129 -> 130**; core `dependencies = []` still
-empty, the 5 safety-envelope files (reflex, serial_arm, arm_sim, arm_config, interpreter) untouched, no `src/` change.
-Reference: Kagan, B.J., Kitchen, A.C., Tran, N.T., et al. (2022), "In vitro neurons learn and exhibit sentience when embodied in a
-simulated game-world", Neuron 110(23):3952-3969, DOI 10.1016/j.neuron.2022.09.001.
+
 ### Added
 - `research/dishbrain_learning.py` -- embodied spiking Pong learned from feedback predictability (free-energy principle). Self-check:
   the structured (contingent-feedback) agent's late hit-rate rises clearly above its early baseline and above chance; the random-feedback
@@ -323,28 +80,7 @@ simulated game-world", Neuron 110(23):3952-3969, DOI 10.1016/j.neuron.2022.09.00
   RESEARCH (129 -> 130).
 
 ## [v2.59] — Wavefront arm path planner: reaction-diffusion computing routes the arm around the obstacle (2026-07-08)
-Product-feature integration + promotion. This gives `reaction_diffusion_compute` (the v2.58 excitable-medium wave) a genuine core home
-by building the arm path-planning stage it feeds: **`src/snn_data_lake/wavefront_planner.py`**, a configuration-space wavefront planner
-for the 2-DOF arm. `reaction_diffusion_compute.py` is promoted `research/` -> `src/snn_data_lake/` (a move, net-zero to the module
-total) so the core module `wavefront_planner` can consume its `excite_wave` / `bfs_dist` / `backtrace`. The planner discretizes the
-arm's (theta_A, theta_B) CONFIGURATION SPACE into a grid, labels a cell WALL iff the arm placed there collides — reusing
-`ArmSim.collision()`, the ONE collision authority (end-effector point vs the OBSTACLE circle and the floor) — ignites the excitable wave
-at the GOAL config so arrival time equals geodesic distance, and steepest-descends from the START config into a collision-free
-joint-space path that routes AROUND the C-space obstacle. Closed-form 2-link inverse kinematics (`ik(x, y)`, law of cosines, elbow
-up/down) resolves a Cartesian end-effector goal to a joint config, so `snn-arm --plan-xy X Y` (or `--plan A B` for a joint config) plans
-to a POINT. **Safety:** every waypoint executes as bounded, rate-limited relative `JOINT_[AB]_ROTATE` commands THROUGH the existing
-gated `ArmSim.apply()`, so the E-STOP freeze, the trajectory-deviation comparator, and — on real hardware via `SerialArm.apply()` — the
-calibration gate and command allow-list all stay in force. The planner adds NO new command token, never writes the wire, and modifies
-NONE of the five safety-envelope files (reflex, serial_arm, arm_sim, arm_config, interpreter) — it only calls their public surface
-read-only. Execution aborts on a mid-plan E-STOP (a frozen arm no-ops `apply()`), with an independent `collision()` guard and a hard
-step-budget cap. Off by default (the `--plan-xy` / `--plan` flags are lazy-import + early-return in `live_arm.main()`; the default path
-and `run(observer=None)` stay byte-identical). **Honest ceiling:** collision labelling inherits `ArmSim.collision()` verbatim — an
-EE-POINT vs a point obstacle, no link-body sweep, no joint limits, sampled only at grid cells; small `step_deg` shrinks the gap and the
-day the collision authority gains link-body checking the planner improves for free (it deliberately does not implement its own divergent
-model). Self-check delta **128 -> 129**; both lint gates clean, core `dependencies = []` still empty, the 5 safety-envelope files
-untouched.
-Reference: Steinbock, O., Toth, A. & Showalter, K. (1995), "Navigating complex labyrinths: optimal paths from chemical waves",
-Science 267(5199):868-871 (the wave engine); closed-form 2-link planar inverse kinematics (law of cosines).
+
 ### Added
 - `src/snn_data_lake/wavefront_planner.py` — C-space wavefront arm path planner (`ik`, `CSpaceGrid`, `plan`, `execute`,
   `plan_to_config`, `plan_to_xy`) consuming `reaction_diffusion_compute`. Self-check: IK round-trip + out-of-reach rejection; a
@@ -357,28 +93,7 @@ Science 267(5199):868-871 (the wave engine); closed-form 2-link planar inverse k
   module total) — it now has a core consumer (`wavefront_planner`). Docstring usage line updated to `python -m ...`.
 
 ## [v2.58] — Reaction-diffusion wave computer: shortest paths from excitable-medium fronts (Steinbock-Showalter 1995) (2026-07-08)
-Self-refuel research cycle. Adds `research/reaction_diffusion_compute.py`, a **reaction-diffusion wave computer** — an EXCITABLE
-cellular automaton (each cell REST / EXCITED / REFRACTORY(k) / WALL) that solves a maze the way a Belousov-Zhabotinsky chemical
-medium does: ignite a wave at the start and, because the wavefront travels at a CONSTANT speed, the step it FIRST arrives at any
-cell equals the GEODESIC distance from the start through the free space. Synchronous 4-neighbour (von Neumann) update: a REST
-non-wall cell becomes EXCITED iff a neighbour is EXCITED; an EXCITED cell becomes REFRACTORY(r); REFRACTORY(k) counts down to REST.
-The refractory tail is the whole point — a cell that just fired cannot be re-excited, so the front is ONE-DIRECTIONAL (it never
-re-enters its own wake) and two head-on fronts ANNIHILATE on contact instead of crossing. This is the classic Steinbock-Toth-Showalter
-labyrinth result realized honestly as a discrete excitable medium, and it is on thesis for the repo as a future arm-loop path
-planner (ignite a wave from the goal over an occupancy grid, steer down the arrival-time gradient). **Why it is a genuine
-reaction-diffusion computation and not flood-fill relabeled:** an INDEPENDENT breadth-first search (`collections.deque`, a plain FIFO
-queue) computes the geodesic over the same 4-connected free grid by a completely different code path, and the PRIMARY assert is
-`arrival_time == bfs_dist` for every reachable cell — two unrelated algorithms agreeing that the first-arrival front equals the
-geodesic is a real correctness result, not a tautology. The excitable-medium SIGNATURE that plain diffusion lacks — every cell fires
-on exactly one step (the refractory wake blocks re-excitation; head-on fronts annihilate) — is asserted directly for both a single
-source and two sources. The maze is a FIXED hand-designed 9x9 grid whose two single-cell gaps force a serpentine detour: the geodesic
-`S(1,1) -> T(7,7)` is **24 steps** while the Manhattan distance is only 12, so the shortest path recovered by steepest descent on the
-arrival-time field (back-trace from the target to a 4-neighbour whose arrival is exactly one less, down to the source) is provably a
-real detour, not a straight line — the self-check confirms the 24-step back-trace is 4-adjacent, non-wall, and runs target -> source.
-**Determinism by construction:** no RNG anywhere — a fixed maze and a deterministic synchronous update give a byte-identical arrival
-field on a repeat run (asserted). Pure standard library (`collections.deque`), ASCII-only output. Self-check delta **127 → 128**;
-both lint gates clean, 5 safety-envelope files untouched, core `dependencies = []` still empty.
-Papers: Steinbock, O., Toth, A. & Showalter, K. (1995), "Navigating complex labyrinths: optimal paths from chemical waves", *Science* 267(5199):868-871; Adamatzky, A. (2005), "Reaction-Diffusion Computers", Elsevier.
+
 ### Added
 - `research/reaction_diffusion_compute.py` — excitable-medium wave computer on a fixed maze (`excite_wave` synchronous
   REST/EXCITED/REFRACTORY CA recording first-arrival times, `bfs_dist` independent `collections.deque` geodesic oracle, `backtrace`
@@ -391,29 +106,7 @@ Papers: Steinbock, O., Toth, A. & Showalter, K. (1995), "Navigating complex laby
   Research-tier, ruff-excluded.
 
 ## [v2.57] — Random Boolean Network: the order-chaos transition as a reservoir substrate (Kauffman 1969) (2026-07-08)
-Self-refuel research cycle. Adds `research/random_boolean_network.py`, a **Random Boolean Network** (Kauffman's NK model) —
-N binary nodes, each with exactly K seeded inputs and a FIXED random Boolean truth table over those K inputs (2^K entries, each
-0/1 iid with bias p; p = 0.5 = unbiased). Update is SYNCHRONOUS: every node recomputes from its K inputs' PREVIOUS values. This
-is the dry abstraction of a gene-regulatory network — a fixed random recurrent Boolean substrate — and, tuned to the "edge of
-chaos", a usable RESERVOIR whose high-dimensional fading state separates temporal structure for a cheap readout. It is the
-Boolean-logic cousin of the spiking Liquid State Machine in `research/spiking_ssm.py`, with an exactly solvable phase diagram.
-**The defining property is Derrida's annealed slope, and the self-check anchors on the DERIVED value, not a code-read number:**
-perturb one node (Hamming distance 1 between two state copies), do one synchronous update, and measure the expected resulting
-Hamming distance = the network's sensitivity. Flipping one input changes a node's lookup address, so the two looked-up truth-table
-entries are independent Bernoulli(p) and differ with probability `2p(1-p)`; a perturbed node is seen by K downstream nodes on
-average (total edges N*K -> average fan-out K), so the expected number of flipped nodes = `(avg fan-out) * 2p(1-p) = K*2p(1-p)`.
-At p = 0.5 this is `0.5*K`, so the ordered->chaotic transition (slope crossing 1) sits exactly at **K = 2**: K=1 -> 0.5 (ordered,
-perturbations die out), K=2 -> 1.0 (critical, edge of chaos), K=3 -> 1.5 (chaotic, perturbations amplify). The self-check measures
-the empirical slope over seeded random networks x seeded random states and asserts each is within a tolerance of the theory 0.5*K
-(measured 0.48 / 0.99 / 1.50), plus the ordering slope(K=1) < 1 < slope(K=3) with slope(K=2) ~ 1 — so the transition is proven to
-emerge from real random truth tables. A secondary check follows the deterministic synchronous trajectory of a small (N=16) network
-until a state repeats (guaranteed by pigeonhole in the finite 2^N state space), asserts the cycle length lies in [1, 2^N], and
-verifies the same seed+state reproduces the identical attractor. **Determinism by construction:** a SINGLE per-instance
-`random.Random(seed)` is threaded through all wiring, truth tables, initial states and perturbations in a fixed call order — the
-Mersenne Twister is identical across CPython 3.11/3.12/3.13, so results are byte-identical across the CI matrix (verified: identical
-stdout on a repeat run). Pure standard library (`random` + `collections`), no module-level seeding, ASCII-only output. Self-check
-delta **126 → 127**; both lint gates clean, 5 safety-envelope files untouched, core `dependencies = []` still empty.
-Paper: Kauffman, S.A. (1969), "Metabolic stability and epigenesis in randomly constructed genetic nets", *J. Theoretical Biology* 22(3):437-467.
+
 ### Added
 - `research/random_boolean_network.py` — Kauffman NK Random Boolean Network (`build_rbn` seeded wiring + iid-Bernoulli truth
   tables, `step` synchronous update, `run` trajectory, `derrida_slope` single-perturbation sensitivity, `find_attractor` cycle
@@ -423,28 +116,7 @@ Paper: Kauffman, S.A. (1969), "Metabolic stability and epigenesis in randomly co
   `run_selfchecks.py` RESEARCH tuple (126 → 127). Research-tier, ruff-excluded.
 
 ## [v2.56] — Cellular Neural Network: locally-coupled analog array, template-programmed (Chua-Yang 1988) (2026-07-08)
-Self-refuel research cycle. Adds `research/cellular_neural_network.py`, a **Cellular Neural Network** — a 2-D grid of
-identical analog cells, each carrying a real state x_ij that evolves by the locally-coupled ODE
-`dx_ij/dt = -x_ij + sum A_kl*y_kl + sum B_kl*u_kl + z` over a fixed 3x3 neighbourhood, with output
-`y = f(x) = 0.5*(|x+1| - |x-1|)` (piecewise-linear saturation, clamped to +-1). The machine is "programmed" purely by the
-template triple (A feedback, B control, z bias); swapping templates turns the same array into an edge detector, an inverter,
-an eroder, etc. On-thesis for this repo as a neuromorphic ANALOG array / early-vision operator (compute at the sensor, no
-clock). **Determinism by construction:** a general CNN with off-center feedback is a bistable relaxation network whose
-settled state can depend on inter-cell convergence order — no clean closed form to assert against. We restrict the FEEDBACK
-template to a positive center only (A = [[0,0,0],[0,1,0],[0,0,0]]), which decouples the cells: writing
-w_ij = (B*u)_ij + z (a constant, since u is fixed), each cell obeys `dx/dt = -x + f(x) + w` and settles to the per-cell
-CLOSED FORM `y_ij(inf) = sign((B*u)_ij + z)` — independent of every neighbour's output and of integration order, zero RNG.
-The classic EDGE-DETECT template (A = center-1; B = [[-1,-1,-1],[-1,8,-1],[-1,-1,-1]]; z = -1) gives
-w_ij = 8*u_ij - (sum of the 8 neighbour inputs) - 1 on a binary image (pixels in {-1=white,+1=black}): a black pixel with an
-all-black neighbourhood nets w = 8-8-1 = -1 < 0 (interior erased), a black pixel touching any white neighbour nets w > 0
-(boundary kept), every white pixel nets w < 0 (background stays white) — so the settled grid is exactly the black region's
-outline. Fixed Dirichlet boundary (virtual cells hold u=y=-1); the test image's 4x4 block never touches the border, so the
-outline is exact. A second center-only-A INVERSION template (w = -u) gives the pixelwise complement as an independent
-closed-form assert. The expected bitmaps are HAND-DERIVED from sign((B*u)+z), not copied from a code run. Pure standard
-library (no imports), no randomness, ASCII-only output. Self-check delta **125 → 126**; both lint gates clean, 20 pytest
-unchanged, 5 safety-envelope files untouched, core `dependencies = []` still empty.
-Papers: Chua, L.O. & Yang, L. (1988), "Cellular Neural Networks: Theory", *IEEE Trans. Circuits and Systems* 35(10):1257-1272.
-Roska, T. & Chua, L.O. (1993), "The CNN Universal Machine", *IEEE Trans. Circuits and Systems II* 40(3):163-173.
+
 ### Added
 - `research/cellular_neural_network.py` — base Cellular Neural Network array (`cnn_settle` Euler integrator, `f` PWL
   saturation, `_conv3x3` template convolution with fixed Dirichlet boundary, `render` ASCII printer) plus two center-only-A
@@ -454,21 +126,7 @@ Roska, T. & Chua, L.O. (1993), "The CNN Universal Machine", *IEEE Trans. Circuit
   `run_selfchecks.py` RESEARCH tuple (125 → 126). Research-tier, ruff-excluded.
 
 ## [v2.55] — Spiking Neural P system: membrane computing meets spiking neurons (Ionescu-Paun-Yokomori 2006) (2026-07-08)
-Self-refuel research cycle. Adds `research/sn_p_system.py`, a **Spiking Neural P system** — the membrane-computing
-(P-systems) formalism placed onto spiking neurons. Each neuron is a membrane holding a single nonnegative INTEGER spike
-count `a`, and fires rules of the form `E / a^c -> a^p ; d`: when the count matches the regular-expression predicate E the
-rule consumes `c` spikes, produces `p` spikes onto every outgoing synapse, and imposes a refractory DELAY `d` during which
-the neuron is CLOSED (steps t+1..t+d) — it emits nothing and DROPS every spike that arrives. Neurons update MAXIMALLY in
-PARALLEL, at most one rule per neuron per step, and the machine's output is the emission-time train of a distinguished
-output neuron. The port is **deterministic by construction**: the paper's canonical example is a NONDETERMINISTIC generator
-(two rules sharing one predicate compete so the machine can emit any natural number), which has no single result to assert
-against and clashes with this repo's zero-RNG contract, so that generator is intentionally NOT ported. Instead the same
-engine drives two closed-form constructions with provable trains — an unary **adder** (output emits exactly n+m spikes) and
-a two-neuron **delay generator** (output train perfectly periodic at interval dA+dB+2) — and `step()` asserts at most one
-rule is applicable per neuron, so a nondeterministic configuration fails loudly rather than silently picking one. Pure
-standard library (`collections` only), no randomness, ASCII-only output. Self-check delta **124 → 125**; both lint gates
-clean, 20 pytest unchanged, 5 safety-envelope files untouched, core `dependencies = []` still empty.
-Paper: Ionescu, M., Paun, Gh., Yokomori, T. (2006), "Spiking Neural P Systems", *Fundamenta Informaticae* 71(2-3):279-308.
+
 ### Added
 - `research/sn_p_system.py` — Spiking Neural P system engine (`SNPSystem`, `Rule` namedtuple, `at_least`/`exactly`
   predicate factories) plus two deterministic builders (`build_adder`, `build_delay_gen`). Self-check asserts: (1) the
@@ -477,17 +135,7 @@ Paper: Ionescu, M., Paun, Gh., Yokomori, T. (2006), "Spiking Neural P Systems", 
   Registered in `run_selfchecks.py` RESEARCH tuple (124 → 125). Research-tier, ruff-excluded.
 
 ## [v2.54] — Triplet STDP: the spike-timing rule pair-STDP predicts backwards (Pfister-Gerstner 2006) (2026-07-08)
-Self-refuel research cycle. Adds `research/triplet_stdp.py`, the minimal **triplet spike-timing-dependent plasticity**
-model (Pfister & Gerstner 2006). Pair-based STDP updates a synapse from spike PAIRS only, so for a fixed +10 ms
-pre→post lag it predicts the pairing-frequency dependence *backwards* — cross-pair post-before-pre interactions pile up
-at high rate and drive net LTD, whereas the cortical data (Sjostrom, Turrigiano & Nelson 2001) show potentiation that
-GROWS with frequency. The triplet rule fixes this by gating LTP on a post-pre-post TRIPLET: a second slow post-synaptic
-trace `o2` (tau_y = 125 ms) accumulates with pairing rate, so LTP grows with frequency as measured, and the rule maps
-onto a BCM-like sliding threshold. Four eligibility traces (fast/slow pre `r1`/`r2`, fast/slow post `o1`/`o2`),
-event-driven exact-exponential decay → fully deterministic, zero randomness, offline. Self-check delta **123 → 124**;
-both lint gates clean, 20 pytest unchanged, 5 safety-envelope files untouched, core `dependencies = []` still empty.
-Paper: Pfister, J.-P. & Gerstner, W. (2006), "Triplets of Spikes in a Model of Spike Timing-Dependent Plasticity",
-*J. Neurosci.* 26(38):9673-9682, DOI 10.1523/JNEUROSCI.1425-06.2006.
+
 ### Added
 - `research/triplet_stdp.py` — Pfister-Gerstner minimal triplet STDP (`TripletSTDP`, `.triplet()`/`.pair()` factories,
   `pairing_dw()`). Self-check runs a 1–50 Hz pairing-frequency sweep and asserts: (1) the triplet rule's Δw rises
@@ -497,25 +145,18 @@ Paper: Pfister, J.-P. & Gerstner, W. (2006), "Triplets of Spikes in a Model of S
   `run_selfchecks.py` RESEARCH tuple (123 → 124). Research-tier, ruff-excluded.
 
 ## [v2.53.2] — Patch: ruff-format the test files (CI lint gate, part 2) (2026-07-07)
-The CI `lint` job runs TWO commands — `ruff check .` **and** `ruff format --check tests`. v2.53.1 fixed the
-first, but the two new test files were not `ruff format`-clean, so the second command failed. This tag
-reformats them. Behavior unchanged; 20 tests pass; both lint commands + 123/123 self-checks green locally.
+
 ### Fixed
 - `ruff format` applied to `tests/test_arm_sim.py` + `tests/test_interpreter.py`.
 
 ## [v2.53.1] — Patch: lint-green re-tag of the v2.53 audit fixes (2026-07-07)
-Identical code to v2.53.0 plus a test-only lint fix. v2.53.0 tagged a commit whose CI lint gate was
-red: the new `tests/test_arm_sim.py` / `tests/test_interpreter.py` tripped ruff's full ruleset (unused
-`pytest` import, unsorted imports, over-long assert messages — test files only; all tests passed). This
-tag points at the lint-green commit.
+
 ### Fixed
 - ruff lint in `tests/test_arm_sim.py` + `tests/test_interpreter.py` (F401 / I001 / E501). Behavior
   unchanged; 20 tests pass, `ruff check .` clean across the repo.
 
 ## [v2.53] — Audit fixes: NaN fail-CLOSED + trajectory comparator + authenticated UDP (2026-07-07)
-Surfaced by a turbo `/audit` (report at `.turbo/audit.md`). Verified: **123/123** self-checks, 75 pytest
-(55 existing + 20 new), ruff clean. Safety-envelope files (`reflex`, `arm_sim`) changed under approval;
-each module self-check re-run green.
+
 ### Fixed
 - **P1 — non-finite fail-open closed across every safety fast-path.** `nan`/`inf` parse as valid Python
   floats, then made every `x < bound` danger comparison `False`, so the reflex and contact gates silently
@@ -543,6 +184,7 @@ each module self-check re-run green.
   that previously had only in-module self-check coverage (each includes the P1 regression above).
 
 ## [v2.52] — Live ESP32 → spike encoder data path: real hardware into the fusion front-end (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/esp32_encoder_path.py`** — a data path from the builder's real ESP32 Dev Module (ultrasonic
   rangefinder + MLX90614 IR thermometer, printing `distance_m, temp_k` over serial at 115200 baud) into the existing
@@ -572,6 +214,7 @@ each module self-check re-run green.
   audio absent until that module lands — a data path, not a spiking model of the sensor, not cognition.
 
 ## [v2.51] — Arithmetic / range entropy coder: lossless compression to the Shannon bound (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/entropy_coder.py`** — an *entropy* coder, complementary to the research spike-native integer
   codec: a static-model **range coder** (the byte-renormalized form of arithmetic coding; Rissanen 1976; Witten, Neal
@@ -600,6 +243,7 @@ each module self-check re-run green.
   adaptive/context modelling** — the entropy-coding level, not a spiking implementation, not cognition.
 
 ## [v2.50] — Morris approximate counter: one big total in ~log₂log₂n bits (Morris 1978) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/morris_counter.py`** — the historical *root* of the whole streaming-sketch field: count how
   many times a single event has happened using a register **exponentially smaller than the count** (Morris, "Counting
@@ -629,6 +273,7 @@ each module self-check re-run green.
   Morris⁺/Csűrös bias-corrected variants** — the approximate-counting level, not a spiking implementation, not cognition.
 
 ## [v2.49] — MinHash: Jaccard set resemblance from fixed-size signatures (Broder) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/minhash.py`** — pairwise **set-similarity** estimation (the complement to HLL's single-set
   cardinality): the Jaccard resemblance `J(A,B) = |A∩B|/|A∪B|` estimated *without ever intersecting the sets*
@@ -657,6 +302,7 @@ each module self-check re-run green.
   spiking implementation, not cognition.
 
 ## [v2.48] — Streaming quantiles: any percentile online in O(1) memory (P²) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/streaming_quantile.py`** — the streaming toolkit's missing *order statistic*: estimate any
   percentile of a stream **online in O(1) memory** (5 markers, never storing the observations) via the **P² algorithm**
@@ -686,6 +332,7 @@ each module self-check re-run green.
   implementation, not cognition.
 
 ## [v2.47] — AMS frequency-moment sketch: F₂ (the surprise number / skew) in sublinear memory (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/frequency_moment.py`** — estimates the **second frequency moment** `F₂ = Σᵢ fᵢ²` of the motif
   stream (the "surprise number" — one number for the whole frequency distribution's **skew / self-join size**) via the
@@ -715,6 +362,7 @@ each module self-check re-run green.
   implementation, not cognition.
 
 ## [v2.46] — DGIM sliding-window count: spikes in the last W ticks in O(log²W) memory (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/sliding_window_count.py`** — a *windowed* streaming statistic: "how many spikes fired in the
   **last W ticks**?", answered continuously in **O(log²W)** memory that never stores the events, via **DGIM** (Datar,
@@ -742,6 +390,7 @@ each module self-check re-run green.
   sum-of-values or other windowed aggregate)**, not a spiking implementation, not cognition.
 
 ## [v2.45] — Reservoir sampling: a uniform one-pass sample of an unbounded stream (Vitter) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/reservoir_sampling.py`** — the canonical streaming *sampling* algorithm (Knuth's Algorithm R;
   Vitter, "Random Sampling with a Reservoir", *ACM TOMS* 11:37, 1985): keep a reservoir of size `k` — the first `k`
@@ -771,6 +420,7 @@ each module self-check re-run green.
   (A-Res/A-ExpJ), distributed, or time-decayed variants**, not a spiking implementation, not cognition.
 
 ## [v2.44] — HyperLogLog cardinality: count distinct spike-motifs in fixed tiny memory (Flajolet) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/spike_cardinality.py`** — completes the lake's fixed-memory streaming-sketch trio with the
   third distinct question, **cardinality** ("how *many distinct* motifs has the stream contained?"), via **HyperLogLog**
@@ -801,6 +451,7 @@ each module self-check re-run green.
   representation** — over synthetic motif ids; the cardinality-sketch level, not a spiking implementation, not cognition.
 
 ## [v2.43] — Population vector decoder: read a direction out of a tuned population (Georgopoulos) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/population_vector.py`** — the read-out counterpart to the RBF encoder: the **population
   vector** decode (Georgopoulos, Schwartz & Kettner, *Science* 233:1416, 1986 — how motor cortex encodes movement
@@ -830,6 +481,7 @@ each module self-check re-run green.
   a spiking-network implementation, no learning of the tuning curves, 2-D directions only**; not cognition.
 
 ## [v2.42] — Kalman filter: recursive optimal state estimation (Kalman 1960) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/kalman_filter.py`** — *dynamic* optimal estimation: the linear **Kalman filter** (Kalman,
   "A New Approach to Linear Filtering and Prediction Problems", *J Basic Eng* 82:35, 1960). A linear-Gaussian
@@ -859,6 +511,7 @@ each module self-check re-run green.
   extended/unscented KF, no model-mismatch handling, not spiking**; not cognition.
 
 ## [v2.41] — Hodgkin-Huxley neuron: the conductance-based biophysical action potential (HH 1952) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/hodgkin_huxley.py`** — the neuron family's first *biophysical* member: the classic
   single-compartment space-clamped squid-axon model (Hodgkin & Huxley, *J Physiol* 117:500, 1952). Nothing is imposed
@@ -887,6 +540,7 @@ each module self-check re-run green.
   multi-compartment, no temperature/Q10 scaling, no channel noise**; not cognition.
 
 ## [v2.40] — Bayesian cue integration: reliability-weighted optimal fusion (Ernst-Banks) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/cue_integration.py`** — optimal multisensory integration: given N independent noisy Gaussian
   estimates `xᵢ ± σᵢ` of the *same* latent value, the maximum-likelihood (Bayesian-optimal) combination is closed
@@ -915,6 +569,7 @@ each module self-check re-run green.
   implementation, not a full Bayesian network**; not cognition.
 
 ## [v2.39] — Stochastic resonance: optimal noise maximizes weak-signal detection (Benzi/Wiesenfeld-Moss) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/stochastic_resonance.py`** — the counterintuitive result that **noise is a resource**: a weak
   periodic signal `s(t) = amp·sin(2πft)` whose amplitude is *below* a detector's threshold almost never crosses it, so
@@ -945,6 +600,7 @@ each module self-check re-run green.
   cognition.
 
 ## [v2.38] — Legendre Memory Unit: optimal linear window memory / delay network (Voelker-Eliasmith) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/legendre_memory.py`** — a continuous rolling-window memory: the **Legendre Memory Unit**
   (Voelker, Kajić & Eliasmith, "Legendre Memory Units: Continuous-Time Representation in Recurrent Neural Networks",
@@ -971,6 +627,7 @@ each module self-check re-run green.
   continuous-memory level, **not the trained recurrent LMU cell, not spiking**; not cognition.
 
 ## [v2.37] — Restricted Boltzmann machine: learn an energy-based generative model by CD (Smolensky/Hinton) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/restricted_boltzmann.py`** — unsupervised *learning* of an undirected energy-based generative
   model, the companion to v2.28's neural sampling (which *samples* a given Boltzmann joint; this *learns* one from
@@ -999,6 +656,7 @@ each module self-check re-run green.
   no persistent-CD, no annealed importance sampling** for the true partition function; not cognition.
 
 ## [v2.36] — Efference copy / forward model: cancel reafference, flag exafference (von Holst / Wolpert) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/forward_model.py`** — action-conditioned sensory prediction: an **efference copy** of the
   motor command `u_t` feeds an internal **forward model** that predicts the next sensory state
@@ -1028,6 +686,7 @@ each module self-check re-run green.
   motor-control network, not biophysics**; not cognition.
 
 ## [v2.35] — Astrocyte / tripartite synapse: slow, local, activity-driven glial gain (Araque) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/astrocyte_modulation.py`** — the **third element** of the synapse: an astrocyte that wraps a
   group of synapses, slowly integrates their local activity into intracellular calcium, and once Ca crosses a
@@ -1057,6 +716,7 @@ each module self-check re-run green.
   release biophysics, no diffusion or astrocyte network**; not cognition.
 
 ## [v2.34] — Synfire chain: stable feedforward propagation of a synchronous spike volley (Abeles/Diesmann) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/synfire_chain.py`** — a precise-timing network phenomenon: the **synfire chain** (Abeles,
   *Corticonics*, 1991; Diesmann, Gewaltig & Aertsen, *Nature* 402:529, 1999). A feedforward chain of L pools of w
@@ -1086,6 +746,7 @@ each module self-check re-run green.
   connectivity**; the packet-propagation level of synchrony, not spiking biophysics, not cognition.
 
 ## [v2.33] — Neuronal avalanches: critical branching + scale-free cascade statistics (Beggs-Plenz) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/neuronal_avalanches.py`** — a network-level **criticality** axis (absent until now): the
   reduced Galton-Watson / mean-field branching reading of cortical **neuronal avalanches** (Beggs & Plenz,
@@ -1116,6 +777,7 @@ each module self-check re-run green.
   refractory dynamics**; the avalanche-statistics level of criticality, not spiking biophysics, not cognition.
 
 ## [v2.32] — Evidence accumulation: perceptual decision-making by drift-diffusion (Gold-Shadlen) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/evidence_accumulation.py`** — a *decision-making* capability the core lacked: the algorithmic
   **drift-diffusion / bounded-accumulator** model of two-choice perceptual decisions (Ratcliff, *Psychol Rev* 85:59,
@@ -1145,6 +807,7 @@ each module self-check re-run green.
   algorithmic level of the decision, **not a spiking attractor network (Wang 2002), not biophysics**; not cognition.
 
 ## [v2.31] — Wilson-Cowan neural mass: E/I population dynamics + bifurcation repertoire (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/wilson_cowan.py`** — the canonical mesoscale cortical **neural mass model** (Wilson & Cowan,
   *Biophys J* 12:1, 1972): two coupled mean firing rates, E (excitatory) and I (inhibitory), each relaxing (time
@@ -1176,6 +839,7 @@ each module self-check re-run green.
   reduced rate model, **not spiking biophysics, no spatial extent, no conduction delays**; not cognition.
 
 ## [v2.30] — Hierarchical predictive coding: perceptual inference by prediction-error (Rao-Ballard) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/predictive_coding.py`** — the second dominant theory of cortical inference (alongside v2.28's
   neural sampling): hierarchical **predictive coding** (Rao & Ballard, *Nat Neurosci* 2:79, 1999; Friston free-energy
@@ -1207,6 +871,7 @@ each module self-check re-run green.
   representable-input test is exact — **not spiking biophysics, no precision/attention weighting**; not cognition.
 
 ## [v2.29] — Kuramoto synchronization: emergent phase-locking of coupled oscillators (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/kuramoto_sync.py`** — the canonical model of collective synchronization (Kuramoto 1975;
   Strogatz, *Physica D* 143:1, 2000). N phase oscillators θᵢ with seeded natural frequencies ωᵢ (Gaussian, centered),
@@ -1236,6 +901,7 @@ each module self-check re-run green.
   neurons, no conduction delays, no topology beyond all-to-all**; not cognition.
 
 ## [v2.28] — Neural sampling: probabilistic inference in spikes (Buesing/Maass) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/neural_sampling.py`** — a genuinely new capability class for the lake: **posterior sampling
   from a defined generative joint** (probabilistic inference in spikes). A recurrent network of stochastic spiking
@@ -1265,6 +931,7 @@ each module self-check re-run green.
   kept small so the exact 2ᴺ Boltzmann distribution grounds the correctness test.
 
 ## [v2.27] — Grid cells: 2D path integration on a hexagonal lattice (entorhinal) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/grid_cells.py`** — the entorhinal **grid cell** via the oscillatory-interference model
   (Hafting, Fyhn, Molden, Moser & Moser, *Nature* 436:801, 2005; Burgess, Barry & O'Keefe, *Hippocampus* 17:801,
@@ -1293,6 +960,7 @@ each module self-check re-run green.
   real VCO spiking dynamics, no neural noise, no phase drift/correction**; a mathematical grid-cell twin, not cognition.
 
 ## [v2.26] — Theta-gamma code: ordered working memory by phase multiplexing (Lisman) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/theta_gamma_code.py`** — the canonical **theta-gamma neural code** for short-term working
   memory (Lisman & Idiart, *Science* 267:1512, 1995; Lisman & Jensen, *Neuron* 77:1002, 2013). Several items are
@@ -1318,6 +986,7 @@ each module self-check re-run green.
   items, **no biophysical oscillators / LFP / inhibition dynamics**, not cognition.
 
 ## [v2.25] — Acetylcholine: the encode-vs-retrieve neuromodulator (Hasselmo) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/acetylcholine.py`** — completes the neuromodulator set (dopamine RPE in `valence_stdp`, tonic
   stress in `cortisol`, and now acetylcholine): the canonical Hasselmo **encode-vs-retrieve mode switch**
@@ -1342,6 +1011,7 @@ each module self-check re-run green.
   gating a tiny toy recurrent store on synthetic patterns — a reduced model of cholinergic dynamics, **not cognition**.
 
 ## [v2.24] — Divisive normalization: the canonical gain-control computation (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/divisive_normalization.py`** — divisive normalization, "the canonical neural computation"
   (Carandini & Heeger, *Nat Rev Neurosci* 13:51, 2012). Each unit's response is its own drive divided by the summed
@@ -1365,6 +1035,7 @@ each module self-check re-run green.
   cognition**.
 
 ## [v2.23] — Dendritic neuron: two-compartment BAC firing (Larkum) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/dendritic_neuron.py`** — the neuron-model family's first **nonlinear dendritic** unit (every
   other neuron is a single-compartment point cell): a reduced **two-compartment pyramidal neuron** (soma/basal +
@@ -1389,6 +1060,7 @@ each module self-check re-run green.
   **not cognition**.
 
 ## [v2.22] — Inhibitory STDP: excitation/inhibition balance (Vogels 2011) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/inhibitory_stdp.py`** — the plasticity family's first **inhibitory** rule: the canonical
   Vogels, Sprekeler, Zenke, Clopath & Gerstner mechanism, *"Inhibitory Plasticity Balances Excitation and Inhibition
@@ -1411,6 +1083,7 @@ each module self-check re-run green.
   **not cognition**.
 
 ## [v2.21] — Real serial arm + an ingest wizard, in the app (2026-07-06)
+
 ### Added
 - **Connect a real serial arm from Arm Control.** A `serial:` COM-port field + **Connect** button: on connect, the
   arm buttons route through `serial_arm.SerialArm` (the real actuator sink) instead of the simulator; the canvas keeps
@@ -1430,6 +1103,7 @@ each module self-check re-run green.
   *uses* `SerialArm`; it does not modify the envelope, and every arm action still flows through a gated `apply()`.
 
 ## [v2.20] — Usable desktop app: load your own data, not just demos (2026-07-06)
+
 ### Changed / Fixed (usability)
 After an adversarial usability review (the app was "just a shell" — every button ran real code, but a fresh user
 could not use it on their own problem), the tkinter desktop app (`control_panel.py`) and packaging were fixed:
@@ -1455,6 +1129,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   "Connect COM" in the GUI, and an in-GUI ingest→store→query wizard.)
 
 ## [v2.19] — Frequency-gated cell-assembly memory (FIP/FID) (2026-07-06)
+
 ### Added
 - **`src/snn_data_lake/frequency_memory.py`** — implements the **frequency-induced mechanism** of Lei, Li, Li, Chen,
   Zhang, Jin & Yang, *"How to form brain-like memory in spiking neural networks with the help of frequency-induced
@@ -1479,6 +1154,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   of the paper's FIP/FID + structural plasticity (exact equations paywalled), synthetic patterns — **not cognition**.
 
 ## [v2.18] — Out-of-core streaming: emulate chips bigger than memory (AirLLM-inspired) (2026-07-05)
+
 ### Added
 - **`src/snn_data_lake/neuro_chip_stream.py`** — applies **AirLLM's layer-streaming architecture** to the
   neuromorphic-chip emulator so a chip with far more neurons than fit in RAM can be emulated. The chip's **cores are
@@ -1502,6 +1178,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched.
 
 ## [v2.17] — Neuromorphic-chip emulator: run the whole SNN locally without silicon (2026-07-05)
+
 ### Added
 - **`src/snn_data_lake/neuro_chip.py`** — a functional/architectural **emulator of an event-driven neuromorphic
   processor**. Multiple `Core`s (each a population of `LIFNeuron`s + a per-tick current accumulator) are wired by an
@@ -1526,6 +1203,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched.
 
 ## [v2.16] — R-STDP: reward-modulated STDP with an eligibility trace (distal reward) (2026-07-05)
+
 ### Added
 - **`src/snn_data_lake/r_stdp.py`** — a new member of the plasticity family: **reward-modulated STDP (R-STDP)**
   with a slowly-decaying per-synapse **eligibility trace**. Spike-timing STDP (`dt = t_post - t_pre`, exponential
@@ -1547,6 +1225,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   cognition**; no deep multi-step credit assignment.
 
 ## [v2.15] — Core Runner: the entire core runs inside the app (and the .exe) (2026-07-05)
+
 ### Added
 - **`control_panel.py` gains a fifth tab, "Core Runner"** — runs the **ENTIRE core project from inside the app**:
   every CORE module's own self-check, executed **in-process** (`runpy.run_module(run_name="__main__")` with isolated
@@ -1565,6 +1244,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   (`reflex`/`serial_arm`/`arm_sim`/`arm_config`/`interpreter`) are untouched.
 
 ## [v2.14] — NL Command tab: the natural-language addon, in the desktop app (2026-07-05)
+
 ### Added
 - **`control_panel.py` gains a fourth tab, "NL Command"** — the natural-language addon exposed in the GUI. Type
   an English phrase; `nl_interface` maps it to a **safe, allow-listed** intent: an arm command, a lake query, or a
@@ -1583,6 +1263,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   the gated `ArmSim.apply()`.
 
 ## [v2.13] — One-click download: the Windows app bundled as a release asset (2026-07-05)
+
 ### Added
 - **`packaging/make_release_bundle.py`** (stdlib-only: `zipfile` + `tomllib`) — assembles the end-user download:
   reads the version from `pyproject.toml` and zips the built `dist/snn-ui.exe` together with `QUICKSTART.txt`,
@@ -1596,6 +1277,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   git-ignored; the 5 safety-envelope files are untouched.
 
 ## [v2.12] — Installable Windows .exe: the tkinter desktop app, packaged (2026-07-05)
+
 ### Added
 - **`packaging/`** — build the zero-dep tkinter control panel (`control_panel`) into a **standalone Windows
   `.exe`** with PyInstaller:
@@ -1615,6 +1297,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   every GUI button still routes through the safety-gated `ArmSim.apply()`.
 
 ## [v2.11] — Run locally, no cloud: optional AirLLM natural-language interface (2026-07-05)
+
 ### Added
 - **`src/snn_data_lake/nl_interface.py`** (zero-dep, CORE) — a LOCAL natural-language front-end that turns English
   into a SAFE intent for the arm or a structured query for the data lake. It is the safety FIREWALL between a
@@ -1640,6 +1323,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   language understanding**; fixed intents (no free-form arm parameters).
 
 ## [v2.10] — Hippocampal SWR replay: sample-efficient value learning (2026-07-05)
+
 ### Added
 - **`src/snn_data_lake/experience_replay.py`** — a **sharp-wave-ripple (SWR) style experience-replay**
   buffer, grounded in Nasrin et al. 2021, *"Spiking Neural Networks and Hippocampal Function"*
@@ -1664,6 +1348,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   planning / not a world model**; synthetic streams.
 
 ## [v2.9] — Hippocampal DG→CA3 memory: pattern separation + completion (2026-07-05)
+
 ### Added
 - **`src/snn_data_lake/hippocampus.py`** — a complementary **dentate-gyrus pattern-SEPARATION → CA3
   pattern-COMPLETION** memory over the `[0,1]^N=64` multimodal substrate, grounded in Nasrin et al. 2021,
@@ -1686,6 +1371,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   not a headline accuracy win.
 
 ## [v2.8] — Autonomous adaptive arm loop: grow from multimodal data + learn actions, safely (2026-07-05)
+
 ### Added
 - **`src/snn_data_lake/autonomous_loop.py`** — ties the multimodal pieces into one loop the arm runs on its
   own: multimodal sensing (`multimodal_encoder`) → a GROWING learner that recruits a unit per novel context
@@ -1705,6 +1391,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   cognition**; the four modality streams are synthetic.
 
 ## [v2.7] — Growing spiking learner: novelty-triggered neurogenesis (2026-07-05)
+
 ### Added
 The GROWTH engine on top of the v2.6 multimodal substrate: an online prototype learner that recruits capacity as
 multimodal data streams in. Zero new deps (core `dependencies = []`), 84/84 self-checks, deterministic, ASCII
@@ -1726,6 +1413,7 @@ streams are SYNTHETIC.
   across two identical-seed runs. The growth engine for a robot arm that expands its capacity from multimodal data.
 
 ## [v2.6] — Multimodal spike encoder: fuse visual/temperature/audio/distance into the spike substrate (2026-07-05)
+
 ### Added
 An encoder/fusion FOUNDATION for multimodal growth — the front-end a real sensor array would feed. Zero new
 deps (core `dependencies = []`), 83/83 self-checks, deterministic, ASCII prints. The safety envelope
@@ -1746,6 +1434,7 @@ ENCODER, not "thinking"; the four streams are SYNTHETIC here (no real camera / t
   pipeline-compatibility, and determinism. This is the foundation for a robot arm that grows from multimodal data.
 
 ## [v2.5] — Performance: closed-form Van Rossum fast path + opt-in stream group-commit (2026-07-05)
+
 ### Changed
 Two measured wins in the zero-dep core. No algorithm changed — one is a closed-form identity, the other is
 opt-in with the default behaviour unchanged. Core `dependencies = []`, 82/82 self-checks, deterministic, ASCII
@@ -1776,6 +1465,7 @@ prints. The safety envelope (`reflex` / `serial_arm` / `arm_sim` / `arm_config` 
   `flush_every=K` returns all events on query and flushes the tail on close.
 
 ## [v2.4] — Performance: faster live matcher + Van Rossum + LCA + telemetry ingest (2026-07-05)
+
 ### Changed
 Four measured, low-risk compute wins in the zero-dep core. **Every change is output-identical /
 accuracy-unchanged and proven so** — no algorithm was altered, only redundant work removed. Core
@@ -1805,6 +1495,7 @@ accuracy-unchanged and proven so** — no algorithm was altered, only redundant 
   ingests.
 
 ## [v2.3] — Desktop control panel: zero-dep tkinter UX (arm + recognition + lake) (2026-07-05)
+
 ### Added
 The product's flagship UX lands as a **zero-dependency tkinter desktop control panel**
 (`src/snn_data_lake/control_panel.py`) — tkinter is Python's standard library, so the core
@@ -1834,6 +1525,7 @@ already-verified code paths (nothing reimplemented):
   **untouched**; all arm motion still flows through the existing gated `apply()`.
 
 ## [v2.2] — Arm primitives wired into the loop (opt-in) (2026-07-05)
+
 ### Added (product wiring; the advertised arm primitives are now genuine, opt-in features)
 The built-but-unwired arm primitives are now reachable from the product entry point
 (`src/snn_data_lake/live_arm.py`) as **opt-in, off-by-default** modes. Every one of them routes
@@ -1865,6 +1557,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   (pure wiring), so the self-check count is unchanged.
 
 ## [v2.1] — Paradigm-C reasoning promoted to core: VSA / HD compositional reasoning (2026-07-05)
+
 ### Added (research → product; fills the "reason" verb)
 - Promoted the VSA / hyperdimensional (HDC) reasoner from `research/` into the shipped core as
   **`src/snn_data_lake/vsa_reasoning.py`** (renamed from `research/spiking_vsa.py` to drop the misleading
@@ -1886,6 +1579,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   (a tier move, not an addition); core `dependencies = []` unchanged.
 
 ## [v2.0] — Scope realignment: core refocused on genuinely-spiking modules (2026-07-04)
+
 ### Changed (product → research; breaking: package surface shrank)
 - Moved three modules that were "spiking in name only" out of the installable `snn_data_lake` core into
   `research/` — they compute over dense/binary vectors, not spike events, so they don't belong in a core whose
@@ -1906,6 +1600,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   promote a Paradigm-C reasoner into the core; a zero-dep desktop control panel.)
 
 ## [v1.9] — Core hardening: actuator safety, determinism, robustness (from the core review) (2026-07-04)
+
 ### Fixed (safety-critical, real-hardware boundary)
 - **EMERGENCY_STOP now freezes the WIRE, not just the sim mirror** (`serial_arm.py`). `SerialArm.apply` gates the
   serial write on the stop latch *before* transmitting: once stopped, nothing but EMERGENCY_STOP/HOME/RETRACT_ALL
@@ -1939,6 +1634,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   read-only core review.
 
 ## [v1.8] — AdEx: adaptive exponential integrate-and-fire, spike-frequency adaptation (research) (2026-07-04)
+
 ### Added
 - **`research/adex_neuron.py`** — the adaptive exponential integrate-and-fire neuron (Brette & Gerstner 2005,
   J. Neurophysiol. 94:3637-3642; firing-pattern taxonomy Naud et al. 2008, Biol. Cybern. 99:335-347). The repo's
@@ -1956,6 +1652,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   research->core integration pass is complete at 4 clean slices, v1.1-v1.4; this primitive ships to the research tier).
 
 ## [v1.7] — Resonate-and-fire: a frequency-selective spiking neuron (research) (2026-07-04)
+
 ### Added
 - **`research/resonate_and_fire.py`** — Izhikevich's (2001) resonate-and-fire neuron: where the repo's LIF /
   Izhikevich / SRM neurons are INTEGRATORS (fire on summed amplitude), this is a RESONATOR — a damped 2-D
@@ -1970,6 +1667,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   integration pass is complete at 4 clean slices, v1.1–v1.4).
 
 ## [v1.6] — Oja's rule: unsupervised principal-component extraction (research) (2026-07-04)
+
 ### Added
 - **`research/oja_pca.py`** — Oja's rule (1982): a single linear neuron whose weight converges to the TOP
   PRINCIPAL COMPONENT of its input stream using only a local Hebbian update with a self-normalizing decay
@@ -1983,6 +1681,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   memory → a matcher would overlap the already-integrated SDM matcher — left in research/).
 
 ## [v1.5] — Spike Bloom filter: fixed-memory pattern membership (research) (2026-07-04)
+
 ### Added
 - **`research/spike_bloom.py`** — a zero-dep Bloom filter (Bloom 1970) for set membership over spike patterns:
   "have I EVER seen this exact pattern?" in memory FIXED regardless of how many distinct patterns arrive. m bits,
@@ -2001,6 +1700,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   candidate (fixed-memory dedup of recurring novel patterns in the continual-learning path).
 
 ## [v1.4] — Integration: LCA sparse coding → core, sparse-coding command matcher (2026-07-04)
+
 ### Changed (research → product)
 - **`research/lca_sparse_coding.py` → `src/snn_data_lake/lca_sparse_coding.py`** — promoted the v0.96 Locally
   Competitive Algorithm into the CI-covered zero-dep core and wired it into recognition as an ADDITIVE, opt-in
@@ -2017,6 +1717,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   the established matcher-option pattern (rank-order v0.79 / tempotron v0.82).
 
 ## [v1.3] — Integration: Count-Min sketch → core, streaming_hub.hot_motifs analytics (2026-07-04)
+
 ### Changed (research → product)
 - **`research/spike_stream_sketch.py` → `src/snn_data_lake/spike_stream_sketch.py`** — promoted the v0.98
   Count-Min heavy-hitter sketch into the CI-covered zero-dep core and wired it into the streaming lake as an
@@ -2035,6 +1736,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   I-term (the controller already has an integral population — a forced fit; left in research/).
 
 ## [v1.2] — Integration: HTM temporal memory → core, lake sequence-anomaly monitor (2026-07-04)
+
 ### Changed (research → product)
 - **`research/htm_sequence_memory.py` → `src/snn_data_lake/htm_sequence_memory.py`** — promoted the v0.97 HTM
   temporal memory into the CI-covered zero-dep core and wired it into the data lake as an ADDITIVE, opt-in,
@@ -2052,6 +1754,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   integration pass (this one on the data-lake side); one coherent, safety-preserving slice per cycle.
 
 ## [v1.1] — Integration: ring attractor → core, spiking proprioception for the arm (2026-07-04)
+
 ### Changed (research → product)
 - **`research/ring_attractor.py` → `src/snn_data_lake/ring_attractor.py`** — promoted the v0.95 continuous
   attractor network into the CI-covered zero-dep core and wired it into the arm as an ADDITIVE, opt-in,
@@ -2068,6 +1771,7 @@ motion through the existing **safety-gated `ArmSim.apply` / `SerialArm.apply`**,
   research→core integration pass (data lake + arm); one coherent, safety-preserving slice per cycle.
 
 ## [v1.0] — NEF integrator: spiking working memory via recurrent dynamics (100th release) (2026-07-04)
+
 ### Added
 - **`research/nef_integrator.py`** — the third NEF principle, DYNAMICS: wire a population's decoded output back
   to its own input (identity recurrent transform) and it becomes a neural INTEGRATOR / line attractor. Every
@@ -2083,6 +1787,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
 {ubuntu,windows}×{3.11,3.12,3.13}. The core remains pure standard library (`dependencies = []`)._
 
 ## [v0.99] — NEF compute: represent + transform a value in a spiking population (2026-07-04)
+
 ### Added
 - **`research/nef_compute.py`** — the Neural Engineering Framework (Eliasmith & Anderson) in zero-dep Python:
   how to COMPUTE with spiking neurons. A scalar x is REPRESENTED by a heterogeneous population of LIF cells
@@ -2096,6 +1801,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   Core `dependencies` still `[]`. On-thesis with `population_encoding` / `spike_preprocessing`.
 
 ## [v0.98] — Spike-stream sketch: Count-Min heavy-hitter motif detection in fixed memory (2026-07-04)
+
 ### Added
 - **`research/spike_stream_sketch.py`** — the lake's streaming-analytics answer to "which spike motifs recur
   most?" over an unbounded stream, in memory that is FIXED regardless of how many distinct patterns arrive. A
@@ -2111,6 +1817,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   On-thesis with `streaming_hub` / `spike_telemetry_hub` / `drift_monitor` (the data-lake / analytics side).
 
 ## [v0.97] — HTM temporal memory: high-order sequence prediction over SDRs (2026-07-04)
+
 ### Added
 - **`research/htm_sequence_memory.py`** — a zero-dep Numenta HTM temporal memory: the lake can store/recall spike
   patterns, this PREDICTS the next one from context. Each input is a sparse set of active columns; each column
@@ -2127,6 +1834,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   Core `dependencies` still `[]`. On-thesis with `sparse_distributed_memory` / `drift_monitor` / `lca_sparse_coding`.
 
 ## [v0.96] — LCA sparse coding: lateral-inhibition network finds the sparse code (2026-07-03)
+
 ### Added
 - **`research/lca_sparse_coding.py`** — the Rozell (2008) Locally Competitive Algorithm as a zero-dep
   lateral-inhibition network. Each dictionary atom is a leaky neuron driven by its match to the signal
@@ -2142,6 +1850,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   `dependencies` still `[]`. On-thesis with `spike_compression` / `sparse_distributed_memory` / `fly_hash`.
 
 ## [v0.95] — Ring attractor: angular path integration for joint-state dead-reckoning (2026-07-03)
+
 ### Added
 - **`research/ring_attractor.py`** — a zero-dep continuous attractor network (CAN): N rate units on a ring
   hold a single self-sustaining activity bump via local excitation + global inhibition. With no input the bump
@@ -2156,6 +1865,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
 - Registered in `run_selfchecks.py` RESEARCH (**72/72** self-checks). Core `dependencies` still `[]`.
 
 ## [v0.94] — Polychronization: memory stored in spike timing (delay-matched neuronal groups) (2026-07-03)
+
 ### Added
 - **`research/polychronization.py`** — a zero-dep demonstration of Izhikevich (2006) Polychronous Neuronal
   Groups (PNGs): a `DelayNetwork` of `LIFNeuron` coincidence detectors wired with per-synapse **conduction
@@ -2170,6 +1880,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   is ruff-excluded (reuses the stdlib `LIFNeuron` from `src/` via a path shim, the established research/ idiom).
 
 ## [v0.93] — Neuromorphic phases in pure stdlib: LIF / SpikeSlicer / IS-SNN forward / LT-Gate / max-pool (2026-07-03)
+
 ### Added
 - The pure-Python (zero-dep, no-tensor) twin of the v0.92 torch subproject — the same neuromorphic phases as
   CI-covered **core** `src/snn_data_lake/` modules (the repo core IS pure stdlib, so this brief lands on-thesis):
@@ -2195,6 +1906,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   zero-dep core (clone-and-run + CI matrix) and the v0.92 torch subproject (optional GPU research).
 
 ## [v0.92] — Trained-SNN subproject complete: SpikeSlicer / IS-SNN / LT-Gate / Max-Former (torch, quarantined) (2026-07-03)
+
 ### Added
 - **`research/neuromorphic_torch/`** — the framework-heavy neuromorphic phases (brief Phases 2-4) as a
   quarantined torch + SpikingJelly subproject (own venv; NOT core deps, NOT in run_selfchecks / CI; the core
@@ -2216,6 +1928,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   brief's 4-phase neuromorphic-DB spec under the "quarantine the frameworks in research/" plan.
 
 ## [v0.91] — Neuromorphic phases: Victor-Purpura distance + VP proximity index (stdlib); torch subproject scaffold (2026-07-02)
+
 ### Added
 - **`src/snn_data_lake/spike_preprocessing.py`**: `victor_purpura_distance(ev_a, ev_b, q)` (+ `_victor_purpura_1d`)
   — the Victor-Purpura spike-train edit distance, tunable cost `q` (q->0 = spike-count/rate difference; large q =
@@ -2236,6 +1949,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   subproject with their own venv. Implements the "quarantine the frameworks in research/" plan.
 
 ## [v0.90] — Integration: Izhikevich neuron promoted as an additive richer neuron option (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/izhikevich_neuron.py`** (promoted from research/, zero-dep): the Izhikevich
   2-equation model as an ADDITIVE alternative neuron, reproducing the cortical firing zoo the repo's LIF
@@ -2251,6 +1965,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   core `dependencies` stays `[]`. 64/64.
 
 ## [v0.89] — Integration: intrinsic plasticity promoted as an additive excitability self-tuner (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/intrinsic_plasticity.py`** (promoted from research/, zero-dep): an
   `IntrinsicPlasticity` neuron whose `adapt` (Triesch rule) tunes gain a and bias b so the output
@@ -2264,6 +1979,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
 
 ## [v0.88] — Integration: homeostatic scaling promoted as an additive rate-stabilizer (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/homeostatic_scaling.py`** (promoted from research/, zero-dep): a
   `HomeostaticNeuron` with `stabilize` — multiplicative synaptic scaling toward a rate set-point, an
@@ -2277,6 +1993,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
 
 ## [v0.87] — Integration: BCM plasticity promoted (competitive selectivity on the classifier shapes) (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/bcm_plasticity.py`** (promoted from research/, zero-dep): `develop_selectivity`
   runs BCM's sliding-threshold rule on `snn_classifier`'s distinct 8x8 shape inputs; one unit
@@ -2290,6 +2007,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
 
 ## [v0.86] — Integration: short-term plasticity promoted as an additive streaming onset filter (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/short_term_plasticity.py`** (promoted from research/, zero-dep): `novelty_filter`
   runs a streamed channel's spike times through a Tsodyks-Markram DEPRESSING synapse, returning a
@@ -2303,6 +2021,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
 
 ## [v0.85] — Integration: FlyHash LSH index promoted as an additive candidate filter (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/fly_hash.py`** (promoted from research/, zero-dep): `FlyHashIndex` turns each
   stored window into a sparse binary tag (fly-olfaction expansion + WTA) so tag-overlap is a
@@ -2316,6 +2035,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
 
 ## [v0.84] — Integration: spiking SOM promoted as an additive clustering backend (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/spiking_som.py`** (promoted from research/, zero-dep): `som_cluster` lays
   unknown windows onto a Kohonen map (competitive WTA BMU + lateral neighbourhood) and groups them by
@@ -2328,6 +2048,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   preserved. Pure-stdlib, CI-covered; core `dependencies` stays `[]`. 64/64.
 
 ## [v0.83] — Integration: SDM associative-recall matcher promoted into the product (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/sparse_distributed_memory.py`** (promoted from research/, zero-dep): `SDMMatcher`
   recognizes a window by Kanerva distributed associative recall — it writes each command's binarized
@@ -2342,6 +2063,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   `[]`. 64/64.
 
 ## [v0.82] — Integration: tempotron gesture matcher promoted into the product (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/tempotron.py`** (promoted from research/, zero-dep): `TempotronMatcher` enrolls
   one Gutig-Sompolinsky tempotron per command on the live `build_default_library`, training each to
@@ -2356,6 +2078,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. 64/64.
 
 ## [v0.81] — Integration: NIR export promoted into the product (deploy the trained recognizer) (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/nir_export.py`** (promoted from research/, zero-dep): the NIR-graph emitter is
   now a PRODUCT module with `export_classifier(W)` that maps a trained `snn_classifier` weight matrix
@@ -2369,6 +2092,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   this = deploy). Pure-stdlib, deterministic, CI-covered; core `dependencies` stays `[]`. 64/64.
 
 ## [v0.80] — Integration: spiking CPG promoted into the product (rhythmic arm motor primitive) (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/cpg_oscillator.py`** (promoted from research/, zero-dep): the Matsuoka
   half-center CPG is now a PRODUCT motor primitive. `cpg_sweep(arm, ...)` drives ArmSim joint A with
@@ -2384,6 +2108,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   `[]`; the arm's safety envelope (collision + E-STOP) is preserved. 64/64 self-checks.
 
 ## [v0.79] — Integration: rank-order coding promoted into the product (gain-invariant matcher) (2026-07-02)
+
 ### Added / Changed
 - **`src/snn_data_lake/rank_order_coding.py`** (promoted from research/, zero-dep): the Thorpe
   rank-order code is now a PRODUCT module with a `RankOrderMatcher` enrolled on the real command
@@ -2398,6 +2123,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   it as the default recognizer is a follow-up. 64/64 self-checks (promotion, not a new count).
 
 ## [v0.78] — Research: intrinsic plasticity (Triesch) — info-max excitability self-tuning (2026-07-02)
+
 ### Added
 - **`research/intrinsic_plasticity.py`** (zero-dep): Triesch's intrinsic plasticity — a neuron adapts
   its transfer-function gain a and bias b to drive its output firing-rate DISTRIBUTION toward an
@@ -2414,6 +2140,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   distribution, not just the mean, and is input-scale invariant.
 
 ## [v0.77] — Research: short-term plasticity (Tsodyks-Markram dynamic synapses) (2026-07-02)
+
 ### Added
 - **`research/short_term_plasticity.py`** (zero-dep): the Tsodyks-Markram dynamic synapse — utilization
   u (facilitation) and resources R (depression) evolve per spike, so a single synapse's gain depends on
@@ -2430,6 +2157,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   synaptic dynamics, distinct from the long-term STDP/BCM learning rules.
 
 ## [v0.76] — Research: BCM plasticity — selectivity development via a sliding threshold (2026-07-02)
+
 ### Added
 - **`research/bcm_plasticity.py`** (zero-dep): the Bienenstock-Cooper-Munro rule — dw = lr*x*y*(y-theta)
   with a modification threshold theta that tracks the neuron's own <y^2>, so responses above theta
@@ -2447,6 +2175,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   scaling.
 
 ## [v0.75] — Research: Izhikevich neuron — cortical spiking regimes from a 2-eq model (2026-07-02)
+
 ### Added
 - **`research/izhikevich_neuron.py`** (zero-dep): the Izhikevich model — membrane v + recovery u and
   four params (a,b,c,d) reproduce the cortical firing zoo the repo's LIF cannot (regular-spiking,
@@ -2461,6 +2190,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   (bursting, adaptation) beside the LIF and srm_neuron models, at LIF-like cost.
 
 ## [v0.74] — Research: homeostatic synaptic scaling (Turrigiano) — rate-stable learning (2026-07-02)
+
 ### Added
 - **`research/homeostatic_scaling.py`** (zero-dep): homeostatic synaptic scaling — a neuron measures
   its own rate and MULTIPLICATIVELY rescales all synapses toward a set-point, the stabilizer the
@@ -2477,6 +2207,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   plasticity axis, distinct from the STDP/tempotron learning rules it stabilizes.
 
 ## [v0.73] — Research: spiking CPG (Matsuoka half-center oscillator) — rhythmic motor drive (2026-07-02)
+
 ### Added
 - **`research/cpg_oscillator.py`** (zero-dep): a Matsuoka central pattern generator — two mutually-
   inhibiting neurons with slow adaptation produce a sustained ANTI-PHASE rhythm from a single tonic
@@ -2492,6 +2223,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   robot-loop axis, distinct from the reactive spiking_pid controller.
 
 ## [v0.72] — Research: rank-order coding (Thorpe) — gain-invariant classification by spike order (2026-07-02)
+
 ### Added
 - **`research/rank_order_coding.py`** (zero-dep): Thorpe's rank-order code — classify a pattern by the
   ORDER its afferents first fire (strongest input spikes first), discarding magnitude. One spike per
@@ -2508,6 +2240,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   invariance.
 
 ## [v0.71] — Research: tempotron — supervised spike-timing learning in one neuron (2026-07-02)
+
 ### Added
 - **`research/tempotron.py`** (zero-dep): the Gutig-Sompolinsky tempotron (Nat. Neurosci. 2006) — one
   leaky neuron trained to fire for one class of spatiotemporal spike patterns and stay silent for
@@ -2523,6 +2256,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   rate/STDP/delay/surrogate learners already in the repo — supervised, timing-based.
 
 ## [v0.70] — Research: spiking self-organizing map — unsupervised topographic store index (2026-07-02)
+
 ### Added
 - **`research/spiking_som.py`** (zero-dep): a Kohonen SOM built from the repo's own primitives — a
   winner-take-all BMU spike + a decaying Gaussian lateral-neighbourhood update — that lays stored
@@ -2538,6 +2272,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   organization), distinct from the WTA routing in snn_moe_classifier and the FlyHash/SDM store line.
 
 ## [v0.69] — Research: Sparse Distributed Memory (Kanerva) — distributed content-addressable store (2026-07-02)
+
 ### Added
 - **`research/sparse_distributed_memory.py`** (zero-dep): Kanerva's SDM (1988) — a large set of
   random D-bit hard-location addresses, each holding D integer bit-counters; write activates every
@@ -2555,6 +2290,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   model) — a foundational baseline, not a duplicate.
 
 ## [v0.68] — Research: FlyHash — bio-inspired LSH for the store's similarity search (2026-07-02)
+
 ### Added
 - **`research/fly_hash.py`** (zero-dep): the fruit-fly olfactory hashing algorithm as an
   approximate-nearest-neighbour index over the spike store — sparse random EXPANSION (d -> 20d
@@ -2574,6 +2310,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   duplicates, `index_compression` (compresses ids) and the associative-memory recall path.
 
 ## [v0.67] — Research: NIR export — spiking models -> Neuromorphic Intermediate Representation (2026-07-02)
+
 ### Added
 - **`research/nir_export.py`** (zero-dep): emit the repo's spiking models (LIF / Affine / Linear /
   Delay / Threshold + I/O) as a **NIR graph** — the cross-platform IR that Loihi 2, SpiNNaker 2, Speck
@@ -2595,6 +2332,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   torch/hardware, not built.
 
 ## [v0.66] — Research: cycle-3 scan builds (reason / store / control / metrics) (2026-07-02)
+
 ### Added
 - **`research/resonator_network.py`** — VSA factorization (decompose a bound product) the built VSA
   lacked: 2-factor 100%, 3-factor 70% via superposition search + restarts. Refs: arXiv:2208.12880.
@@ -2621,6 +2359,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   torch/hardware, not built.
 
 ## [v0.65] — Research: modern-Hopfield energies (softmax + log-sum-ReLU) in dense AM (2026-07-02)
+
 ### Added
 - **`research/dense_associative_memory.py`**: the two modern (continuous) energies alongside the
   polynomial spectrum — softmax / log-sum-exp (Ramsauer 2020, ↔ attention) and **log-sum-ReLU /
@@ -2634,6 +2373,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   self-checks stay green; core `dependencies` stays `[]`.
 
 ## [v0.64] — Research: drift monitor (D3), spike compression, loop latency (D2) (2026-07-02)
+
 ### Added
 - **`src/snn_data_lake/drift_monitor.py`** (core, zero-dep): online drift + novelty watch on the encoded
   stream — Population Stability Index vs an enrolled reference + an OeSNN-style novelty rate — warns
@@ -2654,6 +2394,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   timings); core `dependencies` stays `[]`. Cycle 2 of the literature-driven scan — no framework adopted.
 
 ## [v0.63] — Research: dense associative memory, spiking VSA, LSM sequence model (2026-07-02)
+
 ### Added
 - **`research/dense_associative_memory.py`** (zero-dep): higher-order Hopfield where degree n=2 recovers
   the classical 0.138·N bound and n=4 stores cleanly past P=2·N — placing the repo's associative-memory
@@ -2681,6 +2422,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   a 2024–2026 literature scan mapped onto the store/search/reason thesis — no framework adopted.
 
 ## [v0.62] — Research: energy claim + classical-Hopfield baseline (2026-07-02)
+
 ### Added
 - **`energy.py`** (core, zero-dep): converts measured SynOps to an estimated Joules/inference vs a
   dense-ANN baseline, with cited per-op constants (45 nm MAC/AC, Horowitz 2014; Loihi per-SynOp,
@@ -2703,6 +2445,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   thesis); only the energy-accounting idea was worth taking.
 
 ## [v0.61] — Engineering: pytest suite, ruff + pre-commit, CI matrix (2026-07-01)
+
 ### Added
 - **`tests/` pytest suite** beside the zero-dep `run_selfchecks.py` (the smoke gate stays): edge-case
   unit tests for the safety-critical paths — `serial_arm` calibration gate + fail-safe raise, `reflex`
@@ -2734,6 +2477,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   is intentionally left for a follow-up.
 
 ## [v0.60] — Product: actuator path, research quarantine, installable src/ package
+
 ### Added
 - **Actuator path** (`serial_arm.py`): `SerialArm` — drop-in for `ArmSim` that also writes each
   command over serial to the ESP32 servo sketch (`deploy/command_arm.ino`). `live_arm --actuate
@@ -2766,6 +2510,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
 - 37/37 stdlib self-checks green; wheel verified (30 modules + 3 console scripts).
 
 ## [v0.59] — GCP Phase 1 verified end-to-end + Vertex job fix
+
 ### Verified
 - **Phase 1 ran end-to-end on a live GCP project** (`snn-data-lake-prod`): Terraform infra →
   Bronze in GCS → **Dataproc Serverless** Medallion ETL → **BigLake/BigQuery**. The Gold table
@@ -2783,6 +2528,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
 - `.gitignore`: never commit Terraform state (`*.tfstate`, `.terraform/`).
 
 ## [v0.58] — High-dim spiking MBRL: Dreamer-lite on a 6-DOF arm
+
 ### Added
 - `snn_dreamer_6dof.py`: a model-based-RL agent with all three frontier pieces — a **6-joint
   redundant planar arm** (6 actuators → 2D tip; the redundancy is the high-dim challenge), a
@@ -2800,6 +2546,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   out of scope. Own venv (`.venv-arm`), excluded from CI.
 
 ## [v0.57] — Joint world-model RL (closed loop, both nets spiking)
+
 ### Added
 - `snn_world_model_rl.py`: closes the Policy Network + Forward Dynamics Model into ONE
   model-based-RL loop (Dreamer-style, analytic gradients). The spiking policy learns to reach
@@ -2813,6 +2560,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   a learned value function, 6-DOF) remains out of scope — this is the deepest research item.
 
 ## [v0.56] — Forward Dynamics Model (Phase 4 world-model half)
+
 ### Added
 - `snn_motor_control.py` `ForwardDynamics`: a spiking **world model** (snnTorch surrogate
   gradients) predicting the next end-effector position from (joint angles, action deltas).
@@ -2827,6 +2575,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   remain out of scope.
 
 ## [v0.55] — Wire the new modules into the live loops
+
 ### Changed
 - `spiking_pid.py`: the control loop now runs `arm_sim`'s **trajectory-deviation comparator** —
   an external perturbation injected mid-run is flagged (edge safety reflex) and the PID drives
@@ -2842,6 +2591,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
 - 36/36 self-checks, green (additive; the 95% recognition path unchanged).
 
 ## [v0.54] — Surrogate-gradient SNN motor control (research track)
+
 ### Added
 - `snn_motor_control.py`: a spiking **Policy Network** trained end-to-end with snnTorch
   **surrogate gradients** (fast_sigmoid) for a 2-DOF reach task — BPTT through differentiable
@@ -2850,6 +2600,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   **excluded from CI**. Scoped down from the brief's Forward-Dynamics + 6-DOF Franka (deferred).
 
 ## [v0.53] — Delta Lake PoC (lakehouse-tier storage upgrade)
+
 ### Added
 - `lakehouse/delta_demo.py`: local Delta Lake proof (delta-rs / `deltalake`, no Spark/JVM) —
   12 streaming micro-batch appends → 12 files → `OPTIMIZE` → **1 file**, 2400 rows intact,
@@ -2859,6 +2610,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   streaming-sink upgrade for the (still **unverified**) cloud Bronze path.
 
 ## [v0.52] — NEF spiking PID + Gold synchrony view
+
 ### Added
 - `spiking_pid.py`: NEF-style **population-coded** P/I/D controller driving `arm_sim` joints —
   converges to setpoint, noise-robust. Stdlib, **CI**.
@@ -2870,6 +2622,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   is not in the stdlib CI, so the conflict was latent.
 
 ## [v0.51] — Robot-arm + Silver picks from the Gemini brief
+
 ### Added
 - `population_encoding.py`: RBF/Gaussian receptive-field **population encoder** for continuous
   signals — noise-robust vs single-neuron coding. Stdlib, CI.
@@ -2884,6 +2637,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
 - 33 → **36** self-checks, green.
 
 ## [v0.50] — Robustness + infra hardening
+
 ### Added
 - `arm_config.py`: central arm calibration (distance bins, `CONTACT`, `W`/`STRIDE`, IR fusion,
   `bins_from_capture()`).
@@ -2902,6 +2656,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
 - 32 → **33** self-checks (added `arm_config`), green.
 
 ## [v0.49] — Repo cleanup: clone-and-run in one step
+
 ### Changed
 - README: a top-level **Clone & run** section — `git clone … && python demo.py` (one file,
   zero-dep), then `live_arm.py` (full loop on the real captures) and `gesture_recognition.py`
@@ -2913,6 +2668,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
 (Docs / config only — no code or graph change.)
 
 ## [v0.48] — One-file runnable demo (`python demo.py`)
+
 ### Added
 - `demo.py`: a single, **self-contained, zero-dependency** file that runs the whole loop on
   embedded sample data — sensor `(distance, temp)` → window → **order-aware recognition** →
@@ -2924,6 +2680,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
 - `demo` → **32 self-checks**, green.
 
 ## [v0.47] — Live real-hardware loop closed: sensor → recognize → Interpreter → arm sim
+
 ### Added
 - `live_arm.py`: streams sensor `(distance, temp)` → buffers W → **order-aware** gesture
   recognition (v0.46) → **Interpreter** (gesture→command: approach=`GRIPPER_CLOSE`,
@@ -2936,8 +2693,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
 - `live_arm` → **31 self-checks**, green.
 
 ## [v0.46] — Real-gesture recognition via the order-aware Paradigm B engine (63% → 95%)
-The builder's labeled captures (MakiKuri00 — `robot arm/{IDLE,HAND_APPROACH,HAND_RETREAT}.csv`,
-already committed in PR #6) now run end-to-end.
+
 ### Added
 - `gesture_recognition.py`: recognizes the 3 real gestures. First pass (template / Van Rossum on
   min-max-normalized windows) hit **63%** — IDLE separated (82%) but APPROACH/RETREAT collapsed:
@@ -2950,8 +2706,7 @@ already committed in PR #6) now run end-to-end.
 - `gesture_recognition` added → **30 self-checks**, green.
 
 ## [v0.45] — Builder's first real capture, ingested (CSV adapter)
-MakiKuri00 pushed the first real hardware capture — `robot arm/serial_sensor_log.csv` (ESP32
-ultrasonic + IR, 812 lines) and a pyserial logger `sensor_reading.py`.
+
 ### Review of the capture
 - Logger prepends a `Timestamp` column → our numeric-only contract rejects **every row (0/812)**.
 - ESP32 boot banner leaked into the log (~10 lines) — the "no text on the data port" violation.
@@ -2970,7 +2725,7 @@ ultrasonic + IR, 812 lines) and a pyserial logger `sensor_reading.py`.
   per-gesture captures** — the outstanding training deliverable.
 
 ## [v0.44] — PyBullet arm sim + statistical test bounds + SRM neuron
-Adopted the 3 feasible proposals from Gemini's application/robot-arm brief.
+
 ### Added
 - `arm_sim.py`: a 2-link planar arm the closed loop drives — command → joint motion →
   end-effector pose → collision. **stdlib backend** (exact forward kinematics + geometric
@@ -2995,6 +2750,7 @@ Adopted the 3 feasible proposals from Gemini's application/robot-arm brief.
   the *unreached* target — measured best = **90.0%**.
 
 ## [v0.43] — Data-quality gates: block promotion to Gold on bad data
+
 ### Added
 - `data_quality.py` (stdlib): `gate()` enforces **schema** (t/channel in range, int),
   **encodability** (lossless serialize round-trip), Bronze **immutability** (content hash
@@ -3012,16 +2768,13 @@ Adopted the 3 feasible proposals from Gemini's application/robot-arm brief.
   (hardware → sim-only), #5 fully-temporal (measured −6 pt regression) deferred.
 
 ## [v0.42] — Unified: core + robot-arm application merged back onto `main`
-Reverses the v0.40 split — `main` now holds the **whole project** again: the data-lake/SNN
-core *and* the robot-arm application (signal loop, hybrid matcher, reflex, RPE dopamine,
-cortisol, the Interpreter, the closed loop) plus the builder sensor work (incl. MakiKuri00's
-`robot arm/sensor/sensor.ino`). The `robot-arm` branch stays on the remote for the
-collaborator; everything it held now lives on `main`.
+
 ### Changed
 - CI restored to the **full self-check matrix** (core + app).
 - README + `docs/RUNNING.md`: the application runs from `main` (no branch checkout).
 
 ## [v0.41] — Streaming hub (live append + record-while-query) + capacity cliff mapped
+
 ### Added
 - `streaming_hub.py`: the streaming counterpart to the batch telemetry hub. Durable append-only
   `.spkl` log (8 B/event, flushed per event) + a live in-memory per-channel index → record
@@ -3035,8 +2788,7 @@ collaborator; everything it held now lives on `main`.
 - `streaming_hub` added → **15 core stdlib self-checks**, green.
 
 ## [v0.40] — Split: core on `main`, robot-arm application on the `robot-arm` branch
-`main` is now the spiking **data lake + SNN core** only. The robot-arm **application** moved to
-the [`robot-arm` branch](../../tree/robot-arm) (where collaborator hardware work already lives).
+
 ### Removed from `main` (live on the `robot-arm` branch)
 `signal_loop`, `learned_matcher`, `reflex`, `valence_stdp`, `cortisol`, `interpreter`,
 `closed_loop`, `make_sensor_dataset`, `sensor_demo`, `docs/arduino_contract.md`,
@@ -3051,8 +2803,7 @@ application to the `robot-arm` branch. (History below for v0.32–0.39 stays —
 live on, on the branch.)
 
 ## [v0.39] — First real hardware: builder's sensor (ultrasonic + IR) end-to-end
-The Arduino builder shipped `sensor.ino` (2 channels: ultrasonic distance + MLX90614 IR temp,
-115200, 10 Hz). Reviewed it, modeled its data, and ran the whole stack on its domain.
+
 ### Review of `sensor.ino`
 - Works mechanically; our parser handles its `"d, t"` comma-space format and skips its banner.
 - **Bug**: idle printed `"___"` (when nothing within 3 m) → unparseable → every idle sample
@@ -3071,6 +2822,7 @@ The Arduino builder shipped `sensor.ino` (2 channels: ultrasonic distance + MLX9
 - `make_sensor_dataset` + `sensor_demo` added → 23 stdlib self-checks, green.
 
 ## [v0.38] — Docs: unified local + cloud runbook
+
 ### Added
 - `docs/RUNNING.md`: one guide to run the data lake **locally** (zero-dep core, the robot-arm
   closed loop, the Medallion lakehouse PoC, real N-MNIST, GPU training, the graph) and on
@@ -3080,7 +2832,7 @@ The Arduino builder shipped `sensor.ino` (2 channels: ultrasonic distance + MLX9
 (Docs only — no code change; graph unchanged.)
 
 ## [v0.37] — The Interpreter + the loop closed end-to-end
-Built the downstream Interpreter box and closed the whole reaction loop on one machine.
+
 ### Added
 - `interpreter.py`: matched signature label → concrete robot command (`JOINT_A_ROTATE(+15deg)`,
   `GRIPPER_CLOSE`, …) + reflex map (`STOP→EMERGENCY_STOP`, `WITHDRAW→RETRACT_ALL`). Priority:
@@ -3101,7 +2853,7 @@ Built the downstream Interpreter box and closed the whole reaction loop on one m
   proves the loop in-process.
 
 ## [v0.36] — Closed loop: dopamine + cortisol wired into the live signal loop
-The v0.35 neuromodulators now run *inside* the live loop via an outcome feedback channel.
+
 ### Added
 - **Outcome feedback channel**: the Interpreter sends `OUTCOME <reward>` lines (reward in
   [-1,+1], good=+, bad=-) back into the loop's input, applied to the last acted signal
@@ -3121,7 +2873,7 @@ The v0.35 neuromodulators now run *inside* the live loop via an outcome feedback
   loop and `--serial` (pyserial) are unaffected.
 
 ## [v0.35] — Neuromodulators: RPE dopamine + cortisol stress-state
-Upgraded the learned-instinct layer into the brain's actual fast/slow neuromodulator pair.
+
 ### Changed
 - `valence_stdp.py`: learning is now driven by the reward **PREDICTION ERROR**
   (`dopamine = reward − predicted_value`), not raw reward. Yields real dopamine behaviour:
@@ -3142,7 +2894,7 @@ Upgraded the learned-instinct layer into the brain's actual fast/slow neuromodul
   plasticity) are the right ones; cortisol is not yet wired into the live loop.
 
 ## [v0.34] — Instinctive action: reflex fast-path (#2) + reward-modulated valence (#3)
-Two kinds of instinct layered on top of recognition: hardwired reflex, and learned valence.
+
 ### Added
 - `reflex.py` (#2): a fast LIF reflex arc. Priority "nociceptor" channels (collision force,
   over/under current, over-temp) fire **STOP/WITHDRAW before** the encode → lake → match
@@ -3165,7 +2917,7 @@ Two kinds of instinct layered on top of recognition: hardwired reflex, and learn
   (ch6 current, ch7 force) are **placeholders** pending the Arduino builder's real limits.
 
 ## [v0.33] — Continual learning: record non-matching signals, cluster, promote to new signatures
-The robot-arm loop no longer drops unknowns — it grows its own vocabulary.
+
 ### Added
 - `signal_loop.py`: novel/rejected windows are recorded **live** to `data/unknowns.jsonl`
   (`record_unknown_line`, wired into every run). `--learn` clusters the unknowns by Van
@@ -3182,9 +2934,7 @@ The robot-arm loop no longer drops unknowns — it grows its own vocabulary.
   non-deterministic across runs. Now `crc32`-seeded; a saved `signatures.json` reproduces.
 
 ## [v0.32] — First real-world application: robot-arm signal loop (encode → lake → match → Interpreter)
-The repo's primitives wired into a live closed-loop application. Shipped flat (no app
-branches — branches are for in-progress work, not parallel apps; a `core/`+`apps/` monorepo
-is the move *when* a 2nd real app with its own users lands).
+
 ### Added — robot-arm application
 - `signal_loop.py` — the real-time loop: signal window → `encode_latency` (deterministic
   spikes) → `.spc` data lake (gzip) → match → JSON line on stdout for the Interpreter.
@@ -3206,9 +2956,7 @@ is the move *when* a 2nd real app with its own users lands).
   the loop self-checks the wire contract parser with no hardware).
 
 ## [v0.31] — Real event-camera data: N-MNIST ingestion (DVS spikes, not pixels)
-Closes the one real gap in Gemini's improvement brief — the repo trained only on static
-MNIST. N-MNIST is MNIST recorded by a Dynamic Vision Sensor: native async `(x, y, t, p)`
-spike events on a 34×34×2 grid, no rate/latency conversion needed.
+
 ### Added
 - `nmnist_ingest.py` — end-to-end data-lake leg: events → **Bronze** gzip event store →
   bin into T frames (a stdlib Tonic `ToFrame` analog) → **Silver** spike raster → **ICR**
@@ -3237,8 +2985,7 @@ spike events on a 34×34×2 grid, no rate/latency conversion needed.
 - `nmnist_ingest.py` added to the stdlib self-check matrix (runs via synthetic fallback).
 
 ## [v0.30] — Scale-tuning recipe found: 1600 neurons → 90.0% on GPU
-The next step toward 95%: diagnosed the v0.29 scale-collapse, found the fix via GPU sweeps,
-ran the tuned full job.
+
 ### Method
 - Two proxy sweeps at 1600/6k (6 GPU runs) isolated the scaling recipe: as neurons grow,
   **lower** per-synapse inhibition (`NORD_INH` 120→60 — more neurons already deliver more
@@ -3258,8 +3005,7 @@ ran the tuned full job.
   numbers.
 
 ## [v0.29] — Real GPU training results (honest correction): 95% NOT yet reproduced
-Ran the actual GPU training on an RTX 5070 (cu128). The repo had claimed "6400 → ~95% (GPU)"
-as the target; the measured results correct that.
+
 ### Measured (RTX 5070, torch 2.11.0+cu128)
 - **400 neurons / 20k → 86.4%** test accuracy — matches Diehl & Cook 2015 (~87%). Pipeline
   is correct.
@@ -3281,7 +3027,7 @@ as the target; the measured results correct that.
   jobs, not serial ~1.5-day local runs. No faked numbers.
 
 ## [v0.28] — Streaming ingest (Pub/Sub + Dataflow) + Cloud Composer DAG
-Wires the GCP scale-out's streaming + orchestration layers (artifacts only; run with your auth).
+
 ### Added
 - `gcp/dataflow_ingest.py` — Apache Beam streaming pipeline: Pub/Sub subscription -> parse
   JSON spike events -> 60 s fixed windows -> Parquet in GCS Bronze (the continuous version
@@ -3299,9 +3045,7 @@ Wires the GCP scale-out's streaming + orchestration layers (artifacts only; run 
 ### Remaining (documented): Dataplex governance, Cloud DLP de-id, KMS CMEK, Analytics Hub.
 
 ## [v0.27] — GCP-native deployment scaffold
-Takes the local Medallion PoC toward a cloud lakehouse on GCP (GCS + BigLake/Iceberg +
-BigQuery + Dataproc Serverless + Vertex AI). Artifacts only — provisioning needs the
-user's auth/billing; nothing here touches a cloud.
+
 ### Added
 - `infra/` — Terraform: GCS lake bucket (versioned), BigQuery dataset, BigLake connection,
   Artifact Registry, job service account + IAM. `terraform apply -var project_id=…`.
@@ -3322,9 +3066,7 @@ user's auth/billing; nothing here touches a cloud.
   scale-out, not scripted.
 
 ## [v0.26] — Medallion lakehouse PoC (the followable slice of the production roadmap)
-Assessed an external "Production-Grade Spiking Neural Data Lakehouse" roadmap (cloud:
-Delta Lake / Spark / S3 / Kafka / Unity Catalog / Delta Sharing / FPE / federated). ~60%
-needs cloud infra + $; the ~40% data-PATH slice is followable on one box — built here.
+
 ### Added
 - `lakehouse/medallion.py` — Medallion Bronze→Silver→Gold over this repo's spike store:
   - **Bronze** raw events → columnar **Parquet**; **Silver** binned/temporally-aligned;
@@ -3343,8 +3085,7 @@ needs cloud infra + $; the ~40% data-PATH slice is followable on one box — bui
   Unity Catalog, Delta Sharing, format-preserving encryption, federated learning.
 
 ## [v0.25] — Depth: relation algebra (Paradigm C) + GPU scaling harness
-Two depth tracks: richer relation types now (CPU), GPU-scale accuracy harness for later
-(GPU busy with the 6400/60k run).
+
 ### Added
 - `spike_kg_relations.py` — Paradigm C depth. One cyclic KG exercising the full relation
   algebra in spike-phase coding: **symmetric** (φ≈0/π, self-inverse), **inverse**
@@ -3361,8 +3102,7 @@ Two depth tracks: richer relation types now (CPU), GPU-scale accuracy harness fo
   runtime is installed); the BindsNET `--gpu` path is the working GPU vehicle.
 
 ## [v0.24] — Repo presentation: catalyst-neuromorphic style + CI
-Reformatted the repo to match the conventions of the catalyst-neuromorphic org
-(badges → results table → architecture-at-a-glance → directory tree → competitive context).
+
 ### Added
 - `.github/workflows/ci.yml` — runs every pure-stdlib script's assert-based self-check on
   each push (12 scripts), so the **CI badge is real and green**. Verified locally first.
@@ -3375,8 +3115,7 @@ Reformatted the repo to match the conventions of the catalyst-neuromorphic org
 - Repo description + topics set to match the org's vocabulary.
 
 ## [v0.23] — GPU-verified BindsNET on RTX 5070 (the --gpu path actually runs now)
-The v0.10 `--gpu` switch was never exercised on a real GPU; running it on an RTX 5070
-(Blackwell sm_120, torch 2.11.0+cu128) surfaced two device bugs, now fixed.
+
 ### Fixed
 - `all_activity` returns predictions on CPU while label tensors are on CUDA → align
   predictions to the device before comparing (3 sites).
@@ -3392,9 +3131,7 @@ The v0.10 `--gpu` switch was never exercised on a real GPU; running it on an RTX
   BindsNET `--gpu` path needs only the cu128 torch driver stack, which the 5070 has.
 
 ## [v0.22] — Cyclic relations via RotatE (spike phase coding)
-v0.21's TransE embeds translational/lattice relations but gets **0%** on cyclic ones
-(`tail = (head + shift) mod N` needs a rotation). RotatE fixes it — and is more
-spike-native: phase-of-firing coding.
+
 ### Added
 - `spike_knowledge_graph_rotate.py` (stdlib): entities = spike PHASES θ∈[0,2π),
   relations = phase SHIFTS φ_r; a triple holds when θ_t ≈ θ_h + φ_r (mod 2π). Distance
@@ -3408,8 +3145,7 @@ spike-native: phase-of-firing coding.
 - Paradigm C now covers translational (v0.21) AND cyclic (v0.22) relations.
 
 ## [v0.21] — Paradigm C complete: relational spiking embeddings (SpikE)
-v0.11–18 built Paradigm C's encoding side (TTFS, deterministic latency, Van Rossum). The
-missing SpikE core is RELATIONAL: store a knowledge graph in spike timing and reason over it.
+
 ### Added
 - `spike_knowledge_graph.py` (stdlib): a SpikE-style embedding —
   - entities = spike-latency vectors `s_e ∈ R^D`; relations = spike-time offsets `δ_r`.
@@ -3427,8 +3163,7 @@ missing SpikE core is RELATIONAL: store a knowledge graph in spike timing and re
   RotatE) — the demo KG is a lattice so the spike-time translation holds exactly.
 
 ## [v0.20] — Paradigm B complete: in-storage spike-query engine
-v0.13–14 had one query type (coincidence). A real in-storage search engine needs the
-SNN-native query a von-Neumann scan struggles with: temporal ORDER.
+
 ### Added
 - `paradigm_b_engine.py` — `SpikeQueryEngine` over the v0.12 `.spk` store with two
   compiled query types, both partial-read (only queried channels) + only-matches-to-host:
@@ -3445,8 +3180,7 @@ SNN-native query a von-Neumann scan struggles with: temporal ORDER.
 - **Paradigm A complete (v0.12) · Paradigm B complete (v0.20) · Paradigm C started (v0.11–18).**
 
 ## [v0.19] — GeNN custom plasticity (inject the working rule onto the GPU)
-Acts on the RTX 5070 architecture guidance: rather than GeNN's standard pair-STDP
-(which degraded, v0.18), inject the v0.17 rule that WORKS as a custom GPU weight-update.
+
 ### Added
 - `snn_mnist_stdp_genn.py` — GeNN 5 STDP-MNIST trainer:
   - `burst_xtar_rule()` = `create_weight_update_model` with the v0.17 rule in C++:
@@ -3464,8 +3198,7 @@ Acts on the RTX 5070 architecture guidance: rather than GeNN's standard pair-STD
   rule body, which matches the verified math.
 
 ## [v0.18] — Pair-based STDP kernel (honest negative) + query-identity determinism
-Tried to take the last ~6 points with a proper pair-based STDP kernel, and proved why
-the query/router path must use deterministic encoding.
+
 ### Added
 - Pair-based STDP in `snn_mnist_stdp_fast.py`: a post-synaptic trace `x_post` and
   pre-triggered **LTD** (`FAST_AMINUS`, `TAU_POST`) — an input arriving after the
@@ -3491,7 +3224,7 @@ the query/router path must use deterministic encoding.
   readout — not this kernel.
 
 ## [v0.17] — Close the latency↔rate gap (burst encoding + LTD)
-Halved the v0.16 accuracy gap while keeping the latency path's efficiency edge.
+
 ### Diagnosis
 - v0.16's single-spike latency loses pixel-magnitude info and gives a weak STDP trace,
   and the fast rule had no depression to sharpen prototypes.
@@ -3519,8 +3252,7 @@ Halved the v0.16 accuracy gap while keeping the latency path's efficiency edge.
   verified 82.3% rate path stays the default.
 
 ## [v0.16] — Precomputed latency STDP vs rate STDP (head-to-head)
-Wires the v0.15 preprocessing (deterministic latency + precompute) into the real STDP
-model and compares it against the verified rate-coded path, in one process.
+
 ### Added
 - `snn_mnist_stdp_fast.py` — `FastStdpNetwork`: same LIF + adaptive-threshold + hard-WTA
   STDP, but driven by **precomputed deterministic latency spikes** (each pixel fires
@@ -3542,7 +3274,7 @@ model and compares it against the verified rate-coded path, in one process.
   efficiency/reproducibility option. (The verified 82.3% rate result is untouched.)
 
 ## [v0.15] — Spike preprocessing pipeline (deterministic encode, precompute, Van Rossum)
-Implements three recommended preprocessing steps for CPU-viable STDP.
+
 ### Added
 - `spike_preprocessing.py` (stdlib):
   1. `encode_latency` — **deterministic** latency encoding (1 spike/feature,
@@ -3567,8 +3299,7 @@ Implements three recommended preprocessing steps for CPU-viable STDP.
   its own retune).
 
 ## [v0.14] — Paradigm B distinct-channel counting (GeNN sub-detectors)
-The v0.13 GeNN detector was a single summing LIF — it counts TOTAL input spikes, so k
-spikes from one channel false-trigger it. Fixed to count DISTINCT channels.
+
 ### Changed
 - `paradigm_b_genn.py`: two-stage network — input → per-channel **one-shot
   sub-detectors** (LIF, refractory = W, so each channel emits ≤1 pulse per window) →
@@ -3585,8 +3316,7 @@ spikes from one channel false-trigger it. Fixed to count DISTINCT channels.
   2 false matches; the sub-detector makes **0** (correct). Self-check enforces this.
 
 ## [v0.13] — Paradigm B: in-storage spike-stream matcher (+ GeNN GPU port)
-Started Paradigm B (in-storage pattern matching, cf. NPUsearch): compile a query into
-an SNN, stream stored spikes through it, transfer only matches to the host.
+
 ### Attempted: GeNN
 - Tried to build it on GeNN (genn-team) per request. GeNN code-generates C++/CUDA at
   runtime, so it needs CUDA + a C++ compiler + pygenn — none present on this box
@@ -3612,8 +3342,7 @@ an SNN, stream stored spikes through it, transfer only matches to the host.
   C started (v0.11 TTFS).
 
 ## [v0.12] — Spike Telemetry Hub (Paradigm A complete)
-Completes the assessment's Paradigm A: a hub for multi-channel spike-train telemetry
-(BCI / neural-sim style) stored and queried as sparse events, never dense rasters.
+
 ### Added
 - `spike_telemetry_hub.py` (stdlib):
   - `SpikeTelemetryHub` — per-channel sorted spike-time store (AER).
@@ -3636,10 +3365,7 @@ Completes the assessment's Paradigm A: a hub for multi-channel spike-train telem
   NPU search): still hardware-dependent, out of scope.
 
 ## [v0.11] — Temporal (TTFS) coding, from the architectural assessment
-Acted on an external architectural assessment (Gemini). The assessment was produced
-WITHOUT repo access (speculative, name-based), so its applicable, on-theme ideas were
-adopted and its production-infra suggestions (Parquet tier, OpenTelemetry, in-storage
-NPU) were left as out-of-scope roadmap.
+
 ### Added
 - `temporal_coding_storage.py` — time-to-first-spike (latency) coding, realising the
   assessment's Paradigm C ("more salient data spikes earlier", cf. the SpikE idea).
@@ -3656,6 +3382,7 @@ NPU) were left as out-of-scope roadmap.
   (which is rate-coded): the win is from spike *timing* + early exit, not sparsity.
 
 ## [v0.10] — `--gpu` switch for the BindsNET runner
+
 ### Added
 - `--gpu` / `--device <dev>` flag (and `NORD_GPU=1` env) on `eth_mnist_bindsnet.py`:
   moves the network + all tensors to CUDA so the 6400-neuron → ~95% run is one switch
@@ -3671,10 +3398,7 @@ NPU) were left as out-of-scope roadmap.
   CPU, trains + tests clean (device threading correct).
 
 ## [v0.9] — Path to ~95%: BindsNET conductance Diehl & Cook
-The v0.8 study showed our from-scratch current-based inhibition can't reach the
-literature ~95%. Deep research (Diehl & Cook 2015 + BindsNET) pinned the cause:
-**conductance-based synapses + a real exc/inh population + scale**. v0.9 wires that
-in via BindsNET instead of re-deriving it.
+
 ### Added
 - `eth_mnist_bindsnet.py` — runner around BindsNET's `DiehlAndCook2015` (conductance
   LIF, exc/inh populations, adaptive thresholds) with the paper/BindsNET constants
@@ -3698,8 +3422,7 @@ in via BindsNET instead of re-deriving it.
   compute (neurons × images × GPU), not the algorithm.
 
 ## [v0.8] — STDP inhibition study + homeostasis tuning
-Follow-up on the v0.7 inhibition limitation: built and benchmarked several
-explicit-inhibition designs, then found a real (if modest) accuracy gain.
+
 ### Added
 - `snn_mnist_dc.py` — a from-scratch separate-population Diehl & Cook network
   (all-but-self lateral inhibition, weight-dependent STDP, re-presentation).
@@ -3724,7 +3447,7 @@ explicit-inhibition designs, then found a real (if modest) accuracy gain.
   all 60k images — out of scope for a stdlib-spirit prototype.
 
 ## [v0.7] — Fix the limitations
-Addresses the three caveats from the README's limitations section.
+
 ### Changed
 - **Associative memory storage is now factored (O(P·k), not O(N²)).**
   `spiking_storage_prototype.py` keeps the P sparse patterns and reconstructs the
@@ -3748,6 +3471,7 @@ Addresses the three caveats from the README's limitations section.
   thresholds, all 60k images) — out of scope for this prototype.
 
 ## [v0.6] — MoE + STDP hybrid
+
 ### Added
 - `snn_moe_stdp_mnist.py` — fuses the two real-primitive lines: N unsupervised-STDP
   expert populations on real MNIST, routed by Project-Nord-style firing-rate gating
@@ -3767,6 +3491,7 @@ Addresses the three caveats from the README's limitations section.
   for content routing (and collapse risk).
 
 ## [v0.5] — Scale with real data
+
 ### Added
 - Configurable scaling for the MNIST STDP model via environment variables —
   `NORD_M` (neurons), `NORD_TRAIN`, `NORD_TEST` — no code edit needed to scale.
@@ -3781,6 +3506,7 @@ Addresses the three caveats from the README's limitations section.
   `[40,19,32,35,26,26,33,26,33,30]`.
 
 ## [v0.4] — Spike-driven MoE routing
+
 ### Added
 - `snn_moe_classifier.py` — ports Project Nord's `SpikeDrivenMoE`: firing-rate
   routing (no learned router network), top-k sparse experts, homeostatic load
@@ -3791,6 +3517,7 @@ Addresses the three caveats from the README's limitations section.
   all 8 experts used (balanced).
 
 ## [v0.3] — Real data: unsupervised STDP on MNIST
+
 ### Added
 - `snn_mnist_stdp.py` — real MNIST + snnTorch, Diehl & Cook-style unsupervised
   STDP. No labels and no backprop during training; neurons labelled afterward by
@@ -3804,6 +3531,7 @@ Addresses the three caveats from the README's limitations section.
   reduction from input-spike sparsity.
 
 ## [v0.2] — Supervised spiking classifier
+
 ### Added
 - `snn_classifier.py` — rate-coded spiking classifier trained with a stable
   local delta rule. Weights are the long-term store; sparse spikes are the
@@ -3813,6 +3541,7 @@ Addresses the three caveats from the README's limitations section.
   same-architecture baseline.
 
 ## [v0.1] — Associative memory prototype
+
 ### Added
 - `spiking_storage_prototype.py` — sparse k-winners-take-all associative memory.
   Data written to weights by a covariance Hebbian rule; content-addressable
