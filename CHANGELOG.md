@@ -3,6 +3,38 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.57] — Random Boolean Network: the order-chaos transition as a reservoir substrate (Kauffman 1969) (2026-07-08)
+Self-refuel research cycle. Adds `research/random_boolean_network.py`, a **Random Boolean Network** (Kauffman's NK model) —
+N binary nodes, each with exactly K seeded inputs and a FIXED random Boolean truth table over those K inputs (2^K entries, each
+0/1 iid with bias p; p = 0.5 = unbiased). Update is SYNCHRONOUS: every node recomputes from its K inputs' PREVIOUS values. This
+is the dry abstraction of a gene-regulatory network — a fixed random recurrent Boolean substrate — and, tuned to the "edge of
+chaos", a usable RESERVOIR whose high-dimensional fading state separates temporal structure for a cheap readout. It is the
+Boolean-logic cousin of the spiking Liquid State Machine in `research/spiking_ssm.py`, with an exactly solvable phase diagram.
+**The defining property is Derrida's annealed slope, and the self-check anchors on the DERIVED value, not a code-read number:**
+perturb one node (Hamming distance 1 between two state copies), do one synchronous update, and measure the expected resulting
+Hamming distance = the network's sensitivity. Flipping one input changes a node's lookup address, so the two looked-up truth-table
+entries are independent Bernoulli(p) and differ with probability `2p(1-p)`; a perturbed node is seen by K downstream nodes on
+average (total edges N*K -> average fan-out K), so the expected number of flipped nodes = `(avg fan-out) * 2p(1-p) = K*2p(1-p)`.
+At p = 0.5 this is `0.5*K`, so the ordered->chaotic transition (slope crossing 1) sits exactly at **K = 2**: K=1 -> 0.5 (ordered,
+perturbations die out), K=2 -> 1.0 (critical, edge of chaos), K=3 -> 1.5 (chaotic, perturbations amplify). The self-check measures
+the empirical slope over seeded random networks x seeded random states and asserts each is within a tolerance of the theory 0.5*K
+(measured 0.48 / 0.99 / 1.50), plus the ordering slope(K=1) < 1 < slope(K=3) with slope(K=2) ~ 1 — so the transition is proven to
+emerge from real random truth tables. A secondary check follows the deterministic synchronous trajectory of a small (N=16) network
+until a state repeats (guaranteed by pigeonhole in the finite 2^N state space), asserts the cycle length lies in [1, 2^N], and
+verifies the same seed+state reproduces the identical attractor. **Determinism by construction:** a SINGLE per-instance
+`random.Random(seed)` is threaded through all wiring, truth tables, initial states and perturbations in a fixed call order — the
+Mersenne Twister is identical across CPython 3.11/3.12/3.13, so results are byte-identical across the CI matrix (verified: identical
+stdout on a repeat run). Pure standard library (`random` + `collections`), no module-level seeding, ASCII-only output. Self-check
+delta **126 → 127**; both lint gates clean, 5 safety-envelope files untouched, core `dependencies = []` still empty.
+Paper: Kauffman, S.A. (1969), "Metabolic stability and epigenesis in randomly constructed genetic nets", *J. Theoretical Biology* 22(3):437-467.
+### Added
+- `research/random_boolean_network.py` — Kauffman NK Random Boolean Network (`build_rbn` seeded wiring + iid-Bernoulli truth
+  tables, `step` synchronous update, `run` trajectory, `derrida_slope` single-perturbation sensitivity, `find_attractor` cycle
+  detection). Self-check asserts: (1) the empirical Derrida slope tracks the DERIVED theory 0.5*K within +-0.15 for K in {1,2,3};
+  (2) the order->chaos ordering slope(K=1) < 1 < slope(K=3) with critical slope(K=2) ~ 1; (3) the trajectory is eventually
+  periodic with cycle length in [1, 2^N]; (4) determinism (identical attractor and trajectory on a repeat build). Registered in
+  `run_selfchecks.py` RESEARCH tuple (126 → 127). Research-tier, ruff-excluded.
+
 ## [v2.56] — Cellular Neural Network: locally-coupled analog array, template-programmed (Chua-Yang 1988) (2026-07-08)
 Self-refuel research cycle. Adds `research/cellular_neural_network.py`, a **Cellular Neural Network** — a 2-D grid of
 identical analog cells, each carrying a real state x_ij that evolves by the locally-coupled ODE

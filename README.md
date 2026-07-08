@@ -58,9 +58,9 @@ baseline and reproducible from the printed metrics.
 | **Local Medallion lakehouse** (Bronze→Silver→Gold, Parquet + Delta PoC) | ✅ complete |
 | **GCP lakehouse Phase 1** (Terraform → Dataproc Serverless → BigLake/BigQuery) | ✅ **verified end-to-end on live GCP** |
 | **GPU training (conductance D&C ~95% leg)** | ⏳ 90.0% reproduced (1600n); 6400n/~95% run **blocked by a GCP billing hold**, not a code gap |
-| **Engineering** | ✅ zero-dep core · `pip install` · 126/126 self-checks · pytest 84% · ruff · CI matrix |
+| **Engineering** | ✅ zero-dep core · `pip install` · 127/127 self-checks · pytest 84% · ruff · CI matrix |
 
-Current version: **v2.56** · 167 tagged releases (v0.1 → v2.56). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
+Current version: **v2.57** · 168 tagged releases (v0.1 → v2.57). See [CHANGELOG.md](CHANGELOG.md) for the full arc.
 
 **⬇ Download (Windows, no Python needed):** [spiking-neural-data-lake-2.53.2-windows-x64.zip](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest/download/spiking-neural-data-lake-2.53.2-windows-x64.zip) — unzip and double-click `snn-ui.exe`, no Python needed. **Use your own data + hardware:** replay bundled sample captures or **Open** your own; **Open** your own `.spk` or run the **Import wizard** (spike-event *or* dense sensor CSV → a queryable store); **Connect** a real serial arm (calibration-gated) to drive hardware from Arm Control; type NL commands; run Diagnostics. Verify headlessly with `snn-ui.exe --smoke`. (Real-arm serial needs a source install: `pip install ".[arm]"`. Or clone: `python run_selfchecks.py`.)
 
@@ -223,13 +223,13 @@ pip install -e ".[all]"     # arm + lake + gpu + nmnist (genn excluded — needs
 Two complementary gates — a zero-dep smoke gate and a coverable suite:
 
 ```bash
-python run_selfchecks.py                 # the 126 pure-stdlib module self-checks (exactly what CI runs)
+python run_selfchecks.py                 # the 127 pure-stdlib module self-checks (exactly what CI runs)
 pip install -e ".[dev]" && pytest        # unit + edge-case suite, 84% line coverage (--cov-fail-under=70)
 ruff check .                             # lint
 ```
 
 CI runs the self-checks on a **matrix of `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`**
-plus separate lint and coverage jobs. The 126-module list is canonical in
+plus separate lint and coverage jobs. The 127-module list is canonical in
 [`run_selfchecks.py`](run_selfchecks.py) (CI just runs it); the torch/GPU models are excluded by
 design and live in `research/`.
 
@@ -379,6 +379,20 @@ spiking-neural-data-lake/
 ---
 
 ## Roadmap
+
+_Landed (v2.57, research):_ **Random Boolean Network — Kauffman NK order-chaos transition, reservoir substrate (Kauffman 1969).**
+`research/random_boolean_network.py` implements the classic NK model: N binary nodes, each with exactly K seeded inputs and a
+fixed random Boolean truth table (2^K iid-Bernoulli(p) entries), updated SYNCHRONOUSLY from its inputs' previous values. It is the
+dry abstraction of a gene-regulatory network and, at the "edge of chaos", a Boolean-logic RESERVOIR — the exactly-solvable cousin
+of the spiking Liquid State Machine in `research/spiking_ssm.py`. Its phase transition is Derrida's annealed slope: flip one node,
+do one synchronous update, and the expected number of downstream flips is `(avg fan-out) * 2p(1-p) = K*2p(1-p)`, which at p=0.5 is
+`0.5*K` — so the ordered->chaotic transition (slope crossing 1) sits exactly at K=2 (K=1 -> 0.5 ordered, K=2 -> 1.0 critical, K=3 ->
+1.5 chaotic). The self-check measures the empirical slope over seeded networks x states (0.48 / 0.99 / 1.50) and asserts each
+against the DERIVED 0.5*K (not a code-read constant), plus a secondary attractor check — the deterministic trajectory of a small
+N=16 net is eventually periodic (pigeonhole in 2^N), cycle length in [1, 2^N], identical on a reseed. A single per-instance
+`random.Random(seed)` threads all randomness in fixed order, so results are byte-identical across the CI matrix (verified: identical
+stdout on a repeat run). Research-tier (`research/`, ruff-excluded); pure-stdlib core (`dependencies = []`), **127/127** self-checks;
+the 5 safety-envelope files untouched.
 
 _Landed (v2.56, research):_ **Cellular Neural Network — locally-coupled analog array (Chua-Yang 1988).**
 `research/cellular_neural_network.py` implements the base CNN: a 2-D grid of analog cells evolving by
