@@ -3,6 +3,11 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.72] -- README de-slop: remove em/en dashes and decorative bold (2026-07-08)
+
+### Changed
+- Ran `README.md` through the humanizer pass: replaced 6 em dashes with colons (the three "what it is" bullets, the `Data lake:` table header, the N-MNIST and determinism limitation bullets) and 1 en dash (`role-filler`) with a hyphen; dropped decorative `**bold**` on "gesture"/"95%" in the two-95%s note (kept the `*achieved*` / `*literature target*` italics that carry the contrast). Content, tables, numbers, and `->` pipeline arrows unchanged.
+
 ## [v2.71] -- Opt-in GPU acceleration for the research torch training scripts (2026-07-08)
 
 ### Added

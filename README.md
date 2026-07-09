@@ -8,14 +8,14 @@
 
 A pure-standard-library Python toolkit for event-driven (spiking) computation, in three parts:
 
-- **A neuromorphic primitive library** — 95 zero-dependency modules under `src/snn_data_lake/`:
-  integrate-and-fire and adaptive-threshold neurons, STDP/BCM/e-prop/ReSuMe plasticity, WTA and
+- **A neuromorphic primitive library:** 95 zero-dependency modules under `src/snn_data_lake/`.
+  Integrate-and-fire and adaptive-threshold neurons, STDP/BCM/e-prop/ReSuMe plasticity, WTA and
   reservoir networks, spike encoders/decoders, and streaming sketches. Each module is importable
   as `snn_data_lake.<module>` and carries its own deterministic self-check.
-- **A spike-native data lakehouse** — sparse `.spk` event storage with windowed queries, an
+- **A spike-native data lakehouse:** sparse `.spk` event storage with windowed queries, an
   in-storage coincidence/temporal-order query engine (Paradigm B), a VSA/hyperdimensional
   relational-reasoning layer (Paradigm C), and a Bronze→Silver→Gold Medallion pipeline.
-- **A simulated 2-DOF robot-arm control loop** — gesture recognition → command → reward learning,
+- **A simulated 2-DOF robot-arm control loop:** gesture recognition → command → reward learning,
   with a reflex, a population-coded PID, and neuromodulation, where every motor command passes a
   safety gate (`ArmSim.apply()`) and the real serial path is disabled until explicitly calibrated.
 
@@ -51,7 +51,7 @@ python run_selfchecks.py    # run every module's self-check (138 total)
 All figures are reproduced by running the referenced module. Compute = synaptic operations
 (SynOps); storage = bytes. These three tables run in CI (pure stdlib).
 
-**Data lake — store, search, reason**
+**Data lake: store, search, reason**
 
 | Component | Task | Metric | Result |
 |-----------|------|--------|--------|
@@ -60,7 +60,7 @@ All figures are reproduced by running the referenced module. Compute = synaptic 
 | Telemetry hub (Paradigm A) | sparse `.spk` store | size / query I/O | 61x smaller than a dense raster; windowed query reads 2% of the file |
 | In-storage query (Paradigm B) | coincidence + temporal order | host transfer | 162x less data to host; order-discriminating (FAR→NEAR ≠ NEAR→FAR) |
 | Relational KG (Paradigm C) | link prediction | Hits@1 | 50% TransE / 100% RotatE (cyclic relations; relation algebra verified) |
-| Reasoning (Paradigm C, VSA) | bind/bundle/permute | compositional query | context-steered arm command + role–filler recall |
+| Reasoning (Paradigm C, VSA) | bind/bundle/permute | compositional query | context-steered arm command + role-filler recall |
 | Sequence model (LSM) | temporal-pattern classification | accuracy | 96% (chance 33%), event-driven |
 
 **Compute efficiency**
@@ -83,8 +83,8 @@ spiking model-based RL (surrogate-gradient policy 0.319→0.053 m; Dreamer 2.695
 Dreamer-lite 1.03→0.48 m), and MNIST (unsupervised STDP 82.3% CPU; conductance Diehl & Cook 90.0%
 @1600n on an RTX 5070).
 
-> The two "95%"s differ. The robot-arm **gesture** 95% is *achieved* on real captured data. The
-> MNIST conductance Diehl & Cook **95%** is the *literature target*; best measured here is 90.0%.
+> The two "95%"s differ. The robot-arm gesture 95% is *achieved* on real captured data. The
+> MNIST conductance Diehl & Cook 95% is the *literature target*; best measured here is 90.0%.
 
 ## Repository layout
 
@@ -126,11 +126,11 @@ CI runs the matrix `{ubuntu, windows} × {3.11, 3.12, 3.13}` plus lint and cover
 - **Real-arm "learning" is partly simulated.** Reward/success uses an `--assume-success`
   placeholder and IR sensor fusion is off (`arm_config.IR_PRESENT = None`) until a calibration
   capture and a real success signal land; distance alone decides presence.
-- **N-MNIST 71% is a plumbing demo, not a benchmark** — real DVS data, nearest-prototype, no
+- **N-MNIST 71% is a plumbing demo, not a benchmark:** real DVS data, nearest-prototype, no
   learning (SOTA ~99.3%); off-theme vs the storage/robotics work.
 - **The streaming cloud Bronze leg is unverified.** Batch Phase 1 is verified end-to-end; the
   Pub/Sub→Dataflow streaming sink still writes vanilla Parquet (the Delta fix is proven locally).
-- **The query path requires determinism** — Poisson re-encoding yields different spike trains, so
+- **The query path requires determinism:** Poisson re-encoding yields different spike trains, so
   stochastic encoding cannot be used for matching.
 - **Neuromodulators are abstractions**, not biophysics (single global scalars for
   dopamine/cortisol). Paradigm B's real efficiency win needs neuromorphic silicon; the GeNN GPU
