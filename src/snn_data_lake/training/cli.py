@@ -20,13 +20,24 @@ def main(argv=None):
     )
     parser.add_argument("--gpu", action="store_true",
                         help="request CUDA (falls back to CPU if unavailable)")
+    parser.add_argument("--mnist", action="store_true",
+                        help="train the 784->H->10 MNIST brain (torchvision MNIST) whose forward "
+                             "matches trained_brain, then export a zero-dep brain the core serves "
+                             "with no torch (use with --export-brain)")
     parser.add_argument("--epochs", type=int, default=50,
-                        help="training epochs (default 50)")
+                        help="training epochs (default 50; a few suffice for --mnist)")
+    parser.add_argument("--hidden", type=int, default=256,
+                        help="MNIST brain hidden-layer width (default 256; --mnist only)")
+    parser.add_argument("--steps", type=int, default=25,
+                        help="MNIST rate-coding timesteps (default 25; --mnist only)")
     parser.add_argument("--checkpoint", metavar="PATH",
                         help="save a torch checkpoint (state_dict) to PATH")
     parser.add_argument("--export-core", metavar="PATH", dest="export_core",
                         help="export learned weights as a zero-dep snn_classifier "
                              "weight file at PATH (loadable with no torch present)")
+    parser.add_argument("--export-brain", metavar="PATH", dest="export_brain",
+                        help="export the trained MNIST brain as a zero-dep trained_brain JSON at "
+                             "PATH (loadable + servable with no torch present; --mnist only)")
     parser.add_argument("--offload", action="store_true",
                         help="use CPU/disk-offload training (gradient checkpointing "
                              "+ CPU optimizer state) for models larger than VRAM")
@@ -40,11 +51,34 @@ def main(argv=None):
         from snn_data_lake.training import device as devmod
         from snn_data_lake.training import trainer
         from snn_data_lake.training import offload as offloadmod
+        from snn_data_lake.training import mnist as mnistmod
     except ImportError:
         print('snn-train needs the training extra: pip install ".[train]"')
         sys.exit(1)
 
     dev = devmod.enable(devmod.resolve_device("cuda" if args.gpu else None))
+
+    # ---- MNIST brain path: 784->H->10, forward == trained_brain, exports a zero-dep brain ----
+    if args.mnist:
+        model, metrics = mnistmod.train_model(
+            epochs=args.epochs, hidden=args.hidden, steps=args.steps,
+            device=dev, seed=args.seed)
+        print("training metrics:")
+        for key, val in metrics.items():
+            print(f"  {key}: {val}")
+        if args.checkpoint:
+            mnistmod.save_checkpoint(model, args.checkpoint)
+            print(f"checkpoint saved: {args.checkpoint}")
+        if args.export_brain:
+            brain = mnistmod.export_brain(
+                model, args.export_brain, steps=args.steps,
+                meta={"epochs": args.epochs, "device": str(dev)})
+            print(f"exported brain: {args.export_brain}")
+            # honesty win: prove the export transfers by re-scoring MNIST through the ZERO-DEP core
+            core_acc = mnistmod.verify_transfer(brain, n=200)
+            print(f"transfer check: torch test_acc={metrics['test_acc']:.4f}  "
+                  f"core-served acc (200 imgs)={core_acc:.4f}")
+        return 0
 
     if args.offload:
         model, metrics = offloadmod.train_with_offload(

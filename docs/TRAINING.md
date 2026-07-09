@@ -56,6 +56,32 @@ At production scale, use HuggingFace `accelerate` (`device_map`) or DeepSpeed Ze
 stream optimizer/parameter state between GPU, CPU, and disk during the **backward** pass. This is
 the correct mechanism for *training* something larger than VRAM.
 
+## A real trained brain (MNIST) the whole stack uses
+
+Train a real MNIST classifier fast on the GPU and load it into the **zero-dep core** so the
+lakehouse, matcher, and arm loop can all call it:
+
+```bash
+snn-train --mnist --gpu --epochs 20 --hidden 256 --export-brain brain.json
+```
+
+The MNIST trainer (`snn_data_lake.training.mnist`) is a surrogate-gradient snnTorch net
+(784 → hidden LIF → 10, mixed-precision, checkpointed) that **matches the core's serving semantics
+exactly** — so unlike the 8×8 classifier bridge above, the exported weights transfer *faithfully*
+(the trainer re-runs its export through the zero-dep core and reports the core-served accuracy next
+to the torch one). Serve it with no torch:
+
+```python
+from snn_data_lake import trained_brain as tb
+brain = tb.load_brain("brain.json")     # pure stdlib, validated
+label = tb.predict(brain, pixels)       # pixels in [0,1], length 784
+```
+
+`trained_brain` is a general multi-layer spiking readout — rate-code the input, leaky-integrate-fire
+hidden layers, accumulate output currents, argmax; a single-layer brain reduces exactly to the core
+`snn_classifier`. This is the integration point: anything in the stack that needs a trained model
+calls `trained_brain.predict`/`accuracy`, no GPU or torch at serve time.
+
 ## AirLLM — large-LLM local inference (not training)
 
 AirLLM streams a large language model's transformer layers from disk one at a time, so a 70B+ model
@@ -76,6 +102,7 @@ gradients larger than VRAM). AirLLM has no backward pass, so it is not a trainer
 |------------|-----------------|----------|
 | Clone-and-run inference | `snn-demo`, `import snn_data_lake` | nothing (stdlib) |
 | GPU training → export to core | `snn-train --gpu --export-core` | `.[train]` (torch, snntorch), a CUDA GPU |
+| GPU MNIST brain → serve zero-dep | `snn-train --mnist --export-brain`; `trained_brain.predict` | `.[train]` to train; nothing to serve |
 | Train larger than VRAM | `snn-train --offload` | `.[train]`, + `accelerate`/DeepSpeed for scale |
 | Large-LLM local inference | `local_llm/run_local.py` | `.[llm]` (airllm, torch) |
 | GPU SNN research training | `research/*` (`NORD_GPU=1`) | `.[gpu]` |

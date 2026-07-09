@@ -19,6 +19,15 @@ Then the headline run on a GPU (one switch):
 Or a tractable midpoint (~87%):
     NORD_M=400 NORD_TRAIN=20000 NORD_TEST=5000 python eth_mnist_bindsnet.py --gpu
 
+BATCHING (the throughput fix): the original v0.9 loop ran batch_size=1 -- one image at
+a time -- which left the GPU ~98% idle and stretched a full run to ~2 days on an RTX 5070.
+This runner now processes NORD_BATCH images in parallel per timestep (default 16), for
+~10-50x throughput on a GPU. Batching changes ONLY throughput, not the method: the label
+assignment / prediction still use BindsNET's own all_activity / assign_labels over the
+same [n_samples, time, N] spike record, so the tuned config still reaches the paper's
+accuracy. Tune it per VRAM:
+    NORD_BATCH=64 python eth_mnist_bindsnet.py --gpu
+
 GPU notes:
   --gpu (or --device cuda / NORD_GPU=1) moves the network + tensors to CUDA.
   RTX 5070 = Blackwell (sm_120) -> needs a CUDA 12.8+ torch build; the default CPU
@@ -97,6 +106,7 @@ N_TEST = _ei("NORD_TEST", 10000)
 N_EPOCHS = _ei("NORD_EPOCHS", 1)
 TIME = _ei("NORD_TIME", 250)
 UPDATE = _ei("NORD_UPDATE", 250)   # re-assign labels every UPDATE train images
+BATCH = _ei("NORD_BATCH", 16)      # images run in parallel per timestep (the batch_size=1 fix)
 # scale-sensitive knobs — defaults are BindsNET's ~100-neuron values. Larger networks
 # need MORE inhibition (more competitors) + bigger theta_plus + multiple epochs, or they
 # under-specialise (measured: 6400 neurons / 1 epoch with defaults -> only 47.8%).
@@ -124,7 +134,9 @@ def main():
     print("=" * 60)
     print("BindsNET Diehl & Cook (eth_mnist) — conductance-based")
     print("=" * 60)
-    print(f"neurons={N}  time={TIME}ms  train={N_TRAIN}  test={N_TEST}  epochs={N_EPOCHS}  device={device}")
+    print(f"neurons={N}  time={TIME}ms  train={N_TRAIN}  test={N_TEST}  epochs={N_EPOCHS}  batch={BATCH}  device={device}")
+    print("batched: BATCH images run in parallel per timestep -- the fix for the v0.9 single-image")
+    print("bottleneck (batch_size=1 left the GPU ~98% idle); ~10-50x throughput on a GPU, same method.")
     if N >= 1600 and device == "cpu":
         print("WARNING: large network on CPU — expect a multi-hour (likely overnight) run.")
         print("         Pass --gpu on a CUDA machine (RTX 5070: needs cu128 torch).")
@@ -143,48 +155,72 @@ def main():
     rates = torch.zeros(N, N_CLASSES, device=device)
 
     # ---- train (unsupervised STDP, no labels in the learning loop) ----
+    # BATCHED: BATCH images run in parallel per timestep. BindsNET wants inputs shaped
+    # [time, batch, ...]; the DataLoader collates encoded_image as [batch, time, 1, 28, 28],
+    # so permute time to the front. network.run() detects that the input batch differs from
+    # the current network.batch_size (1 at build) and calls set_batch_size on every layer +
+    # resets the monitors on the first run (and again for a smaller final partial batch), so
+    # the "Ae" spikes come out as [time, batch, N]. (We rely on this dynamic resize rather
+    # than assigning network.batch_size = BATCH by hand: a manual assign would leave the
+    # layer/monitor tensors at batch=1 because run() only resizes when the sizes differ.)
     train_set = make_dataset(train=True)
-    spike_record = torch.zeros(UPDATE, STEPS, N, device=device)
+    spike_record = torch.zeros(UPDATE, STEPS, N, device=device)   # [n_samples, time, N] window buffer
     labels = []
     acc_hist = []
+    img_idx = 0
     print("training...")
     for epoch in range(N_EPOCHS):
-        loader = torch.utils.data.DataLoader(train_set, batch_size=1, shuffle=True)
-        for step, batch in enumerate(loader):
-            if step >= N_TRAIN:
+        loader = torch.utils.data.DataLoader(train_set, batch_size=BATCH, shuffle=True)
+        for batch in loader:
+            if img_idx >= N_TRAIN:
                 break
-            if step % UPDATE == 0 and step > 0:
-                lt = torch.tensor(labels[-UPDATE:], device=device)
-                pred = all_activity(spikes=spike_record, assignments=assignments, n_labels=N_CLASSES).to(device)
-                acc = 100 * torch.sum(lt.long() == pred).item() / len(lt)
-                acc_hist.append(acc)
-                assignments, proportions, rates = assign_labels(
-                    spikes=spike_record, labels=lt, n_labels=N_CLASSES, rates=rates)
-                print(f"  step {step}/{N_TRAIN}  window train acc={acc:.1f}%  (avg {sum(acc_hist)/len(acc_hist):.1f}%)")
-            inputs = {"X": batch["encoded_image"].view(STEPS, 1, 1, 28, 28).to(device)}
+            enc = batch["encoded_image"]                          # [b, STEPS, 1, 28, 28]
+            b = enc.shape[0]                                      # actual batch (final one may be < BATCH)
+            inputs = {"X": enc.permute(1, 0, 2, 3, 4).contiguous().to(device)}   # [STEPS, b, 1, 28, 28]
             network.run(inputs=inputs, time=TIME)
-            spike_record[step % UPDATE] = spikes.get("s").squeeze()
-            labels.append(batch["label"].item())
+            s = spikes.get("s").permute(1, 0, 2).float()          # [STEPS, b, N] -> [b, STEPS, N]
+            batch_labels = batch["label"]
+            for j in range(b):
+                if img_idx >= N_TRAIN:
+                    break
+                spike_record[img_idx % UPDATE] = s[j]             # copy this image's [STEPS, N] into the window
+                labels.append(int(batch_labels[j].item()))
+                img_idx += 1
+                if img_idx % UPDATE == 0:                         # a full window is ready -> assign labels
+                    lt = torch.tensor(labels[-UPDATE:], device=device)
+                    # vectorised over the whole [UPDATE, STEPS, N] window via BindsNET's own helpers
+                    pred = all_activity(spikes=spike_record, assignments=assignments, n_labels=N_CLASSES).to(device)
+                    acc = 100 * torch.sum(lt.long() == pred).item() / len(lt)
+                    acc_hist.append(acc)
+                    assignments, proportions, rates = assign_labels(
+                        spikes=spike_record, labels=lt, n_labels=N_CLASSES, rates=rates)
+                    print(f"  img {img_idx}/{N_TRAIN}  window train acc={acc:.1f}%  (avg {sum(acc_hist)/len(acc_hist):.1f}%)  batch={BATCH}")
             network.reset_state_variables()
 
     # ---- test (theta + weights frozen; classify by assigned-neuron activity) ----
+    # Same batching: feed BATCH images per network.run, then classify the whole batch at
+    # once. spikes.get("s") is [STEPS, b, N]; permuted to [b, STEPS, N] it is exactly the
+    # [n_samples, time, n_neurons] tensor all_activity expects (it sums over time internally).
     test_set = make_dataset(train=False)
-    rec = torch.zeros(1, STEPS, N, device=device)
     n_all, n = 0.0, 0
+    next_report = 500
     print("\ntesting...")
-    for step, batch in enumerate(test_set):
-        if step >= N_TEST:
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=BATCH, shuffle=False)
+    for batch in test_loader:
+        if n >= N_TEST:
             break
-        inputs = {"X": batch["encoded_image"].view(STEPS, 1, 1, 28, 28).to(device)}
+        enc = batch["encoded_image"]                              # [b, STEPS, 1, 28, 28]
+        inputs = {"X": enc.permute(1, 0, 2, 3, 4).contiguous().to(device)}   # [STEPS, b, 1, 28, 28]
         network.run(inputs=inputs, time=TIME)
-        rec[0] = spikes.get("s").squeeze()
-        lt = torch.tensor([batch["label"]], device=device)
-        n_all += float(torch.sum(lt.long() == all_activity(
-            spikes=rec, assignments=assignments, n_labels=N_CLASSES).to(device)).item())
-        n += 1
+        s = spikes.get("s").permute(1, 0, 2).float()              # [b, STEPS, N]
+        lt = batch["label"].to(device)                            # [b]
+        pred = all_activity(spikes=s, assignments=assignments, n_labels=N_CLASSES).to(device)
+        n_all += float(torch.sum(lt.long() == pred).item())
+        n += s.shape[0]
         network.reset_state_variables()
-        if n % 500 == 0:
+        if n >= next_report:
             print(f"  tested {n}/{N_TEST}  running all-activity acc={100*n_all/n:.2f}%")
+            next_report += 500
 
     acc_all = 100 * n_all / n
     print("\n" + "=" * 60)

@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.75] -- A real trained brain: general core inference + fast MNIST GPU trainer + batched D&C (2026-07-09)
+
+### Added
+- `src/snn_data_lake/trained_brain.py` (CORE, zero-dep) -- a general multi-layer spiking readout that loads any GPU-trained "brain" JSON (rate-code input, LIF hidden layers, accumulate output currents, argmax) and serves it with NO torch, so the lakehouse / matcher / arm loop can all call `trained_brain.predict`/`accuracy`. A single-layer brain reduces exactly to `snn_classifier.forward`. Self-check proves 100% accuracy + 100% faithfulness to the core readout + round-trip + determinism. Registered (138 -> 139).
+- `src/snn_data_lake/training/mnist.py` -- a fast surrogate-gradient snnTorch MNIST trainer (784 -> hidden LIF -> 10, mixed-precision fp16 on the tensor cores, checkpointed) whose forward MATCHES `trained_brain`'s semantics EXACTLY, so exported weights transfer faithfully (fixing the v2.74 dynamics caveat). `export_brain` writes a `trained_brain` JSON; `verify_transfer` re-scores the export through the zero-dep core and reports the core-served accuracy next to the torch accuracy. Wired into `snn-train --mnist --export-brain`.
+
+### Changed
+- `research/eth_mnist_bindsnet.py` (the ~90% Diehl & Cook run) now BATCHES: `NORD_BATCH` (default 16) images run in parallel per timestep instead of `batch_size=1`, ~10-50x throughput on a GPU (a ~2-day run -> hours) with the METHOD unchanged (same BindsNET `all_activity`/`assign_labels` over the same window; hyperparameters untouched; BindsNET batch elements are independent simulations so per-image dynamics are identical).
+- `pyproject.toml`: `[train]` gains `torchvision` (MNIST). Core `dependencies = []` unchanged.
+- `docs/TRAINING.md`: the MNIST brain + how the whole stack calls `trained_brain`.
+
+Note: the torch training tier + the batched D&C run are opt-in and NOT in CI (no GPU runner) -- code-reviewed + py_compiled + CPU-fallback; run on a CUDA machine (RTX 5070: needs a cu128 torch build). The zero-dep `trained_brain` core inference + the weight bridge ARE covered by the gates.
+
 ## [v2.74] -- First-class GPU training tier: loosen zero-dep for training, export weights back to the core (2026-07-09)
 
 ### Added
