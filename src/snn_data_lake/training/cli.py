@@ -24,6 +24,10 @@ def main(argv=None):
                         help="train the 784->H->10 MNIST brain (torchvision MNIST) whose forward "
                              "matches trained_brain, then export a zero-dep brain the core serves "
                              "with no torch (use with --export-brain)")
+    parser.add_argument("--genn", action="store_true",
+                        help="with --mnist, train on the GeNN CUDA backend (code-generated, faster "
+                             'for SNNs) instead of snnTorch; needs the GeNN extra (pip install ".[genn]"). '
+                             "GeNN dynamics only approximate the core, so transfer is approximate.")
     parser.add_argument("--epochs", type=int, default=50,
                         help="training epochs (default 50; a few suffice for --mnist)")
     parser.add_argument("--hidden", type=int, default=256,
@@ -63,6 +67,38 @@ def main(argv=None):
 
     # ---- MNIST brain path: 784->H->10, forward == trained_brain, exports a zero-dep brain ----
     if args.mnist:
+        # GeNN CUDA backend: nested guarded import so a missing ml_genn -> one clean line
+        # (its own [genn] message), NOT an ImportError traceback. mnist_genn imports ml_genn at
+        # its module top, so it is imported ONLY here, only when --genn is requested.
+        if args.genn:
+            try:
+                from snn_data_lake.training import mnist_genn as gennmod
+            except ImportError:
+                print('snn-train --genn needs the GeNN extra: pip install ".[genn]"')
+                sys.exit(1)
+            model, metrics = gennmod.train_model(
+                epochs=args.epochs, hidden=args.hidden, steps=args.steps,
+                device=dev, seed=args.seed)
+            print("training metrics:")
+            for key, val in metrics.items():
+                print(f"  {key}: {val}")
+            if args.checkpoint:
+                gennmod.save_checkpoint(model, args.checkpoint)
+                print(f"checkpoint saved: {args.checkpoint}")
+            if args.export_brain:
+                brain = gennmod.export_brain(
+                    model, args.export_brain, steps=args.steps,
+                    meta={"epochs": args.epochs, "device": str(dev), "backend": "genn"})
+                print(f"exported brain: {args.export_brain}")
+                # honesty win: score the export through the ZERO-DEP core. GeNN dynamics only
+                # approximate trained_brain, so expect a wider gap than the snnTorch path.
+                core_acc = gennmod.verify_transfer(brain, n=200)
+                gt = metrics.get("test_acc")
+                gt_str = f"{gt:.4f}" if isinstance(gt, float) else str(gt)
+                print(f"transfer check: GeNN test_acc={gt_str}  "
+                      f"core-served acc (200 imgs)={core_acc:.4f}")
+            return 0
+
         model, metrics = mnistmod.train_model(
             epochs=args.epochs, hidden=args.hidden, steps=args.steps,
             device=dev, seed=args.seed)

@@ -3,6 +3,15 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.78] -- Combine both: SNN-brain + LLM reasoning, and a GeNN-backed GPU trainer (2026-07-09)
+
+### Added
+- `src/snn_data_lake/brain_reasoning.py` (CORE, zero-dep, 140 -> 141): `BrainReasoner` wraps a `trained_brain` with an OPTIONAL LLM backend (any `generate(prompt) -> str`, e.g. `local_llm.AirLLMBackend`). The SNN does perception (spikes -> class); the LLM does the language layer (explain a prediction, or `summarize_store`/`reason_over_store` a `.spk` store). With NO backend it falls back to a deterministic zero-dep templated summary, so clone-and-run still explains itself. This is AirLLM's HONEST role in the project -- not accelerating the tiny SNN (it fits VRAM), but running a big local LLM (disk-streamed) ALONGSIDE it. Self-check verifies perception matches the brain, determinism, the backend protocol, and the store summary.
+- `src/snn_data_lake/training/mnist_genn.py` + `snn-train --mnist --genn`: a GeNN (ml_genn) code-generated-CUDA surrogate-gradient MNIST trainer exporting to the same `trained_brain` format. **Best-effort scaffold, UNVERIFIED against a live GeNN install** (no GPU/GeNN in the build env): every version-sensitive ml_genn call is flagged `# VERIFY(ml_genn):`, the brain meta is tagged `unverified_against_live_genn`, and GeNN's LIF dynamics only approximate the core's, so transfer is looser than the snnTorch path (`verify_transfer` reports the gap). A starting point to iterate on the RTX 5070, not a finished trainer. The `[genn]` extra gains `ml_genn`.
+
+### Changed
+- `docs/TRAINING.md`: the SNN-brain + local-LLM reasoning combine and the GeNN backend option. Core `dependencies = []` unchanged; the torch/GeNN tier stays opt-in and outside CI.
+
 ## [v2.77] -- Promote sleep_replay to core (2026-07-09)
 
 ### Changed

@@ -9,7 +9,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "spiking-neural-data-lake"
-version = "2.77.0"
+version = "2.78.0"
 description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Zero-dep core, clone-and-run."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -30,7 +30,7 @@ gpu = ["torch", "torchvision", "snntorch==1.0.0", "bindsnet", "numpy"]   # resea
 train = ["torch", "torchvision", "snntorch>=0.9", "numpy"]              # src/snn_data_lake/training/: first-class GPU trainer (snn-train); exports weights back to the zero-dep core
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
-genn = ["pygenn"]                                                        # research/*_genn GPU port (needs a C++ compiler + CUDA)
+genn = ["pygenn", "ml_genn"]                                             # research/*_genn + training/mnist_genn GPU trainer (needs a C++ compiler + CUDA)
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe of the tkinter GUI (build-time only; core stays zero-dep)
 dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.15.20", "pre-commit"]       # tests + lint/format (NOT runtime; ruff floor matches .pre-commit-config)
 all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist,train]"]             # every addon (genn excluded — needs a compiler)

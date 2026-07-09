@@ -82,6 +82,16 @@ hidden layers, accumulate output currents, argmax; a single-layer brain reduces 
 `snn_classifier`. This is the integration point: anything in the stack that needs a trained model
 calls `trained_brain.predict`/`accuracy`, no GPU or torch at serve time.
 
+### Faster training on GeNN (optional, best-effort)
+
+`snn-train --mnist --genn` trains the same brain on GeNN's code-generated CUDA backend (often faster
+than snnTorch for SNNs), exporting to the same `trained_brain` format. Needs the `[genn]` extra
+(`pip install ".[genn]"`, plus a C++ compiler + CUDA). **Caveat:** `training/mnist_genn.py` is a
+best-effort scaffold written against the ml_genn 2.x API and **not verified against a live GeNN
+install** — version-sensitive spots are flagged `# VERIFY(ml_genn):`, and GeNN's LIF dynamics only
+*approximate* the core's, so weights transfer more loosely than the snnTorch path (`verify_transfer`
+reports the gap). Treat it as a starting point to iterate on your GPU, not a finished trainer.
+
 ## AirLLM — large-LLM local inference (not training)
 
 AirLLM streams a large language model's transformer layers from disk one at a time, so a 70B+ model
@@ -96,6 +106,27 @@ python local_llm/run_local.py --model <hf-model-id> --prompt "..."
 to run it); the `--offload` path above is **training** disk/CPU-streaming (train a big model's
 gradients larger than VRAM). AirLLM has no backward pass, so it is not a trainer.
 
+## Reasoning: the SNN brain + a local LLM
+
+Where AirLLM's disk-streaming genuinely fits *alongside* the SNN: the brain does perception, a large
+local LLM does the language layer. `brain_reasoning.BrainReasoner` wraps a `trained_brain` with an
+optional LLM backend (any `generate(prompt) -> str`, e.g. `AirLLMBackend`):
+
+```python
+from snn_data_lake.trained_brain import load_brain
+from snn_data_lake.brain_reasoning import BrainReasoner
+# from local_llm.airllm_backend import AirLLMBackend   # optional [llm]: a 70B streamed from disk
+
+r = BrainReasoner(load_brain("brain.json"))             # no backend -> zero-dep templated summary
+print(r.explain(pixels)["text"])
+# r = BrainReasoner(brain, backend=AirLLMBackend())     # a big local LLM reasons in natural language
+```
+
+With no backend it gives a deterministic, zero-dependency summary (clone-and-run). With
+`AirLLMBackend` a large model — disk-streamed so it fits beside the SNN on one GPU — turns the brain's
+prediction, or a `.spk` store (`summarize_store` / `reason_over_store`), into natural language. That
+is AirLLM's honest role here: not accelerating the tiny SNN, but running a big LLM next to it.
+
 ## What needs what
 
 | Capability | Command / entry | Requires |
@@ -104,6 +135,8 @@ gradients larger than VRAM). AirLLM has no backward pass, so it is not a trainer
 | GPU training → export to core | `snn-train --gpu --export-core` | `.[train]` (torch, snntorch), a CUDA GPU |
 | GPU MNIST brain → serve zero-dep | `snn-train --mnist --export-brain`; `trained_brain.predict` | `.[train]` to train; nothing to serve |
 | Train larger than VRAM | `snn-train --offload` | `.[train]`, + `accelerate`/DeepSpeed for scale |
+| GeNN-backend GPU training | `snn-train --mnist --genn` | `.[genn]` (pygenn+ml_genn, compiler+CUDA); best-effort scaffold |
+| Reason over the brain in NL | `brain_reasoning.BrainReasoner(...).explain` | nothing (stdlib summary); `.[llm]` for a real LLM |
 | Large-LLM local inference | `local_llm/run_local.py` | `.[llm]` (airllm, torch) |
 | GPU SNN research training | `research/*` (`NORD_GPU=1`) | `.[gpu]` |
 
