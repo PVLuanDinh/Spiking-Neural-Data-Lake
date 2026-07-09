@@ -152,6 +152,37 @@ def evaluate(W, data, n_classes):
     return correct / len(data), synops
 
 
+# ---- weight bridge: persist / restore trained weights (zero-dep JSON) -------
+# The optional [train] GPU tier (snn_data_lake.training) exports its surrogate-gradient
+# weights in THIS W[c][i] layout, so a clone-and-run zero-dep install can load and serve
+# GPU-trained weights with no torch present.
+def save_weights(W, path, meta=None):
+    """Write the trained weight matrix W (list[C][N] of floats) to a plain JSON file."""
+    import json
+    obj = {"format": "snn_classifier.W/1", "n_classes": len(W), "n_inputs": len(W[0]),
+           "grid": GRID, "steps": STEPS, "weights": [[float(w) for w in row] for row in W],
+           "meta": dict(meta or {})}
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f)
+    return path
+
+
+def load_weights(path):
+    """Load a weight matrix saved by save_weights (or exported by the training tier).
+    Validates format + shape at this trust boundary before returning W (list[C][N])."""
+    import json
+    with open(path, encoding="utf-8") as f:
+        obj = json.load(f)
+    if not isinstance(obj, dict) or not str(obj.get("format", "")).startswith("snn_classifier.W"):
+        raise ValueError(f"{path}: not a snn_classifier weight file (format={obj.get('format')!r})")
+    W = obj.get("weights")
+    if not isinstance(W, list) or not W or not all(isinstance(r, list) for r in W):
+        raise ValueError(f"{path}: 'weights' must be a non-empty list of rows")
+    if any(len(r) != N for r in W):
+        raise ValueError(f"{path}: each row must have N={N} inputs (got {[len(r) for r in W][:3]})")
+    return [[float(w) for w in row] for row in W]
+
+
 # ---- capacity / difficulty sweep (fixes the "easy-shapes-only" limitation) --
 def extra_templates():
     """4 more 8x8 shapes — deliberately LESS separable, so adding classes pushes
@@ -250,7 +281,17 @@ def main():
         random.random()                       # perturb the global RNG between calls
     c2, _, _ = forward(W, s0, C)
     assert c1 == c2, "forward() is not deterministic for identical input (leaks global randomness)"
-    print("self-check OK: test_acc>=85%, SynOps<dense MACs, forward() deterministic per input")
+    # weight bridge round-trip: save -> load is exact and preserves predictions (the [train] GPU
+    # tier exports weights in this same JSON layout for the zero-dep core to load and serve).
+    import os
+    import tempfile
+    wp = os.path.join(tempfile.gettempdir(), "snn_cls_weights_selfcheck.json")
+    save_weights(W, wp, meta={"source": "delta-rule self-check"})
+    W2 = load_weights(wp)
+    os.remove(wp)
+    assert W2 == W, "load_weights(save_weights(W)) must round-trip exactly"
+    assert forward(W2, s0, C)[0] == c1, "loaded weights must reproduce identical predictions"
+    print("self-check OK: test_acc>=85%, SynOps<dense MACs, forward() deterministic, weight bridge round-trips")
 
 
 if __name__ == "__main__":

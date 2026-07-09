@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.74] -- First-class GPU training tier: loosen zero-dep for training, export weights back to the core (2026-07-09)
+
+### Added
+- `src/snn_data_lake/training/` -- an installed, opt-in torch/snnTorch GPU training tier behind the new `[train]` extra (the one place the zero-dep rule is loosened, per an explicit request). `snn-train` (console script) trains a surrogate-gradient spiking readout (single `nn.Linear(N,C)` + `snnTorch.Leaky`, fast-sigmoid BPTT + Adam) on the core's 8x8 4-shape task, with CUDA auto-select (`NORD_GPU=1` / `--gpu`), checkpointing, and CPU/disk offload (`--offload`: gradient checkpointing + CPU-offloaded optimizer) for models larger than VRAM.
+- `snn_classifier.save_weights` / `load_weights` -- a zero-dep JSON weight bridge (trust-boundary validated). The trainer's `export_to_core()` writes weights in the core `W[c][i]` layout so a clone-and-run torch-free install can load and serve GPU-trained weights; round-trip self-check added. (Honest caveat: the trainer optimizes LIF output-spike dynamics while the core serves a linear spike-count readout, so verify transferred accuracy in the core after export -- documented at the export site and in docs/TRAINING.md.)
+- `docs/TRAINING.md` -- GPU training, the train->export->deploy-zero-dep bridge, disk/CPU offload for big models, and AirLLM local inference.
+
+### Changed
+- `local_llm/` AirLLM backend made first-class for large-LLM LOCAL INFERENCE (disk layer-streaming; `run_local.py infer`, lazy imports, clean `[llm]` install message). Documented honestly as inference-only -- AirLLM has no training/gradient path, so "train bigger than VRAM" uses the `--offload` mechanism instead, not AirLLM.
+- `pyproject.toml`: add the `[train]` extra + `snn-train` script + `training/` ruff exclusion. **Core `dependencies = []` is unchanged** -- the loosening is scoped to the opt-in training tier; `pip install .` stays zero-dep and CI-green.
+
+Note: the torch training tier is opt-in and NOT in CI (no GPU runner) -- code-reviewed + byte-compiled with a CPU fallback, to be smoke-tested on a CUDA machine on first use. The zero-dep core, the weight bridge, and the "install the extra" guards ARE covered by the gates.
+
 ## [v2.73] -- Honest retrieval-index + energy metrics (exact NN pruning, memory/INT8/baseline audit) (2026-07-08)
 
 ### Added

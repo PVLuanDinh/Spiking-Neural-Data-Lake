@@ -1,14 +1,15 @@
 # Installable src/ package (snn_data_lake). Core is pure-stdlib (empty `dependencies`); optional
 # extras below add integrations. `pip install .` makes every module importable as
 # `snn_data_lake.<mod>` + installs the console commands below; `pip install ".[all]"` adds every
-# addon (arm+lake+gpu+nmnist). Namespaced -> no top-level collisions (reflex/interpreter/etc).
+# addon (arm+lake+gpu+nmnist+train). Core is zero-dep for clone-and-run inference; training is a
+# first-class opt-in GPU tier (.[train] -> snn-train, src/snn_data_lake/training/, exports to core).
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
 name = "spiking-neural-data-lake"
-version = "2.73.0"
+version = "2.74.0"
 description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Zero-dep core, clone-and-run."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -26,18 +27,20 @@ dependencies = []   # the core is pure standard library — that is the point
 arm = ["pyserial"]                                                       # live_arm --serial / --actuate
 lake = ["polars", "pyarrow", "deltalake"]                               # lakehouse/medallion + delta_demo
 gpu = ["torch", "torchvision", "snntorch==1.0.0", "bindsnet", "numpy"]   # research/ GPU training
+train = ["torch", "snntorch>=0.9", "numpy"]                             # src/snn_data_lake/training/: first-class GPU trainer (snn-train); exports weights back to the zero-dep core
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
 genn = ["pygenn"]                                                        # research/*_genn GPU port (needs a C++ compiler + CUDA)
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe of the tkinter GUI (build-time only; core stays zero-dep)
 dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.15.20", "pre-commit"]       # tests + lint/format (NOT runtime; ruff floor matches .pre-commit-config)
-all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist]"]                   # every addon (genn excluded — needs a compiler)
+all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist,train]"]             # every addon (genn excluded — needs a compiler)
 
 [project.scripts]
 snn-demo = "snn_data_lake.demo:main"         # one-file demo loop
 snn-arm  = "snn_data_lake.live_arm:main"     # live gesture -> arm (add --serial/--actuate for hardware)
 snn-loop = "snn_data_lake.closed_loop:main"  # full closed loop: gesture -> command -> reward -> learn
 snn-ui   = "snn_data_lake.control_panel:main"  # zero-dep tkinter desktop control panel (arm + recognition + lake)
+snn-train = "snn_data_lake.training.cli:main"  # [train] extra: surrogate-gradient GPU trainer -> exports weights to the zero-dep core
 
 [project.urls]
 Homepage = "https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake"
@@ -67,7 +70,7 @@ source = ["snn_data_lake"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["research", "gcp", "infra", "robot arm", "local_llm", "packaging"]
+extend-exclude = ["research", "gcp", "infra", "robot arm", "local_llm", "packaging", "src/snn_data_lake/training"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
