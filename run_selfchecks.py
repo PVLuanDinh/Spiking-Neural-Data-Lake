@@ -61,7 +61,7 @@ RESEARCH = [
     "research/free_energy_control", "research/dishbrain_learning", "research/adex_neuron", "research/triplet_stdp",
     "research/cellular_neural_network", "research/random_boolean_network", "research/neural_heterogeneity",
     "research/burst_multiplexing", "research/stdp_wta_bayes", "research/sorn",
-    "research/resume_learning", "research/weight_perturbation",
+    "research/resume_learning", "research/weight_perturbation", "research/sleep_replay",
     "research/make_results_plot",
 ]
 MODULES = CORE + RESEARCH

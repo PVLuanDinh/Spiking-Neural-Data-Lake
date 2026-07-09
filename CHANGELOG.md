@@ -3,6 +3,11 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.76] -- Sleep replay: offline STDP + noise prevents catastrophic forgetting (Golden-Bazhenov 2022) (2026-07-09)
+
+### Added
+- `research/sleep_replay.py` -- a zero-dep spiking demonstration of sleep-replay consolidation (Golden, Delanois, Sanda & Bazhenov, PLOS Comput Biol 18(11):e1010628, 2022). A recurrent LIF attractor net (24 neurons, reuses `lif_neuron.LIFNeuron`) stores task A then task B in overlapping assemblies under a homeostatic weight budget; storing B catastrophically overwrites A -- A recall drops BELOW chance (active interference, the cue completes to B). A "sleep" phase of NOISE-driven spontaneous activity with STDP on replays the stored assemblies and consolidates a joint weight representation, recovering A markedly above the no-sleep level while keeping B. Fair-controlled (identical net/seed/tasks; only the sleep phase differs; sleep sees no task data): sleep beats no-sleep on A by +0.42 (seed 0; gap >= +0.33 on all of seeds 0-11). Un-riggable anchors: spontaneous activity overlaps the STORED assemblies (0.71) far above random assemblies (0.48) and above an UNTRAINED net's noise (0.41) -- the replay structure comes from the learning, not the noise; and an STDP-off sleep gives no benefit, isolating consolidation from stimulation. Honestly disclosed as a toy demonstration of the mechanism: restoration is PARTIAL (A returns to ~chance, never to 1.00) and can cost B -- it demonstrates the Golden et al. effect, it is NOT a general continual-learning solver. Registered RESEARCH (139 -> 140).
+
 ## [v2.75.1] -- Fix: `snn-train --mnist --gpu` DataLoader crash + modernize AMP API (2026-07-09)
 
 ### Fixed
