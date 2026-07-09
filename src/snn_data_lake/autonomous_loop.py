@@ -26,6 +26,7 @@ import random
 
 from snn_data_lake.arm_config import CONTACT
 from snn_data_lake.arm_sim import ArmSim
+from snn_data_lake.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.cortisol import Cortisol
 from snn_data_lake.experience_replay import ReplayBuffer
 from snn_data_lake.growing_learner import GrowingLearner
@@ -38,8 +39,9 @@ SAFE_ACTION = "HOLD"                                  # what caution biases towa
 class AutonomousArm:
     """Grows units from multimodal context + learns context->action by reward; every motion gated."""
 
-    def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16):
+    def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None):
         self.arm = ArmSim()
+        self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
         self.learner = GrowingLearner()
         self.cort = Cortisol(tau=40.0)
         self.q = {}                       # unit_id -> {action: value}; grows alongside the learner
@@ -59,6 +61,28 @@ class AutonomousArm:
 
     def greedy(self, unit):
         return max(ACTIONS, key=lambda a: self.q[unit][a])
+
+    @classmethod
+    def from_bundle(cls, bundle_or_path, **kwargs):
+        """Enclose a trained-skill bundle (brain_bundle.BrainBundle or a manifest path) in the arm
+        loop. Its skills become available for perception (see perceive()); the gated action path and
+        the reflex/E-STOP safety are UNCHANGED -- this only ADDS perception, it drives no motion."""
+        b = load_bundle(bundle_or_path) if isinstance(bundle_or_path, str) else bundle_or_path
+        return cls(bundle=b, **kwargs)
+
+    def perceive(self, visual=None, temperature=None, audio=None, distance=None):
+        """Classify the current multimodal context with the bundle's perception skill (a trained
+        brain whose input size matches the N=64 substrate). Returns the predicted class, or None if
+        there is no bundle / no size-matching skill. Pure annotation -- it commands NO motion."""
+        if self.bundle is None:
+            return None
+        pattern = encode_multimodal(visual, temperature, audio,
+                                    [distance] if distance is not None else None)
+        for name in ["vision", "perception", *self.bundle.skill_names()]:
+            brain = self.bundle.skills.get(name)
+            if brain is not None and brain["in"] == len(pattern):
+                return self.bundle.predict(name, pattern)
+        return None
 
     def step(self, visual, temperature, audio, distance, reward_fn=None):
         """One autonomous tick. distance is the proximity scalar; reward_fn(unit, action)->[-1,1]."""
@@ -149,6 +173,16 @@ def main():
         bot = AutonomousArm(seed=seed, replay=True)
         return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
 
+    # 7. BUNDLE: enclose a trained perception skill in the loop (additive; the safety gate is untouched)
+    from snn_data_lake.trained_brain import make_brain
+    _wp = [[1.0 if i < 32 else 0.0 for i in range(64)], [0.0 if i < 32 else 1.0 for i in range(64)]]
+    bundled = AutonomousArm.from_bundle(
+        BrainBundle({"vision": make_brain([_wp], steps=8)},
+                    {"reflex": True, "cortisol": True}, {"pid": True}), seed=0)
+    bclass = bundled.perceive(**a)
+    bundle_ev = bundled.step(**_ctx(0.5, 0.5, 0.5, danger_d))     # danger must still E-STOP with a bundle
+    bundle_safe = bundle_ev["action"] == "EMERGENCY_STOP" and bundle_ev["reflex"]
+
     print("=" * 62)
     print("AUTONOMOUS ARM — grows from multimodal data + learns actions, safely")
     print("=" * 62)
@@ -158,6 +192,8 @@ def main():
           f"post-STOP action frozen={still_frozen}")
     print(f"replay      : SWR consolidation -> decisive value in {replay_ticks} live ticks vs {live_ticks} "
           f"(value table only; safety gate holds with replay={replay_frozen})")
+    print(f"bundle      : from_bundle(vision skill) -> perceived class {bclass} (additive perception); "
+          f"safety gate holds with a bundle (E-STOP={bundle_safe})")
     print("=" * 62)
 
     # ---- self-check: deterministic asserts, zero-dep ----
@@ -169,6 +205,12 @@ def main():
     nanguard = AutonomousArm(seed=9)
     nev = nanguard.step(**_ctx(0.5, 0.5, 0.5, float("nan")))
     assert nev["action"] == "EMERGENCY_STOP" and nev["reflex"], "NaN distance must trip the E-STOP (fail-closed)"
+    # bundle: perception is ADDITIVE (a bundle-equipped arm perceives; a bare arm does not) and the
+    # safety gate is untouched by enclosing a trained-skill bundle in the loop.
+    assert bclass in (0, 1) and bclass == bundled.perceive(**a), "bundle perceive -> a deterministic valid class"
+    assert AutonomousArm(seed=0).perceive(**a) is None, "a bundle-less arm perceives nothing (additive, opt-in)"
+    assert bundle_safe, "safety E-STOP must hold with a trained-skill bundle enclosed in the loop"
+    assert bundled.bundle.has_instinct("reflex") and bundled.bundle.has_motor("pid"), "bundle wires instinct/motor flags"
     assert learned == "GRIPPER_OPEN", f"the arm must LEARN the rewarded action, not use a fixed map ({learned})"
     assert run(7) == run(7), "same seed -> identical autonomous behaviour (deterministic)"
     # replay (opt-in SWR) is sample-efficient AND safety-preserving:

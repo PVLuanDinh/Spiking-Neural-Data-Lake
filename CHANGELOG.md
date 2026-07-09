@@ -3,6 +3,14 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.79] -- Brain bundle: package modular trained skills + enclose them in the arm loop (2026-07-09)
+
+### Added
+- `src/snn_data_lake/brain_bundle.py` (CORE, zero-dep, 141 -> 142): a loadable manifest that packages a MODULAR multi-skill brain -- separate trained skills (each its own `trained_brain` JSON, like a brain area) plus config flags for the HARDWIRED instinct/motor primitives (reflex/cortisol/pid/cpg -- wired, not trained, so flags not weights). `make_bundle` / `save_bundle` / `load_bundle` (trust-boundary validated; skill paths resolved relative to the manifest), `BrainBundle.predict(skill, x)` routes to a named skill, `describe()`. Honest framing throughout: it is NOT one network trained on everything, and nothing is co-trained.
+- `autonomous_loop.AutonomousArm.from_bundle(bundle_or_path)` + `perceive(...)`: enclose a bundle's trained perception skill in the arm loop. `perceive` classifies the N=64 multimodal context with a size-matching bundle skill -- ADDITIVE annotation only; the gated action path and the reflex/E-STOP safety are UNCHANGED (self-check: perception is opt-in, a bare arm perceives nothing, and the E-STOP freeze holds with a bundle attached).
+
+This answers "train all skills then enclose in the arm loop": train each skill separately (perception via `snn-train`, etc.), wire the hardwired instincts, bundle them, and the arm loop loads the one bundle -- modular like a brain, not a monolith. Core `dependencies = []`; the 5 safety-envelope files untouched.
+
 ## [v2.78] -- Combine both: SNN-brain + LLM reasoning, and a GeNN-backed GPU trainer (2026-07-09)
 
 ### Added
