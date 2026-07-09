@@ -3,6 +3,11 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.77] -- Promote sleep_replay to core (2026-07-09)
+
+### Changed
+- Promoted `research/sleep_replay.py` -> `src/snn_data_lake/sleep_replay.py` (RESEARCH -> CORE; total self-check count unchanged at 140; now ruff-enforced and importable/runnable as `python -m snn_data_lake.sleep_replay`). The `AttractorNet` spiking associative memory with noise-driven sleep-STDP consolidation is now a first-class core primitive alongside `hippocampus` / `htm_sequence_memory` / `experience_replay`. Behavior is byte-identical (self-check unchanged) and the honest disclosures stay: the demonstration recovers a catastrophically-forgotten task only PARTIALLY (to ~chance) and can cost the second task -- it is the Golden-Bazhenov 2022 mechanism as a reusable primitive, not a general continual-learning solver.
+
 ## [v2.76] -- Sleep replay: offline STDP + noise prevents catastrophic forgetting (Golden-Bazhenov 2022) (2026-07-09)
 
 ### Added

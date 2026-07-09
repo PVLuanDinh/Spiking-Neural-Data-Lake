@@ -57,12 +57,12 @@ general continual-learning solver, and A is only PARTIALLY restored, not returne
 chance, B_sleep 0.88) and asserts only the seed-robust claims (the gap, forgetting, the anchors),
 not the seed-dependent absolute levels.
 
-Pure standard library (`random` seeded per-instance + `math` is not even needed; only `random`),
-ASCII output, deterministic (no global-RNG side effects, no wall-clock). Reuses the core spiking
-primitive snn_data_lake.lif_neuron.LIFNeuron for every neuron. Additive research module; touches
-no core or safety-envelope file.
+Pure standard library (`random` seeded per-instance + `copy`), ASCII output, deterministic
+(no global-RNG side effects, no wall-clock). Reuses the core spiking primitive
+snn_data_lake.lif_neuron.LIFNeuron for every neuron. Additive core primitive (a reusable
+spiking attractor associative memory with sleep consolidation); touches no safety-envelope file.
 
-  Run: PYTHONPATH=src python research/sleep_replay.py
+  Run: python -m snn_data_lake.sleep_replay        # (also run by run_selfchecks.py)
 """
 import copy
 import random
