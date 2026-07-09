@@ -3,6 +3,14 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.80] -- Spiking Language Brain (SNN + LLM in one object) + a from-scratch spiking-LM scaffold (2026-07-09)
+
+### Added
+- `src/snn_data_lake/language_brain.py` (CORE, zero-dep, 142 -> 143): `SpikingLanguageBrain` -- ONE object merging spiking perception (a `brain_bundle` / `trained_brain`, zero-dep) with an optional LLM backend (any `generate(prompt)->str`, e.g. `local_llm.AirLLMBackend`, disk-streamed beside the SNN). API: `perceive` (spiking) + `explain` (perception -> words) + `converse` (language) + `describe`. HONESTLY NAMED: a spiking brain working WITH a language model -- NOT a spiking LLM (the backend is a dense transformer; only perception is spiking). Without a backend, `converse` returns an honest note rather than faking speech. Self-check: routing, no-backend explain names the class, the LLM backend is used, a single brain wraps as a one-skill bundle, determinism.
+- `research/spiking_lm.py`: a from-scratch TINY all-spiking language-model SCAFFOLD (SpikeGPT / SpikingBERT lineage) -- char-level, embedding -> spiking blocks (snnTorch LIF + an RWKV-style spiking token-mixer approximating linear attention) -> spiking readout, surrogate-gradient BPTT. **BEST-EFFORT, UNVERIFIED, tiny, torch/GPU, NOT in CI**: architecture-only (torch absent in the build env, so nothing was run or measured -- no fabricated numbers; design choices flagged `# NOTE:` / `# VERIFY:`). The honest real-spiking-LM starting point; NOT a large LLM and NOT related to AirLLM (which runs a dense transformer).
+
+Answers "merge into one Spiking Neural Network Language Model" honestly: `language_brain` is the usable SNN-brain + LLM integration (one object); `research/spiking_lm.py` is the genuine (scaffold) all-spiking LM to grow on a GPU. A dense LLM (AirLLM) is not, and cannot be made, spiking by merging -- a real spiking LLM is trained from scratch. Core `dependencies = []`; the 5 safety-envelope files untouched.
+
 ## [v2.79] -- Brain bundle: package modular trained skills + enclose them in the arm loop (2026-07-09)
 
 ### Added

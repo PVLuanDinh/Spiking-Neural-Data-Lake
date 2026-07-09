@@ -38,7 +38,7 @@ CORE = [
     "neural_sampling", "restricted_boltzmann",
     "interpreter", "closed_loop", "make_sensor_dataset", "sensor_demo",
     "arm_sim", "arm_config", "population_encoding", "population_vector", "multimodal_encoder", "cue_integration", "growing_learner",
-    "autonomous_loop", "hippocampus", "frequency_memory", "experience_replay", "sleep_replay", "nl_interface", "brain_reasoning", "sensor_csv_ingest", "esp32_encoder_path",
+    "autonomous_loop", "hippocampus", "frequency_memory", "experience_replay", "sleep_replay", "nl_interface", "brain_reasoning", "language_brain", "sensor_csv_ingest", "esp32_encoder_path",
     "gesture_recognition", "live_arm", "serial_arm", "arm_bridge", "spiking_pid", "cpg_oscillator", "kuramoto_sync", "wilson_cowan", "neuronal_avalanches", "synfire_chain", "stochastic_resonance", "forward_model", "kalman_filter", "demo",
     "reaction_diffusion_compute", "wavefront_planner",
     "control_panel",
