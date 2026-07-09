@@ -3,6 +3,17 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.81] -- Spiking LM integrated to core: zero-dep serve + training-tier trainer + growth path (2026-07-09)
+
+### Added
+- `src/snn_data_lake/spiking_lm_serve.py` (CORE, zero-dep, 143 -> 144): loads a trained spiking LM's `snn_lm/1` JSON weight file and runs the same spiking forward (LIF blocks + RWKV-style token-mixer + spike-driven readout, snnTorch-`Leaky` subtract-reset semantics) in PURE PYTHON, with `generate(prompt, n)` -- so a clone-and-run install generates text from a trained spiking LM with NO torch (the LM analogue of `trained_brain`). Self-check: a hand-built LM generates deterministically, a biased readout controls the output, the JSON round-trips, bad files are rejected.
+
+### Changed
+- Promoted the spiking-LM trainer `research/spiking_lm.py` -> `src/snn_data_lake/training/spiking_lm.py` (first-class training tier; `snn-train --lm`). Added `export_lm` (torch weights -> the `snn_lm/1` serve format, shapes asserted) + `verify_transfer` (runs the export through the zero-dep core serve -- the export->serve bridge was verified end-to-end with stub tensors, torch absent), plus GROWTH tooling: `load_corpus` (a real text file), `save`/`load_checkpoint` (resume long runs), `perplexity`, and settable `d_model` / `n_blocks` / `seq_len`. The torch training itself is GPU-only and unverified here.
+- `docs/SPIKING_LM.md`: the honest growth path (real corpus -> subword tokenizer -> scale config -> gradient-checkpointing/offload for VRAM -> truncated BPTT -> longer training -> the spiking-RWKV mixer upgrade -> scale-out), with the honest ceiling -- a single GPU grows a SMALL model, not a frontier LLM.
+
+Core `dependencies = []`; the torch trainer stays opt-in + outside CI; the 5 safety-envelope files untouched.
+
 ## [v2.80] -- Spiking Language Brain (SNN + LLM in one object) + a from-scratch spiking-LM scaffold (2026-07-09)
 
 ### Added

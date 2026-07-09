@@ -1,37 +1,45 @@
-"""TINY from-scratch SPIKING language-model scaffold (SpikeGPT / SpikingBERT lineage).
+"""TRAINING-TIER spiking language-model TRAINER (SpikeGPT lineage) -- run via ``snn-train --lm``.
 
 =======================  HONEST FRAMING -- READ THIS FIRST  =======================
-This is a BEST-EFFORT, RESEARCH-SCALE SCAFFOLD of an ALL-SPIKING language model: a
-char-level transformer whose neurons are LIF spiking units (snnTorch `Leaky` +
-`surrogate.fast_sigmoid()` gradients), trained from scratch by surrogate-gradient
-BPTT. It is in the SpikeGPT / SpikingBERT lineage (a transformer BUILT OUT OF
-spiking neurons), NOT a large trained LLM.
+This is the torch TRAINING tier of the spiking LM: a char-level transformer whose
+neurons are LIF spiking units (snnTorch `Leaky` + `surrogate.fast_sigmoid()`
+gradients), trained from scratch by surrogate-gradient BPTT. It is in the SpikeGPT /
+SpikingBERT lineage (a transformer BUILT OUT OF spiking neurons), NOT a large trained
+LLM. Its EXPORT BRIDGE (`export_lm` below) writes a plain-JSON ``snn_lm/1`` weight
+file that the ZERO-DEP core module ``snn_data_lake.spiking_lm_serve`` loads and
+serves with no torch -- the language-model analogue of `training.mnist` exporting a
+`trained_brain` the core serves (`verify_transfer` below shows the round trip).
 
 It is NOT related to AirLLM. AirLLM runs a large DENSE (non-spiking) transformer by
 streaming its layers off disk; this module is the OPPOSITE -- a small transformer
-made of spiking neurons and trained from scratch on a toy corpus. They share nothing
-but the phrase "language model".
+made of spiking neurons and trained from scratch. They share nothing but the phrase
+"language model".
 
-torch and snntorch are NOT installed on this box and there is no GPU, so NONE of this
-has been run or imported here -- it is architecture-correct-BY-BEST-EFFORT only. There
-are NO measured numbers in this file: no loss, no accuracy, no sample text is claimed.
-The `main()` below deliberately prints the model SHAPE (params/blocks/vocab) and a note
-that training and generation require torch + a GPU and are left to the user; the code
-that would actually train and print numbers ONLY runs when torch is present (on the
-user's machine), where those numbers are REAL, not fabricated here.
+torch and snntorch are NOT installed on this box and there is no GPU, so NONE of the
+torch paths below have been run here -- this is an UNVERIFIED SCAFFOLD, architecture-
+correct BY BEST EFFORT only. There are NO measured numbers in this file: no loss, no
+perplexity, no sample text is claimed. The torch code ONLY runs when torch is present
+(on the user's machine), where the numbers it prints are REAL, never fabricated here.
 
-What it demonstrates: the spiking-LM ARCHITECTURE on a char-level toy (embedding ->
-spiking blocks -> spike-driven readout, unrolled in time, surrogate-grad trained). What
-it does NOT do: a real spiking LLM needs large-scale training this scaffold does not do.
-Treat every design decision flagged `# NOTE:` / `# VERIFY:` below as a research choice
-that a real build would ablate and tune -- especially the spiking-attention approximation.
+What it provides: the spiking-LM ARCHITECTURE (embedding -> spiking blocks ->
+spike-driven readout, unrolled in time, surrogate-grad trained) plus the GROWTH
+levers: a real-corpus loader (`load_corpus`), checkpoint/RESUME (`save_checkpoint` /
+`load_checkpoint`), the growth metric (`perplexity`), free config knobs (d_model /
+n_blocks / seq_len), and the zero-dep export. What it does NOT do: a real spiking LLM
+needs large-scale training this scaffold does not do -- see the `# NOTE:` on
+`SpikingLMConfig` for the honest scale ceiling. Treat every `# NOTE:` / `# VERIFY:`
+as a research choice a real build would ablate and tune.
 
-Run (needs torch + snntorch; from repo root so `torch_device` on research/ resolves):
-    PYTHONPATH=src .venv-gpu/Scripts/python research/spiking_lm.py
+Run (needs torch + snntorch):
+    pip install ".[gpu]"                          # torch + snntorch
+    snn-train --lm --corpus my.txt --steps 500 --checkpoint lm.pt --export-lm my_lm.json
+    python -m snn_data_lake.training.spiking_lm   # shape demo + a tiny REAL train
 
-With no torch installed it prints the shape + a clean "needs torch" note and exits 0.
-Ruff-excluded, runs from research/, NOT in CI.
+With no torch installed the module still imports, and `main()` prints the shape + a
+clean "needs torch" note and exits 0. Ruff-excluded (training tier), NOT in CI.
 """
+import json
+import math
 import sys
 from dataclasses import dataclass
 
@@ -94,7 +102,22 @@ class CharTokenizer:
 
 @dataclass
 class SpikingLMConfig:
-    """Small-by-design config. seq_len 64, d_model 96, 2 blocks -- a research toy, not scale."""
+    """Small-by-design config. ALL knobs freely settable (CLI: --d-model / --blocks / --seq-len).
+
+    # NOTE: THE SCALE LEVERS -- this scaffold grows TOWARD (not to) SpikeGPT scale:
+    #   * d_model / n_blocks: width + depth. 96x2 is the toy default; SpikeGPT-46M is ~512x12+.
+    #   * seq_len: context + BPTT unroll length. BPTT memory/compute grow LINEARLY with it; for
+    #     long sequences use TRUNCATED BPTT (detach the recurrent state every k steps) or
+    #     gradient checkpointing -- neither is implemented here yet, both are the standard
+    #     next steps before raising seq_len past a few hundred.
+    #   * a REAL corpus: `snn-train --lm --corpus file.txt` (see `load_corpus`) instead of the
+    #     built-in toy paragraph.
+    #   * models bigger than VRAM: the training tier's `--offload` path (training/offload.py)
+    #     shows the gradient-checkpoint + CPU-optimizer-state pattern to borrow.
+    #   Honest ceiling: a char tokenizer + single-file corpus + full BPTT trains SMALL models;
+    #   real SpikeGPT scale needs tokenized corpora, truncated BPTT, and multi-GPU -- outside
+    #   this scaffold.
+    """
     vocab_size: int
     d_model: int = 96      # NOTE: 64-128 is the intended small range; 96 is a middle pick.
     n_blocks: int = 2      # NOTE: 2 spiking blocks -- depth is a tuning knob.
@@ -249,6 +272,144 @@ def generate(model, tok, prompt, n=120, seq_len=64, device="cpu", temperature=1.
     return tok.decode(ids)
 
 
+# ----------------------------- growth tooling (the levers) ----------------------------
+def load_corpus(path=None):
+    """Return the training corpus TEXT: a real UTF-8 file at `path`, or the built-in toy
+    string when `path` is None. Pure stdlib (no torch), so the CLI can build the tokenizer
+    before touching any torch code.
+
+    # NOTE: growth lever #1 -- point `snn-train --lm --corpus` at real text (a book, a code
+    #   dump, a wiki slice) instead of the 6-sentence toy. The char tokenizer adapts to
+    #   whatever characters the file contains.
+    """
+    if path is None:
+        return TOY_CORPUS
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    if len(text) < 2:
+        raise ValueError(f"corpus file {path!r} has fewer than 2 characters -- nothing to model")
+    return text
+
+
+def perplexity(model, tok, corpus, seq_len=64, device="cpu"):
+    """exp(mean next-char cross-entropy in nats) of `model` over `corpus` -- THE growth metric.
+
+    Slides non-overlapping length-`seq_len` windows over the encoded corpus, sums the
+    CrossEntropy of every next-char prediction, and returns exp(total_nats / n_tokens).
+    Lower is better; a uniform-random model over V chars scores ppl == V. Windows are
+    independent (LIF/mixer state resets per window, same as the training windows). RUNS
+    ONLY when torch is present; the number is REAL (measured), never fabricated here."""
+    model.eval()
+    data = torch.tensor(tok.encode(corpus), dtype=torch.long, device=device)
+    if data.numel() < 2:
+        raise ValueError("corpus too short for perplexity (need >= 2 chars)")
+    total_nats, n_tokens = 0.0, 0
+    with torch.no_grad():
+        for i in range(0, int(data.numel()) - 1, int(seq_len)):
+            end = min(i + int(seq_len), int(data.numel()) - 1)
+            xb = data[i:end].unsqueeze(0)                # [1, w] input chars
+            yb = data[i + 1:end + 1]                     # [w] next-char targets
+            logits = model(xb)[0]                        # [w, V] per-position logits
+            total_nats += float(F.cross_entropy(logits, yb, reduction="sum").detach().cpu())
+            n_tokens += int(yb.numel())
+    return math.exp(total_nats / max(1, n_tokens))
+
+
+# --------------------- checkpointing (torch.save / torch.load) ------------------------
+def save_checkpoint(model, cfg, path):
+    """Persist the torch model (state_dict + config) so long runs can RESUME instead of
+    restarting -- growth lever #2 (mirrors training/mnist.py's checkpoint format)."""
+    torch.save(
+        {
+            "format": "snn_training.SpikingLM/1",
+            "state_dict": model.state_dict(),
+            "cfg": {"vocab_size": cfg.vocab_size, "d_model": cfg.d_model,
+                    "n_blocks": cfg.n_blocks, "seq_len": cfg.seq_len, "beta": cfg.beta},
+        },
+        path,
+    )
+    return path
+
+
+def load_checkpoint(path):
+    """Rebuild (model, cfg) from a checkpoint written by `save_checkpoint`. Resume with the
+    SAME corpus: the char->id map comes from the corpus tokenizer, so the CLI cross-checks
+    only the vocab SIZE -- a different corpus with a coincidentally equal vocab would silently
+    remap characters. VERIFY: keep corpus + checkpoint paired."""
+    ckpt = torch.load(path, map_location="cpu")
+    if ckpt.get("format") != "snn_training.SpikingLM/1":
+        raise ValueError(f"{path}: not a snn_training.SpikingLM/1 checkpoint")
+    cfg = SpikingLMConfig(**ckpt["cfg"])
+    model = SpikingLM(cfg)
+    model.load_state_dict(ckpt["state_dict"])
+    return model, cfg
+
+
+# ------- THE BRIDGE: export torch weights into the zero-dep spiking_lm_serve core ------
+def export_lm(model, tok, path, cfg, meta=None):
+    """Export the trained spiking LM as a zero-dep ``snn_lm/1`` JSON at `path`.
+
+    ``snn_data_lake.spiking_lm_serve.load_lm`` loads it and ``generate`` runs the SAME
+    spiking forward in pure Python. The serve's LIF is snnTorch's DEFAULT subtract-reset at
+    threshold 1.0 -- exactly what this trainer's ``snn.Leaky(beta=...)`` layers use -- so the
+    dynamics match and the learned weights transfer faithfully. ``nn.Linear.weight`` is
+    [out][in], so every matrix below maps 1:1 into the serve layout with NO transpose:
+      embed [V][D], per block key/value/ffn_w [D][D] + log_decay/ffn_b [D],
+      readout [V][D], readout_b [V].
+    All shapes are ASSERTED before writing. Returns the lm dict."""
+    v, d, nb = cfg.vocab_size, cfg.d_model, cfg.n_blocks
+    embed = model.embed.weight.detach().cpu().tolist()               # [V][D] id -> input current
+    readout = model.readout.weight.detach().cpu().tolist()           # [V][D] head spikes -> logits
+    readout_b = model.readout.bias.detach().cpu().tolist()           # [V]
+    assert len(embed) == v and all(len(r) == d for r in embed), f"embed must be [{v}][{d}]"
+    assert len(readout) == v and all(len(r) == d for r in readout), f"readout must be [{v}][{d}]"
+    assert len(readout_b) == v, f"readout_b must be [{v}]"
+    blocks = []
+    for blk in model.blocks:
+        b = {
+            "key": blk.key.weight.detach().cpu().tolist(),           # [D][D] spikes -> mixer key
+            "value": blk.value.weight.detach().cpu().tolist(),       # [D][D] state -> mixed current
+            "log_decay": blk.log_decay.detach().cpu().tolist(),      # [D] per-channel decay logit
+            "ffn_w": blk.ffn.weight.detach().cpu().tolist(),         # [D][D] spike-driven FFN
+            "ffn_b": blk.ffn.bias.detach().cpu().tolist(),           # [D]
+        }
+        for name in ("key", "value", "ffn_w"):
+            assert len(b[name]) == d and all(len(r) == d for r in b[name]), \
+                f"block {len(blocks)} {name} must be [{d}][{d}]"
+        for name in ("log_decay", "ffn_b"):
+            assert len(b[name]) == d, f"block {len(blocks)} {name} must be [{d}]"
+        blocks.append(b)
+    assert len(blocks) == nb, f"expected {nb} blocks, exported {len(blocks)}"
+    itos = [tok.itos[i] for i in range(v)]               # chars in id order (serve indexes by id)
+    m = {"source": "snn_data_lake.training.spiking_lm surrogate-gradient trainer",
+         "task": "char-lm"}
+    if meta:
+        m.update(meta)
+    lm = {"format": "snn_lm/1", "vocab": v, "d_model": d, "n_blocks": nb,
+          "beta": cfg.beta, "threshold": 1.0,            # snnTorch Leaky default: subtract-reset at 1.0
+          "seq_len": cfg.seq_len, "stoi": dict(tok.stoi), "itos": itos,
+          "embed": embed, "blocks": blocks, "readout": readout, "readout_b": readout_b,
+          "meta": m}
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(lm, f)
+    return lm
+
+
+def verify_transfer(path, prompt="the ", n=60):
+    """Show the export transfers into the core: load the JSON at `path` with the ZERO-DEP
+    ``snn_data_lake.spiking_lm_serve`` and greedy-generate `n` chars after `prompt` -- the
+    trained LM visibly running with NO torch. Returns the generated string (prompt + text).
+
+    HONEST: greedy core-served text can differ slightly from the torch model's output
+    (pure-Python float paths vs torch kernels; and the torch `generate` above SAMPLES while
+    this is greedy). The check proves the weights LOAD and RUN in the core -- it is not a
+    bitwise-equality claim."""
+    from snn_data_lake.spiking_lm_serve import generate as core_generate
+    from snn_data_lake.spiking_lm_serve import load_lm
+    lm = load_lm(path)
+    return core_generate(lm, prompt, n=n, temperature=0.0)
+
+
 # ---------------------------------------- main ---------------------------------------
 def main():
     """Print the spiking-LM SHAPE (torch-free), then -- only if torch is installed -- build the
@@ -280,17 +441,18 @@ def main():
           .format(p=params))
     print("corpus       : {c} chars (embedded toy string, no downloads)".format(c=len(TOY_CORPUS)))
     print("-" * 68)
-    print("training + generation need torch + a GPU and are LEFT TO THE USER.")
+    print('training + export need torch: run them via `snn-train --lm` (pip install ".[gpu]").')
 
     if _TORCH_IMPORT_ERROR is not None:
-        print("needs torch: pip install '.[gpu]'  (installs torch + snntorch), then re-run:")
-        print("  PYTHONPATH=src .venv-gpu/Scripts/python research/spiking_lm.py")
+        print('needs torch: pip install ".[gpu]"  (installs torch + snntorch), then run:')
+        print("  snn-train --lm --export-lm my_lm.json         # train + zero-dep export via the CLI")
+        print("  python -m snn_data_lake.training.spiking_lm   # this shape demo + a tiny real train")
         print("=" * 68)
         return 0
 
     # ---- torch IS present: build, run a few REAL steps, sample. Numbers here are measured. ----
-    from torch_device import enable, resolve_device  # noqa: PLC0415  (lazy; research device-select)
-    device = enable(resolve_device())
+    from snn_data_lake.training.device import resolve_device  # lazy; training-tier device select
+    device = resolve_device()
     torch.manual_seed(0)
     model = SpikingLM(cfg)
     exact = sum(p.numel() for p in model.parameters())
