@@ -1,7 +1,7 @@
 """Fast surrogate-gradient MNIST brain trainer (torch + snnTorch) for the GPU tier.
 
 Trains a 784 -> H -> 10 spiking network whose forward dynamics match
-``snn_data_lake.trained_brain`` EXACTLY, then exports a zero-dep JSON "brain" the
+``snn_data_lake.cortex.trained_brain`` EXACTLY, then exports a zero-dep JSON "brain" the
 core can serve with NO torch present. Because the trainer's LIF hidden layer and
 accumulate-current output are the SAME dynamics ``trained_brain.predict`` runs, the
 learned weights transfer faithfully -- and that is proven after export by re-scoring a
@@ -35,7 +35,7 @@ import snntorch as snn
 from snntorch import surrogate
 from torchvision import datasets, transforms
 
-from snn_data_lake.trained_brain import (
+from snn_data_lake.cortex.trained_brain import (
     DEFAULT_BETA,
     DEFAULT_THRESHOLD,
     accuracy as core_accuracy,

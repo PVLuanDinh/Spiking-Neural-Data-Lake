@@ -9,7 +9,7 @@ Run: pytest tests/test_drift_monitor.py
 
 import random
 
-from snn_data_lake.drift_monitor import DriftMonitor
+from snn_data_lake.substrate.drift_monitor import DriftMonitor
 
 DIM = 8
 

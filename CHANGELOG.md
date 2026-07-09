@@ -3,6 +3,41 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.0] -- Anatomical restructure: the whole library organized by brain region (2026-07-09)
+
+Informed by BrainCog (Zeng et al. 2023, PMC10435966), Dana's neuroanatomy primer, and the
+EBRAINS/NEST cortical-microcircuit models.
+
+### Changed (structural; NON-breaking via a back-compat layer)
+- All 102 core modules moved from the flat `src/snn_data_lake/*.py` layout into 8 anatomical
+  brain-region subpackages: `cortex/` (sensing/encoding, cortical neuron models, microcircuit
+  dynamics, readout, language), `hippocampus/` (memory, spatial, replay), `basal_ganglia/` (action
+  selection, reward-modulated learning), `cerebellum/` (motor coordination, timing, forward/inverse
+  models), `brainstem/` (reflexes, actuation, the sensorimotor loops -- the SAFETY ENVELOPE lives
+  here), `neuromodulation/` (diffuse chemical modulators + glia), `plasticity/` (Hebbian/STDP,
+  homeostatic, developmental learning rules), and `substrate/` (the spiking data-lake, telemetry,
+  and infra -- honestly labelled as NOT a brain region). New canonical path
+  `snn_data_lake.<region>.<module>`; `snn_data_lake.REGIONS` is the authoritative map.
+- BACK-COMPAT (non-breaking): a lazy meta-path alias finder + package `__getattr__` keep every
+  pre-3.0 flat import valid -- `import snn_data_lake.lif_neuron` and
+  `from snn_data_lake.lif_neuron import LIFNeuron` still resolve to the moved module as the
+  IDENTICAL object. The finder restores the real module's `__spec__` so `runpy`/`get_code` on the
+  regional module stay intact. Verified across all 101 aliases by `brain_atlas` and the in-process
+  pytest.
+
+### Added
+- `src/snn_data_lake/brain_atlas.py` (CORE): renders the region -> modules map and self-checks that
+  every legacy flat import path resolves to the identical regional module.
+- `src/snn_data_lake/plasticity/developmental_pruning.py` (CORE): brain-inspired developmental
+  synaptic pruning (BrainCog). Start over-connected, prune the weakest synapses over "development"
+  -> a sparse efficient net. Honest mechanism-level anchor: at MATCHED final sparsity (~12% density,
+  88% pruned), magnitude (keep-strong) pruning beats a fair random-pruning control by +26% to +53%
+  held-out accuracy across 8 seeds (dense ceiling 100%) -- the control shares the exact per-round
+  cut schedule, so only WHICH synapses are cut differs.
+
+The 5 safety-envelope files moved to `brainstem/` with their LOGIC unchanged (every safety
+self-check re-verified). Core `dependencies = []`; 146/146 self-checks, ruff clean, pytest >=70%.
+
 ## [v2.81] -- Spiking LM integrated to core: zero-dep serve + training-tier trainer + growth path (2026-07-09)
 
 ### Added

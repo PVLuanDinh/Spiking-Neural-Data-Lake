@@ -22,26 +22,49 @@ import subprocess
 # PYTHONPATH="src" so `snn_data_lake` (the package) + research/ modules importing it resolve.
 _ENV = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "PYTHONPATH": "src"}
 
-# CORE — the product: arm-loop + data-lake, clone-and-run (root).
+# CORE — the product: arm-loop + data-lake, clone-and-run (root). As of 3.0 organized by
+# anatomical brain region (src/snn_data_lake/<region>/<module>.py); run as
+# `-m snn_data_lake.<region>.<module>`. snn_data_lake.brain_atlas renders + verifies the map.
 CORE = [
-    "_mathutils",
-    "snn_classifier", "trained_brain", "brain_bundle", "spiking_lm_serve", "nir_export", "spike_telemetry_hub", "streaming_hub", "short_term_plasticity",
-    "data_quality", "drift_monitor",
-    "lif_neuron", "dendritic_neuron", "spike_slicer", "is_snn_forward", "lt_gate", "spike_pooling", "ring_attractor", "grid_cells",
-    "htm_sequence_memory", "theta_gamma_code", "legendre_memory", "predictive_coding", "spike_stream_sketch", "spike_cardinality", "reservoir_sampling", "sliding_window_count", "frequency_moment", "streaming_quantile", "minhash", "morris_counter", "entropy_coder",
-    "paradigm_b_matcher", "paradigm_b_engine", "vsa_reasoning", "spike_preprocessing", "adaptive_spiking", "proximity_index", "energy",
-    "neuro_chip", "neuro_chip_stream",
-    "signal_loop", "learned_matcher", "rank_order_coding", "tempotron", "lca_sparse_coding", "evidence_accumulation",
-    "reflex", "valence_stdp", "r_stdp", "bcm_plasticity", "homeostatic_scaling", "inhibitory_stdp",
-    "divisive_normalization",
-    "intrinsic_plasticity", "izhikevich_neuron", "hodgkin_huxley", "alif_neuron", "cortisol", "acetylcholine", "astrocyte_modulation",
-    "neural_sampling", "restricted_boltzmann",
-    "interpreter", "closed_loop", "make_sensor_dataset", "sensor_demo",
-    "arm_sim", "arm_config", "population_encoding", "population_vector", "multimodal_encoder", "cue_integration", "growing_learner",
-    "autonomous_loop", "hippocampus", "frequency_memory", "experience_replay", "sleep_replay", "nl_interface", "brain_reasoning", "language_brain", "sensor_csv_ingest", "esp32_encoder_path",
-    "gesture_recognition", "live_arm", "serial_arm", "arm_bridge", "spiking_pid", "cpg_oscillator", "kuramoto_sync", "wilson_cowan", "neuronal_avalanches", "synfire_chain", "stochastic_resonance", "forward_model", "kalman_filter", "demo",
-    "reaction_diffusion_compute", "wavefront_planner",
-    "control_panel",
+    "brain_atlas",
+    # cortex — sensing/encoding, cortical neuron models, microcircuit dynamics, readout, language
+    "cortex.rank_order_coding", "cortex.population_encoding", "cortex.population_vector", "cortex.multimodal_encoder",
+    "cortex.spike_preprocessing", "cortex.theta_gamma_code", "cortex.spike_slicer", "cortex.adaptive_spiking",
+    "cortex.cue_integration", "cortex.spike_pooling",
+    "cortex.lif_neuron", "cortex.dendritic_neuron", "cortex.izhikevich_neuron", "cortex.hodgkin_huxley", "cortex.alif_neuron",
+    "cortex.divisive_normalization", "cortex.wilson_cowan", "cortex.neuronal_avalanches", "cortex.stochastic_resonance",
+    "cortex.lt_gate", "cortex.lca_sparse_coding", "cortex.predictive_coding", "cortex.is_snn_forward", "cortex.neural_sampling",
+    "cortex.restricted_boltzmann",
+    "cortex.snn_classifier", "cortex.trained_brain", "cortex.learned_matcher", "cortex.tempotron", "cortex.paradigm_b_matcher",
+    "cortex.paradigm_b_engine", "cortex.gesture_recognition",
+    "cortex.language_brain", "cortex.nl_interface", "cortex.brain_reasoning", "cortex.spiking_lm_serve", "cortex.vsa_reasoning",
+    # hippocampus — memory formation, spatial coding, replay
+    "hippocampus.hippocampus", "hippocampus.grid_cells", "hippocampus.htm_sequence_memory", "hippocampus.frequency_memory",
+    "hippocampus.experience_replay", "hippocampus.sleep_replay", "hippocampus.ring_attractor", "hippocampus.growing_learner",
+    "hippocampus.legendre_memory",
+    # basal ganglia — action selection, reward-modulated learning, decision
+    "basal_ganglia.evidence_accumulation", "basal_ganglia.r_stdp", "basal_ganglia.valence_stdp",
+    # cerebellum — motor coordination, timing, forward/inverse models, oscillators
+    "cerebellum.forward_model", "cerebellum.kalman_filter", "cerebellum.spiking_pid", "cerebellum.kuramoto_sync",
+    "cerebellum.synfire_chain", "cerebellum.wavefront_planner",
+    # brainstem + spinal cord — reflexes, actuation, sensorimotor loops, motor pattern generation
+    # (the safety envelope lives here)
+    "brainstem.reflex", "brainstem.serial_arm", "brainstem.arm_sim", "brainstem.arm_config", "brainstem.interpreter",
+    "brainstem.live_arm", "brainstem.arm_bridge", "brainstem.closed_loop", "brainstem.autonomous_loop",
+    "brainstem.signal_loop", "brainstem.cpg_oscillator",
+    # neuromodulation — diffuse chemical modulators + glia
+    "neuromodulation.acetylcholine", "neuromodulation.astrocyte_modulation", "neuromodulation.cortisol",
+    # plasticity — Hebbian/STDP, homeostatic, developmental learning rules
+    "plasticity.bcm_plasticity", "plasticity.homeostatic_scaling", "plasticity.inhibitory_stdp", "plasticity.intrinsic_plasticity",
+    "plasticity.short_term_plasticity", "plasticity.developmental_pruning",
+    # substrate — the spiking data-lake, telemetry, and infra (not a brain region)
+    "substrate._mathutils", "substrate.spike_stream_sketch", "substrate.spike_cardinality", "substrate.reservoir_sampling",
+    "substrate.sliding_window_count", "substrate.frequency_moment", "substrate.streaming_quantile", "substrate.minhash",
+    "substrate.morris_counter", "substrate.entropy_coder", "substrate.proximity_index", "substrate.energy",
+    "substrate.data_quality", "substrate.drift_monitor", "substrate.spike_telemetry_hub", "substrate.streaming_hub",
+    "substrate.neuro_chip", "substrate.neuro_chip_stream", "substrate.nir_export", "substrate.sensor_csv_ingest",
+    "substrate.esp32_encoder_path", "substrate.make_sensor_dataset", "substrate.sensor_demo", "substrate.demo",
+    "substrate.control_panel", "substrate.brain_bundle", "substrate.reaction_diffusion_compute",
 ]
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [

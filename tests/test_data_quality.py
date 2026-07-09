@@ -10,7 +10,7 @@ Run: pytest tests/test_data_quality.py
 import pytest
 
 from snn_data_lake import data_quality as dq
-from snn_data_lake.data_quality import DataQualityError
+from snn_data_lake.substrate.data_quality import DataQualityError
 
 N, DUR = 8, 1000
 

@@ -45,7 +45,7 @@ def main(argv=None):
                              "built-in toy paragraph)")
     parser.add_argument("--export-lm", metavar="PATH", dest="export_lm",
                         help="export the trained spiking LM as a zero-dep snn_lm JSON at PATH "
-                             "(served by snn_data_lake.spiking_lm_serve with no torch present; "
+                             "(served by snn_data_lake.cortex.spiking_lm_serve with no torch present; "
                              "--lm only)")
     parser.add_argument("--d-model", type=int, default=96, dest="d_model",
                         help="LM width (default 96; --lm only)")

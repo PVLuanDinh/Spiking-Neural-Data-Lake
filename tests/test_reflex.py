@@ -7,7 +7,7 @@ the arm into the obstacle and a spurious fire freezes it.
 Run: pytest tests/test_reflex.py
 """
 
-from snn_data_lake.reflex import Reflex, reflex_guard
+from snn_data_lake.brainstem.reflex import Reflex, reflex_guard
 
 
 def _row(ch6=500.0, ch7=0.0):

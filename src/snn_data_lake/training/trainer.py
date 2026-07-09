@@ -1,7 +1,7 @@
 """Surrogate-gradient spiking classifier (torch + snnTorch) for the GPU tier.
 
 Targets the EXACT task the zero-dep core defines. The data + task are REUSED from
-``snn_data_lake.snn_classifier`` (they are zero-dep, so importing them is free):
+``snn_data_lake.cortex.snn_classifier`` (they are zero-dep, so importing them is free):
 8x8 binary shapes, GRID=8 / N=64 inputs, C=4 classes, STEPS=20 rate-coded
 timesteps (ON_RATE=0.9 lit / OFF_RATE=0.05 dark per step).
 
@@ -27,7 +27,7 @@ import torch.nn as nn
 import snntorch as snn
 from snntorch import surrogate
 
-from snn_data_lake.snn_classifier import (
+from snn_data_lake.cortex.snn_classifier import (
     templates,
     dataset,
     save_weights,

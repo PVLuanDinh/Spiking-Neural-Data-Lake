@@ -6,7 +6,7 @@ extra) to train a surrogate-gradient spiking classifier on the GPU, then EXPORTS
 the learned weights back into the zero-dep core so a clone-and-run install can
 serve them with no torch present.
 
-The trainer targets the exact task the core ``snn_data_lake.snn_classifier``
+The trainer targets the exact task the core ``snn_data_lake.cortex.snn_classifier``
 defines -- 8x8 binary shapes (GRID=8, N=64 inputs), C=4 classes, STEPS=20 rate-
 coded timesteps -- and uses a single ``nn.Linear(N, C)`` spiking readout whose
 weight has shape [C][N]. That maps 1:1 onto the core's ``W[c][i]`` matrix, so

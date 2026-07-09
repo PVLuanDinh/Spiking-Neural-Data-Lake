@@ -8,10 +8,13 @@
 
 A pure-standard-library Python toolkit for event-driven (spiking) computation, in three parts:
 
-- **A neuromorphic primitive library:** 95 zero-dependency modules under `src/snn_data_lake/`.
-  Integrate-and-fire and adaptive-threshold neurons, STDP/BCM/e-prop/ReSuMe plasticity, WTA and
-  reservoir networks, spike encoders/decoders, and streaming sketches. Each module is importable
-  as `snn_data_lake.<module>` and carries its own deterministic self-check.
+- **A neuromorphic primitive library:** 102 zero-dependency modules under `src/snn_data_lake/`,
+  organized by brain anatomy (cortex, hippocampus, basal_ganglia, cerebellum, brainstem,
+  neuromodulation, plasticity, and a non-anatomical substrate tier). Integrate-and-fire and
+  adaptive-threshold neurons, STDP/BCM/e-prop/ReSuMe plasticity, WTA and reservoir networks, spike
+  encoders/decoders, and streaming sketches. Each module is importable as
+  `snn_data_lake.<region>.<module>` (the legacy `snn_data_lake.<module>` path still works) and
+  carries its own deterministic self-check. See `snn_data_lake.brain_atlas` for the region map.
 - **A spike-native data lakehouse:** sparse `.spk` event storage with windowed queries, an
   in-storage coincidence/temporal-order query engine (Paradigm B), a VSA/hyperdimensional
   relational-reasoning layer (Paradigm C), and a Bronze→Silver→Gold Medallion pipeline.
@@ -90,7 +93,9 @@ Dreamer-lite 1.03→0.48 m), and MNIST (unsupervised STDP 82.3% CPU; conductance
 ## Repository layout
 
 ```
-src/snn_data_lake/   95 zero-dependency core modules + lakehouse/ (Medallion Bronze→Silver→Gold)
+src/snn_data_lake/   102 zero-dependency core modules across 8 anatomical brain regions (cortex,
+                     hippocampus, basal_ganglia, cerebellum, brainstem, neuromodulation,
+                     plasticity, substrate) + brain_atlas.py + lakehouse/ (Medallion Bronze→Gold)
 research/            benchmarks and experiments, kept for reproducibility (ruff-excluded, not the product)
 tests/               pytest suite (>=70% coverage)
 packaging/           build the tkinter GUI into a standalone Windows .exe (PyInstaller + Inno Setup)
@@ -101,8 +106,8 @@ docs/                install, hardware setup, storage formats, architecture note
 run_selfchecks.py    canonical self-check runner (single source of truth for the module list)
 ```
 
-Safety-critical arm code (`reflex.py`, `serial_arm.py`, `arm_sim.py`, `arm_config.py`,
-`interpreter.py`) is documented in [SECURITY.md](SECURITY.md).
+Safety-critical arm code (`brainstem/reflex.py`, `brainstem/serial_arm.py`, `brainstem/arm_sim.py`,
+`brainstem/arm_config.py`, `brainstem/interpreter.py`) is documented in [SECURITY.md](SECURITY.md).
 
 ## Testing & CI
 

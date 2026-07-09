@@ -14,7 +14,7 @@ if not getattr(sys, "frozen", False):
     _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sys.path.insert(0, os.path.join(_root, "src"))
 
-from snn_data_lake.control_panel import main
+from snn_data_lake.substrate.control_panel import main
 
 if __name__ == "__main__":
     main()

@@ -36,7 +36,7 @@ import snntorch as snn
 from snntorch import surrogate
 from torch.utils.checkpoint import checkpoint
 
-from snn_data_lake.snn_classifier import (
+from snn_data_lake.cortex.snn_classifier import (
     templates,
     dataset,
     N,

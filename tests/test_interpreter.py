@@ -10,7 +10,7 @@ Tests mirror the self-check in interpreter.py:selfcheck() to verify:
 - Reward policy: default 0.0 vs assume_success +0.5
 """
 
-from snn_data_lake.interpreter import Interpreter
+from snn_data_lake.brainstem.interpreter import Interpreter
 
 
 def test_reflex_stop():

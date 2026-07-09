@@ -6,7 +6,7 @@ neurons are LIF spiking units (snnTorch `Leaky` + `surrogate.fast_sigmoid()`
 gradients), trained from scratch by surrogate-gradient BPTT. It is in the SpikeGPT /
 SpikingBERT lineage (a transformer BUILT OUT OF spiking neurons), NOT a large trained
 LLM. Its EXPORT BRIDGE (`export_lm` below) writes a plain-JSON ``snn_lm/1`` weight
-file that the ZERO-DEP core module ``snn_data_lake.spiking_lm_serve`` loads and
+file that the ZERO-DEP core module ``snn_data_lake.cortex.spiking_lm_serve`` loads and
 serves with no torch -- the language-model analogue of `training.mnist` exporting a
 `trained_brain` the core serves (`verify_transfer` below shows the round trip).
 
@@ -349,7 +349,7 @@ def load_checkpoint(path):
 def export_lm(model, tok, path, cfg, meta=None):
     """Export the trained spiking LM as a zero-dep ``snn_lm/1`` JSON at `path`.
 
-    ``snn_data_lake.spiking_lm_serve.load_lm`` loads it and ``generate`` runs the SAME
+    ``snn_data_lake.cortex.spiking_lm_serve.load_lm`` loads it and ``generate`` runs the SAME
     spiking forward in pure Python. The serve's LIF is snnTorch's DEFAULT subtract-reset at
     threshold 1.0 -- exactly what this trainer's ``snn.Leaky(beta=...)`` layers use -- so the
     dynamics match and the learned weights transfer faithfully. ``nn.Linear.weight`` is
@@ -397,15 +397,15 @@ def export_lm(model, tok, path, cfg, meta=None):
 
 def verify_transfer(path, prompt="the ", n=60):
     """Show the export transfers into the core: load the JSON at `path` with the ZERO-DEP
-    ``snn_data_lake.spiking_lm_serve`` and greedy-generate `n` chars after `prompt` -- the
+    ``snn_data_lake.cortex.spiking_lm_serve`` and greedy-generate `n` chars after `prompt` -- the
     trained LM visibly running with NO torch. Returns the generated string (prompt + text).
 
     HONEST: greedy core-served text can differ slightly from the torch model's output
     (pure-Python float paths vs torch kernels; and the torch `generate` above SAMPLES while
     this is greedy). The check proves the weights LOAD and RUN in the core -- it is not a
     bitwise-equality claim."""
-    from snn_data_lake.spiking_lm_serve import generate as core_generate
-    from snn_data_lake.spiking_lm_serve import load_lm
+    from snn_data_lake.cortex.spiking_lm_serve import generate as core_generate
+    from snn_data_lake.cortex.spiking_lm_serve import load_lm
     lm = load_lm(path)
     return core_generate(lm, prompt, n=n, temperature=0.0)
 

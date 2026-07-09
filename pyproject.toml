@@ -9,7 +9,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "spiking-neural-data-lake"
-version = "2.81.0"
+version = "3.0.0"
 description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Zero-dep core, clone-and-run."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -36,10 +36,10 @@ dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.15.20", "pre-commit"]       # tests
 all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist,train]"]             # every addon (genn excluded — needs a compiler)
 
 [project.scripts]
-snn-demo = "snn_data_lake.demo:main"         # one-file demo loop
-snn-arm  = "snn_data_lake.live_arm:main"     # live gesture -> arm (add --serial/--actuate for hardware)
-snn-loop = "snn_data_lake.closed_loop:main"  # full closed loop: gesture -> command -> reward -> learn
-snn-ui   = "snn_data_lake.control_panel:main"  # zero-dep tkinter desktop control panel (arm + recognition + lake)
+snn-demo = "snn_data_lake.substrate.demo:main"         # one-file demo loop
+snn-arm  = "snn_data_lake.brainstem.live_arm:main"     # live gesture -> arm (add --serial/--actuate for hardware)
+snn-loop = "snn_data_lake.brainstem.closed_loop:main"  # full closed loop: gesture -> command -> reward -> learn
+snn-ui   = "snn_data_lake.substrate.control_panel:main"  # zero-dep tkinter desktop control panel (arm + recognition + lake)
 snn-train = "snn_data_lake.training.cli:main"  # [train] extra: surrogate-gradient GPU trainer -> exports weights to the zero-dep core
 
 [project.urls]

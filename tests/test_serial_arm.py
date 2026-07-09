@@ -9,8 +9,8 @@ Run: pytest tests/test_serial_arm.py
 
 import pytest
 
-from snn_data_lake import arm_config
-from snn_data_lake.serial_arm import SerialArm, assert_calibrated
+from snn_data_lake.brainstem import arm_config
+from snn_data_lake.brainstem.serial_arm import SerialArm, assert_calibrated
 
 
 class FakeWriter:
