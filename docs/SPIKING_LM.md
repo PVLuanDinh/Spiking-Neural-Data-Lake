@@ -28,6 +28,11 @@ below are the honest growth path — each is a real lever, none is a shortcut to
 
 1. **Real corpus, not the toy.** `--corpus big.txt` (e.g. TinyStories, WikiText, your own text). More
    and more-varied text is the single biggest quality lever. Perplexity is the metric — track it.
+   Pull one straight off the web with the firewalled fetcher (stdlib, no cloud):
+   `snn-fetch-corpus https://www.gutenberg.org/files/11/11-0.txt alice.txt` then
+   `snn-train --lm --corpus alice.txt`. The fetcher (`snn_data_lake.substrate.web_ingest`) is
+   http/https + public-IP only and is deliberately outside the arm control loop — it just writes a
+   local text file.
 2. **Subword tokenizer.** Char-level caps quality and lengthens sequences. Moving to BPE/subword (e.g.
    a `tokenizers` BPE) shortens sequences and raises the ceiling. *(The char tokenizer is the toy default;
    a subword tokenizer is the first real upgrade — it changes `vocab`/`stoi`/`itos` only.)*

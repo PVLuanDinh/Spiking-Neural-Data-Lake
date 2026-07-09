@@ -100,7 +100,6 @@ research/            benchmarks and experiments, kept for reproducibility (ruff-
 tests/               pytest suite (>=70% coverage)
 packaging/           build the tkinter GUI into a standalone Windows .exe (PyInstaller + Inno Setup)
 local_llm/           optional on-device NL interface (AirLLM backend, [llm] extra, no cloud)
-gcp/ infra/          GCP lakehouse scaffold + Terraform (Phase 1 verified end-to-end)
 deploy/              ESP32 actuator firmware (fail-safe, echo-only by default)
 docs/                install, hardware setup, storage formats, architecture notes
 run_selfchecks.py    canonical self-check runner (single source of truth for the module list)
@@ -125,8 +124,7 @@ CI runs the matrix `{ubuntu, windows} × {3.11, 3.12, 3.13}` plus lint and cover
 ## Limitations & open problems
 
 - **~95% MNIST is a target, not achieved.** Best measured is 90.0% (1600 neurons, scale-tuned);
-  the 6400-neuron run needs the full recipe and multiple epochs and is blocked by a GCP billing
-  hold, not a code gap.
+  the 6400-neuron run needs the full recipe, multiple epochs, and a GPU — not a code gap.
 - **The 6-DOF Dreamer's world model is a plain MLP.** A fully-spiking world model failed to
   regress 6-joint FK; the actor and critic are spiking, the world model is not. The arm is planar.
 - **Real-arm "learning" is partly simulated.** Reward/success uses an `--assume-success`
@@ -134,8 +132,6 @@ CI runs the matrix `{ubuntu, windows} × {3.11, 3.12, 3.13}` plus lint and cover
   capture and a real success signal land; distance alone decides presence.
 - **N-MNIST 71% is a plumbing demo, not a benchmark:** real DVS data, nearest-prototype, no
   learning (SOTA ~99.3%); off-theme vs the storage/robotics work.
-- **The streaming cloud Bronze leg is unverified.** Batch Phase 1 is verified end-to-end; the
-  Pub/Sub→Dataflow streaming sink still writes vanilla Parquet (the Delta fix is proven locally).
 - **The query path requires determinism:** Poisson re-encoding yields different spike trains, so
   stochastic encoding cannot be used for matching.
 - **Neuromodulators are abstractions**, not biophysics (single global scalars for

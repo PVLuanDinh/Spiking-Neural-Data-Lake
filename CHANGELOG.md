@@ -3,6 +3,28 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.1] -- Remove the cloud integration; add firewalled web-corpus fetch for training (2026-07-09)
+
+### Removed
+- Deleted the entire cloud integration: `gcp/` (the Vertex AI / Dataflow / Dataproc / Composer /
+  Cloud Build deploy scaffold) and `infra/` (Terraform, including a committed `terraform.tfstate`).
+  Every GCP/cloud reference was swept out of the docs and the ruff config. NOTE: these files remain
+  in git HISTORY -- if `infra/terraform.tfstate` ever held real secrets, rotate them (deleting from
+  HEAD does not purge history).
+
+### Added
+- `src/snn_data_lake/substrate/web_ingest.py` (CORE, zero-dep): the brain's guarded internet access
+  for TRAINING DATA -- a firewalled web -> text-corpus fetcher (stdlib `urllib`). SSRF firewall:
+  http/https only; every resolved IP must be public (loopback / RFC1918 / link-local / reserved /
+  multicast rejected -- which blocks localhost and the 169.254.169.254 cloud-metadata endpoint);
+  redirects are re-validated; a 5 MB byte cap. Deliberately OUTSIDE the robot-arm control loop -- it
+  only writes a local corpus file you then feed to the trainer. New console command
+  `snn-fetch-corpus <url> <out.txt>`, then `snn-train --lm --corpus <out.txt>`. The offline
+  self-check rejects 14 SSRF/scheme cases and strips HTML; a live fetch of example.com verified the
+  happy path and the guard live-rejecting localhost/metadata.
+
+Core `dependencies = []`; 147/147 self-checks, ruff clean, pytest >=70%; the safety envelope untouched.
+
 ## [v3.0] -- Anatomical restructure: the whole library organized by brain region (2026-07-09)
 
 Informed by BrainCog (Zeng et al. 2023, PMC10435966), Dana's neuroanatomy primer, and the

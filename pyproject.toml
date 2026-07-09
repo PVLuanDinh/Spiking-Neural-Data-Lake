@@ -9,7 +9,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "spiking-neural-data-lake"
-version = "3.0.0"
+version = "3.1.0"
 description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Zero-dep core, clone-and-run."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -41,6 +41,7 @@ snn-arm  = "snn_data_lake.brainstem.live_arm:main"     # live gesture -> arm (ad
 snn-loop = "snn_data_lake.brainstem.closed_loop:main"  # full closed loop: gesture -> command -> reward -> learn
 snn-ui   = "snn_data_lake.substrate.control_panel:main"  # zero-dep tkinter desktop control panel (arm + recognition + lake)
 snn-train = "snn_data_lake.training.cli:main"  # [train] extra: surrogate-gradient GPU trainer -> exports weights to the zero-dep core
+snn-fetch-corpus = "snn_data_lake.substrate.web_ingest:cli"  # firewalled web -> training-corpus fetch (zero-dep urllib)
 
 [project.urls]
 Homepage = "https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake"
@@ -64,13 +65,13 @@ filterwarnings = ["ignore:.*found in sys.modules.*:RuntimeWarning"]
 [tool.coverage.run]
 source = ["snn_data_lake"]
 
-# ruff: scoped to the zero-dep core + tests. research/, gcp/, infra/ and the standalone
-# "robot arm/" sketch are excluded on purpose (linting them means editing quarantined /
-# optional-dep code — out of scope here; see docs/IMPROVEMENTS.md A4).
+# ruff: scoped to the zero-dep core + tests. research/ and the standalone "robot arm/" sketch are
+# excluded on purpose (linting them means editing quarantined / optional-dep code — out of scope
+# here; see docs/IMPROVEMENTS.md A4).
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["research", "gcp", "infra", "robot arm", "local_llm", "packaging", "src/snn_data_lake/training"]
+extend-exclude = ["research", "robot arm", "local_llm", "packaging", "src/snn_data_lake/training"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

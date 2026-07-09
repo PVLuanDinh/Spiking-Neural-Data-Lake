@@ -14,7 +14,7 @@ This exercises all safety-critical paths (collision detection, E-STOP, serial pr
 
 ## Local Data Store
 
-The Medallion lakehouse (`spike_telemetry_hub`, `.spk` file format) is the **local-only replacement** for the optional GCP path. It stores spiking events on disk with efficient random-access via `disk_query()`. No cloud required.
+The Medallion lakehouse (`spike_telemetry_hub`, `.spk` file format) stores spiking events on disk with efficient random-access via `disk_query()`. No cloud required.
 
 ## Local NL Interface (Optional)
 

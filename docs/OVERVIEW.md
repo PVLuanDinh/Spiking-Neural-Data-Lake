@@ -38,9 +38,7 @@ environment; it is explicitly **not** part of the shipped, zero-dep product.
    stored spikes and emits only coincidence/temporal-order matches), and **C** (relational
    reasoning: a knowledge graph in spike timing — link prediction via TransE/RotatE — plus a
    complementary VSA/hyperdimensional-algebra reasoner). A local Medallion lakehouse
-   (Bronze -> Silver -> Gold, Parquet, optional Delta Lake PoC) sits on top, and the same
-   pipeline has been run end-to-end on GCP (Terraform -> GCS -> Dataproc Serverless ->
-   BigLake/BigQuery), verified for Phase 1.
+   (Bronze -> Silver -> Gold, Parquet, optional Delta Lake PoC) sits on top.
 
 3. **Robot-arm control loop** — a biologically-layered controller where sensor data becomes
    spikes, spikes are matched against a learned/stored vocabulary in the data lake, matches
@@ -185,13 +183,12 @@ not "cognition." Specific ceilings called out in the project's own voice:
 - The robot-arm gesture-recognition 95% is *achieved* on real captured
   ESP32 data; the unsupervised-STDP MNIST ~95% figure is a *literature target*
   (Diehl & Cook 2015, 6400 neurons + full 60k) — the best measured result here is
-  **90.0%** at 1600 neurons, and the tuned 6400-neuron run is currently blocked by a GCP
-  billing hold, not a method gap.
+  **90.0%** at 1600 neurons, and the tuned 6400-neuron run has not yet been executed at
+  that scale, not a method gap.
 - Several demos use **synthetic modality streams** (e.g., `make_sensor_dataset.py`) rather
   than live sensors; the live ESP32 path currently covers distance + IR temperature only,
   with visual/audio bands held at zero pending hardware.
-- The lakehouse is a **PoC at Medallion scale**, not a production query engine; the GCP
-  path is verified for Phase 1 only.
+- The lakehouse is a **PoC at Medallion scale**, not a production query engine.
 - The N-MNIST event-camera ingest is explicitly flagged as a plumbing/pipeline demo
   (nearest-prototype, no learning), off-theme from the project's core claims.
 - The arm control loop is **sim-first**; the real-hardware path exists and is

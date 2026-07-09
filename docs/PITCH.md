@@ -28,8 +28,8 @@ baselines, 3.6–83.5× fewer synaptic operations across compute-efficiency prot
 **95% gesture recognition on real captured ESP32 hardware data**. The project is
 equally explicit about what it has *not* achieved: the unsupervised-STDP MNIST ~95% figure
 quoted in the literature (Diehl & Cook 2015, 6400 neurons) is a target, not a result — the
-best measured accuracy here is **90.0% at 1600 neurons**, and the tuned 6400-neuron run is
-blocked by a cloud billing hold, not a method gap. This is offered to the community as a
+best measured accuracy here is **90.0% at 1600 neurons**, and the tuned 6400-neuron run has
+not yet been executed at that scale (a compute-cost gap, not a method gap). This is offered to the community as a
 reproducible engineering-and-research artifact, not a state-of-the-art accuracy paper: read
 it for the data-systems-over-spikes paradigm, the safety-gated bio-layered arm-control
 architecture, and a clone-and-run zero-dependency baseline you can fork, extend, or hold your
@@ -86,11 +86,10 @@ explicit data-system paradigms directly over spike trains:
   ships in-core; the KG-embedding research lineage (TransE/RotatE, full relation algebra)
   lives in `research/`. **[PoC]** — link prediction and VSA composition work and are measured
   (see Results), but this is a research-scale KG, not a production reasoning engine.
-- **Local Medallion lakehouse + verified cloud path.** Bronze→Silver→Gold over Parquet with a
-  data-quality gate, a Delta Lake PoC (transaction log, `OPTIMIZE`, time-travel), and the
-  *same* pipeline run end-to-end on GCP (Terraform → GCS → Dataproc Serverless →
-  BigLake/BigQuery), reproducing the local Gold output exactly for Phase 1. **[PoC]** — Phase 1
-  only; the streaming cloud ingestion leg is unverified (see Limitations).
+- **Local Medallion lakehouse.** Bronze→Silver→Gold over Parquet with a
+  data-quality gate and a Delta Lake PoC (transaction log, `OPTIMIZE`, time-travel).
+  **[PoC]** — a proof-of-concept lakehouse at Medallion scale, not a production query
+  engine (see Limitations).
 
 ### 2.2 ~90 pure-standard-library neuromorphic primitives **[validated]**
 
@@ -154,7 +153,7 @@ Three pillars share one primitive layer:
 
 1. **Spiking-neural-network toolkit** — neuron models, plasticity, coding, cognitive-map
    mechanisms, streaming sketches (§2.2).
-2. **Spiking data-lakehouse** — Paradigms A/B/C plus the Medallion/GCP lakehouse (§2.1).
+2. **Spiking data-lakehouse** — Paradigms A/B/C plus the Medallion lakehouse (§2.1).
 3. **Robot-arm control loop** — sense → think → act, safety-gated throughout (§2.3).
 
 End-to-end closed loop (text diagram, see `docs/OVERVIEW.md` for the fully annotated version):
@@ -224,7 +223,7 @@ configuration. Compute = synaptic operations (SynOps); storage = bytes.
 | Spike-driven MoE routing | 0 learned router-net params (8 biases vs 512); 4× compute cut (top-2 of 8 experts) | learned dense router | README.md, "Compute-efficiency prototypes" table |
 | Gesture recognition (order-aware Paradigm B), real ESP32 captures | **95%** (APPROACH 98% · RETREAT 85% · IDLE 100%) | 63% with a direction-blind template matcher | README.md, "Robot-arm neuromorphic loop" table — **achieved on real captured hardware data** |
 | Unsupervised STDP MNIST, CPU | 82.3% (300 neurons / 6k images) | literature ~95% (Diehl & Cook 2015, 6400n + 60k) | README.md, "Trainable MNIST models" table |
-| Conductance Diehl & Cook MNIST, GPU (RTX 5070, BindsNET) | **90.0% @ 1600 neurons** (scale-tuned); 86.4% @ 400n; 47.8% @ 6400n with untuned defaults | literature ~95% target — 6400n/~95% run is **blocked by a GCP billing hold, not a method gap** | README.md, "Trainable MNIST models" table + "Status at a glance" |
+| Conductance Diehl & Cook MNIST, GPU (RTX 5070, BindsNET) | **90.0% @ 1600 neurons** (scale-tuned); 86.4% @ 400n; 47.8% @ 6400n with untuned defaults | literature ~95% target — the tuned 6400n/~95% run **has not yet been executed at that scale, not a method gap** | README.md, "Trainable MNIST models" table + "Status at a glance" |
 | N-MNIST event-camera ingest (real DVS data, 1.25M events, nearest-prototype, no learning) | 71.0% | flagged off-theme "pipeline/plumbing demo," not a benchmark (SOTA ~99.3% elsewhere in the literature) | README.md, "Trainable MNIST models" table + Limitations |
 | Test coverage | 84% (`--cov-fail-under=70` enforced gate) | — | README.md badges + `pyproject.toml` `[tool.pytest.ini_options]` |
 | Zero-dep self-checks | 123/123 modules pass | — | README.md "Status at a glance"; `run_selfchecks.py` |
@@ -232,8 +231,8 @@ configuration. Compute = synaptic operations (SynOps); storage = bytes.
 **The honest distinction that matters most:** the robot-arm **gesture** 95% is *achieved* on
 real ESP32 hardware captures. The MNIST conductance-Diehl-and-Cook "~95%" is
 a *literature target* the project has not yet reached — the best number actually measured
-here is 90.0% at 1600 neurons, and the recipe for the tuned 6400-neuron/~95% run is known and
-wired but currently blocked by a cloud billing hold, which the project states plainly is a
+here is 90.0% at 1600 neurons, and the recipe for the tuned 6400-neuron/~95% run is known but
+has not yet been run at that scale, which the project states plainly is a
 compute/access gap, not evidence the method doesn't scale.
 
 ## 6. Reproducibility
@@ -312,16 +311,13 @@ Stated in the project's own voice (README "Limitations & open problems", CHANGEL
 
 - **The ~95% MNIST figure is a target, not an achieved result.** Best measured is 90.0%
   (1600 neurons, scale-tuned). The 6400-neuron/~95% run needs the known recipe plus multiple
-  epochs (day-scale compute); the tuned Vertex job is currently blocked by a GCP billing
-  "dunning" hold — a compute-access gap, not a code or method gap.
+  epochs (day-scale compute) that has not yet been run at that scale — a compute-access gap,
+  not a code or method gap.
 - **Some demos use synthetic modality streams.** `make_sensor_dataset.py` and similar
   generate synthetic sensor data for several demos rather than live sensor capture; the live
   ESP32 path currently covers distance + IR temperature only, with visual/audio bands held at
   zero pending hardware.
-- **The lakehouse is a PoC at Medallion scale, not a production query engine**, and the GCP
-  cloud path is verified for Phase 1 only; the streaming (Pub/Sub→Dataflow) Bronze ingestion
-  leg is unverified and still writes vanilla Parquet (small-file problem) rather than the
-  Delta fix already proven locally.
+- **The lakehouse is a PoC at Medallion scale, not a production query engine.**
 - **The N-MNIST event-camera ingest is an explicitly flagged plumbing/pipeline demo** —
   nearest-prototype matching, no learning — off-theme relative to the project's core
   storage/robotics thesis (literature SOTA on comparable event benchmarks is ~99.3%); the
@@ -394,7 +390,7 @@ collaborator:
 - **Full-source install (all optional extras, best-effort):** `install.bat` (Windows) /
   `install.sh` (Linux/macOS) from the full-source release bundle.
 - **Architecture reference:** `docs/OVERVIEW.md` (kept current, single source of truth for the
-  module map); `docs/RUNNING.md` (local + cloud runbook); `docs/HARDWARE_SETUP.md` (BOM,
+  module map); `docs/RUNNING.md` (local runbook); `docs/HARDWARE_SETUP.md` (BOM,
   wiring, firmware, safety envelope in depth).
 - **Suggested citation stub:**
   ```

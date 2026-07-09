@@ -53,6 +53,7 @@ REGIONS = {
         "drift_monitor", "spike_telemetry_hub", "streaming_hub", "neuro_chip", "neuro_chip_stream",
         "nir_export", "sensor_csv_ingest", "esp32_encoder_path", "make_sensor_dataset",
         "sensor_demo", "demo", "control_panel", "brain_bundle", "reaction_diffusion_compute",
+        "web_ingest",
     ],
 }
 

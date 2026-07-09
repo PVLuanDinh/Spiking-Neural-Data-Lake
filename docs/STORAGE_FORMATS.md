@@ -15,7 +15,7 @@ one place that says which is which, so the `.spk / .spc / .spkl` sprawl isn't gu
 ## Common invariants
 - **Bronze events are immutable** — `(t:int, channel:int)`, append-only. `data_quality.bronze_hash`
   pins content; `data_quality.gate()` blocks Gold promotion on schema / duplicate / encodability /
-  immutability / Gold-sanity failure (batch in `medallion.py`, per-event in `gcp/dataflow_ingest.py`).
+  immutability / Gold-sanity failure (in `medallion.py`).
 - `.spk` and `.spkl` both store raw spike events; `.spk` is **index-optimized for reads**, `.spkl`
   is **append-optimized for writes**. They are not interchangeable — pick by access pattern.
 

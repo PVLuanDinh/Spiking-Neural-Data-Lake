@@ -65,6 +65,7 @@ CORE = [
     "substrate.neuro_chip", "substrate.neuro_chip_stream", "substrate.nir_export", "substrate.sensor_csv_ingest",
     "substrate.esp32_encoder_path", "substrate.make_sensor_dataset", "substrate.sensor_demo", "substrate.demo",
     "substrate.control_panel", "substrate.brain_bundle", "substrate.reaction_diffusion_compute",
+    "substrate.web_ingest",
 ]
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [

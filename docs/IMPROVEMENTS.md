@@ -242,47 +242,6 @@ INRC access — reporting measured energy per query (the number B3 estimates ana
 **Acceptance.** Lava CPU port reproduces the coincidence/sequence matches; a documented plan
 (and, once INRC lands, measured energy) for the Loihi 2 run.
 
-### C2 — Unblock and cost-guard the GCP 95% run (P1)
-
-**Why.** The CHANGELOG records the 6400n/~95% Vertex run is **blocked by a billing "dunning" hold**
-on `snn-data-lake-prod` — all `aiplatform` calls denied. Separately, `submit_vertex.sh` launches a
-_3-epoch, day-scale_ L4 job with no checkpointing or preemption strategy, so an eviction loses the
-whole run, and Terraform uses **local state** (`infra/terraform.tfstate` on disk) with no budget
-guardrail.
-
-**Do.** (1) Clear/close the billing case (ops, not code). (2) Add checkpoint/resume to the training
-loop so the long job survives spot-VM eviction; run on Spot L4 for cost. (3) Move Terraform state to
-a **GCS remote backend** and add a billing budget alert + a `terraform destroy` teardown note. (4)
-Write the run's final accuracy back to GCS/BigQuery as an artifact so "95%" becomes a reproducible
-record, not a manual read.
-
-**Acceptance.** A Vertex job that resumes after preemption, runs under a budget alert, and lands a
-result artifact; Terraform state is remote and state is never local again.
-
-### C3 — Implement the Delta streaming sink (P2)
-
-**Why.** `gcp/dataflow_ingest.py` writes vanilla Parquet and its own comment flags the
-consequence: _"the small-file problem at high event rates … the lakehouse-tier fix is a Delta sink
-(transaction log + OPTIMIZE compaction) — proven locally in `lakehouse/delta_demo.py`."_ The fix is
-scoped and the local proof already exists.
-
-**Do.** Swap `WriteToParquet` for a Delta writer in the streaming path, reaching batch/stream
-parity with the medallion PoC; run periodic `OPTIMIZE`/compaction.
-
-**Acceptance.** Streaming Bronze lands as Delta with compaction; small-file count stays bounded
-under a sustained event rate.
-
-### C4 — Pin and CI-build the training image (P2)
-
-**Why.** `gcp/Dockerfile` + `cloudbuild.yaml` exist, but nothing verifies the image builds until a
-Cloud Build is manually triggered, and base images aren't digest-pinned — so the "verified" GPU
-path can rot silently.
-
-**Do.** Pin base images by digest; add a CI job that builds the image (no push) on changes under
-`gcp/`.
-
-**Acceptance.** Image build is a required check on `gcp/**` changes; bases are digest-pinned.
-
 ---
 
 ## D. Product & robotics loop
@@ -360,13 +319,10 @@ on a real event-camera gesture stream — one coherent, on-theme story instead o
 | B3 | SynOps → Joules energy claim | Research | P1 | S | Defensible efficiency number |
 | B5 | Mean ± std over seeds | Research | P1 | S | Credible headline metrics |
 | C1 | Lava/Loihi 2 port of Paradigm B | HW | P1 | L | Real-silicon energy win |
-| C2 | Unblock + cost-guard Vertex 95% run | MLOps | P1 | M | The last-leg result, safely |
 | D2 | End-to-end latency measurement | Product | P1 | S | Real-time claim, quantified |
 | D3 | Live drift detection / recalibration | Product | P1 | M | Robustness to rig changes |
 | A6 | Optional NumPy fast-path | Eng | P2 | M | Speed, zero-dep preserved |
 | B4 | Hopfield baseline for assoc. memory | Research | P2 | S | Contextualized capacity claim |
-| C3 | Delta streaming sink | MLOps | P2 | M | Fixes flagged small-file issue |
-| C4 | CI-build + digest-pin training image | MLOps | P2 | S | Keeps GPU path from rotting |
 | D4 | Unify demo on DVS Gesture stream | Product | P2 | M | One coherent on-theme demo |
 
 _*D1 is P0 only if/when real servos are driven; it's not on the critical path for the sim._
