@@ -3,6 +3,15 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.73] -- Honest retrieval-index + energy metrics (exact NN pruning, memory/INT8/baseline audit) (2026-07-08)
+
+### Added
+- `proximity_index.nearest_exact()` -- exact k-NN by LAESA metric pruning: triangle lower bounds over the medoid pivots (VP is a true metric -- 0 triangle violations in 20000 triples). Returns the SAME items as `brute_force` while computing VP for only ~28% of patterns. The self-check now MEASURES and discloses the fast `nearest(probe)` path's real exact-NN recall (85% at N=180) instead of hiding it behind a same-class recall that always read 100%.
+- `energy.py` memory-access + fair-baseline lenses: `snn_energy_full` (adds a per-SynOp weight fetch + per-timestep membrane read/write, ~5 pJ SRAM each), `ann_energy_int8` (quantized 0.23 pJ/MAC baseline), `crossover_sparsity` (the spike fraction below which the SNN's full energy wins). Constants cited to Horowitz (ISSCC 2014).
+
+### Changed
+- `energy.py` now reports the honest picture next to the compute-only figure. The "3.6x fewer ops / 18.4x less energy" charges the dense ANN N*C MACs on every one of STEPS=20 timesteps (`dense_macs = n*STEPS*N*C`); a static image needs ONE matvec, so against a fair single-matvec INT8 ANN with memory the classifier's SynOps are 5.6x MORE ops and cost ~7x more energy (crossover 1.5% vs observed 27.8% activity). The docstring lists memory-access, INT8 baseline, per-timestep neuron update, and the T-inflated op baseline as the caveats a bare SynOps count omits. No numbers of record removed; the optimistic lens is kept and now counterbalanced.
+
 ## [v2.72] -- README de-slop: remove em/en dashes and decorative bold (2026-07-08)
 
 ### Changed
