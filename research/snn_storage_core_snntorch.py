@@ -15,6 +15,7 @@ spiking_storage_prototype.py (stdlib-only, no deps).
 import torch
 import torch.nn as nn
 import snntorch as snn
+from torch_device import resolve_device, enable
 
 
 # 1. Define a simple Spiking Storage Core architecture
@@ -44,6 +45,7 @@ class SpikingStorageCore(nn.Module):
 # trains, utilizing structural weights for memory extraction.
 
 if __name__ == "__main__":
+    enable(resolve_device())
     steps, input_dim, latent_dim = 25, 64, 32
     core = SpikingStorageCore(input_dim, latent_dim)
     # Poisson spike train: [steps, batch, input_dim] of {0,1}

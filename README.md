@@ -33,6 +33,7 @@ pip install -e ".[all]"     # + optional extras (arm, lake, gpu, nmnist, llm, ..
 ```
 
 Python 3.11+. Full guide, including per-extra notes, in [docs/INSTALL.md](docs/INSTALL.md).
+GPU / accelerator notes (opt-in CUDA for training) in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
 ## Quickstart
 

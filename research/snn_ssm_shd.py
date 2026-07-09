@@ -28,6 +28,9 @@ import torch.nn as nn
 import torch.nn.functional as F  # noqa: N812
 import snntorch as snn
 from snntorch import surrogate
+from torch_device import resolve_device, enable
+
+_DEVICE = enable(resolve_device())
 
 DIM = int(os.environ.get("SSM_DIM", 128))
 LAYERS = int(os.environ.get("SSM_LAYERS", 2))
@@ -107,7 +110,7 @@ def load_shd(train):
 
 def run(x, y, xt, yt, n_classes):
     torch.manual_seed(SEED)
-    g = torch.Generator().manual_seed(SEED)
+    g = torch.Generator(device=_DEVICE).manual_seed(SEED)
     model = SpikingSSM(x.size(2), n_classes)
     opt = torch.optim.Adam(model.parameters(), lr=2e-3)
     for _ in range(EPOCHS):                        # minibatch SGD (many updates, not one/epoch)
@@ -126,7 +129,7 @@ def run(x, y, xt, yt, n_classes):
 
 
 def main():
-    gen = torch.Generator().manual_seed(SEED)
+    gen = torch.Generator(device=_DEVICE).manual_seed(SEED)
     if "--shd" in sys.argv:
         mode = "real SHD (Tonic)"
         x, y = load_shd(True)

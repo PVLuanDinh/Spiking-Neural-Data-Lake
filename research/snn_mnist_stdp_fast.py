@@ -22,6 +22,7 @@ import torch
 from snn_mnist_stdp import (load_mnist, StdpNetwork, assign_labels, evaluate,
                             M, T, TRAIN_N, TEST_N, N_IN, BETA, LR, W_NORM, WMAX,
                             TAU_PRE, THETA_PLUS, THETA_DECAY)
+from torch_device import resolve_device, enable
 
 torch.manual_seed(0)
 # v0.17 defaults = the gap-closer config (76.0% at M=300/6k, vs 68.8% pure latency).
@@ -135,6 +136,7 @@ def fast_eval(net, enc, Y, asg):
 
 
 def main():
+    enable(resolve_device())
     print("=" * 64)
     print("v0.16  PRECOMPUTED LATENCY STDP vs RATE STDP")
     print("=" * 64)

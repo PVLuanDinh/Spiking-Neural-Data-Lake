@@ -3,6 +3,15 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.71] -- Opt-in GPU acceleration for the research torch training scripts (2026-07-08)
+
+### Added
+- `research/torch_device.py` -- shared `resolve_device()` / `enable()` helper giving opt-in CUDA to the torch/snnTorch training scripts via `NORD_GPU=1` or `NORD_DEVICE=cuda`, using `torch.set_default_device`. Wired into `snn_mnist_dc`, `snn_mnist_stdp`, `snn_mnist_stdp_fast`, `snn_moe_stdp_mnist`, `snn_motor_control`, `snn_world_model_rl`, `snn_dreamer_6dof`, `snn_storage_core_snntorch`, `snn_ssm_shd` (and `eth_mnist_bindsnet` already had its own `--gpu`). Explicit `torch.Generator()` sites are bound to the resolved device. The CPU default is byte-identical (the numbers of record are unchanged) and the zero-dependency core is untouched -- GPU stays an opt-in `[gpu]` extra used only by the `research/` training lineage.
+- `docs/PERFORMANCE.md` -- which optional extra (`[gpu]` / `[genn]` / `[llm]`) accelerates what, how to enable GPU training, and why the core stays CPU/stdlib (KB-scale spiking primitives and the real-time arm loop are not GPU-bound; AirLLM disk-streaming only helps a large local LLM, not the core).
+
+### Removed
+- Local-only development files pulled from the public repo (kept on disk, gitignored): `AGENTS.md`, `CLAUDE.md`, `assets/`, `gpu_scaling_sweep.sh`.
+
 ## [v2.70] -- Repo cleanup: dedup helpers, Keep-a-Changelog, technical README (2026-07-08)
 
 ### Changed

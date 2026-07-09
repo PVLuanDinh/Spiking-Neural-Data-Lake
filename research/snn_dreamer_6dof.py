@@ -30,6 +30,9 @@ import torch
 import torch.nn as nn
 import snntorch as snn
 from snntorch import surrogate
+from torch_device import resolve_device, enable
+
+_DEVICE = enable(resolve_device())
 
 NJ, ZD, ED = 6, 16, 2                    # joints, latent dim, end-effector dim (planar)
 H, STEPS, HID = 4, 8, 128                # horizon, LIF steps/net, hidden width
@@ -199,7 +202,7 @@ def update_actor_critic(wm, actor, critic, a_opt, c_opt, gen, iters=4):
 
 def main():
     torch.manual_seed(0)
-    gen = torch.Generator().manual_seed(0)
+    gen = torch.Generator(device=_DEVICE).manual_seed(0)
     wm = WorldModel()
     actor = SNet(ZD + ED, NJ, scale=1.5)
     critic = SNet(ZD + ED, 1, scale=3.0)

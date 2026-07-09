@@ -29,7 +29,9 @@ import os
 import torch
 import snntorch as snn
 from snn_mnist_stdp import load_mnist   # reuse the MNIST loader (v0.3)
+from torch_device import resolve_device, enable
 
+_DEVICE = enable(resolve_device())
 torch.manual_seed(0)
 
 
@@ -61,7 +63,7 @@ class StdpExpert:
     """One unsupervised-STDP excitatory population (hard k-WTA, adaptive theta)."""
 
     def __init__(self, seed):
-        g = torch.Generator().manual_seed(seed)
+        g = torch.Generator(device=_DEVICE).manual_seed(seed)
         self.W = torch.rand(EXPERT_M, N_IN, generator=g) * 0.3
         self._normalise()
         self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")

@@ -39,6 +39,7 @@ import os
 import torch
 import snntorch as snn  # noqa: F401  (kept: same LIF lineage as the rest of the lake)
 from snn_mnist_stdp import load_mnist
+from torch_device import resolve_device, enable
 
 torch.manual_seed(0)
 
@@ -149,6 +150,7 @@ def evaluate(net, X, Y, assignment):
 
 
 def main():
+    enable(resolve_device())
     print("=" * 60)
     print("v0.8  PROPER DIEHL & COOK STDP on MNIST")
     print("=" * 60)

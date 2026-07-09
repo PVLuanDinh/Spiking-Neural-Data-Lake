@@ -20,6 +20,9 @@ import torch
 import torch.nn as nn
 import snntorch as snn
 from snntorch import surrogate
+from torch_device import resolve_device, enable
+
+_DEVICE = enable(resolve_device())
 
 L1, L2 = 1.0, 1.0            # link lengths (match arm_sim)
 
@@ -108,7 +111,7 @@ def model_based_reach(fm, gen, plan_steps=25):
 
 def main():
     torch.manual_seed(0)
-    gen = torch.Generator().manual_seed(0)
+    gen = torch.Generator(device=_DEVICE).manual_seed(0)
     net = SpikingNet(scale=0.3)         # reactive policy: bounded joint deltas (rad)
     opt = torch.optim.Adam(net.parameters(), lr=2e-3)
     lossf = nn.MSELoss()

@@ -29,6 +29,7 @@ import os
 import torch
 import snntorch as snn
 from torchvision import datasets, transforms
+from torch_device import resolve_device, enable
 
 torch.manual_seed(0)  # deterministic run + self-check
 
@@ -160,6 +161,7 @@ def evaluate(net, X, Y, assignment):
 
 
 def main():
+    enable(resolve_device())
     print("=" * 58)
     print("UNSUPERVISED STDP MNIST  (snnTorch, Diehl&Cook style)")
     print("=" * 58)

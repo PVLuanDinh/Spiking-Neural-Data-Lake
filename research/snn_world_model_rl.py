@@ -26,6 +26,9 @@ import snntorch as snn
 from snntorch import surrogate
 
 from snn_motor_control import fk            # differentiable 2-link forward kinematics (reuse)
+from torch_device import resolve_device, enable
+
+_DEVICE = enable(resolve_device())
 
 GAIN = torch.tensor([1.0, 0.5])             # per-joint actuation gain (joint B weaker) — the
 H = 5                                       # rollout horizon (steps per episode)   nonlinearity
@@ -107,7 +110,7 @@ def improve_policy(policy, wm, opt, gen, batch=128, iters=8):
 
 def main():
     torch.manual_seed(0)
-    gen = torch.Generator().manual_seed(0)
+    gen = torch.Generator(device=_DEVICE).manual_seed(0)
     policy = _SpikingNet(4, 2, scale=1.2)   # (theta, target_ee) -> action delta
     wm = _SpikingNet(4, 2, scale=1.2)       # (theta, delta)     -> predicted joint change dtheta
     p_opt = torch.optim.Adam(policy.parameters(), lr=3e-3)
