@@ -3,6 +3,48 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.3] -- Complete the anatomy: connectome wiring layer + amygdala, BG Go/NoGo, TRN gate (2026-07-09)
+
+Driven by an anatomy-completeness audit against the Allen Brain Atlas + the AI 3D brain-map
+research. The audit ranked the top gaps: (1) no explicit connectome, (2) no amygdala, (3) the
+basal-ganglia selection circuit, (4) the thalamic reticular gate. All four built into core. See
+`docs/ANATOMY.md`.
+
+### Added
+- `src/snn_data_lake/connectome.py` (CORE, zero-dep) -- the white-matter WIRING layer beside
+  `brain_atlas.py`'s region map. A typed, directed, signed, loop-aware edge list over 23 canonical
+  sub-structure nodes (34 edges): each edge carries tract / sign (exc|inh|da|ne|5ht|ach) / class
+  (relay|feedback|broadcast|descending) / loop. Encodes 5 closed canonical loops (thalamocortical,
+  CBGTC, hippocampal trisynaptic, cortico-cerebellar, Papez) plus the amygdala threat pathway,
+  neuromodulatory broadcast, and the descending corticospinal path. Self-check asserts every loop is
+  a closed cycle and -- the SAFETY anchor -- the arm actuator is reachable ONLY through the gated
+  brainstem edge (removing it cuts every cortical node off from the actuator). Fair control: the
+  graphify import graph carries none of the connectome's typing, so it is not redundant with Python
+  imports. Honest label: a mesoscale SCHEMATIC of canonical pathways, not a synapse-level connectome.
+- New region `amygdala/` with `fear_conditioning.py` (CORE, zero-dep): spiking CS-US fear
+  conditioning. A BLA LIF associative readout learns via a three-factor Hebbian rule (the US is the
+  gating third factor); CeA emits a threat scalar for a conditioned cue; extinction is a SEPARATE
+  inhibitory path that SUPPRESSES (not erases) the memory. Fair control + anchor: a paired CS learns
+  threat (0.786) while an equally-exposed UNPAIRED control cue stays at 0.000 (cannot learn by
+  construction), and post-extinction the response drops to 0.000 then SPONTANEOUSLY RECOVERS (0.534)
+  vs an erasure control's flat 0.000 -- suppression, not erasure. A threat-detector FUNCTION, NOT
+  fear/suffering.
+- `basal_ganglia/action_gating.py` (CORE, zero-dep): spiking Go/NoGo action selection (the CBGTC
+  selection stage). Striatum D1(Go)/D2(NoGo) -> GPi/SNr tonic inhibition of thalamus -> the winning
+  channel is disinhibited (k-WTA); dopamine modulates the D1/D2 balance. Fair control: a DA lesion
+  (SNc analog) fails selection (0/6 released vs intact 6/6, akinesia) and partial DA slows it (2.83
+  vs 2.17 steps, bradykinesia). Safety-relevant anchor: a tonic-GPi-only state with no cortical drive
+  releases NOTHING (no spurious action).
+- `thalamus/reticular_gate.py` (CORE, zero-dep): the TRN attentional gain gate -- a GABAergic
+  lateral-inhibition valve (reusing `divisive_normalization`) that redistributes a fixed gain budget
+  toward the attended channel. Fair control over the same noisy 16-channel input: attended gating
+  raises the signal-to-distractor ratio 1.02 -> 3.55, while a RANDOM mask with the identical gains
+  stays at 1.03 -- the benefit is selectivity (WHERE the gain goes), not gain itself.
+
+Now 10 anatomical regions, 107 region modules + `brain_atlas` + `connectome`. Core
+`dependencies = []`; 152/152 self-checks, ruff clean, pytest 86.25%; the 5 safety-envelope files
+unchanged (self-checks re-verified).
+
 ## [v3.2] -- A functional Global Workspace, live in the brain loop (2026-07-09)
 
 Global Workspace Theory (Baars 1988; Dehaene & Changeux's Global Neuronal Workspace).

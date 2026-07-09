@@ -26,7 +26,7 @@ _ENV = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "PYTHONPAT
 # anatomical brain region (src/snn_data_lake/<region>/<module>.py); run as
 # `-m snn_data_lake.<region>.<module>`. snn_data_lake.brain_atlas renders + verifies the map.
 CORE = [
-    "brain_atlas",
+    "brain_atlas", "connectome",
     # cortex — sensing/encoding, cortical neuron models, microcircuit dynamics, readout, language
     "cortex.rank_order_coding", "cortex.population_encoding", "cortex.population_vector", "cortex.multimodal_encoder",
     "cortex.spike_preprocessing", "cortex.theta_gamma_code", "cortex.spike_slicer", "cortex.adaptive_spiking",
@@ -42,8 +42,11 @@ CORE = [
     "hippocampus.hippocampus", "hippocampus.grid_cells", "hippocampus.htm_sequence_memory", "hippocampus.frequency_memory",
     "hippocampus.experience_replay", "hippocampus.sleep_replay", "hippocampus.ring_attractor", "hippocampus.growing_learner",
     "hippocampus.legendre_memory",
-    # basal ganglia — action selection, reward-modulated learning, decision
+    # basal ganglia — action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation", "basal_ganglia.r_stdp", "basal_ganglia.valence_stdp",
+    "basal_ganglia.action_gating",
+    # amygdala — aversive/threat learning (CS-US fear conditioning)
+    "amygdala.fear_conditioning",
     # cerebellum — motor coordination, timing, forward/inverse models, oscillators
     "cerebellum.forward_model", "cerebellum.kalman_filter", "cerebellum.spiking_pid", "cerebellum.kuramoto_sync",
     "cerebellum.synfire_chain", "cerebellum.wavefront_planner",
@@ -52,8 +55,8 @@ CORE = [
     "brainstem.reflex", "brainstem.serial_arm", "brainstem.arm_sim", "brainstem.arm_config", "brainstem.interpreter",
     "brainstem.live_arm", "brainstem.arm_bridge", "brainstem.closed_loop", "brainstem.autonomous_loop",
     "brainstem.signal_loop", "brainstem.cpg_oscillator",
-    # thalamus — the relay + global-broadcast hub (Global Workspace Theory)
-    "thalamus.global_workspace",
+    # thalamus — the relay + global-broadcast hub (GWT) + reticular attentional gate
+    "thalamus.global_workspace", "thalamus.reticular_gate",
     # neuromodulation — diffuse chemical modulators + glia
     "neuromodulation.acetylcholine", "neuromodulation.astrocyte_modulation", "neuromodulation.cortisol",
     # plasticity — Hebbian/STDP, homeostatic, developmental learning rules

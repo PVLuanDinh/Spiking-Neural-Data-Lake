@@ -8,9 +8,10 @@
 
 A pure-standard-library Python toolkit for event-driven (spiking) computation, in three parts:
 
-- **A neuromorphic primitive library:** 104 zero-dependency modules under `src/snn_data_lake/`,
-  organized by brain anatomy (cortex, hippocampus, basal_ganglia, cerebellum, brainstem, thalamus,
-  neuromodulation, plasticity, and a non-anatomical substrate tier). Integrate-and-fire and
+- **A neuromorphic primitive library:** 107 zero-dependency modules under `src/snn_data_lake/`,
+  organized by brain anatomy (cortex, hippocampus, basal_ganglia, amygdala, cerebellum, brainstem,
+  thalamus, neuromodulation, plasticity, and a non-anatomical substrate tier), wired by an explicit
+  `connectome`. Integrate-and-fire and
   adaptive-threshold neurons, STDP/BCM/e-prop/ReSuMe plasticity, WTA and reservoir networks, spike
   encoders/decoders, and streaming sketches. Each module is importable as
   `snn_data_lake.<region>.<module>` (the legacy `snn_data_lake.<module>` path still works) and
@@ -93,9 +94,10 @@ Dreamer-lite 1.03→0.48 m), and MNIST (unsupervised STDP 82.3% CPU; conductance
 ## Repository layout
 
 ```
-src/snn_data_lake/   104 zero-dependency core modules across 9 anatomical brain regions (cortex,
-                     hippocampus, basal_ganglia, cerebellum, brainstem, thalamus, neuromodulation,
-                     plasticity, substrate) + brain_atlas.py + lakehouse/ (Medallion Bronze→Gold)
+src/snn_data_lake/   107 zero-dependency core modules across 10 anatomical brain regions (cortex,
+                     hippocampus, basal_ganglia, amygdala, cerebellum, brainstem, thalamus,
+                     neuromodulation, plasticity, substrate) + brain_atlas.py (region->module map) +
+                     connectome.py (region->region wiring) + lakehouse/ (Medallion Bronze→Gold)
 research/            benchmarks and experiments, kept for reproducibility (ruff-excluded, not the product)
 tests/               pytest suite (>=70% coverage)
 packaging/           build the tkinter GUI into a standalone Windows .exe (PyInstaller + Inno Setup)

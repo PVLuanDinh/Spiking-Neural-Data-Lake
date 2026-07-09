@@ -32,7 +32,8 @@ REGIONS = {
         "hippocampus", "grid_cells", "htm_sequence_memory", "frequency_memory",
         "experience_replay", "sleep_replay", "ring_attractor", "growing_learner", "legendre_memory",
     ],
-    "basal_ganglia": ["evidence_accumulation", "r_stdp", "valence_stdp"],
+    "basal_ganglia": ["evidence_accumulation", "r_stdp", "valence_stdp", "action_gating"],
+    "amygdala": ["fear_conditioning"],
     "cerebellum": [
         "forward_model", "kalman_filter", "spiking_pid", "kuramoto_sync", "synfire_chain",
         "wavefront_planner",
@@ -41,7 +42,7 @@ REGIONS = {
         "reflex", "serial_arm", "arm_sim", "arm_config", "interpreter", "live_arm", "arm_bridge",
         "closed_loop", "autonomous_loop", "signal_loop", "cpg_oscillator",
     ],
-    "thalamus": ["global_workspace"],
+    "thalamus": ["global_workspace", "reticular_gate"],
     "neuromodulation": ["acetylcholine", "astrocyte_modulation", "cortisol"],
     "plasticity": [
         "bcm_plasticity", "homeostatic_scaling", "inhibitory_stdp", "intrinsic_plasticity",

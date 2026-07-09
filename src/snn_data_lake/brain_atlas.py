@@ -38,7 +38,7 @@ def main():
     print("=" * 66)
 
     # ---- self-check: layout sane + back-compat intact (zero-dep) ----
-    assert total == 104, f"expected 104 modules in the atlas, got {total}"
+    assert total == 107, f"expected 107 modules in the atlas, got {total}"
     # regions are disjoint (no module in two regions)
     seen = {}
     for region, mods in REGIONS.items():
