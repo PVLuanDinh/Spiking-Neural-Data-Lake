@@ -8,8 +8,8 @@
 
 A pure-standard-library Python toolkit for event-driven (spiking) computation, in three parts:
 
-- **A neuromorphic primitive library:** 102 zero-dependency modules under `src/snn_data_lake/`,
-  organized by brain anatomy (cortex, hippocampus, basal_ganglia, cerebellum, brainstem,
+- **A neuromorphic primitive library:** 104 zero-dependency modules under `src/snn_data_lake/`,
+  organized by brain anatomy (cortex, hippocampus, basal_ganglia, cerebellum, brainstem, thalamus,
   neuromodulation, plasticity, and a non-anatomical substrate tier). Integrate-and-fire and
   adaptive-threshold neurons, STDP/BCM/e-prop/ReSuMe plasticity, WTA and reservoir networks, spike
   encoders/decoders, and streaming sketches. Each module is importable as
@@ -93,8 +93,8 @@ Dreamer-lite 1.03→0.48 m), and MNIST (unsupervised STDP 82.3% CPU; conductance
 ## Repository layout
 
 ```
-src/snn_data_lake/   102 zero-dependency core modules across 8 anatomical brain regions (cortex,
-                     hippocampus, basal_ganglia, cerebellum, brainstem, neuromodulation,
+src/snn_data_lake/   104 zero-dependency core modules across 9 anatomical brain regions (cortex,
+                     hippocampus, basal_ganglia, cerebellum, brainstem, thalamus, neuromodulation,
                      plasticity, substrate) + brain_atlas.py + lakehouse/ (Medallion Bronze→Gold)
 research/            benchmarks and experiments, kept for reproducibility (ruff-excluded, not the product)
 tests/               pytest suite (>=70% coverage)

@@ -3,6 +3,33 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.2] -- A functional Global Workspace, live in the brain loop (2026-07-09)
+
+Global Workspace Theory (Baars 1988; Dehaene & Changeux's Global Neuronal Workspace).
+
+### Added
+- New anatomical region `thalamus/` (the thalamocortical relay + global-broadcast hub) with
+  `global_workspace.py` (CORE, zero-dep): a functional Global Workspace. Specialist regions
+  `submit(source, content, salience)`; each `step()` runs compete -> all-or-none IGNITION (a
+  challenger must clear the ignition threshold AND beat the self-boosted incumbent by a hysteresis
+  margin) -> BROADCAST to every subscriber -> DECAY. Capacity is one slot -- the limited-capacity
+  bottleneck. Honest framing: a functional attention/broadcast mechanism, NOT a claim of phenomenal
+  consciousness. Un-riggable anchor = a FAIR CONTROL: the same noisy stream with the ignition
+  non-linearity toggled -- WITH it the workspace is stable (5 switches), WITHOUT it (pure per-tick
+  argmax) it flickers (27), yet a supra-threshold threat burst (0.98) still breaks through, so the
+  stability comes from the threshold, not a frozen slot. Also asserts the bottleneck, all-or-none
+  (two sub-threshold posts do not sum), global reach, and persistence -> decay.
+
+### Changed
+- Wired the Global Workspace LIVE into the running brain: `AutonomousArm(workspace=True)` steps a
+  workspace every tick -- perception (the current unit) competes with a salience/threat detector; on
+  a safe tick perception holds the slot, on a proximity threat the threat signal ignites and is
+  broadcast. ADDITIVE + read-only -- it selects no action, gates no motion, and never touches the
+  reflex/E-STOP. The self-check confirms the E-STOP freeze still holds with the workspace active.
+
+Core `dependencies = []`; 148/148 self-checks, ruff clean, pytest >=70%; the 5 safety-envelope files
+unchanged (their self-checks re-verified).
+
 ## [v3.1] -- Remove the cloud integration; add firewalled web-corpus fetch for training (2026-07-09)
 
 ### Removed

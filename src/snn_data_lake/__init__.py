@@ -41,6 +41,7 @@ REGIONS = {
         "reflex", "serial_arm", "arm_sim", "arm_config", "interpreter", "live_arm", "arm_bridge",
         "closed_loop", "autonomous_loop", "signal_loop", "cpg_oscillator",
     ],
+    "thalamus": ["global_workspace"],
     "neuromodulation": ["acetylcholine", "astrocyte_modulation", "cortisol"],
     "plasticity": [
         "bcm_plasticity", "homeostatic_scaling", "inhibitory_stdp", "intrinsic_plasticity",

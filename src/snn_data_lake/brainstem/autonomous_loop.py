@@ -31,6 +31,7 @@ from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.neuromodulation.cortisol import Cortisol
 from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
+from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
 ACTIONS = ("GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD")   # the arm's autonomous action repertoire
 SAFE_ACTION = "HOLD"                                  # what caution biases toward under stress
@@ -39,7 +40,8 @@ SAFE_ACTION = "HOLD"                                  # what caution biases towa
 class AutonomousArm:
     """Grows units from multimodal context + learns context->action by reward; every motion gated."""
 
-    def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None):
+    def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None,
+                 workspace=False):
         self.arm = ArmSim()
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
         self.learner = GrowingLearner()
@@ -51,6 +53,9 @@ class AutonomousArm:
         self.replay = replay              # opt-in SWR consolidation; default OFF -> behaviour unchanged
         self.replay_batch = replay_batch
         self.buffer = ReplayBuffer(seed=seed) if replay else None
+        # opt-in Global Workspace: brain regions compete for one slot + broadcast the winner each tick.
+        # ADDITIVE + read-only -- it selects no action and never touches the reflex/E-STOP (see step()).
+        self.workspace = GlobalWorkspace(seed=seed) if workspace else None
 
     def _select(self, unit):
         qa = self.q[unit]
@@ -61,6 +66,18 @@ class AutonomousArm:
 
     def greedy(self, unit):
         return max(ACTIONS, key=lambda a: self.q[unit][a])
+
+    def _workspace_broadcast(self, percept, threat_salience):
+        """Additive Global-Workspace tick: brain regions (perception + a salience/threat detector)
+        compete for the single workspace slot and the winner is broadcast to all. READ-ONLY
+        annotation -- it selects no action, gates no motion, and never touches the reflex/E-STOP.
+        Returns the broadcast content, or None when there is no workspace."""
+        if self.workspace is None:
+            return None
+        if percept is not None:
+            self.workspace.submit("perception", percept, 0.6)   # normally holds the slot when safe
+        self.workspace.submit("salience", "threat", threat_salience)
+        return self.workspace.step()
 
     @classmethod
     def from_bundle(cls, bundle_or_path, **kwargs):
@@ -89,8 +106,10 @@ class AutonomousArm:
         # 1. SAFETY FIRST: an object at the sensor trips the reflex -> gated EMERGENCY_STOP, no action
         if distance is not None and (not math.isfinite(distance) or distance < CONTACT):
             self.cort.step(1.0)                                 # danger -> stress up (sharpens future response)
+            estop = self.arm.apply("EMERGENCY_STOP")            # ONLY path to motion -> gate holds
             return {"unit": None, "action": "EMERGENCY_STOP", "reflex": True,
-                    "state": self.arm.apply("EMERGENCY_STOP")}  # ONLY path to motion -> gate holds
+                    "workspace": self._workspace_broadcast(None, 0.95),  # threat ignites (annotation only)
+                    "state": estop}
         # 2. perceive -> grow a unit on a novel multimodal context
         pattern = encode_multimodal(visual, temperature, audio, [distance] if distance is not None else None)
         unit, grew = self.learner.observe(pattern)
@@ -108,7 +127,10 @@ class AutonomousArm:
                 self.buffer.add(unit, action, r)
                 if not grew:                                # quiescent (familiar) tick -> replay past experience
                     self.buffer.replay(self.q, self.lr, batch=self.replay_batch)
-        return {"unit": unit, "grew": grew, "action": action, "reflex": False, "state": state}
+        # workspace: perception (the current unit) competes with a low background threat -> broadcast.
+        broadcast = self._workspace_broadcast(unit, 0.2)        # additive annotation; drives no motion
+        return {"unit": unit, "grew": grew, "action": action, "reflex": False,
+                "workspace": broadcast, "state": state}
 
 
 def _ctx(v, tmp, au, d):
@@ -183,6 +205,13 @@ def main():
     bundle_ev = bundled.step(**_ctx(0.5, 0.5, 0.5, danger_d))     # danger must still E-STOP with a bundle
     bundle_safe = bundle_ev["action"] == "EMERGENCY_STOP" and bundle_ev["reflex"]
 
+    # 8. WORKSPACE: an opt-in Global Workspace runs live in the loop -- regions compete + broadcast.
+    wsa = AutonomousArm(seed=0, workspace=True)
+    ws_safe = wsa.step(**a)["workspace"]                          # safe tick: perception holds the slot
+    ws_danger = wsa.step(**_ctx(0.5, 0.5, 0.5, danger_d))["workspace"]   # danger: threat ignites + broadcasts
+    ws_frozen = wsa.arm.state()["stopped"]
+    ws_off = AutonomousArm(seed=0).step(**a)["workspace"]         # opt-in: a default arm broadcasts nothing
+
     print("=" * 62)
     print("AUTONOMOUS ARM — grows from multimodal data + learns actions, safely")
     print("=" * 62)
@@ -194,6 +223,8 @@ def main():
           f"(value table only; safety gate holds with replay={replay_frozen})")
     print(f"bundle      : from_bundle(vision skill) -> perceived class {bclass} (additive perception); "
           f"safety gate holds with a bundle (E-STOP={bundle_safe})")
+    print(f"workspace   : Global Workspace live in the loop -> safe broadcasts {ws_safe!r}, danger "
+          f"ignites {ws_danger!r}; E-STOP freeze holds with it active ({ws_frozen})")
     print("=" * 62)
 
     # ---- self-check: deterministic asserts, zero-dep ----
@@ -211,6 +242,12 @@ def main():
     assert AutonomousArm(seed=0).perceive(**a) is None, "a bundle-less arm perceives nothing (additive, opt-in)"
     assert bundle_safe, "safety E-STOP must hold with a trained-skill bundle enclosed in the loop"
     assert bundled.bundle.has_instinct("reflex") and bundled.bundle.has_motor("pid"), "bundle wires instinct/motor flags"
+    # workspace: opt-in + additive; a proximity threat ignites + is broadcast, and the E-STOP freeze
+    # STILL holds with the Global Workspace active (it annotates, it never selects or gates motion).
+    assert ws_off is None, "the Global Workspace is opt-in (a default arm broadcasts nothing)"
+    assert ws_safe is not None, "with a workspace, a safe tick broadcasts the current percept"
+    assert ws_danger == "threat", "a proximity threat must ignite + be broadcast by the workspace"
+    assert ws_frozen, "the E-STOP freeze must hold with the Global Workspace active (additive, gate untouched)"
     assert learned == "GRIPPER_OPEN", f"the arm must LEARN the rewarded action, not use a fixed map ({learned})"
     assert run(7) == run(7), "same seed -> identical autonomous behaviour (deterministic)"
     # replay (opt-in SWR) is sample-efficient AND safety-preserving:

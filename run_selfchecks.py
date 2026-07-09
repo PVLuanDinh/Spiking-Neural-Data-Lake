@@ -52,6 +52,8 @@ CORE = [
     "brainstem.reflex", "brainstem.serial_arm", "brainstem.arm_sim", "brainstem.arm_config", "brainstem.interpreter",
     "brainstem.live_arm", "brainstem.arm_bridge", "brainstem.closed_loop", "brainstem.autonomous_loop",
     "brainstem.signal_loop", "brainstem.cpg_oscillator",
+    # thalamus — the relay + global-broadcast hub (Global Workspace Theory)
+    "thalamus.global_workspace",
     # neuromodulation — diffuse chemical modulators + glia
     "neuromodulation.acetylcholine", "neuromodulation.astrocyte_modulation", "neuromodulation.cortisol",
     # plasticity — Hebbian/STDP, homeostatic, developmental learning rules
