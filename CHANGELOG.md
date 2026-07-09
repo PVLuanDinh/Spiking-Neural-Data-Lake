@@ -3,6 +3,11 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v2.75.1] -- Fix: `snn-train --mnist --gpu` DataLoader crash + modernize AMP API (2026-07-09)
+
+### Fixed
+- `snn-train --mnist --gpu` crashed on a real GPU with `RuntimeError: Expected a 'cuda' device type for generator but found 'cpu'`. Cause: the training CLI called `torch.set_default_device('cuda')` (via `device.enable()`), which breaks the DataLoader's CPU index sampler (its `Generator` stays on CPU). Every trainer already places its tensors explicitly with `.to(device)`, so that global default was redundant and fragile -- removed the `enable()` call; the device string is resolved and passed through as before. Also replaced the deprecated `torch.cuda.amp.{GradScaler,autocast}` with the current `torch.amp.*` API. (Reported from an RTX 5070 run; verified by review + py_compile, still not GPU-run in CI.)
+
 ## [v2.75] -- A real trained brain: general core inference + fast MNIST GPU trainer + batched D&C (2026-07-09)
 
 ### Added

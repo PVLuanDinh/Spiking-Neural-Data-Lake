@@ -20,7 +20,7 @@ Dynamics matched to trained_brain (beta = DEFAULT_BETA = 0.9, threshold = DEFAUL
 ``trained_brain.load_brain`` validates. ``.tolist()`` on each maps 1:1 into a brain with no
 transpose; the shapes are asserted before saving.
 
-SPEED: mixed precision (``torch.cuda.amp`` autocast + GradScaler -> fp16 tensor cores on the
+SPEED: mixed precision (``torch.amp`` autocast + GradScaler -> fp16 tensor cores on the
 5070), Adam, and a minibatched DataLoader. This trains in MINUTES on a 5070, not days.
 
 torch / snntorch / torchvision are imported at module top HERE on purpose: this module is
@@ -146,7 +146,8 @@ def train_model(epochs=DEFAULT_EPOCHS, hidden=DEFAULT_HIDDEN, steps=DEFAULT_STEP
     model = MnistBrain(hidden=hidden, beta=beta, threshold=threshold).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     loss_fn = nn.CrossEntropyLoss()
-    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+    amp_dev = "cuda" if use_amp else "cpu"
+    scaler = torch.amp.GradScaler(amp_dev, enabled=use_amp)
     gen = _generator(device, seed)
 
     last_loss = float("nan")
@@ -157,7 +158,7 @@ def train_model(epochs=DEFAULT_EPOCHS, hidden=DEFAULT_HIDDEN, steps=DEFAULT_STEP
             y = targets.to(device)
             spikes = rate_encode(X, steps, gen, device)          # [steps, b, 784]
             opt.zero_grad()
-            with torch.cuda.amp.autocast(enabled=use_amp):       # fp16 on the 5070 tensor cores
+            with torch.amp.autocast(amp_dev, enabled=use_amp):   # fp16 on the 5070 tensor cores
                 out = model(spikes)
                 loss = loss_fn(out, y)                           # CrossEntropy on accumulated output
             scaler.scale(loss).backward()

@@ -56,7 +56,10 @@ def main(argv=None):
         print('snn-train needs the training extra: pip install ".[train]"')
         sys.exit(1)
 
-    dev = devmod.enable(devmod.resolve_device("cuda" if args.gpu else None))
+    # resolve the device but do NOT set_default_device: every trainer places its tensors
+    # explicitly with .to(device), and a global default of 'cuda' breaks the DataLoader's
+    # CPU index sampler (Generator device mismatch). Explicit placement is the robust path.
+    dev = devmod.resolve_device("cuda" if args.gpu else None)
 
     # ---- MNIST brain path: 784->H->10, forward == trained_brain, exports a zero-dep brain ----
     if args.mnist:
