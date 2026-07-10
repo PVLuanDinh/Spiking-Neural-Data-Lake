@@ -3,6 +3,40 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.16] -- Self-paced curriculum: mastery unlocks harder tasks (cumulative learning) (2026-07-10)
+
+The next lever toward baby-like cumulative learning: STRUCTURE. Mastering an easy task autonomously
+unlocks a harder one. The v3.15 curiosity signal already says WHEN something is mastered (learning
+progress -> 0), so the curriculum gates progression on the agent's OWN competence -- it graduates itself,
+at the frontier of what it can learn (Elman "starting small" 1993; Bengio et al. 2009; Oudeyer). One
+primitive, not a claim of general developmental intelligence.
+
+### Added
+- `neuromodulation/curriculum.py` (CORE, zero-dep) -- `Curriculum`: an ordered sequence of stages of
+  increasing difficulty; `observe(learning_progress)` advances to the next stage when learning progress
+  stays at/below a mastery threshold for `patience` CONSECUTIVE steps (a stage is LEARNED when the agent's
+  own learning-progress dries up -- not a fixed clock; any high LP resets the streak). Un-riggable
+  self-check: **self-paced** -- a fast learner graduates at tick 28, a slow one at 48 (later by exactly
+  the extra learning it needed), advance tracks the LP-dryup not a schedule; no premature advance;
+  **curriculum-helps-via-transfer (HARD)** -- on a shared-competence learner with a frontier-of-learnability
+  gate, jump-to-hardest stays stuck (competence 0.001) while starting-small walks stepping-stones to 0.997
+  on the same budget; deterministic.
+
+### Changed
+- `brainstem/autonomous_loop.py` (NOT a safety-envelope file) -- `AutonomousArm.develop(stages, curriculum)`:
+  a self-paced developmental loop. The arm works the current stage's tasks and ADVANCES autonomously when
+  its own curiosity learning-progress on the stage dries up -- cumulative, self-graduating. Learning flows
+  through the SAME gated `step()` (reflex/E-STOP preempts; no new motor path). Self-checked: on a 4-stage
+  task of increasing difficulty (1,2,3,4 contexts) the arm **graduates itself through 2/4 stages** with
+  competence 1.00 on what it masters, driven by its own learning progress, then honestly stalls on the
+  harder stages within budget (its per-context tabular learning limits how far it self-transfers -- the
+  autonomous *self-pacing* is the demonstrated property; the transfer speed-up is proven on the synthetic
+  learner in the module). Safety: the E-STOP freeze holds through the developmental loop.
+- `cortex/live_brain.py` -- (curiosity flag from v3.15 already forwarded; the develop() loop is on the arm).
+
+Gates green: 175/175 core self-checks, 207 pytest passed (88% cov), ruff clean; the 5 brainstem
+safety-envelope files untouched (git-diff verified).
+
 ## [v3.15] -- Curiosity: intrinsic motivation drives self-directed learning (toward cumulative learning) (2026-07-10)
 
 A step toward baby-like cumulative learning: the ENGINE that makes learning self-directed. A baby learns

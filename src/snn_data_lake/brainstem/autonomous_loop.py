@@ -36,6 +36,7 @@ from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.neuromodulation.cortisol import Cortisol
+from snn_data_lake.neuromodulation.curriculum import Curriculum
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
@@ -129,6 +130,7 @@ class AutonomousArm:
         # novelty while external guards keep it safe).
         self.curiosity = CuriosityDrive(seed=seed) if curiosity else None
         self.curiosity_gain = curiosity_gain
+        self._dev_rng = random.Random(seed + 7)                 # task-selection rng for develop() (kept off step()'s rng)
 
     def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None):
         qa = self.q[unit]
@@ -270,6 +272,46 @@ class AutonomousArm:
             if brain is not None and brain["in"] == len(pattern):
                 return self.bundle.predict(name, pattern)
         return None
+
+    def _competence(self, tasks):
+        """Fraction of a stage's contexts whose greedy learned action already matches the optimal action.
+        Contexts seen during training are familiar, so quantizing them here grows no new unit."""
+        ok = 0
+        for ctx, opt in tasks:
+            pat = self._context_pattern(ctx["visual"], ctx["temperature"], ctx["audio"], ctx["distance"])
+            unit, _grew = self.learner.observe(pat)
+            if unit in self.q and self.greedy(unit) == opt:
+                ok += 1
+        return ok / len(tasks) if tasks else 0.0
+
+    def develop(self, stages, curriculum, batch=6, max_batches=50):
+        """SELF-PACED developmental learning: work on the CURRENT curriculum stage's tasks and ADVANCE to the
+        next stage AUTONOMOUSLY when this arm's own learning progress (curiosity) on it dries up -- the
+        Curriculum reads mastery off the learning-progress signal (not a clock). Needs curiosity + jepa.
+        `stages` = a list of stages, each a list of (context_dict, optimal_action); reward = +1 for the optimal
+        action else -1. Learning flows through the SAME gated step() -- the reflex/E-STOP still preempts and no
+        new motor path is added. Returns a per-stage trace (stage, mastered, competence, advanced)."""
+        trace = []
+        while not curriculum.done:
+            s = curriculum.stage
+            tasks = stages[s]
+            advanced = False
+            for _ in range(max_batches):
+                lp_sum, n = 0.0, 0
+                for _ in range(batch):
+                    ctx, opt = tasks[self._dev_rng.randrange(len(tasks))]
+                    ev = self.step(reward_fn=(lambda u, a, o=opt: 1.0 if a == o else -1.0), **ctx)
+                    if ev["unit"] is not None and self.curiosity is not None:
+                        lp_sum += self.curiosity.learning_progress(ev["unit"])
+                        n += 1
+                if curriculum.observe(lp_sum / n if n else 0.0):
+                    advanced = True
+                    break
+            trace.append({"stage": s, "mastered": curriculum.mastered,
+                          "competence": self._competence(tasks), "advanced": advanced})
+            if not advanced:
+                break                                           # stalled on this stage (never mastered) -> stop
+        return trace
 
     def step(self, visual, temperature, audio, distance, reward_fn=None, homeostatic_load=0.0):
         """One autonomous tick. distance is the proximity scalar; reward_fn(unit, action)->[-1,1].
@@ -757,6 +799,39 @@ def main():
     assert cur_ev["action"] == "EMERGENCY_STOP" and cur_ev["reflex"], "danger must E-STOP with curiosity on"
     assert cur_frozen0 and cur_frozen1, "the E-STOP freeze must hold with curiosity wired in (intrinsic reward, no motor route)"
     assert cur_det, "the curiosity path must be deterministic"
+
+    # 17. CURRICULUM (self-paced developmental learning): the arm works stages of increasing difficulty and
+    #     ADVANCES autonomously when its own learning progress (curiosity) on a stage dries up -- cumulative,
+    #     self-graduating. Opt-in (needs curiosity + jepa); learning flows through the SAME gated step().
+    devC = [(_ctx(0.9, 0.1, 0.1, safe_d), "GRIPPER_OPEN"),     # 4 DISTINCT contexts, each with an optimal action
+            (_ctx(0.1, 0.9, 0.1, safe_d), "GRIPPER_CLOSE"),
+            (_ctx(0.1, 0.1, 0.9, safe_d), "HOLD"),
+            (_ctx(0.9, 0.9, 0.1, safe_d), "GRIPPER_OPEN")]
+    dev_stages = [devC[:1], devC[:2], devC[:3], devC[:4]]      # 1,2,3,4 contexts -> 4 stages of increasing difficulty
+    dev = AutonomousArm(seed=1, pfc=True, jepa=True, curiosity=True)
+    dtrace = dev.develop(dev_stages, Curriculum(n_stages=len(dev_stages), seed=1))
+    dev_mastered = dtrace[-1]["mastered"] if dtrace else 0     # stages the arm graduated itself through
+    dev_final_comp = dtrace[-1]["competence"] if dtrace else 0.0
+    dev_guard = AutonomousArm(seed=2, pfc=True, jepa=True, curiosity=True)   # safety with the developmental loop
+    dev_guard.develop([[(_ctx(0.5, 0.5, 0.5, danger_d), "HOLD")]], Curriculum(n_stages=1, seed=2), batch=2, max_batches=1)
+    dev_frozen = dev_guard.arm.state()["stopped"]              # a danger context in the curriculum still E-STOPs + freezes
+
+    def run_dev(seed):
+        bot = AutonomousArm(seed=seed, pfc=True, jepa=True, curiosity=True)
+        return [t["mastered"] for t in bot.develop(dev_stages, Curriculum(n_stages=len(dev_stages), seed=seed))]
+    dev_det = run_dev(5) == run_dev(5)
+
+    print(f"curriculum  : self-paced developmental learning -- arm graduated itself through {dev_mastered}/"
+          f"{len(dev_stages)} stages (final-stage competence {dev_final_comp:.2f}); safety freeze holds ({dev_frozen})")
+    print("=" * 62)
+
+    assert AutonomousArm(seed=0)._dev_rng is not None, "the arm carries a developmental task-selection rng"
+    assert dev_mastered >= 2, f"the arm must autonomously master + advance through multiple curriculum stages ({dev_mastered})"
+    assert all(t["advanced"] for t in dtrace[:dev_mastered]), \
+        "each mastered stage must have ADVANCED on its own learning-progress dry-up (self-paced, not a clock)"
+    assert dev_final_comp >= 0.5, f"the arm must reach real competence on the stages it masters ({dev_final_comp:.2f})"
+    assert dev_frozen, "the E-STOP freeze must hold with the developmental curriculum loop (learning through the gated step)"
+    assert dev_det, "the developmental curriculum path must be deterministic"
 
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
           f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "

@@ -99,3 +99,10 @@ it rejects the "noisy-TV" trap), so the arm explores and learns SELF-DIRECTED, e
 reward (opt-in `AutonomousArm(curiosity=True)`). This is the engine of self-directed, cumulative learning
 -- one primitive, not a claim of general developmental intelligence; the reflex/E-STOP + caution still
 preempt every command.
+
+v3.16 adds a **self-paced curriculum** (`neuromodulation/curriculum.py`, `Curriculum`): an ordered
+sequence of stages of increasing difficulty that advances AUTONOMOUSLY when the agent's own learning
+progress on a stage dries up (mastery, not a clock -- Elman "starting small"; Oudeyer). Wired as
+`AutonomousArm.develop(stages, curriculum)`: the arm graduates itself through progressively harder stages
+driven by its own curiosity, learning through the same gated `step()`. Curiosity + curriculum together are
+the self-directed, cumulative-learning loop -- master easy, unlock harder, at the frontier of competence.
