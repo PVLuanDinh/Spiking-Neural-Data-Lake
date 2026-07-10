@@ -27,6 +27,7 @@ import random
 from snn_data_lake.amygdala.fear_conditioning import Amygdala
 from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate
 from snn_data_lake.basal_ganglia.latent_q import LatentQ
+from snn_data_lake.basal_ganglia.mlp_q import MlpQ
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.arm_sim import ArmSim
 from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
@@ -54,7 +55,7 @@ class AutonomousArm:
                  workspace=False, amygdala=False, bg_gate=False, interoception=False,
                  pfc=False, pfc_gain=0.5, lake_wm=False, lake_wm_path=None,
                  jepa=False, jepa_horizon=4, hjepa_serve=None, curiosity=False, curiosity_gain=0.5,
-                 latent_q=False):
+                 latent_q=False, mlp_q=False):
         self.arm = ArmSim()
         self._seed = seed
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
@@ -110,7 +111,7 @@ class AutonomousArm:
         # is the SAME top-down PREFERENCE (bounded by pfc_gain) fed to the SAME gated selection. ADDITIVE +
         # read-only to safety: it drives no motion and adds no actuator route; the reflex/E-STOP runs FIRST and
         # still preempts, and every motor command stays gated (see step()). Lazily sized on the first tick.
-        self._jepa_on = jepa
+        self._jepa_on = jepa or mlp_q          # mlp_q rides the JEPA latent -> needs the world model built
         self.jepa = None
         self.jepa_horizon = max(1, min(4, int(jepa_horizon)))   # bounded rollout (the learned map can diverge)
         self._z_goal = None                                     # reward-EMA of latents = the latent goal to plan toward
@@ -137,14 +138,29 @@ class AutonomousArm:
         # shared linear action-value Q(x,a)=W[a].x over the LAKE-STORED pattern representation x (the [0,1]^64
         # encode_multimodal vector the lake records; basal_ganglia/latent_q.LatentQ). ONE weight set across ALL
         # contexts, so a reward update generalizes to nearby contexts -> mastery TRANSFERS (unlike tabular, which
-        # learns each context in isolation). HONEST FINDING (v3.17): I first tried this over the SELF-SUPERVISED
-        # JEPA latent, but a linear Q over it is at CHANCE -- the SSL latent is trained to PREDICT, not aligned
-        # with the reward/task, so it is not linearly separable for the task (measured 0.33 vs 1.00 over the raw
-        # pattern). So the substrate rides the lake-stored PATTERN, which IS task-linear. ADDITIVE to safety: it
+        # learns each context in isolation). This LINEAR substrate rides the lake-stored PATTERN, which is
+        # task-linear and stable. (v3.17 measured a linear Q over the online SSL-JEPA latent at chance and called
+        # it "not task-aligned"; v3.18 CORRECTS that -- the SSL latent DOES encode the task, but the arm's online
+        # encoder near-collapses its few live contexts, so on-robot the pattern is the reliable substrate; see the
+        # NONLINEAR mlp_q block below and self-check 19 for the precise cause.) ADDITIVE to safety: it
         # only changes HOW the action VALUE is computed -- the reflex/E-STOP runs first and every command still
         # flows through the gated ArmSim. Flag OFF => the tabular q path is byte-identical.
         self._latent_q_on = latent_q
         self.latent_q = None                                    # lazily built on the first tick (sized to len(pattern))
+        # opt-in SHARED NONLINEAR MLP-Q (the task-aligned learned substrate): a one-hidden-layer action-value
+        # Q(z,a)=dot(W2[a], relu(W1@z+b1))+b2[a] over the SELF-SUPERVISED JEPA latent z=jepa.encode(pattern)
+        # (basal_ganglia/mlp_q.MlpQ). Where the linear latent_q rides the raw lake pattern, this rides the LEARNED
+        # JEPA latent AND lifts the linear ceiling with a hidden ReLU layer -- a nonlinear function approximator
+        # over a nonlinear encoder. HONEST CORRECTION of v3.17: I reported the SSL latent as "not task-aligned"
+        # (a linear online Q over it scored 0.33 ~ chance). That was OVER-PESSIMISTIC -- an offline probe recovers
+        # the arm's band rule from the SSL latent at 0.80 (linear) / 0.88 (MLP), so the task IS in the latent; the
+        # 0.33 was a WEAK-ONLINE-LEARNER artifact (a single-step Widrow-Hoff linear head on a few noisy contexts),
+        # not the latent being task-irrelevant. This substrate is the honest test of whether an online NONLINEAR
+        # head recovers it on the arm (measured in the self-check). Needs the JEPA (auto-enabled above). ADDITIVE to
+        # safety: only changes HOW the value is computed; reflex/E-STOP first, every command still gated. Flag OFF
+        # => the tabular/latent-Q path is byte-identical.
+        self._mlp_q_on = mlp_q
+        self.mlp_q = None                                       # lazily built on the first tick (sized to the JEPA latent dim)
 
     def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None, qa=None):
         if qa is None:                                          # default = the tabular row; the latent-Q row is passed in
@@ -295,8 +311,11 @@ class AutonomousArm:
         ok = 0
         for ctx, opt in tasks:
             pat = self._context_pattern(ctx["visual"], ctx["temperature"], ctx["audio"], ctx["distance"])
-            if self.latent_q is not None:                       # shared latent-Q: greedy over the lake pattern
+            if self.latent_q is not None:                       # shared LINEAR latent-Q: greedy over the lake pattern
                 if self.latent_q.greedy(pat) == opt:
+                    ok += 1
+            elif self.mlp_q is not None and self.jepa is not None:   # shared NONLINEAR MLP-Q: greedy over the JEPA latent
+                if self.mlp_q.greedy(self.jepa.encode(pat)) == opt:
                     ok += 1
             else:
                 unit, _grew = self.learner.observe(pat)
@@ -355,14 +374,24 @@ class AutonomousArm:
             self.q[unit] = dict.fromkeys(ACTIONS, 0.0)          # new unit -> its own row to learn
         if self._jepa_on and self.jepa is None:
             self.jepa = JepaWorldModel(ACTIONS, in_dim=len(pattern), seed=self._seed)  # lazily sized on first tick
-        # value row: the SHARED latent-Q over the JEPA latent (transfer substrate), else the tabular per-context row
+        # value row: a SHARED value substrate, else the tabular per-context row. Two shared substrates (opt-in,
+        # mutually exclusive): the LINEAR latent_q over the raw lake pattern, or the NONLINEAR mlp_q over the LEARNED
+        # JEPA latent. qsub = the active substrate (None -> tabular); z_lq = its input at decision time (reused, so
+        # the reward update below is a semi-gradient step on the SAME state that produced the action).
         z_lq = None
+        qsub = None
         qa = self.q[unit]
         if self._latent_q_on:
             if self.latent_q is None:
-                self.latent_q = LatentQ(ACTIONS, len(pattern), seed=self._seed)  # shared value over the lake-stored pattern
-            z_lq = pattern                                       # the [0,1]^64 lake representation (task-linear, stable)
-            qa = self.latent_q.values(z_lq)                     # shared value row -> generalizes across contexts
+                self.latent_q = LatentQ(ACTIONS, len(pattern), seed=self._seed)  # shared LINEAR value over the lake pattern
+            qsub, z_lq = self.latent_q, pattern                 # the [0,1]^64 lake representation (task-linear, stable)
+        elif self._mlp_q_on and self.jepa is not None:
+            z_lq = self.jepa.encode(pattern)                    # the SELF-SUPERVISED JEPA latent (task IS in it -- see __init__)
+            if self.mlp_q is None:
+                self.mlp_q = MlpQ(ACTIONS, len(z_lq), seed=self._seed)   # NONLINEAR head sized to the latent dim
+            qsub = self.mlp_q
+        if qsub is not None:
+            qa = qsub.values(z_lq)                              # shared value row -> generalizes across contexts
         threat = self._threat(pattern)                          # learned amygdala threat for this context (0 if opt-out)
         intero = self._interocept(homeostatic_load)             # interoceptive caution from homeostatic load (0 if opt-out)
         pfc_bias = self._pfc_bias(unit, pattern, qa)           # prefrontal top-down goal preference over qa (latent-Q or tabular)
@@ -382,13 +411,13 @@ class AutonomousArm:
         if reward_fn is not None or r_int != 0.0:
             r_ext = reward_fn(unit, action) if reward_fn is not None else 0.0
             r = r_ext + r_int                               # external task reward + intrinsic curiosity reward
-            if self.latent_q is not None and z_lq is not None:
-                self.latent_q.update(z_lq, action, r)       # SHARED latent-Q update -> generalizes to nearby-z contexts (transfer)
+            if qsub is not None and z_lq is not None:
+                qsub.update(z_lq, action, r)                # SHARED substrate update (linear latent_q OR nonlinear mlp_q) -> transfer
             else:
                 self.q[unit][action] += self.lr * self.cort.learn_rate_scale(r) * (r - self.q[unit][action])
             self.cort.step(max(0.0, -r_ext))                # stress from EXTERNAL negative reward only (curiosity is not stress)
             if reward_fn is not None:                       # the task-reward-only paths (replay + latent goals), unchanged
-                if self.replay and self.latent_q is None:   # SWR consolidation: TABULAR value table ONLY, no motor command
+                if self.replay and qsub is None:            # SWR consolidation: TABULAR value table ONLY, no motor command
                     self.buffer.add(unit, action, r_ext)
                     if not grew:                            # quiescent (familiar) tick -> replay past experience
                         self.buffer.replay(self.q, self.lr, batch=self.replay_batch)
@@ -867,9 +896,9 @@ def main():
     # 18. SHARED LATENT-Q (the transfer substrate): a shared linear action-value over the LAKE-STORED pattern
     #     replaces the tabular per-context q, so mastery GENERALIZES to genuinely-novel contexts (NEW units)
     #     where tabular has no learned value. Opt-in; only changes HOW the value is computed (gated selection +
-    #     reflex/E-STOP unchanged). HONEST FINDING: a linear Q over the SELF-SUPERVISED JEPA latent is at chance
-    #     (not task-aligned; measured 0.33 vs 1.00 over the pattern) -- the substrate rides the task-linear lake
-    #     pattern, and the deep clean transfer proof is in basal_ganglia/latent_q's own self-check.
+    #     reflex/E-STOP unchanged). It rides the task-linear lake PATTERN; the deep clean transfer proof is in
+    #     basal_ganglia/latent_q's own self-check. (The NONLINEAR-over-SSL-latent variant + the honest v3.17
+    #     correction are self-check 19 / the mlp_q block below.)
     def _lq_ctx(v, t, au):
         return _ctx(v, t, au, safe_d)
     LQ_RULE = ["GRIPPER_OPEN", "GRIPPER_CLOSE", "HOLD"]         # optimal = argmax over (visual, temperature, audio) band
@@ -911,6 +940,54 @@ def main():
         f"the shared latent-Q must GENERALIZE to new-unit contexts where tabular cannot ({lqq_hold:.2f} vs {tab_hold:.2f})"
     assert lq_ev["action"] == "EMERGENCY_STOP" and lq_ev["reflex"] and lq_frozen, "danger must E-STOP with the latent-Q on"
     assert lq_det, "the latent-Q path must be deterministic"
+
+    # 19. TASK-ALIGNED LEARNED SUBSTRATE (nonlinear MLP-Q over the SSL-JEPA latent): the honest push PAST the
+    #     LINEAR latent-Q. basal_ganglia/mlp_q's own self-check proves a one-hidden-layer head recovers a NONLINEAR
+    #     rule a linear Q provably cannot (0.99 vs 0.47 over a CLEAN latent). Wired over the arm's ONLINE JEPA latent,
+    #     this is the honest on-robot test -- and it CORRECTS v3.17 with a precise cause. Opt-in (auto-enables the
+    #     JEPA); only changes HOW the value is computed (gate + reflex/E-STOP unchanged). Mutually exclusive with
+    #     latent_q (that branch wins if both are set).
+    def _mlp_run():
+        bot = AutonomousArm(seed=1, pfc=True, curiosity=True, mlp_q=True)   # mlp_q auto-enables the JEPA latent it rides
+        for _ in range(500):
+            ctx, opt = lq_train[bot._dev_rng.randrange(len(lq_train))]
+            bot.step(reward_fn=(lambda u, a, o=opt: 1.0 if a == o else -1.0), **ctx)
+        # the arm's ONLINE JEPA latent for the 3 DISTINCT band contexts -> separable, or near-collapsed to one point?
+        zs = [bot.jepa.encode(bot._context_pattern(**_lq_ctx(*[0.9 if i == d else 0.1 for i in range(3)]))) for d in range(3)]
+        spread = max(math.sqrt(sum((zs[i][k] - zs[j][k]) ** 2 for k in range(len(zs[i]))))
+                     for i in range(3) for j in range(i + 1, 3))          # widest pairwise gap between the band latents
+        return bot._competence(lq_hold), spread
+    mlp_hold, mlp_spread = _mlp_run()
+    mlp_guard = AutonomousArm(seed=2, pfc=True, mlp_q=True)                # the safety envelope must hold with it on
+    mlp_ev = mlp_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
+    mlp_guard.step(**_lq_ctx(0.9, 0.1, 0.1))
+    mlp_frozen = mlp_guard.arm.state()["stopped"]
+
+    def run_mlp(seed):
+        bot = AutonomousArm(seed=seed, pfc=True, curiosity=True, mlp_q=True)
+        return [bot.step(reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0])["action"]
+                for _ in range(8)]
+    mlp_det = run_mlp(5) == run_mlp(5)
+
+    print(f"mlp-Q       : NONLINEAR head over the ONLINE SSL-JEPA latent -- held-out {mlp_hold:.2f} (vs the "
+          f"linear-over-pattern latent-Q {lqq_hold:.2f}); the arm's band latents near-collapse (spread {mlp_spread:.3f}) "
+          f"-> the ENCODER, not the head, is the on-arm bottleneck; E-STOP freeze holds ({mlp_frozen})")
+    print("=" * 62)
+
+    assert AutonomousArm(seed=0).mlp_q is None, "the nonlinear MLP-Q is opt-in (a default arm has none)"
+    assert AutonomousArm(seed=0, mlp_q=True)._jepa_on, "mlp_q must auto-enable the JEPA latent it rides"
+    # HONEST FINDING (corrects + refines v3.17): the SSL latent DOES encode the task -- mlp_q's own self-check gets
+    # 0.99 over a clean latent, and an offline probe recovers THIS arm's band rule from the SSL latent at 0.80
+    # (linear) / 0.88 (MLP). v3.17's "0.33 ~ chance -> not task-aligned" was OVER-PESSIMISTIC. The real cause: the
+    # arm's ONLINE JEPA, trained on only a few repeating live contexts, NEAR-COLLAPSES them (spread ~ 0), so on-robot
+    # NO head -- linear or nonlinear -- can separate them. The bottleneck is the ENCODER (a reward-shaped / deeper
+    # encoder, or more diverse experience), NOT the Q-head's capacity -- which is exactly what this experiment shows.
+    assert mlp_spread < 0.05, f"the arm's online SSL latents for distinct bands must near-collapse ({mlp_spread:.3f})"
+    assert mlp_hold <= lqq_hold - 0.30, (
+        f"over the near-collapsed online latent the MLP-Q cannot match the pattern substrate "
+        f"({mlp_hold:.2f} vs {lqq_hold:.2f}) -- the ENCODER, not the head, is the on-arm limit")
+    assert mlp_ev["action"] == "EMERGENCY_STOP" and mlp_ev["reflex"] and mlp_frozen, "danger must E-STOP with mlp_q on"
+    assert mlp_det, "the mlp-Q path must be deterministic"
 
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
           f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "

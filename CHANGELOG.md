@@ -3,6 +3,42 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.18] -- Task-aligned learned substrate: a nonlinear MLP-Q over the JEPA latent (+ an honest v3.17 correction) (2026-07-10)
+
+Pushing PAST the LINEAR `latent_q`: a SHARED NONLINEAR one-hidden-layer action-value
+`Q(z, a) = dot(W2[a], relu(W1@z + b1)) + b2[a]` over the SELF-SUPERVISED JEPA latent `z = jepa.encode(pattern)`.
+Where `latent_q` rides the raw lake pattern with a linear head, this rides the LEARNED latent AND lifts the
+linear ceiling with a hidden ReLU layer -- a nonlinear function approximator over a nonlinear encoder.
+
+### Added
+- `basal_ganglia/mlp_q.py` (CORE, zero-dep) -- `MlpQ`: identical API to `LatentQ` (values/value/greedy/update),
+  a hand-backpropagated one-hidden-layer MLP (no torch/numpy). Un-riggable CAPABILITY proof: on a NONLINEAR
+  (XOR-of-sign-pattern) rule where a linear Q is PROVABLY at chance, MlpQ reaches **0.99** held-out vs LatentQ's
+  **0.47**; on a linearly-separable control rule it does not regress (0.98 vs 0.99). The hidden ReLU layer is the
+  ONLY structural change from LatentQ; a shared W1 carries the transfer (and, honestly, the interference).
+
+### Changed
+- `brainstem/autonomous_loop.py` (NOT a safety-envelope file) -- opt-in `mlp_q=True` (auto-enables the JEPA
+  latent it rides; mutually exclusive with `latent_q`): the value row, the reward update, and `_competence`'s
+  greedy route through `MlpQ` over `jepa.encode(pattern)`. SAFETY: it only changes HOW the value is computed --
+  the reflex E-STOP runs first and every command still flows through the gated ArmSim; self-checked with the
+  freeze holding + deterministic. Flag OFF => the tabular / latent-Q path is byte-identical.
+
+### Honest finding (corrects + refines v3.17)
+v3.17 reported a linear Q over the online SSL-JEPA latent at chance (0.33) and concluded the SSL latent was
+"not task-aligned." That was OVER-PESSIMISTIC. The SSL latent DOES encode the task: `mlp_q`'s own self-check
+recovers a nonlinear rule at 0.99 over a clean latent, and an OFFLINE probe recovers THIS arm's band rule from
+the SSL latent at **0.80 (linear) / 0.88 (MLP)**. The real cause of the on-arm 0.33 is UPSTREAM: the arm's
+ONLINE JEPA, trained on only a few repeating live contexts, NEAR-COLLAPSES them (measured latent spread ~0.003
+between distinct bands), so on-robot NO head -- linear OR nonlinear -- can separate them. **The bottleneck is
+the ENCODER (a reward-shaped / deeper encoder, or more diverse experience), not the Q-head's capacity.**
+Self-check 19 asserts exactly this: mlp_q over the online latent stays at chance BECAUSE the latents collapse
+(spread < 0.05), while the linear latent-Q over the pattern transfers at 1.00. The honest next lever is the
+ENCODER, not a bigger head.
+
+Gates green: 177/177 core self-checks, pytest passed (88.87% cov), ruff clean; the 5 brainstem
+envelope files byte-for-byte unchanged (git-diff empty).
+
 ## [v3.17] -- Shared transfer substrate: a latent action-value replaces the tabular per-context q (2026-07-10)
 
 The biggest real gap in the cumulative-learning arc: the arm's TABULAR `q[unit][action]` has zero transfer
@@ -36,6 +72,8 @@ to encode reward/task structure, so it is not linearly task-aligned. The substra
 **lake-stored `[0,1]^64` pattern** (which IS task-linear) rather than the SSL latent. The next levers
 toward a *learned* task-aligned substrate: a reward-shaped encoder, a non-linear (MLP) Q head over the
 latent, or the (frozen, more structured) H-JEPA served latent -- open work, not a flag.
+**(Partly corrected in v3.18: the SSL latent DOES encode the task offline; the on-arm 0.33 is the online
+encoder near-collapsing its few live contexts, not the latent lacking the task. See the v3.18 entry.)**
 
 Gates green: 176/176 core self-checks, 208 pytest passed (88% cov), ruff clean; the 5 brainstem
 safety-envelope files untouched (git-diff verified).

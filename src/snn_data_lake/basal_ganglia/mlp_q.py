@@ -1,0 +1,277 @@
+r"""
+Shared NONLINEAR (one-hidden-layer MLP) action-value over the JEPA latent -- the task-aligned
+NONLINEAR upgrade of the LINEAR basal_ganglia/latent_q.LatentQ.
+
+Honest framing (read this first). LatentQ is a SHARED LINEAR action-value Q(z, a) = dot(W[a], z) + b[a]:
+ONE weight set across all contexts, so a semi-gradient update from one latent transfers along the
+latent geometry. But a linear map has a hard ceiling -- it can only separate action-values that are a
+LINEAR function of z. An action-value whose optimal action depends NON-LINEARLY on z (e.g. an XOR /
+quadrant rule on the sign pattern of two latent dims) is PROVABLY not representable by any linear Q:
+no single hyperplane separates the XOR regions, so a linear head is stuck at chance. This module lifts
+that ceiling with the smallest thing that clears it -- ONE hidden layer:
+
+    h       = relu(W1 @ z + b1)             # SHARED nonlinear feature layer (W1: hidden x latent_dim)
+    Q(z, a) = dot(W2[a], h) + b2[a]         # per-action linear read-out over the shared features
+
+ONE weight set (W1, b1 shared hidden layer; W2, b2 per-action read-out) is shared across ALL contexts,
+exactly like LatentQ -- so it keeps the transfer -- but the hidden ReLU layer gives it the nonlinear
+features a linear Q lacks. This is textbook NONLINEAR value-function approximation (Sutton & Barto,
+ch. 9-10: a nonlinear function approximator for the action-value); the hidden layer is the ONLY
+structural change from LatentQ, and the API is identical so it drops into the same wiring.
+
+The learning rule is the same semi-gradient delta step toward a scalar `target` that the arm and
+LatentQ use (q += lr*(r - q)), backpropagated BY HAND (no autograd / torch) through the hidden layer:
+
+    err     = target - Q(z, a)                     # error on the taken action ONLY
+    b2[a]  += lr * err ;  W2[a][j] += lr * err * h[j]
+    dh[j]   = err * W2[a][j] * relu'(pre[j])       # relu'(p) = 1 if p > 0 else 0
+    b1[j]  += lr * dh[j] ; W1[j][i] += lr * dh[j] * z[i]
+
+update() returns err. Only the taken action's read-out W2[a] receives the output error, but the SHARED
+hidden layer W1 is reshaped by the backprop of EVERY update -- so learning about one context reshapes
+the features every other context reads, which is what carries the transfer (and, as in LatentQ, the
+interference: the shared representation is one object).
+
+Same ceiling caveat as LatentQ, honestly stated: an MLP head can only recover structure that is
+PRESENT in z. If the latent itself does not carry the information the task needs, no head -- linear or
+nonlinear -- can invent it, and the nonlinearity must move into the ENCODER instead (a deeper JEPA;
+cf. cerebellum/jepa_world_model's snn_jepa/2 hidden encoder). It is still ONE primitive: a nonlinear
+function approximator plus a delta rule, a strict drop-in upgrade of the linear LatentQ.
+
+Distinctness. This is the VALUE table (which action is worth most in a context), not the SELECTION
+circuit (action_gating.py's Go/NoGo) nor the DECISION-by-integration model (evidence_accumulation.py).
+values(z) returns a dict keyed by action name, the same shape as the tabular q[unit] row and LatentQ's
+values(z), so it wires in without touching the selection stage.
+
+Pure stdlib (random; math.sqrt for the fan-in init; dot reused from substrate._mathutils), ASCII-only
+prints, deterministic (random.Random(seed) per instance -- identical seed => byte-identical weights).
+
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.basal_ganglia.mlp_q
+"""
+import math
+import random
+
+from snn_data_lake.substrate._mathutils import dot
+
+
+class MlpQ:
+    """Shared NONLINEAR action-value Q(z, a) = dot(W2[a], relu(W1@z + b1)) + b2[a] over the JEPA latent z.
+
+    ONE weight set (W1, b1 = the shared hidden layer; W2, b2 = the per-action read-out) is shared across
+    every context, so a semi-gradient update from one latent transfers to all -- but the hidden ReLU layer
+    lets it separate action-values that are NON-LINEAR in z, which the linear LatentQ provably cannot.
+    Identical API to LatentQ (values / value / greedy / update) so it drops into the same wiring."""
+
+    def __init__(self, actions, latent_dim, hidden=32, lr=0.05, seed=0):
+        self.actions = tuple(actions)                  # ordered action names
+        self.n = len(self.actions)
+        self.latent_dim = int(latent_dim)
+        self.hidden = int(hidden)
+        self.lr = float(lr)
+        self.seed = seed
+        self.rng = random.Random(seed)                 # per-instance rng; same seed => byte-identical weights
+        self._aidx = {a: i for i, a in enumerate(self.actions)}
+        # SHARED hidden layer: W1 (hidden x latent_dim) small-random (fan-in scale), b1 (hidden) = 0
+        s1 = 1.0 / math.sqrt(self.latent_dim)
+        self.W1 = [[self.rng.uniform(-1.0, 1.0) * s1 for _ in range(self.latent_dim)]
+                   for _ in range(self.hidden)]
+        self.b1 = [0.0] * self.hidden
+        # per-action read-out: W2 (n_actions x hidden) small-random, b2 (n_actions) = 0 (LatentQ's zero-bias init)
+        s2 = 1.0 / math.sqrt(self.hidden)
+        self.W2 = [[self.rng.uniform(-1.0, 1.0) * s2 for _ in range(self.hidden)]
+                   for _ in range(self.n)]
+        self.b2 = [0.0] * self.n
+
+    def _idx(self, a):
+        """Map an action name or an integer index to an action index (duck-typed, like LatentQ / the JEPA)."""
+        if isinstance(a, str):
+            return self._aidx[a]
+        return int(a)
+
+    def _forward(self, z):
+        """Shared hidden layer forward pass: pre = W1@z + b1, h = relu(pre). Returns (pre, h)."""
+        pre = [dot(self.W1[j], z) + self.b1[j] for j in range(self.hidden)]
+        h = [p if p > 0.0 else 0.0 for p in pre]       # relu
+        return pre, h
+
+    def values(self, z):
+        """All-action value row over latent z as {action_name: Q(z, a)} (same shape as LatentQ.values)."""
+        _pre, h = self._forward(z)
+        return {self.actions[i]: dot(self.W2[i], h) + self.b2[i] for i in range(self.n)}
+
+    def value(self, z, a):
+        """Q(z, a) for one action (a = action name or integer index)."""
+        i = self._idx(a)
+        _pre, h = self._forward(z)
+        return dot(self.W2[i], h) + self.b2[i]
+
+    def greedy(self, z):
+        """argmax action name over Q(z, .); deterministic tie-break to the LOWEST index (strict >)."""
+        _pre, h = self._forward(z)
+        best_i = 0
+        best_v = dot(self.W2[0], h) + self.b2[0]
+        for i in range(1, self.n):
+            v = dot(self.W2[i], h) + self.b2[i]
+            if v > best_v:                             # strict > keeps the lowest index on ties
+                best_v, best_i = v, i
+        return self.actions[best_i]
+
+    def update(self, z, a, target):
+        """Semi-gradient delta step of Q(z, a) toward scalar `target`; returns err.
+
+        err = target - Q(z, a) is applied to the taken action ONLY, then backpropped BY HAND through the
+        shared hidden layer: the read-out W2[a]/b2[a] get the output error; dh[j] = err*W2[a][j]*relu'(pre[j])
+        flows into the SHARED W1/b1. Because W1 is shared, this one step reshapes the features every context
+        reads -- that is the transfer (and the interference). dh uses the PRE-update W2 (the true gradient)."""
+        i = self._idx(a)
+        pre, h = self._forward(z)
+        err = target - (dot(self.W2[i], h) + self.b2[i])
+        lr = self.lr
+        w2i = self.W2[i]
+        # hidden-activation gradient dh[j] from the PRE-update read-out weights (relu' gates dead units to 0)
+        dh = [err * w2i[j] if pre[j] > 0.0 else 0.0 for j in range(self.hidden)]
+        # read-out update (taken action only): b2[a] += lr*err ; W2[a][j] += lr*err*h[j]
+        self.b2[i] += lr * err
+        for j in range(self.hidden):
+            w2i[j] += lr * err * h[j]
+        # shared hidden-layer update: b1[j] += lr*dh[j] ; W1[j][k] += lr*dh[j]*z[k]
+        for j in range(self.hidden):
+            g = lr * dh[j]
+            if g == 0.0:                               # dead relu unit (dh[j]==0) -> no change; skip is exact
+                continue
+            self.b1[j] += g
+            w1j = self.W1[j]
+            for k in range(self.latent_dim):
+                w1j[k] += g * z[k]
+        return err
+
+
+# =========================================================================================================
+# Self-check. The whole point is that a NONLINEAR head recovers structure a LINEAR one PROVABLY cannot, so
+# the anchors train MlpQ and the linear LatentQ on the SAME data and compare held-out accuracy on a DISJOINT
+# split of latents neither model ever saw during training.
+#
+# Rules (functions OF the latent z, a unit vector like JEPA encode()):
+#   NON-LINEAR (XOR): optimal action = XOR of the sign pattern of two latent dims -> the classic XOR, which
+#       no hyperplane separates. A linear Q is stuck at chance; a one-hidden-layer MLP recovers it.
+#   LINEAR (control): optimal action = which side of the z0 = z1 hyperplane z is on -> a single linear
+#       functional threshold, so a linear Q CAN learn it -- the MLP must at least match it, not regress.
+# =========================================================================================================
+
+
+def _xor_action(z):
+    """NON-LINEAR rule: optimal action = XOR of the sign pattern of the first two latent dims.
+    action 0 when sign(z0)==sign(z1) (quadrants I, III), action 1 otherwise (II, IV) -- the classic XOR,
+    PROVABLY not linearly separable, so no linear Q(z, a) = dot(W[a], z) + b[a] can represent it."""
+    return 0 if (z[0] >= 0.0) == (z[1] >= 0.0) else 1
+
+
+def _linear_action(z):
+    """LINEARLY-separable control rule: optimal action = which side of the z0 = z1 hyperplane z is on.
+    action 0 when (z0 - z1) >= 0 else 1 -- a single linear-functional threshold, so a linear Q CAN learn it."""
+    return 0 if (z[0] - z[1]) >= 0.0 else 1
+
+
+def _make_contexts(n, latent_dim, rule, seed):
+    """n (z, optimal_action) pairs; z is a unit vector in R^latent_dim (matches JEPA encode())."""
+    rng = random.Random(seed)
+    out = []
+    for _ in range(n):
+        v = [rng.gauss(0.0, 1.0) for _ in range(latent_dim)]
+        nrm = math.sqrt(sum(c * c for c in v)) or 1.0
+        z = [c / nrm for c in v]                        # L2-normalize -> unit vector (like substrate._mathutils.unit)
+        out.append((z, rule(z)))
+    return out
+
+
+def _acc(model, contexts, idx_of):
+    """Fraction of held-out contexts whose greedy() equals the optimal action index."""
+    ok = 0
+    for z, opt in contexts:
+        if idx_of[model.greedy(z)] == opt:
+            ok += 1
+    return ok / len(contexts)
+
+
+def _train(model, contexts, n_actions, passes):
+    """Train a shared action-value on (z, opt) contexts: reward +1 for the optimal action, -1 else."""
+    for _ in range(passes):
+        for z, opt in contexts:
+            for i in range(n_actions):
+                model.update(z, i, 1.0 if i == opt else -1.0)   # reward = target (bootstrap-free), like the arm
+
+
+def main():
+    from snn_data_lake.basal_ganglia.latent_q import LatentQ
+
+    LATENT = 2
+    ACTIONS = ("A0", "A1")
+    idx_of = {a: i for i, a in enumerate(ACTIONS)}
+    N_TRAIN, N_TEST, PASSES, HIDDEN, LR = 400, 300, 30, 32, 0.1
+
+    # ---- (1)+(2) NON-LINEAR (XOR) rule: MlpQ recovers it, the linear LatentQ provably cannot ----
+    nl_train = _make_contexts(N_TRAIN, LATENT, _xor_action, seed=1)
+    nl_test = _make_contexts(N_TEST, LATENT, _xor_action, seed=2)    # DISJOINT held-out (different rng stream)
+    mlp = MlpQ(ACTIONS, LATENT, hidden=HIDDEN, lr=LR, seed=0)
+    lin = LatentQ(ACTIONS, LATENT, lr=LR, seed=0)
+    _train(mlp, nl_train, len(ACTIONS), PASSES)
+    _train(lin, nl_train, len(ACTIONS), PASSES)
+    mlp_nl = _acc(mlp, nl_test, idx_of)
+    lin_nl = _acc(lin, nl_test, idx_of)
+    mlp_nl_train = _acc(mlp, nl_train, idx_of)
+
+    # ---- (3) LINEARLY-separable control rule: MlpQ must be a strict upgrade (>= LatentQ), not a regression ----
+    li_train = _make_contexts(N_TRAIN, LATENT, _linear_action, seed=3)
+    li_test = _make_contexts(N_TEST, LATENT, _linear_action, seed=4)
+    mlp_l = MlpQ(ACTIONS, LATENT, hidden=HIDDEN, lr=LR, seed=0)
+    lin_l = LatentQ(ACTIONS, LATENT, lr=LR, seed=0)
+    _train(mlp_l, li_train, len(ACTIONS), PASSES)
+    _train(lin_l, li_train, len(ACTIONS), PASSES)
+    mlp_lin = _acc(mlp_l, li_test, idx_of)
+    lat_lin = _acc(lin_l, li_test, idx_of)
+
+    # ---- (4) determinism: two MlpQ(seed=11) on the same stream -> identical weights + greedy ----
+    da = MlpQ(ACTIONS, LATENT, hidden=HIDDEN, lr=LR, seed=11)
+    db = MlpQ(ACTIONS, LATENT, hidden=HIDDEN, lr=LR, seed=11)
+    _train(da, nl_train[:150], len(ACTIONS), 3)
+    _train(db, nl_train[:150], len(ACTIONS), 3)
+    same_w = (da.W1 == db.W1 and da.b1 == db.b1 and da.W2 == db.W2 and da.b2 == db.b2)
+    same_greedy = all(da.greedy(z) == db.greedy(z) for z, _o in nl_test[:60])
+
+    print("=" * 78)
+    print("MLP Q -- shared NONLINEAR one-hidden-layer action-value over the JEPA latent (vs linear LatentQ)")
+    print("=" * 78)
+    print(f"latent_dim={LATENT} | actions={ACTIONS} | hidden={HIDDEN} | train={N_TRAIN} test={N_TEST} "
+          f"| passes={PASSES} lr={LR}")
+    print("rule (1/2): NON-LINEAR XOR of the sign pattern of two latent dims (no hyperplane separates it)")
+    print(f"(1) MlpQ    held-out accuracy : {mlp_nl:.3f}   (train {mlp_nl_train:.3f}) -> LEARNS the XOR rule")
+    print(f"(2) LatentQ held-out accuracy : {lin_nl:.3f}   (linear -> stuck near chance {1.0 / len(ACTIONS):.3f})")
+    print(f"    => nonlinear head recovers structure the linear Q cannot ({mlp_nl:.3f} >> {lin_nl:.3f})")
+    print("rule (3): LINEARLY-separable (which side of z0 = z1) -- MlpQ must NOT regress vs LatentQ")
+    print(f"(3) linear  rule held-out     : MlpQ {mlp_lin:.3f}  >=  LatentQ {lat_lin:.3f}  -> strict upgrade")
+    print(f"(4) determin: two seed=11 MlpQ identical weights={same_w}, identical greedy={same_greedy}")
+    print("=" * 78)
+
+    # ---- un-riggable anchors (deterministic asserts) --------------------------------------------
+    # (1) NON-LINEAR: the MLP head recovers the XOR rule on held-out latents it never trained on.
+    assert mlp_nl > 0.85, f"MlpQ must learn the non-linear (XOR) rule on held-out latents (>0.85), got {mlp_nl:.3f}"
+    # (2) FAIR CONTROL: a linear Q provably cannot separate XOR -> stuck near chance; the MLP beats it by a wide margin.
+    assert lin_nl < 0.65, f"linear LatentQ must NOT learn XOR (near chance <0.65), got {lin_nl:.3f}"
+    assert mlp_nl > lin_nl + 0.30, (
+        f"nonlinear head must beat the linear Q on the XOR rule by >0.30 ({mlp_nl:.3f} vs {lin_nl:.3f})")
+    # (3) TRANSFER / strict upgrade: on a LINEARLY-separable rule the MLP is at least as good as the linear Q.
+    assert mlp_lin > 0.85, f"MlpQ must also generalize on the linear rule (>0.85), got {mlp_lin:.3f}"
+    assert mlp_lin >= lat_lin - 0.05, (
+        f"MlpQ must not regress vs LatentQ on the linearly-separable rule ({mlp_lin:.3f} vs {lat_lin:.3f})")
+    # (4) DETERMINISM: identical seed + stream => byte-identical weights and identical greedy choices.
+    assert same_w, "two MlpQ(seed=11) on the same stream must have byte-identical weights"
+    assert same_greedy, "two MlpQ(seed=11) must make identical greedy choices"
+
+    print(f"self-check OK: MlpQ learns the XOR rule on held-out latents ({mlp_nl:.3f}) while the linear "
+          f"LatentQ cannot ({lin_nl:.3f} ~ chance);")
+    print(f"  strict upgrade on the linear rule (MlpQ {mlp_lin:.3f} >= LatentQ {lat_lin:.3f}); "
+          "identical seed => byte-identical weights + greedy")
+
+
+if __name__ == "__main__":
+    main()

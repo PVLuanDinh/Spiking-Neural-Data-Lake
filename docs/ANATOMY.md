@@ -110,7 +110,15 @@ the self-directed, cumulative-learning loop -- master easy, unlock harder, at th
 v3.17 adds the **transfer substrate** (`basal_ganglia/latent_q.py`, `LatentQ`): a SHARED linear
 action-value `Q(x,a) = W[a].x` (opt-in `AutonomousArm(latent_q=True)`) replacing the tabular
 per-context `q[unit][action]`. One weight set across all contexts, so a reward update generalizes -- the
-arm reaches competence 1.00 on genuinely-novel contexts where the tabular baseline scores 0.00.
-**Honest finding:** a linear Q over the self-supervised JEPA latent is at chance (the SSL latent is
-trained to predict, not aligned with reward/task), so the substrate rides the task-linear lake-stored
-`[0,1]^64` pattern; a *learned* task-aligned substrate (reward-shaped encoder / non-linear head) is open work.
+arm reaches competence 1.00 on genuinely-novel contexts where the tabular baseline scores 0.00. The
+substrate rides the task-linear lake-stored `[0,1]^64` pattern.
+
+v3.18 adds the **nonlinear head** (`basal_ganglia/mlp_q.py`, `MlpQ`): a SHARED one-hidden-layer action-value
+`Q(z,a) = W2[a].relu(W1 z + b1) + b2[a]` over the self-supervised JEPA latent (opt-in `AutonomousArm(mlp_q=True)`).
+Its own self-check proves the head recovers a NONLINEAR (XOR) rule a linear Q provably cannot (0.99 vs 0.47).
+**Honest finding (corrects v3.17):** v3.17 called the SSL latent "not task-aligned" (a linear online Q over it
+scored 0.33 ~ chance). That was over-pessimistic -- the SSL latent DOES encode the task (an offline probe
+recovers the arm's rule at 0.80 linear / 0.88 MLP). The real cause of the on-arm chance result is the arm's
+**online JEPA encoder near-collapsing** its few live contexts (latent spread ~0.003), so on-robot no head --
+linear or nonlinear -- can separate them. The honest next lever is a better ENCODER (reward-shaped / deeper /
+more diverse experience), not a bigger Q head.

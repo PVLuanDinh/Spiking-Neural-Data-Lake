@@ -45,7 +45,7 @@ CORE = [
     "hippocampus.legendre_memory",
     # basal ganglia — action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation", "basal_ganglia.r_stdp", "basal_ganglia.valence_stdp",
-    "basal_ganglia.action_gating", "basal_ganglia.latent_q",
+    "basal_ganglia.action_gating", "basal_ganglia.latent_q", "basal_ganglia.mlp_q",
     # amygdala — aversive/threat learning (CS-US fear conditioning)
     "amygdala.fear_conditioning",
     # cerebellum — motor coordination, timing, forward/inverse models, oscillators
