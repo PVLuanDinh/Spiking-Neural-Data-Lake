@@ -68,9 +68,13 @@ The Allen top-level ontology is complete, the medullary/hypothalamic homeostats 
 caution-only arousal, and the **prefrontal executive** now runs the whole brain **live** as a
 goal-directed loop (`cortex/live_brain`). The next honest primitives deepen the reasoning centre:
 
-1. **Deeper deliberation** — give the executive multi-step / model-based reasoning (planning or
+1. ~~**Deeper deliberation** — give the executive multi-step / model-based reasoning (planning or
    lookahead over the cerebellar forward model) rather than single-shot evidence commitment, and a
-   richer working memory (multiple simultaneous goals / sub-goals).
+   richer working memory (multiple simultaneous goals / sub-goals).~~ **Done (v3.10):**
+   `PrefrontalExecutive.plan()` deliberates over `horizon`-step rollouts of an injected forward model
+   (reactive `h=1` takes a trap, planned `h>=2` rejects it); working memory is now a bounded goal
+   stack (`push_subgoal` / `.goals`, sub-goal pops back to its parent). Surfaced on the live brain as
+   `LiveBrain.deliberate_ahead` — a deliberative faculty that biases a goal and never drives the arm.
 2. **Deep sub-nuclei** — the Allen ontology goes below the top level (hypothalamic nuclei, amygdalar
    subnuclei, thalamic relay/association nuclei). Add the load-bearing ones for existing loops.
 3. **Spinal cord as its own region** — split the ventral-horn CPG / stretch-reflex out of `brainstem/`

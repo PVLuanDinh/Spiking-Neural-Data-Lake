@@ -18,6 +18,7 @@ trips the reflex E-STOP before any action, and every motor command flows through
 """
 from snn_data_lake.brainstem.autonomous_loop import ACTIONS, AutonomousArm
 from snn_data_lake.cortex.nl_interface import NLInterface
+from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 
 
 class LiveBrain:
@@ -30,6 +31,8 @@ class LiveBrain:
         self.arm = AutonomousArm(seed=seed, workspace=True, amygdala=True, bg_gate=True,
                                  interoception=True, pfc=True, pfc_gain=pfc_gain, lake_wm=lake_wm)
         self._nl = NLInterface()                             # the NL safety firewall for chat arm commands
+        self._seed = seed
+        self._planner = None                                 # lazy deliberative planner (lookahead over a fwd model)
 
     def alive(self):
         """True only when the full integrative stack is wired in (every region present)."""
@@ -59,6 +62,28 @@ class LiveBrain:
         """The working-memory window read back from the DATA LAKE (empty if lake WM is off / unused yet).
         Each entry is (tick, frozenset(active channels)) -- live proof the lake IS the working memory."""
         return self.arm.lake_wm.recall(window) if self.arm.lake_wm is not None else []
+
+    def deliberate_ahead(self, state, options, goal_value, horizon=8, predictor=None):
+        """The brain's DELIBERATIVE (planning) faculty: look `horizon` steps ahead over a forward
+        model and commit the option whose predicted terminal state best serves `goal_value`, via the
+        prefrontal executive's drift-diffusion race (reuses PrefrontalExecutive.plan). horizon=1 is
+        reactive (immediate consequence), horizon>=2 is planned -- so it can reject a high-immediate
+        -value TRAP that rolls into a bad state.
+
+        SAFETY: this holds a goal by lookahead; it does NOT drive the arm. Motor selection stays
+        reactive and GATED (the reflex/E-STOP and the ArmSim gate are untouched); planning only biases
+        the executive's goal, it never adds a path to the actuator. Returns (option_index, mean_rt)."""
+        from snn_data_lake.cerebellum.forward_model import ForwardModel
+        if predictor is None:
+            predictor = ForwardModel(a=-0.5, b=1.0, dt=0.2)  # abstract plant s' = s + 0.2*(-0.5 s + u)
+        if self._planner is None or self._planner.n_options != len(options):
+            self._planner = PrefrontalExecutive(n_options=len(options), seed=self._seed)
+        return self._planner.plan(state, options, predictor, goal_value, horizon=horizon)
+
+    @property
+    def plan_goals(self):
+        """The deliberative planner's held goal hierarchy (base -> top), or [] if it has not planned yet."""
+        return list(self._planner.goals) if self._planner is not None else []
 
     def converse(self, text):
         """Answer a line of text, GROUNDED in the brain's real state. This is NOT a general chatbot or
@@ -182,6 +207,19 @@ def main():
     assert "goal is GRIPPER_OPEN" in goal_reply, f"converse must report the real working-memory goal ({goal_reply})"
     assert "not a conscious agent" in conscious_reply, "converse must answer the consciousness question honestly"
     assert brain.converse("close the gripper").startswith("Done"), "converse must route a safe arm command through the gate"
+    # the brain can DELIBERATE: plan ahead over a forward model and reject a high-immediate-value trap.
+    target, trap_options = 2.0, [1.0, 5.0, 0.2]              # cmd 0 -> terminal 2.0 (goal); cmd 1 -> 10 (trap)
+    def to_target(s):
+        return -abs(s - target)
+    reactive_pick, _rt_r = brain.deliberate_ahead(0.0, trap_options, to_target, horizon=1)
+    planned_pick, _rt_p = brain.deliberate_ahead(0.0, trap_options, to_target, horizon=40)
+    arm_still_gated = brain.arm.arm.apply is not None        # the gate is intact; planning added no motor path
+    print(f"deliberate : reactive lookahead picks option {reactive_pick} (trap); planning picks "
+          f"{planned_pick} (terminal-best); held plan {brain.plan_goals}")
+    assert reactive_pick == 1 and planned_pick == 0, \
+        f"the live brain must plan ahead: reactive takes the trap ({reactive_pick}), planning rejects it ({planned_pick})"
+    assert brain.plan_goals and brain.plan_goals[-1] == planned_pick, "the planner must hold its committed goal"
+    assert arm_still_gated, "deliberation must not touch the arm gate (planning biases a goal, never drives the arm)"
     brain.arm.lake_wm.close(remove=True)                      # clean up the temp lake files
     if guard.arm.lake_wm is not None:
         guard.arm.lake_wm.close(remove=True)

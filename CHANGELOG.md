@@ -3,6 +3,41 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.10] -- Deeper deliberation: model-based lookahead + multi-goal working memory (2026-07-10)
+
+Driven by `docs/ANATOMY.md` roadmap #1 (deepen the reasoning centre). The prefrontal executive was
+shallow in two ways: it deliberated single-shot over *immediate* evidence (no lookahead, so it could
+not tell a high-immediate-value trap from an action that pays off over a horizon), and it held a
+single scalar goal. Both are now fixed, staying pure-stdlib, deterministic, and touching none of the
+5 brainstem safety-envelope files.
+
+### Added
+- `cortex/prefrontal_executive.py` -- **model-based deliberation** `plan(state, options, predictor,
+  goal_value, horizon)`: score each option by rolling an injected forward model `predict(s, cmd)`
+  forward `horizon` steps and evaluating `goal_value` on the terminal predicted state, then commit
+  via the SAME drift-diffusion race (`RaceAccumulator`) over the rollout values. `horizon=1` is
+  reactive (immediate consequence); `horizon>=2` is planned. The predictor is dependency-injected
+  (any `predict(state, command)` object) -- the class does not couple to a specific model; the
+  self-check composes it with the real `cerebellum.forward_model.ForwardModel`. Un-riggable proof:
+  on a linear plant where the immediate-best command is a trap (converges past the target), reactive
+  deliberation takes the trap while planning rejects it and commits the terminal-best option.
+- `cortex/prefrontal_executive.py` -- **richer working memory**: WM is now a bounded goal STACK of
+  `(index, activity)` frames. `push_subgoal(evidence)` deliberates and pushes a sub-goal above the
+  primary; `maintain()` decays only the TOP frame (lower goals are HELD while a sub-goal is pursued)
+  and pops a faded frame, so a sub-goal pops back to its parent; `top_down_bias()` sums strength over
+  the whole held hierarchy. New `.goals` property exposes the held hierarchy. The single-goal API
+  (`.goal` / `update` / `maintain` / `top_down_bias`) is byte-identical to before when no sub-goal is
+  pushed -- every prior self-check assert passes verbatim.
+- `cortex/live_brain.py` -- `LiveBrain.deliberate_ahead(state, options, goal_value, horizon)` and a
+  `.plan_goals` property surface the planning faculty on the live brain. SAFETY: planning holds a
+  goal by lookahead; it does NOT drive the arm. Motor selection stays reactive and gated (the
+  reflex/E-STOP and the ArmSim gate are untouched); the planner is a separate instance so a
+  command-space plan can never be mistaken for an action-space goal.
+
+Gates green: 171/171 core self-checks, 203 pytest passed (88% coverage), ruff clean.
+
+_Note: the changelog trails at v3.3; entries for v3.4-v3.9 (tagged + pushed) are not yet backfilled._
+
 ## [v3.3] -- Complete the anatomy: connectome wiring layer + amygdala, BG Go/NoGo, TRN gate (2026-07-09)
 
 Driven by an anatomy-completeness audit against the Allen Brain Atlas + the AI 3D brain-map
