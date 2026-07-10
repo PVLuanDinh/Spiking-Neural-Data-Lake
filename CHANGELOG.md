@@ -3,6 +3,48 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.11] -- JEPA: a latent-space world model that learns from the live brain (2026-07-10)
+
+A Joint-Embedding Predictive Architecture (JEPA -- LeCun; I-JEPA / V-JEPA) as a learning method for
+the live brain. JEPA predicts in a learned REPRESENTATION space rather than the raw input space: a
+context encoder, an action-conditioned latent predictor, an EMA / stop-gradient target encoder, and
+VICReg anti-collapse. It drops, duck-typed, into the v3.10 `PrefrontalExecutive.plan()` as a LATENT
+world model, and it is wired LIVE-REACTIVE into the arm loop. Pure-stdlib core + an optional torch
+scaffold; the 5 brainstem safety-envelope files are untouched.
+
+### Added
+- `src/snn_data_lake/cerebellum/jepa_world_model.py` (CORE, zero-dep) -- a **minimal deterministic
+  linear JEPA**: online encoder `z = unit(tanh(We@x + be))`, EMA/stop-grad target encoder, residual
+  action-conditioned predictor `z' = clamp(z + Wz@z + Wa@onehot(a) + b)` (spectral-bounded so long
+  rollouts stay finite), and a hand-rolled VICReg (variance hinge + off-diagonal covariance) with
+  closed-form gradients. `predict(state, command)` satisfies the `plan()` predictor contract;
+  `make_goal_value(z_goal)` builds a negative-L1 latent goal; `train_step` learns online; save/load
+  as `snn_jepa/1`. Honest framing: it demonstrates the JEPA *mechanism* (encoder + predictor +
+  EMA/stop-grad target + latent-space objective + anti-collapse), not a frontier ViT world model.
+  Un-riggable self-check: (1) a fair control that ablates BOTH VICReg AND the EMA/stop-grad asymmetry
+  provably collapses (latent std ~0) while the full model preserves variance; (2) it beats an identity
+  predictor and a 1-D `ForwardModel` baseline; (3) a 40-step rollout stays bounded; (4) on a 2-factor
+  world the 1-D scalar model is provably indifferent between two actions the 16-D latent separates, so
+  `plan()` driven by the JEPA commits the correct action.
+- `research/jepa_scaffold_torch.py` (research, ruff-excluded, NOT in CI) -- a torch I-JEPA-style
+  scaffold that exports a trained latent predictor into the core `snn_jepa/1` format (the core serves
+  it with no torch). UNVERIFIED-ON-HARDWARE (no GPU here); the no-torch path exits cleanly.
+
+### Changed
+- `src/snn_data_lake/brainstem/autonomous_loop.py` (NOT a safety-envelope file) -- opt-in `jepa=False`
+  flag. When on, the executive PLANS over the JEPA latent world model (`z = enc(context)`, then commit
+  the action whose bounded latent rollout best reaches a reward-derived latent goal) to set its goal,
+  instead of the reactive value deliberation; the result is the SAME top-down bias (bounded by
+  `pfc_gain`) into the SAME gated selection. The model self-trains online from the live `(z, a, z')`
+  stream, off the safety path. SAFETY: the reflex E-STOP runs first and still preempts, every motor
+  command stays gated, and JEPA adds no actuator route -- self-checked with the flag ON.
+- `src/snn_data_lake/cortex/live_brain.py` -- `LiveBrain(jepa=True)` forwards the flag; `plan_latent`
+  and `jepa_on()` surface the deliberative latent-planning faculty. Flag OFF => every prior self-check
+  byte-identical.
+
+Gates green: 172/172 core self-checks, 204 pytest passed (88% coverage), ruff clean; the 5 brainstem
+safety-envelope files untouched (git-diff verified).
+
 ## [v3.10] -- Deeper deliberation: model-based lookahead + multi-goal working memory (2026-07-10)
 
 Driven by `docs/ANATOMY.md` roadmap #1 (deepen the reasoning centre). The prefrontal executive was

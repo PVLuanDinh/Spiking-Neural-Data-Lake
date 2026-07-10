@@ -82,3 +82,11 @@ goal-directed loop (`cortex/live_brain`). The next honest primitives deepen the 
 
 Every addition stays pure-stdlib, offline-deterministic, self-checked with a fair control, lives in
 an anatomical region subpackage, and touches none of the 5 safety-envelope files.
+
+## Learning
+
+Beyond the anatomy, the brain also carries **learning mechanisms**. As of v3.11 the cerebellum holds a
+**JEPA latent world model** (`cerebellum/jepa_world_model.py`) beside the input-space `forward_model`:
+a self-supervised encoder + action-conditioned latent predictor + EMA target + VICReg anti-collapse,
+which the prefrontal executive plans over in latent space and which self-trains online from the live
+tick stream. See `docs/JEPA.md`.

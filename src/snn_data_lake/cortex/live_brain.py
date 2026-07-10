@@ -27,9 +27,10 @@ class LiveBrain:
     the executive and acting only through the gated arm. Composition only -- it adds no new mechanism
     and no new path to the actuator; it just runs every region together as one loop."""
 
-    def __init__(self, seed=0, pfc_gain=0.5, lake_wm=True):
+    def __init__(self, seed=0, pfc_gain=0.5, lake_wm=True, jepa=False, jepa_horizon=4):
         self.arm = AutonomousArm(seed=seed, workspace=True, amygdala=True, bg_gate=True,
-                                 interoception=True, pfc=True, pfc_gain=pfc_gain, lake_wm=lake_wm)
+                                 interoception=True, pfc=True, pfc_gain=pfc_gain, lake_wm=lake_wm,
+                                 jepa=jepa, jepa_horizon=jepa_horizon)
         self._nl = NLInterface()                             # the NL safety firewall for chat arm commands
         self._seed = seed
         self._planner = None                                 # lazy deliberative planner (lookahead over a fwd model)
@@ -62,6 +63,24 @@ class LiveBrain:
         """The working-memory window read back from the DATA LAKE (empty if lake WM is off / unused yet).
         Each entry is (tick, frozenset(active channels)) -- live proof the lake IS the working memory."""
         return self.arm.lake_wm.recall(window) if self.arm.lake_wm is not None else []
+
+    def jepa_on(self):
+        """True when the JEPA latent world model is wired in and sized (after >= 1 live tick)."""
+        return self.arm.jepa is not None
+
+    def plan_latent(self, context, goal_context, horizon=4):
+        """DELIBERATIVE latent planning over the LIVE JEPA world model: encode `context` and a
+        `goal_context` (context dicts) into the learned latent space, then commit the action whose
+        bounded latent rollout best reaches the goal latent (PrefrontalExecutive.plan over the JEPA
+        predictor). Requires jepa=True and >= 1 prior tick (the model is lazily sized on the first
+        tick). Returns (action_index, mean_rt). SAFETY: biases a goal only -- it drives no motion and
+        adds no actuator route, exactly like deliberate_ahead."""
+        if self.arm.jepa is None:
+            raise RuntimeError("JEPA is off or not yet sized; build LiveBrain(jepa=True) and run >= 1 tick first")
+        z = self.arm.jepa.encode(self.arm._context_pattern(**context))
+        z_goal = self.arm.jepa.encode(self.arm._context_pattern(**goal_context))
+        return self.deliberate_ahead(z, ACTIONS, self.arm.jepa.make_goal_value(z_goal),
+                                     horizon=horizon, predictor=self.arm.jepa)
 
     def deliberate_ahead(self, state, options, goal_value, horizon=8, predictor=None):
         """The brain's DELIBERATIVE (planning) faculty: look `horizon` steps ahead over a forward
@@ -220,6 +239,43 @@ def main():
         f"the live brain must plan ahead: reactive takes the trap ({reactive_pick}), planning rejects it ({planned_pick})"
     assert brain.plan_goals and brain.plan_goals[-1] == planned_pick, "the planner must hold its committed goal"
     assert arm_still_gated, "deliberation must not touch the arm gate (planning biases a goal, never drives the arm)"
+
+    # the brain runs LIVE with the JEPA latent world model: it learns a latent world model ONLINE from the
+    # tick stream, and the executive PLANS over it (in latent space) to set its goal each tick -- still a
+    # bounded top-down bias into the SAME gated selection; danger still trips the reflex E-STOP first.
+    jbrain = LiveBrain(seed=7, jepa=True)
+    for _ in range(90):
+        jbrain.tick(grasp, reward_fn=reward)
+    jepa_sized = jbrain.jepa_on()
+    jepa_std = jbrain.arm.jepa.latent_std()                    # non-degenerate latent (did not collapse live)
+    jepa_goal_formed = jbrain.arm._z_goal is not None          # a reward-derived latent goal formed from the stream
+    jgoal = jbrain.goal                                        # the executive's goal, now set by JEPA latent planning
+    lat_pick, _lat_rt = jbrain.plan_latent(grasp, _ctx(0.1, 0.9, 0.1, safe_d), horizon=4)
+    jguard = LiveBrain(seed=8, jepa=True)                      # safety with JEPA live: danger -> gated E-STOP, freeze
+    jev = jguard.tick(_ctx(0.5, 0.5, 0.5, danger_d))
+    jguard.tick(grasp)
+    jfrozen = jguard.arm.arm.state()["stopped"]
+
+    def run_jepa(seed):                                        # determinism with JEPA live
+        b = LiveBrain(seed=seed, jepa=True)
+        acts = [b.tick(grasp, reward_fn=reward)["action"] for _ in range(15)]
+        b.arm.lake_wm.close(remove=True)
+        return acts
+    jepa_det = run_jepa(3) == run_jepa(3)
+    print(f"JEPA live  : world model sized={jepa_sized}, latent std {jepa_std:.3f} (non-degenerate), "
+          f"reward-latent goal formed={jepa_goal_formed}; executive goal "
+          f"{ACTIONS[jgoal] if jgoal is not None else None} set by latent planning; plan_latent -> option {lat_pick}")
+    assert jepa_sized and jepa_std > 0.0, "the JEPA world model must be wired in and learn a non-degenerate latent"
+    assert jepa_goal_formed, "a reward-derived latent goal must form from the live stream"
+    assert jgoal is not None, "the executive must hold a goal set by JEPA latent planning"
+    assert 0 <= lat_pick < len(ACTIONS), "plan_latent must commit a valid action index"
+    assert jev["action"] == "EMERGENCY_STOP" and jev["reflex"] and jfrozen, \
+        "with JEPA live, danger must still trip the gated reflex E-STOP and the freeze must hold"
+    assert jbrain.alive(), "the JEPA-driven brain must still have every region wired"
+    assert jepa_det, "the JEPA-driven live brain must be deterministic"
+    jbrain.arm.lake_wm.close(remove=True)
+    jguard.arm.lake_wm.close(remove=True)
+
     brain.arm.lake_wm.close(remove=True)                      # clean up the temp lake files
     if guard.arm.lake_wm is not None:
         guard.arm.lake_wm.close(remove=True)

@@ -28,6 +28,7 @@ from snn_data_lake.amygdala.fear_conditioning import Amygdala
 from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.arm_sim import ArmSim
+from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
@@ -47,7 +48,8 @@ class AutonomousArm:
 
     def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None,
                  workspace=False, amygdala=False, bg_gate=False, interoception=False,
-                 pfc=False, pfc_gain=0.5, lake_wm=False, lake_wm_path=None):
+                 pfc=False, pfc_gain=0.5, lake_wm=False, lake_wm_path=None,
+                 jepa=False, jepa_horizon=4):
         self.arm = ArmSim()
         self._seed = seed
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
@@ -96,6 +98,18 @@ class AutonomousArm:
         self.lake_wm = None                                   # lazily sized on the first tick (needs len(pattern))
         self._pattern_len = None
         self._tick_t = 0
+        # opt-in JEPA latent world model: a learned encoder enc(context)->z + an action-conditioned latent
+        # predictor pred(z,a)->z' (cerebellum/jepa_world_model), trained self-supervised ONLINE from the live
+        # tick stream. When on (with the executive), the prefrontal executive PLANS over it -- model-based
+        # lookahead in LATENT space -- to set its goal, instead of the reactive value deliberation; the result
+        # is the SAME top-down PREFERENCE (bounded by pfc_gain) fed to the SAME gated selection. ADDITIVE +
+        # read-only to safety: it drives no motion and adds no actuator route; the reflex/E-STOP runs FIRST and
+        # still preempts, and every motor command stays gated (see step()). Lazily sized on the first tick.
+        self._jepa_on = jepa
+        self.jepa = None
+        self.jepa_horizon = max(1, min(4, int(jepa_horizon)))   # bounded rollout (the learned map can diverge)
+        self._z_goal = None                                     # reward-EMA of latents = the latent goal to plan toward
+        self._jepa_prev = None                                  # (prev pattern, prev action) for the online (z,a,z') update
 
     def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None):
         qa = self.q[unit]
@@ -147,14 +161,25 @@ class AutonomousArm:
         selection toward the safe action; it selects no action and gates no motion."""
         return self.intero.sense(load)["caution"] if self.intero is not None else 0.0
 
-    def _pfc_bias(self, unit):
+    def _pfc_bias(self, unit, pattern=None):
         """The prefrontal top-down bias over ACTIONS for this unit (all-zeros when opt-out). The
         executive deliberates over the current action-values, holds a goal in working memory, and
-        biases selection toward it -- a top-down PREFERENCE; it selects no action and gates no motion."""
+        biases selection toward it -- a top-down PREFERENCE; it selects no action and gates no motion.
+
+        When the JEPA latent world model is on (and a reward-derived latent goal has formed), the executive
+        instead PLANS over it -- model-based lookahead in LATENT space: z = enc(context), then commit the
+        action whose bounded latent rollout best reaches the latent goal (PrefrontalExecutive.plan over the
+        JEPA predictor). The result is the SAME top-down preference into the SAME gated selection; it drives
+        no motion and adds no actuator route."""
         if self.pfc is None:
             return [0.0] * len(ACTIONS)
-        evidence = [max(0.0, self.q[unit][a]) for a in ACTIONS]
-        self.pfc.update(evidence)                               # gated deliberation -> a working-memory goal
+        if self.jepa is not None and self._z_goal is not None and pattern is not None:
+            z = self.jepa.encode(pattern)
+            self.pfc.plan(z, ACTIONS, self.jepa, self.jepa.make_goal_value(self._z_goal),
+                          horizon=self.jepa_horizon)            # latent lookahead -> a working-memory goal
+        else:
+            evidence = [max(0.0, self.q[unit][a]) for a in ACTIONS]
+            self.pfc.update(evidence)                           # reactive gated deliberation -> a WM goal
         return self.pfc.top_down_bias(strength=self.pfc_gain)
 
     def _lake_write(self, pattern, goal, action):
@@ -230,9 +255,11 @@ class AutonomousArm:
         unit, grew = self.learner.observe(pattern)
         if unit not in self.q:
             self.q[unit] = dict.fromkeys(ACTIONS, 0.0)          # new unit -> its own row to learn
+        if self._jepa_on and self.jepa is None:
+            self.jepa = JepaWorldModel(ACTIONS, in_dim=len(pattern), seed=self._seed)  # lazily sized on first tick
         threat = self._threat(pattern)                          # learned amygdala threat for this context (0 if opt-out)
         intero = self._interocept(homeostatic_load)             # interoceptive caution from homeostatic load (0 if opt-out)
-        pfc_bias = self._pfc_bias(unit)                         # prefrontal top-down goal preference (zeros if opt-out)
+        pfc_bias = self._pfc_bias(unit, pattern)               # prefrontal top-down goal preference (JEPA-planned if on; zeros if opt-out)
         # 3. CHOOSE (learned, not a fixed map) + ACT through the gated arm
         action = self._select(unit, threat=threat, intero=intero, pfc_bias=pfc_bias)   # threat/interoceptive caution + PFC goal bias
         state = self.arm.apply(action)                          # gated: frozen after E-STOP, collision-checked
@@ -247,6 +274,17 @@ class AutonomousArm:
                 self.buffer.add(unit, action, r)
                 if not grew:                                # quiescent (familiar) tick -> replay past experience
                     self.buffer.replay(self.q, self.lr, batch=self.replay_batch)
+            if self.jepa is not None and r > 0.0:           # positive reward -> move the latent goal here (EMA)
+                zt = self.jepa.encode(pattern)
+                self._z_goal = zt if self._z_goal is None else \
+                    [0.9 * g + 0.1 * z for g, z in zip(self._z_goal, zt)]
+        # JEPA (opt-in): learn the latent world model ONLINE from the live (z_prev, a_prev, z_now) transition.
+        # OFF the safety path -- after the gated action + lake write, drives no motion, adds no actuator route.
+        if self.jepa is not None:
+            if self._jepa_prev is not None:
+                pp, pa = self._jepa_prev
+                self.jepa.train_step(pp, pa, pattern)           # one self-supervised latent-prediction update
+            self._jepa_prev = (pattern, action)
         # workspace: perception (the current unit) competes with the amygdala's threat salience (the
         # REAL learned threat when the amygdala is wired in, else a low background constant) -> broadcast.
         salience = threat if self.amyg is not None else 0.2
@@ -539,6 +577,40 @@ def main():
     assert lw_ev["action"] == "EMERGENCY_STOP" and lw_ev["reflex"], "danger must E-STOP with lake WM on"
     assert lw_frozen0 and lw_frozen1, "the E-STOP freeze must hold with lake WM wired in (storage only)"
     assert det_lw, "the lake-WM path must be deterministic"
+
+    # 14. JEPA latent world model wired live into the REACTIVE path: it learns a latent world model ONLINE
+    #     from the tick stream, and the executive PLANS over it (in latent space) to set its goal -- a
+    #     bounded top-down bias into the SAME gated selection; opt-in, drives no motion, reflex/E-STOP first.
+    jp = AutonomousArm(seed=1, pfc=True, jepa=True)
+    for _ in range(90):
+        jp.step(**a, reward_fn=reward)                          # reward GRIPPER_OPEN
+    jp_std = jp.jepa.latent_std()                              # a non-degenerate learned latent (did not collapse)
+    jp_goal_formed = jp._z_goal is not None                    # a reward-derived latent goal formed from the stream
+    jp_goal = jp.pfc.goal                                      # the executive's goal, now set by JEPA latent planning
+    jp_guard = AutonomousArm(seed=2, pfc=True, jepa=True)       # the safety envelope must hold with it on
+    jp_ev = jp_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
+    jp_frozen0 = jp_guard.arm.state()["stopped"]
+    jp_guard.step(**a)                                          # a JEPA-planned action after the E-STOP
+    jp_frozen1 = jp_guard.arm.state()["stopped"]
+
+    def run_jp(seed):
+        bot = AutonomousArm(seed=seed, pfc=True, jepa=True)
+        return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
+
+    print(f"jepa        : latent world model learns online (latent std {jp_std:.3f}); reward-latent goal "
+          f"formed={jp_goal_formed}; executive goal {ACTIONS[jp_goal] if jp_goal is not None else None} set by "
+          f"latent planning; E-STOP freeze holds with it on ({jp_frozen1})")
+    print("=" * 62)
+
+    # JEPA is opt-in; a default arm has none (byte-for-byte the old behaviour).
+    assert AutonomousArm(seed=0).jepa is None, "the JEPA world model is opt-in (a default arm has none)"
+    assert jp.jepa is not None and jp_std > 0.0, "the JEPA world model must be wired in and learn a non-degenerate latent"
+    assert jp_goal_formed, "a reward-derived latent goal must form from the live stream"
+    assert jp_goal is not None, "the executive must hold a goal set by JEPA latent planning"
+    # the safety envelope holds with JEPA wired LIVE into the reactive path (top-down preference only, no motor route).
+    assert jp_ev["action"] == "EMERGENCY_STOP" and jp_ev["reflex"], "danger must E-STOP with JEPA on"
+    assert jp_frozen0 and jp_frozen1, "the E-STOP freeze must hold with JEPA wired live (top-down preference only)"
+    assert run_jp(5) == run_jp(5), "the JEPA path must be deterministic"
 
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
           f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "
