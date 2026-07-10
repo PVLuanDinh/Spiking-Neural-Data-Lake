@@ -71,7 +71,7 @@ class JepaWorldModel:
 
     def __init__(self, actions, in_dim=64, latent_dim=16, tau=0.99, lr=0.05,
                  lambda_inv=1.0, lambda_var=1.0, lambda_cov=1.0, buffer=32,
-                 anti_collapse=True, seed=0):
+                 anti_collapse=True, seed=0, reward_shaping=False, lambda_reward=1.0):
         self.actions = tuple(actions)                 # ordered action names, e.g. ("GRIPPER_CLOSE", ...)
         self.n_act = len(self.actions)
         self._aidx = {a: i for i, a in enumerate(self.actions)}
@@ -106,6 +106,23 @@ class JepaWorldModel:
         # EMA target starts as a copy of the online encoder (standard); ablation re-ties it every step
         self.Wt = [row[:] for row in self.We]
         self.bt = self.be[:]
+
+        # OPTIONAL reward-shaping head (task-aligns the latent). Pure SSL (invariance + VICReg) can COLLAPSE a
+        # small set of repeating contexts to one point (the online arm latent measured ~0.003 apart across
+        # distinct contexts), so no downstream value head can separate them -- the encoder, not the head, is the
+        # bottleneck (v3.18 finding). A reward-predictive auxiliary head r_hat[a] = Wr[a].z + br[a] adds a weak
+        # SUPERVISED gradient that pulls the latent to encode reward/task structure, so contexts with different
+        # reward separate. This is "task-shaped SSL" (auxiliary reward prediction; cf. UNREAL), NOT pure SSL --
+        # honestly: it consumes the reward signal. Drawn ONLY when enabled (so the rng stream, hence every
+        # weight, is byte-identical to a plain model when off); a served/frozen deep encoder skips it entirely.
+        self.reward_shaping = bool(reward_shaping)
+        self.lambda_reward = float(lambda_reward)
+        self.Wr = None
+        self.br = None
+        if self.reward_shaping:
+            sr = 1.0 / math.sqrt(self.L)               # reward-head fan-in scale (over the latent)
+            self.Wr = [[self.rng.uniform(-1.0, 1.0) * sr for _ in range(self.L)] for _ in range(self.n_act)]
+            self.br = [0.0] * self.n_act
 
         self._buf = []                                 # ring buffer of recent online latents (VICReg + telemetry)
         self._prev = None                              # (prev online latent, prev action index) for 2-step term
@@ -156,14 +173,20 @@ class JepaWorldModel:
         return [_clamp(v, -self.z_clip, self.z_clip) for v in p]
 
     # ---- one online JEPA update ------------------------------------------------------------------------
-    def train_step(self, pattern_t, action_t, pattern_next):
+    def train_step(self, pattern_t, action_t, pattern_next, reward=None):
         """One online JEPA update; returns the scalar total loss.
 
         Loss = lambda_inv * invariance + lambda_var * L_var + lambda_cov * L_cov (+ a small 2-step rollout term).
         invariance = ||predict(encode(x_t), a_t) - sg(target_encode(x_{t+1}))||^2. Updates We, be, Wz, Wa, b by
         closed-form gradients (backprop through unit(tanh(.)) by hand), row-scales Wz to stay contractive, then
         EMA-updates the target encoder. Pushes encode(x_t) into the VICReg ring buffer. In the ablation
-        (anti_collapse=False) VICReg is off and the target is tied to the online encoder with no stop-grad."""
+        (anti_collapse=False) VICReg is off and the target is tied to the online encoder with no stop-grad.
+
+        `reward` (opt-in reward-shaping only): the scalar reward the taken action a_t achieved for x_t. When
+        reward_shaping is on and reward is given, a reward-predictive auxiliary head r_hat[a_t] = Wr[a_t].z +
+        br[a_t] contributes lambda_reward * d/dz ||r_hat[a_t]-reward||^2 into the SAME encoder gradient, so the
+        latent learns to encode reward/task structure (task-alignment). reward=None (or reward_shaping off) leaves
+        every existing update byte-identical."""
         L, D = self.L, self.in_dim
         x, y = pattern_t, pattern_next
         aj = self._idx(action_t)
@@ -251,6 +274,20 @@ class JepaWorldModel:
                             gk += cov[k][j] * (z[j] - mu[j])
                     gz[k] += self.lambda_cov * (4.0 / (L * m)) * gk
                 Lcov /= L
+
+            # -- REWARD-SHAPING (opt-in): a reward-predictive head r_hat[aj]=Wr[aj].z+br[aj] toward the OBSERVED
+            #    reward pulls the latent to encode task/reward structure. Its dL/dz folds into the SAME gz (so the
+            #    existing unit(tanh) backprop handles it); the head itself is updated by SGD. Task-aligns z so a
+            #    downstream value head can separate contexts the pure-SSL objective would collapse. --
+            if self.reward_shaping and reward is not None and self.Wr is not None:
+                rerr = (dot(self.Wr[aj], z) + self.br[aj]) - reward     # r_hat[aj] - reward
+                gr = 2.0 * self.lambda_reward * rerr                    # dL_r/d r_hat
+                wraj = self.Wr[aj]
+                for k in range(L):
+                    gz[k] += gr * wraj[k]                               # dL_r/dz = gr * Wr[aj] -> into the shared gz
+                for k in range(L):                                      # SGD the head (uses the pre-update z)
+                    wraj[k] -= self.lr * gr * z[k]
+                self.br[aj] -= self.lr * gr
 
             # -- backprop the combined gz through z = unit(tanh(h)) into We, be --
             self._encoder_backprop(gz, t, n, xin, gWe, gbe)
@@ -775,6 +812,58 @@ def main():
     assert v2_roundtrip, "snn_jepa/2 save/load must round-trip the deep encoder exactly"
     assert enc_frozen, "a loaded deep encoder must stay FROZEN under train_step (only the predictor adapts)"
 
+    # ---- (6) REWARD-SHAPING: task-align the latent where pure SSL collapses a few repeating contexts ----
+    # Pure SSL (invariance + VICReg) drives a small set of repeating contexts TOGETHER (the online arm latent
+    # measured ~0 apart across distinct contexts -> no value head can separate them, the v3.18 finding). A
+    # reward-predictive auxiliary head pulls them APART by reward structure. Fair control: SAME seed / stream /
+    # steps -- the ONLY difference is reward_shaping. 3 distinct banded contexts, optimal action = the band.
+    _band = IN_DIM // 3
+    _rsx = [[1.0 if (i // _band) == d else 0.05 for i in range(IN_DIM)] for d in range(3)]
+    _rstr = [(_rsx[d], d) for d in range(3)]
+
+    def _rs_run(shaped):
+        j = JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, lr=LR, seed=1, reward_shaping=shaped)
+        rng = random.Random(4)
+        prev = None
+        for _ in range(600):                                # online, OBSERVED-reward-only (like the arm)
+            p, opt = _rstr[rng.randrange(3)]
+            a = rng.randrange(len(ACTIONS))
+            r = 1.0 if a == opt else -1.0
+            if prev is not None:
+                j.train_step(prev[0], prev[1], p, reward=prev[2])
+            prev = (p, a, r)
+        zs = [j.encode(p) for p, _ in _rstr]
+        sp = max(math.sqrt(sum((zs[i][k] - zs[m][k]) ** 2 for k in range(LATENT)))
+                 for i in range(3) for m in range(i + 1, 3))
+        wr = _fit_linear([j.encode(p) for p, _ in _rstr],
+                         [[1.0 if a == o else -1.0 for a in range(len(ACTIONS))] for _, o in _rstr],
+                         len(ACTIONS), 300, 0.1, seed=0)
+        acc = sum(1 for p, o in _rstr if max(range(len(ACTIONS)),
+                  key=lambda a: dot(wr[a], j.encode(p))) == o) / len(_rstr)
+        return sp, acc, j
+    rs_plain_sp, rs_plain_acc, _jp = _rs_run(False)
+    rs_shaped_sp, rs_shaped_acc, _js = _rs_run(True)
+    rs_off_none = JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, seed=3).Wr is None
+    # byte-identity when OFF: the reward head is drawn ONLY when enabled, so a plain model's weights are unchanged
+    rs_bytesame = (JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, seed=3).We
+                   == JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, seed=3).We)
+    # determinism of the reward-shaped path
+    _jd = _rs_run(True)[2]
+    rs_det = (_js.We == _jd.We and _js.Wr == _jd.Wr)
+
+    print(f"(6) reward  : pure-SSL few-context spread {rs_plain_sp:.3f} (collapsed, readout {rs_plain_acc:.2f}) -> "
+          f"reward-shaped {rs_shaped_sp:.3f} (readout {rs_shaped_acc:.2f}); head off => Wr None {rs_off_none}")
+    print("=" * 78)
+
+    # ---- (6) REWARD-SHAPING: pure SSL collapses the few contexts; the reward head task-aligns + separates them ----
+    assert rs_plain_sp < 0.1, f"pure SSL must collapse a few repeating contexts (spread {rs_plain_sp:.3f})"
+    assert rs_shaped_sp > 0.4, f"reward-shaping must separate the contexts (spread {rs_shaped_sp:.3f})"
+    assert rs_shaped_acc > rs_plain_acc + 0.3, \
+        f"a linear readout must recover the rule from the reward-shaped latent, not the collapsed one " \
+        f"({rs_shaped_acc:.2f} vs {rs_plain_acc:.2f})"
+    assert rs_off_none and rs_bytesame, "reward_shaping OFF must draw no reward head (Wr None) and leave weights byte-identical"
+    assert rs_det, "the reward-shaped training path must be deterministic (same seed + stream)"
+
     # ---- DETERMINISM + persistence ----
     assert same_weights, "two JepaWorldModel(seed=7) trained on the same stream must have byte-identical weights"
     assert roundtrip, "save/load must round-trip the weights and predictions exactly"
@@ -783,7 +872,9 @@ def main():
           f"JEPA beats identity ({mse_j_lat:.3f}<{mse_id_lat:.3f}) and 1-D scalar ({mse_j_u:.3f}<{mse_f_u:.3f});")
     print(f"  40-step rollout bounded (max |z_i| {roll_max:.2f}); latent>scalar via plan() -> commits "
           f"{ACTIONS[plan_goal]} (scalar OPEN==CLOSE gap {fm_gap:.1e}); deterministic + exact save/load;")
-    print(f"  hidden encoder (snn_jepa/2) separates XOR {deep_acc}/4 vs single-layer {lin_acc}/4 (served + frozen)")
+    print(f"  hidden encoder (snn_jepa/2) separates XOR {deep_acc}/4 vs single-layer {lin_acc}/4 (served + frozen);")
+    print(f"  reward-shaping task-aligns few-context latents (spread {rs_plain_sp:.3f}->{rs_shaped_sp:.3f}, "
+          f"readout {rs_plain_acc:.2f}->{rs_shaped_acc:.2f}) where pure SSL collapses")
 
 
 if __name__ == "__main__":

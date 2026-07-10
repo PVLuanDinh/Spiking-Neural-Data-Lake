@@ -3,6 +3,40 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.19] -- Task-aligned encoder: reward-shaping fixes the on-arm substrate (closes the v3.18 gap) (2026-07-10)
+
+v3.18 found the real bottleneck for the task-aligned substrate: NOT the value head, but the ENCODER -- the arm's
+ONLINE SSL-JEPA near-collapses its few live contexts (latent spread ~0.003), so no head can separate them. v3.19
+FIXES the encoder: a reward-predictive auxiliary head adds a weak SUPERVISED gradient that pulls the latent to
+encode task/reward structure, so the SAME MLP-Q now recovers the rule ON THE ARM.
+
+### Added
+- `cerebellum/jepa_world_model.py` -- opt-in `reward_shaping=True` (+ `lambda_reward`): a reward-predictive head
+  `r_hat[a] = Wr[a].z + br[a]` whose `d/dz ||r_hat - reward||^2` folds into the SAME hand-rolled encoder backprop,
+  task-aligning the latent. `train_step(..., reward=)` takes the observed (taken-action) reward. The head is drawn
+  ONLY when enabled, so a plain model is byte-identical (the rng stream, hence every weight, is unchanged); a
+  served/frozen deep encoder skips it. Self-check 6: pure SSL collapses 3 repeating contexts (spread 0.007, linear
+  readout 0.33 ~ chance) while reward-shaping separates them (spread 0.675, readout 1.00); deterministic; off => Wr None.
+
+### Changed
+- `brainstem/autonomous_loop.py` (NOT an envelope file) -- opt-in `reward_shaped_encoder=True` (auto-enables the
+  JEPA): the online JEPA update is fed the tick's observed task reward, so its encoder task-aligns; the MLP-Q rides
+  the now-separable latent. Self-check 20: on the SAME arm band rule where the plain-SSL MLP-Q was at chance (0.33,
+  §19), the reward-shaped encoder lifts held-out competence to 0.83 and the band latents separate (spread 0.003 ->
+  1.23). SAFETY: only changes the JEPA's online learning -- reflex E-STOP first, every command gated, freeze
+  self-checked; deterministic. Flag OFF => byte-identical.
+
+### The arc, honestly
+v3.17 (linear latent-Q) -> v3.18 (nonlinear MLP-Q; found the encoder, not the head, is the wall) -> v3.19 (fix the
+encoder with reward-shaping). The task-aligned LEARNED substrate now works on-robot: **0.33 -> 0.83 held-out**, by
+fixing the encoder exactly as v3.18's finding predicted. Honest limit: held-out is 0.83 (not 1.00) -- the
+reward-shaped latent transfers to genuinely-novel new-unit contexts well but not perfectly; the purely task-linear
+pattern substrate (v3.17) still hits 1.00 on this particular rule. The win is that a LEARNED latent is now
+task-aligned enough for the nonlinear substrate to generalize where pure SSL gave chance.
+
+Gates green: 177/177 core self-checks, pytest passed (88.91% cov), ruff clean; the 5 brainstem
+envelope files byte-for-byte unchanged (git-diff empty).
+
 ## [v3.18] -- Task-aligned learned substrate: a nonlinear MLP-Q over the JEPA latent (+ an honest v3.17 correction) (2026-07-10)
 
 Pushing PAST the LINEAR `latent_q`: a SHARED NONLINEAR one-hidden-layer action-value

@@ -55,7 +55,7 @@ class AutonomousArm:
                  workspace=False, amygdala=False, bg_gate=False, interoception=False,
                  pfc=False, pfc_gain=0.5, lake_wm=False, lake_wm_path=None,
                  jepa=False, jepa_horizon=4, hjepa_serve=None, curiosity=False, curiosity_gain=0.5,
-                 latent_q=False, mlp_q=False):
+                 latent_q=False, mlp_q=False, reward_shaped_encoder=False):
         self.arm = ArmSim()
         self._seed = seed
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
@@ -111,7 +111,8 @@ class AutonomousArm:
         # is the SAME top-down PREFERENCE (bounded by pfc_gain) fed to the SAME gated selection. ADDITIVE +
         # read-only to safety: it drives no motion and adds no actuator route; the reflex/E-STOP runs FIRST and
         # still preempts, and every motor command stays gated (see step()). Lazily sized on the first tick.
-        self._jepa_on = jepa or mlp_q          # mlp_q rides the JEPA latent -> needs the world model built
+        self._jepa_on = jepa or mlp_q or reward_shaped_encoder   # all three need the JEPA world model built
+        self._reward_shaped_encoder = reward_shaped_encoder      # task-align the JEPA encoder via observed reward
         self.jepa = None
         self.jepa_horizon = max(1, min(4, int(jepa_horizon)))   # bounded rollout (the learned map can diverge)
         self._z_goal = None                                     # reward-EMA of latents = the latent goal to plan toward
@@ -372,8 +373,9 @@ class AutonomousArm:
         unit, grew = self.learner.observe(pattern)
         if unit not in self.q:
             self.q[unit] = dict.fromkeys(ACTIONS, 0.0)          # new unit -> its own row to learn
-        if self._jepa_on and self.jepa is None:
-            self.jepa = JepaWorldModel(ACTIONS, in_dim=len(pattern), seed=self._seed)  # lazily sized on first tick
+        if self._jepa_on and self.jepa is None:                 # lazily sized on the first tick
+            self.jepa = JepaWorldModel(ACTIONS, in_dim=len(pattern), seed=self._seed,
+                                       reward_shaping=self._reward_shaped_encoder)   # opt-in task-aligning encoder
         # value row: a SHARED value substrate, else the tabular per-context row. Two shared substrates (opt-in,
         # mutually exclusive): the LINEAR latent_q over the raw lake pattern, or the NONLINEAR mlp_q over the LEARNED
         # JEPA latent. qsub = the active substrate (None -> tabular); z_lq = its input at decision time (reused, so
@@ -405,11 +407,14 @@ class AutonomousArm:
         #    WITHOUT an external reward (self-directed exploration). The intrinsic reward feeds the value update
         #    only -- no motor route, no stress; the reflex/E-STOP + caution still preempt.
         r_int = 0.0
+        r_ext_step = None                                   # this tick's EXTERNAL task reward (for reward-shaping the encoder); None if no task reward
         if self.curiosity is not None and self.jepa is not None and self._jepa_prev is not None:
             perr = self.jepa.prediction_error(self._jepa_prev[0], self._jepa_prev[1], pattern)
             r_int = self.curiosity_gain * self.curiosity.intrinsic_reward(unit, perr)  # observes + rewards learning progress
         if reward_fn is not None or r_int != 0.0:
             r_ext = reward_fn(unit, action) if reward_fn is not None else 0.0
+            if reward_fn is not None:
+                r_ext_step = r_ext                          # a real task reward this tick -> shape the encoder toward it next update
             r = r_ext + r_int                               # external task reward + intrinsic curiosity reward
             if qsub is not None and z_lq is not None:
                 qsub.update(z_lq, action, r)                # SHARED substrate update (linear latent_q OR nonlinear mlp_q) -> transfer
@@ -433,9 +438,9 @@ class AutonomousArm:
         # OFF the safety path -- after the gated action + lake write, drives no motion, adds no actuator route.
         if self.jepa is not None:
             if self._jepa_prev is not None:
-                pp, pa = self._jepa_prev
-                self.jepa.train_step(pp, pa, pattern)           # one self-supervised latent-prediction update
-            self._jepa_prev = (pattern, action)
+                pp, pa, pr = self._jepa_prev                     # (prev pattern, prev action, prev task reward or None)
+                self.jepa.train_step(pp, pa, pattern, reward=pr)   # SSL update (+ reward-shaping when pr is a task reward)
+            self._jepa_prev = (pattern, action, r_ext_step)
         # workspace: perception (the current unit) competes with the amygdala's threat salience (the
         # REAL learned threat when the amygdala is wired in, else a low background constant) -> broadcast.
         salience = threat if self.amyg is not None else 0.2
@@ -988,6 +993,50 @@ def main():
         f"({mlp_hold:.2f} vs {lqq_hold:.2f}) -- the ENCODER, not the head, is the on-arm limit")
     assert mlp_ev["action"] == "EMERGENCY_STOP" and mlp_ev["reflex"] and mlp_frozen, "danger must E-STOP with mlp_q on"
     assert mlp_det, "the mlp-Q path must be deterministic"
+
+    # 20. TASK-ALIGNED ENCODER (reward-shaping): the honest FIX for the v3.18 encoder-collapse bottleneck. §19
+    #     showed the arm's ONLINE SSL encoder near-collapses its few contexts (spread ~0) so the MLP-Q over it is
+    #     at chance (0.33). Reward-shaping adds a reward-predictive gradient into the encoder (opt-in
+    #     reward_shaped_encoder=True) so the latent separates contexts BY TASK -> the SAME MLP-Q now recovers the
+    #     rule ON THE ARM and transfers to new-unit contexts. Fixes the ENCODER, not the head -- exactly what §19
+    #     said was the bottleneck. Opt-in (auto-enables the JEPA); only changes the JEPA's online update (the gated
+    #     selection + reflex/E-STOP are unchanged).
+    def _rse_run():
+        bot = AutonomousArm(seed=1, pfc=True, curiosity=True, mlp_q=True, reward_shaped_encoder=True)
+        for _ in range(500):
+            ctx, opt = lq_train[bot._dev_rng.randrange(len(lq_train))]
+            bot.step(reward_fn=(lambda u, a, o=opt: 1.0 if a == o else -1.0), **ctx)
+        zs = [bot.jepa.encode(bot._context_pattern(**_lq_ctx(*[0.9 if i == d else 0.1 for i in range(3)]))) for d in range(3)]
+        spread = max(math.sqrt(sum((zs[i][k] - zs[j][k]) ** 2 for k in range(len(zs[i]))))
+                     for i in range(3) for j in range(i + 1, 3))
+        return bot._competence(lq_hold), spread
+    rse_hold, rse_spread = _rse_run()
+    rse_guard = AutonomousArm(seed=2, pfc=True, mlp_q=True, reward_shaped_encoder=True)   # the safety envelope must hold with it on
+    rse_ev = rse_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
+    rse_guard.step(**_lq_ctx(0.9, 0.1, 0.1))
+    rse_frozen = rse_guard.arm.state()["stopped"]
+
+    def run_rse(seed):
+        bot = AutonomousArm(seed=seed, pfc=True, curiosity=True, mlp_q=True, reward_shaped_encoder=True)
+        return [bot.step(reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0])["action"]
+                for _ in range(8)]
+    rse_det = run_rse(5) == run_rse(5)
+
+    print(f"reward-enc  : task-aligning the JEPA encoder -> the SAME MLP-Q recovers the rule ON THE ARM -- held-out "
+          f"{rse_hold:.2f} (vs plain-SSL {mlp_hold:.2f}); band latents separate (spread {rse_spread:.2f} vs "
+          f"{mlp_spread:.3f}); E-STOP freeze holds ({rse_frozen})")
+    print("=" * 62)
+
+    assert AutonomousArm(seed=0)._reward_shaped_encoder is False, "the reward-shaped encoder is opt-in (default off)"
+    assert AutonomousArm(seed=0, reward_shaped_encoder=True)._jepa_on, "reward_shaped_encoder must auto-enable the JEPA"
+    # THE FIX (closes v3.18): reward-shaping breaks the encoder collapse (spread ~0 -> large) so the MLP-Q over the
+    # latent recovers the rule the plain-SSL latent (§19) could not -- the ENCODER was the bottleneck, and this is it.
+    assert rse_spread > 0.5, f"reward-shaping must break the encoder collapse ({rse_spread:.3f} vs plain-SSL {mlp_spread:.3f})"
+    assert rse_hold >= mlp_hold + 0.3, (
+        f"the MLP-Q over the reward-shaped encoder must recover the rule the plain-SSL latent could not "
+        f"({rse_hold:.2f} vs {mlp_hold:.2f})")
+    assert rse_ev["action"] == "EMERGENCY_STOP" and rse_ev["reflex"] and rse_frozen, "danger must E-STOP with the reward-shaped encoder on"
+    assert rse_det, "the reward-shaped-encoder path must be deterministic"
 
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
           f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "
