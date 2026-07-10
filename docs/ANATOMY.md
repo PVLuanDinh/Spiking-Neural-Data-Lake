@@ -16,26 +16,27 @@ not its cell-level microcircuitry or phenomenology.
 | Basal ganglia | present | `basal_ganglia/` — RPE learning + evidence decision + Go/NoGo `action_gating` |
 | Thalamus | present | `thalamus/` — `global_workspace` (GWT) + `reticular_gate` (TRN attentional gate) |
 | Amygdala | present | `amygdala/fear_conditioning` — CS-US threat learning (BLA→CeA), extinction |
-| Hypothalamus | present | `hypothalamus/circadian_clock` — SCN spiking clock (free-run + light entrainment); HPA in `neuromodulation/cortisol` |
-| Midbrain | present | `midbrain/` — `dopamine_nuclei` (VTA/SNc RPE source) + `superior_colliculus` (orienting) |
+| Hypothalamus | present | `hypothalamus/` — `circadian_clock` (SCN spiking clock) + `set_points` (thermo/osmo homeostats the SCN paces); HPA in `neuromodulation/cortisol` |
+| Midbrain | present | `midbrain/` — `dopamine_nuclei` (VTA/SNc RPE source) + `superior_colliculus` (orienting) + `sc_deep_layers` (gaze burst generator, gated) |
 | Pons | present | `pons/` — `pontine_relay` (cortico-ponto-cerebellar) + `reticular_formation` (ARAS arousal) |
 | Epithalamus | present | `epithalamus/habenula` — lateral habenula anti-reward (negative RPE, dopamine opponent via RMTg) |
 | Olfactory pathway | present | `olfactory/` — `olfactory_bulb` (decorrelation) + `piriform_cortex` (association / completion) |
 | Claustrum | present | `claustrum/claustrum` — coincidence-gated cortical synchrony / salience hub |
 | Basal forebrain / neuromodulators | present | `neuromodulation/` — ACh, LC-noradrenaline, raphe-serotonin, astrocyte, cortisol; dopamine in `midbrain` |
 | Reticular activating system (ARAS) | present | `pons/reticular_formation` — bistable sleep-wake arousal switch |
-| White-matter connectome | present (schematic) | `connectome.py` — typed/directed/signed/loop-aware edge list (33 nodes, 9 closed loops) |
-| Medulla | partial | `brainstem/` reflex + loops; no autonomic vital nuclei (respiratory / cardiac) |
+| White-matter connectome | present (schematic) | `connectome.py` — typed/directed/signed/loop-aware edge list (37 nodes, 11 closed loops) |
+| Medulla | present | `medulla/vital_nuclei` — pre-Botzinger respiratory CPG + NTS/RVLM baroreflex, each a homeostatic set-point loop onto the viscera (autonomic effectors, never the arm) |
 
-**Roughly:** the Allen top-level structural ontology is now covered — 14 anatomical regions present
-(each a functional model) plus a schematic connectome; only the medullary autonomic vital nuclei
-remain partial.
+**Roughly:** the Allen top-level structural ontology is now fully covered — 15 anatomical regions
+present (each a functional model) plus a schematic connectome; no top-level structure remains partial.
+The medulla's autonomic vital nuclei (the last partial) are now a real homeostatic pattern generator.
 
 ## Canonical loops (asserted closed in `connectome.py`)
 
 thalamocortical · cortico-basal-ganglia-thalamo-cortical (CBGTC) · hippocampal trisynaptic ·
 cortico-cerebellar (via the pontine relay) · Papez (limbic) · tecto-thalamo-cortical orienting ·
-habenula reward-opponent · olfactory bulb↔piriform · claustro-cortical. Plus the amygdala threat
+habenula reward-opponent · olfactory bulb↔piriform · claustro-cortical · medullary respiratory ·
+baroreflex (both autonomic homeostatic loops onto the viscera). Plus the amygdala threat
 pathway, the ascending neuromodulatory broadcast (dopamine, noradrenaline/LC, serotonin/raphe, ACh,
 ARAS), and the descending corticospinal path. A self-check asserts the arm actuator is reachable
 **only** through the gated brainstem edge — reinforcing the arm-safety envelope.
@@ -47,11 +48,16 @@ still preempts every motor command.
 
 ## Roadmap (next honest primitives, ranked)
 
-1. **Medulla autonomic nuclei** — a spiking respiratory / cardiac pattern generator (pre-Bötzinger)
-   with homeostatic set-points; the last partial Allen top-level structure.
-2. **Hypothalamic set-points beyond the clock** — thermo / osmo / energy regulators that the SCN paces.
-3. **Superior-colliculus deep motor layers** — turn the orienting map into a gaze command *through*
-   the gated brainstem path (never a new route to the actuator).
+The Allen **top-level** structural ontology is now complete (regions *and* connectome). The next
+honest primitives move from breadth to depth and live integration:
+
+1. **Autonomic integration (live, caution-only)** — wire the medullary vital nuclei + hypothalamic
+   set-points into the running loop the way the amygdala threat detector and BG Go/NoGo gate already
+   are: visceral/homeostatic state modulates arousal and gain, never the gated arm path.
+2. **Deep sub-nuclei** — the Allen ontology goes below the top level (hypothalamic nuclei, amygdalar
+   subnuclei, thalamic relay/association nuclei). Add the load-bearing ones for existing loops.
+3. **Spinal cord as its own region** — split the ventral-horn CPG / stretch-reflex out of `brainstem/`
+   into a distinct caudal region, completing the neuraxis below the medulla.
 
 Every addition stays pure-stdlib, offline-deterministic, self-checked with a fair control, lives in
 an anatomical region subpackage, and touches none of the 5 safety-envelope files.

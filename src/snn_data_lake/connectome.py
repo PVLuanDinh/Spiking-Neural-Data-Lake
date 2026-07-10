@@ -65,7 +65,12 @@ NODES = {
     "lhb": ("epithalamus", "lateral habenula (anti-reward / negative RPE)"),
     "claustrum": ("claustrum", "claustrum (cortical synchrony / salience hub)"),
     "bs_motor": ("brainstem", "brainstem / spinal motor + reflex (the gated final path)"),
+    # v3.5 completed-anatomy: medulla autonomic vital nuclei + SC deep motor layers
+    "pbc": ("medulla", "pre-Botzinger complex (medullary respiratory rhythm generator)"),
+    "nts_rvlm": ("medulla", "NTS / RVLM (medullary baroreflex cardiovascular nuclei)"),
+    "sc_deep": ("midbrain", "superior colliculus deep layers (gaze burst generator)"),
     "actuator": (None, "robot arm actuator"),
+    "viscera": (None, "autonomic effector (diaphragm + heart) -- NOT the arm actuator"),
 }
 
 
@@ -151,6 +156,19 @@ EDGES = [
     _e("claustrum", "ctx_sensory", "claustrocortical (salience broadcast)", "exc", "broadcast", "claustro_cortical"),
     _e("ctx_pfc", "claustrum", "corticoclaustral (prefrontal)", "exc", "relay"),
     _e("claustrum", "ctx_pfc", "claustrocortical broadcast (prefrontal)", "exc", "broadcast"),
+    # --- medulla autonomic vital nuclei (v3.5): hypothalamic set-points descend to the medullary
+    #     respiratory (pre-Botzinger) and cardiovascular (NTS/RVLM) rhythm generators, each closing a
+    #     homeostatic reflex loop onto an autonomic effector (the viscera) -- never the arm actuator ---
+    _e("hypothal", "pbc", "hypothalamo-medullary drive (respiratory set-point)", "exc", "descending"),
+    _e("hypothal", "nts_rvlm", "hypothalamo-medullary drive (cardiovascular set-point)", "exc", "descending"),
+    _e("pbc", "viscera", "phrenic -> diaphragm (inspiratory drive)", "exc", "descending", "respiratory"),
+    _e("viscera", "pbc", "pulmonary stretch / chemoreceptor afferent (via NTS)", "exc", "feedback", "respiratory"),
+    _e("nts_rvlm", "viscera", "sympathetic / vagal cardiovascular efferent", "exc", "descending", "baroreflex"),
+    _e("viscera", "nts_rvlm", "baroreceptor afferent (via NTS)", "exc", "feedback", "baroreflex"),
+    # --- superior-colliculus deep motor layers (v3.5): the orienting winner becomes a gaze command
+    #     that reaches the effector ONLY through the gated brainstem final common path (no new route) ---
+    _e("sc", "sc_deep", "superficial -> deep collicular layers (motor error)", "exc", "relay"),
+    _e("sc_deep", "bs_motor", "tecto-reticulospinal gaze command (through the gate)", "exc", "descending"),
 ]
 
 # canonical loops as CLOSED node cycles (first repeated at the end)
@@ -164,6 +182,9 @@ LOOPS = {
     "reward_opponent": ["vta_snc", "ctx_pfc", "lhb", "vta_snc"],
     "olfactory": ["ob", "pir", "ob"],
     "claustro_cortical": ["claustrum", "ctx_sensory", "claustrum"],
+    # v3.5 medullary homeostatic reflex loops (autonomic negative feedback onto the viscera)
+    "respiratory": ["pbc", "viscera", "pbc"],
+    "baroreflex": ["nts_rvlm", "viscera", "nts_rvlm"],
 }
 
 ACTUATOR = "actuator"
@@ -283,6 +304,15 @@ def main():
     assert in_edges == [(GATE_NODE, ACTUATOR)], f"actuator must have exactly one (gated) in-edge, got {in_edges}"
     assert not reachable("ctx_motor", ACTUATOR, block_edge=(GATE_NODE, ACTUATOR)), \
         "removing the gated final motor edge must cut cortex off from the actuator"
+
+    # (b2) SAFETY (v3.5 additions): the SC deep gaze command reaches the arm ONLY through the gate;
+    #      the medullary autonomic nuclei drive the viscera and never reach the arm actuator at all.
+    assert reachable("sc_deep", ACTUATOR), "SC deep gaze command must reach the actuator (via the gate)"
+    assert not reachable("sc_deep", ACTUATOR, block_node=GATE_NODE), \
+        "SC deep must reach the arm ONLY through the gated brainstem node (no new route to the actuator)"
+    for auto in ("pbc", "nts_rvlm", "viscera"):
+        assert not reachable(auto, ACTUATOR), \
+            f"autonomic vital node {auto!r} must never reach the arm actuator"
 
     # (c) FAIR CONTROL: imports lack the connectome's typing (not redundant with Python imports)
     checked, untyped = _import_graph_is_untyped()
