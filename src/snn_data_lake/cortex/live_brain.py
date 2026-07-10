@@ -27,10 +27,12 @@ class LiveBrain:
     the executive and acting only through the gated arm. Composition only -- it adds no new mechanism
     and no new path to the actuator; it just runs every region together as one loop."""
 
-    def __init__(self, seed=0, pfc_gain=0.5, lake_wm=True, jepa=False, jepa_horizon=4, hjepa_serve=None):
+    def __init__(self, seed=0, pfc_gain=0.5, lake_wm=True, jepa=False, jepa_horizon=4, hjepa_serve=None,
+                 curiosity=False, curiosity_gain=0.5):
         self.arm = AutonomousArm(seed=seed, workspace=True, amygdala=True, bg_gate=True,
                                  interoception=True, pfc=True, pfc_gain=pfc_gain, lake_wm=lake_wm,
-                                 jepa=jepa, jepa_horizon=jepa_horizon, hjepa_serve=hjepa_serve)
+                                 jepa=jepa, jepa_horizon=jepa_horizon, hjepa_serve=hjepa_serve,
+                                 curiosity=curiosity, curiosity_gain=curiosity_gain)
         self._nl = NLInterface()                             # the NL safety firewall for chat arm commands
         self._seed = seed
         self._planner = None                                 # lazy deliberative planner (lookahead over a fwd model)

@@ -3,6 +3,41 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.15] -- Curiosity: intrinsic motivation drives self-directed learning (toward cumulative learning) (2026-07-10)
+
+A step toward baby-like cumulative learning: the ENGINE that makes learning self-directed. A baby learns
+cumulatively because it is drawn to what it cannot yet predict but CAN learn -- then habituates and moves
+to the next frontier. This adds that drive: the JEPA world-model's prediction error becomes an intrinsic
+reward, so the arm explores and learns EVEN WITHOUT an external reward. It is one primitive, not a claim of
+general developmental intelligence.
+
+### Added
+- `neuromodulation/intrinsic_motivation.py` (CORE, zero-dep) -- `CuriosityDrive`, a **learning-progress**
+  curiosity signal (Oudeyer & Kaplan 2007; Schmidhuber; Pathak et al. 2017). The key correctness property:
+  it rewards LEARNING PROGRESS (`max(0, slow_EMA - fast_EMA)` of the per-context prediction error), NOT raw
+  surprise -- so it is drawn to *learnable* novelty and does NOT get stuck on unpredictable NOISE (the
+  "noisy-TV" trap). Un-riggable self-check (all HARD asserts): novelty habituates (0.60 -> 2e-7); learning
+  progress peaks then dies on mastery; **anti-noisy-TV -- accumulated curiosity on a learnable context 19.0
+  vs a constant-high noisy context 1.0 (18x), while the noisy context's error stays ~0.90 yet its learning
+  progress stays ~0**; a curiosity-greedy explorer visits the learnable context 44x vs noise 2x; deterministic.
+- `cerebellum/jepa_world_model.py` -- a read-only `prediction_error(x_t, a, x_next)` (the invariance loss
+  WITHOUT updating) so a curiosity drive can read the world-model surprise; mutates nothing (existing
+  behaviour byte-identical).
+
+### Changed
+- `brainstem/autonomous_loop.py` (NOT a safety-envelope file) -- opt-in `curiosity=True` (needs `jepa`).
+  Each tick the JEPA prediction error for the just-lived transition -> a learning-progress intrinsic reward
+  that is added to any external reward in the value update, and **the value update now runs on the intrinsic
+  reward alone** -- so the arm learns SELF-DIRECTED, with no external reward. Self-checked: a curious arm's
+  values change with NO reward_fn while a no-curiosity control's do not (the fair control). SAFETY: the
+  intrinsic reward feeds only the value update -- no motor route, no stress (cortisol still tracks external
+  negative reward only), and the reflex/E-STOP + amygdala/interoceptive caution still preempt every command
+  (a baby is drawn to novelty; external guards keep it safe). Flag OFF => byte-identical.
+- `cortex/live_brain.py` -- `LiveBrain(curiosity=...)` forwards the drive.
+
+Gates green: 174/174 core self-checks, 206 pytest passed (88% cov), ruff clean; the 5 brainstem
+safety-envelope files untouched (git-diff verified).
+
 ## [v3.14] -- H-JEPA powers the live brain: a zero-dep serve path + abstract-latent reasoning (2026-07-10)
 
 Wire a GPU-trained hierarchical JEPA into the live executive. The core gains a zero-dep SERVER for a

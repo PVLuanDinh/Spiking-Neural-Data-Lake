@@ -36,6 +36,7 @@ from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.neuromodulation.cortisol import Cortisol
+from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
@@ -50,7 +51,7 @@ class AutonomousArm:
     def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None,
                  workspace=False, amygdala=False, bg_gate=False, interoception=False,
                  pfc=False, pfc_gain=0.5, lake_wm=False, lake_wm_path=None,
-                 jepa=False, jepa_horizon=4, hjepa_serve=None):
+                 jepa=False, jepa_horizon=4, hjepa_serve=None, curiosity=False, curiosity_gain=0.5):
         self.arm = ArmSim()
         self._seed = seed
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
@@ -119,6 +120,15 @@ class AutonomousArm:
         self.hjepa_serve = hjepa_serve
         self._hj_window = []                                    # rolling K-window of Level-0 latents (feeds encode1)
         self._z1_goal = None                                    # reward-EMA of the abstract Level-1 latent (plan goal)
+        # opt-in CURIOSITY (intrinsic motivation): the JEPA world-model prediction error becomes a
+        # LEARNING-PROGRESS reward that drives SELF-DIRECTED exploration -- the arm learns even with NO external
+        # reward, and it seeks learnable-novel contexts (not noise; learning-progress rejects the noisy-TV trap).
+        # Needs the JEPA (for the prediction error). ADDITIVE + read-only to safety: the intrinsic reward feeds
+        # only the value update -- it drives no motion, adds no actuator route, creates no stress, and the
+        # reflex/E-STOP + amygdala/interoceptive caution still preempt every command (like a baby drawn to
+        # novelty while external guards keep it safe).
+        self.curiosity = CuriosityDrive(seed=seed) if curiosity else None
+        self.curiosity_gain = curiosity_gain
 
     def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None):
         qa = self.q[unit]
@@ -291,23 +301,32 @@ class AutonomousArm:
         state = self.arm.apply(action)                          # gated: frozen after E-STOP, collision-checked
         goal_val = self.pfc.goal if self.pfc is not None else None   # the prefrontal working-memory goal
         self._lake_write(pattern, goal_val, action)             # opt-in: store this tick in the lake working memory
-        # 4. reward -> RPE action-value update + cortisol
-        if reward_fn is not None:
-            r = reward_fn(unit, action)
+        # 4. reward -> RPE action-value update + cortisol. CURIOSITY (opt-in): the JEPA prediction error for
+        #    the just-lived transition becomes a learning-progress INTRINSIC reward, so the arm learns EVEN
+        #    WITHOUT an external reward (self-directed exploration). The intrinsic reward feeds the value update
+        #    only -- no motor route, no stress; the reflex/E-STOP + caution still preempt.
+        r_int = 0.0
+        if self.curiosity is not None and self.jepa is not None and self._jepa_prev is not None:
+            perr = self.jepa.prediction_error(self._jepa_prev[0], self._jepa_prev[1], pattern)
+            r_int = self.curiosity_gain * self.curiosity.intrinsic_reward(unit, perr)  # observes + rewards learning progress
+        if reward_fn is not None or r_int != 0.0:
+            r_ext = reward_fn(unit, action) if reward_fn is not None else 0.0
+            r = r_ext + r_int                               # external task reward + intrinsic curiosity reward
             self.q[unit][action] += self.lr * self.cort.learn_rate_scale(r) * (r - self.q[unit][action])
-            self.cort.step(max(0.0, -r))
-            if self.replay:                                 # SWR consolidation: value table ONLY, no motor command
-                self.buffer.add(unit, action, r)
-                if not grew:                                # quiescent (familiar) tick -> replay past experience
-                    self.buffer.replay(self.q, self.lr, batch=self.replay_batch)
-            if self.jepa is not None and r > 0.0:           # positive reward -> move the latent goal here (EMA)
-                zt = self.jepa.encode(pattern)
-                self._z_goal = zt if self._z_goal is None else \
-                    [0.9 * g + 0.1 * z for g, z in zip(self._z_goal, zt)]
-            if self.hjepa_serve is not None and r > 0.0 and len(self._hj_window) == self.hjepa_serve.K:
-                z1t = self.hjepa_serve.encode1(self._hj_window)   # abstract latent at a rewarded tick -> the goal EMA
-                self._z1_goal = z1t if self._z1_goal is None else \
-                    [0.9 * g + 0.1 * z for g, z in zip(self._z1_goal, z1t)]
+            self.cort.step(max(0.0, -r_ext))                # stress from EXTERNAL negative reward only (curiosity is not stress)
+            if reward_fn is not None:                       # the task-reward-only paths (replay + latent goals), unchanged
+                if self.replay:                             # SWR consolidation: value table ONLY, no motor command
+                    self.buffer.add(unit, action, r_ext)
+                    if not grew:                            # quiescent (familiar) tick -> replay past experience
+                        self.buffer.replay(self.q, self.lr, batch=self.replay_batch)
+                if self.jepa is not None and r_ext > 0.0:   # positive TASK reward -> move the latent goal here (EMA)
+                    zt = self.jepa.encode(pattern)
+                    self._z_goal = zt if self._z_goal is None else \
+                        [0.9 * g + 0.1 * z for g, z in zip(self._z_goal, zt)]
+                if self.hjepa_serve is not None and r_ext > 0.0 and len(self._hj_window) == self.hjepa_serve.K:
+                    z1t = self.hjepa_serve.encode1(self._hj_window)   # abstract latent at a rewarded tick -> the goal EMA
+                    self._z1_goal = z1t if self._z1_goal is None else \
+                        [0.9 * g + 0.1 * z for g, z in zip(self._z1_goal, z1t)]
         # JEPA (opt-in): learn the latent world model ONLINE from the live (z_prev, a_prev, z_now) transition.
         # OFF the safety path -- after the gated action + lake write, drives no motion, adds no actuator route.
         if self.jepa is not None:
@@ -705,6 +724,39 @@ def main():
     assert hj_ev["action"] == "EMERGENCY_STOP" and hj_ev["reflex"], "danger must E-STOP with the served H-JEPA on"
     assert hj_frozen0 and hj_frozen1, "the E-STOP freeze must hold with abstract H-JEPA planning (top-down only)"
     assert run_hj(5) == run_hj(5), "the served-H-JEPA path must be deterministic"
+
+    # 16. CURIOSITY (intrinsic motivation): the JEPA world-model prediction error becomes a learning-progress
+    #     intrinsic reward that drives SELF-DIRECTED learning -- the arm learns EVEN WITH NO external reward.
+    #     Opt-in, needs the JEPA; drives no motion, reflex/E-STOP still preempts.
+    cur = AutonomousArm(seed=1, pfc=True, jepa=True, curiosity=True)
+    for _ in range(60):
+        cur.step(**a)                                          # NO reward_fn -> ONLY curiosity drives learning
+    cur_learned = any(abs(v) > 1e-6 for row in cur.q.values() for v in row.values())
+    dull = AutonomousArm(seed=1, pfc=True, jepa=True, curiosity=False)   # fair control: no curiosity AND no reward
+    for _ in range(60):
+        dull.step(**a)
+    dull_learned = any(abs(v) > 1e-6 for row in dull.q.values() for v in row.values())
+    cur_guard = AutonomousArm(seed=2, pfc=True, jepa=True, curiosity=True)   # the safety envelope must hold with it on
+    cur_ev = cur_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
+    cur_frozen0 = cur_guard.arm.state()["stopped"]
+    cur_guard.step(**a)
+    cur_frozen1 = cur_guard.arm.state()["stopped"]
+
+    def run_cur(seed):
+        bot = AutonomousArm(seed=seed, pfc=True, jepa=True, curiosity=True)
+        return [bot.step(**ctx)["action"] for _ in range(6) for ctx in (a, b, c)]
+    cur_det = run_cur(5) == run_cur(5)
+
+    print(f"curiosity   : self-directed learning with NO external reward -- curious arm's values changed="
+          f"{cur_learned} vs no-curiosity control changed={dull_learned}; E-STOP freeze holds with it on ({cur_frozen1})")
+    print("=" * 62)
+
+    assert AutonomousArm(seed=0).curiosity is None, "curiosity is opt-in (a default arm has none)"
+    assert cur_learned, "curiosity must drive value learning WITHOUT any external reward (self-directed)"
+    assert not dull_learned, "the fair control: no curiosity AND no external reward -> nothing learns"
+    assert cur_ev["action"] == "EMERGENCY_STOP" and cur_ev["reflex"], "danger must E-STOP with curiosity on"
+    assert cur_frozen0 and cur_frozen1, "the E-STOP freeze must hold with curiosity wired in (intrinsic reward, no motor route)"
+    assert cur_det, "the curiosity path must be deterministic"
 
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
           f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "

@@ -75,7 +75,7 @@ CORE = [
     "claustrum.claustrum",
     # neuromodulation — diffuse chemical modulators + glia (LC noradrenaline, raphe serotonin)
     "neuromodulation.acetylcholine", "neuromodulation.astrocyte_modulation", "neuromodulation.cortisol",
-    "neuromodulation.locus_coeruleus", "neuromodulation.raphe_serotonin",
+    "neuromodulation.locus_coeruleus", "neuromodulation.raphe_serotonin", "neuromodulation.intrinsic_motivation",
     # plasticity — Hebbian/STDP, homeostatic, developmental learning rules
     "plasticity.bcm_plasticity", "plasticity.homeostatic_scaling", "plasticity.inhibitory_stdp", "plasticity.intrinsic_plasticity",
     "plasticity.short_term_plasticity", "plasticity.developmental_pruning",

@@ -89,4 +89,13 @@ Beyond the anatomy, the brain also carries **learning mechanisms**. As of v3.11 
 **JEPA latent world model** (`cerebellum/jepa_world_model.py`) beside the input-space `forward_model`:
 a self-supervised encoder + action-conditioned latent predictor + EMA target + VICReg anti-collapse,
 which the prefrontal executive plans over in latent space and which self-trains online from the live
-tick stream. See `docs/JEPA.md`.
+tick stream. See `docs/JEPA.md`. v3.14 adds a served hierarchical H-JEPA (`cerebellum/hjepa_serve.py`) the
+executive can plan over at the abstract level.
+
+As of v3.15 the brain also has a **curiosity drive** (`neuromodulation/intrinsic_motivation.py`,
+`CuriosityDrive`) -- a **learning-progress** intrinsic-motivation signal (Oudeyer; Schmidhuber): the JEPA
+world-model's prediction error becomes an intrinsic reward that rewards *learnable* novelty (not noise --
+it rejects the "noisy-TV" trap), so the arm explores and learns SELF-DIRECTED, even without an external
+reward (opt-in `AutonomousArm(curiosity=True)`). This is the engine of self-directed, cumulative learning
+-- one primitive, not a claim of general developmental intelligence; the reflex/E-STOP + caution still
+preempt every command.

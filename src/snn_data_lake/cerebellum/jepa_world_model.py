@@ -332,6 +332,16 @@ class JepaWorldModel:
         return self.lambda_inv * loss_inv + self.lambda_var * Lvar + self.lambda_cov * Lcov \
             + (self.lambda_roll * Lroll if self.use_rollout else 0.0)
 
+    def prediction_error(self, pattern_t, action_t, pattern_next):
+        """The invariance (prediction) loss for ONE transition WITHOUT updating -- the world-model 'surprise'
+        that a curiosity / intrinsic-motivation drive consumes. Read-only: it mutates no weight, buffer, or
+        state (unlike train_step). error = ||predict(encode(x_t), a_t) - target_encode(x_{t+1})||^2."""
+        aj = self._idx(action_t)
+        z = self.encode(pattern_t)
+        zt = self.target_encode(pattern_next)
+        p = self._predict_pre(z, aj)
+        return sum((p[i] - zt[i]) ** 2 for i in range(self.L))
+
     def _encoder_backprop(self, gz, t, n, x, gWe, gbe):
         """Chain dL/dz (=gz) through z = unit(tanh(h)) to accumulate dL/dWe, dL/dbe.
 
