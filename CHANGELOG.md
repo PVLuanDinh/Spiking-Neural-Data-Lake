@@ -3,6 +3,30 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.13.2] -- Verify the JEPA torch trainers on the actual RTX 5070 GPU (2026-07-10)
+
+Installed a cu128 (CUDA 12.8, Blackwell sm_120) torch build (`torch 2.11.0+cu128`) into `.venv-cu128`
+and ran both trainers on the real RTX 5070 with `NORD_GPU=1`. A GPU-only bug surfaced and was fixed;
+both claims now hold on actual hardware (not just CPU torch).
+
+### Fixed
+- `research/jepa_scaffold_torch.py` -- `verify_transfer` created its probe tensors (`probes`, `a_onehot`)
+  on the default device, which is **cuda** under `NORD_GPU` (`torch_device.enable()` calls
+  `set_default_device`), while the float64 reference model is on CPU -> device-mismatch crash. The bridge
+  comparison is entirely CPU (float64 ref vs the zero-dep core), so the probes are now pinned to
+  `device="cpu"`. (This is the same `set_default_device` gotcha as the v2.75.1 DataLoader fix; it only
+  surfaces on GPU, which is why CPU-torch verification missed it.)
+
+### Verified on the RTX 5070 (torch 2.11.0+cu128, device=cuda, AMP=True)
+- v3.12 scale: trains on the GPU; the export -> core bridge is bit-identical -- the zero-dep core serves
+  the GPU-trained `snn_jepa/2` deep encoder with max |diff| 3.33e-16 over 5 probes.
+- v3.13 H-JEPA: **both claims HOLD on GPU** -- (a) learned nonlinear L1 decodes the XOR regime at MSE
+  0.0000 vs flat linear 0.260 / raw averaging 0.250 (0.25 XOR floor); (b) L1 coarse-roll 0.054 beats L0
+  fine-roll 0.706. The nonlinear hierarchy genuinely beats flat, on real Blackwell hardware.
+
+CPU-torch and no-torch paths still pass unchanged. Core suite 172/172 + pytest 204 unaffected
+(research/ only); 5 envelope files untouched.
+
 ## [v3.13.1] -- Verify the JEPA torch trainers on real torch: two crash fixes + the claims hold (2026-07-10)
 
 Ran the v3.12 / v3.13 torch trainers on real torch (CPU build; the RTX 5070 has no CUDA/cu128 torch

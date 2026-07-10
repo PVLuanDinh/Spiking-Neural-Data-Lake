@@ -349,7 +349,9 @@ def verify_transfer(path, model, n_probe=5, tol=1e-4):
         return {"ok": False, "reason": "core-no-v2"}
 
     torch.manual_seed(123)
-    probes = torch.rand(n_probe, in_dim, dtype=torch.float64)                        # probe inputs in [0,1]
+    # the bridge compares the CPU float64 ref vs the zero-dep (CPU) core, so the probe tensors MUST be on
+    # CPU explicitly -- with NORD_GPU the default device is cuda, which would mismatch the CPU ref.
+    probes = torch.rand(n_probe, in_dim, dtype=torch.float64, device="cpu")           # probe inputs in [0,1]
     max_err = 0.0
     with torch.no_grad():
         z_ref = ref.encode(probes)                       # [n_probe, latent] float64
@@ -361,7 +363,7 @@ def verify_transfer(path, model, n_probe=5, tol=1e-4):
                 max_err = max(max_err, abs(a - b))
             # predict: compare core.predict(z, action) to the torch residual predictor forward.
             for aj, action in enumerate(ACTIONS):
-                a_onehot = torch.zeros(1, n_act, dtype=torch.float64)
+                a_onehot = torch.zeros(1, n_act, dtype=torch.float64, device="cpu")
                 a_onehot[0, aj] = 1.0
                 p_ref = ref.predict(z_ref[i:i + 1], a_onehot)[0].tolist()
                 p_core = core.predict(z_core, action)
