@@ -106,3 +106,11 @@ progress on a stage dries up (mastery, not a clock -- Elman "starting small"; Ou
 `AutonomousArm.develop(stages, curriculum)`: the arm graduates itself through progressively harder stages
 driven by its own curiosity, learning through the same gated `step()`. Curiosity + curriculum together are
 the self-directed, cumulative-learning loop -- master easy, unlock harder, at the frontier of competence.
+
+v3.17 adds the **transfer substrate** (`basal_ganglia/latent_q.py`, `LatentQ`): a SHARED linear
+action-value `Q(x,a) = W[a].x` (opt-in `AutonomousArm(latent_q=True)`) replacing the tabular
+per-context `q[unit][action]`. One weight set across all contexts, so a reward update generalizes -- the
+arm reaches competence 1.00 on genuinely-novel contexts where the tabular baseline scores 0.00.
+**Honest finding:** a linear Q over the self-supervised JEPA latent is at chance (the SSL latent is
+trained to predict, not aligned with reward/task), so the substrate rides the task-linear lake-stored
+`[0,1]^64` pattern; a *learned* task-aligned substrate (reward-shaped encoder / non-linear head) is open work.

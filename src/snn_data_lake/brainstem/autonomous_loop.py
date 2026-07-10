@@ -26,6 +26,7 @@ import random
 
 from snn_data_lake.amygdala.fear_conditioning import Amygdala
 from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate
+from snn_data_lake.basal_ganglia.latent_q import LatentQ
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.arm_sim import ArmSim
 from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
@@ -52,7 +53,8 @@ class AutonomousArm:
     def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None,
                  workspace=False, amygdala=False, bg_gate=False, interoception=False,
                  pfc=False, pfc_gain=0.5, lake_wm=False, lake_wm_path=None,
-                 jepa=False, jepa_horizon=4, hjepa_serve=None, curiosity=False, curiosity_gain=0.5):
+                 jepa=False, jepa_horizon=4, hjepa_serve=None, curiosity=False, curiosity_gain=0.5,
+                 latent_q=False):
         self.arm = ArmSim()
         self._seed = seed
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
@@ -131,9 +133,22 @@ class AutonomousArm:
         self.curiosity = CuriosityDrive(seed=seed) if curiosity else None
         self.curiosity_gain = curiosity_gain
         self._dev_rng = random.Random(seed + 7)                 # task-selection rng for develop() (kept off step()'s rng)
+        # opt-in SHARED LATENT Q (the transfer substrate): replace the TABULAR per-context q[unit][action] with a
+        # shared linear action-value Q(x,a)=W[a].x over the LAKE-STORED pattern representation x (the [0,1]^64
+        # encode_multimodal vector the lake records; basal_ganglia/latent_q.LatentQ). ONE weight set across ALL
+        # contexts, so a reward update generalizes to nearby contexts -> mastery TRANSFERS (unlike tabular, which
+        # learns each context in isolation). HONEST FINDING (v3.17): I first tried this over the SELF-SUPERVISED
+        # JEPA latent, but a linear Q over it is at CHANCE -- the SSL latent is trained to PREDICT, not aligned
+        # with the reward/task, so it is not linearly separable for the task (measured 0.33 vs 1.00 over the raw
+        # pattern). So the substrate rides the lake-stored PATTERN, which IS task-linear. ADDITIVE to safety: it
+        # only changes HOW the action VALUE is computed -- the reflex/E-STOP runs first and every command still
+        # flows through the gated ArmSim. Flag OFF => the tabular q path is byte-identical.
+        self._latent_q_on = latent_q
+        self.latent_q = None                                    # lazily built on the first tick (sized to len(pattern))
 
-    def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None):
-        qa = self.q[unit]
+    def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None, qa=None):
+        if qa is None:                                          # default = the tabular row; the latent-Q row is passed in
+            qa = self.q[unit]
         if self.rng.random() < self.explore:
             return self.rng.choice(ACTIONS)                     # exploration: cortical variability proposes
         if self.bg is not None:
@@ -182,7 +197,7 @@ class AutonomousArm:
         selection toward the safe action; it selects no action and gates no motion."""
         return self.intero.sense(load)["caution"] if self.intero is not None else 0.0
 
-    def _pfc_bias(self, unit, pattern=None):
+    def _pfc_bias(self, unit, pattern=None, qa=None):
         """The prefrontal top-down bias over ACTIONS for this unit (all-zeros when opt-out). The
         executive deliberates over the current action-values, holds a goal in working memory, and
         biases selection toward it -- a top-down PREFERENCE; it selects no action and gates no motion.
@@ -216,7 +231,8 @@ class AutonomousArm:
             self.pfc.plan(z, ACTIONS, self.jepa, self.jepa.make_goal_value(self._z_goal),
                           horizon=self.jepa_horizon)            # latent lookahead -> a working-memory goal
         else:
-            evidence = [max(0.0, self.q[unit][a]) for a in ACTIONS]
+            row = qa if qa is not None else self.q[unit]        # the shared latent-Q row when on, else the tabular row
+            evidence = [max(0.0, row[a]) for a in ACTIONS]
             self.pfc.update(evidence)                           # reactive gated deliberation -> a WM goal
         return self.pfc.top_down_bias(strength=self.pfc_gain)
 
@@ -279,9 +295,13 @@ class AutonomousArm:
         ok = 0
         for ctx, opt in tasks:
             pat = self._context_pattern(ctx["visual"], ctx["temperature"], ctx["audio"], ctx["distance"])
-            unit, _grew = self.learner.observe(pat)
-            if unit in self.q and self.greedy(unit) == opt:
-                ok += 1
+            if self.latent_q is not None:                       # shared latent-Q: greedy over the lake pattern
+                if self.latent_q.greedy(pat) == opt:
+                    ok += 1
+            else:
+                unit, _grew = self.learner.observe(pat)
+                if unit in self.q and self.greedy(unit) == opt:
+                    ok += 1
         return ok / len(tasks) if tasks else 0.0
 
     def develop(self, stages, curriculum, batch=6, max_batches=50):
@@ -335,11 +355,19 @@ class AutonomousArm:
             self.q[unit] = dict.fromkeys(ACTIONS, 0.0)          # new unit -> its own row to learn
         if self._jepa_on and self.jepa is None:
             self.jepa = JepaWorldModel(ACTIONS, in_dim=len(pattern), seed=self._seed)  # lazily sized on first tick
+        # value row: the SHARED latent-Q over the JEPA latent (transfer substrate), else the tabular per-context row
+        z_lq = None
+        qa = self.q[unit]
+        if self._latent_q_on:
+            if self.latent_q is None:
+                self.latent_q = LatentQ(ACTIONS, len(pattern), seed=self._seed)  # shared value over the lake-stored pattern
+            z_lq = pattern                                       # the [0,1]^64 lake representation (task-linear, stable)
+            qa = self.latent_q.values(z_lq)                     # shared value row -> generalizes across contexts
         threat = self._threat(pattern)                          # learned amygdala threat for this context (0 if opt-out)
         intero = self._interocept(homeostatic_load)             # interoceptive caution from homeostatic load (0 if opt-out)
-        pfc_bias = self._pfc_bias(unit, pattern)               # prefrontal top-down goal preference (JEPA-planned if on; zeros if opt-out)
+        pfc_bias = self._pfc_bias(unit, pattern, qa)           # prefrontal top-down goal preference over qa (latent-Q or tabular)
         # 3. CHOOSE (learned, not a fixed map) + ACT through the gated arm
-        action = self._select(unit, threat=threat, intero=intero, pfc_bias=pfc_bias)   # threat/interoceptive caution + PFC goal bias
+        action = self._select(unit, threat=threat, intero=intero, pfc_bias=pfc_bias, qa=qa)   # threat/intero caution + PFC bias
         state = self.arm.apply(action)                          # gated: frozen after E-STOP, collision-checked
         goal_val = self.pfc.goal if self.pfc is not None else None   # the prefrontal working-memory goal
         self._lake_write(pattern, goal_val, action)             # opt-in: store this tick in the lake working memory
@@ -354,10 +382,13 @@ class AutonomousArm:
         if reward_fn is not None or r_int != 0.0:
             r_ext = reward_fn(unit, action) if reward_fn is not None else 0.0
             r = r_ext + r_int                               # external task reward + intrinsic curiosity reward
-            self.q[unit][action] += self.lr * self.cort.learn_rate_scale(r) * (r - self.q[unit][action])
+            if self.latent_q is not None and z_lq is not None:
+                self.latent_q.update(z_lq, action, r)       # SHARED latent-Q update -> generalizes to nearby-z contexts (transfer)
+            else:
+                self.q[unit][action] += self.lr * self.cort.learn_rate_scale(r) * (r - self.q[unit][action])
             self.cort.step(max(0.0, -r_ext))                # stress from EXTERNAL negative reward only (curiosity is not stress)
             if reward_fn is not None:                       # the task-reward-only paths (replay + latent goals), unchanged
-                if self.replay:                             # SWR consolidation: value table ONLY, no motor command
+                if self.replay and self.latent_q is None:   # SWR consolidation: TABULAR value table ONLY, no motor command
                     self.buffer.add(unit, action, r_ext)
                     if not grew:                            # quiescent (familiar) tick -> replay past experience
                         self.buffer.replay(self.q, self.lr, batch=self.replay_batch)
@@ -832,6 +863,54 @@ def main():
     assert dev_final_comp >= 0.5, f"the arm must reach real competence on the stages it masters ({dev_final_comp:.2f})"
     assert dev_frozen, "the E-STOP freeze must hold with the developmental curriculum loop (learning through the gated step)"
     assert dev_det, "the developmental curriculum path must be deterministic"
+
+    # 18. SHARED LATENT-Q (the transfer substrate): a shared linear action-value over the LAKE-STORED pattern
+    #     replaces the tabular per-context q, so mastery GENERALIZES to genuinely-novel contexts (NEW units)
+    #     where tabular has no learned value. Opt-in; only changes HOW the value is computed (gated selection +
+    #     reflex/E-STOP unchanged). HONEST FINDING: a linear Q over the SELF-SUPERVISED JEPA latent is at chance
+    #     (not task-aligned; measured 0.33 vs 1.00 over the pattern) -- the substrate rides the task-linear lake
+    #     pattern, and the deep clean transfer proof is in basal_ganglia/latent_q's own self-check.
+    def _lq_ctx(v, t, au):
+        return _ctx(v, t, au, safe_d)
+    LQ_RULE = ["GRIPPER_OPEN", "GRIPPER_CLOSE", "HOLD"]         # optimal = argmax over (visual, temperature, audio) band
+    lq_train = [(_lq_ctx(*[0.9 if i == d else 0.1 for i in range(3)]), LQ_RULE[d]) for d in range(3) for _ in range(3)]
+    lq_hold = []                                               # dominant band + a partial secondary -> NEW units, SAME rule
+    for d in range(3):
+        for sec in range(3):
+            if sec != d:
+                lv = [0.2, 0.2, 0.2]
+                lv[d], lv[sec] = 0.8, 0.45
+                lq_hold.append((_lq_ctx(*lv), LQ_RULE[d]))
+
+    def _lq_run(use_latent_q):
+        bot = AutonomousArm(seed=1, pfc=True, jepa=True, curiosity=True, latent_q=use_latent_q)
+        for _ in range(500):
+            ctx, opt = lq_train[bot._dev_rng.randrange(len(lq_train))]
+            bot.step(reward_fn=(lambda u, a, o=opt: 1.0 if a == o else -1.0), **ctx)
+        return bot._competence(lq_train), bot._competence(lq_hold)
+    lqq_train, lqq_hold = _lq_run(True)
+    tab_train, tab_hold = _lq_run(False)
+    lq_guard = AutonomousArm(seed=2, pfc=True, jepa=True, latent_q=True)   # the safety envelope must hold with it on
+    lq_ev = lq_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
+    lq_guard.step(**_lq_ctx(0.9, 0.1, 0.1))
+    lq_frozen = lq_guard.arm.state()["stopped"]
+
+    def run_lq(seed):
+        bot = AutonomousArm(seed=seed, pfc=True, jepa=True, curiosity=True, latent_q=True)
+        return [bot.step(reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0])["action"]
+                for _ in range(8)]
+    lq_det = run_lq(5) == run_lq(5)
+
+    print(f"latent-Q    : SHARED value over the lake pattern -- held-out (NEW units, same rule) competence "
+          f"{lqq_hold:.2f} vs tabular {tab_hold:.2f} (TRANSFER); train {lqq_train:.2f}; freeze holds ({lq_frozen})")
+    print("=" * 62)
+
+    assert AutonomousArm(seed=0).latent_q is None, "the shared latent-Q is opt-in (a default arm has none)"
+    assert lqq_train >= 0.8, f"the shared latent-Q must learn the rule family with ONE shared function ({lqq_train:.2f})"
+    assert lqq_hold >= 0.8 and lqq_hold >= tab_hold + 0.3, \
+        f"the shared latent-Q must GENERALIZE to new-unit contexts where tabular cannot ({lqq_hold:.2f} vs {tab_hold:.2f})"
+    assert lq_ev["action"] == "EMERGENCY_STOP" and lq_ev["reflex"] and lq_frozen, "danger must E-STOP with the latent-Q on"
+    assert lq_det, "the latent-Q path must be deterministic"
 
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
           f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "

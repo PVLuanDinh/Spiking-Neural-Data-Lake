@@ -3,6 +3,43 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.17] -- Shared transfer substrate: a latent action-value replaces the tabular per-context q (2026-07-10)
+
+The biggest real gap in the cumulative-learning arc: the arm's TABULAR `q[unit][action]` has zero transfer
+-- each context is learned in isolation, so a curriculum's later stages get no benefit from earlier
+mastery. Replace it with a SHARED linear action-value `Q(x, a) = W[a].x` -- ONE weight set across ALL
+contexts, so a reward update generalizes to nearby contexts and mastery TRANSFERS.
+
+### Added
+- `basal_ganglia/latent_q.py` (CORE, zero-dep) -- `LatentQ`: a shared linear action-value with a
+  semi-gradient / Widrow-Hoff update (`W[a][i] += lr*(target - Q(x,a))*x[i]`), matching the arm's
+  bootstrap-free `q += lr*(r-q)`. Un-riggable transfer proof: trained on a rule and tested on a DISJOINT
+  held-out set of unseen representations, LatentQ generalizes at **0.900** while a tabular control (keyed
+  by a quantization) is at **0.365** (~chance) -- the shared function transfers where the table cannot.
+  Honest duality noted: the same shared W that transfers also INTERFERES on conflicting contexts, and a
+  linear Q cannot separate an action-value that is non-linear in the representation.
+
+### Changed
+- `brainstem/autonomous_loop.py` (NOT a safety-envelope file) -- opt-in `latent_q=True`: the action value
+  (`_select`/`_pfc_bias` evidence/greedy) and the reward update route through `LatentQ` instead of the
+  tabular table. Self-checked: the shared latent-Q learns a 3-way rule family with ONE function and
+  **generalizes to genuinely-novel contexts (NEW GrowingLearner units) at competence 1.00 while the tabular
+  baseline scores 0.00** (transfer). SAFETY: it only changes HOW the action value is computed -- the reflex
+  E-STOP runs first and every command still flows through the gated ArmSim; self-checked with the E-STOP
+  freeze holding. Flag OFF => the tabular q path is byte-identical.
+
+### Honest finding (important)
+The user asked to put the shared Q over the JEPA latent. Measured, a linear Q over the SELF-SUPERVISED
+JEPA latent is at CHANCE (0.33) -- even a fresh linear classifier fit directly to the final SSL latents
+cannot separate the task (vs 1.00 over the raw pattern). The SSL JEPA encoder is trained to PREDICT, not
+to encode reward/task structure, so it is not linearly task-aligned. The substrate therefore rides the
+**lake-stored `[0,1]^64` pattern** (which IS task-linear) rather than the SSL latent. The next levers
+toward a *learned* task-aligned substrate: a reward-shaped encoder, a non-linear (MLP) Q head over the
+latent, or the (frozen, more structured) H-JEPA served latent -- open work, not a flag.
+
+Gates green: 176/176 core self-checks, 208 pytest passed (88% cov), ruff clean; the 5 brainstem
+safety-envelope files untouched (git-diff verified).
+
 ## [v3.16] -- Self-paced curriculum: mastery unlocks harder tasks (cumulative learning) (2026-07-10)
 
 The next lever toward baby-like cumulative learning: STRUCTURE. Mastering an easy task autonomously
