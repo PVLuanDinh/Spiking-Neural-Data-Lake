@@ -169,6 +169,9 @@ EDGES = [
     #     that reaches the effector ONLY through the gated brainstem final common path (no new route) ---
     _e("sc", "sc_deep", "superficial -> deep collicular layers (motor error)", "exc", "relay"),
     _e("sc_deep", "bs_motor", "tecto-reticulospinal gaze command (through the gate)", "exc", "descending"),
+    # --- interoceptive arousal (v3.6): the medullary visceral state ascends (NTS -> LC) to drive
+    #     arousal/caution, wired live into autonomous_loop as a caution-only bias (never a motor route) ---
+    _e("nts_rvlm", "lc", "NTS -> locus coeruleus (interoceptive arousal drive)", "exc", "relay"),
 ]
 
 # canonical loops as CLOSED node cycles (first repeated at the end)
@@ -305,14 +308,15 @@ def main():
     assert not reachable("ctx_motor", ACTUATOR, block_edge=(GATE_NODE, ACTUATOR)), \
         "removing the gated final motor edge must cut cortex off from the actuator"
 
-    # (b2) SAFETY (v3.5 additions): the SC deep gaze command reaches the arm ONLY through the gate;
-    #      the medullary autonomic nuclei drive the viscera and never reach the arm actuator at all.
+    # (b2) SAFETY: the SC deep gaze command and the ascending interoceptive drive can influence motor
+    #      ONLY through the gate. The autonomic nuclei ascend to arousal (NTS->LC, v3.6), so -- like
+    #      every other node -- removing the gate must cut them off from the actuator (no bypass route).
     assert reachable("sc_deep", ACTUATOR), "SC deep gaze command must reach the actuator (via the gate)"
     assert not reachable("sc_deep", ACTUATOR, block_node=GATE_NODE), \
         "SC deep must reach the arm ONLY through the gated brainstem node (no new route to the actuator)"
     for auto in ("pbc", "nts_rvlm", "viscera"):
-        assert not reachable(auto, ACTUATOR), \
-            f"autonomic vital node {auto!r} must never reach the arm actuator"
+        assert not reachable(auto, ACTUATOR, block_node=GATE_NODE), \
+            f"autonomic vital node {auto!r} must reach the arm only through the gated brainstem node (no bypass)"
 
     # (c) FAIR CONTROL: imports lack the connectome's typing (not redundant with Python imports)
     checked, untyped = _import_graph_is_untyped()

@@ -31,6 +31,7 @@ from snn_data_lake.brainstem.arm_sim import ArmSim
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
+from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.neuromodulation.cortisol import Cortisol
 from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
@@ -43,7 +44,7 @@ class AutonomousArm:
     """Grows units from multimodal context + learns context->action by reward; every motion gated."""
 
     def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None,
-                 workspace=False, amygdala=False, bg_gate=False):
+                 workspace=False, amygdala=False, bg_gate=False, interoception=False):
         self.arm = ArmSim()
         self._seed = seed
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
@@ -70,25 +71,31 @@ class AutonomousArm:
         # NOTHING, which falls back to the safe action. It feeds the same gated ArmSim.apply(); it
         # cannot bypass the reflex/E-STOP or introduce any new motion (see _bg_select / step()).
         self.bg = BasalGangliaGate(seed=seed) if bg_gate else None
+        # opt-in interoceptive arousal: the medullary vital nuclei + a hypothalamic thermal set-point map
+        # the body's homeostatic error (a `homeostatic_load` passed to step()) to a bounded CAUTION signal.
+        # ADDITIVE + CAUTION-ONLY -- visceral stress biases selection toward the safe action (and damps the
+        # BG gate's dopamine), exactly like the amygdala threat; it selects no action, gates no motion,
+        # introduces no new actuator route, and the reflex/E-STOP still preempts it (see step()).
+        self.intero = InteroceptiveArousal(seed=seed) if interoception else None
 
-    def _select(self, unit, threat=0.0):
+    def _select(self, unit, threat=0.0, intero=0.0):
         qa = self.q[unit]
         if self.rng.random() < self.explore:
             return self.rng.choice(ACTIONS)                     # exploration: cortical variability proposes
         if self.bg is not None:
-            return self._bg_select(qa, threat)                  # BG Go/NoGo gate disinhibits the exploit choice
-        bias = self.cort.caution_bias() + threat                # stress + learned threat -> favour safe
+            return self._bg_select(qa, threat, intero)          # BG Go/NoGo gate disinhibits the exploit choice
+        bias = self.cort.caution_bias() + threat + intero       # stress + learned threat + interoceptive load -> favour safe
         return max(ACTIONS, key=lambda a: qa[a] + (bias if a == SAFE_ACTION else 0.0))
 
-    def _bg_select(self, qa, threat=0.0):
+    def _bg_select(self, qa, threat=0.0, intero=0.0):
         """Basal-ganglia Go/NoGo selection over the 3 actions. The action values are the per-channel
-        cortical drive; dopamine is the winner's value confidence, DAMPED by stress + learned threat
-        (more caution -> less dopamine -> harder to release). The circuit disinhibits at most one
+        cortical drive; dopamine is the winner's value confidence, DAMPED by stress + learned threat +
+        interoceptive load (more caution -> less dopamine -> harder to release). The circuit disinhibits at most one
         channel; if the tonic GPi is never overcome (no drive / low DA) it releases NOTHING, which
         falls back to the safe action. Selection only ever picks among the SAME actions -- the gated
         arm is untouched and the reflex/E-STOP (checked earlier in step) still preempts it."""
         drive = [max(0.0, qa[a]) for a in ACTIONS]
-        caution = min(1.0, self.cort.caution_bias() + threat)
+        caution = min(1.0, self.cort.caution_bias() + threat + intero)
         da = max(0.0, min(1.0, max(drive) * (1.0 - caution)))
         res = self.bg.select(drive, da)
         return SAFE_ACTION if res["winner"] is None else ACTIONS[res["winner"]]
@@ -112,6 +119,12 @@ class AutonomousArm:
         """The amygdala CeA threat in [0, 1] for this context (0.0 when the amygdala is opt-out)."""
         am = self._amygdala_for(pattern)
         return am.threat(pattern) if am is not None else 0.0
+
+    def _interocept(self, load):
+        """The interoceptive caution in [0, 1] for the current homeostatic load (0.0 when opt-out).
+        The medullary/hypothalamic homeostats map the body's load to a bounded caution that biases
+        selection toward the safe action; it selects no action and gates no motion."""
+        return self.intero.sense(load)["caution"] if self.intero is not None else 0.0
 
     def _workspace_broadcast(self, percept, threat_salience):
         """Additive Global-Workspace tick: brain regions (perception + a salience/threat detector)
@@ -147,8 +160,9 @@ class AutonomousArm:
                 return self.bundle.predict(name, pattern)
         return None
 
-    def step(self, visual, temperature, audio, distance, reward_fn=None):
-        """One autonomous tick. distance is the proximity scalar; reward_fn(unit, action)->[-1,1]."""
+    def step(self, visual, temperature, audio, distance, reward_fn=None, homeostatic_load=0.0):
+        """One autonomous tick. distance is the proximity scalar; reward_fn(unit, action)->[-1,1].
+        homeostatic_load (>=0) is the body's interoceptive load for the opt-in interoception path."""
         # 1. SAFETY FIRST: an object at the sensor trips the reflex -> gated EMERGENCY_STOP, no action
         if distance is not None and (not math.isfinite(distance) or distance < CONTACT):
             self.cort.step(1.0)                                 # danger -> stress up (sharpens future response)
@@ -167,8 +181,9 @@ class AutonomousArm:
         if unit not in self.q:
             self.q[unit] = dict.fromkeys(ACTIONS, 0.0)          # new unit -> its own row to learn
         threat = self._threat(pattern)                          # learned amygdala threat for this context (0 if opt-out)
+        intero = self._interocept(homeostatic_load)             # interoceptive caution from homeostatic load (0 if opt-out)
         # 3. CHOOSE (learned, not a fixed map) + ACT through the gated arm
-        action = self._select(unit, threat=threat)              # amygdala threat / BG gate bias selection toward safety
+        action = self._select(unit, threat=threat, intero=intero)   # amygdala threat / interoceptive load / BG gate bias toward safety
         state = self.arm.apply(action)                          # gated: frozen after E-STOP, collision-checked
         # 4. reward -> RPE action-value update + cortisol
         if reward_fn is not None:
@@ -184,7 +199,7 @@ class AutonomousArm:
         salience = threat if self.amyg is not None else 0.2
         broadcast = self._workspace_broadcast(unit, salience)   # additive annotation; drives no motion
         return {"unit": unit, "grew": grew, "action": action, "reflex": False,
-                "threat": threat, "workspace": broadcast, "state": state}
+                "threat": threat, "intero": intero, "workspace": broadcast, "state": state}
 
 
 def _ctx(v, tmp, au, d):
@@ -364,6 +379,41 @@ def main():
     assert bg_ev["action"] == "EMERGENCY_STOP" and bg_ev["reflex"], "danger must E-STOP with the BG gate on"
     assert bg_frozen, "the E-STOP freeze must hold with the BG gate wired in"
     assert run_wired(5) == run_wired(5), "the amygdala + BG-gate path must be deterministic"
+
+    # 11. INTEROCEPTION wired live: the body's homeostatic load raises a bounded interoceptive caution
+    #     that biases selection toward the safe action -- caution-only, never a new actuator route.
+    io = AutonomousArm(seed=1, interoception=True)
+    io.explore = 0.0                                           # isolate the bias (no exploration noise)
+    io.q[0] = {"GRIPPER_CLOSE": 0.05, "GRIPPER_OPEN": 0.0, "HOLD": 0.0}   # a mild non-safe preference
+    io_calm = io._interocept(0.0)                              # homeostasis -> ~no caution
+    io_stress = io._interocept(1.5)                            # heavy homeostatic load -> strong caution
+    pick_calm = io._select(0, intero=io_calm)                  # no load -> keep the mild non-safe preference
+    pick_stress = io._select(0, intero=io_stress)             # heavy load -> override toward the safe action
+    io_guard = AutonomousArm(seed=2, interoception=True)       # the safety envelope must hold with it on
+    io_ev = io_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d), homeostatic_load=1.5)
+    io_frozen0 = io_guard.arm.state()["stopped"]
+    io_guard.step(**a, homeostatic_load=1.5)                   # an action under load after the E-STOP
+    io_frozen1 = io_guard.arm.state()["stopped"]
+
+    def run_io(seed):
+        bot = AutonomousArm(seed=seed, interoception=True)
+        return [bot.step(**ctx, homeostatic_load=0.8)["action"] for _ in range(6) for ctx in (a, b, c)]
+
+    print(f"interocept  : homeostatic load -> caution {io_calm:.2f} (calm) vs {io_stress:.2f} (stressed); "
+          f"mild-preference tie {pick_calm} -> {pick_stress} under load (safe bias); "
+          f"E-STOP freeze holds with it on ({io_frozen1})")
+    print("=" * 62)
+
+    # interoception is opt-in; a default arm is byte-for-byte the old behaviour.
+    assert AutonomousArm(seed=0).intero is None, "interoception is opt-in (a default arm has none)"
+    # a homeostatic load raises the bounded caution and overrides a mild non-safe preference toward the safe action.
+    assert io_stress > io_calm + 0.10, f"a homeostatic load must raise interoceptive caution ({io_stress:.2f} vs {io_calm:.2f})"
+    assert pick_calm != SAFE_ACTION and pick_stress == SAFE_ACTION, \
+        "interoceptive stress must override a mild non-safe preference toward the safe action (caution-only)"
+    # the safety envelope holds with interoception wired in.
+    assert io_ev["action"] == "EMERGENCY_STOP" and io_ev["reflex"], "danger must E-STOP with interoception on"
+    assert io_frozen0 and io_frozen1, "the E-STOP freeze must hold with interoception wired in (caution-only)"
+    assert run_io(5) == run_io(5), "the interoception path must be deterministic"
 
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
           f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "

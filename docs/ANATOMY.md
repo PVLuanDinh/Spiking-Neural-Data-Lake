@@ -25,7 +25,7 @@ not its cell-level microcircuitry or phenomenology.
 | Basal forebrain / neuromodulators | present | `neuromodulation/` — ACh, LC-noradrenaline, raphe-serotonin, astrocyte, cortisol; dopamine in `midbrain` |
 | Reticular activating system (ARAS) | present | `pons/reticular_formation` — bistable sleep-wake arousal switch |
 | White-matter connectome | present (schematic) | `connectome.py` — typed/directed/signed/loop-aware edge list (37 nodes, 11 closed loops) |
-| Medulla | present | `medulla/vital_nuclei` — pre-Botzinger respiratory CPG + NTS/RVLM baroreflex, each a homeostatic set-point loop onto the viscera (autonomic effectors, never the arm) |
+| Medulla | present | `medulla/` — `vital_nuclei` (pre-Botzinger respiratory CPG + NTS/RVLM baroreflex, homeostatic set-point loops onto the viscera) + `interoceptive_arousal` (visceral error -> bounded caution/gain, wired live) |
 
 **Roughly:** the Allen top-level structural ontology is now fully covered — 15 anatomical regions
 present (each a functional model) plus a schematic connectome; no top-level structure remains partial.
@@ -41,23 +41,25 @@ pathway, the ascending neuromodulatory broadcast (dopamine, noradrenaline/LC, se
 ARAS), and the descending corticospinal path. A self-check asserts the arm actuator is reachable
 **only** through the gated brainstem edge — reinforcing the arm-safety envelope.
 
-The amygdala threat detector and the basal-ganglia Go/NoGo gate are also wired **live** into the
-running arm loop (`brainstem/autonomous_loop.py`, opt-in): the amygdala learns which contexts predict
-danger and the BG gate selects the released action — both **caution-only**, and the reflex/E-STOP
-still preempts every motor command.
+The amygdala threat detector, the basal-ganglia Go/NoGo gate, and the interoceptive-arousal drive are
+wired **live** into the running arm loop (`brainstem/autonomous_loop.py`, opt-in): the amygdala learns
+which contexts predict danger, the BG gate selects the released action, and the medullary/hypothalamic
+homeostats turn the body's `homeostatic_load` into a bounded caution (`medulla/interoceptive_arousal`
+via the NTS→LC ascending edge) — all **caution-only**, and the reflex/E-STOP still preempts every
+motor command.
 
 ## Roadmap (next honest primitives, ranked)
 
-The Allen **top-level** structural ontology is now complete (regions *and* connectome). The next
-honest primitives move from breadth to depth and live integration:
+The Allen **top-level** structural ontology is complete (regions *and* connectome) and the medullary /
+hypothalamic homeostats are now wired **live** into the loop as caution-only arousal. The next honest
+primitives move from breadth to depth:
 
-1. **Autonomic integration (live, caution-only)** — wire the medullary vital nuclei + hypothalamic
-   set-points into the running loop the way the amygdala threat detector and BG Go/NoGo gate already
-   are: visceral/homeostatic state modulates arousal and gain, never the gated arm path.
-2. **Deep sub-nuclei** — the Allen ontology goes below the top level (hypothalamic nuclei, amygdalar
+1. **Deep sub-nuclei** — the Allen ontology goes below the top level (hypothalamic nuclei, amygdalar
    subnuclei, thalamic relay/association nuclei). Add the load-bearing ones for existing loops.
-3. **Spinal cord as its own region** — split the ventral-horn CPG / stretch-reflex out of `brainstem/`
+2. **Spinal cord as its own region** — split the ventral-horn CPG / stretch-reflex out of `brainstem/`
    into a distinct caudal region, completing the neuraxis below the medulla.
+3. **SC deep motor wired live** — let the collicular gaze command participate in the loop through the
+   gated brainstem path (a second gated effector channel, never a bypass), the way interoception now does.
 
 Every addition stays pure-stdlib, offline-deterministic, self-checked with a fair control, lives in
 an anatomical region subpackage, and touches none of the 5 safety-envelope files.

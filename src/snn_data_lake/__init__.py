@@ -46,7 +46,7 @@ REGIONS = {
     "hypothalamus": ["circadian_clock", "set_points"],
     "midbrain": ["dopamine_nuclei", "superior_colliculus", "sc_deep_layers"],
     "pons": ["pontine_relay", "reticular_formation"],
-    "medulla": ["vital_nuclei"],
+    "medulla": ["vital_nuclei", "interoceptive_arousal"],
     "epithalamus": ["habenula"],
     "olfactory": ["olfactory_bulb", "piriform_cortex"],
     "claustrum": ["claustrum"],
