@@ -726,6 +726,10 @@ class App:
         nb.add(LakeTab(nb), text="Lake Browser")
         nb.add(NLTab(nb, arm_tab), text="NL Command")
         nb.add(CoreTab(nb), text="Diagnostics")
+        # local import (function scope): live_brain_tab imports world_to_canvas from here, so a
+        # module-level import would create a load cycle; importing at App construction avoids it.
+        from snn_data_lake.substrate.live_brain_tab import LiveBrainTab
+        nb.add(LiveBrainTab(nb), text="Live Brain")
         nb.pack(fill="both", expand=True)
 
     def mainloop(self):

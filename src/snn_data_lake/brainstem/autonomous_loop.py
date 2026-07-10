@@ -35,6 +35,7 @@ from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.neuromodulation.cortisol import Cortisol
 from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
+from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
 ACTIONS = ("GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD")   # the arm's autonomous action repertoire
@@ -46,7 +47,7 @@ class AutonomousArm:
 
     def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None,
                  workspace=False, amygdala=False, bg_gate=False, interoception=False,
-                 pfc=False, pfc_gain=0.5):
+                 pfc=False, pfc_gain=0.5, lake_wm=False, lake_wm_path=None):
         self.arm = ArmSim()
         self._seed = seed
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
@@ -86,6 +87,15 @@ class AutonomousArm:
         # actuator route, and caution (threat/interoceptive/stress) + the reflex/E-STOP still preempt it.
         self.pfc = PrefrontalExecutive(len(ACTIONS), seed=seed) if pfc else None
         self.pfc_gain = pfc_gain
+        # opt-in lake working memory: each tick's activity (context pattern + one-hot goal + one-hot
+        # action) is stored in the durable spike lake (StreamingHub .spkl) and read back with recall(),
+        # so the working memory literally LIVES IN THE DATA LAKE. ADDITIVE + storage only -- it records
+        # after the action is chosen, never touches the reflex/E-STOP path, and adds no actuator route.
+        self._lake_wm_on = lake_wm
+        self._lake_wm_path = lake_wm_path
+        self.lake_wm = None                                   # lazily sized on the first tick (needs len(pattern))
+        self._pattern_len = None
+        self._tick_t = 0
 
     def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None):
         qa = self.q[unit]
@@ -147,6 +157,25 @@ class AutonomousArm:
         self.pfc.update(evidence)                               # gated deliberation -> a working-memory goal
         return self.pfc.top_down_bias(strength=self.pfc_gain)
 
+    def _lake_write(self, pattern, goal, action):
+        """Store this tick in the lake working memory (opt-in). The active bits of the context pattern,
+        a one-hot GOAL, and a one-hot ACTION are appended to the durable spike lake, so the working
+        memory lives in the data lake (read back via self.lake_wm.recall()). Layout: channels [0, P) =
+        pattern; [P, P+A) = goal one-hot; [P+A, P+2A) = action one-hot (P=len(pattern), A=len(ACTIONS)).
+        Storage only -- it records AFTER the action and never affects selection or motion."""
+        if not self._lake_wm_on:
+            return
+        p, n_act = len(pattern), len(ACTIONS)
+        if self.lake_wm is None:
+            self.lake_wm = LakeWorkingMemory(p + 2 * n_act, path=self._lake_wm_path, seed=self._seed)
+            self._pattern_len = p
+        active = [i for i, v in enumerate(pattern) if v]
+        if goal is not None:
+            active.append(p + goal)
+        active.append(p + n_act + ACTIONS.index(action))
+        self.lake_wm.write(self._tick_t, active)
+        self._tick_t += 1
+
     def _workspace_broadcast(self, percept, threat_salience):
         """Additive Global-Workspace tick: brain regions (perception + a salience/threat detector)
         compete for the single workspace slot and the winner is broadcast to all. READ-ONLY
@@ -207,6 +236,8 @@ class AutonomousArm:
         # 3. CHOOSE (learned, not a fixed map) + ACT through the gated arm
         action = self._select(unit, threat=threat, intero=intero, pfc_bias=pfc_bias)   # threat/interoceptive caution + PFC goal bias
         state = self.arm.apply(action)                          # gated: frozen after E-STOP, collision-checked
+        goal_val = self.pfc.goal if self.pfc is not None else None   # the prefrontal working-memory goal
+        self._lake_write(pattern, goal_val, action)             # opt-in: store this tick in the lake working memory
         # 4. reward -> RPE action-value update + cortisol
         if reward_fn is not None:
             r = reward_fn(unit, action)
@@ -221,7 +252,8 @@ class AutonomousArm:
         salience = threat if self.amyg is not None else 0.2
         broadcast = self._workspace_broadcast(unit, salience)   # additive annotation; drives no motion
         return {"unit": unit, "grew": grew, "action": action, "reflex": False,
-                "threat": threat, "intero": intero, "goal": (self.pfc.goal if self.pfc is not None else None),
+                "threat": threat, "intero": intero, "goal": goal_val,
+                "wm_events": (self.lake_wm.n_events() if self.lake_wm is not None else 0),
                 "workspace": broadcast, "state": state}
 
 
@@ -471,6 +503,42 @@ def main():
     assert pf_ev["action"] == "EMERGENCY_STOP" and pf_ev["reflex"], "danger must E-STOP with the prefrontal executive on"
     assert pf_frozen0 and pf_frozen1, "the E-STOP freeze must hold with the executive wired in (top-down preference only)"
     assert run_pf(5) == run_pf(5), "the prefrontal path must be deterministic"
+
+    # 13. LAKE WORKING MEMORY wired live: each tick's activity is stored in the durable spike lake and
+    #     recalled from it -- the data lake IS the working memory (opt-in, storage only, gate untouched).
+    lw = AutonomousArm(seed=1, pfc=True, lake_wm=True)
+    for _ in range(8):
+        lw.step(**a, reward_fn=reward)
+    wm = lw.lake_wm.recall(4)                                   # the recent working-memory window, read from the lake
+    wm_events = lw.lake_wm.n_events()
+    lw.lake_wm.reopen()                                         # discard the in-RAM object -> replay purely from the .spkl
+    wm_after = lw.lake_wm.recall(4)
+    lake_backed = wm_events > 0 and wm == wm_after and len(wm) == 4
+    lw_guard = AutonomousArm(seed=2, lake_wm=True)              # the safety envelope must hold with it on
+    lw_ev = lw_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
+    lw_frozen0 = lw_guard.arm.state()["stopped"]
+    lw_guard.step(**a)                                          # a normal tick after the E-STOP
+    lw_frozen1 = lw_guard.arm.state()["stopped"]
+
+    def run_lw(seed):
+        bot = AutonomousArm(seed=seed, pfc=True, lake_wm=True)
+        acts = [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
+        bot.lake_wm.close(remove=True)
+        return acts
+
+    det_lw = run_lw(5) == run_lw(5)
+    lw.lake_wm.close(remove=True)                              # clean up the temp lake files
+    lw_guard.lake_wm.close(remove=True)
+
+    print(f"lake WM     : {wm_events} spikes in the durable lake; recall holds {len(wm)} recent ticks; "
+          f"survives reopen={wm == wm_after}; E-STOP freeze holds with it on ({lw_frozen1})")
+    print("=" * 62)
+
+    assert AutonomousArm(seed=0).lake_wm is None, "lake working memory is opt-in (a default arm has none)"
+    assert lake_backed, "the working memory must live in the durable lake (survive reopen) with a bounded window"
+    assert lw_ev["action"] == "EMERGENCY_STOP" and lw_ev["reflex"], "danger must E-STOP with lake WM on"
+    assert lw_frozen0 and lw_frozen1, "the E-STOP freeze must hold with lake WM wired in (storage only)"
+    assert det_lw, "the lake-WM path must be deterministic"
 
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
           f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "

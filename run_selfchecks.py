@@ -38,6 +38,7 @@ CORE = [
     "cortex.snn_classifier", "cortex.trained_brain", "cortex.learned_matcher", "cortex.tempotron", "cortex.paradigm_b_matcher",
     "cortex.paradigm_b_engine", "cortex.gesture_recognition",
     "cortex.language_brain", "cortex.nl_interface", "cortex.brain_reasoning", "cortex.spiking_lm_serve", "cortex.vsa_reasoning",
+    "cortex.prefrontal_executive", "cortex.live_brain",
     # hippocampus — memory formation, spatial coding, replay
     "hippocampus.hippocampus", "hippocampus.grid_cells", "hippocampus.htm_sequence_memory", "hippocampus.frequency_memory",
     "hippocampus.experience_replay", "hippocampus.sleep_replay", "hippocampus.ring_attractor", "hippocampus.growing_learner",
@@ -58,11 +59,13 @@ CORE = [
     # thalamus — the relay + global-broadcast hub (GWT) + reticular attentional gate
     "thalamus.global_workspace", "thalamus.reticular_gate",
     # hypothalamus — homeostatic timing (the SCN circadian clock)
-    "hypothalamus.circadian_clock",
-    # midbrain — dopamine source nuclei (VTA/SNc RPE) + superior-colliculus orienting
-    "midbrain.dopamine_nuclei", "midbrain.superior_colliculus",
+    "hypothalamus.circadian_clock", "hypothalamus.set_points",
+    # midbrain — dopamine source nuclei (VTA/SNc RPE) + superior-colliculus orienting + deep gaze layers
+    "midbrain.dopamine_nuclei", "midbrain.superior_colliculus", "midbrain.sc_deep_layers",
     # pons — cortico-ponto-cerebellar relay + the ascending reticular activating system (ARAS)
     "pons.pontine_relay", "pons.reticular_formation",
+    # medulla — the autonomic vital nuclei (respiratory / cardiac CPG) + interoceptive arousal
+    "medulla.vital_nuclei", "medulla.interoceptive_arousal",
     # epithalamus — the lateral habenula (anti-reward / negative RPE)
     "epithalamus.habenula",
     # olfactory — bulb decorrelation + piriform association
@@ -83,7 +86,7 @@ CORE = [
     "substrate.neuro_chip", "substrate.neuro_chip_stream", "substrate.nir_export", "substrate.sensor_csv_ingest",
     "substrate.esp32_encoder_path", "substrate.make_sensor_dataset", "substrate.sensor_demo", "substrate.demo",
     "substrate.control_panel", "substrate.brain_bundle", "substrate.reaction_diffusion_compute",
-    "substrate.web_ingest",
+    "substrate.web_ingest", "substrate.lake_working_memory", "substrate.live_brain_tab",
 ]
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [
