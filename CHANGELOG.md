@@ -3,6 +3,37 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.13] -- H-JEPA: an honest negative for the linear hierarchy + a nonlinear torch path (2026-07-10)
+
+Pursuing a hierarchical JEPA (LeCun's H-JEPA: stack JEPA levels at increasing abstraction + coarser
+timescale). An honest, measured finding drove this slice.
+
+### Finding (measured, not assumed)
+A minimal LINEAR 2-level H-JEPA does NOT beat flat baselines, for two reasons: (1) spectrally-contractive
+linear predictors saturate under multi-step rollout (L0 fast-roll MSE 0.35 beat L1 coarse-roll 0.48), and
+(2) a linearly-decodable regime is decoded better by raw windowed averaging (MSE 0.0005) than by the
+learned abstraction (0.0163). The learned hierarchy added nothing. The linear core module built to test
+this was removed (it did not earn a core slot); the finding is documented in `docs/JEPA.md`.
+
+### Added
+- `research/hjepa_torch.py` (research, ruff-excluded, NOT in CI) -- a 2-level nonlinear torch H-JEPA that
+  addresses both failure modes: nonlinear MLP encoders at both levels, a NON-contractive MLP coarse
+  predictor (bounded by normalization, not clamped to a contraction), and a nonlinear abstraction (the
+  slow regime is `XOR(b0,b1)` in disjoint bands -- flat linear + raw averaging are provably floored at
+  MSE 0.25). It measures the two claims the linear version failed as `[GPU-VERIFY]` lines and is honest
+  that whether the self-supervised objective makes the abstraction linearly decodable is for the GPU run
+  to confirm. Run on the RTX 5070: `NORD_GPU=1 python research/hjepa_torch.py`. UNVERIFIED ON HARDWARE
+  (no GPU in CI); torch imported lazily, no-torch path exits cleanly.
+
+### Not done (deliberately, honestly)
+- **AirLLM is not used.** AirLLM is disk-streaming inference for a VRAM-too-big transformer; it has no
+  training path and would only slow a compute-bound H-JEPA that fits the 5070 many times over. The real
+  levers are CUDA + AMP and (beyond VRAM) torch gradient-checkpointing / offload. See `docs/AIRLLM_ANALYSIS.md`.
+
+Gates green: 172/172 core self-checks (unchanged -- no core module added/removed from the suite),
+204 pytest passed (88% coverage), ruff clean; the 5 brainstem safety-envelope files untouched. The
+nonlinear H-JEPA's hierarchy-beats-flat claim is unverified-on-hardware.
+
 ## [v3.12] -- Scale JEPA: a deeper (hidden-layer) encoder + a real torch trainer for the RTX 5070 (2026-07-10)
 
 Scaling the v3.11 JEPA. The core JEPA gains a DEEPER encoder (an optional hidden layer, format `snn_jepa/2`),

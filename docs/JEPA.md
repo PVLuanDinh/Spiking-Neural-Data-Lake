@@ -80,7 +80,40 @@ NORD_GPU=1 python research/jepa_scaffold_torch.py    # trains on the 5070, expor
 # then in the zero-dep core: JepaWorldModel(...).load_weights("<export>.json") serves the deep encoder, no torch
 ```
 
-The remaining depth axes (H-JEPA hierarchy, a latent-variable z for multimodality) are the next steps.
+A latent-variable `z` for multimodality is a remaining depth axis.
+
+## H-JEPA (hierarchical JEPA) -- an honest negative + the torch path (v3.13)
+
+H-JEPA stacks JEPA levels at increasing abstraction and coarser timescale (LeCun's hierarchical
+world model): Level 0 models fast per-tick detail; Level 1 abstracts a window of Level-0 latents and
+predicts the slow/abstract structure over a long horizon.
+
+**A minimal LINEAR H-JEPA does not beat flat baselines** (measured, not assumed). Two failure modes:
+1. **Rollout saturation** -- both levels used spectrally-contractive linear predictors, so multi-step
+   rollout collapses to a fixed point and neither extrapolates; L0 fast-roll actually beat L1
+   coarse-roll (MSE 0.35 vs 0.48).
+2. **Trivial abstraction** -- the slow regime was already a linear band in the observation, so raw
+   windowed *averaging* (no learning) decoded it (MSE 0.0005) better than the learned L1 abstraction
+   (0.0163). The learned hierarchy added nothing.
+
+The fix is nonlinearity on both axes: `research/hjepa_torch.py` (research, GPU, **UNVERIFIED ON
+HARDWARE**) is a 2-level torch H-JEPA with **nonlinear MLP encoders** at both levels, a **non-contractive
+MLP coarse predictor** (bounded by normalization, not clamped to a contraction), and a **nonlinear
+abstraction**: the slow regime is `XOR(b0, b1)` of two factors rendered in disjoint bands, so a flat
+linear readout and raw windowed averaging are *provably floored* at MSE 0.25 while a nonlinear
+hierarchical encoder has the capacity to fold XOR into a linearly-decodable latent. It measures the two
+claims the linear version failed (`[GPU-VERIFY]` lines) and is honest that whether the *self-supervised*
+objective actually makes the abstraction linearly decodable is for the RTX 5070 run to confirm.
+
+```bash
+pip install ".[gpu]"
+NORD_GPU=1 python research/hjepa_torch.py   # trains the nonlinear H-JEPA, prints [GPU-VERIFY] hierarchy-vs-flat
+```
+
+**AirLLM does not apply here.** AirLLM is disk-streaming *inference* for a transformer too big for
+VRAM; it has no training path and would only slow a compute-bound H-JEPA that fits the 5070 many times
+over. The real levers are CUDA + AMP, and (for a model that ever exceeds VRAM) torch
+gradient-checkpointing / offload -- not AirLLM. See `docs/AIRLLM_ANALYSIS.md`.
 
 ## Run it
 
