@@ -12,8 +12,11 @@ are the major long-range pathways, each typed:
   * cls    : relay | feedback | broadcast | descending
   * loop   : which canonical loop the edge participates in (or None)
 The graph encodes the canonical loops -- thalamocortical, cortico-basal-ganglia-thalamo-cortical
-(CBGTC), the hippocampal trisynaptic loop, cortico-cerebellar, Papez (limbic), the amygdala threat
-pathway, ascending neuromodulatory broadcast, and the descending corticospinal path to the arm.
+(CBGTC), the hippocampal trisynaptic loop, cortico-cerebellar (via the pontine relay), Papez
+(limbic), the tecto-thalamo-cortical orienting loop, the habenula reward-opponent loop, the
+olfactory bulb<->piriform loop, and the claustro-cortical loop. Plus the amygdala threat pathway,
+the ascending neuromodulatory broadcast (dopamine, noradrenaline/LC, serotonin/raphe, ACh, ARAS),
+and the descending corticospinal path to the arm.
 
 HONEST label: this is a MESOSCALE SCHEMATIC of canonical pathways (like the Allen mesoscale atlas),
 NOT a synapse-level or measured connectome. It asserts graph-topological facts (loop closure, the
@@ -39,7 +42,7 @@ NODES = {
     "gpe": ("basal_ganglia", "external pallidum (GPe)"),
     "gpi_snr": ("basal_ganglia", "internal pallidum / SNr (BG output)"),
     "stn": ("basal_ganglia", "subthalamic nucleus (STN)"),
-    "vta_snc": ("basal_ganglia", "VTA / SNc (dopamine source)"),
+    "vta_snc": ("midbrain", "VTA / SNc (dopamine source nuclei)"),
     "ec": ("hippocampus", "entorhinal cortex"),
     "dg": ("hippocampus", "dentate gyrus"),
     "ca3": ("hippocampus", "CA3"),
@@ -49,8 +52,18 @@ NODES = {
     "cea": ("amygdala", "central amygdala (CeA)"),
     "cb_ctx": ("cerebellum", "cerebellar cortex (Purkinje)"),
     "cb_deep": ("cerebellum", "deep cerebellar nuclei"),
-    "hypothal": ("neuromodulation", "hypothalamus (mammillary body / HPA)"),
+    "hypothal": ("hypothalamus", "hypothalamus (mammillary body / HPA)"),
     "bf_ach": ("neuromodulation", "basal forebrain (acetylcholine)"),
+    "scn": ("hypothalamus", "suprachiasmatic nucleus (SCN, circadian clock)"),
+    "sc": ("midbrain", "superior colliculus (orienting / saccade map)"),
+    "pn": ("pons", "pontine nuclei (cortico-ponto-cerebellar relay)"),
+    "prf": ("pons", "pontine reticular formation (ascending reticular activating system)"),
+    "lc": ("neuromodulation", "locus coeruleus (noradrenaline, arousal gain)"),
+    "raphe": ("neuromodulation", "dorsal raphe (serotonin, patience / mood)"),
+    "ob": ("olfactory", "olfactory bulb (glomerular decorrelation)"),
+    "pir": ("olfactory", "piriform cortex (odor association)"),
+    "lhb": ("epithalamus", "lateral habenula (anti-reward / negative RPE)"),
+    "claustrum": ("claustrum", "claustrum (cortical synchrony / salience hub)"),
     "bs_motor": ("brainstem", "brainstem / spinal motor + reflex (the gated final path)"),
     "actuator": (None, "robot arm actuator"),
 }
@@ -84,8 +97,9 @@ EDGES = [
     _e("ca3", "ca1", "Schaffer collaterals", "exc", "relay", "hippocampal"),
     _e("ca1", "sub", "CA1-subiculum", "exc", "relay", "hippocampal"),
     _e("sub", "ec", "subiculum-entorhinal (return)", "exc", "feedback", "hippocampal"),
-    # cortico-cerebellar loop
-    _e("ctx_motor", "cb_ctx", "cortico-ponto-cerebellar", "exc", "relay", "cortico_cerebellar"),
+    # cortico-cerebellar loop (via the explicit pontine mossy-fibre relay)
+    _e("ctx_motor", "pn", "corticopontine", "exc", "relay", "cortico_cerebellar"),
+    _e("pn", "cb_ctx", "pontocerebellar mossy fibers", "exc", "relay", "cortico_cerebellar"),
     _e("cb_ctx", "cb_deep", "Purkinje projection", "inh", "relay", "cortico_cerebellar"),
     _e("cb_deep", "thal_relay", "dentatothalamic", "exc", "relay", "cortico_cerebellar"),
     # Papez / limbic circuit
@@ -105,6 +119,38 @@ EDGES = [
     # descending corticospinal path to the effector -- THE gated final common path
     _e("ctx_motor", "bs_motor", "corticospinal tract", "exc", "descending", "corticospinal"),
     _e("bs_motor", "actuator", "final common motor path (reflex/E-STOP gated)", "exc", "descending", "corticospinal"),
+    # --- completed-anatomy pathways (v3.4): hypothalamus, midbrain, pons/ARAS, olfactory,
+    #     epithalamus, claustrum, and the LC/raphe neuromodulatory broadcast ---
+    # suprachiasmatic circadian pacing (hypothalamus)
+    _e("scn", "hypothal", "SCN -> hypothalamus (circadian HPA pacing)", "exc", "relay"),
+    _e("scn", "prf", "SCN -> reticular formation (circadian arousal drive)", "exc", "broadcast"),
+    # locus-coeruleus noradrenaline broadcast (the reserved 'ne' class finally has its source node)
+    _e("lc", "ctx_sensory", "coeruleocortical noradrenaline", "ne", "broadcast"),
+    _e("lc", "ctx_pfc", "LC -> PFC noradrenaline (gain)", "ne", "broadcast"),
+    _e("lc", "thal_relay", "LC -> thalamus (arousal gain)", "ne", "broadcast"),
+    # dorsal-raphe serotonin broadcast (the reserved '5ht' class)
+    _e("raphe", "ctx_pfc", "serotonergic projection (patience / mood)", "5ht", "broadcast"),
+    _e("raphe", "striatum", "raphe -> striatum (5-HT, opponent to dopamine)", "5ht", "broadcast"),
+    # ascending reticular activating system (ARAS): pontine reticular formation -> thalamic arousal
+    _e("prf", "thal_relay", "ascending reticular activating (ARAS) -> thalamus", "exc", "broadcast"),
+    _e("prf", "bf_ach", "ARAS -> basal forebrain (cholinergic arousal)", "exc", "broadcast"),
+    # superior-colliculus orienting loop (tecto-thalamo-cortical)
+    _e("ctx_sensory", "sc", "corticotectal (visual salience)", "exc", "relay", "orienting"),
+    _e("sc", "thal_relay", "tectothalamic (orienting relay)", "exc", "relay", "orienting"),
+    _e("ctx_pfc", "sc", "frontal eye field -> colliculus (saccade command)", "exc", "descending"),
+    # lateral-habenula reward-opponent loop (anti-reward suppresses the dopamine burst via RMTg)
+    _e("ctx_pfc", "lhb", "prefrontal -> lateral habenula (disappointment)", "exc", "relay", "reward_opponent"),
+    _e("lhb", "vta_snc", "habenula -> RMTg -> VTA (dopamine suppression)", "inh", "feedback", "reward_opponent"),
+    # olfactory pathway (bulb decorrelation -> piriform association, with centrifugal feedback)
+    _e("ob", "pir", "lateral olfactory tract (bulb -> piriform)", "exc", "relay", "olfactory"),
+    _e("pir", "ob", "piriform -> bulb centrifugal feedback", "exc", "feedback", "olfactory"),
+    _e("pir", "ctx_pfc", "piriform -> orbitofrontal (odor to cortex)", "exc", "relay"),
+    _e("pir", "bla", "piriform -> amygdala (odor valence)", "exc", "relay"),
+    # claustrum: cortical synchrony / salience broadcast hub
+    _e("ctx_sensory", "claustrum", "corticoclaustral (sensory)", "exc", "relay", "claustro_cortical"),
+    _e("claustrum", "ctx_sensory", "claustrocortical (salience broadcast)", "exc", "broadcast", "claustro_cortical"),
+    _e("ctx_pfc", "claustrum", "corticoclaustral (prefrontal)", "exc", "relay"),
+    _e("claustrum", "ctx_pfc", "claustrocortical broadcast (prefrontal)", "exc", "broadcast"),
 ]
 
 # canonical loops as CLOSED node cycles (first repeated at the end)
@@ -112,8 +158,12 @@ LOOPS = {
     "thalamocortical": ["thal_relay", "ctx_sensory", "thal_relay"],
     "cbgtc": ["ctx_motor", "striatum", "gpi_snr", "thal_relay", "ctx_motor"],
     "hippocampal": ["ec", "dg", "ca3", "ca1", "sub", "ec"],
-    "cortico_cerebellar": ["ctx_motor", "cb_ctx", "cb_deep", "thal_relay", "ctx_motor"],
+    "cortico_cerebellar": ["ctx_motor", "pn", "cb_ctx", "cb_deep", "thal_relay", "ctx_motor"],
     "papez": ["sub", "hypothal", "thal_relay", "ctx_pfc", "ec", "dg", "ca3", "ca1", "sub"],
+    "orienting": ["sc", "thal_relay", "ctx_sensory", "sc"],
+    "reward_opponent": ["vta_snc", "ctx_pfc", "lhb", "vta_snc"],
+    "olfactory": ["ob", "pir", "ob"],
+    "claustro_cortical": ["claustrum", "ctx_sensory", "claustrum"],
 }
 
 ACTUATOR = "actuator"

@@ -57,8 +57,21 @@ CORE = [
     "brainstem.signal_loop", "brainstem.cpg_oscillator",
     # thalamus — the relay + global-broadcast hub (GWT) + reticular attentional gate
     "thalamus.global_workspace", "thalamus.reticular_gate",
-    # neuromodulation — diffuse chemical modulators + glia
+    # hypothalamus — homeostatic timing (the SCN circadian clock)
+    "hypothalamus.circadian_clock",
+    # midbrain — dopamine source nuclei (VTA/SNc RPE) + superior-colliculus orienting
+    "midbrain.dopamine_nuclei", "midbrain.superior_colliculus",
+    # pons — cortico-ponto-cerebellar relay + the ascending reticular activating system (ARAS)
+    "pons.pontine_relay", "pons.reticular_formation",
+    # epithalamus — the lateral habenula (anti-reward / negative RPE)
+    "epithalamus.habenula",
+    # olfactory — bulb decorrelation + piriform association
+    "olfactory.olfactory_bulb", "olfactory.piriform_cortex",
+    # claustrum — cortical synchrony / salience hub
+    "claustrum.claustrum",
+    # neuromodulation — diffuse chemical modulators + glia (LC noradrenaline, raphe serotonin)
     "neuromodulation.acetylcholine", "neuromodulation.astrocyte_modulation", "neuromodulation.cortisol",
+    "neuromodulation.locus_coeruleus", "neuromodulation.raphe_serotonin",
     # plasticity — Hebbian/STDP, homeostatic, developmental learning rules
     "plasticity.bcm_plasticity", "plasticity.homeostatic_scaling", "plasticity.inhibitory_stdp", "plasticity.intrinsic_plasticity",
     "plasticity.short_term_plasticity", "plasticity.developmental_pruning",

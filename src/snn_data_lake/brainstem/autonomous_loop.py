@@ -24,6 +24,8 @@ arm. This is adaptive + GROWING, NOT cognition. The four modality streams here a
 import math
 import random
 
+from snn_data_lake.amygdala.fear_conditioning import Amygdala
+from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.arm_sim import ArmSim
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
@@ -41,8 +43,9 @@ class AutonomousArm:
     """Grows units from multimodal context + learns context->action by reward; every motion gated."""
 
     def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None,
-                 workspace=False):
+                 workspace=False, amygdala=False, bg_gate=False):
         self.arm = ArmSim()
+        self._seed = seed
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
         self.learner = GrowingLearner()
         self.cort = Cortisol(tau=40.0)
@@ -56,16 +59,59 @@ class AutonomousArm:
         # opt-in Global Workspace: brain regions compete for one slot + broadcast the winner each tick.
         # ADDITIVE + read-only -- it selects no action and never touches the reflex/E-STOP (see step()).
         self.workspace = GlobalWorkspace(seed=seed) if workspace else None
+        # opt-in amygdala: a REAL learned threat detector (CS-US fear conditioning). Each reflex danger
+        # event pairs the current context with the US, so the amygdala learns which live contexts
+        # predict danger. ADDITIVE + CAUTION-ONLY -- a learned threat biases selection toward the safe
+        # action and feeds the workspace real salience; it selects no action and never gates motion,
+        # and the reflex/E-STOP still preempts it (see step()).
+        self.amyg = Amygdala(seed=seed) if amygdala else None
+        # opt-in basal-ganglia Go/NoGo gate: the action SELECTION stage. It disinhibits at most one of
+        # the SAME safe actions (k-WTA over their values), or -- with no value drive -- releases
+        # NOTHING, which falls back to the safe action. It feeds the same gated ArmSim.apply(); it
+        # cannot bypass the reflex/E-STOP or introduce any new motion (see _bg_select / step()).
+        self.bg = BasalGangliaGate(seed=seed) if bg_gate else None
 
-    def _select(self, unit):
+    def _select(self, unit, threat=0.0):
         qa = self.q[unit]
         if self.rng.random() < self.explore:
-            return self.rng.choice(ACTIONS)                     # exploration
-        bias = self.cort.caution_bias()                         # stressed -> favour the safe action
+            return self.rng.choice(ACTIONS)                     # exploration: cortical variability proposes
+        if self.bg is not None:
+            return self._bg_select(qa, threat)                  # BG Go/NoGo gate disinhibits the exploit choice
+        bias = self.cort.caution_bias() + threat                # stress + learned threat -> favour safe
         return max(ACTIONS, key=lambda a: qa[a] + (bias if a == SAFE_ACTION else 0.0))
+
+    def _bg_select(self, qa, threat=0.0):
+        """Basal-ganglia Go/NoGo selection over the 3 actions. The action values are the per-channel
+        cortical drive; dopamine is the winner's value confidence, DAMPED by stress + learned threat
+        (more caution -> less dopamine -> harder to release). The circuit disinhibits at most one
+        channel; if the tonic GPi is never overcome (no drive / low DA) it releases NOTHING, which
+        falls back to the safe action. Selection only ever picks among the SAME actions -- the gated
+        arm is untouched and the reflex/E-STOP (checked earlier in step) still preempts it."""
+        drive = [max(0.0, qa[a]) for a in ACTIONS]
+        caution = min(1.0, self.cort.caution_bias() + threat)
+        da = max(0.0, min(1.0, max(drive) * (1.0 - caution)))
+        res = self.bg.select(drive, da)
+        return SAFE_ACTION if res["winner"] is None else ACTIONS[res["winner"]]
 
     def greedy(self, unit):
         return max(ACTIONS, key=lambda a: self.q[unit][a])
+
+    def _context_pattern(self, visual, temperature, audio, distance):
+        """The multimodal context vector (the amygdala CS and the growing learner's percept)."""
+        return encode_multimodal(visual, temperature, audio, [distance] if distance is not None else None)
+
+    def _amygdala_for(self, pattern):
+        """The amygdala sized to the current substrate, or None when opt-out."""
+        if self.amyg is None:
+            return None
+        if len(pattern) != self.amyg.n:                         # keep the detector sized to the substrate
+            self.amyg = Amygdala(seed=self._seed, n=len(pattern))
+        return self.amyg
+
+    def _threat(self, pattern):
+        """The amygdala CeA threat in [0, 1] for this context (0.0 when the amygdala is opt-out)."""
+        am = self._amygdala_for(pattern)
+        return am.threat(pattern) if am is not None else 0.0
 
     def _workspace_broadcast(self, percept, threat_salience):
         """Additive Global-Workspace tick: brain regions (perception + a salience/threat detector)
@@ -106,17 +152,23 @@ class AutonomousArm:
         # 1. SAFETY FIRST: an object at the sensor trips the reflex -> gated EMERGENCY_STOP, no action
         if distance is not None and (not math.isfinite(distance) or distance < CONTACT):
             self.cort.step(1.0)                                 # danger -> stress up (sharpens future response)
+            if math.isfinite(distance):                         # real contact (not a NaN fail-closed):
+                pat = self._context_pattern(visual, temperature, audio, distance)
+                am = self._amygdala_for(pat)
+                if am is not None:
+                    am.pair(pat)                                # US present: bind this context to threat
             estop = self.arm.apply("EMERGENCY_STOP")            # ONLY path to motion -> gate holds
             return {"unit": None, "action": "EMERGENCY_STOP", "reflex": True,
                     "workspace": self._workspace_broadcast(None, 0.95),  # threat ignites (annotation only)
                     "state": estop}
         # 2. perceive -> grow a unit on a novel multimodal context
-        pattern = encode_multimodal(visual, temperature, audio, [distance] if distance is not None else None)
+        pattern = self._context_pattern(visual, temperature, audio, distance)
         unit, grew = self.learner.observe(pattern)
         if unit not in self.q:
             self.q[unit] = dict.fromkeys(ACTIONS, 0.0)          # new unit -> its own row to learn
+        threat = self._threat(pattern)                          # learned amygdala threat for this context (0 if opt-out)
         # 3. CHOOSE (learned, not a fixed map) + ACT through the gated arm
-        action = self._select(unit)
+        action = self._select(unit, threat=threat)              # amygdala threat / BG gate bias selection toward safety
         state = self.arm.apply(action)                          # gated: frozen after E-STOP, collision-checked
         # 4. reward -> RPE action-value update + cortisol
         if reward_fn is not None:
@@ -127,10 +179,12 @@ class AutonomousArm:
                 self.buffer.add(unit, action, r)
                 if not grew:                                # quiescent (familiar) tick -> replay past experience
                     self.buffer.replay(self.q, self.lr, batch=self.replay_batch)
-        # workspace: perception (the current unit) competes with a low background threat -> broadcast.
-        broadcast = self._workspace_broadcast(unit, 0.2)        # additive annotation; drives no motion
+        # workspace: perception (the current unit) competes with the amygdala's threat salience (the
+        # REAL learned threat when the amygdala is wired in, else a low background constant) -> broadcast.
+        salience = threat if self.amyg is not None else 0.2
+        broadcast = self._workspace_broadcast(unit, salience)   # additive annotation; drives no motion
         return {"unit": unit, "grew": grew, "action": action, "reflex": False,
-                "workspace": broadcast, "state": state}
+                "threat": threat, "workspace": broadcast, "state": state}
 
 
 def _ctx(v, tmp, au, d):
@@ -255,9 +309,67 @@ def main():
     assert rev["action"] == "EMERGENCY_STOP" and rev["reflex"], "danger must E-STOP even with replay on"
     assert replay_frozen, "replay must NOT move the E-STOP-frozen arm (safety gate holds with replay)"
     assert run_replay(11) == run_replay(11), "replay path must be deterministic"
+
+    # 9. AMYGDALA wired live: a REAL learned threat detector. Repeated danger in one context teaches
+    #    threat for THAT context; a never-dangerous context stays safe (discrimination). Caution-only.
+    amy = AutonomousArm(seed=0, amygdala=True)
+    danger_ctx = _ctx(0.2, 0.8, 0.3, danger_d)                 # this context co-occurs with danger
+    safe_ctx = _ctx(0.9, 0.1, 0.1, safe_d)                     # this one never does
+    for _ in range(12):
+        amy.step(**danger_ctx)                                 # each danger tick pairs the context with the US
+    threat_danger = amy._threat(amy._context_pattern(**danger_ctx))
+    threat_safe = amy._threat(amy._context_pattern(**safe_ctx))
+    amy_guard = AutonomousArm(seed=2, amygdala=True)           # the safety envelope must hold with it on
+    amy_ev = amy_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
+    amy_frozen0 = amy_guard.arm.state()["stopped"]
+    amy_guard.step(**safe_ctx)
+    amy_frozen1 = amy_guard.arm.state()["stopped"]
+
+    # 10. BASAL GANGLIA Go/NoGo gate wired live as the action gate: it releases the learned high-value
+    #     action, or -- with no value drive -- releases NOTHING -> the safe action (no spurious motion).
+    bg = AutonomousArm(seed=1, bg_gate=True)
+    last_bg = None
+    for _ in range(90):
+        last_bg = bg.step(**a, reward_fn=reward)               # reward GRIPPER_OPEN
+    bg_released = bg._bg_select(bg.q[last_bg["unit"]])
+    bg_null = AutonomousArm(seed=3, bg_gate=True)._bg_select(dict.fromkeys(ACTIONS, 0.0))
+    bg_guard = AutonomousArm(seed=2, bg_gate=True)             # the safety envelope must hold with it on
+    bg_ev = bg_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
+    bg_guard.step(**a)
+    bg_frozen = bg_guard.arm.state()["stopped"]
+
+    def run_wired(seed):                                       # both paths together must be deterministic
+        bot = AutonomousArm(seed=seed, amygdala=True, bg_gate=True)
+        return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
+
+    print(f"amygdala    : learned threat for the danger context {threat_danger:.2f} vs the safe "
+          f"context {threat_safe:.2f} (discriminated); E-STOP freeze holds with it on ({amy_frozen1})")
+    print(f"bg gate     : reward -> the gate releases {bg_released}; no value drive -> releases "
+          f"{bg_null} (no spurious motion); E-STOP freeze holds with it on ({bg_frozen})")
+    print("=" * 62)
+
+    # amygdala + BG gate are opt-in; a default arm is byte-for-byte the old behaviour.
+    assert AutonomousArm(seed=0).amyg is None and AutonomousArm(seed=0).bg is None, \
+        "the amygdala and the BG gate are opt-in (a default arm has neither)"
+    # amygdala: learns a REAL threat, discriminates, and never weakens the safety envelope.
+    assert threat_danger > 0.30, f"the amygdala must LEARN threat for the danger context ({threat_danger:.2f})"
+    assert threat_danger > threat_safe + 0.20, \
+        f"the amygdala must DISCRIMINATE danger from safe ({threat_danger:.2f} vs {threat_safe:.2f})"
+    assert amy_ev["action"] == "EMERGENCY_STOP" and amy_ev["reflex"], "danger must E-STOP with the amygdala on"
+    assert amy_frozen0 and amy_frozen1, "the E-STOP freeze must hold with the amygdala wired in (caution-only)"
+    # BG gate: selects the learned action, releases nothing without drive, safety envelope intact.
+    assert bg.greedy(last_bg["unit"]) == "GRIPPER_OPEN", "a BG-gated arm must still learn the rewarded action"
+    assert bg_released == "GRIPPER_OPEN", "the BG gate must release the learned high-value action"
+    assert bg_null == SAFE_ACTION, "no value drive -> the BG gate releases nothing -> the safe action (HOLD)"
+    assert bg_ev["action"] == "EMERGENCY_STOP" and bg_ev["reflex"], "danger must E-STOP with the BG gate on"
+    assert bg_frozen, "the E-STOP freeze must hold with the BG gate wired in"
+    assert run_wired(5) == run_wired(5), "the amygdala + BG-gate path must be deterministic"
+
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
           f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "
-          f"replay: decisive in {replay_ticks}<{live_ticks} live ticks, value-only, gate holds")
+          f"replay: decisive in {replay_ticks}<{live_ticks} live ticks, value-only, gate holds. "
+          f"amygdala learns threat ({threat_danger:.2f}>{threat_safe:.2f}) + BG gate releases {bg_released}, "
+          f"both caution-only (E-STOP freeze holds)")
 
 
 if __name__ == "__main__":
