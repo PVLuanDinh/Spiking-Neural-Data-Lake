@@ -134,3 +134,27 @@ PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.live_brain
 # the torch scale scaffold (prints a guidance banner without torch)
 python research/jepa_scaffold_torch.py
 ```
+
+## H-JEPA in the live brain (v3.14)
+
+The nonlinear H-JEPA can now drive the live executive's reasoning. Two pieces:
+
+- **`cerebellum/hjepa_serve.py` (`HJepaServe`)** -- a zero-dep pure-Python SERVER for a torch-trained
+  2-level H-JEPA exported as `snn_hjepa/1`. It replicates the torch forward exactly: `encode0` (deep
+  ReLU-MLP), `encode1` (mean-pool a K-window of L0 latents -> abstract latent), and residual/pure
+  predictors, with `predict(state, command)` = the abstract `predict1` so it drops into
+  `PrefrontalExecutive.plan()`. Forward-serve only (torch trains the depth; the core serves it). The
+  core serve == the torch forward, **max |diff| 2.50e-16** (verified on the RTX 5070).
+- **Live wiring (`AutonomousArm(hjepa_serve=...)`, opt-in)** -- each tick accumulates `encode0(pattern)`
+  into a rolling K-window; once full, the executive PLANS over the abstract `encode1(window)` latent
+  (rolling the L1 predictor) toward a reward-EMA abstract goal. The abstract latent summarises the recent
+  K-tick *situation*, so the goal tracks the slow regime rather than the instantaneous frame. Still a
+  gated top-down bias -- reflex E-STOP first, no actuator route, the 5 envelope files untouched.
+
+`research/hjepa_arm_torch.py` trains an arm-native H-JEPA (arm `[0,1]^64` observations + the 3 arm
+actions + a slow two-timescale regime) on the GPU and exports `snn_hjepa/1`. **GPU-verified: the abstract
+z1 decodes the slow regime far better than a flat single frame (acc 1.000 vs 0.820)** -- the temporal
+hierarchy genuinely helps vs instantaneous perception. **Honest limit:** z1 does *not* beat raw windowed
+averaging on this arm task (both ~1.0), because the arm regime is band-linear and trivial pooling already
+recovers it -- unlike the XOR world, there is no non-linear floor for the learned abstraction to exploit.
+So on the current arm task the hierarchy's value is "pool beats one frame," not "learned beats trivial."

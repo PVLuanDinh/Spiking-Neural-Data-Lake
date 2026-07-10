@@ -28,6 +28,7 @@ from snn_data_lake.amygdala.fear_conditioning import Amygdala
 from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.arm_sim import ArmSim
+from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
@@ -49,7 +50,7 @@ class AutonomousArm:
     def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None,
                  workspace=False, amygdala=False, bg_gate=False, interoception=False,
                  pfc=False, pfc_gain=0.5, lake_wm=False, lake_wm_path=None,
-                 jepa=False, jepa_horizon=4):
+                 jepa=False, jepa_horizon=4, hjepa_serve=None):
         self.arm = ArmSim()
         self._seed = seed
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
@@ -110,6 +111,14 @@ class AutonomousArm:
         self.jepa_horizon = max(1, min(4, int(jepa_horizon)))   # bounded rollout (the learned map can diverge)
         self._z_goal = None                                     # reward-EMA of latents = the latent goal to plan toward
         self._jepa_prev = None                                  # (prev pattern, prev action) for the online (z,a,z') update
+        # opt-in SERVED H-JEPA: a GPU-trained 2-level hierarchical JEPA (cerebellum/hjepa_serve.HJepaServe, FROZEN).
+        # The executive plans over the ABSTRACT (Level-1) latent: z0 = encode0(pattern) each tick fills a K-window,
+        # z1 = encode1(window) is the abstract situation, and plan() rolls the L1 predictor over it. Like the online
+        # jepa it ONLY biases the executive's goal (bounded by pfc_gain, gated) -- it drives no motion, adds no
+        # actuator route, and the reflex/E-STOP runs first. Served/frozen: no online training in the loop.
+        self.hjepa_serve = hjepa_serve
+        self._hj_window = []                                    # rolling K-window of Level-0 latents (feeds encode1)
+        self._z1_goal = None                                    # reward-EMA of the abstract Level-1 latent (plan goal)
 
     def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None):
         qa = self.q[unit]
@@ -173,6 +182,23 @@ class AutonomousArm:
         no motion and adds no actuator route."""
         if self.pfc is None:
             return [0.0] * len(ACTIONS)
+        # (highest priority) SERVED H-JEPA: accumulate the Level-0 latent window and, once it is full and an
+        # abstract goal has formed, the executive PLANS over the ABSTRACT (Level-1) latent (rolls the L1
+        # predictor). The abstract latent summarises the recent K-tick situation, so the goal tracks the slow
+        # regime rather than the instantaneous frame. Still just a gated top-down bias; drives no motion.
+        if self.hjepa_serve is not None and pattern is not None:
+            self._hj_window.append(self.hjepa_serve.encode0(pattern))
+            if len(self._hj_window) > self.hjepa_serve.K:
+                self._hj_window.pop(0)
+            if len(self._hj_window) == self.hjepa_serve.K and self._z1_goal is not None:
+                z1 = self.hjepa_serve.encode1(self._hj_window)
+                zg = self._z1_goal
+
+                def goal_value(z):
+                    return -sum(abs(z[i] - zg[i]) for i in range(len(zg)))
+                self.pfc.plan(z1, ACTIONS, self.hjepa_serve, goal_value, horizon=self.jepa_horizon)
+                return self.pfc.top_down_bias(strength=self.pfc_gain)
+            # window still filling / no abstract goal yet -> fall through to the reactive bootstrap below
         if self.jepa is not None and self._z_goal is not None and pattern is not None:
             z = self.jepa.encode(pattern)
             self.pfc.plan(z, ACTIONS, self.jepa, self.jepa.make_goal_value(self._z_goal),
@@ -278,6 +304,10 @@ class AutonomousArm:
                 zt = self.jepa.encode(pattern)
                 self._z_goal = zt if self._z_goal is None else \
                     [0.9 * g + 0.1 * z for g, z in zip(self._z_goal, zt)]
+            if self.hjepa_serve is not None and r > 0.0 and len(self._hj_window) == self.hjepa_serve.K:
+                z1t = self.hjepa_serve.encode1(self._hj_window)   # abstract latent at a rewarded tick -> the goal EMA
+                self._z1_goal = z1t if self._z1_goal is None else \
+                    [0.9 * g + 0.1 * z for g, z in zip(self._z1_goal, z1t)]
         # JEPA (opt-in): learn the latent world model ONLINE from the live (z_prev, a_prev, z_now) transition.
         # OFF the safety path -- after the gated action + lake write, drives no motion, adds no actuator route.
         if self.jepa is not None:
@@ -297,6 +327,31 @@ class AutonomousArm:
 
 def _ctx(v, tmp, au, d):
     return {"visual": [v] * 4, "temperature": [tmp], "audio": [au] * 4, "distance": d}
+
+
+def _tiny_hjepa(path, in_dim, k, l0, l1, actions, seed):
+    """Write a tiny valid snn_hjepa/1 file (hand-set single-layer MLPs) for the self-check: it exercises the
+    served-H-JEPA WIRING + safety deterministically. NOT a trained model (the real GPU-trained arm H-JEPA is
+    research/hjepa_arm_torch.py); the wiring/safety is what CI covers here."""
+    import json as _json
+    rng = random.Random(seed)
+    n = len(actions)
+
+    def _lin(o, i):
+        return [[rng.uniform(-0.3, 0.3) for _ in range(i)] for _ in range(o)]
+
+    def _enc(i, o):
+        return [[_lin(o, i), [0.0] * o]]                    # one Linear layer (in -> out); a valid minimal MLP
+    obj = {
+        "format": "snn_hjepa/1", "in_dim": in_dim, "K": k, "latent0": l0, "latent1": l1,
+        "fine_actions": list(actions), "coarse_actions": list(actions), "tau": 0.99,
+        "enc0": _enc(in_dim, l0), "enc1": _enc(l0, l1),
+        "enc0_target": _enc(in_dim, l0), "enc1_target": _enc(l0, l1),
+        "pred0": _enc(l0 + n, l0), "pred1": _enc(l1 + n, l1),
+        "predictors": {"pred0": "residual_mlp_unit", "pred1": "mlp_unit"}, "meta": {},
+    }
+    with open(path, "w", encoding="ascii") as f:
+        _json.dump(obj, f)
 
 
 def main():
@@ -611,6 +666,45 @@ def main():
     assert jp_ev["action"] == "EMERGENCY_STOP" and jp_ev["reflex"], "danger must E-STOP with JEPA on"
     assert jp_frozen0 and jp_frozen1, "the E-STOP freeze must hold with JEPA wired live (top-down preference only)"
     assert run_jp(5) == run_jp(5), "the JEPA path must be deterministic"
+
+    # 15. SERVED H-JEPA wired live: the executive plans over the ABSTRACT (Level-1) latent of a GPU-trained
+    #     2-level hierarchical JEPA (cerebellum/hjepa_serve). A hand-built tiny served model exercises the
+    #     WIRING + safety here (the real arm-trained model is research/hjepa_arm_torch.py, GPU); opt-in.
+    import os as _os
+    import tempfile as _tf
+    hj_path = _os.path.join(_tf.gettempdir(), "snn_hjepa_arm_test.json")
+    _tiny_hjepa(hj_path, 64, 4, 4, 3, ACTIONS, seed=0)
+    served = HJepaServe.load(hj_path)
+    _os.remove(hj_path)
+    hja = AutonomousArm(seed=1, pfc=True, hjepa_serve=served)
+    for _ in range(90):
+        hja.step(**a, reward_fn=reward)
+    hj_windowed = len(hja._hj_window) == served.K
+    hj_goal_formed = hja._z1_goal is not None
+    hj_goal = hja.pfc.goal
+    hj_guard = AutonomousArm(seed=2, pfc=True, hjepa_serve=served)     # the safety envelope must hold with it on
+    hj_ev = hj_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
+    hj_frozen0 = hj_guard.arm.state()["stopped"]
+    hj_guard.step(**a)
+    hj_frozen1 = hj_guard.arm.state()["stopped"]
+
+    def run_hj(seed):
+        bot = AutonomousArm(seed=seed, pfc=True, hjepa_serve=served)
+        return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
+
+    print(f"hjepa-serve : abstract (Level-1) H-JEPA planning -- K-window filled={hj_windowed}, abstract goal "
+          f"formed={hj_goal_formed}; executive goal {ACTIONS[hj_goal] if hj_goal is not None else None} set by "
+          f"abstract planning; E-STOP freeze holds with it on ({hj_frozen1})")
+    print("=" * 62)
+
+    assert AutonomousArm(seed=0).hjepa_serve is None, "the served H-JEPA is opt-in (a default arm has none)"
+    assert hj_windowed, "the Level-0 latent K-window must fill"
+    assert hj_goal_formed, "a reward-EMA abstract (Level-1) goal must form from the live stream"
+    assert hj_goal is not None, "the executive must hold a goal set by ABSTRACT H-JEPA planning"
+    # the safety envelope holds with the served H-JEPA driving abstract planning (top-down preference only, no motor route).
+    assert hj_ev["action"] == "EMERGENCY_STOP" and hj_ev["reflex"], "danger must E-STOP with the served H-JEPA on"
+    assert hj_frozen0 and hj_frozen1, "the E-STOP freeze must hold with abstract H-JEPA planning (top-down only)"
+    assert run_hj(5) == run_hj(5), "the served-H-JEPA path must be deterministic"
 
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
           f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "

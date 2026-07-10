@@ -3,6 +3,41 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.14] -- H-JEPA powers the live brain: a zero-dep serve path + abstract-latent reasoning (2026-07-10)
+
+Wire a GPU-trained hierarchical JEPA into the live executive. The core gains a zero-dep SERVER for a
+torch-trained 2-level H-JEPA, and the prefrontal executive can now plan over the ABSTRACT (Level-1)
+latent -- the recent K-tick situation -- instead of only the instantaneous frame. The 5 brainstem
+safety-envelope files are untouched; H-JEPA only biases the executive's goal (gated, reflex-first).
+
+### Added
+- `cerebellum/hjepa_serve.py` (CORE, zero-dep) -- `HJepaServe`: a pure-stdlib forward SERVER for a
+  torch-trained 2-level H-JEPA exported as `snn_hjepa/1`. Replicates the torch forward exactly --
+  `encode0` (deep ReLU-MLP, unit-normalized), `encode1` (mean-pool a K-window of L0 latents -> abstract
+  latent), residual `predict0` / pure-MLP `predict1`, with `predict(state, command)` = `predict1` so it
+  drops into `PrefrontalExecutive.plan()` over the abstract level. Trust-validating loader; forward-serve
+  only (the deep hierarchical model is torch-trained, served here with no torch). **Bridge verified on the
+  RTX 5070: the core serve == the torch H-JEPA forward, max |diff| 2.50e-16.**
+- `research/hjepa_arm_torch.py` (research, ruff-excluded, NOT in CI) -- an ARM-NATIVE 2-level H-JEPA
+  trainer: a two-timescale world with the arm's `[0,1]^64` banded observations + the 3 arm actions and a
+  slow exogenous regime (constant within a K=8 window, per-frame nuisance that cancels over the pool),
+  trained on the GPU, exported to `snn_hjepa/1` for the core server. **GPU-verified: the abstract z1
+  decodes the slow regime better than a flat single frame (acc 1.000 vs 0.820).** Honest secondary result:
+  z1 does NOT beat raw windowed averaging here (both ~1.0) -- the arm regime is band-linear, so trivial
+  pooling is a strong baseline (unlike the XOR world's non-linear floor). Reported as-is, not rigged.
+
+### Changed
+- `brainstem/autonomous_loop.py` (NOT a safety-envelope file) -- opt-in `hjepa_serve=<HJepaServe>`. When
+  set, each tick accumulates `encode0(pattern)` into a rolling K-window; once full, the executive PLANS
+  over the abstract `encode1(window)` latent (rolling the L1 predictor) toward a reward-EMA abstract goal
+  -> the same gated top-down bias. Served/frozen: no online training. SAFETY: reflex E-STOP runs first,
+  every command stays gated, no actuator route -- self-checked with the served H-JEPA on (a hand-built
+  tiny model exercises the wiring + safety in CI; the GPU-trained model is verified separately).
+- `cortex/live_brain.py` -- `LiveBrain(hjepa_serve=...)` forwards the served model to the arm.
+
+Gates green: 173/173 core self-checks, 205 pytest passed (88% cov), ruff clean; the 5 brainstem
+safety-envelope files untouched (git-diff verified). GPU verification on the RTX 5070 (torch 2.11.0+cu128).
+
 ## [v3.13.2] -- Verify the JEPA torch trainers on the actual RTX 5070 GPU (2026-07-10)
 
 Installed a cu128 (CUDA 12.8, Blackwell sm_120) torch build (`torch 2.11.0+cu128`) into `.venv-cu128`
