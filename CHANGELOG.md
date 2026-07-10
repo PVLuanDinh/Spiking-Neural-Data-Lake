@@ -3,6 +3,34 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.12] -- Scale JEPA: a deeper (hidden-layer) encoder + a real torch trainer for the RTX 5070 (2026-07-10)
+
+Scaling the v3.11 JEPA. The core JEPA gains a DEEPER encoder (an optional hidden layer, format `snn_jepa/2`),
+and the research torch scaffold becomes a real trainer that trains a deep JEPA on a GPU and exports it into
+the zero-dep core -- so the core SERVES a GPU-trained deep encoder with no torch. The 5 brainstem
+safety-envelope files are untouched, and the live-reactive path (v3.11) is byte-identical.
+
+### Added
+- `cerebellum/jepa_world_model.py` -- an optional **hidden-layer encoder** (a 2-layer MLP,
+  `z = unit(tanh(We @ tanh(W1@x + b1) + be))`), persisted as `snn_jepa/2` (the encoder as an ordered list
+  of `[W, b]` layers). A freshly-constructed model is always LINEAR (byte-identical to v3.11 -- every prior
+  self-check reproduces exactly); a deep encoder arrives only via `load_weights(snn_jepa/2)` (e.g. from the
+  torch tier) and is SERVED + FROZEN (only the predictor keeps adapting online). Un-riggable self-check: a
+  served 2-layer encoder makes **XOR linearly separable (4/4)** while the single-layer control -- SAME output
+  layer, no hidden pre-layer, so the hidden layer is the only difference -- **cannot (1/4)**; `snn_jepa/2`
+  round-trips; the loaded deep encoder stays frozen under `train_step`.
+
+### Changed
+- `research/jepa_scaffold_torch.py` -- rewritten from a thin scaffold into a real PyTorch trainer: a deeper
+  MLP-encoder latent JEPA (encoder + residual predictor + EMA target + VICReg), `resolve_device()`
+  (`NORD_GPU=1` -> cuda), AMP, checkpointing, a synthetic action-conditioned data stream, `export_jepa` ->
+  `snn_jepa/2`, and `verify_transfer` (loads the export into the zero-dep core and checks the served
+  `encode`/`predict` match the torch forward within 1e-4). Run it on the RTX 5070 with `pip install '.[gpu]'`.
+  **UNVERIFIED ON HARDWARE** (no GPU in CI); torch is imported lazily and the no-torch path exits cleanly.
+
+Gates green: 172/172 core self-checks, 204 pytest passed (88% coverage), ruff clean; the 5 brainstem
+safety-envelope files untouched (git-diff verified). The torch training run itself is unverified-on-hardware.
+
 ## [v3.11] -- JEPA: a latent-space world model that learns from the live brain (2026-07-10)
 
 A Joint-Embedding Predictive Architecture (JEPA -- LeCun; I-JEPA / V-JEPA) as a learning method for

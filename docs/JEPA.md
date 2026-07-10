@@ -58,14 +58,29 @@ actuator. The reflex E-STOP runs first and still preempts every tick, and every 
 through the gated `ArmSim`. None of the 5 brainstem safety-envelope files changed. All of this is
 asserted with the flag ON in `autonomous_loop.py` and `live_brain.py` self-checks.
 
-## The torch scale scaffold (research, unverified)
+## Scaling: a deeper encoder + the torch trainer (v3.12)
 
-`research/jepa_scaffold_torch.py` is a torch I-JEPA-style scaffold (real EMA target + VICReg,
-standard autograd) that **exports** a trained latent predictor into the core `snn_jepa/1` JSON format,
-so the zero-dep core serves torch-trained latents with no torch (the same core+torch export bridge as
-`trained_brain` / `snn_classifier`). It is **UNVERIFIED ON HARDWARE** (no GPU in CI), ruff-excluded,
-not in CI, and behind the `[gpu]` / `[train]` extra; without torch installed it prints a guidance
-message and exits cleanly.
+A single linear layer is a toy. To scale, the core gains an optional **hidden-layer encoder**
+(`z = unit(tanh(We @ tanh(W1@x + b1) + be))`), persisted as **`snn_jepa/2`** (the encoder as an ordered
+list of `[W, b]` layers). A freshly-built core model stays linear; a **deep** encoder arrives via
+`load_weights(snn_jepa/2)` and is **served + frozen** -- only the predictor keeps adapting online. The
+core self-check proves the hidden layer is load-bearing: a 2-layer encoder makes XOR separable (4/4)
+while the single-layer control (same output layer, no hidden pre-layer) cannot (1/4).
+
+`research/jepa_scaffold_torch.py` is the **scale tier** -- a real PyTorch trainer for the RTX 5070: a
+deeper MLP-encoder latent JEPA (encoder + residual predictor + EMA target + VICReg), device selection
+(`NORD_GPU=1` -> cuda), AMP, checkpointing, and `export_jepa` -> `snn_jepa/2`, plus `verify_transfer`
+which loads the export into the zero-dep core and confirms the served `encode`/`predict` match the torch
+forward. It is **UNVERIFIED ON HARDWARE** (no GPU in CI), ruff-excluded, not in CI, behind the `[gpu]` /
+`[train]` extra; without torch it prints a guidance message and exits cleanly. Train + serve:
+
+```bash
+pip install ".[gpu]"
+NORD_GPU=1 python research/jepa_scaffold_torch.py    # trains on the 5070, exports snn_jepa/2, verify_transfer
+# then in the zero-dep core: JepaWorldModel(...).load_weights("<export>.json") serves the deep encoder, no torch
+```
+
+The remaining depth axes (H-JEPA hierarchy, a latent-variable z for multimodality) are the next steps.
 
 ## Run it
 
