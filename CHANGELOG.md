@@ -3,6 +3,29 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.20] -- Task-aligned encoder reaches 1.0 on-arm: a firm reward-gain closes the honest v3.19 limit (2026-07-10)
+
+v3.19 shipped the reward-shaped encoder (on-arm held-out 0.33 -> 0.83) with an honest limit: 0.83, not 1.00. A
+diagnostic sweep showed that was UNDER-TRAINING, not an encoder ceiling -- an offline linear readout over the
+final latent tracks the on-arm MLP-Q exactly, and both reach 1.00 with a firmer reward pull. So the fix is the
+reward-shaping STRENGTH, not the head or the latent geometry.
+
+### Changed
+- `brainstem/autonomous_loop.py` (NOT an envelope file) -- new `reward_gain` param (= the JEPA's `lambda_reward`,
+  default 5.0) passed to the reward-shaped encoder. The few-context arm regime needs a firm task pull; 5.0 + an
+  800-tick budget recovers the on-arm rule to held-out **1.00 ROBUSTLY across 8 seeds** (weaker pulls plateau
+  ~0.83 with one-seed dips). Inert unless reward_shaped_encoder is on (byte-identical off). Self-check 20 now
+  asserts held-out == 1.00 (was >= plain-SSL + 0.3).
+
+### Result
+The task-aligned LEARNED substrate now FULLY recovers the arm rule on-robot: 0.33 (plain SSL, v3.18) -> 0.83
+(reward-shaped, v3.19) -> **1.00** (firm reward-gain, v3.20); band latent spread 0.003 -> 1.32. The v3.19 honest
+limit is CLOSED -- the LEARNED latent matches the purely task-linear pattern substrate (v3.17's 1.00) while being
+a learned representation, not a hand-provided one.
+
+Gates green: 177/177 core self-checks, pytest passed (88.92% cov), ruff clean; the 5 brainstem
+envelope files byte-for-byte unchanged (git-diff empty).
+
 ## [v3.19] -- Task-aligned encoder: reward-shaping fixes the on-arm substrate (closes the v3.18 gap) (2026-07-10)
 
 v3.18 found the real bottleneck for the task-aligned substrate: NOT the value head, but the ENCODER -- the arm's

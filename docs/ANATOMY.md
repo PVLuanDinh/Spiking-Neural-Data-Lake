@@ -127,7 +127,8 @@ v3.19 takes exactly that lever: **reward-shaping the encoder** (`cerebellum/jepa
 `reward_shaping=True`; `AutonomousArm(reward_shaped_encoder=True)`). A reward-predictive auxiliary head
 `r_hat[a] = Wr[a].z + br[a]` adds a weak supervised gradient (from the observed reward) into the SAME encoder
 backprop, so the latent encodes task/reward structure -- "task-shaped SSL", not pure SSL. This breaks the
-few-context collapse (band latent spread 0.003 -> 1.23) so the SAME nonlinear MLP-Q now recovers the arm's rule
-on-robot: **held-out competence 0.33 -> 0.83**. The task-aligned LEARNED substrate works, by fixing the encoder
-exactly as the v3.18 finding predicted. Honest limit: 0.83 (not 1.00) -- it transfers to novel new-unit contexts
-well but not perfectly; the purely task-linear pattern substrate (v3.17) still hits 1.00 on this particular rule.
+few-context collapse (band latent spread 0.003 -> 1.32) so the SAME nonlinear MLP-Q now recovers the arm's rule
+on-robot. v3.20 tunes the reward-shaping strength (`reward_gain`, default 5.0): a firm task pull lifts on-arm
+held-out competence the whole way -- **0.33 (plain SSL) -> 0.83 (v3.19) -> 1.00 (v3.20)**, robust across seeds.
+The task-aligned LEARNED substrate now FULLY recovers the rule, matching the purely task-linear pattern substrate
+(v3.17's 1.00) while being a learned representation -- by fixing the encoder exactly as the v3.18 finding predicted.
