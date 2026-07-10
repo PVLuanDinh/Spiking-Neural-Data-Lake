@@ -172,6 +172,10 @@ EDGES = [
     # --- interoceptive arousal (v3.6): the medullary visceral state ascends (NTS -> LC) to drive
     #     arousal/caution, wired live into autonomous_loop as a caution-only bias (never a motor route) ---
     _e("nts_rvlm", "lc", "NTS -> locus coeruleus (interoceptive arousal drive)", "exc", "relay"),
+    # --- prefrontal executive (v3.7): the "centre of thoughts" holds a goal in working memory and
+    #     biases motor selection top-down toward it; wired live into autonomous_loop as a caution-safe
+    #     preference that reaches the arm only through the gated final common path (never a bypass) ---
+    _e("ctx_pfc", "ctx_motor", "prefrontal top-down bias (goal -> motor selection)", "exc", "descending"),
 ]
 
 # canonical loops as CLOSED node cycles (first repeated at the end)

@@ -27,6 +27,7 @@ REGIONS = {
         "snn_classifier", "trained_brain", "learned_matcher", "tempotron", "paradigm_b_matcher",
         "paradigm_b_engine", "gesture_recognition",
         "language_brain", "nl_interface", "brain_reasoning", "spiking_lm_serve", "vsa_reasoning",
+        "prefrontal_executive", "live_brain",
     ],
     "hippocampus": [
         "hippocampus", "grid_cells", "htm_sequence_memory", "frequency_memory",

@@ -10,7 +10,7 @@ not its cell-level microcircuitry or phenomenology.
 
 | Canonical structure | Status | In the project |
 |---|---|---|
-| Cerebral cortex | present (function) | `cortex/` — encoders, 5 neuron models, microcircuit dynamics, readouts, language |
+| Cerebral cortex | present (function) | `cortex/` — encoders, 5 neuron models, microcircuit, readouts, language, reasoning (`brain_reasoning`, `vsa_reasoning`) + `prefrontal_executive` (working-memory goal executive) + `live_brain` (the whole brain, running) |
 | Hippocampal formation | present | `hippocampus/` — DG separation → CA3 completion, grid cells, replay, sleep |
 | Cerebellum | present | `cerebellum/` — forward model, Kalman, spiking PID, timing, planner |
 | Basal ganglia | present | `basal_ganglia/` — RPE learning + evidence decision + Go/NoGo `action_gating` |
@@ -48,18 +48,26 @@ homeostats turn the body's `homeostatic_load` into a bounded caution (`medulla/i
 via the NTS→LC ascending edge) — all **caution-only**, and the reflex/E-STOP still preempts every
 motor command.
 
+The **prefrontal executive** (`cortex/prefrontal_executive`) sits at the centre: it deliberates over
+the action-values (reusing the drift-diffusion race), holds a **goal** in working memory, and biases
+selection top-down toward it (`ctx_pfc→ctx_motor`), so the arm is **goal-directed**, not merely
+reactive — a top-down *preference* that still yields to caution and the reflex/E-STOP.
+`cortex/live_brain` runs the whole stack together as one self-driving loop: the brain is **live**,
+centred on reasoning, acting only through the gate.
+
 ## Roadmap (next honest primitives, ranked)
 
-The Allen **top-level** structural ontology is complete (regions *and* connectome) and the medullary /
-hypothalamic homeostats are now wired **live** into the loop as caution-only arousal. The next honest
-primitives move from breadth to depth:
+The Allen top-level ontology is complete, the medullary/hypothalamic homeostats are wired live as
+caution-only arousal, and the **prefrontal executive** now runs the whole brain **live** as a
+goal-directed loop (`cortex/live_brain`). The next honest primitives deepen the reasoning centre:
 
-1. **Deep sub-nuclei** — the Allen ontology goes below the top level (hypothalamic nuclei, amygdalar
+1. **Deeper deliberation** — give the executive multi-step / model-based reasoning (planning or
+   lookahead over the cerebellar forward model) rather than single-shot evidence commitment, and a
+   richer working memory (multiple simultaneous goals / sub-goals).
+2. **Deep sub-nuclei** — the Allen ontology goes below the top level (hypothalamic nuclei, amygdalar
    subnuclei, thalamic relay/association nuclei). Add the load-bearing ones for existing loops.
-2. **Spinal cord as its own region** — split the ventral-horn CPG / stretch-reflex out of `brainstem/`
+3. **Spinal cord as its own region** — split the ventral-horn CPG / stretch-reflex out of `brainstem/`
    into a distinct caudal region, completing the neuraxis below the medulla.
-3. **SC deep motor wired live** — let the collicular gaze command participate in the loop through the
-   gated brainstem path (a second gated effector channel, never a bypass), the way interoception now does.
 
 Every addition stays pure-stdlib, offline-deterministic, self-checked with a fair control, lives in
 an anatomical region subpackage, and touches none of the 5 safety-envelope files.

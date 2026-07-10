@@ -29,6 +29,7 @@ from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.arm_sim import ArmSim
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
+from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
@@ -44,7 +45,8 @@ class AutonomousArm:
     """Grows units from multimodal context + learns context->action by reward; every motion gated."""
 
     def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None,
-                 workspace=False, amygdala=False, bg_gate=False, interoception=False):
+                 workspace=False, amygdala=False, bg_gate=False, interoception=False,
+                 pfc=False, pfc_gain=0.5):
         self.arm = ArmSim()
         self._seed = seed
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
@@ -77,24 +79,33 @@ class AutonomousArm:
         # BG gate's dopamine), exactly like the amygdala threat; it selects no action, gates no motion,
         # introduces no new actuator route, and the reflex/E-STOP still preempts it (see step()).
         self.intero = InteroceptiveArousal(seed=seed) if interoception else None
+        # opt-in prefrontal executive: the "centre of thoughts" -- it deliberates over the current
+        # action-values (evidence), holds a GOAL in working memory, and emits a TOP-DOWN bias toward it.
+        # ADDITIVE + top-down PREFERENCE ONLY -- it raises the goal action's score/drive so behaviour is
+        # goal-directed (and persists across ticks), but it selects no action, gates no motion, adds no
+        # actuator route, and caution (threat/interoceptive/stress) + the reflex/E-STOP still preempt it.
+        self.pfc = PrefrontalExecutive(len(ACTIONS), seed=seed) if pfc else None
+        self.pfc_gain = pfc_gain
 
-    def _select(self, unit, threat=0.0, intero=0.0):
+    def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None):
         qa = self.q[unit]
         if self.rng.random() < self.explore:
             return self.rng.choice(ACTIONS)                     # exploration: cortical variability proposes
         if self.bg is not None:
-            return self._bg_select(qa, threat, intero)          # BG Go/NoGo gate disinhibits the exploit choice
+            return self._bg_select(qa, threat, intero, pfc_bias)    # BG Go/NoGo gate disinhibits the exploit choice
         bias = self.cort.caution_bias() + threat + intero       # stress + learned threat + interoceptive load -> favour safe
-        return max(ACTIONS, key=lambda a: qa[a] + (bias if a == SAFE_ACTION else 0.0))
+        td = pfc_bias or [0.0] * len(ACTIONS)                   # prefrontal top-down preference per action
+        return max(ACTIONS, key=lambda a: qa[a] + (bias if a == SAFE_ACTION else 0.0) + td[ACTIONS.index(a)])
 
-    def _bg_select(self, qa, threat=0.0, intero=0.0):
+    def _bg_select(self, qa, threat=0.0, intero=0.0, pfc_bias=None):
         """Basal-ganglia Go/NoGo selection over the 3 actions. The action values are the per-channel
         cortical drive; dopamine is the winner's value confidence, DAMPED by stress + learned threat +
         interoceptive load (more caution -> less dopamine -> harder to release). The circuit disinhibits at most one
         channel; if the tonic GPi is never overcome (no drive / low DA) it releases NOTHING, which
         falls back to the safe action. Selection only ever picks among the SAME actions -- the gated
         arm is untouched and the reflex/E-STOP (checked earlier in step) still preempts it."""
-        drive = [max(0.0, qa[a]) for a in ACTIONS]
+        td = pfc_bias or [0.0] * len(ACTIONS)                   # prefrontal top-down preference raises the goal action's drive
+        drive = [max(0.0, qa[a]) + td[i] for i, a in enumerate(ACTIONS)]
         caution = min(1.0, self.cort.caution_bias() + threat + intero)
         da = max(0.0, min(1.0, max(drive) * (1.0 - caution)))
         res = self.bg.select(drive, da)
@@ -125,6 +136,16 @@ class AutonomousArm:
         The medullary/hypothalamic homeostats map the body's load to a bounded caution that biases
         selection toward the safe action; it selects no action and gates no motion."""
         return self.intero.sense(load)["caution"] if self.intero is not None else 0.0
+
+    def _pfc_bias(self, unit):
+        """The prefrontal top-down bias over ACTIONS for this unit (all-zeros when opt-out). The
+        executive deliberates over the current action-values, holds a goal in working memory, and
+        biases selection toward it -- a top-down PREFERENCE; it selects no action and gates no motion."""
+        if self.pfc is None:
+            return [0.0] * len(ACTIONS)
+        evidence = [max(0.0, self.q[unit][a]) for a in ACTIONS]
+        self.pfc.update(evidence)                               # gated deliberation -> a working-memory goal
+        return self.pfc.top_down_bias(strength=self.pfc_gain)
 
     def _workspace_broadcast(self, percept, threat_salience):
         """Additive Global-Workspace tick: brain regions (perception + a salience/threat detector)
@@ -182,8 +203,9 @@ class AutonomousArm:
             self.q[unit] = dict.fromkeys(ACTIONS, 0.0)          # new unit -> its own row to learn
         threat = self._threat(pattern)                          # learned amygdala threat for this context (0 if opt-out)
         intero = self._interocept(homeostatic_load)             # interoceptive caution from homeostatic load (0 if opt-out)
+        pfc_bias = self._pfc_bias(unit)                         # prefrontal top-down goal preference (zeros if opt-out)
         # 3. CHOOSE (learned, not a fixed map) + ACT through the gated arm
-        action = self._select(unit, threat=threat, intero=intero)   # amygdala threat / interoceptive load / BG gate bias toward safety
+        action = self._select(unit, threat=threat, intero=intero, pfc_bias=pfc_bias)   # threat/interoceptive caution + PFC goal bias
         state = self.arm.apply(action)                          # gated: frozen after E-STOP, collision-checked
         # 4. reward -> RPE action-value update + cortisol
         if reward_fn is not None:
@@ -199,7 +221,8 @@ class AutonomousArm:
         salience = threat if self.amyg is not None else 0.2
         broadcast = self._workspace_broadcast(unit, salience)   # additive annotation; drives no motion
         return {"unit": unit, "grew": grew, "action": action, "reflex": False,
-                "threat": threat, "intero": intero, "workspace": broadcast, "state": state}
+                "threat": threat, "intero": intero, "goal": (self.pfc.goal if self.pfc is not None else None),
+                "workspace": broadcast, "state": state}
 
 
 def _ctx(v, tmp, au, d):
@@ -414,6 +437,40 @@ def main():
     assert io_ev["action"] == "EMERGENCY_STOP" and io_ev["reflex"], "danger must E-STOP with interoception on"
     assert io_frozen0 and io_frozen1, "the E-STOP freeze must hold with interoception wired in (caution-only)"
     assert run_io(5) == run_io(5), "the interoception path must be deterministic"
+
+    # 12. PREFRONTAL EXECUTIVE wired live: it deliberates over the action-values, commits a GOAL to
+    #     working memory, and top-down-biases selection toward it -- goal-directed, caution-safe.
+    pf = AutonomousArm(seed=1, pfc=True)
+    for _ in range(90):
+        pf.step(**a, reward_fn=reward)                          # reward GRIPPER_OPEN
+    pfc_goal = pf.pfc.goal                                      # the executive's held working-memory goal
+    pfc_bias = pf.pfc.top_down_bias()
+    goal_is_rewarded = pfc_goal == ACTIONS.index("GRIPPER_OPEN")
+    held = all(pf.pfc.maintain() == pfc_goal for _ in range(5))   # WM holds the goal across an input-free delay
+    pf_guard = AutonomousArm(seed=2, pfc=True)                  # the safety envelope must hold with it on
+    pf_ev = pf_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
+    pf_frozen0 = pf_guard.arm.state()["stopped"]
+    pf_guard.step(**a)                                          # an action after the E-STOP
+    pf_frozen1 = pf_guard.arm.state()["stopped"]
+
+    def run_pf(seed):
+        bot = AutonomousArm(seed=seed, pfc=True)
+        return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
+
+    print(f"prefrontal  : deliberates over values -> working-memory goal {ACTIONS[pfc_goal]} "
+          f"(rewarded={goal_is_rewarded}, held across delay={held}); E-STOP freeze holds with it on ({pf_frozen1})")
+    print("=" * 62)
+
+    # the prefrontal executive is opt-in; a default arm has none (byte-for-byte the old behaviour).
+    assert AutonomousArm(seed=0).pfc is None, "the prefrontal executive is opt-in (a default arm has none)"
+    # it commits the high-value (rewarded) action as its goal and holds it in working memory.
+    assert goal_is_rewarded, f"the executive must commit the rewarded action as its goal ({ACTIONS[pfc_goal]})"
+    assert pfc_bias[pfc_goal] == max(pfc_bias) and max(pfc_bias) > 0.0, "the top-down bias must favour the held goal"
+    assert held, "working memory must hold the goal across an input-free delay (persistent activity)"
+    # the safety envelope holds with the executive wired in (top-down preference only, never a motor route).
+    assert pf_ev["action"] == "EMERGENCY_STOP" and pf_ev["reflex"], "danger must E-STOP with the prefrontal executive on"
+    assert pf_frozen0 and pf_frozen1, "the E-STOP freeze must hold with the executive wired in (top-down preference only)"
+    assert run_pf(5) == run_pf(5), "the prefrontal path must be deterministic"
 
     print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
           f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "
