@@ -269,6 +269,7 @@ class TwoTimescaleWorld:
 
     def _apply_coarse(self, b0, b1, a_idx):
         # FLIP0 -> flip b0; FLIP1 -> flip b1; KEEP -> unchanged.
+        import torch
         nb0 = torch.where(a_idx == 0, 1.0 - b0, b0)
         nb1 = torch.where(a_idx == 1, 1.0 - b1, b1)
         return nb0, nb1
@@ -529,7 +530,7 @@ def main():
 
     model = build_hjepa().to(device)
     opt = torch.optim.Adam(model.parameters(), lr=3e-3)
-    scaler = torch.cuda.amp.GradScaler(enabled=is_cuda)                  # # VERIFY(torch): AMP (no-op on cpu)
+    scaler = torch.amp.GradScaler("cuda", enabled=is_cuda)               # # VERIFY(torch): AMP (no-op on cpu)
     world = TwoTimescaleWorld(gen, device)
 
     last = {}

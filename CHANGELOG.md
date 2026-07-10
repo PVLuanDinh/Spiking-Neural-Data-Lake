@@ -3,6 +3,32 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.13.1] -- Verify the JEPA torch trainers on real torch: two crash fixes + the claims hold (2026-07-10)
+
+Ran the v3.12 / v3.13 torch trainers on real torch (CPU build; the RTX 5070 has no CUDA/cu128 torch
+installed, so the GPU kernels are still unexercised -- but the trainers' CLAIMS are device-agnostic and
+now verified). Both trainers crashed on first real-torch execution (they had only been run on the
+no-torch guard path); fixed, and the results confirm the design.
+
+### Fixed
+- `research/jepa_scaffold_torch.py` -- a torch `nn.Module` subclass defined a `_apply()` method that
+  shadowed `nn.Module._apply` (torch's internal, called by `.to(device)`), crashing model construction.
+  Renamed to `_run_layers`. Also modernized the deprecated `torch.cuda.amp.GradScaler(...)` ->
+  `torch.amp.GradScaler("cuda", ...)` (the old form errors on newer cu128 torch).
+- `research/hjepa_torch.py` -- a world method used `torch` without a lazy `import torch` in scope
+  (NameError). Added it. Same `GradScaler` modernization.
+
+### Verified (on CPU torch 2.12.1)
+- v3.12 scale: the deeper MLP encoder trains and the **export -> core bridge is bit-identical** --
+  the zero-dep core serves the torch-trained `snn_jepa/2` deep encoder with max |diff| 2.22e-16 over 5 probes.
+- v3.13 H-JEPA: **both claims HOLD** -- (a) the learned nonlinear L1 abstraction decodes the XOR regime at
+  MSE 0.0000 while a flat linear readout (0.258) and raw windowed averaging (0.250) sit at the provable
+  0.25 XOR floor; (b) L1 coarse-roll (0.0215) beats L0 fine-roll (0.4375) over the long horizon. The
+  nonlinear hierarchy genuinely beats flat where the linear one (v3.13) could not.
+
+The no-torch guidance paths still exit 0. GPU execution on the 5070 needs a cu128 (Blackwell sm_120)
+torch build; only CPU torch is installed here.
+
 ## [v3.13] -- H-JEPA: an honest negative for the linear hierarchy + a nonlinear torch path (2026-07-10)
 
 Pursuing a hierarchical JEPA (LeCun's H-JEPA: stack JEPA levels at increasing abstraction + coarser

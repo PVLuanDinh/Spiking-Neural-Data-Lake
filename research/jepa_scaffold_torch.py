@@ -106,7 +106,7 @@ def build_model(in_dim=IN_DIM, latent_dim=LATENT_DIM, hidden=DEFAULT_HIDDEN,
             self.tau = float(tau)
 
         @staticmethod
-        def _apply(layers, x):
+        def _run_layers(layers, x):
             # z = unit(tanh(W_last @ tanh(... tanh(W1 @ x + b1) ...) + b_last)); tanh EVERY layer,
             # then L2-normalize the FINAL latent onto the unit sphere (matches the core geometry).
             h = x
@@ -115,12 +115,12 @@ def build_model(in_dim=IN_DIM, latent_dim=LATENT_DIM, hidden=DEFAULT_HIDDEN,
             return F.normalize(h, dim=-1)                                   # unit(.) == core _mathutils.unit
 
         def encode(self, x):
-            return self._apply(self.enc, x)
+            return self._run_layers(self.enc, x)
 
         def encode_target(self, x):
             # stop-gradient target branch (sg): no autograd through the EMA encoder.
             with torch.no_grad():
-                return self._apply(self.tgt, x)
+                return self._run_layers(self.tgt, x)
 
         def predict(self, z, a_onehot):
             # residual predictor -- predicts the CHANGE and adds it back to z.
@@ -402,7 +402,7 @@ def main():
 
     model = build_model().to(device)
     opt = torch.optim.Adam(model.parameters(), lr=3e-3)
-    scaler = torch.cuda.amp.GradScaler(enabled=is_cuda)  # # VERIFY(torch): AMP optional (no-op on cpu)
+    scaler = torch.amp.GradScaler("cuda", enabled=is_cuda)  # # VERIFY(torch): AMP optional (no-op on cpu)
     stream = SyntheticStream(gen, device)
 
     last = {}

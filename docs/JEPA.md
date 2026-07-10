@@ -71,7 +71,8 @@ while the single-layer control (same output layer, no hidden pre-layer) cannot (
 deeper MLP-encoder latent JEPA (encoder + residual predictor + EMA target + VICReg), device selection
 (`NORD_GPU=1` -> cuda), AMP, checkpointing, and `export_jepa` -> `snn_jepa/2`, plus `verify_transfer`
 which loads the export into the zero-dep core and confirms the served `encode`/`predict` match the torch
-forward. It is **UNVERIFIED ON HARDWARE** (no GPU in CI), ruff-excluded, not in CI, behind the `[gpu]` /
+forward. Verified on real torch (CPU, v3.13.1): the deep encoder trains and the **export -> core bridge is
+bit-identical** (max |diff| 2.22e-16 over 5 probes). It is ruff-excluded, not in CI, behind the `[gpu]` /
 `[train]` extra; without torch it prints a guidance message and exits cleanly. Train + serve:
 
 ```bash
@@ -102,13 +103,20 @@ MLP coarse predictor** (bounded by normalization, not clamped to a contraction),
 abstraction**: the slow regime is `XOR(b0, b1)` of two factors rendered in disjoint bands, so a flat
 linear readout and raw windowed averaging are *provably floored* at MSE 0.25 while a nonlinear
 hierarchical encoder has the capacity to fold XOR into a linearly-decodable latent. It measures the two
-claims the linear version failed (`[GPU-VERIFY]` lines) and is honest that whether the *self-supervised*
-objective actually makes the abstraction linearly decodable is for the RTX 5070 run to confirm.
+claims the linear version failed (`[GPU-VERIFY]` lines).
+
+**Verified on real torch (CPU, v3.13.1): both claims HOLD.** (a) the learned nonlinear L1 abstraction
+decodes the XOR regime at MSE 0.0000 while a flat linear readout (0.258) and raw windowed averaging
+(0.250) sit at the provable 0.25 XOR floor; (b) L1 coarse-roll (0.0215) beats L0 fine-roll (0.4375). The
+nonlinear hierarchy genuinely beats flat where the linear version could not.
 
 ```bash
 pip install ".[gpu]"
 NORD_GPU=1 python research/hjepa_torch.py   # trains the nonlinear H-JEPA, prints [GPU-VERIFY] hierarchy-vs-flat
 ```
+
+The claims are device-agnostic and were confirmed on a CPU torch build; the CUDA/GPU execution path on
+the RTX 5070 needs a cu128 (Blackwell sm_120) torch install (only CPU torch is present here).
 
 **AirLLM does not apply here.** AirLLM is disk-streaming *inference* for a transformer too big for
 VRAM; it has no training path and would only slow a compute-bound H-JEPA that fits the 5070 many times
