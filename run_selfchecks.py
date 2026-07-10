@@ -38,7 +38,7 @@ CORE = [
     "cortex.snn_classifier", "cortex.trained_brain", "cortex.learned_matcher", "cortex.tempotron", "cortex.paradigm_b_matcher",
     "cortex.paradigm_b_engine", "cortex.gesture_recognition",
     "cortex.language_brain", "cortex.nl_interface", "cortex.brain_reasoning", "cortex.spiking_lm_serve", "cortex.vsa_reasoning",
-    "cortex.prefrontal_executive", "cortex.live_brain",
+    "cortex.prefrontal_executive", "cortex.live_brain", "cortex.interaction_learning",
     # hippocampus — memory formation, spatial coding, replay
     "hippocampus.hippocampus", "hippocampus.grid_cells", "hippocampus.htm_sequence_memory", "hippocampus.frequency_memory",
     "hippocampus.experience_replay", "hippocampus.sleep_replay", "hippocampus.ring_attractor", "hippocampus.growing_learner",

@@ -132,3 +132,12 @@ on-robot. v3.20 tunes the reward-shaping strength (`reward_gain`, default 5.0): 
 held-out competence the whole way -- **0.33 (plain SSL) -> 0.83 (v3.19) -> 1.00 (v3.20)**, robust across seeds.
 The task-aligned LEARNED substrate now FULLY recovers the rule, matching the purely task-linear pattern substrate
 (v3.17's 1.00) while being a learned representation -- by fixing the encoder exactly as the v3.18 finding predicted.
+
+v3.21 adds **spiking interaction learning** (`cortex/interaction_learning.py`, `SpikingInteractionLearner`), and
+corrects course after a spiking-purity audit (`docs/SPIKING_AUDIT.md`): the v3.11-v3.20 learning tier above is
+**rate-level** (linear / MLP / EMA over the lake's `[0,1]^64` pattern), a drift from the project's spiking purpose.
+This module improves the live brain **by being talked to**, the spiking way -- rank-order spike encoding + reward-
+modulated spike-timing plasticity (R-STDP), reusing the real spiking primitives, not a new ANN. Opt-in
+`LiveBrain(interaction_learning=True).teach(text, intent)` / `.route(text)`: talking to the brain lifts its spiking
+intent routing from chance to 1.00, proven from spike timing (a shuffled-teaching control stays at chance), and it
+adds no actuator route (arm commands still go through the NL firewall + gated arm; the reflex E-STOP still preempts).

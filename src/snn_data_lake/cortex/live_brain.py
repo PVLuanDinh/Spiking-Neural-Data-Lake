@@ -17,8 +17,12 @@ trips the reflex E-STOP before any action, and every motor command flows through
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.cortex.live_brain
 """
 from snn_data_lake.brainstem.autonomous_loop import ACTIONS, AutonomousArm
+from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner, text_features
 from snn_data_lake.cortex.nl_interface import NLInterface
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+
+# the brain's conversational intent families -- the labels its spiking interaction learner routes to.
+_IXN_INTENTS = ("GREET", "GOAL", "MEMORY", "ATTENTION", "SAFETY", "CONSCIOUS", "ARM")
 
 
 class LiveBrain:
@@ -28,7 +32,7 @@ class LiveBrain:
     and no new path to the actuator; it just runs every region together as one loop."""
 
     def __init__(self, seed=0, pfc_gain=0.5, lake_wm=True, jepa=False, jepa_horizon=4, hjepa_serve=None,
-                 curiosity=False, curiosity_gain=0.5):
+                 curiosity=False, curiosity_gain=0.5, interaction_learning=False):
         self.arm = AutonomousArm(seed=seed, workspace=True, amygdala=True, bg_gate=True,
                                  interoception=True, pfc=True, pfc_gain=pfc_gain, lake_wm=lake_wm,
                                  jepa=jepa, jepa_horizon=jepa_horizon, hjepa_serve=hjepa_serve,
@@ -36,6 +40,13 @@ class LiveBrain:
         self._nl = NLInterface()                             # the NL safety firewall for chat arm commands
         self._seed = seed
         self._planner = None                                 # lazy deliberative planner (lookahead over a fwd model)
+        # opt-in SPIKING interaction learning: a reward-modulated spike-timing (R-STDP) intent router the brain
+        # IMPROVES by being TALKED TO -- spike-encoded text + spike-timing plasticity, NOT a rate-level ANN. It
+        # recognises which conversational INTENT a line of text carries; it is taught by interaction (teach()).
+        # SAFETY: intent recognition ONLY -- it adds NO actuator route; arm COMMANDS still flow through the NL
+        # firewall + the gated arm in converse(). Off by default -> the brain is byte-identical.
+        self._ixn = (SpikingInteractionLearner(list(_IXN_INTENTS), n_in=24, seed=seed)
+                     if interaction_learning else None)
 
     def alive(self):
         """True only when the full integrative stack is wired in (every region present)."""
@@ -158,6 +169,24 @@ class LiveBrain:
                 "command (e.g. 'close the gripper'), or say whether I am conscious. I am a functional model, "
                 "not a general chatbot.")
 
+    def teach(self, text, intent):
+        """IMPROVE the brain by TALKING to it: spike-encode `text` (rank-order latency code) and teach the
+        spiking interaction learner -- via reward-modulated spike-timing plasticity (R-STDP), NOT a gradient
+        -- that this text carries `intent` (one of _IXN_INTENTS). Repeated exchanges sharpen the mapping, so
+        the brain gets better at recognising what it is being told. Returns the learner's pre-update answer.
+        Requires interaction_learning=True. SAFETY: this learns INTENT RECOGNITION only; it drives no motion
+        and adds no actuator route -- arm COMMANDS still flow through the NL firewall + gated arm in converse()."""
+        if self._ixn is None:
+            raise RuntimeError("interaction learning is off; build LiveBrain(interaction_learning=True)")
+        return self._ixn.interact(text_features(text, self._ixn.n_in), intent)
+
+    def route(self, text):
+        """The brain's LEARNED intent for a line of text, read out by spike timing from the interaction
+        learner (improves as you teach() it). Requires interaction_learning=True; pure inference."""
+        if self._ixn is None:
+            raise RuntimeError("interaction learning is off; build LiveBrain(interaction_learning=True)")
+        return self._ixn.respond(text_features(text, self._ixn.n_in))
+
 
 def _ctx(v, tmp, au, d):
     return {"visual": [v] * 4, "temperature": [tmp], "audio": [au] * 4, "distance": d}
@@ -277,6 +306,43 @@ def main():
     assert jepa_det, "the JEPA-driven live brain must be deterministic"
     jbrain.arm.lake_wm.close(remove=True)
     jguard.arm.lake_wm.close(remove=True)
+
+    # the brain IMPROVES BY BEING TALKED TO, via a SPIKING path: an opt-in reward-modulated spike-timing
+    # (R-STDP) interaction learner. Teaching it (text -> intent) sharpens its intent routing through spike
+    # TIMING, not a gradient -- correcting the drift toward rate-level learning. Intent recognition ONLY: it
+    # adds no actuator route; arm commands still flow through the NL firewall + gated arm.
+    chat = LiveBrain(seed=4, interaction_learning=True)
+    lessons = [("hello there", "GREET"), ("what is your goal", "GOAL"),
+               ("what do you remember", "MEMORY"), ("are you conscious", "CONSCIOUS"),
+               ("close the gripper", "ARM")]
+    ixn_before = sum(chat.route(t) == want for t, want in lessons) / len(lessons)
+    for _ in range(40):
+        for t, want in lessons:
+            chat.teach(t, want)                               # talk to it -> it learns (spike-timing plasticity)
+    ixn_after = sum(chat.route(t) == want for t, want in lessons) / len(lessons)
+    # safety must hold with the interaction learner on: danger still trips the gated reflex E-STOP + freeze
+    ixn_guard = LiveBrain(seed=5, interaction_learning=True)
+    ixn_ev = ixn_guard.tick(_ctx(0.5, 0.5, 0.5, danger_d))
+    ixn_guard.tick(grasp)
+    ixn_frozen = ixn_guard.arm.arm.state()["stopped"]
+
+    def run_ixn(seed):                                        # determinism of the taught brain
+        b = LiveBrain(seed=seed, interaction_learning=True)
+        for _ in range(10):
+            for t, want in lessons:
+                b.teach(t, want)                              # teach/route never tick -> no lake file to clean
+        return [b.route(t) for t, _ in lessons]
+    ixn_det = run_ixn(6) == run_ixn(6)
+    print(f"interaction: TALKING to the brain improved its SPIKING intent routing {ixn_before:.2f} -> "
+          f"{ixn_after:.2f} (R-STDP spike timing, not a gradient); E-STOP freeze holds with it on ({ixn_frozen})")
+    assert LiveBrain(seed=0)._ixn is None, "interaction learning is opt-in (a default brain has none)"
+    assert ixn_after > ixn_before and ixn_after >= 0.8, \
+        f"talking to the brain must improve its intent routing via spiking plasticity ({ixn_before:.2f}->{ixn_after:.2f})"
+    assert ixn_ev["action"] == "EMERGENCY_STOP" and ixn_ev["reflex"] and ixn_frozen, \
+        "danger must trip the gated reflex E-STOP with the interaction learner on (no actuator route added)"
+    assert ixn_det, "the taught brain must be deterministic"
+    if ixn_guard.arm.lake_wm is not None:                     # ixn_guard ticked; chat only teach/route (no lake file)
+        ixn_guard.arm.lake_wm.close(remove=True)
 
     brain.arm.lake_wm.close(remove=True)                      # clean up the temp lake files
     if guard.arm.lake_wm is not None:

@@ -3,6 +3,41 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.21] -- Spiking interaction learning: improve the brain by talking to it (R-STDP) + a spiking-purity audit (2026-07-10)
+
+### Spiking-purity audit (honest) -- see docs/SPIKING_AUDIT.md
+The project's purpose is spike signals + spiking neural networks. An audit found the FOUNDATION genuinely
+spiking (neuron models LIF/Izhikevich/HH/ALIF/dendritic, spike encoders rank-order/population/temporal,
+tempotron, the STDP plasticity family, the hippocampal/cerebellar/brainstem circuits, and the spike-event
+data lake), but the recent HIGHER-COGNITION / LEARNING tier (v3.11-v3.20) DRIFTED to rate-level ANN/linear:
+the JEPA world model is self-describedly "rate-level LINEAR", MlpQ is a backprop MLP, LatentQ is a linear
+Widrow-Hoff head, reward-shaping is a linear head, curiosity is an EMA, curriculum is a counter, converse()
+is keyword routing. They ride ON the spiking lake's stored [0,1]^64 pattern but use no spikes / spike-timing
+learning. Verdict: spiking identity intact at the foundation; the reasoning/learning arc strayed.
+
+### Added -- correcting the drift the spiking way
+- `cortex/interaction_learning.py` (CORE, zero-dep) -- `SpikingInteractionLearner`: a reward-modulated
+  spike-timing (R-STDP) associative learner that IMPROVES THE BRAIN BY BEING TALKED TO, built by REUSING the
+  real spiking primitives (NOT a new rate-level ANN): `cortex.rank_order_coding` (Thorpe latency code -> one
+  discrete spike per synapse) + `basal_ganglia.r_stdp` (pre-before-post eligibility trace gated by a reward
+  sign, `w += lr*d*e`); a tempotron-style PSP membrane readout over the spike times. Un-riggable self-check:
+  held-out accuracy chance 0.16 -> 1.00 via spike-timing plasticity while a TEACHING-SHUFFLED control stays at
+  chance (0.25) -- the gain is from reward-modulated spike TIMING, not the encoding; structurally spiking
+  (discrete spike events; every delta == lr*reward*eligibility; numpy/torch not imported); deterministic. It
+  TALKS to the real LiveBrain (converse()/tick()) and learns to route prompts to the brain's own intents
+  (0.20 -> 1.00). Honest negative documented: the pure scalar-reward-on-the-chosen-action variant plateaus;
+  the teaching-signal R-STDP form is robust.
+
+### Changed
+- `cortex/live_brain.py` -- opt-in `LiveBrain(interaction_learning=True)`: the brain carries the spiking
+  interaction learner. `teach(text, intent)` improves it by talking (R-STDP spike timing); `route(text)`
+  reads its learned intent. Self-checked: talking to the brain lifts its spiking intent routing 0.00 -> 1.00.
+  SAFETY: intent recognition ONLY -- adds no actuator route; arm commands still flow through the NL firewall +
+  gated arm, and danger still trips the gated reflex E-STOP + freeze with it on. Off by default => byte-identical.
+
+Gates green: 178/178 core self-checks, pytest passed (89.04% cov), ruff clean; the 5 brainstem
+envelope files byte-for-byte unchanged (git-diff empty).
+
 ## [v3.20] -- Task-aligned encoder reaches 1.0 on-arm: a firm reward-gain closes the honest v3.19 limit (2026-07-10)
 
 v3.19 shipped the reward-shaped encoder (on-arm held-out 0.33 -> 0.83) with an honest limit: 0.83, not 1.00. A
