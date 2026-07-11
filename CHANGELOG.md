@@ -3,6 +3,41 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.23] -- Spiking-conversion program slice 1: 5 rate brain modules -> genuine spiking (+ full atlas inventory) (2026-07-10)
+
+Kicking off the maximal program to make the ENTIRE neural atlas spiking. A parallel classification of all 103
+brain-region modules (`docs/SPIKING_CONVERSION.md`) found **SPIKING 34 / RATE 47 / RATE_BY_DESIGN 22** (the 30
+`substrate/` modules are the data-lake plumbing, not neurons -- excluded; rate-by-design neural-mass models get a
+spiking analog, not a forced fake). Slice 1 converts 5 self-contained RATE modules to genuine spiking, in-place,
+API-preserved, with no live-loop ripple.
+
+### Changed -- 5 rate modules now genuinely spiking (LIF membranes / spike-timing, not rate arithmetic)
+- `cerebellum/spiking_pid` -- the NAME was a lie (it NEF-decoded to a scalar then did arithmetic PID). Now P/I/D
+  are LIF populations: integral = a running net spike count (spiking anti-windup), derivative = a fast/slow LIF
+  opponent pair, proportional = ON/OFF firing rate. Drives arm_sim to 30.3 deg; under a constant load only the
+  spiking integral cancels it (0.30 vs P-only 3.33 vs no-control 210 deg).
+- `midbrain/superior_colliculus` -- LIF neuron per location + spike-driven lateral inhibition; the FIRST neuron
+  to spike wins the saccade and its spike time IS the latency (chronometric law falls out: 14->4 steps as
+  salience rises). Winner == argmax; flat map -> no spikes.
+- `midbrain/sc_deep_layers` -- LIF EBN burst pool -> a gain-1 line-attractor spiking integrator; eye displacement
+  = accumulated burst spikes, held by persistent spiking; omnipause clamp -> zero spikes -> zero motion.
+- `cortex/cue_integration` -- spiking probabilistic population code (Ma 2006): each cue a Poisson population with
+  gain (spike count) proportional to reliability; fusion = adding spike trains; the summed population decodes the
+  reliability-weighted MLE (x_hat 10.40 ~ MLE 10.4, fused var < best single cue).
+- `neuromodulation/locus_coeruleus` -- a pool of 64 LIF neurons; NE level = windowed population spike rate; a
+  salient event drives a phasic burst (232 -> 1028 spikes) that raises the downstream gain (x3.9).
+
+Each: preserved public API (only trailing `seed=` / small leak-default tweaks; no caller affected); un-riggable
+self-check asserting BOTH the function still holds AND genuine spiking (discrete spike events, membrane/threshold,
+numpy/torch absent); deterministic. The honest cost of spiking read-outs (quantization / Poisson noise) is
+reported, not hidden. Live-loop wiring untouched (no behavioral change to the running brain yet).
+
+Progress: brain-region atlas now **SPIKING 39 / 103; RATE remaining 42**. Later slices convert the live-loop-wired
+rate modules (workspace, perception, value substrate, action selection) -- safety-adjacent, done by the main agent.
+
+Gates green: 178/178 core self-checks, pytest passed (89.25% cov), ruff clean; the 5 brainstem envelope
+files byte-for-byte unchanged (git-diff empty).
+
 ## [v3.22] -- Conversing improves the brain: self-supervised spiking generalization to novel paraphrases (2026-07-10)
 
 Answering "does the brain improve by being talked to?": the fixed `converse()` keyword router does NOT --
