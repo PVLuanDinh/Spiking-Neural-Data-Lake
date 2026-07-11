@@ -35,6 +35,14 @@ exe = ["pyinstaller"]                                                   # build 
 dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.15.20", "pre-commit"]       # tests + lint/format (NOT runtime; ruff floor matches .pre-commit-config)
 all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist,train]"]             # every addon (genn excluded — needs a compiler)
 
+# GPU wheel note (the [gpu]/[train] extras pin bare `torch`, so `pip install` pulls the DEFAULT-index wheel):
+# on recent NVIDIA GPUs the default CPU/older-CUDA wheel will NOT run the training/research tier. Install the
+# CUDA build that matches your card FIRST, then the extra. For an RTX 5070 (Blackwell, sm_120) use the cu128 wheel:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+#   pip install ".[train]"        # (or ".[gpu]") -- torch is already satisfied by the cu128 build above
+# The repo's verified GPU env is `.venv-cu128` (torch 2.11.0+cu128); `NORD_GPU=1` routes tensors to cuda.
+# The zero-dep CORE never needs any of this -- it runs on pure stdlib, CPU, anywhere (see docs/PERFORMANCE.md).
+
 [project.scripts]
 snn-demo = "snn_data_lake.substrate.demo:main"         # one-file demo loop
 snn-arm  = "snn_data_lake.brainstem.live_arm:main"     # live gesture -> arm (add --serial/--actuate for hardware)

@@ -51,7 +51,7 @@ CORE = [
     # cerebellum — motor coordination, timing, forward/inverse models, oscillators
     "cerebellum.forward_model", "cerebellum.kalman_filter", "cerebellum.spiking_pid", "cerebellum.kuramoto_sync",
     "cerebellum.synfire_chain", "cerebellum.wavefront_planner", "cerebellum.jepa_world_model",
-    "cerebellum.hjepa_serve",
+    "cerebellum.hjepa_serve", "cerebellum.spiking_jepa",
     # brainstem + spinal cord — reflexes, actuation, sensorimotor loops, motor pattern generation
     # (the safety envelope lives here)
     "brainstem.reflex", "brainstem.serial_arm", "brainstem.arm_sim", "brainstem.arm_config", "brainstem.interpreter",

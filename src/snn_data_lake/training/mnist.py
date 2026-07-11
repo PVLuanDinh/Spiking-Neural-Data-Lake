@@ -116,9 +116,13 @@ def _datasets(root, download=True):
     return train, test
 
 
-def _flatten(images, device):
-    """[b, 1, 28, 28] -> [b, 784] float in [0, 1] on `device`."""
-    return images.view(images.shape[0], -1).to(device)
+def _flatten(images, device, non_blocking=False):
+    """[b, 1, 28, 28] -> [b, 784] float in [0, 1] on `device`.
+
+    `non_blocking` enables an async H2D copy; only helps when the source batch is in
+    pinned host memory (pin_memory=True), so callers pass it True only on CUDA.
+    """
+    return images.view(images.shape[0], -1).to(device, non_blocking=non_blocking)
 
 
 # ---- train / evaluate -------------------------------------------------------
@@ -138,10 +142,18 @@ def train_model(epochs=DEFAULT_EPOCHS, hidden=DEFAULT_HIDDEN, steps=DEFAULT_STEP
     train_ds, test_ds = _datasets(root, download=download)
     loader_gen = torch.Generator()
     loader_gen.manual_seed(int(seed))
+    # DataLoader tuning is only worth it on CUDA: worker processes decode/collate batches
+    # while the GPU computes, and pinned host buffers give faster (async) H2D copies. On CPU
+    # keep num_workers=0 / pin_memory=False so the path is byte-identical to before. The main
+    # process still owns the seeded `generator`, so the shuffle order is unchanged either way.
+    num_workers = 4 if use_amp else 0                 # GPU-VERIFY
+    pin_memory = use_amp                              # GPU-VERIFY
     train_loader = torch.utils.data.DataLoader(
-        train_ds, batch_size=batch_size, shuffle=True, generator=loader_gen)
+        train_ds, batch_size=batch_size, shuffle=True, generator=loader_gen,
+        num_workers=num_workers, pin_memory=pin_memory)
     test_loader = torch.utils.data.DataLoader(
-        test_ds, batch_size=batch_size, shuffle=False)
+        test_ds, batch_size=batch_size, shuffle=False,
+        num_workers=num_workers, pin_memory=pin_memory)
 
     model = MnistBrain(hidden=hidden, beta=beta, threshold=threshold).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
@@ -150,12 +162,12 @@ def train_model(epochs=DEFAULT_EPOCHS, hidden=DEFAULT_HIDDEN, steps=DEFAULT_STEP
     scaler = torch.amp.GradScaler(amp_dev, enabled=use_amp)
     gen = _generator(device, seed)
 
-    last_loss = float("nan")
+    last_loss_t = None
     for _epoch in range(int(epochs)):
         model.train()
         for images, targets in train_loader:
-            X = _flatten(images, device)
-            y = targets.to(device)
+            X = _flatten(images, device, non_blocking=use_amp)   # pinned async H2D on CUDA  # GPU-VERIFY
+            y = targets.to(device, non_blocking=use_amp)                                      # GPU-VERIFY
             spikes = rate_encode(X, steps, gen, device)          # [steps, b, 784]
             opt.zero_grad()
             with torch.amp.autocast(amp_dev, enabled=use_amp):   # fp16 on the 5070 tensor cores
@@ -164,7 +176,10 @@ def train_model(epochs=DEFAULT_EPOCHS, hidden=DEFAULT_HIDDEN, steps=DEFAULT_STEP
             scaler.scale(loss).backward()
             scaler.step(opt)
             scaler.update()
-            last_loss = float(loss.detach().cpu())
+            last_loss_t = loss.detach()                          # keep on-device; no per-step host sync
+    # Sync the final loss to host ONCE after all training (was a per-step .cpu() that stalled
+    # the GPU every step). Value is identical: the last batch's loss of the final epoch.
+    last_loss = float("nan") if last_loss_t is None else float(last_loss_t)
 
     train_acc = evaluate(model, train_loader, steps, device=device, seed=seed, limit=10000)
     test_acc = evaluate(model, test_loader, steps, device=device, seed=seed + 1)
@@ -187,13 +202,14 @@ def evaluate(model, loader, steps, device="cpu", seed=1234, limit=None):
     """Accuracy of `model` over a DataLoader. Uses its own seeded generator so eval is
     reproducible independent of training; `limit` caps images scored (fast train-set sanity)."""
     model.eval()
+    nb = str(device).startswith("cuda")                          # GPU-VERIFY: async H2D only on CUDA
     gen = _generator(device, seed)
     correct = 0
     total = 0
     with torch.no_grad():
         for images, targets in loader:
-            X = _flatten(images, device)
-            y = targets.to(device)
+            X = _flatten(images, device, non_blocking=nb)
+            y = targets.to(device, non_blocking=nb)
             spikes = rate_encode(X, steps, gen, device)
             pred = model(spikes).argmax(dim=1)
             correct += int((pred == y).sum().cpu())

@@ -10,6 +10,7 @@ Baseline inventory (2026-07-10, parallel classification of 103 brain-region modu
 After slice 1 (v3.23): **SPIKING 39 | RATE 42 | RATE_BY_DESIGN 22.**
 After slice 2 (v3.24): **SPIKING 44 | RATE 38 | RATE_BY_DESIGN 21.**
 After slice 3 (v3.25): **SPIKING 48 | RATE 36 | RATE_BY_DESIGN 19.**
+After slice 4 (v3.26): **SPIKING 49** (new module `cerebellum/spiking_jepa`; rate `jepa_world_model` kept as the fair baseline).
 
 ## Converted to spiking (progress)
 
@@ -142,3 +143,12 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   ratio ~7). All API-preserved, un-riggable spiking self-checks; honest gaps reported (attractor RT units differ;
   global-workspace N-way exact-tie metastable; theta-gamma is a reduced discrete-step oscillator). Remaining
   RATE after slice 3: 36.
+- **Slice 4 (v3.26) -- SpikingJEPA (NEW module, honest study):** `cerebellum/spiking_jepa.py` = a genuinely-spiking
+  (LIF backbone, {0,1} signals, latent=integer counts), genuinely-LOCAL (three-factor rule, no backprop -- freeze-top
+  proof) JEPA world model synthesizing LPL + event-stream + RPL. It genuinely learns action-conditioned latent
+  DYNAMICS (predict beats identity, time-shuffle destroys it). HONEST NEGATIVES (printed, not asserted, not hidden):
+  it does NOT beat a random SNN encoder at representation, and no-collapse can't be shown (a random sparse LIF
+  backbone keeps rank even with anti-collapse off) -- matching the research prediction. The rate `jepa_world_model`
+  stays the fair baseline (NOT converted in place). Atlas SPIKING 49. Separately, a GPU + disk-streaming TIER
+  optimization landed (streaming_hub + proximity_index out-of-core in stdlib core; GPU chip resident-caching + mnist
+  DataLoader + cu128 doc in the torch tiers) -- see CHANGELOG v3.26 + docs/PERFORMANCE.md; core stays zero-dep.

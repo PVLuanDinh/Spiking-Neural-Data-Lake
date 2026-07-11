@@ -3,6 +3,54 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.26] -- SpikingJEPA (slice 4, honest) + GPU/disk-streaming tier optimization (2026-07-11)
+
+Two deliverables, both keeping the zero-dep core intact.
+
+### 1. Slice 4 -- SpikingJEPA: a genuinely-spiking, local-rule world model (with honest negatives)
+NEW CORE `cerebellum/spiking_jepa.py` (`SpikingJEPA`, zero-dep) -- the synthesis the user asked for (LPL +
+event-stream SNN + RPL): an event-stream temporal-contrast encoder -> a recurrent 2-layer LIF backbone (RPL:
+each layer's input includes its own previous spikes) -> a latent readout, trained by a LOCAL three-factor rule
+(presynaptic eligibility x postsynaptic surrogate x a per-layer modulator from the layer's own EMA stats + a
+frozen lagged "echo") -- NO backprop. Duck-typed `encode`/`predict(state,command)`/`make_goal_value` (drops into
+PrefrontalExecutive.plan()); the rate `jepa_world_model` stays the fair baseline. Un-riggable self-check, each
+asserted claim paired with a control that genuinely fails:
+- GENUINELY SPIKING: inter-layer signals all in {0,1}, latent = f(integer spike counts) (graded control fails).
+- GENUINELY LOCAL (no backprop): freeze the top layer, the bottom STILL learns (1.94) while a weight-transport
+  control is exactly 0.
+- PREDICTS ACTION-CONDITIONED LATENT DYNAMICS: pred MSE 0.0067 < identity 0.0085, and a TIME-SHUFFLE control
+  destroys it (0.0194) -- a real, stable learning result.
+- bounded 40-step rollout, determinism (byte-identical), save/load crc+shape guarded.
+HONEST NEGATIVES (measured + printed, NOT asserted, not hidden): (a) no-collapse cannot be shown -- a random
+sparse LIF backbone keeps effective rank high even with all anti-collapse pressure OFF (ablation rank 5.2 vs full
+1.0), so a genuinely-collapsing control cannot be built at this scale; (b) the local rule does NOT beat a RANDOM
+SNN encoder at identity decoding (0.29 vs 0.71; raw-pixel chance 0.33) -- position-tolerance here is
+architectural, not learned. This matches the research prediction: no source demonstrates a
+local+non-contrastive+spiking+recurrent system learning a useful representation, so it is reported as an honest
+toy-scale study, not overclaimed. The espp contrastive variant was tried and also failed to beat identity, so the
+shipped default is `rule="lpl"` (which owns the one genuine claim: prediction). Registered `cerebellum.spiking_jepa`.
+
+### 2. GPU + disk-streaming tier optimization (core stays zero-dep; optional tiers only)
+Per an audit, optimized the OPTIONAL GPU-training + out-of-core lake tiers -- nothing torch enters the zero-dep
+core; the stdlib path stays the default/fallback.
+- GROWTH (stdlib, stays in CORE): `substrate/streaming_hub.py` is now genuinely OUT-OF-CORE -- bounded resident
+  tail (<=K/channel) + a coarse O(total/K) offset index + seek-per-channel block reads, instead of slurping the
+  whole `.spkl` + holding every event in RAM. At 100k events the resident tail is capped (~1.7k) and an old-range
+  query SEEKS 8% of the log, not the file. `.spkl` format + full API byte-identical; verified the
+  lake_working_memory + autonomous_loop lake_wm + E-STOP chain holds. `substrate/proximity_index.py` likewise:
+  N>threshold pages the pattern blobs + pivot table from mmap'd disk (LAESA preserved), resident O(m+cache) not
+  O(N), recall byte-identical to in-RAM.
+- PERFORMANCE (torch tiers, GPU-unverified here -- flagged `# GPU-VERIFY`): `research/neuromorphic_torch/
+  neuro_chip_gpu_stream.py` caches weight shards RESIDENT on-device when they fit a VRAM budget (was re-reading
+  every shard from disk EVERY tick) + drops the per-tick `empty_cache()` + bf16 autocast + shared `resolve_device`;
+  still streams out-of-core when the model exceeds VRAM. `training/mnist.py` DataLoader gains CUDA-gated
+  `num_workers`/`pin_memory`/`non_blocking` + removes the per-step host `.cpu()` sync. `pyproject.toml` +
+  `docs/PERFORMANCE.md` now document the cu128/sm_120 (RTX 5070 Blackwell) install so `.[train]` actually runs on
+  the card.
+
+Gates green: 179/179 core self-checks, pytest passed (89.88% cov), ruff clean; the 5 brainstem envelope files
+byte-for-byte unchanged (git-diff empty).
+
 ## [v3.25] -- Spiking-conversion program slice 3: more of the rational-thinking core -> genuine spiking (2026-07-11)
 
 Slice 3 continues the rational-thinking spiking conversion. 4 modules converted in-place to genuine spiking

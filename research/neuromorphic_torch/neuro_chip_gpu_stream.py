@@ -27,6 +27,17 @@ cycle-accurate silicon, NOT AirLLM-the-library, NOT an LLM. Streaming trades VRA
 for disk I/O (shard load+free per core per tick), buying the ability to emulate chips
 far larger than VRAM; it adds no new physical fidelity.
 
+PERFORMANCE: streaming is only paid when it is NEEDED. If the whole sharded matrix fits
+an on-device budget (~80% of free VRAM on CUDA; 0 on CPU so CPU always streams as before),
+run() loads every shard ONCE and keeps it resident -- no per-tick disk reload + host->device
+copy, and no per-tick torch.cuda.empty_cache(). Only a matrix that EXCEEDS the budget falls
+back to the original per-tick out-of-core streaming (the module's reason to exist). The
+device comes from the shared NORD_GPU/NORD_DEVICE selector (research/torch_device.py),
+default CPU (opt-in GPU). On CUDA the per-core W_c.T @ spikes matmul runs under bf16 autocast
+(Blackwell tensor cores), accumulated in fp32; pass run(autocast=False) for bit-for-bit fp32
+agreement with neuro_chip_gpu (what the agreement self-check uses). CPU is byte-identical to
+before: autocast is ignored and the budget is 0, so CPU still streams in fp32.
+
 Usage:
   import torch
   from research.neuromorphic_torch.neuro_chip_gpu_stream import NeuroChipGPUStream
@@ -55,6 +66,39 @@ except ImportError:
 # Energy constants (cited, from energy.py) -- hardcoded to keep zero-dep on the core
 E_AC_FP32_45NM = 0.9e-12      # accumulate-only op, 45 nm CMOS (Horowitz 2014)
 E_SYNOP_LOIHI = 23.6e-12      # per-SynOp on Loihi incl. routing (arXiv:2210.13107)
+
+
+def _pick_device():
+    """Device via the shared NORD_GPU/NORD_DEVICE selector (research/torch_device.py),
+    defaulting to CPU (opt-in GPU). Falls back to a local CPU-default resolver if that
+    shared module is not importable. ASCII-only output."""
+    import torch  # guaranteed present: the constructor guards on TORCH_AVAILABLE first
+    try:
+        research_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if research_dir not in sys.path:
+            sys.path.insert(0, research_dir)
+        from torch_device import resolve_device
+        return resolve_device()
+    except Exception:
+        want = os.environ.get("NORD_DEVICE")
+        if not want and os.environ.get("NORD_GPU") == "1":
+            want = "cuda"
+        if want and want.startswith("cuda") and torch.cuda.is_available():
+            return want
+        return "cpu"
+
+
+def _resident_budget_bytes(device, override=None):
+    """Bytes of weights allowed to stay RESIDENT on `device`. `override` (bytes) wins;
+    else on CUDA use ~80% of currently-free VRAM, on CPU return 0 so shards always stream
+    (out-of-core path unchanged from the original disk-streaming behavior)."""
+    import torch
+    if override is not None:
+        return int(override)
+    if str(device).startswith("cuda"):
+        free, _total = torch.cuda.mem_get_info()  # GPU-VERIFY: free-VRAM query (CUDA-only)
+        return int(free * 0.8)                    # GPU-VERIFY: keep 20% headroom for activations
+    return 0
 
 
 class NeuroChipGPUStream:
@@ -88,8 +132,8 @@ class NeuroChipGPUStream:
         # Decay constant (vectorized LIF): exp(-1/tau_m)
         self.decay = math.exp(-1.0 / tau_m)
 
-        # Pick device
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Pick device via the shared NORD_GPU/NORD_DEVICE selector (default CPU, opt-in GPU)
+        self.device = _pick_device()
 
         # State: membrane potentials (all neurons, on device; stays resident)
         self.v = torch.full((n_neurons,), v_rest, dtype=torch.float32, device=self.device)
@@ -164,10 +208,11 @@ class NeuroChipGPUStream:
             torch.save(shard, self._shard_paths[c])
             self._shard_bytes[c] = shard.element_size() * shard.nelement()
 
-    def run(self, external_input=None, ticks=1):
+    def run(self, external_input=None, ticks=1, vram_budget_bytes=None, autocast=True):
         """
-        Time-stepped event loop with weight streaming: each core's weights are
-        loaded from disk one at a time, contribute to the global current, then freed.
+        Time-stepped event loop. If the whole sharded matrix fits the on-device budget the
+        shards are loaded ONCE and kept resident; otherwise each core's weights are streamed
+        from disk one at a time, contribute to the global current, then freed (out-of-core).
 
         Each timestep:
           1. For each core k in order:
@@ -183,6 +228,11 @@ class NeuroChipGPUStream:
             external_input: dict {tick: torch.Tensor} or None
                            if provided, external_input[t] is a [n_neurons] current vector
             ticks: number of timesteps
+            vram_budget_bytes: max bytes of weights kept resident on-device (None = auto:
+                               ~80% of free VRAM on CUDA, 0 on CPU so shards always stream).
+            autocast: on CUDA, run the per-core matmul under bf16 autocast (Blackwell tensor
+                      cores), accumulated in fp32; ignored on CPU. Pass False for bit-for-bit
+                      fp32 agreement with neuro_chip_gpu.
 
         Returns:
             dict with keys:
@@ -214,27 +264,52 @@ class NeuroChipGPUStream:
         last_spikes = torch.zeros(self.n_neurons, dtype=torch.float32, device=self.device)
         self._max_resident_weight_bytes = 0
 
+        # ---- Residency decision: if the whole sharded matrix fits the on-device budget,
+        # load every shard ONCE and keep it resident (no per-tick disk reload + H2D copy).
+        # Only when it EXCEEDS the budget do we fall back to per-tick out-of-core streaming.
+        total_shard_bytes = self.n_neurons * self.n_neurons * 4  # row-shards partition the full matrix
+        budget = _resident_budget_bytes(self.device, vram_budget_bytes)
+        resident_weights = None
+        if total_shard_bytes <= budget:
+            # GPU-VERIFY: resident path is only taken on CUDA (budget is 0 on CPU -> always streams)
+            resident_weights = []
+            for c in range(self.n_cores):
+                W_c = torch.load(self._shard_paths[c], weights_only=True).to(device=self.device, dtype=torch.float32)
+                resident_weights.append(W_c)
+            # all shards resident at once -> peak resident weight bytes is their sum
+            self._max_resident_weight_bytes = total_shard_bytes
+
+        use_autocast = bool(autocast) and str(self.device).startswith("cuda")
+        neurons_per_core = self.n_neurons // self.n_cores
+
         for t in range(ticks):
-            # (1) Stream each core's weights, accumulate current
+            # (1) Accumulate each core's contribution into the tick current
             current = torch.zeros(self.n_neurons, dtype=torch.float32, device=self.device)
 
             for c in range(self.n_cores):
-                # LOAD core c's weight shard
-                W_c = torch.load(self._shard_paths[c], weights_only=True).to(device=self.device, dtype=torch.float32)
-                resident_bytes = W_c.element_size() * W_c.nelement()
-                self._max_resident_weight_bytes = max(self._max_resident_weight_bytes, resident_bytes)
+                if resident_weights is not None:
+                    W_c = resident_weights[c]                    # already on device, no reload
+                else:
+                    # out-of-core: stream this core's shard disk -> device for this tick
+                    W_c = torch.load(self._shard_paths[c], weights_only=True).to(device=self.device, dtype=torch.float32)
+                    resident_bytes = W_c.element_size() * W_c.nelement()
+                    self._max_resident_weight_bytes = max(self._max_resident_weight_bytes, resident_bytes)
 
-                # Accumulate W_c.T @ last_spikes into current
-                # W_c has shape [neurons_in_core_c, n_neurons], so W_c.T @ last_spikes
-                # gives contributions from neurons in core c to all neurons
-                current = current + torch.matmul(W_c.T, last_spikes[c * (self.n_neurons // self.n_cores):
-                                                                      (c + 1) * (self.n_neurons // self.n_cores) if c < self.n_cores - 1
-                                                                      else self.n_neurons])
+                # W_c is [neurons_in_core_c, n_neurons], so W_c.T @ seg gives core c's
+                # contribution from its neurons to all neurons.
+                seg = last_spikes[c * neurons_per_core:
+                                  (c + 1) * neurons_per_core if c < self.n_cores - 1 else self.n_neurons]
+                if use_autocast:
+                    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):  # GPU-VERIFY: Blackwell tensor cores
+                        contrib = torch.matmul(W_c.T, seg)
+                    current = current + contrib.float()          # accumulate in fp32
+                else:
+                    current = current + torch.matmul(W_c.T, seg)
 
-                # FREE W_c from device (explicit cleanup)
-                del W_c
-                if self.device == "cuda":
-                    torch.cuda.empty_cache()
+                if resident_weights is None:
+                    # FREE the streamed shard; NO per-tick empty_cache (the caching allocator
+                    # reuses this block for the next load -- empty_cache here only stalled the GPU).
+                    del W_c
 
             # (2) Add scheduled external input
             if t in external_input:
@@ -273,15 +348,18 @@ class NeuroChipGPUStream:
                 for src_idx in spike_indices:
                     # Determine which core owns this source neuron
                     src_core = int(self.core_assignment[src_idx].item())
-                    # Load that core's shard to count fan-out
-                    W_c = torch.load(self._shard_paths[src_core], weights_only=True)
-                    # Local index within the core
-                    neurons_per_core = self.n_neurons // self.n_cores
+                    if resident_weights is not None:
+                        W_c = resident_weights[src_core]         # reuse resident shard, no disk reload
+                    else:
+                        # Load that core's shard to count fan-out
+                        W_c = torch.load(self._shard_paths[src_core], weights_only=True)
+                    # Local index within the core (neurons_per_core defined before the tick loop)
                     src_local = int(src_idx) - src_core * neurons_per_core
                     if src_local < W_c.shape[0]:
                         fan_out = int((W_c[src_local] != 0).sum().item())
                         total_synops += fan_out
-                    del W_c
+                    if resident_weights is None:
+                        del W_c
 
             # Queue spikes for next tick
             last_spikes = spikes
@@ -342,10 +420,11 @@ if __name__ == "__main__":
         ext_input = {0: torch.tensor([1.5, 0.0], dtype=torch.float32)}
         metrics_ref = chip_ref.run(external_input=ext_input, ticks=4)
 
-        # Streaming version
+        # Streaming version -- autocast=False so the comparison is exact fp32 on any device
+        # (bf16 tensor-core autocast is the default on CUDA; the agreement path opts out).
         chip_stream = NeuroChipGPUStream(n_neurons=2, n_cores=2, tau_m=10.0)
         chip_stream.set_weights(W_ref)
-        metrics_stream = chip_stream.run(external_input=ext_input, ticks=4)
+        metrics_stream = chip_stream.run(external_input=ext_input, ticks=4, autocast=False)
 
         # Verify agreement
         assert metrics_ref["spikes"] == metrics_stream["spikes"], \
@@ -376,8 +455,10 @@ if __name__ == "__main__":
         chip_bound = NeuroChipGPUStream(n_neurons=n_neurons_large, n_cores=n_cores_large, tau_m=10.0)
         chip_bound.set_weights(W_large)
 
+        # vram_budget_bytes=1 forces the out-of-core streaming path (shards exceed the budget)
+        # so the one-core-resident bound is genuinely exercised on CPU AND GPU.
         ext_input_bound = {0: torch.ones(n_neurons_large) * 0.5}
-        metrics_bound = chip_bound.run(external_input=ext_input_bound, ticks=10)
+        metrics_bound = chip_bound.run(external_input=ext_input_bound, ticks=10, vram_budget_bytes=1)
 
         full_bytes = metrics_bound["full_matrix_bytes"]
         max_resident_bytes = metrics_bound["max_resident_weight_bytes"]

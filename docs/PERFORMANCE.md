@@ -23,7 +23,10 @@ numbers of record exactly. Request the GPU with an environment variable (or the 
 `--device` flags on `eth_mnist_bindsnet.py`):
 
 ```bash
-pip install -e ".[gpu]"
+# recent NVIDIA cards need the matching CUDA wheel FIRST (the extras pin bare `torch`).
+# RTX 5070 = Blackwell sm_120 -> the cu128 wheel (the repo's verified GPU env = .venv-cu128, torch 2.11.0+cu128):
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+pip install -e ".[gpu]"          # or ".[train]" -- torch already satisfied by the cu128 build above
 NORD_GPU=1 python research/snn_mnist_dc.py          # or NORD_DEVICE=cuda:0
 ```
 
@@ -51,6 +54,25 @@ the natural-language front-end backend (`local_llm/airllm_backend.py`). It is *n
 speedup — the core's spiking modules are KB-scale, so streaming them from disk is pure I/O
 overhead. The zero-dependency `StubBackend` covers the default NL path; use AirLLM only if you
 deliberately want a large local model. See [AIRLLM_ANALYSIS.md](AIRLLM_ANALYSIS.md).
+
+## Disk-streaming & growth (the lake scales out-of-core)
+
+The spike lake is built to grow beyond RAM without adding a heavy dependency. Two layers:
+
+- **Streaming sketches (pure stdlib, genuinely sublinear-memory, never store the stream):** HyperLogLog
+  cardinality, DGIM sliding-window count (O(log^2 W)), reservoir sampling, AMS F2, P^2 quantiles, Count-Min +
+  heavy hitters, MinHash. These summarize an unbounded stream in fixed tiny memory -- the crown jewels of the
+  growth story.
+- **On-disk spike store (pure stdlib, mmap/seek):** the `.spkl` streaming hub + the content-addressable recall
+  index read/hold only a BOUNDED working set -- an old-range query SEEKS the file for the needed block instead
+  of slurping the whole thing, so resident memory does not grow O(total-events) as the lake fills. (The seek-based
+  indexed reader pattern is shared with `spike_telemetry_hub.load()`.)
+- **`[lake]` medallion (optional, polars/pyarrow/deltalake):** a partitioned bronze/silver/gold Parquet/Delta
+  lakehouse with the polars streaming engine (`scan_parquet(...).sink_parquet(...)`) + `optimize.compact()` +
+  time-travel, for large-scale out-of-core recompute. Never touches the core.
+
+Rule of thumb: keep resident memory bounded and let the disk hold the growth; add the `[lake]` extra only when
+you outgrow the stdlib `.spkl` path.
 
 ## Status / caveat
 
