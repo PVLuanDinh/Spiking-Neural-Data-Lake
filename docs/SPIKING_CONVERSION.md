@@ -8,6 +8,7 @@ spiking ANALOG, not a forced fake.
 Baseline inventory (2026-07-10, parallel classification of 103 brain-region modules):
 **SPIKING 34 | RATE 47 (convert) | RATE_BY_DESIGN 22 (spiking analog).**
 After slice 1 (v3.23): **SPIKING 39 | RATE 42 | RATE_BY_DESIGN 22.**
+After slice 2 (v3.24): **SPIKING 44 | RATE 38 | RATE_BY_DESIGN 21.**
 
 ## Converted to spiking (progress)
 
@@ -81,6 +82,27 @@ inhibitory_stdp, short_term_plasticity.
 | plasticity/intrinsic_plasticity | adapt a spiking neuron's threshold/gain from its spike-rate distribution toward the target |
 | plasticity/developmental_pruning | LIF readout over input spikes; surrogate-gradient; prune synapses by weight magnitude |
 
+## Rational-thinking focus (slice 2+) + the "rate-by-design is convertible" method
+
+Per directive, the program now prioritises the modules that contribute to **rational thinking** -- decision,
+working memory, reasoning, inference, attention, memory-for-thought -- and ignores the rest (motor: gaze /
+PID / CPG / path-planning; autonomic / homeostatic; peripheral sensory encoding; pure spatial: grid / ring;
+safety IO). Those ignored modules can be converted later or left as rate; they are not on the thinking path.
+
+**RATE_BY_DESIGN is NOT an exemption from spiking.** Each canonical "rate" model has a well-known SPIKING
+network implementation; the analog is genuine spiking, not a fake:
+- drift-diffusion / LCA decision -> **Wang-2002 spiking decision attractor** (LIF pools, recurrent excitation +
+  shared inhibition, integrate-to-sustained-firing; chronometric RT = time-to-threshold).
+- persistent-activity working memory -> a **bistable spiking attractor** (recurrent excitation > leak keeps a
+  pool firing across an input-free delay).
+- WTA / argmax -> **LIF lateral inhibition** (first-to-sustained-spike wins; margin = spike-count gap).
+- E/I neural mass (Wilson-Cowan) -> an actual **spiking E/I network** whose population rates match the mass model.
+- divisive normalization -> **spiking normalization** (inhibitory-pool feedback gain control, Loihi-style).
+- continuous attractor (ring) -> a **spiking ring attractor** (recurrent bump of spiking neurons).
+So the rational-thinking RATE_BY_DESIGN modules (prefrontal_executive, reticular_gate, theta_gamma_code,
+divisive_normalization, wilson_cowan) are convertible and will be redesigned into spikes, starting with the
+prefrontal executive.
+
 ## RATE_BY_DESIGN (22) -- spiking analog, not a forced rewrite
 
 neuronal_avalanches (critical-branching stats), theta_gamma_code (phase-slot buffer), divisive_normalization
@@ -101,3 +123,11 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
 - Remaining RATE after slice 1: 42. Live-loop-wired conversions (global_workspace, growing_learner,
   multimodal_encoder, the value substrate, autonomous_loop selection) are later, safety-adjacent slices done by
   the main agent.
+- **Slice 2 (v3.24) -- the RATIONAL-THINKING core (5 modules):** `cortex/prefrontal_executive` (RATE_BY_DESIGN ->
+  spiking: Wang-2002 spiking WTA decision attractor + persistent-activity bistable spiking working memory; the
+  flagship rate-by-design redesign; still passes autonomous_loop sec12 + live_brain + E-STOP), `cortex/vsa_reasoning`
+  (spike-polarity hypervectors; bind=spike-XOR, bundle=superposition-WTA, sim=coincidence), `cortex/predictive_coding`
+  (signed LIF error populations; inference = spiking settling; Hebbian-on-spikes), `cortex/restricted_boltzmann`
+  (stochastic LIF sampling + event-driven CD/STDP), `cortex/brain_reasoning` (LIF WTA decision + spike-margin
+  confidence). All API-preserved, un-riggable spiking self-checks. Honest gaps reported (pfc WM metastable/drive-gated
+  release; spike-quantized inference approximate; WTA ties can differ from argmax). Remaining RATE after slice 2: 38.

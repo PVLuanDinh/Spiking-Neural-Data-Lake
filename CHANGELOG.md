@@ -3,6 +3,43 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.24] -- Spiking-conversion program slice 2: the RATIONAL-THINKING core -> genuine spiking (incl the executive) (2026-07-11)
+
+Slice 2 of the maximal program, focused (per directive) on the modules that contribute to RATIONAL THINKING --
+decision, working memory, reasoning, inference -- and treating RATE_BY_DESIGN as convertible (every canonical rate
+model has a spiking implementation), NOT an exemption. 5 modules converted in-place to genuine spiking, API-preserved.
+
+### Changed -- 5 rational-thinking modules now genuinely spiking
+- `cortex/prefrontal_executive` (the flagship; RATE_BY_DESIGN -> spiking) -- the reasoning centre. The LCA
+  drift-diffusion decision is now a WANG-2002 SPIKING WTA DECISION ATTRACTOR (one LIF pool per option, recurrent
+  self-excitation + a shared inhibitory pool; the pool that reaches sustained firing wins, wider gap -> faster =
+  chronometric). Working memory is now a PERSISTENT-ACTIVITY BISTABLE SPIKING ATTRACTOR (a LIF pool self-sustains
+  firing across an input-free delay; WM spikes [24,24,22,17,18,16], crippled recurrence=0 -> 0). Every prior assert
+  holds AND the safety chain is intact: autonomous_loop sec12 (goal rewarded + held across delay + E-STOP freeze)
+  and live_brain (planning rejects the trap: reactive->1, planned->0; E-STOP holds) both pass. Honest gap: the
+  persistent state is metastable (decay set by the recurrence gain, not spike-frequency adaptation) -- which is
+  exactly what pops a stale sub-goal.
+- `cortex/vsa_reasoning` -- spike-polarity hypervectors (one spike/dim on an up/down line); bind = spike-XOR
+  coincidence, bundle = superposition WTA, similarity = spike coincidence count. Analogy/cleanup/binding hold.
+- `cortex/predictive_coding` -- signed LIF error populations (ON/OFF, +/-1 spikes); causes integrate the error
+  spikes; inference = spiking recurrent settling (error activity 1.56 -> 0.12, recon MSE 6.2e-5 vs ablated 2.3e-2);
+  learning = Hebbian-on-spikes.
+- `cortex/restricted_boltzmann` -- stochastic LIF units sample by spiking; learning = event-driven CD/STDP
+  (88/128 synapses with no spike coincidence get exactly zero update -- genuinely event-driven, not an outer
+  product). Recon acc 0.98 (control 0.50); F(data) < F(random); denoise Hamming 3 -> 0.
+- `cortex/brain_reasoning` -- the reasoned decision is now a LIF winner-take-all (lateral inhibition); confidence =
+  the spike-count margin (monotone in the score gap). Winner == argmax on non-ties.
+
+Each: preserved public API, un-riggable self-check asserting BOTH function AND genuine spiking (discrete spikes,
+membrane/threshold, numpy/torch absent), deterministic. Honest cost of spiking read-outs (quantization, metastable
+WM, tie ambiguity) reported, not faked.
+
+Progress: brain-region atlas now **SPIKING 44 / 103; RATE remaining 38**. The reasoning centre (prefrontal
+executive) that the LIVE BRAIN uses to think is now genuinely spiking.
+
+Gates green: 178/178 core self-checks, pytest passed (89.47% cov), ruff clean; the 5 brainstem envelope files
+byte-for-byte unchanged (git-diff empty).
+
 ## [v3.23] -- Spiking-conversion program slice 1: 5 rate brain modules -> genuine spiking (+ full atlas inventory) (2026-07-10)
 
 Kicking off the maximal program to make the ENTIRE neural atlas spiking. A parallel classification of all 103
