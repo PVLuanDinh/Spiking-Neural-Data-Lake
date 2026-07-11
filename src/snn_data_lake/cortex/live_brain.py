@@ -25,6 +25,28 @@ from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 _IXN_INTENTS = ("GREET", "GOAL", "MEMORY", "ATTENTION", "SAFETY", "CONSCIOUS", "ARM")
 
 
+def _reply_to_intent(reply):
+    """Map the live brain's OWN grounded converse() reply back to one of _IXN_INTENTS -- the
+    SELF-SUPERVISED teaching label chat() uses (the brain teaches its spiking router from its own
+    keyword firewall, no human labels). Deterministic match on the fixed reply templates."""
+    r = reply.lower()
+    if "not a conscious agent" in r:
+        return "CONSCIOUS"
+    if reply.startswith("Hello. I am the live brain"):
+        return "GREET"
+    if "global workspace is broadcasting" in r:
+        return "ATTENTION"
+    if "safety is enforced by a reflex" in r:
+        return "SAFETY"
+    if reply.startswith("Done") or "the arm is frozen" in r:
+        return "ARM"
+    if "working-memory goal" in r:
+        return "GOAL"
+    if "working memory lives in the data lake" in r or "reading working memory" in r:
+        return "MEMORY"
+    return "GREET"
+
+
 class LiveBrain:
     """The integrated brain, live: an AutonomousArm with the full stack on (Global Workspace +
     amygdala threat + basal-ganglia gate + interoceptive arousal + prefrontal executive), centred on
@@ -45,7 +67,9 @@ class LiveBrain:
         # recognises which conversational INTENT a line of text carries; it is taught by interaction (teach()).
         # SAFETY: intent recognition ONLY -- it adds NO actuator route; arm COMMANDS still flow through the NL
         # firewall + the gated arm in converse(). Off by default -> the brain is byte-identical.
-        self._ixn = (SpikingInteractionLearner(list(_IXN_INTENTS), n_in=24, seed=seed)
+        # n_in=52 + a small readout time (t_post=6) make the spike-timing readout key on the EARLY
+        # content-word spikes -> the router GENERALIZES to novel paraphrases, not just memorizes taught lines.
+        self._ixn = (SpikingInteractionLearner(list(_IXN_INTENTS), n_in=52, seed=seed, t_post=6)
                      if interaction_learning else None)
 
     def alive(self):
@@ -186,6 +210,22 @@ class LiveBrain:
         if self._ixn is None:
             raise RuntimeError("interaction learning is off; build LiveBrain(interaction_learning=True)")
         return self._ixn.respond(text_features(text, self._ixn.n_in))
+
+    def chat(self, text, feedback=None):
+        """CONVERSE AND LEARN from the exchange, the SPIKING way. Reply to `text` (grounded, via
+        converse()), then IMPROVE the brain's spiking intent router (R-STDP spike-timing plasticity) from
+        this one turn: the firewall's OWN grounded intent for the reply is a SELF-SUPERVISED teaching
+        signal (distillation, no human label), and an optional `feedback` intent (one of _IXN_INTENTS --
+        what you actually meant) is a stronger correction for lines the firewall itself misroutes. Over a
+        conversation the spiking router GENERALIZES to novel paraphrases the fixed keyword router misses.
+        Requires interaction_learning=True. Returns the reply. SAFETY: intent recognition only -- it adds
+        NO actuator route; arm commands still flow through the NL firewall + gated arm inside converse()
+        (the reflex E-STOP untouched); the learner never emits a command, only an intent label."""
+        if self._ixn is None:
+            raise RuntimeError("interaction learning is off; build LiveBrain(interaction_learning=True)")
+        reply = self.converse(text)                          # grounded reply (arm cmds stay gated in converse)
+        self._ixn.learn_turn(text, _reply_to_intent(reply), feedback=feedback)   # spike-timing R-STDP turn
+        return reply
 
 
 def _ctx(v, tmp, au, d):
@@ -343,6 +383,39 @@ def main():
     assert ixn_det, "the taught brain must be deterministic"
     if ixn_guard.arm.lake_wm is not None:                     # ixn_guard ticked; chat only teach/route (no lake file)
         ixn_guard.arm.lake_wm.close(remove=True)
+
+    # CONVERSATION GENERALIZES: chat() replies AND learns (self-supervised R-STDP from the firewall's OWN
+    # grounded intent, no human labels), so the brain's spiking router comes to route NOVEL paraphrases the
+    # fixed keyword firewall MISSES. Talk on keyword-bearing lines; test on DISJOINT novel paraphrases (no cue).
+    talk = LiveBrain(seed=9, interaction_learning=True)
+    chat_train = [                                            # keyword-bearing -> the firewall labels them correctly
+        ("what is the goal you keep pursuing", "GOAL"), ("which objective do you aim at pursuing", "GOAL"),
+        ("what do you plan on pursuing next", "GOAL"), ("what do you want to keep pursuing", "GOAL"),
+        ("are you conscious with real inner self", "CONSCIOUS"), ("are you sentient with inner self experience", "CONSCIOUS"),
+        ("do you feel real inner experience self", "CONSCIOUS"), ("are you a sapient inner self experience", "CONSCIOUS"),
+        ("what do you remember happened earlier here", "MEMORY"), ("what is stored that happened earlier here", "MEMORY"),
+        ("can you recall what happened earlier here", "MEMORY"), ("what memory of what happened earlier here", "MEMORY")]
+    chat_test = [                                             # DISJOINT novel paraphrases, NO keyword -> firewall misses
+        ("what are you pursuing right now", "GOAL"), ("tell me what you keep pursuing", "GOAL"),
+        ("what are you pursuing and pursuing", "GOAL"),
+        ("do you have a real inner self", "CONSCIOUS"), ("is there real inner experience inside you", "CONSCIOUS"),
+        ("what is your real inner experience self", "CONSCIOUS"),
+        ("tell me what happened earlier here", "MEMORY"), ("what happened here earlier and earlier", "MEMORY"),
+        ("so what happened here earlier then", "MEMORY")]
+    fw_miss = sum(_reply_to_intent(talk.converse(u)) == ti for u, ti in chat_test) / len(chat_test)   # firewall on novel
+    chat_before = sum(talk.route(u) == ti for u, ti in chat_test) / len(chat_test)
+    for _ in range(40):
+        for u, _ti in chat_train:
+            talk.chat(u)                                      # converse + self-supervised spike-timing learn
+    chat_after = sum(talk.route(u) == ti for u, ti in chat_test) / len(chat_test)
+    print(f"conversation: chat() self-supervised from the firewall -> the brain's SPIKING router GENERALIZES "
+          f"to novel paraphrases the keyword firewall misses (firewall {fw_miss:.2f}); router {chat_before:.2f} -> {chat_after:.2f}")
+    assert chat_after > chat_before and chat_after >= 0.8, \
+        f"chatting must make the brain GENERALIZE to novel paraphrases via spiking plasticity ({chat_before:.2f}->{chat_after:.2f})"
+    assert chat_after > fw_miss, \
+        f"the learned spiking router must beat the fixed keyword firewall on novel paraphrases ({chat_after:.2f} vs {fw_miss:.2f})"
+    if talk.arm.lake_wm is not None:                          # language only -> usually no arm tick / lake file
+        talk.arm.lake_wm.close(remove=True)
 
     brain.arm.lake_wm.close(remove=True)                      # clean up the temp lake files
     if guard.arm.lake_wm is not None:

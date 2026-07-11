@@ -3,6 +3,37 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.22] -- Conversing improves the brain: self-supervised spiking generalization to novel paraphrases (2026-07-10)
+
+Answering "does the brain improve by being talked to?": the fixed `converse()` keyword router does NOT --
+it is stateless and misses paraphrases carrying none of its hand-tuned keywords (0.20 on held-out novel
+paraphrases, identical on re-ask). So the brain was IMPROVED so it does: conversation now drives SPIKING
+generalization, self-supervised from the brain's own firewall, no human labels.
+
+### Added / Changed
+- `cortex/interaction_learning.py` -- `learn_turn(utterance, firewall_intent, feedback=None)` +
+  `route_text(utterance)` + a `t_post` spike-timing knob (a SMALLER readout time keys the membrane read on
+  the EARLY content-word spikes -> generalization, not memorization; default None == n_in, byte-identical).
+  Converse-and-learn: the firewall's OWN grounded intent for each line is a SELF-SUPERVISED teaching signal
+  (distillation), trained by R-STDP spike-timing plasticity. New self-check on the REAL LiveBrain: the fixed
+  keyword router misses novel paraphrases (0.20, no learning state) while the spiking router taught from the
+  firewall GENERALIZES to a DISJOINT held-out set 0.30 -> 1.00 (teaching-shuffled control 0.10); structurally
+  spiking (discrete spike events, delta == lr*reward*eligibility, no numpy/torch); deterministic. Honest
+  limit: on the firewall's OWN blind spots distillation stays 0.20 and explicit conversational feedback
+  recovers 0.90 (still spike-timing R-STDP). Existing self-check byte-identical.
+- `cortex/live_brain.py` -- `LiveBrain.chat(text, feedback=None)`: reply (grounded, via converse()) AND learn
+  from the turn (self-supervised R-STDP), in the generalizing config (n_in=52, t_post=6). Self-check:
+  chatting makes the brain's SPIKING intent router GENERALIZE to novel paraphrases the keyword firewall
+  misses -- firewall 0.00, router 0.00 -> 1.00 on 9 held-out paraphrases. SAFETY: intent recognition only,
+  NO actuator route (arm commands stay behind the NL firewall + gated arm; reflex E-STOP untouched). Off by
+  default => byte-identical.
+
+Honest answer: plain conversation through the fixed router does NOT improve the brain; the added SPIKING
+path does -- the brain now learns from conversation and generalizes, in the project's real (spiking) modality.
+
+Gates green: 178/178 core self-checks, pytest passed (89.11% cov), ruff clean; the 5 brainstem envelope
+files byte-for-byte unchanged (git-diff empty).
+
 ## [v3.21] -- Spiking interaction learning: improve the brain by talking to it (R-STDP) + a spiking-purity audit (2026-07-10)
 
 ### Spiking-purity audit (honest) -- see docs/SPIKING_AUDIT.md

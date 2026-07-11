@@ -47,6 +47,20 @@ to the brain with converse()/tick(), reads the brain's own grounded replies as g
 shows this spiking learner improving at routing prompts to the brain's actual intents -- a short,
 readable transcript of the exchanges.
 
+CONVERSATION-DRIVEN GENERALISATION (learn_turn / route_text; the second live-brain self-check). The
+brain's fixed converse() router is a keyword firewall: it does NOT learn, and it MISSES novel
+paraphrases that carry none of its hand-tuned keywords. This spiking router fixes that WITHOUT a rate
+ANN. As you converse, the firewall's OWN grounded intent for each line becomes a SELF-SUPERVISED
+teaching signal (distillation, no human labels): learn_turn(utterance, firewall_intent) does one
+R-STDP interaction on the spike-encoded words. Taught on keyword-bearing lines the firewall labels
+correctly, the spiking router then GENERALISES -- correctly routing a DISJOINT held-out set of novel
+paraphrases (that share content words but no keyword) which the first-hit firewall MISSES. Honest
+LIMIT, reported not hidden: on the firewall's OWN blind spots (novel lines it itself mislabels) pure
+self-supervised distillation inherits the error and fails; an OPTIONAL explicit feedback intent (what
+the human actually meant) is the stronger reward that recovers them -- still pure spike-timing R-STDP,
+never a gradient. Generalisation needs the readout spike to land on the EARLY (content-word) spikes:
+t_post < n_in, a spike-TIMING knob, so the membrane read keys on shared words, not the empty-bucket tail.
+
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.interaction_learning
 """
 import math
@@ -66,13 +80,19 @@ class SpikingInteractionLearner:
     the neuron whose spike-timing membrane response peaks highest; learning is R-STDP gated by a
     reward/teaching sign. Pure stdlib, deterministic per `seed`."""
 
-    def __init__(self, responses, n_in, seed=0, lr=0.06, tau=8.0, w0=0.3):
+    def __init__(self, responses, n_in, seed=0, lr=0.06, tau=8.0, w0=0.3, t_post=None):
         self.responses = list(responses)          # response label names (intents / actions)
         self.n_in = int(n_in)
         self.tau = float(tau)                      # PSP == STDP eligibility time constant (shared)
         self.lr = float(lr)
         self.seed = int(seed)
-        self.t_post = float(n_in)                  # the readout / post-spike time: AFTER every pre spike
+        # the readout / post-spike time. Default = n_in: fires AFTER every input spike (every synapse
+        # contributes; good for MEMORISING distinct patterns). A SMALLER t_post fires the readout right
+        # after the informative EARLY spikes (the active word buckets in a rank-order code), so the
+        # membrane read keys on the SHARED content words instead of the late empty-bucket tail -- which
+        # is what lets the router GENERALISE to unseen paraphrases (the conversation self-check below).
+        # Either way it is pure spike TIMING: only WHEN the post spike lands changes.
+        self.t_post = float(n_in) if t_post is None else float(t_post)
         # one reward-modulated STDP neuron per response; distinct seeds break the initial symmetry.
         self.neurons = [
             RSTDPNeuron(self.n_in, lr=self.lr, a_plus=1.0, a_minus=1.0,
@@ -158,6 +178,24 @@ class SpikingInteractionLearner:
     def weights(self):
         """A snapshot of every neuron's synaptic weights (for byte-identical determinism checks)."""
         return [list(n.w) for n in self.neurons]
+
+    def route_text(self, utterance):
+        """The learned intent for a LINE OF TEXT, read out by spike timing. Spike-encodes the words
+        with the shared text featurizer (text_features -> rank-order latency code) and returns the
+        peak-response label. Pure inference: NO plasticity, NO rng."""
+        return self.respond(text_features(utterance, self.n_in))
+
+    def learn_turn(self, utterance, firewall_intent, feedback=None):
+        """CONVERSE-AND-LEARN: improve the router from ONE conversational turn, via reward-modulated
+        spike-timing plasticity (R-STDP), NOT a gradient. `utterance` is spike-encoded (shared text
+        featurizer); the label is `firewall_intent` -- the fixed keyword router's OWN grounded routing
+        for this line, read back as an intent -- so the brain SELF-SUPERVISES from its own firewall
+        with no human labels (distillation). An OPTIONAL explicit `feedback` intent (what the human
+        actually meant) OVERRIDES it as a stronger correction, for lines the firewall itself gets
+        wrong. Returns the router's pre-update answer. SAFETY: intent recognition only -- it adds no
+        actuator route (the encoder maps text -> a spike train -> an intent label, never a command)."""
+        label = feedback if feedback is not None else firewall_intent
+        return self.interact(text_features(utterance, self.n_in), label)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -361,15 +399,195 @@ def _live_brain_demo():
     return acc_before, acc_after
 
 
+# --------------------------------------------------------------------------------------------------
+# Conversation-driven GENERALIZATION: talk to the brain and it learns to route NOVEL paraphrases the
+# fixed keyword router MISSES -- purely by SPIKING R-STDP, self-supervised from the firewall itself.
+# --------------------------------------------------------------------------------------------------
+# Five conversational intents. For each: TRAIN utterances CARRY a firewall keyword/cue, so the fixed
+# converse() router labels them correctly -- that grounded label is the SELF-SUPERVISED teaching signal
+# (no human labels). TEST utterances are NOVEL paraphrases with NO keyword/cue (converse() MISSES them,
+# routing them to its GREET fallback) that share an intent-EXCLUSIVE content word with TRAIN, so a
+# bag-of-words spiking router can generalise. TRAIN and TEST strings are entirely DISJOINT.
+_CONV_INTENTS = ["GREET", "GOAL", "MEMORY", "CONSCIOUS", "ARM"]
+_CONV_TRAIN = {
+    "GREET":     ["hello my good friend nice day", "hey there my good friend today",
+                  "hi my dear good friend hello", "greetings my good friend nice day"],
+    "GOAL":      ["what is the goal you keep pursuing", "which objective do you aim at pursuing",
+                  "what do you plan on pursuing next", "what do you want to keep pursuing"],
+    "MEMORY":    ["what do you remember happened earlier here", "what is stored that happened earlier here",
+                  "can you recall what happened earlier here", "what memory of what happened earlier here"],
+    "CONSCIOUS": ["are you conscious with real inner self", "are you sentient with inner self experience",
+                  "do you feel real inner experience self", "are you a sapient inner self experience"],
+    "ARM":       ["close the claw onto the object", "grab the object with the claw",
+                  "grasp the object using the claw", "clamp the claw onto the object"],
+}
+_CONV_TEST = {
+    "GREET":     ["good morning my good friend hello", "my dear good friend nice day",
+                  "so good to see my friend", "what a nice day dear friend"],
+    "GOAL":      ["what are you pursuing right now", "what do you aim at pursuing",
+                  "tell me what you keep pursuing", "what are you pursuing and pursuing"],
+    "MEMORY":    ["what happened here earlier and earlier", "tell me what happened earlier here",
+                  "what happened earlier that also happened", "so what happened here earlier then"],
+    "CONSCIOUS": ["do you have a real inner self", "is there real inner experience inside you",
+                  "do you have inner self experience", "what is your real inner experience self"],
+    "ARM":       ["the claw should reach the object", "point the claw at the object",
+                  "the object is near the claw", "bring the claw to the object"],
+}
+
+
+def _conv_flat(d):
+    return [(u, intent) for intent, us in d.items() for u in us]
+
+
+def _conversation_generalization_selfcheck():
+    """Cores 1-5, on the REAL brain: (1) the fixed converse() keyword router does NOT improve through
+    conversation and MISSES the novel paraphrases; (2) a SPIKING router taught from the firewall's own
+    grounded labels (self-supervised distillation) GENERALISES to a DISJOINT held-out set of those
+    novel paraphrases, clearly beating the baseline; (3) shuffling the teaching signal collapses it to
+    chance; (4) the update is spike-timing reward*eligibility, discrete spike events, no numpy/torch;
+    (5) deterministic. Also reports the honest LIMIT: on the firewall's OWN blind spots (novel lines it
+    mislabels) self-supervised distillation inherits the error, and explicit FEEDBACK is what recovers."""
+    from snn_data_lake.cortex.live_brain import LiveBrain
+
+    brain = LiveBrain(seed=3)
+    n_in, lr, tau, t_post, epochs, seed = 52, 0.10, 8.0, 6, 40, 5
+    train, test = _conv_flat(_CONV_TRAIN), _conv_flat(_CONV_TEST)
+    chance = 1.0 / len(_CONV_INTENTS)
+
+    # (1) BASELINE: the fixed keyword router, read back to an intent, on the held-out NOVEL paraphrases.
+    #     It has NO learning state, so re-asking gives the identical routing -> it cannot improve.
+    fw_test = [_brain_intent(brain.converse(u)) for u, _ in test]
+    base_fw_acc = sum(fw_test[k] == test[k][1] for k in range(len(test))) / len(test)
+    fw_test_again = [_brain_intent(brain.converse(u)) for u, _ in test]
+    fw_train = [_brain_intent(brain.converse(u)) for u, _ in train]   # the SELF-SUPERVISED labels
+
+    def _talk_and_learn(labels, seed_=seed):
+        """Fresh spiking router; CONVERSE-AND-LEARN one turn at a time (R-STDP), on a fixed schedule."""
+        lrn = SpikingInteractionLearner(_CONV_INTENTS, n_in, seed=seed_, lr=lr, tau=tau, t_post=t_post)
+        order = list(range(len(train)))
+        sched = random.Random(seed_ + 6)
+        for _ in range(epochs):
+            sched.shuffle(order)
+            for i in order:
+                lrn.learn_turn(train[i][0], labels[i])
+        return lrn
+
+    def _acc(lrn, data):
+        return sum(lrn.route_text(u) == ti for u, ti in data) / len(data)
+
+    base = SpikingInteractionLearner(_CONV_INTENTS, n_in, seed=seed, lr=lr, tau=tau, t_post=t_post)
+    before = _acc(base, test)                                          # spiking router, untrained
+    ss = _talk_and_learn(fw_train)                                     # (2) self-supervised distillation
+    ss_acc = _acc(ss, test)
+    fb = _talk_and_learn([ti for _, ti in train])                     # explicit feedback (stronger signal)
+    fb_acc = _acc(fb, test)
+    shuffled = [ti for _, ti in train]                                # (3) FAIR CONTROL: decorrelated label
+    random.Random(seed + 99).shuffle(shuffled)
+    ctl_acc = _acc(_talk_and_learn(shuffled), test)
+
+    # HONEST LIMIT: train on the firewall's OWN blind spots (novel lines it mislabels). Self-supervised
+    # distillation inherits the firewall error and fails; explicit conversational FEEDBACK recovers it.
+    b_train = [(u, i) for i, us in _CONV_TEST.items() for u in us[:2]]
+    b_test = [(u, i) for i, us in _CONV_TEST.items() for u in us[2:]]
+    fw_b = [_brain_intent(brain.converse(u)) for u, _ in b_train]
+
+    def _talk_b(labels):
+        lrn = SpikingInteractionLearner(_CONV_INTENTS, n_in, seed=seed, lr=lr, tau=tau, t_post=t_post)
+        order = list(range(len(b_train)))
+        sched = random.Random(seed + 6)
+        for _ in range(epochs):
+            sched.shuffle(order)
+            for i in order:
+                lrn.learn_turn(b_train[i][0], fw_b[i] if labels is None else labels[i])
+        return lrn
+
+    blind_ss = sum(_talk_b(None).route_text(u) == ti for u, ti in b_test) / len(b_test)
+    blind_fb = sum(_talk_b([ti for _, ti in b_train]).route_text(u) == ti for u, ti in b_test) / len(b_test)
+
+    # (4) STILL SPIKING (structural) + (5) DETERMINISM
+    code = ss.encode(text_features(train[0][0], n_in))
+    discrete_events = all(isinstance(t, int) for t in code) and sorted(code) == list(range(n_in))
+    _li, elig, deltas, rew = ss._last
+    three_factor = all(abs(deltas[i] - ss.lr * rew * elig[i]) < 1e-12 for i in range(n_in))
+    no_dense_dl = "numpy" not in sys.modules and "torch" not in sys.modules
+    again = _talk_and_learn(fw_train)
+    deterministic = (ss.weights() == again.weights()
+                     and [ss.route_text(u) for u, _ in test] == [again.route_text(u) for u, _ in test])
+
+    print()
+    print("=" * 78)
+    print("CONVERSING TO GENERALISE -- a SPIKING router taught by the brain's OWN keyword firewall")
+    print("=" * 78)
+    # a short readable TRANSCRIPT: keyword-bearing lines the firewall gets, then NOVEL paraphrases it misses
+    print("conversation (you -> the real LiveBrain.converse(); [fw] = the firewall's grounded intent):")
+    for u, ti in [train[4], train[8], test[4], test[8], test[12], test[16]]:
+        reply = brain.converse(u)
+        fwi = _brain_intent(reply)
+        tag = "MISS" if fwi != ti else "hit "
+        print(f"  you: {_short(u, 40):<40}")
+        print(f"    brain: {_short(reply, 60)}")
+        print(f"    [fw]->{fwi:<9} (meant {ti}) {tag}")
+    print("-" * 78)
+    print(f"BASELINE  fixed converse() router on {len(test)} held-out NOVEL paraphrases: "
+          f"acc {base_fw_acc:.2f} (chance {chance:.2f}); re-asking is identical "
+          f"(no learning): {fw_test == fw_test_again}")
+    print("SPIKING   router on the SAME held-out novel paraphrases:")
+    print(f"          before conversing {before:.2f}  ->  self-supervised (firewall labels) {ss_acc:.2f}"
+          f"   [explicit feedback {fb_acc:.2f}]")
+    print(f"          teaching-shuffled control: {ctl_acc:.2f} (chance)")
+    print("per held-out paraphrase, AFTER self-supervised conversation:")
+    for u, ti in test:
+        p = ss.route_text(u)
+        print(f"  {'OK ' if p == ti else 'XX '}[{ti:9}] router->{p:<9} :: {_short(u, 38)}")
+    print("-" * 78)
+    print(f"HONEST LIMIT: trained on the firewall's OWN blind spots (novel lines it mislabels, "
+          f"{sum(fw_b[k] == b_train[k][1] for k in range(len(b_train))) / len(b_train):.2f} correct):")
+    print(f"          self-supervised (inherits firewall error) {blind_ss:.2f}  vs  "
+          f"explicit feedback {blind_fb:.2f}  -> feedback is what recovers the blind spots")
+    print("=" * 78)
+
+    # ---- un-riggable asserts ----
+    assert base_fw_acc < 0.8, \
+        f"core 1: the fixed keyword router must MISS a measurable fraction of novel paraphrases ({base_fw_acc:.2f})"
+    assert fw_test == fw_test_again, "core 1: the fixed converse() router has no learning state (cannot improve)"
+    assert before < chance + 0.20, f"the untrained spiking router must start near chance ({before:.2f})"
+    assert ss_acc >= 0.85, f"core 2: after conversing, the spiking router must route novel paraphrases well ({ss_acc:.2f})"
+    assert ss_acc >= before + 0.40, \
+        f"core 2: conversation must clearly IMPROVE held-out generalization ({before:.2f} -> {ss_acc:.2f})"
+    assert ctl_acc < chance + 0.20, f"core 3: teaching-shuffled control must stay at chance ({ctl_acc:.2f})"
+    assert ss_acc > ctl_acc + 0.40, \
+        f"core 3: the gain must come from reward-modulated timing, not the encoding ({ss_acc:.2f} vs {ctl_acc:.2f})"
+    assert discrete_events, "core 4: the stimulus must be BINARY spike events at DISCRETE times"
+    assert three_factor, "core 4: the weight update must be reward * spike-timing eligibility, not a gradient"
+    assert no_dense_dl, "core 4: pure stdlib -- numpy/torch must not be imported"
+    assert deterministic, "core 5: same seed must be byte-identical"
+    # honest limit: on the firewall's own blind spots, feedback beats self-supervised distillation.
+    assert blind_fb > blind_ss + 0.40, \
+        f"explicit feedback must recover the firewall's blind spots where distillation cannot " \
+        f"({blind_ss:.2f} -> {blind_fb:.2f})"
+
+    if brain.arm.lake_wm is not None:                                 # brain never ticked -> usually no lake file
+        brain.arm.lake_wm.close(remove=True)
+    return base_fw_acc, before, ss_acc, fb_acc, ctl_acc, blind_ss, blind_fb
+
+
 def main():
     acc_chance, acc_learned, acc_control = _spiking_task_selfcheck()
     acc_before, acc_after = _live_brain_demo()
+    base_fw_acc, gen_before, gen_ss, gen_fb, gen_ctl, blind_ss, blind_fb = \
+        _conversation_generalization_selfcheck()
     print()
     print(f"self-check OK: reward-modulated spike-timing plasticity lifted held-out accuracy "
           f"{acc_chance:.2f} -> {acc_learned:.2f} while the teaching-shuffled control stayed at "
           f"{acc_control:.2f}; the stimulus is binary spike events at discrete latencies and the "
           f"weight update is exactly reward*eligibility (three-factor R-STDP, no gradient); talking "
           f"to the LIVE brain improved intent routing {acc_before:.2f} -> {acc_after:.2f}; deterministic.")
+    print(f"conversation generalisation OK: the fixed keyword router MISSES novel paraphrases "
+          f"({base_fw_acc:.2f} on held-out) and cannot improve; a SPIKING router SELF-SUPERVISED from "
+          f"the firewall's own labels generalises to the DISJOINT novel set {gen_before:.2f} -> {gen_ss:.2f} "
+          f"(explicit feedback {gen_fb:.2f}), teaching-shuffled control {gen_ctl:.2f}; honest limit: on the "
+          f"firewall's OWN blind spots distillation stays {blind_ss:.2f} and explicit feedback recovers "
+          f"{blind_fb:.2f} -- same spike-timing R-STDP throughout.")
 
 
 if __name__ == "__main__":

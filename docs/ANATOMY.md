@@ -141,3 +141,12 @@ modulated spike-timing plasticity (R-STDP), reusing the real spiking primitives,
 `LiveBrain(interaction_learning=True).teach(text, intent)` / `.route(text)`: talking to the brain lifts its spiking
 intent routing from chance to 1.00, proven from spike timing (a shuffled-teaching control stays at chance), and it
 adds no actuator route (arm commands still go through the NL firewall + gated arm; the reflex E-STOP still preempts).
+
+v3.22 answers "does the brain improve by being talked to?" honestly: the fixed `converse()` keyword router does NOT
+(it is stateless and misses paraphrases with no keyword -- 0.20 on held-out novel paraphrases), so the brain was
+improved so it does. `LiveBrain.chat(text)` replies AND learns from each turn -- the firewall's own grounded intent
+is a SELF-SUPERVISED R-STDP teaching signal (no human labels), and a `t_post` spike-timing knob makes the readout
+key on early content-word spikes so it GENERALIZES. The brain's spiking router now routes NOVEL paraphrases the
+keyword firewall misses (firewall 0.00, router 0.00 -> 1.00 on held-out), still spike-timing (shuffled control at
+chance) and still intent-recognition only (no actuator route). Honest limit: on the firewall's own blind spots
+distillation inherits the error and explicit conversational feedback is what recovers them.
