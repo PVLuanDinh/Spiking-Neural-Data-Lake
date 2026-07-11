@@ -3,6 +3,42 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.25] -- Spiking-conversion program slice 3: more of the rational-thinking core -> genuine spiking (2026-07-11)
+
+Slice 3 continues the rational-thinking spiking conversion. 4 modules converted in-place to genuine spiking
+(2 RATE + 2 RATE_BY_DESIGN), API-preserved.
+
+### Changed
+- `basal_ganglia/evidence_accumulation` (RATE -> spiking) -- decision by a WANG-2002 SPIKING DECISION ATTRACTOR
+  (one LIF pool per choice + a shared inhibitory pool; the pool that reaches sustained population firing wins,
+  RT = crossing step). Psychometric 0.48 -> 1.00, chronometric (weak RT 6.9 > strong 4.0), speed-accuracy (low
+  bound acc 0.83/RT 2.9 vs high 1.00/10.3), N-way WTA 39/40, 96 spikes/trial. Both DriftDiffusion + RaceAccumulator
+  APIs preserved (no external callers). Honest: RTs are in attractor-commit steps (units differ from the old DDM);
+  bound reinterpreted as a rate threshold.
+- `thalamus/global_workspace` (RATE -> spiking; LIVE-LOOP-WIRED) -- a spiking DEHAENE-CHANGEUX IGNITION network:
+  LIF pools + a shared inhibitory pool + recurrent self-excitation; the winner IGNITES to sustained firing and is
+  broadcast while sub-threshold content stays local (all-or-none: weak 0.40 -> 0 spikes / strong 0.80 -> 59 spikes;
+  3x more stable than per-tick argmax, 4 vs 27 switches). SAFETY: the live broadcast contract + E-STOP are intact --
+  autonomous_loop sec8 (safe tick broadcasts the percept, threat ignites 'threat', E-STOP freeze holds) and
+  live_brain both pass. Honest gap: a perfect N-way tie is metastable (broken only by the deterministic single-slot
+  readout); genuine physical WTA proven with distinct strengths.
+- `thalamus/reticular_gate` (RATE_BY_DESIGN -> spiking) -- a spiking TRN attentional gate: LIF relay neurons + an
+  inhibitory TRN pool (threshold spread -> graded recruitment) realise divisive normalization by spiking feedback
+  (attended relay ~0.20 spikes/step vs distractors ~0.03; more competitors -> more TRN spikes -> lower throughput).
+- `cortex/theta_gamma_code` (RATE_BY_DESIGN -> spiking) -- a spiking Lisman-Idiart phase code: each held item is a
+  LIF population that fires at its item-specific gamma phase within the theta cycle; recall decodes by spike phase;
+  capacity = the theta/gamma step ratio (~7); items re-fire each theta cycle (maintenance).
+
+Each: preserved public API, un-riggable self-check asserting BOTH function AND genuine spiking (discrete spikes,
+membrane/threshold, numpy/torch absent), deterministic. Honest costs reported (attractor RT units, N-way-tie
+metastability, reduced-oscillator theta-gamma).
+
+Progress: brain-region atlas now **SPIKING 48 / 103; RATE remaining 36**. Decision (evidence accumulation) and the
+global broadcast / attention (workspace) -- both used by the LIVE BRAIN to think -- are now genuinely spiking.
+
+Gates green: 178/178 core self-checks, pytest passed (89.60% cov), ruff clean; the 5 brainstem envelope files
+byte-for-byte unchanged (git-diff empty).
+
 ## [v3.24] -- Spiking-conversion program slice 2: the RATIONAL-THINKING core -> genuine spiking (incl the executive) (2026-07-11)
 
 Slice 2 of the maximal program, focused (per directive) on the modules that contribute to RATIONAL THINKING --

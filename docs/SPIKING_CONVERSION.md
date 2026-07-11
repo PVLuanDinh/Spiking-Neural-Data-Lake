@@ -9,6 +9,7 @@ Baseline inventory (2026-07-10, parallel classification of 103 brain-region modu
 **SPIKING 34 | RATE 47 (convert) | RATE_BY_DESIGN 22 (spiking analog).**
 After slice 1 (v3.23): **SPIKING 39 | RATE 42 | RATE_BY_DESIGN 22.**
 After slice 2 (v3.24): **SPIKING 44 | RATE 38 | RATE_BY_DESIGN 21.**
+After slice 3 (v3.25): **SPIKING 48 | RATE 36 | RATE_BY_DESIGN 19.**
 
 ## Converted to spiking (progress)
 
@@ -131,3 +132,13 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   (stochastic LIF sampling + event-driven CD/STDP), `cortex/brain_reasoning` (LIF WTA decision + spike-margin
   confidence). All API-preserved, un-riggable spiking self-checks. Honest gaps reported (pfc WM metastable/drive-gated
   release; spike-quantized inference approximate; WTA ties can differ from argmax). Remaining RATE after slice 2: 38.
+- **Slice 3 (v3.25) -- more rational-thinking (4 modules):** `basal_ganglia/evidence_accumulation` (RATE ->
+  Wang-2002 spiking decision attractor: LIF pools + shared inhibition; psychometric/chronometric/speed-accuracy
+  hold), `thalamus/global_workspace` (RATE -> spiking Dehaene-Changeux IGNITION: LIF pools + global lateral
+  inhibition + self-excitation; all-or-none ignition; LIVE-LOOP-WIRED -- verified autonomous_loop sec8 broadcast
+  contract + E-STOP + live_brain), `thalamus/reticular_gate` (RATE_BY_DESIGN -> spiking TRN attentional gate:
+  LIF relay + inhibitory pool = spiking divisive normalization), `cortex/theta_gamma_code` (RATE_BY_DESIGN ->
+  spiking Lisman-Idiart phase code: LIF populations fire at item-specific gamma phases; capacity = theta/gamma
+  ratio ~7). All API-preserved, un-riggable spiking self-checks; honest gaps reported (attractor RT units differ;
+  global-workspace N-way exact-tie metastable; theta-gamma is a reduced discrete-step oscillator). Remaining
+  RATE after slice 3: 36.
