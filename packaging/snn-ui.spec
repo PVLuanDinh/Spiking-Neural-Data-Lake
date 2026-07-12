@@ -30,7 +30,8 @@ a = Analysis(
     runtime_hooks=[],
     excludes=["numpy", "torch", "torchvision", "snntorch", "bindsnet",   # optional-dep addons:
               "polars", "pyarrow", "deltalake", "serial", "airllm",       # never part of the GUI
-              "transformers", "tonic", "pytest"],
+              "transformers", "tonic", "pytest",
+              "snn_data_lake.hippocampus.ng_snn"],                        # torch-gated core module (not in the GUI)
     noarchive=False,
 )
 pyz = PYZ(a.pure)
