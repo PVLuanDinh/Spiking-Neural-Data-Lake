@@ -116,9 +116,10 @@ class SpikingChat:
         # self-improve -> a curiosity-driven brain (needs jepa) + the spiking interaction learner,
         # so it learns SELF-DIRECTED. Otherwise -> grasp-reward priming (fixed goal GRIPPER_OPEN).
         if self_improve:
-            # SI-1: the self-improvement drive is the GENUINELY-SPIKING learning-progress curiosity
-            # (SpikingCuriosityDrive, LP read from LIF spike counts) -- the live primitive is now spiking.
-            self.brain = LiveBrain(seed=seed, spiking_curiosity=True, jepa=True, interaction_learning=True)
+            # SI-1: the self-improvement drive is the GENUINELY-SPIKING learning-progress
+            # curiosity (SpikingCuriosityDrive, LP from LIF spike counts) -- now spiking.
+            self.brain = LiveBrain(seed=seed, spiking_curiosity=True, jepa=True,
+                                   interaction_learning=True)
         else:
             self.brain = LiveBrain(seed=seed)
         _safe = CONTACT * 3.0
