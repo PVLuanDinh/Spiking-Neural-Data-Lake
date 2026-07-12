@@ -23,6 +23,10 @@ classifiers = [
 ]
 dependencies = []   # the core is pure standard library — that is the point
 
+# EXCEPTION (documented, user-authorized): hippocampus/ng_snn.py is the ONE core module that imports
+# torch (NG-SNN spiking classifier). Core stays dependencies=[] (torch is NOT a hard dep); ng_snn is
+# torch-GATED in run_selfchecks.py (skipped when torch absent) and satisfied by the [gpu]/[train]
+# extras below. Every other core module is zero-dep. See CLAUDE.md.
 [project.optional-dependencies]
 arm = ["pyserial"]                                                       # live_arm --serial / --actuate
 lake = ["polars", "pyarrow", "deltalake"]                               # lakehouse/medallion + delta_demo

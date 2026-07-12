@@ -40,6 +40,7 @@ from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.neuromodulation.cortisol import Cortisol
 from snn_data_lake.neuromodulation.curriculum import Curriculum
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
+from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
@@ -55,6 +56,7 @@ class AutonomousArm:
                  workspace=False, amygdala=False, bg_gate=False, interoception=False,
                  pfc=False, pfc_gain=0.5, lake_wm=False, lake_wm_path=None,
                  jepa=False, jepa_horizon=4, hjepa_serve=None, curiosity=False, curiosity_gain=0.5,
+                 spiking_curiosity=False,
                  latent_q=False, mlp_q=False, reward_shaped_encoder=False, reward_gain=5.0):
         self.arm = ArmSim()
         self._seed = seed
@@ -135,7 +137,15 @@ class AutonomousArm:
         # only the value update -- it drives no motion, adds no actuator route, creates no stress, and the
         # reflex/E-STOP + amygdala/interoceptive caution still preempt every command (like a baby drawn to
         # novelty while external guards keep it safe).
-        self.curiosity = CuriosityDrive(seed=seed) if curiosity else None
+        # spiking_curiosity (SI-1) swaps the rate learning-progress drive for the genuinely-spiking one
+        # (SpikingCuriosityDrive, LP read from LIF spike counts) -- a duck-typed drop-in, so every consumer
+        # (learning_progress / intrinsic_reward at the value-feed) is unchanged. Off -> the exact rate path.
+        if spiking_curiosity:
+            self.curiosity = SpikingCuriosityDrive(seed=seed)
+        elif curiosity:
+            self.curiosity = CuriosityDrive(seed=seed)
+        else:
+            self.curiosity = None
         self.curiosity_gain = curiosity_gain
         self._dev_rng = random.Random(seed + 7)                 # task-selection rng for develop() (kept off step()'s rng)
         # opt-in SHARED LATENT Q (the transfer substrate): replace the TABULAR per-context q[unit][action] with a

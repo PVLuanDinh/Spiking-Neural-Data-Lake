@@ -153,13 +153,17 @@ def make_handler(chat, lock):
         def _serve_state(self):
             try:
                 with lock:
-                    goal = ACTIONS[chat.brain.goal] if chat.brain.goal is not None else None
+                    action_goal = ACTIONS[chat.brain.goal] if chat.brain.goal is not None else None
                     wm = chat.brain.arm.lake_wm
                     state = {
-                        "goal": goal,
+                        "goal": chat.meta_goal or action_goal,   # meta-goal when self-improving
                         "lake_events": chat.lake.n_events(),
                         "wm_events": wm.n_events() if wm is not None else 0,
                     }
+                    if chat.self_improve:                        # live self-improvement telemetry
+                        state["action_goal"] = action_goal
+                        state["ticks"] = chat._ticks
+                        state["learning_progress"] = round(chat._lp, 6)
                 self._send_json(state)
             except Exception:                       # never leak a traceback to the client
                 self._send_error_json(500, "internal error")
@@ -200,13 +204,28 @@ def make_handler(chat, lock):
     return ChatHandler
 
 
-def build_server(port, lake_path):
+def build_server(port, lake_path, self_improve=False):
     """Create (httpd, chat, lock). One SpikingChat guarded by a threading lock."""
     os.makedirs(os.path.dirname(lake_path), exist_ok=True)
-    chat = SpikingChat(lake_path=lake_path)
+    chat = SpikingChat(lake_path=lake_path, self_improve=self_improve)
     lock = threading.Lock()
     httpd = ThreadingHTTPServer((HOST, port), make_handler(chat, lock))
     return httpd, chat, lock
+
+
+def _daemon_loop(chat, lock, stop_event, interval=0.02):
+    """The SELF-IMPROVING DAEMON: a background thread that ticks the curiosity-driven brain
+    continuously, so it learns SELF-DIRECTED from its own experience even when no one is chatting.
+    Guarded by `lock` (the SAME lock the request handlers use) so the daemon + chat never race the
+    shared brain. Gated + safe: each tick runs the reflex E-STOP first and curiosity feeds only the
+    value update (no motor route). A tick must never crash the server."""
+    while not stop_event.is_set():
+        try:
+            with lock:
+                chat.tick_self_improve()
+        except Exception:
+            pass
+        stop_event.wait(interval)
 
 
 def main(argv=None):
@@ -215,22 +234,31 @@ def main(argv=None):
                         help=f"port to bind (default {DEFAULT_PORT})")
     parser.add_argument("--smoke", action="store_true",
                         help="run the headless self-check and exit")
+    parser.add_argument("--self-improve", action="store_true",
+                        help="run as a SELF-IMPROVING DAEMON: a background thread ticks the "
+                             "curiosity-driven brain continuously so it learns (gated/safe)")
     args = parser.parse_args(argv)
 
     if args.smoke:
         return smoke()
 
-    httpd, chat, _lock = build_server(args.port, LAKE_PATH)
+    httpd, chat, lock = build_server(args.port, LAKE_PATH, self_improve=args.self_improve)
     port = httpd.server_address[1]
+    stop_event = threading.Event()
+    if args.self_improve:                         # start the background self-improvement daemon
+        threading.Thread(target=_daemon_loop, args=(chat, lock, stop_event), daemon=True).start()
     print(f"Serving on http://{HOST}:{port}")
     print(f"  chat page  -> http://{HOST}:{port}/")
     print(f"  lake file  -> {LAKE_PATH}")
+    if args.self_improve:
+        print("  mode       -> SELF-IMPROVING DAEMON (curiosity-driven learning; gated/safe)")
     print("Press Ctrl+C to stop.")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         print("Shutting down.")
     finally:
+        stop_event.set()
         httpd.shutdown()
         httpd.server_close()
         chat.close()

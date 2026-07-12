@@ -54,11 +54,12 @@ class LiveBrain:
     and no new path to the actuator; it just runs every region together as one loop."""
 
     def __init__(self, seed=0, pfc_gain=0.5, lake_wm=True, jepa=False, jepa_horizon=4, hjepa_serve=None,
-                 curiosity=False, curiosity_gain=0.5, interaction_learning=False):
+                 curiosity=False, curiosity_gain=0.5, spiking_curiosity=False, interaction_learning=False):
         self.arm = AutonomousArm(seed=seed, workspace=True, amygdala=True, bg_gate=True,
                                  interoception=True, pfc=True, pfc_gain=pfc_gain, lake_wm=lake_wm,
                                  jepa=jepa, jepa_horizon=jepa_horizon, hjepa_serve=hjepa_serve,
-                                 curiosity=curiosity, curiosity_gain=curiosity_gain)
+                                 curiosity=curiosity, curiosity_gain=curiosity_gain,
+                                 spiking_curiosity=spiking_curiosity)
         self._nl = NLInterface()                             # the NL safety firewall for chat arm commands
         self._seed = seed
         self._planner = None                                 # lazy deliberative planner (lookahead over a fwd model)

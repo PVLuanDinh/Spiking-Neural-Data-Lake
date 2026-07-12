@@ -76,7 +76,7 @@ CORE = [
     # neuromodulation — diffuse chemical modulators + glia (LC noradrenaline, raphe serotonin)
     "neuromodulation.acetylcholine", "neuromodulation.astrocyte_modulation", "neuromodulation.cortisol",
     "neuromodulation.locus_coeruleus", "neuromodulation.raphe_serotonin", "neuromodulation.intrinsic_motivation",
-    "neuromodulation.curriculum",
+    "neuromodulation.curriculum", "neuromodulation.spiking_curiosity",
     # plasticity — Hebbian/STDP, homeostatic, developmental learning rules
     "plasticity.bcm_plasticity", "plasticity.homeostatic_scaling", "plasticity.inhibitory_stdp", "plasticity.intrinsic_plasticity",
     "plasticity.short_term_plasticity", "plasticity.developmental_pruning",
@@ -111,10 +111,29 @@ RESEARCH = [
     "research/resume_learning", "research/weight_perturbation",
     "research/make_results_plot",
 ]
-MODULES = CORE + RESEARCH
+# TORCH-GATED CORE -- the ONE documented, user-authorized exception to the zero-dep core.
+# hippocampus.ng_snn (NG-SNN, contribution-grown spiking classifier) imports torch; it is run ONLY
+# where torch is importable and SKIPPED-with-notice otherwise, so every OTHER core module + the
+# pure-stdlib CI matrix stay zero-dep. torch is an optional extra ([gpu]/[train]); see CLAUDE.md.
+TORCH_GATED = ["hippocampus.ng_snn"]
+
+
+def _torch_ok():
+    try:
+        import torch  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+_TORCH = _torch_ok()
+MODULES = CORE + (TORCH_GATED if _TORCH else []) + RESEARCH
 
 
 def run_all():
+    if not _TORCH:
+        for m in TORCH_GATED:
+            print(f"SKIP  {m}  (torch not importable -- zero-dep matrix stays green)")
     failed = []
     for m in MODULES:
         cmd = ([sys.executable, f"{m}.py"] if m.startswith("research/")   # research/: run as a script

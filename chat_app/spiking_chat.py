@@ -84,10 +84,19 @@ class SpikingChat:
     None) AND a LiveBrain (primed so it holds a real goal + working memory). respond(text)
     runs encode -> store -> classify -> tick -> decode and returns the whole pipeline state."""
 
-    def __init__(self, seed=0, lake_path=None):
+    def __init__(self, seed=0, lake_path=None, self_improve=False):
         self.seed = seed
         self.rng = random.Random(seed)          # per-instance rng (no import-time seeding)
         self.n_channels = N_CHANNELS
+        # SELF-IMPROVEMENT mode: instead of a fixed external "open the gripper" reward, the brain
+        # runs CURIOSITY-DRIVEN -- an intrinsic learning-progress reward (no external task reward)
+        # drives SELF-DIRECTED learning from its own experience each tick. Its meta-goal is to
+        # IMPROVE ITSELF: one primitive (curiosity + spiking learning), not open-ended recursive
+        # self-improvement. Gated + safe: the reflex E-STOP runs first, curiosity feeds value only.
+        self.self_improve = self_improve
+        self.meta_goal = "self-improvement" if self_improve else None
+        self._ticks = 0                         # self-improvement ticks accumulated
+        self._lp = 0.0                          # mean learning-progress (improving-now signal)
 
         # ---- persistent conversation lake (durable spike log) ----
         if lake_path is None:
@@ -104,11 +113,30 @@ class SpikingChat:
         self._t_cursor = (max(t for t, _ in existing) + 2) if existing else 0
 
         # ---- the live brain: prime it so it holds a real goal + working memory ----
-        self.brain = LiveBrain(seed=seed)
-        self._grasp = {"visual": [0.9] * 4, "temperature": [0.1], "audio": [0.1] * 4,
-                       "distance": CONTACT * 3.0}
-        for _ in range(90):                       # form the goal (GRIPPER_OPEN) + fill lake WM
-            self.brain.tick(self._grasp, reward_fn=self._reward)
+        # self-improve -> a curiosity-driven brain (needs jepa) + the spiking interaction learner,
+        # so it learns SELF-DIRECTED. Otherwise -> grasp-reward priming (fixed goal GRIPPER_OPEN).
+        if self_improve:
+            # SI-1: the self-improvement drive is the GENUINELY-SPIKING learning-progress curiosity
+            # (SpikingCuriosityDrive, LP read from LIF spike counts) -- the live primitive is now spiking.
+            self.brain = LiveBrain(seed=seed, spiking_curiosity=True, jepa=True, interaction_learning=True)
+        else:
+            self.brain = LiveBrain(seed=seed)
+        _safe = CONTACT * 3.0
+        self._grasp = {"visual": [0.9] * 4, "temperature": [0.1],
+                       "audio": [0.1] * 4, "distance": _safe}
+        # a small rotation of SAFE stimuli (all safe distance -> no danger) so curiosity always has
+        # learnable novelty to improve on; distinct bands the value/JEPA substrate can separate.
+        self._explore = [
+            {"visual": [0.9] * 4, "temperature": [0.1], "audio": [0.1] * 4, "distance": _safe},
+            {"visual": [0.1] * 4, "temperature": [0.9], "audio": [0.1] * 4, "distance": _safe},
+            {"visual": [0.1] * 4, "temperature": [0.1], "audio": [0.9] * 4, "distance": _safe},
+        ]
+        if self_improve:
+            for _ in range(60):                   # prime via curiosity (no ext reward)
+                self.tick_self_improve()
+        else:
+            for _ in range(90):                   # form the goal (GRIPPER_OPEN) + fill lake WM
+                self.brain.tick(self._grasp, reward_fn=self._reward)
 
         # ---- intent prototypes: encode the example phrases once, sum per-channel counts ----
         self.prototypes = {intent: self._prototype(phrases)
@@ -117,6 +145,19 @@ class SpikingChat:
     @staticmethod
     def _reward(unit, action):
         return 1.0 if action == "GRIPPER_OPEN" else -1.0
+
+    def tick_self_improve(self):
+        """One SELF-IMPROVEMENT tick: curiosity-driven (intrinsic learning-progress reward, NO
+        external task reward) over a rotating SAFE stimulus -> the brain learns self-directed.
+        Gated + safe: the reflex E-STOP runs FIRST and curiosity feeds only the value update (no
+        motor route). Updates the learning-progress telemetry. Called by respond() + the daemon."""
+        ctx = self._explore[self._ticks % len(self._explore)]
+        self.brain.tick(ctx)                      # no reward_fn -> intrinsic curiosity drives it
+        self._ticks += 1
+        cur = self.brain.arm.curiosity
+        if cur is not None and self.brain.arm.q:  # mean progress over grown units = "improving"
+            lps = [cur.learning_progress(u) for u in self.brain.arm.q]
+            self._lp = sum(lps) / len(lps) if lps else 0.0
 
     # ---- ENCODE: text -> real spike train ----------------------------------------
     def encode(self, text):
@@ -179,6 +220,13 @@ class SpikingChat:
         brain's REAL state. LiveBrain.converse() gives the honest, state-grounded sentence
         (it answers greeting/goal/memory/workspace/safety/consciousness from actual state and
         routes arm commands through the gated arm) -- no language-model generation happens."""
+        if self.self_improve and intent == "ask_goal":
+            act = ACTIONS[self.brain.goal] if self.brain.goal is not None else "none"
+            return ("My goal is to IMPROVE MYSELF: I run curiosity-driven -- an intrinsic "
+                    "learning-progress reward (no external task reward) drives self-directed "
+                    "learning from my own experience each tick. It is ONE primitive (curiosity + "
+                    "spiking learning), NOT open-ended recursive self-improvement, and the reflex "
+                    f"E-STOP still preempts every motor command. (Gated action bias: {act}.)")
         return self.brain.converse(text)
 
     # ---- RESPOND: run the whole pipeline for one turn ----------------------------
@@ -188,18 +236,26 @@ class SpikingChat:
         spikes, _ = self.encode(text)
         self.store(spikes)
         intent, confidence = self.classify(spikes)
-        self.brain.tick(self._grasp, reward_fn=self._reward)   # advance the live brain one tick
+        if self.self_improve:
+            self.tick_self_improve()              # advance one curiosity-driven tick
+        else:
+            self.brain.tick(self._grasp, reward_fn=self._reward)   # advance the live brain one tick
         reply = self.decode(intent, text)
-        goal = ACTIONS[self.brain.goal] if self.brain.goal is not None else None
-        return {
+        action_goal = ACTIONS[self.brain.goal] if self.brain.goal is not None else None
+        out = {
             "reply": reply,
             "input_spikes": len(spikes),
             "lake_events": self.lake.n_events(),
             "intent": intent,
             "confidence": float(confidence),
-            "goal": goal,
+            "goal": self.meta_goal or action_goal,   # meta-goal when self-improving
             "wm_events": self.brain.arm.lake_wm.n_events(),
         }
+        if self.self_improve:
+            out["action_goal"] = action_goal
+            out["ticks"] = self._ticks
+            out["learning_progress"] = round(self._lp, 6)
+        return out
 
     def close(self, remove=False):
         """Release the conversation lake + the brain's lake working memory. If `remove` and the
