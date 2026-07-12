@@ -145,9 +145,10 @@ Numbers are fixed-seed; rerun to reproduce.
 ## Download (Windows, no Python needed)
 
 A standalone GUI executable is published on the
-[Releases page](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/latest): unzip
-and run `snn-ui.exe` (verify headlessly with `snn-ui.exe --smoke`). A full-source zip is also
-attached for a Python 3.11+ install via `install.bat` / `install.sh`.
+[v2.53.2 release](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/tag/v2.53.2)
+(the binary build; later versions are source/tag-only): unzip and run `snn-ui.exe` (verify
+headlessly with `snn-ui.exe --smoke`). A full-source zip is also attached there for a Python 3.11+
+install via `install.bat` / `install.sh`.
 
 ## Provenance & license
 
