@@ -3,6 +3,32 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.40] -- developmental loop: the full autonomous brain cycle on real data (2026-07-15)
+
+Add `research/developmental_loop.py` -- the closed, repeating developmental cycle: unsupervised learning ->
+memorization -> self-improvement + neurogenesis -> decision for the next objective -> repeat. Each stage is
+a real mechanism, composed:
+
+- UNSUPERVISED LEARNING: a GROWABLE spiking STDP learner (LIF + STDP + k-WTA + adaptive-threshold
+  homeostasis -- the verified `snn_mnist_stdp` mechanics) learns the current objective's real MNIST digits
+  with NO labels and NO backprop.
+- MEMORIZATION: exemplars are stored and REHEARSED (replayed) on later cycles -- hippocampal-style
+  consolidation that prevents earlier digits being forgotten (continual learning).
+- SELF-IMPROVEMENT + NEUROGENESIS: the learner GROWS NEURONS (recruits + freezes/consolidates the trained
+  ones) to add capacity per objective, and self-evaluates competence by neuron-label voting (labels only
+  read out competence, never train).
+- DECISION: a curiosity / learning-progress drive picks the next objective (the least-competent / unseen
+  digit) -- the brain chooses what to learn next, autotelic.
+- Open-ended + self-directed. Observation / cognition only, no actuator route.
+
+Also FIXES a GPU device bug in `research/snn_mnist_stdp.py` (the unsupervised STDP MNIST runner): loaded
+images stayed on CPU while the network was on cuda under `NORD_GPU` (the set_default_device trap) ->
+`image.to(device)` in `run()`. The runner now trains on the GPU.
+
+`research/` tier (ruff-excluded, torch venv required). Verified: the loop cycles end-to-end (curiosity picks
+a digit -> neurogenesis grows -> unsupervised STDP learns -> memorize + consolidate -> self-evaluate ->
+repeat).  `.venv-cu128\Scripts\python research\developmental_loop.py`
+
 ## [v3.39] -- full-brain experience: all torch tiers on real data (no forcing) (2026-07-15)
 
 Add `research/full_brain_experience.py` -- drive the whole brain through a real episode so EVERY torch tier

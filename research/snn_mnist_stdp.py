@@ -98,6 +98,7 @@ class StdpNetwork:
     def run(self, image, learn):
         """Simulate one image for T steps. Returns exc spike-count vector [M] and
         the number of synaptic operations performed (spike-driven)."""
+        image = image.to(self.W.device)          # GPU-safe: match the network device (input is loaded on CPU)
         mem = self.lif.init_leaky()
         x_pre = torch.zeros(N_IN)
         counts = torch.zeros(M)
