@@ -33,7 +33,7 @@ CORE = [
     "cortex.cue_integration", "cortex.spike_pooling",
     "cortex.lif_neuron", "cortex.dendritic_neuron", "cortex.izhikevich_neuron", "cortex.hodgkin_huxley", "cortex.alif_neuron",
     "cortex.divisive_normalization", "cortex.wilson_cowan", "cortex.neuronal_avalanches", "cortex.stochastic_resonance",
-    "cortex.lt_gate", "cortex.lca_sparse_coding", "cortex.predictive_coding", "cortex.is_snn_forward", "cortex.neural_sampling",
+    "cortex.lt_gate", "cortex.lca_sparse_coding", "cortex.predictive_coding", "cortex.pc_cortex_serve", "cortex.is_snn_forward", "cortex.neural_sampling",
     "cortex.restricted_boltzmann",
     "cortex.snn_classifier", "cortex.trained_brain", "cortex.learned_matcher", "cortex.tempotron", "cortex.paradigm_b_matcher",
     "cortex.paradigm_b_engine", "cortex.gesture_recognition",

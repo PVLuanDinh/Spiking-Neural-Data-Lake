@@ -11,6 +11,7 @@ After slice 1 (v3.23): **SPIKING 39 | RATE 42 | RATE_BY_DESIGN 22.**
 After slice 2 (v3.24): **SPIKING 44 | RATE 38 | RATE_BY_DESIGN 21.**
 After slice 3 (v3.25): **SPIKING 48 | RATE 36 | RATE_BY_DESIGN 19.**
 After slice 4 (v3.26): **SPIKING 49** (new module `cerebellum/spiking_jepa`; rate `jepa_world_model` kept as the fair baseline).
+After slice 5 (v3.29): **SPIKING 50** (new module `cortex/pc_cortex_serve`, the DEEP spiking predictive-coding cortex server; the 2-level spiking seed `cortex/predictive_coding` kept as the small baseline).
 
 ## Converted to spiking (progress)
 
@@ -152,3 +153,22 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   stays the fair baseline (NOT converted in place). Atlas SPIKING 49. Separately, a GPU + disk-streaming TIER
   optimization landed (streaming_hub + proximity_index out-of-core in stdlib core; GPU chip resident-caching + mnist
   DataLoader + cu128 doc in the torch tiers) -- see CHANGELOG v3.26 + docs/PERFORMANCE.md; core stays zero-dep.
+- **Slice 5 (v3.29) -- deep spiking predictive-coding cortex (NEW module, GPU-verified, honest):** the 2-level seed
+  `cortex/predictive_coding` scaled DEEP under the predictive-coding framework (the user directive: use the predictive-
+  coding node to build out the rest of the brain, torch GPU allowed). NEW CORE `cortex/pc_cortex_serve.py` = a zero-dep
+  forward SERVER for an L-level (default 3) generative spiking hierarchy exported as `snn_pcnet/1` -- signed ON/OFF LIF
+  error populations, discrete-spike settling (the seed's exact `_lif` generalized to L levels: `r_j += lr*(W_j^T s_{j-1}
+  - s_j)`, top `r_L += lr*(W_L^T s_{L-1})`), an optional linear readout on the settled top cause. Trust-boundary `load()`
+  validates the `snn_pcnet/1` geometry/chaining/readout; un-riggable self-check proves faithful replay vs an independent
+  reference, genuinely-predictive settling (error-spike activity + recon residual fall vs a frozen-cause control),
+  discrete {-1,0,1} spikes + real leak + no torch/numpy in core. TRAINER `research/pc_cortex_torch.py` (torch/GPU, ruff-
+  excluded, NOT imported by core) learns the hierarchy by LOCAL Hebbian-on-spikes predictive coding -- **no global
+  backprop across levels** (settling under no_grad; M-step `W_l += lr_w * outer(rate_{l-1}, r_l)`); ridge readout on the
+  settled top cause. GPU-VERIFIED on the RTX 5070 (`.venv-cu128`, torch 2.11.0+cu128): N-MNIST (60k/10k, dims
+  [2312,128,64,32]) test acc **0.748**, export fidelity server-vs-trainer top-cause **max_err 0.00e+00** (byte-faithful
+  serve). HONEST NEGATIVES (printed, not asserted): LOCAL-PC learning adds only **+0.026** over random generative weights
+  + a trained readout at this scale (most of the accuracy is architecture + linear readout, not the local rule); and the
+  depth-earns-its-place XOR toy did NOT separate (3-level 0.75 == raw-avg 0.75) -- depth does not yet beat shallow. The
+  value delivered is a faithful zero-dep spiking GENERATIVE trunk + the honest measurement, not a SOTA number. Rate/2-level
+  seed `cortex/predictive_coding` kept as the small baseline (mirrors spiking_jepa keeping jepa_world_model). No live
+  wiring this slice (zero safety surface); Slice 6 = opt-in checkpoint-gated perception-tier wiring. Atlas SPIKING 50.

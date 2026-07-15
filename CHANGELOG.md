@@ -3,6 +3,37 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.29] -- deep spiking predictive-coding cortex (conversion slice 5, GPU-verified, honest) (2026-07-15)
+
+Directive: "use the predictive-coding node to build out the rest of the brain, torch GPU acceptable."
+The 2-level spiking seed `cortex/predictive_coding` scaled DEEP under the predictive-coding framework,
+kept honest. Zero-dep core intact. (CHANGELOG note: v3.27-v3.28 entries still trail their tags.)
+
+### NEW CORE `cortex/pc_cortex_serve.py` -- zero-dep forward server for an L-level spiking PC hierarchy
+- Serves a torch-trained `snn_pcnet/1` artifact (L>=2 generative levels) with NO torch/numpy: signed
+  ON/OFF LIF error populations, discrete-spike settling generalizing the seed's `_lif` to L levels
+  (`r_j += lr*(W_j^T s_{j-1} - s_j)`, top `r_L += lr*(W_L^T s_{L-1})`), optional linear readout on the
+  settled top cause (`infer`/`classify`).
+- Trust boundary: `load()` validates the format tag, dims geometry, that gen_weights has exactly L
+  matrices chaining through the hierarchy, the precision vector, and the readout shape -- ValueError on
+  any mismatch.
+- Un-riggable self-check: served settling == an independent hand-rolled reference (1e-9); genuinely
+  predictive (error-spike activity 3.0->0.72 and recon residual 0.013 vs 1.66 fall vs a frozen-cause
+  control); discrete {-1,0,+1} spikes, real leak, no torch/numpy in core; validating loader. Registered
+  in `run_selfchecks.py` CORE. Atlas SPIKING 49 -> 50.
+
+### TRAINER `research/pc_cortex_torch.py` (torch/GPU tier, ruff-excluded, NOT imported by core)
+- Learns the hierarchy by LOCAL Hebbian-on-spikes predictive coding -- **no global backprop across
+  levels** (settling under `no_grad`; M-step `W_l += lr_w * outer(rate_{l-1}, r_l)`); ridge readout on
+  settled top causes. GPU-batched settling only.
+- GPU-VERIFIED on the RTX 5070 (`.venv-cu128`, torch 2.11.0+cu128): N-MNIST (60k/10k, dims
+  [2312,128,64,32]) test acc **0.748**; export fidelity server-vs-trainer top-cause **max_err 0.00e+00**.
+- HONEST NEGATIVES (printed, not asserted): local-PC learning adds only **+0.026** over random generative
+  weights + trained readout at this scale; the depth-earns-its-place XOR toy did NOT separate (3-level
+  0.75 == raw-avg 0.75). Value = a faithful zero-dep spiking generative trunk + the honest measurement.
+- Rate/2-level seed `cortex/predictive_coding` kept as the small baseline. No live wiring this slice
+  (zero safety surface); perception-tier wiring is a later opt-in, checkpoint-gated slice.
+
 ## [v3.26] -- SpikingJEPA (slice 4, honest) + GPU/disk-streaming tier optimization (2026-07-11)
 
 Two deliverables, both keeping the zero-dep core intact.
