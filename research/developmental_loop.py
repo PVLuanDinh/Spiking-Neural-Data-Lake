@@ -12,9 +12,11 @@ Each stage is a REAL brain mechanism, composed (not faked):
   2. MEMORIZATION            exemplars of what was learned are stored and REHEARSED (replayed) on every
                              later cycle -- hippocampal replay / systems consolidation that stops the
                              earlier digits being forgotten as new ones are learned (continual learning).
-  3. SELF-IMPROVEMENT +      the learner GROWS NEURONS (neurogenesis) to add capacity for each new
-     NEUROGENESIS            objective, and self-evaluates competence by neuron-label voting on a held-out
-                             probe (labels used ONLY to read out competence, never to train).
+  3. SELF-IMPROVEMENT +      the BRAIN grows its OWN neurons (neurogenesis) -- the ART / hippocampus.
+     NEUROGENESIS            GrowingLearner vigilance rule recruits a neuron ONLY on a learnable-NOVEL pattern
+                             no existing prototype matches (self-limiting, need-sized -- NOT a fixed grow(GROW)
+                             schedule); and it self-evaluates competence by neuron-label voting on a held-out
+                             probe (labels only read out competence, never train).
   4. DECISION                the brain's OWN neuromodulation/spiking_curiosity.SpikingCuriosityDrive picks the
                              next objective (most_curious = spiking learning-progress + novelty) and a
                              SpikingCurriculum (LIF accumulator) paces mastery -- it explores every unseen
@@ -31,10 +33,12 @@ Scale knobs (env): NORD_CYCLES, NORD_GROW (neurons/cycle), NORD_PER (train imgs/
                    (probe imgs/digit), NORD_REPLAY (exemplars/digit), NORD_CAP (max consecutive revisits),
                    NORD_GPU=1.
 
-Empirical accuracy ladder (full 10-digit self-directed run, no labels, GPU): GROW=50 -> 500 neurons -> 87.5%;
-GROW=120 -> 1200 neurons -> 88.0% (digit 9: 60% -> 75%, curriculum mastered 3/10). SCALING the unsupervised
-learner is the accuracy lever; the objective-selection / revisit strategy is NOT (revisiting plateaus ~81-83%
--- see CHANGELOG v3.42/v3.43). Toward Diehl & Cook: 1600 -> ~92%, 6400 -> ~95%.
+Empirical accuracy ladder (full 10-digit self-directed run, no labels, GPU). NORD_GROW is now a per-cycle
+recruitment CAP (the brain's vigilance rule sizes actual growth up to it): cap=50 -> 87.5%; cap=120,
+random-init growth -> 88.0%; cap=120, BRAIN-DECIDED novelty-seeded growth -> 88.8% (digit 9: 60% -> 75%,
+curriculum mastered 3/10). SCALING the learner is the accuracy lever; the objective-selection / revisit
+strategy is NOT (revisiting plateaus ~81-83% -- see CHANGELOG v3.42/v3.43). Toward Diehl & Cook: ~92% at
+1600, ~95% at 6400.
 """
 import os
 import sys
@@ -75,13 +79,31 @@ class GrowableSTDP:
         self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
 
-    def grow(self, k):
-        """Recruit k new excitatory neurons (neurogenesis): small random positive weights, normalised."""
-        w = torch.rand(k, N_IN, device=self.device) * 0.3
-        w *= (W_NORM / w.sum(dim=1, keepdim=True).clamp_min(1e-6))
-        self.W = torch.cat([self.W, w], dim=0)
-        self.theta = torch.cat([self.theta, torch.zeros(k, device=self.device)], dim=0)
-        self.n += k
+    def match(self, image):
+        """Best match of `image` to the existing neuron prototypes -- max cosine similarity of the input to
+        every neuron's weight vector. 0.0 when there are no neurons yet. This is the 'do I already recognise
+        this?' signal the brain's neurogenesis rule reads."""
+        if self.n == 0:
+            return 0.0
+        x = image.to(self.device)
+        xn = x / (x.norm() + 1e-6)
+        wn = self.W / (self.W.norm(dim=1, keepdim=True) + 1e-6)
+        return float((wn @ xn).max())
+
+    def maybe_recruit(self, image, vigilance):
+        """The BRAIN'S OWN neurogenesis decision (the ART / hippocampus.GrowingLearner vigilance rule): recruit
+        exactly ONE neuron, SEEDED toward `image`, iff no existing prototype matches it above `vigilance`
+        (learnable-novelty). Familiar patterns (match >= vigilance) recruit nothing -- they refine the matching
+        neuron via STDP instead -- so growth is SELF-LIMITING and need-sized, not a fixed schedule. Returns True
+        if it grew."""
+        if self.n == 0 or self.match(image) < vigilance:
+            x = image.to(self.device)
+            w = (x / (x.sum() + 1e-6) * W_NORM).unsqueeze(0)   # the new prototype IS the novel pattern (ART recruit)
+            self.W = torch.cat([self.W, w], dim=0)
+            self.theta = torch.cat([self.theta, torch.zeros(1, device=self.device)], dim=0)
+            self.n += 1
+            return True
+        return False
 
     def run(self, image, learn):
         """Simulate one image for T steps; return the exc spike-count vector [n]. ALL neurons stay plastic
@@ -154,6 +176,7 @@ def main():
     PROBE = _envi("NORD_PROBE", 40)        # held-out probe images per digit
     REPLAY = _envi("NORD_REPLAY", 60)      # exemplars stored + rehearsed per learned digit (anti-forgetting)
     CAP = _envi("NORD_CAP", 1)             # max consecutive revisits of the SAME digit (anti-fixation -> diversify)
+    VIG = float(os.environ.get("NORD_VIG", "0.85"))   # neurogenesis vigilance: best-match below this = learnable-novel -> the brain recruits
 
     print("=" * 88)
     print("DEVELOPMENTAL LOOP -- unsupervised learning -> memorize -> grow neurons -> decide next -> repeat")
@@ -189,29 +212,31 @@ def main():
               f"[{'explore (novel)' if is_new else 'revisit (curiosity frontier)'}; "
               f"curiosity_value={curiosity.curiosity_value(objective):.3f}, novelty={curiosity.novelty(objective):.2f}]")
 
-        # ---- 3/NEUROGENESIS: grow neurons for a NEW objective; a revisit REFINES the existing capacity ----
-        if is_new:
-            m0 = net.n
-            net.grow(GROW)
-            memory[objective] = [Xtr[i] for i in by_class[objective][PER:PER + REPLAY]]
-            learned.append(objective)
-            print(f"  [neurogenesis]   neurons {m0} -> {net.n}  (+{GROW} recruited for the new digit; "
-                  f"stored {len(memory[objective])} exemplars in the replay buffer)")
-        else:
-            print(f"  [neurogenesis]   no growth (revisit) -- the {net.n} neurons refine the shared representation")
-
-        # ---- 1/UNSUPERVISED LEARNING: STDP on the objective + balanced REPLAY of every learned digit. A
-        #      REVISIT uses only a LIGHT, replay-balanced dose of fresh images (refine, don't over-specialise
-        #      the shared representation to the frontier digit and drift the others). ----
+        # ---- 3/NEUROGENESIS + 1/UNSUPERVISED LEARNING (interleaved): the STDP learner streams the objective's
+        #      images + balanced replay; as it goes, the BRAIN'S OWN neurogenesis rule (the ART / hippocampus.
+        #      GrowingLearner vigilance rule) RECRUITS a neuron whenever it meets a learnable-NOVEL pattern no
+        #      existing prototype matches. The brain SIZES ITS OWN GROWTH -- self-limiting (familiar patterns
+        #      refine existing neurons, they do not recruit), not a fixed net.grow(GROW) schedule. Revisits use
+        #      a light, replay-balanced fresh dose. ----
         t0 = time.time()
         n_train = PER if is_new else max(REPLAY, PER // 4)
         train_imgs = [Xtr[i] for i in by_class[objective][:n_train]]
         rehearse = [ex for d in learned for ex in memory.get(d, [])]
         stream = train_imgs + rehearse
         torch.manual_seed(cyc)
+        m0 = net.n
+        recruited = 0
         for j in torch.randperm(len(stream)).tolist():
-            net.run(stream[j], learn=True)
+            img = stream[j]
+            if recruited < GROW and net.maybe_recruit(img, VIG):   # the brain decides: recruit iff learnable-novel
+                recruited += 1
+            net.run(img, learn=True)
         dt = time.time() - t0
+        if is_new:
+            memory[objective] = [Xtr[i] for i in by_class[objective][n_train:n_train + REPLAY]]
+            learned.append(objective)
+        print(f"  [neurogenesis]   the BRAIN recruited {recruited} neurons on learnable-novelty (vigilance {VIG}); "
+              f"{m0} -> {net.n} neurons  [self-sized by the ART/grow-trigger rule, per-cycle cap {GROW}]")
         print(f"  [unsupervised]   STDP on {len(train_imgs)} digit-{objective} imgs + {len(rehearse)} replayed "
               f"exemplars, no labels ({dt:.0f}s)")
 

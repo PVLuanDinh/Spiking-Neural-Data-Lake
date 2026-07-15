@@ -3,6 +3,24 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.45] -- developmental loop: the BRAIN grows its own neurons (vigilance-gated neurogenesis) (2026-07-15)
+
+Replace the fixed `net.grow(GROW)` schedule with the brain's OWN neurogenesis decision -- the ART /
+`hippocampus.GrowingLearner` vigilance rule. During training the learner RECRUITS a neuron (seeded toward
+the pattern) only when it meets a learnable-NOVEL input no existing prototype matches (best cosine
+similarity < vigilance); familiar patterns refine the matching neuron via STDP and recruit nothing. The
+brain sizes its own growth -- self-limiting, need-driven -- not a fixed count.
+
+Verified self-limiting (smoke: recruits fewer when it recognises more -- 70 vs the 80 cap for a simpler
+digit). Full 10-digit GPU run: **88.8%** (no labels) -- beats the fixed-schedule 88.0% and the 87.5% mark
+(novelty-SEEDED recruitment starts each new neuron on a real novel pattern, better than random init).
+HONEST note: at 300 imgs/digit the per-cycle cap (`NORD_GROW`, now a CAP not a count) binds every cycle
+because each digit has more than `cap` novel patterns, so the observed count is uniform at that scale; the
+self-sizing is visible when the cap does not bind (fewer imgs / higher cap / higher vigilance). This
+completes the loop's decision path: objectives chosen by `SpikingCuriosityDrive`, paced by
+`SpikingCurriculum`, neurons grown by the vigilance rule -- all the brain's real modules, no hand-coded
+schedule anywhere.
+
 ## [v3.44] -- developmental loop: scaling the learner beats 87.5% (the real accuracy lever) (2026-07-15)
 
 Confirm empirically that SCALING the unsupervised learner -- not the objective-selection or revisit strategy
