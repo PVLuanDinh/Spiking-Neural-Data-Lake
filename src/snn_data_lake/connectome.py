@@ -69,6 +69,10 @@ NODES = {
     "pbc": ("medulla", "pre-Botzinger complex (medullary respiratory rhythm generator)"),
     "nts_rvlm": ("medulla", "NTS / RVLM (medullary baroreflex cardiovascular nuclei)"),
     "sc_deep": ("midbrain", "superior colliculus deep layers (gaze burst generator)"),
+    # v3.36 completed-anatomy: the teaching/broadcast/reward hubs the audit found missing
+    "io": ("medulla", "inferior olive (climbing-fibre error / teaching signal to cerebellum)"),
+    "gwt": ("thalamus", "global workspace / GNW ignition hub (Dehaene-Changeux broadcast)"),
+    "nacc": ("basal_ganglia", "nucleus accumbens / ventral striatum (mesolimbic reward)"),
     "actuator": (None, "robot arm actuator"),
     "viscera": (None, "autonomic effector (diaphragm + heart) -- NOT the arm actuator"),
 }
@@ -176,6 +180,35 @@ EDGES = [
     #     biases motor selection top-down toward it; wired live into autonomous_loop as a caution-safe
     #     preference that reaches the arm only through the gated final common path (never a bypass) ---
     _e("ctx_pfc", "ctx_motor", "prefrontal top-down bias (goal -> motor selection)", "exc", "descending"),
+    # --- v3.36 completed-anatomy: the region->region edges the brain audit found genuinely missing.
+    #     ALL are afferent / broadcast / modulatory -- none is an edge INTO the actuator, so the arm-safety
+    #     gate invariant (actuator's sole in-edge is bs_motor; no node reaches it except through the gate) is
+    #     preserved (verified by the self-check below). ---
+    # hippocampo-cortical systems consolidation: SWR replay writes memories back to neocortex (the missing
+    # ca1/sub -> cortex return that experience_replay / sleep_replay / sleep_consolidation implement)
+    _e("ca1", "ctx_pfc", "hippocampo-cortical (systems consolidation / SWR replay)", "exc", "broadcast"),
+    # basal-ganglia hyperdirect pathway: cortex -> STN fast global "stop" (bypasses the striatum)
+    _e("ctx_pfc", "stn", "cortico-subthalamic (hyperdirect / fast stop)", "exc", "relay", "cbgtc"),
+    # mesolimbic dopamine reward loop: VTA -> ventral striatum (NAcc) -> VTA (incentive salience)
+    _e("vta_snc", "nacc", "mesolimbic dopamine (reward / incentive salience)", "da", "broadcast", "mesolimbic"),
+    _e("nacc", "vta_snc", "ventral-striatal -> VTA (GABAergic feedback)", "inh", "feedback", "mesolimbic"),
+    # amygdala LOW ROAD (LeDoux): thalamus -> BLA fast fear pathway, complementing the cortical high road
+    _e("thal_relay", "bla", "thalamo-amygdala (low road, fast fear)", "exc", "relay"),
+    # amygdala -> medullary autonomic: fear drives cardiovascular/respiratory arousal (onto viscera, NOT the arm)
+    _e("cea", "nts_rvlm", "amygdala -> medulla (autonomic fear response)", "exc", "descending"),
+    # amygdala -> hippocampus: emotional modulation of memory encoding
+    _e("bla", "ca1", "amygdala -> hippocampus (emotional memory modulation)", "exc", "relay"),
+    # olivo-cerebellar climbing-fibre teaching loop: the error signal cerebellar learning is premised on
+    _e("io", "cb_ctx", "inferior olive climbing fibres (error / teaching signal)", "exc", "relay", "olivocerebellar"),
+    _e("cb_deep", "io", "deep-nuclei -> inferior olive (GABAergic feedback)", "inh", "feedback", "olivocerebellar"),
+    # global-workspace (GNW) ignition hub: specialists compete for access, the winner is broadcast globally
+    _e("ctx_sensory", "gwt", "specialist -> global workspace (access competition)", "exc", "relay", "global_workspace"),
+    _e("ctx_pfc", "gwt", "prefrontal -> global workspace (access competition)", "exc", "relay", "global_workspace"),
+    _e("gwt", "ctx_pfc", "global workspace ignition broadcast (to prefrontal)", "exc", "broadcast", "global_workspace"),
+    _e("gwt", "ctx_sensory", "global workspace ignition broadcast (to sensory)", "exc", "broadcast"),
+    # spinal reflex AFFERENT arc: sensory afferent into the gated brainstem/spinal motor node (the missing
+    # ascending half of the reflex; it reaches the actuator ONLY through the bs_motor gate, never around it)
+    _e("ctx_sensory", "bs_motor", "dorsal-root sensory afferent (reflex arc, through the gate)", "exc", "relay"),
 ]
 
 # canonical loops as CLOSED node cycles (first repeated at the end)
@@ -192,6 +225,10 @@ LOOPS = {
     # v3.5 medullary homeostatic reflex loops (autonomic negative feedback onto the viscera)
     "respiratory": ["pbc", "viscera", "pbc"],
     "baroreflex": ["nts_rvlm", "viscera", "nts_rvlm"],
+    # v3.36 completed-anatomy loops
+    "mesolimbic": ["vta_snc", "nacc", "vta_snc"],
+    "olivocerebellar": ["io", "cb_ctx", "cb_deep", "io"],
+    "global_workspace": ["gwt", "ctx_pfc", "gwt"],
 }
 
 ACTUATOR = "actuator"

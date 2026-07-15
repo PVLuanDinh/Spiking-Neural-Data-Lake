@@ -3,6 +3,34 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.36] -- connectome: fill the missing region->region edges + ledger corrections (2026-07-15)
+
+Fill the genuine region->region wiring the 5-agent brain audit found missing in `connectome.py`, and fix
+two stale ledger classifications. The arm-safety gate invariant is preserved (verified by the self-check).
+
+Connectome (3 new nodes, 14 new edges, 3 new closed loops; now 40 nodes / 81 edges / 14 loops):
+- hippocampo-cortical systems consolidation: `ca1 -> ctx_pfc` (SWR replay writes memory back to neocortex).
+- basal-ganglia hyperdirect `ctx_pfc -> stn` (fast global stop); mesolimbic reward loop `vta_snc <-> nacc`
+  (new NAcc / ventral-striatum node).
+- amygdala: low road `thal_relay -> bla` (fast fear), autonomic `cea -> nts_rvlm` (fear cardio, onto viscera
+  not the arm), emotional memory `bla -> ca1`.
+- olivo-cerebellar climbing-fibre teaching loop: new inferior-olive node `io`, `io -> cb_ctx` (error signal)
+  + `cb_deep -> io`.
+- global-workspace GNW ignition hub: new `gwt` node; specialists (`ctx_sensory`/`ctx_pfc`) -> `gwt` -> global
+  broadcast back to cortex.
+- spinal reflex AFFERENT arc: `ctx_sensory -> bs_motor` (the ascending half of the reflex; reaches the
+  actuator only through the `bs_motor` gate).
+- SAFETY: every new edge is afferent / broadcast / modulatory, none into the actuator. The self-check
+  confirms the actuator's sole in-edge is still `bs_motor` and no node reaches it except through the gate.
+
+Ledger corrections (docs/SPIKING_CONVERSION.md):
+- `medulla/vital_nuclei` was mis-listed "Already SPIKING"; it is a rate/phase relaxation oscillator (no LIF)
+  -> RATE_BY_DESIGN.
+- `basal_ganglia/evidence_accumulation` is SPIKING (Wang-2002 attractor, converted v3.25); removed from the
+  RATE-to-convert table.
+
+Gates green: 204/204 self-checks, ruff clean.
+
 ## [v3.35] -- Nengo whole-brain observation: the entire brain (incl torch tiers) under Nengo (2026-07-15)
 
 Extend `substrate/nengo_bridge.py` so Nengo can OBSERVE the WHOLE brain, not just isolated NEF/LIF

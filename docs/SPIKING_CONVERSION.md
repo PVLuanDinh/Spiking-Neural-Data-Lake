@@ -30,8 +30,16 @@ lif_neuron, dendritic_neuron, izhikevich_neuron, hodgkin_huxley, alif_neuron, ad
 stochastic_resonance, rank_order_coding, spike_preprocessing, spike_slicer, lt_gate, is_snn_forward,
 neural_sampling, trained_brain, tempotron, paradigm_b_matcher, paradigm_b_engine, spiking_lm_serve,
 interaction_learning, htm_sequence_memory, sleep_replay, r_stdp, action_gating, synfire_chain, reflex,
-closed_loop, signal_loop, dopamine_nuclei, vital_nuclei, habenula, claustrum, fear_conditioning,
+closed_loop, signal_loop, dopamine_nuclei, habenula, claustrum, fear_conditioning,
 inhibitory_stdp, short_term_plasticity.
+
+**CORRECTIONS (2026-07-15 brain audit).** Two baseline mis-classifications, fixed here (the historical
+tally line above is a dated 2026-07-10 snapshot and is left as-is):
+- `medulla/vital_nuclei` was listed "Already SPIKING" but the code is a rate/phase relaxation oscillator
+  (no LIF membrane) -- it is RATE_BY_DESIGN (a homeostatic servo), not membrane-spiking. Removed from the
+  SPIKING list above.
+- `basal_ganglia/evidence_accumulation` was converted to a genuine Wang-2002 spiking attractor in Slice 3
+  (v3.25); the RATE table below no longer lists it (treat it as SPIKING).
 
 ## RATE -- to convert (47), with the spiking design
 
@@ -57,7 +65,6 @@ inhibitory_stdp, short_term_plasticity.
 | hippocampus/experience_replay | three-factor R-STDP actor; replay = spontaneous spike-sequence reactivation |
 | hippocampus/growing_learner | spiking prototype/RBF units matched by spike coincidence; recruit-on-weak-response; Hebbian |
 | hippocampus/legendre_memory | realize the A/B delay state-space in spiking neurons via NEF (spiking LMU) |
-| basal_ganglia/evidence_accumulation | Wang-2002 spiking attractor: LIF pools integrate to threshold via recurrent E + I |
 | basal_ganglia/valence_stdp | LIF valence neuron; pre/post spike-timing eligibility gated by dopamine (three-factor) |
 | basal_ganglia/latent_q | spiking linear readout over latent spikes, reward-modulated (three-factor) plasticity |
 | basal_ganglia/mlp_q | spiking MLP: LIF hidden units, surrogate-gradient / reward-STDP; first-spike action-value |
@@ -211,3 +218,18 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   (JEPA-dist 1.86, closer than good 2.82) that the goal-distance-ONLY value WALKS INTO. Zero-dep, no live wiring,
   no actuator. Total self-checks 203->204. COMPLETES the arc: slice 7 negative (PC no action channel) -> slice 8
   positive (PC=surprise value) -> slice 9 (JEPA+decoder+PC compose = action-conditioned active inference).
+- **v3.34-v3.36 -- BRAIN AUDIT + UNIFY + NENGO + CONNECTOME (structural, not spiking conversion):** a 5-agent
+  read-only audit drove three structural fixes. v3.34: the atlas `REGIONS` map (in `__init__.py`) had drifted
+  38 modules behind the filesystem (hidden by a hard-coded `assert total == 126`); registered all 36 zero-dep
+  orphans + a `TORCH_TIER` annex (neurogenesis_engine, ng_snn), replaced the count assert with a filesystem-
+  consistency check (drift-proof); atlas now 164 modules / 17 regions. Landed the nengo foundation. v3.35: Nengo
+  WHOLE-BRAIN observation (`to_nengo_brain`/`observe_brain`: every `brain.state()` signal -> its own spiking NEF
+  ensemble; verified on real nengo, 30 signals incl torch tiers). v3.36: filled the CONNECTOME region->region
+  edges the audit found missing -- hippocampo-cortical consolidation (ca1->ctx_pfc), BG hyperdirect (ctx_pfc->stn)
+  + mesolimbic reward loop (vta<->nacc, new NAcc node), amygdala low-road (thal_relay->bla) + autonomic (cea->
+  nts_rvlm) + emotional-memory (bla->ca1), olivo-cerebellar climbing-fibre teaching loop (new inferior-olive
+  node io<->cb), global-workspace GNW ignition hub (new gwt node, specialists<->broadcast), spinal reflex
+  afferent arc (ctx_sensory->bs_motor). 40 nodes / 81 edges / 14 closed loops; the arm-safety gate invariant
+  (actuator's sole in-edge = bs_motor; no node reaches it except through the gate) VERIFIED to still hold. Plus
+  ledger corrections: vital_nuclei is RATE_BY_DESIGN (rate/phase, not membrane-spiking); evidence_accumulation is
+  SPIKING (converted v3.25, removed from the RATE table).
