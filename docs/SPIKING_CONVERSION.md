@@ -200,3 +200,14 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   stated, not silently assumed. Self-contained in pc_cortex_serve.py, no live wiring, no actuator. No new module --
   Atlas SPIKING stays 50. Completes the PC-planning story: slice 7 = honest negative (no action channel), slice 8 =
   honest positive (surprise IS the value).
+- **Slice 9 (v3.33) -- active-inference BRIDGE: JEPA dynamics + PC surprise compose (the "next lever"):** closes
+  slice 7's gap. NEW zero-dep demo `research/pc_active_inference.py` (RESEARCH gate). A ridge DECODER
+  `D(z_jepa)->observation` (stdlib, fit on `(JEPA.encode(x),x)`) maps JepaWorldModel's action-conditioned predicted
+  latents back into PC's observation space where PC.surprise lives; composed value = `-(JEPA goal-dist +
+  beta*PC.surprise(D(z)))`. JEPA supplies the action channel PC lacks; PC supplies the epistemic value distance
+  lacks; shared synthetic observation manifold (the slice-8 prerequisite). Un-riggable: (1) JEPA.predict
+  discriminates actions; (2) decoder recon 0.82 vs mean 7.0; (3) surprise survives encode+decode (on 0.005 << off
+  3.478); (4) a REAL PrefrontalExecutive.plan() with the composed EFE value AVOIDS an off-manifold look-alike
+  (JEPA-dist 1.86, closer than good 2.82) that the goal-distance-ONLY value WALKS INTO. Zero-dep, no live wiring,
+  no actuator. Total self-checks 203->204. COMPLETES the arc: slice 7 negative (PC no action channel) -> slice 8
+  positive (PC=surprise value) -> slice 9 (JEPA+decoder+PC compose = action-conditioned active inference).

@@ -3,6 +3,26 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.33] -- active-inference bridge: JEPA dynamics + PC surprise compose (the "next lever") (2026-07-15)
+
+Close slice 7's gap: PC has no action channel, so give the action-conditioned dynamics to JepaWorldModel
+and let PC score JEPA's rollouts through a DECODER -- the two COMPOSE into genuine active-inference
+planning. New self-contained zero-dep demo `research/pc_active_inference.py` (added to the RESEARCH gate).
+
+- The bridge: JEPA is joint-embedding (no reconstruction), so a ridge DECODER `D(z_jepa) -> observation`
+  (fit stdlib on `(JEPA.encode(x), x)` pairs) maps JEPA's predicted latents back to PC's observation space,
+  where `PC.surprise` is defined. Composed `value(z) = -( ||z - z_goal||_1 + beta * PC.surprise(D(z)) )`:
+  JEPA supplies the action dynamics PC lacks, PC supplies the epistemic (surprise) value distance lacks.
+  Both share one synthetic observation manifold (the prerequisite slice 8 flagged).
+- Un-riggable self-check (each claim paired with a failing control): (1) JEPA.predict discriminates actions
+  (the channel PC has not); (2) the decoder reconstructs observations from JEPA latents far better than the
+  mean baseline (0.82 vs 7.0); (3) PC.surprise survives the encode+decode round-trip (on-manifold 0.005 <<
+  off-manifold 3.48); (4) a REAL PrefrontalExecutive.plan() over JEPA latents with the composed EFE value
+  AVOIDS an off-manifold look-alike (closer to the goal in JEPA latent, 1.86 vs 2.82) that the goal-distance-
+  ONLY value WALKS INTO.
+- Zero-dep (JepaWorldModel, PcCortexServe, the ridge decoder are all stdlib); no live wiring, no actuator
+  route. Gates green: 204/204 self-checks, pytest 86%, ruff clean.
+
 ## [v3.32] -- PC-cortex active inference: surprise / expected-free-energy value (slice 8, honest positive) (2026-07-15)
 
 The honest, self-consistent resolution of slice 7's negative: predictive coding is the PERCEPTION half of
