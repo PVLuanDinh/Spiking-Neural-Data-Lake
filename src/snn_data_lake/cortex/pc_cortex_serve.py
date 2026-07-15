@@ -100,6 +100,7 @@ class PcCortexServe:
         self._prec = [float(p) for p in prec]         # L precisions, one per error level e_0..e_{L-1}
         self.steps = int(steps)
         self.lr = float(lr)
+        self._plan_steps = max(1, min(int(steps), 25))   # bounded cheap settle for predict()'s planning rollout
         self._readout = readout                       # (W, b) or None; W is n_classes x dims[L]
         self._classes = tuple(classes) if classes is not None else None
 
@@ -260,6 +261,47 @@ class PcCortexServe:
         """Top-down reconstruction of the input from settled causes: x_hat = W_1 @ r_1."""
         return _matvec(self._W[0], causes[0])
 
+    # ---- duck-typed planning interface (drops into PrefrontalExecutive.plan(), like JepaWorldModel/HJepaServe) ----
+    def encode(self, x):
+        """Planning-interface encoder (alias of infer): settle the hierarchy on input x and return the
+        top-cause latent r_L -- the percept PrefrontalExecutive.plan() plans over. Mirrors JepaWorldModel.encode."""
+        return self.infer(x)
+
+    def generate(self, z):
+        """TOP-DOWN generative pass: from a top-cause latent z (length top_dim), run the generative weights
+        DOWN the hierarchy to the predicted INPUT x_hat = W_1 @ (W_2 @ (... @ (W_L @ z))). The observation the
+        cause z implies (Rao-Ballard top-down). Returns a length-in_dim vector."""
+        if len(z) != self._dims[-1]:
+            raise ValueError(f"generate: z length {len(z)} != top_dim {self._dims[-1]}")
+        h = list(z)
+        for lvl in range(self._L - 1, -1, -1):           # apply W_L, W_{L-1}, ..., W_1
+            h = _matvec(self._W[lvl], h)
+        return h
+
+    def predict(self, state, command):
+        """Duck-typed forward step for PrefrontalExecutive.plan(): the PC TOP-DOWN generative prediction --
+        z' = encode(generate(z)) -- the next top-cause the model predicts for its own generated observation
+        (a bounded plan-settle). Duck-types EXACTLY like JepaWorldModel.predict / HJepaServe.predict, so a
+        PcCortexServe drops straight into plan() as its `predictor`.
+
+        HONEST LIMIT (by design, not a bug): predictive coding is a PERCEPTUAL generative model with NO action
+        channel, so `command` is ACCEPTED AND IGNORED -- this predicts the generative continuation, not the
+        consequence of an action. Consequently plan() over this predictor CANNOT discriminate actions (every
+        option rolls identically and the executive ties). PC is the PERCEPTION half of active inference; genuine
+        action-conditioned planning stays with JepaWorldModel / HJepaServe. Demonstrated in the module self-check."""
+        _ = command                                       # intentionally unused: PC has no action channel
+        return self.infer(self.generate(state), steps=self._plan_steps)
+
+    def make_goal_value(self, z_goal):
+        """Return goal_value(z) = -sum_i |z_i - z_goal_i| (negative L1 distance to a goal latent), for plan() --
+        identical convention to JepaWorldModel.make_goal_value."""
+        zg = list(z_goal)
+
+        def goal_value(z):
+            return -sum(abs(z[i] - zg[i]) for i in range(len(zg)))
+
+        return goal_value
+
 
 # =========================================================================================================
 # Self-check: build a TINY snn_pcnet/1 (L=3) by hand, serve it, and assert the settling forward matches an
@@ -416,6 +458,24 @@ def main():
     reject_count_ok = _expect_valueerror(lambda b: b["gen_weights"].pop())                        # too few matrices
     reject_readout_ok = _expect_valueerror(lambda b: b["readout"][0].append([0.0, 0.0]))          # 3-class W vs 2-class bias
 
+    # ---- (6) plan() CONSUMES the PC top-down predictions (duck-typed like JEPA/HJepaServe), with the HONEST
+    #         limit surfaced: PC has NO action channel, so predict IGNORES command -> plan() TIES across options.
+    from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+    z0 = srv.encode(x)                                          # a settled top-cause latent (alias of infer)
+    cmd_agnostic = (srv.predict(z0, "A") == srv.predict(z0, "B") == srv.predict(z0, 0))   # command IGNORED (structural)
+    xhat_gen = srv.generate(z0)                                 # top-down generative pass from the cause
+    recon_gen = sum((x[k] - xhat_gen[k]) ** 2 for k in range(dims[0])) / dims[0]
+    recon_zero = sum((x[k] - srv.generate([0.0] * srv.top_dim)[k]) ** 2 for k in range(dims[0])) / dims[0]
+    gen_ok = len(xhat_gen) == srv.in_dim and recon_gen < recon_zero   # a settled cause generates closer to x than a null cause
+    options = ["A", "B", 0]
+    gv = srv.make_goal_value(z0)                               # goal = the current percept (negative-L1)
+    pfc = PrefrontalExecutive(n_options=len(options), seed=0)
+    g1, _ = pfc.plan(z0, options, srv, gv, horizon=3, write=False)          # a REAL executive plans over the PC predictor
+    g2, _ = PrefrontalExecutive(n_options=len(options), seed=0).plan(z0, options, srv, gv, horizon=3, write=False)
+    plan_duck_ok = isinstance(g1, int) and 0 <= g1 < len(options) and g1 == g2   # duck-types + deterministic
+    roll_vals = [pfc._rollout_value(z0, o, srv, gv, 3) for o in options]
+    plan_ties = (max(roll_vals) - min(roll_vals) < 1e-9)       # HONEST NEGATIVE: no action discrimination
+
     print("=" * 78)
     print("PC-CORTEX SERVE -- zero-dep forward server for a torch-trained deep spiking snn_pcnet/1")
     print("=" * 78)
@@ -427,6 +487,9 @@ def main():
     print(f"readout     : classify(x)={label!r} in classes: {classify_ok}")
     print(f"trust       : reject bad-format={reject_format_ok} wrong-shape={reject_shape_ok} "
           f"wrong-count={reject_count_ok} bad-readout={reject_readout_ok}")
+    print(f"planning    : duck-types into PrefrontalExecutive.plan()={plan_duck_ok}; top-down generate beats null cause={gen_ok}")
+    print(f"HONEST NEG  : PC has NO action channel -> predict ignores command={cmd_agnostic}; plan() ties across options={plan_ties} "
+          f"(perception != control; action-conditioned planning stays with JEPA/HJepaServe)")
     print("-" * 78)
 
     assert causes_ok, "served settling causes must match the independent hand-rolled reference"
@@ -442,10 +505,14 @@ def main():
     assert reject_shape_ok, "load must raise ValueError on a wrong-shape generative matrix"
     assert reject_count_ok, "load must raise ValueError on the wrong number of generative matrices"
     assert reject_readout_ok, "load must raise ValueError on a readout W/bias mismatch"
+    assert cmd_agnostic, "PC predict() must be command-AGNOSTIC (PC has no action channel) -- structural honesty, not a bug"
+    assert gen_ok, "generate() top-down from a settled cause must reconstruct x better than a null cause"
+    assert plan_duck_ok, "PcCortexServe must duck-type into PrefrontalExecutive.plan() (encode/predict/make_goal_value) and roll deterministically"
 
     print("self-check OK: snn_pcnet/1 deep spiking predictive-coding forward served pure-stdlib, matches an "
           "independent reference settling, is genuinely predictive (activity+residual fall) and spiking, with a "
-          "validating loader")
+          "validating loader; duck-types into PrefrontalExecutive.plan() as a top-down predictor -- with the HONEST "
+          "limit that PC has no action channel so plan() cannot discriminate actions (perception, not control)")
 
 
 if __name__ == "__main__":

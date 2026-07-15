@@ -3,6 +3,25 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.31] -- PC-cortex duck-types into PrefrontalExecutive.plan() (slice 7, honest) (2026-07-15)
+
+Give the deep spiking predictive-coding cortex (`cortex/pc_cortex_serve`) the JEPA/HJepaServe planning
+interface so `PrefrontalExecutive.plan()` can consume its TOP-DOWN predictions -- perception/planning over
+latents, no actuator route. Self-contained in `cortex/pc_cortex_serve.py`.
+
+- New interface (duck-types exactly like `JepaWorldModel`/`HJepaServe`): `encode(x)` (settle -> top-cause
+  latent), `generate(z)` (top-down `x_hat = W_1 @ ... @ W_L @ z`), `predict(state, command)` (top-down
+  generative step `z' = encode(generate(z))`), `make_goal_value(z_goal)` (negative-L1, JEPA convention).
+- A REAL `PrefrontalExecutive.plan()` consumes the PC predictor in the self-check: duck-types + rolls
+  deterministically; `generate()` top-down beats a null cause.
+- HONEST NEGATIVE (asserted structurally, not hidden): predictive coding is a PERCEPTUAL generative model
+  with NO action channel, so `predict()` ACCEPTS AND IGNORES `command` -> `plan()` cannot discriminate
+  actions (every option rolls identically; the executive ties). PC is the perception half of active
+  inference; genuine action-conditioned planning stays with JEPA/HJepaServe. The genuinely-useful PC
+  planning role is active-inference goal_value / surprise-minimization (a follow-up), not a dynamics model.
+- No new module, no live wiring, no actuator route (Atlas SPIKING stays 50). Gates green: 203/203
+  self-checks, pytest 86%, ruff clean.
+
 ## [v3.30] -- PC-cortex perception tier wired into the live brain (slice 6) (2026-07-15)
 
 Wire the deep spiking predictive-coding cortex (v3.29 `cortex/pc_cortex_serve`) into `cortex/brain.py`

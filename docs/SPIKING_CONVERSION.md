@@ -180,3 +180,11 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   latent when loaded + degrade-to-None on bad input + arm untouched); autonomous_loop E-STOP/freeze + live_brain
   gated-danger freeze verified to hold. No new module -- Atlas SPIKING stays 50. brain.py commit isolated from the
   entangled uncommitted nengo-bridge working-tree changes (left untouched).
+- **Slice 7 (v3.31) -- PC-cortex duck-types into PrefrontalExecutive.plan() (honest negative):** gave
+  `cortex/pc_cortex_serve` the JEPA/HJepaServe planning interface (`encode`/`generate` top-down/`predict`
+  action-AGNOSTIC/`make_goal_value` negative-L1) so a REAL `PrefrontalExecutive.plan()` consumes its top-down
+  predictions (self-check: duck-types + deterministic + top-down generate beats a null cause). HONEST NEGATIVE
+  asserted structurally: PC has NO action channel, so predict IGNORES command -> plan() TIES across options
+  (perception != control; action-conditioned planning stays with JEPA/HJepaServe). Self-contained in
+  pc_cortex_serve.py -- no live wiring, no actuator route. No new module -- Atlas SPIKING stays 50. The genuinely-
+  useful PC planning role is active-inference goal_value/surprise-minimization (a follow-up), not a dynamics model.
