@@ -36,6 +36,7 @@ lake = ["polars", "pyarrow", "deltalake"]                               # lakeho
 gpu = ["torch", "torchvision", "snntorch==1.0.0", "bindsnet", "numpy"]   # research/ GPU training
 train = ["torch", "torchvision", "snntorch>=0.9", "numpy"]              # GPU trainers (snn-train; training/surrogate_snn.py hybrid N-MNIST perception encoder, +[nmnist] for tonic) -> export weights to the Brain's OPTIONAL torch perception tier; zero-dep core never imports it
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
+nengo = ["nengo"]                                                       # substrate/nengo_bridge: run the brain's NEF/LIF substrate on Nengo (sim + NengoLoihi deploy); nengo-gated, zero-dep core never imports it
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
 genn = ["pygenn", "ml_genn"]                                             # research/*_genn + training/mnist_genn GPU trainer (needs a C++ compiler + CUDA)
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe of the tkinter GUI (build-time only; core stays zero-dep)

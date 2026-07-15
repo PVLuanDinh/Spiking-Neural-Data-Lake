@@ -127,6 +127,10 @@ RESEARCH = [
 # torch (Brain degrades to its deterministic narrator + no growth). cortex.language_center (SpikeGPT
 # serve) is exercised via cortex.brain, not run standalone here (it needs the 862MB weights + GPU).
 TORCH_GATED = ["hippocampus.ng_snn", "cortex.brain", "cortex.neurogenesis_engine"]
+# NENGO-GATED -- the Nengo bridge (substrate.nengo_bridge) exposes the NEF/LIF/spiking substrate to
+# Nengo (sim + NengoLoihi deploy target); it imports `nengo` (optional). Run only where nengo is
+# importable, SKIPPED-with-notice otherwise (its own __main__ also self-SKIPs). Zero-dep core unaffected.
+NENGO_GATED = ["substrate.nengo_bridge"]
 
 
 def _torch_ok():
@@ -137,14 +141,26 @@ def _torch_ok():
         return False
 
 
+def _nengo_ok():
+    try:
+        import nengo  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
 _TORCH = _torch_ok()
-MODULES = CORE + (TORCH_GATED if _TORCH else []) + RESEARCH
+_NENGO = _nengo_ok()
+MODULES = CORE + (TORCH_GATED if _TORCH else []) + (NENGO_GATED if _NENGO else []) + RESEARCH
 
 
 def run_all():
     if not _TORCH:
         for m in TORCH_GATED:
             print(f"SKIP  {m}  (torch not importable -- zero-dep matrix stays green)")
+    if not _NENGO:
+        for m in NENGO_GATED:
+            print(f"SKIP  {m}  (nengo not importable -- zero-dep matrix stays green)")
     failed = []
     for m in MODULES:
         cmd = ([sys.executable, f"{m}.py"] if m.startswith("research/")   # research/: run as a script

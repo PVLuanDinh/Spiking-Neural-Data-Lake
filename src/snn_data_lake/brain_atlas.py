@@ -8,43 +8,70 @@ path (`snn_data_lake.<region>.<module>`), so old code keeps working after the mo
   python -m snn_data_lake.brain_atlas        # (also run by run_selfchecks.py)
 """
 import importlib
+import os
 
-from snn_data_lake import _MOVED, REGIONS
+from snn_data_lake import _MOVED, REGIONS, TORCH_TIER
 
 
 def region_of(module):
-    """Return the brain region a module belongs to, or None if unknown."""
+    """Return the brain region a module belongs to, or None if unknown (checks the zero-dep REGIONS map
+    and the TORCH_TIER annex)."""
     for region, mods in REGIONS.items():
+        if module in mods:
+            return region
+    for region, mods in TORCH_TIER.items():
         if module in mods:
             return region
     return None
 
 
 def atlas():
-    """Return the region -> modules map (the authoritative anatomical layout)."""
+    """Return the region -> modules map (the authoritative anatomical layout: REGIONS zero-dep tier).
+    The torch-tier annex is snn_data_lake.TORCH_TIER."""
     return REGIONS
 
 
+def _region_files(region):
+    """The set of module names (files) actually present in a region subpackage (excludes __init__)."""
+    pkg = importlib.import_module(f"snn_data_lake.{region}")
+    d = os.path.dirname(pkg.__file__)
+    return {f[:-3] for f in os.listdir(d) if f.endswith(".py") and f != "__init__.py"}
+
+
 def main():
-    total = sum(len(mods) for mods in REGIONS.values())
+    region_total = sum(len(m) for m in REGIONS.values())
+    torch_total = sum(len(m) for m in TORCH_TIER.values())
+    total = region_total + torch_total
     print("=" * 66)
     print("BRAIN ATLAS -- snn_data_lake organized by anatomical region")
     print("=" * 66)
     for region in REGIONS:
-        mods = REGIONS[region]
-        print(f"{region:<16} {len(mods):>2} modules")
+        extra = len(TORCH_TIER.get(region, []))
+        tag = f" (+{extra} torch-tier)" if extra else ""
+        print(f"{region:<16} {len(REGIONS[region]):>2} modules{tag}")
     print("-" * 66)
-    print(f"{'TOTAL':<16} {total:>2} modules across {len(REGIONS)} regions")
+    print(f"{'TOTAL':<16} {total:>2} modules across {len(REGIONS)} regions "
+          f"({region_total} zero-dep + {torch_total} torch-tier)")
     print("=" * 66)
 
-    # ---- self-check: layout sane + back-compat intact (zero-dep) ----
-    assert total == 126, f"expected 126 modules in the atlas, got {total}"
-    # regions are disjoint (no module in two regions)
+    # ---- self-check: the map EXACTLY covers the filesystem, so it cannot silently drift ----
+    # every .py module on disk in a region is mapped (REGIONS or TORCH_TIER), and every mapped entry has
+    # a file. This replaces the old hard-coded count assert, which masked unmapped modules.
+    for region in REGIONS:
+        files = _region_files(region)
+        mapped = set(REGIONS[region]) | set(TORCH_TIER.get(region, []))
+        unmapped = files - mapped
+        phantom = mapped - files
+        assert not unmapped, f"{region}: modules on disk but not in the atlas map: {sorted(unmapped)}"
+        assert not phantom, f"{region}: atlas entries with no module file: {sorted(phantom)}"
+
+    # regions are disjoint (no module in two regions, nor in both REGIONS and the torch annex)
     seen = {}
-    for region, mods in REGIONS.items():
-        for m in mods:
-            assert m not in seen, f"module {m} listed in both {seen[m]} and {region}"
-            seen[m] = region
+    for tier in (REGIONS, TORCH_TIER):
+        for region, mods in tier.items():
+            for m in mods:
+                assert m not in seen, f"module {m} listed in both {seen[m]} and {region}"
+                seen[m] = region
 
     # every legacy flat path resolves to the SAME object as the new regional path
     for flat, dotted in _MOVED.items():
@@ -62,8 +89,24 @@ def main():
     for region in REGIONS:
         importlib.import_module(f"snn_data_lake.{region}")
 
-    print(f"self-check OK: {total} modules mapped to {len(REGIONS)} regions; "
-          f"all {len(_MOVED)} legacy import paths still resolve to the moved module")
+    # torch-tier annex: verify each module region-resolves + imports WHEN torch is present; SKIP-with-notice
+    # otherwise so the zero-dep CI matrix stays green (these are the only atlas modules torch-gated at import).
+    try:
+        import torch  # noqa: F401
+        _torch = True
+    except Exception:
+        _torch = False
+    for region, mods in TORCH_TIER.items():
+        for m in mods:
+            assert region_of(m) == region, f"torch-tier {m} must region-resolve to {region}"
+            if _torch:
+                importlib.import_module(f"snn_data_lake.{region}.{m}")
+            else:
+                print(f"SKIP  torch-tier {region}.{m}  (torch absent -- zero-dep matrix stays green)")
+
+    print(f"self-check OK: {total} modules mapped to {len(REGIONS)} regions "
+          f"({region_total} zero-dep + {torch_total} torch-tier); all {len(_MOVED)} legacy import paths "
+          f"still resolve to the moved module; map matches the filesystem exactly")
 
 
 if __name__ == "__main__":
