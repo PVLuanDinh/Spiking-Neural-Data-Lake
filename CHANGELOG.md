@@ -3,6 +3,20 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.41] -- developmental loop: replay-based continual learning (52.8% -> 87.5%) (2026-07-15)
+
+Improve `research/developmental_loop.py`'s continual-learning accuracy by replacing the frozen-per-digit
+capacity with an all-plastic shared representation + strong balanced REPLAY (replay-based continual
+learning). All grown neurons stay plastic; a replay buffer (60 exemplars/digit) is rehearsed every cycle,
+so the shared representation refines across ALL digits instead of each digit getting only its own frozen
+50 neurons.
+
+Result (full 10-digit self-directed run, GPU, no labels): final mean competence **52.8% -> 87.5%** over all
+10 MNIST digits. The forgetting curve is now gentle (100% -> 87.5%, vs the frozen design's 100% -> 52.8%),
+and it exceeds the 78.2% one-shot standalone STDP baseline (heavier effective training + balanced replay
+approach joint training). Neurogenesis (0 -> 500 neurons), curiosity-driven objective selection, and memory
+rehearsal are unchanged. Observation / cognition only, no actuator route.
+
 ## [v3.40] -- developmental loop: the full autonomous brain cycle on real data (2026-07-15)
 
 Add `research/developmental_loop.py` -- the closed, repeating developmental cycle: unsupervised learning ->

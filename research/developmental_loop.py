@@ -53,15 +53,15 @@ def _envi(k, d):
 # ---- a GROWABLE unsupervised spiking STDP learner (neuron count is per-instance, so it can grow) -------
 class GrowableSTDP:
     """The snn_mnist_stdp STDP + k-WTA mechanics, but with a per-instance neuron count so the network can
-    RECRUIT neurons (neurogenesis). Frozen neurons (already trained on earlier objectives) keep their
-    weights; only the freshly-grown neurons learn the new objective, so old skills are preserved."""
+    RECRUIT neurons (neurogenesis). All neurons stay PLASTIC -- a shared representation refined across every
+    learned digit; forgetting is held off by strong REPLAY of stored exemplars (replay-based continual
+    learning), not by freezing, which lets accuracy approach the joint-training (one-shot) result."""
 
     def __init__(self, device):
         self.device = device
         self.n = 0
         self.W = torch.zeros(0, N_IN, device=device)
         self.theta = torch.zeros(0, device=device)
-        self.frozen = 0                       # neurons [0:frozen) are consolidated (no more learning)
         self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
 
@@ -73,13 +73,10 @@ class GrowableSTDP:
         self.theta = torch.cat([self.theta, torch.zeros(k, device=self.device)], dim=0)
         self.n += k
 
-    def freeze(self):
-        """Consolidate: the neurons trained so far stop learning (protected from overwrite)."""
-        self.frozen = self.n
-
     def run(self, image, learn):
-        """Simulate one image for T steps; return the exc spike-count vector [n]. STDP potentiates ONLY the
-        un-frozen (freshly-grown) neurons -- old prototypes are protected (systems consolidation)."""
+        """Simulate one image for T steps; return the exc spike-count vector [n]. ALL neurons stay plastic
+        (shared representation); forgetting is held off by strong REPLAY (rehearsal) of old digits, not by
+        freezing -- replay-based continual learning, which refines every prototype across all learned digits."""
         image = image.to(self.device)
         mem = self.lif.init_leaky()
         x_pre = torch.zeros(N_IN, device=self.device)
@@ -97,7 +94,7 @@ class GrowableSTDP:
                     cand = cand[torch.topk(eff[cand], KWTA).indices]
                 for w in cand.tolist():
                     counts[w] += 1
-                    if learn and w >= self.frozen:            # only NEW neurons learn (old ones consolidated)
+                    if learn:                                 # ALL neurons stay plastic (replay prevents forgetting)
                         self.W[w] += LR * x_pre
                         self.W[w].clamp_(0.0, WMAX)
                         self.theta[w] += THETA_PLUS
@@ -145,6 +142,7 @@ def main():
     GROW = _envi("NORD_GROW", 40)          # neurons recruited per objective (neurogenesis)
     PER = _envi("NORD_PER", 250)           # training images per digit (unsupervised)
     PROBE = _envi("NORD_PROBE", 40)        # held-out probe images per digit
+    REPLAY = _envi("NORD_REPLAY", 60)      # exemplars stored + rehearsed per learned digit (anti-forgetting)
 
     print("=" * 88)
     print("DEVELOPMENTAL LOOP -- unsupervised learning -> memorize -> grow neurons -> decide next -> repeat")
@@ -177,11 +175,11 @@ def main():
         net.grow(GROW)
         print(f"  [neurogenesis]   neurons {m0} -> {net.n}  (+{GROW} recruited)")
 
-        # ---- 1/UNSUPERVISED LEARNING: STDP on the objective's digits + REHEARSAL of old ones (memory) ----
+        # ---- 1/UNSUPERVISED LEARNING: STDP on the objective's digits, STRONGLY interleaved with REPLAY of
+        #      every previously-learned digit so the shared (all-plastic) representation refines all classes ----
         t0 = time.time()
-        idx = by_class[objective][:PER]
-        train_imgs = [Xtr[i] for i in idx]
-        # 2/MEMORIZATION rehearsal: interleave a few stored exemplars of every previously-learned digit
+        train_imgs = [Xtr[i] for i in by_class[objective][:PER]]
+        # 2/MEMORIZATION rehearsal: a balanced replay of ALL learned digits' stored exemplars (anti-forgetting)
         rehearse = [ex for d in learned for ex in memory.get(d, [])]
         stream = train_imgs + rehearse
         torch.manual_seed(cyc)
@@ -189,15 +187,14 @@ def main():
         for j in order.tolist():
             net.run(stream[j], learn=True)
         dt = time.time() - t0
-        print(f"  [unsupervised]   STDP on {len(train_imgs)} digit-{objective} imgs + rehearsed "
-              f"{len(rehearse)} old exemplars, no labels ({dt:.0f}s)")
+        print(f"  [unsupervised]   STDP on {len(train_imgs)} digit-{objective} imgs interleaved with "
+              f"{len(rehearse)} replayed old exemplars, no labels ({dt:.0f}s)")
 
-        # ---- 2/MEMORIZATION: store exemplars of the new digit + CONSOLIDATE (freeze) the trained neurons ----
-        memory[objective] = [Xtr[i] for i in by_class[objective][PER:PER + 8]]
-        net.freeze()
+        # ---- 2/MEMORIZATION: store a rich exemplar buffer of the new digit for future replay ----
+        memory[objective] = [Xtr[i] for i in by_class[objective][PER:PER + REPLAY]]
         learned.append(objective)
-        print(f"  [memorize]       stored {len(memory[objective])} digit-{objective} exemplars; "
-              f"consolidated {net.frozen} neurons (protected from forgetting)")
+        print(f"  [memorize]       stored {len(memory[objective])} digit-{objective} exemplars in the replay "
+              f"buffer (rehearsed every later cycle to consolidate against forgetting)")
 
         # ---- 3/SELF-IMPROVEMENT: self-evaluate competence over ALL learned digits (progress signal) ----
         probe_imgs = [Xte[i] for d in learned for i in probe_by[d]]
