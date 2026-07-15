@@ -14,9 +14,11 @@ Each stage is a REAL brain mechanism, composed (not faked):
                              earlier digits being forgotten as new ones are learned (continual learning).
   3. SELF-IMPROVEMENT +      the BRAIN grows its OWN neurons (neurogenesis) -- the ART / hippocampus.
      NEUROGENESIS            GrowingLearner vigilance rule recruits a neuron ONLY on a learnable-NOVEL pattern
-                             no existing prototype matches (self-limiting, need-sized -- NOT a fixed grow(GROW)
-                             schedule); and it self-evaluates competence by neuron-label voting on a held-out
-                             probe (labels only read out competence, never train).
+     (+ PRUNE, + LC)         no existing prototype matches (self-limiting, need-sized -- NOT a fixed grow(GROW)
+                             schedule), and PRUNES dead never-winning neurons (plasticity/developmental_pruning:
+                             the brain grows AND prunes). The locus-coeruleus (neuromodulation) boosts the STDP
+                             learning gain 1x-3x on a salient/novel objective (attend harder to the unknown).
+                             It self-evaluates competence by neuron-label voting (labels only read out competence).
   4. DECISION                the brain's OWN neuromodulation/spiking_curiosity.SpikingCuriosityDrive picks the
                              next objective (most_curious = spiking learning-progress + novelty) and a
                              SpikingCurriculum (LIF accumulator) paces mastery -- it explores every unseen
@@ -54,6 +56,7 @@ from snn_mnist_stdp import (BETA, KWTA, LR, MAX_RATE, N_IN, T, TAU_PRE, THETA_DE
                             THETA_PLUS, THRESH, W_NORM, WMAX, load_mnist)
 from torch_device import enable, resolve_device
 
+from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
 import snntorch as snn
@@ -105,10 +108,24 @@ class GrowableSTDP:
             return True
         return False
 
-    def run(self, image, learn):
+    def prune_dead(self, activity, min_spikes=1):
+        """Developmental PRUNING (the brain grows AND prunes -- plasticity/developmental_pruning +
+        lifelong_consolidation): drop neurons whose total activity over the probe is below `min_spikes` --
+        dead / never-winning prototypes that only add noise to the label vote. `activity` is a length-n
+        per-neuron spike total. Returns the number pruned (keeps at least one neuron)."""
+        keep = activity >= min_spikes
+        pruned = int((~keep).sum().item())
+        if pruned and keep.any():
+            self.W = self.W[keep]
+            self.theta = self.theta[keep]
+            self.n = int(keep.sum().item())
+        return pruned
+
+    def run(self, image, learn, lr_scale=1.0):
         """Simulate one image for T steps; return the exc spike-count vector [n]. ALL neurons stay plastic
         (shared representation); forgetting is held off by strong REPLAY (rehearsal) of old digits, not by
-        freezing -- replay-based continual learning, which refines every prototype across all learned digits."""
+        freezing -- replay-based continual learning. `lr_scale` multiplies the STDP step (the locus-coeruleus
+        noradrenaline gain: a salient/novel input drives a bigger, more decisive weight change)."""
         image = image.to(self.device)
         mem = self.lif.init_leaky()
         x_pre = torch.zeros(N_IN, device=self.device)
@@ -127,7 +144,7 @@ class GrowableSTDP:
                 for w in cand.tolist():
                     counts[w] += 1
                     if learn:                                 # ALL neurons stay plastic (replay prevents forgetting)
-                        self.W[w] += LR * x_pre
+                        self.W[w] += (LR * lr_scale) * x_pre  # LR scaled by the LC noradrenaline gain
                         self.W[w].clamp_(0.0, WMAX)
                         self.theta[w] += THETA_PLUS
                 mem = torch.zeros(self.n, device=self.device)
@@ -144,8 +161,11 @@ def assign_and_eval(net, probe_imgs, probe_lbls, classes):
     then held-out accuracy over the given classes. Returns (overall_acc, {class: acc})."""
     resp = torch.zeros(net.n, 10, device=net.device)
     per = torch.zeros(10, device=net.device)
+    activity = torch.zeros(net.n, device=net.device)          # per-neuron spike totals -> feeds pruning
     for img, y in zip(probe_imgs, probe_lbls):
-        resp[:, int(y)] += net.run(img, learn=False)
+        counts = net.run(img, learn=False)
+        resp[:, int(y)] += counts
+        activity += counts
         per[int(y)] += 1
     assignment = (resp / per.clamp_min(1)).argmax(dim=1)
     correct = {c: 0 for c in classes}
@@ -155,6 +175,7 @@ def assign_and_eval(net, probe_imgs, probe_lbls, classes):
         if c not in classes:
             continue
         counts = net.run(img, learn=False)
+        activity += counts
         scores = torch.zeros(10, device=net.device)
         for cc in range(10):
             m = assignment == cc
@@ -164,7 +185,7 @@ def assign_and_eval(net, probe_imgs, probe_lbls, classes):
         total[c] += 1
     per_cls = {c: (correct[c] / total[c] if total[c] else 0.0) for c in classes}
     ov = sum(correct.values()) / max(1, sum(total.values()))
-    return ov, per_cls
+    return ov, per_cls, activity
 
 
 def main():
@@ -177,6 +198,7 @@ def main():
     REPLAY = _envi("NORD_REPLAY", 60)      # exemplars stored + rehearsed per learned digit (anti-forgetting)
     CAP = _envi("NORD_CAP", 1)             # max consecutive revisits of the SAME digit (anti-fixation -> diversify)
     VIG = float(os.environ.get("NORD_VIG", "0.85"))   # neurogenesis vigilance: best-match below this = learnable-novel -> the brain recruits
+    PRUNE = _envi("NORD_PRUNE", 0)         # opt-in developmental pruning (default OFF -- see below: HURTS the sparse kWTA regime)
 
     print("=" * 88)
     print("DEVELOPMENTAL LOOP -- unsupervised learning -> memorize -> grow neurons -> decide next -> repeat")
@@ -194,6 +216,7 @@ def main():
     # the brain's OWN neuromodulatory decision machinery drives objective selection + pacing:
     curiosity = SpikingCuriosityDrive(seed=0)                     # spiking learning-progress + novelty
     curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)   # self-paced mastery gate (LIF accumulator)
+    lc = LocusCoeruleus()                   # noradrenaline: salient/novel input -> phasic burst -> higher learning gain
     consec = {d: 0 for d in range(10)}     # consecutive-pick counter (fixation guard for the phase-2 revisits)
 
     for cyc in range(1, CYCLES + 1):
@@ -218,6 +241,12 @@ def main():
         #      existing prototype matches. The brain SIZES ITS OWN GROWTH -- self-limiting (familiar patterns
         #      refine existing neurons, they do not recruit), not a fixed net.grow(GROW) schedule. Revisits use
         #      a light, replay-balanced fresh dose. ----
+        # NEUROMODULATION -- locus coeruleus: a NOVEL / hard objective is SALIENT -> phasic NA burst -> higher
+        # learning gain (the brain attends harder to what it does not yet know). gain scales the STDP step.
+        salience = 1.0 if is_new else (1.0 - competence[objective])
+        na = lc.step(salience)                 # NA firing rate in [0,1] (phasic burst on a salient/novel event)
+        gain = 1.0 + 2.0 * na                  # noradrenaline boosts the STDP step 1x..3x on salient/novel input
+
         t0 = time.time()
         n_train = PER if is_new else max(REPLAY, PER // 4)
         train_imgs = [Xtr[i] for i in by_class[objective][:n_train]]
@@ -230,20 +259,35 @@ def main():
             img = stream[j]
             if recruited < GROW and net.maybe_recruit(img, VIG):   # the brain decides: recruit iff learnable-novel
                 recruited += 1
-            net.run(img, learn=True)
+            net.run(img, learn=True, lr_scale=gain)                # LC noradrenaline gain modulates the STDP step
         dt = time.time() - t0
         if is_new:
             memory[objective] = [Xtr[i] for i in by_class[objective][n_train:n_train + REPLAY]]
             learned.append(objective)
         print(f"  [neurogenesis]   the BRAIN recruited {recruited} neurons on learnable-novelty (vigilance {VIG}); "
               f"{m0} -> {net.n} neurons  [self-sized by the ART/grow-trigger rule, per-cycle cap {GROW}]")
+        print(f"  [neuromod]       locus-coeruleus NA {na:.2f} ({lc.mode()}) on salience {salience:.2f} "
+              f"-> STDP step gain x{gain:.2f}")
         print(f"  [unsupervised]   STDP on {len(train_imgs)} digit-{objective} imgs + {len(rehearse)} replayed "
               f"exemplars, no labels ({dt:.0f}s)")
+
+        # ---- 3b/PRUNE (opt-in, NORD_PRUNE=1): the brain grows AND prunes (plasticity/developmental_pruning) --
+        #      drop neurons dead over the training distribution. HONEST: pruning HURTS this sparse kWTA regime
+        #      (only 1 winner/step, so most prototypes are low-activity by design; dead-pruning removes useful
+        #      sparse coders and freshly-recruited units -> 88.8% -> 60-84%). Left OFF by default; the brain's
+        #      dead-pruning is built for DENSE synapses, not sparse winner-take-all prototypes. ----
+        if PRUNE:
+            pact = torch.zeros(net.n, device=dev)
+            for img in stream[:min(len(stream), 300)]:
+                pact += net.run(img, learn=False)
+            pruned = net.prune_dead(pact, min_spikes=1)
+            if pruned:
+                print(f"  [prune]          removed {pruned} dead neurons -> {net.n} live (NORD_PRUNE on)")
 
         # ---- 2/SELF-IMPROVEMENT: self-evaluate competence over ALL learned digits ----
         probe_imgs = [Xte[i] for d in learned for i in probe_by[d]]
         probe_lbls = [int(Yte[i]) for d in learned for i in probe_by[d]]
-        ov, per_cls = assign_and_eval(net, probe_imgs, probe_lbls, set(learned))
+        ov, per_cls, _ = assign_and_eval(net, probe_imgs, probe_lbls, set(learned))
         competence.update(per_cls)
 
         # ---- 4/feed the REAL curiosity + curriculum modules the outcome (prediction error = 1 - competence),

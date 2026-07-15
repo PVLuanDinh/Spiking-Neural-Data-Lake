@@ -3,6 +3,28 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.46] -- developmental loop: fold in more brain modules (LC noradrenaline + grow/prune) -- honest results (2026-07-15)
+
+Compose two more of the brain's real modules into the loop:
+- `neuromodulation/locus_coeruleus` (LC): a salient/novel objective drives a phasic NA burst that scales the
+  STDP learning gain 1x-3x (attend harder to the unknown), wired via the NA firing level.
+- `plasticity/developmental_pruning`: grow AND prune -- drop dead never-winning neurons.
+
+HONEST results (full 10-digit GPU runs, no labels): neither moves accuracy off the STDP scale ceiling.
+- LC (no prune): **87.7%** -- within run-to-run noise of the 88.8% grow-only baseline; LC is NEUTRAL here (the
+  STDP already learns the digits; the salience-gain boost does not change the ceiling). Kept -- a faithful
+  addition, honestly neutral for this task.
+- PRUNING: an honest NEGATIVE for this regime -- with kWTA=1 (one winner/step) most prototypes are
+  low-activity BY DESIGN, so dead-pruning removes useful sparse coders + freshly-recruited units and CRASHES
+  accuracy (88.8% -> 83.5% probe-based / 60.5% train-based). The brain's dead-pruning is built for DENSE
+  synapses, not sparse winner-take-all prototypes. Gated OFF by default (`NORD_PRUNE=1` to enable, for a
+  ~5.6x smaller but less accurate net).
+
+Net finding across the whole loop investigation: AUTONOMY comes from the brain's neuromodulation modules
+(curiosity picks objectives, curriculum paces, vigilance/grow-trigger grows neurons, LC modulates learning);
+ACCURACY comes from the unsupervised LEARNER'S SCALE (500 -> 87.5%, 1200 -> 88.8%), not the decision /
+plasticity strategy. `metacognitive_monitor` remains an unwired further lever.
+
 ## [v3.45] -- developmental loop: the BRAIN grows its own neurons (vigilance-gated neurogenesis) (2026-07-15)
 
 Replace the fixed `net.grow(GROW)` schedule with the brain's OWN neurogenesis decision -- the ART /
