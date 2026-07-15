@@ -3,6 +3,26 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.38] -- NengoGUI whole-brain model: watch the brain (incl neurogenesis) live in the browser (2026-07-15)
+
+Add `research/nengo_gui_brain.py` -- a NengoGUI model of the whole SNDL brain as a live spiking network.
+
+- Loads in the browser NengoGUI (`nengo -P <port> research/nengo_gui_brain.py`): a `brain.tick() -> state()`
+  Node feeds one labeled spiking NEF ensemble per curated brain signal; each GUI sim step ticks the real
+  brain, so every organ signal (including the torch/nengo/pc tier channels) evolves as spikes in real time.
+  Right-click an ensemble for a value / spike-raster / firing-rate plot.
+- Growth signals lead (`grown_units`, `reasoning_units`) with a short `day_period=15` so the SLEEP-gated
+  neurogenesis is reached quickly and its neuron count visibly climbs (count signals get a radius-25
+  ensemble so growth stays on-scale, not saturated).
+- TORCH VENV REQUIRED for neurogenesis: run under an env with BOTH nengo AND torch (e.g. `.venv-cu128` +
+  `pip install nengo_gui`). Under a torch-less nengo env the brain still runs but `grown_units` stays flat
+  (the neurogenesis engine is torch-tier and does not load). Observation-only, no actuator route;
+  NengoLoihi-deployable.
+
+`research/` tier (ruff-excluded, not imported by the zero-dep core). Verified: the model builds (14 labeled
+ensembles), NengoGUI serves HTTP 200, and headless neurogenesis grows 0 -> 5 units over 60 ticks under
+`.venv-cu128`.
+
 ## [v3.37] -- snn-nengo-launch: run the whole brain live under Nengo (console script) (2026-07-15)
 
 Make the v3.35 whole-brain observation a first-class ENTRYPOINT and add a live per-tick trace.
