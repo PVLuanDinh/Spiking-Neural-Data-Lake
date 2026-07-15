@@ -39,10 +39,14 @@ CORE = [
     "cortex.paradigm_b_engine", "cortex.gesture_recognition",
     "cortex.language_brain", "cortex.nl_interface", "cortex.brain_reasoning", "cortex.spiking_lm_serve", "cortex.vsa_reasoning",
     "cortex.prefrontal_executive", "cortex.live_brain", "cortex.interaction_learning",
+    "cortex.access_consciousness", "cortex.self_model", "cortex.reasoning_curriculum",
+    "cortex.spiking_recurrent_cell", "cortex.autapse_neuron", "cortex.metacognitive_monitor",
+    "cortex.wholistic_loop", "cortex.autotelic_goals", "cortex.quality_diversity",
+    "cortex.self_improvement_suite", "cortex.theory_of_mind",
     # hippocampus — memory formation, spatial coding, replay
     "hippocampus.hippocampus", "hippocampus.grid_cells", "hippocampus.htm_sequence_memory", "hippocampus.frequency_memory",
     "hippocampus.experience_replay", "hippocampus.sleep_replay", "hippocampus.ring_attractor", "hippocampus.growing_learner",
-    "hippocampus.legendre_memory",
+    "hippocampus.legendre_memory", "hippocampus.function_preserving_growth", "hippocampus.sleep_consolidation",
     # basal ganglia — action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation", "basal_ganglia.r_stdp", "basal_ganglia.valence_stdp",
     "basal_ganglia.action_gating", "basal_ganglia.latent_q", "basal_ganglia.mlp_q",
@@ -63,6 +67,7 @@ CORE = [
     "hypothalamus.circadian_clock", "hypothalamus.set_points",
     # midbrain — dopamine source nuclei (VTA/SNc RPE) + superior-colliculus orienting + deep gaze layers
     "midbrain.dopamine_nuclei", "midbrain.superior_colliculus", "midbrain.sc_deep_layers",
+    "midbrain.multisensory_integration",
     # pons — cortico-ponto-cerebellar relay + the ascending reticular activating system (ARAS)
     "pons.pontine_relay", "pons.reticular_formation",
     # medulla — the autonomic vital nuclei (respiratory / cardiac CPG) + interoceptive arousal
@@ -76,10 +81,13 @@ CORE = [
     # neuromodulation — diffuse chemical modulators + glia (LC noradrenaline, raphe serotonin)
     "neuromodulation.acetylcholine", "neuromodulation.astrocyte_modulation", "neuromodulation.cortisol",
     "neuromodulation.locus_coeruleus", "neuromodulation.raphe_serotonin", "neuromodulation.intrinsic_motivation",
-    "neuromodulation.curriculum", "neuromodulation.spiking_curiosity",
+    "neuromodulation.curriculum", "neuromodulation.spiking_curiosity", "neuromodulation.generalizing_novelty",
+    "neuromodulation.drive_reduction",
     # plasticity — Hebbian/STDP, homeostatic, developmental learning rules
     "plasticity.bcm_plasticity", "plasticity.homeostatic_scaling", "plasticity.inhibitory_stdp", "plasticity.intrinsic_plasticity",
-    "plasticity.short_term_plasticity", "plasticity.developmental_pruning",
+    "plasticity.short_term_plasticity", "plasticity.developmental_pruning", "plasticity.competitive_learning",
+    "plasticity.lifelong_consolidation", "plasticity.criticality_regulator", "plasticity.feedback_alignment", "plasticity.meta_plasticity",
+    "plasticity.benna_fusi",
     # substrate — the spiking data-lake, telemetry, and infra (not a brain region)
     "substrate._mathutils", "substrate.spike_stream_sketch", "substrate.spike_cardinality", "substrate.reservoir_sampling",
     "substrate.sliding_window_count", "substrate.frequency_moment", "substrate.streaming_quantile", "substrate.minhash",
@@ -111,11 +119,14 @@ RESEARCH = [
     "research/resume_learning", "research/weight_perturbation",
     "research/make_results_plot",
 ]
-# TORCH-GATED CORE -- the ONE documented, user-authorized exception to the zero-dep core.
-# hippocampus.ng_snn (NG-SNN, contribution-grown spiking classifier) imports torch; it is run ONLY
-# where torch is importable and SKIPPED-with-notice otherwise, so every OTHER core module + the
-# pure-stdlib CI matrix stay zero-dep. torch is an optional extra ([gpu]/[train]); see CLAUDE.md.
-TORCH_GATED = ["hippocampus.ng_snn"]
+# TORCH-GATED CORE -- modules that import torch; run ONLY where torch is importable and
+# SKIPPED-with-notice otherwise, so the pure-stdlib CI matrix stays green. torch is an optional
+# extra ([gpu]/[train]). hippocampus.ng_snn is the original documented exception; the BRAIN TIER
+# (cortex.brain the unified brain + cortex.neurogenesis_engine) is the user-authorized relaxation
+# of the zero-dep-core rule for "the best-performing brain" -- the zero-dep core still runs with no
+# torch (Brain degrades to its deterministic narrator + no growth). cortex.language_center (SpikeGPT
+# serve) is exercised via cortex.brain, not run standalone here (it needs the 862MB weights + GPU).
+TORCH_GATED = ["hippocampus.ng_snn", "cortex.brain", "cortex.neurogenesis_engine"]
 
 
 def _torch_ok():

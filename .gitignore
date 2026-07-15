@@ -60,3 +60,13 @@ Thumbs.db
 /CLAUDE.md
 /assets/
 /gpu_scaling_sweep.sh
+vendor/
+models/
+
+# ARC-AGI-3 arcade downloads (research/arc_agi/play.py)
+environment_files/
+recordings/
+
+# Literature dumps — hundreds of MB of PDFs, kept on disk, never committed
+research/ScienceDirect_articles_*/
+research/*.zip

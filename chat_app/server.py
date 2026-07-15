@@ -76,8 +76,10 @@ def _content_type(path):
     return guessed or "application/octet-stream"
 
 
-def make_handler(chat, lock):
-    """Build a request handler bound to one SpikingChat guarded by `lock`."""
+def make_handler(chat, lock, neuro=False, full=False):
+    """Build a request handler bound to one engine guarded by `lock`. `neuro`=True -> a
+    NeurogenesisSelfImprove (state()/tick() API); `full`=True -> a FullBrainDaemon
+    (state()/respond()/tick() API, the integrated brain); else a SpikingChat (brain API)."""
 
     class ChatHandler(BaseHTTPRequestHandler):
         server_version = "SNDLChat/1.0"
@@ -153,17 +155,21 @@ def make_handler(chat, lock):
         def _serve_state(self):
             try:
                 with lock:
-                    action_goal = ACTIONS[chat.brain.goal] if chat.brain.goal is not None else None
-                    wm = chat.brain.arm.lake_wm
-                    state = {
-                        "goal": chat.meta_goal or action_goal,   # meta-goal when self-improving
-                        "lake_events": chat.lake.n_events(),
-                        "wm_events": wm.n_events() if wm is not None else 0,
-                    }
-                    if chat.self_improve:                        # live self-improvement telemetry
-                        state["action_goal"] = action_goal
-                        state["ticks"] = chat._ticks
-                        state["learning_progress"] = round(chat._lp, 6)
+                    if neuro or full:                  # self-improve engines expose state()
+                        state = dict(chat.state())     # goal/ticks/grown_units/predict/circadian
+                    else:
+                        goal = chat.brain.goal
+                        action_goal = ACTIONS[goal] if goal is not None else None
+                        wm = chat.brain.arm.lake_wm
+                        state = {
+                            "goal": chat.meta_goal or action_goal,   # meta-goal when self-improving
+                            "lake_events": chat.lake.n_events(),
+                            "wm_events": wm.n_events() if wm is not None else 0,
+                        }
+                        if chat.self_improve:                    # live self-improvement telemetry
+                            state["action_goal"] = action_goal
+                            state["ticks"] = chat._ticks
+                            state["learning_progress"] = round(chat._lp, 6)
                 self._send_json(state)
             except Exception:                       # never leak a traceback to the client
                 self._send_error_json(500, "internal error")
@@ -195,8 +201,22 @@ def make_handler(chat, lock):
                 return self._send_error_json(413, "'message' is too long")
 
             try:
-                with lock:                          # serialize the (stateful) spiking pipeline
-                    result = chat.respond(message)
+                with lock:                          # serialize the (stateful) engine
+                    if neuro:                       # neurogenesis daemon: report self-improve state
+                        st = chat.state()
+                        acc = st.get("predict_accuracy", 0.0)
+                        result = {
+                            "reply": (f"I am self-improving via NEUROGENESIS: I have grown "
+                                      f"{st.get('grown_units', 0)} NG-SNN neurons to predict my "
+                                      f"own next perception, currently {acc * 100:.0f}% accurate "
+                                      f"over {st.get('ticks', 0)} ticks (chance is "
+                                      f"{100 // st.get('n_modes', 5)}%). Goal: {st.get('goal')}. "
+                                      f"This is a perception-only self-model -- the reflex "
+                                      f"E-STOP and gated arm are untouched."),
+                            **st,
+                        }
+                    else:
+                        result = chat.respond(message)
                 self._send_json(result)
             except Exception:                       # never leak a traceback to the client
                 self._send_error_json(500, "internal error running the spiking pipeline")
@@ -204,25 +224,40 @@ def make_handler(chat, lock):
     return ChatHandler
 
 
-def build_server(port, lake_path, self_improve=False):
-    """Create (httpd, chat, lock). One SpikingChat guarded by a threading lock."""
+def build_server(port, lake_path, self_improve=False, neurogenesis=False, full_brain=False):
+    """Create (httpd, engine, lock). The engine is a SpikingChat, or -- in NEUROGENESIS mode -- a
+    NeurogenesisSelfImprove that grows NG-SNN neurons to predict its own next perception, or -- in
+    FULL-BRAIN mode -- a FullBrainDaemon: the integrated LiveBrain driven on a hypothalamic wake/
+    sleep cycle that sleep-gates neurogenesis + replay consolidation (torch tier,
+    goal=self-improvement). The torch engines are imported LAZILY so plain/smoke/self-improve modes
+    stay pure-stdlib (no torch)."""
     os.makedirs(os.path.dirname(lake_path), exist_ok=True)
-    chat = SpikingChat(lake_path=lake_path, self_improve=self_improve)
+    if full_brain:
+        # the unified brain: owns the self-model + introspection + the SpikeGPT language center
+        from snn_data_lake.cortex.brain import Brain
+        chat = Brain(seed=0, lake_path=lake_path)
+    elif neurogenesis:
+        from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+        chat = NeurogenesisSelfImprove(seed=0)
+    else:
+        chat = SpikingChat(lake_path=lake_path, self_improve=self_improve)
     lock = threading.Lock()
-    httpd = ThreadingHTTPServer((HOST, port), make_handler(chat, lock))
+    httpd = ThreadingHTTPServer((HOST, port), make_handler(chat, lock, neurogenesis, full_brain))
     return httpd, chat, lock
 
 
-def _daemon_loop(chat, lock, stop_event, interval=0.02):
-    """The SELF-IMPROVING DAEMON: a background thread that ticks the curiosity-driven brain
-    continuously, so it learns SELF-DIRECTED from its own experience even when no one is chatting.
-    Guarded by `lock` (the SAME lock the request handlers use) so the daemon + chat never race the
-    shared brain. Gated + safe: each tick runs the reflex E-STOP first and curiosity feeds only the
-    value update (no motor route). A tick must never crash the server."""
+def _daemon_loop(chat, lock, stop_event, engine_tick=False, interval=0.02):
+    """The SELF-IMPROVING DAEMON: a background thread that ticks the engine continuously, so it
+    improves from its own experience even when no one is chatting. `engine_tick`=True -> the engine
+    exposes its own tick() (NEUROGENESIS grows NG-SNN neurons; FULL-BRAIN runs the integrated
+    wake/sleep brain); else it ticks the curiosity-driven SpikingChat via tick_self_improve().
+    Guarded by `lock` (the SAME lock the handlers use) so daemon + requests never race. Safe:
+    perception/value only, no motor route; a tick must never crash the server."""
+    tick = chat.tick if engine_tick else chat.tick_self_improve
     while not stop_event.is_set():
         try:
             with lock:
-                chat.tick_self_improve()
+                tick()
         except Exception:
             pass
         stop_event.wait(interval)
@@ -237,21 +272,46 @@ def main(argv=None):
     parser.add_argument("--self-improve", action="store_true",
                         help="run as a SELF-IMPROVING DAEMON: a background thread ticks the "
                              "curiosity-driven brain continuously so it learns (gated/safe)")
+    parser.add_argument("--neurogenesis", action="store_true",
+                        help="NEUROGENESIS self-improving daemon: grow NG-SNN neurons to "
+                             "predict the brain's own next perception (torch tier; self-improve)")
+    parser.add_argument("--full-brain", action="store_true",
+                        help="FULL-BRAIN daemon (DEFAULT): drive the integrated LiveBrain on a "
+                             "hypothalamic wake/sleep cycle that sleep-gates neurogenesis (torch)")
+    parser.add_argument("--static", action="store_true",
+                        help="opt OUT of the daemon: serve the plain no-daemon chat. Without this "
+                             "and no other mode flag, --full-brain runs.")
     args = parser.parse_args(argv)
 
     if args.smoke:
         return smoke()
 
-    httpd, chat, lock = build_server(args.port, LAKE_PATH, self_improve=args.self_improve)
+    # DEFAULT MODE = full-brain: with no explicit mode flag (and not --static), run the full brain.
+    if not (args.self_improve or args.neurogenesis or args.full_brain or args.static):
+        args.full_brain = True
+
+    engine_tick = args.neurogenesis or args.full_brain   # engines with their own tick()
+    daemon_on = args.self_improve or engine_tick
+    httpd, chat, lock = build_server(args.port, LAKE_PATH, self_improve=args.self_improve,
+                                     neurogenesis=args.neurogenesis, full_brain=args.full_brain)
     port = httpd.server_address[1]
     stop_event = threading.Event()
-    if args.self_improve:                         # start the background self-improvement daemon
-        threading.Thread(target=_daemon_loop, args=(chat, lock, stop_event), daemon=True).start()
+    if daemon_on:                                 # start the background self-improvement daemon
+        threading.Thread(target=_daemon_loop,
+                         args=(chat, lock, stop_event, engine_tick), daemon=True).start()
     print(f"Serving on http://{HOST}:{port}")
     print(f"  chat page  -> http://{HOST}:{port}/")
     print(f"  lake file  -> {LAKE_PATH}")
-    if args.self_improve:
+    if args.full_brain:
+        print("  mode       -> FULL-BRAIN daemon (integrated LiveBrain + wake/sleep cycle; "
+              "sleep-gated neurogenesis; goal=self-improvement, safe)")
+    elif args.neurogenesis:
+        print("  mode       -> NEUROGENESIS daemon (NG-SNN grows to predict next perception; "
+              "goal=self-improvement, safe)")
+    elif args.self_improve:
         print("  mode       -> SELF-IMPROVING DAEMON (curiosity-driven learning; gated/safe)")
+    else:
+        print("  mode       -> static chat (no daemon; --full-brain is the default otherwise)")
     print("Press Ctrl+C to stop.")
     try:
         httpd.serve_forever()
@@ -261,7 +321,8 @@ def main(argv=None):
         stop_event.set()
         httpd.shutdown()
         httpd.server_close()
-        chat.close()
+        if hasattr(chat, "close"):                # SpikingChat has close(); neuro engine has none
+            chat.close()
     return 0
 
 
