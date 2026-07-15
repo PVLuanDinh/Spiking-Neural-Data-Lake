@@ -315,6 +315,64 @@ def observe_brain(brain, t=0.05, dt=0.001, tick=True):
     return decoded, total_spikes, keys
 
 
+def _ascii_spark(vals, width=48):
+    """An ASCII sparkline of a value sequence (ASCII-only ramp, so Windows cp1252 can't crash on it)."""
+    ramp = " .:-=+*#%@"
+    if not vals:
+        return ""
+    lo, hi = min(vals), max(vals)
+    rng = (hi - lo) or 1.0
+    n = len(vals)
+    return "".join(ramp[int((vals[int(j * n / width)] - lo) / rng * (len(ramp) - 1))] for j in range(width))
+
+
+def launch(t=0.1, dt=0.001, trace=("brain_alive", "access_index", "novelty_live", "wake_ticks", "reflex_armed"),
+           quiet=False):
+    """Launch the WHOLE SNDL brain LIVE under nengo.Simulator (console script: `snn-nengo-launch`).
+
+    Builds Brain(seed=0), wraps every numeric brain.state() signal in its own spiking NEF population, and steps
+    the nengo sim TICK-BY-TICK -- printing a live per-tick trace of a few signals and, at the end, an ASCII
+    sparkline of each traced signal over the run plus the total spikes. This is the v3.35 whole-brain OBSERVATION
+    layer as an entrypoint; needs nengo (deployable to NengoLoihi). Observation-only -- no actuator route.
+    `quiet` suppresses the live trace (used by the self-check smoke). Returns 0 on success, 1 if nengo absent."""
+    if not _NENGO_OK:
+        print("snn-nengo-launch: nengo not installed (gated tier). pip install nengo (e.g. into .venv-nengo / "
+              ".venv-cu128) to launch the brain under Nengo; the zero-dep core is unaffected.")
+        return 1
+    from snn_data_lake.cortex.brain import Brain
+    b = Brain(seed=0)
+    net, dec_probes, spk_probes, keys, _ = to_nengo_brain(b, tick=True)
+    traced = [k for k in trace if k in keys] or keys[:5]
+    history = {k: [] for k in traced}
+    steps = max(1, int(t / dt))
+    if not quiet:
+        print("=" * 74)
+        print(f"snn-nengo-launch: SNDL brain LIVE under nengo.Simulator ({len(keys)} signals, {steps} ticks)")
+        print("=" * 74)
+    with nengo.Simulator(net, dt=dt, progress_bar=False) as sim:
+        every = max(1, steps // 20)
+        for i in range(steps):
+            sim.step()                                          # one nengo dt = one brain tick (Node ticks it)
+            for k in traced:
+                history[k].append(float(sim.data[dec_probes[k]][-1][0]))
+            if not quiet and i % every == 0:
+                cells = "  ".join(f"{k[:11]}={history[k][-1]:+.2f}" for k in traced)
+                print(f"  t={i * dt * 1000:5.0f}ms  {cells}")
+    total_spikes = int(sum(np.count_nonzero(sim.data[spk_probes[k]]) for k in keys))
+    b.close()
+    if not quiet:
+        print("-" * 74)
+        print("per-signal trace over the run (ASCII sparkline, low..high):")
+        for k in traced:
+            h = history[k]
+            print(f"  {k:16s} |{_ascii_spark(h)}| {min(h):+.2f}..{max(h):+.2f}")
+        print("-" * 74)
+        print(f"DONE: {len(keys)} brain signals observed as spiking NEF populations under Nengo; {total_spikes} "
+              f"spikes. Observation-only, no actuator route; deployable to NengoLoihi.")
+        print("=" * 74)
+    return 0
+
+
 # ----------------------------------------------------------------------------------------------------------
 # self-check (un-riggable where nengo allows; tolerance bands, not bit-equality)
 # ----------------------------------------------------------------------------------------------------------
@@ -440,6 +498,8 @@ def main():
     assert all(math.isfinite(v) for v in decoded_b.values()), "every observed brain signal must decode finite"
     assert len(tier_keys) >= 1 and all(k in bkeys for k in tier_keys), \
         "the observed set must include the torch/nengo/pc TIER channels (whole-brain observability incl torch)"
+    # (5) snn-nengo-launch entrypoint smoke: the console launcher steps a short brain-under-Nengo pass
+    assert launch(t=0.006, quiet=True) == 0, "the snn-nengo-launch entrypoint must run a brain under Nengo"
 
     print(f"self-check OK: Nengo NEF decodes x^2 RMSE {ng_sq_rmse:.4f} (comparable to zero-dep "
           f"{zdep_sq_rmse:.4f}), 1-neuron control fails ({ctrl_rmse:.3f}); matched Nengo LIF tracks the brain "

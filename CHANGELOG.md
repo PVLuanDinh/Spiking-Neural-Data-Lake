@@ -3,6 +3,23 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.37] -- snn-nengo-launch: run the whole brain live under Nengo (console script) (2026-07-15)
+
+Make the v3.35 whole-brain observation a first-class ENTRYPOINT and add a live per-tick trace.
+
+- `substrate/nengo_bridge.launch()`: builds Brain(seed=0), wraps every `brain.state()` signal in its own
+  spiking NEF population, and STEPS nengo.Simulator tick-by-tick -- printing a live per-tick trace of a few
+  signals and, at the end, an ASCII sparkline of each traced signal over the run plus the total spikes.
+  Observation-only, no actuator route; deployable to NengoLoihi.
+- Console script `snn-nengo-launch` (pyproject `[project.scripts]` -> `nengo_bridge:launch`, `[nengo]` extra).
+- The self-check adds a quiet `launch()` smoke; without nengo, `launch()` prints a friendly gated message and
+  returns 1 (zero-dep matrix unaffected).
+- Verified on real Nengo (`.venv-nengo`): the brain wakes tick-by-tick (brain_alive 0 -> 0.94, access_index
+  0 -> 0.41, wake_ticks climbing, reflex_armed armed), 30 signals as spiking NEF populations, ASCII sparkline
+  plot, ~8000 spikes.
+
+Gates green: 204/204 self-checks (nengo_bridge SKIPs without nengo), ruff clean.
+
 ## [v3.36] -- connectome: fill the missing region->region edges + ledger corrections (2026-07-15)
 
 Fill the genuine region->region wiring the 5-agent brain audit found missing in `connectome.py`, and fix

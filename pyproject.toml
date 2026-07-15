@@ -58,6 +58,7 @@ snn-loop = "snn_data_lake.brainstem.closed_loop:main"  # full closed loop: gestu
 snn-ui   = "snn_data_lake.substrate.control_panel:main"  # zero-dep tkinter desktop control panel (arm + recognition + lake)
 snn-train = "snn_data_lake.training.cli:main"  # [train] extra: surrogate-gradient GPU trainer -> exports weights to the zero-dep core
 snn-fetch-corpus = "snn_data_lake.substrate.web_ingest:cli"  # firewalled web -> training-corpus fetch (zero-dep urllib)
+snn-nengo-launch = "snn_data_lake.substrate.nengo_bridge:launch"  # [nengo] extra: run the whole brain LIVE under nengo.Simulator (per-tick trace; NengoLoihi-deployable, observation-only)
 
 [project.urls]
 Homepage = "https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake"
