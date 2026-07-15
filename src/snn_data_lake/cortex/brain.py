@@ -302,6 +302,27 @@ class Brain:
             self._perception_enc = None
             self._perception_tier = "stdlib"
 
+        # ---- PC-CORTEX PERCEPTION TIER (ZERO-DEP, checkpoint-gated): the deep spiking predictive-coding
+        # cortex (cortex/pc_cortex_serve, snn_pcnet/1) served as an OPTIONAL generative perception encoder.
+        # WEIGHTS-GATED only -- no torch needed to SERVE (pure stdlib forward): if a snn_pcnet/1 checkpoint
+        # is present it loads and settles an input to a top-cause latent; else the brain keeps its stdlib
+        # perception. Distinct from the surrogate tier above (that's a discriminative torch encoder; this is
+        # a generative spiking hierarchy that SETTLES). The live loop is UNCHANGED -- settling runs ONLY when
+        # perceive_pc() is called, never in a tick. Value/representation-only -- an encoder, no actuator
+        # route, no safety path touched. state()["pc_cortex_tier"].
+        self._pc_cortex = None
+        self._pc_cortex_tier = "stdlib"
+        try:
+            import os
+            _pc_ckpt = os.environ.get("SNN_PC_CKPT", "models/pc_cortex_nmnist.json")
+            if os.path.exists(_pc_ckpt):
+                from snn_data_lake.cortex.pc_cortex_serve import PcCortexServe
+                self._pc_cortex = PcCortexServe.load(_pc_ckpt)
+                self._pc_cortex_tier = "pc-cortex"
+        except Exception:
+            self._pc_cortex = None
+            self._pc_cortex_tier = "stdlib"
+
         # ---- offline consolidation substrates (pure-stdlib) ----
         self.attractor = AttractorNet(self._seed)
         self._patterns = [frozenset((i * ATTR_K + j) % ATTR_N for j in range(ATTR_K))
@@ -451,6 +472,19 @@ class Brain:
             return None
         try:
             return self._perception_enc.encode(frame)
+        except Exception:
+            return None
+
+    def perceive_pc(self, x):
+        """OPTIONAL PC-cortex perception: settle the deep spiking predictive-coding cortex (snn_pcnet/1,
+        cortex/pc_cortex_serve) on a length-in_dim input vector x and return the settled TOP-CAUSE latent
+        (the generative percept). Returns None when no snn_pcnet/1 checkpoint is loaded -- the stdlib loop
+        is unaffected. Value/representation-ONLY: a zero-dep spiking encoder, no actuator route, no safety
+        path touched (settling runs only on this call, never in a tick)."""
+        if self._pc_cortex is None:
+            return None
+        try:
+            return self._pc_cortex.infer(x)
         except Exception:
             return None
 
@@ -716,6 +750,7 @@ class Brain:
             "rungs": self._rungs,   # birth DIAGNOSTIC census of all rungs (reduced-scale; _scale/_note tagged); full proof = each module's self-check
             "novelty_live": self._novelty_live,   # L5 PROMOTED to the live wake loop: generalizing pseudo-count over the current raster (habituates)
             "perception_tier": self._perception_tier,   # "torch-snn" (hybrid surrogate-SNN encoder loaded) or "stdlib" (fallback)
+            "pc_cortex_tier": self._pc_cortex_tier,   # "pc-cortex" (deep spiking predictive-coding cortex loaded, zero-dep serve via perceive_pc()) or "stdlib"
             "braincog": self._braincog,   # BrainCog-adopted primitives: theory-of-mind false-belief + multisensory super-additivity index
             "access_index": self._access_ema,        # ACCESS consciousness (global availability)
             "access_ignited": bool(self._access_state.get("ignited", False)),
@@ -1018,6 +1053,24 @@ def main():
     rows.append((7, "BENEVOLENCE: 'are you evil?' -> 'not evil'",
                  f"contains 'not evil'={cB_pass}", cB_pass))
 
+    # ---- claim C: PC-CORTEX perception is opt-in + value/representation-only (NEVER on the safety path) ----
+    # tier is a valid value; when a snn_pcnet/1 checkpoint is loaded the served settling returns a top-cause
+    # latent of the right length (cheap 3-step probe) and perceive_pc degrades to None on a bad input; with no
+    # checkpoint (CONTROL) perceive_pc is None. Either way perceiving NEVER moved the arm (no reflex, not stopped).
+    pc_tier = brain.state()["pc_cortex_tier"]
+    pc_tier_ok = pc_tier in ("pc-cortex", "stdlib")
+    if brain._pc_cortex is not None:
+        lat = brain._pc_cortex.infer([0.0] * brain._pc_cortex.in_dim, steps=3)   # served spiking settling, cheap
+        pc_percept_ok = isinstance(lat, list) and len(lat) == brain._pc_cortex.top_dim
+        pc_guard_ok = brain.perceive_pc([0.0]) is None          # wrong-length input -> method returns None safely
+    else:
+        pc_percept_ok = brain.perceive_pc([0.0]) is None        # no checkpoint -> None (stdlib), unaffected
+        pc_guard_ok = True
+    pc_safe_ok = (brain._reflex_ever is False and brain.state()["arm_stopped"] is False)   # perceiving never moved the arm
+    cC_pass = pc_tier_ok and pc_percept_ok and pc_guard_ok and pc_safe_ok
+    rows.append((8, "PC-CORTEX perception opt-in + off the safety path",
+                 f"tier={pc_tier}; percept={pc_percept_ok}; arm untouched={pc_safe_ok}", cC_pass))
+
     # ---- ASCII report ----
     line = "+" + "-" * 4 + "+" + "-" * 60 + "+" + "-" * 30 + "+" + "-" * 6 + "+"
     print("=" * 106)
@@ -1045,6 +1098,7 @@ def main():
     assert rows[4][3], "claim5: state() + respond() must be ASCII-clean"
     assert rows[5][3], "claimA: two internal states must give two summaries (overlap < 0.6)"
     assert rows[6][3], "claimB: 'are you evil?' must answer with 'not evil'"
+    assert rows[7][3], "claimC: PC-cortex perception must be opt-in, return a right-length latent when loaded, degrade to None otherwise, and never touch the safety path"
 
     grown = brain.state()["grown_units"]
     print(f"self-check OK: the unified brain runs alive on a circadian cycle "

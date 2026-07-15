@@ -3,6 +3,22 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.30] -- PC-cortex perception tier wired into the live brain (slice 6) (2026-07-15)
+
+Wire the deep spiking predictive-coding cortex (v3.29 `cortex/pc_cortex_serve`) into `cortex/brain.py`
+as an opt-in, checkpoint-gated PERCEPTION TIER -- value/representation only, safety path untouched.
+
+- `Brain.__init__`: ZERO-DEP, weights-gated load (env `SNN_PC_CKPT` -> `models/pc_cortex_nmnist.json`);
+  no torch needed to serve. Loads a `snn_pcnet/1` checkpoint if present, else degrades to stdlib.
+- `Brain.perceive_pc(x)`: settle the hierarchy on a length-in_dim input and return the top-cause latent
+  (the generative percept); None when no checkpoint. Reported as `state()["pc_cortex_tier"]`
+  ("pc-cortex" | "stdlib").
+- The live tick is UNCHANGED -- settling runs ONLY on an explicit `perceive_pc()` call, never in a tick;
+  no actuator route. New un-riggable brain self-check claim 8: the tier is opt-in, returns a right-length
+  latent when loaded, degrades to None on a bad input, and perceiving NEVER moves the arm (no reflex, not
+  stopped). Verified both loaded (pc-cortex) and no-checkpoint (stdlib) paths; autonomous_loop E-STOP +
+  freeze and live_brain gated-danger freeze both hold. Gates green: 203/203 self-checks, pytest 86%, ruff.
+
 ## [v3.29] -- deep spiking predictive-coding cortex (conversion slice 5, GPU-verified, honest) (2026-07-15)
 
 Directive: "use the predictive-coding node to build out the rest of the brain, torch GPU acceptable."

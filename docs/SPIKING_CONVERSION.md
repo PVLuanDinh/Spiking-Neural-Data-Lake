@@ -172,3 +172,11 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   value delivered is a faithful zero-dep spiking GENERATIVE trunk + the honest measurement, not a SOTA number. Rate/2-level
   seed `cortex/predictive_coding` kept as the small baseline (mirrors spiking_jepa keeping jepa_world_model). No live
   wiring this slice (zero safety surface); Slice 6 = opt-in checkpoint-gated perception-tier wiring. Atlas SPIKING 50.
+- **Slice 6 (v3.30) -- PC-cortex perception tier WIRED into the live brain (safety-verified):** `cortex/pc_cortex_serve`
+  wired into `cortex/brain.py` as an opt-in, ZERO-DEP, checkpoint-gated perception tier (`SNN_PC_CKPT` ->
+  models/pc_cortex_nmnist.json; no torch needed to serve; degrades to stdlib), exposed via `perceive_pc(x)` -> settled
+  top-cause latent, reported `state()["pc_cortex_tier"]` ("pc-cortex" | "stdlib"). The live tick is UNCHANGED (settling
+  runs only on the explicit call, never in a tick); no actuator route. New brain self-check claim 8 (opt-in + right-length
+  latent when loaded + degrade-to-None on bad input + arm untouched); autonomous_loop E-STOP/freeze + live_brain
+  gated-danger freeze verified to hold. No new module -- Atlas SPIKING stays 50. brain.py commit isolated from the
+  entangled uncommitted nengo-bridge working-tree changes (left untouched).
