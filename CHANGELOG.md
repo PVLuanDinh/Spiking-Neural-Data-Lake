@@ -3,6 +3,19 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.44] -- developmental loop: scaling the learner beats 87.5% (the real accuracy lever) (2026-07-15)
+
+Confirm empirically that SCALING the unsupervised learner -- not the objective-selection or revisit strategy
+-- is what raises accuracy. Same code (curiosity + curriculum still drive selection), more neurons per digit:
+
+  GROW=50  -> 500 neurons  -> 87.5%   (v3.41)
+  GROW=120 -> 1200 neurons -> 88.0%   (digit 9: 60% -> 75%, curriculum mastered 3/10)
+
+Beats the 87.5% mark, tracking the Diehl & Cook ladder (1600 -> ~92%, 6400 -> ~95%). Doc-only: records the
+empirical accuracy ladder + the scale knobs in the module header. The loop's decision machinery (the brain's
+real SpikingCuriosityDrive + SpikingCurriculum) is unchanged; this closes the loop-accuracy investigation --
+autonomy comes from the neuromodulation modules, accuracy comes from learner scale.
+
 ## [v3.43] -- developmental loop: diversified revisit (honest negative -- revisit is not the accuracy lever) (2026-07-15)
 
 Add an anti-fixation cap (`NORD_CAP`, max consecutive same-digit revisits) so the curiosity-driven revisit

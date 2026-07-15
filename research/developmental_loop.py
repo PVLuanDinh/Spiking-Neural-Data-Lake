@@ -27,8 +27,14 @@ every digit is mastered (or a cycle budget is hit). Observation / cognition only
 
 Needs the torch venv:
     D:\AI-project\spiking-neural-data-lake\.venv-cu128\Scripts\python research\developmental_loop.py
-Scale knobs (env): NORD_CYCLES, NORD_GROW (neurons grown per cycle), NORD_PER (train images per digit),
-                   NORD_PROBE (held-out probe images per digit), NORD_GPU=1.
+Scale knobs (env): NORD_CYCLES, NORD_GROW (neurons/cycle), NORD_PER (train imgs/digit), NORD_PROBE
+                   (probe imgs/digit), NORD_REPLAY (exemplars/digit), NORD_CAP (max consecutive revisits),
+                   NORD_GPU=1.
+
+Empirical accuracy ladder (full 10-digit self-directed run, no labels, GPU): GROW=50 -> 500 neurons -> 87.5%;
+GROW=120 -> 1200 neurons -> 88.0% (digit 9: 60% -> 75%, curriculum mastered 3/10). SCALING the unsupervised
+learner is the accuracy lever; the objective-selection / revisit strategy is NOT (revisiting plateaus ~81-83%
+-- see CHANGELOG v3.42/v3.43). Toward Diehl & Cook: 1600 -> ~92%, 6400 -> ~95%.
 """
 import os
 import sys
