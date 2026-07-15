@@ -302,6 +302,44 @@ class PcCortexServe:
 
         return goal_value
 
+    # ---- active inference: PC as the SURPRISE / expected-free-energy value (its honest planning role) --------
+    def surprise(self, x, steps=None, lr=None):
+        """Settled FREE ENERGY (total prediction-error energy) of an observation x under the generative model:
+        settle the causes, then sum |e_l|^2 over ALL levels (e_0 = x - W_1 r_1; e_l = r_l - W_{l+1} r_{l+1}).
+        LOW surprise = the model EXPLAINS x (x is on the learned manifold); HIGH = anomalous / off-manifold.
+        This is the ambiguity / epistemic term of expected free energy (Friston; Da Costa 2020) -- how much
+        the model is 'surprised' by x. Reported as a non-negative scalar."""
+        causes = self.settle(x, steps=steps, lr=lr)
+        pred0 = _matvec(self._W[0], causes[0])
+        energy = sum((x[k] - pred0[k]) ** 2 for k in range(self._dims[0]))
+        for lvl in range(1, self._L):
+            pred = _matvec(self._W[lvl], causes[lvl])
+            energy += sum((causes[lvl - 1][k] - pred[k]) ** 2 for k in range(self._dims[lvl]))
+        return energy
+
+    def make_efe_value(self, x_goal, beta=1.0, steps=None, lr=None):
+        """Return an EXPECTED-FREE-ENERGY goal_value(x) over OBSERVATIONS for plan(): score x by BOTH how close
+        its percept is to the goal AND how well the generative model explains it --
+
+            value(x) = -( ||encode(x) - encode(x_goal)||_1  +  beta * surprise(x) )
+
+        the pragmatic (goal-reaching) term MINUS the epistemic/ambiguity (surprise) term; higher = better (plan
+        maximizes). This is PC's HONEST planning contribution -- the perception / generative-model half of active
+        inference (Da Costa 2020): prefer goal-matching states the model TRUSTS, avoiding anomalous look-alikes
+        that a goal-distance-only value cannot tell apart. `x_goal` is a length-in_dim goal OBSERVATION; the
+        predictor injected into plan() must therefore produce candidate OBSERVATIONS in this model's input space
+        (e.g. a decoder / a policy model trained in the SAME space) -- pairing with a different-space predictor
+        like JepaWorldModel needs a shared observation space first (noted honestly, not silently assumed)."""
+        z_goal = self.infer(x_goal, steps=steps, lr=lr)
+        b = float(beta)
+
+        def value(x):
+            z = self.infer(x, steps=steps, lr=lr)
+            pragmatic = sum(abs(z[i] - z_goal[i]) for i in range(len(z_goal)))
+            return -(pragmatic + b * self.surprise(x, steps=steps, lr=lr))
+
+        return value
+
 
 # =========================================================================================================
 # Self-check: build a TINY snn_pcnet/1 (L=3) by hand, serve it, and assert the settling forward matches an
@@ -332,6 +370,7 @@ def _build_tiny_blob():
 
 
 def main():
+    import math
     import os
     import sys
     import tempfile
@@ -476,6 +515,64 @@ def main():
     roll_vals = [pfc._rollout_value(z0, o, srv, gv, 3) for o in options]
     plan_ties = (max(roll_vals) - min(roll_vals) < 1e-9)       # HONEST NEGATIVE: no action discrimination
 
+    # ---- (7) ACTIVE INFERENCE (honest POSITIVE): PC surprise as the expected-free-energy value makes the
+    #         executive AVOID an off-manifold look-alike that a goal-distance-only value WALKS INTO. The trap
+    #         sits AT the goal in latent (closest) but carries a co-kernel component of W_1 the model cannot
+    #         explain (high surprise); the good option is on-manifold but slightly off-goal (low surprise).
+    z_goal_c = [0.8, -0.5]
+    x_goal = srv.generate(z_goal_c)                            # the goal observation
+    x_good = srv.generate([z_goal_c[0] + 0.55, z_goal_c[1] - 0.45])   # on-manifold, off goal in latent (low surprise)
+    x_far = srv.generate([-0.6, 0.7])                          # on-manifold but far in latent
+
+    def _vdot(a, b):
+        return sum(a[i] * b[i] for i in range(len(a)))
+    W1cols = [[W[0][i][j] for i in range(dims[0])] for j in range(dims[1])]   # generative columns of W_1
+    basis = []                                                 # Gram-Schmidt orthonormal basis of col(W_1)
+    for col in W1cols:
+        v = list(col)
+        for u in basis:
+            p = _vdot(v, u)
+            v = [v[i] - p * u[i] for i in range(len(v))]
+        nrm = math.sqrt(_vdot(v, v))
+        if nrm > 1e-9:
+            basis.append([vi / nrm for vi in v])
+    unull = [1.0, -0.3, 0.2, 0.7, -0.5]                        # a fixed seed vector, projected OUT of col(W_1)
+    for u in basis:
+        p = _vdot(unull, u)
+        unull = [unull[i] - p * u[i] for i in range(len(unull))]
+    nn = math.sqrt(_vdot(unull, unull)) or 1.0
+    unull = [v / nn for v in unull]                            # unit co-kernel direction (inexplicable by W_1)
+    x_trap = [x_goal[k] + 2.0 * unull[k] for k in range(dims[0])]   # AT the goal in latent, but off-manifold
+
+    zc_goal = srv.infer(x_goal)
+
+    def _ldist(xx):
+        zz = srv.infer(xx)
+        return sum(abs(zz[i] - zc_goal[i]) for i in range(len(zc_goal)))
+    d_good, d_trap = _ldist(x_good), _ldist(x_trap)
+    s_good, s_trap = srv.surprise(x_good), srv.surprise(x_trap)
+    trap_is_closer = d_trap < d_good                          # the trap LOOKS more like the goal (lower latent distance)
+    surprise_gap = s_trap > 2.0 * s_good + 0.5                # but the trap is clearly MORE surprising (off-manifold)
+
+    efe = srv.make_efe_value(x_goal, beta=1.0)                # goal-distance MINUS surprise
+
+    def dist_only_value(xx):
+        return -_ldist(xx)                                    # goal-distance-ONLY value (no surprise term)
+
+    class _CandidateModel:                                    # a policy model producing candidate OBSERVATIONS
+        def __init__(self, cands):
+            self._c = cands
+
+        def predict(self, state, command):
+            return self._c[int(command)]
+
+    cand = _CandidateModel([x_good, x_trap, x_far])           # 0 = good, 1 = trap, 2 = far
+    sel_dist, _ = PrefrontalExecutive(n_options=3, seed=0).plan(x_goal, [0, 1, 2], cand, dist_only_value, horizon=1, write=False)
+    sel_efe, _ = PrefrontalExecutive(n_options=3, seed=0).plan(x_goal, [0, 1, 2], cand, efe, horizon=1, write=False)
+    dist_walks_into_trap = (sel_dist == 1)                    # goal-distance-only picks the closest -> the anomaly
+    efe_avoids_trap = (sel_efe == 0)                          # EFE (with surprise) picks the trusted on-manifold good
+    ai_ok = trap_is_closer and surprise_gap and dist_walks_into_trap and efe_avoids_trap
+
     print("=" * 78)
     print("PC-CORTEX SERVE -- zero-dep forward server for a torch-trained deep spiking snn_pcnet/1")
     print("=" * 78)
@@ -490,6 +587,10 @@ def main():
     print(f"planning    : duck-types into PrefrontalExecutive.plan()={plan_duck_ok}; top-down generate beats null cause={gen_ok}")
     print(f"HONEST NEG  : PC has NO action channel -> predict ignores command={cmd_agnostic}; plan() ties across options={plan_ties} "
           f"(perception != control; action-conditioned planning stays with JEPA/HJepaServe)")
+    print(f"active-inf  : latent-dist good={d_good:.3f} trap={d_trap:.3f} (trap closer={trap_is_closer}); "
+          f"surprise good={s_good:.3f} trap={s_trap:.3f} (gap={surprise_gap})")
+    print(f"HONEST POS  : goal-distance-only plan WALKS INTO the trap (sel={sel_dist})={dist_walks_into_trap}; "
+          f"EFE plan AVOIDS it -> good (sel={sel_efe})={efe_avoids_trap} (PC surprise = the epistemic value)")
     print("-" * 78)
 
     assert causes_ok, "served settling causes must match the independent hand-rolled reference"
@@ -508,11 +609,16 @@ def main():
     assert cmd_agnostic, "PC predict() must be command-AGNOSTIC (PC has no action channel) -- structural honesty, not a bug"
     assert gen_ok, "generate() top-down from a settled cause must reconstruct x better than a null cause"
     assert plan_duck_ok, "PcCortexServe must duck-type into PrefrontalExecutive.plan() (encode/predict/make_goal_value) and roll deterministically"
+    assert ai_ok, ("active inference: PC surprise (the EFE value) must avoid a low-distance HIGH-surprise off-manifold "
+                   "look-alike that a goal-distance-only value cannot -- surprise gap + latent-distance preserved + EFE "
+                   "discriminates + trap invisible to distance-only + EFE-plan picks the good state")
 
     print("self-check OK: snn_pcnet/1 deep spiking predictive-coding forward served pure-stdlib, matches an "
           "independent reference settling, is genuinely predictive (activity+residual fall) and spiking, with a "
           "validating loader; duck-types into PrefrontalExecutive.plan() as a top-down predictor -- with the HONEST "
-          "limit that PC has no action channel so plan() cannot discriminate actions (perception, not control)")
+          "limit that PC has no action channel so plan() cannot discriminate actions (perception, not control) -- and "
+          "supplies the ACTIVE-INFERENCE surprise/expected-free-energy value that makes the executive avoid an "
+          "off-manifold look-alike a goal-distance-only value walks into (PC's genuine planning role)")
 
 
 if __name__ == "__main__":

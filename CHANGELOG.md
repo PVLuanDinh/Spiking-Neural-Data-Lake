@@ -3,6 +3,26 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.32] -- PC-cortex active inference: surprise / expected-free-energy value (slice 8, honest positive) (2026-07-15)
+
+The honest, self-consistent resolution of slice 7's negative: predictive coding is the PERCEPTION half of
+active inference, so its planning contribution is the SURPRISE / expected-free-energy VALUE, not a dynamics
+model. Self-contained in `cortex/pc_cortex_serve.py`; no live wiring, no actuator route.
+
+- `surprise(x)`: settled FREE ENERGY (total prediction-error energy across all levels) of an observation --
+  LOW = the model explains x (on-manifold), HIGH = anomalous/off-manifold. The ambiguity term of EFE.
+- `make_efe_value(x_goal, beta)`: an expected-free-energy `goal_value(x) = -( ||encode(x)-encode(x_goal)||_1
+  + beta*surprise(x) )` -- pragmatic (goal) MINUS epistemic (surprise); duck-types into plan() over OBSERVATIONS.
+- HONEST POSITIVE (un-riggable, head-to-head): given a look-alike TRAP that sits CLOSEST to the goal in latent
+  (0.315 vs 0.455) but is off-manifold (surprise 4.64 vs 0.03) -- built from a co-kernel direction of W_1 the
+  model cannot explain -- a REAL PrefrontalExecutive.plan() using the goal-distance-ONLY value WALKS INTO the
+  trap, while the EFE value (with PC surprise) AVOIDS it and picks the trusted on-manifold option. PC surprise
+  supplies discrimination goal-distance alone cannot.
+- HONEST scope: make_efe_value scores OBSERVATIONS, so the injected predictor must produce candidate
+  observations in PC's input space; pairing with a different-space action model (JepaWorldModel) still needs a
+  shared observation space (a decoder / same-space training) -- stated, not silently assumed.
+- No new module, no live wiring, no actuator route (Atlas SPIKING stays 50). Gates green: 203/203, pytest 86%, ruff.
+
 ## [v3.31] -- PC-cortex duck-types into PrefrontalExecutive.plan() (slice 7, honest) (2026-07-15)
 
 Give the deep spiking predictive-coding cortex (`cortex/pc_cortex_serve`) the JEPA/HJepaServe planning

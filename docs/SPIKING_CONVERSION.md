@@ -188,3 +188,15 @@ live_arm, arm_bridge -- physics/byte-IO/config, correctly not neural and NEVER c
   (perception != control; action-conditioned planning stays with JEPA/HJepaServe). Self-contained in
   pc_cortex_serve.py -- no live wiring, no actuator route. No new module -- Atlas SPIKING stays 50. The genuinely-
   useful PC planning role is active-inference goal_value/surprise-minimization (a follow-up), not a dynamics model.
+- **Slice 8 (v3.32) -- PC active inference: surprise / expected-free-energy value (honest POSITIVE):** the
+  self-consistent resolution of slice 7's negative -- PC is the PERCEPTION half of active inference, so its
+  planning role is the SURPRISE/EFE value, NOT a dynamics model. Added `surprise(x)` (settled free energy: low=
+  on-manifold/explained, high=anomalous) + `make_efe_value(x_goal,beta)` (= -(latent goal-dist + beta*surprise),
+  duck-types into plan() over OBSERVATIONS). Un-riggable HEAD-TO-HEAD: a co-kernel look-alike TRAP CLOSEST to the
+  goal in latent (0.315 < 0.455) but off-manifold (surprise 4.64 vs 0.03) -> a REAL PrefrontalExecutive.plan()
+  with the goal-distance-ONLY value WALKS INTO the trap, while the EFE value (with PC surprise) AVOIDS it and picks
+  the trusted good option. PC surprise adds discrimination distance alone cannot. HONEST scope: EFE scores
+  observations, so a JepaWorldModel pairing needs a shared observation space (decoder / same-space training) --
+  stated, not silently assumed. Self-contained in pc_cortex_serve.py, no live wiring, no actuator. No new module --
+  Atlas SPIKING stays 50. Completes the PC-planning story: slice 7 = honest negative (no action channel), slice 8 =
+  honest positive (surprise IS the value).
