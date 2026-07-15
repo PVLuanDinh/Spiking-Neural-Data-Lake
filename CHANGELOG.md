@@ -3,6 +3,30 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.48] -- developmental loop: criticality-guided pruning (arXiv 2311.16141) -- honest NEGATIVE (2026-07-15)
+
+Tested whether the criticality metric from "Criticality-Guided Efficient Pruning in SNNs Inspired by the
+Critical Brain Hypothesis" (arXiv 2311.16141) fixes our pruning. Their insight: rank neurons for pruning by
+CRITICALITY (near-threshold-ness), not magnitude/activity -- a barely-excitable neuron near threshold is
+informative even if it rarely wins. The metric is the surrogate-derivative `g'(u - Vth) = 1/(1 + alpha^2 (u-Vth)^2)`,
+which needs NO backprop -- it is a closed-form function of the membrane-threshold distance we already track.
+
+Implemented (`GrowableSTDP`): per-neuron criticality accumulated over the probe pass (`last_crit`), and a
+`prune_dead(criticality=...)` mode that drops the SAME NUMBER the activity rule would but picks the LEAST-CRITICAL
+old neurons (pure metric swap; opt-in `NORD_CRIT=1`, slope `NORD_ALPHA`). Newborn-grace kept.
+
+HONEST result (hard-WTA, full 10-digit GPU, same ~130 neurons pruned/cycle, only the metric differs):
+- activity-prune -> **73.8%** (129 neurons); criticality-prune -> **72.7%** (138 neurons) -- **TIED** (1.1% apart,
+  within run-to-run noise), both ~15 points below the **~88%** no-prune baseline.
+
+Why it does not transfer: the paper's criticality carries surrogate-GRADIENT signal that magnitude-pruning
+misses in DEEP STBP-trained SNNs. Our regime is single-layer STDP with neuron-label VOTING -- accuracy depends
+on whether a neuron's weight PROTOTYPE discriminates classes, which is orthogonal to membrane near-threshold-ness
+during the probe. The regenerate-to-target-sparsity half only matters for compression (which we do not need; its
+limit is "add the neurons back" = no-prune = 88%). Conclusion unchanged from v3.46/47: pruning hurts this regime
+regardless of metric; the accuracy lever is MORE neurons, not fewer. Metric kept as reusable opt-in code.
+Research tier only; zero-dep core untouched.
+
 ## [v3.47] -- developmental loop: soft k-WTA + newborn-grace pruning -- honest NEGATIVE (2026-07-15)
 
 Tested the user's hypothesis that a SOFT k-WTA (graded lateral inhibition, a continuously-adjustable global

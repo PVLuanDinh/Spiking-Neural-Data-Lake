@@ -82,8 +82,10 @@ class GrowableSTDP:
     learned digit; forgetting is held off by strong REPLAY of stored exemplars (replay-based continual
     learning), not by freezing, which lets accuracy approach the joint-training (one-shot) result."""
 
-    def __init__(self, device, inh=None):
+    def __init__(self, device, inh=None, alpha=1.0):
         self.device = device
+        self.alpha = float(alpha)              # criticality metric slope (surrogate-derivative g'(u-Vth), arXiv 2311.16141)
+        self.last_crit = None                  # per-neuron criticality of the most recent run() (near-threshold-ness)
         # inh=None -> HARD top-1 k-WTA + full lateral reset (the verified snn_mnist_stdp mechanic, best acc
         # 88.8% at 10-class scale). A float turns on experimental SOFT k-WTA (graded global coupling): kept
         # as an opt-in because it does NOT beat hard-WTA at 10 classes (peaks ~76% at inh=15) -- see docstring.
@@ -122,15 +124,30 @@ class GrowableSTDP:
             return True
         return False
 
-    def prune_dead(self, activity, min_spikes=1, cycle=0, grace=1):
+    def prune_dead(self, activity, min_spikes=1, cycle=0, grace=1, criticality=None):
         """Developmental PRUNING (the brain grows AND prunes -- plasticity/developmental_pruning +
-        lifelong_consolidation): drop neurons whose total activity over the probe is below `min_spikes` --
-        dead / never-winning prototypes that only add noise to the label vote. `activity` is a length-n
-        per-neuron spike total. NEWBORN PROTECTION: a neuron recruited within the last `grace` cycles is
+        lifelong_consolidation). NEWBORN PROTECTION: a neuron recruited within the last `grace` cycles is
         never pruned (a developmental critical period) -- otherwise pruning kills freshly-recruited neurons
-        before they have had a cycle to win, fighting neurogenesis. Returns the number pruned (keeps >=1)."""
+        before they have had a cycle to win, fighting neurogenesis. Returns the number pruned (keeps >=1).
+
+        Selection metric (ablation):
+          - criticality=None  -> ACTIVITY rule: drop neurons whose spike total < `min_spikes` (v3.46/47 default;
+            fails here because low-activity != useless under k-WTA).
+          - criticality given  -> CRITICALITY rule (arXiv 2311.16141): drop the SAME NUMBER the activity rule
+            would (K = #dead-and-old), but pick the K LEAST-CRITICAL old neurons (lowest near-threshold score),
+            keeping barely-excitable-but-informative sparse coders the activity rule wrongly deletes. Pure
+            metric swap -> net-size trajectory identical, only the SELECTION differs."""
         newborn = (cycle - self.birth) < grace              # protected: too young to prune
-        keep = (activity >= min_spikes) | newborn
+        dead = (activity < min_spikes) & (~newborn)         # what the activity rule would drop
+        k = int(dead.sum().item())
+        if criticality is None or k == 0:
+            keep = (activity >= min_spikes) | newborn       # ACTIVITY rule (or nothing to prune)
+        else:                                               # CRITICALITY rule: drop the k least-critical OLD neurons
+            score = criticality.clone()
+            score[newborn] = float("inf")                   # newborns never selected for pruning
+            drop_idx = torch.topk(score, k, largest=False).indices
+            keep = torch.ones(self.n, dtype=torch.bool, device=self.device)
+            keep[drop_idx] = False
         pruned = int((~keep).sum().item())
         if pruned and keep.any():
             self.W = self.W[keep]
@@ -148,13 +165,16 @@ class GrowableSTDP:
         mem = self.lif.init_leaky()
         x_pre = torch.zeros(N_IN, device=self.device)
         counts = torch.zeros(self.n, device=self.device)
-        rates = image * MAX_RATE
+        crit = torch.zeros(self.n, device=self.device)     # CRITICALITY (arXiv 2311.16141): sum_t g'(eff - THRESH),
+        rates = image * MAX_RATE                            #   g'(x)=1/(1+alpha^2 x^2) peaks when membrane ~ threshold
         for _ in range(T):
             s_in = (torch.rand(N_IN, device=self.device) < rates).float()
             x_pre = x_pre * self.pre_decay + s_in
             cur = self.W @ s_in
             _, mem = self.lif(cur, mem)
             eff = mem - self.theta
+            d = eff - THRESH                                # membrane-to-threshold distance (before any WTA reset)
+            crit += 1.0 / (1.0 + (self.alpha * d) ** 2)     # near-threshold = high criticality (barely-excitable)
             if self.inh is None:
                 # HARD top-1 k-WTA (the verified snn_mnist_stdp mechanic, KWTA=1): the single strongest neuron
                 # that clears threshold fires, then a FULL lateral-inhibition reset silences everyone that step.
@@ -187,6 +207,7 @@ class GrowableSTDP:
         if learn:
             s = self.W.sum(dim=1, keepdim=True).clamp_min(1e-6)
             self.W *= (W_NORM / s)
+        self.last_crit = crit
         return counts
 
 
@@ -234,6 +255,8 @@ def main():
     VIG = float(os.environ.get("NORD_VIG", "0.85"))   # neurogenesis vigilance: best-match below this = learnable-novel -> the brain recruits
     PRUNE = _envi("NORD_PRUNE", 0)         # opt-in developmental pruning (HONEST: hurts here regardless -- see below)
     INH = float(os.environ["NORD_INH"]) if os.environ.get("NORD_INH") else None   # None -> HARD top-1 WTA (default, best 88.8%); a float -> experimental SOFT k-WTA
+    CRIT = _envi("NORD_CRIT", 0)           # prune selection metric: 0 -> activity (v3.47), 1 -> CRITICALITY (arXiv 2311.16141)
+    ALPHA = float(os.environ.get("NORD_ALPHA", "1.0"))   # criticality metric slope g'(x)=1/(1+(alpha*x)^2)
 
     print("=" * 88)
     print("DEVELOPMENTAL LOOP -- unsupervised learning -> memorize -> grow neurons -> decide next -> repeat")
@@ -244,7 +267,7 @@ def main():
     by_class = {d: (Ytr == d).nonzero(as_tuple=True)[0] for d in range(10)}
     probe_by = {d: (Yte == d).nonzero(as_tuple=True)[0][:PROBE] for d in range(10)}
 
-    net = GrowableSTDP(dev, inh=INH)
+    net = GrowableSTDP(dev, inh=INH, alpha=ALPHA)
     learned = []                            # digits seen/being-learned so far
     competence = {d: 0.0 for d in range(10)}   # self-measured competence per digit
     memory = {}                             # MEMORIZATION: stored exemplars per learned digit (for rehearsal)
@@ -316,11 +339,15 @@ def main():
         #      (dense-synapse mechanism, not sparse-prototype). Left OFF by default. ----
         if PRUNE:
             pact = torch.zeros(net.n, device=dev)
+            pcrit = torch.zeros(net.n, device=dev)
             for img in stream[:min(len(stream), 300)]:
                 pact += net.run(img, learn=False)
-            pruned = net.prune_dead(pact, min_spikes=1, cycle=cyc, grace=1)
+                pcrit += net.last_crit                       # accumulate criticality over the same probe pass
+            crit_arg = pcrit if CRIT else None               # NORD_CRIT=1 -> rank pruning by criticality, else activity
+            pruned = net.prune_dead(pact, min_spikes=1, cycle=cyc, grace=1, criticality=crit_arg)
             if pruned:
-                print(f"  [prune]          removed {pruned} dead neurons -> {net.n} live (NORD_PRUNE on)")
+                metric = "least-critical" if CRIT else "dead"
+                print(f"  [prune]          removed {pruned} {metric} neurons -> {net.n} live (NORD_PRUNE on)")
 
         # ---- 2/SELF-IMPROVEMENT: self-evaluate competence over ALL learned digits ----
         probe_imgs = [Xte[i] for d in learned for i in probe_by[d]]
