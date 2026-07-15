@@ -3,6 +3,23 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.39] -- full-brain experience: all torch tiers on real data (no forcing) (2026-07-15)
+
+Add `research/full_brain_experience.py` -- drive the whole brain through a real episode so EVERY torch tier
+genuinely engages (not poked): perception, language, neurogenesis.
+
+- PERCEPTION: real N-MNIST digits -> the surrogate-gradient SNN encoder (torch, `perception_tier=torch-snn`)
+  AND the deep spiking predictive-coding cortex (`pc_cortex_serve`) classify them (7/8, acc 0.88, in_dim 2312).
+- LANGUAGE: prompts -> the SpikeGPT-216M spiking language center (torch) replies with generated text (~7s each).
+- NEUROGENESIS: sleep cycles -> the NG-SNN engine grows neurons (`grown_units` 0 -> 5, `reasoning_units` 0 -> 4).
+- Each tier runs because the episode feeds it real input, not because it is forced. Observation / cognition
+  only -- no actuator route.
+- TORCH VENV REQUIRED (torch + the checkpoints `surrogate_nmnist.pth` / `pc_cortex_nmnist.json` /
+  `models/spikegpt/`):  `.venv-cu128\Scripts\python research\full_brain_experience.py`
+
+`research/` tier (ruff-excluded, not imported by the zero-dep core). Verified end-to-end under `.venv-cu128`:
+all four torch tiers load and produce real output.
+
 ## [v3.38] -- NengoGUI whole-brain model: watch the brain (incl neurogenesis) live in the browser (2026-07-15)
 
 Add `research/nengo_gui_brain.py` -- a NengoGUI model of the whole SNDL brain as a live spiking network.
