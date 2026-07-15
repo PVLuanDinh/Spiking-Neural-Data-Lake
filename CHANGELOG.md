@@ -3,6 +3,25 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.49] -- deep vs single-layer UNSUPERVISED STDP -- honest NEGATIVE (naive conv-STDP collapses) (2026-07-15)
+
+Asked whether DEEPENING the loop's learner raises accuracy while keeping its thesis (unsupervised, no labels,
+no backprop, spiking-pure -- user chose "deep unsupervised STDP stack" over supervised deep STBP). New research
+file `research/deep_stdp.py`: a greedy layer-wise conv-STDP hierarchy (Kheradpisheh-2018 style, simplified) --
+C shared 5x5 kernels learned unsupervised by WTA-STDP over rate-coded Poisson spikes -> max-pool -> the existing
+FC-STDP prototype layer + neuron-label vote. Runs a fair 1-layer-vs-2-layer head-to-head (same subset/seed/readout).
+
+HONEST result (RTX 5070, MNIST 6000/2000, C=16, M=100): **1-layer 63.6% vs 2-layer 8.8% (= chance, delta -54.9%,
+DEEP HURTS).** Diagnosed: the simplified conv layer COLLAPSES -- its 16 maps converge to near-identical filters
+(pairwise cosine similarity ~0.96), so pooled features carry no class information (all-zero at the reused THRESH;
+identical-and-uninformative at lower conv thresholds -- threshold-independent, so structural map-collapse, not
+firing calibration). This is the known weakness of naive RATE-coded, single-greedy-winner conv-STDP. Making deep
+unsupervised STDP actually help needs the fuller machinery it omits on purpose: DoG preprocessing + LATENCY /
+rank-order coding + first-spike winners + a diversity-FORCING inter-map lateral-inhibition field -- a real research
+build, not a knob. Kept as a documented negative + a clean baseline scaffold for that future work. The developmental
+loop keeps its single-layer STDP learner (accuracy lever stays neuron SCALE: ~88% -> ~95% at 6400, Diehl&Cook).
+Research tier only; zero-dep core untouched.
+
 ## [v3.48] -- developmental loop: criticality-guided pruning (arXiv 2311.16141) -- honest NEGATIVE (2026-07-15)
 
 Tested whether the criticality metric from "Criticality-Guided Efficient Pruning in SNNs Inspired by the
