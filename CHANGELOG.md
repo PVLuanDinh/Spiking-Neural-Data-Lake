@@ -3,6 +3,26 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.42] -- developmental loop: objective-selection wired through the real curiosity + curriculum modules (2026-07-15)
+
+Replace the loop's inline learning-progress heuristic with the brain's OWN neuromodulation modules:
+`neuromodulation/spiking_curiosity.SpikingCuriosityDrive.most_curious()` now picks each objective (spiking
+learning-progress + novelty) and `SpikingCurriculum` (a LIF-accumulator mastery gate) paces it. Two-phase:
+explore every unseen digit, then curiosity REVISITS the learnable frontier (revisits use a light, replay-
+balanced dose of fresh images so refining the frontier does not over-specialise the shared representation).
+
+HONEST result (full 15-cycle GPU run, no labels): the curiosity drive genuinely + correctly identifies the
+frontier -- it fixates on digit 9 (the hardest / most-confusable MNIST digit for unsupervised STDP), whose
+spiking learning-progress stays highest (~0.38) while the easy digits read 0.00. But curiosity-greedy
+revisiting does NOT beat balanced coverage on accuracy: 87.5% (pure explore, v3.41) -> 81.5% (curiosity-
+driven). Digit 9 is intrinsically hard (oscillates 52-75%, does not converge), so focusing compute there
+slightly drifts the others. The wiring is a genuine AUTONOMY / faithfulness gain (the brain's real decision
+machinery, not a heuristic); the honest lesson is that curiosity correctly finds the frontier, but here the
+frontier is hard-not-learnable-fast, so balanced coverage is near-optimal for accuracy.
+
+`research/` tier. Verified end-to-end; the curiosity value + spiking learning-progress + curriculum mastery
+count are printed each cycle.
+
 ## [v3.41] -- developmental loop: replay-based continual learning (52.8% -> 87.5%) (2026-07-15)
 
 Improve `research/developmental_loop.py`'s continual-learning accuracy by replacing the frozen-per-digit

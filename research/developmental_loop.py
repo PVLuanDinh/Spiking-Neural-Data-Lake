@@ -15,9 +15,11 @@ Each stage is a REAL brain mechanism, composed (not faked):
   3. SELF-IMPROVEMENT +      the learner GROWS NEURONS (neurogenesis) to add capacity for each new
      NEUROGENESIS            objective, and self-evaluates competence by neuron-label voting on a held-out
                              probe (labels used ONLY to read out competence, never to train).
-  4. DECISION                a curiosity / learning-progress drive picks the NEXT objective -- the digit
-                             the brain is least competent at / has not yet seen (novelty-seeking), i.e. it
-                             chooses what to learn next by itself (autotelic).
+  4. DECISION                the brain's OWN neuromodulation/spiking_curiosity.SpikingCuriosityDrive picks the
+                             next objective (most_curious = spiking learning-progress + novelty) and a
+                             SpikingCurriculum (LIF accumulator) paces mastery -- it explores every unseen
+                             digit, then REVISITS the weakest-still-improving one on the learnable frontier.
+                             Autotelic, no hand-coded heuristic.
   5. repeat.
 
 The loop is OPEN-ENDED and SELF-DIRECTED: it keeps choosing new digits, growing, and consolidating until
@@ -41,6 +43,8 @@ import torch
 from snn_mnist_stdp import (BETA, KWTA, LR, MAX_RATE, N_IN, T, TAU_PRE, THETA_DECAY,
                             THETA_PLUS, THRESH, W_NORM, WMAX, load_mnist)
 from torch_device import enable, resolve_device
+
+from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
 import snntorch as snn
 
@@ -138,7 +142,7 @@ def assign_and_eval(net, probe_imgs, probe_lbls, classes):
 def main():
     enable(resolve_device())
     dev = resolve_device()
-    CYCLES = _envi("NORD_CYCLES", 6)
+    CYCLES = _envi("NORD_CYCLES", 15)      # >10 so curiosity REVISITS the weakest digits after covering all 10
     GROW = _envi("NORD_GROW", 40)          # neurons recruited per objective (neurogenesis)
     PER = _envi("NORD_PER", 250)           # training images per digit (unsupervised)
     PROBE = _envi("NORD_PROBE", 40)        # held-out probe images per digit
@@ -154,61 +158,70 @@ def main():
     probe_by = {d: (Yte == d).nonzero(as_tuple=True)[0][:PROBE] for d in range(10)}
 
     net = GrowableSTDP(dev)
-    learned = []                            # digits mastered so far
+    learned = []                            # digits seen/being-learned so far
     competence = {d: 0.0 for d in range(10)}   # self-measured competence per digit
     memory = {}                             # MEMORIZATION: stored exemplars per learned digit (for rehearsal)
+    # the brain's OWN neuromodulatory decision machinery drives objective selection + pacing:
+    curiosity = SpikingCuriosityDrive(seed=0)                     # spiking learning-progress + novelty
+    curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)   # self-paced mastery gate (LIF accumulator)
 
     for cyc in range(1, CYCLES + 1):
-        # ---- 4/DECISION: curiosity picks the next objective = the UNSEEN digit (novelty); if all seen,
-        #      revisit the least-competent (learning-progress). This is the brain choosing what to learn. ----
+        # ---- 4/DECISION: the brain's SPIKING CURIOSITY drive picks the objective (most_curious = novelty +
+        #      spiking learning-progress). Phase 1 explores UNSEEN digits; once all seen, curiosity REVISITS
+        #      the weakest-still-improving digit (the learnable frontier). No hand-coded heuristic. ----
         unseen = [d for d in range(10) if d not in learned]
-        if unseen:
-            objective = min(unseen, key=lambda d: competence[d])   # novelty-seeking
-            reason = "novel (never seen)"
+        candidates = unseen if unseen else list(range(10))
+        objective = curiosity.most_curious(candidates)
+        is_new = objective not in learned
+        print(f"\nCYCLE {cyc}  ->  OBJECTIVE: digit {objective}  "
+              f"[{'explore (novel)' if is_new else 'revisit (curiosity frontier)'}; "
+              f"curiosity_value={curiosity.curiosity_value(objective):.3f}, novelty={curiosity.novelty(objective):.2f}]")
+
+        # ---- 3/NEUROGENESIS: grow neurons for a NEW objective; a revisit REFINES the existing capacity ----
+        if is_new:
+            m0 = net.n
+            net.grow(GROW)
+            memory[objective] = [Xtr[i] for i in by_class[objective][PER:PER + REPLAY]]
+            learned.append(objective)
+            print(f"  [neurogenesis]   neurons {m0} -> {net.n}  (+{GROW} recruited for the new digit; "
+                  f"stored {len(memory[objective])} exemplars in the replay buffer)")
         else:
-            objective = min(range(10), key=lambda d: competence[d])
-            reason = "lowest competence (revisit)"
-        print(f"\nCYCLE {cyc}  ->  OBJECTIVE: learn digit {objective}   [curiosity: {reason}]")
+            print(f"  [neurogenesis]   no growth (revisit) -- the {net.n} neurons refine the shared representation")
 
-        # ---- 3/NEUROGENESIS: grow neurons to add capacity for the new objective ----
-        m0 = net.n
-        net.grow(GROW)
-        print(f"  [neurogenesis]   neurons {m0} -> {net.n}  (+{GROW} recruited)")
-
-        # ---- 1/UNSUPERVISED LEARNING: STDP on the objective's digits, STRONGLY interleaved with REPLAY of
-        #      every previously-learned digit so the shared (all-plastic) representation refines all classes ----
+        # ---- 1/UNSUPERVISED LEARNING: STDP on the objective + balanced REPLAY of every learned digit. A
+        #      REVISIT uses only a LIGHT, replay-balanced dose of fresh images (refine, don't over-specialise
+        #      the shared representation to the frontier digit and drift the others). ----
         t0 = time.time()
-        train_imgs = [Xtr[i] for i in by_class[objective][:PER]]
-        # 2/MEMORIZATION rehearsal: a balanced replay of ALL learned digits' stored exemplars (anti-forgetting)
+        n_train = PER if is_new else max(REPLAY, PER // 4)
+        train_imgs = [Xtr[i] for i in by_class[objective][:n_train]]
         rehearse = [ex for d in learned for ex in memory.get(d, [])]
         stream = train_imgs + rehearse
         torch.manual_seed(cyc)
-        order = torch.randperm(len(stream))
-        for j in order.tolist():
+        for j in torch.randperm(len(stream)).tolist():
             net.run(stream[j], learn=True)
         dt = time.time() - t0
-        print(f"  [unsupervised]   STDP on {len(train_imgs)} digit-{objective} imgs interleaved with "
-              f"{len(rehearse)} replayed old exemplars, no labels ({dt:.0f}s)")
+        print(f"  [unsupervised]   STDP on {len(train_imgs)} digit-{objective} imgs + {len(rehearse)} replayed "
+              f"exemplars, no labels ({dt:.0f}s)")
 
-        # ---- 2/MEMORIZATION: store a rich exemplar buffer of the new digit for future replay ----
-        memory[objective] = [Xtr[i] for i in by_class[objective][PER:PER + REPLAY]]
-        learned.append(objective)
-        print(f"  [memorize]       stored {len(memory[objective])} digit-{objective} exemplars in the replay "
-              f"buffer (rehearsed every later cycle to consolidate against forgetting)")
-
-        # ---- 3/SELF-IMPROVEMENT: self-evaluate competence over ALL learned digits (progress signal) ----
+        # ---- 2/SELF-IMPROVEMENT: self-evaluate competence over ALL learned digits ----
         probe_imgs = [Xte[i] for d in learned for i in probe_by[d]]
         probe_lbls = [int(Yte[i]) for d in learned for i in probe_by[d]]
-        prev = dict(competence)
         ov, per_cls = assign_and_eval(net, probe_imgs, probe_lbls, set(learned))
         competence.update(per_cls)
-        prog = competence[objective] - prev[objective]
-        print(f"  [self-improve]   competence over learned {sorted(learned)} = {ov:.1%}  "
-              f"(digit {objective}: {competence[objective]:.1%}, learning-progress +{prog:.1%})")
+
+        # ---- 4/feed the REAL curiosity + curriculum modules the outcome (prediction error = 1 - competence),
+        #      so the NEXT decision is driven by their spiking learning-progress signal, not a heuristic ----
+        curiosity.observe(objective, 1.0 - competence[objective])
+        lp = curiosity.learning_progress(objective)
+        mastered_now = curriculum.observe(lp)
+        print(f"  [self-improve]   competence over {sorted(learned)} = {ov:.1%}  (digit {objective}: "
+              f"{competence[objective]:.1%}, spiking learning-progress={lp:.3f}); "
+              f"curriculum mastered {curriculum.mastered}/10{' [+advanced]' if mastered_now else ''}")
 
     print("\n" + "=" * 88)
-    print(f"DEVELOPMENTAL LOOP COMPLETE: the brain autonomously learned {sorted(learned)} UNSUPERVISED, grew "
-          f"{net.n} neurons over {CYCLES} cycles, consolidated each into memory, and chose every objective itself.")
+    print(f"DEVELOPMENTAL LOOP COMPLETE: the brain autonomously learned {sorted(learned)} UNSUPERVISED over "
+          f"{CYCLES} cycles, grew {net.n} neurons, consolidated via replay, and CHOSE every objective itself "
+          f"through its spiking curiosity drive + curriculum (curriculum mastered {curriculum.mastered}/10).")
     final = sum(competence[d] for d in learned) / len(learned)
     print(f"final mean competence over the {len(learned)} self-chosen digits: {final:.1%}  (no labels used in training)")
     print("=" * 88)
