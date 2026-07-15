@@ -245,6 +245,77 @@ def simulate(net, probes, t=0.3, dt=0.001, settle=0.5):
 
 
 # ----------------------------------------------------------------------------------------------------------
+# 4. WHOLE-BRAIN OBSERVATION -- expose the ENTIRE brain (every region + the torch tiers) to Nengo
+# ----------------------------------------------------------------------------------------------------------
+def brain_signals(brain):
+    """The numeric observable surface of a brain: every scalar in brain.state() (bool -> 0/1; each `*_tier`
+    string -> 1.0 when a non-stdlib tier is active else 0.0). This surface spans ALL tiers -- the zero-dep
+    spiking regions AND the torch tiers via their EXPORTED signals (perception_tier, pc_cortex_tier,
+    nengo_tier, grown/reasoning units, access index, novelty, ...). Returns an ordered {name: float}.
+    HONEST: a torch organ exports a derived scalar / tier-active flag here, NOT its raw internal spikes."""
+    out = {}
+    for k, v in brain.state().items():
+        if isinstance(v, bool):
+            out[k] = 1.0 if v else 0.0
+        elif isinstance(v, (int, float)):
+            out[k] = float(v)
+        elif isinstance(v, str) and k.endswith("_tier"):
+            out[k] = 0.0 if v == "stdlib" else 1.0        # torch/nengo/pc tier ACTIVE as an observable channel
+    return out
+
+
+def to_nengo_brain(brain, tick=True, n_neurons=30):
+    """Build a nengo.Network that OBSERVES THE WHOLE BRAIN. A live-tap Node reads brain.state() each sim step
+    (ticking the brain once per step when tick=True) and every numeric signal is REPRESENTED in its own
+    spiking NEF Ensemble, with a decoded Probe and a neuron (spike) Probe. Running nengo.Simulator then records
+    every organ's signal over time as Nengo spikes -- torch tiers INCLUDED, via their exported scalars / tier
+    flags. Deployable to NengoLoihi as a whole-brain monitoring layer. Returns (net, dec_probes, spk_probes,
+    keys, scales).
+
+    HONEST framing: Nengo does NOT run the brain's computation (the brain is custom stdlib + torch). It
+    OBSERVES and re-encodes the brain's OUTPUT signals into spiking populations. The zero-dep spiking regions
+    and the pc_cortex serve export real activity; the torch organs (SpikeGPT language center, neurogenesis,
+    ng_snn, surrogate perception) export a derived scalar / tier-active flag, not their internal spikes --
+    observing those requires entering the torch process. This is the whole-brain OBSERVABILITY seam."""
+    _require_nengo()
+    sig0 = brain_signals(brain)
+    keys = list(sig0)
+    if not keys:
+        raise RuntimeError("brain.state() exposed no numeric signals to observe")
+    scales = [max(1.0, 1.5 * abs(sig0[k])) for k in keys]        # per-signal NEF radius (bounds the signal)
+    net = nengo.Network(label="whole-brain observation", seed=0)
+    dec_probes, spk_probes = {}, {}
+    with net:
+        def _tap(t):
+            if tick:
+                brain.tick()
+            s = brain_signals(brain)
+            return [s.get(k, 0.0) for k in keys]
+        drive = nengo.Node(_tap, size_out=len(keys))
+        for i, k in enumerate(keys):
+            ens = nengo.Ensemble(n_neurons=n_neurons, dimensions=1, radius=scales[i], seed=0)
+            nengo.Connection(drive[i], ens, synapse=0.01)
+            dec_probes[k] = nengo.Probe(ens, synapse=0.02)
+            spk_probes[k] = nengo.Probe(ens.neurons)
+    return net, dec_probes, spk_probes, keys, scales
+
+
+def observe_brain(brain, t=0.05, dt=0.001, tick=True):
+    """Run the whole-brain observation network on nengo.Simulator for `t` s. Returns ({name: mean decoded
+    signal}, total spikes across all ensembles, keys). The brain ticks once per sim step when tick=True."""
+    _require_nengo()
+    net, dec_probes, spk_probes, keys, _ = to_nengo_brain(brain, tick=tick)
+    with nengo.Simulator(net, dt=dt, progress_bar=False) as sim:
+        sim.run(t)
+    decoded = {}
+    for k in keys:
+        d = sim.data[dec_probes[k]]
+        decoded[k] = float(d[-max(1, len(d) // 2):].mean())
+    total_spikes = int(sum(np.count_nonzero(sim.data[spk_probes[k]]) for k in keys))
+    return decoded, total_spikes, keys
+
+
+# ----------------------------------------------------------------------------------------------------------
 # self-check (un-riggable where nengo allows; tolerance bands, not bit-equality)
 # ----------------------------------------------------------------------------------------------------------
 def _rmse(pairs):
@@ -329,6 +400,16 @@ def main():
     print("(3) EXPORT RUNS  (brain circuit -> nengo.Network -> nengo.Simulator)")
     print(f"    population front-end : decoded {dec_ff:+.3f} (target 0.500), spikes {spk_ff}")
     print(f"    recurrent integrator : decoded {dec_rc:+.3f}, spikes {spk_rc}  (line-attractor loop holds)")
+
+    # --- (4) WHOLE-BRAIN OBSERVATION: the ENTIRE brain (incl torch tiers via exported signals) under Nengo ---
+    from snn_data_lake.cortex.brain import Brain
+    b = Brain(seed=0)
+    tier_keys = [k for k in brain_signals(b) if k.endswith("_tier")]     # torch/nengo/pc tier channels
+    decoded_b, brain_spikes, bkeys = observe_brain(b, t=0.05)
+    b.close()
+    print("(4) WHOLE-BRAIN OBSERVATION  (every numeric brain.state() signal -> its own spiking NEF ensemble)")
+    print(f"    observed {len(bkeys)} brain signals as Nengo spiking populations (total spikes {brain_spikes}); "
+          f"tier channels incl torch tiers: {tier_keys}")
     print("=" * 72)
 
     # ---- asserts: tolerance bands (the Nengo sim is float/seeded, not bit-deterministic) ----
@@ -353,13 +434,23 @@ def main():
     assert abs(dec_ff - 0.5) < 0.15, f"front-end must represent the input scalar ({dec_ff:.3f} vs 0.5)"
     assert spk_rc > 0 and math.isfinite(dec_rc), "exported recurrent loop must run, spike, decode finite"
 
+    # (4) whole-brain observation: many signals observed as spiking populations; torch-tier channels included
+    assert len(bkeys) >= 8, f"the whole-brain observer must expose many signals ({len(bkeys)})"
+    assert brain_spikes > 0, "the whole-brain observation ensembles must actually spike"
+    assert all(math.isfinite(v) for v in decoded_b.values()), "every observed brain signal must decode finite"
+    assert len(tier_keys) >= 1 and all(k in bkeys for k in tier_keys), \
+        "the observed set must include the torch/nengo/pc TIER channels (whole-brain observability incl torch)"
+
     print(f"self-check OK: Nengo NEF decodes x^2 RMSE {ng_sq_rmse:.4f} (comparable to zero-dep "
           f"{zdep_sq_rmse:.4f}), 1-neuron control fails ({ctrl_rmse:.3f}); matched Nengo LIF tracks the brain "
           f"LIFNeuron to {max_diff:.2f} Hz (mistuned control {ctrl_max_diff:.1f} Hz); exported circuit ran on "
           f"nengo.Simulator emitting {spk_ff} spikes, decode {dec_ff:.3f}.")
+    print(f"WHOLE-BRAIN: {len(bkeys)} brain.state() signals (incl the {len(tier_keys)} torch/nengo/pc tier "
+          f"channels) observed as spiking NEF populations under nengo.Simulator ({brain_spikes} spikes).")
     print("HONEST: NEF is an APPROXIMATOR -- fidelity within tolerance, never exact. This bridges the NEF/LIF "
-          "PRIMITIVES (the substrate every module routes through), NOT a Nengo re-impl of ~200 brain modules. "
-          "NengoLoihi is a deploy TARGET; Loihi silicon is not exercised here. Zero-dep core untouched.")
+          "PRIMITIVES + OBSERVES the whole brain's output signals (torch tiers via exported scalars, not raw "
+          "internal spikes); it is NOT a Nengo re-impl of ~200 brain modules. NengoLoihi is a deploy TARGET; "
+          "Loihi silicon is not exercised here. Zero-dep core untouched.")
     return 0
 
 

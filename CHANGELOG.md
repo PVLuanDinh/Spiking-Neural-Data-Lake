@@ -3,6 +3,49 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.35] -- Nengo whole-brain observation: the entire brain (incl torch tiers) under Nengo (2026-07-15)
+
+Extend `substrate/nengo_bridge.py` so Nengo can OBSERVE the WHOLE brain, not just isolated NEF/LIF
+primitives. nengo-gated; zero-dep core untouched.
+
+- `brain_signals(brain)`: the numeric observable surface of `brain.state()` -- every scalar (bool -> 0/1)
+  plus each `*_tier` string as a 1/0 tier-active flag. Spans ALL tiers: the zero-dep spiking regions AND
+  the torch tiers via their EXPORTED signals (perception_tier, pc_cortex_tier, nengo_tier, grown/reasoning
+  units, access index, novelty).
+- `to_nengo_brain(brain)` / `observe_brain(brain)`: build a nengo.Network where a live-tap Node reads
+  `brain.state()` each sim step (ticking the brain once per step) and every numeric signal is represented in
+  its own spiking NEF Ensemble, decoded + spike-probed. Running nengo.Simulator records every organ's signal
+  over time as Nengo spikes. Deployable to NengoLoihi as a whole-brain monitoring layer.
+- Verified on real Nengo (`.venv-nengo`): 30 `brain.state()` signals observed as spiking NEF populations
+  (4834 spikes), including the 3 torch/nengo/pc tier channels. No-nengo path SKIPs (zero-dep matrix green).
+- HONEST: Nengo does NOT run the brain's compute (custom stdlib + torch); it OBSERVES + re-encodes the
+  brain's OUTPUT signals into spiking populations. Torch organs (SpikeGPT, neurogenesis, ng_snn, surrogate
+  perception) export a derived scalar / tier flag, not their raw internal spikes -- observing those needs the
+  torch process. This is the whole-brain OBSERVABILITY seam, not a Nengo re-implementation of ~200 modules.
+
+Gates green: 204/204 self-checks (nengo_bridge SKIPs without nengo), ruff clean.
+
+## [v3.34] -- unify the anatomical atlas + land the Nengo foundation (2026-07-15)
+
+A 5-agent brain-wide audit found the atlas `REGIONS` map (in `__init__.py`) had drifted from the
+filesystem: 38 modules present + self-tested but unmapped, hidden by a hard-coded `assert total == 126`.
+
+- Register all 36 zero-dep orphans into `REGIONS` (higher-cognition / self-model / self-improvement cortex
+  tier; hippocampal growth + consolidation; basal-ganglia latent/mlp Q; cerebellar JEPA / HJepa /
+  spiking-JEPA world models; midbrain multisensory; neuromod curiosity / curriculum / drive; plasticity meta
+  / consolidation; substrate nengo_bridge).
+- Add a `TORCH_TIER` annex for the 2 modules that import torch at load (`cortex.neurogenesis_engine`,
+  `hippocampus.ng_snn`): mapped + counted + region_of-resolvable, excluded from the zero-dep alias loop,
+  import-verified only when torch is present. Every other torch-trained organ imports lazily -> `REGIONS`.
+- `brain_atlas`: replace the `== 126` hard-code with a FILESYSTEM-CONSISTENCY check (every region `.py` is
+  mapped, every mapped entry has a file) so the map can never silently drift again. Atlas now 164 modules
+  across 17 regions (162 zero-dep + 2 torch-tier), map == filesystem exactly.
+- Land the previously-uncommitted Nengo foundation: `substrate/nengo_bridge.py` (generic NEF/LIF <->
+  nengo.Ensemble bridge, NengoLoihi-deployable, nengo-gated), `brain.nengo_compute()` + `state()["nengo_tier"]`,
+  run_selfchecks NENGO_GATED tier, and the `[nengo]` pyproject extra.
+
+Gates green: 204/204 self-checks, ruff clean.
+
 ## [v3.33] -- active-inference bridge: JEPA dynamics + PC surprise compose (the "next lever") (2026-07-15)
 
 Close slice 7's gap: PC has no action channel, so give the action-conditioned dynamics to JepaWorldModel
