@@ -3,6 +3,31 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.47] -- developmental loop: soft k-WTA + newborn-grace pruning -- honest NEGATIVE (2026-07-15)
+
+Tested the user's hypothesis that a SOFT k-WTA (graded lateral inhibition, a continuously-adjustable global
+coupling, instead of a hard single-winner) would make developmental PRUNING viable. Built it, swept it, and
+measured it honestly at the full 10-class scale. It does not pay off; the default stays hard-WTA no-prune.
+
+- SOFT k-WTA (`GrowableSTDP(inh=x)`, opt-in `NORD_INH`): the whole supra-threshold population fires, and each
+  neuron's membrane drops by `inh * (spikes of the others)` -- graded all-but-self inhibition, not a hard reset.
+- NEWBORN-GRACE pruning (`prune_dead(cycle, grace=1)`): a neuron recruited this cycle is never pruned -- a
+  developmental critical period, so pruning cannot kill freshly-recruited units before they have won.
+
+HONEST results (full 10-digit GPU runs, no labels):
+- Soft k-WTA does NOT beat hard-WTA. A 3-digit smoke looked strong (94-96%) but that was a LOW-CLASS-COUNT
+  artifact: at 10 classes inh=5 -> **68.5%**, inh=15 -> **76.2%** (soft peak), inh=50 -> **71.2%**, all below
+  hard top-1 WTA's **~88%**. More classes -> population overlap muddies the neuron-label vote.
+- Pruning still loses. Naive prune COLLAPSES the net (inh=5 -> 52 neurons / 29.8%). Newborn-grace FIXES the
+  collapse (stabilises ~150-260 neurons / 58.2%) -- the grace gate genuinely works -- but pruning STILL hurts
+  accuracy (inh=15: 76.2% -> 58.2%): in this replay-STDP vote, low-activity neurons carry useful class-vote
+  mass, so removing them removes signal. Developmental dead-pruning is a dense-synapse mechanism, not a
+  sparse-prototype one.
+
+Kept both as documented opt-in negatives (reproducible via `NORD_INH` / `NORD_PRUNE`); restored HARD top-1
+WTA as the default run path (regression-checked: default = 87.7%, within noise of the 88.8% baseline).
+Research tier only (`research/developmental_loop.py`); zero-dep core untouched.
+
 ## [v3.46] -- developmental loop: fold in more brain modules (LC noradrenaline + grow/prune) -- honest results (2026-07-15)
 
 Compose two more of the brain's real modules into the loop:

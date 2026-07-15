@@ -41,6 +41,14 @@ random-init growth -> 88.0%; cap=120, BRAIN-DECIDED novelty-seeded growth -> 88.
 curriculum mastered 3/10). SCALING the learner is the accuracy lever; the objective-selection / revisit
 strategy is NOT (revisiting plateaus ~81-83% -- see CHANGELOG v3.42/v3.43). Toward Diehl & Cook: ~92% at
 1600, ~95% at 6400.
+
+SOFT k-WTA + PRUNING (v3.47, opt-in NORD_INH / NORD_PRUNE) -- HONEST NEGATIVES, kept for reproducibility:
+graded lateral inhibition (a continuously-adjustable global coupling) looked strong on a 3-digit smoke
+(94-96%) but that was a LOW-CLASS-COUNT artifact: at the full 10 classes it does NOT beat hard top-1 WTA --
+inh=5 -> 68.5%, inh=15 -> 76.2% (soft peak), inh=50 -> 71.2%, all below hard-WTA's 88.8%. Developmental
+dead-pruning also fails to pay off: naive pruning COLLAPSES the net (inh=5 -> 52 neurons / 29.8%); a
+newborn-grace critical period fixes the collapse (~150-260 neurons / 58.2%) but pruning still HURTS accuracy
+(low-activity neurons carry useful class-vote mass). Default stays HARD-WTA, no pruning (88.8%).
 """
 import os
 import sys
@@ -74,11 +82,16 @@ class GrowableSTDP:
     learned digit; forgetting is held off by strong REPLAY of stored exemplars (replay-based continual
     learning), not by freezing, which lets accuracy approach the joint-training (one-shot) result."""
 
-    def __init__(self, device):
+    def __init__(self, device, inh=None):
         self.device = device
+        # inh=None -> HARD top-1 k-WTA + full lateral reset (the verified snn_mnist_stdp mechanic, best acc
+        # 88.8% at 10-class scale). A float turns on experimental SOFT k-WTA (graded global coupling): kept
+        # as an opt-in because it does NOT beat hard-WTA at 10 classes (peaks ~76% at inh=15) -- see docstring.
+        self.inh = None if inh is None else float(inh)
         self.n = 0
         self.W = torch.zeros(0, N_IN, device=device)
         self.theta = torch.zeros(0, device=device)
+        self.birth = torch.zeros(0, device=device)   # cycle each neuron was recruited (newborn-protection critical period)
         self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
 
@@ -93,7 +106,7 @@ class GrowableSTDP:
         wn = self.W / (self.W.norm(dim=1, keepdim=True) + 1e-6)
         return float((wn @ xn).max())
 
-    def maybe_recruit(self, image, vigilance):
+    def maybe_recruit(self, image, vigilance, cycle=0):
         """The BRAIN'S OWN neurogenesis decision (the ART / hippocampus.GrowingLearner vigilance rule): recruit
         exactly ONE neuron, SEEDED toward `image`, iff no existing prototype matches it above `vigilance`
         (learnable-novelty). Familiar patterns (match >= vigilance) recruit nothing -- they refine the matching
@@ -104,20 +117,25 @@ class GrowableSTDP:
             w = (x / (x.sum() + 1e-6) * W_NORM).unsqueeze(0)   # the new prototype IS the novel pattern (ART recruit)
             self.W = torch.cat([self.W, w], dim=0)
             self.theta = torch.cat([self.theta, torch.zeros(1, device=self.device)], dim=0)
+            self.birth = torch.cat([self.birth, torch.full((1,), float(cycle), device=self.device)], dim=0)
             self.n += 1
             return True
         return False
 
-    def prune_dead(self, activity, min_spikes=1):
+    def prune_dead(self, activity, min_spikes=1, cycle=0, grace=1):
         """Developmental PRUNING (the brain grows AND prunes -- plasticity/developmental_pruning +
         lifelong_consolidation): drop neurons whose total activity over the probe is below `min_spikes` --
         dead / never-winning prototypes that only add noise to the label vote. `activity` is a length-n
-        per-neuron spike total. Returns the number pruned (keeps at least one neuron)."""
-        keep = activity >= min_spikes
+        per-neuron spike total. NEWBORN PROTECTION: a neuron recruited within the last `grace` cycles is
+        never pruned (a developmental critical period) -- otherwise pruning kills freshly-recruited neurons
+        before they have had a cycle to win, fighting neurogenesis. Returns the number pruned (keeps >=1)."""
+        newborn = (cycle - self.birth) < grace              # protected: too young to prune
+        keep = (activity >= min_spikes) | newborn
         pruned = int((~keep).sum().item())
         if pruned and keep.any():
             self.W = self.W[keep]
             self.theta = self.theta[keep]
+            self.birth = self.birth[keep]
             self.n = int(keep.sum().item())
         return pruned
 
@@ -137,17 +155,33 @@ class GrowableSTDP:
             cur = self.W @ s_in
             _, mem = self.lif(cur, mem)
             eff = mem - self.theta
-            cand = (eff > THRESH).nonzero(as_tuple=True)[0]
-            if cand.numel() > 0:
-                if cand.numel() > KWTA:
-                    cand = cand[torch.topk(eff[cand], KWTA).indices]
-                for w in cand.tolist():
+            if self.inh is None:
+                # HARD top-1 k-WTA (the verified snn_mnist_stdp mechanic, KWTA=1): the single strongest neuron
+                # that clears threshold fires, then a FULL lateral-inhibition reset silences everyone that step.
+                cand = (eff > THRESH).nonzero(as_tuple=True)[0]
+                if cand.numel() > 0:
+                    w = int(cand[torch.topk(eff[cand], min(KWTA, cand.numel())).indices][0])
                     counts[w] += 1
-                    if learn:                                 # ALL neurons stay plastic (replay prevents forgetting)
-                        self.W[w] += (LR * lr_scale) * x_pre  # LR scaled by the LC noradrenaline gain
+                    if learn:
+                        self.W[w] += (LR * lr_scale) * x_pre
                         self.W[w].clamp_(0.0, WMAX)
                         self.theta[w] += THETA_PLUS
-                mem = torch.zeros(self.n, device=self.device)
+                    mem = torch.zeros(self.n, device=self.device)
+            else:
+                fired = eff > THRESH                       # SOFT k-WTA: the whole supra-threshold POPULATION fires
+                nf = int(fired.sum().item())               #   (graded competition, not a single hard winner)
+                if nf > 0:
+                    idx = fired.nonzero(as_tuple=True)[0]
+                    counts[idx] += 1
+                    if learn:                              # vectorised STDP for the co-firing population (all plastic)
+                        self.W[idx] += (LR * lr_scale) * x_pre.unsqueeze(0)   # LR scaled by the LC noradrenaline gain
+                        self.W[idx].clamp_(0.0, WMAX)
+                        self.theta[idx] += THETA_PLUS
+                    # graded ALL-BUT-SELF lateral inhibition (a continuously-adjustable GLOBAL coupling): each neuron's
+                    # membrane drops by inh * (spikes of the OTHERS) -- SMOOTH suppression by rank, not a hard reset.
+                    # Spreads activity across a population; makes pruning non-collapsing (with newborn grace) but does
+                    # NOT beat hard-WTA on accuracy at 10 classes -- kept opt-in as an honest negative.
+                    mem = (mem - self.inh * (nf - fired.float())).clamp_min(0.0)
             if learn:
                 self.theta *= THETA_DECAY
         if learn:
@@ -198,7 +232,8 @@ def main():
     REPLAY = _envi("NORD_REPLAY", 60)      # exemplars stored + rehearsed per learned digit (anti-forgetting)
     CAP = _envi("NORD_CAP", 1)             # max consecutive revisits of the SAME digit (anti-fixation -> diversify)
     VIG = float(os.environ.get("NORD_VIG", "0.85"))   # neurogenesis vigilance: best-match below this = learnable-novel -> the brain recruits
-    PRUNE = _envi("NORD_PRUNE", 0)         # opt-in developmental pruning (default OFF -- see below: HURTS the sparse kWTA regime)
+    PRUNE = _envi("NORD_PRUNE", 0)         # opt-in developmental pruning (HONEST: hurts here regardless -- see below)
+    INH = float(os.environ["NORD_INH"]) if os.environ.get("NORD_INH") else None   # None -> HARD top-1 WTA (default, best 88.8%); a float -> experimental SOFT k-WTA
 
     print("=" * 88)
     print("DEVELOPMENTAL LOOP -- unsupervised learning -> memorize -> grow neurons -> decide next -> repeat")
@@ -209,7 +244,7 @@ def main():
     by_class = {d: (Ytr == d).nonzero(as_tuple=True)[0] for d in range(10)}
     probe_by = {d: (Yte == d).nonzero(as_tuple=True)[0][:PROBE] for d in range(10)}
 
-    net = GrowableSTDP(dev)
+    net = GrowableSTDP(dev, inh=INH)
     learned = []                            # digits seen/being-learned so far
     competence = {d: 0.0 for d in range(10)}   # self-measured competence per digit
     memory = {}                             # MEMORIZATION: stored exemplars per learned digit (for rehearsal)
@@ -257,7 +292,7 @@ def main():
         recruited = 0
         for j in torch.randperm(len(stream)).tolist():
             img = stream[j]
-            if recruited < GROW and net.maybe_recruit(img, VIG):   # the brain decides: recruit iff learnable-novel
+            if recruited < GROW and net.maybe_recruit(img, VIG, cycle=cyc):   # the brain decides: recruit iff learnable-novel
                 recruited += 1
             net.run(img, learn=True, lr_scale=gain)                # LC noradrenaline gain modulates the STDP step
         dt = time.time() - t0
@@ -272,15 +307,18 @@ def main():
               f"exemplars, no labels ({dt:.0f}s)")
 
         # ---- 3b/PRUNE (opt-in, NORD_PRUNE=1): the brain grows AND prunes (plasticity/developmental_pruning) --
-        #      drop neurons dead over the training distribution. HONEST: pruning HURTS this sparse kWTA regime
-        #      (only 1 winner/step, so most prototypes are low-activity by design; dead-pruning removes useful
-        #      sparse coders and freshly-recruited units -> 88.8% -> 60-84%). Left OFF by default; the brain's
-        #      dead-pruning is built for DENSE synapses, not sparse winner-take-all prototypes. ----
+        #      drop neurons dead over the training distribution, with a NEWBORN-GRACE critical period (a neuron
+        #      recruited this cycle is never pruned). HONEST, MEASURED: the grace gate stops the pruning COLLAPSE
+        #      (soft-kWTA inh=5 + naive prune died to 52 neurons / 29.8%; + grace stabilises ~150-260 neurons /
+        #      58.2%), but pruning STILL HURTS accuracy vs no-prune (inh=15: 76.2% -> 58.2%; hard-WTA 88.8% ->
+        #      lower) -- in this replay-STDP vote, low-activity neurons still carry useful class-vote mass, so
+        #      removing them removes signal. Conclusion: developmental dead-pruning is NOT a win for this system
+        #      (dense-synapse mechanism, not sparse-prototype). Left OFF by default. ----
         if PRUNE:
             pact = torch.zeros(net.n, device=dev)
             for img in stream[:min(len(stream), 300)]:
                 pact += net.run(img, learn=False)
-            pruned = net.prune_dead(pact, min_spikes=1)
+            pruned = net.prune_dead(pact, min_spikes=1, cycle=cyc, grace=1)
             if pruned:
                 print(f"  [prune]          removed {pruned} dead neurons -> {net.n} live (NORD_PRUNE on)")
 
