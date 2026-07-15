@@ -3,6 +3,20 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.43] -- developmental loop: diversified revisit (honest negative -- revisit is not the accuracy lever) (2026-07-15)
+
+Add an anti-fixation cap (`NORD_CAP`, max consecutive same-digit revisits) so the curiosity-driven revisit
+refines the top weak digits in rotation instead of fixating on digit 9, keeping `SpikingCuriosityDrive` as
+the genuine selector.
+
+HONEST NEGATIVE (full 18-cycle GPU run, no labels): diversifying the revisit did NOT beat balanced coverage
+-- 81.2% (diversified) vs 87.5% (v3.41 pure explore). Revisiting (fixated OR diversified) plateaus the
+STDP + replay representation at ~81-83%; the accuracy is set by the coverage phase plus run-to-run
+order/seed variance, and the ~81-87% band is the STDP learner's ceiling for this config (500 neurons). The
+real lever to beat 87.5% is SCALING the unsupervised learner (more neurons per digit -> Diehl & Cook:
+400->87%, 1600->92%, 6400->95%), NOT the loop's objective-selection or revisit strategy. The curiosity /
+curriculum wiring stands as a genuine autonomy gain; revisit strategy is exhausted as an accuracy lever.
+
 ## [v3.42] -- developmental loop: objective-selection wired through the real curiosity + curriculum modules (2026-07-15)
 
 Replace the loop's inline learning-progress heuristic with the brain's OWN neuromodulation modules:

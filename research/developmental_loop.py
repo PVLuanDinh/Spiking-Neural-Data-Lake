@@ -147,6 +147,7 @@ def main():
     PER = _envi("NORD_PER", 250)           # training images per digit (unsupervised)
     PROBE = _envi("NORD_PROBE", 40)        # held-out probe images per digit
     REPLAY = _envi("NORD_REPLAY", 60)      # exemplars stored + rehearsed per learned digit (anti-forgetting)
+    CAP = _envi("NORD_CAP", 1)             # max consecutive revisits of the SAME digit (anti-fixation -> diversify)
 
     print("=" * 88)
     print("DEVELOPMENTAL LOOP -- unsupervised learning -> memorize -> grow neurons -> decide next -> repeat")
@@ -164,6 +165,7 @@ def main():
     # the brain's OWN neuromodulatory decision machinery drives objective selection + pacing:
     curiosity = SpikingCuriosityDrive(seed=0)                     # spiking learning-progress + novelty
     curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)   # self-paced mastery gate (LIF accumulator)
+    consec = {d: 0 for d in range(10)}     # consecutive-pick counter (fixation guard for the phase-2 revisits)
 
     for cyc in range(1, CYCLES + 1):
         # ---- 4/DECISION: the brain's SPIKING CURIOSITY drive picks the objective (most_curious = novelty +
@@ -171,7 +173,11 @@ def main():
         #      the weakest-still-improving digit (the learnable frontier). No hand-coded heuristic. ----
         unseen = [d for d in range(10) if d not in learned]
         candidates = unseen if unseen else list(range(10))
+        if not unseen:                       # phase 2: block a digit revisited CAP times in a row -> diversify
+            allowed = [d for d in candidates if consec[d] < CAP]
+            candidates = allowed or candidates
         objective = curiosity.most_curious(candidates)
+        consec = {d: (consec[d] + 1 if d == objective else 0) for d in range(10)}
         is_new = objective not in learned
         print(f"\nCYCLE {cyc}  ->  OBJECTIVE: digit {objective}  "
               f"[{'explore (novel)' if is_new else 'revisit (curiosity frontier)'}; "
