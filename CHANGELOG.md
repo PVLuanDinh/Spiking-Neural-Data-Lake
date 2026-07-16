@@ -3,6 +3,26 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.64] -- RBF-SVM ensemble: adding the nonlinear member makes combining WORK -> 96.5% new best (2026-07-16)
+
+Added the v3.63 RBF-SVM to the v3.61 ensemble (which had HURT: two linear-boundary readouts share features ->
+correlated errors). `research/ensemble_rbf.py` measures linear readout + progressive columns + RBF-SVM -- all on the
+SAME frozen unsupervised conv1 spatial features (C1=30) -- as singles, every ensemble combination (probability
+average), and pairwise error-correlation (both-wrong). No leakage (readouts train/fit on train, scored on held-out test).
+
+RESULT (RTX 5070, MNIST 10000/2000): singles linear 95.8%, columns 89.1%, RBF 95.6%.
+  ensembles: linear+columns (OLD) 91.8% (-3.9%, hurts); linear+RBF **96.5%** (+0.7% vs best member -- NEW BEST);
+             columns+RBF 91.9%; linear+columns+RBF 95.4% (columns drags it below RBF alone).
+  error correlation (both-wrong): linear-vs-columns 3.5%, linear-vs-RBF **2.5%** (most decorrelated), columns-vs-RBF 3.0%.
+
+Textbook ensemble theory confirmed on our own data: combining helps ONLY with DECORRELATED members. The RBF-SVM is
+NONLINEAR, so it fails on different inputs than the linear readout (both-wrong 2.5% vs 3.5% for the two linear members)
+-> linear+RBF gives a genuine +0.7% gain (96.5%, a new record), where the earlier all-linear ensemble hurt. The weak,
+linear-boundary columns readout (89.1%) drags every ensemble it is in, so it must be EXCLUDED; linear+RBF is the winning
+pair. So "add the RBF to the ensemble" WORKS -- paired with the linear readout, not columns. Feature learning stays
+unsupervised; only the readouts are supervised. Accuracy ladder now: 96.5% (linear+RBF ens) > 96.2 (RBF static, 15k) >
+95.8 (linear static) > 93.3 (linear loop) > 88.8 (vote loop). Research tier only; zero-dep core untouched.
+
 ## [v3.63] -- 2-stage conv-STDP + SVM: global-pool recipe FAILS on digits, but RBF-SVM breaks 95% -> 96.2% (2026-07-16)
 
 Pursued the Kheradpisheh ~98% recipe (2 unsupervised conv-STDP stages + GLOBAL pooling + SVM readout).
