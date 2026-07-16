@@ -3,6 +3,31 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.55] -- brain-integrated developmental loop (Slice 1): real hippocampus + basal-ganglia + metacog wired in (2026-07-15)
+
+First slice of wiring the brain's REAL subsystems into the developmental loop (`research/developmental_loop_brain.py`
++ `research/brain_adapters/{hippocampal_memory,growable_readout,brain_decision}.py`). Each adapter wraps an actual
+core module (Fable5-built, verified by me): HippocampalMemory = `hippocampus/experience_replay.ReplayBuffer` +
+`hippocampus/sleep_consolidation.SleepConsolidator`; BrainDecision = `basal_ganglia/latent_q.LatentQ` value +
+`cortex/metacognitive_monitor.MetacognitiveMonitor`; GrowableReadout = a function-preserving (Net2Net) growable MLP
+built on the `hippocampus/function_preserving_growth` principle. Perception stays unsupervised conv1; the loop's
+curiosity/curriculum autonomy is preserved and now augmented with real value + metacognitive control.
+
+HONEST measured result (RTX 5070, MNIST 10000/2000, self-directed, no leakage):
+- Hippocampal memory + brain decision HOLD accuracy: the loop reaches **93.3%** (-0.2% vs the v3.54 deep loop) --
+  the two subsystems replace the hand-rolled replay buffer + curiosity-only decision with the real modules for FREE.
+  These are the DEFAULT. (curiosity chose all 10 digits; LatentQ value + metacog drive objective selection.)
+- The growable MLP readout (NORD_GROWABLE=1) is an HONEST NEGATIVE: the function-preserving growth is exact (verified
+  0.0 logit-diff + real capacity gain standalone), but a continually-trained MLP readout FORGETS catastrophically
+  across digits -- crashes to **78.6%** at ~7 classes (curve holds ~0.93 then falls off a cliff), where the plain
+  linear readout does not. The neurogenesis MECHANISM is sound; MLP-continual-forgetting is the cost. Diagnostic
+  isolated it cleanly (linear+memory+decision 93.3% vs MLP+memory+decision 78.6%). Kept opt-in; default readout linear.
+
+So Slice 1: 2 of 3 brain subsystems wired with accuracy held (architectural faithfulness for free, the v3.46 lesson
+confirmed positively this time); the readout-neurogenesis is a documented opt-in negative. The growable readout also
+verified standalone (function-preserving 0.0, acc 0.695->0.867 on a toy task). Slice 2 (executive/dopamine/global-
+workspace) to follow. Research tier only; zero-dep core untouched.
+
 ## [v3.54] -- deep developmental loop: conv1 + continual linear readout wired in -> 93.5% (2026-07-15)
 
 Wired the v3.53 winner (unsupervised conv1 features + a linear readout) INTO the autonomous developmental loop
