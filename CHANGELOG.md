@@ -3,6 +3,31 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.68] -- lake-backed memory + task-expert SKILL LIBRARY: prune->expert->consolidate->route->reuse (2026-07-16)
+
+Answers "can task-specific neurons be pruned + clustered into an expert, consolidated in the data lake, and reused
+as skills?" -- YES, demonstrated. Two new research files.
+
+`research/brain_adapters/lake_memory.py` (`LakeMemory`): consolidates exemplars to the DURABLE substrate spike lake
+(StreamingHub `.spkl`, latency-encoded) + a ProximityIndex (Victor-Purpura spike-train distance), and PULLS them back
+BY PROXIMITY (content-addressable). Verified standalone: proximity recall precision 100% vs 25% chance; durability =
+120 patterns + 2753 events survive a close+reopen (durable in the lake, not RAM). Constraint: proximity keys are <=64
+channels (use a compact global feature as the key, row-index/id as payload).
+
+`research/lake_skill_library.py`: a Mixture-of-Task-Experts SKILL LIBRARY built on the lake. Per task: train a small
+expert, PRUNE it (29% smallest weights) and FREEZE it; CONSOLIDATE it as a durable named SKILL -- the task centroid as
+the proximity key via `LakeMemory.consolidate`, plus `SleepConsolidator.wake(skill_id=...)` for the skill record. A
+PROXIMITY ROUTER (`LakeMemory.retrieve`) selects the right expert per input with NO task-id and NO retraining.
+
+MEASURED (RTX 5070, 5 HETEROGENEOUS tasks x 3 classes in R^32): specialist experts mean 0.94; proximity router
+selection **1.00** (chance 0.20); routed end-to-end (recall only) 0.94; KEY COMPARISON -- routed expert library 0.94
+vs a single shared model 0.38 = **+0.56** (experts WIN when tasks are dissimilar); 5 routing skills + 160 events survive
+the lake close+reopen (durable, recall-only). Honest regime note: this is the HETEROGENEOUS-task case where a per-task
+expert library beats a shared model; on FEATURE-SHARING tasks (MNIST digits) a shared model wins instead (project-
+measured, v3.60) -- so the skill library is built for diverse task streams, not for carving similar classes. The lake
+durably stores the content-addressable ROUTING skill (centroid -> task_id) + the named skill; expert weights live in a
+bank. Research tier only; zero-dep core untouched.
+
 ## [v3.67] -- fully LABEL-FREE loop: autonomously trains from raw pixels, 88.3% cluster purity (2026-07-16)
 
 The honest demonstration of "can the model autonomously train from raw data" -- YES. New
