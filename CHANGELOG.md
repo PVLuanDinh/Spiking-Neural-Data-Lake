@@ -3,6 +3,31 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.53] -- LINEAR readout on deep spiking features: the readout WAS the cap; depth HELPS -> 95.1% (2026-07-15)
+
+The decisive test that closes the deepening arc (v3.49-52). `research/deep_stdp_readout.py` puts a LINEAR readout
+(torch nn.Linear + cross-entropy = softmax / multinomial-logistic regression, the linear-SVM hypothesis class) on
+three FROZEN feature sources -- raw pixels, stage-1 conv features, stage-1+stage-2 conv features -- and compares
+test accuracy. Feature learning stays FULLY UNSUPERVISED (the conv STDP saw no labels); only the linear readout is
+supervised, on frozen features (the standard Kheradpisheh protocol). Same scale/seed as v3.51 for a direct compare.
+
+RESULT (RTX 5070, MNIST 8000/2000, C1=30 C2=60):
+                          VOTE readout (v3.51)   LINEAR readout (this)
+  pixels (784)                 58.0%                    87.6%
+  conv1  (1080)                53.9%                    95.1%
+  conv1+conv2 (960)            48.9%                    92.1%
+Under a linear readout depth HELPS (+7.5% conv1 vs pixels), the EXACT reversal of the vote, where depth hurt. This
+proves the whole arc's conclusion: the deep unsupervised spiking features were discriminative all along; the
+spiking neuron-label VOTE was the bottleneck (it penalised the abstract pooled features), not the depth. A readout
+that can use the features (linear/SVM) turns depth into a gain.
+
+Honest nuances: (1) the BEST is ONE conv stage + linear = 95.1%, not two -- the second conv stage over-pools/over-
+abstracts at this scale (-3.0% vs conv1), so deeper is not monotonically better; one good conv stage + a linear
+head is the sweet spot. (2) The readout is SUPERVISED (labels); feature learning stays unsupervised. So the
+fully-unsupervised vote-only pipeline caps ~88%; unlocking 95.1% costs a supervised linear head -- an honest thesis
+tradeoff. 95.1% is the session best and beats the single-layer STDP loop's ~88% ceiling with only 30 conv maps
+(vs needing ~6400 neurons for ~95% by the pure-scale lever). Research tier only; zero-dep core untouched.
+
 ## [v3.52] -- canonical 6-layer cortical microcircuit (Potjans-Diesmann), zero-dep spiking column (2026-07-15)
 
 New CORE module `cortex/cortical_microcircuit.py` -- a faithful pure-stdlib (zero-dep) spiking implementation of
