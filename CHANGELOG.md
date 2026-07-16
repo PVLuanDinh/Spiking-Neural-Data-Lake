@@ -3,6 +3,44 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.75] -- enclosed-loop RECOVERY 47.4->96%, packed AER lake (2x), autonomous general skill-builder (lang/math/physics) (2026-07-16)
+
+Five research-tier landings, zero-dep CORE untouched, all gates green (core 205/205, ruff clean, substrate pytest).
+
+- RECOVERED the enclosed autonomous brain from 47.4% to ~96%. `research/autonomous_brain.py` grew its readout 0x
+  (metacog grow_trigger never fired) so the all-plastic MLP forgot catastrophically; the honest root cause (Fable5
+  audit + main-agent verify) is the READOUT: a class-incremental backprop MLP forgets via shared-softmax recency
+  bias, while the SAME frozen spiking features score ~95% under an order-invariant readout. `research/autonomous_brain_recovered.py`
+  (NEW) swaps the readout to SLDA-RFF, makes NEUROGENESIS order-invariant by GROWING the RFF basis and sleep-replaying
+  the durable lake (more neurons, no forgetting -- resolves the accuracy-vs-neurogenesis tension), fixes the curiosity
+  fixation with round-robin revisit, and adds an RBF SLEEP-REFIT on the consolidated lake. GPU-verified on the RTX 5070:
+  online 95.8-96.0% (was 47.4%), sleep-refit rises with lake coverage (1500->92.3, 4000->94.0, 8000->95.5%), WM 18/18,
+  9x RFF grows, lake durable. `research/developmental_loop_lake_slda.py` (NEW) is the 94.9%/95.4% durable-lake SLDA loop.
+- PACKED 4-BYTE AER lake (2x smaller, lossless, byte-reversible). `streaming_hub.py` gains an OPT-IN `packed=True` 4 B
+  record (u32 = channel<<26 | time) vs the default 8 B `<II` (unchanged, byte-identical -- all core self-checks pass).
+  Fixed-width, so the entire out-of-core seek/index/replay design is untouched; a range guard RAISES on overflow
+  (never truncates). `lake_memory.py` opts in by default -> the lake halves on disk with identical retrieval/accuracy
+  (verified: 468 KB vs 960 KB at 4000 exemplars, online 95.8% unchanged). 2x (not 4x) because global time needs >16 bits;
+  band-relative 2 B is the next step. From a 2-agent research pass (neuromorphic AER/AEDAT literature + codebase design).
+- LANGUAGE SELF-BUILD (autonomous, self-supervised, spiking). `research/corpus_stream.py` (NEW) streams real
+  (context, next-token) from CMUdict (~126k words) + a Gutenberg corpus (458k phoneme / 128k word pairs), no labels.
+  `research/language_self_build.py` (NEW) forms phoneme/word/order cell assemblies via R-STDP, curiosity/curriculum,
+  lake-consolidated. HONEST: the single-layer spiking readout FORMS separated assemblies (sep 52-57) and learns above a
+  shuffled-teaching control, but is BELOW n-gram baselines (phonetics 7% vs bigram 20%) -- the readout-is-the-lever
+  ceiling. `research/language_readout_slda.py` (NEW) closes the gap with the SLDA-RFF hybrid over the SAME spiking code:
+  phonetics 22.1% > bigram 20.5%, semantics 11.9% > unigram 5.9%. From a 2-agent research pass (Pulvermuller/Garagnani
+  cell-assembly model + repo-mapped autonomous-loop design).
+- GENERAL, DOMAIN-AGNOSTIC SKILL BUILDER + INDEXER. `research/skill_builder.py` (NEW) runs ONE autonomous loop over
+  language + math (generated arithmetic), each cast as (context -> next-token); competence via the strong hybrid head,
+  each skill indexed in the lake by 64-d crc32 signature exemplars, routed by PROXIMITY with no domain-id (100%/99%).
+  `research/meta_skill_loop.py` (NEW) is the STANDING tri-domain loop: language / math / PHYSICS (a real bouncing-ball
+  ODE, discretized next-state) compete by cross-domain learning-progress; each domain has a PERSISTENT order-invariant
+  SLDA head that accumulates across visits (no forgetting). All three beat their baselines (lang 23.7>20.5, math
+  28.6>16.7, physics 66.4>54.0), fairly visited (anti-fixation guard ported from the recovered loop), routed 89% >>
+  33% chance, 450 signatures durable. HONEST: a skill-FORMATION + INDEXING + cross-domain SELECTION engine with
+  per-skill learning curves; competence bounded by the readout; does NOT solve any domain. Physics-JEPA latent-rollout
+  and world-KB masked-slot facts are the named next adapters. From a general-skill-method research pass.
+
 ## [v3.74] -- lake double conv-pass ELIMINATED: one-pass batched_features_and_keys (byte-identical) (2026-07-16)
 
 Completes the third v3.72 audit item (deferred as "moot" in v3.73, now done properly). `developmental_loop_lake.py`

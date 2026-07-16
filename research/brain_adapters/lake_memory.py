@@ -70,15 +70,21 @@ class LakeMemory:
     durability_check(): close+reopen the `.spkl` and confirm every consolidated exemplar survives.
     """
 
-    def __init__(self, path=None, seed=0, band=T, q=1.0, probe=3):
+    def __init__(self, path=None, seed=0, band=T, q=1.0, probe=3, packed=True):
         """Create/open the durable lake store and the proximity index.
 
         `path` None -> a unique temp `.spkl` is created; else the given path is used (resume if it
         exists). `band` is the per-exemplar time-band width (>= T so latency times never collide).
-        `q` is the Victor-Purpura shift cost of the index; `probe` the default medoid probe width."""
+        `q` is the Victor-Purpura shift cost of the index; `probe` the default medoid probe width.
+        `packed` (DEFAULT True): store the durable log with StreamingHub's 4 B packed AER record instead
+        of the 8 B default -> HALVES the lake on disk, losslessly (channel < N=64 fits 6 bits; the global
+        band time e*band+t fits the 26-bit field for < 2^26/band exemplars). Byte-reversible; retrieval,
+        durability and out-of-core behaviour are unchanged. Set packed=False for the legacy 8 B layout
+        (e.g. to resume a store written before this option existed)."""
         if band < T:
             raise ValueError(f"band must be >= T ({T}) so latency times fit in one exemplar band")
         self.n = N                          # StreamingHub channel width = the feature width N=64
+        self.packed = bool(packed)
         self.seed = seed
         self.rng = random.Random(seed)
         self.band = int(band)
@@ -92,7 +98,7 @@ class LakeMemory:
             self._created_temp = False
         self.path = path
         resume = self._created_temp is False and os.path.exists(path) and os.path.getsize(path) > 0
-        self.hub = StreamingHub(path, self.n, resume=resume)
+        self.hub = StreamingHub(path, self.n, resume=resume, packed=self.packed)
         self._patterns = []                 # encoded latency patterns [(t, feat), ...] (index build set)
         self._payloads = []                 # parallel replay ids (row index and/or label)
         self._features = []                 # raw feature vectors (for class-representative queries)
@@ -196,7 +202,7 @@ class LakeMemory:
         before_events = self.hub.n_events()
         before_patterns = [self._read_pattern(e) for e in range(self.n_stored)]
         self.hub.close()
-        self.hub = StreamingHub(self.path, self.n, resume=True)      # replay purely from disk
+        self.hub = StreamingHub(self.path, self.n, resume=True, packed=self.packed)   # replay purely from disk
         after_events = self.hub.n_events()
         after_patterns = [self._read_pattern(e) for e in range(self.n_stored)]
         ok = (after_events == before_events) and (after_patterns == before_patterns)
@@ -265,7 +271,8 @@ def main():
         print(f"stored        : {mem.n_stored} exemplars from {n_clusters} clusters "
               f"({per_cluster} each), payload = cluster id")
         print(f"durable lake  : {os.path.basename(mem.path)}  {os.path.getsize(mem.path):,} B "
-              f"({mem.hub.n_events()} spike events, 8 B each)")
+              f"({mem.hub.n_events()} spike events, {mem.hub._rec.size} B each"
+              f"{', packed AER' if mem.hub.packed else ''})")
         print("-" * 66)
         print(f"PROPERTY 1 proximity : nearest-{k} recall precision = {precision:.0%} "
               f"(chance = {chance:.0%})  <- a query near cluster A recalls mostly cluster-A payloads")

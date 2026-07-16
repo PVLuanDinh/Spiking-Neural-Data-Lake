@@ -9,8 +9,10 @@ the `.spk` with its channel index at save time. This is the STREAMING counterpar
   - a windowed query runs at ANY time over the growing store (record-WHILE-query)
   - restart -> `_replay()` rebuilds that bounded structure by scanning the log once (crash recovery)
 
-8 bytes/event on disk (channel u32, time u32). The distributed version of this is the cloud
-path (Pub/Sub -> Dataflow -> GCS Bronze); this is the single-machine one.
+8 bytes/event on disk (channel u32, time u32) by default; OPT-IN `packed=True` uses a 4 B record
+(one u32 = channel<<26 | time, lossless for channel<64 + time<2^26) that halves the log while keeping
+the fixed-width out-of-core design intact. The distributed version of this is the cloud path
+(Pub/Sub -> Dataflow -> GCS Bronze); this is the single-machine one.
 
 OUT-OF-CORE (so it scales as the lake GROWS): the hub never holds O(total-events) resident and
 never slurps the whole `.spkl`. Per channel it keeps only (a) a RECENT TAIL of the current
@@ -28,7 +30,10 @@ import struct
 from array import array
 from bisect import bisect_left, bisect_right
 
-_REC = struct.Struct("<II")     # (channel, time) = 8 bytes per event
+_REC = struct.Struct("<II")     # DEFAULT record: (channel u32, time u32) = 8 bytes per event
+_REC_PACKED = struct.Struct("<I")   # OPT-IN packed record: one u32 = (channel << _PACK_TBITS) | time = 4 bytes
+_PACK_CBITS = 6                 # packed channel field: 6 bits -> channel in [0, 64)
+_PACK_TBITS = 26               # packed time field: 26 bits -> time in [0, 67108864)
 _INDEX_STRIDE = 1024            # coarse offset index: one (time, offset) sample every K events/channel
 _SCAN_CHUNK = 1 << 20          # bytes read per disk block while scanning (bounds resident memory)
 _MAX_T = 1 << 32               # exclusive upper bound over all u32 spike times (whole-lake scan)
@@ -81,7 +86,7 @@ class _ChannelViews:
 
 
 class StreamingHub:
-    def __init__(self, path, n_channels, resume=False, flush_every=1):
+    def __init__(self, path, n_channels, resume=False, flush_every=1, packed=False):
         """`flush_every` (opt-in group-commit knob; DEFAULT 1 = the original behaviour, unchanged):
 
           - flush_every == 1 : flush() after EVERY append -> durable-per-event crash recovery
@@ -92,14 +97,33 @@ class StreamingHub:
             appended events can be lost on a HARD crash before the group flush) for ~K-fold fewer
             flush syscalls -> higher append throughput. The in-memory index still updates on every
             append, so a query is never stale; a clean close() always flushes the buffered tail
-            (no data lost on a normal shutdown)."""
+            (no data lost on a normal shutdown).
+
+        `packed` (opt-in on-disk record width; DEFAULT False = the original 8 B (channel u32, time u32)):
+
+          - packed == False : each event is 8 B `<II` -- byte-for-byte identical to before. Any
+            channel/time in [0, 2^32) is representable. This stays the default so every existing
+            store, self-check and core user is unchanged.
+          - packed == True : each event is 4 B `<I` -- one u32 packing (channel << 26) | time. This
+            HALVES the durable log (the record is uncompressed AER; the default spends 64 bits on a
+            channel < 64 and a time < 2^26). Requires channel in [0, 64) and time in [0, 2^26); a
+            value outside that range raises (LOSSLESS: never silently truncated). The record is still
+            FIXED WIDTH, so the whole out-of-core design is untouched -- offsets, coarse index, seek
+            and replay all just use the 4 B record size. Reversible: unpack recovers (channel, time)
+            exactly. A packed store MUST be reopened with packed=True (the width is not self-describing)."""
         if n_channels <= 0:
             raise ValueError("n_channels must be positive")
         if flush_every < 1:
             raise ValueError("flush_every must be >= 1")
+        if packed and n_channels > (1 << _PACK_CBITS):
+            raise ValueError(
+                f"packed=True needs n_channels <= {1 << _PACK_CBITS} (channel packs into {_PACK_CBITS} bits), "
+                f"got {n_channels}")
         self.path = path
         self.n = n_channels
         self.flush_every = int(flush_every)
+        self.packed = bool(packed)
+        self._rec = _REC_PACKED if self.packed else _REC     # fixed-width record struct (4 B packed / 8 B default)
         self._pending = 0                                   # appends written but not yet flushed
         self._K = _INDEX_STRIDE                             # coarse-index / tail block size
         self._nrec = 0                                      # total records on disk (== events appended)
@@ -124,6 +148,24 @@ class StreamingHub:
             self._f.flush()
             self._pending = 0
 
+    def _pack(self, channel, t):
+        """Serialize one (channel, time) record to bytes. Default = 8 B `<II`. Packed = 4 B u32
+        (channel << 26) | time; raises if channel/time exceed the packed field widths so the store
+        never silently loses bits (the packed mode is LOSSLESS within its documented range)."""
+        if self.packed:
+            if not 0 <= t < (1 << _PACK_TBITS):
+                raise ValueError(f"packed=True needs time in [0, {1 << _PACK_TBITS}), got {t}")
+            return self._rec.pack((channel << _PACK_TBITS) | t)
+        return self._rec.pack(channel, t)
+
+    def _unpack_from(self, buf, i):
+        """Deserialize one record at byte offset i back to (channel, time) -- the exact inverse of
+        _pack for both the default and packed layouts."""
+        if self.packed:
+            (w,) = self._rec.unpack_from(buf, i)
+            return (w >> _PACK_TBITS, w & ((1 << _PACK_TBITS) - 1))
+        return self._rec.unpack_from(buf, i)
+
     def _record_index(self, channel, t, off):
         """Update the BOUNDED resident index for one on-disk record (shared by append + _replay,
         so the reconstructed state is identical whether written live or replayed from disk)."""
@@ -147,8 +189,8 @@ class StreamingHub:
         if not 0 <= channel < self.n:
             raise IndexError(f"channel {channel} out of range [0,{self.n})")
         t = int(t)
-        off = self._nrec * _REC.size                        # byte offset of the record about to be written
-        self._f.write(_REC.pack(channel, t))
+        off = self._nrec * self._rec.size                   # byte offset of the record about to be written
+        self._f.write(self._pack(channel, t))
         self._nrec += 1
         self._pending += 1
         if self._pending >= self.flush_every:               # default flush_every=1 -> durable per event
@@ -168,9 +210,10 @@ class StreamingHub:
                 buf = f.read(min(_SCAN_CHUNK, end - pos))
                 if not buf:
                     break
-                m = (len(buf) // _REC.size) * _REC.size
-                for i in range(0, m, _REC.size):
-                    cc, tt = _REC.unpack_from(buf, i)
+                rs = self._rec.size
+                m = (len(buf) // rs) * rs
+                for i in range(0, m, rs):
+                    cc, tt = self._unpack_from(buf, i)
                     if cc == c and t0 <= tt < t1:
                         out.append((tt, cc))
                 read += m
@@ -223,16 +266,17 @@ class StreamingHub:
         self._flush_pending()                               # durable up to this analytics read
         from snn_data_lake.substrate.spike_stream_sketch import HeavyHitters
         bins = {}
-        end = self._nrec * _REC.size
+        rs = self._rec.size
+        end = self._nrec * rs
         with open(self.path, "rb") as f:
             pos = 0
             while pos < end:
                 buf = f.read(min(_SCAN_CHUNK, end - pos))
                 if not buf:
                     break
-                m = (len(buf) // _REC.size) * _REC.size
-                for i in range(0, m, _REC.size):
-                    c, t = _REC.unpack_from(buf, i)
+                m = (len(buf) // rs) * rs
+                for i in range(0, m, rs):
+                    c, t = self._unpack_from(buf, i)
                     if 0 <= c < self.n:
                         bins.setdefault(t // window, set()).add(c)
                 pos += m
@@ -261,18 +305,19 @@ class StreamingHub:
         Scans the log in bounded chunks (NEVER `f.read()` of the whole file) and replays records
         in append order through the SAME `_record_index` path used live, so the reconstructed tail,
         coarse index and monotonicity flags -- and therefore all query results -- are identical."""
+        rs = self._rec.size
         size = os.path.getsize(self.path)
-        nrec = size // _REC.size
-        end = nrec * _REC.size
+        nrec = size // rs
+        end = nrec * rs
         with open(self.path, "rb") as f:
             pos = 0
             while pos < end:
                 buf = f.read(min(_SCAN_CHUNK, end - pos))
                 if not buf:
                     break
-                m = (len(buf) // _REC.size) * _REC.size
-                for i in range(0, m, _REC.size):
-                    c, t = _REC.unpack_from(buf, i)
+                m = (len(buf) // rs) * rs
+                for i in range(0, m, rs):
+                    c, t = self._unpack_from(buf, i)
                     if 0 <= c < self.n:
                         self._record_index(c, t, pos + i)
                 pos += m
@@ -454,11 +499,55 @@ def main():
     assert (again["resident"], again["index"], again["old"], again["old_bytes"]) == \
            (hi["resident"], hi["index"], hi["old"], hi["old_bytes"]), "out-of-core path is not deterministic"
 
+    # ---- PACKED 4 B record: 2x smaller on disk, LOSSLESS + byte-reversible, out-of-core unchanged ----
+    # Write the SAME events to a default (8 B) and a packed (4 B) hub; the packed log must be exactly
+    # half the bytes and every query / replay result must be identical (channel<64, time<2^26).
+    PN = 16
+    pk_events = [(rng.randrange(PN), rng.randrange(1 << 20)) for _ in range(600)]
+    pd = os.path.join(".", "data", "packed_default.spkl")
+    pp = os.path.join(".", "data", "packed_4b.spkl")
+    for p in (pd, pp):
+        if os.path.exists(p):
+            os.remove(p)
+    hd = StreamingHub(pd, PN)                                 # default 8 B
+    hp = StreamingHub(pp, PN, packed=True)                    # opt-in 4 B
+    for c, t in pk_events:
+        hd.append(c, t)
+        hp.append(c, t)
+    qd = sorted(hd.query_window(0, 1 << 20))
+    qp = sorted(hp.query_window(0, 1 << 20))
+    bytes_d, bytes_p = os.path.getsize(pd), os.path.getsize(pp)
+    hd.close(); hp.close()
+    hp2 = StreamingHub(pp, PN, resume=True, packed=True)      # reopen the packed log purely from disk
+    qp_reopen = sorted(hp2.query_window(0, 1 << 20))
+    replayed_p = hp2.n_events()
+    hp2.close()
+    # range guard: an out-of-range value must RAISE, never silently truncate (lossless contract)
+    guard_ok = False
+    hg = StreamingHub(os.path.join(".", "data", "packed_guard.spkl"), PN, packed=True)
+    try:
+        hg.append(0, 1 << _PACK_TBITS)                       # time exactly at the field ceiling -> must raise
+    except ValueError:
+        guard_ok = True
+    finally:
+        hg.close()
+    print("-" * 60)
+    print("PACKED 4 B record (opt-in, lossless AER):")
+    print(f"  default 8 B log {bytes_d:,} B  vs  packed 4 B log {bytes_p:,} B  "
+          f"({bytes_d / bytes_p:.1f}x smaller); queries identical={qd == qp}")
+    print(f"  reopen-from-disk: {replayed_p} events, query matches live={qp == qp_reopen}; "
+          f"range guard raises={guard_ok}")
+    assert qd == qp, "packed record changed query results vs the default 8 B layout (not lossless)"
+    assert bytes_p == len(pk_events) * 4 and bytes_d == len(pk_events) * 8, "packed log is not 4 B/event"
+    assert qp_reopen == qp and replayed_p == len(pk_events), "packed log did not survive reopen from disk"
+    assert guard_ok, "packed mode must RAISE on an out-of-range time (lossless), not truncate"
+
     print("self-check OK: record-while-query works, queries are partial + live, "
           "durable log replays exactly; hot_motifs surfaces the recurring coactivation motif; "
           "group-commit default is byte-identical and flush_every=K loses nothing on query/close; "
           "OUT-OF-CORE: resident memory bounded (tail cap + O(total/K) index), old-range queries "
-          "SEEK the log, results unchanged, deterministic, survive reopen")
+          "SEEK the log, results unchanged, deterministic, survive reopen; "
+          "PACKED 4 B record is 2x smaller, lossless + byte-reversible, out-of-core unchanged")
 
 
 if __name__ == "__main__":
