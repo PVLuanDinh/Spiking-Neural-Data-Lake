@@ -3,6 +3,22 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.69] -- developmental loop consolidates to the DATA LAKE + replays BY PROXIMITY (durable) (2026-07-16)
+
+Wires the developmental loop's long-term memory to the substrate DATA LAKE. `research/developmental_loop_lake.py`
+replaces the in-RAM random replay ring with `LakeMemory`: each learned digit's exemplars are CONSOLIDATED to the
+durable spike lake (`.spkl`), and each cycle's replay is PULLED BY PROXIMITY (content-addressable) -- query the lake
+with a class-representative compact C1-dim key, get back the nearest stored exemplars' row-indices, replay their full
+spatial features. Feature learning stays unsupervised; only the linear readout is supervised.
+
+MEASURED (RTX 5070, MNIST 10000/2000): final accuracy **90.2%**; **1500 exemplars consolidated to the durable lake**
+(49,437 spike events); replay pulled by proximity (1350/cycle); DURABILITY verified -- close+reopen the `.spkl`,
+events 49437 -> 49437, all patterns match, memory survives restart (durable in the lake, NOT a RAM ring). Honest cost:
+90.2% vs the RAM-ring random replay's 93.3% (-3.1%) -- the proximity key is the COMPACT 30-dim global feature, so
+content-addressable retrieval is coarser than exact per-class sampling (mostly-right-class, some contamination);
+tunable with a richer key or exact retrieval, but the substrate-lake consolidate->proximity-pull path is proven and
+durable. Fixed a bug (LakeMemory.retrieve returns a payload list, not a 2-tuple). Research tier only; core untouched.
+
 ## [v3.68] -- lake-backed memory + task-expert SKILL LIBRARY: prune->expert->consolidate->route->reuse (2026-07-16)
 
 Answers "can task-specific neurons be pruned + clustered into an expert, consolidated in the data lake, and reused
