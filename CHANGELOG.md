@@ -3,6 +3,32 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.61] -- feature-scaling + readout-ensemble: combining does NOT give a fully accurate loop (honest NEGATIVE) (2026-07-16)
+
+Tested two levers for raising BOTH the linear (93.3%) and progressive-columns (90.5%) readouts: (1) SCALE the shared
+frozen conv1 features (C1 30->100), (2) ENSEMBLE the two readouts. `research/readout_ensemble.py` trains both readouts
+CONTINUALLY on an identical developmental schedule over C1=100 features, then averages their softmax + measures error
+correlation.
+
+MEASURED (RTX 5070, MNIST 8000/2000, C1=100): linear **89.9%**, columns **85.5%**, ensemble **88.0%** -- BOTH readouts
+DROPPED vs their C1=30 baselines (93.3 / 90.5), and the ensemble HURT (-1.9% vs the best single).
+
+Two honest findings:
+- ENSEMBLE / combining does NOT give a fully accurate loop. The two readouts read the SAME frozen features -> correlated
+  errors: they are BOTH wrong on 7.8% of test points, so the ORACLE ceiling (best any combination could reach = 1 -
+  both-wrong) is only 92.2% -- below even the C1=30 single linear (93.3%). Averaging an unequal pair with correlated
+  errors drags the stronger one down. Ensemble gains need DECORRELATED members (different features), which these are not.
+- Naive FEATURE SCALING backfired: C1=100 made both readouts WORSE. Kernel diversity went 0.339 (C1=30) -> 0.549 (near
+  the 0.6 collapse bar) -- with 100 maps competing under the same training budget, unsupervised STDP could not specialise
+  them, so they became REDUNDANT (feat_dim 3600 but lower-quality). Confirms the literature caveat that STDP is not robust
+  wrt the number of feature maps. More maps != richer features unless they actually specialise (the diversity signal says
+  100 maps are under-trained -> the fix would be more epochs / stronger competition, untested here).
+
+Conclusion: the loop CANNOT be made fully accurate by combining readouts or by naively adding conv maps -- the ceiling is
+feature QUALITY (frozen unsupervised conv1), and naive scaling degraded it. Realistic max on unsupervised-STDP features is
+~95-98% (Kheradpisheh: 2 conv-STDP stages + SVM + specialised maps); ~99% needs supervised feature learning (breaks the
+unsupervised-perception thesis). Research tier only; zero-dep core untouched.
+
 ## [v3.60] -- per-digit cortical COLUMNS (progressive nets): fixes v3.59, neocortex+neurogenesis reaches 90.5% (2026-07-16)
 
 Fixed v3.59's laminar failure (63.7%, only L2/3 frozen -> shared L4 drifts -> frozen features break). New class
