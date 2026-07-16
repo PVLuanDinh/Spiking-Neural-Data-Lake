@@ -3,6 +3,25 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.56] -- sleep consolidation tested for the MLP-forgetting: honest NEGATIVE (default already consolidates) (2026-07-15)
+
+Followed up the v3.55 growable-MLP forgetting (crashes to 78.6% at ~7 classes) with the natural question: does a
+SLEEP consolidation phase (interleaved balanced replay of ALL learned digits at reduced lr -- the Complementary
+Learning Systems anti-forgetting mechanism) rescue it? Added the sleep pass to `research/developmental_loop_brain.py`
+(NORD_SLEEP_STEPS/EVERY/PER/LR) and tested it.
+
+MEASURED (RTX 5070, MNIST 10000/2000, growable MLP readout): no sleep 78.6%; HEAVY sleep (200 steps/cycle) 73.7%
+(WORSE); LIGHT sleep (80 steps / 3 cycles) 78.7% (no change). Sleep does NOT rescue the MLP. Diagnosis: the MLP
+fails by OVERFITTING the finite hippocampal replay buffer (~200 exemplars/digit, sampled with replacement), not by
+lack of interleaving -- so replaying more just overfits it harder (heavy) or does nothing (light). The linear readout
+generalises from the same replay; the MLP cannot.
+
+The honest resolution: the DEFAULT loop ALREADY embodies working sleep-consolidation -- the per-cycle BALANCED REPLAY
+of the linear readout IS continual interleaved consolidation, which is exactly why it holds 93.3% with no extra sleep
+phase. "Sleep helps forgetting" is TRUE and already realised; an explicit extra sleep phase only overfits the
+overfitting-prone MLP. So the growable MLP is the wrong readout for a finite replay buffer regardless of sleep.
+Sleep kept as an opt-in knob (default OFF); default readout stays linear (93.3%). Research tier only; core untouched.
+
 ## [v3.55] -- brain-integrated developmental loop (Slice 1): real hippocampus + basal-ganglia + metacog wired in (2026-07-15)
 
 First slice of wiring the brain's REAL subsystems into the developmental loop (`research/developmental_loop_brain.py`

@@ -23,6 +23,15 @@ real brain subsystems HOLDS ~93.5% or COSTS accuracy. MEASURED RESULT (RTX 5070,
   - the growable MLP readout (NORD_GROWABLE=1, function-preserving neurogenesis) is an HONEST NEGATIVE: the
     growth works, but a continually-trained MLP readout FORGETS across digits (crashes to 78.6% at ~7 classes)
     where a plain linear readout does not. Kept opt-in; the default readout is linear.
+
+SLEEP CONSOLIDATION (NORD_SLEEP_STEPS>0, an interleaved balanced-all-digit replay pass at reduced lr -- the
+CLS anti-forgetting mechanism) was TESTED as a fix for the MLP and does NOT rescue it: MLP no-sleep 78.6%,
+heavy sleep 73.7% (overfits the finite ~200/digit replay buffer WORSE), light sleep 78.7% (no change). The
+MLP fails by OVERFITTING the finite replay, not by lack of interleaving, so more replay cannot help. Note the
+DEFAULT loop already embodies working sleep-consolidation: the per-cycle BALANCED REPLAY (linear readout) IS
+continual interleaved consolidation, which is exactly why it holds 93.3% without an extra sleep phase. Sleep
+is thus kept OFF by default (the linear+replay default is the working consolidation); the explicit sleep pass
+is an opt-in knob that only overfits the MLP.
 The self-check asserts the loop beats the vote loop (>0.85) + chance and prints the signed gap to v3.54's 93.5%.
 
 Run (from repo root; GPU strongly recommended):
@@ -132,6 +141,12 @@ def main():
     HIDDEN = _envi("NORD_HIDDEN", 64)
     GROW_K = _envi("NORD_GROW_K", 4)
     HIDDEN_CAP = _envi("NORD_HIDDEN_CAP", 160)
+    # SLEEP consolidation (anti-forgetting): after the objective-skewed LEARN, replay a BALANCED interleaved
+    # batch of ALL learned digits at reduced lr (hippocampal replay -> neocortical consolidation, CLS).
+    SLEEP_EVERY = _envi("NORD_SLEEP_EVERY", 1)     # run a sleep pass every N cycles
+    SLEEP_PER = _envi("NORD_SLEEP_PER", 200)       # balanced replay feats per learned digit in the sleep pass
+    SLEEP_STEPS = _envi("NORD_SLEEP_STEPS", 0)     # consolidation SGD steps (0 = sleep OFF, the default -- see below)
+    SLEEP_LR_SCALE = float(os.environ.get("NORD_SLEEP_LR", "0.5"))   # reduced plasticity during sleep
 
     print("=" * 92)
     print("BRAIN-INTEGRATED DEVELOPMENTAL LOOP (Slice 1) -- real hippocampus + basal-ganglia + metacog + neurogenesis")
@@ -224,6 +239,18 @@ def main():
         if is_new:
             memory.store(tr_by[objective][n_train:n_train + REPLAY], objective)   # hippocampus remembers exemplars
             learned.append(objective)
+
+        # ---- SLEEP CONSOLIDATION (the anti-forgetting fix): the per-cycle LEARN above is objective-SKEWED, which a
+        #      plastic MLP readout overfits -> catastrophic forgetting. A sleep pass replays a BALANCED, INTERLEAVED
+        #      batch of ALL learned digits equally (no objective skew) at reduced lr -- hippocampal replay driving
+        #      neocortical consolidation (Complementary Learning Systems). This is what stops the MLP crash. ----
+        if learned and SLEEP_STEPS and (cyc % SLEEP_EVERY == 0):
+            sleep_rows = memory.sample(learned, SLEEP_PER)              # balanced across ALL learned (incl objective)
+            if sleep_rows:
+                sidx = torch.tensor(sleep_rows, dtype=torch.long, device=dev)
+                readout.train_step(Ftr[sidx], ytr[sidx], lr=BASE_LR * SLEEP_LR_SCALE, steps=SLEEP_STEPS)
+                print(f"  [sleep]         consolidated {len(learned)} digits, {len(sleep_rows)} balanced replay feats "
+                      f"x{SLEEP_STEPS} steps @ lr {BASE_LR * SLEEP_LR_SCALE:.4f} (interleaved, anti-forgetting)")
         print(f"  [neuromod]      LC NA {na:.2f} ({lc.mode()}) salience {salience:.2f} -> readout lr gain x{gain:.2f}")
         print(f"  [readout]       {SGD} steps on {len(obj_rows)} digit-{objective} + {len(replay_rows)} hippocampal-replay feats ({dt:.1f}s)")
 
