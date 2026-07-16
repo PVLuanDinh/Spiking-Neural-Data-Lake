@@ -3,6 +3,23 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.62] -- feature-scaling follow-up: more training SPECIALISES 100 maps but accuracy SATURATES at baseline (2026-07-16)
+
+Follow-up to v3.61's finding that naive C1=100 hurt (maps under-specialised, diversity 0.549). Hypothesis: more
+training lets the 100 maps specialise. Re-ran `research/readout_ensemble.py` at C1=100 with DOUBLED epochs (6) + full
+10k train. CONFIRMED the diagnosis AND closed the scaling question:
+- kernel diversity 0.549 -> **0.356** (specialised, back to the C1=30 level 0.339) -- more training fixed the redundancy.
+- linear **92.9%** (recovered from 89.9%, but ~= the C1=30 baseline 93.3%, NOT beating it); columns 87.7%; ensemble
+  91.2% (still hurts -1.7%); both-wrong 4.8% -> oracle ceiling 95.2%.
+
+Conclusion: scaling the conv-map COUNT is a DEAD END for MNIST -- once the 100 maps are properly specialised they only
+MATCH the 30-map baseline, they do not exceed it. MNIST's feature basis saturates at ~30 maps (digits are a small set of
+strokes; extra specialised maps are redundant). The accuracy ceiling is the FEATURE TYPE (single-stage latency conv-STDP,
+~95%, matching v3.53's 95.1% static joint), not the readout, the ensemble, or the map count -- all three were tested and
+none moved it. Beating ~95% needs a different feature mechanism: 2-stage conv-STDP + SVM (Kheradpisheh ~98%) or supervised
+feature learning (~99%, abandons the unsupervised-perception thesis). Accuracy investigation CLOSED. No code change
+(same script, different knobs); recorded for the honest record. Research tier only; zero-dep core untouched.
+
 ## [v3.61] -- feature-scaling + readout-ensemble: combining does NOT give a fully accurate loop (honest NEGATIVE) (2026-07-16)
 
 Tested two levers for raising BOTH the linear (93.3%) and progressive-columns (90.5%) readouts: (1) SCALE the shared
