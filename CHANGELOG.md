@@ -3,6 +3,27 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.51] -- two-stage conv-STDP: depth MONOTONICALLY HURTS under a spiking vote readout (2026-07-15)
+
+Stacked a SECOND latency conv-STDP stage on the frozen v3.50 first stage (`research/deep_stdp_2stage.py`):
+conv1 -> pool -> conv2 -> pool -> FC-STDP vote, a genuine 3-layer deep unsupervised spiking hierarchy
+(Kheradpisheh SDNN style, the stage-1 first-spike-time map cascades directly as stage-2's latency volley).
+1-vs-2-vs-3-layer honest head-to-head, same subset/seed/readout.
+
+MEASURED (RTX 5070, MNIST 8000/2000, C1=30 C2=60 M=100, unsupervised):
+- BOTH conv stages stay DIVERSE (no collapse): stage-1 cos-sim 0.339, stage-2 0.132 (stage 2 even MORE
+  specialised). The two-axis WTA + multiplicative STDP works at both depths -- the features are genuinely good.
+- Accuracy DROPS MONOTONICALLY with depth: 1-layer 58.0% -> 2-layer 53.9% -> 3-layer 48.9% (delta 2v1 -4.0%,
+  3v1 -9.1%, 3v2 -5.0%). Deeper HURTS.
+
+Why: the bottleneck is the readout, and it does not just cap depth -- it PENALISES it. Each conv+pool stage
+discards spatial resolution that the nearest-prototype neuron-label VOTE depends on, so every added stage removes
+vote-usable information. Diverse abstract features help an SVM (Kheradpisheh's ~98%) but hurt a spiking vote.
+Firm conclusion of the whole deepening arc (v3.49-51): the spiking architecture CAN be deepened (diverse features
+at 3 levels, no collapse), but under a spiking vote readout depth ties-then-hurts; converting depth -> accuracy
+needs a different readout (linear/SVM on the features), not more layers. Dev-loop keeps its single-layer STDP
+(accuracy lever = neuron SCALE). Research tier only; zero-dep core untouched.
+
 ## [v3.50] -- latency conv-STDP (Kheradpisheh-2018): collapse FIXED, deep features MATCH flat (2026-07-15)
 
 Follow-up to v3.49's collapse. Built the FULL Kheradpisheh-2018 machinery in `research/deep_stdp_latency.py`
