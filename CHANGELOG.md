@@ -3,6 +3,32 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.52] -- canonical 6-layer cortical microcircuit (Potjans-Diesmann), zero-dep spiking column (2026-07-15)
+
+New CORE module `cortex/cortical_microcircuit.py` -- a faithful pure-stdlib (zero-dep) spiking implementation of
+the canonical Potjans & Diesmann 2014 cortical microcircuit: the 8 cell-type-specific populations (L2/3, L4, L5,
+L6 x exc/inh) with the paper's 8x8 connection-probability matrix, per-population external drive, LIF neurons
+(tau_m=10ms, dt=0.1ms, 2ms refractory), current-based delta synapses with 1.5ms delay, and the L4->L2/3->L5->L6
+canonical flow. Neuron counts are scaled down (default 0.008 -> 618 neurons; full is 77169) for pure-Python
+tractability, with a variance-preserving weight rescale + operating-point external drive to keep the scaled network
+in the asynchronous-irregular regime (documented approximation of the paper's full mean-and-variance matching).
+
+This is an honest DYNAMICS model, NOT a classifier -- it reproduces cortical layer-specific firing STATISTICS,
+it does not raise developmental-loop accuracy (that is the readout thread, v3.49-51). The user asked for a 6-layer
+neocortex "for loop accuracy"; the accuracy premise was corrected (canonical microcircuit = dynamics, not
+classification) and the module was built for its own sake as a faithful cortical column, filling a real atlas gap
+(the cortex region claimed "microcircuit dynamics" but had no canonical column).
+
+Self-check (the honest acceptance test for a dynamics model) asserts the known biological SIGNATURES and passes:
+all 8 populations active (4.67-18.72 Hz, none silent/runaway), asynchronous-irregular (mean CV_ISI 0.80 > 0.7),
+and the canonical layer signature rate(L5e) > rate(L2/3e) (superficial-low, L5 elevated; L2/3e lowest exc, L5e
+highest exc emerge and are printed). Robust across seeds 0-5; ~2s to run. HONEST caveat: at ~120x downscale the
+absolute Hz are approximate (elevated vs the paper's exact rates); only the qualitative signatures are asserted.
+Wired into REGIONS (cortex) + the run_selfchecks CORE registry; atlas now 165 modules / 17 regions, filesystem-
+consistent; flat back-compat path `snn_data_lake.cortical_microcircuit` resolves. No connectome edge (intra-column
+layer flow is internal to the cortex node; region-level cortex<->thalamus edges already exist). Zero-dep core
+invariant preserved (no numpy/torch in sys.modules; deterministic per-instance RNG).
+
 ## [v3.51] -- two-stage conv-STDP: depth MONOTONICALLY HURTS under a spiking vote readout (2026-07-15)
 
 Stacked a SECOND latency conv-STDP stage on the frozen v3.50 first stage (`research/deep_stdp_2stage.py`):
