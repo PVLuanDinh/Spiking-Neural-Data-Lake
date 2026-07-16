@@ -118,7 +118,8 @@ class LakeMemory:
         For each exemplar e (global ordinal): (a) latency-encode its feature vector; (b) write it to
         the durable `.spkl` on its own time band -- hub.append(feature, e*band + t) per spike -- so the
         pattern is reconstructable from disk; (c) add the encoded pattern + payload to the index build
-        set. The ProximityIndex is rebuilt over ALL stored patterns at the end. Returns self."""
+        set. The ProximityIndex is built LAZILY (on the next retrieve), not rebuilt on every consolidate
+        call -- the durable `.spkl` writes still happen per-call, only the index build is deferred. Returns self."""
         feats = [_to_floats(v) for v in feature_vectors]
         payloads = list(payloads)
         if len(feats) != len(payloads):
@@ -132,8 +133,16 @@ class LakeMemory:
             self._patterns.append(pattern)
             self._payloads.append(pay)
             self._features.append(vec)
-        if self._patterns:
+        self._dirty = True                              # mark the index stale; build once on the next retrieve
+        return self
+
+    def _ensure_index(self):
+        """Build the ProximityIndex over ALL stored patterns ONCE, only if new exemplars were consolidated
+        since the last build (avoids rebuilding the whole index on every consolidate call). Identical index
+        contents + ranking as the old eager rebuild -- only the timing of the build changes."""
+        if getattr(self, "_dirty", True) and self._patterns:
             self.index = ProximityIndex(q=self.q).build(self._patterns, list(self._payloads))
+            self._dirty = False
         return self
 
     # ---- RETRIEVE by proximity (content-addressable recall) ------------------
@@ -142,6 +151,7 @@ class LakeMemory:
 
         Encodes the query with the SAME latency code, then ProximityIndex.nearest(query, k, probe) --
         the loop calls this each cycle instead of random.sample() to draw content-relevant replay."""
+        self._ensure_index()                            # lazy build: only rebuilds if new exemplars were consolidated
         if self.index is None:
             return []
         query = self._encode(query_vector)

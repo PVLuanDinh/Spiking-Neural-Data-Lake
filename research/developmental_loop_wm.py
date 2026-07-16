@@ -34,39 +34,7 @@ from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDriv
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 
 
-def _envi(k, d):
-    v = os.environ.get(k)
-    return int(v) if v else d
-
-
-def _cache(conv, X, dev):
-    return torch.stack([conv.features(img).reshape(-1) for img in X], 0).to(dev)
-
-
-class LinearReadout:
-    def __init__(self, in_dim, seed=0, lr=0.01):
-        torch.manual_seed(seed)
-        self.dev = resolve_device()
-        self.clf = nn.Linear(in_dim, 10).to(self.dev)
-        self.opt = torch.optim.Adam(self.clf.parameters(), lr=lr, weight_decay=1e-4)
-
-    def train_step(self, X, y, lr, steps=1):
-        for g in self.opt.param_groups:
-            g["lr"] = lr
-        for _ in range(steps):
-            self.opt.zero_grad()
-            F.cross_entropy(self.clf(X), y).backward()
-            self.opt.step()
-
-    def predict(self, X):
-        with torch.no_grad():
-            return self.clf(X)
-
-
-def _acc(readout, feats, labels, idx):
-    if not idx:
-        return 0.0
-    return float((readout.predict(feats[idx]).argmax(1) == labels[idx]).float().mean())
+from _loop_common import envi as _envi, LinearReadout, cache_features, acc as _acc   # noqa: E402 (shared DRY helpers)
 
 
 def _evidence(option, n=10, strong=1.0, weak=0.05):
@@ -122,7 +90,7 @@ def main():
     for ep in range(L1_EPOCHS):
         _train(conv, Xtr, f"conv1 ep{ep + 1}/{L1_EPOCHS}")
     print(f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}")
-    Ftr, Fte = _cache(conv, Xtr, dev), _cache(conv, Xte, dev)
+    Ftr, Fte = cache_features(conv, Xtr, dev), cache_features(conv, Xte, dev)
     ytr, yte = Ytr.long().to(dev), Yte.long().to(dev)
     D = Ftr.shape[1]
     tr_by = {d: (Ytr == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}

@@ -36,13 +36,7 @@ from deep_stdp_latency import ConvLatencyStdp, _train
 from brain_adapters.lake_memory import LakeMemory
 
 
-def _envi(k, d):
-    v = os.environ.get(k)
-    return int(v) if v else d
-
-
-def _cache_spatial(conv, X, dev):
-    return torch.stack([conv.features(img).reshape(-1) for img in X], 0).to(dev)
+from _loop_common import envi as _envi, LinearReadout, cache_features, acc as _acc   # noqa: E402 (shared DRY helpers)
 
 
 def _global_key(conv, img):
@@ -55,30 +49,6 @@ def _global_key(conv, img):
     return val.amax(dim=(1, 2))            # [C1]
 
 
-class LinearReadout:
-    def __init__(self, in_dim, seed=0, lr=0.01):
-        torch.manual_seed(seed)
-        self.dev = resolve_device()
-        self.clf = nn.Linear(in_dim, 10).to(self.dev)
-        self.opt = torch.optim.Adam(self.clf.parameters(), lr=lr, weight_decay=1e-4)
-
-    def train_step(self, X, y, lr, steps=1):
-        for g in self.opt.param_groups:
-            g["lr"] = lr
-        for _ in range(steps):
-            self.opt.zero_grad()
-            F.cross_entropy(self.clf(X), y).backward()
-            self.opt.step()
-
-    def predict(self, X):
-        with torch.no_grad():
-            return self.clf(X)
-
-
-def _acc(readout, feats, labels, idx):
-    if not idx:
-        return 0.0
-    return float((readout.predict(feats[idx]).argmax(1) == labels[idx]).float().mean())
 
 
 def main():
@@ -111,8 +81,8 @@ def main():
     print(f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}")
 
     print("[cache] conv1 SPATIAL features (train+test) + compact C1 global KEYS...")
-    Ftr = _cache_spatial(conv, Xtr, dev)
-    Fte = _cache_spatial(conv, Xte, dev)
+    Ftr = cache_features(conv, Xtr, dev)
+    Fte = cache_features(conv, Xte, dev)
     Gtr = torch.stack([_global_key(conv, img) for img in Xtr], 0)     # [Ntr, C1] proximity keys
     ytr, yte = Ytr.long().to(dev), Yte.long().to(dev)
     D = Ftr.shape[1]

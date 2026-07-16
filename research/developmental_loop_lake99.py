@@ -34,41 +34,11 @@ from torch_device import resolve_device, enable
 from snn_mnist_stdp import load_mnist
 from deep_stdp_latency import ConvLatencyStdp, _train
 from brain_adapters.lake_memory import LakeMemory
+from _loop_common import envi as _envi, envf as _envf, LinearReadout, cache_features, acc as _acc
 
 
-def _envi(k, d):
-    v = os.environ.get(k)
-    return int(v) if v else d
 
 
-def _cache_spatial(conv, X, dev):
-    return torch.stack([conv.features(img).reshape(-1) for img in X], 0).to(dev)
-
-
-class LinearReadout:
-    def __init__(self, in_dim, seed=0, lr=0.01):
-        torch.manual_seed(seed)
-        self.dev = resolve_device()
-        self.clf = nn.Linear(in_dim, 10).to(self.dev)
-        self.opt = torch.optim.Adam(self.clf.parameters(), lr=lr, weight_decay=1e-4)
-
-    def train_step(self, X, y, lr, steps=1):
-        for g in self.opt.param_groups:
-            g["lr"] = lr
-        for _ in range(steps):
-            self.opt.zero_grad()
-            F.cross_entropy(self.clf(X), y).backward()
-            self.opt.step()
-
-    def predict(self, X):
-        with torch.no_grad():
-            return self.clf(X)
-
-
-def _acc(readout, feats, labels, idx):
-    if not idx:
-        return 0.0
-    return float((readout.predict(feats[idx]).argmax(1) == labels[idx]).float().mean())
 
 
 def _rbf_refit_eval(Ftr, Ytr, rows, Fte, yte_np, pooled_te):
@@ -115,8 +85,8 @@ def main():
     print(f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}")
 
     print("[cache] conv1 SPATIAL features + richer projected KEYS...")
-    Ftr = _cache_spatial(conv, Xtr, dev)
-    Fte = _cache_spatial(conv, Xte, dev)
+    Ftr = cache_features(conv, Xtr, dev)
+    Fte = cache_features(conv, Xte, dev)
     D = Ftr.shape[1]
     # RICHER KEY: fixed random projection of the full spatial feature -> <=64-dim, sigmoid to [0,1].
     torch.manual_seed(12345)

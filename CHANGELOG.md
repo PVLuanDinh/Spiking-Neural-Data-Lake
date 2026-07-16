@@ -3,6 +3,30 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.73] -- DRY refactor (_loop_common) + lazy ProximityIndex build (behavior-preserving) (2026-07-16)
+
+The follow-up cleanups the v3.72 audit flagged. Behavior-preserving throughout (results unchanged).
+
+DRY -- new `research/_loop_common.py` extracts the helpers that were copy-pasted across the loop suite:
+`envi`/`envf` (env readers), `LinearReadout` (the continual head), `cache_features` (routed through the v3.72
+`batched_features` -- byte-identical, ~135x faster), and `acc`. Refactored `developmental_loop_wm.py`,
+`developmental_loop_lake.py`, and `developmental_loop_lake99.py` to import these + deleted their duplicate
+definitions; all three import clean and the shared helpers are byte-identical to the locals they replaced, so
+numeric behavior is unchanged (feature caching now also gets the batched speedup for free). The remaining files
+(deep / slda / ensemble scripts / brain -- whose readout has extra grow/n_hidden) can migrate to `_loop_common`
+incrementally; the module is the reusable asset.
+
+LAZY INDEX -- `brain_adapters/lake_memory.py`: the `ProximityIndex` was rebuilt over ALL patterns on EVERY
+`consolidate()` call (once per new digit -> repeated O(n) rebuilds of the growing set). Now `consolidate` only sets
+a dirty flag; the index is built ONCE lazily on the next `retrieve` (`_ensure_index`). Same index contents + VP-distance
+ranking -- only the build TIMING changed. Verified: `lake_memory` self-check still passes (proximity recall 100%,
+durable across reopen).
+
+The audit's third item (`developmental_loop_lake.py`'s double conv pass) is now largely MOOT: the v3.72 batched
+feature extraction made a second pass trivial (~0.3s -> ~0.6s over the whole train set), so the key is left as its
+exact original `_global_key` output rather than risk changing retrieval results for a sub-second saving. Research
+tier only; zero-dep core untouched.
+
 ## [v3.72] -- loop optimization pass (research + audit + optimize): 135x faster features + SLDA-RFF 94.8% + bug fixes (2026-07-16)
 
 Three Fable5 subagents (research / audit / optimize) surveyed, reviewed, and optimized the developmental-loop suite;
