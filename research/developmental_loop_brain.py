@@ -20,9 +20,14 @@ real brain subsystems HOLDS ~93.5% or COSTS accuracy. MEASURED RESULT (RTX 5070,
   - hippocampal memory (real ReplayBuffer + SleepConsolidator) + brain decision (LatentQ value + Metacog)
     HOLD accuracy: the loop reaches 93.3% (-0.2% vs the v3.54 deep loop) -- faithfulness for FREE. These two
     subsystems are the default.
-  - the growable MLP readout (NORD_GROWABLE=1, function-preserving neurogenesis) is an HONEST NEGATIVE: the
-    growth works, but a continually-trained MLP readout FORGETS across digits (crashes to 78.6% at ~7 classes)
-    where a plain linear readout does not. Kept opt-in; the default readout is linear.
+  - the growable MLP readout (NORD_GROWABLE=1) all-plastic FORGETS (crashes to 78.6% at ~7 classes). FIX (v3.57,
+    NORD_FREEZE=1 default): GROW-AND-FREEZE -- progressive neurogenesis + parameter isolation. Each new digit
+    grows a fresh hidden block and FREEZES the prior units' incoming weights (+ zeroes their Adam moments), so a
+    new digit CANNOT overwrite old feature detectors. This re-enables neurogenesis: 78.6% -> 88.8% (no crash,
+    stable curve, grew 32->192 hidden). HONEST: 88.8% still trails the plain linear 93.3% -- MNIST digits share
+    features, so a shared readout is more parameter-efficient than per-digit isolated blocks; freeze fixes
+    forgetting but at a representation-efficiency cost. Neurogenesis is now VIABLE, not the accuracy winner.
+    The default readout stays linear (93.3%); growable+freeze is the working opt-in.
 
 SLEEP CONSOLIDATION (NORD_SLEEP_STEPS>0, an interleaved balanced-all-digit replay pass at reduced lr -- the
 CLS anti-forgetting mechanism) was TESTED as a fix for the MLP and does NOT rescue it: MLP no-sleep 78.6%,
@@ -187,6 +192,9 @@ def main():
     # 78.6% at ~7 classes) where the linear readout does not. The neurogenesis mechanism is sound; MLP-continual-
     # forgetting is the cost. Kept opt-in for reproducibility.
     GROWABLE = _envi("NORD_GROWABLE", 0)
+    FREEZE = _envi("NORD_FREEZE", 1)       # (with GROWABLE=1) grow-and-FREEZE: progressive neurogenesis + parameter
+    #                                        isolation -- freeze each digit's units, grow a fresh block for the next,
+    #                                        so a new digit CANNOT overwrite old feature detectors (the CL fix).
     if GROWABLE:
         readout = GrowableReadout(D, n_classes=10, hidden=HIDDEN, seed=0)   # NEUROGENESIS: grows function-preservingly
     else:
@@ -269,10 +277,19 @@ def main():
         comp_after_vec = [competence[d] for d in range(10)]
         decision.observe(objective, [comp_before[d] for d in range(10)], comp_after_vec, lp, curiosity.novelty(objective))
         grew = ""
-        if decision.grow_trigger() and readout.n_hidden < HIDDEN_CAP:      # the brain grows its OWN readout neurons
-            readout.grow(GROW_K)
-            grow_events += 1
-            grew = f" [+neurogenesis: readout hidden -> {readout.n_hidden}]"
+        if GROWABLE and FREEZE:
+            # PROGRESSIVE NEUROGENESIS + FREEZE: after learning this new digit, freeze its units and grow a fresh
+            # block for the NEXT digit -> each digit owns a protected sub-network, new cannot overwrite old.
+            if is_new and readout.n_hidden < HIDDEN_CAP:
+                readout.grow(GROW_K, freeze_old=True)
+                grow_events += 1
+                grew = f" [+neurogenesis+FREEZE: hidden -> {readout.n_hidden}, old frozen]"
+        elif GROWABLE:
+            # non-freeze growable (the honest-negative version): metacog-triggered growth, all-plastic -> forgets.
+            if decision.grow_trigger() and readout.n_hidden < HIDDEN_CAP:
+                readout.grow(GROW_K)
+                grow_events += 1
+                grew = f" [+neurogenesis: readout hidden -> {readout.n_hidden}]"
         print(f"  [self-improve]  competence over {sorted(learned)} = {overall:.1%}  (digit {objective}: "
               f"{competence[objective]:.1%}, lp={lp:.3f}); curriculum {curriculum.mastered}/10{grew}")
 

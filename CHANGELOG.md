@@ -3,6 +3,28 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.57] -- grow-and-freeze re-enables neurogenesis: MLP-forgetting FIXED 78.6% -> 88.8% (2026-07-15)
+
+Researched how to stop the v3.55/56 growable-MLP catastrophic forgetting (the CL literature: neurogenesis needs
+parameter ISOLATION -- grow new units AND freeze old ones, as in progressive nets / PackNet; growth alone forgets
+because every weight stays plastic). Implemented + tested it.
+
+Extended `research/brain_adapters/growable_readout.py` with NEUROGENESIS-WITH-FREEZE: `grow(k, freeze_old=True,
+freeze_out_classes=...)` marks existing hidden units frozen, and `train_step` zeroes their gradients AND their Adam
+moment buffers (the momentum-drift detail matters -- grad-masking alone leaves residual updates), so frozen units'
+weights stay bit-for-bit fixed (verified max|diff| = 0.0). Standalone 2-task forgetting test: Task-A retention
+nofreeze 0.811 vs freeze 1.000 (+0.189, task-aware). `research/developmental_loop_brain.py` wires progressive
+grow-and-freeze (NORD_FREEZE=1): each new digit grows a fresh block and freezes the prior one.
+
+MEASURED in the loop (RTX 5070, MNIST 10000/2000, class-incremental): grow-and-freeze **88.8%** -- a +10-point
+recovery from the all-plastic 78.6% crash, curve now STABLE (0.86-0.91, no cliff), readout grew 32->192 hidden.
+Neurogenesis is RE-ENABLED: growth no longer self-destructs. HONEST remaining gap: 88.8% still trails the plain
+linear readout (93.3%) -- MNIST digits share features, so a shared readout is more parameter-efficient than
+per-digit isolated sub-networks; freeze fixes forgetting but at a representation-efficiency cost. So neurogenesis
+is now VIABLE (was a hard negative), not the accuracy winner here. Default readout stays linear (93.3%);
+growable+freeze is the working opt-in. Sleep (v3.56) still does not help the MLP (overfits); freeze does.
+Research tier only; zero-dep core untouched.
+
 ## [v3.56] -- sleep consolidation tested for the MLP-forgetting: honest NEGATIVE (default already consolidates) (2026-07-15)
 
 Followed up the v3.55 growable-MLP forgetting (crashes to 78.6% at ~7 classes) with the natural question: does a
