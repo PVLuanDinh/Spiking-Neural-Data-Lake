@@ -66,6 +66,7 @@ from deep_stdp_latency import ConvLatencyStdp
 from brain_adapters.hippocampal_memory import HippocampalMemory
 from brain_adapters.growable_readout import GrowableReadout
 from brain_adapters.brain_decision import BrainDecision
+from brain_adapters.executive_control import ExecutivePlanner, DopamineModulator, WorkspaceBroadcast
 
 
 class _LinearReadout:
@@ -204,6 +205,14 @@ def main():
     curiosity = SpikingCuriosityDrive(seed=0)
     curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)
     lc = LocusCoeruleus()
+    # ---- Slice 2: executive planning + dopamine RPE neuromod + global-workspace broadcast (opt-in, default on) ----
+    EXEC = _envi("NORD_EXEC", 1)            # prefrontal_executive plans the objective (lookahead over competence)
+    DOPA = _envi("NORD_DOPA", 1)            # dopamine RPE modulates the readout lr alongside LC
+    WS = _envi("NORD_WS", 1)               # global_workspace broadcasts the current goal (coordination)
+    planner = ExecutivePlanner(seed=0)
+    dopamine = DopamineModulator(seed=0)
+    workspace = WorkspaceBroadcast(seed=0)
+    da_gain = 1.0                          # dopamine lr multiplier (from the previous cycle's RPE)
 
     learned = []
     competence = {d: 0.0 for d in range(10)}
@@ -221,17 +230,22 @@ def main():
             candidates = allowed or candidates
         comp_vec = [competence[d] for d in range(10)]
         cur_scores = [curiosity.curiosity_value(d) for d in candidates]
-        objective = decision.choose(candidates, comp_vec, cur_scores)
+        # EXECUTIVE: prefrontal_executive plans the objective by lookahead over competence dynamics (goal_value =
+        # mean + min competence, predictor raises headroom-proportionally). Falls back to BrainDecision otherwise.
+        objective = planner.plan_objective(comp_vec, candidates) if EXEC else decision.choose(candidates, comp_vec, cur_scores)
         consec = {d: (consec[d] + 1 if d == objective else 0) for d in range(10)}
         is_new = objective not in learned
+        # GLOBAL WORKSPACE: broadcast the current goal (salience = how far from mastered). Coordination/faithfulness.
+        ws_ignited = workspace.broadcast("executive", f"study_digit_{objective}", 1.0 - competence[objective]) if WS else None
         print(f"\nCYCLE {cyc}  ->  OBJECTIVE: digit {objective}  "
-              f"[{'explore (novel)' if is_new else 'revisit'}; metacog {'EXPLORE' if decision.explore() else 'exploit'}, "
-              f"reliability={decision.reliability():.2f}, novelty={curiosity.novelty(objective):.2f}]")
+              f"[{'explore (novel)' if is_new else 'revisit'}; {'EXEC-planned' if EXEC else 'metacog ' + ('EXPLORE' if decision.explore() else 'exploit')}, "
+              f"reliability={decision.reliability():.2f}, novelty={curiosity.novelty(objective):.2f}"
+              f"{'; workspace IGNITED' if ws_ignited else ''}]")
 
         # ---- NEUROMODULATION: locus-coeruleus NA on salience -> bounded readout lr gain ----
         salience = 1.0 if is_new else (1.0 - competence[objective])
         na = lc.step(salience)
-        gain = 1.0 + 0.5 * na
+        gain = (1.0 + 0.5 * na) * (da_gain if DOPA else 1.0)   # LC noradrenaline x dopamine RPE (prev cycle)
 
         # ---- LEARN: continual readout SGD on the objective's cached features + BALANCED REPLAY sampled by
         #      the real HippocampalMemory (ReplayBuffer) of previously-learned digits. ----
@@ -276,6 +290,9 @@ def main():
         curriculum.observe(lp)
         comp_after_vec = [competence[d] for d in range(10)]
         decision.observe(objective, [comp_before[d] for d in range(10)], comp_after_vec, lp, curiosity.novelty(objective))
+        # DOPAMINE: reward-prediction-error on the realised competence gain sets NEXT cycle's lr multiplier.
+        if DOPA:
+            da_gain = dopamine.modulate(competence[objective] - comp_before[objective])
         grew = ""
         if GROWABLE and FREEZE:
             # PROGRESSIVE NEUROGENESIS + FREEZE: after learning this new digit, freeze its units and grow a fresh

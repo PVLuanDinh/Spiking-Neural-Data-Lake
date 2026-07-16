@@ -3,6 +3,30 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.58] -- brain-integrated developmental loop (Slice 2): executive + dopamine + global-workspace -- wiring COMPLETE (2026-07-15)
+
+Second (final) slice of the full coherent brain wiring. New `research/brain_adapters/executive_control.py` wraps three
+more real core modules: ExecutivePlanner (`cortex/prefrontal_executive.PrefrontalExecutive.plan` -- plans the objective
+by lookahead over competence dynamics, goal_value = mean + min competence, a headroom-proportional predictor),
+DopamineModulator (`midbrain/dopamine_nuclei.DopamineNuclei` -- reward-prediction-error on the realised competence gain
+sets a bounded [0.5,2.0] lr multiplier), WorkspaceBroadcast (`thalamus/global_workspace.GlobalWorkspace` -- ignites +
+broadcasts the current goal). Wired into `research/developmental_loop_brain.py` (NORD_EXEC/DOPA/WS, default on): the
+prefrontal executive now plans each objective, dopamine modulates the readout lr alongside LC, and the global workspace
+broadcasts the goal each cycle.
+
+MEASURED (RTX 5070, MNIST 10000/2000, self-directed, full Slice 1+2): the loop reaches **93.3%** (-0.2% vs the v3.54
+deep loop) -- HOLDS accuracy. Executive planning covered all 10 digits (curriculum mastered 7/10), the workspace ignites
+on each goal, dopamine modulates the lr (x0.75 on low RPE). As predicted and stated up front, this slice adds
+ARCHITECTURAL COMPLETENESS, not accuracy: executive planning changes objective ORDER (accuracy-neutral, per the deep-loop
+revisit findings), and dopamine/workspace are neuromodulation/coordination. The v3.46 lesson confirmed a third time:
+routing the loop through the brain's real subsystems is faithfulness for free when the readout stays linear.
+
+FULL WIRING NOW COMPLETE. The autonomous developmental loop routes through: unsupervised conv1 perception -> hippocampal
+replay/consolidation -> continual linear readout -> objective selection by spiking curiosity + basal-ganglia value +
+metacognition + prefrontal executive planning -> dopamine + LC neuromodulation -> global-workspace broadcast, at 93.3%,
+fully self-directed, spiking-unsupervised in perception. Honest opt-in negatives kept: growable-MLP readout + freeze
+(88.8%, neurogenesis viable but trails linear), sleep (overfits). Research tier only; zero-dep core untouched.
+
 ## [v3.57] -- grow-and-freeze re-enables neurogenesis: MLP-forgetting FIXED 78.6% -> 88.8% (2026-07-15)
 
 Researched how to stop the v3.55/56 growable-MLP catastrophic forgetting (the CL literature: neurogenesis needs
