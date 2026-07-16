@@ -176,7 +176,7 @@ def main():
     print(f"  DURABILITY (close+reopen the .spkl, memory survives): {durable}")
     print(f"  reference: developmental_loop_deep.py (RAM ring, random replay) = 93.3%")
     print("=" * 84)
-    assert final > 0.10, f"lake loop at/below chance: {final:.2f}"
+    assert final > 0.85, f"lake loop regressed below its ~90% claim: {final:.2f}"   # catch regressions, not just chance
     assert durable, "consolidated memory did NOT survive the lake reopen"
     print(f"self-check OK: lake-backed loop {final:.1%} (proximity replay from the durable lake); "
           f"{lake.n_stored} exemplars durable across restart; feature learning unsupervised.")

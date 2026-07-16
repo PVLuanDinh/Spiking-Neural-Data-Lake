@@ -3,6 +3,36 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.72] -- loop optimization pass (research + audit + optimize): 135x faster features + SLDA-RFF 94.8% + bug fixes (2026-07-16)
+
+Three Fable5 subagents (research / audit / optimize) surveyed, reviewed, and optimized the developmental-loop suite;
+the main agent synthesized, verified on the RTX 5070, and applied the safe/high-value changes.
+
+PERF -- `research/fast_features.py`: a batched, BYTE-IDENTICAL replacement for the per-image `conv.features` loop.
+The non-leaky IF means potential = conv2d(cumulative volley), so first-spike = first threshold crossing, batchable
+over the image dimension. Verified: max abs diff 0.000e+00 vs the per-image loop, **135x faster on GPU** (2000 imgs
+6.78s -> 0.05s; a 14k-image cache drops from ~45s to 0.3s). Feature caching -- the loop's dominant cost -- is now
+near-free. Additive (a loop swaps its cache call for `batched_features`); `deep_stdp_latency.py` unchanged.
+
+ACCURACY -- `research/developmental_loop_slda.py`: replaces the continual LINEAR head (93.3%, forgets vs the 95.1%
+static joint) with SLDA-on-RFF. Random Fourier Features (fixed z = sqrt(2/M) cos(FW+b)) approximate the RBF kernel
+(RanDumb, arXiv 2402.08823); Streaming LDA accumulates ORDER-INVARIANT sufficient statistics (per-class sums, counts,
+ZZ^T) and classifies with the shared-covariance linear discriminant. Because the statistics are order-invariant the
+CONTINUAL loop == the JOINT solution by construction -- no replay, no forgetting, no SGD tuning. MEASURED: **94.8%
+continual** (beats the continual linear 93.3%, matches the static joint linear 95.1%). Honest: RFF at gamma=0.02/M=2000
+matches joint-linear, not the RBF ceiling (98.2%) -- tuning gamma/M is the untried lever toward the RBF gain.
+
+CORRECTNESS (audit-found, fixed by the main agent): `developmental_loop.py assign_and_eval` fitted neuron labels and
+scored accuracy on the SAME probe images (optimistically biased competence that fed back into curiosity/curriculum) --
+now split into DISJOINT assign/eval halves (so the earlier vote-loop ladder, 88.8% etc., was slightly optimistic); the
+weak self-check asserts in the lake / lake99 / wm loops (asserting only >0.10 chance while claiming ~90%+) bumped to
+their real baselines (>0.85) so a regression is caught. Also fixed the SLDA RFF-init generator/device trap
+(`torch.randn(generator=cpu_g)` under set_default_device(cuda) -> pin device="cpu" then move).
+
+Audit noted for a later follow-up (not applied): a `research/_loop_common.py` DRY refactor (LinearReadout / cache /
+env helpers copy-pasted across 8 files), `developmental_loop_lake.py`'s double conv pass (lake99 already derives the
+key from the cached feature), and `ProximityIndex` rebuilding on every consolidate. Research tier only; core untouched.
+
 ## [v3.71] -- EXPLICIT WORKING MEMORY wired into the loop: objective held as a prefrontal persistent-activity pointer (2026-07-16)
 
 Closes the explicit-working-memory gap in the memory taxonomy. `research/developmental_loop_wm.py` wires

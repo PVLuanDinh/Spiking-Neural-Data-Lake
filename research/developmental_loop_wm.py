@@ -188,7 +188,7 @@ def main():
     print("  MEMORY SYSTEM NOW COMPLETE: implicit (STDP conv1 features) + declarative (data lake) +")
     print("  EXPLICIT WORKING (prefrontal persistent-activity pointer, held in reverberating spikes).")
     print("=" * 86)
-    assert final > 0.10, "loop at/below chance"
+    assert final > 0.85, f"loop regressed below its ~92% claim: {final:.2f}"   # catch regressions, not just chance
     assert wm_hold_hits / max(1, wm_hold_total) > 0.5, "WM did not reliably hold the objective pointer"
     print(f"self-check OK: WM held the objective pointer {wm_hold_hits}/{wm_hold_total} cycles across a "
           f"{MAINTAIN}-tick no-input delay; persisted {held_for} ticks; accuracy {final:.1%} (faculty holds).")

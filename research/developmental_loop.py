@@ -213,11 +213,20 @@ class GrowableSTDP:
 
 def assign_and_eval(net, probe_imgs, probe_lbls, classes):
     """Neuron-label voting on a labelled PROBE (labels used only to read out competence, not to train),
-    then held-out accuracy over the given classes. Returns (overall_acc, {class: acc})."""
+    then HELD-OUT accuracy. The probe is split into DISJOINT halves: neuron labels are assigned on the
+    first half, accuracy is scored on the SECOND half -- otherwise assigning and scoring on the same
+    images optimistically biases competence (a real bug fixed in v3.72). Returns (overall_acc,
+    {class: acc}, activity)."""
+    half = len(probe_imgs) // 2
+    assign_imgs, assign_lbls = probe_imgs[:half], probe_lbls[:half]
+    eval_imgs, eval_lbls = probe_imgs[half:], probe_lbls[half:]
+    if not eval_imgs:                                          # too few probe images -> fall back (no split possible)
+        assign_imgs, assign_lbls = probe_imgs, probe_lbls
+        eval_imgs, eval_lbls = probe_imgs, probe_lbls
     resp = torch.zeros(net.n, 10, device=net.device)
     per = torch.zeros(10, device=net.device)
     activity = torch.zeros(net.n, device=net.device)          # per-neuron spike totals -> feeds pruning
-    for img, y in zip(probe_imgs, probe_lbls):
+    for img, y in zip(assign_imgs, assign_lbls):              # ASSIGN neuron labels on the first half
         counts = net.run(img, learn=False)
         resp[:, int(y)] += counts
         activity += counts
@@ -225,7 +234,7 @@ def assign_and_eval(net, probe_imgs, probe_lbls, classes):
     assignment = (resp / per.clamp_min(1)).argmax(dim=1)
     correct = {c: 0 for c in classes}
     total = {c: 0 for c in classes}
-    for img, y in zip(probe_imgs, probe_lbls):
+    for img, y in zip(eval_imgs, eval_lbls):                  # SCORE on the disjoint second half
         c = int(y)
         if c not in classes:
             continue

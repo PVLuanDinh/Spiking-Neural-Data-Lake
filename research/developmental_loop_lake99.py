@@ -187,7 +187,7 @@ def main():
     print(f"  RBF sleep-refit delta vs baseline 90.2%          : {rbf_acc - 0.902:+.1%}")
     print(f"  DURABILITY (lake survives close+reopen)          : {durable.get('ok')}")
     print("=" * 88)
-    assert lin_final > 0.10 and rbf_acc > 0.10, "a readout at/below chance"
+    assert lin_final > 0.85 and rbf_acc > 0.85, "a readout regressed below its ~90%+ claim"   # catch regressions
     assert durable.get("ok"), "lake memory did not survive reopen"
     print(f"self-check OK: richer-key linear {lin_final:.1%}, RBF sleep-refit {rbf_acc:.1%} "
           f"(baseline 90.2%); {n_used} exemplars durable in the lake.")
