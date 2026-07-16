@@ -3,6 +3,29 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.60] -- per-digit cortical COLUMNS (progressive nets): fixes v3.59, neocortex+neurogenesis reaches 90.5% (2026-07-16)
+
+Fixed v3.59's laminar failure (63.7%, only L2/3 frozen -> shared L4 drifts -> frozen features break). New class
+`LaminarColumns` in `research/brain_adapters/laminar_readout.py`: per-digit ISOLATED cortical columns (progressive
+neural networks, Rusu 2016). Each new digit grows its OWN full column (L4 in_dim->n4 + L2/3 n4->n23), and the WHOLE
+old columns are frozen (L4+L2/3 weights + Adam moments -> bit-exact), so every frozen column's features always see
+stable (its own, fixed) input -- freezing now covers the entire upstream path, not just the middle layer. A shared
+L5 head reads the concatenation of all columns; growth extends L5 fan-in with a zero block (function-preserving) +
+replay keeps the head calibrated. Verified standalone: frozen column L4+L2/3 max|diff|=0.0, function-preserving grow
+0.0 dlogit, 2-task Task-A retention 1.000->1.000, acc_B 1.000. Wired into `developmental_loop_brain.py` (NORD_COLUMNS=1).
+
+MEASURED in the loop (RTX 5070, MNIST, class-incremental, grew 10 columns -> 352 units): **90.5%** -- a big recovery
+from the laminar 63.7% and the BEST neurogenesis variant to date, beating flat-growable+freeze (88.8%), all-plastic
+MLP (78.6%), and laminar partial-freeze (63.7%). Curve stable (0.87-0.96). Confirms the diagnosis: FREEZE MUST COVER
+THE FULL UPSTREAM PATH.
+
+Honest residual: 90.5% still trails the plain linear (93.3%, -3.0%) -- MNIST digits SHARE features, so isolated
+per-digit columns are less parameter-efficient than a shared readout, and the shared L5 head has mild class-IL drift
+(replay-mitigated, not eliminated). So the neocortex-layers + neurogenesis version WORKS (90.5%, biologically the
+"cortical column per concept" motif) but the shared linear still wins on feature-sharing MNIST. Readout scorecard:
+linear 93.3 > progressive-columns 90.5 > flat-growable+freeze 88.8 > all-plastic 78.6 > laminar-partial-freeze 63.7.
+Default readout stays linear; columns is the working neurogenesis+neocortex opt-in. Research tier only; core untouched.
+
 ## [v3.59] -- neocortical LAMINAR readout + neurogenesis: integrated, honest NEGATIVE (partial freeze insufficient in a deep stack) (2026-07-16)
 
 Wired the neurogenesis readout into the canonical 6-layer NEOCORTICAL laminar motif (user: "use the version with

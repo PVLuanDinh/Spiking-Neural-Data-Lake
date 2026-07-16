@@ -322,10 +322,272 @@ class LaminarReadout(nn.Module):
                     st["exp_avg_sq"][idx] = 0.0
 
 
+class LaminarColumns(nn.Module):
+    r"""Per-digit ISOLATED cortical COLUMNS (PROGRESSIVE neural networks, Rusu et al. 2016)
+    so freezing covers the ENTIRE upstream path -- the fix for the v3.59 failure where
+    LaminarReadout froze only L2/3 while a SHARED L4 stayed plastic and drifted, corrupting
+    the "frozen" L2/3 features (they received an L4 output they were never frozen for ->
+    catastrophic forgetting, 63.7%, the worst mode).
+
+    THE FIX. Each new digit/task gets its OWN full COLUMN, and freezing locks a whole column:
+
+      column c = L4_c (Linear in_dim->n4 + ReLU) -> L2/3_c (Linear n4->n23 + ReLU)
+
+    so every frozen column's L2/3 features ALWAYS see the SAME (its own, fixed) L4 output --
+    there is no shared upstream stage left to drift. A SINGLE shared output head reads the
+    CONCATENATION of every column's L2/3 activations:
+
+      h23_c   = relu( relu(X @ W4_c^T + b4_c) @ W23_c^T + b23_c )   for each column c
+      concat  = [ h23_0 | h23_1 | ... | h23_C ]                     (width = C * n23)
+      logits  = concat @ W5^T + b5                                  (shared L5 head)
+
+    There is NO L6 top-down loop in the column version (kept simple + stable on purpose --
+    the isolation guarantee is the point here, not the feedback gain). Compare LaminarReadout
+    above for the L6-gated single-column variant.
+
+    NEUROGENESIS = grow(freeze_old=True): FREEZE all existing columns entirely (their L4+L2/3
+    params: gradient masked to zero every step AND Adam moments zeroed at freeze -- the
+    momentum-zeroing is essential, or a frozen weight drifts under residual momentum even at
+    zero gradient), then ADD one fresh PLASTIC column and EXTEND the shared L5 head's fan-in by
+    n23 with a ZERO block. Zero L5 fan-in makes the grow FUNCTION-PRESERVING: the new column
+    contributes 0 * h23_new == 0 to the logits at the instant of growth. The Adam moment
+    buffers are extended in lockstep (block-copy of the old top-left region; new entries zero).
+
+    WHAT STAYS TRAINABLE. The newest (unfrozen) column and the shared L5 head update every
+    step -- L5 must stay fully trainable so it can route the new column to the new class and,
+    with a little replay, keep the old-class boundaries. HONEST caveat: because L5 is shared
+    and trainable, some class-incremental (no task id) recency forgetting through the head can
+    remain -- what full-column isolation GUARANTEES is that every old column's features are
+    bit-exact preserved (the v3.59 corruption cannot happen); it does not by itself freeze the
+    shared readout. Score retention task-aware (Task-IL) to isolate the feature/column effect.
+
+    Interface (train_step / predict / grow(k, freeze_old) / n_hidden) matches the loop's
+    readout for drop-in use. Torch/GPU tier: built on resolve_device() with an explicit
+    .to(device) on every parameter (NOT set_default_device -- torch.normal(generator=...) and
+    freshly-wrapped nn.Parameter can silently stay on CPU under a cuda default). Deterministic
+    (torch.manual_seed + per-instance generators). ASCII-only prints. Zero-dep CORE untouched.
+    """
+
+    def __init__(self, in_dim, n_classes=10, n4=48, n23=32, seed=0):
+        super().__init__()
+        torch.manual_seed(seed)
+        self.in_dim = in_dim
+        self.n_classes = n_classes
+        self.n4 = n4
+        self.n23 = n23
+        self._seed = seed
+        # per-instance CPU generators -> deterministic init AND deterministic grow draws,
+        # independent of the global RNG. Column 0 draws from _init_gen; grown columns from
+        # _grow_gen (so adding a column is a fresh, distinct feature detector from birth).
+        self._init_gen = torch.Generator().manual_seed(seed)
+        self._grow_gen = torch.Generator().manual_seed(seed + 0x5EED)
+
+        dev = resolve_device()
+        self.device = torch.device(dev)
+
+        # Per-column L4 + L2/3 parameters, parallel lists indexed by column. Raw Parameters
+        # (in ParameterLists) so growth is a simple append + the Adam moment buffers can be
+        # extended in lockstep.
+        self.W4s = nn.ParameterList()   # each: L4  (n4  x in_dim)  sensory input layer
+        self.b4s = nn.ParameterList()
+        self.W23s = nn.ParameterList()  # each: L2/3 (n23 x n4)     feature layer
+        self.b23s = nn.ParameterList()
+
+        # Whole-column frozen flag (parameter isolation). True == this column's L4+L2/3 are a
+        # FIXED feature stack -- their gradients are masked to zero every train_step and their
+        # Adam moments are zeroed at freeze, so the whole column is bit-for-bit constant.
+        self._frozen_cols = []
+
+        self._add_column(self._init_gen)  # start with ONE column (column 0)
+
+        # Shared L5 OUTPUT head reads the CONCAT of all columns' L2/3 activations. Its fan-in
+        # is total_n23 (== C * n23) and GROWS by n23 each time a column is added.
+        self.W5 = nn.Parameter(self._w(n_classes, self.n_hidden, self._init_gen))
+        self.b5 = nn.Parameter(self._b(n_classes))
+
+        self._lr = 1e-2
+        self.opt = torch.optim.Adam(self.parameters(), lr=self._lr)
+
+    # --- construction helpers --------------------------------------------------------------
+    def _w(self, fan_out, fan_in, gen):
+        std = (2.0 / fan_in) ** 0.5
+        return torch.normal(0.0, std, (fan_out, fan_in), generator=gen).to(self.device)
+
+    def _b(self, n):
+        return torch.zeros(n).to(self.device)
+
+    def _add_column(self, gen):
+        """Append one fresh PLASTIC column (its own L4 + L2/3). Draws from `gen` so each
+        column is deterministic and distinct. Does NOT touch W5 -- the caller sizes/extends
+        the shared head's fan-in."""
+        self.W4s.append(nn.Parameter(self._w(self.n4, self.in_dim, gen)))
+        self.b4s.append(nn.Parameter(self._b(self.n4)))
+        self.W23s.append(nn.Parameter(self._w(self.n23, self.n4, gen)))
+        self.b23s.append(nn.Parameter(self._b(self.n23)))
+        self._frozen_cols.append(False)
+
+    @property
+    def n_hidden(self):
+        """Total L2/3 width across ALL columns (== n_columns * n23). The loop's HIDDEN_CAP
+        bounds this, exactly as for the single-column readout."""
+        return sum(int(w.shape[0]) for w in self.W23s)
+
+    @property
+    def n_columns(self):
+        return len(self.W23s)
+
+    # --- forward through the parallel columns ---------------------------------------------
+    def _column_h23(self, X, i):
+        """One column's L4 -> L2/3 activation (ReLU/ReLU)."""
+        h4 = F.relu(X @ self.W4s[i].t() + self.b4s[i])       # L4 sensory input (this column)
+        return F.relu(h4 @ self.W23s[i].t() + self.b23s[i])  # L2/3 feature layer (this column)
+
+    def forward(self, X):
+        h23s = [self._column_h23(X, i) for i in range(self.n_columns)]
+        concat = torch.cat(h23s, dim=1)                       # [N, C*n23]
+        return concat @ self.W5.t() + self.b5                 # shared L5 head -> logits
+
+    def predict(self, X):
+        """Return final logits [N, n_classes] (no grad)."""
+        X = X.to(self.device)
+        with torch.no_grad():
+            return self.forward(X)
+
+    def train_step(self, X, y, lr, steps=1):
+        """steps Adam cross-entropy step(s). FROZEN columns' L4+L2/3 params do not change:
+        their gradient is zeroed every step (and their Adam moments were zeroed at freeze).
+        The newest (unfrozen) column and the shared L5 head update normally."""
+        X = X.to(self.device)
+        y = y.to(self.device)
+        self._lr = lr
+        for g in self.opt.param_groups:
+            g["lr"] = lr
+        last = None
+        for _ in range(steps):
+            self.opt.zero_grad(set_to_none=True)
+            loss = F.cross_entropy(self.forward(X), y)
+            loss.backward()
+            for i, frozen in enumerate(self._frozen_cols):
+                if frozen:
+                    for prm in (self.W4s[i], self.b4s[i], self.W23s[i], self.b23s[i]):
+                        if prm.grad is not None:
+                            prm.grad.zero_()
+            self.opt.step()
+            last = float(loss.detach())
+        return last
+
+    # --- neurogenesis: add one isolated column --------------------------------------------
+    def grow(self, k=1, freeze_old=False):
+        """PER-DIGIT neurogenesis. Adds ONE new column (regardless of k -- k is accepted only
+        for interface compatibility with the single-unit readouts; a column grow is atomic).
+        Returns the new total L2/3 width (n_hidden).
+
+        When freeze_old=True: FREEZE every existing column entirely (L4+L2/3 -> grad-masked
+        each step + Adam moments zeroed here), then add the new PLASTIC column and EXTEND the
+        shared L5 head's fan-in by n23 with a ZERO block. The zero block makes the grow
+        FUNCTION-PRESERVING -- the new column contributes 0 to the logits at the instant of
+        growth -- while freezing whole columns guarantees every frozen column's features
+        always see their OWN fixed L4 (the v3.59 shared-L4 drift is structurally impossible).
+        freeze_old=False just appends a plastic column (all columns stay trainable)."""
+        # Snapshot Adam state (keyed by stable name) BEFORE re-wrapping W5 / appending params.
+        old_state = self._snapshot_adam()
+
+        if freeze_old:
+            for i in range(len(self._frozen_cols)):
+                self._frozen_cols[i] = True
+
+        # EXTEND the shared L5 fan-in by n23 with a ZERO block (function-preserving: the new
+        # column's contribution to the logits is 0 * h23_new == 0 at the instant of growth).
+        with torch.no_grad():
+            zero_block = torch.zeros(self.n_classes, self.n23, device=self.W5.device)
+            new_W5 = torch.cat([self.W5.data, zero_block], dim=1)
+        self.W5 = nn.Parameter(new_W5)
+
+        # ADD the new plastic column (its h23 lands in the LAST n23 slots of the concat, which
+        # is exactly the zero block just appended to W5 -> preserved output).
+        self._add_column(self._grow_gen)
+
+        # Rebuild Adam over the new param set and restore the extended moment buffers.
+        self.opt = torch.optim.Adam(self.parameters(), lr=self._lr)
+        self._restore_adam(old_state)
+
+        # Residual Adam momentum would drift a frozen column even under a zero gradient, so
+        # zero those moments once. Combined with the per-step gradient mask, frozen columns
+        # then stay EXACTLY constant. See _zero_frozen_moments.
+        self._zero_frozen_moments()
+        return self.n_hidden
+
+    # --- Adam state bookkeeping across the grow -------------------------------------------
+    def _param_map(self):
+        """Stable name -> current Parameter map (per-column L4/L2/3 + shared W5/b5). Used to
+        snapshot/restore Adam moments across a grow, where W5 is re-wrapped (bigger fan-in)
+        and a column's four params are appended."""
+        m = {}
+        for i in range(self.n_columns):
+            m[f"W4_{i}"] = self.W4s[i]
+            m[f"b4_{i}"] = self.b4s[i]
+            m[f"W23_{i}"] = self.W23s[i]
+            m[f"b23_{i}"] = self.b23s[i]
+        m["W5"] = self.W5
+        m["b5"] = self.b5
+        return m
+
+    def _snapshot_adam(self):
+        snap = {}
+        for key, prm in self._param_map().items():
+            st = self.opt.state.get(prm, None)
+            if st:
+                snap[key] = {
+                    "step": st["step"].clone() if torch.is_tensor(st["step"]) else st["step"],
+                    "exp_avg": st["exp_avg"].detach().clone(),
+                    "exp_avg_sq": st["exp_avg_sq"].detach().clone(),
+                }
+        return snap
+
+    def _restore_adam(self, snap):
+        """Re-seed the fresh optimizer so existing columns keep their Adam moments and the
+        widened W5 keeps its (top-left block) moments; the new column and the new L5 fan-in
+        block start at zero momentum. The overlapping block is copied; padding stays zero."""
+        if not snap:
+            return
+        pm = self._param_map()
+        for key, src in snap.items():
+            if key not in pm:
+                continue
+            prm = pm[key]
+            exp_avg = torch.zeros_like(prm.data)
+            exp_avg_sq = torch.zeros_like(prm.data)
+            block = tuple(slice(0, s) for s in src["exp_avg"].shape)
+            exp_avg[block] = src["exp_avg"].to(exp_avg.device)
+            exp_avg_sq[block] = src["exp_avg_sq"].to(exp_avg_sq.device)
+            self.opt.state[prm] = {
+                "step": src["step"],
+                "exp_avg": exp_avg,
+                "exp_avg_sq": exp_avg_sq,
+            }
+
+    def _zero_frozen_moments(self):
+        """Zero the Adam first/second-moment buffers for every FROZEN column's L4+L2/3 params.
+        A frozen column's gradient is masked to zero every step, so once its moments are zero
+        they stay zero and Adam's update becomes 0 -> the whole column is bit-for-bit
+        unchanged. WITHOUT this, momentum accumulated during the column's own training would
+        keep nudging it under a zero gradient and the 'exactly unchanged' guarantee fails."""
+        for i, frozen in enumerate(self._frozen_cols):
+            if not frozen:
+                continue
+            for prm in (self.W4s[i], self.b4s[i], self.W23s[i], self.b23s[i]):
+                st = self.opt.state.get(prm, None)
+                if st and "exp_avg" in st:
+                    st["exp_avg"].zero_()
+                    st["exp_avg_sq"].zero_()
+
+
 # --------------------------------------------------------------------------------------
 # Self-check: on small SYNTHETIC data, prove (1) the laminar column beats chance,
 # (2) grow(k, freeze_old=True) on L2/3 is function-preserving AND frozen rows stay bit-exact
 # while new units change, (3) the L6 feedback actually changes the logits.
+# Then (4) LaminarColumns: full-upstream freeze retains Task A where the shared-L4 laminar
+# did not -- frozen column bit-exact, function-preserving grow, high 2-task retention.
 # --------------------------------------------------------------------------------------
 def _make_bands(n=600, in_dim=8, n_bands=6, seed=0):
     """A 2-class band-parity task: one informative coordinate in [0, n_bands) whose label is
@@ -345,6 +607,39 @@ def _make_bands(n=600, in_dim=8, n_bands=6, seed=0):
 def _accuracy(model, X, y):
     pred = model.predict(X).argmax(dim=1).cpu()
     return float((pred == y).float().mean())
+
+
+def _accuracy_subset(model, X, y, classes):
+    """Task-aware (Task-Incremental) accuracy: argmax over ONLY `classes`. The standard
+    continual-learning metric -- it isolates whether the task's own columns/features survived,
+    without the shared-softmax recency bias between tasks (which no feature freeze can remove
+    without a task id at test time -- reported honestly in the LaminarColumns caveat)."""
+    idx = torch.tensor(classes, device=model.device)
+    logits = model.predict(X)[:, idx]
+    pred = idx[logits.argmax(dim=1)].cpu()
+    return float((pred == y).float().mean())
+
+
+def _make_col_blobs(n_per=120, in_dim=12, n_classes=6, sep=3.0, seed=0):
+    """6 DISTINCT (well-separated) Gaussian blobs, classes 0..5, placed along one informative
+    axis with a zig-zag on a second axis. Distinct on purpose: with isolated per-digit columns
+    + full-upstream freeze, Task A={0,1,2} should be RETAINED after learning Task B={3,4,5} --
+    which the shared-L4 laminar could not do (its 'frozen' L2/3 saw a drifting L4). Deterministic;
+    CPU tensors (torch.normal(float,float,size) lands on CPU) -- the model moves batches to its
+    device."""
+    g = torch.Generator().manual_seed(seed)
+    Xs, ys = [], []
+    for c in range(n_classes):
+        center = torch.zeros(in_dim)
+        center[0] = c * sep                              # informative axis
+        center[1] = ((c % 2) * 2 - 1) * sep              # zig-zag on a 2nd axis
+        Xs.append(center + torch.normal(0.0, 1.0, (n_per, in_dim), generator=g))
+        ys.append(torch.full((n_per,), c, dtype=torch.long))
+    X = torch.cat(Xs, 0)
+    y = torch.cat(ys, 0)
+    X = (X - X.mean(0, keepdim=True)) / (X.std(0, keepdim=True) + 1e-8)
+    perm = torch.randperm(X.shape[0], generator=g)
+    return X[perm], y[perm]
 
 
 def main():
@@ -432,6 +727,76 @@ def main():
     twin_match = float((twin_ff - base_ff).abs().max())
     print(f"          use_l6=False twin matches the feedforward path (max|diff|={twin_match:.3e})")
 
+    # ---- (4) LaminarColumns: per-digit ISOLATED columns -> FULL upstream freeze -----------
+    # The v3.59 failure: LaminarReadout froze only L2/3, a SHARED L4 drifted, and the 'frozen'
+    # L2/3 saw an L4 it was never frozen for -> catastrophic forgetting (63.7%). Fix: give each
+    # task its OWN full column (L4 + L2/3) and freeze whole columns, so every frozen column's
+    # features always see their OWN fixed L4. Prove on a 2-task problem (A={0,1,2}, B={3,4,5},
+    # distinct blobs): (a) the frozen column's L4 AND L2/3 are BIT-EXACT after Task B, (b) the
+    # grow is function-preserving, (c) Task-A retention AND Task-B are both high.
+    print("-" * 74)
+    print("(4) LaminarColumns -- progressive per-digit columns (Rusu 2016): FULL upstream freeze")
+    ci, cnc = 12, 6
+    Xc, yc = _make_col_blobs(n_per=120, in_dim=ci, n_classes=cnc, sep=3.0, seed=0)
+    task_a, task_b = [0, 1, 2], [3, 4, 5]
+    a_mask = (yc.unsqueeze(1) == torch.tensor(task_a)).any(1)
+    Xa, ya = Xc[a_mask], yc[a_mask]
+    Xb, yb = Xc[~a_mask], yc[~a_mask]
+    # SMALL replay of A (deterministic subset), the same handful the developmental loop keeps.
+    grp = torch.Generator().manual_seed(7)
+    rp = torch.randperm(Xa.shape[0], generator=grp)[:40]
+    Xb_tr = torch.cat([Xb, Xa[rp]], 0)
+    yb_tr = torch.cat([yb, ya[rp]], 0)
+
+    col = LaminarColumns(ci, n_classes=cnc, n4=48, n23=32, seed=0)
+    # Train column 0 on Task A to a MODERATE point (bounded logits keep the grow check tight).
+    for _ in range(400):
+        col.train_step(Xa, ya, lr=5e-3, steps=1)
+    acc_A_before = _accuracy_subset(col, Xa, ya, task_a)
+    print(f"    column-0 trained on Task A{task_a}: acc_A (task-aware) = {acc_A_before:.3f}  "
+          f"(n_columns={col.n_columns}, n_hidden={col.n_hidden})")
+
+    # Snapshot column-0's ENTIRE upstream (L4 + L2/3) to prove bit-exact freeze later.
+    W4_0 = col.W4s[0].detach().clone()
+    W23_0 = col.W23s[0].detach().clone()
+
+    # grow(freeze_old=True): freeze column-0 entirely, add plastic column-1. Function-preserving.
+    logits_pre = col.predict(Xc).clone()
+    new_width = col.grow(k=1, freeze_old=True)
+    logits_post = col.predict(Xc)
+    max_logit_diff = float((logits_pre - logits_post).abs().max())
+    assert new_width == 2 * 32, f"n_hidden must be 2 columns * 32 = 64, got {new_width}"
+    assert col.n_columns == 2, f"must have 2 columns after grow, got {col.n_columns}"
+    assert max_logit_diff < 1e-4, (
+        f"grow() must be function-preserving: max|dlogit| {max_logit_diff:.3e} >= 1e-4"
+    )
+    assert bool(col._frozen_cols[0]) and not bool(col._frozen_cols[1]), \
+        "column-0 must be frozen, column-1 plastic"
+    print(f"    grow(freeze_old=True): columns 1 -> {col.n_columns}, n_hidden {32} -> {new_width}, "
+          f"L5 fan-in extended with a zero block  max|dlogit|={max_logit_diff:.3e} (< 1e-4)")
+
+    # Train Task B (with small A replay). Column-0 frozen; column-1 + shared L5 learn.
+    for _ in range(1500):
+        col.train_step(Xb_tr, yb_tr, lr=5e-3, steps=1)
+
+    w4_diff = float((col.W4s[0].detach() - W4_0).abs().max())
+    w23_diff = float((col.W23s[0].detach() - W23_0).abs().max())
+    acc_A_after = _accuracy_subset(col, Xa, ya, task_a)
+    acc_B = _accuracy_subset(col, Xb, yb, task_b)
+    acc_A_after_all = _accuracy(col, Xa, ya)  # class-incremental (no task id) -- honest confound
+    assert w4_diff == 0.0, f"frozen column-0 L4 must be EXACTLY unchanged, got max|diff|={w4_diff:.3e}"
+    assert w23_diff == 0.0, f"frozen column-0 L2/3 must be EXACTLY unchanged, got max|diff|={w23_diff:.3e}"
+    assert acc_A_after > 0.85, (
+        f"isolated column-0 must RETAIN Task A after Task B (task-aware): {acc_A_after:.3f} <= 0.85"
+    )
+    assert acc_B > 0.85, f"the NEW task must be learned in column-1: acc_B={acc_B:.3f} <= 0.85"
+    print(f"    frozen column-0: L4 max|diff|={w4_diff:.3e}  L2/3 max|diff|={w23_diff:.3e} "
+          f"(BOTH must be 0.0 -> FULL upstream freeze)")
+    print(f"    retention: acc_A {acc_A_before:.3f} -> {acc_A_after:.3f} (task-aware, > 0.85)  |  "
+          f"acc_B={acc_B:.3f} (> 0.85)  |  acc_A all-class(no task id)={acc_A_after_all:.3f}")
+    print("    -> full-column isolation retains Task A where the shared-L4 laminar drifted "
+          "(L5 shared/trainable: some class-IL recency remains, reported not hidden)")
+
     print("-" * 74)
     print("HONEST NOTES: the microcircuit reference is a DYNAMICS model (no accuracy); this")
     print("  readout borrows only its LAYER ROLES/FLOW. L6 is ONE feedback iteration (not a")
@@ -443,6 +808,9 @@ def main():
           f"L2/3 neurogenesis function-preserving (max|dlogit|={max_logit_diff:.3e}), frozen rows "
           f"bit-exact (diff={frozen_diff:.3e}), new units move (diff={new_diff:.3e}); "
           f"L6 feedback active (diff={l6_diff:.3e})")
+    print(f"  + LaminarColumns full-upstream freeze: frozen column-0 L4/L2/3 bit-exact "
+          f"(L4 diff={w4_diff:.3e}, L2/3 diff={w23_diff:.3e}); 2-task retention acc_A "
+          f"{acc_A_before:.3f} -> {acc_A_after:.3f} (task-aware), acc_B={acc_B:.3f}")
 
 
 if __name__ == "__main__":
