@@ -3,6 +3,33 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.50] -- latency conv-STDP (Kheradpisheh-2018): collapse FIXED, deep features MATCH flat (2026-07-15)
+
+Follow-up to v3.49's collapse. Built the FULL Kheradpisheh-2018 machinery in `research/deep_stdp_latency.py`
+(the four mechanisms v3.49 omitted): DoG ON/OFF center-surround preprocessing; latency / rank-order coding
+(stronger contrast fires earlier, each input spikes at most once); a conv integrate-and-fire layer with a
+first-spike TWO-AXIS WTA (intra-map: each map fires once per image; inter-map: one map owns a neighbourhood --
+this is what forces feature diversity); and multiplicative soft-bound STDP `dw = +-a * w * (1-w)` that drives
+weights toward sharp distinct binary features. Layer 1 trains greedily for a few epochs (unsupervised); the
+FC-STDP prototype layer + neuron-label vote reads out accuracy. Still fully unsupervised (no labels, no backprop
+in feature/prototype learning; labels only in the vote).
+
+MEASURED (RTX 5070, MNIST, unsupervised):
+- COLLAPSE FIXED. Layer-1 kernel diversity (mean pairwise cos-sim) 0.96 (v3.49) -> **0.34** (converges over
+  epochs 0.67 -> 0.40 -> 0.35 -> 0.34). The maps genuinely specialise; the self-check ASSERTS diversity < 0.6.
+- Deep MATCHES flat, does not beat it, at two scales: C30/M100/6k -> 1-layer 63.6% vs 2-layer 63.1% (-0.5%);
+  C50/M300/10k -> 1-layer 80.5% vs 2-layer 78.8% (-1.6%). Both scale points TIE -> the bottleneck is the
+  spiking VOTE READOUT, not the features or scale: the shared M-neuron FC-STDP vote already extracts most of
+  what is linearly separable from raw pixels, so the diverse conv features do not add vote-accuracy. Kheradpisheh's
+  ~98% comes from an SVM on the spiking features + multiple conv stages, not a spiking vote.
+
+Bottom line: the architecture CAN be deepened spiking-pure (genuine diverse deep spiking features, no collapse),
+but a spiking vote-readout does not turn that into an accuracy gain. Next levers to convert depth -> accuracy: a
+linear/SVM readout on the conv features (supervised readout on unsupervised features, the standard protocol) and/or
+a second conv stage. Module kept as a working, verified deep unsupervised spiking feature extractor. Fixed a GPU
+device bug from the no-GPU build subagent: `torch.normal(float,float,size=)` ignores set_default_device and lands
+on CPU -> pinned conv kernels + DoG to resolve_device(). Research tier only; zero-dep core untouched.
+
 ## [v3.49] -- deep vs single-layer UNSUPERVISED STDP -- honest NEGATIVE (naive conv-STDP collapses) (2026-07-15)
 
 Asked whether DEEPENING the loop's learner raises accuracy while keeping its thesis (unsupervised, no labels,
