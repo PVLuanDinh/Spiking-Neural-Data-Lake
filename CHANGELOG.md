@@ -3,6 +3,27 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.71] -- EXPLICIT WORKING MEMORY wired into the loop: objective held as a prefrontal persistent-activity pointer (2026-07-16)
+
+Closes the explicit-working-memory gap in the memory taxonomy. `research/developmental_loop_wm.py` wires
+`cortex/prefrontal_executive.PrefrontalExecutive` (Wang-2002 persistent-activity WM, recurrence 0.98) into the
+developmental loop as its ACTIVE working memory: each cycle WRITES the curiosity-proposed objective into the WM
+(`wm.update`, gated spiking commit), MAINTAINS it across a 20-tick delay with NO input (`wm.maintain`, reverberating
+persistent activity), then READS the held pointer back (`wm.goal`) and drives learning on THAT -- so the current
+objective lives as a pointer in reverberating spikes, and the WM is genuinely in the control path.
+
+MEASURED (RTX 5070, MNIST 10000/2000): WM HOLD rate 15/15 = 100% (the objective survived the 20-tick no-input maintain
+delay every cycle); persistence probe held the pointer for 79 delay ticks with no input (delayed recall) before the
+attractor faded; distractor robustness held (attractor stability); final accuracy 92.4% (holds vs the 93.3% python-
+variable-objective reference -- this is an architectural-faithfulness FACULTY, not an accuracy lever). Every cycle
+proposed == WM-held (read-back correct).
+
+The loop's memory system is now COMPLETE across the explicit/implicit taxonomy: IMPLICIT = STDP-learned conv1 features
+(procedural, in weights) + adaptive thresholds (intrinsic plasticity); DECLARATIVE = the durable data lake (episodic
+exemplars, content-addressable by proximity, v3.68/69); EXPLICIT WORKING = the prefrontal persistent-activity pointer
+(reverberating attractor, this). GOTCHA: `PrefrontalExecutive.goal` is read as an ATTRIBUTE (int/None) -- the instance
+attribute shadows the `def goal()` method, so use `wm.goal` not `wm.goal()`. Research tier only; zero-dep core untouched.
+
 ## [v3.70] -- lake loop toward 99: richer key + RBF sleep-refit -> 93.3% (honest ceiling, data-limited) (2026-07-16)
 
 Attacked the 90.2% proximity-replay lake loop (v3.69) with the two loop-specific levers.
