@@ -3,6 +3,27 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.70] -- lake loop toward 99: richer key + RBF sleep-refit -> 93.3% (honest ceiling, data-limited) (2026-07-16)
+
+Attacked the 90.2% proximity-replay lake loop (v3.69) with the two loop-specific levers.
+`research/developmental_loop_lake99.py`: (1) a RICHER proximity KEY -- a fixed random projection of the full
+1080-dim conv1 spatial feature to a 48-dim (<=64) sigmoid-mapped key (label-free, distance-preserving) instead of the
+crude 30-dim global-max; (2) an RBF SLEEP-REFIT -- a "sleep" consolidation that pulls ALL lake-consolidated exemplars
+and refits an RBF-SVM on their full spatial features (the linear->RBF readout upgrade).
+
+MEASURED (RTX 5070, MNIST 12000/2000): richer-key continual linear **90.8%** (+0.6% vs 90.2 baseline); RBF sleep-refit
+**93.3%** (+3.1%); 3000 exemplars consolidated + durable across lake reopen. Both levers help but LESS than hoped, and
+the diagnosis is the point:
+- the richer key gave only +0.6 -- so the -3.1% was mostly CONTINUAL-LEARNING dynamics, not key contamination.
+- the RBF sleep-refit reached only 93.3 (vs the static RBF's 98.2) because it refit on 3000 consolidated exemplars,
+  where the static RBF used 30k -- RBF accuracy scales with data, so the refit is DATA-LIMITED by how much the loop
+  consolidates, not by the readout type.
+
+Honest ceiling: the continual proximity-replay LOOP caps ~93-95% (continual cost + consolidated-subset). Reaching 99%
+is a STATIC-PIPELINE job (full 30k+ + RBF + augmentation) -- 99% is above even the 30k static ceiling (98.2%), and the
+loop's consolidated-subset structure inherently trails it. The levers pushed the loop 90.2 -> 93.3 honestly, not to 99.
+Research tier only; zero-dep core untouched.
+
 ## [v3.69] -- developmental loop consolidates to the DATA LAKE + replays BY PROXIMITY (durable) (2026-07-16)
 
 Wires the developmental loop's long-term memory to the substrate DATA LAKE. `research/developmental_loop_lake.py`
