@@ -3,6 +3,24 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.65] -- data lever REACHES ~98%: linear+RBF ensemble hits 98.2% on unsupervised conv1 spikes (2026-07-16)
+
+The data lever toward ~98%. Re-ran `research/ensemble_rbf.py` at 30k train / FULL 10k test (up from 10k/2k), and swapped
+the RBF's slow Platt predict_proba for decision_function + softmax so the RBF-SVM scales to 30k in reasonable time.
+
+RESULT (RTX 5070, MNIST 30000/10000, full test set -- reliable numbers; conv1 diversity 0.295):
+  singles: linear readout 97.8%, columns 93.1%, RBF-SVM **98.0%**.
+  ensembles: linear+RBF **98.2%** (+0.2%, NEW BEST); linear+columns (old) 95.2%; columns+RBF 93.9%; all-3 97.2%.
+  error correlation: linear-vs-RBF 1.3% (most decorrelated), linear-vs-columns 1.7%, columns-vs-RBF 1.4%.
+
+TARGET REACHED -- 98.2%, Kheradpisheh-class -- and with SINGLE-STAGE conv1 (no 2nd conv stage needed). The earlier worry
+that single-stage features cap ~97% was wrong: with enough labelled data + an RBF-SVM, conv1 alone hits 98.0%, and the
+decorrelated linear+RBF ensemble adds +0.2 -> 98.2%. The data lever (10k -> 30k) lifted RBF 95.6 -> 98.0 and the ensemble
+96.5 -> 98.2. Full accuracy arc: 88.8 (vote loop) -> 93.3 (linear loop) -> 95.1 (linear static) -> 96.5 (linear+RBF @10k)
+-> 98.2 (linear+RBF @30k). All on the SAME frozen UNSUPERVISED conv1 spikes -- feature learning saw no labels, only the
+readout is supervised. The lever throughout was the READOUT (RBF nonlinear > linear > vote) + a decorrelated ensemble +
+more data; the dead ends were 2-stage conv, global pooling, and map-count scaling. Research tier only; core untouched.
+
 ## [v3.64] -- RBF-SVM ensemble: adding the nonlinear member makes combining WORK -> 96.5% new best (2026-07-16)
 
 Added the v3.63 RBF-SVM to the v3.61 ensemble (which had HURT: two linear-boundary readouts share features ->

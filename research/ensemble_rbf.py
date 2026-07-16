@@ -118,12 +118,16 @@ def main():
         P_col = _softmax_np(col.predict(Fte))
 
     # ---- member 3: RBF-SVM (nonlinear, sklearn, probability) ----
-    print("[svm] fitting RBF-SVC (probability) on conv1 spatial features...")
+    print("[svm] fitting RBF-SVC on conv1 spatial features...")
     Xtr_np, Xte_np = Ftr.cpu().numpy(), Fte.cpu().numpy()
     sc = StandardScaler().fit(Xtr_np)
-    rbf = SVC(kernel="rbf", gamma="scale", probability=True, random_state=0)
+    # decision_function + softmax (an ensemble-usable probability surrogate) instead of predict_proba --
+    # skips the slow Platt CV so RBF-SVC scales to larger train sets (30k+) in reasonable time.
+    rbf = SVC(kernel="rbf", gamma="scale", decision_function_shape="ovr", random_state=0)
     rbf.fit(sc.transform(Xtr_np), Ytr.numpy())
-    P_rbf = rbf.predict_proba(sc.transform(Xte_np))
+    dec = rbf.decision_function(sc.transform(Xte_np))               # [N,10] one-vs-rest scores
+    dec = dec - dec.max(axis=1, keepdims=True)
+    P_rbf = np.exp(dec) / np.exp(dec).sum(axis=1, keepdims=True)     # softmax -> probability surrogate
 
     # ---- singles ----
     a_lin, a_col, a_rbf = _acc(P_lin, yte_np), _acc(P_col, yte_np), _acc(P_rbf, yte_np)
