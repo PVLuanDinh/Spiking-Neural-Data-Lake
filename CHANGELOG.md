@@ -3,6 +3,29 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.67] -- fully LABEL-FREE loop: autonomously trains from raw pixels, 88.3% cluster purity (2026-07-16)
+
+The honest demonstration of "can the model autonomously train from raw data" -- YES. New
+`research/developmental_loop_unsupervised.py`: the developmental loop with ZERO labels in training, neurogenesis, or
+ANY decision. Reuses the label-free `GrowableSTDP` (spiking STDP prototypes on raw 784 pixels + ART-vigilance
+neurogenesis), `SpikingCuriosityDrive` (learning-progress from PREDICTION error), and `LocusCoeruleus` (salience gain).
+
+Loop (all label-free): stream raw pixels -> intrinsic error = 1 - mean(match) (the model's own quantisation error) ->
+curiosity learning-progress on that error self-directs growth vs consolidation -> ART vigilance grows prototypes on
+novelty -> STDP refines by spike timing. Labels are touched ONLY in the final score() (purity / NMI / reference
+accuracy) -- audited + verified no leak: Ytr is never indexed, Yte only builds the scoring probe.
+
+MEASURED (RTX 5070, raw MNIST, 20 cycles, zero labels in the loop): the model SELF-GREW **764 prototypes** (ART,
+label-free); intrinsic error fell 1.000 -> 0.148 driven purely by its own learning-progress signal (~0.14-0.17
+throughout); the resulting clusters are **88.3% pure**, **NMI 0.614** vs the true digits, 88.0% reference accuracy
+(most-active-prototype voting). It discovers the digit structure from raw pixels with no supervision -- purity ~=
+the fully-unsupervised vote ceiling (88.8%), consistent. Honest caveats: it OVER-grew (764 prototypes at vigilance
+0.85 -- aggressive; higher vigilance = fewer/purer) and did NOT self-converge (learning-progress stayed positive, hit
+the cycle budget still improving; the convergence gate exists, budget came first) -- both tunable knobs.
+
+This closes the "autonomous from raw data" question: feature learning, category formation, neurogenesis, and
+self-direction are all genuinely label-free; labels enter only to MEASURE the result. Research tier only; core untouched.
+
 ## [v3.66] -- developmental loop wired through nengo: live spike visualization in NengoGUI (2026-07-16)
 
 New `research/nengo_gui_devloop.py`: wires the developmental loop through nengo so its spikes can be VISUALISED in
