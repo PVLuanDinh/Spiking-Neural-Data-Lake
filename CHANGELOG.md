@@ -3,6 +3,29 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.59] -- neocortical LAMINAR readout + neurogenesis: integrated, honest NEGATIVE (partial freeze insufficient in a deep stack) (2026-07-16)
+
+Wired the neurogenesis readout into the canonical 6-layer NEOCORTICAL laminar motif (user: "use the version with
+neurogenesis but integrate the neocortex layers"). New `research/brain_adapters/laminar_readout.py`: conv1 features
+(thalamic input) -> L4 (internal granular / sensory input) -> L2/3 (external granular+pyramidal / FEATURE layer,
+GROWABLE + FREEZE neurogenesis) -> L5 (internal pyramidal / OUTPUT) -> L6 (multiform / top-down FEEDBACK gain on
+L2/3, one sigmoid-gated iteration). Layer roles taken from the v3.52 `cortical_microcircuit` (a dynamics model, not
+reused for compute). Wired into `developmental_loop_brain.py` (NORD_LAMINAR=1). The module is verified standalone:
+function-preserving L2/3 growth (extends L5 fan-in with a zero column; max|dlogit| 0.0 GPU), frozen L2/3 rows bit-exact,
+L6 feedback demonstrably changes logits.
+
+MEASURED in the loop (RTX 5070, MNIST, class-incremental, L2/3 grew 32->192): **63.7%** -- the WORST readout tested
+(vs linear 93.3%, flat-growable+freeze 88.8%, all-plastic MLP 78.6%). Curve crashes progressively 0.90 -> 0.59.
+
+Diagnosis (an instructive extension of the freeze finding): FREEZING ONE LAYER IS INSUFFICIENT IN A DEEP STACK. The
+laminar readout freezes only L2/3, but L4 upstream stays plastic and DRIFTS as new digits arrive, so the frozen L2/3
+blocks receive different L4 outputs than they were frozen for -- their preserved weights detect features that no longer
+arrive. The flat GrowableReadout's freeze worked precisely because its frozen units read the FIXED conv1 features
+directly. Fix path (untested): freeze the entire upstream path (L4 + L2/3) per digit, i.e. per-digit isolated columns.
+Honest conclusion: the neocortical laminar readout is faithfully built and runs (all 10 digits, L6 feedback active) but
+is accuracy-worst here -- deep architecture + partial freeze compounds forgetting on feature-sharing MNIST. Default
+readout stays linear (93.3%); laminar is a documented opt-in. Research tier only; zero-dep core untouched.
+
 ## [v3.58] -- brain-integrated developmental loop (Slice 2): executive + dopamine + global-workspace -- wiring COMPLETE (2026-07-15)
 
 Second (final) slice of the full coherent brain wiring. New `research/brain_adapters/executive_control.py` wraps three

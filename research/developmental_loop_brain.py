@@ -67,6 +67,7 @@ from brain_adapters.hippocampal_memory import HippocampalMemory
 from brain_adapters.growable_readout import GrowableReadout
 from brain_adapters.brain_decision import BrainDecision
 from brain_adapters.executive_control import ExecutivePlanner, DopamineModulator, WorkspaceBroadcast
+from brain_adapters.laminar_readout import LaminarReadout
 
 
 class _LinearReadout:
@@ -193,13 +194,17 @@ def main():
     # 78.6% at ~7 classes) where the linear readout does not. The neurogenesis mechanism is sound; MLP-continual-
     # forgetting is the cost. Kept opt-in for reproducibility.
     GROWABLE = _envi("NORD_GROWABLE", 0)
-    FREEZE = _envi("NORD_FREEZE", 1)       # (with GROWABLE=1) grow-and-FREEZE: progressive neurogenesis + parameter
-    #                                        isolation -- freeze each digit's units, grow a fresh block for the next,
-    #                                        so a new digit CANNOT overwrite old feature detectors (the CL fix).
-    if GROWABLE:
-        readout = GrowableReadout(D, n_classes=10, hidden=HIDDEN, seed=0)   # NEUROGENESIS: grows function-preservingly
+    LAMINAR = _envi("NORD_LAMINAR", 0)     # readout as the 6-layer NEOCORTICAL motif (L4->L2/3->L5->L6) with
+    #                                        NEUROGENESIS (grow+freeze) in the L2/3 feature layer.
+    FREEZE = _envi("NORD_FREEZE", 1)       # (with GROWABLE/LAMINAR=1) grow-and-FREEZE: progressive neurogenesis +
+    #                                        parameter isolation -- freeze each digit's units, grow a fresh block
+    #                                        for the next, so a new digit CANNOT overwrite old feature detectors.
+    if LAMINAR:
+        readout = LaminarReadout(D, n_classes=10, n23=HIDDEN, seed=0)       # cortical-column readout + L2/3 neurogenesis
+    elif GROWABLE:
+        readout = GrowableReadout(D, n_classes=10, hidden=HIDDEN, seed=0)   # flat MLP + function-preserving neurogenesis
     else:
-        readout = _LinearReadout(D, n_classes=10, seed=0)                   # diagnostic: plain continual linear (v3.54 winner)
+        readout = _LinearReadout(D, n_classes=10, seed=0)                   # plain continual linear (v3.54 winner, 93.3%)
     memory = HippocampalMemory(seed=0)                                  # real ReplayBuffer + SleepConsolidator
     decision = BrainDecision(n_actions=10, state_dim=10, seed=0)        # LatentQ value + MetacognitiveMonitor
     curiosity = SpikingCuriosityDrive(seed=0)
@@ -294,7 +299,7 @@ def main():
         if DOPA:
             da_gain = dopamine.modulate(competence[objective] - comp_before[objective])
         grew = ""
-        if GROWABLE and FREEZE:
+        if (GROWABLE or LAMINAR) and FREEZE:
             # PROGRESSIVE NEUROGENESIS + FREEZE: after learning this new digit, freeze its units and grow a fresh
             # block for the NEXT digit -> each digit owns a protected sub-network, new cannot overwrite old.
             if is_new and readout.n_hidden < HIDDEN_CAP:
