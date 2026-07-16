@@ -3,6 +3,33 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.63] -- 2-stage conv-STDP + SVM: global-pool recipe FAILS on digits, but RBF-SVM breaks 95% -> 96.2% (2026-07-16)
+
+Pursued the Kheradpisheh ~98% recipe (2 unsupervised conv-STDP stages + GLOBAL pooling + SVM readout).
+`research/deep_stdp_2stage_svm.py` trains conv1 (C1=30) + conv2 (C2=150, composite) unsupervised, global-max-pools
+each stage (translation-invariant length-C vector), and fits sklearn LinearSVC + RBF-SVC on three feature sets
+(fit on TRAIN, score on held-out TEST, no leakage). 15k train / 3k test on the RTX 5070.
+
+RESULT (test acc; stage-1 diversity 0.302, stage-2 0.122 -- both well-specialised):
+  feature set              LinearSVC   RBF-SVC
+  conv1 SPATIAL              93.8%      96.2%   <- NEW BEST
+  conv1 GLOBAL               52.3%      56.7%
+  conv1+conv2 GLOBAL         60.0%      63.9%
+
+Two honest findings:
+- GLOBAL POOLING FAILS on MNIST (conv1-global 56.7%, 2-stage-global 63.9% -- far below conv1-spatial). Kheradpisheh's
+  global pool works for NATURAL images (conv2 = large-receptive-field object-part detectors whose PRESENCE is
+  informative + translation-invariant). Our conv2 (5x5 over 12x12) is not object-parts, and MNIST digits are CENTRED +
+  spatially structured -- global max discards WHERE the strokes are, which IS the digit information. The recipe does
+  not transfer to centred digits; spatial features win.
+- The SVM lever DID deliver: RBF-SVC on conv1 SPATIAL features = **96.2%**, a new record beating the linear readout
+  (95.1% static / 93.3% loop) by ~1-3 pts. The NONLINEAR classifier extracts more from the SAME conv1 features than any
+  linear readout -- the path past the 95% ceiling was the classifier, not the second conv stage.
+
+So the ~95% wall is broken -> 96.2% via RBF-SVM on the existing conv1 spatial features (feature learning stays
+unsupervised; only the SVM is supervised). Toward ~98% the remaining levers are more DATA (Kheradpisheh uses full 60k;
+this used 15k) and/or a spatially-structured 2-stage (NOT global-pooled). Research tier only; zero-dep core untouched.
+
 ## [v3.62] -- feature-scaling follow-up: more training SPECIALISES 100 maps but accuracy SATURATES at baseline (2026-07-16)
 
 Follow-up to v3.61's finding that naive C1=100 hurt (maps under-specialised, diversity 0.549). Hypothesis: more
