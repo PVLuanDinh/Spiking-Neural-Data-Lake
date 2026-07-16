@@ -152,6 +152,46 @@ def batched_features(conv, X, batch=256):
     return torch.cat(out, dim=0)
 
 
+def batched_features_and_keys(conv, X, batch=256):
+    """One batched forward -> BOTH the spatial feature AND the compact global KEY.
+
+    Replaces the SNDL lake loop's redundant DOUBLE conv-forward: `batched_features`
+    (spatial [N,feat_dim]) and `torch.stack([_global_key(conv, img) for img in X])`
+    (key [N,C1]) each ran `_dog_latency`+`_forward` over the same images, so the
+    second forward was pure waste -- both outputs are functions of the SAME first-
+    spike map `fired`. Here `fired` is computed ONCE per image-batch and both come
+    off the ONE latency map `val`:
+
+      val    = where(fired < t_lat, (t_lat - fired)/t_lat, 0)   # [B,C,hout,hout]
+      spatial = (max_pool2d(val, conv.pool) -> flatten -> /per-image-max)
+                -- byte-identical tail to batched_features(conv, X)  -> [N, feat_dim]
+      keys    = val.amax(dim=(2, 3))                              # per-map global-max
+                -- byte-identical to _global_key's val.amax(dim=(1,2)) per image
+                                                                   -> [N, C1]
+
+    Returns (spatial [N, conv.feat_dim()], keys [N, conv.C]), both on conv.device.
+    """
+    device = conv.device
+    t_lat = conv.t_lat
+    N = len(X)
+    spat = []
+    keys = []
+    with torch.no_grad():
+        for i in range(0, N, batch):
+            xb = _as_batch(X[i:i + batch], device)
+            st = _dog_latency_batch(conv, xb)                         # [B,2,28,28]
+            fired = _forward_batch(conv, st)                          # [B,C,hout,hout]
+            val = torch.where(fired < t_lat,
+                              (t_lat - fired).float() / t_lat,
+                              torch.zeros_like(fired, dtype=torch.float32))
+            pooled = F.max_pool2d(val, conv.pool)                     # [B,C,ph,ph]
+            feat = pooled.reshape(val.shape[0], -1)                   # [B, feat_dim]
+            feat = feat / feat.amax(dim=1, keepdim=True).clamp_min(1e-6)
+            spat.append(feat)
+            keys.append(val.amax(dim=(2, 3)))                         # [B, C] global key
+    return torch.cat(spat, dim=0), torch.cat(keys, dim=0)
+
+
 def main():
     device = resolve_device()
     enable(device)
@@ -195,6 +235,33 @@ def main():
         f"FEATURES DIFFER: max abs diff {max_diff:.3e} >= 1e-4 -- the batched "
         "extractor is NOT numerically equivalent; the optimization is invalid.")
     print("  PASS: batched features match the per-image loop (< 1e-4).")
+
+    # -------- ONE-PASS spatial+keys (byte-equivalence gate) --------
+    def _ref_global_key(c, img):
+        """Reference per-image key -- exact copy of developmental_loop_lake._global_key."""
+        st = c._dog_latency(img)
+        fired, _ = c._forward(st)
+        val = torch.where(fired < c.t_lat, (c.t_lat - fired).float() / c.t_lat,
+                          torch.zeros_like(fired, dtype=torch.float32))
+        return val.amax(dim=(1, 2))                                   # [C1]
+
+    spatial_1p, keys_1p = batched_features_and_keys(conv, Xc, batch=BATCH)
+    key_ref = torch.stack([_ref_global_key(conv, x) for x in Xc])     # [N, C1] per-image loop
+    assert spatial_1p.shape == ref.shape, f"spatial shape mismatch: {spatial_1p.shape} vs {ref.shape}"
+    assert keys_1p.shape == key_ref.shape, f"keys shape mismatch: {keys_1p.shape} vs {key_ref.shape}"
+    spatial_diff = float((spatial_1p - ref).abs().max().item())
+    key_diff = float((keys_1p - key_ref).abs().max().item())
+    print("\n" + "-" * 66)
+    print(f"ONE-PASS batched_features_and_keys  ({CORRECT_N} images)")
+    print(f"  spatial vs batched_features    max abs diff = {spatial_diff:.3e}")
+    print(f"  keys    vs _global_key stack   max abs diff = {key_diff:.3e}")
+    assert spatial_diff < 1e-4, (
+        f"ONE-PASS SPATIAL DIFFERS: {spatial_diff:.3e} >= 1e-4 -- not equivalent to "
+        "batched_features; the single-pass refactor is invalid.")
+    assert key_diff < 1e-4, (
+        f"ONE-PASS KEYS DIFFER: {key_diff:.3e} >= 1e-4 -- not equivalent to the "
+        "per-image _global_key stack; the single-pass refactor is invalid.")
+    print("  PASS: one-pass spatial AND keys both match their two-pass references (< 1e-4).")
 
     # -------- SPEEDUP (same images, wall-clock) --------
     Xs = Xte[:SPEED_N]

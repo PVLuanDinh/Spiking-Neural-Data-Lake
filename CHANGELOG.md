@@ -3,6 +3,22 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.74] -- lake double conv-pass ELIMINATED: one-pass batched_features_and_keys (byte-identical) (2026-07-16)
+
+Completes the third v3.72 audit item (deferred as "moot" in v3.73, now done properly). `developmental_loop_lake.py`
+extracted features TWICE per image: the SPATIAL feature (`cache_features` -> conv forward) AND the C1 global KEY
+(`_global_key` -> a SECOND conv forward per image). New `batched_features_and_keys(conv, X, batch=256)` in
+`research/fast_features.py` runs the batched `_dog_latency`+`_forward` ONCE and derives BOTH from the same `fired`
+latency map: `spatial` (max_pool -> flatten -> /max tail) + `keys` (per-map global-max `val.amax`). Refactored
+`developmental_loop_lake.py` to `Ftr, Gtr = batched_features_and_keys(conv, Xtr)` (one call), deleting the per-image
+`_global_key` loop.
+
+VERIFIED byte-identical on the RTX 5070: spatial vs `batched_features` max abs diff **0.000e+00**, keys vs the
+`_global_key` stack **0.000e+00** -- the key VALUES are unchanged, only computed in one pass, so the lake loop still
+reaches ~90.2% and stays durable. Both files import clean; the extended fast_features self-check asserts both < 1e-4.
+All three audit follow-ups now complete (DRY `_loop_common` + lazy ProximityIndex in v3.73; double-conv here).
+Research tier only; zero-dep core untouched.
+
 ## [v3.73] -- DRY refactor (_loop_common) + lazy ProximityIndex build (behavior-preserving) (2026-07-16)
 
 The follow-up cleanups the v3.72 audit flagged. Behavior-preserving throughout (results unchanged).

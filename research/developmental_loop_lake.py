@@ -36,19 +36,8 @@ from deep_stdp_latency import ConvLatencyStdp, _train
 from brain_adapters.lake_memory import LakeMemory
 
 
-from _loop_common import envi as _envi, LinearReadout, cache_features, acc as _acc   # noqa: E402 (shared DRY helpers)
-
-
-def _global_key(conv, img):
-    """Compact C1-dim (<=64) proximity KEY: one global latency value per conv1 feature map.
-    fired[C1,h,w] -> (t_lat - fired)/t_lat, global-max over space -> length C1 in [0,1]."""
-    st = conv._dog_latency(img)
-    fired, _ = conv._forward(st)
-    val = torch.where(fired < conv.t_lat, (conv.t_lat - fired).float() / conv.t_lat,
-                      torch.zeros_like(fired, dtype=torch.float32))
-    return val.amax(dim=(1, 2))            # [C1]
-
-
+from _loop_common import envi as _envi, LinearReadout, acc as _acc   # noqa: E402 (shared DRY helpers)
+from fast_features import batched_features_and_keys                  # noqa: E402 (one-pass spatial+keys)
 
 
 def main():
@@ -80,10 +69,9 @@ def main():
         _train(conv, Xtr, f"conv1 ep{ep + 1}/{L1_EPOCHS}")
     print(f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}")
 
-    print("[cache] conv1 SPATIAL features (train+test) + compact C1 global KEYS...")
-    Ftr = cache_features(conv, Xtr, dev)
-    Fte = cache_features(conv, Xte, dev)
-    Gtr = torch.stack([_global_key(conv, img) for img in Xtr], 0)     # [Ntr, C1] proximity keys
+    print("[cache] conv1 SPATIAL features (train+test) + compact C1 global KEYS (ONE forward pass)...")
+    Ftr, Gtr = batched_features_and_keys(conv, Xtr)                   # [Ntr, feat_dim], [Ntr, C1] proximity keys
+    Fte, _ = batched_features_and_keys(conv, Xte)                     # (test keys unused)
     ytr, yte = Ytr.long().to(dev), Yte.long().to(dev)
     D = Ftr.shape[1]
     tr_by = {d: (Ytr == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
