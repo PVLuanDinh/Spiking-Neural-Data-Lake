@@ -3,6 +3,25 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.66] -- developmental loop wired through nengo: live spike visualization in NengoGUI (2026-07-16)
+
+New `research/nengo_gui_devloop.py`: wires the developmental loop through nengo so its spikes can be VISUALISED in
+NengoGUI (user request). Follows the existing `research/nengo_gui_brain.py` / `substrate/nengo_bridge.py` pattern
+(numeric signal -> spiking NEF Ensemble + probes). At import a small unsupervised conv1 (`ConvLatencyStdp` C1=16, 2
+epochs, 3000-img subset) is pre-trained + frozen; a `DevLoopDriver` runs the `developmental_loop_deep` control flow
+(SpikingCuriosityDrive picks the objective, LocusCoeruleus boosts the readout lr, a continual nn.Linear head learns
+frozen features with replay). One `nengo.Node` advances a loop cycle every ~40 sim steps and streams a demo digit each
+step, outputting `[perception(C1 conv1 first-spike activity) | competence(10) | objective | LC-NA+curiosity | test-acc+
+curriculum]`; each slice drives its own LABELLED spiking NEF ensemble. The headline "perception (conv1 feature spikes)"
+ensemble shows the genuine per-map first-spike activity.
+
+Headless-verified on the RTX 5070 (`.venv-cu128`, torch+nengo 4.1.0): a short `nengo.Simulator` run advanced 5 loop
+cycles and drove **5867 nengo spikes** across the 5 labelled ensembles (perception 1646, competence 1269, objective 701,
+neuromod 1119, progress 1132), conv1 diversity 0.385 (no collapse). Observation + classification only, no actuator route.
+LAUNCH THE GUI (user-side; the socket bind cannot run headless): from the repo root,
+`.venv-cu128\Scripts\nengo.exe -P 8765 research\nengo_gui_devloop.py` (port flag `-P` capital; 8080 is Windows-blocked;
+browser at localhost:8765). Research tier only; zero-dep core untouched.
+
 ## [v3.65] -- data lever REACHES ~98%: linear+RBF ensemble hits 98.2% on unsupervised conv1 spikes (2026-07-16)
 
 The data lever toward ~98%. Re-ran `research/ensemble_rbf.py` at 30k train / FULL 10k test (up from 10k/2k), and swapped
