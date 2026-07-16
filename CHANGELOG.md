@@ -3,6 +3,30 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.54] -- deep developmental loop: conv1 + continual linear readout wired in -> 93.5% (2026-07-15)
+
+Wired the v3.53 winner (unsupervised conv1 features + a linear readout) INTO the autonomous developmental loop
+(`research/developmental_loop_deep.py`). The loop's AUTONOMY machinery is preserved verbatim -- SpikingCuriosityDrive
+picks the objective digit, SpikingCurriculum self-paces, LocusCoeruleus modulates the readout lr, replay consolidates
+-- but the accuracy path is swapped: instead of growable STDP prototypes + a neuron-label VOTE, the learner is a
+single CONTINUAL nn.Linear over frozen (cached) conv1 features, trained online across cycles with balanced replay as
+the anti-forgetting mechanism. Feature learning stays fully UNSUPERVISED (conv1 pre-trained no-labels, frozen); only
+the thin linear readout is supervised (the accepted thesis tradeoff). Prototype-neurogenesis is replaced by the
+conv1+linear stack (the growth lever was an accuracy lever; the autonomy machinery is untouched).
+
+MEASURED (RTX 5070, MNIST 10000/2000, C1=30, self-directed, no leakage -- train/test caches strictly separate):
+- Deep loop reaches **93.5%** overall held-out (replay=200, sgd=300; the shipped default), or 90.7% at lighter
+  replay=80/sgd=150. Both BEAT the old vote developmental loop (best 88.8%): +4.7 / +1.9 points.
+- vs the v3.53 STATIC joint linear readout (95.1%): the continual loop costs **-1.6%** (replay=200) or -4.4%
+  (replay=80). The gap is the classic continual-vs-joint forgetting penalty; more rehearsal narrows it (curve
+  degrades gently 1.00 -> ~0.93 as digits accumulate, then holds). The full 95.1% needs joint (non-developmental)
+  training; the self-directed continual loop gets within 1.6% of it.
+
+So the deepening arc converts to a real loop gain: the autonomous developmental loop now reaches 93.5% (from 88.8%),
+staying self-directed (curiosity chose all 10 digits, curriculum mastered 7/10) and spiking-unsupervised in its
+perception, with a supervised linear head as the readout. Self-check asserts the continual readout beats the vote-loop
+bar (>0.85) + chance, prints the honest signed gap to the joint (does not assert 95.1%). Research tier only; core untouched.
+
 ## [v3.53] -- LINEAR readout on deep spiking features: the readout WAS the cap; depth HELPS -> 95.1% (2026-07-15)
 
 The decisive test that closes the deepening arc (v3.49-52). `research/deep_stdp_readout.py` puts a LINEAR readout
