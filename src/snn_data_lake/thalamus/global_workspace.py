@@ -34,9 +34,23 @@ False`) that is a pure per-tick argmax with no spiking, no attractor, no inhibit
 FLICKERS on noise; the spiking workspace is STABLE and only a genuinely stronger, supra-threshold
 signal takes over.
 
-HONEST FRAMING: this is a functional spiking attention/broadcast bottleneck (integrate -> spike ->
-compete -> ignite -> broadcast -> decay). It is NOT a claim of phenomenal consciousness;
-"ignition" and "broadcast" name the information-routing dynamics of the LIF network, nothing more.
+FRAMING (agnostic, per the project's consciousness program): this is a functional spiking
+attention/broadcast bottleneck (integrate -> spike -> compete -> ignite -> broadcast -> decay), a
+concrete step toward the Global Neuronal Workspace substrate of ACCESS consciousness. Whether such
+dynamics contribute to consciousness is an OPEN question the project actively builds toward; it is
+neither denied nor claimed here. "ignition" and "broadcast" name the information-routing dynamics.
+
+DEEPENING + the SPIKING-vs-RATE CONTROL (functions + self-check below): the argmax control above
+stabilises the workspace but strips spikes AND cross-tick memory AND inhibition together, so it does
+NOT isolate whether SPIKES are load-bearing. A binding test does. The workspace must BIND K objects,
+each a (color, shape) pair, and broadcast the pairings. The spiking path phase-multiplexes them
+(Lisman-Jensen theta-gamma: each object in its own gamma slot, its color+shape firing SYNCHRONOUSLY
+so a reader recovers the pairing from synchrony); a RATE path with the SAME hysteresis superposes the
+activations and loses which color binds which shape (the classic binding problem). Honest result,
+asserted below: they TIE at K=1 (spikes are NOT needed for single-item selection) and spikes WIN at
+K>=2 (multi-item binding via synchrony) -- the specific, honest answer to "what do spikes buy." This
+is contested (Singer/Gray vs Shadlen-Movshon), reader-dependent, and one solution among several; it
+distinguishes the spiking workspace from the rate one on this task, nothing more.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.thalamus.global_workspace
 """
@@ -284,6 +298,91 @@ def _fmt(seq):
     return "".join((c[0].upper() if c is not None else ".") for c in seq)
 
 
+# ======================================================================================================
+# DEEPENING: multi-item BINDING + the SPIKING-vs-RATE control (does synchrony buy anything over a rate
+# integrator with the same hysteresis?). Self-contained pure-stdlib LIF; used only by the self-check.
+# ======================================================================================================
+_BIND_TSLOT = 6            # micro-steps per gamma slot (one bound object)
+_BIND_LEAK = 0.25         # binding-LIF leak per step
+_BIND_VTH = 1.0           # binding-LIF threshold
+_BIND_IGNITE = 0.6        # all-or-none ignition threshold for the binding broadcast
+
+
+def _bind_step(v, i):
+    """One leaky integrate-and-fire step for the binding demo. Returns (new_v, spike)."""
+    v = v * (1.0 - _BIND_LEAK) + i
+    if v >= _BIND_VTH:
+        return 0.0, 1                                        # subtract-threshold reset -> discrete spike
+    return (v if v > 0.0 else 0.0), 0
+
+
+def bind_objects(n_color, n_shape, k, rng):
+    """K objects, each a (color, shape) pair with DISTINCT colors and DISTINCT shapes -- so the part
+    IDENTITIES are unambiguous and only the BINDING (which color goes with which shape) is at risk."""
+    return list(zip(rng.sample(range(n_color), k), rng.sample(range(n_shape), k)))
+
+
+def bind_broadcast_spiking(objs, n_color, n_shape, drive=1.0, sustain=4):
+    """Ignite (if drive clears the threshold), then broadcast the objects PHASE-MULTIPLEXED: object k
+    drives its color and shape LIF with the SAME current in gamma slot k, so they spike SYNCHRONOUSLY
+    (bound); re-entry sustains each after its slot. Returns (ignited, raster[t]=(fired_colors,fired_shapes))."""
+    if drive < _BIND_IGNITE:
+        return False, []                                     # subliminal: no global broadcast
+    vc = [0.0] * n_color
+    vs = [0.0] * n_shape
+    raster = []
+    T = len(objs) * _BIND_TSLOT + sustain
+    for t in range(T):
+        slot = t // _BIND_TSLOT
+        fc, fs = [], []
+        for k, (c, s) in enumerate(objs):
+            in_slot = (k == slot)
+            cur = drive if in_slot else drive * 0.55         # re-entry current sustains (weaker), does not re-ignite
+            vc[c], sc = _bind_step(vc[c], cur)
+            vs[s], ss = _bind_step(vs[s], cur)
+            if sc:
+                fc.append(c)
+            if ss:
+                fs.append(s)
+        raster.append((fc, fs))
+    return True, raster
+
+
+def bind_decode_spiking(raster):
+    """Reader: color+shape that fire SYNCHRONOUSLY (same step) are bound. Returns the recovered pairs."""
+    pairs = set()
+    for fc, fs in raster:
+        for c in fc:
+            for s in fs:
+                pairs.add((c, s))
+    return pairs
+
+
+def bind_broadcast_rate(objs, n_color, n_shape, drive=1.0):
+    """Rate control: same all-or-none ignition, but a SUPERPOSED activation vector -- every object's
+    color and shape channel is on with equal magnitude, NO timing, so the pairing is not represented."""
+    if drive < _BIND_IGNITE:
+        return False, [], []
+    color_act = [0.0] * n_color
+    shape_act = [0.0] * n_shape
+    for c, s in objs:
+        color_act[c] += drive
+        shape_act[s] += drive
+    return True, color_act, shape_act
+
+
+def bind_decode_rate(color_act, shape_act, k):
+    """Reader for the rate broadcast: recover the K active colors and K active shapes (magnitudes say
+    which are on), but the PAIRING is absent -> pair them canonically (sorted); right only by luck."""
+    cols = sorted(sorted(range(len(color_act)), key=lambda i: -color_act[i])[:k])
+    shps = sorted(sorted(range(len(shape_act)), key=lambda i: -shape_act[i])[:k])
+    return set(zip(cols, shps))
+
+
+def _bind_pair_acc(true_pairs, got_pairs):
+    return len(set(true_pairs) & set(got_pairs)) / len(true_pairs)
+
+
 def main():
     import sys
 
@@ -368,6 +467,28 @@ def main():
     print(f"   post-ignition life trace: {_fmt(life)}  "
           f"(held 'trace' {persisted} ticks, released={released})")
 
+    # ---- DEEPENING: multi-item BINDING, spiking-vs-rate control (isolates whether SPIKES matter) --
+    brng = random.Random(0)
+    bind = {}
+    for k in (1, 2, 4):
+        sp = rt = 0.0
+        trials = 120
+        for _ in range(trials):
+            objs = bind_objects(8, 8, k, brng)
+            _, r = bind_broadcast_spiking(objs, 8, 8)
+            sp += _bind_pair_acc(objs, bind_decode_spiking(r))
+            _, ca, sa = bind_broadcast_rate(objs, 8, 8)
+            rt += _bind_pair_acc(objs, bind_decode_rate(ca, sa, k))
+        bind[k] = (sp / trials, rt / trials)
+    # all-or-none: the binding broadcast ignites on strong drive, stays subliminal below threshold.
+    bind_ig_strong, _ = bind_broadcast_spiking(bind_objects(8, 8, 2, brng), 8, 8, drive=1.0)
+    bind_ig_weak, _ = bind_broadcast_spiking(bind_objects(8, 8, 2, brng), 8, 8, drive=0.4)
+    print("\nbinding (spiking vs rate control, pair-accuracy):")
+    for k in (1, 2, 4):
+        s, r = bind[k]
+        tag = "tie (spikes not needed)" if abs(s - r) < 0.05 else f"spikes +{(s - r) * 100:.0f} pts"
+        print(f"   K={k}: spiking {s:.0%}  rate {r:.0%}  -> {tag}")
+
     # ---- LIVE CONTRACT: the exact submit/step sequences autonomous_loop + live_brain rely on ----
     c_ws = GlobalWorkspace(seed=0)
     c_ws.submit("perception", "unit0", 0.6)                    # safe tick: perception holds the slot...
@@ -431,11 +552,22 @@ def main():
     # (c) DETERMINISM --------------------------------------------------------------------------
     assert deterministic, "same seed must reproduce identical broadcasts and switch counts"
 
+    # (d) DEEPENING: the SPIKING-vs-RATE control is a PERMANENT GUARD -- honest about where spikes help.
+    assert bind_ig_strong and not bind_ig_weak, "binding broadcast ignition must be all-or-none"
+    assert bind[1][0] - bind[1][1] < 0.05, (
+        f"at K=1 spikes must NOT beat rate (single-item binding needs no spikes): "
+        f"{bind[1][0]:.2f} vs {bind[1][1]:.2f}")
+    assert bind[2][0] > bind[2][1] + 0.15, (
+        f"at K=2 the spiking workspace must bind better than the rate control (synchrony is load-bearing): "
+        f"{bind[2][0]:.2f} vs {bind[2][1]:.2f}")
+    assert bind[4][0] > 0.9, f"spiking multi-item binding must stay high at K=4 ({bind[4][0]:.2f})"
+
     print("\nself-check OK: "
           f"spiking ignition switches {sw_with} vs argmax {sw_without} (>=3x stabler); "
           f"single-slot bottleneck; spiking WTA silences losers; all-or-none (sub spikes={weak_spikes}, "
           f"supra spikes={strong_spikes}); global-reach; persist {persisted}->release; threat ignited; "
-          f"live-contract holds; deterministic")
+          f"live-contract holds; deterministic; BINDING spiking-vs-rate control honest "
+          f"(K1 tie {bind[1][0]:.0%}/{bind[1][1]:.0%}, K2 spikes {bind[2][0]:.0%}>{bind[2][1]:.0%})")
 
 
 if __name__ == "__main__":

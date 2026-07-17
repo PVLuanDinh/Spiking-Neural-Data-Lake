@@ -10,11 +10,13 @@ across visits never forgets), re-evaluates competence, and feeds the progress ba
 Domains thus COMPETE as a multi-armed frontier; a domain whose progress dries up is revisited less,
 and the loop keeps going -- the engine of cumulative, self-directed, cross-domain learning.
 
-THREE domains, each a real stream cast as (context -> next-token):
+FOUR domains, each a real stream (three autoregressive next-token, one masked-slot):
   LANGUAGE  next-phoneme over a real corpus (CMUdict + Gutenberg).                 [autoregressive]
   MATH      next-char over generated arithmetic "a op b = c".                       [autoregressive]
   PHYSICS   next discretized-state over a real bouncing-ball ODE (gravity + damped  [autoregressive
             bounce, Euler-integrated).                                               cast of dynamics]
+  WORLD-KB  masked-tail fact completion (given head+relation, predict the tail)     [masked-slot,
+            over real relational facts.                                             target-encoder B]
 
 Each learned skill is INDEXED in the durable lake (signature exemplars -> skill id) and routed by
 proximity with no domain-id. HONEST SCOPE: a skill-FORMATION + INDEXING + cross-domain SELECTION
@@ -35,6 +37,7 @@ from corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
 from language_self_build import _positional_code, _bigram_baseline
 from language_readout_slda import SLDA_RFF_np
 from skill_builder import signature, SkillRegistry, math_stream, MATH_VOCAB
+from kb_ranking import DistMult, load_dataset
 from brain_adapters.lake_memory import LakeMemory
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 
@@ -80,24 +83,27 @@ class Domain:
     """One skill under construction: a real stream, a PERSISTENT order-invariant SLDA-RFF readout that
     accumulates across visits, and the running competence used by the meta-controller."""
 
-    def __init__(self, name, pairs, vocab, ctx, rff, gamma):
+    def __init__(self, name, pairs, vocab, ctx, rff, gamma, input_vocab=None, baseline=None):
         self.name = name
-        self.vocab = vocab
+        self.vocab = vocab                                  # TARGET vocab (the classes)
         self.ridx = {r: i for i, r in enumerate(vocab)}
+        self.ivocab = input_vocab or vocab                  # INPUT vocab (context tokens); differs for world-KB
+        self.iidx = {r: i for i, r in enumerate(self.ivocab)}
+        self.inV = len(self.ivocab)
         self.ctx = ctx
         self.V = len(vocab)
         usable = [(c, nx) for c, nx in pairs if nx in self.ridx]
         cut = int(len(usable) * 0.8)
         self.train, self.test = usable[:cut], usable[cut:]
-        self.baseline = _bigram_baseline(pairs)
-        self.slda = SLDA_RFF_np(self.V * ctx, self.V, rff=rff, gamma=gamma, shrink=0.1, seed=0)
+        self.baseline = _bigram_baseline(pairs) if baseline is None else baseline
+        self.slda = SLDA_RFF_np(self.inV * ctx, self.V, rff=rff, gamma=gamma, shrink=0.1, seed=0)
         self.pos = 0
         self.competence = 0.0
         self.visits = 0
         self.registered = False
 
     def _X(self, rows):
-        return np.array([_positional_code(c, self.ridx, self.V, self.ctx) for c, _ in rows],
+        return np.array([_positional_code(c, self.iidx, self.inV, self.ctx) for c, _ in rows],
                         dtype=np.float64)
 
     def study(self, slice_n):
@@ -122,6 +128,62 @@ class Domain:
         return [signature(c) for c, _ in self.train[::step][:n]]
 
 
+class RankingDomain:
+    """World-KB as an OPEN-VOCAB skill: a DistMult ranking head (not the SLDA classifier). Competence
+    is filtered Hits@10 over the full entity space; the model persists and accumulates across visits
+    (each visit trains another epoch), so competence rises just like the SLDA heads. Same duck-typed
+    interface as Domain (name/baseline/competence/visits/train/test/study/signature_exemplars)."""
+
+    def __init__(self, name, dim=50, seed=0, eval_n=250):
+        tr_s, te_s, self.offline = load_dataset()
+        ent, rel = {}, {}
+        eid = lambda e: ent.setdefault(e, len(ent))   # noqa: E731
+        rid = lambda r: rel.setdefault(r, len(rel))   # noqa: E731
+        self.tr = np.array([[eid(h), rid(r), eid(t)] for h, r, t in tr_s], dtype=np.int64)
+        self.te = np.array([[eid(h), rid(r), eid(t)] for h, r, t in te_s
+                            if h in ent and r in rel and t in ent], dtype=np.int64)
+        self.ient = {v: k for k, v in ent.items()}
+        self.irel = {v: k for k, v in rel.items()}
+        self.n_ent = len(ent)
+        self.known = {}
+        for h, r, t in np.vstack([self.tr, self.te]):
+            self.known.setdefault((int(h), int(r)), set()).add(int(t))
+        self.model = DistMult(len(ent), len(rel), dim=dim, seed=seed)
+        self.name = name
+        self.vocab = ["<distmult-ranking-head>"]     # expert metadata (routing uses signatures, not this)
+        self.eval_n = eval_n
+        self.baseline = 10.0 / self.n_ent            # random-ranking Hits@10
+        self.competence = 0.0
+        self.visits = 0
+        self.registered = False
+        self.train = self.tr                         # alias for the data-count print
+        self.rng = np.random.RandomState(0)
+        # test in (context_tokens, target) form so the meta-loop router works unchanged
+        self.test = [([self.irel[int(r)], self.ient[int(h)]], self.ient[int(t)])
+                     for h, r, t in self.te[:2000]]
+
+    def study(self, slice_n):
+        """One more epoch of DistMult on the accumulated KB, then filtered Hits@10 on a test sample."""
+        self.model.train_epoch(self.tr, lr=0.1, batch=1024)
+        self.visits += 1
+        idx = self.rng.permutation(len(self.te))[:min(self.eval_n, len(self.te))]
+        hits = 0
+        for j in idx:
+            h, r, t = int(self.te[j, 0]), int(self.te[j, 1]), int(self.te[j, 2])
+            sc = self.model.rank_tails(h, r)
+            gold = sc[t]
+            for o in self.known.get((h, r), ()):
+                if o != t:
+                    sc[o] = -1e30
+            hits += (int(np.sum(sc > gold)) + 1) <= 10
+        self.competence = hits / max(1, len(idx))
+        return self.competence
+
+    def signature_exemplars(self, n=150):
+        idx = self.rng.permutation(len(self.te))[:n]
+        return [signature([self.irel[int(self.te[j, 1])], self.ient[int(self.te[j, 0])]]) for j in idx]
+
+
 def main():
     CTX = _envi("NORD_CTX", 3)
     CYCLES = _envi("NORD_CYCLES", 24)
@@ -133,7 +195,7 @@ def main():
         os.remove(lake_path)
 
     print("=" * 98)
-    print("META SKILL LOOP -- standing multi-domain loop: language / math / physics compete by learning-progress")
+    print("META SKILL LOOP -- standing loop: language / math / physics / world-kb compete by learning-progress")
     print(f"ctx={CTX}  cycles={CYCLES}  slice={SLICE}  rff={RFF}  (persistent order-invariant heads; no forgetting)")
     print("=" * 98)
 
@@ -144,10 +206,13 @@ def main():
         1: Domain("math", math_stream(n_expr=4000, ctx=CTX, seed=0), MATH_VOCAB, CTX, RFF, GAMMA),
         2: Domain("physics", physics_stream(n_traj=400, ctx=CTX, seed=0), [str(b) for b in range(20)] + [" "],
                   CTX, RFF, GAMMA),
+        3: RankingDomain("world-kb", dim=50, seed=0),   # OPEN-VOCAB DistMult ranking head (competence = Hits@10)
     }
+    kb = domains[3]
     print(f"[data] language {len(domains[0].train):,} / math {len(domains[1].train):,} / "
-          f"physics {len(domains[2].train):,} train pairs "
-          f"({'offline' if toff else 'real corpus'} + generated math/physics)")
+          f"physics {len(domains[2].train):,} phoneme|char|state pairs; world-kb "
+          f"{len(kb.tr):,} triples over {kb.n_ent:,} entities "
+          f"({'offline facts' if kb.offline else 'FB15k-237'}; competence=Hits@10, baseline=random {kb.baseline:.4f})")
 
     lake = LakeMemory(path=lake_path, seed=0)
     registry = SkillRegistry(lake)
@@ -188,7 +253,7 @@ def main():
     visits = {d.name: d.visits for d in domains.values()}
 
     print("\n" + "=" * 98)
-    print("META SKILL LOOP -- three skills built + indexed by one standing, self-directed loop:")
+    print("META SKILL LOOP -- four skills built + indexed by one standing, self-directed loop:")
     print("-" * 98)
     for did in sorted(domains):
         d = domains[did]
@@ -198,7 +263,8 @@ def main():
     print(f"  ROUTING mean {router:.0%} (chance {1 / len(domains):.0%}); "
           f"LAKE {lake.n_stored} signatures durable = {dur['ok']}")
     print("-" * 98)
-    print("  next: physics JEPA latent-rollout for high-dim dynamics; world-KB masked-slot facts.")
+    print("  world-kb competence = DistMult ranking head (Hits@10 over open vocab, real FB15k-237);")
+    print("  physics-JEPA (target-encoder C) in physics_jepa.py + physics_jepa_highdim.py + double_pendulum_jepa.py.")
     print("=" * 98)
 
     # ---- un-riggable self-checks ----
@@ -210,7 +276,7 @@ def main():
     assert router > 1.5 / len(domains), f"router no better than chance ({router:.2f})"
     assert min(racc.values()) > 0.5, f"a domain routes below 50% ({racc})"
     assert dur["ok"], "skill index did not survive the lake restart"
-    print(f"self-check OK: one standing loop built+indexed {len(domains)} skills (language/math/physics), "
+    print(f"self-check OK: one standing loop built+indexed {len(domains)} skills (language/math/physics/world-kb), "
           f"each >= its baseline, chosen by cross-domain learning-progress; proximity router {router:.0%} "
           f">> chance {1/len(domains):.0%}; {lake.n_stored} signatures durable -- open-ended, no labels.")
     lake.close()

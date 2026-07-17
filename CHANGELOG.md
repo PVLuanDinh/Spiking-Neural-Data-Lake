@@ -3,6 +3,43 @@
 All notable changes to the Spiking Neural Data Lake. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); each version is a git tag.
 
+## [v3.76] -- GWT deepening (spiking-vs-rate binding control) to core + skill-builder domain suite + audit-vetted readout studies (2026-07-16)
+
+CONSCIOUSNESS PROGRAM (agnostic, actively building toward it -- neither denied nor claimed): the core
+`thalamus/global_workspace.py` gains a DEEPENING + a permanent honesty guard. The existing argmax
+control stabilises the workspace but strips spikes+memory+inhibition together, so it never isolates
+whether SPIKES are load-bearing. NEW module functions + self-check add a multi-item BINDING test with a
+SPIKING-vs-RATE control (same hysteresis): the workspace must bind K (color,shape) objects and broadcast
+the pairings; the spiking path phase-multiplexes them (theta-gamma synchrony binds color+shape of one
+object), a rate path superposes and loses the pairing. HONEST result asserted permanently: they TIE at
+K=1 (spikes NOT needed for single-item selection) and spikes WIN at K>=2 (100% vs 51% at K=2, 100% vs
+26% at K=4) -- the specific answer to "what do spikes buy": multi-item binding via synchrony (contested,
+reader-dependent, one solution among several). The `GlobalWorkspace` class + its live contract
+(autonomous_loop sec 8 + live_brain + E-STOP) are byte-identical (additive only). Framing updated from
+"NOT a claim of consciousness" to agnostic-pursuit. Research prototype: `research/gwt_deep.py`.
+
+SKILL-BUILDER DOMAIN SUITE (research/, all honestly scoped): `world_kb_stream.py` (masked-slot fact
+completion 50% vs 26.9% baseline on real relational facts); `kb_ranking.py` (from-scratch DistMult on
+REAL FB15k-237, 272k triples/14.5k entities, filtered Hits@10 0.30, 431x random -- the open-vocab
+competence head); `physics_jepa.py` (action-conditioned latent JEPA -- HONEST NEGATIVE: learned latent
+does not beat a random encoder on a near-linear world, JL); `physics_jepa_highdim.py` (+63% vs random
+once the obs is high-dim + mostly noise); `double_pendulum_jepa.py` (+60% on a genuinely CHAOTIC double
+pendulum). `meta_skill_loop.py` now a 4-domain standing loop with the DistMult ranking head wired as
+world-KB's competence path (language/math/physics/world-kb, routed 77-84% vs 25% chance).
+
+READOUT STUDIES (audit-vetted, correcting earlier overstatements): `readout_fair_compare.py` (Tier-1
+honesty fix -- at EQUAL training budget the decoder swap R-STDP->SLDA-RFF is worth +17.5 pts, but
+SLDA-RFF only TIES the trigram, and the single-layer R-STDP readout DEGRADES with more data; the earlier
+"7% vs 22%" conflated a 15x data difference); `readout_boost.py` (Tier-2 -- on frozen features ensembling
+SLDA-RFF adds only +0.3 and an MLP head is -0.7, so the readout is at its ceiling; the next real gain is
+a better ENCODER, not more decoder engineering -- confirming the two audits). A Fable5 spec for the
+Tier-3 encoder (DCLS learnable delays + adaptive-LIF, served frozen via a `snn_rsnn/1` contract, benched
+on SHD/SSC/N-MNIST) is on record, not yet built.
+
+Gates GREEN (core 205/205 incl. the expanded GWT self-check, ruff clean). Zero-dep CORE untouched except
+the additive `global_workspace.py` self-check. (`research/open_world_loop.py` autonomous domain discovery
+is WIP -- excluded pending a DP-means perf fix.)
+
 ## [v3.75] -- enclosed-loop RECOVERY 47.4->96%, packed AER lake (2x), autonomous general skill-builder (lang/math/physics) (2026-07-16)
 
 Five research-tier landings, zero-dep CORE untouched, all gates green (core 205/205, ruff clean, substrate pytest).
