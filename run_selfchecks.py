@@ -134,7 +134,18 @@ RESEARCH = [
     "reasoning.reasoning_compose",  # MULTI-STEP composition over the MoE router (bounded expert grammar)
     "reasoning.pc_abduction",       # ABDUCTION (min-free-energy cause selection) + Pearl 3-step counterfactual
     "reasoning.rose_language",      # ROSE fluent-language pipeline: VSA constituency + grounded semantics + SLDA competence
+    "reasoning.rpm_solver",         # spiking NVSA Raven's-matrix solver: role-filler + example->rule induction (Gf)
+    "reasoning.raven_bench",        # honest RPM benchmark (synthetic tasks + failing random control)
+    "reasoning.vsa_synthesize",     # OUT-OF-GRAMMAR Gf: synthesizes novel rules as VSA spike-op programs (no fixed menu)
+    "reasoning.ar_spiking_lm_serve", # forward-only Spiking-RWKV serve: order-sensitive logprob (the BLiMP lever)
+    "reasoning.eprop_lm_serve",     # BRAIN-NATIVE e-prop recurrent-spiking LM serve: order-sensitive logprob (no backprop)
+    "reasoning.eprop_lm_alif_serve", # deep-ALIF e-prop LM serve: adaptive-threshold long-range, order-sensitive logprob
     "reasoning.self_improve", "reasoning.godel_machine", "reasoning.self_mod_harness", "reasoning.content_signature",
+    # the two OUTSIDE yardsticks the depth ceilings are measured against. Both SKIP-with-notice when
+    # their dataset is not downloaded, so the zero-dep CI matrix stays green either way.
+    "reasoning.arc_bench",          # ARC-AGI: exact-match pass@2 over 800 tasks; controls must score ~0
+    "reasoning.blimp_bench",        # BLiMP: 67 paradigms x 1000 minimal pairs; chance 50%, human 88.6%
+    "reasoning.arc_solver",         # test-time program synthesis over 2-D grids (object DSL + iterative deepening)
 ]
 # TORCH/NUMPY-GATED CORE -- modules that import a heavy numeric dep (torch or numpy); run ONLY where
 # it is importable and SKIPPED-with-notice otherwise, so the pure-stdlib CI matrix + the in-process

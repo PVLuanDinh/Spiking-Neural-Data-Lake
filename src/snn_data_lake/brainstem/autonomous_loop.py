@@ -55,6 +55,9 @@ from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
 ACTIONS = ("GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD")   # the arm's autonomous action repertoire
 SAFE_ACTION = "HOLD"                                  # what caution biases toward under stress
+# W4c: self-motion step DERIVED from the chosen action (a real behavioral trajectory), not a constant drift.
+# Representation-only -- this feeds the allocentric MAP readout, never the actuator (the arm gate is separate).
+_ALLO_MOVE = {"GRIPPER_CLOSE": (0.05, 0.0), "GRIPPER_OPEN": (-0.05, 0.0), "HOLD": (0.0, 0.04)}
 
 
 class AutonomousArm:
@@ -102,6 +105,7 @@ class AutonomousArm:
         self._attn_on = bool(attention)
         self._rgate = self._dnorm = self._claustrum = None   # lazily built on the first attended tick
         self._attn_mask = []                             # per-modality relay gains (attended band released)
+        self._attn_gain = None                           # per-band multiplicative gain APPLIED to the learner's percept
         self._attended = -1                              # index of the attended modality band
         self._bound_modalities = 0                       # cross-modal assemblies the claustrum bound
         # opt-in amygdala: a REAL learned threat detector (CS-US fear conditioning). Each reflex danger
@@ -152,6 +156,7 @@ class AutonomousArm:
         self.jepa = None
         self.jepa_horizon = max(1, min(4, int(jepa_horizon)))   # bounded rollout (the learned map can diverge)
         self._z_goal = None                                     # reward-EMA of latents = the latent goal to plan toward
+        self._autotelic_goal_thresh = 0.02                      # min intrinsic reward that forms a latent goal (autotelic planning)
         self._jepa_prev = None                                  # (prev pattern, prev action) for the online (z,a,z') update
         # opt-in SERVED H-JEPA: a GPU-trained 2-level hierarchical JEPA (cerebellum/hjepa_serve.HJepaServe, FROZEN).
         # The executive plans over the ABSTRACT (Level-1) latent: z0 = encode0(pattern) each tick fills a K-window,
@@ -214,6 +219,8 @@ class AutonomousArm:
         self._naca_credit = 0.0                                 # neuromod-corrected credit readout
         self._allo_on = bool(allocentric)
         self._allo = None
+        self._allo_pos = None
+        self._allo_nearest = None                               # W4c: nearest recalled landmark (map now READ BACK, not telemetry-only)
         self._allo_pos = (0.0, 0.0)                             # allocentric position estimate readout
         self._gain_on = bool(gain_adapt)
         self._gain = None
@@ -284,10 +291,12 @@ class AutonomousArm:
         return max(ACTIONS, key=lambda a: self.q[unit][a])
 
     def _attend(self, visual, temperature, audio, distance):
-        """REPRESENTATION-ONLY covert attention (readout): a spiking reticular (TRN) gate selects the
-        salient modality band from the four contrast-normalized bottom-up drives, and the claustrum
-        binds co-active bands. Sets attention readouts; it MASKS NOTHING -- the learner's value input and
-        the reflex/E-STOP (which reads raw `distance`) are untouched. Bounded, deterministic, guarded."""
+        """Covert attention: a spiking reticular (TRN) gate selects the salient modality band from the four
+        contrast-normalized bottom-up drives, and the claustrum binds co-active bands. Sets the attention
+        readouts AND a per-band `_attn_gain` that step() APPLIES to the learner's percept + value substrate
+        (biased competition -- attended band at full gain, unattended in [0.5,1.0)). SAFETY: the reflex/E-STOP
+        (raw `distance`) and the amygdala threat readout stay on the RAW, unattenuated pattern -- attention
+        never suppresses a threat or the safety path. Bounded, deterministic, guarded."""
         try:
             if self._rgate is None:
                 from snn_data_lake.claustrum.claustrum import Claustrum
@@ -307,6 +316,9 @@ class AutonomousArm:
             mask = self._rgate.mask(attn)                                 # spiking TRN gate -> per-band gain (attended released)
             self._attn_mask = [round(float(m), 4) for m in mask]
             self._attended = int(max(range(len(mask)), key=lambda i: mask[i]))
+            mx = max(mask) if mask else 0.0                               # per-band gain APPLIED downstream: attended band
+            self._attn_gain = ([0.5 + 0.5 * (float(m) / mx) for m in mask]  # at full gain (1.0), unattended in [0.5,1.0)
+                               if mx > 0 else None)                        # biased competition, not a hard mask (no collapse)
             trains = [[1 if norm[i] > 0.15 else 0] * 6 for i in range(4)]  # crude per-band activity raster
             _ft, assemblies = self._claustrum.detect(trains)
             self._bound_modalities = len(self._claustrum.bound_areas(assemblies))
@@ -509,9 +521,14 @@ class AutonomousArm:
         pattern = self._context_pattern(visual, temperature, audio, distance)
         if self._salience_on and self.workspace is not None:   # novelty's only consumer is the GWT competitor
             self._novelty = self._percept_novelty(pattern)     # bottom-up salience updates each perceived tick
-        if self._attn_on:                                      # covert attention READOUT (masks nothing; E-STOP untouched)
+        percept = pattern
+        if self._attn_on:                                      # covert attention: readout + APPLY to the LEARNER's percept
             self._attend(visual, temperature, audio, distance)
-        unit, grew = self.learner.observe(pattern)
+            if self._attn_gain:                                # biased competition: attended band at full gain, others in
+                g, nb = self._attn_gain, len(self._attn_gain)  # [0.5,1.0). threat/amygdala/reflex/E-STOP stay on RAW pattern.
+                per = max(1, len(pattern) // nb)               # cells per modality band (64/4)
+                percept = [min(1.0, pattern[i] * g[min(i // per, nb - 1)]) for i in range(len(pattern))]
+        unit, grew = self.learner.observe(percept)
         if unit not in self.q:
             self.q[unit] = dict.fromkeys(ACTIONS, 0.0)          # new unit -> its own row to learn
         if self._jepa_on and self.jepa is None:                 # lazily sized on the first tick
@@ -528,7 +545,7 @@ class AutonomousArm:
         if self._latent_q_on:
             if self.latent_q is None:
                 self.latent_q = LatentQ(ACTIONS, len(pattern), seed=self._seed)  # shared LINEAR value over the lake pattern
-            qsub, z_lq = self.latent_q, pattern                 # the [0,1]^64 lake representation (task-linear, stable)
+            qsub, z_lq = self.latent_q, percept                 # attended [0,1]^64 lake representation (task-linear, stable)
         elif self._mlp_q_on and self.jepa is not None:
             z_lq = self.jepa.encode(pattern)                    # the SELF-SUPERVISED JEPA latent (task IS in it -- see __init__)
             if self.mlp_q is None:
@@ -603,6 +620,15 @@ class AutonomousArm:
                     z1t = self.hjepa_serve.encode1(self._hj_window)   # abstract latent at a rewarded tick -> the goal EMA
                     self._z1_goal = z1t if self._z1_goal is None else \
                         [0.9 * g + 0.1 * z for g, z in zip(self._z1_goal, z1t)]
+            elif self.jepa is not None and r_int > self._autotelic_goal_thresh:
+                # AUTOTELIC latent goal: with NO external task (reward_fn is None), a strong INTRINSIC reward
+                # (curiosity learning-progress + empowerment controllability) marks THIS latent as intrinsically
+                # valuable -> move the goal toward it so the prefrontal executive PLANS toward controllable/
+                # learnable states. Deliberative lookahead now fires on the DEFAULT self-directed loop; this is
+                # value/annotation only -- no motor route (the reflex/E-STOP + caution gates still preempt).
+                zt = self.jepa.encode(pattern)
+                self._z_goal = zt if self._z_goal is None else \
+                    [0.9 * g + 0.1 * z for g, z in zip(self._z_goal, zt)]
         # FOUR REPRESENTATION-ONLY DRIVES (opt-in): each observes this tick's already-computed locals
         # (threat / intero / r_int / r_ext_step / action / qa) and feeds the value/annotation channel only --
         # no actuator route, nothing here alters the action already gated above; the reflex/E-STOP preempted.
@@ -638,9 +664,11 @@ class AutonomousArm:
             if self._allo_on:                                    # allocentric landmark map dead-reckoned from the stream
                 if self._allo is None:
                     self._allo = AllocentricMap(seed=self._seed)
-                self._allo.move(0.05, 0.0)                        # integrate a small self-motion step (path integration)
+                dx, dy = _ALLO_MOVE.get(action, (0.0, 0.0))       # W4c: self-motion DERIVED from the chosen action (not a constant)
+                self._allo.move(dx, dy)                           # path integration reflects the real behavioral trajectory
                 self._allo.observe(str(action), rel_x=intero, rel_y=threat, valence=math.tanh(r_int + rx))
                 self._allo_pos = self._allo.position              # allocentric position estimate (readout, no motion)
+                self._allo_nearest = self._allo.nearest(valence_pref=math.tanh(r_int + rx))  # W4c: READ BACK nearest landmark (map consumed)
             if self._gain_on:                                    # cerebellar feedforward gain adaptation (NEVER applied)
                 if self._gain is None:
                     self._gain = GainAdapter(seed=self._seed)

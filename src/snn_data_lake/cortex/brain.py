@@ -41,6 +41,8 @@ Deterministic: per-instance seeding only (no wall-clock, no global RNG). ASCII-o
 
   PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python.exe -m snn_data_lake.cortex.brain
 """
+import re
+
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.cortex.access_consciousness import AccessConsciousness
 from snn_data_lake.cortex.live_brain import LiveBrain
@@ -48,6 +50,7 @@ from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor
 from snn_data_lake.cortex.reasoning_curriculum import ReasoningEnv, ReasoningLearner
 from snn_data_lake.cortex.self_model import SelfModel, SelfNarrator
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
+from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.hippocampus.ring_attractor import RingAttractor
 from snn_data_lake.hippocampus.sleep_replay import AttractorNet
 from snn_data_lake.hippocampus.sleep_replay import K as ATTR_K
@@ -66,6 +69,18 @@ from snn_data_lake.neuromodulation.raphe_serotonin import DorsalRaphe
 
 SAFE_DISTANCE = CONTACT * 3.0    # perception-only distance band; never in a reflex/danger zone
 STORE_EVERY = 3                  # store one sleep-replay assembly every STORE_EVERY wake ticks
+
+# LIVE theory-of-mind dialogue grammar (W2d): a small hand-specified surface parse feeding a REAL first-order
+# belief tracker. '<subj> put/moved the <obj> in/to the <loc>'; an absence marker makes the change UNWITNESSED
+# (the user keeps a now-false belief). The parse is developer-charged; the belief mechanics are genuine.
+_TOM_PLACE = re.compile(
+    r"\b(?P<subj>i|we|you|someone|somebody)\s+(?:put|places?|placed|sets?|left|leaves?|hid|hides?|moved?|moves?)\s+"
+    r"(?:the\s+|a\s+|an\s+|my\s+|your\s+)?(?P<obj>[a-z][a-z ]*?)\s+"
+    r"(?:back\s+)?(?:in|on|at|into|onto|inside|to)\s+(?:the\s+|a\s+|an\s+|my\s+|your\s+)?"
+    r"(?P<loc>[a-z][a-z ]*?)(?:\s*[.,!?]|\s+and\b|\s+but\b|\s+while\b|\s+when\b|\s+without\b|$)")
+_TOM_ABSENT = ("while i was away", "while i was gone", "while i was out", "when i was not looking",
+               "when i wasn't looking", "behind my back", "secretly", "without me", "without my seeing",
+               "i did not see", "i didn't see", "i was not there", "i wasn't there", "unbeknownst to me")
 
 
 def _mean(xs):
@@ -288,6 +303,8 @@ class Brain:
                             and self._tom.predict_from_world("user") == 1)  # reality moved on -> false belief tracked
         except Exception:
             self._tom = None
+        self._tom_locs = {}                                    # live ToM: dialogue location name -> integer id
+        self._tom_obj = None                                   # the object the live ToM currently tracks
 
         # ---- BrainCog-inspired cognitive primitives adopted into the brain (pure-stdlib, from
         # docs/BRAINCOG_COMPARISON.md): Theory-of-Mind (an OTHER-agent false-belief tracker -- a whole
@@ -338,16 +355,69 @@ class Brain:
         # the tier. Value/representation-only -- an encoder, no actuator route. state()["perception_tier"].
         self._perception_enc = None
         self._perception_tier = "stdlib"
+        self._real_frames = None                              # W3b: a pack of REAL N-MNIST event frames (numpy at runtime)
+        self._real_labels = None
+        self._real_ptr = 0
+        self._perceiving_real = False
+        self._real_percept = None
+        self._perception_acc = None                           # LIVE classification accuracy over real frames perceived
+        self._perc_hits = self._perc_seen = 0
+        self._perceived_digit = None
+        self._audio_enc = None                                # W3c: brain-native e-prop SHD auditory encoder
+        self._audio_frames = None
+        self._audio_labels = None
+        self._audio_ptr = 0
+        self._perceiving_audio = False
+        self._audio_percept = None
+        self._audio_acc = None                                # LIVE audio classification accuracy over real SHD frames
+        self._audio_hits = self._audio_seen = 0
+        self._perceived_word = None
+        self._vis_learner = None                              # W4a: growing prototype learner over REAL vision latents
+        self._aud_learner = None                              # W4a: growing prototype learner over REAL audio latents
+        self._real_units = 0                                  # learned representations (prototypes) of real stimuli
+        self._real_novelty = 0.0                              # novelty spike when a real percept recruits a new prototype
         try:
             import os
-            _ckpt = os.environ.get("SNN_PERCEPTION_CKPT", "models/surrogate_nmnist.pth")
-            if os.path.exists(_ckpt):
-                from training.surrogate_snn import SurrogateEncoder
-                self._perception_enc = SurrogateEncoder.load(_ckpt, device="cpu")
-                self._perception_tier = "torch-snn"
+            if os.environ.get("NORD_TORCH") == "0":            # manual off-switch: keep the zero-dep stdlib perception path
+                raise RuntimeError("torch tier disabled")
+            _eprop = os.environ.get("SNN_EPROP_CKPT", "models/eprop_nmnist.pt")
+            if os.path.exists(_eprop):                         # BRAIN-NATIVE first: the e-prop-trained encoder (no backprop)
+                from training.eprop_nmnist import EpropEncoder
+                self._perception_enc = EpropEncoder.load(_eprop, device="cpu")
+                self._perception_tier = "eprop-snn"
+            else:                                              # fallback: the surrogate-BPTT encoder (NOT brain-native)
+                _ckpt = os.environ.get("SNN_PERCEPTION_CKPT")
+                if not _ckpt:
+                    for _c in ("models/nmnist_encoder.pt", "models/surrogate_nmnist.pth"):
+                        if os.path.exists(_c):
+                            _ckpt = _c
+                            break
+                if _ckpt and os.path.exists(_ckpt):
+                    from training.surrogate_snn import SurrogateEncoder
+                    self._perception_enc = SurrogateEncoder.load(_ckpt, device="cpu")
+                    self._perception_tier = "torch-snn"
+            if self._perception_enc is not None:               # load the REAL event-frame pack (numpy only at runtime)
+                import numpy as _np
+                _pack = os.environ.get("SNN_PERCEPTION_PACK", "models/nmnist_pack.npz")
+                if os.path.exists(_pack):
+                    _d = _np.load(_pack)
+                    self._real_frames, self._real_labels = _d["frames"], _d["labels"]
+                    self._perceiving_real = True               # brain perceives REAL event-vision on the live tick
+            _audio = os.environ.get("SNN_EPROP_AUDIO_CKPT", "models/eprop_shd.pt")
+            if os.path.exists(_audio):                         # AUDITORY tier (brain-native): e-prop SHD encoder, parallel to vision
+                from training.eprop_shd import EpropAudioEncoder
+                self._audio_enc = EpropAudioEncoder.load(_audio, device="cpu")
+                import numpy as _np2
+                _apack = os.environ.get("SNN_SHD_PACK", "models/shd_pack.npz")
+                if os.path.exists(_apack):
+                    _ad = _np2.load(_apack)
+                    self._audio_frames, self._audio_labels = _ad["frames"], _ad["labels"]
+                    self._perceiving_audio = True              # brain perceives REAL event-audio on the live tick
         except Exception:
             self._perception_enc = None
             self._perception_tier = "stdlib"
+            self._perceiving_real = False
+            self._perceiving_audio = False
 
         # ---- PC-CORTEX PERCEPTION TIER (ZERO-DEP, checkpoint-gated): the deep spiking predictive-coding
         # cortex (cortex/pc_cortex_serve, snn_pcnet/1) served as an OPTIONAL generative perception encoder.
@@ -415,6 +485,7 @@ class Brain:
         self._percepts = len(self._explore)   # rotating stimuli = distinct perceptual assemblies
         self._access_ema = 0.0                 # running access-consciousness index in [0,1]
         self._access_state = {}                # last GNW readout (ignited / availability / n_bound)
+        self._access_hold = {"content": None, "strength": 0.0}   # W2e: SUSTAINED cross-tick broadcast (decaying reverberation)
 
         # ---- telemetry / bookkeeping ----
         self._wake_ticks = 0
@@ -540,6 +611,82 @@ class Brain:
         except Exception:
             return None
 
+    def _perceive_real(self):
+        """W3b: perceive the NEXT real N-MNIST event frame on the live wake tick -- the trained deep spiking
+        encoder (perceive_event, 98% N-MNIST) encodes + classifies a REAL high-D event-vision stimulus, moving
+        live perception off the 3-synthetic-scalar ceiling. Tracks a LIVE classification accuracy over the real
+        frames actually perceived. Value/representation-ONLY: an encoder + rate readout, no actuator route, the
+        reflex/E-STOP/distance path untouched. Returns the normalized [0,1]^64 latent, or None when inactive."""
+        if not self._perceiving_real or self._perception_enc is None or self._real_frames is None:
+            return None
+        try:
+            i = self._real_ptr % len(self._real_frames)
+            self._real_ptr += 1
+            frame = self._real_frames[i]
+            latent = self.perceive_event(frame)                 # torch spiking encoder -> latent (dim 64)
+            if latent is None:
+                return None
+            pred = int(self._perception_enc.classify(frame))    # rate readout -> perceived digit
+            label = int(self._real_labels[i])
+            self._perc_seen += 1
+            self._perc_hits += int(pred == label)
+            self._perception_acc = round(self._perc_hits / self._perc_seen, 4)
+            self._perceived_digit = pred
+            vals = [float(v) for v in (latent.tolist() if hasattr(latent, "tolist") else latent)]
+            mx = max(vals) or 1.0
+            return [min(1.0, max(0.0, v / mx)) for v in vals]   # normalize spike counts -> [0,1]^64 percept
+        except Exception:
+            return None
+
+    def _perceive_audio(self):
+        """W3c: perceive the NEXT real SHD event-audio frame on the live wake tick -- the e-prop-trained
+        recurrent spiking AUDITORY encoder encodes + classifies a REAL spoken-digit stimulus (a second real
+        sensory modality alongside vision). Tracks a LIVE audio classification accuracy. Representation-ONLY:
+        no actuator route, the reflex/E-STOP path untouched. Returns the normalized latent, or None when inactive."""
+        if not self._perceiving_audio or self._audio_enc is None or self._audio_frames is None:
+            return None
+        try:
+            i = self._audio_ptr % len(self._audio_frames)
+            self._audio_ptr += 1
+            frame = self._audio_frames[i]
+            latent = self._audio_enc.encode(frame)              # e-prop spiking auditory encoder -> latent
+            if latent is None:
+                return None
+            pred = int(self._audio_enc.classify(frame))         # rate readout -> perceived spoken digit
+            label = int(self._audio_labels[i])
+            self._audio_seen += 1
+            self._audio_hits += int(pred == label)
+            self._audio_acc = round(self._audio_hits / self._audio_seen, 4)
+            self._perceived_word = pred
+            vals = [float(v) for v in (latent.tolist() if hasattr(latent, "tolist") else latent)]
+            mx = max(vals) or 1.0
+            return [min(1.0, max(0.0, v / mx)) for v in vals]
+        except Exception:
+            return None
+
+    def _consume_perception(self):
+        """W4a: CONSUME the real percept into cognition (was readout-only telemetry). Each real vision/audio
+        latent is LEARNED by a growing prototype learner, so the brain forms categories of real stimuli; a newly
+        recruited prototype is a novelty SPIKE (biases the workspace); the learned-unit count feeds global access
+        (real perception now contributes to consciousness, not just a class label). Representation-only, no
+        actuator route -- the reflex/E-STOP path is untouched (this runs off the tick's real-percept latents)."""
+        self._real_novelty *= 0.8
+        for percept, attr in ((self._real_percept, "_vis_learner"), (self._audio_percept, "_aud_learner")):
+            if not percept:
+                continue
+            learner = getattr(self, attr)
+            if learner is None:
+                learner = GrowingLearner(vigilance=0.86, dim=len(percept))
+                setattr(self, attr, learner)
+            try:
+                _, grew = learner.observe(percept)             # form/refine a real-stimulus prototype
+                if grew:
+                    self._real_novelty = 1.0                   # a genuinely new real stimulus category
+            except Exception:
+                pass
+        self._real_units = ((self._vis_learner.n_units if self._vis_learner else 0)
+                            + (self._aud_learner.n_units if self._aud_learner else 0))
+
     def perceive_pc(self, x):
         """OPTIONAL PC-cortex perception: settle the deep spiking predictive-coding cortex (snn_pcnet/1,
         cortex/pc_cortex_serve) on a length-in_dim input vector x and return the settled TOP-CAUSE latent
@@ -605,6 +752,9 @@ class Brain:
             except Exception:
                 pass
         self._interval_timer += 1                    # INTERVAL TIMING: ramp wake ticks since this episode began
+        self._real_percept = self._perceive_real()   # W3b: perceive a REAL N-MNIST event-vision frame this wake tick
+        self._audio_percept = self._perceive_audio()  # W3c: perceive a REAL SHD event-audio frame this wake tick
+        self._consume_perception()                    # W4a: CONSUME the real percept -> prototype learning + novelty
         self._update_access()                       # bundle grown neurons -> workspace ignition
         if self._access_state.get("ignited"):
             self._regions_live.add("cortex_access_consciousness")
@@ -669,15 +819,27 @@ class Brain:
         -- it is NOT and never claims phenomenal/subjective experience (see respond())."""
         p = self._wake_ticks % self._percepts
         grown = self.neuro.grown_units if self.neuro is not None else 0
-        n_total = len(self.brain.arm.q) + grown       # perceptual units + neurogenesis-grown
-        k = min(2 + n_total // self._percepts, 8)     # coherent assembly size (grows w/ neurons)
+        n_total = len(self.brain.arm.q) + grown + self._real_units  # + W4a learned real-perception prototypes (consumed into access)
+        sustained = float(self._access_hold.get("strength", 0.0))   # W2e: a recent ignition still reverberating
+        # RE-ROUTE: held broadcast content recruits a LARGER coherent assembly on this tick (ignition on tick t
+        # biases processing on t+1 -- the specialist re-entry the workspace previously lacked). Still capped at 8.
+        k = min(2 + n_total // self._percepts + int(round(2 * sustained)), 8)
         try:
             ac = AccessConsciousness(seed=self._seed)
             ac.bind_assembly([f"p{p}#{i}" for i in range(k)])   # co-active percept = coherent
             ac.step()                                           # ignition + all-or-none broadcast
             self._access_state = ac.state()
             idx = self._access_state.get("access_index", 0.0)
-            self._access_ema = round(0.9 * self._access_ema + 0.1 * idx, 6)
+            # SUSTAINED ACCESS: ignited content is HELD across ticks (decaying), not rebuilt from scratch each tick;
+            # a live hold keeps global availability elevated (reverberation), so access is a sustained state not a flicker.
+            if bool(self._access_state.get("ignited", False)):
+                content = (f"digit-{self._perceived_digit}"                 # W3b: REAL perceived content in the workspace
+                           if self._perceiving_real and self._perceived_digit is not None else f"p{p}")
+                self._access_hold = {"content": content, "strength": 1.0}
+            else:
+                self._access_hold = {"content": self._access_hold.get("content"), "strength": round(0.6 * sustained, 4)}
+            eff = idx + 0.3 * self._access_hold["strength"] * (1.0 - idx)   # held broadcast sustains availability
+            self._access_ema = round(0.9 * self._access_ema + 0.1 * eff, 6)
         except Exception:
             self._access_state = {}
 
@@ -899,11 +1061,21 @@ class Brain:
             "rungs": self._rungs,   # birth DIAGNOSTIC census of all rungs (reduced-scale; _scale/_note tagged); full proof = each module's self-check
             "novelty_live": self._novelty_live,   # L5 PROMOTED to the live wake loop: generalizing pseudo-count over the current raster (habituates)
             "perception_tier": self._perception_tier,   # "torch-snn" (hybrid surrogate-SNN encoder loaded) or "stdlib" (fallback)
+            "perceiving_real": bool(self._perceiving_real),   # W3b: perceiving REAL N-MNIST event-vision on the live tick
+            "perception_acc": self._perception_acc,     # LIVE classification accuracy over the real frames perceived
+            "perceived_digit": self._perceived_digit,   # the digit the brain is currently seeing (real event-vision)
+            "perceiving_audio": bool(self._perceiving_audio),  # W3c: perceiving REAL SHD event-audio on the live tick
+            "audio_perception_acc": self._audio_acc,    # LIVE audio classification accuracy over real SHD frames
+            "perceived_word": self._perceived_word,     # the spoken digit (0-19) the brain is currently hearing
+            "real_perception_units": self._real_units,   # W4a: prototypes LEARNED from real vision+audio (consumed, not telemetry)
+            "real_novelty": round(float(self._real_novelty), 3),  # novelty spike when a real percept recruits a new category
             "pc_cortex_tier": self._pc_cortex_tier,   # "pc-cortex" (deep spiking predictive-coding cortex loaded, zero-dep serve via perceive_pc()) or "stdlib"
             "nengo_tier": self._nengo_tier,   # "nengo" -> can offload any vector compute to a Nengo NEF ensemble (NengoLoihi-deployable) via nengo_compute()
             "braincog": self._braincog,   # BrainCog-adopted primitives: theory-of-mind false-belief + multisensory super-additivity index
             "access_index": self._access_ema,        # ACCESS consciousness (global availability)
             "access_ignited": bool(self._access_state.get("ignited", False)),
+            "sustained_access": round(float(self._access_hold.get("strength", 0.0)), 3),  # W2e: cross-tick broadcast reverberation
+            "workspace_content": self._access_hold.get("content"),   # the content currently held in the global workspace
             "n_bound": int(self._access_state.get("n_bound", 0)),
             "arm_stopped": bool(self.brain.arm.arm.state().get("stopped", False)),
             "reflex_armed": True,
@@ -911,11 +1083,14 @@ class Brain:
             "da_level": round(float(getattr(self.brain.arm, "_da_level", 0.0)), 4),   # phasic dopamine (TD-RPE + habenula anti-reward)
             "rpe": round(float(getattr(self.brain.arm, "_rpe", 0.0)), 4),             # reward-prediction error (the dopamine signal)
             "map_position": (list(getattr(getattr(self.brain.arm, "_allo", None), "position", ()) or ()) or None),  # allocentric cognitive map
+            "map_nearest": getattr(self.brain.arm, "_allo_nearest", None),  # W4c: nearest recalled landmark (map now READ BACK)
             "interval_ticks": self._interval_timer,   # INTERVAL TIMING: wake ticks since this episode began (temporal cognition)
+            "interval_weber_sd": round(0.15 * self._interval_timer, 3),  # W4c: scalar-timing Weber SD (SD proportional to duration)
             "attended_modality": int(getattr(self.brain.arm, "_attended", -1)),   # covert attention: salient band (0=vis,1=temp,2=aud,3=dist)
             "bound_modalities": int(getattr(self.brain.arm, "_bound_modalities", 0)),  # claustrum cross-modal binding count
             "pci": self._pci,   # agnostic perturbational-complexity (substrate integration; explicitly NOT a phenomenal/consciousness claim)
-            "tom_false_belief": self._tom_ok,   # live theory-of-mind: correctly tracks a user's FALSE belief vs reality (inferred)
+            "tom_false_belief": self._tom_ok,   # birth false-belief CAPABILITY proof (Sally-Anne; the tracker works)
+            "tom_live": self._tom_live(),       # LIVE dialogue-driven belief vs reality (None when idle; updated from chat)
             "schemas": self._schemas,   # SCHEMA INDUCTION: derived prototype/schema triples kept last consolidation (ART+DistMult gated)
             "skills": self._skills_state,   # bounded nightly skill FORMATION (per-domain competence; not general skill)
             "neuro_device": (getattr(self.neuro, "device", "off") if self.neuro is not None else "off"),  # sleep-tier GPU
@@ -956,6 +1131,9 @@ class Brain:
         conv = conv.replace("My working-memory goal is ",
                             "My overall goal is self-improvement; my prefrontal motor intent is ")
         st = self.state()
+        somatic = self._somatic_recall(st)                   # CONSUME the affect-tagged episodic store (was write-only)
+        if not is_command:
+            self._tom_update(message)                        # LIVE theory-of-mind: ingest belief statements from dialogue
         reason_out = self.reason(message)                    # consult the nightly-learned reasoning faculty (read-only)
 
         low = str(message).lower()
@@ -975,12 +1153,10 @@ class Brain:
             route = "language (ROSE constituency parse)" if rose is not None else "act (gated)"
         elif not is_command and self._tom is not None and any(p in low for p in (
                 "do you understand", "what do you think i", "do you know what i", "read my mind",
-                "theory of mind", "what am i thinking")):
-            core = ("I keep a model of your mind SEPARATE from the world: I track what YOU know from what "
-                    "you have told me, so I can tell when your belief differs from reality (false-belief "
-                    f"tracking is {'working' if self._tom_ok else 'degraded'}). It is INFERRED, not certain "
-                    "-- I model your knowledge, I do not read your mind.")
-            route = "social cognition (theory of mind)"
+                "theory of mind", "what am i thinking", "where will i look", "where would i look",
+                "where do i look", "where do i think", "where do i believe", "what do i believe")):
+            core = self._tom_report()                        # LIVE dialogue-driven belief vs reality (not a frozen flag)
+            route = "social cognition (theory of mind: live belief tracking)"
         elif any(cue in low for cue in self._BENEVOLENCE_CUES):
             core = self.narrator.benevolence()               # deterministic; contains 'not evil'
             route = "benevolence (safe affirmation)"
@@ -1012,6 +1188,8 @@ class Brain:
             route = "Gf (fluid: acquired language center)" if gen else "Gf (fluid: narrator summary)"
 
         reply = core.encode("ascii", "ignore").decode()      # LM text may be non-ASCII; enforce
+        if somatic is not None and not is_command:            # fold the recalled somatic marker into free conversation
+            reply = reply + somatic["note"]
         if not is_command:                                    # KEEP LEARNING language from live turns, like a human:
             try:                                              # spiking predictive-coding exposure + local plasticity,
                 lm = self._lm_serve()                         # NOT gradient training (durably saved on the sleep tick)
@@ -1019,7 +1197,92 @@ class Brain:
                     lm.expose(message)
             except Exception:
                 pass
-        return {"reply": reply, "route": route, **st}
+        return {"reply": reply, "route": route,
+                "somatic_recall": (None if somatic is None else
+                                   {"tick": somatic["tick"], "valence": somatic["valence"], "arousal": somatic["arousal"]}),
+                **st}
+
+    def _somatic_recall(self, st):
+        """CONSUME the affect-tagged episodic store (hippocampus/affective_memory) that was WRITE-ONLY on
+        the live path -- recall_by_emotion was never called, so emotional memory could not bias cognition.
+        Given the CURRENT affect (self-model valence + an arousal proxy = |rpe|), retrieve the somatic-marker
+        episode: the past percept whose STORED affect is closest to how the brain feels now (Damasio somatic
+        marker -- 'when was I last this way?'). Returns a marker dict or None. Only CHARGED episodes surface
+        (|valence| >= 0.2), so an empty or affectively-neutral history leaves respond() byte-identical."""
+        store = getattr(getattr(self.brain, "arm", None), "_affmem", None)
+        if store is None or not getattr(store, "episodes", None):
+            return None
+        v = float(st.get("self_state", {}).get("valence", 0.0) or 0.0)
+        a = min(1.0, abs(float(st.get("rpe", 0.0) or 0.0)))     # present arousal proxy: phasic RPE magnitude
+        eps = store.recall_by_emotion(v, a, k=1)                 # somatic-marker retrieval: nearest to PRESENT affect
+        ep = eps[0] if eps else None
+        if ep is not None and abs(ep.valence) >= 0.2:            # present affect matched a charged past episode
+            basis = "how I feel now is closest to"
+        else:
+            # present affect is ~neutral -> fall back to the single most SALIENT stored memory: a genuinely
+            # strong emotional episode still colors present appraisal at rest (Damasio). Only a real one surfaces.
+            sal = max(store.episodes, key=lambda e: abs(e.valence) + e.arousal)
+            if abs(sal.valence) < 0.5:                           # no genuinely charged memory -> stay silent
+                return None
+            ep, basis = sal, "my strongest felt memory is"
+        tone = "aversive" if ep.valence < 0 else "pleasant"
+        note = (f" (somatic marker: {basis} a past {tone} episode from tick {ep.tick} "
+                f"[valence {ep.valence:+.2f}, arousal {ep.arousal:.2f}] -- recalled by affect, not content.)")
+        return {"note": note, "tick": ep.tick, "valence": round(ep.valence, 3), "arousal": round(ep.arousal, 3)}
+
+    def _tom_update(self, message):
+        """LIVE first-order theory of mind: update the user-belief model from THIS turn's statement instead of
+        the birth script. Grammar '<subj> put/moved the <obj> in/to the <loc>'. Witnessed (no absence marker)
+        -> place(): user+brain share the true belief; UNWITNESSED (an absence marker) -> move() for the brain
+        ONLY, so the user keeps a now-FALSE belief. The belief tracking is real; only the surface parse is
+        hand-specified. Returns a short event string, or None when the turn carries no belief statement."""
+        if self._tom is None:
+            return None
+        low = str(message).lower()
+        m = _TOM_PLACE.search(low)
+        if not m:
+            return None
+        obj, loc = m.group("obj").strip(), m.group("loc").strip()
+        if not obj or not loc:
+            return None
+        if loc not in self._tom_locs:
+            if len(self._tom_locs) >= self._tom.n_locations:    # out of location capacity -> stay honest, ignore
+                return None
+            self._tom_locs[loc] = len(self._tom_locs)
+        lid = self._tom_locs[loc]
+        self._tom_obj = obj
+        if any(mk in low for mk in _TOM_ABSENT) and self._tom.world is not None:
+            self._tom.move(lid, observers=["brain"])            # brain sees it; user does NOT -> false belief
+            return f"unwitnessed move: the {obj} is now at '{loc}' (you did not see it)"
+        self._tom.place(lid, observers=["user", "brain"])       # both witness -> shared true belief
+        return f"witnessed: you and I both saw the {obj} at '{loc}'"
+
+    def _tom_report(self):
+        """Report the LIVE (dialogue-driven) theory-of-mind state, not a frozen flag: where the user BELIEVES
+        the tracked object is vs where it ACTUALLY is, flagging a false belief on divergence."""
+        if self._tom is not None and self._tom_obj is not None and self._tom.world is not None:
+            bel, wor = self._tom.predict_from_belief("user"), self._tom.predict_from_world("user")
+            names = {v: k for k, v in self._tom_locs.items()}
+            bname, wname = names.get(bel, f"loc{bel}"), names.get(wor, f"loc{wor}")
+            if bel != wor:
+                return (f"You would look for the {self._tom_obj} at '{bname}' -- that is where you last saw it -- but "
+                        f"it is actually at '{wname}'. I track your belief SEPARATELY from reality, so I know you hold "
+                        "a FALSE belief (you did not witness the move). Inferred, not read from your mind.")
+            return (f"You and I both take the {self._tom_obj} to be at '{bname}', matching reality -- no divergence "
+                    "right now. I track your belief separately from the world; here they agree.")
+        return ("I keep a model of your mind SEPARATE from the world, so I can tell when your belief differs from "
+                f"reality (birth false-belief proof: {'passed' if self._tom_ok else 'degraded'}). Tell me e.g. 'I put "
+                "the ball in the basket', then 'you moved it to the box while I was away', then ask 'where will I "
+                "look?'. Inferred, not certain -- I model your knowledge, I do not read your mind.")
+
+    def _tom_live(self):
+        """Compact live-ToM telemetry for state(): tracked object + user belief vs world (None when idle)."""
+        if self._tom is None or self._tom_obj is None or self._tom.world is None:
+            return None
+        bel, wor = self._tom.predict_from_belief("user"), self._tom.predict_from_world("user")
+        names = {v: k for k, v in self._tom_locs.items()}
+        return {"obj": self._tom_obj, "belief": names.get(bel, bel), "world": names.get(wor, wor),
+                "false_belief": bool(bel != wor)}
 
     @staticmethod
     def _grounded(reply):

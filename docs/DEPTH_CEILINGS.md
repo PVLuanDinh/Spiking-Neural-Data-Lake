@@ -1,0 +1,397 @@
+# The two hard depth ceilings — measured, not asserted
+
+The v3.78 release notes named two ceilings honestly but without numbers:
+
+> Two depth ceilings stand: (1) fluent open-domain language absent (ROSE = compositional structure +
+> grounded semantics, NOT GPT-level generation); (2) general fluid intelligence still ~absent
+> (no test-time program synthesis for novel out-of-grammar problems).
+
+An unmeasured ceiling is an opinion. This document replaces both with numbers from **real, external,
+public benchmarks** — chosen because they cannot be gamed by a template bank, a taught-triple traversal,
+or a fluent-sounding demo, and because they come with published human and machine anchors.
+
+Both statements turned out to be **wrong in their diagnosis**, in opposite directions: the Gf ceiling was
+described as an absence that is in fact present-but-domain-blind, and the language ceiling was described as
+a matter of eloquence when it is a total absence of measurable grammatical competence.
+
+## The instruments
+
+Two harnesses make the ceilings permanently measurable. Both are registered RESEARCH-tier self-checks and
+both SKIP-with-notice when their dataset is absent, so the zero-dep CI matrix stays green either way.
+
+| harness | file | benchmark |
+|---|---|---|
+| `arc_bench` | `src/snn_data_lake/reasoning/arc_bench.py` | ARC-AGI-1, 400 train + 400 eval tasks, exact match, pass@2 |
+| `blimp_bench` | `src/snn_data_lake/reasoning/blimp_bench.py` | BLiMP, 67 paradigms × 1000 minimal pairs |
+
+Both ship controls that must **genuinely fail**, so a real score is believable:
+
+```
+arc_bench   : identity 0/200 = 0.0% | constant 1/200 = 0.5% | oracle 50/50 = 100.0%   -> OK
+blimp_bench : random 49.7% | constant 0.0% | length 30.4% | oracle 100.0%             -> OK
+```
+
+The ARC trivial-solver noise floor is therefore **0.5%**, and BLiMP chance is **50.0%**. Sentence length alone
+scores *below* chance on BLiMP (30.4%), confirming the pairs are genuinely minimal — no surface leak.
+
+---
+
+## Ceiling 1 — general fluid intelligence
+
+**Benchmark.** ARC-AGI-1 (Chollet, *On the Measure of Intelligence*, 2019). Every task needs a different
+solution program, and that program is in no taught grammar, so it must be synthesised at test time. This is
+the structural bar for Gf credit: developer-aware generalisation, zero gradient descent at test time.
+
+### Before
+
+`scratchpad/arc_baseline.py`, evaluation split, first 100 tasks, pass@2:
+
+| interface | score |
+|---|---|
+| `gf-direct` — gf.py's inducer, hand-fed pre-parsed grids (deliberately generous) | **0/100 = 0.0%** |
+| `reasoning-cortex` — `build_default_cortex` routed directly | **0/100 = 0.0%** |
+| `live-brain` — `Brain.respond`, as a user would ask | **0/100 = 0.0%** |
+
+Zero through every interface, including one rigged in the brain's favour. Against the 0.5% trivial floor,
+the brain was **at or below noise**.
+
+### The release notes were wrong about why
+
+They said there is "no test-time program synthesis." False. `src/snn_data_lake/reasoning/gf.py` contains
+real test-time program synthesis — `induce_program` (iterative-deepening enumeration returning the smallest
+program consistent with the observations), `OpenGf` (self-extending, with library learning), and
+`consistent_hypotheses` / `ActiveLearner` (hypothesis search that breaks underdetermination by experiment).
+It is also **already wired live**, as `NumberSeriesExpert`, `LetterExpert` and `RavenExpert` in
+`reasoning/reasoning_cortex.py`.
+
+The real defect is narrower: that machinery synthesises programs over **1-D numeric and letter sequences**.
+ARC is about **2-D grids and the objects inside them**, and the brain had no perception of that domain — so
+there was nothing for the inducer to induce over. A working synthesis engine, blind to the domain.
+
+### After — `reasoning/arc_solver.py`
+
+Object perception (connected components with colour/bbox/size/symmetry/uniqueness attributes, reusing
+`arc_agi/rule_inducer.py`'s `parse_objects`) + a 13-primitive grid-transformation DSL + iterative-deepening
+search for the **smallest program consistent with every training pair** (MDL bias, following `gf.py`'s own
+idiom) + a cross-task library. Wired live as `ArcExpert` in `reasoning_cortex.py`.
+
+| split | score |
+|---|---|
+| training (developed against) | **40/400 = 10.00%** |
+| **evaluation (held out, never inspected)** | **11/400 = 2.75%** |
+
+Controls that genuinely fail: identity-only DSL scores 0/3 on synthetic tasks and **0/40 on training**.
+Determinism verified (two budget-bound runs solve the identical set).
+
+**Library learning was an exact null.** Training split with the library ON and OFF produced **identical**
+scores and **identical solved-ID sets** (40/400 both ways), despite the library learning 6 composites. It
+demonstrably helps in a constructed depth-1 case in the self-check, and demonstrably does nothing at scale.
+Reported as measured, not quietly dropped.
+
+### What is honest to claim
+
+The measured move is **0.0% → 2.75%** on held-out ARC-AGI-1, roughly 5× the trivial floor. Human performance
+is ~85%. What was built is **test-time program synthesis over an author-chosen grid vocabulary**: it solves
+the geometry / colour-mapping / object-selection slice and returns an honest empty candidate list everywhere
+else. The DSL is a developer-supplied prior, and under Chollet's developer-aware clause that prior is charged
+against the score. **This is not general fluid intelligence, and the gf.py wall is unmoved.**
+
+An 8-design adversarial panel (8 independent designs, 3 refutation lenses each) reached the same verdict
+independently and more strongly: **7 of 8 designs were refuted**, and the single survivor states in its own
+thesis that the Gf ceiling *cannot be closed, only moved* — because every published RPM/analogy success,
+spiking or not, assumes a hand-specified attribute grammar, which the developer-aware clause charges against
+the score. No design in the surveyed space earns general Gf credit.
+
+---
+
+## Ceiling 2 — fluent open-domain language
+
+**Benchmark.** BLiMP (Warstadt et al., TACL 2020). 67 paradigms × 1000 minimal pairs differing in exactly one
+grammatical feature. Automatic, needs **no LLM judge** — it cannot be passed by sounding fluent, nor by a
+template bank, because both sentences share nearly every word.
+
+Anchors: chance **50.0%**, **word-level** 5-gram (83M words) **61.2%**, GPT-2 large **86.0%**, human **88.6%**.
+
+### Before
+
+`scratchpad/blimp_baseline.py`, 67 paradigms × 25 pairs = 1675. Scoring is strictly read-only — no weight
+update during evaluation, or the benchmark would teach the model its own test.
+
+| scorer | score |
+|---|---|
+| char-bigram fitted on the same exposure text | **52.8%** |
+| acquired-LM — `cortex/language_acquisition.py`, the online locally-plastic learner | **51.0%** |
+| ROSE `comprehend` — `reasoning/rose_language.py` | **no signal** |
+
+Three findings, all worse than the release-note framing:
+
+1. The language faculty is **at chance**. 51.0% against a 50.0% floor is not a weak grasp of syntax.
+2. It is **beaten by a character bigram table** on identical text.
+3. **Its entire lifetime language exposure was 2,428 characters.**
+
+**ROSE.** `comprehend` returns `{'known': False, 'reason': 'ungrounded'}` for *every* ordinary English
+sentence tested, including grammatical ones like "the cat sat on the mat". It emits no grammaticality signal
+and cannot separate fluent English from word salad. This is not a failure against its own spec — ROSE is a
+constituency-and-grounding mechanism over a small world KB and says so. But it sharpens the honest claim.
+
+**The core's "spiking LM" is an empty pipe.** `cortex/spiking_lm_serve.py` is registered CORE and its
+self-check passes, but there is **no trained weight file anywhere in the repo**: it serves a hand-built
+4-token demo model (`vocab=4, d_model=4, 1 block`) that generates `'abbbbbb'`. `run_selfchecks.py` records
+that SpikeGPT was scrapped in v3.77. There is no trained language model in this project.
+
+### The mechanism, established by measurement
+
+Corpus scaled from 2,428 characters to **10,000,000 characters** of WikiText-103 (4,119×):
+
+```
+  chars_seen |  acq-LM |  bigram |  5-gram |   acq PPL |   2g PPL |   5g PPL
+        1000 |    54.8 |    51.2 |    47.9 |     17.77 |    15.97 |    30.12
+       10000 |    55.5 |    52.2 |    49.9 |     17.67 |    12.25 |    20.14
+      100000 |    53.5 |    53.2 |    51.3 |     15.62 |    10.93 |     9.56
+     1000000 |    53.4 |    53.0 |    52.7 |     16.21 |    10.71 |     5.31
+    10000000 |    53.2 |    53.5 |    53.4 |     15.81 |    10.69 |     4.38
+```
+
+Four candidate causes were **falsified** by ablation:
+
+| candidate | verdict | evidence |
+|---|---|---|
+| homeostatic decay erases learning | falsified | removing `W *= (1-1e-5)` entirely: 53.4% → 53.1% |
+| vocabulary folding destroys the distinctions | falsified | **0/1675** pairs collapse; 100% stay separable |
+| `ctx=8` too short | falsified **and reversed** | ctx 2→32 gives BLiMP 57.3→53.4, PPL 11.91→18.69 |
+| features are lossy | falsified | 0.65% collision over 117,859 contexts; each position 72–84% decodable |
+
+What is left, and it is confirmed twice over:
+
+- **The readout is linear over a summed bag.** `W` is 34×88 = **2,992 parameters regardless of corpus size**.
+  A linear map on a superposition can only learn an additive per-position vote; next-character prediction
+  needs conjunctions, which are not linearly separable from a summed bag. This is why *shorter* context wins.
+- **The learning rule is not the cap.** Fitting the same architecture full-batch to convergence with no decay
+  — the convex optimum of the shipped design — reaches **57.0%** BLiMP. The online local rule reaches 53.4%.
+  It underfits its own architecture by ~3 points; the architecture is the wall.
+- **Naive width expansion is refuted.** A random sparse expansion to 8192 dims (278,528 synapses) made it
+  *worse* (BLiMP 52.3–53.2%, PPL 26.75–30.92).
+
+### The finding that reframes the whole ceiling
+
+**Prediction quality and grammaticality are decoupled here.** Better language modelling does not buy BLiMP.
+
+A count-based character n-gram swept from bigram to 11-gram (up to 5.2M nonzero parameters) on 10M characters:
+
+```
+   n-gram   nonzero params   BLiMP%    char PPL
+        2              838     52.3      10.692
+        5          256,688     53.4       4.379      <- best PPL region
+        8        2,228,645     54.1       4.835
+       11        5,208,719     53.1       7.026
+```
+
+Character perplexity improves 2.6× and BLiMP moves inside a ~2-point band. The best character model in the
+entire arc reaches **54.7%**.
+
+Adding capacity and nonlinearity to the readout, under the same online local rule, does not help either:
+
+| model | learned params | BLiMP | held-out PPL |
+|---|---|---|---|
+| shipped 88-dim linear, online | 2,992 | 53.4% | 16.21 |
+| shipped 88-dim linear, **convex optimum** | 2,992 | **56.1%** | 13.82 |
+| SLDA-RFF over the spiking PC latent (the repo's own nonlinear readout) | 1,176,784 | 55.9% | 13.90 |
+| conjunctive features, ctx≤7 wide | 10,289,692 | 52.3% | **4.69** |
+
+A **3,400× larger** conjunctive readout improves perplexity 3.5× and scores **worse** on BLiMP than the tiny
+linear one. Across 12 variants, correlation(held-out PPL, BLiMP) = **+0.452** — a *positive* r, meaning lower
+perplexity goes with *lower* BLiMP.
+
+Changing the unit from characters to words does not rescue it either. On 15,523,489 word tokens
+(194,760 types, 30k vocab), 12 configurations up to 4-grams with 13M parameters:
+
+```
+  best by held-out PPL: word 3-gram, Witten-Bell
+    -> BLiMP 52.5% mean | 50.6% on the clean fully-in-vocab subset (n=694 pairs) | word PPL 569.4
+```
+
+The clean-subset number is **chance**. (Reported with its confound: BLiMP has an 11.16% OOV rate against this
+vocabulary, which is why the in-vocab subset is quoted separately rather than the headline being taken at
+face value.)
+
+**So the readout was never the cap, and neither was the corpus, the context window, the vocabulary fold, or
+the learning rule.** Every one of those was tested and eliminated by ablation.
+
+### Why — the mechanism, not just the correlation
+
+A per-paradigm trace explains the flat ~50%. The word 3-gram is **not uniformly weak; it is bimodal**:
+
+```
+  principle_A_domain_1              100%      wh_vs_that_with_gap_long_distance     4%
+  principle_A_case_1                100%      coordinate_structure_constraint       8%
+  wh_questions_subject_gap           96%      matrix_question_npi                   8%
+```
+
+The token trace shows the cause: **BLiMP's hard pairs are reorderings of the same words.** The ungrammatical
+"What *was* Alicia approaching senators" contains the frequent bigram `what was` (−2.5); the grammatical
+"What *senators* was Alicia..." contains the rare `what senators` (−11.9). So an n-gram-class model is not
+guessing on these items — it is **systematically wrong**, confidently preferring the ungrammatical sentence.
+The two modes cancel to chance. Capacity, context and data all move perplexity without touching the
+cancellation, because none of them supply long-distance structure.
+
+That also explains the otherwise baffling inversion: the aliased 88-dim bag scores *higher* on BLiMP
+(55.9–56.1%) than models that predict text far better (52–54%). It is a worse predictor whose errors happen
+to be less anti-correlated with grammaticality.
+
+Nothing in this family — count-based or locally learned, character or word, 3K or 130M parameters — clears
+~57%, while the published word 5-gram anchor is 61.2% and GPT-2 large is 86.0%. Closing that gap requires a
+representation of **long-distance dependency**, not more capacity. (Honest caveat: the 61.2% anchor used
+83M words, 5.4× the largest clean exposure reached here, so the word-level arm is not a like-for-like
+refutation of that number.)
+
+### Integrity notes on these measurements
+
+Four bugs were found and fixed during this study, three of which had produced invalid numbers: a missing
+unigram level in the backoff chain (harmless at V=34, drove BLiMP *below chance* at V=30k); fixed add-alpha
+collapsing on singleton word contexts (held-out PPL *rose* with context); UNK acting as a free ride that
+rewarded OOV-heavy, often ungrammatical sentences; and **held-out contamination above 1.25e8 exposure
+characters** — verified directly by probing, with the affected run retained on disk as
+`scratchpad/lang_word_big_out.VOID.txt` and a `assert_heldout_disjoint` gate added so it cannot recur.
+The contaminated numbers are not used anywhere in this document.
+
+### What is honest to claim
+
+- The language ceiling is **not** "structure without eloquence". There is **no measurable grammatical
+  competence** anywhere in the stack, no trained language model, and the acquired learner's own architecture
+  provably caps at 57.0%.
+- **Corpus scale is not the lever** — proven, not assumed: 4,119× more real text moved BLiMP by −1.6 points,
+  and at the convex optimum train PPL (13.650) and held-out PPL (13.822) are equal, so the model is
+  capacity-limited, not data-limited.
+- **Capacity is not the lever either** — 3,400× more parameters scored *worse*.
+- **The unit is not the lever at this scale** — word n-grams over 15.5M tokens sit at chance on the clean
+  in-vocab subset, and a plastic local-rule readout with **129,584,388 parameters** at matched exposure
+  scores 50.8–53.9%, i.e. it merely matches the count model.
+- **The failure is systematic, not noisy** — on the hard paradigms these models confidently prefer the
+  *ungrammatical* sentence, because the pairs are word reorderings and the ungrammatical order contains the
+  commoner n-gram.
+- The acquired-LM's BLiMP number **should not be cited as evidence of language ability** anywhere.
+- All four language designs put to the adversarial panel were **refuted**, several on measured wall-clock
+  grounds (one encoder path benchmarked at 96 hours; one serving architecture at 25 days for a full sweep).
+
+---
+
+## Bottom line
+
+Both ceilings **still stand**. One moved measurably, one did not move at all:
+
+| ceiling | before | after | status |
+|---|---|---|---|
+| fluid intelligence | ARC-AGI eval **0.0%** | ARC-AGI eval **2.75%** | moved off the floor; not closed |
+| open-domain language | BLiMP **51.0%** (chance 50.0) | unchanged | not moved; cause now proven architectural |
+
+The honest gain is not the 2.75%. It is that both ceilings are now **quantified against external benchmarks
+with failing controls**, both have a **mechanism identified by ablation rather than by assertion**, and two
+comfortable stories the project was telling itself have been retired: that Gf lacked a synthesis engine (it
+has one), and that language merely lacked eloquence (it lacks grammar, and more data will not supply it).
+
+Neither number is evidence about consciousness in either direction, and nothing here settles that question.
+
+---
+
+## Wave-1 depth addition — spiking RAVEN (Gf) + an order-sensitive AR language serve
+
+The next wave attacked each ceiling at the mechanism this document had just identified. Both additions are
+built, wired live, and gate-green (256/256 self-checks, ruff clean, E-STOP trio intact); neither closes its
+ceiling, and both are reported with the same developer-aware honesty as above.
+
+### Gf — a second measured point: RAVEN, not ARC
+
+New instruments: `reasoning/rpm_solver.py` (`RpmSolver` + live `RpmExpert`) and `reasoning/raven_bench.py`.
+The solver is genuinely spiking-native: role-filler object codes bound with `cortex/vsa_reasoning.py`'s
+bipolar HD algebra (the repo's NVSA substrate), **example→rule induction** over the NVSA rule set
+(distribute-three via row-product+unbind, progression via `gf.py`'s shift inducer, constant, arithmetic)
+executed as spike XOR / permute / cleanup ops, with the winning rule and answer selected through
+`basal_ganglia.action_gating.BasalGangliaGate.select` + `thalamus.global_workspace.GlobalWorkspace` ignition.
+
+```
+raven_bench (synthetic 8-choice):  RpmSolver 98.3% (59/60), known 96.7%
+controls:  random 11.7%  |  constant 15.0%   (chance 12.5%)   cited anchor NVSA-RAVEN ~88%
+live route:  12/12 'raven:' queries reach rpm-raven via reasoning_cortex.route() with the correct answer
+```
+
+**What is honest to claim.** This closes the *RAVEN-abstraction slice* the way `arc_solver` closed the
+geometry slice — no more, and for the same reason it is no more. The attribute codes (type/size/color over a
+small integer pool) are a **developer-supplied grammar**, and under Chollet's developer-aware clause that
+prior is charged against the score. So 98.3% on synthetic RPM is **not general fluid intelligence**; it is
+test-time rule induction over an author-chosen attribute vocabulary. This is precisely the outcome the lone
+surviving adversarial design predicted — every published RPM success, spiking or not, assumes a hand-specified
+attribute grammar. The untested gap is **real** I-RAVEN with a perception front-end extracting attributes from
+pixels (where NVSA's cited ~88% lives); `raven_bench` already loads such a dataset if present, and scores the
+same solver honestly against it. The `gf.py` wall — novel *out-of-grammar* synthesis — remains unmoved.
+
+### Language — the order-sensitive instrument the diagnosis demanded
+
+The mechanism section above proved the cap is **order-invariance**: the SLDA-RFF readout decodes a summed bag,
+so on BLiMP's hard pairs (word reorderings) it is not guessing but *systematically wrong*. This wave installs
+the architectural cure, forward-serve half first: `reasoning/ar_spiking_lm_serve.py` (numpy, forward-only) +
+`training/ar_spiking_lm.py` (torch [train] tier). It is a SpikeGPT-style Spiking-RWKV char LM (Zhu et al.,
+arXiv:2302.13939) — LIF-gated linear recurrence token-mixer, no softmax — scored by **full-sentence
+autoregressive log-probability**, which is order-sensitive by construction. Trained offline with BPTT +
+fast-sigmoid surrogate gradients, frozen to numpy, forward-served with `logprob(sentence)`; wired into
+`blimp_bench` as an opt-in real scorer.
+
+```
+order proof:  logprob(grammatical) != logprob(shuffled)   random-init diff 1.40 ;  after tiny inline train  167.19
+blimp_bench:  AR spiking-LM -> n/a  (no frozen artifact at models/ar_spiking_lm.npz)
+```
+
+**What is honest to claim.** BLiMP is **unchanged** — the serve degrades honestly to `n/a` because no
+real-scale artifact exists, and it fabricates no number. What is new is the **first representation in the
+stack that can encode word order at all**: unlike every bag/n-gram model measured above, shuffling the input
+changes the score. A toy model sits at n-gram ~57–60%; moving BLiMP off that floor needs the real-scale GPU
+train (~GPT-2-small, 10–100M words) exported to `models/ar_spiking_lm.npz`. This wave ships the **architecture
+and the full train→freeze→forward-serve pipeline**, not a result. The acquired-LM's ~53% must still not be
+cited as language ability, and no BLiMP gain is claimed here.
+
+### Bottom line, restated
+
+| ceiling | status after Wave-1 |
+|---|---|
+| fluid intelligence | RAVEN slice now solved (98.3% synthetic, developer-aware-charged); **general Gf still not earned**; `gf.py` out-of-grammar wall unmoved |
+| open-domain language | order-invariance cure now **installed as architecture** (order-sensitive AR logprob, proven); **BLiMP unmoved** — awaits the real-scale GPU train |
+
+Both ceilings still stand. The wave converted each from "cause identified" to "cure built and instrumented",
+and left the honest number exactly where the evidence puts it.
+
+## Reproduce
+
+```bash
+cd D:/AI-project/spiking-neural-data-lake
+
+# harness self-checks (both skip cleanly if the data is not downloaded)
+PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.arc_bench
+PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.blimp_bench
+PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.arc_solver
+
+# Wave-1 additions (Gf RAVEN + order-sensitive AR language serve)
+PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.raven_bench
+PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.rpm_solver
+PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.ar_spiking_lm_serve          # fast stdlib+numpy order proof
+PYTHONPATH=src .venv-cu128/Scripts/python.exe -m snn_data_lake.reasoning.ar_spiking_lm_serve --train  # strict trained order proof (torch)
+
+# before-state baselines
+NORD_PERSIST=0 .venv-lake/Scripts/python.exe scratchpad/arc_baseline.py 100
+NORD_PERSIST=0 .venv-lake/Scripts/python.exe scratchpad/blimp_baseline.py 25
+
+# the ARC solver, both splits, library on/off
+PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/arc_score.py evaluation on
+PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/arc_score.py training off
+
+# the language scale + mechanism study
+PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/lang_scale.py 1e3 1e4 1e5 1e6 1e7
+PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/lang_diag.py     # ablations D1-D7
+PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/lang_probe.py    # decodability D8
+```
+
+Datasets (all gitignored under `data/`):
+
+```bash
+curl -sL -o arc.zip   https://github.com/fchollet/ARC-AGI/archive/refs/heads/master.zip     # -> data/arc/
+curl -sL -o blimp.zip https://github.com/alexwarstadt/blimp/archive/refs/heads/master.zip   # -> data/lang/blimp/
+# WikiText-103: HF parquet wikitext-103-raw-v1/train-00000-of-00002.parquet -> data/lang/wikitext/
+```

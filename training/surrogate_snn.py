@@ -162,6 +162,23 @@ class SurrogateEncoder:
         _, latent = self.net(x)
         return latent[0] if single else latent
 
+    @torch.no_grad()
+    def classify(self, event_frame):
+        """Predicted class label(s) from the rate readout -- proves the encoder PERCEIVES real content
+        (not noise) on the live path. [T,C,H,W] -> int; [B,T,C,H,W] -> list[int]."""
+        x = event_frame
+        if not torch.is_tensor(x):
+            x = torch.as_tensor(x, dtype=torch.float32)
+        x = x.float().to(self.device)
+        single = (x.ndim == 4)
+        if single:
+            x = x.unsqueeze(0)
+        if x.ndim != 5:
+            raise ValueError("classify expects [T,C,H,W] or [B,T,C,H,W]; got shape %s" % (tuple(x.shape),))
+        logits, _ = self.net(x)
+        pred = logits.argmax(dim=1)
+        return int(pred[0]) if single else [int(v) for v in pred]
+
 
 # ----------------------------------------------------------------------------
 # Data (reused from research/ng_snn/data.py, imported lazily so this module stays torch-only-importable).

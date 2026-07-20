@@ -29,15 +29,21 @@ import re
 import sys
 import tempfile
 
-from snn_data_lake.reasoning.content_signature import signature      # stdlib (decoupled from skill_builder's numpy chain)
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
-from snn_data_lake.reasoning.world_kb_stream import load_kb
-from snn_data_lake.reasoning.consciousness_probe import probe_access, probe_binding, probe_integration, probe_reentry
+from snn_data_lake.reasoning.consciousness_probe import (
+    probe_access,
+    probe_binding,
+    probe_integration,
+    probe_reentry,
+)
+from snn_data_lake.reasoning.content_signature import (
+    signature,  # stdlib (decoupled from skill_builder's numpy chain)
+)
 from snn_data_lake.reasoning.lake_reason import Reasoner
 from snn_data_lake.reasoning.train_of_thought import TrainOfThought
+from snn_data_lake.reasoning.world_kb_stream import load_kb
 from snn_data_lake.substrate.home import KnowledgeLog, banner, home
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
-
 
 _STOP = {"what", "is", "a", "an", "the", "of", "in", "on", "at", "to", "are", "you", "do", "does",
          "i", "me", "my", "tell", "about", "was", "were", "who", "which", "how", "and", "it", "its",
@@ -265,7 +271,10 @@ class LakeChat:
         if low.rstrip().endswith("?") or (words and words[0] in
                                           ("what", "how", "why", "who", "when", "where", "does", "is", "are")):
             return None
-        from snn_data_lake.reasoning.model_builder import RECIPES, ModelBuilder    # lazy: geometry only on a build turn
+        from snn_data_lake.reasoning.model_builder import (  # lazy: geometry only on a build turn
+            RECIPES,
+            ModelBuilder,
+        )
         target = next((t for t in RECIPES if t in low), None)
         if target is None:
             return {"known": False, "coverage": 0.0, "ignited": False, "source": "builder",
@@ -333,8 +342,13 @@ class LakeChat:
         distinct) + closed-form 2-3-point ambiguity, ASK if underdetermined else ANSWER. `consistent_
         programs` (the expensive exhaustive walk) is reached only for a compressing fit, and stops at 2
         distinct -- so the common patternless turn costs one search, not three."""
-        from snn_data_lake.reasoning.gf import (_geometric_next, _interleave_next, _periodic_additive_next,
-                                _poly_next, _recurrence_next)
+        from snn_data_lake.reasoning.gf import (
+            _geometric_next,
+            _interleave_next,
+            _periodic_additive_next,
+            _poly_next,
+            _recurrence_next,
+        )
         self._pending_gf = None                                # clear; re-armed below only if we ASK
         stmt = " ".join(map(str, ints))
         # OPEN-ENDED search FIRST, so it LEARNS from every series (even ones a labeled family answers) --
@@ -359,8 +373,9 @@ class LakeChat:
             if got is not None:
                 return self._gf_reply(stmt, got[0], got[1])    # a structural family fits -> clean label
 
-        from snn_data_lake.reasoning.gf import (Library, consistent_hypotheses, consistent_programs,
-                                                _evaluate_al as _evaluate, _render_al as _render)
+        from snn_data_lake.reasoning.gf import Library, consistent_hypotheses, consistent_programs
+        from snn_data_lake.reasoning.gf import _evaluate_al as _evaluate
+        from snn_data_lake.reasoning.gf import _render_al as _render
         # a fit that compresses by >=2 nodes is strong Occam evidence -> trust it and SKIP the closed-form
         # hypotheses entirely (that scan is ~23 ms and would be discarded here anyway, e.g. factorial).
         strong = full is not None and full[2] < len(ints) - 1
@@ -403,7 +418,12 @@ class LakeChat:
     def _gf_request(self, text):
         """Route a PUZZLE turn to the fluid-intelligence inducer: a letter analogy, a Raven grid, or a
         number/letter series. Returns a reply dict, or None when the turn is not a Gf puzzle."""
-        from snn_data_lake.reasoning.gf import analogy_over, letter_analogy, letter_series, raven_dist3
+        from snn_data_lake.reasoning.gf import (
+            analogy_over,
+            letter_analogy,
+            letter_series,
+            raven_dist3,
+        )
         low = text.lower()
 
         # a NOVEL-ALPHABET analogy ("alphabet q w e r t then q:w :: e:?") -- the rule transfers to a
@@ -765,7 +785,7 @@ class LakeChat:
                 triples = [tuple(rec["triple"]) for rec in self.records if rec.get("triple")]
                 cached = (len(self.records),
                           build_default_cortex(seed=0, triples=triples or None, enable_recognizer_bank=True,
-                                               enable_abduction=True))
+                                               enable_abduction=True, enable_rpm=True))
                 self._cortex = cached
             from snn_data_lake.reasoning.reasoning_compose import CompositionalSolver
             return CompositionalSolver(cached[1], records=self.records).solve(text)
@@ -1092,7 +1112,9 @@ def boot(chat, wordnet=True):
     if not wordnet:
         return f"{tag} -> {chat.n_known} things known"
     try:
-        from snn_data_lake.reasoning.web_ingest_gate import WebAccessGate      # lazy import (avoids a circular import at module load)
+        from snn_data_lake.reasoning.web_ingest_gate import (
+            WebAccessGate,  # lazy import (avoids a circular import at module load)
+        )
         n_web, n_core, prov = WebAccessGate().ingest_wordnet(chat)
         return f"{tag} + {n_core} core + {n_web} web defs -> {chat.n_known} known ({prov})"
     except Exception as e:                               # gate import / fetch failed -> durable+world-KB, still boots

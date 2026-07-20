@@ -33,7 +33,6 @@ module stays stdlib-importable, and the expert trains only on the passed triples
 import re
 import zlib
 
-
 # ------------------------------------------------------------- query features (computed once) --------
 
 _INT_TOK = re.compile(r"-?\d+")
@@ -170,6 +169,65 @@ class RavenExpert:
                 "rows via the spiking VSA)." % (stmt, got), True)
 
 
+class ArcExpert:
+    """arc_solver.py -- ARC-domain TEST-TIME PROGRAM SYNTHESIS over 2-D grids: object perception +
+    a grid-transformation DSL + iterative-deepening search for the SMALLEST program consistent with
+    every training pair (the gf.induce_program idiom on grids). The task is presented as text:
+    'arc: <in> -> <out> ; <in> -> <out> ; test <grid>' -- rows separated by '|', cells digits 0-9.
+    score() is pure-regex/cheap; the solver imports LAZILY on first answer (build cost unchanged).
+    Honest gap when no program in the DSL reproduces all the training pairs -- never a guessed grid."""
+
+    name, module, source, uses = "arc-grid", "arc_solver", "gf", "stdlib"
+
+    def __init__(self, seed=0):
+        self._synth = None                                     # lazy: arc_solver.synthesize on first use
+
+    @staticmethod
+    def _grid(txt):
+        rows = [[int(v) for v in re.findall(r"[0-9]", part)] for part in txt.split("|")]
+        rows = [r for r in rows if r]
+        if not rows or any(len(r) != len(rows[0]) for r in rows):
+            return None
+        return rows
+
+    def _parse(self, q):
+        m = re.search(r"\barc\b\s*:?(.*)$", q.low, re.S)
+        if not m:
+            return None
+        pairs, test = [], None
+        for seg in m.group(1).split(";"):
+            seg = seg.strip()
+            if "->" in seg:
+                a, _, b = seg.partition("->")
+                gi, go = self._grid(a), self._grid(b)
+                if gi is None or go is None:
+                    return None
+                pairs.append((gi, go))
+            elif seg.startswith("test"):
+                test = self._grid(seg[4:])
+        if not pairs or test is None:
+            return None
+        return pairs, test
+
+    def score(self, q):
+        return 0.95 if self._parse(q) else 0.0
+
+    def answer(self, q):
+        pairs, test = self._parse(q)
+        if self._synth is None:
+            from snn_data_lake.reasoning.arc_solver import synthesize
+            self._synth = synthesize
+        cands, progs = self._synth(pairs, test, attempts=1, node_budget=1500, time_budget=2.0)
+        if not cands:
+            return ("[honest gap] no program in my grid DSL (<=3 steps) reproduces all %d training "
+                    "pairs of this arc task -- no bluffed grid." % len(pairs), False)
+        names, closer = progs[0]
+        grid_txt = "|".join("".join(str(v) for v in row) for row in cands[0])
+        return ("[arc] induced a grid program at test time -> %s (program: %s+%s, the smallest "
+                "consistent with all %d train pairs). a synthesized program, not a stored fact." %
+                (grid_txt, ">".join(names) if names else "id", closer, len(pairs)), True)
+
+
 class BindingExpert:
     """mcr_hdc.py -- Modular Composite Representation (HDC): bind role=filler pairs into ONE
     hypervector, then unbind a queried role to recover its filler. Wraps mcr_hv/bind/bundle/unbind/sim.
@@ -179,7 +237,13 @@ class BindingExpert:
 
     def __init__(self, seed=0, d=256):
         self.d = d
-        from snn_data_lake.reasoning.mcr_hdc import mcr_bind, mcr_bundle, mcr_hv, mcr_sim, mcr_unbind
+        from snn_data_lake.reasoning.mcr_hdc import (
+            mcr_bind,
+            mcr_bundle,
+            mcr_hv,
+            mcr_sim,
+            mcr_unbind,
+        )
         self._hv, self._bind, self._bundle, self._unbind, self._sim = (
             mcr_hv, mcr_bind, mcr_bundle, mcr_unbind, mcr_sim)
 
@@ -446,7 +510,10 @@ class RelationalCompletionExpert:
         passed triples ONLY (no dataset fetch, no network). Cached -> later turns just rank."""
         if self._model is None:
             import numpy as np
-            from snn_data_lake.reasoning.kb_ranking import DistMult    # the class ONLY, never its dataset fns
+
+            from snn_data_lake.reasoning.kb_ranking import (
+                DistMult,  # the class ONLY, never its dataset fns
+            )
             e2i = {e: i for i, e in enumerate(self._ents)}
             r2i = {r: i for i, r in enumerate(self._rels)}
             batch = max(8, min(256, len(self.triples) // 4))
@@ -543,15 +610,17 @@ class ReasoningCortex:
                 "confidence": round(best_score, 2), "expert": best.name, "reply": reply}
 
 
-def build_default_cortex(seed=0, triples=None, enable_recognizer_bank=False, enable_abduction=False):
-    """Register the eight live reasoning experts (each a thin adapter over one reasoning/ study).
+def build_default_cortex(seed=0, triples=None, enable_recognizer_bank=False, enable_abduction=False, enable_rpm=False):
+    """Register the nine live reasoning experts (each a thin adapter over one reasoning/ study --
+    incl. the ARC grid expert, inert unless the query is an explicit 'arc:' grid task).
     With `triples` (the caller's OWN stored (head, relation, tail) KB facts), also register the
     RelationalCompletionExpert: LEARNED link prediction (kb_ranking.DistMult) over those triples --
     generalized relational inference past exact lookup. triples=None/empty -> the 8-expert cortex,
     byte-identical to before (the ninth expert is skipped, numpy is never touched)."""
     cortex = ReasoningCortex()
     for expert_cls in (NumberSeriesExpert, LetterExpert, RavenExpert, BindingExpert,
-                       DistributedRecallExpert, AssociativeRecallExpert, ClusterExpert, PlasticityExpert):
+                       DistributedRecallExpert, AssociativeRecallExpert, ClusterExpert, PlasticityExpert,
+                       ArcExpert):
         cortex.register(expert_cls(seed=seed))
     if triples:
         cortex.register(RelationalCompletionExpert(seed=seed, triples=triples))
@@ -561,6 +630,9 @@ def build_default_cortex(seed=0, triples=None, enable_recognizer_bank=False, ena
     if enable_recognizer_bank:                                   # opt-in heterogeneous spiking recognizer ensemble
         from snn_data_lake.cortex.recognizer_bank import RecognizerBankExpert
         cortex.register(RecognizerBankExpert(seed=seed))         # inert on ordinary text (needs a 'recognize: <64 nums>' query)
+    if enable_rpm:                                               # opt-in spiking NVSA Raven's-matrix solver (Gf induction)
+        from snn_data_lake.reasoning.rpm_solver import RpmExpert
+        cortex.register(RpmExpert(seed=seed))                    # inert on ordinary text (needs a 'raven: <cells> | <candidates>' query)
     return cortex
 
 
@@ -631,6 +703,18 @@ def main():
     # (d) deterministic: routing every probe twice yields identical dicts
     for q, _we, _wa, o in results:
         assert cortex.route(q) == o, "routing must be deterministic for %r" % q
+
+    # ---- ARC grid tasks: test-time program synthesis over 2-D grids (arc_solver) ---------------------
+    arcq = "arc: 12|30 -> 03|21 ; 56|70 -> 07|65 ; test 89|10"
+    arc_hit = cortex.route(arcq)
+    assert arc_hit["expert"] == "arc-grid" and arc_hit["known"] and arc_hit["source"] == "gf", arc_hit
+    assert "01|98" in arc_hit["reply"], arc_hit["reply"]           # rot180 of the test grid, induced
+    arc_gap = cortex.route("arc: 11|11 -> 12|34 ; 22|22 -> 56|78 ; test 33|33")
+    assert arc_gap["expert"] == "arc-grid" and not arc_gap["known"], arc_gap
+    assert cortex.route(arcq) == arc_hit, "arc routing must be deterministic"
+    print("arc grid expert (arc_solver test-time program synthesis over 2-D grids):")
+    print("  induced     : %s" % arc_hit["reply"])
+    print("  honest gap  : %s" % arc_gap["reply"])
 
     # ---- relational completion: LEARNED link prediction over the brain's OWN triples -----------------
     import sys

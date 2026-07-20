@@ -102,7 +102,7 @@ omit = ["*/reasoning/*", "*/training/*"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["research", "integrations", "src/snn_data_lake/training", "training", "src/snn_data_lake/reasoning"]
+extend-exclude = ["research", "integrations", "src/snn_data_lake/training", "training", "src/snn_data_lake/reasoning", "scratchpad"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
