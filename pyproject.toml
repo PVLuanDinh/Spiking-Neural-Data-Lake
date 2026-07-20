@@ -1,8 +1,14 @@
-# Installable src/ package (snn_data_lake). Core is pure-stdlib (empty `dependencies`); optional
-# extras below add integrations. `pip install .` makes every module importable as
-# `snn_data_lake.<mod>` + installs the console commands below; `pip install ".[all]"` adds every
-# addon (arm+lake+gpu+nmnist+train). Core is zero-dep for clone-and-run inference; training is a
-# first-class opt-in GPU tier (.[train] -> snn-train, src/snn_data_lake/training/, exports to core).
+# Installable src/ package (snn_data_lake). TORCH TIER ON BY DEFAULT (user policy 2026-07-18): the
+# default `dependencies` include torch+numpy, so `pip install .` gives the torch brain tier out of the
+# box. Set env NORD_TORCH=0 to run torch-free (the non-torch modules are all pure stdlib, so the brain
+# still works, just without the torch growth/learning tier). `pip install ".[all]"` adds every addon
+# (arm+lake+gpu+nmnist+train); training is a first-class GPU tier (.[train] -> snn-train).
+#
+# DEPENDENCY SCOPE (user policy 2026-07-19): the former ZERO-DEP-CORE contract is RELAXED -- new
+# dependencies MAY be added as the project grows, and the user VERIFIES each one. numpy is a core dep
+# (the brain-native language acquisition + growth/learning tiers use it); the interactive-viz stack
+# (matplotlib/netplotbrain/pandas/scikit-image/nibabel/templateflow) lives in the [viz] extra. Keep
+# every addition justified and surfaced for verification; prefer stdlib when it is genuinely sufficient.
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -10,7 +16,7 @@ build-backend = "hatchling.build"
 [project]
 name = "spiking-neural-data-lake"
 version = "3.28.0"
-description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Zero-dep core, clone-and-run."
+description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Torch tier on by default (NORD_TORCH=0 for a zero-dep stdlib brain)."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -21,15 +27,18 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = []   # the core is pure standard library — that is the point
+dependencies = ["torch", "numpy"]   # TORCH TIER ON BY DEFAULT (user policy, 2026-07-18)
 
-# EXCEPTION (documented, user-authorized): a small BRAIN TIER imports torch -- hippocampus/ng_snn.py
-# (NG-SNN classifier) plus cortex/{brain,language_center,neurogenesis_engine}.py (the unified Brain,
-# its SpikeGPT-216M language center, and the neurogenesis engine). The user relaxed the zero-dep-core
-# rule for "the best-performing brain". Core still declares dependencies=[] (torch is NOT a hard dep):
-# these modules are torch-GATED in run_selfchecks.py (skipped when torch absent -- the Brain then runs
-# on its deterministic narrator with no growth), and torch is satisfied by the [gpu]/[train] extras
-# below. Every OTHER core module stays zero-dep.
+# TORCH TIER = ON BY DEFAULT (user policy, 2026-07-18). torch is now a HARD default dependency: a plain
+# `pip install .` pulls torch+numpy and the torch BRAIN TIER runs by default -- hippocampus/ng_snn.py
+# (NG-SNN classifier) + cortex/{brain,language_center,neurogenesis_engine}.py (the unified Brain, its
+# SpikeGPT language center, the neurogenesis engine) grow/learn on torch out of the box. This
+# INTENTIONALLY supersedes the former zero-dep-core contract. MANUAL OFF-SWITCH: set env `NORD_TORCH=0`
+# to run torch-free -- the torch tier then degrades to the deterministic stdlib narrator (no growth) and
+# run_selfchecks.py skips the torch-gated modules, so the pure-stdlib path still exists on demand. Every
+# non-torch module remains pure stdlib, so `NORD_TORCH=0` gives a fully-working zero-dep brain. The
+# [gpu]/[train] extras below pin the GPU/training wheels (torchvision/snntorch/tonic) on top of the
+# default torch.
 [project.optional-dependencies]
 arm = ["pyserial"]                                                       # live_arm --serial / --actuate
 lake = ["polars", "pyarrow", "deltalake"]                               # lakehouse/medallion + delta_demo
@@ -40,6 +49,7 @@ nengo = ["nengo"]                                                       # substr
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
 genn = ["pygenn", "ml_genn"]                                             # research/*_genn + training/mnist_genn GPU trainer (needs a C++ compiler + CUDA)
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe of the tkinter GUI (build-time only; core stays zero-dep)
+viz = ["matplotlib", "netplotbrain", "pandas", "scikit-image", "nibabel", "templateflow"]  # chat --viz: real MNI152 template brain via netplotbrain (brain_netplot) + the self-contained ellipsoid-hull fallback (brain_activity_3d); core never imports any of these. netplotbrain fetches the MNI152 template from TemplateFlow on first render (cached ~/.cache/templateflow).
 dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.15.20", "pre-commit"]       # tests + lint/format (NOT runtime; ruff floor matches .pre-commit-config)
 all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist,train]"]             # every addon (genn excluded — needs a compiler)
 
@@ -81,6 +91,10 @@ filterwarnings = ["ignore:.*found in sys.modules.*:RuntimeWarning"]
 
 [tool.coverage.run]
 source = ["snn_data_lake"]
+# reasoning/ (folded research builds) + training/ (torch GPU trainers) are verified by their own
+# run_selfchecks self-checks, not the unit suite -- omit them from the coverage denominator (they are
+# ruff-excluded for the same reason).
+omit = ["*/reasoning/*", "*/training/*"]
 
 # ruff: scoped to the zero-dep core + tests. research/ and the standalone "robot arm/" sketch are
 # excluded on purpose (linting them means editing quarantined / optional-dep code — out of scope
@@ -88,7 +102,7 @@ source = ["snn_data_lake"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["research", "robot arm", "local_llm", "packaging", "src/snn_data_lake/training", "training"]
+extend-exclude = ["research", "integrations", "src/snn_data_lake/training", "training", "src/snn_data_lake/reasoning"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

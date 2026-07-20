@@ -92,6 +92,9 @@ def main():
     # torch-tier annex: verify each module region-resolves + imports WHEN torch is present; SKIP-with-notice
     # otherwise so the zero-dep CI matrix stays green (these are the only atlas modules torch-gated at import).
     try:
+        import os
+        if os.environ.get("NORD_TORCH") == "0":               # off-switch: treat the torch tier as absent
+            raise ImportError
         import torch  # noqa: F401
         _torch = True
     except Exception:

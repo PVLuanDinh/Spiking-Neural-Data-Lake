@@ -80,7 +80,8 @@ class SpikingInteractionLearner:
     the neuron whose spike-timing membrane response peaks highest; learning is R-STDP gated by a
     reward/teaching sign. Pure stdlib, deterministic per `seed`."""
 
-    def __init__(self, responses, n_in, seed=0, lr=0.06, tau=8.0, w0=0.3, t_post=None):
+    def __init__(self, responses, n_in, seed=0, lr=0.06, tau=8.0, w0=0.3, t_post=None, naca=None, stack=None,
+                 bank=None, readout_zoo=None, readout_kinds=None):
         self.responses = list(responses)          # response label names (intents / actions)
         self.n_in = int(n_in)
         self.tau = float(tau)                      # PSP == STDP eligibility time constant (shared)
@@ -101,6 +102,25 @@ class SpikingInteractionLearner:
         ]
         self.rng = random.Random(self.seed)        # instance rng (e.g. training-order shuffles)
         self._last = None                          # (label, eligibility, deltas, reward) of the last deposit
+        # OPT-IN neuromodulation (NACABroadcast, duck-typed): a diffuse global gate that reshapes the LOCAL
+        # R-STDP delta ADDITIVELY. None -> the local rule is untouched (byte-identical). It modulates
+        # plasticity only; it adds NO actuator route (this router stays intent-recognition only).
+        self.naca = naca
+        # OPT-IN homeostatic plasticity stack (HomeostaticPlasticityStack, duck-typed): a FIXED ORDERED
+        # SANDWICH run around each LIVE R-STDP deposit -- a short-term dynamic gain BEFORE the update, then
+        # homeostatic synaptic scaling + intrinsic plasticity STABILIZE the just-updated synapses AFTER it,
+        # so the live learning weights stay bounded + at a target firing rate instead of drifting. None ->
+        # OFF -> the learning path is BYTE-IDENTICAL to today. It stabilizes plasticity only and adds NO
+        # actuator route (this router stays intent-recognition only).
+        self.stack = stack
+        # OPT-IN sensory front-end (SensoryEncoderBank, duck-typed): re-codes the stimulus into the spike
+        # train. None -> the live rank_code() is BYTE-IDENTICAL. Must preserve the n_in code width.
+        self.bank = bank
+        # OPT-IN heterogeneous spiking readout (NeuronZoo, duck-typed): feeds each neuron's membrane read
+        # through a small point-neuron POOL. None -> the linear membrane read is BYTE-IDENTICAL. The
+        # enabled path is NOT byte-identical (re-baseline routing before enabling); intent-recognition only.
+        self.readout_zoo = readout_zoo
+        self.readout_kinds = readout_kinds
 
     def encode(self, stimulus):
         """Spike-encode a stimulus into a SPIKE TRAIN: one spike per input synapse at a discrete
@@ -108,6 +128,8 @@ class SpikingInteractionLearner:
         discrete times; invariant to any monotonic gain change on the stimulus."""
         if len(stimulus) != self.n_in:
             raise ValueError(f"stimulus has {len(stimulus)} dims, expected {self.n_in}")
+        if self.bank is not None:                  # OPT-IN sensory front-end (must preserve n_in width)
+            return self.bank.encode(list(stimulus))
         return rank_code(list(stimulus))           # list[int]: spike time (latency) per synapse
 
     def _psp(self, dt):
@@ -121,7 +143,22 @@ class SpikingInteractionLearner:
         v = 0.0
         for i, t in enumerate(code):
             v += neuron.w[i] * self._psp(self.t_post - t)
-        return v
+        if self.readout_zoo is None:
+            return v                                # BYTE-IDENTICAL linear membrane read (default)
+        # OPT-IN heterogeneous spiking readout: pass the membrane read v through a small cached pool of
+        # point neurons; the pool's total spike count is the decision variable. Not byte-identical.
+        pool = getattr(neuron, "_zoo_pool", None)
+        if pool is None:
+            from snn_data_lake.cortex.neuron_zoo import SAFE_KINDS, sample_population
+            pool = sample_population(
+                8, seed=self.seed * 7919 + self.neurons.index(neuron), kinds=self.readout_kinds or SAFE_KINDS)
+            neuron._zoo_pool = pool
+        total = 0
+        for cell in pool:
+            cell.reset_state()
+            for _ in range(32):
+                total += cell.step(v)
+        return float(total)
 
     def _argmax_label(self, code):
         drives = [self._drive(n, code) for n in self.neurons]
@@ -138,8 +175,18 @@ class SpikingInteractionLearner:
         for i, t in enumerate(code):               # deliver the input spike train
             n.pre_spike(i, float(t))
         n.post_spike(self.t_post)                  # post spike AFTER the inputs -> LTP eligibility
+        if self.stack is not None:                 # PRE: fast short-term dynamic gain modulates the deposit
+            d = float(d) * self.stack.pre_gain(li)  #      (Tsodyks-Markram release: onset strong, burst fades)
         deltas = n.reward(float(d))                # three-factor gate (returns per-synapse deltas)
-        self._last = (li, list(n.e), list(deltas), float(d))
+        self._last = (li, list(n.e), list(deltas), float(d))   # the LOCAL delta stays exactly reward*eligibility
+        if self.naca is not None:                  # additive neuromodulatory correction ON TOP of the local delta
+            lam = self.naca.lam(li)                # input-type (response-class) expectation -> scalar neuromodulator
+            mod = self.naca.modulate(deltas, lam)  # -eta*f_local(lam)*delta; all zeros when the gate is off
+            for i in range(self.n_in):
+                n.w[i] += mod[i]
+        if self.stack is not None:                 # POST: homeostatic scaling + intrinsic plasticity STABILIZE
+            activity = [self._psp(self.t_post - t) for t in code]   # per-synapse PSP drive (>=0); y=sum(w*psp)=readout v
+            n.w = self.stack.stabilize(li, list(n.w), activity)     #   bound the live synapses + hold the firing rate
         return deltas
 
     def respond(self, stimulus):
@@ -317,7 +364,7 @@ def _brain_intent(reply):
     r = reply.lower()
     if reply.startswith("Hello. I am the live brain"):
         return "GREET"
-    if "not a conscious agent" in r:
+    if "neither claim" in r and "experience" in r:       # the agnostic consciousness reply
         return "CONSCIOUS"
     if reply.startswith("Done") or "the arm is frozen" in r or "e-stop" in r:
         return "ARM"

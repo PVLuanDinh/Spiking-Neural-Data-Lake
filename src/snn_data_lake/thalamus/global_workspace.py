@@ -128,12 +128,11 @@ class GlobalWorkspace:
         for fn in self._subscribers:
             fn(content)
 
-    def _top_candidate(self, exclude=None):
+    def _top_candidate(self):
         # Highest salience wins; deterministic tie-break by source name (lexicographically first).
-        pool = [c for c in self._buffer if exclude is None or (c[0], c[1]) != exclude]
-        if not pool:
+        if not self._buffer:
             return None
-        return min(pool, key=lambda c: (-c[2], c[0]))
+        return min(self._buffer, key=lambda c: (-c[2], c[0]))
 
     def _jitter_for(self, key):
         # A fixed, tiny per-pool current drawn once (deterministic under the seed) -- breaks the

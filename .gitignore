@@ -19,6 +19,11 @@ packaging/installer/
 venv/
 env/
 
+# Secrets / local env files (API keys etc — never commit)
+.env
+*.env
+**/.env
+
 # Local working docs (not repo artifacts)
 *.docx
 
@@ -70,3 +75,6 @@ recordings/
 # Literature dumps — hundreds of MB of PDFs, kept on disk, never committed
 research/ScienceDirect_articles_*/
 research/*.zip
+
+# Durable working-memory data lake (chat --web / web_server.py) — persists locally, never committed
+brain_data/

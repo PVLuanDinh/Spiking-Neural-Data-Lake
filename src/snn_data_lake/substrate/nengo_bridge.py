@@ -34,6 +34,13 @@ import math
 try:
     import nengo
     import numpy as np
+    # Disable Nengo's on-disk decoder cache (~/.nengo/cache, shared across ALL venvs by the same user).
+    # It pickles solved decoders keyed only by the problem -- NOT by numpy version -- so a cache entry
+    # written by one env's numpy (e.g. .venv-nengo's numpy 2.x, module path `numpy._core`) crashes with
+    # ModuleNotFoundError when read back under another env's numpy (.venv-cu128's 1.26, path `numpy.core`).
+    # Decoders are cheap and deterministically re-solved from the seed, so disabling the cache makes the
+    # bridge deterministic + env-robust with no effect on any decode/assertion. See docs -- gated tier.
+    nengo.rc["decoder_cache"]["enabled"] = "False"
     _NENGO_OK = True
     _IMPORT_ERR = None
 except ImportError as _e:            # gated: import stays clean when the neuromorphic stack is absent
@@ -389,7 +396,7 @@ def main():
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))   # repo root -> import research.*
-    import research.nef_compute as nef  # the zero-dep NEF ground truth
+    import snn_data_lake.reasoning.nef_compute as nef  # the zero-dep NEF ground truth (folded reasoning tier)
     from snn_data_lake.cortex.lif_neuron import LIFNeuron  # the discrete brain LIF
 
     print("=" * 72)

@@ -168,14 +168,14 @@ class FullBrainArcadeAgent:
         reward = float(levels - self.prev_levels)
         self.prev_levels = levels
         done = frame.state in (GameState.WIN, GameState.GAME_OVER)
-        grid0 = grids[0] if grids else []
+        grid0 = _to_list(grids[0]) if len(grids) else []
 
         if self.last is not None:                  # fold the last transition into world model + drives
             s0, k0 = self.last
             predicted = self.T.get((s0, k0), (None,))[0]
             pred_err = 0.0 if predicted == sig else 1.0
             self.cur.intrinsic_reward((s0, k0), pred_err)
-            changed = self._prev_grid is not None and grid0 != self._prev_grid
+            changed = self._prev_sig is not None and sig != self._prev_sig   # crc32-based (numpy-safe)
             eff = reward + (0.01 if changed else 0.0)   # frame-change bonus -> prefer non-no-op actions
             self.T[(s0, k0)] = (sig, eff, done)
             self.tried.setdefault(s0, set()).add(k0)
@@ -207,6 +207,7 @@ class FullBrainArcadeAgent:
                 key = keys[self._race(vals)] if max(vals) > 0.0 else self.rng.choice(keys)
         self.last = (sig, key)
         self._prev_grid = grid0
+        self._prev_sig = sig
         return self._emit(key)
 
     def _plan(self):

@@ -618,7 +618,7 @@ def main():
     centers0 = encoders[0].centers
 
     # ---- train the full JEPA and the fair control on the SAME seeded stream / steps / architecture ----
-    train, _ = _gen_stream(STEPS, 1, encoders, D, NOISE, ACTIONS)
+    train, train_hidden = _gen_stream(STEPS, 1, encoders, D, NOISE, ACTIONS)   # keep hidden (reused below)
     full = JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, lr=LR,
                           lambda_var=LV, lambda_cov=LC, anti_collapse=True, seed=0)
     ctrl = JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, lr=LR,
@@ -647,7 +647,6 @@ def main():
         for (x, a, y) in train:
             fm.update(_band0_centroid(x, centers0, BAND), CMD[a], _band0_centroid(y, centers0, BAND), lr=0.15)
     # JEPA feature -> u readout, and ForwardModel feature -> u readout, both LMS-fit on the training stream
-    _, train_hidden = _gen_stream(STEPS, 1, encoders, D, NOISE, ACTIONS)   # same seed -> same trajectory
     jf = [full.predict(full.encode(x), a) for (x, a, _y) in train]
     ff = [[fm.predict(_band0_centroid(x, centers0, BAND), CMD[a]), 1.0] for (x, a, _y) in train]
     ut = [un for (_u, _a, un) in hidden]                             # held-out hidden next-state targets

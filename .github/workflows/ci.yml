@@ -13,21 +13,36 @@ concurrency:
 
 jobs:
   stdlib-self-checks:
-    name: self-checks ${{ matrix.os }} py${{ matrix.python-version }}
+    name: self-checks (NORD_TORCH=0) ${{ matrix.os }} py${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false                       # one cell failing must not mask the others
       matrix:
         os: [ubuntu-latest, windows-latest]  # the product is Windows-first (record_and_run.ps1, COMx)
         python-version: ["3.11", "3.12", "3.13"]
+    env:
+      NORD_TORCH: "0"                         # manual off-switch: proves the zero-dep stdlib path still passes
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          # no `cache: pip` — this job installs nothing (zero-dep), so there is no pip cache to save
-      - name: Run every pure-stdlib script's assert-based self-check (zero deps)
+          # no `cache: pip` — with NORD_TORCH=0 this job installs nothing (zero-dep), no pip cache to save
+      - name: Run every self-check with the torch tier OFF (zero deps, off-switch path)
         run: python run_selfchecks.py       # canonical module list lives in run_selfchecks.py
+
+  torch-self-checks:
+    name: self-checks (torch tier ON, default)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install -e .    # torch is a DEFAULT dependency now -> the torch tier runs
+      - name: Run every self-check with the torch tier ON (default)
+        run: python run_selfchecks.py       # ng_snn / brain / neurogenesis_engine now run, not skipped
 
   lint:
     name: lint (ruff)

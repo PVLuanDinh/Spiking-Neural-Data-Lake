@@ -230,12 +230,17 @@ class PrefrontalExecutive:
         winner = self._stable_commit(evidence)
         alternatives = [evidence[j] for j in range(len(evidence)) if j != winner]
         margin = evidence[winner] - (max(alternatives) if alternatives else float("-inf"))
+        self._gate_primary(winner, margin)
+        return self.goal
+
+    def _gate_primary(self, idx, margin):
+        """Gate the write of the PRIMARY (base) goal: overwrite it only if `margin` clears the gate
+        threshold (or nothing is held yet), keeping any sub-goals. Shared by update() and plan()."""
         if not self._stack or margin >= self.gate_threshold:
             if self._stack:
-                self._stack[0] = self._new_frame(winner)        # overwrite the primary goal (keep sub-goals)
+                self._stack[0] = self._new_frame(idx)           # overwrite the primary goal (keep sub-goals)
             else:
-                self._stack.append(self._new_frame(winner))     # first goal
-        return self.goal
+                self._stack.append(self._new_frame(idx))        # first goal
 
     def _rollout_value(self, state, command, predictor, goal_value, horizon):
         """Roll `predictor.predict(s, command)` forward `horizon` steps from `state` (at least one --
@@ -265,11 +270,7 @@ class PrefrontalExecutive:
         if write:
             alternatives = [drifts[j] for j in range(len(drifts)) if j != goal]
             margin = drifts[goal] - (max(alternatives) if alternatives else float("-inf"))
-            if not self._stack or margin >= self.gate_threshold:
-                if self._stack:
-                    self._stack[0] = self._new_frame(goal)
-                else:
-                    self._stack.append(self._new_frame(goal))
+            self._gate_primary(goal, margin)
         return goal, sum(rts) / len(rts)
 
     def push_subgoal(self, evidence):

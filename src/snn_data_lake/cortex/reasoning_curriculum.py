@@ -182,6 +182,23 @@ class ReasoningLearner:
     def n_units(self):
         return len(self.codebook)
 
+    def state_dict(self):
+        """JSON-able learner state: the grown codebook + learned ranks -- enough to decide()/score
+        identically after a reload. The replay buffer is NOT saved (it re-fills from live premises;
+        the ranks ARE the skill), keeping the durable blob small (real memory only, no noise)."""
+        return {"codebook": {str(u): list(c) for u, c in self.codebook.items()},
+                "rank": {str(u): float(r) for u, r in self.rank.items()},
+                "next_uid": self._next_uid}
+
+    def load_state_dict(self, d):
+        """Restore a state_dict() blob (grown codebook + ranks). None/empty -> a fresh learner (no-op)."""
+        if not d:
+            return self
+        self.codebook = {int(u): list(c) for u, c in d.get("codebook", {}).items()}
+        self.rank = {int(u): float(r) for u, r in d.get("rank", {}).items()}
+        self._next_uid = int(d.get("next_uid", len(self.codebook)))
+        return self
+
     def _route(self, code, grow):
         """Return the unit id for a spike code, recruiting a new rank unit on novelty (grow=True).
         Routing is a spike-coincidence cleanup over the codebook; a best sim below vigilance is a
@@ -494,6 +511,17 @@ def main():
     assert spiking, "decide() must route through the spiking accumulator (discrete spike events)"
     assert deterministic, "two seed=0 runs must give an identical held-out arc"
     assert no_tensor, "pure stdlib: numpy / torch must be absent"
+
+    # ---- (6) DURABILITY: a state_dict() round-trip reloads the SAME skill (never-forget across a boot) ----
+    blob = learner.state_dict()
+    reloaded = ReasoningLearner(seed=0).load_state_dict(blob)
+    same = all(learner.decide(env.encode(a), env.encode(b)) == reloaded.decide(env.encode(a), env.encode(b))
+               for a, b in env.heldout_pairs())
+    reloaded_acc = reloaded.held_out_accuracy(env)
+    print(f"(6) durable   : state_dict round-trip -> reloaded held-out {reloaded_acc:.2f} "
+          f"(units {reloaded.n_units}), decides identically={same}")
+    assert same, "a reloaded learner (state_dict round-trip) must decide held-out pairs identically"
+    assert reloaded.n_units == learner.n_units, "state_dict round-trip must preserve the grown codebook"
 
     print(f"self-check OK: adjacent-only training -> transitive held-out {arc[0]:.2f} -> {reasoning_final:.2f} "
           f"(>= 0.9), beating memoriser {mem_acc:.2f} and cyclic {shuffle_acc:.2f};")

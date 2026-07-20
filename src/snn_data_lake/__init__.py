@@ -29,23 +29,25 @@ REGIONS = {
         "paradigm_b_engine", "gesture_recognition",
         "language_brain", "nl_interface", "brain_reasoning", "spiking_lm_serve", "vsa_reasoning",
         "prefrontal_executive", "live_brain", "interaction_learning",
+        "recognizer_bank", "sensory_encoder_bank", "neuron_zoo",   # merges: recognizer ensemble / encoder bank / neuron population
         # higher cognition / self-model / self-improvement (v3.14+)
         "access_consciousness", "self_model", "metacognitive_monitor", "theory_of_mind",
         "reasoning_curriculum", "autotelic_goals", "quality_diversity", "self_improvement_suite",
-        "wholistic_loop", "spiking_recurrent_cell", "autapse_neuron",
+        "wholistic_loop", "spiking_recurrent_cell", "autapse_neuron", "integration_measure", "agency_monitor",
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
-        "pc_cortex_serve", "language_center", "brain",
+        "pc_cortex_serve", "brain", "rsnn_encoder",
     ],
     "hippocampus": [
         "hippocampus", "grid_cells", "htm_sequence_memory", "frequency_memory",
         "experience_replay", "sleep_replay", "ring_attractor", "growing_learner", "legendre_memory",
         "function_preserving_growth", "neurogenesis", "sleep_consolidation",
+        "affective_memory", "contrastive_episode_analysis", "allocentric_map",
     ],
     "basal_ganglia": ["evidence_accumulation", "r_stdp", "valence_stdp", "action_gating", "latent_q", "mlp_q"],
     "amygdala": ["fear_conditioning"],
     "cerebellum": [
         "forward_model", "kalman_filter", "spiking_pid", "kuramoto_sync", "synfire_chain",
-        "wavefront_planner", "jepa_world_model", "hjepa_serve", "spiking_jepa",
+        "wavefront_planner", "jepa_world_model", "hjepa_serve", "spiking_jepa", "gain_adaptation",
     ],
     "brainstem": [
         "reflex", "serial_arm", "arm_sim", "arm_config", "interpreter", "live_arm", "arm_bridge",
@@ -62,30 +64,32 @@ REGIONS = {
     "neuromodulation": [
         "acetylcholine", "astrocyte_modulation", "cortisol", "locus_coeruleus", "raphe_serotonin",
         "intrinsic_motivation", "curriculum", "spiking_curiosity", "generalizing_novelty", "drive_reduction",
+        "naca", "empowerment", "developmental_envelope",
     ],
     "plasticity": [
         "bcm_plasticity", "homeostatic_scaling", "inhibitory_stdp", "intrinsic_plasticity",
         "short_term_plasticity", "developmental_pruning", "competitive_learning", "criticality_regulator",
-        "feedback_alignment", "meta_plasticity", "benna_fusi", "lifelong_consolidation",
+        "feedback_alignment", "meta_plasticity", "benna_fusi", "lifelong_consolidation", "homeostatic_plasticity_stack", "plasticity_rule_stack",
     ],
     "substrate": [
-        "_mathutils", "spike_stream_sketch", "spike_cardinality", "reservoir_sampling",
+        "_mathutils", "spike_stream_sketch", "spike_cardinality", "reservoir_sampling", "lake_memory", "stream_sketch_panel",
         "sliding_window_count", "frequency_moment", "streaming_quantile", "minhash",
         "morris_counter", "entropy_coder", "proximity_index", "energy", "data_quality",
         "drift_monitor", "spike_telemetry_hub", "streaming_hub", "neuro_chip", "neuro_chip_stream",
         "nir_export", "sensor_csv_ingest", "esp32_encoder_path", "make_sensor_dataset",
         "sensor_demo", "demo", "control_panel", "brain_bundle", "reaction_diffusion_compute",
-        "web_ingest", "lake_working_memory", "live_brain_tab", "nengo_bridge",
+        "web_ingest", "lake_working_memory", "live_brain_tab", "nengo_bridge", "home", "binlog",
+        "growable", "coordinated_growth",
     ],
 }
 
 # TORCH-TIER ANNEX -- region -> modules that import torch AT MODULE LOAD (so they cannot be imported
 # in the zero-dep CI matrix). They are part of the anatomical map (region_of + the atlas count include
 # them), but are NOT aliased into the zero-dep back-compat layer and are import-verified only when torch
-# is present. Every OTHER torch-trained organ (pc_cortex_serve, language_center, brain, jepa/hjepa serve,
+# is present. Every OTHER torch-trained organ (pc_cortex_serve, brain, jepa/hjepa serve,
 # neurogenesis) imports lazily and lives in REGIONS above. See brain_atlas for the gated verification.
 TORCH_TIER = {
-    "cortex": ["neurogenesis_engine"],
+    "cortex": ["neurogenesis_engine", "language_acquisition"],
     "hippocampus": ["ng_snn"],
 }
 

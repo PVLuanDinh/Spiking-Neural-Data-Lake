@@ -33,6 +33,7 @@ from snn_data_lake.brainstem.arm_config import (  # reflex distance + window str
 from snn_data_lake.brainstem.arm_sim import ArmSim
 from snn_data_lake.brainstem.interpreter import Interpreter
 from snn_data_lake.cortex.gesture_recognition import W, classify, load_csv
+from snn_data_lake.substrate import home
 
 SENSOR_COMMANDS = {"HAND_APPROACH": "GRIPPER_CLOSE",   # grab the approaching object
                    "HAND_RETREAT":  "GRIPPER_OPEN",    # release as it leaves
@@ -133,6 +134,15 @@ def run(samples, arm, interp, emit, stride=STRIDE, observer=None):
 def main():
     args = sys.argv[1:]
     interp = Interpreter(commands=SENSOR_COMMANDS)
+
+    # opt-in (snn-arm --persist): attach the shared durable home so the arm boots aware of its lifelong
+    # PERCEPTUAL memory. SAFETY: this attaches memory only -- the safety-gated apply() / run() path is
+    # untouched and NO remembered motor command is ever replayed at boot (an arm must never move itself
+    # from memory). Banners go to stderr so the stdout JSON event stream stays clean.
+    if "--persist" in args:
+        sys.stderr.write(home.banner("live-arm", knowledge=False) + "\n")
+        sys.stderr.write("[persist] durable home attached for perceptual memory ONLY; the safety-gated "
+                         "apply() is untouched and no remembered motor command is ever replayed (safety).\n")
 
     def emit(d):
         print(__import__("json").dumps(d)); sys.stdout.flush()

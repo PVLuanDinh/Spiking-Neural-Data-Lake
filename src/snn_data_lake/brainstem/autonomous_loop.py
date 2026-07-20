@@ -30,16 +30,24 @@ from snn_data_lake.basal_ganglia.latent_q import LatentQ
 from snn_data_lake.basal_ganglia.mlp_q import MlpQ
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.arm_sim import ArmSim
+from snn_data_lake.cerebellum.gain_adaptation import GainAdapter
 from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
+from snn_data_lake.cortex.agency_monitor import AgencyMonitor
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
+from snn_data_lake.hippocampus.affective_memory import AffectiveEpisodicStore
+from snn_data_lake.hippocampus.allocentric_map import AllocentricMap
+from snn_data_lake.hippocampus.contrastive_episode_analysis import ContrastiveEpisodeAnalyzer
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.neuromodulation.cortisol import Cortisol
 from snn_data_lake.neuromodulation.curriculum import Curriculum
+from snn_data_lake.neuromodulation.developmental_envelope import DevelopmentalEnvelope
+from snn_data_lake.neuromodulation.empowerment import Empowerment
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
+from snn_data_lake.neuromodulation.naca import NACABroadcast
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
@@ -56,8 +64,11 @@ class AutonomousArm:
                  workspace=False, amygdala=False, bg_gate=False, interoception=False,
                  pfc=False, pfc_gain=0.5, lake_wm=False, lake_wm_path=None,
                  jepa=False, jepa_horizon=4, hjepa_serve=None, curiosity=False, curiosity_gain=0.5,
-                 spiking_curiosity=False,
-                 latent_q=False, mlp_q=False, reward_shaped_encoder=False, reward_gain=5.0):
+                 spiking_curiosity=False, empowerment=False, empowerment_gain=0.5, dopamine=False,
+                 latent_q=False, mlp_q=False, reward_shaped_encoder=False, reward_gain=5.0,
+                 salience_novelty=False, attention=False,
+                 affective_memory=False, agency_monitor=False, contrastive=False, develop_env=False,
+                 naca=False, allocentric=False, gain_adapt=False, vitals_hold=False, vitals_hold_gain=0.5):
         self.arm = ArmSim()
         self._seed = seed
         self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
@@ -73,6 +84,26 @@ class AutonomousArm:
         # opt-in Global Workspace: brain regions compete for one slot + broadcast the winner each tick.
         # ADDITIVE + read-only -- it selects no action and never touches the reflex/E-STOP (see step()).
         self.workspace = GlobalWorkspace(seed=seed) if workspace else None
+        self._salience_on = bool(salience_novelty)   # opt-in bottom-up novelty salience -> a GWT competitor
+        self._sal_ema = None                          # running percept expectation (the habituation substrate)
+        self._novelty = 0.0                           # last bottom-up salience (deviance vs expectation)
+        # opt-in DOPAMINERGIC reward loop (gap #4): a spiking TD-RPE broadcast (midbrain VTA/SNc) with an
+        # OPPONENT anti-reward channel (lateral habenula -> RMTg -> DA below baseline) driving a three-factor
+        # DA-gated striatal valence learner. REPRESENTATION-ONLY: it learns an affective value over contexts
+        # and broadcasts DA/RPE; it drives NO motion, adds no actuator route, and the reflex/E-STOP preempts.
+        self._dopa_on = bool(dopamine)
+        self._dopa = self._lhb = self._valence = None   # lazily built on the first rewarded tick
+        self._da_level = 0.0                             # last phasic dopamine level in [0,1]
+        self._rpe = 0.0                                  # last reward-prediction error (the dopamine signal)
+        # opt-in COVERT ATTENTION (gap #8): a spiking reticular (TRN) gate selects the salient modality
+        # band, divisive normalization gives contrast constancy, and the claustrum binds co-active
+        # modalities. READOUT-ONLY: it MEASURES attention over the percept and never masks the learner's
+        # value input or the reflex -- the E-STOP path reads raw `distance` and is untouched.
+        self._attn_on = bool(attention)
+        self._rgate = self._dnorm = self._claustrum = None   # lazily built on the first attended tick
+        self._attn_mask = []                             # per-modality relay gains (attended band released)
+        self._attended = -1                              # index of the attended modality band
+        self._bound_modalities = 0                       # cross-modal assemblies the claustrum bound
         # opt-in amygdala: a REAL learned threat detector (CS-US fear conditioning). Each reflex danger
         # event pairs the current context with the US, so the amygdala learns which live contexts
         # predict danger. ADDITIVE + CAUTION-ONLY -- a learned threat biases selection toward the safe
@@ -147,7 +178,55 @@ class AutonomousArm:
         else:
             self.curiosity = None
         self.curiosity_gain = curiosity_gain
+        # opt-in EMPOWERMENT (controllability / agency drive): the empowerment GAIN over the JEPA latent --
+        # how many more DISTINGUISHABLE futures the agent can now reach by its OWN actions -- becomes an
+        # intrinsic reward ORTHOGONAL to curiosity (control, not novelty). Needs the JEPA (its predict IS the
+        # forward model). ADDITIVE + read-only to safety: feeds the value update only, no motor route. Off ->
+        # a default brain is byte-identical. Lazily built once the JEPA world model exists.
+        self._empower_on = bool(empowerment)
+        self.empower = None
+        self.empowerment_gain = empowerment_gain
+        # opt-in FOUR REPRESENTATION-ONLY DRIVES (each default False -> a default brain is byte-identical).
+        # All feed the value/annotation channel ONLY -- no actuator route, no change to action selection,
+        # the reflex/E-STOP still preempts: affective episodic memory (emotion-tagged retention), the agency
+        # monitor (controllability of action -> realized value = a sense of agency), contrastive episode
+        # analysis (which context features separate success from failure), and the developmental envelope
+        # (competence -> exploration DOWN, forward-model authority UP; its explore_noise/forward_model_gain
+        # readouts are COMPUTED + STORED only, never routed into _select). Each lazily built on first use.
+        self._affmem_on = bool(affective_memory)
+        self._affmem = None
+        self._agency_on = bool(agency_monitor)
+        self._agency = None
+        self._contrast_on = bool(contrastive)
+        self._contrast = None
+        self._dev_on = bool(develop_env)
+        self._dev = None
+        self._comp_ema = 0.0                                    # running task-competence EMA feeding the envelope
+        self._dev_explore = 0.0                                 # exposed developmental readouts (stored, never routed)
+        self._dev_fm_gain = 0.0
         self._dev_rng = random.Random(seed + 7)                 # task-selection rng for develop() (kept off step()'s rng)
+        # THREE MORE opt-in representation-only faculties (default False -> byte-identical brain). All feed
+        # the value/annotation channel ONLY -- no actuator route: NACA (neuromodulator-gated credit on the
+        # local reward delta), an allocentric spatial map (dead-reckons a landmark map from the percept
+        # stream), and cerebellar gain adaptation (learns a feedforward gain estimate, NEVER applied to motion).
+        self._naca_on = bool(naca)
+        self._naca = None
+        self._naca_credit = 0.0                                 # neuromod-corrected credit readout
+        self._allo_on = bool(allocentric)
+        self._allo = None
+        self._allo_pos = (0.0, 0.0)                             # allocentric position estimate readout
+        self._gain_on = bool(gain_adapt)
+        self._gain = None
+        self._motor_gain = 0.0                                  # adapted feedforward gain readout (never routed)
+        # OPT-IN Lake-Vitals reliability HOLD: high stream-drift ADDS caution toward SAFE_ACTION only (never
+        # motion), computed AFTER the reflex/E-STOP early-return so it can never suppress or delay an E-STOP.
+        # vitals_hold=False (default) -> _vitals None -> reliability_hold 0.0 -> step() is byte-identical.
+        self._vitals_hold_gain = float(vitals_hold_gain)
+        if vitals_hold:
+            from snn_data_lake.substrate.stream_sketch_panel import StreamSketchPanel
+            self._vitals = StreamSketchPanel(seed=seed)
+        else:
+            self._vitals = None
         # opt-in SHARED LATENT Q (the transfer substrate): replace the TABULAR per-context q[unit][action] with a
         # shared linear action-value Q(x,a)=W[a].x over the LAKE-STORED pattern representation x (the [0,1]^64
         # encode_multimodal vector the lake records; basal_ganglia/latent_q.LatentQ). ONE weight set across ALL
@@ -176,18 +255,18 @@ class AutonomousArm:
         self._mlp_q_on = mlp_q
         self.mlp_q = None                                       # lazily built on the first tick (sized to the JEPA latent dim)
 
-    def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None, qa=None):
+    def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None, qa=None, reliability_hold=0.0):
         if qa is None:                                          # default = the tabular row; the latent-Q row is passed in
             qa = self.q[unit]
         if self.rng.random() < self.explore:
             return self.rng.choice(ACTIONS)                     # exploration: cortical variability proposes
         if self.bg is not None:
-            return self._bg_select(qa, threat, intero, pfc_bias)    # BG Go/NoGo gate disinhibits the exploit choice
-        bias = self.cort.caution_bias() + threat + intero       # stress + learned threat + interoceptive load -> favour safe
+            return self._bg_select(qa, threat, intero, pfc_bias, reliability_hold)  # BG Go/NoGo gate disinhibits the exploit choice
+        bias = self.cort.caution_bias() + threat + intero + reliability_hold   # stress + threat + intero + drift-hold -> favour safe
         td = pfc_bias or [0.0] * len(ACTIONS)                   # prefrontal top-down preference per action
         return max(ACTIONS, key=lambda a: qa[a] + (bias if a == SAFE_ACTION else 0.0) + td[ACTIONS.index(a)])
 
-    def _bg_select(self, qa, threat=0.0, intero=0.0, pfc_bias=None):
+    def _bg_select(self, qa, threat=0.0, intero=0.0, pfc_bias=None, reliability_hold=0.0):
         """Basal-ganglia Go/NoGo selection over the 3 actions. The action values are the per-channel
         cortical drive; dopamine is the winner's value confidence, DAMPED by stress + learned threat +
         interoceptive load (more caution -> less dopamine -> harder to release). The circuit disinhibits at most one
@@ -196,13 +275,43 @@ class AutonomousArm:
         arm is untouched and the reflex/E-STOP (checked earlier in step) still preempts it."""
         td = pfc_bias or [0.0] * len(ACTIONS)                   # prefrontal top-down preference raises the goal action's drive
         drive = [max(0.0, qa[a]) + td[i] for i, a in enumerate(ACTIONS)]
-        caution = min(1.0, self.cort.caution_bias() + threat + intero)
+        caution = min(1.0, self.cort.caution_bias() + threat + intero + reliability_hold)
         da = max(0.0, min(1.0, max(drive) * (1.0 - caution)))
         res = self.bg.select(drive, da)
         return SAFE_ACTION if res["winner"] is None else ACTIONS[res["winner"]]
 
     def greedy(self, unit):
         return max(ACTIONS, key=lambda a: self.q[unit][a])
+
+    def _attend(self, visual, temperature, audio, distance):
+        """REPRESENTATION-ONLY covert attention (readout): a spiking reticular (TRN) gate selects the
+        salient modality band from the four contrast-normalized bottom-up drives, and the claustrum
+        binds co-active bands. Sets attention readouts; it MASKS NOTHING -- the learner's value input and
+        the reflex/E-STOP (which reads raw `distance`) are untouched. Bounded, deterministic, guarded."""
+        try:
+            if self._rgate is None:
+                from snn_data_lake.claustrum.claustrum import Claustrum
+                from snn_data_lake.cortex.divisive_normalization import DivisiveNormalization
+                from snn_data_lake.thalamus.reticular_gate import ReticularGate
+                self._rgate = ReticularGate(n_channels=4, seed=self._seed)
+                self._dnorm = DivisiveNormalization()
+                self._claustrum = Claustrum(n_areas=4, seed=self._seed)
+
+            def _energy(x):
+                vals = x if isinstance(x, (list, tuple)) else [x]
+                vals = [abs(float(v)) for v in vals if v is not None]
+                return sum(vals) / len(vals) if vals else 0.0
+            drives = [_energy(visual), _energy(temperature), _energy(audio), _energy(distance)]
+            norm = self._dnorm.normalize([max(0.0, d) for d in drives])   # contrast-constant bottom-up drives
+            attn = [n + 0.3 * self._novelty for n in norm]                # + top-down/novelty bias
+            mask = self._rgate.mask(attn)                                 # spiking TRN gate -> per-band gain (attended released)
+            self._attn_mask = [round(float(m), 4) for m in mask]
+            self._attended = int(max(range(len(mask)), key=lambda i: mask[i]))
+            trains = [[1 if norm[i] > 0.15 else 0] * 6 for i in range(4)]  # crude per-band activity raster
+            _ft, assemblies = self._claustrum.detect(trains)
+            self._bound_modalities = len(self._claustrum.bound_areas(assemblies))
+        except Exception:
+            pass
 
     def _context_pattern(self, visual, temperature, audio, distance):
         """The multimodal context vector (the amygdala CS and the growing learner's percept)."""
@@ -285,6 +394,19 @@ class AutonomousArm:
         self.lake_wm.write(self._tick_t, active)
         self._tick_t += 1
 
+    def _percept_novelty(self, pattern):
+        """Bottom-up salience: normalized L1 deviance of the percept from its running expectation (an
+        EMA that HABITUATES to frequent stimuli), clamped to [0, 1]. A novel/deviant percept -> high; a
+        repeated stimulus pulls the EMA toward it -> the novelty decays (habituation). Pure stdlib,
+        deterministic. This is the stimulus-derived relevance signal the salience/RAS path was missing."""
+        if self._sal_ema is None:
+            self._sal_ema = list(pattern)
+            return 1.0                                          # the first percept is an onset -> maximally novel
+        n = max(1, len(pattern))
+        dev = sum(abs(p - e) for p, e in zip(pattern, self._sal_ema)) / n
+        self._sal_ema = [0.9 * e + 0.1 * p for e, p in zip(self._sal_ema, pattern)]
+        return min(1.0, dev)
+
     def _workspace_broadcast(self, percept, threat_salience):
         """Additive Global-Workspace tick: brain regions (perception + a salience/threat detector)
         compete for the single workspace slot and the winner is broadcast to all. READ-ONLY
@@ -295,6 +417,8 @@ class AutonomousArm:
         if percept is not None:
             self.workspace.submit("perception", percept, 0.6)   # normally holds the slot when safe
         self.workspace.submit("salience", "threat", threat_salience)
+        if self._salience_on:
+            self.workspace.submit("salience", "novelty", self._novelty)   # bottom-up stimulus salience competes
         return self.workspace.step()
 
     @classmethod
@@ -383,6 +507,10 @@ class AutonomousArm:
                     "state": estop}
         # 2. perceive -> grow a unit on a novel multimodal context
         pattern = self._context_pattern(visual, temperature, audio, distance)
+        if self._salience_on and self.workspace is not None:   # novelty's only consumer is the GWT competitor
+            self._novelty = self._percept_novelty(pattern)     # bottom-up salience updates each perceived tick
+        if self._attn_on:                                      # covert attention READOUT (masks nothing; E-STOP untouched)
+            self._attend(visual, temperature, audio, distance)
         unit, grew = self.learner.observe(pattern)
         if unit not in self.q:
             self.q[unit] = dict.fromkeys(ACTIONS, 0.0)          # new unit -> its own row to learn
@@ -412,7 +540,13 @@ class AutonomousArm:
         intero = self._interocept(homeostatic_load)             # interoceptive caution from homeostatic load (0 if opt-out)
         pfc_bias = self._pfc_bias(unit, pattern, qa)           # prefrontal top-down goal preference over qa (latent-Q or tabular)
         # 3. CHOOSE (learned, not a fixed map) + ACT through the gated arm
-        action = self._select(unit, threat=threat, intero=intero, pfc_bias=pfc_bias, qa=qa)   # threat/intero caution + PFC bias
+        reliability_hold = 0.0
+        if self._vitals is not None:                            # OPT-IN Lake-Vitals: high drift -> add caution toward HOLD only
+            self._vitals.observe({"motif": frozenset(i for i, v in enumerate(pattern) if v >= 0.5),
+                                  "features": list(pattern)})
+            reliability_hold = self._vitals_hold_gain * self._vitals.drift_novelty()   # in [0, gain]; NEVER creates motion
+        action = self._select(unit, threat=threat, intero=intero, pfc_bias=pfc_bias, qa=qa,
+                              reliability_hold=reliability_hold)   # threat/intero caution + PFC bias + drift hold (SAFE_ACTION only)
         state = self.arm.apply(action)                          # gated: frozen after E-STOP, collision-checked
         goal_val = self.pfc.goal if self.pfc is not None else None   # the prefrontal working-memory goal
         self._lake_write(pattern, goal_val, action)             # opt-in: store this tick in the lake working memory
@@ -425,6 +559,10 @@ class AutonomousArm:
         if self.curiosity is not None and self.jepa is not None and self._jepa_prev is not None:
             perr = self.jepa.prediction_error(self._jepa_prev[0], self._jepa_prev[1], pattern)
             r_int = self.curiosity_gain * self.curiosity.intrinsic_reward(unit, perr)  # observes + rewards learning progress
+        if self._empower_on and self.jepa is not None:
+            if self.empower is None:                            # lazily bind the drive to the (now-built) JEPA forward model
+                self.empower = Empowerment(self.jepa, ACTIONS, horizon=2, seed=self._seed)
+            r_int += self.empowerment_gain * self.empower.step_reward(self.jepa.encode(pattern))  # controllability gain
         if reward_fn is not None or r_int != 0.0:
             r_ext = reward_fn(unit, action) if reward_fn is not None else 0.0
             if reward_fn is not None:
@@ -435,6 +573,23 @@ class AutonomousArm:
             else:
                 self.q[unit][action] += self.lr * self.cort.learn_rate_scale(r) * (r - self.q[unit][action])
             self.cort.step(max(0.0, -r_ext))                # stress from EXTERNAL negative reward only (curiosity is not stress)
+            if self._dopa_on:                               # DOPAMINERGIC RPE + opponent anti-reward (representation-only)
+                try:
+                    if self._valence is None:               # lazy build of the three spiking source nuclei
+                        from snn_data_lake.basal_ganglia.valence_stdp import ValenceLearner
+                        from snn_data_lake.epithalamus.habenula import LateralHabenula
+                        from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
+                        self._dopa = DopamineNuclei(seed=self._seed)
+                        self._lhb = LateralHabenula(seed=self._seed)
+                        self._valence = ValenceLearner()
+                    pred = self._valence.valence(pattern)   # predicted affective value of this context (before learning)
+                    rpe = self._valence.learn(pattern, r)   # three-factor DA-gated STDP over the context -> the RPE
+                    da = self._dopa.da_level(rpe)           # phasic dopamine LEVEL (tonic baseline shifted by RPE; burst on +RPE)
+                    if rpe < 0.0:                           # OPPONENT: an LHb burst drives DA BELOW baseline (RMTg relay)
+                        da = self._lhb.dopamine(predicted=pred, received=r)
+                    self._da_level, self._rpe = round(float(da), 4), round(float(rpe), 4)
+                except Exception:
+                    pass
             if reward_fn is not None:                       # the task-reward-only paths (replay + latent goals), unchanged
                 if self.replay and qsub is None:            # SWR consolidation: TABULAR value table ONLY, no motor command
                     self.buffer.add(unit, action, r_ext)
@@ -448,6 +603,49 @@ class AutonomousArm:
                     z1t = self.hjepa_serve.encode1(self._hj_window)   # abstract latent at a rewarded tick -> the goal EMA
                     self._z1_goal = z1t if self._z1_goal is None else \
                         [0.9 * g + 0.1 * z for g, z in zip(self._z1_goal, z1t)]
+        # FOUR REPRESENTATION-ONLY DRIVES (opt-in): each observes this tick's already-computed locals
+        # (threat / intero / r_int / r_ext_step / action / qa) and feeds the value/annotation channel only --
+        # no actuator route, nothing here alters the action already gated above; the reflex/E-STOP preempted.
+        if (self._affmem_on or self._agency_on or self._contrast_on or self._dev_on
+                or self._naca_on or self._allo_on or self._gain_on):
+            rx = r_ext_step if r_ext_step is not None else 0.0  # this tick's EXTERNAL task reward (0.0 without a task)
+            qmax = max(qa.values()) if qa else 0.0              # peak of the value row (dict for tabular + shared substrates)
+            if self._affmem_on:                                 # emotion-tagged episodic retention of this tick's percept
+                if self._affmem is None:
+                    self._affmem = AffectiveEpisodicStore(capacity=256)
+                self._affmem.store(pattern, valence=math.tanh(r_int + rx), arousal=threat, reward=rx)
+            if self._agency_on:                                 # controllability of action -> realized value (sense of agency)
+                if self._agency is None:
+                    self._agency = AgencyMonitor(seed=self._seed)
+                self._agency.observe(action, cmd=qmax, fb=(rx if reward_fn is not None else r_int))
+            if self._contrast_on and reward_fn is not None:     # success-vs-failure context pooling (REAL task reward only)
+                if self._contrast is None:
+                    self._contrast = ContrastiveEpisodeAnalyzer(seed=self._seed)
+                self._contrast.record(rx > 0.0, {"threat": threat, "intero": intero, "qmax": qmax})
+            if self._dev_on:                                    # competence EMA -> maturity; readouts stored, never routed
+                if self._dev is None:
+                    self._dev = DevelopmentalEnvelope(seed=self._seed)
+                self._comp_ema = 0.98 * self._comp_ema + 0.02 * (1.0 if (reward_fn is not None and rx > 0.0) else 0.0)
+                self._dev.update(self._comp_ema)
+                self._dev_explore = self._dev.explore_noise      # exploration scale readout (NOT applied to _select)
+                self._dev_fm_gain = self._dev.forward_model_gain  # forward-model authority readout (NOT applied)
+            if self._naca_on:                                    # neuromodulator-gated credit on the local reward delta
+                if self._naca is None:
+                    self._naca = NACABroadcast(n_syn=8, n_types=len(ACTIONS), seed=self._seed)
+                sig = ACTIONS.index(action) if action in ACTIONS else 0
+                corr = self._naca.modulate([r_int], self._naca.lam(sig))  # per-synapse delta list -> corrections
+                self._naca_credit = float(corr[0]) if corr else 0.0       # additive neuromod correction (readout)
+            if self._allo_on:                                    # allocentric landmark map dead-reckoned from the stream
+                if self._allo is None:
+                    self._allo = AllocentricMap(seed=self._seed)
+                self._allo.move(0.05, 0.0)                        # integrate a small self-motion step (path integration)
+                self._allo.observe(str(action), rel_x=intero, rel_y=threat, valence=math.tanh(r_int + rx))
+                self._allo_pos = self._allo.position              # allocentric position estimate (readout, no motion)
+            if self._gain_on:                                    # cerebellar feedforward gain adaptation (NEVER applied)
+                if self._gain is None:
+                    self._gain = GainAdapter(seed=self._seed)
+                motor = 1.0 if action in ("GRIPPER_OPEN", "GRIPPER_CLOSE") else 0.0
+                _resp, _err, self._motor_gain = self._gain.step(motor, world_gain=qmax)  # learn a gain (readout only)
         # JEPA (opt-in): learn the latent world model ONLINE from the live (z_prev, a_prev, z_now) transition.
         # OFF the safety path -- after the gated action + lake write, drives no motion, adds no actuator route.
         if self.jepa is not None:

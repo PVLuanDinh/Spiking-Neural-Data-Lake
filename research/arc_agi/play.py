@@ -18,8 +18,20 @@ brain plugs in by spike-encoding frame.frame and returning one of the legal
 actions.
 """
 
+import os
+import pathlib
 import random
 import sys
+
+# Load the gitignored .env (ARC_API_KEY) if present -- zero-dep, no python-dotenv needed. Does NOT
+# override an already-exported ARC_API_KEY. Must run before arc_agi.Arcade() reads the key.
+_envf = pathlib.Path(__file__).with_name(".env")
+if _envf.exists():
+    for _line in _envf.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
 
 import arc_agi
 from arcengine import GameAction, GameState

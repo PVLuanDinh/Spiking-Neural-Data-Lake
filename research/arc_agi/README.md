@@ -37,11 +37,27 @@ ARC_API_KEY=<key> PYTHONPATH=src .venv-arc/Scripts/python research/arc_agi/play_
 ARC_API_KEY=<key> PYTHONPATH=src .venv-arc/Scripts/python research/arc_agi/play.py       ls20 400  # random baseline
 ```
 
+## 3. Relational rule-inducer + reasoning layer
+
+- `rule_inducer.py` — a relational grid rule-inducer: parse the grid into OBJECTS (connected components),
+  INDUCE causal change-rules from (grid, action, grid') transitions (object translate / click-transform /
+  appear / dependency / goal), then PLAN with a model-based value iteration; the executed action is chosen
+  by a spiking RaceAccumulator. Reuses `cortex/vsa_reasoning` (rule store), `basal_ganglia/evidence_accumulation`.
+  PROVEN (self-check): rules learned on 4 small size-5 instances TRANSFER zero-shot to held-out + SCALED-UP
+  grids -- key_door **1.00** and push_box **1.00** solve, vs a tabular-state agent (same budget) at **0.06 / 0.00**
+  (state explosion) and a shuffled-action control at 0.12 / 0.00. That is the honest win: relational induction
+  GENERALIZES where tabular coverage explodes, on learnable-rule games.
+- `play_brain.py` wires it as an OPPORTUNISTIC reasoning layer: it induces move-agent rules from the live
+  transition stream and plans with them WHEN a game fits the schema; else it falls back to curiosity + a
+  frame-change exploration bonus. The summary prints `reasoning: schema_fit=N plan_actions=M`.
+
 ### Honest benchmark result (real arcade, registered key)
 
 The full-brain agent connects and plays the real games. On `ls20` and `ft09` it completes **0 levels** --
-TIED with the random baseline (also 0). This is honest: ARC-AGI-3 is a frontier, largely-unsolved
-benchmark. On `ls20` only ACTION1-4 are offered and single actions do not change the frame from the start
-(near-static reachability, ~3 distinct states), so a tabular-curiosity + value-iteration agent has almost
-nothing to climb -- these games need relational/causal RULE INDUCTION over the grid and long credit
-horizons, which this policy does not do. No overclaim: the brain plays for real; it does not solve these.
+TIED with the random baseline (also 0). The reasoning layer reports **`schema_fit=0, plan_actions=0`** on
+these games: they do not expose the relational schema the inducer needs (no single move-agent that translates
+by deltas toward a goal), so the planner never engages -- exactly the inducer's own stated honest-negative,
+now confirmed on the live arcade. On `ls20`, single actions do not even change the frame from the start
+(~3 reachable states), so curiosity has nothing to climb. No overclaim: the rule-inducer is a genuine
+relational reasoner (proven to generalize on learnable-schema toy games); the frontier ARC-AGI-3 games need
+richer rule classes + long horizons it does not cover, so the brain plays for real but does not solve these.

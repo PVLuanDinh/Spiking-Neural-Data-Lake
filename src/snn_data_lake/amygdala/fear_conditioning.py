@@ -33,7 +33,8 @@ input-output mapping of aversive conditioning (acquisition, discrimination, exti
 spontaneous recovery). It does NOT model fear phenomenology, distress, or suffering, and nothing
 here experiences anything.
 
-Deterministic: per-instance random.Random(seed); two runs with the same seed are identical.
+Deterministic: the class consumes no randomness (purely functional readouts); the training protocol
+seeds its own local random.Random, so two runs with the same seed are identical.
 
   python -m snn_data_lake.amygdala.fear_conditioning
 """
@@ -72,21 +73,34 @@ class Amygdala:
 
     def __init__(self, seed=0, n=N):
         self.n = n
-        self.w_exc = [0.0] * n     # BLA: CS-feature -> threat association (built by pairing)
-        self.w_inh = [0.0] * n     # CeA gate: inhibitory suppression (built by extinction)
+        # Per-AVERSIVE-CATEGORY weights (us_id -> vector). Category 0 is the default single US, so a
+        # brain that only ever pairs one outcome behaves EXACTLY as before. Pairing a new us_id GROWS
+        # a fresh threat channel on demand -> the number of distinguishable aversive outcomes (shock
+        # vs nausea vs ...) is unbounded, lifting the old single-scalar-US ceiling.
+        self.w_exc = {0: [0.0] * n}     # us_id -> BLA CS-feature -> threat association (built by pairing)
+        self.w_inh = {0: [0.0] * n}     # us_id -> CeA inhibitory suppression (built by extinction)
         self.elapsed = 0.0         # rest time since extinction (drives inhibitory recovery)
-        self.rng = random.Random(seed)
+
+    def _ensure(self, us_id):
+        """Allocate a fresh zero weight pair the first time an aversive category is used. Growth is
+        function-preserving: existing categories are untouched, so adding a US never perturbs a
+        previously learned one."""
+        if us_id not in self.w_exc:
+            self.w_exc[us_id] = [0.0] * self.n
+            self.w_inh[us_id] = [0.0] * self.n
 
     # ---- spiking readout ----------------------------------------------------
-    def _bla_spikes(self, by_step, us_current=0.0):
+    def _bla_spikes(self, by_step, us_current=0.0, us_id=0):
         """LIF integrate-and-fire over T steps. Per-step input = US drive + sum of w_exc for the
-        CS features spiking this step. Returns the BLA output spike count (the raw threat drive)."""
+        CS features spiking this step, on aversive category `us_id`. Returns the BLA output spike
+        count (the raw threat drive for that category)."""
+        w = self.w_exc[us_id]
         v = 0.0
         spikes = 0
         for t in range(T):
             cur = us_current
             for i in by_step[t]:
-                cur += self.w_exc[i]
+                cur += w[i]
             v = v * LEAK + cur
             if v >= TH_BLA:
                 spikes += 1
@@ -98,31 +112,46 @@ class Amygdala:
         after extinction, -> 0 as rest -> infinity (unmasking the intact CS-US memory)."""
         return math.exp(-self.elapsed / TAU_REC)
 
-    def threat(self, cs):
-        """CeA readout: excitatory BLA response minus the (recovery-scaled) inhibitory gate,
-        clamped to [0, 1]. This is the conditioned threat signal for cue `cs`."""
+    def _threat_for(self, cs, us_id):
+        """CeA readout for ONE aversive category: category-`us_id` excitatory BLA response minus its
+        (recovery-scaled) inhibitory gate, clamped to [0, 1]."""
         by, active = _by_step(cs)
-        exc = min(1.0, self._bla_spikes(by, 0.0) / SAT_EXC)
+        exc = min(1.0, self._bla_spikes(by, 0.0, us_id) / SAT_EXC)
         if active:
-            mean_inh = sum(self.w_inh[i] for i in active) / len(active)
+            mean_inh = sum(self.w_inh[us_id][i] for i in active) / len(active)
             inh = min(1.0, mean_inh * self._recovery_factor())
         else:
             inh = 0.0
         return max(0.0, min(1.0, exc - inh))
+
+    def threat(self, cs):
+        """Aggregate conditioned threat for cue `cs`: the STRONGEST response across all learned
+        aversive categories. Identical to the single-category value when only one US is learned
+        (max over {0}), so this is a drop-in for the original scalar readout."""
+        return max(self._threat_for(cs, k) for k in self.w_exc)
+
+    def threat_by_us(self, cs):
+        """Per-category conditioned response {us_id: threat}. This is exactly what a single scalar
+        readout CANNOT do: it reports WHICH distinct aversive outcome the cue predicts (e.g. shock
+        vs nausea), not one undifferentiated threat magnitude in which the two associations collide."""
+        return {k: self._threat_for(cs, k) for k in sorted(self.w_exc)}
 
     def is_threat(self, cs):
         """Threshold decision: True when the CeA threat crosses THETA_CEA (conditioned response)."""
         return self.threat(cs) >= THETA_CEA
 
     # ---- learning -----------------------------------------------------------
-    def pair(self, cs):
-        """Paired trial: CS presented WITH the US. Three-factor Hebbian potentiation binds the
-        active CS features to the US-driven threat pathway (US is the gating third factor).
-        Returns the unconditioned BLA response (US drives the BLA regardless of w_exc)."""
+    def pair(self, cs, us_id=0):
+        """Paired trial: CS presented WITH the US of aversive category `us_id` (default 0). Three-
+        factor Hebbian potentiation binds the active CS features to THAT category's threat pathway
+        (US is the gating third factor). A new us_id grows a fresh category on first use. Returns
+        the unconditioned BLA response (US drives the BLA regardless of w_exc)."""
+        self._ensure(us_id)
         by, active = _by_step(cs)
-        ucr = self._bla_spikes(by, US_CURRENT)     # unconditioned response (US drive)
+        ucr = self._bla_spikes(by, US_CURRENT, us_id)     # unconditioned response (US drive)
+        w = self.w_exc[us_id]
         for i in active:
-            self.w_exc[i] += LR_EXC * (1.0 - self.w_exc[i] / W_MAX)
+            w[i] += LR_EXC * (1.0 - w[i] / W_MAX)
         return ucr
 
     def expose(self, cs):
@@ -130,10 +159,10 @@ class Amygdala:
         unpaired control cue: it is experienced equally often, but because the US never co-occurs
         the three-factor rule binds nothing to it. Returns the current BLA response."""
         by, _ = _by_step(cs)
-        return self._bla_spikes(by, 0.0)
+        return self._bla_spikes(by, 0.0, 0)
 
-    def extinguish(self, cs, erasure=False):
-        """CS presented with the US OMITTED.
+    def extinguish(self, cs, us_id=0, erasure=False):
+        """CS presented with the US of category `us_id` OMITTED.
 
         Default (suppression, the real amygdala): grow the SEPARATE inhibitory gate w_inh, driven
         by the excitatory prediction the CS still evokes (US expected but absent). w_exc is left
@@ -141,14 +170,17 @@ class Amygdala:
 
         erasure=True (control model): directly decay w_exc and learn NO inhibition -- the memory
         is destroyed. Used to prove spontaneous recovery needs suppression, not erasure."""
+        self._ensure(us_id)
         by, active = _by_step(cs)
         if erasure:
+            w = self.w_exc[us_id]
             for i in active:
-                self.w_exc[i] *= (1.0 - ERASE)
+                w[i] *= (1.0 - ERASE)
             return
-        exc = min(1.0, self._bla_spikes(by, 0.0) / SAT_EXC)   # prediction error = expected threat
+        exc = min(1.0, self._bla_spikes(by, 0.0, us_id) / SAT_EXC)   # prediction error = expected threat
+        wi = self.w_inh[us_id]
         for i in active:
-            self.w_inh[i] += LR_INH * exc * (1.0 - self.w_inh[i] / W_MAX)
+            wi[i] += LR_INH * exc * (1.0 - wi[i] / W_MAX)
 
     def rest(self, delay):
         """Let time pass. The inhibitory extinction trace recovers (decays); the CS-US trace does
@@ -259,6 +291,34 @@ def main():
         f"recovery is the signature of suppression-not-erasure: {rec:.3f} vs erasure {e_rec:.3f}"
     # determinism
     assert det, "same seed must produce identical numbers"
+
+    # ---- MULTI-US: distinct aversive outcomes are separably learned (closes the 1-US ceiling) ----
+    # Two cues, two DIFFERENT unconditioned outcomes (cue A -> "shock" = category 0; cue B ->
+    # "nausea" = category 1). A single scalar readout collapses both into one undifferentiated
+    # threat; the per-category readout reports WHICH outcome each cue predicts.
+    multi = Amygdala(seed=7)
+    half = N // 2
+    cs_shock = _tone(11, 0, half)          # cue A tone -> aversive category 0 (lower band)
+    cs_nausea = _tone(12, half, N)         # cue B tone -> aversive category 1 (disjoint upper band)
+    mrng = random.Random(707)
+    for _ in range(18):
+        multi.pair(_jitter(cs_shock, mrng), us_id=0)
+        multi.pair(_jitter(cs_nausea, mrng), us_id=1)
+    ta = multi.threat_by_us(cs_shock)
+    tb = multi.threat_by_us(cs_nausea)
+    print("\nmulti-US (closes the single-scalar-US ceiling):")
+    print(f"  cue A predicts by-outcome {{{ta[0]:.2f}, {ta[1]:.2f}}}  (outcome 0 = shock)")
+    print(f"  cue B predicts by-outcome {{{tb[0]:.2f}, {tb[1]:.2f}}}  (outcome 1 = nausea)")
+    print("=" * 70)
+    assert set(multi.w_exc) == {0, 1}, "pairing a new us_id must GROW a new aversive category"
+    assert ta[0] >= THETA_CEA and ta[1] < THETA_CEA, \
+        f"cue A must predict outcome 0, NOT outcome 1: {ta}"
+    assert tb[1] >= THETA_CEA and tb[0] < THETA_CEA, \
+        f"cue B must predict outcome 1, NOT outcome 0: {tb}"
+    assert multi.threat(cs_shock) == ta[0] and ta[0] > ta[1], \
+        "aggregate threat() must SURFACE the strongest category: cue A's outcome-0 value, above outcome 1"
+    assert multi.threat(cs_nausea) == tb[1] and tb[1] > tb[0], \
+        "aggregate threat() must surface cue B's outcome-1 value, above outcome 0"
 
     print(f"self-check OK: pairing learned threat ({paired:.3f}) while the equally-exposed "
           f"unpaired control did not ({unpaired:.3f}); extinction suppressed it ({ext:.3f}) and it "

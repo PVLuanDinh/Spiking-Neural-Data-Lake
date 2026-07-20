@@ -15,16 +15,23 @@ from snn_data_lake import arm_bridge as AB
 from snn_data_lake import signal_loop as S
 from snn_data_lake.brainstem.interpreter import Interpreter
 from snn_data_lake.brainstem.reflex import Reflex
+from snn_data_lake.substrate import home
 
 
 def run_episode(signals, lib=None, assume_success=True, base_threshold=0.10, trace=None,
-                bridge=None):
+                bridge=None, valence_init=None):
     """Drive raw signal lines through the whole stack with live reward feedback.
-    Returns the live state objects so callers can inspect what was learned."""
+    Returns the live state objects so callers can inspect what was learned.
+
+    valence_init (a saved ValenceLearner.w list) seeds the value function from a PRIOR run, so the
+    loop RESUMES what it learned instead of starting at zero -- the durable 'never forgets' path.
+    None (the default) starts fresh, keeping the scripted self-check deterministic."""
     lib = S.build_default_library() if lib is None else lib
     matcher = S.build_matcher(lib)
     reflex = Reflex()
     valence = S.ValenceLearner()
+    if valence_init is not None:                              # resume a learned value function from disk
+        valence.w = [float(x) for x in valence_init]
     cort = S.Cortisol(tau=30.0)
     itp = Interpreter(assume_success=assume_success)
 
@@ -73,10 +80,25 @@ def run_episode(signals, lib=None, assume_success=True, base_threshold=0.10, tra
 
 
 def main():
+    import os
+    import sys
+
     lib = S.build_default_library()
     good_line = ",".join(f"{x:.4f}" for x in lib["GRIPPER_CLOSE"])
     good_win = S.normalize(S.resize_to_n([float(x) for x in good_line.split(",")]))
     danger = "500,500,500,500,500,500,950,0"
+
+    # LAUNCH mode (snn-loop --persist): attach the shared durable home so the learned VALENCE POLICY
+    # accumulates across runs -- the loop resumes what it learned instead of starting at zero. (Motor
+    # commands are NEVER persisted or replayed; only the learned value function is durable.)
+    if "--persist" in sys.argv:
+        print(home.banner("closed-loop", lake=False))
+        w0 = home.load_state("valence.json")                 # prior learned values (None on first run)
+        st = run_episode([good_line] * 30, lib=lib, valence_init=w0)
+        home.save_state("valence.json", st["valence"].w)     # durable: remembered next launch
+        print(f"[persist] {'resumed prior' if w0 else 'no prior'} valence, learned this run, saved -> "
+              f"value(GRIPPER_CLOSE)={st['valence'].valence(good_win):+.2f} (accumulates across launches)")
+        return
 
     # episode: repeat the GRIPPER_CLOSE gesture (executed, rewarded), then a collision
     signals = [good_line] * 30 + [danger]
@@ -117,8 +139,34 @@ def main():
         "reward routed over the UDP back-channel did not close the loop"
     print(f"bridged: OUTCOME routed over arm_bridge UDP -> "
           f"value(GRIPPER_CLOSE)={bstate['valence'].valence(good_win):+.2f} (loop still closes)")
+
+    # ---- DURABLE never-forget: the learned valence policy SURVIVES a restart ----
+    # (isolated temp home so the deterministic self-check never touches the real ~/.snn_data_lake)
+    import shutil
+    import tempfile
+    _prev, _tmp = os.environ.get("NORD_HOME"), tempfile.mkdtemp(prefix="snn_loop_home_")
+    os.environ["NORD_HOME"] = _tmp
+    try:
+        s1 = run_episode([good_line] * 30, lib=lib, assume_success=True)       # learn from scratch
+        home.save_state("valence.json", s1["valence"].w)                       # persist the learned policy
+        v_saved = s1["valence"].valence(good_win)
+        w_reload = home.load_state("valence.json")
+        s2 = run_episode([], lib=lib, valence_init=w_reload)                   # FRESH loop, NO signals: pure reload
+        v_reload = s2["valence"].valence(good_win)
+        assert w_reload is not None and s2["valence"].act(good_win)[0] == "APPROACH", (
+            "a reloaded loop must already value the learned gesture (durable policy)")
+        assert abs(v_reload - v_saved) < 1e-9, (
+            f"the learned valence was FORGOTTEN across a restart: reloaded {v_reload:+.4f} != saved {v_saved:+.4f}")
+    finally:
+        os.environ.pop("NORD_HOME", None)
+        if _prev is not None:
+            os.environ["NORD_HOME"] = _prev
+        shutil.rmtree(_tmp, ignore_errors=True)
+
     print("self-check OK: gesture -> command, reward raised its value to APPROACH, "
-          "collision -> EMERGENCY_STOP + stress -> sharpened reflex, UDP back-channel transparent (loop closed)")
+          "collision -> EMERGENCY_STOP + stress -> sharpened reflex, UDP back-channel transparent (loop closed); "
+          "learned valence policy SURVIVES a restart (durable home, resumed by a fresh loop). "
+          "Launch with --persist to accumulate it across runs.")
 
 
 if __name__ == "__main__":

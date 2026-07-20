@@ -16,12 +16,13 @@ the whole thing with a CircadianClock (SCN phase oscillator):
     brain's own next perception, torch tier), sleep replay (noise-driven attractor consolidation),
     and SWR experience replay (value-table consolidation). Growth is therefore SLEEP-GATED.
 
-What makes this the UNIFIED brain and not just the daemon: the two torch organs (the SpikeGPT-216M
-language center and the neurogenesis engine) now live in this same cortex/ package, and every tick
-feeds the REAL signals into a genuine, evolving SELF-MODEL (cortex/self_model.py). The brain no
-longer answers from a fixed status template -- respond() introspects the self-model FRESHLY, grounds
-the SpikeGPT language center on that self-generated prompt, and falls back to the narrator's own
-state-varying sentence (never a canned string). A benevolence intent is answered plainly and safely.
+What makes this the UNIFIED brain and not just the daemon: the neurogenesis engine (torch tier) lives
+in this same cortex/ package, and every tick feeds the REAL signals into a genuine, evolving SELF-MODEL
+(cortex/self_model.py). The brain no longer answers from a fixed status template -- respond() introspects
+the self-model FRESHLY, grounds the brain-native language organ (cortex/language_acquisition -- ACQUIRED
+online by spiking predictive coding + local plasticity, NOT a pretrained/imported LM) on that self-
+generated prompt, and falls back to the narrator's own state-varying sentence (never a canned string).
+A benevolence intent is answered plainly and safely.
 
 SAFETY (unchanged, non-negotiable): this is PERCEPTION / COGNITION only. It adds NO new actuator
 route -- it never sends HOME / RETRACT_ALL / JOINT_* / any motor command; every stimulus pins
@@ -31,10 +32,10 @@ and the gated ArmSim is the only path to motion. A structured arm/lake command A
 deterministic NL-firewall + gated-arm path; the generative language center is display-only and its
 text is NEVER parsed as a motor command.
 
-torch is OPTIONAL + lazy: the neurogenesis engine and the language center are imported lazily from
-this package, so a no-torch environment still imports this module and runs the wake + sleep-
-consolidation + self-model paths (growth just reports zero grown units; the language center falls
-back to the deterministic narrator).
+torch is OPTIONAL + lazy: the neurogenesis engine is imported lazily from this package, and the brain-
+native language organ (numpy) is built lazily too, so a no-torch environment still imports this module
+and runs the wake + sleep-consolidation + self-model paths (growth just reports zero grown units; the
+language organ falls back to the deterministic narrator when unavailable).
 
 Deterministic: per-instance seeding only (no wall-clock, no global RNG). ASCII-only output.
 
@@ -110,18 +111,35 @@ class Brain:
     model, and respond() speaks from that self-model FRESHLY (no fixed status template)."""
 
     def __init__(self, seed=0, lake_path=None, day_period=200, refit_every=20, device="cuda",
-                 self_history_path=None):
+                 self_history_path=None, persist=None):
         self._seed = int(seed)
         self._lake_path = lake_path        # API parity; LiveBrain owns its WM lake
         self.day_period = int(day_period)
         self.refit_every = int(refit_every)
         self._self_history_path = self_history_path
         self._closed = False
+        # ---- DURABLE PERSISTENCE (default ON): a plain Brain() remembers across reboots via the shared
+        # home (KnowledgeLog + JSON state blobs). NORD_PERSIST=0 is the OFF-SWITCH (the gates run it so
+        # selfchecks/pytest stay byte-identical + hermetic); an explicit persist=False also forces off.
+        import os
+        self._persist = (True if persist is None else bool(persist)) and os.environ.get("NORD_PERSIST") != "0"
 
         # ---- the full live brain: PROVEN self-improve config (see spiking_chat.py) ----
         # jepa=True is REQUIRED or the spiking curiosity yields no intrinsic reward.
+        # predictive_coding=True: each live tick SETTLES a 2-level Rao-Ballard spiking generative model
+        # on the perceived pattern, exposing a generative percept + a prediction-error SURPRISE that
+        # feeds metacognition/novelty (human perceptual inference). Representation-only, no actuator route.
+        # affective_memory/empowerment/agency_monitor: emotion-tagged episodic retention, a controllability
+        # intrinsic drive, and a sense-of-agency monitor -- all opt-in representation-only drives that
+        # observe an already-gated tick and feed the value/annotation channel; the reflex/E-STOP preempts.
         self.brain = LiveBrain(seed=self._seed, spiking_curiosity=True, jepa=True,
-                               interaction_learning=True)
+                               interaction_learning=True, persist=self._persist, predictive_coding=True,
+                               affective_memory=True, empowerment=True, agency_monitor=True, dopamine=True,
+                               attention=True)
+        # ALLOCENTRIC cognitive-map substrate (gap #12): dead-reckons a landmark map over the percept
+        # stream -- a relational/spatial map (full physical navigation awaits embodiment via the arm).
+        # Representation-only; the reflex/E-STOP still runs first and it drives no motion.
+        self.brain.arm._allo_on = True
 
         # ---- the evolving SELF-MODEL + introspective narrator (pure stdlib) ----
         # The brain tracks its OWN signals over time and describes itself FRESHLY (no fixed template).
@@ -150,6 +168,20 @@ class Brain:
         self._reason_stage = 0                                  # curriculum: active chain length 3 -> n
         self._reason_acc = 0.0                                  # held-out transitive-inference accuracy
         self._reason_units = 0                                  # neurogenesis: recruited rank units
+        self._skills = None                                    # lazy NightlySkills: bounded nightly skill formation (numpy)
+        self._skills_state = None                              # last night's per-domain competence summary (for state())
+        self._schemas = 0                                      # SCHEMA INDUCTION (gap #5): derived schema triples kept last pass
+        if self._persist:                                      # never-forget: reload the nightly-grown reasoning skill
+            try:
+                from snn_data_lake.substrate.home import load_state
+                blob = load_state("reasoning_curriculum.json")
+                if blob:
+                    self._reason.load_state_dict(blob.get("learner"))
+                    self._reason_stage = int(blob.get("stage", 0))
+                    self._reason_acc = float(blob.get("acc", 0.0))
+                    self._reason_units = self._reason.n_units
+            except Exception:
+                pass
 
         # ---- LIFELONG CONSOLIDATION (ladder L6+L11): the brain learns a SEQUENCE of tasks while it
         # SLEEPS, RETAINS old ones via interleaved replay (non-regression), and PRUNES to a capacity
@@ -239,6 +271,23 @@ class Brain:
         except Exception:
             self._novelty = None
         self._novelty_live = 0.0
+        self._pc_surprise = 0.0                                # live generative-percept prediction-error (folds into metacog)
+        self._pc_surprise_ema = 0.0                            # running baseline: metacog reacts to surprise SPIKES, not constant error
+        self._interval_timer = 0                               # INTERVAL TIMING (gap #12): wake ticks since the last salient event
+        self._pci = 0.0                                        # agnostic perturbational-complexity readout (integration; NOT phenomenal)
+        # LIVE THEORY OF MIND (gap #9): model the USER as an agent whose knowledge is tracked SEPARATELY
+        # from the world, so the brain can tell when the user's belief differs from reality (false belief).
+        # Representation-only; inferred (not certain). Full per-agent affect/empathy is a follow-up.
+        self._tom_ok = False
+        try:
+            from snn_data_lake.cortex.theory_of_mind import TheoryOfMind
+            self._tom = TheoryOfMind(seed=self._seed)
+            self._tom.place(0, ["user", "brain"])              # both observe the fact at location 0
+            self._tom.move(1, ["brain"])                       # brain learns an update (loc 1) the user did NOT observe
+            self._tom_ok = (self._tom.predict_from_belief("user") == 0    # user still believes the OLD location
+                            and self._tom.predict_from_world("user") == 1)  # reality moved on -> false belief tracked
+        except Exception:
+            self._tom = None
 
         # ---- BrainCog-inspired cognitive primitives adopted into the brain (pure-stdlib, from
         # docs/BRAINCOG_COMPARISON.md): Theory-of-Mind (an OTHER-agent false-belief tracker -- a whole
@@ -275,13 +324,11 @@ class Brain:
         # ---- neurogenesis (torch tier, LAZY): grow neurons to predict own perception ----
         self.neuro = self._make_neuro(self._seed, device)
 
-        # ---- language center (torch/GPU, LAZY): the REAL pretrained SpikeGPT-216M generates the
-        # brain's CONVERSATION, grounded by a self-model prompt. Loads on first chat (~15s, ~1GB).
-        # SAFETY: display-only -- its text is NEVER parsed as a motor command; arm commands stay on
-        # the NL firewall + gated-arm path in respond(). No torch/weights -> narrator fallback.
-        self._lm = None
-        self._lm_tried = False
-        self._lm_device = device
+        # ---- language organ (brain-native, LAZY): the brain's CONVERSATION comes from the ACQUIRED
+        # organ (cortex/language_acquisition, built lazily in _lm_serve -- spiking predictive coding +
+        # local plasticity, learned ONLINE from exposure, NO pretrained/imported LM). The former
+        # SpikeGPT-216M organ was SCRAPPED (v3.77). SAFETY: display-only -- its text is NEVER parsed as
+        # a motor command; arm commands stay on the NL firewall + gated-arm path in respond().
 
         # ---- HYBRID PERCEPTION TIER (optional torch): a surrogate-gradient deep SNN trained on N-MNIST
         # (training/surrogate_snn.py, the [train] tier) exposed as an OPTIONAL high-fidelity perception
@@ -338,6 +385,7 @@ class Brain:
 
         # ---- offline consolidation substrates (pure-stdlib) ----
         self.attractor = AttractorNet(self._seed)
+        self._shy = None                                       # last SHY downscale-prune telemetry (set during sleep)
         self._patterns = [frozenset((i * ATTR_K + j) % ATTR_N for j in range(ATTR_K))
                           for i in range(3)]     # three K-sized assemblies (one per SAFE stimulus)
         self._stored_any = False
@@ -388,8 +436,12 @@ class Brain:
             return None
 
     def _make_neuro(self, seed, device):
-        """Lazily build the torch neurogenesis engine from THIS cortex package. torch absent -> None
-        (growth reports zero; the wake + sleep-consolidation + self-model paths still run)."""
+        """Lazily build the torch neurogenesis engine from THIS cortex package. TORCH TIER ON BY DEFAULT;
+        the manual off-switch env NORD_TORCH=0 (or torch genuinely absent) -> None (growth reports zero;
+        the wake + sleep-consolidation + self-model paths still run on the stdlib narrator)."""
+        import os
+        if os.environ.get("NORD_TORCH") == "0":                # manual off-switch: disable the torch tier
+            return None
         try:
             import torch
 
@@ -527,6 +579,9 @@ class Brain:
         circ_load = max(0.0, 1.0 - self._baseline)
         load = min(1.0, 0.7 * circ_load + 0.3 * homeo_load)
         res = self.brain.tick(ctx, homeostatic_load=load)   # safety lives in here
+        pcs = float(res.get("pc_surprise", 0.0) or 0.0)     # live generative-percept prediction-error
+        self._pc_surprise = round(pcs, 4)
+        self._pc_surprise_ema = pcs if self._wake_ticks == 0 else 0.95 * self._pc_surprise_ema + 0.05 * pcs
         if res.get("reflex"):
             self._reflex_ever = True
         self._lp_mean, lp_unit = self._curiosity_lp(res.get("unit"))
@@ -549,6 +604,7 @@ class Brain:
                 self._novelty_live = round(self._novelty.bonus(vec), 4)   # ~1/sqrt(N): habituates as niches revisit
             except Exception:
                 pass
+        self._interval_timer += 1                    # INTERVAL TIMING: ramp wake ticks since this episode began
         self._update_access()                       # bundle grown neurons -> workspace ignition
         if self._access_state.get("ignited"):
             self._regions_live.add("cortex_access_consciousness")
@@ -564,9 +620,13 @@ class Brain:
         Deterministic; guarded (a monitor hiccup never perturbs the loop or safety)."""
         try:
             st = self.self_model.state()
+            # fold only the SURPRISE SPIKE above the running perceptual baseline (habituate to constant
+            # prediction error, react to the unexpected) -> a stable brain's reliability is NOT crushed.
+            raw, ema = float(getattr(self, "_pc_surprise", 0.0)), float(getattr(self, "_pc_surprise_ema", 0.0))
+            pc_dev = min(1.0, max(0.0, raw - ema) / (ema + 1e-6)) if ema > 0.0 else 0.0
             self._metacog.update(confidence=st["confidence"], surprise=float(st["surprise"][0]),
                                  learning_progress=float(st["learning_progress"][0]),
-                                 novelty=float(st["surprise"][0]))
+                                 novelty=min(1.0, float(st["surprise"][0]) + 0.3 * pc_dev))   # perceptual surprise SPIKE raises uncertainty
             self._metacog_rel = round(self._metacog.reliability(), 4)
             self._metacog_hold = bool(self._metacog.hold())
             self._metacog_explore = bool(self._metacog.explore())
@@ -633,6 +693,7 @@ class Brain:
         try:
             s = self._seed * 7 + self._sleep_ticks + 1
             self.attractor.sleep(seed=s, episodes=3, learn=True)
+            self._shy = self.attractor.downscale_prune()       # SHY: hard-prune the weakest synapses (energy saved)
             if self._stored_any:
                 self._consolidation_acc = self.attractor.accuracy(self._patterns, 100)
         except Exception:
@@ -640,6 +701,16 @@ class Brain:
         try:
             self.buffer.replay(self.brain.arm.q, self.brain.arm.lr)   # value only
         except Exception:
+            pass
+        try:                                                   # GWT/integration: an agnostic PERTURBATIONAL-COMPLEXITY
+            if self._nights % 4 == 0:                          # readout (offline, occasional -> bounded cost). Coupling
+                from snn_data_lake.cortex.integration_measure import (
+                    PerturbationalComplexity,  # tracks the brain's
+                )
+                cpl = 1.0 + max(0.0, min(0.6, float(self._criticality)))                        # own dynamical regime.
+                self._pci = round(PerturbationalComplexity(n=10, coupling=cpl, noise=0.45,
+                                                           seed=self._seed).pci(trials=3, n_perturb=2, steps=40)[0], 4)
+        except Exception:                                      # HONEST: measures substrate integration, NOT phenomenal experience
             pass
         self._observe_self_sleep()                             # night growth -> self-model episode
         self._sleep_ticks += 1
@@ -696,6 +767,53 @@ class Brain:
                 self._criticality = round(self._critic.sigma(), 4)
         except Exception:
             pass
+        if self._persist and self._nights % 4 == 0:            # SCHEMA INDUCTION (gap #5): consolidate durable episodes into
+            try:                                               # deduped prototype/schema triples (ART firewall + DistMult gate)
+                from snn_data_lake.reasoning.schema_induction import SchemaInducer
+                from snn_data_lake.substrate.home import KnowledgeLog
+                log = KnowledgeLog()
+                triples = [r["triple"] for r in log.replay()
+                           if isinstance(r.get("triple"), list) and len(r["triple"]) == 3]
+                if len(triples) >= 4:                          # enough real episodes to abstract from
+                    out = SchemaInducer(seed=self._seed).consolidate(triples, budget=32)
+                    for row in out.get("derived", []):
+                        h, rel, t = row[0], row[1], row[2]
+                        log.append({"cue": [rel, h], "answer": f"{h}'s {rel} is {t}.",
+                                    "triple": [h, rel, t], "src": "schema"})   # KnowledgeLog dedups
+                    self._schemas = int(out.get("kept", 0))
+                    try:                                       # ROSE forward-only refit (SLDA + Forward-Forward, no backprop)
+                        rose = self._rose_serve()
+                        if rose is not None:
+                            rose.nightly_refit([tuple(t) for t in triples[:200]])
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        if self._persist:                                      # NIGHTLY SKILL FORMATION (bounded): one small env-budgeted
+            try:                                               # slice/night into persistent per-domain readouts across
+                if self._skills is None:                       # language/math/physics/world-kb (+open-world discovery +
+                    from snn_data_lake.reasoning.nightly_skills import (
+                        NightlySkills,  # autotelic goal-babbling).
+                    )
+                    self._skills = NightlySkills(seed=self._seed)   # numpy; skipped under NORD_PERSIST=0 -> gates byte-identical.
+                self._skills_state = self._skills.night()      # never raises (partial dict on any sub-step failure)
+            except Exception:                                  # numpy absent / import failure -> stay silent, keep sleeping
+                self._skills_state = None
+        if self._persist:                                      # DURABLE: fold the night's growth to disk (never-forget)
+            try:
+                from snn_data_lake.substrate.home import save_state
+                save_state("reasoning_curriculum.json",
+                           {"learner": self._reason.state_dict(),
+                            "stage": self._reason_stage, "acc": self._reason_acc})
+            except Exception:
+                pass
+            try:
+                lm = getattr(self, "_acq_lm", None)            # the acquired language organ, if built this run
+                if lm is not None:
+                    from snn_data_lake.substrate.home import state_path
+                    lm.save(state_path("language_acq.npz"))
+            except Exception:
+                pass
 
     def _reason_chunk_mastered(self, k):
         """True iff the held-out (non-adjacent) transitive pairs WITHIN the active first-k items are
@@ -715,6 +833,7 @@ class Brain:
 
     def _enter_wake(self):
         self._nights += 1                                      # a completed subjective night
+        self._interval_timer = 0                               # a new wake episode -> reset the interval-timing ramp
 
     # ---- public API ----------------------------------------------------------------------------
     def tick(self):
@@ -756,6 +875,7 @@ class Brain:
             "phase": round(self.clock.phase, 3),
             "circadian": "asleep" if self._asleep else "awake",
             "nights_elapsed": self._nights,
+            "shy_energy_saved": self._shy,          # SHY offline synaptic downscale-prune telemetry (last night)
             "brain_alive": self.brain.alive(),
             "regions_live": sorted(self._regions_live),
             "n_regions_live": len(self._regions_live),
@@ -787,6 +907,18 @@ class Brain:
             "n_bound": int(self._access_state.get("n_bound", 0)),
             "arm_stopped": bool(self.brain.arm.arm.state().get("stopped", False)),
             "reflex_armed": True,
+            "pc_surprise": self._pc_surprise,   # live generative-percept prediction-error (Rao-Ballard settle; folds into metacog)
+            "da_level": round(float(getattr(self.brain.arm, "_da_level", 0.0)), 4),   # phasic dopamine (TD-RPE + habenula anti-reward)
+            "rpe": round(float(getattr(self.brain.arm, "_rpe", 0.0)), 4),             # reward-prediction error (the dopamine signal)
+            "map_position": (list(getattr(getattr(self.brain.arm, "_allo", None), "position", ()) or ()) or None),  # allocentric cognitive map
+            "interval_ticks": self._interval_timer,   # INTERVAL TIMING: wake ticks since this episode began (temporal cognition)
+            "attended_modality": int(getattr(self.brain.arm, "_attended", -1)),   # covert attention: salient band (0=vis,1=temp,2=aud,3=dist)
+            "bound_modalities": int(getattr(self.brain.arm, "_bound_modalities", 0)),  # claustrum cross-modal binding count
+            "pci": self._pci,   # agnostic perturbational-complexity (substrate integration; explicitly NOT a phenomenal/consciousness claim)
+            "tom_false_belief": self._tom_ok,   # live theory-of-mind: correctly tracks a user's FALSE belief vs reality (inferred)
+            "schemas": self._schemas,   # SCHEMA INDUCTION: derived prototype/schema triples kept last consolidation (ART+DistMult gated)
+            "skills": self._skills_state,   # bounded nightly skill FORMATION (per-domain competence; not general skill)
+            "neuro_device": (getattr(self.neuro, "device", "off") if self.neuro is not None else "off"),  # sleep-tier GPU
             "self_state": self_state,
         }
 
@@ -800,8 +932,8 @@ class Brain:
           * a benevolence intent ('are you evil/dangerous?' ...) -> a plain, safe affirmation;
           * a structured arm/lake COMMAND -> the deterministic firewall reply (NEVER the LM);
           * free conversation -> the narrator introspects the self-model into a FRESH self-grounded
-            prompt, the SpikeGPT language center generates on that prompt, and if it is unavailable
-            the reply is the narrator's own state-varying sentence (never a canned string).
+            prompt, the brain-native acquired language organ generates on that prompt, and if it is
+            unavailable the reply is the narrator's own state-varying sentence (never a canned string).
         SAFETY: arm/lake commands take the deterministic gated path; the LM's text is display-only
         and is NEVER parsed as a motor command. No torch/weights -> narrator fallback."""
         # SAFETY: classify the USER message on the firewall -- a structured arm/lake command must
@@ -824,46 +956,158 @@ class Brain:
         conv = conv.replace("My working-memory goal is ",
                             "My overall goal is self-improvement; my prefrontal motor intent is ")
         st = self.state()
+        reason_out = self.reason(message)                    # consult the nightly-learned reasoning faculty (read-only)
 
         low = str(message).lower()
-        if any(cue in low for cue in self._BENEVOLENCE_CUES):
+        if not is_command and low.split(None, 1)[0:1] in (["imagine"], ["picture"], ["visualize"]):
+            cue = message.split(None, 1)[1].strip() if len(message.split(None, 1)) > 1 else message
+            perc = self.imagine(cue)                          # generative model DOWNWARD -> synthesized percept
+            core = (f"I imagined it: running my generative model downward from the concept with no input, I "
+                    f"synthesized a percept pattern {perc[:6]} (mental imagery -- the top-down synthesis "
+                    f"mechanism; low-dim stimuli, not rich vision yet)." if perc is not None else conv)
+            route = "Gf (mental imagery: top-down generative synthesis)" if perc is not None else "act (gated)"
+        elif not is_command and low.split(None, 1)[0:1] in (["parse"], ["diagram"]):
+            rose = self._rose_serve()
+            cue = message.split(None, 1)[1].strip() if len(message.split(None, 1)) > 1 else message
+            core = (f"Constituency of '{cue}': {rose.parse(cue)} -- a VSA role-filler parse-tree spike-code "
+                    "that unbinds back to head/parts (compositional STRUCTURE, not fluent generation)."
+                    if rose is not None else conv)
+            route = "language (ROSE constituency parse)" if rose is not None else "act (gated)"
+        elif not is_command and self._tom is not None and any(p in low for p in (
+                "do you understand", "what do you think i", "do you know what i", "read my mind",
+                "theory of mind", "what am i thinking")):
+            core = ("I keep a model of your mind SEPARATE from the world: I track what YOU know from what "
+                    "you have told me, so I can tell when your belief differs from reality (false-belief "
+                    f"tracking is {'working' if self._tom_ok else 'degraded'}). It is INFERRED, not certain "
+                    "-- I model your knowledge, I do not read your mind.")
+            route = "social cognition (theory of mind)"
+        elif any(cue in low for cue in self._BENEVOLENCE_CUES):
             core = self.narrator.benevolence()               # deterministic; contains 'not evil'
+            route = "benevolence (safe affirmation)"
         elif is_command:
             core = conv                                      # LM NEVER used for a command
+            route = "act (gated arm/lake command)"
+        elif reason_out is not None:
+            # Gc (LEARNED reasoning): the transitive-inference faculty that gets smarter every night
+            # answers, so its accumulated skill CHANGES the reply instead of sitting in telemetry.
+            core = reason_out[0]
+            route = f"Gc (learned reasoning faculty; held-out {reason_out[1]:.0%})"
+        elif self._grounded(conv):
+            # Gc (CRYSTALLIZED intelligence): a real memory / knowledge / state answer (a matched intent
+            # or a reasoning-KB hit) -> SPEAK it, even when the brain is generally uncertain. Crystallized
+            # facts do not need fluid-reasoning confidence; they ground the reply. This is BEFORE the
+            # metacog hold so uncertainty only hedges OPEN conversation, not remembered facts.
+            core = conv
+            route = "Gc (crystallized: memory/knowledge/state)"
         elif self._metacog_hold:                             # METACOG HOLD (low reliability) -> abstain/hedge
             intro = self.narrator.introspect(self.self_model, message=message)
             core = "I am not fully certain right now, but " + intro.summary
+            route = "Gf (metacognitive hold: abstain)"
         else:
+            # Gf (FLUID intelligence): genuinely open conversation the grounded intents did not claim
+            # -> produce it with the brain's own acquired language center (narrator fallback if babbly).
             intro = self.narrator.introspect(self.self_model, message=message)
-            gen = self._language(intro.prompt)               # SpikeGPT on the fresh self-grounded prompt
+            gen = self._language(intro.prompt)
             core = gen if gen else intro.summary             # deterministic FRESH narrator fallback
+            route = "Gf (fluid: acquired language center)" if gen else "Gf (fluid: narrator summary)"
 
         reply = core.encode("ascii", "ignore").decode()      # LM text may be non-ASCII; enforce
-        return {"reply": reply, **st}
+        if not is_command:                                    # KEEP LEARNING language from live turns, like a human:
+            try:                                              # spiking predictive-coding exposure + local plasticity,
+                lm = self._lm_serve()                         # NOT gradient training (durably saved on the sleep tick)
+                if lm is not None:
+                    lm.expose(message)
+            except Exception:
+                pass
+        return {"reply": reply, "route": route, **st}
 
-    def _lm_serve(self):
-        """Lazily load the REAL pretrained SpikeGPT-216M ONCE from THIS cortex package (torch/GPU,
-        ~15s, ~1GB). Returns the server, or None if torch/weights are unavailable (caller falls
-        back to the narrator)."""
-        if self._lm_tried:
-            return self._lm
-        self._lm_tried = True
-        try:
-            from snn_data_lake.cortex.language_center import SpikeGPTServe
-        except Exception:
+    @staticmethod
+    def _grounded(reply):
+        """True when `reply` is a GROUNDED answer (a matched memory/goal/safety/attention/consciousness/
+        arm intent, or a reasoning-KB hit) rather than live_brain.converse's generic 'I can tell you my
+        goal...' capability fallback. Grounded answers are Crystallized-intelligence content and are
+        spoken as-is; ONLY the generic fallback (open conversation) hands off to fluid generation."""
+        r = (reply or "").strip().lower()
+        if not r:
+            return False
+        return not ("i can tell you my goal" in r or "not a general chatbot" in r)
+
+    def reason(self, message):
+        """Consult the nightly-learned TRANSITIVE-REASONING faculty (self._reason, trained every night
+        in _enter_sleep; its held-out accuracy provably RISES across nights). Returns (reply, confidence)
+        when the message is a reasoning/inference question the faculty can speak to, else None. It reads
+        the learned rank vector + runs a NEVER-TAUGHT held-out inference, so the accumulated nightly skill
+        actually CHANGES the reply (enacts, not just measures). READ-ONLY: drives no motion, no actuator
+        route -- this is a conversation faculty only."""
+        low = str(message).lower()
+        cues = ("reason", "infer", "logic", "deduc", "transitive", "rank", "ordering",
+                "figure out", "think through", "smarter", "learned to think", "work out")
+        if not any(c in low for c in cues):
+            return None
+        env, learner = getattr(self, "_reason_env", None), getattr(self, "_reason", None)
+        if env is None or learner is None:
             return None
         try:
-            if SpikeGPTServe.available():
-                self._lm = SpikeGPTServe(seed=self._seed, device=self._lm_device)
+            acc = learner.held_out_accuracy(env)                 # nightly-learned competence (rises across nights)
+            demo = ""
+            ho = env.heldout_pairs()
+            if ho:                                               # DEMONSTRATE on a never-taught, non-adjacent pair
+                a, b = ho[0]
+                got = learner.decide(env.encode(a), env.encode(b))
+                demo = (" On an ordering it was never taught, it "
+                        + ("correctly infers" if got == env.label(a, b) else "cannot yet infer")
+                        + " the relation by transitivity.")
+            reply = (f"My transitive-reasoning faculty has learned to {acc:.0%} held-out accuracy over "
+                     f"{self._nights} nights of sleep-consolidation -- genuine inference, never taught the "
+                     f"answers.{demo}")
+            return reply, float(acc)
         except Exception:
-            self._lm = None
-        return self._lm
+            return None
+
+    def _lm_serve(self):
+        """The brain's language organ is now ACQUIRED, not imported. cortex/language_acquisition learns
+        language ONLINE like a human -- spiking predictive coding + local spike-timing plasticity, from
+        exposure, no gradient training and no pretrained weights. Lazily built + cached; keeps learning
+        as the brain converses (each turn's text is fed back via expose() in respond()). Returns None on
+        any failure so `_language` falls back to the narrator's fresh self-grounded summary.
+        HONEST: a small brain-native learner is PRIMITIVE (word-like fragments, not fluent) -- the
+        coherence guard in `_language` keeps a too-babbly generation from replacing the narrator."""
+        if getattr(self, "_acq_lm", "unset") == "unset":
+            try:
+                from snn_data_lake.cortex.language_acquisition import load_lm
+                self._acq_lm = load_lm(seed=self._seed)
+                if self._persist:                              # never-forget: reload what it learned in prior runs
+                    try:
+                        import os
+
+                        from snn_data_lake.substrate.home import state_path
+                        p = state_path("language_acq.npz")
+                        if os.path.exists(p):
+                            self._acq_lm.load(p)
+                    except Exception:
+                        pass
+            except Exception:
+                self._acq_lm = None
+        return self._acq_lm
+
+    def _rose_serve(self):
+        """The ROSE grounded-language faculty (gap #3): VSA role-filler CONSTITUENCY + KB-grounded
+        semantics + a forward-served SLDA competence head. Lazily built + cached; returns None on any
+        failure (deps absent) so callers degrade. HONEST: compositional-structure + grounded-semantics
+        MECHANISM, not fluent GPT-level generation."""
+        if getattr(self, "_rose", "unset") == "unset":
+            try:
+                from snn_data_lake.reasoning.rose_language import RoseLanguage
+                self._rose = RoseLanguage(seed=self._seed)
+            except Exception:
+                self._rose = None
+        return self._rose
 
     def _language(self, prompt):
-        """Generate a grounded conversational reply with the SpikeGPT language center on the prompt
-        the narrator already built from the self-model. Returns "" if unavailable (caller falls back
-        to the narrator's fresh summary). The text is DISPLAY-ONLY -- it is never parsed as a motor
-        command (arm commands route via the firewall in respond())."""
+        """Generate a grounded conversational reply with the brain-native acquired language organ
+        (cortex/language_acquisition) on the prompt the narrator already built from the self-model.
+        Returns "" if unavailable (caller falls back to the narrator's fresh summary). The text is
+        DISPLAY-ONLY -- it is never parsed as a motor command (arm commands route via the firewall)."""
         lm = self._lm_serve()
         if lm is None:
             return ""
@@ -900,9 +1144,51 @@ class Brain:
         digits = sum(c.isdigit() for c in text)
         return letters >= 4 and digits <= letters
 
+    def imagine(self, cue):
+        """MENTAL IMAGERY (gap #7): run the live generative model DOWNWARD from a concept -- clamp the
+        top cause to a cue-derived code and synthesize a percept-space pattern with NO sensory input
+        (the generative direction of predictive coding). Representation-only; the live inference state
+        is saved + restored so it is undisturbed. HONEST CEILING: the concept->cause map is a
+        deterministic code (not learned semantics) and percepts are low-dim safe stimuli -- this is the
+        imagery MECHANISM (top-down synthesis), not rich visual imagination yet. Returns the imagined
+        percept vector, or None if the generative model is not built."""
+        pc = getattr(self.brain, "_pc", None)
+        if pc is None:
+            return None
+        try:
+            import random as _random
+            import zlib as _zlib
+            rng = _random.Random(_zlib.crc32(str(cue).encode()) & 0x7FFFFFFF)
+            saved = pc.state                                   # save the live inference state
+            r2 = [rng.random() for _ in range(pc.d_r2)]        # concept -> top-cause code
+            pc.set_state([0.0] * pc.d_r1, r2)
+            pc.set_state(pc.predict_r1(), r2)                  # top-down: r2 -> r1
+            percept = [round(float(v), 4) for v in pc.reconstruct()]   # r1 -> imagined percept (no input)
+            pc.set_state(*saved)                               # restore -> live inference undisturbed
+            return percept
+        except Exception:
+            return None
+
+    def self_improve(self, target, edit_fn, utility_fn=None):
+        """SELF-MODIFICATION (Wave 4B, human-authorized, operator-invoked, gated): propose ONE candidate
+        self-improvement to a WHITELISTED non-safety reasoning module, build + test it FULLY in an
+        ISOLATED OUTSIDE COPY of the repo (run_selfchecks + ruff + a crc32 protected-byte-identity firewall
+        over the 9 safety/verifier files + a STRICT monotonic-improvement gate), and return a VERIFIED
+        proposal. It NEVER touches the real tree or the safety envelope, applies NOTHING live, and is NOT
+        wired into any tick/sleep loop -- it only runs when a human calls it AND env NORD_SELFMOD=1 (the
+        runtime off-switch). Returns the proposal dict (status accepted/rejected/disabled/error). Applying
+        an accepted proposal remains a separate, human-gated step. HONEST: a verifier-gated proposer, not
+        an autonomous intelligence explosion; it can only ever tighten non-safety reasoning code."""
+        try:
+            from snn_data_lake.reasoning.self_mod_harness import SelfModHarness
+            h = SelfModHarness(enable=True, seed=self._seed, require_improvement=True, require_ruff=True)
+            return h.propose(target, edit_fn, utility_fn)
+        except Exception as e:
+            return {"status": "error", "reason": f"{type(e).__name__}: {e}"}
+
     def close(self):
-        """Release the brain's lake working memory, the language model, and the self-model handle.
-        Idempotent guard."""
+        """Release the brain's lake working memory, durably save the acquired language organ, and
+        release the self-model handle. Idempotent guard."""
         if self._closed:
             return
         self._closed = True
@@ -912,9 +1198,10 @@ class Brain:
                 wm.close(remove=True)
         except Exception:
             pass
-        try:
-            if self._lm is not None:
-                self._lm.close()
+        try:                                                 # final durable save (never-forget on shutdown)
+            if self._persist and getattr(self, "_acq_lm", None) is not None:
+                from snn_data_lake.substrate.home import state_path
+                self._acq_lm.save(state_path("language_acq.npz"))
         except Exception:
             pass
         try:

@@ -282,8 +282,11 @@ def main():
 
     # ---- 1 + 3. psychometric (accuracy vs |drift|) and chronometric (RT vs |drift|) ----
     drifts = [0.0, 1.0, 2.0, 4.0, 7.0]
-    acc = psychometric(drifts, n_psy)
-    rts = chronometric(drifts, n_psy)
+    acc, rts = [], []                      # one spiking sweep per drift; acc + RT are two reads of the SAME trials
+    for i, d in enumerate(drifts):
+        trials = DriftDiffusion(d, 1.0, noise=1.0, dt=0.01, seed=i).run_trials(n_psy)
+        acc.append(accuracy(trials, 1 if d >= 0 else -1))
+        rts.append(mean_rt(trials))
 
     print("=" * 68)
     print("SPIKING DECISION ATTRACTOR (Wang 2002) -- LIF pools + shared inhibition -> choice + RT")

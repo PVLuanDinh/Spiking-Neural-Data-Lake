@@ -78,20 +78,35 @@ def validate_url(url):
 
 
 class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
-    """Re-run the SSRF firewall on every redirect target before following it."""
+    """Re-run the SSRF firewall on every redirect target before following it, PLUS an optional
+    extra_check (e.g. a caller's host allowlist) -- so an allowlisted host cannot 30x-redirect off the
+    allowlist to any public host (the SSRF firewall alone would let that through)."""
+
+    def __init__(self, extra_check=None):
+        super().__init__()
+        self._extra_check = extra_check
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         validate_url(newurl)
+        if self._extra_check is not None:
+            self._extra_check(newurl)       # e.g. the gate's allowlist -- refuse a redirect off it
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def fetch_text(url, max_bytes=DEFAULT_MAX_BYTES, timeout=DEFAULT_TIMEOUT):
-    """Download url and return decoded text. Firewalled + redirect-checked + size-capped."""
+def fetch_text(url, max_bytes=DEFAULT_MAX_BYTES, timeout=DEFAULT_TIMEOUT, extra_check=None):
+    """Download url and return decoded text. Firewalled + redirect-checked + size-capped. `extra_check`
+    (if given) is run on the original URL, every redirect target, AND the final URL -- callers pass
+    their host allowlist so a redirect cannot escape it."""
     validate_url(url)
-    opener = urllib.request.build_opener(_ValidatingRedirectHandler())
+    if extra_check is not None:
+        extra_check(url)
+    opener = urllib.request.build_opener(_ValidatingRedirectHandler(extra_check))
     req = urllib.request.Request(url, headers={"User-Agent": _UA})
     with opener.open(req, timeout=timeout) as resp:
-        validate_url(resp.geturl())         # re-check the final (post-redirect) URL
+        final = resp.geturl()
+        validate_url(final)                 # re-check the final (post-redirect) URL
+        if extra_check is not None:
+            extra_check(final)              # ...and re-check it against the caller's allowlist too
         data = resp.read(max_bytes + 1)
     if len(data) > max_bytes:
         raise ValueError(f"download exceeds the {max_bytes}-byte cap")

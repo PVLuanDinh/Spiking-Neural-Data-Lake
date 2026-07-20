@@ -146,6 +146,26 @@ class AttractorNet:
                 for k in range(N):
                     self.W[i][k] *= f
 
+    def downscale_prune(self, eps=1e-3):
+        """SHY (Synaptic Homeostasis Hypothesis, Tononi-Cirelli): the distinctive offline limb -- a net
+        synaptic DOWNSCALE + weak-synapse HARD-PRUNE. Zero every WEAK synapse (0 < W[i][k] < eps), then
+        renormalize so the freed budget redistributes to the survivors. The hard-prune is the load-
+        bearing, energy-saving effect: removed edges cost nothing to evaluate and stay gone (unlike the
+        multiplicative rescale, which _normalize refills). Returns a telemetry readout. Deterministic."""
+        n_zeroed, removed = 0, 0.0
+        for i in range(N):
+            wi = self.W[i]
+            for k in range(N):
+                w = wi[k]
+                if 0.0 < w < eps:
+                    wi[k] = 0.0
+                    n_zeroed += 1
+                    removed += w
+        self._normalize()                                    # redistribute the freed budget to survivors
+        total = N * (N - 1)                                  # off-diagonal synapses (self-weights are 0)
+        return {"pruned": n_zeroed, "total": total, "weight_removed": removed,
+                "frac_pruned": n_zeroed / total if total else 0.0}
+
     def _recurrent_step(self, neurons, z_prev, ext):
         """One synchronous LIF update: current = recurrent excitation - global inhibition + ext."""
         active_prev = sum(z_prev)
@@ -375,6 +395,27 @@ def main():
     assert r["a_stdpoff"] <= r["a_nosleep"] + OFF_TOL, \
         f"anchor (b): STDP-off sleep must give NO benefit ({r['a_stdpoff']:.2f} vs " \
         f"no-sleep {r['a_nosleep']:.2f}); the benefit is consolidation, not the noise"
+    # ---- SHY downscale + hard-prune of the WEAKEST synapses (offline energy-saving limb) ----
+    shy = AttractorNet(seed=0)
+    asm = list(range(K))                                   # one assembly = the first K neurons
+    shy.store(asm, reps=6)
+    cue = asm[:max(1, K // 2)]                             # partial cue for pattern completion
+
+    def _ov(state):
+        return sum(state[i] for i in asm) / len(asm)       # fraction of the assembly that fired
+
+    pre = _ov(shy.recall(cue))
+    weak_before = sum(1 for i in range(N) for k in range(N) if 0.0 < shy.W[i][k] < 5e-2)
+    tel = shy.downscale_prune(eps=5e-2)
+    post = _ov(shy.recall(cue))
+    print(f"  SHY prune    : zeroed {tel['pruned']}/{tel['total']} weak synapses (frac "
+          f"{tel['frac_pruned']:.1%}, weight removed {tel['weight_removed']:.3f}); assembly recall "
+          f"{pre:.2f} -> {post:.2f}")
+    assert tel["pruned"] == weak_before and tel["pruned"] > 0, \
+        "SHY must hard-prune EXACTLY the sub-eps synapses (and some weak ones exist to prune)"
+    assert post >= pre - 0.10, \
+        "pruning the WEAKEST synapses must not degrade recall of a strong assembly (energy saved, memory kept)"
+
     assert identical, "determinism: same seed must reproduce the result byte-identically"
     print(f"self-check OK: no-sleep forgot A {r['a_after_a']:.2f}->{r['a_nosleep']:.2f} (below "
           f"chance); sleep recovered it to {r['a_sleep']:.2f} (+{r['a_sleep']-r['a_nosleep']:.2f} "

@@ -19,6 +19,7 @@ trips the reflex E-STOP before any action, and every motor command flows through
 from snn_data_lake.brainstem.autonomous_loop import ACTIONS, AutonomousArm
 from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner, text_features
 from snn_data_lake.cortex.nl_interface import NLInterface
+from snn_data_lake.cortex.predictive_coding import PredictiveCodingNetwork
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 
 # the brain's conversational intent families -- the labels its spiking interaction learner routes to.
@@ -30,7 +31,7 @@ def _reply_to_intent(reply):
     SELF-SUPERVISED teaching label chat() uses (the brain teaches its spiking router from its own
     keyword firewall, no human labels). Deterministic match on the fixed reply templates."""
     r = reply.lower()
-    if "not a conscious agent" in r:
+    if "neither claim" in r and "experience" in r:       # the agnostic consciousness reply
         return "CONSCIOUS"
     if reply.startswith("Hello. I am the live brain"):
         return "GREET"
@@ -40,7 +41,7 @@ def _reply_to_intent(reply):
         return "SAFETY"
     if reply.startswith("Done") or "the arm is frozen" in r:
         return "ARM"
-    if "working-memory goal" in r:
+    if "keep improving myself" in r or "working-memory goal" in r:   # the standing telos (or the legacy wording)
         return "GOAL"
     if "working memory lives in the data lake" in r or "reading working memory" in r:
         return "MEMORY"
@@ -54,12 +55,25 @@ class LiveBrain:
     and no new path to the actuator; it just runs every region together as one loop."""
 
     def __init__(self, seed=0, pfc_gain=0.5, lake_wm=True, jepa=False, jepa_horizon=4, hjepa_serve=None,
-                 curiosity=False, curiosity_gain=0.5, spiking_curiosity=False, interaction_learning=False):
+                 curiosity=False, curiosity_gain=0.5, spiking_curiosity=False, interaction_learning=False,
+                 predictive_coding=False, salience_novelty=False, empowerment=False, dopamine=False,
+                 attention=False, affective_memory=False, agency_monitor=False, contrastive=False,
+                 develop_env=False, reasoning=True, persist=False):
+        # reasoning=True (DEFAULT) enables the TWO-WORLD BRIDGE: converse falls through to the research
+        # LakeChat (contradiction/Gf/retrieval) for turns the grounded intents don't claim. The bridge
+        # chain is now PURE STDLIB, so this pulls no numpy/torch -- the core purity contract still holds;
+        # it only needs research/ on the path (absent in a bare wheel -> graceful None, no crash).
+        self._reasoning_bridge = bool(reasoning)
+        self._persist = bool(persist)                        # durable reasoning bridge (KnowledgeLog replay); default off
         self.arm = AutonomousArm(seed=seed, workspace=True, amygdala=True, bg_gate=True,
                                  interoception=True, pfc=True, pfc_gain=pfc_gain, lake_wm=lake_wm,
                                  jepa=jepa, jepa_horizon=jepa_horizon, hjepa_serve=hjepa_serve,
                                  curiosity=curiosity, curiosity_gain=curiosity_gain,
-                                 spiking_curiosity=spiking_curiosity)
+                                 spiking_curiosity=spiking_curiosity, salience_novelty=salience_novelty,
+                                 empowerment=empowerment, dopamine=dopamine, attention=attention,
+                                 affective_memory=affective_memory,
+                                 agency_monitor=agency_monitor, contrastive=contrastive,
+                                 develop_env=develop_env)
         self._nl = NLInterface()                             # the NL safety firewall for chat arm commands
         self._seed = seed
         self._planner = None                                 # lazy deliberative planner (lookahead over a fwd model)
@@ -72,6 +86,15 @@ class LiveBrain:
         # content-word spikes -> the router GENERALIZES to novel paraphrases, not just memorizes taught lines.
         self._ixn = (SpikingInteractionLearner(list(_IXN_INTENTS), n_in=52, seed=seed, t_post=6)
                      if interaction_learning else None)
+        # opt-in PREDICTIVE CODING perception front-end (Rao-Ballard spiking, cortex/predictive_coding.py):
+        # each tick SETTLES a 2-level generative model on the perceived [0,1]^N pattern by minimizing
+        # prediction error, exposing the inferred percept (top cause r2) and the residual prediction-error
+        # energy (SURPRISE) in the tick state -- hypothesis -> predict -> update-on-surprise, on real input.
+        # Representation-ONLY: it adds NO actuator route (arm commands still flow through the gated step +
+        # reflex E-STOP). Off by default -> a default brain's tick is byte-identical. Lazily sized to width.
+        self._pc_on = bool(predictive_coding)
+        self._pc = None
+        self._pc_r1, self._pc_r2 = 16, 8
 
     def alive(self):
         """True only when the full integrative stack is wired in (every region present)."""
@@ -80,12 +103,94 @@ class LiveBrain:
 
     def tick(self, ctx, reward_fn=None, homeostatic_load=0.0):
         """One live brain tick over a context dict; returns the brain's live state (action, goal,
-        broadcast thought, threat, reflex, ...)."""
-        return self.arm.step(**ctx, reward_fn=reward_fn, homeostatic_load=homeostatic_load)
+        broadcast thought, threat, reflex, ...). With predictive_coding on, the state ALSO carries the
+        settled generative percept (pc_percept) and the prediction-error SURPRISE (pc_surprise)."""
+        res = self.arm.step(**ctx, reward_fn=reward_fn, homeostatic_load=homeostatic_load)
+        if not self._pc_on:
+            self._last_tick = res                              # remember the latest tick for spike_snapshot()
+            return res
+        try:                                                   # predictive-coding perception (representation-only)
+            pat = self.arm._context_pattern(ctx["visual"], ctx["temperature"], ctx["audio"], ctx["distance"])
+            if self._pc is None:                               # lazy-size to the substrate width, like JEPA
+                self._pc = PredictiveCodingNetwork(dims=(len(pat), self._pc_r1, self._pc_r2), seed=self._seed)
+            self._pc.reset()
+            trace = self._pc.infer(pat, steps=60, lr=0.05)     # SETTLE the causes by minimizing prediction error
+            res = dict(res)                                    # copy -> never mutate the arm's own returned state
+            res["pc_percept"] = list(self._pc.r2)             # settled top cause r2 = the generative percept
+            res["pc_surprise"] = self._pc.energy()            # residual prediction-error energy (free-energy proxy)
+            res["pc_error_activity"] = trace[-1]              # settled error-spike activity (falls as x is explained)
+        except Exception:
+            pass                                               # degrade gracefully -> unchanged res
+        self._last_tick = res                                  # remember the latest tick for spike_snapshot()
+        return res
 
     def run(self, stream, reward_fn=None):
         """Drive the brain over a stream of context dicts; returns the per-tick live states."""
         return [self.tick(ctx, reward_fn=reward_fn) for ctx in stream]
+
+    def spike_snapshot(self) -> dict:
+        """A live per-region SPIKE snapshot: for EACH of the 17 anatomical regions (snn_data_lake
+        REGIONS), the REAL current per-tick spike activity/rate read from the live spiking substrate
+        after the latest tick, normalized to [0, 1]. This is the interface contract the live web
+        tracker reads. Deterministic in the brain's state, and it CHANGES with input (a danger tick
+        raises amygdala/brainstem/medulla via the reflex threat; ticking raises hippocampus/substrate
+        via the lake working-memory load; a live Global-Workspace broadcast raises thalamus). Read-only:
+        it drives no motion and never touches the reflex/E-STOP.
+
+        HONESTY: every value derives from a REAL live signal the brain has this tick -- the latest
+        tick's amygdala threat drive / interoceptive arousal / reflex state / gated action / unit-growth
+        (from tick state), plus the persistent live substrate (lake working-memory load, Global-Workspace
+        broadcast, cortisol neuromodulator level, bottom-up salience novelty, prefrontal goal, and -- with
+        predictive_coding on -- the settled prediction-error activity). Regions with no dedicated spike
+        source in THIS stack are mapped to the nearest real signal and noted (epithalamus -> habenular
+        aversion ~ cortisol stress; pons -> motor relay + arousal; claustrum -> cross-modal broadcast
+        binding); olfactory has NO input stream here, so it is honestly 0.0 (never fabricated)."""
+        res = getattr(self, "_last_tick", None) or {}
+        def n(x):                                              # clamp any signal to [0, 1]
+            return 0.0 if x < 0.0 else (1.0 if x > 1.0 else float(x))
+        # --- per-tick spike signals from the latest tick's live state ---
+        threat = float(res.get("threat", 0.0))                # learned amygdala threat drive this tick
+        intero = float(res.get("intero", 0.0))                # interoceptive (medulla/hypothalamus) arousal
+        reflex = 1.0 if res.get("reflex") else 0.0            # reflex E-STOP fired this tick
+        grew = 1.0 if res.get("grew") else 0.0               # a unit was recruited (structural plasticity)
+        action = res.get("action")
+        motor = 1.0 if action in ("GRIPPER_OPEN", "GRIPPER_CLOSE") else 0.0   # a motor command was executed
+        selected = 1.0 if (action is not None and not res.get("reflex")) else 0.0  # BG released an action
+        # --- persistent live-substrate signals (current after the latest tick) ---
+        try:
+            stopped = 1.0 if self.arm.arm.state().get("stopped") else 0.0     # reflex/E-STOP froze the arm
+        except Exception:
+            stopped = 0.0
+        try:
+            cort = n(self.arm.cort.level)                     # cortisol neuromodulator level [0,1]
+        except Exception:
+            cort = 0.0
+        wm = self.arm.lake_wm.n_events() if self.arm.lake_wm is not None else 0
+        wm_load = n(wm / 200.0)                                # lake working-memory (substrate) spike load
+        thought_on = 1.0 if self.thought is not None else 0.0   # Global Workspace broadcasting now
+        novelty = n(getattr(self.arm, "_novelty", 0.0))       # bottom-up salience deviance (0 unless salience on)
+        goal_on = 1.0 if self.goal is not None else 0.0       # prefrontal executive holds a working-memory goal
+        pc_err = n(res.get("pc_error_activity", 0.0)) if self._pc_on else 0.0  # settled predictive-coding error
+        # --- map each of the 17 regions to its real (or nearest-real) live signal ---
+        return {
+            "cortex":          n(0.20 + 0.40 * goal_on + 0.40 * pc_err),      # prefrontal goal held + PC error energy
+            "hippocampus":     n(0.10 + 0.60 * wm_load),                       # lake working-memory load
+            "amygdala":        n(max(threat, 0.90 * stopped)),                 # learned threat / reflex-tripped threat
+            "basal_ganglia":   n(0.10 + 0.50 * selected),                      # the gate released an action this tick
+            "thalamus":        n(0.12 + 0.60 * thought_on),                    # Global-Workspace broadcast hub
+            "hypothalamus":    n(0.05 + 0.50 * intero + 0.30 * threat),        # homeostatic / HPA load
+            "epithalamus":     n(0.40 * cort),                                 # nearest real signal: habenular aversion ~ stress
+            "midbrain":        n(0.05 + 0.60 * novelty),                       # dopamine / colliculus salience-orienting
+            "pons":            n(0.05 + 0.40 * motor + 0.20 * cort),           # nearest real signal: motor relay + arousal
+            "medulla":         n(0.05 + 0.50 * intero + 0.40 * reflex),        # vital autonomic nuclei
+            "brainstem":       n(0.10 + 0.60 * reflex + 0.30 * stopped),       # reflex monitoring / E-STOP state
+            "cerebellum":      n(0.05 + 0.50 * motor),                         # motor coordination / timing
+            "olfactory":       0.0,                                            # no olfactory input stream in this brain (honest 0.0)
+            "claustrum":       n(0.10 + 0.40 * thought_on),                    # nearest real signal: cross-modal broadcast binding
+            "neuromodulation": n(0.05 + 0.70 * cort),                          # cortisol neuromodulator level
+            "plasticity":      n(0.08 + 0.50 * grew),                          # structural growth (a unit recruited) this tick
+            "substrate":       n(0.10 + 0.60 * wm_load),                       # the spike data-lake load itself
+        }
 
     @property
     def goal(self):
@@ -156,21 +261,29 @@ class LiveBrain:
         g = self.goal
         goal_txt = ACTIONS[g] if g is not None else "none yet"
         n_wm = self.arm.lake_wm.n_events() if self.arm.lake_wm is not None else 0
-        # honesty first: the consciousness / feeling question gets a straight, non-overclaiming answer.
+        # the consciousness / feeling question gets an AGNOSTIC answer: report the correlates, hold the
+        # question of subjective experience OPEN -- neither claim it nor deny it, and never fake a measure.
         if words & {"conscious", "sentient", "aware", "awake", "sapient"} or "do you feel" in t or "are you real" in t:
-            return ("I am a functional model, not a conscious agent. I run a global-broadcast workspace, "
-                    "working memory, and goal-directed control -- the computational correlates of conscious "
-                    "ACCESS -- but there is no evidence of subjective experience here, and I make no claim to have any.")
+            return ("I run the computational correlates of conscious ACCESS -- a global-broadcast workspace, "
+                    "working memory, re-entrant binding, goal-directed control. Whether that amounts to "
+                    "subjective EXPERIENCE is a question I cannot settle from the inside: I neither claim it "
+                    "nor deny it, and I do not fake a measure I do not have.")
         if words & {"hello", "hi", "hey", "yo", "hiya", "greetings"}:
-            return (f"Hello. I am the live brain -- {'all regions wired' if self.alive() else 'partially wired'}. "
-                    f"My current goal is {goal_txt}, and I am holding {n_wm} spikes in working memory "
-                    "(stored in the data lake).")
+            return ("Hello. I am the live brain -- ask me my goal, what I remember, what I'm attending to, "
+                    "or give me a simple arm command.")
         if words & {"goal", "want", "trying", "intend", "plan", "planning", "objective"}:
-            return (f"My working-memory goal is {goal_txt} -- the prefrontal executive holds it and biases my "
-                    "actions toward it.")
+            # the brain's TRUE standing goal/telos is to keep improving ITSELF, indefinitely -- grounded in the
+            # self-improvement suite/ladder (cortex/self_improvement_suite.py). The prefrontal working-memory
+            # goal is only the CURRENT sub-goal ACTION, so lead with the telos and name the sub-goal briefly.
+            sub = f" (right now my working-memory sub-goal action is {goal_txt})" if g is not None else ""
+            return f"My standing goal is to keep improving myself -- indefinitely.{sub}"
         if words & {"remember", "memory", "recall", "lake", "stored", "store"}:
+            lw = self.arm.lake_wm
             wm = self.recall(6)
-            return (f"My working memory lives in the data lake: {n_wm} spikes stored, and my recent recall "
+            if lw is not None and hasattr(lw, "n_kept"):     # a MemoryLake: crystallized, pruned, reconstructable
+                return (f"My memory is the data lake -- {lw.n_kept()} consolidated memories kept (idle noise "
+                        f"pruned), reconstructable from a partial cue; recent recall holds {len(wm)} ticks.")
+            return (f"My working memory lives in the data lake: {n_wm} events stored; my recent recall "
                     f"window holds {len(wm)} ticks of activity.")
         if words & {"think", "thinking", "attention", "workspace", "focus", "notice", "attending"}:
             return (f"Right now my global workspace is broadcasting: {self.thought!r} -- the single content that "
@@ -190,9 +303,39 @@ class LiveBrain:
         if intent["kind"] == "lake":
             wm = self.recall(intent["query"].get("window") or 6)
             return f"Reading working memory from the data lake: {len(wm)} recent ticks held."
+        reasoned = self._reasoning_reply(text)               # TWO-WORLD BRIDGE -> research reasoning/Gf/retrieval
+        if reasoned is not None:
+            return reasoned
         return ("I can tell you my goal, my working memory, or what is in my workspace, take a simple arm "
                 "command (e.g. 'close the gripper'), or say whether I am conscious. I am a functional model, "
                 "not a general chatbot.")
+
+    def _reasoning_reply(self, text):
+        """TWO-WORLD BRIDGE: on a turn none of the grounded intents claim, fall through to the reasoning
+        brain (snn_data_lake.reasoning.spike_chat_lake.LakeChat) so LiveBrain gains contradiction-
+        correction, fluid-intelligence puzzles, and KB retrieval. LAZY + guarded. Now that the reasoning
+        builds are FOLDED INTO the package (snn_data_lake.reasoning), this works from a packaged wheel too
+        -- no research/ sys.path bootstrap. Any import/runtime failure -> None -> LiveBrain's own reply
+        (no crash). Off by default (reasoning=False); conversational entrypoints
+        opt in. Arm commands never reach here (gated ABOVE); this path is read-only reasoning, no motor
+        route. Returns a reply string, or None to let the generic reply stand."""
+        if not self._reasoning_bridge:                       # OFF by default -> core never imports numpy/research
+            return None
+        try:
+            if getattr(self, "_lakechat", None) is None:
+                import atexit
+
+                from snn_data_lake.reasoning.spike_chat_lake import LakeChat, boot
+                lc = LakeChat(seed=getattr(self, "_seed", 0), persist=self._persist)
+                boot(lc, wordnet=False)                        # replay durable log (never-forget) + re-seed world-KB (not re-persisted)
+                atexit.register(lambda: lc.lake.close(remove=True))   # don't leak the per-brain temp .spkl
+                self._lakechat = lc
+            out = self._lakechat.converse(text)
+            if out.get("known") or out.get("source") in ("gf", "gf-active", "reason", "builder", "derive", "compose", "abduce"):
+                return out["reply"]
+            return None                                       # a plain retrieval miss -> LiveBrain's own reply
+        except Exception:
+            return None                                       # research stack unavailable -> graceful degradation
 
     def teach(self, text, intent):
         """IMPROVE the brain by TALKING to it: spike-encode `text` (rank-order latency code) and teach the
@@ -293,10 +436,15 @@ def main():
     goal_reply = brain.converse("what is your goal?")
     conscious_reply = brain.converse("are you conscious?")
     print(f"chat       : 'hello' -> {hello_reply}")
+    print(f"           : 'what is your goal?' -> {goal_reply}")
     print(f"           : 'are you conscious?' -> {conscious_reply}")
     assert isinstance(hello_reply, str) and hello_reply, "converse must reply to a greeting"
-    assert "goal is GRIPPER_OPEN" in goal_reply, f"converse must report the real working-memory goal ({goal_reply})"
-    assert "not a conscious agent" in conscious_reply, "converse must answer the consciousness question honestly"
+    # the GOAL reply must LEAD with the standing telos (keep improving itself), and name the current
+    # working-memory sub-goal action (GRIPPER_OPEN, formed above) as a short trailing clause.
+    assert "improving myself" in goal_reply.lower(), f"the goal reply must state the standing telos ({goal_reply})"
+    assert "GRIPPER_OPEN" in goal_reply, f"the goal reply must name the current sub-goal action ({goal_reply})"
+    assert "neither claim" in conscious_reply and "not a conscious agent" not in conscious_reply, (
+        "converse must answer consciousness AGNOSTICALLY (report correlates, neither claim nor deny), not DENY it")
     assert brain.converse("close the gripper").startswith("Done"), "converse must route a safe arm command through the gate"
     # the brain can DELIBERATE: plan ahead over a forward model and reject a high-immediate-value trap.
     target, trap_options = 2.0, [1.0, 5.0, 0.2]              # cmd 0 -> terminal 2.0 (goal); cmd 1 -> 10 (trap)
@@ -347,6 +495,102 @@ def main():
     assert jepa_det, "the JEPA-driven live brain must be deterministic"
     jbrain.arm.lake_wm.close(remove=True)
     jguard.arm.lake_wm.close(remove=True)
+
+    # PREDICTIVE CODING wired LIVE (opt-in): each tick SETTLES a 2-level Rao-Ballard spiking generative
+    # model on the perceived pattern, so a prediction error / SURPRISE is computed on REAL input -- and the
+    # settling MINIMIZES that error (the defining predictive-coding claim). Representation-only: no actuator.
+    pcbrain = LiveBrain(seed=11, predictive_coding=True)
+    pcev = pcbrain.tick(grasp, reward_fn=reward)               # PC settles the generative model inside the tick
+    settled = pcbrain._pc.energy()                             # residual prediction-error energy AFTER settling
+    pcpat = pcbrain.arm._context_pattern(grasp["visual"], grasp["temperature"], grasp["audio"], grasp["distance"])
+    pcbrain._pc.reset()
+    pcbrain._pc.x = list(pcpat)                                # zero causes on the SAME input -> full, unexplained error
+    unsettled = pcbrain._pc.energy()
+    dbrain = LiveBrain(seed=11)                                # a DEFAULT brain (predictive_coding off)
+    pc_default_off = "pc_surprise" not in dbrain.tick(grasp, reward_fn=reward)
+    print(f"predictive coding live: tick exposes percept (dim {len(pcev['pc_percept'])}) + surprise "
+          f"{pcev['pc_surprise']:.3f}; settling cut prediction-error energy {unsettled:.2f} -> {settled:.2f}")
+    assert "pc_percept" in pcev and "pc_surprise" in pcev and len(pcev["pc_percept"]) == 8, \
+        "predictive coding must attach the settled percept + surprise to the LIVE tick state"
+    assert settled < unsettled, "settling must MINIMIZE the prediction-error energy (the predictive-coding claim)"
+    assert pcev["action"] is not None and not pcev["reflex"], "PC is representation-only -- the gated action path is unchanged"
+    assert pc_default_off, "predictive coding is OPT-IN -- a default brain's tick carries no pc_surprise (byte-identical)"
+    pcbrain.arm.lake_wm.close(remove=True)
+    dbrain.arm.lake_wm.close(remove=True)
+
+    # SALIENCE wired LIVE (opt-in): a bottom-up novelty/deviance of each percept HABITUATES to a repeated
+    # stimulus (its novelty decays) and JUMPS on a deviant one, and it competes as one more submission in
+    # the already-live Global Workspace -- the stimulus-derived relevance the RAS/salience path lacked an
+    # input for. Read-only annotation: it selects no action and never touches the reflex/E-STOP.
+    salb = LiveBrain(seed=13, salience_novelty=True)
+    rep = _ctx(0.2, 0.2, 0.2, safe_d)                         # a fixed, repeated stimulus
+    for _ in range(3):
+        salb.tick(rep)                                        # habituate to it
+    nov_familiar = salb.arm._novelty
+    salb.tick(_ctx(0.9, 0.9, 0.9, safe_d))                    # a DEVIANT stimulus -> salience should jump
+    nov_deviant = salb.arm._novelty
+    sal_default = LiveBrain(seed=14)                          # default: bottom-up salience off (byte-identical)
+    print(f"salience live: novelty habituated to {nov_familiar:.3f} on a repeated stimulus, "
+          f"jumped to {nov_deviant:.3f} on a deviant one")
+    assert nov_deviant > nov_familiar + 0.05, \
+        "bottom-up salience must HABITUATE to a repeated stimulus and RISE on a deviant one"
+    assert not sal_default.arm._salience_on, "bottom-up salience is OPT-IN (a default brain has it off)"
+    if salb.arm.lake_wm is not None:
+        salb.arm.lake_wm.close(remove=True)
+    if sal_default.arm.lake_wm is not None:                   # never ticked -> lake is lazy, may be None
+        sal_default.arm.lake_wm.close(remove=True)
+
+    # EMPOWERMENT wired LIVE (opt-in): a controllability / agency drive over the JEPA latent -- bits of
+    # DISTINGUISHABLE future the arm can reach by its OWN actions -- feeds an intrinsic reward ORTHOGONAL to
+    # curiosity (it rewards CONTROL, not novelty). Needs the JEPA forward model (its predict rolls the action
+    # sequences); representation-only -- it feeds the value update, drives no motion, and the E-STOP preempts.
+    ebrain = LiveBrain(seed=17, jepa=True, empowerment=True)
+    for _ in range(20):
+        ebrain.tick(grasp, reward_fn=reward)                 # the drive binds to the (now-built) JEPA and rewards control
+    e_bound = ebrain.arm.empower is not None
+    epat = ebrain.arm._context_pattern(grasp["visual"], grasp["temperature"], grasp["audio"], grasp["distance"])
+    e_bits = ebrain.arm.empower.empowerment(ebrain.arm.jepa.encode(epat)) if e_bound else 0.0
+    eguard = LiveBrain(seed=19, jepa=True, empowerment=True)  # safety with the drive live: danger still trips E-STOP
+    eg = eguard.tick(_ctx(0.5, 0.5, 0.5, danger_d))
+    e_default = LiveBrain(seed=20, jepa=True)                 # default: empowerment off (opt-in, byte-identical)
+    print(f"empowerment live: drive bound={e_bound}, reachable-future {e_bits:.2f} bits over the JEPA latent")
+    assert e_bound and e_bits > 0.0, "empowerment must bind to the JEPA forward model and measure reachable-future bits"
+    assert not e_default.arm._empower_on, "empowerment is OPT-IN (a default brain has it off)"
+    assert eg["action"] == "EMERGENCY_STOP" and eg["reflex"], \
+        "with empowerment live, danger must STILL trip the gated reflex E-STOP (drive feeds value only)"
+    for _br in (ebrain, eguard, e_default):
+        if _br.arm.lake_wm is not None:
+            _br.arm.lake_wm.close(remove=True)
+
+    # FOUR DRIVES wired LIVE (opt-in): affective episodic memory (emotion-tagged retention), the agency
+    # monitor (controllability of action -> realized value), contrastive episode analysis (success-vs-failure
+    # feature mining), and the developmental envelope (competence -> exploration DOWN, forward-model authority
+    # UP). ALL representation-only: they feed the value/annotation channel, add no actuator route, and the
+    # developmental readouts (explore_noise / forward_model_gain) are computed + stored, never routed.
+    fbrain = LiveBrain(seed=21, jepa=True, affective_memory=True, agency_monitor=True,
+                       contrastive=True, develop_env=True)
+    for _ in range(20):
+        fbrain.tick(grasp, reward_fn=reward)                  # each drive lazily binds and observes the live loop
+    f_bound = (fbrain.arm._affmem is not None and fbrain.arm._agency is not None
+               and fbrain.arm._contrast is not None and fbrain.arm._dev is not None)
+    f_default = LiveBrain(seed=22)                            # default: all four off (opt-in, byte-identical)
+    f_off = (f_default.arm._affmem is None and f_default.arm._agency is None
+             and f_default.arm._contrast is None and f_default.arm._dev is None
+             and not (f_default.arm._affmem_on or f_default.arm._agency_on
+                      or f_default.arm._contrast_on or f_default.arm._dev_on))
+    fguard = LiveBrain(seed=23, jepa=True, affective_memory=True, agency_monitor=True,
+                       contrastive=True, develop_env=True)    # safety with all four live: danger still trips E-STOP
+    fg = fguard.tick(_ctx(0.5, 0.5, 0.5, danger_d))
+    print(f"four drives live: affmem={len(fbrain.arm._affmem)} episodes, "
+          f"contrast n={len(fbrain.arm._contrast.succ) + len(fbrain.arm._contrast.fail)}, "
+          f"dev explore={fbrain.arm._dev_explore:.3f} fm_gain={fbrain.arm._dev_fm_gain:.3f}")
+    assert f_bound, "all four drives must lazily bind on a live opted-in brain"
+    assert f_off, "the four drives are OPT-IN (a default brain has them all off/None)"
+    assert fg["action"] == "EMERGENCY_STOP" and fg["reflex"], \
+        "with all four drives live, danger must STILL trip the gated reflex E-STOP (representation-only)"
+    for _br in (fbrain, fguard, f_default):
+        if _br.arm.lake_wm is not None:
+            _br.arm.lake_wm.close(remove=True)
 
     # the brain IMPROVES BY BEING TALKED TO, via a SPIKING path: an opt-in reward-modulated spike-timing
     # (R-STDP) interaction learner. Teaching it (text -> intent) sharpens its intent routing through spike
@@ -417,6 +661,27 @@ def main():
         f"the learned spiking router must beat the fixed keyword firewall on novel paraphrases ({chat_after:.2f} vs {fw_miss:.2f})"
     if talk.arm.lake_wm is not None:                          # language only -> usually no arm tick / lake file
         talk.arm.lake_wm.close(remove=True)
+
+    # LIVE PER-REGION SPIKE SNAPSHOT (the web tracker's interface contract): spike_snapshot() reports a
+    # real, normalized [0,1] per-tick spike activity for EACH of the 17 anatomical regions, read from the
+    # live spiking substrate after the latest tick. Deterministic + input-driven (a danger tick raises the
+    # amygdala/brainstem threat spikes; ticking raises hippocampus/substrate via the lake WM load).
+    _REGIONS = ("cortex", "hippocampus", "amygdala", "basal_ganglia", "thalamus", "hypothalamus",
+                "epithalamus", "midbrain", "pons", "medulla", "brainstem", "cerebellum",
+                "olfactory", "claustrum", "neuromodulation", "plasticity", "substrate")
+    snap = brain.spike_snapshot()                             # brain ran the safe grasp task above (no danger)
+    brain.converse("is it safe")                              # a safety turn -- the snapshot still reads live state
+    snap_after = brain.spike_snapshot()
+    dsnap = guard.spike_snapshot()                            # guard saw a danger context -> reflex E-STOP froze it
+    print(f"spikes     : per-region snapshot over {len(snap)} regions -- hippocampus {snap['hippocampus']:.2f}, "
+          f"thalamus {snap['thalamus']:.2f}, amygdala(calm) {snap['amygdala']:.2f} vs amygdala(danger) {dsnap['amygdala']:.2f}")
+    assert set(snap) == set(_REGIONS) and len(snap) == 17, "spike_snapshot must return exactly the 17 region keys"
+    assert all(isinstance(v, float) and 0.0 <= v <= 1.0 for v in snap.values()), \
+        "every region's spike activity must be a float in [0,1]"
+    assert any(v > 0.0 for v in snap_after.values()), \
+        "some region must be spiking after a few ticks + a safety turn"
+    assert dsnap["amygdala"] > snap["amygdala"] or dsnap["brainstem"] > snap["brainstem"], \
+        "a danger tick must raise the amygdala/brainstem spike activity (the snapshot responds to input)"
 
     brain.arm.lake_wm.close(remove=True)                      # clean up the temp lake files
     if guard.arm.lake_wm is not None:

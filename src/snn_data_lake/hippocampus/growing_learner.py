@@ -33,6 +33,7 @@ import math
 
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.cortex.spike_preprocessing import N
+from snn_data_lake.substrate.growable import grow_vector
 
 
 def _cosine(a, b):
@@ -65,7 +66,11 @@ class GrowingLearner:
         return len(self.prototypes)
 
     def _best(self, pattern):
-        """(unit_id, similarity) of the nearest prototype, or (-1, -1.0) if none."""
+        """(unit_id, similarity) of the nearest prototype, or (-1, -1.0) if none. Fails loud on a
+        width mismatch (cosine's zip would otherwise silently truncate) -- so a consumer that forgot
+        to grow_dim alongside a widened producer is caught, not masked."""
+        if len(pattern) != self.dim:
+            raise ValueError(f"pattern width {len(pattern)} != learner dim {self.dim}; grow_dim to widen first")
         best_id, best_sim = -1, -1.0
         for i, p in enumerate(self.prototypes):
             s = _cosine(pattern, p)
@@ -88,6 +93,20 @@ class GrowingLearner:
     def classify(self, pattern):
         """Nearest existing prototype id (recognition only; never grows). -1 if empty."""
         return self._best(pattern)[0]
+
+    def grow_dim(self, new_dim):
+        """Widen the feature space this learner lives in, function-preservingly (shared growth
+        primitive substrate.growable.grow_vector). Every existing prototype is zero-extended, so a
+        pattern the learner already knew -- whose NEW dimensions are 0, because that modality was
+        absent when it was learned -- still recognises BIT-IDENTICALLY (cosine is unchanged when the
+        appended dims are 0 on both sides). Only patterns that actually populate the new dimensions
+        can differ, which is exactly the added capability. This lets the learner grow together with a
+        widening substrate (e.g. a new sensor modality) instead of being pinned to its birth width.
+        Monotone: shrinking is refused so a grown memory never forgets by truncation."""
+        if new_dim < self.dim:
+            raise ValueError(f"growth is monotone: cannot shrink dim {self.dim} -> {new_dim}")
+        self.prototypes = [grow_vector(p, new_dim) for p in self.prototypes]
+        self.dim = new_dim
 
 
 def _jitter(vals, amt, rng):
@@ -167,15 +186,27 @@ def main():
     assert a_seq == b_seq, "assignment sequence must be identical for the same seed"
     assert a_lrn.prototypes == b_lrn.prototypes, "final prototype set must be identical"
 
+    # 6. WIDTH GROWTH (function-preserving, via the shared growable primitive): widen the feature
+    #    space and a KNOWN pattern (new dimensions absent -> zeros) still recognises to the same unit.
+    wl, _ = run_stream(seed=0)
+    probe = _encode(PATTERNS[2])
+    id_before, units_before = wl.classify(probe), wl.n_units
+    wl.grow_dim(N + 16)                                     # 64 -> 80: a new sensor modality appears
+    assert wl.dim == N + 16 and all(len(p) == N + 16 for p in wl.prototypes), "every prototype must widen"
+    assert wl.n_units == units_before, "widening changes the width, not the unit count"
+    assert wl.classify(probe + [0.0] * 16) == id_before, \
+        "a known pattern (new modality absent) must still recognise after widening (function-preserving)"
+
     print(f"vigilance={learner.vigilance}  lr={learner.lr}  dim={N}  jitter={JIT}")
     print("1 GROWTH      : 5 distinct patterns -> n_units=5")
     print(f"2 RECOGNITION : accuracy {acc:.2f} ({hits}/{len(PATTERNS)})")
     print("3 NOVELTY     : 6th pattern grew=True -> n_units=6")
     print("4 STABILITY   : familiar patterns did not grow -> n_units=6")
     print("5 DETERMINISM : identical prototypes + assignments across two runs")
+    print(f"6 WIDTH GROW  : dim {N} -> {N + 16} function-preserving (known pattern still recognised)")
     print("=" * 60)
     print(f"self-check OK: grew to {learner.n_units} units by neurogenesis, "
-          f"recognition acc {acc:.2f}, deterministic")
+          f"recognition acc {acc:.2f}, deterministic, feature space grows without forgetting")
 
 
 if __name__ == "__main__":

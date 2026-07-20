@@ -374,8 +374,11 @@ def smoke():
     assert run(5) == run(5), "the live brain must be deterministic"
 
     # (c2) chat: the brain answers GROUNDED in its real state, and never claims consciousness ------
-    assert "goal is GRIPPER_OPEN" in brain.converse("what is your goal?"), "chat must report the real goal"
-    assert "not a conscious agent" in brain.converse("are you conscious?"), "chat must answer consciousness honestly"
+    _g = brain.converse("what is your goal?")
+    assert "improving myself" in _g.lower() and "GRIPPER_OPEN" in _g, "chat must report the standing telos + sub-goal"
+    _c = brain.converse("are you conscious?")
+    assert "neither claim" in _c and "not a conscious agent" not in _c, (
+        "chat must answer consciousness AGNOSTICALLY (report correlates, neither claim nor deny), not DENY it")
 
     brain.arm.lake_wm.close(remove=True)                # clean up the temp lake files
     if guard.arm.lake_wm is not None:

@@ -40,6 +40,7 @@ from snn_data_lake import arm_sim, gesture_recognition, spike_telemetry_hub
 from snn_data_lake.brainstem.interpreter import Interpreter
 from snn_data_lake.brainstem.live_arm import SENSOR_COMMANDS
 from snn_data_lake.cortex.nl_interface import NLInterface, StubBackend
+from snn_data_lake.substrate import home
 
 STEP_DEG = 15                                  # per-click joint increment
 DEMO_SPK = os.path.join("data", "telemetry.spk")
@@ -820,6 +821,7 @@ def main():
         return
     if "--run-core" in sys.argv:                    # run the ENTIRE core in-process (headless) -> exit 0/1
         sys.exit(0 if run_all_core() else 1)
+    print(home.banner("control-panel"))             # attach + announce the shared durable home on GUI launch
     try:
         App().mainloop()
     except tk.TclError as e:
