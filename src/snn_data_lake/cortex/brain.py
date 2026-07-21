@@ -208,6 +208,20 @@ class Brain:
         self._metacog_rel = 0.0  # fused spike-count reliability
         self._metacog_hold = False  # low reliability -> abstain/hedge
         self._metacog_explore = False  # explore vs exploit
+        # SECOND-ORDER access metacognition: a spiking monitor of whether content actually reached
+        # global availability, distinct from the first-order reliability above. It reads the
+        # workspace's OWN de-saturated signals (availability, graded access strength, ignition
+        # success), so it only became informative once those stopped being pinned -- before that it
+        # had zero live callers. Consumed in respond() as a second abstain gate: the brain declines
+        # to commit to an open reply when its own estimate says the content did not reliably reach
+        # access, even if first-order reliability looked fine.
+        try:
+            from snn_data_lake.cortex.second_order_access import SecondOrderAccess
+
+            self._second_order = SecondOrderAccess(seed=self._seed)
+        except Exception:
+            self._second_order = None
+        self._second_order_hold = False  # 2nd-order estimate: content did not reliably reach access
 
         # ---- REASONING: a transitive-inference skill the brain GROWS while it SLEEPS (neurogenesis +
         # self-paced curriculum + offline replay). Cognition only -- NO actuator route. Held-out
@@ -1693,7 +1707,17 @@ class Brain:
             # access only; no phenomenal claim.
             nov = float(self._real_novelty or 0.0)
             real = 1.0 if (self._perceiving_real and self._perceived_digit is not None) else 0.0
-            strength = max(0.0, min(1.0, 0.40 + 0.30 * real + 0.35 * nov))
+            # RELATIVE-baseline salience (the same self-calibrating idiom as the exploration and
+            # reward-onset thresholds), not a magic floor. Anchor salience AT the rheobase (0.55)
+            # when novelty sits at its running baseline `_nov_base`: a percept MORE novel than the
+            # brain has habituated to clears threshold and reaches access; a repeated, below-baseline
+            # one falls under it and LAPSES (repetition suppression). A real percept adds a small
+            # bump. Self-calibrating means access stays selective as the novelty distribution drifts,
+            # instead of a fixed floor that flips the whole regime (0.40 -> 90% lapse, 0.50 -> 0%).
+            rheobase = 0.55  # AccessConsciousness ignition_threshold (anchor salience here)
+            strength = max(
+                0.0, min(1.0, rheobase + 0.5 * (nov - float(self._nov_base or 0.0)) + 0.15 * real)
+            )
             ac.bind_assembly([f"p{p}#{i}" for i in range(k)], salience=strength)
             ac.step()  # ignition + all-or-none broadcast (may FAIL when strength is low)
             self._access_state = ac.state()
@@ -2154,6 +2178,21 @@ class Brain:
             unavailable the reply is the narrator's own state-varying sentence (never a canned string).
         SAFETY: arm/lake commands take the deterministic gated path; the LM's text is display-only
         and is NEVER parsed as a motor command. No torch/weights -> narrator fallback."""
+        # SECOND-ORDER ACCESS: read whether the current content reliably reached global availability
+        # through the spiking second-order monitor, and cache its hold. Consumes the workspace's
+        # de-saturated signals (availability / graded access strength / ignition success), so it
+        # carries real information now that those are no longer pinned.
+        if self._second_order is not None:
+            try:
+                self._second_order.observe(
+                    float(getattr(self, "_reentrant_availability", 1.0) or 0.0),
+                    float(getattr(self, "_reentrant_strength", 0.0) or 0.0),
+                    bool(self._access_state.get("ignited", False)),
+                    float(self._metacog_rel or 0.0),
+                )
+                self._second_order_hold = bool(self._second_order.hold())
+            except Exception:
+                self._second_order_hold = False
         # SAFETY: classify the USER message on the firewall -- a structured arm/lake command must
         # take the deterministic gated path, not the generative language model.
         try:
@@ -2253,10 +2292,15 @@ class Brain:
             # metacog hold so uncertainty only hedges OPEN conversation, not remembered facts.
             core = conv
             route = "Gc (crystallized: memory/knowledge/state)"
-        elif self._metacog_hold:  # METACOG HOLD (low reliability) -> abstain/hedge
+        elif self._metacog_hold or self._second_order_hold:  # HOLD (low reliability OR the
+            # second-order monitor says the content did not reliably reach access) -> abstain/hedge
             intro = self.narrator.introspect(self.self_model, message=message)
             core = "I am not fully certain right now, but " + intro.summary
-            route = "Gf (metacognitive hold: abstain)"
+            route = (
+                "Gf (second-order access hold: abstain)"
+                if self._second_order_hold and not self._metacog_hold
+                else "Gf (metacognitive hold: abstain)"
+            )
         else:
             # Gf (FLUID intelligence): genuinely open conversation the grounded intents did not claim
             # -> produce it with the brain's own acquired language center (narrator fallback if babbly).
