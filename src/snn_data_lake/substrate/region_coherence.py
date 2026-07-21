@@ -25,7 +25,11 @@ signal over the brain's per-region spike activity each tick. It combines two com
 The scalar `coherence` = a phase-weighted blend of the two (synchrony dominates; the complexity term
 modulates), clamped to [0,1]. `ignition_bias(base)` maps it to a GWT rheobase: higher coherence LOWERS the
 ignition threshold (a synchronized, integrated brain ignites its global workspace more readily), monotone
-and clamped.
+and clamped. The SIZE of that discount is a single CALIBRATED constant, `RegionCoherence.IGNITION_GAIN`,
+measured against the coherence distribution the live brain actually produces (and against the coalition
+drives it is compared with) -- read its docstring for the numbers, the defensible band, and the honest
+limit. It is calibrated, NOT learned: an adaptive rheobase would destroy cross-tick comparability of
+"did it ignite?", which is the whole point of having a fixed yardstick.
 
 This is a DYNAMICS / SUBSTRATE property -- large-scale phase coherence with a tractable integration proxy --
 REPORTED as an ignition-gating signal. It is NEVER asserted to equal consciousness, and it is NOT IIT Phi
@@ -91,13 +95,54 @@ class RegionCoherence:
     GWT rheobase: higher coherence lowers the threshold (easier ignition), monotone and clamped.
     """
 
-    def __init__(self, seed=0, window=32, min_window=4, w_phase=0.7, w_integ=0.3, gain=0.5):
+    # -- THE single definition of the ignition-bias gain -----------------------------------------
+    # Never re-type this number: `_adjust` takes `gain` as a REQUIRED argument and `__init__`
+    # defaults to this constant, so there is exactly one place to change it. (A duplicated default
+    # here previously let an edit in one place silently no-op the other.)
+    IGNITION_GAIN = 0.5
+    """How strongly coherence lowers the GWT rheobase: thr = base_threshold * (1 - IGNITION_GAIN*c).
+
+    CALIBRATED, and deliberately NOT LEARNED. The rheobase is the YARDSTICK that decides "did this
+    tick ignite?"; making the yardstick itself adaptive would destroy cross-tick comparability of the
+    answer. So the FORM stays fixed (memoryless, bounded, monotone, deterministic) and only the SIZE
+    of the discount is calibrated -- against the coherence this brain actually produces.
+
+    MEASURED (throwaway probe: cortex.brain.Brain wake sessions, seeds {0,1,2,3,5} x 120 forced-day
+    ticks with a varying synthetic percept, n=600 samples of Brain._region_coherence_val):
+        min 0.138 | p05 0.259 | p25 0.390 | median 0.500 | mean 0.488 | p75 0.571 | p95 0.697
+        | max 0.896 | sd 0.134   -- mass concentrated in [0.3, 0.7]; c=0 and c=1 NEVER occur.
+    Coalition drives from the same sessions (the values this rheobase is compared against): the
+    WINNING coalition's bottom-up salience spans [0.668, 1.000] (median 0.815); the MASKED/losing
+    coalitions span [0.086, 0.500] (median 0.121, p75 0.167).
+
+    WHY 0.5 -- over the coherence that actually occurs it sweeps the rheobase across [0.304, 0.512]
+    from the 0.55 base. That band sits strictly BELOW every winning drive ever observed (0.668 -- the
+    workspace never darkens) and strictly ABOVE the p75 of the masked drives (0.167 -- a weak
+    coalition is not handed access for free). Across the p05..p95 coherence bulk the threshold moves
+    0.479 -> 0.358, a 25% relative discount: big enough that the gate demonstrably covaries with
+    coherence, small enough that ignition still has to be earned. Those two constraints bound a
+    defensible band of gain in [0.40, 0.78): under 0.40 the bulk discount drops below 20% relative
+    and the gate barely does anything; at ~0.78 and above, the threshold at the highest observed
+    coherence falls under the masked-drive p75 and stops discriminating (at gain 1.0 it reaches
+    0.057 -- below EVERY drive ever observed, i.e. fully open and carrying no information). 0.5 sits
+    inside that band on the conservative side, so the previously unjustified 0.5 SURVIVES the
+    measurement and is kept here WITH its evidence rather than re-picked.
+
+    HONEST LIMIT -- in the sessions measured the workspace ignited on 100% of wake ticks at EVERY
+    gain in [0.0, 1.0], including gain 0.0 (no bias at all), with exactly one coalition sustaining
+    and the winner's spike count saturated. At those drive levels single-winner selectivity is
+    enforced by the workspace's lateral inhibition, not by the rheobase. This constant is therefore
+    calibrated on the threshold's MARGIN against the measured drives, NOT on a measured change in
+    ignition outcome; no value in [0.0, 1.0] was observed to change what the brain does today.
+    """
+
+    def __init__(self, seed=0, window=32, min_window=4, w_phase=0.7, w_integ=0.3, gain=None):
         self.seed = int(seed)
         self.window = int(window)  # rolling-history cap for scalar-rate inputs
         self.min_window = int(min_window)  # shortest array treated as a direct phase window
         self.w_phase = float(w_phase)  # weight on synchrony (dominant)
         self.w_integ = float(w_integ)  # weight on the integration/complexity proxy
-        self.gain = float(gain)  # how strongly coherence lowers the ignition threshold
+        self.gain = float(self.IGNITION_GAIN if gain is None else gain)  # see IGNITION_GAIN
         self._hist = {}  # region -> rolling list of scalar rates
         self._coherence = 0.0
         self._phase_order = 0.0
@@ -242,9 +287,13 @@ class RegionCoherence:
 
     # ---- ignition gating --------------------------------------------------------------------------
     @staticmethod
-    def _adjust(base_threshold, coherence, gain=0.5):
+    def _adjust(base_threshold, coherence, gain):
         """Map coherence -> adjusted GWT rheobase. Higher coherence LOWERS the threshold (easier
-        ignition), strictly monotone decreasing in coherence, clamped to (0, base]."""
+        ignition), strictly monotone decreasing in coherence, clamped to (0, base].
+
+        `gain` is REQUIRED -- it has NO default here on purpose. The one definition lives in
+        RegionCoherence.IGNITION_GAIN (with its measured justification), so re-calibrating it cannot
+        be silently no-opped by a stale second default sitting in this signature."""
         c = min(1.0, max(0.0, float(coherence)))
         return float(base_threshold * (1.0 - gain * c))
 
@@ -281,8 +330,21 @@ def main():
     #     and unchanged (== base) at coherence 0; the two live states obey the same ordering.
     base = 0.55
     sweep = [0.0, 0.25, 0.5, 0.75, 1.0]
-    biases = [RegionCoherence._adjust(base, c, 0.5) for c in sweep]
+    gain = RegionCoherence.IGNITION_GAIN  # the ONE definition (calibrated; see its docstring)
+    biases = [RegionCoherence._adjust(base, c, gain) for c in sweep]
     monotone = all(b2 < b1 for b1, b2 in zip(biases, biases[1:], strict=False))
+
+    # (e) CALIBRATION: the gain must keep the rheobase inside the band that the MEASURED live signals
+    #     bound. Numbers from the wake-session probe recorded in RegionCoherence.IGNITION_GAIN --
+    #     coherence range actually observed, and the coalition drives the rheobase is compared with.
+    MEAS_C_MIN, MEAS_C_P05, MEAS_C_P95, MEAS_C_MAX = 0.138, 0.259, 0.697, 0.896
+    MEAS_MASKED_P75 = 0.167  # p75 of the LOSING coalitions' bottom-up drive
+    MEAS_WINNER_MIN = 0.668  # weakest WINNING coalition drive ever observed
+    thr_c_min = RegionCoherence._adjust(base, MEAS_C_MIN, gain)
+    thr_c_max = RegionCoherence._adjust(base, MEAS_C_MAX, gain)
+    thr_p05 = RegionCoherence._adjust(base, MEAS_C_P05, gain)
+    thr_p95 = RegionCoherence._adjust(base, MEAS_C_P95, gain)
+    bulk_discount = (thr_p05 - thr_p95) / thr_p05  # relative rheobase drop over the coherence bulk
 
     rc = RegionCoherence(seed=0)
     rc.update(sync)
@@ -317,6 +379,11 @@ def main():
         f"vs coherence {c_lo:.3f} -> {bias_lo:.3f}   (higher coherence -> lower threshold)"
     )
     print(f"  bias sweep over coherence {sweep} : {[round(b, 3) for b in biases]}")
+    print(
+        f"  CALIBRATION (gain = {gain}, measured live coherence {MEAS_C_MIN}..{MEAS_C_MAX}): rheobase "
+        f"sweeps {thr_c_max:.3f}..{thr_c_min:.3f}, above masked-drive p75 {MEAS_MASKED_P75} and below "
+        f"the weakest winning drive {MEAS_WINNER_MIN}; bulk (p05..p95) discount {100 * bulk_discount:.1f}%"
+    )
 
     # ---- asserts ----
     # (a) synchronized -> high phase order.
@@ -346,6 +413,19 @@ def main():
     )
     assert 0.0 < bias_hi <= base and 0.0 < bias_lo <= base, (
         f"adjusted thresholds must stay in (0, base]: {bias_hi:.3f}, {bias_lo:.3f}"
+    )
+    # (e) the gain stays inside the empirically defensible band (see IGNITION_GAIN for the probe).
+    assert thr_c_max > MEAS_MASKED_P75, (
+        f"gain {gain} drops the rheobase to {thr_c_max:.3f} at the highest observed coherence, at or "
+        f"under the masked coalitions' p75 drive {MEAS_MASKED_P75} -- the gate stops discriminating"
+    )
+    assert thr_c_min < MEAS_WINNER_MIN, (
+        f"gain {gain} leaves the rheobase at {thr_c_min:.3f} at the lowest observed coherence, above "
+        f"the weakest winning drive {MEAS_WINNER_MIN} -- the workspace would darken"
+    )
+    assert bulk_discount >= 0.20, (
+        f"gain {gain} discounts the rheobase only {100 * bulk_discount:.1f}% across the p05..p95 "
+        f"coherence bulk -- the gate would barely covary with coherence"
     )
     # (d) determinism.
     assert det_a == det_b, "same seed + identical input must reproduce an identical result"

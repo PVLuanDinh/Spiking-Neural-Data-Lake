@@ -1518,7 +1518,11 @@ class Brain:
                 if (
                     self._reentrant is not None
                 ):  # higher cross-region coherence -> lower rheobase -> easier ignition
-                    thr = float(self._region_coherence.ignition_bias(0.55))
+                    thr = float(
+                        self._region_coherence.ignition_bias(
+                            self._reentrant.base_ignition_threshold
+                        )
+                    )
                     self._reentrant.ignition_threshold = thr
                     self._reentrant._v_th = thr / self._reentrant._LEAK
             except Exception:
@@ -1561,11 +1565,27 @@ class Brain:
             learning_progress=lp,
             self_predict_acc=acc,
             surprise=round(1.0 - acc, 6),
+            # C1 #5: the GRADED de-saturated workspace access strength feeds access-confidence --
+            # weak/masked content that fails to hold the workspace lowers confidence -> metacog hold
+            # (was the saturated AccessConsciousness index alone).
+            # C3: the two sources are combined CONJUNCTIVELY (weakest link), not by a hand-set 50/50
+            # blend. The mean was a policy weight deciding how much two competing access estimates
+            # each count -- and worse, it defeated this line's own stated purpose: with a mean, a
+            # re-entrant workspace that fails COMPLETELY (strength -> 0) still leaves 0.5*access_ema,
+            # so a genuine access failure could never actually collapse access-confidence. min()
+            # lets it, which is what "content that fails to hold the workspace lowers confidence"
+            # means. It also matches this module's own documented idiom one level up --
+            # self_model.confidence() is deliberately a PRODUCT of its proxies "so any single
+            # collapse drops confidence". No constant remains, and no reward signal is invented:
+            # the alternative considered was learning a convex mixing weight, but access_conf does
+            # not causally influence self_predict_acc, so that reward would be correlational and
+            # could not honestly be called credit assignment for the abstain decision.
+            # When no workspace exists the attribute defaults to 1.0, so min() is the identity and
+            # behaviour falls back exactly to the AccessConsciousness index alone.
             access_index=round(
-                0.5 * float(self._access_ema)
-                + 0.5 * float(getattr(self, "_reentrant_strength", 1.0)),
+                min(float(self._access_ema), float(getattr(self, "_reentrant_strength", 1.0))),
                 6,
-            ),  # C1 #5: the GRADED de-saturated workspace access strength now feeds access-confidence -- weak/masked content that fails to hold the workspace lowers confidence -> metacog hold (was the saturated AccessConsciousness index alone)
+            ),
             ignited=bool(self._access_state.get("ignited", False)),
             grown_units=grown,
             phase=round(self.clock.phase, 6),

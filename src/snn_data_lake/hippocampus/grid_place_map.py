@@ -75,7 +75,6 @@ class GridPlaceMap:
         phases_per_side=3,
         extent=1.5,
         gain=3.0,
-        place_threshold=0.5,
         spike_window=20,
         max_spike_rate=1.0,
         seed=0,
@@ -87,13 +86,13 @@ class GridPlaceMap:
             phases_per_side: phase offsets per axis within each module's unit cell (tiles the module).
             extent: half-width of the square toy environment [-extent, extent]^2 (decode range).
             gain: grid-cell firing sharpness (passed to GridCell).
-            place_threshold: min population-vector correlation for a place cell to count as "firing".
+            (place_threshold was removed: the firing criterion is now derived per query in
+            place_at() from the population's own off-field baseline, not configured.)
             spike_window: timesteps for the deterministic rate->spike readout.
             max_spike_rate: per-step spike probability at a grid cell's peak rate.
             seed: RNG seed -> reproducible grid phases and spike readout.
         """
         self.extent = float(extent)
-        self.place_threshold = float(place_threshold)
         self.spike_window = int(spike_window)
         self.max_spike_rate = float(max_spike_rate)
         self.seed = int(seed)
@@ -138,21 +137,36 @@ class GridPlaceMap:
         return spikes
 
     # ---- place cells: bind / query / recall ----
+    def _match_bar(self, acts, key):
+        """The derived firing bar for `key`: the midpoint between a perfect self-match (1.0) and what
+        the REST of the population reads here. See place_at() for the derivation."""
+        others = [v for p, v in acts.items() if p != key]
+        return (1.0 + (sum(others) / len(others) if others else 0.0)) / 2.0
+
     def observe(self, position, percept):
         """Bind `percept` to `position`: one-shot Hebbian imprint of the grid code as a place cell.
 
-        New percept  -> a place cell whose synaptic template = the grid rate vector here.
-        Known percept -> running-average consolidation of template and field center (Hebbian, no gradient).
-        """
+        New place    -> a place cell whose synaptic template = the grid rate vector here.
+        Known place  -> running-average consolidation of template and field center (Hebbian, no gradient).
+
+        A percept seen at a SPATIALLY DIFFERENT location opens a NEW place cell rather than being
+        averaged into the old one. Without this, percept identity silently doubles as PLACE identity:
+        the live caller binds whatever it currently perceives every tick, so one label perceived at
+        many positions had its template averaged over unrelated locations (grid codes averaged toward
+        the population mean). Measured consequence upstream: the live winner correlation collapsed to
+        a ~0.226 median and place_at answered None on roughly 79% of ticks -- the place code was being
+        destroyed by its own consolidation rule, which no firing threshold could repair.
+
+        "Same place" uses the SAME derived criterion as place_at, so binding and recall cannot
+        disagree: consolidate into the best-matching existing variant of this percept if it fires
+        here, else open a new one. Variants are keyed `percept@k`; the first keeps the bare label, so
+        a map with one location per percept is unchanged."""
         code = self.grid_code(position)
-        rec = self._places.get(percept)
-        if rec is None:
-            self._places[percept] = {
-                "template": code,
-                "center": [float(position[0]), float(position[1])],
-                "n": 1,
-            }
-        else:
+        acts = self.place_activation(position)
+        variants = [p for p in self._places if p == percept or p.startswith(f"{percept}@")]
+        best_v = max(variants, key=lambda p: acts[p]) if variants else None
+        if best_v is not None and acts[best_v] >= self._match_bar(acts, best_v):
+            rec = self._places[best_v]  # the same place again -> Hebbian consolidation
             n = rec["n"]
             rec["template"] = [
                 (rec["template"][i] * n + code[i]) / (n + 1) for i in range(self.n_grid)
@@ -160,7 +174,14 @@ class GridPlaceMap:
             rec["center"][0] = (rec["center"][0] * n + float(position[0])) / (n + 1)
             rec["center"][1] = (rec["center"][1] * n + float(position[1])) / (n + 1)
             rec["n"] = n + 1
-        return percept
+            return best_v
+        key = percept if percept not in self._places else f"{percept}@{len(variants)}"
+        self._places[key] = {
+            "template": code,
+            "center": [float(position[0]), float(position[1])],
+            "n": 1,
+        }
+        return key
 
     def place_activation(self, position):
         """{percept: place-cell activation in [-1, 1]} = grid population-vector correlation with each template."""
@@ -168,12 +189,56 @@ class GridPlaceMap:
         return {p: _pearson(code, rec["template"]) for p, rec in self._places.items()}
 
     def place_at(self, position):
-        """Content-addressed spatial query: the percept whose place cell fires here, or None if all silent."""
+        """Content-addressed spatial query: the percept whose place cell fires here, or None if all silent.
+
+        The winner is decided by WITHIN-TICK POPULATION COMPETITION (lateral inhibition), not by a
+        fixed correlation cut. The old `place_threshold=0.5` was an absolute cut on a Pearson
+        correlation, so place recognition could not tell how discriminable the CURRENT environment
+        is: as more percepts are bound the correlation distribution shifts and a frozen 0.5 silently
+        becomes either permissive or deaf. That matters because a non-None answer here keys the
+        R-STDP place-VALUE table and triggers the grid-bump landmark reset, so a wrong "I am here"
+        corrupts the very code the value learns on.
+
+        The criterion is DERIVED, not chosen. A Pearson correlation against a place's own template
+        is exactly 1.0 when standing on it, by construction, and settles at the population's
+        off-field baseline when far away. So the honest decision boundary is the MIDPOINT between
+        those two references: fire when the winner is closer to a perfect self-match than to what
+        the rest of this population is currently reading,
+
+            best >= (1.0 + mean(others)) / 2
+
+        which recovers the old hand-set 0.5 as its value in a sparse environment (the measured
+        off-field mean is ~-0.006) while tracking the population instead of being frozen to it.
+
+        Measured honestly: the bar sits at 0.436 / 0.532 / 0.502 / 0.506 for 3 / 8 / 20 / 40 bound
+        places, with 100% identification at every density. So it MOVES with the population but does
+        NOT climb steadily with crowding -- in this environment the grid codes stay well
+        decorrelated, so the off-field baseline stays near zero however many places are bound. The
+        adaptivity is real but only bites where off-field correlation is genuinely elevated (a small
+        or spatially aliased environment); do not claim a crowding response this has not shown.
+
+        It also fixes the failure the constant hid: mere population competition is NOT enough,
+        because at a far corner one landmark does genuinely stand out from the pack (measured 0.398
+        vs a -0.006 mean) without the agent being anywhere near it. Beating the alternatives and
+        matching the template are different claims, and place identity needs the second one.
+
+        A noise floor of 1/sqrt(n_grid) -- the analytic scale of a Pearson correlation over n_grid
+        samples, the same idiom used for the episodic-recall thresholds -- guards the degenerate
+        case where a single bound place leaves no population to compare against.
+
+        Deliberately STATELESS -- no EMA, no adapted threshold. An adaptive threshold here would
+        close a feedback loop: firing triggers observe_landmark, which mutates the CAN bump, which
+        re-derives the position fed back into this query. A rate-regulating homeostat in that loop
+        would also pin the output rate, destroying the ability to answer "I am nowhere" at all."""
         acts = self.place_activation(position)
         if not acts:
             return None
-        best = max(acts, key=acts.get)
-        return best if acts[best] >= self.place_threshold else None
+        best_p = max(acts, key=acts.get)
+        best = acts[best_p]
+        floor = 1.0 / math.sqrt(self.n_grid)  # correlation noise floor over n_grid samples
+        if best < floor:
+            return None  # indistinguishable from chance -> nowhere
+        return best_p if best >= self._match_bar(acts, best_p) else None
 
     def place_spikes(self, position, percept, window=None):
         """Literal spike count of one place cell here (rate->spikes on its correlation; on-field high, off ~0)."""

@@ -66,7 +66,8 @@ def test_coherence_property_tracks_last_update():
 def test_ignition_bias_monotonic_in_coherence():
     base = 0.55
     sweep = [0.0, 0.25, 0.5, 0.75, 1.0]
-    biases = [RegionCoherence._adjust(base, c, 0.5) for c in sweep]
+    # exercise the LIVE calibrated gain, not a re-typed copy (see RegionCoherence.IGNITION_GAIN)
+    biases = [RegionCoherence._adjust(base, c, RegionCoherence.IGNITION_GAIN) for c in sweep]
     assert all(b2 < b1 for b1, b2 in zip(biases, biases[1:], strict=False))
     assert biases[0] == base  # coherence 0 -> unchanged
 

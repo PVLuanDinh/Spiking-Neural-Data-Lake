@@ -88,6 +88,11 @@ class ReentrantWorkspace:
 
     def __init__(self, ignition_threshold=0.55, reentry=True, seed=0):
         self.ignition_threshold = ignition_threshold  # rheobase: a coalition fires iff drive > this
+        # The construction-time rheobase, kept immutable. `ignition_threshold` above is LIVE and may be
+        # modulated per tick by a caller (cortex.brain biases it with cross-region coherence), so the
+        # unmodulated base has to be recorded here -- otherwise callers re-type the 0.55 literal and the
+        # two silently drift apart. Read this, never re-type the default.
+        self.base_ignition_threshold = float(ignition_threshold)
         self.reentry = reentry
         self._v_th = (
             ignition_threshold / self._LEAK
