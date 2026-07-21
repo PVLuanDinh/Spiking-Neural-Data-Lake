@@ -36,8 +36,8 @@ from snn_data_lake.brainstem.serial_arm import is_valid_command
 # intent label -> a command token the wire allow-list already accepts. The VALUE is ours,
 # never the model's text, so the model can only choose among these, never inject a command.
 ARM_LABELS = {
-    "close": "GRIPPER_CLOSE",
-    "open": "GRIPPER_OPEN",
+    "close": "ENGAGE",
+    "open": "RELEASE",
     "hold": "HOLD",
     "home": "HOME",
     "retract": "RETRACT_ALL",
@@ -131,8 +131,8 @@ def main():
     # 1 ARM MAPPING: English phrases route to the right allow-listed command, and EVERY arm
     #   command returned passes the wire allow-list (defense in depth).
     cases = {
-        "please close the gripper and pick it up": "GRIPPER_CLOSE",
-        "open the hand and release": "GRIPPER_OPEN",
+        "please close the effector and pick it up": "ENGAGE",
+        "open the hand and release": "RELEASE",
         "go home / reset to neutral": "HOME",
         "STOP! emergency": "EMERGENCY_STOP",
         "withdraw and back off": "RETRACT_ALL",
@@ -165,7 +165,7 @@ def main():
     for payload in (
         "DROP_EVERYTHING",
         "JOINT_A_ROTATE(+9999deg)",
-        "GRIPPER_CLOSE; rm -rf /",
+        "ENGAGE; rm -rf /",
         "EMERGENCY_STOP\nJOINT_B_ROTATE(+40deg)",
         "rotate_a EVIL",
     ):
@@ -173,7 +173,7 @@ def main():
         assert out["kind"] == "reject", f"firewall breached: payload {payload!r} -> {out}"
 
     # 5 DETERMINISM: same text -> identical intent.
-    assert nl.interpret("close the gripper") == nl.interpret("close the gripper"), (
+    assert nl.interpret("close the effector") == nl.interpret("close the effector"), (
         "must be deterministic"
     )
 

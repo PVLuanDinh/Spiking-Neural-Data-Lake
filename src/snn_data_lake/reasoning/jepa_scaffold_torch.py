@@ -39,7 +39,7 @@ Persisted core format ('snn_jepa/2'), shapes with in_dim=64, hidden=H, latent_di
   enc_layers = [[W1[H][64], b1[H]], [W2[16][H], b2[16]]]   online encoder, APPLICATION order
   tgt_layers = [[.......][H], [.......][16]]               EMA target encoder, same shapes
   Wz [16][16]   Wa [16][3]  b [16]                         residual action-conditioned predictor
-  actions = ("GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD")
+  actions = ("ENGAGE", "RELEASE", "HOLD")
 
 torch is imported LAZILY inside the functions/main (never at module top), so this file imports
 cleanly with no torch installed and ``python research/jepa_scaffold_torch.py`` exits 0 with a
@@ -68,7 +68,7 @@ import math
 IN_DIM = 64
 LATENT_DIM = 16
 DEFAULT_HIDDEN = 64                 # H: hidden width of the MLP encoder (the snn_jepa/2 scale knob)
-ACTIONS = ("GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD")
+ACTIONS = ("ENGAGE", "RELEASE", "HOLD")
 N_ACT = len(ACTIONS)
 
 JEPA_FORMAT = "snn_jepa/2"

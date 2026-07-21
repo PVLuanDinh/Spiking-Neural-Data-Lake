@@ -229,7 +229,7 @@ def main():
         after = list(KnowledgeLog().replay())  # reload EVERYTHING from disk in this process
 
         # ---- PROPERTY 3: durable JSON state blob round-trips ----
-        save_state("valence.json", {"GRIPPER_CLOSE": 0.83, "GRIPPER_OPEN": -0.11})
+        save_state("valence.json", {"ENGAGE": 0.83, "RELEASE": -0.11})
         state = load_state("valence.json")
         state_default = load_state("never_written.json", default={"empty": True})
 
@@ -254,9 +254,7 @@ def main():
         assert len(after) == len(first) + 1, (
             "the log must be append-only (child clobbered prior facts)"
         )
-        assert state == {"GRIPPER_CLOSE": 0.83, "GRIPPER_OPEN": -0.11}, (
-            "durable state blob did not round-trip"
-        )
+        assert state == {"ENGAGE": 0.83, "RELEASE": -0.11}, "durable state blob did not round-trip"
         assert state_default == {"empty": True}, (
             "load_state default not returned for a missing blob"
         )

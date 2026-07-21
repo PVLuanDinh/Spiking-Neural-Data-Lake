@@ -115,7 +115,7 @@ class BrainSession:
 
     @staticmethod
     def _reward(u, act):
-        return 1.0 if act == "GRIPPER_OPEN" else -0.2
+        return 1.0 if act == "RELEASE" else -0.2
 
     def build(self):
         from snn_data_lake.cortex.brain import Brain

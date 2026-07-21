@@ -20,7 +20,7 @@ THE FIVE TABS
   Lake Browser     Load the demo store, Open your OWN .spk, or use Import data... (a wizard
                    for spike-event OR dense sensor CSV -> a queryable store); run queries.
 
-  NL Command       Type an English command ("close the gripper", "go home",
+  NL Command       Type an English command ("close the effector", "go home",
                    "STOP", "read telemetry channel 7 window 1000"). It maps to a
                    safe allow-listed arm action (driven through the same gated
                    Arm Control path) or a lake query, or is rejected. Zero-dep

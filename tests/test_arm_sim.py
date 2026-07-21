@@ -4,7 +4,7 @@ pytest suite for arm_sim.py — 2-link planar arm simulation.
 Tests mirror the self-check in arm_sim.py:main() to verify:
 - HOME pose and collision detection
 - Joint rotation and end-effector motion
-- Gripper state
+- Effector state
 - EMERGENCY_STOP freeze behavior
 - Trajectory-deviation reflex (audit P1: no-op commands must NOT clear breach)
 """
@@ -29,16 +29,16 @@ def test_joint_a_rotate_raises_arm():
     assert s["ee"][1] > 0, f"End-effector y should be > 0 after raising, got {s['ee'][1]}"
 
 
-def test_gripper_close_and_open():
-    """GRIPPER_CLOSE sets gripper 1.0; GRIPPER_OPEN sets 0.0."""
+def test_effector_close_and_open():
+    """ENGAGE sets effector 1.0; RELEASE sets 0.0."""
     arm = ArmSim()
     arm.apply("HOME")
 
-    arm.apply("GRIPPER_CLOSE")
-    assert arm.gripper == 1.0, f"Gripper should be 1.0 after CLOSE, got {arm.gripper}"
+    arm.apply("ENGAGE")
+    assert arm.effector == 1.0, f"Effector should be 1.0 after CLOSE, got {arm.effector}"
 
-    arm.apply("GRIPPER_OPEN")
-    assert arm.gripper == 0.0, f"Gripper should be 0.0 after OPEN, got {arm.gripper}"
+    arm.apply("RELEASE")
+    assert arm.effector == 0.0, f"Effector should be 0.0 after OPEN, got {arm.effector}"
 
 
 def test_ground_collision_on_negative_rotate():
@@ -69,14 +69,14 @@ def test_emergency_stop_freezes_motion():
 def test_trajectory_breach_audit_p1():
     """Audit P1: only real joint motion recommits trajectory reference.
 
-    A no-op command (HOLD / unknown token / gripper) must NOT clear a trajectory breach
+    A no-op command (HOLD / unknown token / effector) must NOT clear a trajectory breach
     after an external perturbation. Only real joint motion recommits the path.
 
     Sequence:
     1. HOME, perturb +20deg -> trajectory_breach() = True
     2. HOLD (no-op) -> breach STAYS True
     3. ZZZ_UNKNOWN (unknown token) -> breach STAYS True
-    4. GRIPPER_CLOSE (gripper, no joint motion) -> breach STAYS True
+    4. ENGAGE (effector, no joint motion) -> breach STAYS True
     5. HOME (real motion) -> breach clears to False
     """
     arm = ArmSim()
@@ -96,9 +96,9 @@ def test_trajectory_breach_audit_p1():
     arm.apply("ZZZ_UNKNOWN")
     assert arm.trajectory_breach(), "Unknown token (no-op) must NOT clear trajectory breach"
 
-    # No-op: gripper command (no joint motion) must NOT clear the breach
-    arm.apply("GRIPPER_CLOSE")
-    assert arm.trajectory_breach(), "GRIPPER_CLOSE (no motion) must NOT clear breach"
+    # No-op: effector command (no joint motion) must NOT clear the breach
+    arm.apply("ENGAGE")
+    assert arm.trajectory_breach(), "ENGAGE (no motion) must NOT clear breach"
 
     # Real joint motion: HOME recommits the path and clears the breach
     arm.apply("HOME")

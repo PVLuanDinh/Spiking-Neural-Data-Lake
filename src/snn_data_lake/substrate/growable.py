@@ -38,7 +38,7 @@ import re
 
 # Effector / actuator / reflex vocabulary that must NEVER become a growth seam. is_safety_seam
 # normalizes a name (case, separators) and matches these as tokens or compounds, so near-miss
-# variants ("ARM_DOF", "e-stop", "gripper_servo", "actuator_count") are caught too, not just exact
+# variants ("ARM_DOF", "e-stop", "effector_servo", "actuator_count") are caught too, not just exact
 # strings. This is a defense-in-depth tripwire, not a proof (see the module docstring).
 _SAFETY_TOKENS = frozenset(
     {
@@ -52,7 +52,6 @@ _SAFETY_TOKENS = frozenset(
         "actions",
         "actuator",
         "effector",
-        "gripper",
         "servo",
         "servos",
         "reflex",
@@ -279,7 +278,7 @@ def main():
         "e-stop",
         "estop",
         "joint_limits",
-        "gripper_servo",
+        "effector_servo",
         "reflex",
         "EmergencyStop",
         "actuator_count",

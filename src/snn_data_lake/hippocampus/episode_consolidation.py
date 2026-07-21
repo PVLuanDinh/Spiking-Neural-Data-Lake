@@ -28,6 +28,14 @@ MECHANISM (brain-native, local, no gradients):
   * RECALL. Pattern completion as a k-WTA attractor settle: from a partial/noisy cue, iterate
     s <- topK(W s) until fixed point. k-WTA (a fixed activity budget, the network's global
     inhibition) makes completion robust and needs no per-unit threshold tuning.
+  * READ-OUT (the durable store SPEAKS). Storing only assemblies makes consolidation telemetry:
+    a K-of-N bit vector cannot be turned back into a readable episode, so nothing downstream can
+    ever say WHAT was consolidated. An index therefore holds, alongside every resident assembly,
+    the ORIGINAL episode dict it was encoded from (keyed by zlib.crc32 of the assembly's active
+    units), and it follows the ring exactly: evicting a pattern evicts its episode. recall_episode()
+    completes a cue through the SAME attractor, matches the settled state back to the nearest
+    resident assembly, and returns that assembly's episode DICT -- so a consolidated memory can be
+    spoken, not just counted. The index is a read-out label, never part of the dynamics.
   * REPLAY (quiescent consolidation). Noise-driven spontaneous reactivation of the stored
     assemblies in a noise-shuffled order, each cued by a NOISE-CORRUPTED partial of its own
     trace (drop + spurious spikes); the recurrent weights complete it, and when the spontaneous
@@ -50,6 +58,12 @@ synaptic couplings, but it does not raise an already-1.00 recall) -- the durabil
 non-destructive consolidation + synaptic strengthening, NOT a recall boost. (2) Role slots are
 developer-defined (same honest limit episodic_recall discloses). (3) Beyond capacity the ring
 evicts the oldest by design -- that is bounded forgetting, not catastrophic interference.
+(3b) recall_episode's episode dict is a STORED LABEL, not a reconstruction: this encoder hashes the
+WHOLE episode, so the assembly carries no slot structure to unbind (episodic_recall's HRR traces do
+that). The consequence is disclosed at the API: a PATTERN cue may be partial/noisy (that is the
+attractor's job), but a DICT cue addresses by exact content -- a genuinely partial dict hashes to an
+unrelated assembly and correctly returns an honest MISS rather than a guess. A cue matching nothing
+returns an EMPTY episode at confidence 0.0; the nearest-anything is never fabricated.
 (4) Representation/value side ONLY: never selects an action, never calls the arm, imports nothing
 from brainstem/ or any safety-envelope file; nothing runs at import.
 
@@ -81,6 +95,10 @@ REPLAY_DROP = 0.4  # fraction of an assembly's spikes dropped in its reactivatio
 REPLAY_FLIP = 0.15  # spurious spikes added (as a fraction of K) to the reactivation cue
 REACTIVATE_MIN = 0.7  # min overlap-with-own-trace for a reactivation to be consolidated
 
+# ---- episode read-out (durable store -> readable episode dict) ----
+MIN_EPISODE_CONF = 0.5  # confidence floor for recall_episode; below it we report an HONEST MISS
+ENC_CACHE_MULT = 8  # encode-side pattern->episode cache size, as a multiple of capacity
+
 
 def _canon(episode):
     """Deterministic canonical string for an episode dict (sorted role=filler slots)."""
@@ -95,6 +113,8 @@ class EpisodeConsolidator:
       store(pattern)            -> add the assembly to the covariance attractor (ring at capacity)
       replay(steps=100)         -> quiescent noise-driven reactivation + covariance-STDP consolidation
       recall(partial_pattern)   -> completed nearest stored assembly (k-WTA attractor settle)
+      recall_episode(cue)       -> {"episode","confidence","key"}: the readable EPISODE DICT behind
+                                   the completed assembly (empty episode + 0.0 on an honest miss)
       retained()                -> fraction of stored episodes still recoverable from a partial cue
 
     Deterministic given `seed`. dim units, `active`=K spikes per assembly, `capacity` episodes held.
@@ -110,6 +130,10 @@ class EpisodeConsolidator:
         self.W = np.zeros((self.dim, self.dim))  # recurrent covariance weights (zero diagonal)
         self.codes = []  # per stored episode: frozenset of active unit indices
         self.patterns = []  # per stored episode: its binary {0,1} assembly vector
+        self.keys = []  # per stored episode: crc32 of its assembly (stable content key)
+        self.episodes = []  # per stored episode: the ORIGINAL dict (None if stored unlabelled)
+        self._enc_cap = max(64, ENC_CACHE_MULT * self.capacity)
+        self._enc_seen = {}  # encode-side key -> episode dict, bounded FIFO (labels store())
 
     # ---- encoding: episode dict -> sparse cell assembly -------------------------------------
     def encode(self, episode):
@@ -120,22 +144,47 @@ class EpisodeConsolidator:
         idx = rng.sample(range(self.dim), self.K)
         v = np.zeros(self.dim)
         v[idx] = 1.0
+        self._remember_encoding(v, episode)
         return v
 
+    def _pattern_key(self, pattern):
+        """Stable content key for an assembly: crc32 of its sorted active unit indices (never the
+        builtin hash -- that is salted per process and would break determinism across runs)."""
+        idx = sorted(np.flatnonzero(np.asarray(pattern, dtype=float) > 0).tolist())
+        return zlib.crc32(repr(idx).encode("utf-8"))
+
+    def _remember_encoding(self, pattern, episode):
+        """Note that this assembly came from this episode dict, so a later store() can LABEL it.
+        Bounded FIFO: a long-running brain encodes far more episodes than it keeps resident."""
+        self._enc_seen[self._pattern_key(pattern)] = dict(episode)
+        while len(self._enc_seen) > self._enc_cap:
+            self._enc_seen.pop(next(iter(self._enc_seen)))
+
     # ---- storage: covariance Hebbian outer product (additive => non-forgetting) -------------
-    def store(self, pattern):
+    def store(self, pattern, episode=None):
         """Store a cell assembly by covariance Hebbian learning W += (x-a)(x-a)^T (zero diagonal).
         Additive, so older episodes are not overwritten. Holds `capacity` episodes as a ring:
-        on overflow the oldest assembly's contribution is subtracted (bounded, deliberate)."""
+        on overflow the oldest assembly's contribution is subtracted (bounded, deliberate).
+
+        The readable label rides along: the assembly is indexed to the episode dict it came from
+        (passed here, else the one encode() saw for this exact assembly, else None), and the ring
+        evicts the label with the pattern -- an evicted episode can never be spoken again."""
         x = (np.asarray(pattern, dtype=float) > 0).astype(float)
+        if episode is not None:
+            self._remember_encoding(x, episode)
+        key = self._pattern_key(x)
         d = x - self.a
         self.W += np.outer(d, d)
         np.fill_diagonal(self.W, 0.0)
         self.codes.append(frozenset(np.flatnonzero(x).tolist()))
         self.patterns.append(x)
+        self.keys.append(key)
+        self.episodes.append(self._enc_seen.get(key))
         if len(self.patterns) > self.capacity:
             old = self.patterns.pop(0)
             self.codes.pop(0)
+            self.keys.pop(0)
+            self.episodes.pop(0)  # evicting the pattern evicts its episode
             do = old - self.a
             self.W -= np.outer(do, do)
             np.fill_diagonal(self.W, 0.0)
@@ -164,6 +213,56 @@ class EpisodeConsolidator:
             return np.zeros(self.dim)
         s = (np.asarray(partial_pattern, dtype=float) > 0).astype(float)
         return self._settle(s, RECALL_ITERS)
+
+    # ---- read-out: the durable store returns a READABLE episode -----------------------------
+    def _cue_pattern(self, cue):
+        """Coerce a cue to a binary assembly. A dict is ENCODED (content-addressed: exact episodes
+        only -- see the module's honest caveat 3b); an array is taken as a partial/noisy assembly.
+        Returns None for a wrong-shaped cue."""
+        if isinstance(cue, dict):
+            return self.encode(cue)
+        v = np.asarray(cue, dtype=float)
+        if v.shape != (self.dim,):
+            return None
+        return (v > 0).astype(float)
+
+    def recall_episode(self, partial_cue, min_conf=MIN_EPISODE_CONF):
+        """Recall the readable EPISODE DICT behind a cue -- the durable store speaking, not counting.
+
+        Completes `partial_cue` (a partial/noisy assembly, or an episode dict which is encoded) via
+        the SAME k-WTA attractor as recall(), then matches the settled state back to the resident
+        assembly it best explains and returns THAT assembly's indexed episode. Confidence is a
+        product of two normalized overlaps, so a match must both complete AND account for the cue:
+          completion = |settled & code| / |code|   (did the attractor land in that basin)
+          support    = |cue & code| / |cue|        (were the cue's own spikes members of it)
+        A novel cue can be dragged into some basin (completion high) but its spikes belong to no
+        stored assembly (support low), so the product stays under the floor and we report an HONEST
+        MISS: {"episode": {}, "confidence": 0.0, "key": None}. Nothing is ever fabricated -- an empty
+        store, an empty/ill-shaped cue, a sub-floor match, or a resident pattern that was stored
+        without a label all return the same honest miss. Mirrors episodic_recall.complete()'s shape.
+        Deterministic: ties resolve to the earliest-stored assembly."""
+        miss = {"episode": {}, "confidence": 0.0, "key": None}
+        if not self.codes:
+            return miss
+        cue = self._cue_pattern(partial_cue)
+        if cue is None:
+            return miss
+        cue_on = frozenset(np.flatnonzero(cue).tolist())
+        if not cue_on:
+            return miss
+        settled = frozenset(np.flatnonzero(self.recall(cue)).tolist())
+        best_j, best_conf = -1, 0.0
+        for j, code in enumerate(self.codes):
+            conf = (len(settled & code) / len(code)) * (len(cue_on & code) / len(cue_on))
+            if conf > best_conf:
+                best_j, best_conf = j, conf
+        if best_j < 0 or best_conf < min_conf or self.episodes[best_j] is None:
+            return miss
+        return {
+            "episode": dict(self.episodes[best_j]),
+            "confidence": round(best_conf, 3),
+            "key": self.keys[best_j],
+        }
 
     # ---- replay: quiescent noise-driven reactivation + covariance STDP ----------------------
     def replay(self, steps=100):
@@ -346,6 +445,59 @@ def main():
     deterministic = bool(np.array_equal(ec.W, ec2.W)) and ec.retained() == ec2.retained()
     assert deterministic, "(c) same seed must reproduce identical weights and retention"
 
+    # ---- (d) READ-OUT: the durable store returns the READABLE EPISODE, and misses honestly -----
+    # (d1) every stored episode is returned VERBATIM from a 50% partial cue -- consolidation can
+    # now SPEAK what it consolidated, instead of only reporting that a pattern came back.
+    read_hits, read_confs = 0, []
+    for i, code in enumerate(ec.codes):
+        got = ec.recall_episode(ec._partial_cue(code, 0.5, 0))
+        read_confs.append(got["confidence"])
+        if got["episode"] == episodes[i] and got["key"] == ec.keys[i]:
+            read_hits += 1
+    read_acc = read_hits / len(ec.codes)
+    assert read_acc == 1.0, (
+        f"(d1) every stored episode must be returned verbatim from a 50% partial cue "
+        f"(got {read_acc:.3f})"
+    )
+    assert min(read_confs) >= MIN_EPISODE_CONF, (
+        f"(d1) every recalled episode must clear the confidence floor (min {min(read_confs):.3f})"
+    )
+
+    # (d2) DURABLE: the EARLIEST-stored episodes are still returned correctly after all the later
+    # stores and a full replay pass -- the read-out inherits the no-catastrophic-forgetting result.
+    early_read = sum(
+        1
+        for i, code in enumerate(codes_all[: capacity // 8])
+        if ec.recall_episode(ec._partial_cue(code, 0.5, 0))["episode"] == episodes[i]
+    ) / len(codes_all[: capacity // 8])
+    assert early_read == 1.0, (
+        f"(d2) earliest episodes must still read back after later stores + replay ({early_read:.3f})"
+    )
+
+    # (d3) HONEST MISS: cues for episodes that were never stored return an EMPTY episode at
+    # confidence 0.0. The attractor still settles somewhere, but those cues' spikes belong to no
+    # stored assembly, so no nearest-anything is fabricated.
+    unseen = _demo_episodes(capacity + 8)[capacity:]  # 8 episodes never stored
+    fresh = EpisodeConsolidator(dim=dim, capacity=capacity, seed=seed)  # encoder only, empty store
+    misses = [ec.recall_episode(fresh.encode(e)) for e in unseen]
+    assert all(
+        m["episode"] == {} and m["confidence"] == 0.0 and m["key"] is None for m in misses
+    ), "(d3) a cue matching nothing must return an empty episode at confidence 0.0 (no fabrication)"
+    empty_store = EpisodeConsolidator(dim=dim, capacity=capacity, seed=seed).recall_episode(
+        fresh.encode(unseen[0])
+    )
+    assert empty_store == {"episode": {}, "confidence": 0.0, "key": None}, (
+        "(d3) an empty store must miss honestly too"
+    )
+
+    # (d4) DETERMINISM of the read-out: the twin instance returns identical episodes/confidences.
+    read_deterministic = all(
+        ec.recall_episode(ec._partial_cue(c, 0.5, 0))
+        == ec2.recall_episode(ec2._partial_cue(c, 0.5, 0))
+        for c in ec.codes
+    )
+    assert read_deterministic, "(d4) same seed must reproduce identical episode read-out"
+
     # ---- ANCHOR: the BALANCED schedule is what keeps memory -- the naive control collapses -----
     ctrl, _ = build(with_all=True)
     ctrl._replay_unbalanced_control(steps=100)
@@ -374,6 +526,18 @@ def main():
     )
     print(f"(c) determinism : same seed -> identical weights + retention = {deterministic}")
     print(
+        f"(d) read-out    : {read_hits}/{len(ec.codes)} episodes returned VERBATIM from a 50% "
+        f"partial cue (min conf {min(read_confs):.2f})"
+    )
+    print(
+        f"    durable     : earliest {len(codes_all[: capacity // 8])} episodes read back after all "
+        f"stores + replay : {early_read:.3f}"
+    )
+    print(
+        f"    honest miss : {len(misses)}/{len(unseen)} never-stored cues -> empty episode, "
+        f"confidence 0.00 (nothing fabricated); read-out deterministic = {read_deterministic}"
+    )
+    print(
         f"anchor          : unbalanced blank-noise replay collapses retention to {naive_retained:.3f} "
         f"(<< {completion:.3f}) -- the schedule keeps memory"
     )
@@ -383,7 +547,10 @@ def main():
         f"all complete from a 50% partial cue ({completion:.2f}), earliest survive later stores + "
         f"replay (no catastrophic forgetting, {early_after:.2f}); replay strengthened coupling "
         f"{coupling_before:.3f}->{coupling_after:.3f}; deterministic; naive replay collapses to "
-        f"{naive_retained:.2f}"
+        f"{naive_retained:.2f}; READ-OUT: {read_hits}/{len(ec.codes)} episodes returned VERBATIM as "
+        f"dicts from a 50% partial cue (min conf {min(read_confs):.2f}), earliest {early_read:.2f} "
+        f"after later stores + replay, {len(unseen)}/{len(unseen)} never-stored cues miss honestly "
+        f"(empty episode, conf 0.00), read-out deterministic"
     )
 
 

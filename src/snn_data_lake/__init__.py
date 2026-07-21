@@ -86,6 +86,7 @@ REGIONS = {
         "counterfactual_sim",  # C1 batch-2: N-agent recursive ToM / counterfactual do()-operator simulation
         "learned_attention",  # C1 batch-3: learned spiking reticular attention gate (local plasticity)
         "learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
+        "second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
         "pc_cortex_serve",
         "brain",
@@ -111,6 +112,7 @@ REGIONS = {
         "episodic_recall",
         "spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
         "episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
+        "head_direction",  # C2 r2: spiking HD ring + goal-vector cells (heading, bearing, distance)
     ],
     "basal_ganglia": [
         "evidence_accumulation",

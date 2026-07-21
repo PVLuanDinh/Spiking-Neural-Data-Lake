@@ -7,7 +7,7 @@ End-to-end guide: bare ESP32 + sensors + arm → the live loop moving a **real**
 ```
   [ ultrasonic + IR ] --sensor line--> ESP32 --USB serial (one UART)--> PC: snn_data_lake/live_arm.py
                                           ^                                   |
-  [ gripper + 2 joints ] <--PWM--  servos |  <----------command line---------- (recognize -> Interpreter)
+  [ effector + 2 joints ] <--PWM--  servos |  <----------command line---------- (recognize -> Interpreter)
 ```
 One USB cable carries **both** directions: sensor lines out, command lines in. `live_arm` opens
 the port **once** and reads + writes on the same handle.
@@ -18,7 +18,7 @@ the port **once** and reads + writes on the same handle.
 - **ESP32** dev board (USB).
 - **Ultrasonic distance** sensor (HC-SR04 or equiv) → `Sensor_1`, metres.
 - **IR temperature** sensor (MLX90614, I2C) → `Sensor_2`.
-- **3 servos**: gripper + joint A + joint B (hobby servos, e.g. SG90/MG996R).
+- **3 servos**: effector + joint A + joint B (hobby servos, e.g. SG90/MG996R).
 - **External 5–6 V servo supply** (do **not** power servos off the ESP32/USB — current spikes
   brown-out the board). Tie the supply **ground to the ESP32 ground** (common ground).
 - Jumper wires, breadboard, USB cable.
@@ -33,7 +33,7 @@ and chosen to **not collide** with the sensor pins.
 | Ultrasonic ECHO | GPIO 11 | 5 V echo → use a divider to 3.3 V if your module is 5 V |
 | MLX90614 SDA | GPIO 21 | I2C |
 | MLX90614 SCL | GPIO 22 | I2C |
-| Gripper servo | GPIO 13 | PWM |
+| Effector servo | GPIO 13 | PWM |
 | Joint A servo | GPIO 25 | PWM (NOT 12 — that's TRIG) |
 | Joint B servo | GPIO 26 | PWM |
 | Servo V+ | external 5–6 V | **not** ESP32 5V |
@@ -55,7 +55,7 @@ and chosen to **not collide** with the sensor pins.
 const int TRIG_PIN = 12, ECHO_PIN = 11;          // ultrasonic
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();     // IR on I2C (SDA 21, SCL 22)
 
-Servo gripper, jointA, jointB;
+Servo effector, jointA, jointB;
 const int PIN_GRIP = 13, PIN_A = 25, PIN_B = 26; // servo pins (clear of sensor pins)
 
 // ---- REAL limits: REPLACE with your rig's measured values (arduino_requirements.md #3) ----
@@ -70,8 +70,8 @@ void setup(){
   Serial.begin(115200);
   pinMode(TRIG_PIN, OUTPUT); pinMode(ECHO_PIN, INPUT);
   if(!mlx.begin()){ while(1) delay(1000); }       // no banner on the data port
-  gripper.attach(PIN_GRIP); jointA.attach(PIN_A); jointB.attach(PIN_B);
-  gripper.write(GRIP_OPEN); jointA.write(HOME_A); jointB.write(HOME_B);
+  effector.attach(PIN_GRIP); jointA.attach(PIN_A); jointB.attach(PIN_B);
+  effector.write(GRIP_OPEN); jointA.write(HOME_A); jointB.write(HOME_B);
 }
 
 float getDistanceM(){
@@ -85,10 +85,10 @@ void handleCommand(){
   String cmd = Serial.readStringUntil('\n'); cmd.trim();
   if(cmd.length()==0) return;
   if(ECHO_ONLY){ Serial.print("ACK "); Serial.println(cmd); return; }
-  if(cmd=="EMERGENCY_STOP"){ gripper.detach(); jointA.detach(); jointB.detach(); }  // fail-safe first
-  else if(cmd=="GRIPPER_CLOSE") gripper.write(GRIP_CLOSED);
-  else if(cmd=="GRIPPER_OPEN")  gripper.write(GRIP_OPEN);
-  else if(cmd=="HOME"||cmd=="RETRACT_ALL"){ jointA.write(HOME_A); jointB.write(HOME_B); gripper.write(GRIP_OPEN); }
+  if(cmd=="EMERGENCY_STOP"){ effector.detach(); jointA.detach(); jointB.detach(); }  // fail-safe first
+  else if(cmd=="ENGAGE") effector.write(GRIP_CLOSED);
+  else if(cmd=="RELEASE")  effector.write(GRIP_OPEN);
+  else if(cmd=="HOME"||cmd=="RETRACT_ALL"){ jointA.write(HOME_A); jointB.write(HOME_B); effector.write(GRIP_OPEN); }
   else if(cmd.startsWith("JOINT_A_ROTATE")) jointA.write(clampDeg(jointA.read()+parseDeg(cmd)));
   else if(cmd.startsWith("JOINT_B_ROTATE")) jointB.write(clampDeg(jointB.read()+parseDeg(cmd)));
   // HOLD / unknown -> nothing
@@ -123,14 +123,14 @@ deliberate gate so placeholder limits can't drive hardware.
 
 ## 6. Bring-up sequence  *(do NOT skip — each step de-risks the next)*
 1. **Echo test (servos safe).** Sketch `ECHO_ONLY = true`. Open the Arduino **Serial Monitor**
-   (115200), type `GRIPPER_CLOSE` → see `ACK GRIPPER_CLOSE`, and confirm `d, t` lines stream. No
+   (115200), type `ENGAGE` → see `ACK ENGAGE`, and confirm `d, t` lines stream. No
    Python, no gate needed.
 2. **Sensor stream sanity.** `python -m snn_data_lake.live_arm --csv captures\IDLE.csv` after a recording (§7),
    or watch the Serial Monitor — distances change as you move your hand.
 3. **Set real safety numbers** (§5), flip `SAFETY_CALIBRATED = True`.
 4. **One joint.** Sketch `ECHO_ONLY = false`; wire only Joint A. `live_arm --serial COMx --actuate
    COMx`, do the gesture, confirm the joint moves within its clamps.
-5. **Gripper**, then Joint B.
+5. **Effector**, then Joint B.
 6. **E-STOP hardware test (acceptance).** Move a hand under `CONTACT` → the arm must halt
    **before** contact (`EMERGENCY_STOP` detaches the servos).
 

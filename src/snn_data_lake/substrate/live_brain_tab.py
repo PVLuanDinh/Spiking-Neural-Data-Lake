@@ -206,7 +206,7 @@ class LiveBrainTab(ttk.Frame):
         self._chat_say(
             "brain",
             "Hi. Try 'hello', 'what is your goal', 'what do you remember', "
-            "'are you conscious', or a command like 'close the gripper'.",
+            "'are you conscious', or a command like 'close the effector'.",
         )
 
     def _chat_say(self, who, text):
@@ -348,7 +348,7 @@ class LiveBrainTab(ttk.Frame):
         c.create_line(*p1, *p2, fill=link, width=6, capstyle="round")
         for px_, py_ in (p0, p1):
             c.create_oval(px_ - 4, py_ - 4, px_ + 4, py_ + 4, fill="#333")
-        eefill = "#080" if arm.gripper else "white"
+        eefill = "#080" if arm.effector else "white"
         c.create_oval(
             p2[0] - 6, p2[1] - 6, p2[0] + 6, p2[1] + 6, fill=eefill, outline="#080", width=2
         )
@@ -357,11 +357,11 @@ class LiveBrainTab(ttk.Frame):
                 self.W // 2, 14, text="E-STOP", fill="#c00", font=("TkDefaultFont", 12, "bold")
             )
 
-        grip = "CLOSED" if state.get("gripper") else "open"
+        grip = "CLOSED" if state.get("effector") else "open"
         self.arm_status.configure(
             text=(
                 f"theta(deg) A={state['theta_deg'][0]:5.1f} B={state['theta_deg'][1]:5.1f}  "
-                f"ee=({state['ee'][0]:+.2f},{state['ee'][1]:+.2f})  gripper={grip}\n"
+                f"ee=({state['ee'][0]:+.2f},{state['ee'][1]:+.2f})  effector={grip}\n"
                 f"action={self._last_action}  stopped={state['stopped']}  "
                 f"collision={state['collision']}"
             ),
@@ -394,14 +394,14 @@ def smoke():
     grasp = _ctx(0.9, 0.1, 0.1, SAFE_D)
 
     def reward(_unit, action):
-        return 1.0 if action == "GRIPPER_OPEN" else -1.0
+        return 1.0 if action == "RELEASE" else -1.0
 
     # (a) the brain LEARNS a goal + stores working memory in the data lake ---------
     brain = LiveBrain(seed=1)
     for _ in range(90):
         brain.tick(grasp, reward_fn=reward)
     assert brain.alive(), "the live brain must wire in every region"
-    assert brain.goal == ACTIONS.index("GRIPPER_OPEN"), (
+    assert brain.goal == ACTIONS.index("RELEASE"), (
         f"the PFC must form the rewarded goal ({ACTIONS[brain.goal] if brain.goal is not None else None})"
     )
     assert brain.arm.lake_wm is not None and brain.arm.lake_wm.n_events() > 0, (
@@ -429,7 +429,7 @@ def smoke():
 
     # (c2) chat: the brain answers GROUNDED in its real state, and never claims consciousness ------
     _g = brain.converse("what is your goal?")
-    assert "improving myself" in _g.lower() and "GRIPPER_OPEN" in _g, (
+    assert "improving myself" in _g.lower() and "RELEASE" in _g, (
         "chat must report the standing telos + sub-goal"
     )
     _c = brain.converse("are you conscious?")

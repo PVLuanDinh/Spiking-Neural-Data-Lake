@@ -12,7 +12,7 @@ disagree, the code is correct and this document is stale.
 | Capability | CAN | CANNOT |
 |---|---|---|
 | Arm geometry | 2-link planar arm, forward kinematics (`arm_sim.py:45-49`) | 3D arm, >2 joints, inverse kinematics solver |
-| Motion | Discrete relative joint rotations, HOME/RETRACT, gripper open/close (`interpreter.py:27-33`) | Continuous/velocity control, path planning around obstacles |
+| Motion | Discrete relative joint rotations, HOME/RETRACT, effector open/close (`interpreter.py:27-33`) | Continuous/velocity control, path planning around obstacles |
 | Collision | Detect ground-plane and one point obstacle after the fact (`arm_sim.py:51-57`) | Route around an obstacle; it only halts on penetration |
 | Force/torque | Trip a danger reflex on out-of-range current/force channels (`reflex.py:21-24`) | Closed-loop force/torque control or compliant motion |
 | Sensing | Ultrasonic distance (m) + IR temperature (K) via ESP32 (`esp32_encoder_path.py:14-16`) | Vision/video or audio (bands held at zero, `esp32_encoder_path.py:16`, `:229-241`) |
@@ -29,7 +29,7 @@ disagree, the code is correct and this document is stale.
 - **2-link planar arm**: `ArmSim.__init__(self, l1=1.0, l2=1.0, use_pybullet=False)`
   (`arm_sim.py:33`, docstring "2-joint planar arm" `arm_sim.py:31`). Link lengths
   `l1`, `l2` default to 1.0 unit each; **2 revolute joints** `theta[0]`/`theta[1]`
-  (joint A, joint B, `arm_sim.py:35`); a **gripper** scalar 0=open..1=closed
+  (joint A, joint B, `arm_sim.py:35`); a **effector** scalar 0=open..1=closed
   (`arm_sim.py:36`).
 
 ### Forward kinematics
@@ -83,9 +83,9 @@ allow-list") is defined by `_FIXED` and the `_JOINT` regex in `serial_arm.py:31-
 |---|---|---|---|
 | `JOINT_A_ROTATE(+Ndeg)` / `(-Ndeg)` | Rotates joint A by a **relative** delta in degrees | Interpreter default: `+15deg` (`interpreter.py:28`); arbitrary float N accepted by the regex `[+-]?\d+(?:\.\d+)?deg` (`arm_sim.py:27`) | `arm_sim.py:60-71` |
 | `JOINT_B_ROTATE(-Ndeg)` | Rotates joint B by a relative delta in degrees | Interpreter default: `-10deg` (`interpreter.py:29`) | `arm_sim.py:60-71` |
-| `GRIPPER_CLOSE` | Sets `gripper = 1.0` (fully closed) | n/a (binary) | `arm_sim.py:72-73` |
-| `GRIPPER_OPEN` | Sets `gripper = 0.0` (fully open) | n/a (binary) | `arm_sim.py:74-75` |
-| `HOME` | Resets `theta=[0,0]`, `gripper=0.0`, clears `stopped` | n/a | `arm_sim.py:76-80` |
+| `ENGAGE` | Sets `effector = 1.0` (fully closed) | n/a (binary) | `arm_sim.py:72-73` |
+| `RELEASE` | Sets `effector = 0.0` (fully open) | n/a (binary) | `arm_sim.py:74-75` |
+| `HOME` | Resets `theta=[0,0]`, `effector=0.0`, clears `stopped` | n/a | `arm_sim.py:76-80` |
 | `RETRACT_ALL` | Same effect as `HOME` (both hit the same branch) | n/a | `arm_sim.py:76-80` |
 | `EMERGENCY_STOP` | Sets `stopped = True`; freezes all further motion until `RETRACT_ALL`/`HOME` | n/a | `arm_sim.py:61-63` |
 | `HOLD` | No-op: does not match any branch, so no joint motion and `expected_ee` is NOT recommitted | n/a | `arm_sim.py:81-85` (comment), confirmed by self-check `arm_sim.py:211-212` |
@@ -228,7 +228,7 @@ Notes:
 
 ### Command allow-list
 - Only two shapes reach the wire: `_FIXED = {"EMERGENCY_STOP","HOME",
-  "RETRACT_ALL","GRIPPER_CLOSE","GRIPPER_OPEN","HOLD"}` and the
+  "RETRACT_ALL","ENGAGE","RELEASE","HOLD"}` and the
   `JOINT_[AB]_ROTATE(...)` regex (`serial_arm.py:31-38`). Anything else is
   dropped, never transmitted (`serial_arm.py:73-74`, self-check with
   `"DROP_EVERYTHING"`, `serial_arm.py:127,168`).
@@ -242,7 +242,7 @@ Notes:
   `arm_sim.py:20`), checked at `arm_sim.py:107-109`.
 - Catches **external perturbations** moving the arm without a command
   (`perturb()`, `arm_sim.py:91-99`). A no-op command (`HOLD`, unknown token, or a
-  gripper command) does **not** clear a breach; only real motion recommits
+  effector command) does **not** clear a breach; only real motion recommits
   `expected_ee` (`arm_sim.py:81-85`, self-check `arm_sim.py:205-218`).
 
 ### Cortisol-modulated vigilance
@@ -308,7 +308,7 @@ To move a physical arm instead of the simulator:
   (`arm_sim.py:8-13,119-145`); the always-available stdlib path is pure
   geometry - angles in, position out, no dynamics simulated.
 - **Sim-to-real gap is not modeled or bounded.** `SerialArm` mirrors `ArmSim`
-  purely for state/gripper bookkeeping (`serial_arm.py:53-56,65-66`) - it does
+  purely for state/effector bookkeeping (`serial_arm.py:53-56,65-66`) - it does
   not read back real encoder positions to correct for drift or backlash. The
   proprioceptive "slip watchdog" (`live_arm.py:41,51-54,122-127`) is explicitly
   **read-only**, issuing no correction (self-check `live_arm.py:268-282` proves

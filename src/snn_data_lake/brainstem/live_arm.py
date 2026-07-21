@@ -4,7 +4,7 @@ v0.47 — live real-hardware loop: ESP32 sensor -> recognize -> Interpreter -> a
 Closes the loop end to end on the reference sensor:
 
   (d, t) samples  ->  buffer W  ->  ORDER-AWARE gesture recognition (Paradigm B, v0.46)
-                  ->  Interpreter (gesture -> robot command)  ->  arm_sim (joint / gripper motion)
+                  ->  Interpreter (gesture -> robot command)  ->  arm_sim (joint / effector motion)
   + a contact reflex that EMERGENCY_STOPs the arm the instant the object is at the sensor.
 
 Sources (same downstream, sim-to-real):
@@ -37,8 +37,8 @@ from snn_data_lake.cortex.gesture_recognition import W, classify, load_csv
 from snn_data_lake.substrate import home
 
 SENSOR_COMMANDS = {
-    "HAND_APPROACH": "GRIPPER_CLOSE",  # grab the approaching object
-    "HAND_RETREAT": "GRIPPER_OPEN",  # release as it leaves
+    "HAND_APPROACH": "ENGAGE",  # grab the approaching object
+    "HAND_RETREAT": "RELEASE",  # release as it leaves
     "IDLE": "HOLD",
 }
 
@@ -47,7 +47,7 @@ _JOINT_A = re.compile(r"JOINT_A_ROTATE\(([+-]?\d+(?:\.\d+)?)deg\)")
 
 
 def _joint_a_delta(command):
-    """Commanded joint-A delta (deg) from an Interpreter command; 0.0 for gripper / HOLD / stop."""
+    """Commanded joint-A delta (deg) from an Interpreter command; 0.0 for effector / HOLD / stop."""
     m = _JOINT_A.fullmatch(command or "")
     return float(m.group(1)) if m else 0.0
 
@@ -106,7 +106,7 @@ def run(samples, arm, interp, emit, stride=STRIDE, observer=None):
     joint-angle estimate + slip mismatch are logged. It issues NO command and never touches
     the arm, so collision / EMERGENCY_STOP / reflex still gate every motion."""
     buf = []
-    stats = {"windows": 0, "GRIPPER_CLOSE": 0, "GRIPPER_OPEN": 0, "HOLD": 0, "reflex": 0}
+    stats = {"windows": 0, "ENGAGE": 0, "RELEASE": 0, "HOLD": 0, "reflex": 0}
     for d, t in samples:
         if (
             not math.isfinite(d) or d < CONTACT
@@ -127,7 +127,7 @@ def run(samples, arm, interp, emit, stride=STRIDE, observer=None):
             ev = {
                 "gesture": gesture,
                 "command": cmd,
-                "gripper": arm.gripper,
+                "effector": arm.effector,
                 "ee": arm.state()["ee"],
             }
             if observer is not None:  # opt-in read-only proprioception
@@ -283,19 +283,19 @@ def main():
     print("=" * 62)
     print(f"source        : {source}")
     print(
-        f"APPROACH file : {stats_a.get('GRIPPER_CLOSE', 0)} GRIPPER_CLOSE, "
+        f"APPROACH file : {stats_a.get('ENGAGE', 0)} ENGAGE, "
         f"{stats_a.get('reflex', 0)} reflex-STOP (object reached the sensor)"
     )
-    print(f"RETREAT file  : {stats_r.get('GRIPPER_OPEN', 0)} GRIPPER_OPEN")
+    print(f"RETREAT file  : {stats_r.get('RELEASE', 0)} RELEASE")
     print(
-        f"arm after approach run: gripper={a_arm.gripper} ee={a_arm.state()['ee']} "
+        f"arm after approach run: effector={a_arm.effector} ee={a_arm.state()['ee']} "
         f"stopped={a_arm.stopped}"
     )
     print("=" * 62)
 
     # ---- self-checks --------------------------------------------------------
-    assert stats_a.get("GRIPPER_CLOSE", 0) >= 1, "approach did not drive GRIPPER_CLOSE"
-    assert stats_r.get("GRIPPER_OPEN", 0) >= 1, "retreat did not drive GRIPPER_OPEN"
+    assert stats_a.get("ENGAGE", 0) >= 1, "approach did not drive ENGAGE"
+    assert stats_r.get("RELEASE", 0) >= 1, "retreat did not drive RELEASE"
     assert stats_a.get("reflex", 0) >= 1, "contact never tripped the reflex STOP"
 
     # duplex smoke test: sensor-read + command-write share ONE serial handle (no hardware).
@@ -337,16 +337,16 @@ def main():
                 yield v[0], v[1]
 
     run(_bounded(), darm, interp, quiet)  # read + recognize + write on one handle
-    assert "GRIPPER_CLOSE" in fd.sent, f"duplex: approach did not send GRIPPER_CLOSE ({fd.sent})"
+    assert "ENGAGE" in fd.sent, f"duplex: approach did not send ENGAGE ({fd.sent})"
     assert "EMERGENCY_STOP" in fd.sent, "duplex: contact did not send EMERGENCY_STOP over serial"
     # the E-STOP freeze must hold end-to-end: the post-contact approach must NOT reach the wire
     estop_i = fd.sent.index("EMERGENCY_STOP")
-    assert "GRIPPER_CLOSE" not in fd.sent[estop_i + 1 :], (
+    assert "ENGAGE" not in fd.sent[estop_i + 1 :], (
         f"a command after EMERGENCY_STOP reached the wire through live_arm ({fd.sent})"
     )
 
     print(
-        "self-check OK: approach->GRIPPER_CLOSE, retreat->GRIPPER_OPEN, contact->reflex STOP, "
+        "self-check OK: approach->ENGAGE, retreat->RELEASE, contact->reflex STOP, "
         "post-STOP commands frozen off the wire, one-UART duplex read+write (loop closed)"
     )
 

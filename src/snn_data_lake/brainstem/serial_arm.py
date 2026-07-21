@@ -3,7 +3,7 @@ v0.60 — real-arm actuator sink. The Phase-2 command-OUT path.
 
 live_arm.py already does: sensor -> recognize -> Interpreter -> command -> arm.apply(cmd).
 Until now `arm` was ArmSim (a simulation). SerialArm is a DROP-IN with the same surface
-live_arm uses off ArmSim — .apply(cmd), .state(), .gripper — but each command line also goes
+live_arm uses off ArmSim — .apply(cmd), .state(), .effector — but each command line also goes
 out over serial to the ESP32 servo sketch (deploy/command_arm.ino), moving the REAL arm.
 See docs/arduino_contract.md ("Command channel").
 
@@ -30,7 +30,7 @@ from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.arm_sim import ArmSim
 
 _JOINT = re.compile(r"JOINT_[AB]_ROTATE\([+-]?\d+(?:\.\d+)?deg\)")
-_FIXED = {"EMERGENCY_STOP", "HOME", "RETRACT_ALL", "GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD"}
+_FIXED = {"EMERGENCY_STOP", "HOME", "RETRACT_ALL", "ENGAGE", "RELEASE", "HOLD"}
 _ALLOWED_WHEN_STOPPED = {
     "EMERGENCY_STOP",
     "HOME",
@@ -56,7 +56,7 @@ def assert_calibrated(allow_uncalibrated=False):
 
 
 class SerialArm:
-    """Command sink: mirrors ArmSim (for state()/gripper logging) AND writes each command line
+    """Command sink: mirrors ArmSim (for state()/effector logging) AND writes each command line
     to the ESP32. writer = an object with .write(bytes)/.flush()/.close() — a real serial.Serial
     on hardware, or a fake for bench tests. writer=None opens a real pyserial port."""
 
@@ -69,7 +69,7 @@ class SerialArm:
 
             writer = serial.Serial(port, baud, timeout=1)
         self.w = writer
-        self.mirror = ArmSim()  # local twin so state()/gripper still work
+        self.mirror = ArmSim()  # local twin so state()/effector still work
         self.mirror.apply("HOME")
 
     def apply(self, command):
@@ -92,8 +92,8 @@ class SerialArm:
         return self.mirror.state()
 
     @property
-    def gripper(self):
-        return self.mirror.gripper
+    def effector(self):
+        return self.mirror.effector
 
     def close(self):
         try:
@@ -123,15 +123,15 @@ def main():
     fake = FakeSerial()
     arm = SerialArm(writer=fake, allow_uncalibrated=True)  # bench must opt in explicitly now
 
-    arm.apply("GRIPPER_CLOSE")
+    arm.apply("ENGAGE")
     arm.apply("JOINT_A_ROTATE(+15deg)")
     arm.apply("EMERGENCY_STOP")
     # --- once stopped, the WIRE must stay silent for anything but stop/home/retract ---
-    arm.apply("GRIPPER_CLOSE")  # blocked by the E-STOP freeze -> NOT transmitted
+    arm.apply("ENGAGE")  # blocked by the E-STOP freeze -> NOT transmitted
     arm.apply("JOINT_B_ROTATE(-5deg)")  # blocked by the E-STOP freeze -> NOT transmitted
     lines_during_stop = list(fake.lines)
     arm.apply("HOME")  # allowed while stopped -> transmitted, clears the latch
-    arm.apply("GRIPPER_OPEN")  # latch cleared -> transmitted again
+    arm.apply("RELEASE")  # latch cleared -> transmitted again
     # --- allow-list: an unrecognised command is never put on the wire ---
     arm.apply("DROP_EVERYTHING")  # invalid token -> dropped, NOT transmitted
 
@@ -142,7 +142,7 @@ def main():
     print(
         f"during E-STOP  : nothing new transmitted -> {lines_during_stop[-1]} was last before HOME"
     )
-    print(f"mirror gripper : {arm.gripper}   stopped: {arm.state()['stopped']}")
+    print(f"mirror effector : {arm.effector}   stopped: {arm.state()['stopped']}")
 
     # calibration gate: an INJECTED writer with no calibration + no opt-in must now be blocked too
     try:
@@ -160,7 +160,7 @@ def main():
     # fail-safe: a serial error must raise, not be swallowed
     fake.fail = True
     try:
-        arm.apply("GRIPPER_CLOSE")  # (arm is not stopped now; valid) -> attempts a write -> raises
+        arm.apply("ENGAGE")  # (arm is not stopped now; valid) -> attempts a write -> raises
         failsafe = False
     except RuntimeError:
         failsafe = True
@@ -172,14 +172,14 @@ def main():
     print("=" * 58)
 
     # ---- self-checks --------------------------------------------------------
-    assert fake.lines[:3] == ["GRIPPER_CLOSE", "JOINT_A_ROTATE(+15deg)", "EMERGENCY_STOP"], (
+    assert fake.lines[:3] == ["ENGAGE", "JOINT_A_ROTATE(+15deg)", "EMERGENCY_STOP"], (
         f"pre-stop commands not sent verbatim: {fake.lines}"
     )
-    assert fake.lines.count("GRIPPER_CLOSE") == 1, (
+    assert fake.lines.count("ENGAGE") == 1, (
         f"a command after EMERGENCY_STOP reached the wire — the freeze is not enforced on serial: {fake.lines}"
     )
     assert "JOINT_B_ROTATE(-5deg)" not in fake.lines, "a joint move after E-STOP reached the wire"
-    assert "HOME" in fake.lines and "GRIPPER_OPEN" in fake.lines, (
+    assert "HOME" in fake.lines and "RELEASE" in fake.lines, (
         "HOME must clear the latch and re-enable the wire"
     )
     assert "DROP_EVERYTHING" not in fake.lines, (

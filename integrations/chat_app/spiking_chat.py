@@ -62,8 +62,8 @@ INTENT_EXAMPLES = {
                       "what are you attending to", "what is your focus", "what do you notice"],
     "ask_safety":    ["are you safe", "is it dangerous", "safety first", "will you hurt anyone",
                       "emergency stop", "is this dangerous"],
-    "command":       ["close the gripper", "open the gripper", "move the arm",
-                      "close gripper", "open gripper", "grip"],
+    "command":       ["close the effector", "open the effector", "move the arm",
+                      "close effector", "open effector", "grip"],
 }
 
 
@@ -94,7 +94,7 @@ class SpikingChat:
         self.viz = bool(viz)
         self.viz_style = viz_style              # "netplot" (real MNI152 brain) | "hull" (self-contained)
         self._viz3d = None                      # lazily built on first show/update (viz path only)
-        # SELF-IMPROVEMENT mode: instead of a fixed external "open the gripper" reward, the brain
+        # SELF-IMPROVEMENT mode: instead of a fixed external "open the effector" reward, the brain
         # runs CURIOSITY-DRIVEN -- an intrinsic learning-progress reward (no external task reward)
         # drives SELF-DIRECTED learning from its own experience each tick. Its meta-goal is to
         # IMPROVE ITSELF: one primitive (curiosity + spiking learning), not open-ended recursive
@@ -120,7 +120,7 @@ class SpikingChat:
 
         # ---- the live brain: prime it so it holds a real goal + working memory ----
         # self-improve -> a curiosity-driven brain (needs jepa) + the spiking interaction learner,
-        # so it learns SELF-DIRECTED. Otherwise -> grasp-reward priming (fixed goal GRIPPER_OPEN).
+        # so it learns SELF-DIRECTED. Otherwise -> grasp-reward priming (fixed goal RELEASE).
         # reasoning=True opts into the two-world bridge: converse falls through to the research
         # reasoning/Gf/retrieval brain for turns the grounded intents don't claim. This is the
         # web/chat app (not the zero-dep core), so numpy/research are fine; arm commands stay gated.
@@ -156,7 +156,7 @@ class SpikingChat:
             for _ in range(60):                   # prime via curiosity (no ext reward)
                 self.tick_self_improve()
         else:
-            for _ in range(90):                   # form the goal (GRIPPER_OPEN) + fill lake WM
+            for _ in range(90):                   # form the goal (RELEASE) + fill lake WM
                 self.brain.tick(self._grasp, reward_fn=self._reward)
 
         # ---- intent prototypes: encode the example phrases once, sum per-channel counts ----
@@ -165,7 +165,7 @@ class SpikingChat:
 
     @staticmethod
     def _reward(unit, action):
-        return 1.0 if action == "GRIPPER_OPEN" else -1.0
+        return 1.0 if action == "RELEASE" else -1.0
 
     def tick_self_improve(self):
         """One SELF-IMPROVEMENT tick: curiosity-driven (intrinsic learning-progress reward, NO
@@ -345,7 +345,7 @@ def _run_viz_chat(seed=0, viz_style="netplot"):
     print("SPIKING CHAT + LIVE 3D BRAIN -- the whole brain lighting up as you converse")
     print("=" * 74)
     print("Try: 'what are you thinking', 'is this dangerous', 'what do you remember',")
-    print("     'what is your goal', 'close the gripper'.  Type 'quit'/'exit' (or Ctrl-C) to stop.")
+    print("     'what is your goal', 'close the effector'.  Type 'quit'/'exit' (or Ctrl-C) to stop.")
     try:
         while True:
             try:
@@ -425,7 +425,7 @@ def main():
     # (6) DETERMINISM: same seed + same messages -> identical replies + identical spike counts.
     def run(seed):
         c = SpikingChat(seed=seed)                # its own temp lake
-        msgs = ["hello", "what is your goal", "what do you remember", "close the gripper"]
+        msgs = ["hello", "what is your goal", "what do you remember", "close the effector"]
         outs = [c.respond(m) for m in msgs]
         replies = [o["reply"] for o in outs]
         counts = [o["input_spikes"] for o in outs]

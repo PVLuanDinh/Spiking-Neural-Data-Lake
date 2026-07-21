@@ -66,7 +66,7 @@ The LLM can never inject a raw command — `nl_interface` gates all output throu
 python local_llm/run_local.py
 
 # Output shows arm commands executing safely:
-#   [1] Input: Close the gripper
+#   [1] Input: Close the effector
 #       Intent: kind=arm, command=close
 #       State: stopped=False, ee=(0.1, 0.2, 0.3)
 #

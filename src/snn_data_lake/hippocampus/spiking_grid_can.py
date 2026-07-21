@@ -35,6 +35,32 @@ MECHANISM (pure LIF + recurrent connectivity; no backprop).
   - reset(pos) CLAMPS the bump onto the phase that encodes pos -- the optional LANDMARK / place->grid phase
     reset that corrects accumulated drift when a known landmark is seen.
 
+LANDMARK PHASE RESET (drift correction). Pure dead-reckoning DRIFTS: the shift gain is self-calibrated ONCE,
+so residual gain error plus sheet discretization accumulate with path length and the decoded phase slides
+away from ground truth. Real entorhinal grids do not drift without bound because sensory landmarks and
+boundaries RESET the grid phase (Hardcastle, Ganguli & Giocomo, Neuron 86:827, 2015 -- error accumulates with
+distance from a boundary and is corrected at it; Evans et al., J Neurosci 36:4266, 2016 -- place->grid
+feedback anchors the phase). Implemented here as:
+  - observe_landmark(id, true_pos=None) on the FIRST sighting imprints the co-active grid activity onto that
+    landmark cell's synapses by a one-shot HEBBIAN outer product (pre = the landmark cell fires, post = the
+    syn field), peak-normalized: w = syn / max(syn). If true_pos is supplied it imprints the idealized bump
+    at that place instead. The anchor is imprinted ONCE, while the estimate is still trusted; re-sightings
+    only READ it. Re-learning continually from an already-drifted bump would let the anchor itself drift --
+    deliberately NOT done, and re-sightings never receive a fresh ground-truth oracle.
+  - On RE-sighting the stored trace is injected as a graded CUE COMBINATION onto the synaptic field,
+    syn <- (1-gain)*syn + gain*scale*w, where scale matches the trace to the live bump's amplitude. Two
+    von Mises bumps at nearby phases combine into a bump whose circular mean lies BETWEEN them, weighted by
+    gain: gain=0 is a no-op, gain=1 a full re-clamp onto the stored phase, anything between a partial nudge.
+    This is NOT a teleport -- the membrane state v is left untouched and the CAN dynamics resolve the mixture.
+  - MEASURED LIMIT (kept, not tuned away): the mixture only works while the anchor/bump mismatch is a modest
+    fraction of a period. At gaps of 0.267..0.466 period the mixture is BIMODAL and the broad inhibition
+    extinguishes BOTH lobes -- bump amplitude collapses to 0.000 (gaps <=0.213 recover to 2.000). Because the
+    network knows this mismatch WITHOUT ground truth (stored anchor phase vs its own decode), a mismatch past
+    capture_threshold (default 0.2 period) makes the landmark CAPTURE outright (gain -> 1, a unimodal
+    re-clamp) rather than mix: large cue conflict resolves by the sensory cue winning, small conflict
+    integrates. capture_threshold=None keeps the raw fragile mixture -- main() asserts that it still fails.
+  - drift(true_pos) reports the current torus distance between decode() and a supplied ground truth.
+
 DISTINCTNESS. Not grid_cells.py / grid_place_map.py (analytic RATE fields, no recurrent dynamics). Not
 ring_attractor.py (1-D heading ring, scalar angular velocity). ZERO coupling to the arm / safety envelope:
 representation-only, imports only the stdlib, issues no commands, exposes no actuator route.
@@ -44,6 +70,20 @@ WITHIN one period, not over an open world (a multi-scale population would disamb
 Velocity integration is accurate within a bounded velocity range (the self-calibrated linear regime, |v| up
 to a few percent of the period per tick); larger per-tick velocities out-run the bump and integrate
 sub-linearly. Deterministic (no stochastic units).
+
+MEASURED DRIFT NUMBERS (this module's self-check; report them as they are).
+  - Free dead-reckoning over 4 open circuits (50 ticks at v=0.02 each = one full grid period per circuit)
+    drifts MONOTONICALLY: 0.1392 -> 0.2955 -> 0.4424 -> 0.5950 period, i.e. ~0.1487 per period travelled
+    (a residual shift-gain calibration error), reaching 84% of the 0.7071 largest error the torus can even
+    represent. The bump stays healthy throughout (amp 1.984) -- the estimate is LOST, the network is not dead.
+  - The SAME trajectory with 'home' sighted once per circuit stays BOUNDED: 0.0617/0.0060 alternating,
+    0.0060 at circuit 4 (99x lower than free) and still <= 0.0617 out to circuit 8, amp 1.941. The residual
+    is not zero and does not shrink to zero -- error re-accumulates between sightings and is knocked back
+    down at each one, which is exactly what "bounded, not corrected" means.
+  - NEGATIVE RESULT worth stating: on a CLOSED square lap there is essentially NO accumulating drift to fix
+    (0.067 after 5 laps and the same 0.067 after 30 laps) because equal +v and -v cancel the multiplicative
+    gain error. Landmark reset buys nothing there. Drift is a property of the PATH, not just of path length.
+  - The graded correction's failure mode is REAL and kept: see capture_threshold above (amp -> 0.000).
 
   python -m snn_data_lake.hippocampus.spiking_grid_can     # self-check; also runnable by run_selfchecks.py
 """
@@ -130,6 +170,8 @@ class SpikingGridCAN:
         vel_gain=1.0,
         settle_steps=30,
         calibrate=True,
+        landmark_gain=0.6,
+        capture_threshold=0.2,
     ):
         self.n = int(n)
         self.seed = int(seed)  # network is deterministic; seed kept for interface parity
@@ -140,6 +182,14 @@ class SpikingGridCAN:
         self.syn_decay = float(syn_decay)
         self.vth = float(vth)
         self.vel_gain = float(vel_gain)
+        self.landmark_gain = float(
+            landmark_gain
+        )  # default strength of a landmark phase reset in [0,1]
+        self.capture_threshold = None if capture_threshold is None else float(capture_threshold)
+        self.last_capture = (
+            False  # did the most recent sighting CAPTURE (large cue conflict) rather than mix?
+        )
+        self._landmarks = {}  # landmark id -> Hebbian synaptic trace of the grid phase it was first seen at
         self.N = self.n * self.n
 
         n = self.n
@@ -233,10 +283,81 @@ class SpikingGridCAN:
         return [[row[i] * col[j] for j in range(n)] for i in range(n)]
 
     def reset(self, pos=(0.0, 0.0)):
-        """Clamp the bump onto the location `pos` (the optional landmark / place->grid phase reset)."""
+        """Clamp the bump onto the location `pos` (the optional landmark / place->grid phase reset).
+
+        Learned landmark anchors are long-term memory and SURVIVE a reset -- only the bump is re-clamped.
+        """
         self.syn = self._bump(pos)
         self.v = _zeros(self.n)
         return self.decode()
+
+    # ---- landmark phase reset: Hebbian place->grid anchor + graded correction of accumulated drift ----
+    def observe_landmark(self, landmark_id, true_pos=None, gain=None):
+        """Sight landmark `landmark_id`; return the magnitude of the phase correction applied (position units).
+
+        FIRST sighting -> one-shot HEBBIAN imprint of the co-active grid phase (w = syn/max(syn), or the
+        idealized bump at `true_pos` when supplied); no correction is applied, so 0.0 is returned.
+        RE-sighting -> graded cue combination toward the STORED phase, syn <- (1-gain)*syn + gain*scale*w.
+        `true_pos` is used ONLY on the first sighting: re-sightings are corrected by the landmark MEMORY,
+        never by a fresh ground-truth oracle. `gain` defaults to self.landmark_gain and is clipped to [0,1].
+        """
+        if landmark_id not in self._landmarks:
+            field = self._bump(true_pos) if true_pos is not None else [row[:] for row in self.syn]
+            peak = max(max(r) for r in field)
+            if peak <= 0.0:
+                peak = 1.0
+            self._landmarks[landmark_id] = [[c / peak for c in r] for r in field]
+            return 0.0
+
+        w = self._landmarks[landmark_id]
+        g = self.landmark_gain if gain is None else float(gain)
+        g = 0.0 if g < 0.0 else (1.0 if g > 1.0 else g)
+        before = self.decode()
+        anchor = self._decode_field(w)
+        # Internal mismatch between the anchor and the bump -- known WITHOUT ground truth (both are the
+        # network's own state). MEASURED failure: a mixture of two bumps more than ~0.21 of a period apart
+        # is bimodal and the broad inhibition extinguishes BOTH lobes (amplitude -> 0.000 at gaps
+        # 0.267..0.466; see main()'s failing control). Past capture_threshold the landmark therefore CAPTURES
+        # outright (g -> 1) instead of mixing -- large cue conflict resolves by the sensory cue winning,
+        # small conflict integrates. Set capture_threshold=None to keep the raw (fragile) mixture.
+        gap = math.hypot(
+            _circ_diff(anchor[0], before[0], self.spacing),
+            _circ_diff(anchor[1], before[1], self.spacing),
+        )
+        self.last_capture = self.capture_threshold is not None and gap > self.capture_threshold
+        if self.last_capture:
+            g = 1.0
+        peak_w = max(max(r) for r in w)
+        scale = (self.bump_amplitude() / peak_w) if peak_w > 0.0 else 1.0
+        n = self.n
+        syn = self.syn
+        for i in range(n):
+            si, wi = syn[i], w[i]
+            for j in range(n):
+                si[j] = (1.0 - g) * si[j] + g * scale * wi[
+                    j
+                ]  # graded cue combination, NOT a teleport
+        after = self.decode()
+        return math.hypot(
+            _circ_diff(after[0], before[0], self.spacing),
+            _circ_diff(after[1], before[1], self.spacing),
+        )
+
+    def stored_phase(self, landmark_id):
+        """Decoded position (x, y) of the grid phase anchored to `landmark_id`, or None if never seen."""
+        w = self._landmarks.get(landmark_id)
+        return None if w is None else self._decode_field(w)
+
+    def known_landmarks(self):
+        """Ids of every landmark whose grid phase has been imprinted, in insertion order."""
+        return list(self._landmarks)
+
+    def drift(self, true_pos):
+        """Current path-integration error: torus distance from decode() to the supplied ground truth."""
+        x, y = self.decode()
+        return math.hypot(
+            _circ_diff(x, true_pos[0], self.spacing), _circ_diff(y, true_pos[1], self.spacing)
+        )
 
     # ---- readout: population-vector (circular-mean) center of the spiking bump ----
     def _phase(self, marginal):
@@ -255,12 +376,16 @@ class SpikingGridCAN:
         col = self._phase(_col_sums(self.syn, n)) % (2 * math.pi) / (2 * math.pi) * self.n
         return (row, col)
 
+    def _decode_field(self, field):
+        """Population-vector position (x, y) of ANY n-by-n activity field (used for stored landmark traces)."""
+        n = self.n
+        y = self._phase(_row_sums(field, n)) % (2 * math.pi) / (2 * math.pi) * self.spacing
+        x = self._phase(_col_sums(field, n)) % (2 * math.pi) / (2 * math.pi) * self.spacing
+        return (x, y)
+
     def decode(self):
         """Decoded continuous position (x, y) within one grid period [0, spacing)."""
-        n = self.n
-        y = self._phase(_row_sums(self.syn, n)) % (2 * math.pi) / (2 * math.pi) * self.spacing
-        x = self._phase(_col_sums(self.syn, n)) % (2 * math.pi) / (2 * math.pi) * self.spacing
-        return (x, y)
+        return self._decode_field(self.syn)
 
     def bump_amplitude(self):
         """Peak synaptic activity of the bump -- a liveness measure (single stable bump => > 0)."""
@@ -283,6 +408,78 @@ class SpikingGridCAN:
             self.step((cal_v, 0.0))
         moved = _circ_diff(self.decode()[0], before[0], self.spacing)
         return (cal_v * cal_steps) / moved if abs(moved) > 1e-9 else 1.0
+
+
+CIRCUIT_V, CIRCUIT_STEPS = 0.02, 50  # 0.02 * 50 == 1.0 == exactly ONE grid period per circuit
+
+
+def _run_circuits(can, circuits, use_landmarks, gain=0.6):
+    """Walk `circuits` OPEN circuits around the periodic sheet; return (per-circuit drift, worst, min amp).
+
+    Why an OPEN circuit and not a closed loop: a CLOSED loop commands equal +v and -v, so a multiplicative
+    shift-gain error CANCELS and nothing accumulates (measured: a 24-tick square lap sits at 0.067 error after
+    5 laps AND after 30 laps -- flat). Dead-reckoning drift only accumulates when velocity does not reverse.
+    Because the sheet is a torus, translating by exactly one period returns to the SAME place, so a constant
+    +v circuit both accumulates error monotonically and revisits the landmark once per circuit.
+
+    Ground truth is the exact integral of the COMMANDED velocities. 'home' is imprinted BEFORE any motion
+    (drift exactly 0, so the anchor is exact) and re-sighted at the end of every circuit.
+    """
+    tx, ty = can.decode()
+    if use_landmarks:
+        can.observe_landmark("home")  # one-shot Hebbian imprint while the estimate is still exact
+    worst = 0.0
+    min_amp = can.bump_amplitude()
+    per_circuit = []
+    for _ in range(circuits):
+        for _k in range(CIRCUIT_STEPS):
+            can.step((CIRCUIT_V, CIRCUIT_V))
+            tx += CIRCUIT_V
+            ty += CIRCUIT_V
+            worst = max(worst, can.drift((tx, ty)))
+            min_amp = min(min_amp, can.bump_amplitude())
+        if use_landmarks:
+            can.observe_landmark("home", gain=gain)
+            min_amp = min(min_amp, can.bump_amplitude())
+        per_circuit.append(can.drift((tx, ty)))
+    return per_circuit, worst, min_amp
+
+
+def _settled(seed=0):
+    """A fresh network settled onto a stable bump at mid-period (away from the wrap seam)."""
+    can = SpikingGridCAN(n=16, seed=seed)
+    can.reset((0.5, 0.5))
+    for _ in range(20):
+        can.step((0.0, 0.0))
+    return can
+
+
+def _graded_probe(gain, walk=6, capture_threshold=0.2, settle=0):
+    """Learn an anchor, walk away, correct with `gain`; deterministic, so gains are directly comparable.
+
+    `settle` free-running ticks are taken AFTER the correction -- a bimodal mixture still looks alive on the
+    tick it is written and only collapses once the recurrent inhibition resolves it, so the failing control
+    needs settle > 0 to see the death.
+    Returns (correction magnitude, gap-to-anchor before, gap-to-anchor after, bump amplitude after).
+    """
+    can = _settled()
+    can.capture_threshold = capture_threshold
+    can.observe_landmark("L")  # one-shot Hebbian imprint of the settled phase
+    anchor = can.stored_phase("L")
+    for _ in range(walk):
+        can.step((0.02, 0.02))  # walk away -> the bump now sits elsewhere
+    before = can.decode()
+    corr = can.observe_landmark("L", gain=gain)
+    for _ in range(settle):
+        can.step((0.0, 0.0))
+    after = can.decode()
+
+    def gap(p):
+        return math.hypot(
+            _circ_diff(p[0], anchor[0], can.spacing), _circ_diff(p[1], anchor[1], can.spacing)
+        )
+
+    return corr, gap(before), gap(after), can.bump_amplitude()
 
 
 def main():
@@ -337,6 +534,37 @@ def main():
     b.reset((0.1, 0.1))
     det = all(a.step((0.02, 0.015)) == b.step((0.02, 0.015)) for _ in range(30))
 
+    # ---- 6. DRIFT: pure dead-reckoning slides away from ground truth as the path lengthens ----
+    n_circ = 4  # honest horizon: past ~4.8 circuits the error exceeds the half-period and the torus WRAPS it
+    free_errs, free_worst, free_amp = _run_circuits(_settled(), n_circ, use_landmarks=False)
+    free_final = free_errs[-1]
+    per_circuit = free_final / n_circ
+    torus_max = math.hypot(0.5, 0.5)  # largest error representable on the periodic sheet
+
+    # ---- 7. LANDMARK phase reset: the SAME trajectory, error kept BOUNDED instead of accumulating ----
+    lm_errs, lm_worst, lm_amp = _run_circuits(_settled(), 8, use_landmarks=True)
+    lm_final = lm_errs[n_circ - 1]  # same horizon as the no-landmark run, for a fair head-to-head
+    lm_long = max(lm_errs)  # ... and it stays bounded for twice as long
+
+    # ---- 8. the correction is GRADED (monotone in gain) and leaves the bump alive ----
+    grades = [(g,) + _graded_probe(g) for g in (0.0, 0.5, 1.0)]
+    gaps_after = [
+        row[3] for row in grades
+    ]  # gap-to-anchor after correcting at gain 0.0 / 0.5 / 1.0
+    corrs = [row[1] for row in grades]
+    grade_amp = min(row[4] for row in grades)
+
+    # ---- 9. FAILING CONTROL (kept, not tuned away): the raw mixture EXTINGUISHES the bump when the
+    #         anchor/bump mismatch is large. capture_threshold=None disables the cue-capture rule. ----
+    _, fail_gap0, _, fail_amp = _graded_probe(0.6, walk=12, capture_threshold=None, settle=20)
+    _, _, ok_gap, ok_amp = _graded_probe(0.6, walk=12, capture_threshold=0.2, settle=20)
+
+    # ---- 10. determinism of the landmark path itself ----
+    det_lm = (
+        _run_circuits(_settled(), 3, use_landmarks=True)[0]
+        == _run_circuits(_settled(), 3, use_landmarks=True)[0]
+    )
+
     print("=" * 72)
     print("SPIKING GRID CAN -- 2-D continuous-attractor path integration by a moving LIF bump")
     print("=" * 72)
@@ -356,6 +584,41 @@ def main():
         f"return err {loop_err:.4f}"
     )
     print(f"landmark reset -> ({r[0]:.3f},{r[1]:.3f}) err {reset_err:.4f}; determinism {det}")
+    print("-" * 72)
+    print(
+        f"DRIFT (no landmarks), {n_circ} open circuits x {CIRCUIT_STEPS} ticks at v={CIRCUIT_V} "
+        f"(= 1 grid period each):"
+    )
+    print(
+        f"  per-circuit error {[round(e, 4) for e in free_errs]} -> DRIFTS to {free_final:.4f} "
+        f"({per_circuit:.4f}/period, {100 * free_final / torus_max:.0f}% of the {torus_max:.4f} torus max)"
+    )
+    print(
+        f"  the bump itself stays healthy while drifting (min amp {free_amp:.3f}) -- it is LOST, not dead"
+    )
+    print("LANDMARK PHASE RESET, same trajectory ('home' sighted once per circuit, gain 0.6):")
+    print(
+        f"  per-circuit error {[round(e, 4) for e in lm_errs]} -> BOUNDED at {lm_final:.4f} "
+        f"@circuit {n_circ} (worst {lm_worst:.4f}, still <= {lm_long:.4f} at circuit 8), min amp {lm_amp:.3f}"
+    )
+    print(
+        f"  head-to-head @circuit {n_circ}: {free_final:.4f} (free) vs {lm_final:.4f} (landmark) "
+        f"= {free_final / max(lm_final, 1e-9):.0f}x lower; worst-case {free_worst:.4f} vs {lm_worst:.4f}"
+    )
+    print("GRADED correction (gap to anchor 0.1510 before; gain 0.0 / 0.5 / 1.0):")
+    print(
+        f"  correction {[round(c, 4) for c in corrs]} -> residual gap {[round(g, 4) for g in gaps_after]} "
+        f"(monotone, gain 0 = no-op, gain 1 = full re-clamp); min amp {grade_amp:.3f}"
+    )
+    print("HONEST FAILURE (kept, not tuned away) -- raw mixture at a LARGE anchor/bump mismatch:")
+    print(
+        f"  gap {fail_gap0:.4f} + capture DISABLED -> bimodal mixture, bump EXTINGUISHED after settling "
+        f"(amp {fail_amp:.3f})"
+    )
+    print(
+        f"  same gap WITH the cue-capture rule -> unimodal re-clamp, residual {ok_gap:.4f}, amp {ok_amp:.3f}"
+    )
+    print(f"determinism (landmark path) {det_lm}")
     print("=" * 72)
 
     # ---- self-check: deterministic asserts, no backprop ----
@@ -373,9 +636,54 @@ def main():
         f"landmark reset must re-clamp the bump exactly onto pos (err {reset_err:.4f})"
     )
     assert det, "same seed must integrate an identical trajectory (deterministic)"
+
+    # (a) pure dead-reckoning DRIFTS, and the drift GROWS monotonically with path length
+    assert free_errs == sorted(free_errs), (
+        f"dead-reckoning error must grow monotonically with path length (got {free_errs})"
+    )
+    assert free_final > 0.3, (
+        f"drift over {n_circ} circuits must be substantial, not negligible (got {free_final:.4f})"
+    )
+    assert free_amp > 0.5, (
+        f"the drifting bump must still be ALIVE -- drift is a lost estimate, not a dead network "
+        f"(min amp {free_amp:.3f})"
+    )
+    # (b) periodic landmark sightings keep the SAME trajectory's error BOUNDED and much lower
+    assert lm_final < free_final / 5.0, (
+        f"landmark reset must cut the error substantially ({lm_final:.4f} vs free {free_final:.4f})"
+    )
+    assert lm_worst < 0.25 and lm_long < 0.25, (
+        f"landmark-corrected error must stay BOUNDED over 8 circuits (worst {lm_worst:.4f}, max {lm_long:.4f})"
+    )
+    # (c) the correction is GRADED (monotone in gain) and does not destroy the bump
+    assert gaps_after[0] > gaps_after[1] > gaps_after[2], (
+        f"correction must be GRADED: bigger gain -> smaller residual gap (got {gaps_after})"
+    )
+    assert corrs[0] == 0.0 and gaps_after[2] < 1e-9, (
+        f"gain 0 must be a no-op and gain 1 a full re-clamp onto the stored phase (got {corrs[0]:.4f}, "
+        f"{gaps_after[2]:.6f})"
+    )
+    assert grade_amp > 0.5 and lm_amp > 0.5, (
+        f"a graded correction must NOT destroy the bump (min amp {grade_amp:.3f} / {lm_amp:.3f})"
+    )
+    # (d) the KEPT failure: the raw mixture really does extinguish the bump at a large mismatch
+    assert fail_amp < 0.01, (
+        f"HONEST FAILING CONTROL: the raw mixture at gap {fail_gap0:.4f} is expected to extinguish the bump "
+        f"(amp {fail_amp:.3f}) -- if this now passes, the documented limit changed"
+    )
+    # (the residual here is NOT 0: the capture re-clamps exactly onto the anchor, then 20 free-running
+    #  settle ticks let the bump relax onto the discrete sheet -- honest attractor pinning, ~0.03 period)
+    assert ok_amp > 0.5 and ok_gap < 0.05, (
+        f"the cue-capture rule must survive the same mismatch (amp {ok_amp:.3f}, residual {ok_gap:.6f})"
+    )
+    assert det_lm, "the landmark-corrected trajectory must be deterministic too"
     print(
         f"self-check OK: {can.N}-LIF spiking bump path-integrates velocity to target ({tx:.3f},{ty:.3f}) "
         f"decoded ({dx:.3f},{dy:.3f}) err {pi_err:.4f}; landmark reset re-clamps; loop err {loop_err:.4f}; "
+        f"dead-reckoning DRIFTS {free_final:.4f} over {n_circ} periods vs {lm_final:.4f} with landmark "
+        f"phase reset ({free_final / max(lm_final, 1e-9):.0f}x, bounded <= {lm_long:.4f} over 8); correction "
+        f"graded (residual {gaps_after[0]:.4f}/{gaps_after[1]:.4f}/{gaps_after[2]:.4f} at gain 0/0.5/1, "
+        f"amp {grade_amp:.3f}); raw mixture at gap {fail_gap0:.4f} KILLS the bump (amp {fail_amp:.3f}, kept); "
         f"deterministic"
     )
 

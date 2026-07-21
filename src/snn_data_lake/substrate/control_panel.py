@@ -179,8 +179,8 @@ class ArmTab(ttk.Frame):
             ("JOINT_A -", f"JOINT_A_ROTATE(-{STEP_DEG}deg)"),
             ("JOINT_B +", f"JOINT_B_ROTATE(+{STEP_DEG}deg)"),
             ("JOINT_B -", f"JOINT_B_ROTATE(-{STEP_DEG}deg)"),
-            ("GRIPPER OPEN", "GRIPPER_OPEN"),
-            ("GRIPPER CLOSE", "GRIPPER_CLOSE"),
+            ("EFFECTOR OPEN", "RELEASE"),
+            ("EFFECTOR CLOSE", "ENGAGE"),
             ("HOME", "HOME"),
             ("RETRACT_ALL", "RETRACT_ALL"),
         ]
@@ -303,18 +303,18 @@ class ArmTab(ttk.Frame):
         c.create_line(*p1, *p2, fill=link, width=6, capstyle="round")
         for px_, py_ in (p0, p1):
             c.create_oval(px_ - 4, py_ - 4, px_ + 4, py_ + 4, fill="#333")
-        # end-effector: gripper open (hollow) vs closed (filled)
-        eefill = "#080" if arm.gripper else "white"
+        # end-effector: effector open (hollow) vs closed (filled)
+        eefill = "#080" if arm.effector else "white"
         c.create_oval(
             p2[0] - 6, p2[1] - 6, p2[0] + 6, p2[1] + 6, fill=eefill, outline="#080", width=2
         )
 
         s = arm.state()
-        grip = "CLOSED" if s["gripper"] else "open"
+        grip = "CLOSED" if s["effector"] else "open"
         self.status.configure(
             text=(
                 f"theta(deg) A={s['theta_deg'][0]:5.1f} B={s['theta_deg'][1]:5.1f}   "
-                f"ee=({s['ee'][0]:+.2f},{s['ee'][1]:+.2f})   gripper={grip}\n"
+                f"ee=({s['ee'][0]:+.2f},{s['ee'][1]:+.2f})   effector={grip}\n"
                 f"stopped={s['stopped']}   collision={s['collision']}   "
                 f"deviation={s['deviation']:.3f} m   backend={s['backend']}"
             ),
@@ -396,7 +396,7 @@ class RecognitionTab(ttk.Frame):
         cmd, _ = self.interp.interpret({"match": gesture})  # gesture -> command (reused)
         self.arm.apply(cmd)  # gated arm reaction
         ee = self.arm.state()["ee"]
-        grip = "CLOSED" if self.arm.gripper else "open"
+        grip = "CLOSED" if self.arm.effector else "open"
         self.idx += 1
         self.head.configure(
             text=f"window {self.idx}/{len(self.windows)}   gesture={gesture}   "
@@ -404,7 +404,7 @@ class RecognitionTab(ttk.Frame):
         )
         self._logline(
             f"win {self.idx:3d}  gesture={gesture:<13} cmd={cmd:<13} "
-            f"gripper={grip} ee=({ee[0]:+.2f},{ee[1]:+.2f})"
+            f"effector={grip} ee=({ee[0]:+.2f},{ee[1]:+.2f})"
         )
 
     def toggle(self):
@@ -554,7 +554,7 @@ class NLTab(ttk.Frame):
             self,
             foreground="#555",
             font=("TkDefaultFont", 8),
-            text="examples:  close the gripper   open   rotate joint A   go home   STOP   "
+            text="examples:  close the effector   open   rotate joint A   go home   STOP   "
             "read telemetry channel 7 window 1000",
         ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(4, 0))
         ttk.Label(
@@ -894,15 +894,15 @@ def _smoke():
 
     # NL Command tab (display-free): an English phrase maps to a gated-apply-valid command; unsafe -> reject
     nlx = NLInterface(backend=StubBackend())
-    assert nlx.interpret("close the gripper")["command"] == "GRIPPER_CLOSE", (
+    assert nlx.interpret("close the effector")["command"] == "ENGAGE", (
         "NL 'close' phrase mis-mapped"
     )
     assert nlx.interpret("delete everything")["kind"] == "reject", (
         "unsafe NL phrase must be rejected"
     )
     arm2 = arm_sim.ArmSim()
-    arm2.apply(nlx.interpret("close the gripper")["command"])
-    assert arm2.state()["gripper"], "an NL-mapped command must drive the gated arm"
+    arm2.apply(nlx.interpret("close the effector")["command"])
+    assert arm2.state()["effector"], "an NL-mapped command must drive the gated arm"
 
     # Core Runner (display-free): the whole core is discoverable + runnable in-process
     core = core_modules()

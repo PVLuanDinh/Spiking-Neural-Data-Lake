@@ -23,7 +23,7 @@ CONTACT = 0.04  # d < CONTACT -> imminent-contact reflex EMERGENCY_STOP
 TRAJ_DEV_MAX = 0.15  # end-effector deviation (m) from the intended pose that trips the
 # trajectory-deviation reflex (the "differential position comparator":
 # an external perturbation knocks the arm off its commanded path).
-# tied to arm reach (l1+l2=2m); re-tune per real rig/gripper.
+# tied to arm reach (l1+l2=2m); re-tune per real rig/effector.
 
 # ---- real-hardware safety gate -------------------------------------------------
 # CONTACT / joint-limit / reflex values here are PLACEHOLDERS tuned to the sim, NOT your rig.

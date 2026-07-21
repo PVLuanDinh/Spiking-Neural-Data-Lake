@@ -503,6 +503,119 @@ class PlasticityExpert:
         )
 
 
+# ------------------------------------------------------------- relational structure-mapping ---------
+# query shape: two relational SITUATIONS as rel(a,b,..) propositions, separated by '::'
+#   "map attracts(sun,planet) revolves_around(planet,sun) :: attracts(nucleus,electron) ..."
+# The parenthesised proposition form is what distinguishes this from the letter analogy
+# 'abc:abd :: ijk:?' that LetterExpert already answers correctly (which carries no props).
+
+_PROP = re.compile(r"([a-z_][a-z0-9_]*)\s*\(([^()]*)\)")
+_IS_TO_AS = re.compile(r"\bis\s+to\b.*\bas\b.*\bis\s+to\b")
+
+
+class StructureMappingSolver:
+    """vsa_structure_mapping.py -- Gentner (1983) relational STRUCTURE-MAPPING over VSA spike codes.
+    Wraps StructureMapper.map/score: given two relational situations it recovers the one-to-one OBJECT
+    correspondence that maximises SYSTEMATICITY -- objects match by the configuration of relations they
+    participate in (sun<->nucleus), never by surface identity. This is the relations-over-relations
+    analogy the letter/number Gf experts cannot do: they induce a shift within ONE sequence, this maps
+    a whole relational SYSTEM onto another.
+
+    Honesty gates, both grounded in the held-out benchmark (reasoning/analogy_bench.py, 9/12):
+      - systematicity 0 -> honest gap. With no shared predicate there is no gradient to climb, so the
+        returned correspondence would be an ungrounded guess (the benchmark's 'renamed_relations' case).
+      - more than MAX_OBJ objects a side -> honest gap. The benchmark shows long chains settle into a
+        SHIFTED near-miss local optimum instead of the true maximum, so past that width the answer is
+        not trustworthy (and the search cost grows fast on a live turn)."""
+
+    name, module, source, uses = "structure-map", "vsa_structure_mapping", "gf", "stdlib"
+    DIM, MAX_OBJ = 1024, 6  # MAX_OBJ: measured trust boundary, see analogy_bench.py
+
+    def __init__(self, seed=0):
+        self.seed = seed
+        self._Mapper = None  # lazy: StructureMapper on first answer (score() stays pure regex)
+
+    @staticmethod
+    def _props(chunk):
+        """'rel(a, b) rel2(c)' -> [('rel','a','b'), ('rel2','c')]. Args are bare identifiers."""
+        out = []
+        for rel, argstr in _PROP.findall(chunk):
+            args = re.findall(r"[a-z0-9_]+", argstr)
+            if args:
+                out.append((rel,) + tuple(args))
+        return out
+
+    def _parse(self, q):
+        """Two proposition SETS separated by '::' -> (source, target); None when it is not that."""
+        if "::" not in q.low:
+            return None
+        head, _, tail = q.low.partition("::")
+        src, tgt = self._props(head), self._props(tail)
+        if not src or not tgt:
+            return None
+        return src, tgt
+
+    @staticmethod
+    def _objects(props):
+        seen = []
+        for prop in props:
+            for a in prop[1:]:
+                if a not in seen:
+                    seen.append(a)
+        return seen
+
+    def score(self, q):
+        if q.analogy:  # 'abc:abd :: ijk:?' is LetterExpert's -- never hijack it
+            return 0.0
+        if self._parse(q):
+            return 0.62  # a real relational analogy: competes, but under the single-purpose experts
+        if _IS_TO_AS.search(q.low):
+            return 0.2  # plausible relational analogy, but no propositions to ground it -> won't fire
+        return 0.0
+
+    def answer(self, q):
+        parsed = self._parse(q)
+        if parsed is None:
+            return (
+                "[honest gap] give me two relational situations as propositions separated by '::' "
+                "(e.g. 'attracts(sun,planet) revolves_around(planet,sun) :: "
+                "attracts(nucleus,electron) revolves_around(electron,nucleus)').",
+                False,
+            )
+        src, tgt = parsed
+        wide = max(len(self._objects(src)), len(self._objects(tgt)))
+        if wide > self.MAX_OBJ:
+            return (
+                "[honest gap] %d objects a side is past my measured search budget (%d) -- on wider "
+                "systems the mapping settles into a shifted near-miss, so i will not claim one."
+                % (wide, self.MAX_OBJ),
+                False,
+            )
+        if self._Mapper is None:
+            from snn_data_lake.reasoning.vsa_structure_mapping import StructureMapper
+
+            self._Mapper = StructureMapper
+        mapper = self._Mapper(dim=self.DIM, seed=self.seed)  # FRESH: map() advances its own rng
+        mapping = mapper.map(src, tgt)
+        if not mapping:
+            return ("[honest gap] i could not put the two situations into correspondence.", False)
+        systematicity = mapper.score(mapping, src, tgt)
+        if systematicity <= 0.0:
+            return (
+                "[honest gap] the two situations share no relational structure (systematicity 0.00) "
+                "-- any correspondence i returned would be a guess, so i return none.",
+                False,
+            )
+        corr = ", ".join("%s->%s" % (b, t) for b, t in sorted(mapping.items()))
+        return (
+            "[structure-map] relational structure-mapping (Gentner) over the spiking VSA: %s "
+            "(systematicity %.2f -- %d of %d base relations survive the mapping). objects matched by "
+            "their RELATIONAL role, not by surface similarity."
+            % (corr, systematicity, round(systematicity * len(src)), len(src)),
+            True,
+        )
+
+
 def _rng(tag):
     """Deterministic per-content RNG: crc32 of the tag seeds a fresh random.Random (never builtin hash)."""
     import random
@@ -695,8 +808,9 @@ class ReasoningCortex:
                 "expert": None,
                 "reply": (
                     "[honest gap] no reasoning expert is confident about this query -- it is "
-                    "outside the live studies (Gf sequences/analogy/Raven, HDC binding, SDM "
-                    "recall, dense associative memory, SOM clustering, triplet-STDP). no bluff."
+                    "outside the live studies (Gf sequences/analogy/Raven, relational "
+                    "structure-mapping, HDC binding, SDM recall, dense associative memory, "
+                    "SOM clustering, triplet-STDP). no bluff."
                 ),
             }
         try:
@@ -722,8 +836,10 @@ class ReasoningCortex:
 def build_default_cortex(
     seed=0, triples=None, enable_recognizer_bank=False, enable_abduction=False, enable_rpm=False
 ):
-    """Register the nine live reasoning experts (each a thin adapter over one reasoning/ study --
-    incl. the ARC grid expert, inert unless the query is an explicit 'arc:' grid task).
+    """Register the ten live reasoning experts (each a thin adapter over one reasoning/ study --
+    incl. the ARC grid expert, inert unless the query is an explicit 'arc:' grid task, and the
+    relational structure-mapping solver, inert unless the query carries two 'rel(a,b) :: rel(c,d)'
+    proposition sets).
     With `triples` (the caller's OWN stored (head, relation, tail) KB facts), also register the
     RelationalCompletionExpert: LEARNED link prediction (kb_ranking.DistMult) over those triples --
     generalized relational inference past exact lookup. triples=None/empty -> the 8-expert cortex,
@@ -739,6 +855,7 @@ def build_default_cortex(
         ClusterExpert,
         PlasticityExpert,
         ArcExpert,
+        StructureMappingSolver,
     ):
         cortex.register(expert_cls(seed=seed))
     if triples:

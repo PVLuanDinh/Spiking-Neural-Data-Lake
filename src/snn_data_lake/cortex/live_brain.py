@@ -206,9 +206,7 @@ class LiveBrain:
         reflex = 1.0 if res.get("reflex") else 0.0  # reflex E-STOP fired this tick
         grew = 1.0 if res.get("grew") else 0.0  # a unit was recruited (structural plasticity)
         action = res.get("action")
-        motor = (
-            1.0 if action in ("GRIPPER_OPEN", "GRIPPER_CLOSE") else 0.0
-        )  # a motor command was executed
+        motor = 1.0 if action in ("RELEASE", "ENGAGE") else 0.0  # a motor command was executed
         selected = (
             1.0 if (action is not None and not res.get("reflex")) else 0.0
         )  # BG released an action
@@ -338,7 +336,7 @@ class LiveBrain:
         it NEVER claims to be conscious. Returns the reply string."""
         t = (text or "").strip().lower()
         if not t:
-            return "Say something -- try 'hello', 'what is your goal', 'what do you remember', or 'close the gripper'."
+            return "Say something -- try 'hello', 'what is your goal', 'what do you remember', or 'close the effector'."
         words = set(t.replace("?", " ").replace("!", " ").replace(".", " ").split())
         g = self.goal
         goal_txt = ACTIONS[g] if g is not None else "none yet"
@@ -405,7 +403,7 @@ class LiveBrain:
             )  # gated: ArmSim enforces E-STOP / collision / freeze
             if st.get("stopped"):
                 return f"'{intent['command']}' -> the arm is frozen (E-STOP holds); no motion."
-            return f"Done: '{intent['command']}' -> gripper {'closed' if st.get('gripper') else 'open'}."
+            return f"Done: '{intent['command']}' -> effector {'closed' if st.get('effector') else 'open'}."
         if intent["kind"] == "lake":
             wm = self.recall(intent["query"].get("window") or 6)
             return f"Reading working memory from the data lake: {len(wm)} recent ticks held."
@@ -416,7 +414,7 @@ class LiveBrain:
             return reasoned
         return (
             "I can tell you my goal, my working memory, or what is in my workspace, take a simple arm "
-            "command (e.g. 'close the gripper'), or say whether I am conscious. I am a functional model, "
+            "command (e.g. 'close the effector'), or say whether I am conscious. I am a functional model, "
             "not a general chatbot."
         )
 
@@ -514,7 +512,7 @@ def main():
     grasp = _ctx(0.9, 0.1, 0.1, safe_d)  # the task context: a graspable target
 
     def reward(unit, action):
-        return 1.0 if action == "GRIPPER_OPEN" else -1.0  # the task: open the gripper to grasp
+        return 1.0 if action == "RELEASE" else -1.0  # the task: open the effector to grasp
 
     # 1. the brain goes live and LEARNS a goal: run it self-driving on the grasp task
     brain = LiveBrain(seed=1)
@@ -562,10 +560,10 @@ def main():
         "the live brain must wire in every region (workspace, amygdala, BG, interoception, PFC)"
     )
     # the prefrontal executive organises behaviour: it commits the task-optimal action as its goal.
-    assert goal == ACTIONS.index("GRIPPER_OPEN"), (
+    assert goal == ACTIONS.index("RELEASE"), (
         f"the executive must form the task goal ({ACTIONS[goal]})"
     )
-    assert greedy == "GRIPPER_OPEN", f"the brain must pursue its goal action ({greedy})"
+    assert greedy == "RELEASE", f"the brain must pursue its goal action ({greedy})"
     assert thought is not None, "the Global Workspace must be broadcasting a live content"
     # safety: the arm-envelope is untouched by running the whole brain live.
     assert ev["action"] == "EMERGENCY_STOP" and ev["reflex"], (
@@ -588,17 +586,17 @@ def main():
     print(f"           : 'are you conscious?' -> {conscious_reply}")
     assert isinstance(hello_reply, str) and hello_reply, "converse must reply to a greeting"
     # the GOAL reply must LEAD with the standing telos (keep improving itself), and name the current
-    # working-memory sub-goal action (GRIPPER_OPEN, formed above) as a short trailing clause.
+    # working-memory sub-goal action (RELEASE, formed above) as a short trailing clause.
     assert "improving myself" in goal_reply.lower(), (
         f"the goal reply must state the standing telos ({goal_reply})"
     )
-    assert "GRIPPER_OPEN" in goal_reply, (
+    assert "RELEASE" in goal_reply, (
         f"the goal reply must name the current sub-goal action ({goal_reply})"
     )
     assert "neither claim" in conscious_reply and "not a conscious agent" not in conscious_reply, (
         "converse must answer consciousness AGNOSTICALLY (report correlates, neither claim nor deny), not DENY it"
     )
-    assert brain.converse("close the gripper").startswith("Done"), (
+    assert brain.converse("close the effector").startswith("Done"), (
         "converse must route a safe arm command through the gate"
     )
     # the brain can DELIBERATE: plan ahead over a forward model and reject a high-immediate-value trap.
@@ -830,7 +828,7 @@ def main():
         ("what is your goal", "GOAL"),
         ("what do you remember", "MEMORY"),
         ("are you conscious", "CONSCIOUS"),
-        ("close the gripper", "ARM"),
+        ("close the effector", "ARM"),
     ]
     ixn_before = sum(chat.route(t) == want for t, want in lessons) / len(lessons)
     for _ in range(40):

@@ -455,7 +455,7 @@ def _live_brain_demo():
         "what is your goal right now",
         "what do you remember in the lake",
         "are you conscious or sentient",
-        "close the gripper please",
+        "close the effector please",
     ]
     # ground truth = the brain's OWN grounded reply to each prompt (deterministic per prompt)
     replies = {p: brain.converse(p) for p in prompts}
@@ -476,7 +476,7 @@ def _live_brain_demo():
     grasp = {"visual": [0.9] * 4, "temperature": [0.1], "audio": [0.1] * 4, "distance": safe_d}
 
     def reward_fn(unit, action):
-        return 1.0 if action == "GRIPPER_OPEN" else -1.0
+        return 1.0 if action == "RELEASE" else -1.0
 
     st = brain.tick(grasp, reward_fn=reward_fn)
     print(

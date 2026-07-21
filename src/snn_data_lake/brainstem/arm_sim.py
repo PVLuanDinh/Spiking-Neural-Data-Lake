@@ -36,7 +36,7 @@ class ArmSim:
     def __init__(self, l1=1.0, l2=1.0, use_pybullet=False):
         self.l1, self.l2 = l1, l2
         self.theta = [0.0, 0.0]  # joint A, B angles (radians)
-        self.gripper = 0.0  # 0 = open .. 1 = closed
+        self.effector = 0.0  # 0 = open .. 1 = closed
         self.stopped = False
         self.backend = "stdlib"
         self._p = None
@@ -74,16 +74,16 @@ class ArmSim:
             j = 0 if m.group(1) == "A" else 1
             self.theta[j] += float(m.group(2)) * DEG
             moved = True
-        elif command == "GRIPPER_CLOSE":
-            self.gripper = 1.0
-        elif command == "GRIPPER_OPEN":
-            self.gripper = 0.0
+        elif command == "ENGAGE":
+            self.effector = 1.0
+        elif command == "RELEASE":
+            self.effector = 0.0
         elif command in ("HOME", "RETRACT_ALL"):
             self.theta = [0.0, 0.0]
-            self.gripper = 0.0
+            self.effector = 0.0
             self.stopped = False
             moved = True
-        # HOLD / unknown / gripper -> no joint motion, so the commanded trajectory reference stays put.
+        # HOLD / unknown / effector -> no joint motion, so the commanded trajectory reference stays put.
         # (audit P1) recommitting expected_ee on a no-op would zero deviation() and silently clear a
         # trajectory_breach() after an external perturb, with NO corrective motion. Only real motion recommits.
         if moved:
@@ -118,7 +118,7 @@ class ArmSim:
         return {
             "theta_deg": [round(t / DEG, 1) for t in self.theta],
             "ee": (round(x, 3), round(y, 3)),
-            "gripper": self.gripper,
+            "effector": self.effector,
             "stopped": self.stopped,
             "collision": self.collision(),
             "deviation": round(self.deviation(), 3),
@@ -203,8 +203,8 @@ def main():
     s = arm.apply("JOINT_A_ROTATE(+15deg)")
     assert s["theta_deg"][0] == 15.0 and s["ee"][1] > 0, "joint A did not raise the arm"
 
-    arm.apply("GRIPPER_CLOSE")
-    assert arm.gripper == 1.0, "gripper did not close"
+    arm.apply("ENGAGE")
+    assert arm.effector == 1.0, "effector did not close"
 
     # drive into the ground -> collision detected (reflex would EMERGENCY_STOP)
     arm.apply("HOME")
@@ -230,7 +230,7 @@ def main():
     arm.apply("HOME")  # corrective re-home recommits the path
     assert not arm.trajectory_breach(), "corrective HOME did not clear the trajectory breach"
 
-    # audit P1: a no-op command (HOLD / unknown token / gripper) must NOT clear a trajectory breach --
+    # audit P1: a no-op command (HOLD / unknown token / effector) must NOT clear a trajectory breach --
     # only real joint motion recommits the path. Previously apply() recommitted expected_ee on EVERY
     # command, so a HOLD after a perturb silently masked the safety comparator with no corrective motion.
     arm.apply("HOME")
@@ -240,9 +240,9 @@ def main():
     assert arm.trajectory_breach(), "a HOLD no-op must NOT clear a trajectory breach"
     arm.apply("ZZZ_UNKNOWN")
     assert arm.trajectory_breach(), "an unknown no-op token must NOT clear a trajectory breach"
-    arm.apply("GRIPPER_CLOSE")
+    arm.apply("ENGAGE")
     assert arm.trajectory_breach(), (
-        "a gripper command (no joint motion) must NOT clear a trajectory breach"
+        "a effector command (no joint motion) must NOT clear a trajectory breach"
     )
     arm.apply("HOME")
     assert not arm.trajectory_breach(), "corrective HOME after the no-ops must clear the breach"

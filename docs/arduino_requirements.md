@@ -33,7 +33,7 @@ python -m snn_data_lake.live_arm --serial COM8      # your port
 errors, send the error — that's just as useful.
 
 ### 2. Actuator interface — how a command reaches the real arm  *(blocking)*
-Right now our loop emits commands (`GRIPPER_CLOSE`, `GRIPPER_OPEN`, `JOINT_A_ROTATE(+15deg)`,
+Right now our loop emits commands (`ENGAGE`, `RELEASE`, `JOINT_A_ROTATE(+15deg)`,
 `EMERGENCY_STOP`) and drives a **simulated** arm. To move the **real** arm we need the actuator
 path. Tell us **how your servos are driven**, then either:
 - accept our commands **back over serial** to the ESP32 (a second sketch that reads a command
@@ -64,7 +64,7 @@ vs far-object separation).
 
 ### 5. Reward / success signal  *(upgrade — enables real learning)*
 The loop can **learn** from outcomes (dopamine/cortisol), but only with a real "did it work?"
-signal. Today it's a placeholder (`--assume-success`). If the arm has a **gripper-force or
+signal. Today it's a placeholder (`--assume-success`). If the arm has a **effector-force or
 object-present sensor**, stream it as a 3rd channel or a success flag.
 
 **Deliver (optional):** a success indicator per grasp. Without it, learning stays simulated.

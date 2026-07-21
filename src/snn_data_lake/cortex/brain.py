@@ -512,8 +512,27 @@ class Brain:
         self._affect_core = self._tom2 = self._xmodal = self._grid_place = None
         self._emotion = None  # current categorical emotion (AffectCore over valence/arousal)
         self._superadditive = False  # cross-modal vision+audio super-additive binding this tick
+        self._xmodal_known = set()  # C2 #19: bimodal object handles the binder has been TAUGHT
+        self._xmodal_handle = None  # C2 #19: the bound object recognised this tick (None = unbound)
         self._place_here = (
             None  # the landmark/percept the grid-place map binds to the current position
+        )
+        self._place_value = {}  # C2 #1: R-STDP learned value per place -> drives approach on re-entry
+        self._learned_latency = 0  # C2 #3: learned reward latency -> opens a timed Go window
+        # C2 BRAIN-NATIVE: the approach drive's per-source weights are LEARNED (three-factor,
+        # dopamine-gated, baseline-subtracted -- see _route_percept_to_action), not hand-set. They
+        # start EQUAL so no source is privileged by hand; the brain learns which ones pay off.
+        self._drive_w = dict.fromkeys(("novelty", "ignition", "place", "timing", "reroute"), 0.1)
+        self._drive_lr = 0.02  # three-factor learning rate for the approach-drive synapses
+        self._place_lr = 0.25  # R-STDP rate for per-place value
+        self._base_tau = 0.02  # adaptation rate of the running baselines below
+        self._rpe_base = 0.0  # running |RPE| baseline -> the RELATIVE reward-onset threshold
+        self._nov_base = 0.0  # running novelty baseline -> the RELATIVE explore/fidget threshold
+        self._place_from_spiking_bump = (
+            False  # C2 #16: place grounded on the spiking grid bump, not the float map
+        )
+        self._place_correction = (
+            0.0  # C2 #8: last landmark phase-reset magnitude (drift correction)
         )
         try:
             from snn_data_lake.cortex.affect_core import AffectCore, SecondOrderToM
@@ -529,6 +548,9 @@ class Brain:
 
         # W8: re-entrant (de-saturated) workspace + reconstructive episodic memory + homeostatic drives
         self._reentrant = self._episodic = self._drives = None
+        self._reroute_bias = (
+            0.0  # C2 #11: top-down re-route bias the ignited content sends to the action specialist
+        )
         self._reentrant_availability = (
             1.0  # global availability -- can now be < 1.0 (a real access FAILURE)
         )
@@ -536,12 +558,21 @@ class Brain:
             1.0  # C1 #5: GRADED sustained-firing access strength (consumed into access-confidence)
         )
         self._dominant_drive = None
+        self._drive_activity = (
+            None  # C2 #11: the drive-vocabulary activity actually performed this tick
+        )
         try:
             from snn_data_lake.hippocampus.episodic_recall import EpisodicRecall
             from snn_data_lake.hypothalamus.homeostatic_drives import HomeostaticDrives
             from snn_data_lake.thalamus.reentrant_workspace import ReentrantWorkspace
 
             self._reentrant = ReentrantWorkspace(seed=self._seed)
+            # C2 #11: SUBSCRIBE the downstream specialists so an ignited coalition is actually RE-ROUTED --
+            # broadcast_to(name) returns a top-down bias the specialist ADDS to its NEXT output, closing the
+            # GWT loop into behaviour instead of recording a label. Subscribing also makes `availability` a
+            # GRADED fraction-of-subscribers-reached rather than a binary, de-saturating global access.
+            for _spec in ("action", "language"):
+                self._reentrant.subscribe(_spec)
             self._episodic = EpisodicRecall(seed=self._seed)
             self._drives = HomeostaticDrives(seed=self._seed)
         except Exception:
@@ -830,22 +861,28 @@ class Brain:
         normalization (Reynolds-Heeger contrast constancy), amplified by a TOP-DOWN gain that rises with
         novelty -- so the brain attends harder to novel stimuli. Pure/representation-only: it produces a
         sensory channel, adds no actuator route, and NEVER sources the distance/E-STOP channel. Returns
-        {channel:[0,1]^4, band, focus}, or None when the latent is too short."""
+        {channel:[0,1]^4, band, focus}, or None when the latent is too short.
+
+        C2 #2 CONSOLIDATION: the gating is now performed by the LEARNED spiking reticular gate
+        (cortex/learned_attention) -- per-band drive = learned synapse x bottom-up salience x
+        top-down goal similarity x bottom-up surprise, under Reynolds-Heeger divisive normalization
+        with a spiking LIF winner-take-all, trained by a local three-factor rule. It REPLACES the
+        hardcoded (salience/mean)*0.4*gain formula that used to live here: that formula was the real
+        sensory gate while the learned gate was attended AND trained every tick with its output
+        thrown away. `gain` is retained for signature compatibility but is no longer a magic
+        multiplier -- bottom-up surprise now enters through the learned drive itself."""
         n = len(latent)
-        if n < 4:
-            return None
-        b = n // 4
-        sal = [
-            sum(latent[i * b : (i + 1) * b]) / b for i in range(4)
-        ]  # bottom-up salience per band
-        tot = sum(sal) or 1.0
-        mean_sal = tot / 4.0
-        g = 1.0 + max(0.0, min(1.0, gain))  # top-down gain (attend novel harder)
-        chan = [
-            min(1.0, max(0.0, (s / (mean_sal + 1e-6)) * 0.4 * g)) for s in sal
-        ]  # divisive-norm contrast
-        w = max(range(4), key=lambda i: sal[i])  # the attended (winning) feature band
-        return {"channel": chan, "band": w, "focus": round(max(sal) / tot, 3)}
+        if n < 4 or self._learned_attn is None:
+            return None  # no learned gate -> no real-percept channel (caller falls back to the safe band)
+        # goal stays None: PrefrontalExecutive.goal is an ACTION INDEX, not a percept-space vector, so
+        # feeding it as the top-down goal would be a type/semantic mismatch. A real goal vector in
+        # feature space is not available yet -- documented rather than faked.
+        gated = self._learned_attn.attend(latent, goal=None)
+        b = max(1, len(gated) // 4)
+        chan = [min(1.0, max(0.0, sum(gated[i * b : (i + 1) * b]) / b)) for i in range(4)]
+        band, strength = self._learned_attn.focus
+        self._attn_focus = (band, strength)
+        return {"channel": chan, "band": int(band), "focus": float(strength)}
 
     def _safe_ctx(self):
         """The current SAFE stimulus (rotates; distance pinned SAFE so the E-STOP never trips). W9
@@ -942,8 +979,17 @@ class Brain:
         latent is LEARNED by a growing prototype learner, so the brain forms categories of real stimuli; a newly
         recruited prototype is a novelty SPIKE (biases the workspace); the learned-unit count feeds global access
         (real perception now contributes to consciousness, not just a class label). Representation-only, no
-        actuator route -- the reflex/E-STOP path is untouched (this runs off the tick's real-percept latents)."""
-        self._real_novelty *= 0.8
+        actuator route -- the reflex/E-STOP path is untouched (this runs off the tick's real-percept latents).
+
+        C2 #5 CONSOLIDATION: novelty is now the GENERALIZING pseudo-count (neuromodulation/
+        generalizing_novelty, a SimHash ~1/sqrt(N) count that HABITUATES and generalises across
+        near-duplicate rasters), already computed fresh this tick as _novelty_live. It replaces the
+        ad-hoc `*= 0.8` decay + hard `= 1.0` spike that fired only on GrowingLearner recruitment --
+        a hand-coded signal read at NINE downstream sites while the real pseudo-count fed a single
+        telemetry key. Prototype recruitment is kept as an INPUT that lifts the estimate, not as the
+        whole signal. Reusing _novelty_live (rather than calling bonus() again) avoids double-
+        incrementing the shared counter."""
+        self._real_novelty = min(1.0, max(0.0, float(self._novelty_live or 0.0)))
         for percept, attr in (
             (self._real_percept, "_vis_learner"),
             (self._audio_percept, "_aud_learner"),
@@ -956,8 +1002,8 @@ class Brain:
                 setattr(self, attr, learner)
             try:
                 _, grew = learner.observe(percept)  # form/refine a real-stimulus prototype
-                if grew:
-                    self._real_novelty = 1.0  # a genuinely new real stimulus category
+                if grew:  # recruitment LIFTS the pseudo-count (an input), no longer overrides it
+                    self._real_novelty = min(1.0, self._real_novelty + 0.5)
             except Exception:
                 pass
         self._real_units = (self._vis_learner.n_units if self._vis_learner else 0) + (
@@ -966,19 +1012,55 @@ class Brain:
         # W6: fuse the two real modalities into a super-additive BOUND object (cross-modal binding)
         if self._xmodal is not None and self._real_percept and self._audio_percept:
             try:
-                self._superadditive = bool(
-                    self._xmodal.bind(self._real_percept, self._audio_percept).get("superadditive")
-                )
+                # C2 #19: TEACH the binder its bimodal objects. bind() can only report super-additive
+                # enhancement for a REGISTERED handle, and register() was never called anywhere -- so
+                # `superadditive` was provably a constant False, a state key that could never be true.
+                # A congruent sighting (the seen digit and the heard word name the SAME object) is the
+                # one-shot registration; later co-presentations can then genuinely exceed additive.
+                if (
+                    self._perceived_digit is not None
+                    and self._perceived_word is not None
+                    and int(self._perceived_digit) == int(self._perceived_word) % 10
+                ):
+                    handle = f"obj{int(self._perceived_digit)}"
+                    if handle not in self._xmodal_known:
+                        self._xmodal.register(handle, self._real_percept, self._audio_percept)
+                        self._xmodal_known.add(handle)
+                fused = self._xmodal.bind(self._real_percept, self._audio_percept)
+                self._superadditive = bool(fused.get("superadditive"))
+                self._xmodal_handle = fused.get("handle")
             except Exception:
                 self._superadditive = False
         # W6: bind the perceived stimulus to the current allocentric PLACE (grid + place cells)
         if self._grid_place is not None and self._perceived_digit is not None:
             try:
-                allo = getattr(getattr(self.brain, "arm", None), "_allo", None)
-                pos = allo.position if allo is not None else None
+                # C2 #16: the SPIKING bump is now the path integrator that GROUNDS place -- bind place to the
+                # continuous-attractor grid's decoded position (a recurrent LIF bump that integrated the
+                # self-motion velocity) instead of the symbolic float dead-reckoned estimate, so the spatial
+                # code rests on real spiking dynamics. Position is resolved WITHIN one grid period (grid cells
+                # are intrinsically periodic -- honest single-module scope). Falls back to the float estimate
+                # only until the bump has integrated its first step.
+                pos = self._grid_can_xy
+                if pos is None:
+                    allo = getattr(getattr(self.brain, "arm", None), "_allo", None)
+                    pos = allo.position if allo is not None else None
                 if pos is not None:
                     self._grid_place.observe(tuple(pos), self._perceived_digit)
                     self._place_here = self._grid_place.place_at(tuple(pos))
+                    self._place_from_spiking_bump = self._grid_can_xy is not None
+                    # C2 #8: sighting a re-recognized place PHASE-RESETS the spiking bump toward that
+                    # landmark's Hebbian-imprinted phase. Free-running dead reckoning drifts to ~84% of
+                    # the torus's max representable error, which would corrupt the very place code the
+                    # R-STDP place-value learns on -- so this correction is required, not optional.
+                    # No ground-truth oracle: the FIRST sighting imprints the co-active phase and later
+                    # sightings are corrected by that MEMORY.
+                    if self._grid_can is not None and self._place_here is not None:
+                        try:
+                            self._place_correction = round(
+                                float(self._grid_can.observe_landmark(self._place_here)), 4
+                            )
+                        except Exception:
+                            pass
             except Exception:
                 pass
 
@@ -987,15 +1069,75 @@ class Brain:
         representation-only top-down drive (NEVER bypasses the reflex/E-STOP or the actuator gate). A novel real
         percept (real_novelty) or an ignited global workspace RAISES the drive of the non-HOLD actions -- so real
         perception + conscious access now ENGAGE the brain (act rather than hold) instead of only updating
-        telemetry. The BG Go/NoGo caution damps release + the reflex preempts, so this stays safe."""
+        telemetry. The BG Go/NoGo caution damps release + the reflex preempts, so this stays safe.
+
+        C2 BRAIN-NATIVE: how much each signal drives approach is NO LONGER a table of constants
+        (0.15 novelty / 0.05 ignition / 0.25 place / 0.2 timing / 0.15 re-route). Those were policy
+        numbers chosen by hand -- the same hardcoding this project's consolidation policy forbids,
+        one level up from the mechanisms they gate. They are now SYNAPTIC WEIGHTS learned by the
+        repo's own three-factor idiom (cf. basal_ganglia/r_stdp, plasticity/valence_stdp,
+        cortex/learned_attention.learn): eligibility = each source's activation this tick, dopamine =
+        the arm's RPE, baseline-subtracted so the sources COMPETE for influence. Weights start EQUAL
+        so no source is privileged by hand -- the brain learns the ordering from what pays off.
+        The two former absolute thresholds are now RELATIVE to running baselines (neural adaptation
+        to the current distribution) rather than magic numbers."""
         try:
             from snn_data_lake.brainstem.autonomous_loop import ACTIONS, SAFE_ACTION
 
-            engage = 0.15 * float(
-                self._real_novelty
-            )  # a novel real stimulus -> curiosity-driven engagement
-            if self._access_state.get("ignited"):
-                engage += 0.05  # an ignited global workspace adds a small engage drive
+            da = float(
+                getattr(self.brain.arm, "_rpe", 0.0) or 0.0
+            )  # the neuromodulatory 3rd factor
+            elig = {  # per-source activation this tick = the pre-synaptic eligibility
+                "novelty": max(0.0, float(self._real_novelty or 0.0)),
+                "ignition": 1.0 if self._access_state.get("ignited") else 0.0,
+                "place": 0.0,
+                "timing": 0.0,
+                "reroute": 0.0,
+            }
+            # R-STDP place-VALUE: eligibility = the place occupied, dopamine = RPE. A place that PAID
+            # OFF gains value, so RE-ENTERING it raises approach. Bounded + local, no gradient.
+            place = self._place_here
+            if place is not None:
+                v = self._place_value.get(place, 0.0)
+                v = max(-1.0, min(1.0, v + self._place_lr * da * (1.0 - abs(v))))
+                self._place_value[place] = round(v, 4)
+                elig["place"] = max(0.0, v)
+            # TIMED Go window: a rewarded outcome teaches the spiking clock WHEN reward arrives, and
+            # proximity to that learned latency opens the window. Reward ONSET is detected relative to
+            # the running |RPE| baseline (adaptation), not against a fixed cutoff.
+            if self._time_clock is not None:
+                try:
+                    el = float(self._elapsed_time or 0.0)
+                    if da > 0.0 and da > self._rpe_base:
+                        self._learned_latency = max(1, int(round(el)))
+                        self._time_clock.learn_interval(self._learned_latency, da)
+                        self._time_clock.reset()
+                    elif self._learned_latency:
+                        lat = float(self._learned_latency)
+                        elig["timing"] = max(0.0, 1.0 - min(1.0, abs(el - lat) / max(1.0, lat)))
+                except Exception:
+                    pass
+            # GWT RE-ROUTE: broadcast_to() returns the top-down bias the subscribed action specialist
+            # adds to its next output -- a globally-available coalition CHANGES behaviour.
+            if self._reentrant is not None:
+                try:
+                    rb = self._reentrant.broadcast_to("action")
+                    self._reroute_bias = round(float(max(rb.values())), 4) if rb else 0.0
+                    elig["reroute"] = min(1.0, self._reroute_bias)
+                except Exception:
+                    pass
+            engage = sum(self._drive_w[k] * elig[k] for k in elig)
+            # three-factor competitive update: dw = lr * dopamine * (eligibility - mean eligibility)
+            mean_e = sum(elig.values()) / len(elig)
+            for k, e in elig.items():
+                self._drive_w[k] = min(
+                    1.0, max(0.0, self._drive_w[k] + self._drive_lr * da * (e - mean_e))
+                )
+            # running baselines the relative thresholds adapt to (habituation to the current regime)
+            self._rpe_base = (1.0 - self._base_tau) * self._rpe_base + self._base_tau * abs(da)
+            self._nov_base = (1.0 - self._base_tau) * self._nov_base + self._base_tau * elig[
+                "novelty"
+            ]
             self.brain.arm._ext_drive = (
                 [0.0 if a == SAFE_ACTION else engage for a in ACTIONS] if engage > 0.0 else None
             )
@@ -1008,8 +1150,18 @@ class Brain:
         no actuator route, reflex/E-STOP untouched."""
         if self._drives is not None:
             try:
-                self._drives.tick(str(res.get("action") or "rest"))
+                # C2 #11: feed the drives an activity FROM THEIR OWN VOCABULARY (rest/explore/
+                # socialize, or the irrelevant-control fidget). This used to pass the arm's ACTIONS
+                # (ENGAGE/RELEASE/HOLD), none of which name a servicing activity -- so NO drive was
+                # ever serviced, every deficit grew monotonically forever and dominant_drive was
+                # just whichever drive drifts fastest. Honest mapping: an arm action services no
+                # modelled drive, so it counts as fidget unless a novel percept is being explored.
+                # RELATIVE, not a magic cutoff: a percept counts as novel when it exceeds the
+                # running novelty baseline the brain has habituated to (see _nov_base).
+                act = "explore" if float(self._real_novelty or 0.0) > self._nov_base else "fidget"
+                self._drives.tick(act)
                 self._dominant_drive = self._drives.dominant_drive()
+                self._drive_activity = act
             except Exception:
                 pass
         if self._reentrant is not None:
@@ -1309,8 +1461,9 @@ class Brain:
             self._learned_attn is not None and self._real_percept
         ):  # C1 b3: LEARNED spiking attention over the real percept stream
             try:
-                self._learned_attn.attend(self._real_percept, goal=None)
-                self._attn_focus = self._learned_attn.focus
+                # C2 #2: attend() now runs inside _attend_real_stream, where its gate IS the arm's
+                # sensory channel (it used to be re-attended here and discarded). Only the local
+                # three-factor update belongs on this tick, applied to that attend's eligibility.
                 self._learned_attn.learn(
                     float(self._lp_mean or 0.0) - float(res.get("threat") or 0.0)
                 )
@@ -1377,6 +1530,15 @@ class Brain:
                 self._learned_evc.learn(engaged=(gain > 0.0), reward=reward)
                 self._evc_cost = round(float(self._learned_evc.cost), 3)
                 self._evc_value = round(float(self._learned_evc.value), 3)
+                # C2 #9: push the LEARNED cost/value to the arm so its control allocation uses them
+                # instead of the fixed cost=0.1 / +0.3 constants. These were computed every tick and
+                # kept only as telemetry while the arm's real control ran on hardcoded numbers.
+                # Representation-only: it scales the SAME bounded top-down preference the gated
+                # selection already arbitrates; the reflex/E-STOP still preempts.
+                self.brain.arm._learned_ctl = (
+                    float(self._learned_evc.cost),
+                    float(self._learned_evc.value),
+                )
             except Exception:
                 pass
 
@@ -1490,6 +1652,13 @@ class Brain:
         if self.neuro is not None:
             try:
                 self.neuro.tick()  # GROW NG-SNN neurons (torch tier)
+            except Exception:
+                pass
+        if self._drives is not None:
+            try:  # C2 #11: sleeping IS the energy-servicing activity ("rest" in the drive vocabulary)
+                self._drives.tick("rest")
+                self._dominant_drive = self._drives.dominant_drive()
+                self._drive_activity = "rest"
             except Exception:
                 pass
         if (
@@ -1777,6 +1946,16 @@ class Brain:
                 self._superadditive
             ),  # W6: vision+audio bound into a super-additive object this tick
             "place_here": self._place_here,  # W6: the percept the grid+place map binds to the current allocentric position
+            "place_value": (
+                self._place_value.get(self._place_here, 0.0)
+                if self._place_here is not None
+                else 0.0
+            ),  # C2 #1: R-STDP learned value of the CURRENT place (drives approach on re-entry)
+            "places_valued": len(self._place_value),  # C2 #1: how many places carry a learned value
+            "learned_latency": self._learned_latency,  # C2 #3: learned reward latency (opens the timed Go window)
+            "place_correction": self._place_correction,  # C2 #8: landmark phase-reset magnitude correcting bump drift
+            "reroute_bias": self._reroute_bias,  # C2 #11: GWT broadcast re-route bias now driving the action specialist
+            "place_from_spiking_bump": self._place_from_spiking_bump,  # C2 #16: place grounded on the spiking grid CAN
             "acc_conflict": round(
                 float(getattr(self.brain.arm, "_conflict", 0.0)), 3
             ),  # W8: ACC conflict over competing action drives
@@ -1805,6 +1984,11 @@ class Brain:
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
             "episode_retained": self._episode_retained,  # C1 b4: durable-episode recall fraction (systems consolidation, no forgetting)
             "dominant_drive": self._dominant_drive,  # W8: the currently most-unmet homeostatic drive (interoceptive)
+            "drive_activity": self._drive_activity,  # C2 #11: the drive-vocabulary activity performed (rest/explore/socialize/fidget)
+            "crossmodal_handle": self._xmodal_handle,  # C2 #19: the TAUGHT bimodal object recognised this tick
+            "crossmodal_objects": len(
+                self._xmodal_known
+            ),  # C2 #19: bimodal objects the binder has learned
             "pc_cortex_tier": self._pc_cortex_tier,  # "pc-cortex" (deep spiking predictive-coding cortex loaded, zero-dep serve via perceive_pc()) or "stdlib"
             "nengo_tier": self._nengo_tier,  # "nengo" -> can offload any vector compute to a Nengo NEF ensemble (NengoLoihi-deployable) via nengo_compute()
             "braincog": self._braincog,  # BrainCog-adopted primitives: theory-of-mind false-belief + multisensory super-additivity index
@@ -1889,7 +2073,7 @@ class Brain:
                 conv = self.brain.converse(message)
             except Exception:
                 conv = "I am the live brain."
-        # The prefrontal executive's goal is necessarily a MOTOR action (GRIPPER_CLOSE/OPEN/HOLD).
+        # The prefrontal executive's goal is necessarily a MOTOR action (ENGAGE/OPEN/HOLD).
         # Reframe so the reply leads with the DAEMON's goal (self-improvement); motor intent second.
         conv = conv.replace(
             "My current goal is ", "My goal is self-improvement -- my current motor intent is "
@@ -2044,6 +2228,21 @@ class Brain:
                             f" (recalled: I {e.get('what', 'acted')} at '{e.get('where')}' feeling "
                             f"{e.get('affect', 'calm')} -- reconstructed from a partial cue.)"
                         )
+                        # C2 (memory): the DURABLE consolidated store now drives output too -- confirm the
+                        # reconstructed episode against the sparse attractor that survived sleep replay, so
+                        # consolidation is a spoken memory property, not telemetry. Honest: a miss says so.
+                        if self._episode_consolidator is not None:
+                            try:
+                                dur = self._episode_consolidator.recall_episode(
+                                    self._episode_consolidator.encode(e)
+                                )
+                                if (dur or {}).get("confidence", 0.0) > 0.0:
+                                    reply = reply + (
+                                        f" (durable: that episode is held verbatim in my consolidated store"
+                                        f" [{self._episode_retained:.0%} of episodes still recoverable after replay].)"
+                                    )
+                            except Exception:
+                                pass
                 except Exception:
                     pass
             if self._affect_core is not None and any(
@@ -2096,19 +2295,18 @@ class Brain:
                         )
                         + " -- a functional access/binding readout, NOT a claim of subjective experience.)"
                     )
-                if self._cfsim is not None and any(
+                if self._imagined_best is not None and any(
                     c in low for c in ("what if", "imagine", "suppose", "if you")
                 ):
-                    from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _A
-
-                    ranked = self._cfsim.counterfactual(
-                        [0.5] * 9, list(range(len(_A))), 2, lambda v: sum(v)
+                    # Report the imagination ALREADY rolled this tick from the REAL feature vector
+                    # (_wake_c1_faculties). It used to re-run the forward model here on a literal
+                    # [0.5]*9 constant, so the spoken answer described a state the brain was never in.
+                    reply = reply + (
+                        f" (imagining it: rolling a learned forward model over my options from my"
+                        f" actual current state I'd lean '{self._imagined_best}'"
+                        f" [imagined surprise {self._imagined_surprise:.2f}]"
+                        " -- a counterfactual do()-simulation, imagined not enacted.)"
                     )
-                    if ranked:
-                        reply = reply + (
-                            f" (imagining it: rolling a learned forward model over my options I'd lean '{_A[ranked[0][0]]}'"
-                            " -- a counterfactual do()-simulation, imagined not enacted.)"
-                        )
                 if self._false_beliefs and any(
                     c in low
                     for c in ("believe", "think", "know", "false belief", "mistaken", "what does")
@@ -2125,6 +2323,13 @@ class Brain:
                         f" (interval sense: my spiking clock reads ~{self._elapsed_time:.1f} ticks elapsed"
                         f" (Weber sd {self._timing_sd:.2f}, growing with duration) -- a population time-cell code.)"
                     )
+            except Exception:
+                pass
+        if not is_command and self._drives is not None:
+            try:  # C2 #11: a conversational turn IS the social-servicing activity
+                self._drives.tick("socialize")
+                self._dominant_drive = self._drives.dominant_drive()
+                self._drive_activity = "socialize"
             except Exception:
                 pass
         if not is_command:  # KEEP LEARNING language from live turns, like a human:

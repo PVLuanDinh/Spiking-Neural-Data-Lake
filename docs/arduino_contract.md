@@ -42,7 +42,7 @@ python -m snn_data_lake.signal_loop --serial COM3 --window 8     # 8 timesteps Ã
 `signal_loop` does **not** write to the Arduino. It emits one JSON line on **stdout** per
 window for the Interpreter to consume:
 ```json
-{"t": 42, "match": "GRIPPER_CLOSE", "dist": 2.99, "confident": true}
+{"t": 42, "match": "ENGAGE", "dist": 2.99, "confident": true}
 ```
 `match` is `null` + `confident:false` when the signal is novel/ambiguous (no command fired).
 
@@ -71,8 +71,8 @@ command-in share the one UART.
 
 Command vocabulary (exactly what `snn_data_lake/interpreter.py` emits):
 ```
-GRIPPER_CLOSE
-GRIPPER_OPEN
+ENGAGE
+RELEASE
 HOLD                      # no-op (hold pose)
 EMERGENCY_STOP            # fail-safe â€” the sketch detaches servos FIRST
 JOINT_A_ROTATE(+15deg)    # signed integer degrees, relative
@@ -132,5 +132,5 @@ void loop() {
 
 ## Enrolling references
 Each command needs one reference signature in `data/signatures.json`. On hardware:
-hold the arm in the gesture, then `python -m snn_data_lake.signal_loop --enroll GRIPPER_CLOSE` captures
+hold the arm in the gesture, then `python -m snn_data_lake.signal_loop --enroll ENGAGE` captures
 a window. Labels in `signatures.json` are exactly what `match` emits to the Interpreter.

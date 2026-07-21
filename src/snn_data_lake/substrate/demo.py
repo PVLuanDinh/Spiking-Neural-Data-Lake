@@ -28,7 +28,7 @@ CONTACT = 0.04  # distance (m) -> reflex EMERGENCY_STOP
 NEAR, MID, FAR = 0, 1, 2
 
 # gesture -> robot command (approach grabs the incoming object, retreat releases)
-COMMANDS = {"HAND_APPROACH": "GRIPPER_CLOSE", "HAND_RETREAT": "GRIPPER_OPEN", "IDLE": "HOLD"}
+COMMANDS = {"HAND_APPROACH": "ENGAGE", "HAND_RETREAT": "RELEASE", "IDLE": "HOLD"}
 
 
 # ---- order-aware recognition (Paradigm B sequence detector) ------------------
@@ -70,10 +70,10 @@ def recognize(window):
     return "HAND_APPROACH" if pd[-1] < pd[0] else "HAND_RETREAT"
 
 
-# ---- 2-link arm (forward kinematics + gripper + collision) ------------------
+# ---- 2-link arm (forward kinematics + effector + collision) ------------------
 class Arm:
     def __init__(self, l1=1.0, l2=1.0):
-        self.l1, self.l2, self.theta, self.gripper, self.stopped = l1, l2, [0.0, 0.0], 0.0, False
+        self.l1, self.l2, self.theta, self.effector, self.stopped = l1, l2, [0.0, 0.0], 0.0, False
 
     def ee(self):
         a, b = self.theta[0], self.theta[0] + self.theta[1]
@@ -85,10 +85,10 @@ class Arm:
     def apply(self, cmd):
         if cmd == "EMERGENCY_STOP":
             self.stopped = True
-        elif cmd == "GRIPPER_CLOSE":
-            self.gripper = 1.0
-        elif cmd == "GRIPPER_OPEN":
-            self.gripper = 0.0
+        elif cmd == "ENGAGE":
+            self.effector = 1.0
+        elif cmd == "RELEASE":
+            self.effector = 0.0
         # HOLD -> nothing
         return cmd
 
@@ -142,7 +142,7 @@ def run(stream, arm, narrate=True):
             if narrate:
                 print(
                     f"  {note:20} -> recognize {gesture:14} -> command {cmd:14} "
-                    f"(gripper={arm.gripper}, ee={arm.ee()})"
+                    f"(effector={arm.effector}, ee={arm.ee()})"
                 )
             buf = []
     return acted
@@ -167,15 +167,15 @@ def main():
     cmds = [c for _, c in acted]
     print(f"actions: {', '.join(cmds)}")
     print(
-        "approach grabbed (GRIPPER_CLOSE), retreat released (GRIPPER_OPEN), "
+        "approach grabbed (ENGAGE), retreat released (RELEASE), "
         "contact stopped the arm (EMERGENCY_STOP)."
     )
     print("=" * 70)
 
     # ---- self-check (so the demo is verifiable) -----------------------------
     seen = {c for _, c in acted}
-    assert "GRIPPER_CLOSE" in seen, "approach did not grab"
-    assert "GRIPPER_OPEN" in seen, "retreat did not release"
+    assert "ENGAGE" in seen, "approach did not grab"
+    assert "RELEASE" in seen, "retreat did not release"
     assert "EMERGENCY_STOP" in seen and arm.stopped, "contact did not trip the reflex"
     print(
         "self-check OK: recognized gestures, mapped to commands, moved the arm, "

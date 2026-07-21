@@ -111,7 +111,7 @@ def main():
     import sys
 
     lib = S.build_default_library()
-    good_line = ",".join(f"{x:.4f}" for x in lib["GRIPPER_CLOSE"])
+    good_line = ",".join(f"{x:.4f}" for x in lib["ENGAGE"])
     good_win = S.normalize(S.resize_to_n([float(x) for x in good_line.split(",")]))
     danger = "500,500,500,500,500,500,950,0"
 
@@ -125,11 +125,11 @@ def main():
         home.save_state("valence.json", st["valence"].w)  # durable: remembered next launch
         print(
             f"[persist] {'resumed prior' if w0 else 'no prior'} valence, learned this run, saved -> "
-            f"value(GRIPPER_CLOSE)={st['valence'].valence(good_win):+.2f} (accumulates across launches)"
+            f"value(ENGAGE)={st['valence'].valence(good_win):+.2f} (accumulates across launches)"
         )
         return
 
-    # episode: repeat the GRIPPER_CLOSE gesture (executed, rewarded), then a collision
+    # episode: repeat the ENGAGE gesture (executed, rewarded), then a collision
     signals = [good_line] * 30 + [danger]
     trace = []
     state = run_episode(signals, lib=lib, assume_success=True, trace=trace)
@@ -149,7 +149,7 @@ def main():
         f"reward={collision['reward']} stress={collision['stress']:.2f}"
     )
     print(
-        f"final  : value(GRIPPER_CLOSE)={val.valence(good_win):+.2f} "
+        f"final  : value(ENGAGE)={val.valence(good_win):+.2f} "
         f"({val.act(good_win)[0]})  stress={cort.level:.2f}  "
         f"reflex_thresh_scale={cort.reflex_threshold_scale():.2f}"
     )
@@ -157,7 +157,7 @@ def main():
 
     # ---- self-checks --------------------------------------------------------
     cmds = [t.get("command") for t in trace]
-    assert "GRIPPER_CLOSE" in cmds, "matched gesture never produced its command"
+    assert "ENGAGE" in cmds, "matched gesture never produced its command"
     assert "EMERGENCY_STOP" in cmds, "collision never produced an emergency stop"
     assert last["value"] > first["value"], "dopamine did not raise the rewarded gesture's value"
     assert val.act(good_win)[0] == "APPROACH", "rewarded gesture not learned as APPROACH"
@@ -174,7 +174,7 @@ def main():
     )
     print(
         f"bridged: OUTCOME routed over arm_bridge UDP -> "
-        f"value(GRIPPER_CLOSE)={bstate['valence'].valence(good_win):+.2f} (loop still closes)"
+        f"value(ENGAGE)={bstate['valence'].valence(good_win):+.2f} (loop still closes)"
     )
 
     # ---- DURABLE never-forget: the learned valence policy SURVIVES a restart ----

@@ -36,7 +36,7 @@ WHAT WE NEED FROM YOU (6 items, blocking first)
    short video). If it errors, send the error - that's just as useful.
 
 2. ACTUATOR INTERFACE - how a command reaches the real arm   (BLOCKING)
-   Right now our loop emits commands (GRIPPER_CLOSE, GRIPPER_OPEN,
+   Right now our loop emits commands (ENGAGE, RELEASE,
    JOINT_A_ROTATE(+15deg), EMERGENCY_STOP) and drives a SIMULATED arm. To
    move the REAL arm we need the actuator path. Tell us how your servos are
    driven, then either:
@@ -73,7 +73,7 @@ WHAT WE NEED FROM YOU (6 items, blocking first)
 5. REWARD / SUCCESS SIGNAL   (upgrade - enables real learning)
    The loop can LEARN from outcomes (dopamine/cortisol), but only with a
    real "did it work?" signal. Today it's a placeholder (--assume-success).
-   If the arm has a gripper-force or object-present sensor, stream it as a
+   If the arm has a effector-force or object-present sensor, stream it as a
    3rd channel or a success flag.
    DELIVER (optional): a success indicator per grasp. Without it, learning
    stays simulated.

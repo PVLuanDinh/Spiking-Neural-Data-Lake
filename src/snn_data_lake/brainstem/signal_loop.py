@@ -28,7 +28,7 @@ zero-startup template baseline.
   cat windows.csv | python signal_loop.py --stdin  # exercise the wire contract, no hardware
   python signal_loop.py --serial COM3 --reflex     # instinctive STOP/WITHDRAW on danger channels
   python signal_loop.py --serial COM3 --reflex --feedback   # full closed loop (below)
-  python signal_loop.py --enroll GRIPPER_CLOSE     # record a reference into signatures.json
+  python signal_loop.py --enroll ENGAGE     # record a reference into signatures.json
 
 Feedback loop (--feedback): the Interpreter sends outcomes BACK into the loop's input
 as `OUTCOME <reward>` lines (reward in [-1,+1], good=+, bad=-), applied to the last acted
@@ -77,7 +77,7 @@ NOISE = 0.08  # simulated sensor jitter
 MIN_SUPPORT = 3  # repeats before a novel -> new signature
 
 # Default command library (the Interpreter maps these labels -> JOINT_A_ROTATE, etc.)
-COMMANDS = ["JOINT_A_ROTATE", "JOINT_B_ROTATE", "GRIPPER_CLOSE", "GRIPPER_OPEN", "HOME"]
+COMMANDS = ["JOINT_A_ROTATE", "JOINT_B_ROTATE", "ENGAGE", "RELEASE", "HOME"]
 
 
 # ---- signal source ----------------------------------------------------------

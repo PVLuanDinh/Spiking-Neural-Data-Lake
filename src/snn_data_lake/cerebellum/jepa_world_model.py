@@ -86,7 +86,7 @@ class JepaWorldModel:
         reward_shaping=False,
         lambda_reward=1.0,
     ):
-        self.actions = tuple(actions)  # ordered action names, e.g. ("GRIPPER_CLOSE", ...)
+        self.actions = tuple(actions)  # ordered action names, e.g. ("ENGAGE", ...)
         self.n_act = len(self.actions)
         self._aidx = {a: i for i, a in enumerate(self.actions)}
         self.in_dim = int(in_dim)
@@ -591,11 +591,11 @@ class JepaWorldModel:
 # =========================================================================================================
 
 # Balanced 2-factor dynamics (sum of each column is 0 -> a mean-zero random walk that explores [0,1]^2).
-# GRIPPER_OPEN and GRIPPER_CLOSE move u0 IDENTICALLY (+d) but u1 OPPOSITELY -- a scalar readout of u0 cannot
+# RELEASE and ENGAGE move u0 IDENTICALLY (+d) but u1 OPPOSITELY -- a scalar readout of u0 cannot
 # tell them apart, yet the 2-D latent can. HOLD moves u0 the other way (-2d) to balance the walk.
 _EFFECTS = {
-    "GRIPPER_OPEN": (+1.0, -1.0),
-    "GRIPPER_CLOSE": (+1.0, +1.0),
+    "RELEASE": (+1.0, -1.0),
+    "ENGAGE": (+1.0, +1.0),
     "HOLD": (-2.0, 0.0),
 }
 
@@ -676,8 +676,8 @@ def main():
     IN_DIM, K, LATENT = 64, 2, 16
     BAND = IN_DIM // K  # 32 neurons per factor
     D, NOISE = 0.20, 0.02
-    ACTIONS = ("GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD")
-    OPEN = 1  # index of GRIPPER_OPEN (the goal action) in ACTIONS
+    ACTIONS = ("ENGAGE", "RELEASE", "HOLD")
+    OPEN = 1  # index of RELEASE (the goal action) in ACTIONS
     STEPS, LR = 1200, 0.08
     LV, LC = 20.0, 2.0  # VICReg weights (default is 1.0; the unit-sphere latent
     #                                                      caps per-dim energy, so the anti-collapse pressure is
@@ -737,8 +737,8 @@ def main():
 
     # (2b) JEPA beats a 1-D linear ForwardModel on a scalar projection -- fair common target: predict next u.
     CMD = {
-        "GRIPPER_OPEN": 1.0,
-        "GRIPPER_CLOSE": 1.0,
+        "RELEASE": 1.0,
+        "ENGAGE": 1.0,
         "HOLD": -1.0,
     }  # OPEN/CLOSE share a command: the scalar
     fm = ForwardModel(a=0.0, b=0.0, dt=1.0, seed=0)  # readout of u0 cannot distinguish them
@@ -775,7 +775,7 @@ def main():
                 roll_max = max(roll_max, abs(v))
 
     # ---- (4) LATENT > SCALAR via plan(): a goal that depends on BOTH hidden factors ----
-    # Start (0.40, 0.50); goal (u0 high, u1 low) -> reachable only by GRIPPER_OPEN (u0 up, u1 down). CLOSE is a
+    # Start (0.40, 0.50); goal (u0 high, u1 low) -> reachable only by RELEASE (u0 up, u1 down). CLOSE is a
     # decoy (u0 up, u1 UP) that a u0-only scalar cannot distinguish from OPEN.
     rng_g = random.Random(21)
     start_pat = _render([0.40, 0.50], encoders, rng_g, NOISE)
@@ -792,7 +792,7 @@ def main():
 
     jepa_val = {a: roll_val(full, z_start, i, HZ, gv) for i, a in enumerate(ACTIONS)}
     jepa_best = max(range(len(ACTIONS)), key=lambda i: jepa_val[ACTIONS[i]])
-    jepa_gap = jepa_val["GRIPPER_OPEN"] - jepa_val["GRIPPER_CLOSE"]
+    jepa_gap = jepa_val["RELEASE"] - jepa_val["ENGAGE"]
 
     # the scalar ForwardModel: state = u0 centroid, goal = u0 centroid of the goal; OPEN and CLOSE share a
     # command, so its rollout values for them are PROVABLY identical -> it cannot represent the task.
@@ -800,7 +800,7 @@ def main():
     s_goal = _band0_centroid(goal_pat, centers0, BAND)
     scal_gv = lambda s: -((s - s_goal) ** 2)
     fm_val = {a: roll_val(fm, s_start, CMD[a], HZ, scal_gv) for a in ACTIONS}
-    fm_gap = abs(fm_val["GRIPPER_OPEN"] - fm_val["GRIPPER_CLOSE"])
+    fm_gap = abs(fm_val["RELEASE"] - fm_val["ENGAGE"])
 
     # drive PrefrontalExecutive.plan() with the JEPA as its (duck-typed) predictor
     pfc = PrefrontalExecutive(n_options=len(ACTIONS), seed=5)
@@ -948,7 +948,7 @@ def main():
 
     # ---- (4) LATENT > SCALAR: JEPA reaches the 2-factor goal; the scalar model is provably indifferent ----
     assert jepa_best == OPEN, (
-        f"the JEPA plan must pick GRIPPER_OPEN, the only action reaching the (high u0, low u1) goal (got {ACTIONS[jepa_best]})"
+        f"the JEPA plan must pick RELEASE, the only action reaching the (high u0, low u1) goal (got {ACTIONS[jepa_best]})"
     )
     assert jepa_gap > 1e-3, (
         f"the JEPA must clearly prefer OPEN over the CLOSE decoy in latent space (gap {jepa_gap:+.4f})"
@@ -957,7 +957,7 @@ def main():
         f"the 1-D scalar model must be provably indifferent between OPEN and CLOSE (gap {fm_gap:.2e})"
     )
     assert plan_goal == OPEN and plan_det, (
-        f"PrefrontalExecutive.plan() driven by the JEPA must deterministically commit GRIPPER_OPEN (got {plan_goal})"
+        f"PrefrontalExecutive.plan() driven by the JEPA must deterministically commit RELEASE (got {plan_goal})"
     )
 
     # ---- (5) HIDDEN ENCODER (snn_jepa/2): a served deep encoder represents XOR a single layer cannot ----

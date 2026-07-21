@@ -115,7 +115,7 @@ def main():
 
     # 5. the safety envelope stays out of the growth network: exact AND near-miss effector/reflex
     #    names are refused registration (the tripwire; the real bound is the brainstem ArmSim gate).
-    unsafe = ("arm_dof", "ARM_DOF", "motor_actions", "e-stop", "gripper_servo")
+    unsafe = ("arm_dof", "ARM_DOF", "motor_actions", "e-stop", "effector_servo")
     refused = 0
     for seam in unsafe:
         try:

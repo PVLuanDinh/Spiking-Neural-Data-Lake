@@ -54,11 +54,11 @@ from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
-ACTIONS = ("GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD")  # the arm's autonomous action repertoire
+ACTIONS = ("ENGAGE", "RELEASE", "HOLD")  # the arm's autonomous action repertoire
 SAFE_ACTION = "HOLD"  # what caution biases toward under stress
 # W4c: self-motion step DERIVED from the chosen action (a real behavioral trajectory), not a constant drift.
 # Representation-only -- this feeds the allocentric MAP readout, never the actuator (the arm gate is separate).
-_ALLO_MOVE = {"GRIPPER_CLOSE": (0.05, 0.0), "GRIPPER_OPEN": (-0.05, 0.0), "HOLD": (0.0, 0.04)}
+_ALLO_MOVE = {"ENGAGE": (0.05, 0.0), "RELEASE": (-0.05, 0.0), "HOLD": (0.0, 0.04)}
 
 
 class AutonomousArm:
@@ -276,6 +276,18 @@ class AutonomousArm:
         self._exec = None  # W8: ACC/EVC executive (lazily bound)
         self._conflict = 0.0  # W8: ACC conflict over the competing action drives (readout)
         self._control_gain = 0.0  # W9: EVC control gain -- scales the PFC top-down bias by conflict
+        self._learned_ctl = (
+            None  # C2 #9: (cost, value) of control LEARNED by the cortex (None -> fixed constants)
+        )
+        self._planned_seq = []  # C2 #6: best multi-step action sequence from the beam planner (preference only)
+        # LEARNED (not hand-set) strength of the plan's vote against the reactive PFC bias
+        self._plan_w = 0.1  # three-factor synapse, grown/shrunk by dopamine (see _pfc_bias)
+        self._plan_lr = 0.02  # its learning rate
+        self._plan_elig = 0.0  # eligibility trace: was the plan followed on the last tick
+        self._plan_base = (
+            0.0  # that trace's running mean (subtracted -> only better-than-usual pays)
+        )
+        self._plan_tau = 0.02  # baseline adaptation rate
         self._allo_pos = (0.0, 0.0)  # allocentric position estimate readout
         self._gain_on = bool(gain_adapt)
         self._gain = None
@@ -475,7 +487,21 @@ class AutonomousArm:
                 stakes = (
                     (vals[0] - vals[1]) if len(vals) > 1 else 0.5
                 )  # decision margin = value of resolving the conflict
-                ctl = self._exec.evc(self._conflict, value_gain=stakes + 0.3, cost=0.1)
+                # C2 #9: use the LEARNED cost/value-of-control when the cortex has pushed them
+                # (cortex/learned_evc, dopamine-gated three-factor). They replace the fixed
+                # cost=0.1 / +0.3 constants -- same formula shape, same BOUNDED top-down preference
+                # into the same gated selection; the reflex/E-STOP still preempts and no actuator
+                # route is added. Falls back to the constants when the cortex has not pushed yet.
+                lc = getattr(self, "_learned_ctl", None)
+                if lc is not None:
+                    cost_l, value_l = lc
+                    ctl = self._exec.evc(
+                        self._conflict,
+                        value_gain=stakes + max(0.0, float(value_l)),
+                        cost=max(0.0, float(cost_l)),
+                    )
+                else:
+                    ctl = self._exec.evc(self._conflict, value_gain=stakes + 0.3, cost=0.1)
                 gain = self.pfc_gain * (
                     1.0 + ctl
                 )  # MORE top-down control when conflict is high AND worth it
@@ -486,6 +512,7 @@ class AutonomousArm:
         # abstract goal has formed, the executive PLANS over the ABSTRACT (Level-1) latent (rolls the L1
         # predictor). The abstract latent summarises the recent K-tick situation, so the goal tracks the slow
         # regime rather than the instantaneous frame. Still just a gated top-down bias; drives no motion.
+        hj_planned = False
         if self.hjepa_serve is not None and pattern is not None:
             self._hj_window.append(self.hjepa_serve.encode0(pattern))
             if len(self._hj_window) > self.hjepa_serve.K:
@@ -498,24 +525,72 @@ class AutonomousArm:
                     return -sum(abs(z[i] - zg[i]) for i in range(len(zg)))
 
                 self.pfc.plan(z1, ACTIONS, self.hjepa_serve, goal_value, horizon=self.jepa_horizon)
-                return self.pfc.top_down_bias(strength=gain)
+                # this path plans ONE abstract step, so the multi-step sequence is stale -> drop it
+                # (it must not nudge with an old plan) and fall through to the shared learning tail
+                # so the plan synapse still sees this tick's outcome.
+                self._planned_seq, hj_planned = [], True
             # window still filling / no abstract goal yet -> fall through to the reactive bootstrap below
-        if self.jepa is not None and self._z_goal is not None and pattern is not None:
+        if hj_planned:
+            pass
+        elif self.jepa is not None and self._z_goal is not None and pattern is not None:
             z = self.jepa.encode(pattern)
+            gv = self.jepa.make_goal_value(self._z_goal)
             self.pfc.plan(
                 z,
                 ACTIONS,
                 self.jepa,
-                self.jepa.make_goal_value(self._z_goal),
+                gv,
                 horizon=self.jepa_horizon,
             )  # latent lookahead -> a working-memory goal
+            # C2 #6: MULTI-STEP model-based planning. executive_control.plan_sequence (a beam/tree search
+            # that previously had ZERO callers) searches action SEQUENCES over the SAME learned JEPA latent
+            # world model (transition_fn=jepa.predict, value_fn=goal distance), so lookahead DEPTH becomes
+            # real behaviour instead of a one-step rollout. Bounded top-down PREFERENCE only -- the same
+            # gated selection arbitrates it, the reflex/E-STOP preempts, and no actuator route is added.
+            if self._exec is not None:
+                try:
+                    self._planned_seq = list(
+                        self._exec.plan_sequence(
+                            z,
+                            list(ACTIONS),
+                            gv,
+                            self.jepa.predict,
+                            depth=min(3, max(2, int(self.jepa_horizon))),
+                            breadth=3,
+                        )
+                        or []
+                    )
+                except Exception:
+                    self._planned_seq = []
         else:
             row = (
                 qa if qa is not None else self.q[unit]
             )  # the shared latent-Q row when on, else the tabular row
             evidence = [max(0.0, row[a]) for a in ACTIONS]
             self.pfc.update(evidence)  # reactive gated deliberation -> a WM goal
-        return self.pfc.top_down_bias(strength=gain)
+        bias = self.pfc.top_down_bias(strength=gain)
+        # BRAIN-NATIVE: how far the multi-step plan out-votes the reactive PFC bias is a LEARNED
+        # synapse, not a hand-set 0.5. Three-factor with an eligibility trace: the trace carries
+        # whether the plan was followed last tick, dopamine (the arm's RPE) supplies the sign, and
+        # the trace's own running mean is subtracted so only BETTER-than-usual outcomes strengthen
+        # plan-following. Bounded preference; the reflex/E-STOP still preempts and no actuator
+        # route is added.
+        da = float(self._rpe or 0.0)
+        self._plan_w = min(
+            1.0, max(0.0, self._plan_w + self._plan_lr * da * (self._plan_elig - self._plan_base))
+        )
+        self._plan_base = (
+            1.0 - self._plan_tau
+        ) * self._plan_base + self._plan_tau * self._plan_elig
+        self._plan_elig = 0.0
+        if self._planned_seq:  # bounded nudge toward the FIRST action of the best planned sequence
+            try:
+                bias = list(bias)
+                bias[ACTIONS.index(self._planned_seq[0])] += self._plan_w * gain
+                self._plan_elig = 1.0
+            except (ValueError, IndexError):
+                pass
+        return bias
 
     def _lake_write(self, pattern, goal, action):
         """Store this tick in the lake working memory (opt-in). The active bits of the context pattern,
@@ -940,7 +1015,7 @@ class AutonomousArm:
             if self._gain_on:  # cerebellar feedforward gain adaptation (NEVER applied)
                 if self._gain is None:
                     self._gain = GainAdapter(seed=self._seed)
-                motor = 1.0 if action in ("GRIPPER_OPEN", "GRIPPER_CLOSE") else 0.0
+                motor = 1.0 if action in ("RELEASE", "ENGAGE") else 0.0
                 _resp, _err, self._motor_gain = self._gain.step(
                     motor, world_gain=qmax
                 )  # learn a gain (readout only)
@@ -1029,13 +1104,13 @@ def main():
             grow.step(**ctx)
     grew_to = grow.learner.n_units
 
-    # 2. LEARNING: reward GRIPPER_OPEN (NOT the tie-break default) in context a -> policy overrides to it
+    # 2. LEARNING: reward RELEASE (NOT the tie-break default) in context a -> policy overrides to it
     learn = AutonomousArm(seed=1)
 
     def reward(unit, action):
-        return 1.0 if action == "GRIPPER_OPEN" else -1.0
+        return 1.0 if action == "RELEASE" else -1.0
 
-    default_before = learn.step(**a)["action"] or "GRIPPER_CLOSE"
+    default_before = learn.step(**a)["action"] or "ENGAGE"
     last = None
     for _ in range(90):
         last = learn.step(**a, reward_fn=reward)
@@ -1062,7 +1137,7 @@ def main():
         for t in range(1, 200):
             ev = bot.step(**a, reward_fn=reward)
             row = bot.q[ev["unit"]]
-            if row["GRIPPER_OPEN"] - max(row["GRIPPER_CLOSE"], row["HOLD"]) >= target:
+            if row["RELEASE"] - max(row["ENGAGE"], row["HOLD"]) >= target:
                 return t
         return 200
 
@@ -1113,7 +1188,7 @@ def main():
     print("=" * 62)
     print(f"growth      : 3 distinct multimodal contexts -> {grew_to} grown units")
     print(
-        f"learning    : rewarded GRIPPER_OPEN -> policy went {default_before} -> {learned} (learned, not fixed)"
+        f"learning    : rewarded RELEASE -> policy went {default_before} -> {learned} (learned, not fixed)"
     )
     print(
         f"safety      : object at sensor -> {ev['action']} (reflex={ev['reflex']}), arm stopped={stopped}; "
@@ -1168,7 +1243,7 @@ def main():
     assert ws_frozen, (
         "the E-STOP freeze must hold with the Global Workspace active (additive, gate untouched)"
     )
-    assert learned == "GRIPPER_OPEN", (
+    assert learned == "RELEASE", (
         f"the arm must LEARN the rewarded action, not use a fixed map ({learned})"
     )
     assert run(7) == run(7), "same seed -> identical autonomous behaviour (deterministic)"
@@ -1204,7 +1279,7 @@ def main():
     bg = AutonomousArm(seed=1, bg_gate=True)
     last_bg = None
     for _ in range(90):
-        last_bg = bg.step(**a, reward_fn=reward)  # reward GRIPPER_OPEN
+        last_bg = bg.step(**a, reward_fn=reward)  # reward RELEASE
     bg_released = bg._bg_select(bg.q[last_bg["unit"]])
     bg_null = AutonomousArm(seed=3, bg_gate=True)._bg_select(dict.fromkeys(ACTIONS, 0.0))
     bg_guard = AutonomousArm(seed=2, bg_gate=True)  # the safety envelope must hold with it on
@@ -1244,10 +1319,10 @@ def main():
         "the E-STOP freeze must hold with the amygdala wired in (caution-only)"
     )
     # BG gate: selects the learned action, releases nothing without drive, safety envelope intact.
-    assert bg.greedy(last_bg["unit"]) == "GRIPPER_OPEN", (
+    assert bg.greedy(last_bg["unit"]) == "RELEASE", (
         "a BG-gated arm must still learn the rewarded action"
     )
-    assert bg_released == "GRIPPER_OPEN", "the BG gate must release the learned high-value action"
+    assert bg_released == "RELEASE", "the BG gate must release the learned high-value action"
     assert bg_null == SAFE_ACTION, (
         "no value drive -> the BG gate releases nothing -> the safe action (HOLD)"
     )
@@ -1262,8 +1337,8 @@ def main():
     io = AutonomousArm(seed=1, interoception=True)
     io.explore = 0.0  # isolate the bias (no exploration noise)
     io.q[0] = {
-        "GRIPPER_CLOSE": 0.05,
-        "GRIPPER_OPEN": 0.0,
+        "ENGAGE": 0.05,
+        "RELEASE": 0.0,
         "HOLD": 0.0,
     }  # a mild non-safe preference
     io_calm = io._interocept(0.0)  # homeostasis -> ~no caution
@@ -1311,10 +1386,10 @@ def main():
     #     working memory, and top-down-biases selection toward it -- goal-directed, caution-safe.
     pf = AutonomousArm(seed=1, pfc=True)
     for _ in range(90):
-        pf.step(**a, reward_fn=reward)  # reward GRIPPER_OPEN
+        pf.step(**a, reward_fn=reward)  # reward RELEASE
     pfc_goal = pf.pfc.goal  # the executive's held working-memory goal
     pfc_bias = pf.pfc.top_down_bias()
-    goal_is_rewarded = pfc_goal == ACTIONS.index("GRIPPER_OPEN")
+    goal_is_rewarded = pfc_goal == ACTIONS.index("RELEASE")
     held = all(
         pf.pfc.maintain() == pfc_goal for _ in range(5)
     )  # WM holds the goal across an input-free delay
@@ -1408,7 +1483,7 @@ def main():
     #     bounded top-down bias into the SAME gated selection; opt-in, drives no motion, reflex/E-STOP first.
     jp = AutonomousArm(seed=1, pfc=True, jepa=True)
     for _ in range(90):
-        jp.step(**a, reward_fn=reward)  # reward GRIPPER_OPEN
+        jp.step(**a, reward_fn=reward)  # reward RELEASE
     jp_std = jp.jepa.latent_std()  # a non-degenerate learned latent (did not collapse)
     jp_goal_formed = jp._z_goal is not None  # a reward-derived latent goal formed from the stream
     jp_goal = jp.pfc.goal  # the executive's goal, now set by JEPA latent planning
@@ -1553,11 +1628,11 @@ def main():
     devC = [
         (
             _ctx(0.9, 0.1, 0.1, safe_d),
-            "GRIPPER_OPEN",
+            "RELEASE",
         ),  # 4 DISTINCT contexts, each with an optimal action
-        (_ctx(0.1, 0.9, 0.1, safe_d), "GRIPPER_CLOSE"),
+        (_ctx(0.1, 0.9, 0.1, safe_d), "ENGAGE"),
         (_ctx(0.1, 0.1, 0.9, safe_d), "HOLD"),
-        (_ctx(0.9, 0.9, 0.1, safe_d), "GRIPPER_OPEN"),
+        (_ctx(0.9, 0.9, 0.1, safe_d), "RELEASE"),
     ]
     dev_stages = [
         devC[:1],
@@ -1626,8 +1701,8 @@ def main():
         return _ctx(v, t, au, safe_d)
 
     LQ_RULE = [
-        "GRIPPER_OPEN",
-        "GRIPPER_CLOSE",
+        "RELEASE",
+        "ENGAGE",
         "HOLD",
     ]  # optimal = argmax over (visual, temperature, audio) band
     lq_train = [
@@ -1662,9 +1737,9 @@ def main():
     def run_lq(seed):
         bot = AutonomousArm(seed=seed, pfc=True, jepa=True, curiosity=True, latent_q=True)
         return [
-            bot.step(
-                reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0]
-            )["action"]
+            bot.step(reward_fn=(lambda u, a: 1.0 if a == "RELEASE" else -1.0), **lq_train[0][0])[
+                "action"
+            ]
             for _ in range(8)
         ]
 
@@ -1728,9 +1803,9 @@ def main():
     def run_mlp(seed):
         bot = AutonomousArm(seed=seed, pfc=True, curiosity=True, mlp_q=True)
         return [
-            bot.step(
-                reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0]
-            )["action"]
+            bot.step(reward_fn=(lambda u, a: 1.0 if a == "RELEASE" else -1.0), **lq_train[0][0])[
+                "action"
+            ]
             for _ in range(8)
         ]
 
@@ -1807,9 +1882,9 @@ def main():
             seed=seed, pfc=True, curiosity=True, mlp_q=True, reward_shaped_encoder=True
         )
         return [
-            bot.step(
-                reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0]
-            )["action"]
+            bot.step(reward_fn=(lambda u, a: 1.0 if a == "RELEASE" else -1.0), **lq_train[0][0])[
+                "action"
+            ]
             for _ in range(8)
         ]
 

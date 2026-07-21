@@ -29,11 +29,11 @@ def test_reflex_withdraw():
     assert reward == -1.0, f"reflex should have reward -1.0, got {reward}"
 
 
-def test_match_gripper_close():
-    """Match GRIPPER_CLOSE label -> command "GRIPPER_CLOSE"."""
+def test_match_effector_close():
+    """Match ENGAGE label -> command "ENGAGE"."""
     itp = Interpreter()
-    cmd, reward = itp.interpret({"match": "GRIPPER_CLOSE", "instinct": None})
-    assert cmd == "GRIPPER_CLOSE", f"match should return GRIPPER_CLOSE, got {cmd}"
+    cmd, reward = itp.interpret({"match": "ENGAGE", "instinct": None})
+    assert cmd == "ENGAGE", f"match should return ENGAGE, got {cmd}"
 
 
 def test_instinct_avoid_vetoes_match():
@@ -98,7 +98,7 @@ def test_command_priority_avoid_beats_match():
     """Instinct priority: AVOID beats match."""
     itp = Interpreter()
     # AVOID vetoes the match
-    cmd, reward = itp.interpret({"instinct": "AVOID", "match": "GRIPPER_CLOSE"})
+    cmd, reward = itp.interpret({"instinct": "AVOID", "match": "ENGAGE"})
     assert cmd == "HOLD", f"AVOID should beat match, got {cmd}"
     assert reward == -0.3, f"AVOID should have reward -0.3, got {reward}"
 

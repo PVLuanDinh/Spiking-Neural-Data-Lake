@@ -9,7 +9,7 @@ user's RTX 5070 (``NORD_GPU=1 python research/hjepa_arm_torch.py``).
 
 WHY THIS FILE (vs research/hjepa_torch.py). The v3.13 H-JEPA (hjepa_torch.py) is trained on a
 toy XOR world with FLIP0/FLIP1/KEEP actions -- USELESS for the arm, whose action set is
-{GRIPPER_CLOSE, GRIPPER_OPEN, HOLD} and whose observations are the encode_multimodal
+{ENGAGE, RELEASE, HOLD} and whose observations are the encode_multimodal
 [0,1]^64 banded vector. This trainer reuses that file's architecture WHOLESALE (the _HJepa
 nn.Module: deep ReLU-MLP encode0/encode1, unit-normalized latents, EMA targets; VICReg
 anti-collapse; the residual-fine / pure-coarse predictors; the resolve_device/AMP/no-torch
@@ -27,7 +27,7 @@ THE ARM-NATIVE WORLD (ArmTwoTimescaleWorld):
     persists across several windows -- genuinely SLOW relative to the fast per-tick nuisance.
     r is EXOGENOUS: the arm cannot flip it (it is task context, e.g. "is a graspable object
     present"). r is rendered into the DISTANCE band and it also names the optimal arm action:
-    r=0 -> GRIPPER_OPEN, r=1 -> GRIPPER_CLOSE, HOLD is never optimal (served downstream via the
+    r=0 -> RELEASE, r=1 -> ENGAGE, HOLD is never optimal (served downstream via the
     meta.regime_to_action map; the SSL trainer itself is reward-free).
   * A FAST within-window nuisance corrupts the regime band per FRAME so a SINGLE frame is
     ambiguous about r, but the K-window POOL reveals it: the distance-band position is
@@ -36,8 +36,8 @@ THE ARM-NATIVE WORLD (ArmTwoTimescaleWorld):
     smeared. This is the whole point: pooling (z1 / raw window-average) recovers r; one frame
     (z0) cannot.
   * Actions drive a SEPARATE fast factor so obs_t -(arm action)-> obs_{t+1} is a real,
-    learnable transition: the arm action advances an AUDIO-band phase q (GRIPPER_CLOSE +step,
-    GRIPPER_OPEN -step, HOLD 0), so the fine predictor has a genuine action-conditioned target.
+    learnable transition: the arm action advances an AUDIO-band phase q (ENGAGE +step,
+    RELEASE -step, HOLD 0), so the fine predictor has a genuine action-conditioned target.
     The regime is untouched by the action (exogenous, on the slow clock).
   * FINE_ACTIONS == COARSE_ACTIONS == the 3 ARM actions: the arm has ONE action set. The
     hierarchy here is TEMPORAL (z1 abstracts K ticks of z0), NOT an action decomposition, so
@@ -88,13 +88,13 @@ HIDDEN1 = 64                # L1 head MLP width
 HIDDEN_P = 64               # predictor MLP width
 
 # The arm has ONE action set; the hierarchy is TEMPORAL, so fine == coarse == the arm actions.
-ARM_ACTIONS = ("GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD")   # brainstem/interpreter.py command set
+ARM_ACTIONS = ("ENGAGE", "RELEASE", "HOLD")   # brainstem/interpreter.py command set
 FINE_ACTIONS = ARM_ACTIONS
 COARSE_ACTIONS = ARM_ACTIONS
 N_FINE = len(FINE_ACTIONS)
 N_COARSE = len(COARSE_ACTIONS)
 # r names the optimal arm action (served downstream; the SSL trainer is reward-free).
-REGIME_TO_ACTION = {"0": "GRIPPER_OPEN", "1": "GRIPPER_CLOSE"}   # HOLD is never optimal
+REGIME_TO_ACTION = {"0": "RELEASE", "1": "ENGAGE"}   # HOLD is never optimal
 
 HJEPA_FORMAT = "snn_hjepa/1"
 DEFAULT_TAU = 0.99          # EMA target momentum
@@ -221,7 +221,7 @@ class ArmTwoTimescaleWorld:
     (constant within a window, slow per-window Markov flip P_FLIP, EXOGENOUS to the arm) and is
     rendered into the DISTANCE band, corrupted per-FRAME by a fast within-window cosine nuisance
     that sums to ~0 over K ticks -> one frame is ambiguous about r, the K-window POOL reveals it.
-    The arm action advances the AUDIO-band phase (GRIPPER_CLOSE +step / GRIPPER_OPEN -step /
+    The arm action advances the AUDIO-band phase (ENGAGE +step / RELEASE -step /
     HOLD 0), a real learnable obs_t -> obs_{t+1} transition. torch imported lazily."""
 
     def __init__(self, gen, device, batch=DEFAULT_BATCH, k=K, band=BAND,
@@ -522,7 +522,7 @@ def main():
         print("ARM-NATIVE HIERARCHICAL H-JEPA TORCH TRAINER (research/, not CI) -- torch NOT installed")
         print("=" * 72)
         print("A 2-level NONLINEAR H-JEPA (LeCun 2022 H-JEPA / V-JEPA 2024 / VICReg 2022) trained on")
-        print("the ARM's observation ([0,1]^64 banded) + action ({GRIPPER_CLOSE,GRIPPER_OPEN,HOLD})")
+        print("the ARM's observation ([0,1]^64 banded) + action ({ENGAGE,RELEASE,HOLD})")
         print("space, so the exported snn_hjepa/1 artifact can be SERVED in the live arm brain.")
         print("Needs a GPU + torch to train and measure -- nothing to run without torch.")
         print("needs torch: pip install '.[gpu]'")

@@ -12,11 +12,11 @@
 
 #include <ESP32Servo.h>
 
-Servo gripper;
+Servo effector;
 Servo jointA;
 Servo jointB;
 
-const int GRIP_OPEN   = 20;      // deg — REPLACE with your gripper's real open/closed angles
+const int GRIP_OPEN   = 20;      // deg — REPLACE with your effector's real open/closed angles
 const int GRIP_CLOSED = 80;
 const int JOINT_MIN   = 10;      // deg — REPLACE with your arm's real per-joint safe limits
 const int JOINT_MAX   = 170;
@@ -35,10 +35,10 @@ int parseDeg(const String& c) {
 
 void setup() {
   Serial.begin(115200);
-  gripper.attach(13);            // REPLACE with your servo pins
+  effector.attach(13);            // REPLACE with your servo pins
   jointA.attach(12);
   jointB.attach(14);
-  gripper.write(GRIP_OPEN);
+  effector.write(GRIP_OPEN);
   jointA.write(HOME_A);
   jointB.write(HOME_B);
 }
@@ -54,13 +54,13 @@ void loop() {
   if (ECHO_ONLY) { Serial.print("ACK "); Serial.println(cmd); return; }
 
   if (cmd == "EMERGENCY_STOP") {          // fail-safe FIRST — cut motion immediately
-    gripper.detach(); jointA.detach(); jointB.detach();
-  } else if (cmd == "GRIPPER_CLOSE") {
-    gripper.write(GRIP_CLOSED);
-  } else if (cmd == "GRIPPER_OPEN") {
-    gripper.write(GRIP_OPEN);
+    effector.detach(); jointA.detach(); jointB.detach();
+  } else if (cmd == "ENGAGE") {
+    effector.write(GRIP_CLOSED);
+  } else if (cmd == "RELEASE") {
+    effector.write(GRIP_OPEN);
   } else if (cmd == "HOME" || cmd == "RETRACT_ALL") {
-    jointA.write(HOME_A); jointB.write(HOME_B); gripper.write(GRIP_OPEN);
+    jointA.write(HOME_A); jointB.write(HOME_B); effector.write(GRIP_OPEN);
   } else if (cmd.startsWith("JOINT_A_ROTATE")) {
     jointA.write(clampDeg(jointA.read() + parseDeg(cmd)));
   } else if (cmd.startsWith("JOINT_B_ROTATE")) {

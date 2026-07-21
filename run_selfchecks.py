@@ -51,6 +51,7 @@ CORE = [
     "cortex.recursive_tom", "cortex.counterfactual_sim",   # C1 batch-2: N-agent recursive ToM / counterfactual do()-operator
     "cortex.learned_attention",   # C1 batch-3: learned spiking reticular attention gate
     "cortex.learned_evc",   # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
+    "cortex.second_order_access",   # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
     # hippocampus — memory formation, spatial coding, replay
     "hippocampus.hippocampus", "hippocampus.grid_cells", "hippocampus.htm_sequence_memory", "hippocampus.frequency_memory",
     "hippocampus.experience_replay", "hippocampus.sleep_replay", "hippocampus.ring_attractor", "hippocampus.growing_learner",
@@ -60,6 +61,7 @@ CORE = [
     "hippocampus.episodic_recall",   # W8: reconstructive pattern-completion autobiographical recall
     "hippocampus.spiking_grid_can",   # C1: continuous-attractor SPIKING grid network (bump path integration)
     "hippocampus.episode_consolidation",   # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
+    "hippocampus.head_direction",   # C2 r2: spiking HD ring + goal-vector cells (heading, bearing, distance)
     # basal ganglia — action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation", "basal_ganglia.r_stdp", "basal_ganglia.valence_stdp",
     "basal_ganglia.action_gating", "basal_ganglia.latent_q", "basal_ganglia.mlp_q",
@@ -143,6 +145,11 @@ RESEARCH = [
     "reasoning.model_builder",
     # the 5 Gf inducers COMBINED (not merged) into one file: reasoning.gf
     "reasoning.gf",
+    # HONEST held-out RPM bench (rendered rasters -> spiking component perception -> derived cells),
+    # replacing the old grammar self-test: 80% measured vs 12.5% chance, broken controls near chance.
+    # (reasoning.arc_diagnostic is deliberately NOT here -- a ~27 s offline instrument, covered by
+    # tests/test_arc_diagnostic.py; the smoke gate stays fast.)
+    "reasoning.real_rpm_bench",
     "reasoning.vsa_structure_mapping",   # C1 batch-4: Gentner relational structure-mapping analogy (VSA/resonator)
     "reasoning.reasoning_cortex",   # MoE router: ~8 dead reasoning studies made live on the converse path
     "reasoning.derivation",         # multi-hop transitive DEDUCTION (proof-carrying BFS over taught facts)

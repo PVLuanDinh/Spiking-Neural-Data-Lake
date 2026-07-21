@@ -1035,27 +1035,39 @@ class LakeChat:
         ):  # composes -> single-shot stays the
             return None  # router's job; skip the cortex build on ordinary turns
         try:
-            cached = getattr(self, "_cortex", None)
-            if cached is None or cached[0] != len(self.records):
-                from snn_data_lake.reasoning.reasoning_cortex import build_default_cortex
-
-                triples = [tuple(rec["triple"]) for rec in self.records if rec.get("triple")]
-                cached = (
-                    len(self.records),
-                    build_default_cortex(
-                        seed=0,
-                        triples=triples or None,
-                        enable_recognizer_bank=True,
-                        enable_abduction=True,
-                        enable_rpm=True,
-                    ),
-                )
-                self._cortex = cached
             from snn_data_lake.reasoning.reasoning_compose import CompositionalSolver
 
-            return CompositionalSolver(cached[1], records=self.records).solve(text)
+            return CompositionalSolver(self._get_cortex(), records=self.records).solve(text)
         except Exception:
             return None
+
+    def _get_cortex(self):
+        """C2 #3: ONE cortex build shared by every dispatch path.
+
+        _compose_reply and _cortex_reply each built their own cortex but cached into the SAME
+        `self._cortex` slot keyed only on len(self.records) -- with DIFFERENT capability sets
+        (compose enabled abduction+rpm; the unconditional per-turn dispatch enabled neither). So
+        which experts a query could reach depended on which path happened to run first for a given
+        record count: a 'raven:' turn arriving through the ordinary dispatch found no RPM expert at
+        all, and the spiking VSA synthesis expert was effectively unreachable. Now every path gets
+        the full roster, and the answer no longer depends on turn order."""
+        cached = getattr(self, "_cortex", None)
+        if cached is None or cached[0] != len(self.records):
+            from snn_data_lake.reasoning.reasoning_cortex import build_default_cortex
+
+            triples = [tuple(rec["triple"]) for rec in self.records if rec.get("triple")]
+            cached = (
+                len(self.records),
+                build_default_cortex(
+                    seed=0,
+                    triples=triples or None,
+                    enable_recognizer_bank=True,
+                    enable_abduction=True,
+                    enable_rpm=True,
+                ),
+            )
+            self._cortex = cached
+        return cached[1]
 
     def _abduce_reply(self, text):
         """ABDUCTION (min-free-energy cause selection): on a 'why X' / 'what causes X' query, abduce the
@@ -1098,19 +1110,7 @@ class LakeChat:
         cortex built before an ingest rebuilds once the KB grows; the trained model itself is lazy
         and cached inside the expert (train once, reuse across turns)."""
         try:
-            cached = getattr(self, "_cortex", None)
-            if cached is None or cached[0] != len(self.records):
-                from snn_data_lake.reasoning.reasoning_cortex import build_default_cortex
-
-                triples = [tuple(rec["triple"]) for rec in self.records if rec.get("triple")]
-                cached = (
-                    len(self.records),
-                    build_default_cortex(
-                        seed=0, triples=triples or None, enable_recognizer_bank=True
-                    ),
-                )
-                self._cortex = cached
-            out = cached[1].route(text)
+            out = self._get_cortex().route(text)  # C2 #3: the ONE full-roster cortex
             if not out.get("known"):
                 return None  # no confident expert -> caller's honest gap stands
             return {

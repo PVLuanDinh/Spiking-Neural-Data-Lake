@@ -32,7 +32,7 @@ a plain ImportError is raised with the one-line fix: pip install ".[llm]".
 Usage:
     from local_llm.airllm_backend import AirLLMBackend
     backend = AirLLMBackend()  # downloads model weights on first instantiation
-    label = backend.complete("close the gripper")   # -> "close" (nl_interface contract)
+    label = backend.complete("close the effector")   # -> "close" (nl_interface contract)
     text = backend.generate("Explain what a spike train is in one sentence.")  # inference
 """
 
@@ -159,7 +159,7 @@ class AirLLMBackend:
         text generation, use .generate() instead.
 
         Args:
-            prompt: English instruction (e.g., "close the gripper")
+            prompt: English instruction (e.g., "close the effector")
 
         Returns:
             One of VALID_LABELS. If the model output contains no recognized label,
@@ -196,7 +196,7 @@ if __name__ == "__main__":
         print("AirLLM/torch available - running smoke test", file=sys.stderr)
         backend = AirLLMBackend()
 
-        result = backend.complete("close the gripper")
+        result = backend.complete("close the effector")
         print(f"complete() smoke test result: {result}")
         assert result in VALID_LABELS, f"Invalid label: {result}"
 

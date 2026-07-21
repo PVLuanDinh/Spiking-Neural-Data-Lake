@@ -169,14 +169,14 @@ _REPLY_SAFETY = ("Safety is enforced by a reflex E-STOP and a gated arm. The arm
                  "reflex preempts every command.")
 _REPLY_MEMORY = ("My working memory lives in the data lake: 500 spikes stored, and my recent "
                  "recall window holds 6 ticks of activity.")
-_REPLY_GOAL = ("My working-memory goal is GRIPPER_OPEN -- the prefrontal executive holds it and "
+_REPLY_GOAL = ("My working-memory goal is RELEASE -- the prefrontal executive holds it and "
                "biases my actions toward it.")
 
 
 def _stub_brain(stopped=False, n_events=500, thought="percept"):
     """A minimal pure-stdlib stand-in exposing the live-state accessors region_activity reads."""
     lake = types.SimpleNamespace(n_events=lambda: n_events)
-    armsim = types.SimpleNamespace(state=lambda: {"stopped": stopped, "gripper": False})
+    armsim = types.SimpleNamespace(state=lambda: {"stopped": stopped, "effector": False})
     arm = types.SimpleNamespace(lake_wm=lake, arm=armsim)
     return types.SimpleNamespace(thought=thought, goal=3, arm=arm)
 

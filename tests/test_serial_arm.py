@@ -49,11 +49,11 @@ def test_assert_calibrated_gate_toggles(monkeypatch):
 def test_commands_sent_verbatim_and_mirrored():
     w = FakeWriter()
     arm = SerialArm(writer=w, allow_uncalibrated=True)  # bench: opt in past the gate
-    arm.apply("GRIPPER_CLOSE")
+    arm.apply("ENGAGE")
     arm.apply("JOINT_A_ROTATE(+15deg)")
     arm.apply("EMERGENCY_STOP")
-    assert w.lines == ["GRIPPER_CLOSE", "JOINT_A_ROTATE(+15deg)", "EMERGENCY_STOP"]
-    assert arm.gripper == 1.0  # mirror closed the gripper
+    assert w.lines == ["ENGAGE", "JOINT_A_ROTATE(+15deg)", "EMERGENCY_STOP"]
+    assert arm.effector == 1.0  # mirror closed the effector
     assert arm.state()["stopped"] is True  # EMERGENCY_STOP froze the mirror
 
 
@@ -69,12 +69,12 @@ def test_emergency_stop_freezes_the_wire():
     w = FakeWriter()
     arm = SerialArm(writer=w, allow_uncalibrated=True)
     arm.apply("EMERGENCY_STOP")
-    arm.apply("GRIPPER_CLOSE")  # blocked by the freeze -> not transmitted
+    arm.apply("ENGAGE")  # blocked by the freeze -> not transmitted
     arm.apply("JOINT_A_ROTATE(+10deg)")  # blocked -> not transmitted
     assert w.lines == ["EMERGENCY_STOP"]
     arm.apply("HOME")  # allowed while stopped -> clears the latch
-    arm.apply("GRIPPER_OPEN")  # latch cleared -> transmitted again
-    assert w.lines == ["EMERGENCY_STOP", "HOME", "GRIPPER_OPEN"]
+    arm.apply("RELEASE")  # latch cleared -> transmitted again
+    assert w.lines == ["EMERGENCY_STOP", "HOME", "RELEASE"]
     assert arm.state()["stopped"] is False
 
 
@@ -92,7 +92,7 @@ def test_write_error_is_failsafe():
     arm = SerialArm(writer=w, allow_uncalibrated=True)
     w.fail = True
     with pytest.raises(RuntimeError, match="actuator serial write failed"):
-        arm.apply("GRIPPER_OPEN")
+        arm.apply("RELEASE")
 
 
 def test_close_swallows_writer_errors():

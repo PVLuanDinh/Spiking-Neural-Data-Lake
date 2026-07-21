@@ -2109,7 +2109,7 @@ Note: the torch training tier is opt-in and NOT in CI (no GPU runner) -- code-re
   (fires `STOP`/`WITHDRAW`); `autonomous_loop.step` and `live_arm.run` treat a non-finite distance as danger
   (reflex `EMERGENCY_STOP`). Regression self-checks added to each.
 - **P1 — `arm_sim` trajectory-comparator masking.** `apply()` recommitted `expected_ee` on *every* command,
-  so a no-op `HOLD`/unknown/gripper token after an external `perturb()` zeroed `deviation()` and silently
+  so a no-op `HOLD`/unknown/effector token after an external `perturb()` zeroed `deviation()` and silently
   cleared `trajectory_breach()` with no corrective motion. Now only real joint motion
   (`JOINT_*`/`HOME`/`RETRACT_ALL`) recommits the trajectory reference. Regression self-check added.
 ### Security
@@ -3323,7 +3323,7 @@ could not use it on their own problem), the tkinter desktop app (`control_panel.
   style RPE + slow `cortisol` stress) → the arm reacts. **Autonomous** = there is NO hardcoded gesture→command
   map; the arm grows its own repertoire from the stream AND learns which action each context should trigger from
   reward. Self-check: 3 distinct multimodal contexts → 3 grown units; a rewarded action is LEARNED (policy moves
-  GRIPPER_CLOSE → GRIPPER_OPEN, proving it is learned not fixed); deterministic.
+  ENGAGE → RELEASE, proving it is learned not fixed); deterministic.
 - **SAFETY (the whole point): the network only chooses — it never bypasses the envelope.** An object at the
   sensor (`distance < CONTACT`) trips the reflex → gated `EMERGENCY_STOP` BEFORE any learned action, and EVERY
   motor command is issued through the safety-gated `ArmSim.apply()`. Self-check asserts danger → E-STOP and that a
@@ -3448,9 +3448,9 @@ already-verified code paths (nothing reimplemented):
 
 - **Arm Control** — a `tk.Canvas` renders the 2-link planar arm via `ArmSim` forward kinematics
   (links, end-effector, floor, and the obstacle from `arm_sim`), turning red on `collision()`.
-  Buttons (JOINT_A/B +/-, GRIPPER OPEN/CLOSE, HOME, RETRACT_ALL, a large red **EMERGENCY_STOP**)
+  Buttons (JOINT_A/B +/-, EFFECTOR OPEN/CLOSE, HOME, RETRACT_ALL, a large red **EMERGENCY_STOP**)
   issue motion **only** through the safety-gated `ArmSim.apply()`; a live status line shows theta,
-  ee, gripper, stopped, collision, and deviation.
+  ee, effector, stopped, collision, and deviation.
 - **Live Recognition** — pick one of the builder's labeled captures and Step / Auto-play its
   windows through the **same** path `live_arm` uses: `gesture_recognition.classify` -> `Interpreter`
   (the `live_arm` sensor command map) -> gated arm reaction, with a scrolling event log.
@@ -4529,7 +4529,7 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
   back-channel** (opt-in `bridge=`) — the split-process feedback path, transparent to learning
   (same value learned with or without the bridge).
 ### Note
-- `live_arm.py` left as-is: it issues gripper commands (no joint motion), so the trajectory
+- `live_arm.py` left as-is: it issues effector commands (no joint motion), so the trajectory
   comparator has nothing to compare there — it belongs in the joint-control path (`spiking_pid`).
 ### CI
 - 36/36 self-checks, green (additive; the 95% recognition path unchanged).
@@ -4627,11 +4627,11 @@ _Milestone: v1.0 — 100 contiguous tagged releases (v0.1 → v1.0), 77 zero-dep
 
 ### Added
 - `live_arm.py`: streams sensor `(distance, temp)` → buffers W → **order-aware** gesture
-  recognition (v0.46) → **Interpreter** (gesture→command: approach=`GRIPPER_CLOSE`,
-  retreat=`GRIPPER_OPEN`, idle=`HOLD`) → **arm_sim** (joint/gripper motion), with a **contact
+  recognition (v0.46) → **Interpreter** (gesture→command: approach=`ENGAGE`,
+  retreat=`RELEASE`, idle=`HOLD`) → **arm_sim** (joint/effector motion), with a **contact
   reflex** (d < 0.04 m → `EMERGENCY_STOP`). `--serial COM8` runs live off the ESP32; replays the
   builder's labeled CSVs hardware-free by default. Verified on **real data**: APPROACH → 46
-  `GRIPPER_CLOSE` + 9 contact-STOPs, RETREAT → 39 `GRIPPER_OPEN`, arm gripper closes and stops on
+  `ENGAGE` + 9 contact-STOPs, RETREAT → 39 `RELEASE`, arm effector closes and stops on
   contact. **Loop closed.**
 ### CI
 - `live_arm` → **31 self-checks**, green.
@@ -4779,7 +4779,7 @@ live on, on the branch.)
 
 ### Added
 - `interpreter.py`: matched signature label → concrete robot command (`JOINT_A_ROTATE(+15deg)`,
-  `GRIPPER_CLOSE`, …) + reflex map (`STOP→EMERGENCY_STOP`, `WITHDRAW→RETRACT_ALL`). Priority:
+  `ENGAGE`, …) + reflex map (`STOP→EMERGENCY_STOP`, `WITHDRAW→RETRACT_ALL`). Priority:
   **reflex preempts > AVOID instinct vetoes (HOLD) > confident match executes**. Honest reward
   policy (placeholder): reflex −1, veto −0.3, exec 0 (+0.5 with `--assume-success`). `--pipe`
   reads loop JSON on stdin → commands to stdout, `OUTCOME` to a back-channel.

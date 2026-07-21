@@ -3,7 +3,7 @@ v0.37 — the Interpreter: matched signal -> robot command + outcome feedback.
 
 The downstream box of signal_loop.py (the schematic's "Reaction / Command Translation").
 It reads the loop's JSON events on stdin, translates a matched signature LABEL into a
-concrete robot command (JOINT_A_ROTATE(+15deg), GRIPPER_CLOSE, ...), and closes the loop
+concrete robot command (JOINT_A_ROTATE(+15deg), ENGAGE, ...), and closes the loop
 by sending an `OUTCOME <reward>` back to `signal_loop --feedback`.
 
 Priority (instinct over cognition):
@@ -28,8 +28,8 @@ import sys
 COMMANDS = {
     "JOINT_A_ROTATE": "JOINT_A_ROTATE(+15deg)",
     "JOINT_B_ROTATE": "JOINT_B_ROTATE(-10deg)",
-    "GRIPPER_CLOSE": "GRIPPER_CLOSE",
-    "GRIPPER_OPEN": "GRIPPER_OPEN",
+    "ENGAGE": "ENGAGE",
+    "RELEASE": "RELEASE",
     "HOME": "HOME",
 }
 REFLEX_CMD = {"STOP": "EMERGENCY_STOP", "WITHDRAW": "RETRACT_ALL"}
@@ -97,7 +97,7 @@ def selfcheck():
     # ---- unit: each event class translates correctly --------------------------
     assert itp.interpret({"reflex": "STOP", "preempt": True}) == ("EMERGENCY_STOP", -1.0)
     assert itp.interpret({"reflex": "WITHDRAW"}) == ("RETRACT_ALL", -1.0)
-    assert itp.interpret({"match": "GRIPPER_CLOSE", "instinct": None})[0] == "GRIPPER_CLOSE"
+    assert itp.interpret({"match": "ENGAGE", "instinct": None})[0] == "ENGAGE"
     assert itp.interpret({"match": "HOME", "instinct": "AVOID"}) == ("HOLD", -0.3)  # veto wins
     assert itp.interpret({"match": None})[0] is None  # novel -> no cmd
     assert itp.interpret({"match": "UNMAPPED_LABEL"})[0] is None  # no mapping
@@ -112,14 +112,14 @@ def selfcheck():
     lib = S.build_default_library()
     matcher = S.build_matcher(lib)
 
-    # a) the GRIPPER_CLOSE reference window should translate to its command
-    ref_line = ",".join(f"{x:.4f}" for x in lib["GRIPPER_CLOSE"])
+    # a) the ENGAGE reference window should translate to its command
+    ref_line = ",".join(f"{x:.4f}" for x in lib["ENGAGE"])
     events = []
     S.run_live(
         iter([ref_line]), lib, matcher, None, S.ValenceLearner(), S.Cortisol(), emit=events.append
     )
     cmds = [itp.interpret(e)[0] for e in events]
-    assert "GRIPPER_CLOSE" in cmds, f"reference signal did not map to its command: {cmds}"
+    assert "ENGAGE" in cmds, f"reference signal did not map to its command: {cmds}"
 
     # b) a collision through a reflex-enabled loop -> EMERGENCY_STOP + bad reward
     from snn_data_lake.brainstem.reflex import Reflex
@@ -140,7 +140,7 @@ def selfcheck():
     print("priority    : reflex > AVOID-veto > match;  reward: reflex -1, veto -0.3, exec 0/+0.5")
     print(
         "self-check OK: reflex preempts, AVOID vetoes, matches map to commands, "
-        "reference signal -> GRIPPER_CLOSE, collision -> EMERGENCY_STOP"
+        "reference signal -> ENGAGE, collision -> EMERGENCY_STOP"
     )
 
 

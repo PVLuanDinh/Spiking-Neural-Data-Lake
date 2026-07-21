@@ -208,7 +208,7 @@ def run_transcript(backend, backend_name):
 
     # Example commands
     examples = [
-        "Close the gripper",
+        "Close the effector",
         "Hold position",
         "Stop all movement",
         "Read telemetry from channel 0 window 6000",
@@ -265,7 +265,7 @@ def run_selfcheck():
     lake_path = create_demo_lake()
 
     # Check 1: safe phrase drives a gated apply and yields valid state
-    intent = nl.interpret("close the gripper")
+    intent = nl.interpret("close the effector")
     assert intent["kind"] == "arm", f"Expected kind=arm, got {intent['kind']}"
     state = arm.apply(intent["command"])
     assert "stopped" in state, "State missing 'stopped' key"
