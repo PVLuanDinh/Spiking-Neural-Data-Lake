@@ -14,8 +14,11 @@ This module is the same induction idiom transplanted to the grid domain:
                    parse_objects / cells_by_color (same BFS, same attribute style; re-implemented here
                    because that module's top-level `import env` makes it un-importable as a package
                    module -- adds 8-connectivity and multi-colour variants they lack).
-  2. DSL         : ~50 small, TOTAL grid->grid primitives (rotate/flip/crop/scale/tile/mirror/object
-                   select+delete/gravity/fill/frame/split-logic). Inapplicable -> None, never raises.
+  2. DSL         : ~70 small, TOTAL grid->grid primitives (rotate/flip/crop/scale/tile/mirror/object
+                   select+delete/gravity/fill/frame/split-logic, plus OBJECT-CENTRIC ops over the
+                   extracted components: per-object reflection, modal/odd shape+colour filters,
+                   in-place isolation, component counting, bbox fill, reading-order selection,
+                   colour-role cells, centering). Inapplicable -> None, never raises.
   3. SEARCH      : iterative deepening over COMPOSITIONS by program size, exactly the
                    gf.induce_program idiom: the SMALLEST program consistent with EVERY training pair
                    wins (MDL / Occam bias). Equivalence pruning (two prefixes producing identical
@@ -25,14 +28,11 @@ This module is the same induction idiom transplanted to the grid domain:
   4. LIBRARY     : a solved task's winning program (>=2 steps) becomes ONE named composite primitive
                    -- OpenGf._learn's pattern in the grid domain -- so later tasks reach deeper
                    within the same size budget. Measured ON vs OFF; a null result is reported as-is.
-  5. WEIGHTS     : per-primitive selection weights learned ACROSS tasks (ArcWeights, per-instance
-                   state passed in exactly like the library, never a module-global reorder of
-                   _BASE): each winning program's primitives earn reward-minus-baseline credit (the
-                   r_stdp idiom; uniform EXACT credit to the closed program, no eligibility decay,
-                   dead search paths never punished) and _pool is stably re-sorted by that credit.
-                   Under a binding node budget the order decides which equal-size consistent program
-                   is found first AND which primitives are reached at all before truncation;
-                   weights=None (the default) keeps the hand-authored order. Measured ON vs OFF.
+
+(A learned per-primitive ordering, ArcWeights, was built and measured here: its bench effect was
+byte-identical to the fixed prior -- arc_diagnostic proved the failures are DSL-COVERAGE limited,
+so no search order can add solves. Per the adopt-better/retire-inferior policy it was REMOVED;
+the hand-authored _BASE order is the only prior.)
 
 HONEST FRAMING (read before quoting any number)
 -----------------------------------------------
@@ -385,9 +385,145 @@ def _frame(g, colr):
     return (top,) + tuple((colr,) + row + (colr,) for row in g) + (top,)
 
 
-# ---- the base (parameter-free) primitive registry: (name, fn). The hand order is the COLD-START ----
-#      prior and the tie-break: ArcWeights re-sorts a per-task COPY in _pool by learned credit; this
-#      list itself is NEVER mutated (arc_diagnostic reflects into it, determinism depends on it).
+# ---- OBJECT-CENTRIC primitives: transforms/filters/counts over the extracted components. --------
+#      Added after arc_diagnostic proved (11/11 sampled failures) the ceiling is DSL COVERAGE,
+#      not search: the only lever that can add solves is a richer vocabulary. All reuse
+#      components(); all are parameter-free, total, deterministic.
+
+
+def _obj_reflect_each(g, mode):
+    """Reflect every (8-connected, multi-colour) object in place within its own bbox.
+    A reflected cell landing on another object's cell -> None (strict, keeps precision)."""
+    bg = background(g)
+    objs = components(g, 8, False, bg)
+    if not objs:
+        return None
+    R, C = len(g), len(g[0])
+    out = [[bg] * C for _ in range(R)]
+    occ = set()
+    for o in objs:
+        r0, c0, r1, c1 = o["bbox"]
+        for y, x in sorted(o["cells"]):
+            ny = (r0 + r1) - y if mode in ("v", "r") else y
+            nx = (c0 + c1) - x if mode in ("h", "r") else x
+            if (ny, nx) in occ:
+                return None
+            occ.add((ny, nx))
+            out[ny][nx] = g[y][x]
+    return _tup(out)
+
+
+def _recolor_modal(g):
+    """Recolor every non-background cell to the modal non-background colour (ties -> smallest)."""
+    bg = background(g)
+    cnt = Counter(v for row in g for v in row if v != bg)
+    if not cnt:
+        return None
+    top = max(cnt.values())
+    col = min(c for c, n in cnt.items() if n == top)
+    return tuple(tuple(col if v != bg else v for v in row) for row in g)
+
+
+def _filter_objs(g, attr, keep_modal):
+    """Keep only the objects whose `attr` ('shape' or 'color') equals (or differs from) THE
+    unique modal value over all objects; ambiguity or nothing-to-filter -> None."""
+    bg = background(g)
+    objs = components(g, 4, True, bg)
+    if len(objs) < 2:
+        return None
+    cnt = Counter(o[attr] for o in objs)
+    top = max(cnt.values())
+    modal = [k for k, n in cnt.items() if n == top]
+    if len(modal) != 1 or len(cnt) < 2:
+        return None
+    keep = [o for o in objs if (o[attr] == modal[0]) == keep_modal]
+    out = [[bg] * len(g[0]) for _ in range(len(g))]
+    for o in keep:
+        for y, x in o["cells"]:
+            out[y][x] = g[y][x]
+    return _tup(out)
+
+
+def _isolate(g, conn, same, mode):
+    """Keep ONE object (chosen by _pick) in place; every other cell becomes background --
+    the in-place complement of _sel (which crops to the object's bbox)."""
+    bg = background(g)
+    obj = _pick(components(g, conn, same, bg), mode)
+    if obj is None:
+        return None
+    out = [[bg] * len(g[0]) for _ in range(len(g))]
+    for y, x in obj["cells"]:
+        out[y][x] = g[y][x]
+    return _tup(out)
+
+
+def _count_grid(g, conn, same, square):
+    """COUNT the objects: k of them -> a k x k (or 1 x k) grid of the modal object colour."""
+    bg = background(g)
+    objs = components(g, conn, same, bg)
+    k = len(objs)
+    if k == 0 or k > _MAXS:
+        return None
+    cnt = Counter(o["color"] for o in objs)
+    top = max(cnt.values())
+    col = min(c for c, n in cnt.items() if n == top)
+    return tuple((col,) * k for _ in range(k if square else 1))
+
+
+def _objs_bbox_fill(g):
+    """Fill every object's bounding box with the object's colour (deterministic overwrite order)."""
+    bg = background(g)
+    objs = components(g, 4, True, bg)
+    if not objs:
+        return None
+    out = [list(row) for row in g]
+    for o in objs:
+        r0, c0, r1, c1 = o["bbox"]
+        for y in range(r0, r1 + 1):
+            for x in range(c0, c1 + 1):
+                out[y][x] = o["color"]
+    return _tup(out)
+
+
+def _sel_pos(g, conn, same, idx):
+    """Crop of the FIRST or LAST object in reading order (components are bbox-sorted)."""
+    bg = background(g)
+    objs = components(g, conn, same, bg)
+    if len(objs) < 2:
+        return None
+    return _obj_crop(g, objs[idx], bg)
+
+
+def _color_cell(g, modal):
+    """1x1 grid of the modal (or the rarest) non-background colour; ties -> smallest."""
+    bg = background(g)
+    cnt = Counter(v for row in g for v in row if v != bg)
+    if not cnt:
+        return None
+    pickn = max(cnt.values()) if modal else min(cnt.values())
+    return ((min(c for c, n in cnt.items() if n == pickn),),)
+
+
+def _obj_center(g):
+    """Move the single (8-connected, multi-colour) object so its bbox is centred in the grid."""
+    bg = background(g)
+    objs = components(g, 8, False, bg)
+    if len(objs) != 1:
+        return None
+    o = objs[0]
+    r0, c0, r1, c1 = o["bbox"]
+    R, C = len(g), len(g[0])
+    dr = (R - (r1 - r0 + 1)) // 2 - r0
+    dc = (C - (c1 - c0 + 1)) // 2 - c0
+    out = [[bg] * C for _ in range(R)]
+    for y, x in o["cells"]:
+        out[y + dr][x + dc] = g[y][x]
+    return _tup(out)
+
+
+# ---- the base (parameter-free) primitive registry: (name, fn). The hand order is the search ----
+#      prior ('cheap/likely first') and the tie-break; this list itself is NEVER mutated
+#      (arc_diagnostic reflects into it, determinism depends on it).
 
 _BASE = [
     ("rot90", _rot90),
@@ -429,6 +565,28 @@ _BASE = [
     ("gravity_up", lambda g: _gravity(g, "up")),
     ("gravity_left", lambda g: _gravity(g, "left")),
     ("gravity_right", lambda g: _gravity(g, "right")),
+    # object-centric additions (see the OBJECT-CENTRIC section above; appended, never reordered)
+    ("obj_flip_h_each", lambda g: _obj_reflect_each(g, "h")),
+    ("obj_flip_v_each", lambda g: _obj_reflect_each(g, "v")),
+    ("obj_rot180_each", lambda g: _obj_reflect_each(g, "r")),
+    ("recolor_modal", _recolor_modal),
+    ("keep_modal_shape", lambda g: _filter_objs(g, "shape", True)),
+    ("keep_odd_shape", lambda g: _filter_objs(g, "shape", False)),
+    ("keep_modal_color", lambda g: _filter_objs(g, "color", True)),
+    ("keep_odd_color", lambda g: _filter_objs(g, "color", False)),
+    ("isolate_largest", lambda g: _isolate(g, 4, True, "largest")),
+    ("isolate_largest_m8", lambda g: _isolate(g, 8, False, "largest")),
+    ("count_sq", lambda g: _count_grid(g, 4, True, True)),
+    ("count_row", lambda g: _count_grid(g, 4, True, False)),
+    ("count_sq_m8", lambda g: _count_grid(g, 8, False, True)),
+    ("objs_bbox_fill", _objs_bbox_fill),
+    ("sel_first", lambda g: _sel_pos(g, 4, True, 0)),
+    ("sel_last", lambda g: _sel_pos(g, 4, True, -1)),
+    ("sel_first_m8", lambda g: _sel_pos(g, 8, False, 0)),
+    ("sel_last_m8", lambda g: _sel_pos(g, 8, False, -1)),
+    ("modal_cell", lambda g: _color_cell(g, True)),
+    ("rare_cell", lambda g: _color_cell(g, False)),
+    ("obj_center", _obj_center),
 ]
 
 
@@ -588,45 +746,8 @@ class ArcLibrary:
         return True
 
 
-class ArcWeights:
-    """Learned per-primitive selection weights -- replaces _BASE's hand-authored 'cheap/likely
-    first' prior with cross-task credit. PER-INSTANCE state passed in exactly like the library
-    (NEVER a module-global reorder of _BASE: two consecutive fresh runs must solve the identical
-    task set, and arc_diagnostic reflects into _BASE). The update is the r_stdp idiom in its exact
-    degenerate case: on a win, reward +1 MINUS a running baseline (the mean solve rate seen so far)
-    is credited UNIFORMLY to every primitive of the winning program -- the full program is known
-    exactly at closure, so an eligibility decay over the prefix would only add approximation error
-    -- and dead search paths are never punished (they outnumber wins by orders of magnitude and
-    nearly every primitive legitimately appears on many, so punishment would swamp the win signal
-    and penalize generality). The ordering only permutes depth>=2 priority under a binding node
-    budget: at depth 1 the whole pool (tens of primitives) fits any real budget, so every primitive
-    is still tried on every task -- exploration is preserved for free."""
-
-    def __init__(self):
-        self.w = {}  # primitive name -> accumulated baseline-subtracted credit
-        self.seen = 0  # solver calls observed
-        self.wins = 0  # calls that closed a consistent program
-
-    def observe(self, names, solved):
-        """One finished solver call: the winning program's primitive names (possibly empty, e.g.
-        the const fallback) and whether ANY consistent program closed -- the only signal available
-        before ground truth, the same standard ArcLibrary.learn already accepts."""
-        base = self.wins / self.seen if self.seen else 0.0
-        self.seen += 1
-        if solved:
-            self.wins += 1
-            for n in names:  # uniform exact credit, one per occurrence
-                self.w[n] = self.w.get(n, 0.0) + (1.0 - base)
-
-    def key(self, name):
-        """Sort weight of a primitive (0.0 when never credited)."""
-        return self.w.get(name, 0.0)
-
-
-def _pool(train_in, train_out, library, weights=None):
-    """The per-task primitive pool: base + fitted + library composites (refit in THIS task's context).
-    With `weights` (ArcWeights) the pool is STABLY sorted by learned credit, best first: ties keep
-    the hand-authored order, so an uncredited (fresh) table reproduces the fixed prior exactly."""
+def _pool(train_in, train_out, library):
+    """The per-task primitive pool: base + fitted + library composites (refit in THIS task's context)."""
     prims = list(_BASE) + _fitted_prims(train_in, train_out)
     pmap = dict(prims)
     if library is not None:
@@ -643,8 +764,6 @@ def _pool(train_in, train_out, library, weights=None):
                 return g
 
             prims.append(("lib:" + ">".join(names), comp))
-    if weights is not None:
-        prims.sort(key=lambda p: -weights.key(p[0]))  # stable: zero-credit ties keep hand order
     return prims
 
 
@@ -657,14 +776,12 @@ def synthesize(
     time_budget=None,
     library=None,
     dsl="full",
-    weights=None,
 ):
     """Iterative-deepening program synthesis for ONE ARC task.
 
     Returns (candidates, programs): up to `attempts` DISTINCT predicted test-output grids (lists of
     lists), smallest-program-first, and the matching (names, closer) descriptions. dsl="identity" is
-    the CONTROL: no primitives, exact closer only -- it must score ~0 on real tasks. `weights`
-    (ArcWeights) reorders the primitive pool by learned cross-task credit; None = the fixed prior."""
+    the CONTROL: no primitives, exact closer only -- it must score ~0 on real tasks."""
     _SEG_CACHE.clear()
     try:
         train_in = tuple(_tup(i) for i, _o in train_pairs)
@@ -676,7 +793,7 @@ def synthesize(
         return [], []
 
     full = dsl == "full"
-    prims = _pool(train_in, train_out, library, weights) if full else []
+    prims = _pool(train_in, train_out, library) if full else []
     cands, progs, seen_c = [], [], set()
 
     def close(state, names):
@@ -742,12 +859,9 @@ def synthesize(
     return cands, progs
 
 
-def make_solver(
-    library=None, max_depth=3, node_budget=4000, time_budget=5.0, dsl="full", weights=None
-):
+def make_solver(library=None, max_depth=3, node_budget=4000, time_budget=5.0, dsl="full"):
     """An arc_bench-shaped solver(train_pairs, test_input, attempts) -> [candidate grids]. With a
-    library, each solved task's winning program is learned as a composite for the NEXT tasks; with
-    `weights` (ArcWeights), each outcome likewise updates the learned primitive ordering."""
+    library, each solved task's winning program is learned as a composite for the NEXT tasks."""
 
     def solver(train, test_input, attempts=2):
         cands, progs = synthesize(
@@ -759,14 +873,11 @@ def make_solver(
             time_budget=time_budget,
             library=library,
             dsl=dsl,
-            weights=weights,
         )
         if library is not None and progs:
             names, _closer = progs[0]
             if len(names) >= 2:
                 library.learn(names)
-        if weights is not None:
-            weights.observe(progs[0][0] if progs else (), bool(progs))
         return cands
 
     return solver
@@ -811,6 +922,40 @@ def main():
             "sel_largest",
             _sel(_tup([[1, 0, 0], [1, 0, 2], [1, 0, 0]]), 4, True, "largest")
             == _tup([[1], [1], [1]]),
+        ),
+        (
+            "obj_flip_h_each",
+            _obj_reflect_each(_tup([[3, 0, 0, 5], [3, 3, 0, 0]]), "h")
+            == _tup([[0, 3, 0, 5], [3, 3, 0, 0]]),
+        ),
+        (
+            "obj_flip_h_collision",
+            _obj_reflect_each(_tup([[1, 0, 5, 0], [1, 0, 0, 0], [1, 1, 1, 0]]), "h") is None,
+        ),
+        (
+            "keep_odd_color",
+            _filter_objs(_tup([[1, 0, 2], [0, 0, 0], [1, 0, 0]]), "color", False)
+            == _tup([[0, 0, 2], [0, 0, 0], [0, 0, 0]]),
+        ),
+        (
+            "isolate_largest",
+            _isolate(_tup([[1, 1, 0], [0, 0, 0], [0, 0, 5]]), 4, True, "largest")
+            == _tup([[1, 1, 0], [0, 0, 0], [0, 0, 0]]),
+        ),
+        (
+            "count_sq",
+            _count_grid(_tup([[1, 0, 1], [0, 0, 0], [2, 0, 0]]), 4, True, True)
+            == _tup([[1, 1, 1], [1, 1, 1], [1, 1, 1]]),
+        ),
+        (
+            "sel_first",
+            _sel_pos(_tup([[7, 0, 0], [0, 0, 0], [0, 0, 4]]), 4, True, 0) == _tup([[7]]),
+        ),
+        ("modal_cell", _color_cell(_tup([[0, 1, 2], [0, 2, 0]]), True) == _tup([[2]])),
+        (
+            "obj_center",
+            _obj_center(_tup([[6, 0, 0], [0, 0, 0], [0, 0, 0]]))
+            == _tup([[0, 0, 0], [0, 6, 0], [0, 0, 0]]),
         ),
     ]
     for name, passed in checks:
@@ -880,32 +1025,14 @@ def main():
         print("  FAIL library: the learned composite must make the depth-1 solve possible")
         ok = False
 
-    # ---- (d2) learned selection weights: r_stdp-style credit reorders the pool, never _BASE --------
-    w = ArcWeights()
-    w.observe(("crop_content", "scale2"), True)  # first win: baseline 0 -> +1 each
-    w.observe((), False)  # a miss moves only the baseline
-    w.observe(("scale2",), True)  # second win: baseline 1/2 -> +0.5
+    # ---- (d2) pool order: the hand-authored _BASE prior must survive pooling exactly ---------------
     tin = tuple(_tup(i) for i, _o in t_two[0])
     tout = tuple(_tup(o) for _i, o in t_two[0])
     base_names = [n for n, _f in _pool(tin, tout, None)]
-    wnames = [n for n, _f in _pool(tin, tout, None, weights=w)]
-    print(
-        "weights: credit scale2=%.1f crop_content=%.1f baseline=%d/%d -> pool head %r"
-        % (w.key("scale2"), w.key("crop_content"), w.wins, w.seen, wnames[:2])
-    )
     if base_names[: len(_BASE)] != [n for n, _f in _BASE]:
-        print("  FAIL weights: weights=None must keep the hand-authored order exactly")
+        print("  FAIL pool: _pool must keep the hand-authored _BASE order exactly")
         ok = False
-    if not (
-        w.key("scale2") == 1.5
-        and w.key("crop_content") == 1.0
-        and wnames[:2] == ["scale2", "crop_content"]
-        and wnames[2:] == [n for n in base_names if n not in ("scale2", "crop_content")]
-    ):
-        print(
-            "  FAIL weights: credited primitives must lead; zero-credit ties must keep hand order"
-        )
-        ok = False
+    print("pool order: _BASE prior preserved (%d base primitives)" % len(_BASE))
 
     # ---- (e) TRAINING-split spot score (develop on training; evaluation is NEVER read here) --------
     from snn_data_lake.reasoning import arc_bench
@@ -945,27 +1072,6 @@ def main():
         print(
             "determinism: two node-budget-bound runs solve the identical set (%d tasks)"
             % r_again["solved"]
-        )
-        # learned weights ON: fresh per-instance state each run (were the credit a module global
-        # mutated during run 1, run 2 would reorder and this identity would fail); the ON-vs-OFF
-        # solve count is MEASURED and printed, never asserted -- arc_diagnostic's verdict is that
-        # failures are coverage-limited, so a null effect is the expected honest outcome.
-        r_wa = arc_bench.score(
-            make_solver(node_budget=1500, time_budget=None, weights=ArcWeights()),
-            "training",
-            limit=n,
-        )
-        r_wb = arc_bench.score(
-            make_solver(node_budget=1500, time_budget=None, weights=ArcWeights()),
-            "training",
-            limit=n,
-        )
-        if r_wa["solved_ids"] != r_wb["solved_ids"]:
-            print("  FAIL: two fresh-ArcWeights runs must solve the identical task set")
-            ok = False
-        print(
-            "learned weights: %d/%d solved (vs %d/%d fixed prior) -- measured, not asserted"
-            % (r_wa["solved"], r_wa["total"], r_again["solved"], r_again["total"])
         )
 
     print("-" * 96)

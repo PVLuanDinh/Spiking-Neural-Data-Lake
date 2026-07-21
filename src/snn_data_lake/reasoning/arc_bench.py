@@ -130,14 +130,21 @@ def main():
         r = score(solv, "evaluation", limit=200)
         print(f"  control {name:9s}: {r['solved']}/{r['total']} = {100 * r['rate']:.1f}%")
         if r["rate"] > 0.02:
-            print(f"  FAIL: control '{name}' scored {r['rate']:.3f}; a trivial solver must not pass ARC")
+            print(
+                f"  FAIL: control '{name}' scored {r['rate']:.3f}; a trivial solver must not pass ARC"
+            )
             ok = False
 
     # Exact-match plumbing must be strict in both directions.
     if not _grids_equal([[1, 2]], [[1, 2]]):
         print("  FAIL: _grids_equal rejected identical grids")
         ok = False
-    for a, b in (([[1, 2]], [[1, 3]]), ([[1, 2]], [[1, 2], [3, 4]]), ([[1, 2]], [[1]]), ([[1]], None)):
+    for a, b in (
+        ([[1, 2]], [[1, 3]]),
+        ([[1, 2]], [[1, 2], [3, 4]]),
+        ([[1, 2]], [[1]]),
+        ([[1]], None),
+    ):
         if _grids_equal(a, b):
             print(f"  FAIL: _grids_equal accepted {a!r} == {b!r}")
             ok = False
