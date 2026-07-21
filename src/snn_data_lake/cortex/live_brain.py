@@ -162,8 +162,11 @@ class LiveBrain:
                 pat, steps=60, lr=0.05
             )  # SETTLE the causes by minimizing prediction error
             res = dict(res)  # copy -> never mutate the arm's own returned state
-            res["pc_percept"] = list(self._pc.r2)  # settled top cause r2 = the generative percept
-            res["pc_surprise"] = (
+            # cast at the boundary: r2 / energy() are numpy now, the live state dict stays plain float
+            res["pc_percept"] = [
+                float(v) for v in self._pc.r2
+            ]  # settled top cause r2 = the generative percept
+            res["pc_surprise"] = float(
                 self._pc.energy()
             )  # residual prediction-error energy (free-energy proxy)
             res["pc_error_activity"] = trace[

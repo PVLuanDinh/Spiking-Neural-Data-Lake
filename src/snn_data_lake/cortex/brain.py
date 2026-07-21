@@ -670,9 +670,12 @@ class Brain:
         except Exception:
             self._learned_evc = self._episode_consolidator = self._structure_mapper = None
 
-        # ---- PC-CORTEX PERCEPTION TIER (ZERO-DEP, checkpoint-gated): the deep spiking predictive-coding
+        # ---- PC-CORTEX PERCEPTION TIER (TORCH-FREE SERVE, checkpoint-gated): the deep spiking
+        # predictive-coding
         # cortex (cortex/pc_cortex_serve, snn_pcnet/1) served as an OPTIONAL generative perception encoder.
-        # WEIGHTS-GATED only -- no torch needed to SERVE (pure stdlib forward): if a snn_pcnet/1 checkpoint
+        # WEIGHTS-GATED only -- no torch needed to SERVE (the settle is numpy, not the training tier;
+        # the former "zero-dep / pure stdlib" claim is stale -- that rule was removed project-wide):
+        # if a snn_pcnet/1 checkpoint
         # is present it loads and settles an input to a top-cause latent; else the brain keeps its stdlib
         # perception. Distinct from the surrogate tier above (that's a discriminative torch encoder; this is
         # a generative spiking hierarchy that SETTLES). The live loop is UNCHANGED -- settling runs ONLY when

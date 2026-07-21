@@ -503,10 +503,14 @@ def main():
         "stdlib",
     ), "expert must expose the router protocol attrs"
 
-    # ---- (7) ASCII-only; the abduction path pulls in no numpy/torch
-    pure = "numpy" not in sys.modules and "torch" not in sys.modules
+    # ---- (7) ASCII-only; the abduction path stays off the TRAINING tier. numpy is no longer
+    # checked: the zero-dependency rule was removed project-wide and the predictive-coding settle
+    # this path calls is now vectorised, so "no numpy" became permanently False -- a stale probe
+    # reporting a policy that no longer exists. torch is still the meaningful line: models are
+    # SERVED frozen, so the always-on abduction path must not drag in the training tier.
+    pure = "torch" not in sys.modules
     print("-" * 92)
-    print(f"(7) imports   : no numpy/torch imported in the abduction path = {pure}")
+    print(f"(7) imports   : no torch (training tier) imported in the abduction path = {pure}")
 
     print("=" * 92)
     print(

@@ -1,13 +1,13 @@
 r"""
-Zero-dep forward SERVER for a torch-trained DEEP spiking predictive-coding cortex (`snn_pcnet/1`).
+NumPy forward SERVER (NO torch) for a torch-trained DEEP spiking predictive-coding cortex (`snn_pcnet/1`).
 
 Honest framing (read this first). The 2-level seed cortex/predictive_coding.py is a small Rao-Ballard
 SPIKING coder (signed ON/OFF LIF error populations, graded cause readouts, spiking settling, Hebbian-
-on-spikes). This module is the matching PURE-STDLIB core SERVER for the DEEP version of that same
+on-spikes). This module is the matching NUMPY core SERVER for the DEEP version of that same
 network: an L-level (L >= 2) generative hierarchy TRAINED in the torch tier (research/pc_cortex_torch.py:
 GPU-batched local predictive-coding -- top-down generative weights, bottom-up precision-weighted error,
 local Hebbian weight updates, NO global backprop) and EXPORTED as an `snn_pcnet/1` JSON artifact. Here
-we LOAD that artifact and replay the SPIKING SETTLING forward with NO torch, NO numpy -- forward-serve
+we LOAD that artifact and replay the SPIKING SETTLING forward in numpy with NO torch -- forward-serve
 only, no training. It is the predictive_coding analogue of cerebellum/hjepa_serve.py one architecture-
 class over: a spiking generative hierarchy instead of a feedforward H-JEPA.
 
@@ -38,27 +38,33 @@ the positive-integer geometry (dims), that gen_weights has exactly L matrices ea
 (if present) that the readout W is [n_classes] x [dims[L]] with a matching bias -- raising ValueError on
 any mismatch. save()/round-trip is intentionally NOT provided -- this is a serve-only loader.
 
-Pure stdlib (math, json + shared _mathutils.unit is NOT needed here; raw matvec inline), ASCII-only
-prints, deterministic.
+Dependencies. numpy + stdlib (json), and deliberately NO torch: this is the ALWAYS-ON serving path, so
+the GPU/[train] tier stays out of it and models are served frozen. numpy is an unconditional core
+dependency project-wide, so the matvecs and the ON/OFF LIF membranes are vectorized here (the settling
+loop is the hot path). The module self-check still validates the served forward against an INDEPENDENT
+hand-rolled PURE-PYTHON reference settling -- that reference is intentionally NOT vectorized, because its
+entire value is being an instrument built out of different arithmetic than the code under test.
+ASCII-only prints, deterministic.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.pc_cortex_serve
 """
 
 import json
 
+import numpy as np
+
 PCNET_FORMAT = "snn_pcnet/1"
 
 
 # ---- forward primitives (match research/pc_cortex_torch.py + the seed predictive_coding.py) ----------
 def _matvec(m, v):
-    """M @ v : m is rows x cols, v has length cols -> result length rows."""
-    return [sum(row[j] * v[j] for j in range(len(v))) for row in m]
+    """M @ v : m is a rows x cols float64 array, v has length cols -> result length rows."""
+    return m @ v
 
 
 def _matvec_t(m, v):
-    """M^T @ v : m is rows x cols, v has length rows -> result length cols."""
-    rows, cols = len(m), len(m[0])
-    return [sum(m[i][j] * v[i] for i in range(rows)) for j in range(cols)]
+    """M^T @ v : m is a rows x cols float64 array, v has length rows -> result length cols."""
+    return m.T @ v
 
 
 # ---- weight-file validation (the trust boundary; never serve an unvalidated file) ------------------
@@ -85,7 +91,7 @@ def _validate_matrix(name, m, rows, cols):
 
 
 class PcCortexServe:
-    """A pure-stdlib forward server for a torch-trained deep spiking predictive-coding cortex
+    """A numpy (torch-free) forward server for a torch-trained deep spiking predictive-coding cortex
     (`snn_pcnet/1`).
 
     load() reads + trust-validates the artifact. infer(x) settles the spiking hierarchy on input x and
@@ -98,7 +104,9 @@ class PcCortexServe:
     ):
         self._dims = [int(d) for d in dims]  # [d_in, d_1, ..., d_L]
         self._L = len(self._dims) - 1  # number of cause levels
-        self._W = gen_weights  # [W_1, ..., W_L]; W_l is dims[l-1] x dims[l]
+        # [W_1, ..., W_L]; W_l is dims[l-1] x dims[l]. asarray is a no-op when load() already converted,
+        # and carries the DIRECT-construction path (callers that pass validated lists of lists) into numpy.
+        self._W = [np.asarray(w, dtype=np.float64) for w in gen_weights]
         self.theta = float(theta)
         self.leak = float(leak)
         self._prec = [float(p) for p in prec]  # L precisions, one per error level e_0..e_{L-1}
@@ -107,7 +115,15 @@ class PcCortexServe:
         self._plan_steps = max(
             1, min(int(steps), 25)
         )  # bounded cheap settle for predict()'s planning rollout
-        self._readout = readout  # (W, b) or None; W is n_classes x dims[L]
+        # (W, b) or None; W is n_classes x dims[L]
+        self._readout = (
+            None
+            if readout is None
+            else (
+                np.asarray(readout[0], dtype=np.float64),
+                np.asarray(readout[1], dtype=np.float64),
+            )
+        )
         self._classes = tuple(classes) if classes is not None else None
 
     # ---- construction / trust boundary -------------------------------------------------------------
@@ -139,6 +155,9 @@ class PcCortexServe:
                 f"bad {PCNET_FORMAT} file: gen_weights must be a list of exactly {L} matrices (got {len(gw) if isinstance(gw, list) else type(gw).__name__})"
             )
         gen = [_validate_matrix(f"gen_weights[{l}]", gw[l], dims[l], dims[l + 1]) for l in range(L)]
+        # Trust boundary is UNCHANGED: _validate_matrix ran on the raw JSON lists above. Only now, on
+        # already-validated data, do we convert to float64 arrays for the vectorized forward.
+        gen = [np.asarray(m, dtype=np.float64) for m in gen]
 
         prec = obj.get("prec")
         if prec is None:
@@ -179,7 +198,8 @@ class PcCortexServe:
                 raise ValueError(
                     f"bad {PCNET_FORMAT} file: classes length must equal readout rows ({len(W)})"
                 )
-            readout = (W, b)
+            # again: converted only AFTER the raw JSON lists cleared validation above
+            readout = (np.asarray(W, dtype=np.float64), np.asarray(b, dtype=np.float64))
 
         return cls(
             dims=dims,
@@ -215,22 +235,6 @@ class PcCortexServe:
         return self._classes
 
     # ---- the spiking settling forward --------------------------------------------------------------
-    def _lif_step(self, v_on, v_off, drive, k, theta, leak):
-        """One LIF step for the signed ON/OFF neuron pair encoding one error component. ON integrates the
-        positive part of the drive, OFF the negative; each leaks, crosses theta -> emits a discrete spike
-        and resets by subtraction. Returns the signed spike in {-1, 0, +1}. Mutates v_on/v_off in place."""
-        pos = drive if drive > 0.0 else 0.0
-        neg = -drive if drive < 0.0 else 0.0
-        v_on[k] = (1.0 - leak) * v_on[k] + pos
-        s_on = 1 if v_on[k] >= theta else 0
-        if s_on:
-            v_on[k] -= theta
-        v_off[k] = (1.0 - leak) * v_off[k] + neg
-        s_off = 1 if v_off[k] >= theta else 0
-        if s_off:
-            v_off[k] -= theta
-        return s_on - s_off
-
     def settle(self, x, steps=None, lr=None, trace=False):
         """Settle the causes r_1..r_L for input x by running the spiking network. Returns the settled
         causes [r_1, ..., r_L]; if trace=True, returns (causes, activity_trace) where activity_trace is
@@ -249,38 +253,49 @@ class PcCortexServe:
             self.leak,
         )
 
-        x = list(x)
-        r = [[0.0] * dims[j + 1] for j in range(L)]  # r[0]=r_1 ... r[L-1]=r_L
-        v_on = [[0.0] * dims[i] for i in range(L)]  # error membranes e_0..e_{L-1}
-        v_off = [[0.0] * dims[i] for i in range(L)]
+        x = np.asarray(x, dtype=np.float64)
+        r = [np.zeros(dims[j + 1], dtype=np.float64) for j in range(L)]  # r[0]=r_1 ... r[L-1]=r_L
+        v_on = [
+            np.zeros(dims[i], dtype=np.float64) for i in range(L)
+        ]  # error membranes e_0..e_{L-1}
+        v_off = [np.zeros(dims[i], dtype=np.float64) for i in range(L)]
         act_trace = []
 
         for _ in range(steps + 1):  # +1: final pass is the settled readout below
             # top-down predictions -> analog errors e_0..e_{L-1}
-            errs = []
-            pred0 = _matvec(W[0], r[0])  # W_1 @ r_1 predicts x
-            errs.append([x[k] - pred0[k] for k in range(dims[0])])
+            errs = [x - _matvec(W[0], r[0])]  # e_0 = x - W_1 @ r_1
             for lvl in range(1, L):  # e_l = r_l - W_{l+1} @ r_{l+1}
-                pred = _matvec(W[lvl], r[lvl])
-                errs.append([r[lvl - 1][k] - pred[k] for k in range(dims[lvl])])
-            # encode each error into signed ON/OFF LIF spikes
+                errs.append(r[lvl - 1] - _matvec(W[lvl], r[lvl]))
+            # Encode each error into signed ON/OFF LIF spikes, vectorized over the whole error population.
+            # TWO RECTIFIED MEMBRANES, not one signed membrane: ON integrates the positive part of the
+            # drive, OFF the negative; each leaks, crosses theta -> discrete spike, resets by subtraction.
+            # This is the documented cross-tier contract with reasoning/pc_cortex_torch.py (~L114-119).
             spikes = []
+            n_spiking = 0
             for i in range(L):
-                si = [
-                    self._lif_step(v_on[i], v_off[i], prec[i] * errs[i][k], k, theta, leak)
-                    for k in range(dims[i])
-                ]
+                drive = prec[i] * errs[i]
+                pos = np.maximum(drive, 0.0)
+                neg = np.maximum(-drive, 0.0)
+                v_on[i] = (1.0 - leak) * v_on[i] + pos
+                s_on = (v_on[i] >= theta).astype(np.float64)
+                v_on[i] -= theta * s_on
+                v_off[i] = (1.0 - leak) * v_off[i] + neg
+                s_off = (v_off[i] >= theta).astype(np.float64)
+                v_off[i] -= theta * s_off
+                si = s_on - s_off  # signed spike in {-1.0, 0.0, +1.0}
                 spikes.append(si)
-            act_trace.append(sum(1 for si in spikes for s in si if s))
+                n_spiking += int(np.count_nonzero(si))
+            act_trace.append(n_spiking)
             # integrate error spikes into the causes: r_j += lr * (W_j^T @ s_{j-1} - s_j), top has no s_L
             for j in range(L):
                 up = _matvec_t(W[j], spikes[j])  # length dims[j+1]
                 if j < L - 1:
-                    s_above = spikes[j + 1]
-                    r[j] = [r[j][m] + lr * (up[m] - s_above[m]) for m in range(dims[j + 1])]
+                    r[j] = r[j] + lr * (up - spikes[j + 1])
                 else:
-                    r[j] = [r[j][m] + lr * up[m] for m in range(dims[j + 1])]
-        return (r, act_trace) if trace else r
+                    r[j] = r[j] + lr * up
+        # return plain lists: settle/infer/encode are the PUBLIC contract other modules print and index
+        causes = [rj.tolist() for rj in r]
+        return (causes, act_trace) if trace else causes
 
     def infer(self, x, steps=None, lr=None):
         """Settle the hierarchy on x and return the top cause r_L (the latent percept)."""
@@ -295,13 +310,13 @@ class PcCortexServe:
             )
         rL = self.infer(x, steps=steps, lr=lr)
         W, b = self._readout
-        logits = [sum(W[c][m] * rL[m] for m in range(len(rL))) + b[c] for c in range(len(W))]
-        idx = max(range(len(logits)), key=lambda c: logits[c])
+        logits = _matvec(W, np.asarray(rL, dtype=np.float64)) + b
+        idx = int(np.argmax(logits))  # argmax takes the FIRST maximum, as the previous max() did
         return self._classes[idx] if self._classes is not None else idx
 
     def reconstruct(self, causes):
         """Top-down reconstruction of the input from settled causes: x_hat = W_1 @ r_1."""
-        return _matvec(self._W[0], causes[0])
+        return _matvec(self._W[0], np.asarray(causes[0], dtype=np.float64)).tolist()
 
     # ---- duck-typed planning interface (drops into PrefrontalExecutive.plan(), like JepaWorldModel/HJepaServe) ----
     def encode(self, x):
@@ -315,10 +330,10 @@ class PcCortexServe:
         cause z implies (Rao-Ballard top-down). Returns a length-in_dim vector."""
         if len(z) != self._dims[-1]:
             raise ValueError(f"generate: z length {len(z)} != top_dim {self._dims[-1]}")
-        h = list(z)
+        h = np.asarray(z, dtype=np.float64)
         for lvl in range(self._L - 1, -1, -1):  # apply W_L, W_{L-1}, ..., W_1
             h = _matvec(self._W[lvl], h)
-        return h
+        return h.tolist()
 
     def predict(self, state, command):
         """Duck-typed forward step for PrefrontalExecutive.plan(): the PC TOP-DOWN generative prediction --
@@ -352,12 +367,12 @@ class PcCortexServe:
         This is the ambiguity / epistemic term of expected free energy (Friston; Da Costa 2020) -- how much
         the model is 'surprised' by x. Reported as a non-negative scalar."""
         causes = self.settle(x, steps=steps, lr=lr)
-        pred0 = _matvec(self._W[0], causes[0])
+        pred0 = _matvec(self._W[0], np.asarray(causes[0], dtype=np.float64))
         energy = sum((x[k] - pred0[k]) ** 2 for k in range(self._dims[0]))
         for lvl in range(1, self._L):
-            pred = _matvec(self._W[lvl], causes[lvl])
+            pred = _matvec(self._W[lvl], np.asarray(causes[lvl], dtype=np.float64))
             energy += sum((causes[lvl - 1][k] - pred[k]) ** 2 for k in range(self._dims[lvl]))
-        return energy
+        return float(energy)
 
     def make_efe_value(self, x_goal, beta=1.0, steps=None, lr=None):
         """Return an EXPECTED-FREE-ENERGY goal_value(x) over OBSERVATIONS for plan(): score x by BOTH how close
@@ -385,10 +400,12 @@ class PcCortexServe:
 
 # =========================================================================================================
 # Self-check: build a TINY snn_pcnet/1 (L=3) by hand, serve it, and assert the settling forward matches an
-# INDEPENDENT hand-rolled reference (raw arithmetic, not the served code path); the spiking settling is
-# genuinely PREDICTIVE (error-spike activity + recon residual FALL vs an lr=0 frozen-cause control); spikes
-# are discrete in {-1,0,1} with a real leak and the core imports NO torch/numpy; and the loader rejects
-# bad-format and wrong-shape files. Deterministic, ASCII-only.
+# INDEPENDENT hand-rolled reference (raw scalar Python arithmetic, NOT the served code path and NOT numpy --
+# it is deliberately left un-vectorized so this compares two DIFFERENT implementations, which is the only
+# reason the comparison proves anything); the spiking settling is genuinely PREDICTIVE (error-spike activity
+# + recon residual FALL vs an lr=0 frozen-cause control); spikes are discrete in {-1,0,1} with a real leak
+# and NO torch is on the serve path; and the loader rejects bad-format and wrong-shape files. Deterministic,
+# ASCII-only.
 # =========================================================================================================
 def _build_tiny_blob():
     """A hand-set snn_pcnet/1 dict: dims [5, 4, 3, 2] (L=3 cause levels -> exercises the MIDDLE-level cause
@@ -434,7 +451,9 @@ def main():
     prec = blob["prec"]
     L = len(dims) - 1
 
-    # ---- independent reference settling (raw arithmetic; NOT the served code path) ----
+    # ---- independent reference settling (raw scalar arithmetic; NOT the served code path) ----
+    # DO NOT VECTORIZE THIS. It is the instrument, not the subject: it exists to be built out of different
+    # arithmetic than PcCortexServe. Converting it to numpy would compare numpy against numpy and prove nothing.
     def r_mv(m, v):
         return [sum(m[i][j] * v[j] for j in range(len(v))) for i in range(len(m))]
 
@@ -519,10 +538,11 @@ def main():
     recon_ab = sum((x[k] - xhat_ab[k]) ** 2 for k in range(dims[0])) / dims[0]
     settles_ok = act_late < 0.5 * act_early and act_late < act_late_ab and recon < 0.5 * recon_ab
 
-    # ---- (3) genuinely spiking: last spikes discrete in {-1,0,1}, real leak, no torch/numpy in core ----
+    # ---- (3) genuinely spiking: last spikes discrete in {-1,0,1}, real leak, and NO torch on the serve
+    #          path (numpy IS expected here -- it is an unconditional core dependency; torch is not) ----
     spikes_discrete = all(s in (-1, 0, 1) for si in last_spikes for s in si)
     leak_ok = 0.0 < srv.leak < 1.0
-    pure_ok = "torch" not in sys.modules and "numpy" not in sys.modules
+    no_torch_ok = "torch" not in sys.modules
 
     # ---- (4) classify + config exposure ----
     label = srv.classify(x, steps=steps, lr=lr)
@@ -663,7 +683,9 @@ def main():
     ai_ok = trap_is_closer and surprise_gap and dist_walks_into_trap and efe_avoids_trap
 
     print("=" * 78)
-    print("PC-CORTEX SERVE -- zero-dep forward server for a torch-trained deep spiking snn_pcnet/1")
+    print(
+        "PC-CORTEX SERVE -- numpy torch-free forward server for a torch-trained deep spiking snn_pcnet/1"
+    )
     print("=" * 78)
     print(
         f"config      : dims={srv.dims} levels={srv.n_levels} in={srv.in_dim} top={srv.top_dim} classes={list(srv.classes)}"
@@ -676,7 +698,7 @@ def main():
         f"recon {recon:.4f} vs frozen {recon_ab:.4f}: {settles_ok}"
     )
     print(
-        f"spiking     : spikes in {{-1,0,1}}={spikes_discrete} leak={srv.leak} pure(no torch/numpy)={pure_ok}"
+        f"spiking     : spikes in {{-1,0,1}}={spikes_discrete} leak={srv.leak} no-torch-on-serve-path={no_torch_ok}"
     )
     print(f"readout     : classify(x)={label!r} in classes: {classify_ok}")
     print(
@@ -730,8 +752,8 @@ def main():
     )
 
     print(
-        "self-check OK: snn_pcnet/1 deep spiking predictive-coding forward served pure-stdlib, matches an "
-        "independent reference settling, is genuinely predictive (activity+residual fall) and spiking, with a "
+        "self-check OK: snn_pcnet/1 deep spiking predictive-coding forward served in numpy with no torch, "
+        "matches an INDEPENDENT pure-Python reference settling, is genuinely predictive (activity+residual fall) and spiking, with a "
         "validating loader; duck-types into PrefrontalExecutive.plan() as a top-down predictor -- with the HONEST "
         "limit that PC has no action channel so plan() cannot discriminate actions (perception, not control) -- and "
         "supplies the ACTIVE-INFERENCE surprise/expected-free-energy value that makes the executive avoid an "

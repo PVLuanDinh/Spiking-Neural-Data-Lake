@@ -61,9 +61,29 @@ feedback anchors the phase). Implemented here as:
     integrates. capture_threshold=None keeps the raw fragile mixture -- main() asserts that it still fails.
   - drift(true_pos) reports the current torus distance between decode() and a supplied ground truth.
 
+IMPLEMENTATION NOTE (numpy). The sheet state (v, syn), the four von Mises kernels and every landmark trace
+are numpy float64 arrays, and the per-tick hot path (the six 16x16 matrix products, the LIF threshold/reset,
+the population-vector readout) is vectorized. This is a PERFORMANCE change only -- the mechanism, the
+parameters and n=16 are untouched. MEASURED at n=16: 1.510 ms -> 0.0226 ms per step() (66.9x; best of 5 x
+300 ticks), construction 58.5 ms -> 1.05 ms (55.5x). NOT BIT-IDENTICAL, and honestly so: the one-time
+constants (theta, sin/cos tables, VMe/VMi/dVMe/dVMi, _bump) are still built elementwise with math.* and ARE
+bit-identical, but per-tick BLAS/pairwise summation accumulates in a different ORDER than the old sequential
+triple loop, so decoded trajectories agree to 1.110e-16 (1 ulp) rather than exactly -- 21 of 144 probed
+trajectory coordinates differ in the last bit. Every drift, amplitude, shift-gain and landmark number in
+this docstring and in main() is unchanged bit-for-bit, and every self-check assert and test threshold is
+unchanged. One seam artifact worth naming: decode() of a bump sitting exactly at 0 is a knife-edge -- the
+mathematically-zero sin marginal rounds to -2.2e-16 under sequential summation (atan2 -> just below 0 ->
+wraps to x = spacing) and to exactly 0.0 under BLAS (x = 0.0). Both denote the SAME point (torus distance
+0.0) and _circ_diff is indifferent, but the returned representative flips at that one measure-zero point.
+
+Rationale for keeping n=16 here: spacing=1.0 and the n-by-n sheet tiles exactly ONE period, so a larger n
+buys finer discretization WITHIN a period and does NOT extend range -- position stays resolved modulo one
+spacing. What numpy actually unlocks is 8-16 MODULES at different spacings per tick (8 modules: 12.1 ms
+pure-Python -> 0.18 ms here), and multi-scale phase disambiguation is what extends range. Separate work.
+
 DISTINCTNESS. Not grid_cells.py / grid_place_map.py (analytic RATE fields, no recurrent dynamics). Not
 ring_attractor.py (1-D heading ring, scalar angular velocity). ZERO coupling to the arm / safety envelope:
-representation-only, imports only the stdlib, issues no commands, exposes no actuator route.
+representation-only, imports only the stdlib + numpy, issues no commands, exposes no actuator route.
 
 HONEST SCOPE. One grid module (single spacing) on a small toroidal sheet, so position is resolved only
 WITHIN one period, not over an open world (a multi-scale population would disambiguate -- see grid_cells.py).
@@ -90,57 +110,12 @@ MEASURED DRIFT NUMBERS (this module's self-check; report them as they are).
 
 import math
 
+import numpy as np
+
 
 def _circ_diff(a, b, period):
     """Signed smallest difference a - b on a ring of circumference `period`, in (-period/2, period/2]."""
     return (a - b + period / 2.0) % period - period / 2.0
-
-
-def _zeros(n):
-    """n-by-n matrix of 0.0 (numpy np.zeros((n, n)) -> nested lists)."""
-    return [[0.0] * n for _ in range(n)]
-
-
-def _transpose(M, n):
-    """Transpose of an n-by-n matrix (numpy M.T -> nested lists)."""
-    return [[M[j][i] for j in range(n)] for i in range(n)]
-
-
-def _matmul(A, B, n):
-    """n-by-n matrix product A @ B (pure-Python triple loop; out[i][j] = sum_k A[i][k]*B[k][j])."""
-    out = [[0.0] * n for _ in range(n)]
-    for i in range(n):
-        Ai = A[i]
-        Oi = out[i]
-        for k in range(n):
-            aik = Ai[k]
-            Bk = B[k]
-            for j in range(n):
-                Oi[j] += aik * Bk[j]
-    return out
-
-
-def _row_sums(M, n):
-    """Sum along axis=1: one value per row (numpy M.sum(axis=1))."""
-    out = []
-    for i in range(n):
-        s = 0.0
-        Mi = M[i]
-        for j in range(n):
-            s += Mi[j]
-        out.append(s)
-    return out
-
-
-def _col_sums(M, n):
-    """Sum along axis=0: one value per column (numpy M.sum(axis=0))."""
-    out = []
-    for j in range(n):
-        s = 0.0
-        for i in range(n):
-            s += M[i][j]
-        out.append(s)
-    return out
 
 
 class SpikingGridCAN:
@@ -197,25 +172,27 @@ class SpikingGridCAN:
             2.0 * math.pi * i / n for i in range(n)
         ]  # phase of each sheet row/col on the torus
         self.theta = theta
-        cos_d = [[math.cos(theta[i] - theta[j]) for j in range(n)] for i in range(n)]
-        sin_d = [[math.sin(theta[i] - theta[j]) for j in range(n)] for i in range(n)]
-        self.VMe = [
-            [math.exp(kappa_e * (cos_d[i][j] - 1.0)) for j in range(n)] for i in range(n)
-        ]  # sharp excitatory kernel (center)
-        self.VMi = [
-            [math.exp(kappa_i * (cos_d[i][j] - 1.0)) for j in range(n)] for i in range(n)
-        ]  # broad inhibitory kernel (surround)
-        self.dVMe = [
-            [-kappa_e * sin_d[i][j] * self.VMe[i][j] for j in range(n)] for i in range(n)
-        ]  # angular derivative -> asymmetric shift
-        self.dVMi = [
-            [-kappa_i * sin_d[i][j] * self.VMi[i][j] for j in range(n)] for i in range(n)
-        ]  # (2-D generalization of ring w_asym)
-        self.dVMeT = _transpose(self.dVMe, n)  # dVMe.T, precomputed (constant across ticks)
-        self.dVMiT = _transpose(self.dVMi, n)  # dVMi.T, precomputed
+        # Readout tables and kernels are ONE-TIME constants: built elementwise with math.* (not the
+        # numpy ufuncs) so every constant is bit-identical to the pure-Python version of this module.
+        self._sin_theta = np.array([math.sin(t) for t in theta])  # population-vector readout tables
+        self._cos_theta = np.array([math.cos(t) for t in theta])
+        cos_d = np.array([[math.cos(theta[i] - theta[j]) for j in range(n)] for i in range(n)])
+        sin_d = np.array([[math.sin(theta[i] - theta[j]) for j in range(n)] for i in range(n)])
+        self.VMe = np.array(
+            [[math.exp(kappa_e * (cos_d[i][j] - 1.0)) for j in range(n)] for i in range(n)]
+        )  # sharp excitatory kernel (center)
+        self.VMi = np.array(
+            [[math.exp(kappa_i * (cos_d[i][j] - 1.0)) for j in range(n)] for i in range(n)]
+        )  # broad inhibitory kernel (surround)
+        self.dVMe = -kappa_e * sin_d * self.VMe  # angular derivative -> asymmetric shift
+        self.dVMi = -kappa_i * sin_d * self.VMi  # (2-D generalization of ring w_asym)
+        # dVMe.T / dVMi.T, precomputed AND made contiguous (constant across ticks, so the per-tick
+        # matrix products never pay for a strided operand).
+        self.dVMeT = np.ascontiguousarray(self.dVMe.T)
+        self.dVMiT = np.ascontiguousarray(self.dVMi.T)
 
-        self.v = _zeros(n)  # LIF membrane potentials
-        self.syn = _zeros(n)  # spike-driven synaptic-activity field
+        self.v = np.zeros((n, n))  # LIF membrane potentials
+        self.syn = np.zeros((n, n))  # spike-driven synaptic-activity field
         self._gain = 1.0
         if calibrate:
             self._gain = self._calibrate(settle_steps)
@@ -224,63 +201,41 @@ class SpikingGridCAN:
     # ---- recurrent connectivity: center-surround + velocity-gated asymmetric shift ----
     def _currents(self, vx, vy):
         """Recurrent synaptic current onto every neuron: Mexican-hat sustain + velocity-driven shift."""
-        n = self.n
         syn = self.syn
-        VMe, VMi, dVMe, dVMi = self.VMe, self.VMi, self.dVMe, self.dVMi
-        dVMeT, dVMiT = self.dVMeT, self.dVMiT
-        E = _matmul(VMe, syn, n)  # VMe @ syn
-        Im = _matmul(VMi, syn, n)  # VMi @ syn
-        dE = _matmul(dVMe, syn, n)  # dVMe @ syn
-        dIm = _matmul(dVMi, syn, n)  # dVMi @ syn
-        rec_e = _matmul(E, VMe, n)  # VMe @ syn @ VMe
-        rec_i = _matmul(Im, VMi, n)  # VMi @ syn @ VMi
-        sr_e = _matmul(dE, VMe, n)  # dVMe @ syn @ VMe   (d/drow, y axis)
-        sr_i = _matmul(dIm, VMi, n)  # dVMi @ syn @ VMi
-        sc_e = _matmul(E, dVMeT, n)  # VMe @ syn @ dVMe.T (d/dcol, x axis)
-        sc_i = _matmul(Im, dVMiT, n)  # VMi @ syn @ dVMi.T
+        VMe, VMi = self.VMe, self.VMi
+        E = VMe @ syn  # VMe @ syn
+        Im = VMi @ syn  # VMi @ syn
+        dE = self.dVMe @ syn  # dVMe @ syn
+        dIm = self.dVMi @ syn  # dVMi @ syn
         a_e, a_i = self.a_e, self.a_i
+        rec = a_e * (E @ VMe) - a_i * (Im @ VMi)  # separable center-surround
+        shift_row = a_e * (dE @ VMe) - a_i * (dIm @ VMi)  # d/drow  (y axis)
+        shift_col = a_e * (E @ self.dVMeT) - a_i * (Im @ self.dVMiT)  # d/dcol  (x axis)
         g = self.vel_gain * self._gain
-        out = [[0.0] * n for _ in range(n)]
-        for i in range(n):
-            Oi = out[i]
-            for j in range(n):
-                rec = a_e * rec_e[i][j] - a_i * rec_i[i][j]  # separable center-surround
-                shift_row = a_e * sr_e[i][j] - a_i * sr_i[i][j]  # d/drow  (y axis)
-                shift_col = a_e * sc_e[i][j] - a_i * sc_i[i][j]  # d/dcol  (x axis)
-                Oi[j] = (rec + g * (vy * shift_row + vx * shift_col)) / n
-        return out
+        return (rec + g * (vy * shift_row + vx * shift_col)) / self.n
 
     def step(self, velocity=(0.0, 0.0)):
         """Advance the bump one integration tick under `velocity`=(vx, vy); return decode()."""
         vx, vy = velocity
-        I = self._currents(vx, vy)
-        n = self.n
-        v, syn = self.v, self.syn
-        leak, vth, syn_decay = self.leak, self.vth, self.syn_decay
-        for i in range(n):
-            vi, Ii, syni = v[i], I[i], syn[i]
-            for j in range(n):
-                nv = leak * vi[j] + Ii[j]  # LIF membrane integration
-                if nv >= vth:  # threshold
-                    spike = 1.0
-                    nv = 0.0  # reset to 0
-                else:
-                    spike = 0.0
-                vi[j] = nv
-                syni[j] = syni[j] * syn_decay + spike  # spike-driven recurrent synapses
+        nv = self.leak * self.v + self._currents(vx, vy)  # LIF membrane integration
+        fired = nv >= self.vth  # threshold
+        spikes = fired.astype(np.float64)
+        self.v = np.where(fired, 0.0, nv)  # reset to 0
+        self.syn = self.syn * self.syn_decay + spikes  # spike-driven recurrent synapses
         return self.decode()
 
     # ---- landmark reset: clamp the bump onto the phase encoding `pos` (place->grid phase reset) ----
     def _bump(self, pos):
+        """Idealized separable von Mises bump at `pos`, as an n-by-n ndarray (outer product)."""
         x, y = pos
         n = self.n
         theta = self.theta
         ke = self.kappa_e
         py = 2.0 * math.pi * (y / self.spacing)
         px = 2.0 * math.pi * (x / self.spacing)
-        row = [math.exp(ke * (math.cos(theta[i] - py) - 1.0)) for i in range(n)]
-        col = [math.exp(ke * (math.cos(theta[j] - px) - 1.0)) for j in range(n)]
-        return [[row[i] * col[j] for j in range(n)] for i in range(n)]
+        row = np.array([math.exp(ke * (math.cos(theta[i] - py) - 1.0)) for i in range(n)])
+        col = np.array([math.exp(ke * (math.cos(theta[j] - px) - 1.0)) for j in range(n)])
+        return row[:, None] * col[None, :]
 
     def reset(self, pos=(0.0, 0.0)):
         """Clamp the bump onto the location `pos` (the optional landmark / place->grid phase reset).
@@ -288,7 +243,7 @@ class SpikingGridCAN:
         Learned landmark anchors are long-term memory and SURVIVE a reset -- only the bump is re-clamped.
         """
         self.syn = self._bump(pos)
-        self.v = _zeros(self.n)
+        self.v = np.zeros((self.n, self.n))
         return self.decode()
 
     # ---- landmark phase reset: Hebbian place->grid anchor + graded correction of accumulated drift ----
@@ -302,11 +257,11 @@ class SpikingGridCAN:
         never by a fresh ground-truth oracle. `gain` defaults to self.landmark_gain and is clipped to [0,1].
         """
         if landmark_id not in self._landmarks:
-            field = self._bump(true_pos) if true_pos is not None else [row[:] for row in self.syn]
-            peak = max(max(r) for r in field)
+            field = self._bump(true_pos) if true_pos is not None else self.syn.copy()
+            peak = float(field.max())
             if peak <= 0.0:
                 peak = 1.0
-            self._landmarks[landmark_id] = [[c / peak for c in r] for r in field]
+            self._landmarks[landmark_id] = field / peak
             return 0.0
 
         w = self._landmarks[landmark_id]
@@ -327,16 +282,10 @@ class SpikingGridCAN:
         self.last_capture = self.capture_threshold is not None and gap > self.capture_threshold
         if self.last_capture:
             g = 1.0
-        peak_w = max(max(r) for r in w)
+        peak_w = float(w.max())
         scale = (self.bump_amplitude() / peak_w) if peak_w > 0.0 else 1.0
-        n = self.n
-        syn = self.syn
-        for i in range(n):
-            si, wi = syn[i], w[i]
-            for j in range(n):
-                si[j] = (1.0 - g) * si[j] + g * scale * wi[
-                    j
-                ]  # graded cue combination, NOT a teleport
+        # graded cue combination, NOT a teleport
+        self.syn = (1.0 - g) * self.syn + g * scale * w
         after = self.decode()
         return math.hypot(
             _circ_diff(after[0], before[0], self.spacing),
@@ -361,27 +310,22 @@ class SpikingGridCAN:
 
     # ---- readout: population-vector (circular-mean) center of the spiking bump ----
     def _phase(self, marginal):
-        theta = self.theta
-        s = 0.0
-        c = 0.0
-        for i in range(self.n):
-            s += marginal[i] * math.sin(theta[i])
-            c += marginal[i] * math.cos(theta[i])
+        """Circular mean of a length-n marginal. math.atan2 on Python floats -> a PYTHON float out."""
+        s = float(np.dot(marginal, self._sin_theta))
+        c = float(np.dot(marginal, self._cos_theta))
         return math.atan2(s, c)
 
     def bump_center(self):
         """Bump location on the n-by-n sheet as continuous (row, col) in [0, n)."""
-        n = self.n
-        row = self._phase(_row_sums(self.syn, n)) % (2 * math.pi) / (2 * math.pi) * self.n
-        col = self._phase(_col_sums(self.syn, n)) % (2 * math.pi) / (2 * math.pi) * self.n
-        return (row, col)
+        row = self._phase(self.syn.sum(axis=1)) % (2 * math.pi) / (2 * math.pi) * self.n
+        col = self._phase(self.syn.sum(axis=0)) % (2 * math.pi) / (2 * math.pi) * self.n
+        return (float(row), float(col))
 
     def _decode_field(self, field):
         """Population-vector position (x, y) of ANY n-by-n activity field (used for stored landmark traces)."""
-        n = self.n
-        y = self._phase(_row_sums(field, n)) % (2 * math.pi) / (2 * math.pi) * self.spacing
-        x = self._phase(_col_sums(field, n)) % (2 * math.pi) / (2 * math.pi) * self.spacing
-        return (x, y)
+        y = self._phase(field.sum(axis=1)) % (2 * math.pi) / (2 * math.pi) * self.spacing
+        x = self._phase(field.sum(axis=0)) % (2 * math.pi) / (2 * math.pi) * self.spacing
+        return (float(x), float(y))
 
     def decode(self):
         """Decoded continuous position (x, y) within one grid period [0, spacing)."""
@@ -389,12 +333,7 @@ class SpikingGridCAN:
 
     def bump_amplitude(self):
         """Peak synaptic activity of the bump -- a liveness measure (single stable bump => > 0)."""
-        m = self.syn[0][0]
-        for row in self.syn:
-            for val in row:
-                if val > m:
-                    m = val
-        return float(m)
+        return float(self.syn.max())
 
     def _calibrate(self, settle_steps):
         """Self-calibrate the shift gain: decoded displacement -> commanded velocity integral (like ring)."""

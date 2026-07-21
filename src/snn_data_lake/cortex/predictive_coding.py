@@ -55,6 +55,12 @@ A small 2-level Rao-Ballard predictive coder made GENUINELY SPIKING (LIF error +
 discrete spikes, spiking recurrent settling, Hebbian-on-spikes learning) on synthetic data -- a
 reduced model with tiny dims; spiking inference is approximate (residual reported), not exact
 biophysics, not cognition.
+
+IMPLEMENTATION: the weights, the causes and the LIF membranes are numpy float64 arrays and each
+settle step is the same arithmetic written as vector ops. Seeded construction still draws from
+random.Random(seed) in the same row-major order, so the initial weights are BIT-IDENTICAL to the
+former list-of-lists build. infer_batch() settles B inputs at once -- that batched path, not
+batch=1, is where the vector form actually pays.
 Refs: Rao & Ballard, Nat Neurosci 2:79 (1999); Friston, free-energy view.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.predictive_coding
@@ -62,16 +68,7 @@ Refs: Rao & Ballard, Nat Neurosci 2:79 (1999); Friston, free-energy view.
 
 import random
 
-
-def _matvec(m, v):
-    """M @ v : m is rows x cols, v has length cols -> result length rows."""
-    return [sum(row[j] * v[j] for j in range(len(v))) for row in m]
-
-
-def _matvec_t(m, v):
-    """M^T @ v : m is rows x cols, v has length rows -> result length cols."""
-    rows, cols = len(m), len(m[0])
-    return [sum(m[i][j] * v[i] for i in range(rows)) for j in range(cols)]
+import numpy as np
 
 
 class PredictiveCodingNetwork:
@@ -94,88 +91,93 @@ class PredictiveCodingNetwork:
     def __init__(self, dims=(8, 4, 2), seed=0):
         self.d_in, self.d_r1, self.d_r2 = dims
         self.rng = random.Random(seed)
-        # W1: predicts input x from r1 (d_in rows x d_r1 cols); W2: predicts r1 from r2.
-        self.w1 = [
-            [self.rng.uniform(-0.5, 0.5) for _ in range(self.d_r1)] for _ in range(self.d_in)
-        ]
-        self.w2 = [
-            [self.rng.uniform(-0.5, 0.5) for _ in range(self.d_r2)] for _ in range(self.d_r1)
-        ]
-        self.x = [0.0] * self.d_in
+        # W1: predicts input x from r1 (d_in rows x d_r1 cols); W2: predicts r1 from r2. np.asarray
+        # over the SAME row-major nested comprehension -> the seeded RNG draw order is unchanged, so
+        # the initial weights are bit-identical to the pre-numpy list-of-lists build.
+        self.w1 = np.asarray(
+            [[self.rng.uniform(-0.5, 0.5) for _ in range(self.d_r1)] for _ in range(self.d_in)],
+            dtype=np.float64,
+        )
+        self.w2 = np.asarray(
+            [[self.rng.uniform(-0.5, 0.5) for _ in range(self.d_r2)] for _ in range(self.d_r1)],
+            dtype=np.float64,
+        )
+        self.x = np.zeros(self.d_in, dtype=np.float64)
         self.reset()
 
     def reset(self):
         """Clear the inferred causes r1, r2 and every LIF membrane/spike/counter (call before
         inferring a new input)."""
-        self.r1 = [0.0] * self.d_r1  # layer-1 causes (graded cause-neuron readout)
-        self.r2 = [0.0] * self.d_r2  # layer-2 causes
+        self.r1 = np.zeros(self.d_r1, dtype=np.float64)  # layer-1 causes (graded readout)
+        self.r2 = np.zeros(self.d_r2, dtype=np.float64)  # layer-2 causes
         # LIF error-neuron membranes: signed ON/OFF pair per error component.
-        self.v_e0_on = [0.0] * self.d_in
-        self.v_e0_off = [0.0] * self.d_in
-        self.v_e1_on = [0.0] * self.d_r1
-        self.v_e1_off = [0.0] * self.d_r1
-        # last discrete spike vectors (+1 ON / -1 OFF / 0 silent), for inspection.
+        self.v_e0_on = np.zeros(self.d_in, dtype=np.float64)
+        self.v_e0_off = np.zeros(self.d_in, dtype=np.float64)
+        self.v_e1_on = np.zeros(self.d_r1, dtype=np.float64)
+        self.v_e1_off = np.zeros(self.d_r1, dtype=np.float64)
+        # last discrete spike vectors (+1 ON / -1 OFF / 0 silent), for inspection. Deliberately
+        # kept as PYTHON LISTS of ints (length d_in / d_r1, so they cost nothing) -- callers do
+        # `net.s_e0 + net.s_e1` and that has to stay list CONCATENATION, not array addition.
         self.s_e0 = [0] * self.d_in
         self.s_e1 = [0] * self.d_r1
         # cumulative signed spikes + step count over a settle window (for Hebbian-on-spikes).
-        self.cum_e0 = [0.0] * self.d_in
-        self.cum_e1 = [0.0] * self.d_r1
+        self.cum_e0 = np.zeros(self.d_in, dtype=np.float64)
+        self.cum_e1 = np.zeros(self.d_r1, dtype=np.float64)
         self.n_steps = 0
 
     @property
     def state(self):
         """Current inferred causes as (r1, r2) copies."""
-        return (list(self.r1), list(self.r2))
+        return (self.r1.copy(), self.r2.copy())
 
     def set_state(self, r1, r2):
         """Force the causes and clear the error membranes (used to probe the spike message-passing
         directly)."""
-        self.r1 = list(r1)
-        self.r2 = list(r2)
-        self.v_e0_on = [0.0] * self.d_in
-        self.v_e0_off = [0.0] * self.d_in
-        self.v_e1_on = [0.0] * self.d_r1
-        self.v_e1_off = [0.0] * self.d_r1
+        self.r1 = np.array(r1, dtype=np.float64)  # np.array, not asarray -> always a copy
+        self.r2 = np.array(r2, dtype=np.float64)
+        self.v_e0_on = np.zeros(self.d_in, dtype=np.float64)
+        self.v_e0_off = np.zeros(self.d_in, dtype=np.float64)
+        self.v_e1_on = np.zeros(self.d_r1, dtype=np.float64)
+        self.v_e1_off = np.zeros(self.d_r1, dtype=np.float64)
 
     def reconstruct(self):
         """Top-down reconstruction of the input from r1: x_hat = W1 @ r1."""
-        return _matvec(self.w1, self.r1)
+        return self.w1 @ self.r1
 
     def predict_r1(self):
         """Top-down prediction of r1 from r2: r1_hat = W2 @ r2."""
-        return _matvec(self.w2, self.r2)
+        return self.w2 @ self.r2
 
     def errors(self):
         """Analog prediction errors (e0, e1): e0 = x - W1 @ r1, e1 = r1 - W2 @ r2. These are the
         membrane DRIVES that the LIF error populations spike-encode; also used for reporting."""
-        x_hat = self.reconstruct()
-        r1_hat = self.predict_r1()
-        e0 = [self.x[k] - x_hat[k] for k in range(self.d_in)]
-        e1 = [self.r1[j] - r1_hat[j] for j in range(self.d_r1)]
+        e0 = self.x - self.reconstruct()
+        e1 = self.r1 - self.predict_r1()
         return e0, e1
 
     def energy(self):
         """Total prediction-error energy E = |e0|^2 + |e1|^2 at the current state (reduced free
         energy; the quantity the spiking settling descends)."""
         e0, e1 = self.errors()
-        return sum(v * v for v in e0) + sum(v * v for v in e1)
+        return e0 @ e0 + e1 @ e1
 
-    def _lif(self, v_on, v_off, drive, k):
-        """One LIF step for the signed ON/OFF neuron pair encoding error component k. The ON neuron
-        integrates the positive part of the drive, the OFF neuron the negative part; each leaks,
-        crosses THETA -> emits a discrete spike and resets by subtraction. Returns the signed spike
-        in {-1, 0, +1}. Mutates the two membrane lists in place."""
-        pos = drive if drive > 0.0 else 0.0
-        neg = -drive if drive < 0.0 else 0.0
-        v_on[k] = (1.0 - self.LEAK) * v_on[k] + pos
-        s_on = 1 if v_on[k] >= self.THETA else 0
-        if s_on:
-            v_on[k] -= self.THETA
-        v_off[k] = (1.0 - self.LEAK) * v_off[k] + neg
-        s_off = 1 if v_off[k] >= self.THETA else 0
-        if s_off:
-            v_off[k] -= self.THETA
-        return s_on - s_off
+    def _lif(self, v_on, v_off, drive):
+        """One LIF step for the signed ON/OFF neuron pairs encoding a whole error VECTOR (or, when
+        `drive` is (B, d), a whole BATCH of them). The ON neurons integrate the positive part of the
+        drive, the OFF neurons the negative part; each leaks, crosses THETA -> emits a discrete spike
+        and resets by subtraction. Returns the signed spike array in {-1.0, 0.0, +1.0}, elementwise
+        identical to the former scalar-per-component loop. Mutates v_on / v_off in place."""
+        pos = np.maximum(drive, 0.0)
+        neg = np.maximum(-drive, 0.0)
+        v_on *= 1.0 - self.LEAK
+        v_on += pos
+        s_on = v_on >= self.THETA
+        v_on -= self.THETA * s_on
+        v_off *= 1.0 - self.LEAK
+        v_off += neg
+        s_off = v_off >= self.THETA
+        v_off -= self.THETA * s_off
+        return s_on.astype(np.float64) - s_off.astype(np.float64)
 
     def infer_step(self, x, lr):
         """One timestep of the spiking network. Encodes the current mismatch into error SPIKES,
@@ -185,35 +187,59 @@ class PredictiveCodingNetwork:
         r1 += lr * (W1^T @ s_e0 - s_e1) ;  r2 += lr * (W2^T @ s_e1). The r2 update is driven ONLY by
         the layer-1 error spikes s_e1 -- the hierarchical spike message-passing signature. Passing
         lr = 0.0 reads the error spikes WITHOUT moving the causes (a settled/ablated readout)."""
-        self.x = list(x)
+        self.x = np.array(x, dtype=np.float64)
         e0, e1 = self.errors()
-        s_e0 = [
-            self._lif(self.v_e0_on, self.v_e0_off, self.PREC0 * e0[k], k) for k in range(self.d_in)
-        ]
-        s_e1 = [
-            self._lif(self.v_e1_on, self.v_e1_off, self.PREC1 * e1[j], j) for j in range(self.d_r1)
-        ]
-        self.s_e0, self.s_e1 = s_e0, s_e1
-        activity = sum(1 for s in s_e0 if s) + sum(1 for s in s_e1 if s)
-        for k in range(self.d_in):
-            self.cum_e0[k] += s_e0[k]
-        for j in range(self.d_r1):
-            self.cum_e1[j] += s_e1[j]
+        s_e0 = self._lif(self.v_e0_on, self.v_e0_off, self.PREC0 * e0)
+        s_e1 = self._lif(self.v_e1_on, self.v_e1_off, self.PREC1 * e1)
+        self.s_e0 = [int(s) for s in s_e0]  # exposed as lists of ints (see reset)
+        self.s_e1 = [int(s) for s in s_e1]
+        activity = int(np.count_nonzero(s_e0) + np.count_nonzero(s_e1))
+        self.cum_e0 += s_e0
+        self.cum_e1 += s_e1
         self.n_steps += 1
-        g1 = _matvec_t(self.w1, s_e0)  # bottom-up error spikes W1^T @ s_e0 (length d_r1)
-        g2 = _matvec_t(self.w2, s_e1)  # bottom-up error spikes W2^T @ s_e1 (length d_r2)
-        self.r1 = [self.r1[j] + lr * (g1[j] - s_e1[j]) for j in range(self.d_r1)]
-        self.r2 = [self.r2[m] + lr * g2[m] for m in range(self.d_r2)]
+        g1 = self.w1.T @ s_e0  # bottom-up error spikes W1^T @ s_e0 (length d_r1)
+        g2 = self.w2.T @ s_e1  # bottom-up error spikes W2^T @ s_e1 (length d_r2)
+        self.r1 = self.r1 + lr * (g1 - s_e1)
+        self.r2 = self.r2 + lr * g2
         return activity
 
     def infer(self, x, steps=400, lr=0.05):
         """Settle r1, r2 for input x by letting the spiking network run. Returns the prediction-error
         SPIKE-ACTIVITY trace (length steps+1); it falls as the error neurons fall silent. The final
         entry is a settled readout taken with the causes held fixed (lr = 0.0)."""
-        self.x = list(x)
+        self.x = np.array(x, dtype=np.float64)
         trace = [self.infer_step(x, lr) for _ in range(steps)]
         trace.append(self.infer_step(x, 0.0))  # settled error-spike readout, causes held
         return trace
+
+    def infer_batch(self, x, steps=6, lr=0.05):
+        """BATCHED settle: x is (B, d_in) -> the settled causes (r1, r2), shapes (B, d_r1) and
+        (B, d_r2). Identical arithmetic to infer(): same LIF order, same reset-by-subtraction, same
+        trailing lr = 0.0 readout step -- just run over B independent inputs at once.
+
+        This is where the numpy form actually pays. At batch=1 the dims are so small that numpy's
+        per-call overhead eats most of the win; the gain is in amortising that overhead over B.
+
+        PURE: it reads the (frozen) weights and touches NONE of this instance's causes, membranes,
+        spike vectors or counters -- so it cannot support learn(), which needs the spike counters."""
+        x = np.asarray(x, dtype=np.float64)
+        b = x.shape[0]
+        r1 = np.zeros((b, self.d_r1), dtype=np.float64)
+        r2 = np.zeros((b, self.d_r2), dtype=np.float64)
+        v_e0_on = np.zeros((b, self.d_in), dtype=np.float64)
+        v_e0_off = np.zeros((b, self.d_in), dtype=np.float64)
+        v_e1_on = np.zeros((b, self.d_r1), dtype=np.float64)
+        v_e1_off = np.zeros((b, self.d_r1), dtype=np.float64)
+        for step in range(steps + 1):  # steps x lr, then the settled lr = 0.0 readout step
+            step_lr = lr if step < steps else 0.0
+            e0 = x - r1 @ self.w1.T  # x - W1 @ r1, per row
+            e1 = r1 - r2 @ self.w2.T  # r1 - W2 @ r2, per row
+            s_e0 = self._lif(v_e0_on, v_e0_off, self.PREC0 * e0)
+            s_e1 = self._lif(v_e1_on, v_e1_off, self.PREC1 * e1)
+            if step_lr:
+                r1 = r1 + step_lr * (s_e0 @ self.w1 - s_e1)  # W1^T @ s_e0 - s_e1
+                r2 = r2 + step_lr * (s_e1 @ self.w2)  # W2^T @ s_e1
+        return r1, r2
 
     def learn(self, dataset, epochs=12, steps=120, lr=0.05, lr_w=0.02):
         """Train W1, W2 on a dataset. Returns the per-epoch average post-inference reconstruction
@@ -226,23 +252,19 @@ class PredictiveCodingNetwork:
                 self.reset()
                 self.infer(x, steps=steps, lr=lr)
                 e0, _ = self.errors()
-                epoch_mse += sum(v * v for v in e0) / self.d_in
-                rate0 = [self.cum_e0[k] / self.n_steps for k in range(self.d_in)]  # spike-rate ~ e0
-                rate1 = [self.cum_e1[j] / self.n_steps for j in range(self.d_r1)]  # spike-rate ~ e1
-                for k in range(self.d_in):  # W1 += lr_w * outer(rate(s_e0), r1)
-                    for j in range(self.d_r1):
-                        self.w1[k][j] += lr_w * rate0[k] * self.r1[j]
-                for j in range(self.d_r1):  # W2 += lr_w * outer(rate(s_e1), r2)
-                    for m in range(self.d_r2):
-                        self.w2[j][m] += lr_w * rate1[j] * self.r2[m]
+                epoch_mse += float(e0 @ e0) / self.d_in
+                rate0 = self.cum_e0 / self.n_steps  # spike-rate ~ e0
+                rate1 = self.cum_e1 / self.n_steps  # spike-rate ~ e1
+                self.w1 += lr_w * np.outer(rate0, self.r1)  # W1 += lr_w * outer(rate(s_e0), r1)
+                self.w2 += lr_w * np.outer(rate1, self.r2)  # W2 += lr_w * outer(rate(s_e1), r2)
             curve.append(epoch_mse / len(dataset))
         return curve
 
     def representable_input(self, r2_true):
         """Build an input the hierarchy can explain: x = W1 @ (W2 @ r2_true) (recovered only up to
         the spiking residual)."""
-        r1_true = _matvec(self.w2, list(r2_true))
-        return _matvec(self.w1, r1_true)
+        r1_true = self.w2 @ np.asarray(r2_true, dtype=np.float64)
+        return self.w1 @ r1_true
 
 
 def synth_dataset(n=8, d_in=8, rank=2, noise=0.02, seed=7):
@@ -277,7 +299,7 @@ def main():
     net.reset()
     trace = net.infer(x, steps=800, lr=0.05)
     e0, _ = net.errors()
-    recon_mse = sum(v * v for v in e0) / net.d_in
+    recon_mse = float(e0 @ e0) / net.d_in
     total_spikes = sum(trace)
     act_early = _window_mean(trace, 0, 50)  # prediction-error spike rate, start of inference
     act_late = _window_mean(trace, len(trace) - 50, len(trace))  # ... near the settled point
@@ -286,19 +308,19 @@ def main():
     ablate.reset()
     trace_ab = ablate.infer(x, steps=800, lr=0.0)  # causes frozen -> mismatch never explained away
     e0_ab, _ = ablate.errors()
-    recon_mse_ab = sum(v * v for v in e0_ab) / ablate.d_in
+    recon_mse_ab = float(e0_ab @ e0_ab) / ablate.d_in
     act_late_ab = _window_mean(trace_ab, len(trace_ab) - 50, len(trace_ab))
 
     # ---- 2. HIERARCHICAL spike message-passing: r2 moves ONLY when driven by layer-1 error SPIKES.
     net2 = PredictiveCodingNetwork(dims=(8, 4, 2), seed=1)
     r2_fixed = [0.5, -0.3]
-    r1_match = _matvec(net2.w2, r2_fixed)  # r1 = W2 @ r2 => e1 == 0 => NO e1 spikes
+    r1_match = net2.w2 @ np.asarray(r2_fixed)  # r1 = W2 @ r2 => e1 == 0 => NO e1 spikes
     net2.set_state(r1_match, r2_fixed)
     net2.x = [0.0] * 8
     r2_before = list(net2.r2)
     net2.infer_step([0.0] * 8, lr=0.1)  # s_e1 == 0 so r2 step = lr * W2^T @ 0 = 0
     frozen_move = max(abs(a - b) for a, b in zip(r2_before, net2.r2))
-    net2.set_state([v + 0.5 for v in r1_match], r2_fixed)  # residual e1 = +0.5 -> ON spikes
+    net2.set_state(r1_match + 0.5, r2_fixed)  # residual e1 = +0.5 -> ON spikes
     r2_before2 = list(net2.r2)
     for _ in range(30):  # let the e1 spikes accumulate and drive r2
         net2.infer_step([0.0] * 8, lr=0.1)
@@ -313,7 +335,7 @@ def main():
     # ---- 4. DETERMINISM: same seed/input -> identical weights and identical spike traces.
     a = PredictiveCodingNetwork(dims=(8, 4, 2), seed=0)
     b = PredictiveCodingNetwork(dims=(8, 4, 2), seed=0)
-    same_weights = a.w1 == b.w1 and a.w2 == b.w2
+    same_weights = np.array_equal(a.w1, b.w1) and np.array_equal(a.w2, b.w2)
     a.reset()
     b.reset()
     trace_a = a.infer(a.representable_input([0.4, -0.7]), steps=60, lr=0.05)

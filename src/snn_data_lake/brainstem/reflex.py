@@ -53,7 +53,7 @@ class Reflex:
                     self.missing.add(ch)
                     sys.stderr.write(
                         f"reflex: safety channel {ch} absent from a {len(raw)}-wide "
-                        f"frame — its '{action}' rule is INACTIVE\n"
+                        f"frame -- its '{action}' rule is INACTIVE\n"
                     )
                 continue
             x = raw[ch]

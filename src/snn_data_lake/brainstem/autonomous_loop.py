@@ -236,6 +236,39 @@ class AutonomousArm:
         self._empower_on = bool(empowerment)
         self.empower = None
         self.empowerment_gain = empowerment_gain
+        # C3 #6/#7: the two intrinsic drives used to enter the SUMMED reward through hand-picked
+        # exchange rates (curiosity_gain 0.5, empowerment_gain 0.5) -- a developer deciding what
+        # novelty and controllability are WORTH against task success, in incommensurate units
+        # (curiosity is a difference of prediction-error EMAs; empowerment is in bits).
+        # Two fixes, in order:
+        #  (a) UNIT CONVERSION, not policy: each channel is divided by a running EMA of its OWN
+        #      magnitude (RND-style, Burda 2018) before it is weighted, so the two arrive
+        #      dimensionless and the weight is a genuine ratio rather than a scale correction.
+        #  (b) the ratio is then LEARNED, but ONLY from EXTERNAL reward. Weighting a channel by an
+        #      error computed on the summed reward that CONTAINS it is self-referential and cannot
+        #      converge, so the third factor here is r_ext alone, baseline-subtracted per unit.
+        #      The constructor gains become the INITIAL weights (equal by default -> the drives are
+        #      not ranked by hand), and their sum stays clamped so the intrinsic channel can never
+        #      outgrow the external one. Value channel only: no motor route, reflex/E-STOP preempt.
+        self._int_tau = 0.02  # adaptation rate of the per-channel magnitude baselines
+        self._cur_mag = 0.0  # running |curiosity| magnitude -> its unit
+        self._emp_mag = 0.0  # running |empowerment| magnitude -> its unit
+        self._int_lr = 0.02  # learning rate of the curiosity/empowerment split
+        self._int_elig = (0.0, 0.0)  # last tick's normalised (curiosity, empowerment) contributions
+        self._rext_base = {}  # per-unit running mean of EXTERNAL reward (the only honest credit)
+        self._rint_base = 0.0  # running mean of POSITIVE intrinsic reward -> the autotelic scale
+        self._r_mag = 0.0  # running mean |delivered reward| = the unit exploration is sized in
+        self._visits = {}  # per-unit experience count -> count-based exploration decay 1/sqrt(n)
+        # C3 #8: pfc_gain (the goal-directed-vs-habitual arbitration weight) is learned by CONTRAST.
+        # Outcomes are accumulated separately for ticks where the top-down goal actually FLIPPED the
+        # choice and ticks where it did not; the gain follows the difference, so it grows only while
+        # overriding habit genuinely pays and shrinks once it starts overriding good habits.
+        self._td_flipped = False  # did the goal override the habit on the last selection
+        self._r_ovr = 0.0  # outcome baseline over override ticks
+        self._r_hab = 0.0  # outcome baseline over habit-followed ticks
+        self._n_ovr = 0  # evidence counts -- the gain waits for both to be real
+        self._n_hab = 0
+        self._pfc_lr = 0.02
         # opt-in FOUR REPRESENTATION-ONLY DRIVES (each default False -> a default brain is byte-identical).
         # All feed the value/annotation channel ONLY -- no actuator route, no change to action selection,
         # the reflex/E-STOP still preempts: affective episodic memory (emotion-tagged retention), the agency
@@ -341,14 +374,60 @@ class AutonomousArm:
             return td
         return [td[i] + ext[i] for i in range(len(td))]
 
+    def _explore_noise(self, unit, scores):
+        """C3 #10: exploration as CORTICAL VARIABILITY inside the gated selection, at a rate set by
+        how UNRESOLVED the decision is -- replacing a fixed epsilon-greedy coin flip.
+
+        Why the old mechanism had to go rather than be tuned. Epsilon-greedy did not merely use a
+        hand-picked rate; it EARLY-RETURNED a uniform random action, jumping the cortisol/threat/
+        interoceptive/BG caution path entirely. That shortcut is what forced the rate to be capped:
+        any rise meant more ticks bypassing caution. Injecting the variability into the scores
+        instead means every exploratory choice STILL passes through caution, the BG gate, and the
+        reflex/E-STOP -- so the safety invariant now holds STRUCTURALLY rather than by keeping a
+        magic number small, and the rate is free to adapt over its whole range.
+
+        The rate is parameter-free and comes from EVIDENCE, not from the values themselves. Two
+        value-derived rates were built and measured first, and both failed for the same underlying
+        reason -- they judge uncertainty by the quantity still being learned:
+          * spread / running-mean(spread) is circular; the ratio sits at ~1 forever, so it can never
+            report "resolved" and exploration never anneals (replay's decisive-value probe slowed
+            from 3 ticks to 70).
+          * R * exp(-spread/R) against the reward scale anneals, but couples the rate to how fast
+            values happen to grow, which starved the replay arm entirely (200 ticks vs 24).
+        What actually governs how much a decision should be explored is how much EVIDENCE exists for
+        it, so sigma is the reward scale divided by sqrt(1 + times THIS ACTION was taken in THIS
+        unit) -- count-based optimism (Strehl & Littman), the family the audit itself recommended for
+        the sibling explore_bonus. Per STATE-ACTION, not per state: a per-state count was measured
+        and is not enough, because once the state is well-visited the noise decays even over actions
+        that were never tried even once. That silently capped the replay probe's value margin at
+        1.00 (q[HOLD] sat at exactly 0.0, untouched), which the old epsilon coin had covered only by
+        accident of being permanently random. Per state-action, an untried action keeps full-scale
+        optimism until it IS tried, so coverage is guaranteed rather than lucky.
+
+        It decays monotonically with experience (so learning provably commits), needs no tuned rate,
+        and -- decisively for the self-paced curriculum -- RESETS for a newly grown unit, so a new
+        stage gets full exploration again while mastered ones stay decisive.
+
+        `explore` survives as the on/off instrument (0.0 -> deterministic exploitation, used by the
+        isolation probes); its magnitude no longer sets any rate."""
+        # unit None = a direct query with no context identity, so there are no state-action counts
+        # to be optimistic about; answer deterministically rather than at full optimism.
+        if unit is None or not self.explore or self._r_mag <= 1e-9:
+            # No reward experienced yet -- every action scores identically and there is nothing to be
+            # uncertain BETWEEN, so noise buys no information and only destroys the naive tie-break
+            # prior (measured: randomising it broke the learning probe's "before" readout).
+            return [0.0] * len(scores)
+        return [
+            self.rng.gauss(0.0, self._r_mag / math.sqrt(1.0 + self._visits.get((unit, a), 0)))
+            for a in ACTIONS
+        ]
+
     def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None, qa=None, reliability_hold=0.0):
         if qa is None:  # default = the tabular row; the latent-Q row is passed in
             qa = self.q[unit]
-        if self.rng.random() < self.explore:
-            return self.rng.choice(ACTIONS)  # exploration: cortical variability proposes
         if self.bg is not None:
             return self._bg_select(
-                qa, threat, intero, pfc_bias, reliability_hold
+                qa, threat, intero, pfc_bias, reliability_hold, unit
             )  # BG Go/NoGo gate disinhibits the exploit choice
         bias = (
             self.cort.caution_bias() + threat + intero + reliability_hold
@@ -357,12 +436,20 @@ class AutonomousArm:
         td = self._route_signals(
             td
         )  # W5: + routed computed signals (novelty/salience) -> behaviour
-        return max(
-            ACTIONS,
-            key=lambda a: qa[a] + (bias if a == SAFE_ACTION else 0.0) + td[ACTIONS.index(a)],
-        )
 
-    def _bg_select(self, qa, threat=0.0, intero=0.0, pfc_bias=None, reliability_hold=0.0):
+        noise = self._explore_noise(unit, [qa[a] for a in ACTIONS])  # variability, still gated
+
+        def hab(a):  # the HABITUAL choice: learned value + caution, WITHOUT the top-down vote
+            return qa[a] + (bias if a == SAFE_ACTION else 0.0) + noise[ACTIONS.index(a)]
+
+        a_hab = max(ACTIONS, key=hab)
+        a_act = max(ACTIONS, key=lambda a: hab(a) + td[ACTIONS.index(a)])
+        self._td_flipped = a_act != a_hab  # did the goal actually OVERRIDE the habit this tick
+        return a_act
+
+    def _bg_select(
+        self, qa, threat=0.0, intero=0.0, pfc_bias=None, reliability_hold=0.0, unit=None
+    ):
         """Basal-ganglia Go/NoGo selection over the 3 actions. The action values are the per-channel
         cortical drive; dopamine is the winner's value confidence, DAMPED by stress + learned threat +
         interoceptive load (more caution -> less dopamine -> harder to release). The circuit disinhibits at most one
@@ -375,7 +462,15 @@ class AutonomousArm:
         td = self._route_signals(
             td
         )  # W5: + routed computed signals (novelty/salience) -> behaviour
-        drive = [max(0.0, qa[a]) + td[i] for i, a in enumerate(ACTIONS)]
+        noise = self._explore_noise(unit, [qa[a] for a in ACTIONS])  # the BG gate still gates it
+        drive = [max(0.0, max(0.0, qa[a]) + td[i] + noise[i]) for i, a in enumerate(ACTIONS)]
+        # C3 #8: did the top-down vote actually CHANGE the ranking the BG gate arbitrates? Compared
+        # on the drive vector rather than by re-running the gate (the gate is stateful, so a second
+        # pass would perturb it) -- an honest proxy: if the top-drive action is the same with and
+        # without td, the goal had no causal effect on this tick's behaviour and earns no credit.
+        self._td_flipped = max(range(len(ACTIONS)), key=lambda i: drive[i]) != max(
+            range(len(ACTIONS)), key=lambda i: max(0.0, qa[ACTIONS[i]])
+        )
         if self._exec is None:  # W8: lazily bind the ACC executive
             try:
                 from snn_data_lake.cortex.executive_control import ExecutiveControl
@@ -843,24 +938,125 @@ class AutonomousArm:
         #    only -- no motor route, no stress; the reflex/E-STOP + caution still preempt.
         r_int = 0.0
         r_ext_step = None  # this tick's EXTERNAL task reward (for reward-shaping the encoder); None if no task reward
+        # C3 #10: evidence for THIS action in THIS context -> its exploration optimism decays
+        k = (unit, action)
+        self._visits[k] = self._visits.get(k, 0) + 1
+        raw_cur = raw_emp = 0.0
         if self.curiosity is not None and self.jepa is not None and self._jepa_prev is not None:
             perr = self.jepa.prediction_error(self._jepa_prev[0], self._jepa_prev[1], pattern)
-            r_int = self.curiosity_gain * self.curiosity.intrinsic_reward(
-                unit, perr
-            )  # observes + rewards learning progress
+            raw_cur = self.curiosity.intrinsic_reward(unit, perr)  # rewards learning progress
         if self._empower_on and self.jepa is not None:
             if self.empower is None:  # lazily bind the drive to the (now-built) JEPA forward model
                 self.empower = Empowerment(self.jepa, ACTIONS, horizon=2, seed=self._seed)
-            r_int += self.empowerment_gain * self.empower.step_reward(
-                self.jepa.encode(pattern)
-            )  # controllability gain
+            raw_emp = self.empower.step_reward(self.jepa.encode(pattern))  # controllability gain
+        # C3 #6/#7: put the two drives in COMMON units before weighting them. Each is divided by a
+        # running EMA of its own magnitude, so a prediction-error difference and a controllability
+        # gain in bits arrive on the same scale and the weight below is a real ratio, not a hidden
+        # unit conversion. Self-normalising: as a channel's magnitude grows its unit grows with it.
+        if raw_cur or raw_emp:
+            # WARM START, not a ramp from zero: an EMA started at 0 divides the first samples by a
+            # near-zero unit, so the normalised drive spikes ~1/tau and swamps external reward before
+            # the baseline catches up (measured: it dropped the reward-encoder self-check from a
+            # held-out 1.00 to 0.67). Seed each unit with the first magnitude it ever sees, so the
+            # first normalised sample is exactly 1.0 and the channel is well-scaled from tick one.
+            self._cur_mag = (
+                abs(raw_cur)
+                if self._cur_mag <= 0.0
+                else (1.0 - self._int_tau) * self._cur_mag + self._int_tau * abs(raw_cur)
+            )
+            self._emp_mag = (
+                abs(raw_emp)
+                if self._emp_mag <= 0.0
+                else (1.0 - self._int_tau) * self._emp_mag + self._int_tau * abs(raw_emp)
+            )
+            # bounded: a transient far above the running unit is clipped, so one outlier tick cannot
+            # dominate the value update the way an unbounded ratio would
+            n_cur = max(-4.0, min(4.0, raw_cur / self._cur_mag)) if self._cur_mag > 1e-9 else 0.0
+            n_emp = max(-4.0, min(4.0, raw_emp / self._emp_mag)) if self._emp_mag > 1e-9 else 0.0
+            # MEASURED CORRECTION -- the delivered reward stays RAW; normalisation is used ONLY for
+            # credit. The audit's proposal (RND-style running-magnitude normalisation of the
+            # delivered intrinsic reward, Burda 2018) is wrong for THIS signal, and the code proved
+            # it: curiosity here is LEARNING PROGRESS, whose decay toward zero as the world model
+            # masters the environment IS its meaning. Dividing it by its own running magnitude
+            # erases that -- a nearly-converged model keeps emitting full-strength curiosity.
+            # Measured cost of doing it: the reward-shaped-encoder held-out fell 1.00 -> 0.67 and
+            # the plain MLP-Q 0.33 -> 0.17. (RND normalises NOVELTY, which has no such semantics.)
+            # So: deliver raw (magnitude preserved, byte-identical at birth), and use the
+            # normalised values only as ELIGIBILITY, where a common scale is what makes the two
+            # drives' competition for weight fair rather than a contest of native units.
+            r_int = self.curiosity_gain * raw_cur + self.empowerment_gain * raw_emp
+            self._int_elig = (n_cur, n_emp)  # credited on the NEXT tick, when an outcome exists
+            if r_int > 0.0:  # C3 #11: the scale the autotelic goal gate measures itself against
+                self._rint_base = (
+                    r_int
+                    if self._rint_base <= 0.0
+                    else (1.0 - self._int_tau) * self._rint_base + self._int_tau * r_int
+                )
         if reward_fn is not None or r_int != 0.0:
             r_ext = reward_fn(unit, action) if reward_fn is not None else 0.0
             if reward_fn is not None:
                 r_ext_step = (
                     r_ext  # a real task reward this tick -> shape the encoder toward it next update
                 )
+            # C3 #7: LEARN the curiosity/empowerment split, credited by EXTERNAL reward ONLY. The
+            # third factor is r_ext against its own per-unit running mean -- never `r` below, which
+            # contains the very intrinsic term being weighted (that loop is self-referential and
+            # saturates at the clamp instead of converging). Eligibility is LAST tick's normalised
+            # contribution, since r_int for this tick is computed before any outcome exists. The two
+            # drives compete via baseline subtraction, and their sum is clamped so the intrinsic
+            # channel can never outgrow the external one -- the bound that keeps a self-directed arm
+            # answerable to real task reward.
+            # Only meaningful when BOTH drives are live: this rule learns a RATIO, and a ratio
+            # against a structurally absent channel is not learnable -- with empowerment off the
+            # baseline subtraction reduces to +/-0.5*e_cur, so noise in the external reward walks
+            # curiosity's weight around for no reason (measured: it cost the plain MLP-Q probe
+            # 0.33 -> 0.17 held-out). With one drive there is nothing to arbitrate, so its
+            # constructor weight stands.
+            err = 0.0
+            if reward_fn is not None:  # the shared "better/worse than usual HERE" outcome signal
+                base = self._rext_base.get(unit, 0.0)
+                err = r_ext - base
+                self._rext_base[unit] = (1.0 - self._int_tau) * base + self._int_tau * r_ext
+            if reward_fn is not None and self.curiosity is not None and self._empower_on:
+                e_cur, e_emp = self._int_elig
+                mean_e = 0.5 * (e_cur + e_emp)
+                self.curiosity_gain = min(
+                    1.0, max(0.0, self.curiosity_gain + self._int_lr * err * (e_cur - mean_e))
+                )
+                self.empowerment_gain = min(
+                    1.0, max(0.0, self.empowerment_gain + self._int_lr * err * (e_emp - mean_e))
+                )
+                tot = self.curiosity_gain + self.empowerment_gain
+                if tot > 1.0:  # bounded intrinsic channel: it never outweighs external reward
+                    self.curiosity_gain /= tot
+                    self.empowerment_gain /= tot
+            # C3 #8: LEARN pfc_gain -- how strongly the prefrontal GOAL outweighs learned habit --
+            # by CONTRAST, not by reinforcement. The rule needs a signal that DEGRADES as the gain
+            # rises, or it ratchets to the clamp: "did the action match the goal" grows with gain
+            # and so can never brake it. "Does overriding the habit pay BETTER than following it"
+            # falls once the gain starts overriding GOOD habits, which is what creates an interior
+            # fixed point. Two lagged outcome baselines -- one over ticks where the goal actually
+            # flipped the choice, one over ticks where it did not -- and the gain follows their
+            # difference. Ticks where the vote changed nothing are excluded entirely: availability
+            # is not effect. Preference weight only; the reflex/E-STOP and arm gate are untouched.
+            if self.pfc is not None and reward_fn is not None:
+                out = err  # better/worse than usually happens in this context
+                if self._td_flipped:
+                    self._r_ovr = (1.0 - self._int_tau) * self._r_ovr + self._int_tau * out
+                    self._n_ovr += 1
+                else:
+                    self._r_hab = (1.0 - self._int_tau) * self._r_hab + self._int_tau * out
+                    self._n_hab += 1
+                if self._n_ovr >= 10 and self._n_hab >= 10:  # both baselines have real evidence
+                    self.pfc_gain = min(
+                        1.0, max(0.1, self.pfc_gain + self._pfc_lr * (self._r_ovr - self._r_hab))
+                    )
             r = r_ext + r_int  # external task reward + intrinsic curiosity reward
+            self._r_mag = (  # C3 #10: the reward scale exploration noise is measured against
+                abs(r)
+                if self._r_mag <= 0.0
+                else (1.0 - self._int_tau) * self._r_mag + self._int_tau * abs(r)
+            )
             if qsub is not None and z_lq is not None:
                 qsub.update(
                     z_lq, action, r
@@ -927,7 +1123,19 @@ class AutonomousArm:
                         if self._z1_goal is None
                         else [0.9 * g + 0.1 * z for g, z in zip(self._z1_goal, z1t)]
                     )
-            elif self.jepa is not None and r_int > self._autotelic_goal_thresh:
+            # C3 #11: the cutoff is now the STRICTER of an absolute floor and the intrinsic reward's
+            # own running scale. The floor alone was fragile in a way this cycle made worse: r_int's
+            # magnitude is the product of curiosity_gain/empowerment_gain, and those now LEARN and
+            # move (measured 0.50 -> 0.81 on a two-drive task), so a fixed 0.02 silently changes
+            # meaning as the brain retunes itself. Taking the max against a running mean of positive
+            # intrinsic reward makes the gate track that scale. Deliberately one-sided: it can only
+            # ever become STRICTER than today, never looser, so the cutoff keeps its real semantics
+            # -- "stop forming goals when nothing is intrinsically valuable" -- instead of a
+            # mean-tracking baseline that would follow learning-progress down to noise and then fire
+            # on it forever, random-walking the latent goal.
+            elif self.jepa is not None and r_int > max(
+                self._autotelic_goal_thresh, self._rint_base
+            ):
                 # AUTOTELIC latent goal: with NO external task (reward_fn is None), a strong INTRINSIC reward
                 # (curiosity learning-progress + empowerment controllability) marks THIS latent as intrinsically
                 # valuable -> move the goal toward it so the prefrontal executive PLANS toward controllable/
@@ -1132,8 +1340,14 @@ def main():
         ], bot.learner.n_units
 
     # 6. REPLAY (opt-in SWR consolidation): sample-efficient value learning, safety intact.
-    def ticks_to_open_margin(replay, target=1.2):
-        bot = AutonomousArm(seed=3, replay=replay)
+    # STRENGTHENED (C3 #10): this compared ONE seed. Exploration is now stochastic per-tick
+    # (count-based optimism instead of an epsilon coin), so a single-seed race between two
+    # stochastic learners is decided partly by luck -- seed 3 is in fact the one seed of twelve
+    # where the slower arm wins. A single sample was never adequate evidence for the claim being
+    # made. It now MEANS "replay is sample-efficient": replay must be faster ON AVERAGE and on a
+    # clear MAJORITY of seeds. That is a harder bar than one comparison, not an easier one.
+    def ticks_to_open_margin(replay, seed=3, target=1.2):
+        bot = AutonomousArm(seed=seed, replay=replay)
         for t in range(1, 200):
             ev = bot.step(**a, reward_fn=reward)
             row = bot.q[ev["unit"]]
@@ -1141,8 +1355,12 @@ def main():
                 return t
         return 200
 
-    live_ticks = ticks_to_open_margin(replay=False)
-    replay_ticks = ticks_to_open_margin(replay=True)
+    _seeds = range(12)
+    _live = [ticks_to_open_margin(replay=False, seed=s) for s in _seeds]
+    _replay = [ticks_to_open_margin(replay=True, seed=s) for s in _seeds]
+    live_ticks = sum(_live) / len(_live)
+    replay_ticks = sum(_replay) / len(_replay)
+    replay_wins = sum(1 for lv, rp in zip(_live, _replay) if rp < lv)
 
     rguard = AutonomousArm(seed=2, replay=True)  # danger, then a rewarded action, replay ON
     rev = rguard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
@@ -1195,7 +1413,8 @@ def main():
         f"post-STOP action frozen={still_frozen}"
     )
     print(
-        f"replay      : SWR consolidation -> decisive value in {replay_ticks} live ticks vs {live_ticks} "
+        f"replay      : SWR consolidation -> decisive value in {replay_ticks:.1f} mean live ticks vs "
+        f"{live_ticks:.1f} over 12 seeds (faster on {replay_wins}/12) "
         f"(value table only; safety gate holds with replay={replay_frozen})"
     )
     print(
@@ -1248,8 +1467,9 @@ def main():
     )
     assert run(7) == run(7), "same seed -> identical autonomous behaviour (deterministic)"
     # replay (opt-in SWR) is sample-efficient AND safety-preserving:
-    assert replay_ticks < live_ticks, (
-        f"replay must learn in fewer live ticks ({replay_ticks} vs {live_ticks})"
+    assert replay_ticks < live_ticks and replay_wins >= 9, (
+        f"replay must learn in fewer live ticks ON AVERAGE and on a majority of seeds "
+        f"({replay_ticks:.1f} vs {live_ticks:.1f}; faster on {replay_wins}/12)"
     )
     assert rev["action"] == "EMERGENCY_STOP" and rev["reflex"], (
         "danger must E-STOP even with replay on"
@@ -1921,7 +2141,8 @@ def main():
     print(
         f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
         f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "
-        f"replay: decisive in {replay_ticks}<{live_ticks} live ticks, value-only, gate holds. "
+        f"replay: decisive in {replay_ticks:.1f}<{live_ticks:.1f} mean ticks over 12 seeds "
+        f"({replay_wins}/12), value-only, gate holds. "
         f"amygdala learns threat ({threat_danger:.2f}>{threat_safe:.2f}) + BG gate releases {bg_released}, "
         f"both caution-only (E-STOP freeze holds)"
     )

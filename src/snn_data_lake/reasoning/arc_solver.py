@@ -25,6 +25,14 @@ This module is the same induction idiom transplanted to the grid domain:
   4. LIBRARY     : a solved task's winning program (>=2 steps) becomes ONE named composite primitive
                    -- OpenGf._learn's pattern in the grid domain -- so later tasks reach deeper
                    within the same size budget. Measured ON vs OFF; a null result is reported as-is.
+  5. WEIGHTS     : per-primitive selection weights learned ACROSS tasks (ArcWeights, per-instance
+                   state passed in exactly like the library, never a module-global reorder of
+                   _BASE): each winning program's primitives earn reward-minus-baseline credit (the
+                   r_stdp idiom; uniform EXACT credit to the closed program, no eligibility decay,
+                   dead search paths never punished) and _pool is stably re-sorted by that credit.
+                   Under a binding node budget the order decides which equal-size consistent program
+                   is found first AND which primitives are reached at all before truncation;
+                   weights=None (the default) keeps the hand-authored order. Measured ON vs OFF.
 
 HONEST FRAMING (read before quoting any number)
 -----------------------------------------------
@@ -51,7 +59,7 @@ import sys
 import time
 from collections import Counter
 
-_MAXS = 30                                   # ARC grids are at most 30x30; larger outputs are invalid
+_MAXS = 30  # ARC grids are at most 30x30; larger outputs are invalid
 _N4 = ((-1, 0), (1, 0), (0, -1), (0, 1))
 _N8 = _N4 + ((-1, -1), (-1, 1), (1, -1), (1, 1))
 
@@ -59,6 +67,7 @@ _N8 = _N4 + ((-1, -1), (-1, 1), (1, -1), (1, 1))
 # ====================================================================================================
 # grids
 # ====================================================================================================
+
 
 def _tup(g):
     """Grid -> immutable tuple-of-tuples of ints (hashable state for the search)."""
@@ -91,7 +100,7 @@ def background(g):
 #    attribute style; adds 8-connectivity and multi-colour variants; background skipped, not EMPTY).
 # ====================================================================================================
 
-_SEG_CACHE = {}                              # (grid, conn, same_color) -> [obj], cleared per synthesize
+_SEG_CACHE = {}  # (grid, conn, same_color) -> [obj], cleared per synthesize
 
 
 def components(g, conn=4, same_color=True, bg=None):
@@ -118,8 +127,13 @@ def components(g, conn=4, same_color=True, bg=None):
                 cells.append((y, x))
                 for dy, dx in nei:
                     ny, nx = y + dy, x + dx
-                    if (0 <= ny < R and 0 <= nx < C and not seen[ny][nx] and g[ny][nx] != bg
-                            and (not same_color or g[ny][nx] == colr)):
+                    if (
+                        0 <= ny < R
+                        and 0 <= nx < C
+                        and not seen[ny][nx]
+                        and g[ny][nx] != bg
+                        and (not same_color or g[ny][nx] == colr)
+                    ):
                         seen[ny][nx] = True
                         stack.append((ny, nx))
             rs = [y for y, _ in cells]
@@ -128,11 +142,15 @@ def components(g, conn=4, same_color=True, bg=None):
             topn = max(cnt.values())
             dom = min(c2 for c2, n in cnt.items() if n == topn)
             r0, c0 = min(rs), min(cs)
-            objs.append({
-                "cells": frozenset(cells), "color": dom, "size": len(cells),
-                "bbox": (r0, c0, max(rs), max(cs)),
-                "shape": frozenset((y - r0, x - c0) for y, x in cells),
-            })
+            objs.append(
+                {
+                    "cells": frozenset(cells),
+                    "color": dom,
+                    "size": len(cells),
+                    "bbox": (r0, c0, max(rs), max(cs)),
+                    "shape": frozenset((y - r0, x - c0) for y, x in cells),
+                }
+            )
     objs.sort(key=lambda o: o["bbox"])
     _SEG_CACHE[key] = objs
     return objs
@@ -141,7 +159,7 @@ def components(g, conn=4, same_color=True, bg=None):
 def _obj_crop(g, obj, bg):
     r0, c0, r1, c1 = obj["bbox"]
     out = [[bg] * (c1 - c0 + 1) for _ in range(r1 - r0 + 1)]
-    for (y, x) in obj["cells"]:
+    for y, x in obj["cells"]:
         out[y - r0][x - c0] = g[y][x]
     return _tup(out)
 
@@ -174,6 +192,7 @@ def _pick(objs, mode):
 # 2. THE DSL -- small, composable, TOTAL primitives: grid -> grid, or None when inapplicable.
 # ====================================================================================================
 
+
 def _rot90(g):
     return tuple(zip(*g[::-1]))
 
@@ -205,7 +224,7 @@ def _crop_content(g):
         return None
     rs = [r for r, _ in pts]
     cs = [c for _, c in pts]
-    return tuple(row[min(cs):max(cs) + 1] for row in g[min(rs):max(rs) + 1])
+    return tuple(row[min(cs) : max(cs) + 1] for row in g[min(rs) : max(rs) + 1])
 
 
 def _scale(g, k):
@@ -274,11 +293,14 @@ def _half(g, which):
     if which in ("top", "bottom"):
         if R < 2:
             return None
-        return g[:R // 2] if which == "top" else g[R - R // 2:]
+        return g[: R // 2] if which == "top" else g[R - R // 2 :]
     if C < 2:
         return None
-    return (tuple(row[:C // 2] for row in g) if which == "left"
-            else tuple(row[C - C // 2:] for row in g))
+    return (
+        tuple(row[: C // 2] for row in g)
+        if which == "left"
+        else tuple(row[C - C // 2 :] for row in g)
+    )
 
 
 def _sel(g, conn, same, mode):
@@ -292,8 +314,10 @@ def _del(g, conn, same, mode):
     obj = _pick(components(g, conn, same, bg), mode)
     if obj is None:
         return None
-    return tuple(tuple(bg if (r, c) in obj["cells"] else v for c, v in enumerate(row))
-                 for r, row in enumerate(g))
+    return tuple(
+        tuple(bg if (r, c) in obj["cells"] else v for c, v in enumerate(row))
+        for r, row in enumerate(g)
+    )
 
 
 _GRAV = {"down": (1, 0), "up": (-1, 0), "left": (0, -1), "right": (0, 1)}
@@ -308,9 +332,10 @@ def _gravity(g, d):
         return g
     R, C = len(g), len(g[0])
 
-    def far(o):                                  # settle the objects nearest the wall first
+    def far(o):  # settle the objects nearest the wall first
         ys = [r * dr + c * dc for r, c in o["cells"]]
         return -max(ys)
+
     out = [[bg] * C for _ in range(R)]
     occupied = set()
     for o in sorted(objs, key=lambda o: (far(o), o["bbox"])):
@@ -321,7 +346,7 @@ def _gravity(g, d):
                 s += 1
             else:
                 break
-        for (r, c) in o["cells"]:
+        for r, c in o["cells"]:
             y, x = r + dr * s, c + dc * s
             out[y][x] = g[r][c]
             occupied.add((y, x))
@@ -347,7 +372,7 @@ def _fill_enclosed(g, colr):
     if not holes:
         return None
     out = [list(row) for row in g]
-    for (r, c) in holes:
+    for r, c in holes:
         out[r][c] = colr
     return _tup(out)
 
@@ -360,20 +385,36 @@ def _frame(g, colr):
     return (top,) + tuple((colr,) + row + (colr,) for row in g) + (top,)
 
 
-# ---- the base (parameter-free) primitive registry: (name, fn), cheap/likely first -------------------
+# ---- the base (parameter-free) primitive registry: (name, fn). The hand order is the COLD-START ----
+#      prior and the tie-break: ArcWeights re-sorts a per-task COPY in _pool by learned credit; this
+#      list itself is NEVER mutated (arc_diagnostic reflects into it, determinism depends on it).
 
 _BASE = [
-    ("rot90", _rot90), ("rot180", _rot180), ("rot270", _rot270),
-    ("flip_h", _flip_h), ("flip_v", _flip_v), ("transpose", _transpose),
+    ("rot90", _rot90),
+    ("rot180", _rot180),
+    ("rot270", _rot270),
+    ("flip_h", _flip_h),
+    ("flip_v", _flip_v),
+    ("transpose", _transpose),
     ("crop_content", _crop_content),
-    ("mirror_h", _mirror_h), ("mirror_h_l", _mirror_h_l),
-    ("mirror_v", _mirror_v), ("mirror_v_t", _mirror_v_t), ("mirror_quad", _mirror_quad),
-    ("scale2", lambda g: _scale(g, 2)), ("scale3", lambda g: _scale(g, 3)), ("unscale", _unscale),
-    ("tile_h2", lambda g: _tile(g, 1, 2)), ("tile_v2", lambda g: _tile(g, 2, 1)),
-    ("tile_22", lambda g: _tile(g, 2, 2)), ("tile_h3", lambda g: _tile(g, 1, 3)),
-    ("tile_v3", lambda g: _tile(g, 3, 1)), ("tile_33", lambda g: _tile(g, 3, 3)),
-    ("half_top", lambda g: _half(g, "top")), ("half_bottom", lambda g: _half(g, "bottom")),
-    ("half_left", lambda g: _half(g, "left")), ("half_right", lambda g: _half(g, "right")),
+    ("mirror_h", _mirror_h),
+    ("mirror_h_l", _mirror_h_l),
+    ("mirror_v", _mirror_v),
+    ("mirror_v_t", _mirror_v_t),
+    ("mirror_quad", _mirror_quad),
+    ("scale2", lambda g: _scale(g, 2)),
+    ("scale3", lambda g: _scale(g, 3)),
+    ("unscale", _unscale),
+    ("tile_h2", lambda g: _tile(g, 1, 2)),
+    ("tile_v2", lambda g: _tile(g, 2, 1)),
+    ("tile_22", lambda g: _tile(g, 2, 2)),
+    ("tile_h3", lambda g: _tile(g, 1, 3)),
+    ("tile_v3", lambda g: _tile(g, 3, 1)),
+    ("tile_33", lambda g: _tile(g, 3, 3)),
+    ("half_top", lambda g: _half(g, "top")),
+    ("half_bottom", lambda g: _half(g, "bottom")),
+    ("half_left", lambda g: _half(g, "left")),
+    ("half_right", lambda g: _half(g, "right")),
     ("sel_largest", lambda g: _sel(g, 4, True, "largest")),
     ("sel_smallest", lambda g: _sel(g, 4, True, "smallest")),
     ("sel_unique_color", lambda g: _sel(g, 4, True, "unique_color")),
@@ -384,12 +425,15 @@ _BASE = [
     ("del_largest", lambda g: _del(g, 4, True, "largest")),
     ("del_smallest", lambda g: _del(g, 4, True, "smallest")),
     ("del_unique_color", lambda g: _del(g, 4, True, "unique_color")),
-    ("gravity_down", lambda g: _gravity(g, "down")), ("gravity_up", lambda g: _gravity(g, "up")),
-    ("gravity_left", lambda g: _gravity(g, "left")), ("gravity_right", lambda g: _gravity(g, "right")),
+    ("gravity_down", lambda g: _gravity(g, "down")),
+    ("gravity_up", lambda g: _gravity(g, "up")),
+    ("gravity_left", lambda g: _gravity(g, "left")),
+    ("gravity_right", lambda g: _gravity(g, "right")),
 ]
 
 
 # ---- fitted (per-task) primitives: parameters inferred from the TRAINING pairs, never per-task ids --
+
 
 def _out_colors(train_outs):
     """Non-background colours across the training OUTPUTS, most frequent first (deterministic)."""
@@ -411,7 +455,7 @@ def _split_layouts():
         m = C // 2
         if len({row[m] for row in g}) != 1:
             return None
-        return tuple(row[:m] for row in g), tuple(row[m + 1:] for row in g)
+        return tuple(row[:m] for row in g), tuple(row[m + 1 :] for row in g)
 
     def hsep(g):
         R = len(g)
@@ -420,16 +464,20 @@ def _split_layouts():
         m = R // 2
         if len(set(g[m])) != 1:
             return None
-        return g[:m], g[m + 1:]
+        return g[:m], g[m + 1 :]
 
     def veven(g):
         C = len(g[0])
-        return (tuple(row[:C // 2] for row in g), tuple(row[C // 2:] for row in g)) \
-            if (C >= 2 and C % 2 == 0) else None
+        return (
+            (tuple(row[: C // 2] for row in g), tuple(row[C // 2 :] for row in g))
+            if (C >= 2 and C % 2 == 0)
+            else None
+        )
 
     def heven(g):
         R = len(g)
-        return (g[:R // 2], g[R // 2:]) if (R >= 2 and R % 2 == 0) else None
+        return (g[: R // 2], g[R // 2 :]) if (R >= 2 and R % 2 == 0) else None
+
     return [("vsep", vsep), ("hsep", hsep), ("veven", veven), ("heven", heven)]
 
 
@@ -450,11 +498,19 @@ def _mk_split_op(splitf, op, out_color):
             row = []
             for va, vb in zip(ra, rb):
                 a, b = va != bg, vb != bg
-                on = ((a and b) if op == "and" else (a or b) if op == "or"
-                      else (a != b) if op == "xor" else (a and not b))
+                on = (
+                    (a and b)
+                    if op == "and"
+                    else (a or b)
+                    if op == "or"
+                    else (a != b)
+                    if op == "xor"
+                    else (a and not b)
+                )
                 row.append(out_color if on else bg)
             rows.append(tuple(row))
         return tuple(rows)
+
     return fn
 
 
@@ -470,15 +526,17 @@ def _fitted_prims(train_in, train_out):
         if all(lf(x) is not None for x in train_in):
             if colors:
                 for op in ("and", "or", "xor", "diff"):
-                    prims.append(("split_%s_%s_%d" % (lname, op, colors[0]),
-                                  _mk_split_op(lf, op, colors[0])))
-            break                                            # first layout that fits every input
+                    prims.append(
+                        ("split_%s_%s_%d" % (lname, op, colors[0]), _mk_split_op(lf, op, colors[0]))
+                    )
+            break  # first layout that fits every input
     return prims
 
 
 # ====================================================================================================
 # closers -- finish a program at any search state (exact match, or a colour-map fitted from train)
 # ====================================================================================================
+
 
 def _fit_colormap(pred, want):
     """One colour->colour mapping consistent CELLWISE across every (predicted, wanted) pair, or None.
@@ -506,14 +564,15 @@ def _apply_map(g, m):
 #    equivalence pruning, a node budget, and an optional wall-time budget (resource guards only).
 # ====================================================================================================
 
+
 class ArcLibrary:
     """Learned composite primitives -- OpenGf._learn's pattern in the grid domain: the winning
     program of a solved task (>=2 steps, flattened, deduped) becomes ONE named step for later tasks."""
 
     def __init__(self, cap=64):
         self.cap = cap
-        self.progs = []                                        # [tuple(primitive names)]
-        self._defs = {}                                        # composite name -> flat name tuple
+        self.progs = []  # [tuple(primitive names)]
+        self._defs = {}  # composite name -> flat name tuple
         self._seen = set()
 
     def learn(self, names):
@@ -529,14 +588,51 @@ class ArcLibrary:
         return True
 
 
-def _pool(train_in, train_out, library):
-    """The per-task primitive pool: base + fitted + library composites (refit in THIS task's context)."""
+class ArcWeights:
+    """Learned per-primitive selection weights -- replaces _BASE's hand-authored 'cheap/likely
+    first' prior with cross-task credit. PER-INSTANCE state passed in exactly like the library
+    (NEVER a module-global reorder of _BASE: two consecutive fresh runs must solve the identical
+    task set, and arc_diagnostic reflects into _BASE). The update is the r_stdp idiom in its exact
+    degenerate case: on a win, reward +1 MINUS a running baseline (the mean solve rate seen so far)
+    is credited UNIFORMLY to every primitive of the winning program -- the full program is known
+    exactly at closure, so an eligibility decay over the prefix would only add approximation error
+    -- and dead search paths are never punished (they outnumber wins by orders of magnitude and
+    nearly every primitive legitimately appears on many, so punishment would swamp the win signal
+    and penalize generality). The ordering only permutes depth>=2 priority under a binding node
+    budget: at depth 1 the whole pool (tens of primitives) fits any real budget, so every primitive
+    is still tried on every task -- exploration is preserved for free."""
+
+    def __init__(self):
+        self.w = {}  # primitive name -> accumulated baseline-subtracted credit
+        self.seen = 0  # solver calls observed
+        self.wins = 0  # calls that closed a consistent program
+
+    def observe(self, names, solved):
+        """One finished solver call: the winning program's primitive names (possibly empty, e.g.
+        the const fallback) and whether ANY consistent program closed -- the only signal available
+        before ground truth, the same standard ArcLibrary.learn already accepts."""
+        base = self.wins / self.seen if self.seen else 0.0
+        self.seen += 1
+        if solved:
+            self.wins += 1
+            for n in names:  # uniform exact credit, one per occurrence
+                self.w[n] = self.w.get(n, 0.0) + (1.0 - base)
+
+    def key(self, name):
+        """Sort weight of a primitive (0.0 when never credited)."""
+        return self.w.get(name, 0.0)
+
+
+def _pool(train_in, train_out, library, weights=None):
+    """The per-task primitive pool: base + fitted + library composites (refit in THIS task's context).
+    With `weights` (ArcWeights) the pool is STABLY sorted by learned credit, best first: ties keep
+    the hand-authored order, so an uncredited (fresh) table reproduces the fixed prior exactly."""
     prims = list(_BASE) + _fitted_prims(train_in, train_out)
     pmap = dict(prims)
     if library is not None:
         for names in library.progs:
             if not all(n in pmap for n in names):
-                continue                                       # a fitted step this task cannot refit
+                continue  # a fitted step this task cannot refit
             fns = [pmap[n] for n in names]
 
             def comp(g, fns=fns):
@@ -545,17 +641,30 @@ def _pool(train_in, train_out, library):
                     if g is None:
                         return None
                 return g
+
             prims.append(("lib:" + ">".join(names), comp))
+    if weights is not None:
+        prims.sort(key=lambda p: -weights.key(p[0]))  # stable: zero-credit ties keep hand order
     return prims
 
 
-def synthesize(train_pairs, test_input, attempts=2, max_depth=3, node_budget=4000,
-               time_budget=None, library=None, dsl="full"):
+def synthesize(
+    train_pairs,
+    test_input,
+    attempts=2,
+    max_depth=3,
+    node_budget=4000,
+    time_budget=None,
+    library=None,
+    dsl="full",
+    weights=None,
+):
     """Iterative-deepening program synthesis for ONE ARC task.
 
     Returns (candidates, programs): up to `attempts` DISTINCT predicted test-output grids (lists of
     lists), smallest-program-first, and the matching (names, closer) descriptions. dsl="identity" is
-    the CONTROL: no primitives, exact closer only -- it must score ~0 on real tasks."""
+    the CONTROL: no primitives, exact closer only -- it must score ~0 on real tasks. `weights`
+    (ArcWeights) reorders the primitive pool by learned cross-task credit; None = the fixed prior."""
     _SEG_CACHE.clear()
     try:
         train_in = tuple(_tup(i) for i, _o in train_pairs)
@@ -566,8 +675,8 @@ def synthesize(train_pairs, test_input, attempts=2, max_depth=3, node_budget=400
     if not train_in or not all(_ok(g) for g in train_in + train_out + (test,)):
         return [], []
 
-    full = (dsl == "full")
-    prims = _pool(train_in, train_out, library) if full else []
+    full = dsl == "full"
+    prims = _pool(train_in, train_out, library, weights) if full else []
     cands, progs, seen_c = [], [], set()
 
     def close(state, names):
@@ -598,9 +707,10 @@ def synthesize(train_pairs, test_input, attempts=2, max_depth=3, node_budget=400
         for state, names in frontier:
             for pname, fn in prims:
                 nodes += 1
-                if nodes > node_budget or (t0 is not None and nodes % 64 == 0
-                                           and time.monotonic() - t0 > time_budget):
-                    frontier = []                              # budget exhausted -> truncate honestly
+                if nodes > node_budget or (
+                    t0 is not None and nodes % 64 == 0 and time.monotonic() - t0 > time_budget
+                ):
+                    frontier = []  # budget exhausted -> truncate honestly
                     nxt = []
                     break
                 gs = []
@@ -608,7 +718,7 @@ def synthesize(train_pairs, test_input, attempts=2, max_depth=3, node_budget=400
                     try:
                         g = fn(g)
                     except Exception:
-                        g = None                               # a primitive must be total; treat as None
+                        g = None  # a primitive must be total; treat as None
                     if g is None or not _ok(g):
                         gs = None
                         break
@@ -617,7 +727,7 @@ def synthesize(train_pairs, test_input, attempts=2, max_depth=3, node_budget=400
                     continue
                 ns = tuple(gs)
                 if ns in seen:
-                    continue                                   # equivalence pruning (same effect, longer)
+                    continue  # equivalence pruning (same effect, longer)
                 seen.add(ns)
                 close(ns, names + (pname,))
                 if len(cands) >= attempts:
@@ -632,24 +742,40 @@ def synthesize(train_pairs, test_input, attempts=2, max_depth=3, node_budget=400
     return cands, progs
 
 
-def make_solver(library=None, max_depth=3, node_budget=4000, time_budget=5.0, dsl="full"):
+def make_solver(
+    library=None, max_depth=3, node_budget=4000, time_budget=5.0, dsl="full", weights=None
+):
     """An arc_bench-shaped solver(train_pairs, test_input, attempts) -> [candidate grids]. With a
-    library, each solved task's winning program is learned as a composite for the NEXT tasks."""
+    library, each solved task's winning program is learned as a composite for the NEXT tasks; with
+    `weights` (ArcWeights), each outcome likewise updates the learned primitive ordering."""
+
     def solver(train, test_input, attempts=2):
-        cands, progs = synthesize(train, test_input, attempts=attempts, max_depth=max_depth,
-                                  node_budget=node_budget, time_budget=time_budget,
-                                  library=library, dsl=dsl)
+        cands, progs = synthesize(
+            train,
+            test_input,
+            attempts=attempts,
+            max_depth=max_depth,
+            node_budget=node_budget,
+            time_budget=time_budget,
+            library=library,
+            dsl=dsl,
+            weights=weights,
+        )
         if library is not None and progs:
             names, _closer = progs[0]
             if len(names) >= 2:
                 library.learn(names)
+        if weights is not None:
+            weights.observe(progs[0][0] if progs else (), bool(progs))
         return cands
+
     return solver
 
 
 # ====================================================================================================
 # self-check -- primitives, synthetic tasks, a genuinely-failing control, library effect, determinism
 # ====================================================================================================
+
 
 def _solve1(pairs, test, **kw):
     cands, progs = synthesize(pairs, test, **kw)
@@ -675,11 +801,17 @@ def main():
         ("mirror_h", _mirror_h(_tup([[1, 2]])) == _tup([[1, 2, 2, 1]])),
         ("tile_22", _tile(_tup([[7]]), 2, 2) == _tup([[7, 7], [7, 7]])),
         ("gravity_down", _gravity(_tup([[3, 0], [0, 0]]), "down") == _tup([[0, 0], [3, 0]])),
-        ("fill_enclosed", _fill_enclosed(_tup([[0, 0, 0, 0], [0, 3, 3, 3], [0, 3, 0, 3], [0, 3, 3, 3]]), 6)
-         == _tup([[0, 0, 0, 0], [0, 3, 3, 3], [0, 3, 6, 3], [0, 3, 3, 3]])),
+        (
+            "fill_enclosed",
+            _fill_enclosed(_tup([[0, 0, 0, 0], [0, 3, 3, 3], [0, 3, 0, 3], [0, 3, 3, 3]]), 6)
+            == _tup([[0, 0, 0, 0], [0, 3, 3, 3], [0, 3, 6, 3], [0, 3, 3, 3]]),
+        ),
         ("frame", _frame(_tup([[5]]), 2) == _tup([[2, 2, 2], [2, 5, 2], [2, 2, 2]])),
-        ("sel_largest", _sel(_tup([[1, 0, 0], [1, 0, 2], [1, 0, 0]]), 4, True, "largest")
-         == _tup([[1], [1], [1]])),
+        (
+            "sel_largest",
+            _sel(_tup([[1, 0, 0], [1, 0, 2], [1, 0, 0]]), 4, True, "largest")
+            == _tup([[1], [1], [1]]),
+        ),
     ]
     for name, passed in checks:
         if not passed:
@@ -688,12 +820,21 @@ def main():
     print("primitives: %d/%d unit checks pass" % (sum(p for _n, p in checks), len(checks)))
 
     # ---- (b) synthetic tasks (hand-built here; NO benchmark data touched) --------------------------
-    t_rot = ([([[1, 2], [3, 0]], [[0, 3], [2, 1]]), ([[5, 0], [0, 6]], [[6, 0], [0, 5]])],
-             [[7, 0], [0, 8]], [[8, 0], [0, 7]])                     # rule: rot180
-    t_map = ([([[1, 1], [2, 2]], [[2, 2], [1, 1]]), ([[1, 2], [1, 2]], [[2, 1], [2, 1]])],
-             [[2, 2], [2, 1]], [[1, 1], [1, 2]])                     # rule: swap colours 1<->2
-    t_two = ([([[0, 0], [0, 3]], [[3, 3], [3, 3]]), ([[5, 0], [0, 0]], [[5, 5], [5, 5]])],
-             [[0, 0], [9, 0]], [[9, 9], [9, 9]])                     # rule: crop_content then scale2
+    t_rot = (
+        [([[1, 2], [3, 0]], [[0, 3], [2, 1]]), ([[5, 0], [0, 6]], [[6, 0], [0, 5]])],
+        [[7, 0], [0, 8]],
+        [[8, 0], [0, 7]],
+    )  # rule: rot180
+    t_map = (
+        [([[1, 1], [2, 2]], [[2, 2], [1, 1]]), ([[1, 2], [1, 2]], [[2, 1], [2, 1]])],
+        [[2, 2], [2, 1]],
+        [[1, 1], [1, 2]],
+    )  # rule: swap colours 1<->2
+    t_two = (
+        [([[0, 0], [0, 3]], [[3, 3], [3, 3]]), ([[5, 0], [0, 0]], [[5, 5], [5, 5]])],
+        [[0, 0], [9, 0]],
+        [[9, 9], [9, 9]],
+    )  # rule: crop_content then scale2
     for tname, (pairs, ti, want) in (("rot180", t_rot), ("colormap", t_map), ("crop+scale", t_two)):
         got, prog = _solve1(pairs, ti)
         if got != want:
@@ -703,57 +844,138 @@ def main():
             print("synthetic '%s': solved by %r" % (tname, prog))
 
     # ---- (c) CONTROL that must genuinely fail: identity-only DSL on the same synthetic tasks -------
-    ctrl_hits = sum(1 for pairs, ti, want in (t_rot, t_map, t_two)
-                    if _solve1(pairs, ti, dsl="identity")[0] == want)
-    print("control (identity-only DSL) on the 3 synthetic tasks: %d/3 solved (must be 0)" % ctrl_hits)
+    ctrl_hits = sum(
+        1
+        for pairs, ti, want in (t_rot, t_map, t_two)
+        if _solve1(pairs, ti, dsl="identity")[0] == want
+    )
+    print(
+        "control (identity-only DSL) on the 3 synthetic tasks: %d/3 solved (must be 0)" % ctrl_hits
+    )
     if ctrl_hits:
         ok = False
 
     # ---- (d) library learning: a 2-step solve becomes ONE step for the next task -------------------
     lib = ArcLibrary()
     solver = make_solver(library=lib, time_budget=None)
-    solver(t_two[0], t_two[1])                                       # learns ('crop_content','scale2')
+    solver(t_two[0], t_two[1])  # learns ('crop_content','scale2')
     got_nolib, _p = _solve1(t_two[0], t_two[1], max_depth=1)
     got_lib, prog_lib = _solve1(t_two[0], t_two[1], max_depth=1, library=lib)
-    print("library: progs=%r; depth-1 without lib -> %s, with lib -> %s" %
-          (lib.progs, "solved" if got_nolib == t_two[2] else "unsolved",
-           "solved" if got_lib == t_two[2] else "unsolved"))
+    print(
+        "library: progs=%r; depth-1 without lib -> %s, with lib -> %s"
+        % (
+            lib.progs,
+            "solved" if got_nolib == t_two[2] else "unsolved",
+            "solved" if got_lib == t_two[2] else "unsolved",
+        )
+    )
     lib_name = "lib:" + ">".join(lib.progs[0]) if lib.progs else None
-    if not (len(lib.progs) == 1 and len(lib.progs[0]) == 2 and got_nolib != t_two[2]
-            and got_lib == t_two[2] and prog_lib[0] == (lib_name,)):
+    if not (
+        len(lib.progs) == 1
+        and len(lib.progs[0]) == 2
+        and got_nolib != t_two[2]
+        and got_lib == t_two[2]
+        and prog_lib[0] == (lib_name,)
+    ):
         print("  FAIL library: the learned composite must make the depth-1 solve possible")
+        ok = False
+
+    # ---- (d2) learned selection weights: r_stdp-style credit reorders the pool, never _BASE --------
+    w = ArcWeights()
+    w.observe(("crop_content", "scale2"), True)  # first win: baseline 0 -> +1 each
+    w.observe((), False)  # a miss moves only the baseline
+    w.observe(("scale2",), True)  # second win: baseline 1/2 -> +0.5
+    tin = tuple(_tup(i) for i, _o in t_two[0])
+    tout = tuple(_tup(o) for _i, o in t_two[0])
+    base_names = [n for n, _f in _pool(tin, tout, None)]
+    wnames = [n for n, _f in _pool(tin, tout, None, weights=w)]
+    print(
+        "weights: credit scale2=%.1f crop_content=%.1f baseline=%d/%d -> pool head %r"
+        % (w.key("scale2"), w.key("crop_content"), w.wins, w.seen, wnames[:2])
+    )
+    if base_names[: len(_BASE)] != [n for n, _f in _BASE]:
+        print("  FAIL weights: weights=None must keep the hand-authored order exactly")
+        ok = False
+    if not (
+        w.key("scale2") == 1.5
+        and w.key("crop_content") == 1.0
+        and wnames[:2] == ["scale2", "crop_content"]
+        and wnames[2:] == [n for n in base_names if n not in ("scale2", "crop_content")]
+    ):
+        print(
+            "  FAIL weights: credited primitives must lead; zero-credit ties must keep hand order"
+        )
         ok = False
 
     # ---- (e) TRAINING-split spot score (develop on training; evaluation is NEVER read here) --------
     from snn_data_lake.reasoning import arc_bench
+
     tasks = arc_bench.load_tasks("training")
     if not tasks:
         print("SKIP data section: no ARC data at %s" % arc_bench.DATA)
     else:
         n = 40
-        r_full = arc_bench.score(make_solver(node_budget=1500, time_budget=3.0), "training", limit=n)
-        r_ctrl = arc_bench.score(make_solver(node_budget=1500, time_budget=3.0, dsl="identity"),
-                                 "training", limit=n)
-        print("training[:%d]  full DSL   : %d/%d = %.1f%%   solved=%s" %
-              (n, r_full["solved"], r_full["total"], 100 * r_full["rate"], r_full["solved_ids"]))
-        print("training[:%d]  identity   : %d/%d = %.1f%%   (the failing control)" %
-              (n, r_ctrl["solved"], r_ctrl["total"], 100 * r_ctrl["rate"]))
-        if not (r_full["solved"] > r_ctrl["solved"] and r_full["solved"] >= 2 and r_ctrl["solved"] <= 1):
+        r_full = arc_bench.score(
+            make_solver(node_budget=1500, time_budget=3.0), "training", limit=n
+        )
+        r_ctrl = arc_bench.score(
+            make_solver(node_budget=1500, time_budget=3.0, dsl="identity"), "training", limit=n
+        )
+        print(
+            "training[:%d]  full DSL   : %d/%d = %.1f%%   solved=%s"
+            % (n, r_full["solved"], r_full["total"], 100 * r_full["rate"], r_full["solved_ids"])
+        )
+        print(
+            "training[:%d]  identity   : %d/%d = %.1f%%   (the failing control)"
+            % (n, r_ctrl["solved"], r_ctrl["total"], 100 * r_ctrl["rate"])
+        )
+        if not (
+            r_full["solved"] > r_ctrl["solved"] and r_full["solved"] >= 2 and r_ctrl["solved"] <= 1
+        ):
             print("  FAIL: full DSL must beat the identity control and clear the trivial floor")
             ok = False
         # determinism: an identical re-run (node budget binding, no wall-clock in logic)
-        r_again = arc_bench.score(make_solver(node_budget=1500, time_budget=None), "training", limit=n)
+        r_again = arc_bench.score(
+            make_solver(node_budget=1500, time_budget=None), "training", limit=n
+        )
         r_b = arc_bench.score(make_solver(node_budget=1500, time_budget=None), "training", limit=n)
         if r_again["solved_ids"] != r_b["solved_ids"]:
             print("  FAIL: two budget-bound runs must solve the identical task set")
             ok = False
-        print("determinism: two node-budget-bound runs solve the identical set (%d tasks)" %
-              r_again["solved"])
+        print(
+            "determinism: two node-budget-bound runs solve the identical set (%d tasks)"
+            % r_again["solved"]
+        )
+        # learned weights ON: fresh per-instance state each run (were the credit a module global
+        # mutated during run 1, run 2 would reorder and this identity would fail); the ON-vs-OFF
+        # solve count is MEASURED and printed, never asserted -- arc_diagnostic's verdict is that
+        # failures are coverage-limited, so a null effect is the expected honest outcome.
+        r_wa = arc_bench.score(
+            make_solver(node_budget=1500, time_budget=None, weights=ArcWeights()),
+            "training",
+            limit=n,
+        )
+        r_wb = arc_bench.score(
+            make_solver(node_budget=1500, time_budget=None, weights=ArcWeights()),
+            "training",
+            limit=n,
+        )
+        if r_wa["solved_ids"] != r_wb["solved_ids"]:
+            print("  FAIL: two fresh-ArcWeights runs must solve the identical task set")
+            ok = False
+        print(
+            "learned weights: %d/%d solved (vs %d/%d fixed prior) -- measured, not asserted"
+            % (r_wa["solved"], r_wa["total"], r_again["solved"], r_again["total"])
+        )
 
     print("-" * 96)
-    print("HONEST: this synthesizes short programs over an author-chosen grid vocabulary. It solves")
+    print(
+        "HONEST: this synthesizes short programs over an author-chosen grid vocabulary. It solves"
+    )
     print("the geometry/colour/object-selection slice of ARC and returns an honest empty candidate")
-    print("list everywhere else; it is NOT general fluid intelligence -- the wall of gf.py, unmoved.")
+    print(
+        "list everywhere else; it is NOT general fluid intelligence -- the wall of gf.py, unmoved."
+    )
     print("arc_solver self-check:", "OK" if ok else "FAILED")
     return 0 if ok else 1
 

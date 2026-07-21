@@ -75,13 +75,58 @@ arm, NEVER emits a motor command, and imports NOTHING from brainstem/ or any saf
 It reuses cortex/vsa_reasoning (pure spike algebra). Additive/opt-in: nothing runs at import; work
 happens only under explicit calls or __main__.
 
+THRESHOLDS ARE DERIVED, NOT FROZEN. Both decision margins used below are COMPUTED from the store's
+own geometry at call time -- there is no tuned constant left. Two analytic quantities do all the
+work (see _superposition_margin / _prototype_margin, both MEASURED against the substrate):
+
+  E(n) = C(n-1, floor((n-1)/2)) / 2^(n-1)
+      the coincidence at which ONE component survives a superposition of n. bundle is a majority
+      WTA, so the target decides a dimension only when the other n-1 are exactly tied. E(1)=1.0,
+      E(5)=0.375, E(9)=0.273. (An earlier revision of this docstring quoted 0.25 at S=9; the
+      formula and the substrate both say 0.273 -- measured 0.272 over 200 trials at D=512.)
+  sigma = 1/sqrt(D)
+      the standard deviation of the centred spike coincidence between two UNRELATED D-dim codes
+      (measured 0.0452 at D=512 vs 1/sqrt(512)=0.0442).
+
+Each threshold is then N_SIGMA sigmas above ITS OWN floor, capped halfway to ITS OWN signal:
+
+  membership (_family_thresh)  floor 0            signal E(S)               -- S = that episode's
+                                                                              own binding count
+  schema     (_gist_thresh)    floor E(S)*E(m)    signal two-level majority -- m = family size
+
+The two floors differ and that is the whole point: a NON-member's unbind is unrelated to the cue's
+filler so it is zero-mean noise, but a slot that merely VARIES across a family still occurs in one
+of the m members, so it lands at E(S)*E(m) -- 0.117 at S=5,m=6, nearly three times the raw noise.
+This is why the retired frozen pair was 0.15 and 0.30 rather than one number: they were the SAME
+3.4-sigma rule measured against two different floors, one of which was never written down. Both
+old constants are recovered by the derivation at the size they were tuned for (S=5, m=6, D=512):
+0.150 vs 0.15, and 0.267 vs 0.30. Away from that size they diverge, correctly -- see caveat (4).
+
+What that divergence is worth, MEASURED (300 stores per row, D=512): the rate at which a GENUINE
+member of an episode is judged a non-member, under the frozen 0.15 versus the derived threshold.
+
+  S       5      9     11     14     18     25
+  frozen  0.0%   0.3%   1.5%   8.2%  21.3%  40.4%
+  derived 0.0%   0.1%   0.2%   0.6%   1.5%   3.3%
+
+At the tuned size the two are indistinguishable (0.0% / 0.0%) -- this change is not a re-tuning and
+buys nothing there. The gap opens exactly where the docstring said it would: by S=14 the frozen
+constant sits at 72% of the signal it is supposed to sit safely below, and silently discards one
+member in twelve. The derived value tracks the signal down and holds the miss rate near zero. Note
+the derived rate is NOT zero and grows too -- that is the substrate's finite capacity (caveat 4)
+showing through honestly, not something a threshold can remove.
+
 HONEST CAVEATS. (1) The role slots (who/what/where/when/affect) are DEVELOPER-DEFINED, not
 discovered. (2) Reconstruction is RETRIEVAL over STORED episodes + cleanup, NOT generative
 imagination -- it can only complete to an episode it actually holds (or fail honestly with low
 confidence). (3) Fillers must be in the slot codebook for cleanup to name them; a novel cue value
 retrieves best-effort and reports low confidence. (4) Capacity is finite: per-episode traces
 superpose ~S slot-bindings and cross-episode retrieval is a coincidence scan, so recovery degrades
-as slots/episodes grow -- exactly as a spiking associative memory should.
+as slots/episodes grow -- exactly as a spiking associative memory should. The thresholds now TRACK
+that decay instead of ignoring it (E(S) falls as S grows, and the halfway cap pulls the threshold
+down with it), but tracking a collapsing signal is not the same as preventing it: when a family's
+signal falls to its own floor there is no threshold that separates them and the schema degrades
+regardless. The derivation makes the ceiling visible; it does not raise it.
 
 Determinism: crc32-seeded atomic spike codes (never builtin hash); per-instance random.Random(seed)
 for the noise/self-check only; ASCII-only output.
@@ -89,6 +134,7 @@ for the noise/self-check only; ASCII-only output.
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.episodic_recall
 """
 
+import math
 import random
 import zlib
 
@@ -97,6 +143,63 @@ from snn_data_lake.cortex.vsa_reasoning import bind, bundle, cleanup, coincidenc
 # The developer-defined role slots (HONEST: these are hand-specified, not induced). An episode dict
 # may supply any subset; unknown keys are accepted and get their own role vector on first sight.
 DEFAULT_SLOTS = ("who", "what", "where", "when", "affect")
+
+# Detection margin in units of the code's analytic noise sigma, shared by BOTH thresholds. This is
+# the only free number left in the module, and it is not a new one: the retired frozen
+# family_thresh was 0.15 at D=512, i.e. 0.15*sqrt(512) = 3.39 sigma, and this module's own docstring
+# already named that design margin ("0.15 is ~3.4 sigma above noise"). It is INHERITED, not re-tuned
+# -- the evidence that it is the right number is that applying the SAME 3.4 to the (previously
+# unnamed) schema floor independently reproduces the other frozen constant, 0.267 vs 0.30.
+N_SIGMA = 3.4
+
+
+def _superposition_margin(n):
+    """E(n) = C(n-1, floor((n-1)/2)) / 2^(n-1): the expected spike coincidence at which ONE
+    component is recovered by unbinding it back out of a superposition of n role-filler bindings.
+
+    Derivation: bundle is a per-dimension majority WTA over the n components. The target binding
+    decides a dimension ONLY when the other n-1 are exactly tied (probability C(n-1,(n-1)/2)/2^(n-1)
+    ); otherwise they outvote it and the outcome carries no information about the target. n=1 gives
+    1.0 (a lone binding unbinds exactly), n=5 gives 0.375, n=9 gives 0.273.
+
+    MEASURED against the substrate (200 trials, D=512): 1.000 / 0.376 / 0.315 / 0.272 / 0.227 at
+    n = 1 / 5 / 7 / 9 / 13, versus predicted 1.000 / 0.375 / 0.313 / 0.273 / 0.226."""
+    k = max(0, int(n) - 1)
+    return math.comb(k, k // 2) / float(2**k)
+
+
+def _prototype_margin(m, n_slots):
+    """Expected coincidence of a filler that is INVARIANT across all m traces of a family, unbound
+    out of their bundled prototype. A TWO-level majority: each trace agrees with the invariant
+    binding per dimension at p = (1 + E(n_slots))/2, and the prototype is the majority of m such
+    votes. bundle breaks an even tie on the UP line, which agrees with the target on half the
+    dimensions, so a tie contributes 1/2.
+
+    MEASURED (200 trials, D=512, n_slots=5): 0.374 / 0.533 / 0.640 / 0.713 / 0.814 at m = 2 / 4 /
+    6 / 8 / 12, versus predicted 0.375 / 0.533 / 0.641 / 0.713 / 0.814."""
+    p = (1.0 + _superposition_margin(n_slots)) / 2.0
+    agree = 0.0
+    for k in range(int(m) + 1):
+        pk = math.comb(int(m), k) * (p**k) * ((1.0 - p) ** (int(m) - k))
+        if 2 * k > m:
+            agree += pk
+        elif 2 * k == m:
+            agree += 0.5 * pk
+    return 2.0 * agree - 1.0
+
+
+def _analytic_thresh(floor, signal, d_width, n_sigma=N_SIGMA):
+    """A decision threshold n_sigma analytic sigmas above `floor`, never further than HALFWAY from
+    `floor` to `signal`. sigma = 1/sqrt(D) is the standard deviation of the centred spike
+    coincidence between two unrelated D-dimensional codes (measured 0.0452 at D=512).
+
+    The halfway cap is not a safety blanket, it is load-bearing: without it a 9-slot episode in a
+    2-episode family would be judged at 0.287 against a signal of 0.273 and EVERY genuinely
+    invariant slot would be silently rejected. With it the threshold stays strictly inside
+    (floor, signal) for every (S, m) the store can produce, degrading with the signal instead of
+    crossing it."""
+    sigma = 1.0 / math.sqrt(max(1, int(d_width)))
+    return min(floor + n_sigma * sigma, 0.5 * (floor + signal))
 
 
 def _flip(code, frac, rng):
@@ -139,28 +242,62 @@ class EpisodicRecall:
         self,
         slots=DEFAULT_SLOTS,
         seed=0,
-        gist_thresh=0.30,
-        family_thresh=0.15,
         schema_consensus=1.0,
     ):
+        # NOTE: the former gist_thresh=0.30 / family_thresh=0.15 arguments are GONE, not defaulted.
+        # Both are now computed per call from the store's own geometry (slot count, family size,
+        # code width) -- see _family_thresh / _gist_thresh. There is nothing left to pass.
         self.seed = int(seed)
-        self.gist_thresh = float(gist_thresh)
         # fraction of family members that must INDIVIDUALLY reconstruct a candidate schema slot to
         # the same filler. 1.0 = unanimous = the literal definition of "invariant across the
         # family". See _schema_of: the prototype margin alone was measured to invent a winner for a
         # 6/6 split, so this gate is a correctness fix, not a knob.
         self.schema_consensus = float(schema_consensus)
-        # spike-coincidence floor for "this stored episode agrees with that cue slot". Unbinding one
-        # role from a trace of S superposed bindings recovers its filler at ~C(S-1,(S-1)/2)/2^(S-1)
-        # coincidence (0.375 at S=5, 0.25 at S=9) while a non-member sits at the ~1/sqrt(D) noise
-        # floor (0.044 at D=512), so 0.15 is ~3.4 sigma above noise and well under the signal.
-        # HONEST: this margin shrinks as episodes gain slots -- see caveat (4).
-        self.family_thresh = float(family_thresh)
         self._role = {}  # slot -> role spike code (fixed, crc32-seeded)
         self._codebook = {}  # slot -> {value_str: filler spike code}
-        self._episodes = []  # list of {"key": crc32, "trace": spike code}
+        self._episodes = []  # list of {"key": crc32, "trace": spike code, "S": n bindings}
         for s in slots:
             self._ensure_slot(s)
+
+    # ---- analytic thresholds (derived per call; nothing frozen, nothing learned) ---------
+    def _slots_of(self, ep):
+        """S: the number of role-filler bindings superposed in a stored episode's trace.
+
+        BACK-COMPAT (explicit, not a crash and not a silent guess): records written before this
+        field existed carry no "S". We substitute len(self._role) -- the number of registered role
+        slots -- which is a strict UPPER bound on any episode's binding count, since every slot an
+        episode uses is registered by _ensure_slot before its trace is built. An upper bound on S is
+        a LOWER bound on the expected signal E(S), so a legacy record is judged by the most
+        conservative threshold the derivation can justify rather than an optimistic one. For a store
+        using the 5 DEFAULT_SLOTS this reproduces the retired frozen behaviour exactly (S=5 ->
+        family threshold 0.150 vs the old 0.15, which admit the identical set of episodes because
+        no attainable coincidence value falls between them)."""
+        s = ep.get("S")
+        return int(s) if s is not None else len(self._role)
+
+    def _family_thresh(self, ep):
+        """Membership threshold for ONE stored episode: is this episode's filler for a cue slot the
+        one the cue named? The comparison is a sim against a SINGLE named filler code, so a
+        non-member is zero-mean noise -- floor 0.0 -- and the signal is that episode's own E(S).
+        Per-episode, so a 12-slot episode and a 3-slot episode in the same store are each judged at
+        their own capacity."""
+        return _analytic_thresh(0.0, _superposition_margin(self._slots_of(ep)), len(ep["trace"]))
+
+    def _gist_thresh(self, fam):
+        """Schema threshold for ONE family prototype. The floor here is NOT the raw noise floor: a
+        slot that merely VARIES across the family still contributes its filler to one of the m
+        traces, so it survives the two-level bundle at E(S)*E(m) -- 0.117 at S=5,m=6, versus 0.044
+        for pure noise. Judging a varying slot against pure noise would let it through; judging it
+        against its own floor is what the retired 0.30 was implicitly doing.
+
+        S is taken as the MOST loaded member of the family: the threshold has to stay below the
+        WEAKEST member's signal, because a member whose signal fell under it would be dropped from
+        the schema with no way to recover it. That errs permissive, which is the safe direction here
+        -- the per-member consensus gate in _schema_of is what guards the permissive side."""
+        m = len(fam)
+        n_slots = max(self._slots_of(ep) for ep in fam)
+        floor = _superposition_margin(n_slots) * _superposition_margin(m)
+        return _analytic_thresh(floor, _prototype_margin(m, n_slots), len(fam[0]["trace"]))
 
     def __len__(self):
         return len(self._episodes)
@@ -204,15 +341,22 @@ class EpisodicRecall:
 
     def encode(self, episode):
         """Encode + store one episode dict {slot: value}. Returns a crc32 key. The trace is a single
-        superposed spike code; every filler value enters the slot codebook (semantic vocabulary)."""
+        superposed spike code; every filler value enters the slot codebook (semantic vocabulary).
+
+        The record also keeps S, the number of bindings the trace superposes. S is knowable ONLY
+        here (the trace itself is a flat spike code that does not reveal how many components went
+        into it), and every analytic threshold downstream needs it -- storing it is what lets the
+        thresholds track capacity instead of assuming it."""
         for s in episode:
             self._ensure_slot(s)
         trace = self._trace(episode, register=True)
         if trace is None:
             raise ValueError("cannot encode an empty episode")
+        # same predicate _trace bundles on -- the count of role-filler bindings actually superposed
+        n_slots = sum(1 for v in episode.values() if v is not None)
         raw = "|".join(f"{s}={self._valstr(episode[s])}" for s in sorted(episode)).encode("ascii")
         key = zlib.crc32(raw)
-        self._episodes.append({"key": key, "trace": trace})
+        self._episodes.append({"key": key, "trace": trace, "S": n_slots})
         return key
 
     # ---- retrieval + reconstruction ----------------------------------------------------
@@ -261,11 +405,12 @@ class EpisodicRecall:
     def gist(self, cue, m=6):
         """Extract the schema (INVARIANT slots) shared across the top-m episodes a cue retrieves.
         Bundle the family's traces into a prototype, unbind each role, and keep a slot only when its
-        cleanup margin clears gist_thresh (invariant across the family reinforces; variable slots
-        destructively interfere and are dropped). gist_thresh (0.30) is a majority-reinforcement
-        floor: an invariant slot is present in EVERY family trace so its prototype-unbind coincidence
-        is large, while a varying / single-instance slot sits near the noise floor. A family of <2
-        has NO gist (empty schema) -- a schema needs a population. Returns {"schema","margins","n"}."""
+        cleanup margin clears the DERIVED schema threshold (invariant across the family reinforces;
+        variable slots destructively interfere and are dropped). That threshold is computed per
+        family by _gist_thresh from the family size m and the members' slot load S -- an invariant
+        slot is present in EVERY family trace so its prototype-unbind coincidence is large, while a
+        varying slot falls back to the E(S)*E(m) one-of-m floor. A family of <2 has NO gist (empty
+        schema) -- a schema needs a population. Returns {"schema","margins","n"}."""
         cue_trace = self._trace(cue, register=False)
         if cue_trace is None or not self._episodes:
             return {"schema": {}, "margins": {}, "n": 0}
@@ -280,21 +425,24 @@ class EpisodicRecall:
 
         Gate 1 (prototype margin): bundle the family's traces into a prototype, unbind each role,
         clean up to the nearest filler, keep the slot only if its spike-coincidence margin clears
-        gist_thresh -- an invariant filler reinforces across the superposition, a varying one
-        destructively interferes down to the noise floor.
+        the family's DERIVED schema threshold (_gist_thresh) -- an invariant filler reinforces
+        across the superposition, a varying one destructively interferes down to the E(S)*E(m)
+        one-of-m floor.
 
         Gate 2 (per-member CONSENSUS): the candidate label must ALSO be what at least
         schema_consensus of the family members individually reconstruct in that slot. This gate is
         not decoration -- it exists because gate 1 alone was MEASURED to fabricate. On a cue
         spanning two families that split 6/6 on `who` (alice vs bob), the bundle's majority WTA
         (ties -> up line) does not fully cancel, and the prototype cleaned up to `bob` at margin
-        0.367 > gist_thresh 0.30: a confident schema slot invented out of a dead tie. Consensus
-        rejects it (6/12 members agree), which is the actual DEFINITION of invariant-across-family
-        rather than a threshold tweak. Default 1.0 (unanimous): we prefer an honest missing slot
-        over a fabricated one.
+        0.367 -- clear of the gate-1 threshold whether that is the retired frozen 0.30 or the
+        derived 0.235 for this family (m=12, S=5): a confident schema slot invented out of a dead
+        tie. No threshold fixes this, which is exactly why the fix is not a threshold. Consensus
+        rejects it (6/12 members agree), which is the actual DEFINITION of invariant-across-family.
+        Default 1.0 (unanimous): we prefer an honest missing slot over a fabricated one.
 
         Returns (schema, margins) -- the shared core of gist() and apply_schema()."""
         proto = bundle([ep["trace"] for ep in fam])
+        thresh = self._gist_thresh(fam)  # derived from this family's size and slot load
         schema, margins = {}, {}
         for slot, role in self._role.items():
             book = self._codebook.get(slot)
@@ -302,7 +450,7 @@ class EpisodicRecall:
                 continue
             label, s = cleanup(bind(proto, role), book)
             margins[slot] = round(s, 3)
-            if s < self.gist_thresh:
+            if s < thresh:
                 continue  # varies across the family (or absent) -> not part of the schema
             agree = sum(1 for ep in fam if cleanup(bind(ep["trace"], role), book)[0] == label)
             if agree >= self.schema_consensus * len(fam):
@@ -333,10 +481,9 @@ class EpisodicRecall:
             return [], 0, 0  # nothing in this situation was ever observed -> no family, honestly
         scored = []
         for ep in self._episodes:
+            thresh = self._family_thresh(ep)  # derived from THIS episode's slot load and code width
             agree = sum(
-                1
-                for s, code in grounded
-                if sim(bind(ep["trace"], self._role[s]), code) >= self.family_thresh
+                1 for s, code in grounded if sim(bind(ep["trace"], self._role[s]), code) >= thresh
             )
             scored.append((agree, ep))
         best = max(a for a, _ep in scored)
@@ -560,6 +707,47 @@ def _generalization_check():
     return hits / len(novel), len(novel), first, c_noinv, c_nofam, c_amb
 
 
+def _threshold_check():
+    """The DERIVED thresholds must sit strictly between the floor they reject and the signal they
+    must not reject, for every (S, m) the store can produce -- that is the property the retired
+    frozen 0.15/0.30 could not have, since a constant crosses any signal that falls far enough.
+
+    Returns (rows, n_pairs, worst_headroom, legacy_matches_stored) where rows are printable
+    (S, m, floor, thresh, signal) tuples for a few representative sizes."""
+    rows = []
+    for n_slots, m in ((5, 6), (9, 6), (5, 2), (9, 2), (13, 3)):
+        floor = _superposition_margin(n_slots) * _superposition_margin(m)
+        signal = _prototype_margin(m, n_slots)
+        rows.append((n_slots, m, floor, _analytic_thresh(floor, signal, 512), signal))
+    # exhaustive sweep: threshold strictly inside (floor, signal) for both thresholds
+    n_pairs, worst = 0, 1.0
+    for m in range(2, 33):
+        for n_slots in range(1, 41):
+            floor = _superposition_margin(n_slots) * _superposition_margin(m)
+            signal = _prototype_margin(m, n_slots)
+            t = _analytic_thresh(floor, signal, 512)
+            assert floor < t < signal, f"gist threshold outside (floor,signal) at S={n_slots} m={m}"
+            worst = min(worst, t - floor, signal - t)
+            n_pairs += 1
+    for n_slots in range(1, 61):
+        sig = _superposition_margin(n_slots)
+        t = _analytic_thresh(0.0, sig, 512)
+        assert 0.0 < t < sig, f"family threshold outside (0,signal) at S={n_slots}"
+    # BACK-COMPAT: a legacy record with no "S" must not crash and must fall back to the registered
+    # slot count -- for a DEFAULT_SLOTS store that reproduces the stored-S threshold exactly.
+    er = EpisodicRecall(seed=11)
+    er.encode(
+        {"who": "self", "what": "toast", "where": "kitchen", "when": "day0", "affect": "calm"}
+    )
+    stored_thresh = er._family_thresh(er._episodes[0])
+    legacy = {k: v for k, v in er._episodes[0].items() if k != "S"}  # simulate a pre-"S" record
+    legacy_thresh = er._family_thresh(legacy)
+    assert er._slots_of(legacy) == len(er._role), (
+        "legacy fallback must be the registered slot count"
+    )
+    return rows, n_pairs, worst, (legacy_thresh == stored_thresh)
+
+
 def main():
     print("=" * 78)
     print("RECONSTRUCTIVE / AUTOBIOGRAPHICAL EPISODIC MEMORY (VSA pattern completion + gist)")
@@ -617,6 +805,26 @@ def main():
     print(
         f"    ctrl ambiguous cue (6/6 who)  : prediction={c_amb['prediction']} "
         f"conf={c_amb['confidence']} n_family={c_amb['n_family']}"
+    )
+
+    # (e) DERIVED THRESHOLDS (nothing frozen: computed from slot count, family size, code width) ---
+    rows, n_pairs, worst, legacy_ok = _threshold_check()
+    print("-" * 78)
+    print("(e) THRESHOLDS: derived per call from S (slot load), m (family size), D (code width)")
+    print(
+        "    retired frozen pair: family_thresh=0.15  gist_thresh=0.30  (tuned at S=5, m=6, D=512)"
+    )
+    for n_slots, m, floor, thr, signal in rows:
+        print(
+            f"    S={n_slots:>2} m={m:>2} D=512 : schema floor={floor:.3f} < thresh={thr:.3f} "
+            f"< signal={signal:.3f}   (membership thresh={_analytic_thresh(0.0, _superposition_margin(n_slots), 512):.3f})"
+        )
+    print(
+        f"    swept {n_pairs} (S,m) pairs: threshold strictly inside (floor,signal) in ALL of them, "
+        f"min headroom {worst:.3f}"
+    )
+    print(
+        f"    legacy record with no stored S falls back to the slot count, threshold: {legacy_ok}"
     )
 
     # ---- ASSERTS: real metric + un-riggable FAILING controls ------------------------------------
@@ -686,6 +894,21 @@ def main():
     assert det[0]["prediction"] == {"who": "self", "when": "morning"}, (
         f"3-episode family must still transfer its invariants, got {det[0]}"
     )
+    # (e) thresholds are DERIVED, not frozen: they must move with S/m/D, stay inside (floor,signal)
+    # (asserted exhaustively inside _threshold_check), and survive a record written without an "S".
+    assert legacy_ok, "a legacy record with no stored S must reproduce the DEFAULT_SLOTS threshold"
+    assert worst > 0.0, f"no headroom between floor/threshold/signal, got {worst}"
+    t5, t9, t21 = (_analytic_thresh(0.0, _superposition_margin(s), 512) for s in (5, 9, 21))
+    assert t5 > t9 > t21, (
+        f"the membership threshold must TIGHTEN as episodes gain slots, got {t5:.3f}/{t9:.3f}/{t21:.3f}"
+    )
+    assert abs(t5 - 0.15) < 0.002, (
+        f"at the size the retired constant was tuned for (S=5,D=512) the derivation must reproduce "
+        f"it, got {t5:.4f} vs 0.15"
+    )
+    assert _analytic_thresh(0.0, _superposition_margin(5), 2048) < t5, (
+        "a wider code must lower the noise-driven threshold (sigma = 1/sqrt(D))"
+    )
 
     print("-" * 78)
     print(
@@ -697,7 +920,11 @@ def main():
         f"situations {gen_acc:.0%} ({n_probe} unseen probes, conf {g_first['confidence']}) while "
         f"the no-invariant and ungrounded controls honestly predict NOTHING at 0.0 and an "
         f"ambiguous 6/6 cue drops the conflicting slot ({c_amb['prediction']}) instead of picking "
-        f"a winner; VSA one-shot associative memory, no gradients; safety-inert."
+        f"a winner; both decision thresholds are DERIVED per call from slot load / family size / "
+        f"code width (no frozen constant, no learning, no adapted state), verified strictly inside "
+        f"(floor,signal) over {n_pairs} (S,m) pairs with {worst:.3f} min headroom and reproducing "
+        f"the retired 0.15 at the size it was tuned for; VSA one-shot associative memory, no "
+        f"gradients; safety-inert."
     )
     print("=" * 78)
     return 0
