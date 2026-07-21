@@ -51,11 +51,12 @@ with ZERO external reward, the learning primitive the hand-wired controller can 
 Reuses (does not reimplement): cortex/lif_neuron.LIFNeuron (the need pool + the non-spiking membrane
 control), hypothalamus/set_points.Homeostat (the signed set-point error / the honest-negative baseline
 controller), basal_ganglia/valence_stdp.ValenceLearner (the value/RPE channel + three-factor plasticity
-the reward feeds), substrate/_mathutils.mean. Pure stdlib, per-instance random.Random(seed), ASCII-only,
+the reward feeds), substrate/_mathutils.mean. Per-instance random.Random(seed), ASCII-only,
 deterministic.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.drive_reduction
 """
+
 import random
 
 from snn_data_lake.basal_ganglia.valence_stdp import ValenceLearner
@@ -64,8 +65,8 @@ from snn_data_lake.cortex.spike_preprocessing import N as N_FEATURES
 from snn_data_lake.hypothalamus.set_points import Homeostat
 from snn_data_lake.substrate._mathutils import mean
 
-K = 3               # number of homeostatic drives (metaphorical accumulators, all set-point 0)
-DRIFT = 0.15        # per-step passive deficit accumulation on EVERY drive (the loss the agent opposes)
+K = 3  # number of homeostatic drives (metaphorical accumulators, all set-point 0)
+DRIFT = 0.15  # per-step passive deficit accumulation on EVERY drive (the loss the agent opposes)
 REWARD_SCALE = 0.4  # scales the drive reward into the valence learner's tanh-friendly range
 
 
@@ -80,12 +81,14 @@ class NeedPool:
     substitutes the unbounded membrane and destabilizes learning. Deterministic (noiseless readout ->
     rate is a pure fn of drive); per-instance thresholds drawn from random.Random(seed)."""
 
-    def __init__(self, gain=0.4, tau_m=10.0, n_cells=24, steps=50, thresh_lo=0.5, thresh_hi=3.5, seed=0):
-        self.gain = gain                 # drive magnitude -> input current scale
-        self.tau_m = tau_m               # LIF membrane time constant
-        self.n_cells = n_cells           # cells in the population (a pool, not one unit)
-        self.steps = steps               # integration steps per rate readout
-        rng = random.Random(seed)        # per-instance rng -> heterogeneous, reproducible thresholds
+    def __init__(
+        self, gain=0.4, tau_m=10.0, n_cells=24, steps=50, thresh_lo=0.5, thresh_hi=3.5, seed=0
+    ):
+        self.gain = gain  # drive magnitude -> input current scale
+        self.tau_m = tau_m  # LIF membrane time constant
+        self.n_cells = n_cells  # cells in the population (a pool, not one unit)
+        self.steps = steps  # integration steps per rate readout
+        rng = random.Random(seed)  # per-instance rng -> heterogeneous, reproducible thresholds
         self.thresholds = [rng.uniform(thresh_lo, thresh_hi) for _ in range(n_cells)]
 
     def rate(self, drive):
@@ -103,8 +106,10 @@ class NeedPool:
         """Total spike COUNT across the pool for a constant drive (used to prove the pool genuinely
         fires, and that the non-spiking membrane control fires ZERO)."""
         current = self.gain * max(0.0, drive)
-        return sum(sum(LIFNeuron(tau_m=self.tau_m, v_threshold=thr).run([current] * self.steps))
-                   for thr in self.thresholds)
+        return sum(
+            sum(LIFNeuron(tau_m=self.tau_m, v_threshold=thr).run([current] * self.steps))
+            for thr in self.thresholds
+        )
 
     def membrane(self, drive):
         """CONTROL readout: steady sub-threshold membrane of a single NON-spiking integrator (threshold
@@ -148,17 +153,27 @@ class DriveReductionLearner:
     (delivers the reduction of a RANDOM drive, decorrelated from the acted drive). Deterministic;
     per-instance random.Random(seed)."""
 
-    def __init__(self, pool, reward_kind="reduction", elig_kind="spiking", shuffle=False,
-                 lr=0.15, epsilon=0.2, drift=DRIFT, k=K, seed=0):
+    def __init__(
+        self,
+        pool,
+        reward_kind="reduction",
+        elig_kind="spiking",
+        shuffle=False,
+        lr=0.15,
+        epsilon=0.2,
+        drift=DRIFT,
+        k=K,
+        seed=0,
+    ):
         self.pool = pool
         self.reward_kind = reward_kind
         self.elig_kind = elig_kind
         self.shuffle = shuffle
         self.drift = drift
         self.k = k
-        self.n_actions = k + 1                        # k drain actions + REST
+        self.n_actions = k + 1  # k drain actions + REST
         self.epsilon = epsilon
-        self.value = ValenceLearner(lr=lr)            # the reused value/RPE channel (one-hot addressed)
+        self.value = ValenceLearner(lr=lr)  # the reused value/RPE channel (one-hot addressed)
         self.rng = random.Random(seed)
 
     def _q(self, state, action):
@@ -185,24 +200,26 @@ class DriveReductionLearner:
         state = _argmax_drive(x)
         a = self.act(state, explore=True)
 
-        x_now = [xi + self.drift for xi in x]         # passive deficit accumulation on every drive
+        x_now = [xi + self.drift for xi in x]  # passive deficit accumulation on every drive
         d_before = sum(x_now)
         x_next = list(x_now)
         elig = 0.0
-        if a < self.k:                                # drain one drive fully (REST drains nothing)
+        if a < self.k:  # drain one drive fully (REST drains nothing)
             elig = self._eligibility(x_now[a], 0.0)
             x_next[a] = 0.0
         d_after = sum(x_next)
 
         if self.reward_kind == "reduction":
-            reward = d_before - d_after               # drive REDUCTION (the action's real effect)
+            reward = d_before - d_after  # drive REDUCTION (the action's real effect)
         else:
-            reward = -d_after                         # drive LEVEL control (the residual, not the change)
-        if self.shuffle and a < self.k:               # reward PERMUTED across state-actions: action a is
-            reward = x_now[(a + 1) % self.k]          # credited with a DIFFERENT drive's reduction
+            reward = -d_after  # drive LEVEL control (the residual, not the change)
+        if self.shuffle and a < self.k:  # reward PERMUTED across state-actions: action a is
+            reward = x_now[(a + 1) % self.k]  # credited with a DIFFERENT drive's reduction
 
         # three-factor plasticity: reused valence learn() with eligibility as the lr_scale gate.
-        self.value.learn(_sa_feature(state, a, self.n_actions), REWARD_SCALE * reward, lr_scale=elig)
+        self.value.learn(
+            _sa_feature(state, a, self.n_actions), REWARD_SCALE * reward, lr_scale=elig
+        )
         return x_next
 
     def train(self, episodes, steps, x_scale=3.0):
@@ -220,7 +237,9 @@ class DriveReductionLearner:
 
     def learned_map(self):
         """The learned state -> action map (should be the identity: drain the most-deficient drive)."""
-        return {s: max(range(self.n_actions), key=lambda a: (self._q(s, a), -a)) for s in range(self.k)}
+        return {
+            s: max(range(self.n_actions), key=lambda a: (self._q(s, a), -a)) for s in range(self.k)
+        }
 
 
 def _regulate(policy, x0, steps, drift=DRIFT, k=K, warmup=50):
@@ -248,20 +267,30 @@ def _setpoint_policy(x, k=K):
 
 def main():
     width = 82
-    x0 = [1.0, 2.0, 3.0]                               # a fixed starting deficit vector for every eval
+    x0 = [1.0, 2.0, 3.0]  # a fixed starting deficit vector for every eval
     episodes, ep_steps, eval_steps = 300, 40, 400
     pool = NeedPool(seed=0)
 
     print("=" * width)
-    print("HOMEOSTATIC DRIVE-REDUCTION REWARD -- L9 / SI-2 (Keramati & Gutkin); ZERO external reward")
-    print("reward = drive REDUCTION (D_before - D_after); eligibility = spiking NEED-pool rate DROP")
+    print(
+        "HOMEOSTATIC DRIVE-REDUCTION REWARD -- L9 / SI-2 (Keramati & Gutkin); ZERO external reward"
+    )
+    print(
+        "reward = drive REDUCTION (D_before - D_after); eligibility = spiking NEED-pool rate DROP"
+    )
     print("=" * width)
 
     # ---- train four conditions on the SAME internal drive-reduction task ----------------------------
-    reduction = DriveReductionLearner(pool, "reduction", "spiking", seed=0).train(episodes, ep_steps)
-    shuffled = DriveReductionLearner(pool, "reduction", "spiking", shuffle=True, seed=0).train(episodes, ep_steps)
+    reduction = DriveReductionLearner(pool, "reduction", "spiking", seed=0).train(
+        episodes, ep_steps
+    )
+    shuffled = DriveReductionLearner(pool, "reduction", "spiking", shuffle=True, seed=0).train(
+        episodes, ep_steps
+    )
     level = DriveReductionLearner(pool, "level", "spiking", seed=0).train(episodes, ep_steps)
-    membrane = DriveReductionLearner(pool, "reduction", "membrane", seed=0).train(episodes, ep_steps)
+    membrane = DriveReductionLearner(pool, "reduction", "membrane", seed=0).train(
+        episodes, ep_steps
+    )
 
     # ---- evaluate: mean total drive over an episode (lower == better regulation) --------------------
     d_reduction = _regulate(reduction.policy, x0, eval_steps)
@@ -269,66 +298,103 @@ def main():
     d_level = _regulate(level.policy, x0, eval_steps)
     d_membrane = _regulate(membrane.policy, x0, eval_steps)
     rrng = random.Random(123)
-    d_random = _regulate(lambda x: rrng.randrange(K + 1), x0, eval_steps)   # naive: any action incl. REST
+    d_random = _regulate(
+        lambda x: rrng.randrange(K + 1), x0, eval_steps
+    )  # naive: any action incl. REST
     d_baseline = _regulate(_setpoint_policy, x0, eval_steps)
 
     # ---- (4) the NEED pool genuinely SPIKES and its rate DROPS on satisfaction ----------------------
-    rate_hi, rate_lo = pool.rate(3.0), pool.rate(0.0)      # big deficit fires; satisfied is quiet
-    spikes_hi = pool.spikes(3.0)                           # a real spike COUNT (not a scalar)
-    membrane_fires = pool.membrane_spikes(3.0)             # the membrane control never spikes
+    rate_hi, rate_lo = pool.rate(3.0), pool.rate(0.0)  # big deficit fires; satisfied is quiet
+    spikes_hi = pool.spikes(3.0)  # a real spike COUNT (not a scalar)
+    membrane_fires = pool.membrane_spikes(3.0)  # the membrane control never spikes
 
-    print(f"drives K={K}  drift={DRIFT}/step  train={episodes}x{ep_steps} eps  eval={eval_steps} steps")
-    print(f"NEED pool: cells={pool.n_cells}  spikes(deficit=3.0)={spikes_hi} (SPIKES)  "
-          f"rate 3.0={rate_hi:.3f} -> 0.0={rate_lo:.3f} (phasic DROP)  membrane fires={membrane_fires}")
-    print(f"learned service map (state -> action): {reduction.learned_map()}  (identity == drain the "
-          f"most-deficient drive)")
+    print(
+        f"drives K={K}  drift={DRIFT}/step  train={episodes}x{ep_steps} eps  eval={eval_steps} steps"
+    )
+    print(
+        f"NEED pool: cells={pool.n_cells}  spikes(deficit=3.0)={spikes_hi} (SPIKES)  "
+        f"rate 3.0={rate_hi:.3f} -> 0.0={rate_lo:.3f} (phasic DROP)  membrane fires={membrane_fires}"
+    )
+    print(
+        f"learned service map (state -> action): {reduction.learned_map()}  (identity == drain the "
+        f"most-deficient drive)"
+    )
     print("-" * width)
     print("mean total drive over the episode (LOWER == better regulation):")
-    print(f"  (1) drive-REDUCTION reward (spiking elig) : {d_reduction:6.3f}   <-- regulates, ZERO external reward")
-    print(f"  (2) SHUFFLED reward          [control a]  : {d_shuffled:6.3f}   <-- reward permuted -> fails")
-    print(f"  (3) drive-LEVEL reward       [control b]  : {d_level:6.3f}   <-- level not reduction -> fails")
-    print(f"  (4) MEMBRANE-value elig      [control c]  : {d_membrane:6.3f}   <-- non-spiking readout -> fails")
+    print(
+        f"  (1) drive-REDUCTION reward (spiking elig) : {d_reduction:6.3f}   <-- regulates, ZERO external reward"
+    )
+    print(
+        f"  (2) SHUFFLED reward          [control a]  : {d_shuffled:6.3f}   <-- reward permuted -> fails"
+    )
+    print(
+        f"  (3) drive-LEVEL reward       [control b]  : {d_level:6.3f}   <-- level not reduction -> fails"
+    )
+    print(
+        f"  (4) MEMBRANE-value elig      [control c]  : {d_membrane:6.3f}   <-- non-spiking readout -> fails"
+    )
     print(f"      random service policy    [reference]  : {d_random:6.3f}")
-    print(f"      set_points controller    [baseline]   : {d_baseline:6.3f}   <-- hand-designed feedback")
+    print(
+        f"      set_points controller    [baseline]   : {d_baseline:6.3f}   <-- hand-designed feedback"
+    )
     print("=" * width)
 
     # ---- (1) the drive-reduction policy regulates (reduces total drive) with NO external reward ------
-    assert d_reduction < 0.5 * d_random, \
+    assert d_reduction < 0.5 * d_random, (
         f"drive-reduction policy must REDUCE total drive vs a random policy ({d_reduction:.3f} vs {d_random:.3f})"
-    assert reduction.learned_map() == {s: s for s in range(K)}, \
+    )
+    assert reduction.learned_map() == {s: s for s in range(K)}, (
         "the policy must learn to drain the most-deficient drive (identity map) from internal reward alone"
+    )
 
     # ---- (2) CONTROL a -- SHUFFLED reward cannot regulate (drive stays high) -------------------------
-    assert d_shuffled > 2.0 * d_reduction, \
+    assert d_shuffled > 2.0 * d_reduction, (
         f"a shuffled (permuted) reward must FAIL to regulate ({d_shuffled:.3f} must stay high vs {d_reduction:.3f})"
+    )
 
     # ---- (3) CONTROL b -- the drive-LEVEL reward regulates WORSE than drive-reduction ----------------
-    assert d_level > 2.0 * d_reduction, \
+    assert d_level > 2.0 * d_reduction, (
         f"the drive-LEVEL reward must regulate worse than drive-REDUCTION ({d_level:.3f} vs {d_reduction:.3f})"
+    )
 
     # ---- (4) the eligibility is a REAL spiking DROP; the membrane-value control FAILS ----------------
     assert spikes_hi > 0, "the NEED pool must actually SPIKE for a real deficit (spike count > 0)"
-    assert membrane_fires == 0, "the membrane-value control must be a NON-spiking integrator (0 spikes)"
-    assert rate_hi > 5.0 * max(rate_lo, 1e-9), "the pool's rate must DROP sharply when the drive is satisfied"
-    assert d_membrane > 2.0 * d_reduction, \
+    assert membrane_fires == 0, (
+        "the membrane-value control must be a NON-spiking integrator (0 spikes)"
+    )
+    assert rate_hi > 5.0 * max(rate_lo, 1e-9), (
+        "the pool's rate must DROP sharply when the drive is satisfied"
+    )
+    assert d_membrane > 2.0 * d_reduction, (
         f"swapping the spiking DROP for a raw membrane VALUE must break regulation ({d_membrane:.3f} vs {d_reduction:.3f})"
+    )
 
     # ---- (5) HONEST NEGATIVE: the learned policy TIES (does NOT beat) the set_points controller ------
-    assert d_reduction >= d_baseline - 1e-9, \
+    assert d_reduction >= d_baseline - 1e-9, (
         f"the learned policy must NOT beat the hand-designed set_points controller ({d_reduction:.3f} vs {d_baseline:.3f})"
-    assert abs(d_reduction - d_baseline) < 0.20, \
+    )
+    assert abs(d_reduction - d_baseline) < 0.20, (
         f"the learned policy should TIE the set_points controller at this toy scale ({d_reduction:.3f} vs {d_baseline:.3f})"
+    )
 
     # ---- determinism: same seed -> identical regulation ----------------------------------------------
     again = DriveReductionLearner(pool, "reduction", "spiking", seed=0).train(episodes, ep_steps)
-    assert _regulate(again.policy, x0, eval_steps) == d_reduction, "same seed must reproduce the result exactly"
+    assert _regulate(again.policy, x0, eval_steps) == d_reduction, (
+        "same seed must reproduce the result exactly"
+    )
 
-    print(f"self-check OK: drive-reduction reward regulates ({d_reduction:.3f}) with ZERO external reward, "
-          f">2x better than random ({d_random:.3f});")
-    print(f"  shuffled ({d_shuffled:.3f}) and drive-LEVEL ({d_level:.3f}) rewards FAIL; a real LIF NEED pool "
-          f"spikes ({spikes_hi} spikes) + drops on satisfaction, membrane-value elig fails ({d_membrane:.3f});")
-    print(f"  HONEST NEGATIVE: learned policy TIES the set_points controller ({d_reduction:.3f} vs "
-          f"{d_baseline:.3f}) -- it does NOT beat it; the value is goal-directed action from internal drives")
+    print(
+        f"self-check OK: drive-reduction reward regulates ({d_reduction:.3f}) with ZERO external reward, "
+        f">2x better than random ({d_random:.3f});"
+    )
+    print(
+        f"  shuffled ({d_shuffled:.3f}) and drive-LEVEL ({d_level:.3f}) rewards FAIL; a real LIF NEED pool "
+        f"spikes ({spikes_hi} spikes) + drops on satisfaction, membrane-value elig fails ({d_membrane:.3f});"
+    )
+    print(
+        f"  HONEST NEGATIVE: learned policy TIES the set_points controller ({d_reduction:.3f} vs "
+        f"{d_baseline:.3f}) -- it does NOT beat it; the value is goal-directed action from internal drives"
+    )
 
 
 if __name__ == "__main__":

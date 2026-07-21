@@ -37,24 +37,34 @@ Schultz, Dayan & Montague 1997 (reward-prediction-error dopamine).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.epithalamus.habenula
 """
+
 import random
 
-GAIN = 0.5        # LHb drive gain applied to the rectified negative RPE
-LEAK = 0.1        # LIF membrane leak per step
-VTH = 1.0         # LIF spike threshold
-NOISE = 0.03      # LIF membrane noise sigma (deterministic per-call reseed)
-STEPS = 40        # readout window length
-DA_BASE = 1.0     # tonic dopamine baseline
-DA_GAIN = 1.0     # positive-RPE excitation of the DA cell (the VTA's own job)
-W_RMTG = 1.4      # RMTg GABAergic relay weight: LHb rate -> DA inhibition
+GAIN = 0.5  # LHb drive gain applied to the rectified negative RPE
+LEAK = 0.1  # LIF membrane leak per step
+VTH = 1.0  # LIF spike threshold
+NOISE = 0.03  # LIF membrane noise sigma (deterministic per-call reseed)
+STEPS = 40  # readout window length
+DA_BASE = 1.0  # tonic dopamine baseline
+DA_GAIN = 1.0  # positive-RPE excitation of the DA cell (the VTA's own job)
+W_RMTG = 1.4  # RMTg GABAergic relay weight: LHb rate -> DA inhibition
 SEED = 7
 
 
 class LateralHabenula:
     """LHb negative-RPE readout + RMTg relay onto a self-contained downstream dopamine cell."""
 
-    def __init__(self, gain=GAIN, leak=LEAK, vth=VTH, noise=NOISE,
-                 da_base=DA_BASE, da_gain=DA_GAIN, w_rmtg=W_RMTG, seed=SEED):
+    def __init__(
+        self,
+        gain=GAIN,
+        leak=LEAK,
+        vth=VTH,
+        noise=NOISE,
+        da_base=DA_BASE,
+        da_gain=DA_GAIN,
+        w_rmtg=W_RMTG,
+        seed=SEED,
+    ):
         self.gain = gain
         self.leak = leak
         self.vth = vth
@@ -98,10 +108,10 @@ class LateralHabenula:
         the RMTg relay subtracts the LHb firing rate, so an LHb burst drops DA below baseline.
         Pass w_rmtg=0.0 to lesion the relay (the causal control)."""
         w = self.w_rmtg if w_rmtg is None else w_rmtg
-        pos = max(0.0, received - predicted)                    # better-than-expected excites DA
+        pos = max(0.0, received - predicted)  # better-than-expected excites DA
         da_drive = self.da_base + self.da_gain * pos
         lhb_rate = self.lhb_spikes(predicted, received, steps) / steps
-        rmtg = w * lhb_rate                                     # RMTg: LHb firing -> DA inhibition
+        rmtg = w * lhb_rate  # RMTg: LHb firing -> DA inhibition
         return max(0.0, da_drive - rmtg)
 
 
@@ -110,8 +120,8 @@ def main():
 
     # Four outcomes at a FIXED surprise magnitude (|RPE| = 1) so only the SIGN differs -- un-riggable.
     scenarios = [
-        ("expected reward", 1.0, 1.0),    # received == predicted   : no error
-        ("omission (worse)", 1.0, 0.0),   # expected +1, received 0 : negative RPE
+        ("expected reward", 1.0, 1.0),  # received == predicted   : no error
+        ("omission (worse)", 1.0, 0.0),  # expected +1, received 0 : negative RPE
         ("punishment(worse)", 0.0, -1.0),  # expected 0, received -1 : negative RPE
         ("windfall (better)", 0.0, 1.0),  # expected 0, received +1 : POSITIVE RPE (the VTA's job)
     ]
@@ -119,7 +129,9 @@ def main():
     print("=" * 70)
     print("LATERAL HABENULA -- the anti-reward node (negative-RPE opponent of dopamine)")
     print("=" * 70)
-    print(f"DA baseline = {lhb.da_base:.2f}   RMTg weight = {lhb.w_rmtg:.2f}   window = {STEPS} steps")
+    print(
+        f"DA baseline = {lhb.da_base:.2f}   RMTg weight = {lhb.w_rmtg:.2f}   window = {STEPS} steps"
+    )
     print("-" * 70)
     print(f"{'outcome':<18}{'pred':>6}{'recv':>6}{'RPE':>7}{'LHb spk':>9}{'DA':>7}   note")
     print("-" * 70)
@@ -141,8 +153,10 @@ def main():
     # Causal control: cut the RMTg relay and the omission DA dip must vanish.
     da_omit_intact = lhb.dopamine(1.0, 0.0)
     da_omit_lesion = lhb.dopamine(1.0, 0.0, w_rmtg=0.0)
-    print(f"RMTg lesion control (omission): DA {da_omit_lesion:.2f} (LHb->DA relay cut) "
-          f"vs {da_omit_intact:.2f} (relay intact)")
+    print(
+        f"RMTg lesion control (omission): DA {da_omit_lesion:.2f} (LHb->DA relay cut) "
+        f"vs {da_omit_intact:.2f} (relay intact)"
+    )
     print("=" * 70)
 
     spk_expect, da_expect = rows["expected reward"]
@@ -150,29 +164,45 @@ def main():
     spk_punish, da_punish = rows["punishment(worse)"]
     spk_better, da_better = rows["windfall (better)"]
 
-    # ---- self-check: deterministic asserts, zero-dep, ASCII-only ----
+    # ---- self-check: deterministic asserts, ASCII-only ----
     # 1. LHb BURSTS on a negative RPE (worse-than-expected: omission and punishment alike).
     assert spk_omit > 0 and spk_punish > 0, "LHb must burst on a negative RPE (worse-than-expected)"
     # 2. NO burst when the outcome matches the prediction (no error).
     assert spk_expect == 0, "an expected reward must evoke NO LHb burst (baseline silence)"
     # 3. NO burst on a POSITIVE RPE -- the asymmetry that makes LHb dopamine's OPPONENT, not its echo.
-    assert spk_better == 0, "a better-than-expected outcome must evoke NO LHb burst (that is the VTA's job)"
+    assert spk_better == 0, (
+        "a better-than-expected outcome must evoke NO LHb burst (that is the VTA's job)"
+    )
     # 4. Same |RPE| in both directions, opposite LHb response -- un-riggable sign selectivity.
-    assert lhb.rpe(0.0, 1.0) == -lhb.rpe(1.0, 0.0), "windfall and omission are equal-magnitude, opposite-sign RPE"
+    assert lhb.rpe(0.0, 1.0) == -lhb.rpe(1.0, 0.0), (
+        "windfall and omission are equal-magnitude, opposite-sign RPE"
+    )
     # 5. LHb activity REDUCES DA below baseline (the opponent effect, via the RMTg relay).
-    assert da_omit < lhb.da_base - 0.1 and da_punish < lhb.da_base - 0.1, "LHb burst must suppress DA below baseline"
+    assert da_omit < lhb.da_base - 0.1 and da_punish < lhb.da_base - 0.1, (
+        "LHb burst must suppress DA below baseline"
+    )
     assert da_expect == lhb.da_base, "no error -> DA rests exactly at baseline"
-    assert da_better > lhb.da_base, "a positive RPE lifts DA above baseline while the LHb stays silent"
+    assert da_better > lhb.da_base, (
+        "a positive RPE lifts DA above baseline while the LHb stays silent"
+    )
     # 6. The suppression is CAUSED by LHb -> RMTg: cutting the relay abolishes the DA dip.
-    assert da_omit_lesion == lhb.da_base and da_omit_intact < lhb.da_base, "cutting RMTg must abolish the DA dip"
+    assert da_omit_lesion == lhb.da_base and da_omit_intact < lhb.da_base, (
+        "cutting RMTg must abolish the DA dip"
+    )
     # 7. Determinism: same seed and repeated calls -> identical spikes and DA.
     a, b = LateralHabenula(), LateralHabenula()
-    assert a.lhb_spikes(1.0, 0.0) == b.lhb_spikes(1.0, 0.0), "same seed must give identical LHb spike counts"
-    assert lhb.lhb_spikes(1.0, 0.0) == spk_omit, "LHb spike count must be a pure, reproducible function of the input"
+    assert a.lhb_spikes(1.0, 0.0) == b.lhb_spikes(1.0, 0.0), (
+        "same seed must give identical LHb spike counts"
+    )
+    assert lhb.lhb_spikes(1.0, 0.0) == spk_omit, (
+        "LHb spike count must be a pure, reproducible function of the input"
+    )
     assert a.dopamine(1.0, 0.0) == b.dopamine(1.0, 0.0), "same seed must give identical DA"
 
-    print(f"self-check OK: LHb bursts on negative RPE ({spk_omit} spk), silent on expected/positive "
-          f"(0 spk); DA {lhb.da_base:.2f} -> {da_omit:.2f} on omission (opponent via RMTg); deterministic")
+    print(
+        f"self-check OK: LHb bursts on negative RPE ({spk_omit} spk), silent on expected/positive "
+        f"(0 spk); DA {lhb.da_base:.2f} -> {da_omit:.2f} on omission (opponent via RMTg); deterministic"
+    )
 
 
 if __name__ == "__main__":

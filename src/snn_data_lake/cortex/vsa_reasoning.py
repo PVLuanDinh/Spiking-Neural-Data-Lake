@@ -41,19 +41,20 @@ capacity point -- exactly as a spiking associative memory should.
 
   Run: python -m snn_data_lake.cortex.vsa_reasoning       # (also run by run_selfchecks.py)
 """
+
 import random
 import sys
 import zlib
 
-D = 512           # spike-code dimensionality (each dim = one spike on the up(+1) or down(-1) line)
-VOCAB = 128       # filler vocabulary cleanup searches over (distractors make capacity finite)
+D = 512  # spike-code dimensionality (each dim = one spike on the up(+1) or down(-1) line)
+VOCAB = 128  # filler vocabulary cleanup searches over (distractors make capacity finite)
 SEEDS = range(5)  # >=5 seeds -> mean +/- std
-THRESH = 0.95     # filler-recovery fraction counted as "clean"
+THRESH = 0.95  # filler-recovery fraction counted as "clean"
 
 
 def mean_std(xs):
     m = sum(xs) / len(xs)
-    return m, (sum((x - m) ** 2 for x in xs) / len(xs)) ** 0.5   # population std
+    return m, (sum((x - m) ** 2 for x in xs) / len(xs)) ** 0.5  # population std
 
 
 def hv(label):
@@ -80,12 +81,12 @@ def bundle(vecs):
     out = []
     for col in zip(*vecs):
         up = sum(1 for s in col if s == 1)
-        out.append(1 if up * 2 >= len(col) else -1)   # up-line spikes >= half -> UP wins the WTA
+        out.append(1 if up * 2 >= len(col) else -1)  # up-line spikes >= half -> UP wins the WTA
     return out
 
 
 def permute(v, k=1):
-    return v[-k:] + v[:-k]                           # spike-line cyclic shift (axonal-delay order code)
+    return v[-k:] + v[:-k]  # spike-line cyclic shift (axonal-delay order code)
 
 
 def coincidence(a, b):
@@ -114,7 +115,7 @@ def record_recovery(k_pairs, seed):
     rng = random.Random(seed)
     roles = [hv(f"ROLE{i}") for i in range(k_pairs)]
     vocab = {f"V{i}": hv(f"V{i}") for i in range(VOCAB)}
-    chosen = rng.sample(list(vocab), k_pairs)                     # k distinct fillers from the vocab
+    chosen = rng.sample(list(vocab), k_pairs)  # k distinct fillers from the vocab
     record = bundle([bind(roles[i], vocab[chosen[i]]) for i in range(k_pairs)])
     correct = sum(cleanup(bind(record, roles[i]), vocab)[0] == chosen[i] for i in range(k_pairs))
     return correct / k_pairs
@@ -123,11 +124,13 @@ def record_recovery(k_pairs, seed):
 def main():
     # ---- demo 1: context-dependent arm command algebra (reason by spike XOR) ----
     commands = {c: hv(c) for c in ("GRIP", "WAIT", "RETREAT", "HOME")}
-    rules = bundle([
-        bind(bind(hv("APPROACH"), hv("NEAR")), hv("GRIP")),
-        bind(bind(hv("APPROACH"), hv("FAR")), hv("WAIT")),
-        bind(bind(hv("RETREAT"), hv("NEAR")), hv("RETREAT")),
-    ])
+    rules = bundle(
+        [
+            bind(bind(hv("APPROACH"), hv("NEAR")), hv("GRIP")),
+            bind(bind(hv("APPROACH"), hv("FAR")), hv("WAIT")),
+            bind(bind(hv("RETREAT"), hv("NEAR")), hv("RETREAT")),
+        ]
+    )
 
     def decide(gesture, context):
         """Query the bundled rule code by spike XOR, then WTA over command codes by coincidence.
@@ -145,11 +148,15 @@ def main():
 
     # ---- spiking-substrate checks (discrete spikes; coincidence sim; spike-op bind/bundle) ----
     a, b, c = hv("A"), hv("B"), hv("C")
-    spikes_discrete = is_spike_code(a) and is_spike_code(bind(a, b)) and is_spike_code(bundle([a, b, c]))
-    self_coincidence = coincidence(a, a) == D and sim(a, a) == 1.0     # perfectly coincident with itself
-    anti_coincidence = sim(a, [-x for x in a]) == -1.0                 # opposite spike lines everywhere
-    unbind_exact = bind(bind(a, b), a) == b                            # spike XOR is exactly self-inverse
-    bind_dissimilar = abs(sim(bind(a, b), a)) < 0.15                   # a bound pair hides its factors
+    spikes_discrete = (
+        is_spike_code(a) and is_spike_code(bind(a, b)) and is_spike_code(bundle([a, b, c]))
+    )
+    self_coincidence = (
+        coincidence(a, a) == D and sim(a, a) == 1.0
+    )  # perfectly coincident with itself
+    anti_coincidence = sim(a, [-x for x in a]) == -1.0  # opposite spike lines everywhere
+    unbind_exact = bind(bind(a, b), a) == b  # spike XOR is exactly self-inverse
+    bind_dissimilar = abs(sim(bind(a, b), a)) < 0.15  # a bound pair hides its factors
     permute_roundtrip = permute(permute(a, 1), D - 1) == a
     no_tensor_libs = "numpy" not in sys.modules and "torch" not in sys.modules
     deterministic = hv("Z") == hv("Z") and record_recovery(24, 3) == record_recovery(24, 3)
@@ -157,43 +164,61 @@ def main():
     print("=" * 62)
     print("Spiking VSA / HDC reasoning -- two-line spike-polarity codes, spike-domain ops")
     print("=" * 62)
-    print(f"D={D}  seeds={len(list(SEEDS))}  substrate=spike code (1 spike/dim on up(+1)/down(-1) line)")
+    print(
+        f"D={D}  seeds={len(list(SEEDS))}  substrate=spike code (1 spike/dim on up(+1)/down(-1) line)"
+    )
     print("ops: bind=spike XOR gate  bundle=superposition WTA  sim=spike coincidence count")
-    print(f"arm algebra: bind(APPROACH,NEAR) -> {near_cmd} (margin {near_margin}) | "
-          f"bind(APPROACH,FAR) -> {far_cmd} (margin {far_margin})  (context flips the command)")
+    print(
+        f"arm algebra: bind(APPROACH,NEAR) -> {near_cmd} (margin {near_margin}) | "
+        f"bind(APPROACH,FAR) -> {far_cmd} (margin {far_margin})  (context flips the command)"
+    )
     print("\n role-filler record recovery vs load (coincidence cleanup, mean +/- std):")
     for k in loads:
         m, s = mean_std(cap[k])
         print(f"   {k:>2} pairs : {m:>6.1%} +/- {s:>4.1%}")
-    print(f"\nspiking: discrete-spikes={spikes_discrete}  self-coincidence={self_coincidence}  "
-          f"anti-coincidence={anti_coincidence}  no-numpy/torch={no_tensor_libs}")
-    print(f"structure: unbind(XOR) exact={unbind_exact}  bound-pair-hides-factors={bind_dissimilar}"
-          f"  permute-roundtrip={permute_roundtrip}  deterministic={deterministic}")
-    print("Spiking VSA gives Paradigm C a role/relation algebra (spike XOR / superposition WTA /"
-          " coincidence) over spike codes; it COMPLEMENTS paradigm_b_engine, which reasons in spike"
-          " TIMING.")
+    print(
+        f"\nspiking: discrete-spikes={spikes_discrete}  self-coincidence={self_coincidence}  "
+        f"anti-coincidence={anti_coincidence}  no-numpy/torch={no_tensor_libs}"
+    )
+    print(
+        f"structure: unbind(XOR) exact={unbind_exact}  bound-pair-hides-factors={bind_dissimilar}"
+        f"  permute-roundtrip={permute_roundtrip}  deterministic={deterministic}"
+    )
+    print(
+        "Spiking VSA gives Paradigm C a role/relation algebra (spike XOR / superposition WTA /"
+        " coincidence) over spike codes; it COMPLEMENTS paradigm_b_engine, which reasons in spike"
+        " TIMING."
+    )
     print("=" * 62)
 
     # ---- self-check: assert FUNCTION, GENUINELY-SPIKING, and DETERMINISM; all deterministic ----
     # (a) FUNCTION: analogy/cleanup/binding return the right items above the distractor margin.
-    assert near_cmd == "GRIP" and far_cmd == "WAIT", \
+    assert near_cmd == "GRIP" and far_cmd == "WAIT", (
         f"context did not steer the command: NEAR->{near_cmd} FAR->{far_cmd}"
-    assert near_margin > 0 and far_margin > 0, "winning command must beat the runner-up on coincidence"
+    )
+    assert near_margin > 0 and far_margin > 0, (
+        "winning command must beat the runner-up on coincidence"
+    )
     lo_m, _ = mean_std(cap[4])
     hi_m, _ = mean_std(cap[64])
     assert lo_m >= THRESH, f"small record should recover cleanly by coincidence: {lo_m:.2f}"
     assert lo_m > hi_m, "recovery should degrade as the record is overloaded (finite capacity)"
     # (b) GENUINELY SPIKING: discrete spike events, coincidence similarity, spike-op bind/bundle,
     #     and no tensor libraries imported.
-    assert spikes_discrete, "hypervectors must be discrete spike codes (one spike/dim on up/down line)"
-    assert self_coincidence and anti_coincidence, "sim must be a spike-coincidence count, not a dot-product"
+    assert spikes_discrete, (
+        "hypervectors must be discrete spike codes (one spike/dim on up/down line)"
+    )
+    assert self_coincidence and anti_coincidence, (
+        "sim must be a spike-coincidence count, not a dot-product"
+    )
     assert unbind_exact and bind_dissimilar, "bind must be a self-inverse spike XOR gate"
     assert is_spike_code(rules), "bundle (superposition WTA) must emit a valid spike code"
-    assert no_tensor_libs, "genuinely spiking + zero-dep: numpy/torch must be absent"
     # (c) DETERMINISM: identical results across runs (crc32/seed-driven, no module-level RNG).
     assert deterministic, "spike codes and recovery must be deterministic given the seed"
-    print("self-check OK: spike-XOR/superposition-WTA/coincidence algebra holds, context-steered "
-          "command, clean coincidence recall at low load degrading with capacity, genuinely spiking")
+    print(
+        "self-check OK: spike-XOR/superposition-WTA/coincidence algebra holds, context-steered "
+        "command, clean coincidence recall at low load degrading with capacity, genuinely spiking"
+    )
 
 
 if __name__ == "__main__":

@@ -38,6 +38,7 @@ apical amplification / isolation / drive regimes (arXiv:2311.06074).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.dendritic_neuron
 """
+
 import math
 import random
 
@@ -48,16 +49,26 @@ class DendriticNeuron:
     Exposes .plateau_active (a Ca2+ plateau is currently injecting boost) and .ca_spikes (count of
     dendritic Ca2+ plateaus ignited). Deterministic; no internal randomness."""
 
-    def __init__(self, tau_s=8.0, tau_a=15.0, v_thresh=1.0, v_reset=0.0, ca_thresh=1.0,
-                 bp_bump=0.20, plateau_boost=0.8, plateau_dur=8, refractory=0):
-        self.decay_s = math.exp(-1.0 / tau_s)        # soma membrane leak per timestep
-        self.decay_a = math.exp(-1.0 / tau_a)        # apical membrane leak (slower -> sustained)
+    def __init__(
+        self,
+        tau_s=8.0,
+        tau_a=15.0,
+        v_thresh=1.0,
+        v_reset=0.0,
+        ca_thresh=1.0,
+        bp_bump=0.20,
+        plateau_boost=0.8,
+        plateau_dur=8,
+        refractory=0,
+    ):
+        self.decay_s = math.exp(-1.0 / tau_s)  # soma membrane leak per timestep
+        self.decay_a = math.exp(-1.0 / tau_a)  # apical membrane leak (slower -> sustained)
         self.v_thresh = v_thresh
         self.v_reset = v_reset
         self.ca_thresh = ca_thresh
-        self.bp_bump = bp_bump                        # backprop depolarization added to apical on a soma spike
-        self.plateau_boost = plateau_boost            # current injected into soma while a plateau is active
-        self.plateau_dur = plateau_dur                # plateau lifetime in steps
+        self.bp_bump = bp_bump  # backprop depolarization added to apical on a soma spike
+        self.plateau_boost = plateau_boost  # current injected into soma while a plateau is active
+        self.plateau_dur = plateau_dur  # plateau lifetime in steps
         self.refractory = refractory
         self.reset_state()
 
@@ -76,16 +87,18 @@ class DendriticNeuron:
         self.v_a = self.v_a * self.decay_a + apical
         # --- Ca2+ plateau: sustain an active one, or ignite when V_a crosses ca_thresh ---
         boost = 0.0
-        if self._plateau > 0:                          # sustained plateau keeps injecting boost
+        if self._plateau > 0:  # sustained plateau keeps injecting boost
             self._plateau -= 1
             boost = self.plateau_boost
-        if self._plateau <= 0 and self.v_a >= self.ca_thresh:   # BAC: apical (+ backprop bump) coincidence
+        if (
+            self._plateau <= 0 and self.v_a >= self.ca_thresh
+        ):  # BAC: apical (+ backprop bump) coincidence
             self._plateau = self.plateau_dur
             self.ca_spikes += 1
             boost = self.plateau_boost
         self.plateau_active = self._plateau > 0
         # --- soma compartment: leak + basal feed-forward + plateau boost, then fire + reset ---
-        if self._refr > 0:                             # refractory: clamped, integrates nothing
+        if self._refr > 0:  # refractory: clamped, integrates nothing
             self._refr -= 1
             self.v_s = self.v_reset
             return 0
@@ -93,7 +106,7 @@ class DendriticNeuron:
         if self.v_s >= self.v_thresh:
             self.v_s = self.v_reset
             self._refr = self.refractory
-            self.v_a += self.bp_bump                   # backpropagating AP depolarizes the apical dendrite
+            self.v_a += self.bp_bump  # backpropagating AP depolarizes the apical dendrite
             return 1
         return 0
 
@@ -145,27 +158,37 @@ def main():
     print("DENDRITIC NEURON -- two-compartment BAC firing (apical-basal coincidence)")
     print("=" * 66)
     print(f"basal drive     (basal only) : rate {basal_rate:.3f}  Ca2+ plateaus {basal_plateaus}")
-    print(f"apical isolation (apical only): rate {apical_rate:.3f}  Ca2+ plateaus {apical_plateaus}")
+    print(
+        f"apical isolation (apical only): rate {apical_rate:.3f}  Ca2+ plateaus {apical_plateaus}"
+    )
     print(f"BAC coincidence  (both)      : rate {both_rate:.3f}  Ca2+ plateaus {both_plateaus}")
     print(f"supralinear gain             : both / basal-max = {gain:.2f}x")
     print("=" * 66)
 
     # ---- self-check: additive -- a new member of the neuron-model family (lif/izhikevich),
     # changes no existing behaviour; ceiling: reduced rate/spike caricature, not conductance-based HH.
-    # Deterministic asserts, zero-dep stdlib, ASCII-only prints ----
+    # Deterministic asserts, ASCII-only prints ----
     assert basal_rate > 0.0, "basal drive alone must make the soma fire (basal-max rate)"
     assert basal_plateaus == 0, "basal drive alone must NOT ignite a Ca2+ plateau (no apical drive)"
-    assert apical_rate <= 0.02, f"apical input alone must leave the soma near-silent (got {apical_rate:.3f})"
-    assert apical_plateaus == 0, "apical alone must stay sub-threshold: no Ca2+ spike without backprop"
+    assert apical_rate <= 0.02, (
+        f"apical input alone must leave the soma near-silent (got {apical_rate:.3f})"
+    )
+    assert apical_plateaus == 0, (
+        "apical alone must stay sub-threshold: no Ca2+ spike without backprop"
+    )
     assert both_plateaus > 0, "coincident apical+basal must ignite a dendritic Ca2+ plateau"
-    assert both_rate > basal_rate * 1.5, \
+    assert both_rate > basal_rate * 1.5, (
         f"BAC must be SUPRALINEAR: both {both_rate:.3f} must clearly exceed basal-max {basal_rate:.3f}"
-    assert both_rate > apical_rate and basal_rate > apical_rate, \
+    )
+    assert both_rate > apical_rate and basal_rate > apical_rate, (
         "coincidence detector: high only when apical AND basal co-occur, not for either alone"
+    )
     assert train1 == train2, "same seed/input -> identical spike train (deterministic)"
-    print(f"self-check OK: basal-max {basal_rate:.3f}, apical-only {apical_rate:.3f}, "
-          f"BAC {both_rate:.3f} ({gain:.1f}x supralinear), plateau fired ({both_plateaus} Ca2+ spikes); "
-          f"deterministic")
+    print(
+        f"self-check OK: basal-max {basal_rate:.3f}, apical-only {apical_rate:.3f}, "
+        f"BAC {both_rate:.3f} ({gain:.1f}x supralinear), plateau fired ({both_plateaus} Ca2+ spikes); "
+        f"deterministic"
+    )
 
 
 if __name__ == "__main__":

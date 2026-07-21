@@ -16,6 +16,7 @@ CI-safe: real CSVs if present, else an inline synthetic 3-gesture set.
 
   python gesture_recognition.py
 """
+
 import os
 
 from snn_data_lake.brainstem.arm_config import (  # calibration lives in arm_config
@@ -35,12 +36,13 @@ GESTURES = ["IDLE", "HAND_APPROACH", "HAND_RETREAT"]
 
 def classify(blk):
     # blk items are (distance, ir); present() fuses IR iff calibrated, else distance-only
-    inrange = [(i, dbin(d)) for i, (d, ir) in enumerate(blk)
-               if present(d, ir) and dbin(d) is not None]
+    inrange = [
+        (i, dbin(d)) for i, (d, ir) in enumerate(blk) if present(d, ir) and dbin(d) is not None
+    ]
     if len(inrange) < max(2, len(blk) // 2):
         return "IDLE"
-    appr = match_sequence(inrange, [FAR, MID, NEAR], W)      # ordered: far -> near
-    retr = match_sequence(inrange, [NEAR, MID, FAR], W)      # ordered: near -> far
+    appr = match_sequence(inrange, [FAR, MID, NEAR], W)  # ordered: far -> near
+    retr = match_sequence(inrange, [NEAR, MID, FAR], W)  # ordered: near -> far
     if appr and not retr:
         return "HAND_APPROACH"
     if retr and not appr:
@@ -65,7 +67,7 @@ def load_csv(path):
 
 
 def windows(rows, w=W, stride=STRIDE):
-    return [rows[s:s + w] for s in range(0, len(rows) - w + 1, stride)]
+    return [rows[s : s + w] for s in range(0, len(rows) - w + 1, stride)]
 
 
 def _synthetic():
@@ -73,8 +75,8 @@ def _synthetic():
     items = []
     items += [([(3.13, -1.0)] * W, "IDLE") for _ in range(8)]
     for _ in range(8):
-        items.append(([(0.9 - 0.11 * i, 295.0) for i in range(W)], "HAND_APPROACH"))   # falling
-        items.append(([(0.1 + 0.11 * i, 295.0) for i in range(W)], "HAND_RETREAT"))     # rising
+        items.append(([(0.9 - 0.11 * i, 295.0) for i in range(W)], "HAND_APPROACH"))  # falling
+        items.append(([(0.1 + 0.11 * i, 295.0) for i in range(W)], "HAND_RETREAT"))  # rising
     return items
 
 
@@ -98,7 +100,7 @@ def main():
         pred = classify(blk)
         confusion.setdefault(true, {})
         confusion[true][pred] = confusion[true].get(pred, 0) + 1
-        correct += (pred == true)
+        correct += pred == true
     acc = correct / len(items)
 
     def recall(g):
@@ -109,19 +111,24 @@ def main():
     print("GESTURE RECOGNITION — order-aware (Paradigm B sequence detector)")
     print("=" * 60)
     print(f"source   : {src}")
-    print(f"windows  : {len(items)} ({', '.join(f'{g}={sum(1 for _,l in items if l==g)}' for g in labels)})")
-    print(f"accuracy : {acc:.0%}  (chance {1/len(labels):.0%})")
+    print(
+        f"windows  : {len(items)} ({', '.join(f'{g}={sum(1 for _, l in items if l == g)}' for g in labels)})"
+    )
+    print(f"accuracy : {acc:.0%}  (chance {1 / len(labels):.0%})")
     for g in labels:
         print(f"  {g:14} recall {recall(g):.0%}  -> {confusion.get(g, {})}")
     print("=" * 60)
 
     # ---- self-checks --------------------------------------------------------
     assert acc > 0.75, f"order-aware recognition should clear 75%, got {acc:.2f}"
-    assert recall("HAND_APPROACH") >= 0.6 and recall("HAND_RETREAT") >= 0.6, \
+    assert recall("HAND_APPROACH") >= 0.6 and recall("HAND_RETREAT") >= 0.6, (
         "approach/retreat still confused — order detection not separating direction"
+    )
     assert recall("IDLE") >= 0.6, "idle not recognized"
-    print(f"self-check OK: order-aware recognition {acc:.0%}, approach/retreat now separated "
-          f"(A={recall('HAND_APPROACH'):.0%} R={recall('HAND_RETREAT'):.0%} I={recall('IDLE'):.0%})")
+    print(
+        f"self-check OK: order-aware recognition {acc:.0%}, approach/retreat now separated "
+        f"(A={recall('HAND_APPROACH'):.0%} R={recall('HAND_RETREAT'):.0%} I={recall('IDLE'):.0%})"
+    )
 
 
 if __name__ == "__main__":

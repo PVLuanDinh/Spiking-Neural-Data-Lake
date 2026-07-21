@@ -19,7 +19,7 @@ def simulate(a, b, c, d, current=10.0, T=300.0, dt=0.1):
     v, u = -65.0, b * -65.0
     spikes = []
     for k in range(int(T / dt)):
-        if v >= 30.0:                       # spike: record peak, then reset
+        if v >= 30.0:  # spike: record peak, then reset
             spikes.append(k * dt)
             v, u = c, u + d
         v += dt * (0.04 * v * v + 5 * v + 140 - u + current)
@@ -34,15 +34,15 @@ def _isi_cv(spikes):
     isi = [b - a for a, b in zip(spikes, spikes[1:])]
     m = sum(isi) / len(isi)
     var = sum((x - m) ** 2 for x in isi) / len(isi)
-    return (var ** 0.5) / m if m else 0.0
+    return (var**0.5) / m if m else 0.0
 
 
 # canonical Izhikevich parameter sets (a, b, c, d)
 REGIMES = {
-    "regular-spiking":        (0.02, 0.2, -65.0, 8.0),
+    "regular-spiking": (0.02, 0.2, -65.0, 8.0),
     "intrinsically-bursting": (0.02, 0.2, -55.0, 4.0),
-    "chattering":             (0.02, 0.2, -50.0, 2.0),
-    "fast-spiking":           (0.10, 0.2, -65.0, 2.0),
+    "chattering": (0.02, 0.2, -50.0, 2.0),
+    "fast-spiking": (0.10, 0.2, -65.0, 2.0),
 }
 
 
@@ -59,17 +59,22 @@ def main():
         print(f"{name:<24}{counts[name]:>13}{cvs[name]:>10.2f}")
     print("=" * 62)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert all(n >= 3 for n in counts.values()), f"every regime must fire under drive ({counts})"
-    assert counts["fast-spiking"] > counts["regular-spiking"], \
+    assert counts["fast-spiking"] > counts["regular-spiking"], (
         f"fast-spiking must fire faster than regular-spiking ({counts['fast-spiking']} vs {counts['regular-spiking']})"
-    assert cvs["chattering"] > cvs["regular-spiking"], \
+    )
+    assert cvs["chattering"] > cvs["regular-spiking"], (
         f"chattering must burst (higher ISI variability) than regular-spiking ({cvs['chattering']:.2f} vs {cvs['regular-spiking']:.2f})"
-    assert cvs["intrinsically-bursting"] > cvs["regular-spiking"], \
+    )
+    assert cvs["intrinsically-bursting"] > cvs["regular-spiking"], (
         "intrinsically-bursting must show burst structure vs regular-spiking"
+    )
     assert simulate(*REGIMES["chattering"]) == simulate(*REGIMES["chattering"]), "deterministic"
-    print(f"self-check OK: 4 distinct regimes; FS {counts['fast-spiking']} > RS {counts['regular-spiking']} spikes; "
-          f"bursting CV CH {cvs['chattering']:.2f} > RS {cvs['regular-spiking']:.2f}; additive; deterministic")
+    print(
+        f"self-check OK: 4 distinct regimes; FS {counts['fast-spiking']} > RS {counts['regular-spiking']} spikes; "
+        f"bursting CV CH {cvs['chattering']:.2f} > RS {cvs['regular-spiking']:.2f}; additive; deterministic"
+    )
 
 
 if __name__ == "__main__":

@@ -40,6 +40,7 @@ standard library. ASCII-only output.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.function_preserving_growth
 """
+
 import math
 import random
 
@@ -54,16 +55,15 @@ class SpikingGrowthLayer:
     insertion. Hidden units are independent (no lateral wiring), so splitting one
     leaves every other unit's dynamics untouched."""
 
-    def __init__(self, n_in=6, n_hidden=4, n_out=2, seed=0,
-                 tau_m=10.0, v_threshold=1.0, refractory=0):
+    def __init__(
+        self, n_in=6, n_hidden=4, n_out=2, seed=0, tau_m=10.0, v_threshold=1.0, refractory=0
+    ):
         rng = random.Random(seed)
         self.n_in = n_in
         self.n_out = n_out
         self._hp = {"tau_m": tau_m, "v_threshold": v_threshold, "refractory": refractory}
-        self.w_in = [[rng.uniform(0.0, 1.0) for _ in range(n_in)]
-                     for _ in range(n_hidden)]
-        self.w_out = [[rng.uniform(0.3, 0.9) for _ in range(n_out)]
-                      for _ in range(n_hidden)]
+        self.w_in = [[rng.uniform(0.0, 1.0) for _ in range(n_in)] for _ in range(n_hidden)]
+        self.w_out = [[rng.uniform(0.3, 0.9) for _ in range(n_out)] for _ in range(n_hidden)]
         self.hidden = [LIFNeuron(**self._hp) for _ in range(n_hidden)]
         self.readout = [LIFNeuron(**self._hp) for _ in range(n_out)]
         self.reset_state()
@@ -86,8 +86,10 @@ class SpikingGrowthLayer:
         w_out[u][k] * spike[u] -- the exact-real-sum that makes the split invariant
         hold to the last bit."""
         hs = [self.hidden[u].step(dot(self.w_in[u], x)) for u in range(self.n_hidden)]
-        currents = [math.fsum(self.w_out[u][k] * hs[u] for u in range(self.n_hidden))
-                    for k in range(self.n_out)]
+        currents = [
+            math.fsum(self.w_out[u][k] * hs[u] for u in range(self.n_hidden))
+            for k in range(self.n_out)
+        ]
         ys = [self.readout[k].step(currents[k]) for k in range(self.n_out)]
         return currents, ys, hs
 
@@ -122,13 +124,13 @@ class SpikingGrowthLayer:
         so the downstream current is unchanged to the last bit. Any other factor
         perturbs the downstream current (see the control in the self-check).
         Returns the new unit's id."""
-        self.w_in.append(list(self.w_in[p]))                 # incoming weights: exact copy
+        self.w_in.append(list(self.w_in[p]))  # incoming weights: exact copy
         if copy_state:
             self.hidden.append(self._clone_neuron(self.hidden[p]))
         else:
-            self.hidden.append(LIFNeuron(**self._hp))        # control: state NOT copied
+            self.hidden.append(LIFNeuron(**self._hp))  # control: state NOT copied
         parent_out = self.w_out[p]
-        self.w_out[p] = [w * factor for w in parent_out]     # halve parent fan-out
+        self.w_out[p] = [w * factor for w in parent_out]  # halve parent fan-out
         self.w_out.append([w * factor for w in parent_out])  # halve duplicate fan-out
         return self.n_hidden - 1
 
@@ -142,7 +144,7 @@ class SpikingGrowthLayer:
         Returns the new unit's id."""
         self.w_in.append(self._eligibility_seed(window))
         self.hidden.append(LIFNeuron(**self._hp))
-        self.w_out.append([0.0] * self.n_out)                # zero fan-out -> exact at insertion
+        self.w_out.append([0.0] * self.n_out)  # zero fan-out -> exact at insertion
         return self.n_hidden - 1
 
     def _eligibility_seed(self, window):
@@ -195,8 +197,10 @@ def main():
     print("=" * 66)
     print("FUNCTION-PRESERVING SPIKING GROWTH (Net2Net split) -- L6 / SI-10")
     print("=" * 66)
-    print(f"layer {n_in}->{n_hid} LIF->{n_out}   window={n_steps} steps   "
-          f"split unit p={p} ({spikes_per_unit[p]} spikes)")
+    print(
+        f"layer {n_in}->{n_hid} LIF->{n_out}   window={n_steps} steps   "
+        f"split unit p={p} ({spikes_per_unit[p]} spikes)"
+    )
 
     # (1a) EXACT INVARIANT -- fresh re-run after a halving split == baseline, bit-for-bit.
     g = mk()
@@ -271,16 +275,26 @@ def main():
     assert d1.run(window)[0] == d2.run(window)[0], "same seed -> identical output"
     assert d1.w_out == d2.w_out, "same seed -> identical grown weights"
 
-    print(f"1a EXACT (fresh)   : split unit {p}, halve fan-out, re-run -> max abs diff "
-          f"= {diff_split!r}  (bit-identical)")
-    print(f"1b EXACT (stream)  : split at t={mid} copying live state (v={v_at_split:.4f}, "
-          f"refr={refr_at_split}) -> max abs diff = {diff_mid!r}")
-    print(f"   membrane matters: SAME split WITHOUT state copy -> max abs diff = "
-          f"{diff_nostate!r} (perturbed; informational)")
-    print(f"2  CONTROL (fail)  : split WITHOUT halving (factor=1.0) -> max abs diff = "
-          f"{diff_nohalve!r} (nonzero -> exact-equality FAILS, as it must)")
-    print(f"3  GRADMAX add     : new unit, OUT-weights == 0.0 -> max abs diff = "
-          f"{diff_gradmax!r} (bit-identical at insertion)")
+    print(
+        f"1a EXACT (fresh)   : split unit {p}, halve fan-out, re-run -> max abs diff "
+        f"= {diff_split!r}  (bit-identical)"
+    )
+    print(
+        f"1b EXACT (stream)  : split at t={mid} copying live state (v={v_at_split:.4f}, "
+        f"refr={refr_at_split}) -> max abs diff = {diff_mid!r}"
+    )
+    print(
+        f"   membrane matters: SAME split WITHOUT state copy -> max abs diff = "
+        f"{diff_nostate!r} (perturbed; informational)"
+    )
+    print(
+        f"2  CONTROL (fail)  : split WITHOUT halving (factor=1.0) -> max abs diff = "
+        f"{diff_nohalve!r} (nonzero -> exact-equality FAILS, as it must)"
+    )
+    print(
+        f"3  GRADMAX add     : new unit, OUT-weights == 0.0 -> max abs diff = "
+        f"{diff_gradmax!r} (bit-identical at insertion)"
+    )
     print("5  DETERMINISM     : identical grown weights + output across two builds")
     print("-" * 66)
     print("HONEST NEGATIVE: the GradMax in-weight seed is an eligibility-directed")
@@ -288,9 +302,11 @@ def main():
     print("  is scale-dependent and is pure noise at a few units. The shipped, proven")
     print("  result is the eps-invariant ALONE: exact bit-for-bit output preservation.")
     print("=" * 66)
-    print(f"self-check OK: halving split exact (diff {diff_split!r} fresh / {diff_mid!r} "
-          f"mid-stream), no-halve control fails (diff {diff_nohalve!r}), zero-fanout add "
-          f"exact (diff {diff_gradmax!r}), deterministic")
+    print(
+        f"self-check OK: halving split exact (diff {diff_split!r} fresh / {diff_mid!r} "
+        f"mid-stream), no-halve control fails (diff {diff_nohalve!r}), zero-fanout add "
+        f"exact (diff {diff_gradmax!r}), deterministic"
+    )
 
 
 if __name__ == "__main__":

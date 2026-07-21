@@ -1,6 +1,6 @@
 """
 Lifelong consolidation: the GROW <-> PRUNE <-> CONSOLIDATE continual-learning loop
-with a non-regression (anti-catastrophic-forgetting) probe (pure stdlib, zero-dep).
+with a non-regression (anti-catastrophic-forgetting) probe.
 
 WHAT THIS IS (honest). This is a genuine LIFELONG-LEARNING / anti-catastrophic-
 forgetting mechanism -- a real *bounded* continual-learning increment. It learns a
@@ -41,10 +41,11 @@ tiny magnitude-prune is reimplemented faithfully over UNITS (developmental_pruni
 prunes over synapses), same "drop the smallest score" rule.
 
 Determinism: per-instance random.Random(seed); no global RNG, no wall-clock, no hash().
-ASCII-only output. Pure stdlib.
+ASCII-only output.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.lifelong_consolidation
 """
+
 import random
 
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
@@ -80,9 +81,21 @@ class LifelongConsolidator:
       epochs      : passes over each task's training stream.
     """
 
-    def __init__(self, dim, budget, *, replay=True, prune=True,
-                 prune_mode="magnitude", vigilance=0.9, lr=0.2, task_decay=0.15,
-                 replay_batch=2, epochs=2, seed=0):
+    def __init__(
+        self,
+        dim,
+        budget,
+        *,
+        replay=True,
+        prune=True,
+        prune_mode="magnitude",
+        vigilance=0.9,
+        lr=0.2,
+        task_decay=0.15,
+        replay_batch=2,
+        epochs=2,
+        seed=0,
+    ):
         self.dim = dim
         self.budget = budget
         self.replay_on = replay
@@ -93,10 +106,10 @@ class LifelongConsolidator:
         self.epochs = epochs
         self.seed = seed
         self.learner = GrowingLearner(vigilance=vigilance, lr=lr, dim=dim)
-        self.labels = []                 # class label per unit (aligned to prototypes)
-        self.utility = []                # use-decayed activity trace per unit
-        self.memory = ReplayBuffer(capacity=4096, seed=seed + 1)   # lifelong exemplars
-        self.rng = random.Random(seed + 2)                          # random-prune RNG
+        self.labels = []  # class label per unit (aligned to prototypes)
+        self.utility = []  # use-decayed activity trace per unit
+        self.memory = ReplayBuffer(capacity=4096, seed=seed + 1)  # lifelong exemplars
+        self.rng = random.Random(seed + 2)  # random-prune RNG
 
     @property
     def n_units(self):
@@ -112,9 +125,9 @@ class LifelongConsolidator:
         uid, grew = self.learner.observe(x)
         if grew:
             self.labels.append(y)
-            self.utility.append(1.0)          # new unit starts with unit credit
+            self.utility.append(1.0)  # new unit starts with unit credit
         else:
-            self.utility[uid] += 1.0          # familiar hit -> refresh (use it)
+            self.utility[uid] += 1.0  # familiar hit -> refresh (use it)
         return uid
 
     def _prune_to_budget(self):
@@ -148,20 +161,20 @@ class LifelongConsolidator:
     def learn_task(self, task_id, train):
         """Learn one task: grow/refine on its stream, interleave old-task replay,
         commit its exemplars to lifelong memory, then prune to the budget."""
-        self.utility = [u * self.task_decay for u in self.utility]   # recency pressure
+        self.utility = [u * self.task_decay for u in self.utility]  # recency pressure
         order_rng = random.Random(self.seed + 100 + task_id)
         fresh = []
         for _ in range(self.epochs):
             stream = train[:]
             order_rng.shuffle(stream)
             for x, y in stream:
-                self._observe(x, y)            # learn the new sample (decays + credits)
+                self._observe(x, y)  # learn the new sample (decays + credits)
                 if self.replay_on and len(self.memory):
-                    self._replay_once()        # rehearse old tasks (non-regression)
+                    self._replay_once()  # rehearse old tasks (non-regression)
                 fresh.append((y, tuple(x)))
-        for y, xt in fresh:                    # exemplars visible to LATER tasks only
+        for y, xt in fresh:  # exemplars visible to LATER tasks only
             self.memory.add(y, xt, 0.0)
-        self._prune_to_budget()                # grow <-> prune under the budget
+        self._prune_to_budget()  # grow <-> prune under the budget
 
     # ---- readout ------------------------------------------------------------
     def classify(self, x):
@@ -175,16 +188,16 @@ class LifelongConsolidator:
 
 
 # ---- synthetic continual-learning benchmark --------------------------------
-D = 36                 # input dim = 6 classes x BLK
-BLK = 6                # dims owned by each global class (disjoint across classes)
-HIGH, LOW = 0.9, 0.1   # in-block vs baseline activation
-SIGMA = 0.06           # gaussian sample noise (rate units)
-T = 3                  # number of tasks (A, B, C)
-KPT = 2                # classes per task -> 6 disjoint classes
-MODES = 2              # sub-prototypes per class: a PRIMARY + a redundant SECONDARY
-TRAIN_PER_MODE = (12, 4)   # primary is frequent, secondary is rare (prune-able)
-TEST_PER_MODE = (10, 10)   # test both modes evenly (fair retention measurement)
-BUDGET = 6             # capacity ceiling: 1 primary per class (12 units grow, 3 tasks)
+D = 36  # input dim = 6 classes x BLK
+BLK = 6  # dims owned by each global class (disjoint across classes)
+HIGH, LOW = 0.9, 0.1  # in-block vs baseline activation
+SIGMA = 0.06  # gaussian sample noise (rate units)
+T = 3  # number of tasks (A, B, C)
+KPT = 2  # classes per task -> 6 disjoint classes
+MODES = 2  # sub-prototypes per class: a PRIMARY + a redundant SECONDARY
+TRAIN_PER_MODE = (12, 4)  # primary is frequent, secondary is rare (prune-able)
+TEST_PER_MODE = (10, 10)  # test both modes evenly (fair retention measurement)
+BUDGET = 6  # capacity ceiling: 1 primary per class (12 units grow, 3 tasks)
 
 
 def _clip01(v):
@@ -260,23 +273,26 @@ def _digest(tasks):
     rnd, _ = run_sequence(tasks, replay=True, prune=True, prune_mode="random", seed=0)
     allt = _all_test(tasks)
     return (
-        round(on.accuracy(tasks[0]["test"]), 6), round(off.accuracy(tasks[0]["test"]), 6),
-        round(on.accuracy(allt), 6), round(rnd.accuracy(allt), 6),
-        on.n_units, off.n_units, rnd.n_units,
+        round(on.accuracy(tasks[0]["test"]), 6),
+        round(off.accuracy(tasks[0]["test"]), 6),
+        round(on.accuracy(allt), 6),
+        round(rnd.accuracy(allt), 6),
+        on.n_units,
+        off.n_units,
+        rnd.n_units,
     )
 
 
 def main():
-    import sys
 
     tasks = _make_tasks(seed=0)
     all_test = _all_test(tasks)
 
     # === (1) NON-REGRESSION: interleaved replay stops catastrophic forgetting =====
-    con_on, hist_on = run_sequence(tasks, replay=True, prune=True,
-                                   prune_mode="magnitude", seed=0)
-    con_off, hist_off = run_sequence(tasks, replay=False, prune=True,
-                                     prune_mode="magnitude", seed=0)
+    con_on, hist_on = run_sequence(tasks, replay=True, prune=True, prune_mode="magnitude", seed=0)
+    con_off, hist_off = run_sequence(
+        tasks, replay=False, prune=True, prune_mode="magnitude", seed=0
+    )
     retA_on = con_on.accuracy(tasks[0]["test"])
     retA_off = con_off.accuracy(tasks[0]["test"])
     curr_on = con_on.accuracy(tasks[-1]["test"])
@@ -297,8 +313,9 @@ def main():
     RANDOM_SEEDS = 8
     acc_mag = con_on.accuracy(all_test)
     rnd_accs = [
-        run_sequence(tasks, replay=True, prune=True, prune_mode="random", seed=s)[0]
-        .accuracy(all_test)
+        run_sequence(tasks, replay=True, prune=True, prune_mode="random", seed=s)[0].accuracy(
+            all_test
+        )
         for s in range(RANDOM_SEEDS)
     ]
     acc_rnd = mean(rnd_accs)
@@ -306,10 +323,12 @@ def main():
     # === report table (replay-on vs replay-off) ===================================
     lines = []
     lines.append("=" * 66)
-    lines.append("LIFELONG CONSOLIDATION  (grow <-> prune <-> consolidate, zero-dep)")
+    lines.append("LIFELONG CONSOLIDATION  (grow <-> prune <-> consolidate)")
     lines.append("=" * 66)
-    lines.append(f"tasks={T} x {KPT} disjoint classes  dim={D}  budget={BUDGET}  "
-                 f"prune=magnitude  task_decay={con_on.task_decay}")
+    lines.append(
+        f"tasks={T} x {KPT} disjoint classes  dim={D}  budget={BUDGET}  "
+        f"prune=magnitude  task_decay={con_on.task_decay}"
+    )
     lines.append("-" * 66)
     lines.append("replay ON  (interleaved rehearsal of old-task exemplars)")
     lines.append(f"  {'task':<6}{'current-acc':>14}{'A-retention':>14}{'n_units':>10}")
@@ -320,17 +339,27 @@ def main():
     for t, cur, reta, n in hist_off:
         lines.append(f"  {chr(ord('A') + t):<6}{cur:>13.1%}{reta:>14.1%}{n:>10}")
     lines.append("-" * 66)
-    lines.append(f"(1) A-retention   replay-ON {retA_on:.1%}  >>  replay-OFF "
-                 f"{retA_off:.1%}   (margin {ret_margin:+.1%})")
-    lines.append(f"    current task  replay-ON {curr_on:.1%}      replay-OFF "
-                 f"{curr_off:.1%}   (both still learned)")
-    lines.append(f"(2) capacity      pruned n_units<=budget: {bounded}  "
-                 f"(final {con_on.n_units})   grow-only n_units={con_grow.n_units}>"
-                 f"{BUDGET}")
-    lines.append(f"    accuracy      pruned {acc_pruned:.1%}  vs  grow-only "
-                 f"{acc_grow:.1%}  (prune does not tank acc)")
-    lines.append(f"(3) prune rule    magnitude {acc_mag:.1%}  >  random "
-                 f"{acc_rnd:.1%}  (mean of {RANDOM_SEEDS}; utility beats random @ budget)")
+    lines.append(
+        f"(1) A-retention   replay-ON {retA_on:.1%}  >>  replay-OFF "
+        f"{retA_off:.1%}   (margin {ret_margin:+.1%})"
+    )
+    lines.append(
+        f"    current task  replay-ON {curr_on:.1%}      replay-OFF "
+        f"{curr_off:.1%}   (both still learned)"
+    )
+    lines.append(
+        f"(2) capacity      pruned n_units<=budget: {bounded}  "
+        f"(final {con_on.n_units})   grow-only n_units={con_grow.n_units}>"
+        f"{BUDGET}"
+    )
+    lines.append(
+        f"    accuracy      pruned {acc_pruned:.1%}  vs  grow-only "
+        f"{acc_grow:.1%}  (prune does not tank acc)"
+    )
+    lines.append(
+        f"(3) prune rule    magnitude {acc_mag:.1%}  >  random "
+        f"{acc_rnd:.1%}  (mean of {RANDOM_SEEDS}; utility beats random @ budget)"
+    )
     lines.append("=" * 66)
 
     # === deterministic, un-riggable asserts (each with a control that FAILS) ======
@@ -338,36 +367,39 @@ def main():
     assert curr_on >= 0.80, f"replay-on must still learn the current task ({curr_on:.2f})"
     assert curr_off >= 0.80, f"replay-off must still learn the current task ({curr_off:.2f})"
     assert retA_on >= 0.80, f"replay-on old-task A retention too low ({retA_on:.2f})"
-    assert retA_off <= 0.55, (
-        f"CONTROL replay-off should CATASTROPHICALLY FORGET A ({retA_off:.2f})")
+    assert retA_off <= 0.55, f"CONTROL replay-off should CATASTROPHICALLY FORGET A ({retA_off:.2f})"
     assert ret_margin >= 0.30, (
-        f"retention gain from replay must be clear (>=0.30), got {ret_margin:+.2f}")
+        f"retention gain from replay must be clear (>=0.30), got {ret_margin:+.2f}"
+    )
 
     # (2) bounded capacity: prune holds the budget, grow-only blows past it.
     assert bounded, "pruned n_units must stay <= budget after every task"
     assert con_on.n_units <= BUDGET, f"final pruned n_units {con_on.n_units} > {BUDGET}"
     assert con_grow.n_units > BUDGET, (
-        f"CONTROL grow-only must exceed budget ({con_grow.n_units} <= {BUDGET})")
+        f"CONTROL grow-only must exceed budget ({con_grow.n_units} <= {BUDGET})"
+    )
     assert acc_pruned >= acc_grow - 0.05, (
-        f"pruning must not tank accuracy ({acc_pruned:.2f} vs grow-only {acc_grow:.2f})")
+        f"pruning must not tank accuracy ({acc_pruned:.2f} vs grow-only {acc_grow:.2f})"
+    )
 
     # (3) utility prune is not random.
     assert acc_mag > acc_rnd + 0.05, (
-        f"magnitude prune ({acc_mag:.2f}) must beat mean random prune ({acc_rnd:.2f})")
+        f"magnitude prune ({acc_mag:.2f}) must beat mean random prune ({acc_rnd:.2f})"
+    )
 
-    # (4) determinism + ASCII + zero-dep.
+    # (4) determinism + ASCII.
     assert _digest(tasks) == _digest(tasks), "same seed must give identical runs"
     for ln in lines:
         assert ln.isascii(), "all output must be ASCII"
-    assert "numpy" not in sys.modules, "zero-dep: numpy must not be imported"
-    assert "torch" not in sys.modules, "zero-dep: torch must not be imported"
 
     for ln in lines:
         print(ln)
-    print(f"self-check OK: replay retention {retA_on:.0%}>>{retA_off:.0%} "
-          f"(margin {ret_margin:+.0%}); capacity<= {BUDGET} vs grow-only "
-          f"{con_grow.n_units}; magnitude {acc_mag:.0%}>random {acc_rnd:.0%}; "
-          f"deterministic, ASCII, zero-dep")
+    print(
+        f"self-check OK: replay retention {retA_on:.0%}>>{retA_off:.0%} "
+        f"(margin {ret_margin:+.0%}); capacity<= {BUDGET} vs grow-only "
+        f"{con_grow.n_units}; magnitude {acc_mag:.0%}>random {acc_rnd:.0%}; "
+        f"deterministic, ASCII"
+    )
 
 
 if __name__ == "__main__":

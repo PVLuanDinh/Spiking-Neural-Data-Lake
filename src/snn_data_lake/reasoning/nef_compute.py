@@ -16,10 +16,11 @@ population represent a value and compute a nonlinear function of it; not full Ne
 
   python -m research.nef_compute        # (also run by run_selfchecks.py, root on PYTHONPATH)
 """
+
 import math
 import random
 
-T_REF, TAU_RC = 0.002, 0.02                 # LIF refractory + membrane time constants (Nengo defaults)
+T_REF, TAU_RC = 0.002, 0.02  # LIF refractory + membrane time constants (Nengo defaults)
 
 
 def lif_rate(current):
@@ -51,13 +52,13 @@ class NEFEnsemble:
     def __init__(self, n=60, seed=0):
         rng = random.Random(seed)
         self.n = n
-        self.enc = [rng.choice((-1.0, 1.0)) for _ in range(n)]     # preferred direction
+        self.enc = [rng.choice((-1.0, 1.0)) for _ in range(n)]  # preferred direction
         self.alpha, self.bias = [], []
         for _ in range(n):
-            x_int = rng.uniform(-0.95, 0.95)                       # x where the neuron starts firing
-            r_max = rng.uniform(100.0, 300.0)                      # firing rate at the preferred extreme
+            x_int = rng.uniform(-0.95, 0.95)  # x where the neuron starts firing
+            r_max = rng.uniform(100.0, 300.0)  # firing rate at the preferred extreme
             j_max = 1.0 / (1.0 - math.exp((T_REF - 1.0 / r_max) / TAU_RC))
-            gain = (j_max - 1.0) / (1.0 - x_int)                   # current = 1 at x_int, j_max at x=+1 (in enc dir)
+            gain = (j_max - 1.0) / (1.0 - x_int)  # current = 1 at x_int, j_max at x=+1 (in enc dir)
             self.alpha.append(gain)
             self.bias.append(1.0 - gain * x_int)
 
@@ -66,10 +67,14 @@ class NEFEnsemble:
 
     def solve_decoders(self, func, samples=80, reg=0.1):
         xs = [-1.0 + 2.0 * j / (samples - 1) for j in range(samples)]
-        act = [self.rates(x) for x in xs]                          # M x N activity matrix
-        gamma = [[sum(act[m][i] * act[m][j] for m in range(samples)) for j in range(self.n)]
-                 for i in range(self.n)]
-        ridge = (reg * max(gamma[i][i] for i in range(self.n)))    # regularize -> smooth decoders (noise model)
+        act = [self.rates(x) for x in xs]  # M x N activity matrix
+        gamma = [
+            [sum(act[m][i] * act[m][j] for m in range(samples)) for j in range(self.n)]
+            for i in range(self.n)
+        ]
+        ridge = reg * max(
+            gamma[i][i] for i in range(self.n)
+        )  # regularize -> smooth decoders (noise model)
         for i in range(self.n):
             gamma[i][i] += ridge
         upsilon = [sum(act[m][i] * func(xs[m]) for m in range(samples)) for i in range(self.n)]
@@ -86,10 +91,10 @@ def _rmse(ens, decoders, func, pts):
 
 def main():
     ens = NEFEnsemble(n=80, seed=0)
-    test = [-1.0 + 2.0 * j / 40 for j in range(41)]               # test points (off the training grid)
+    test = [-1.0 + 2.0 * j / 40 for j in range(41)]  # test points (off the training grid)
 
-    d_id = ens.solve_decoders(lambda x: x)                        # representation: decode x
-    d_sq = ens.solve_decoders(lambda x: x * x)                    # transformation: decode x^2
+    d_id = ens.solve_decoders(lambda x: x)  # representation: decode x
+    d_sq = ens.solve_decoders(lambda x: x * x)  # transformation: decode x^2
     rmse_id = _rmse(ens, d_id, lambda x: x, test)
     rmse_sq = _rmse(ens, d_sq, lambda x: x * x, test)
 
@@ -104,17 +109,27 @@ def main():
     print(f"representation  decode(x)   RMSE {rmse_id:.4f}")
     print(f"transformation  decode(x^2) RMSE {rmse_sq:.4f}")
     print(f"small pop ({small.n})  decode(x)   RMSE {rmse_small:.4f} (fewer neurons -> worse)")
-    print(f"spot: x=0.5 -> decode(x)={ens.decode(d_id, 0.5):.3f}, decode(x^2)={ens.decode(d_sq, 0.5):.3f} (want 0.25)")
+    print(
+        f"spot: x=0.5 -> decode(x)={ens.decode(d_id, 0.5):.3f}, decode(x^2)={ens.decode(d_sq, 0.5):.3f} (want 0.25)"
+    )
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert rmse_id < 0.05, f"the population must represent x accurately ({rmse_id:.4f})"
     assert rmse_sq < 0.05, f"the population must compute x^2 by decoding ({rmse_sq:.4f})"
-    assert rmse_small > rmse_id, f"fewer neurons must decode worse (NEF error scaling) ({rmse_small:.4f} vs {rmse_id:.4f})"
-    assert abs(ens.decode(d_sq, 0.5) - 0.25) < 0.05, f"decode(0.5^2) must be ~0.25 ({ens.decode(d_sq, 0.5):.3f})"
-    assert ens.solve_decoders(lambda x: x) == d_id, "same ensemble -> identical decoders (deterministic)"
-    print(f"self-check OK: represent x (RMSE {rmse_id:.3f}), compute x^2 (RMSE {rmse_sq:.3f}) from the same "
-          f"spikes; {small.n}-neuron pop worse ({rmse_small:.3f}); deterministic")
+    assert rmse_small > rmse_id, (
+        f"fewer neurons must decode worse (NEF error scaling) ({rmse_small:.4f} vs {rmse_id:.4f})"
+    )
+    assert abs(ens.decode(d_sq, 0.5) - 0.25) < 0.05, (
+        f"decode(0.5^2) must be ~0.25 ({ens.decode(d_sq, 0.5):.3f})"
+    )
+    assert ens.solve_decoders(lambda x: x) == d_id, (
+        "same ensemble -> identical decoders (deterministic)"
+    )
+    print(
+        f"self-check OK: represent x (RMSE {rmse_id:.3f}), compute x^2 (RMSE {rmse_sq:.3f}) from the same "
+        f"spikes; {small.n}-neuron pop worse ({rmse_small:.3f}); deterministic"
+    )
 
 
 if __name__ == "__main__":

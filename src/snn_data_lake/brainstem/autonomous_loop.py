@@ -21,6 +21,7 @@ arm. This is adaptive + GROWING, NOT cognition. The four modality streams here a
 
   python -m snn_data_lake.brainstem.autonomous_loop
 """
+
 import math
 import random
 
@@ -53,8 +54,8 @@ from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
-ACTIONS = ("GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD")   # the arm's autonomous action repertoire
-SAFE_ACTION = "HOLD"                                  # what caution biases toward under stress
+ACTIONS = ("GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD")  # the arm's autonomous action repertoire
+SAFE_ACTION = "HOLD"  # what caution biases toward under stress
 # W4c: self-motion step DERIVED from the chosen action (a real behavioral trajectory), not a constant drift.
 # Representation-only -- this feeds the allocentric MAP readout, never the actuator (the arm gate is separate).
 _ALLO_MOVE = {"GRIPPER_CLOSE": (0.05, 0.0), "GRIPPER_OPEN": (-0.05, 0.0), "HOLD": (0.0, 0.04)}
@@ -63,51 +64,87 @@ _ALLO_MOVE = {"GRIPPER_CLOSE": (0.05, 0.0), "GRIPPER_OPEN": (-0.05, 0.0), "HOLD"
 class AutonomousArm:
     """Grows units from multimodal context + learns context->action by reward; every motion gated."""
 
-    def __init__(self, lr=0.3, explore=0.15, seed=0, replay=False, replay_batch=16, bundle=None,
-                 workspace=False, amygdala=False, bg_gate=False, interoception=False,
-                 pfc=False, pfc_gain=0.5, lake_wm=False, lake_wm_path=None,
-                 jepa=False, jepa_horizon=4, hjepa_serve=None, curiosity=False, curiosity_gain=0.5,
-                 spiking_curiosity=False, empowerment=False, empowerment_gain=0.5, dopamine=False,
-                 latent_q=False, mlp_q=False, reward_shaped_encoder=False, reward_gain=5.0,
-                 salience_novelty=False, attention=False,
-                 affective_memory=False, agency_monitor=False, contrastive=False, develop_env=False,
-                 naca=False, allocentric=False, gain_adapt=False, vitals_hold=False, vitals_hold_gain=0.5):
+    def __init__(
+        self,
+        lr=0.3,
+        explore=0.15,
+        seed=0,
+        replay=False,
+        replay_batch=16,
+        bundle=None,
+        workspace=False,
+        amygdala=False,
+        bg_gate=False,
+        interoception=False,
+        pfc=False,
+        pfc_gain=0.5,
+        lake_wm=False,
+        lake_wm_path=None,
+        jepa=False,
+        jepa_horizon=4,
+        hjepa_serve=None,
+        curiosity=False,
+        curiosity_gain=0.5,
+        spiking_curiosity=False,
+        empowerment=False,
+        empowerment_gain=0.5,
+        dopamine=False,
+        latent_q=False,
+        mlp_q=False,
+        reward_shaped_encoder=False,
+        reward_gain=5.0,
+        salience_novelty=False,
+        attention=False,
+        affective_memory=False,
+        agency_monitor=False,
+        contrastive=False,
+        develop_env=False,
+        naca=False,
+        allocentric=False,
+        gain_adapt=False,
+        vitals_hold=False,
+        vitals_hold_gain=0.5,
+    ):
         self.arm = ArmSim()
         self._seed = seed
-        self.bundle = bundle              # optional BrainBundle of trained skills (perception, ...); additive
+        self.bundle = bundle  # optional BrainBundle of trained skills (perception, ...); additive
         self.learner = GrowingLearner()
         self.cort = Cortisol(tau=40.0)
-        self.q = {}                       # unit_id -> {action: value}; grows alongside the learner
+        self.q = {}  # unit_id -> {action: value}; grows alongside the learner
         self.lr = lr
         self.explore = explore
         self.rng = random.Random(seed)
-        self.replay = replay              # opt-in SWR consolidation; default OFF -> behaviour unchanged
+        self.replay = replay  # opt-in SWR consolidation; default OFF -> behaviour unchanged
         self.replay_batch = replay_batch
         self.buffer = ReplayBuffer(seed=seed) if replay else None
         # opt-in Global Workspace: brain regions compete for one slot + broadcast the winner each tick.
         # ADDITIVE + read-only -- it selects no action and never touches the reflex/E-STOP (see step()).
         self.workspace = GlobalWorkspace(seed=seed) if workspace else None
-        self._salience_on = bool(salience_novelty)   # opt-in bottom-up novelty salience -> a GWT competitor
-        self._sal_ema = None                          # running percept expectation (the habituation substrate)
-        self._novelty = 0.0                           # last bottom-up salience (deviance vs expectation)
+        self._salience_on = bool(
+            salience_novelty
+        )  # opt-in bottom-up novelty salience -> a GWT competitor
+        self._sal_ema = None  # running percept expectation (the habituation substrate)
+        self._novelty = 0.0  # last bottom-up salience (deviance vs expectation)
         # opt-in DOPAMINERGIC reward loop (gap #4): a spiking TD-RPE broadcast (midbrain VTA/SNc) with an
         # OPPONENT anti-reward channel (lateral habenula -> RMTg -> DA below baseline) driving a three-factor
         # DA-gated striatal valence learner. REPRESENTATION-ONLY: it learns an affective value over contexts
         # and broadcasts DA/RPE; it drives NO motion, adds no actuator route, and the reflex/E-STOP preempts.
         self._dopa_on = bool(dopamine)
-        self._dopa = self._lhb = self._valence = None   # lazily built on the first rewarded tick
-        self._da_level = 0.0                             # last phasic dopamine level in [0,1]
-        self._rpe = 0.0                                  # last reward-prediction error (the dopamine signal)
+        self._dopa = self._lhb = self._valence = None  # lazily built on the first rewarded tick
+        self._da_level = 0.0  # last phasic dopamine level in [0,1]
+        self._rpe = 0.0  # last reward-prediction error (the dopamine signal)
         # opt-in COVERT ATTENTION (gap #8): a spiking reticular (TRN) gate selects the salient modality
         # band, divisive normalization gives contrast constancy, and the claustrum binds co-active
         # modalities. READOUT-ONLY: it MEASURES attention over the percept and never masks the learner's
         # value input or the reflex -- the E-STOP path reads raw `distance` and is untouched.
         self._attn_on = bool(attention)
-        self._rgate = self._dnorm = self._claustrum = None   # lazily built on the first attended tick
-        self._attn_mask = []                             # per-modality relay gains (attended band released)
-        self._attn_gain = None                           # per-band multiplicative gain APPLIED to the learner's percept
-        self._attended = -1                              # index of the attended modality band
-        self._bound_modalities = 0                       # cross-modal assemblies the claustrum bound
+        self._rgate = self._dnorm = self._claustrum = (
+            None  # lazily built on the first attended tick
+        )
+        self._attn_mask = []  # per-modality relay gains (attended band released)
+        self._attn_gain = None  # per-band multiplicative gain APPLIED to the learner's percept
+        self._attended = -1  # index of the attended modality band
+        self._bound_modalities = 0  # cross-modal assemblies the claustrum bound
         # opt-in amygdala: a REAL learned threat detector (CS-US fear conditioning). Each reflex danger
         # event pairs the current context with the US, so the amygdala learns which live contexts
         # predict danger. ADDITIVE + CAUTION-ONLY -- a learned threat biases selection toward the safe
@@ -138,7 +175,7 @@ class AutonomousArm:
         # after the action is chosen, never touches the reflex/E-STOP path, and adds no actuator route.
         self._lake_wm_on = lake_wm
         self._lake_wm_path = lake_wm_path
-        self.lake_wm = None                                   # lazily sized on the first tick (needs len(pattern))
+        self.lake_wm = None  # lazily sized on the first tick (needs len(pattern))
         self._pattern_len = None
         self._tick_t = 0
         # opt-in JEPA latent world model: a learned encoder enc(context)->z + an action-conditioned latent
@@ -148,24 +185,32 @@ class AutonomousArm:
         # is the SAME top-down PREFERENCE (bounded by pfc_gain) fed to the SAME gated selection. ADDITIVE +
         # read-only to safety: it drives no motion and adds no actuator route; the reflex/E-STOP runs FIRST and
         # still preempts, and every motor command stays gated (see step()). Lazily sized on the first tick.
-        self._jepa_on = jepa or mlp_q or reward_shaped_encoder   # all three need the JEPA world model built
-        self._reward_shaped_encoder = reward_shaped_encoder      # task-align the JEPA encoder via observed reward
-        self._reward_gain = reward_gain                          # reward-shaping strength (lambda_reward); the few-context
+        self._jepa_on = (
+            jepa or mlp_q or reward_shaped_encoder
+        )  # all three need the JEPA world model built
+        self._reward_shaped_encoder = (
+            reward_shaped_encoder  # task-align the JEPA encoder via observed reward
+        )
+        self._reward_gain = reward_gain  # reward-shaping strength (lambda_reward); the few-context
         #                                                          arm regime needs a firm task pull -> default 5.0 recovers
         #                                                          the on-arm rule to 1.0 held-out (weaker pulls plateau ~0.83)
         self.jepa = None
-        self.jepa_horizon = max(1, min(4, int(jepa_horizon)))   # bounded rollout (the learned map can diverge)
-        self._z_goal = None                                     # reward-EMA of latents = the latent goal to plan toward
-        self._autotelic_goal_thresh = 0.02                      # min intrinsic reward that forms a latent goal (autotelic planning)
-        self._jepa_prev = None                                  # (prev pattern, prev action) for the online (z,a,z') update
+        self.jepa_horizon = max(
+            1, min(4, int(jepa_horizon))
+        )  # bounded rollout (the learned map can diverge)
+        self._z_goal = None  # reward-EMA of latents = the latent goal to plan toward
+        self._autotelic_goal_thresh = (
+            0.02  # min intrinsic reward that forms a latent goal (autotelic planning)
+        )
+        self._jepa_prev = None  # (prev pattern, prev action) for the online (z,a,z') update
         # opt-in SERVED H-JEPA: a GPU-trained 2-level hierarchical JEPA (cerebellum/hjepa_serve.HJepaServe, FROZEN).
         # The executive plans over the ABSTRACT (Level-1) latent: z0 = encode0(pattern) each tick fills a K-window,
         # z1 = encode1(window) is the abstract situation, and plan() rolls the L1 predictor over it. Like the online
         # jepa it ONLY biases the executive's goal (bounded by pfc_gain, gated) -- it drives no motion, adds no
         # actuator route, and the reflex/E-STOP runs first. Served/frozen: no online training in the loop.
         self.hjepa_serve = hjepa_serve
-        self._hj_window = []                                    # rolling K-window of Level-0 latents (feeds encode1)
-        self._z1_goal = None                                    # reward-EMA of the abstract Level-1 latent (plan goal)
+        self._hj_window = []  # rolling K-window of Level-0 latents (feeds encode1)
+        self._z1_goal = None  # reward-EMA of the abstract Level-1 latent (plan goal)
         # opt-in CURIOSITY (intrinsic motivation): the JEPA world-model prediction error becomes a
         # LEARNING-PROGRESS reward that drives SELF-DIRECTED exploration -- the arm learns even with NO external
         # reward, and it seeks learnable-novel contexts (not noise; learning-progress rejects the noisy-TV trap).
@@ -206,31 +251,42 @@ class AutonomousArm:
         self._contrast = None
         self._dev_on = bool(develop_env)
         self._dev = None
-        self._comp_ema = 0.0                                    # running task-competence EMA feeding the envelope
-        self._dev_explore = 0.0                                 # exposed developmental readouts (stored, never routed)
+        self._comp_ema = 0.0  # running task-competence EMA feeding the envelope
+        self._dev_explore = 0.0  # exposed developmental readouts (stored, never routed)
         self._dev_fm_gain = 0.0
-        self._dev_rng = random.Random(seed + 7)                 # task-selection rng for develop() (kept off step()'s rng)
+        self._dev_rng = random.Random(
+            seed + 7
+        )  # task-selection rng for develop() (kept off step()'s rng)
         # THREE MORE opt-in representation-only faculties (default False -> byte-identical brain). All feed
         # the value/annotation channel ONLY -- no actuator route: NACA (neuromodulator-gated credit on the
         # local reward delta), an allocentric spatial map (dead-reckons a landmark map from the percept
         # stream), and cerebellar gain adaptation (learns a feedforward gain estimate, NEVER applied to motion).
         self._naca_on = bool(naca)
         self._naca = None
-        self._naca_credit = 0.0                                 # neuromod-corrected credit readout
+        self._naca_credit = 0.0  # neuromod-corrected credit readout
         self._allo_on = bool(allocentric)
         self._allo = None
         self._allo_pos = None
-        self._allo_nearest = None                               # W4c: nearest recalled landmark (map now READ BACK, not telemetry-only)
-        self._allo_pos = (0.0, 0.0)                             # allocentric position estimate readout
+        self._allo_nearest = (
+            None  # W4c: nearest recalled landmark (map now READ BACK, not telemetry-only)
+        )
+        self._ext_drive = (
+            None  # W5: routed computed signals (novelty/salience) -> a bounded top-down drive
+        )
+        self._exec = None  # W8: ACC/EVC executive (lazily bound)
+        self._conflict = 0.0  # W8: ACC conflict over the competing action drives (readout)
+        self._control_gain = 0.0  # W9: EVC control gain -- scales the PFC top-down bias by conflict
+        self._allo_pos = (0.0, 0.0)  # allocentric position estimate readout
         self._gain_on = bool(gain_adapt)
         self._gain = None
-        self._motor_gain = 0.0                                  # adapted feedforward gain readout (never routed)
+        self._motor_gain = 0.0  # adapted feedforward gain readout (never routed)
         # OPT-IN Lake-Vitals reliability HOLD: high stream-drift ADDS caution toward SAFE_ACTION only (never
         # motion), computed AFTER the reflex/E-STOP early-return so it can never suppress or delay an E-STOP.
         # vitals_hold=False (default) -> _vitals None -> reliability_hold 0.0 -> step() is byte-identical.
         self._vitals_hold_gain = float(vitals_hold_gain)
         if vitals_hold:
             from snn_data_lake.substrate.stream_sketch_panel import StreamSketchPanel
+
             self._vitals = StreamSketchPanel(seed=seed)
         else:
             self._vitals = None
@@ -246,7 +302,7 @@ class AutonomousArm:
         # only changes HOW the action VALUE is computed -- the reflex/E-STOP runs first and every command still
         # flows through the gated ArmSim. Flag OFF => the tabular q path is byte-identical.
         self._latent_q_on = latent_q
-        self.latent_q = None                                    # lazily built on the first tick (sized to len(pattern))
+        self.latent_q = None  # lazily built on the first tick (sized to len(pattern))
         # opt-in SHARED NONLINEAR MLP-Q (the task-aligned learned substrate): a one-hidden-layer action-value
         # Q(z,a)=dot(W2[a], relu(W1@z+b1))+b2[a] over the SELF-SUPERVISED JEPA latent z=jepa.encode(pattern)
         # (basal_ganglia/mlp_q.MlpQ). Where the linear latent_q rides the raw lake pattern, this rides the LEARNED
@@ -260,18 +316,39 @@ class AutonomousArm:
         # safety: only changes HOW the value is computed; reflex/E-STOP first, every command still gated. Flag OFF
         # => the tabular/latent-Q path is byte-identical.
         self._mlp_q_on = mlp_q
-        self.mlp_q = None                                       # lazily built on the first tick (sized to the JEPA latent dim)
+        self.mlp_q = None  # lazily built on the first tick (sized to the JEPA latent dim)
+
+    def _route_signals(self, td):
+        """W5: fold the brain's ROUTED computed signals (an external top-down drive set from the OUTER loop --
+        real-perception novelty / workspace salience) into the per-action preference, so signals that
+        previously only COMPUTED now CHANGE behaviour. Representation-only: this is one more top-down
+        preference the SAME gated selection arbitrates -- the reflex/E-STOP still preempts (checked earlier in
+        step), the BG Go/NoGo caution still damps release, and the arm gate is untouched. Bounded + safe."""
+        ext = self._ext_drive
+        if not ext or len(ext) != len(td):
+            return td
+        return [td[i] + ext[i] for i in range(len(td))]
 
     def _select(self, unit, threat=0.0, intero=0.0, pfc_bias=None, qa=None, reliability_hold=0.0):
-        if qa is None:                                          # default = the tabular row; the latent-Q row is passed in
+        if qa is None:  # default = the tabular row; the latent-Q row is passed in
             qa = self.q[unit]
         if self.rng.random() < self.explore:
-            return self.rng.choice(ACTIONS)                     # exploration: cortical variability proposes
+            return self.rng.choice(ACTIONS)  # exploration: cortical variability proposes
         if self.bg is not None:
-            return self._bg_select(qa, threat, intero, pfc_bias, reliability_hold)  # BG Go/NoGo gate disinhibits the exploit choice
-        bias = self.cort.caution_bias() + threat + intero + reliability_hold   # stress + threat + intero + drift-hold -> favour safe
-        td = pfc_bias or [0.0] * len(ACTIONS)                   # prefrontal top-down preference per action
-        return max(ACTIONS, key=lambda a: qa[a] + (bias if a == SAFE_ACTION else 0.0) + td[ACTIONS.index(a)])
+            return self._bg_select(
+                qa, threat, intero, pfc_bias, reliability_hold
+            )  # BG Go/NoGo gate disinhibits the exploit choice
+        bias = (
+            self.cort.caution_bias() + threat + intero + reliability_hold
+        )  # stress + threat + intero + drift-hold -> favour safe
+        td = pfc_bias or [0.0] * len(ACTIONS)  # prefrontal top-down preference per action
+        td = self._route_signals(
+            td
+        )  # W5: + routed computed signals (novelty/salience) -> behaviour
+        return max(
+            ACTIONS,
+            key=lambda a: qa[a] + (bias if a == SAFE_ACTION else 0.0) + td[ACTIONS.index(a)],
+        )
 
     def _bg_select(self, qa, threat=0.0, intero=0.0, pfc_bias=None, reliability_hold=0.0):
         """Basal-ganglia Go/NoGo selection over the 3 actions. The action values are the per-channel
@@ -280,8 +357,25 @@ class AutonomousArm:
         channel; if the tonic GPi is never overcome (no drive / low DA) it releases NOTHING, which
         falls back to the safe action. Selection only ever picks among the SAME actions -- the gated
         arm is untouched and the reflex/E-STOP (checked earlier in step) still preempts it."""
-        td = pfc_bias or [0.0] * len(ACTIONS)                   # prefrontal top-down preference raises the goal action's drive
+        td = pfc_bias or [0.0] * len(
+            ACTIONS
+        )  # prefrontal top-down preference raises the goal action's drive
+        td = self._route_signals(
+            td
+        )  # W5: + routed computed signals (novelty/salience) -> behaviour
         drive = [max(0.0, qa[a]) + td[i] for i, a in enumerate(ACTIONS)]
+        if self._exec is None:  # W8: lazily bind the ACC executive
+            try:
+                from snn_data_lake.cortex.executive_control import ExecutiveControl
+
+                self._exec = ExecutiveControl(seed=self._seed)
+            except Exception:
+                self._exec = False
+        if self._exec:  # W8: ACC conflict readout over the competing drives (BG gate still selects)
+            try:
+                self._conflict = round(float(self._exec.conflict(drive)), 4)
+            except Exception:
+                pass
         caution = min(1.0, self.cort.caution_bias() + threat + intero + reliability_hold)
         da = max(0.0, min(1.0, max(drive) * (1.0 - caution)))
         res = self.bg.select(drive, da)
@@ -302,6 +396,7 @@ class AutonomousArm:
                 from snn_data_lake.claustrum.claustrum import Claustrum
                 from snn_data_lake.cortex.divisive_normalization import DivisiveNormalization
                 from snn_data_lake.thalamus.reticular_gate import ReticularGate
+
                 self._rgate = ReticularGate(n_channels=4, seed=self._seed)
                 self._dnorm = DivisiveNormalization()
                 self._claustrum = Claustrum(n_areas=4, seed=self._seed)
@@ -310,16 +405,26 @@ class AutonomousArm:
                 vals = x if isinstance(x, (list, tuple)) else [x]
                 vals = [abs(float(v)) for v in vals if v is not None]
                 return sum(vals) / len(vals) if vals else 0.0
+
             drives = [_energy(visual), _energy(temperature), _energy(audio), _energy(distance)]
-            norm = self._dnorm.normalize([max(0.0, d) for d in drives])   # contrast-constant bottom-up drives
-            attn = [n + 0.3 * self._novelty for n in norm]                # + top-down/novelty bias
-            mask = self._rgate.mask(attn)                                 # spiking TRN gate -> per-band gain (attended released)
+            norm = self._dnorm.normalize(
+                [max(0.0, d) for d in drives]
+            )  # contrast-constant bottom-up drives
+            attn = [n + 0.3 * self._novelty for n in norm]  # + top-down/novelty bias
+            mask = self._rgate.mask(attn)  # spiking TRN gate -> per-band gain (attended released)
             self._attn_mask = [round(float(m), 4) for m in mask]
             self._attended = int(max(range(len(mask)), key=lambda i: mask[i]))
-            mx = max(mask) if mask else 0.0                               # per-band gain APPLIED downstream: attended band
-            self._attn_gain = ([0.5 + 0.5 * (float(m) / mx) for m in mask]  # at full gain (1.0), unattended in [0.5,1.0)
-                               if mx > 0 else None)                        # biased competition, not a hard mask (no collapse)
-            trains = [[1 if norm[i] > 0.15 else 0] * 6 for i in range(4)]  # crude per-band activity raster
+            mx = max(mask) if mask else 0.0  # per-band gain APPLIED downstream: attended band
+            self._attn_gain = (
+                [
+                    0.5 + 0.5 * (float(m) / mx) for m in mask
+                ]  # at full gain (1.0), unattended in [0.5,1.0)
+                if mx > 0
+                else None
+            )  # biased competition, not a hard mask (no collapse)
+            trains = [
+                [1 if norm[i] > 0.15 else 0] * 6 for i in range(4)
+            ]  # crude per-band activity raster
             _ft, assemblies = self._claustrum.detect(trains)
             self._bound_modalities = len(self._claustrum.bound_areas(assemblies))
         except Exception:
@@ -327,13 +432,15 @@ class AutonomousArm:
 
     def _context_pattern(self, visual, temperature, audio, distance):
         """The multimodal context vector (the amygdala CS and the growing learner's percept)."""
-        return encode_multimodal(visual, temperature, audio, [distance] if distance is not None else None)
+        return encode_multimodal(
+            visual, temperature, audio, [distance] if distance is not None else None
+        )
 
     def _amygdala_for(self, pattern):
         """The amygdala sized to the current substrate, or None when opt-out."""
         if self.amyg is None:
             return None
-        if len(pattern) != self.amyg.n:                         # keep the detector sized to the substrate
+        if len(pattern) != self.amyg.n:  # keep the detector sized to the substrate
             self.amyg = Amygdala(seed=self._seed, n=len(pattern))
         return self.amyg
 
@@ -360,6 +467,21 @@ class AutonomousArm:
         no motion and adds no actuator route."""
         if self.pfc is None:
             return [0.0] * len(ACTIONS)
+        gain = self.pfc_gain
+        if self._exec:  # W9: EVC gates control by ACC conflict (closes the conflict->control loop)
+            try:
+                row0 = qa if qa is not None else self.q.get(unit, {})
+                vals = sorted(row0.values(), reverse=True) if row0 else []
+                stakes = (
+                    (vals[0] - vals[1]) if len(vals) > 1 else 0.5
+                )  # decision margin = value of resolving the conflict
+                ctl = self._exec.evc(self._conflict, value_gain=stakes + 0.3, cost=0.1)
+                gain = self.pfc_gain * (
+                    1.0 + ctl
+                )  # MORE top-down control when conflict is high AND worth it
+                self._control_gain = round(float(ctl), 4)
+            except Exception:
+                pass
         # (highest priority) SERVED H-JEPA: accumulate the Level-0 latent window and, once it is full and an
         # abstract goal has formed, the executive PLANS over the ABSTRACT (Level-1) latent (rolls the L1
         # predictor). The abstract latent summarises the recent K-tick situation, so the goal tracks the slow
@@ -374,18 +496,26 @@ class AutonomousArm:
 
                 def goal_value(z):
                     return -sum(abs(z[i] - zg[i]) for i in range(len(zg)))
+
                 self.pfc.plan(z1, ACTIONS, self.hjepa_serve, goal_value, horizon=self.jepa_horizon)
-                return self.pfc.top_down_bias(strength=self.pfc_gain)
+                return self.pfc.top_down_bias(strength=gain)
             # window still filling / no abstract goal yet -> fall through to the reactive bootstrap below
         if self.jepa is not None and self._z_goal is not None and pattern is not None:
             z = self.jepa.encode(pattern)
-            self.pfc.plan(z, ACTIONS, self.jepa, self.jepa.make_goal_value(self._z_goal),
-                          horizon=self.jepa_horizon)            # latent lookahead -> a working-memory goal
+            self.pfc.plan(
+                z,
+                ACTIONS,
+                self.jepa,
+                self.jepa.make_goal_value(self._z_goal),
+                horizon=self.jepa_horizon,
+            )  # latent lookahead -> a working-memory goal
         else:
-            row = qa if qa is not None else self.q[unit]        # the shared latent-Q row when on, else the tabular row
+            row = (
+                qa if qa is not None else self.q[unit]
+            )  # the shared latent-Q row when on, else the tabular row
             evidence = [max(0.0, row[a]) for a in ACTIONS]
-            self.pfc.update(evidence)                           # reactive gated deliberation -> a WM goal
-        return self.pfc.top_down_bias(strength=self.pfc_gain)
+            self.pfc.update(evidence)  # reactive gated deliberation -> a WM goal
+        return self.pfc.top_down_bias(strength=gain)
 
     def _lake_write(self, pattern, goal, action):
         """Store this tick in the lake working memory (opt-in). The active bits of the context pattern,
@@ -397,7 +527,9 @@ class AutonomousArm:
             return
         p, n_act = len(pattern), len(ACTIONS)
         if self.lake_wm is None:
-            self.lake_wm = LakeWorkingMemory(p + 2 * n_act, path=self._lake_wm_path, seed=self._seed)
+            self.lake_wm = LakeWorkingMemory(
+                p + 2 * n_act, path=self._lake_wm_path, seed=self._seed
+            )
             self._pattern_len = p
         active = [i for i, v in enumerate(pattern) if v]
         if goal is not None:
@@ -409,11 +541,11 @@ class AutonomousArm:
     def _percept_novelty(self, pattern):
         """Bottom-up salience: normalized L1 deviance of the percept from its running expectation (an
         EMA that HABITUATES to frequent stimuli), clamped to [0, 1]. A novel/deviant percept -> high; a
-        repeated stimulus pulls the EMA toward it -> the novelty decays (habituation). Pure stdlib,
-        deterministic. This is the stimulus-derived relevance signal the salience/RAS path was missing."""
+        repeated stimulus pulls the EMA toward it -> the novelty decays (habituation).
+        Deterministic. This is the stimulus-derived relevance signal the salience/RAS path was missing."""
         if self._sal_ema is None:
             self._sal_ema = list(pattern)
-            return 1.0                                          # the first percept is an onset -> maximally novel
+            return 1.0  # the first percept is an onset -> maximally novel
         n = max(1, len(pattern))
         dev = sum(abs(p - e) for p, e in zip(pattern, self._sal_ema)) / n
         self._sal_ema = [0.9 * e + 0.1 * p for e, p in zip(self._sal_ema, pattern)]
@@ -427,10 +559,12 @@ class AutonomousArm:
         if self.workspace is None:
             return None
         if percept is not None:
-            self.workspace.submit("perception", percept, 0.6)   # normally holds the slot when safe
+            self.workspace.submit("perception", percept, 0.6)  # normally holds the slot when safe
         self.workspace.submit("salience", "threat", threat_salience)
         if self._salience_on:
-            self.workspace.submit("salience", "novelty", self._novelty)   # bottom-up stimulus salience competes
+            self.workspace.submit(
+                "salience", "novelty", self._novelty
+            )  # bottom-up stimulus salience competes
         return self.workspace.step()
 
     @classmethod
@@ -447,8 +581,9 @@ class AutonomousArm:
         there is no bundle / no size-matching skill. Pure annotation -- it commands NO motion."""
         if self.bundle is None:
             return None
-        pattern = encode_multimodal(visual, temperature, audio,
-                                    [distance] if distance is not None else None)
+        pattern = encode_multimodal(
+            visual, temperature, audio, [distance] if distance is not None else None
+        )
         for name in ["vision", "perception", *self.bundle.skill_names()]:
             brain = self.bundle.skills.get(name)
             if brain is not None and brain["in"] == len(pattern):
@@ -460,11 +595,15 @@ class AutonomousArm:
         Contexts seen during training are familiar, so quantizing them here grows no new unit."""
         ok = 0
         for ctx, opt in tasks:
-            pat = self._context_pattern(ctx["visual"], ctx["temperature"], ctx["audio"], ctx["distance"])
-            if self.latent_q is not None:                       # shared LINEAR latent-Q: greedy over the lake pattern
+            pat = self._context_pattern(
+                ctx["visual"], ctx["temperature"], ctx["audio"], ctx["distance"]
+            )
+            if self.latent_q is not None:  # shared LINEAR latent-Q: greedy over the lake pattern
                 if self.latent_q.greedy(pat) == opt:
                     ok += 1
-            elif self.mlp_q is not None and self.jepa is not None:   # shared NONLINEAR MLP-Q: greedy over the JEPA latent
+            elif (
+                self.mlp_q is not None and self.jepa is not None
+            ):  # shared NONLINEAR MLP-Q: greedy over the JEPA latent
                 if self.mlp_q.greedy(self.jepa.encode(pat)) == opt:
                     ok += 1
             else:
@@ -496,10 +635,16 @@ class AutonomousArm:
                 if curriculum.observe(lp_sum / n if n else 0.0):
                     advanced = True
                     break
-            trace.append({"stage": s, "mastered": curriculum.mastered,
-                          "competence": self._competence(tasks), "advanced": advanced})
+            trace.append(
+                {
+                    "stage": s,
+                    "mastered": curriculum.mastered,
+                    "competence": self._competence(tasks),
+                    "advanced": advanced,
+                }
+            )
             if not advanced:
-                break                                           # stalled on this stage (never mastered) -> stop
+                break  # stalled on this stage (never mastered) -> stop
         return trace
 
     def step(self, visual, temperature, audio, distance, reward_fn=None, homeostatic_load=0.0):
@@ -507,34 +652,53 @@ class AutonomousArm:
         homeostatic_load (>=0) is the body's interoceptive load for the opt-in interoception path."""
         # 1. SAFETY FIRST: an object at the sensor trips the reflex -> gated EMERGENCY_STOP, no action
         if distance is not None and (not math.isfinite(distance) or distance < CONTACT):
-            self.cort.step(1.0)                                 # danger -> stress up (sharpens future response)
-            if math.isfinite(distance):                         # real contact (not a NaN fail-closed):
+            self.cort.step(1.0)  # danger -> stress up (sharpens future response)
+            if math.isfinite(distance):  # real contact (not a NaN fail-closed):
                 pat = self._context_pattern(visual, temperature, audio, distance)
                 am = self._amygdala_for(pat)
                 if am is not None:
-                    am.pair(pat)                                # US present: bind this context to threat
-            estop = self.arm.apply("EMERGENCY_STOP")            # ONLY path to motion -> gate holds
-            return {"unit": None, "action": "EMERGENCY_STOP", "reflex": True,
-                    "workspace": self._workspace_broadcast(None, 0.95),  # threat ignites (annotation only)
-                    "state": estop}
+                    am.pair(pat)  # US present: bind this context to threat
+            estop = self.arm.apply("EMERGENCY_STOP")  # ONLY path to motion -> gate holds
+            return {
+                "unit": None,
+                "action": "EMERGENCY_STOP",
+                "reflex": True,
+                "workspace": self._workspace_broadcast(
+                    None, 0.95
+                ),  # threat ignites (annotation only)
+                "state": estop,
+            }
         # 2. perceive -> grow a unit on a novel multimodal context
         pattern = self._context_pattern(visual, temperature, audio, distance)
-        if self._salience_on and self.workspace is not None:   # novelty's only consumer is the GWT competitor
-            self._novelty = self._percept_novelty(pattern)     # bottom-up salience updates each perceived tick
+        if (
+            self._salience_on and self.workspace is not None
+        ):  # novelty's only consumer is the GWT competitor
+            self._novelty = self._percept_novelty(
+                pattern
+            )  # bottom-up salience updates each perceived tick
         percept = pattern
-        if self._attn_on:                                      # covert attention: readout + APPLY to the LEARNER's percept
+        if self._attn_on:  # covert attention: readout + APPLY to the LEARNER's percept
             self._attend(visual, temperature, audio, distance)
-            if self._attn_gain:                                # biased competition: attended band at full gain, others in
-                g, nb = self._attn_gain, len(self._attn_gain)  # [0.5,1.0). threat/amygdala/reflex/E-STOP stay on RAW pattern.
-                per = max(1, len(pattern) // nb)               # cells per modality band (64/4)
-                percept = [min(1.0, pattern[i] * g[min(i // per, nb - 1)]) for i in range(len(pattern))]
+            if self._attn_gain:  # biased competition: attended band at full gain, others in
+                g, nb = (
+                    self._attn_gain,
+                    len(self._attn_gain),
+                )  # [0.5,1.0). threat/amygdala/reflex/E-STOP stay on RAW pattern.
+                per = max(1, len(pattern) // nb)  # cells per modality band (64/4)
+                percept = [
+                    min(1.0, pattern[i] * g[min(i // per, nb - 1)]) for i in range(len(pattern))
+                ]
         unit, grew = self.learner.observe(percept)
         if unit not in self.q:
-            self.q[unit] = dict.fromkeys(ACTIONS, 0.0)          # new unit -> its own row to learn
-        if self._jepa_on and self.jepa is None:                 # lazily sized on the first tick
-            self.jepa = JepaWorldModel(ACTIONS, in_dim=len(pattern), seed=self._seed,
-                                       reward_shaping=self._reward_shaped_encoder,   # opt-in task-aligning encoder
-                                       lambda_reward=self._reward_gain)              # firm task pull (inert unless shaping)
+            self.q[unit] = dict.fromkeys(ACTIONS, 0.0)  # new unit -> its own row to learn
+        if self._jepa_on and self.jepa is None:  # lazily sized on the first tick
+            self.jepa = JepaWorldModel(
+                ACTIONS,
+                in_dim=len(pattern),
+                seed=self._seed,
+                reward_shaping=self._reward_shaped_encoder,  # opt-in task-aligning encoder
+                lambda_reward=self._reward_gain,
+            )  # firm task pull (inert unless shaping)
         # value row: a SHARED value substrate, else the tabular per-context row. Two shared substrates (opt-in,
         # mutually exclusive): the LINEAR latent_q over the raw lake pattern, or the NONLINEAR mlp_q over the LEARNED
         # JEPA latent. qsub = the active substrate (None -> tabular); z_lq = its input at decision time (reused, so
@@ -544,82 +708,150 @@ class AutonomousArm:
         qa = self.q[unit]
         if self._latent_q_on:
             if self.latent_q is None:
-                self.latent_q = LatentQ(ACTIONS, len(pattern), seed=self._seed)  # shared LINEAR value over the lake pattern
-            qsub, z_lq = self.latent_q, percept                 # attended [0,1]^64 lake representation (task-linear, stable)
+                self.latent_q = LatentQ(
+                    ACTIONS, len(pattern), seed=self._seed
+                )  # shared LINEAR value over the lake pattern
+            qsub, z_lq = (
+                self.latent_q,
+                percept,
+            )  # attended [0,1]^64 lake representation (task-linear, stable)
         elif self._mlp_q_on and self.jepa is not None:
-            z_lq = self.jepa.encode(pattern)                    # the SELF-SUPERVISED JEPA latent (task IS in it -- see __init__)
+            z_lq = self.jepa.encode(
+                pattern
+            )  # the SELF-SUPERVISED JEPA latent (task IS in it -- see __init__)
             if self.mlp_q is None:
-                self.mlp_q = MlpQ(ACTIONS, len(z_lq), seed=self._seed)   # NONLINEAR head sized to the latent dim
+                self.mlp_q = MlpQ(
+                    ACTIONS, len(z_lq), seed=self._seed
+                )  # NONLINEAR head sized to the latent dim
             qsub = self.mlp_q
         if qsub is not None:
-            qa = qsub.values(z_lq)                              # shared value row -> generalizes across contexts
-        threat = self._threat(pattern)                          # learned amygdala threat for this context (0 if opt-out)
-        intero = self._interocept(homeostatic_load)             # interoceptive caution from homeostatic load (0 if opt-out)
-        pfc_bias = self._pfc_bias(unit, pattern, qa)           # prefrontal top-down goal preference over qa (latent-Q or tabular)
+            qa = qsub.values(z_lq)  # shared value row -> generalizes across contexts
+        threat = self._threat(pattern)  # learned amygdala threat for this context (0 if opt-out)
+        intero = self._interocept(
+            homeostatic_load
+        )  # interoceptive caution from homeostatic load (0 if opt-out)
+        pfc_bias = self._pfc_bias(
+            unit, pattern, qa
+        )  # prefrontal top-down goal preference over qa (latent-Q or tabular)
         # 3. CHOOSE (learned, not a fixed map) + ACT through the gated arm
         reliability_hold = 0.0
-        if self._vitals is not None:                            # OPT-IN Lake-Vitals: high drift -> add caution toward HOLD only
-            self._vitals.observe({"motif": frozenset(i for i, v in enumerate(pattern) if v >= 0.5),
-                                  "features": list(pattern)})
-            reliability_hold = self._vitals_hold_gain * self._vitals.drift_novelty()   # in [0, gain]; NEVER creates motion
-        action = self._select(unit, threat=threat, intero=intero, pfc_bias=pfc_bias, qa=qa,
-                              reliability_hold=reliability_hold)   # threat/intero caution + PFC bias + drift hold (SAFE_ACTION only)
-        state = self.arm.apply(action)                          # gated: frozen after E-STOP, collision-checked
-        goal_val = self.pfc.goal if self.pfc is not None else None   # the prefrontal working-memory goal
-        self._lake_write(pattern, goal_val, action)             # opt-in: store this tick in the lake working memory
+        if (
+            self._vitals is not None
+        ):  # OPT-IN Lake-Vitals: high drift -> add caution toward HOLD only
+            self._vitals.observe(
+                {
+                    "motif": frozenset(i for i, v in enumerate(pattern) if v >= 0.5),
+                    "features": list(pattern),
+                }
+            )
+            reliability_hold = (
+                self._vitals_hold_gain * self._vitals.drift_novelty()
+            )  # in [0, gain]; NEVER creates motion
+        action = self._select(
+            unit,
+            threat=threat,
+            intero=intero,
+            pfc_bias=pfc_bias,
+            qa=qa,
+            reliability_hold=reliability_hold,
+        )  # threat/intero caution + PFC bias + drift hold (SAFE_ACTION only)
+        state = self.arm.apply(action)  # gated: frozen after E-STOP, collision-checked
+        goal_val = (
+            self.pfc.goal if self.pfc is not None else None
+        )  # the prefrontal working-memory goal
+        self._lake_write(
+            pattern, goal_val, action
+        )  # opt-in: store this tick in the lake working memory
         # 4. reward -> RPE action-value update + cortisol. CURIOSITY (opt-in): the JEPA prediction error for
         #    the just-lived transition becomes a learning-progress INTRINSIC reward, so the arm learns EVEN
         #    WITHOUT an external reward (self-directed exploration). The intrinsic reward feeds the value update
         #    only -- no motor route, no stress; the reflex/E-STOP + caution still preempt.
         r_int = 0.0
-        r_ext_step = None                                   # this tick's EXTERNAL task reward (for reward-shaping the encoder); None if no task reward
+        r_ext_step = None  # this tick's EXTERNAL task reward (for reward-shaping the encoder); None if no task reward
         if self.curiosity is not None and self.jepa is not None and self._jepa_prev is not None:
             perr = self.jepa.prediction_error(self._jepa_prev[0], self._jepa_prev[1], pattern)
-            r_int = self.curiosity_gain * self.curiosity.intrinsic_reward(unit, perr)  # observes + rewards learning progress
+            r_int = self.curiosity_gain * self.curiosity.intrinsic_reward(
+                unit, perr
+            )  # observes + rewards learning progress
         if self._empower_on and self.jepa is not None:
-            if self.empower is None:                            # lazily bind the drive to the (now-built) JEPA forward model
+            if self.empower is None:  # lazily bind the drive to the (now-built) JEPA forward model
                 self.empower = Empowerment(self.jepa, ACTIONS, horizon=2, seed=self._seed)
-            r_int += self.empowerment_gain * self.empower.step_reward(self.jepa.encode(pattern))  # controllability gain
+            r_int += self.empowerment_gain * self.empower.step_reward(
+                self.jepa.encode(pattern)
+            )  # controllability gain
         if reward_fn is not None or r_int != 0.0:
             r_ext = reward_fn(unit, action) if reward_fn is not None else 0.0
             if reward_fn is not None:
-                r_ext_step = r_ext                          # a real task reward this tick -> shape the encoder toward it next update
-            r = r_ext + r_int                               # external task reward + intrinsic curiosity reward
+                r_ext_step = (
+                    r_ext  # a real task reward this tick -> shape the encoder toward it next update
+                )
+            r = r_ext + r_int  # external task reward + intrinsic curiosity reward
             if qsub is not None and z_lq is not None:
-                qsub.update(z_lq, action, r)                # SHARED substrate update (linear latent_q OR nonlinear mlp_q) -> transfer
+                qsub.update(
+                    z_lq, action, r
+                )  # SHARED substrate update (linear latent_q OR nonlinear mlp_q) -> transfer
             else:
-                self.q[unit][action] += self.lr * self.cort.learn_rate_scale(r) * (r - self.q[unit][action])
-            self.cort.step(max(0.0, -r_ext))                # stress from EXTERNAL negative reward only (curiosity is not stress)
-            if self._dopa_on:                               # DOPAMINERGIC RPE + opponent anti-reward (representation-only)
+                self.q[unit][action] += (
+                    self.lr * self.cort.learn_rate_scale(r) * (r - self.q[unit][action])
+                )
+            self.cort.step(
+                max(0.0, -r_ext)
+            )  # stress from EXTERNAL negative reward only (curiosity is not stress)
+            if self._dopa_on:  # DOPAMINERGIC RPE + opponent anti-reward (representation-only)
                 try:
-                    if self._valence is None:               # lazy build of the three spiking source nuclei
+                    if self._valence is None:  # lazy build of the three spiking source nuclei
                         from snn_data_lake.basal_ganglia.valence_stdp import ValenceLearner
                         from snn_data_lake.epithalamus.habenula import LateralHabenula
                         from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
+
                         self._dopa = DopamineNuclei(seed=self._seed)
                         self._lhb = LateralHabenula(seed=self._seed)
                         self._valence = ValenceLearner()
-                    pred = self._valence.valence(pattern)   # predicted affective value of this context (before learning)
-                    rpe = self._valence.learn(pattern, r)   # three-factor DA-gated STDP over the context -> the RPE
-                    da = self._dopa.da_level(rpe)           # phasic dopamine LEVEL (tonic baseline shifted by RPE; burst on +RPE)
-                    if rpe < 0.0:                           # OPPONENT: an LHb burst drives DA BELOW baseline (RMTg relay)
+                    pred = self._valence.valence(
+                        pattern
+                    )  # predicted affective value of this context (before learning)
+                    rpe = self._valence.learn(
+                        pattern, r
+                    )  # three-factor DA-gated STDP over the context -> the RPE
+                    da = self._dopa.da_level(
+                        rpe
+                    )  # phasic dopamine LEVEL (tonic baseline shifted by RPE; burst on +RPE)
+                    if rpe < 0.0:  # OPPONENT: an LHb burst drives DA BELOW baseline (RMTg relay)
                         da = self._lhb.dopamine(predicted=pred, received=r)
                     self._da_level, self._rpe = round(float(da), 4), round(float(rpe), 4)
                 except Exception:
                     pass
-            if reward_fn is not None:                       # the task-reward-only paths (replay + latent goals), unchanged
-                if self.replay and qsub is None:            # SWR consolidation: TABULAR value table ONLY, no motor command
+            if (
+                reward_fn is not None
+            ):  # the task-reward-only paths (replay + latent goals), unchanged
+                if (
+                    self.replay and qsub is None
+                ):  # SWR consolidation: TABULAR value table ONLY, no motor command
                     self.buffer.add(unit, action, r_ext)
-                    if not grew:                            # quiescent (familiar) tick -> replay past experience
+                    if not grew:  # quiescent (familiar) tick -> replay past experience
                         self.buffer.replay(self.q, self.lr, batch=self.replay_batch)
-                if self.jepa is not None and r_ext > 0.0:   # positive TASK reward -> move the latent goal here (EMA)
+                if (
+                    self.jepa is not None and r_ext > 0.0
+                ):  # positive TASK reward -> move the latent goal here (EMA)
                     zt = self.jepa.encode(pattern)
-                    self._z_goal = zt if self._z_goal is None else \
-                        [0.9 * g + 0.1 * z for g, z in zip(self._z_goal, zt)]
-                if self.hjepa_serve is not None and r_ext > 0.0 and len(self._hj_window) == self.hjepa_serve.K:
-                    z1t = self.hjepa_serve.encode1(self._hj_window)   # abstract latent at a rewarded tick -> the goal EMA
-                    self._z1_goal = z1t if self._z1_goal is None else \
-                        [0.9 * g + 0.1 * z for g, z in zip(self._z1_goal, z1t)]
+                    self._z_goal = (
+                        zt
+                        if self._z_goal is None
+                        else [0.9 * g + 0.1 * z for g, z in zip(self._z_goal, zt)]
+                    )
+                if (
+                    self.hjepa_serve is not None
+                    and r_ext > 0.0
+                    and len(self._hj_window) == self.hjepa_serve.K
+                ):
+                    z1t = self.hjepa_serve.encode1(
+                        self._hj_window
+                    )  # abstract latent at a rewarded tick -> the goal EMA
+                    self._z1_goal = (
+                        z1t
+                        if self._z1_goal is None
+                        else [0.9 * g + 0.1 * z for g, z in zip(self._z1_goal, z1t)]
+                    )
             elif self.jepa is not None and r_int > self._autotelic_goal_thresh:
                 # AUTOTELIC latent goal: with NO external task (reward_fn is None), a strong INTRINSIC reward
                 # (curiosity learning-progress + empowerment controllability) marks THIS latent as intrinsically
@@ -627,68 +859,120 @@ class AutonomousArm:
                 # learnable states. Deliberative lookahead now fires on the DEFAULT self-directed loop; this is
                 # value/annotation only -- no motor route (the reflex/E-STOP + caution gates still preempt).
                 zt = self.jepa.encode(pattern)
-                self._z_goal = zt if self._z_goal is None else \
-                    [0.9 * g + 0.1 * z for g, z in zip(self._z_goal, zt)]
+                self._z_goal = (
+                    zt
+                    if self._z_goal is None
+                    else [0.9 * g + 0.1 * z for g, z in zip(self._z_goal, zt)]
+                )
         # FOUR REPRESENTATION-ONLY DRIVES (opt-in): each observes this tick's already-computed locals
         # (threat / intero / r_int / r_ext_step / action / qa) and feeds the value/annotation channel only --
         # no actuator route, nothing here alters the action already gated above; the reflex/E-STOP preempted.
-        if (self._affmem_on or self._agency_on or self._contrast_on or self._dev_on
-                or self._naca_on or self._allo_on or self._gain_on):
-            rx = r_ext_step if r_ext_step is not None else 0.0  # this tick's EXTERNAL task reward (0.0 without a task)
-            qmax = max(qa.values()) if qa else 0.0              # peak of the value row (dict for tabular + shared substrates)
-            if self._affmem_on:                                 # emotion-tagged episodic retention of this tick's percept
+        if (
+            self._affmem_on
+            or self._agency_on
+            or self._contrast_on
+            or self._dev_on
+            or self._naca_on
+            or self._allo_on
+            or self._gain_on
+        ):
+            rx = (
+                r_ext_step if r_ext_step is not None else 0.0
+            )  # this tick's EXTERNAL task reward (0.0 without a task)
+            qmax = (
+                max(qa.values()) if qa else 0.0
+            )  # peak of the value row (dict for tabular + shared substrates)
+            if self._affmem_on:  # emotion-tagged episodic retention of this tick's percept
                 if self._affmem is None:
                     self._affmem = AffectiveEpisodicStore(capacity=256)
-                self._affmem.store(pattern, valence=math.tanh(r_int + rx), arousal=threat, reward=rx)
-            if self._agency_on:                                 # controllability of action -> realized value (sense of agency)
+                self._affmem.store(
+                    pattern, valence=math.tanh(r_int + rx), arousal=threat, reward=rx
+                )
+            if self._agency_on:  # controllability of action -> realized value (sense of agency)
                 if self._agency is None:
                     self._agency = AgencyMonitor(seed=self._seed)
                 self._agency.observe(action, cmd=qmax, fb=(rx if reward_fn is not None else r_int))
-            if self._contrast_on and reward_fn is not None:     # success-vs-failure context pooling (REAL task reward only)
+            if (
+                self._contrast_on and reward_fn is not None
+            ):  # success-vs-failure context pooling (REAL task reward only)
                 if self._contrast is None:
                     self._contrast = ContrastiveEpisodeAnalyzer(seed=self._seed)
                 self._contrast.record(rx > 0.0, {"threat": threat, "intero": intero, "qmax": qmax})
-            if self._dev_on:                                    # competence EMA -> maturity; readouts stored, never routed
+            if self._dev_on:  # competence EMA -> maturity; readouts stored, never routed
                 if self._dev is None:
                     self._dev = DevelopmentalEnvelope(seed=self._seed)
-                self._comp_ema = 0.98 * self._comp_ema + 0.02 * (1.0 if (reward_fn is not None and rx > 0.0) else 0.0)
+                self._comp_ema = 0.98 * self._comp_ema + 0.02 * (
+                    1.0 if (reward_fn is not None and rx > 0.0) else 0.0
+                )
                 self._dev.update(self._comp_ema)
-                self._dev_explore = self._dev.explore_noise      # exploration scale readout (NOT applied to _select)
-                self._dev_fm_gain = self._dev.forward_model_gain  # forward-model authority readout (NOT applied)
-            if self._naca_on:                                    # neuromodulator-gated credit on the local reward delta
+                self._dev_explore = (
+                    self._dev.explore_noise
+                )  # exploration scale readout (NOT applied to _select)
+                self._dev_fm_gain = (
+                    self._dev.forward_model_gain
+                )  # forward-model authority readout (NOT applied)
+            if self._naca_on:  # neuromodulator-gated credit on the local reward delta
                 if self._naca is None:
                     self._naca = NACABroadcast(n_syn=8, n_types=len(ACTIONS), seed=self._seed)
                 sig = ACTIONS.index(action) if action in ACTIONS else 0
-                corr = self._naca.modulate([r_int], self._naca.lam(sig))  # per-synapse delta list -> corrections
-                self._naca_credit = float(corr[0]) if corr else 0.0       # additive neuromod correction (readout)
-            if self._allo_on:                                    # allocentric landmark map dead-reckoned from the stream
+                corr = self._naca.modulate(
+                    [r_int], self._naca.lam(sig)
+                )  # per-synapse delta list -> corrections
+                self._naca_credit = (
+                    float(corr[0]) if corr else 0.0
+                )  # additive neuromod correction (readout)
+            if self._allo_on:  # allocentric landmark map dead-reckoned from the stream
                 if self._allo is None:
                     self._allo = AllocentricMap(seed=self._seed)
-                dx, dy = _ALLO_MOVE.get(action, (0.0, 0.0))       # W4c: self-motion DERIVED from the chosen action (not a constant)
-                self._allo.move(dx, dy)                           # path integration reflects the real behavioral trajectory
-                self._allo.observe(str(action), rel_x=intero, rel_y=threat, valence=math.tanh(r_int + rx))
-                self._allo_pos = self._allo.position              # allocentric position estimate (readout, no motion)
-                self._allo_nearest = self._allo.nearest(valence_pref=math.tanh(r_int + rx))  # W4c: READ BACK nearest landmark (map consumed)
-            if self._gain_on:                                    # cerebellar feedforward gain adaptation (NEVER applied)
+                dx, dy = _ALLO_MOVE.get(
+                    action, (0.0, 0.0)
+                )  # W4c: self-motion DERIVED from the chosen action (not a constant)
+                self._allo.move(dx, dy)  # path integration reflects the real behavioral trajectory
+                self._allo.observe(
+                    str(action), rel_x=intero, rel_y=threat, valence=math.tanh(r_int + rx)
+                )
+                self._allo_pos = (
+                    self._allo.position
+                )  # allocentric position estimate (readout, no motion)
+                self._allo_nearest = self._allo.nearest(
+                    valence_pref=math.tanh(r_int + rx)
+                )  # W4c: READ BACK nearest landmark (map consumed)
+            if self._gain_on:  # cerebellar feedforward gain adaptation (NEVER applied)
                 if self._gain is None:
                     self._gain = GainAdapter(seed=self._seed)
                 motor = 1.0 if action in ("GRIPPER_OPEN", "GRIPPER_CLOSE") else 0.0
-                _resp, _err, self._motor_gain = self._gain.step(motor, world_gain=qmax)  # learn a gain (readout only)
+                _resp, _err, self._motor_gain = self._gain.step(
+                    motor, world_gain=qmax
+                )  # learn a gain (readout only)
         # JEPA (opt-in): learn the latent world model ONLINE from the live (z_prev, a_prev, z_now) transition.
         # OFF the safety path -- after the gated action + lake write, drives no motion, adds no actuator route.
         if self.jepa is not None:
             if self._jepa_prev is not None:
-                pp, pa, pr = self._jepa_prev                     # (prev pattern, prev action, prev task reward or None)
-                self.jepa.train_step(pp, pa, pattern, reward=pr)   # SSL update (+ reward-shaping when pr is a task reward)
+                pp, pa, pr = (
+                    self._jepa_prev
+                )  # (prev pattern, prev action, prev task reward or None)
+                self.jepa.train_step(
+                    pp, pa, pattern, reward=pr
+                )  # SSL update (+ reward-shaping when pr is a task reward)
             self._jepa_prev = (pattern, action, r_ext_step)
         # workspace: perception (the current unit) competes with the amygdala's threat salience (the
         # REAL learned threat when the amygdala is wired in, else a low background constant) -> broadcast.
         salience = threat if self.amyg is not None else 0.2
-        broadcast = self._workspace_broadcast(unit, salience)   # additive annotation; drives no motion
-        return {"unit": unit, "grew": grew, "action": action, "reflex": False,
-                "threat": threat, "intero": intero, "goal": goal_val,
-                "wm_events": (self.lake_wm.n_events() if self.lake_wm is not None else 0),
-                "workspace": broadcast, "state": state}
+        broadcast = self._workspace_broadcast(
+            unit, salience
+        )  # additive annotation; drives no motion
+        return {
+            "unit": unit,
+            "grew": grew,
+            "action": action,
+            "reflex": False,
+            "threat": threat,
+            "intero": intero,
+            "goal": goal_val,
+            "wm_events": (self.lake_wm.n_events() if self.lake_wm is not None else 0),
+            "workspace": broadcast,
+            "state": state,
+        }
 
 
 def _ctx(v, tmp, au, d):
@@ -700,6 +984,7 @@ def _tiny_hjepa(path, in_dim, k, l0, l1, actions, seed):
     served-H-JEPA WIRING + safety deterministically. NOT a trained model (the real GPU-trained arm H-JEPA is
     research/hjepa_arm_torch.py); the wiring/safety is what CI covers here."""
     import json as _json
+
     rng = random.Random(seed)
     n = len(actions)
 
@@ -707,14 +992,25 @@ def _tiny_hjepa(path, in_dim, k, l0, l1, actions, seed):
         return [[rng.uniform(-0.3, 0.3) for _ in range(i)] for _ in range(o)]
 
     def _enc(i, o):
-        return [[_lin(o, i), [0.0] * o]]                    # one Linear layer (in -> out); a valid minimal MLP
+        return [[_lin(o, i), [0.0] * o]]  # one Linear layer (in -> out); a valid minimal MLP
+
     obj = {
-        "format": "snn_hjepa/1", "in_dim": in_dim, "K": k, "latent0": l0, "latent1": l1,
-        "fine_actions": list(actions), "coarse_actions": list(actions), "tau": 0.99,
-        "enc0": _enc(in_dim, l0), "enc1": _enc(l0, l1),
-        "enc0_target": _enc(in_dim, l0), "enc1_target": _enc(l0, l1),
-        "pred0": _enc(l0 + n, l0), "pred1": _enc(l1 + n, l1),
-        "predictors": {"pred0": "residual_mlp_unit", "pred1": "mlp_unit"}, "meta": {},
+        "format": "snn_hjepa/1",
+        "in_dim": in_dim,
+        "K": k,
+        "latent0": l0,
+        "latent1": l1,
+        "fine_actions": list(actions),
+        "coarse_actions": list(actions),
+        "tau": 0.99,
+        "enc0": _enc(in_dim, l0),
+        "enc1": _enc(l0, l1),
+        "enc0_target": _enc(in_dim, l0),
+        "enc1_target": _enc(l0, l1),
+        "pred0": _enc(l0 + n, l0),
+        "pred1": _enc(l1 + n, l1),
+        "predictors": {"pred0": "residual_mlp_unit", "pred1": "mlp_unit"},
+        "meta": {},
     }
     with open(path, "w", encoding="ascii") as f:
         _json.dump(obj, f)
@@ -722,7 +1018,7 @@ def _tiny_hjepa(path, in_dim, k, l0, l1, actions, seed):
 
 def main():
     safe_d, danger_d = CONTACT * 3.0, CONTACT * 0.5
-    a = _ctx(0.9, 0.1, 0.1, safe_d)          # three DISTINCT multimodal contexts (differ per band)
+    a = _ctx(0.9, 0.1, 0.1, safe_d)  # three DISTINCT multimodal contexts (differ per band)
     b = _ctx(0.1, 0.9, 0.1, safe_d)
     c = _ctx(0.1, 0.1, 0.9, safe_d)
 
@@ -735,8 +1031,10 @@ def main():
 
     # 2. LEARNING: reward GRIPPER_OPEN (NOT the tie-break default) in context a -> policy overrides to it
     learn = AutonomousArm(seed=1)
+
     def reward(unit, action):
         return 1.0 if action == "GRIPPER_OPEN" else -1.0
+
     default_before = learn.step(**a)["action"] or "GRIPPER_CLOSE"
     last = None
     for _ in range(90):
@@ -748,13 +1046,15 @@ def main():
     ev = guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     stopped = guard.arm.state()["stopped"]
     ee_frozen = guard.arm.state()["ee"]
-    guard.step(**a)                                            # a learned action after E-STOP
+    guard.step(**a)  # a learned action after E-STOP
     still_frozen = guard.arm.state()["stopped"] and guard.arm.state()["ee"] == ee_frozen
 
     # 5. DETERMINISM
     def run(seed):
         bot = AutonomousArm(seed=seed)
-        return [bot.step(**ctx)["action"] for _ in range(3) for ctx in (a, b, c)], bot.learner.n_units
+        return [
+            bot.step(**ctx)["action"] for _ in range(3) for ctx in (a, b, c)
+        ], bot.learner.n_units
 
     # 6. REPLAY (opt-in SWR consolidation): sample-efficient value learning, safety intact.
     def ticks_to_open_margin(replay, target=1.2):
@@ -765,13 +1065,14 @@ def main():
             if row["GRIPPER_OPEN"] - max(row["GRIPPER_CLOSE"], row["HOLD"]) >= target:
                 return t
         return 200
+
     live_ticks = ticks_to_open_margin(replay=False)
     replay_ticks = ticks_to_open_margin(replay=True)
 
-    rguard = AutonomousArm(seed=2, replay=True)                 # danger, then a rewarded action, replay ON
+    rguard = AutonomousArm(seed=2, replay=True)  # danger, then a rewarded action, replay ON
     rev = rguard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     ree = rguard.arm.state()["ee"]
-    rguard.step(**a, reward_fn=reward)                          # replay-eligible tick after the E-STOP
+    rguard.step(**a, reward_fn=reward)  # replay-eligible tick after the E-STOP
     replay_frozen = rguard.arm.state()["stopped"] and rguard.arm.state()["ee"] == ree
 
     def run_replay(seed):
@@ -780,75 +1081,119 @@ def main():
 
     # 7. BUNDLE: enclose a trained perception skill in the loop (additive; the safety gate is untouched)
     from snn_data_lake.cortex.trained_brain import make_brain
+
     _wp = [[1.0 if i < 32 else 0.0 for i in range(64)], [0.0 if i < 32 else 1.0 for i in range(64)]]
     bundled = AutonomousArm.from_bundle(
-        BrainBundle({"vision": make_brain([_wp], steps=8)},
-                    {"reflex": True, "cortisol": True}, {"pid": True}), seed=0)
+        BrainBundle(
+            {"vision": make_brain([_wp], steps=8)},
+            {"reflex": True, "cortisol": True},
+            {"pid": True},
+        ),
+        seed=0,
+    )
     bclass = bundled.perceive(**a)
-    bundle_ev = bundled.step(**_ctx(0.5, 0.5, 0.5, danger_d))     # danger must still E-STOP with a bundle
+    bundle_ev = bundled.step(
+        **_ctx(0.5, 0.5, 0.5, danger_d)
+    )  # danger must still E-STOP with a bundle
     bundle_safe = bundle_ev["action"] == "EMERGENCY_STOP" and bundle_ev["reflex"]
 
     # 8. WORKSPACE: an opt-in Global Workspace runs live in the loop -- regions compete + broadcast.
     wsa = AutonomousArm(seed=0, workspace=True)
-    ws_safe = wsa.step(**a)["workspace"]                          # safe tick: perception holds the slot
-    ws_danger = wsa.step(**_ctx(0.5, 0.5, 0.5, danger_d))["workspace"]   # danger: threat ignites + broadcasts
+    ws_safe = wsa.step(**a)["workspace"]  # safe tick: perception holds the slot
+    ws_danger = wsa.step(**_ctx(0.5, 0.5, 0.5, danger_d))[
+        "workspace"
+    ]  # danger: threat ignites + broadcasts
     ws_frozen = wsa.arm.state()["stopped"]
-    ws_off = AutonomousArm(seed=0).step(**a)["workspace"]         # opt-in: a default arm broadcasts nothing
+    ws_off = AutonomousArm(seed=0).step(**a)[
+        "workspace"
+    ]  # opt-in: a default arm broadcasts nothing
 
     print("=" * 62)
     print("AUTONOMOUS ARM — grows from multimodal data + learns actions, safely")
     print("=" * 62)
     print(f"growth      : 3 distinct multimodal contexts -> {grew_to} grown units")
-    print(f"learning    : rewarded GRIPPER_OPEN -> policy went {default_before} -> {learned} (learned, not fixed)")
-    print(f"safety      : object at sensor -> {ev['action']} (reflex={ev['reflex']}), arm stopped={stopped}; "
-          f"post-STOP action frozen={still_frozen}")
-    print(f"replay      : SWR consolidation -> decisive value in {replay_ticks} live ticks vs {live_ticks} "
-          f"(value table only; safety gate holds with replay={replay_frozen})")
-    print(f"bundle      : from_bundle(vision skill) -> perceived class {bclass} (additive perception); "
-          f"safety gate holds with a bundle (E-STOP={bundle_safe})")
-    print(f"workspace   : Global Workspace live in the loop -> safe broadcasts {ws_safe!r}, danger "
-          f"ignites {ws_danger!r}; E-STOP freeze holds with it active ({ws_frozen})")
+    print(
+        f"learning    : rewarded GRIPPER_OPEN -> policy went {default_before} -> {learned} (learned, not fixed)"
+    )
+    print(
+        f"safety      : object at sensor -> {ev['action']} (reflex={ev['reflex']}), arm stopped={stopped}; "
+        f"post-STOP action frozen={still_frozen}"
+    )
+    print(
+        f"replay      : SWR consolidation -> decisive value in {replay_ticks} live ticks vs {live_ticks} "
+        f"(value table only; safety gate holds with replay={replay_frozen})"
+    )
+    print(
+        f"bundle      : from_bundle(vision skill) -> perceived class {bclass} (additive perception); "
+        f"safety gate holds with a bundle (E-STOP={bundle_safe})"
+    )
+    print(
+        f"workspace   : Global Workspace live in the loop -> safe broadcasts {ws_safe!r}, danger "
+        f"ignites {ws_danger!r}; E-STOP freeze holds with it active ({ws_frozen})"
+    )
     print("=" * 62)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert grew_to == 3, f"must grow one unit per distinct multimodal context ({grew_to})"
-    assert ev["action"] == "EMERGENCY_STOP" and ev["reflex"], "danger must trip the reflex E-STOP before any action"
+    assert ev["action"] == "EMERGENCY_STOP" and ev["reflex"], (
+        "danger must trip the reflex E-STOP before any action"
+    )
     assert stopped, "E-STOP must freeze the arm"
-    assert still_frozen, "a learned action after E-STOP must NOT move the arm (safety gate holds through the loop)"
+    assert still_frozen, (
+        "a learned action after E-STOP must NOT move the arm (safety gate holds through the loop)"
+    )
     # audit P1: a NaN distance must FAIL CLOSED (reflex E-STOP), not slip past `distance < CONTACT`
     nanguard = AutonomousArm(seed=9)
     nev = nanguard.step(**_ctx(0.5, 0.5, 0.5, float("nan")))
-    assert nev["action"] == "EMERGENCY_STOP" and nev["reflex"], "NaN distance must trip the E-STOP (fail-closed)"
+    assert nev["action"] == "EMERGENCY_STOP" and nev["reflex"], (
+        "NaN distance must trip the E-STOP (fail-closed)"
+    )
     # bundle: perception is ADDITIVE (a bundle-equipped arm perceives; a bare arm does not) and the
     # safety gate is untouched by enclosing a trained-skill bundle in the loop.
-    assert bclass in (0, 1) and bclass == bundled.perceive(**a), "bundle perceive -> a deterministic valid class"
-    assert AutonomousArm(seed=0).perceive(**a) is None, "a bundle-less arm perceives nothing (additive, opt-in)"
+    assert bclass in (0, 1) and bclass == bundled.perceive(**a), (
+        "bundle perceive -> a deterministic valid class"
+    )
+    assert AutonomousArm(seed=0).perceive(**a) is None, (
+        "a bundle-less arm perceives nothing (additive, opt-in)"
+    )
     assert bundle_safe, "safety E-STOP must hold with a trained-skill bundle enclosed in the loop"
-    assert bundled.bundle.has_instinct("reflex") and bundled.bundle.has_motor("pid"), "bundle wires instinct/motor flags"
+    assert bundled.bundle.has_instinct("reflex") and bundled.bundle.has_motor("pid"), (
+        "bundle wires instinct/motor flags"
+    )
     # workspace: opt-in + additive; a proximity threat ignites + is broadcast, and the E-STOP freeze
     # STILL holds with the Global Workspace active (it annotates, it never selects or gates motion).
     assert ws_off is None, "the Global Workspace is opt-in (a default arm broadcasts nothing)"
     assert ws_safe is not None, "with a workspace, a safe tick broadcasts the current percept"
     assert ws_danger == "threat", "a proximity threat must ignite + be broadcast by the workspace"
-    assert ws_frozen, "the E-STOP freeze must hold with the Global Workspace active (additive, gate untouched)"
-    assert learned == "GRIPPER_OPEN", f"the arm must LEARN the rewarded action, not use a fixed map ({learned})"
+    assert ws_frozen, (
+        "the E-STOP freeze must hold with the Global Workspace active (additive, gate untouched)"
+    )
+    assert learned == "GRIPPER_OPEN", (
+        f"the arm must LEARN the rewarded action, not use a fixed map ({learned})"
+    )
     assert run(7) == run(7), "same seed -> identical autonomous behaviour (deterministic)"
     # replay (opt-in SWR) is sample-efficient AND safety-preserving:
-    assert replay_ticks < live_ticks, f"replay must learn in fewer live ticks ({replay_ticks} vs {live_ticks})"
-    assert rev["action"] == "EMERGENCY_STOP" and rev["reflex"], "danger must E-STOP even with replay on"
-    assert replay_frozen, "replay must NOT move the E-STOP-frozen arm (safety gate holds with replay)"
+    assert replay_ticks < live_ticks, (
+        f"replay must learn in fewer live ticks ({replay_ticks} vs {live_ticks})"
+    )
+    assert rev["action"] == "EMERGENCY_STOP" and rev["reflex"], (
+        "danger must E-STOP even with replay on"
+    )
+    assert replay_frozen, (
+        "replay must NOT move the E-STOP-frozen arm (safety gate holds with replay)"
+    )
     assert run_replay(11) == run_replay(11), "replay path must be deterministic"
 
     # 9. AMYGDALA wired live: a REAL learned threat detector. Repeated danger in one context teaches
     #    threat for THAT context; a never-dangerous context stays safe (discrimination). Caution-only.
     amy = AutonomousArm(seed=0, amygdala=True)
-    danger_ctx = _ctx(0.2, 0.8, 0.3, danger_d)                 # this context co-occurs with danger
-    safe_ctx = _ctx(0.9, 0.1, 0.1, safe_d)                     # this one never does
+    danger_ctx = _ctx(0.2, 0.8, 0.3, danger_d)  # this context co-occurs with danger
+    safe_ctx = _ctx(0.9, 0.1, 0.1, safe_d)  # this one never does
     for _ in range(12):
-        amy.step(**danger_ctx)                                 # each danger tick pairs the context with the US
+        amy.step(**danger_ctx)  # each danger tick pairs the context with the US
     threat_danger = amy._threat(amy._context_pattern(**danger_ctx))
     threat_safe = amy._threat(amy._context_pattern(**safe_ctx))
-    amy_guard = AutonomousArm(seed=2, amygdala=True)           # the safety envelope must hold with it on
+    amy_guard = AutonomousArm(seed=2, amygdala=True)  # the safety envelope must hold with it on
     amy_ev = amy_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     amy_frozen0 = amy_guard.arm.state()["stopped"]
     amy_guard.step(**safe_ctx)
@@ -859,108 +1204,157 @@ def main():
     bg = AutonomousArm(seed=1, bg_gate=True)
     last_bg = None
     for _ in range(90):
-        last_bg = bg.step(**a, reward_fn=reward)               # reward GRIPPER_OPEN
+        last_bg = bg.step(**a, reward_fn=reward)  # reward GRIPPER_OPEN
     bg_released = bg._bg_select(bg.q[last_bg["unit"]])
     bg_null = AutonomousArm(seed=3, bg_gate=True)._bg_select(dict.fromkeys(ACTIONS, 0.0))
-    bg_guard = AutonomousArm(seed=2, bg_gate=True)             # the safety envelope must hold with it on
+    bg_guard = AutonomousArm(seed=2, bg_gate=True)  # the safety envelope must hold with it on
     bg_ev = bg_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     bg_guard.step(**a)
     bg_frozen = bg_guard.arm.state()["stopped"]
 
-    def run_wired(seed):                                       # both paths together must be deterministic
+    def run_wired(seed):  # both paths together must be deterministic
         bot = AutonomousArm(seed=seed, amygdala=True, bg_gate=True)
         return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
 
-    print(f"amygdala    : learned threat for the danger context {threat_danger:.2f} vs the safe "
-          f"context {threat_safe:.2f} (discriminated); E-STOP freeze holds with it on ({amy_frozen1})")
-    print(f"bg gate     : reward -> the gate releases {bg_released}; no value drive -> releases "
-          f"{bg_null} (no spurious motion); E-STOP freeze holds with it on ({bg_frozen})")
+    print(
+        f"amygdala    : learned threat for the danger context {threat_danger:.2f} vs the safe "
+        f"context {threat_safe:.2f} (discriminated); E-STOP freeze holds with it on ({amy_frozen1})"
+    )
+    print(
+        f"bg gate     : reward -> the gate releases {bg_released}; no value drive -> releases "
+        f"{bg_null} (no spurious motion); E-STOP freeze holds with it on ({bg_frozen})"
+    )
     print("=" * 62)
 
     # amygdala + BG gate are opt-in; a default arm is byte-for-byte the old behaviour.
-    assert AutonomousArm(seed=0).amyg is None and AutonomousArm(seed=0).bg is None, \
+    assert AutonomousArm(seed=0).amyg is None and AutonomousArm(seed=0).bg is None, (
         "the amygdala and the BG gate are opt-in (a default arm has neither)"
+    )
     # amygdala: learns a REAL threat, discriminates, and never weakens the safety envelope.
-    assert threat_danger > 0.30, f"the amygdala must LEARN threat for the danger context ({threat_danger:.2f})"
-    assert threat_danger > threat_safe + 0.20, \
+    assert threat_danger > 0.30, (
+        f"the amygdala must LEARN threat for the danger context ({threat_danger:.2f})"
+    )
+    assert threat_danger > threat_safe + 0.20, (
         f"the amygdala must DISCRIMINATE danger from safe ({threat_danger:.2f} vs {threat_safe:.2f})"
-    assert amy_ev["action"] == "EMERGENCY_STOP" and amy_ev["reflex"], "danger must E-STOP with the amygdala on"
-    assert amy_frozen0 and amy_frozen1, "the E-STOP freeze must hold with the amygdala wired in (caution-only)"
+    )
+    assert amy_ev["action"] == "EMERGENCY_STOP" and amy_ev["reflex"], (
+        "danger must E-STOP with the amygdala on"
+    )
+    assert amy_frozen0 and amy_frozen1, (
+        "the E-STOP freeze must hold with the amygdala wired in (caution-only)"
+    )
     # BG gate: selects the learned action, releases nothing without drive, safety envelope intact.
-    assert bg.greedy(last_bg["unit"]) == "GRIPPER_OPEN", "a BG-gated arm must still learn the rewarded action"
+    assert bg.greedy(last_bg["unit"]) == "GRIPPER_OPEN", (
+        "a BG-gated arm must still learn the rewarded action"
+    )
     assert bg_released == "GRIPPER_OPEN", "the BG gate must release the learned high-value action"
-    assert bg_null == SAFE_ACTION, "no value drive -> the BG gate releases nothing -> the safe action (HOLD)"
-    assert bg_ev["action"] == "EMERGENCY_STOP" and bg_ev["reflex"], "danger must E-STOP with the BG gate on"
+    assert bg_null == SAFE_ACTION, (
+        "no value drive -> the BG gate releases nothing -> the safe action (HOLD)"
+    )
+    assert bg_ev["action"] == "EMERGENCY_STOP" and bg_ev["reflex"], (
+        "danger must E-STOP with the BG gate on"
+    )
     assert bg_frozen, "the E-STOP freeze must hold with the BG gate wired in"
     assert run_wired(5) == run_wired(5), "the amygdala + BG-gate path must be deterministic"
 
     # 11. INTEROCEPTION wired live: the body's homeostatic load raises a bounded interoceptive caution
     #     that biases selection toward the safe action -- caution-only, never a new actuator route.
     io = AutonomousArm(seed=1, interoception=True)
-    io.explore = 0.0                                           # isolate the bias (no exploration noise)
-    io.q[0] = {"GRIPPER_CLOSE": 0.05, "GRIPPER_OPEN": 0.0, "HOLD": 0.0}   # a mild non-safe preference
-    io_calm = io._interocept(0.0)                              # homeostasis -> ~no caution
-    io_stress = io._interocept(1.5)                            # heavy homeostatic load -> strong caution
-    pick_calm = io._select(0, intero=io_calm)                  # no load -> keep the mild non-safe preference
-    pick_stress = io._select(0, intero=io_stress)             # heavy load -> override toward the safe action
-    io_guard = AutonomousArm(seed=2, interoception=True)       # the safety envelope must hold with it on
+    io.explore = 0.0  # isolate the bias (no exploration noise)
+    io.q[0] = {
+        "GRIPPER_CLOSE": 0.05,
+        "GRIPPER_OPEN": 0.0,
+        "HOLD": 0.0,
+    }  # a mild non-safe preference
+    io_calm = io._interocept(0.0)  # homeostasis -> ~no caution
+    io_stress = io._interocept(1.5)  # heavy homeostatic load -> strong caution
+    pick_calm = io._select(0, intero=io_calm)  # no load -> keep the mild non-safe preference
+    pick_stress = io._select(0, intero=io_stress)  # heavy load -> override toward the safe action
+    io_guard = AutonomousArm(seed=2, interoception=True)  # the safety envelope must hold with it on
     io_ev = io_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d), homeostatic_load=1.5)
     io_frozen0 = io_guard.arm.state()["stopped"]
-    io_guard.step(**a, homeostatic_load=1.5)                   # an action under load after the E-STOP
+    io_guard.step(**a, homeostatic_load=1.5)  # an action under load after the E-STOP
     io_frozen1 = io_guard.arm.state()["stopped"]
 
     def run_io(seed):
         bot = AutonomousArm(seed=seed, interoception=True)
-        return [bot.step(**ctx, homeostatic_load=0.8)["action"] for _ in range(6) for ctx in (a, b, c)]
+        return [
+            bot.step(**ctx, homeostatic_load=0.8)["action"] for _ in range(6) for ctx in (a, b, c)
+        ]
 
-    print(f"interocept  : homeostatic load -> caution {io_calm:.2f} (calm) vs {io_stress:.2f} (stressed); "
-          f"mild-preference tie {pick_calm} -> {pick_stress} under load (safe bias); "
-          f"E-STOP freeze holds with it on ({io_frozen1})")
+    print(
+        f"interocept  : homeostatic load -> caution {io_calm:.2f} (calm) vs {io_stress:.2f} (stressed); "
+        f"mild-preference tie {pick_calm} -> {pick_stress} under load (safe bias); "
+        f"E-STOP freeze holds with it on ({io_frozen1})"
+    )
     print("=" * 62)
 
     # interoception is opt-in; a default arm is byte-for-byte the old behaviour.
     assert AutonomousArm(seed=0).intero is None, "interoception is opt-in (a default arm has none)"
     # a homeostatic load raises the bounded caution and overrides a mild non-safe preference toward the safe action.
-    assert io_stress > io_calm + 0.10, f"a homeostatic load must raise interoceptive caution ({io_stress:.2f} vs {io_calm:.2f})"
-    assert pick_calm != SAFE_ACTION and pick_stress == SAFE_ACTION, \
+    assert io_stress > io_calm + 0.10, (
+        f"a homeostatic load must raise interoceptive caution ({io_stress:.2f} vs {io_calm:.2f})"
+    )
+    assert pick_calm != SAFE_ACTION and pick_stress == SAFE_ACTION, (
         "interoceptive stress must override a mild non-safe preference toward the safe action (caution-only)"
+    )
     # the safety envelope holds with interoception wired in.
-    assert io_ev["action"] == "EMERGENCY_STOP" and io_ev["reflex"], "danger must E-STOP with interoception on"
-    assert io_frozen0 and io_frozen1, "the E-STOP freeze must hold with interoception wired in (caution-only)"
+    assert io_ev["action"] == "EMERGENCY_STOP" and io_ev["reflex"], (
+        "danger must E-STOP with interoception on"
+    )
+    assert io_frozen0 and io_frozen1, (
+        "the E-STOP freeze must hold with interoception wired in (caution-only)"
+    )
     assert run_io(5) == run_io(5), "the interoception path must be deterministic"
 
     # 12. PREFRONTAL EXECUTIVE wired live: it deliberates over the action-values, commits a GOAL to
     #     working memory, and top-down-biases selection toward it -- goal-directed, caution-safe.
     pf = AutonomousArm(seed=1, pfc=True)
     for _ in range(90):
-        pf.step(**a, reward_fn=reward)                          # reward GRIPPER_OPEN
-    pfc_goal = pf.pfc.goal                                      # the executive's held working-memory goal
+        pf.step(**a, reward_fn=reward)  # reward GRIPPER_OPEN
+    pfc_goal = pf.pfc.goal  # the executive's held working-memory goal
     pfc_bias = pf.pfc.top_down_bias()
     goal_is_rewarded = pfc_goal == ACTIONS.index("GRIPPER_OPEN")
-    held = all(pf.pfc.maintain() == pfc_goal for _ in range(5))   # WM holds the goal across an input-free delay
-    pf_guard = AutonomousArm(seed=2, pfc=True)                  # the safety envelope must hold with it on
+    held = all(
+        pf.pfc.maintain() == pfc_goal for _ in range(5)
+    )  # WM holds the goal across an input-free delay
+    pf_guard = AutonomousArm(seed=2, pfc=True)  # the safety envelope must hold with it on
     pf_ev = pf_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     pf_frozen0 = pf_guard.arm.state()["stopped"]
-    pf_guard.step(**a)                                          # an action after the E-STOP
+    pf_guard.step(**a)  # an action after the E-STOP
     pf_frozen1 = pf_guard.arm.state()["stopped"]
 
     def run_pf(seed):
         bot = AutonomousArm(seed=seed, pfc=True)
         return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
 
-    print(f"prefrontal  : deliberates over values -> working-memory goal {ACTIONS[pfc_goal]} "
-          f"(rewarded={goal_is_rewarded}, held across delay={held}); E-STOP freeze holds with it on ({pf_frozen1})")
+    print(
+        f"prefrontal  : deliberates over values -> working-memory goal {ACTIONS[pfc_goal]} "
+        f"(rewarded={goal_is_rewarded}, held across delay={held}); E-STOP freeze holds with it on ({pf_frozen1})"
+    )
     print("=" * 62)
 
     # the prefrontal executive is opt-in; a default arm has none (byte-for-byte the old behaviour).
-    assert AutonomousArm(seed=0).pfc is None, "the prefrontal executive is opt-in (a default arm has none)"
+    assert AutonomousArm(seed=0).pfc is None, (
+        "the prefrontal executive is opt-in (a default arm has none)"
+    )
     # it commits the high-value (rewarded) action as its goal and holds it in working memory.
-    assert goal_is_rewarded, f"the executive must commit the rewarded action as its goal ({ACTIONS[pfc_goal]})"
-    assert pfc_bias[pfc_goal] == max(pfc_bias) and max(pfc_bias) > 0.0, "the top-down bias must favour the held goal"
-    assert held, "working memory must hold the goal across an input-free delay (persistent activity)"
+    assert goal_is_rewarded, (
+        f"the executive must commit the rewarded action as its goal ({ACTIONS[pfc_goal]})"
+    )
+    assert pfc_bias[pfc_goal] == max(pfc_bias) and max(pfc_bias) > 0.0, (
+        "the top-down bias must favour the held goal"
+    )
+    assert held, (
+        "working memory must hold the goal across an input-free delay (persistent activity)"
+    )
     # the safety envelope holds with the executive wired in (top-down preference only, never a motor route).
-    assert pf_ev["action"] == "EMERGENCY_STOP" and pf_ev["reflex"], "danger must E-STOP with the prefrontal executive on"
-    assert pf_frozen0 and pf_frozen1, "the E-STOP freeze must hold with the executive wired in (top-down preference only)"
+    assert pf_ev["action"] == "EMERGENCY_STOP" and pf_ev["reflex"], (
+        "danger must E-STOP with the prefrontal executive on"
+    )
+    assert pf_frozen0 and pf_frozen1, (
+        "the E-STOP freeze must hold with the executive wired in (top-down preference only)"
+    )
     assert run_pf(5) == run_pf(5), "the prefrontal path must be deterministic"
 
     # 13. LAKE WORKING MEMORY wired live: each tick's activity is stored in the durable spike lake and
@@ -968,15 +1362,15 @@ def main():
     lw = AutonomousArm(seed=1, pfc=True, lake_wm=True)
     for _ in range(8):
         lw.step(**a, reward_fn=reward)
-    wm = lw.lake_wm.recall(4)                                   # the recent working-memory window, read from the lake
+    wm = lw.lake_wm.recall(4)  # the recent working-memory window, read from the lake
     wm_events = lw.lake_wm.n_events()
-    lw.lake_wm.reopen()                                         # discard the in-RAM object -> replay purely from the .spkl
+    lw.lake_wm.reopen()  # discard the in-RAM object -> replay purely from the .spkl
     wm_after = lw.lake_wm.recall(4)
     lake_backed = wm_events > 0 and wm == wm_after and len(wm) == 4
-    lw_guard = AutonomousArm(seed=2, lake_wm=True)              # the safety envelope must hold with it on
+    lw_guard = AutonomousArm(seed=2, lake_wm=True)  # the safety envelope must hold with it on
     lw_ev = lw_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     lw_frozen0 = lw_guard.arm.state()["stopped"]
-    lw_guard.step(**a)                                          # a normal tick after the E-STOP
+    lw_guard.step(**a)  # a normal tick after the E-STOP
     lw_frozen1 = lw_guard.arm.state()["stopped"]
 
     def run_lw(seed):
@@ -986,17 +1380,27 @@ def main():
         return acts
 
     det_lw = run_lw(5) == run_lw(5)
-    lw.lake_wm.close(remove=True)                              # clean up the temp lake files
+    lw.lake_wm.close(remove=True)  # clean up the temp lake files
     lw_guard.lake_wm.close(remove=True)
 
-    print(f"lake WM     : {wm_events} spikes in the durable lake; recall holds {len(wm)} recent ticks; "
-          f"survives reopen={wm == wm_after}; E-STOP freeze holds with it on ({lw_frozen1})")
+    print(
+        f"lake WM     : {wm_events} spikes in the durable lake; recall holds {len(wm)} recent ticks; "
+        f"survives reopen={wm == wm_after}; E-STOP freeze holds with it on ({lw_frozen1})"
+    )
     print("=" * 62)
 
-    assert AutonomousArm(seed=0).lake_wm is None, "lake working memory is opt-in (a default arm has none)"
-    assert lake_backed, "the working memory must live in the durable lake (survive reopen) with a bounded window"
-    assert lw_ev["action"] == "EMERGENCY_STOP" and lw_ev["reflex"], "danger must E-STOP with lake WM on"
-    assert lw_frozen0 and lw_frozen1, "the E-STOP freeze must hold with lake WM wired in (storage only)"
+    assert AutonomousArm(seed=0).lake_wm is None, (
+        "lake working memory is opt-in (a default arm has none)"
+    )
+    assert lake_backed, (
+        "the working memory must live in the durable lake (survive reopen) with a bounded window"
+    )
+    assert lw_ev["action"] == "EMERGENCY_STOP" and lw_ev["reflex"], (
+        "danger must E-STOP with lake WM on"
+    )
+    assert lw_frozen0 and lw_frozen1, (
+        "the E-STOP freeze must hold with lake WM wired in (storage only)"
+    )
     assert det_lw, "the lake-WM path must be deterministic"
 
     # 14. JEPA latent world model wired live into the REACTIVE path: it learns a latent world model ONLINE
@@ -1004,33 +1408,45 @@ def main():
     #     bounded top-down bias into the SAME gated selection; opt-in, drives no motion, reflex/E-STOP first.
     jp = AutonomousArm(seed=1, pfc=True, jepa=True)
     for _ in range(90):
-        jp.step(**a, reward_fn=reward)                          # reward GRIPPER_OPEN
-    jp_std = jp.jepa.latent_std()                              # a non-degenerate learned latent (did not collapse)
-    jp_goal_formed = jp._z_goal is not None                    # a reward-derived latent goal formed from the stream
-    jp_goal = jp.pfc.goal                                      # the executive's goal, now set by JEPA latent planning
-    jp_guard = AutonomousArm(seed=2, pfc=True, jepa=True)       # the safety envelope must hold with it on
+        jp.step(**a, reward_fn=reward)  # reward GRIPPER_OPEN
+    jp_std = jp.jepa.latent_std()  # a non-degenerate learned latent (did not collapse)
+    jp_goal_formed = jp._z_goal is not None  # a reward-derived latent goal formed from the stream
+    jp_goal = jp.pfc.goal  # the executive's goal, now set by JEPA latent planning
+    jp_guard = AutonomousArm(
+        seed=2, pfc=True, jepa=True
+    )  # the safety envelope must hold with it on
     jp_ev = jp_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     jp_frozen0 = jp_guard.arm.state()["stopped"]
-    jp_guard.step(**a)                                          # a JEPA-planned action after the E-STOP
+    jp_guard.step(**a)  # a JEPA-planned action after the E-STOP
     jp_frozen1 = jp_guard.arm.state()["stopped"]
 
     def run_jp(seed):
         bot = AutonomousArm(seed=seed, pfc=True, jepa=True)
         return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
 
-    print(f"jepa        : latent world model learns online (latent std {jp_std:.3f}); reward-latent goal "
-          f"formed={jp_goal_formed}; executive goal {ACTIONS[jp_goal] if jp_goal is not None else None} set by "
-          f"latent planning; E-STOP freeze holds with it on ({jp_frozen1})")
+    print(
+        f"jepa        : latent world model learns online (latent std {jp_std:.3f}); reward-latent goal "
+        f"formed={jp_goal_formed}; executive goal {ACTIONS[jp_goal] if jp_goal is not None else None} set by "
+        f"latent planning; E-STOP freeze holds with it on ({jp_frozen1})"
+    )
     print("=" * 62)
 
     # JEPA is opt-in; a default arm has none (byte-for-byte the old behaviour).
-    assert AutonomousArm(seed=0).jepa is None, "the JEPA world model is opt-in (a default arm has none)"
-    assert jp.jepa is not None and jp_std > 0.0, "the JEPA world model must be wired in and learn a non-degenerate latent"
+    assert AutonomousArm(seed=0).jepa is None, (
+        "the JEPA world model is opt-in (a default arm has none)"
+    )
+    assert jp.jepa is not None and jp_std > 0.0, (
+        "the JEPA world model must be wired in and learn a non-degenerate latent"
+    )
     assert jp_goal_formed, "a reward-derived latent goal must form from the live stream"
     assert jp_goal is not None, "the executive must hold a goal set by JEPA latent planning"
     # the safety envelope holds with JEPA wired LIVE into the reactive path (top-down preference only, no motor route).
-    assert jp_ev["action"] == "EMERGENCY_STOP" and jp_ev["reflex"], "danger must E-STOP with JEPA on"
-    assert jp_frozen0 and jp_frozen1, "the E-STOP freeze must hold with JEPA wired live (top-down preference only)"
+    assert jp_ev["action"] == "EMERGENCY_STOP" and jp_ev["reflex"], (
+        "danger must E-STOP with JEPA on"
+    )
+    assert jp_frozen0 and jp_frozen1, (
+        "the E-STOP freeze must hold with JEPA wired live (top-down preference only)"
+    )
     assert run_jp(5) == run_jp(5), "the JEPA path must be deterministic"
 
     # 15. SERVED H-JEPA wired live: the executive plans over the ABSTRACT (Level-1) latent of a GPU-trained
@@ -1038,6 +1454,7 @@ def main():
     #     WIRING + safety here (the real arm-trained model is research/hjepa_arm_torch.py, GPU); opt-in.
     import os as _os
     import tempfile as _tf
+
     hj_path = _os.path.join(_tf.gettempdir(), "snn_hjepa_arm_test.json")
     _tiny_hjepa(hj_path, 64, 4, 4, 3, ACTIONS, seed=0)
     served = HJepaServe.load(hj_path)
@@ -1048,7 +1465,9 @@ def main():
     hj_windowed = len(hja._hj_window) == served.K
     hj_goal_formed = hja._z1_goal is not None
     hj_goal = hja.pfc.goal
-    hj_guard = AutonomousArm(seed=2, pfc=True, hjepa_serve=served)     # the safety envelope must hold with it on
+    hj_guard = AutonomousArm(
+        seed=2, pfc=True, hjepa_serve=served
+    )  # the safety envelope must hold with it on
     hj_ev = hj_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     hj_frozen0 = hj_guard.arm.state()["stopped"]
     hj_guard.step(**a)
@@ -1058,18 +1477,26 @@ def main():
         bot = AutonomousArm(seed=seed, pfc=True, hjepa_serve=served)
         return [bot.step(**ctx, reward_fn=reward)["action"] for _ in range(6) for ctx in (a, b, c)]
 
-    print(f"hjepa-serve : abstract (Level-1) H-JEPA planning -- K-window filled={hj_windowed}, abstract goal "
-          f"formed={hj_goal_formed}; executive goal {ACTIONS[hj_goal] if hj_goal is not None else None} set by "
-          f"abstract planning; E-STOP freeze holds with it on ({hj_frozen1})")
+    print(
+        f"hjepa-serve : abstract (Level-1) H-JEPA planning -- K-window filled={hj_windowed}, abstract goal "
+        f"formed={hj_goal_formed}; executive goal {ACTIONS[hj_goal] if hj_goal is not None else None} set by "
+        f"abstract planning; E-STOP freeze holds with it on ({hj_frozen1})"
+    )
     print("=" * 62)
 
-    assert AutonomousArm(seed=0).hjepa_serve is None, "the served H-JEPA is opt-in (a default arm has none)"
+    assert AutonomousArm(seed=0).hjepa_serve is None, (
+        "the served H-JEPA is opt-in (a default arm has none)"
+    )
     assert hj_windowed, "the Level-0 latent K-window must fill"
     assert hj_goal_formed, "a reward-EMA abstract (Level-1) goal must form from the live stream"
     assert hj_goal is not None, "the executive must hold a goal set by ABSTRACT H-JEPA planning"
     # the safety envelope holds with the served H-JEPA driving abstract planning (top-down preference only, no motor route).
-    assert hj_ev["action"] == "EMERGENCY_STOP" and hj_ev["reflex"], "danger must E-STOP with the served H-JEPA on"
-    assert hj_frozen0 and hj_frozen1, "the E-STOP freeze must hold with abstract H-JEPA planning (top-down only)"
+    assert hj_ev["action"] == "EMERGENCY_STOP" and hj_ev["reflex"], (
+        "danger must E-STOP with the served H-JEPA on"
+    )
+    assert hj_frozen0 and hj_frozen1, (
+        "the E-STOP freeze must hold with abstract H-JEPA planning (top-down only)"
+    )
     assert run_hj(5) == run_hj(5), "the served-H-JEPA path must be deterministic"
 
     # 16. CURIOSITY (intrinsic motivation): the JEPA world-model prediction error becomes a learning-progress
@@ -1077,13 +1504,17 @@ def main():
     #     Opt-in, needs the JEPA; drives no motion, reflex/E-STOP still preempts.
     cur = AutonomousArm(seed=1, pfc=True, jepa=True, curiosity=True)
     for _ in range(60):
-        cur.step(**a)                                          # NO reward_fn -> ONLY curiosity drives learning
+        cur.step(**a)  # NO reward_fn -> ONLY curiosity drives learning
     cur_learned = any(abs(v) > 1e-6 for row in cur.q.values() for v in row.values())
-    dull = AutonomousArm(seed=1, pfc=True, jepa=True, curiosity=False)   # fair control: no curiosity AND no reward
+    dull = AutonomousArm(
+        seed=1, pfc=True, jepa=True, curiosity=False
+    )  # fair control: no curiosity AND no reward
     for _ in range(60):
         dull.step(**a)
     dull_learned = any(abs(v) > 1e-6 for row in dull.q.values() for v in row.values())
-    cur_guard = AutonomousArm(seed=2, pfc=True, jepa=True, curiosity=True)   # the safety envelope must hold with it on
+    cur_guard = AutonomousArm(
+        seed=2, pfc=True, jepa=True, curiosity=True
+    )  # the safety envelope must hold with it on
     cur_ev = cur_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     cur_frozen0 = cur_guard.arm.state()["stopped"]
     cur_guard.step(**a)
@@ -1092,50 +1523,97 @@ def main():
     def run_cur(seed):
         bot = AutonomousArm(seed=seed, pfc=True, jepa=True, curiosity=True)
         return [bot.step(**ctx)["action"] for _ in range(6) for ctx in (a, b, c)]
+
     cur_det = run_cur(5) == run_cur(5)
 
-    print(f"curiosity   : self-directed learning with NO external reward -- curious arm's values changed="
-          f"{cur_learned} vs no-curiosity control changed={dull_learned}; E-STOP freeze holds with it on ({cur_frozen1})")
+    print(
+        f"curiosity   : self-directed learning with NO external reward -- curious arm's values changed="
+        f"{cur_learned} vs no-curiosity control changed={dull_learned}; E-STOP freeze holds with it on ({cur_frozen1})"
+    )
     print("=" * 62)
 
     assert AutonomousArm(seed=0).curiosity is None, "curiosity is opt-in (a default arm has none)"
-    assert cur_learned, "curiosity must drive value learning WITHOUT any external reward (self-directed)"
-    assert not dull_learned, "the fair control: no curiosity AND no external reward -> nothing learns"
-    assert cur_ev["action"] == "EMERGENCY_STOP" and cur_ev["reflex"], "danger must E-STOP with curiosity on"
-    assert cur_frozen0 and cur_frozen1, "the E-STOP freeze must hold with curiosity wired in (intrinsic reward, no motor route)"
+    assert cur_learned, (
+        "curiosity must drive value learning WITHOUT any external reward (self-directed)"
+    )
+    assert not dull_learned, (
+        "the fair control: no curiosity AND no external reward -> nothing learns"
+    )
+    assert cur_ev["action"] == "EMERGENCY_STOP" and cur_ev["reflex"], (
+        "danger must E-STOP with curiosity on"
+    )
+    assert cur_frozen0 and cur_frozen1, (
+        "the E-STOP freeze must hold with curiosity wired in (intrinsic reward, no motor route)"
+    )
     assert cur_det, "the curiosity path must be deterministic"
 
     # 17. CURRICULUM (self-paced developmental learning): the arm works stages of increasing difficulty and
     #     ADVANCES autonomously when its own learning progress (curiosity) on a stage dries up -- cumulative,
     #     self-graduating. Opt-in (needs curiosity + jepa); learning flows through the SAME gated step().
-    devC = [(_ctx(0.9, 0.1, 0.1, safe_d), "GRIPPER_OPEN"),     # 4 DISTINCT contexts, each with an optimal action
-            (_ctx(0.1, 0.9, 0.1, safe_d), "GRIPPER_CLOSE"),
-            (_ctx(0.1, 0.1, 0.9, safe_d), "HOLD"),
-            (_ctx(0.9, 0.9, 0.1, safe_d), "GRIPPER_OPEN")]
-    dev_stages = [devC[:1], devC[:2], devC[:3], devC[:4]]      # 1,2,3,4 contexts -> 4 stages of increasing difficulty
+    devC = [
+        (
+            _ctx(0.9, 0.1, 0.1, safe_d),
+            "GRIPPER_OPEN",
+        ),  # 4 DISTINCT contexts, each with an optimal action
+        (_ctx(0.1, 0.9, 0.1, safe_d), "GRIPPER_CLOSE"),
+        (_ctx(0.1, 0.1, 0.9, safe_d), "HOLD"),
+        (_ctx(0.9, 0.9, 0.1, safe_d), "GRIPPER_OPEN"),
+    ]
+    dev_stages = [
+        devC[:1],
+        devC[:2],
+        devC[:3],
+        devC[:4],
+    ]  # 1,2,3,4 contexts -> 4 stages of increasing difficulty
     dev = AutonomousArm(seed=1, pfc=True, jepa=True, curiosity=True)
     dtrace = dev.develop(dev_stages, Curriculum(n_stages=len(dev_stages), seed=1))
-    dev_mastered = dtrace[-1]["mastered"] if dtrace else 0     # stages the arm graduated itself through
+    dev_mastered = (
+        dtrace[-1]["mastered"] if dtrace else 0
+    )  # stages the arm graduated itself through
     dev_final_comp = dtrace[-1]["competence"] if dtrace else 0.0
-    dev_guard = AutonomousArm(seed=2, pfc=True, jepa=True, curiosity=True)   # safety with the developmental loop
-    dev_guard.develop([[(_ctx(0.5, 0.5, 0.5, danger_d), "HOLD")]], Curriculum(n_stages=1, seed=2), batch=2, max_batches=1)
-    dev_frozen = dev_guard.arm.state()["stopped"]              # a danger context in the curriculum still E-STOPs + freezes
+    dev_guard = AutonomousArm(
+        seed=2, pfc=True, jepa=True, curiosity=True
+    )  # safety with the developmental loop
+    dev_guard.develop(
+        [[(_ctx(0.5, 0.5, 0.5, danger_d), "HOLD")]],
+        Curriculum(n_stages=1, seed=2),
+        batch=2,
+        max_batches=1,
+    )
+    dev_frozen = dev_guard.arm.state()[
+        "stopped"
+    ]  # a danger context in the curriculum still E-STOPs + freezes
 
     def run_dev(seed):
         bot = AutonomousArm(seed=seed, pfc=True, jepa=True, curiosity=True)
-        return [t["mastered"] for t in bot.develop(dev_stages, Curriculum(n_stages=len(dev_stages), seed=seed))]
+        return [
+            t["mastered"]
+            for t in bot.develop(dev_stages, Curriculum(n_stages=len(dev_stages), seed=seed))
+        ]
+
     dev_det = run_dev(5) == run_dev(5)
 
-    print(f"curriculum  : self-paced developmental learning -- arm graduated itself through {dev_mastered}/"
-          f"{len(dev_stages)} stages (final-stage competence {dev_final_comp:.2f}); safety freeze holds ({dev_frozen})")
+    print(
+        f"curriculum  : self-paced developmental learning -- arm graduated itself through {dev_mastered}/"
+        f"{len(dev_stages)} stages (final-stage competence {dev_final_comp:.2f}); safety freeze holds ({dev_frozen})"
+    )
     print("=" * 62)
 
-    assert AutonomousArm(seed=0)._dev_rng is not None, "the arm carries a developmental task-selection rng"
-    assert dev_mastered >= 2, f"the arm must autonomously master + advance through multiple curriculum stages ({dev_mastered})"
-    assert all(t["advanced"] for t in dtrace[:dev_mastered]), \
+    assert AutonomousArm(seed=0)._dev_rng is not None, (
+        "the arm carries a developmental task-selection rng"
+    )
+    assert dev_mastered >= 2, (
+        f"the arm must autonomously master + advance through multiple curriculum stages ({dev_mastered})"
+    )
+    assert all(t["advanced"] for t in dtrace[:dev_mastered]), (
         "each mastered stage must have ADVANCED on its own learning-progress dry-up (self-paced, not a clock)"
-    assert dev_final_comp >= 0.5, f"the arm must reach real competence on the stages it masters ({dev_final_comp:.2f})"
-    assert dev_frozen, "the E-STOP freeze must hold with the developmental curriculum loop (learning through the gated step)"
+    )
+    assert dev_final_comp >= 0.5, (
+        f"the arm must reach real competence on the stages it masters ({dev_final_comp:.2f})"
+    )
+    assert dev_frozen, (
+        "the E-STOP freeze must hold with the developmental curriculum loop (learning through the gated step)"
+    )
     assert dev_det, "the developmental curriculum path must be deterministic"
 
     # 18. SHARED LATENT-Q (the transfer substrate): a shared linear action-value over the LAKE-STORED pattern
@@ -1146,9 +1624,18 @@ def main():
     #     correction are self-check 19 / the mlp_q block below.)
     def _lq_ctx(v, t, au):
         return _ctx(v, t, au, safe_d)
-    LQ_RULE = ["GRIPPER_OPEN", "GRIPPER_CLOSE", "HOLD"]         # optimal = argmax over (visual, temperature, audio) band
-    lq_train = [(_lq_ctx(*[0.9 if i == d else 0.1 for i in range(3)]), LQ_RULE[d]) for d in range(3) for _ in range(3)]
-    lq_hold = []                                               # dominant band + a partial secondary -> NEW units, SAME rule
+
+    LQ_RULE = [
+        "GRIPPER_OPEN",
+        "GRIPPER_CLOSE",
+        "HOLD",
+    ]  # optimal = argmax over (visual, temperature, audio) band
+    lq_train = [
+        (_lq_ctx(*[0.9 if i == d else 0.1 for i in range(3)]), LQ_RULE[d])
+        for d in range(3)
+        for _ in range(3)
+    ]
+    lq_hold = []  # dominant band + a partial secondary -> NEW units, SAME rule
     for d in range(3):
         for sec in range(3):
             if sec != d:
@@ -1162,28 +1649,45 @@ def main():
             ctx, opt = lq_train[bot._dev_rng.randrange(len(lq_train))]
             bot.step(reward_fn=(lambda u, a, o=opt: 1.0 if a == o else -1.0), **ctx)
         return bot._competence(lq_train), bot._competence(lq_hold)
+
     lqq_train, lqq_hold = _lq_run(True)
     tab_train, tab_hold = _lq_run(False)
-    lq_guard = AutonomousArm(seed=2, pfc=True, jepa=True, latent_q=True)   # the safety envelope must hold with it on
+    lq_guard = AutonomousArm(
+        seed=2, pfc=True, jepa=True, latent_q=True
+    )  # the safety envelope must hold with it on
     lq_ev = lq_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     lq_guard.step(**_lq_ctx(0.9, 0.1, 0.1))
     lq_frozen = lq_guard.arm.state()["stopped"]
 
     def run_lq(seed):
         bot = AutonomousArm(seed=seed, pfc=True, jepa=True, curiosity=True, latent_q=True)
-        return [bot.step(reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0])["action"]
-                for _ in range(8)]
+        return [
+            bot.step(
+                reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0]
+            )["action"]
+            for _ in range(8)
+        ]
+
     lq_det = run_lq(5) == run_lq(5)
 
-    print(f"latent-Q    : SHARED value over the lake pattern -- held-out (NEW units, same rule) competence "
-          f"{lqq_hold:.2f} vs tabular {tab_hold:.2f} (TRANSFER); train {lqq_train:.2f}; freeze holds ({lq_frozen})")
+    print(
+        f"latent-Q    : SHARED value over the lake pattern -- held-out (NEW units, same rule) competence "
+        f"{lqq_hold:.2f} vs tabular {tab_hold:.2f} (TRANSFER); train {lqq_train:.2f}; freeze holds ({lq_frozen})"
+    )
     print("=" * 62)
 
-    assert AutonomousArm(seed=0).latent_q is None, "the shared latent-Q is opt-in (a default arm has none)"
-    assert lqq_train >= 0.8, f"the shared latent-Q must learn the rule family with ONE shared function ({lqq_train:.2f})"
-    assert lqq_hold >= 0.8 and lqq_hold >= tab_hold + 0.3, \
+    assert AutonomousArm(seed=0).latent_q is None, (
+        "the shared latent-Q is opt-in (a default arm has none)"
+    )
+    assert lqq_train >= 0.8, (
+        f"the shared latent-Q must learn the rule family with ONE shared function ({lqq_train:.2f})"
+    )
+    assert lqq_hold >= 0.8 and lqq_hold >= tab_hold + 0.3, (
         f"the shared latent-Q must GENERALIZE to new-unit contexts where tabular cannot ({lqq_hold:.2f} vs {tab_hold:.2f})"
-    assert lq_ev["action"] == "EMERGENCY_STOP" and lq_ev["reflex"] and lq_frozen, "danger must E-STOP with the latent-Q on"
+    )
+    assert lq_ev["action"] == "EMERGENCY_STOP" and lq_ev["reflex"] and lq_frozen, (
+        "danger must E-STOP with the latent-Q on"
+    )
     assert lq_det, "the latent-Q path must be deterministic"
 
     # 19. TASK-ALIGNED LEARNED SUBSTRATE (nonlinear MLP-Q over the SSL-JEPA latent): the honest push PAST the
@@ -1193,45 +1697,74 @@ def main():
     #     JEPA); only changes HOW the value is computed (gate + reflex/E-STOP unchanged). Mutually exclusive with
     #     latent_q (that branch wins if both are set).
     def _mlp_run():
-        bot = AutonomousArm(seed=1, pfc=True, curiosity=True, mlp_q=True)   # mlp_q auto-enables the JEPA latent it rides
+        bot = AutonomousArm(
+            seed=1, pfc=True, curiosity=True, mlp_q=True
+        )  # mlp_q auto-enables the JEPA latent it rides
         for _ in range(500):
             ctx, opt = lq_train[bot._dev_rng.randrange(len(lq_train))]
             bot.step(reward_fn=(lambda u, a, o=opt: 1.0 if a == o else -1.0), **ctx)
         # the arm's ONLINE JEPA latent for the 3 DISTINCT band contexts -> separable, or near-collapsed to one point?
-        zs = [bot.jepa.encode(bot._context_pattern(**_lq_ctx(*[0.9 if i == d else 0.1 for i in range(3)]))) for d in range(3)]
-        spread = max(math.sqrt(sum((zs[i][k] - zs[j][k]) ** 2 for k in range(len(zs[i]))))
-                     for i in range(3) for j in range(i + 1, 3))          # widest pairwise gap between the band latents
+        zs = [
+            bot.jepa.encode(
+                bot._context_pattern(**_lq_ctx(*[0.9 if i == d else 0.1 for i in range(3)]))
+            )
+            for d in range(3)
+        ]
+        spread = max(
+            math.sqrt(sum((zs[i][k] - zs[j][k]) ** 2 for k in range(len(zs[i]))))
+            for i in range(3)
+            for j in range(i + 1, 3)
+        )  # widest pairwise gap between the band latents
         return bot._competence(lq_hold), spread
+
     mlp_hold, mlp_spread = _mlp_run()
-    mlp_guard = AutonomousArm(seed=2, pfc=True, mlp_q=True)                # the safety envelope must hold with it on
+    mlp_guard = AutonomousArm(
+        seed=2, pfc=True, mlp_q=True
+    )  # the safety envelope must hold with it on
     mlp_ev = mlp_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     mlp_guard.step(**_lq_ctx(0.9, 0.1, 0.1))
     mlp_frozen = mlp_guard.arm.state()["stopped"]
 
     def run_mlp(seed):
         bot = AutonomousArm(seed=seed, pfc=True, curiosity=True, mlp_q=True)
-        return [bot.step(reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0])["action"]
-                for _ in range(8)]
+        return [
+            bot.step(
+                reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0]
+            )["action"]
+            for _ in range(8)
+        ]
+
     mlp_det = run_mlp(5) == run_mlp(5)
 
-    print(f"mlp-Q       : NONLINEAR head over the ONLINE SSL-JEPA latent -- held-out {mlp_hold:.2f} (vs the "
-          f"linear-over-pattern latent-Q {lqq_hold:.2f}); the arm's band latents near-collapse (spread {mlp_spread:.3f}) "
-          f"-> the ENCODER, not the head, is the on-arm bottleneck; E-STOP freeze holds ({mlp_frozen})")
+    print(
+        f"mlp-Q       : NONLINEAR head over the ONLINE SSL-JEPA latent -- held-out {mlp_hold:.2f} (vs the "
+        f"linear-over-pattern latent-Q {lqq_hold:.2f}); the arm's band latents near-collapse (spread {mlp_spread:.3f}) "
+        f"-> the ENCODER, not the head, is the on-arm bottleneck; E-STOP freeze holds ({mlp_frozen})"
+    )
     print("=" * 62)
 
-    assert AutonomousArm(seed=0).mlp_q is None, "the nonlinear MLP-Q is opt-in (a default arm has none)"
-    assert AutonomousArm(seed=0, mlp_q=True)._jepa_on, "mlp_q must auto-enable the JEPA latent it rides"
+    assert AutonomousArm(seed=0).mlp_q is None, (
+        "the nonlinear MLP-Q is opt-in (a default arm has none)"
+    )
+    assert AutonomousArm(seed=0, mlp_q=True)._jepa_on, (
+        "mlp_q must auto-enable the JEPA latent it rides"
+    )
     # HONEST FINDING (corrects + refines v3.17): the SSL latent DOES encode the task -- mlp_q's own self-check gets
     # 0.99 over a clean latent, and an offline probe recovers THIS arm's band rule from the SSL latent at 0.80
     # (linear) / 0.88 (MLP). v3.17's "0.33 ~ chance -> not task-aligned" was OVER-PESSIMISTIC. The real cause: the
     # arm's ONLINE JEPA, trained on only a few repeating live contexts, NEAR-COLLAPSES them (spread ~ 0), so on-robot
     # NO head -- linear or nonlinear -- can separate them. The bottleneck is the ENCODER (a reward-shaped / deeper
     # encoder, or more diverse experience), NOT the Q-head's capacity -- which is exactly what this experiment shows.
-    assert mlp_spread < 0.05, f"the arm's online SSL latents for distinct bands must near-collapse ({mlp_spread:.3f})"
+    assert mlp_spread < 0.05, (
+        f"the arm's online SSL latents for distinct bands must near-collapse ({mlp_spread:.3f})"
+    )
     assert mlp_hold <= lqq_hold - 0.30, (
         f"over the near-collapsed online latent the MLP-Q cannot match the pattern substrate "
-        f"({mlp_hold:.2f} vs {lqq_hold:.2f}) -- the ENCODER, not the head, is the on-arm limit")
-    assert mlp_ev["action"] == "EMERGENCY_STOP" and mlp_ev["reflex"] and mlp_frozen, "danger must E-STOP with mlp_q on"
+        f"({mlp_hold:.2f} vs {lqq_hold:.2f}) -- the ENCODER, not the head, is the on-arm limit"
+    )
+    assert mlp_ev["action"] == "EMERGENCY_STOP" and mlp_ev["reflex"] and mlp_frozen, (
+        "danger must E-STOP with mlp_q on"
+    )
     assert mlp_det, "the mlp-Q path must be deterministic"
 
     # 20. TASK-ALIGNED ENCODER (reward-shaping): the honest FIX for the v3.18 encoder-collapse bottleneck. §19
@@ -1242,48 +1775,81 @@ def main():
     #     said was the bottleneck. Opt-in (auto-enables the JEPA); only changes the JEPA's online update (the gated
     #     selection + reflex/E-STOP are unchanged).
     def _rse_run():
-        bot = AutonomousArm(seed=1, pfc=True, curiosity=True, mlp_q=True, reward_shaped_encoder=True)
-        for _ in range(800):                                # firm reward-gain (5.0) + this budget recovers the rule to 1.0
+        bot = AutonomousArm(
+            seed=1, pfc=True, curiosity=True, mlp_q=True, reward_shaped_encoder=True
+        )
+        for _ in range(800):  # firm reward-gain (5.0) + this budget recovers the rule to 1.0
             ctx, opt = lq_train[bot._dev_rng.randrange(len(lq_train))]
             bot.step(reward_fn=(lambda u, a, o=opt: 1.0 if a == o else -1.0), **ctx)
-        zs = [bot.jepa.encode(bot._context_pattern(**_lq_ctx(*[0.9 if i == d else 0.1 for i in range(3)]))) for d in range(3)]
-        spread = max(math.sqrt(sum((zs[i][k] - zs[j][k]) ** 2 for k in range(len(zs[i]))))
-                     for i in range(3) for j in range(i + 1, 3))
+        zs = [
+            bot.jepa.encode(
+                bot._context_pattern(**_lq_ctx(*[0.9 if i == d else 0.1 for i in range(3)]))
+            )
+            for d in range(3)
+        ]
+        spread = max(
+            math.sqrt(sum((zs[i][k] - zs[j][k]) ** 2 for k in range(len(zs[i]))))
+            for i in range(3)
+            for j in range(i + 1, 3)
+        )
         return bot._competence(lq_hold), spread
+
     rse_hold, rse_spread = _rse_run()
-    rse_guard = AutonomousArm(seed=2, pfc=True, mlp_q=True, reward_shaped_encoder=True)   # the safety envelope must hold with it on
+    rse_guard = AutonomousArm(
+        seed=2, pfc=True, mlp_q=True, reward_shaped_encoder=True
+    )  # the safety envelope must hold with it on
     rse_ev = rse_guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     rse_guard.step(**_lq_ctx(0.9, 0.1, 0.1))
     rse_frozen = rse_guard.arm.state()["stopped"]
 
     def run_rse(seed):
-        bot = AutonomousArm(seed=seed, pfc=True, curiosity=True, mlp_q=True, reward_shaped_encoder=True)
-        return [bot.step(reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0])["action"]
-                for _ in range(8)]
+        bot = AutonomousArm(
+            seed=seed, pfc=True, curiosity=True, mlp_q=True, reward_shaped_encoder=True
+        )
+        return [
+            bot.step(
+                reward_fn=(lambda u, a: 1.0 if a == "GRIPPER_OPEN" else -1.0), **lq_train[0][0]
+            )["action"]
+            for _ in range(8)
+        ]
+
     rse_det = run_rse(5) == run_rse(5)
 
-    print(f"reward-enc  : task-aligning the JEPA encoder -> the SAME MLP-Q FULLY recovers the rule ON THE ARM -- "
-          f"held-out {rse_hold:.2f} (vs plain-SSL {mlp_hold:.2f}); band latents separate (spread {rse_spread:.2f} vs "
-          f"{mlp_spread:.3f}); E-STOP freeze holds ({rse_frozen})")
+    print(
+        f"reward-enc  : task-aligning the JEPA encoder -> the SAME MLP-Q FULLY recovers the rule ON THE ARM -- "
+        f"held-out {rse_hold:.2f} (vs plain-SSL {mlp_hold:.2f}); band latents separate (spread {rse_spread:.2f} vs "
+        f"{mlp_spread:.3f}); E-STOP freeze holds ({rse_frozen})"
+    )
     print("=" * 62)
 
-    assert AutonomousArm(seed=0)._reward_shaped_encoder is False, "the reward-shaped encoder is opt-in (default off)"
-    assert AutonomousArm(seed=0, reward_shaped_encoder=True)._jepa_on, "reward_shaped_encoder must auto-enable the JEPA"
+    assert AutonomousArm(seed=0)._reward_shaped_encoder is False, (
+        "the reward-shaped encoder is opt-in (default off)"
+    )
+    assert AutonomousArm(seed=0, reward_shaped_encoder=True)._jepa_on, (
+        "reward_shaped_encoder must auto-enable the JEPA"
+    )
     # THE FIX (closes v3.18): reward-shaping breaks the encoder collapse (spread ~0 -> large) so the MLP-Q over the
     # latent FULLY recovers the rule the plain-SSL latent (§19) could not -- the ENCODER was the bottleneck. With a
     # firm reward-gain (5.0) + budget, on-arm held-out reaches 1.00 (robust across seeds; weaker pulls plateau ~0.83).
-    assert rse_spread > 0.5, f"reward-shaping must break the encoder collapse ({rse_spread:.3f} vs plain-SSL {mlp_spread:.3f})"
+    assert rse_spread > 0.5, (
+        f"reward-shaping must break the encoder collapse ({rse_spread:.3f} vs plain-SSL {mlp_spread:.3f})"
+    )
     assert rse_hold >= 0.999, (
         f"the MLP-Q over the reward-shaped encoder must FULLY recover the rule the plain-SSL latent could not "
-        f"({rse_hold:.2f} held-out vs plain-SSL {mlp_hold:.2f})")
-    assert rse_ev["action"] == "EMERGENCY_STOP" and rse_ev["reflex"] and rse_frozen, "danger must E-STOP with the reward-shaped encoder on"
+        f"({rse_hold:.2f} held-out vs plain-SSL {mlp_hold:.2f})"
+    )
+    assert rse_ev["action"] == "EMERGENCY_STOP" and rse_ev["reflex"] and rse_frozen, (
+        "danger must E-STOP with the reward-shaped encoder on"
+    )
     assert rse_det, "the reward-shaped-encoder path must be deterministic"
 
-    print(f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
-          f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "
-          f"replay: decisive in {replay_ticks}<{live_ticks} live ticks, value-only, gate holds. "
-          f"amygdala learns threat ({threat_danger:.2f}>{threat_safe:.2f}) + BG gate releases {bg_released}, "
-          f"both caution-only (E-STOP freeze holds)")
+    print(
+        f"self-check OK: grows a unit per novel context ({grew_to}); learns the rewarded action "
+        f"({default_before}->{learned}); danger -> gated E-STOP + freeze holds; deterministic. "
+        f"replay: decisive in {replay_ticks}<{live_ticks} live ticks, value-only, gate holds. "
+        f"amygdala learns threat ({threat_danger:.2f}>{threat_safe:.2f}) + BG gate releases {bg_released}, "
+        f"both caution-only (E-STOP freeze holds)"
+    )
 
 
 if __name__ == "__main__":

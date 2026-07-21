@@ -1,5 +1,5 @@
 """
-Kuramoto coupled-oscillator synchronization -- emergent population phase-locking (pure stdlib).
+Kuramoto coupled-oscillator synchronization -- emergent population phase-locking.
 
 A population of N phase oscillators, each with its own natural frequency omega_i (sampled from a
 fixed seeded Gaussian, centered at 0), all-to-all sine-coupled with strength K:
@@ -34,6 +34,7 @@ neurons, no conduction delays, no network topology beyond all-to-all; not cognit
 
   python -m snn_data_lake.cerebellum.kuramoto_sync        # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
@@ -106,8 +107,10 @@ class KuramotoNetwork:
         dt = self.dt if dt is None else dt
         r, psi = self.order_parameter()
         kr = self.coupling * r
-        self.theta = [self.theta[i] + dt * (self.omega[i] + kr * math.sin(psi - self.theta[i]))
-                      for i in range(self.n)]
+        self.theta = [
+            self.theta[i] + dt * (self.omega[i] + kr * math.sin(psi - self.theta[i]))
+            for i in range(self.n)
+        ]
         return r
 
     def run(self, steps, dt=None):
@@ -134,11 +137,11 @@ def _steady_r(n, coupling, freq_spread, seed, steps, dt, last_frac=0.25):
 def main():
     n, seed, dt, steps = 256, 0, 0.05, 1200
     spread = 1.0
-    k_c = critical_coupling(spread)                       # ~= 1.596 for spread = 1.0
-    floor = 1.0 / math.sqrt(n)                            # finite-N incoherent order-parameter floor
+    k_c = critical_coupling(spread)  # ~= 1.596 for spread = 1.0
+    floor = 1.0 / math.sqrt(n)  # finite-N incoherent order-parameter floor
 
     # ---- 1. coupling-threshold transition: same seeded frequencies, low K vs high K ----
-    k_low, k_high = 0.40, 5.00                            # ~0.25*K_c  and  ~3.1*K_c
+    k_low, k_high = 0.40, 5.00  # ~0.25*K_c  and  ~3.1*K_c
     r_low = _steady_r(n, k_low, spread, seed, steps, dt)
     net_high = KuramotoNetwork(n=n, coupling=k_high, freq_spread=spread, seed=seed, dt=dt)
     net_high.run(steps, dt)
@@ -154,7 +157,7 @@ def main():
     r_ident, _ = ident.order_parameter()
 
     # ---- 4. frequency entrainment: instantaneous-frequency spread collapses at high K ----
-    spread_k0 = _stdev(net_high.omega)                    # at K=0 the inst. freq IS omega
+    spread_k0 = _stdev(net_high.omega)  # at K=0 the inst. freq IS omega
     spread_locked = _stdev(net_high.instantaneous_frequencies())
     collapse = spread_locked / spread_k0
 
@@ -169,26 +172,38 @@ def main():
     print("coupling K   ->   steady-state r")
     for k, r in zip(sweep_k, sweep_r):
         print(f"   {k:5.2f}     ->   {r:.3f}")
-    print(f"transition : mean_r(low K={k_low:.2f})={r_low:.3f}  vs  "
-          f"mean_r(high K={k_high:.2f})={r_high:.3f}   (incoherent floor 1/sqrt(N)={floor:.3f})")
+    print(
+        f"transition : mean_r(low K={k_low:.2f})={r_low:.3f}  vs  "
+        f"mean_r(high K={k_high:.2f})={r_high:.3f}   (incoherent floor 1/sqrt(N)={floor:.3f})"
+    )
     print(f"identical oscillators (spread=0), K=2.0 : r={r_ident:.3f} (full phase-lock)")
-    print(f"entrainment at high K : inst-freq stdev {spread_k0:.3f} (K=0) -> "
-          f"{spread_locked:.3f} (locked), collapse x{collapse:.3f}")
+    print(
+        f"entrainment at high K : inst-freq stdev {spread_k0:.3f} (K=0) -> "
+        f"{spread_locked:.3f} (locked), collapse x{collapse:.3f}"
+    )
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
-    assert r_low < 0.30, f"below K_c the population must stay near the incoherent floor ({r_low:.3f})"
+    # ---- self-check: deterministic asserts ----
+    assert r_low < 0.30, (
+        f"below K_c the population must stay near the incoherent floor ({r_low:.3f})"
+    )
     assert r_high > 0.80, f"above K_c the population must synchronize ({r_high:.3f})"
     assert r_high > 3.0 * r_low, f"high-K r must be far above low-K r ({r_high:.3f} vs {r_low:.3f})"
     for a, b in zip(sweep_r, sweep_r[1:]):
-        assert b >= a - 0.08, f"steady-state r must be (weakly) increasing in K ({a:.3f} -> {b:.3f})"
-    assert sweep_r[-1] > sweep_r[0], f"r must rise across the sweep ({sweep_r[0]:.3f} -> {sweep_r[-1]:.3f})"
+        assert b >= a - 0.08, (
+            f"steady-state r must be (weakly) increasing in K ({a:.3f} -> {b:.3f})"
+        )
+    assert sweep_r[-1] > sweep_r[0], (
+        f"r must rise across the sweep ({sweep_r[0]:.3f} -> {sweep_r[-1]:.3f})"
+    )
     assert r_ident > 0.99, f"identical oscillators must fully phase-lock ({r_ident:.3f})"
     assert collapse < 0.25, f"high-K must entrain instantaneous frequencies ({collapse:.3f})"
     assert det_a == det_b, "same n/seed/coupling must give an identical r series"
-    print(f"self-check OK: transition r {r_low:.3f}(low)->{r_high:.3f}(high) above floor {floor:.3f}; "
-          f"monotone in K; identical-osc r={r_ident:.3f}; freq-spread collapse x{collapse:.3f}; "
-          f"deterministic")
+    print(
+        f"self-check OK: transition r {r_low:.3f}(low)->{r_high:.3f}(high) above floor {floor:.3f}; "
+        f"monotone in K; identical-osc r={r_ident:.3f}; freq-spread collapse x{collapse:.3f}; "
+        f"deterministic"
+    )
 
 
 if __name__ == "__main__":

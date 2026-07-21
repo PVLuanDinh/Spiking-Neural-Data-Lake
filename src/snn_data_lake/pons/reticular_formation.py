@@ -36,20 +36,21 @@ Wilson & Cowan 1972 (mutual-inhibition bistability).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.pons.reticular_formation
 """
+
 import math
 import random
 
-SELF_EXC = 2.0       # self-excitation of each population
-MUTUAL = 4.0         # mutual inhibition between wake and sleep (drives bistability)
-BIAS = 2.2           # activation threshold (> SELF_EXC: a lone pop needs external drive to sustain)
-GAIN = 6.0           # sigmoid steepness (sharp switch)
-TAU = 0.5            # relaxation rate per step
-NOISE = 0.02         # seeded per-step reticular jitter
-ITERS = 80           # settling steps
-HOMEO = 0.6          # homeostatic sleep pressure onto the sleep population (fixed, moderate)
-DRIVE_MAX = 2.0      # strongest ascending drive in the sweep
-DRIVE_STEP = 0.05    # sweep resolution
-DRIVE_MID = 1.0      # intermediate drive used for the coexisting-states test
+SELF_EXC = 2.0  # self-excitation of each population
+MUTUAL = 4.0  # mutual inhibition between wake and sleep (drives bistability)
+BIAS = 2.2  # activation threshold (> SELF_EXC: a lone pop needs external drive to sustain)
+GAIN = 6.0  # sigmoid steepness (sharp switch)
+TAU = 0.5  # relaxation rate per step
+NOISE = 0.02  # seeded per-step reticular jitter
+ITERS = 80  # settling steps
+HOMEO = 0.6  # homeostatic sleep pressure onto the sleep population (fixed, moderate)
+DRIVE_MAX = 2.0  # strongest ascending drive in the sweep
+DRIVE_STEP = 0.05  # sweep resolution
+DRIVE_MID = 1.0  # intermediate drive used for the coexisting-states test
 
 
 def _sigmoid(z):
@@ -59,8 +60,18 @@ def _sigmoid(z):
 class ReticularFormation:
     """Wake vs sleep mutual-inhibition flip-flop -> a bistable arousal level in [0, 1]."""
 
-    def __init__(self, self_exc=SELF_EXC, mutual=MUTUAL, bias=BIAS, gain=GAIN,
-                 tau=TAU, noise=NOISE, homeo=HOMEO, iters=ITERS, seed=0):
+    def __init__(
+        self,
+        self_exc=SELF_EXC,
+        mutual=MUTUAL,
+        bias=BIAS,
+        gain=GAIN,
+        tau=TAU,
+        noise=NOISE,
+        homeo=HOMEO,
+        iters=ITERS,
+        seed=0,
+    ):
         self.self_exc = self_exc
         self.mutual = mutual
         self.bias = bias
@@ -86,8 +97,12 @@ class ReticularFormation:
         for _ in range(self.iters):
             nw = self.rng.uniform(-self.noise, self.noise)
             ns = self.rng.uniform(-self.noise, self.noise)
-            w_t = _sigmoid(self.gain * (drive + self.self_exc * w - self.mutual * s - self.bias + nw))
-            s_t = _sigmoid(self.gain * (homeo + self.self_exc * s - self.mutual * w - self.bias + ns))
+            w_t = _sigmoid(
+                self.gain * (drive + self.self_exc * w - self.mutual * s - self.bias + nw)
+            )
+            s_t = _sigmoid(
+                self.gain * (homeo + self.self_exc * s - self.mutual * w - self.bias + ns)
+            )
             w = (1.0 - self.tau) * w + self.tau * w_t
             s = (1.0 - self.tau) * s + self.tau * s_t
         return w, s
@@ -136,11 +151,11 @@ def main():
 
     up_drives = _frange(0.0, DRIVE_MAX, DRIVE_STEP)
     down_drives = list(reversed(up_drives))
-    up_arousal = rf.sweep(up_drives, start="sleep")          # asleep -> raise drive
-    down_arousal = rf.sweep(down_drives, start="wake")       # awake  -> lower drive
+    up_arousal = rf.sweep(up_drives, start="sleep")  # asleep -> raise drive
+    down_arousal = rf.sweep(down_drives, start="wake")  # awake  -> lower drive
 
-    up_thresh = _switch_on(up_drives, up_arousal)            # asleep -> awake switch point
-    down_thresh = _switch_off(down_drives, down_arousal)     # awake  -> asleep switch point
+    up_thresh = _switch_on(up_drives, up_arousal)  # asleep -> awake switch point
+    down_thresh = _switch_off(down_drives, down_arousal)  # awake  -> asleep switch point
 
     # two attractors at the extremes (settle from BOTH starts)
     sleep_from_sleep = rf.arousal(0.0, start="sleep")
@@ -155,49 +170,68 @@ def main():
     print("=" * 68)
     print("RETICULAR FORMATION (ARAS) -- bistable sleep-wake arousal switch")
     print("=" * 68)
-    print(f"flip-flop: self-exc {SELF_EXC}, mutual-inhib {MUTUAL}, gain {GAIN}, "
-          f"homeostatic pressure {HOMEO}")
+    print(
+        f"flip-flop: self-exc {SELF_EXC}, mutual-inhib {MUTUAL}, gain {GAIN}, "
+        f"homeostatic pressure {HOMEO}"
+    )
     print(f"arousal in [0, 1] read from the wake population; drive swept 0.0 -> {DRIVE_MAX}")
     print("-" * 68)
     print("(a) two attractors (settle from either start):")
-    print(f"    NO drive   -> arousal {sleep_from_sleep:.2f} (from sleep) / "
-          f"{sleep_from_wake:.2f} (from wake)   [SLEEP]")
-    print(f"    FULL drive -> arousal {wake_from_sleep:.2f} (from sleep) / "
-          f"{wake_from_wake:.2f} (from wake)   [WAKE]")
+    print(
+        f"    NO drive   -> arousal {sleep_from_sleep:.2f} (from sleep) / "
+        f"{sleep_from_wake:.2f} (from wake)   [SLEEP]"
+    )
+    print(
+        f"    FULL drive -> arousal {wake_from_sleep:.2f} (from sleep) / "
+        f"{wake_from_wake:.2f} (from wake)   [WAKE]"
+    )
     print("(b) hysteresis loop (sharp bistable transitions):")
     print(f"    UP   switch (asleep -> awake) at drive {up_thresh:.2f}")
     print(f"    DOWN switch (awake -> asleep) at drive {down_thresh:.2f}")
     print(f"    loop width = {up_thresh - down_thresh:.2f}  (up threshold > down threshold)")
-    print(f"(c) intermediate drive {DRIVE_MID:.2f}: arousal {mid_low:.2f} (from sleep) vs "
-          f"{mid_high:.2f} (from wake)  [two stable states]")
+    print(
+        f"(c) intermediate drive {DRIVE_MID:.2f}: arousal {mid_low:.2f} (from sleep) vs "
+        f"{mid_high:.2f} (from wake)  [two stable states]"
+    )
     print("=" * 68)
 
-    # ---- self-check: deterministic asserts, zero-dep, ASCII-only ----
+    # ---- self-check: deterministic asserts, ASCII-only ----
     # (a) two attractors: no drive -> SLEEP from any start; full drive -> WAKE from any start.
-    assert sleep_from_sleep < 0.3 and sleep_from_wake < 0.3, \
+    assert sleep_from_sleep < 0.3 and sleep_from_wake < 0.3, (
         f"no drive must settle to the sleep attractor ({sleep_from_sleep:.2f}, {sleep_from_wake:.2f})"
-    assert wake_from_sleep > 0.7 and wake_from_wake > 0.7, \
+    )
+    assert wake_from_sleep > 0.7 and wake_from_wake > 0.7, (
         f"full drive must settle to the wake attractor ({wake_from_sleep:.2f}, {wake_from_wake:.2f})"
+    )
     # (b) hysteresis: the up switch threshold is strictly ABOVE the down switch threshold.
-    assert up_thresh is not None and down_thresh is not None, "both switches must occur in the sweep"
-    assert up_thresh > down_thresh, \
+    assert up_thresh is not None and down_thresh is not None, (
+        "both switches must occur in the sweep"
+    )
+    assert up_thresh > down_thresh, (
         f"hysteresis requires up threshold > down threshold ({up_thresh:.2f} vs {down_thresh:.2f})"
-    assert up_thresh - down_thresh > 0.2, f"hysteresis loop must have width ({up_thresh - down_thresh:.2f})"
+    )
+    assert up_thresh - down_thresh > 0.2, (
+        f"hysteresis loop must have width ({up_thresh - down_thresh:.2f})"
+    )
     # (c) history dependence: two distinct stable states coexist at the intermediate drive.
-    assert mid_high - mid_low > 0.5, \
+    assert mid_high - mid_low > 0.5, (
         f"intermediate drive must have two stable states ({mid_low:.2f} vs {mid_high:.2f})"
+    )
     assert mid_low < 0.3 < 0.7 < mid_high, "the coexisting states must straddle the switch"
     # determinism: two fresh same-seed instances reproduce identical trajectories op-for-op.
     rf2 = ReticularFormation(seed=0)
     assert rf2.sweep(up_drives, start="sleep") == up_arousal, "same seed -> identical up-sweep"
     a, b = ReticularFormation(seed=0), ReticularFormation(seed=0)
-    assert a.arousal(DRIVE_MID, start="wake") == b.arousal(DRIVE_MID, start="wake"), \
+    assert a.arousal(DRIVE_MID, start="wake") == b.arousal(DRIVE_MID, start="wake"), (
         "same seed -> identical settled arousal"
+    )
 
-    print(f"self-check OK: sleep attractor {sleep_from_sleep:.2f} <-> wake attractor "
-          f"{wake_from_wake:.2f}; hysteresis up {up_thresh:.2f} > down {down_thresh:.2f} "
-          f"(loop {up_thresh - down_thresh:.2f}); intermediate drive holds two states "
-          f"{mid_low:.2f}/{mid_high:.2f}; deterministic")
+    print(
+        f"self-check OK: sleep attractor {sleep_from_sleep:.2f} <-> wake attractor "
+        f"{wake_from_wake:.2f}; hysteresis up {up_thresh:.2f} > down {down_thresh:.2f} "
+        f"(loop {up_thresh - down_thresh:.2f}); intermediate drive holds two states "
+        f"{mid_low:.2f}/{mid_high:.2f}; deterministic"
+    )
 
 
 if __name__ == "__main__":

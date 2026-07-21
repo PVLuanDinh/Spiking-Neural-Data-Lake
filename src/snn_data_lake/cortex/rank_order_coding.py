@@ -13,6 +13,7 @@ VanRullen, Neural Networks 14 (2001).
 
   python -m snn_data_lake.cortex.rank_order_coding        # (also run by run_selfchecks.py)
 """
+
 import random
 
 from snn_data_lake.brainstem.signal_loop import build_default_library
@@ -51,7 +52,7 @@ def _template_label(refs_enc, labels, window):
 def _rig_gain(v, b, p):
     """A monotonic sensor gain/contrast change (order-preserving): [0,1] -> [b,1] via v**p.
     Strictly increasing, so rank order is preserved exactly while magnitudes shift — a rig move."""
-    return b + (1.0 - b) * (v ** p)
+    return b + (1.0 - b) * (v**p)
 
 
 def main():
@@ -70,7 +71,7 @@ def main():
     for i in range(trials):
         lab = labels[i % len(labels)]
         w = jitter(library[lab], 0.10)
-        b, p = rng.uniform(0.0, 0.45), rng.uniform(0.5, 2.2)     # per-capture rig setting
+        b, p = rng.uniform(0.0, 0.45), rng.uniform(0.5, 2.2)  # per-capture rig setting
         windows.append((lab, w, b, p))
 
     def acc(matcher, apply_gain):
@@ -90,18 +91,28 @@ def main():
     print("=" * 66)
     print(f"{len(labels)} commands, {trials} jittered windows")
     print("                     clean    under a per-capture rig gain change")
-    print(f"  rank-order match : {rank_clean:.0%}     {rank_gain:.0%}   (order unchanged -> invariant)")
-    print(f"  template (VanR)  : {tmpl_clean:.0%}     {tmpl_gain:.0%}   (magnitude drifts -> degrades)")
+    print(
+        f"  rank-order match : {rank_clean:.0%}     {rank_gain:.0%}   (order unchanged -> invariant)"
+    )
+    print(
+        f"  template (VanR)  : {tmpl_clean:.0%}     {tmpl_gain:.0%}   (magnitude drifts -> degrades)"
+    )
     print("=" * 66)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert rank_clean >= 0.9, f"rank-order matcher must recognize the commands ({rank_clean:.2f})"
     assert rank_gain == rank_clean, "rank-order recognition must be EXACTLY gain-invariant"
-    assert tmpl_gain < tmpl_clean - 0.05, f"the magnitude template must degrade under rig gain ({tmpl_clean:.2f}->{tmpl_gain:.2f})"
-    assert rank_gain > tmpl_gain, f"rank-order must beat the template under a rig gain change ({rank_gain:.2f} vs {tmpl_gain:.2f})"
+    assert tmpl_gain < tmpl_clean - 0.05, (
+        f"the magnitude template must degrade under rig gain ({tmpl_clean:.2f}->{tmpl_gain:.2f})"
+    )
+    assert rank_gain > tmpl_gain, (
+        f"rank-order must beat the template under a rig gain change ({rank_gain:.2f} vs {tmpl_gain:.2f})"
+    )
     assert rank_code([3.0, 1.0, 2.0]) == [0, 2, 1], "descending rank: largest -> 0"
-    print(f"self-check OK: rank-order {rank_clean:.0%} clean and {rank_gain:.0%} under rig gain "
-          f"(invariant); template drops {tmpl_clean:.0%}->{tmpl_gain:.0%}; wired to the command library")
+    print(
+        f"self-check OK: rank-order {rank_clean:.0%} clean and {rank_gain:.0%} under rig gain "
+        f"(invariant); template drops {tmpl_clean:.0%}->{tmpl_gain:.0%}; wired to the command library"
+    )
 
 
 if __name__ == "__main__":

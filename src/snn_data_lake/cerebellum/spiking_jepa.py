@@ -54,10 +54,11 @@ representations in deep sensory networks" (LPL, 2023); Illing et al., "Local pla
 representations using self-supervised contrastive predictions" (2021); the JEPA move (LeCun 2022) -- predict
 in a learned latent space, not pixel space; Izhikevich (2007) eligibility traces.
 
-Pure stdlib (math, random, json, zlib), ASCII-only prints, deterministic (random.Random(seed) per instance).
+Deps: math, random, json, zlib (numpy/torch allowed project-wide); ASCII-only prints, deterministic (random.Random(seed) per instance).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.spiking_jepa
 """
+
 import json
 import math
 import random
@@ -107,26 +108,40 @@ class SpikingJEPA:
     make_goal_value() builds a negative-L1 latent goal_value; save/load persist tagged JSON with a crc32
     trust boundary."""
 
-    def __init__(self, actions, retina=20, T=10, sizes=(24, 16), latent_dim=12, rule="lpl",
-                 anti_collapse=True, tau=0.99, lr=0.04, seed=0, theta=0.5, rho_star=0.25,
-                 graded=False, transport=False):
+    def __init__(
+        self,
+        actions,
+        retina=20,
+        T=10,
+        sizes=(24, 16),
+        latent_dim=12,
+        rule="lpl",
+        anti_collapse=True,
+        tau=0.99,
+        lr=0.04,
+        seed=0,
+        theta=0.5,
+        rho_star=0.25,
+        graded=False,
+        transport=False,
+    ):
         self.actions = tuple(actions)
         self.n_act = len(self.actions)
         self._aidx = {a: i for i, a in enumerate(self.actions)}
         self.R = int(retina)
         self.T = int(T)
-        self.sizes = tuple(int(s) for s in sizes)      # exactly 2 LIF layers
+        self.sizes = tuple(int(s) for s in sizes)  # exactly 2 LIF layers
         self.L = int(latent_dim)
         self.rule = str(rule)
         self.anti_collapse = bool(anti_collapse)
-        self.tau = float(tau)                          # EMA target-readout coefficient
+        self.tau = float(tau)  # EMA target-readout coefficient
         self.lr = float(lr)
         self.seed = seed
-        self.theta = float(theta)                      # event log-contrast threshold
-        self.rho_star = float(rho_star)                # homeostatic target firing rate
-        self.graded = bool(graded)                     # CONTROL: tanh instead of a spike -> non-binary (claim 1)
-        self.transport = bool(transport)               # CONTROL: bottom gated by top update (weight transport)
-        self.freeze_top = False                        # CONTROL: freeze top layer+readout+predictor (claim 2)
+        self.theta = float(theta)  # event log-contrast threshold
+        self.rho_star = float(rho_star)  # homeostatic target firing rate
+        self.graded = bool(graded)  # CONTROL: tanh instead of a spike -> non-binary (claim 1)
+        self.transport = bool(transport)  # CONTROL: bottom gated by top update (weight transport)
+        self.freeze_top = False  # CONTROL: freeze top layer+readout+predictor (claim 2)
         self.rng = random.Random(seed)
 
         # ---- LIF backbone constants ----
@@ -135,21 +150,21 @@ class SpikingJEPA:
 
         # ---- event encoder constants ----
         self._eps_log = 1e-3
-        self._dmax = -math.log(self._eps_log)          # max |log-contrast| for [0,1] frames (latency scale)
-        self._ref = [0.0] * self.R                     # stored/zero reference frame (encode spikes obs vs this)
+        self._dmax = -math.log(self._eps_log)  # max |log-contrast| for [0,1] frames (latency scale)
+        self._ref = [0.0] * self.R  # stored/zero reference frame (encode spikes obs vs this)
 
         # ---- learning-rule constants ----
         self.tau_e = 3.0
         self.elig_decay = math.exp(-1.0 / self.tau_e)  # presynaptic eligibility EMA
-        self.beta = 3.0                                # surrogate sharpness
-        self.stat_decay = 0.98                         # per-layer EMA statistics decay (tau_stat)
+        self.beta = 3.0  # surrogate sharpness
+        self.stat_decay = 0.98  # per-layer EMA statistics decay (tau_stat)
         self.eps_stat = 1e-3
         self.lambda_pred = 1.0
         self.lambda_var = 2.0
         self.lambda_cov = 0.5
         self.lambda_homeo = 0.5
-        self.lambda_jepa = 0.4                         # top-down JEPA modulator weight on the top LIF layer
-        self.espp_alpha = 1.0                          # ESPP negative-pair push strength
+        self.lambda_jepa = 0.4  # top-down JEPA modulator weight on the top LIF layer
+        self.espp_alpha = 1.0  # ESPP negative-pair push strength
 
         # ---- predictor constants (copied from jepa_world_model) ----
         self.z_clip = 3.0
@@ -162,7 +177,10 @@ class SpikingJEPA:
         self.Wrec = []
         self.conn_ff = []
         self.conn_rec = []
-        fan_ff = [2 * self.R, self.sizes[0]]           # layer0 ff = 2R event lines; layer1 ff = layer0 spikes
+        fan_ff = [
+            2 * self.R,
+            self.sizes[0],
+        ]  # layer0 ff = 2R event lines; layer1 ff = layer0 spikes
         for l in range(2):
             wff, cff = _sparse_init(r, fan_ff[l], self.sizes[l], _FF_GAIN, self.v_threshold)
             wrec, crec = _sparse_init(r, self.sizes[l], self.sizes[l], _REC_GAIN, self.v_threshold)
@@ -173,7 +191,9 @@ class SpikingJEPA:
 
         # readout: z = unit(tanh(Wr @ s_bar_top + br)); a frozen EMA/stop-grad target readout Wr_t/br_t
         sr = 1.0 / math.sqrt(self.sizes[-1])
-        self.Wr = [[r.uniform(-1.0, 1.0) * sr for _ in range(self.sizes[-1])] for _ in range(self.L)]
+        self.Wr = [
+            [r.uniform(-1.0, 1.0) * sr for _ in range(self.sizes[-1])] for _ in range(self.L)
+        ]
         self.br = [0.0] * self.L
         self.Wr_t = [row[:] for row in self.Wr]
         self.br_t = self.br[:]
@@ -188,9 +208,9 @@ class SpikingJEPA:
         self.var = [[0.01] * n for n in self.sizes]
         self.cov = [[[0.0] * n for _ in range(n)] for n in self.sizes]
 
-        self._buf = []                                 # ring buffer of online latents (telemetry)
+        self._buf = []  # ring buffer of online latents (telemetry)
         self.buffer = 64
-        self._neg = [[] for _ in self.sizes]           # ESPP negative memory per layer
+        self._neg = [[] for _ in self.sizes]  # ESPP negative memory per layer
 
     # ---- action handling (copied from jepa_world_model) ------------------------------------------------
     def _idx(self, command):
@@ -204,7 +224,7 @@ class SpikingJEPA:
         """Coerce obs to a length-R [0,1] frame: truncate a longer live pattern, pad a shorter one with 0."""
         v = list(obs)
         if len(v) >= self.R:
-            return [float(x) for x in v[:self.R]]
+            return [float(x) for x in v[: self.R]]
         return [float(x) for x in v] + [0.0] * (self.R - len(v))
 
     def _events(self, prev, cur, graded=False):
@@ -243,7 +263,9 @@ class SpikingJEPA:
         t_ = self.T
         spk = [[[0.0] * sizes[l] for _ in range(t_)] for l in range(nl)]
         vpre = [[[0.0] * sizes[l] for _ in range(t_)] for l in range(nl)]
-        neurons = [[LIFNeuron(self.tau_m, self.v_threshold) for _ in range(sizes[l])] for l in range(nl)]
+        neurons = [
+            [LIFNeuron(self.tau_m, self.v_threshold) for _ in range(sizes[l])] for l in range(nl)
+        ]
         prev = [[0.0] * sizes[l] for l in range(nl)]
         for t in range(t_):
             layer_in = ev[t]
@@ -273,19 +295,25 @@ class SpikingJEPA:
                     if graded:
                         vv = nrn.v_rest + (vprevv - nrn.v_rest) * nrn.decay + cur
                         nrn.v = vv
-                        s = math.tanh(vv)          # non-binary: the graded (non-spiking) control
+                        s = math.tanh(vv)  # non-binary: the graded (non-spiking) control
                         vp = vv
                     else:
-                        s = float(nrn.step(cur))   # binary 0/1 spike
-                        vp = nrn.v_rest + (vprevv - nrn.v_rest) * nrn.decay + cur   # pre-reset membrane
+                        s = float(nrn.step(cur))  # binary 0/1 spike
+                        vp = (
+                            nrn.v_rest + (vprevv - nrn.v_rest) * nrn.decay + cur
+                        )  # pre-reset membrane
                     out[j] = s
                     spk_lt[j] = s
                     vpre_lt[j] = vp
                 prev[l] = out
-                layer_in = out                     # this layer's spikes are the next layer's ff input
-        sbar = [[sum(spk[l][t][j] for t in range(t_)) / t_ for j in range(sizes[l])] for l in range(nl)]
-        counts = [[int(round(sum(spk[l][t][j] for t in range(t_)))) for j in range(sizes[l])]
-                  for l in range(nl)]
+                layer_in = out  # this layer's spikes are the next layer's ff input
+        sbar = [
+            [sum(spk[l][t][j] for t in range(t_)) / t_ for j in range(sizes[l])] for l in range(nl)
+        ]
+        counts = [
+            [int(round(sum(spk[l][t][j] for t in range(t_)))) for j in range(sizes[l])]
+            for l in range(nl)
+        ]
         return {"ev": ev, "spk": spk, "vpre": vpre, "sbar": sbar, "counts": counts}
 
     # ---- readout ---------------------------------------------------------------------------------------
@@ -449,7 +477,7 @@ class SpikingJEPA:
         for i in range(big_l):
             wzi = self.Wz[i]
             for k in range(big_l):
-                wzi[k] *= (1.0 - self.wd)
+                wzi[k] *= 1.0 - self.wd
         rowmax = max(sum(abs(self.Wz[i][k]) for k in range(big_l)) for i in range(big_l))
         if rowmax > self.rho_max:
             f = self.rho_max / rowmax
@@ -480,7 +508,7 @@ class SpikingJEPA:
         rec_y = self._forward(pattern_next)
         sbx = rec_x["sbar"]
         sby = rec_y["sbar"]
-        echo = [sby[l][:] for l in range(nl)]          # frozen next population code (stop-grad)
+        echo = [sby[l][:] for l in range(nl)]  # frozen next population code (stop-grad)
 
         z = self._readout(sbx[-1], self.Wr, self.br)
         self._buf.append(z[:])
@@ -495,14 +523,14 @@ class SpikingJEPA:
 
         # ---- JEPA invariance loss (readout + predictor + top-down modulator) ----
         if self.anti_collapse:
-            z_tgt = self._readout(echo[-1], self.Wr_t, self.br_t)     # stop-grad EMA target
+            z_tgt = self._readout(echo[-1], self.Wr_t, self.br_t)  # stop-grad EMA target
         else:
-            z_tgt = self._readout(echo[-1], self.Wr, self.br)         # tied to online (ablation)
+            z_tgt = self._readout(echo[-1], self.Wr, self.br)  # tied to online (ablation)
         p = self._predict_pre(z, aj)
         r = [p[i] - z_tgt[i] for i in range(big_l)]
         loss_inv = sum(ri * ri for ri in r)
         gp = [2.0 * r[i] for i in range(big_l)]
-        gz = [0.0] * big_l                                             # dL/dz through the predictor (pre-update)
+        gz = [0.0] * big_l  # dL/dz through the predictor (pre-update)
         for k in range(big_l):
             acc = gp[k]
             for i in range(big_l):
@@ -513,7 +541,7 @@ class SpikingJEPA:
         top_l1 = 0.0
         lr = self.lr
         if not self.freeze_top:
-            for i in range(big_l):                                    # predictor params
+            for i in range(big_l):  # predictor params
                 self.b[i] -= lr * gp[i]
                 self.Wa[i][aj] -= lr * gp[i]
                 wzi = self.Wz[i]
@@ -521,13 +549,13 @@ class SpikingJEPA:
                 for k in range(big_l):
                     wzi[k] -= lr * gi * z[k]
             self._spectral_bound()
-            for i in range(big_l):                                    # readout params
+            for i in range(big_l):  # readout params
                 wri = self.Wr[i]
                 gwri = gwr[i]
                 for j in range(self.sizes[-1]):
                     wri[j] -= lr * gwri[j]
                 self.br[i] -= lr * gbr[i]
-            if self.anti_collapse:                                    # EMA target readout
+            if self.anti_collapse:  # EMA target readout
                 ta = self.tau
                 for i in range(big_l):
                     wti = self.Wr_t[i]
@@ -546,7 +574,7 @@ class SpikingJEPA:
                 continue
             n = self.sizes[l]
             m = self._modulator(l, sbx[l], echo[l])
-            if l == nl - 1:                                           # top layer also gets the JEPA error
+            if l == nl - 1:  # top layer also gets the JEPA error
                 lj = self.lambda_jepa
                 for j in range(n):
                     m[j] += -lj * gsbar_top[j]
@@ -560,7 +588,7 @@ class SpikingJEPA:
             e_rec = self._elig(rec_x["spk"][l], n)
             sg = self._surrogate(rec_x["vpre"][l], n)
             gate = 1.0
-            if l == 0 and self.transport:                            # weight-transport surrogate: gate on top
+            if l == 0 and self.transport:  # weight-transport surrogate: gate on top
                 gate = 1.0 if top_l1 > 1e-9 else 0.0
             wff = self.Wff[l]
             wrec = self.Wrec[l]
@@ -643,16 +671,31 @@ class SpikingJEPA:
         field over the exact serialized payload. Floats round-trip exactly (json repr of doubles)."""
         body = {
             "format": "snn_spiking_jepa/1",
-            "actions": list(self.actions), "retina": self.R, "T": self.T,
-            "sizes": list(self.sizes), "latent_dim": self.L, "rule": self.rule,
-            "anti_collapse": self.anti_collapse, "tau": self.tau, "lr": self.lr,
-            "theta": self.theta, "rho_star": self.rho_star,
-            "Wff": self.Wff, "Wrec": self.Wrec, "conn_ff": self.conn_ff, "conn_rec": self.conn_rec,
-            "Wr": self.Wr, "br": self.br, "Wr_t": self.Wr_t, "br_t": self.br_t,
-            "Wz": self.Wz, "Wa": self.Wa, "b": self.b,
+            "actions": list(self.actions),
+            "retina": self.R,
+            "T": self.T,
+            "sizes": list(self.sizes),
+            "latent_dim": self.L,
+            "rule": self.rule,
+            "anti_collapse": self.anti_collapse,
+            "tau": self.tau,
+            "lr": self.lr,
+            "theta": self.theta,
+            "rho_star": self.rho_star,
+            "Wff": self.Wff,
+            "Wrec": self.Wrec,
+            "conn_ff": self.conn_ff,
+            "conn_rec": self.conn_rec,
+            "Wr": self.Wr,
+            "br": self.br,
+            "Wr_t": self.Wr_t,
+            "br_t": self.br_t,
+            "Wz": self.Wz,
+            "Wa": self.Wa,
+            "b": self.b,
         }
         s = json.dumps(body, sort_keys=True, separators=(",", ":"))
-        crc = zlib.crc32(s.encode("ascii")) & 0xffffffff
+        crc = zlib.crc32(s.encode("ascii")) & 0xFFFFFFFF
         with open(path, "w", encoding="ascii") as f:
             json.dump({"format": "snn_spiking_jepa/1", "crc": crc, "body": s}, f)
 
@@ -668,7 +711,7 @@ class SpikingJEPA:
         crc = obj.get("crc")
         if not isinstance(s, str) or not isinstance(crc, int):
             raise ValueError("bad spiking-JEPA weight file: missing body/crc")
-        if (zlib.crc32(s.encode("ascii")) & 0xffffffff) != crc:
+        if (zlib.crc32(s.encode("ascii")) & 0xFFFFFFFF) != crc:
             raise ValueError("bad spiking-JEPA weight file: crc mismatch (corrupted payload)")
         body = json.loads(s)
         if body.get("format") != "snn_spiking_jepa/1":
@@ -677,18 +720,29 @@ class SpikingJEPA:
         big_l = int(body.get("latent_dim", -1))
         r_ = int(body.get("retina", -1))
         acts = body.get("actions")
-        if not (isinstance(sizes, list) and len(sizes) == 2 and big_l > 0 and r_ > 0
-                and isinstance(acts, list) and len(acts) > 0):
+        if not (
+            isinstance(sizes, list)
+            and len(sizes) == 2
+            and big_l > 0
+            and r_ > 0
+            and isinstance(acts, list)
+            and len(acts) > 0
+        ):
             raise ValueError("bad spiking-JEPA weight file: bad geometry")
         na = len(acts)
 
         def _shape_ok(mat, rows, cols):
-            return isinstance(mat, list) and len(mat) == rows and all(
-                isinstance(row, list) and len(row) == cols for row in mat)
+            return (
+                isinstance(mat, list)
+                and len(mat) == rows
+                and all(isinstance(row, list) and len(row) == cols for row in mat)
+            )
 
         wff = body.get("Wff")
         wrec = body.get("Wrec")
-        if not (isinstance(wff, list) and len(wff) == 2 and isinstance(wrec, list) and len(wrec) == 2):
+        if not (
+            isinstance(wff, list) and len(wff) == 2 and isinstance(wrec, list) and len(wrec) == 2
+        ):
             raise ValueError("bad spiking-JEPA weight file: backbone block count")
         if not (_shape_ok(wff[0], sizes[0], 2 * r_) and _shape_ok(wff[1], sizes[1], sizes[0])):
             raise ValueError("bad spiking-JEPA weight file: feed-forward shape mismatch")
@@ -705,13 +759,23 @@ class SpikingJEPA:
             raise ValueError("bad spiking-JEPA weight file: readout shape mismatch")
         if not (_shape_ok(wz, big_l, big_l) and _shape_ok(wa, big_l, na)):
             raise ValueError("bad spiking-JEPA weight file: predictor shape mismatch")
-        if not (isinstance(bb, list) and len(bb) == big_l and isinstance(br, list) and len(br) == big_l
-                and isinstance(br_t, list) and len(br_t) == big_l):
+        if not (
+            isinstance(bb, list)
+            and len(bb) == big_l
+            and isinstance(br, list)
+            and len(br) == big_l
+            and isinstance(br_t, list)
+            and len(br_t) == big_l
+        ):
             raise ValueError("bad spiking-JEPA weight file: bias shape mismatch")
         conn_ff = body.get("conn_ff")
         conn_rec = body.get("conn_rec")
-        if not (isinstance(conn_ff, list) and len(conn_ff) == 2 and isinstance(conn_rec, list)
-                and len(conn_rec) == 2):
+        if not (
+            isinstance(conn_ff, list)
+            and len(conn_ff) == 2
+            and isinstance(conn_rec, list)
+            and len(conn_rec) == 2
+        ):
             raise ValueError("bad spiking-JEPA weight file: connectivity block count")
 
         # trusted: adopt the validated weights and geometry
@@ -752,13 +816,13 @@ class SpikingJEPA:
 # obs = a shape template (bar/blob/cross) rendered at p; actions drift the position left/right or hold.
 # =========================================================================================================
 _SHAPES = [
-    [0.8, 0.9, 1.0, 1.0, 1.0, 0.9, 0.8],   # bar (solid)
-    [0.2, 0.5, 0.8, 1.0, 0.8, 0.5, 0.2],   # blob (rounded)
-    [1.0, 0.3, 1.0, 0.3, 1.0, 0.3, 1.0],   # cross (alternating)
+    [0.8, 0.9, 1.0, 1.0, 1.0, 0.9, 0.8],  # bar (solid)
+    [0.2, 0.5, 0.8, 1.0, 0.8, 0.5, 0.2],  # blob (rounded)
+    [1.0, 0.3, 1.0, 0.3, 1.0, 0.3, 1.0],  # cross (alternating)
 ]
-_SW = len(_SHAPES[0])                       # shape width (7)
+_SW = len(_SHAPES[0])  # shape width (7)
 _ACTIONS = ("DRIFT_LEFT", "DRIFT_RIGHT", "HOLD")
-_DRIFT = 3                                  # pixels a shape drifts per LEFT/RIGHT action (HOLD = 0). Large
+_DRIFT = 3  # pixels a shape drifts per LEFT/RIGHT action (HOLD = 0). Large
 #                                             enough that actions carry real signal -> a genuine gap between
 #                                             the action-conditioned predictor and a static identity predictor.
 
@@ -807,7 +871,10 @@ def _probe_acc(feats_tr, ids_tr, feats_te, ids_te, c, epochs=80, lr=0.3):
     linearly present, so the trained/random/raw comparison in the self-check is a FAIR one."""
     fd = len(feats_tr[0])
     mu = [sum(f[k] for f in feats_tr) / len(feats_tr) for k in range(fd)]
-    sd = [math.sqrt(sum((f[k] - mu[k]) ** 2 for f in feats_tr) / len(feats_tr)) + 1e-6 for k in range(fd)]
+    sd = [
+        math.sqrt(sum((f[k] - mu[k]) ** 2 for f in feats_tr) / len(feats_tr)) + 1e-6
+        for k in range(fd)
+    ]
 
     def _norm(f):
         return [(f[k] - mu[k]) / sd[k] for k in range(fd)]
@@ -829,8 +896,9 @@ def _probe_acc(feats_tr, ids_tr, feats_te, ids_te, c, epochs=80, lr=0.3):
                 for k in range(fd):
                     wo[k] += lr * e * f[k] / fd
                 b[o] += lr * e
-    ok = sum(1 for f, y in zip(fte, ids_te)
-             if max(range(c), key=lambda o: b[o] + dot(w[o], f)) == y)
+    ok = sum(
+        1 for f, y in zip(fte, ids_te) if max(range(c), key=lambda o: b[o] + dot(w[o], f)) == y
+    )
     return ok / len(fte)
 
 
@@ -848,7 +916,7 @@ def _pos_dataset(c, positions, retina):
 
 def _fill_buf(model, batch):
     """Measure collapse on a held-out batch: fill the latent ring buffer with fresh encodes, then read out."""
-    model._buf = [model.encode(x) for (x, _a, _y, _i, _p) in batch][-model.buffer:]
+    model._buf = [model.encode(x) for (x, _a, _y, _i, _p) in batch][-model.buffer :]
     return model.latent_std(), model.effective_rank()
 
 
@@ -859,14 +927,14 @@ def main():
     retina = 20
     c = len(_SHAPES)
     steps = 600
-    epochs = 2                                # 2 passes: enough for a STABLE predict-beats-identity margin
+    epochs = 2  # 2 passes: enough for a STABLE predict-beats-identity margin
     train = _gen_stream(steps, 1, retina)
     hold = _gen_stream(220, 2, retina)
 
     # ---- train the shipped model (rule="lpl", anti_collapse=True) ----
     full = SpikingJEPA(_ACTIONS, retina=retina, seed=0)
     for _ep in range(epochs):
-        for (x, a, y, _i, _p) in train:
+        for x, a, y, _i, _p in train:
             full.train_step(x, a, y)
 
     # backbone firing-rate diagnostic (healthy = alive + bounded), averaged over a batch so a single silent
@@ -888,7 +956,9 @@ def main():
     sig = _signals(rec_x)
     spiking_ok = all(v == 0.0 or v == 1.0 for v in sig)
     # latent is a function of INTEGER spike counts: rebuild z from counts/T and match encode()
-    z_counts = full._readout([rec_x["counts"][-1][j] / full.T for j in range(full.sizes[-1])], full.Wr, full.br)
+    z_counts = full._readout(
+        [rec_x["counts"][-1][j] / full.T for j in range(full.sizes[-1])], full.Wr, full.br
+    )
     z_enc = full.encode(train[0][0])
     counts_int = all(isinstance(v, int) for row in rec_x["counts"] for v in row)
     latent_from_counts = (z_counts == z_enc) and counts_int
@@ -900,12 +970,14 @@ def main():
     loc_stream = _gen_stream(160, 5, retina)
     prim = SpikingJEPA(_ACTIONS, retina=retina, seed=0)
     ctrl2 = SpikingJEPA(_ACTIONS, retina=retina, seed=0)
-    for (x, a, y, _i, _p) in train[:120]:                # a shared warm start so both have identical weights
+    for x, a, y, _i, _p in train[:120]:  # a shared warm start so both have identical weights
         prim.train_step(x, a, y)
         ctrl2.train_step(x, a, y)
 
     def _bottom_l1(model):
-        return sum(abs(v) for row in model.Wff[0] for v in row) + sum(abs(v) for row in model.Wrec[0] for v in row)
+        return sum(abs(v) for row in model.Wff[0] for v in row) + sum(
+            abs(v) for row in model.Wrec[0] for v in row
+        )
 
     prim.freeze_top = True
     prim.transport = False
@@ -913,7 +985,7 @@ def main():
     ctrl2.transport = True
     b0_prim = _bottom_l1(prim)
     b0_ctrl = _bottom_l1(ctrl2)
-    for (x, a, y, _i, _p) in loc_stream:
+    for x, a, y, _i, _p in loc_stream:
         prim.train_step(x, a, y)
         ctrl2.train_step(x, a, y)
     d_prim = abs(_bottom_l1(prim) - b0_prim)
@@ -926,7 +998,7 @@ def main():
     # full vs anti-collapse-ablation latent std / effective-rank as telemetry only (see the module docstring).
     ctrl3 = SpikingJEPA(_ACTIONS, retina=retina, seed=0, anti_collapse=False)
     for _ep in range(epochs):
-        for (x, a, y, _i, _p) in train:
+        for x, a, y, _i, _p in train:
             ctrl3.train_step(x, a, y)
     full_std, full_rank = _fill_buf(full, hold)
     ctrl_std, ctrl_rank = _fill_buf(ctrl3, hold)
@@ -934,7 +1006,7 @@ def main():
     # ============================ CLAIM 4: PREDICTS FUTURE LATENT > IDENTITY, killed by TIME-SHUFFLE ============================
     def _mse(model_pred, predfn):
         tot = 0.0
-        for (x, a, y, _i, _p) in hold:
+        for x, a, y, _i, _p in hold:
             zt = model_pred.target_encode(y)
             pr = predfn(model_pred, x, a)
             tot += sum((pr[i] - zt[i]) ** 2 for i in range(model_pred.L))
@@ -956,7 +1028,7 @@ def main():
     rng_s = random.Random(7)
     ys = [t[2] for t in train]
     rng_s.shuffle(ys)
-    for (x, a, _y, _i, _p), yy in zip(train, ys):        # predictor-only SGD on shuffled targets
+    for (x, a, _y, _i, _p), yy in zip(train, ys):  # predictor-only SGD on shuffled targets
         z = shuf.encode(x)
         zt = shuf.target_encode(yy)
         aj = shuf._idx(a)
@@ -979,24 +1051,27 @@ def main():
     # encoder, not a product of the local learning (indeed the trained encoder does not exceed the random one).
     lo_p, hi_p = _SW // 2, retina - 1 - _SW // 2
     all_pos = list(range(lo_p, hi_p + 1))
-    tr_pos = all_pos[0::2]                                            # train positions
-    te_pos = all_pos[1::2]                                            # DISJOINT held-out positions
+    tr_pos = all_pos[0::2]  # train positions
+    te_pos = all_pos[1::2]  # DISJOINT held-out positions
     xtr, ids_tr = _pos_dataset(c, tr_pos, retina)
     xte, ids_te = _pos_dataset(c, te_pos, retina)
-    acc_primary = _probe_acc([full.encode(x) for x in xtr], ids_tr,
-                             [full.encode(x) for x in xte], ids_te, c)
-    rand_enc = SpikingJEPA(_ACTIONS, retina=retina, seed=3)          # untrained encoder baseline
-    acc_random = _probe_acc([rand_enc.encode(x) for x in xtr], ids_tr,
-                            [rand_enc.encode(x) for x in xte], ids_te, c)
+    acc_primary = _probe_acc(
+        [full.encode(x) for x in xtr], ids_tr, [full.encode(x) for x in xte], ids_te, c
+    )
+    rand_enc = SpikingJEPA(_ACTIONS, retina=retina, seed=3)  # untrained encoder baseline
+    acc_random = _probe_acc(
+        [rand_enc.encode(x) for x in xtr], ids_tr, [rand_enc.encode(x) for x in xte], ids_te, c
+    )
 
-    def _raw_events(model, x):                                        # raw event counts per line (2R vector)
+    def _raw_events(model, x):  # raw event counts per line (2R vector)
         rec = model._forward(x)
         return [sum(rec["ev"][t][i] for t in range(model.T)) for i in range(2 * model.R)]
 
-    acc_raw = _probe_acc([_raw_events(full, x) for x in xtr], ids_tr,
-                         [_raw_events(full, x) for x in xte], ids_te, c)
+    acc_raw = _probe_acc(
+        [_raw_events(full, x) for x in xtr], ids_tr, [_raw_events(full, x) for x in xte], ids_te, c
+    )
     chance = 1.0 / c
-    learn_gt_random = acc_primary > acc_random                       # reported honestly (False at this scale)
+    learn_gt_random = acc_primary > acc_random  # reported honestly (False at this scale)
 
     # ============================ BOUNDED ROLLOUT (40 steps, every action) ============================
     z0 = full.encode(_render(0, retina // 2, retina))
@@ -1015,25 +1090,32 @@ def main():
     # ============================ DETERMINISM + SAVE/LOAD ============================
     det_a = SpikingJEPA(_ACTIONS, retina=retina, seed=7)
     det_b = SpikingJEPA(_ACTIONS, retina=retina, seed=7)
-    for (x, a, y, _i, _p) in train[:150]:
+    for x, a, y, _i, _p in train[:150]:
         det_a.train_step(x, a, y)
         det_b.train_step(x, a, y)
-    same_weights = (det_a.Wff == det_b.Wff and det_a.Wrec == det_b.Wrec and det_a.Wr == det_b.Wr
-                    and det_a.br == det_b.br and det_a.Wz == det_b.Wz and det_a.Wa == det_b.Wa
-                    and det_a.b == det_b.b)
+    same_weights = (
+        det_a.Wff == det_b.Wff
+        and det_a.Wrec == det_b.Wrec
+        and det_a.Wr == det_b.Wr
+        and det_a.br == det_b.br
+        and det_a.Wz == det_b.Wz
+        and det_a.Wa == det_b.Wa
+        and det_a.b == det_b.b
+    )
 
     tmp = os.path.join(tempfile.gettempdir(), "snn_spiking_jepa_rt.json")
     full.save_weights(tmp)
     loaded = SpikingJEPA(_ACTIONS, retina=retina, seed=99)
     loaded.load_weights(tmp)
     probe = _render(1, retina // 2 - 2, retina)
-    roundtrip = (loaded.encode(probe) == full.encode(probe)
-                 and loaded.predict(loaded.encode(probe), "HOLD") == full.predict(full.encode(probe), "HOLD"))
+    roundtrip = loaded.encode(probe) == full.encode(probe) and loaded.predict(
+        loaded.encode(probe), "HOLD"
+    ) == full.predict(full.encode(probe), "HOLD")
     # corrupted crc -> ValueError
     with open(tmp, encoding="ascii") as f:
         obj = json.load(f)
     bad_crc = dict(obj)
-    bad_crc["crc"] = (obj["crc"] + 1) & 0xffffffff
+    bad_crc["crc"] = (obj["crc"] + 1) & 0xFFFFFFFF
     with open(tmp, "w", encoding="ascii") as f:
         json.dump(bad_crc, f)
     crc_raises = False
@@ -1043,11 +1125,17 @@ def main():
         crc_raises = True
     # bad shape -> ValueError (tamper the body, refresh the crc so it is the SHAPE that trips)
     body = json.loads(obj["body"])
-    body["Wr"] = [row[:-1] for row in body["Wr"]]            # wrong number of columns
+    body["Wr"] = [row[:-1] for row in body["Wr"]]  # wrong number of columns
     s2 = json.dumps(body, sort_keys=True, separators=(",", ":"))
     with open(tmp, "w", encoding="ascii") as f:
-        json.dump({"format": "snn_spiking_jepa/1",
-                   "crc": zlib.crc32(s2.encode("ascii")) & 0xffffffff, "body": s2}, f)
+        json.dump(
+            {
+                "format": "snn_spiking_jepa/1",
+                "crc": zlib.crc32(s2.encode("ascii")) & 0xFFFFFFFF,
+                "body": s2,
+            },
+            f,
+        )
     shape_raises = False
     try:
         SpikingJEPA(_ACTIONS, retina=retina).load_weights(tmp)
@@ -1058,30 +1146,50 @@ def main():
     # ============================ REPORT ============================
     line = "=" * 92
     print(line)
-    print("SPIKING JEPA -- genuinely spiking + genuinely local predictive world model (honest toy-scale study)")
+    print(
+        "SPIKING JEPA -- genuinely spiking + genuinely local predictive world model (honest toy-scale study)"
+    )
     print(line)
-    print(f"world      : drifting shapes, {c} identities x positions on a {retina}-pixel retina, "
-          f"actions {_ACTIONS}, drift={_DRIFT}px")
-    print(f"model      : event retina(2R={2 * retina}) -> LIF {full.sizes} (RPL) -> readout L={full.L}; "
-          f"rule={full.rule!r}; steps={steps}x{epochs}")
+    print(
+        f"world      : drifting shapes, {c} identities x positions on a {retina}-pixel retina, "
+        f"actions {_ACTIONS}, drift={_DRIFT}px"
+    )
+    print(
+        f"model      : event retina(2R={2 * retina}) -> LIF {full.sizes} (RPL) -> readout L={full.L}; "
+        f"rule={full.rule!r}; steps={steps}x{epochs}"
+    )
     print(f"backbone   : firing rates layer0={rate0:.3f} layer1={rate1:.3f} (alive + bounded)")
     print(line)
     print("ASSERTED CLAIMS (each vs a control that genuinely fails):")
-    print(f"(1) spiking      : inter-layer signals all in {{0,1}}={spiking_ok}; latent=f(int counts)="
-          f"{latent_from_counts}  | CONTROL graded non-binary={graded_nonbinary}")
-    print(f"(2) local        : freeze-top bottom L1-delta primary={d_prim:.4e} > eps  | CONTROL "
-          f"transport bottom-delta={d_ctrl:.4e} (~0)")
-    print(f"(4) predict      : pred MSE={mse_pred:.5f} < identity MSE={mse_ident:.5f}  | CONTROL "
-          f"time-shuffled MSE={mse_shuf:.5f} (>= identity)")
+    print(
+        f"(1) spiking      : inter-layer signals all in {{0,1}}={spiking_ok}; latent=f(int counts)="
+        f"{latent_from_counts}  | CONTROL graded non-binary={graded_nonbinary}"
+    )
+    print(
+        f"(2) local        : freeze-top bottom L1-delta primary={d_prim:.4e} > eps  | CONTROL "
+        f"transport bottom-delta={d_ctrl:.4e} (~0)"
+    )
+    print(
+        f"(4) predict      : pred MSE={mse_pred:.5f} < identity MSE={mse_ident:.5f}  | CONTROL "
+        f"time-shuffled MSE={mse_shuf:.5f} (>= identity)"
+    )
     print("HONEST DIAGNOSTICS (dropped claims -- MEASURED, NOT asserted; see docstring):")
-    print(f"(3) collapse tele: full std={full_std:.4f} rank={full_rank:.2f} | anti-collapse-ABLATION "
-          f"std={ctrl_std:.4f} rank={ctrl_rank:.2f} -> ablation does NOT collapse (random LIF holds rank)")
-    print(f"(5) id-generalize: trained acc={acc_primary:.2f} | random-encoder acc={acc_random:.2f} | "
-          f"raw-pixel acc={acc_raw:.2f} (chance {chance:.2f}) -> learning>random={learn_gt_random} "
-          f"(architecture, not learning)")
-    print(f"rollout    : 40-step bounded={roll_bounded} (max |z_i|={roll_max:.3f} < 10) for every action")
-    print(f"determinism: two seed=7 models byte-identical={same_weights}; save/load exact={roundtrip}; "
-          f"crc-raises={crc_raises}; shape-raises={shape_raises}")
+    print(
+        f"(3) collapse tele: full std={full_std:.4f} rank={full_rank:.2f} | anti-collapse-ABLATION "
+        f"std={ctrl_std:.4f} rank={ctrl_rank:.2f} -> ablation does NOT collapse (random LIF holds rank)"
+    )
+    print(
+        f"(5) id-generalize: trained acc={acc_primary:.2f} | random-encoder acc={acc_random:.2f} | "
+        f"raw-pixel acc={acc_raw:.2f} (chance {chance:.2f}) -> learning>random={learn_gt_random} "
+        f"(architecture, not learning)"
+    )
+    print(
+        f"rollout    : 40-step bounded={roll_bounded} (max |z_i|={roll_max:.3f} < 10) for every action"
+    )
+    print(
+        f"determinism: two seed=7 models byte-identical={same_weights}; save/load exact={roundtrip}; "
+        f"crc-raises={crc_raises}; shape-raises={shape_raises}"
+    )
     print(line)
 
     # ==================== ASSERTS (only genuine claims -- each with a control that GENUINELY fails) ====================
@@ -1089,30 +1197,46 @@ def main():
     # toy scale neither can be shown against a control that genuinely fails, so asserting them would be a rig.
     assert spiking_ok, "every inter-layer signal must be a 0/1 spike"
     assert latent_from_counts, "the latent must be a function of INTEGER spike counts"
-    assert graded_nonbinary, "the graded control must emit non-binary signals (would FAIL the spiking check)"
+    assert graded_nonbinary, (
+        "the graded control must emit non-binary signals (would FAIL the spiking check)"
+    )
 
-    assert d_prim > 1e-6, f"with the top frozen the bottom must STILL learn from its own local loss ({d_prim:.2e})"
-    assert d_ctrl < 1e-9, f"the weight-transport control must NOT learn when the top is frozen ({d_ctrl:.2e})"
-    assert d_prim > 100.0 * (d_ctrl + 1e-30), "local bottom-learning must dwarf the transport control"
+    assert d_prim > 1e-6, (
+        f"with the top frozen the bottom must STILL learn from its own local loss ({d_prim:.2e})"
+    )
+    assert d_ctrl < 1e-9, (
+        f"the weight-transport control must NOT learn when the top is frozen ({d_ctrl:.2e})"
+    )
+    assert d_prim > 100.0 * (d_ctrl + 1e-30), (
+        "local bottom-learning must dwarf the transport control"
+    )
 
-    assert mse_pred < mse_ident, \
+    assert mse_pred < mse_ident, (
         f"the action-conditioned predictor must beat the identity predictor in latent space ({mse_pred:.5f} < {mse_ident:.5f})"
-    assert mse_shuf >= mse_ident, \
+    )
+    assert mse_shuf >= mse_ident, (
         f"a time-shuffled predictor must lose that advantage ({mse_shuf:.5f} >= {mse_ident:.5f})"
+    )
 
-    assert roll_bounded, f"a 40-step rollout must stay finite and bounded for every action (max |z_i| {roll_max:.3f})"
+    assert roll_bounded, (
+        f"a 40-step rollout must stay finite and bounded for every action (max |z_i| {roll_max:.3f})"
+    )
     assert same_weights, "two seed=7 models trained on the same stream must be byte-identical"
     assert roundtrip, "save/load must round-trip encode + predict exactly"
     assert crc_raises, "a corrupted-crc weight file must raise ValueError"
     assert shape_raises, "a bad-shape weight file must raise ValueError"
 
-    print(f"self-check OK: genuinely spiking (rates {rate0:.2f}/{rate1:.2f}, latent=f(counts)); genuinely local "
-          f"(bottom learns {d_prim:.1e} vs transport {d_ctrl:.1e}); predicts action-conditioned latent dynamics "
-          f"({mse_pred:.5f}<{mse_ident:.5f}, time-shuffled {mse_shuf:.5f});")
-    print(f"  40-step bounded; deterministic + exact save/load (crc+shape guarded); rule={full.rule!r}. "
-          f"HONEST NEGATIVES (reported, not asserted): no-collapse ablation does NOT collapse "
-          f"(rank {full_rank:.1f} vs {ctrl_rank:.1f}); learning does NOT beat a random encoder at identity "
-          f"(id-gen {acc_primary:.2f} vs random {acc_random:.2f}, raw {acc_raw:.2f}).")
+    print(
+        f"self-check OK: genuinely spiking (rates {rate0:.2f}/{rate1:.2f}, latent=f(counts)); genuinely local "
+        f"(bottom learns {d_prim:.1e} vs transport {d_ctrl:.1e}); predicts action-conditioned latent dynamics "
+        f"({mse_pred:.5f}<{mse_ident:.5f}, time-shuffled {mse_shuf:.5f});"
+    )
+    print(
+        f"  40-step bounded; deterministic + exact save/load (crc+shape guarded); rule={full.rule!r}. "
+        f"HONEST NEGATIVES (reported, not asserted): no-collapse ablation does NOT collapse "
+        f"(rank {full_rank:.1f} vs {ctrl_rank:.1f}); learning does NOT beat a random encoder at identity "
+        f"(id-gen {acc_primary:.2f} vs random {acc_random:.2f}, raw {acc_raw:.2f})."
+    )
 
 
 if __name__ == "__main__":

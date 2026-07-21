@@ -45,23 +45,24 @@ reward gradient and solves a small spiking task WITHOUT backprop. It is a single
 on synthetic spike trains -- no hidden layers, no deep credit assignment. NOTHING is rigged: the
 finite-difference gradient is an independent ground truth, w is NOT initialised near the optimum,
 and the cosine threshold was fixed before measuring.
-Pure stdlib (random + math), additive research module, zero-dep, deterministic.
+Additive research module (random + math), deterministic.
 Ref: Fiete, I.R. & Seung, H.S. (2006), "Gradient Learning in Spiking Neural Networks by Dynamic
 Perturbation of Conductances", Physical Review Letters 97:048104, DOI 10.1103/PhysRevLett.97.048104.
 
   PYTHONPATH=src python research/weight_perturbation.py      # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
 SEED = 7
-N_SYN = 30           # plastic input weights on the readout
-N_PATTERN = 4        # fixed input spike patterns
-T = 25               # timesteps per pattern
-TAU = 8.0            # readout membrane time constant
+N_SYN = 30  # plastic input weights on the readout
+N_PATTERN = 4  # fixed input spike patterns
+T = 25  # timesteps per pattern
+TAU = 8.0  # readout membrane time constant
 DECAY = math.exp(-1.0 / TAU)
-P_SPIKE = 0.30       # input spike sparsity
-TARGETS = [1.5, 0.4, 1.5, 0.4]   # target peak voltage per pattern: high = "fire", low = "quiet"
+P_SPIKE = 0.30  # input spike sparsity
+TARGETS = [1.5, 0.4, 1.5, 0.4]  # target peak voltage per pattern: high = "fire", low = "quiet"
 
 
 def make_patterns(rng):
@@ -118,14 +119,14 @@ def train(w0, patterns, rng, iters, eta, sigma, clip):
     baseline = reward(w, patterns)
     traj = [reward(w, patterns)]
     for _ in range(iters):
-        xi = [rng.gauss(0.0, sigma) for _ in range(N_SYN)]      # local synaptic noise
+        xi = [rng.gauss(0.0, sigma) for _ in range(N_SYN)]  # local synaptic noise
         wp = [w[i] + xi[i] for i in range(N_SYN)]
-        r_perturbed = reward(wp, patterns)                       # one scalar reward, forward only
+        r_perturbed = reward(wp, patterns)  # one scalar reward, forward only
         scale = eta * (r_perturbed - baseline) / (sigma * sigma)  # (reward - baseline) correlation
-        scale = clip if scale > clip else (-clip if scale < -clip else scale)   # bounded step
+        scale = clip if scale > clip else (-clip if scale < -clip else scale)  # bounded step
         for i in range(N_SYN):
-            w[i] += scale * xi[i]                                # move along the noise, reward-weighted
-        baseline = 0.9 * baseline + 0.1 * r_perturbed            # running-mean reward baseline
+            w[i] += scale * xi[i]  # move along the noise, reward-weighted
+        baseline = 0.9 * baseline + 0.1 * r_perturbed  # running-mean reward baseline
         traj.append(reward(w, patterns))
     return w, traj
 
@@ -169,16 +170,24 @@ def cosine(a, b):
     return dot / (na * nb)
 
 
-def run_experiment(seed, iters=2500, eta=0.003, train_sigma=0.05, clip=3.0,
-                   samples=3000, anchor_sigma=0.02, fd_eps=0.01):
+def run_experiment(
+    seed,
+    iters=2500,
+    eta=0.003,
+    train_sigma=0.05,
+    clip=3.0,
+    samples=3000,
+    anchor_sigma=0.02,
+    fd_eps=0.01,
+):
     """One fully deterministic run: build patterns + init weights, perturbation-train, then anchor
     the estimator against finite differences at the INITIAL w (deliberately far from the optimum)."""
     rng = random.Random(seed)
     patterns = make_patterns(rng)
-    w0 = [rng.uniform(-0.05, 0.05) for _ in range(N_SYN)]        # small init: peaks ~0, far from targets
+    w0 = [rng.uniform(-0.05, 0.05) for _ in range(N_SYN)]  # small init: peaks ~0, far from targets
     w_final, traj = train(w0, patterns, rng, iters, eta, train_sigma, clip)
-    g_hat = perturbation_gradient(w0, patterns, rng, samples, anchor_sigma)   # estimator at fixed w0
-    g_fd = finite_difference_gradient(w0, patterns, fd_eps)                   # independent ground truth
+    g_hat = perturbation_gradient(w0, patterns, rng, samples, anchor_sigma)  # estimator at fixed w0
+    g_fd = finite_difference_gradient(w0, patterns, fd_eps)  # independent ground truth
     return {
         "traj": traj,
         "r_init": traj[0],
@@ -201,13 +210,21 @@ def main():
     e_init, e_final = res["err_init"], res["err_final"]
     cos, samples = res["cos"], res["samples"]
 
-    print(f"task            : {N_SYN} plastic weights, {N_PATTERN} spike patterns, LIF peak-voltage readout")
+    print(
+        f"task            : {N_SYN} plastic weights, {N_PATTERN} spike patterns, LIF peak-voltage readout"
+    )
     print(f"                  target peaks {TARGETS} (high = fire, low = quiet)")
     print(f"reward (init)   : {r_init:+.4f}   task error (init)  : {e_init:.4f}")
     print(f"reward (final)  : {r_final:+.4f}   task error (final) : {e_final:.4f}")
-    print(f"learning        : reward {r_init:+.3f} -> {r_final:+.3f}   error {e_init:.3f} -> {e_final:.3f}")
-    print(f"ANCHOR          : cos(g_perturb, g_finite_diff) = {cos:.4f} over {samples} perturbation samples")
-    print("                  (finite-diff gradient is an INDEPENDENT ground truth; no backprop used)")
+    print(
+        f"learning        : reward {r_init:+.3f} -> {r_final:+.3f}   error {e_init:.3f} -> {e_final:.3f}"
+    )
+    print(
+        f"ANCHOR          : cos(g_perturb, g_finite_diff) = {cos:.4f} over {samples} perturbation samples"
+    )
+    print(
+        "                  (finite-diff gradient is an INDEPENDENT ground truth; no backprop used)"
+    )
 
     # determinism: the whole pipeline is a pure function of the seed.
     res2 = run_experiment(SEED)
@@ -215,9 +232,11 @@ def main():
     print(f"determinism     : same seed -> identical reward trajectory + cosine = {identical}")
     print("=" * 74)
 
-    # ---- self-check (deterministic asserts, zero-dep, ASCII; NOTHING rigged) ----
+    # ---- self-check (deterministic asserts, ASCII; NOTHING rigged) ----
     # (a) LEARNS: reward rises substantially and task error drops, by perturbation alone.
-    assert r_final > r_init + 1.0, f"perturbation must raise the reward substantially ({r_init:+.4f} -> {r_final:+.4f})"
+    assert r_final > r_init + 1.0, (
+        f"perturbation must raise the reward substantially ({r_init:+.4f} -> {r_final:+.4f})"
+    )
     assert e_final < 0.5 * e_init, f"task error must drop clearly ({e_init:.4f} -> {e_final:.4f})"
     # (b) un-riggable anchor: perturbation estimate aligns with the independent finite-diff gradient.
     #     Threshold 0.6 fixed a priori (task spec); finite differences are a separate code path.
@@ -226,9 +245,11 @@ def main():
     #     evaluations and the injected noise xi -- there is no analytic gradient in the update path.
     # (d) determinism: same seed -> identical trajectory + cosine on a repeat run.
     assert identical, "same seed must reproduce the reward trajectory and cosine exactly"
-    print(f"self-check OK: learned by perturbation alone (reward {r_init:+.3f} -> {r_final:+.3f}, "
-          f"error {e_init:.3f} -> {e_final:.3f}); estimator matches the independent finite-difference "
-          f"gradient (cos {cos:.4f} > 0.6, {samples} samples); no backprop; deterministic")
+    print(
+        f"self-check OK: learned by perturbation alone (reward {r_init:+.3f} -> {r_final:+.3f}, "
+        f"error {e_init:.3f} -> {e_final:.3f}); estimator matches the independent finite-difference "
+        f"gradient (cos {cos:.4f} > 0.6, {samples} samples); no backprop; deterministic"
+    )
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 r"""
 pc_active_inference.py -- the shared-observation-space BRIDGE that lets a real action-conditioned world
 model (JepaWorldModel) and the predictive-coding cortex (PcCortexServe) COMPOSE into genuine active-
-inference planning. Pure stdlib, zero-dep (all three organs are stdlib); no torch, no live wiring, no
+inference planning. No live wiring, no
 actuator route. The honest culmination of the PC-planning arc:
 
   slice 7 (v3.31): PC alone canNOT be the action model -- it has no action channel (plan() ties).
@@ -34,6 +34,7 @@ Un-riggable self-check (each claim paired with a control that must fail):
 
   PYTHONUTF8=1 PYTHONPATH=src python research/pc_active_inference.py
 """
+
 import json
 import math
 import os
@@ -49,16 +50,26 @@ from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 def _build_pc():
     """A hand-built deterministic PcCortexServe: in_dim 8, causes [6, 4] (top_dim 4). Weights are small +
     structured so generate() lands on a well-conditioned manifold. Dumped + loaded through the trust boundary."""
+
     def grid(rows, cols):
-        return [[round(0.30 * math.cos(0.7 * i + 1.3 * j) + 0.20 * math.sin(0.5 * i - 0.9 * j), 4)
-                 for j in range(cols)] for i in range(rows)]
+        return [
+            [
+                round(0.30 * math.cos(0.7 * i + 1.3 * j) + 0.20 * math.sin(0.5 * i - 0.9 * j), 4)
+                for j in range(cols)
+            ]
+            for i in range(rows)
+        ]
+
     dims = [8, 6, 4]
     blob = {
         "format": "snn_pcnet/1",
         "dims": dims,
         "gen_weights": [grid(dims[0], dims[1]), grid(dims[1], dims[2])],
-        "prec": [1.0, 1.0], "theta": 0.5, "leak": 0.02,
-        "steps": 200, "lr": 0.05,
+        "prec": [1.0, 1.0],
+        "theta": 0.5,
+        "leak": 0.02,
+        "steps": 200,
+        "lr": 0.05,
         "meta": {"trained_by": "pc_active_inference-demo", "unverified_on_hardware": True},
     }
     p = os.path.join(tempfile.gettempdir(), "pc_active_inference_pc.json")
@@ -69,7 +80,7 @@ def _build_pc():
     return srv
 
 
-# ---- a ridge-regression decoder D: JEPA latent -> observation (pure stdlib) ---------------------------
+# ---- a ridge-regression decoder D: JEPA latent -> observation ---------------------------
 def _solve(A, B):
     """Solve A X = B for X (Gauss-Jordan with partial pivoting). A is n x n, B is n x m."""
     n, m = len(A), len(B[0])
@@ -90,11 +101,14 @@ def fit_decoder(Z, X, lam=1e-2):
     """Ridge-fit a linear decoder from latents Z [N x L] to observations X [N x D]. Returns decode(z) that
     maps a length-L latent to a length-D observation via (Z1^T Z1 + lam I)^-1 Z1^T X with a bias column."""
     n, L, D = len(Z), len(Z[0]), len(X[0])
-    Z1 = [list(Z[i]) + [1.0] for i in range(n)]          # append bias
+    Z1 = [list(Z[i]) + [1.0] for i in range(n)]  # append bias
     p = L + 1
-    A = [[sum(Z1[k][i] * Z1[k][j] for k in range(n)) + (lam if i == j else 0.0) for j in range(p)] for i in range(p)]
+    A = [
+        [sum(Z1[k][i] * Z1[k][j] for k in range(n)) + (lam if i == j else 0.0) for j in range(p)]
+        for i in range(p)
+    ]
     B = [[sum(Z1[k][i] * X[k][d] for k in range(n)) for d in range(D)] for i in range(p)]
-    W = _solve(A, B)                                     # p x D
+    W = _solve(A, B)  # p x D
 
     def decode(z):
         z1 = list(z) + [1.0]
@@ -114,7 +128,7 @@ class ManifoldWorld:
         self.pc = pc
         self.top = pc.top_dim
         self.step = step
-        self.hazard_dir = hazard_dir                     # unit co-kernel direction of W_1 (inexplicable)
+        self.hazard_dir = hazard_dir  # unit co-kernel direction of W_1 (inexplicable)
         self.hazard_gain = hazard_gain
         self.actions = ("X+", "X-", "Y+", "Y-")
         self._delta = {"X+": (0, +step), "X-": (0, -step), "Y+": (1, +step), "Y-": (1, -step)}
@@ -122,7 +136,7 @@ class ManifoldWorld:
     def obs(self, s):
         """Observation of state s: PC.generate(s), plus an off-manifold co-kernel component in the hazard region."""
         x = self.pc.generate(list(s))
-        if s[0] > 0.5:                                   # HAZARD region -> add an inexplicable component
+        if s[0] > 0.5:  # HAZARD region -> add an inexplicable component
             x = [x[k] + self.hazard_gain * self.hazard_dir[k] for k in range(len(x))]
         return x
 
@@ -142,6 +156,7 @@ def _cokernel_dir(W1, seed_vec):
 
     def vdot(a, b):
         return sum(a[i] * b[i] for i in range(len(a)))
+
     basis = []
     for col in columns:
         v = list(col)
@@ -176,14 +191,16 @@ def main():
     # The hazard direction must be a co-kernel of the top-down map M = W_1 @ W_2 (top_dim -> obs): the columns
     # of M are generate(e_k), so a vector orthogonal to all of them is an observation the model cannot produce
     # (inexplicable -> high surprise). Obtain M via the public generate() on the standard top-cause basis.
-    Mcols = [pc.generate([1.0 if k == j else 0.0 for k in range(pc.top_dim)]) for j in range(pc.top_dim)]
-    Mrows = [[Mcols[j][i] for j in range(pc.top_dim)] for i in range(pc.in_dim)]   # obs x top_dim
-    hazard_dir = _cokernel_dir(Mrows, [1.0, -0.4, 0.3, 0.8, -0.6, 0.5, -0.2, 0.7][:pc.in_dim])
+    Mcols = [
+        pc.generate([1.0 if k == j else 0.0 for k in range(pc.top_dim)]) for j in range(pc.top_dim)
+    ]
+    Mrows = [[Mcols[j][i] for j in range(pc.top_dim)] for i in range(pc.in_dim)]  # obs x top_dim
+    hazard_dir = _cokernel_dir(Mrows, [1.0, -0.4, 0.3, 0.8, -0.6, 0.5, -0.2, 0.7][: pc.in_dim])
     world = ManifoldWorld(pc, hazard_dir)
 
     # ---- train a JEPA action model on random-walk trajectories over the world (light, honest) ----
     jepa = JepaWorldModel(actions=world.actions, in_dim=pc.in_dim, latent_dim=6, seed=0)
-    Zpairs, Xpairs = [], []                              # (encode(obs), obs) for the decoder
+    Zpairs, Xpairs = [], []  # (encode(obs), obs) for the decoder
     s = [0.0] * pc.top_dim
     for _ in range(600):
         x_t = world.obs(s)
@@ -193,7 +210,7 @@ def main():
         jepa.train_step(x_t, a, x_n)
         Zpairs.append(jepa.encode(x_t))
         Xpairs.append(x_t)
-        s = s2 if rng.random() < 0.85 else [0.0] * pc.top_dim   # occasional reset
+        s = s2 if rng.random() < 0.85 else [0.0] * pc.top_dim  # occasional reset
 
     decode = fit_decoder(Zpairs, Xpairs, lam=1e-2)
 
@@ -201,21 +218,29 @@ def main():
     # (1) ACTION CHANNEL: JEPA.predict discriminates actions (the channel PC does NOT have).
     z_probe = jepa.encode(world.obs([0.2, -0.1] + [0.0] * (pc.top_dim - 2)))
     outs = [jepa.predict(z_probe, a) for a in world.actions]
-    action_channel = any(outs[i] != outs[j] for i in range(len(outs)) for j in range(i + 1, len(outs)))
+    action_channel = any(
+        outs[i] != outs[j] for i in range(len(outs)) for j in range(i + 1, len(outs))
+    )
 
     # (2) DECODER BRIDGE: reconstructs observations from JEPA latents better than the mean baseline.
     mean_obs = [sum(x[d] for x in Xpairs) / len(Xpairs) for d in range(pc.in_dim)]
     test_states = [[rng.uniform(-0.4, 0.4) for _ in range(pc.top_dim)] for _ in range(40)]
-    test_obs = [pc.generate(s) for s in test_states]     # clean on-manifold test observations
-    dec_err = sum(sum((decode(jepa.encode(x))[d] - x[d]) ** 2 for d in range(pc.in_dim)) for x in test_obs)
+    test_obs = [pc.generate(s) for s in test_states]  # clean on-manifold test observations
+    dec_err = sum(
+        sum((decode(jepa.encode(x))[d] - x[d]) ** 2 for d in range(pc.in_dim)) for x in test_obs
+    )
     base_err = sum(sum((mean_obs[d] - x[d]) ** 2 for d in range(pc.in_dim)) for x in test_obs)
     decoder_ok = dec_err < 0.5 * base_err
 
     # (3) SURPRISE SURVIVES THE BRIDGE: PC flags an off-manifold obs through JEPA-encode + decode.
     z_goal_top = [0.6, -0.3] + [0.0] * (pc.top_dim - 2)
-    x_goal = pc.generate(z_goal_top)                     # on-manifold goal observation
-    x_on = pc.generate([-0.9, 0.8] + [0.0] * (pc.top_dim - 2))   # a FARTHER on-manifold obs: trusted but not closest (low surprise)
-    x_off = [x_goal[k] + 2.0 * hazard_dir[k] for k in range(pc.in_dim)]   # off-manifold look-alike (high surprise)
+    x_goal = pc.generate(z_goal_top)  # on-manifold goal observation
+    x_on = pc.generate(
+        [-0.9, 0.8] + [0.0] * (pc.top_dim - 2)
+    )  # a FARTHER on-manifold obs: trusted but not closest (low surprise)
+    x_off = [
+        x_goal[k] + 2.0 * hazard_dir[k] for k in range(pc.in_dim)
+    ]  # off-manifold look-alike (high surprise)
     s_on = pc.surprise(decode(jepa.encode(x_on)))
     s_off = pc.surprise(decode(jepa.encode(x_off)))
     surprise_bridge = s_off > 2.0 * s_on + 0.2
@@ -223,52 +248,83 @@ def main():
     # (4) COMPOSED ACTIVE INFERENCE: plan() over JEPA latents with the composed EFE value avoids the off-
     #     manifold look-alike that a JEPA-goal-distance-ONLY value walks into. Candidates encoded to JEPA latents.
     z_goal = jepa.encode(x_goal)
-    z_on = jepa.encode(x_on)                             # the trusted good option (on-manifold)
-    z_off = jepa.encode(x_off)                           # the look-alike trap (off-manifold, near the goal)
+    z_on = jepa.encode(x_on)  # the trusted good option (on-manifold)
+    z_off = jepa.encode(x_off)  # the look-alike trap (off-manifold, near the goal)
     z_far = jepa.encode(pc.generate([-0.7, 0.6] + [0.0] * (pc.top_dim - 2)))
-    cands = [z_on, z_off, z_far]                         # 0 = good, 1 = trap, 2 = far
+    cands = [z_on, z_off, z_far]  # 0 = good, 1 = trap, 2 = far
 
     def dist(z):
         return sum(abs(z[i] - z_goal[i]) for i in range(len(z_goal)))
+
     d_on, d_off = dist(z_on), dist(z_off)
-    trap_is_closer = d_off < d_on                        # the trap looks more like the goal in JEPA latent
+    trap_is_closer = d_off < d_on  # the trap looks more like the goal in JEPA latent
 
     beta = 50.0
 
     def dist_value(z):
-        return -dist(z)                                  # goal-distance ONLY (JEPA make_goal_value convention)
+        return -dist(z)  # goal-distance ONLY (JEPA make_goal_value convention)
 
     def efe_value(z):
-        return -(dist(z) + beta * pc.surprise(decode(z)))   # composed: pragmatic (JEPA) + epistemic (PC surprise)
+        return -(
+            dist(z) + beta * pc.surprise(decode(z))
+        )  # composed: pragmatic (JEPA) + epistemic (PC surprise)
 
     predictor = _CandidateModel(cands)
-    sel_dist, _ = PrefrontalExecutive(n_options=3, seed=0).plan(z_on, [0, 1, 2], predictor, dist_value, horizon=1, write=False)
-    sel_efe, _ = PrefrontalExecutive(n_options=3, seed=0).plan(z_on, [0, 1, 2], predictor, efe_value, horizon=1, write=False)
-    dist_walks_into_trap = (sel_dist == 1)
-    efe_avoids_trap = (sel_efe == 0)
+    sel_dist, _ = PrefrontalExecutive(n_options=3, seed=0).plan(
+        z_on, [0, 1, 2], predictor, dist_value, horizon=1, write=False
+    )
+    sel_efe, _ = PrefrontalExecutive(n_options=3, seed=0).plan(
+        z_on, [0, 1, 2], predictor, efe_value, horizon=1, write=False
+    )
+    dist_walks_into_trap = sel_dist == 1
+    efe_avoids_trap = sel_efe == 0
 
     print("=" * 90)
-    print("PC ACTIVE INFERENCE -- JepaWorldModel (action dynamics) + PcCortexServe (surprise/EFE value) compose")
+    print(
+        "PC ACTIVE INFERENCE -- JepaWorldModel (action dynamics) + PcCortexServe (surprise/EFE value) compose"
+    )
     print("=" * 90)
-    print(f"(1) action channel  : JEPA.predict discriminates actions = {action_channel}  (PC has none -> plan() ties)")
-    print(f"(2) decoder bridge  : decode recon err {dec_err:.3f} vs mean baseline {base_err:.3f} -> better = {decoder_ok}")
-    print(f"(3) surprise bridge : PC.surprise(D(encode(x))) on-manifold {s_on:.3f} << off-manifold {s_off:.3f} = {surprise_bridge}")
-    print(f"(4) composed AI     : JEPA-latent dist good={d_on:.3f} trap={d_off:.3f} (trap closer={trap_is_closer}); "
-          f"dist-only plan picks {sel_dist} (walks into trap={dist_walks_into_trap}); "
-          f"EFE plan picks {sel_efe} (avoids trap={efe_avoids_trap})")
+    print(
+        f"(1) action channel  : JEPA.predict discriminates actions = {action_channel}  (PC has none -> plan() ties)"
+    )
+    print(
+        f"(2) decoder bridge  : decode recon err {dec_err:.3f} vs mean baseline {base_err:.3f} -> better = {decoder_ok}"
+    )
+    print(
+        f"(3) surprise bridge : PC.surprise(D(encode(x))) on-manifold {s_on:.3f} << off-manifold {s_off:.3f} = {surprise_bridge}"
+    )
+    print(
+        f"(4) composed AI     : JEPA-latent dist good={d_on:.3f} trap={d_off:.3f} (trap closer={trap_is_closer}); "
+        f"dist-only plan picks {sel_dist} (walks into trap={dist_walks_into_trap}); "
+        f"EFE plan picks {sel_efe} (avoids trap={efe_avoids_trap})"
+    )
     print("-" * 90)
 
-    assert action_channel, "(1) JEPA.predict must discriminate actions -- the action channel PC lacks"
-    assert decoder_ok, "(2) the ridge decoder must reconstruct observations from JEPA latents better than the mean baseline"
-    assert surprise_bridge, "(3) PC surprise must survive the JEPA-encode + decode round-trip (off-manifold >> on-manifold)"
-    assert trap_is_closer, "(4a) the off-manifold trap must be the CLOSER look-alike in JEPA latent (else the test is trivial)"
-    assert dist_walks_into_trap, "(4b) the goal-distance-ONLY value must walk into the closer off-manifold trap"
-    assert efe_avoids_trap, "(4c) the composed EFE value (JEPA distance + PC surprise via the decoder) must AVOID the trap"
+    assert action_channel, (
+        "(1) JEPA.predict must discriminate actions -- the action channel PC lacks"
+    )
+    assert decoder_ok, (
+        "(2) the ridge decoder must reconstruct observations from JEPA latents better than the mean baseline"
+    )
+    assert surprise_bridge, (
+        "(3) PC surprise must survive the JEPA-encode + decode round-trip (off-manifold >> on-manifold)"
+    )
+    assert trap_is_closer, (
+        "(4a) the off-manifold trap must be the CLOSER look-alike in JEPA latent (else the test is trivial)"
+    )
+    assert dist_walks_into_trap, (
+        "(4b) the goal-distance-ONLY value must walk into the closer off-manifold trap"
+    )
+    assert efe_avoids_trap, (
+        "(4c) the composed EFE value (JEPA distance + PC surprise via the decoder) must AVOID the trap"
+    )
 
-    print("self-check OK: the DECODER bridges JEPA's action-conditioned latents into PC's observation space, so a "
-          "real PrefrontalExecutive plans with JEPA dynamics + PC surprise -- action-conditioned active inference "
-          "that avoids off-manifold look-alikes a goal-distance-only value walks into. JEPA supplies the action "
-          "channel PC lacks; PC supplies the epistemic value distance lacks; zero-dep, no actuator route.")
+    print(
+        "self-check OK: the DECODER bridges JEPA's action-conditioned latents into PC's observation space, so a "
+        "real PrefrontalExecutive plans with JEPA dynamics + PC surprise -- action-conditioned active inference "
+        "that avoids off-manifold look-alikes a goal-distance-only value walks into. JEPA supplies the action "
+        "channel PC lacks; PC supplies the epistemic value distance lacks; no actuator route."
+    )
 
 
 if __name__ == "__main__":

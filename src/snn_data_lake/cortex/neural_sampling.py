@@ -1,6 +1,6 @@
 """
 Neural sampling -- a recurrent net of stochastic spiking neurons whose spikes are MCMC samples
-from a Boltzmann distribution (probabilistic inference in spikes; pure stdlib).
+from a Boltzmann distribution (probabilistic inference in spikes).
 
 The neural-sampling hypothesis (Buesing, Bill, Nessler & Maass, "Neural Dynamics as Sampling",
 PLoS Comput Biol 7:e1002211, 2011): a network of N stochastic binary neurons z in {0,1}^N with
@@ -32,6 +32,7 @@ small so the exact Boltzmann distribution can be enumerated (2^N states) for the
 
   python -m snn_data_lake.cortex.neural_sampling        # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
@@ -59,8 +60,8 @@ class BoltzmannSampler:
         self.W = [list(map(float, row)) for row in weights]
         self.b = [float(x) for x in biases]
         self.rng = random.Random(seed)
-        self._z = [0] * self.n            # deterministic all-zeros start
-        self._clamped = {}                # index -> fixed value
+        self._z = [0] * self.n  # deterministic all-zeros start
+        self._clamped = {}  # index -> fixed value
         self._free = list(range(self.n))
 
     # ---- state ---------------------------------------------------------------------------------
@@ -197,8 +198,8 @@ def main():
     biases = [0.5, -0.2, 0.1]
 
     sampler = BoltzmannSampler(weights, biases, seed=0)
-    analytic = sampler.analytic_distribution()                 # exact p(z) over all 2^3 states
-    samples = sampler.sample(40000, burn_in=3000, thin=3)      # spikes = MCMC samples of p(z)
+    analytic = sampler.analytic_distribution()  # exact p(z) over all 2^3 states
+    samples = sampler.sample(40000, burn_in=3000, thin=3)  # spikes = MCMC samples of p(z)
     empirical = empirical_distribution(samples)
     tv = _tv(empirical, analytic)
 
@@ -206,8 +207,8 @@ def main():
     e_marg = marginals(samples)
     marg_err = max(abs(a - e) for a, e in zip(a_marg, e_marg))
 
-    a_corr = _corr(analytic, 0, 1)                             # E[z0 z1] analytic
-    e_corr = _emp_corr(samples, 0, 1)                          # E[z0 z1] empirical
+    a_corr = _corr(analytic, 0, 1)  # E[z0 z1] analytic
+    e_corr = _emp_corr(samples, 0, 1)  # E[z0 z1] empirical
     corr_err = abs(a_corr - e_corr)
 
     # Conditional inference: clamp z2 = 1 (evidence) -> posterior p(z0, z1 | z2 = 1).
@@ -217,7 +218,7 @@ def main():
     cond_samples = cond.sample(40000, burn_in=3000, thin=3)
     cond_empirical = empirical_distribution(cond_samples)
     cond_tv = _tv(cond_empirical, cond_analytic)
-    ca_marg = _analytic_marginals(cond_analytic)               # includes z2 == 1 exactly
+    ca_marg = _analytic_marginals(cond_analytic)  # includes z2 == 1 exactly
     ce_marg = marginals(cond_samples)
     cond_marg_err = max(abs(ca_marg[i] - ce_marg[i]) for i in (0, 1))
 
@@ -227,8 +228,10 @@ def main():
     print("state      analytic p(z)   empirical   energy")
     for code in range(1 << sampler.n):
         z = tuple((code >> i) & 1 for i in range(sampler.n))
-        print(f"  {''.join(map(str, z))}         {analytic[z]:.4f}        "
-              f"{empirical.get(z, 0.0):.4f}     {sampler.energy(z):+.3f}")
+        print(
+            f"  {''.join(map(str, z))}         {analytic[z]:.4f}        "
+            f"{empirical.get(z, 0.0):.4f}     {sampler.energy(z):+.3f}"
+        )
     print("-" * 66)
     print(f"TV(empirical, Boltzmann)        = {tv:.4f}   (< 0.03 target)")
     print(f"marginals P(z_i=1) analytic     = [{a_marg[0]:.3f}, {a_marg[1]:.3f}, {a_marg[2]:.3f}]")
@@ -242,7 +245,7 @@ def main():
     print(f"  conditional TV                = {cond_tv:.4f}   (max marg err {cond_marg_err:.4f})")
     print("=" * 66)
 
-    # ---- self-check: deterministic asserts, zero-dep --------------------------------
+    # ---- self-check: deterministic asserts --------------------------------
     # 1. stationary distribution IS the Boltzmann distribution (the headline correctness test).
     assert tv < 0.03, f"empirical must match Boltzmann p(z): TV {tv:.4f}"
     # 2. marginals and one pairwise correlation match the analytic values.
@@ -254,10 +257,14 @@ def main():
     assert cond_marg_err < 0.02, f"conditional marginals must match: max err {cond_marg_err:.4f}"
     # 4. determinism: same weights/biases/seed -> identical chain and identical estimates.
     twin = BoltzmannSampler(weights, biases, seed=0)
-    assert twin.sample(40000, burn_in=3000, thin=3) == samples, "same seed must give identical chain"
+    assert twin.sample(40000, burn_in=3000, thin=3) == samples, (
+        "same seed must give identical chain"
+    )
 
-    print(f"self-check OK: spikes sample Boltzmann p(z) (TV {tv:.4f}); marginals err {marg_err:.4f}, "
-          f"E[z0 z1] err {corr_err:.4f}; clamp z2=1 posterior TV {cond_tv:.4f}; deterministic")
+    print(
+        f"self-check OK: spikes sample Boltzmann p(z) (TV {tv:.4f}); marginals err {marg_err:.4f}, "
+        f"E[z0 z1] err {corr_err:.4f}; clamp z2=1 posterior TV {cond_tv:.4f}; deterministic"
+    )
 
 
 if __name__ == "__main__":

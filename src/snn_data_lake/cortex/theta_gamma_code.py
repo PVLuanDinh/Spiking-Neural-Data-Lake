@@ -1,5 +1,5 @@
 """
-Theta-gamma phase code -- ordered working memory by a SPIKING oscillation (pure stdlib).
+Theta-gamma phase code -- ordered working memory by a SPIKING oscillation.
 
 Working-memory items are multiplexed IN TIME by a genuine spiking network (Lisman & Idiart 1995;
 Lisman & Jensen 2013). One slow THETA cycle is divided into K faster GAMMA sub-cycles = K ordered memory
@@ -30,9 +30,9 @@ hash()). Credit Lisman & Idiart 1995 / Lisman & Jensen 2013.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.theta_gamma_code
 """
+
 import math
 import random
-import sys
 
 
 def _stable_key(item):
@@ -48,7 +48,7 @@ class _LIFNeuron:
     __slots__ = ("decay", "vth", "vreset", "refr_len", "v", "_refr")
 
     def __init__(self, tau_m, v_threshold, v_reset, refractory):
-        self.decay = math.exp(-1.0 / tau_m)     # membrane leak per timestep
+        self.decay = math.exp(-1.0 / tau_m)  # membrane leak per timestep
         self.vth = v_threshold
         self.vreset = v_reset
         self.refr_len = refractory
@@ -57,12 +57,12 @@ class _LIFNeuron:
 
     def step(self, current):
         """Advance one timestep with input `current`; return 1 if the neuron spiked else 0."""
-        if self._refr > 0:                      # refractory: clamped, integrates nothing
+        if self._refr > 0:  # refractory: clamped, integrates nothing
             self._refr -= 1
             self.v = self.vreset
             return 0
         self.v = self.v * self.decay + current  # leak toward rest + integrate the drive current
-        if self.v >= self.vth:                  # threshold crossing -> discrete spike
+        if self.v >= self.vth:  # threshold crossing -> discrete spike
             self.v = self.vreset
             self._refr = self.refr_len
             return 1
@@ -79,19 +79,23 @@ class ThetaGammaCode:
     which population spikes in which gamma window (== input order for a fitting run)."""
 
     def __init__(self, capacity=7, n_neurons=256, ensemble_size=8, seed=0):
-        self.k = capacity                 # gamma cycles per theta = working-memory capacity (7 +/- 2)
-        self.n = n_neurons                # neurons available for an item's gamma-window population
-        self.w = ensemble_size            # LIF neurons per population (sparse code)
+        self.k = capacity  # gamma cycles per theta = working-memory capacity (7 +/- 2)
+        self.n = n_neurons  # neurons available for an item's gamma-window population
+        self.w = ensemble_size  # LIF neurons per population (sparse code)
         self.seed = seed
-        self._items = []                  # current items; list index = gamma slot = theta-phase rank
-        self.evicted = []                 # items dropped by the capacity bound, oldest-first (for inspection)
+        self._items = []  # current items; list index = gamma slot = theta-phase rank
+        self.evicted = []  # items dropped by the capacity bound, oldest-first (for inspection)
         # --- oscillation geometry: one theta cycle nests K gamma windows of steps_per_gamma steps each ---
-        self.steps_per_gamma = 6          # timesteps per gamma sub-cycle (a population integrates over these)
-        self.steps_per_theta = self.k * self.steps_per_gamma  # capacity K == steps_per_theta / steps_per_gamma
+        self.steps_per_gamma = (
+            6  # timesteps per gamma sub-cycle (a population integrates over these)
+        )
+        self.steps_per_theta = (
+            self.k * self.steps_per_gamma
+        )  # capacity K == steps_per_theta / steps_per_gamma
         # --- LIF parameters: driven for ~2 steps before crossing threshold, one spike per gamma window ---
-        self.tau_m = 8.0                  # membrane time constant
-        self.i_drive = 0.8                # suprathreshold drive during an item's own gamma window (0 otherwise)
-        self.refractory = self.steps_per_gamma   # one spike per neuron per gamma window
+        self.tau_m = 8.0  # membrane time constant
+        self.i_drive = 0.8  # suprathreshold drive during an item's own gamma window (0 otherwise)
+        self.refractory = self.steps_per_gamma  # one spike per neuron per gamma window
 
     def _ensemble(self, item):
         """The sparse LIF population (which cells fire) for an item in its gamma sub-cycle -- deterministic, seeded."""
@@ -103,7 +107,9 @@ class ThetaGammaCode:
         rng = random.Random(self.seed * 2_000_003 + _stable_key(item))
         neurons = []
         for _ in range(self.w):
-            vth = 0.9 + 0.2 * rng.random()      # heterogeneous threshold in [0.9, 1.1); still fires by step 2
+            vth = (
+                0.9 + 0.2 * rng.random()
+            )  # heterogeneous threshold in [0.9, 1.1); still fires by step 2
             neurons.append(_LIFNeuron(self.tau_m, vth, 0.0, self.refractory))
         return neurons
 
@@ -112,15 +118,17 @@ class ThetaGammaCode:
 
         Each timestep, the population in the CURRENT gamma window gets i_drive (all others 0), so exactly one
         population spikes per gamma window. Returns [(cycle, gamma_window, slot, neuron_id), ...]."""
-        ens = [sorted(self._ensemble(it)) for it in self._items]          # neuron ids per slot
-        pops = [self._new_population(it) for it in self._items]           # LIF neurons per slot
+        ens = [sorted(self._ensemble(it)) for it in self._items]  # neuron ids per slot
+        pops = [self._new_population(it) for it in self._items]  # LIF neurons per slot
         spt, spg = self.steps_per_theta, self.steps_per_gamma
         spikes = []
         for cyc in range(n_cycles):
             for local_t in range(spt):
-                window = local_t // spg                                   # active gamma sub-cycle this step
+                window = local_t // spg  # active gamma sub-cycle this step
                 for slot, neurons in enumerate(pops):
-                    drive = self.i_drive if slot == window else 0.0       # gamma inhibition: only own window drives
+                    drive = (
+                        self.i_drive if slot == window else 0.0
+                    )  # gamma inhibition: only own window drives
                     for j, neuron in enumerate(neurons):
                         if neuron.step(drive):
                             spikes.append((cyc, window, slot, ens[slot][j]))
@@ -150,7 +158,7 @@ class ThetaGammaCode:
         """Place one item into the next gamma slot; evict the OLDEST if the theta cycle is already full (> K)."""
         self._items.append(item)
         if len(self._items) > self.k:
-            self.evicted.append(self._items.pop(0))     # capacity limit: oldest theta-phase drops out
+            self.evicted.append(self._items.pop(0))  # capacity limit: oldest theta-phase drops out
         return self.slot_of(item)
 
     def encode_sequence(self, items):
@@ -189,8 +197,10 @@ class ThetaGammaCode:
 
     def spike_events(self, n_cycles=1):
         """Discrete LIF spike events over n_cycles theta cycles: [(theta_cycle, gamma_window, theta_phase, neuron_id), ...]."""
-        return [(cyc, window, self.slot_phase(window), nid)
-                for cyc, window, _slot, nid in self._simulate(n_cycles)]
+        return [
+            (cyc, window, self.slot_phase(window), nid)
+            for cyc, window, _slot, nid in self._simulate(n_cycles)
+        ]
 
     def spike_raster(self):
         """One theta cycle as firing events: [(gamma_window, item), ...] -- decoded from LIF spike phase, in order."""
@@ -210,10 +220,10 @@ def _fmt_phases(phs):
 
 def main():
     # ---- 1. ORDER BY SPIKE PHASE: a fitting sequence reads back in the SAME order, decoded from LIF spike timing ----
-    seq = ["RED", "GREEN", "BLUE", "YELLOW", "CYAN"]        # 5 items into a K=7 theta cycle (fits)
+    seq = ["RED", "GREEN", "BLUE", "YELLOW", "CYAN"]  # 5 items into a K=7 theta cycle (fits)
     tgc = ThetaGammaCode(capacity=7)
     slots = tgc.encode_sequence(seq)
-    recovered = tgc.readout()                              # re-runs the oscillation; reads back by gamma phase
+    recovered = tgc.readout()  # re-runs the oscillation; reads back by gamma phase
 
     # ---- 2. PHASE -> POSITION: item i sits in gamma slot i; phases strictly increasing and distinct ----
     phs = tgc.phases()
@@ -223,16 +233,18 @@ def main():
 
     # ---- 3. CAPACITY (theta/gamma ratio, 7 +/- 2): overflow evicts the OLDEST, most-recent K survive in order ----
     over = ThetaGammaCode(capacity=7)
-    over.encode_sequence(list(range(10)))                  # push 10 into K=7 -> drop 0,1,2
+    over.encode_sequence(list(range(10)))  # push 10 into K=7 -> drop 0,1,2
     survivors = over.readout()
     dropped = list(over.evicted)
-    ratio_cap = tgc.steps_per_theta // tgc.steps_per_gamma  # capacity EMERGES from the theta/gamma ratio
+    ratio_cap = (
+        tgc.steps_per_theta // tgc.steps_per_gamma
+    )  # capacity EMERGES from the theta/gamma ratio
 
     # ---- 4. GENUINELY SPIKING: LIF populations fire discrete spikes at discrete gamma phases, only in their window ----
-    events = tgc.spike_events(n_cycles=1)                  # (cycle, gamma_window, theta_phase, neuron_id)
+    events = tgc.spike_events(n_cycles=1)  # (cycle, gamma_window, theta_phase, neuron_id)
     n_spikes = len(events)
     windows_fired = sorted({g for _c, g, _p, _n in events})
-    raster = tgc.spike_raster()                            # [(gamma_window, item)] decoded from spikes
+    raster = tgc.spike_raster()  # [(gamma_window, item)] decoded from spikes
     slot_reads_own = all(w == tgc.slot_of(it) and recovered[w] == it for w, it in raster)
 
     # ---- 5. MAINTENANCE: every population re-fires in EVERY theta cycle (persistent active holding) ----
@@ -245,58 +257,87 @@ def main():
     # ---- 6. SEPARATION: each gamma window reads back exactly its own item; populations are distinct ----
     ens = [e for _w, _it, e in tgc.raster_with_ensembles()]
     ens_distinct = len(set(ens)) == len(ens)
-    max_overlap = max((len(a & b) for i, a in enumerate(ens) for b in ens[i + 1:]), default=0)
+    max_overlap = max((len(a & b) for i, a in enumerate(ens) for b in ens[i + 1 :]), default=0)
 
-    # ---- 7. NO numpy/torch imported anywhere; pure stdlib ----
-    no_np_torch = ("numpy" not in sys.modules) and ("torch" not in sys.modules)
-
-    # ---- 8. DETERMINISM: two fresh instances, same input -> identical readout / phases / raster / spikes ----
+    # ---- 7. DETERMINISM: two fresh instances, same input -> identical readout / phases / raster / spikes ----
     a = ThetaGammaCode(capacity=7)
     a.encode_sequence(seq)
     b = ThetaGammaCode(capacity=7)
     b.encode_sequence(seq)
-    deterministic = (a.readout() == b.readout() and a.phases() == b.phases()
-                     and a.raster_with_ensembles() == b.raster_with_ensembles()
-                     and a.spike_events(2) == b.spike_events(2))
+    deterministic = (
+        a.readout() == b.readout()
+        and a.phases() == b.phases()
+        and a.raster_with_ensembles() == b.raster_with_ensembles()
+        and a.spike_events(2) == b.spike_events(2)
+    )
 
     print("=" * 72)
     print("THETA-GAMMA CODE -- spiking working memory by LIF gamma-phase multiplexing")
     print("=" * 72)
-    print(f"capacity K (gamma cycles per theta) : {tgc.k}   (== steps_per_theta/steps_per_gamma = {ratio_cap})")
-    print(f"theta cycle geometry                : {tgc.steps_per_theta} steps = K x {tgc.steps_per_gamma} gamma steps")
+    print(
+        f"capacity K (gamma cycles per theta) : {tgc.k}   (== steps_per_theta/steps_per_gamma = {ratio_cap})"
+    )
+    print(
+        f"theta cycle geometry                : {tgc.steps_per_theta} steps = K x {tgc.steps_per_gamma} gamma steps"
+    )
     print(f"encoded sequence                    : {seq}")
     print(f"gamma slots assigned                : {slots}")
     print(f"readout (decoded from spike phase)  : {recovered}")
     print(f"per-item theta phase (radians)      : {_fmt_phases(phs)}")
-    print(f"LIF spikes / theta cycle            : {n_spikes} (={len(seq)} pops x w={tgc.w}), in windows {windows_fired}")
-    print(f"maintenance: windows firing / cycle : {[sorted(per_cycle[c]) for c in range(3)]} (re-fires each theta)")
-    print(f"separation: max population overlap  : {max_overlap} of w={tgc.w} (distinct={ens_distinct})")
+    print(
+        f"LIF spikes / theta cycle            : {n_spikes} (={len(seq)} pops x w={tgc.w}), in windows {windows_fired}"
+    )
+    print(
+        f"maintenance: windows firing / cycle : {[sorted(per_cycle[c]) for c in range(3)]} (re-fires each theta)"
+    )
+    print(
+        f"separation: max population overlap  : {max_overlap} of w={tgc.w} (distinct={ens_distinct})"
+    )
     print(f"overflow: push 0..9 into K=7        : survivors {survivors}, evicted oldest {dropped}")
     print("=" * 72)
 
     # ---- self-check: deterministic asserts, ASCII-only ----
     # FUNCTION -- ordered store/recall by phase + capacity
-    assert recovered == seq, f"order by phase: readout must equal input order ({recovered} != {seq})"
-    assert slots == list(range(len(seq))), f"a fitting sequence fills gamma slots 0..n-1 in order ({slots})"
+    assert recovered == seq, (
+        f"order by phase: readout must equal input order ({recovered} != {seq})"
+    )
+    assert slots == list(range(len(seq))), (
+        f"a fitting sequence fills gamma slots 0..n-1 in order ({slots})"
+    )
     assert slot_ok, "phase->position: item i must occupy gamma slot i"
     assert monotonic, f"theta phase must increase with position (monotonic): {_fmt_phases(phs)}"
     assert distinct_phase, f"each item must sit at a distinct theta phase: {_fmt_phases(phs)}"
-    assert len(survivors) == 7, f"capacity: buffer must hold exactly K=7 after overflow (held {len(survivors)})"
-    assert survivors == [3, 4, 5, 6, 7, 8, 9], f"overflow keeps the most-recent K in order ({survivors})"
+    assert len(survivors) == 7, (
+        f"capacity: buffer must hold exactly K=7 after overflow (held {len(survivors)})"
+    )
+    assert survivors == [3, 4, 5, 6, 7, 8, 9], (
+        f"overflow keeps the most-recent K in order ({survivors})"
+    )
     assert dropped == [0, 1, 2], f"overflow evicts the OLDEST items first ({dropped})"
     assert ratio_cap == tgc.k, f"capacity must equal the theta/gamma ratio ({ratio_cap} != {tgc.k})"
-    assert slot_reads_own, "separation: each occupied gamma window must read back exactly the item placed there"
+    assert slot_reads_own, (
+        "separation: each occupied gamma window must read back exactly the item placed there"
+    )
     # GENUINELY SPIKING -- LIF populations, discrete spikes at discrete phases, recall reads spike timing
-    assert n_spikes == len(seq) * tgc.w, f"each population must emit w discrete spikes / theta cycle ({n_spikes})"
-    assert windows_fired == list(range(len(seq))), f"spikes must land at discrete gamma phases 0..n-1 ({windows_fired})"
+    assert n_spikes == len(seq) * tgc.w, (
+        f"each population must emit w discrete spikes / theta cycle ({n_spikes})"
+    )
+    assert windows_fired == list(range(len(seq))), (
+        f"spikes must land at discrete gamma phases 0..n-1 ({windows_fired})"
+    )
     assert refire, "maintenance: every population must re-fire in every theta cycle"
-    assert ens_distinct and max_overlap < tgc.w, f"distinct items must use distinct populations (overlap {max_overlap})"
-    assert no_np_torch, "must be pure stdlib: numpy/torch must not be imported"
+    assert ens_distinct and max_overlap < tgc.w, (
+        f"distinct items must use distinct populations (overlap {max_overlap})"
+    )
     # DETERMINISM
-    assert deterministic, "same input must give identical readout/phases/raster/spikes across two fresh instances"
-    print(f"self-check OK: {len(seq)} items held as LIF populations firing one-per-gamma, recall decoded from spike "
-          f"phase {_fmt_phases(phs)}; {n_spikes} discrete spikes/theta, re-firing each cycle; capacity K={tgc.k} "
-          f"(push 0..9 -> keep {survivors}, evict {dropped}); separation clean; deterministic")
+    assert deterministic, (
+        "same input must give identical readout/phases/raster/spikes across two fresh instances"
+    )
+    print(
+        f"self-check OK: {len(seq)} items held as LIF populations firing one-per-gamma, recall decoded from spike "
+        f"phase {_fmt_phases(phs)}; {n_spikes} discrete spikes/theta, re-firing each cycle; capacity K={tgc.k} "
+        f"(push 0..9 -> keep {survivors}, evict {dropped}); separation clean; deterministic"
+    )
 
 
 if __name__ == "__main__":

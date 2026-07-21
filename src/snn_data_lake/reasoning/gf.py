@@ -43,7 +43,7 @@ is real and structural: any rule NOT expressible in this grammar within the size
 mixed +/x per-step, anything needing a primitive the grammar lacks) still returns None -- an honest
 gap. Widening the grammar/budget moves the wall; it never removes it.
 
-Deps: pure stdlib.
+Deps: stdlib (numpy/torch allowed project-wide).
   PYTHONPATH=src .venv-lake/Scripts/python research/program_inducer.py     # probe + self-check
 """
 import sys
@@ -567,7 +567,7 @@ HONEST CEILING (measured, not hidden -- the probe asserts these GAP rather than 
   This is a BOUNDED, spiking-native Gf mechanism (WHICH shift on a known ordered space), not general
   fluid reasoning. The ordinality of the space is a built-in prior; the rule over it is induced.
 
-Deps: stdlib + the brain's own snn_data_lake.cortex.vsa_reasoning (no numpy, no LLM).
+Deps: stdlib + the brain's own snn_data_lake.cortex.vsa_reasoning (no LLM).
   PYTHONPATH=src .venv-lake/Scripts/python research/gf_inducer.py    # scripted probe + self-check
 """
 import string

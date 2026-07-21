@@ -14,16 +14,17 @@ windows across a rising-noise sweep and reports who wins where. Low noise: a tie
 
   python learned_matcher.py
 """
+
 import random
 
 from snn_data_lake import snn_classifier as C  # train/forward/softmax + globals N, STEPS, EPOCHS
 from snn_data_lake.brainstem.signal_loop import build_default_library
 from snn_data_lake.cortex.spike_preprocessing import encode_latency, van_rossum_distance
 
-N = C.N                               # 64 features — matches the signal window
-THR = 0.5                             # binarize a [0,1] window for the rate-coder
-K_PER = 30                            # exemplars enrolled per command (multi-shot)
-TRAIN_NOISE = 0.20                    # noise the learner is trained under
+N = C.N  # 64 features — matches the signal window
+THR = 0.5  # binarize a [0,1] window for the rate-coder
+K_PER = 30  # exemplars enrolled per command (multi-shot)
+TRAIN_NOISE = 0.20  # noise the learner is trained under
 
 
 def binarize(vec, thr=THR):
@@ -86,8 +87,9 @@ def calibrate_gate(library, refs_enc, seed=7):
     real signal ever lands is treated as garbage and the loop stays silent."""
     rng = random.Random(seed)
     labels = list(library)
-    known = [nearest_dist(refs_enc, jitter(library[l], 0.35, rng))
-             for l in labels for _ in range(20)]
+    known = [
+        nearest_dist(refs_enc, jitter(library[l], 0.35, rng)) for l in labels for _ in range(20)
+    ]
     novel = [nearest_dist(refs_enc, [rng.random() for _ in range(N)]) for _ in range(100)]
     return (max(known) + min(novel)) / 2.0
 
@@ -124,14 +126,16 @@ def main():
         s = sorted((van_rossum_distance(q, ev), i) for i, ev in enumerate(refs_enc))
         return s[0][1] if s[0][0] < 0.85 * s[1][0] else None
 
-    W, labels = train_learned(library)                 # learned (supervised spiking)
-    gate = calibrate_gate(library, refs_enc)           # novelty threshold
+    W, labels = train_learned(library)  # learned (supervised spiking)
+    gate = calibrate_gate(library, refs_enc)  # novelty threshold
 
     print("=" * 78)
     print("STRONGER MATCHING — template vs learned vs hybrid (learned + novelty gate)")
     print("=" * 78)
-    print(f"commands={nC}  exemplars/cmd={K_PER}  train_noise={TRAIN_NOISE:.0%}  "
-          f"gate={gate:.2f}  (chance {1/nC:.0%})")
+    print(
+        f"commands={nC}  exemplars/cmd={K_PER}  train_noise={TRAIN_NOISE:.0%}  "
+        f"gate={gate:.2f}  (chance {1 / nC:.0%})"
+    )
     print(f"{'noise':>6} | {'TEMPLATE':>14} | {'LEARNED':>14} | {'HYBRID':>14}")
     print(f"{'':>6} | {'acc':>7}{'rej':>7} | {'acc':>7}{'rej':>7} | {'acc':>7}{'rej':>7}")
     print("-" * 78)
@@ -141,18 +145,23 @@ def main():
         labs, known, novel = make_windows(library, 40, noise, seed=100 + int(noise * 100))
         t_acc, t_rej = acc_rej(template_label, labs, known, novel)
         l_acc, l_rej = acc_rej(lambda w: learned_label(W, nC, w), labs, known, novel)
-        h_acc, h_rej = acc_rej(lambda w: hybrid_match(W, nC, refs_enc, gate, w)[0],
-                               labs, known, novel)
+        h_acc, h_rej = acc_rej(
+            lambda w: hybrid_match(W, nC, refs_enc, gate, w)[0], labs, known, novel
+        )
         rows.append((noise, t_acc, t_rej, l_acc, l_rej, h_acc, h_rej))
-        print(f"{noise:>5.0%} | {t_acc:>6.0%}{t_rej:>7.0%} | {l_acc:>6.0%}{l_rej:>7.0%} "
-              f"| {h_acc:>6.0%}{h_rej:>7.0%}")
+        print(
+            f"{noise:>5.0%} | {t_acc:>6.0%}{t_rej:>7.0%} | {l_acc:>6.0%}{l_rej:>7.0%} "
+            f"| {h_acc:>6.0%}{h_rej:>7.0%}"
+        )
     print("=" * 78)
 
     hi = [r for r in rows if r[0] >= 0.40]
     t_hi = sum(r[1] for r in hi) / len(hi)
     h_hi = sum(r[5] for r in hi) / len(hi)
-    print(f"high-noise (>=40%) acc:  template {t_hi:.0%}  ->  hybrid {h_hi:.0%}  "
-          f"({h_hi-t_hi:+.0%})   |   hybrid novelty rejection holds where learned-alone fails")
+    print(
+        f"high-noise (>=40%) acc:  template {t_hi:.0%}  ->  hybrid {h_hi:.0%}  "
+        f"({h_hi - t_hi:+.0%})   |   hybrid novelty rejection holds where learned-alone fails"
+    )
 
     # ---- self-checks --------------------------------------------------------
     assert rows[0][1] >= 0.85 and rows[0][5] >= 0.85, "a matcher fails at low noise"
@@ -162,8 +171,10 @@ def main():
     assert all(r[6] >= 0.5 for r in rows), "hybrid novelty rejection broke"
     # documents the learned-alone weakness this fixes
     assert rows[-1][4] < 0.3, "expected learned-alone to over-fire on novel signals"
-    print("self-check OK: hybrid keeps learned's high-noise accuracy AND template's "
-          "novelty rejection; learned-alone over-fires on garbage (documented)")
+    print(
+        "self-check OK: hybrid keeps learned's high-noise accuracy AND template's "
+        "novelty rejection; learned-alone over-fires on garbage (documented)"
+    )
 
 
 if __name__ == "__main__":

@@ -28,20 +28,21 @@ knows reality predicts B and is wrong. Those two predictors are exactly the clai
 Honest framing. This is a FUNCTIONAL false-belief tracker: a belief population that can lag the world.
 It is NOT machine consciousness or genuine mentalizing, and it does not know "what it is like" to hold
 a belief -- it models only THAT a belief can diverge from reality. The scenarios are toy and the readout
-is near-tabular. Deterministic, ASCII, zero-dependency standard library.
+is near-tabular. Deterministic, ASCII.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.theory_of_mind
 """
+
 import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.cortex.population_encoding import PopulationEncoder
 
 # spiking winner-take-all readout over the belief population
-_WINDOW = 20          # steps each location's LIF neuron is driven
-_TAU_M = 10.0         # LIF membrane time constant
-_DRIVE = 0.3          # input current for the peak-count location (others scaled by count/peak)
-_MAX_SPIKES = 12      # population-code peak spike count
+_WINDOW = 20  # steps each location's LIF neuron is driven
+_TAU_M = 10.0  # LIF membrane time constant
+_DRIVE = 0.3  # input current for the peak-count location (others scaled by count/peak)
+_MAX_SPIKES = 12  # population-code peak spike count
 
 
 def _loc_name(i):
@@ -64,9 +65,11 @@ class BeliefPopulation:
             raise ValueError("need n_locations >= 2")
         self.n_locations = n_locations
         self.seed = seed
-        self.rng = random.Random(seed)                       # per-instance RNG (noise-robustness path)
-        self.encoder = PopulationEncoder(n=n_locations, lo=0.0, hi=n_locations - 1, max_spikes=max_spikes)
-        self.counts = None                                   # no belief formed yet
+        self.rng = random.Random(seed)  # per-instance RNG (noise-robustness path)
+        self.encoder = PopulationEncoder(
+            n=n_locations, lo=0.0, hi=n_locations - 1, max_spikes=max_spikes
+        )
+        self.counts = None  # no belief formed yet
 
     def observe(self, location):
         """Fold a DIRECTLY observed location into the belief population (a fresh percept overwrites)."""
@@ -107,9 +110,9 @@ class TheoryOfMind:
         self.n_locations = n_locations
         self.seed = seed
         self.window = window
-        self.rng = random.Random(seed)                       # per-instance RNG
-        self.world = None                                    # true object location
-        self.beliefs = {}                                    # agent -> BeliefPopulation
+        self.rng = random.Random(seed)  # per-instance RNG
+        self.world = None  # true object location
+        self.beliefs = {}  # agent -> BeliefPopulation
 
     def _belief(self, agent):
         if agent not in self.beliefs:
@@ -142,9 +145,9 @@ def _run_sally_anne(start, moved, sally_present_for_move, seed=0):
     moves it to `moved`, with Sally present only if sally_present_for_move. Returns the TheoryOfMind
     at the 'Sally returns' read-out moment."""
     tom = TheoryOfMind(n_locations=4, seed=seed)
-    tom.place(start, observers=("Sally", "Anne"))            # both witness the placement
+    tom.place(start, observers=("Sally", "Anne"))  # both witness the placement
     present = ("Sally", "Anne") if sally_present_for_move else ("Anne",)
-    tom.move(moved, observers=present)                       # Anne moves it; Sally may be absent
+    tom.move(moved, observers=present)  # Anne moves it; Sally may be absent
     return tom
 
 
@@ -170,15 +173,19 @@ def main():
         tom = _run_sally_anne(start, moved, sally_present_for_move=False)
         look_belief = tom.predict_from_belief("Sally")
         look_world = tom.predict_from_world("Sally")
-        correct = start                                      # she looks where SHE believes it is
+        correct = start  # she looks where SHE believes it is
         if look_belief == correct:
             belief_hits += 1
         if look_world == correct:
             world_hits += 1
-        emit(f"    marble {_loc_name(start)}->{_loc_name(moved)} (Sally away): "
-             f"belief-predict={_loc_name(look_belief)}  world-predict={_loc_name(look_world)}  "
-             f"true-look={_loc_name(correct)}")
-        assert look_belief == start, f"belief predictor missed the false-belief basket {_loc_name(start)}"
+        emit(
+            f"    marble {_loc_name(start)}->{_loc_name(moved)} (Sally away): "
+            f"belief-predict={_loc_name(look_belief)}  world-predict={_loc_name(look_world)}  "
+            f"true-look={_loc_name(correct)}"
+        )
+        assert look_belief == start, (
+            f"belief predictor missed the false-belief basket {_loc_name(start)}"
+        )
     belief_acc = belief_hits / len(scenarios)
     world_acc = world_hits / len(scenarios)
     emit(f"    belief-predictor accuracy = {belief_acc:.2f}  (predicts the false-belief basket A)")
@@ -191,8 +198,12 @@ def main():
         tom = _run_sally_anne(start, moved, sally_present_for_move=False)
         look_world = tom.predict_from_world("Sally")
         assert look_world == moved, "world predictor should report reality (the moved-to basket)"
-        assert look_world != start, "world predictor must FAIL the false-belief case (predicts B not A)"
-    emit(f"    world-predictor accuracy = {world_acc:.2f}  (predicts B, where the marble really is)")
+        assert look_world != start, (
+            "world predictor must FAIL the false-belief case (predicts B not A)"
+        )
+    emit(
+        f"    world-predictor accuracy = {world_acc:.2f}  (predicts B, where the marble really is)"
+    )
     emit("    -> the tracker represents a BELIEF distinct from reality, not merely the world state")
     assert world_acc == 0.0, "the reality control must FAIL every false-belief case"
 
@@ -203,8 +214,10 @@ def main():
         tom = _run_sally_anne(start, moved, sally_present_for_move=True)
         lb = tom.predict_from_belief("Sally")
         lw = tom.predict_from_world("Sally")
-        emit(f"    marble {_loc_name(start)}->{_loc_name(moved)} (Sally present): "
-             f"belief={_loc_name(lb)}  world={_loc_name(lw)}  agree={lb == lw}")
+        emit(
+            f"    marble {_loc_name(start)}->{_loc_name(moved)} (Sally present): "
+            f"belief={_loc_name(lb)}  world={_loc_name(lw)}  agree={lb == lw}"
+        )
         assert lb == lw == moved, "with a TRUE belief both predictors must agree on reality"
     emit("    -> divergence is SPECIFIC to the unobserved-change case, not a general disagreement")
 
@@ -215,10 +228,12 @@ def main():
     tom_b = _run_sally_anne(0, 2, sally_present_for_move=False, seed=0)
     det_ok = tom_a.predict_from_belief("Sally") == tom_b.predict_from_belief("Sally")
     noisy = _run_sally_anne(1, 3, sally_present_for_move=False, seed=0)
-    noisy_look = noisy.predict_from_belief("Sally", jitter=2)     # perturb the population code
+    noisy_look = noisy.predict_from_belief("Sally", jitter=2)  # perturb the population code
     emit(f"    identical seeds -> identical prediction : {det_ok}")
-    emit(f"    spike-count jitter=2 -> WTA still recovers {_loc_name(noisy_look)} "
-         f"(the belief basket {_loc_name(1)})")
+    emit(
+        f"    spike-count jitter=2 -> WTA still recovers {_loc_name(noisy_look)} "
+        f"(the belief basket {_loc_name(1)})"
+    )
     assert det_ok, "identical seeds produced different predictions -- not deterministic"
     assert noisy_look == 1, "spiking WTA readout must survive population-code jitter"
 
@@ -227,13 +242,17 @@ def main():
     report = "\n".join(lines)
     assert report.isascii(), "self-check produced non-ASCII output"
     print(report)
-    print("HONEST NEGATIVE: this is a FUNCTIONAL false-belief TRACKER -- a belief population that can "
-          "lag world state -- NOT machine consciousness or genuine mentalizing. It models THAT a belief "
-          "can diverge from reality, not WHAT it is like to hold one; the scenarios are toy and the "
-          "readout is near-tabular. Deterministic, ASCII, zero-dep.")
-    print("self-check OK: the belief predictor passes Sally-Anne (accuracy 1.00, predicts the "
-          "false-belief basket A); the reality CONTROL fails (0.00, predicts B); with a true belief "
-          "both predictors agree; the spiking WTA readout is noise-robust and deterministic")
+    print(
+        "HONEST NEGATIVE: this is a FUNCTIONAL false-belief TRACKER -- a belief population that can "
+        "lag world state -- NOT machine consciousness or genuine mentalizing. It models THAT a belief "
+        "can diverge from reality, not WHAT it is like to hold one; the scenarios are toy and the "
+        "readout is near-tabular. Deterministic, ASCII."
+    )
+    print(
+        "self-check OK: the belief predictor passes Sally-Anne (accuracy 1.00, predicts the "
+        "false-belief basket A); the reality CONTROL fails (0.00, predicts B); with a true belief "
+        "both predictors agree; the spiking WTA readout is noise-robust and deterministic"
+    )
 
 
 if __name__ == "__main__":

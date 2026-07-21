@@ -1,5 +1,5 @@
 """
-v0.15 — spike preprocessing pipeline  (stdlib-only, zero deps).
+v0.15 — spike preprocessing pipeline.
 
 Implements the three recommended next steps:
 
@@ -20,6 +20,7 @@ Implements the three recommended next steps:
 
 Run:  python spike_preprocessing.py
 """
+
 import math
 import os
 import random
@@ -27,19 +28,18 @@ import struct
 import time
 from array import array
 
-T = 32          # time steps
-N = 64          # features
-C = 5           # classes (for the query-matching demo)
-FLOOR = 0.10    # features dimmer than this never spike (sparse)
-TAU = 4.0       # Van Rossum decay constant (steps)
+T = 32  # time steps
+N = 64  # features
+C = 5  # classes (for the query-matching demo)
+FLOOR = 0.10  # features dimmer than this never spike (sparse)
+TAU = 4.0  # Van Rossum decay constant (steps)
 
 
 # ---- 1. deterministic latency encoding --------------------------------------
 def encode_latency(vec, t_steps=T, floor=FLOOR):
     """Deterministic: each feature >= floor emits ONE spike; brighter -> earlier.
     Returns sorted [(time, feature), ...]. No randomness anywhere."""
-    out = [(int(round((1.0 - v) * (t_steps - 1))), i)
-           for i, v in enumerate(vec) if v >= floor]
+    out = [(int(round((1.0 - v) * (t_steps - 1))), i) for i, v in enumerate(vec) if v >= floor]
     out.sort()
     return out
 
@@ -76,7 +76,8 @@ def save_cache(path, encoded, t_steps):
             f.write(struct.pack("<I", len(ev)))
             a = array("H")
             for t, i in ev:
-                a.append(t); a.append(i)
+                a.append(t)
+                a.append(i)
             f.write(a.tobytes())
     return os.path.getsize(path)
 
@@ -142,26 +143,30 @@ def van_rossum_distance(ev_a, ev_b, n_features=N, t_steps=T, tau=TAU, _use_fast=
         by_a[i].append(t)
     for t, i in ev_b:
         by_b[i].append(t)
-    decay = math.exp(-1.0 / tau)                 # invariant across features -> hoisted
+    decay = math.exp(-1.0 / tau)  # invariant across features -> hoisted
 
     # ---- v2.5 closed-form fast path (guarded: <=1 spike/channel, in range) -----------------
     if _use_fast and all(
-        len(by_a[i]) <= 1 and len(by_b[i]) <= 1
+        len(by_a[i]) <= 1
+        and len(by_b[i]) <= 1
         and (not by_a[i] or 0 <= by_a[i][0] < t_steps)
         and (not by_b[i] or 0 <= by_b[i][0] < t_steps)
         for i in range(n_features)
     ):
-        r = decay * decay                        # sum_t decay^(2k) is geometric in r=decay^2
+        r = decay * decay  # sum_t decay^(2k) is geometric in r=decay^2
         inv = 1.0 / (1.0 - r)
         total = 0.0
         for i in range(n_features):
             sa, sb = by_a[i], by_b[i]
-            if sa and sb:                        # spikes at a and b: |waveform_a - waveform_b|^2
+            if sa and sb:  # spikes at a and b: |waveform_a - waveform_b|^2
                 a, b = sa[0], sb[0]
                 m = a if a > b else b
-                total += ((1.0 - r ** (t_steps - a)) + (1.0 - r ** (t_steps - b))
-                          - 2.0 * decay ** abs(a - b) * (1.0 - r ** (t_steps - m))) * inv
-            elif sa:                             # one train silent -> pure geometric series
+                total += (
+                    (1.0 - r ** (t_steps - a))
+                    + (1.0 - r ** (t_steps - b))
+                    - 2.0 * decay ** abs(a - b) * (1.0 - r ** (t_steps - m))
+                ) * inv
+            elif sa:  # one train silent -> pure geometric series
                 total += (1.0 - r ** (t_steps - sa[0])) * inv
             elif sb:
                 total += (1.0 - r ** (t_steps - sb[0])) * inv
@@ -171,7 +176,7 @@ def van_rossum_distance(ev_a, ev_b, n_features=N, t_steps=T, tau=TAU, _use_fast=
     total = 0.0
     for i in range(n_features):
         sa, sb = by_a[i], by_b[i]
-        if not sa and not sb:                    # both channels silent -> zero contribution
+        if not sa and not sb:  # both channels silent -> zero contribution
             continue
         fa = _filtered(sa, decay, t_steps)
         fb = _filtered(sb, decay, t_steps)
@@ -188,14 +193,16 @@ def _victor_purpura_1d(a, b, q):
         return float(m)
     if m == 0:
         return float(n)
-    prev = [float(j) for j in range(m + 1)]              # D[0][j] = j
+    prev = [float(j) for j in range(m + 1)]  # D[0][j] = j
     for i in range(1, n + 1):
-        cur = [float(i)] + [0.0] * m                     # D[i][0] = i
+        cur = [float(i)] + [0.0] * m  # D[i][0] = i
         ai = a[i - 1]
         for j in range(1, m + 1):
-            cur[j] = min(prev[j] + 1.0,                  # delete a spike
-                         cur[j - 1] + 1.0,               # insert a spike
-                         prev[j - 1] + q * abs(ai - b[j - 1]))   # shift a[i] onto b[j]
+            cur[j] = min(
+                prev[j] + 1.0,  # delete a spike
+                cur[j - 1] + 1.0,  # insert a spike
+                prev[j - 1] + q * abs(ai - b[j - 1]),
+            )  # shift a[i] onto b[j]
         prev = cur
     return prev[m]
 
@@ -206,7 +213,7 @@ def victor_purpura_distance(ev_a, ev_b, q=1.0, n_features=N):
     q -> 0 collapses to the spike-COUNT difference (rate code, timing ignored); large q -> coincidence
     detection (a spike is cheaper to move than delete+insert only within ~2/q of a target). Monotone
     non-decreasing in q. A true metric on spike trains, complementary to the continuous Van Rossum
-    distance (which this module also provides). Pure stdlib, deterministic. Refs: Victor & Purpura,
+    distance (which this module also provides). Deterministic. Refs: Victor & Purpura,
     J. Neurophysiol. 76 (1996); Aronov, J. Neurosci. Methods 124 (2003) for the labelled-line sum."""
     by_a = [[] for _ in range(n_features)]
     by_b = [[] for _ in range(n_features)]
@@ -225,7 +232,7 @@ def denoise(events, window=2, min_neighbors=1):
     Spurious spikes (membrane leak, random synaptic firing) arrive alone; real signal fires
     in temporally correlated bursts. Removing isolated specks before learning stops noise
     from contaminating STDP / matching. Returns a new sorted [(t, feature), ...].
-    Pure stdlib; opt-in (callers pass already-encoded events) so verified paths don't shift."""
+    Opt-in (callers pass already-encoded events) so verified paths don't shift."""
     by_ch = {}
     for t, i in events:
         by_ch.setdefault(i, []).append(t)
@@ -233,8 +240,7 @@ def denoise(events, window=2, min_neighbors=1):
     for i, times in by_ch.items():
         ts = sorted(times)
         for idx, t in enumerate(ts):
-            neighbors = sum(1 for jdx, u in enumerate(ts)
-                            if jdx != idx and abs(u - t) <= window)
+            neighbors = sum(1 for jdx, u in enumerate(ts) if jdx != idx and abs(u - t) <= window)
             if neighbors >= min_neighbors:
                 kept.append((t, i))
     kept.sort()
@@ -244,8 +250,9 @@ def denoise(events, window=2, min_neighbors=1):
 # ---- demo + measure ---------------------------------------------------------
 def main():
     random.seed(0)
-    protos = [[random.random() if random.random() < 0.45 else 0.0 for _ in range(N)]
-              for _ in range(C)]
+    protos = [
+        [random.random() if random.random() < 0.45 else 0.0 for _ in range(N)] for _ in range(C)
+    ]
 
     def noisy(p):
         return [min(1.0, max(0.0, v + random.uniform(-0.12, 0.12))) for v in p]
@@ -258,20 +265,20 @@ def main():
     print("=" * 60)
 
     # 1. determinism
-    det = (encode_latency(dataset[0]) == encode_latency(dataset[0]))
+    det = encode_latency(dataset[0]) == encode_latency(dataset[0])
     print(f"1. deterministic encoding : {det}  (same input -> same spikes, no RNG)")
 
     # 2. precompute + cache + speedup over re-encoding each 'epoch'
     EPOCHS = 8
     t0 = time.perf_counter()
     for _ in range(EPOCHS):
-        _ = [encode_latency(x) for x in dataset]          # on-the-fly every epoch
+        _ = [encode_latency(x) for x in dataset]  # on-the-fly every epoch
     on_the_fly = time.perf_counter() - t0
 
     t0 = time.perf_counter()
-    enc = precompute(dataset)                              # once
+    enc = precompute(dataset)  # once
     for _ in range(EPOCHS):
-        for ev in enc:                                     # reuse: just index
+        for ev in enc:  # reuse: just index
             _ = ev
     precomputed = time.perf_counter() - t0
 
@@ -279,10 +286,12 @@ def main():
     os.makedirs(os.path.dirname(path), exist_ok=True)
     cbytes = save_cache(path, enc, T)
     enc2, _ = load_cache(path)
-    print(f"2. precompute + cache     : {cbytes:,} B cache; "
-          f"{EPOCHS}-epoch encode {on_the_fly*1e3:.0f}ms on-the-fly "
-          f"vs {precomputed*1e3:.0f}ms precomputed "
-          f"-> {on_the_fly/max(1e-6,precomputed):.1f}x less encode work")
+    print(
+        f"2. precompute + cache     : {cbytes:,} B cache; "
+        f"{EPOCHS}-epoch encode {on_the_fly * 1e3:.0f}ms on-the-fly "
+        f"vs {precomputed * 1e3:.0f}ms precomputed "
+        f"-> {on_the_fly / max(1e-6, precomputed):.1f}x less encode work"
+    )
 
     # 3. Van Rossum query matching: classify each query by nearest stored prototype
     proto_enc = [encode_latency(p) for p in protos]
@@ -290,7 +299,7 @@ def main():
     for x, y in zip(dataset, labels):
         q = encode_latency(x)
         pred = min(range(C), key=lambda c: van_rossum_distance(q, proto_enc[c]))
-        correct += (pred == y)
+        correct += pred == y
     acc = correct / len(dataset)
     print(f"3. Van Rossum matching    : query->nearest stored prototype acc={acc:.1%}")
 
@@ -300,14 +309,18 @@ def main():
     d_poi = van_rossum_distance(encode_poisson(img), encode_poisson(img))
     print("4. query identity         : SAME image encoded twice ->")
     print(f"     deterministic latency : Van Rossum dist = {d_det:.3f}  (recognised as SAME query)")
-    print(f"     Poisson (stochastic)  : Van Rossum dist = {d_poi:.2f}  (looks like DIFFERENT data!)")
+    print(
+        f"     Poisson (stochastic)  : Van Rossum dist = {d_poi:.2f}  (looks like DIFFERENT data!)"
+    )
 
     # 5. Silver-tier denoise: a real burst survives, isolated noise specks are removed
-    burst = [(5, 0), (6, 0), (7, 0)]                  # correlated signal on channel 0
-    noise = [(20, 1), (3, 2)]                          # lone specks on channels 1, 2
+    burst = [(5, 0), (6, 0), (7, 0)]  # correlated signal on channel 0
+    noise = [(20, 1), (3, 2)]  # lone specks on channels 1, 2
     cleaned = denoise(burst + noise, window=2, min_neighbors=1)
-    print(f"5. Silver denoise         : {len(burst+noise)} spikes -> {len(cleaned)} "
-          f"(burst kept, {len(burst+noise)-len(cleaned)} isolated specks dropped)")
+    print(
+        f"5. Silver denoise         : {len(burst + noise)} spikes -> {len(cleaned)} "
+        f"(burst kept, {len(burst + noise) - len(cleaned)} isolated specks dropped)"
+    )
     print("=" * 60)
 
     # ---- self-checks --------------------------------------------------------
@@ -330,40 +343,46 @@ def main():
     # encode_latency emits <=1 spike/channel so the fast path applies; it must reproduce the general
     # discrete sum to float rounding and never flip a nearest-label + Lowe-ratio matcher decision.
     max_vr_diff = 0.0
-    battery = [([], [])]                                     # empty/empty
-    for a in range(T):                                       # empty/one and one/empty, every time
+    battery = [([], [])]  # empty/empty
+    for a in range(T):  # empty/one and one/empty, every time
         battery.append(([(a, 0)], []))
         battery.append(([], [(a, 0)]))
-    for a in range(0, T, 3):                                 # one/one at many time-pairs
+    for a in range(0, T, 3):  # one/one at many time-pairs
         for b in range(0, T, 2):
             battery.append(([(a, 0)], [(b, 0)]))
-    enc_windows = [encode_latency(x) for x in dataset]       # 400 real encode_latency windows
-    for k in range(len(enc_windows) - 1):                    # 399 real consecutive-window pairs
+    enc_windows = [encode_latency(x) for x in dataset]  # 400 real encode_latency windows
+    for k in range(len(enc_windows) - 1):  # 399 real consecutive-window pairs
         battery.append((enc_windows[k], enc_windows[k + 1]))
-    for k in range(len(enc_windows)):                        # 400 real window vs prototype pairs
+    for k in range(len(enc_windows)):  # 400 real window vs prototype pairs
         battery.append((enc_windows[k], proto_enc[k % C]))
-    for tau_t in (2.0, 4.0, 8.0):                            # several taus
+    for tau_t in (2.0, 4.0, 8.0):  # several taus
         for ea, eb in battery:
-            d_fast = van_rossum_distance(ea, eb, tau=tau_t)              # closed-form fast path
+            d_fast = van_rossum_distance(ea, eb, tau=tau_t)  # closed-form fast path
             d_ref = van_rossum_distance(ea, eb, tau=tau_t, _use_fast=False)  # general loop
             max_vr_diff = max(max_vr_diff, abs(d_fast - d_ref))
     assert max_vr_diff <= 1e-9, f"fast-path value drift {max_vr_diff:.2e} > 1e-9"
 
-    def _decide(win, use_fast):                              # nearest label + Lowe-ratio reject
+    def _decide(win, use_fast):  # nearest label + Lowe-ratio reject
         qd = encode_latency(win)
-        s = sorted((van_rossum_distance(qd, ev, _use_fast=use_fast), c)
-                   for c, ev in enumerate(proto_enc))
+        s = sorted(
+            (van_rossum_distance(qd, ev, _use_fast=use_fast), c) for c, ev in enumerate(proto_enc)
+        )
         return s[0][1] if s[0][0] < 0.85 * s[1][0] else None
+
     rng_d = random.Random(1234)
     decide_windows = list(dataset) + [[rng_d.random() for _ in range(N)] for _ in range(300)]
     decision_diffs = sum(1 for w in decide_windows if _decide(w, True) != _decide(w, False))
     assert decision_diffs == 0, f"fast path flipped {decision_diffs} matcher decisions"
-    print(f"6. Van Rossum fast path   : closed-form value max|dd|={max_vr_diff:.1e} (<=1e-9), "
-          f"{decision_diffs} matcher-decision diffs over {len(decide_windows)} windows")
+    print(
+        f"6. Van Rossum fast path   : closed-form value max|dd|={max_vr_diff:.1e} (<=1e-9), "
+        f"{decision_diffs} matcher-decision diffs over {len(decide_windows)} windows"
+    )
 
-    print("self-check OK: deterministic, cache intact, precompute faster, "
-          "Van Rossum separates & matches (closed-form fast path value+decision identical), "
-          "Poisson breaks query identity, denoise drops isolated specks")
+    print(
+        "self-check OK: deterministic, cache intact, precompute faster, "
+        "Van Rossum separates & matches (closed-form fast path value+decision identical), "
+        "Poisson breaks query identity, denoise drops isolated specks"
+    )
 
 
 if __name__ == "__main__":

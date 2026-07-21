@@ -16,8 +16,8 @@ developing brain moves in lock-step --
 
 This is the human-brain-general developmental principle (Hadders-Algra 2018: motor development
 is competence-driven, not clock-driven), not a species- or gait-specific schedule. It carries
-no numpy/torch, no perturbation-direction physics, no arm geometry -- only the abstract envelope
-math -- so it stays a pure-stdlib neuromodulator like its neighbours (cortisol.py, raphe_serotonin.py).
+no perturbation-direction physics, no arm geometry -- only the abstract envelope
+math -- so it stays a lightweight neuromodulator like its neighbours (cortisol.py, raphe_serotonin.py).
 
 HOW IT WOULD WIRE (documented here; no other file is edited by this module):
   * autonomous_loop `_competence(tasks)` / develop()'s per-stage `competence` trace  -> update(competence).
@@ -31,6 +31,7 @@ HOW IT WOULD WIRE (documented here; no other file is edited by this module):
 
   python developmental_envelope.py
 """
+
 import math
 import random
 
@@ -47,8 +48,8 @@ class DevelopmentalEnvelope:
         # ema          : smoothing factor for the competence integrator (small = slow, stable).
         self.base_explore = float(base_explore)
         self.ema = float(ema)
-        self.maturity = 0.0                 # 0.0 = neonate (loud, reactive), 1.0 = mature (precise, predictive)
-        self._rng = random.Random(seed)     # per-instance -> deterministic babbling stream
+        self.maturity = 0.0  # 0.0 = neonate (loud, reactive), 1.0 = mature (precise, predictive)
+        self._rng = random.Random(seed)  # per-instance -> deterministic babbling stream
 
     def update(self, competence):
         """EMA the competence signal in [0,1] into `maturity` in [0,1]. Returns the new maturity.
@@ -102,18 +103,20 @@ def main():
     env = DevelopmentalEnvelope(base_explore=0.3, ema=0.05, seed=0)
     neo_noise = env.explore_noise
     neo_gain = env.forward_model_gain
-    neo_mix = env.mix(reactive=0.2, predictive=0.9)     # feedback vs forward-model action
-    print(f"neonate  maturity={env.maturity:.3f}  explore_noise={neo_noise:.3f}  "
-          f"forward_model_gain={neo_gain:.3f}  mix(0.2,0.9)={neo_mix:.3f}")
+    neo_mix = env.mix(reactive=0.2, predictive=0.9)  # feedback vs forward-model action
+    print(
+        f"neonate  maturity={env.maturity:.3f}  explore_noise={neo_noise:.3f}  "
+        f"forward_model_gain={neo_gain:.3f}  mix(0.2,0.9)={neo_mix:.3f}"
+    )
 
     # ---- (a) rising competence curve -> noise strictly DOWN, gain strictly UP --
     n = 60
     noises, gains, mixes = [], [], []
     for i in range(n):
-        env.update((i + 1) / n)                          # strictly rising competence 1/n .. 1
+        env.update((i + 1) / n)  # strictly rising competence 1/n .. 1
         noises.append(env.explore_noise)
         gains.append(env.forward_model_gain)
-        mixes.append(env.mix(reactive=0.0, predictive=1.0))   # == gain: reactive->predictive shift
+        mixes.append(env.mix(reactive=0.0, predictive=1.0))  # == gain: reactive->predictive shift
 
     # ---- (b) mature state: drive competence=1 to saturation -> precise + predictive
     for _ in range(400):
@@ -122,9 +125,13 @@ def main():
     mat_gain = env.forward_model_gain
     mat_mix = env.mix(reactive=0.2, predictive=0.9)
     mat_sample = env.explore_sample()
-    print(f"mature   maturity={env.maturity:.3f}  explore_noise={mat_noise:.5f}  "
-          f"forward_model_gain={mat_gain:.3f}  mix(0.2,0.9)={mat_mix:.3f}")
-    print(f"babbling narrows: neonate |sample|~{env.base_explore:.2f} scale -> mature |sample|={abs(mat_sample):.5f}")
+    print(
+        f"mature   maturity={env.maturity:.3f}  explore_noise={mat_noise:.5f}  "
+        f"forward_model_gain={mat_gain:.3f}  mix(0.2,0.9)={mat_mix:.3f}"
+    )
+    print(
+        f"babbling narrows: neonate |sample|~{env.base_explore:.2f} scale -> mature |sample|={abs(mat_sample):.5f}"
+    )
 
     # ---- (d) determinism: same seed -> identical babbling; different seed -> not
     def babble_stream(seed):
@@ -134,6 +141,7 @@ def main():
             e.update((i + 1) / 20)
             out.append(e.explore_sample())
         return out
+
     stream_a = babble_stream(0)
     stream_b = babble_stream(0)
     stream_c = babble_stream(1)
@@ -142,13 +150,19 @@ def main():
 
     # ---- self-checks ----------------------------------------------------------
     # (b) neonatal: explore_noise ~ base_explore, gain ~ 0
-    assert math.isclose(neo_noise, env.base_explore, abs_tol=1e-9), "neonate explore_noise must equal base_explore"
-    assert math.isclose(neo_gain, 0.0, abs_tol=1e-9), "neonate forward_model_gain must be ~0 (reactive)"
+    assert math.isclose(neo_noise, env.base_explore, abs_tol=1e-9), (
+        "neonate explore_noise must equal base_explore"
+    )
+    assert math.isclose(neo_gain, 0.0, abs_tol=1e-9), (
+        "neonate forward_model_gain must be ~0 (reactive)"
+    )
 
     # (a) monotone: as competence rises, explore_noise STRICTLY falls, gain STRICTLY rises
     for k in range(1, n):
         assert noises[k] < noises[k - 1], "explore_noise must strictly DECREASE as competence rises"
-        assert gains[k] > gains[k - 1], "forward_model_gain must strictly INCREASE as competence rises"
+        assert gains[k] > gains[k - 1], (
+            "forward_model_gain must strictly INCREASE as competence rises"
+        )
 
     # (b) mature: explore_noise ~ 0, gain ~ 1
     assert mat_noise < 1e-3, "mature explore_noise must anneal toward 0 (precise)"
@@ -159,15 +173,21 @@ def main():
     assert math.isclose(neo_mix, 0.2, abs_tol=1e-6), "neonate mix must be ~the reactive value"
     assert math.isclose(mat_mix, 0.9, abs_tol=1e-3), "mature mix must be ~the predictive value"
     for k in range(1, n):
-        assert mixes[k] > mixes[k - 1], "mix(reactive,predictive) must shift toward predictive as competence rises"
+        assert mixes[k] > mixes[k - 1], (
+            "mix(reactive,predictive) must shift toward predictive as competence rises"
+        )
 
     # (d) determinism
     assert stream_a == stream_b, "same seed must give identical babbling"
-    assert stream_a != stream_c, "different seed must give different babbling (RNG is per-instance seeded)"
+    assert stream_a != stream_c, (
+        "different seed must give different babbling (RNG is per-instance seeded)"
+    )
 
-    print("self-check OK: competence anneals exploration DOWN and forward-model gain UP; "
-          "neonate is noisy+reactive, mature is precise+predictive; mix hands feedback->feedforward; "
-          "babbling is deterministic per seed")
+    print(
+        "self-check OK: competence anneals exploration DOWN and forward-model gain UP; "
+        "neonate is noisy+reactive, mature is precise+predictive; mix hands feedback->feedforward; "
+        "babbling is deterministic per seed"
+    )
 
 
 if __name__ == "__main__":

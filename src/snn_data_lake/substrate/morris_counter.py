@@ -1,5 +1,5 @@
 """
-Morris approximate counter -- count n events in a ~log2 log2 n -bit register (pure stdlib).
+Morris approximate counter -- count n events in a ~log2 log2 n -bit register.
 
 The lake often needs ONE running total -- "how many events so far?" -- kept in almost no memory
 (per-channel tallies, firmware-grade counters). An exact counter for n events needs ~log2(n)
@@ -37,6 +37,7 @@ Csuros bias-corrected variants, not a spiking implementation, not cognition.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.morris_counter   # selfchecks
 """
+
 import math
 import random
 
@@ -84,12 +85,12 @@ class MorrisCounter:
             while remaining > 0:
                 p = a ** (-c)
                 if p >= 1.0:
-                    gap = 1                    # c == 0: the first event always increments
+                    gap = 1  # c == 0: the first event always increments
                 else:
-                    u = rng.random()           # gap ~ Geometric(p) on {1, 2, ...}
+                    u = rng.random()  # gap ~ Geometric(p) on {1, 2, ...}
                     gap = max(1, math.ceil(math.log1p(-u) / math.log1p(-p)))
                 if gap > remaining:
-                    break                      # no increment within these k events (memoryless)
+                    break  # no increment within these k events (memoryless)
                 remaining -= gap
                 c += 1
             self.registers[i] = c
@@ -97,7 +98,7 @@ class MorrisCounter:
     def count(self):
         """Unbiased estimate of the events offered: mean over registers of (a^c - 1)/(a - 1)."""
         a = self.a
-        total = sum((a ** c - 1.0) / (a - 1.0) for c in self.registers)
+        total = sum((a**c - 1.0) / (a - 1.0) for c in self.registers)
         return total / self.m
 
     def register_bits(self):
@@ -115,8 +116,8 @@ class MorrisCounter:
 
 def main():
     m, a, seed = 64, 2.0, 0
-    se = math.sqrt((a - 1.0) / (2.0 * m))    # rel std error of the m-averaged estimate (8.84%)
-    bound = 0.15                             # ~1.7 sigma at m=64 -- must hold at the fixed seed
+    se = math.sqrt((a - 1.0) / (2.0 * m))  # rel std error of the m-averaged estimate (8.84%)
+    bound = 0.15  # ~1.7 sigma at m=64 -- must hold at the fixed seed
 
     # ---- 1. accuracy across orders of magnitude: count a KNOWN n, estimate within the bound.
     # n=1000 goes through increment() one event at a time (exercises the per-event path);
@@ -142,7 +143,7 @@ def main():
     big = counters[n_big]
     max_c = max(big.registers)
     bits = big.register_bits()
-    exact_bits = n_big.bit_length()          # bits an exact counter needs for the same n
+    exact_bits = n_big.bit_length()  # bits an exact counter needs for the same n
     loglog = math.log2(math.log2(n_big))
 
     # ---- 3. unbiasedness / no systematic drift: mean estimate over R independent runs (fixed
@@ -155,7 +156,7 @@ def main():
         total += rmc.count()
     mean_est = total / runs
     mean_rel = abs(mean_est - n_unbias) / n_unbias
-    mean_se = se / math.sqrt(runs)           # rel std error of the R-run mean (~0.63%)
+    mean_se = se / math.sqrt(runs)  # rel std error of the R-run mean (~0.63%)
 
     # ---- 4. determinism: same m/a/seed/n -> identical registers + estimate, fresh instances ----
     d1 = MorrisCounter(m=m, a=a, seed=7)
@@ -167,34 +168,45 @@ def main():
     print("=" * 68)
     print("MORRIS APPROXIMATE COUNTER -- one big total in ~log2 log2 n bits")
     print("=" * 68)
-    print(f"config: m = {m} averaged base-a registers, a = {a}; rel std error "
-          f"sqrt((a-1)/(2m)) = {se * 100:.2f}%; bound {bound * 100:.0f}%")
+    print(
+        f"config: m = {m} averaged base-a registers, a = {a}; rel std error "
+        f"sqrt((a-1)/(2m)) = {se * 100:.2f}%; bound {bound * 100:.0f}%"
+    )
     print(f"{'true n':>9}  ->  {'estimate':>12}   {'rel err':>8}   path")
     for n, est, rel, path in rows:
         print(f"{n:>9}  ->  {est:>12.1f}   {rel * 100:>7.2f}%   {path}")
-    print(f"memory     : n = {n_big} -> largest register c = {max_c} (~log2 n = "
-          f"{math.log2(n_big):.1f}) -> register_bits() = {bits} bits "
-          f"(~log2 log2 n = {loglog:.1f}) vs exact counter {exact_bits} bits")
-    print(f"unbiased   : mean estimate over {runs} runs (seeds 1..{runs}) of n = {n_unbias} "
-          f"-> {mean_est:.1f} (rel {mean_rel * 100:.2f}%; mean's own std ~ {mean_se * 100:.2f}%)")
-    print(f"determinism: two fresh instances, same m/a/seed/n -> identical estimate: "
-          f"{deterministic}")
+    print(
+        f"memory     : n = {n_big} -> largest register c = {max_c} (~log2 n = "
+        f"{math.log2(n_big):.1f}) -> register_bits() = {bits} bits "
+        f"(~log2 log2 n = {loglog:.1f}) vs exact counter {exact_bits} bits"
+    )
+    print(
+        f"unbiased   : mean estimate over {runs} runs (seeds 1..{runs}) of n = {n_unbias} "
+        f"-> {mean_est:.1f} (rel {mean_rel * 100:.2f}%; mean's own std ~ {mean_se * 100:.2f}%)"
+    )
+    print(
+        f"determinism: two fresh instances, same m/a/seed/n -> identical estimate: {deterministic}"
+    )
     print("=" * 68)
 
-    # ---- asserts: deterministic, zero-dep; genuine estimates, nothing rigged ----
+    # ---- asserts: deterministic; genuine estimates, nothing rigged ----
     for n, _est, rel, _path in rows:
         assert rel < bound, f"n={n}: rel err {rel * 100:.2f}% exceeds bound {bound * 100:.0f}%"
     assert 15 <= max_c <= 28, f"register c={max_c} should sit near log2(n)~{math.log2(n_big):.0f}"
     assert bits <= 6, f"register needs {bits} bits, expected ~log2 log2 n ~ {loglog:.1f} (<= 6)"
     assert 3 * bits < exact_bits, (
-        f"register ({bits} bits) must be far below an exact counter ({exact_bits} bits)")
+        f"register ({bits} bits) must be far below an exact counter ({exact_bits} bits)"
+    )
     assert mean_rel < 0.03, (
         f"mean over {runs} runs {mean_est:.1f} drifts {mean_rel * 100:.2f}% from n={n_unbias} "
-        f"(estimator must be unbiased)")
+        f"(estimator must be unbiased)"
+    )
     assert deterministic, "same m/a/seed/n must give identical registers and estimate"
-    print(f"self-check OK: n in {list(scales)} each within {bound * 100:.0f}% using {m} "
-          f"registers of <= {bits} bits (exact needs {exact_bits}); mean over {runs} runs "
-          f"within {mean_rel * 100:.2f}% of n; deterministic")
+    print(
+        f"self-check OK: n in {list(scales)} each within {bound * 100:.0f}% using {m} "
+        f"registers of <= {bits} bits (exact needs {exact_bits}); mean over {runs} runs "
+        f"within {mean_rel * 100:.2f}% of n; deterministic"
+    )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 """
-v0.12 — Spike Telemetry Hub  (Paradigm A, stdlib-only, zero deps).
+v0.12 — Spike Telemetry Hub  (Paradigm A).
 
 Completes the assessment's Paradigm A: a hub that ingests, stores, manages and
 queries multi-channel spike-train telemetry — the kind streamed by high-density
@@ -22,6 +22,7 @@ Capabilities:
 
 Run:  python spike_telemetry_hub.py
 """
+
 import os
 import random
 import struct
@@ -32,8 +33,8 @@ from bisect import bisect_left
 # synthetic-store generation. The store format + query paths themselves use no randomness.
 
 _MAGIC = b"SPK1"
-_HEADER = struct.Struct("<4sII")     # magic, n_channels, duration
-_INDEX = struct.Struct("<QI")        # per-channel: byte offset, spike count
+_HEADER = struct.Struct("<4sII")  # magic, n_channels, duration
+_INDEX = struct.Struct("<QI")  # per-channel: byte offset, spike count
 
 
 class SpikeTelemetryHub:
@@ -51,7 +52,7 @@ class SpikeTelemetryHub:
         if not 0 <= channel < self.n:
             raise IndexError(f"channel {channel} out of range [0,{self.n})")
         a = self.ch[channel]
-        prev_last = a[-1] if a else None            # O(1) max: the stored array is kept sorted
+        prev_last = a[-1] if a else None  # O(1) max: the stored array is kept sorted
         new = [int(t) for t in times]
         a.extend(new)
         # v2.4 perf: the stored array is ALWAYS sorted (invariant maintained here), so an
@@ -99,7 +100,7 @@ class SpikeTelemetryHub:
     def query_window(self, t0, t1, channels=None):
         """events with t0 <= t < t1; binary-search per channel (no full scan)."""
         out = []
-        for c in (channels if channels is not None else range(self.n)):
+        for c in channels if channels is not None else range(self.n):
             a = self.ch[c]
             for k in range(bisect_left(a, t0), bisect_left(a, t1)):
                 out.append((a[k], c))
@@ -156,7 +157,7 @@ def synth(n_channels, duration, rate, burst_channels, burst_win):
     for c in range(n_channels):
         k = max(1, int(rate * duration))
         times = sorted(random.sample(range(duration), k))
-        if c in burst_channels:                      # add a dense burst
+        if c in burst_channels:  # add a dense burst
             b0, b1 = burst_win
             # set(): a neuron fires at most once per step (canonical AER) — the burst sample
             # can land on a baseline time, and a duplicate (t,channel) is not a real 2nd spike.
@@ -166,8 +167,8 @@ def synth(n_channels, duration, rate, burst_channels, burst_win):
 
 
 def main():
-    random.seed(0)                               # local, deterministic synthetic store (not an import-time side effect)
-    N, DUR, RATE = 256, 100_000, 0.004          # 256 channels, ~400 spikes each
+    random.seed(0)  # local, deterministic synthetic store (not an import-time side effect)
+    N, DUR, RATE = 256, 100_000, 0.004  # 256 channels, ~400 spikes each
     BURST_CH, BURST = {7, 99}, (50_000, 52_000)
     hub = synth(N, DUR, RATE, BURST_CH, BURST)
     path = os.path.join(".", "data", "telemetry.spk")
@@ -182,39 +183,43 @@ def main():
     print()
 
     # storage: sparse AER file vs dense rasters
-    dense_byte = N * DUR                          # 1 byte / (channel,step)
-    dense_bit = N * DUR // 8                       # 1 bit  / (channel,step)
+    dense_byte = N * DUR  # 1 byte / (channel,step)
+    dense_bit = N * DUR // 8  # 1 bit  / (channel,step)
     print("STORAGE (lower = less space):")
     print(f"  sparse .spk file : {nbytes:,} B")
-    print(f"  dense 1-bit raster: {dense_bit:,} B  -> {dense_bit/nbytes:.1f}x larger")
-    print(f"  dense 1-byte raster: {dense_byte:,} B  -> {dense_byte/nbytes:.0f}x larger")
+    print(f"  dense 1-bit raster: {dense_bit:,} B  -> {dense_bit / nbytes:.1f}x larger")
+    print(f"  dense 1-byte raster: {dense_byte:,} B  -> {dense_byte / nbytes:.0f}x larger")
     print()
 
     # windowed partial-read query: only the 2 burst channels in the burst window
     events, read = disk_query(path, BURST[0], BURST[1], channels=sorted(BURST_CH))
     print("WINDOWED QUERY (channels {7,99}, window [50000,52000)):")
     print(f"  events returned : {len(events):,}")
-    print(f"  bytes read      : {read:,}  ({100*read/nbytes:.1f}% of the file)")
+    print(f"  bytes read      : {read:,}  ({100 * read / nbytes:.1f}% of the file)")
     print()
 
     # analyse: firing rate + burst (anomaly) detection
     rts = hub.rates()
     print("ANALYSIS:")
-    print(f"  mean firing rate : {1000*sum(rts)/len(rts):.2f} mHz/step (avg over channels)")
+    print(f"  mean firing rate : {1000 * sum(rts) / len(rts):.2f} mHz/step (avg over channels)")
     found = hub.bursts(7, window=2000, k=300)
-    print(f"  burst detector on ch7 (>=300 spikes/2000-step bin): {len(found)} hit(s) at {found[:1]}")
+    print(
+        f"  burst detector on ch7 (>=300 spikes/2000-step bin): {len(found)} hit(s) at {found[:1]}"
+    )
     print("=" * 60)
 
     # ---- self-checks --------------------------------------------------------
-    hub2 = SpikeTelemetryHub.load(path)            # roundtrip integrity
+    hub2 = SpikeTelemetryHub.load(path)  # roundtrip integrity
     assert hub2.n_events() == ev, "save/load lost events"
     brute = [(t, c) for c in sorted(BURST_CH) for t in hub.ch[c] if BURST[0] <= t < BURST[1]]
     assert sorted(events) == sorted(brute), "disk windowed query != brute force"
     assert read < nbytes, "partial read touched the whole file"
     assert nbytes < dense_bit, "sparse store not smaller than 1-bit raster"
     assert len(found) >= 1, "injected burst not detected"
-    print("self-check OK: roundtrip intact, windowed query correct & partial, "
-          "sparse < dense, burst detected")
+    print(
+        "self-check OK: roundtrip intact, windowed query correct & partial, "
+        "sparse < dense, burst detected"
+    )
 
 
 if __name__ == "__main__":

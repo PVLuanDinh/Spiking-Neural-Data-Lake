@@ -1,6 +1,6 @@
 """
 v2.10 - experience_replay: sharp-wave-ripple (SWR) style offline replay for
-sample-efficient value learning (stdlib-only, zero deps).
+sample-efficient value learning.
 
 Grounded in Nasrin et al. 2021, "Spiking Neural Networks and Hippocampal Function"
 (Cognitive Systems Research; DOI 10.1016/j.cogsys.2021.07.008): during quiescence the
@@ -27,6 +27,7 @@ Additive / opt-in: nothing replays unless you build a buffer and call replay().
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.experience_replay
 """
+
 import random
 
 
@@ -35,9 +36,9 @@ class ReplayBuffer:
 
     def __init__(self, capacity=256, seed=0):
         self.capacity = capacity
-        self.buf = []                                   # (unit, action, reward) transitions
-        self._i = 0                                     # ring write pointer
-        self.rng = random.Random(seed)                  # seeded -> deterministic sampling
+        self.buf = []  # (unit, action, reward) transitions
+        self._i = 0  # ring write pointer
+        self.rng = random.Random(seed)  # seeded -> deterministic sampling
 
     def __len__(self):
         return len(self.buf)
@@ -63,7 +64,7 @@ class ReplayBuffer:
         SAFETY: no action is chosen or emitted here -- value learning only."""
         picks = self.sample(batch)
         n = 0
-        for unit, action, reward in picks + picks[::-1]:    # forward sweep then reverse sweep
+        for unit, action, reward in picks + picks[::-1]:  # forward sweep then reverse sweep
             row = q.get(unit)
             if row is not None and action in row:
                 row[action] += lr * mod * (reward - row[action])
@@ -73,7 +74,7 @@ class ReplayBuffer:
 
 def main():
     ACTIONS = ("A", "B", "C")
-    REWARD = {"A": 1.0, "B": -1.0, "C": -1.0}           # A is the rewarded action
+    REWARD = {"A": 1.0, "B": -1.0, "C": -1.0}  # A is the rewarded action
 
     def live_learn(steps, lr=0.3, replay_batch=0, seed=0):
         """Drive one unit with `steps` live rewarded ticks; optionally replay each tick.
@@ -82,12 +83,12 @@ def main():
         buf = ReplayBuffer(seed=seed)
         rng = random.Random(seed)
         for _ in range(steps):
-            a = rng.choice(ACTIONS)                     # explore uniformly (same stream both modes)
+            a = rng.choice(ACTIONS)  # explore uniformly (same stream both modes)
             r = REWARD[a]
-            q[0][a] += lr * (r - q[0][a])               # the live RPE update
+            q[0][a] += lr * (r - q[0][a])  # the live RPE update
             buf.add(0, a, r)
             if replay_batch:
-                buf.replay(q, lr, batch=replay_batch)   # SWR consolidation (value table only)
+                buf.replay(q, lr, batch=replay_batch)  # SWR consolidation (value table only)
         return q[0]
 
     def greedy(row):
@@ -104,23 +105,31 @@ def main():
     assert greedy(no_rep) == "A" == greedy(rep), "both must eventually prefer the rewarded action"
     margin_no = no_rep["A"] - max(no_rep["B"], no_rep["C"])
     margin_rep = rep["A"] - max(rep["B"], rep["C"])
-    assert margin_rep > margin_no, f"replay must sharpen the value gap ({margin_rep:.3f} <= {margin_no:.3f})"
+    assert margin_rep > margin_no, (
+        f"replay must sharpen the value gap ({margin_rep:.3f} <= {margin_no:.3f})"
+    )
 
     # 2 FEWER LIVE TICKS: replay hits a decisive A-margin in fewer real interactions.
     def ticks_to_margin(target, replay_batch, seed=2):
         q = {0: dict.fromkeys(ACTIONS, 0.0)}
-        buf = ReplayBuffer(seed=seed); rng = random.Random(seed)
+        buf = ReplayBuffer(seed=seed)
+        rng = random.Random(seed)
         for t in range(1, 200):
-            a = rng.choice(ACTIONS); r = REWARD[a]
-            q[0][a] += 0.3 * (r - q[0][a]); buf.add(0, a, r)
+            a = rng.choice(ACTIONS)
+            r = REWARD[a]
+            q[0][a] += 0.3 * (r - q[0][a])
+            buf.add(0, a, r)
             if replay_batch:
                 buf.replay(q, 0.3, batch=replay_batch)
             if q[0]["A"] - max(q[0]["B"], q[0]["C"]) >= target:
                 return t
         return 200
+
     live_only = ticks_to_margin(1.2, replay_batch=0)
     with_replay = ticks_to_margin(1.2, replay_batch=16)
-    assert with_replay < live_only, f"replay must need fewer live ticks ({with_replay} vs {live_only})"
+    assert with_replay < live_only, (
+        f"replay must need fewer live ticks ({with_replay} vs {live_only})"
+    )
 
     # 3 VALUE-ONLY: replay returns an int update count and mutates only q (no action, no emit).
     q = {0: dict.fromkeys(ACTIONS, 0.0)}
@@ -135,12 +144,16 @@ def main():
     assert live_learn(12, 16, seed=5) == live_learn(12, 16, seed=5), "same seed -> identical q"
 
     print(f"1 SAMPLE EFF : A-margin replay={margin_rep:.3f} > no-replay={margin_no:.3f}")
-    print(f"2 FEWER TICKS: live ticks to a decisive margin replay={with_replay} < live-only={live_only}")
+    print(
+        f"2 FEWER TICKS: live ticks to a decisive margin replay={with_replay} < live-only={live_only}"
+    )
     print(f"3 VALUE-ONLY : {updates} value updates (fwd+rev), no action chosen/emitted")
     print("4 DETERMINISM: same seed -> identical replayed value table")
     print("=" * 60)
-    print(f"self-check OK: SWR replay sharpens value (margin {margin_rep:.3f}>{margin_no:.3f}) in fewer "
-          f"live ticks ({with_replay}<{live_only}); value-table-only; deterministic")
+    print(
+        f"self-check OK: SWR replay sharpens value (margin {margin_rep:.3f}>{margin_no:.3f}) in fewer "
+        f"live ticks ({with_replay}<{live_only}); value-table-only; deterministic"
+    )
 
 
 if __name__ == "__main__":

@@ -1,14 +1,15 @@
 """
-Leaky Integrate-and-Fire (LIF) neuron — the canonical zero-dep spiking primitive.
+Leaky Integrate-and-Fire (LIF) neuron — the canonical spiking primitive.
 
 The repo's LIF dynamics were embedded in reflex.py / tempotron.py / paradigm_b_engine.py with no single
 reusable class. This is that class: the membrane potential V leaks toward rest each step
 (decay = exp(-1/tau_m)), integrates the input current, and fires a spike + resets when V crosses threshold,
-with an optional refractory period. Pure standard library, deterministic. The building block reused by
+with an optional refractory period. Deterministic. The building block reused by
 is_snn_forward, spike_slicer, and lt_gate.
 
   python -m snn_data_lake.cortex.lif_neuron        # (also run by run_selfchecks.py)
 """
+
 import math
 
 
@@ -16,7 +17,7 @@ class LIFNeuron:
     """Discrete-time leaky integrate-and-fire neuron. step(current) -> 1/0 spike."""
 
     def __init__(self, tau_m=10.0, v_threshold=1.0, v_reset=0.0, v_rest=0.0, refractory=0):
-        self.decay = math.exp(-1.0 / tau_m)          # membrane leak per timestep
+        self.decay = math.exp(-1.0 / tau_m)  # membrane leak per timestep
         self.v_threshold = v_threshold
         self.v_reset = v_reset
         self.v_rest = v_rest
@@ -29,11 +30,13 @@ class LIFNeuron:
 
     def step(self, current):
         """Advance one timestep with input `current`; return 1 if the neuron spiked else 0."""
-        if self._refr > 0:                           # refractory: clamped, integrates nothing
+        if self._refr > 0:  # refractory: clamped, integrates nothing
             self._refr -= 1
             self.v = self.v_reset
             return 0
-        self.v = self.v_rest + (self.v - self.v_rest) * self.decay + current   # leak toward rest + integrate
+        self.v = (
+            self.v_rest + (self.v - self.v_rest) * self.decay + current
+        )  # leak toward rest + integrate
         if self.v >= self.v_threshold:
             self.v = self.v_reset
             self._refr = self.refractory
@@ -78,14 +81,18 @@ def main():
     print(f"refractory=5 gaps  : {gaps} (>= refractory)")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert leaks, "membrane must leak toward rest with no input"
     assert fired > 0, "strong constant input must fire the neuron"
     assert monotone and rates[-1] > rates[0], f"firing rate must rise with input current ({rates})"
     assert not gaps or min(gaps) > 5, f"refractory must space spikes by > refractory ({gaps})"
-    assert LIFNeuron().run([0.3] * 30) == LIFNeuron().run([0.3] * 30), "same input -> identical train"
-    print(f"self-check OK: leak, threshold+reset ({fired} spikes), monotone F-I {rates[0]:.2f}->{rates[-1]:.2f}, "
-          f"refractory spacing; deterministic")
+    assert LIFNeuron().run([0.3] * 30) == LIFNeuron().run([0.3] * 30), (
+        "same input -> identical train"
+    )
+    print(
+        f"self-check OK: leak, threshold+reset ({fired} spikes), monotone F-I {rates[0]:.2f}->{rates[-1]:.2f}, "
+        f"refractory spacing; deterministic"
+    )
 
 
 if __name__ == "__main__":

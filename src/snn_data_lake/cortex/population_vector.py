@@ -1,6 +1,6 @@
 """
 Population vector decoder -- read a continuous DIRECTION out of a cosine-tuned population by
-the rate-weighted vector sum of preferred directions (pure stdlib, zero deps).
+the rate-weighted vector sum of preferred directions.
 
 A population of N neurons each has a PREFERRED DIRECTION phi_i spread around the circle and
 COSINE tuning: for a movement/stimulus direction theta, neuron i fires
@@ -39,6 +39,7 @@ implementation, no learning of the tuning curves, 2-D directions only. Not cogni
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.cortex.population_vector
 """
+
 import math
 import random
 
@@ -73,9 +74,9 @@ class PopulationVector:
             i * step + (jitter * step * (jrng.random() - 0.5) if jitter else 0.0)
             for i in range(n_neurons)
         ]
-        self._cos = [math.cos(p) for p in self.preferred]        # preferred-direction unit
-        self._sin = [math.sin(p) for p in self.preferred]        # vectors (precomputed)
-        self._rng = random.Random(seed)                          # rate-noise stream
+        self._cos = [math.cos(p) for p in self.preferred]  # preferred-direction unit
+        self._sin = [math.sin(p) for p in self.preferred]  # vectors (precomputed)
+        self._rng = random.Random(seed)  # rate-noise stream
 
     def rates(self, theta, noise=0.0):
         """Per-neuron firing rates for true direction theta (rectified cosine tuning).
@@ -119,7 +120,7 @@ def _test_directions(k, seed=12345):
 
 def main():
     deg = 180.0 / math.pi
-    dirs = _test_directions(2000)                    # 2000 fixed-seed directions on the circle
+    dirs = _test_directions(2000)  # 2000 fixed-seed directions on the circle
 
     # ---- 1. decoding accuracy (noise-free) ---------------------------------------------
     # N=15 (odd) so a genuine sub-degree tuning-ripple survives -- an even, evenly-spread
@@ -129,10 +130,10 @@ def main():
     errs = [angular_error(pop.decode_direction(t), t) for t in dirs]
     mean_abs = mean([abs(e) for e in errs]) * deg
     max_abs = max(abs(e) for e in errs) * deg
-    signed_bias = mean(errs) * deg                  # ~0 for evenly-spread preferred dirs
+    signed_bias = mean(errs) * deg  # ~0 for evenly-spread preferred dirs
 
     # ---- 2. accuracy improves with N (fixed noise -> more cells average out the noise) --
-    noise = 5.0                                      # std vs peak drive gain=20 (moderate)
+    noise = 5.0  # std vs peak drive gain=20 (moderate)
     small = PopulationVector(n_neurons=8, baseline=5.0, gain=20.0, seed=0)
     large = PopulationVector(n_neurons=64, baseline=5.0, gain=20.0, seed=0)
     small_err = mean([abs(angular_error(small.decode_direction(t, noise), t)) for t in dirs]) * deg
@@ -142,7 +143,7 @@ def main():
     npop = PopulationVector(n_neurons=16, baseline=5.0, gain=20.0, seed=7)
     pop_noisy, single_noisy = [], []
     for t in dirs:
-        r = npop.rates(t, noise=noise)               # one noisy rate vector, shared by both
+        r = npop.rates(t, noise=noise)  # one noisy rate vector, shared by both
         pop_noisy.append(abs(angular_error(npop.decode(r), t)))
         single_noisy.append(abs(angular_error(npop.best_neuron_direction(r), t)))
     pop_noisy_err = mean(pop_noisy) * deg
@@ -157,14 +158,22 @@ def main():
     print("=" * 70)
     print("POPULATION VECTOR DECODER -- Georgopoulos vector-sum readout of a direction")
     print("=" * 70)
-    print("tuning: r_i = baseline + gain * max(0, cos(theta - phi_i)); "
-          "decode theta_hat = atan2(sum (r_i-baseline)*(cos phi_i, sin phi_i))")
-    print(f"1. accuracy  (N=15, {len(dirs)} dirs, noise-free): "
-          f"mean |err| {mean_abs:.3f} deg  max |err| {max_abs:.3f} deg")
-    print(f"2. improves with N (noise std {noise:.0f}): N=8 {small_err:.3f} deg -> "
-          f"N=64 {large_err:.3f} deg")
-    print(f"3. under noise (std {noise:.0f}): population {pop_noisy_err:.3f} deg  vs "
-          f"single most-active neuron {single_noisy_err:.3f} deg")
+    print(
+        "tuning: r_i = baseline + gain * max(0, cos(theta - phi_i)); "
+        "decode theta_hat = atan2(sum (r_i-baseline)*(cos phi_i, sin phi_i))"
+    )
+    print(
+        f"1. accuracy  (N=15, {len(dirs)} dirs, noise-free): "
+        f"mean |err| {mean_abs:.3f} deg  max |err| {max_abs:.3f} deg"
+    )
+    print(
+        f"2. improves with N (noise std {noise:.0f}): N=8 {small_err:.3f} deg -> "
+        f"N=64 {large_err:.3f} deg"
+    )
+    print(
+        f"3. under noise (std {noise:.0f}): population {pop_noisy_err:.3f} deg  vs "
+        f"single most-active neuron {single_noisy_err:.3f} deg"
+    )
     print(f"4. signed bias (N=15, noise-free): {signed_bias:+.4f} deg (approx 0 -> unbiased)")
     print(f"5. determinism: two fresh N=16 seed=3 instances identical: {dec_a == dec_b}")
     print("=" * 70)
@@ -176,15 +185,18 @@ def main():
 
     # 2. more neurons -> clearly lower error (population averaging under the same noise).
     assert large_err < small_err, (
-        f"large N must beat small N ({large_err:.4f} deg < {small_err:.4f} deg)")
+        f"large N must beat small N ({large_err:.4f} deg < {small_err:.4f} deg)"
+    )
     assert large_err < 0.6 * small_err, (
-        f"large N should be clearly better ({large_err:.4f} vs {small_err:.4f} deg)")
+        f"large N should be clearly better ({large_err:.4f} vs {small_err:.4f} deg)"
+    )
 
     # 3. under noise the population stays bounded and beats the single-neuron argmax read-out.
     assert pop_noisy_err < 15.0, f"population noisy error unbounded: {pop_noisy_err:.3f} deg"
     assert pop_noisy_err < single_noisy_err, (
         f"population must beat single most-active neuron under noise "
-        f"({pop_noisy_err:.3f} vs {single_noisy_err:.3f} deg)")
+        f"({pop_noisy_err:.3f} vs {single_noisy_err:.3f} deg)"
+    )
 
     # 4. evenly-spread preferred directions give an unbiased decode (no systematic rotation).
     assert abs(signed_bias) < 0.5, f"decode has a systematic bias: {signed_bias:+.4f} deg"
@@ -192,9 +204,11 @@ def main():
     # 5. deterministic: same n/seed/noise -> identical decoded directions.
     assert dec_a == dec_b, "same n/seed/noise must reproduce identical decoded directions"
 
-    print(f"self-check OK: mean |err| {mean_abs:.3f} deg (max {max_abs:.3f}); N=8 {small_err:.3f} "
-          f"-> N=64 {large_err:.3f} deg; under noise population {pop_noisy_err:.3f} deg < "
-          f"single-neuron {single_noisy_err:.3f} deg; bias {signed_bias:+.4f} deg; deterministic")
+    print(
+        f"self-check OK: mean |err| {mean_abs:.3f} deg (max {max_abs:.3f}); N=8 {small_err:.3f} "
+        f"-> N=64 {large_err:.3f} deg; under noise population {pop_noisy_err:.3f} deg < "
+        f"single-neuron {single_noisy_err:.3f} deg; bias {signed_bias:+.4f} deg; deterministic"
+    )
 
 
 if __name__ == "__main__":

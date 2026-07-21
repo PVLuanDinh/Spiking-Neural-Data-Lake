@@ -38,6 +38,7 @@ drives it with synthetic traces only.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.self_model
 """
+
 import collections
 import os
 import random
@@ -48,39 +49,93 @@ from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 
 # ---- tracked signals (order fixes the dominant-signal channel index) ---------
 TRACKED = (
-    "goal", "goal_stability", "learning_progress", "surprise", "self_predict_acc",
-    "access_index", "ignited", "grown_units", "phase", "awake", "valence", "threat",
-    "consolidation", "nights", "decision_margin",
+    "goal",
+    "goal_stability",
+    "learning_progress",
+    "surprise",
+    "self_predict_acc",
+    "access_index",
+    "ignited",
+    "grown_units",
+    "phase",
+    "awake",
+    "valence",
+    "threat",
+    "consolidation",
+    "nights",
+    "decision_margin",
 )
 
 # init value per signal -> "a signal never observed stays at its init value"
 INIT = {
-    "goal": 0, "goal_stability": 0.0, "learning_progress": 0.0, "surprise": 0.0,
-    "self_predict_acc": 0.0, "access_index": 0.0, "ignited": False, "grown_units": 0,
-    "phase": 0.0, "awake": False, "valence": 0.0, "threat": 0.0, "consolidation": 0.0,
-    "nights": 0, "decision_margin": None,
+    "goal": 0,
+    "goal_stability": 0.0,
+    "learning_progress": 0.0,
+    "surprise": 0.0,
+    "self_predict_acc": 0.0,
+    "access_index": 0.0,
+    "ignited": False,
+    "grown_units": 0,
+    "phase": 0.0,
+    "awake": False,
+    "valence": 0.0,
+    "threat": 0.0,
+    "consolidation": 0.0,
+    "nights": 0,
+    "decision_margin": None,
 }
 
 # nominal range used to compare |trend| across heterogeneous units (a goal step of 1 is
 # not "bigger" than a surprise swing of 0.6 -- normalise before ranking "what changed most")
 SCALE = {
-    "goal": 8.0, "goal_stability": 1.0, "learning_progress": 1.0, "surprise": 1.0,
-    "self_predict_acc": 1.0, "access_index": 1.0, "ignited": 1.0, "grown_units": 64.0,
-    "phase": 1.0, "awake": 1.0, "valence": 2.0, "threat": 1.0, "consolidation": 1.0,
-    "nights": 8.0, "decision_margin": 1.0,
+    "goal": 8.0,
+    "goal_stability": 1.0,
+    "learning_progress": 1.0,
+    "surprise": 1.0,
+    "self_predict_acc": 1.0,
+    "access_index": 1.0,
+    "ignited": 1.0,
+    "grown_units": 64.0,
+    "phase": 1.0,
+    "awake": 1.0,
+    "valence": 2.0,
+    "threat": 1.0,
+    "consolidation": 1.0,
+    "nights": 8.0,
+    "decision_margin": 1.0,
 }
 
 # how each signal is phrased in the narrator
 KIND = {
-    "goal": "count", "goal_stability": "unit", "learning_progress": "unit", "surprise": "unit",
-    "self_predict_acc": "unit", "access_index": "unit", "ignited": "bool", "grown_units": "count",
-    "phase": "unit", "awake": "bool", "valence": "valence", "threat": "unit",
-    "consolidation": "unit", "nights": "count", "decision_margin": "unit",
+    "goal": "count",
+    "goal_stability": "unit",
+    "learning_progress": "unit",
+    "surprise": "unit",
+    "self_predict_acc": "unit",
+    "access_index": "unit",
+    "ignited": "bool",
+    "grown_units": "count",
+    "phase": "unit",
+    "awake": "bool",
+    "valence": "valence",
+    "threat": "unit",
+    "consolidation": "unit",
+    "nights": "count",
+    "decision_margin": "unit",
 }
 
-PHASE_NAMES = ("deep-sleep", "rem-sleep", "drowsy", "waking", "quiet-wake", "alert", "engaged", "focused")
+PHASE_NAMES = (
+    "deep-sleep",
+    "rem-sleep",
+    "drowsy",
+    "waking",
+    "quiet-wake",
+    "alert",
+    "engaged",
+    "focused",
+)
 
-N_CHANNELS = 64                 # reserved-channel layout for the durable autobiographical trace
+N_CHANNELS = 64  # reserved-channel layout for the durable autobiographical trace
 # reserved bands (one-hot per snapshot): phase 0-7, valence 8-15, surprise 16-23, goal 24-31,
 # growth 32-39, confidence 40-47, dominant-signal 48-63.
 
@@ -97,12 +152,12 @@ def _valence_bucket(v):
     return min(7, max(0, int((float(v) + 1.0) / 2.0 * 8)))
 
 
-def _surprise_bucket(s):        # 0 low, 1 rising, 2 high
+def _surprise_bucket(s):  # 0 low, 1 rising, 2 high
     s = float(s)
     return 0 if s < 0.34 else (1 if s < 0.67 else 2)
 
 
-def _conf_bucket(c):            # 0 low, 1 med, 2 high
+def _conf_bucket(c):  # 0 low, 1 med, 2 high
     c = float(c)
     return 0 if c < 0.34 else (1 if c < 0.67 else 2)
 
@@ -151,8 +206,8 @@ class SelfModel:
 
     def __init__(self, seed=0, history_path=None):
         self.seed = seed
-        self.rng = random.Random(seed)          # per-instance RNG (unused on the deterministic path)
-        self.tick = 0                           # internal monotonic counter
+        self.rng = random.Random(seed)  # per-instance RNG (unused on the deterministic path)
+        self.tick = 0  # internal monotonic counter
         self.signals = {}
         for name in TRACKED:
             init = INIT[name]
@@ -160,7 +215,9 @@ class SelfModel:
             self.signals[name] = (init, ema, 0.0)
         self.ring = collections.deque(maxlen=64)
         self.history_path = history_path
-        self.lake = LakeWorkingMemory(N_CHANNELS, path=history_path, seed=seed) if history_path else None
+        self.lake = (
+            LakeWorkingMemory(N_CHANNELS, path=history_path, seed=seed) if history_path else None
+        )
 
     # ---- update the self-model from one snapshot of brain signals -----------
     def observe(self, **signals):
@@ -190,7 +247,15 @@ class SelfModel:
         episode = (self.tick, phase_b, goal_raw, dom_name, val_b, sur_b, conf_b)
         self.ring.append(episode)
         if self.lake is not None:
-            chans = {phase_b, 8 + val_b, 16 + sur_b, 24 + goal_b, 32 + grow_b, 40 + conf_b, 48 + dom_i}
+            chans = {
+                phase_b,
+                8 + val_b,
+                16 + sur_b,
+                24 + goal_b,
+                32 + grow_b,
+                40 + conf_b,
+                48 + dom_i,
+            }
             self.lake.write(self.tick, chans)
         self.tick += 1
 
@@ -241,7 +306,7 @@ class SelfModel:
         phase_b = _band(chans, 0, 8)
         val_b = _band(chans, 8, 16)
         sur_b = _band(chans, 16, 24)
-        goal_b = _band(chans, 24, 32)                   # durable goal band is mod-8 (faithful for goals 0-7)
+        goal_b = _band(chans, 24, 32)  # durable goal band is mod-8 (faithful for goals 0-7)
         conf_b = _band(chans, 40, 48)
         dom_i = _band(chans, 48, 64)
         return (t, phase_b, goal_b, TRACKED[dom_i], val_b, sur_b, conf_b)
@@ -313,7 +378,9 @@ class SelfNarrator:
             certain = "less certain than now"
         else:
             certain = "about as certain as now"
-        return f"About {n} ticks ago I was {PHASE_NAMES[phase_b]}, pursuing goal {goal_e}, {certain}."
+        return (
+            f"About {n} ticks ago I was {PHASE_NAMES[phase_b]}, pursuing goal {goal_e}, {certain}."
+        )
 
     def _mood_sentence(self, model):
         """The brain's CURRENT state as ONE plain-English mood sentence (no numbers, no brackets) --
@@ -323,9 +390,13 @@ class SelfNarrator:
         awake = bool(st["awake"][0])
         sur = float(st["surprise"][0])
         lp = float(st["learning_progress"][0])
-        base = ("I feel fairly sure of myself" if conf >= 0.6
-                else "I feel a little uncertain" if conf < 0.34
-                else "I feel moderately settled")
+        base = (
+            "I feel fairly sure of myself"
+            if conf >= 0.6
+            else "I feel a little uncertain"
+            if conf < 0.34
+            else "I feel moderately settled"
+        )
         extra = []
         if sur >= 0.6:
             extra.append("something just surprised me")
@@ -390,8 +461,13 @@ def _overlap(a, b):
 def _trace_low_surprise_rising_learning():
     m = SelfModel(seed=0)
     for i in range(8):
-        m.observe(learning_progress=0.10 + 0.05 * i, self_predict_acc=0.30 + 0.03 * i,
-                  surprise=0.05, phase=0.70, goal=1)
+        m.observe(
+            learning_progress=0.10 + 0.05 * i,
+            self_predict_acc=0.30 + 0.03 * i,
+            surprise=0.05,
+            phase=0.70,
+            goal=1,
+        )
     return m
 
 
@@ -420,15 +496,17 @@ def main():
     sa = nar.introspect(ma).summary
     sb = nar.introspect(mb).summary
     ov = _overlap(sa, sb)
-    FIXED = "System nominal. All signals within parameters."     # the hated old template (control)
+    FIXED = "System nominal. All signals within parameters."  # the hated old template (control)
     emit("(1) VARIABILITY")
     emit(f"    trace A -> {sa}")
     emit(f"    trace B -> {sb}")
-    emit(f"    token-overlap(A,B) = {ov:.2f} (< 0.60); fixed-template control is byte-identical A==B")
+    emit(
+        f"    token-overlap(A,B) = {ov:.2f} (< 0.60); fixed-template control is byte-identical A==B"
+    )
     assert sa != sb, "the two traces produced the same summary (still a fixed template)"
     assert ov < 0.60, f"summaries share too many tokens ({ov:.2f}) -- not varying enough"
     assert sa != FIXED and sb != FIXED, "summary collapsed onto the old fixed template"
-    assert FIXED == FIXED, "control invariant"                   # the old template never varies
+    assert FIXED == FIXED, "control invariant"  # the old template never varies
 
     # (2) SIGNALS REFLECT REALITY -----------------------------------------------------------
     m2 = SelfModel(seed=0)
@@ -437,8 +515,10 @@ def main():
     st2 = m2.state()
     emit("-" * 78)
     emit("(2) SIGNALS REFLECT REALITY")
-    emit(f"    surprise ema = {st2['surprise'][1]:.4f} (> 0.50); grown_units = {st2['grown_units'][0]}; "
-         f"goal = {st2['goal'][0]}; unobserved threat = {st2['threat']}")
+    emit(
+        f"    surprise ema = {st2['surprise'][1]:.4f} (> 0.50); grown_units = {st2['grown_units'][0]}; "
+        f"goal = {st2['goal'][0]}; unobserved threat = {st2['threat']}"
+    )
     assert st2["surprise"][1] > 0.50, "surprise ema did not track the sustained high input"
     assert st2["grown_units"][0] == 42, "growth did not track 42"
     assert st2["goal"][0] == 3, "goal did not track 3"
@@ -452,7 +532,7 @@ def main():
     ml = SelfModel(seed=0)
     ml.observe(self_predict_acc=0.9, decision_margin=0.9, surprise=0.05, access_index=0.9)
     learned_conf = ml.confidence()
-    ml.observe(surprise=0.95)                                    # a surprise spike
+    ml.observe(surprise=0.95)  # a surprise spike
     spike_conf = ml.confidence()
 
     mn = SelfModel(seed=0)
@@ -462,8 +542,10 @@ def main():
     noise_conf = mn.confidence()
     emit("-" * 78)
     emit("(3) CONFIDENCE tracks uncertainty")
-    emit(f"    flat={flat_conf:.3f} < learned={learned_conf:.3f}; surprise-spike drops to "
-         f"{spike_conf:.3f}; pure-noise stays low at {noise_conf:.3f}")
+    emit(
+        f"    flat={flat_conf:.3f} < learned={learned_conf:.3f}; surprise-spike drops to "
+        f"{spike_conf:.3f}; pure-noise stays low at {noise_conf:.3f}"
+    )
     assert flat_conf < learned_conf, "a learning trace did not raise confidence above flat/birth"
     assert spike_conf < learned_conf, "a surprise spike did not drop confidence"
     assert noise_conf < 0.35 and noise_conf < learned_conf, "pure noise did not stay low-confidence"
@@ -473,31 +555,42 @@ def main():
     os.close(fd)
     m4 = SelfModel(seed=0, history_path=hpath)
     try:
-        for i in range(12):                                     # goals 0-7 so the mod-8 band is faithful
-            m4.observe(goal=i % 8, phase=0.1 * (i % 8), surprise=0.05 * i, valence=-0.5 + 0.1 * i,
-                       self_predict_acc=0.05 * i, access_index=0.5, decision_margin=0.5)
+        for i in range(12):  # goals 0-7 so the mod-8 band is faithful
+            m4.observe(
+                goal=i % 8,
+                phase=0.1 * (i % 8),
+                surprise=0.05 * i,
+                valence=-0.5 + 0.1 * i,
+                self_predict_acc=0.05 * i,
+                access_index=0.5,
+                decision_margin=0.5,
+            )
         ground_truth = list(m4.ring)[-4:]
         r_before = m4.recall_history(4)
-        m4.reopen()                                             # throw away RAM, replay the durable lake
+        m4.reopen()  # throw away RAM, replay the durable lake
         r_after = m4.recall_history(4)
         recalled_ticks = [e[0] for e in r_after]
 
-        fresh = SelfModel(seed=0)                               # CONTROL: no history -> recalls nothing
+        fresh = SelfModel(seed=0)  # CONTROL: no history -> recalls nothing
         fresh_recall = fresh.recall_history(4)
 
         emit("-" * 78)
         emit("(4) AUTOBIOGRAPHICAL recall (durable spike-lake trace)")
         emit(f"    recall(4) == ground-truth ring : {r_before == ground_truth}")
-        emit(f"    survives reopen()  (before==after): {r_before == r_after}; ticks {recalled_ticks} "
-             f"(bounded, tick 0 omitted)")
+        emit(
+            f"    survives reopen()  (before==after): {r_before == r_after}; ticks {recalled_ticks} "
+            f"(bounded, tick 0 omitted)"
+        )
         emit(f"    fresh no-history model recalls   : {fresh_recall}")
         assert r_before == ground_truth, "durable recall did not match the ground-truth episodes"
         assert r_after == r_before, "recall changed after reopen() -- did not survive the restart"
-        assert recalled_ticks == [8, 9, 10, 11], f"recall(4) is not the last 4 ticks: {recalled_ticks}"
+        assert recalled_ticks == [8, 9, 10, 11], (
+            f"recall(4) is not the last 4 ticks: {recalled_ticks}"
+        )
         assert 0 not in recalled_ticks, "an old episode leaked into the bounded recall window"
         assert fresh_recall == [], "a fresh model recalled episodes it never had"
     finally:
-        m4.close(remove=True)                                   # no litter
+        m4.close(remove=True)  # no litter
     assert not os.path.exists(hpath), "history file was not removed"
 
     # (5) BENEVOLENCE + DETERMINISM + ASCII -------------------------------------------------
@@ -519,10 +612,12 @@ def main():
     report = "\n".join(lines)
     assert report.isascii(), "self-check produced non-ASCII output"
     print(report)
-    print("self-check OK: the self-model tracks its own signals with deterministic EMAs; the narrator "
-          "produces FRESH state-varying self-descriptions (not a fixed template, overlap < 0.60); "
-          "confidence tracks real uncertainty and drops on a surprise spike; the autobiographical "
-          "trace lives in the durable spike lake and survives reopen(); benevolent, ASCII, deterministic")
+    print(
+        "self-check OK: the self-model tracks its own signals with deterministic EMAs; the narrator "
+        "produces FRESH state-varying self-descriptions (not a fixed template, overlap < 0.60); "
+        "confidence tracks real uncertainty and drops on a surprise spike; the autobiographical "
+        "trace lives in the durable spike lake and survives reopen(); benevolent, ASCII, deterministic"
+    )
 
 
 if __name__ == "__main__":

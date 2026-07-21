@@ -30,6 +30,7 @@ Pure standard library, deterministic (no RNG). ASCII-only output.
 Reference: Steinbock, Toth & Showalter (1995), excitable-medium maze solving; the wave engine is
 snn_data_lake.substrate.reaction_diffusion_compute (bfs_dist / excite_wave / backtrace / neighbours).
 """
+
 import math
 
 from snn_data_lake.brainstem.arm_sim import ArmSim
@@ -52,7 +53,7 @@ def ik(x, y, l1=1.0, l2=1.0):
         return []
     c = max(-1.0, min(1.0, c))
     sols = []
-    for sign in (1.0, -1.0):                                   # elbow-down, elbow-up
+    for sign in (1.0, -1.0):  # elbow-down, elbow-up
         tb = sign * math.acos(c)
         ta = math.atan2(y, x) - math.atan2(l2 * math.sin(tb), l1 + l2 * math.cos(tb))
         sols.append((ta, tb))
@@ -69,7 +70,7 @@ class CSpaceGrid:
         self.b_lo, self.b_hi = b_range
         self.na = int(round((self.a_hi - self.a_lo) / step_deg)) + 1
         self.nb = int(round((self.b_hi - self.b_lo) / step_deg)) + 1
-        probe = ArmSim()                                       # one scratch sim, reused read-only
+        probe = ArmSim()  # one scratch sim, reused read-only
         self.free = set()
         for i in range(self.na):
             for j in range(self.nb):
@@ -118,9 +119,9 @@ def plan(start_cfg, goal_cfg, step_deg=5.0, a_range=(0.0, 180.0), b_range=(-180.
     if s is None or t is None:
         return ("NO_FREE_CELL", [])
     arrival, _ = excite_wave(grid.free, [t])
-    if s not in arrival:                                       # goal cell walled off from the start cell
+    if s not in arrival:  # goal cell walled off from the start cell
         return ("NO_PATH", [])
-    cells = backtrace(arrival, s, t)                           # [s, ..., t] down the gradient
+    cells = backtrace(arrival, s, t)  # [s, ..., t] down the gradient
     return ("OK", [grid.angles(i, j) for (i, j) in cells])
 
 
@@ -129,41 +130,63 @@ def execute(arm, waypoints, slew_deg=8.0, tol_deg=1.0, max_steps=4000):
     gated ArmSim.apply(). Stops on E-STOP (state()['stopped']), collision, step budget, or arrival. Returns
     {'reached', 'stopped', 'collided', 'steps'}. Never commands the wire directly and adds no new token."""
     steps = 0
-    for (ta, tb) in waypoints:
+    for ta, tb in waypoints:
         for j, target_rad in ((0, ta), (1, tb)):
             axis = "A" if j == 0 else "B"
             target_deg = target_rad / DEG
             while True:
-                if arm.state()["stopped"]:                    # mid-plan E-STOP: a frozen arm no-ops apply()
+                if arm.state()["stopped"]:  # mid-plan E-STOP: a frozen arm no-ops apply()
                     return {"reached": False, "stopped": True, "collided": False, "steps": steps}
                 if steps >= max_steps:
                     return {"reached": False, "stopped": False, "collided": False, "steps": steps}
                 err = target_deg - arm.theta[j] / DEG
                 if abs(err) <= tol_deg:
                     break
-                delta = max(-slew_deg, min(slew_deg, err))     # rate limit (bounded joint velocity)
+                delta = max(-slew_deg, min(slew_deg, err))  # rate limit (bounded joint velocity)
                 arm.apply(f"JOINT_{axis}_ROTATE({delta:+.4f}deg)")
                 steps += 1
-                if arm.collision() is not None:                # independent guard (mirrors cpg_sweep)
-                    return {"reached": False, "stopped": arm.state()["stopped"], "collided": True, "steps": steps}
-    reached = (abs(arm.theta[0] - waypoints[-1][0]) <= tol_deg * DEG
-               and abs(arm.theta[1] - waypoints[-1][1]) <= tol_deg * DEG)
-    return {"reached": reached, "stopped": arm.state()["stopped"],
-            "collided": arm.collision() is not None, "steps": steps}
+                if arm.collision() is not None:  # independent guard (mirrors cpg_sweep)
+                    return {
+                        "reached": False,
+                        "stopped": arm.state()["stopped"],
+                        "collided": True,
+                        "steps": steps,
+                    }
+    reached = (
+        abs(arm.theta[0] - waypoints[-1][0]) <= tol_deg * DEG
+        and abs(arm.theta[1] - waypoints[-1][1]) <= tol_deg * DEG
+    )
+    return {
+        "reached": reached,
+        "stopped": arm.state()["stopped"],
+        "collided": arm.collision() is not None,
+        "steps": steps,
+    }
 
 
 def _finish(arm, waypoints):
     """Execute a planned path and label the outcome status."""
     res = execute(arm, waypoints)
-    res["status"] = ("REACHED" if res["reached"] else "ESTOPPED" if res["stopped"]
-                     else "COLLIDED" if res["collided"] else "INCOMPLETE")
+    res["status"] = (
+        "REACHED"
+        if res["reached"]
+        else "ESTOPPED"
+        if res["stopped"]
+        else "COLLIDED"
+        if res["collided"]
+        else "INCOMPLETE"
+    )
     res["waypoints"] = len(waypoints)
     return res
 
 
-def plan_to_config(arm, ta_deg, tb_deg, step_deg=5.0, a_range=(0.0, 180.0), b_range=(-180.0, 180.0)):
+def plan_to_config(
+    arm, ta_deg, tb_deg, step_deg=5.0, a_range=(0.0, 180.0), b_range=(-180.0, 180.0)
+):
     """Plan + execute to a target JOINT config (degrees), from the arm's live pose. Returns a status dict."""
-    status, wp = plan((arm.theta[0], arm.theta[1]), (ta_deg * DEG, tb_deg * DEG), step_deg, a_range, b_range)
+    status, wp = plan(
+        (arm.theta[0], arm.theta[1]), (ta_deg * DEG, tb_deg * DEG), step_deg, a_range, b_range
+    )
     if status != "OK":
         return {"status": status, "reached": False, "waypoints": 0, "steps": 0}
     return _finish(arm, wp)
@@ -181,7 +204,7 @@ def plan_to_xy(arm, x, y, step_deg=5.0, a_range=(0.0, 180.0), b_range=(-180.0, 1
     probe = ArmSim()
     for gcfg in goals:
         probe.theta = [gcfg[0], gcfg[1]]
-        if probe.collision() is not None:                     # the goal pose itself must be collision-free
+        if probe.collision() is not None:  # the goal pose itself must be collision-free
             continue
         status, wp = plan(start, gcfg, step_deg, a_range, b_range)
         if status == "OK" and (best is None or len(wp) < len(best)):
@@ -212,15 +235,28 @@ def main():
     s_cell, g_cell = grid.cell(start_cfg), grid.cell(goal_cfg)
     status, wp = plan(start_cfg, goal_cfg, step, a_range, b_range)
     manhattan = abs(s_cell[0] - g_cell[0]) + abs(s_cell[1] - g_cell[1])
-    print(f"start cfg (10,100) EE {tuple(round(v, 3) for v in _ee(start_cfg))}  free={start_cfg and s_cell in grid.free}")
-    print(f"goal  cfg (10,115) EE {tuple(round(v, 3) for v in _ee(goal_cfg))}  free={g_cell in grid.free}")
-    print(f"plan status {status}: {len(wp)} waypoints, geodesic {len(wp) - 1} vs Manhattan {manhattan} (detour)")
+    print(
+        f"start cfg (10,100) EE {tuple(round(v, 3) for v in _ee(start_cfg))}  free={start_cfg and s_cell in grid.free}"
+    )
+    print(
+        f"goal  cfg (10,115) EE {tuple(round(v, 3) for v in _ee(goal_cfg))}  free={g_cell in grid.free}"
+    )
+    print(
+        f"plan status {status}: {len(wp)} waypoints, geodesic {len(wp) - 1} vs Manhattan {manhattan} (detour)"
+    )
 
     # straight cell-interpolation start->goal, to show the direct path is blocked
-    straight = [(round(s_cell[0] + (g_cell[0] - s_cell[0]) * k / manhattan),
-                 round(s_cell[1] + (g_cell[1] - s_cell[1]) * k / manhattan)) for k in range(manhattan + 1)]
+    straight = [
+        (
+            round(s_cell[0] + (g_cell[0] - s_cell[0]) * k / manhattan),
+            round(s_cell[1] + (g_cell[1] - s_cell[1]) * k / manhattan),
+        )
+        for k in range(manhattan + 1)
+    ]
     blocked_on_straight = sum(1 for c in straight if c not in grid.free)
-    print(f"straight interpolation crosses {blocked_on_straight} blocked cell(s) -> a real obstacle to route around")
+    print(
+        f"straight interpolation crosses {blocked_on_straight} blocked cell(s) -> a real obstacle to route around"
+    )
 
     # Cartesian interface: reach the goal end-effector POINT via IK + the wavefront plan, through apply()
     goal_xy = _ee(goal_cfg)
@@ -228,61 +264,79 @@ def main():
     arm.theta = [start_cfg[0], start_cfg[1]]
     arm.expected_ee = arm.ee()
     res = plan_to_xy(arm, goal_xy[0], goal_xy[1], step, a_range, b_range)
-    print(f"plan_to_xy {tuple(round(v, 3) for v in goal_xy)}: status {res['status']}, "
-          f"{res['waypoints']} waypoints, {res['steps']} gated commands, "
-          f"final EE {tuple(round(v, 3) for v in arm.ee())}")
+    print(
+        f"plan_to_xy {tuple(round(v, 3) for v in goal_xy)}: status {res['status']}, "
+        f"{res['waypoints']} waypoints, {res['steps']} gated commands, "
+        f"final EE {tuple(round(v, 3) for v in arm.ee())}"
+    )
     print("=" * 64)
 
     # -------------------- self-check (deterministic; emergent, nothing hardcoded) --------------------
     # (h) inverse kinematics: FK(IK(x,y)) round-trips; out-of-reach returns no solution
-    for (tx, ty) in [(1.4, 0.5), (0.4, 0.99), (-0.5, 1.2), (0.0, 1.5)]:
+    for tx, ty in [(1.4, 0.5), (0.4, 0.99), (-0.5, 1.2), (0.0, 1.5)]:
         sols = ik(tx, ty)
         assert sols, f"ik unexpectedly empty for reachable ({tx},{ty})"
         for cfg in sols:
             ex, ey = _ee(cfg)
-            assert abs(ex - tx) < 1e-9 and abs(ey - ty) < 1e-9, f"ik round-trip failed {cfg} -> {(ex, ey)}"
+            assert abs(ex - tx) < 1e-9 and abs(ey - ty) < 1e-9, (
+                f"ik round-trip failed {cfg} -> {(ex, ey)}"
+            )
     assert ik(3.0, 0.0) == [] and ik(0.0, 2.5) == [], "ik must reject out-of-reach targets"
 
     # (a) every planned waypoint is collision-free (labelled by the collision authority)
     assert status == "OK" and len(wp) >= 2, f"plan failed: {status}"
     for cfg in wp:
-        probe = ArmSim(); probe.theta = [cfg[0], cfg[1]]
+        probe = ArmSim()
+        probe.theta = [cfg[0], cfg[1]]
         assert probe.collision() is None, f"planned waypoint collides: {cfg}"
     # (b) connectivity: consecutive waypoints are one grid step apart in exactly one joint (4-adjacent)
-    for (a, b) in zip(wp, wp[1:]):
+    for a, b in zip(wp, wp[1:]):
         da, db = round((b[0] - a[0]) / DEG / step), round((b[1] - a[1]) / DEG / step)
         assert (abs(da), abs(db)) in ((1, 0), (0, 1)), f"waypoints not 4-adjacent: {a}->{b}"
     # (c) it is a genuine DETOUR: longer than the Manhattan straight line, which itself is blocked
     assert (len(wp) - 1) > manhattan, "path is not a detour"
-    assert blocked_on_straight >= 1, "the straight path was not actually blocked -- no obstacle to route"
+    assert blocked_on_straight >= 1, (
+        "the straight path was not actually blocked -- no obstacle to route"
+    )
 
     # (d) executing through apply() reaches the goal, never collides, preserves the trajectory invariants
     assert res["status"] == "REACHED", f"execution did not reach goal: {res}"
-    assert abs(arm.ee()[0] - goal_xy[0]) < 0.05 and abs(arm.ee()[1] - goal_xy[1]) < 0.05, "EE not at goal"
+    assert abs(arm.ee()[0] - goal_xy[0]) < 0.05 and abs(arm.ee()[1] - goal_xy[1]) < 0.05, (
+        "EE not at goal"
+    )
     assert arm.collision() is None and not arm.stopped, "arm ended collided or stopped"
-    assert arm.deviation() < 1e-6 and not arm.trajectory_breach(), "trajectory-deviation invariant broken"
+    assert arm.deviation() < 1e-6 and not arm.trajectory_breach(), (
+        "trajectory-deviation invariant broken"
+    )
 
     # (e) a mid-plan E-STOP freezes the arm and aborts execution (motion goes through the gated apply())
-    estop_arm = ArmSim(); estop_arm.theta = [start_cfg[0], start_cfg[1]]
+    estop_arm = ArmSim()
+    estop_arm.theta = [start_cfg[0], start_cfg[1]]
     frozen = list(estop_arm.theta)
     estop_arm.apply("EMERGENCY_STOP")
     er = execute(estop_arm, wp)
-    assert er["stopped"] and not er["reached"] and estop_arm.theta == frozen, "E-STOP did not freeze/abort"
+    assert er["stopped"] and not er["reached"] and estop_arm.theta == frozen, (
+        "E-STOP did not freeze/abort"
+    )
 
     # (f) a disconnected goal is reported, not crashed (the NO_PATH guard the planner relies on)
-    disconnected = {(0, 0), (0, 1), (9, 9)}                    # (9,9) is isolated from (0,0)
+    disconnected = {(0, 0), (0, 1), (9, 9)}  # (9,9) is isolated from (0,0)
     arr_dc, _ = excite_wave(disconnected, [(0, 0)])
     assert (9, 9) not in arr_dc, "excite_wave reached a disconnected cell"
 
     # (g) determinism + the wave computes the geodesic: excite_wave arrival == independent BFS, repeatable
     arrival, _ = excite_wave(grid.free, [g_cell])
     assert arrival == bfs_dist(grid.free, [g_cell]), "excitable wave != BFS geodesic"
-    assert plan(start_cfg, goal_cfg, step, a_range, b_range) == (status, wp), "planner is nondeterministic"
+    assert plan(start_cfg, goal_cfg, step, a_range, b_range) == (status, wp), (
+        "planner is nondeterministic"
+    )
 
-    print(f"self-check OK: IK round-trips + rejects out-of-reach; wavefront plan is collision-free, "
-          f"4-adjacent, a real detour (geodesic {len(wp) - 1} > Manhattan {manhattan}, straight path blocked); "
-          f"reaches the Cartesian goal through gated apply() with trajectory invariants intact; mid-plan "
-          f"E-STOP freezes the arm; disconnected goal handled; wave == BFS geodesic; deterministic")
+    print(
+        f"self-check OK: IK round-trips + rejects out-of-reach; wavefront plan is collision-free, "
+        f"4-adjacent, a real detour (geodesic {len(wp) - 1} > Manhattan {manhattan}, straight path blocked); "
+        f"reaches the Cartesian goal through gated apply() with trajectory invariants intact; mid-plan "
+        f"E-STOP freezes the arm; disconnected goal handled; wave == BFS geodesic; deterministic"
+    )
 
 
 if __name__ == "__main__":

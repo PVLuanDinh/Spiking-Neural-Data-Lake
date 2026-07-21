@@ -43,11 +43,12 @@ circuit (action_gating.py's Go/NoGo) nor the DECISION-by-integration model (evid
 values(z) returns a dict keyed by action name, the same shape as the tabular q[unit] row and LatentQ's
 values(z), so it wires in without touching the selection stage.
 
-Pure stdlib (random; math.sqrt for the fan-in init; dot reused from substrate._mathutils), ASCII-only
+stdlib + numpy/torch allowed project-wide (uses random; math.sqrt for the fan-in init; dot reused from substrate._mathutils), ASCII-only
 prints, deterministic (random.Random(seed) per instance -- identical seed => byte-identical weights).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.basal_ganglia.mlp_q
 """
+
 import math
 import random
 
@@ -63,23 +64,26 @@ class MlpQ:
     Identical API to LatentQ (values / value / greedy / update) so it drops into the same wiring."""
 
     def __init__(self, actions, latent_dim, hidden=32, lr=0.05, seed=0):
-        self.actions = tuple(actions)                  # ordered action names
+        self.actions = tuple(actions)  # ordered action names
         self.n = len(self.actions)
         self.latent_dim = int(latent_dim)
         self.hidden = int(hidden)
         self.lr = float(lr)
         self.seed = seed
-        self.rng = random.Random(seed)                 # per-instance rng; same seed => byte-identical weights
+        self.rng = random.Random(seed)  # per-instance rng; same seed => byte-identical weights
         self._aidx = {a: i for i, a in enumerate(self.actions)}
         # SHARED hidden layer: W1 (hidden x latent_dim) small-random (fan-in scale), b1 (hidden) = 0
         s1 = 1.0 / math.sqrt(self.latent_dim)
-        self.W1 = [[self.rng.uniform(-1.0, 1.0) * s1 for _ in range(self.latent_dim)]
-                   for _ in range(self.hidden)]
+        self.W1 = [
+            [self.rng.uniform(-1.0, 1.0) * s1 for _ in range(self.latent_dim)]
+            for _ in range(self.hidden)
+        ]
         self.b1 = [0.0] * self.hidden
         # per-action read-out: W2 (n_actions x hidden) small-random, b2 (n_actions) = 0 (LatentQ's zero-bias init)
         s2 = 1.0 / math.sqrt(self.hidden)
-        self.W2 = [[self.rng.uniform(-1.0, 1.0) * s2 for _ in range(self.hidden)]
-                   for _ in range(self.n)]
+        self.W2 = [
+            [self.rng.uniform(-1.0, 1.0) * s2 for _ in range(self.hidden)] for _ in range(self.n)
+        ]
         self.b2 = [0.0] * self.n
 
     def _idx(self, a):
@@ -91,7 +95,7 @@ class MlpQ:
     def _forward(self, z):
         """Shared hidden layer forward pass: pre = W1@z + b1, h = relu(pre). Returns (pre, h)."""
         pre = [dot(self.W1[j], z) + self.b1[j] for j in range(self.hidden)]
-        h = [p if p > 0.0 else 0.0 for p in pre]       # relu
+        h = [p if p > 0.0 else 0.0 for p in pre]  # relu
         return pre, h
 
     def values(self, z):
@@ -112,7 +116,7 @@ class MlpQ:
         best_v = dot(self.W2[0], h) + self.b2[0]
         for i in range(1, self.n):
             v = dot(self.W2[i], h) + self.b2[i]
-            if v > best_v:                             # strict > keeps the lowest index on ties
+            if v > best_v:  # strict > keeps the lowest index on ties
                 best_v, best_i = v, i
         return self.actions[best_i]
 
@@ -137,7 +141,7 @@ class MlpQ:
         # shared hidden-layer update: b1[j] += lr*dh[j] ; W1[j][k] += lr*dh[j]*z[k]
         for j in range(self.hidden):
             g = lr * dh[j]
-            if g == 0.0:                               # dead relu unit (dh[j]==0) -> no change; skip is exact
+            if g == 0.0:  # dead relu unit (dh[j]==0) -> no change; skip is exact
                 continue
             self.b1[j] += g
             w1j = self.W1[j]
@@ -179,7 +183,7 @@ def _make_contexts(n, latent_dim, rule, seed):
     for _ in range(n):
         v = [rng.gauss(0.0, 1.0) for _ in range(latent_dim)]
         nrm = math.sqrt(sum(c * c for c in v)) or 1.0
-        z = [c / nrm for c in v]                        # L2-normalize -> unit vector (like substrate._mathutils.unit)
+        z = [c / nrm for c in v]  # L2-normalize -> unit vector (like substrate._mathutils.unit)
         out.append((z, rule(z)))
     return out
 
@@ -198,7 +202,9 @@ def _train(model, contexts, n_actions, passes):
     for _ in range(passes):
         for z, opt in contexts:
             for i in range(n_actions):
-                model.update(z, i, 1.0 if i == opt else -1.0)   # reward = target (bootstrap-free), like the arm
+                model.update(
+                    z, i, 1.0 if i == opt else -1.0
+                )  # reward = target (bootstrap-free), like the arm
 
 
 def main():
@@ -211,7 +217,9 @@ def main():
 
     # ---- (1)+(2) NON-LINEAR (XOR) rule: MlpQ recovers it, the linear LatentQ provably cannot ----
     nl_train = _make_contexts(N_TRAIN, LATENT, _xor_action, seed=1)
-    nl_test = _make_contexts(N_TEST, LATENT, _xor_action, seed=2)    # DISJOINT held-out (different rng stream)
+    nl_test = _make_contexts(
+        N_TEST, LATENT, _xor_action, seed=2
+    )  # DISJOINT held-out (different rng stream)
     mlp = MlpQ(ACTIONS, LATENT, hidden=HIDDEN, lr=LR, seed=0)
     lin = LatentQ(ACTIONS, LATENT, lr=LR, seed=0)
     _train(mlp, nl_train, len(ACTIONS), PASSES)
@@ -235,42 +243,70 @@ def main():
     db = MlpQ(ACTIONS, LATENT, hidden=HIDDEN, lr=LR, seed=11)
     _train(da, nl_train[:150], len(ACTIONS), 3)
     _train(db, nl_train[:150], len(ACTIONS), 3)
-    same_w = (da.W1 == db.W1 and da.b1 == db.b1 and da.W2 == db.W2 and da.b2 == db.b2)
+    same_w = da.W1 == db.W1 and da.b1 == db.b1 and da.W2 == db.W2 and da.b2 == db.b2
     same_greedy = all(da.greedy(z) == db.greedy(z) for z, _o in nl_test[:60])
 
     print("=" * 78)
-    print("MLP Q -- shared NONLINEAR one-hidden-layer action-value over the JEPA latent (vs linear LatentQ)")
+    print(
+        "MLP Q -- shared NONLINEAR one-hidden-layer action-value over the JEPA latent (vs linear LatentQ)"
+    )
     print("=" * 78)
-    print(f"latent_dim={LATENT} | actions={ACTIONS} | hidden={HIDDEN} | train={N_TRAIN} test={N_TEST} "
-          f"| passes={PASSES} lr={LR}")
-    print("rule (1/2): NON-LINEAR XOR of the sign pattern of two latent dims (no hyperplane separates it)")
-    print(f"(1) MlpQ    held-out accuracy : {mlp_nl:.3f}   (train {mlp_nl_train:.3f}) -> LEARNS the XOR rule")
-    print(f"(2) LatentQ held-out accuracy : {lin_nl:.3f}   (linear -> stuck near chance {1.0 / len(ACTIONS):.3f})")
-    print(f"    => nonlinear head recovers structure the linear Q cannot ({mlp_nl:.3f} >> {lin_nl:.3f})")
-    print("rule (3): LINEARLY-separable (which side of z0 = z1) -- MlpQ must NOT regress vs LatentQ")
-    print(f"(3) linear  rule held-out     : MlpQ {mlp_lin:.3f}  >=  LatentQ {lat_lin:.3f}  -> strict upgrade")
-    print(f"(4) determin: two seed=11 MlpQ identical weights={same_w}, identical greedy={same_greedy}")
+    print(
+        f"latent_dim={LATENT} | actions={ACTIONS} | hidden={HIDDEN} | train={N_TRAIN} test={N_TEST} "
+        f"| passes={PASSES} lr={LR}"
+    )
+    print(
+        "rule (1/2): NON-LINEAR XOR of the sign pattern of two latent dims (no hyperplane separates it)"
+    )
+    print(
+        f"(1) MlpQ    held-out accuracy : {mlp_nl:.3f}   (train {mlp_nl_train:.3f}) -> LEARNS the XOR rule"
+    )
+    print(
+        f"(2) LatentQ held-out accuracy : {lin_nl:.3f}   (linear -> stuck near chance {1.0 / len(ACTIONS):.3f})"
+    )
+    print(
+        f"    => nonlinear head recovers structure the linear Q cannot ({mlp_nl:.3f} >> {lin_nl:.3f})"
+    )
+    print(
+        "rule (3): LINEARLY-separable (which side of z0 = z1) -- MlpQ must NOT regress vs LatentQ"
+    )
+    print(
+        f"(3) linear  rule held-out     : MlpQ {mlp_lin:.3f}  >=  LatentQ {lat_lin:.3f}  -> strict upgrade"
+    )
+    print(
+        f"(4) determin: two seed=11 MlpQ identical weights={same_w}, identical greedy={same_greedy}"
+    )
     print("=" * 78)
 
     # ---- un-riggable anchors (deterministic asserts) --------------------------------------------
     # (1) NON-LINEAR: the MLP head recovers the XOR rule on held-out latents it never trained on.
-    assert mlp_nl > 0.85, f"MlpQ must learn the non-linear (XOR) rule on held-out latents (>0.85), got {mlp_nl:.3f}"
+    assert mlp_nl > 0.85, (
+        f"MlpQ must learn the non-linear (XOR) rule on held-out latents (>0.85), got {mlp_nl:.3f}"
+    )
     # (2) FAIR CONTROL: a linear Q provably cannot separate XOR -> stuck near chance; the MLP beats it by a wide margin.
     assert lin_nl < 0.65, f"linear LatentQ must NOT learn XOR (near chance <0.65), got {lin_nl:.3f}"
     assert mlp_nl > lin_nl + 0.30, (
-        f"nonlinear head must beat the linear Q on the XOR rule by >0.30 ({mlp_nl:.3f} vs {lin_nl:.3f})")
+        f"nonlinear head must beat the linear Q on the XOR rule by >0.30 ({mlp_nl:.3f} vs {lin_nl:.3f})"
+    )
     # (3) TRANSFER / strict upgrade: on a LINEARLY-separable rule the MLP is at least as good as the linear Q.
-    assert mlp_lin > 0.85, f"MlpQ must also generalize on the linear rule (>0.85), got {mlp_lin:.3f}"
+    assert mlp_lin > 0.85, (
+        f"MlpQ must also generalize on the linear rule (>0.85), got {mlp_lin:.3f}"
+    )
     assert mlp_lin >= lat_lin - 0.05, (
-        f"MlpQ must not regress vs LatentQ on the linearly-separable rule ({mlp_lin:.3f} vs {lat_lin:.3f})")
+        f"MlpQ must not regress vs LatentQ on the linearly-separable rule ({mlp_lin:.3f} vs {lat_lin:.3f})"
+    )
     # (4) DETERMINISM: identical seed + stream => byte-identical weights and identical greedy choices.
     assert same_w, "two MlpQ(seed=11) on the same stream must have byte-identical weights"
     assert same_greedy, "two MlpQ(seed=11) must make identical greedy choices"
 
-    print(f"self-check OK: MlpQ learns the XOR rule on held-out latents ({mlp_nl:.3f}) while the linear "
-          f"LatentQ cannot ({lin_nl:.3f} ~ chance);")
-    print(f"  strict upgrade on the linear rule (MlpQ {mlp_lin:.3f} >= LatentQ {lat_lin:.3f}); "
-          "identical seed => byte-identical weights + greedy")
+    print(
+        f"self-check OK: MlpQ learns the XOR rule on held-out latents ({mlp_nl:.3f}) while the linear "
+        f"LatentQ cannot ({lin_nl:.3f} ~ chance);"
+    )
+    print(
+        f"  strict upgrade on the linear rule (MlpQ {mlp_lin:.3f} >= LatentQ {lat_lin:.3f}); "
+        "identical seed => byte-identical weights + greedy"
+    )
 
 
 if __name__ == "__main__":

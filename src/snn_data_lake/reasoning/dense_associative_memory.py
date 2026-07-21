@@ -21,8 +21,8 @@ So one demo places the repo's associative-memory story on a named spectrum:
 v0.65 — also contrasts the two MODERN (continuous) energies at the dense load: the softmax / log-sum-exp
 form (Ramsauer 2020, ↔ Transformer attention) and the log-sum-ReLU / Epanechnikov energy
 (arXiv:2506.10801). LSR matches softmax's high capacity but is exp-FREE, so it needs none of the
-max-subtraction / clamping the softmax requires to avoid overflow — a real robustness win for a
-pure-stdlib recall path (naive exp(β·dot) overflows once β·dot > ~709).
+max-subtraction / clamping the softmax requires to avoid overflow — a real robustness win for the
+recall path (naive exp(β·dot) overflows once β·dot > ~709).
 
   Run: python dense_associative_memory.py       # (also run by run_selfchecks.py)
 """

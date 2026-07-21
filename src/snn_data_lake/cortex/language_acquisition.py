@@ -31,6 +31,7 @@ PRIMITIVE -- it learns letter/word statistics and produces sub-word babble that 
 NOT fluent English. That primitiveness is the correct evidence it is really learning like a brain;
 the real proof is the DEVELOPMENTAL CURVE (surprise dropping over exposure). We never fake fluency.
 """
+
 import math
 import random
 
@@ -75,7 +76,7 @@ class LanguageAcquisition:
         # spiking PC latent adds the settled predictive-coding percept.
         self._feat = self.d_in + self.latent
         self.W = np.zeros((V, self._feat), dtype=np.float64)
-        self._ctx_ids = [_STOI[" "]] * self.ctx      # rolling context (starts as silence)
+        self._ctx_ids = [_STOI[" "]] * self.ctx  # rolling context (starts as silence)
         self.n_seen = 0
 
     # -- perception: context -> input pattern -> spiking predictive-coding latent -------------------
@@ -83,14 +84,18 @@ class LanguageAcquisition:
         """Encode the context characters into the encoder's input pattern (a position-tagged bag of
         graphemes), then let the predictive-coding network SETTLE its causes (infer) -> spiking latent."""
         x = [0.0] * self.d_in
-        for p, c in enumerate(ids):                  # position-tagged so order matters
+        for p, c in enumerate(ids):  # position-tagged so order matters
             x[(c * 7 + p * 13) % self.d_in] += 1.0
         m = max(x) or 1.0
         x = [v / m for v in x]
         self._pc.reset()
-        self._pc.infer(x, steps=6, lr=0.05)          # settle causes by minimising prediction error
-        return np.concatenate([np.asarray(x, dtype=np.float64),          # context features (n-gram signal)
-                               np.asarray(self._pc.r2, dtype=np.float64)])  # settled predictive-coding percept
+        self._pc.infer(x, steps=6, lr=0.05)  # settle causes by minimising prediction error
+        return np.concatenate(
+            [
+                np.asarray(x, dtype=np.float64),  # context features (n-gram signal)
+                np.asarray(self._pc.r2, dtype=np.float64),
+            ]
+        )  # settled predictive-coding percept
 
     def _logits(self, latent):
         return self.W @ latent
@@ -104,11 +109,11 @@ class LanguageAcquisition:
         probs = _softmax(self._logits(latent))
         surprise = -math.log(probs[target_id] + 1e-12)
         err = -probs
-        err[target_id] += 1.0                        # prediction error over outputs (target - predicted)
+        err[target_id] += 1.0  # prediction error over outputs (target - predicted)
         # LOCAL rule: dW = lr * outer(prediction_error, presynaptic_latent). No backprop; pre = latent
         # spikes, post = error -> potentiate the correct char, depress the mispredicted ones (R-STDP).
         self.W += self.lr * np.outer(err, latent)
-        self.W *= (1.0 - 1e-5)                        # gentle homeostatic decay (bounded weights)
+        self.W *= 1.0 - 1e-5  # gentle homeostatic decay (bounded weights)
         self.n_seen += 1
         return surprise, latent
 
@@ -120,12 +125,13 @@ class LanguageAcquisition:
         tot, n = 0.0, 0
         for tid in ids:
             s, _ = self._learn_step(ctx, tid)
-            tot += s; n += 1
-            ctx = ctx[1:] + [tid]                     # slide the context window
+            tot += s
+            n += 1
+            ctx = ctx[1:] + [tid]  # slide the context window
         self._ctx_ids = ctx
         return tot / n if n else 0.0
 
-    learn = expose                                   # alias -- conversing with it teaches it language
+    learn = expose  # alias -- conversing with it teaches it language
 
     def developmental_curve(self, text, chunks=8):
         """Expose in `chunks` and return the mean surprise per chunk -- the proof it is LEARNING
@@ -134,35 +140,36 @@ class LanguageAcquisition:
         size = max(1, len(ids) // chunks)
         curve = []
         for i in range(0, len(ids), size):
-            curve.append(round(self.expose("".join(ids[i:i + size])), 4))
+            curve.append(round(self.expose("".join(ids[i : i + size])), 4))
         return curve
 
     # -- production == active prediction: roll the learned prediction forward ----------------------
     def _sample(self, probs, generated, temperature, top_p, min_p, repetition_penalty):
         p = probs.astype(np.float64).copy()
         if repetition_penalty and repetition_penalty != 1.0:
-            for c in set(generated[-self.ctx:]):
+            for c in set(generated[-self.ctx :]):
                 p[c] = p[c] / repetition_penalty
         logits = np.log(p + 1e-12) / max(1e-3, temperature)
         p = _softmax(logits)
-        if min_p and min_p > 0:                      # min-p: drop tokens below min_p * peak
+        if min_p and min_p > 0:  # min-p: drop tokens below min_p * peak
             p[p < min_p * p.max()] = 0.0
-        if top_p and top_p < 1.0:                    # nucleus: keep the smallest set summing to top_p
+        if top_p and top_p < 1.0:  # nucleus: keep the smallest set summing to top_p
             order = np.argsort(p)[::-1]
             csum = np.cumsum(p[order])
-            keep = order[:max(1, int(np.searchsorted(csum, top_p)) + 1)]
-            mask = np.zeros_like(p); mask[keep] = 1.0
+            keep = order[: max(1, int(np.searchsorted(csum, top_p)) + 1)]
+            mask = np.zeros_like(p)
+            mask[keep] = 1.0
             p = p * mask
         s = p.sum()
         if s <= 0:
             return int(np.argmax(probs))
         p = p / s
-        r = self.rng.random()                        # deterministic given seed
+        r = self.rng.random()  # deterministic given seed
         return int(np.searchsorted(np.cumsum(p), r, side="right"))
 
     def _roll(self, prompt, max_tokens, temperature, top_p, min_p, repetition_penalty, stop):
         ctx = list(self._ctx_ids)
-        for ch in prompt[-self.ctx:]:                # prime the context with the prompt
+        for ch in prompt[-self.ctx :]:  # prime the context with the prompt
             ctx = ctx[1:] + [_STOI[_fold(ch)]]
         out, surp = [], 0.0
         for _ in range(max_tokens):
@@ -178,14 +185,30 @@ class LanguageAcquisition:
         text = "".join(VOCAB[i] for i in out)
         return text, (surp / max(1, len(out)))
 
-    def generate(self, prompt="", max_tokens=64, temperature=0.5, top_p=0.5, stop=("\n",),
-                 repetition_penalty=1.3, min_p=0.05, best_of=1):
+    def generate(
+        self,
+        prompt="",
+        max_tokens=64,
+        temperature=0.5,
+        top_p=0.5,
+        stop=("\n",),
+        repetition_penalty=1.3,
+        min_p=0.05,
+        best_of=1,
+    ):
         """Produce text by ROLLING THE LEARNED PREDICTION FORWARD (production == prediction). With
         best_of>1, roll several candidates and keep the most confident (lowest mean surprise)."""
         best, best_s = "", float("inf")
         for _ in range(max(1, int(best_of))):
-            text, s = self._roll(prompt, max_tokens, temperature, top_p, min_p, repetition_penalty,
-                                 tuple(stop) if stop else ())
+            text, s = self._roll(
+                prompt,
+                max_tokens,
+                temperature,
+                top_p,
+                min_p,
+                repetition_penalty,
+                tuple(stop) if stop else (),
+            )
             if s < best_s:
                 best, best_s = text, s
         return best.strip()
@@ -197,7 +220,9 @@ class LanguageAcquisition:
 
     def load(self, path):
         d = np.load(path, allow_pickle=False)
-        self.W = d["W"]; self._ctx_ids = list(d["ctx"]); self.n_seen = int(d["n"])
+        self.W = d["W"]
+        self._ctx_ids = list(d["ctx"])
+        self.n_seen = int(d["n"])
         return self
 
 
@@ -260,16 +285,22 @@ def main():
     print("learning rule : local error-modulated Hebbian / R-STDP on a spiking predictive-coding")
     print("                latent (no backprop, no optimizer, no corpus gradient descent)")
     print(f"developmental : surprise per chunk (must FALL) -> {curve}")
-    print(f"  drop        : {curve[0]:.3f} -> {curve[-1]:.3f}  ({'LEARNING' if curve[-1] < curve[0] else 'NOT learning'})")
+    print(
+        f"  drop        : {curve[0]:.3f} -> {curve[-1]:.3f}  ({'LEARNING' if curve[-1] < curve[0] else 'NOT learning'})"
+    )
     print(f"babble (pre)  : {babble!r}   structure={_structure_score(babble):.3f}")
     print(f"learned (post): {learned!r}   structure={_structure_score(learned):.3f}")
     # asserts: it LEARNS (surprise drops materially) and generations get more structured.
     assert curve[-1] < curve[0] * 0.85, f"surprise must drop over exposure (learning): {curve}"
-    assert _structure_score(learned) >= _structure_score(babble), "generations must get more word-like"
+    assert _structure_score(learned) >= _structure_score(babble), (
+        "generations must get more word-like"
+    )
     assert la.n_seen > 0
     print("=" * 74)
-    print("self-check OK: acquired online via predictive-coding + local plasticity; surprise dropped; "
-          "generations grew more word-like; deterministic. (Primitive by design -- honest.)")
+    print(
+        "self-check OK: acquired online via predictive-coding + local plasticity; surprise dropped; "
+        "generations grew more word-like; deterministic. (Primitive by design -- honest.)"
+    )
 
 
 if __name__ == "__main__":

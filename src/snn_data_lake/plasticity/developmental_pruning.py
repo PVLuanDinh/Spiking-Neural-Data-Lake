@@ -1,4 +1,4 @@
-"""Developmental synaptic pruning for a spiking linear readout (zero-dep).
+"""Developmental synaptic pruning for a spiking linear readout.
 
 Brain-inspired sparsifier, after BrainCog's developmental-plasticity pruning
 (Zeng et al. 2023, PMC10435966): the brain starts massively over-connected and
@@ -32,21 +32,22 @@ core magnitude-vs-random comparison is what must stay honest.
 
   python -m snn_data_lake.plasticity.developmental_pruning
 """
+
 import math
 import random
 
 # ---- fixed hyperparameters (chosen once; not tuned per seed) ----------------
-K = 5                 # classes
-D = 64                # input dimension (firing-rate vector)
-N_SIGNAL = 16         # discriminative dims; the other 48 are shared distractors (no class info)
-PER_TRAIN = 30        # train samples per class
-PER_TEST = 20         # held-out test samples per class
-SIGMA = 0.18          # gaussian sample noise (rate units)
-LR = 0.2              # delta-rule learning rate
-WARMUP = 15           # dense training epochs before pruning begins
-ROUNDS = 6            # developmental pruning rounds
-RETRAIN = 6           # survivor-training epochs after each prune round
-PRUNE_FRAC = 0.30     # fraction of SURVIVORS cut each round
+K = 5  # classes
+D = 64  # input dimension (firing-rate vector)
+N_SIGNAL = 16  # discriminative dims; the other 48 are shared distractors (no class info)
+PER_TRAIN = 30  # train samples per class
+PER_TEST = 20  # held-out test samples per class
+SIGMA = 0.18  # gaussian sample noise (rate units)
+LR = 0.2  # delta-rule learning rate
+WARMUP = 15  # dense training epochs before pruning begins
+ROUNDS = 6  # developmental pruning rounds
+RETRAIN = 6  # survivor-training epochs after each prune round
+PRUNE_FRAC = 0.30  # fraction of SURVIVORS cut each round
 TARGET_DENSITY = (1.0 - PRUNE_FRAC) ** ROUNDS  # ~0.12 surviving after ROUNDS rounds
 
 
@@ -154,7 +155,7 @@ def _make_data(rng):
     for _ in range(K):
         p = base[:]
         for i in signal:
-            p[i] = rng.random()          # class-specific value on discriminative dims
+            p[i] = rng.random()  # class-specific value on discriminative dims
         protos.append(p)
 
     def sample(c):
@@ -174,8 +175,10 @@ def run(seed=0):
     rnd_acc, rnd_den = _develop(train, test, "random", rng=random.Random(seed + 1))
     return {
         "dense_acc": dense_acc,
-        "mag_acc": mag_acc, "mag_den": mag_den,
-        "rnd_acc": rnd_acc, "rnd_den": rnd_den,
+        "mag_acc": mag_acc,
+        "mag_den": mag_den,
+        "rnd_acc": rnd_acc,
+        "rnd_den": rnd_den,
     }
 
 
@@ -186,39 +189,52 @@ def main():
     chance = 1.0 / K
 
     print("=" * 60)
-    print("DEVELOPMENTAL SYNAPTIC PRUNING  (BrainCog-inspired, zero-dep)")
+    print("DEVELOPMENTAL SYNAPTIC PRUNING  (BrainCog-inspired)")
     print("=" * 60)
-    print(f"task     : K={K} classes, dim={D} ({N_SIGNAL} signal + {D - N_SIGNAL} distractor), "
-          f"noise sigma={SIGMA}")
-    print(f"schedule : warmup {WARMUP} ep, then {ROUNDS} rounds x prune {PRUNE_FRAC:.0%} of "
-          f"survivors, +{RETRAIN} ep each")
+    print(
+        f"task     : K={K} classes, dim={D} ({N_SIGNAL} signal + {D - N_SIGNAL} distractor), "
+        f"noise sigma={SIGMA}"
+    )
+    print(
+        f"schedule : warmup {WARMUP} ep, then {ROUNDS} rounds x prune {PRUNE_FRAC:.0%} of "
+        f"survivors, +{RETRAIN} ep each"
+    )
     print("-" * 60)
     print(f"dense (no-prune) accuracy : {r['dense_acc']:6.1%}   (ceiling; chance {chance:.0%})")
     print(f"magnitude-pruned accuracy : {r['mag_acc']:6.1%}   @ density {r['mag_den']:.1%}")
-    print(f"random-pruned    accuracy : {r['rnd_acc']:6.1%}   @ density {r['rnd_den']:.1%}   "
-          f"(fair control, matched sparsity)")
+    print(
+        f"random-pruned    accuracy : {r['rnd_acc']:6.1%}   @ density {r['rnd_den']:.1%}   "
+        f"(fair control, matched sparsity)"
+    )
     print(f"magnitude - random margin : {margin:+.1%}")
-    print(f"achieved mask density     : {r['mag_den']:.1%}   (target {TARGET_DENSITY:.1%}, "
-          f"pruned {1 - r['mag_den']:.0%})")
+    print(
+        f"achieved mask density     : {r['mag_den']:.1%}   (target {TARGET_DENSITY:.1%}, "
+        f"pruned {1 - r['mag_den']:.0%})"
+    )
     print("=" * 60)
 
     # ---- self-check: deterministic, honest asserts ----
     # 1. magnitude-pruned held-out accuracy is well above chance at the target sparsity.
     assert r["mag_acc"] >= chance + 0.30, (
-        f"magnitude-pruned accuracy {r['mag_acc']:.2f} not well above chance {chance:.2f}")
+        f"magnitude-pruned accuracy {r['mag_acc']:.2f} not well above chance {chance:.2f}"
+    )
     # 2. THE mechanism anchor: keep-strong beats random at matched final sparsity.
     assert margin >= 0.05, (
-        f"magnitude ({r['mag_acc']:.2f}) must beat random ({r['rnd_acc']:.2f}) by a real margin")
+        f"magnitude ({r['mag_acc']:.2f}) must beat random ({r['rnd_acc']:.2f}) by a real margin"
+    )
     # 3. matched sparsity: both strategies reach the same density.
     assert r["mag_den"] == r["rnd_den"], "magnitude and random must reach identical density"
     # 4. pruning actually happened -- achieved density near the schedule target.
     assert abs(r["mag_den"] - TARGET_DENSITY) <= 0.05, (
-        f"achieved density {r['mag_den']:.3f} off target {TARGET_DENSITY:.3f}")
+        f"achieved density {r['mag_den']:.3f} off target {TARGET_DENSITY:.3f}"
+    )
     # 5. determinism: same seed -> identical numbers.
     assert run(seed) == r, "run(seed) must be deterministic"
 
-    print(f"self-check OK: magnitude beats random by {margin:+.1%} at {r['mag_den']:.0%} density "
-          f"(dense ceiling {r['dense_acc']:.0%}); deterministic, matched sparsity")
+    print(
+        f"self-check OK: magnitude beats random by {margin:+.1%} at {r['mag_den']:.0%} density "
+        f"(dense ceiling {r['dense_acc']:.0%}); deterministic, matched sparsity"
+    )
 
 
 if __name__ == "__main__":

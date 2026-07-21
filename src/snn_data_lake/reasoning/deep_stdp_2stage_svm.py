@@ -2,7 +2,7 @@
 Two-STAGE unsupervised conv-STDP + GLOBAL pooling + SVM readout on MNIST -- the
 Kheradpisheh-2018 ~98% recipe, and an honest test of whether it beats the
 single-stage conv1 ceiling (~95%, v3.53).  (torch/GPU tier, ruff-excluded; the
-zero-dep CORE is untouched -- this file imports nothing from src/ and edits
+CORE is untouched -- this file imports nothing from src/ and edits
 nothing there.)
 
 WHY THIS FILE EXISTS (vs the earlier FAILED 2-stage)
@@ -68,7 +68,7 @@ run finishes in ~30-60 min on GPU):
     NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/deep_stdp_2stage_svm.py
 Scale knobs : NORD_C1(30) NORD_C2(150) NORD_T(15) NORD_L1_EPOCHS(4) NORD_L2_EPOCHS(4)
               NORD_POOL1(2) NORD_K2 NORD_TRAIN(15000) NORD_TEST(3000) NORD_GPU
-Deps: numpy torch torchvision snntorch scikit-learn  (research/GPU tier; core stays zero-dep)
+Deps: numpy torch torchvision snntorch scikit-learn  (research/GPU tier; core untouched)
 """
 import os
 

@@ -34,7 +34,7 @@ returns one concatenated vector, sliced onto these ensembles:
 Radii are set from the actual signal magnitudes so the populations spike visibly (not saturated).
 
 HONEST framing: Nengo does NOT run the loop's computation (the loop is torch: conv1 STDP + a linear
-readout + the zero-dep neuromodulators). It OBSERVES and re-encodes the loop's spiking/telemetry
+readout + the neuromodulators). It OBSERVES and re-encodes the loop's spiking/telemetry
 signals into spiking NEF populations -- the same observability seam as nengo_gui_brain.py. The conv1
 PERCEPTION spikes are genuine first-spike-latency activity of the unsupervised extractor; the loop
 telemetry (competence/objective/neuromod/accuracy) are re-encoded scalars. Observation + classification
@@ -59,8 +59,9 @@ n signals / total spikes / per-ensemble spike counts.
 Scale knobs (env): NORD_C1 (16) NORD_T (15) NORD_L1_EPOCHS (2) NORD_TRAIN (3000) NORD_TEST (800)
                    NORD_SGD (60) NORD_CYCLE_EVERY (40) NORD_PER (200) NORD_REPLAY (100) NORD_CAP (1)
                    NORD_GPU=1
-Deps: numpy torch torchvision snntorch nengo   (research/GPU+nengo tier; the zero-dep core is untouched)
+Deps: numpy torch torchvision snntorch nengo   (research/GPU+nengo tier; the core is untouched)
 """
+
 import os
 import sys
 
@@ -83,9 +84,11 @@ from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp  # noqa: E
 
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus  # noqa: E402
 from snn_data_lake.neuromodulation.spiking_curiosity import (  # noqa: E402
-    SpikingCuriosityDrive, SpikingCurriculum)
+    SpikingCuriosityDrive,
+    SpikingCurriculum,
+)
 
-BASE_LR = 0.01          # continual linear-readout Adam lr (matches developmental_loop_deep)
+BASE_LR = 0.01  # continual linear-readout Adam lr (matches developmental_loop_deep)
 WEIGHT_DECAY = 1e-4
 
 
@@ -97,20 +100,20 @@ def _envi(k, d):
 # ---------------------------------------------------------------------------------------------------
 # CONFIG -- small by default so the module-level pre-train keeps the GUI import responsive
 # ---------------------------------------------------------------------------------------------------
-C1 = _envi("NORD_C1", 16)              # conv1 feature maps (== perception ensemble dimensions)
-T_LAT = _envi("NORD_T", 15)            # latency steps
+C1 = _envi("NORD_C1", 16)  # conv1 feature maps (== perception ensemble dimensions)
+T_LAT = _envi("NORD_T", 15)  # latency steps
 L1_EPOCHS = _envi("NORD_L1_EPOCHS", 2)  # unsupervised conv1 pre-training epochs
-TRAIN_N = _envi("NORD_TRAIN", 3000)    # train images (conv pre-train + cached readout features)
-TEST_N = _envi("NORD_TEST", 800)       # held-out test images (cached for competence)
-SGD = _envi("NORD_SGD", 60)            # Adam steps per developmental cycle
+TRAIN_N = _envi("NORD_TRAIN", 3000)  # train images (conv pre-train + cached readout features)
+TEST_N = _envi("NORD_TEST", 800)  # held-out test images (cached for competence)
+SGD = _envi("NORD_SGD", 60)  # Adam steps per developmental cycle
 CYCLE_EVERY = _envi("NORD_CYCLE_EVERY", 40)  # advance ONE loop cycle every this many sim-steps
-PER = _envi("NORD_PER", 200)           # objective-digit train features per cycle
-REPLAY = _envi("NORD_REPLAY", 100)     # replayed feature rows stored + rehearsed per learned digit
-CAP = _envi("NORD_CAP", 1)             # max consecutive revisits of the same digit (anti-fixation)
+PER = _envi("NORD_PER", 200)  # objective-digit train features per cycle
+REPLAY = _envi("NORD_REPLAY", 100)  # replayed feature rows stored + rehearsed per learned digit
+CAP = _envi("NORD_CAP", 1)  # max consecutive revisits of the same digit (anti-fixation)
 
-torch.manual_seed(0)                   # determinism
+torch.manual_seed(0)  # determinism
 _DEV = resolve_device()
-enable(_DEV)                           # route torch factories to GPU when NORD_GPU=1 (else CPU)
+enable(_DEV)  # route torch factories to GPU when NORD_GPU=1 (else CPU)
 
 
 def _accuracy(clf, feats, labels, idx):
@@ -128,11 +131,13 @@ def _perception_spikes(conv, image):
     per conv map, (t_lat - first_spike_time).amax-over-space / t_lat  (earlier spike = stronger;
     never-fired map = 0). This is the frozen extractor's real first-spike-latency activity."""
     st = conv._dog_latency(image)
-    fired, _ = conv._forward(st)                          # [C, hout, hout] first-spike times (t_lat == never)
-    val = torch.where(fired < conv.t_lat,
-                      (conv.t_lat - fired).float() / conv.t_lat,
-                      torch.zeros_like(fired, dtype=torch.float32))
-    per_map = val.reshape(conv.C, -1).amax(dim=1)         # [C] in [0,1]
+    fired, _ = conv._forward(st)  # [C, hout, hout] first-spike times (t_lat == never)
+    val = torch.where(
+        fired < conv.t_lat,
+        (conv.t_lat - fired).float() / conv.t_lat,
+        torch.zeros_like(fired, dtype=torch.float32),
+    )
+    per_map = val.reshape(conv.C, -1).amax(dim=1)  # [C] in [0,1]
     return per_map
 
 
@@ -143,13 +148,15 @@ print("[nengo_gui_devloop] loading MNIST + pre-training conv1 (unsupervised, onc
 _Xtr, _Ytr, _Xte, _Yte = load_mnist(TRAIN_N, TEST_N)
 
 torch.manual_seed(0)
-_conv = ConvLatencyStdp(C1, T_LAT)                        # frozen unsupervised perception extractor
+_conv = ConvLatencyStdp(C1, T_LAT)  # frozen unsupervised perception extractor
 for _ep in range(L1_EPOCHS):
     for _img in _Xtr:
         _conv.train_image(_img)
 _DIVERSITY = _conv.kernel_diversity()
-print(f"[nengo_gui_devloop] conv1 frozen: C1={C1} feat_dim={_conv.feat_dim()} "
-      f"kernel-diversity(cos-sim)={_DIVERSITY:.3f} ({'no collapse' if _DIVERSITY < 0.6 else 'WARN collapse'})")
+print(
+    f"[nengo_gui_devloop] conv1 frozen: C1={C1} feat_dim={_conv.feat_dim()} "
+    f"kernel-diversity(cos-sim)={_DIVERSITY:.3f} ({'no collapse' if _DIVERSITY < 0.6 else 'WARN collapse'})"
+)
 
 # cache the frozen readout features ONCE for the whole train + test pool (features never change)
 _Ftr = torch.stack([_conv.features(img).reshape(-1) for img in _Xtr], dim=0).to(_DEV)
@@ -167,8 +174,10 @@ _demo_perc = [_perception_spikes(_conv, _Xte[i]).detach().to("cpu").tolist() for
 # perception NEF radius from the actual demo-vector magnitudes so the population spikes visibly
 _perc_maxnorm = max(float(np.linalg.norm(v)) for v in _demo_perc) or 1.0
 _PERC_RADIUS = max(1.0, 1.2 * _perc_maxnorm)
-print(f"[nengo_gui_devloop] cached features train{tuple(_Ftr.shape)} test{tuple(_Fte.shape)}; "
-      f"{len(_demo_perc)} demo digits; perception radius={_PERC_RADIUS:.2f}")
+print(
+    f"[nengo_gui_devloop] cached features train{tuple(_Ftr.shape)} test{tuple(_Fte.shape)}; "
+    f"{len(_demo_perc)} demo digits; perception radius={_PERC_RADIUS:.2f}"
+)
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -184,10 +193,10 @@ class DevLoopDriver:
     def __init__(self):
         self.clf = nn.Linear(_D, 10).to(_DEV)
         self.opt = torch.optim.Adam(self.clf.parameters(), lr=BASE_LR, weight_decay=WEIGHT_DECAY)
-        self.curiosity = SpikingCuriosityDrive(seed=0)                     # spiking learning-progress + novelty
+        self.curiosity = SpikingCuriosityDrive(seed=0)  # spiking learning-progress + novelty
         self.curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)
-        self.lc = LocusCoeruleus()                                        # noradrenaline: salient/novel -> higher gain
-        self.learned = []                                                # digits chosen/learned so far
+        self.lc = LocusCoeruleus()  # noradrenaline: salient/novel -> higher gain
+        self.learned = []  # digits chosen/learned so far
         self.competence = {d: 0.0 for d in range(10)}
         self.replay_pool = {}
         self.consec = {d: 0 for d in range(10)}
@@ -238,7 +247,7 @@ class DevLoopDriver:
             self.opt.step()
         self.clf.eval()
         if is_new:
-            self.replay_pool[objective] = _tr_by[objective][n_train:n_train + REPLAY]
+            self.replay_pool[objective] = _tr_by[objective][n_train : n_train + REPLAY]
             self.learned.append(objective)
 
         # MEASURE competence on the held-out TEST cache (train/test never mix), overall + per-digit.
@@ -268,8 +277,11 @@ class DevLoopDriver:
             self._advance_cycle()
         perc = _demo_perc[self.step_i % len(_demo_perc)]
         self.step_i += 1
-        return list(perc) + list(self.comp) + [self.obj_scalar, self.na, self.curio,
-                                               self.acc, self.mastered_frac]
+        return (
+            list(perc)
+            + list(self.comp)
+            + [self.obj_scalar, self.na, self.curio, self.acc, self.mastered_frac]
+        )
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -279,10 +291,10 @@ class DevLoopDriver:
 # so the populations spike visibly rather than saturating.
 _SPEC = [
     ("perception (conv1 feature spikes)", C1, _PERC_RADIUS, max(100, 6 * C1)),
-    ("competence (per-digit)",            10, math.sqrt(10),                80),
-    ("objective (digit/9)",               1,  1.0,                          40),
-    ("neuromod (LC-NA, curiosity)",       2,  2.0,                          50),
-    ("progress (test-acc, curric/10)",    2,  1.5,                          50),
+    ("competence (per-digit)", 10, math.sqrt(10), 80),
+    ("objective (digit/9)", 1, 1.0, 40),
+    ("neuromod (LC-NA, curiosity)", 2, 2.0, 50),
+    ("progress (test-acc, curric/10)", 2, 1.5, 50),
 ]
 
 _driver = DevLoopDriver()
@@ -296,8 +308,8 @@ with model:
     _off = 0
     for _label, _dim, _radius, _nn in _SPEC:
         ens = nengo.Ensemble(n_neurons=_nn, dimensions=_dim, radius=_radius, label=_label, seed=0)
-        nengo.Connection(loop_node[_off:_off + _dim], ens, synapse=0.01)
-        spike_probes[_label] = nengo.Probe(ens.neurons)         # raw spikes -> NengoGUI raster / verify
+        nengo.Connection(loop_node[_off : _off + _dim], ens, synapse=0.01)
+        spike_probes[_label] = nengo.Probe(ens.neurons)  # raw spikes -> NengoGUI raster / verify
         decoded_probes[_label] = nengo.Probe(ens, synapse=0.02)  # decoded signal
         _off += _dim
 
@@ -308,16 +320,22 @@ def main():
     print("=" * 88)
     print("NENGO-GUI DEVELOPMENTAL LOOP -- headless verify (nengo.Simulator, no GUI socket)")
     print("=" * 88)
-    print(f"device={_DEV}  C1={C1}  ensembles={len(_SPEC)}  node size_out={_SIZE_OUT}  "
-          f"cycle_every={CYCLE_EVERY}  sgd={SGD}")
+    print(
+        f"device={_DEV}  C1={C1}  ensembles={len(_SPEC)}  node size_out={_SIZE_OUT}  "
+        f"cycle_every={CYCLE_EVERY}  sgd={SGD}"
+    )
     with nengo.Simulator(model, dt=0.001, progress_bar=False) as sim:
         sim.run(0.2)
 
-    per_ens = {label: int(np.count_nonzero(sim.data[spike_probes[label]])) for label, _, _, _ in _SPEC}
+    per_ens = {
+        label: int(np.count_nonzero(sim.data[spike_probes[label]])) for label, _, _, _ in _SPEC
+    }
     total = sum(per_ens.values())
     print("-" * 88)
-    print(f"advanced {_driver.cyc} developmental cycles; learned digits {sorted(_driver.learned)} "
-          f"(overall test acc {_driver.acc:.1%}, curriculum mastered {_driver.curriculum.mastered}/10)")
+    print(
+        f"advanced {_driver.cyc} developmental cycles; learned digits {sorted(_driver.learned)} "
+        f"(overall test acc {_driver.acc:.1%}, curriculum mastered {_driver.curriculum.mastered}/10)"
+    )
     print(f"signals re-encoded as spiking NEF ensembles: {len(_SPEC)}   total spikes: {total}")
     for label, _, _, _ in _SPEC:
         print(f"    {label:36s} : {per_ens[label]} spikes")
@@ -326,12 +344,15 @@ def main():
     # asserts: the loop must drive REAL nengo spikes. Perception (always-positive first-spike activity)
     # guarantees the headline population fires; total across all ensembles must be > 0.
     assert total > 0, "the developmental loop drove NO nengo spikes (expected > 0)"
-    assert per_ens["perception (conv1 feature spikes)"] > 0, \
+    assert per_ens["perception (conv1 feature spikes)"] > 0, (
         "the conv1 PERCEPTION population must spike (it is driven by real first-spike activity)"
-    print(f"self-check OK: developmental loop drove {total} nengo spikes across {len(_SPEC)} "
-          f"labelled spiking ensembles; perception population "
-          f"{per_ens['perception (conv1 feature spikes)']} spikes. Observation-only, no actuator route; "
-          f"deployable to NengoLoihi.")
+    )
+    print(
+        f"self-check OK: developmental loop drove {total} nengo spikes across {len(_SPEC)} "
+        f"labelled spiking ensembles; perception population "
+        f"{per_ens['perception (conv1 feature spikes)']} spikes. Observation-only, no actuator route; "
+        f"deployable to NengoLoihi."
+    )
     print("Launch the GUI:  .venv-cu128\\Scripts\\nengo.exe -P 8765 research\\nengo_gui_devloop.py")
     print("=" * 88)
     return 0

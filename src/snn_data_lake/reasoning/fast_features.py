@@ -2,7 +2,7 @@
 Batched conv1 feature extractor -- a drop-in, numerically-equivalent, far faster
 replacement for the per-image `torch.stack([conv.features(img) for img in X])`
 loop that dominates the SNDL developmental-loop runtime.  (torch/GPU tier,
-ruff-excluded; core stays zero-dep -- this file is ADDITIVE and imports the
+ruff-excluded; this file is ADDITIVE and imports the
 frozen `ConvLatencyStdp` from research/deep_stdp_latency.py, editing nothing.)
 
 WHY THIS FILE EXISTS
@@ -46,7 +46,7 @@ within GPU conv float noise, < 1e-4) to `torch.stack([conv.features(x) for x in 
 Run the correctness + speed self-check:
     NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python research/fast_features.py
 Knobs: NORD_C NORD_T NORD_TRAIN NORD_CORRECT NORD_SPEED NORD_BATCH NORD_GPU
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core stays zero-dep)
+Deps: numpy torch torchvision snntorch   (research/GPU tier)
 """
 import os
 import time

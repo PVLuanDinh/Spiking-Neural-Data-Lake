@@ -1,5 +1,5 @@
 """
-v2.14 — Desktop control panel: the product's zero-dep tkinter UX (arm + recognition + lake + NL command).
+v2.14 — Desktop control panel: the product's tkinter UX (arm + recognition + lake + NL command).
 
 tkinter is Python's standard-library GUI, so this ships the "full UX" with NO new dependency:
 one window, a ttk.Notebook with three tabs that drive the exact same verified code paths the
@@ -16,7 +16,7 @@ headless demos use —
                        (channel, [t0,t1)) query and report "reads X% of file".
   4. NL Command      : type an English command; nl_interface maps it to an allow-listed arm command
                        (driven through the SAME gated ArmSim.apply() as tab 1) or a lake query, or
-                       REJECTS it. Zero-dep StubBackend; the backend can only pick a label, never a
+                       REJECTS it. Local StubBackend; the backend can only pick a label, never a
                        raw command (an optional on-device AirLLM backend stays CLI-opt-in via run_local).
   5. Diagnostics     : run the ENTIRE core project from inside the app — every CORE module's own
                        self-check, in-process (no python subprocess), PASS/FAIL live. Proves the whole
@@ -30,6 +30,7 @@ collision gate untouched). Nothing here reimplements recognition, the interprete
   python -m snn_data_lake.substrate.control_panel --smoke # headless-safe CI self-check (no display needed)
   python -m snn_data_lake.substrate.control_panel --run-core  # run the ENTIRE core in-process (headless), exit 0/1
 """
+
 import math
 import os
 import sys
@@ -42,7 +43,7 @@ from snn_data_lake.brainstem.live_arm import SENSOR_COMMANDS
 from snn_data_lake.cortex.nl_interface import NLInterface, StubBackend
 from snn_data_lake.substrate import home
 
-STEP_DEG = 15                                  # per-click joint increment
+STEP_DEG = 15  # per-click joint increment
 DEMO_SPK = os.path.join("data", "telemetry.spk")
 
 
@@ -65,8 +66,10 @@ def find_captures():
     the bundle), then any present in the working dir. Returns existing CSV paths."""
     out = []
     for g in gesture_recognition.GESTURES:
-        for cand in (resource_path(os.path.join(gesture_recognition.DIR, f"{g}.csv")),
-                     os.path.join(gesture_recognition.DIR, f"{g}.csv")):
+        for cand in (
+            resource_path(os.path.join(gesture_recognition.DIR, f"{g}.csv")),
+            os.path.join(gesture_recognition.DIR, f"{g}.csv"),
+        ):
             if os.path.exists(cand):
                 out.append(cand)
                 break
@@ -89,13 +92,14 @@ def ensure_demo_store(path=DEMO_SPK):
         return path
     hub = spike_telemetry_hub.SpikeTelemetryHub(8, 1000)
     for c in range(8):
-        hub.ingest(c, range(c, 1000, 10 + c))         # regular, sorted, reproducible
+        hub.ingest(c, range(c, 1000, 10 + c))  # regular, sorted, reproducible
     try:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         hub.save(path)
         return path
-    except OSError:                                    # read-only install -> build in temp instead
+    except OSError:  # read-only install -> build in temp instead
         import tempfile
+
         tmp = os.path.join(tempfile.gettempdir(), "snn_demo_telemetry.spk")
         if not os.path.exists(tmp):
             hub.save(tmp)
@@ -105,13 +109,13 @@ def ensure_demo_store(path=DEMO_SPK):
 def _csv_to_store(path):
     """Build a SpikeTelemetryHub from a CSV of spike events -- each row 'channel,time' (integers;
     ';' also accepted; header / comment / blank rows skipped). Channels + duration are inferred.
-    The zero-dep 'bring your own data' import path behind the Lake tab's Import button."""
+    The 'bring your own data' import path behind the Lake tab's Import button."""
     events = []
     with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip().replace(";", ",")
             if not line or not (line[0].isdigit() or line[0] in "+-"):
-                continue                               # skip header / comment / blank
+                continue  # skip header / comment / blank
             parts = line.split(",")
             if len(parts) >= 2:
                 events.append((int(float(parts[0])), int(float(parts[1]))))
@@ -141,7 +145,7 @@ def _dense_csv_to_store(path, threshold=0.5):
             try:
                 rows.append([float(x) for x in line.split(",")])
             except ValueError:
-                continue                                   # header / non-numeric row -> skip
+                continue  # header / non-numeric row -> skip
     if not rows:
         raise ValueError("no numeric rows found")
     n_ch = max(len(r) for r in rows)
@@ -159,27 +163,42 @@ class ArmTab(ttk.Frame):
 
     def __init__(self, master):
         super().__init__(master, padding=8)
-        self.arm = arm_sim.ArmSim()                # stdlib backend; the gated safety API
-        self.canvas = tk.Canvas(self, width=self.W, height=self.H, bg="white",
-                                highlightthickness=1, highlightbackground="#888")
+        self.arm = arm_sim.ArmSim()  # stdlib backend; the gated safety API
+        self.canvas = tk.Canvas(
+            self,
+            width=self.W,
+            height=self.H,
+            bg="white",
+            highlightthickness=1,
+            highlightbackground="#888",
+        )
         self.canvas.grid(row=0, column=0, rowspan=8, padx=(0, 10))
 
-        btns = [("JOINT_A +", f"JOINT_A_ROTATE(+{STEP_DEG}deg)"),
-                ("JOINT_A -", f"JOINT_A_ROTATE(-{STEP_DEG}deg)"),
-                ("JOINT_B +", f"JOINT_B_ROTATE(+{STEP_DEG}deg)"),
-                ("JOINT_B -", f"JOINT_B_ROTATE(-{STEP_DEG}deg)"),
-                ("GRIPPER OPEN", "GRIPPER_OPEN"),
-                ("GRIPPER CLOSE", "GRIPPER_CLOSE"),
-                ("HOME", "HOME"),
-                ("RETRACT_ALL", "RETRACT_ALL")]
+        btns = [
+            ("JOINT_A +", f"JOINT_A_ROTATE(+{STEP_DEG}deg)"),
+            ("JOINT_A -", f"JOINT_A_ROTATE(-{STEP_DEG}deg)"),
+            ("JOINT_B +", f"JOINT_B_ROTATE(+{STEP_DEG}deg)"),
+            ("JOINT_B -", f"JOINT_B_ROTATE(-{STEP_DEG}deg)"),
+            ("GRIPPER OPEN", "GRIPPER_OPEN"),
+            ("GRIPPER CLOSE", "GRIPPER_CLOSE"),
+            ("HOME", "HOME"),
+            ("RETRACT_ALL", "RETRACT_ALL"),
+        ]
         for r, (label, cmd) in enumerate(btns):
-            ttk.Button(self, text=label, width=16,
-                       command=lambda c=cmd: self.send(c)).grid(row=r, column=1, sticky="ew", pady=1)
+            ttk.Button(self, text=label, width=16, command=lambda c=cmd: self.send(c)).grid(
+                row=r, column=1, sticky="ew", pady=1
+            )
 
-        stop = tk.Button(self, text="EMERGENCY_STOP", bg="#c00", fg="white",
-                         activebackground="#900", activeforeground="white",
-                         font=("TkDefaultFont", 10, "bold"),
-                         command=lambda: self.send("EMERGENCY_STOP"))
+        stop = tk.Button(
+            self,
+            text="EMERGENCY_STOP",
+            bg="#c00",
+            fg="white",
+            activebackground="#900",
+            activeforeground="white",
+            font=("TkDefaultFont", 10, "bold"),
+            command=lambda: self.send("EMERGENCY_STOP"),
+        )
         stop.grid(row=len(btns), column=1, sticky="ew", pady=(8, 2))
 
         self.status = ttk.Label(self, text="", font=("TkFixedFont", 9), justify="left")
@@ -188,20 +207,22 @@ class ArmTab(ttk.Frame):
         # optional REAL-hardware sink: route the buttons through serial_arm.SerialArm, which enforces
         # the calibration gate + wire allow-list + E-STOP freeze. OFF by default (buttons drive the
         # simulator until you Connect); an uncalibrated rig is refused -- no bypass.
-        sr = ttk.Frame(self); sr.grid(row=10, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        sr = ttk.Frame(self)
+        sr.grid(row=10, column=0, columnspan=2, sticky="w", pady=(6, 0))
         ttk.Label(sr, text="serial:").pack(side="left")
         self.port_entry = ttk.Entry(sr, width=10)
         self.port_entry.insert(0, "COM3")
         self.port_entry.pack(side="left", padx=2)
         self.conn_btn = ttk.Button(sr, text="Connect", command=self.connect_serial)
         self.conn_btn.pack(side="left", padx=2)
-        self.serial_status = ttk.Label(sr, text="SIM (not connected)", font=("TkFixedFont", 8),
-                                       foreground="#555")
+        self.serial_status = ttk.Label(
+            sr, text="SIM (not connected)", font=("TkFixedFont", 8), foreground="#555"
+        )
         self.serial_status.pack(side="left", padx=6)
         self.render()
 
     def send(self, cmd):
-        self.arm.apply(cmd)                        # ONLY path to motion -> reflex / E-STOP gate holds
+        self.arm.apply(cmd)  # ONLY path to motion -> reflex / E-STOP gate holds
         self.render()
 
     @property
@@ -213,21 +234,28 @@ class ArmTab(ttk.Frame):
         """Toggle: route the buttons through the REAL arm over serial (serial_arm.SerialArm, which
         enforces the calibration gate + wire allow-list + E-STOP freeze), or back to the simulator.
         No bypass -- an uncalibrated rig is refused."""
-        if not isinstance(self.arm, arm_sim.ArmSim):        # connected -> disconnect
-            self._disconnect(); return
+        if not isinstance(self.arm, arm_sim.ArmSim):  # connected -> disconnect
+            self._disconnect()
+            return
         port = self.port_entry.get().strip()
         if not port:
-            self._serial_msg("enter a COM port (e.g. COM3)", err=True); return
+            self._serial_msg("enter a COM port (e.g. COM3)", err=True)
+            return
         try:
             from snn_data_lake.brainstem.serial_arm import SerialArm
-            arm = SerialArm(port=port)                       # calibration gate + allow-list on the WIRE
+
+            arm = SerialArm(port=port)  # calibration gate + allow-list on the WIRE
         except ImportError:
-            self._serial_msg("needs pyserial: pip install \".[arm]\" (run from source)", err=True); return
-        except RuntimeError:                                 # calibration gate refused -> stay on sim
-            self._serial_msg("refused: set arm_config.SAFETY_CALIBRATED=True for your rig first", err=True)
+            self._serial_msg('needs pyserial: pip install ".[arm]" (run from source)', err=True)
             return
-        except Exception as e:                               # port open failed
-            self._serial_msg(f"could not open {port}: {e}", err=True); return
+        except RuntimeError:  # calibration gate refused -> stay on sim
+            self._serial_msg(
+                "refused: set arm_config.SAFETY_CALIBRATED=True for your rig first", err=True
+            )
+            return
+        except Exception as e:  # port open failed
+            self._serial_msg(f"could not open {port}: {e}", err=True)
+            return
         self.arm = arm
         self.conn_btn.configure(text="Disconnect")
         self._serial_msg(f"REAL arm on {port} -- buttons drive hardware (gated)")
@@ -247,14 +275,16 @@ class ArmTab(ttk.Frame):
         self.serial_status.configure(text=text, foreground=("#c00" if err else "#080"))
 
     def render(self):
-        c, arm = self.canvas, self.sim             # geometry from the sim (or the SerialArm's mirror)
+        c, arm = self.canvas, self.sim  # geometry from the sim (or the SerialArm's mirror)
         c.delete("all")
         colliding = arm.collision()
         # floor
         fx0, fy = world_to_canvas(-2.2, arm_sim.FLOOR_Y, self.W, self.H, self.SCALE)
         fx1, _ = world_to_canvas(2.2, arm_sim.FLOOR_Y, self.W, self.H, self.SCALE)
         c.create_line(fx0, fy, fx1, fy, fill="#654321", width=2)
-        c.create_text(fx1, fy + 8, text="floor", fill="#654321", anchor="e", font=("TkDefaultFont", 7))
+        c.create_text(
+            fx1, fy + 8, text="floor", fill="#654321", anchor="e", font=("TkDefaultFont", 7)
+        )
         # obstacle
         ox, oy = arm_sim.OBSTACLE
         px, py = world_to_canvas(ox, oy, self.W, self.H, self.SCALE)
@@ -271,20 +301,25 @@ class ArmTab(ttk.Frame):
         p2 = world_to_canvas(eex, eey, self.W, self.H, self.SCALE)
         c.create_line(*p0, *p1, fill=link, width=6, capstyle="round")
         c.create_line(*p1, *p2, fill=link, width=6, capstyle="round")
-        for (px_, py_) in (p0, p1):
+        for px_, py_ in (p0, p1):
             c.create_oval(px_ - 4, py_ - 4, px_ + 4, py_ + 4, fill="#333")
         # end-effector: gripper open (hollow) vs closed (filled)
         eefill = "#080" if arm.gripper else "white"
-        c.create_oval(p2[0] - 6, p2[1] - 6, p2[0] + 6, p2[1] + 6, fill=eefill, outline="#080", width=2)
+        c.create_oval(
+            p2[0] - 6, p2[1] - 6, p2[0] + 6, p2[1] + 6, fill=eefill, outline="#080", width=2
+        )
 
         s = arm.state()
         grip = "CLOSED" if s["gripper"] else "open"
         self.status.configure(
-            text=(f"theta(deg) A={s['theta_deg'][0]:5.1f} B={s['theta_deg'][1]:5.1f}   "
-                  f"ee=({s['ee'][0]:+.2f},{s['ee'][1]:+.2f})   gripper={grip}\n"
-                  f"stopped={s['stopped']}   collision={s['collision']}   "
-                  f"deviation={s['deviation']:.3f} m   backend={s['backend']}"),
-            foreground=("#c00" if colliding or s["stopped"] else "#000"))
+            text=(
+                f"theta(deg) A={s['theta_deg'][0]:5.1f} B={s['theta_deg'][1]:5.1f}   "
+                f"ee=({s['ee'][0]:+.2f},{s['ee'][1]:+.2f})   gripper={grip}\n"
+                f"stopped={s['stopped']}   collision={s['collision']}   "
+                f"deviation={s['deviation']:.3f} m   backend={s['backend']}"
+            ),
+            foreground=("#c00" if colliding or s["stopped"] else "#000"),
+        )
 
 
 # ---- tab 2: Live Recognition ----------------------------------------------------
@@ -293,13 +328,14 @@ class RecognitionTab(ttk.Frame):
 
     def __init__(self, master):
         super().__init__(master, padding=8)
-        self.interp = Interpreter(commands=SENSOR_COMMANDS)   # same map live_arm uses
+        self.interp = Interpreter(commands=SENSOR_COMMANDS)  # same map live_arm uses
         self.arm = arm_sim.ArmSim()
         self.windows = []
         self.idx = 0
         self.playing = False
 
-        top = ttk.Frame(self); top.grid(row=0, column=0, sticky="ew")
+        top = ttk.Frame(self)
+        top.grid(row=0, column=0, sticky="ew")
         ttk.Label(top, text="capture:").pack(side="left")
         self.pick = ttk.Combobox(top, width=34, state="readonly", values=find_captures())
         self.pick.pack(side="left", padx=4)
@@ -329,7 +365,9 @@ class RecognitionTab(ttk.Frame):
         self.play_btn.configure(text="Auto-play")
         path = self.pick.get()
         self.arm = arm_sim.ArmSim()
-        self.windows = gesture_recognition.windows(gesture_recognition.load_csv(path)) if path else []
+        self.windows = (
+            gesture_recognition.windows(gesture_recognition.load_csv(path)) if path else []
+        )
         self.idx = 0
         self._logline("=" * 60)
         self._logline(f"loaded {os.path.basename(path)} -> {len(self.windows)} windows")
@@ -337,8 +375,9 @@ class RecognitionTab(ttk.Frame):
 
     def open_csv(self):
         """Load YOUR OWN gesture-capture CSV (same numeric format as the sample captures)."""
-        p = filedialog.askopenfilename(title="Open a gesture-capture CSV",
-                                       filetypes=[("CSV", "*.csv"), ("All files", "*.*")])
+        p = filedialog.askopenfilename(
+            title="Open a gesture-capture CSV", filetypes=[("CSV", "*.csv"), ("All files", "*.*")]
+        )
         if p:
             vals = list(self.pick["values"])
             if p not in vals:
@@ -353,16 +392,20 @@ class RecognitionTab(ttk.Frame):
             self.play_btn.configure(text="Auto-play")
             return
         blk = self.windows[self.idx]
-        gesture = gesture_recognition.classify(blk)                # recognition (reused)
-        cmd, _ = self.interp.interpret({"match": gesture})         # gesture -> command (reused)
-        self.arm.apply(cmd)                                        # gated arm reaction
+        gesture = gesture_recognition.classify(blk)  # recognition (reused)
+        cmd, _ = self.interp.interpret({"match": gesture})  # gesture -> command (reused)
+        self.arm.apply(cmd)  # gated arm reaction
         ee = self.arm.state()["ee"]
         grip = "CLOSED" if self.arm.gripper else "open"
         self.idx += 1
-        self.head.configure(text=f"window {self.idx}/{len(self.windows)}   gesture={gesture}   "
-                                 f"command={cmd}   ee=({ee[0]:.2f},{ee[1]:.2f})")
-        self._logline(f"win {self.idx:3d}  gesture={gesture:<13} cmd={cmd:<13} "
-                      f"gripper={grip} ee=({ee[0]:+.2f},{ee[1]:+.2f})")
+        self.head.configure(
+            text=f"window {self.idx}/{len(self.windows)}   gesture={gesture}   "
+            f"command={cmd}   ee=({ee[0]:.2f},{ee[1]:.2f})"
+        )
+        self._logline(
+            f"win {self.idx:3d}  gesture={gesture:<13} cmd={cmd:<13} "
+            f"gripper={grip} ee=({ee[0]:+.2f},{ee[1]:+.2f})"
+        )
 
     def toggle(self):
         self.playing = not self.playing
@@ -396,14 +439,16 @@ class LakeTab(ttk.Frame):
         self.path = None
         self.nbytes = 0
 
-        top = ttk.Frame(self); top.grid(row=0, column=0, columnspan=6, sticky="ew")
+        top = ttk.Frame(self)
+        top.grid(row=0, column=0, columnspan=6, sticky="ew")
         ttk.Button(top, text="Load demo store", command=self.open_store).pack(side="left")
         ttk.Button(top, text="Open .spk...", command=self.open_file).pack(side="left", padx=2)
         ttk.Button(top, text="Import data...", command=self.import_data).pack(side="left", padx=2)
         self.summary = ttk.Label(top, text="no store loaded", font=("TkFixedFont", 9))
         self.summary.pack(side="left", padx=10)
 
-        form = ttk.Frame(self); form.grid(row=1, column=0, columnspan=6, sticky="w", pady=6)
+        form = ttk.Frame(self)
+        form.grid(row=1, column=0, columnspan=6, sticky="w", pady=6)
         self.e_ch = self._field(form, "channel", "7")
         self.e_t0 = self._field(form, "t0", "0")
         self.e_t1 = self._field(form, "t1", "1000")
@@ -425,8 +470,10 @@ class LakeTab(ttk.Frame):
 
     def open_file(self):
         """Open YOUR OWN .spk telemetry store."""
-        p = filedialog.askopenfilename(title="Open a .spk telemetry store",
-                                       filetypes=[("Spike store", "*.spk"), ("All files", "*.*")])
+        p = filedialog.askopenfilename(
+            title="Open a .spk telemetry store",
+            filetypes=[("Spike store", "*.spk"), ("All files", "*.*")],
+        )
         if p:
             try:
                 self._load_store(p)
@@ -442,10 +489,14 @@ class LakeTab(ttk.Frame):
         self.path = path
         self.nbytes = os.path.getsize(path)
         hub = spike_telemetry_hub.SpikeTelemetryHub.load(path)
-        self.summary.configure(text=f"{os.path.basename(path)}   channels={hub.n}   "
-                                    f"events={hub.n_events()}   bytes={self.nbytes}")
-        self._show(f"opened {path}: {hub.n} channels, {hub.n_events()} events, "
-                   f"{self.nbytes} bytes\nenter channel + [t0,t1) and Run query.")
+        self.summary.configure(
+            text=f"{os.path.basename(path)}   channels={hub.n}   "
+            f"events={hub.n_events()}   bytes={self.nbytes}"
+        )
+        self._show(
+            f"opened {path}: {hub.n} channels, {hub.n_events()} events, "
+            f"{self.nbytes} bytes\nenter channel + [t0,t1) and Run query."
+        )
 
     def query(self):
         try:
@@ -459,12 +510,14 @@ class LakeTab(ttk.Frame):
             self._show(f"query error: {e}")
             return
         head = events[:40]
-        lines = [f"query channel={ch} window=[{t0},{t1})",
-                 f"events returned : {len(events)}",
-                 f"bytes read      : {read}  ({pct_read(read, self.nbytes):.1f}% of the "
-                 f"{self.nbytes}-byte file)",
-                 "-" * 50,
-                 "  ".join(f"t={t}" for t, _c in head) or "(no events in window)"]
+        lines = [
+            f"query channel={ch} window=[{t0},{t1})",
+            f"events returned : {len(events)}",
+            f"bytes read      : {read}  ({pct_read(read, self.nbytes):.1f}% of the "
+            f"{self.nbytes}-byte file)",
+            "-" * 50,
+            "  ".join(f"t={t}" for t, _c in head) or "(no events in window)",
+        ]
         if len(events) > len(head):
             lines.append(f"... ({len(events) - len(head)} more)")
         self._show("\n".join(lines))
@@ -481,46 +534,61 @@ class NLTab(ttk.Frame):
     """Type an English command; nl_interface maps it to a SAFE intent that drives the SAME gated
     paths as the other tabs. Arm intents route through the Arm Control tab's ArmSim.apply() (reflex /
     E-STOP / collision gate); lake intents run a windowed disk_query. The backend can only pick an
-    allow-listed LABEL, never a raw command. Default backend is the zero-dep StubBackend (a local
+    allow-listed LABEL, never a raw command. Default backend is the StubBackend (a local
     on-device AirLLM backend stays CLI-opt-in: SNN_LLM=1 python local_llm/run_local.py)."""
 
     def __init__(self, master, armtab):
         super().__init__(master, padding=8)
-        self.nl = NLInterface(backend=StubBackend())   # zero-dep, deterministic keyword router
-        self.armtab = armtab                           # arm intents drive the SAME gated arm as tab 1
+        self.nl = NLInterface(backend=StubBackend())  # deterministic keyword router
+        self.armtab = armtab  # arm intents drive the SAME gated arm as tab 1
 
-        top = ttk.Frame(self); top.grid(row=0, column=0, columnspan=3, sticky="ew")
+        top = ttk.Frame(self)
+        top.grid(row=0, column=0, columnspan=3, sticky="ew")
         ttk.Label(top, text="command:").pack(side="left")
         self.entry = ttk.Entry(top, width=48)
         self.entry.pack(side="left", padx=4)
         self.entry.bind("<Return>", lambda _e: self.run())
         ttk.Button(top, text="Run", command=self.run).pack(side="left", padx=2)
 
-        ttk.Label(self, foreground="#555", font=("TkDefaultFont", 8),
-                  text="examples:  close the gripper   open   rotate joint A   go home   STOP   "
-                       "read telemetry channel 7 window 1000").grid(row=1, column=0, columnspan=3,
-                                                                    sticky="w", pady=(4, 0))
-        ttk.Label(self, foreground="#555", font=("TkDefaultFont", 8),
-                  text="backend: StubBackend (zero-dep). Optional on-device AirLLM: "
-                       "SNN_LLM=1 python local_llm/run_local.py").grid(row=2, column=0, columnspan=3, sticky="w")
+        ttk.Label(
+            self,
+            foreground="#555",
+            font=("TkDefaultFont", 8),
+            text="examples:  close the gripper   open   rotate joint A   go home   STOP   "
+            "read telemetry channel 7 window 1000",
+        ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        ttk.Label(
+            self,
+            foreground="#555",
+            font=("TkDefaultFont", 8),
+            text="backend: StubBackend (local). Optional on-device AirLLM: "
+            "SNN_LLM=1 python local_llm/run_local.py",
+        ).grid(row=2, column=0, columnspan=3, sticky="w")
 
         self.log = tk.Text(self, width=78, height=15, font=("TkFixedFont", 9), state="disabled")
         self.log.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(6, 0))
-        sb = ttk.Scrollbar(self, command=self.log.yview); sb.grid(row=3, column=2, sticky="ns", pady=(6, 0))
+        sb = ttk.Scrollbar(self, command=self.log.yview)
+        sb.grid(row=3, column=2, sticky="ns", pady=(6, 0))
         self.log.configure(yscrollcommand=sb.set)
-        self._logline("Type an English command and press Run (or Enter). Arm actions appear on the Arm Control tab.")
+        self._logline(
+            "Type an English command and press Run (or Enter). Arm actions appear on the Arm Control tab."
+        )
 
     def run(self):
         text = self.entry.get().strip()
         if not text:
             return
-        intent = self.nl.interpret(text)               # -> allow-listed arm cmd / lake query / reject
+        intent = self.nl.interpret(text)  # -> allow-listed arm cmd / lake query / reject
         kind = intent["kind"]
         if kind == "arm":
-            self.armtab.send(intent["command"])        # SAME gated apply as tab 1 (reflex / E-STOP / collision)
+            self.armtab.send(
+                intent["command"]
+            )  # SAME gated apply as tab 1 (reflex / E-STOP / collision)
             s = self.armtab.arm.state()
-            self._logline(f"> {text}\n    ARM  {intent['command']}  -> ee=({s['ee'][0]:+.2f},{s['ee'][1]:+.2f}) "
-                          f"stopped={s['stopped']} collision={s['collision']}")
+            self._logline(
+                f"> {text}\n    ARM  {intent['command']}  -> ee=({s['ee'][0]:+.2f},{s['ee'][1]:+.2f}) "
+                f"stopped={s['stopped']} collision={s['collision']}"
+            )
         elif kind == "lake":
             self._lake(text, intent["query"])
         else:
@@ -536,11 +604,15 @@ class NLTab(ttk.Frame):
         except (IndexError, ValueError) as e:
             self._logline(f"> {text}\n    LAKE query error: {e}")
             return
-        self._logline(f"> {text}\n    LAKE channels={chans} window=[0,{t1}) -> {len(events)} events, "
-                      f"{read} bytes read")
+        self._logline(
+            f"> {text}\n    LAKE channels={chans} window=[0,{t1}) -> {len(events)} events, "
+            f"{read} bytes read"
+        )
 
     def _logline(self, text):
-        self.log.configure(state="normal"); self.log.insert("end", text + "\n"); self.log.see("end")
+        self.log.configure(state="normal")
+        self.log.insert("end", text + "\n")
+        self.log.see("end")
         self.log.configure(state="disabled")
 
 
@@ -564,6 +636,7 @@ def run_core_selfcheck(mod):
     import runpy
     import sys
     from contextlib import redirect_stderr, redirect_stdout
+
     buf = io.StringIO()
     saved_argv = sys.argv
     sys.argv = [mod]
@@ -571,9 +644,9 @@ def run_core_selfcheck(mod):
         with redirect_stdout(buf), redirect_stderr(buf):
             runpy.run_module(f"snn_data_lake.{mod}", run_name="__main__")
         return True, buf.getvalue()
-    except SystemExit as e:                            # a module may sys.exit(0) on success
+    except SystemExit as e:  # a module may sys.exit(0) on success
         return (e.code in (0, None)), buf.getvalue()
-    except BaseException as e:                          # AssertionError / any self-check failure
+    except BaseException as e:  # AssertionError / any self-check failure
         return False, f"{buf.getvalue()}\n{type(e).__name__}: {e}"
     finally:
         sys.argv = saved_argv
@@ -585,8 +658,10 @@ def run_all_core(emit=print):
     mods = core_modules()
     failed = [m for m in mods if not _emit_result(m, emit)]
     emit("=" * 56)
-    emit(f"{len(mods) - len(failed)}/{len(mods)} core self-checks passed"
-         + (f"   FAILED: {', '.join(failed)}" if failed else ""))
+    emit(
+        f"{len(mods) - len(failed)}/{len(mods)} core self-checks passed"
+        + (f"   FAILED: {', '.join(failed)}" if failed else "")
+    )
     return not failed
 
 
@@ -605,24 +680,36 @@ class CoreTab(ttk.Frame):
     def __init__(self, master):
         super().__init__(master, padding=8)
         self.mods = core_modules()
-        top = ttk.Frame(self); top.grid(row=0, column=0, columnspan=2, sticky="ew")
-        self.run_btn = ttk.Button(top, text=f"Run all {len(self.mods)} core self-checks", command=self.run_all)
+        top = ttk.Frame(self)
+        top.grid(row=0, column=0, columnspan=2, sticky="ew")
+        self.run_btn = ttk.Button(
+            top, text=f"Run all {len(self.mods)} core self-checks", command=self.run_all
+        )
         self.run_btn.pack(side="left")
-        self.summary = ttk.Label(top, text=f"{len(self.mods)} core modules", font=("TkFixedFont", 9))
+        self.summary = ttk.Label(
+            top, text=f"{len(self.mods)} core modules", font=("TkFixedFont", 9)
+        )
         self.summary.pack(side="left", padx=10)
 
         self.log = tk.Text(self, width=78, height=20, font=("TkFixedFont", 9), state="disabled")
         self.log.grid(row=1, column=0, sticky="nsew", pady=(6, 0))
-        sb = ttk.Scrollbar(self, command=self.log.yview); sb.grid(row=1, column=1, sticky="ns", pady=(6, 0))
+        sb = ttk.Scrollbar(self, command=self.log.yview)
+        sb.grid(row=1, column=1, sticky="ns", pady=(6, 0))
         self.log.configure(yscrollcommand=sb.set)
-        self.rowconfigure(1, weight=1); self.columnconfigure(0, weight=1)
-        self._logline(f"{len(self.mods)} core modules discovered. "
-                      "Press Run to execute the entire core in-process.")
+        self.rowconfigure(1, weight=1)
+        self.columnconfigure(0, weight=1)
+        self._logline(
+            f"{len(self.mods)} core modules discovered. "
+            "Press Run to execute the entire core in-process."
+        )
 
     def run_all(self):
-        self._queue = list(self.mods); self._passed = 0; self._failed = []
+        self._queue = list(self.mods)
+        self._passed = 0
+        self._failed = []
         self.run_btn.configure(state="disabled")
-        self._clear(); self._logline("=" * 60)
+        self._clear()
+        self._logline("=" * 60)
         self._logline(f"running {len(self._queue)} core self-checks in-process...")
         self.after(1, self._next)
 
@@ -630,8 +717,10 @@ class CoreTab(ttk.Frame):
         if not self._queue:
             self.run_btn.configure(state="normal")
             self._logline("=" * 60)
-            self._logline(f"{self._passed}/{len(self.mods)} core self-checks passed"
-                          + (f"   FAILED: {', '.join(self._failed)}" if self._failed else ""))
+            self._logline(
+                f"{self._passed}/{len(self.mods)} core self-checks passed"
+                + (f"   FAILED: {', '.join(self._failed)}" if self._failed else "")
+            )
             return
         mod = self._queue.pop(0)
         ok, _out = run_core_selfcheck(mod)
@@ -640,15 +729,21 @@ class CoreTab(ttk.Frame):
         else:
             self._failed.append(mod)
         self._logline(f"{'PASS' if ok else 'FAIL'}  {mod}")
-        self.summary.configure(text=f"{self._passed} passed, {len(self._failed)} failed, {len(self._queue)} left",
-                               foreground=("#c00" if self._failed else "#080"))
+        self.summary.configure(
+            text=f"{self._passed} passed, {len(self._failed)} failed, {len(self._queue)} left",
+            foreground=("#c00" if self._failed else "#080"),
+        )
         self.after(1, self._next)
 
     def _clear(self):
-        self.log.configure(state="normal"); self.log.delete("1.0", "end"); self.log.configure(state="disabled")
+        self.log.configure(state="normal")
+        self.log.delete("1.0", "end")
+        self.log.configure(state="disabled")
 
     def _logline(self, text):
-        self.log.configure(state="normal"); self.log.insert("end", text + "\n"); self.log.see("end")
+        self.log.configure(state="normal")
+        self.log.insert("end", text + "\n")
+        self.log.see("end")
         self.log.configure(state="disabled")
 
 
@@ -667,51 +762,80 @@ class IngestDialog(tk.Toplevel):
         self.fmt = tk.StringVar(value="events")
         pad = {"padx": 8, "pady": 4}
 
-        row = ttk.Frame(self); row.pack(fill="x", **pad)
+        row = ttk.Frame(self)
+        row.pack(fill="x", **pad)
         ttk.Button(row, text="Choose CSV...", command=self._pick).pack(side="left")
         self.file_lbl = ttk.Label(row, text="(no file chosen)", font=("TkFixedFont", 9))
         self.file_lbl.pack(side="left", padx=6)
 
-        fr = ttk.LabelFrame(self, text="how to read it"); fr.pack(fill="x", **pad)
-        ttk.Radiobutton(fr, text="spike events -- each row 'channel,time' (integers)",
-                        value="events", variable=self.fmt).pack(anchor="w")
-        ttk.Radiobutton(fr, text="dense sensor -- each row = a time step, each column a channel",
-                        value="dense", variable=self.fmt).pack(anchor="w")
-        tr = ttk.Frame(fr); tr.pack(anchor="w", pady=2)
+        fr = ttk.LabelFrame(self, text="how to read it")
+        fr.pack(fill="x", **pad)
+        ttk.Radiobutton(
+            fr,
+            text="spike events -- each row 'channel,time' (integers)",
+            value="events",
+            variable=self.fmt,
+        ).pack(anchor="w")
+        ttk.Radiobutton(
+            fr,
+            text="dense sensor -- each row = a time step, each column a channel",
+            value="dense",
+            variable=self.fmt,
+        ).pack(anchor="w")
+        tr = ttk.Frame(fr)
+        tr.pack(anchor="w", pady=2)
         ttk.Label(tr, text="   dense: spike when value >=").pack(side="left")
-        self.thr = ttk.Entry(tr, width=6); self.thr.insert(0, "0.5"); self.thr.pack(side="left")
+        self.thr = ttk.Entry(tr, width=6)
+        self.thr.insert(0, "0.5")
+        self.thr.pack(side="left")
 
-        br = ttk.Frame(self); br.pack(fill="x", **pad)
+        br = ttk.Frame(self)
+        br.pack(fill="x", **pad)
         ttk.Button(br, text="Build .spk", command=self._build).pack(side="left")
         ttk.Button(br, text="Cancel", command=self.destroy).pack(side="left", padx=4)
-        self.msg = ttk.Label(self, text="pick a CSV, choose a format, then Build.",
-                             font=("TkFixedFont", 9), justify="left")
+        self.msg = ttk.Label(
+            self,
+            text="pick a CSV, choose a format, then Build.",
+            font=("TkFixedFont", 9),
+            justify="left",
+        )
         self.msg.pack(fill="x", **pad)
 
     def _pick(self):
-        p = filedialog.askopenfilename(parent=self, title="Choose a CSV",
-                                       filetypes=[("CSV", "*.csv"), ("All files", "*.*")])
+        p = filedialog.askopenfilename(
+            parent=self, title="Choose a CSV", filetypes=[("CSV", "*.csv"), ("All files", "*.*")]
+        )
         if p:
             self.csv = p
             self.file_lbl.configure(text=os.path.basename(p))
 
     def _build(self):
         if not self.csv:
-            self.msg.configure(text="choose a CSV first."); return
+            self.msg.configure(text="choose a CSV first.")
+            return
         try:
-            hub = (_csv_to_store(self.csv) if self.fmt.get() == "events"
-                   else _dense_csv_to_store(self.csv, float(self.thr.get())))
+            hub = (
+                _csv_to_store(self.csv)
+                if self.fmt.get() == "events"
+                else _dense_csv_to_store(self.csv, float(self.thr.get()))
+            )
         except Exception as e:
-            self.msg.configure(text=f"could not read it: {e}"); return
-        out = filedialog.asksaveasfilename(parent=self, title="Save built store as .spk",
-                                           defaultextension=".spk", filetypes=[("Spike store", "*.spk")])
+            self.msg.configure(text=f"could not read it: {e}")
+            return
+        out = filedialog.asksaveasfilename(
+            parent=self,
+            title="Save built store as .spk",
+            defaultextension=".spk",
+            filetypes=[("Spike store", "*.spk")],
+        )
         if not out:
             return
         try:
             hub.save(out)
         except OSError as e:
-            self.msg.configure(text=f"save failed: {e}"); return
-        self.on_built(out)             # hand the store to the Lake tab
+            self.msg.configure(text=f"save failed: {e}")
+            return
+        self.on_built(out)  # hand the store to the Lake tab
         self.destroy()
 
 
@@ -721,7 +845,7 @@ class App:
         self.root = tk.Tk()
         self.root.title("Spiking Neural Data Lake — Control Panel")
         nb = ttk.Notebook(self.root)
-        arm_tab = ArmTab(nb)                           # kept: the NL tab drives this same gated arm
+        arm_tab = ArmTab(nb)  # kept: the NL tab drives this same gated arm
         nb.add(arm_tab, text="Arm Control")
         nb.add(RecognitionTab(nb), text="Live Recognition")
         nb.add(LakeTab(nb), text="Lake Browser")
@@ -730,6 +854,7 @@ class App:
         # local import (function scope): live_brain_tab imports world_to_canvas from here, so a
         # module-level import would create a load cycle; importing at App construction avoids it.
         from snn_data_lake.substrate.live_brain_tab import LiveBrainTab
+
         nb.add(LiveBrainTab(nb), text="Live Brain")
         nb.pack(fill="both", expand=True)
 
@@ -741,11 +866,17 @@ def _smoke():
     """Headless-safe self-check: assert the display-free logic, then TRY the GUI and skip if headless."""
     # (a) non-GUI logic that needs no display -----------------------------------
     w, h, scale = 480, 360, 90
-    assert world_to_canvas(0, 0, w, h, scale) == (w // 2, int(h * 0.6)), "base must map to canvas origin"
+    assert world_to_canvas(0, 0, w, h, scale) == (w // 2, int(h * 0.6)), (
+        "base must map to canvas origin"
+    )
     assert world_to_canvas(1, 0, w, h, scale) == (w // 2 + scale, int(h * 0.6)), "+x moves right"
-    assert world_to_canvas(0, 1, w, h, scale) == (w // 2, int(h * 0.6) - scale), "+y moves up (flipped)"
+    assert world_to_canvas(0, 1, w, h, scale) == (w // 2, int(h * 0.6) - scale), (
+        "+y moves up (flipped)"
+    )
     caps = find_captures()
-    assert isinstance(caps, list) and all(os.path.exists(p) for p in caps), "capture discovery broken"
+    assert isinstance(caps, list) and all(os.path.exists(p) for p in caps), (
+        "capture discovery broken"
+    )
     assert pct_read(100, 1000) == 10.0 and pct_read(5, 0) == 0.0, "lake percent-read math wrong"
 
     path = ensure_demo_store()
@@ -757,23 +888,33 @@ def _smoke():
     # command strings the buttons emit must be ones the gated apply() actually acts on
     arm = arm_sim.ArmSim()
     arm.apply(f"JOINT_A_ROTATE(+{STEP_DEG}deg)")
-    assert arm.state()["theta_deg"][0] == float(STEP_DEG), "arm button command is not gated-apply valid"
+    assert arm.state()["theta_deg"][0] == float(STEP_DEG), (
+        "arm button command is not gated-apply valid"
+    )
 
     # NL Command tab (display-free): an English phrase maps to a gated-apply-valid command; unsafe -> reject
     nlx = NLInterface(backend=StubBackend())
-    assert nlx.interpret("close the gripper")["command"] == "GRIPPER_CLOSE", "NL 'close' phrase mis-mapped"
-    assert nlx.interpret("delete everything")["kind"] == "reject", "unsafe NL phrase must be rejected"
-    arm2 = arm_sim.ArmSim(); arm2.apply(nlx.interpret("close the gripper")["command"])
+    assert nlx.interpret("close the gripper")["command"] == "GRIPPER_CLOSE", (
+        "NL 'close' phrase mis-mapped"
+    )
+    assert nlx.interpret("delete everything")["kind"] == "reject", (
+        "unsafe NL phrase must be rejected"
+    )
+    arm2 = arm_sim.ArmSim()
+    arm2.apply(nlx.interpret("close the gripper")["command"])
     assert arm2.state()["gripper"], "an NL-mapped command must drive the gated arm"
 
     # Core Runner (display-free): the whole core is discoverable + runnable in-process
     core = core_modules()
-    assert core and "substrate.control_panel" not in core, "core module list empty or includes the app itself"
+    assert core and "substrate.control_panel" not in core, (
+        "core module list empty or includes the app itself"
+    )
     ok, _out = run_core_selfcheck(next(m for m in core if m.endswith("lif_neuron")))
     assert ok, "a core module must run to completion in-process (lif_neuron)"
 
     # Lake "Import CSV -> .spk" (display-free): a channel,time CSV builds a queryable store
     import tempfile
+
     _csvp = os.path.join(tempfile.gettempdir(), "snn_import_test.csv")
     with open(_csvp, "w", encoding="utf-8") as _f:
         _f.write("channel,time\n0,5\n0,9\n2,3\n")
@@ -784,18 +925,19 @@ def _smoke():
     # dense sensor CSV import (display-free): rows = time, cols = channels, threshold -> events
     _dp = os.path.join(tempfile.gettempdir(), "snn_dense_test.csv")
     with open(_dp, "w", encoding="utf-8") as _f:
-        _f.write("0.1,0.9\n0.8,0.2\n")        # ch0 spikes at t=1, ch1 at t=0 (threshold 0.5)
+        _f.write("0.1,0.9\n0.8,0.2\n")  # ch0 spikes at t=1, ch1 at t=0 (threshold 0.5)
     _d = _dense_csv_to_store(_dp, 0.5)
     assert _d.n == 2 and _d.n_events() == 2, "dense CSV import must threshold to the right events"
     os.remove(_dp)
 
     # serial-connect gate (display-free): driving a REAL arm on an uncalibrated rig must be REFUSED
     from snn_data_lake.brainstem.serial_arm import SerialArm
+
     try:
         SerialArm(port="COM_TEST_NONEXISTENT")
         refused = False
     except Exception:
-        refused = True                        # calibration gate / import / port error -> not driven
+        refused = True  # calibration gate / import / port error -> not driven
     assert refused, "an uncalibrated real arm must be refused (the serial safety gate holds)"
 
     # (b) TRY to construct the whole GUI, then destroy WITHOUT mainloop ----------
@@ -808,29 +950,35 @@ def _smoke():
         mode = "GUI construction skipped (no display)"
         print("control_panel smoke: GUI construction skipped (no display)")
 
-    print(f"self-check OK: canvas FK transform, capture discovery ({len(caps)} found), lake "
-          f"partial-read stats, gated-apply commands, NL command routing, CSV+dense import, "
-          f"serial gate, core runner ({len(core)} modules); {mode}")
+    print(
+        f"self-check OK: canvas FK transform, capture discovery ({len(caps)} found), lake "
+        f"partial-read stats, gated-apply commands, NL command routing, CSV+dense import, "
+        f"serial gate, core runner ({len(core)} modules); {mode}"
+    )
 
 
 def main():
     """snn-ui entry point: launch the desktop app (or --smoke for the headless self-check)."""
     import sys
+
     if "--smoke" in sys.argv:
         _smoke()
         return
-    if "--run-core" in sys.argv:                    # run the ENTIRE core in-process (headless) -> exit 0/1
+    if "--run-core" in sys.argv:  # run the ENTIRE core in-process (headless) -> exit 0/1
         sys.exit(0 if run_all_core() else 1)
-    print(home.banner("control-panel"))             # attach + announce the shared durable home on GUI launch
+    print(home.banner("control-panel"))  # attach + announce the shared durable home on GUI launch
     try:
         App().mainloop()
     except tk.TclError as e:
-        print(f"control_panel: no display available ({e}). "
-              "Run with --smoke for the headless self-check.")
+        print(
+            f"control_panel: no display available ({e}). "
+            "Run with --smoke for the headless self-check."
+        )
 
 
 if __name__ == "__main__":
     import sys
+
     # `python -m snn_data_lake.substrate.control_panel` (what run_selfchecks.py / CI runs, no args) defaults
     # to the headless-safe self-check so the runner never blocks on a window; a recognised flag
     # (--gui / --smoke / --run-core) routes to main() instead.

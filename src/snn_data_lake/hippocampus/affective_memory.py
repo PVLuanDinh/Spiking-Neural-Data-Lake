@@ -1,6 +1,6 @@
 """
 v3.77 - affective_memory: AFFECT-TAGGED EPISODIC MEMORY with somatic-marker retrieval
-and amygdala-modulated (importance-weighted) replay (stdlib-only, zero deps).
+and amygdala-modulated (importance-weighted) replay.
 
 Grounded in Damasio's SOMATIC-MARKER HYPOTHESIS (Descartes' Error, 1994) and the
 amygdala's modulation of hippocampal consolidation (McGaugh 2004, "The amygdala
@@ -39,6 +39,7 @@ build a store and call it.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.affective_memory
 """
+
 import collections
 import math
 import random
@@ -83,12 +84,12 @@ class AffectiveEpisodicStore:
     Retention is emotion-weighted (evict argmin importance, keep the salient), retrieval is by
     content (cosine + salience bonus) OR by affect (somatic-marker: nearest valence/arousal),
     and consolidation samples episodes weighted by importance -> amygdala-modulated replay to
-    feed the existing uniform ReplayBuffer. Pure stdlib, deterministic, safety-inert."""
+    feed the existing uniform ReplayBuffer. Deterministic, safety-inert."""
 
     def __init__(self, capacity=256):
         self.capacity = max(1, int(capacity))
-        self.episodes = []        # list[Episode], length <= capacity
-        self._tick = 0            # monotonic store-order counter (recency marker)
+        self.episodes = []  # list[Episode], length <= capacity
+        self._tick = 0  # monotonic store-order counter (recency marker)
 
     def __len__(self):
         return len(self.episodes)
@@ -162,8 +163,7 @@ class AffectiveEpisodicStore:
         target affect -- 'when was I last this afraid?' -- ranked by -(|dv| + |da|), ignoring
         content entirely. Returns list[Episode]."""
         scored = [
-            (-(abs(ep.valence - v_target) + abs(ep.arousal - a_target)), ep)
-            for ep in self.episodes
+            (-(abs(ep.valence - v_target) + abs(ep.arousal - a_target)), ep) for ep in self.episodes
         ]
         scored.sort(key=lambda t: t[0], reverse=True)
         return [ep for _, ep in scored[:k]]
@@ -193,13 +193,23 @@ def main():
     #     (it is the OLDEST -> a recency/ring policy would evict it first). Under capacity
     #     pressure it survives while a LOW-affect episode is evicted.
     s = AffectiveEpisodicStore(capacity=2)
-    high = s.store([1.0, 0.0, 0.0], valence=0.95, arousal=0.90, reward=1.0)   # tick 0, oldest, imp=2.35
-    low1 = s.store([0.0, 1.0, 0.0], valence=0.00, arousal=0.05, reward=0.0)   # tick 1,        imp=0.05
-    low2 = s.store([0.0, 0.0, 1.0], valence=0.00, arousal=0.10, reward=0.0)   # tick 2 -> forces an eviction
+    high = s.store(
+        [1.0, 0.0, 0.0], valence=0.95, arousal=0.90, reward=1.0
+    )  # tick 0, oldest, imp=2.35
+    low1 = s.store(
+        [0.0, 1.0, 0.0], valence=0.00, arousal=0.05, reward=0.0
+    )  # tick 1,        imp=0.05
+    low2 = s.store(
+        [0.0, 0.0, 1.0], valence=0.00, arousal=0.10, reward=0.0
+    )  # tick 2 -> forces an eviction
     keys = [ep.key for ep in s.episodes]
-    assert high.tick < low1.tick < low2.tick, "high-affect episode must be the OLDEST (recency bait)"
+    assert high.tick < low1.tick < low2.tick, (
+        "high-affect episode must be the OLDEST (recency bait)"
+    )
     assert high.key in keys, "emotion-weighted retention must KEEP the high-affect episode"
-    assert low1.key not in keys, "the low-affect episode must be evicted, not the older high-affect one"
+    assert low1.key not in keys, (
+        "the low-affect episode must be evicted, not the older high-affect one"
+    )
     assert low2.key in keys and len(s) == 2, "newest low episode stored; capacity respected"
 
     # (b) SOMATIC MARKER BEATS CONTENT. e_content's fragment == the cue but it is affectively
@@ -207,25 +217,35 @@ def main():
     #     recall_by_emotion must return e_fear; recall_similar must return e_content.
     s2 = AffectiveEpisodicStore(capacity=10)
     cue = [1.0, 0.0, 0.0]
-    e_content = s2.store([1.0, 0.0, 0.0], valence=0.00, arousal=0.05, reward=0.0)   # content twin, neutral
-    e_fear = s2.store([0.0, 0.0, 1.0], valence=-0.90, arousal=0.90, reward=-1.0)    # content stranger, terrified
+    e_content = s2.store(
+        [1.0, 0.0, 0.0], valence=0.00, arousal=0.05, reward=0.0
+    )  # content twin, neutral
+    e_fear = s2.store(
+        [0.0, 0.0, 1.0], valence=-0.90, arousal=0.90, reward=-1.0
+    )  # content stranger, terrified
     by_emotion = s2.recall_by_emotion(-0.90, 0.90, k=1)
     by_content = s2.recall_similar(cue, k=1)
-    assert by_emotion[0].key == e_fear.key, "somatic-marker recall must return the affect match (fear)"
-    assert by_content[0].key == e_content.key, "content recall must return the content match, not fear"
+    assert by_emotion[0].key == e_fear.key, (
+        "somatic-marker recall must return the affect match (fear)"
+    )
+    assert by_content[0].key == e_content.key, (
+        "content recall must return the content match, not fear"
+    )
 
     # (c) IMPORTANCE-WEIGHTED SAMPLING OVER-REPRESENTS HIGH IMPORTANCE vs UNIFORM (deterministic).
     #     Same seed for both draws so the comparison is apples-to-apples and un-riggable.
     s3 = AffectiveEpisodicStore(capacity=16)
-    hi = s3.store([1.0, 0.0], valence=0.90, arousal=0.90, reward=1.0)               # imp = 2.30
+    hi = s3.store([1.0, 0.0], valence=0.90, arousal=0.90, reward=1.0)  # imp = 2.30
     for i in range(5):
-        s3.store([0.0, float(i + 1)], valence=0.0, arousal=0.02, reward=0.0)        # imp = 0.02 each
+        s3.store([0.0, float(i + 1)], valence=0.0, arousal=0.02, reward=0.0)  # imp = 0.02 each
     budget, seed_c = 1000, 123
     weighted = s3.consolidate(budget, seed=seed_c)
     uniform = random.Random(seed_c).choices(s3.episodes, weights=[1.0] * len(s3), k=budget)
     w_hi = sum(1 for ep in weighted if ep.key == hi.key)
     u_hi = sum(1 for ep in uniform if ep.key == hi.key)
-    assert w_hi > u_hi, f"importance sampling must over-represent the salient episode ({w_hi} <= {u_hi})"
+    assert w_hi > u_hi, (
+        f"importance sampling must over-represent the salient episode ({w_hi} <= {u_hi})"
+    )
     assert w_hi > budget // len(s3), "weighted count must exceed the uniform 1/N expectation"
 
     # (d) DETERMINISM: same seed -> identical consolidate sample.
@@ -233,17 +253,25 @@ def main():
     d2 = [ep.key for ep in s3.consolidate(500, seed=7)]
     assert d1 == d2, "same seed must yield an identical consolidate sample"
 
-    print(f"(a) RETENTION : kept high-affect (imp={_importance(high):.2f}, oldest tick={high.tick}); "
-          f"evicted low-affect (imp={_importance(low1):.2f}) -> emotion beats recency")
-    print("(b) SOMATIC   : recall_by_emotion -> fear episode; recall_similar -> content episode "
-          "(marker beats content)")
-    print(f"(c) REPLAY    : salient episode sampled {w_hi}/{budget} weighted vs {u_hi}/{budget} uniform "
-          f"(over-represented)")
+    print(
+        f"(a) RETENTION : kept high-affect (imp={_importance(high):.2f}, oldest tick={high.tick}); "
+        f"evicted low-affect (imp={_importance(low1):.2f}) -> emotion beats recency"
+    )
+    print(
+        "(b) SOMATIC   : recall_by_emotion -> fear episode; recall_similar -> content episode "
+        "(marker beats content)"
+    )
+    print(
+        f"(c) REPLAY    : salient episode sampled {w_hi}/{budget} weighted vs {u_hi}/{budget} uniform "
+        f"(over-represented)"
+    )
     print(f"(d) DETERMINISM: same seed -> identical {len(d1)}-episode sample")
     print("=" * 68)
-    print(f"self-check OK: affect-weighted retention (keep imp={_importance(high):.2f}, drop "
-          f"imp={_importance(low1):.2f}); somatic-marker recall beats content; amygdala-modulated "
-          f"replay over-represents salient {w_hi}>{u_hi}; deterministic")
+    print(
+        f"self-check OK: affect-weighted retention (keep imp={_importance(high):.2f}, drop "
+        f"imp={_importance(low1):.2f}); somatic-marker recall beats content; amygdala-modulated "
+        f"replay over-represents salient {w_hi}>{u_hi}; deterministic"
+    )
 
 
 if __name__ == "__main__":

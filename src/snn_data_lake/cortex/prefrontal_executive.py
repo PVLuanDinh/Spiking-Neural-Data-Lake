@@ -6,7 +6,7 @@ The prefrontal cortex holds a GOAL in working memory as PERSISTENT SPIKING activ
 spiking winner-take-all competition between option pools, and broadcasts a TOP-DOWN BIAS that
 downstream action selection consumes. Neither the decision nor the memory is a rate-level shortcut:
 both are built from leaky-integrate-and-fire (LIF) neurons that leak, integrate current, cross a
-threshold, emit a discrete spike, and reset. No numpy, no torch -- pure stdlib (math, random).
+threshold, emit a discrete spike, and reset.
 
 Mechanism (spiking, deterministic, per-instance rng):
   1. DECISION = a Wang-2002-style spiking decision ATTRACTOR (replaces the old LCA drift-diffusion
@@ -68,6 +68,7 @@ below threshold (which is what pops a stale sub-goal); the firing itself is real
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.prefrontal_executive
 """
+
 import random
 
 
@@ -79,45 +80,57 @@ class PrefrontalExecutive:
     deliberation with update(); read the raw spiking commitment with deliberate(); read the held goal
     via .goal; and read the top-down preference over options with top_down_bias()."""
 
-    def __init__(self, n_options, gate_threshold=0.5, recurrence=0.98, hold_threshold=0.2,
-                 bound=1.0, noise=1.0, dt=0.01, leak=0.2, inhibition=0.1, commit_races=25,
-                 max_goals=4, seed=0):
+    def __init__(
+        self,
+        n_options,
+        gate_threshold=0.5,
+        recurrence=0.98,
+        hold_threshold=0.2,
+        bound=1.0,
+        noise=1.0,
+        dt=0.01,
+        leak=0.2,
+        inhibition=0.1,
+        commit_races=25,
+        max_goals=4,
+        seed=0,
+    ):
         self.n_options = n_options
-        self.gate_threshold = gate_threshold    # evidence margin needed to overwrite the held goal
-        self.recurrence = recurrence            # WM recurrent self-excitation gain (~1 -> persistent)
-        self.hold_threshold = hold_threshold    # persistent drive fades (pool released) below this
-        self.bound = bound                      # spiking decision bound (sustained-rate threshold)
-        self.noise = noise                      # background input noise on the LIF pools
-        self.dt = dt                            # nominal integration time-step (LIF steps are discrete)
-        self.leak = leak                        # LIF membrane leak (sets the membrane decay factor)
-        self.inhibition = inhibition            # shared-inhibition strength (WTA competition)
-        self.commit_races = commit_races        # spiking decisions majority-voted into a stable commit
-        self.max_goals = max_goals              # bounded goal-stack depth (primary + sub-goals)
+        self.gate_threshold = gate_threshold  # evidence margin needed to overwrite the held goal
+        self.recurrence = recurrence  # WM recurrent self-excitation gain (~1 -> persistent)
+        self.hold_threshold = hold_threshold  # persistent drive fades (pool released) below this
+        self.bound = bound  # spiking decision bound (sustained-rate threshold)
+        self.noise = noise  # background input noise on the LIF pools
+        self.dt = dt  # nominal integration time-step (LIF steps are discrete)
+        self.leak = leak  # LIF membrane leak (sets the membrane decay factor)
+        self.inhibition = inhibition  # shared-inhibition strength (WTA competition)
+        self.commit_races = commit_races  # spiking decisions majority-voted into a stable commit
+        self.max_goals = max_goals  # bounded goal-stack depth (primary + sub-goals)
         self.rng = random.Random(seed)
-        self._stack = []                        # goal stack: [[index, drive, Vs], ...] base .. top
-        self._wm_spikes = 0                     # spikes emitted by the active WM pool on the last maintain()
+        self._stack = []  # goal stack: [[index, drive, Vs], ...] base .. top
+        self._wm_spikes = 0  # spikes emitted by the active WM pool on the last maintain()
 
         # ---- spiking (LIF) constants; dimensionless, discrete-step. threshold=1.0, reset=0.0 -------
         md = 1.0 - leak
-        self._md = 0.5 if md < 0.5 else (0.95 if md > 0.95 else md)   # membrane decay (from leak)
+        self._md = 0.5 if md < 0.5 else (0.95 if md > 0.95 else md)  # membrane decay (from leak)
         # decision attractor (Wang-2002 WTA): one LIF pool per option + a shared inhibitory pool
-        self._n_dec = 5                          # LIF neurons per option pool
-        self._n_inh = 3                          # shared inhibitory pool size
-        self._t_max = 200                        # max integration steps per spiking decision
-        self._g_ext = 0.55                       # external evidence -> input current gain
-        self._b0 = 0.02                          # baseline input current
-        self._w_plus = 0.50                      # recurrent self-excitation within an option pool
-        self._w_inh = 4.0 * inhibition           # shared inhibitory pool -> option pools (recurrent WTA)
-        self._w_ie = 1.2                         # option pools -> inhibitory pool excitation
-        self._w_cross = 0.50                     # feed-forward cross-inhibition (immediate, chronometric)
-        self._init_v = 0.10                      # random initial membrane charge (seed-dependent start)
-        self._theta = 0.26 * bound               # sustained-firing-rate threshold to declare a winner
-        self._trace_decay = 0.90                 # rate-proxy (low-pass firing) smoothing
-        self._noise_amp = 0.05 * noise           # background noise amplitude
+        self._n_dec = 5  # LIF neurons per option pool
+        self._n_inh = 3  # shared inhibitory pool size
+        self._t_max = 200  # max integration steps per spiking decision
+        self._g_ext = 0.55  # external evidence -> input current gain
+        self._b0 = 0.02  # baseline input current
+        self._w_plus = 0.50  # recurrent self-excitation within an option pool
+        self._w_inh = 4.0 * inhibition  # shared inhibitory pool -> option pools (recurrent WTA)
+        self._w_ie = 1.2  # option pools -> inhibitory pool excitation
+        self._w_cross = 0.50  # feed-forward cross-inhibition (immediate, chronometric)
+        self._init_v = 0.10  # random initial membrane charge (seed-dependent start)
+        self._theta = 0.26 * bound  # sustained-firing-rate threshold to declare a winner
+        self._trace_decay = 0.90  # rate-proxy (low-pass firing) smoothing
+        self._noise_amp = 0.05 * noise  # background noise amplitude
         # working-memory attractor (persistent-activity bistable LIF pool)
-        self._n_wm = 6                           # LIF neurons in a working-memory pool
-        self._wm_steps = 8                       # LIF micro-steps advanced per maintain() delay tick
-        self._wm_gain = 0.55                     # recurrent drive -> input current gain
+        self._n_wm = 6  # LIF neurons in a working-memory pool
+        self._wm_steps = 8  # LIF micro-steps advanced per maintain() delay tick
+        self._wm_gain = 0.55  # recurrent drive -> input current gain
         # fixed per-neuron heterogeneity (deterministic; async firing without per-step randomness)
         het = random.Random((seed * 2654435761 + 1) & 0xFFFFFFFF)
         self._dec_bias = [0.05 * (het.random() - 0.5) for _ in range(self._n_dec * n_options)]
@@ -146,7 +159,7 @@ class PrefrontalExecutive:
             if e > e_ref:
                 e_ref = e
         if e_ref <= 0.0:
-            return 0, 1                                          # no evidence -> no race (tie -> index 0)
+            return 0, 1  # no evidence -> no race (tie -> index 0)
         scaled = [(e if e > 0.0 else 0.0) / e_ref for e in evidence]
         sum_scaled = 0.0
         for s in scaled:
@@ -165,26 +178,35 @@ class PrefrontalExecutive:
         init_v = self._init_v
         Vd = [[init_v * rnd() for _ in range(nd)] for _ in range(n)]
         Vi = [init_v * rnd() for _ in range(ni)]
-        trace = [0.0] * n                                        # per option-pool firing-rate proxy
-        trace_i = 0.0                                            # inhibitory-pool firing-rate proxy
+        trace = [0.0] * n  # per option-pool firing-rate proxy
+        trace_i = 0.0  # inhibitory-pool firing-rate proxy
         winner = None
         rt = self._t_max
         for t in range(1, self._t_max + 1):
-            inh = w_inh * trace_i                                # shared spiking inhibition this step
+            inh = w_inh * trace_i  # shared spiking inhibition this step
             spk = [0] * n
             for i in range(n):
-                cur = g_ext * scaled[i] - cross[i] + w_plus * trace[i] - inh + b0 + namp * (rnd() - 0.5)
+                cur = (
+                    g_ext * scaled[i]
+                    - cross[i]
+                    + w_plus * trace[i]
+                    - inh
+                    + b0
+                    + namp * (rnd() - 0.5)
+                )
                 base = i * nd
                 col = Vd[i]
                 s = 0
                 for k in range(nd):
-                    v = md * col[k] + cur + dec_bias[base + k]   # LIF: leak + integrate current
-                    if v >= 1.0:                                 # threshold -> discrete spike -> reset
+                    v = md * col[k] + cur + dec_bias[base + k]  # LIF: leak + integrate current
+                    if v >= 1.0:  # threshold -> discrete spike -> reset
                         s += 1
                         v = 0.0
                     col[k] = v
                 spk[i] = s
-            exc = w_ie * (trace[0] if n == 1 else sum(trace))    # option pools excite the inhibitory pool
+            exc = w_ie * (
+                trace[0] if n == 1 else sum(trace)
+            )  # option pools excite the inhibitory pool
             si = 0
             for k in range(ni):
                 v = md * Vi[k] + exc + namp * (rnd() - 0.5)
@@ -196,12 +218,12 @@ class PrefrontalExecutive:
                 trace[i] = td * trace[i] + (1.0 - td) * (spk[i] / nd)
             trace_i = td * trace_i + (1.0 - td) * (si / ni)
             best = _argmax(trace)
-            if trace[best] >= theta:                            # first pool to sustained high firing wins
+            if trace[best] >= theta:  # first pool to sustained high firing wins
                 winner = best
                 rt = t
                 break
         if winner is None:
-            winner = _argmax(trace)                             # timed out -> the strongest pool so far
+            winner = _argmax(trace)  # timed out -> the strongest pool so far
         return winner, rt
 
     def deliberate(self, evidence):
@@ -238,9 +260,9 @@ class PrefrontalExecutive:
         threshold (or nothing is held yet), keeping any sub-goals. Shared by update() and plan()."""
         if not self._stack or margin >= self.gate_threshold:
             if self._stack:
-                self._stack[0] = self._new_frame(idx)           # overwrite the primary goal (keep sub-goals)
+                self._stack[0] = self._new_frame(idx)  # overwrite the primary goal (keep sub-goals)
             else:
-                self._stack.append(self._new_frame(idx))        # first goal
+                self._stack.append(self._new_frame(idx))  # first goal
 
     def _rollout_value(self, state, command, predictor, goal_value, horizon):
         """Roll `predictor.predict(s, command)` forward `horizon` steps from `state` (at least one --
@@ -259,7 +281,7 @@ class PrefrontalExecutive:
         exactly like update(). Returns (goal_index, mean_rt)."""
         values = [self._rollout_value(state, o, predictor, goal_value, horizon) for o in options]
         lo = min(values)
-        drifts = [v - lo + 0.1 for v in values]         # shift rollout scores to positive input drives
+        drifts = [v - lo + 0.1 for v in values]  # shift rollout scores to positive input drives
         votes = [0] * len(options)
         rts = []
         for _ in range(self.commit_races):
@@ -281,7 +303,7 @@ class PrefrontalExecutive:
         Returns the current (sub-)goal index."""
         winner = self._stable_commit(evidence)
         if len(self._stack) >= self.max_goals:
-            self._stack.pop(0)                          # bounded WM: drop the oldest (base) frame
+            self._stack.pop(0)  # bounded WM: drop the oldest (base) frame
         self._stack.append(self._new_frame(winner))
         return self.goal
 
@@ -296,13 +318,13 @@ class PrefrontalExecutive:
         drive = frame[1]
         Vs = frame[2]
         md = self._md
-        cur = self._wm_gain * drive                     # recurrent drive -> input current (no ext input)
+        cur = self._wm_gain * drive  # recurrent drive -> input current (no ext input)
         bias = self._wm_bias
         spikes = 0
         for _ in range(self._wm_steps):
             for k in range(self._n_wm):
-                v = md * Vs[k] + cur + bias[k]           # LIF: leak + integrate recurrent current
-                if v >= 1.0:                             # threshold -> spike -> reset
+                v = md * Vs[k] + cur + bias[k]  # LIF: leak + integrate recurrent current
+                if v >= 1.0:  # threshold -> spike -> reset
                     spikes += 1
                     v = 0.0
                 Vs[k] = v
@@ -318,9 +340,9 @@ class PrefrontalExecutive:
             self._wm_spikes = 0
             return None
         top = self._stack[-1]
-        top[1] *= self.recurrence                        # recurrent drive decays across the input-free delay
-        self._wm_spikes = self._run_wm_pool(top)         # persistent LIF spiking on the surviving drive
-        if top[1] < self.hold_threshold:                 # drive too weak to self-sustain -> release goal
+        top[1] *= self.recurrence  # recurrent drive decays across the input-free delay
+        self._wm_spikes = self._run_wm_pool(top)  # persistent LIF spiking on the surviving drive
+        if top[1] < self.hold_threshold:  # drive too weak to self-sustain -> release goal
             self._stack.pop()
         return self.goal
 
@@ -345,7 +367,6 @@ def _mean_rt(pfc, evidence, n):
 
 
 def main():
-    import sys
 
     from snn_data_lake.cerebellum.forward_model import ForwardModel  # the injected lookahead model
 
@@ -353,33 +374,33 @@ def main():
 
     # ---- 1. working-memory persistence: PERSISTENT SPIKING vs crippled maintenance ----------------
     pfc = PrefrontalExecutive(n_options=n_opt, seed=0)
-    pfc.update([2.0, 0.1, 0.1, 0.1])                 # strong evidence for option 0 -> commit goal
+    pfc.update([2.0, 0.1, 0.1, 0.1])  # strong evidence for option 0 -> commit goal
     committed = pfc.goal
     held_trace = []
     wm_spike_trace = []
-    for _ in range(6):                               # delay ticks with NO input
-        held_trace.append(pfc.maintain())            # the WM pool keeps firing (persistent activity)
-        wm_spike_trace.append(pfc._wm_spikes)        # discrete spikes emitted this input-free tick
+    for _ in range(6):  # delay ticks with NO input
+        held_trace.append(pfc.maintain())  # the WM pool keeps firing (persistent activity)
+        wm_spike_trace.append(pfc._wm_spikes)  # discrete spikes emitted this input-free tick
     persisted = pfc.goal
 
     crippled = PrefrontalExecutive(n_options=n_opt, recurrence=0.0, seed=0)  # no recurrence
     crippled.update([2.0, 0.1, 0.1, 0.1])
     crippled_trace = [crippled.maintain() for _ in range(3)]
-    crippled_wm_spikes = crippled._wm_spikes         # the pool falls silent once the drive collapses
+    crippled_wm_spikes = crippled._wm_spikes  # the pool falls silent once the drive collapses
     decayed = crippled.goal
 
     # ---- 2. gated updating: stability (weak B) vs flexibility (strong B) ---------------------------
     gate = PrefrontalExecutive(n_options=3, seed=1)
-    gate.update([2.0, 0.2, 0.2])                     # commit goal A = 0
+    gate.update([2.0, 0.2, 0.2])  # commit goal A = 0
     goal_a = gate.goal
-    gate.update([0.5, 0.7, 0.4])                     # WEAK evidence for B (margin < gate) -> keep A
+    gate.update([0.5, 0.7, 0.4])  # WEAK evidence for B (margin < gate) -> keep A
     after_weak = gate.goal
-    gate.update([0.2, 2.0, 0.2])                     # STRONG evidence for B (margin > gate) -> B
+    gate.update([0.2, 2.0, 0.2])  # STRONG evidence for B (margin > gate) -> B
     after_strong = gate.goal
 
     # ---- 3. spiking decision: WTA winner + chronometric rt ordering --------------------------------
     delib = PrefrontalExecutive(n_options=3, seed=2)
-    competing = [0.3, 0.8, 1.8]                      # option 2 has the strongest evidence
+    competing = [0.3, 0.8, 1.8]  # option 2 has the strongest evidence
     n_win = 60
     wins = [0, 0, 0]
     sample_rt = None
@@ -389,24 +410,26 @@ def main():
         if sample_rt is None:
             sample_rt = rt
     strongest = _argmax(competing)
-    weak_rt = _mean_rt(delib, [0.6, 0.1, 0.1], 30)   # weak dominant evidence -> slow commitment
+    weak_rt = _mean_rt(delib, [0.6, 0.1, 0.1], 30)  # weak dominant evidence -> slow commitment
     strong_rt = _mean_rt(delib, [2.2, 0.1, 0.1], 30)  # strong dominant evidence -> fast commitment
 
     # ---- 4. top-down bias reflects the goal --------------------------------------------------------
     biaser = PrefrontalExecutive(n_options=n_opt, seed=3)
     bias_none = biaser.top_down_bias()
-    biaser.update([2.0, 0.1, 0.1, 0.1])              # goal 0
+    biaser.update([2.0, 0.1, 0.1, 0.1])  # goal 0
     bias_0 = biaser.top_down_bias()
-    biaser.update([0.1, 0.1, 0.1, 2.0])              # goal 3
+    biaser.update([0.1, 0.1, 0.1, 2.0])  # goal 3
     bias_3 = biaser.top_down_bias()
 
     # ---- 5. model-based lookahead: reactive picks the immediate TRAP; planning rejects it ----------
     # abstract plant s' = s + 0.2*(-0.5*s + u): a constant command u converges to steady state 2u.
     fm_trap = ForwardModel(a=-0.5, b=1.0, dt=0.2)
     target = 2.0
-    def goal_value(s):                               # closer to the target state -> higher value
+
+    def goal_value(s):  # closer to the target state -> higher value
         return -abs(s - target)
-    options = [1.0, 5.0, 0.2]                         # cmd 0 -> s*=2.0 (goal); cmd 1 -> s*=10 (trap)
+
+    options = [1.0, 5.0, 0.2]  # cmd 0 -> s*=2.0 (goal); cmd 1 -> s*=10 (trap)
     reactive = PrefrontalExecutive(n_options=len(options), seed=10)
     reactive_goal, reactive_rt = reactive.plan(0.0, options, fm_trap, goal_value, horizon=1)
     planned = PrefrontalExecutive(n_options=len(options), seed=10)
@@ -418,30 +441,35 @@ def main():
     # ---- 5b. the lookahead composes with the REAL forward model + is deterministic -----------------
     fm_chk = ForwardModel(a=-0.5, b=1.0, dt=0.2)
     manual = 0.0
-    for _ in range(3):                               # the model's own forward chain, by hand
+    for _ in range(3):  # the model's own forward chain, by hand
         manual = fm_chk.predict(manual, 1.0)
-    via_rollout = PrefrontalExecutive(n_options=2, seed=0)._rollout_value(0.0, 1.0, fm_chk,
-                                                                          lambda s: s, 3)
+    via_rollout = PrefrontalExecutive(n_options=2, seed=0)._rollout_value(
+        0.0, 1.0, fm_chk, lambda s: s, 3
+    )
+
     def plan_scene(seed):
         p = PrefrontalExecutive(n_options=len(options), seed=seed)
         return p.plan(0.0, options, ForwardModel(a=-0.5, b=1.0, dt=0.2), goal_value, horizon=40)
+
     plan_det = plan_scene(9) == plan_scene(9)
 
     # ---- 5c. planning keeps the chronometric signature: a wider terminal gap commits faster --------
     wide = PrefrontalExecutive(n_options=2, seed=11)
-    _wg, wide_rt = wide.plan(0.0, [1.0, 5.0], fm_trap, goal_value, horizon=40)     # terminals 2 vs 10
+    _wg, wide_rt = wide.plan(0.0, [1.0, 5.0], fm_trap, goal_value, horizon=40)  # terminals 2 vs 10
     narrow = PrefrontalExecutive(n_options=2, seed=11)
-    _ng, narrow_rt = narrow.plan(0.0, [1.0, 1.05], fm_trap, goal_value, horizon=40)  # terminals 2 vs 2.1
+    _ng, narrow_rt = narrow.plan(
+        0.0, [1.0, 1.05], fm_trap, goal_value, horizon=40
+    )  # terminals 2 vs 2.1
 
     # ---- 6. richer working memory: a sub-goal over a primary, pops back on decay --------------------
     hier = PrefrontalExecutive(n_options=4, seed=8)
-    hier.update([2.0, 0.1, 0.1, 0.1])                # primary goal 0
+    hier.update([2.0, 0.1, 0.1, 0.1])  # primary goal 0
     primary_goal = hier.goal
-    hier.push_subgoal([0.1, 0.1, 2.0, 0.1])          # sub-goal 2, pushed above the primary
+    hier.push_subgoal([0.1, 0.1, 2.0, 0.1])  # sub-goal 2, pushed above the primary
     sub_goal = hier.goal
-    hier_goals = list(hier.goals)                    # [0, 2] -- the held hierarchy
-    hier_bias = hier.top_down_bias()                 # the whole hierarchy votes (nonzero on 0 and 2)
-    popped_back = None                               # the sub-goal decays and pops back to the parent
+    hier_goals = list(hier.goals)  # [0, 2] -- the held hierarchy
+    hier_bias = hier.top_down_bias()  # the whole hierarchy votes (nonzero on 0 and 2)
+    popped_back = None  # the sub-goal decays and pops back to the parent
     for _ in range(400):
         g = hier.maintain()
         if len(hier.goals) == 1:
@@ -452,43 +480,64 @@ def main():
     print("=" * 72)
     print("PREFRONTAL EXECUTIVE -- spiking working memory + spiking WTA decision -> top-down bias")
     print("=" * 72)
-    print(f"options: {n_opt} | gate: {pfc.gate_threshold} | recurrence: {pfc.recurrence} | "
-          f"hold threshold: {pfc.hold_threshold} | LIF pool: {pfc._n_dec}/opt + {pfc._n_inh} inh")
-    print(f"commit goal {committed}; after 6 delay ticks (no input) -> still held: {persisted} "
-          f"(trace {held_trace})")
-    print(f"persistent spiking: WM pool spikes per input-free tick {wm_spike_trace} "
-          f"(crippled recurrence=0 -> {crippled_wm_spikes} spikes, trace {crippled_trace}, goal {decayed})")
+    print(
+        f"options: {n_opt} | gate: {pfc.gate_threshold} | recurrence: {pfc.recurrence} | "
+        f"hold threshold: {pfc.hold_threshold} | LIF pool: {pfc._n_dec}/opt + {pfc._n_inh} inh"
+    )
+    print(
+        f"commit goal {committed}; after 6 delay ticks (no input) -> still held: {persisted} "
+        f"(trace {held_trace})"
+    )
+    print(
+        f"persistent spiking: WM pool spikes per input-free tick {wm_spike_trace} "
+        f"(crippled recurrence=0 -> {crippled_wm_spikes} spikes, trace {crippled_trace}, goal {decayed})"
+    )
     print("-" * 72)
-    print(f"gated updating: hold A={goal_a}; weak evidence for B -> {after_weak} (stays A); "
-          f"strong evidence for B -> {after_strong} (switches to B)")
+    print(
+        f"gated updating: hold A={goal_a}; weak evidence for B -> {after_weak} (stays A); "
+        f"strong evidence for B -> {after_strong} (switches to B)"
+    )
     print("-" * 72)
-    print(f"spiking WTA over evidence {competing} ({n_win} trials): win counts {wins} -> "
-          f"strongest option {strongest} wins {wins[strongest]}/{n_win} (sample rt {sample_rt} steps)")
-    print(f"chronometric: weak-evidence rt {weak_rt:.1f} steps vs strong-evidence rt "
-          f"{strong_rt:.1f} steps -> stronger commits faster")
+    print(
+        f"spiking WTA over evidence {competing} ({n_win} trials): win counts {wins} -> "
+        f"strongest option {strongest} wins {wins[strongest]}/{n_win} (sample rt {sample_rt} steps)"
+    )
+    print(
+        f"chronometric: weak-evidence rt {weak_rt:.1f} steps vs strong-evidence rt "
+        f"{strong_rt:.1f} steps -> stronger commits faster"
+    )
     print("-" * 72)
     print(f"top-down bias: no goal -> {bias_none}; goal 0 -> {bias_0}; goal 3 -> {bias_3}")
     print("-" * 72)
-    print(f"lookahead   : options {options} immediate values {[round(v, 2) for v in immediate_vals]} "
-          f"-> terminal values {[round(v, 2) for v in terminal_vals]}")
-    print(f"deliberation: reactive (h=1) commits option {reactive_goal} (the immediate-best TRAP); "
-          f"planned (h=40) commits option {planned_goal} (the terminal-best)")
+    print(
+        f"lookahead   : options {options} immediate values {[round(v, 2) for v in immediate_vals]} "
+        f"-> terminal values {[round(v, 2) for v in terminal_vals]}"
+    )
+    print(
+        f"deliberation: reactive (h=1) commits option {reactive_goal} (the immediate-best TRAP); "
+        f"planned (h=40) commits option {planned_goal} (the terminal-best)"
+    )
     print(f"chronometric: wide terminal gap rt {wide_rt:.1f} < narrow gap rt {narrow_rt:.1f} steps")
-    print(f"hierarchy   : primary goal {primary_goal}; push sub-goal -> held {hier_goals}, bias "
-          f"{hier_bias}; sub-goal decays -> pops back to primary {after_pop}")
+    print(
+        f"hierarchy   : primary goal {primary_goal}; push sub-goal -> held {hier_goals}, bias "
+        f"{hier_bias}; sub-goal decays -> pops back to primary {after_pop}"
+    )
     print("=" * 72)
 
     # ---- un-riggable self-checks (deterministic asserts) ------------------------------------------
-    # (0) GENUINELY SPIKING: LIF pools, discrete spikes, persistent firing -- and NO numpy / torch.
-    assert "numpy" not in sys.modules and "torch" not in sys.modules, \
-        "the spiking executive must be pure stdlib (no numpy / torch imported)"
-    assert all(isinstance(s, int) for s in wm_spike_trace), "WM activity must be discrete spike counts"
-    assert all(s > 0 for s in wm_spike_trace), \
+    # (0) GENUINELY SPIKING: LIF pools, discrete spikes, persistent firing.
+    assert all(isinstance(s, int) for s in wm_spike_trace), (
+        "WM activity must be discrete spike counts"
+    )
+    assert all(s > 0 for s in wm_spike_trace), (
         f"the WM pool must keep EMITTING SPIKES across zero-input delay ticks ({wm_spike_trace})"
-    assert crippled_wm_spikes == 0, \
+    )
+    assert crippled_wm_spikes == 0, (
         f"with no recurrence the WM pool must fall silent (no persistent spiking), got {crippled_wm_spikes}"
-    assert isinstance(sample_rt, int) and 0 < sample_rt <= delib._t_max, \
+    )
+    assert isinstance(sample_rt, int) and 0 < sample_rt <= delib._t_max, (
         f"a spiking decision must resolve at a discrete reaction-time step ({sample_rt})"
+    )
 
     # (1) persistence: recurrence sustains the goal across a delay; crippled maintenance loses it.
     assert committed == 0, "a strong evidence commitment must set the goal"
@@ -499,14 +548,17 @@ def main():
     # (2) stability vs flexibility: weak new evidence cannot overwrite; strong new evidence can.
     assert goal_a == 0, "the executive must first commit goal A"
     assert after_weak == goal_a, "weak new evidence (margin below gate) must NOT overwrite goal A"
-    assert after_strong == 1 and after_strong != goal_a, \
+    assert after_strong == 1 and after_strong != goal_a, (
         "strong new evidence (margin above gate) must switch the goal to B"
+    )
 
     # (3) spiking WTA decision: strongest evidence wins the majority; stronger evidence is faster.
-    assert wins[strongest] == max(wins) and wins[strongest] > n_win / 2, \
+    assert wins[strongest] == max(wins) and wins[strongest] > n_win / 2, (
         f"the strongest-evidence option's LIF pool must win the WTA majority ({wins})"
-    assert strong_rt < weak_rt, \
+    )
+    assert strong_rt < weak_rt, (
         f"stronger evidence must commit faster ({strong_rt:.1f} vs {weak_rt:.1f} steps)"
+    )
 
     # (4) top-down bias reflects the held goal, switches with it, and is all-zeros when none held.
     assert bias_none == [0.0] * n_opt, "no held goal must yield an all-zero top-down bias"
@@ -531,39 +583,55 @@ def main():
     assert same_a != diff_c, "a different seed must differ"
 
     # (6) model-based lookahead changes behaviour: reactive takes the immediate trap, planning avoids it.
-    assert _argmax(immediate_vals) == 1, \
+    assert _argmax(immediate_vals) == 1, (
         f"the trap must be the immediate-best option (values {immediate_vals})"
-    assert _argmax(terminal_vals) == 0, \
+    )
+    assert _argmax(terminal_vals) == 0, (
         f"a different option must be the terminal-best (values {terminal_vals})"
-    assert reactive_goal == 1, f"reactive deliberation (h=1) must take the immediate trap ({reactive_goal})"
-    assert planned_goal == 0 and planned_goal != reactive_goal, \
+    )
+    assert reactive_goal == 1, (
+        f"reactive deliberation (h=1) must take the immediate trap ({reactive_goal})"
+    )
+    assert planned_goal == 0 and planned_goal != reactive_goal, (
         f"planning (h=40) must reject the trap and commit the terminal-best ({planned_goal})"
+    )
 
     # (7) the lookahead composes with the REAL forward model and is deterministic.
-    assert via_rollout == manual, \
+    assert via_rollout == manual, (
         f"the rollout must equal the forward model's own prediction chain ({via_rollout} vs {manual})"
+    )
     assert plan_det, "same seed must reproduce an identical plan (goal + rt)"
 
     # (8) planning keeps the chronometric signature: a wider terminal value gap commits faster.
-    assert wide_rt < narrow_rt, \
+    assert wide_rt < narrow_rt, (
         f"a wider terminal-value gap must commit faster ({wide_rt:.1f} vs {narrow_rt:.1f} steps)"
+    )
 
     # (9) richer working memory: a sub-goal sits above the primary, the hierarchy votes, it pops back.
-    assert primary_goal == 0 and sub_goal == 2 and sub_goal != primary_goal, \
+    assert primary_goal == 0 and sub_goal == 2 and sub_goal != primary_goal, (
         f"push_subgoal must place a sub-goal above the primary ({hier_goals})"
+    )
     assert hier_goals == [0, 2], f"the held hierarchy must be primary then sub-goal ({hier_goals})"
-    assert hier_bias[0] > 0 and hier_bias[2] > 0 and sum(1 for b in hier_bias if b > 0) == 2, \
+    assert hier_bias[0] > 0 and hier_bias[2] > 0 and sum(1 for b in hier_bias if b > 0) == 2, (
         f"the top-down bias must vote for the whole held hierarchy ({hier_bias})"
-    assert popped_back == primary_goal and after_pop == [primary_goal], \
+    )
+    assert popped_back == primary_goal and after_pop == [primary_goal], (
         f"a decayed sub-goal must pop back to the held primary goal (got {popped_back}, stack {after_pop})"
+    )
 
-    print(f"self-check OK: goal {committed} persists as PERSISTENT SPIKING across delay "
-          f"(WM spikes {wm_spike_trace}; crippled -> {crippled_wm_spikes});")
-    print(f"  stability keeps A={goal_a} under weak B, flexibility switches to {after_strong}; spiking "
-          f"WTA wins {wins[strongest]}/{n_win} and commits faster ({strong_rt:.1f} < {weak_rt:.1f} steps);")
-    print(f"  top-down bias tracks the goal; deterministic; lookahead: reactive takes trap option "
-          f"{reactive_goal}, planning commits option {planned_goal}; sub-goal {sub_goal} pops back to "
-          f"{primary_goal}")
+    print(
+        f"self-check OK: goal {committed} persists as PERSISTENT SPIKING across delay "
+        f"(WM spikes {wm_spike_trace}; crippled -> {crippled_wm_spikes});"
+    )
+    print(
+        f"  stability keeps A={goal_a} under weak B, flexibility switches to {after_strong}; spiking "
+        f"WTA wins {wins[strongest]}/{n_win} and commits faster ({strong_rt:.1f} < {weak_rt:.1f} steps);"
+    )
+    print(
+        f"  top-down bias tracks the goal; deterministic; lookahead: reactive takes trap option "
+        f"{reactive_goal}, planning commits option {planned_goal}; sub-goal {sub_goal} pops back to "
+        f"{primary_goal}"
+    )
 
 
 if __name__ == "__main__":

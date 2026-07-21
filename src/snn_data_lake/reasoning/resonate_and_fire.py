@@ -11,6 +11,7 @@ deterministic. On-thesis with cpg_oscillator / izhikevich_neuron / spike_preproc
 
   python -m research.resonate_and_fire        # (also run by run_selfchecks.py, root on PYTHONPATH)
 """
+
 import math
 
 
@@ -19,7 +20,7 @@ class ResonateFire:
 
     def __init__(self, freq_hz, damping=2.0, threshold=0.3, dt=0.001):
         self.omega = 2.0 * math.pi * freq_hz
-        self.b = -damping                     # subthreshold decay (negative -> damped oscillation)
+        self.b = -damping  # subthreshold decay (negative -> damped oscillation)
         self.threshold = threshold
         self.dt = dt
         self.reset()
@@ -30,9 +31,9 @@ class ResonateFire:
 
     def step(self, current):
         x, y = self.x, self.y
-        self.x = x + (self.b * x - self.omega * y + current) * self.dt    # rotate + decay + drive
+        self.x = x + (self.b * x - self.omega * y + current) * self.dt  # rotate + decay + drive
         self.y = y + (self.omega * x + self.b * y) * self.dt
-        if self.y >= self.threshold:                                      # oscillation crossed threshold -> spike
+        if self.y >= self.threshold:  # oscillation crossed threshold -> spike
             self.x = self.y = 0.0
             return 1
         return 0
@@ -47,7 +48,7 @@ def _sine(freq_hz, steps, dt=0.001, amp=1.0):
 
 
 def main():
-    dt, steps = 0.001, 2000                                    # 2 seconds
+    dt, steps = 0.001, 2000  # 2 seconds
 
     # 1. tuning curve: a 10 Hz-tuned neuron responds only near 10 Hz (band-pass)
     tuned = ResonateFire(10.0, dt=dt)
@@ -72,13 +73,21 @@ def main():
     print(f"detected frequencies : {detected} Hz (the two tones present)")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert peak > 0 and off == 0, f"the neuron must resonate at its tuned frequency only ({tuning})"
-    assert set(detected) == {10, 20}, f"the bank must detect exactly the two tones present ({detected})"
-    assert response[bank_freqs.index(10)] >= 2 and response[bank_freqs.index(15)] < 2, "off-tone neurons stay below sustained resonance"
-    assert ResonateFire(10.0, dt=dt).run(_sine(10, steps, dt)) == peak, "same signal -> identical response (deterministic)"
-    print(f"self-check OK: band-pass resonance (peak {peak} at 10 Hz, {off} off); bank decomposed 10+20 Hz "
-          f"signal to {detected}; deterministic")
+    assert set(detected) == {10, 20}, (
+        f"the bank must detect exactly the two tones present ({detected})"
+    )
+    assert response[bank_freqs.index(10)] >= 2 and response[bank_freqs.index(15)] < 2, (
+        "off-tone neurons stay below sustained resonance"
+    )
+    assert ResonateFire(10.0, dt=dt).run(_sine(10, steps, dt)) == peak, (
+        "same signal -> identical response (deterministic)"
+    )
+    print(
+        f"self-check OK: band-pass resonance (peak {peak} at 10 Hz, {off} off); bank decomposed 10+20 Hz "
+        f"signal to {detected}; deterministic"
+    )
 
 
 if __name__ == "__main__":

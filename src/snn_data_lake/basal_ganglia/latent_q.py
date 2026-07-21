@@ -39,11 +39,12 @@ DECISION-by-integration model (evidence_accumulation.py). It is the drop-in repl
 scalar q the reward-learning side already keeps; values(z) returns a dict keyed by action name with
 the same shape as the old q[unit] row, so it wires in without changing the selection stage.
 
-Pure stdlib (random; dot/unit reused from substrate._mathutils), ASCII-only prints, deterministic
+stdlib + numpy/torch allowed project-wide (uses random; dot/unit reused from substrate._mathutils), ASCII-only prints, deterministic
 (random.Random(seed) per instance -- identical seed => byte-identical weights).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.basal_ganglia.latent_q
 """
+
 import random
 
 from snn_data_lake.substrate._mathutils import dot, unit
@@ -58,17 +59,19 @@ class LatentQ:
     """
 
     def __init__(self, actions, latent_dim, lr=0.1, seed=0):
-        self.actions = tuple(actions)                  # ordered action names
+        self.actions = tuple(actions)  # ordered action names
         self.n = len(self.actions)
         self.latent_dim = int(latent_dim)
         self.lr = float(lr)
         self.seed = seed
-        self.rng = random.Random(seed)                 # per-instance rng; same seed => same weights
+        self.rng = random.Random(seed)  # per-instance rng; same seed => same weights
         self._aidx = {a: i for i, a in enumerate(self.actions)}
         # small random W (breaks ties / symmetry), zero bias -- matches the tabular q's zero init
         scale = 0.01
-        self.W = [[self.rng.uniform(-1.0, 1.0) * scale for _ in range(self.latent_dim)]
-                  for _ in range(self.n)]
+        self.W = [
+            [self.rng.uniform(-1.0, 1.0) * scale for _ in range(self.latent_dim)]
+            for _ in range(self.n)
+        ]
         self.b = [0.0] * self.n
 
     def _idx(self, a):
@@ -92,7 +95,7 @@ class LatentQ:
         best_v = dot(self.W[0], z) + self.b[0]
         for i in range(1, self.n):
             v = dot(self.W[i], z) + self.b[i]
-            if v > best_v:                             # strict > keeps the lowest index on ties
+            if v > best_v:  # strict > keeps the lowest index on ties
                 best_v, best_i = v, i
         return self.actions[best_i]
 
@@ -128,7 +131,7 @@ def _rule_action(z, n_actions):
     g = len(z) // n_actions
     best_i, best_s = 0, sum(z[0:g])
     for j in range(1, n_actions):
-        s = sum(z[j * g:(j + 1) * g])
+        s = sum(z[j * g : (j + 1) * g])
         if s > best_s:
             best_s, best_i = s, j
     return best_i
@@ -157,19 +160,19 @@ class _TabularQ:
         self.n = n_actions
         self.lr = lr
         self.bins = bins
-        self.q = {}                                    # (quant_key, action) -> value
+        self.q = {}  # (quant_key, action) -> value
 
     def update(self, z, a, target):
         k = (_quant_key(z, self.bins), a)
         cur = self.q.get(k, 0.0)
-        self.q[k] = cur + self.lr * (target - cur)     # q += lr*(r - q): identical to the arm's rule
+        self.q[k] = cur + self.lr * (target - cur)  # q += lr*(r - q): identical to the arm's rule
 
     def greedy(self, z):
         key = _quant_key(z, self.bins)
         best_i, best_v = 0, self.q.get((key, 0), 0.0)
         for i in range(1, self.n):
             v = self.q.get((key, i), 0.0)
-            if v > best_v:                             # unseen key => all zeros => lowest index
+            if v > best_v:  # unseen key => all zeros => lowest index
                 best_v, best_i = v, i
         return best_i
 
@@ -180,7 +183,7 @@ def _held_out_acc(model, contexts, name_of=None):
     for z, opt in contexts:
         g = model.greedy(z)
         gi = name_of[g] if name_of is not None else g
-        ok += (gi == opt)
+        ok += gi == opt
     return ok / len(contexts)
 
 
@@ -200,7 +203,7 @@ def main():
     for _ in range(PASSES):
         for z, opt in train:
             for i, a in enumerate(ACTIONS):
-                r = 1.0 if i == opt else -1.0          # reward = target (bootstrap-free), for both models
+                r = 1.0 if i == opt else -1.0  # reward = target (bootstrap-free), for both models
                 lq.update(z, a, r)
                 tab.update(z, i, r)
     lq_holdout = _held_out_acc(lq, test, name_of=idx_of)
@@ -210,14 +213,14 @@ def main():
     # ---- (3) online learning: on a small fixed context set, update() drives greedy() to optimal ----
     fixed = _make_contexts(4, LATENT, N_ACT, random.Random(7))
     online = LatentQ(ACTIONS, LATENT, lr=0.2, seed=3)
-    v0 = online.value(fixed[0][0], fixed[0][1])        # optimal-action value BEFORE any reward
+    v0 = online.value(fixed[0][0], fixed[0][1])  # optimal-action value BEFORE any reward
     for _ in range(60):
         for z, opt in fixed:
             for i, a in enumerate(ACTIONS):
                 online.update(z, a, 1.0 if i == opt else -1.0)
     online_ok = all(idx_of[online.greedy(z)] == opt for z, opt in fixed)
     z0, opt0 = fixed[0]
-    v1 = online.value(z0, opt0)                        # optimal-action value AFTER reward
+    v1 = online.value(z0, opt0)  # optimal-action value AFTER reward
     others_below = all(online.value(z0, i) < v1 for i in range(N_ACT) if i != opt0)
 
     # ---- (4) determinism: two LatentQ(seed=s) on the same stream -> identical weights + greedy ----
@@ -227,30 +230,47 @@ def main():
     for z, a, r in stream:
         da.update(z, a, r)
         db.update(z, a, r)
-    same_w = (da.W == db.W and da.b == db.b)
+    same_w = da.W == db.W and da.b == db.b
     same_greedy = all(da.greedy(z) == db.greedy(z) for z, _o in test[:50])
 
     print("=" * 74)
     print("LATENT Q -- shared linear action-value over the JEPA latent (transfer vs tabular)")
     print("=" * 74)
-    print(f"latent_dim={LATENT} | actions={ACTIONS} | train={N_TRAIN} test={N_TEST} "
-          f"| passes={PASSES} lr={LR}")
-    print(f"rule: optimal action = latent group ([{LATENT // N_ACT} dims each]) with the largest sum")
-    print(f"(1) LatentQ  held-out accuracy : {lq_holdout:.3f}   (train {lq_train:.3f}) -> GENERALIZES")
-    print(f"(2) tabular  held-out accuracy : {tab_holdout:.3f}   (unseen z-keys -> ~chance {1.0 / N_ACT:.3f})")
-    print(f"    => shared latent transfers where the table cannot ({lq_holdout:.3f} >> {tab_holdout:.3f})")
-    print(f"(3) online   : greedy reaches optimal on {len(fixed)} fixed contexts = {online_ok}; "
-          f"rewarded value {v0:+.3f} -> {v1:+.3f} (rose above the others: {others_below})")
-    print(f"(4) determin : two seed=11 models identical weights={same_w}, identical greedy={same_greedy}")
+    print(
+        f"latent_dim={LATENT} | actions={ACTIONS} | train={N_TRAIN} test={N_TEST} "
+        f"| passes={PASSES} lr={LR}"
+    )
+    print(
+        f"rule: optimal action = latent group ([{LATENT // N_ACT} dims each]) with the largest sum"
+    )
+    print(
+        f"(1) LatentQ  held-out accuracy : {lq_holdout:.3f}   (train {lq_train:.3f}) -> GENERALIZES"
+    )
+    print(
+        f"(2) tabular  held-out accuracy : {tab_holdout:.3f}   (unseen z-keys -> ~chance {1.0 / N_ACT:.3f})"
+    )
+    print(
+        f"    => shared latent transfers where the table cannot ({lq_holdout:.3f} >> {tab_holdout:.3f})"
+    )
+    print(
+        f"(3) online   : greedy reaches optimal on {len(fixed)} fixed contexts = {online_ok}; "
+        f"rewarded value {v0:+.3f} -> {v1:+.3f} (rose above the others: {others_below})"
+    )
+    print(
+        f"(4) determin : two seed=11 models identical weights={same_w}, identical greedy={same_greedy}"
+    )
     print("=" * 74)
 
     # ---- un-riggable anchors (deterministic asserts) --------------------------------------------
     # (1) TRANSFER: LatentQ generalizes to held-out latents it never trained on.
-    assert lq_holdout > 0.85, f"LatentQ must generalize to held-out latents (>0.85), got {lq_holdout:.3f}"
+    assert lq_holdout > 0.85, (
+        f"LatentQ must generalize to held-out latents (>0.85), got {lq_holdout:.3f}"
+    )
     # (2) FAIR CONTROL: the tabular Q cannot transfer -- unseen keys leave it near chance.
     assert tab_holdout < 0.45, f"tabular Q must NOT transfer (<0.45), got {tab_holdout:.3f}"
     assert lq_holdout > tab_holdout + 0.30, (
-        f"shared latent must beat tabular by a wide margin ({lq_holdout:.3f} vs {tab_holdout:.3f})")
+        f"shared latent must beat tabular by a wide margin ({lq_holdout:.3f} vs {tab_holdout:.3f})"
+    )
     # (3) ONLINE: reward drives greedy to the optimal action and lifts its value above the others.
     assert online_ok, "online update() must drive greedy() to the optimal action on the fixed set"
     assert v1 > v0, f"rewarding the optimal action must raise its value ({v0:.3f} -> {v1:.3f})"
@@ -259,10 +279,14 @@ def main():
     assert same_w, "two LatentQ(seed=11) on the same stream must have byte-identical weights"
     assert same_greedy, "two LatentQ(seed=11) must make identical greedy choices"
 
-    print(f"self-check OK: LatentQ generalizes to held-out latents ({lq_holdout:.3f}) while the tabular "
-          f"control cannot ({tab_holdout:.3f} ~ chance);")
-    print(f"  online reward drives greedy to optimal (value {v0:+.3f} -> {v1:+.3f}); "
-          "identical seed => byte-identical weights + greedy")
+    print(
+        f"self-check OK: LatentQ generalizes to held-out latents ({lq_holdout:.3f}) while the tabular "
+        f"control cannot ({tab_holdout:.3f} ~ chance);"
+    )
+    print(
+        f"  online reward drives greedy to optimal (value {v0:+.3f} -> {v1:+.3f}); "
+        "identical seed => byte-identical weights + greedy"
+    )
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ converges onto the target times.
 
 Everything is emergent and measured: inputs/target/weights are seeded but never placed near a
 solution, spikes are not hand-planted, and the match tolerance and thresholds are fixed a priori.
-Deterministic (per-instance random.Random), pure stdlib, ASCII-only.
+Deterministic (per-instance random.Random), ASCII-only.
 
 Ref: Ponulak, F. & Kasinski, A. (2010), "Supervised Learning in Spiking Neural Networks with
 ReSuMe: Sequence Learning, Classification, and Spike Shifting", Neural Computation 22(2):467-510,
@@ -43,28 +43,29 @@ DOI 10.1162/neco.2009.11-08-901.
 
   python research/resume_learning.py        # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
 from snn_data_lake.spike_preprocessing import van_rossum_distance
 
 # ---- fixed hyperparameters (chosen a priori, NOT fitted after seeing results) ----
-N_SYN = 200        # plastic input synapses
-T_WIN = 100        # steps in the learning window
-TAU_M = 10.0       # LIF membrane time constant (steps)
-TAU_S = 5.0        # synaptic PSC time constant (steps)
-TAU_K = 5.0        # ReSuMe learning-kernel time constant (steps)
-TAU_VR = 3.0       # van Rossum metric time constant (steps)
-THR = 1.0          # firing threshold
-REFRAC = 4         # refractory steps after a spike
-A_OFF = 0.05       # ReSuMe non-Hebbian offset `a`
-ETA = 0.005        # learning rate
-EPOCHS = 80        # training epochs
+N_SYN = 200  # plastic input synapses
+T_WIN = 100  # steps in the learning window
+TAU_M = 10.0  # LIF membrane time constant (steps)
+TAU_S = 5.0  # synaptic PSC time constant (steps)
+TAU_K = 5.0  # ReSuMe learning-kernel time constant (steps)
+TAU_VR = 3.0  # van Rossum metric time constant (steps)
+THR = 1.0  # firing threshold
+REFRAC = 4  # refractory steps after a spike
+A_OFF = 0.05  # ReSuMe non-Hebbian offset `a`
+ETA = 0.005  # learning rate
+EPOCHS = 80  # training epochs
 INPUT_RATE = 0.05  # per-step Poisson spike probability per synapse
-N_TARGET = 5       # number of desired output spikes
-TARGET_LO = 10     # target times sampled from [TARGET_LO, T_WIN - TARGET_LO)
-TARGET_SPACING = 8 # minimum spacing between target spikes
-TOL = 3            # match tolerance (steps) for the timing-precision metric
+N_TARGET = 5  # number of desired output spikes
+TARGET_LO = 10  # target times sampled from [TARGET_LO, T_WIN - TARGET_LO)
+TARGET_SPACING = 8  # minimum spacing between target spikes
+TOL = 3  # match tolerance (steps) for the timing-precision metric
 
 
 def _poisson_inputs(rng):
@@ -129,8 +130,9 @@ def _to_events(times):
 
 def _distance(out_times, target):
     """Honest metric: REUSED van Rossum distance between output and target trains (channel 0)."""
-    return van_rossum_distance(_to_events(out_times), _to_events(target),
-                               n_features=1, t_steps=T_WIN, tau=TAU_VR)
+    return van_rossum_distance(
+        _to_events(out_times), _to_events(target), n_features=1, t_steps=T_WIN, tau=TAU_VR
+    )
 
 
 def train(seed):
@@ -138,9 +140,9 @@ def train(seed):
     rng = random.Random(seed)
     trains = _poisson_inputs(rng)
     target = _target_train(rng)
-    w = [rng.uniform(0.0, 0.05) for _ in range(N_SYN)]   # small random -- NOT near a solution
-    psc = _traces(trains, TAU_S)          # drives the membrane
-    kern = _traces(trains, TAU_K)         # ReSuMe eligibility (a + kern) at each step
+    w = [rng.uniform(0.0, 0.05) for _ in range(N_SYN)]  # small random -- NOT near a solution
+    psc = _traces(trains, TAU_S)  # drives the membrane
+    kern = _traces(trains, TAU_K)  # ReSuMe eligibility (a + kern) at each step
     tgtset = set(target)
 
     out0 = _forward(w, psc)
@@ -154,7 +156,7 @@ def train(seed):
             for t in range(T_WIN):
                 sd = 1.0 if t in tgtset else 0.0
                 so = 1.0 if t in outset else 0.0
-                if sd or so:                       # (S_d - S_out) is 0 elsewhere
+                if sd or so:  # (S_d - S_out) is 0 elsewhere
                     acc += (sd - so) * (A_OFF + ki[t])
             w[i] += ETA * acc
         traj.append(_distance(_forward(w, psc), target))
@@ -186,11 +188,13 @@ def main():
     print(f"initial output   : {out0}")
     print(f"final output     : {outf}")
     print(f"van Rossum dist  : initial {d0:.3f} -> final {df:.3f}  (ratio {df / d0:.3f})")
-    print(f"target match     : {matched}/{len(target)} within +/-{TOL} steps, {false_pos} false positives")
+    print(
+        f"target match     : {matched}/{len(target)} within +/-{TOL} steps, {false_pos} false positives"
+    )
     print(f"control (untrained neuron) van Rossum distance : {control:.3f}")
     print("=" * 64)
 
-    # ---- self-checks: deterministic asserts, fixed a priori, zero-dep ----
+    # ---- self-checks: deterministic asserts, fixed a priori ----
     # (a) LEARNS: the reused van Rossum distance drops substantially, in both relative and
     #     absolute terms. Fixed thresholds chosen before running.
     assert df < 0.35 * d0, f"van Rossum distance must drop a lot: {df:.3f} vs 0.35*{d0:.3f}"
@@ -201,14 +205,18 @@ def main():
     # (c) CONTROL: an untrained neuron is genuinely FAR from the target (the drop is learning,
     #     not a trivially-close init/target).
     assert control > 2.0, f"control neuron must be far from target: {control:.3f}"
-    assert df < 0.2 * control, f"learned distance must be far below control: {df:.3f} vs {control:.3f}"
+    assert df < 0.2 * control, (
+        f"learned distance must be far below control: {df:.3f} vs {control:.3f}"
+    )
     # (d) DETERMINISM: same seed -> identical distance trajectory on a repeat run.
     _, _, _, traj2, _ = train(seed)
     assert traj == traj2, "ReSuMe must be deterministic for a fixed seed"
 
-    print(f"self-check OK: ReSuMe learned the exact target train (van Rossum {d0:.2f} -> {df:.2f}), "
-          f"{matched}/{len(target)} target spikes matched, {false_pos} false positives, "
-          f"control {control:.2f}; deterministic")
+    print(
+        f"self-check OK: ReSuMe learned the exact target train (van Rossum {d0:.2f} -> {df:.2f}), "
+        f"{matched}/{len(target)} target spikes matched, {false_pos} false positives, "
+        f"control {control:.2f}; deterministic"
+    )
 
 
 if __name__ == "__main__":

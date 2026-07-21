@@ -1,5 +1,5 @@
 """
-Triplet STDP — spike-timing plasticity that captures the FREQUENCY dependence pair-STDP gets wrong (pure stdlib).
+Triplet STDP — spike-timing plasticity that captures the FREQUENCY dependence pair-STDP gets wrong.
 
 Classical pair-based STDP updates a synapse from pre/post spike PAIRS only, so for a fixed pre-before-post lag its
 prediction barely depends on how fast the pairs repeat -- and where it does depend, it depends the WRONG way:
@@ -23,6 +23,7 @@ visual-cortex parameter set, Table 3).
 
   python -m research.triplet_stdp        # (also run by run_selfchecks.py, root on PYTHONPATH)
 """
+
 import math
 
 
@@ -30,9 +31,14 @@ class TripletSTDP:
     """Pfister-Gerstner minimal triplet rule: 4 eligibility traces, additive weight change, event-driven."""
 
     def __init__(self, a2p, a2m, a3p, a3m, tau_p=16.8, tau_m=33.7, tau_x=101.0, tau_y=125.0):
-        self.a2p, self.a2m, self.a3p, self.a3m = a2p, a2m, a3p, a3m   # pair LTP/LTD, triplet LTP/LTD amplitudes
-        self.tau_p, self.tau_m = tau_p, tau_m                        # fast pre / fast post trace time constants (ms)
-        self.tau_x, self.tau_y = tau_x, tau_y                        # slow pre / slow post trace time constants (ms)
+        self.a2p, self.a2m, self.a3p, self.a3m = (
+            a2p,
+            a2m,
+            a3p,
+            a3m,
+        )  # pair LTP/LTD, triplet LTP/LTD amplitudes
+        self.tau_p, self.tau_m = tau_p, tau_m  # fast pre / fast post trace time constants (ms)
+        self.tau_x, self.tau_y = tau_x, tau_y  # slow pre / slow post trace time constants (ms)
 
     @classmethod
     def triplet(cls):
@@ -46,27 +52,27 @@ class TripletSTDP:
 
     def pairing_dw(self, freq_hz, n_pairs=60, dt_ms=10.0):
         """Net additive weight change from n_pairs pre->post pairs (dt_ms apart) repeated at freq_hz."""
-        r1 = r2 = o1 = o2 = 0.0                       # fast pre, slow pre, fast post, slow post eligibility traces
+        r1 = r2 = o1 = o2 = 0.0  # fast pre, slow pre, fast post, slow post eligibility traces
         w = 0.0
         t_last = 0.0
         period = 1000.0 / freq_hz
         events = []
-        for k in range(n_pairs):                      # pre at k*period, post dt_ms later
-            events.append((k * period, 0))            # 0 = presynaptic spike
-            events.append((k * period + dt_ms, 1))    # 1 = postsynaptic spike
+        for k in range(n_pairs):  # pre at k*period, post dt_ms later
+            events.append((k * period, 0))  # 0 = presynaptic spike
+            events.append((k * period + dt_ms, 1))  # 1 = postsynaptic spike
         events.sort()
         for t, kind in events:
-            dt = t - t_last                           # decay every trace to the current event time
+            dt = t - t_last  # decay every trace to the current event time
             r1 *= math.exp(-dt / self.tau_p)
             r2 *= math.exp(-dt / self.tau_x)
             o1 *= math.exp(-dt / self.tau_m)
             o2 *= math.exp(-dt / self.tau_y)
             t_last = t
-            if kind == 0:                             # PRE: LTD, slow-pre trace r2 read BEFORE this spike bumps it
+            if kind == 0:  # PRE: LTD, slow-pre trace r2 read BEFORE this spike bumps it
                 w -= o1 * (self.a2m + self.a3m * r2)
                 r1 += 1.0
                 r2 += 1.0
-            else:                                     # POST: LTP, slow-post trace o2 read BEFORE this spike bumps it
+            else:  # POST: LTP, slow-post trace o2 read BEFORE this spike bumps it
                 w += r1 * (self.a2p + self.a3p * o2)
                 o1 += 1.0
                 o2 += 1.0
@@ -74,7 +80,7 @@ class TripletSTDP:
 
 
 def main():
-    freqs = [1, 10, 20, 40, 50]                       # Sjostrom 2001 pairing-frequency sweep (Hz)
+    freqs = [1, 10, 20, 40, 50]  # Sjostrom 2001 pairing-frequency sweep (Hz)
     tri, pair = TripletSTDP.triplet(), TripletSTDP.pair()
     tri_dw = [tri.pairing_dw(f) for f in freqs]
     pair_dw = [pair.pairing_dw(f) for f in freqs]
@@ -87,23 +93,36 @@ def main():
     print(f"freq (Hz)      : {[f'{f:>7}' for f in freqs]}")
     print(f"triplet dw     : {[f'{v:>+7.3f}' for v in tri_dw]}  (LTP grows with rate)")
     print(f"pair    dw     : {[f'{v:>+7.3f}' for v in pair_dw]}  (LTP -> LTD, wrong way)")
-    print(f"@40 Hz         : triplet {tri_dw[i40]:+.3f} vs pair {pair_dw[i40]:+.3f}  (opposite sign)")
+    print(
+        f"@40 Hz         : triplet {tri_dw[i40]:+.3f} vs pair {pair_dw[i40]:+.3f}  (opposite sign)"
+    )
     print("=" * 64)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     mono_up = all(tri_dw[i] < tri_dw[i + 1] for i in range(len(freqs) - 1))
     mono_down = all(pair_dw[i] > pair_dw[i + 1] for i in range(len(freqs) - 1))
-    assert mono_up, f"defining property: triplet LTP must INCREASE with pairing frequency ({tri_dw})"
-    assert tri_dw[-1] > 0.4, f"triplet rule must reach decisive net LTP at high frequency ({tri_dw[-1]:.3f})"
+    assert mono_up, (
+        f"defining property: triplet LTP must INCREASE with pairing frequency ({tri_dw})"
+    )
+    assert tri_dw[-1] > 0.4, (
+        f"triplet rule must reach decisive net LTP at high frequency ({tri_dw[-1]:.3f})"
+    )
     assert mono_down, f"pair-STDP control must predict the OPPOSITE (decreasing) trend ({pair_dw})"
     assert tri_dw[i40] > 0.0 > pair_dw[i40], (
         f"sign divergence at 40 Hz: triplet potentiates where pair depresses "
-        f"({tri_dw[i40]:+.3f} vs {pair_dw[i40]:+.3f})")
-    reduced = TripletSTDP(a2p=8.8e-3, a2m=7.1e-3, a3p=0.0, a3m=0.0)      # triplet terms off + pair's A2
-    assert [reduced.pairing_dw(f) for f in freqs] == pair_dw, "triplet rule must reduce to pair-STDP when A3 = 0"
-    assert [TripletSTDP.triplet().pairing_dw(f) for f in freqs] == tri_dw, "same protocol -> identical dw (deterministic)"
-    print(f"self-check OK: triplet LTP {tri_dw[0]:+.3f}->{tri_dw[-1]:+.3f} rises with rate, pair "
-          f"{pair_dw[0]:+.3f}->{pair_dw[-1]:+.3f} falls; opposite sign @40 Hz; reduces to pair @A3=0; deterministic")
+        f"({tri_dw[i40]:+.3f} vs {pair_dw[i40]:+.3f})"
+    )
+    reduced = TripletSTDP(a2p=8.8e-3, a2m=7.1e-3, a3p=0.0, a3m=0.0)  # triplet terms off + pair's A2
+    assert [reduced.pairing_dw(f) for f in freqs] == pair_dw, (
+        "triplet rule must reduce to pair-STDP when A3 = 0"
+    )
+    assert [TripletSTDP.triplet().pairing_dw(f) for f in freqs] == tri_dw, (
+        "same protocol -> identical dw (deterministic)"
+    )
+    print(
+        f"self-check OK: triplet LTP {tri_dw[0]:+.3f}->{tri_dw[-1]:+.3f} rises with rate, pair "
+        f"{pair_dw[0]:+.3f}->{pair_dw[-1]:+.3f} falls; opposite sign @40 Hz; reduces to pair @A3=0; deterministic"
+    )
 
 
 if __name__ == "__main__":

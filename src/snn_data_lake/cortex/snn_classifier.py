@@ -1,5 +1,5 @@
 r"""
-Trainable spiking classifier  (stdlib-only, zero deps) — first trainable model
+Trainable spiking classifier — first trainable model
 for the project. Same aim: less compute, less storage than a dense ANN.
 
 How it embodies the project's storage method:
@@ -20,6 +20,7 @@ Learning rule: supervised local delta rule on per-input spike counts
 Task: 4 distinct 8x8 binary shapes (bar | / - / \ / box), recognised under
 bit-flip noise. Synthetic + self-contained so it trains offline in seconds.
 """
+
 import random
 
 from snn_data_lake.substrate._mathutils import softmax
@@ -29,13 +30,13 @@ from snn_data_lake.substrate._mathutils import softmax
 # its own data generation. So importing this module never perturbs the global RNG.
 
 GRID = 8
-N = GRID * GRID          # input neurons (pixels)
-STEPS = 20               # spike-train length per sample
+N = GRID * GRID  # input neurons (pixels)
+STEPS = 20  # spike-train length per sample
 LR = 0.5
 EPOCHS = 8
 TRAIN_PER_CLASS = 40
 TEST_PER_CLASS = 20
-FLIP = 0.12              # fraction of pixels flipped to make a noisy sample
+FLIP = 0.12  # fraction of pixels flipped to make a noisy sample
 ON_RATE, OFF_RATE = 0.9, 0.05  # spike prob for lit / dark pixel per timestep
 
 
@@ -53,13 +54,15 @@ def templates():
     vbar, hbar, diag, box = _blank(), _blank(), _blank(), _blank()
     mid = GRID // 2
     for i in range(GRID):
-        _set(vbar, i, mid)            # vertical bar
-        _set(hbar, mid, i)            # horizontal bar
-        _set(diag, i, i)             # diagonal
-    for i in range(GRID):            # box outline
-        _set(box, 0, i); _set(box, GRID - 1, i)
-        _set(box, i, 0); _set(box, i, GRID - 1)
-    return [vbar, hbar, diag, box]   # labels 0..3
+        _set(vbar, i, mid)  # vertical bar
+        _set(hbar, mid, i)  # horizontal bar
+        _set(diag, i, i)  # diagonal
+    for i in range(GRID):  # box outline
+        _set(box, 0, i)
+        _set(box, GRID - 1, i)
+        _set(box, i, 0)
+        _set(box, i, GRID - 1)
+    return [vbar, hbar, diag, box]  # labels 0..3
 
 
 def noisy(template, flip=FLIP):
@@ -94,8 +97,7 @@ def _seed_of(sample):
 def encode_step(sample, rng):
     """one timestep: each pixel fires with prob ON_RATE if lit else OFF_RATE.
     Returns the list of firing input-neuron indices (sparse event set)."""
-    return [i for i, px in enumerate(sample)
-            if rng.random() < (ON_RATE if px else OFF_RATE)]
+    return [i for i, px in enumerate(sample) if rng.random() < (ON_RATE if px else OFF_RATE)]
 
 
 def forward(W, sample, n_classes, rng=None):
@@ -109,11 +111,11 @@ def forward(W, sample, n_classes, rng=None):
     counts = [0] * N
     synops = 0
     for _ in range(STEPS):
-        for i in encode_step(sample, rng):   # sparse: only firing inputs do work
+        for i in encode_step(sample, rng):  # sparse: only firing inputs do work
             counts[i] += 1
             for c in range(n_classes):
                 currents[c] += W[c][i]
-            synops += n_classes           # one spike -> n_classes synaptic ops
+            synops += n_classes  # one spike -> n_classes synaptic ops
     return currents, counts, synops
 
 
@@ -138,7 +140,7 @@ def train(train_data, n_classes, quiet=False):
                         wc[i] += LR * err * counts[i] / STEPS
         acc = correct / len(train_data)
         if not quiet:
-            print(f"  epoch {epoch+1}/{EPOCHS}  train_acc={acc:.1%}")
+            print(f"  epoch {epoch + 1}/{EPOCHS}  train_acc={acc:.1%}")
     return W, total_synops
 
 
@@ -159,9 +161,16 @@ def evaluate(W, data, n_classes):
 def save_weights(W, path, meta=None):
     """Write the trained weight matrix W (list[C][N] of floats) to a plain JSON file."""
     import json
-    obj = {"format": "snn_classifier.W/1", "n_classes": len(W), "n_inputs": len(W[0]),
-           "grid": GRID, "steps": STEPS, "weights": [[float(w) for w in row] for row in W],
-           "meta": dict(meta or {})}
+
+    obj = {
+        "format": "snn_classifier.W/1",
+        "n_classes": len(W),
+        "n_inputs": len(W[0]),
+        "grid": GRID,
+        "steps": STEPS,
+        "weights": [[float(w) for w in row] for row in W],
+        "meta": dict(meta or {}),
+    }
     with open(path, "w", encoding="utf-8") as f:
         json.dump(obj, f)
     return path
@@ -171,6 +180,7 @@ def load_weights(path):
     """Load a weight matrix saved by save_weights (or exported by the training tier).
     Validates format + shape at this trust boundary before returning W (list[C][N])."""
     import json
+
     with open(path, encoding="utf-8") as f:
         obj = json.load(f)
     if not isinstance(obj, dict) or not str(obj.get("format", "")).startswith("snn_classifier.W"):
@@ -190,18 +200,20 @@ def extra_templates():
     cross, xsh, tophalf, lbar = _blank(), _blank(), _blank(), _blank()
     mid = GRID // 2
     for i in range(GRID):
-        _set(cross, mid, i); _set(cross, i, mid)        # plus  (overlaps v/h bars)
-        _set(xsh, i, i); _set(xsh, i, GRID - 1 - i)     # X     (overlaps diagonal)
-        _set(lbar, i, 0); _set(lbar, i, 1)              # thick left bar
+        _set(cross, mid, i)
+        _set(cross, i, mid)  # plus  (overlaps v/h bars)
+        _set(xsh, i, i)
+        _set(xsh, i, GRID - 1 - i)  # X     (overlaps diagonal)
+        _set(lbar, i, 0)
+        _set(lbar, i, 1)  # thick left bar
     for r in range(GRID // 2):
         for c in range(GRID):
-            _set(tophalf, r, c)                          # filled top half
+            _set(tophalf, r, c)  # filled top half
     return [cross, xsh, tophalf, lbar]
 
 
 def _ds(per_class, temps, flip):
-    data = [(noisy(t, flip), label) for label, t in enumerate(temps)
-            for _ in range(per_class)]
+    data = [(noisy(t, flip), label) for label, t in enumerate(temps) for _ in range(per_class)]
     random.shuffle(data)
     return data
 
@@ -226,7 +238,7 @@ def difficulty_sweep():
         W, _ = train(_ds(TRAIN_PER_CLASS, temps, 0.15), C, quiet=True)
         acc, _ = evaluate(W, _ds(TEST_PER_CLASS, temps, 0.15), C)
         bar = "#" * int(acc * 20)
-        print(f"  {C} classes : {acc:5.0%} (chance {1/C:4.0%}) | {bar}")
+        print(f"  {C} classes : {acc:5.0%} (chance {1 / C:4.0%}) | {bar}")
     print("=" * 56)
     print("Reads as the capacity curve: accuracy holds until noise or class")
     print("overlap exceeds what a single linear spiking readout can separate.")
@@ -234,7 +246,7 @@ def difficulty_sweep():
 
 # ---- run + measure ----------------------------------------------------------
 def main():
-    random.seed(0)                    # local, deterministic data generation (not an import-time side effect)
+    random.seed(0)  # local, deterministic data generation (not an import-time side effect)
     temps = templates()
     C = len(temps)
     train_data = dataset(TRAIN_PER_CLASS, temps)
@@ -249,7 +261,7 @@ def main():
     W, train_synops = train(train_data, C)
     test_acc, test_synops = evaluate(W, test_data, C)
     print()
-    print(f"TEST ACCURACY : {test_acc:.1%}   (chance = {1/C:.0%})")
+    print(f"TEST ACCURACY : {test_acc:.1%}   (chance = {1 / C:.0%})")
     print()
 
     # --- compute: spike-driven SynOps vs a dense ANN over the same samples ---
@@ -266,8 +278,10 @@ def main():
     # --- storage: weights as int8 vs float32; spikes binary vs float acts ---
     weight_vals = C * N
     print("STORAGE (lower = less space):")
-    print(f"  weights        : {weight_vals} values; int8 quantisable -> "
-          f"{weight_vals} B vs {weight_vals*4} B float32 (4x)")
+    print(
+        f"  weights        : {weight_vals} values; int8 quantisable -> "
+        f"{weight_vals} B vs {weight_vals * 4} B float32 (4x)"
+    )
     print("  activations    : spikes are 1-bit events vs 32-bit floats (32x)")
     print("=" * 56)
 
@@ -278,24 +292,28 @@ def main():
     s0 = test_data[0][0]
     c1, _, _ = forward(W, s0, C)
     for _ in range(5):
-        random.random()                       # perturb the global RNG between calls
+        random.random()  # perturb the global RNG between calls
     c2, _, _ = forward(W, s0, C)
     assert c1 == c2, "forward() is not deterministic for identical input (leaks global randomness)"
     # weight bridge round-trip: save -> load is exact and preserves predictions (the [train] GPU
     # tier exports weights in this same JSON layout for the zero-dep core to load and serve).
     import os
     import tempfile
+
     wp = os.path.join(tempfile.gettempdir(), "snn_cls_weights_selfcheck.json")
     save_weights(W, wp, meta={"source": "delta-rule self-check"})
     W2 = load_weights(wp)
     os.remove(wp)
     assert W2 == W, "load_weights(save_weights(W)) must round-trip exactly"
     assert forward(W2, s0, C)[0] == c1, "loaded weights must reproduce identical predictions"
-    print("self-check OK: test_acc>=85%, SynOps<dense MACs, forward() deterministic, weight bridge round-trips")
+    print(
+        "self-check OK: test_acc>=85%, SynOps<dense MACs, forward() deterministic, weight bridge round-trips"
+    )
 
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) > 1 and sys.argv[1] == "sweep":
         difficulty_sweep()
     else:

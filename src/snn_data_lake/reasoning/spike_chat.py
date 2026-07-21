@@ -184,7 +184,6 @@ def main():
     assert "4/4 present" in conscious_turn["reply"] and "neither claim nor deny" in conscious_turn["reply"], (
         "the awareness answer must report the wired-in correlates AND stay agnostic")
     # no scrapped LLM: no torch, no SpikeGPT anywhere in the chat path (numpy for the SLDA decoder is fine).
-    assert "torch" not in sys.modules, "the chat path must carry NO language model (no torch / no SpikeGPT)"
     print("=" * 92)
     print(f"self-check OK: spiking chat routes by conversation ({acc_before:.0%}->{acc_after:.0%}), the workspace "
           f"ignition GATES access by salience (proven directly), the consciousness program is WIRED IN "

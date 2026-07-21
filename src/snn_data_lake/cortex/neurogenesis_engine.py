@@ -33,6 +33,7 @@ torch.Generator(seed) inside NG-SNN. Device = cuda if available else cpu.
 
   PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python.exe -m snn_data_lake.cortex.neurogenesis_engine
 """
+
 import random
 
 import torch
@@ -41,7 +42,7 @@ from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.hippocampus.ng_snn import NGSNN
 
-SAFE_DISTANCE = CONTACT * 3.0   # 0.12 m -- perception-only channel, never in a reflex/danger band
+SAFE_DISTANCE = CONTACT * 3.0  # 0.12 m -- perception-only channel, never in a reflex/danger band
 
 
 def _mode_features(mode_id, k_modes, rng=None, jitter=0.0):
@@ -50,15 +51,15 @@ def _mode_features(mode_id, k_modes, rng=None, jitter=0.0):
     into a CLOUD rather than a point, so separating the next-mode genuinely needs capacity (few
     neurons underfit, more neurons generalize) -- that is what makes GROWING == improving. Distance
     is pinned SAFE (perception only, no motor route). encode_multimodal clamps to [0,1]."""
-    base = (mode_id + 0.5) / k_modes                        # 0.1,0.3,0.5,0.7,0.9 for K=5
+    base = (mode_id + 0.5) / k_modes  # 0.1,0.3,0.5,0.7,0.9 for K=5
 
     def j():
         return rng.uniform(-jitter, jitter) if (rng is not None and jitter) else 0.0
 
     return encode_multimodal(
         visual=base + j(),
-        temperature=(1.0 - base) + j(),                     # inverted -> richer per-mode signature
-        audio=((mode_id * 2) % k_modes + 0.5) / k_modes + j(),   # permuted band
+        temperature=(1.0 - base) + j(),  # inverted -> richer per-mode signature
+        audio=((mode_id * 2) % k_modes + 0.5) / k_modes + j(),  # permuted band
         distance=SAFE_DISTANCE,
     )
 
@@ -85,8 +86,20 @@ class NeurogenesisSelfImprove:
     perception. PERCEPTION-ONLY -- no arm, no motor command, no actuator route (see module
     docstring). Read state via .goal/.ticks/.grown_units/.predict_accuracy/.n_modes/.state()."""
 
-    def __init__(self, k_modes=5, refit_every=20, buffer_cap=1000, peak=0.75, jitter=0.12,
-                 l_max=120, eps_tol=0.28, T=15, seed=7, shuffle_transitions=False, device=None):
+    def __init__(
+        self,
+        k_modes=5,
+        refit_every=20,
+        buffer_cap=1000,
+        peak=0.75,
+        jitter=0.12,
+        l_max=120,
+        eps_tol=0.28,
+        T=15,
+        seed=7,
+        shuffle_transitions=False,
+        device=None,
+    ):
         self.k_modes = int(k_modes)
         self.refit_every = int(refit_every)
         self.buffer_cap = int(buffer_cap)
@@ -96,15 +109,15 @@ class NeurogenesisSelfImprove:
         self.shuffle_transitions = bool(shuffle_transitions)
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self._l_max, self._eps_tol, self._T = int(l_max), float(eps_tol), int(T)
-        self._chain = random.Random(seed)               # mode transitions + jitter RNG
-        self._matrix = _markov_matrix(self.k_modes, self.peak, seed)   # transition structure
+        self._chain = random.Random(seed)  # mode transitions + jitter RNG
+        self._matrix = _markov_matrix(self.k_modes, self.peak, seed)  # transition structure
         self.current_mode = self._chain.randrange(self.k_modes)
-        self._buf_x = []                                 # features_t
-        self._buf_y = []                                 # mode_{t+1}
+        self._buf_x = []  # features_t
+        self._buf_y = []  # mode_{t+1}
         self.ticks = 0
         self._n_units = 0
-        self._acc = 1.0 / self.k_modes                   # chance until the first fit
-        self.trajectory = []                             # (tick, n_units, acc) per refit
+        self._acc = 1.0 / self.k_modes  # chance until the first fit
+        self.trajectory = []  # (tick, n_units, acc) per refit
 
     # ---- context stream ----------------------------------------------------------------------
     def _next_mode(self, cur):
@@ -124,7 +137,7 @@ class NeurogenesisSelfImprove:
         """Advance the chain one step; record (features of the current mode -> next mode id);
         refit the NG-SNN when due. Returns the new current mode id."""
         feats = _mode_features(self.current_mode, self.k_modes, self._chain, self.jitter)  # feat_t
-        nxt = self._next_mode(self.current_mode)        # mode_{t+1} (next perception)
+        nxt = self._next_mode(self.current_mode)  # mode_{t+1} (next perception)
         self._buf_x.append(feats)
         self._buf_y.append(nxt)
         if len(self._buf_x) > self.buffer_cap:
@@ -146,10 +159,11 @@ class NeurogenesisSelfImprove:
             return
         x = torch.tensor(self._buf_x, dtype=torch.float32)
         y = torch.tensor(self._buf_y, dtype=torch.long)
-        x_tr, y_tr = x[:n - holdout], y[:n - holdout]
-        x_te, y_te = x[n - holdout:], y[n - holdout:]
-        model = NGSNN(l_max=self._l_max, eps_tol=self._eps_tol, T=self._T,
-                      device=self.device, seed=self.seed)
+        x_tr, y_tr = x[: n - holdout], y[: n - holdout]
+        x_te, y_te = x[n - holdout :], y[n - holdout :]
+        model = NGSNN(
+            l_max=self._l_max, eps_tol=self._eps_tol, T=self._T, device=self.device, seed=self.seed
+        )
         model.fit(x_tr, y_tr)
         pred = model.predict(x_te)
         acc = (pred == y_te.to(model.device)).float().mean().item()
@@ -175,8 +189,13 @@ class NeurogenesisSelfImprove:
         return self.k_modes
 
     def state(self):
-        return {"goal": self.goal, "ticks": self.ticks, "grown_units": self.grown_units,
-                "predict_accuracy": self.predict_accuracy, "n_modes": self.n_modes}
+        return {
+            "goal": self.goal,
+            "ticks": self.ticks,
+            "grown_units": self.grown_units,
+            "predict_accuracy": self.predict_accuracy,
+            "n_modes": self.n_modes,
+        }
 
 
 # -------------------------------------------------------------------------------------------------
@@ -190,8 +209,16 @@ def _run(engine, n_ticks):
 
 def main():
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    cfg = dict(k_modes=5, refit_every=20, buffer_cap=1000, peak=0.75, jitter=0.12,
-               l_max=120, eps_tol=0.28, T=15)
+    cfg = dict(
+        k_modes=5,
+        refit_every=20,
+        buffer_cap=1000,
+        peak=0.75,
+        jitter=0.12,
+        l_max=120,
+        eps_tol=0.28,
+        T=15,
+    )
     chance = 1.0 / cfg["k_modes"]
 
     # claim 1: SELF-IMPROVEMENT -- held-out next-mode accuracy RISES from ~chance as it grows.
@@ -199,16 +226,17 @@ def main():
     eng = _run(NeurogenesisSelfImprove(seed=7, **cfg), 600)
     traj = eng.trajectory
     accs = [ac for (_, _, ac) in traj]
-    early_acc = sum(accs[:2]) / 2                    # first refits (small buffer, few neurons)
-    late_acc = sum(accs[-3:]) / 3                    # last refits (600 ticks of experience)
+    early_acc = sum(accs[:2]) / 2  # first refits (small buffer, few neurons)
+    late_acc = sum(accs[-3:]) / 3  # last refits (600 ticks of experience)
     grown = eng.grown_units
-    c1_pass = (late_acc >= 0.5) and (early_acc <= 0.40) \
-        and (late_acc - early_acc >= 0.15) and (grown > 0)
+    c1_pass = (
+        (late_acc >= 0.5) and (early_acc <= 0.40) and (late_acc - early_acc >= 0.15) and (grown > 0)
+    )
 
     # claim 2: CONTROL THAT MUST FAIL -- shuffled (structure-free) transitions stay at chance.
     ctrl = _run(NeurogenesisSelfImprove(seed=7, shuffle_transitions=True, **cfg), 600)
     ctrl_acc = ctrl.trajectory[-1][2]
-    ctrl_grew = ctrl.grown_units > 0                 # it DID grow, but cannot generalize
+    ctrl_grew = ctrl.grown_units > 0  # it DID grow, but cannot generalize
     c2_pass = (ctrl_acc < 0.35) and ctrl_grew and (late_acc - ctrl_acc >= 0.20)
 
     # claim 3: GENUINELY NEUROGENIC -- more distinct experience -> more (but bounded) neurons.
@@ -228,14 +256,30 @@ def main():
 
     # ---- ASCII report ---------------------------------------------------------------------------
     rows = [
-        (1, "held-out next-mode acc RISES as it grows",
-         f"early {early_acc:.2f} -> late {late_acc:.2f} ({grown}u)", c1_pass),
-        (2, "shuffled control stays near chance",
-         f"ctrl {ctrl_acc:.2f} vs structured {late_acc:.2f}", c2_pass),
-        (3, "neurogenic: more experience -> more units",
-         f"t100 {units_100}u -> t600 {units_600}u (<{cfg['l_max']})", c3_pass),
-        (4, "deterministic trajectory (seed=7)",
-         f"units {units_a == units_b} + accs match", c4_pass),
+        (
+            1,
+            "held-out next-mode acc RISES as it grows",
+            f"early {early_acc:.2f} -> late {late_acc:.2f} ({grown}u)",
+            c1_pass,
+        ),
+        (
+            2,
+            "shuffled control stays near chance",
+            f"ctrl {ctrl_acc:.2f} vs structured {late_acc:.2f}",
+            c2_pass,
+        ),
+        (
+            3,
+            "neurogenic: more experience -> more units",
+            f"t100 {units_100}u -> t600 {units_600}u (<{cfg['l_max']})",
+            c3_pass,
+        ),
+        (
+            4,
+            "deterministic trajectory (seed=7)",
+            f"units {units_a == units_b} + accs match",
+            c4_pass,
+        ),
     ]
     line = "+" + "-" * 4 + "+" + "-" * 42 + "+" + "-" * 34 + "+" + "-" * 6 + "+"
     print("=" * 90)
@@ -248,8 +292,10 @@ def main():
     print(line)
     print("trajectory (tick, grown_units, predict_accuracy):")
     print("  " + "  ".join(f"[{t},{u}u,{ac:.2f}]" for (t, u, ac) in traj))
-    print("CONTROL (must FAIL): shuffled transitions -> no learnable structure -> stays at chance "
-          "even after the same growth.")
+    print(
+        "CONTROL (must FAIL): shuffled transitions -> no learnable structure -> stays at chance "
+        "even after the same growth."
+    )
     print("=" * 90)
 
     # ---- asserts --------------------------------------------------------------------------------

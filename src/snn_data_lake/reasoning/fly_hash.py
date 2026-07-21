@@ -90,7 +90,7 @@ def main():
     print(f"tag overlap: same-command {near:.1f} vs different-command {far:.1f} winners")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert recall >= 0.9, f"FlyHash index must return the right command as top candidate ({recall:.2f})"
     assert near > 2 * far, f"same-command tags must overlap >> different-command ({near:.1f} vs {far:.1f})"
     assert FlyHash(N, seed=0).tag(library[labels[0]]) == FlyHash(N, seed=0).tag(library[labels[0]]), \

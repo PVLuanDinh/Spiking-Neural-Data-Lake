@@ -51,11 +51,12 @@ Shadlen-Movshon), demonstrated on a toy symbolic graph, nothing more.
 
     set PYTHONUTF8=1 & set PYTHONPATH=src & python research/train_of_thought.py
 """
+
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
 # how the workspace slot is driven when we post a thought as a candidate (supra-rheobase ~0.55)
 _IGNITE_SALIENCE = 0.9
-_SOURCE = "assoc"          # a single specialist source label for every posted thought
+_SOURCE = "assoc"  # a single specialist source label for every posted thought
 
 
 class TrainOfThought:
@@ -88,7 +89,7 @@ class TrainOfThought:
 
     def __init__(self, seed=0):
         self.seed = seed
-        self.ws = GlobalWorkspace(seed=seed)   # composes ONE workspace (one thought-stream)
+        self.ws = GlobalWorkspace(seed=seed)  # composes ONE workspace (one thought-stream)
         self.last_trace = []
 
     def _reset(self):
@@ -100,26 +101,26 @@ class TrainOfThought:
         """Serial re-entrant chain of ignited thoughts held INTERNALLY (no externalization)."""
         self._reset()
         self.last_trace = []
-        chain = []                                   # distinct ignited thoughts, in order
+        chain = []  # distinct ignited thoughts, in order
         candidates = [(seed, float(seed_salience))]  # (thought, salience) posted next tick
         for _ in range(max_steps):
             for thought, sal in candidates:
                 self.ws.submit(_SOURCE, thought, sal)
-            broadcast = self.ws.step()               # one spiking ignition cycle
+            broadcast = self.ws.step()  # one spiking ignition cycle
 
-            if broadcast is None:                    # nothing sustained firing -> subliminal
+            if broadcast is None:  # nothing sustained firing -> subliminal
                 self.last_trace.append((None, "die"))
                 break
-            if chain and broadcast == chain[-1]:     # incumbent still holds: sustained firing
+            if chain and broadcast == chain[-1]:  # incumbent still holds: sustained firing
                 self.last_trace.append((broadcast, "hold"))
-                continue                             # keep re-posting; the attractor will decay
-            if broadcast in chain:                   # returned to an earlier link -> settled/loop
+                continue  # keep re-posting; the attractor will decay
+            if broadcast in chain:  # returned to an earlier link -> settled/loop
                 self.last_trace.append((broadcast, "loop"))
                 break
-            chain.append(broadcast)                  # a NEW thought ignited: extend the chain
+            chain.append(broadcast)  # a NEW thought ignited: extend the chain
             self.last_trace.append((broadcast, "ignite"))
             candidates = associate(broadcast, list(chain))  # re-entry: broadcast seeds the next
-            if not candidates:                       # dead end: no further association
+            if not candidates:  # dead end: no further association
                 self.last_trace.append((broadcast, "end"))
                 break
         return chain
@@ -131,7 +132,7 @@ class TrainOfThought:
         This models the J-space limitation: to continue it would have to write to the page."""
         self._reset()
         self.ws.submit(_SOURCE, seed, float(seed_salience))
-        broadcast = self.ws.step()                   # exactly one ignition; then stop (no loop)
+        broadcast = self.ws.step()  # exactly one ignition; then stop (no loop)
         return [] if broadcast is None else [broadcast]
 
     # -- top-down summon / hold / dismiss (persistence) -----------------------------------------
@@ -154,7 +155,7 @@ class TrainOfThought:
         (stop refreshing -> the sustained-firing attractor fades), so it takes a few ticks."""
         ticks = 0
         while self.ws.current is not None and ticks < max_wait:
-            self.ws.step()                           # no submission -> unrefreshed decay
+            self.ws.step()  # no submission -> unrefreshed decay
             ticks += 1
         return ticks
 
@@ -166,12 +167,12 @@ class TrainOfThought:
         composite = "(%s + %s)" % (a, b)
         self._reset()
         self.ws.submit(_SOURCE, composite, float(salience))
-        self.ws.step()                               # ignite the composite
+        self.ws.step()  # ignite the composite
         return composite
 
 
 # ==============================================================================================
-# DETERMINISTIC OFFLINE SELF-CHECK (no network, no torch, no numpy; ASCII-only output).
+# DETERMINISTIC OFFLINE SELF-CHECK (no network; ASCII-only output).
 # ==============================================================================================
 def _fact_graph():
     """A small fact-association graph: concept -> list of (related_concept, salience).
@@ -181,7 +182,7 @@ def _fact_graph():
     return {
         "sun": [("rises_east", 0.9)],
         "rises_east": [("earth_rotates", 0.9)],
-        "earth_rotates": [("day_night", 0.9), ("coriolis", 0.6)],   # strong vs weak: WTA selects
+        "earth_rotates": [("day_night", 0.9), ("coriolis", 0.6)],  # strong vs weak: WTA selects
         "day_night": [("seasons", 0.9)],
         "seasons": [("axial_tilt", 0.9)],
         "axial_tilt": [("climate", 0.9)],
@@ -191,8 +192,10 @@ def _fact_graph():
 
 def _make_associate(graph):
     """Return an `associate(broadcast, chain) -> [(thought, salience), ...]` over the graph."""
+
     def associate(broadcast, chain):
         return list(graph.get(broadcast, []))
+
     return associate
 
 
@@ -205,11 +208,17 @@ def _print_transcript(trace):
         if event == "ignite":
             print("   tick %2d  * IGNITE  %s" % (step, broadcast))
         elif event == "hold":
-            print("   tick %2d  -   hold  %s  (sustained recurrent firing / held in mind)" % (step, broadcast))
+            print(
+                "   tick %2d  -   hold  %s  (sustained recurrent firing / held in mind)"
+                % (step, broadcast)
+            )
         elif event == "die":
             print("   tick %2d  .   (nothing ignited -> subliminal, stream ends)" % step)
         elif event == "loop":
-            print("   tick %2d  o   loop  %s  (returned to an earlier thought -> resolves)" % (step, broadcast))
+            print(
+                "   tick %2d  o   loop  %s  (returned to an earlier thought -> resolves)"
+                % (step, broadcast)
+            )
         elif event == "end":
             print("   tick %2d  |   (no further association -> train ends)" % step)
 
@@ -230,13 +239,13 @@ def main():
 
     # ---- (3) HOLD across a delay, then DISMISS (top-down summon / hold / dismiss) ---------------
     summoned = tot.summon("holdme")
-    held = tot.hold(ticks=3)                        # no fresh input -> attractor sustains it
+    held = tot.hold(ticks=3)  # no fresh input -> attractor sustains it
     held_ok = summoned == "holdme" and all(h == "holdme" for h in held)
-    release_ticks = tot.dismiss()                  # withdraw drive -> decays out of the workspace
+    release_ticks = tot.dismiss()  # withdraw drive -> decays out of the workspace
     dismissed_ok = tot.ws.current is None
 
     # ---- (4a) WEAK seed: sub-threshold drive ignites NOTHING (no hallucinated chain) ------------
-    weak = tot.think("sun", associate, max_steps=8, seed_salience=0.4)   # 0.4 < rheobase 0.55
+    weak = tot.think("sun", associate, max_steps=8, seed_salience=0.4)  # 0.4 < rheobase 0.55
     # ---- (4b) DEAD-END seed: ignites but has no association -> terminates at length 1 -----------
     dead = tot.think("climate", associate, max_steps=8)
 
@@ -259,22 +268,32 @@ def main():
     print()
     print("re-entrant train of thought (held INTERNALLY, no externalization):")
     print("   " + " -> ".join(chain))
-    print("   %d distinct thoughts, chained internally over %d workspace ticks" % (len(chain), len(trace)))
+    print(
+        "   %d distinct thoughts, chained internally over %d workspace ticks"
+        % (len(chain), len(trace))
+    )
     print()
     print("FEEDFORWARD control (single pass, no re-entry -- the J-space limitation):")
     print("   %s  -> %d thought(s); cannot chain without writing to the page" % (ff, len(ff)))
     print()
-    print("summon/hold/dismiss: summoned %r, held %d ticks %r, dismissed after %d ticks (released=%r)"
-          % (summoned, len(held), held, release_ticks, dismissed_ok))
+    print(
+        "summon/hold/dismiss: summoned %r, held %d ticks %r, dismissed after %d ticks (released=%r)"
+        % (summoned, len(held), held, release_ticks, dismissed_ok)
+    )
     print("recombine('day_night','seasons') -> %s" % composite)
-    print("weak sub-threshold seed -> %r ; dead-end seed 'climate' -> %r ; cyclic graph -> %s"
-          % (weak, dead, loop_chain))
+    print(
+        "weak sub-threshold seed -> %r ; dead-end seed 'climate' -> %r ; cyclic graph -> %s"
+        % (weak, dead, loop_chain)
+    )
     print()
     print("J-space limitations this replicates PAST (Anthropic workspace paper):")
     print("   (a) feedforward, no in-pass recurrence  -> here a re-entrant loop feeds each")
     print("       broadcast back as the next seed;")
     print("   (b) cannot hold a train of thought internally, must externalize (CoT on the page)")
-    print("       -> here the chain of %d thoughts is held INTERNALLY across ticks, never written;" % len(chain))
+    print(
+        "       -> here the chain of %d thoughts is held INTERNALLY across ticks, never written;"
+        % len(chain)
+    )
     print("   (c) the human workspace's summon/hold/dismiss + sustained firing + chaining +")
     print("       recombination are all exercised above via genuine spiking ignition.")
 
@@ -290,10 +309,14 @@ def main():
     # the spiking WTA SELECTED the strong branch: the weak associate never ignited into the chain.
     assert "coriolis" not in chain, "the weak (0.6) associate must lose the WTA and NOT ignite"
     # the trace actually contains HOLD ticks -> transitions are re-entrant, not instantaneous.
-    assert any(ev == "hold" for _, ev in trace), "thoughts must be HELD (sustained firing) between hops"
+    assert any(ev == "hold" for _, ev in trace), (
+        "thoughts must be HELD (sustained firing) between hops"
+    )
 
     # (2) the FEEDFORWARD control cannot chain: at most one thought.
-    assert len(ff) <= 1, "the feedforward control must yield <= 1 thought (no re-entry), got %r" % (ff,)
+    assert len(ff) <= 1, "the feedforward control must yield <= 1 thought (no re-entry), got %r" % (
+        ff,
+    )
     assert len(chain) >= 3 > len(ff), "re-entry must chain N>=3 while feedforward yields <=1"
 
     # (3) HOLD persists across >= 2 ticks; DISMISS releases the thought.
@@ -306,7 +329,9 @@ def main():
     #     a cyclic graph settles (does not run forever).
     assert weak == [], "a sub-threshold (0.40) seed must ignite NOTHING (no hallucinated chain)"
     assert dead == ["climate"], "a dead-end seed must ignite once then terminate, got %r" % (dead,)
-    assert 0 < len(loop_chain) <= 4, "a cyclic graph must settle quickly, not loop forever, got %r" % (loop_chain,)
+    assert 0 < len(loop_chain) <= 4, (
+        "a cyclic graph must settle quickly, not loop forever, got %r" % (loop_chain,)
+    )
 
     # (5) recombination binds both inputs into one novel composite content.
     assert "day_night" in composite and "seasons" in composite, "composite must contain both inputs"
@@ -314,20 +339,28 @@ def main():
 
     # determinism.
     assert chain2 == chain, "same seed must reproduce the identical train of thought"
-    # zero-dep: no numerical framework imported to run the spiking workspace.
-    assert "numpy" not in sys.modules and "torch" not in sys.modules, "must be pure stdlib"
 
     print()
-    print("self-check OK: "
-          "re-entrant train of thought chained %d distinct ignited thoughts internally "
-          "(%s) over %d ticks with %d hold ticks; feedforward control yielded %d (cannot chain); "
-          "hold persisted %d ticks then dismiss released in %d; weak seed ignited nothing; "
-          "dead-end stopped at 1; cyclic graph settled to %d; recombine -> %s; deterministic; "
-          "pure-stdlib. Replicates PAST J-space feedforward/must-externalize limits (content is a "
-          "symbolic associate, the workspace supplies serial ignition+hold; contested, one mechanism)."
-          % (len(chain), " -> ".join(chain), len(trace),
-             sum(1 for _, ev in trace if ev == "hold"), len(ff),
-             len(held), release_ticks, len(loop_chain), composite))
+    print(
+        "self-check OK: "
+        "re-entrant train of thought chained %d distinct ignited thoughts internally "
+        "(%s) over %d ticks with %d hold ticks; feedforward control yielded %d (cannot chain); "
+        "hold persisted %d ticks then dismiss released in %d; weak seed ignited nothing; "
+        "dead-end stopped at 1; cyclic graph settled to %d; recombine -> %s; deterministic. "
+        "Replicates PAST J-space feedforward/must-externalize limits (content is a "
+        "symbolic associate, the workspace supplies serial ignition+hold; contested, one mechanism)."
+        % (
+            len(chain),
+            " -> ".join(chain),
+            len(trace),
+            sum(1 for _, ev in trace if ev == "hold"),
+            len(ff),
+            len(held),
+            release_ticks,
+            len(loop_chain),
+            composite,
+        )
+    )
 
 
 if __name__ == "__main__":

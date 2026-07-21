@@ -32,7 +32,7 @@ loop with measurable learning curves and un-riggable controls, NOT competence or
 
   NORD ...  PYTHONPATH=src python research/language_self_build.py
   Knobs: NORD_CTX(3) NORD_NIN(48) NORD_CYCLES(12) NORD_PER(400) NORD_VOCAB(60) NORD_LIMIT(0=all)
-Deps: pure stdlib (reuses src/ spiking primitives + research/brain_adapters/lake_memory).
+Deps: stdlib (reuses src/ spiking primitives + research/brain_adapters/lake_memory).
 """
 import os
 import random

@@ -1,5 +1,5 @@
 """
-Entorhinal grid cells -- oscillatory-interference 2D path integration (pure stdlib).
+Entorhinal grid cells -- oscillatory-interference 2D path integration.
 
 A grid cell fires on a triangular/HEXAGONAL lattice of locations as an animal crosses a plane
 (Hafting, Fyhn, Molden, Moser & Moser, Nature 436:801, 2005). The oscillatory-interference model
@@ -30,6 +30,7 @@ or drift correction. A mathematical grid-cell twin (geometry + dead-reckoning), 
 
   python -m snn_data_lake.hippocampus.grid_cells        # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
@@ -41,20 +42,24 @@ class GridCell:
         self.spacing = float(spacing)
         self.orientation = float(orientation)
         self.gain = float(gain)
-        if phase is None:                                    # seed -> reproducible random spatial phase
+        if phase is None:  # seed -> reproducible random spatial phase
             rng = random.Random(seed)
             phase = (rng.uniform(0.0, self.spacing), rng.uniform(0.0, self.spacing))
         self.phase = (float(phase[0]), float(phase[1]))
-        kmag = 4.0 * math.pi / (math.sqrt(3.0) * self.spacing)     # |b_k| that makes peak spacing == lambda
-        self.k = [(kmag * math.cos(self.orientation + a), kmag * math.sin(self.orientation + a))
-                  for a in (0.0, math.pi / 3.0, 2.0 * math.pi / 3.0)]   # three 60deg-separated wave-vectors
-        self._pos = [0.0, 0.0]                               # accumulated agent position (path integration)
+        kmag = (
+            4.0 * math.pi / (math.sqrt(3.0) * self.spacing)
+        )  # |b_k| that makes peak spacing == lambda
+        self.k = [
+            (kmag * math.cos(self.orientation + a), kmag * math.sin(self.orientation + a))
+            for a in (0.0, math.pi / 3.0, 2.0 * math.pi / 3.0)
+        ]  # three 60deg-separated wave-vectors
+        self._pos = [0.0, 0.0]  # accumulated agent position (path integration)
 
     def rate(self, x, y):
         """Firing rate at absolute position (x, y): interference of three plane waves through g (in (0,1])."""
         dx, dy = x - self.phase[0], y - self.phase[1]
-        s = sum(math.cos(kx * dx + ky * dy) for kx, ky in self.k) / 3.0   # cosine sum in [-1/2, 1]
-        return math.exp(self.gain * (s - 1.0))               # monotone: peaks (s=1) -> 1, troughs -> small
+        s = sum(math.cos(kx * dx + ky * dy) for kx, ky in self.k) / 3.0  # cosine sum in [-1/2, 1]
+        return math.exp(self.gain * (s - 1.0))  # monotone: peaks (s=1) -> 1, troughs -> small
 
     def rate_at(self, pos):
         return self.rate(pos[0], pos[1])
@@ -85,8 +90,10 @@ class GridModulePopulation:
     """A small multi-scale population: grid modules at >=2 spacings (the real entorhinal organization)."""
 
     def __init__(self, spacings=(0.6, 1.0), orientation=0.0, phase=(0.0, 0.0), gain=3.0, seed=0):
-        self.modules = [GridCell(spacing=s, orientation=orientation, phase=phase, gain=gain, seed=seed + i)
-                        for i, s in enumerate(spacings)]
+        self.modules = [
+            GridCell(spacing=s, orientation=orientation, phase=phase, gain=gain, seed=seed + i)
+            for i, s in enumerate(spacings)
+        ]
 
     def rates(self, x, y):
         """Population rate vector at (x, y) -- one entry per module."""
@@ -113,7 +120,7 @@ def _find_peaks(xs, ys, grid, thresh, merge):
             if v < thresh:
                 continue
             if all(v >= grid[j + dj][i + di] for dj in (-1, 0, 1) for di in (-1, 0, 1)):
-                w = 3                                        # centroid over a small window -> sub-pixel peak
+                w = 3  # centroid over a small window -> sub-pixel peak
                 sx = sy = sw = 0.0
                 for jj in range(max(0, j - w), min(n, j + w + 1)):
                     for ii in range(max(0, i - w), min(n, i + w + 1)):
@@ -123,7 +130,7 @@ def _find_peaks(xs, ys, grid, thresh, merge):
                             sy += wt * ys[jj]
                             sw += wt
                 cands.append((sx / sw, sy / sw))
-    peaks = []                                               # cluster adjacent maxima into one peak each
+    peaks = []  # cluster adjacent maxima into one peak each
     for px, py in cands:
         if not any(math.hypot(px - qx, py - qy) < merge for qx, qy in peaks):
             peaks.append((px, py))
@@ -137,10 +144,14 @@ def _hex_metrics(cell):
     xs, ys, grid = cell.rate_map(px - half, px + half, py - half, py + half, 161)
     peaks = _find_peaks(xs, ys, grid, 0.5, 0.4 * cell.spacing)
     center = min(peaks, key=lambda p: math.hypot(p[0] - px, p[1] - py))
-    others = sorted((p for p in peaks if p != center),
-                    key=lambda p: math.hypot(p[0] - center[0], p[1] - center[1]))[:6]
+    others = sorted(
+        (p for p in peaks if p != center),
+        key=lambda p: math.hypot(p[0] - center[0], p[1] - center[1]),
+    )[:6]
     dists = [math.hypot(p[0] - center[0], p[1] - center[1]) for p in others]
-    angs = sorted(math.degrees(math.atan2(p[1] - center[1], p[0] - center[0])) % 360.0 for p in others)
+    angs = sorted(
+        math.degrees(math.atan2(p[1] - center[1], p[0] - center[0])) % 360.0 for p in others
+    )
     steps = [(angs[(i + 1) % 6] - angs[i]) % 360.0 for i in range(6)]
     return sum(dists) / 6.0, sum(steps) / 6.0, min(a % 60.0 for a in angs), center
 
@@ -165,11 +176,16 @@ def main():
     leg = GridCell(spacing=1.0, phase=(0.0, 0.0))
     leg.reset((0.0, 0.0))
     for _ in range(10):
-        leg.step((0.3, 0.1), dt=0.5)                         # -> displacement (1.5, 0.5)
+        leg.step((0.3, 0.1), dt=0.5)  # -> displacement (1.5, 0.5)
     straight_err = math.hypot(leg.position[0] - 1.5, leg.position[1] - 0.5)
     loop = GridCell(spacing=1.0, phase=(0.0, 0.0))
     loop.reset((0.0, 0.0))
-    for vel in ((0.4, 0.0), (0.0, 0.4), (-0.4, 0.0), (0.0, -0.4)):   # square loop, net displacement 0
+    for vel in (
+        (0.4, 0.0),
+        (0.0, 0.4),
+        (-0.4, 0.0),
+        (0.0, -0.4),
+    ):  # square loop, net displacement 0
         for _ in range(5):
             loop.step(vel, dt=0.5)
     loop_err = math.hypot(*loop.position)
@@ -182,38 +198,57 @@ def main():
         b.step((0.11, -0.07), dt=0.3)
     same_traj = a.position == b.position
 
-    pop = GridModulePopulation(spacings=(0.6, 1.0))          # multi-scale readout at the origin
+    pop = GridModulePopulation(spacings=(0.6, 1.0))  # multi-scale readout at the origin
     pop_rates = pop.rates(0.0, 0.0)
 
     print("=" * 68)
     print("GRID CELLS -- oscillatory-interference 2D path integration")
     print("=" * 68)
-    print(f"hexagonal lattice (lambda=1.00): 6 nearest peaks mean dist {spacing_m:.3f} "
-          f"(set 1.00), angle step {angle_step:.1f} deg")
-    print(f"geometry: spacing 0.60 -> measured {small_m:.3f} ; spacing 1.00 -> measured {big_m:.3f}")
-    print(f"orientation +15deg rotates lattice by {rot_deg:.1f} deg ; "
-          f"phase (0.2,0) translates peak by {peak_shift:.3f} (period {shift_m:.3f})")
-    print(f"path integration: straight leg -> pos ({leg.position[0]:.3f},{leg.position[1]:.3f}) "
-          f"err {straight_err:.1e} ; closed loop return err {loop_err:.1e}")
+    print(
+        f"hexagonal lattice (lambda=1.00): 6 nearest peaks mean dist {spacing_m:.3f} "
+        f"(set 1.00), angle step {angle_step:.1f} deg"
+    )
+    print(
+        f"geometry: spacing 0.60 -> measured {small_m:.3f} ; spacing 1.00 -> measured {big_m:.3f}"
+    )
+    print(
+        f"orientation +15deg rotates lattice by {rot_deg:.1f} deg ; "
+        f"phase (0.2,0) translates peak by {peak_shift:.3f} (period {shift_m:.3f})"
+    )
+    print(
+        f"path integration: straight leg -> pos ({leg.position[0]:.3f},{leg.position[1]:.3f}) "
+        f"err {straight_err:.1e} ; closed loop return err {loop_err:.1e}"
+    )
     print(f"determinism (seed 7): identical rate map {same_map} and trajectory {same_traj}")
-    print(f"population rates at origin (spacings 0.6, 1.0): "
-          f"[{pop_rates[0]:.3f}, {pop_rates[1]:.3f}]")
+    print(
+        f"population rates at origin (spacings 0.6, 1.0): [{pop_rates[0]:.3f}, {pop_rates[1]:.3f}]"
+    )
     print("=" * 68)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert abs(spacing_m - 1.0) < 0.05, f"measured grid spacing must match lambda ({spacing_m:.3f})"
-    assert abs(angle_step - 60.0) < 3.0, f"6 nearest peaks must sit 60deg apart -> hexagonal ({angle_step:.2f})"
-    assert abs(small_m - 0.6) < 0.05 and abs(big_m - 1.0) < 0.05 and big_m > small_m, \
+    assert abs(angle_step - 60.0) < 3.0, (
+        f"6 nearest peaks must sit 60deg apart -> hexagonal ({angle_step:.2f})"
+    )
+    assert abs(small_m - 0.6) < 0.05 and abs(big_m - 1.0) < 0.05 and big_m > small_m, (
         f"different spacing -> different measured period ({small_m:.3f}, {big_m:.3f})"
-    assert abs(rot_deg - 15.0) < 3.0, f"orientation must rotate the lattice by ~15deg ({rot_deg:.2f})"
-    assert abs(peak_shift - 0.2) < 0.03 and abs(shift_m - 1.0) < 0.05, \
+    )
+    assert abs(rot_deg - 15.0) < 3.0, (
+        f"orientation must rotate the lattice by ~15deg ({rot_deg:.2f})"
+    )
+    assert abs(peak_shift - 0.2) < 0.03 and abs(shift_m - 1.0) < 0.05, (
         f"phase must translate peaks (~0.2) without changing period ({peak_shift:.3f}, {shift_m:.3f})"
+    )
     assert straight_err < 1e-9, f"straight leg must land at v*t ({straight_err:.1e})"
     assert loop_err < 1e-9, f"closed velocity loop must return to the start ({loop_err:.1e})"
-    assert same_map and same_traj, "same params/seed must give identical rate map and trajectory (deterministic)"
-    print(f"self-check OK: hexagonal lattice (spacing {spacing_m:.3f}, step {angle_step:.1f} deg); "
-          f"spacing/orientation/phase set the geometry; path integration exact "
-          f"(loop err {loop_err:.1e}); deterministic")
+    assert same_map and same_traj, (
+        "same params/seed must give identical rate map and trajectory (deterministic)"
+    )
+    print(
+        f"self-check OK: hexagonal lattice (spacing {spacing_m:.3f}, step {angle_step:.1f} deg); "
+        f"spacing/orientation/phase set the geometry; path integration exact "
+        f"(loop err {loop_err:.1e}); deterministic"
+    )
 
 
 if __name__ == "__main__":

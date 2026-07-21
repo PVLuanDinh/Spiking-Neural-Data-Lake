@@ -56,12 +56,13 @@ Controls exposed for an un-riggable comparison:
 Reuses (does NOT reimplement): basal_ganglia.r_stdp.RSTDPNeuron (the spiking reward-gated
 weight update the cascade attaches to) and substrate._mathutils.mean. The diffusion is exact,
 deterministic float arithmetic; per-instance random.Random(seed); zlib.crc32 for sub-seeds
-(never hash()); no wall-clock, no global RNG. ASCII-only output. Pure stdlib, zero-dep.
+(never hash()); no wall-clock, no global RNG. ASCII-only output.
 
 Refs: Benna & Fusi, Nat. Neurosci. 2016; Fusi, Drew & Abbott, Neuron 2005 (cascade model).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.benna_fusi
 """
+
 import random
 import zlib
 
@@ -69,17 +70,17 @@ from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.substrate._mathutils import mean
 
 # ---- experiment constants (deterministic; sequential-interference protocol A -> B -> A) ----
-N_SYN = 24            # synapses carrying the mapping
-N_LEVELS = 6          # beakers per cascade (fast u_1 .. slow u_6)
-C_RATIO = 2.0         # geometric capacity growth  C_k = C_0 * C_RATIO^k
-G0 = 0.10             # first (fastest) inter-beaker conductance
-G_RATIO = 0.5         # geometric conductance shrink  g_k = G0 * G_RATIO^k (deep tubes narrow)
-W_MAX = 1.0           # bounded synaptic efficacy (the bound is what makes a scalar forget)
-LR = 0.20             # R-STDP learning rate -> per-tick deposit ~ LR * exp(-1/tau) ~ 0.19
-T_A = 300             # A-training ticks (long: let A seep into / CONSOLIDATE the deep beakers)
-CRIT = 0.90           # criterion: sign-agreement fraction with the target mapping
-T_B_MAX = 150         # cap on B-training ticks
-RELAX = 200           # rest/consolidation steps before the A re-test (labile B fades)
+N_SYN = 24  # synapses carrying the mapping
+N_LEVELS = 6  # beakers per cascade (fast u_1 .. slow u_6)
+C_RATIO = 2.0  # geometric capacity growth  C_k = C_0 * C_RATIO^k
+G0 = 0.10  # first (fastest) inter-beaker conductance
+G_RATIO = 0.5  # geometric conductance shrink  g_k = G0 * G_RATIO^k (deep tubes narrow)
+W_MAX = 1.0  # bounded synaptic efficacy (the bound is what makes a scalar forget)
+LR = 0.20  # R-STDP learning rate -> per-tick deposit ~ LR * exp(-1/tau) ~ 0.19
+T_A = 300  # A-training ticks (long: let A seep into / CONSOLIDATE the deep beakers)
+CRIT = 0.90  # criterion: sign-agreement fraction with the target mapping
+T_B_MAX = 150  # cap on B-training ticks
+RELAX = 200  # rest/consolidation steps before the A re-test (labile B fades)
 
 
 def _clip(x, lo, hi):
@@ -99,14 +100,15 @@ class BennaFusiSynapse:
     g0=0.0 zeroes the coupling so the cascade is OFF (control b), leaving the fast beaker alone.
     """
 
-    def __init__(self, n_levels=N_LEVELS, c_ratio=C_RATIO, g0=G0, g_ratio=G_RATIO, dt=1.0,
-                 w_max=W_MAX):
+    def __init__(
+        self, n_levels=N_LEVELS, c_ratio=C_RATIO, g0=G0, g_ratio=G_RATIO, dt=1.0, w_max=W_MAX
+    ):
         self.n = n_levels
         self.dt = dt
         self.w_max = w_max
-        self.c = [1.0 * (c_ratio ** k) for k in range(n_levels)]        # capacities (grow)
-        self.g = [g0 * (g_ratio ** k) for k in range(n_levels - 1)]     # conductances (shrink)
-        self.u = [0.0] * n_levels                                       # beaker levels
+        self.c = [1.0 * (c_ratio**k) for k in range(n_levels)]  # capacities (grow)
+        self.g = [g0 * (g_ratio**k) for k in range(n_levels - 1)]  # conductances (shrink)
+        self.u = [0.0] * n_levels  # beaker levels
 
     def deposit(self, delta):
         """A plasticity event enters the fast beaker u_1 (bounded synaptic efficacy)."""
@@ -124,7 +126,7 @@ class BennaFusiSynapse:
         for _ in range(steps):
             flow = [0.0] * n
             for k in range(n - 1):
-                f = g[k] * (u[k] - u[k + 1])       # diffusive flow from beaker k to k+1
+                f = g[k] * (u[k] - u[k + 1])  # diffusive flow from beaker k to k+1
                 flow[k] -= f
                 flow[k + 1] += f
             for k in range(n):
@@ -169,17 +171,17 @@ class BennaFusiLearner:
         A single positive reward gates the per-tick eligibility into signed weight deltas.
         """
         r = self.rstdp
-        r.e = [0.0] * r.n                 # fresh per-tick eligibility (this tick only)
+        r.e = [0.0] * r.n  # fresh per-tick eligibility (this tick only)
         r.t_pre = [None] * r.n
         r.t_post = None
         for i, t in enumerate(targets):
-            if t > 0:                     # causal pairing: pre before post
+            if t > 0:  # causal pairing: pre before post
                 r.pre_spike(i, 0.0)
         r.post_spike(1.0)
         for i, t in enumerate(targets):
-            if t < 0:                     # anti-causal pairing: pre after post
+            if t < 0:  # anti-causal pairing: pre after post
                 r.pre_spike(i, 2.0)
-        return r.reward(1.0)              # w += lr * e; returns the per-synapse deltas
+        return r.reward(1.0)  # w += lr * e; returns the per-synapse deltas
 
     def train_tick(self, targets):
         """One tick: spiking deltas -> deposit into fast beakers -> one diffusion step."""
@@ -225,8 +227,8 @@ def _run(mode, seed=0):
     while learner.accuracy(b) < CRIT and b_ticks < T_B_MAX:
         learner.train_tick(b)
         b_ticks += 1
-    b_crit = learner.accuracy(b)          # measured right after B training (fast beaker holds B)
-    learner.relax(RELAX)                  # rest: labile B fades, consolidated A re-emerges
+    b_crit = learner.accuracy(b)  # measured right after B training (fast beaker holds B)
+    learner.relax(RELAX)  # rest: labile B fades, consolidated A re-emerges
     a_ret = learner.accuracy(a)
     return a_after_a, b_crit, b_ticks, a_ret
 
@@ -242,32 +244,43 @@ def main():
     a_a_0, b_0, bt_0, ret_0 = _run("diffusion_off", seed=0)
 
     print("config              A-acc(after A)   B-crit(after B)   A-retention(after B+rest)")
-    print(f"Benna-Fusi cascade      {a_a_bf:5.3f}            {b_bf:5.3f}  ({bt_bf:3d} B-ticks)     {ret_bf:5.3f}")
-    print(f"single scalar (N=1)     {a_a_1:5.3f}            {b_1:5.3f}  ({bt_1:3d} B-ticks)     {ret_1:5.3f}")
-    print(f"diffusion off (g=0)     {a_a_0:5.3f}            {b_0:5.3f}  ({bt_0:3d} B-ticks)     {ret_0:5.3f}")
+    print(
+        f"Benna-Fusi cascade      {a_a_bf:5.3f}            {b_bf:5.3f}  ({bt_bf:3d} B-ticks)     {ret_bf:5.3f}"
+    )
+    print(
+        f"single scalar (N=1)     {a_a_1:5.3f}            {b_1:5.3f}  ({bt_1:3d} B-ticks)     {ret_1:5.3f}"
+    )
+    print(
+        f"diffusion off (g=0)     {a_a_0:5.3f}            {b_0:5.3f}  ({bt_0:3d} B-ticks)     {ret_0:5.3f}"
+    )
     print("-" * 74)
-    print(f"chance retention = 0.500 ; B reached criterion (>= {CRIT:.2f}) on the cascade = {b_bf >= CRIT}")
+    print(
+        f"chance retention = 0.500 ; B reached criterion (>= {CRIT:.2f}) on the cascade = {b_bf >= CRIT}"
+    )
 
     # ---- determinism: same seed -> identical outcome ----
     same = _run("cascade", seed=7) == _run("cascade", seed=7)
     print(f"determinism (two seed=7 cascade runs identical) = {same}")
     print("=" * 74)
 
-    # ---- self-check: deterministic asserts, zero-dep, ASCII, un-riggable ----
+    # ---- self-check: deterministic asserts, ASCII, un-riggable ----
     # (1) RETENTION: cascade retains A markedly better than the plasticity-matched scalar,
     #     WHILE B still reached its criterion (the free fast beaker learned B).
     assert b_bf >= CRIT, f"B must reach criterion on the cascade (fast beaker learns B): {b_bf:.3f}"
     assert ret_bf >= 0.80, f"cascade must retain A at the measured horizon: {ret_bf:.3f}"
-    assert ret_bf >= ret_1 + 0.30, \
+    assert ret_bf >= ret_1 + 0.30, (
         f"cascade must retain A MARKEDLY better than the single scalar: {ret_bf:.3f} vs {ret_1:.3f}"
+    )
     # (2) CONTROL a -- plasticity-matched single scalar forgets A catastrophically (~ chance).
     assert ret_1 <= 0.50, f"single scalar must forget A catastrophically (<= chance): {ret_1:.3f}"
     # (3) CONTROL b -- zero diffusion collapses retention BACK to the scalar baseline: it is the
     #     CASCADE (multi-timescale coupling), not merely a low fast lr, that holds A.
-    assert ret_0 <= ret_1 + 0.05, \
+    assert ret_0 <= ret_1 + 0.05, (
         f"g=0 must collapse to the single-scalar baseline (cascade, not low lr): {ret_0:.3f} vs {ret_1:.3f}"
-    assert ret_bf >= ret_0 + 0.30, \
+    )
+    assert ret_bf >= ret_0 + 0.30, (
         f"cascade must beat its own g=0 control (the coupling is the mechanism): {ret_bf:.3f} vs {ret_0:.3f}"
+    )
     assert same, "same seed must give an identical outcome (determinism)"
 
     # (4) HONEST LIMIT (printed, not overclaimed).

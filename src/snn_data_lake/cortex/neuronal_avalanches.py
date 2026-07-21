@@ -1,6 +1,6 @@
 """
 Neuronal avalanches / critical branching -- scale-free cascade statistics with the branching ratio
-as the explicit control parameter (pure stdlib).
+as the explicit control parameter.
 
 A homogeneous network of N units. An AVALANCHE is a cascade seeded by ONE spontaneously-active unit:
 at each generation every currently-active unit independently activates some downstream units, tuned so
@@ -41,6 +41,7 @@ cognition.
 
   python -m snn_data_lake.cortex.neuronal_avalanches        # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
@@ -74,11 +75,11 @@ class BranchingNetwork:
         self.n = n
         self.sigma = sigma
         self.fanout = fanout
-        self.p = sigma / fanout          # per-target activation prob; Binomial(fanout, p) has mean sigma
+        self.p = sigma / fanout  # per-target activation prob; Binomial(fanout, p) has mean sigma
         self.seed = seed
-        self.max_size = max_size         # runaway cutoff: truncate a cascade once it reaches this size
+        self.max_size = max_size  # runaway cutoff: truncate a cascade once it reaches this size
         self.rng = random.Random(seed)
-        self.branching_trace = []        # list of (ancestors, descendants) generation pairs from run()
+        self.branching_trace = []  # list of (ancestors, descendants) generation pairs from run()
 
     def _one(self):
         """One cascade. Returns (gen_active, gen_raw): per-generation active counts (post-cap; first
@@ -94,13 +95,15 @@ class BranchingNetwork:
             gen_active.append(active)
             size += active
             raw = 0
-            for _ in range(active * fanout):     # active units x fanout Bernoulli(p) = Binomial(., p)
+            for _ in range(active * fanout):  # active units x fanout Bernoulli(p) = Binomial(., p)
                 if rnd() < p:
                     raw += 1
             gen_raw.append(raw)
-            if size >= max_size:                 # runaway (supercritical): truncate the giant cascade
+            if size >= max_size:  # runaway (supercritical): truncate the giant cascade
                 break
-            active = raw if raw <= cap else cap   # cap the active set at the available network size N
+            active = (
+                raw if raw <= cap else cap
+            )  # cap the active set at the available network size N
         return gen_active, gen_raw
 
     def avalanche(self):
@@ -151,7 +154,7 @@ class BranchingNetwork:
         center) over the bins that have support. Dividing by bin width is what makes a true
         P(s)~s^exponent recover a fitted slope ~ exponent (raw log-binned counts would be off by +1).
         Returns (slope, n_bins_with_support)."""
-        dist = BranchingNetwork.size_distribution(sizes)          # {size: count}
+        dist = BranchingNetwork.size_distribution(sizes)  # {size: count}
         lo, hi = math.log(s_min), math.log(s_max)
         edges = [math.exp(lo + (hi - lo) * i / n_bins) for i in range(n_bins + 1)]
         xs, ys = [], []
@@ -159,8 +162,8 @@ class BranchingNetwork:
             a, b = edges[i], edges[i + 1]
             count = sum(c for s, c in dist.items() if a <= s < b)
             if count > 0:
-                xs.append(math.log(math.sqrt(a * b)))             # geometric bin center
-                ys.append(math.log(count / (b - a)))              # density = count / bin width
+                xs.append(math.log(math.sqrt(a * b)))  # geometric bin center
+                ys.append(math.log(count / (b - a)))  # density = count / bin width
         if len(xs) < 2:
             return 0.0, len(xs)
         return _lstsq_slope(xs, ys), len(xs)
@@ -168,11 +171,11 @@ class BranchingNetwork:
 
 def main():
     n, fanout, seed, max_size = 1000, 4, 0, 4000
-    n_test1, n_scaling = 4000, 20000       # avalanches per sigma (test 1); critical/subcritical run
-    fit_min, fit_max = 4, 256              # power-law scaling range for the log-log slope fit
+    n_test1, n_scaling = 4000, 20000  # avalanches per sigma (test 1); critical/subcritical run
+    fit_min, fit_max = 4, 256  # power-law scaling range for the log-log slope fit
 
     # ---- 1. branching ratio is the real control parameter: measured sigma matches, mean size grows ----
-    rows = []                              # (sigma, measured_sigma, mean_size, max_size)
+    rows = []  # (sigma, measured_sigma, mean_size, max_size)
     for sigma in (0.8, 1.0, 1.2):
         net = BranchingNetwork(n=n, sigma=sigma, fanout=fanout, seed=seed, max_size=max_size)
         records = net.run(n_test1)
@@ -203,10 +206,14 @@ def main():
     print("=" * 60)
     print("NEURONAL AVALANCHES -- critical branching process (Beggs-Plenz / Galton-Watson)")
     print("=" * 60)
-    print(f"network N={n}, fanout={fanout}, offspring ~ Binomial(fanout, sigma/fanout) [mean=sigma], "
-          f"seed={seed}")
-    print(f"runaway size cutoff={max_size}; test-1 avalanches/sigma={n_test1}; "
-          f"critical/subcritical run={n_scaling}")
+    print(
+        f"network N={n}, fanout={fanout}, offspring ~ Binomial(fanout, sigma/fanout) [mean=sigma], "
+        f"seed={seed}"
+    )
+    print(
+        f"runaway size cutoff={max_size}; test-1 avalanches/sigma={n_test1}; "
+        f"critical/subcritical run={n_scaling}"
+    )
     print("")
     print(" sigma  regime          measured-sigma   mean size    max size")
     regime = {0.8: "subcritical", 1.0: "critical", 1.2: "supercritical"}
@@ -214,31 +221,42 @@ def main():
         print(f" {sg:4.2f}  {regime[sg]:<13}      {meas:6.3f}       {mean_s:8.2f}    {max_s:8d}")
     print("")
     print("critical size distribution: approx power law P(s)~s^-1.5")
-    print(f"  log-log slope over s in [{fit_min}, {fit_max}] = {slope:.3f} "
-          f"({n_bins} bins, mean-field exponent -1.5)")
-    print(f"critical max avalanche {crit_max} vs subcritical max {sub_max} -> "
-          f"{tail_ratio:.1f}x larger tail")
+    print(
+        f"  log-log slope over s in [{fit_min}, {fit_max}] = {slope:.3f} "
+        f"({n_bins} bins, mean-field exponent -1.5)"
+    )
+    print(
+        f"critical max avalanche {crit_max} vs subcritical max {sub_max} -> "
+        f"{tail_ratio:.1f}x larger tail"
+    )
     print(f"one-cascade API: largest of 20 avalanche() draws (size, duration) = {biggest}")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep, ASCII-only ----
+    # ---- self-check: deterministic asserts, ASCII-only ----
     for sg, meas, _mean_s, _max_s in rows:
         assert abs(meas - sg) < 0.05, f"measured sigma must match set sigma ({meas:.3f} vs {sg})"
-    assert sub_mean < crit_mean < super_mean, \
+    assert sub_mean < crit_mean < super_mean, (
         f"mean size must grow with sigma ({sub_mean:.2f} -> {crit_mean:.2f} -> {super_mean:.2f})"
-    assert crit_mean > 5.0 * sub_mean, \
+    )
+    assert crit_mean > 5.0 * sub_mean, (
         f"critical mean size must dwarf subcritical ({crit_mean:.2f} vs {sub_mean:.2f})"
-    assert super_mean > 3.0 * crit_mean, \
+    )
+    assert super_mean > 3.0 * crit_mean, (
         f"supercritical mean size must dwarf critical ({super_mean:.2f} vs {crit_mean:.2f})"
-    assert -2.1 < slope < -1.1, \
+    )
+    assert -2.1 < slope < -1.1, (
         f"critical size distribution must be an approx power law near -1.5 (slope {slope:.3f})"
+    )
     assert n_bins >= 6, f"power-law fit must span a real scaling range ({n_bins} bins)"
-    assert crit_max > 20 * sub_max, \
+    assert crit_max > 20 * sub_max, (
         f"critical tail must be orders of magnitude above subcritical ({crit_max} vs {sub_max})"
+    )
     assert identical, "same n/sigma/seed must give identical records"
-    print(f"self-check OK: measured-sigma matches set sigma (err<0.05); mean size "
-          f"{sub_mean:.1f}<<{crit_mean:.1f}<<{super_mean:.1f}; critical P(s)~s^{slope:.2f} over "
-          f"[{fit_min},{fit_max}]; critical tail {tail_ratio:.0f}x subcritical; deterministic")
+    print(
+        f"self-check OK: measured-sigma matches set sigma (err<0.05); mean size "
+        f"{sub_mean:.1f}<<{crit_mean:.1f}<<{super_mean:.1f}; critical P(s)~s^{slope:.2f} over "
+        f"[{fit_min},{fit_max}]; critical tail {tail_ratio:.0f}x subcritical; deterministic"
+    )
 
 
 if __name__ == "__main__":

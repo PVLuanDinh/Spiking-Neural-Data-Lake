@@ -1,5 +1,5 @@
 """
-Potjans-Diesmann 6-layer / 8-population cortical MICROCIRCUIT -- a pure-stdlib SPIKING dynamics model.
+Potjans-Diesmann 6-layer / 8-population cortical MICROCIRCUIT -- a SPIKING dynamics model.
 
 This is the canonical cortical column model of Potjans & Diesmann 2014 ("The Cell-Type Specific
 Cortical Microcircuit: Relating Structure and Activity in a Full-Scale Spiking Network Model",
@@ -37,19 +37,19 @@ predicted rates), chosen so the qualitative layer signatures below survive the ~
 per-population rates are therefore approximate; the QUALITATIVE signatures (all layers low-rate,
 asynchronous-irregular, superficial-low / L5-elevated) are what this scaled twin reproduces.
 
-Zero runtime dependencies (pure Python stdlib: random, math). Per-instance random.Random(seed);
+Per-instance random.Random(seed);
 ASCII-only output.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.cortical_microcircuit
   (back-compat alias also resolves:  python -m snn_data_lake.cortical_microcircuit)
 """
+
 import math
 import random
-import sys
 
 # --- the eight populations, in canonical order --------------------------------------------------
 POP_NAMES = ["L2/3e", "L2/3i", "L4e", "L4i", "L5e", "L5i", "L6e", "L6i"]
-EXC_POPS = (0, 2, 4, 6)                    # indices of the excitatory pools (the rest are inhibitory)
+EXC_POPS = (0, 2, 4, 6)  # indices of the excitatory pools (the rest are inhibitory)
 
 # Full-scale population sizes (Potjans-Diesmann 2014, Table 5). Total = 77169.
 N_FULL = [20683, 5834, 21915, 5479, 4850, 1065, 14395, 2948]
@@ -70,21 +70,21 @@ CONN_PROB = [
 K_EXT = [1600, 1500, 2100, 1900, 2000, 1900, 2900, 2100]
 
 # --- LIF + synapse parameters (Potjans-Diesmann values), voltages measured RELATIVE to rest -----
-TAU_M = 10.0                 # membrane time constant (ms)
-DT = 0.1                     # integration step (ms)
-V_TH = 15.0                  # spike threshold (mV above the -65 mV rest / reset)
-V_RESET = 0.0                # reset = rest (relative)
-T_REF_MS = 2.0               # absolute refractory period (ms)
-DELAY_MS = 1.5               # synaptic transmission delay (ms)
-PSP = 0.15                   # excitatory PSP amplitude (mV) -- the delta-synapse voltage jump
-G_INH = 4.0                  # relative inhibitory weight (inhibition-dominated): IPSP = -G_INH x PSP
-BG_RATE = 8.0                # external background rate per synapse (Hz)
-V_OP = 6.0                   # sub-threshold mean operating point (mV) set by the external drive
-NOISE_GAIN = 4.0             # multiplier on the external diffusion std (sets the fluctuation size)
+TAU_M = 10.0  # membrane time constant (ms)
+DT = 0.1  # integration step (ms)
+V_TH = 15.0  # spike threshold (mV above the -65 mV rest / reset)
+V_RESET = 0.0  # reset = rest (relative)
+T_REF_MS = 2.0  # absolute refractory period (ms)
+DELAY_MS = 1.5  # synaptic transmission delay (ms)
+PSP = 0.15  # excitatory PSP amplitude (mV) -- the delta-synapse voltage jump
+G_INH = 4.0  # relative inhibitory weight (inhibition-dominated): IPSP = -G_INH x PSP
+BG_RATE = 8.0  # external background rate per synapse (Hz)
+V_OP = 6.0  # sub-threshold mean operating point (mV) set by the external drive
+NOISE_GAIN = 4.0  # multiplier on the external diffusion std (sets the fluctuation size)
 
 
 class CorticalMicrocircuit:
-    """The Potjans-Diesmann 8-population cortical column as a scaled pure-Python spiking LIF network.
+    """The Potjans-Diesmann 8-population cortical column as a scaled spiking LIF network.
 
     Build a downscaled instance (`scale` in (0, 1]; full model is scale=1.0 -> 77169 neurons, far
     too large for stdlib), then call `.simulate(t_ms)`. `.firing_rates()` returns the per-population
@@ -92,7 +92,9 @@ class CorticalMicrocircuit:
     intervals (CV ~ 1 == Poisson-irregular). Connectivity is drawn once from a per-instance
     random.Random(seed); the drawn network + drive is a deterministic function of (scale, seed)."""
 
-    def __init__(self, scale=0.008, seed=0, g=G_INH, bg_rate=BG_RATE, v_op=V_OP, noise_gain=NOISE_GAIN):
+    def __init__(
+        self, scale=0.008, seed=0, g=G_INH, bg_rate=BG_RATE, v_op=V_OP, noise_gain=NOISE_GAIN
+    ):
         if not (0.0 < scale <= 1.0):
             raise ValueError("scale must be in (0, 1]")
         self.scale = scale
@@ -101,8 +103,8 @@ class CorticalMicrocircuit:
         self.bg_rate = bg_rate
         self.v_op = v_op
         self.noise_gain = noise_gain
-        self.decay = math.exp(-DT / TAU_M)      # membrane leak factor per step (used in simulate too)
-        self.rng = random.Random(seed)          # per-instance RNG (connectivity build)
+        self.decay = math.exp(-DT / TAU_M)  # membrane leak factor per step (used in simulate too)
+        self.rng = random.Random(seed)  # per-instance RNG (connectivity build)
 
         # scaled population sizes (>=1 each so no layer vanishes) and the global index ranges
         self.n_pop = [max(1, int(round(N_FULL[p] * scale))) for p in range(8)]
@@ -112,15 +114,15 @@ class CorticalMicrocircuit:
         for p in range(8):
             self.pop_start.append(acc)
             acc += self.n_pop[p]
-        self.pop_of = [0] * self.n_total       # global index -> population index
+        self.pop_of = [0] * self.n_total  # global index -> population index
         for p in range(8):
             for k in range(self.n_pop[p]):
                 self.pop_of[self.pop_start[p] + k] = p
 
         # variance-preserving weight correction: w -> w / sqrt(scale)  (Potjans-Diesmann scaling)
         corr = 1.0 / math.sqrt(scale)
-        self.w_exc = PSP * corr                # excitatory delta-synapse voltage jump (mV)
-        self.w_inh = -g * PSP * corr           # inhibitory delta-synapse voltage jump (mV)
+        self.w_exc = PSP * corr  # excitatory delta-synapse voltage jump (mV)
+        self.w_inh = -g * PSP * corr  # inhibitory delta-synapse voltage jump (mV)
 
         self._build_connectivity()
 
@@ -138,17 +140,21 @@ class CorticalMicrocircuit:
         # recurrent connectivity. This is a documented simplification of the paper's full
         # mean-and-variance matching, tuned so the qualitative signatures survive the downscaling.
         dt_s = DT / 1000.0
-        mu_op = v_op * (1.0 - self.decay)      # external mean / step that holds the leak-steady v = v_op
-        self.mu_ext = [0.0] * self.n_total     # per-neuron external mean voltage kick / step (mV)
+        mu_op = v_op * (
+            1.0 - self.decay
+        )  # external mean / step that holds the leak-steady v = v_op
+        self.mu_ext = [0.0] * self.n_total  # per-neuron external mean voltage kick / step (mV)
         self.sigma_ext = [0.0] * self.n_total  # per-neuron external std of the kick / step (mV)
         for i in range(self.n_total):
             p = self.pop_of[i]
-            rate = K_EXT[p] * bg_rate * dt_s   # expected external spikes this step (per-layer)
+            rate = K_EXT[p] * bg_rate * dt_s  # expected external spikes this step (per-layer)
             self.mu_ext[i] = mu_op
             self.sigma_ext[i] = noise_gain * math.sqrt(rate) * PSP
 
         # results (populated by simulate())
-        self.spike_times = [[] for _ in range(self.n_total)]   # per-neuron spike times (ms) in window
+        self.spike_times = [
+            [] for _ in range(self.n_total)
+        ]  # per-neuron spike times (ms) in window
         self.meas_ms = 0.0
 
     def _build_connectivity(self):
@@ -159,15 +165,17 @@ class CorticalMicrocircuit:
         for event-driven propagation. Weight sign is set by whether the SOURCE pool is exc or inh."""
         rng = self.rng
         self.out_adj = [[] for _ in range(self.n_total)]
-        self.in_degree = [[0] * 8 for _ in range(8)]   # K_ij: recurrent in-degree matrix (inspectable)
+        self.in_degree = [
+            [0] * 8 for _ in range(8)
+        ]  # K_ij: recurrent in-degree matrix (inspectable)
         n_syn = 0
-        for i in range(8):                              # target population
+        for i in range(8):  # target population
             tgt_lo = self.pop_start[i]
-            for j in range(8):                          # source population
+            for j in range(8):  # source population
                 c = CONN_PROB[i][j]
                 if c <= 0.0:
                     continue
-                k = int(round(c * self.n_pop[j]))       # in-degree from j into each i-neuron
+                k = int(round(c * self.n_pop[j]))  # in-degree from j into each i-neuron
                 self.in_degree[i][j] = k
                 if k == 0:
                     continue
@@ -205,10 +213,10 @@ class CorticalMicrocircuit:
         theta = V_TH
         reset = V_RESET
         spikes = [[] for _ in range(n)]
-        pending = [[0.0] * n for _ in range(ring)]     # ring buffer of delayed synaptic input (mV)
+        pending = [[0.0] * n for _ in range(ring)]  # ring buffer of delayed synaptic input (mV)
 
         # dedicated, reproducible noise RNG (independent of the connectivity draw sequence)
-        rng = random.Random((self.seed * 1000003 + 101) & 0x7fffffff)
+        rng = random.Random((self.seed * 1000003 + 101) & 0x7FFFFFFF)
         gauss = rng.gauss
 
         for step in range(total_steps):
@@ -219,7 +227,7 @@ class CorticalMicrocircuit:
             for i in range(n):
                 r = ref[i]
                 if r > 0:
-                    ref[i] = r - 1              # in refractory: membrane clamped at reset
+                    ref[i] = r - 1  # in refractory: membrane clamped at reset
                     continue
                 s = sigma[i]
                 vi = v[i] * decay + buf[i] + mu[i] + (gauss(0.0, s) if s > 0.0 else 0.0)
@@ -228,11 +236,11 @@ class CorticalMicrocircuit:
                     ref[i] = tref_steps
                     if recording:
                         spikes[i].append((step - settle_steps) * DT)
-                    for (tgt, w) in out_adj[i]:
+                    for tgt, w in out_adj[i]:
                         fut[tgt] += w
                 else:
                     v[i] = vi
-            pending[slot] = [0.0] * n          # clear the consumed slot for reuse
+            pending[slot] = [0.0] * n  # clear the consumed slot for reuse
 
         self.spike_times = spikes
         return self
@@ -278,7 +286,7 @@ class CorticalMicrocircuit:
 
 
 def _mean_finite(xs):
-    vals = [x for x in xs if x == x]           # drop NaNs (NaN != NaN)
+    vals = [x for x in xs if x == x]  # drop NaNs (NaN != NaN)
     return sum(vals) / len(vals) if vals else float("nan")
 
 
@@ -293,10 +301,14 @@ def main():
     print("=" * 72)
     print("POTJANS-DIESMANN CORTICAL MICROCIRCUIT -- 8-population spiking LIF column")
     print("=" * 72)
-    print(f"scale {scale:.4f}  ->  {net.n_total} neurons  |  {net.n_synapses} recurrent synapses  "
-          f"(full model = {sum(N_FULL)} neurons)")
-    print(f"variance-preserving weights: EPSP {net.w_exc:.3f} mV  IPSP {net.w_inh:.3f} mV  "
-          f"(g = {net.g:.0f}, base PSP {PSP} mV / sqrt(scale))")
+    print(
+        f"scale {scale:.4f}  ->  {net.n_total} neurons  |  {net.n_synapses} recurrent synapses  "
+        f"(full model = {sum(N_FULL)} neurons)"
+    )
+    print(
+        f"variance-preserving weights: EPSP {net.w_exc:.3f} mV  IPSP {net.w_inh:.3f} mV  "
+        f"(g = {net.g:.0f}, base PSP {PSP} mV / sqrt(scale))"
+    )
     print(f"measurement window: {net.meas_ms:.0f} ms after a 100 ms settle,  dt = {DT} ms")
     print("-" * 72)
     print("pop      N     rate(Hz)    CV_ISI     kind")
@@ -308,8 +320,10 @@ def main():
     print("-" * 72)
     print(f"mean CV_ISI across populations: {mean_cv:.3f}   (Poisson-irregular ~ 1.0)")
     r23e, r5e = rates[0], rates[4]
-    print(f"layer signature: rate(L5e) {r5e:.2f} Hz  >  rate(L2/3e) {r23e:.2f} Hz  "
-          f"(superficial-low, L5 elevated)")
+    print(
+        f"layer signature: rate(L5e) {r5e:.2f} Hz  >  rate(L2/3e) {r23e:.2f} Hz  "
+        f"(superficial-low, L5 elevated)"
+    )
     print("=" * 72)
 
     # ---- self-checks: assert the KNOWN biological SIGNATURES (dynamics model, not accuracy) ----
@@ -319,20 +333,24 @@ def main():
         assert rates[p] < 30.0, f"{POP_NAMES[p]} rate {rates[p]:.1f} Hz is runaway/saturated"
     # (2) ASYNCHRONOUS-IRREGULAR ground state: spiking is irregular, not clock-like or synchronized.
     assert mean_cv == mean_cv, "CV_ISI undefined -- too few spikes to estimate irregularity"
-    assert mean_cv > 0.7, f"mean CV_ISI {mean_cv:.2f} too regular -- not the asynchronous-irregular state"
+    assert mean_cv > 0.7, (
+        f"mean CV_ISI {mean_cv:.2f} too regular -- not the asynchronous-irregular state"
+    )
     # (3) canonical LAYER RATE SIGNATURE: superficial L2/3e is low, L5e is the elevated excitatory
     #     layer (the robust qualitative ordering that survives the downscaling).
     assert rates[4] > rates[0], (
-        f"layer signature broken: L5e {rates[4]:.2f} Hz must exceed L2/3e {rates[0]:.2f} Hz")
-    # structural sanity: genuinely spiking, pure stdlib, deterministic.
-    assert "numpy" not in sys.modules and "torch" not in sys.modules, "must be pure stdlib"
+        f"layer signature broken: L5e {rates[4]:.2f} Hz must exceed L2/3e {rates[0]:.2f} Hz"
+    )
+    # structural sanity: genuinely spiking, deterministic.
     net2 = CorticalMicrocircuit(scale=scale, seed=0)
     net2.simulate(t_ms=400.0, settle_ms=100.0)
     assert net2.firing_rates() == rates, "same (scale, seed) must reproduce identical rates"
 
-    print(f"self-check OK: 8/8 populations active {min(rates):.2f}-{max(rates):.2f} Hz, "
-          f"asynchronous-irregular (mean CV {mean_cv:.2f} > 0.7), "
-          f"layer signature L5e > L2/3e ({rates[4]:.2f} > {rates[0]:.2f} Hz); pure-stdlib, deterministic")
+    print(
+        f"self-check OK: 8/8 populations active {min(rates):.2f}-{max(rates):.2f} Hz, "
+        f"asynchronous-irregular (mean CV {mean_cv:.2f} > 0.7), "
+        f"layer signature L5e > L2/3e ({rates[4]:.2f} > {rates[0]:.2f} Hz); deterministic"
+    )
 
 
 if __name__ == "__main__":

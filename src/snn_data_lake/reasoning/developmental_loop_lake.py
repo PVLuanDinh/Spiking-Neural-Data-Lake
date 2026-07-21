@@ -22,7 +22,7 @@ loop's ~93.3% (vs random RAM replay), while proving the memory is durable?
 Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/developmental_loop_lake.py
 Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NORD_REPLAY(150)
        NORD_SGD(300) NORD_TRAIN(10000) NORD_TEST(2000)
-Deps: numpy torch torchvision snntorch  (research/GPU tier; core stays zero-dep)
+Deps: numpy torch torchvision snntorch  (research/GPU tier; core untouched)
 """
 import os
 

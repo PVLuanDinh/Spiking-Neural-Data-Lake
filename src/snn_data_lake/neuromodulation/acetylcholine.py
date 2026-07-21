@@ -30,14 +30,15 @@ Neurobiol 2006; encode/retrieve scheduling, J Neurosci 33:8689, 2013).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.acetylcholine
 """
+
 import math
 import random
 
-TAU = 10.0             # ACh time constant (steps) -- how fast it tracks the novelty drive
-MODE_TH = 0.5          # ACh >= this -> ENCODE, else RETRIEVE
-FF_MIN, FF_MAX = 0.2, 1.0   # feedforward (afferent) gain range: attenuated when ACh is low
-REC_MAX = 1.0          # recurrent (feedback) gain when ACh is fully low
-PLAST_MAX = 1.0        # plasticity scale when ACh is fully high
+TAU = 10.0  # ACh time constant (steps) -- how fast it tracks the novelty drive
+MODE_TH = 0.5  # ACh >= this -> ENCODE, else RETRIEVE
+FF_MIN, FF_MAX = 0.2, 1.0  # feedforward (afferent) gain range: attenuated when ACh is low
+REC_MAX = 1.0  # recurrent (feedback) gain when ACh is fully low
+PLAST_MAX = 1.0  # plasticity scale when ACh is fully high
 
 
 class Acetylcholine:
@@ -95,7 +96,7 @@ class RecurrentStore:
         clamped = []
         for i in range(self.n):
             rec = sum(self.w[i][j] * pattern[j] for j in range(self.n) if j != i)
-            clamped.append(_sign(ff * pattern[i] + g * rec))     # recurrent suppressed when ACh high
+            clamped.append(_sign(ff * pattern[i] + g * rec))  # recurrent suppressed when ACh high
         for i in range(self.n):
             ci = clamped[i]
             for j in range(self.n):
@@ -156,18 +157,22 @@ def demo_encode_retrieve(seed):
     store = RecurrentStore(n)
     ach = Acetylcholine(tau=8.0)
 
-    for _ in range(40):              # sustained novelty -> ACh climbs into ENCODE mode
+    for _ in range(40):  # sustained novelty -> ACh climbs into ENCODE mode
         ach.step(1.0)
     ach_hi = ach.level
-    store.encode(a, ach)             # clean, recurrent-suppressed write of A
+    store.encode(a, ach)  # clean, recurrent-suppressed write of A
 
-    for _ in range(60):              # sustained quiescence -> ACh decays into RETRIEVE mode
+    for _ in range(60):  # sustained quiescence -> ACh decays into RETRIEVE mode
         ach.step(0.0)
     ach_lo = ach.level
     cue = _corrupt(a, rng)
     recalled = store.retrieve(cue, ach)
-    return {"ach_hi": ach_hi, "ach_lo": ach_lo, "cue_acc": _accuracy(cue, a),
-            "recall_acc": _accuracy(recalled, a)}
+    return {
+        "ach_hi": ach_hi,
+        "ach_lo": ach_lo,
+        "cue_acc": _accuracy(cue, a),
+        "recall_acc": _accuracy(recalled, a),
+    }
 
 
 def demo_interference(seed):
@@ -199,14 +204,18 @@ def demo_habituation(seed):
     ach = Acetylcholine(tau=6.0)
     trace, nov = [], []
     for _ in range(40):
-        v = _novelty(expect, x)      # perceive
+        v = _novelty(expect, x)  # perceive
         nov.append(v)
         trace.append(ach.step(v))
-        _learn_expect(expect, x)     # then habituate
-    ach_novel = max(trace[:10])      # peak while still novel
-    ach_familiar = trace[-1]         # after habituation
-    return {"ach_novel": ach_novel, "ach_familiar": ach_familiar,
-            "nov_first": nov[0], "nov_last": nov[-1]}
+        _learn_expect(expect, x)  # then habituate
+    ach_novel = max(trace[:10])  # peak while still novel
+    ach_familiar = trace[-1]  # after habituation
+    return {
+        "ach_novel": ach_novel,
+        "ach_familiar": ach_familiar,
+        "nov_first": nov[0],
+        "nov_last": nov[-1],
+    }
 
 
 def _mode_switch():
@@ -229,28 +238,42 @@ def main():
     print("=" * 66)
     print("ACETYLCHOLINE -- novelty-driven ENCODE-vs-RETRIEVE mode switch")
     print("=" * 66)
-    print(f"high ACh={hi.level:.2f} -> {hi.mode():8s} ff={hi.feedforward_gain():.2f} "
-          f"rec={hi.recurrent_gain():.2f} plast={hi.plasticity_scale():.2f}")
-    print(f"low  ACh={lo.level:.2f} -> {lo.mode():8s} ff={lo.feedforward_gain():.2f} "
-          f"rec={lo.recurrent_gain():.2f} plast={lo.plasticity_scale():.2f}")
-    print(f"encode-then-retrieve: wrote A at ACh={er['ach_hi']:.2f}, recalled at ACh={er['ach_lo']:.2f}")
+    print(
+        f"high ACh={hi.level:.2f} -> {hi.mode():8s} ff={hi.feedforward_gain():.2f} "
+        f"rec={hi.recurrent_gain():.2f} plast={hi.plasticity_scale():.2f}"
+    )
+    print(
+        f"low  ACh={lo.level:.2f} -> {lo.mode():8s} ff={lo.feedforward_gain():.2f} "
+        f"rec={lo.recurrent_gain():.2f} plast={lo.plasticity_scale():.2f}"
+    )
+    print(
+        f"encode-then-retrieve: wrote A at ACh={er['ach_hi']:.2f}, recalled at ACh={er['ach_lo']:.2f}"
+    )
     print(f"  partial cue acc={er['cue_acc']:.2f} -> recall acc={er['recall_acc']:.2f}")
-    print(f"novelty: ACh(novel)={hab['ach_novel']:.2f} > ACh(familiar)={hab['ach_familiar']:.2f} "
-          f"(novelty {hab['nov_first']:.2f} -> {hab['nov_last']:.2f})")
-    print(f"interference: recall A={intf['a_acc']:.2f}, recall B={intf['b_acc']:.2f} after writing both")
+    print(
+        f"novelty: ACh(novel)={hab['ach_novel']:.2f} > ACh(familiar)={hab['ach_familiar']:.2f} "
+        f"(novelty {hab['nov_first']:.2f} -> {hab['nov_last']:.2f})"
+    )
+    print(
+        f"interference: recall A={intf['a_acc']:.2f}, recall B={intf['b_acc']:.2f} after writing both"
+    )
     print("=" * 66)
 
     # ---- self-checks (deterministic, ASCII-only) ----------------------------
     # 1. mode switch: gains flip with ACh
     assert hi.mode() == "ENCODE", "sustained novelty should put ACh in ENCODE mode"
     assert lo.mode() == "RETRIEVE", "sustained quiescence should put ACh in RETRIEVE mode"
-    assert hi.feedforward_gain() > lo.feedforward_gain(), "feedforward gain must be higher in encode"
+    assert hi.feedforward_gain() > lo.feedforward_gain(), (
+        "feedforward gain must be higher in encode"
+    )
     assert hi.recurrent_gain() < lo.recurrent_gain(), "recurrent gain must be higher in retrieve"
     assert hi.plasticity_scale() > lo.plasticity_scale(), "plasticity must be higher in encode"
     # 2. encode-then-retrieve (headline): write in encode mode, recall in retrieve mode
     assert er["ach_hi"] >= MODE_TH, "ACh must be high (ENCODE) at write time"
     assert er["ach_lo"] < MODE_TH, "ACh must be low (RETRIEVE) at recall time"
-    assert er["recall_acc"] >= 0.8, f"recall of A from a partial cue must be high ({er['recall_acc']})"
+    assert er["recall_acc"] >= 0.8, (
+        f"recall of A from a partial cue must be high ({er['recall_acc']})"
+    )
     assert er["recall_acc"] > er["cue_acc"], "retrieval must improve on the degraded cue"
     # 3. novelty dynamics: habituation
     assert hab["ach_novel"] > hab["ach_familiar"], "ACh must be higher on novel than familiar input"
@@ -259,13 +282,17 @@ def main():
     assert intf["a_acc"] >= 0.8, f"recall of A must survive encoding B ({intf['a_acc']})"
     assert intf["b_acc"] >= 0.8, f"recall of B must be high ({intf['b_acc']})"
     # 5. determinism: same seed/input -> identical results across fresh instances
-    assert demo_encode_retrieve(0) == demo_encode_retrieve(0), "encode/retrieve must be deterministic"
+    assert demo_encode_retrieve(0) == demo_encode_retrieve(0), (
+        "encode/retrieve must be deterministic"
+    )
     assert demo_habituation(1) == demo_habituation(1), "habituation trace must be deterministic"
 
-    print(f"self-check OK: ACh novel={hab['ach_novel']:.2f} vs familiar={hab['ach_familiar']:.2f}; "
-          f"mode flips ENCODE ff={hi.feedforward_gain():.2f}/rec={hi.recurrent_gain():.2f} -> "
-          f"RETRIEVE ff={lo.feedforward_gain():.2f}/rec={lo.recurrent_gain():.2f}; "
-          f"encode-then-retrieve recall acc={er['recall_acc']:.2f}")
+    print(
+        f"self-check OK: ACh novel={hab['ach_novel']:.2f} vs familiar={hab['ach_familiar']:.2f}; "
+        f"mode flips ENCODE ff={hi.feedforward_gain():.2f}/rec={hi.recurrent_gain():.2f} -> "
+        f"RETRIEVE ff={lo.feedforward_gain():.2f}/rec={lo.recurrent_gain():.2f}; "
+        f"encode-then-retrieve recall acc={er['recall_acc']:.2f}"
+    )
 
 
 if __name__ == "__main__":

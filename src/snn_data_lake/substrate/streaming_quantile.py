@@ -1,5 +1,5 @@
 """
-Streaming quantile -- the P-square (P2) estimator: any percentile of a stream in O(1) memory (pure stdlib).
+Streaming quantile -- the P-square (P2) estimator: any percentile of a stream in O(1) memory.
 
 The lake keeps several fixed-memory questions running over a flood of values; this one estimates an ORDER
 STATISTIC -- the p-quantile, the value below which a fraction p of the data falls (the p50 median, the p99 tail).
@@ -41,6 +41,7 @@ implementation, not cognition.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.streaming_quantile   # (also run by selfchecks)
 """
+
 import math
 import random
 
@@ -90,11 +91,11 @@ class P2Quantile:
 
     def reset(self):
         """Forget everything -- start a fresh estimate over a new stream."""
-        self._buf = []          # holds the first <5 observations until the markers are initialised
-        self._q = None          # marker heights q_1..q_5 (observed values)
-        self._np = None         # marker positions n_i (integer counts)
-        self._npd = None        # desired marker positions n'_i (floats)
-        self._dnp = None        # per-observation increments of the desired positions
+        self._buf = []  # holds the first <5 observations until the markers are initialised
+        self._q = None  # marker heights q_1..q_5 (observed values)
+        self._np = None  # marker positions n_i (integer counts)
+        self._npd = None  # desired marker positions n'_i (floats)
+        self._dnp = None  # per-observation increments of the desired positions
         self._n_seen = 0
 
     def _initialize(self):
@@ -211,14 +212,16 @@ class StreamingQuantiles:
 
 def main():
     n = 100000
-    acc_bound = 0.03          # central/upper quantiles of a light-tailed stream converge tight
-    tail_bound = 0.05         # a heavy-tailed p99 sits on a sparse tail -> a slightly looser but honest bound
+    acc_bound = 0.03  # central/upper quantiles of a light-tailed stream converge tight
+    tail_bound = (
+        0.05  # a heavy-tailed p99 sits on a sparse tail -> a slightly looser but honest bound
+    )
 
     # ---- 1. accuracy vs the EXACT quantile: a seeded normal-ish positive stream (mean 100, sd 15 -> all values
     # positive so relative error is well-defined), several p, P2 estimate vs the sorted-sample oracle. ----
     rng = random.Random(20260706)
     sample = [rng.gauss(100.0, 15.0) for _ in range(n)]
-    oracle = sorted(sample)                                  # O(N) oracle: allowed for the TEST, NOT the algorithm
+    oracle = sorted(sample)  # O(N) oracle: allowed for the TEST, NOT the algorithm
     ps = [0.5, 0.9, 0.95, 0.99]
     mq = StreamingQuantiles(ps).add_all(sample)
     rows = []
@@ -264,34 +267,54 @@ def main():
     print("=" * 72)
     print("STREAMING QUANTILE -- P-square (P2) estimator: 5 markers, O(1) memory")
     print("=" * 72)
-    print(f"stream: N = {n} seeded observations; estimator holds n_markers = {n_markers} markers (never stored)")
+    print(
+        f"stream: N = {n} seeded observations; estimator holds n_markers = {n_markers} markers (never stored)"
+    )
     print("accuracy vs exact (normal mean=100 sd=15):")
     for p, exact, est, rel in rows:
         tag = "p" + str(int(round(p * 100)))
-        print(f"  {tag:>4} : exact {exact:10.4f}  ->  P2 estimate {est:10.4f}   (rel err {rel * 100:5.2f}%)")
+        print(
+            f"  {tag:>4} : exact {exact:10.4f}  ->  P2 estimate {est:10.4f}   (rel err {rel * 100:5.2f}%)"
+        )
     print(f"  worst-case relative error = {max_rel * 100:.2f}%  (bound {acc_bound * 100:.0f}%)")
-    print(f"O(1) memory: p99 of N = {n} observations kept in {n_markers} markers "
-          f"(exact oracle stores all {n})")
-    print(f"skewed exponential (mean {exp_mean:.3f} vs median ~0.693 -- mean >> median, long tail):")
+    print(
+        f"O(1) memory: p99 of N = {n} observations kept in {n_markers} markers "
+        f"(exact oracle stores all {n})"
+    )
+    print(
+        f"skewed exponential (mean {exp_mean:.3f} vs median ~0.693 -- mean >> median, long tail):"
+    )
     for p, exact, est, rel in exp_rows:
         tag = "p" + str(int(round(p * 100)))
-        print(f"  {tag:>4} : exact {exact:8.4f}  ->  P2 estimate {est:8.4f}   (rel err {rel * 100:5.2f}%)")
-    print(f"determinism: two fresh P2Quantile(0.95) on the same seeded stream -> identical: {det_a == det_b}")
+        print(
+            f"  {tag:>4} : exact {exact:8.4f}  ->  P2 estimate {est:8.4f}   (rel err {rel * 100:5.2f}%)"
+        )
+    print(
+        f"determinism: two fresh P2Quantile(0.95) on the same seeded stream -> identical: {det_a == det_b}"
+    )
     print(f"fewer-than-5 path: exact median of [3,1,2] = {small_med:.1f}")
     print("=" * 72)
 
-    # ---- asserts (deterministic, zero-dep; genuine estimates vs a real sorted oracle, nothing rigged) ----
+    # ---- asserts (deterministic; genuine estimates vs a real sorted oracle, nothing rigged) ----
     for p, _exact, _est, rel in rows:
-        assert rel < acc_bound, f"P2 p{int(round(p*100))} off by {rel*100:.2f}% (> {acc_bound*100:.0f}% bound)"
+        assert rel < acc_bound, (
+            f"P2 p{int(round(p * 100))} off by {rel * 100:.2f}% (> {acc_bound * 100:.0f}% bound)"
+        )
     assert n_markers == 5, f"P2 must hold exactly 5 markers, not {n_markers}"
     assert p99_est.n_seen == n, "estimator must have consumed the whole stream"
     for p, _exact, _est, rel in exp_rows:
-        assert rel < tail_bound, f"skewed p{int(round(p*100))} off by {rel*100:.2f}% (> {tail_bound*100:.0f}%)"
-    assert exp_mean > 1.4 * exp_oracle[n // 2], "sanity: exponential mean must sit well above its own median"
+        assert rel < tail_bound, (
+            f"skewed p{int(round(p * 100))} off by {rel * 100:.2f}% (> {tail_bound * 100:.0f}%)"
+        )
+    assert exp_mean > 1.4 * exp_oracle[n // 2], (
+        "sanity: exponential mean must sit well above its own median"
+    )
     assert det_a == det_b, "same p / seeded stream must give an identical estimate"
     assert small_med == 2.0, f"exact median of [3,1,2] must be 2.0, got {small_med}"
-    print(f"self-check OK: {len(ps)} quantiles within {max_rel*100:.2f}% of exact using {n_markers} markers over "
-          f"N={n}; skewed p50/p90/p99 all track; deterministic")
+    print(
+        f"self-check OK: {len(ps)} quantiles within {max_rel * 100:.2f}% of exact using {n_markers} markers over "
+        f"N={n}; skewed p50/p90/p99 all track; deterministic"
+    )
 
 
 if __name__ == "__main__":

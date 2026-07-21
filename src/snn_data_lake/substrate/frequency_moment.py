@@ -1,5 +1,5 @@
 """
-Frequency-moment sketch -- AMS "tug-of-war" estimate of F2 = sum_i f_i^2 in sublinear memory (pure stdlib).
+Frequency-moment sketch -- AMS "tug-of-war" estimate of F2 = sum_i f_i^2 in sublinear memory.
 
 The streaming lake asks several fixed-memory questions about a flood of spike motifs; each has its own sketch,
 and this one estimates a DIFFERENT statistic from all of them: the SECOND FREQUENCY MOMENT
@@ -36,6 +36,7 @@ not a spiking implementation, not cognition.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.frequency_moment   # (also run by selfchecks)
 """
+
 import hashlib
 
 _MASK64 = (1 << 64) - 1
@@ -73,7 +74,7 @@ class AMSSketch:
         self.d = int(d)
         self.g = int(g)
         self.seed = int(seed)
-        self._n = self.d * self.g          # total counters = the memory footprint
+        self._n = self.d * self.g  # total counters = the memory footprint
         self.reset()
 
     def reset(self):
@@ -142,21 +143,21 @@ def _lcg(state):
 
 
 def main():
-    d, g = 16, 15                                   # 240 counters; large enough that median-of-means lands cleanly
+    d, g = 16, 15  # 240 counters; large enough that median-of-means lands cleanly
     seed = 7
-    acc_bound = 0.18                                # stated relative-error bound for the accuracy test
+    acc_bound = 0.18  # stated relative-error bound for the accuracy test
 
     # ---- 1. accuracy vs EXACT F2: a skewed stream (heavy hitters + a long light tail), exact F2 from a real
     # frequency table, AMS estimate within acc_bound. ----
     stream = []
     for item, reps in ((101, 900), (102, 700), (103, 500), (104, 300)):
-        stream += [item] * reps                     # four heavy hitters
+        stream += [item] * reps  # four heavy hitters
     st = 12345
-    for _ in range(30000):                          # ...buried in a light tail of ~4000 distinct rare motifs
+    for _ in range(30000):  # ...buried in a light tail of ~4000 distinct rare motifs
         st = _lcg(st)
         stream.append(1000 + (st >> 17) % 4000)
     st = 999
-    for i in range(len(stream) - 1, 0, -1):         # deterministic Fisher-Yates shuffle (no random import)
+    for i in range(len(stream) - 1, 0, -1):  # deterministic Fisher-Yates shuffle (no random import)
         st = _lcg(st)
         j = st % (i + 1)
         stream[i], stream[j] = stream[j], stream[i]
@@ -173,7 +174,7 @@ def main():
     st = 555
     for _ in range(30000):
         st = _lcg(st)
-        mem_stream.append(20000 + (st >> 13) % 9000)    # ~9000 distinct motifs
+        mem_stream.append(20000 + (st >> 13) % 9000)  # ~9000 distinct motifs
     mem_distinct = len({x for x in mem_stream})
     mem_f2_true = exact_f2(mem_stream)
     mem_sk = AMSSketch(d=d, g=g, seed=seed).add_all(mem_stream)
@@ -183,16 +184,16 @@ def main():
     # ---- 3. skew sensitivity (the MEANING of F2): two streams of the SAME length -- one near-uniform, one heavily
     # skewed -- AMS F2 must be much LARGER for the skewed one (tracking the exact F2s). ----
     length = 30000
-    uni = []                                        # near-uniform: 6000 motifs each seen ~5 times -> small F2
+    uni = []  # near-uniform: 6000 motifs each seen ~5 times -> small F2
     st = 4242
     for _ in range(length):
         st = _lcg(st)
         uni.append(50000 + (st >> 11) % 6000)
-    skew = [70001] * 9000 + [70002] * 8000 + [70003] * 7000   # three heavy hitters -> large F2
+    skew = [70001] * 9000 + [70002] * 8000 + [70003] * 7000  # three heavy hitters -> large F2
     st = 313
     for _ in range(length - len(skew)):
         st = _lcg(st)
-        skew.append(80000 + (st >> 11) % 6000)      # small light tail to reach the same total length
+        skew.append(80000 + (st >> 11) % 6000)  # small light tail to reach the same total length
     uni_true, skew_true = exact_f2(uni), exact_f2(skew)
     uni_est = AMSSketch(d=d, g=g, seed=seed).add_all(uni).estimate()
     skew_est = AMSSketch(d=d, g=g, seed=seed).add_all(skew).estimate()
@@ -205,30 +206,60 @@ def main():
     print("=" * 70)
     print("FREQUENCY-MOMENT SKETCH -- AMS tug-of-war F2 = sum f_i^2 (median-of-means)")
     print("=" * 70)
-    print(f"sketch: d={d} counters/group, g={g} groups, n_counters = d*g = {sk.n_counters}; seed={seed}")
-    print(f"accuracy : exact F2 = {f2_true} vs estimate {f2_est:.0f}  (rel err {rel * 100:.2f}%, "
-          f"bound {acc_bound * 100:.0f}%) over {n_distinct} distinct in {sk.n_counters} counters")
-    print(f"sublinear: {mem_sk.n_counters} counters estimate F2 over {mem_distinct} distinct motifs "
-          f"(exact F2 needs {mem_distinct} counters)")
-    print(f"           exact F2 = {mem_f2_true} vs estimate {mem_f2_est:.0f} (rel err {mem_rel * 100:.2f}%)")
+    print(
+        f"sketch: d={d} counters/group, g={g} groups, n_counters = d*g = {sk.n_counters}; seed={seed}"
+    )
+    print(
+        f"accuracy : exact F2 = {f2_true} vs estimate {f2_est:.0f}  (rel err {rel * 100:.2f}%, "
+        f"bound {acc_bound * 100:.0f}%) over {n_distinct} distinct in {sk.n_counters} counters"
+    )
+    print(
+        f"sublinear: {mem_sk.n_counters} counters estimate F2 over {mem_distinct} distinct motifs "
+        f"(exact F2 needs {mem_distinct} counters)"
+    )
+    print(
+        f"           exact F2 = {mem_f2_true} vs estimate {mem_f2_est:.0f} (rel err {mem_rel * 100:.2f}%)"
+    )
     print(f"skew     : uniform  exact F2 = {uni_true:>10} -> estimate {uni_est:>12.0f}")
-    print(f"           skewed   exact F2 = {skew_true:>10} -> estimate {skew_est:>12.0f}  "
-          f"(skewed est / uniform est = {skew_est / uni_est:.0f}x)")
-    print(f"determinism: two fresh instances, same d/g/seed/stream -> identical estimate: {det_a == det_b}")
+    print(
+        f"           skewed   exact F2 = {skew_true:>10} -> estimate {skew_est:>12.0f}  "
+        f"(skewed est / uniform est = {skew_est / uni_est:.0f}x)"
+    )
+    print(
+        f"determinism: two fresh instances, same d/g/seed/stream -> identical estimate: {det_a == det_b}"
+    )
     print("=" * 70)
 
-    # ---- asserts: deterministic, zero-dep; genuine estimates vs a real F2 oracle, nothing rigged ----
-    assert rel < acc_bound, f"AMS F2 estimate off by {rel * 100:.2f}% (> {acc_bound * 100:.0f}% bound)"
-    assert sk.n_counters < n_distinct, f"sketch must be sublinear in distinct motifs ({sk.n_counters} vs {n_distinct})"
-    assert mem_sk.n_counters < mem_distinct, f"memory {mem_sk.n_counters} must be below distinct {mem_distinct}"
-    assert mem_rel < acc_bound, f"sublinear-memory F2 estimate off by {mem_rel * 100:.2f}% (> bound)"
-    assert skew_true > 20 * uni_true, "exact F2 must itself be far larger for the skewed stream (sanity on the oracle)"
-    assert skew_est > 10 * uni_est, f"AMS F2 must be much larger for the skewed stream ({skew_est:.0f} vs {uni_est:.0f})"
-    assert abs(uni_est - uni_true) / uni_true < 0.30, f"uniform F2 estimate must track its exact ({uni_est:.0f})"
-    assert abs(skew_est - skew_true) / skew_true < acc_bound, f"skewed F2 estimate must track its exact ({skew_est:.0f})"
+    # ---- asserts: deterministic; genuine estimates vs a real F2 oracle, nothing rigged ----
+    assert rel < acc_bound, (
+        f"AMS F2 estimate off by {rel * 100:.2f}% (> {acc_bound * 100:.0f}% bound)"
+    )
+    assert sk.n_counters < n_distinct, (
+        f"sketch must be sublinear in distinct motifs ({sk.n_counters} vs {n_distinct})"
+    )
+    assert mem_sk.n_counters < mem_distinct, (
+        f"memory {mem_sk.n_counters} must be below distinct {mem_distinct}"
+    )
+    assert mem_rel < acc_bound, (
+        f"sublinear-memory F2 estimate off by {mem_rel * 100:.2f}% (> bound)"
+    )
+    assert skew_true > 20 * uni_true, (
+        "exact F2 must itself be far larger for the skewed stream (sanity on the oracle)"
+    )
+    assert skew_est > 10 * uni_est, (
+        f"AMS F2 must be much larger for the skewed stream ({skew_est:.0f} vs {uni_est:.0f})"
+    )
+    assert abs(uni_est - uni_true) / uni_true < 0.30, (
+        f"uniform F2 estimate must track its exact ({uni_est:.0f})"
+    )
+    assert abs(skew_est - skew_true) / skew_true < acc_bound, (
+        f"skewed F2 estimate must track its exact ({skew_est:.0f})"
+    )
     assert det_a == det_b, "same d/g/seed/stream must give an identical estimate"
-    print(f"self-check OK: F2 within {rel * 100:.2f}% of exact ({f2_est:.0f} vs {f2_true}) using {sk.n_counters} "
-          f"counters over {n_distinct} distinct; skewed F2 {skew_est / uni_est:.0f}x the uniform; deterministic")
+    print(
+        f"self-check OK: F2 within {rel * 100:.2f}% of exact ({f2_est:.0f} vs {f2_true}) using {sk.n_counters} "
+        f"counters over {n_distinct} distinct; skewed F2 {skew_est / uni_est:.0f}x the uniform; deterministic"
+    )
 
 
 if __name__ == "__main__":

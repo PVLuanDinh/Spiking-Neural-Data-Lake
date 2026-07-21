@@ -1,7 +1,7 @@
 """
 Two-STAGE latency conv-STDP on MNIST -- a genuinely DEEP unsupervised spiking
 hierarchy (Kheradpisheh-2018 SDNN style, pool-between-conv-layers), and an honest
-1-vs-2-vs-3-layer head-to-head.  (torch/GPU tier, ruff-excluded; core stays zero-dep.)
+1-vs-2-vs-3-layer head-to-head.  (torch/GPU tier, ruff-excluded; core untouched.)
 
 WHY THIS FILE EXISTS
 --------------------
@@ -81,7 +81,7 @@ Scale knobs : NORD_C1 NORD_C2 NORD_M NORD_TRAIN NORD_TEST NORD_T NORD_GPU
 Stage knobs : NORD_L1_EPOCHS NORD_L2_EPOCHS NORD_POOL1
 Stage-2 calibration (optional): NORD_K2 NORD_CTHRESH2 NORD_KWINNER2 NORD_RINH2
                                 NORD_APLUS2 NORD_AMINUS2
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core stays zero-dep)
+Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
 """
 import os
 

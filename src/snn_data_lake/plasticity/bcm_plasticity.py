@@ -12,6 +12,7 @@ Bienenstock, Cooper & Munro, J. Neurosci. 2 (1982); Cooper & Bear, Nat. Rev. Neu
 
   python -m snn_data_lake.plasticity.bcm_plasticity        # (also run by run_selfchecks.py)
 """
+
 import random
 
 import snn_data_lake.cortex.snn_classifier as C
@@ -86,19 +87,30 @@ def main():
     print("=" * 60)
     print(f"{len(names)} distinct classifier shapes")
     print(f"responses before : {[round(r, 2) for r in resp_before]}  selectivity {sel_before:.2f}")
-    print(f"responses after  : {[round(responses[n], 2) for n in names]}  selectivity {sel_after:.2f}")
+    print(
+        f"responses after  : {[round(responses[n], 2) for n in names]}  selectivity {sel_after:.2f}"
+    )
     print(f"unit became selective to '{winner}'; theta settled at {neuron.theta:.2f}")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert sel_after > 0.5, f"BCM must develop selectivity to one shape ({sel_after:.2f})"
-    assert sel_after > sel_before + 0.2, f"selectivity must sharpen with exposure ({sel_before:.2f} -> {sel_after:.2f})"
-    assert responses[winner] > 1.5 * max(responses[n] for n in names if n != winner), \
+    assert sel_after > sel_before + 0.2, (
+        f"selectivity must sharpen with exposure ({sel_before:.2f} -> {sel_after:.2f})"
+    )
+    assert responses[winner] > 1.5 * max(responses[n] for n in names if n != winner), (
         "the selected shape must dominate the others"
-    assert 0 < neuron.theta < 100 and all(0 <= w <= 2 for w in neuron.w), "theta + weights stay bounded"
-    assert develop_selectivity(patterns)[2] == winner, "same seed -> same selected shape (deterministic)"
-    print(f"self-check OK: selectivity {sel_before:.2f}->{sel_after:.2f}, unit selective to '{winner}'; "
-          f"BCM competitive selectivity on the classifier shapes; additive; deterministic")
+    )
+    assert 0 < neuron.theta < 100 and all(0 <= w <= 2 for w in neuron.w), (
+        "theta + weights stay bounded"
+    )
+    assert develop_selectivity(patterns)[2] == winner, (
+        "same seed -> same selected shape (deterministic)"
+    )
+    print(
+        f"self-check OK: selectivity {sel_before:.2f}->{sel_after:.2f}, unit selective to '{winner}'; "
+        f"BCM competitive selectivity on the classifier shapes; additive; deterministic"
+    )
 
 
 if __name__ == "__main__":

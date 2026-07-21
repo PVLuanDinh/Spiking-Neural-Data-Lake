@@ -19,8 +19,9 @@ Run (from repo root; GPU; C1=100 conv is slower to pre-train):
     NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/readout_ensemble.py
 Knobs: NORD_C1(100) NORD_CYCLES(15) NORD_PER(300) NORD_REPLAY(200) NORD_SGD(300) NORD_HIDDEN(32)
        NORD_T(15) NORD_L1_EPOCHS(3) NORD_TRAIN(8000) NORD_TEST(2000)
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core stays zero-dep)
+Deps: numpy torch torchvision snntorch   (research/GPU tier; core is untouched)
 """
+
 import os
 
 import torch
@@ -108,7 +109,9 @@ def main():
     conv = ConvLatencyStdp(C1, T_LAT)
     for ep in range(L1_EPOCHS):
         _train(conv, Xtr, f"conv1 ep{ep + 1}/{L1_EPOCHS}")
-    print(f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}")
+    print(
+        f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}"
+    )
 
     print("\n[cache] conv1 features (train+test)...")
     Ftr, Fte = _cache(conv, Xtr, dev, "train"), _cache(conv, Xte, dev, "test")
@@ -120,7 +123,7 @@ def main():
     # two readouts on the SAME features, trained on the SAME schedule/batches
     lin = LinearReadout(D, seed=0)
     col = LaminarColumns(D, n_classes=10, n23=HIDDEN, seed=0)
-    memory = {}                                        # held-out replay pool per learned digit
+    memory = {}  # held-out replay pool per learned digit
     learned = []
     comp = {d: 0.0 for d in range(10)}
 
@@ -144,7 +147,7 @@ def main():
         lin.train_step(Xb, yb, lr=0.01, steps=SGD)
         col.train_step(Xb, yb, lr=0.01, steps=SGD)
         if is_new:
-            memory[obj] = tr_by[obj][n_train:n_train + REPLAY]
+            memory[obj] = tr_by[obj][n_train : n_train + REPLAY]
             learned.append(obj)
 
         # competence (linear) drives the phase-2 schedule
@@ -153,8 +156,10 @@ def main():
         for d in learned:
             comp[d] = _acc(lin_log, yte, te_by[d])
         pooled = [r for d in learned for r in te_by[d]]
-        print(f"CYCLE {cyc:2d} obj={obj} {'new' if is_new else 'rev'}  "
-              f"linear over {sorted(learned)} = {_acc(lin_log, yte, pooled):.1%}")
+        print(
+            f"CYCLE {cyc:2d} obj={obj} {'new' if is_new else 'rev'}  "
+            f"linear over {sorted(learned)} = {_acc(lin_log, yte, pooled):.1%}"
+        )
 
     # ---- final: linear, columns, and their ENSEMBLE on the held-out test set ----
     pooled = [r for d in learned for r in te_by[d]]
@@ -180,15 +185,21 @@ def main():
     print(f"  ENSEMBLE (avg softmax)     : {acc_ens:.1%}")
     print("-" * 78)
     print(f"  ensemble gain vs best single : {acc_ens - max(acc_lin, acc_col):+.1%}")
-    print(f"  BOTH wrong (correlated fail) : {both_wrong:.1%}   EITHER wrong (union) : {either_wrong:.1%}")
-    print(f"  -> ensemble ceiling = 1 - (both wrong) = {1 - both_wrong:.1%} "
-          f"(the fraction at least one gets right)")
+    print(
+        f"  BOTH wrong (correlated fail) : {both_wrong:.1%}   EITHER wrong (union) : {either_wrong:.1%}"
+    )
+    print(
+        f"  -> ensemble ceiling = 1 - (both wrong) = {1 - both_wrong:.1%} "
+        f"(the fraction at least one gets right)"
+    )
     print("=" * 78)
 
     # self-check: features + readouts sane; report the honest ensemble gap (do NOT assert a big gain).
     assert acc_lin > 0.5 and acc_col > 0.5, "a readout failed to beat chance"
-    print(f"self-check OK: linear {acc_lin:.1%}, columns {acc_col:.1%}, ensemble {acc_ens:.1%} "
-          f"(gain {acc_ens - max(acc_lin, acc_col):+.1%}); both-wrong {both_wrong:.1%} = correlated-error floor")
+    print(
+        f"self-check OK: linear {acc_lin:.1%}, columns {acc_col:.1%}, ensemble {acc_ens:.1%} "
+        f"(gain {acc_ens - max(acc_lin, acc_col):+.1%}); both-wrong {both_wrong:.1%} = correlated-error floor"
+    )
 
 
 if __name__ == "__main__":

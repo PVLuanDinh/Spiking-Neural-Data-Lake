@@ -31,14 +31,15 @@ discrimination. Intrinsic plasticity tunes the neuron's own EXCITABILITY (not th
 biologically correct division of labour: synaptic homeostasis bounds the weights, cellular homeostasis
 bounds the firing rate.
 
-HONESTY / SAFETY. Pure stdlib -- no numpy, no torch (the three reused rules are stdlib too), so the
-zero-dep / NORD_TORCH gating is unaffected. Additive and OPT-IN: the learner takes the stack as an
+HONESTY / SAFETY. stdlib + numpy/torch allowed project-wide (the three reused rules happen to be stdlib too).
+Additive and OPT-IN: the learner takes the stack as an
 injected duck-typed object; with no stack (the default) the R-STDP path is BYTE-IDENTICAL to today. It
 stabilizes plasticity only and adds NO actuator route (the intent-recognition learning path only; the
 motor path is untouched). Deterministic: every rule here is closed-form, no rng.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.homeostatic_plasticity_stack
 """
+
 import math
 
 from snn_data_lake.plasticity.homeostatic_scaling import HomeostaticNeuron
@@ -65,17 +66,17 @@ class _ShortTermGain:
 
     def __init__(self, n_neurons, U=0.6, tau_f=1.0, tau_d=2.0, floor=0.5):
         self._syn = [DynamicSynapse(U, tau_f, tau_d) for _ in range(n_neurons)]
-        self._last = [0 for _ in range(n_neurons)]     # last global tick this neuron was deposited to
-        self._onset = float(U)                          # first-spike epsc == U -> normalization reference
+        self._last = [0 for _ in range(n_neurons)]  # last global tick this neuron was deposited to
+        self._onset = float(U)  # first-spike epsc == U -> normalization reference
         self.floor = float(floor)
 
     def stabilize(self, ctx):
         i = ctx["neuron_id"]
         now = ctx.get("tick", self._last[i] + 1)
-        dt = max(1.0, float(now - self._last[i]))       # gap since this neuron's previous deposit
+        dt = max(1.0, float(now - self._last[i]))  # gap since this neuron's previous deposit
         self._last[i] = now
-        epsc = self._syn[i].spike(dt)                   # REUSE the real Tsodyks-Markram release (u * R)
-        g = epsc / self._onset                          # normalize: onset ~1.0, sustained burst < 1.0
+        epsc = self._syn[i].spike(dt)  # REUSE the real Tsodyks-Markram release (u * R)
+        g = epsc / self._onset  # normalize: onset ~1.0, sustained burst < 1.0
         g = min(1.0, max(self.floor, g))
         ctx["gain"] = ctx["gain"] * g
         return ctx
@@ -92,8 +93,12 @@ class _HomeostaticScaling:
     reused = "homeostatic_scaling.HomeostaticNeuron"
 
     def __init__(self, n_neurons, ceiling_factor=3.0, scale_rate=0.5):
-        self._cell = [HomeostaticNeuron([0.0], target=1.0, scale_rate=scale_rate) for _ in range(n_neurons)]
-        self._target = [None for _ in range(n_neurons)]   # per-neuron drive ceiling, set on first sight
+        self._cell = [
+            HomeostaticNeuron([0.0], target=1.0, scale_rate=scale_rate) for _ in range(n_neurons)
+        ]
+        self._target = [
+            None for _ in range(n_neurons)
+        ]  # per-neuron drive ceiling, set on first sight
         self.ceiling_factor = float(ceiling_factor)
 
     def stabilize(self, ctx):
@@ -101,15 +106,15 @@ class _HomeostaticScaling:
         cell = self._cell[i]
         cell.w = list(ctx["weights"])
         x = list(ctx["activity"])
-        y = cell.output(x)                              # membrane drive y = sum(w*x) == the readout v
+        y = cell.output(x)  # membrane drive y = sum(w*x) == the readout v
         ctx["drive"] = y
-        if self._target[i] is None:                     # calibrate the ceiling from the baseline drive
+        if self._target[i] is None:  # calibrate the ceiling from the baseline drive
             self._target[i] = max(self.ceiling_factor * abs(y), 1e-3)
         cell.target = self._target[i]
-        if y > cell.target:                             # only trim genuine runaway (never boost a loser)
-            cell.stabilize(x)                           # REUSE the real multiplicative synaptic scaling
+        if y > cell.target:  # only trim genuine runaway (never boost a loser)
+            cell.stabilize(x)  # REUSE the real multiplicative synaptic scaling
             ctx["weights"] = list(cell.w)
-            ctx["drive"] = cell.output(x)               # bounded drive after scaling
+            ctx["drive"] = cell.output(x)  # bounded drive after scaling
         return ctx
 
 
@@ -129,11 +134,11 @@ class _IntrinsicPlasticity:
     def stabilize(self, ctx):
         i = ctx["neuron_id"]
         y = ctx.get("drive")
-        if y is None:                                   # defensive: compute the drive if scaling was off
+        if y is None:  # defensive: compute the drive if scaling was off
             y = sum(w * a for w, a in zip(ctx["weights"], ctx["activity"]))
             ctx["drive"] = y
-        ctx["rate"] = self._ip[i].adapt(y)              # REUSE the real Triesch excitability self-tuner
-        return ctx                                      # weights unchanged: intrinsic plasticity tunes the cell
+        ctx["rate"] = self._ip[i].adapt(y)  # REUSE the real Triesch excitability self-tuner
+        return ctx  # weights unchanged: intrinsic plasticity tunes the cell
 
 
 # --------------------------------------------------------------------------------------------------
@@ -148,25 +153,53 @@ class HomeostaticPlasticityStack:
         d *= stack.pre_gain(neuron_id)        # PRE  short-term dynamic gain
         ... the RSTDPNeuron.reward(d) update happens ...
         n.w = stack.stabilize(neuron_id, n.w, activity)   # POST homeostatic scaling + intrinsic plasticity
-    Pure stdlib, deterministic, no rng."""
+    Deterministic, no rng."""
 
     _UPDATE = "<r_stdp_weight_update>"
 
-    def __init__(self, n_neurons, *, short_term=True, homeostatic=True, intrinsic=True,
-                 U=0.6, tau_f=1.0, tau_d=2.0, gain_floor=0.5,
-                 ceiling_factor=3.0, scale_rate=0.5, mu=0.15, ip_lr=0.02, seed=0):
+    def __init__(
+        self,
+        n_neurons,
+        *,
+        short_term=True,
+        homeostatic=True,
+        intrinsic=True,
+        U=0.6,
+        tau_f=1.0,
+        tau_d=2.0,
+        gain_floor=0.5,
+        ceiling_factor=3.0,
+        scale_rate=0.5,
+        mu=0.15,
+        ip_lr=0.02,
+        seed=0,
+    ):
         self.n_neurons = int(n_neurons)
         self.seed = int(seed)
-        self._short = _ShortTermGain(self.n_neurons, U=U, tau_f=tau_f, tau_d=tau_d, floor=gain_floor) if short_term else None
-        self._homeo = _HomeostaticScaling(self.n_neurons, ceiling_factor=ceiling_factor, scale_rate=scale_rate) if homeostatic else None
+        self._short = (
+            _ShortTermGain(self.n_neurons, U=U, tau_f=tau_f, tau_d=tau_d, floor=gain_floor)
+            if short_term
+            else None
+        )
+        self._homeo = (
+            _HomeostaticScaling(
+                self.n_neurons, ceiling_factor=ceiling_factor, scale_rate=scale_rate
+            )
+            if homeostatic
+            else None
+        )
         self._intr = _IntrinsicPlasticity(self.n_neurons, mu=mu, lr=ip_lr) if intrinsic else None
         self._pre = [a for a in (self._short,) if a is not None]
         self._post = [a for a in (self._homeo, self._intr) if a is not None]
         # the fixed order the sandwich touches its rules each step (used for the ordering self-check)
-        self.order = tuple([a.name for a in self._pre] + [self._UPDATE] + [a.name for a in self._post])
-        self.reuses = tuple(a.reused for a in (self._short, self._homeo, self._intr) if a is not None)
+        self.order = tuple(
+            [a.name for a in self._pre] + [self._UPDATE] + [a.name for a in self._post]
+        )
+        self.reuses = tuple(
+            a.reused for a in (self._short, self._homeo, self._intr) if a is not None
+        )
         self._global_t = 0
-        self._order_log = []                            # one tuple per learning_step (fixed-order proof)
+        self._order_log = []  # one tuple per learning_step (fixed-order proof)
 
     # -- public API used by SpikingInteractionLearner --------------------------------------------
     def pre_gain(self, neuron_id):
@@ -182,8 +215,14 @@ class HomeostaticPlasticityStack:
         """POST: run the stabilizers (homeostatic scaling, then intrinsic plasticity) in fixed order on
         the just-updated synapses of `neuron_id`. `activity` is the per-synapse drive (PSP, >=0); the
         membrane drive y = sum(weights*activity) is the readout. Returns the stabilized weights."""
-        ctx = {"neuron_id": int(neuron_id), "weights": list(weights), "activity": list(activity),
-               "gain": 1.0, "drive": None, "rate": None}
+        ctx = {
+            "neuron_id": int(neuron_id),
+            "weights": list(weights),
+            "activity": list(activity),
+            "gain": 1.0,
+            "drive": None,
+            "rate": None,
+        }
         for a in self._post:
             ctx = a.stabilize(ctx)
         return ctx["weights"]
@@ -195,14 +234,23 @@ class HomeostaticPlasticityStack:
         Returns (stabilized_weights, ctx). Records the order in self._order_log for the ordering proof."""
         self._global_t += 1
         trace = []
-        ctx = {"neuron_id": int(neuron_id), "weights": list(weights), "activity": list(activity),
-               "gain": 1.0, "drive": None, "rate": None, "tick": self._global_t}
-        for a in self._pre:                             # PRE: short-term dynamic gain
+        ctx = {
+            "neuron_id": int(neuron_id),
+            "weights": list(weights),
+            "activity": list(activity),
+            "gain": 1.0,
+            "drive": None,
+            "rate": None,
+            "tick": self._global_t,
+        }
+        for a in self._pre:  # PRE: short-term dynamic gain
             ctx = a.stabilize(ctx)
             trace.append(a.name)
-        ctx["weights"] = list(rstdp_update(ctx["gain"], ctx["weights"]))   # LIVE R-STDP weight update
+        ctx["weights"] = list(
+            rstdp_update(ctx["gain"], ctx["weights"])
+        )  # LIVE R-STDP weight update
         trace.append(self._UPDATE)
-        for a in self._post:                            # POST: homeostatic scaling + intrinsic plasticity
+        for a in self._post:  # POST: homeostatic scaling + intrinsic plasticity
             ctx = a.stabilize(ctx)
             trace.append(a.name)
         self._order_log.append(tuple(trace))
@@ -210,7 +258,7 @@ class HomeostaticPlasticityStack:
 
 
 # --------------------------------------------------------------------------------------------------
-# self-check helpers (deterministic, zero-dep, ASCII)
+# self-check helpers (deterministic, ASCII)
 # --------------------------------------------------------------------------------------------------
 def _drive_code(n_in):
     """A fixed spike code + its per-synapse PSP drive, matching interaction_learning's readout kernel
@@ -224,6 +272,7 @@ def _drive_code(n_in):
 def _rstdp_update_fn(neuron, code, t_post):
     """A closure that performs ONE real R-STDP deposit (reward = +1 * gain) on `neuron` and returns its
     weights -- the LIVE update the sandwich wraps. REUSES basal_ganglia.r_stdp.RSTDPNeuron verbatim."""
+
     def update(gain, weights):
         neuron.w = list(weights)
         neuron.e = [0.0] * neuron.n
@@ -232,8 +281,9 @@ def _rstdp_update_fn(neuron, code, t_post):
         for i, t in enumerate(code):
             neuron.pre_spike(i, float(t))
         neuron.post_spike(t_post)
-        neuron.reward(gain * 1.0)                       # potentiating reward, scaled by the short-term gain
+        neuron.reward(gain * 1.0)  # potentiating reward, scaled by the short-term gain
         return list(neuron.w)
+
     return update
 
 
@@ -244,7 +294,9 @@ def _run_stream(stabilized, steps, seed, n_in=10):
     from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 
     code, activity, t_post = _drive_code(n_in)
-    neuron = RSTDPNeuron(n_in, lr=0.1, a_plus=1.0, a_minus=1.0, tau_plus=8.0, tau_minus=8.0, w0=0.3, seed=seed)
+    neuron = RSTDPNeuron(
+        n_in, lr=0.1, a_plus=1.0, a_minus=1.0, tau_plus=8.0, tau_minus=8.0, w0=0.3, seed=seed
+    )
     update = _rstdp_update_fn(neuron, code, t_post)
     stack = HomeostaticPlasticityStack(1, seed=seed) if stabilized else None
 
@@ -255,9 +307,11 @@ def _run_stream(stabilized, steps, seed, n_in=10):
             w, ctx = stack.learning_step(0, w, activity, update)
             drive, rate = ctx["drive"], ctx["rate"]
         else:
-            w = update(1.0, w)                          # raw R-STDP, no stabilization
+            w = update(1.0, w)  # raw R-STDP, no stabilization
             drive = sum(wi * ai for wi, ai in zip(w, activity))
-            rate = 1.0 / (1.0 + math.exp(-max(-60.0, min(60.0, drive))))   # fixed a=1,b=0 sigmoid (no IP)
+            rate = 1.0 / (
+                1.0 + math.exp(-max(-60.0, min(60.0, drive)))
+            )  # fixed a=1,b=0 sigmoid (no IP)
         wmax_series.append(max(abs(wi) for wi in w))
         drive_series.append(drive)
         rate_series.append(rate)
@@ -272,22 +326,25 @@ def _stability_and_stack_selfcheck():
     c_wmax, c_drive, c_rate, _c_w, _ = _run_stream(False, steps, seed)
 
     tail = 50
-    s_drive_tail = max(s_drive[-tail:])                 # stabilized: bounded
-    c_drive_final = c_drive[-1]                          # control: diverges
-    s_rate_mean = sum(s_rate[-tail:]) / tail             # stabilized: -> mu (homeostasis)
-    c_rate_mean = sum(c_rate[-tail:]) / tail             # control: saturates ~1.0 (no homeostasis)
+    s_drive_tail = max(s_drive[-tail:])  # stabilized: bounded
+    c_drive_final = c_drive[-1]  # control: diverges
+    s_rate_mean = sum(s_rate[-tail:]) / tail  # stabilized: -> mu (homeostasis)
+    c_rate_mean = sum(c_rate[-tail:]) / tail  # control: saturates ~1.0 (no homeostasis)
     s_wmax_final, c_wmax_final = s_wmax[-1], c_wmax[-1]
 
     # (b) fixed order: every logged step is exactly (short-term) -> [update] -> (homeostatic, intrinsic)
     order_ok = bool(stack._order_log) and all(step == stack.order for step in stack._order_log)
     # (c) determinism: same seed -> identical stabilized weight trajectory
     s2_wmax, s2_drive, s2_rate, s2_w, _ = _run_stream(True, steps, seed)
-    deterministic = (s_w == s2_w and s_wmax == s2_wmax and s_drive == s2_drive and s_rate == s2_rate)
-    # (d) reuse: the adapters wrap the REAL rule classes (named), pure stdlib
-    reuse_ok = (isinstance(stack._short._syn[0], DynamicSynapse)
-                and isinstance(stack._homeo._cell[0], HomeostaticNeuron)
-                and isinstance(stack._intr._ip[0], IntrinsicPlasticity))
+    deterministic = s_w == s2_w and s_wmax == s2_wmax and s_drive == s2_drive and s_rate == s2_rate
+    # (d) reuse: the adapters wrap the REAL rule classes (named)
+    reuse_ok = (
+        isinstance(stack._short._syn[0], DynamicSynapse)
+        and isinstance(stack._homeo._cell[0], HomeostaticNeuron)
+        and isinstance(stack._intr._ip[0], IntrinsicPlasticity)
+    )
     import sys
+
     no_dense_dl = "numpy" not in sys.modules and "torch" not in sys.modules
 
     print("=" * 78)
@@ -299,25 +356,36 @@ def _stability_and_stack_selfcheck():
     print("-" * 78)
     print("STABILITY PROOF  (stabilized sandwich vs raw unstabilized R-STDP control):")
     print(f"  max|weight|  final : stabilized {s_wmax_final:8.3f}   control {c_wmax_final:12.3f}")
-    print(f"  drive (v)          : stabilized {s_drive_tail:8.3f} (bounded)   control {c_drive_final:12.3f} (diverges)")
-    print(f"  firing rate -> mu  : stabilized {s_rate_mean:8.3f} (~mu={mu})   control {c_rate_mean:12.3f} (saturated)")
-    print(f"  fixed order every step: {order_ok}   deterministic: {deterministic}   "
-          f"reuses real modules: {reuse_ok}   stdlib (no numpy/torch): {no_dense_dl}")
+    print(
+        f"  drive (v)          : stabilized {s_drive_tail:8.3f} (bounded)   control {c_drive_final:12.3f} (diverges)"
+    )
+    print(
+        f"  firing rate -> mu  : stabilized {s_rate_mean:8.3f} (~mu={mu})   control {c_rate_mean:12.3f} (saturated)"
+    )
+    print(
+        f"  fixed order every step: {order_ok}   deterministic: {deterministic}   "
+        f"reuses real modules: {reuse_ok}   numpy/torch not imported: {no_dense_dl}"
+    )
     print("=" * 78)
 
     # ---- asserts ----
-    assert c_drive_final > 3.0 * s_drive_tail, \
+    assert c_drive_final > 3.0 * s_drive_tail, (
         f"(a) unstabilized control drive must DIVERGE far past the stabilized ceiling ({c_drive_final:.2f} vs {s_drive_tail:.2f})"
-    assert s_drive_tail < 20.0 and s_wmax_final < 5.0, \
+    )
+    assert s_drive_tail < 20.0 and s_wmax_final < 5.0, (
         f"(a) the stabilized synapses must stay BOUNDED (drive {s_drive_tail:.2f}, max|w| {s_wmax_final:.2f})"
-    assert abs(s_rate_mean - mu) < 0.08, \
+    )
+    assert abs(s_rate_mean - mu) < 0.08, (
         f"(a) intrinsic plasticity must hold the output firing rate at the set-point ({s_rate_mean:.3f} vs mu={mu})"
-    assert c_rate_mean > 0.9, \
+    )
+    assert c_rate_mean > 0.9, (
         f"(a) the unstabilized control rate must saturate (no homeostasis) ({c_rate_mean:.3f})"
+    )
     assert order_ok, "(b) every learning step must run the rules in the fixed sandwich order"
     assert deterministic, "(c) same seed must give a byte-identical trajectory"
-    assert reuse_ok, "(d) the stack must REUSE the real DynamicSynapse / HomeostaticNeuron / IntrinsicPlasticity"
-    assert no_dense_dl, "pure stdlib: numpy/torch must not be imported"
+    assert reuse_ok, (
+        "(d) the stack must REUSE the real DynamicSynapse / HomeostaticNeuron / IntrinsicPlasticity"
+    )
     return s_drive_tail, c_drive_final, s_rate_mean, c_rate_mean
 
 
@@ -359,21 +427,28 @@ def _learner_off_on_selfcheck():
     off = _train_with(None)
     on = _train_with(HomeostaticPlasticityStack(len(responses), seed=seed))
     off_acc, on_acc = off.accuracy(test), on.accuracy(test)
-    off_bytes_identical = off.weights() == _train_with(None).weights()   # OFF is deterministic (no stack)
+    off_bytes_identical = (
+        off.weights() == _train_with(None).weights()
+    )  # OFF is deterministic (no stack)
 
     print()
     print("=" * 78)
     print("WIRE CHECK -- SpikingInteractionLearner with the homeostatic plasticity stack OFF vs ON")
     print("=" * 78)
-    print(f"default-OFF _spiking_task_selfcheck (today's behaviour): chance {off_chance:.2f} -> "
-          f"learned {off_learned:.2f} (control {off_control:.2f}) -- still green, OFF byte-identical")
-    print(f"same task, held-out routing accuracy: stack OFF {off_acc:.2f}  ->  stack ON {on_acc:.2f}")
+    print(
+        f"default-OFF _spiking_task_selfcheck (today's behaviour): chance {off_chance:.2f} -> "
+        f"learned {off_learned:.2f} (control {off_control:.2f}) -- still green, OFF byte-identical"
+    )
+    print(
+        f"same task, held-out routing accuracy: stack OFF {off_acc:.2f}  ->  stack ON {on_acc:.2f}"
+    )
     print(f"OFF run is byte-identical run-to-run: {off_bytes_identical}")
     print("=" * 78)
 
     assert off_bytes_identical, "OFF path must be deterministic / byte-identical to today"
-    assert on_acc >= off_acc - 0.05, \
+    assert on_acc >= off_acc - 0.05, (
         f"stack ON must NOT degrade routing accuracy ({on_acc:.2f} vs OFF {off_acc:.2f})"
+    )
     assert on_acc >= 0.80, f"stack ON must still learn the task well ({on_acc:.2f})"
     return off_acc, on_acc
 
@@ -382,13 +457,15 @@ def main():
     s_drive, c_drive, s_rate, c_rate = _stability_and_stack_selfcheck()
     off_acc, on_acc = _learner_off_on_selfcheck()
     print()
-    print(f"self-check OK: a fixed ordered sandwich (short-term dynamic gain -> [live R-STDP update] -> "
-          f"homeostatic scaling + intrinsic plasticity), REUSING DynamicSynapse / HomeostaticNeuron / "
-          f"IntrinsicPlasticity verbatim, keeps the live learning synapses BOUNDED (drive {s_drive:.2f} vs "
-          f"an unstabilized control's diverging {c_drive:.1f}) and holds the firing rate at its set-point "
-          f"(rate {s_rate:.2f}~mu vs saturated {c_rate:.2f}); the rules run in the fixed order every step; "
-          f"deterministic; pure stdlib (no numpy/torch). Wired into SpikingInteractionLearner as an opt-in "
-          f"stack: OFF is byte-identical to today, ON does not degrade routing ({off_acc:.2f} -> {on_acc:.2f}).")
+    print(
+        f"self-check OK: a fixed ordered sandwich (short-term dynamic gain -> [live R-STDP update] -> "
+        f"homeostatic scaling + intrinsic plasticity), REUSING DynamicSynapse / HomeostaticNeuron / "
+        f"IntrinsicPlasticity verbatim, keeps the live learning synapses BOUNDED (drive {s_drive:.2f} vs "
+        f"an unstabilized control's diverging {c_drive:.1f}) and holds the firing rate at its set-point "
+        f"(rate {s_rate:.2f}~mu vs saturated {c_rate:.2f}); the rules run in the fixed order every step; "
+        f"deterministic. Wired into SpikingInteractionLearner as an opt-in "
+        f"stack: OFF is byte-identical to today, ON does not degrade routing ({off_acc:.2f} -> {on_acc:.2f})."
+    )
 
 
 if __name__ == "__main__":

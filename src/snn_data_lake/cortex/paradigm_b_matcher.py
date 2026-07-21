@@ -22,6 +22,7 @@ in paradigm_b_genn.py — it can't run on this CPU/no-compiler machine.
 
 Run:  python paradigm_b_matcher.py   (builds telemetry via the v0.12 hub first)
 """
+
 import os
 from collections import deque
 
@@ -50,7 +51,7 @@ def match_stream(events_sorted, q):
             win.popleft()
         if len({c for _, c in win}) >= k:
             matches.append(t)
-            win.clear()                      # refractory: one match per coincidence
+            win.clear()  # refractory: one match per coincidence
     return matches
 
 
@@ -61,7 +62,7 @@ def subdetector_match(events_sorted, q):
     This is the network the GPU port mirrors; it must equal match_stream."""
     W, k = q["window"], q["k"]
     chans = set(q["channels"])
-    last_pulse = {}                          # channel -> last sub-detector pulse time
+    last_pulse = {}  # channel -> last sub-detector pulse time
     pulses = deque()
     matches = []
     for t, ch in events_sorted:
@@ -69,7 +70,7 @@ def subdetector_match(events_sorted, q):
             continue
         lp = last_pulse.get(ch)
         if lp is not None and t - lp < W:
-            continue                         # sub-detector refractory: no new pulse
+            continue  # sub-detector refractory: no new pulse
         last_pulse[ch] = t
         pulses.append((t, ch))
         while pulses and pulses[0][0] <= t - W:
@@ -77,7 +78,7 @@ def subdetector_match(events_sorted, q):
         if len({c for _, c in pulses}) >= k:
             matches.append(t)
             pulses.clear()
-            last_pulse.clear()               # detector refractory: reset after match
+            last_pulse.clear()  # detector refractory: reset after match
     return matches
 
 
@@ -103,7 +104,7 @@ def run_query(spk_path, q):
     """Read ONLY the template channels from storage, stream them through the detector.
     Returns (matches, events_read, bytes_read)."""
     events, bytes_read = disk_query(spk_path, 0, 2**31 - 1, channels=q["channels"])
-    events.sort()                            # merge template channels into one stream
+    events.sort()  # merge template channels into one stream
     return match_stream(events, q), len(events), bytes_read
 
 
@@ -128,11 +129,17 @@ def main():
     print(f"query: channels={q['channels']} coincidence within W={q['window']} (k={q['k']})")
     print()
     print(f"matches emitted        : {len(matches)}  ({len(in_burst)} inside the burst window)")
-    print(f"events streamed         : {n_read:,}  (only the {len(q['channels'])} template channels)")
-    print(f"bytes read from storage : {bytes_read:,}  ({100*bytes_read/nbytes:.1f}% of the file)")
+    print(
+        f"events streamed         : {n_read:,}  (only the {len(q['channels'])} template channels)"
+    )
+    print(
+        f"bytes read from storage : {bytes_read:,}  ({100 * bytes_read / nbytes:.1f}% of the file)"
+    )
     transferred = len(matches)
-    print(f"host transfer           : {transferred} match stamps vs {hub.n_events():,} raw events "
-          f"-> {hub.n_events()/max(1,transferred):.0f}x less to host")
+    print(
+        f"host transfer           : {transferred} match stamps vs {hub.n_events():,} raw events "
+        f"-> {hub.n_events() / max(1, transferred):.0f}x less to host"
+    )
     print("=" * 60)
 
     # ---- distinct-channel counting (the v0.14 GeNN-parity fix) ----
@@ -140,7 +147,7 @@ def main():
     stream.sort()
     sub = subdetector_match(stream, q)
     sub_burst = [m for m in sub if BURST[0] <= m < BURST[1]]
-    spam = [(10 * i, 7) for i in range(q["k"] + 2)]      # one channel, repeated
+    spam = [(10 * i, 7) for i in range(q["k"] + 2)]  # one channel, repeated
     print()
     print("DISTINCT-CHANNEL COUNTING (the GeNN sub-detector net, v0.14):")
     print(f"  sub-detector net matches : {len(sub)} ({len(sub_burst)} in burst)")
@@ -148,8 +155,12 @@ def main():
     print("     per-window refractory vs raw-distinct re-triggering — both count DISTINCT")
     print("     channels. The GeNN port mirrors the sub-detector net exactly.)")
     print(f"  spam test (channel 7 x{q['k'] + 2} in a window):")
-    print(f"    total-count detector (wrong): {len(total_count_match(spam, q))} match(es) — false positive")
-    print(f"    sub-detector  (distinct)    : {len(subdetector_match(spam, q))} match(es) — correct")
+    print(
+        f"    total-count detector (wrong): {len(total_count_match(spam, q))} match(es) — false positive"
+    )
+    print(
+        f"    sub-detector  (distinct)    : {len(subdetector_match(spam, q))} match(es) — correct"
+    )
     print()
 
     # ---- self-checks (verify against brute force) ----
@@ -166,8 +177,10 @@ def main():
     assert len(sub_burst) >= 1, "sub-detector net did not detect the burst"
     assert len(total_count_match(spam, q)) >= 1, "spam should fool a total-counter"
     assert subdetector_match(spam, q) == [], "sub-detector must reject single-channel spam"
-    print("self-check OK: matches==brute force, burst detected, partial read, "
-          "transfer reduced, distinct-counting verified (spam rejected)")
+    print(
+        "self-check OK: matches==brute force, burst detected, partial read, "
+        "transfer reduced, distinct-counting verified (spam rejected)"
+    )
 
 
 if __name__ == "__main__":

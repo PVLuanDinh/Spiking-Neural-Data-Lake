@@ -29,6 +29,7 @@ GROWS capacity as data arrives; it does not "think".
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.growing_learner
 """
+
 import math
 
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
@@ -59,7 +60,7 @@ class GrowingLearner:
         self.vigilance = vigilance
         self.lr = lr
         self.dim = dim
-        self.prototypes = []                          # list of [0,1]^dim vectors
+        self.prototypes = []  # list of [0,1]^dim vectors
 
     @property
     def n_units(self):
@@ -70,7 +71,9 @@ class GrowingLearner:
         width mismatch (cosine's zip would otherwise silently truncate) -- so a consumer that forgot
         to grow_dim alongside a widened producer is caught, not masked."""
         if len(pattern) != self.dim:
-            raise ValueError(f"pattern width {len(pattern)} != learner dim {self.dim}; grow_dim to widen first")
+            raise ValueError(
+                f"pattern width {len(pattern)} != learner dim {self.dim}; grow_dim to widen first"
+            )
         best_id, best_sim = -1, -1.0
         for i, p in enumerate(self.prototypes):
             s = _cosine(pattern, p)
@@ -82,12 +85,13 @@ class GrowingLearner:
         """Learn from one pattern. Recruit a new unit if novel (grew=True), else refine
         the nearest unit toward it (grew=False). Returns (unit_id, grew)."""
         best_id, best_sim = self._best(pattern)
-        if best_id < 0 or best_sim < self.vigilance:       # novel -> neurogenesis
+        if best_id < 0 or best_sim < self.vigilance:  # novel -> neurogenesis
             self.prototypes.append(list(pattern))
             return len(self.prototypes) - 1, True
-        proto = self.prototypes[best_id]                   # familiar -> refine toward it
-        self.prototypes[best_id] = [(1.0 - self.lr) * w + self.lr * x
-                                    for w, x in zip(proto, pattern)]
+        proto = self.prototypes[best_id]  # familiar -> refine toward it
+        self.prototypes[best_id] = [
+            (1.0 - self.lr) * w + self.lr * x for w, x in zip(proto, pattern)
+        ]
         return best_id, False
 
     def classify(self, pattern):
@@ -128,14 +132,14 @@ def main():
     # 5 DISTINCT multimodal signatures: each is (visual, temp, audio, distance) levels.
     # Combinations are chosen so encoded bands land on well-separated RBF centers.
     PATTERNS = [
-        (0.1, 0.1, 0.1, 0.1),      # all-low
-        (0.9, 0.9, 0.9, 0.9),      # all-high
-        (0.1, 0.9, 0.1, 0.9),      # alternating A
-        (0.9, 0.1, 0.9, 0.1),      # alternating B
-        (0.5, 0.5, 0.5, 0.5),      # all-mid
+        (0.1, 0.1, 0.1, 0.1),  # all-low
+        (0.9, 0.9, 0.9, 0.9),  # all-high
+        (0.1, 0.9, 0.1, 0.9),  # alternating A
+        (0.9, 0.1, 0.9, 0.1),  # alternating B
+        (0.5, 0.5, 0.5, 0.5),  # all-mid
     ]
-    NOVEL = (0.7, 0.7, 0.7, 0.7)   # a 6th signature distinct from all five
-    JIT = 0.03                     # input jitter; distinct patterns must exceed within-jitter
+    NOVEL = (0.7, 0.7, 0.7, 0.7)  # a 6th signature distinct from all five
+    JIT = 0.03  # input jitter; distinct patterns must exceed within-jitter
 
     learner = GrowingLearner(vigilance=0.85, lr=0.2)
 
@@ -149,7 +153,7 @@ def main():
         lrn = GrowingLearner(vigilance=0.85, lr=0.2)
         rng = random.Random(seed)
         seq = []
-        for _ in range(6):                              # 6 repeats of each pattern
+        for _ in range(6):  # 6 repeats of each pattern
             for lv in PATTERNS:
                 seq.append(lrn.observe(_encode(lv, rng, JIT)))
         return lrn, seq
@@ -162,7 +166,7 @@ def main():
     # 2. RECOGNITION: a fresh jittered copy of each pattern classifies to its own unit.
     rng = random.Random(100)
     hits = 0
-    expected = list(range(5))                            # first-seen order == unit id
+    expected = list(range(5))  # first-seen order == unit id
     for want, lv in zip(expected, PATTERNS):
         if learner.classify(_encode(lv, rng, JIT)) == want:
             hits += 1
@@ -191,11 +195,14 @@ def main():
     wl, _ = run_stream(seed=0)
     probe = _encode(PATTERNS[2])
     id_before, units_before = wl.classify(probe), wl.n_units
-    wl.grow_dim(N + 16)                                     # 64 -> 80: a new sensor modality appears
-    assert wl.dim == N + 16 and all(len(p) == N + 16 for p in wl.prototypes), "every prototype must widen"
+    wl.grow_dim(N + 16)  # 64 -> 80: a new sensor modality appears
+    assert wl.dim == N + 16 and all(len(p) == N + 16 for p in wl.prototypes), (
+        "every prototype must widen"
+    )
     assert wl.n_units == units_before, "widening changes the width, not the unit count"
-    assert wl.classify(probe + [0.0] * 16) == id_before, \
+    assert wl.classify(probe + [0.0] * 16) == id_before, (
         "a known pattern (new modality absent) must still recognise after widening (function-preserving)"
+    )
 
     print(f"vigilance={learner.vigilance}  lr={learner.lr}  dim={N}  jitter={JIT}")
     print("1 GROWTH      : 5 distinct patterns -> n_units=5")
@@ -203,10 +210,14 @@ def main():
     print("3 NOVELTY     : 6th pattern grew=True -> n_units=6")
     print("4 STABILITY   : familiar patterns did not grow -> n_units=6")
     print("5 DETERMINISM : identical prototypes + assignments across two runs")
-    print(f"6 WIDTH GROW  : dim {N} -> {N + 16} function-preserving (known pattern still recognised)")
+    print(
+        f"6 WIDTH GROW  : dim {N} -> {N + 16} function-preserving (known pattern still recognised)"
+    )
     print("=" * 60)
-    print(f"self-check OK: grew to {learner.n_units} units by neurogenesis, "
-          f"recognition acc {acc:.2f}, deterministic, feature space grows without forgetting")
+    print(
+        f"self-check OK: grew to {learner.n_units} units by neurogenesis, "
+        f"recognition acc {acc:.2f}, deterministic, feature space grows without forgetting"
+    )
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ HONEST ANCHORS for reading any score:
   - a 5-gram LM trained on 83M words scores ~61%; GPT-2 large scores ~86% (same paper, Table 3)
   So: <=55% means "no grammatical knowledge", ~61% means "n-gram level", >=80% means "real syntax".
 
-Pure stdlib. No numpy, no torch. Representation-only: imports no brainstem, routes no actuator.
+Representation-only: imports no brainstem, routes no actuator.
 """
 
 import json

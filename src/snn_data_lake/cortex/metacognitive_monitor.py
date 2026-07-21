@@ -61,6 +61,7 @@ zlib.crc32 for bucketing (never hash()), ASCII-only prints, deterministic.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.metacognitive_monitor
 """
+
 import math
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
@@ -85,30 +86,44 @@ class MetacognitiveMonitor:
     lesion=True the gates become no-ops == the ungated control. Deterministic;
     per-instance random.Random(seed) fixes the population's bias heterogeneity."""
 
-    def __init__(self, pop_size=24, steps=16, tau_m=10.0,
-                 w_conf=0.6, w_lp=0.5, w_surprise=0.9, base=0.0, bias_spread=0.4,
-                 r_hold=0.12, r_explore=0.30, nov_hi=0.4, lp_eps=1e-6,
-                 lesion=False, seed=0):
+    def __init__(
+        self,
+        pop_size=24,
+        steps=16,
+        tau_m=10.0,
+        w_conf=0.6,
+        w_lp=0.5,
+        w_surprise=0.9,
+        base=0.0,
+        bias_spread=0.4,
+        r_hold=0.12,
+        r_explore=0.30,
+        nov_hi=0.4,
+        lp_eps=1e-6,
+        lesion=False,
+        seed=0,
+    ):
         import random
-        self.rng = random.Random(seed)                     # per-instance rng (fixes bias heterogeneity)
+
+        self.rng = random.Random(seed)  # per-instance rng (fixes bias heterogeneity)
         self.pop_size = int(pop_size)
         self.steps = int(steps)
-        self.w_conf = float(w_conf)                         # confidence -> excitation
-        self.w_lp = float(w_lp)                             # rising learning-progress -> excitation
-        self.w_surprise = float(w_surprise)                # persistent-surprise-without-progress -> inhibition
+        self.w_conf = float(w_conf)  # confidence -> excitation
+        self.w_lp = float(w_lp)  # rising learning-progress -> excitation
+        self.w_surprise = float(w_surprise)  # persistent-surprise-without-progress -> inhibition
         self.base = float(base)
-        self.r_hold = float(r_hold)                        # reliability below this -> HOLD / abstain
-        self.r_explore = float(r_explore)                  # reliability below this -> explore
-        self.nov_hi = float(nov_hi)                        # novelty at/above this counts as "novel"
-        self.lp_eps = float(lp_eps)                        # learning-progress above this counts as "learnable"
+        self.r_hold = float(r_hold)  # reliability below this -> HOLD / abstain
+        self.r_explore = float(r_explore)  # reliability below this -> explore
+        self.nov_hi = float(nov_hi)  # novelty at/above this counts as "novel"
+        self.lp_eps = float(lp_eps)  # learning-progress above this counts as "learnable"
         self.lesion = bool(lesion)
         # the dedicated LIF reliability pool (fixed per-neuron bias -> graded population rate)
         self.pool = [LIFNeuron(tau_m=tau_m) for _ in range(self.pop_size)]
         self.bias = [self.rng.uniform(-bias_spread, bias_spread) for _ in range(self.pop_size)]
         # last-update cache (all gates are pure functions of these)
-        self._rel = 0.0                                    # windowed spike-count firing rate in [0,1]
-        self._spikes = 0                                   # integer spike count over the window
-        self._mem = 0.0                                    # mean final membrane (CONTROL comparison ONLY)
+        self._rel = 0.0  # windowed spike-count firing rate in [0,1]
+        self._spikes = 0  # integer spike count over the window
+        self._mem = 0.0  # mean final membrane (CONTROL comparison ONLY)
         self._conf = 0.0
         self._surprise = 0.0
         self._lp = 0.0
@@ -128,18 +143,24 @@ class MetacognitiveMonitor:
         nov = _clamp01(novelty)
         self._conf, self._surprise, self._lp, self._nov = c, s, lp, nov
         # excite by confidence + rising LP; inhibit by persistent-surprise-WITHOUT-progress
-        drive = (self.base + self.w_conf * c + self.w_lp * lp
-                 - self.w_surprise * s * (1.0 - min(1.0, lp)))
+        drive = (
+            self.base
+            + self.w_conf * c
+            + self.w_lp * lp
+            - self.w_surprise * s * (1.0 - min(1.0, lp))
+        )
         spikes = 0
         memsum = 0.0
         for neuron, b in zip(self.pool, self.bias):
-            neuron.reset_state()                           # fresh integration window per update (no cross-leak)
+            neuron.reset_state()  # fresh integration window per update (no cross-leak)
             current = drive + b
             for _ in range(self.steps):
                 spikes += neuron.step(current)
-            memsum += neuron.v                             # final subthreshold membrane (for the control read only)
+            memsum += neuron.v  # final subthreshold membrane (for the control read only)
         self._spikes = spikes
-        self._rel = spikes / float(self.pop_size * self.steps)   # SPIKE-COUNT firing rate (not membrane)
+        self._rel = spikes / float(
+            self.pop_size * self.steps
+        )  # SPIKE-COUNT firing rate (not membrane)
         self._mem = memsum / float(self.pop_size)
         return self._rel
 
@@ -192,19 +213,19 @@ class MetacognitiveMonitor:
 
 
 # =====================================================================================
-# Un-riggable self-check. Deterministic (seed=0), ASCII-only, zero-dep. Each claim is
+# Un-riggable self-check. Deterministic (seed=0), ASCII-only. Each claim is
 # paired with a CONTROL that FAILS. The monitor GATES a real neurogenesis learner over a
 # stream that mixes LEARNABLE classes with an UNLEARNABLE noise context.
 # =====================================================================================
 
-DIM = 64                 # feature-space dimensionality
-K = 4                    # number of learnable classes
-ROUNDS = 12              # stream repeats per class
-NOISE_PER_ROUND = 12     # unlearnable noise samples interleaved per round
-HELDOUT_PER_CLASS = 10   # held-out class samples for the accuracy test
-VIG = 0.80               # grower vigilance (classes recognized above it; fresh noise falls below it)
-ENGAGE = 0.12            # learn_gate floor to refine a recognized context
-JIT = 0.15               # class-sample input jitter (kept within a quantization bin)
+DIM = 64  # feature-space dimensionality
+K = 4  # number of learnable classes
+ROUNDS = 12  # stream repeats per class
+NOISE_PER_ROUND = 12  # unlearnable noise samples interleaved per round
+HELDOUT_PER_CLASS = 10  # held-out class samples for the accuracy test
+VIG = 0.80  # grower vigilance (classes recognized above it; fresh noise falls below it)
+ENGAGE = 0.12  # learn_gate floor to refine a recognized context
+JIT = 0.15  # class-sample input jitter (kept within a quantization bin)
 
 
 def _quantize(vec):
@@ -217,6 +238,7 @@ def _quantize(vec):
 def _bucket_key(vec):
     """Deterministic bucket id from the coarse code (zlib.crc32, never hash())."""
     import zlib
+
     return zlib.crc32(_quantize(vec))
 
 
@@ -236,6 +258,7 @@ def _make_classes(seed):
     """K well-separated sparse templates: class c is HIGH (0.75) on its own disjoint
     feature block and LOW (0.25) elsewhere -> classes separable, noise (uniform) overlaps."""
     import random
+
     rng = random.Random(1000 + seed)
     block = DIM // K
     templates = []
@@ -267,9 +290,10 @@ class _World:
 
     def __init__(self, seed):
         from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
-        self.fam = {}                                      # bucket -> running-mean feature vector
+
+        self.fam = {}  # bucket -> running-mean feature vector
         self.cur = CuriosityDrive(novelty_decay=0.8, seed=seed)
-        self.beta = 0.3                                    # familiarity running-mean rate
+        self.beta = 0.3  # familiarity running-mean rate
 
     def signals(self, vec):
         """Return (confidence, surprise, learning_progress, novelty) for one input.
@@ -278,19 +302,20 @@ class _World:
         learning_progress, novelty = the anti-noisy-TV curiosity signals for the bucket."""
         key = _bucket_key(vec)
         st = self.fam.get(key)
-        conf = _clamp01(_cosine(vec, st)) if st is not None else 0.0   # recognize BEFORE updating
+        conf = _clamp01(_cosine(vec, st)) if st is not None else 0.0  # recognize BEFORE updating
         surprise = 1.0 - conf
-        if st is None:                                     # then fold the sample into the running mean
+        if st is None:  # then fold the sample into the running mean
             self.fam[key] = list(vec)
         else:
             self.fam[key] = [(1.0 - self.beta) * m + self.beta * x for m, x in zip(st, vec)]
-        self.cur.observe(key, surprise)                    # honest LP: falls only for a RECURRING bucket
+        self.cur.observe(key, surprise)  # honest LP: falls only for a RECURRING bucket
         return conf, surprise, self.cur.learning_progress(key), self.cur.novelty(key)
 
 
 def _build_stream(seed):
     """A shuffled stream interleaving K jittered class samples per round with fresh noise."""
     import random
+
     rng = random.Random(seed)
     templates = _make_classes(seed)
     plan = []
@@ -324,8 +349,9 @@ def _run_gated(stream, world, monitor, grower):
             continue
         _, best_sim = grower._best(vec)
         recognized = best_sim >= grower.vigilance
-        engage = (recognized and monitor.learn_gate() >= ENGAGE) or \
-                 (not recognized and monitor.grow_trigger())
+        engage = (recognized and monitor.learn_gate() >= ENGAGE) or (
+            not recognized and monitor.grow_trigger()
+        )
         if not engage:
             continue
         uid, grew = grower.observe(vec)
@@ -350,6 +376,7 @@ def _heldout_acc(grower, proto_label, seed):
     """Held-out accuracy on fresh class samples: correct iff the nearest prototype was
     recruited by the SAME class (a noise-born or wrong-class prototype winning = wrong)."""
     import random
+
     rng = random.Random(9000 + seed)
     templates = _make_classes(seed)
     correct = total = 0
@@ -389,13 +416,14 @@ def _experiment(seed):
     # ---- PLAIN no-monitor baseline (for the lesion byte-identical proof) ----
     p_grower = GrowingLearner(vigilance=VIG, lr=0.2, dim=DIM)
     p_label = _run_plain(stream, p_grower)
-    lesion_byte_identical = (l_grower.prototypes == p_grower.prototypes and l_label == p_label)
+    lesion_byte_identical = l_grower.prototypes == p_grower.prototypes and l_label == p_label
 
     # ---- (2) CONFIDENCE-ABSTAIN vs always-commit, on a RELIABLE + UNRELIABLE query mix ----
     import random
+
     qrng = random.Random(5000 + seed)
     templates = _make_classes(seed)
-    queries = []                                           # (true_label, vec); -1 == OOD noise
+    queries = []  # (true_label, vec); -1 == OOD noise
     for _ in range(HELDOUT_PER_CLASS):
         for ci in range(K):
             queries.append((ci, _class_sample(templates[ci], qrng)))
@@ -404,8 +432,8 @@ def _experiment(seed):
         queries.append((-1, _noise_sample(qrng)))
     qrng.shuffle(queries)
 
-    a_correct = a_total = 0                                # always-commit
-    c_correct = c_committed = ood_abstained = 0            # monitor: commit only when reliable
+    a_correct = a_total = 0  # always-commit
+    c_correct = c_committed = ood_abstained = 0  # monitor: commit only when reliable
     for true_label, vec in queries:
         conf, surp, lp, nov = g_world.signals(vec)
         g_mon.update(conf, surp, lp, nov)
@@ -414,7 +442,7 @@ def _experiment(seed):
         hit = 1 if pred == true_label else 0
         a_correct += hit
         a_total += 1
-        if g_mon.hold():                                   # abstain on the unreliable
+        if g_mon.hold():  # abstain on the unreliable
             if true_label == -1:
                 ood_abstained += 1
             continue
@@ -425,37 +453,44 @@ def _experiment(seed):
 
     # ---- (3) SPIKING structural reads: reliable vs noise vs sub-threshold ----
     probe = MetacognitiveMonitor(lesion=False, seed=seed)
-    probe.update(confidence=0.99, surprise=0.02, learning_progress=0.2, novelty=0.5)   # reliable
+    probe.update(confidence=0.99, surprise=0.02, learning_progress=0.2, novelty=0.5)  # reliable
     rel_reliable = probe.reliability()
-    spike_count_is_integer = abs(rel_reliable * probe.pop_size * probe.steps
-                                 - probe._spikes) < 1e-9
+    spike_count_is_integer = abs(rel_reliable * probe.pop_size * probe.steps - probe._spikes) < 1e-9
     mem_reliable = probe._reliability_from_membrane()
     mem_prod = mem_reliable * probe.pop_size * probe.steps
     mem_is_integer_spikecount = abs(mem_prod - round(mem_prod)) < 1e-9
-    probe.update(confidence=0.0, surprise=1.0, learning_progress=0.0, novelty=1.0)      # noise
+    probe.update(confidence=0.0, surprise=1.0, learning_progress=0.0, novelty=1.0)  # noise
     rel_noise = probe.reliability()
 
     # sub-threshold trap: a pool charged to just below threshold emits NOTHING, yet its
     # membrane sits high -> the membrane read falsely says "reliable", spikes correctly 0.
     trap = MetacognitiveMonitor(lesion=False, seed=seed, bias_spread=0.0)
     decay = math.exp(-1.0 / 10.0)
-    sub = 0.99 * (1.0 - decay)                             # steady-state V* ~ 0.99 < threshold 1.0
+    sub = 0.99 * (1.0 - decay)  # steady-state V* ~ 0.99 < threshold 1.0
     n = LIFNeuron(tau_m=10.0)
     trap_spikes = sum(n.step(sub) for _ in range(trap.steps))
     trap_membrane_rel = sigmoid(n.v)
     trap_spike_rel = trap_spikes / float(trap.steps)
 
     return {
-        "g_acc": g_acc, "l_acc": l_acc, "g_units": g_units, "l_units": l_units,
-        "g_abstains": g_abstains, "l_abstains": l_abstains,
+        "g_acc": g_acc,
+        "l_acc": l_acc,
+        "g_units": g_units,
+        "l_units": l_units,
+        "g_abstains": g_abstains,
+        "l_abstains": l_abstains,
         "lesion_byte_identical": lesion_byte_identical,
-        "always_acc": always_acc, "commit_acc": commit_acc,
-        "ood_abstained": ood_abstained, "committed": c_committed,
-        "rel_reliable": rel_reliable, "rel_noise": rel_noise,
+        "always_acc": always_acc,
+        "commit_acc": commit_acc,
+        "ood_abstained": ood_abstained,
+        "committed": c_committed,
+        "rel_reliable": rel_reliable,
+        "rel_noise": rel_noise,
         "spike_count_is_integer": spike_count_is_integer,
         "mem_is_integer_spikecount": mem_is_integer_spikecount,
         "mem_reliable": mem_reliable,
-        "trap_spikes": trap_spikes, "trap_membrane_rel": trap_membrane_rel,
+        "trap_spikes": trap_spikes,
+        "trap_membrane_rel": trap_membrane_rel,
         "trap_spike_rel": trap_spike_rel,
     }
 
@@ -475,21 +510,42 @@ def main():
     _p(lines, "=" * 78)
     _p(lines, "metacognition CONSUMED: a LIF reliability pool gates LEARN / EXPLORE / GROW / HOLD")
     _p(lines, "-" * 78)
-    _p(lines, f"stream: {K} learnable classes x {ROUNDS} rounds + {NOISE_PER_ROUND} noise/round "
-              f"(dim={DIM}, vigilance={VIG})")
+    _p(
+        lines,
+        f"stream: {K} learnable classes x {ROUNDS} rounds + {NOISE_PER_ROUND} noise/round "
+        f"(dim={DIM}, vigilance={VIG})",
+    )
     _p(lines, "-" * 78)
     _p(lines, "                       held-out acc   units    abstains")
-    _p(lines, f"  GATED (monitor on) :   {r['g_acc']:.3f}       {r['g_units']:>3}      {r['g_abstains']:>3}")
-    _p(lines, f"  LESIONED (control) :   {r['l_acc']:.3f}       {r['l_units']:>3}      {r['l_abstains']:>3}")
+    _p(
+        lines,
+        f"  GATED (monitor on) :   {r['g_acc']:.3f}       {r['g_units']:>3}      {r['g_abstains']:>3}",
+    )
+    _p(
+        lines,
+        f"  LESIONED (control) :   {r['l_acc']:.3f}       {r['l_units']:>3}      {r['l_abstains']:>3}",
+    )
     _p(lines, "-" * 78)
-    _p(lines, f"(1) gating helps    : gated acc {r['g_acc']:.3f} >= lesioned {r['l_acc']:.3f} + margin, "
-              f"and gated units {r['g_units']} < lesioned {r['l_units']}")
-    _p(lines, f"(2) confidence-hold : committed acc {r['commit_acc']:.3f} > always-commit {r['always_acc']:.3f}; "
-              f"abstained on {r['ood_abstained']} OOD queries ({r['committed']} committed)")
-    _p(lines, f"(3) spiking read    : reliable rate {r['rel_reliable']:.3f} vs noise {r['rel_noise']:.3f}; "
-              f"spike-count integer={r['spike_count_is_integer']} membrane-integer={r['mem_is_integer_spikecount']}")
-    _p(lines, f"    sub-thr trap    : spikes={r['trap_spikes']} spike_rel={r['trap_spike_rel']:.3f} "
-              f"but membrane_rel={r['trap_membrane_rel']:.3f} (membrane falsely 'reliable')")
+    _p(
+        lines,
+        f"(1) gating helps    : gated acc {r['g_acc']:.3f} >= lesioned {r['l_acc']:.3f} + margin, "
+        f"and gated units {r['g_units']} < lesioned {r['l_units']}",
+    )
+    _p(
+        lines,
+        f"(2) confidence-hold : committed acc {r['commit_acc']:.3f} > always-commit {r['always_acc']:.3f}; "
+        f"abstained on {r['ood_abstained']} OOD queries ({r['committed']} committed)",
+    )
+    _p(
+        lines,
+        f"(3) spiking read    : reliable rate {r['rel_reliable']:.3f} vs noise {r['rel_noise']:.3f}; "
+        f"spike-count integer={r['spike_count_is_integer']} membrane-integer={r['mem_is_integer_spikecount']}",
+    )
+    _p(
+        lines,
+        f"    sub-thr trap    : spikes={r['trap_spikes']} spike_rel={r['trap_spike_rel']:.3f} "
+        f"but membrane_rel={r['trap_membrane_rel']:.3f} (membrane falsely 'reliable')",
+    )
     _p(lines, f"    lesion==ungated : byte-identical downstream={r['lesion_byte_identical']}")
     _p(lines, f"(4) determinism     : two seed=0 runs identical={_experiment(0) == r}")
     _p(lines, "=" * 78)
@@ -497,38 +553,54 @@ def main():
         print(line)
 
     # ---- (1) GATING HELPS LEARNING (headline) ----
-    assert r["g_acc"] >= r["l_acc"] + 0.05, \
+    assert r["g_acc"] >= r["l_acc"] + 0.05, (
         f"gated held-out {r['g_acc']:.3f} must beat lesioned {r['l_acc']:.3f} by a margin"
-    assert r["g_units"] < r["l_units"], \
+    )
+    assert r["g_units"] < r["l_units"], (
         f"gated must recruit FEWER units ({r['g_units']}) than lesioned ({r['l_units']}) -- no noise memorizing"
+    )
     assert r["g_abstains"] > 0, "the gated monitor must ABSTAIN on the unlearnable noise"
 
     # ---- (2) CONFIDENCE-ABSTAIN beats always-commit ----
-    assert r["commit_acc"] > r["always_acc"], \
+    assert r["commit_acc"] > r["always_acc"], (
         f"committed-only accuracy {r['commit_acc']:.3f} must beat always-commit {r['always_acc']:.3f}"
+    )
     assert r["ood_abstained"] > 0, "the monitor must HOLD on some OOD / unreliable queries"
 
     # ---- (3) SPIKING + LESIONABLE ----
-    assert r["rel_reliable"] > r["rel_noise"], "the spike-count reliability must separate reliable from noise"
-    assert r["spike_count_is_integer"], "reliability * pop_size * steps must be an exact SPIKE COUNT (integer)"
-    assert not r["mem_is_integer_spikecount"], \
+    assert r["rel_reliable"] > r["rel_noise"], (
+        "the spike-count reliability must separate reliable from noise"
+    )
+    assert r["spike_count_is_integer"], (
+        "reliability * pop_size * steps must be an exact SPIKE COUNT (integer)"
+    )
+    assert not r["mem_is_integer_spikecount"], (
         "the membrane read is NOT a spike-count fraction -- structural proof reliability is spike-derived"
-    assert r["trap_spikes"] == 0 and r["trap_spike_rel"] == 0.0, \
+    )
+    assert r["trap_spikes"] == 0 and r["trap_spike_rel"] == 0.0, (
         "a sub-threshold pool emits NO spikes -> spike reliability is correctly 0 (abstain)"
-    assert r["trap_membrane_rel"] > 0.5, \
+    )
+    assert r["trap_membrane_rel"] > 0.5, (
         "the membrane read falsely calls the silent sub-threshold pool 'reliable' -- why we read spikes"
+    )
     assert r["lesion_byte_identical"], "lesion=True must be byte-identical downstream to no monitor"
 
     # ---- (4) DETERMINISM ----
     assert _experiment(0) == r, "two seed=0 runs must be byte-for-byte identical"
 
-    print(f"self-check OK: GATING lifts held-out {r['l_acc']:.3f}->{r['g_acc']:.3f} while cutting units "
-          f"{r['l_units']}->{r['g_units']} (abstained on {r['g_abstains']} noise);")
-    print(f"  confidence-HOLD raises accuracy {r['always_acc']:.3f}->{r['commit_acc']:.3f} by abstaining on "
-          f"{r['ood_abstained']} OOD; reliability is SPIKE-count ({r['rel_reliable']:.2f} vs noise "
-          f"{r['rel_noise']:.2f}),")
-    print("  membrane-read control FAILS the structural spike-count assert and mis-reads a silent pool; "
-          "lesion==ungated; deterministic")
+    print(
+        f"self-check OK: GATING lifts held-out {r['l_acc']:.3f}->{r['g_acc']:.3f} while cutting units "
+        f"{r['l_units']}->{r['g_units']} (abstained on {r['g_abstains']} noise);"
+    )
+    print(
+        f"  confidence-HOLD raises accuracy {r['always_acc']:.3f}->{r['commit_acc']:.3f} by abstaining on "
+        f"{r['ood_abstained']} OOD; reliability is SPIKE-count ({r['rel_reliable']:.2f} vs noise "
+        f"{r['rel_noise']:.2f}),"
+    )
+    print(
+        "  membrane-read control FAILS the structural spike-count assert and mis-reads a silent pool; "
+        "lesion==ungated; deterministic"
+    )
 
 
 if __name__ == "__main__":

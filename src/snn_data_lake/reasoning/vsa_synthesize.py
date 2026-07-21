@@ -49,6 +49,7 @@ answer. Honest gap (known=False) whenever no program in the space fits -- never 
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.reasoning.vsa_synthesize
 """
+
 # ruff: noqa: UP031  -- %-format is the hand-aligned house style of every sibling in reasoning/
 # (which the repo excludes from `ruff check .`); kept for consistency, not reflowed to f-strings.
 import random
@@ -57,16 +58,16 @@ import sys
 from snn_data_lake.cortex.vsa_reasoning import bind, bundle, hv, permute
 from snn_data_lake.reasoning.gf import code
 
-MAX_SIZE = 6           # MDL cap: total description length of a program (nodes; perm costs |shift|)
-MAX_DEPTH = 2          # compositional depth of the expression tree
-SHIFT_LIM = 3          # literal perm shifts searched: -3..-1, +1..+3
-_SHIFT_MAX = 64        # ordinal-line extent the comp/icomp shift induction reads exactly
+MAX_SIZE = 6  # MDL cap: total description length of a program (nodes; perm costs |shift|)
+MAX_DEPTH = 2  # compositional depth of the expression tree
+SHIFT_LIM = 3  # literal perm shifts searched: -3..-1, +1..+3
+_SHIFT_MAX = 64  # ordinal-line extent the comp/icomp shift induction reads exactly
 
 _TERMS = (("A",), ("B",), ("R",))
 _BINOPS = ("bind", "bund", "comp", "icomp")
-_COMM = ("bind", "bund")                    # commutative -> canonical operand order, no self-pairs
-_SPACE_CACHE = {}                           # (max_size, max_depth, shift_lim) -> ordered programs
-_SHIFT_BOOK = {}                            # tuple(code(s)) -> s, built lazily (0.._SHIFT_MAX)
+_COMM = ("bind", "bund")  # commutative -> canonical operand order, no self-pairs
+_SPACE_CACHE = {}  # (max_size, max_depth, shift_lim) -> ordered programs
+_SHIFT_BOOK = {}  # tuple(code(s)) -> s, built lazily (0.._SHIFT_MAX)
 
 
 def _render(expr):
@@ -105,7 +106,7 @@ def _program_space(max_size, max_depth, shift_lim):
         younger = [e for dd in range(d) for e in layers[dd]]
         for sub in layers[d - 1]:
             if sub[0] == "perm":
-                continue                    # nested perms collapse to one shift -- skip duplicates
+                continue  # nested perms collapse to one shift -- skip duplicates
             for s in range(-shift_lim, shift_lim + 1):
                 if s == 0 or size[sub] + abs(s) > max_size:
                     continue
@@ -116,9 +117,9 @@ def _program_space(max_size, max_depth, shift_lim):
             for left in younger:
                 for right in younger:
                     if depth[left] != d - 1 and depth[right] != d - 1:
-                        continue            # at least one child on the frontier (no duplicates)
+                        continue  # at least one child on the frontier (no duplicates)
                     if op in _COMM and (left == right or _render(left) > _render(right)):
-                        continue            # canonical order; bind(x,x)/bund(x,x) are degenerate
+                        continue  # canonical order; bind(x,x)/bund(x,x) are degenerate
                     if size[left] + size[right] + 1 > max_size:
                         continue
                     e = (op, left, right)
@@ -152,7 +153,7 @@ def _eval(expr, env, memo):
             out = bind(lv, rv)
         elif op == "bund":
             out = bundle([lv, rv])
-        else:                               # comp / icomp: permute-compose along the ordinal line
+        else:  # comp / icomp: permute-compose along the ordinal line
             s = _shift_of(rv)
             out = None if s is None else permute(lv, s if op == "comp" else -s)
     memo[expr] = out
@@ -207,7 +208,7 @@ class VsaSynthesizer:
                 continue
             pred = _eval(expr, q_env, q_memo)
             if pred is None:
-                continue                    # fits the examples but is undefined on the query codes
+                continue  # fits the examples but is undefined on the query codes
             return txt, sz, pred
         return None
 
@@ -217,9 +218,13 @@ class VsaSynthesizer:
         returns an honest gap (known=False, answer_idx=0), never raises."""
         try:
             return self._solve(context_cells, candidates)
-        except Exception as exc:            # honest gap, never a crash
-            return {"answer_idx": 0, "confidence": 0.0, "known": False,
-                    "program": "gap:%s" % type(exc).__name__}
+        except Exception as exc:  # honest gap, never a crash
+            return {
+                "answer_idx": 0,
+                "confidence": 0.0,
+                "known": False,
+                "program": "gap:%s" % type(exc).__name__,
+            }
 
     def _solve(self, context_cells, candidates):
         if len(context_cells) != 8 or len(candidates) < 2:
@@ -231,19 +236,21 @@ class VsaSynthesizer:
             if any(a not in c for c in context_cells):
                 continue
             ex = [tuple(_enc(a, rows[r][i][a]) for i in range(3)) for r in (0, 1)]
-            rvec = bind(bind(ex[0][0], ex[0][1]), ex[0][2])       # row invariant (fold-bind row 0)
+            rvec = bind(bind(ex[0][0], ex[0][1]), ex[0][2])  # row invariant (fold-bind row 0)
             ex_envs = [{"A": e[0], "B": e[1], "R": rvec} for e in ex]
             ex_targets = [e[2] for e in ex]
             q_env = {"A": _enc(a, rows[2][0][a]), "B": _enc(a, rows[2][1][a]), "R": rvec}
             got = self._synthesize(ex_envs, ex_targets, q_env)
             if got is not None:
                 programs[a], _sz, predicted[a] = got[0], got[1], got[2]
-        if not predicted:                   # nothing in the program space fits any attribute
+        if not predicted:  # nothing in the program space fits any attribute
             return {"answer_idx": 0, "confidence": 0.0, "known": False, "program": "gap:no-program"}
 
         n = len(predicted)
-        matches = [sum(1 for a2, p in predicted.items()
-                       if a2 in cand and _enc(a2, cand[a2]) == p) for cand in candidates]
+        matches = [
+            sum(1 for a2, p in predicted.items() if a2 in cand and _enc(a2, cand[a2]) == p)
+            for cand in candidates
+        ]
         best = max(matches)
         winners = [i for i, m in enumerate(matches) if m == best]
         answer_idx = winners[0]
@@ -251,8 +258,12 @@ class VsaSynthesizer:
         confidence = round((best - second) / float(n), 3)
         known = len(winners) == 1 and best == n
         prog_txt = "; ".join("%s=%s" % (a2, programs[a2]) for a2 in sorted(programs))
-        return {"answer_idx": answer_idx, "confidence": confidence, "known": bool(known),
-                "program": prog_txt if known else ("low-confidence (%s)" % prog_txt)}
+        return {
+            "answer_idx": answer_idx,
+            "confidence": confidence,
+            "known": bool(known),
+            "program": prog_txt if known else ("low-confidence (%s)" % prog_txt),
+        }
 
 
 class IdentityProgramSolver:
@@ -263,10 +274,14 @@ class IdentityProgramSolver:
     def solve(self, context_cells, candidates):
         if len(context_cells) != 8 or len(candidates) < 2:
             return {"answer_idx": 0, "confidence": 0.0, "known": False, "program": "gap:malformed"}
-        frozen = context_cells[6]           # row 2, col 0 -- program A's prediction per attribute
+        frozen = context_cells[6]  # row 2, col 0 -- program A's prediction per attribute
         matches = [sum(1 for a, v in frozen.items() if cand.get(a) == v) for cand in candidates]
-        return {"answer_idx": matches.index(max(matches)), "confidence": 0.0, "known": False,
-                "program": "frozen:A"}
+        return {
+            "answer_idx": matches.index(max(matches)),
+            "confidence": 0.0,
+            "known": False,
+            "program": "frozen:A",
+        }
 
 
 # ---------------------------------------------------------------- self-check --------------------------
@@ -277,25 +292,26 @@ class IdentityProgramSolver:
 _ATTRS = ("type", "size", "color")
 
 _CLASSIC = {  # the fixed menu's own regimes -- must fall out as SYNTHESIZED programs, and
-              # rpm_solver must ALSO solve them (proving they are in-grammar for the fixed menu)
-    "constant":    ([[3, 3, 3], [5, 5, 5]], [2, 2], 2),
+    # rpm_solver must ALSO solve them (proving they are in-grammar for the fixed menu)
+    "constant": ([[3, 3, 3], [5, 5, 5]], [2, 2], 2),
     "progression": ([[1, 3, 5], [2, 4, 6]], [3, 5], 7),
-    "arithmetic":  ([[2, 3, 5], [4, 1, 5]], [1, 4], 5),
+    "arithmetic": ([[2, 3, 5], [4, 1, 5]], [1, 4], 5),
     "distribute3": ([[1, 2, 3], [2, 3, 1]], [3, 1], 2),
 }
-_NOVEL = {    # HELD-OUT regimes: NOT expressible by rpm_solver's fixed menu (it must gap) --
-              # out-of-grammar synthesis is proven on exactly these matrices
-    "revsub c=b-a":     ([[1, 4, 3], [2, 7, 5]], [1, 7], 6),
+_NOVEL = {  # HELD-OUT regimes: NOT expressible by rpm_solver's fixed menu (it must gap) --
+    # out-of-grammar synthesis is proven on exactly these matrices
+    "revsub c=b-a": ([[1, 4, 3], [2, 7, 5]], [1, 7], 6),
     "sumplus1 c=a+b+1": ([[1, 2, 4], [3, 1, 5]], [2, 3], 6),
-    "rowprog c=2b-a":   ([[2, 3, 4], [1, 4, 7]], [3, 5], 7),
+    "rowprog c=2b-a": ([[2, 3, 4], [1, 4, 7]], [3, 5], 7),
 }
-_GARBAGE = ([[1, 5, 2], [4, 2, 7]], [3, 6])   # no program in the space fits -> must gap honestly
+_GARBAGE = ([[1, 5, 2], [4, 2, 7]], [3, 6])  # no program in the space fits -> must gap honestly
 
 
 def _grid_task(rows, knowns, answer_val, rng):
     """Replicate one verified value grid across the three attributes; build 8 candidates with
     raven_bench's own distractor builder (reused, not re-invented). Returns (context, cands, idx)."""
     from snn_data_lake.reasoning.raven_bench import _candidates
+
     context = [{a: rows[r][c] for a in _ATTRS} for r in range(2) for c in range(3)]
     context += [{a: knowns[c] for a in _ATTRS} for c in range(2)]
     answer = {a: answer_val for a in _ATTRS}
@@ -314,9 +330,10 @@ def main():
     rpm = RpmSolver(seed=0)
     rng = random.Random(0)
     space = _program_space(MAX_SIZE, MAX_DEPTH, SHIFT_LIM)
-    print("program space: %d programs (depth<=%d, size<=%d, |shift|<=%d) over "
-          "{A,B,R} x {perm,bind,comp,icomp,bund}" %
-          (len(space), MAX_DEPTH, MAX_SIZE, SHIFT_LIM))
+    print(
+        "program space: %d programs (depth<=%d, size<=%d, |shift|<=%d) over "
+        "{A,B,R} x {perm,bind,comp,icomp,bund}" % (len(space), MAX_DEPTH, MAX_SIZE, SHIFT_LIM)
+    )
 
     # (a) the fixed menu's own regimes, re-derived as SYNTHESIZED programs (rpm solves them too,
     #     proving these matrices are in-grammar for the fixed menu).
@@ -330,8 +347,10 @@ def main():
         ok = res["known"] and res["answer_idx"] == idx and rr["known"] and rr["answer_idx"] == idx
         classic_ok.append(ok)
         prog = res["program"].split(";")[0].split("=", 1)[-1].strip()
-        print("  [%s] %-12s -> #%d (truth #%d) known=%s  program: C = %s" %
-              ("PASS" if ok else "FAIL", kind, res["answer_idx"], idx, res["known"], prog))
+        print(
+            "  [%s] %-12s -> #%d (truth #%d) known=%s  program: C = %s"
+            % ("PASS" if ok else "FAIL", kind, res["answer_idx"], idx, res["known"], prog)
+        )
 
     # (b) HELD-OUT regimes: rpm_solver must return its honest gap (out-of-grammar for the fixed
     #     menu) while the synthesizer composes a program and solves.
@@ -348,9 +367,18 @@ def main():
         prog = res["program"].split(";")[0].split("=", 1)[-1].strip()
         if kind.startswith("rowprog"):
             novel_example = prog
-        print("  [%s] %-17s -> synth #%d (truth #%d) known=%s | rpm known=%s  program: C = %s" %
-              ("PASS" if ok else "FAIL", kind, res["answer_idx"], idx, res["known"],
-               rr["known"], prog))
+        print(
+            "  [%s] %-17s -> synth #%d (truth #%d) known=%s | rpm known=%s  program: C = %s"
+            % (
+                "PASS" if ok else "FAIL",
+                kind,
+                res["answer_idx"],
+                idx,
+                res["known"],
+                rr["known"],
+                prog,
+            )
+        )
 
     # (bench) raven_bench's own synthetic split + its un-riggable failing controls.
     print("-" * 78)
@@ -359,12 +387,18 @@ def main():
     ctrl_r = score(RandomSolver(seed=0), "synthetic", limit=limit)
     ctrl_i = score(IdentityProgramSolver(), "synthetic", limit=limit)
     print("(c) raven_bench synthetic split (%d tasks, 8-choice, chance 12.5%%):" % limit)
-    print("  VsaSynthesizer   %3d/%-3d  %5.1f%%  (known %.1f%%)" %
-          (r["solved"], r["n"], 100 * r["accuracy"], 100 * r["known_frac"]))
-    print("  random-ctrl      %3d/%-3d  %5.1f%%" %
-          (ctrl_r["solved"], ctrl_r["n"], 100 * ctrl_r["accuracy"]))
-    print("  frozen-A-ctrl    %3d/%-3d  %5.1f%%" %
-          (ctrl_i["solved"], ctrl_i["n"], 100 * ctrl_i["accuracy"]))
+    print(
+        "  VsaSynthesizer   %3d/%-3d  %5.1f%%  (known %.1f%%)"
+        % (r["solved"], r["n"], 100 * r["accuracy"], 100 * r["known_frac"])
+    )
+    print(
+        "  random-ctrl      %3d/%-3d  %5.1f%%"
+        % (ctrl_r["solved"], ctrl_r["n"], 100 * ctrl_r["accuracy"])
+    )
+    print(
+        "  frozen-A-ctrl    %3d/%-3d  %5.1f%%"
+        % (ctrl_i["solved"], ctrl_i["n"], 100 * ctrl_i["accuracy"])
+    )
 
     # (gap) a grid no program in the space regenerates -> honest gap, never a bluffed choice.
     g_rows, g_knowns = _GARBAGE
@@ -374,48 +408,62 @@ def main():
     gap = synth.solve(g_ctx, g_cands)
     gap_ok = not gap["known"]
     print("-" * 78)
-    print("  [%s] garbage grid -> known=%s program=%r (must be an honest gap)" %
-          ("PASS" if gap_ok else "FAIL", gap["known"], gap["program"]))
+    print(
+        "  [%s] garbage grid -> known=%s program=%r (must be an honest gap)"
+        % ("PASS" if gap_ok else "FAIL", gap["known"], gap["program"])
+    )
 
     # determinism: two fresh instances reproduce the identical result dict.
     ctx_d, cands_d, _i = _grid_task(*_CLASSIC["distribute3"], rng=random.Random(7))
-    det_ok = VsaSynthesizer(seed=0).solve(ctx_d, cands_d) == VsaSynthesizer(seed=0).solve(ctx_d, cands_d)
-    print("  [%s] determinism  -> same task reproduces the identical result dict" %
-          ("PASS" if det_ok else "FAIL"))
+    det_ok = VsaSynthesizer(seed=0).solve(ctx_d, cands_d) == VsaSynthesizer(seed=0).solve(
+        ctx_d, cands_d
+    )
+    print(
+        "  [%s] determinism  -> same task reproduces the identical result dict"
+        % ("PASS" if det_ok else "FAIL")
+    )
 
     print("-" * 78)
     print("honest ceiling: the op set / depth / shift bounds are developer-chosen, so Gf credit is")
     print("PARTIAL (synthesis WITHIN a designed algebra). CAN synthesize: any depth<=2 composition")
     print("of bind/perm/comp/icomp/bund -- incl. b-a, a+b+1, 2b-a, row-multiset unbinds. CANNOT:")
-    print("value multiplication, conditionals, depth>2 rules, shifts>|%d|, perception. Two example" %
-          SHIFT_LIM)
+    print(
+        "value multiplication, conditionals, depth>2 rules, shifts>|%d|, perception. Two example"
+        % SHIFT_LIM
+    )
     print("rows can under-determine a matrix; MDL then backs the shortest reading (known=False if")
     print("it fails to single out a candidate). No rule menu anywhere: delete a classic rule from")
     print("rpm_solver and nothing here changes -- the program space never enumerates rule NAMES.")
 
     example = novel_example or "(none)"
     assert all(classic_ok), "all four classic regimes must be re-derived as synthesized programs"
-    assert all(novel_ok), ("every held-out regime must be solved by synthesis while rpm_solver "
-                           "gaps on it -- that asymmetry IS the out-of-grammar proof")
+    assert all(novel_ok), (
+        "every held-out regime must be solved by synthesis while rpm_solver "
+        "gaps on it -- that asymmetry IS the out-of-grammar proof"
+    )
     assert r["accuracy"] >= 0.60, (
         "the synthesizer must clear chance (12.5%%) by a wide margin, got %.1f%%"
-        % (100 * r["accuracy"]))
+        % (100 * r["accuracy"])
+    )
     assert ctrl_r["accuracy"] <= 0.30 and ctrl_i["accuracy"] <= 0.30, (
         "both controls must genuinely fail near chance (%.1f%% / %.1f%%)"
-        % (100 * ctrl_r["accuracy"], 100 * ctrl_i["accuracy"]))
+        % (100 * ctrl_r["accuracy"], 100 * ctrl_i["accuracy"])
+    )
     assert r["accuracy"] > ctrl_r["accuracy"] + 0.30, "the margin over control must discriminate"
     assert gap_ok, "a grid no program regenerates must return an HONEST gap (known=False)"
     assert det_ok, "the synthesizer must be deterministic"
-    assert "numpy" not in sys.modules and "torch" not in sys.modules, "must be pure stdlib"
 
     print("=" * 78)
     print("self-check OK: rules SYNTHESIZED as spike-op programs (no fixed menu) -- classics")
     print("re-derived, held-out regimes solved where rpm_solver honestly gaps (example synthesized")
-    print("out-of-grammar program: C = %s, i.e. col3 = 2*col2 - col1), %.1f%% on raven_bench" %
-          (example, 100 * r["accuracy"]))
-    print("synthetic vs %.1f%% random / %.1f%% frozen-program controls; honest gap on a no-rule "
-          "grid; deterministic; pure stdlib." %
-          (100 * ctrl_r["accuracy"], 100 * ctrl_i["accuracy"]))
+    print(
+        "out-of-grammar program: C = %s, i.e. col3 = 2*col2 - col1), %.1f%% on raven_bench"
+        % (example, 100 * r["accuracy"])
+    )
+    print(
+        "synthetic vs %.1f%% random / %.1f%% frozen-program controls; honest gap on a no-rule "
+        "grid; deterministic." % (100 * ctrl_r["accuracy"], 100 * ctrl_i["accuracy"])
+    )
     return 0
 
 

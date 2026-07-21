@@ -37,8 +37,9 @@ random reservoir with a linear readout cannot synthesize a nonlinear feature lik
 the paper's trained (pruned) autaptic weights. Memory span is finite: recall attenuates for bits
 deeper than the delay range / weight scale sustain (the paper's space-time tradeoff).
 
-  python -m snn_data_lake.cortex.autapse_neuron        # (deterministic self-check, zero-dep)
+  python -m snn_data_lake.cortex.autapse_neuron        # (deterministic self-check)
 """
+
 import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
@@ -55,11 +56,10 @@ class AutapseNeuron:
 
     step(current) advances one internal node: it adds the delayed autaptic current
     sum_d w_a^d * s^{t-d} to the external input, runs the base LIF, records the emitted spike,
-    and returns it. Pure stdlib, deterministic.
+    and returns it. Deterministic.
     """
 
-    def __init__(self, delays, weights=None, w_scale=0.9, tau_m=5.0,
-                 v_threshold=1.0, seed=0):
+    def __init__(self, delays, weights=None, w_scale=0.9, tau_m=5.0, v_threshold=1.0, seed=0):
         self.delays = [int(d) for d in delays]
         if any(d < 1 for d in self.delays):
             raise ValueError("autaptic delays must be >= 1 node")
@@ -70,14 +70,13 @@ class AutapseNeuron:
             self.weights = [float(w) for w in weights]
             if len(self.weights) != len(self.delays):
                 raise ValueError("weights must align 1:1 with delays")
-        self.lif = LIFNeuron(tau_m=tau_m, v_threshold=v_threshold,
-                             v_reset=0.0, v_rest=0.0)
+        self.lif = LIFNeuron(tau_m=tau_m, v_threshold=v_threshold, v_reset=0.0, v_rest=0.0)
         self.reset_state()
 
     def reset_state(self):
         self.lif.reset_state()
-        self._spikes = []          # emitted spike history s^0..s^{t-1}
-        self.v = 0.0               # last membrane potential (the reservoir readout state)
+        self._spikes = []  # emitted spike history s^0..s^{t-1}
+        self.v = 0.0  # last membrane potential (the reservoir readout state)
 
     def _autaptic_current(self):
         """sum_{d in D, d <= t} w_a^d * s^{t-d} -- delayed feedback of the neuron's own spikes."""
@@ -85,7 +84,7 @@ class AutapseNeuron:
         total = 0.0
         for w, d in zip(self.weights, self.delays):
             if w and n >= d:
-                total += w * self._spikes[-d]      # s^{t-d}
+                total += w * self._spikes[-d]  # s^{t-d}
         return total
 
     def step(self, current):
@@ -111,7 +110,7 @@ class AutapseNeuron:
 
 
 class _LinearReadout:
-    """Minimal zero-dep logistic readout (the RC readout head), trained by gradient descent."""
+    """Minimal logistic readout (the RC readout head), trained by gradient descent."""
 
     def __init__(self, n):
         self.w = [0.0] * n
@@ -134,7 +133,7 @@ def _standardize(train, rows):
     n = len(train[0])
     mean = [sum(r[k] for r in train) / len(train) for k in range(n)]
     var = [sum((r[k] - mean[k]) ** 2 for r in train) / len(train) for k in range(n)]
-    std = [(v ** 0.5) or 1.0 for v in var]
+    std = [(v**0.5) or 1.0 for v in var]
 
     def z(rowset):
         return [[(r[k] - mean[k]) / std[k] for k in range(n)] for r in rowset]
@@ -143,10 +142,10 @@ def _standardize(train, rows):
 
 
 # --- the delayed-match (delayed-recall) task -------------------------------------------------
-M_STIM = 12          # stimulus nodes carrying a random spike stream
-K_SILENT = 8         # silent readout nodes (no external input) after the stimulus -- the gap
-DELAYS = list(range(1, 7))       # autaptic delay bank D = {1..6}
-I_IN = 1.6           # supra-threshold current for a 1-bit (fires + resets the membrane at once)
+M_STIM = 12  # stimulus nodes carrying a random spike stream
+K_SILENT = 8  # silent readout nodes (no external input) after the stimulus -- the gap
+DELAYS = list(range(1, 7))  # autaptic delay bank D = {1..6}
+I_IN = 1.6  # supra-threshold current for a 1-bit (fires + resets the membrane at once)
 N_TRAIN, N_TEST = 400, 200
 
 
@@ -159,7 +158,7 @@ def _delayed_match_stream(rng):
     """
     bits = [1 if rng.random() < 0.5 else 0 for _ in range(M_STIM)]
     stream = [I_IN if b else 0.0 for b in bits] + [0.0] * K_SILENT
-    return stream, bits[M_STIM - 1]          # recall the most recent stimulus after the gap
+    return stream, bits[M_STIM - 1]  # recall the most recent stimulus after the gap
 
 
 def _run_experiment(weights, seed):
@@ -172,7 +171,7 @@ def _run_experiment(weights, seed):
     neuron = AutapseNeuron(DELAYS, weights=weights)
 
     def features(stream):
-        return neuron.run_states(stream)[M_STIM:]     # the silent-tail state (reservoir readout)
+        return neuron.run_states(stream)[M_STIM:]  # the silent-tail state (reservoir readout)
 
     xs, ys = [], []
     for _ in range(N_TRAIN + N_TEST):
@@ -199,7 +198,7 @@ def main():
 
     auta_tr, auta_te = _run_experiment(res_w, seed=42)
     abl_tr, abl_te = _run_experiment(zero_w, seed=42)
-    base = 0.5     # balanced random bits -> chance = base rate
+    base = 0.5  # balanced random bits -> chance = base rate
 
     print("=" * 72)
     print("TDA-LIF AUTAPSE NEURON -- one neuron, delayed self-loops = temporal memory capacity")
@@ -208,30 +207,39 @@ def main():
     print(f"       {K_SILENT} SILENT nodes; a linear head recalls the LAST stimulus bit from the")
     print("       neuron's silent-window state. Firing resets the membrane, so only a delayed")
     print("       autapse can carry the stimulus across the silence.")
-    print(f"  autapse neuron (delays {DELAYS[0]}..{DELAYS[-1]}) : train {auta_tr:.0%}   test {auta_te:.0%}")
-    print(f"  memoryless LIF control (ablated)   : train {abl_tr:.0%}   test {abl_te:.0%}   (chance {base:.0%})")
+    print(
+        f"  autapse neuron (delays {DELAYS[0]}..{DELAYS[-1]}) : train {auta_tr:.0%}   test {auta_te:.0%}"
+    )
+    print(
+        f"  memoryless LIF control (ablated)   : train {abl_tr:.0%}   test {abl_te:.0%}   (chance {base:.0%})"
+    )
     print("=" * 72)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     # 1. headline: the autapse neuron solves the temporal-memory task ...
     assert auta_te >= 0.9, f"autapse neuron must recall the delayed stimulus ({auta_te:.2f})"
     # 2. ... which the memoryless control provably CANNOT (fire+reset erases it -> chance).
-    assert abl_te <= base + 0.08, \
+    assert abl_te <= base + 0.08, (
         f"memoryless LIF control must sit at chance on delayed-match ({abl_te:.2f})"
+    )
     # 3. the delay memory is load-bearing: same neuron + readout, autapses ablated -> collapse.
-    assert auta_te - abl_te >= 0.3, \
+    assert auta_te - abl_te >= 0.3, (
         f"delayed autapses must be load-bearing ({auta_te:.2f} vs ablated {abl_te:.2f})"
+    )
     # 4. mechanism: an autapse genuinely transports a past spike a memoryless LIF forgets.
     fired = AutapseNeuron([3], weights=[1.5]).run([1.6, 0.0, 0.0, 0.0, 0.0, 0.0])
-    assert fired[0] == 1 and fired[3] == 1, \
+    assert fired[0] == 1 and fired[3] == 1, (
         f"a delay-3 autapse must re-fire the neuron 3 nodes after a lone input spike ({fired})"
+    )
     forgot = AutapseNeuron([3], weights=[0.0]).run([1.6, 0.0, 0.0, 0.0, 0.0, 0.0])
     assert sum(forgot) == 1, f"the memoryless control must fire once and forget ({forgot})"
     # 5. deterministic.
     assert _run_experiment(res_w, seed=42) == (auta_tr, auta_te), "same seed -> identical result"
 
-    print(f"self-check OK: autapse neuron {auta_te:.0%} vs memoryless {abl_te:.0%} on delayed-match "
-          f"(chance {base:.0%}); delayed self-feedback is load-bearing (ablate -> collapse); deterministic")
+    print(
+        f"self-check OK: autapse neuron {auta_te:.0%} vs memoryless {abl_te:.0%} on delayed-match "
+        f"(chance {base:.0%}); delayed self-feedback is load-bearing (ablate -> collapse); deterministic"
+    )
 
 
 if __name__ == "__main__":

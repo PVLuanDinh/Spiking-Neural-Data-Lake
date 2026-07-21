@@ -1,5 +1,5 @@
 """
-LCA sparse coding + sparse-coding matcher — lateral-inhibition recognition (pure stdlib, no tensors).
+LCA sparse coding + sparse-coding matcher — lateral-inhibition recognition.
 
 Rozell et al. (2008) LCA finds a SPARSE representation of a signal over a dictionary using only neuromorphic-
 native operations: leaky integration, thresholding, and recurrent LATERAL INHIBITION. Each atom is a leaky
@@ -15,6 +15,7 @@ path. On-thesis with sparse_distributed_memory / fly_hash / rank_order_coding.
 
   python -m snn_data_lake.cortex.lca_sparse_coding        # (also run by run_selfchecks.py)
 """
+
 import random
 
 from snn_data_lake.brainstem.signal_loop import build_default_library
@@ -39,25 +40,29 @@ class LCA:
     """Locally Competitive Algorithm: sparse coding by leaky integration + lateral inhibition."""
 
     def __init__(self, dictionary, lam=0.1, dt=0.1):
-        self.phi = dictionary                       # list of M atoms, each a D-vector (columns of Phi)
+        self.phi = dictionary  # list of M atoms, each a D-vector (columns of Phi)
         self.m = len(dictionary)
         self.lam = lam
         self.dt = dt
         # Gram matrix with zeroed diagonal = lateral-inhibition weights (overlap between atoms)
-        self.g_off = [[0.0 if i == j else dot(dictionary[i], dictionary[j]) for j in range(self.m)]
-                      for i in range(self.m)]
+        self.g_off = [
+            [0.0 if i == j else dot(dictionary[i], dictionary[j]) for j in range(self.m)]
+            for i in range(self.m)
+        ]
 
     def encode(self, x, steps=80):
         # v2.4 perf: default steps 300 -> 80 (~3.5x faster). Same algorithm, fewer LCA
         # iterations. Measured flat: LCAMatcher accuracy is 100% clean + jittered at
         # steps 300/150/80, and the sparse-code support/reconstruction asserts still hold.
-        b = [dot(atom, x) for atom in self.phi]     # driving input: match of each atom to the signal
-        u = [0.0] * self.m                           # membrane potentials
-        a = [0.0] * self.m                           # active coefficients (thresholded)
+        b = [dot(atom, x) for atom in self.phi]  # driving input: match of each atom to the signal
+        u = [0.0] * self.m  # membrane potentials
+        a = [0.0] * self.m  # active coefficients (thresholded)
         for _ in range(steps):
             for i in range(self.m):
                 inhib = sum(self.g_off[i][j] * a[j] for j in range(self.m))
-                u[i] += self.dt * (b[i] - u[i] - inhib)     # leaky integrate: drive - leak - lateral inhibition
+                u[i] += self.dt * (
+                    b[i] - u[i] - inhib
+                )  # leaky integrate: drive - leak - lateral inhibition
             a = [_soft(ui, self.lam) for ui in u]
         return a
 
@@ -87,7 +92,7 @@ def main():
     phi = [[1.0 if k == i else 0.0 for k in range(d)] for i in range(d)]
     while len(phi) < d + n_rand:
         cand = _unit([rng.uniform(-1, 1) for _ in range(d)])
-        if all(abs(dot(cand, atom)) < max_coherence for atom in phi):       # incoherent-frame condition
+        if all(abs(dot(cand, atom)) < max_coherence for atom in phi):  # incoherent-frame condition
             phi.append(cand)
     support, coeffs = [1, 3, 6], [1.0, 0.8, 0.6]
     x = [0.0] * d
@@ -97,7 +102,9 @@ def main():
     lca = LCA(phi, lam=0.08)
     a = lca.encode(x)
     active = [i for i, ai in enumerate(a) if abs(ai) > 0.05]
-    corr_active = [i for i in range(len(phi)) if abs(dot(phi[i], x)) > 0.05]   # dense correlation baseline
+    corr_active = [
+        i for i in range(len(phi)) if abs(dot(phi[i], x)) > 0.05
+    ]  # dense correlation baseline
     err = sum((x[k] - lca.reconstruct(a)[k]) ** 2 for k in range(d)) ** 0.5
 
     # ---- 2. PRODUCT integration: sparse-coding matcher over the enrolled command library ----
@@ -118,18 +125,30 @@ def main():
     print("=" * 60)
     print("LCA SPARSE CODING — sparse code + sparse-coding command matcher")
     print("=" * 60)
-    print(f"sparse code : support {active} (true {support}); {len(active)}-sparse vs dense {len(corr_active)}, err {err:.3f}")
-    print(f"LCA matcher : {len(labels)} commands; clean {clean}/{len(labels)}, jittered {acc:.0%} over {trials}")
+    print(
+        f"sparse code : support {active} (true {support}); {len(active)}-sparse vs dense {len(corr_active)}, err {err:.3f}"
+    )
+    print(
+        f"LCA matcher : {len(labels)} commands; clean {clean}/{len(labels)}, jittered {acc:.0%} over {trials}"
+    )
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
-    assert set(active) == set(support), f"LCA must recover the true 3-atom support ({active} vs {support})"
-    assert len(active) < len(corr_active) and err < 0.2, f"LCA must be sparse + accurate ({len(active)}/{err:.3f})"
-    assert clean == len(labels), f"sparse-coding matcher must recognize every clean reference ({clean}/{len(labels)})"
+    # ---- self-check: deterministic asserts ----
+    assert set(active) == set(support), (
+        f"LCA must recover the true 3-atom support ({active} vs {support})"
+    )
+    assert len(active) < len(corr_active) and err < 0.2, (
+        f"LCA must be sparse + accurate ({len(active)}/{err:.3f})"
+    )
+    assert clean == len(labels), (
+        f"sparse-coding matcher must recognize every clean reference ({clean}/{len(labels)})"
+    )
     assert acc >= 0.9, f"sparse-coding matcher must be robust to jitter ({acc:.2f})"
     assert LCAMatcher(library).label(library[labels[0]]) == labels[0], "deterministic recognition"
-    print(f"self-check OK: LCA recovers {len(active)}-sparse code (err {err:.3f}); LCAMatcher recognizes "
-          f"{len(labels)} commands (clean {clean}/{len(labels)}, jittered {acc:.0%}); deterministic")
+    print(
+        f"self-check OK: LCA recovers {len(active)}-sparse code (err {err:.3f}); LCAMatcher recognizes "
+        f"{len(labels)} commands (clean {clean}/{len(labels)}, jittered {acc:.0%}); deterministic"
+    )
 
 
 if __name__ == "__main__":

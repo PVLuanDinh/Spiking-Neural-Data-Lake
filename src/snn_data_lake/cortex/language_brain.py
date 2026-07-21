@@ -18,6 +18,7 @@ real-spiking-LM starting point.
 
   python -m snn_data_lake.cortex.language_brain        # (also run by run_selfchecks.py)
 """
+
 from snn_data_lake.cortex.brain_reasoning import BrainReasoner
 from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 
@@ -31,10 +32,12 @@ class SpikingLanguageBrain:
             self.bundle = load_bundle(perception)
         elif isinstance(perception, BrainBundle):
             self.bundle = perception
-        elif isinstance(perception, dict) and "layers" in perception:      # a single trained_brain
+        elif isinstance(perception, dict) and "layers" in perception:  # a single trained_brain
             self.bundle = BrainBundle({"default": perception})
         else:
-            raise TypeError("perception must be a BrainBundle, a trained_brain dict, or a bundle path")
+            raise TypeError(
+                "perception must be a BrainBundle, a trained_brain dict, or a bundle path"
+            )
         self.backend = backend
 
     def skills(self):
@@ -57,18 +60,24 @@ class SpikingLanguageBrain:
         """Pure language: hand the prompt to the LLM backend. Without a backend this returns an
         honest note rather than pretending to speak (the SNN alone does not do open language)."""
         if self.backend is None:
-            return ("(no language backend attached -- perception is spiking and zero-dep, but open "
-                    "language needs an LLM: install the [llm] extra and pass AirLLMBackend() to "
-                    "SpikingLanguageBrain.)")
+            return (
+                "(no language backend attached -- perception is spiking and zero-dep, but open "
+                "language needs an LLM: install the [llm] extra and pass AirLLMBackend() to "
+                "SpikingLanguageBrain.)"
+            )
         return self.backend.generate(prompt)
 
     def describe(self):
-        shapes = ", ".join(f"{n} ({self.bundle.skills[n]['in']}->{self.bundle.skills[n]['out']})"
-                           for n in self.bundle.skill_names())
+        shapes = ", ".join(
+            f"{n} ({self.bundle.skills[n]['in']}->{self.bundle.skills[n]['out']})"
+            for n in self.bundle.skill_names()
+        )
         lang = "an LLM backend" if self.backend is not None else "NO language backend"
-        return (f"SpikingLanguageBrain: {len(self.skills())} spiking perception skill(s) [{shapes}] "
-                f"+ {lang}. This is a spiking brain working WITH a language model -- NOT a spiking "
-                f"LLM (the backend is a dense transformer; only perception is spiking).")
+        return (
+            f"SpikingLanguageBrain: {len(self.skills())} spiking perception skill(s) [{shapes}] "
+            f"+ {lang}. This is a spiking brain working WITH a language model -- NOT a spiking "
+            f"LLM (the backend is a dense transformer; only perception is spiking)."
+        )
 
 
 class _EchoBackend:
@@ -96,7 +105,7 @@ def main():
     # a real bundle (one spiking skill), unified with an (echo) language backend
     bundle = BrainBundle({"vision": brain}, {"reflex": True}, {"pid": True})
     slb = SpikingLanguageBrain(bundle, backend=_EchoBackend())
-    slb_nolang = SpikingLanguageBrain(brain)                       # single brain, no backend
+    slb_nolang = SpikingLanguageBrain(brain)  # single brain, no backend
 
     pred = slb.perceive(x)
     exp = slb.explain(x)
@@ -114,21 +123,28 @@ def main():
     print(f"describe         : {slb.describe()}")
     print("=" * 68)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert pred == tb_predict(brain, x), "perceive must route to the spiking skill's brain"
-    assert exp["pred"] == pred and exp["text"].startswith("LLM> "), "explain must perceive + use the LLM backend"
-    exp_nolang = slb_nolang.explain(x)                    # no backend -> deterministic summary names the class
-    assert exp_nolang["pred"] == pred and str(pred) in exp_nolang["text"], \
+    assert exp["pred"] == pred and exp["text"].startswith("LLM> "), (
+        "explain must perceive + use the LLM backend"
+    )
+    exp_nolang = slb_nolang.explain(x)  # no backend -> deterministic summary names the class
+    assert exp_nolang["pred"] == pred and str(pred) in exp_nolang["text"], (
         "no-backend explain must name the class in a zero-dep summary"
+    )
     assert said.startswith("LLM> "), "converse must use the attached LLM backend"
-    assert "backend" in no_lang.lower() and "[llm]" in no_lang.lower(), \
+    assert "backend" in no_lang.lower() and "[llm]" in no_lang.lower(), (
         "without a backend, converse must return an honest note, not fake speech"
+    )
     assert "NOT a spiking" in slb.describe(), "describe must state it is not a spiking LLM (honest)"
-    assert slb.skills() == ["vision"] and SpikingLanguageBrain(brain).skills() == ["default"], \
+    assert slb.skills() == ["vision"] and SpikingLanguageBrain(brain).skills() == ["default"], (
         "a single trained_brain wraps as a one-skill bundle"
+    )
     assert slb.perceive(x) == pred, "perception is deterministic"
-    print(f"self-check OK: unified perceive(class {pred}) + explain + converse(LLM) in one object; "
-          f"single-brain wraps; honest describe (spiking brain + LLM, not a spiking LLM); deterministic")
+    print(
+        f"self-check OK: unified perceive(class {pred}) + explain + converse(LLM) in one object; "
+        f"single-brain wraps; honest describe (spiking brain + LLM, not a spiking LLM); deterministic"
+    )
 
 
 if __name__ == "__main__":

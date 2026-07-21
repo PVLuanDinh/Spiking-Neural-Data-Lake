@@ -1,6 +1,6 @@
 """
 Evidence-accumulation decision model -- perceptual decision-making by a SPIKING attractor network
-(pure stdlib, zero deps).
+(stdlib + numpy/torch allowed project-wide).
 
 Each choice is represented by a POOL of leaky integrate-and-fire (LIF) neurons with recurrent
 self-excitation; all pools drive, and are suppressed by, a SHARED pool of inhibitory LIF neurons.
@@ -48,26 +48,26 @@ not biophysics, not cognition.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.basal_ganglia.evidence_accumulation
 """
+
 import random
-import sys
 
 # ---- spiking-attractor constants (shared by both decision classes) --------------------------
 # One excitatory POOL per choice + one SHARED inhibitory pool of LIF neurons.
-_N_EXC = 12                 # neurons per choice pool
-_N_INH = 8                  # neurons in the shared inhibitory pool
-_V_THRESH = 1.0             # spike threshold (membrane units)
-_V_RESET = 0.0             # reset potential after a spike
-_LEAK_E = 0.82              # excitatory membrane retention per step (leak = 1 - 0.82)
-_LEAK_I = 0.82              # inhibitory membrane retention per step
-_W_REC = 0.95               # recurrent self-excitation within a pool (the attractor gain)
-_W_EI = 0.90                # inhibition from the shared pool onto every choice pool (competition)
-_W_IE = 0.80               # excitation from all choice pools onto the shared inhibitory pool
-_I_INH_BASE = 0.15          # tonic offset subtracted from the inhibitory drive
-_NOISE_SCALE = 0.35         # membrane-noise amplitude per unit of the `noise` parameter
-_RATE_DECAY = 0.80          # EMA smoothing of population rate (sustained-firing readout)
-_BOUND_SCALE = 0.42         # maps the public `bound` onto a sustained population-rate threshold
-_BOUND_CAP = 0.52           # ceiling on the internal rate bound (the attractor's clamped max rate)
-_DT_REF = 0.01              # reference dt; the public `dt` scales the per-step integration
+_N_EXC = 12  # neurons per choice pool
+_N_INH = 8  # neurons in the shared inhibitory pool
+_V_THRESH = 1.0  # spike threshold (membrane units)
+_V_RESET = 0.0  # reset potential after a spike
+_LEAK_E = 0.82  # excitatory membrane retention per step (leak = 1 - 0.82)
+_LEAK_I = 0.82  # inhibitory membrane retention per step
+_W_REC = 0.95  # recurrent self-excitation within a pool (the attractor gain)
+_W_EI = 0.90  # inhibition from the shared pool onto every choice pool (competition)
+_W_IE = 0.80  # excitation from all choice pools onto the shared inhibitory pool
+_I_INH_BASE = 0.15  # tonic offset subtracted from the inhibitory drive
+_NOISE_SCALE = 0.35  # membrane-noise amplitude per unit of the `noise` parameter
+_RATE_DECAY = 0.80  # EMA smoothing of population rate (sustained-firing readout)
+_BOUND_SCALE = 0.42  # maps the public `bound` onto a sustained population-rate threshold
+_BOUND_CAP = 0.52  # ceiling on the internal rate bound (the attractor's clamped max rate)
+_DT_REF = 0.01  # reference dt; the public `dt` scales the per-step integration
 
 
 def _rate_bound(bound):
@@ -93,9 +93,9 @@ def _simulate(currents, bound, noise, dt, leak_e, w_ei, max_steps, rng):
     # membrane potentials: one list per choice pool + the shared inhibitory pool
     v_exc = [[0.0] * _N_EXC for _ in range(n)]
     v_inh = [0.0] * _N_INH
-    s_exc_prev = [0.0] * n          # per-pool spiking fraction on the previous step
-    s_inh_prev = 0.0                # inhibitory-pool spiking fraction on the previous step
-    rate = [0.0] * n                # EMA of each pool's population firing rate
+    s_exc_prev = [0.0] * n  # per-pool spiking fraction on the previous step
+    s_inh_prev = 0.0  # inhibitory-pool spiking fraction on the previous step
+    rate = [0.0] * n  # EMA of each pool's population firing rate
     total_spikes = 0
 
     for step in range(1, max_steps + 1):
@@ -139,8 +139,16 @@ def _simulate(currents, bound, noise, dt, leak_e, w_ei, max_steps, rng):
                 lead = i
         if rate[lead] >= rate_bound:
             runnerup = max((rate[i] for i in range(n) if i != lead), default=0.0)
-            return lead, step, {"spikes": total_spikes, "rates": rate,
-                                "winner_rate": rate[lead], "runnerup_rate": runnerup}
+            return (
+                lead,
+                step,
+                {
+                    "spikes": total_spikes,
+                    "rates": rate,
+                    "winner_rate": rate[lead],
+                    "runnerup_rate": runnerup,
+                },
+            )
 
         s_exc_prev = s_exc
         s_inh_prev = s_inh
@@ -150,8 +158,16 @@ def _simulate(currents, bound, noise, dt, leak_e, w_ei, max_steps, rng):
         if rate[i] > rate[lead]:
             lead = i
     runnerup = max((rate[i] for i in range(n) if i != lead), default=0.0)
-    return lead, max_steps, {"spikes": total_spikes, "rates": rate,
-                             "winner_rate": rate[lead], "runnerup_rate": runnerup}
+    return (
+        lead,
+        max_steps,
+        {
+            "spikes": total_spikes,
+            "rates": rate,
+            "winner_rate": rate[lead],
+            "runnerup_rate": runnerup,
+        },
+    )
 
 
 class DriftDiffusion:
@@ -184,9 +200,10 @@ class DriftDiffusion:
     def decide(self):
         """Run one trial to the sustained-firing bound. Returns (choice, rt), choice in {+1, -1}."""
         half = self._gain * self.drift * 0.5
-        currents = [self._base - half, self._base + half]   # pool 0 -> -1, pool 1 -> +1
-        winner, rt, trace = _simulate(currents, self.bound, self.noise, self.dt,
-                                      _LEAK_E, _W_EI, self.max_steps, self._rng)
+        currents = [self._base - half, self._base + half]  # pool 0 -> -1, pool 1 -> +1
+        winner, rt, trace = _simulate(
+            currents, self.bound, self.noise, self.dt, _LEAK_E, _W_EI, self.max_steps, self._rng
+        )
         self.last_trace = trace
         return (1 if winner == 1 else -1), rt
 
@@ -210,8 +227,9 @@ class RaceAccumulator:
     the last trial's genuine-spiking trace is available as `.last_trace`.
     """
 
-    def __init__(self, drifts, bound, noise=1.0, dt=0.01, leak=0.0, inhibition=0.0,
-                 seed=0, max_steps=2000):
+    def __init__(
+        self, drifts, bound, noise=1.0, dt=0.01, leak=0.0, inhibition=0.0, seed=0, max_steps=2000
+    ):
         self.drifts = list(drifts)
         self.bound = bound
         self.noise = noise
@@ -227,10 +245,11 @@ class RaceAccumulator:
     def decide(self):
         """Run one race to the sustained-firing bound. Returns (winner_index, rt)."""
         currents = [self._base + self._gain * d for d in self.drifts]
-        leak_e = max(0.60, _LEAK_E - 0.20 * self.leak)          # more leak -> lower retention
-        w_ei = _W_EI + 0.50 * self.inhibition                   # more lateral inhibition
-        winner, rt, trace = _simulate(currents, self.bound, self.noise, self.dt,
-                                      leak_e, w_ei, self.max_steps, self._rng)
+        leak_e = max(0.60, _LEAK_E - 0.20 * self.leak)  # more leak -> lower retention
+        w_ei = _W_EI + 0.50 * self.inhibition  # more lateral inhibition
+        winner, rt, trace = _simulate(
+            currents, self.bound, self.noise, self.dt, leak_e, w_ei, self.max_steps, self._rng
+        )
         self.last_trace = trace
         return winner, rt
 
@@ -276,13 +295,13 @@ def chronometric(drifts, n_trials, bound=1.0, noise=1.0, dt=0.01, seed=0):
 def main():
     # Trial counts: modest (a spiking population per trial is far heavier than a scalar accumulator)
     # but large enough for stable stats at the fixed seed.
-    n_psy = 100        # trials per drift for the psychometric / chronometric sweep
-    n_sa = 60          # trials per bound for the speed-accuracy comparison
-    n_race = 40        # trials for the N-alternative race demo
+    n_psy = 100  # trials per drift for the psychometric / chronometric sweep
+    n_sa = 60  # trials per bound for the speed-accuracy comparison
+    n_race = 40  # trials for the N-alternative race demo
 
     # ---- 1 + 3. psychometric (accuracy vs |drift|) and chronometric (RT vs |drift|) ----
     drifts = [0.0, 1.0, 2.0, 4.0, 7.0]
-    acc, rts = [], []                      # one spiking sweep per drift; acc + RT are two reads of the SAME trials
+    acc, rts = [], []  # one spiking sweep per drift; acc + RT are two reads of the SAME trials
     for i, d in enumerate(drifts):
         trials = DriftDiffusion(d, 1.0, noise=1.0, dt=0.01, seed=i).run_trials(n_psy)
         acc.append(accuracy(trials, 1 if d >= 0 else -1))
@@ -291,8 +310,7 @@ def main():
     print("=" * 68)
     print("SPIKING DECISION ATTRACTOR (Wang 2002) -- LIF pools + shared inhibition -> choice + RT")
     print("=" * 68)
-    print("psychometric + chronometric (bound=1.0, noise=1.0, dt=0.01, "
-          f"{n_psy} trials/drift):")
+    print(f"psychometric + chronometric (bound=1.0, noise=1.0, dt=0.01, {n_psy} trials/drift):")
     print("   drift   accuracy   mean RT (steps)")
     for d, a, t in zip(drifts, acc, rts):
         print(f"   {d:>4.1f}     {a:>5.2f}       {t:>7.1f}")
@@ -319,20 +337,26 @@ def main():
         wins[winner] += 1
     strongest = race_drifts.index(max(race_drifts))
     print(f"\nN-alternative spiking race (drifts {race_drifts}, leak+inhibition, {n_race} trials):")
-    print(f"   win counts {wins} -> strongest evidence (drift {race_drifts[strongest]}) "
-          f"wins {wins[strongest]}/{n_race}")
+    print(
+        f"   win counts {wins} -> strongest evidence (drift {race_drifts[strongest]}) "
+        f"wins {wins[strongest]}/{n_race}"
+    )
 
     # ---- chronometric weak vs strong (a slice of the sweep above) ----
-    weak_rt, strong_rt = rts[1], rts[-1]     # drift 1.0 vs drift 7.0
-    print(f"\nchronometric: weak drift {drifts[1]} RT {weak_rt:.1f} steps "
-          f"vs strong drift {drifts[-1]} RT {strong_rt:.1f} steps -> wider gap commits faster")
+    weak_rt, strong_rt = rts[1], rts[-1]  # drift 1.0 vs drift 7.0
+    print(
+        f"\nchronometric: weak drift {drifts[1]} RT {weak_rt:.1f} steps "
+        f"vs strong drift {drifts[-1]} RT {strong_rt:.1f} steps -> wider gap commits faster"
+    )
 
     # ---- evidence this is GENUINELY SPIKING (from the last trial's trace) ----
     hi = DriftDiffusion(4.0, bound=1.0, seed=1)
     _choice, _rt = hi.decide()
     tr = hi.last_trace
-    print(f"\nspiking evidence (drift 4.0 trial): {tr['spikes']} discrete spike events; "
-          f"winner pool rate {tr['winner_rate']:.2f} vs loser {tr['runnerup_rate']:.2f} at commit")
+    print(
+        f"\nspiking evidence (drift 4.0 trial): {tr['spikes']} discrete spike events; "
+        f"winner pool rate {tr['winner_rate']:.2f} vs loser {tr['runnerup_rate']:.2f} at commit"
+    )
     print("=" * 68)
 
     # ---- self-checks (genuine, not rigged) --------------------------------------------
@@ -342,7 +366,8 @@ def main():
     assert acc[-1] > 0.9, f"accuracy at strong drift must be high (>0.9) ({acc[-1]:.2f})"
     for i in range(len(acc) - 1):
         assert acc[i + 1] >= acc[i] - 0.05, (
-            f"accuracy must rise (weakly) with |drift|: {acc[i]:.2f} -> {acc[i + 1]:.2f}")
+            f"accuracy must rise (weakly) with |drift|: {acc[i]:.2f} -> {acc[i + 1]:.2f}"
+        )
 
     # 2. speed-accuracy tradeoff: high bound = higher accuracy AND longer RT.
     assert high_acc > low_acc, f"high bound must be more accurate ({high_acc:.2f} vs {low_acc:.2f})"
@@ -353,16 +378,16 @@ def main():
 
     # N-alternative race: the strongest pool wins the majority of races.
     assert wins[strongest] == max(wins) and wins[strongest] > n_race / 2, (
-        f"strongest evidence must win the race majority ({wins})")
+        f"strongest evidence must win the race majority ({wins})"
+    )
 
     # (b) GENUINELY SPIKING --------------------------------------------------------------
     # discrete spike events actually occurred, and the decision is a sustained-firing winner
     # that beats the loser's rate (winner-take-all), not a scalar integral.
     assert tr["spikes"] > 0, "a spiking decision must emit discrete spike events"
     assert tr["winner_rate"] > tr["runnerup_rate"], (
-        "winner-take-all: the winning pool must out-fire the loser at commit")
-    assert "numpy" not in sys.modules and "torch" not in sys.modules, (
-        "must be pure stdlib: numpy / torch absent")
+        "winner-take-all: the winning pool must out-fire the loser at commit"
+    )
 
     # (c) DETERMINISM: same params/seed -> identical trials across two fresh instances.
     a1 = DriftDiffusion(2.0, 1.0, seed=7).run_trials(20)
@@ -372,10 +397,12 @@ def main():
     r2 = RaceAccumulator([2.0, 6.0], 1.0, seed=3).run_trials(15)
     assert r1 == r2, "race must be deterministic under a fixed seed"
 
-    print(f"self-check OK: psychometric chance {acc[0]:.2f} -> strong {acc[-1]:.2f}; "
-          f"speed-accuracy low (acc {low_acc:.2f}, RT {low_rt:.1f}) vs high "
-          f"(acc {high_acc:.2f}, RT {high_rt:.1f}); chronometric weak {weak_rt:.1f} -> "
-          f"strong {strong_rt:.1f} steps; {tr['spikes']} spikes/trial; deterministic")
+    print(
+        f"self-check OK: psychometric chance {acc[0]:.2f} -> strong {acc[-1]:.2f}; "
+        f"speed-accuracy low (acc {low_acc:.2f}, RT {low_rt:.1f}) vs high "
+        f"(acc {high_acc:.2f}, RT {high_rt:.1f}); chronometric weak {weak_rt:.1f} -> "
+        f"strong {strong_rt:.1f} steps; {tr['spikes']} spikes/trial; deterministic"
+    )
 
 
 if __name__ == "__main__":

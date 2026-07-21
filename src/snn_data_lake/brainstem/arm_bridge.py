@@ -15,6 +15,7 @@ proposed a UDP bridge — we keep it stdlib + localhost).
 
   python arm_bridge.py        # self-check (in-process loopback, no real network needed)
 """
+
 import os
 import secrets
 import socket
@@ -64,11 +65,11 @@ class OutcomeBridge:
     def __init__(self, host="127.0.0.1", port=0, timeout=1.0, token=None):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((host, port))
-        self.sock.settimeout(timeout)               # never block the control loop forever
+        self.sock.settimeout(timeout)  # never block the control loop forever
         self.port = self.sock.getsockname()[1]
         if token is None:
             token = os.environ.get("SNN_OUTCOME_TOKEN") or secrets.token_hex(8)
-        self.token = token or None                  # "" -> None -> unauthenticated (explicit opt-out)
+        self.token = token or None  # "" -> None -> unauthenticated (explicit opt-out)
 
     def recv_outcome(self):
         """Next reward float, or None on timeout / malformed / unauthenticated packet."""
@@ -83,7 +84,7 @@ class OutcomeBridge:
 
 
 def main():
-    bridge = OutcomeBridge(timeout=1.0)             # ephemeral port, short timeout (CI-safe); auto-token
+    bridge = OutcomeBridge(timeout=1.0)  # ephemeral port, short timeout (CI-safe); auto-token
     port, tok = bridge.port, bridge.token
 
     # 1) an authenticated positive reward survives the round trip
@@ -99,16 +100,16 @@ def main():
     # 4) (audit P2) a datagram with NO token or a FORGED token is rejected -- can't inject a reward.
     #    Raw sends bypass env so the test is deterministic regardless of SNN_OUTCOME_TOKEN.
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.sendto(b"OUTCOME 0.9", ("127.0.0.1", port))                       # unauthenticated
+        s.sendto(b"OUTCOME 0.9", ("127.0.0.1", port))  # unauthenticated
     r4 = bridge.recv_outcome()
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.sendto(b"OUTCOME 0.9 deadbeefdeadbeef", ("127.0.0.1", port))      # forged token
+        s.sendto(b"OUTCOME 0.9 deadbeefdeadbeef", ("127.0.0.1", port))  # forged token
     r5 = bridge.recv_outcome()
     # 5) closing the loop: route received rewards into a learner-like accumulator
     value = 0.0
     for reward in (r1, r2):
         if reward is not None:
-            value += 0.5 * reward                   # stand-in for valence/cortisol .learn(reward)
+            value += 0.5 * reward  # stand-in for valence/cortisol .learn(reward)
 
     bridge.close()
 
@@ -133,10 +134,15 @@ def main():
     # token enforcement + clamping on an authenticated datagram
     assert parse_outcome(f"OUTCOME 0.3 {tok}", tok) == 0.3, "authenticated reward must parse"
     assert parse_outcome("OUTCOME 0.3", tok) is None, "missing token must be rejected"
-    assert parse_outcome(f"OUTCOME 9999 {tok}", tok) == 1.0 and parse_outcome(f"OUTCOME -9999 {tok}", tok) == -1.0, "reward must be clamped"
+    assert (
+        parse_outcome(f"OUTCOME 9999 {tok}", tok) == 1.0
+        and parse_outcome(f"OUTCOME -9999 {tok}", tok) == -1.0
+    ), "reward must be clamped"
     # legacy opt-out (no token) still round-trips
     assert parse_outcome("OUTCOME 0.3") == 0.3 and parse_outcome("HELLO") is None
-    print("self-check OK: authenticated OUTCOME round-trips, unauth/forged rejected, clamped, reaches the loop")
+    print(
+        "self-check OK: authenticated OUTCOME round-trips, unauth/forged rejected, clamped, reaches the loop"
+    )
 
 
 if __name__ == "__main__":

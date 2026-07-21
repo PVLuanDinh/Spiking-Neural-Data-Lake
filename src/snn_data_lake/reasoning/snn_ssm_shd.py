@@ -1,10 +1,10 @@
 """
-Spiking State-Space Model (deep, trained) — the SOTA-track companion to the zero-dep LSM.
+Spiking State-Space Model (deep, trained) — the SOTA-track companion to the CI-able LSM.
 
 RESEARCH TRACK — needs torch+snntorch (SHD path also needs tonic); runs in its own venv, NOT in CI.
 Validated on CPU: the synthetic long-range task reaches 100%; real SHD via Tonic reaches 32% (20-class,
 chance 5%) on a capped 500-sample / 12-epoch run — full-SHD SOTA needs a GPU box with uncapped,
-longer training. The zero-dep, CI-covered mechanism is spiking_ssm.py.
+longer training. The CI-covered mechanism is spiking_ssm.py.
 
 Deep spiking SSMs are the current best for long event sequences (SpikingSSMs, AAAI 2025; P-SpikeSSM,
 ICLR 2025; FLAMES, arXiv:2504.01257): a linear state-space recurrence h_t = A⊙h_{t-1} + B·x_t carries
@@ -20,6 +20,7 @@ Run (own venv, from repo root so snn_data_lake resolves):
   PYTHONPATH=src .venv-gpu/Scripts/python research/snn_ssm_shd.py            # synthetic long-range task
   PYTHONPATH=src .venv-gpu/Scripts/python research/snn_ssm_shd.py --shd      # real SHD via Tonic
 """
+
 import os
 import sys
 
@@ -34,10 +35,12 @@ _DEVICE = enable(resolve_device())
 
 DIM = int(os.environ.get("SSM_DIM", 128))
 LAYERS = int(os.environ.get("SSM_LAYERS", 2))
-STEPS = int(os.environ.get("SSM_STEPS", 50))      # sequence length (time bins)
+STEPS = int(os.environ.get("SSM_STEPS", 50))  # sequence length (time bins)
 EPOCHS = int(os.environ.get("SSM_EPOCHS", 25))
 BATCH = int(os.environ.get("SSM_BATCH", 32))
-SHD_CAP = int(os.environ.get("SSM_SHD_CAP", 500))   # cap SHD samples for a feasible CPU validation run
+SHD_CAP = int(
+    os.environ.get("SSM_SHD_CAP", 500)
+)  # cap SHD samples for a feasible CPU validation run
 SEED = 0
 
 
@@ -52,14 +55,14 @@ class SpikingSSMBlock(nn.Module):
         self.C = nn.Linear(dim, dim)
         self.lif = snn.Leaky(beta=0.9, spike_grad=spike_grad)
 
-    def forward(self, x):                         # x: [batch, steps, dim] -> spikes [batch, steps, dim]
-        a = torch.exp(-F.softplus(self.log_a))    # diagonal decay in (0,1)
+    def forward(self, x):  # x: [batch, steps, dim] -> spikes [batch, steps, dim]
+        a = torch.exp(-F.softplus(self.log_a))  # diagonal decay in (0,1)
         h = torch.zeros(x.size(0), x.size(2), device=x.device)
         mem = self.lif.init_leaky()
         out, self.spike_count = [], 0.0
         for t in range(x.size(1)):
-            h = a * h + self.B(x[:, t])           # SSM linear recurrence (carries long-range memory)
-            spk, mem = self.lif(self.C(h), mem)   # binary spiking nonlinearity
+            h = a * h + self.B(x[:, t])  # SSM linear recurrence (carries long-range memory)
+            spk, mem = self.lif(self.C(h), mem)  # binary spiking nonlinearity
             self.spike_count = self.spike_count + spk.sum().item()
             out.append(spk)
         return torch.stack(out, dim=1)
@@ -73,13 +76,13 @@ class SpikingSSM(nn.Module):
         self.blocks = nn.ModuleList([SpikingSSMBlock(dim, spike_grad) for _ in range(layers)])
         self.readout = nn.Linear(dim, n_classes)
 
-    def forward(self, x):                          # x: [batch, steps, in_dim]
+    def forward(self, x):  # x: [batch, steps, in_dim]
         h = self.embed(x)
         self.synops = 0.0
         for blk in self.blocks:
             h = blk(h)
-            self.synops += blk.spike_count * blk.C.out_features   # spikes × fan-out
-        return self.readout(h.mean(dim=1))         # pool spikes over time -> logits
+            self.synops += blk.spike_count * blk.C.out_features  # spikes × fan-out
+        return self.readout(h.mean(dim=1))  # pool spikes over time -> logits
 
 
 def synthetic_task(n, steps, in_dim, n_classes, gen):
@@ -88,7 +91,7 @@ def synthetic_task(n, steps, in_dim, n_classes, gen):
     x = torch.rand(n, steps, in_dim, generator=gen) * 0.1
     y = torch.randint(0, n_classes, (n,), generator=gen)
     for i in range(n):
-        x[i, :5, y[i] % in_dim] += 1.5             # early cue in a class-specific channel
+        x[i, :5, y[i] % in_dim] += 1.5  # early cue in a class-specific channel
     return x, y
 
 
@@ -96,14 +99,21 @@ def load_shd(train):
     """Real SHD via Tonic (guarded). Returns (frames [N,steps,channels], labels). Capped to
     SHD_CAP samples so a CPU validation run is feasible (full SHD needs a GPU box)."""
     import tonic  # noqa: PLC0415
-    ds = tonic.datasets.SHD(save_to="./data", train=train,
-                            transform=tonic.transforms.ToFrame(
-                                sensor_size=tonic.datasets.SHD.sensor_size, n_time_bins=STEPS))
+
+    ds = tonic.datasets.SHD(
+        save_to="./data",
+        train=train,
+        transform=tonic.transforms.ToFrame(
+            sensor_size=tonic.datasets.SHD.sensor_size, n_time_bins=STEPS
+        ),
+    )
     n = min(SHD_CAP if train else max(1, SHD_CAP // 4), len(ds))
     xs, ys = [], []
     for i in range(n):
         frame, lab = ds[i]
-        xs.append(torch.as_tensor(frame, dtype=torch.float32).reshape(STEPS, -1))  # -> [steps, channels]
+        xs.append(
+            torch.as_tensor(frame, dtype=torch.float32).reshape(STEPS, -1)
+        )  # -> [steps, channels]
         ys.append(int(lab))
     return torch.stack(xs), torch.tensor(ys)
 
@@ -113,10 +123,10 @@ def run(x, y, xt, yt, n_classes):
     g = torch.Generator(device=_DEVICE).manual_seed(SEED)
     model = SpikingSSM(x.size(2), n_classes)
     opt = torch.optim.Adam(model.parameters(), lr=2e-3)
-    for _ in range(EPOCHS):                        # minibatch SGD (many updates, not one/epoch)
+    for _ in range(EPOCHS):  # minibatch SGD (many updates, not one/epoch)
         perm = torch.randperm(x.size(0), generator=g)
         for k in range(0, x.size(0), BATCH):
-            idx = perm[k:k + BATCH]
+            idx = perm[k : k + BATCH]
             opt.zero_grad()
             loss = F.cross_entropy(model(x[idx]), y[idx])
             loss.backward()
@@ -144,7 +154,8 @@ def main():
     acc, synops, sparsity = run(x, y, xt, yt, n_classes)
 
     try:
-        from snn_data_lake.energy import compare   # noqa: PLC0415
+        from snn_data_lake.energy import compare  # noqa: PLC0415
+
         # fair baseline = the dense-SSM recurrence a non-spiking model runs EVERY step for ALL units
         # (the C matmul: layers × steps × dim × dim); the spiking model only pays for actual spikes.
         e = compare(int(synops), LAYERS * STEPS * DIM * DIM)

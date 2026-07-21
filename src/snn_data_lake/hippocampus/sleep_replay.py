@@ -57,54 +57,55 @@ general continual-learning solver, and A is only PARTIALLY restored, not returne
 chance, B_sleep 0.88) and asserts only the seed-robust claims (the gap, forgetting, the anchors),
 not the seed-dependent absolute levels.
 
-Pure standard library (`random` seeded per-instance + `copy`), ASCII output, deterministic
+Seeded per-instance (`random` + `copy`), ASCII output, deterministic
 (no global-RNG side effects, no wall-clock). Reuses the core spiking primitive
 snn_data_lake.cortex.lif_neuron.LIFNeuron for every neuron. Additive core primitive (a reusable
 spiking attractor associative memory with sleep consolidation); touches no safety-envelope file.
 
   Run: python -m snn_data_lake.hippocampus.sleep_replay        # (also run by run_selfchecks.py)
 """
+
 import copy
 import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 
 # ---- network ----
-N = 24             # LIF neurons (one recurrent layer)
-K = 6              # neurons per stored assembly (pattern size)
+N = 24  # LIF neurons (one recurrent layer)
+K = 6  # neurons per stored assembly (pattern size)
 
 # two sequential 2-way tasks; each pattern is a cell assembly (set of neuron indices).
 # The assemblies OVERLAP across tasks -> storing B competes for A's shared neurons (interference).
-P_A0 = frozenset(range(0, 6))                 # task A, class 0
-P_A1 = frozenset(range(6, 12))                # task A, class 1
-P_B0 = frozenset({1, 2, 3, 7, 8, 9})          # task B, class 0 (overlaps A0 and A1)
-P_B1 = frozenset({4, 5, 10, 11, 12, 13})      # task B, class 1
+P_A0 = frozenset(range(0, 6))  # task A, class 0
+P_A1 = frozenset(range(6, 12))  # task A, class 1
+P_B0 = frozenset({1, 2, 3, 7, 8, 9})  # task B, class 0 (overlaps A0 and A1)
+P_B1 = frozenset({4, 5, 10, 11, 12, 13})  # task B, class 1
 
 # ---- dynamics (recurrent LIF attractor with global inhibition) ----
-V_TH = 1.0         # LIF threshold
-TAU_M = 8.0        # LIF membrane time constant
-G_INH = 0.10       # global inhibition per active neuron -> k-WTA-like competition (bounds activity)
-EXT_CLAMP = 2.5    # external current that clamps a cued/taught neuron ON
-BUDGET = 2.5       # homeostatic L1 budget of each neuron's incoming weights (synaptic scaling)
-A_STORE = 0.30     # Hebbian potentiation increment during (clamped) storage
+V_TH = 1.0  # LIF threshold
+TAU_M = 8.0  # LIF membrane time constant
+G_INH = 0.10  # global inhibition per active neuron -> k-WTA-like competition (bounds activity)
+EXT_CLAMP = 2.5  # external current that clamps a cued/taught neuron ON
+BUDGET = 2.5  # homeostatic L1 budget of each neuron's incoming weights (synaptic scaling)
+A_STORE = 0.30  # Hebbian potentiation increment during (clamped) storage
 
 # ---- storage (supervised clamp) ----
-STORE_REPS_A = 5   # storage repetitions per task-A assembly
-STORE_REPS_B = 4   # storage repetitions per task-B assembly (enough to overwrite A)
+STORE_REPS_A = 5  # storage repetitions per task-A assembly
+STORE_REPS_B = 4  # storage repetitions per task-B assembly (enough to overwrite A)
 
 # ---- recall / test ----
-T_CUE = 5          # steps the partial cue is clamped
-T_FREE = 15        # free-run steps (the attractor completes the pattern)
-CUE_FRAC = 0.34    # fraction of an assembly given as the cue (HARD partial cue -> exposes forgetting)
-TEST_TRIALS = 12   # cues per pattern (different random halves) for an accuracy estimate
+T_CUE = 5  # steps the partial cue is clamped
+T_FREE = 15  # free-run steps (the attractor completes the pattern)
+CUE_FRAC = 0.34  # fraction of an assembly given as the cue (HARD partial cue -> exposes forgetting)
+TEST_TRIALS = 12  # cues per pattern (different random halves) for an accuracy estimate
 
 # ---- sleep (noise-driven spontaneous replay + covariance STDP) ----
-SLEEP_EPISODES = 500   # replay events per sleep phase
-EP_STEPS = 12          # steps per replay event (reset between events -> different basins visited)
-NOISE_AMP = 0.9        # amplitude of the per-neuron noise current
-NOISE_P = 0.20         # per-step probability each neuron gets a noise kick
-KICK_SEEDS = 2         # neurons given an onset kick to seed each event
-LR_SLEEP = 0.10        # covariance-STDP rate during sleep
+SLEEP_EPISODES = 500  # replay events per sleep phase
+EP_STEPS = 12  # steps per replay event (reset between events -> different basins visited)
+NOISE_AMP = 0.9  # amplitude of the per-neuron noise current
+NOISE_P = 0.20  # per-step probability each neuron gets a noise kick
+KICK_SEEDS = 2  # neurons given an onset kick to seed each event
+LR_SLEEP = 0.10  # covariance-STDP rate during sleep
 ANCHOR_EPISODES = 200  # sleep episodes recorded for the replay-reality anchor
 
 PATTERNS = [P_A0, P_A1, P_B0, P_B1]
@@ -161,10 +162,14 @@ class AttractorNet:
                     wi[k] = 0.0
                     n_zeroed += 1
                     removed += w
-        self._normalize()                                    # redistribute the freed budget to survivors
-        total = N * (N - 1)                                  # off-diagonal synapses (self-weights are 0)
-        return {"pruned": n_zeroed, "total": total, "weight_removed": removed,
-                "frac_pruned": n_zeroed / total if total else 0.0}
+        self._normalize()  # redistribute the freed budget to survivors
+        total = N * (N - 1)  # off-diagonal synapses (self-weights are 0)
+        return {
+            "pruned": n_zeroed,
+            "total": total,
+            "weight_removed": removed,
+            "frac_pruned": n_zeroed / total if total else 0.0,
+        }
 
     def _recurrent_step(self, neurons, z_prev, ext):
         """One synchronous LIF update: current = recurrent excitation - global inhibition + ext."""
@@ -238,12 +243,14 @@ class AttractorNet:
             kick = set(rng.sample(range(N), KICK_SEEDS))
             z = [0] * N
             for t in range(EP_STEPS):
-                ext = [NOISE_AMP if (rng.random() < NOISE_P or (t < 2 and i in kick)) else 0.0
-                       for i in range(N)]
+                ext = [
+                    NOISE_AMP if (rng.random() < NOISE_P or (t < 2 and i in kick)) else 0.0
+                    for i in range(N)
+                ]
                 z = self._recurrent_step(neurons, z, ext)
             if record is not None:
                 record.append(z[:])
-            if learn and K - 2 <= sum(z) <= K + 2:            # only consolidate clean, full-ish replays
+            if learn and K - 2 <= sum(z) <= K + 2:  # only consolidate clean, full-ish replays
                 active = set(i for i in range(N) if z[i])
                 for i in active:
                     for k in range(N):
@@ -316,10 +323,14 @@ def run(seed):
 
     return {
         "a_after_a": a_after_a,
-        "a_nosleep": a_nosleep, "b_nosleep": b_nosleep,
-        "a_sleep": a_sleep, "b_sleep": b_sleep,
-        "a_stdpoff": a_stdpoff, "b_stdpoff": b_stdpoff,
-        "replay_stored": replay_stored, "replay_random": replay_random,
+        "a_nosleep": a_nosleep,
+        "b_nosleep": b_nosleep,
+        "a_sleep": a_sleep,
+        "b_sleep": b_sleep,
+        "a_stdpoff": a_stdpoff,
+        "b_stdpoff": b_stdpoff,
+        "replay_stored": replay_stored,
+        "replay_random": replay_random,
         "replay_untrained": replay_untrained,
     }
 
@@ -328,11 +339,13 @@ def run(seed):
 #      on all of seeds 0-11, cleared with margin, not tuned to barely pass. The seed-DEPENDENT
 #      absolute levels (exact restored A, exact B cost) are reported but NOT asserted.) ----
 CHANCE = 0.50
-FORGET_MARGIN = 0.30   # no-sleep must forget A by at least this vs right-after-A (obs: ~0.88 drop)
-RETAIN_MARGIN = 0.20   # sleep must beat no-sleep on A by at least this (obs: gap >= +0.33 every seed)
-REPLAY_MIN = 0.60      # trained-net spontaneous states must overlap the stored assemblies this much
-REPLAY_GAP = 0.10      # ... and clearly more than random / untrained baselines
-OFF_TOL = 0.03         # STDP-off sleep must be no better than no-sleep (within this tolerance)
+FORGET_MARGIN = 0.30  # no-sleep must forget A by at least this vs right-after-A (obs: ~0.88 drop)
+RETAIN_MARGIN = (
+    0.20  # sleep must beat no-sleep on A by at least this (obs: gap >= +0.33 every seed)
+)
+REPLAY_MIN = 0.60  # trained-net spontaneous states must overlap the stored assemblies this much
+REPLAY_GAP = 0.10  # ... and clearly more than random / untrained baselines
+OFF_TOL = 0.03  # STDP-off sleep must be no better than no-sleep (within this tolerance)
 
 
 def main():
@@ -342,86 +355,117 @@ def main():
     print("=" * 74)
 
     r = run(0)
-    print(f"task            : store A (2 assemblies) then B (2 assemblies) in {N} LIF neurons, "
-          f"K={K}/assembly; chance {CHANCE:.0%}")
+    print(
+        f"task            : store A (2 assemblies) then B (2 assemblies) in {N} LIF neurons, "
+        f"K={K}/assembly; chance {CHANCE:.0%}"
+    )
     print("")
     print("                          task A acc      task B acc")
     print(f"  after storing A       :   {r['a_after_a']:.2f}            -")
-    print(f"  no-sleep  (A->B)      :   {r['a_nosleep']:.2f}          {r['b_nosleep']:.2f}"
-          f"     <- A forgotten (BELOW chance: cue completes to B)")
-    print(f"  SLEEP (A->s->B->s)    :   {r['a_sleep']:.2f}          {r['b_sleep']:.2f}"
-          f"     <- A partially restored (>> no-sleep), B still learned")
-    print(f"  STDP-OFF sleep        :   {r['a_stdpoff']:.2f}          {r['b_stdpoff']:.2f}"
-          f"     <- no benefit (same noise, plasticity off)")
+    print(
+        f"  no-sleep  (A->B)      :   {r['a_nosleep']:.2f}          {r['b_nosleep']:.2f}"
+        f"     <- A forgotten (BELOW chance: cue completes to B)"
+    )
+    print(
+        f"  SLEEP (A->s->B->s)    :   {r['a_sleep']:.2f}          {r['b_sleep']:.2f}"
+        f"     <- A partially restored (>> no-sleep), B still learned"
+    )
+    print(
+        f"  STDP-OFF sleep        :   {r['a_stdpoff']:.2f}          {r['b_stdpoff']:.2f}"
+        f"     <- no benefit (same noise, plasticity off)"
+    )
     print("")
-    print(f"  A retention gain (sleep - no-sleep) : {r['a_sleep'] - r['a_nosleep']:+.2f}  "
-          f"(threshold >= +{RETAIN_MARGIN}; gap >= +0.33 on all of seeds 0-11)")
-    print(f"  replay overlap: stored {r['replay_stored']:.2f}  vs random {r['replay_random']:.2f}"
-          f"  vs untrained {r['replay_untrained']:.2f}   (spontaneous activity replays the "
-          f"STORED assemblies)")
+    print(
+        f"  A retention gain (sleep - no-sleep) : {r['a_sleep'] - r['a_nosleep']:+.2f}  "
+        f"(threshold >= +{RETAIN_MARGIN}; gap >= +0.33 on all of seeds 0-11)"
+    )
+    print(
+        f"  replay overlap: stored {r['replay_stored']:.2f}  vs random {r['replay_random']:.2f}"
+        f"  vs untrained {r['replay_untrained']:.2f}   (spontaneous activity replays the "
+        f"STORED assemblies)"
+    )
     print("")
     print("  NOTE: small hand-tuned demo (24 LIF neurons, K=6, overlapping assemblies, homeostatic")
     print("  budget as the forgetting substrate). ROBUST across seeds 0-11: no-sleep forgets A far")
     print("  below chance; sleep beats no-sleep on A by >= +0.33 every seed; anchors hold. SEED-")
-    print("  DEPENDENT (reported, not asserted): the ABSOLUTE restored A (0.46-0.79, around chance --")
-    print("  A is only PARTIALLY restored, never back to 1.00) and B's cost (B_sleep 0.50-1.00). Needs")
-    print("  the hard partial cue. Demonstrates the mechanism, not a general continual-learning solver.")
+    print(
+        "  DEPENDENT (reported, not asserted): the ABSOLUTE restored A (0.46-0.79, around chance --"
+    )
+    print(
+        "  A is only PARTIALLY restored, never back to 1.00) and B's cost (B_sleep 0.50-1.00). Needs"
+    )
+    print(
+        "  the hard partial cue. Demonstrates the mechanism, not a general continual-learning solver."
+    )
 
     # determinism: same seed -> identical result dict.
     r2 = run(0)
-    identical = (r == r2)
+    identical = r == r2
     print(f"  determinism  : same seed -> identical result = {identical}")
     print("=" * 74)
 
     # ---- self-check (deterministic asserts; all thresholds fixed a priori above) ----
-    assert r["a_nosleep"] <= r["a_after_a"] - FORGET_MARGIN, \
-        f"no-sleep must show REAL forgetting: A {r['a_after_a']:.2f} -> {r['a_nosleep']:.2f} " \
+    assert r["a_nosleep"] <= r["a_after_a"] - FORGET_MARGIN, (
+        f"no-sleep must show REAL forgetting: A {r['a_after_a']:.2f} -> {r['a_nosleep']:.2f} "
         f"(need drop >= {FORGET_MARGIN})"
-    assert r["a_sleep"] >= r["a_nosleep"] + RETAIN_MARGIN, \
-        f"THE RESULT: sleep must retain A markedly better than no-sleep: {r['a_sleep']:.2f} " \
+    )
+    assert r["a_sleep"] >= r["a_nosleep"] + RETAIN_MARGIN, (
+        f"THE RESULT: sleep must retain A markedly better than no-sleep: {r['a_sleep']:.2f} "
         f"!>= {r['a_nosleep']:.2f} + {RETAIN_MARGIN}"
-    assert r["b_nosleep"] >= CHANCE and r["b_sleep"] >= CHANCE, \
-        f"B must stay learned -- sleep must recover A WITHOUT destroying B (both >= chance " \
+    )
+    assert r["b_nosleep"] >= CHANCE and r["b_sleep"] >= CHANCE, (
+        f"B must stay learned -- sleep must recover A WITHOUT destroying B (both >= chance "
         f"{CHANCE}): no-sleep {r['b_nosleep']:.2f}, sleep {r['b_sleep']:.2f}"
-    assert r["replay_stored"] > REPLAY_MIN, \
-        f"anchor (a): trained-net spontaneous activity must replay the stored assemblies " \
+    )
+    assert r["replay_stored"] > REPLAY_MIN, (
+        f"anchor (a): trained-net spontaneous activity must replay the stored assemblies "
         f"({r['replay_stored']:.2f} !> {REPLAY_MIN})"
-    assert r["replay_stored"] > r["replay_random"] + REPLAY_GAP, \
-        f"anchor (a): replay must match STORED assemblies more than random ones " \
+    )
+    assert r["replay_stored"] > r["replay_random"] + REPLAY_GAP, (
+        f"anchor (a): replay must match STORED assemblies more than random ones "
         f"({r['replay_stored']:.2f} vs {r['replay_random']:.2f})"
-    assert r["replay_stored"] > r["replay_untrained"] + REPLAY_GAP, \
-        f"anchor (a): the replay structure comes from the LEARNING, not the noise " \
+    )
+    assert r["replay_stored"] > r["replay_untrained"] + REPLAY_GAP, (
+        f"anchor (a): the replay structure comes from the LEARNING, not the noise "
         f"(trained {r['replay_stored']:.2f} vs untrained {r['replay_untrained']:.2f})"
-    assert r["a_stdpoff"] <= r["a_nosleep"] + OFF_TOL, \
-        f"anchor (b): STDP-off sleep must give NO benefit ({r['a_stdpoff']:.2f} vs " \
+    )
+    assert r["a_stdpoff"] <= r["a_nosleep"] + OFF_TOL, (
+        f"anchor (b): STDP-off sleep must give NO benefit ({r['a_stdpoff']:.2f} vs "
         f"no-sleep {r['a_nosleep']:.2f}); the benefit is consolidation, not the noise"
+    )
     # ---- SHY downscale + hard-prune of the WEAKEST synapses (offline energy-saving limb) ----
     shy = AttractorNet(seed=0)
-    asm = list(range(K))                                   # one assembly = the first K neurons
+    asm = list(range(K))  # one assembly = the first K neurons
     shy.store(asm, reps=6)
-    cue = asm[:max(1, K // 2)]                             # partial cue for pattern completion
+    cue = asm[: max(1, K // 2)]  # partial cue for pattern completion
 
     def _ov(state):
-        return sum(state[i] for i in asm) / len(asm)       # fraction of the assembly that fired
+        return sum(state[i] for i in asm) / len(asm)  # fraction of the assembly that fired
 
     pre = _ov(shy.recall(cue))
     weak_before = sum(1 for i in range(N) for k in range(N) if 0.0 < shy.W[i][k] < 5e-2)
     tel = shy.downscale_prune(eps=5e-2)
     post = _ov(shy.recall(cue))
-    print(f"  SHY prune    : zeroed {tel['pruned']}/{tel['total']} weak synapses (frac "
-          f"{tel['frac_pruned']:.1%}, weight removed {tel['weight_removed']:.3f}); assembly recall "
-          f"{pre:.2f} -> {post:.2f}")
-    assert tel["pruned"] == weak_before and tel["pruned"] > 0, \
+    print(
+        f"  SHY prune    : zeroed {tel['pruned']}/{tel['total']} weak synapses (frac "
+        f"{tel['frac_pruned']:.1%}, weight removed {tel['weight_removed']:.3f}); assembly recall "
+        f"{pre:.2f} -> {post:.2f}"
+    )
+    assert tel["pruned"] == weak_before and tel["pruned"] > 0, (
         "SHY must hard-prune EXACTLY the sub-eps synapses (and some weak ones exist to prune)"
-    assert post >= pre - 0.10, \
+    )
+    assert post >= pre - 0.10, (
         "pruning the WEAKEST synapses must not degrade recall of a strong assembly (energy saved, memory kept)"
+    )
 
     assert identical, "determinism: same seed must reproduce the result byte-identically"
-    print(f"self-check OK: no-sleep forgot A {r['a_after_a']:.2f}->{r['a_nosleep']:.2f} (below "
-          f"chance); sleep recovered it to {r['a_sleep']:.2f} (+{r['a_sleep']-r['a_nosleep']:.2f} "
-          f"vs no-sleep, partial); B kept {r['b_sleep']:.2f}/{r['b_nosleep']:.2f}; replay overlaps stored "
-          f"{r['replay_stored']:.2f}>random {r['replay_random']:.2f}/untrained {r['replay_untrained']:.2f}; "
-          f"STDP-off no benefit; deterministic")
+    print(
+        f"self-check OK: no-sleep forgot A {r['a_after_a']:.2f}->{r['a_nosleep']:.2f} (below "
+        f"chance); sleep recovered it to {r['a_sleep']:.2f} (+{r['a_sleep'] - r['a_nosleep']:.2f} "
+        f"vs no-sleep, partial); B kept {r['b_sleep']:.2f}/{r['b_nosleep']:.2f}; replay overlaps stored "
+        f"{r['replay_stored']:.2f}>random {r['replay_random']:.2f}/untrained {r['replay_untrained']:.2f}; "
+        f"STDP-off no benefit; deterministic"
+    )
 
 
 if __name__ == "__main__":

@@ -44,11 +44,12 @@ HONEST FRAMING -- THIS RUNG IS FRAGILE; the claims are scoped hard:
     win on its own value metric at this scale. We show uniform vs priority and assert NOTHING about
     priority being better.
 
-Pure standard library (random + zlib.crc32 for skill-buffer seeds; no wall-clock, no global RNG),
+Seeded via random + zlib.crc32 for skill-buffer seeds (no wall-clock, no global RNG),
 ASCII-only output, deterministic. Additive core primitive; touches no safety-envelope file.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.sleep_consolidation
 """
+
 import random
 import zlib
 
@@ -70,14 +71,14 @@ from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDriv
 from snn_data_lake.substrate._mathutils import mean
 
 # ---- the two skills = the proven overlapping assemblies from sleep_replay (B overwrites A) ----
-SKILL_A = [P_A0, P_A1]                 # learned first
-SKILL_B = [P_B0, P_B1]                 # learned second; its assemblies overlap A -> interference
+SKILL_A = [P_A0, P_A1]  # learned first
+SKILL_B = [P_B0, P_B1]  # learned second; its assemblies overlap A -> interference
 
 # ---- rate SWR value replay (experience_replay) that runs ALONGSIDE the spiking sleep ----
-_ACTIONS = ("good", "bad")             # a 2-action toy value table per skill
-_REWARD = {"good": 1.0, "bad": -1.0}   # 'good' is the rewarded action
-_LR_VALUE = 0.3                        # RPE learning rate (mirrors the live loop / experience_replay demo)
-_REPLAY_BUDGET = 16                    # total rate-replay batch per quiescent phase (split across skills)
+_ACTIONS = ("good", "bad")  # a 2-action toy value table per skill
+_REWARD = {"good": 1.0, "bad": -1.0}  # 'good' is the rewarded action
+_LR_VALUE = 0.3  # RPE learning rate (mirrors the live loop / experience_replay demo)
+_REPLAY_BUDGET = 16  # total rate-replay batch per quiescent phase (split across skills)
 
 # ---- SI-1 learning-progress: a graded completion-error probe (1 - attractor overlap) is fed to the ----
 # ---- SpikingCuriosityDrive per storage rep; its PEAK learning-progress during wake is the priority. ----
@@ -87,8 +88,8 @@ _REPLAY_BUDGET = 16                    # total rate-replay batch per quiescent p
 
 # ---- a-priori thresholds (the SEED-ROBUST claims only; absolute retention is NOT asserted) ----
 CHANCE = 0.50
-FORGET_MARGIN = 0.30                   # no-sleep must forget A by at least this vs right-after-A
-RETAIN_MARGIN = 0.20                   # sleep must beat no-sleep on A by at least this (obs gap ~ +0.42)
+FORGET_MARGIN = 0.30  # no-sleep must forget A by at least this vs right-after-A
+RETAIN_MARGIN = 0.20  # sleep must beat no-sleep on A by at least this (obs gap ~ +0.42)
 
 
 class SleepConsolidator:
@@ -109,16 +110,16 @@ class SleepConsolidator:
 
     def __init__(self, seed, sleep=True, prioritized=False, episodes=SLEEP_EPISODES):
         self.seed = int(seed)
-        self.sleep_on = bool(sleep)                        # OFF -> the no-sleep control
-        self.prioritized = bool(prioritized)               # LP-priority on the rate replay (unproven add)
-        self.episodes = int(episodes)                      # spiking sleep episodes per quiescent phase
-        self.net = AttractorNet(seed)                      # REUSED proven spiking attractor + sleep-replay
+        self.sleep_on = bool(sleep)  # OFF -> the no-sleep control
+        self.prioritized = bool(prioritized)  # LP-priority on the rate replay (unproven add)
+        self.episodes = int(episodes)  # spiking sleep episodes per quiescent phase
+        self.net = AttractorNet(seed)  # REUSED proven spiking attractor + sleep-replay
         self.curiosity = SpikingCuriosityDrive(seed=seed)  # REUSED SI-1 spiking learning-progress
-        self.skills = {}                                   # skill_id -> assemblies (order preserved)
-        self.buffers = {}                                  # skill_id -> ReplayBuffer (rate SWR, ALONGSIDE)
-        self.q = {}                                        # skill_id -> {action: value} (rate value table)
-        self._lp = {}                                      # skill_id -> PEAK SI-1 LP during wake (priority weight)
-        self._phase = 0                                    # quiescent-phase counter -> distinct sleep seeds
+        self.skills = {}  # skill_id -> assemblies (order preserved)
+        self.buffers = {}  # skill_id -> ReplayBuffer (rate SWR, ALONGSIDE)
+        self.q = {}  # skill_id -> {action: value} (rate value table)
+        self._lp = {}  # skill_id -> PEAK SI-1 LP during wake (priority weight)
+        self._phase = 0  # quiescent-phase counter -> distinct sleep seeds
 
     def _completion_error(self, assemblies, target_idx, seed):
         """Graded held-out completion error for the LP trace: cue a hard partial subset of assembly
@@ -137,24 +138,32 @@ class SleepConsolidator:
         (falls as the assembly strengthens) and feed it to the SI-1 spiking LP drive, and we log a rate
         SWR transition + live RPE update into the skill's value table. Returns None."""
         self.skills[skill_id] = list(assemblies)
-        bseed = zlib.crc32(skill_id.encode("ascii"))       # deterministic per-skill buffer seed (not hash())
+        bseed = zlib.crc32(
+            skill_id.encode("ascii")
+        )  # deterministic per-skill buffer seed (not hash())
         self.buffers[skill_id] = ReplayBuffer(capacity=256, seed=bseed)
         self.q.setdefault(skill_id, dict.fromkeys(_ACTIONS, 0.0))
-        arng = random.Random(bseed ^ self.seed)            # per-skill action stream (deterministic)
+        arng = random.Random(bseed ^ self.seed)  # per-skill action stream (deterministic)
         peak_lp = 0.0
         step = 0
         for ai, p in enumerate(assemblies):
             for _ in range(reps):
-                self.net.store(p, 1)                       # one storage rep (identical trajectory to store(p, reps))
+                self.net.store(p, 1)  # one storage rep (identical trajectory to store(p, reps))
                 err = self._completion_error(assemblies, ai, self.seed * 1000 + step)
-                self.curiosity.observe(skill_id, err)      # SI-1 spiking LP: falling error -> positive learning progress
-                peak_lp = max(peak_lp, self.curiosity.learning_progress(skill_id))   # capture LP while still learning
+                self.curiosity.observe(
+                    skill_id, err
+                )  # SI-1 spiking LP: falling error -> positive learning progress
+                peak_lp = max(
+                    peak_lp, self.curiosity.learning_progress(skill_id)
+                )  # capture LP while still learning
                 a = arng.choice(_ACTIONS)
                 r = _REWARD[a]
-                self.q[skill_id][a] += _LR_VALUE * (r - self.q[skill_id][a])   # live RPE (mirrors the loop)
-                self.buffers[skill_id].add(skill_id, a, r)                     # rate SWR transition (ALONGSIDE)
+                self.q[skill_id][a] += _LR_VALUE * (
+                    r - self.q[skill_id][a]
+                )  # live RPE (mirrors the loop)
+                self.buffers[skill_id].add(skill_id, a, r)  # rate SWR transition (ALONGSIDE)
                 step += 1
-        self._lp[skill_id] = peak_lp                       # this skill's priority weight (peak wake learning-progress)
+        self._lp[skill_id] = peak_lp  # this skill's priority weight (peak wake learning-progress)
 
     def _replay_alloc(self, skills):
         """How to split this phase's rate-replay budget across the skills seen so far. UNIFORM =
@@ -211,102 +220,145 @@ def run(seed, sleep, prioritized=False):
     skill B, sleep, then measure A's LP-independent held-out retention (+ B's, + the rate value margin).
     With sleep OFF the quiescent phases skip the spiking replay -> A is overwritten (the control)."""
     c = SleepConsolidator(seed, sleep=sleep, prioritized=prioritized)
-    c.wake("A", SKILL_A, STORE_REPS_A)     # WAKE: learn skill A
-    after_a = c.retention(SKILL_A)         # A well-formed right after learning
-    c.quiescent()                          # SLEEP 1: consolidate A (spiking) + spaced value replay
-    c.wake("B", SKILL_B, STORE_REPS_B)     # WAKE: learn B -> overwrites A's shared synapses (interference)
-    c.quiescent()                          # SLEEP 2: spontaneous replay of both + spaced value replay
+    c.wake("A", SKILL_A, STORE_REPS_A)  # WAKE: learn skill A
+    after_a = c.retention(SKILL_A)  # A well-formed right after learning
+    c.quiescent()  # SLEEP 1: consolidate A (spiking) + spaced value replay
+    c.wake(
+        "B", SKILL_B, STORE_REPS_B
+    )  # WAKE: learn B -> overwrites A's shared synapses (interference)
+    c.quiescent()  # SLEEP 2: spontaneous replay of both + spaced value replay
     skills = list(c.skills)
     return {
         "after_a": after_a,
-        "ret_a": c.retention(SKILL_A),     # LP-INDEPENDENT retention of the OLD skill A
+        "ret_a": c.retention(SKILL_A),  # LP-INDEPENDENT retention of the OLD skill A
         "ret_b": c.retention(SKILL_B),
         "val": c.value_margin(),
-        "lp": {s: round(c._lp[s], 3) for s in skills},        # captured peak SI-1 LP per skill
-        "alloc": dict(zip(skills, c._replay_alloc(skills))),  # rate-replay budget split this run used
+        "lp": {s: round(c._lp[s], 3) for s in skills},  # captured peak SI-1 LP per skill
+        "alloc": dict(
+            zip(skills, c._replay_alloc(skills))
+        ),  # rate-replay budget split this run used
     }
 
 
 def main():
     print("=" * 82)
-    print("SLEEP CONSOLIDATION (L11 / SI-6) -- proven spiking sleep-replay WIRED to a live quiescent tick")
-    print("wake: store skill A -> sleep -> store interfering skill B -> sleep;  knob turns sleep OFF")
+    print(
+        "SLEEP CONSOLIDATION (L11 / SI-6) -- proven spiking sleep-replay WIRED to a live quiescent tick"
+    )
+    print(
+        "wake: store skill A -> sleep -> store interfering skill B -> sleep;  knob turns sleep OFF"
+    )
     print("=" * 82)
 
     # ---- run every condition across a few seeds: no-sleep control / UNIFORM sleep / LP-PRIORITY sleep ----
     seeds = (0, 1, 2)
-    res = {s: {"ns": run(s, sleep=False),
-               "sl": run(s, sleep=True),                    # UNIFORM replay -- this earns the gap
-               "pr": run(s, sleep=True, prioritized=True)}  # LP-PRIORITY replay (unproven rate-side add)
-           for s in seeds}
-    ns, sl, pr = res[0]["ns"], res[0]["sl"], res[0]["pr"]   # primary seed 0
+    res = {
+        s: {
+            "ns": run(s, sleep=False),
+            "sl": run(s, sleep=True),  # UNIFORM replay -- this earns the gap
+            "pr": run(s, sleep=True, prioritized=True),
+        }  # LP-PRIORITY replay (unproven rate-side add)
+        for s in seeds
+    }
+    ns, sl, pr = res[0]["ns"], res[0]["sl"], res[0]["pr"]  # primary seed 0
     gap = sl["ret_a"] - ns["ret_a"]
 
-    print("retention = LP-INDEPENDENT held-out pattern-completion accuracy of OLD skill A "
-          f"(chance {CHANCE:.0%})")
+    print(
+        "retention = LP-INDEPENDENT held-out pattern-completion accuracy of OLD skill A "
+        f"(chance {CHANCE:.0%})"
+    )
     print("")
     print("  seed 0                  A retention     B retention   value margin")
     print(f"  after learning A      :   {ns['after_a']:.2f} (fragile)      -")
-    print(f"  no-sleep  (control)   :   {ns['ret_a']:.2f} (fragile)   {ns['ret_b']:.2f}"
-          f"        {ns['val']:+.2f}   <- A OVERWRITTEN by B")
-    print(f"  SLEEP uniform         :   {sl['ret_a']:.2f} (fragile)   {sl['ret_b']:.2f}"
-          f"        {sl['val']:+.2f}   <- A partially restored (>> no-sleep)")
-    print(f"  SLEEP LP-priority     :   {pr['ret_a']:.2f} (fragile)   {pr['ret_b']:.2f}"
-          f"        {pr['val']:+.2f}   <- rate-side only; retention UNCHANGED")
+    print(
+        f"  no-sleep  (control)   :   {ns['ret_a']:.2f} (fragile)   {ns['ret_b']:.2f}"
+        f"        {ns['val']:+.2f}   <- A OVERWRITTEN by B"
+    )
+    print(
+        f"  SLEEP uniform         :   {sl['ret_a']:.2f} (fragile)   {sl['ret_b']:.2f}"
+        f"        {sl['val']:+.2f}   <- A partially restored (>> no-sleep)"
+    )
+    print(
+        f"  SLEEP LP-priority     :   {pr['ret_a']:.2f} (fragile)   {pr['ret_b']:.2f}"
+        f"        {pr['val']:+.2f}   <- rate-side only; retention UNCHANGED"
+    )
     print("")
     print(f"  ASSERTED GAP (sleep - no-sleep) : {gap:+.2f}   (threshold >= +{RETAIN_MARGIN})")
 
     # ---- (3) FRAGILITY: absolute retention is seed-sensitive; the GAP direction is robust ----
     print("")
-    print("  FRAGILITY (absolute retention is SEED-DEPENDENT, reported not asserted; gap is robust):")
+    print(
+        "  FRAGILITY (absolute retention is SEED-DEPENDENT, reported not asserted; gap is robust):"
+    )
     for s in seeds:
         rn, rl = res[s]["ns"]["ret_a"], res[s]["sl"]["ret_a"]
-        print(f"    seed {s}: no-sleep A={rn:.2f}  sleep A={rl:.2f} (both fragile)   gap {rl - rn:+.2f}")
+        print(
+            f"    seed {s}: no-sleep A={rn:.2f}  sleep A={rl:.2f} (both fragile)   gap {rl - rn:+.2f}"
+        )
 
     # ---- (4) HONEST NEGATIVE: LP-priority does NOT beat UNIFORM at this scale (assert nothing) ----
     print("")
     print("  HONEST NEGATIVE -- LP-priority vs UNIFORM replay (assert NOTHING about priority):")
-    print("    per seed: captured SI-1 LP -> priority rate-replay alloc | retention (unif==prio) | value marg")
+    print(
+        "    per seed: captured SI-1 LP -> priority rate-replay alloc | retention (unif==prio) | value marg"
+    )
     for s in seeds:
         u, p = res[s]["sl"], res[s]["pr"]
         reall = "reallocated" if p["alloc"] != u["alloc"] else "no LP signal -> uniform"
-        print(f"    seed {s}: LP {p['lp']} -> alloc {p['alloc']} ({reall}) | "
-              f"ret {u['ret_a']:.2f}=={p['ret_a']:.2f} | val {u['val']:+.3f} vs {p['val']:+.3f}")
-    print("    => LP is ~0 in the consolidation regime (A masters instantly, B's post-interference error is")
-    print("       noisy-flat -- anti-noisy-TV reads both ~0); where LP does differ (seed 2) priority reallocates")
-    print("       but NEVER beats uniform: it only touches the rate replay, never the spiking retention driver.")
+        print(
+            f"    seed {s}: LP {p['lp']} -> alloc {p['alloc']} ({reall}) | "
+            f"ret {u['ret_a']:.2f}=={p['ret_a']:.2f} | val {u['val']:+.3f} vs {p['val']:+.3f}"
+        )
+    print(
+        "    => LP is ~0 in the consolidation regime (A masters instantly, B's post-interference error is"
+    )
+    print(
+        "       noisy-flat -- anti-noisy-TV reads both ~0); where LP does differ (seed 2) priority reallocates"
+    )
+    print(
+        "       but NEVER beats uniform: it only touches the rate replay, never the spiking retention driver."
+    )
 
     # ---- determinism ----
     sl_again = run(0, sleep=True)
-    identical = (sl == sl_again)
+    identical = sl == sl_again
     print("")
     print(f"  determinism : same seed -> identical result = {identical}")
     print("=" * 82)
 
     # ---- self-check: assert ONLY the seed-robust claims (the GAP, and that no-sleep forgets) ----
-    assert ns["ret_a"] <= ns["after_a"] - FORGET_MARGIN, \
-        f"CONTROL: no-sleep must FORGET A (A {ns['after_a']:.2f} -> {ns['ret_a']:.2f}, " \
+    assert ns["ret_a"] <= ns["after_a"] - FORGET_MARGIN, (
+        f"CONTROL: no-sleep must FORGET A (A {ns['after_a']:.2f} -> {ns['ret_a']:.2f}, "
         f"drop >= {FORGET_MARGIN})"
-    assert gap >= RETAIN_MARGIN, \
-        f"THE RESULT: the live quiescent sleep phase must retain A markedly better than no-sleep " \
+    )
+    assert gap >= RETAIN_MARGIN, (
+        f"THE RESULT: the live quiescent sleep phase must retain A markedly better than no-sleep "
         f"({sl['ret_a']:.2f} !>= {ns['ret_a']:.2f} + {RETAIN_MARGIN})"
+    )
     for s in seeds:
         g = res[s]["sl"]["ret_a"] - res[s]["ns"]["ret_a"]
-        assert g > 0.0, f"the sleep-vs-no-sleep gap direction must be robust (seed {s} gap {g:+.2f} !> 0)"
+        assert g > 0.0, (
+            f"the sleep-vs-no-sleep gap direction must be robust (seed {s} gap {g:+.2f} !> 0)"
+        )
     # priority provably adds nothing to the LP-INDEPENDENT retention (it never touches the spiking driver)
     for s in seeds:
         u, p = res[s]["sl"], res[s]["pr"]
-        assert abs(u["ret_a"] - p["ret_a"]) < 1e-12, \
+        assert abs(u["ret_a"] - p["ret_a"]) < 1e-12, (
             f"LP-priority must leave the spiking retention driver untouched (seed {s} retention unif==prio)"
+        )
     assert identical, "determinism: same seed must reproduce the result byte-identically"
     # NOTE: NO assertion on absolute retention levels (fragile) and NO assertion that priority > uniform.
 
-    print(f"self-check OK: proven spiking sleep-replay WIRED live -- no-sleep forgot A "
-          f"{ns['after_a']:.2f}->{ns['ret_a']:.2f}; the quiescent sleep phase recovered it to "
-          f"{sl['ret_a']:.2f} (gap {gap:+.2f}, LP-INDEPENDENT metric, PARTIAL/fragile);")
-    print(f"  gap direction robust across seeds 0-2; LP-priority left retention unchanged "
-          f"(uniform {sl['ret_a']:.2f} == priority {pr['ret_a']:.2f}) and won nothing on value margin "
-          f"({sl['val']:+.3f} vs {pr['val']:+.3f}); deterministic")
+    print(
+        f"self-check OK: proven spiking sleep-replay WIRED live -- no-sleep forgot A "
+        f"{ns['after_a']:.2f}->{ns['ret_a']:.2f}; the quiescent sleep phase recovered it to "
+        f"{sl['ret_a']:.2f} (gap {gap:+.2f}, LP-INDEPENDENT metric, PARTIAL/fragile);"
+    )
+    print(
+        f"  gap direction robust across seeds 0-2; LP-priority left retention unchanged "
+        f"(uniform {sl['ret_a']:.2f} == priority {pr['ret_a']:.2f}) and won nothing on value margin "
+        f"({sl['val']:+.3f} vs {pr['val']:+.3f}); deterministic"
+    )
 
 
 if __name__ == "__main__":

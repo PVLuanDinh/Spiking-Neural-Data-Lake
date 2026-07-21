@@ -33,7 +33,7 @@ SPIKES (vs a rate integrator with the same hysteresis) are load-bearing. This mo
       that it is what distinguishes the spiking workspace from the rate one on this task.
 
   This is a step of the consciousness program (GWT re-entry + binding), built honestly, not a claim of
-  phenomenal consciousness. Pure stdlib (LIF loops), deterministic, core-promotable.
+  phenomenal consciousness. LIF loops, deterministic, core-promotable.
 
   python research/gwt_deep.py
 """

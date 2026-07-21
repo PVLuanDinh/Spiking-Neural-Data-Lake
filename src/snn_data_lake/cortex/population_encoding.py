@@ -12,11 +12,12 @@ neuromorphic way to feed continuous signals (joint angle, distance, IR) into an 
        -> spike counts over a window       (activation * max_spikes, rounded)
   counts -> activation-weighted centroid of the centers  -> x_hat
 
-Pure stdlib (math only). Does NOT replace the verified distance-bin path in arm_config /
+Does NOT replace the verified distance-bin path in arm_config /
 gesture_recognition — it's an additional, noise-robust front-end for downstream SNN consumers.
 
   python population_encoding.py        # self-check
 """
+
 import math
 import random
 
@@ -45,7 +46,7 @@ class PopulationEncoder:
     def decode(self, counts):
         """Spike counts -> scalar estimate (activation-weighted centroid of centers)."""
         total = sum(counts)
-        if total == 0:                      # nothing fired -> out of range, no estimate
+        if total == 0:  # nothing fired -> out of range, no estimate
             return None
         return sum(c * k for c, k in zip(self.centers, counts)) / total
 
@@ -60,7 +61,7 @@ def main():
     rng = random.Random(0)
 
     # 1) clean encode->decode round-trips across the range
-    xs = [0.1 * i for i in range(1, 20)]            # 0.1 .. 1.9 (inside range)
+    xs = [0.1 * i for i in range(1, 20)]  # 0.1 .. 1.9 (inside range)
     errs = [abs(enc.decode(enc.encode(x)) - x) for x in xs]
     mean_err = sum(errs) / len(errs)
 
@@ -78,8 +79,10 @@ def main():
     print("=" * 60)
     print("RBF POPULATION ENCODING (continuous scalar -> spikes -> scalar)")
     print("=" * 60)
-    print(f"neurons={enc.n} centers[{enc.lo},{enc.hi}] sigma={enc.sigma:.3f} max_spikes={enc.max_spikes}")
-    print(f"clean round-trip mean abs error : {mean_err:.4f}  (range span {enc.hi-enc.lo})")
+    print(
+        f"neurons={enc.n} centers[{enc.lo},{enc.hi}] sigma={enc.sigma:.3f} max_spikes={enc.max_spikes}"
+    )
+    print(f"clean round-trip mean abs error : {mean_err:.4f}  (range span {enc.hi - enc.lo})")
     print(f"under noise: population {pop_mean:.4f}  vs single-neuron {sng_mean:.4f}")
     print(f"out-of-range x=5.0 -> counts {enc.encode(5.0)} decode {enc.decode(enc.encode(5.0))}")
     print("=" * 60)
@@ -87,9 +90,10 @@ def main():
     # ---- self-checks --------------------------------------------------------
     assert mean_err < 0.05, f"clean round-trip too lossy: {mean_err:.4f}"
     assert pop_mean < sng_mean, "population code should beat single-neuron under noise"
-    assert enc.decode(enc.encode(5.0)) is None or enc.decode([0] * enc.n) is None, \
+    assert enc.decode(enc.encode(5.0)) is None or enc.decode([0] * enc.n) is None, (
         "all-silent population must decode to None (out of range)"
-    assert enc.encode(1.0)[enc.n // 2 - 1:enc.n // 2 + 1], "mid-range must excite middle neurons"
+    )
+    assert enc.encode(1.0)[enc.n // 2 - 1 : enc.n // 2 + 1], "mid-range must excite middle neurons"
     print(f"self-check OK: round-trip {mean_err:.4f}, noise-robust ({pop_mean:.4f}<{sng_mean:.4f})")
 
 

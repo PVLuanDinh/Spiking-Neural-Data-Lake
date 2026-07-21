@@ -24,6 +24,7 @@ execution. It reads allowlisted static knowledge files and turns them into lake 
   Knobs: NORD_WORDNET_URL(jsdelivr data.noun) NORD_WN_LIMIT(4000) NORD_WEB_MAXBYTES(16000000)
 Deps: stdlib (+ numpy via spike_chat_lake). Reuses substrate.web_ingest (SSRF firewall) + spike_chat_lake.
 """
+
 import json
 import os
 import sys
@@ -34,14 +35,21 @@ from snn_data_lake.substrate.web_ingest import fetch_text
 
 # ---- the GATE's host allowlist: only these knowledge sources may be fetched (on top of the SSRF firewall) ----
 ALLOWLIST = {
-    "cdn.jsdelivr.net", "raw.githubusercontent.com", "unpkg.com",
-    "wordnetcode.princeton.edu", "www.gutenberg.org", "gutenberg.org", "mattmahoney.net",
-    "en.wikipedia.org", "simple.wikipedia.org",   # scholarly encyclopedia (REST summary API)
-    "s3.amazonaws.com",                            # ConceptNet dumps (relational triples, CC BY-SA)
-    "www.wikidata.org",                            # Wikidata entities (labels + descriptions, CC0)
+    "cdn.jsdelivr.net",
+    "raw.githubusercontent.com",
+    "unpkg.com",
+    "wordnetcode.princeton.edu",
+    "www.gutenberg.org",
+    "gutenberg.org",
+    "mattmahoney.net",
+    "en.wikipedia.org",
+    "simple.wikipedia.org",  # scholarly encyclopedia (REST summary API)
+    "s3.amazonaws.com",  # ConceptNet dumps (relational triples, CC BY-SA)
+    "www.wikidata.org",  # Wikidata entities (labels + descriptions, CC0)
 }
 DEFAULT_WORDNET_URL = os.environ.get(
-    "NORD_WORDNET_URL", "https://cdn.jsdelivr.net/npm/wordnet-db@3.1.14/dict/data.noun")
+    "NORD_WORDNET_URL", "https://cdn.jsdelivr.net/npm/wordnet-db@3.1.14/dict/data.noun"
+)
 DEFAULT_MAXBYTES = int(os.environ.get("NORD_WEB_MAXBYTES", "16000000"))
 
 # bundled REAL definitions -- the offline fallback so the gate + self-check work with no network.
@@ -73,7 +81,7 @@ class WebAccessGate:
     """The controlled doorway: allowlist + SSRF firewall + size cap + provenance log around web_ingest."""
 
     def __init__(self):
-        self.log = []                                          # [(host, bytes, source)] -- auditable provenance
+        self.log = []  # [(host, bytes, source)] -- auditable provenance
 
     def _host(self, url):
         return (urlparse(url).hostname or "").lower()
@@ -85,13 +93,17 @@ class WebAccessGate:
         """Raise unless url's host is allowlisted -- passed into web_ingest as the redirect check so a
         30x from an allowlisted host to an off-allowlist public host is refused, not silently followed."""
         if not self.allowed(url):
-            raise PermissionError(f"web gate: redirect/target host {self._host(url)!r} is not on the allowlist")
+            raise PermissionError(
+                f"web gate: redirect/target host {self._host(url)!r} is not on the allowlist"
+            )
 
     def fetch(self, url, source="web", max_bytes=DEFAULT_MAXBYTES):
         """Fetch text through all three checks. Raises PermissionError if the host is not allowlisted
         (on the original URL AND every redirect); web_ingest raises on any SSRF-blocked target. Logs."""
         self._require_allowed(url)
-        text = fetch_text(url, max_bytes=max_bytes, extra_check=self._require_allowed)   # allowlist on redirects too
+        text = fetch_text(
+            url, max_bytes=max_bytes, extra_check=self._require_allowed
+        )  # allowlist on redirects too
         self.log.append((self._host(url), len(text), source))
         return text
 
@@ -109,13 +121,15 @@ class WebAccessGate:
         text = self.fetch(url, source=f"wikipedia:{topic}")
         try:
             obj = json.loads(text)
-        except ValueError:                                     # not JSON (unexpected body) -> no fact
+        except ValueError:  # not JSON (unexpected body) -> no fact
             return (topic, "")
-        title = obj.get("title") or topic                     # canonical title (may differ from topic)
-        extract = obj.get("extract") or ""                     # "" for missing/redirect/disambiguation
+        title = obj.get("title") or topic  # canonical title (may differ from topic)
+        extract = obj.get("extract") or ""  # "" for missing/redirect/disambiguation
         return (title, extract)
 
-    def fetch_binary(self, url, out_path, source="web", max_bytes=700_000_000, chunk=1 << 20, timeout=180):
+    def fetch_binary(
+        self, url, out_path, source="web", max_bytes=700_000_000, chunk=1 << 20, timeout=180
+    ):
         """STREAM a large BINARY through the gate to disk (e.g. ConceptNet's 498 MB .csv.gz) WITHOUT
         loading it into RAM -- `fetch`/`fetch_text` read the whole body into memory and decode it as
         text, which would both exhaust memory and corrupt a gzip. This keeps every gate guarantee:
@@ -123,8 +137,9 @@ class WebAccessGate:
         IP must be PUBLIC, plus a redirect validator so a 302 cannot walk to a private address) + a hard
         byte cap enforced while streaming + provenance logging. Returns (path, bytes_written)."""
         self._require_allowed(url)
-        # the SSRF firewall lives in the zero-dep substrate; reuse it rather than re-implementing it
+        # the SSRF firewall lives in the substrate; reuse it rather than re-implementing it
         from snn_data_lake.substrate.web_ingest import _ValidatingRedirectHandler, validate_url
+
         validate_url(url)
         # allowlist on redirects too: a 302 from an allowlisted host cannot walk off the allowlist
         opener = urllib.request.build_opener(_ValidatingRedirectHandler(self._require_allowed))
@@ -146,7 +161,7 @@ class WebAccessGate:
     def parse_wordnet(text, limit=None):
         out = {}
         for line in text.splitlines():
-            if not line or line[0] == " ":                     # license header lines begin with spaces
+            if not line or line[0] == " ":  # license header lines begin with spaces
                 continue
             left, sep, gloss = line.partition("|")
             if not sep:
@@ -155,12 +170,20 @@ class WebAccessGate:
             if len(parts) < 5:
                 continue
             try:
-                int(parts[3], 16)                              # w_cnt is hex -> confirms a synset data line
+                int(parts[3], 16)  # w_cnt is hex -> confirms a synset data line
             except ValueError:
                 continue
             word = parts[4].replace("_", " ").lower()
-            g = gloss.strip().split(";")[0].strip().strip('"')  # first gloss clause, drop usage examples
-            if word and g and word.isascii() and word not in out and all(c.isalpha() or c == " " for c in word):
+            g = (
+                gloss.strip().split(";")[0].strip().strip('"')
+            )  # first gloss clause, drop usage examples
+            if (
+                word
+                and g
+                and word.isascii()
+                and word not in out
+                and all(c.isalpha() or c == " " for c in word)
+            ):
                 out[word] = g
                 if limit and len(out) >= limit:
                     break
@@ -173,7 +196,7 @@ class WebAccessGate:
         synset offset, so a limited slice is arbitrary, not the commonest words). Returns
         (n_web, n_core, provenance_str). Falls back to core-only if the web fetch is blocked/offline."""
         limit = limit if limit is not None else int(os.environ.get("NORD_WN_LIMIT", "4000"))
-        for word, g in _BUNDLED.items():                       # core common definitions (always present)
+        for word, g in _BUNDLED.items():  # core common definitions (always present)
             learner.learn([word], f"{word}: {g}.")
         n_core = len(_BUNDLED)
         n_web = 0
@@ -185,7 +208,7 @@ class WebAccessGate:
                     learner.learn([word], f"{word}: {g}.")
                     n_web += 1
             prov = f"WordNet data.noun via {self._host(url)} ({self.log[-1][1]:,} bytes) -> {n_web} words"
-        except Exception as e:                                 # blocked host / offline
+        except Exception as e:  # blocked host / offline
             prov = f"web fetch unavailable ({type(e).__name__}) -- bundled core only"
         return n_web, n_core, prov
 
@@ -194,29 +217,43 @@ def main():
     from snn_data_lake.reasoning.spike_chat_lake import LakeChat
 
     print("=" * 92)
-    print("WEB ACCESS GATE -- the brain's controlled doorway to self-enrich from the web (WordNet first)")
+    print(
+        "WEB ACCESS GATE -- the brain's controlled doorway to self-enrich from the web (WordNet first)"
+    )
     print("=" * 92)
     gate = WebAccessGate()
 
     # ---- SAFETY: the gate refuses non-allowlisted hosts AND SSRF-blocked targets (localhost/private/file) ----
-    blocked = ["http://localhost/x", "http://127.0.0.1/", "http://169.254.169.254/latest/meta-data/",
-               "http://10.0.0.1/", "file:///etc/passwd", "https://evil.example.com/steal"]
+    blocked = [
+        "http://localhost/x",
+        "http://127.0.0.1/",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://10.0.0.1/",
+        "file:///etc/passwd",
+        "https://evil.example.com/steal",
+    ]
     refused = 0
     for u in blocked:
         try:
             gate.fetch(u, max_bytes=1000)
         except Exception:
             refused += 1
-    print(f"[safety] refused {refused}/{len(blocked)} unsafe/non-allowlisted fetches "
-          f"(host allowlist + SSRF firewall + http/https-only)")
+    print(
+        f"[safety] refused {refused}/{len(blocked)} unsafe/non-allowlisted fetches "
+        f"(host allowlist + SSRF firewall + http/https-only)"
+    )
 
     # ---- INGEST: fetch WordNet through the gate (or bundled fallback) into the brain's lake ----
     chat = LakeChat(seed=0)
     before = chat.n_known
-    n_web, n_core, prov = gate.ingest_wordnet(chat, limit=int(os.environ.get("NORD_WN_LIMIT", "4000")))
+    n_web, n_core, prov = gate.ingest_wordnet(
+        chat, limit=int(os.environ.get("NORD_WN_LIMIT", "4000"))
+    )
     print(f"[ingest] source: {prov}")
-    print(f"[ingest] the brain's lake grew {before} -> {chat.n_known} words "
-          f"(+{n_core} core defs, +{n_web} from the web)\n")
+    print(
+        f"[ingest] the brain's lake grew {before} -> {chat.n_known} words "
+        f"(+{n_core} core defs, +{n_web} from the web)\n"
+    )
 
     # ---- the brain now converses from the ingested dictionary ----
     for q in ["what is water", "what is a brain", "what is gravity"]:
@@ -227,33 +264,49 @@ def main():
     dur = chat.lake.durability_check()
 
     print("=" * 92)
-    print(f"provenance log (auditable): {gate.log if gate.log else '[offline -- bundled fallback]'}")
+    print(
+        f"provenance log (auditable): {gate.log if gate.log else '[offline -- bundled fallback]'}"
+    )
     print("=" * 92)
 
     # ---- self-checks: the GATE is safe, ingests knowledge, enriches the lake, durable ----
-    assert refused == len(blocked), f"the gate must refuse ALL unsafe/non-allowlisted fetches ({refused}/{len(blocked)})"
-    assert not gate.allowed("http://evil.example.com/x"), "a non-allowlisted host must not be allowed"
+    assert refused == len(blocked), (
+        f"the gate must refuse ALL unsafe/non-allowlisted fetches ({refused}/{len(blocked)})"
+    )
+    assert not gate.allowed("http://evil.example.com/x"), (
+        "a non-allowlisted host must not be allowed"
+    )
     assert gate.allowed(DEFAULT_WORDNET_URL), "the WordNet source host must be allowlisted"
     # REDIRECT ALLOWLIST: a 30x from an allowlisted host to an off-allowlist public host must be
     # refused (not just SSRF-checked). The gate passes _require_allowed into the redirect handler.
     from snn_data_lake.substrate.web_ingest import _ValidatingRedirectHandler
-    gate._require_allowed(DEFAULT_WORDNET_URL)                  # an allowlisted target passes
+
+    gate._require_allowed(DEFAULT_WORDNET_URL)  # an allowlisted target passes
     redirect_refused = False
     try:
         gate._require_allowed("https://evil.example.com/pwn")  # a redirect target off the allowlist
     except PermissionError:
         redirect_refused = True
-    assert redirect_refused, "a redirect to a non-allowlisted public host must be refused by the gate"
-    assert _ValidatingRedirectHandler(gate._require_allowed)._extra_check is gate._require_allowed, (
-        "the gate must wire its allowlist into the redirect handler (else redirects escape it)")
-    assert chat.n_known == before + n_core + n_web, "the gate must ingest every fetched definition into the lake"
-    assert got_water["known"] and "liquid" in got_water["reply"].lower(), "the brain must answer 'water' from the ingest"
+    assert redirect_refused, (
+        "a redirect to a non-allowlisted public host must be refused by the gate"
+    )
+    assert (
+        _ValidatingRedirectHandler(gate._require_allowed)._extra_check is gate._require_allowed
+    ), "the gate must wire its allowlist into the redirect handler (else redirects escape it)"
+    assert chat.n_known == before + n_core + n_web, (
+        "the gate must ingest every fetched definition into the lake"
+    )
+    assert got_water["known"] and "liquid" in got_water["reply"].lower(), (
+        "the brain must answer 'water' from the ingest"
+    )
     assert dur["ok"], "the web-ingested knowledge must be durable in the lake"
     chat.lake.close()
-    print(f"self-check OK: web access gate is safe (refused {refused}/{len(blocked)} unsafe fetches; allowlist + "
-          f"SSRF firewall + size cap + provenance), ingested {n_core} core + {n_web} web definitions into the "
-          f"brain's lake ({before}->{chat.n_known}), the brain answers from them, durable. The loop can now "
-          f"self-enrich from the dictionary through ONE auditable doorway.")
+    print(
+        f"self-check OK: web access gate is safe (refused {refused}/{len(blocked)} unsafe fetches; allowlist + "
+        f"SSRF firewall + size cap + provenance), ingested {n_core} core + {n_web} web definitions into the "
+        f"brain's lake ({before}->{chat.n_known}), the brain answers from them, durable. The loop can now "
+        f"self-enrich from the dictionary through ONE auditable doorway."
+    )
     return 0
 
 

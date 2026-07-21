@@ -42,12 +42,15 @@ rate in a toy LIF pool, nothing more.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.midbrain.dopamine_nuclei
 """
+
 import random
 
 # A trial is a chain of (state, reward-on-entry). Reward is delivered when entering REWARD.
 CUED_REWARD = [("ITI", 0.0), ("CUE", 0.0), ("TRACE", 0.0), ("REWARD", 1.0)]
 CUED_OMIT = [("ITI", 0.0), ("CUE", 0.0), ("TRACE", 0.0), ("REWARD", 0.0)]
-BASELINE_STATES = frozenset({"ITI"})   # pre-cue baseline: trial onset is unpredictable -> not learned
+BASELINE_STATES = frozenset(
+    {"ITI"}
+)  # pre-cue baseline: trial onset is unpredictable -> not learned
 
 
 class DopamineNuclei:
@@ -58,21 +61,31 @@ class DopamineNuclei:
     the internal value cache V. The nucleus never decides an action -- it only broadcasts dopamine.
     """
 
-    def __init__(self, seed=0, gamma=0.9, alpha=0.3, tonic_baseline=0.2, gain=0.8,
-                 n_cells=24, steps=60, leak=0.1, noise=0.015):
+    def __init__(
+        self,
+        seed=0,
+        gamma=0.9,
+        alpha=0.3,
+        tonic_baseline=0.2,
+        gain=0.8,
+        n_cells=24,
+        steps=60,
+        leak=0.1,
+        noise=0.015,
+    ):
         self.rng = random.Random(seed)
-        self.gamma = gamma                 # temporal discount of the critic
-        self.alpha = alpha                 # TD(0) learning rate of the value cache
-        self.tonic_baseline = tonic_baseline   # dopamine level at rpe == 0 (tonic firing)
-        self.gain = gain                   # how strongly the phasic rate follows the rpe
-        self.n_cells = n_cells             # dopamine neurons in the population
-        self.steps = steps                 # LIF integration steps per readout
-        self.leak = leak                   # LIF membrane leak
-        self.noise = noise                 # small per-step input noise (kept deterministic)
+        self.gamma = gamma  # temporal discount of the critic
+        self.alpha = alpha  # TD(0) learning rate of the value cache
+        self.tonic_baseline = tonic_baseline  # dopamine level at rpe == 0 (tonic firing)
+        self.gain = gain  # how strongly the phasic rate follows the rpe
+        self.n_cells = n_cells  # dopamine neurons in the population
+        self.steps = steps  # LIF integration steps per readout
+        self.leak = leak  # LIF membrane leak
+        self.noise = noise  # small per-step input noise (kept deterministic)
         # heterogeneous per-cell thresholds make it a population, not one unit:
         self.thresholds = [self.rng.uniform(0.9, 1.1) for _ in range(n_cells)]
-        self.readout_seed = seed * 100003 + 7   # fixed readout noise -> rate is a pure fn of level
-        self.v = {}                        # critic cache: state -> predicted value (NOT synapses)
+        self.readout_seed = seed * 100003 + 7  # fixed readout noise -> rate is a pure fn of level
+        self.v = {}  # critic cache: state -> predicted value (NOT synapses)
 
     def _value(self, state):
         return self.v.get(state, 0.0)
@@ -128,31 +141,35 @@ def main():
     n_train = 80
     nuc = DopamineNuclei(seed=0)
 
-    baseline_rate = nuc.phasic(0.0)                       # tonic dopamine (no prediction error)
+    baseline_rate = nuc.phasic(0.0)  # tonic dopamine (no prediction error)
 
-    naive = nuc.present(CUED_REWARD, learn=False)         # first exposure: nothing predicts reward
+    naive = nuc.present(CUED_REWARD, learn=False)  # first exposure: nothing predicts reward
     naive_cue_rpe, naive_rew_rpe = naive["CUE"], naive["REWARD"]
     naive_cue_rate = nuc.phasic(naive_cue_rpe)
-    naive_rew_rate = nuc.phasic(naive_rew_rpe)            # UNPREDICTED reward -> burst
+    naive_rew_rate = nuc.phasic(naive_rew_rpe)  # UNPREDICTED reward -> burst
 
-    _train(nuc, CUED_REWARD, n_train)                     # learn the cue -> reward association
+    _train(nuc, CUED_REWARD, n_train)  # learn the cue -> reward association
 
-    trained = nuc.present(CUED_REWARD, learn=False)       # reward now fully predicted by the cue
+    trained = nuc.present(CUED_REWARD, learn=False)  # reward now fully predicted by the cue
     tr_cue_rpe, tr_rew_rpe = trained["CUE"], trained["REWARD"]
-    tr_cue_rate = nuc.phasic(tr_cue_rpe)                  # burst has TRANSFERRED to the cue
-    tr_rew_rate = nuc.phasic(tr_rew_rpe)                  # PREDICTED reward -> no burst
+    tr_cue_rate = nuc.phasic(tr_cue_rpe)  # burst has TRANSFERRED to the cue
+    tr_rew_rate = nuc.phasic(tr_rew_rpe)  # PREDICTED reward -> no burst
 
-    omit = nuc.present(CUED_OMIT, learn=False)            # expected reward withheld
+    omit = nuc.present(CUED_OMIT, learn=False)  # expected reward withheld
     omit_rpe = omit["REWARD"]
-    omit_rate = nuc.phasic(omit_rpe)                      # -> phasic DIP below baseline
+    omit_rate = nuc.phasic(omit_rpe)  # -> phasic DIP below baseline
 
     print("=" * 70)
     print("MIDBRAIN DOPAMINE NUCLEI (VTA/SNc) -- spiking RPE teaching signal")
     print("=" * 70)
-    print(f"cells: {nuc.n_cells} | gamma: {nuc.gamma} | alpha: {nuc.alpha} | "
-          f"tonic baseline level: {nuc.tonic_baseline:.2f}")
-    print(f"learned values after {n_train} trials: V(CUE)={nuc._value('CUE'):.3f}  "
-          f"V(TRACE)={nuc._value('TRACE'):.3f}  (V(REWARD)={nuc._value('REWARD'):.3f}, terminal)")
+    print(
+        f"cells: {nuc.n_cells} | gamma: {nuc.gamma} | alpha: {nuc.alpha} | "
+        f"tonic baseline level: {nuc.tonic_baseline:.2f}"
+    )
+    print(
+        f"learned values after {n_train} trials: V(CUE)={nuc._value('CUE'):.3f}  "
+        f"V(TRACE)={nuc._value('TRACE'):.3f}  (V(REWARD)={nuc._value('REWARD'):.3f}, terminal)"
+    )
     print(f"tonic baseline dopamine rate (rpe=0): {baseline_rate:.3f}")
     print("-" * 70)
     print("condition                     |   rpe  | da level | pop rate | vs baseline")
@@ -165,7 +182,11 @@ def main():
         ("omitted reward (expected)", omit_rpe, omit_rate),
     ]
     for name, rpe, rate in rows:
-        tag = "BURST" if rate > baseline_rate + 0.05 else ("DIP" if rate < baseline_rate - 0.03 else "baseline")
+        tag = (
+            "BURST"
+            if rate > baseline_rate + 0.05
+            else ("DIP" if rate < baseline_rate - 0.03 else "baseline")
+        )
         print(f"{name:<29} | {rpe:+.3f} |  {nuc.da_level(rpe):.3f}   |  {rate:.3f}   | {tag}")
     print("=" * 70)
     print("same magnitude-1 reward: UNPREDICTED bursts, PREDICTED does not -> the burst tracks")
@@ -174,13 +195,17 @@ def main():
 
     # ---- un-riggable self-checks (deterministic asserts) --------------------
     # (1) fully PREDICTED reward evokes no phasic burst: rate stays at baseline (rpe ~= 0).
-    assert abs(tr_rew_rate - baseline_rate) < 0.05, "predicted reward must not burst (stay baseline)"
+    assert abs(tr_rew_rate - baseline_rate) < 0.05, (
+        "predicted reward must not burst (stay baseline)"
+    )
     assert abs(tr_rew_rpe) < 0.05, "a fully predicted reward must drive rpe to ~0"
     # (2) UNPREDICTED reward evokes a phasic burst: rate clearly above baseline.
     assert naive_rew_rate > baseline_rate + 0.3, "unpredicted reward must evoke a phasic burst"
     assert naive_rew_rpe > 0.5, "unpredicted reward must be a positive surprise (rpe > 0)"
     # SURPRISE not magnitude: identical reward, burst only when unpredicted.
-    assert naive_rew_rate > tr_rew_rate + 0.3, "same reward: unpredicted must burst, predicted must not"
+    assert naive_rew_rate > tr_rew_rate + 0.3, (
+        "same reward: unpredicted must burst, predicted must not"
+    )
     # (3) OMITTED expected reward evokes a phasic dip: rate below baseline (rpe < 0).
     assert omit_rate < baseline_rate - 0.03, "omitted expected reward must dip below baseline"
     assert omit_rpe < -0.5, "omitted expected reward must be a negative surprise (rpe < 0)"
@@ -198,10 +223,14 @@ def main():
     assert other.phasic(o_naive["REWARD"]) == naive_rew_rate, "same seed must reproduce rates"
     assert other.phasic(o_trained["CUE"]) == tr_cue_rate, "same seed must reproduce transfer rate"
 
-    print(f"self-check OK: baseline {baseline_rate:.3f}; UNPREDICTED reward bursts {naive_rew_rate:.3f} "
-          f"(rpe {naive_rew_rpe:+.2f}) while PREDICTED stays {tr_rew_rate:.3f};")
-    print(f"  omission dips {omit_rate:.3f} (rpe {omit_rpe:+.2f}); burst TRANSFERS reward->cue "
-          f"(cue {tr_cue_rate:.3f} vs reward {tr_rew_rate:.3f}); surprise not magnitude; deterministic")
+    print(
+        f"self-check OK: baseline {baseline_rate:.3f}; UNPREDICTED reward bursts {naive_rew_rate:.3f} "
+        f"(rpe {naive_rew_rpe:+.2f}) while PREDICTED stays {tr_rew_rate:.3f};"
+    )
+    print(
+        f"  omission dips {omit_rate:.3f} (rpe {omit_rpe:+.2f}); burst TRANSFERS reward->cue "
+        f"(cue {tr_cue_rate:.3f} vs reward {tr_rew_rate:.3f}); surprise not magnitude; deterministic"
+    )
 
 
 if __name__ == "__main__":

@@ -1,6 +1,5 @@
 """
-v2.9 - hippocampus: DG pattern-SEPARATION -> CA3 pattern-COMPLETION memory
-(stdlib-only, zero deps).
+v2.9 - hippocampus: DG pattern-SEPARATION -> CA3 pattern-COMPLETION memory.
 
 Grounded in Nasrin et al. 2021, "Spiking Neural Networks and Hippocampal Function"
 (Cognitive Systems Research; DOI 10.1016/j.cogsys.2021.07.008): the dentate gyrus (DG)
@@ -26,6 +25,7 @@ route noisy cues through.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.hippocampus
 """
+
 import random
 
 from snn_data_lake.cortex.spike_preprocessing import N
@@ -44,7 +44,7 @@ class DentateGyrus:
     def __init__(self, dim=N, expansion=20, wta=0.05, samples=6, seed=0):
         self.dim = dim
         self.m = dim * expansion
-        rng = random.Random(seed)                       # all RNG seeded -> deterministic
+        rng = random.Random(seed)  # all RNG seeded -> deterministic
         self.proj = [tuple(rng.sample(range(dim), samples)) for _ in range(self.m)]
         self.k = max(1, round(self.m * wta))
 
@@ -52,7 +52,7 @@ class DentateGyrus:
         """[0,1]^dim vector -> frozenset of the top-k projection ids (sparse DG code).
         Projection activation = sum of x over its tap set; ties break to the lower id."""
         act = [sum(x[i] for i in taps) for taps in self.proj]
-        top = sorted(range(self.m), key=lambda j: (act[j], -j), reverse=True)[:self.k]
+        top = sorted(range(self.m), key=lambda j: (act[j], -j), reverse=True)[: self.k]
         return frozenset(top)
 
 
@@ -65,8 +65,8 @@ class CA3:
     basin because DG separation + overlap voting is robust. Deterministic; ties -> lower id."""
 
     def __init__(self):
-        self.codes = []                                 # per item: DG sparse code (frozenset)
-        self.origs = []                                 # per item: original [0,1]^N vector
+        self.codes = []  # per item: DG sparse code (frozenset)
+        self.origs = []  # per item: original [0,1]^N vector
 
     def imprint(self, code, x):
         self.codes.append(code)
@@ -113,12 +113,16 @@ def main():
         return [min(1.0, max(0.0, w + rng.uniform(-amt, amt))) for w in v]
 
     def mask(v, rng, frac):
-        return [0.0 if rng.random() < frac else w for w in v]        # zero ~frac of features
+        return [0.0 if rng.random() < frac else w for w in v]  # zero ~frac of features
 
     # 6 well-separated multimodal (visual, temp, audio, distance) signatures.
     PATTERNS = [
-        (0.1, 0.1, 0.1, 0.1), (0.9, 0.9, 0.9, 0.9), (0.1, 0.9, 0.1, 0.9),
-        (0.9, 0.1, 0.9, 0.1), (0.5, 0.5, 0.5, 0.5), (0.7, 0.3, 0.5, 0.2),
+        (0.1, 0.1, 0.1, 0.1),
+        (0.9, 0.9, 0.9, 0.9),
+        (0.1, 0.9, 0.1, 0.9),
+        (0.9, 0.1, 0.9, 0.1),
+        (0.5, 0.5, 0.5, 0.5),
+        (0.7, 0.3, 0.5, 0.2),
     ]
     vecs = [enc(lv) for lv in PATTERNS]
     K = len(vecs)
@@ -155,14 +159,14 @@ def main():
     # least as well as the learner's raw nearest-prototype cosine (opt-in, non-degrading).
     learner = GrowingLearner()
     for v in vecs:
-        learner.prototypes.append(list(v))              # 1 prototype per pattern, id-aligned
+        learner.prototypes.append(list(v))  # 1 prototype per pattern, id-aligned
     nrng = random.Random(7)
     raw_hits = hip_hits = 0
     for _ in range(T):
         pid = nrng.randrange(K)
-        cue = jitter(vecs[pid], nrng, 0.12)             # identical cue fed to both paths
-        raw_hits += (learner.classify(cue) == pid)
-        hip_hits += (hip.recall(cue) == ids[pid])
+        cue = jitter(vecs[pid], nrng, 0.12)  # identical cue fed to both paths
+        raw_hits += learner.classify(cue) == pid
+        hip_hits += hip.recall(cue) == ids[pid]
     raw_acc, hip_acc = raw_hits / T, hip_hits / T
     assert hip_acc >= raw_acc, f"hippocampus worse than raw cosine: {hip_acc:.3f} < {raw_acc:.3f}"
 
@@ -182,14 +186,18 @@ def main():
     assert det, "same seed must give identical recall results"
 
     print(f"units m={hip.dg.m}  active k={hip.dg.k}  stored={K}  dim={N}")
-    print(f"1 SEPARATION  : raw_cos={raw_cos:.3f} code_overlap={overlap_frac:.3f} "
-          f"ratio={sep_ratio:.2f} (>1 -> DG decorrelates similar inputs)")
+    print(
+        f"1 SEPARATION  : raw_cos={raw_cos:.3f} code_overlap={overlap_frac:.3f} "
+        f"ratio={sep_ratio:.2f} (>1 -> DG decorrelates similar inputs)"
+    )
     print(f"2 COMPLETION  : 30%-masked cue recall acc={comp_acc:.3f} over {T} trials")
     print(f"3 ADDITIVE    : noisy-cue acc raw={raw_acc:.3f} hip={hip_acc:.3f} (hip >= raw)")
     print("4 DETERMINISM : same seed -> identical DG codes and recalls")
     print("=" * 60)
-    print(f"self-check OK: separation ratio {sep_ratio:.2f}, completion {comp_acc:.3f}, "
-          f"additive hip {hip_acc:.3f} >= raw {raw_acc:.3f}, deterministic")
+    print(
+        f"self-check OK: separation ratio {sep_ratio:.2f}, completion {comp_acc:.3f}, "
+        f"additive hip {hip_acc:.3f} >= raw {raw_acc:.3f}, deterministic"
+    )
 
 
 if __name__ == "__main__":

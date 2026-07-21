@@ -12,6 +12,7 @@ Koch, Nat. Neurosci. 2 (1999).
 
   python -m snn_data_lake.plasticity.intrinsic_plasticity        # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
@@ -30,7 +31,7 @@ class IntrinsicPlasticity:
     def adapt(self, x):
         y = self.output(x)
         inv = 1.0 / self.mu
-        db = self.lr * (1.0 - (2.0 + inv) * y + inv * y * y)   # Triesch rule, exponential target
+        db = self.lr * (1.0 - (2.0 + inv) * y + inv * y * y)  # Triesch rule, exponential target
         da = self.lr / self.a + db * x
         self.a += da
         self.b += db
@@ -68,7 +69,7 @@ def main():
         ip.adapt(x)
     mean_after = _mean_out(ip, test)
 
-    ip_s = IntrinsicPlasticity(mu=mu, a=1.0, b=0.0)             # 3x-amplified input -> gain must compensate
+    ip_s = IntrinsicPlasticity(mu=mu, a=1.0, b=0.0)  # 3x-amplified input -> gain must compensate
     for x in train:
         ip_s.adapt(3.0 * x)
     mean_scaled = _mean_out(ip_s, [3.0 * x for x in test])
@@ -82,15 +83,25 @@ def main():
     print(f"scale invariance: output mean on x3 input still {mean_scaled:.3f} (~mu)")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
-    assert abs(mean_after - mu) < 0.03, f"IP must pull the output mean to the target ({mean_after:.3f})"
-    assert abs(mean_before - mu) > 0.1, f"the un-adapted neuron must start off-target ({mean_before:.3f})"
-    assert abs(mean_scaled - mu) < 0.03, f"IP must hold the mean under a 3x input scale ({mean_scaled:.3f})"
-    assert ip_s.a < ip.a, f"gain must shrink to compensate a larger input ({ip_s.a:.3f} < {ip.a:.3f})"
+    # ---- self-check: deterministic asserts ----
+    assert abs(mean_after - mu) < 0.03, (
+        f"IP must pull the output mean to the target ({mean_after:.3f})"
+    )
+    assert abs(mean_before - mu) > 0.1, (
+        f"the un-adapted neuron must start off-target ({mean_before:.3f})"
+    )
+    assert abs(mean_scaled - mu) < 0.03, (
+        f"IP must hold the mean under a 3x input scale ({mean_scaled:.3f})"
+    )
+    assert ip_s.a < ip.a, (
+        f"gain must shrink to compensate a larger input ({ip_s.a:.3f} < {ip.a:.3f})"
+    )
     assert ip.a > 0, "gain stays positive (the lr/a term keeps it away from 0)"
     assert IntrinsicPlasticity(mu=mu).a == IntrinsicPlasticity(mu=mu).a, "deterministic init"
-    print(f"self-check OK: mean {mean_before:.2f}->{mean_after:.2f}~mu; scale-invariant "
-          f"(a {ip.a:.2f}->{ip_s.a:.2f} on x3, mean {mean_scaled:.2f}); additive; deterministic")
+    print(
+        f"self-check OK: mean {mean_before:.2f}->{mean_after:.2f}~mu; scale-invariant "
+        f"(a {ip.a:.2f}->{ip_s.a:.2f} on x3, mean {mean_scaled:.2f}); additive; deterministic"
+    )
 
 
 if __name__ == "__main__":

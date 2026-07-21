@@ -16,7 +16,7 @@ purity, a strong decoder for accuracy. The SLDA-RFF readout is order-invariant c
 
 The torch SLDA_RFF in developmental_loop_slda is hardcoded to 10 classes; language needs 39 phones /
 K words, so this ports the identical math to numpy with a general class count (research tier -- numpy
-is allowed; CORE stays zero-dep and untouched).
+is allowed; CORE untouched).
 
   PYTHONPATH=src python research/language_readout_slda.py
   Knobs: NORD_CTX(3) NORD_PER(6000) NORD_VOCAB(60) NORD_RFF(1500) NORD_GAMMA(0.15) NORD_SHRINK(0.1)

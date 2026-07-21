@@ -4,7 +4,7 @@ explodes.
 
 WHAT THIS IS
 ------------
-A pure-stdlib, deterministic agent that plays the ARC-AGI-3-STYLE toy games in `env.py`. Instead of
+A deterministic agent that plays the ARC-AGI-3-STYLE toy games in `env.py`. Instead of
 memorizing (exact-grid-state -> value) like a tabular RL agent, it:
 
   1. PARSES each colored integer grid into OBJECTS = connected components of same color (color, cell
@@ -67,7 +67,7 @@ arcade. A caveat also holds for the tabular control: given a FRESH, LARGE budget
 instance it would of course solve these tiny MDPs -- the point is that it does not GENERALIZE across
 instances, so under a fixed transfer budget it fails while the relational rule does not.
 
-Constraints: pure stdlib; per-instance random.Random(seed); zlib.crc32 (never hash()); no wall-clock
+Constraints: per-instance random.Random(seed); zlib.crc32 (never hash()); no wall-clock
 / no global RNG; ASCII-only prints; deterministic (same seed -> byte-identical run).
 
   PYTHONUTF8=1 PYTHONPATH=src:. python research/arc_agi/rule_inducer.py
@@ -82,16 +82,16 @@ import zlib
 from collections import Counter, defaultdict
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_ROOT = os.path.dirname(os.path.dirname(_HERE))          # repo root
+_ROOT = os.path.dirname(os.path.dirname(_HERE))  # repo root
 for _p in (os.path.join(_ROOT, "src"), _ROOT, _HERE):
     if _p not in sys.path:
         pass  # migrated: sys.path bootstrap removed (now an importable package)
 
 from snn_data_lake.basal_ganglia.evidence_accumulation import RaceAccumulator  # noqa: E402
-from snn_data_lake.cortex.vsa_reasoning import bind, bundle, cleanup, hv       # noqa: E402
+from snn_data_lake.cortex.vsa_reasoning import bind, bundle, cleanup, hv  # noqa: E402
 
-import env as arc_env                                                          # noqa: E402
-from brain_player import BrainPlayer, random_player                            # noqa: E402
+import env as arc_env  # noqa: E402
+from brain_player import BrainPlayer, random_player  # noqa: E402
 
 EMPTY = arc_env.EMPTY
 
@@ -100,7 +100,7 @@ EMPTY = arc_env.EMPTY
 # 1. PARSE -- colored integer grid -> OBJECTS (connected components of same color).
 # =====================================================================================================
 
-_NEI = ((-1, 0), (1, 0), (0, -1), (0, 1))          # 4-connectivity
+_NEI = ((-1, 0), (1, 0), (0, -1), (0, 1))  # 4-connectivity
 
 
 def connected_components(grid):
@@ -136,11 +136,15 @@ def parse_objects(grid, background=EMPTY):
             continue
         rs = [y for y, x in cells]
         cs = [x for y, x in cells]
-        objs.append({
-            "color": color, "cells": cells, "size": len(cells),
-            "bbox": (min(rs), min(cs), max(rs), max(cs)),
-            "centroid": (sum(rs) / len(cells), sum(cs) / len(cells)),
-        })
+        objs.append(
+            {
+                "color": color,
+                "cells": cells,
+                "size": len(cells),
+                "bbox": (min(rs), min(cs), max(rs), max(cs)),
+                "centroid": (sum(rs) / len(cells), sum(cs) / len(cells)),
+            }
+        )
     return objs
 
 
@@ -169,6 +173,7 @@ def sig_of(grid):
 # =====================================================================================================
 # 2. COLLECT transitions -- Go-Explore full coverage of the reachable (state, action) graph.
 # =====================================================================================================
+
 
 def collect_transitions(game, budget=6000):
     """Systematically take every action from every reachable state (via snapshot/restore) and record
@@ -218,6 +223,7 @@ def shuffle_transitions(trans, seed):
 # 3. INDUCE -- relational change-rules with support / confidence (the rules, NEVER hardcoded).
 # =====================================================================================================
 
+
 class _ActionSemantics:
     """The induced action->delta map, stored + recalled in the SPIKING VSA substrate (vsa_reasoning).
     Each `bind(hv(ACT:a), hv(DELTA:dr:dc))` role-filler is bundled into one spike code; recall binds
@@ -226,12 +232,16 @@ class _ActionSemantics:
     yet it is genuinely the spike-code algebra, and a shuffled (incoherent) delta map recalls wrongly."""
 
     def __init__(self, deltas):
-        self.deltas = dict(deltas)                       # {action: (dr,dc)}
+        self.deltas = dict(deltas)  # {action: (dr,dc)}
         uniq = set(self.deltas.values())
         self._codebook = {"%d:%d" % (dr, dc): hv("DELTA:%d:%d" % (dr, dc)) for dr, dc in uniq}
         if self.deltas:
-            self._bundle = bundle([bind(hv("ACT:%d" % a), self._codebook["%d:%d" % d])
-                                   for a, d in self.deltas.items()])
+            self._bundle = bundle(
+                [
+                    bind(hv("ACT:%d" % a), self._codebook["%d:%d" % d])
+                    for a, d in self.deltas.items()
+                ]
+            )
         else:
             self._bundle = None
 
@@ -249,15 +259,15 @@ class RuleSet:
 
     def __init__(self):
         self.agent_color = None
-        self.deltas = {}                 # action -> (dr,dc)   (induced action semantics)
-        self.delta_conf = {}             # action -> confidence
-        self.collectibles = set()        # colors that vanish on agent contact -> event `collected(C)`
-        self.pushables = set()           # colors that translate by the agent delta when entered
-        self.push_goal = {}              # pushable color -> target color that yields the reward
-        self.dependency = {}             # obstacle color -> required event color (block unless present)
-        self.goal_agent = {}             # color -> required event color (agent entry -> reward/done)
-        self.support = {}                # rule tag -> support count (evidence)
-        self.semantics = None            # _ActionSemantics (VSA store)
+        self.deltas = {}  # action -> (dr,dc)   (induced action semantics)
+        self.delta_conf = {}  # action -> confidence
+        self.collectibles = set()  # colors that vanish on agent contact -> event `collected(C)`
+        self.pushables = set()  # colors that translate by the agent delta when entered
+        self.push_goal = {}  # pushable color -> target color that yields the reward
+        self.dependency = {}  # obstacle color -> required event color (block unless present)
+        self.goal_agent = {}  # color -> required event color (agent entry -> reward/done)
+        self.support = {}  # rule tag -> support count (evidence)
+        self.semantics = None  # _ActionSemantics (VSA store)
 
     def delta(self, a):
         """Read the action's delta THROUGH the spiking VSA store (falls back to the raw map)."""
@@ -311,19 +321,19 @@ def induce(trans, min_conf=0.5):
         if not d or len(cb.get(ac, ())) != 1 or len(cb2.get(ac, ())) != 1:
             continue
         p1, p2 = next(iter(cb[ac])), next(iter(cb2[ac]))
-        if (p2[0] - p1[0], p2[1] - p1[1]) != d:          # agent did not translate by this action -> skip
+        if (p2[0] - p1[0], p2[1] - p1[1]) != d:  # agent did not translate by this action -> skip
             continue
-        tgt_color = g[p2[0]][p2[1]]                       # what stood on the cell the agent entered
+        tgt_color = g[p2[0]][p2[1]]  # what stood on the cell the agent entered
         if tgt_color in (EMPTY, ac):
             continue
         cg, cg2 = _color_counts(g), _color_counts(g2)
         far = (p2[0] + d[0], p2[1] + d[1])
-        pushed = (0 <= far[0] < len(g) and 0 <= far[1] < len(g[0]) and far in cb2.get(tgt_color, ()))
-        if pushed:                                        # the object moved on by the same delta
+        pushed = 0 <= far[0] < len(g) and 0 <= far[1] < len(g[0]) and far in cb2.get(tgt_color, ())
+        if pushed:  # the object moved on by the same delta
             push_sup[tgt_color] += 1
             if r > 0.0:
                 pushgoal_sup[(tgt_color, g[far[0]][far[1]])] += 1
-        elif cg2[tgt_color] < cg[tgt_color]:              # the object vanished on contact
+        elif cg2[tgt_color] < cg[tgt_color]:  # the object vanished on contact
             collect_sup[tgt_color] += 1
     rs.collectibles = {c for c, n in collect_sup.items() if n >= 1}
     rs.pushables = {c for c, n in push_sup.items() if n >= 1}
@@ -339,9 +349,11 @@ def induce(trans, min_conf=0.5):
     # --- (d) dependency + agent-goal: entry into color X blocked unless event Y (then maybe reward) --
     def before_events(g):
         cg = _color_counts(g)
-        return frozenset(c for c in rs.collectibles if cg[c] == 0)   # collectible absent => collected
+        return frozenset(
+            c for c in rs.collectibles if cg[c] == 0
+        )  # collectible absent => collected
 
-    entry = defaultdict(list)                             # X -> [(moved, events, reward, done)]
+    entry = defaultdict(list)  # X -> [(moved, events, reward, done)]
     for g, a, g2, r, done in trans:
         d = rs.deltas.get(a)
         cb, cb2 = cells_by_color(g), cells_by_color(g2)
@@ -350,7 +362,7 @@ def induce(trans, min_conf=0.5):
         p1 = next(iter(cb[ac]))
         tr = (p1[0] + d[0], p1[1] + d[1])
         if not (0 <= tr[0] < len(g) and 0 <= tr[1] < len(g[0])):
-            continue                                      # boundary block is not an object dependency
+            continue  # boundary block is not an object dependency
         X = g[tr[0]][tr[1]]
         if X in (EMPTY, ac):
             continue
@@ -367,7 +379,7 @@ def induce(trans, min_conf=0.5):
                     if any(r > 0.0 and dn for _e, r, dn in entered):
                         rs.goal_agent[X] = Y
                     break
-        elif entered and not blocked:                     # unconditional agent-goal (no precondition)
+        elif entered and not blocked:  # unconditional agent-goal (no precondition)
             wins = [(e, r, dn) for e, r, dn in entered if r > 0.0 and dn]
             if wins:
                 common = set.intersection(*[set(e) for e, _r, _dn in wins]) if wins else set()
@@ -375,11 +387,13 @@ def induce(trans, min_conf=0.5):
 
     # a color better explained as a DEPENDENCY obstacle (door) or a PUSH-GOAL target (target) is NOT
     # a collectible -- it only "vanished" because the agent/box occluded it. Drop those spurious flags.
-    rs.collectibles -= (set(rs.dependency) | set(rs.push_goal.values()))
+    rs.collectibles -= set(rs.dependency) | set(rs.push_goal.values())
 
     # keep only confident action semantics (a shuffled stream fails this -> unreliable model)
     rs.support["agent_color"] = disp[ac]
-    rs.mean_delta_conf = (sum(rs.delta_conf.values()) / len(rs.delta_conf)) if rs.delta_conf else 0.0
+    rs.mean_delta_conf = (
+        (sum(rs.delta_conf.values()) / len(rs.delta_conf)) if rs.delta_conf else 0.0
+    )
     rs.confident = rs.mean_delta_conf >= min_conf
     return rs
 
@@ -387,6 +401,7 @@ def induce(trans, min_conf=0.5):
 # =====================================================================================================
 # 4. PREDICT + PLAN -- an imagined relational world model, value iteration, spiking action select.
 # =====================================================================================================
+
 
 class InducedModel:
     """The transferred relational model instantiated on ONE test grid. Instance CONSTANTS (obstacle,
@@ -401,11 +416,15 @@ class InducedModel:
         cb = cells_by_color(grid)
         self.agent0 = next(iter(cb[rules.agent_color])) if cb.get(rules.agent_color) else None
         self.cellcolor = {(r, c): grid[r][c] for r in range(self.R) for c in range(self.C)}
-        self.obstacles = {p: grid[p[0]][p[1]] for p in
-                          {q for X in rules.dependency for q in cb.get(X, ())}}
-        self.collectible_pos = {p: grid[p[0]][p[1]] for p in
-                                {q for C in rules.collectibles for q in cb.get(C, ())}}
-        self.movable0 = frozenset((color, p) for color in rules.pushables for p in cb.get(color, ()))
+        self.obstacles = {
+            p: grid[p[0]][p[1]] for p in {q for X in rules.dependency for q in cb.get(X, ())}
+        }
+        self.collectible_pos = {
+            p: grid[p[0]][p[1]] for p in {q for C in rules.collectibles for q in cb.get(C, ())}
+        }
+        self.movable0 = frozenset(
+            (color, p) for color in rules.pushables for p in cb.get(color, ())
+        )
 
     def initial_state(self, grid):
         return self.state_from_grid(grid)
@@ -434,11 +453,16 @@ class InducedModel:
             return state, 0.0, False
         movpos = {p: color for color, p in movs}
 
-        if tr in movpos:                                  # push a movable object
+        if tr in movpos:  # push a movable object
             P = movpos[tr]
             far = (tr[0] + d[0], tr[1] + d[1])
-            if not self._in(far) or far in movpos or far in self.obstacles or far in self.collectible_pos:
-                return state, 0.0, False                  # blocked push
+            if (
+                not self._in(far)
+                or far in movpos
+                or far in self.obstacles
+                or far in self.collectible_pos
+            ):
+                return state, 0.0, False  # blocked push
             new_movs = set(movs)
             new_movs.discard((P, tr))
             new_movs.add((P, far))
@@ -447,10 +471,10 @@ class InducedModel:
                 reward, done = 1.0, True
             return (tr, events, frozenset(new_movs)), reward, done
 
-        if tr in self.obstacles:                          # dependency obstacle (e.g. door)
+        if tr in self.obstacles:  # dependency obstacle (e.g. door)
             need = self.rules.dependency.get(self.obstacles[tr])
             if need is not None and need not in events:
-                return state, 0.0, False                  # solid until the event fires
+                return state, 0.0, False  # solid until the event fires
 
         new_events = events
         if tr in self.collectible_pos and self.collectible_pos[tr] not in events:
@@ -529,7 +553,7 @@ def solve_with_rules(rules, game, seed, race_scale=6.0):
     for step in range(game.max_steps):
         qv = Q.get(s)
         if qv is None or max(qv) <= 0.0:
-            a = rng.randrange(game.n_actions)             # off the planned frontier -> fall back
+            a = rng.randrange(game.n_actions)  # off the planned frontier -> fall back
         else:
             rseed = (zlib.crc32(repr(s).encode()) ^ (step * 2654435761)) & 0xFFFFFFFF
             a = _race_action(qv, rseed, race_scale, game.n_actions)
@@ -546,12 +570,17 @@ def solve_with_rules(rules, game, seed, race_scale=6.0):
 # 5. TABULAR CONTROL -- the repo's own BrainPlayer, trained on small, applied to the test (no transfer).
 # =====================================================================================================
 
+
 def train_tabular(game_cls, small_size, small_seeds, seed=0, budget=8000):
     """Train BrainPlayer (memorized transitions + value iteration, keyed on EXACT grid states) on the
     same small instances the inducer learned from. Its table holds only small-instance states."""
-    tab = BrainPlayer(game_cls(seed=small_seeds[0], size=small_size).n_actions
-                      if _accepts_size(game_cls) else game_cls(seed=small_seeds[0]).n_actions,
-                      seed=seed, explore_budget=budget)
+    tab = BrainPlayer(
+        game_cls(seed=small_seeds[0], size=small_size).n_actions
+        if _accepts_size(game_cls)
+        else game_cls(seed=small_seeds[0]).n_actions,
+        seed=seed,
+        explore_budget=budget,
+    )
     for s in small_seeds:
         tab._explore(_mk(game_cls, s, small_size))
     tab._plan()
@@ -567,6 +596,7 @@ def tabular_solve(tab, game, seed):
 # =====================================================================================================
 # helpers for size-parameterized construction
 # =====================================================================================================
+
 
 def _accepts_size(game_cls):
     return game_cls in (arc_env.KeyDoor, arc_env.PushBox, arc_env.ColorLock)
@@ -590,6 +620,7 @@ def _mkc(game_cls, seed, size, cap_factor):
 # 6. PROOF HARNESS -- learn small, test held-out + scaled; rule-inducer vs tabular vs shuffle.
 # =====================================================================================================
 
+
 def _rate(fn, instances):
     return sum(1 for inst in instances if fn(inst)) / len(instances)
 
@@ -603,7 +634,9 @@ def _random_rate(instances_factory, seeds, reps=8):
     return hits / tot
 
 
-def run_game_proof(game_cls, small_size, small_seeds, held_seeds, scaled_sizes, scaled_seeds, cap_factor):
+def run_game_proof(
+    game_cls, small_size, small_seeds, held_seeds, scaled_sizes, scaled_seeds, cap_factor
+):
     name = game_cls.name
 
     # ---- LEARN the rules on the SMALL instances (full budget; no cap during learning) ----
@@ -619,8 +652,11 @@ def run_game_proof(game_cls, small_size, small_seeds, held_seeds, scaled_sizes, 
     scaled = [(s, sz) for sz in scaled_sizes for s in scaled_seeds]
 
     def inducer(seed, size, ruleset):
-        return solve_with_rules(ruleset, _mkc(game_cls, seed, size, cap_factor), seed=zlib.crc32(
-            ("%s:%d:%d" % (name, seed, size)).encode()) & 0x7FFFFFFF)
+        return solve_with_rules(
+            ruleset,
+            _mkc(game_cls, seed, size, cap_factor),
+            seed=zlib.crc32(("%s:%d:%d" % (name, seed, size)).encode()) & 0x7FFFFFFF,
+        )
 
     def solve_ind(cfg):
         return inducer(cfg[0], cfg[1], rules)
@@ -629,17 +665,25 @@ def run_game_proof(game_cls, small_size, small_seeds, held_seeds, scaled_sizes, 
         return inducer(cfg[0], cfg[1], rules_shuf)
 
     def solve_tab(cfg):
-        return tabular_solve(tab, _mkc(game_cls, cfg[0], cfg[1], cap_factor),
-                             seed=zlib.crc32(("T:%d:%d" % (cfg[0], cfg[1])).encode()) & 0x7FFFFFFF)
+        return tabular_solve(
+            tab,
+            _mkc(game_cls, cfg[0], cfg[1], cap_factor),
+            seed=zlib.crc32(("T:%d:%d" % (cfg[0], cfg[1])).encode()) & 0x7FFFFFFF,
+        )
 
     res = {
-        "ind_held": _rate(solve_ind, held), "ind_scaled": _rate(solve_ind, scaled),
-        "tab_held": _rate(solve_tab, held), "tab_scaled": _rate(solve_tab, scaled),
-        "shuf_held": _rate(solve_shuf, held), "shuf_scaled": _rate(solve_shuf, scaled),
+        "ind_held": _rate(solve_ind, held),
+        "ind_scaled": _rate(solve_ind, scaled),
+        "tab_held": _rate(solve_tab, held),
+        "tab_scaled": _rate(solve_tab, scaled),
+        "shuf_held": _rate(solve_shuf, held),
+        "shuf_scaled": _rate(solve_shuf, scaled),
         "rnd_held": _random_rate(
-            [(lambda s=s, sz=sz: _mkc(game_cls, s, sz, cap_factor)) for s, sz in held], held),
+            [(lambda s=s, sz=sz: _mkc(game_cls, s, sz, cap_factor)) for s, sz in held], held
+        ),
         "rnd_scaled": _random_rate(
-            [(lambda s=s, sz=sz: _mkc(game_cls, s, sz, cap_factor)) for s, sz in scaled], scaled),
+            [(lambda s=s, sz=sz: _mkc(game_cls, s, sz, cap_factor)) for s, sz in scaled], scaled
+        ),
         "rules": rules,
     }
     return res
@@ -649,9 +693,16 @@ def _fmt_rules(rules):
     ds = " ".join("%d:(%d,%d)" % (a, d[0], d[1]) for a, d in sorted(rules.deltas.items()))
     dep = " ".join("%d<-collected(%d)" % (x, y) for x, y in sorted(rules.dependency.items()))
     pg = " ".join("%d->target%d" % (p, t) for p, t in sorted(rules.push_goal.items()))
-    return ("agent=%s deltas[%s] collect=%s push=%s dep=[%s] goal=%s pushgoal=[%s] conf=%.2f" % (
-        rules.agent_color, ds, sorted(rules.collectibles), sorted(rules.pushables),
-        dep, sorted(rules.goal_agent), pg, rules.mean_delta_conf))
+    return "agent=%s deltas[%s] collect=%s push=%s dep=[%s] goal=%s pushgoal=[%s] conf=%.2f" % (
+        rules.agent_color,
+        ds,
+        sorted(rules.collectibles),
+        sorted(rules.pushables),
+        dep,
+        sorted(rules.goal_agent),
+        pg,
+        rules.mean_delta_conf,
+    )
 
 
 def main():
@@ -666,14 +717,38 @@ def main():
     # (color, centroid, size) -- not pixels. This is what makes the induced rules grid-size agnostic.
     demo = arc_env.KeyDoor(seed=1, size=5).reset()
     objs = parse_objects(demo)
-    print("object parse (example key_door 5x5): %d objects -> %s" % (
-        len(objs), ", ".join("color%d@(%.0f,%.0f)size%d" % (
-            o["color"], o["centroid"][0], o["centroid"][1], o["size"]) for o in objs)))
+    print(
+        "object parse (example key_door 5x5): %d objects -> %s"
+        % (
+            len(objs),
+            ", ".join(
+                "color%d@(%.0f,%.0f)size%d"
+                % (o["color"], o["centroid"][0], o["centroid"][1], o["size"])
+                for o in objs
+            ),
+        )
+    )
 
     # (game, small_size, small_seeds, held_seeds, scaled_sizes, scaled_seeds, linear-step-budget factor)
     configs = [
-        (arc_env.KeyDoor, 5, [0, 1, 2, 3], list(range(100, 112)), [8, 10], list(range(200, 208)), 6),
-        (arc_env.PushBox, 5, [0, 1, 2, 3], list(range(100, 112)), [7, 9], list(range(200, 208)), 10),
+        (
+            arc_env.KeyDoor,
+            5,
+            [0, 1, 2, 3],
+            list(range(100, 112)),
+            [8, 10],
+            list(range(200, 208)),
+            6,
+        ),
+        (
+            arc_env.PushBox,
+            5,
+            [0, 1, 2, 3],
+            list(range(100, 112)),
+            [7, 9],
+            list(range(200, 208)),
+            10,
+        ),
     ]
 
     results = {}
@@ -683,13 +758,34 @@ def main():
         r = res["rules"]
         print("\n[%s]  learned on %d small seeds (size %d)" % (game_cls.name, len(sseeds), ssz))
         print("  induced rules: %s" % _fmt_rules(r))
-        print("  test sets    : held-out=%d layouts (size %d) | scaled=%d layouts (sizes %s)" % (
-            len(hseeds), ssz, len(scsz) * len(scseeds), scsz))
-        print("  %-22s %10s %10s %10s %10s" % ("solve-rate", "inducer", "tabular", "shuffle", "random"))
-        print("  %-22s %10.2f %10.2f %10.2f %10.2f" % (
-            "held-out (same size)", res["ind_held"], res["tab_held"], res["shuf_held"], res["rnd_held"]))
-        print("  %-22s %10.2f %10.2f %10.2f %10.2f" % (
-            "SCALED-UP (bigger)", res["ind_scaled"], res["tab_scaled"], res["shuf_scaled"], res["rnd_scaled"]))
+        print(
+            "  test sets    : held-out=%d layouts (size %d) | scaled=%d layouts (sizes %s)"
+            % (len(hseeds), ssz, len(scsz) * len(scseeds), scsz)
+        )
+        print(
+            "  %-22s %10s %10s %10s %10s"
+            % ("solve-rate", "inducer", "tabular", "shuffle", "random")
+        )
+        print(
+            "  %-22s %10.2f %10.2f %10.2f %10.2f"
+            % (
+                "held-out (same size)",
+                res["ind_held"],
+                res["tab_held"],
+                res["shuf_held"],
+                res["rnd_held"],
+            )
+        )
+        print(
+            "  %-22s %10.2f %10.2f %10.2f %10.2f"
+            % (
+                "SCALED-UP (bigger)",
+                res["ind_scaled"],
+                res["tab_scaled"],
+                res["shuf_scaled"],
+                res["rnd_scaled"],
+            )
+        )
 
     # ---- determinism: a second full run reproduces byte-identical solve rates ----
     det_ok = True
@@ -708,39 +804,61 @@ def main():
     for gname, res in results.items():
         ind_s, tab_s, shuf_s = res["ind_scaled"], res["tab_scaled"], res["shuf_scaled"]
         ind_h, tab_h = res["ind_held"], res["tab_held"]
-        print("[%s] scaled: inducer %.2f  >>  tabular %.2f (transfer fails: unseen states)  "
-              "shuffle %.2f (no rule induced)" % (gname, ind_s, tab_s, shuf_s))
+        print(
+            "[%s] scaled: inducer %.2f  >>  tabular %.2f (transfer fails: unseen states)  "
+            "shuffle %.2f (no rule induced)" % (gname, ind_s, tab_s, shuf_s)
+        )
         print("           held-out: inducer %.2f  vs  tabular %.2f" % (ind_h, tab_h))
         # (1) the rule-inducer solves the held-out and scaled instances.
-        assert ind_h >= 0.85, "%s: held-out inducer solve-rate must be high (got %.2f)" % (gname, ind_h)
-        assert ind_s >= 0.85, "%s: SCALED inducer solve-rate must be high (got %.2f)" % (gname, ind_s)
+        assert ind_h >= 0.85, "%s: held-out inducer solve-rate must be high (got %.2f)" % (
+            gname,
+            ind_h,
+        )
+        assert ind_s >= 0.85, "%s: SCALED inducer solve-rate must be high (got %.2f)" % (
+            gname,
+            ind_s,
+        )
         # (2) the tabular-state control fails (state explosion, never-visited test states).
-        assert ind_s - tab_s >= 0.6, "%s: inducer must beat tabular on scaled by >=0.6 (%.2f vs %.2f)" % (
-            gname, ind_s, tab_s)
-        assert ind_h - tab_h >= 0.5, "%s: inducer must beat tabular on held-out by >=0.5 (%.2f vs %.2f)" % (
-            gname, ind_h, tab_h)
+        assert ind_s - tab_s >= 0.6, (
+            "%s: inducer must beat tabular on scaled by >=0.6 (%.2f vs %.2f)"
+            % (gname, ind_s, tab_s)
+        )
+        assert ind_h - tab_h >= 0.5, (
+            "%s: inducer must beat tabular on held-out by >=0.5 (%.2f vs %.2f)"
+            % (gname, ind_h, tab_h)
+        )
         # (3) shuffled transitions collapse to chance (no coherent action->effect rule).
-        assert ind_s - shuf_s >= 0.5, "%s: shuffle control must collapse on scaled (%.2f vs %.2f)" % (
-            gname, ind_s, shuf_s)
+        assert ind_s - shuf_s >= 0.5, (
+            "%s: shuffle control must collapse on scaled (%.2f vs %.2f)" % (gname, ind_s, shuf_s)
+        )
 
     assert det_ok, "two full runs must reproduce byte-identical solve rates (deterministic)"
-    assert no_tensor, "pure stdlib: numpy / torch must be absent"
 
     kd, pb = results["key_door"]["ind_scaled"], results["push_box"]["ind_scaled"]
     kt, pt = results["key_door"]["tab_scaled"], results["push_box"]["tab_scaled"]
     ks, ps = results["key_door"]["shuf_scaled"], results["push_box"]["shuf_scaled"]
-    print("\nself-check OK: rule-inducer SCALED solve key_door %.2f / push_box %.2f  >>  "
-          "tabular %.2f / %.2f  >>  shuffle %.2f / %.2f;" % (kd, pb, kt, pt, ks, ps))
-    print("  relational rules TRANSFER to bigger grids & new layouts; the tabular table does not "
-          "(unseen states); shuffling action->effect destroys induction; deterministic; spiking "
-          "RaceAccumulator selects; no numpy/torch.")
-    print("  HONEST: toy games have learnable relational rules by construction -- this does NOT solve "
-          "frontier ARC-AGI-3 (richer rule classes + long horizons uncovered); the claim is only that")
+    print(
+        "\nself-check OK: rule-inducer SCALED solve key_door %.2f / push_box %.2f  >>  "
+        "tabular %.2f / %.2f  >>  shuffle %.2f / %.2f;" % (kd, pb, kt, pt, ks, ps)
+    )
+    print(
+        "  relational rules TRANSFER to bigger grids & new layouts; the tabular table does not "
+        "(unseen states); shuffling action->effect destroys induction; deterministic; spiking "
+        "RaceAccumulator selects."
+    )
+    print(
+        "  HONEST: toy games have learnable relational rules by construction -- this does NOT solve "
+        "frontier ARC-AGI-3 (richer rule classes + long horizons uncovered); the claim is only that"
+    )
     print("  relational induction generalizes where tabular coverage explodes.")
-    print("  Scope of THIS demo: 2 of 4 games (dependency=key_door, push=push_box), both grid-scalable "
-          "with pure zero-shot transfer. color_lock's safe color is a per-INSTANCE latent (needs a few")
-    print("  grounding steps, not zero-shot) and toggle_to_goal is not grid-scalable -- honestly out of "
-          "the scaled-transfer proof, though the same object/rule machinery parses them.")
+    print(
+        "  Scope of THIS demo: 2 of 4 games (dependency=key_door, push=push_box), both grid-scalable "
+        "with pure zero-shot transfer. color_lock's safe color is a per-INSTANCE latent (needs a few"
+    )
+    print(
+        "  grounding steps, not zero-shot) and toggle_to_goal is not grid-scalable -- honestly out of "
+        "the scaled-transfer proof, though the same object/rule machinery parses them."
+    )
 
 
 if __name__ == "__main__":

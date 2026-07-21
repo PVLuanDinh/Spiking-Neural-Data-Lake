@@ -27,7 +27,7 @@ Learning progress is:
 That third case is what makes curiosity cumulative: it automatically walks the agent to the
 frontier of the LEARNABLE and off the cliff of the unlearnable, then on to the next frontier.
 
-Mechanism (deterministic, per-instance rng, pure stdlib):
+Mechanism (deterministic, per-instance rng):
   Per hashable context_key the drive keeps a visit count and TWO exponential moving averages
   of the reported prediction error, at different time constants:
      fast EMA  (rate alpha)            -- responds quickly to recent error,
@@ -52,10 +52,11 @@ approaches" (2007); Schmidhuber, "Formal Theory of Creativity, Fun, and Intrinsi
 Motivation" (2010); Pathak, Agrawal, Efros & Darrell, "Curiosity-driven Exploration by
 Self-supervised Prediction" (ICM, 2017).
 
-Pure stdlib (random, substrate._mathutils.mean), ASCII-only prints, deterministic.
+Deps: random, substrate._mathutils.mean (numpy/torch allowed project-wide); ASCII-only prints, deterministic.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.intrinsic_motivation
 """
+
 import random
 
 from snn_data_lake.substrate._mathutils import mean
@@ -71,15 +72,30 @@ class CuriosityDrive:
     is the expected-reward heuristic (learning progress + a bootstrapping novelty bonus) that drives a
     curiosity-greedy explorer. Deterministic; per-instance random.Random(seed)."""
 
-    def __init__(self, alpha=0.2, novelty_decay=0.6, slow_ratio=0.2,
-                 novelty_gain=0.5, explore_bonus=0.05, seed=0):
-        self.alpha = float(alpha)                            # fast prediction-error EMA rate (the primary estimate)
-        self.alpha_slow = float(alpha) * float(slow_ratio)   # slow EMA rate (lags -> the learning-progress reference)
-        self.novelty_decay = float(novelty_decay)            # geometric habituation factor per observe, in (0,1)
-        self.novelty_gain = float(novelty_gain)              # how strongly novelty multiplicatively boosts the reward
-        self.explore_bonus = float(explore_bonus)            # additive novelty bonus in curiosity_value (bootstrap only)
-        self.rng = random.Random(seed)                       # per-instance rng (selector tie-break / determinism)
-        self._ctx = {}                                       # context_key -> {"n": count, "fast": EMA, "slow": EMA}
+    def __init__(
+        self,
+        alpha=0.2,
+        novelty_decay=0.6,
+        slow_ratio=0.2,
+        novelty_gain=0.5,
+        explore_bonus=0.05,
+        seed=0,
+    ):
+        self.alpha = float(alpha)  # fast prediction-error EMA rate (the primary estimate)
+        self.alpha_slow = float(alpha) * float(
+            slow_ratio
+        )  # slow EMA rate (lags -> the learning-progress reference)
+        self.novelty_decay = float(
+            novelty_decay
+        )  # geometric habituation factor per observe, in (0,1)
+        self.novelty_gain = float(
+            novelty_gain
+        )  # how strongly novelty multiplicatively boosts the reward
+        self.explore_bonus = float(
+            explore_bonus
+        )  # additive novelty bonus in curiosity_value (bootstrap only)
+        self.rng = random.Random(seed)  # per-instance rng (selector tie-break / determinism)
+        self._ctx = {}  # context_key -> {"n": count, "fast": EMA, "slow": EMA}
 
     def observe(self, context_key, pred_error):
         """Fold one world-model prediction error for context_key into its running estimates: increment the
@@ -123,7 +139,9 @@ class CuriosityDrive:
         Learning progress is the PRIMARY, non-negative, bounded term; novelty only MULTIPLICATIVELY modulates
         it, so a mastered or noisy context (lp ~0) earns ~0 no matter how novel. Deterministic."""
         self.observe(context_key, pred_error)
-        return self.learning_progress(context_key) * (1.0 + self.novelty_gain * self.novelty(context_key))
+        return self.learning_progress(context_key) * (
+            1.0 + self.novelty_gain * self.novelty(context_key)
+        )
 
     def curiosity_value(self, context_key):
         """Expected intrinsic reward of visiting context_key NEXT, from current stats (no new error yet):
@@ -167,12 +185,14 @@ def _run_explorer(drive, n_rounds, greedy):
         k = drive.most_curious(cands) if greedy else drive.rng.choice(cands)
         if k == "learnable":
             e = err["learnable"]
-            err["learnable"] = max(0.05, err["learnable"] * 0.85)   # visiting it teaches the model (error falls)
+            err["learnable"] = max(
+                0.05, err["learnable"] * 0.85
+            )  # visiting it teaches the model (error falls)
         elif k == "mastered":
-            e = err["mastered"]                                     # already flat-low
+            e = err["mastered"]  # already flat-low
         else:
-            e = 0.9 + drive.rng.uniform(-0.1, 0.1)                  # flat-high noise (no downward trend)
-        drive.intrinsic_reward(k, e)                               # observes + updates the per-context stats
+            e = 0.9 + drive.rng.uniform(-0.1, 0.1)  # flat-high noise (no downward trend)
+        drive.intrinsic_reward(k, e)  # observes + updates the per-context stats
         visits[k] += 1
     return visits
 
@@ -184,17 +204,17 @@ def main():
     for _ in range(30):
         d1.observe("A", 0.5)
         nov_curve.append(d1.novelty("A"))
-    nov_unseen = d1.novelty("B")                                   # never observed
+    nov_unseen = d1.novelty("B")  # never observed
 
     # ---- (2) LEARNING PROGRESS tracks a LEARNING curve: positive during decay, ~0 once mastered ----
     d2 = CuriosityDrive(seed=0)
     lp_learning = []
     e = 1.0
-    for _ in range(30):                                           # geometric decay 1.0, 0.9, 0.81, ... (mastering)
+    for _ in range(30):  # geometric decay 1.0, 0.9, 0.81, ... (mastering)
         d2.observe("L", e)
         lp_learning.append(d2.learning_progress("L"))
         e *= 0.9
-    for _ in range(200):                                         # plateau: error now flat -> progress dies out
+    for _ in range(200):  # plateau: error now flat -> progress dies out
         d2.observe("L", e)
     lp_peak = max(lp_learning)
     lp_plateau = d2.learning_progress("L")
@@ -204,19 +224,25 @@ def main():
     # genuinely learnable context (decaying error) piles up progress; a high-but-flat noisy context ~does not.
     d3 = CuriosityDrive(seed=1)
     srng = random.Random(1234)
-    learn_stream = [0.9 ** t for t in range(90)]                  # a genuinely learnable context (error decays, masters)
-    noisy_stream = [0.9 + srng.uniform(-0.05, 0.05) for _ in range(90)]  # constant-high mean + jitter, NO downward trend
+    learn_stream = [
+        0.9**t for t in range(90)
+    ]  # a genuinely learnable context (error decays, masters)
+    noisy_stream = [
+        0.9 + srng.uniform(-0.05, 0.05) for _ in range(90)
+    ]  # constant-high mean + jitter, NO downward trend
     learn_lp = 0.0
     noisy_lp = 0.0
     learn_reward = 0.0
     noisy_reward = 0.0
     for le, ne in zip(learn_stream, noisy_stream):
-        learn_reward += d3.intrinsic_reward("learnable", le)     # observes, then accumulates the reward ...
+        learn_reward += d3.intrinsic_reward(
+            "learnable", le
+        )  # observes, then accumulates the reward ...
         noisy_reward += d3.intrinsic_reward("noisy", ne)
-        learn_lp += d3.learning_progress("learnable")            # ... and the raw learning-progress signal
+        learn_lp += d3.learning_progress("learnable")  # ... and the raw learning-progress signal
         noisy_lp += d3.learning_progress("noisy")
-    noisy_final_err = d3._ctx["noisy"]["fast"]                    # noise stays HIGH ...
-    noisy_final_lp = d3.learning_progress("noisy")               # ... yet its learning progress is ~0
+    noisy_final_err = d3._ctx["noisy"]["fast"]  # noise stays HIGH ...
+    noisy_final_lp = d3.learning_progress("noisy")  # ... yet its learning progress is ~0
 
     # ---- (4) EXPLORATION: a curiosity-greedy explorer prefers the learnable-novel context; random does not ----
     rounds = 48
@@ -224,74 +250,118 @@ def main():
     random_visits = _run_explorer(CuriosityDrive(seed=2), rounds, greedy=False)
 
     # ---- (5) DETERMINISM: two seed=s drives fed the same stream give identical signals ----
-    stream = [("x", 0.9), ("x", 0.7), ("x", 0.55), ("y", 0.30), ("x", 0.45), ("y", 0.30), ("x", 0.40)]
+    stream = [
+        ("x", 0.9),
+        ("x", 0.7),
+        ("x", 0.55),
+        ("y", 0.30),
+        ("x", 0.45),
+        ("y", 0.30),
+        ("x", 0.40),
+    ]
     sig_a, sig_b = [], []
     da, db = CuriosityDrive(seed=7), CuriosityDrive(seed=7)
-    for (k, ev) in stream:
+    for k, ev in stream:
         sig_a.append((da.novelty(k), da.learning_progress(k), da.intrinsic_reward(k, ev)))
-    for (k, ev) in stream:
+    for k, ev in stream:
         sig_b.append((db.novelty(k), db.learning_progress(k), db.intrinsic_reward(k, ev)))
-    explore_repro = (_run_explorer(CuriosityDrive(seed=2), rounds, True)
-                     == _run_explorer(CuriosityDrive(seed=2), rounds, True))
+    explore_repro = _run_explorer(CuriosityDrive(seed=2), rounds, True) == _run_explorer(
+        CuriosityDrive(seed=2), rounds, True
+    )
 
     print("=" * 78)
     print("INTRINSIC MOTIVATION -- learning-progress curiosity (anti-noisy-TV, self-directed)")
     print("=" * 78)
-    print(f"alpha(fast)={d3.alpha}  alpha_slow={d3.alpha_slow:.3f}  novelty_decay={d3.novelty_decay}  "
-          f"novelty_gain={d3.novelty_gain}")
+    print(
+        f"alpha(fast)={d3.alpha}  alpha_slow={d3.alpha_slow:.3f}  novelty_decay={d3.novelty_decay}  "
+        f"novelty_gain={d3.novelty_gain}"
+    )
     print("-" * 78)
-    print(f"(1) habituation : novelty(A) {nov_curve[0]:.3f} -> {nov_curve[-1]:.2e} over 30 observes; "
-          f"unseen(B)={nov_unseen:.2f}")
-    print(f"(2) learn curve : learning_progress peaks {lp_peak:.3f} during decay -> {lp_plateau:.2e} once mastered")
-    print(f"(3) anti-noisyTV: learnable learning-progress {learn_lp:.3f}  vs  noisy {noisy_lp:.3f}  "
-          f"(ratio {learn_lp / max(noisy_lp, 1e-9):.1f}x); curiosity reward learnable {learn_reward:.2f} "
-          f"vs noisy {noisy_reward:.2f}")
-    print(f"                  noisy stays HIGH (err~{noisy_final_err:.2f}) yet learning_progress~{noisy_final_lp:.2e}")
+    print(
+        f"(1) habituation : novelty(A) {nov_curve[0]:.3f} -> {nov_curve[-1]:.2e} over 30 observes; "
+        f"unseen(B)={nov_unseen:.2f}"
+    )
+    print(
+        f"(2) learn curve : learning_progress peaks {lp_peak:.3f} during decay -> {lp_plateau:.2e} once mastered"
+    )
+    print(
+        f"(3) anti-noisyTV: learnable learning-progress {learn_lp:.3f}  vs  noisy {noisy_lp:.3f}  "
+        f"(ratio {learn_lp / max(noisy_lp, 1e-9):.1f}x); curiosity reward learnable {learn_reward:.2f} "
+        f"vs noisy {noisy_reward:.2f}"
+    )
+    print(
+        f"                  noisy stays HIGH (err~{noisy_final_err:.2f}) yet learning_progress~{noisy_final_lp:.2e}"
+    )
     print(f"(4) exploration : greedy visits {greedy_visits}  |  random visits {random_visits}")
-    print(f"(5) determinism : identical signals={sig_a == sig_b}  explorer reproducible={explore_repro}")
+    print(
+        f"(5) determinism : identical signals={sig_a == sig_b}  explorer reproducible={explore_repro}"
+    )
     print("=" * 78)
 
     # ---- (1) HABITUATION asserts ----
-    assert all(nov_curve[i + 1] < nov_curve[i] for i in range(len(nov_curve) - 1)), \
+    assert all(nov_curve[i + 1] < nov_curve[i] for i in range(len(nov_curve) - 1)), (
         "novelty must STRICTLY decrease with repeated observation (habituation)"
+    )
     assert nov_curve[-1] < 0.01, "a heavily-repeated context's novelty must converge toward ~0"
-    assert nov_unseen == 1.0 and nov_unseen > nov_curve[-1], \
+    assert nov_unseen == 1.0 and nov_unseen > nov_curve[-1], (
         "a never-seen context must stay maximally novel (well above the habituated one)"
+    )
 
     # ---- (2) LEARNING PROGRESS tracks a learning curve ----
-    assert lp_peak > 0.05, "learning progress must be clearly POSITIVE while error is decaying (learning)"
-    assert lp_plateau < 0.01, "learning progress must fall to ~0 once the context is mastered (error flat)"
+    assert lp_peak > 0.05, (
+        "learning progress must be clearly POSITIVE while error is decaying (learning)"
+    )
+    assert lp_plateau < 0.01, (
+        "learning progress must fall to ~0 once the context is mastered (error flat)"
+    )
     assert lp_plateau < 0.05 * lp_peak, "mastered progress must be far below the learning peak"
 
     # ---- (3) ANTI-NOISY-TV -- the HARD, un-riggable assert ----
-    assert noisy_final_err > 0.5, "the noisy context's error must stay HIGH (a real noisy TV, not low error)"
-    assert noisy_final_lp < 0.02, "high-but-flat noise must give ~0 learning progress (NOT stuck-high)"
-    assert learn_lp > 12.0 * noisy_lp, \
-        f"curiosity must CHASE the learnable frontier, NOT the noise (learnable learning-progress {learn_lp:.3f} " \
+    assert noisy_final_err > 0.5, (
+        "the noisy context's error must stay HIGH (a real noisy TV, not low error)"
+    )
+    assert noisy_final_lp < 0.02, (
+        "high-but-flat noise must give ~0 learning progress (NOT stuck-high)"
+    )
+    assert learn_lp > 12.0 * noisy_lp, (
+        f"curiosity must CHASE the learnable frontier, NOT the noise (learnable learning-progress {learn_lp:.3f} "
         f"must be >> noisy {noisy_lp:.3f})"
-    assert learn_reward > 12.0 * noisy_reward, \
+    )
+    assert learn_reward > 12.0 * noisy_reward, (
         f"the curiosity REWARD must inherit anti-noisy-TV (learnable {learn_reward:.3f} >> noisy {noisy_reward:.3f})"
+    )
 
     # ---- (4) EXPLORATION: greedy prefers the learnable-novel context; random does not ----
-    assert greedy_visits["learnable"] > greedy_visits["mastered"], \
+    assert greedy_visits["learnable"] > greedy_visits["mastered"], (
         "curiosity-greedy exploration must visit the learnable-novel context more than the mastered one"
-    assert greedy_visits["learnable"] > greedy_visits["noisy"], \
+    )
+    assert greedy_visits["learnable"] > greedy_visits["noisy"], (
         "curiosity-greedy exploration must prefer the learnable context over the noisy (unlearnable) one"
-    assert greedy_visits["learnable"] > random_visits["learnable"], \
+    )
+    assert greedy_visits["learnable"] > random_visits["learnable"], (
         "the curiosity-blind random control must NOT prefer the learnable context the way greedy does"
+    )
 
     # ---- (5) DETERMINISM ----
-    assert sig_a == sig_b, "two CuriosityDrive(seed=7) fed the same stream must give identical signals"
+    assert sig_a == sig_b, (
+        "two CuriosityDrive(seed=7) fed the same stream must give identical signals"
+    )
     assert explore_repro, "the seeded explorer must reproduce its visit counts exactly"
 
-    print(f"self-check OK: novelty habituates ({nov_curve[0]:.2f}->{nov_curve[-1]:.1e}) while unseen stays 1.0; "
-          f"learning progress peaks {lp_peak:.3f} then dies to {lp_plateau:.1e} on mastery;")
-    print(f"  ANTI-NOISY-TV: learnable curiosity reward {learn_reward:.3f} >> noisy {noisy_reward:.3f} "
-          f"({learn_reward / max(noisy_reward, 1e-9):.0f}x) though noise stays high (err {noisy_final_err:.2f}, "
-          f"lp {noisy_final_lp:.1e});")
-    print(f"  greedy explorer visits learnable {greedy_visits['learnable']}x vs noisy {greedy_visits['noisy']}x / "
-          f"mastered {greedy_visits['mastered']}x (random {random_visits['learnable']}x); deterministic "
-          f"(mean lp during learning {mean(lp_learning):.3f})")
+    print(
+        f"self-check OK: novelty habituates ({nov_curve[0]:.2f}->{nov_curve[-1]:.1e}) while unseen stays 1.0; "
+        f"learning progress peaks {lp_peak:.3f} then dies to {lp_plateau:.1e} on mastery;"
+    )
+    print(
+        f"  ANTI-NOISY-TV: learnable curiosity reward {learn_reward:.3f} >> noisy {noisy_reward:.3f} "
+        f"({learn_reward / max(noisy_reward, 1e-9):.0f}x) though noise stays high (err {noisy_final_err:.2f}, "
+        f"lp {noisy_final_lp:.1e});"
+    )
+    print(
+        f"  greedy explorer visits learnable {greedy_visits['learnable']}x vs noisy {greedy_visits['noisy']}x / "
+        f"mastered {greedy_visits['mastered']}x (random {random_visits['learnable']}x); deterministic "
+        f"(mean lp during learning {mean(lp_learning):.3f})"
+    )
 
 
 if __name__ == "__main__":

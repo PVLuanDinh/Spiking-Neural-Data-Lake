@@ -14,8 +14,8 @@ spiking-lake hippocampus instead, WITHOUT reimplementing any of its mechanics:
     (sleep) consolidation lifecycle. We use it for the periodic "sleep" pass.
 
 The loop OWNS the big feature tensors. This adapter stores only INDICES (ints into that frozen
-matrix) + labels -- never the features themselves. Pure standard library (lists/dicts + the two
-zero-dep modules above); no torch needed here. Deterministic (per-instance random via the
+matrix) + labels -- never the features themselves. Composed from lists/dicts + the two
+sibling modules above. Deterministic (per-instance random via the
 ReplayBuffer/SleepConsolidator seeds). ASCII-only output. Touches no core file.
 
 --------------------------------------------------------------------------------------------
@@ -48,6 +48,7 @@ CONSOLIDATE -- how the sleep pass rides SleepConsolidator:
 
   PYTHONUTF8=1 PYTHONPATH=src python research/brain_adapters/hippocampal_memory.py
 """
+
 import random
 
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
@@ -130,7 +131,9 @@ class HippocampalMemory:
         retention = 0.0
         if digits:
             cons.quiescent()  # the sleep pass -- consolidates all stored assemblies together
-            retention = cons.retention(assemblies)  # held-out completion accuracy over the learned set
+            retention = cons.retention(
+                assemblies
+            )  # held-out completion accuracy over the learned set
         return {
             "learned": digits,
             "n_skills": len(digits),
@@ -161,9 +164,9 @@ def main():
     # ---- store a few digits' worth of exemplars; DISJOINT row-index ranges per digit so any
     # ---- cross-class leak would be unambiguously detectable from the flat sample() output. ----
     truth = {
-        0: list(range(0, 5)),        # digit 0 -> rows 0..4
-        1: list(range(100, 105)),    # digit 1 -> rows 100..104
-        2: list(range(200, 202)),    # digit 2 -> rows 200..201 (small pool: < per_digit)
+        0: list(range(0, 5)),  # digit 0 -> rows 0..4
+        1: list(range(100, 105)),  # digit 1 -> rows 100..104
+        2: list(range(200, 202)),  # digit 2 -> rows 200..201 (small pool: < per_digit)
     }
     for label, rows in truth.items():
         stored = mem.store(rows, label)
@@ -203,8 +206,9 @@ def main():
     summary = mem.consolidate(learned=[0, 1, 2])
     assert summary["n_skills"] == 3, "one skill per learned digit"
     assert summary["learned"] == [0, 1, 2], "summary lists the consolidated digits"
-    assert isinstance(summary["retention"], float) and 0.0 <= summary["retention"] <= 1.0, \
+    assert isinstance(summary["retention"], float) and 0.0 <= summary["retention"] <= 1.0, (
         "retention must be an accuracy in [0,1]"
+    )
     assert isinstance(summary["value_margin"], float), "value_margin must be a float"
     assert summary["sleep_episodes"] == 40, "summary echoes the sleep depth used"
 
@@ -216,14 +220,18 @@ def main():
 
     print(f"stored digits         : {mem.stored_digits()}  (per-digit real ReplayBuffers)")
     print(f"balanced sample (n={per_digit}) : {len(picks)} indices  counts-per-digit {counts}")
-    print(f"consolidate summary   : retention={summary['retention']:.2f}  "
-          f"value_margin={summary['value_margin']:+.3f}  skills={summary['n_skills']}  "
-          f"sleep_episodes={summary['sleep_episodes']}")
+    print(
+        f"consolidate summary   : retention={summary['retention']:.2f}  "
+        f"value_margin={summary['value_margin']:+.3f}  skills={summary['n_skills']}  "
+        f"sleep_episodes={summary['sleep_episodes']}"
+    )
     print("=" * 74)
-    print("self-check OK: real ReplayBuffer holds (row_index,label) exemplars as (unit,action,"
-          "reward); sample is balanced across learned digits (<= per_digit each, only stored, no "
-          "cross-class leak); SleepConsolidator wake->quiescent returns a sane retention summary; "
-          "deterministic")
+    print(
+        "self-check OK: real ReplayBuffer holds (row_index,label) exemplars as (unit,action,"
+        "reward); sample is balanced across learned digits (<= per_digit each, only stored, no "
+        "cross-class leak); SleepConsolidator wake->quiescent returns a sane retention summary; "
+        "deterministic"
+    )
 
 
 if __name__ == "__main__":

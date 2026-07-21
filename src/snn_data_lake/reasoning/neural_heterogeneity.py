@@ -1,5 +1,5 @@
 """
-Neural heterogeneity promotes robust learning (Perez-Nieves et al. 2021) -- zero-dep.
+Neural heterogeneity promotes robust learning (Perez-Nieves et al. 2021).
 
 Perez-Nieves, Leung, Dragotti & Goodman, "Neural heterogeneity promotes robust learning", Nature
 Communications 12:5791 (2021), DOI 10.1038/s41467-021-26022-3: spiking populations whose neurons carry
@@ -34,25 +34,28 @@ Measured (seed 0, deterministic, held-out): HETEROGENEOUS 100.0% vs HOMOGENEOUS-
 
   Run: python neural_heterogeneity.py       # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
 from snn_data_lake._mathutils import softmax
-from snn_data_lake.lif_neuron import LIFNeuron  # canonical zero-dep LIF (PYTHONPATH=src under run_selfchecks)
+from snn_data_lake.lif_neuron import (
+    LIFNeuron,
+)  # canonical LIF (PYTHONPATH=src under run_selfchecks)
 
 SEED = 0
-N = 50                     # neurons per population (het and homo are the SAME size)
-T = 60                     # timesteps per stimulus
-PER = 70                   # stimuli per class (4 classes)
-K = 4                      # (concentration bit) x (level bit)
-A = 0.5                    # pulse height -- sub-threshold alone (needs summation to fire a short-tau neuron)
-CONC_STEPS = (2, 3, 4, 5, 6)              # the 5-pulse packet, CONCENTRATED
-DIFF_STEPS = (2, 8, 14, 20, 26)           # the SAME 5 pulses, DIFFUSED (identical total energy)
-O_HI, O_LO = 0.14, 0.03    # sustained level bit: sub-threshold offset over the whole window
-TAU_MIN, TAU_MAX = 2.0, 40.0   # heterogeneous tau range (log-uniform)
+N = 50  # neurons per population (het and homo are the SAME size)
+T = 60  # timesteps per stimulus
+PER = 70  # stimuli per class (4 classes)
+K = 4  # (concentration bit) x (level bit)
+A = 0.5  # pulse height -- sub-threshold alone (needs summation to fire a short-tau neuron)
+CONC_STEPS = (2, 3, 4, 5, 6)  # the 5-pulse packet, CONCENTRATED
+DIFF_STEPS = (2, 8, 14, 20, 26)  # the SAME 5 pulses, DIFFUSED (identical total energy)
+O_HI, O_LO = 0.14, 0.03  # sustained level bit: sub-threshold offset over the whole window
+TAU_MIN, TAU_MAX = 2.0, 40.0  # heterogeneous tau range (log-uniform)
 V_TH = 1.0
-REFRACTORY = 2             # caps the max firing rate so counts don't run away
-NOISE = 0.02               # per-step current jitter
+REFRACTORY = 2  # caps the max firing rate so counts don't run away
+NOISE = 0.02  # per-step current jitter
 EPOCHS = 60
 LR = 0.1
 
@@ -72,7 +75,7 @@ def make_taus(rng):
 def prototype(conc, level):
     """Noise-free 1-D current = sustained offset (level bit) + a 5-pulse packet (concentrated or diffused)."""
     seq = [O_HI if level else O_LO] * T
-    for t in (CONC_STEPS if conc else DIFF_STEPS):
+    for t in CONC_STEPS if conc else DIFF_STEPS:
         seq[t] += A
     return seq
 
@@ -82,8 +85,12 @@ def stimulus(rng, conc, level):
 
 
 def dataset(rng):
-    data = [(stimulus(rng, conc, level), conc * 2 + level)
-            for conc in (0, 1) for level in (0, 1) for _ in range(PER)]
+    data = [
+        (stimulus(rng, conc, level), conc * 2 + level)
+        for conc in (0, 1)
+        for level in (0, 1)
+        for _ in range(PER)
+    ]
     rng.shuffle(data)
     return data
 
@@ -101,8 +108,13 @@ def features(data, taus):
 def standardize(train, test):
     """Per-feature z-score using TRAIN statistics only (applied identically to both populations)."""
     mean = [sum(f[i] for f, _ in train) / len(train) for i in range(N)]
-    std = [math.sqrt(sum((f[i] - mean[i]) ** 2 for f, _ in train) / len(train)) or 1.0 for i in range(N)]
-    z = lambda rows: [([(f[i] - mean[i]) / std[i] for i in range(N)] + [1.0], y) for f, y in rows]  # +bias
+    std = [
+        math.sqrt(sum((f[i] - mean[i]) ** 2 for f, _ in train) / len(train)) or 1.0
+        for i in range(N)
+    ]
+    z = lambda rows: [
+        ([(f[i] - mean[i]) / std[i] for i in range(N)] + [1.0], y) for f, y in rows
+    ]  # +bias
     return z(train), z(test)
 
 
@@ -123,7 +135,9 @@ def train_readout(train):
 
 def accuracy(W, test):
     nf = len(test[0][0])
-    ok = sum(max(range(K), key=lambda c: sum(W[c][i] * f[i] for i in range(nf))) == y for f, y in test)
+    ok = sum(
+        max(range(K), key=lambda c: sum(W[c][i] * f[i] for i in range(nf))) == y for f, y in test
+    )
     return ok / len(test)
 
 
@@ -131,7 +145,7 @@ def selectivity_spread(taus):
     """Response diversity: spread (stdev) of a per-neuron selectivity index that is +1 for a neuron driven
     only by the concentration probe and -1 for one driven only by the level probe. Diverse tau -> some neurons
     are concentration-selective and others level-selective -> wide spread; a single tau -> everyone alike."""
-    conc_probe = prototype(conc=1, level=0)   # fast concentrated energy, minimal sustained level
+    conc_probe = prototype(conc=1, level=0)  # fast concentrated energy, minimal sustained level
     level_probe = prototype(conc=0, level=1)  # sustained high level, no concentration
     idx = []
     for tau in taus:
@@ -145,7 +159,7 @@ def selectivity_spread(taus):
 def run_experiment(seed):
     rng = random.Random(seed)
     het_taus, homo_taus, homo_tau = make_taus(rng)
-    data = dataset(rng)                      # SAME data for every population
+    data = dataset(rng)  # SAME data for every population
     cut = int(0.7 * len(data))
 
     def evaluate(taus):
@@ -156,8 +170,8 @@ def run_experiment(seed):
     return {
         "het": evaluate(het_taus),
         "homo": evaluate(homo_taus),
-        "short": evaluate([TAU_MIN] * N),        # single-tau reference: everyone fast
-        "long": evaluate([TAU_MAX] * N),         # single-tau reference: everyone slow
+        "short": evaluate([TAU_MIN] * N),  # single-tau reference: everyone fast
+        "long": evaluate([TAU_MAX] * N),  # single-tau reference: everyone slow
         "mean_tau": homo_tau,
         "het_spread": selectivity_spread(het_taus),
         "homo_spread": selectivity_spread(homo_taus),
@@ -172,9 +186,13 @@ def main():
     print("=" * 64)
     print("NEURAL HETEROGENEITY -- diverse tau beats homogeneous on a temporal task")
     print("=" * 64)
-    print(f"N={N} neurons/pop  T={T}  classes=(concentration x level)={K}  per-class={PER}  chance={chance:.0%}")
+    print(
+        f"N={N} neurons/pop  T={T}  classes=(concentration x level)={K}  per-class={PER}  chance={chance:.0%}"
+    )
     print(f"heterogeneous tau : log-uniform [{TAU_MIN:.0f}, {TAU_MAX:.0f}]  (mean {mean_tau:.2f})")
-    print(f"homogeneous tau   : every neuron = {mean_tau:.2f}  (SAME N, SAME unit input, SAME mean tau)")
+    print(
+        f"homogeneous tau   : every neuron = {mean_tau:.2f}  (SAME N, SAME unit input, SAME mean tau)"
+    )
     print()
     print("population              | mean tau | held-out accuracy")
     print("-" * 54)
@@ -184,20 +202,34 @@ def main():
     print(f"  ref: homogeneous slow |  {TAU_MAX:6.2f}  |   {long:6.1%}")
     print("-" * 54)
     print(f"heterogeneity margin : +{het - homo:.1%}  (het - homo, same mean tau)")
-    print(f"selectivity spread   : het {r['het_spread']:.2f}  vs  homo {r['homo_spread']:.2f}  (wider = more timescales tiled)")
+    print(
+        f"selectivity spread   : het {r['het_spread']:.2f}  vs  homo {r['homo_spread']:.2f}  (wider = more timescales tiled)"
+    )
     print("no single tau matches the diverse population -- diversity is what wins.")
     print("=" * 64)
 
     # ---- self-check (deterministic; the paper's fair same-mean-tau control) ----
-    assert het > homo + 0.12, f"heterogeneity must clearly beat the fair homogeneous control: {het:.3f} vs {homo:.3f}"
+    assert het > homo + 0.12, (
+        f"heterogeneity must clearly beat the fair homogeneous control: {het:.3f} vs {homo:.3f}"
+    )
     assert het > chance + 0.2, f"heterogeneous population must be well above chance: {het:.3f}"
-    assert homo > chance, f"homogeneous control must be above chance (not crippled): {homo:.3f} <= {chance:.3f}"
-    assert het > long + 0.1, f"the diverse pop must beat even the best single tau: het {het:.3f} vs long {long:.3f}"
-    assert r["het_spread"] > r["homo_spread"], f"heterogeneous pop must tile more timescales: {r['het_spread']:.3f} <= {r['homo_spread']:.3f}"
+    assert homo > chance, (
+        f"homogeneous control must be above chance (not crippled): {homo:.3f} <= {chance:.3f}"
+    )
+    assert het > long + 0.1, (
+        f"the diverse pop must beat even the best single tau: het {het:.3f} vs long {long:.3f}"
+    )
+    assert r["het_spread"] > r["homo_spread"], (
+        f"heterogeneous pop must tile more timescales: {r['het_spread']:.3f} <= {r['homo_spread']:.3f}"
+    )
     repeat = run_experiment(SEED)
-    assert (repeat["het"], repeat["homo"]) == (het, homo), "same seed must give identical accuracies (determinism)"
-    print(f"self-check OK: heterogeneous {het:.1%} > homogeneous {homo:.1%} (+{het - homo:.1%}) and > any single tau, "
-          f"both > chance {chance:.0%}, wider timescale tiling, deterministic")
+    assert (repeat["het"], repeat["homo"]) == (het, homo), (
+        "same seed must give identical accuracies (determinism)"
+    )
+    print(
+        f"self-check OK: heterogeneous {het:.1%} > homogeneous {homo:.1%} (+{het - homo:.1%}) and > any single tau, "
+        f"both > chance {chance:.0%}, wider timescale tiling, deterministic"
+    )
 
 
 if __name__ == "__main__":

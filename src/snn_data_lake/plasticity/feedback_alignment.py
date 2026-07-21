@@ -42,6 +42,7 @@ backpropagation for deep learning", Nat. Commun. 7 (2016); Zeng et al., BrainCog
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.feedback_alignment
 """
+
 import math
 import random
 
@@ -49,26 +50,26 @@ from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.substrate._mathutils import dot, softmax
 
-N_IN = 3                 # 3-bit parity: the smallest task random hidden features reliably FAIL on
-N_HIDDEN = 4             # small enough that a frozen random hidden layer cannot solve it
-N_OUT = 2                # even / odd parity
-K_SUB = 6                # LIF sub-neurons per hidden unit -> a smooth POPULATION rate code
-T_STEPS = 20             # timesteps the hidden LIF population is run per forward pass
+N_IN = 3  # 3-bit parity: the smallest task random hidden features reliably FAIL on
+N_HIDDEN = 4  # small enough that a frozen random hidden layer cannot solve it
+N_OUT = 2  # even / odd parity
+K_SUB = 6  # LIF sub-neurons per hidden unit -> a smooth POPULATION rate code
+T_STEPS = 20  # timesteps the hidden LIF population is run per forward pass
 TAU_M = 8.0
-SUB_OFFSETS = [0.15 * (k / (K_SUB - 1)) for k in range(K_SUB)]   # heterogeneous fixed bias offsets
-BIAS0 = 0.30             # baseline drive so the hidden population sits in its graded firing band
-GAIN = 0.35              # maps hidden pre-activation to input current
-W_SCALE = 1.0            # init range for all weights and the fixed feedback matrix
-B1_INIT = 0.10           # init range for the learnable per-unit current bias
-CUR_LO, CUR_HI = 0.03, 1.3       # clamp the drive out of the permanent-dead / hard-saturated zones
-B1_LO, B1_HI = -0.25, 0.45       # keep the learnable bias in a live regime (no dead-neuron runaway)
-RATE_MAX = 0.7           # population rate ceiling (used only to shape the surrogate)
-SURR_LEAK = 0.06         # surrogate floor so a silent unit can still recover
+SUB_OFFSETS = [0.15 * (k / (K_SUB - 1)) for k in range(K_SUB)]  # heterogeneous fixed bias offsets
+BIAS0 = 0.30  # baseline drive so the hidden population sits in its graded firing band
+GAIN = 0.35  # maps hidden pre-activation to input current
+W_SCALE = 1.0  # init range for all weights and the fixed feedback matrix
+B1_INIT = 0.10  # init range for the learnable per-unit current bias
+CUR_LO, CUR_HI = 0.03, 1.3  # clamp the drive out of the permanent-dead / hard-saturated zones
+B1_LO, B1_HI = -0.25, 0.45  # keep the learnable bias in a live regime (no dead-neuron runaway)
+RATE_MAX = 0.7  # population rate ceiling (used only to shape the surrogate)
+SURR_LEAK = 0.06  # surrogate floor so a silent unit can still recover
 OUT_LR = 0.25
 HID_LR = 0.45
 B1_LR = 0.13
 EPOCHS = 1200
-N_SEEDS = 8              # average over a fixed seed range -> stable, un-cherry-picked means
+N_SEEDS = 8  # average over a fixed seed range -> stable, un-cherry-picked means
 
 MODES = ("fa", "local", "shuffled", "backprop")
 
@@ -81,7 +82,7 @@ def parity_dataset():
     """The 2**N_IN input patterns of N-bit parity (label = XOR of the bits). Not linearly
     separable: it genuinely needs a learned hidden layer, so a frozen random one fails."""
     data = []
-    for n in range(2 ** N_IN):
+    for n in range(2**N_IN):
         x = [float((n >> i) & 1) for i in range(N_IN)]
         target = [0.0] * N_OUT
         target[int(sum(x)) % 2] = 1.0
@@ -141,19 +142,21 @@ class FeedbackAlignmentSNN:
         if self.mode == "local":
             return [0.0] * N_HIDDEN
         if self.mode == "backprop":
-            return [sum(self.W2[k][j] * delta_out[k] for k in range(N_OUT)) for j in range(N_HIDDEN)]
+            return [
+                sum(self.W2[k][j] * delta_out[k] for k in range(N_OUT)) for j in range(N_HIDDEN)
+            ]
         if self.mode == "shuffled":
             flat = [self.B[j][k] for j in range(N_HIDDEN) for k in range(N_OUT)]
             self._shuf_rng.shuffle(flat)
             fb = [[flat[j * N_OUT + k] for k in range(N_OUT)] for j in range(N_HIDDEN)]
-        else:                                    # "fa": the fixed random feedback matrix
+        else:  # "fa": the fixed random feedback matrix
             fb = self.B
         return [sum(fb[j][k] * delta_out[k] for k in range(N_OUT)) for j in range(N_HIDDEN)]
 
     def train_step(self, x, target):
         p, r = self.forward(x)
         delta_out = [p[k] - target[k] for k in range(N_OUT)]
-        e_hidden = self._hidden_error(delta_out)     # uses current W2 (must precede the W2 update)
+        e_hidden = self._hidden_error(delta_out)  # uses current W2 (must precede the W2 update)
         # output layer: local delta rule
         for k in range(N_OUT):
             for i in range(N_HIDDEN):
@@ -229,42 +232,72 @@ def main():
 
     print("=" * 78)
     print("FEEDBACK ALIGNMENT -- random weight-transport-free credit assignment + local plasticity")
-    print(f"(input -> hidden LIF population -> output; {N_IN}-bit parity, {N_HIDDEN} hidden, chance {chance:.2f})")
+    print(
+        f"(input -> hidden LIF population -> output; {N_IN}-bit parity, {N_HIDDEN} hidden, chance {chance:.2f})"
+    )
     print("=" * 78)
     print(f"{'condition':<26}{'mean acc':>10}{'mean loss':>11}   per-seed")
-    print(f"{'feedback + local (FA)':<26}{fa_acc:>10.3f}{fa_loss:>11.3f}   {[round(a, 2) for a in fa_seeds]}")
-    print(f"{'local-only (no feedback)':<26}{lo_acc:>10.3f}{lo_loss:>11.3f}   {[round(a, 2) for a in lo_seeds]}")
-    print(f"{'shuffled feedback':<26}{sh_acc:>10.3f}{sh_loss:>11.3f}   {[round(a, 2) for a in sh_seeds]}")
-    print(f"{'exact backprop (W2^T ref)':<26}{bp_acc:>10.3f}{bp_loss:>11.3f}   {[round(a, 2) for a in bp_seeds]}")
+    print(
+        f"{'feedback + local (FA)':<26}{fa_acc:>10.3f}{fa_loss:>11.3f}   {[round(a, 2) for a in fa_seeds]}"
+    )
+    print(
+        f"{'local-only (no feedback)':<26}{lo_acc:>10.3f}{lo_loss:>11.3f}   {[round(a, 2) for a in lo_seeds]}"
+    )
+    print(
+        f"{'shuffled feedback':<26}{sh_acc:>10.3f}{sh_loss:>11.3f}   {[round(a, 2) for a in sh_seeds]}"
+    )
+    print(
+        f"{'exact backprop (W2^T ref)':<26}{bp_acc:>10.3f}{bp_loss:>11.3f}   {[round(a, 2) for a in bp_seeds]}"
+    )
     print("-" * 78)
     print(f"FA-vs-backprop feedback alignment  cos(B.delta, W2^T.delta) = {align:.3f}  (in (0,1))")
-    print(f"gap to exact backprop: FA reaches {fa_acc:.3f} vs the W2^T reference {bp_acc:.3f}; the random")
-    print("feedback only PARTIALLY aligns with the true gradient (cos < 1) -- it approaches, does not match.")
+    print(
+        f"gap to exact backprop: FA reaches {fa_acc:.3f} vs the W2^T reference {bp_acc:.3f}; the random"
+    )
+    print(
+        "feedback only PARTIALLY aligns with the true gradient (cos < 1) -- it approaches, does not match."
+    )
     print("=" * 78)
 
-    # ---- self-check: deterministic asserts, zero-dep, ASCII. Claim + CONTROLS that FAIL. ----
+    # ---- self-check: deterministic asserts, ASCII. Claim + CONTROLS that FAIL. ----
     # (1) feedback + local LEARNS the nonlinear task, well above chance.
     assert fa_acc > 0.85, f"feedback+local must learn parity well above chance ({fa_acc:.3f})"
-    assert fa_acc - chance > 0.30, f"feedback+local must beat chance by a wide margin ({fa_acc:.3f})"
+    assert fa_acc - chance > 0.30, (
+        f"feedback+local must beat chance by a wide margin ({fa_acc:.3f})"
+    )
     # (2) LOCAL-ONLY control fails -- stuck near chance -> the feedback credit assignment is load-bearing.
     assert lo_acc < 0.72, f"local-only must stay near chance ({lo_acc:.3f})"
-    assert fa_acc - lo_acc > 0.25, f"feedback must be load-bearing: FA >> local-only ({fa_acc:.3f} vs {lo_acc:.3f})"
+    assert fa_acc - lo_acc > 0.25, (
+        f"feedback must be load-bearing: FA >> local-only ({fa_acc:.3f} vs {lo_acc:.3f})"
+    )
     # (3) SHUFFLED feedback degrades toward local-only -> it is the ALIGNED STATIONARY random feedback,
     #     not per-step noise, that assigns credit.
     assert sh_acc < 0.72, f"per-step-reshuffled feedback must stay near chance ({sh_acc:.3f})"
-    assert fa_acc - sh_acc > 0.25, f"stationary random feedback must beat reshuffled ({fa_acc:.3f} vs {sh_acc:.3f})"
-    assert sh_acc < lo_acc + 0.12, f"shuffled must degrade toward local-only ({sh_acc:.3f} vs {lo_acc:.3f})"
+    assert fa_acc - sh_acc > 0.25, (
+        f"stationary random feedback must beat reshuffled ({fa_acc:.3f} vs {sh_acc:.3f})"
+    )
+    assert sh_acc < lo_acc + 0.12, (
+        f"shuffled must degrade toward local-only ({sh_acc:.3f} vs {lo_acc:.3f})"
+    )
     # (4) gap to exact backprop -- FA approaches (aligns with) but does NOT match the true gradient.
-    assert 0.15 < align < 0.97, f"FA feedback must align with but not equal exact backprop ({align:.3f})"
+    assert 0.15 < align < 0.97, (
+        f"FA feedback must align with but not equal exact backprop ({align:.3f})"
+    )
     # (5) determinism: same (mode, seed) -> identical weights.
     a = train_condition("fa", 0)[0]
     b = train_condition("fa", 0)[0]
-    same = all(a.hidden[j].w == b.hidden[j].w for j in range(N_HIDDEN)) and a.W2 == b.W2 and a.b1 == b.b1
+    same = (
+        all(a.hidden[j].w == b.hidden[j].w for j in range(N_HIDDEN))
+        and a.W2 == b.W2
+        and a.b1 == b.b1
+    )
     assert same, "same (mode, seed) must give identical weights (determinism)"
 
-    print(f"self-check OK: feedback+local {fa_acc:.3f} vs local-only {lo_acc:.3f} vs shuffled {sh_acc:.3f} "
-          f"(chance {chance:.2f}); backprop ref {bp_acc:.3f}; alignment {align:.2f} (approaches, not matches); "
-          f"random weight-transport-free credit assignment; additive; deterministic")
+    print(
+        f"self-check OK: feedback+local {fa_acc:.3f} vs local-only {lo_acc:.3f} vs shuffled {sh_acc:.3f} "
+        f"(chance {chance:.2f}); backprop ref {bp_acc:.3f}; alignment {align:.2f} (approaches, not matches); "
+        f"random weight-transport-free credit assignment; additive; deterministic"
+    )
 
 
 if __name__ == "__main__":

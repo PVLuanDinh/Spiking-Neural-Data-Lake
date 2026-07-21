@@ -57,11 +57,12 @@ Un-riggable self-check (deterministic seed=0, ASCII), each claim paired with a c
       events), two seed=0 runs give an identical arc, all output is ASCII. Curiosity is reported
       HONESTLY (assert it helps, or print an honest no-help).
 
-Pure stdlib (random, sys, zlib + repo modules), per-instance random.Random(seed), zlib.crc32 for
+Per-instance random.Random(seed), zlib.crc32 for
 persisted decision seeds (never hash()), no wall-clock, ASCII-only prints.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.reasoning_curriculum
 """
+
 import random
 import sys
 import zlib
@@ -74,14 +75,14 @@ from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.substrate._mathutils import sigmoid
 
 # ---- learner / decision constants ----------------------------------------------------------------
-_VIGILANCE = 0.30       # spike-coincidence sim below this -> a novel item code -> recruit (neurogenesis)
-_LR = 0.35              # Bradley-Terry / Elo rank step (fraction of the prediction error applied)
-_DECAY = 0.03           # rank weight decay: a consistent chain still separates (data gradient dominates),
-                        # but a contradictory CYCLE has ~0 net gradient so decay keeps its ranks flat -> chance
-_DRIFT_SCALE = 2.2      # rank-gap -> accumulator drift (raw, NOT normalised: a flat chain -> ~0 drift)
-_BOUND = 1.0            # accumulator sustained-firing bound
-_NOISE = 0.6            # accumulator membrane-noise amplitude
-_MAX_STEPS = 400        # accumulator step cap (bounds runtime; a big drift commits far sooner)
+_VIGILANCE = 0.30  # spike-coincidence sim below this -> a novel item code -> recruit (neurogenesis)
+_LR = 0.35  # Bradley-Terry / Elo rank step (fraction of the prediction error applied)
+_DECAY = 0.03  # rank weight decay: a consistent chain still separates (data gradient dominates),
+# but a contradictory CYCLE has ~0 net gradient so decay keeps its ranks flat -> chance
+_DRIFT_SCALE = 2.2  # rank-gap -> accumulator drift (raw, NOT normalised: a flat chain -> ~0 drift)
+_BOUND = 1.0  # accumulator sustained-firing bound
+_NOISE = 0.6  # accumulator membrane-noise amplitude
+_MAX_STEPS = 400  # accumulator step cap (bounds runtime; a big drift commits far sooner)
 
 
 def _pair_seed(ua, ub):
@@ -104,8 +105,10 @@ class ReasoningEnv:
         self.tag = tag
         rng = random.Random(seed)
         self.order = list(range(self.n_items))
-        rng.shuffle(self.order)                                   # the hidden total order (a permutation)
-        self.pos = {item: i for i, item in enumerate(self.order)}  # item -> rank position (0 = earliest)
+        rng.shuffle(self.order)  # the hidden total order (a permutation)
+        self.pos = {
+            item: i for i, item in enumerate(self.order)
+        }  # item -> rank position (0 = earliest)
 
     def encode(self, item):
         """Spike-polarity hypervector identity for an item (balanced two-line spike code)."""
@@ -148,8 +151,10 @@ class InconsistentEnv(ReasoningEnv):
     every adjacent training pair (same unordered train set as the consistent env)."""
 
     def adjacent_premises(self, k=None):
-        directed = super().adjacent_premises(k)                  # the linear chain (respects k) ...
-        return [p for a, b in directed for p in ((a, b), (b, a))]  # ... each edge in BOTH directions
+        directed = super().adjacent_premises(k)  # the linear chain (respects k) ...
+        return [
+            p for a, b in directed for p in ((a, b), (b, a))
+        ]  # ... each edge in BOTH directions
 
 
 class ReasoningLearner:
@@ -162,8 +167,17 @@ class ReasoningLearner:
     evidence-accumulation attractor and returns which pool wins the spiking race (NOT a float
     compare). Deterministic; per-instance random.Random(seed)."""
 
-    def __init__(self, seed=0, vigilance=_VIGILANCE, lr=_LR, decay=_DECAY, drift_scale=_DRIFT_SCALE,
-                 bound=_BOUND, noise=_NOISE, max_steps=_MAX_STEPS):
+    def __init__(
+        self,
+        seed=0,
+        vigilance=_VIGILANCE,
+        lr=_LR,
+        decay=_DECAY,
+        drift_scale=_DRIFT_SCALE,
+        bound=_BOUND,
+        noise=_NOISE,
+        max_steps=_MAX_STEPS,
+    ):
         self.rng = random.Random(seed)
         self.vigilance = float(vigilance)
         self.lr = float(lr)
@@ -172,11 +186,11 @@ class ReasoningLearner:
         self.bound = float(bound)
         self.noise = float(noise)
         self.max_steps = int(max_steps)
-        self.codebook = {}                                       # unit_id -> spike code (grown)
-        self.rank = {}                                           # unit_id -> learned scalar rank
+        self.codebook = {}  # unit_id -> spike code (grown)
+        self.rank = {}  # unit_id -> learned scalar rank
         self._next_uid = 0
-        self.buffer = ReplayBuffer(capacity=1024, seed=seed)      # premise store for sleep replay
-        self.last_trace = None                                   # last spiking-decision trace
+        self.buffer = ReplayBuffer(capacity=1024, seed=seed)  # premise store for sleep replay
+        self.last_trace = None  # last spiking-decision trace
 
     @property
     def n_units(self):
@@ -186,9 +200,11 @@ class ReasoningLearner:
         """JSON-able learner state: the grown codebook + learned ranks -- enough to decide()/score
         identically after a reload. The replay buffer is NOT saved (it re-fills from live premises;
         the ranks ARE the skill), keeping the durable blob small (real memory only, no noise)."""
-        return {"codebook": {str(u): list(c) for u, c in self.codebook.items()},
-                "rank": {str(u): float(r) for u, r in self.rank.items()},
-                "next_uid": self._next_uid}
+        return {
+            "codebook": {str(u): list(c) for u, c in self.codebook.items()},
+            "rank": {str(u): float(r) for u, r in self.rank.items()},
+            "next_uid": self._next_uid,
+        }
 
     def load_state_dict(self, d):
         """Restore a state_dict() blob (grown codebook + ranks). None/empty -> a fresh learner (no-op)."""
@@ -204,7 +220,7 @@ class ReasoningLearner:
         Routing is a spike-coincidence cleanup over the codebook; a best sim below vigilance is a
         never-seen item -> neurogenesis. Returns -1 for an unknown code when grow=False."""
         if self.codebook:
-            uid, s = cleanup(code, self.codebook)                # nearest stored unit by spike coincidence
+            uid, s = cleanup(code, self.codebook)  # nearest stored unit by spike coincidence
             if s >= self.vigilance:
                 return uid
         if not grow:
@@ -235,7 +251,7 @@ class ReasoningLearner:
         the premise for replay, applies the rank nudge). Returns the pre-update prediction error."""
         ua = self._route(code_a, grow=True)
         ub = self._route(code_b, grow=True)
-        self.buffer.add(ua, ub, 1.0)                             # store for offline sleep replay
+        self.buffer.add(ua, ub, 1.0)  # store for offline sleep replay
         return self._train_units(ua, ub)
 
     def replay_consolidate(self, batch):
@@ -256,13 +272,18 @@ class ReasoningLearner:
         ub = self._route(code_b, grow=False)
         if ua < 0 or ub < 0:
             self.last_trace = None
-            return bool(zlib.crc32(f"{ua}:{ub}".encode()) & 1)   # unseen item -> balanced coin
+            return bool(zlib.crc32(f"{ua}:{ub}".encode()) & 1)  # unseen item -> balanced coin
         drift = self.drift_scale * (self.rank[ua] - self.rank[ub])
-        model = DriftDiffusion(drift, bound=self.bound, noise=self.noise,
-                               seed=_pair_seed(ua, ub), max_steps=self.max_steps)
-        choice, _rt = model.decide()                             # spiking race: choice in {+1, -1}
+        model = DriftDiffusion(
+            drift,
+            bound=self.bound,
+            noise=self.noise,
+            seed=_pair_seed(ua, ub),
+            max_steps=self.max_steps,
+        )
+        choice, _rt = model.decide()  # spiking race: choice in {+1, -1}
         self.last_trace = model.last_trace
-        return choice == 1                                       # +1 pool wins -> a is before b
+        return choice == 1  # +1 pool wins -> a is before b
 
     def held_out_accuracy(self, env):
         """Fraction of NON-adjacent held-out queries decided correctly. Every unordered pair is
@@ -289,8 +310,18 @@ def _mean_active_error(learner, env, premises):
     return tot / len(premises)
 
 
-def develop(env, nights, live_budget, seed=0, replay_batch=0, curiosity=False,
-            stage_sizes=None, jump=False, decay=_DECAY, eval_last_only=False):
+def develop(
+    env,
+    nights,
+    live_budget,
+    seed=0,
+    replay_batch=0,
+    curiosity=False,
+    stage_sizes=None,
+    jump=False,
+    decay=_DECAY,
+    eval_last_only=False,
+):
     """Run the wake/sleep sleep-loop for `nights`, recording held-out accuracy each night.
 
     WAKE samples `live_budget` ADJACENT premises from the active item set (curriculum-controlled) and
@@ -353,7 +384,7 @@ class MemorizationLearner:
         self.seen = {}
 
     def train_premise(self, a, b):
-        self.seen[(a, b)] = True                                 # 'a is before b'
+        self.seen[(a, b)] = True  # 'a is before b'
 
     def decide(self, a, b):
         if (a, b) in self.seen:
@@ -361,7 +392,9 @@ class MemorizationLearner:
         if (b, a) in self.seen:
             return False
         lo, hi = sorted((a, b))
-        return bool(zlib.crc32(f"{lo}:{hi}".encode()) & 1)       # unseen -> balanced, direction-invariant
+        return bool(
+            zlib.crc32(f"{lo}:{hi}".encode()) & 1
+        )  # unseen -> balanced, direction-invariant
 
     def held_out_accuracy(self, env):
         correct = total = 0
@@ -384,8 +417,15 @@ def main():
 
     # ---- (1) HEADLINE: adjacent-only training -> non-adjacent held-out rises to >= 0.9 ----
     env = ReasoningEnv(n_items, seed=0)
-    arc, units_arc, learner, trained = develop(env, nights, live_budget=24, seed=0, replay_batch=24,
-                                               curiosity=False, stage_sizes=stage_sizes)
+    arc, units_arc, learner, trained = develop(
+        env,
+        nights,
+        live_budget=24,
+        seed=0,
+        replay_batch=24,
+        curiosity=False,
+        stage_sizes=stage_sizes,
+    )
     reasoning_final = arc[-1]
 
     # CONTROL-MEM: rote memoriser trained on the SAME adjacent premises.
@@ -402,8 +442,17 @@ def main():
     shuffle_each = []
     for s in shuffle_seeds:
         sh_env = InconsistentEnv(n_items, seed=s, tag="CYC")
-        sh_arc, _u, _l, _t = develop(sh_env, nights, live_budget=24, seed=s, replay_batch=24,
-                                     curiosity=False, stage_sizes=None, jump=True, eval_last_only=True)
+        sh_arc, _u, _l, _t = develop(
+            sh_env,
+            nights,
+            live_budget=24,
+            seed=s,
+            replay_batch=24,
+            curiosity=False,
+            stage_sizes=None,
+            jump=True,
+            eval_last_only=True,
+        )
         shuffle_each.append(sh_arc[-1])
     shuffle_acc = sum(shuffle_each) / len(shuffle_each)
 
@@ -418,18 +467,49 @@ def main():
     balanced = labels.count(True) == labels.count(False)
 
     # ---- (3) SLEEP/REPLAY HELPS at an equal LIVE budget (small budget so it is not yet saturated) ----
-    no_rep_arc, _u, _a, _b = develop(ReasoningEnv(n_items, seed=1), nights=6, live_budget=6, seed=3,
-                                     replay_batch=0, stage_sizes=None, jump=True, eval_last_only=True)
-    rep_arc, _u2, _c, _d = develop(ReasoningEnv(n_items, seed=1), nights=6, live_budget=6, seed=3,
-                                   replay_batch=24, stage_sizes=None, jump=True, eval_last_only=True)
+    no_rep_arc, _u, _a, _b = develop(
+        ReasoningEnv(n_items, seed=1),
+        nights=6,
+        live_budget=6,
+        seed=3,
+        replay_batch=0,
+        stage_sizes=None,
+        jump=True,
+        eval_last_only=True,
+    )
+    rep_arc, _u2, _c, _d = develop(
+        ReasoningEnv(n_items, seed=1),
+        nights=6,
+        live_budget=6,
+        seed=3,
+        replay_batch=24,
+        stage_sizes=None,
+        jump=True,
+        eval_last_only=True,
+    )
     no_rep, with_rep = no_rep_arc[-1], rep_arc[-1]
 
     # ---- (4) NEUROGENESIS + CURRICULUM vs jump-to-largest at an equal budget (a longer chain) ----
     cur_n, cur_stages = 7, [3, 4, 5, 6, 7]
-    cur_arc, _cu, _cl, _cp = develop(ReasoningEnv(cur_n, seed=2), nights=10, live_budget=4, seed=5,
-                                     replay_batch=0, stage_sizes=cur_stages, eval_last_only=True)
-    jump_arc, _ju, _jl, _jp = develop(ReasoningEnv(cur_n, seed=2), nights=10, live_budget=4, seed=5,
-                                      replay_batch=0, stage_sizes=None, jump=True, eval_last_only=True)
+    cur_arc, _cu, _cl, _cp = develop(
+        ReasoningEnv(cur_n, seed=2),
+        nights=10,
+        live_budget=4,
+        seed=5,
+        replay_batch=0,
+        stage_sizes=cur_stages,
+        eval_last_only=True,
+    )
+    jump_arc, _ju, _jl, _jp = develop(
+        ReasoningEnv(cur_n, seed=2),
+        nights=10,
+        live_budget=4,
+        seed=5,
+        replay_batch=0,
+        stage_sizes=None,
+        jump=True,
+        eval_last_only=True,
+    )
     cur_final, jump_final = cur_arc[-1], jump_arc[-1]
 
     # neurogenesis: n_units grows one unit per newly-seen item as the active set grows.
@@ -445,18 +525,41 @@ def main():
     _pred = learner.decide(env.encode(env.order[0]), env.encode(env.order[-1]))
     trace = learner.last_trace
     spiking = trace is not None and trace["spikes"] > 0
-    arc2, _u2, _l2, _t2 = develop(ReasoningEnv(n_items, seed=0), nights, live_budget=24, seed=0,
-                                  replay_batch=24, curiosity=False, stage_sizes=stage_sizes)
+    arc2, _u2, _l2, _t2 = develop(
+        ReasoningEnv(n_items, seed=0),
+        nights,
+        live_budget=24,
+        seed=0,
+        replay_batch=24,
+        curiosity=False,
+        stage_sizes=stage_sizes,
+    )
     deterministic = arc == arc2
     no_tensor = "numpy" not in sys.modules and "torch" not in sys.modules
 
     # CURIOSITY (honest): frontier-premise selection vs uniform, at an equal small budget.
-    cur_on, _x, _xl, _y = develop(ReasoningEnv(n_items, seed=4), nights=6, live_budget=6, seed=6,
-                                  replay_batch=0, curiosity=True, stage_sizes=None, jump=True,
-                                  eval_last_only=True)
-    cur_off, _p, _pl, _q = develop(ReasoningEnv(n_items, seed=4), nights=6, live_budget=6, seed=6,
-                                   replay_batch=0, curiosity=False, stage_sizes=None, jump=True,
-                                   eval_last_only=True)
+    cur_on, _x, _xl, _y = develop(
+        ReasoningEnv(n_items, seed=4),
+        nights=6,
+        live_budget=6,
+        seed=6,
+        replay_batch=0,
+        curiosity=True,
+        stage_sizes=None,
+        jump=True,
+        eval_last_only=True,
+    )
+    cur_off, _p, _pl, _q = develop(
+        ReasoningEnv(n_items, seed=4),
+        nights=6,
+        live_budget=6,
+        seed=6,
+        replay_batch=0,
+        curiosity=False,
+        stage_sizes=None,
+        jump=True,
+        eval_last_only=True,
+    )
     curiosity_on, curiosity_off = cur_on[-1], cur_off[-1]
     curiosity_helps = curiosity_on > curiosity_off + 0.02
 
@@ -464,7 +567,9 @@ def main():
     print("REASONING CURRICULUM -- transitive inference grown by the sleep-loop (spiking)")
     print("=" * 72)
     print(f"n_items={n_items}  nights={nights}  curriculum stages(item-counts)={stage_sizes}")
-    print("train = ADJACENT premises only | held-out = NON-adjacent pairs (distance >= 2), both dirs")
+    print(
+        "train = ADJACENT premises only | held-out = NON-adjacent pairs (distance >= 2), both dirs"
+    )
     print("-" * 72)
     print("night | held-out acc | n_units")
     for night, (acc, uni) in enumerate(zip(arc, units_arc), start=1):
@@ -472,62 +577,104 @@ def main():
         print(f"  {night:>2}  |     {acc:.2f}     |   {uni:>2}   {bar}")
     print("-" * 72)
     print(f"(1) HEADLINE  : reasoning held-out arc [{_fmt_arc(arc)}] -> {reasoning_final:.2f}")
-    print(f"    controls  : memoriser {mem_acc:.2f}  |  inconsistent/cyclic MEAN {shuffle_acc:.2f} "
-          f"over {len(shuffle_seeds)} seeds (both ~chance)")
-    print(f"(2) no-leak   : disjoint={disjoint}  all-dist>=2={all_far}  never-trained-heldout={never_trained}  "
-          f"balanced-labels={balanced} ({labels.count(True)}T/{labels.count(False)}F)")
-    print(f"(3) replay    : held-out no-replay {no_rep:.2f} -> with-replay {with_rep:.2f} (equal live budget)")
-    print(f"(4) curric.   : small->large {cur_final:.2f} vs jump-to-largest {jump_final:.2f} "
-          f"(n={cur_n}, equal budget); neurogenesis {grow_curve}")
-    print(f"(5) spiking   : accumulator trace spikes={trace['spikes'] if spiking else 0}  "
-          f"deterministic={deterministic}  no-numpy/torch={no_tensor}")
-    print(f"    curiosity : frontier {curiosity_on:.2f} vs uniform {curiosity_off:.2f} -> "
-          f"{'HELPS' if curiosity_helps else 'no clear help (honest)'}")
+    print(
+        f"    controls  : memoriser {mem_acc:.2f}  |  inconsistent/cyclic MEAN {shuffle_acc:.2f} "
+        f"over {len(shuffle_seeds)} seeds (both ~chance)"
+    )
+    print(
+        f"(2) no-leak   : disjoint={disjoint}  all-dist>=2={all_far}  never-trained-heldout={never_trained}  "
+        f"balanced-labels={balanced} ({labels.count(True)}T/{labels.count(False)}F)"
+    )
+    print(
+        f"(3) replay    : held-out no-replay {no_rep:.2f} -> with-replay {with_rep:.2f} (equal live budget)"
+    )
+    print(
+        f"(4) curric.   : small->large {cur_final:.2f} vs jump-to-largest {jump_final:.2f} "
+        f"(n={cur_n}, equal budget); neurogenesis {grow_curve}"
+    )
+    print(
+        f"(5) spiking   : accumulator trace spikes={trace['spikes'] if spiking else 0}  "
+        f"deterministic={deterministic}  no-numpy/torch={no_tensor}"
+    )
+    print(
+        f"    curiosity : frontier {curiosity_on:.2f} vs uniform {curiosity_off:.2f} -> "
+        f"{'HELPS' if curiosity_helps else 'no clear help (honest)'}"
+    )
     print("=" * 72)
 
     # ---- (1) HEADLINE asserts: genuine transitive inference, beating both controls ----
-    assert reasoning_final >= 0.9, f"held-out transitive inference must reach >= 0.9 (got {reasoning_final:.2f})"
-    assert arc[-1] > arc[0] + 0.1, f"held-out accuracy must RISE across nights ({arc[0]:.2f} -> {arc[-1]:.2f})"
-    assert 0.4 <= mem_acc <= 0.6, f"memoriser must score ~0.5 on never-seen pairs (got {mem_acc:.2f})"
-    assert 0.4 <= shuffle_acc <= 0.6, f"inconsistent/cyclic ensemble mean must be ~chance (got {shuffle_acc:.2f})"
+    assert reasoning_final >= 0.9, (
+        f"held-out transitive inference must reach >= 0.9 (got {reasoning_final:.2f})"
+    )
+    assert arc[-1] > arc[0] + 0.1, (
+        f"held-out accuracy must RISE across nights ({arc[0]:.2f} -> {arc[-1]:.2f})"
+    )
+    assert 0.4 <= mem_acc <= 0.6, (
+        f"memoriser must score ~0.5 on never-seen pairs (got {mem_acc:.2f})"
+    )
+    assert 0.4 <= shuffle_acc <= 0.6, (
+        f"inconsistent/cyclic ensemble mean must be ~chance (got {shuffle_acc:.2f})"
+    )
     assert reasoning_final >= mem_acc + 0.25, "reasoning must clearly beat the memoriser control"
-    assert reasoning_final >= shuffle_acc + 0.25, "reasoning must clearly beat the inconsistent-order control"
+    assert reasoning_final >= shuffle_acc + 0.25, (
+        "reasoning must clearly beat the inconsistent-order control"
+    )
 
     # ---- (2) NO-LEAKAGE asserts ----
     assert disjoint, "train pairs and held-out pairs must be DISJOINT"
     assert all_far, "every held-out pair must have order-distance >= 2"
     assert never_trained, "the learner must NEVER have trained on a held-out pair"
-    assert balanced, "held-out labels must be balanced (both directions) so a constant answer scores ~0.5"
+    assert balanced, (
+        "held-out labels must be balanced (both directions) so a constant answer scores ~0.5"
+    )
 
     # ---- (3) SLEEP/REPLAY asserts ----
-    assert with_rep > no_rep, f"offline replay must beat no-replay at equal live budget ({with_rep:.2f} vs {no_rep:.2f})"
+    assert with_rep > no_rep, (
+        f"offline replay must beat no-replay at equal live budget ({with_rep:.2f} vs {no_rep:.2f})"
+    )
 
     # ---- (4) NEUROGENESIS + CURRICULUM asserts ----
-    assert cur_final > jump_final, f"small->large curriculum must beat jump-to-largest ({cur_final:.2f} vs {jump_final:.2f})"
-    assert grow_curve[0][1] < grow_curve[-1][1], "n_units must GROW as the number of items grows (neurogenesis)"
-    assert grow_curve[-1][1] == n_items, f"one rank unit per item must be recruited (got {grow_curve[-1][1]}/{n_items})"
+    assert cur_final > jump_final, (
+        f"small->large curriculum must beat jump-to-largest ({cur_final:.2f} vs {jump_final:.2f})"
+    )
+    assert grow_curve[0][1] < grow_curve[-1][1], (
+        "n_units must GROW as the number of items grows (neurogenesis)"
+    )
+    assert grow_curve[-1][1] == n_items, (
+        f"one rank unit per item must be recruited (got {grow_curve[-1][1]}/{n_items})"
+    )
 
     # ---- (5) SPIKING + DETERMINISM asserts ----
     assert spiking, "decide() must route through the spiking accumulator (discrete spike events)"
     assert deterministic, "two seed=0 runs must give an identical held-out arc"
-    assert no_tensor, "pure stdlib: numpy / torch must be absent"
 
     # ---- (6) DURABILITY: a state_dict() round-trip reloads the SAME skill (never-forget across a boot) ----
     blob = learner.state_dict()
     reloaded = ReasoningLearner(seed=0).load_state_dict(blob)
-    same = all(learner.decide(env.encode(a), env.encode(b)) == reloaded.decide(env.encode(a), env.encode(b))
-               for a, b in env.heldout_pairs())
+    same = all(
+        learner.decide(env.encode(a), env.encode(b))
+        == reloaded.decide(env.encode(a), env.encode(b))
+        for a, b in env.heldout_pairs()
+    )
     reloaded_acc = reloaded.held_out_accuracy(env)
-    print(f"(6) durable   : state_dict round-trip -> reloaded held-out {reloaded_acc:.2f} "
-          f"(units {reloaded.n_units}), decides identically={same}")
+    print(
+        f"(6) durable   : state_dict round-trip -> reloaded held-out {reloaded_acc:.2f} "
+        f"(units {reloaded.n_units}), decides identically={same}"
+    )
     assert same, "a reloaded learner (state_dict round-trip) must decide held-out pairs identically"
-    assert reloaded.n_units == learner.n_units, "state_dict round-trip must preserve the grown codebook"
+    assert reloaded.n_units == learner.n_units, (
+        "state_dict round-trip must preserve the grown codebook"
+    )
 
-    print(f"self-check OK: adjacent-only training -> transitive held-out {arc[0]:.2f} -> {reasoning_final:.2f} "
-          f"(>= 0.9), beating memoriser {mem_acc:.2f} and cyclic {shuffle_acc:.2f};")
-    print(f"  no leakage (disjoint, dist>=2, balanced); replay {no_rep:.2f}->{with_rep:.2f}; "
-          f"curriculum {cur_final:.2f}>{jump_final:.2f}; neurogenesis 1 unit/item; spiking + deterministic; "
-          f"curiosity {'helps' if curiosity_helps else 'no clear help (reported honestly)'}")
+    print(
+        f"self-check OK: adjacent-only training -> transitive held-out {arc[0]:.2f} -> {reasoning_final:.2f} "
+        f"(>= 0.9), beating memoriser {mem_acc:.2f} and cyclic {shuffle_acc:.2f};"
+    )
+    print(
+        f"  no leakage (disjoint, dist>=2, balanced); replay {no_rep:.2f}->{with_rep:.2f}; "
+        f"curriculum {cur_final:.2f}>{jump_final:.2f}; neurogenesis 1 unit/item; spiking + deterministic; "
+        f"curiosity {'helps' if curiosity_helps else 'no clear help (reported honestly)'}"
+    )
 
 
 if __name__ == "__main__":

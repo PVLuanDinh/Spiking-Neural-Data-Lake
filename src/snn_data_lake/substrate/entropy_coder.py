@@ -32,13 +32,14 @@ implementation, not cognition.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.entropy_coder
 """
+
 import math
 import random
 
-MASK = 0xFFFFFFFF      # 32-bit working precision
-TOP = 1 << 24          # top-byte-settled renormalization threshold
-BOT = 1 << 16          # underflow threshold (also the max total frequency the coder tolerates)
-MAX_TOTAL = 1 << 16    # scale any model down to this so total frequency stays within the coder
+MASK = 0xFFFFFFFF  # 32-bit working precision
+TOP = 1 << 24  # top-byte-settled renormalization threshold
+BOT = 1 << 16  # underflow threshold (also the max total frequency the coder tolerates)
+MAX_TOTAL = 1 << 16  # scale any model down to this so total frequency stays within the coder
 
 
 def _scale_counts(counts, limit):
@@ -50,7 +51,7 @@ def _scale_counts(counts, limit):
     over = sum(scaled) - limit
     i = 0
     n = len(scaled)
-    while over > 0:                       # trim the surplus off buckets that can spare it
+    while over > 0:  # trim the surplus off buckets that can spare it
         if scaled[i] > 1:
             scaled[i] -= 1
             over -= 1
@@ -88,13 +89,13 @@ class RangeCoder:
         items = [(s, c) for s, c in items if c > 0]
         if not items:
             raise ValueError("model needs at least one symbol with a positive count")
-        items.sort(key=lambda kv: kv[0])                 # stable, deterministic symbol order
+        items.sort(key=lambda kv: kv[0])  # stable, deterministic symbol order
         scaled = _scale_counts([c for _, c in items], MAX_TOTAL)
         self._symbols = [s for s, _ in items]
         self._freq = {}
         self._cum = {}
-        self._cum_arr = []                               # cumulative starts, ascending (for search)
-        self._sym_arr = []                               # symbols aligned with _cum_arr
+        self._cum_arr = []  # cumulative starts, ascending (for search)
+        self._sym_arr = []  # symbols aligned with _cum_arr
         run = 0
         for s, f in zip(self._symbols, scaled):
             self._freq[s] = f
@@ -140,7 +141,7 @@ class RangeCoder:
                 out.append((self._low >> 24) & 0xFF)
                 self._low = (self._low << 8) & MASK
                 self._range = (self._range << 8) & MASK
-        for _ in range(4):                               # flush the remaining low bytes
+        for _ in range(4):  # flush the remaining low bytes
             out.append((self._low >> 24) & 0xFF)
             self._low = (self._low << 8) & MASK
         return bytes(out)
@@ -164,7 +165,7 @@ class RangeCoder:
         self._low = 0
         self._range = MASK
         code = 0
-        for _ in range(4):                               # prime the code word
+        for _ in range(4):  # prime the code word
             code = ((code << 8) | (data[pos] if pos < n else 0)) & MASK
             pos += 1
         total = self._total
@@ -207,21 +208,27 @@ def main():
 
     # ---- 1. lossless round-trip on several stream shapes (THE test) ----
     urng = random.Random(12345)
-    skew_w = [1000, 300, 150, 80, 40, 20, 8, 2]          # skewed 8-symbol model, H ~ 1.7 bits
+    skew_w = [1000, 300, 150, 80, 40, 20, 8, 2]  # skewed 8-symbol model, H ~ 1.7 bits
     skewed = _weighted(skew_w, 40000, seed=7)
     uniform = [urng.randrange(16) for _ in range(40000)]
     allone = [5] * 4000
     short = [2, 7, 2, 2, 7, 3, 2]
 
     rt = []
-    for name, stream in (("skewed", skewed), ("uniform", uniform),
-                         ("all-one", allone), ("short", short)):
+    for name, stream in (
+        ("skewed", skewed),
+        ("uniform", uniform),
+        ("all-one", allone),
+        ("short", short),
+    ):
         coder = RangeCoder(_counts(stream))
         back = coder.decode(coder.encode(stream), len(stream))
         ok = back == stream
         rt.append(ok)
-        print(f"  round-trip {name:8s}: {'OK' if ok else 'FAIL'}  "
-              f"(N={len(stream)}, alphabet={len(set(stream))})")
+        print(
+            f"  round-trip {name:8s}: {'OK' if ok else 'FAIL'}  "
+            f"(N={len(stream)}, alphabet={len(set(stream))})"
+        )
     print(f"  all round-trips bit-exact: {all(rt)}")
 
     # ---- 2. near the entropy bound on the skewed stream (THE point) ----
@@ -245,10 +252,14 @@ def main():
     print("-" * 64)
     print(f"  skewed alphabet k={k}: fixed width = {fixed_w} bits/symbol")
     print(f"    entropy-coded : {len(enc):>7,} B  ({enc_bits / n:.3f} bits/symbol)")
-    print(f"    fixed-width   : {fixed_bits // 8:>7,} B  ({fixed_w}.000 bits/symbol)"
-          f"  -> {fixed_bits / enc_bits:.2f}x smaller")
-    print(f"    byte/symbol   : {byte_bits // 8:>7,} B  (8.000 bits/symbol)"
-          f"  -> {byte_bits / enc_bits:.2f}x smaller")
+    print(
+        f"    fixed-width   : {fixed_bits // 8:>7,} B  ({fixed_w}.000 bits/symbol)"
+        f"  -> {fixed_bits / enc_bits:.2f}x smaller"
+    )
+    print(
+        f"    byte/symbol   : {byte_bits // 8:>7,} B  (8.000 bits/symbol)"
+        f"  -> {byte_bits / enc_bits:.2f}x smaller"
+    )
 
     # ---- 4. no free lunch on a uniform source ----
     ku = 16
@@ -276,10 +287,12 @@ def main():
     assert enc_bits < byte_bits, "must beat one byte per symbol"
     assert abs(u_achieved - log2k) < 0.1, "uniform must land near log2(k) (no free lunch)"
     assert enc_a == enc_b, "coder must be deterministic"
-    print(f"self-check OK: lossless bit-exact round-trips; skewed near H "
-          f"({achieved:.3f} vs {h:.3f} bits/symbol, overhead {overhead:+.3f}); "
-          f"{fixed_bits / enc_bits:.2f}x < fixed-width, {byte_bits / enc_bits:.2f}x < byte/symbol; "
-          f"uniform {u_achieved:.3f} ~ log2(k) {log2k:.3f}")
+    print(
+        f"self-check OK: lossless bit-exact round-trips; skewed near H "
+        f"({achieved:.3f} vs {h:.3f} bits/symbol, overhead {overhead:+.3f}); "
+        f"{fixed_bits / enc_bits:.2f}x < fixed-width, {byte_bits / enc_bits:.2f}x < byte/symbol; "
+        f"uniform {u_achieved:.3f} ~ log2(k) {log2k:.3f}"
+    )
 
 
 if __name__ == "__main__":

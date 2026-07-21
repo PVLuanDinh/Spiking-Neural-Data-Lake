@@ -47,7 +47,7 @@ WHY THERE IS NO SURROGATE (the whole point):
     the spike (the spike, ReLU, is differentiated exactly) -- and the gradient
     check passing to ~1e-9 confirms this handling matches the true gradient.
 
-HONEST SCOPE: this is a MECHANISM demo -- a from-scratch, zero-dependency,
+HONEST SCOPE: this is a MECHANISM demo -- a from-scratch,
 backprop-trainable spiking RNN cell, shown to learn a toy temporal task (delayed
 cue recall) cleanly with plain gradient descent. It is NOT a trained language
 model, not MNIST-scale, and the SRC "spike" is a GRADED, multi-timestep positive
@@ -63,19 +63,20 @@ random.Random). ASCII-only output.
 
   python -m snn_data_lake.cortex.spiking_recurrent_cell
 """
+
 import math
 import random
 
 from snn_data_lake.substrate._mathutils import dot, softmax
 
 # ---- fixed SRC dynamics constants (paper Section 3 / Eq. 5 table) ----
-ALPHA = 0.9      # leaky-integrator leakage factor
-RHO = 3.0        # input rescaling (x confined to (-rho, rho))
-R = 2.0          # fast positive-feedback coefficient
-RS = -7.0        # slow negative-feedback coefficient
-ZS_HYP = 0.9     # slow time constant when h is low (hyperpolarized)
-ZS_DEP = 0.0     # slow time constant when h is high (depolarized)
-H_STEP = 0.5     # Heaviside threshold on h for the zs step
+ALPHA = 0.9  # leaky-integrator leakage factor
+RHO = 3.0  # input rescaling (x confined to (-rho, rho))
+R = 2.0  # fast positive-feedback coefficient
+RS = -7.0  # slow negative-feedback coefficient
+ZS_HYP = 0.9  # slow time constant when h is low (hyperpolarized)
+ZS_DEP = 0.0  # slow time constant when h is high (depolarized)
+H_STEP = 0.5  # Heaviside threshold on h for the zs step
 
 
 def _relu(v):
@@ -100,19 +101,29 @@ class SpikingRecurrentCell:
     computation hides in the spike shape.
     """
 
-    def __init__(self, n_in, n_hidden, n_out, seed=0, ws_scale=1.4,
-                 wr_scale=0.2, wout_scale=0.6, bh_init=-2.5):
+    def __init__(
+        self,
+        n_in,
+        n_hidden,
+        n_out,
+        seed=0,
+        ws_scale=1.4,
+        wr_scale=0.2,
+        wout_scale=0.6,
+        bh_init=-2.5,
+    ):
         rng = random.Random(seed)
         self.n_in = n_in
         self.n_hidden = n_hidden
         self.n_out = n_out
-        self.Ws = [[rng.uniform(-ws_scale, ws_scale) for _ in range(n_in)]
-                   for _ in range(n_hidden)]
-        self.Wr = [[rng.uniform(-wr_scale, wr_scale) for _ in range(n_hidden)]
-                   for _ in range(n_hidden)]
+        self.Ws = [[rng.uniform(-ws_scale, ws_scale) for _ in range(n_in)] for _ in range(n_hidden)]
+        self.Wr = [
+            [rng.uniform(-wr_scale, wr_scale) for _ in range(n_hidden)] for _ in range(n_hidden)
+        ]
         self.bh = [bh_init for _ in range(n_hidden)]
-        self.Wout = [[rng.uniform(-wout_scale, wout_scale) for _ in range(n_hidden)]
-                     for _ in range(n_out)]
+        self.Wout = [
+            [rng.uniform(-wout_scale, wout_scale) for _ in range(n_hidden)] for _ in range(n_out)
+        ]
         self.bout = [0.0 for _ in range(n_out)]
 
     # ---- forward pass: run the spiking dynamics, return prob + cache ----
@@ -169,8 +180,14 @@ class SpikingRecurrentCell:
         logits = [self.bout[c] + dot(self.Wout[c], rate) for c in range(self.n_out)]
         probs = softmax(logits)
         cache = {
-            "seq": seq, "x": big_x, "h": big_h, "hs": big_hs,
-            "sout": big_sout, "zs": big_zs, "rate": rate, "probs": probs,
+            "seq": seq,
+            "x": big_x,
+            "h": big_h,
+            "hs": big_hs,
+            "sout": big_sout,
+            "zs": big_zs,
+            "rate": rate,
+            "probs": probs,
         }
         return probs, cache
 
@@ -233,8 +250,8 @@ class SpikingRecurrentCell:
                     dh_t[j] += dsout_t[j]
                 # h = tanh(a): da = dh * (1 - h^2)
                 da = dh_t[j] * (1.0 - h_t[j] * h_t[j])
-                g_bh[j] += da                       # a = ... + bh
-                dx = da                             # a = x + ... (d a / d x = 1)
+                g_bh[j] += da  # a = ... + bh
+                dx = da  # a = x + ... (d a / d x = 1)
                 if has_prev:
                     # a[t] = x + r*h[t-1] + rs*hs[t-1] + bh
                     dh_prev[j] += da * R
@@ -255,7 +272,7 @@ class SpikingRecurrentCell:
                     dij = di_t[j]
                     for m in range(h_pmap):
                         gwrj[m] += dij * sout_prev[m]
-                        dsout_prev[m] += dij * wrj[m]   # via s_out[t-1]=ReLU(h[t-1])
+                        dsout_prev[m] += dij * wrj[m]  # via s_out[t-1]=ReLU(h[t-1])
                     di_prev[j] += dij * ALPHA
         loss = -math.log(max(probs[label], 1e-12))
         grads = {"Ws": g_ws, "Wr": g_wr, "bh": g_bh, "Wout": g_wout, "bout": g_bout}
@@ -263,8 +280,13 @@ class SpikingRecurrentCell:
 
     # ---- parameter update (plain SGD with momentum) ----
     def _named(self):
-        return (("Ws", self.Ws), ("Wr", self.Wr), ("bh", self.bh),
-                ("Wout", self.Wout), ("bout", self.bout))
+        return (
+            ("Ws", self.Ws),
+            ("Wr", self.Wr),
+            ("bh", self.bh),
+            ("Wout", self.Wout),
+            ("bout", self.bout),
+        )
 
     def apply_grads(self, grads, lr, velo):
         for name, param in self._named():
@@ -308,8 +330,10 @@ def train(cell, data, epochs, lr):
     history = []
     n = len(data)
     for _ in range(epochs):
-        acc_grads = {name: ([[0.0] * len(r) for r in p] if isinstance(p[0], list)
-                            else [0.0] * len(p)) for name, p in cell._named()}
+        acc_grads = {
+            name: ([[0.0] * len(r) for r in p] if isinstance(p[0], list) else [0.0] * len(p))
+            for name, p in cell._named()
+        }
         total = 0.0
         for seq, label in data:
             _, cache = cell.forward(seq)
@@ -343,16 +367,15 @@ def make_dataset(n_samples, n_classes, seq_len, seed, bg_prob=0.08):
     every channel force the net to integrate/hold evidence across time, not peek
     at a single frame. Chance accuracy = 1 / n_classes."""
     rng = random.Random(seed)
-    cue_lo, cue_hi = 1, max(2, seq_len // 2)   # cue lives in an early window
+    cue_lo, cue_hi = 1, max(2, seq_len // 2)  # cue lives in an early window
     data = []
     for _ in range(n_samples):
         label = rng.randrange(n_classes)
         seq = []
         for t in range(seq_len):
-            frame = [1.0 if rng.random() < bg_prob else 0.0
-                     for _ in range(n_classes)]
+            frame = [1.0 if rng.random() < bg_prob else 0.0 for _ in range(n_classes)]
             if cue_lo <= t < cue_hi:
-                frame[label] = 1.0             # cue channel fires in the window
+                frame[label] = 1.0  # cue channel fires in the window
             seq.append(frame)
         data.append((seq, label))
     return data
@@ -373,8 +396,10 @@ def gradient_check(cell, data, eps=1e-5):
     we backprop the real gradient of the real forward op => NO surrogate. A
     binary-spike SNN would blow this up (its true numeric gradient is ~0)."""
     # analytic gradient (batch-averaged)
-    acc = {name: ([[0.0] * len(r) for r in p] if isinstance(p[0], list)
-                  else [0.0] * len(p)) for name, p in cell._named()}
+    acc = {
+        name: ([[0.0] * len(r) for r in p] if isinstance(p[0], list) else [0.0] * len(p))
+        for name, p in cell._named()
+    }
     for seq, label in data:
         _, cache = cell.forward(seq)
         grads, _ = cell.backward(cache, label)
@@ -413,15 +438,15 @@ def main():
     seq_len = 10
     chance = 1.0 / n_classes
 
-    cell = SpikingRecurrentCell(n_in=n_classes, n_hidden=14, n_out=n_classes,
-                                seed=1, bh_init=-1.6)
+    cell = SpikingRecurrentCell(n_in=n_classes, n_hidden=14, n_out=n_classes, seed=1, bh_init=-1.6)
 
     train_data = make_dataset(120, n_classes, seq_len, seed=10)
     test_data = make_dataset(240, n_classes, seq_len, seed=999)
 
     # CONTROL: an untrained / random-weight cell (same architecture)
-    control = SpikingRecurrentCell(n_in=n_classes, n_hidden=14, n_out=n_classes,
-                                   seed=1, bh_init=-1.6)
+    control = SpikingRecurrentCell(
+        n_in=n_classes, n_hidden=14, n_out=n_classes, seed=1, bh_init=-1.6
+    )
     control_acc = accuracy(control, test_data)
 
     # structural no-surrogate proof BEFORE training (arbitrary weights)
@@ -443,51 +468,64 @@ def main():
     n_events = sum(1 for v in flat if v > 0.0)
     # structural: the "spike" is EXACTLY ReLU(h) -- a differentiable function of
     # state, not a binarized Heaviside that would need a surrogate.
-    is_relu = all(sout[t][j] == _relu(hh[t][j])
-                  for t in range(len(sout)) for j in range(cell.n_hidden))
+    is_relu = all(
+        sout[t][j] == _relu(hh[t][j]) for t in range(len(sout)) for j in range(cell.n_hidden)
+    )
     silent_steps = sum(1 for row in sout if all(v == 0.0 for v in row))
 
     print("=" * 70)
     print("SPIKING RECURRENT CELL (SRC) -- differentiable, backprop-trainable,")
     print("no surrogate gradient   [reproduces arXiv:2306.03623]")
     print("=" * 70)
-    print(f"task: delayed cue recall, {n_classes} classes, T={seq_len} "
-          f"(chance = {chance:.0%})")
-    print(f"train loss: {history[0]:.3f} -> {history[-1]:.3f}  "
-          f"({len(history)} epochs, plain BPTT gradient descent)")
-    print(f"accuracy  : train {train_acc:.0%}   held-out {test_acc:.0%}   "
-          f"random-control {control_acc:.0%}")
+    print(f"task: delayed cue recall, {n_classes} classes, T={seq_len} (chance = {chance:.0%})")
+    print(
+        f"train loss: {history[0]:.3f} -> {history[-1]:.3f}  "
+        f"({len(history)} epochs, plain BPTT gradient descent)"
+    )
+    print(
+        f"accuracy  : train {train_acc:.0%}   held-out {test_acc:.0%}   "
+        f"random-control {control_acc:.0%}"
+    )
     print("-" * 70)
     print("no-surrogate structural proof:")
-    print(f"  analytic BPTT vs finite-difference TRUE gradient: "
-          f"max rel err {grad_err:.2e}")
+    print(f"  analytic BPTT vs finite-difference TRUE gradient: max rel err {grad_err:.2e}")
     print(f"  spike output equals ReLU(h) exactly (differentiable): {is_relu}")
     print("event / spiking evidence on a held-out sample:")
-    print(f"  s_out sparsity (exactly-zero fraction): {sparsity:.0%} "
-          f"({n_events} discrete spike-events, {silent_steps} fully-silent steps)")
+    print(
+        f"  s_out sparsity (exactly-zero fraction): {sparsity:.0%} "
+        f"({n_events} discrete spike-events, {silent_steps} fully-silent steps)"
+    )
     print("=" * 70)
 
     # ---- un-riggable self-checks: a headline claim + a control that FAILS ----
-    assert history[-1] < history[0] - 0.3, \
+    assert history[-1] < history[0] - 0.3, (
         f"training loss must drop under plain BPTT ({history[0]:.3f}->{history[-1]:.3f})"
-    assert test_acc >= 0.80, \
+    )
+    assert test_acc >= 0.80, (
         f"held-out accuracy must rise well above chance ({test_acc:.2f} vs {chance:.2f})"
+    )
     # CONTROL genuinely fails: random weights cannot beat chance by much
-    assert control_acc <= chance + 0.15, \
+    assert control_acc <= chance + 0.15, (
         f"untrained control must score ~chance ({control_acc:.2f} vs {chance:.2f})"
-    assert test_acc > control_acc + 0.30, \
-        f"training must beat the random control by a wide margin " \
+    )
+    assert test_acc > control_acc + 0.30, (
+        f"training must beat the random control by a wide margin "
         f"({test_acc:.2f} vs {control_acc:.2f})"
+    )
     # structural: genuinely spiking (event-based) + genuinely no surrogate
-    assert grad_err < 1e-3, \
+    assert grad_err < 1e-3, (
         f"analytic BPTT must match the true numeric gradient (no surrogate): {grad_err:.2e}"
+    )
     assert is_relu, "inter-unit spike output must be exactly ReLU(h) (differentiable event)"
-    assert sparsity >= 0.30, \
+    assert sparsity >= 0.30, (
         f"output must be event-based / sparse, not a dense signal ({sparsity:.2f})"
+    )
     assert n_events > 0, "the cell must actually emit spike-events"
-    print(f"self-check OK: loss {history[0]:.2f}->{history[-1]:.2f}, held-out "
-          f"{test_acc:.0%} >> chance {chance:.0%} (random {control_acc:.0%}); "
-          f"no surrogate (grad err {grad_err:.1e}); {sparsity:.0%} sparse events")
+    print(
+        f"self-check OK: loss {history[0]:.2f}->{history[-1]:.2f}, held-out "
+        f"{test_acc:.0%} >> chance {chance:.0%} (random {control_acc:.0%}); "
+        f"no surrogate (grad err {grad_err:.1e}); {sparsity:.0%} sparse events"
+    )
 
 
 if __name__ == "__main__":

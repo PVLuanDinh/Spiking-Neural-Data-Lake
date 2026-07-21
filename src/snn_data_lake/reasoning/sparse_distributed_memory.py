@@ -12,6 +12,7 @@ self-contained option, not the live default. Refs: Kanerva, "Sparse Distributed 
 
   python -m snn_data_lake.sparse_distributed_memory        # (also run by run_selfchecks.py)
 """
+
 import random
 
 from snn_data_lake.signal_loop import build_default_library
@@ -48,7 +49,7 @@ class SDM:
         active = self._active(address)
         if not active:
             return [0] * self.data_dim
-        return [sum(self.ctr[i][j] for i in active) for j in range(self.data_dim)]   # summed votes
+        return [sum(self.ctr[i][j] for i in active) for j in range(self.data_dim)]  # summed votes
 
 
 class SDMMatcher:
@@ -80,8 +81,10 @@ def main():
         return [min(1.0, max(0.0, x + rng.uniform(-n, n))) for x in v]
 
     trials = 150
-    ok = sum(matcher.label(jitter(library[labels[i % len(labels)]], 0.10)) == labels[i % len(labels)]
-             for i in range(trials))
+    ok = sum(
+        matcher.label(jitter(library[labels[i % len(labels)]], 0.10)) == labels[i % len(labels)]
+        for i in range(trials)
+    )
     acc = ok / trials
     clean = sum(matcher.label(library[lab]) == lab for lab in labels)
 
@@ -89,16 +92,21 @@ def main():
     print("SDM MATCHER — distributed associative-recall gesture recognition")
     print("=" * 60)
     print(f"{len(labels)} commands, {matcher.mem.n} hard locations, radius {matcher.mem.r}")
-    print(f"recognition accuracy: {acc:.0%} on {trials} jittered windows; clean {clean}/{len(labels)}")
+    print(
+        f"recognition accuracy: {acc:.0%} on {trials} jittered windows; clean {clean}/{len(labels)}"
+    )
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert acc >= 0.9, f"SDM matcher must recognize the commands ({acc:.2f})"
     assert clean == len(labels), "every clean command must be recognized exactly"
-    assert SDMMatcher(library).label(library[labels[0]]) == \
-        SDMMatcher(library).label(library[labels[0]]), "deterministic"
-    print(f"self-check OK: SDM matcher {acc:.0%} on jittered windows, {clean}/{len(labels)} clean; "
-          f"distributed associative recall wired to the command library; deterministic")
+    assert SDMMatcher(library).label(library[labels[0]]) == SDMMatcher(library).label(
+        library[labels[0]]
+    ), "deterministic"
+    print(
+        f"self-check OK: SDM matcher {acc:.0%} on jittered windows, {clean}/{len(labels)} clean; "
+        f"distributed associative recall wired to the command library; deterministic"
+    )
 
 
 if __name__ == "__main__":

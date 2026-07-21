@@ -1,5 +1,5 @@
 """
-Astrocyte / tripartite-synapse modulation -- slow, LOCAL, activity-driven glial gain (pure stdlib).
+Astrocyte / tripartite-synapse modulation -- slow, LOCAL, activity-driven glial gain.
 
 An astrocyte process wraps a GROUP of synapses and forms a THIRD element of the synapse (Araque,
 Parpura, Sanzgiri & Haydon, Trends Neurosci 22:208, 1999; Volterra & Meldolesi, Nat Rev Neurosci
@@ -35,6 +35,7 @@ A reduced slow-Ca + threshold-gliotransmission model of tripartite synapse on sy
 activity -- phenomenological glial gain, NOT IP3 / Ca-induced-Ca-release biophysics, no diffusion or
 astrocyte network, not cognition.
 """
+
 import math
 import random
 
@@ -44,15 +45,24 @@ from snn_data_lake.cortex.lif_neuron import LIFNeuron
 class Astrocyte:
     """Slow, local, activity-driven glial gain over one or more synaptic domains."""
 
-    def __init__(self, n_domains=2, ca_rise=0.02, ca_decay=0.02, ca_thresh=0.5,
-                 gain=2.0, tau_gain=30.0, ca_noise=0.0, seed=0):
+    def __init__(
+        self,
+        n_domains=2,
+        ca_rise=0.02,
+        ca_decay=0.02,
+        ca_thresh=0.5,
+        gain=2.0,
+        tau_gain=30.0,
+        ca_noise=0.0,
+        seed=0,
+    ):
         self.n_domains = n_domains
         self.ca_rise = ca_rise
-        self.ca_decay = ca_decay                     # tau_ca = 1/ca_decay (LONG relative to tau_m)
+        self.ca_decay = ca_decay  # tau_ca = 1/ca_decay (LONG relative to tau_m)
         self.ca_thresh = ca_thresh
         self.gain = gain
         self.gain_relax = math.exp(-1.0 / tau_gain)  # slow return of the gain toward 1
-        self.ca_noise = ca_noise                     # optional Ca microdomain jitter (default off)
+        self.ca_noise = ca_noise  # optional Ca microdomain jitter (default off)
         self._rng = random.Random(seed)
         self.reset()
 
@@ -99,13 +109,13 @@ def _run(astro, activities):
 
 def main():
     t_on, t_off = 100, 60
-    n_persist = 15                                   # persistence horizon after the drive stops
+    n_persist = 15  # persistence horizon after the drive stops
 
     # 1. sustained-high drive -> Ca ramps past threshold -> gliotransmission engages
     sus_ca, sus_g = _run(Astrocyte(n_domains=1), [1.0] * t_on + [0.0] * t_off)
     sus_peak_g = max(sus_g)
     cross_tick = next(i for i, c in enumerate(sus_ca) if c >= 0.5)
-    persist_g = sus_g[t_on + n_persist - 1]          # gain n_persist ticks after the drive stops
+    persist_g = sus_g[t_on + n_persist - 1]  # gain n_persist ticks after the drive stops
 
     # 1b. brief-high drive -> Ca stays subthreshold -> no gliotransmission
     brief_ca, brief_g = _run(Astrocyte(n_domains=1), [1.0] * 5 + [0.0] * (t_on + t_off - 5))
@@ -151,35 +161,46 @@ def main():
     print(f"brief gain (every 20)  : {sample(brief_g)}  peak gain {brief_peak_g:.3f} (~1)")
     print(f"low-drive gain         : {low_gain:.3f} (~1, subthreshold)")
     print(f"persistence: gain +{n_persist} ticks after drive stops = {persist_g:.3f} (still on)")
-    print(f"locality  : domain A ca {ca_active:.3f} gain {gain_active:.3f}  |  "
-          f"domain B ca {ca_quiet:.3f} gain {gain_quiet:.3f}")
-    print(f"downstream LIF spikes  : baseline {base_spikes}  ->  modulated {mod_spikes}"
-          f"  (gain {mod_astro.gains[0]:.2f} on drive {drive})")
+    print(
+        f"locality  : domain A ca {ca_active:.3f} gain {gain_active:.3f}  |  "
+        f"domain B ca {ca_quiet:.3f} gain {gain_quiet:.3f}"
+    )
+    print(
+        f"downstream LIF spikes  : baseline {base_spikes}  ->  modulated {mod_spikes}"
+        f"  (gain {mod_astro.gains[0]:.2f} on drive {drive})"
+    )
     print("=" * 68)
 
-    # ---- self-checks: deterministic asserts, zero-dep ----
+    # ---- self-checks: deterministic asserts ----
     # 1. slow activity-dependent threshold gliotransmission
-    assert sus_peak_g - 1.0 > 0.2, \
+    assert sus_peak_g - 1.0 > 0.2, (
         f"sustained-high must engage gliotransmission (gain {sus_peak_g:.3f} >> 1)"
-    assert abs(brief_peak_g - 1.0) < 0.05 and brief_ca_max < 0.5, \
+    )
+    assert abs(brief_peak_g - 1.0) < 0.05 and brief_ca_max < 0.5, (
         f"brief drive must stay subthreshold (ca {brief_ca_max:.3f}, gain {brief_peak_g:.3f} ~ 1)"
+    )
     assert abs(low_gain - 1.0) < 0.05, f"low drive must not engage (gain {low_gain:.3f} ~ 1)"
     assert cross_tick > 20, f"Ca must ramp SLOWLY, not per-spike (crosses tick {cross_tick})"
     # 2. slow timescale / persistence (tau_ca=50 >> membrane tau=10; still modulated N ticks later)
-    assert persist_g - 1.0 > 0.1, \
+    assert persist_g - 1.0 > 0.1, (
         f"gain must persist {n_persist} ticks after offset (tau_ca=50 vs tau_m=10): {persist_g:.3f}"
+    )
     # 3. locality -- an active and a quiet domain in the SAME astrocyte end clearly different
-    assert gain_active - gain_quiet > 0.3 and ca_active - ca_quiet > 0.3, \
+    assert gain_active - gain_quiet > 0.3 and ca_active - ca_quiet > 0.3, (
         f"active vs quiet domain must differ (gain {gain_active:.3f} vs {gain_quiet:.3f})"
+    )
     assert abs(gain_quiet - 1.0) < 1e-9, f"quiet domain must be unmodulated (gain {gain_quiet:.3f})"
     # 4. functional effect on transmission
-    assert mod_spikes > base_spikes, \
+    assert mod_spikes > base_spikes, (
         f"gliotransmission must change downstream output ({mod_spikes} vs {base_spikes} spikes)"
+    )
     # 5. determinism
     assert tr1 == tr2, "same seed/inputs must give identical Ca/gain traces"
-    print(f"self-check OK: sustained {sus_peak_g:.2f} engages vs brief {brief_peak_g:.2f} ~ 1; "
-          f"persists {persist_g:.2f} +{n_persist}; A {gain_active:.2f} != B {gain_quiet:.2f}; "
-          f"LIF {base_spikes}->{mod_spikes} spikes; deterministic")
+    print(
+        f"self-check OK: sustained {sus_peak_g:.2f} engages vs brief {brief_peak_g:.2f} ~ 1; "
+        f"persists {persist_g:.2f} +{n_persist}; A {gain_active:.2f} != B {gain_quiet:.2f}; "
+        f"LIF {base_spikes}->{mod_spikes} spikes; deterministic"
+    )
 
 
 if __name__ == "__main__":

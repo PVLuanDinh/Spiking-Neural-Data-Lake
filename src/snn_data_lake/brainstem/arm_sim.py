@@ -14,6 +14,7 @@ Backends:
 
   python arm_sim.py
 """
+
 import math
 import re
 
@@ -22,8 +23,8 @@ from snn_data_lake.brainstem.arm_config import (
 )
 
 DEG = math.pi / 180.0
-FLOOR_Y = -0.20                 # end-effector below this = ground collision
-OBSTACLE = (0.4, 1.3)           # point obstacle (x, y)
+FLOOR_Y = -0.20  # end-effector below this = ground collision
+OBSTACLE = (0.4, 1.3)  # point obstacle (x, y)
 OBSTACLE_R = 0.30
 
 _JOINT = re.compile(r"JOINT_([AB])_ROTATE\(([+-]?\d+(?:\.\d+)?)deg\)")
@@ -34,12 +35,14 @@ class ArmSim:
 
     def __init__(self, l1=1.0, l2=1.0, use_pybullet=False):
         self.l1, self.l2 = l1, l2
-        self.theta = [0.0, 0.0]     # joint A, B angles (radians)
-        self.gripper = 0.0          # 0 = open .. 1 = closed
+        self.theta = [0.0, 0.0]  # joint A, B angles (radians)
+        self.gripper = 0.0  # 0 = open .. 1 = closed
         self.stopped = False
         self.backend = "stdlib"
         self._p = None
-        self.expected_ee = self.ee()   # where the EE SHOULD be given the last command (trajectory ref)
+        self.expected_ee = (
+            self.ee()
+        )  # where the EE SHOULD be given the last command (trajectory ref)
         if use_pybullet:
             self._init_pybullet()
 
@@ -64,7 +67,7 @@ class ArmSim:
             self.stopped = True
             return self.state()
         if self.stopped and command not in ("RETRACT_ALL", "HOME"):
-            return self.state()                       # frozen until retract / home
+            return self.state()  # frozen until retract / home
         moved = False
         m = _JOINT.fullmatch(command or "")
         if m:
@@ -84,7 +87,7 @@ class ArmSim:
         # (audit P1) recommitting expected_ee on a no-op would zero deviation() and silently clear a
         # trajectory_breach() after an external perturb, with NO corrective motion. Only real motion recommits.
         if moved:
-            self.expected_ee = self.ee()   # a MOTION command defines where the arm intends to be
+            self.expected_ee = self.ee()  # a MOTION command defines where the arm intends to be
         if self._p is not None:
             self._sync_pybullet()
         return self.state()
@@ -112,39 +115,59 @@ class ArmSim:
 
     def state(self):
         x, y = self.ee()
-        return {"theta_deg": [round(t / DEG, 1) for t in self.theta],
-                "ee": (round(x, 3), round(y, 3)), "gripper": self.gripper,
-                "stopped": self.stopped, "collision": self.collision(),
-                "deviation": round(self.deviation(), 3), "backend": self.backend}
+        return {
+            "theta_deg": [round(t / DEG, 1) for t in self.theta],
+            "ee": (round(x, 3), round(y, 3)),
+            "gripper": self.gripper,
+            "stopped": self.stopped,
+            "collision": self.collision(),
+            "deviation": round(self.deviation(), 3),
+            "backend": self.backend,
+        }
 
     # ---- optional pybullet physics (headless) ------------------------------
     def _init_pybullet(self):
         try:
             import pybullet as p
-            self.cid = p.connect(p.DIRECT)            # headless: no OpenGL window (CI-safe)
-            p.setGravity(0, 0, 0, physicsClientId=self.cid)   # kinematic planar arm
+
+            self.cid = p.connect(p.DIRECT)  # headless: no OpenGL window (CI-safe)
+            p.setGravity(0, 0, 0, physicsClientId=self.cid)  # kinematic planar arm
             # base + 2 revolute links rotating about Z, lying in the XY plane
             link_l = [self.l1, self.l2]
-            col = [p.createCollisionShape(p.GEOM_BOX, halfExtents=[ll / 2, 0.05, 0.05],
-                                          physicsClientId=self.cid) for ll in link_l]
+            col = [
+                p.createCollisionShape(
+                    p.GEOM_BOX, halfExtents=[ll / 2, 0.05, 0.05], physicsClientId=self.cid
+                )
+                for ll in link_l
+            ]
             self.arm = p.createMultiBody(
-                baseMass=0, baseCollisionShapeIndex=-1, basePosition=[0, 0, 0],
-                linkMasses=[1, 1], linkCollisionShapeIndices=col,
+                baseMass=0,
+                baseCollisionShapeIndex=-1,
+                basePosition=[0, 0, 0],
+                linkMasses=[1, 1],
+                linkCollisionShapeIndices=col,
                 linkVisualShapeIndices=[-1, -1],
                 linkPositions=[[link_l[0] / 2, 0, 0], [link_l[1], 0, 0]],
                 linkOrientations=[[0, 0, 0, 1], [0, 0, 0, 1]],
                 linkInertialFramePositions=[[0, 0, 0], [0, 0, 0]],
                 linkInertialFrameOrientations=[[0, 0, 0, 1], [0, 0, 0, 1]],
-                linkParentIndices=[0, 1], linkJointTypes=[p.JOINT_REVOLUTE, p.JOINT_REVOLUTE],
-                linkJointAxis=[[0, 0, 1], [0, 0, 1]], physicsClientId=self.cid)
+                linkParentIndices=[0, 1],
+                linkJointTypes=[p.JOINT_REVOLUTE, p.JOINT_REVOLUTE],
+                linkJointAxis=[[0, 0, 1], [0, 0, 1]],
+                physicsClientId=self.cid,
+            )
             self.obstacle = p.createMultiBody(
-                baseMass=0, baseCollisionShapeIndex=p.createCollisionShape(
-                    p.GEOM_SPHERE, radius=OBSTACLE_R, physicsClientId=self.cid),
-                basePosition=[OBSTACLE[0], OBSTACLE[1], 0], physicsClientId=self.cid)
+                baseMass=0,
+                baseCollisionShapeIndex=p.createCollisionShape(
+                    p.GEOM_SPHERE, radius=OBSTACLE_R, physicsClientId=self.cid
+                ),
+                basePosition=[OBSTACLE[0], OBSTACLE[1], 0],
+                physicsClientId=self.cid,
+            )
             self._p = p
             self.backend = "pybullet"
         except Exception:
-            self._p = None                            # any failure -> stdlib backend
+            self._p = None  # any failure -> stdlib backend
 
     def _sync_pybullet(self):
         p = self._p
@@ -156,8 +179,9 @@ class ArmSim:
         """Real contact count from physics (only meaningful on the pybullet backend)."""
         if self._p is None:
             return None
-        pts = self._p.getClosestPoints(self.arm, self.obstacle, distance=0.0,
-                                       physicsClientId=self.cid)
+        pts = self._p.getClosestPoints(
+            self.arm, self.obstacle, distance=0.0, physicsClientId=self.cid
+        )
         return len(pts)
 
     def close(self):
@@ -171,7 +195,7 @@ def drive(arm, commands):
 
 
 def main():
-    arm = ArmSim()                                    # stdlib backend (CI path)
+    arm = ArmSim()  # stdlib backend (CI path)
 
     home = arm.apply("HOME")
     assert home["ee"] == (2.0, 0.0) and home["collision"] is None, "HOME pose wrong"
@@ -197,11 +221,13 @@ def main():
 
     # trajectory-deviation comparator: a command stays on-path; an external perturb trips it
     arm.apply("HOME")
-    assert arm.deviation() < 1e-9 and not arm.trajectory_breach(), "commanded pose must read on-path"
-    arm.perturb(da_deg=20)                              # external shove, NOT a command
+    assert arm.deviation() < 1e-9 and not arm.trajectory_breach(), (
+        "commanded pose must read on-path"
+    )
+    arm.perturb(da_deg=20)  # external shove, NOT a command
     assert arm.trajectory_breach(), "comparator missed an off-path perturbation"
     dev = arm.deviation()
-    arm.apply("HOME")                                   # corrective re-home recommits the path
+    arm.apply("HOME")  # corrective re-home recommits the path
     assert not arm.trajectory_breach(), "corrective HOME did not clear the trajectory breach"
 
     # audit P1: a no-op command (HOLD / unknown token / gripper) must NOT clear a trajectory breach --
@@ -215,13 +241,16 @@ def main():
     arm.apply("ZZZ_UNKNOWN")
     assert arm.trajectory_breach(), "an unknown no-op token must NOT clear a trajectory breach"
     arm.apply("GRIPPER_CLOSE")
-    assert arm.trajectory_breach(), "a gripper command (no joint motion) must NOT clear a trajectory breach"
+    assert arm.trajectory_breach(), (
+        "a gripper command (no joint motion) must NOT clear a trajectory breach"
+    )
     arm.apply("HOME")
     assert not arm.trajectory_breach(), "corrective HOME after the no-ops must clear the breach"
 
     # integration: Interpreter command -> arm motion
     from snn_data_lake.brainstem.interpreter import Interpreter
-    cmd = Interpreter().interpret({"match": "JOINT_B_ROTATE"})[0]   # -> "JOINT_B_ROTATE(-10deg)"
+
+    cmd = Interpreter().interpret({"match": "JOINT_B_ROTATE"})[0]  # -> "JOINT_B_ROTATE(-10deg)"
     arm.apply("HOME")
     moved = arm.apply(cmd)
     assert moved["theta_deg"][1] == -10.0, f"interpreter cmd '{cmd}' did not move joint B"
@@ -236,8 +265,10 @@ def main():
     print(f"trajectory  : perturb +20deg -> deviation {dev:.3f}m (bound {TRAJ_DEV_MAX}) -> breach")
     print(f"interpreter : '{cmd}' -> joint B = {moved['theta_deg'][1]} deg")
     print("=" * 56)
-    print("self-check OK: commands move joints, collision detected, E-STOP freezes, "
-          "trajectory comparator catches off-path perturbation, Interpreter drives the arm")
+    print(
+        "self-check OK: commands move joints, collision detected, E-STOP freezes, "
+        "trajectory comparator catches off-path perturbation, Interpreter drives the arm"
+    )
     arm.close()
 
 

@@ -1,5 +1,5 @@
 """
-HTM temporal memory + lake sequence-anomaly — predict the next spike-pattern from context (pure stdlib).
+HTM temporal memory + lake sequence-anomaly — predict the next spike-pattern from context.
 
 The lake can store and recall spike patterns; HTM temporal memory (Numenta) PREDICTS the next one from context.
 Each input is a sparse set of active COLUMNS; each column has several CELLS so the same column can be active in
@@ -21,6 +21,7 @@ a segment that predicted a column which then didn't fire). Not the full Numenta 
 
   python -m snn_data_lake.hippocampus.htm_sequence_memory        # (also run by run_selfchecks.py)
 """
+
 import random
 
 from snn_data_lake.cortex.spike_preprocessing import N, encode_latency
@@ -28,7 +29,9 @@ from snn_data_lake.cortex.spike_preprocessing import N, encode_latency
 
 def encode(symbol, n_cols=256, w=5):
     """Deterministic sparse distributed representation: symbol -> w active columns of n_cols (near-orthogonal)."""
-    seed = sum((i + 1) * ord(ch) for i, ch in enumerate(symbol))       # stable across runs (no builtin hash)
+    seed = sum(
+        (i + 1) * ord(ch) for i, ch in enumerate(symbol)
+    )  # stable across runs (no builtin hash)
     return frozenset(random.Random(seed).sample(range(n_cols), w))
 
 
@@ -39,7 +42,7 @@ class TemporalMemory:
         self.n_cols = n_cols
         self.cpc = cells_per_col
         self.threshold = threshold
-        self.segments = {}                 # cell -> list of segments; each segment = set(presynaptic cells)
+        self.segments = {}  # cell -> list of segments; each segment = set(presynaptic cells)
         self.reset()
 
     def reset(self):
@@ -52,7 +55,7 @@ class TemporalMemory:
         return range(col * self.cpc, col * self.cpc + self.cpc)
 
     def _best_winner(self, col):
-        return min(self._cells(col), key=lambda c: len(self.segments.get(c, [])))   # least-used cell
+        return min(self._cells(col), key=lambda c: len(self.segments.get(c, [])))  # least-used cell
 
     def _matching_cell(self, col, context):
         """Cell in col whose existing segment best matches the prior context (stable reuse). None if no match."""
@@ -77,16 +80,19 @@ class TemporalMemory:
         if learn:
             for cell in self.predictive_cells:
                 if cell // self.cpc not in active_cols:
-                    self.segments[cell] = [seg for seg in self.segments.get(cell, [])
-                                           if len(seg & prev_active) < self.threshold]
+                    self.segments[cell] = [
+                        seg
+                        for seg in self.segments.get(cell, [])
+                        if len(seg & prev_active) < self.threshold
+                    ]
 
         new_active, new_winner = set(), set()
         for col in active_cols:
             predicted = [c for c in self._cells(col) if c in self.predictive_cells]
-            if predicted:                                  # expected: only the predicted cells fire
+            if predicted:  # expected: only the predicted cells fire
                 new_active.update(predicted)
                 new_winner.update(predicted)
-            else:                                          # surprise: burst the whole column
+            else:  # surprise: burst the whole column
                 new_active.update(self._cells(col))
                 # reuse the cell already representing this context (stable), else start a new one.
                 # segments stay FIXED once grown (binary) -- union-expanding a reused segment would
@@ -99,8 +105,9 @@ class TemporalMemory:
                 new_winner.add(cell)
 
         self.active_cells, self.winner_cells = new_active, new_winner
-        self.predictive_cells = {                          # depolarize cells whose segment matches the context
-            cell for cell, segs in self.segments.items()
+        self.predictive_cells = {  # depolarize cells whose segment matches the context
+            cell
+            for cell, segs in self.segments.items()
             if any(len(seg & new_active) >= self.threshold for seg in segs)
         }
         return predicted_cols, anomaly
@@ -117,14 +124,18 @@ class SequenceAnomalyMonitor:
     stream, never alters recognition or control."""
 
     def __init__(self, n_features=N, cells_per_col=8, threshold=3):
-        self.tm = TemporalMemory(n_cols=n_features, cells_per_col=cells_per_col, threshold=threshold)
+        self.tm = TemporalMemory(
+            n_cols=n_features, cells_per_col=cells_per_col, threshold=threshold
+        )
 
     def reset(self):
         self.tm.reset()
 
     def observe(self, window, learn=True):
         """Feed one feature window; returns its anomaly (fraction of active columns that were unpredicted)."""
-        cols = frozenset(f for _t, f in encode_latency(window))    # active features = SDR columns (lake encoder)
+        cols = frozenset(
+            f for _t, f in encode_latency(window)
+        )  # active features = SDR columns (lake encoder)
         _, anomaly = self.tm.compute(cols, learn=learn)
         return anomaly
 
@@ -161,20 +172,27 @@ def main():
     e_from_xbc = _overlap(predict_after("XBC"), sdr["E"])
 
     # ---- 2. PRODUCT integration: sequence-anomaly over the lake's OWN encoder (encode_latency) ----
-    g = {"A": _gesture(range(0, 6)), "B": _gesture(range(10, 16)), "C": _gesture(range(20, 26)),
-         "D": _gesture(range(30, 36)), "E": _gesture(range(40, 46))}     # E = a valid window never seen after C
+    g = {
+        "A": _gesture(range(0, 6)),
+        "B": _gesture(range(10, 16)),
+        "C": _gesture(range(20, 26)),
+        "D": _gesture(range(30, 36)),
+        "E": _gesture(range(40, 46)),
+    }  # E = a valid window never seen after C
     mon = SequenceAnomalyMonitor()
-    for _ in range(25):                                                  # learn the normal order A->B->C->D
+    for _ in range(25):  # learn the normal order A->B->C->D
         mon.reset()
         for name in "ABCD":
             mon.observe(g[name], learn=True)
     mon.reset()
-    known = [mon.observe(g[name], learn=False) for name in "ABCD"]       # [0]=A start (high); B,C,D predicted (low)
+    known = [
+        mon.observe(g[name], learn=False) for name in "ABCD"
+    ]  # [0]=A start (high); B,C,D predicted (low)
     trained_transition = sum(known[1:]) / 3.0
     mon.reset()
     for name in "ABC":
         mon.observe(g[name], learn=False)
-    out_of_order = mon.observe(g["E"], learn=False)                      # valid window, wrong order -> bursts
+    out_of_order = mon.observe(g["E"], learn=False)  # valid window, wrong order -> bursts
 
     print("=" * 60)
     print("HTM TEMPORAL MEMORY — high-order prediction + lake sequence-anomaly")
@@ -184,15 +202,25 @@ def main():
     print(f"out-of-order window after ABC: anomaly {out_of_order:.2f} -> TEMPORAL ANOMALY flagged")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
-    assert d_from_abc > 0.6 and d_from_abc > 2 * e_from_abc, f"ABC must predict D not E ({d_from_abc:.2f}/{e_from_abc:.2f})"
+    # ---- self-check: deterministic asserts ----
+    assert d_from_abc > 0.6 and d_from_abc > 2 * e_from_abc, (
+        f"ABC must predict D not E ({d_from_abc:.2f}/{e_from_abc:.2f})"
+    )
     assert e_from_xbc > 0.6, f"XBC must predict E ({e_from_xbc:.2f})"
-    assert trained_transition < 0.2, f"learned transitions must be low-anomaly ({trained_transition:.2f})"
-    assert out_of_order > 0.8, f"a valid window in the wrong order must burst as a temporal anomaly ({out_of_order:.2f})"
+    assert trained_transition < 0.2, (
+        f"learned transitions must be low-anomaly ({trained_transition:.2f})"
+    )
+    assert out_of_order > 0.8, (
+        f"a valid window in the wrong order must burst as a temporal anomaly ({out_of_order:.2f})"
+    )
     mon2 = SequenceAnomalyMonitor()
-    assert mon2.observe(g["A"], learn=False) == SequenceAnomalyMonitor().observe(g["A"], learn=False), "deterministic"
-    print(f"self-check OK: high-order ABC->D {d_from_abc:.2f}/XBC->E {e_from_xbc:.2f}; lake monitor learns order "
-          f"(transitions {trained_transition:.2f}) and flags out-of-order window ({out_of_order:.2f}); deterministic")
+    assert mon2.observe(g["A"], learn=False) == SequenceAnomalyMonitor().observe(
+        g["A"], learn=False
+    ), "deterministic"
+    print(
+        f"self-check OK: high-order ABC->D {d_from_abc:.2f}/XBC->E {e_from_xbc:.2f}; lake monitor learns order "
+        f"(transitions {trained_transition:.2f}) and flags out-of-order window ({out_of_order:.2f}); deterministic"
+    )
 
 
 if __name__ == "__main__":

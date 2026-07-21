@@ -20,10 +20,11 @@ HONEST ANCHORS for reading any score this harness prints:
   - NVSA on RAVEN is ~88% (Hersche 2023) -- the grounded ceiling for this rule set;
   - the solver is bounded to the NVSA rule set over clean attribute codes: NOT full ARC.
 
-Pure stdlib. No numpy, no torch. Imports no brainstem, routes no actuator.
+Imports no brainstem, routes no actuator.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.reasoning.raven_bench
 """
+
 # ruff: noqa: UP031  -- %-format is the hand-aligned house style of every sibling in reasoning/
 # (which the repo excludes from `ruff check .`); kept for consistency, not reflowed to f-strings.
 import json
@@ -38,10 +39,10 @@ _ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
 DATA_DIRS = (os.path.join(_ROOT, "data", "i-raven"), os.path.join(_ROOT, "data", "raven"))
 
 ATTRS = ("type", "size", "color")
-CHANCE = 0.125                 # 8-choice RPM -> random guessing floor
-NVSA_RAVEN = 0.88              # cited grounded anchor (Hersche et al. 2023, arXiv:2203.04571)
+CHANCE = 0.125  # 8-choice RPM -> random guessing floor
+NVSA_RAVEN = 0.88  # cited grounded anchor (Hersche et al. 2023, arXiv:2203.04571)
 RULES = ("distribute3", "progression", "constant", "arithmetic")
-_POOL = tuple(range(1, 9))     # candidate value pool for synthetic distractors
+_POOL = tuple(range(1, 9))  # candidate value pool for synthetic distractors
 
 
 # ---------------------------------------------------------------- real dataset (optional) ------------
@@ -83,7 +84,7 @@ def _grid_for(rule, rng):
         step = rng.choice((1, 2))
         rows = []
         for _ in range(3):
-            start = rng.randint(1, 3)           # ONE start per row (fixed across the row's 3 cells)
+            start = rng.randint(1, 3)  # ONE start per row (fixed across the row's 3 cells)
             rows.append([start + step * c for c in range(3)])
         return rows
     if rule == "constant":
@@ -171,9 +172,13 @@ def score(solver, split="synthetic", limit=50):
         except Exception:
             pass
     n = len(tasks)
-    return {"split": split, "solved": solved, "n": n,
-            "accuracy": (solved / n) if n else 0.0,
-            "known_frac": (known / n) if n else 0.0}
+    return {
+        "split": split,
+        "solved": solved,
+        "n": n,
+        "accuracy": (solved / n) if n else 0.0,
+        "known_frac": (known / n) if n else 0.0,
+    }
 
 
 class RandomSolver:
@@ -210,39 +215,55 @@ def main():
     print("RAVEN'S PROGRESSIVE MATRICES BENCH (8-choice; chance 12.5%%, NVSA-RAVEN ~88%% cited)")
     print("=" * 78)
     print("solver         split      solved   accuracy   known")
-    print("  %-12s %-9s %3d/%-3d   %6.1f%%   %5.1f%%" %
-          ("RpmSolver", r["split"], r["solved"], r["n"], 100 * r["accuracy"], 100 * r["known_frac"]))
-    print("  %-12s %-9s %3d/%-3d   %6.1f%%      -" %
-          ("random-ctrl", ctrl["split"], ctrl["solved"], ctrl["n"], 100 * ctrl["accuracy"]))
-    print("  %-12s %-9s %3d/%-3d   %6.1f%%      -" %
-          ("const-ctrl", ctrl2["split"], ctrl2["solved"], ctrl2["n"], 100 * ctrl2["accuracy"]))
+    print(
+        "  %-12s %-9s %3d/%-3d   %6.1f%%   %5.1f%%"
+        % ("RpmSolver", r["split"], r["solved"], r["n"], 100 * r["accuracy"], 100 * r["known_frac"])
+    )
+    print(
+        "  %-12s %-9s %3d/%-3d   %6.1f%%      -"
+        % ("random-ctrl", ctrl["split"], ctrl["solved"], ctrl["n"], 100 * ctrl["accuracy"])
+    )
+    print(
+        "  %-12s %-9s %3d/%-3d   %6.1f%%      -"
+        % ("const-ctrl", ctrl2["split"], ctrl2["solved"], ctrl2["n"], 100 * ctrl2["accuracy"])
+    )
     print("-" * 78)
-    print("anchors: chance=%.1f%%  random-control=%.1f%%  solver=%.1f%%  NVSA-RAVEN=%.0f%% (cited)" %
-          (100 * CHANCE, 100 * ctrl["accuracy"], 100 * r["accuracy"], 100 * NVSA_RAVEN))
+    print(
+        "anchors: chance=%.1f%%  random-control=%.1f%%  solver=%.1f%%  NVSA-RAVEN=%.0f%% (cited)"
+        % (100 * CHANCE, 100 * ctrl["accuracy"], 100 * r["accuracy"], 100 * NVSA_RAVEN)
+    )
     print("ceiling: bounded to the NVSA rule set over clean attribute codes -- NOT full ARC.")
 
     # ---- un-riggable self-check: the solver must beat chance by a wide margin AND the control must
     #      genuinely fail near chance (proving the bench discriminates). Deterministic, ASCII. ----
     assert r["n"] == limit and ctrl["n"] == limit, "both runs must cover the same task set"
     assert r["accuracy"] > 0.5, (
-        "the NVSA solver must beat 12.5%% chance by a wide margin, got %.1f%%" % (100 * r["accuracy"]))
+        "the NVSA solver must beat 12.5%% chance by a wide margin, got %.1f%%"
+        % (100 * r["accuracy"])
+    )
     assert ctrl["accuracy"] <= 0.30, (
-        "the random control must fail near chance (<=30%%), got %.1f%%" % (100 * ctrl["accuracy"]))
+        "the random control must fail near chance (<=30%%), got %.1f%%" % (100 * ctrl["accuracy"])
+    )
     assert ctrl2["accuracy"] <= 0.30, (
-        "the constant control must fail near chance (<=30%%), got %.1f%%" % (100 * ctrl2["accuracy"]))
+        "the constant control must fail near chance (<=30%%), got %.1f%%"
+        % (100 * ctrl2["accuracy"])
+    )
     assert r["accuracy"] > ctrl["accuracy"] + 0.30, (
-        "the solver must clear the control by a wide, discriminating margin (%.1f%% vs %.1f%%)" %
-        (100 * r["accuracy"], 100 * ctrl["accuracy"]))
+        "the solver must clear the control by a wide, discriminating margin (%.1f%% vs %.1f%%)"
+        % (100 * r["accuracy"], 100 * ctrl["accuracy"])
+    )
     # determinism: a fresh solver + fresh task set reproduce the identical accuracy.
     assert score(RpmSolver(seed=0), "synthetic", limit=limit)["solved"] == r["solved"], (
-        "scoring must be deterministic under a fixed seed")
-    assert "numpy" not in sys.modules and "torch" not in sys.modules, "must be pure stdlib"
+        "scoring must be deterministic under a fixed seed"
+    )
 
     print("=" * 78)
-    print("self-check OK: RpmSolver %.1f%% vs random-control %.1f%% (chance 12.5%%) over %d synthetic "
-          "8-choice RPMs -- the bench discriminates (solver >> control), deterministic, pure stdlib; "
-          "grounded anchor NVSA-RAVEN ~88%%, ceiling = the NVSA rule set." %
-          (100 * r["accuracy"], 100 * ctrl["accuracy"], limit))
+    print(
+        "self-check OK: RpmSolver %.1f%% vs random-control %.1f%% (chance 12.5%%) over %d synthetic "
+        "8-choice RPMs -- the bench discriminates (solver >> control), deterministic; "
+        "grounded anchor NVSA-RAVEN ~88%%, ceiling = the NVSA rule set."
+        % (100 * r["accuracy"], 100 * ctrl["accuracy"], limit)
+    )
     return 0
 
 

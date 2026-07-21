@@ -1,5 +1,5 @@
 """
-Claustrum -- a coincidence-gated cortical SALIENCE broadcaster (pure stdlib, zero deps).
+Claustrum -- a coincidence-gated cortical SALIENCE broadcaster.
 
 The claustrum is a thin sheet of grey matter reciprocally connected with most of the
 cortical mantle. Its dense, near-symmetric wiring makes it well placed to REGISTER when
@@ -33,14 +33,15 @@ on -- and gives no support to -- the claustrum-as-seat-of-consciousness hypothes
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.claustrum.claustrum
 """
+
 import random
 
-N_AREAS = 6      # number of reciprocally-connected cortical areas feeding the claustrum
-K = 3            # coincidence threshold: fire when >= K distinct areas are co-active
-WINDOW = 3       # trailing coincidence-integration window, in time steps
-GAIN = 1.8       # broadcast salience gain applied to the bound assembly
-N_STEPS = 256    # length of every spike raster (identical across conditions -> equal-rate fair test)
-N_BURSTS = 8     # synchronous coincident events in the SYNCHRONOUS stimulus
+N_AREAS = 6  # number of reciprocally-connected cortical areas feeding the claustrum
+K = 3  # coincidence threshold: fire when >= K distinct areas are co-active
+WINDOW = 3  # trailing coincidence-integration window, in time steps
+GAIN = 1.8  # broadcast salience gain applied to the bound assembly
+N_STEPS = 256  # length of every spike raster (identical across conditions -> equal-rate fair test)
+N_BURSTS = 8  # synchronous coincident events in the SYNCHRONOUS stimulus
 
 
 def _mean(xs):
@@ -75,16 +76,16 @@ class Claustrum:
 
     def __init__(self, n_areas=N_AREAS, k=K, window=WINDOW, gain=GAIN, seed=0):
         self.n_areas = n_areas
-        self.k = k                 # coincidence threshold (distinct co-active areas)
-        self.window = window       # trailing integration window (time steps)
-        self.gain = gain           # broadcast salience gain for the bound assembly
-        self.rng = random.Random(seed)   # per-instance RNG -> deterministic burst schedule
+        self.k = k  # coincidence threshold (distinct co-active areas)
+        self.window = window  # trailing integration window (time steps)
+        self.gain = gain  # broadcast salience gain for the bound assembly
+        self.rng = random.Random(seed)  # per-instance RNG -> deterministic burst schedule
 
     # -- coincidence detection ------------------------------------------------------------------
     def _active_areas(self, trains, t):
         """The set of DISTINCT areas that spiked inside the trailing window ending at tick t."""
         lo = max(0, t - self.window + 1)
-        return frozenset(a for a in range(self.n_areas) if any(trains[a][lo:t + 1]))
+        return frozenset(a for a in range(self.n_areas) if any(trains[a][lo : t + 1]))
 
     def detect(self, trains):
         """Run the coincidence gate over the rasters.
@@ -147,7 +148,7 @@ class Claustrum:
         so no window ever holds two areas. Equal rate, zero coincidence; only timing changed."""
         n_steps = len(trains[0])
         counts = [sum(row) for row in trains]
-        spacing = self.window + 1                      # > window => no two spikes share a window
+        spacing = self.window + 1  # > window => no two spikes share a window
         out = [[0] * n_steps for _ in range(self.n_areas)]
         for slot, a in enumerate(_round_robin(counts)):
             t = slot * spacing
@@ -171,9 +172,9 @@ def main():
     c = Claustrum(seed=0)
 
     sync = c.synchronous_stream()
-    async_ = c.scatter_async(sync)                 # SAME per-area budget, spread out
+    async_ = c.scatter_async(sync)  # SAME per-area budget, spread out
     total_sync = sum(sum(r) for r in sync)
-    single = c.single_area_stream(total_sync + 4, area=0)   # louder than the whole sync budget
+    single = c.single_area_stream(total_sync + 4, area=0)  # louder than the whole sync budget
 
     conditions = [
         ("SYNCHRONOUS", sync),
@@ -198,15 +199,21 @@ def main():
     print("=" * 70)
     print("CLAUSTRUM -- coincidence-gated salience broadcaster (binds, not aware)")
     print("=" * 70)
-    print(f"areas={c.n_areas}  coincidence: >= {c.k} co-active within window={c.window} steps  "
-          f"broadcast gain=x{c.gain:.2f}")
+    print(
+        f"areas={c.n_areas}  coincidence: >= {c.k} co-active within window={c.window} steps  "
+        f"broadcast gain=x{c.gain:.2f}"
+    )
     print("-" * 70)
-    print(f"{'condition':<22}{'spikes':>7}{'rate/area':>11}{'peak':>6}"
-          f"{'fires':>7}{'bound':>7}{'amplify':>9}")
+    print(
+        f"{'condition':<22}{'spikes':>7}{'rate/area':>11}{'peak':>6}"
+        f"{'fires':>7}{'bound':>7}{'amplify':>9}"
+    )
     print("-" * 70)
     for label, total, rate, peak, nfires, nbound, amplify in rows:
-        print(f"{label:<22}{total:>7}{rate:>11.4f}{peak:>6}"
-              f"{nfires:>7}{nbound:>7}{('x' + format(amplify, '.2f')):>9}")
+        print(
+            f"{label:<22}{total:>7}{rate:>11.4f}{peak:>6}"
+            f"{nfires:>7}{nbound:>7}{('x' + format(amplify, '.2f')):>9}"
+        )
     print("-" * 70)
     print("equal rate/area for SYNCHRONOUS vs ASYNC -> the trigger is COINCIDENCE, not rate.")
     print("=" * 70)
@@ -223,7 +230,8 @@ def main():
     assert peak_s >= c.k, f"synchronous peak coincidence must reach threshold ({peak_s} >= {c.k})"
     assert bound_s >= c.k, f"a fired assembly must bind >= k areas (bound {bound_s})"
     assert amp_s > 1.0 and abs(amp_s - c.gain) < 1e-9, (
-        f"the bound assembly must be amplified by the broadcast gain (x{amp_s:.2f} vs x{c.gain:.2f})")
+        f"the bound assembly must be amplified by the broadcast gain (x{amp_s:.2f} vs x{c.gain:.2f})"
+    )
 
     # ---- (b) FAIR CONTROL: SAME rate, spread in time -> no coincidence, no firing --------------
     assert counts_async == counts_sync, "async control must preserve every area's spike count"
@@ -246,13 +254,16 @@ def main():
     s2 = a2.synchronous_stream()
     f2, as2 = a2.detect(s2)
     assert s1 == s2 and f1 == f2 and as1 == as2, (
-        "same seed must reproduce identical stimulus and identical coincidence firing")
+        "same seed must reproduce identical stimulus and identical coincidence firing"
+    )
 
-    print("self-check OK: "
-          f"synchrony fires {fires_s}x (peak coact {peak_s} >= k={c.k}), binds {bound_s} areas "
-          f"x{amp_s:.2f}; SAME {total_s}-spike budget spread async -> {fires_a} fires "
-          f"(equal rate, no coincidence); single loud area ({total_1} spikes) -> {bound_1} bound; "
-          "deterministic")
+    print(
+        "self-check OK: "
+        f"synchrony fires {fires_s}x (peak coact {peak_s} >= k={c.k}), binds {bound_s} areas "
+        f"x{amp_s:.2f}; SAME {total_s}-spike budget spread async -> {fires_a} fires "
+        f"(equal rate, no coincidence); single loud area ({total_1} spikes) -> {bound_1} bound; "
+        "deterministic"
+    )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 """
-MinHash -- estimate the Jaccard resemblance between two motif-sets from fixed-size signatures (pure stdlib).
+MinHash -- estimate the Jaccard resemblance between two motif-sets from fixed-size signatures.
 
 The lake stores motifs as SETS of active features. A recurring question is not "how big is one set?" but
 "how SIMILAR are two named sets A and B?" -- the Jaccard resemblance J(A,B) = |A intersect B| / |A union B|,
@@ -29,10 +29,11 @@ retrieval; not a spiking implementation, not cognition.
 
   python -m snn_data_lake.substrate.minhash        # (also run by run_selfchecks.py)
 """
+
 import hashlib
 import math
 
-_MAX64 = (1 << 64) - 1                        # empty-slot sentinel: every real hash is <= this
+_MAX64 = (1 << 64) - 1  # empty-slot sentinel: every real hash is <= this
 
 
 class MinHash:
@@ -60,11 +61,11 @@ class MinHash:
     def signature(self, iterable):
         """The K-slot MinHash signature of a set: for each permutation k, the minimum hash over the elements."""
         sig = [_MAX64] * self.num_perm
-        for elem in set(iterable):                     # duplicates cannot change a minimum; iterate distinct
-            base = self._seed_digest.copy()            # blake2b(seed) precomputed; add element once...
+        for elem in set(iterable):  # duplicates cannot change a minimum; iterate distinct
+            base = self._seed_digest.copy()  # blake2b(seed) precomputed; add element once...
             base.update(self._to_bytes(elem))
             for k in range(self.num_perm):
-                h = base.copy()                        # ...then fold in permutation k -> h_k(elem)
+                h = base.copy()  # ...then fold in permutation k -> h_k(elem)
                 h.update(self._perm[k])
                 v = int.from_bytes(h.digest(), "big")
                 if v < sig[k]:
@@ -98,13 +99,13 @@ def exact_jaccard(a, b):
 def main():
     num_perm = 128
     mh = MinHash(num_perm=num_perm, seed=0)
-    se = 1.0 / math.sqrt(num_perm)             # standard error ~ 1/sqrt(K)
-    bound = 3.0 * se                           # accept within 3 standard errors
+    se = 1.0 / math.sqrt(num_perm)  # standard error ~ 1/sqrt(K)
+    bound = 3.0 * se  # accept within 3 standard errors
 
     # ---- 1. accuracy across the range: slide B over a fixed A to hit known true J(A,B) ----
     base = set(range(600))
     sig_a = mh.signature(base)
-    shifts = (32, 106, 200, 323, 491)          # chosen so true J(A,B) ~ 0.9, 0.7, 0.5, 0.3, 0.1
+    shifts = (32, 106, 200, 323, 491)  # chosen so true J(A,B) ~ 0.9, 0.7, 0.5, 0.3, 0.1
     rows = []
     for shift in shifts:
         other = set(range(shift, shift + 600))
@@ -113,9 +114,9 @@ def main():
         rows.append((true_j, est, abs(est - true_j)))
 
     # ---- 2. extremes: identical sets -> ~1.0 ; disjoint sets -> ~0.0 ----
-    ident = mh.similarity(sig_a, mh.signature(base))            # same set: every slot must agree
+    ident = mh.similarity(sig_a, mh.signature(base))  # same set: every slot must agree
     left = set(range(500))
-    right = set(range(1_000_000, 1_000_500))                    # no shared element -> true J = 0
+    right = set(range(1_000_000, 1_000_500))  # no shared element -> true J = 0
     disj = mh.jaccard(left, right)
 
     # ---- 3. fixed signature size: K numbers regardless of |set| (a real set would grow with |set|) ----
@@ -137,23 +138,34 @@ def main():
     print(f"{'true J(A,B)':>12}  {'estimate':>10}  {'abs err':>9}")
     for true_j, est, err in rows:
         print(f"{true_j:>12.4f}  {est:>10.4f}  {err:>9.4f}")
-    print(f"extremes: identical sets est {ident:.4f} (> 0.99); disjoint sets est {disj:.4f} (< 0.02)")
-    print(f"fixed signature: |set|=50000 -> len(sig)={len(sig_big)}; |set|=10 -> "
-          f"len(sig)={len(sig_small)}; num_perm={num_perm}")
-    print(f"determinism: two fresh instances -> identical signature {det_sig} and estimate {det_est}")
+    print(
+        f"extremes: identical sets est {ident:.4f} (> 0.99); disjoint sets est {disj:.4f} (< 0.02)"
+    )
+    print(
+        f"fixed signature: |set|=50000 -> len(sig)={len(sig_big)}; |set|=10 -> "
+        f"len(sig)={len(sig_small)}; num_perm={num_perm}"
+    )
+    print(
+        f"determinism: two fresh instances -> identical signature {det_sig} and estimate {det_est}"
+    )
     print("=" * 68)
 
-    # ---- asserts: deterministic, zero-dep; genuine estimates, not rigged ----
+    # ---- asserts: deterministic; genuine estimates, not rigged ----
     for true_j, _est, err in rows:
-        assert err < bound, f"J(A,B)={true_j:.4f}: abs err {err:.4f} exceeds 3/sqrt(K) bound {bound:.4f}"
+        assert err < bound, (
+            f"J(A,B)={true_j:.4f}: abs err {err:.4f} exceeds 3/sqrt(K) bound {bound:.4f}"
+        )
     assert ident > 0.99, f"identical sets must estimate ~1.0 ({ident:.4f})"
     assert disj < 0.02, f"disjoint sets must estimate ~0.0 ({disj:.4f})"
-    assert len(sig_big) == num_perm == len(sig_small), \
+    assert len(sig_big) == num_perm == len(sig_small), (
         f"signature must be exactly {num_perm} slots regardless of |set|"
+    )
     assert num_perm < 50000, "signature size must be independent of (and far below) |set|"
     assert det_sig and det_est, "same num_perm/seed/set must give identical signature and estimate"
-    print(f"self-check OK: Jaccard within {bound:.4f} across true J in [0.1, 0.9]; identical {ident:.2f} / "
-          f"disjoint {disj:.2f}; {num_perm}-slot signature for |set|=50000; deterministic")
+    print(
+        f"self-check OK: Jaccard within {bound:.4f} across true J in [0.1, 0.9]; identical {ident:.2f} / "
+        f"disjoint {disj:.2f}; {num_perm}-slot signature for |set|=50000; deterministic"
+    )
 
 
 if __name__ == "__main__":

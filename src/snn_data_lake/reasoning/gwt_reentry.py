@@ -20,7 +20,7 @@ WHAT RE-ENTRY BUYS (demonstrated + controlled, honest):
   4. SUSTAIN ACROSS A GAP: once ignited, the re-entrant loop holds the content alive through a dropout in
      bottom-up input (self-sustaining reverberation); the feedforward-only control releases immediately.
 
-Pure stdlib LIF (integrate -> spike -> sustained-firing readout), deterministic, core-promotable like
+LIF (integrate -> spike -> sustained-firing readout), deterministic, core-promotable like
 gwt_deep.py. NOT a claim of phenomenal consciousness -- it names one dynamics: recurrent top-down
 amplification enabling all-or-none access. Open question, actively built toward, neither denied nor claimed.
 

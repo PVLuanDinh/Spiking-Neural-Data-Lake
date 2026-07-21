@@ -1,7 +1,7 @@
 """
 Stream-sketch panel -- "Lake Vitals": one fixed-memory O(1)-per-record self-monitor over the brain's
 spike/motif stream, composing the nine dead streaming-sketch primitives behind a single
-observe(event) / snapshot()->dict contract, plus drift_novelty()->[0,1] (pure stdlib).
+observe(event) / snapshot()->dict contract, plus drift_novelty()->[0,1].
 
 The lake ships nine INDEPENDENT fixed-memory sketches, each answering ONE streaming question in memory
 that does not grow with the stream length. Used one at a time they are easy to forget to wire up; used
@@ -41,6 +41,7 @@ it can never introduce motion, and the brainstem reflex / E-STOP remains the dom
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.stream_sketch_panel   # self-check
 """
+
 from collections import deque
 
 from snn_data_lake.substrate.drift_monitor import DriftMonitor
@@ -83,23 +84,42 @@ class StreamSketchPanel:
         sketches HeavyHitters + MinHash gracefully skip it).
     """
 
-    def __init__(self, hll_p=11, heavy_k=3, cms_depth=4, cms_width=256,
-                 dgim_window=256, dgim_k=4, quantile_ps=(0.5, 0.9, 0.99),
-                 ams_d=16, ams_g=9, reservoir_k=16, morris_m=64, minhash_num_perm=64,
-                 active_threshold=0.5, drift_window=40, drift_reference_size=60,
-                 drift_n_bins=10, drift_psi_warn=0.20, drift_novelty_k=2.5,
-                 drift_weights=(0.5, 0.3, 0.2), seed=0):
+    def __init__(
+        self,
+        hll_p=11,
+        heavy_k=3,
+        cms_depth=4,
+        cms_width=256,
+        dgim_window=256,
+        dgim_k=4,
+        quantile_ps=(0.5, 0.9, 0.99),
+        ams_d=16,
+        ams_g=9,
+        reservoir_k=16,
+        morris_m=64,
+        minhash_num_perm=64,
+        active_threshold=0.5,
+        drift_window=40,
+        drift_reference_size=60,
+        drift_n_bins=10,
+        drift_psi_warn=0.20,
+        drift_novelty_k=2.5,
+        drift_weights=(0.5, 0.3, 0.2),
+        seed=0,
+    ):
         self.seed = seed
         self.active_threshold = float(active_threshold)
         # --- the nine fixed-memory sketches (each seeded where it has an RNG) ---
-        self.hll = HyperLogLog(p=hll_p, seed=seed)                                  # distinct F0
-        self.heavy = HeavyHitters(k=heavy_k, depth=cms_depth, width=cms_width, seed=seed)  # top-K frequency
-        self.dgim = SlidingWindowCounter(dgim_window, max_buckets=dgim_k)           # windowed spike count
-        self.quant = StreamingQuantiles(quantile_ps)                               # p50/p90/p99 activity
-        self.ams = AMSSketch(d=ams_d, g=ams_g, seed=seed)                          # F2 skew
-        self.reservoir = Reservoir(reservoir_k, seed=seed)                         # uniform motif sample
-        self.morris = MorrisCounter(m=morris_m, a=2.0, seed=seed)                  # approx total count
-        self.minhash = MinHash(num_perm=minhash_num_perm, seed=seed)              # set-resemblance drift term
+        self.hll = HyperLogLog(p=hll_p, seed=seed)  # distinct F0
+        self.heavy = HeavyHitters(
+            k=heavy_k, depth=cms_depth, width=cms_width, seed=seed
+        )  # top-K frequency
+        self.dgim = SlidingWindowCounter(dgim_window, max_buckets=dgim_k)  # windowed spike count
+        self.quant = StreamingQuantiles(quantile_ps)  # p50/p90/p99 activity
+        self.ams = AMSSketch(d=ams_d, g=ams_g, seed=seed)  # F2 skew
+        self.reservoir = Reservoir(reservoir_k, seed=seed)  # uniform motif sample
+        self.morris = MorrisCounter(m=morris_m, a=2.0, seed=seed)  # approx total count
+        self.minhash = MinHash(num_perm=minhash_num_perm, seed=seed)  # set-resemblance drift term
         # --- drift enrollment state (DriftMonitor needs a reference set up front -> buffer then freeze) ---
         self._drift_window = int(drift_window)
         self._drift_reference_size = int(drift_reference_size)
@@ -107,10 +127,12 @@ class StreamSketchPanel:
         self._drift_psi_warn = float(drift_psi_warn)
         self._drift_novelty_k = float(drift_novelty_k)
         self._drift_weights = tuple(float(w) for w in drift_weights)
-        self._drift = None                # the DriftMonitor, lazily built once the reference is full
-        self._ref_buf = []                # buffers the first N feature vectors until enrollment
-        self._ref_active = None           # frozen reference motif-vocabulary (union of active index sets)
-        self._recent_active = deque(maxlen=self._drift_window)   # recent motif index-sets (bounded window)
+        self._drift = None  # the DriftMonitor, lazily built once the reference is full
+        self._ref_buf = []  # buffers the first N feature vectors until enrollment
+        self._ref_active = None  # frozen reference motif-vocabulary (union of active index sets)
+        self._recent_active = deque(
+            maxlen=self._drift_window
+        )  # recent motif index-sets (bounded window)
         # --- exact bookkeeping (a handful of ints; O(1) and useful next to the approximate estimates) ---
         self._n = 0
         self._reservoir_seen = 0
@@ -126,10 +148,14 @@ class StreamSketchPanel:
             value = event.get("value")
         elif isinstance(event, (set, frozenset)):
             motif = event
-        elif isinstance(event, (list, tuple)) and event and all(isinstance(x, (int, float)) for x in event):
-            features = event                                    # a bare feature vector
+        elif (
+            isinstance(event, (list, tuple))
+            and event
+            and all(isinstance(x, (int, float)) for x in event)
+        ):
+            features = event  # a bare feature vector
         else:
-            motif = event                                       # a bare hashable id
+            motif = event  # a bare hashable id
         if features is not None:
             active = frozenset(i for i, v in enumerate(features) if v >= self.active_threshold)
             if motif is None:
@@ -139,7 +165,7 @@ class StreamSketchPanel:
             if spike is None:
                 spike = 1 if active else 0
         if isinstance(motif, (set, frozenset, list, tuple)):
-            motif = frozenset(motif)                            # normalise to a hashable index-set
+            motif = frozenset(motif)  # normalise to a hashable index-set
         if spike is None:
             spike = 1 if motif else 0
         return motif, features, spike, value
@@ -151,19 +177,19 @@ class StreamSketchPanel:
         snapshot()/drift_novelty(), so this stays a fixed-size update per record."""
         motif, features, spike, value = self._coerce(event)
         self._n += 1
-        self.morris.increment()                                # total count, tiny register
-        self.dgim.add(1 if spike else 0)                       # windowed firing count
+        self.morris.increment()  # total count, tiny register
+        self.dgim.add(1 if spike else 0)  # windowed firing count
         if value is not None:
-            self.quant.add(value)                              # order statistics of per-record activity
+            self.quant.add(value)  # order statistics of per-record activity
         if motif is not None:
-            self.hll.add(motif)                                # distinct motifs
-            self.ams.add(motif)                                # F2 skew
+            self.hll.add(motif)  # distinct motifs
+            self.ams.add(motif)  # F2 skew
             if self.reservoir.add(tuple(sorted(motif)) if _is_index_set(motif) else motif):
                 pass
             self._reservoir_seen += 1
             if _is_index_set(motif):
-                self.heavy.add(motif)                          # top-K frequency (needs an int-index iterable)
-                self._recent_active.append(motif)              # recent motif vocabulary (bounded)
+                self.heavy.add(motif)  # top-K frequency (needs an int-index iterable)
+                self._recent_active.append(motif)  # recent motif vocabulary (bounded)
         if features is not None:
             self._observe_features(list(features))
         return None
@@ -173,13 +199,17 @@ class StreamSketchPanel:
         if self._drift is None:
             self._ref_buf.append(features)
             if len(self._ref_buf) >= self._drift_reference_size:
-                self._drift = DriftMonitor(self._ref_buf, n_bins=self._drift_n_bins,
-                                           psi_warn=self._drift_psi_warn, novelty_k=self._drift_novelty_k,
-                                           window=self._drift_window)
+                self._drift = DriftMonitor(
+                    self._ref_buf,
+                    n_bins=self._drift_n_bins,
+                    psi_warn=self._drift_psi_warn,
+                    novelty_k=self._drift_novelty_k,
+                    window=self._drift_window,
+                )
                 self._ref_active = frozenset(
-                    i for w in self._ref_buf
-                    for i, v in enumerate(w) if v >= self.active_threshold)   # frozen reference vocabulary
-                self._ref_buf = None                            # release the reference buffer -> bounded memory
+                    i for w in self._ref_buf for i, v in enumerate(w) if v >= self.active_threshold
+                )  # frozen reference vocabulary
+                self._ref_buf = None  # release the reference buffer -> bounded memory
         else:
             self._drift.push(features)
 
@@ -202,7 +232,9 @@ class StreamSketchPanel:
             return 0.0
         psi, nov, _warn = self._drift.assess()
         w_psi, w_nov, w_res = self._drift_weights
-        psi_c = _clamp01(psi / (2.0 * self._drift_psi_warn)) if self._drift_psi_warn > 0 else 0.0  # PSI==warn -> 0.5
+        psi_c = (
+            _clamp01(psi / (2.0 * self._drift_psi_warn)) if self._drift_psi_warn > 0 else 0.0
+        )  # PSI==warn -> 0.5
         nov_c = _clamp01(nov)
         res_c = _clamp01(1.0 - self._recent_resemblance())
         return _clamp01(w_psi * psi_c + w_nov * nov_c + w_res * res_c)
@@ -211,12 +243,22 @@ class StreamSketchPanel:
         """A read-only, JSON-friendly dict of the whole panel: every sketch's current answer + memory footprint.
 
         Safe to call anywhere -- it reads the sketches and never mutates the stream or drives anything."""
-        drift_block = {"enrolled": self._drift is not None, "psi": 0.0, "novelty_rate": 0.0,
-                       "warn": False, "resemblance": 1.0}
+        drift_block = {
+            "enrolled": self._drift is not None,
+            "psi": 0.0,
+            "novelty_rate": 0.0,
+            "warn": False,
+            "resemblance": 1.0,
+        }
         if self._drift is not None:
             psi, nov, warn = self._drift.assess()
-            drift_block = {"enrolled": True, "psi": psi, "novelty_rate": nov, "warn": bool(warn),
-                           "resemblance": self._recent_resemblance()}
+            drift_block = {
+                "enrolled": True,
+                "psi": psi,
+                "novelty_rate": nov,
+                "warn": bool(warn),
+                "resemblance": self._recent_resemblance(),
+            }
         heavy = [sorted(m) for m in self.heavy.heavy()]
         return {
             "n_events_exact": self._n,
@@ -258,12 +300,15 @@ def main():
         """A synthetic spike/motif stream: a few FREQUENT hot motifs buried in many rare ones, each event
         also carrying a normalised feature window (base profile + jitter, optionally shifted = a 'rig move')."""
         import math as _m
+
         if hot is None:
             hot = [frozenset(rng.sample(range(200), 6)) for _ in range(len(n_hot_reps))]
 
         def feature_window():
-            return [min(1.0, max(0.0, 0.5 + 0.3 * _m.sin(i) + shift + rng.uniform(-0.05, 0.05)))
-                    for i in range(dim)]
+            return [
+                min(1.0, max(0.0, 0.5 + 0.3 * _m.sin(i) + shift + rng.uniform(-0.05, 0.05)))
+                for i in range(dim)
+            ]
 
         motifs = []
         for m, reps in zip(hot, n_hot_reps):
@@ -288,15 +333,27 @@ def main():
         stat_snap = panel.snapshot()
         stat_drift = panel.drift_novelty()
         # ---- DRIFTED phase ("move the rig": feature means shift) ----
-        drift_events, _ = build_stream(0.40, rng, n_hot_reps=(40, 30, 20), n_background=120, hot=hot)
+        drift_events, _ = build_stream(
+            0.40, rng, n_hot_reps=(40, 30, 20), n_background=120, hot=hot
+        )
         for ev in drift_events:
             panel.observe(ev)
         drift_snap = panel.snapshot()
         drift_drift = panel.drift_novelty()
-        return panel, hot, active_counts, motif_stream, stat_snap, stat_drift, drift_snap, drift_drift
+        return (
+            panel,
+            hot,
+            active_counts,
+            motif_stream,
+            stat_snap,
+            stat_drift,
+            drift_snap,
+            drift_drift,
+        )
 
-    (panel, hot, active_counts, motif_stream,
-     stat_snap, stat_drift, drift_snap, drift_drift) = run(seed)
+    (panel, hot, active_counts, motif_stream, stat_snap, stat_drift, drift_snap, drift_drift) = run(
+        seed
+    )
 
     # ---- oracles (allowed in the TEST, not part of the panel) ----
     distinct_true = len(set(motif_stream))
@@ -310,67 +367,114 @@ def main():
     p50_rel = abs(p50_est - exact_med) / max(1.0, exact_med)
     f2_true = exact_f2(motif_stream)
     f2_rel = abs(stat_snap["f2_skew"] - f2_true) / f2_true
-    morris_rel = abs(stat_snap["n_events_morris"] - stat_snap["n_events_exact"]) / stat_snap["n_events_exact"]
-    morris_bound = 3.0 * panel.morris.relative_error + 0.03      # 3-sigma of the m-averaged estimate + margin
+    morris_rel = (
+        abs(stat_snap["n_events_morris"] - stat_snap["n_events_exact"])
+        / stat_snap["n_events_exact"]
+    )
+    morris_bound = (
+        3.0 * panel.morris.relative_error + 0.03
+    )  # 3-sigma of the m-averaged estimate + margin
 
     # ---- determinism: a second identical run must reproduce the panel exactly ----
     (_p2, _h2, _ac2, _ms2, stat_snap2, stat_drift2, drift_snap2, drift_drift2) = run(seed)
-    det = (stat_snap["distinct_motifs"] == stat_snap2["distinct_motifs"]
-           and stat_snap["heavy_hitters"] == stat_snap2["heavy_hitters"]
-           and stat_snap["quantiles"] == stat_snap2["quantiles"]
-           and stat_snap["f2_skew"] == stat_snap2["f2_skew"]
-           and stat_drift == stat_drift2 and drift_drift == drift_drift2)
+    det = (
+        stat_snap["distinct_motifs"] == stat_snap2["distinct_motifs"]
+        and stat_snap["heavy_hitters"] == stat_snap2["heavy_hitters"]
+        and stat_snap["quantiles"] == stat_snap2["quantiles"]
+        and stat_snap["f2_skew"] == stat_snap2["f2_skew"]
+        and stat_drift == stat_drift2
+        and drift_drift == drift_drift2
+    )
 
     # ---- memory is bounded + constant across phases for the fixed sketches ----
-    fixed_keys = ("hll_registers", "heavy_counters", "ams_counters", "reservoir_k",
-                  "morris_registers", "quantile_markers")
+    fixed_keys = (
+        "hll_registers",
+        "heavy_counters",
+        "ams_counters",
+        "reservoir_k",
+        "morris_registers",
+        "quantile_markers",
+    )
     mem_constant = all(stat_snap["memory"][k] == drift_snap["memory"][k] for k in fixed_keys)
-    dgim_bound = panel.dgim.k * 12 * 12                        # k * log2(W)^2 for W=256 (L=8) -> generous cap
+    dgim_bound = panel.dgim.k * 12 * 12  # k * log2(W)^2 for W=256 (L=8) -> generous cap
     dgim_ok = drift_snap["memory"]["dgim_buckets"] <= dgim_bound
 
     print("=" * 74)
     print("STREAM-SKETCH PANEL -- 'Lake Vitals': nine fixed-memory sketches over one stream")
     print("=" * 74)
-    print(f"stream: {stat_snap['n_events_exact']} stationary events then "
-          f"{drift_snap['n_events_exact'] - stat_snap['n_events_exact']} drifted; motif space range(200)")
-    print(f"distinct : HLL {stat_snap['distinct_motifs']:.0f} vs true {distinct_true} "
-          f"(rel {hll_rel * 100:.2f}%, bound {hll_bound * 100:.2f}%)")
+    print(
+        f"stream: {stat_snap['n_events_exact']} stationary events then "
+        f"{drift_snap['n_events_exact'] - stat_snap['n_events_exact']} drifted; motif space range(200)"
+    )
+    print(
+        f"distinct : HLL {stat_snap['distinct_motifs']:.0f} vs true {distinct_true} "
+        f"(rel {hll_rel * 100:.2f}%, bound {hll_bound * 100:.2f}%)"
+    )
     print(f"heavy    : recovered {sorted(heavy_got)} == true hot {heavy_got == heavy_true}")
-    print(f"quantile : activity p50 est {p50_est:.1f} vs exact {exact_med} (rel {p50_rel * 100:.2f}%); "
-          f"p90={stat_snap['quantiles'][0.9]:.1f} p99={stat_snap['quantiles'][0.99]:.1f}")
+    print(
+        f"quantile : activity p50 est {p50_est:.1f} vs exact {exact_med} (rel {p50_rel * 100:.2f}%); "
+        f"p90={stat_snap['quantiles'][0.9]:.1f} p99={stat_snap['quantiles'][0.99]:.1f}"
+    )
     print(f"F2 skew  : AMS {stat_snap['f2_skew']:.0f} vs exact {f2_true} (rel {f2_rel * 100:.2f}%)")
-    print(f"count    : Morris {stat_snap['n_events_morris']:.0f} vs exact {stat_snap['n_events_exact']} "
-          f"(rel {morris_rel * 100:.2f}%, bound {morris_bound * 100:.2f}%); "
-          f"DGIM last-W spikes {stat_snap['window_spike_count']:.1f}")
-    print(f"sample   : reservoir holds {stat_snap['reservoir_size']} of {stat_snap['reservoir_seen']} motifs")
-    print(f"drift    : stationary novelty {stat_drift:.3f} (warn {stat_snap['drift']['warn']}) -> "
-          f"drifted novelty {drift_drift:.3f} (warn {drift_snap['drift']['warn']})")
-    print(f"           PSI {stat_snap['drift']['psi']:.3f} -> {drift_snap['drift']['psi']:.3f}; "
-          f"resemblance {stat_snap['drift']['resemblance']:.3f} -> {drift_snap['drift']['resemblance']:.3f}")
-    print(f"memory   : fixed sketches constant across phases {mem_constant}; "
-          f"DGIM buckets {drift_snap['memory']['dgim_buckets']} <= {dgim_bound}")
+    print(
+        f"count    : Morris {stat_snap['n_events_morris']:.0f} vs exact {stat_snap['n_events_exact']} "
+        f"(rel {morris_rel * 100:.2f}%, bound {morris_bound * 100:.2f}%); "
+        f"DGIM last-W spikes {stat_snap['window_spike_count']:.1f}"
+    )
+    print(
+        f"sample   : reservoir holds {stat_snap['reservoir_size']} of {stat_snap['reservoir_seen']} motifs"
+    )
+    print(
+        f"drift    : stationary novelty {stat_drift:.3f} (warn {stat_snap['drift']['warn']}) -> "
+        f"drifted novelty {drift_drift:.3f} (warn {drift_snap['drift']['warn']})"
+    )
+    print(
+        f"           PSI {stat_snap['drift']['psi']:.3f} -> {drift_snap['drift']['psi']:.3f}; "
+        f"resemblance {stat_snap['drift']['resemblance']:.3f} -> {drift_snap['drift']['resemblance']:.3f}"
+    )
+    print(
+        f"memory   : fixed sketches constant across phases {mem_constant}; "
+        f"DGIM buckets {drift_snap['memory']['dgim_buckets']} <= {dgim_bound}"
+    )
     print(f"determinism: two fresh panels, same seed/stream -> identical snapshot {det}")
     print("=" * 74)
 
-    # ---- asserts: deterministic, zero-dep; genuine estimates vs real oracles, nothing rigged ----
-    assert hll_rel < hll_bound, f"HLL distinct off by {hll_rel * 100:.2f}% (> {hll_bound * 100:.2f}%)"
-    assert heavy_got == heavy_true, f"heavy hitters must recover the hot motifs ({heavy_got} vs {heavy_true})"
+    # ---- asserts: deterministic; genuine estimates vs real oracles, nothing rigged ----
+    assert hll_rel < hll_bound, (
+        f"HLL distinct off by {hll_rel * 100:.2f}% (> {hll_bound * 100:.2f}%)"
+    )
+    assert heavy_got == heavy_true, (
+        f"heavy hitters must recover the hot motifs ({heavy_got} vs {heavy_true})"
+    )
     assert p50_rel < 0.10, f"activity p50 off by {p50_rel * 100:.2f}% (> 10%)"
     assert f2_rel < 0.20, f"AMS F2 off by {f2_rel * 100:.2f}% (> 20%)"
-    assert morris_rel < morris_bound, f"Morris count off by {morris_rel * 100:.2f}% (> {morris_bound * 100:.2f}%)"
+    assert morris_rel < morris_bound, (
+        f"Morris count off by {morris_rel * 100:.2f}% (> {morris_bound * 100:.2f}%)"
+    )
     assert stat_snap["reservoir_size"] == panel.reservoir.k, "reservoir must stay at k"
-    assert not stat_snap["drift"]["warn"], f"stationary stream must not warn (PSI={stat_snap['drift']['psi']:.3f})"
-    assert drift_snap["drift"]["warn"], f"drifted stream must warn (PSI={drift_snap['drift']['psi']:.3f})"
+    assert not stat_snap["drift"]["warn"], (
+        f"stationary stream must not warn (PSI={stat_snap['drift']['psi']:.3f})"
+    )
+    assert drift_snap["drift"]["warn"], (
+        f"drifted stream must warn (PSI={drift_snap['drift']['psi']:.3f})"
+    )
     assert drift_drift > stat_drift + 0.10, (
-        f"drift_novelty must RISE on the drifted phase ({stat_drift:.3f} -> {drift_drift:.3f})")
-    assert 0.0 <= stat_drift <= 1.0 and 0.0 <= drift_drift <= 1.0, "drift_novelty must stay in [0,1]"
+        f"drift_novelty must RISE on the drifted phase ({stat_drift:.3f} -> {drift_drift:.3f})"
+    )
+    assert 0.0 <= stat_drift <= 1.0 and 0.0 <= drift_drift <= 1.0, (
+        "drift_novelty must stay in [0,1]"
+    )
     assert mem_constant, "fixed-memory sketches must keep a constant footprint across phases"
-    assert dgim_ok, f"DGIM buckets {drift_snap['memory']['dgim_buckets']} exceed O(log^2 W) bound {dgim_bound}"
+    assert dgim_ok, (
+        f"DGIM buckets {drift_snap['memory']['dgim_buckets']} exceed O(log^2 W) bound {dgim_bound}"
+    )
     assert det, "same seed/stream must give an identical snapshot (deterministic)"
-    print(f"self-check OK: HLL distinct within {hll_rel * 100:.2f}%, hot motifs recovered, activity p50 within "
-          f"{p50_rel * 100:.2f}%, F2 within {f2_rel * 100:.2f}%, Morris within {morris_rel * 100:.2f}%; "
-          f"drift_novelty {stat_drift:.3f}->{drift_drift:.3f} on the rig-move; memory bounded + constant; "
-          f"deterministic")
+    print(
+        f"self-check OK: HLL distinct within {hll_rel * 100:.2f}%, hot motifs recovered, activity p50 within "
+        f"{p50_rel * 100:.2f}%, F2 within {f2_rel * 100:.2f}%, Morris within {morris_rel * 100:.2f}%; "
+        f"drift_novelty {stat_drift:.3f}->{drift_drift:.3f} on the rig-move; memory bounded + constant; "
+        f"deterministic"
+    )
 
 
 if __name__ == "__main__":

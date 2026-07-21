@@ -60,12 +60,13 @@ top-left region; padded entries zero) so training resumes with existing momentum
 Torch/GPU tier. Built on resolve_device() (research/torch_device.py) with an explicit
 .to(device) on every parameter -- it does NOT rely on set_default_device (that quirk lands
 torch.normal / freshly-wrapped nn.Parameter on CPU even under a cuda default). Deterministic
-(torch.manual_seed + per-instance generators). ASCII-only prints. Zero-dep CORE untouched:
+(torch.manual_seed + per-instance generators). ASCII-only prints. CORE untouched:
 this file lives under research/, imports nothing from src/, edits neither run_selfchecks nor
 pyproject.
 
   NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/brain_adapters/laminar_readout.py
 """
+
 import os
 import sys
 
@@ -112,7 +113,9 @@ class LaminarReadout(nn.Module):
         # explicit .to(self.device) on every tensor is required.
         def _w(fan_out, fan_in):
             std = (2.0 / fan_in) ** 0.5
-            return torch.normal(0.0, std, (fan_out, fan_in), generator=self._init_gen).to(self.device)
+            return torch.normal(0.0, std, (fan_out, fan_in), generator=self._init_gen).to(
+                self.device
+            )
 
         def _b(n):
             return torch.zeros(n).to(self.device)
@@ -147,8 +150,8 @@ class LaminarReadout(nn.Module):
     # --- forward through the laminar column ------------------------------------------------
     def _l4_l23(self, X):
         """L4 -> L2/3: return the first-pass L2/3 activations h23 (ReLU)."""
-        h4 = F.relu(X @ self.W4.t() + self.b4)          # L4 sensory input layer
-        h23 = F.relu(h4 @ self.W23.t() + self.b23)      # L2/3 feature layer
+        h4 = F.relu(X @ self.W4.t() + self.b4)  # L4 sensory input layer
+        h23 = F.relu(h4 @ self.W23.t() + self.b23)  # L2/3 feature layer
         return h23
 
     def forward(self, X, use_feedback=None):
@@ -158,14 +161,14 @@ class LaminarReadout(nn.Module):
         if use_feedback is None:
             use_feedback = self.use_l6
         h23 = self._l4_l23(X)
-        logits1 = h23 @ self.W5.t() + self.b5           # L5 first-pass prediction
+        logits1 = h23 @ self.W5.t() + self.b5  # L5 first-pass prediction
         if not use_feedback:
             return logits1
         # L6: predict a per-L2/3-unit multiplicative gain in (0,1) from the first-pass
         # logits, gate the L2/3 activations, and re-run L5 (ONE feedback iteration).
-        gain = torch.sigmoid(logits1 @ self.W6.t() + self.b6)   # (N, n23)
+        gain = torch.sigmoid(logits1 @ self.W6.t() + self.b6)  # (N, n23)
         h23_mod = h23 * gain
-        return h23_mod @ self.W5.t() + self.b5          # L5 second pass -> final logits
+        return h23_mod @ self.W5.t() + self.b5  # L5 second pass -> final logits
 
     def predict(self, X):
         """Return final logits [N, n_classes] (no grad), through L4->L2/3->[L6 gain]->L5."""
@@ -244,9 +247,9 @@ class LaminarReadout(nn.Module):
             # capacity: its zero L5 fan-in is what zeros its output, NOT an identical activation).
             w23_p = self.W23.data[p].clone()
             std23 = (2.0 / self.n4) ** 0.5
-            noise = torch.normal(
-                0.0, 1.0, (self.n4,), generator=self._grow_gen
-            ).to(self.device) * std23
+            noise = (
+                torch.normal(0.0, 1.0, (self.n4,), generator=self._grow_gen).to(self.device) * std23
+            )
             new_W23 = torch.cat([self.W23.data, (w23_p + noise).unsqueeze(0)], dim=0)
             new_b23 = torch.cat([self.b23.data, self.b23.data[p : p + 1].clone()], dim=0)
 
@@ -365,7 +368,7 @@ class LaminarColumns(nn.Module):
     readout for drop-in use. Torch/GPU tier: built on resolve_device() with an explicit
     .to(device) on every parameter (NOT set_default_device -- torch.normal(generator=...) and
     freshly-wrapped nn.Parameter can silently stay on CPU under a cuda default). Deterministic
-    (torch.manual_seed + per-instance generators). ASCII-only prints. Zero-dep CORE untouched.
+    (torch.manual_seed + per-instance generators). ASCII-only prints. CORE untouched.
     """
 
     def __init__(self, in_dim, n_classes=10, n4=48, n23=32, seed=0):
@@ -388,7 +391,7 @@ class LaminarColumns(nn.Module):
         # Per-column L4 + L2/3 parameters, parallel lists indexed by column. Raw Parameters
         # (in ParameterLists) so growth is a simple append + the Adam moment buffers can be
         # extended in lockstep.
-        self.W4s = nn.ParameterList()   # each: L4  (n4  x in_dim)  sensory input layer
+        self.W4s = nn.ParameterList()  # each: L4  (n4  x in_dim)  sensory input layer
         self.b4s = nn.ParameterList()
         self.W23s = nn.ParameterList()  # each: L2/3 (n23 x n4)     feature layer
         self.b23s = nn.ParameterList()
@@ -439,13 +442,13 @@ class LaminarColumns(nn.Module):
     # --- forward through the parallel columns ---------------------------------------------
     def _column_h23(self, X, i):
         """One column's L4 -> L2/3 activation (ReLU/ReLU)."""
-        h4 = F.relu(X @ self.W4s[i].t() + self.b4s[i])       # L4 sensory input (this column)
+        h4 = F.relu(X @ self.W4s[i].t() + self.b4s[i])  # L4 sensory input (this column)
         return F.relu(h4 @ self.W23s[i].t() + self.b23s[i])  # L2/3 feature layer (this column)
 
     def forward(self, X):
         h23s = [self._column_h23(X, i) for i in range(self.n_columns)]
-        concat = torch.cat(h23s, dim=1)                       # [N, C*n23]
-        return concat @ self.W5.t() + self.b5                 # shared L5 head -> logits
+        concat = torch.cat(h23s, dim=1)  # [N, C*n23]
+        return concat @ self.W5.t() + self.b5  # shared L5 head -> logits
 
     def predict(self, X):
         """Return final logits [N, n_classes] (no grad)."""
@@ -631,8 +634,8 @@ def _make_col_blobs(n_per=120, in_dim=12, n_classes=6, sep=3.0, seed=0):
     Xs, ys = [], []
     for c in range(n_classes):
         center = torch.zeros(in_dim)
-        center[0] = c * sep                              # informative axis
-        center[1] = ((c % 2) * 2 - 1) * sep              # zig-zag on a 2nd axis
+        center[0] = c * sep  # informative axis
+        center[1] = ((c % 2) * 2 - 1) * sep  # zig-zag on a 2nd axis
         Xs.append(center + torch.normal(0.0, 1.0, (n_per, in_dim), generator=g))
         ys.append(torch.full((n_per,), c, dtype=torch.long))
     X = torch.cat(Xs, 0)
@@ -651,13 +654,17 @@ def main():
     print("=" * 74)
     print("LAMINAR READOUT -- 6-layer cortical motif (L4->L2/3->L5 + L6 gain) -- research")
     print("=" * 74)
-    print(f"task: 6-band parity  N={X.shape[0]}  in_dim={in_dim}  classes={n_classes}  "
-          f"chance={chance:.3f}")
+    print(
+        f"task: 6-band parity  N={X.shape[0]}  in_dim={in_dim}  classes={n_classes}  "
+        f"chance={chance:.3f}"
+    )
 
     # ---- (1) forward through all layers + train -> beat chance -------------------------
     model = LaminarReadout(in_dim, n_classes=n_classes, n4=32, n23=8, seed=0, use_l6=True)
-    print(f"shapes: L4 {tuple(model.W4.shape)}  L2/3 {tuple(model.W23.shape)}  "
-          f"L5 {tuple(model.W5.shape)}  L6 {tuple(model.W6.shape)}  (use_l6={model.use_l6})")
+    print(
+        f"shapes: L4 {tuple(model.W4.shape)}  L2/3 {tuple(model.W23.shape)}  "
+        f"L5 {tuple(model.W5.shape)}  L6 {tuple(model.W6.shape)}  (use_l6={model.use_l6})"
+    )
     acc_init = _accuracy(model, X, y)
     loss = None
     # Train to a MODERATE point (acc >> chance) rather than to convergence. On this perfectly
@@ -669,27 +676,39 @@ def main():
     for _ in range(200):
         loss = model.train_step(X, y, lr=5e-3, steps=1)
     acc_trained = _accuracy(model, X, y)
-    assert acc_trained > 0.85, f"laminar readout must beat chance decisively: {acc_trained:.3f} <= 0.85"
-    print(f"(1) column: acc {acc_init:.3f} (init) -> {acc_trained:.3f} (trained)  "
-          f"loss={loss:.4f}  >> chance {chance:.3f}")
+    assert acc_trained > 0.85, (
+        f"laminar readout must beat chance decisively: {acc_trained:.3f} <= 0.85"
+    )
+    print(
+        f"(1) column: acc {acc_init:.3f} (init) -> {acc_trained:.3f} (trained)  "
+        f"loss={loss:.4f}  >> chance {chance:.3f}"
+    )
 
     # ---- (2) grow(k, freeze_old=True) on L2/3: function-preserving + frozen bit-exact ---
     logits_pre = model.predict(X).clone()
     n23_before = model.n_hidden
-    frozen_before = model._frozen.clone()               # all currently plastic
-    new_width = model.grow(k=8, freeze_old=True)         # freeze the old L2/3 units, add 8
+    frozen_before = model._frozen.clone()  # all currently plastic
+    new_width = model.grow(k=8, freeze_old=True)  # freeze the old L2/3 units, add 8
     logits_post = model.predict(X)
     max_logit_diff = float((logits_pre - logits_post).abs().max())
-    assert new_width == n23_before + 8, f"L2/3 must widen {n23_before} -> {n23_before + 8}, got {new_width}"
-    assert model.n_hidden == n23_before + 8, f"n_hidden must be {n23_before + 8}, got {model.n_hidden}"
+    assert new_width == n23_before + 8, (
+        f"L2/3 must widen {n23_before} -> {n23_before + 8}, got {new_width}"
+    )
+    assert model.n_hidden == n23_before + 8, (
+        f"n_hidden must be {n23_before + 8}, got {model.n_hidden}"
+    )
     assert max_logit_diff < 1e-4, (
         f"grow() must be function-preserving on L2/3: max|dlogit| {max_logit_diff:.3e} >= 1e-4"
     )
-    print(f"(2a) grow : L2/3 {n23_before} -> {new_width}  max|dlogit|={max_logit_diff:.3e} (< 1e-4, "
-          f"function-preserving)")
+    print(
+        f"(2a) grow : L2/3 {n23_before} -> {new_width}  max|dlogit|={max_logit_diff:.3e} (< 1e-4, "
+        f"function-preserving)"
+    )
 
-    frozen_idx = model._frozen.clone()                  # first n23_before units now frozen
-    assert int(frozen_idx[:n23_before].sum()) == n23_before, "all pre-existing L2/3 units must be frozen"
+    frozen_idx = model._frozen.clone()  # first n23_before units now frozen
+    assert int(frozen_idx[:n23_before].sum()) == n23_before, (
+        "all pre-existing L2/3 units must be frozen"
+    )
     assert int(frozen_idx[n23_before:].sum()) == 0, "the 8 new L2/3 units must be plastic"
     W23_at_grow = model.W23.detach().clone()
     # Train further on the SAME task -- frozen rows must stay bit-exact; new rows must move.
@@ -698,12 +717,20 @@ def main():
     W23_now = model.W23.detach()
     frozen_diff = float((W23_now[frozen_idx] - W23_at_grow[frozen_idx]).abs().max())
     new_diff = float((W23_now[~frozen_idx] - W23_at_grow[~frozen_idx]).abs().max())
-    assert frozen_diff == 0.0, f"frozen L2/3 rows must be EXACTLY unchanged, got max|diff|={frozen_diff:.3e}"
-    assert new_diff > 0.0, f"at least one NEW L2/3 unit must change during training, got {new_diff:.3e}"
+    assert frozen_diff == 0.0, (
+        f"frozen L2/3 rows must be EXACTLY unchanged, got max|diff|={frozen_diff:.3e}"
+    )
+    assert new_diff > 0.0, (
+        f"at least one NEW L2/3 unit must change during training, got {new_diff:.3e}"
+    )
     acc_after_grow = _accuracy(model, X, y)
-    print(f"(2b) freeze: frozen L2/3 rows max|diff|={frozen_diff:.3e} (must be 0.0)  |  "
-          f"new-unit rows max|diff|={new_diff:.3e} (> 0)")
-    print(f"          acc after grow+train = {acc_after_grow:.3f} (neurogenesis kept the column working)")
+    print(
+        f"(2b) freeze: frozen L2/3 rows max|diff|={frozen_diff:.3e} (must be 0.0)  |  "
+        f"new-unit rows max|diff|={new_diff:.3e} (> 0)"
+    )
+    print(
+        f"          acc after grow+train = {acc_after_grow:.3f} (neurogenesis kept the column working)"
+    )
 
     # ---- (3) L6 feedback actually changes the logits -----------------------------------
     # Same model, same input: compare the pure feedforward L5 output (use_feedback=False)
@@ -716,14 +743,17 @@ def main():
         fb = model.forward(Xg, use_feedback=True)
     l6_diff = float((ff - fb).abs().max())
     assert l6_diff > 1e-4, f"L6 feedback must change the logits, got max|diff|={l6_diff:.3e}"
-    print(f"(3) L6    : max|logits(feedback) - logits(feedforward)| = {l6_diff:.3e} (> 1e-4, "
-          f"feedback is active)")
+    print(
+        f"(3) L6    : max|logits(feedback) - logits(feedforward)| = {l6_diff:.3e} (> 1e-4, "
+        f"feedback is active)"
+    )
 
     twin = LaminarReadout(in_dim, n_classes=n_classes, n4=32, n23=8, seed=0, use_l6=False)
     with torch.no_grad():
         twin_ff = twin.forward(X.to(twin.device))
-        base_ff = LaminarReadout(in_dim, n_classes=n_classes, n4=32, n23=8, seed=0,
-                                 use_l6=True).forward(X.to(twin.device), use_feedback=False)
+        base_ff = LaminarReadout(
+            in_dim, n_classes=n_classes, n4=32, n23=8, seed=0, use_l6=True
+        ).forward(X.to(twin.device), use_feedback=False)
     twin_match = float((twin_ff - base_ff).abs().max())
     print(f"          use_l6=False twin matches the feedforward path (max|diff|={twin_match:.3e})")
 
@@ -753,8 +783,10 @@ def main():
     for _ in range(400):
         col.train_step(Xa, ya, lr=5e-3, steps=1)
     acc_A_before = _accuracy_subset(col, Xa, ya, task_a)
-    print(f"    column-0 trained on Task A{task_a}: acc_A (task-aware) = {acc_A_before:.3f}  "
-          f"(n_columns={col.n_columns}, n_hidden={col.n_hidden})")
+    print(
+        f"    column-0 trained on Task A{task_a}: acc_A (task-aware) = {acc_A_before:.3f}  "
+        f"(n_columns={col.n_columns}, n_hidden={col.n_hidden})"
+    )
 
     # Snapshot column-0's ENTIRE upstream (L4 + L2/3) to prove bit-exact freeze later.
     W4_0 = col.W4s[0].detach().clone()
@@ -770,10 +802,13 @@ def main():
     assert max_logit_diff < 1e-4, (
         f"grow() must be function-preserving: max|dlogit| {max_logit_diff:.3e} >= 1e-4"
     )
-    assert bool(col._frozen_cols[0]) and not bool(col._frozen_cols[1]), \
+    assert bool(col._frozen_cols[0]) and not bool(col._frozen_cols[1]), (
         "column-0 must be frozen, column-1 plastic"
-    print(f"    grow(freeze_old=True): columns 1 -> {col.n_columns}, n_hidden {32} -> {new_width}, "
-          f"L5 fan-in extended with a zero block  max|dlogit|={max_logit_diff:.3e} (< 1e-4)")
+    )
+    print(
+        f"    grow(freeze_old=True): columns 1 -> {col.n_columns}, n_hidden {32} -> {new_width}, "
+        f"L5 fan-in extended with a zero block  max|dlogit|={max_logit_diff:.3e} (< 1e-4)"
+    )
 
     # Train Task B (with small A replay). Column-0 frozen; column-1 + shared L5 learn.
     for _ in range(1500):
@@ -784,18 +819,28 @@ def main():
     acc_A_after = _accuracy_subset(col, Xa, ya, task_a)
     acc_B = _accuracy_subset(col, Xb, yb, task_b)
     acc_A_after_all = _accuracy(col, Xa, ya)  # class-incremental (no task id) -- honest confound
-    assert w4_diff == 0.0, f"frozen column-0 L4 must be EXACTLY unchanged, got max|diff|={w4_diff:.3e}"
-    assert w23_diff == 0.0, f"frozen column-0 L2/3 must be EXACTLY unchanged, got max|diff|={w23_diff:.3e}"
+    assert w4_diff == 0.0, (
+        f"frozen column-0 L4 must be EXACTLY unchanged, got max|diff|={w4_diff:.3e}"
+    )
+    assert w23_diff == 0.0, (
+        f"frozen column-0 L2/3 must be EXACTLY unchanged, got max|diff|={w23_diff:.3e}"
+    )
     assert acc_A_after > 0.85, (
         f"isolated column-0 must RETAIN Task A after Task B (task-aware): {acc_A_after:.3f} <= 0.85"
     )
     assert acc_B > 0.85, f"the NEW task must be learned in column-1: acc_B={acc_B:.3f} <= 0.85"
-    print(f"    frozen column-0: L4 max|diff|={w4_diff:.3e}  L2/3 max|diff|={w23_diff:.3e} "
-          f"(BOTH must be 0.0 -> FULL upstream freeze)")
-    print(f"    retention: acc_A {acc_A_before:.3f} -> {acc_A_after:.3f} (task-aware, > 0.85)  |  "
-          f"acc_B={acc_B:.3f} (> 0.85)  |  acc_A all-class(no task id)={acc_A_after_all:.3f}")
-    print("    -> full-column isolation retains Task A where the shared-L4 laminar drifted "
-          "(L5 shared/trainable: some class-IL recency remains, reported not hidden)")
+    print(
+        f"    frozen column-0: L4 max|diff|={w4_diff:.3e}  L2/3 max|diff|={w23_diff:.3e} "
+        f"(BOTH must be 0.0 -> FULL upstream freeze)"
+    )
+    print(
+        f"    retention: acc_A {acc_A_before:.3f} -> {acc_A_after:.3f} (task-aware, > 0.85)  |  "
+        f"acc_B={acc_B:.3f} (> 0.85)  |  acc_A all-class(no task id)={acc_A_after_all:.3f}"
+    )
+    print(
+        "    -> full-column isolation retains Task A where the shared-L4 laminar drifted "
+        "(L5 shared/trainable: some class-IL recency remains, reported not hidden)"
+    )
 
     print("-" * 74)
     print("HONEST NOTES: the microcircuit reference is a DYNAMICS model (no accuracy); this")
@@ -804,13 +849,17 @@ def main():
     print("  unit's ZERO L5 fan-in (and zero L6 fan-out) is what preserves the logits, and")
     print("  its perturbed incoming is a distinct feature training then recruits.")
     print("=" * 74)
-    print(f"self-check OK: laminar column acc {acc_init:.3f} -> {acc_trained:.3f} (chance {chance:.3f}); "
-          f"L2/3 neurogenesis function-preserving (max|dlogit|={max_logit_diff:.3e}), frozen rows "
-          f"bit-exact (diff={frozen_diff:.3e}), new units move (diff={new_diff:.3e}); "
-          f"L6 feedback active (diff={l6_diff:.3e})")
-    print(f"  + LaminarColumns full-upstream freeze: frozen column-0 L4/L2/3 bit-exact "
-          f"(L4 diff={w4_diff:.3e}, L2/3 diff={w23_diff:.3e}); 2-task retention acc_A "
-          f"{acc_A_before:.3f} -> {acc_A_after:.3f} (task-aware), acc_B={acc_B:.3f}")
+    print(
+        f"self-check OK: laminar column acc {acc_init:.3f} -> {acc_trained:.3f} (chance {chance:.3f}); "
+        f"L2/3 neurogenesis function-preserving (max|dlogit|={max_logit_diff:.3e}), frozen rows "
+        f"bit-exact (diff={frozen_diff:.3e}), new units move (diff={new_diff:.3e}); "
+        f"L6 feedback active (diff={l6_diff:.3e})"
+    )
+    print(
+        f"  + LaminarColumns full-upstream freeze: frozen column-0 L4/L2/3 bit-exact "
+        f"(L4 diff={w4_diff:.3e}, L2/3 diff={w23_diff:.3e}); 2-task retention acc_A "
+        f"{acc_A_before:.3f} -> {acc_A_after:.3f} (task-aware), acc_B={acc_B:.3f}"
+    )
 
 
 if __name__ == "__main__":

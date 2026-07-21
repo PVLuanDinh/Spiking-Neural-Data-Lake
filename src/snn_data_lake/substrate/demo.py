@@ -19,11 +19,12 @@ production versions, tests, lakehouse, GPU training, and the live `--serial` pat
 Optional live hardware (needs `pip install pyserial`):
     python demo.py --serial COM8
 """
+
 import math
 import sys
 
-W = 8                                  # samples per window
-CONTACT = 0.04                         # distance (m) -> reflex EMERGENCY_STOP
+W = 8  # samples per window
+CONTACT = 0.04  # distance (m) -> reflex EMERGENCY_STOP
 NEAR, MID, FAR = 0, 1, 2
 
 # gesture -> robot command (approach grabs the incoming object, retreat releases)
@@ -33,7 +34,7 @@ COMMANDS = {"HAND_APPROACH": "GRIPPER_CLOSE", "HAND_RETREAT": "GRIPPER_OPEN", "I
 # ---- order-aware recognition (Paradigm B sequence detector) ------------------
 def dbin(d):
     if d >= 2.0:
-        return None                    # nothing in range
+        return None  # nothing in range
     return NEAR if d < 0.30 else MID if d < 0.60 else FAR
 
 
@@ -65,7 +66,7 @@ def recognize(window):
         return "HAND_APPROACH"
     if retr and not appr:
         return "HAND_RETREAT"
-    pd = [window[i][0] for i, _ in present]               # noisy: fall back to net direction
+    pd = [window[i][0] for i, _ in present]  # noisy: fall back to net direction
     return "HAND_APPROACH" if pd[-1] < pd[0] else "HAND_RETREAT"
 
 
@@ -76,8 +77,10 @@ class Arm:
 
     def ee(self):
         a, b = self.theta[0], self.theta[0] + self.theta[1]
-        return (round(self.l1 * math.cos(a) + self.l2 * math.cos(b), 2),
-                round(self.l1 * math.sin(a) + self.l2 * math.sin(b), 2))
+        return (
+            round(self.l1 * math.cos(a) + self.l2 * math.cos(b), 2),
+            round(self.l1 * math.sin(a) + self.l2 * math.sin(b), 2),
+        )
 
     def apply(self, cmd):
         if cmd == "EMERGENCY_STOP":
@@ -94,11 +97,14 @@ class Arm:
 def sample_stream():
     """A scripted run: idle, an approach, a retreat, then a contact event."""
     idle = [(3.13, -1.0)] * W
-    approach = [(round(0.9 - 0.115 * i, 2), 295.0 + i * 0.4) for i in range(W)]   # distance falling
-    retreat = [(round(0.05 + 0.115 * i, 2), 298.0 - i * 0.4) for i in range(W)]   # distance rising
-    contact = [(0.02, 298.6)]                                                     # object AT sensor
-    for label, win in (("(quiet)", idle), ("(hand approaching)", approach),
-                       ("(hand retreating)", retreat)):
+    approach = [(round(0.9 - 0.115 * i, 2), 295.0 + i * 0.4) for i in range(W)]  # distance falling
+    retreat = [(round(0.05 + 0.115 * i, 2), 298.0 - i * 0.4) for i in range(W)]  # distance rising
+    contact = [(0.02, 298.6)]  # object AT sensor
+    for label, win in (
+        ("(quiet)", idle),
+        ("(hand approaching)", approach),
+        ("(hand retreating)", retreat),
+    ):
         for s in win:
             yield label, s
     for s in contact:
@@ -107,6 +113,7 @@ def sample_stream():
 
 def serial_stream(port, baud=115200):
     import serial  # only for --serial
+
     ser = serial.Serial(port, baud)
     while True:
         parts = ser.readline().decode("ascii", "ignore").strip().split(",")
@@ -120,7 +127,7 @@ def serial_stream(port, baud=115200):
 def run(stream, arm, narrate=True):
     buf, acted = [], []
     for note, (d, t) in stream:
-        if d < CONTACT:                                   # reflex preempts everything
+        if d < CONTACT:  # reflex preempts everything
             arm.apply("EMERGENCY_STOP")
             acted.append(("REFLEX", "EMERGENCY_STOP"))
             if narrate:
@@ -133,8 +140,10 @@ def run(stream, arm, narrate=True):
             cmd = arm.apply(COMMANDS[gesture])
             acted.append((gesture, cmd))
             if narrate:
-                print(f"  {note:20} -> recognize {gesture:14} -> command {cmd:14} "
-                      f"(gripper={arm.gripper}, ee={arm.ee()})")
+                print(
+                    f"  {note:20} -> recognize {gesture:14} -> command {cmd:14} "
+                    f"(gripper={arm.gripper}, ee={arm.ee()})"
+                )
             buf = []
     return acted
 
@@ -157,8 +166,10 @@ def main():
     print("\n" + "=" * 70)
     cmds = [c for _, c in acted]
     print(f"actions: {', '.join(cmds)}")
-    print("approach grabbed (GRIPPER_CLOSE), retreat released (GRIPPER_OPEN), "
-          "contact stopped the arm (EMERGENCY_STOP).")
+    print(
+        "approach grabbed (GRIPPER_CLOSE), retreat released (GRIPPER_OPEN), "
+        "contact stopped the arm (EMERGENCY_STOP)."
+    )
     print("=" * 70)
 
     # ---- self-check (so the demo is verifiable) -----------------------------
@@ -166,8 +177,10 @@ def main():
     assert "GRIPPER_CLOSE" in seen, "approach did not grab"
     assert "GRIPPER_OPEN" in seen, "retreat did not release"
     assert "EMERGENCY_STOP" in seen and arm.stopped, "contact did not trip the reflex"
-    print("self-check OK: recognized gestures, mapped to commands, moved the arm, "
-          "reflex stopped on contact — the whole loop ran from one file.")
+    print(
+        "self-check OK: recognized gestures, mapped to commands, moved the arm, "
+        "reflex stopped on contact — the whole loop ran from one file."
+    )
 
 
 if __name__ == "__main__":

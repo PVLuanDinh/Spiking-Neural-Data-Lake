@@ -8,7 +8,7 @@ teaching signal is always the token that actually comes next -- supervision-by-t
     public domain). Yields (previous K phonemes, next phoneme).
   * WORDS: yields (previous K words, next word) for the semantics/syntax levels.
 
-Ingestion is pure stdlib: `substrate.web_ingest.fetch_corpus` (urllib, SSRF-firewalled) fetches a
+Ingestion goes through `substrate.web_ingest.fetch_corpus` (urllib, SSRF-firewalled) fetches a
 real text corpus and CMUdict once to TEMP, cached. Never fully resident -- the corpus is iterated as
 a token stream. If the network is unavailable (offline CI), it falls back to a small BUNDLED sample
 of real English + real CMUdict pronunciations, so the self-check is deterministic offline while the

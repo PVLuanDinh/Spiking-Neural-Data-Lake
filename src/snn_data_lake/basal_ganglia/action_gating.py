@@ -35,6 +35,7 @@ is a disinhibition event in a spiking circuit, nothing more.
 
   python -m snn_data_lake.basal_ganglia.action_gating
 """
+
 import random
 
 
@@ -45,18 +46,29 @@ class BasalGangliaGate:
     and returns which channel (if any) is disinhibited and released, plus its latency in steps.
     """
 
-    def __init__(self, seed=0, d1_base=0.25, d2_base=0.50, da_gain=0.90,
-                 tonic=1.0, base_exc=1.0, leak=0.15, v_thresh=1.0, k=1, steps=40):
+    def __init__(
+        self,
+        seed=0,
+        d1_base=0.25,
+        d2_base=0.50,
+        da_gain=0.90,
+        tonic=1.0,
+        base_exc=1.0,
+        leak=0.15,
+        v_thresh=1.0,
+        k=1,
+        steps=40,
+    ):
         self.rng = random.Random(seed)
-        self.d1_base = d1_base      # baseline D1 (Go) gain, before dopamine
-        self.d2_base = d2_base      # baseline D2 (NoGo) gain, before dopamine
-        self.da_gain = da_gain      # how strongly dopamine tilts D1 up / D2 down
-        self.tonic = tonic          # tonic GPi/SNr inhibition on every thalamic channel
-        self.base_exc = base_exc    # constant cortical excitation onto the thalamic relay
-        self.leak = leak            # LIF membrane leak
-        self.v_thresh = v_thresh    # release (spike) threshold of the thalamic relay
-        self.k = k                  # k-WTA winners allowed to open a Go gate (bottleneck = 1)
-        self.steps = steps          # max integration steps per selection
+        self.d1_base = d1_base  # baseline D1 (Go) gain, before dopamine
+        self.d2_base = d2_base  # baseline D2 (NoGo) gain, before dopamine
+        self.da_gain = da_gain  # how strongly dopamine tilts D1 up / D2 down
+        self.tonic = tonic  # tonic GPi/SNr inhibition on every thalamic channel
+        self.base_exc = base_exc  # constant cortical excitation onto the thalamic relay
+        self.leak = leak  # LIF membrane leak
+        self.v_thresh = v_thresh  # release (spike) threshold of the thalamic relay
+        self.k = k  # k-WTA winners allowed to open a Go gate (bottleneck = 1)
+        self.steps = steps  # max integration steps per selection
 
     @staticmethod
     def _kwta(values, k):
@@ -78,8 +90,8 @@ class BasalGangliaGate:
         winners = self._kwta(go, self.k)
         gpi = []
         for j in range(len(drive)):
-            go_eff = go[j] if j in winners else 0.0        # losers: lateral inhibition shuts Go
-            gpi.append(max(0.0, self.tonic - go_eff + nogo[j]))   # Go disinhibits, NoGo inhibits
+            go_eff = go[j] if j in winners else 0.0  # losers: lateral inhibition shuts Go
+            gpi.append(max(0.0, self.tonic - go_eff + nogo[j]))  # Go disinhibits, NoGo inhibits
         return go, nogo, gpi
 
     def select(self, drive, da):
@@ -93,12 +105,12 @@ class BasalGangliaGate:
             for j in range(len(drive)):
                 if fired[j]:
                     continue
-                net = self.base_exc - gpi[j]               # cortical drive minus GPi inhibition
+                net = self.base_exc - gpi[j]  # cortical drive minus GPi inhibition
                 v[j] = max(0.0, v[j] + (-self.leak * v[j] + net))
-                if v[j] >= self.v_thresh:                  # thalamic relay releases (spikes)
+                if v[j] >= self.v_thresh:  # thalamic relay releases (spikes)
                     fired[j] = True
                     released.append((j, t))
-            if released:                                   # bottleneck: first release wins
+            if released:  # bottleneck: first release wins
                 break
         winner = released[0] if released else None
         disinhibited = min(range(len(gpi)), key=lambda j: gpi[j])
@@ -137,14 +149,14 @@ def main():
     gate = BasalGangliaGate(seed=0)
     trials = gate.make_trials(strongest, n_ch)
 
-    rep = [0.40, 0.55, 0.87, 0.30]           # a clear representative trial: channel 2 is strongest
+    rep = [0.40, 0.55, 0.87, 0.30]  # a clear representative trial: channel 2 is strongest
     rep_res = gate.select(rep, da_intact)
 
     intact = _sweep(gate, trials, da_intact)
     partial = _sweep(gate, trials, da_partial)
     lesion = _sweep(gate, trials, da_lesion)
 
-    null_res = gate.select([0.0] * n_ch, da_intact)   # tonic GPi only, NO cortical drive
+    null_res = gate.select([0.0] * n_ch, da_intact)  # tonic GPi only, NO cortical drive
 
     print("=" * 68)
     print("BASAL GANGLIA Go/NoGo ACTION SELECTION (CBGTC disinhibition bottleneck)")
@@ -152,21 +164,31 @@ def main():
     print(f"channels/trial: {n_ch} | trials: {len(trials)} | max steps: {gate.steps}")
     print(f"representative drive: {[round(x, 2) for x in rep]}")
     print(f"  -> strongest channel     : {rep.index(max(rep))} (drive {max(rep):.2f})")
-    print(f"  -> GPi output per channel : {[round(g, 2) for g in rep_res['gpi']]}  "
-          "(winner's GPi is disinhibited)")
+    print(
+        f"  -> GPi output per channel : {[round(g, 2) for g in rep_res['gpi']]}  "
+        "(winner's GPi is disinhibited)"
+    )
     print(f"  -> released channel       : {rep_res['winner']} at step {rep_res['latency']}\n")
 
     print("dopamine is load-bearing (same 6 inputs, only DA differs):")
-    print(f"  intact  DA={da_intact:.2f} : {intact[0]}/{intact[1]} released, "
-          f"mean latency {intact[2]:.2f} steps")
-    print(f"  partial DA={da_partial:.2f} : {partial[0]}/{partial[1]} released, "
-          f"mean latency {partial[2]:.2f} steps   (bradykinesia -- later)")
+    print(
+        f"  intact  DA={da_intact:.2f} : {intact[0]}/{intact[1]} released, "
+        f"mean latency {intact[2]:.2f} steps"
+    )
+    print(
+        f"  partial DA={da_partial:.2f} : {partial[0]}/{partial[1]} released, "
+        f"mean latency {partial[2]:.2f} steps   (bradykinesia -- later)"
+    )
     lesion_lat = "n/a" if lesion[0] == 0 else f"{lesion[2]:.2f}"
-    print(f"  lesion  DA={da_lesion:.2f} : {lesion[0]}/{lesion[1]} released, "
-          f"mean latency {lesion_lat} steps   (akinesia -- nothing released)\n")
+    print(
+        f"  lesion  DA={da_lesion:.2f} : {lesion[0]}/{lesion[1]} released, "
+        f"mean latency {lesion_lat} steps   (akinesia -- nothing released)\n"
+    )
 
-    print(f"null case (tonic GPi only, NO cortical drive): released = {null_res['winner']} "
-          "(no spurious action)")
+    print(
+        f"null case (tonic GPi only, NO cortical drive): released = {null_res['winner']} "
+        "(no spurious action)"
+    )
     print("=" * 68)
 
     # ---- un-riggable anchors (deterministic asserts) ------------------------
@@ -176,8 +198,9 @@ def main():
     # (3) exactly one channel wins -- the disinhibition bottleneck.
     assert len(rep_res["released"]) == 1, "exactly one channel may be released"
     # (2) SAFETY: no cortical drive -> tonic GPi inhibits everything -> nothing is released.
-    assert null_res["winner"] is None and null_res["released"] == [], \
+    assert null_res["winner"] is None and null_res["released"] == [], (
         "no-drive tonic-GPi state must release NO action"
+    )
     # Fair control: DA is load-bearing. Removing it FAILS selection; reducing it SLOWS it.
     assert intact[0] == len(trials), "intact dopamine should release every trial"
     assert lesion[0] == 0, "DA lesion (SNc) must fail selection -- akinesia"
@@ -188,14 +211,21 @@ def main():
     trials2 = gate2.make_trials(strongest, n_ch)
     rep2 = gate2.select(rep, da_intact)
     assert trials2 == trials, "same seed must reproduce identical trials"
-    assert (rep2["winner"], rep2["latency"], rep2["released"]) == \
-        (rep_res["winner"], rep_res["latency"], rep_res["released"]), "same seed must reproduce run"
+    assert (rep2["winner"], rep2["latency"], rep2["released"]) == (
+        rep_res["winner"],
+        rep_res["latency"],
+        rep_res["released"],
+    ), "same seed must reproduce run"
 
-    print(f"self-check OK: strongest channel {rep_res['winner']} disinhibited+released (1 winner); "
-          "no-drive releases nothing;")
-    print(f"  intact {intact[0]}/{intact[1]} @ {intact[2]:.2f} steps -> partial "
-          f"{partial[0]}/{partial[1]} @ {partial[2]:.2f} (slower) -> lesion {lesion[0]}/{lesion[1]} "
-          "(akinesia); deterministic")
+    print(
+        f"self-check OK: strongest channel {rep_res['winner']} disinhibited+released (1 winner); "
+        "no-drive releases nothing;"
+    )
+    print(
+        f"  intact {intact[0]}/{intact[1]} @ {intact[2]:.2f} steps -> partial "
+        f"{partial[0]}/{partial[1]} @ {partial[2]:.2f} (slower) -> lesion {lesion[0]}/{lesion[1]} "
+        "(akinesia); deterministic"
+    )
 
 
 if __name__ == "__main__":

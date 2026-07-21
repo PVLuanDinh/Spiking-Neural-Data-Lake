@@ -44,6 +44,7 @@ Pure stdlib (json, math), ASCII-only prints, deterministic. NO torch, NO numpy i
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.rsnn_encoder
 """
+
 import json
 
 _FORMAT = "snn_rsnn/1"
@@ -51,8 +52,11 @@ _FORMAT = "snn_rsnn/1"
 
 def _shape_ok(M, rows, cols):
     """True iff M is a rows-by-cols list-of-lists (the same shape guard load_weights in jepa uses)."""
-    return isinstance(M, list) and len(M) == rows and all(
-        isinstance(row, list) and len(row) == cols for row in M)
+    return (
+        isinstance(M, list)
+        and len(M) == rows
+        and all(isinstance(row, list) and len(row) == cols for row in M)
+    )
 
 
 def _vec_ok(v, n):
@@ -84,13 +88,18 @@ class RsnnEncoder:
                 raise ValueError(f"rsnn layer {li}: non-positive out-width or max_delay")
             if not _shape_ok(W, nout, prev):
                 raise ValueError(f"rsnn layer {li}: W must be [out={nout}][in={prev}]")
-            if not (isinstance(delays, list) and len(delays) == nout
-                    and all(isinstance(r, list) and len(r) == prev for r in delays)):
+            if not (
+                isinstance(delays, list)
+                and len(delays) == nout
+                and all(isinstance(r, list) and len(r) == prev for r in delays)
+            ):
                 raise ValueError(f"rsnn layer {li}: delays must be [out={nout}][in={prev}]")
             for r in delays:
                 for d in r:
                     if not (isinstance(d, int) and 0 <= d < maxd):
-                        raise ValueError(f"rsnn layer {li}: delay {d!r} out of [0,{maxd}) or non-integer")
+                        raise ValueError(
+                            f"rsnn layer {li}: delay {d!r} out of [0,{maxd}) or non-integer"
+                        )
             for key in ("bias", "beta", "a", "v_th"):
                 if not _vec_ok(L.get(key), nout):
                     raise ValueError(f"rsnn layer {li}: '{key}' must be a length-{nout} vector")
@@ -118,19 +127,19 @@ class RsnnEncoder:
         Y = []
         for t in range(T):
             xt = X[t]
-            for i in range(nin):                       # write this step's spikes into the ring
+            for i in range(nin):  # write this step's spikes into the ring
                 ring[i][pos] = xt[i]
             frame = [0.0] * nout
             for j in range(nout):
                 Wj, dj = W[j], delays[j]
-                cur = bias[j]                          # per-neuron bias current
-                for i in range(nin):                   # + delayed synaptic current I_j[t]
+                cur = bias[j]  # per-neuron bias current
+                for i in range(nin):  # + delayed synaptic current I_j[t]
                     cur += Wj[i] * ring[i][(pos - dj[i]) % maxd]
-                uj = beta[j] * u[j] + cur              # leaky integrate
-                thr = v_th[j] + a[j] * b[j]            # adaptive threshold
-                sp = 1.0 if uj >= thr else 0.0         # hard Heaviside
-                u[j] = uj - thr * sp                   # reset by subtraction
-                b[j] = rho * b[j] + sp                 # adaptation
+                uj = beta[j] * u[j] + cur  # leaky integrate
+                thr = v_th[j] + a[j] * b[j]  # adaptive threshold
+                sp = 1.0 if uj >= thr else 0.0  # hard Heaviside
+                u[j] = uj - thr * sp  # reset by subtraction
+                b[j] = rho * b[j] + sp  # adaptation
                 frame[j] = sp
                 counts[j] += sp
             Y.append(frame)
@@ -172,7 +181,9 @@ class RsnnEncoder:
             obj = json.load(f)
         fmt = obj.get("format") if isinstance(obj, dict) else None
         if fmt != _FORMAT:
-            raise ValueError(f"bad rsnn weight file: missing/incorrect 'format' tag (expected {_FORMAT})")
+            raise ValueError(
+                f"bad rsnn weight file: missing/incorrect 'format' tag (expected {_FORMAT})"
+            )
         n_in = int(obj.get("n_in", -1))
         layers = obj.get("layers")
         if not (n_in > 0 and isinstance(layers, list) and layers):
@@ -180,7 +191,7 @@ class RsnnEncoder:
         self.n_in = n_in
         self.rho = float(obj.get("rho", self.rho))
         self.layers = layers
-        self._validate_geometry()                       # raises ValueError on any shape/tap mismatch
+        self._validate_geometry()  # raises ValueError on any shape/tap mismatch
         return self
 
 
@@ -198,8 +209,13 @@ def _coincidence_layer(delay_on):
     NO spike. beta small so there is no cross-step accumulation to muddy the demonstration."""
     d0 = 2 if delay_on else 0
     return {
-        "W": [[1.0, 1.0]], "delays": [[d0, 0]], "max_delay": 4,
-        "bias": [0.0], "beta": [0.1], "a": [0.0], "v_th": [1.5],
+        "W": [[1.0, 1.0]],
+        "delays": [[d0, 0]],
+        "max_delay": 4,
+        "bias": [0.0],
+        "beta": [0.1],
+        "a": [0.0],
+        "v_th": [1.5],
     }
 
 
@@ -217,24 +233,45 @@ def main():
     count_off = enc_off.features(spikes)[0]
 
     print("input: spike on ch0 @ t=0, spike on ch1 @ t=2  (emitted 2 steps apart)")
-    print(f"  delay=2 on ch0 -> the two spikes ALIGN at t=2 -> neuron fires : count = {count_on:.0f}")
-    print(f"  delay=0 on ch0 -> spikes never coincide      -> silent       : count = {count_off:.0f}")
+    print(
+        f"  delay=2 on ch0 -> the two spikes ALIGN at t=2 -> neuron fires : count = {count_on:.0f}"
+    )
+    print(
+        f"  delay=0 on ch0 -> spikes never coincide      -> silent       : count = {count_off:.0f}"
+    )
 
     # a small 2-layer determinism check: fixed weights -> a fixed, reproducible count vector.
     layers2 = [
-        {"W": [[0.9, 0.0, 0.0], [0.0, 0.9, 0.9]], "delays": [[0, 1, 0], [0, 0, 2]],
-         "max_delay": 3, "bias": [0.0, 0.0], "beta": [0.5, 0.7], "a": [0.2, 0.1], "v_th": [0.8, 0.8]},
-        {"W": [[1.0, 1.0]], "delays": [[0, 1]], "max_delay": 3,
-         "bias": [0.0], "beta": [0.6], "a": [0.3], "v_th": [1.0]},
+        {
+            "W": [[0.9, 0.0, 0.0], [0.0, 0.9, 0.9]],
+            "delays": [[0, 1, 0], [0, 0, 2]],
+            "max_delay": 3,
+            "bias": [0.0, 0.0],
+            "beta": [0.5, 0.7],
+            "a": [0.2, 0.1],
+            "v_th": [0.8, 0.8],
+        },
+        {
+            "W": [[1.0, 1.0]],
+            "delays": [[0, 1]],
+            "max_delay": 3,
+            "bias": [0.0],
+            "beta": [0.6],
+            "a": [0.3],
+            "v_th": [1.0],
+        },
     ]
     enc2 = RsnnEncoder(n_in=3, layers=layers2, rho=0.9)
     seq = [[1.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 0.0], [1.0, 1.0, 1.0]]
     feat2a = enc2.features(seq)
-    feat2b = RsnnEncoder(n_in=3, layers=layers2, rho=0.9).features(seq)   # fresh instance, same result
+    feat2b = RsnnEncoder(n_in=3, layers=layers2, rho=0.9).features(
+        seq
+    )  # fresh instance, same result
 
     # save/load round-trip + bad-format rejection
     import os
     import tempfile
+
     p = os.path.join(tempfile.gettempdir(), "rsnn_selfcheck.json")
     enc2.save_weights(p)
     reloaded = RsnnEncoder().load_weights(p)
@@ -250,14 +287,18 @@ def main():
         rejected = True
 
     print(f"2-layer feature vector (penultimate counts) : {[int(v) for v in feat2a]}")
-    print(f"  feat_dim = {enc2.feat_dim()}  reload-matches = {feat2c == feat2a}  "
-          f"bad-format-rejected = {rejected}")
+    print(
+        f"  feat_dim = {enc2.feat_dim()}  reload-matches = {feat2c == feat2a}  "
+        f"bad-format-rejected = {rejected}"
+    )
     print("=" * 74)
 
     # ---- un-riggable, structurally-spiking, deterministic asserts (zero-dep) ----
     assert count_on == 1.0, f"delay-aligned coincidence must fire exactly once (got {count_on})"
     assert count_off == 0.0, f"without the delay the spikes must NOT coincide (got {count_off})"
-    assert count_on > count_off, "LEARNABLE DELAY must flip the neuron from silent to firing (the whole point)"
+    assert count_on > count_off, (
+        "LEARNABLE DELAY must flip the neuron from silent to firing (the whole point)"
+    )
     # every emitted value is a binary spike (structurally spiking, not a rate/analog activation)
     frames, _ = enc2.forward_spikes(seq)
     assert all(v in (0.0, 1.0) for fr in frames for v in fr), "outputs must be binary spikes"
@@ -266,8 +307,10 @@ def main():
     assert feat2c == feat2a, "save/load round-trip must preserve the forward exactly"
     assert enc2.feat_dim() == 1, "feat_dim must be the last layer's out-width"
     assert rejected, "load_weights must reject a bad/missing format tag (trust boundary)"
-    print(f"self-check OK: delays enable coincidence detection (1 vs 0 spike); ALIF forward deterministic "
-          f"({[int(v) for v in feat2a]}); binary spikes + integer counts; snn_rsnn/1 round-trips + trust-checked.")
+    print(
+        f"self-check OK: delays enable coincidence detection (1 vs 0 spike); ALIF forward deterministic "
+        f"({[int(v) for v in feat2a]}); binary spikes + integer counts; snn_rsnn/1 round-trips + trust-checked."
+    )
 
 
 if __name__ == "__main__":

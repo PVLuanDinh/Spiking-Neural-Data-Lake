@@ -58,7 +58,7 @@ Needs the torch venv (GPU strongly recommended; the conv is pre-trained ONCE, pe
 Scale knobs (env): NORD_CYCLES (15, >10 so phase-2 revisits) NORD_C1 (30) NORD_T (15)
                    NORD_L1_EPOCHS (3) NORD_PER (300) NORD_REPLAY (200) NORD_SGD (300)
                    NORD_CAP (1, anti-fixation) NORD_TRAIN (10000) NORD_TEST (2000) NORD_GPU
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core stays zero-dep)
+Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
 """
 import os
 import sys

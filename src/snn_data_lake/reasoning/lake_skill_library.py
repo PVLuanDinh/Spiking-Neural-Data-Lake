@@ -7,7 +7,7 @@ into the substrate DATA LAKE as a named, content-addressable SKILL, and at infer
 input to the right expert BY PROXIMITY (content-addressable, no task-id, no retraining). It is the
 inverse of a shared model: instead of one network that must fit every task at once, we keep a BANK
 of frozen experts and a proximity ROUTER that recalls which one to apply. The router substrate + the
-durable skill store are the project's zero-dep stdlib spike lake; only the experts (and the single
+durable skill store are the project's stdlib spike lake; only the experts (and the single
 shared-model baseline) use torch/GPU.
 
 THE REGIME MATTERS (stated honestly). Expert libraries WIN when tasks are DISSIMILAR: each task lives
@@ -17,7 +17,7 @@ linear/MLP boundary can serve all of them, but a per-task specialist can. On FEA
 project has already measured that. So this file deliberately builds the HETEROGENEOUS regime where
 the paradigm pays off, and the key comparison (routed library vs one shared model) reports both.
 
-PIPELINE (all deterministic; ASCII output; GPU-safe -- torch never touches the zero-dep lake):
+PIPELINE (all deterministic; ASCII output; GPU-safe -- torch never touches the lake):
   1. TASKS. T tasks x K classes in a shared D-dim space (D<=64). Each task t has a random CENTER
      (its distinct region) and its K class-means sit along a CYCLICALLY-SHIFTED set of shared
      direction vectors (label k -> dir[(k+t)%K]). The cyclic shift makes the SAME label occupy
@@ -202,7 +202,7 @@ def main():
         import torch  # noqa: F401
     except ImportError:
         print("torch not installed; the expert/shared-model tier needs the [gpu]/[train] extra. "
-              "Skipping (the zero-dep lake router/store are exercised by lake_memory.py).")
+              "Skipping (the lake router/store are exercised by lake_memory.py).")
         return
 
     assert D_DIM <= 64, f"router key width D={D_DIM} must be <= 64 (the lake/index channel width N)"

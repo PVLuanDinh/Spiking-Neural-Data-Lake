@@ -14,7 +14,7 @@ the spiking global workspace, over the raw-binary knowledge on the SSD.
                        "learn: q | a" teaches (durable, raw binary); "think: X" runs a train of thought;
                        anything else is a normal turn (reason -> recall -> honest gap).
 
-Zero-dep: stdlib http.server only (no flask/fastapi). Binds 127.0.0.1 (LOCAL ONLY -- this exposes a
+Uses stdlib http.server only (no flask/fastapi). Binds 127.0.0.1 (LOCAL ONLY -- this exposes a
 brain that can be taught, so it is deliberately not served on 0.0.0.0).
 
   PYTHONPATH=src .venv-lake/Scripts/python research/brain_web.py --serve            # CPU brain + UI

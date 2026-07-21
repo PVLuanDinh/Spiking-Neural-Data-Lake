@@ -21,6 +21,7 @@ inference, not a large LLM.
 
   python -m snn_data_lake.cortex.spiking_lm_serve        # (also run by run_selfchecks.py)
 """
+
 import json
 import math
 
@@ -63,7 +64,7 @@ def _forward_logits(lm, ids):
     mem_head = [0.0] * d
     decays = [[_sigmoid(z) for z in blk["log_decay"]] for blk in lm["blocks"]]
     for t in range(len(ids)):
-        cur = list(embed[ids[t]])                       # [d] input current for this token
+        cur = list(embed[ids[t]])  # [d] input current for this token
         for b, blk in enumerate(lm["blocks"]):
             spk_in, mem_in[b] = _lif(mem_in[b], cur, beta, thr)
             k = _matvec(blk["key"], spk_in)
@@ -73,9 +74,11 @@ def _forward_logits(lm, ids):
             spk_out, mem_out[b] = _lif(mem_out[b], mix, beta, thr)
             fout = _matvec(blk["ffn_w"], spk_out)
             fb = blk["ffn_b"]
-            cur = [fout[i] + fb[i] + cur[i] for i in range(d)]   # graded residual
-        spk_head, mem_head = _lif(mem_head, cur, beta, thr)      # spike-driven readout
-        logits = [row_i + lm["readout_b"][o] for o, row_i in enumerate(_matvec(lm["readout"], spk_head))]
+            cur = [fout[i] + fb[i] + cur[i] for i in range(d)]  # graded residual
+        spk_head, mem_head = _lif(mem_head, cur, beta, thr)  # spike-driven readout
+        logits = [
+            row_i + lm["readout_b"][o] for o, row_i in enumerate(_matvec(lm["readout"], spk_head))
+        ]
     return logits
 
 
@@ -99,7 +102,7 @@ def generate(lm, prompt, n=80, seq_len=None, temperature=0.0, seed=0):
     for _ in range(int(n)):
         logits = _forward_logits(lm, ids[-seq_len:])
         if temperature <= 0.0:
-            nxt = max(range(len(logits)), key=lambda c: logits[c])       # greedy
+            nxt = max(range(len(logits)), key=lambda c: logits[c])  # greedy
         else:
             m = max(logits)
             exps = [math.exp((z - m) / temperature) for z in logits]
@@ -127,7 +130,18 @@ def load_lm(path):
         lm = json.load(f)
     if not isinstance(lm, dict) or str(lm.get("format", "")) != LM_FORMAT:
         raise ValueError(f"{path}: not a {LM_FORMAT} file (format={lm.get('format')!r})")
-    for key in ("vocab", "d_model", "beta", "threshold", "stoi", "itos", "embed", "blocks", "readout", "readout_b"):
+    for key in (
+        "vocab",
+        "d_model",
+        "beta",
+        "threshold",
+        "stoi",
+        "itos",
+        "embed",
+        "blocks",
+        "readout",
+        "readout_b",
+    ):
         if key not in lm:
             raise ValueError(f"{path}: missing '{key}'")
     if len(lm["embed"]) != lm["vocab"] or len(lm["itos"]) != lm["vocab"]:
@@ -140,15 +154,32 @@ def _demo_lm():
     NOT trained. The readout is biased hard toward one char so the greedy output is predictable."""
     v, d = 4, 4
     ident = [[1.0 if i == j else 0.0 for j in range(d)] for i in range(d)]
-    blk = {"key": ident, "value": ident, "log_decay": [0.0] * d,
-           "ffn_w": [[0.0] * d for _ in range(d)], "ffn_b": [0.0] * d}
+    blk = {
+        "key": ident,
+        "value": ident,
+        "log_decay": [0.0] * d,
+        "ffn_w": [[0.0] * d for _ in range(d)],
+        "ffn_b": [0.0] * d,
+    }
     readout = [[0.0] * d for _ in range(v)]
-    readout_b = [0.0, 5.0, 0.0, 0.0]                    # bias hard toward char id 1
+    readout_b = [0.0, 5.0, 0.0, 0.0]  # bias hard toward char id 1
     chars = list("abcd")
-    return {"format": LM_FORMAT, "vocab": v, "d_model": d, "n_blocks": 1, "beta": 0.9,
-            "threshold": 1.0, "seq_len": 8, "stoi": {c: i for i, c in enumerate(chars)},
-            "itos": chars, "embed": [[2.0 if k == i else 0.0 for k in range(d)] for i in range(v)],
-            "blocks": [blk], "readout": readout, "readout_b": readout_b, "meta": {}}
+    return {
+        "format": LM_FORMAT,
+        "vocab": v,
+        "d_model": d,
+        "n_blocks": 1,
+        "beta": 0.9,
+        "threshold": 1.0,
+        "seq_len": 8,
+        "stoi": {c: i for i, c in enumerate(chars)},
+        "itos": chars,
+        "embed": [[2.0 if k == i else 0.0 for k in range(d)] for i in range(v)],
+        "blocks": [blk],
+        "readout": readout,
+        "readout_b": readout_b,
+        "meta": {},
+    }
 
 
 def main():
@@ -156,7 +187,7 @@ def main():
     import tempfile
 
     lm = _demo_lm()
-    out = generate(lm, "a", n=6, temperature=0.0)       # greedy, deterministic
+    out = generate(lm, "a", n=6, temperature=0.0)  # greedy, deterministic
     out2 = generate(lm, "a", n=6, temperature=0.0)
 
     # round-trip through the JSON weight file the trainer writes
@@ -169,14 +200,18 @@ def main():
     print("=" * 62)
     print("SPIKING LM SERVE -- zero-dep inference for a trained spiking LM")
     print("=" * 62)
-    print(f"vocab={lm['vocab']} d_model={lm['d_model']} blocks={lm['n_blocks']} (hand-built demo LM)")
+    print(
+        f"vocab={lm['vocab']} d_model={lm['d_model']} blocks={lm['n_blocks']} (hand-built demo LM)"
+    )
     print(f"greedy generate('a', 6) : {out!r}")
     print(f"round-trip (load) match : {out == out_loaded}")
     print("=" * 62)
 
     # ---- self-check: deterministic asserts, zero-dep ----
     assert out == out2, "generation must be deterministic (greedy)"
-    assert len(out) == len("a") + 6 and all(c in lm["stoi"] for c in out), "output = prompt + n valid chars"
+    assert len(out) == len("a") + 6 and all(c in lm["stoi"] for c in out), (
+        "output = prompt + n valid chars"
+    )
     # positive control: readout biased hard toward char 'b' (id 1) -> greedy emits 'b'
     assert set(out[1:]) == {"b"}, f"readout biased to 'b' must make greedy emit 'b' ({out!r})"
     assert out_loaded == out, "a saved+loaded LM must generate identically (faithful serve)"
@@ -190,8 +225,10 @@ def main():
         raised = True
     os.remove(bad)
     assert raised, "load_lm must reject a non-snn_lm file at the trust boundary"
-    print(f"self-check OK: zero-dep spiking-LM forward + greedy generate {out!r} deterministic; "
-          f"biased readout controls output; JSON weight file round-trips; bad file rejected")
+    print(
+        f"self-check OK: zero-dep spiking-LM forward + greedy generate {out!r} deterministic; "
+        f"biased readout controls output; JSON weight file round-trips; bad file rejected"
+    )
 
 
 if __name__ == "__main__":

@@ -39,8 +39,8 @@ no rewrite): bcm_plasticity.BCMNeuron (theta as the metaplastic threshold), inhi
 (the Vogels E/I controller), benna_fusi.BennaFusiSynapse (the coupled-beaker cascade). The base sandwich is
 inherited unchanged.
 
-HONESTY / SAFETY. Pure stdlib -- no numpy, no torch (all reused rules are stdlib), so the zero-dep /
-NORD_TORCH gating is unaffected. OPT-IN: the learner takes the stack as an injected duck-typed object; with
+HONESTY / SAFETY. stdlib + numpy/torch allowed project-wide (all reused rules happen to be stdlib).
+OPT-IN: the learner takes the stack as an injected duck-typed object; with
 no stack (the default) the R-STDP path is BYTE-IDENTICAL to today, and attaching this one changes nothing
 until it is enabled. It stabilizes/consolidates PLASTICITY only and adds NO actuator route (the intent-
 recognition learning path only; the motor path is untouched). Deterministic: per-instance random.Random /
@@ -51,6 +51,7 @@ re-verify. ASCII-only output.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.plasticity_rule_stack
 """
+
 import zlib
 
 from snn_data_lake.plasticity.bcm_plasticity import BCMNeuron
@@ -81,14 +82,18 @@ class _BCMMetaGate:
         self._beta = float(beta)
         self._floor = float(floor)
         self._seed = int(seed)
-        self._lr = float(lr)                    # small BCM lr -> the STABLE non-trivial fixed point
-        self._bcm = [None] * self._n            # one scalar BCMNeuron(1) per neuron, lazily built
-        self._theta0 = 0.05                     # BCMNeuron's initial theta (gate == 1.0 at rest)
+        self._lr = float(lr)  # small BCM lr -> the STABLE non-trivial fixed point
+        self._bcm = [None] * self._n  # one scalar BCMNeuron(1) per neuron, lazily built
+        self._theta0 = 0.05  # BCMNeuron's initial theta (gate == 1.0 at rest)
 
     def _ensure(self, i):
         if self._bcm[i] is None:
-            sub = zlib.crc32(b"bcm-meta") ^ (self._seed + i)   # deterministic sub-seed (never hash())
-            self._bcm[i] = BCMNeuron(1, lr=self._lr, seed=sub)  # scalar unit: theta tracks the drive
+            sub = zlib.crc32(b"bcm-meta") ^ (
+                self._seed + i
+            )  # deterministic sub-seed (never hash())
+            self._bcm[i] = BCMNeuron(
+                1, lr=self._lr, seed=sub
+            )  # scalar unit: theta tracks the drive
 
     @staticmethod
     def _squash(drive):
@@ -103,7 +108,7 @@ class _BCMMetaGate:
         magnitude, squashed into the stable band). theta = <y^2> is the metaplastic modification threshold:
         strong recent drive RAISES it. Delegates to the real BCM update rule (a single-input BCMNeuron)."""
         self._ensure(i)
-        self._bcm[i].update([self._squash(drive)])             # REUSE the real BCM rule (slides theta)
+        self._bcm[i].update([self._squash(drive)])  # REUSE the real BCM rule (slides theta)
 
     def theta(self, i):
         b = self._bcm[i]
@@ -148,10 +153,10 @@ class _EIBalance:
         developed inhibition). The trim is bounded, multiplicative, and only ever reduces the weights."""
         self._t += 1
         inh = [0] * self._n_syn
-        inh[self._t % self._n_syn] = 1                         # deterministic inhibitory input (no rng)
-        exc = 0.15 + 0.02 * max(0.0, drive)                    # excitatory proxy of the neuron's drive
+        inh[self._t % self._n_syn] = 1  # deterministic inhibitory input (no rng)
+        exc = 0.15 + 0.02 * max(0.0, drive)  # excitatory proxy of the neuron's drive
         exc = min(1.0, max(0.0, exc))
-        self._ctrl[i].step(exc, inh, learn=True)               # REUSE the real Vogels iSTDP update
+        self._ctrl[i].step(exc, inh, learn=True)  # REUSE the real Vogels iSTDP update
         inhibition = self._ctrl[i].mean_w()
         f = 1.0 - min(self._max_trim, self._k * inhibition)
         return [w * f for w in weights], inhibition
@@ -179,15 +184,15 @@ class _BennaFusiConsolidation:
         self._n = int(n_neurons)
         self._w_max = float(w_max)
         self._n_levels = int(n_levels)
-        self._cas = [None] * self._n            # per-neuron list[BennaFusiSynapse]
-        self._prev = [None] * self._n           # last returned effective weights (delta reference)
+        self._cas = [None] * self._n  # per-neuron list[BennaFusiSynapse]
+        self._prev = [None] * self._n  # last returned effective weights (delta reference)
 
     def _ensure(self, i, weights):
         if self._cas[i] is None:
             cas = [BennaFusiSynapse(n_levels=self._n_levels, w_max=self._w_max) for _ in weights]
             for s, wi in zip(cas, weights):
                 lvl = min(self._w_max, max(-self._w_max, float(wi)))
-                s.u = [lvl] * self._n_levels    # start at equilibrium: flow == 0, perturbs nothing
+                s.u = [lvl] * self._n_levels  # start at equilibrium: flow == 0, perturbs nothing
             self._cas[i] = cas
             self._prev[i] = list(weights)
 
@@ -198,9 +203,11 @@ class _BennaFusiConsolidation:
         cas, prev = self._cas[i], self._prev[i]
         out = []
         for k, s in enumerate(cas):
-            s.deposit(weights[k] - prev[k])     # inject this step's plasticity event into the fast beaker
-            s.diffuse(1)                        # seep fast -> deep
-            out.append(s.weight)                # effective weight = fast beaker (deep-anchored at rest)
+            s.deposit(
+                weights[k] - prev[k]
+            )  # inject this step's plasticity event into the fast beaker
+            s.diffuse(1)  # seep fast -> deep
+            out.append(s.weight)  # effective weight = fast beaker (deep-anchored at rest)
         self._prev[i] = list(out)
         return out
 
@@ -226,23 +233,51 @@ class PlasticityRuleStack(HomeostaticPlasticityStack):
 
     Attach exactly like the base stack (pass as `stack=` to SpikingInteractionLearner, or assign
     `ixn.stack = PlasticityRuleStack(n_neurons=n)`). With ei=metaplastic=consolidation=False it is
-    byte-identical to the base stack. Pure stdlib, deterministic, no actuator route."""
+    byte-identical to the base stack. Deterministic, no actuator route."""
 
-    def __init__(self, n_neurons, *, ei=True, metaplastic=True, consolidation=True, seed=0,
-                 meta_beta=8.0, meta_floor=0.3,
-                 ei_n_syn=16, ei_rho0=0.05, ei_max_trim=0.05, ei_k=0.5,
-                 bf_w_max=4.0, bf_n_levels=6, **base_kwargs):
+    def __init__(
+        self,
+        n_neurons,
+        *,
+        ei=True,
+        metaplastic=True,
+        consolidation=True,
+        seed=0,
+        meta_beta=8.0,
+        meta_floor=0.3,
+        ei_n_syn=16,
+        ei_rho0=0.05,
+        ei_max_trim=0.05,
+        ei_k=0.5,
+        bf_w_max=4.0,
+        bf_n_levels=6,
+        **base_kwargs,
+    ):
         super().__init__(n_neurons, seed=seed, **base_kwargs)
-        self._meta = _BCMMetaGate(self.n_neurons, beta=meta_beta, floor=meta_floor, seed=seed) if metaplastic else None
-        self._ei = _EIBalance(self.n_neurons, n_syn=ei_n_syn, rho0=ei_rho0, max_trim=ei_max_trim, k=ei_k) if ei else None
-        self._cons = _BennaFusiConsolidation(self.n_neurons, w_max=bf_w_max, n_levels=bf_n_levels) if consolidation else None
+        self._meta = (
+            _BCMMetaGate(self.n_neurons, beta=meta_beta, floor=meta_floor, seed=seed)
+            if metaplastic
+            else None
+        )
+        self._ei = (
+            _EIBalance(self.n_neurons, n_syn=ei_n_syn, rho0=ei_rho0, max_trim=ei_max_trim, k=ei_k)
+            if ei
+            else None
+        )
+        self._cons = (
+            _BennaFusiConsolidation(self.n_neurons, w_max=bf_w_max, n_levels=bf_n_levels)
+            if consolidation
+            else None
+        )
         # the full order this superset touches its rules each step (base sandwich sits in the middle)
         self.rule_order = tuple(
             [a.name for a in (self._meta,) if a is not None]
             + [self._UPDATE]
             + [a.name for a in (self._ei, self._cons) if a is not None]
         )
-        self.rule_reuses = tuple(a.reused for a in (self._meta, self._ei, self._cons) if a is not None)
+        self.rule_reuses = tuple(
+            a.reused for a in (self._meta, self._ei, self._cons) if a is not None
+        )
 
     # -- PRE: base short-term gain, then the metaplastic BCM brake ---------------------------------
     def pre_gain(self, neuron_id):
@@ -254,14 +289,14 @@ class PlasticityRuleStack(HomeostaticPlasticityStack):
     # -- POST: base sandwich, then E/I trim, then Benna-Fusi consolidation --------------------------
     def stabilize(self, neuron_id, weights, activity):
         i = int(neuron_id)
-        w = super().stabilize(i, weights, activity)             # base: bounded + rate-homeostatic
+        w = super().stabilize(i, weights, activity)  # base: bounded + rate-homeostatic
         drive = sum(wi * ai for wi, ai in zip(w, activity))
         if self._ei is not None:
             w, _ = self._ei.apply(i, w, drive)
         if self._cons is not None:
-            w = self._cons.consolidate(i, w)                    # deep-anchored effective weights
+            w = self._cons.consolidate(i, w)  # deep-anchored effective weights
         if self._meta is not None:
-            self._meta.observe(i, drive)                        # slide theta for the NEXT pre_gain
+            self._meta.observe(i, drive)  # slide theta for the NEXT pre_gain
         return w
 
     def relax(self, neuron_id, steps):
@@ -278,7 +313,7 @@ class PlasticityRuleStack(HomeostaticPlasticityStack):
         mg = self._meta.gate(i) if self._meta is not None else 1.0
 
         def _gated(gain, w):
-            return rstdp_update(gain * mg, w)                   # metaplastic brake on the effective LR
+            return rstdp_update(gain * mg, w)  # metaplastic brake on the effective LR
 
         w, ctx = super().learning_step(i, weights, activity, _gated)
         drive = sum(wi * ai for wi, ai in zip(w, activity))
@@ -297,7 +332,7 @@ class PlasticityRuleStack(HomeostaticPlasticityStack):
 
 
 # --------------------------------------------------------------------------------------------------
-# self-check helpers (deterministic, zero-dep, ASCII)
+# self-check helpers (deterministic, ASCII)
 # --------------------------------------------------------------------------------------------------
 def _sign_agree(w, target):
     """Fraction of synapses whose weight SIGN agrees with the target sign pattern (chance 0.5)."""
@@ -336,13 +371,17 @@ def _retention_run(stack, n_in, a, d_old, d_new, activity, t_a, t_b, relax, w_bo
     """
     new = [-x for x in a]
     w = [0.0] * n_in
-    for _ in range(t_a):                                       # A: consolidate the old pattern
-        w = stack.stabilize(0, [_clip(w[i] + d_old[i], -w_bound, w_bound) for i in range(n_in)], activity)
+    for _ in range(t_a):  # A: consolidate the old pattern
+        w = stack.stabilize(
+            0, [_clip(w[i] + d_old[i], -w_bound, w_bound) for i in range(n_in)], activity
+        )
     a_after_a = _sign_agree(w, a)
-    for _ in range(t_b):                                       # B: conflicting new-pattern burst
-        w = stack.stabilize(0, [_clip(w[i] + d_new[i], -w_bound, w_bound) for i in range(n_in)], activity)
+    for _ in range(t_b):  # B: conflicting new-pattern burst
+        w = stack.stabilize(
+            0, [_clip(w[i] + d_new[i], -w_bound, w_bound) for i in range(n_in)], activity
+        )
     b_after_b = _sign_agree(w, new)
-    relax_fn = getattr(stack, "relax", None)                  # base stack has no rest phase
+    relax_fn = getattr(stack, "relax", None)  # base stack has no rest phase
     r = relax_fn(0, relax) if relax_fn is not None else None
     if r is not None:
         w = r
@@ -354,10 +393,12 @@ def _retention_selfcheck():
     """Anti-forgetting: the rule stack retains an OLD pattern through a conflicting NEW burst markedly
     better than the base HomeostaticPlasticityStack (which has no consolidation memory)."""
     n_in, seed = 24, 0
-    a = [1 if (zlib.crc32(bytes([i])) ^ seed) % 2 else -1 for i in range(n_in)]   # deterministic +/-1 pattern
+    a = [
+        1 if (zlib.crc32(bytes([i])) ^ seed) % 2 else -1 for i in range(n_in)
+    ]  # deterministic +/-1 pattern
     d_old = _signed_deltas(n_in, a, seed)
     d_new = _signed_deltas(n_in, [-x for x in a], seed)
-    activity = [0.05] * n_in                                   # small drive: keep the base ceiling inactive
+    activity = [0.05] * n_in  # small drive: keep the base ceiling inactive
     t_a, t_b, relax, w_bound = 60, 40, 400, 1.0
 
     # high ceiling on BOTH so homeostatic scaling does not couple synapses -> a clean per-synapse test;
@@ -366,24 +407,40 @@ def _retention_selfcheck():
     base = HomeostaticPlasticityStack(1, seed=seed, ceiling_factor=200.0)
     rule = PlasticityRuleStack(1, seed=seed, ceiling_factor=200.0, bf_w_max=w_bound)
 
-    b_aA, b_aB, b_ret = _retention_run(base, n_in, a, d_old, d_new, activity, t_a, t_b, relax, w_bound)
-    r_aA, r_aB, r_ret = _retention_run(rule, n_in, a, d_old, d_new, activity, t_a, t_b, relax, w_bound)
+    b_aA, b_aB, b_ret = _retention_run(
+        base, n_in, a, d_old, d_new, activity, t_a, t_b, relax, w_bound
+    )
+    r_aA, r_aB, r_ret = _retention_run(
+        rule, n_in, a, d_old, d_new, activity, t_a, t_b, relax, w_bound
+    )
 
     print("=" * 78)
-    print("ANTI-FORGETTING -- rule stack vs base stack: retain OLD pattern through a NEW-pattern burst")
+    print(
+        "ANTI-FORGETTING -- rule stack vs base stack: retain OLD pattern through a NEW-pattern burst"
+    )
     print("=" * 78)
-    print(f"protocol: consolidate A ({t_a} ticks) -> conflicting B burst ({t_b} ticks) -> rest ({relax})")
+    print(
+        f"protocol: consolidate A ({t_a} ticks) -> conflicting B burst ({t_b} ticks) -> rest ({relax})"
+    )
     print("                    A learned (after A)   B learned (after B)   A retained (after rest)")
-    print(f"  base stack             {b_aA:5.3f}                {b_aB:5.3f}                 {b_ret:5.3f}")
-    print(f"  rule stack             {r_aA:5.3f}                {r_aB:5.3f}                 {r_ret:5.3f}")
+    print(
+        f"  base stack             {b_aA:5.3f}                {b_aB:5.3f}                 {b_ret:5.3f}"
+    )
+    print(
+        f"  rule stack             {r_aA:5.3f}                {r_aB:5.3f}                 {r_ret:5.3f}"
+    )
     print(f"  chance A-retention = 0.500 ; rule improvement over base = {r_ret - b_ret:+.3f}")
     print("=" * 78)
 
     assert b_aA > 0.9 and r_aA > 0.9, f"both stacks must first LEARN A ({b_aA:.3f}, {r_aA:.3f})"
     assert r_aB > 0.9, f"the rule stack's fast beaker must still LEARN the new B ({r_aB:.3f})"
-    assert b_ret <= 0.5 + 1e-9, f"base stack must FORGET A after the conflicting burst (<= chance): {b_ret:.3f}"
+    assert b_ret <= 0.5 + 1e-9, (
+        f"base stack must FORGET A after the conflicting burst (<= chance): {b_ret:.3f}"
+    )
     assert r_ret >= 0.80, f"rule stack must RETAIN A at the measured horizon: {r_ret:.3f}"
-    assert r_ret >= b_ret + 0.30, f"rule stack must retain A MARKEDLY better than base: {r_ret:.3f} vs {b_ret:.3f}"
+    assert r_ret >= b_ret + 0.30, (
+        f"rule stack must retain A MARKEDLY better than base: {r_ret:.3f} vs {b_ret:.3f}"
+    )
     return b_ret, r_ret
 
 
@@ -396,12 +453,12 @@ def _adaptive_lr_selfcheck():
     def _settled_gate(drive):
         gate = _BCMMetaGate(1, seed=seed)
         for _ in range(settle):
-            gate.observe(0, drive)                             # sustained recent drive of this magnitude
+            gate.observe(0, drive)  # sustained recent drive of this magnitude
         return gate.gate(0), gate.theta(0)
 
     g_lo, th_lo = _settled_gate(lo_drive)
     g_hi, th_hi = _settled_gate(hi_drive)
-    g_cold = _BCMMetaGate(1, seed=seed).gate(0)                # no history -> 1.0
+    g_cold = _BCMMetaGate(1, seed=seed).gate(0)  # no history -> 1.0
 
     print()
     print("=" * 78)
@@ -409,12 +466,18 @@ def _adaptive_lr_selfcheck():
     print("=" * 78)
     print(f"cold start (no history) gate : {g_cold:.3f}  (== 1.0, no brake)")
     print(f"low recent drive  ({lo_drive}) : theta {th_lo:6.3f} -> gate {g_lo:.3f}")
-    print(f"high recent drive ({hi_drive}) : theta {th_hi:6.3f} -> gate {g_hi:.3f}  (metaplastic brake)")
+    print(
+        f"high recent drive ({hi_drive}) : theta {th_hi:6.3f} -> gate {g_hi:.3f}  (metaplastic brake)"
+    )
     print("=" * 78)
 
     assert g_cold == 1.0, f"cold-start gate must be 1.0 (no metaplastic history): {g_cold:.3f}"
-    assert th_hi > th_lo, f"stronger recent drive must RAISE the BCM threshold theta ({th_hi:.3f} > {th_lo:.3f})"
-    assert g_hi < g_lo, f"higher recent activity must LOWER the effective LR gate ({g_hi:.3f} < {g_lo:.3f})"
+    assert th_hi > th_lo, (
+        f"stronger recent drive must RAISE the BCM threshold theta ({th_hi:.3f} > {th_lo:.3f})"
+    )
+    assert g_hi < g_lo, (
+        f"higher recent activity must LOWER the effective LR gate ({g_hi:.3f} < {g_lo:.3f})"
+    )
     assert 0.3 <= g_hi <= 1.0 and 0.3 <= g_lo <= 1.0, "the gate stays bounded in [floor, 1.0]"
     return g_lo, g_hi
 
@@ -428,7 +491,9 @@ def _stability_selfcheck():
     code, activity, t_post = HPS._drive_code(n_in)
     from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 
-    neuron = RSTDPNeuron(n_in, lr=0.1, a_plus=1.0, a_minus=1.0, tau_plus=8.0, tau_minus=8.0, w0=0.3, seed=seed)
+    neuron = RSTDPNeuron(
+        n_in, lr=0.1, a_plus=1.0, a_minus=1.0, tau_plus=8.0, tau_minus=8.0, w0=0.3, seed=seed
+    )
     update = HPS._rstdp_update_fn(neuron, code, t_post)
     stack = PlasticityRuleStack(1, seed=seed)
 
@@ -443,7 +508,9 @@ def _stability_selfcheck():
     s_rate = sum(rate_tail) / len(rate_tail)
 
     # unstabilized control: raw R-STDP potentiation diverges
-    c_neuron = RSTDPNeuron(n_in, lr=0.1, a_plus=1.0, a_minus=1.0, tau_plus=8.0, tau_minus=8.0, w0=0.3, seed=seed)
+    c_neuron = RSTDPNeuron(
+        n_in, lr=0.1, a_plus=1.0, a_minus=1.0, tau_plus=8.0, tau_minus=8.0, w0=0.3, seed=seed
+    )
     c_update = HPS._rstdp_update_fn(c_neuron, code, t_post)
     cw = list(c_neuron.w)
     for _ in range(steps):
@@ -454,13 +521,19 @@ def _stability_selfcheck():
     print("=" * 78)
     print("STABILITY PRESERVED -- full superset sandwich stays bounded + rate-homeostatic")
     print("=" * 78)
-    print(f"stream: {steps} potentiating R-STDP deposits onto one neuron (full rule stack wrapping each)")
-    print(f"  drive (v)         : rule {s_drive:8.3f} (bounded)    control {c_drive:12.3f} (diverges)")
+    print(
+        f"stream: {steps} potentiating R-STDP deposits onto one neuron (full rule stack wrapping each)"
+    )
+    print(
+        f"  drive (v)         : rule {s_drive:8.3f} (bounded)    control {c_drive:12.3f} (diverges)"
+    )
     print(f"  firing rate -> mu : rule {s_rate:8.3f} (~mu={mu})")
     print("=" * 78)
 
     assert s_drive < 20.0, f"the superset must keep the synapses BOUNDED (drive {s_drive:.2f})"
-    assert c_drive > 3.0 * s_drive, f"the unstabilized control must DIVERGE past the bounded rule ({c_drive:.1f} vs {s_drive:.2f})"
+    assert c_drive > 3.0 * s_drive, (
+        f"the unstabilized control must DIVERGE past the bounded rule ({c_drive:.1f} vs {s_drive:.2f})"
+    )
     assert abs(s_rate - mu) < 0.08, f"rate homeostasis must be preserved ({s_rate:.3f} vs mu={mu})"
     return s_drive, c_drive, s_rate
 
@@ -485,35 +558,43 @@ def _equivalence_and_determinism_selfcheck():
         return w, gains
 
     base_w, base_g = _run(HomeostaticPlasticityStack(1, seed=seed))
-    off_w, off_g = _run(PlasticityRuleStack(1, seed=seed, ei=False, metaplastic=False, consolidation=False))
+    off_w, off_g = _run(
+        PlasticityRuleStack(1, seed=seed, ei=False, metaplastic=False, consolidation=False)
+    )
     on1_w, _ = _run(PlasticityRuleStack(1, seed=seed))
     on2_w, _ = _run(PlasticityRuleStack(1, seed=seed))
 
-    equivalent = (off_w == base_w and off_g == base_g)
-    deterministic = (on1_w == on2_w)
+    equivalent = off_w == base_w and off_g == base_g
+    deterministic = on1_w == on2_w
     reuse_ok = True
     r = PlasticityRuleStack(1, seed=seed)
-    r.stabilize(0, [0.3] * n_in, activity)                    # size the lazy structures
-    reuse_ok = (isinstance(r._meta._bcm[0], BCMNeuron)
-                and isinstance(r._ei._ctrl[0], InhibitorySTDP)
-                and isinstance(r._cons._cas[0][0], BennaFusiSynapse))
+    r.stabilize(0, [0.3] * n_in, activity)  # size the lazy structures
+    reuse_ok = (
+        isinstance(r._meta._bcm[0], BCMNeuron)
+        and isinstance(r._ei._ctrl[0], InhibitorySTDP)
+        and isinstance(r._cons._cas[0][0], BennaFusiSynapse)
+    )
     import sys
+
     stdlib_ok = "numpy" not in sys.modules and "torch" not in sys.modules
 
     print()
     print("=" * 78)
     print("DROP-IN EQUIVALENCE + DETERMINISM + REUSE")
     print("=" * 78)
-    print(f"extras OFF == base HomeostaticPlasticityStack (byte-identical weights + gains): {equivalent}")
+    print(
+        f"extras OFF == base HomeostaticPlasticityStack (byte-identical weights + gains): {equivalent}"
+    )
     print(f"extras ON deterministic (same seed -> identical trajectory): {deterministic}")
     print(f"reuses real modules (BCMNeuron / InhibitorySTDP / BennaFusiSynapse): {reuse_ok}")
-    print(f"pure stdlib (no numpy / torch imported): {stdlib_ok}")
+    print(f"numpy / torch not imported in this self-check: {stdlib_ok}")
     print("=" * 78)
 
     assert equivalent, "with all extras OFF the superset must be byte-identical to the base stack"
     assert deterministic, "same seed must give a byte-identical trajectory with the extras ON"
-    assert reuse_ok, "the extra faculties must REUSE the real BCMNeuron / InhibitorySTDP / BennaFusiSynapse"
-    assert stdlib_ok, "pure stdlib: numpy/torch must not be imported"
+    assert reuse_ok, (
+        "the extra faculties must REUSE the real BCMNeuron / InhibitorySTDP / BennaFusiSynapse"
+    )
     return equivalent, deterministic
 
 
@@ -523,13 +604,15 @@ def main():
     s_drive, c_drive, s_rate = _stability_selfcheck()
     equivalent, deterministic = _equivalence_and_determinism_selfcheck()
     print()
-    print(f"self-check OK: PlasticityRuleStack is a drop-in SUPERSET of HomeostaticPlasticityStack "
-          f"(extras OFF byte-identical: {equivalent}) that ADDS a metaplastic BCM adaptive-LR gate "
-          f"(recent activity lowers the effective LR: gate {g_lo:.2f} -> {g_hi:.2f}) and anti-forgetting "
-          f"(rule retains an old pattern through a conflicting burst {r_ret:.2f} vs the base's forgetting "
-          f"{b_ret:.2f}), REUSING BCMNeuron / InhibitorySTDP / BennaFusiSynapse verbatim, while PRESERVING "
-          f"the base's bounded (drive {s_drive:.2f} vs a diverging {c_drive:.1f}) + rate-homeostatic "
-          f"(rate {s_rate:.2f}~mu) guarantee; deterministic ({deterministic}); pure stdlib.")
+    print(
+        f"self-check OK: PlasticityRuleStack is a drop-in SUPERSET of HomeostaticPlasticityStack "
+        f"(extras OFF byte-identical: {equivalent}) that ADDS a metaplastic BCM adaptive-LR gate "
+        f"(recent activity lowers the effective LR: gate {g_lo:.2f} -> {g_hi:.2f}) and anti-forgetting "
+        f"(rule retains an old pattern through a conflicting burst {r_ret:.2f} vs the base's forgetting "
+        f"{b_ret:.2f}), REUSING BCMNeuron / InhibitorySTDP / BennaFusiSynapse verbatim, while PRESERVING "
+        f"the base's bounded (drive {s_drive:.2f} vs a diverging {c_drive:.1f}) + rate-homeostatic "
+        f"(rate {s_rate:.2f}~mu) guarantee; deterministic ({deterministic})."
+    )
 
 
 if __name__ == "__main__":

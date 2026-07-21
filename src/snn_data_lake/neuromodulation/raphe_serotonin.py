@@ -31,14 +31,15 @@ Schweighofer et al. 2008; Miyazaki, Miyazaki & Doya 2011/2014.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.raphe_serotonin
 """
+
 import math
 import random
 
-K_HI = 2.0          # steep hyperbolic discount at 5-HT=0 (impulsive: the future is crushed)
-K_LO = 0.02         # shallow discount at 5-HT=1 (patient: the future is barely discounted)
-TAU = 50.0          # slow tonic 5-HT time constant (a mood/context setpoint, not a fast signal)
+K_HI = 2.0  # steep hyperbolic discount at 5-HT=0 (impulsive: the future is crushed)
+K_LO = 0.02  # shallow discount at 5-HT=1 (patient: the future is barely discounted)
+TAU = 50.0  # slow tonic 5-HT time constant (a mood/context setpoint, not a fast signal)
 
-LEVELS = (0.0, 0.25, 0.5, 0.75, 1.0)   # 5-HT sweep: impulsive -> patient
+LEVELS = (0.0, 0.25, 0.5, 0.75, 1.0)  # 5-HT sweep: impulsive -> patient
 
 
 class DorsalRaphe:
@@ -78,7 +79,9 @@ class DorsalRaphe:
 
     def patience(self, battery):
         """Fraction of a fixed SS-vs-LL battery on which the larger-later option is chosen."""
-        return sum(1 for sooner, later in battery if self.choose(sooner, later) == "LL") / len(battery)
+        return sum(1 for sooner, later in battery if self.choose(sooner, later) == "LL") / len(
+            battery
+        )
 
     def tolerated_wait(self, ratio):
         """Max delay tolerated for a reward `ratio`x larger than an immediate one (indifference of a
@@ -129,7 +132,7 @@ def main():
     print(f"LOW 5-HT (impulsive) patience={lo:.2f}  ->  HIGH 5-HT (patient) patience={hi:.2f}")
     print("=" * 66)
 
-    # ---- self-checks (deterministic, zero-dep, ASCII-only) ------------------
+    # ---- self-checks (deterministic, ASCII-only) ------------------
     frac = d["patience"]
     # 1. the switch: low 5-HT is impulsive (smaller-sooner), high 5-HT is patient (larger-later)
     assert lo < 0.5, f"low 5-HT must be impulsive (mostly smaller-sooner), got patience {lo:.2f}"
@@ -138,16 +141,21 @@ def main():
     # 2. a mid level interpolates between the impulsive and patient extremes
     assert lo <= mid <= hi, f"mid 5-HT must interpolate ({lo:.2f} <= {mid:.2f} <= {hi:.2f})"
     # 3. monotonicity: patience is non-decreasing in 5-HT (5-HT is load-bearing, un-riggable)
-    assert all(frac[i] <= frac[i + 1] + 1e-9 for i in range(len(frac) - 1)), \
+    assert all(frac[i] <= frac[i + 1] + 1e-9 for i in range(len(frac) - 1)), (
         f"patience must increase monotonically with 5-HT: {[f'{f:.2f}' for f in frac]}"
+    )
     # 4. discount rate falls with 5-HT so the tolerated wait grows -> the mechanism is monotone
     assert d["waits"][0] < d["waits"][-1], "tolerated waiting time must grow as 5-HT rises"
     # 5. determinism: same seed -> identical results
-    assert demo_intertemporal(0) == demo_intertemporal(0), "same seed must reproduce identical results"
+    assert demo_intertemporal(0) == demo_intertemporal(0), (
+        "same seed must reproduce identical results"
+    )
 
-    print(f"self-check OK: patience rises monotonically with 5-HT "
-          f"{[f'{f:.2f}' for f in frac]} (low={lo:.2f} impulsive -> high={hi:.2f} patient); "
-          f"tolerated 2x wait {d['waits'][0]:.2f} -> {d['waits'][-1]:.2f}")
+    print(
+        f"self-check OK: patience rises monotonically with 5-HT "
+        f"{[f'{f:.2f}' for f in frac]} (low={lo:.2f} impulsive -> high={hi:.2f} patient); "
+        f"tolerated 2x wait {d['waits'][0]:.2f} -> {d['waits'][-1]:.2f}"
+    )
 
 
 if __name__ == "__main__":

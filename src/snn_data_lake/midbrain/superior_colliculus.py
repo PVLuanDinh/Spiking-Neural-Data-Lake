@@ -40,6 +40,7 @@ threshold-crossing spike in a small LIF winner-take-all array, nothing more.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.midbrain.superior_colliculus
 """
+
 import random
 
 
@@ -50,17 +51,30 @@ class SuperiorColliculus:
     location ever wins on a flat/zero map (nothing spikes); on a peaked map the argmax spikes first
     and wins, and higher salience -> earlier first spike -> lower latency."""
 
-    def __init__(self, n=24, inhib=1.0, leak=0.02, theta=3.0, max_steps=200, seed=0,
-                 w_inhib=2.0, inhib_decay=0.5, v_reset=0.0, readout_window=12):
+    def __init__(
+        self,
+        n=24,
+        inhib=1.0,
+        leak=0.02,
+        theta=3.0,
+        max_steps=200,
+        seed=0,
+        w_inhib=2.0,
+        inhib_decay=0.5,
+        v_reset=0.0,
+        readout_window=12,
+    ):
         self.n = n
-        self.inhib = inhib                  # surround-inhibition strength (>=1 cancels a flat map)
-        self.leak = leak                    # LIF membrane leak per step (>0 == genuinely leaky)
-        self.theta = theta                  # LIF firing threshold (membrane spikes when it crosses)
-        self.max_steps = max_steps          # give up (no saccade) if nothing spikes in this many steps
-        self.w_inhib = w_inhib              # lateral inhibitory PSP a spike delivers to every other
-        self.inhib_decay = inhib_decay      # per-step decay of the lateral inhibitory synaptic trace
-        self.v_reset = v_reset              # membrane potential a neuron resets to after a spike
-        self.readout_window = readout_window  # steps to keep integrating after the winner first spikes
+        self.inhib = inhib  # surround-inhibition strength (>=1 cancels a flat map)
+        self.leak = leak  # LIF membrane leak per step (>0 == genuinely leaky)
+        self.theta = theta  # LIF firing threshold (membrane spikes when it crosses)
+        self.max_steps = max_steps  # give up (no saccade) if nothing spikes in this many steps
+        self.w_inhib = w_inhib  # lateral inhibitory PSP a spike delivers to every other
+        self.inhib_decay = inhib_decay  # per-step decay of the lateral inhibitory synaptic trace
+        self.v_reset = v_reset  # membrane potential a neuron resets to after a spike
+        self.readout_window = (
+            readout_window  # steps to keep integrating after the winner first spikes
+        )
         self.rng = random.Random(seed)
 
     @staticmethod
@@ -93,10 +107,10 @@ class SuperiorColliculus:
         train as (step, location) events."""
         drives = self._lateral(salience)
         n = len(salience)
-        v = [0.0] * n                        # LIF membrane potentials (rest = 0)
-        inh = [0.0] * n                      # lateral inhibitory synaptic trace onto each neuron
+        v = [0.0] * n  # LIF membrane potentials (rest = 0)
+        inh = [0.0] * n  # lateral inhibitory synaptic trace onto each neuron
         spikes = [0] * n
-        spike_train = []                     # discrete (step, location) spike events
+        spike_train = []  # discrete (step, location) spike events
         target, latency = None, None
         stop_at = self.max_steps
         for t in range(1, self.max_steps + 1):
@@ -112,19 +126,25 @@ class SuperiorColliculus:
             for i in fired:
                 spikes[i] += 1
                 spike_train.append((t, i))
-                v[i] = self.v_reset                       # SPIKE -> reset membrane
-                for j in range(n):                        # lateral inhibitory synapses to all others
+                v[i] = self.v_reset  # SPIKE -> reset membrane
+                for j in range(n):  # lateral inhibitory synapses to all others
                     if j != i:
                         inh[j] += self.w_inhib
             if fired and target is None:
-                target = fired[0]                         # FIRST location to spike wins the saccade
+                target = fired[0]  # FIRST location to spike wins the saccade
                 latency = t
-                stop_at = t + self.readout_window         # keep integrating to build the spike raster
+                stop_at = t + self.readout_window  # keep integrating to build the spike raster
             if target is not None and t >= stop_at:
                 break
         argmax = next(iter(self._kwta(salience, 1)))
-        return {"target": target, "latency": latency, "drives": drives, "argmax": argmax,
-                "spikes": spikes, "spike_train": spike_train}
+        return {
+            "target": target,
+            "latency": latency,
+            "drives": drives,
+            "argmax": argmax,
+            "spikes": spikes,
+            "spike_train": spike_train,
+        }
 
     def single_map(self, loc, salience, background=0.05, jitter=0.0):
         """A map with one target at `loc` over a low uniform background (optional deterministic
@@ -144,7 +164,6 @@ class SuperiorColliculus:
 
 
 def main():
-    import sys
 
     sc = SuperiorColliculus(seed=0)
 
@@ -170,20 +189,32 @@ def main():
     print("=" * 68)
     print("SUPERIOR COLLICULUS -- retinotopic salience map -> SPIKING WTA saccade")
     print("=" * 68)
-    print(f"locations: {sc.n} | threshold: {sc.theta} | leak: {sc.leak} | surround inhib: "
-          f"{sc.inhib} | lateral w: {sc.w_inhib} | max steps: {sc.max_steps}")
-    print(f"single target @ loc 7 (salience 0.80): first spike -> loc {res_one['target']} "
-          f"at step {res_one['latency']} ({res_one['spikes'][res_one['target']]} spikes total)")
-    print(f"flat map (all 0.50, high energy)     : saccade -> {res_flat['target']} "
-          "(no contrast -> nothing spikes)")
-    print(f"zero map (all 0.00)                  : saccade -> {res_zero['target']} "
-          "(no drive -> nothing spikes)")
+    print(
+        f"locations: {sc.n} | threshold: {sc.theta} | leak: {sc.leak} | surround inhib: "
+        f"{sc.inhib} | lateral w: {sc.w_inhib} | max steps: {sc.max_steps}"
+    )
+    print(
+        f"single target @ loc 7 (salience 0.80): first spike -> loc {res_one['target']} "
+        f"at step {res_one['latency']} ({res_one['spikes'][res_one['target']]} spikes total)"
+    )
+    print(
+        f"flat map (all 0.50, high energy)     : saccade -> {res_flat['target']} "
+        "(no contrast -> nothing spikes)"
+    )
+    print(
+        f"zero map (all 0.00)                  : saccade -> {res_zero['target']} "
+        "(no drive -> nothing spikes)"
+    )
     print("-" * 68)
     print("two targets: strong @ loc 4 (0.90) vs weak @ loc 17 (0.60)")
-    print(f"  -> winner loc {res_two['target']} first spike at step {res_two['latency']}  "
-          f"(map argmax = loc {res_two['argmax']})")
-    print(f"  -> spikes in readout window: winner loc 4 = {res_two['spikes'][4]}, "
-          f"loser loc 17 = {res_two['spikes'][17]} (lateral inhibition suppresses the loser)")
+    print(
+        f"  -> winner loc {res_two['target']} first spike at step {res_two['latency']}  "
+        f"(map argmax = loc {res_two['argmax']})"
+    )
+    print(
+        f"  -> spikes in readout window: winner loc 4 = {res_two['spikes'][4]}, "
+        f"loser loc 17 = {res_two['spikes'][17]} (lateral inhibition suppresses the loser)"
+    )
     print("-" * 68)
     print("latency falls as salience rises (express vs regular saccade):")
     for s, lat in zip(sweep, latencies):
@@ -199,43 +230,47 @@ def main():
     for _ in range(40):
         m = [trng.uniform(0.02, 0.15) for _ in range(sc.n)]
         peak = trng.randrange(sc.n)
-        m[peak] = max(m) + trng.uniform(0.3, 0.9)          # a unique, clearly dominant target
+        m[peak] = max(m) + trng.uniform(0.3, 0.9)  # a unique, clearly dominant target
         r = sc.saccade(m)
         assert r["target"] == peak, "the highest-salience location must win the spiking race"
         assert r["target"] == r["argmax"], "the spiking winner must equal the salience argmax"
     # flat / zero maps generate NO saccade (nothing spikes -> no spurious target).
     assert res_flat["target"] is None, "a flat salience map must generate no saccade"
     assert res_zero["target"] is None, "a zero salience map must generate no saccade"
-    assert res_flat["spike_train"] == [] and res_zero["spike_train"] == [], \
+    assert res_flat["spike_train"] == [] and res_zero["spike_train"] == [], (
         "a flat/zero map must produce no spikes at all"
+    )
     assert sum(res_flat["spikes"]) == 0 and sum(res_zero["spikes"]) == 0, "no spikes on a flat map"
 
     # (b) CHRONOMETRIC: first-spike latency strictly decreases as salience increases.
     assert all(lat is not None for lat in latencies), "each real target must produce a spike"
-    assert all(a > b for a, b in zip(latencies, latencies[1:])), \
+    assert all(a > b for a, b in zip(latencies, latencies[1:])), (
         "first-spike latency must strictly decrease as salience increases"
+    )
 
     # (c) GENUINELY SPIKING: real LIF membranes (leak + integrate + threshold + spike + reset),
-    #     the winner is chosen by the FIRST spike, discrete spike events, no numpy/torch.
+    #     the winner is chosen by the FIRST spike, discrete spike events.
     assert sc.leak > 0.0, "the membrane must genuinely leak (leaky integrate-and-fire)"
     assert sc.theta > 0.0 and hasattr(sc, "v_reset"), "a firing threshold and a reset must exist"
     # discrete spike events: integer (step, location) pairs, and the winner's FIRST spike == latency.
     train = res_one["spike_train"]
-    assert train and all(isinstance(t, int) and isinstance(i, int) for t, i in train), \
+    assert train and all(isinstance(t, int) and isinstance(i, int) for t, i in train), (
         "spikes must be discrete integer (step, location) events"
+    )
     winner_first = min(t for t, i in train if i == res_one["target"])
     assert winner_first == res_one["latency"], "latency must be the winner's FIRST spike time"
     # reset is real: after firing, the winner resets and re-integrates to spike again (a train).
-    assert res_one["spikes"][res_one["target"]] >= 2, \
+    assert res_one["spikes"][res_one["target"]] >= 2, (
         "the winner must spike repeatedly, which is only possible if the membrane resets"
+    )
     # lateral inhibition genuinely produces winner-take-all: winner out-spikes the loser, and
     # non-target (background) neurons never spike.
-    assert res_two["spikes"][4] > res_two["spikes"][17], \
+    assert res_two["spikes"][4] > res_two["spikes"][17], (
         "the winner's lateral inhibition must suppress the loser (spiking WTA)"
-    assert all(c == 0 for k, c in enumerate(res_two["spikes"]) if k not in (4, 17)), \
+    )
+    assert all(c == 0 for k, c in enumerate(res_two["spikes"]) if k not in (4, 17)), (
         "background neurons (zero drive) must never spike"
-    assert "numpy" not in sys.modules and "torch" not in sys.modules, \
-        "this module must be pure stdlib (no numpy / torch)"
+    )
 
     # (d) DETERMINISM: same seed -> identical jittered maps and identical saccades (spikes included).
     a = SuperiorColliculus(seed=0)
@@ -245,12 +280,18 @@ def main():
     assert ma == mb, "same seed must reproduce identical jittered maps"
     assert a.saccade(ma) == b.saccade(mb), "same seed must reproduce identical spiking saccades"
 
-    print(f"self-check OK: single target -> loc {res_one['target']} spikes first (== argmax); "
-          f"flat/zero maps -> no spikes / no saccade;")
-    print(f"  stronger of two spikes first and wins (loc {res_two['target']} == argmax, "
-          f"{res_two['spikes'][4]} vs {res_two['spikes'][17]} spikes via lateral inhibition);")
-    print(f"  first-spike latency {latencies[0]}->{latencies[-1]} steps strictly falls as salience "
-          f"{sweep[0]:.1f}->{sweep[-1]:.1f} rises; LIF leak/threshold/reset; deterministic")
+    print(
+        f"self-check OK: single target -> loc {res_one['target']} spikes first (== argmax); "
+        f"flat/zero maps -> no spikes / no saccade;"
+    )
+    print(
+        f"  stronger of two spikes first and wins (loc {res_two['target']} == argmax, "
+        f"{res_two['spikes'][4]} vs {res_two['spikes'][17]} spikes via lateral inhibition);"
+    )
+    print(
+        f"  first-spike latency {latencies[0]}->{latencies[-1]} steps strictly falls as salience "
+        f"{sweep[0]:.1f}->{sweep[-1]:.1f} rises; LIF leak/threshold/reset; deterministic"
+    )
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ captures (same format) and nothing else changes.
 
   python sensor_demo.py
 """
+
 from snn_data_lake import make_sensor_dataset as mk
 from snn_data_lake import signal_loop as S
 from snn_data_lake.brainstem.interpreter import Interpreter
@@ -21,10 +22,10 @@ from snn_data_lake.brainstem.reflex import Reflex
 # gestures -> commands appropriate to a proximity/temperature arm (illustrative)
 SENSOR_COMMANDS = {
     "HAND_APPROACH": "PREPARE_GRASP",
-    "HAND_RETREAT":  "RELEASE",
-    "HOT_OBJECT":    "WITHDRAW_HEAT",
-    "COLD_OBJECT":   "PROCEED",
-    "IDLE":          "IDLE_HOLD",
+    "HAND_RETREAT": "RELEASE",
+    "HOT_OBJECT": "WITHDRAW_HEAT",
+    "COLD_OBJECT": "PROCEED",
+    "IDLE": "IDLE_HOLD",
 }
 # reflex limits on the RAW (distance_m, temp_C) sample: too close (<0.10 m), or too hot (>50 C)
 SENSOR_REFLEX = {0: (0.10, 4.0, "STOP"), 1: (-100.0, 50.0, "WITHDRAW")}
@@ -71,9 +72,9 @@ def main():
         examples[g] = itp.interpret({"match": label})[0]
 
     # 3. reflex on raw danger samples (ahead of recognition)
-    close_hit = _fires([0.0, 25.0])      # contact (0 m) -> STOP
-    hot_hit = _fires([0.6, 60.0])        # 60 C -> WITHDRAW
-    safe = _fires([0.6, 28.0])           # within limits -> no fire
+    close_hit = _fires([0.0, 25.0])  # contact (0 m) -> STOP
+    hot_hit = _fires([0.6, 60.0])  # 60 C -> WITHDRAW
+    safe = _fires([0.6, 28.0])  # within limits -> no fire
 
     # 4. closed-loop: a rewarded HAND_APPROACH raises its value (dopamine)
     val, cort = S.ValenceLearner(), S.Cortisol()
@@ -88,7 +89,7 @@ def main():
     print("SENSOR DEMO — reference ultrasonic+IR rig, end to end")
     print("=" * 60)
     print(f"enrolled : {list(library)}")
-    print(f"recognition (held-out windows) : {acc:.0%}  (chance {1/len(library):.0%})")
+    print(f"recognition (held-out windows) : {acc:.0%}  (chance {1 / len(library):.0%})")
     print("gesture -> command:")
     for g, c in examples.items():
         print(f"  {g:14} -> {c}")
@@ -102,8 +103,10 @@ def main():
     assert close_hit == "STOP" and hot_hit == "WITHDRAW", "reflex missed a danger sample"
     assert safe is None, "reflex fired on a safe sample"
     assert v1 > v0, "dopamine did not raise the rewarded gesture's value"
-    print("self-check OK: gestures recognized + commanded, reflex catches close/hot, "
-          "dopamine learns — full stack runs on the reference sensor")
+    print(
+        "self-check OK: gestures recognized + commanded, reflex catches close/hot, "
+        "dopamine learns — full stack runs on the reference sensor"
+    )
 
 
 if __name__ == "__main__":

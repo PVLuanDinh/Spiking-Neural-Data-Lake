@@ -1,6 +1,6 @@
 """
 Spiking Boltzmann machine -- an undirected energy-based generative model whose units are STOCHASTIC
-LIF neurons and whose learning is SPIKE-DRIVEN (event-driven contrastive divergence). Pure stdlib.
+LIF neurons and whose learning is SPIKE-DRIVEN (event-driven contrastive divergence).
 
 The RBM (Smolensky 1986; Hinton, "Training Products of Experts by Minimizing Contrastive Divergence",
 Neural Comput 14:1771, 2002) is a bipartite Markov random field: visible units v in {0,1}^nv and hidden
@@ -63,6 +63,7 @@ couple seconds and the signatures are stable at a fixed seed. Not cognition.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.restricted_boltzmann   # (also run by selfchecks)
 """
+
 import math
 import random
 
@@ -99,13 +100,13 @@ class RBM:
         self.b_v = [0.0] * n_visible
         self.b_h = [0.0] * n_hidden
         # ---- stochastic-LIF sampling parameters (the spiking substrate) ----
-        self.tau_m = 4.0                          # membrane time constant (steps)
+        self.tau_m = 4.0  # membrane time constant (steps)
         self.decay = math.exp(-1.0 / self.tau_m)  # leak-toward-rest factor per step
-        self.v_threshold = 1.0                    # spike threshold
-        self.v_reset = 0.0                         # post-spike reset potential
-        self.noise = 0.30                          # per-step membrane noise (drives stochastic firing)
-        self.gain = 1.5                            # synaptic-current gain into the membrane
-        self.window = 30                           # sampling window: micro-steps per block-Gibbs half-step
+        self.v_threshold = 1.0  # spike threshold
+        self.v_reset = 0.0  # post-spike reset potential
+        self.noise = 0.30  # per-step membrane noise (drives stochastic firing)
+        self.gain = 1.5  # synaptic-current gain into the membrane
+        self.window = 30  # sampling window: micro-steps per block-Gibbs half-step
 
     # ---- stochastic LIF substrate ---------------------------------------------------------------
     def _lif_step(self, u, drive):
@@ -128,14 +129,18 @@ class RBM:
     def hidden_probs(self, v):
         """Analytic p(h_j = 1 | v) = sigmoid(b_h_j + sum_i v_i W_ij) -- the ON-probability the stochastic
         LIF hidden units approximate by their windowed spike rate."""
-        return [sigmoid(self.b_h[j] + sum(v[i] * self.W[i][j] for i in range(self.nv)))
-                for j in range(self.nh)]
+        return [
+            sigmoid(self.b_h[j] + sum(v[i] * self.W[i][j] for i in range(self.nv)))
+            for j in range(self.nh)
+        ]
 
     def visible_probs(self, h):
         """Analytic p(v_i = 1 | h) = sigmoid(b_v_i + sum_j W_ij h_j) -- the ON-probability the stochastic
         LIF visible units approximate by their windowed spike rate."""
-        return [sigmoid(self.b_v[i] + sum(self.W[i][j] * h[j] for j in range(self.nh)))
-                for i in range(self.nv)]
+        return [
+            sigmoid(self.b_v[i] + sum(self.W[i][j] * h[j] for j in range(self.nh)))
+            for i in range(self.nv)
+        ]
 
     def _sample(self, probs):
         """Bernoulli sample a binary vector from per-unit probabilities (uses self.rng). Kept for the
@@ -160,13 +165,17 @@ class RBM:
     def sample_hidden(self, v):
         """Sample the hidden layer given visible vector v BY SPIKING. Returns (rate, h): rate = per-unit
         windowed spike rate (estimate of p(h|v)); h = discrete binary spike sample (each entry in {0, 1})."""
-        drive = [self.b_h[j] + sum(v[i] * self.W[i][j] for i in range(self.nv)) for j in range(self.nh)]
+        drive = [
+            self.b_h[j] + sum(v[i] * self.W[i][j] for i in range(self.nv)) for j in range(self.nh)
+        ]
         return self._spike_layer(drive, [0.0] * self.nh)
 
     def sample_visible(self, h):
         """Sample the visible layer given hidden vector h BY SPIKING. Returns (rate, v): rate = per-unit
         windowed spike rate (estimate of p(v|h)); v = discrete binary spike sample (each entry in {0, 1})."""
-        drive = [self.b_v[i] + sum(self.W[i][j] * h[j] for j in range(self.nh)) for i in range(self.nv)]
+        drive = [
+            self.b_v[i] + sum(self.W[i][j] * h[j] for j in range(self.nh)) for i in range(self.nv)
+        ]
         return self._spike_layer(drive, [0.0] * self.nv)
 
     # ---- generation / denoising (by spiking) ----------------------------------------------------
@@ -181,7 +190,9 @@ class RBM:
         # hidden spike-rate from v (longer window for a stable readout)
         uh = [0.0] * self.nh
         ch = [0] * self.nh
-        drive_h = [self.b_h[j] + sum(v[i] * self.W[i][j] for i in range(self.nv)) for j in range(self.nh)]
+        drive_h = [
+            self.b_h[j] + sum(v[i] * self.W[i][j] for i in range(self.nv)) for j in range(self.nh)
+        ]
         for _ in range(wide):
             s = self._lif_step(uh, drive_h)
             for j in range(self.nh):
@@ -190,7 +201,10 @@ class RBM:
         # visible spike-rate driven by the hidden rate
         uv = [0.0] * self.nv
         cv = [0] * self.nv
-        drive_v = [self.b_v[i] + sum(self.W[i][j] * h_rate[j] for j in range(self.nh)) for i in range(self.nv)]
+        drive_v = [
+            self.b_v[i] + sum(self.W[i][j] * h_rate[j] for j in range(self.nh))
+            for i in range(self.nv)
+        ]
         for _ in range(wide):
             s = self._lif_step(uv, drive_v)
             for i in range(self.nv):
@@ -228,8 +242,11 @@ class RBM:
         cv = [0] * self.nv
         ch = [0] * self.nh
         for _ in range(self.window):
-            vs = v0                                   # clamped tonic data spikes
-            drive_h = [self.b_h[j] + sum(vs[i] * self.W[i][j] for i in range(self.nv)) for j in range(self.nh)]
+            vs = v0  # clamped tonic data spikes
+            drive_h = [
+                self.b_h[j] + sum(vs[i] * self.W[i][j] for i in range(self.nv))
+                for j in range(self.nh)
+            ]
             hs = self._lif_step(uh, drive_h)
             for i in range(self.nv):
                 if vs[i]:
@@ -237,7 +254,7 @@ class RBM:
                     row = coinc[i]
                     for j in range(self.nh):
                         if hs[j]:
-                            row[j] += 1                # co-spike -> STDP coincidence event
+                            row[j] += 1  # co-spike -> STDP coincidence event
             for j in range(self.nh):
                 ch[j] += hs[j]
         return coinc, cv, ch
@@ -254,9 +271,15 @@ class RBM:
         cv = [0] * self.nv
         ch = [0] * self.nh
         for _ in range(self.window):
-            drive_v = [self.b_v[i] + sum(self.W[i][j] * hs[j] for j in range(self.nh)) for i in range(self.nv)]
+            drive_v = [
+                self.b_v[i] + sum(self.W[i][j] * hs[j] for j in range(self.nh))
+                for i in range(self.nv)
+            ]
             vs = self._lif_step(uv, drive_v)
-            drive_h = [self.b_h[j] + sum(vs[i] * self.W[i][j] for i in range(self.nv)) for j in range(self.nh)]
+            drive_h = [
+                self.b_h[j] + sum(vs[i] * self.W[i][j] for i in range(self.nv))
+                for j in range(self.nh)
+            ]
             hs = self._lif_step(uh, drive_h)
             for i in range(self.nv):
                 if vs[i]:
@@ -264,7 +287,7 @@ class RBM:
                     row = coinc[i]
                     for j in range(self.nh):
                         if hs[j]:
-                            row[j] += 1                # co-spike -> STDP coincidence event
+                            row[j] += 1  # co-spike -> STDP coincidence event
             for j in range(self.nh):
                 ch[j] += hs[j]
         return coinc, cv, ch
@@ -276,19 +299,28 @@ class RBM:
         Every term is an integer spike/coincidence count, so a synapse with no co-spike in EITHER phase gets
         exactly zero update (the event-driven property). Returns a stats dict for inspection/self-check."""
         cd, cvd, chd = self._data_phase(v0)
-        h0 = [1 if chd[j] > 0 else 0 for j in range(self.nh)]     # data-phase hidden spike sample
+        h0 = [1 if chd[j] > 0 else 0 for j in range(self.nh)]  # data-phase hidden spike sample
         cr, cvr, chr_ = self._recon_phase(h0)
         inv = lr / self.window
         for i in range(self.nv):
             Wi = self.W[i]
             cdi, cri = cd[i], cr[i]
             for j in range(self.nh):
-                Wi[j] += inv * (cdi[j] - cri[j])                  # STDP: potentiate on data co-spikes, depress on recon co-spikes
+                Wi[j] += inv * (
+                    cdi[j] - cri[j]
+                )  # STDP: potentiate on data co-spikes, depress on recon co-spikes
             self.b_v[i] += inv * (cvd[i] - cvr[i])
         for j in range(self.nh):
             self.b_h[j] += inv * (chd[j] - chr_[j])
-        return {"coinc_data": cd, "coinc_recon": cr, "cv_data": cvd, "cv_recon": cvr,
-                "ch_data": chd, "ch_recon": chr_, "recon_rate": [cvr[i] / self.window for i in range(self.nv)]}
+        return {
+            "coinc_data": cd,
+            "coinc_recon": cr,
+            "cv_data": cvd,
+            "cv_recon": cvr,
+            "ch_data": chd,
+            "ch_recon": chr_,
+            "recon_rate": [cvr[i] / self.window for i in range(self.nv)],
+        }
 
     # ---- learning (event-driven contrastive divergence) -----------------------------------------
     def train(self, data, epochs=40, lr=0.1):
@@ -340,17 +372,17 @@ def _recon_accuracy(model, protos):
 
 def main():
     nv, nh = 16, 8
-    data_rng = random.Random(123)                       # fixed dataset (separate from the model rng)
+    data_rng = random.Random(123)  # fixed dataset (separate from the model rng)
 
     # three well-separated 16-bit prototypes with clear structure.
-    proto_a = [1] * 8 + [0] * 8                          # left block on
-    proto_b = [0] * 8 + [1] * 8                          # right block on
-    proto_c = [i % 2 for i in range(nv)]                 # alternating 0101...
+    proto_a = [1] * 8 + [0] * 8  # left block on
+    proto_b = [0] * 8 + [1] * 8  # right block on
+    proto_c = [i % 2 for i in range(nv)]  # alternating 0101...
     protos = [proto_a, proto_b, proto_c]
 
     data = []
     for p in protos:
-        data.extend(_noisy_copies(p, n=8, flips=2, rng=data_rng))   # 24 noisy training vectors
+        data.extend(_noisy_copies(p, n=8, flips=2, rng=data_rng))  # 24 noisy training vectors
 
     # ---- 1. event-driven-CD (spike-driven) learning lowers reconstruction error ----
     rbm = RBM(nv, nh, seed=0)
@@ -359,7 +391,7 @@ def main():
 
     # ---- 2. FUNCTION: trained machine reconstructs prototypes far above an untrained control ----
     trained_acc = _recon_accuracy(rbm, protos)
-    control = RBM(nv, nh, seed=7)                        # untrained (random weights) baseline
+    control = RBM(nv, nh, seed=7)  # untrained (random weights) baseline
     control_acc = _recon_accuracy(control, protos)
 
     # ---- 3. the learned model scores data above random (lower free energy) ----
@@ -367,11 +399,11 @@ def main():
     rand_rng = random.Random(999)
     randoms = [[rand_rng.randint(0, 1) for _ in range(nv)] for _ in range(200)]
     f_rand = sum(rbm.free_energy(v) for v in randoms) / len(randoms)
-    f_margin = f_rand - f_data                           # positive => data lower F => more probable
+    f_margin = f_rand - f_data  # positive => data lower F => more probable
 
     # ---- 4. denoising: corrupt a prototype, reconstruct (by spiking) toward the true mode ----
     corrupt = list(proto_a)
-    for idx in (2, 5, 9):                                # flip 3 bits (deterministic)
+    for idx in (2, 5, 9):  # flip 3 bits (deterministic)
         corrupt[idx] = 1 - corrupt[idx]
     before = _hamming(corrupt, proto_a)
     cleaned = rbm.reconstruct(corrupt)
@@ -379,20 +411,28 @@ def main():
 
     # ---- 5. GENUINELY SPIKING: discrete spikes + event-driven (spike-coincidence) learning ----
     probe = RBM(nv, nh, seed=3)
-    _rh, h_spikes = probe.sample_hidden(proto_a)         # sample the hidden layer BY SPIKING
-    _rv, v_spikes = probe.sample_visible(h_spikes)       # sample the visible layer BY SPIKING
+    _rh, h_spikes = probe.sample_hidden(proto_a)  # sample the hidden layer BY SPIKING
+    _rv, v_spikes = probe.sample_visible(h_spikes)  # sample the visible layer BY SPIKING
     spikes_binary = set(h_spikes) <= {0, 1} and set(v_spikes) <= {0, 1}
     spikes_fire = sum(h_spikes) > 0 and sum(v_spikes) > 0
     # one CD step: the update is driven purely by integer spike coincidences.
     stats = probe._cd_step(proto_a, lr=0.1)
-    cd_int = all(isinstance(stats["coinc_data"][i][j], int) and isinstance(stats["coinc_recon"][i][j], int)
-                 for i in range(nv) for j in range(nh))
-    both_zero = [(i, j) for i in range(nv) for j in range(nh)
-                 if stats["coinc_data"][i][j] == 0 and stats["coinc_recon"][i][j] == 0]
-    any_coincident = any(stats["coinc_data"][i][j] > 0 or stats["coinc_recon"][i][j] > 0
-                         for i in range(nv) for j in range(nh))
-    import sys as _sys
-    no_tensors = "numpy" not in _sys.modules and "torch" not in _sys.modules
+    cd_int = all(
+        isinstance(stats["coinc_data"][i][j], int) and isinstance(stats["coinc_recon"][i][j], int)
+        for i in range(nv)
+        for j in range(nh)
+    )
+    both_zero = [
+        (i, j)
+        for i in range(nv)
+        for j in range(nh)
+        if stats["coinc_data"][i][j] == 0 and stats["coinc_recon"][i][j] == 0
+    ]
+    any_coincident = any(
+        stats["coinc_data"][i][j] > 0 or stats["coinc_recon"][i][j] > 0
+        for i in range(nv)
+        for j in range(nh)
+    )
 
     # ---- 6. determinism: same data/seed -> identical trained model + identical curve ----
     twin = RBM(nv, nh, seed=0)
@@ -406,27 +446,39 @@ def main():
     print(f"recon-error curve head {[round(v, 4) for v in curve[:3]]}")
     print(f"recon-error curve tail {[round(v, 4) for v in curve[-3:]]}")
     print(f"  epoch 1 {first_err:.4f} -> final {last_err:.4f}  ({first_err / last_err:.2f}x lower)")
-    print(f"reconstruction accuracy: trained {trained_acc:.3f}  vs  untrained control {control_acc:.3f}")
+    print(
+        f"reconstruction accuracy: trained {trained_acc:.3f}  vs  untrained control {control_acc:.3f}"
+    )
     print(f"free energy: F(data) {f_data:+.3f}   F(random) {f_rand:+.3f}   margin {f_margin:+.3f}")
     print("  (lower F(v) = higher modelled p(v); data must sit BELOW random)")
-    print(f"denoise (spiking): corrupt proto_a (flip 3 bits) Hamming {before} -> reconstruct {after}")
+    print(
+        f"denoise (spiking): corrupt proto_a (flip 3 bits) Hamming {before} -> reconstruct {after}"
+    )
     print(f"spiking: hidden spikes {h_spikes} (discrete, fired={sum(h_spikes)})")
-    print(f"  event-driven learning: {len(both_zero)}/{nv * nh} synapses had NO spike coincidence "
-          f"in either phase -> exactly zero update")
+    print(
+        f"  event-driven learning: {len(both_zero)}/{nv * nh} synapses had NO spike coincidence "
+        f"in either phase -> exactly zero update"
+    )
     print(f"determinism: identical curve {same_curve}; identical weights {same_weights}")
     print("=" * 72)
 
-    # ---- self-check: deterministic asserts, zero-dep stdlib, ASCII-only prints ----
+    # ---- self-check: deterministic asserts, ASCII-only prints ----
     # (a) FUNCTION -- spike-driven CD lowers reconstruction error; the machine completes patterns above a
     #     fair untrained baseline and assigns the data lower free energy than random vectors.
-    assert last_err < 0.75 * first_err, \
+    assert last_err < 0.75 * first_err, (
         f"spiking CD must clearly lower reconstruction error ({first_err:.4f} -> {last_err:.4f})"
-    assert trained_acc >= 0.80, f"trained machine must reconstruct prototypes well ({trained_acc:.3f})"
-    assert trained_acc - control_acc >= 0.30, \
+    )
+    assert trained_acc >= 0.80, (
+        f"trained machine must reconstruct prototypes well ({trained_acc:.3f})"
+    )
+    assert trained_acc - control_acc >= 0.30, (
         f"trained must beat untrained control clearly ({trained_acc:.3f} vs {control_acc:.3f})"
+    )
     assert f_data < f_rand, f"F(data) must be below F(random) ({f_data:.3f} vs {f_rand:.3f})"
     assert f_margin > 0.8, f"free-energy margin must be clear ({f_margin:.3f})"
-    assert after < before, f"spiking reconstruct must reduce distance to the true prototype ({before} -> {after})"
+    assert after < before, (
+        f"spiking reconstruct must reduce distance to the true prototype ({before} -> {after})"
+    )
     assert after <= 2, f"spiking reconstruction must land on/near the true mode ({after})"
     # (b) GENUINELY SPIKING -- units sample by DISCRETE spikes; learning is spike-coincidence driven
     #     (integer counts; no-coincidence => no-update); no tensor libraries imported.
@@ -440,21 +492,28 @@ def main():
     ev = RBM(nv, nh, seed=3)
     W_before = [row[:] for row in ev.W]
     st = ev._cd_step(proto_a, lr=0.1)
-    bz = [(i, j) for i in range(nv) for j in range(nh)
-          if st["coinc_data"][i][j] == 0 and st["coinc_recon"][i][j] == 0]
-    assert all(ev.W[i][j] == W_before[i][j] for (i, j) in bz), \
+    bz = [
+        (i, j)
+        for i in range(nv)
+        for j in range(nh)
+        if st["coinc_data"][i][j] == 0 and st["coinc_recon"][i][j] == 0
+    ]
+    assert all(ev.W[i][j] == W_before[i][j] for (i, j) in bz), (
         "event-driven: synapses with no spike coincidence must receive EXACTLY zero update"
-    assert any(ev.W[i][j] != W_before[i][j] for i in range(nv) for j in range(nh)), \
+    )
+    assert any(ev.W[i][j] != W_before[i][j] for i in range(nv) for j in range(nh)), (
         "spike-coincident synapses must move (learning happened)"
-    assert no_tensors, "must be pure stdlib -- numpy/torch must NOT be imported"
+    )
     _ = W_after  # (silence: probe state already exercised)
     # (c) DETERMINISM: same data/seed -> identical trained model and identical curve.
     assert same_curve and same_weights, "same data/seed must give an identical trained model"
 
-    print(f"self-check OK: spiking-CD recon error {first_err:.3f} -> {last_err:.3f}; "
-          f"recon acc {trained_acc:.2f} (control {control_acc:.2f}); "
-          f"F(data) {f_data:.2f} < F(random) {f_rand:.2f} (margin {f_margin:.2f}); "
-          f"denoise Hamming {before} -> {after}; discrete spikes + event-driven STDP; deterministic")
+    print(
+        f"self-check OK: spiking-CD recon error {first_err:.3f} -> {last_err:.3f}; "
+        f"recon acc {trained_acc:.2f} (control {control_acc:.2f}); "
+        f"F(data) {f_data:.2f} < F(random) {f_rand:.2f} (margin {f_margin:.2f}); "
+        f"denoise Hamming {before} -> {after}; discrete spikes + event-driven STDP; deterministic"
+    )
 
 
 if __name__ == "__main__":

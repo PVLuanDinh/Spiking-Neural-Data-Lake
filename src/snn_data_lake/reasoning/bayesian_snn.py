@@ -4,8 +4,8 @@ Bayesian spiking inference — calibrated uncertainty on top of a recall (scan #
 Nothing in store/search/reason emits a CONFIDENCE: the KG query and the novelty gate return an answer
 with no "how sure". A Bernoulli weight mask sampled per forward pass turns the deterministic readout
 into an ensemble; the disagreement across N spike-count passes is a cheap, calibrated uncertainty —
-low for a clean in-distribution cue, high for an out-of-distribution / ambiguous one. Pure-stdlib,
-composes with the drift monitor and the KG. Refs: arXiv:2401.15453 (Bayesian Inference Accelerator for
+low for a clean in-distribution cue, high for an out-of-distribution / ambiguous one. Composes
+with the drift monitor and the KG. Refs: arXiv:2401.15453 (Bayesian Inference Accelerator for
 SNNs, DATE 2024).
 
   Run: python bayesian_snn.py       # (also run by run_selfchecks.py)

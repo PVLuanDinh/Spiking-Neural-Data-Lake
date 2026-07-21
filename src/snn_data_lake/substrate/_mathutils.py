@@ -1,5 +1,5 @@
 """
-Shared pure-stdlib math helpers, extracted verbatim from duplicated copies that
+Shared math helpers, extracted verbatim from duplicated copies that
 lived across the core package and the research modules. Every function here is
 byte-for-byte equivalent (same formula, same numeric behavior) to the canonical
 implementation it was lifted from, so importing it in place of a local copy
@@ -22,8 +22,9 @@ Copies whose formula DIFFERS were deliberately left in place (not merged):
     guards, so they are NOT byte-equivalent to `pearson` here.
   - lca_sparse_coding._unit uses `** 0.5` rather than math.sqrt.
 
-Pure stdlib (`math` only), ASCII-only, deterministic.
+ASCII-only, deterministic.
 """
+
 import math
 
 

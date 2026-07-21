@@ -37,12 +37,13 @@ VALUE / REPRESENTATION ONLY. This module imports NOTHING from brainstem/ or the 
 emits no motor command; every rung is a pure value/representation exercise. The __main__
 self-check asserts that by scanning this file's own import lines.
 
-Determinism & style invariants (per CLAUDE.md): pure stdlib; per-instance random.Random(seed);
+Determinism & style invariants (per CLAUDE.md): per-instance random.Random(seed);
 no global RNG; no wall-clock inside census() (the __main__ runtime line uses perf_counter for
 DISPLAY ONLY and is never part of the returned census); ASCII-only prints; deterministic.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.self_improvement_suite
 """
+
 import math
 import random
 import time
@@ -85,24 +86,24 @@ from snn_data_lake.plasticity.meta_plasticity import MetaPlasticLearner
 SENTINEL = -999.0
 
 # Reduced-scale census budgets (small on purpose -- this is a LIVE census, NOT the full proof).
-_NOV_DIM = 64          # raster width (matches the LIF raster the real self-check uses)
-_NOV_BITS = 16         # SimHash bits
-_MP_WARMUP = 20        # meta-plasticity: short warmup ...
-_MP_EPOCH = 10         # ... short epoch ...
-_MP_EPOCHS = 2         # ... few flips
-_MP_WIN = 8            # short re-adaptation window
-_BF_A = 150            # benna-fusi: A-training ticks (enough for A to seep into the deep beakers)
-_BF_B = 15             # B-training ticks (the conflicting overwrite)
-_BF_RELAX = 50         # rest ticks before the A re-test
-_DR_CELLS = 8          # drive-reduction NEED pool cells (small -> cheap spiking readout)
-_DR_STEPS = 20         # LIF integration steps per NEED-pool rate readout
-_DR_EPISODES = 3       # short training episodes ...
-_DR_EPSTEPS = 8        # ... few steps each
-_DR_EVAL = 120         # eval rollout steps (no LIF -> cheap); tail after warmup=50 is the metric
-_GROW_WIN = 12         # growth: input-window length
-_GOAL_EPISODES = 6     # autotelic: FEW babbling episodes
-_QD_BUDGET = 60        # quality-diversity: small evaluation budget
-_QD_INIT = 20          # random seed policies before mutation begins
+_NOV_DIM = 64  # raster width (matches the LIF raster the real self-check uses)
+_NOV_BITS = 16  # SimHash bits
+_MP_WARMUP = 20  # meta-plasticity: short warmup ...
+_MP_EPOCH = 10  # ... short epoch ...
+_MP_EPOCHS = 2  # ... few flips
+_MP_WIN = 8  # short re-adaptation window
+_BF_A = 150  # benna-fusi: A-training ticks (enough for A to seep into the deep beakers)
+_BF_B = 15  # B-training ticks (the conflicting overwrite)
+_BF_RELAX = 50  # rest ticks before the A re-test
+_DR_CELLS = 8  # drive-reduction NEED pool cells (small -> cheap spiking readout)
+_DR_STEPS = 20  # LIF integration steps per NEED-pool rate readout
+_DR_EPISODES = 3  # short training episodes ...
+_DR_EPSTEPS = 8  # ... few steps each
+_DR_EVAL = 120  # eval rollout steps (no LIF -> cheap); tail after warmup=50 is the metric
+_GROW_WIN = 12  # growth: input-window length
+_GOAL_EPISODES = 6  # autotelic: FEW babbling episodes
+_QD_BUDGET = 60  # quality-diversity: small evaluation budget
+_QD_INIT = 20  # random seed policies before mutation begins
 
 
 def _rung_novelty(seed):
@@ -115,12 +116,12 @@ def _rung_novelty(seed):
     for _ in range(4):
         base = [rng.randint(0, 1) for _ in range(_NOV_DIM)]
         dup = list(base)
-        dup[rng.randrange(_NOV_DIM)] ^= 1          # a near-duplicate (single-bit flip)
+        dup[rng.randrange(_NOV_DIM)] ^= 1  # a near-duplicate (single-bit flip)
         rasters.append(base)
         rasters.append(dup)
     buckets = set()
     for r in rasters:
-        nov.bonus(r)                               # observe (increment the bucket count)
+        nov.bonus(r)  # observe (increment the bucket count)
         buckets.add(nov.bucket(r))
     return float(len(buckets))
 
@@ -129,9 +130,11 @@ def _rung_metaplast(seed):
     """L8 -- run the real non-stationary reach at a SMALL budget with both metaplastic
     mechanisms on (full) vs both off, and report the post-flip competence delta."""
     full = MetaPlasticLearner(lr_gate=True, bcm_meta=True, seed=seed).run(
-        warmup=_MP_WARMUP, epoch=_MP_EPOCH, n_epochs=_MP_EPOCHS, adapt_window=_MP_WIN)
+        warmup=_MP_WARMUP, epoch=_MP_EPOCH, n_epochs=_MP_EPOCHS, adapt_window=_MP_WIN
+    )
     both_off = MetaPlasticLearner(lr_gate=False, bcm_meta=False, seed=seed).run(
-        warmup=_MP_WARMUP, epoch=_MP_EPOCH, n_epochs=_MP_EPOCHS, adapt_window=_MP_WIN)
+        warmup=_MP_WARMUP, epoch=_MP_EPOCH, n_epochs=_MP_EPOCHS, adapt_window=_MP_WIN
+    )
     return float(full["post_acc"] - both_off["post_acc"])
 
 
@@ -168,8 +171,8 @@ def _rung_growth(seed):
     window = [[rng.uniform(0.0, 1.0) for _ in range(6)] for _ in range(_GROW_WIN)]
     base = SpikingGrowthLayer(seed=seed)
     cur0, _out0, _hid0 = base.run(window)
-    grown = SpikingGrowthLayer(seed=seed)          # identical weights (same seed)
-    grown.duplicate_unit(0, factor=0.5)            # function-preserving widen
+    grown = SpikingGrowthLayer(seed=seed)  # identical weights (same seed)
+    grown.duplicate_unit(0, factor=0.5)  # function-preserving widen
     cur1, _out1, _hid1 = grown.run(window)
     return float(_max_abs_diff(cur0, cur1))
 
@@ -198,10 +201,12 @@ def _rung_qd(seed):
     enc = PopulationEncoder(n=DPOS, lo=0.0, hi=1.0, max_spikes=10)
     neurons = [LIFNeuron(tau_m=10.0, v_threshold=1.0) for _ in range(K_NEURONS)]
 
-    def beh(policy, _enc=enc, _neu=neurons):       # policy -> behavior descriptor (rollout settling point)
+    def beh(
+        policy, _enc=enc, _neu=neurons
+    ):  # policy -> behavior descriptor (rollout settling point)
         return behavior_descriptor(policy, _enc, _neu)
 
-    def obj(policy):                               # within-niche quality (prefer the up-right corner)
+    def obj(policy):  # within-niche quality (prefer the up-right corner)
         x, y = beh(policy)
         return x + y
 
@@ -232,7 +237,7 @@ def census(seed=0):
     for name, fn in _RUNGS:
         try:
             out[name] = float(fn(seed))
-        except Exception:                          # noqa: BLE001 -- one rung must never break the brain
+        except Exception:  # noqa: BLE001 -- one rung must never break the brain
             out[name] = SENTINEL
     return out
 
@@ -250,7 +255,7 @@ class SelfImprovementSuite:
 
 
 def main():
-    t0 = time.perf_counter()                       # DISPLAY-ONLY wall-clock (never part of the census)
+    t0 = time.perf_counter()  # DISPLAY-ONLY wall-clock (never part of the census)
     result = census(0)
     elapsed = time.perf_counter() - t0
 
@@ -270,12 +275,15 @@ def main():
     #     sentinel -> all eight self-improvement rungs load + run in one process under one seed.
     for name, _fn in _RUNGS:
         v = result[name]
-        assert isinstance(v, float) and math.isfinite(v), f"{name} must be a finite real number ({v!r})"
+        assert isinstance(v, float) and math.isfinite(v), (
+            f"{name} must be a finite real number ({v!r})"
+        )
         assert v != SENTINEL, f"{name} hit the failure sentinel -- the rung did not compose/run"
 
     # (2) EXACT INVARIANT: function-preserving growth is bit-for-bit even at reduced scale.
-    assert result["growth_exact_diff"] == 0.0, \
+    assert result["growth_exact_diff"] == 0.0, (
         f"growth must preserve output EXACTLY (diff {result['growth_exact_diff']!r} != 0.0)"
+    )
 
     # (3) DETERMINISM: a second census under the same seed is byte-identical.
     assert census(0) == result, "census(0) must be byte-identical across calls (deterministic)"
@@ -283,8 +291,11 @@ def main():
     # (4) NO-ACTUATOR: this module's own import lines pull nothing from the actuator / arm /
     #     safety-envelope package -- a value/representation-only suite (scanned, un-riggable).
     with open(__file__, encoding="utf-8") as fh:
-        import_lines = [ln for ln in fh.read().splitlines()
-                        if ln.startswith("import ") or ln.startswith("from ")]
+        import_lines = [
+            ln
+            for ln in fh.read().splitlines()
+            if ln.startswith("import ") or ln.startswith("from ")
+        ]
     forbidden = ("brainstem", "serial_arm", "arm_sim", "arm_config")
     hits = [tok for tok in forbidden if any(tok in ln for ln in import_lines)]
     assert hits == [], f"suite must import NOTHING from brainstem/arm (found {hits})"
@@ -295,8 +306,10 @@ def main():
     print(f"(4) NO-ACTUATOR : forbidden-import hits={hits} (value/representation only)")
     print(f"total census runtime = {elapsed:.3f}s (display only; not part of the census)")
     print("=" * 78)
-    print(f"suite OK: {len(_RUNGS)} self-improvement rungs compose into ONE deterministic census "
-          f"under one seed; growth exact (0.0); no actuator; runtime {elapsed:.3f}s")
+    print(
+        f"suite OK: {len(_RUNGS)} self-improvement rungs compose into ONE deterministic census "
+        f"under one seed; growth exact (0.0); no actuator; runtime {elapsed:.3f}s"
+    )
 
 
 if __name__ == "__main__":

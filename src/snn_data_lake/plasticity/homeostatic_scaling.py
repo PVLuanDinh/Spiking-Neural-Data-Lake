@@ -11,6 +11,7 @@ Turrigiano et al., Nature 391 (1998); Turrigiano, "The self-tuning neuron", Cell
 
   python -m snn_data_lake.plasticity.homeostatic_scaling        # (also run by run_selfchecks.py)
 """
+
 import snn_data_lake.cortex.snn_classifier as C
 
 
@@ -27,7 +28,7 @@ class HomeostaticNeuron:
     def hebb(self, x):
         y = self.output(x)
         for i in range(len(self.w)):
-            self.w[i] += self.hebb_lr * x[i] * y          # correlated activity -> potentiation
+            self.w[i] += self.hebb_lr * x[i] * y  # correlated activity -> potentiation
 
     def stabilize(self, x):
         """Multiplicative synaptic scaling toward the rate set-point (same factor on every synapse)."""
@@ -51,14 +52,14 @@ def _shape():
 def main():
     x = _shape()
     init = [0.5] * len(x)
-    lr = 0.003                                               # small so scaling holds the rate near target
+    lr = 0.003  # small so scaling holds the rate near target
 
     hn = HomeostaticNeuron(init, target=1.0, hebb_lr=lr)
     for _ in range(300):
         hn.step(x, homeostasis=True)
     conv, wmax = hn.output(x), max(hn.w)
 
-    free = HomeostaticNeuron(init, target=1.0, hebb_lr=lr)   # same start, Hebbian only
+    free = HomeostaticNeuron(init, target=1.0, hebb_lr=lr)  # same start, Hebbian only
     for _ in range(300):
         free.step(x, homeostasis=False)
     runaway, wmax_free = free.output(x), max(free.w)
@@ -71,20 +72,30 @@ def main():
     print("=" * 60)
     print("HOMEOSTATIC SCALING — additive rate-stabilizer (driven by a real shape)")
     print("=" * 60)
-    print(f"input: classifier shape ({len(x)} synapses, {int(sum(x))} active), target rate {hn.target:.1f}, 300 steps")
+    print(
+        f"input: classifier shape ({len(x)} synapses, {int(sum(x))} active), target rate {hn.target:.1f}, 300 steps"
+    )
     print(f"with scaling : rate {conv:.2f} (-> target), max weight {wmax:.2f} (bounded)")
     print(f"Hebbian only : rate {runaway:.1f} (runaway), max weight {wmax_free:.1f}")
     print(f"ratio drift under a scale step: {drift:.1e} (multiplicative = pattern preserved)")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
-    assert abs(conv - hn.target) < 0.15, f"scaling must hold the rate near the set-point ({conv:.3f})"
-    assert runaway > 5 * hn.target, f"Hebbian alone must run away without homeostasis ({runaway:.1f})"
-    assert wmax < wmax_free, f"homeostatic weights must stay bounded far below runaway ({wmax:.2f} vs {wmax_free:.1f})"
+    # ---- self-check: deterministic asserts ----
+    assert abs(conv - hn.target) < 0.15, (
+        f"scaling must hold the rate near the set-point ({conv:.3f})"
+    )
+    assert runaway > 5 * hn.target, (
+        f"Hebbian alone must run away without homeostasis ({runaway:.1f})"
+    )
+    assert wmax < wmax_free, (
+        f"homeostatic weights must stay bounded far below runaway ({wmax:.2f} vs {wmax_free:.1f})"
+    )
     assert drift < 1e-9, "multiplicative scaling must preserve all relative weight ratios"
     assert HomeostaticNeuron(init).w == HomeostaticNeuron(init).w, "deterministic"
-    print(f"self-check OK: rate {conv:.2f}~target vs runaway {runaway:.0f}; ratios preserved ({drift:.0e}); "
-          f"additive stabilizer, no learner default changed; deterministic")
+    print(
+        f"self-check OK: rate {conv:.2f}~target vs runaway {runaway:.0f}; ratios preserved ({drift:.0e}); "
+        f"additive stabilizer, no learner default changed; deterministic"
+    )
 
 
 if __name__ == "__main__":

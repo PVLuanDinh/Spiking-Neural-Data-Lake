@@ -20,6 +20,7 @@ is a bad outcome), AVOID veto -> -0.3, executed command -> 0.0 (neutral, await r
   signal_loop.py --serial COM3 --feedback | python interpreter.py --pipe --outcome loop_in
   python interpreter.py                    # run the self-check (no stdin)
 """
+
 import json
 import sys
 
@@ -27,9 +28,9 @@ import sys
 COMMANDS = {
     "JOINT_A_ROTATE": "JOINT_A_ROTATE(+15deg)",
     "JOINT_B_ROTATE": "JOINT_B_ROTATE(-10deg)",
-    "GRIPPER_CLOSE":  "GRIPPER_CLOSE",
-    "GRIPPER_OPEN":   "GRIPPER_OPEN",
-    "HOME":           "HOME",
+    "GRIPPER_CLOSE": "GRIPPER_CLOSE",
+    "GRIPPER_OPEN": "GRIPPER_OPEN",
+    "HOME": "HOME",
 }
 REFLEX_CMD = {"STOP": "EMERGENCY_STOP", "WITHDRAW": "RETRACT_ALL"}
 
@@ -54,23 +55,24 @@ class Interpreter:
         # 3. recognition
         label = ev.get("match")
         if label is None:
-            return None, 0.0                      # novel/ambiguous -> no command, no opinion
+            return None, 0.0  # novel/ambiguous -> no command, no opinion
         cmd = self.commands.get(label)
         if cmd is None:
-            return None, 0.0                      # known label, but no command mapped yet
+            return None, 0.0  # known label, but no command mapped yet
         return cmd, (0.5 if self.assume_success else 0.0)
 
 
 def run_pipe(itp, outcome_path=None):
     """Read loop JSON events from stdin -> robot commands to stdout, OUTCOME back-channel.
     To truly close the loop, connect the OUTCOME stream to the loop's stdin (FIFO/socket)."""
+
     def send_outcome(reward):
         line = f"OUTCOME {reward}"
         if outcome_path:
             with open(outcome_path, "a", encoding="utf-8") as f:
                 f.write(line + "\n")
         else:
-            sys.stderr.write(line + "\n")         # default: stderr (tee/redirect to loop stdin)
+            sys.stderr.write(line + "\n")  # default: stderr (tee/redirect to loop stdin)
             sys.stderr.flush()
 
     for line in sys.stdin:
@@ -83,7 +85,8 @@ def run_pipe(itp, outcome_path=None):
             continue
         cmd, reward = itp.interpret(ev)
         if cmd is not None:
-            print(cmd); sys.stdout.flush()         # -> controller / servo drivers
+            print(cmd)
+            sys.stdout.flush()  # -> controller / servo drivers
         if reward is not None:
             send_outcome(reward)
 
@@ -96,32 +99,36 @@ def selfcheck():
     assert itp.interpret({"reflex": "WITHDRAW"}) == ("RETRACT_ALL", -1.0)
     assert itp.interpret({"match": "GRIPPER_CLOSE", "instinct": None})[0] == "GRIPPER_CLOSE"
     assert itp.interpret({"match": "HOME", "instinct": "AVOID"}) == ("HOLD", -0.3)  # veto wins
-    assert itp.interpret({"match": None})[0] is None                                 # novel -> no cmd
-    assert itp.interpret({"match": "UNMAPPED_LABEL"})[0] is None                     # no mapping
-    assert itp.interpret({"outcome": -1.0}) == (None, None)                          # echo ignored
+    assert itp.interpret({"match": None})[0] is None  # novel -> no cmd
+    assert itp.interpret({"match": "UNMAPPED_LABEL"})[0] is None  # no mapping
+    assert itp.interpret({"outcome": -1.0}) == (None, None)  # echo ignored
     # reward policy: executed command gets +0.5 only with assume_success
     assert Interpreter().interpret({"match": "HOME"})[1] == 0.0
     assert Interpreter(assume_success=True).interpret({"match": "HOME"})[1] == 0.5
 
     # ---- integration: drive real loop events through the Interpreter ----------
     from snn_data_lake import signal_loop as S
+
     lib = S.build_default_library()
     matcher = S.build_matcher(lib)
 
     # a) the GRIPPER_CLOSE reference window should translate to its command
     ref_line = ",".join(f"{x:.4f}" for x in lib["GRIPPER_CLOSE"])
     events = []
-    S.run_live(iter([ref_line]), lib, matcher, None,
-               S.ValenceLearner(), S.Cortisol(), emit=events.append)
+    S.run_live(
+        iter([ref_line]), lib, matcher, None, S.ValenceLearner(), S.Cortisol(), emit=events.append
+    )
     cmds = [itp.interpret(e)[0] for e in events]
     assert "GRIPPER_CLOSE" in cmds, f"reference signal did not map to its command: {cmds}"
 
     # b) a collision through a reflex-enabled loop -> EMERGENCY_STOP + bad reward
     from snn_data_lake.brainstem.reflex import Reflex
+
     danger = "500,500,500,500,500,500,950,0"
     ev2 = []
-    S.run_live(iter([danger]), lib, matcher, Reflex(),
-               S.ValenceLearner(), S.Cortisol(), emit=ev2.append)
+    S.run_live(
+        iter([danger]), lib, matcher, Reflex(), S.ValenceLearner(), S.Cortisol(), emit=ev2.append
+    )
     out2 = [itp.interpret(e) for e in ev2]
     assert ("EMERGENCY_STOP", -1.0) in out2, f"collision did not yield emergency stop: {out2}"
 
@@ -131,8 +138,10 @@ def selfcheck():
     print(f"command map : {list(COMMANDS)}")
     print(f"reflex map  : {REFLEX_CMD}")
     print("priority    : reflex > AVOID-veto > match;  reward: reflex -1, veto -0.3, exec 0/+0.5")
-    print("self-check OK: reflex preempts, AVOID vetoes, matches map to commands, "
-          "reference signal -> GRIPPER_CLOSE, collision -> EMERGENCY_STOP")
+    print(
+        "self-check OK: reflex preempts, AVOID vetoes, matches map to commands, "
+        "reference signal -> GRIPPER_CLOSE, collision -> EMERGENCY_STOP"
+    )
 
 
 def main():

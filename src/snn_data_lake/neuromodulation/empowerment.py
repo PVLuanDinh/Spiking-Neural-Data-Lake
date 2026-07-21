@@ -25,10 +25,11 @@ HONEST SCOPE: a coarse, bounded-horizon channel-capacity ESTIMATE (grid-quantize
 `max_seqs` sequences, then a seeded reproducible subsample), NOT exact mutual information. It measures
 the ACTION channel specifically: the CONTROL in the self-check shuffles the action->outcome mapping so
 actions no longer discriminate the future and confirms E COLLAPSES -- proving it is self-caused
-reachability, not mere state spread / novelty. Pure stdlib, per-instance random.Random(seed), ASCII.
+reachability, not mere state spread / novelty. Per-instance random.Random(seed), ASCII.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.empowerment
 """
+
 import itertools
 import math
 import random
@@ -98,12 +99,14 @@ class Empowerment:
 # ---- tiny deterministic stub predictors for the self-check (no torch needed) ----------------------
 class _Trap:
     """Every action leads to the SAME place -> the agent controls nothing."""
+
     def predict(self, z, a):
         return [0.0, 0.0]
 
 
 class _Hub:
     """Each action moves the state a DISTINCT way -> sequences fan out to many futures."""
+
     def predict(self, z, a):
         return [z[0] + (a + 1), z[1] + (a + 1) * (a + 1)]
 
@@ -111,6 +114,7 @@ class _Hub:
 class _NoControl:
     """The state MOVES a lot every step (high novelty) but the move IGNORES the action -> the agent
     controls nothing. The un-riggable control: a novelty drive would reward this; empowerment must not."""
+
     def predict(self, z, a):
         return [z[0] + 1.0, z[1] + 1.0]
 
@@ -130,30 +134,43 @@ def main():
 
     print(f"  trap  (every action -> same place)     : E = {e_trap:.2f} bits  (no control)")
     print(f"  hub   (actions fan out to many futures): E = {e_hub:.2f} bits  (high control)")
-    print(f"  no-control (state MOVES, action ignored): E = {e_nc:.2f} bits  (moved={moved}, novelty!=control)")
+    print(
+        f"  no-control (state MOVES, action ignored): E = {e_nc:.2f} bits  (moved={moved}, novelty!=control)"
+    )
 
     # empowerment GAIN: moving from a trap-like state toward a hub-like state is rewarded
     gain = Empowerment(_Hub(), A, horizon=2, seed=0).reward([0.0, 0.0], [0.0, 0.0])
     # determinism: same seed -> identical estimate
-    det = (Empowerment(_Hub(), A, horizon=3, seed=0).empowerment(z0)
-           == Empowerment(_Hub(), A, horizon=3, seed=0).empowerment(z0))
+    det = Empowerment(_Hub(), A, horizon=3, seed=0).empowerment(z0) == Empowerment(
+        _Hub(), A, horizon=3, seed=0
+    ).empowerment(z0)
     print(f"  gain (E(after)-E(before)) example      : {gain:+.2f}   ; deterministic = {det}")
     print("=" * 78)
 
     # ---- un-riggable self-check --------------------------------------------------------------------
-    assert e_trap == 0.0, f"a trap where every action collapses to one future must score ~0 ({e_trap})"
-    assert e_hub > 2.0, f"a hub whose actions fan out to many distinct futures must score high ({e_hub})"
+    assert e_trap == 0.0, (
+        f"a trap where every action collapses to one future must score ~0 ({e_trap})"
+    )
+    assert e_hub > 2.0, (
+        f"a hub whose actions fan out to many distinct futures must score high ({e_hub})"
+    )
     # THE CONTROL: the state moves as much as any hub, but because the move IGNORES the action, the
     # ACTION->future channel carries no information -> E collapses. This is what separates empowerment
     # (control) from novelty (mere change): a novelty drive would light up here; empowerment must not.
-    assert moved, "the no-control predictor must actually MOVE the state (else the control is trivial)"
-    assert e_nc == 0.0, f"when the future ignores the action, empowerment must collapse to ~0 ({e_nc})"
+    assert moved, (
+        "the no-control predictor must actually MOVE the state (else the control is trivial)"
+    )
+    assert e_nc == 0.0, (
+        f"when the future ignores the action, empowerment must collapse to ~0 ({e_nc})"
+    )
     assert e_hub > e_nc, "empowerment must prefer CONTROL (hub) over mere CHANGE (no-control)"
     assert det, "same seed must reproduce an identical empowerment estimate"
 
-    print(f"self-check OK: empowerment = bits of self-reachable future -- trap {e_trap:.1f} < no-control "
-          f"{e_nc:.1f} (moves but uncontrolled) << hub {e_hub:.1f}; the CONTROL (action-independent "
-          f"future) collapses E, proving it measures CONTROL not novelty; deterministic; zero-dep.")
+    print(
+        f"self-check OK: empowerment = bits of self-reachable future -- trap {e_trap:.1f} < no-control "
+        f"{e_nc:.1f} (moves but uncontrolled) << hub {e_hub:.1f}; the CONTROL (action-independent "
+        f"future) collapses E, proving it measures CONTROL not novelty; deterministic."
+    )
 
 
 if __name__ == "__main__":

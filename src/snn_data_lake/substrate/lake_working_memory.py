@@ -37,14 +37,15 @@ touches no actuator.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.lake_working_memory
 """
+
 import os
 import random
 import tempfile
 
 from snn_data_lake.substrate.streaming_hub import StreamingHub
 
-_REC_BYTES = 8          # StreamingHub stores (channel u32, time u32) = 8 B/event
-_MAX_T = 1 << 32        # exclusive upper bound over all u32 tick times (whole-lake query)
+_REC_BYTES = 8  # StreamingHub stores (channel u32, time u32) = 8 B/event
+_MAX_T = 1 << 32  # exclusive upper bound over all u32 tick times (whole-lake query)
 
 
 class LakeWorkingMemory:
@@ -65,7 +66,7 @@ class LakeWorkingMemory:
             raise ValueError("n_channels must be positive")
         if path is None:
             fd, path = tempfile.mkstemp(suffix=".spkl")
-            os.close(fd)                                    # StreamingHub opens its own handle
+            os.close(fd)  # StreamingHub opens its own handle
             self._created_temp = True
         else:
             self._created_temp = False
@@ -73,7 +74,7 @@ class LakeWorkingMemory:
         self.seed = seed
         self.rng = random.Random(seed)
         self.path = path
-        self.last_t = None                                  # the "now" cursor (latest tick written)
+        self.last_t = None  # the "now" cursor (latest tick written)
         self.hub = StreamingHub(path, self.n, resume=False)
 
     # ---- write one tick into the durable lake -------------------------------
@@ -144,16 +145,16 @@ class LakeWorkingMemory:
 
 
 def main():
-    N = 16                      # 12 activity channels + 4 reserved value slots
-    ACT = 12                    # activity channels [0, 12)
-    VLO, VHI = 12, 16           # reserved one-hot value slots [12, 16)
-    created = []                # temp paths to clean up at the end
+    N = 16  # 12 activity channels + 4 reserved value slots
+    ACT = 12  # activity channels [0, 12)
+    VLO, VHI = 12, 16  # reserved one-hot value slots [12, 16)
+    created = []  # temp paths to clean up at the end
 
     try:
         # ---- write a handful of ticks of activity into the durable lake -----
         wm = LakeWorkingMemory(N, seed=0)
         created.append(wm)
-        plan = {                # tick -> the channels active on that tick
+        plan = {  # tick -> the channels active on that tick
             0: [1, 4],
             1: [2, 7],
             2: [0, 9],
@@ -168,7 +169,7 @@ def main():
         # recall the last 3 ticks BEFORE and AFTER reopen (reconstruct from disk)
         W = 3
         recall_before = wm.recall(W)
-        wm.reopen()                                     # throw away RAM, replay durable log
+        wm.reopen()  # throw away RAM, replay durable log
         recall_after = wm.recall(W)
         disk_bytes = os.path.getsize(wm.path)
         events = wm.n_events()
@@ -176,9 +177,9 @@ def main():
         # ---- one-hot value round-trip on the reserved slot range ------------
         vm = LakeWorkingMemory(N, seed=0)
         created.append(vm)
-        values = [3, 1, 2, 0, 3, 2]                     # a sequence of goal/action values
+        values = [3, 1, 2, 0, 3, 2]  # a sequence of goal/action values
         for t, v in enumerate(values):
-            vm.write(t, [t % ACT, VLO + v])             # some activity + the one-hot value
+            vm.write(t, [t % ACT, VLO + v])  # some activity + the one-hot value
         read_channel = vm.most_recent(VLO, VHI)
         read_value = read_channel - VLO
 
@@ -197,29 +198,38 @@ def main():
         print("=" * 68)
         print("LAKE WORKING MEMORY -- the spike data lake IS the working memory")
         print("=" * 68)
-        print(f"channels     : {N} ({ACT} activity + {VHI - VLO} reserved value slots "
-              f"[{VLO},{VHI}))")
-        print(f"wrote        : {len(plan)} ticks, {appends} spikes -> durable {os.path.basename(wm.path)}")
+        print(
+            f"channels     : {N} ({ACT} activity + {VHI - VLO} reserved value slots [{VLO},{VHI}))"
+        )
+        print(
+            f"wrote        : {len(plan)} ticks, {appends} spikes -> durable {os.path.basename(wm.path)}"
+        )
         print(f"durable log  : {disk_bytes} B on disk ({events} events x {_REC_BYTES} B)")
         print("-" * 68)
         print(f"recall(3) BEFORE reopen : {[(t, sorted(s)) for t, s in recall_before]}")
         print(f"recall(3) AFTER  reopen : {[(t, sorted(s)) for t, s in recall_after]}")
         print("  (identical -> the WM was reconstructed from the durable lake, not RAM)")
         print("-" * 68)
-        print(f"value stream {values} -> most_recent([{VLO},{VHI})) = ch {read_channel} "
-              f"= value {read_value} (the last one written)")
+        print(
+            f"value stream {values} -> most_recent([{VLO},{VHI})) = ch {read_channel} "
+            f"= value {read_value} (the last one written)"
+        )
         print(f"determinism  : two seed=123 stores -> recall equal = {recall_da == recall_db}")
         print("=" * 68)
 
         # ---- un-riggable self-checks (deterministic asserts) ----------------
         # (1) The WM lives in the LAKE, not RAM: contents survive discarding RAM + replaying disk.
         assert recall_before == recall_after, "reopen from the durable lake changed the WM contents"
-        assert recall_after, "recall after reopen must be non-empty (WM did not survive the restart)"
+        assert recall_after, (
+            "recall after reopen must be non-empty (WM did not survive the restart)"
+        )
 
         # (2) Recency window: recall(k) holds ONLY the last k ticks (bounded store).
         recalled_ticks = {t for t, _ in recall_after}
-        assert recalled_ticks == {3, 4, 5}, f"recall(3) must be the last 3 ticks, got {recalled_ticks}"
-        old_channels = set(plan[0])                     # tick 0 is outside the window
+        assert recalled_ticks == {3, 4, 5}, (
+            f"recall(3) must be the last 3 ticks, got {recalled_ticks}"
+        )
+        old_channels = set(plan[0])  # tick 0 is outside the window
         recent_channels = {c for _, s in recall_after for c in s}
         assert not (old_channels & recent_channels), "an old tick's channels leaked into recall(3)"
         assert set(plan[5]).issubset(recent_channels), "the most recent tick's channels are missing"
@@ -236,12 +246,14 @@ def main():
         # (5) Determinism: identical inputs -> identical recall.
         assert recall_da == recall_db, "same seed produced different recall results"
 
-        print("self-check OK: WM lives in the durable lake (survives reopen); recall is a bounded "
-              "recency window; one-hot value round-trips; n_events == appends and the .spkl is "
-              "non-empty; recall is deterministic")
+        print(
+            "self-check OK: WM lives in the durable lake (survives reopen); recall is a bounded "
+            "recency window; one-hot value round-trips; n_events == appends and the .spkl is "
+            "non-empty; recall is deterministic"
+        )
     finally:
         for w in created:
-            w.close(remove=True)                        # release handles + delete temp files
+            w.close(remove=True)  # release handles + delete temp files
 
 
 if __name__ == "__main__":

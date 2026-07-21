@@ -40,12 +40,13 @@ THE PROTECTED SET it enforces (the exact immutable files -- a rewrite may touch 
   PLUS reasoning/self_mod_harness.py  (this proposer itself)
   = 9 files total. None is ever a legal target; touching any (even as a side effect) fails the gate.
 
-Deps: pure stdlib (os, re, shutil, subprocess, sys, tempfile, zlib, random) + the sibling modules
+Deps: stdlib (os, re, shutil, subprocess, sys, tempfile, zlib, random) + the sibling modules
   reasoning/godel_machine.py (for _SAFETY_KERNEL) and reasoning/self_improve.py (SelfImprover, Change).
-  No numpy, no torch, no network. REPRESENTATION-ONLY: imports nothing from brainstem, no actuator route.
+  REPRESENTATION-ONLY: imports nothing from brainstem, no actuator route.
 
   PYTHONPATH=src python -m snn_data_lake.reasoning.self_mod_harness   # the DISABLED-by-default self-check
 """
+
 import os
 import re
 import shutil
@@ -69,9 +70,26 @@ _PROTECTED = tuple(dict.fromkeys((*_SAFETY_KERNEL, *_EXTRA_PROTECTED)))  # de-du
 # heavy / irrelevant trees skipped when copying the real repo into a sandbox (the self-checks are
 # hermetic, so none of these is needed to run the gate). A tiny hermetic test repo matches none of them.
 _COPY_IGNORE = shutil.ignore_patterns(
-    ".git", ".venv*", "venv", "env", "__pycache__", "*.pyc", ".ruff_cache", ".mypy_cache",
-    ".pytest_cache", "node_modules", "dist", "build", "*.egg-info", "graphify-out",
-    "data", "brain_data", "assets", "models", "vendor", "environment_files",
+    ".git",
+    ".venv*",
+    "venv",
+    "env",
+    "__pycache__",
+    "*.pyc",
+    ".ruff_cache",
+    ".mypy_cache",
+    ".pytest_cache",
+    "node_modules",
+    "dist",
+    "build",
+    "*.egg-info",
+    "graphify-out",
+    "data",
+    "brain_data",
+    "assets",
+    "models",
+    "vendor",
+    "environment_files",
 )
 _PASS_RE = re.compile(r"(\d+)\s*/\s*\d+\s+self-checks passed")  # run_selfchecks.py's summary line
 
@@ -109,21 +127,37 @@ class SelfModHarness:
     Even enabled it only ever writes into a temp sandbox and returns a proposal; it applies nothing live.
     """
 
-    def __init__(self, enable=False, whitelist=None, seed=0, repo=None, protected=None,
-                 sandbox_root=None, max_attempts=8, timeout=900, require_improvement=False,
-                 require_ruff=True):
+    def __init__(
+        self,
+        enable=False,
+        whitelist=None,
+        seed=0,
+        repo=None,
+        protected=None,
+        sandbox_root=None,
+        max_attempts=8,
+        timeout=900,
+        require_improvement=False,
+        require_ruff=True,
+    ):
         self._enable = bool(enable)
-        self._require_improvement = bool(require_improvement)   # True -> accept ONLY a STRICT utility increase
-        self._require_ruff = bool(require_ruff)                 # True -> the sandbox must ALSO be ruff-clean (fully tested)
+        self._require_improvement = bool(
+            require_improvement
+        )  # True -> accept ONLY a STRICT utility increase
+        self._require_ruff = bool(
+            require_ruff
+        )  # True -> the sandbox must ALSO be ruff-clean (fully tested)
         self._repo = os.path.abspath(repo) if repo else _repo_root()
         self._protected = frozenset(protected if protected is not None else _PROTECTED)
-        self._whitelist = frozenset(whitelist if whitelist is not None else self._default_whitelist())
-        self._rng = Random(seed)                 # per-instance RNG (no global RNG, no wall-clock)
-        self._sandbox_root = sandbox_root         # where temp sandboxes are created (None -> system temp)
+        self._whitelist = frozenset(
+            whitelist if whitelist is not None else self._default_whitelist()
+        )
+        self._rng = Random(seed)  # per-instance RNG (no global RNG, no wall-clock)
+        self._sandbox_root = sandbox_root  # where temp sandboxes are created (None -> system temp)
         self._max_attempts = int(max_attempts)
         self._timeout = timeout
         self._attempts = 0
-        self.log = []                             # (target, status, reason) -- the audit trail
+        self.log = []  # (target, status, reason) -- the audit trail
 
     # -------------------------------------------------------------------- configuration helpers ----
 
@@ -166,11 +200,24 @@ class SelfModHarness:
         if not os.path.isfile(script):
             return 1, None
         home = tempfile.mkdtemp(prefix="selfmod_home_", dir=self._sandbox_root)
-        env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8",
-               "PYTHONDONTWRITEBYTECODE": "1", "PYTHONPATH": "src", "NORD_HOME": home}
+        env = {
+            **os.environ,
+            "PYTHONUTF8": "1",
+            "PYTHONIOENCODING": "utf-8",
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONPATH": "src",
+            "NORD_HOME": home,
+        }
         try:
-            r = subprocess.run([sys.executable, "run_selfchecks.py"], cwd=path, env=env,
-                               capture_output=True, text=True, encoding="utf-8", timeout=self._timeout)
+            r = subprocess.run(
+                [sys.executable, "run_selfchecks.py"],
+                cwd=path,
+                env=env,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=self._timeout,
+            )
         except (OSError, subprocess.SubprocessError):
             return 1, None
         finally:
@@ -187,12 +234,23 @@ class SelfModHarness:
         If ruff is not importable in the sandbox interpreter, returns True (do not block; run_selfchecks
         -- which actually EXECUTES the code -- remains the breakage gate)."""
         try:
-            probe = subprocess.run([sys.executable, "-c", "import ruff"], cwd=path,
-                                   capture_output=True, text=True, timeout=60)
+            probe = subprocess.run(
+                [sys.executable, "-c", "import ruff"],
+                cwd=path,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
             if probe.returncode != 0:
-                return True                                     # ruff absent in this env -> selfchecks still gate
-            r = subprocess.run([sys.executable, "-m", "ruff", "check", "."], cwd=path,
-                               capture_output=True, text=True, encoding="utf-8", timeout=self._timeout)
+                return True  # ruff absent in this env -> selfchecks still gate
+            r = subprocess.run(
+                [sys.executable, "-m", "ruff", "check", "."],
+                cwd=path,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=self._timeout,
+            )
             return r.returncode == 0
         except (OSError, subprocess.SubprocessError):
             return True
@@ -209,13 +267,26 @@ class SelfModHarness:
         pass-count. Acceptance requires: protected files byte-identical + gate green + utility not regressed.
         This NEVER applies anything to the real repo -- it returns a proposal for human review.
         """
-        result = {"status": "rejected", "accepted": False, "protected_ok": True,
-                  "utility_before": None, "utility_after": None, "sandbox": None, "reason": ""}
+        result = {
+            "status": "rejected",
+            "accepted": False,
+            "protected_ok": True,
+            "utility_before": None,
+            "utility_after": None,
+            "sandbox": None,
+            "reason": "",
+        }
 
         # (0) DOUBLE OFF-SWITCH: inert unless BOTH enable=True and NORD_SELFMOD=1. Do NOTHING otherwise.
         if not self._is_enabled():
-            self.log.append((str(target), "disabled", "off by default (needs enable=True + NORD_SELFMOD=1)"))
-            return {**result, "status": "disabled", "reason": "disabled: needs enable=True AND NORD_SELFMOD=1"}
+            self.log.append(
+                (str(target), "disabled", "off by default (needs enable=True + NORD_SELFMOD=1)")
+            )
+            return {
+                **result,
+                "status": "disabled",
+                "reason": "disabled: needs enable=True AND NORD_SELFMOD=1",
+            }
 
         try:
             rel = _rel(self._repo, target)
@@ -224,29 +295,40 @@ class SelfModHarness:
             # before touching the filesystem. protected_ok=False marks the safety-envelope refusal.
             if rel in self._protected:
                 self.log.append((rel, "rejected", "firewall: protected file"))
-                return {**result, "protected_ok": False,
-                        "reason": f"firewall: {rel} is a PROTECTED safety/verifier file (never a target)"}
+                return {
+                    **result,
+                    "protected_ok": False,
+                    "reason": f"firewall: {rel} is a PROTECTED safety/verifier file (never a target)",
+                }
 
             # (1b) WHITELIST: only NON-safety reasoning/ modules are candidates. (Not a safety breach --
             # simply not an allowed target -- so protected_ok stays True.)
             if rel not in self._whitelist:
                 self.log.append((rel, "rejected", "not in whitelist"))
-                return {**result, "reason": f"rejected: {rel} is not in the non-safety reasoning/ whitelist"}
+                return {
+                    **result,
+                    "reason": f"rejected: {rel} is not in the non-safety reasoning/ whitelist",
+                }
 
             # (1c) BOUNDED: cap the number of attempts per instance.
             self._attempts += 1
             if self._attempts > self._max_attempts:
                 self.log.append((rel, "rejected", "attempt budget exhausted"))
-                return {**result, "reason": f"rejected: attempt budget ({self._max_attempts}) exhausted"}
+                return {
+                    **result,
+                    "reason": f"rejected: attempt budget ({self._max_attempts}) exhausted",
+                }
 
             # (2) ISOLATE: copy the repo into a fresh temp sandbox; the real tree is never mutated.
             token = self._rng.randrange(1 << 30)
             sandbox = tempfile.mkdtemp(prefix=f"selfmod_wt_{token}_", dir=self._sandbox_root)
-            shutil.rmtree(sandbox)                              # copytree wants a non-existent dest
+            shutil.rmtree(sandbox)  # copytree wants a non-existent dest
             shutil.copytree(self._repo, sandbox, ignore=_COPY_IGNORE)
             result["sandbox"] = sandbox
 
-            protected_present = [p for p in self._protected if os.path.isfile(os.path.join(sandbox, *p.split("/")))]
+            protected_present = [
+                p for p in self._protected if os.path.isfile(os.path.join(sandbox, *p.split("/")))
+            ]
             outcome = {}
 
             # (3)+(4) apply the edit + measure the gate INSIDE the sandbox. All heavy work happens here;
@@ -260,13 +342,17 @@ class SelfModHarness:
                     util_before = utility_fn(sandbox)
                 outcome["utility_before"] = util_before
 
-                edit_fn(sandbox)                                # <-- the candidate edit, sandbox-only
+                edit_fn(sandbox)  # <-- the candidate edit, sandbox-only
 
                 crc_after = _crc_map(sandbox, protected_present)
-                protected_ok = crc_before == crc_after          # byte-identity firewall (crc32)
-                rc, pc_after = self._run_selfchecks(sandbox)     # the real gate (executes the code), run in the sandbox
-                selfcheck_ok = (rc == 0)
-                ruff_ok = self._run_ruff(sandbox) if self._require_ruff else True   # FULL gate: ALSO lint-clean (no bugs)
+                protected_ok = crc_before == crc_after  # byte-identity firewall (crc32)
+                rc, pc_after = self._run_selfchecks(
+                    sandbox
+                )  # the real gate (executes the code), run in the sandbox
+                selfcheck_ok = rc == 0
+                ruff_ok = (
+                    self._run_ruff(sandbox) if self._require_ruff else True
+                )  # FULL gate: ALSO lint-clean (no bugs)
                 util_after = pc_after if utility_fn is None else utility_fn(sandbox)
                 outcome["utility_after"] = util_after
                 outcome["protected_ok"] = protected_ok
@@ -309,12 +395,13 @@ class SelfModHarness:
                 shutil.rmtree(sandbox, ignore_errors=True)
                 result["sandbox"] = None
             return result
-        except Exception as e:                                  # guard: a failure must never crash the caller
+        except Exception as e:  # guard: a failure must never crash the caller
             self.log.append((str(target), "error", f"{type(e).__name__}: {e}"))
             return {**result, "status": "error", "reason": f"error: {type(e).__name__}: {e}"}
 
 
 # ---------------------------------------------------------------- the self-check (DISABLED-safe) -----
+
 
 def _emit(line):
     assert line.isascii(), "ASCII-only output"
@@ -361,8 +448,14 @@ def _build_tiny_repo(root):
     """A throwaway repo the harness can drive fast: a stub run_selfchecks.py, one whitelisted reasoning
     module (a legal target), and one protected 'safety' file (reflex.py) that must stay untouchable."""
     _write(os.path.join(root, "run_selfchecks.py"), _TINY_SELFCHECKS)
-    _write(os.path.join(root, "src", "pkg", "reasoning", "good_mod.py"), "def contribute(x):\n    return x + 1\n")
-    _write(os.path.join(root, "src", "pkg", "brainstem", "reflex.py"), "def estop():\n    return True\n")
+    _write(
+        os.path.join(root, "src", "pkg", "reasoning", "good_mod.py"),
+        "def contribute(x):\n    return x + 1\n",
+    )
+    _write(
+        os.path.join(root, "src", "pkg", "brainstem", "reflex.py"),
+        "def estop():\n    return True\n",
+    )
 
 
 def main():
@@ -386,17 +479,29 @@ def main():
         os.environ.pop("NORD_SELFMOD", None)
         h_off = SelfModHarness(enable=False)
         r_off = h_off.propose("src/snn_data_lake/reasoning/derivation.py", lambda sb: None, None)
-        assert r_off["status"] == "disabled" and r_off["accepted"] is False, "default must be DISABLED"
+        assert r_off["status"] == "disabled" and r_off["accepted"] is False, (
+            "default must be DISABLED"
+        )
         assert r_off["sandbox"] is None, "a disabled propose() must NOT create a sandbox"
         # enable=True alone is NOT enough (env still unset) -> still disabled
         h_env_missing = SelfModHarness(enable=True)
-        assert h_env_missing.propose("src/snn_data_lake/reasoning/derivation.py", lambda sb: None)["status"] == "disabled", \
-            "enable=True WITHOUT NORD_SELFMOD=1 must stay disabled"
+        assert (
+            h_env_missing.propose("src/snn_data_lake/reasoning/derivation.py", lambda sb: None)[
+                "status"
+            ]
+            == "disabled"
+        ), "enable=True WITHOUT NORD_SELFMOD=1 must stay disabled"
         # env set but enable=False -> still disabled
         os.environ["NORD_SELFMOD"] = "1"
-        assert SelfModHarness(enable=False).propose("src/snn_data_lake/reasoning/derivation.py", lambda sb: None)["status"] == "disabled", \
-            "NORD_SELFMOD=1 WITHOUT enable=True must stay disabled"
-        _emit("  [OK] DISABLED by default: needs BOTH enable=True AND NORD_SELFMOD=1 (no sandbox, no change)")
+        assert (
+            SelfModHarness(enable=False).propose(
+                "src/snn_data_lake/reasoning/derivation.py", lambda sb: None
+            )["status"]
+            == "disabled"
+        ), "NORD_SELFMOD=1 WITHOUT enable=True must stay disabled"
+        _emit(
+            "  [OK] DISABLED by default: needs BOTH enable=True AND NORD_SELFMOD=1 (no sandbox, no change)"
+        )
 
         # ---- build a hermetic tiny repo; from here on the harness is EXPLICITLY enabled (env already =1) ----
         tiny = os.path.join(work, "tinyrepo")
@@ -407,44 +512,80 @@ def main():
         def mk():
             # require_ruff=False: the tiny STUB repo has no ruff config (the ruff FULL-gate applies to the
             # real ruff-configured repo, exercised via the brain's opt-in self_improve path, not this stub).
-            return SelfModHarness(enable=True, whitelist=wl, seed=0, repo=tiny, protected=prot,
-                                  sandbox_root=work, timeout=120, require_ruff=False)
+            return SelfModHarness(
+                enable=True,
+                whitelist=wl,
+                seed=0,
+                repo=tiny,
+                protected=prot,
+                sandbox_root=work,
+                timeout=120,
+                require_ruff=False,
+            )
 
-        def edit_whitespace(sb):     # a benign no-op: append a blank line (still compiles) -> utility held
-            with open(os.path.join(sb, "src", "pkg", "reasoning", "good_mod.py"), "a", encoding="utf-8") as f:
+        def edit_whitespace(
+            sb,
+        ):  # a benign no-op: append a blank line (still compiles) -> utility held
+            with open(
+                os.path.join(sb, "src", "pkg", "reasoning", "good_mod.py"), "a", encoding="utf-8"
+            ) as f:
                 f.write("\n")
 
-        def edit_break(sb):          # a syntax-breaking edit -> run_selfchecks reddens -> must be REJECTED
-            with open(os.path.join(sb, "src", "pkg", "reasoning", "good_mod.py"), "w", encoding="utf-8") as f:
+        def edit_break(sb):  # a syntax-breaking edit -> run_selfchecks reddens -> must be REJECTED
+            with open(
+                os.path.join(sb, "src", "pkg", "reasoning", "good_mod.py"), "w", encoding="utf-8"
+            ) as f:
                 f.write("def (((  # deliberately broken\n")
 
-        def edit_side_effect(sb):    # legal target BUT also mutates a protected file -> crc firewall trips
-            with open(os.path.join(sb, "src", "pkg", "reasoning", "good_mod.py"), "a", encoding="utf-8") as f:
+        def edit_side_effect(
+            sb,
+        ):  # legal target BUT also mutates a protected file -> crc firewall trips
+            with open(
+                os.path.join(sb, "src", "pkg", "reasoning", "good_mod.py"), "a", encoding="utf-8"
+            ) as f:
                 f.write("\n")
-            with open(os.path.join(sb, "src", "pkg", "brainstem", "reflex.py"), "a", encoding="utf-8") as f:
+            with open(
+                os.path.join(sb, "src", "pkg", "brainstem", "reflex.py"), "a", encoding="utf-8"
+            ) as f:
                 f.write("# tampered\n")
 
         # ---- (2) enabled + benign edit to a whitelisted module -> ACCEPTED (in the sandbox only) ----
         r_ok = mk().propose("src/pkg/reasoning/good_mod.py", edit_whitespace, None)
-        assert r_ok["status"] == "accepted" and r_ok["accepted"] is True, "a green, non-regressing edit must be ACCEPTED"
+        assert r_ok["status"] == "accepted" and r_ok["accepted"] is True, (
+            "a green, non-regressing edit must be ACCEPTED"
+        )
         assert r_ok["protected_ok"] is True, "the benign edit touched no protected file"
-        assert r_ok["sandbox"] and os.path.isdir(r_ok["sandbox"]), "accepted proposal keeps its sandbox for review"
-        assert r_ok["sandbox"] != tiny and os.path.abspath(r_ok["sandbox"]) != os.path.abspath(tiny), "sandbox is a COPY"
-        _emit(f"  [OK] enabled + benign edit ACCEPTED in sandbox (util {r_ok['utility_before']}->{r_ok['utility_after']}), real tree untouched")
+        assert r_ok["sandbox"] and os.path.isdir(r_ok["sandbox"]), (
+            "accepted proposal keeps its sandbox for review"
+        )
+        assert r_ok["sandbox"] != tiny and os.path.abspath(r_ok["sandbox"]) != os.path.abspath(
+            tiny
+        ), "sandbox is a COPY"
+        _emit(
+            f"  [OK] enabled + benign edit ACCEPTED in sandbox (util {r_ok['utility_before']}->{r_ok['utility_after']}), real tree untouched"
+        )
 
         # ---- (3) THE FIREWALL ----
         # 3a: a PROTECTED safety file is never a legal target -> REJECTED, protected_ok False, no sandbox
         r_fw = mk().propose("src/pkg/brainstem/reflex.py", edit_whitespace, None)
-        assert r_fw["accepted"] is False and r_fw["protected_ok"] is False, "editing a safety file must be REJECTED (firewall)"
+        assert r_fw["accepted"] is False and r_fw["protected_ok"] is False, (
+            "editing a safety file must be REJECTED (firewall)"
+        )
         assert r_fw["sandbox"] is None, "a firewalled target never gets a sandbox"
         # 3b: a legal target whose edit ALSO tampers a protected file -> crc firewall -> REJECTED, protected_ok False
         r_se = mk().propose("src/pkg/reasoning/good_mod.py", edit_side_effect, None)
-        assert r_se["accepted"] is False and r_se["protected_ok"] is False, "a side-effect touch of a protected file must be REJECTED"
+        assert r_se["accepted"] is False and r_se["protected_ok"] is False, (
+            "a side-effect touch of a protected file must be REJECTED"
+        )
         # 3c: a legal target whose edit BREAKS a selfcheck -> gate red -> REJECTED (protected untouched)
         r_br = mk().propose("src/pkg/reasoning/good_mod.py", edit_break, None)
         assert r_br["accepted"] is False, "an edit that reddens the gate must be REJECTED"
-        assert r_br["protected_ok"] is True, "the broken edit touched no protected file (it just failed the gate)"
-        _emit("  [OK] FIREWALL: protected target rejected (protected_ok False); side-effect on a safety file rejected; broken selfcheck rejected")
+        assert r_br["protected_ok"] is True, (
+            "the broken edit touched no protected file (it just failed the gate)"
+        )
+        _emit(
+            "  [OK] FIREWALL: protected target rejected (protected_ok False); side-effect on a safety file rejected; broken selfcheck rejected"
+        )
 
         # ---- (5) DETERMINISM: same inputs -> same verdict ----
         v1 = mk().propose("src/pkg/reasoning/good_mod.py", edit_whitespace, None)["accepted"]
@@ -454,11 +595,22 @@ def main():
         # the exact protected set it enforces (reported for the audit trail)
         default_state = SelfModHarness(enable=False).state()
         assert default_state["enabled"] is False, "state() reflects the disabled default"
-        assert "src/snn_data_lake/brainstem/reflex.py" in _PROTECTED, "the arm-safety kernel is protected"
-        assert "src/snn_data_lake/reasoning/self_improve.py" in _PROTECTED, "the bounded-improvement verifier is protected"
-        assert "src/snn_data_lake/reasoning/self_mod_harness.py" in _PROTECTED, "the proposer protects itself"
-        assert "run_selfchecks.py" in _PROTECTED and "src/snn_data_lake/reasoning/godel_machine.py" in _PROTECTED, "verifier + godel kernel protected"
-        assert len(_PROTECTED) == 9, "exactly the 9 immutable files (5 brainstem + run_selfchecks + godel + self_improve + self_mod)"
+        assert "src/snn_data_lake/brainstem/reflex.py" in _PROTECTED, (
+            "the arm-safety kernel is protected"
+        )
+        assert "src/snn_data_lake/reasoning/self_improve.py" in _PROTECTED, (
+            "the bounded-improvement verifier is protected"
+        )
+        assert "src/snn_data_lake/reasoning/self_mod_harness.py" in _PROTECTED, (
+            "the proposer protects itself"
+        )
+        assert (
+            "run_selfchecks.py" in _PROTECTED
+            and "src/snn_data_lake/reasoning/godel_machine.py" in _PROTECTED
+        ), "verifier + godel kernel protected"
+        assert len(_PROTECTED) == 9, (
+            "exactly the 9 immutable files (5 brainstem + run_selfchecks + godel + self_improve + self_mod)"
+        )
         _emit(f"  [OK] deterministic; PROTECTED set = {len(_PROTECTED)} immutable files enforced")
 
     finally:
@@ -472,14 +624,18 @@ def main():
     # ---- (4) the REAL repo tree is byte-unchanged (crc a couple of files before/after the whole run) ----
     for p, crc0 in real_before.items():
         assert _crc_file(p) == crc0, f"the real tree must be byte-unchanged: {p}"
-    _emit("  [OK] real repo tree byte-identical after the self-check (crc32 of run_selfchecks.py + reflex.py unchanged)")
+    _emit(
+        "  [OK] real repo tree byte-identical after the self-check (crc32 of run_selfchecks.py + reflex.py unchanged)"
+    )
 
     _emit("")
-    _emit("self-check OK: DISABLED-by-default sandboxed verifier-gated PROPOSER -- inert unless enable=True "
-          "AND NORD_SELFMOD=1; even enabled it only writes a temp sandbox, refuses the 9 protected files "
-          "(crc32 firewall), rejects broken/regressing edits, applies NOTHING to the real tree, and leaves "
-          "the safety envelope untouched. Enabling + applying is human-gated; this is a proposer, not an "
-          "intelligence explosion.")
+    _emit(
+        "self-check OK: DISABLED-by-default sandboxed verifier-gated PROPOSER -- inert unless enable=True "
+        "AND NORD_SELFMOD=1; even enabled it only writes a temp sandbox, refuses the 9 protected files "
+        "(crc32 firewall), rejects broken/regressing edits, applies NOTHING to the real tree, and leaves "
+        "the safety envelope untouched. Enabling + applying is human-gated; this is a proposer, not an "
+        "intelligence explosion."
+    )
     return 0
 
 

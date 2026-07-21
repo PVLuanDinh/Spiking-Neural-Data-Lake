@@ -11,6 +11,7 @@ is untouched. Refs: Tsodyks & Markram, PNAS 94 (1997); Markram, Wang & Tsodyks, 
 
   python -m snn_data_lake.plasticity.short_term_plasticity        # (also run by run_selfchecks.py)
 """
+
 import math
 import os
 import tempfile
@@ -49,8 +50,8 @@ def novelty_filter(spike_times, U=0.6, tau_f=1.0, tau_d=60.0):
 def main():
     path = os.path.join(tempfile.mkdtemp(), "stream.spkl")
     hub = StreamingHub(path, n_channels=1)
-    baseline = [0, 40, 80, 120]                       # sparse: each spike is an onset
-    burst = [200, 202, 204, 206, 208, 210]            # dense: sustained activity after an onset
+    baseline = [0, 40, 80, 120]  # sparse: each spike is an onset
+    burst = [200, 202, 204, 206, 208, 210]  # dense: sustained activity after an onset
     for t in baseline + burst:
         hub.append(0, t)
 
@@ -64,18 +65,29 @@ def main():
     print(f"stream: {len(baseline)} sparse + {len(burst)} burst spikes on channel 0")
     print(f"sparse (onset) weights : {[round(w, 3) for w in base_w]}")
     print(f"burst  weights (fade)  : {[round(w, 3) for w in burst_w]}")
-    print(f"burst onset {burst_w[0]:.3f} -> sustained {burst_w[-1]:.3f} "
-          f"(depression); mean sparse {sum(base_w) / len(base_w):.3f} > mean burst {sum(burst_w) / len(burst_w):.3f}")
+    print(
+        f"burst onset {burst_w[0]:.3f} -> sustained {burst_w[-1]:.3f} "
+        f"(depression); mean sparse {sum(base_w) / len(base_w):.3f} > mean burst {sum(burst_w) / len(burst_w):.3f}"
+    )
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
-    assert burst_w[0] > burst_w[-1] * 1.5, f"a sustained burst must fade (onset >> tail: {burst_w[0]:.3f} vs {burst_w[-1]:.3f})"
-    assert sum(base_w) / len(base_w) > sum(burst_w) / len(burst_w), \
+    # ---- self-check: deterministic asserts ----
+    assert burst_w[0] > burst_w[-1] * 1.5, (
+        f"a sustained burst must fade (onset >> tail: {burst_w[0]:.3f} vs {burst_w[-1]:.3f})"
+    )
+    assert sum(base_w) / len(base_w) > sum(burst_w) / len(burst_w), (
         "sparse onsets must carry more novelty weight than sustained burst spikes"
-    assert burst_w[0] > 0.8 * base_w[0], "the burst ONSET (after a gap) must ring out near full strength"
-    assert dict(novelty_filter(hub.ch[0])) == weights, "same stream -> identical weights (deterministic)"
-    print(f"self-check OK: onset {burst_w[0]:.2f} >> sustained {burst_w[-1]:.2f}; sparse novelty > burst; "
-          f"additive filter, streaming_hub default path unchanged; deterministic")
+    )
+    assert burst_w[0] > 0.8 * base_w[0], (
+        "the burst ONSET (after a gap) must ring out near full strength"
+    )
+    assert dict(novelty_filter(hub.ch[0])) == weights, (
+        "same stream -> identical weights (deterministic)"
+    )
+    print(
+        f"self-check OK: onset {burst_w[0]:.2f} >> sustained {burst_w[-1]:.2f}; sparse novelty > burst; "
+        f"additive filter, streaming_hub default path unchanged; deterministic"
+    )
 
 
 if __name__ == "__main__":

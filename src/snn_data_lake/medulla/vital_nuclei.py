@@ -43,6 +43,7 @@ rate); they never touch the voluntary arm actuator or the brainstem safety envel
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.medulla.vital_nuclei
 """
+
 import random
 
 
@@ -59,19 +60,19 @@ class MedullaVitalNuclei:
         self,
         seed=0,
         # respiratory relaxation oscillator (pre-Botzinger)
-        resp_gain=0.05,      # phase ramp per step per unit drive (sets breathing frequency)
+        resp_gain=0.05,  # phase ramp per step per unit drive (sets breathing frequency)
         resp_threshold=1.0,  # phase at which an inspiratory burst fires and the phase resets
-        tidal=1.0,           # CO2 cleared by one inspiratory burst (tidal volume)
+        tidal=1.0,  # CO2 cleared by one inspiratory burst (tidal volume)
         # chemoreceptor set-point loop
         co2_set_point=40.0,  # regulated arterial-CO2 target (mmHg-like units)
-        drive0=1.0,          # baseline respiratory drive at the set-point (open-loop drive too)
-        k_chemo=0.5,         # chemoreceptor feedback gain (drive per unit CO2 error)
-        drive_min=0.05,      # drive floor so the oscillator never fully stalls
+        drive0=1.0,  # baseline respiratory drive at the set-point (open-loop drive too)
+        k_chemo=0.5,  # chemoreceptor feedback gain (drive per unit CO2 error)
+        drive_min=0.05,  # drive floor so the oscillator never fully stalls
         # baroreflex set-point loop
         map_set_point=90.0,  # regulated mean-arterial-pressure target (mmHg-like units)
-        k_baro=2.0,          # NTS -> RVLM baroreflex gain (control per unit pressure error)
-        baro_leak=0.05,      # open-loop pressure relaxation toward its (disturbed) equilibrium
-        baro_dt=0.1,         # integration step for the pressure plant (keeps the loop stable)
+        k_baro=2.0,  # NTS -> RVLM baroreflex gain (control per unit pressure error)
+        baro_leak=0.05,  # open-loop pressure relaxation toward its (disturbed) equilibrium
+        baro_dt=0.1,  # integration step for the pressure plant (keeps the loop stable)
     ):
         self.rng = random.Random(seed)
         self.resp_gain = resp_gain
@@ -94,8 +95,9 @@ class MedullaVitalNuclei:
             return self.drive0
         return max(self.drive_min, self.drive0 + self.k_chemo * (co2 - self.co2_set_point))
 
-    def run_chemoreflex(self, steps=3000, co2_production=0.06, co2_init=55.0,
-                        feedback=True, noise=0.0):
+    def run_chemoreflex(
+        self, steps=3000, co2_production=0.06, co2_init=55.0, feedback=True, noise=0.0
+    ):
         """Run the pre-Botzinger oscillator under the CO2 set-point loop.
 
         Each step: CO2 accrues the metabolic production load; the phase ramps at resp_gain * drive;
@@ -204,53 +206,76 @@ def main():
     print("=" * 72)
     print("MEDULLA VITAL NUCLEI -- respiratory + cardiac CPG on homeostatic set-points")
     print("=" * 72)
-    print(f"CO2 set-point: {core.co2_set_point:.1f} | MAP set-point: {core.map_set_point:.1f} | "
-          f"breath threshold: {core.resp_threshold:.1f}")
+    print(
+        f"CO2 set-point: {core.co2_set_point:.1f} | MAP set-point: {core.map_set_point:.1f} | "
+        f"breath threshold: {core.resp_threshold:.1f}"
+    )
     print("-" * 72)
     print("(1) chemoreceptor CO2 regulation (start 55.0, metabolic load 0.06):")
     print(f"    closed loop -> steady CO2 {co2_closed:6.2f}  (error {err_closed:5.2f})")
-    print(f"    open loop   -> steady CO2 {co2_open:6.2f}  (error {err_open:5.2f}, drifts off target)")
+    print(
+        f"    open loop   -> steady CO2 {co2_open:6.2f}  (error {err_open:5.2f}, drifts off target)"
+    )
     print("-" * 72)
-    print(f"(2) respiratory rhythm: {len(steady_bursts)} inspiratory bursts, "
-          f"mean period {mean_ival:.1f} steps, max deviation {max_dev:.1f} (regular)")
+    print(
+        f"(2) respiratory rhythm: {len(steady_bursts)} inspiratory bursts, "
+        f"mean period {mean_ival:.1f} steps, max deviation {max_dev:.1f} (regular)"
+    )
     print("-" * 72)
     print("(3) chemoreflex vs metabolic demand (breaths per step at steady state):")
     print(f"    low load  (0.05) -> rate {rate_low:.4f}")
     print(f"    high load (0.09) -> rate {rate_high:.4f}  (breathes faster under load)")
     print("-" * 72)
     print("(4) baroreflex vs a +30 pressure disturbance:")
-    print(f"    with feedback    -> steady MAP {map_on:6.2f}  (error {baro_err_on:5.2f}, corrected)")
-    print(f"    without feedback -> steady MAP {map_off:6.2f}  (error {baro_err_off:5.2f}, stranded)")
+    print(
+        f"    with feedback    -> steady MAP {map_on:6.2f}  (error {baro_err_on:5.2f}, corrected)"
+    )
+    print(
+        f"    without feedback -> steady MAP {map_off:6.2f}  (error {baro_err_off:5.2f}, stranded)"
+    )
     print("=" * 72)
 
     # ---- un-riggable fair-control self-checks (deterministic asserts) --------
     # (1) the set-point is held by the loop: closed-loop error small, open-loop error large.
-    assert err_closed < 2.0, f"closed-loop CO2 must settle near the set-point (error {err_closed:.2f})"
+    assert err_closed < 2.0, (
+        f"closed-loop CO2 must settle near the set-point (error {err_closed:.2f})"
+    )
     assert err_open > 8.0, f"open-loop CO2 must drift off the set-point (error {err_open:.2f})"
     assert err_open > 4.0 * err_closed, "feedback must regulate far tighter than open loop"
     # (2) genuinely oscillatory: multiple bursts, non-zero and roughly constant period (not tonic).
     assert len(steady_bursts) >= 10, "the respiratory CPG must emit many bursts (not tonic/flat)"
     assert mean_ival > 1.0, "inter-burst interval must be non-zero (a real rhythm, not every-step)"
-    assert max_dev <= 0.25 * mean_ival + 1.0, "the breathing period must be roughly constant (regular)"
+    assert max_dev <= 0.25 * mean_ival + 1.0, (
+        "the breathing period must be roughly constant (regular)"
+    )
     # (3) chemoreflex responds to demand: heavier CO2 load -> faster steady breathing.
     assert rate_high > rate_low, "a higher metabolic CO2 load must raise the steady breathing rate"
     # (4) baroreflex rejects the disturbance only with feedback.
-    assert baro_err_on < 2.0, f"the baroreflex must correct the disturbance (error {baro_err_on:.2f})"
-    assert baro_err_off > 20.0, f"without feedback pressure must stay disturbed (error {baro_err_off:.2f})"
-    assert baro_err_off > 5.0 * baro_err_on, "the baroreflex must reject the disturbance it is given"
+    assert baro_err_on < 2.0, (
+        f"the baroreflex must correct the disturbance (error {baro_err_on:.2f})"
+    )
+    assert baro_err_off > 20.0, (
+        f"without feedback pressure must stay disturbed (error {baro_err_off:.2f})"
+    )
+    assert baro_err_off > 5.0 * baro_err_on, (
+        "the baroreflex must reject the disturbance it is given"
+    )
     # Determinism: same seed -> identical traces (rng-seeded metabolic/vasomotor jitter reproduces).
     a = MedullaVitalNuclei(seed=7)
     b = MedullaVitalNuclei(seed=7)
     ra = a.run_chemoreflex(noise=0.02)
     rb = b.run_chemoreflex(noise=0.02)
     assert ra == rb, "same seed must reproduce identical chemoreflex traces"
-    assert a.run_baroreflex(noise=0.5) == b.run_baroreflex(noise=0.5), \
+    assert a.run_baroreflex(noise=0.5) == b.run_baroreflex(noise=0.5), (
         "same seed must reproduce identical baroreflex traces"
+    )
 
-    print(f"self-check OK: CO2 closed-loop error {err_closed:.2f} vs open-loop {err_open:.2f}; "
-          f"{len(steady_bursts)} bursts @ period {mean_ival:.1f}; "
-          f"rate {rate_low:.3f}->{rate_high:.3f} under load; "
-          f"baroreflex error {baro_err_on:.2f} vs {baro_err_off:.2f}; deterministic")
+    print(
+        f"self-check OK: CO2 closed-loop error {err_closed:.2f} vs open-loop {err_open:.2f}; "
+        f"{len(steady_bursts)} bursts @ period {mean_ival:.1f}; "
+        f"rate {rate_low:.3f}->{rate_high:.3f} under load; "
+        f"baroreflex error {baro_err_on:.2f} vs {baro_err_off:.2f}; deterministic"
+    )
 
 
 if __name__ == "__main__":

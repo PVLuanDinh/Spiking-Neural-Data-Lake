@@ -100,7 +100,7 @@ def main():
     print(f"subthreshold    : I=100 pA -> {len(st_sub)} spikes (below rheobase)")
     print("=" * 64)
 
-    # ---- self-check (deterministic asserts, zero-dep) ----
+    # ---- self-check (deterministic asserts) ----
     assert len(st_adapt) >= 3 and len(st_tonic) >= 3, "both neurons must fire a train under 500 pA"
     # spike-frequency adaptation: ISIs of the adapting neuron increase then saturate. Allow one dt of slack:
     # at the steady-state plateau the ISI wobbles by a single fixed-step grid cell (e.g. 76.0 vs 76.1 ms).

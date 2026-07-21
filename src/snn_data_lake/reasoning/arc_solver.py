@@ -41,7 +41,7 @@ Methodology: developed on the TRAINING split only; the evaluation split is never
 on. The self-check scores training tasks and runs a genuinely-failing control (the same search with
 an identity-only DSL scores ~0).
 
-Pure stdlib. Deterministic (fixed iteration order; no RNG needed; wall-clock only as a budget).
+Deterministic (fixed iteration order; no RNG needed; wall-clock only as a budget).
 ASCII-only output. Representation-only: imports no brainstem, routes no actuator.
 
   PYTHONPATH=src python -m snn_data_lake.reasoning.arc_solver          # self-check
@@ -749,11 +749,6 @@ def main():
             ok = False
         print("determinism: two node-budget-bound runs solve the identical set (%d tasks)" %
               r_again["solved"])
-
-    no_tensor = "numpy" not in sys.modules and "torch" not in sys.modules
-    if not no_tensor:
-        print("  FAIL: pure stdlib -- numpy/torch must be absent")
-        ok = False
 
     print("-" * 96)
     print("HONEST: this synthesizes short programs over an author-chosen grid vocabulary. It solves")

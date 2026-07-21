@@ -21,6 +21,7 @@ generalisation of that readout to arbitrary input/output sizes and optional hidd
 
   python -m snn_data_lake.cortex.trained_brain        # (also run by run_selfchecks.py)
 """
+
 import json
 import zlib
 
@@ -56,7 +57,7 @@ def predict_scores(brain, x):
         raise ValueError(f"input length {len(x)} != brain in={brain['in']}")
     rng = _Rng(_seed_of(x))
     n_last = len(layers) - 1
-    mems = [[0.0] * len(W) for W in layers]      # membrane per neuron, per layer
+    mems = [[0.0] * len(W) for W in layers]  # membrane per neuron, per layer
     out_acc = [0.0] * len(layers[-1])
     for _ in range(steps):
         spikes = [1 if rng.random() < xi else 0 for xi in x]
@@ -65,19 +66,19 @@ def predict_scores(brain, x):
             cur = [0.0] * len(W)
             for o in range(len(W)):
                 row = W[o]
-                cur[o] = sum(row[i] for i in active)     # weighted incoming spikes (sparse)
+                cur[o] = sum(row[i] for i in active)  # weighted incoming spikes (sparse)
             if li == n_last:
                 for o in range(len(W)):
-                    out_acc[o] += cur[o]                  # output: accumulate currents (linear readout)
+                    out_acc[o] += cur[o]  # output: accumulate currents (linear readout)
                 break
             m = mems[li]
             fired = []
             for o in range(len(W)):
-                m[o] = m[o] * beta + cur[o]               # leaky integrate
+                m[o] = m[o] * beta + cur[o]  # leaky integrate
                 if m[o] >= thr:
                     fired.append(o)
-                    m[o] = 0.0                            # spike + reset
-            active = fired                                # hidden spikes feed the next layer
+                    m[o] = 0.0  # spike + reset
+            active = fired  # hidden spikes feed the next layer
     return out_acc
 
 
@@ -96,9 +97,16 @@ def accuracy(brain, data):
 def make_brain(layers, steps, beta=DEFAULT_BETA, threshold=DEFAULT_THRESHOLD, meta=None):
     """Assemble a brain dict from per-layer weight matrices (each W is [out][in] floats)."""
     layers = [[[float(w) for w in row] for row in W] for W in layers]
-    return {"format": BRAIN_FORMAT, "in": len(layers[0][0]), "out": len(layers[-1]),
-            "steps": int(steps), "beta": float(beta), "threshold": float(threshold),
-            "layers": layers, "meta": dict(meta or {})}
+    return {
+        "format": BRAIN_FORMAT,
+        "in": len(layers[0][0]),
+        "out": len(layers[-1]),
+        "steps": int(steps),
+        "beta": float(beta),
+        "threshold": float(threshold),
+        "layers": layers,
+        "meta": dict(meta or {}),
+    }
 
 
 def save_brain(brain, path):
@@ -122,7 +130,7 @@ def load_brain(path):
             raise ValueError(f"{path}: layer {k} is ragged")
         if len(W[0]) != prev_in:
             raise ValueError(f"{path}: layer {k} expects in={len(W[0])} but got {prev_in}")
-        prev_in = len(W)                                  # this layer's out feeds the next
+        prev_in = len(W)  # this layer's out feeds the next
     if prev_in != brain["out"]:
         raise ValueError(f"{path}: final layer out={prev_in} != brain out={brain['out']}")
     return brain
@@ -180,8 +188,10 @@ def main():
     assert brain2["layers"] == brain["layers"], "brain must round-trip through save/load exactly"
     assert det, "predict must be deterministic for identical input"
     assert predict(brain, test[0][0]) in range(C), "prediction must be a valid class"
-    print(f"self-check OK: trained-brain serves GPU-trainable weights zero-dep; {acc:.0%} acc, "
-          f"faithful to the core readout, round-trips, deterministic")
+    print(
+        f"self-check OK: trained-brain serves GPU-trainable weights zero-dep; {acc:.0%} acc, "
+        f"faithful to the core readout, round-trips, deterministic"
+    )
 
 
 if __name__ == "__main__":

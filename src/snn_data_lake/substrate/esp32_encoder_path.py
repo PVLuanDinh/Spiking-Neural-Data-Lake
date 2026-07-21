@@ -2,8 +2,8 @@
 v1.0 -- ESP32 serial stream -> multimodal encoder -> spike vector.
 
 Raw ESP32 serial lines (distance_m, temp_k) -> parse -> normalize to [0,1] ->
-the existing encode_multimodal -> N=64 spike feature vector. Pure stdlib, zero
-deps (pyserial imported lazily only in read_serial_lines).
+the existing encode_multimodal -> N=64 spike feature vector (pyserial imported
+lazily only in read_serial_lines).
 
 Firmware quirks handled:
   * distance > 3.00 m -> firmware sends temperature as sentinel -1 (idle) -> treat
@@ -21,6 +21,7 @@ not cognition.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.esp32_encoder_path
 """
+
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.cortex.spike_preprocessing import N, encode_latency
 
@@ -40,8 +41,13 @@ def parse_esp32_line(line):
         return None
 
     # Skip control lines and boot banner.
-    if (line in ("STOPPED", "RESUMED") or "ets " in line or "rst:" in line
-            or "boot:" in line or "mode:" in line):
+    if (
+        line in ("STOPPED", "RESUMED")
+        or "ets " in line
+        or "rst:" in line
+        or "boot:" in line
+        or "mode:" in line
+    ):
         return None
 
     # Try to parse as "distance_m, temp_k" (two comma-separated floats).
@@ -96,9 +102,7 @@ def encode_reading(line):
 
     # Feed the existing multimodal encoder: distance and temperature present,
     # visual and audio absent (None -> graceful dropout -> zeros).
-    feats = encode_multimodal(
-        visual=None, temperature=temp01, audio=None, distance=distance01
-    )
+    feats = encode_multimodal(visual=None, temperature=temp01, audio=None, distance=distance01)
     return feats
 
 
@@ -124,8 +128,8 @@ def spikes_for(feats):
 def read_serial_lines(port, baud=115200, timeout=1.0):
     """Lazily yield decoded text lines from a live serial port.
 
-    Imports pyserial only here (not at module top), so the module remains
-    zero-dep at import time. If pyserial is missing, raises a clear
+    Imports pyserial only here (not at module top), so importing this module
+    never pulls in pyserial. If pyserial is missing, raises a clear
     ImportError directing the user to `pip install ".[arm]"`.
 
     Args:
@@ -140,9 +144,7 @@ def read_serial_lines(port, baud=115200, timeout=1.0):
     try:
         import serial
     except ImportError as e:
-        raise ImportError(
-            "pyserial not found. Install with: pip install \".[arm]\""
-        ) from e
+        raise ImportError('pyserial not found. Install with: pip install ".[arm]"') from e
 
     ser = serial.Serial(port, baud, timeout=timeout)
     try:
@@ -171,8 +173,9 @@ def main():
 
     # ---- Parse tests ----
     p1 = parse_esp32_line("0.41, 297.14")
-    assert p1 is not None and abs(p1[0] - 0.41) < 1e-9 and abs(p1[1] - 297.14) < 1e-9, \
+    assert p1 is not None and abs(p1[0] - 0.41) < 1e-9 and abs(p1[1] - 297.14) < 1e-9, (
         f"parse_esp32_line('0.41, 297.14') = {p1}, expected (0.41, 297.14)"
+    )
 
     assert parse_esp32_line("STOPPED") is None, "parse_esp32_line('STOPPED') should be None"
     assert parse_esp32_line("RESUMED") is None, "parse_esp32_line('RESUMED') should be None"
@@ -206,83 +209,90 @@ def main():
 
     # Temperature idle sentinel or negative: None (missing).
     d_idle, t_idle = normalize(4.20, -1.0)
-    assert t_idle is None, \
-        f"normalize(4.20, -1.0): temp should be None (idle), got {t_idle}"
+    assert t_idle is None, f"normalize(4.20, -1.0): temp should be None (idle), got {t_idle}"
     msg = f"normalize(4.20, -1.0): distance should be 1.0 (clamp), got {d_idle}"
     assert abs(d_idle - 1.0) < 1e-9, msg
 
     d_neg, t_neg = normalize(1.5, -50.0)
-    assert t_neg is None, \
-        f"normalize(1.5, -50.0): temp should be None (negative), got {t_neg}"
+    assert t_neg is None, f"normalize(1.5, -50.0): temp should be None (negative), got {t_neg}"
 
     # ---- Encoding tests: object-present line ----
     feats_obj = encode_reading("0.41, 297.14")
-    assert feats_obj is not None and len(feats_obj) == N, \
-        (f"encode_reading('0.41, 297.14') should return {N} floats, "
-         f"got {len(feats_obj) if feats_obj else None}")
+    assert feats_obj is not None and len(feats_obj) == N, (
+        f"encode_reading('0.41, 297.14') should return {N} floats, "
+        f"got {len(feats_obj) if feats_obj else None}"
+    )
 
     # All features in [0, 1].
-    assert all(0.0 <= v <= 1.0 for v in feats_obj), \
-        "all features must be in [0, 1]"
+    assert all(0.0 <= v <= 1.0 for v in feats_obj), "all features must be in [0, 1]"
 
     # Visual band [0:16] all zeros (absent).
-    assert feats_obj[0:16] == [0.0] * 16, \
+    assert feats_obj[0:16] == [0.0] * 16, (
         f"visual band [0:16] should be all zeros, got {feats_obj[0:16]}"
+    )
 
     # Temperature band [16:32] NOT all zeros (temp encoded).
     temp_band = feats_obj[16:32]
-    assert temp_band != [0.0] * 16, \
+    assert temp_band != [0.0] * 16, (
         f"temperature band [16:32] should NOT be all zeros (temp={297.14}), got {temp_band}"
-    assert all(0.0 <= v <= 1.0 for v in temp_band), \
-        "temperature band must be in [0, 1]"
+    )
+    assert all(0.0 <= v <= 1.0 for v in temp_band), "temperature band must be in [0, 1]"
 
     # Audio band [32:48] all zeros (absent).
-    assert feats_obj[32:48] == [0.0] * 16, \
+    assert feats_obj[32:48] == [0.0] * 16, (
         f"audio band [32:48] should be all zeros, got {feats_obj[32:48]}"
+    )
 
     # Distance band [48:64] NOT all zeros (distance encoded).
     dist_band = feats_obj[48:64]
-    assert dist_band != [0.0] * 16, \
+    assert dist_band != [0.0] * 16, (
         f"distance band [48:64] should NOT be all zeros (distance={0.41}), got {dist_band}"
-    assert all(0.0 <= v <= 1.0 for v in dist_band), \
-        "distance band must be in [0, 1]"
+    )
+    assert all(0.0 <= v <= 1.0 for v in dist_band), "distance band must be in [0, 1]"
 
     # ---- Encoding tests: idle line (distance > 3, temp = -1) ----
     feats_idle = encode_reading("4.20, -1.00")
-    assert feats_idle is not None and len(feats_idle) == N, \
-        (f"encode_reading('4.20, -1.00') should return {N} floats, "
-         f"got {len(feats_idle) if feats_idle else None}")
+    assert feats_idle is not None and len(feats_idle) == N, (
+        f"encode_reading('4.20, -1.00') should return {N} floats, "
+        f"got {len(feats_idle) if feats_idle else None}"
+    )
 
     # Distance band [48:64] should still be encoded (distance > 3 -> 1.0).
     dist_band_idle = feats_idle[48:64]
-    assert dist_band_idle != [0.0] * 16, \
+    assert dist_band_idle != [0.0] * 16, (
         f"distance band [48:64] should NOT be zeros (distance={4.20}), got {dist_band_idle}"
+    )
 
     # Temperature band [16:32] should be all zeros (temp missing due to idle sentinel).
     temp_band_idle = feats_idle[16:32]
-    assert temp_band_idle == [0.0] * 16, \
+    assert temp_band_idle == [0.0] * 16, (
         f"temperature band [16:32] should be all zeros (temp=-1 idle), got {temp_band_idle}"
+    )
 
     # ---- Determinism ----
     feats_again = encode_reading("0.41, 297.14")
-    assert feats_obj == feats_again, \
+    assert feats_obj == feats_again, (
         "encode_reading must be deterministic: same input -> identical vector"
+    )
 
     # ---- Stream tests ----
     all_feats = list(encode_stream(captured_lines))
-    assert len(all_feats) == 6, \
+    assert len(all_feats) == 6, (
         f"encode_stream over 6 captured lines should yield 6 vectors, got {len(all_feats)}"
+    )
 
     # All vectors in [0, 1]^N.
     for i, vec in enumerate(all_feats):
-        assert len(vec) == N and all(0.0 <= v <= 1.0 for v in vec), \
+        assert len(vec) == N and all(0.0 <= v <= 1.0 for v in vec), (
             f"vector {i} must be {N} floats in [0, 1]"
+        )
 
     # ---- Spike encoding ----
     spikes = spikes_for(feats_obj)
     assert isinstance(spikes, list), "spikes_for must return a list"
-    assert all(len(ev) == 2 and 0 <= ev[1] < N for ev in spikes), \
+    assert all(len(ev) == 2 and 0 <= ev[1] < N for ev in spikes), (
         "spikes must be (time, feature) pairs with feature in [0, N)"
+    )
 
     # ---- Report ----
     print("=" * 70)
@@ -311,8 +321,8 @@ def main():
     idle_temp_band = feats_idle_sample[16:32]
     idle_dist_band = feats_idle_sample[48:64]
     print("  idle line '4.20, -1.00':")
-    print(f"    temp band [16:32]  all zeros: {idle_temp_band == [0.0]*16} (temp missing)")
-    print(f"    dist band [48:64]  nonzero:   {idle_dist_band != [0.0]*16} (dist={4.20} -> 1.0)")
+    print(f"    temp band [16:32]  all zeros: {idle_temp_band == [0.0] * 16} (temp missing)")
+    print(f"    dist band [48:64]  nonzero:   {idle_dist_band != [0.0] * 16} (dist={4.20} -> 1.0)")
     print()
 
     print("NORMALIZATION BAND ENDPOINTS:")

@@ -1,6 +1,6 @@
 r"""
 LINEAR READOUT on deep unsupervised spiking features -- the decisive test of the
-deepening arc.  (torch/GPU tier, ruff-excluded; core stays zero-dep.)
+deepening arc.  (torch/GPU tier, ruff-excluded; core untouched.)
 
 WHY THIS FILE EXISTS
 --------------------
@@ -26,7 +26,7 @@ Run (from the repo root; a few minutes on GPU):
     NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/deep_stdp_readout.py
 Scale knobs: NORD_C1 NORD_C2 NORD_TRAIN NORD_TEST NORD_T NORD_L1_EPOCHS NORD_L2_EPOCHS
              NORD_POOL1 NORD_READEP (linear-readout epochs)
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core stays zero-dep)
+Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
 """
 import os
 

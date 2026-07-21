@@ -1,10 +1,10 @@
-"""Brain-player adapter: drives the Spiking Neural Data Lake's ZERO-DEP cognition to PLAY the
+"""Brain-player adapter: drives the Spiking Neural Data Lake's cognition to PLAY the
 ARC-AGI-3-STYLE grid games in env.py.
 
 HONEST FRAMING
 --------------
 This is a REPRESENTATIVE harness, not the official ARC-AGI-3 eval (see env.py). The player below
-uses the brain's pure-stdlib cognitive machinery directly -- it does NOT import `cortex.brain.Brain`
+uses the brain's cognitive machinery directly -- it does NOT import `cortex.brain.Brain`
 (that needs torch) and imports NOTHING from brainstem/ (no arm, no actuator). It is VALUE- and
 REPRESENTATION-ONLY.
 
@@ -43,7 +43,7 @@ import sys
 import zlib
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_ROOT = os.path.dirname(os.path.dirname(_HERE))          # repo root
+_ROOT = os.path.dirname(os.path.dirname(_HERE))  # repo root
 for _p in (os.path.join(_ROOT, "src"), _ROOT, _HERE):
     if _p not in sys.path:
         pass  # migrated: sys.path bootstrap removed (now an importable package)
@@ -53,11 +53,11 @@ from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive  #
 
 import env as arc_env  # noqa: E402
 
-PALETTE = 16          # fixed color palette for the one-hot spike encoder (all game colors are < 16)
+PALETTE = 16  # fixed color palette for the one-hot spike encoder (all game colors are < 16)
 
 
 class BrainPlayer:
-    """Curiosity-driven Go-Explore player over the brain's zero-dep cognition.
+    """Curiosity-driven Go-Explore player over the brain's cognition.
 
     solve(game) -> bool : discover the hidden rule by interacting, then try to reach the goal.
     Returns True iff the exploit rollout reaches a rewarding terminal within game.max_steps."""
@@ -72,12 +72,12 @@ class BrainPlayer:
         # two real CuriosityDrive instances: one for the Go-Explore frontier, one for transitions.
         self.cur_frontier = CuriosityDrive(seed=seed)
         self.cur_action = CuriosityDrive(seed=seed + 1)
-        self.T = {}                # (sig, action) -> (sig2, reward, done)   the learned world model
-        self.snap = {}             # sig -> env snapshot (Go-Explore return-to-state)
-        self.tried = {}            # sig -> set(actions already taken from this state)
-        self.expandable = set()    # non-terminal sigs still worth returning to
-        self.states = set()        # every sig seen
-        self.Q = {}                # sig -> [value per action]
+        self.T = {}  # (sig, action) -> (sig2, reward, done)   the learned world model
+        self.snap = {}  # sig -> env snapshot (Go-Explore return-to-state)
+        self.tried = {}  # sig -> set(actions already taken from this state)
+        self.expandable = set()  # non-terminal sigs still worth returning to
+        self.states = set()  # every sig seen
+        self.Q = {}  # sig -> [value per action]
 
     # ---- perception: colored grid -> population one-hot spike code (also the state signature) ----
     def perceive(self, grid):
@@ -139,7 +139,7 @@ class BrainPlayer:
             self.T[(s, a)] = (s2, r, done)
             self.tried[s].add(a)
             self._register(s2, game.snapshot(), terminal=done)
-            if len(self.tried[s]) >= self.nA:            # fully expanded -> leaves the frontier
+            if len(self.tried[s]) >= self.nA:  # fully expanded -> leaves the frontier
                 self.expandable.discard(s)
 
     def _plan(self):
@@ -165,7 +165,11 @@ class BrainPlayer:
         actions stay a genuine near-tie the noisy race breaks."""
         mn, mx = min(qvals), max(qvals)
         span = mx - mn
-        drifts = [self.race_scale * (v - mn) / span for v in qvals] if span > 1e-9 else [0.0] * len(qvals)
+        drifts = (
+            [self.race_scale * (v - mn) / span for v in qvals]
+            if span > 1e-9
+            else [0.0] * len(qvals)
+        )
         acc = RaceAccumulator(drifts, bound=1.0, noise=0.3, dt=0.01, seed=seed, max_steps=400)
         winner, _rt = acc.decide()
         return winner
@@ -176,7 +180,7 @@ class BrainPlayer:
         for step in range(game.max_steps):
             qvals = self.Q.get(s)
             if qvals is None or max(qvals) <= 0.0:
-                a = self.rng.randrange(self.nA)             # unseen / unvalued -> fall back
+                a = self.rng.randrange(self.nA)  # unseen / unvalued -> fall back
             else:
                 seed = (zlib.crc32(repr(s).encode()) ^ (step * 2654435761)) & 0xFFFFFFFF
                 a = self._race_action(qvals, seed)

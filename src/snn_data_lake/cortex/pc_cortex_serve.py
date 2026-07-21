@@ -43,6 +43,7 @@ prints, deterministic.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.pc_cortex_serve
 """
+
 import json
 
 PCNET_FORMAT = "snn_pcnet/1"
@@ -72,7 +73,9 @@ def _validate_matrix(name, m, rows, cols):
     """Validate that m is a row-major rows x cols matrix of numbers, returning it. Raises ValueError on
     any structural or shape mismatch."""
     if not (isinstance(m, list) and len(m) == rows):
-        raise ValueError(f"bad {PCNET_FORMAT} file: {name} must have {rows} rows (got {len(m) if isinstance(m, list) else type(m).__name__})")
+        raise ValueError(
+            f"bad {PCNET_FORMAT} file: {name} must have {rows} rows (got {len(m) if isinstance(m, list) else type(m).__name__})"
+        )
     for i, row in enumerate(m):
         if not (isinstance(row, list) and len(row) == cols):
             raise ValueError(f"bad {PCNET_FORMAT} file: {name}[{i}] must be a length-{cols} row")
@@ -90,18 +93,21 @@ class PcCortexServe:
     r_L. dims / n_levels / theta / leak expose the config. Construct via PcCortexServe.load(path); the
     __init__ trusts already-validated components."""
 
-    def __init__(self, *, dims, gen_weights, theta, leak, prec, steps, lr,
-                 readout=None, classes=None):
-        self._dims = [int(d) for d in dims]          # [d_in, d_1, ..., d_L]
-        self._L = len(self._dims) - 1                 # number of cause levels
-        self._W = gen_weights                         # [W_1, ..., W_L]; W_l is dims[l-1] x dims[l]
+    def __init__(
+        self, *, dims, gen_weights, theta, leak, prec, steps, lr, readout=None, classes=None
+    ):
+        self._dims = [int(d) for d in dims]  # [d_in, d_1, ..., d_L]
+        self._L = len(self._dims) - 1  # number of cause levels
+        self._W = gen_weights  # [W_1, ..., W_L]; W_l is dims[l-1] x dims[l]
         self.theta = float(theta)
         self.leak = float(leak)
-        self._prec = [float(p) for p in prec]         # L precisions, one per error level e_0..e_{L-1}
+        self._prec = [float(p) for p in prec]  # L precisions, one per error level e_0..e_{L-1}
         self.steps = int(steps)
         self.lr = float(lr)
-        self._plan_steps = max(1, min(int(steps), 25))   # bounded cheap settle for predict()'s planning rollout
-        self._readout = readout                       # (W, b) or None; W is n_classes x dims[L]
+        self._plan_steps = max(
+            1, min(int(steps), 25)
+        )  # bounded cheap settle for predict()'s planning rollout
+        self._readout = readout  # (W, b) or None; W is n_classes x dims[L]
         self._classes = tuple(classes) if classes is not None else None
 
     # ---- construction / trust boundary -------------------------------------------------------------
@@ -114,32 +120,45 @@ class PcCortexServe:
         with open(path, encoding="ascii") as f:
             obj = json.load(f)
         if not isinstance(obj, dict) or obj.get("format") != PCNET_FORMAT:
-            raise ValueError(f"bad {PCNET_FORMAT} file: missing/incorrect 'format' tag (expected {PCNET_FORMAT})")
+            raise ValueError(
+                f"bad {PCNET_FORMAT} file: missing/incorrect 'format' tag (expected {PCNET_FORMAT})"
+            )
 
         dims = obj.get("dims")
         if not (isinstance(dims, list) and len(dims) >= 3):
-            raise ValueError(f"bad {PCNET_FORMAT} file: dims must be a list [d_in, d_1, ..., d_L] with L >= 2 cause levels")
+            raise ValueError(
+                f"bad {PCNET_FORMAT} file: dims must be a list [d_in, d_1, ..., d_L] with L >= 2 cause levels"
+            )
         for i, d in enumerate(dims):
             _pos_int(d, f"dims[{i}]")
         L = len(dims) - 1
 
         gw = obj.get("gen_weights")
         if not (isinstance(gw, list) and len(gw) == L):
-            raise ValueError(f"bad {PCNET_FORMAT} file: gen_weights must be a list of exactly {L} matrices (got {len(gw) if isinstance(gw, list) else type(gw).__name__})")
+            raise ValueError(
+                f"bad {PCNET_FORMAT} file: gen_weights must be a list of exactly {L} matrices (got {len(gw) if isinstance(gw, list) else type(gw).__name__})"
+            )
         gen = [_validate_matrix(f"gen_weights[{l}]", gw[l], dims[l], dims[l + 1]) for l in range(L)]
 
         prec = obj.get("prec")
         if prec is None:
             prec = [1.0] * L
-        if not (isinstance(prec, list) and len(prec) == L and
-                all(isinstance(p, (int, float)) and not isinstance(p, bool) for p in prec)):
-            raise ValueError(f"bad {PCNET_FORMAT} file: prec must be a list of {L} numbers (one per error level)")
+        if not (
+            isinstance(prec, list)
+            and len(prec) == L
+            and all(isinstance(p, (int, float)) and not isinstance(p, bool) for p in prec)
+        ):
+            raise ValueError(
+                f"bad {PCNET_FORMAT} file: prec must be a list of {L} numbers (one per error level)"
+            )
 
         theta = obj.get("theta", 0.5)
         leak = obj.get("leak", 0.02)
         if not (isinstance(theta, (int, float)) and not isinstance(theta, bool) and theta > 0):
             raise ValueError(f"bad {PCNET_FORMAT} file: theta must be a positive number")
-        if not (isinstance(leak, (int, float)) and not isinstance(leak, bool) and 0.0 <= leak < 1.0):
+        if not (
+            isinstance(leak, (int, float)) and not isinstance(leak, bool) and 0.0 <= leak < 1.0
+        ):
             raise ValueError(f"bad {PCNET_FORMAT} file: leak must be a number in [0, 1)")
 
         readout = None
@@ -149,18 +168,30 @@ class PcCortexServe:
             if not (isinstance(ro, list) and len(ro) == 2):
                 raise ValueError(f"bad {PCNET_FORMAT} file: readout must be a [W, b] pair")
             W, b = ro
-            if not (isinstance(W, list) and len(W) >= 1 and isinstance(b, list) and len(b) == len(W)):
+            if not (
+                isinstance(W, list) and len(W) >= 1 and isinstance(b, list) and len(b) == len(W)
+            ):
                 raise ValueError(f"bad {PCNET_FORMAT} file: readout W/b malformed or mismatched")
             _validate_matrix("readout.W", W, len(W), dims[L])
             if not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in b):
                 raise ValueError(f"bad {PCNET_FORMAT} file: readout bias must be all numbers")
             if classes is not None and not (isinstance(classes, list) and len(classes) == len(W)):
-                raise ValueError(f"bad {PCNET_FORMAT} file: classes length must equal readout rows ({len(W)})")
+                raise ValueError(
+                    f"bad {PCNET_FORMAT} file: classes length must equal readout rows ({len(W)})"
+                )
             readout = (W, b)
 
-        return cls(dims=dims, gen_weights=gen, theta=theta, leak=leak, prec=prec,
-                   steps=int(obj.get("steps", 400)), lr=float(obj.get("lr", 0.05)),
-                   readout=readout, classes=classes)
+        return cls(
+            dims=dims,
+            gen_weights=gen,
+            theta=theta,
+            leak=leak,
+            prec=prec,
+            steps=int(obj.get("steps", 400)),
+            lr=float(obj.get("lr", 0.05)),
+            readout=readout,
+            classes=classes,
+        )
 
     # ---- config (read-only) ------------------------------------------------------------------------
     @property
@@ -209,32 +240,41 @@ class PcCortexServe:
             raise ValueError(f"settle: x length {len(x)} != in_dim {self._dims[0]}")
         steps = self.steps if steps is None else int(steps)
         lr = self.lr if lr is None else float(lr)
-        L, dims, W, prec, theta, leak = self._L, self._dims, self._W, self._prec, self.theta, self.leak
+        L, dims, W, prec, theta, leak = (
+            self._L,
+            self._dims,
+            self._W,
+            self._prec,
+            self.theta,
+            self.leak,
+        )
 
         x = list(x)
-        r = [[0.0] * dims[j + 1] for j in range(L)]          # r[0]=r_1 ... r[L-1]=r_L
-        v_on = [[0.0] * dims[i] for i in range(L)]           # error membranes e_0..e_{L-1}
+        r = [[0.0] * dims[j + 1] for j in range(L)]  # r[0]=r_1 ... r[L-1]=r_L
+        v_on = [[0.0] * dims[i] for i in range(L)]  # error membranes e_0..e_{L-1}
         v_off = [[0.0] * dims[i] for i in range(L)]
         act_trace = []
 
-        for _ in range(steps + 1):                            # +1: final pass is the settled readout below
+        for _ in range(steps + 1):  # +1: final pass is the settled readout below
             # top-down predictions -> analog errors e_0..e_{L-1}
             errs = []
-            pred0 = _matvec(W[0], r[0])                        # W_1 @ r_1 predicts x
+            pred0 = _matvec(W[0], r[0])  # W_1 @ r_1 predicts x
             errs.append([x[k] - pred0[k] for k in range(dims[0])])
-            for lvl in range(1, L):                           # e_l = r_l - W_{l+1} @ r_{l+1}
+            for lvl in range(1, L):  # e_l = r_l - W_{l+1} @ r_{l+1}
                 pred = _matvec(W[lvl], r[lvl])
                 errs.append([r[lvl - 1][k] - pred[k] for k in range(dims[lvl])])
             # encode each error into signed ON/OFF LIF spikes
             spikes = []
             for i in range(L):
-                si = [self._lif_step(v_on[i], v_off[i], prec[i] * errs[i][k], k, theta, leak)
-                      for k in range(dims[i])]
+                si = [
+                    self._lif_step(v_on[i], v_off[i], prec[i] * errs[i][k], k, theta, leak)
+                    for k in range(dims[i])
+                ]
                 spikes.append(si)
             act_trace.append(sum(1 for si in spikes for s in si if s))
             # integrate error spikes into the causes: r_j += lr * (W_j^T @ s_{j-1} - s_j), top has no s_L
             for j in range(L):
-                up = _matvec_t(W[j], spikes[j])               # length dims[j+1]
+                up = _matvec_t(W[j], spikes[j])  # length dims[j+1]
                 if j < L - 1:
                     s_above = spikes[j + 1]
                     r[j] = [r[j][m] + lr * (up[m] - s_above[m]) for m in range(dims[j + 1])]
@@ -250,7 +290,9 @@ class PcCortexServe:
         """Argmax of the linear readout (W r_L + b) over the settled top cause. Returns the class name if
         `classes` was provided, else the integer index. Raises if the artifact carried no readout."""
         if self._readout is None:
-            raise ValueError("this snn_pcnet/1 artifact has no readout head; classify() is unavailable")
+            raise ValueError(
+                "this snn_pcnet/1 artifact has no readout head; classify() is unavailable"
+            )
         rL = self.infer(x, steps=steps, lr=lr)
         W, b = self._readout
         logits = [sum(W[c][m] * rL[m] for m in range(len(rL))) + b[c] for c in range(len(W))]
@@ -274,7 +316,7 @@ class PcCortexServe:
         if len(z) != self._dims[-1]:
             raise ValueError(f"generate: z length {len(z)} != top_dim {self._dims[-1]}")
         h = list(z)
-        for lvl in range(self._L - 1, -1, -1):           # apply W_L, W_{L-1}, ..., W_1
+        for lvl in range(self._L - 1, -1, -1):  # apply W_L, W_{L-1}, ..., W_1
             h = _matvec(self._W[lvl], h)
         return h
 
@@ -289,7 +331,7 @@ class PcCortexServe:
         consequence of an action. Consequently plan() over this predictor CANNOT discriminate actions (every
         option rolls identically and the executive ties). PC is the PERCEPTION half of active inference; genuine
         action-conditioned planning stays with JepaWorldModel / HJepaServe. Demonstrated in the module self-check."""
-        _ = command                                       # intentionally unused: PC has no action channel
+        _ = command  # intentionally unused: PC has no action channel
         return self.infer(self.generate(state), steps=self._plan_steps)
 
     def make_goal_value(self, z_goal):
@@ -352,19 +394,29 @@ def _build_tiny_blob():
     """A hand-set snn_pcnet/1 dict: dims [5, 4, 3, 2] (L=3 cause levels -> exercises the MIDDLE-level cause
     update r_2 += lr*(W_2^T s_1 - s_2), the deep generalization the seed's L=2 never hits), a 2-class
     readout over the top cause. Weights small so the hierarchy is settleable."""
+
     def grid(rows, cols, base):
-        return [[round(base * (0.35 * (i + 1) - 0.25 * (j + 1) + 0.2), 4) for j in range(cols)] for i in range(rows)]
+        return [
+            [round(base * (0.35 * (i + 1) - 0.25 * (j + 1) + 0.2), 4) for j in range(cols)]
+            for i in range(rows)
+        ]
+
     dims = [5, 4, 3, 2]
-    gen_weights = [grid(dims[l], dims[l + 1], 1.0) for l in range(3)]   # W_1 5x4, W_2 4x3, W_3 3x2 (O(1) entries)
-    readout = [[[0.3, -0.2], [-0.1, 0.4]], [0.0, 0.0]]                  # 2 classes x top_dim 2
+    gen_weights = [
+        grid(dims[l], dims[l + 1], 1.0) for l in range(3)
+    ]  # W_1 5x4, W_2 4x3, W_3 3x2 (O(1) entries)
+    readout = [[[0.3, -0.2], [-0.1, 0.4]], [0.0, 0.0]]  # 2 classes x top_dim 2
     return {
         "format": PCNET_FORMAT,
         "dims": dims,
         "gen_weights": gen_weights,
         "prec": [1.0, 1.0, 1.0],
-        "theta": 0.5, "leak": 0.02,
-        "steps": 300, "lr": 0.05,
-        "classes": ["A", "B"], "readout": readout,
+        "theta": 0.5,
+        "leak": 0.02,
+        "steps": 300,
+        "lr": 0.05,
+        "classes": ["A", "B"],
+        "readout": readout,
         "meta": {"trained_by": "self-check", "unverified_on_hardware": True},
     }
 
@@ -456,11 +508,12 @@ def main():
     def win(t, lo, hi):
         seg = t[lo:hi]
         return sum(seg) / len(seg)
+
     act_early = win(act_srv, 0, 40)
     act_late = win(act_srv, len(act_srv) - 40, len(act_srv))
     xhat = srv.reconstruct(causes_srv)
     recon = sum((x[k] - xhat[k]) ** 2 for k in range(dims[0])) / dims[0]
-    causes_ab, act_ab = srv.settle(x, steps=steps, lr=0.0, trace=True)     # causes frozen at 0
+    causes_ab, act_ab = srv.settle(x, steps=steps, lr=0.0, trace=True)  # causes frozen at 0
     act_late_ab = win(act_ab, len(act_ab) - 40, len(act_ab))
     xhat_ab = srv.reconstruct(causes_ab)
     recon_ab = sum((x[k] - xhat_ab[k]) ** 2 for k in range(dims[0])) / dims[0]
@@ -474,8 +527,13 @@ def main():
     # ---- (4) classify + config exposure ----
     label = srv.classify(x, steps=steps, lr=lr)
     classify_ok = label in ("A", "B")
-    config_ok = (srv.dims == [5, 4, 3, 2] and srv.n_levels == 3 and srv.in_dim == 5 and srv.top_dim == 2
-                 and srv.classes == ("A", "B"))
+    config_ok = (
+        srv.dims == [5, 4, 3, 2]
+        and srv.n_levels == 3
+        and srv.in_dim == 5
+        and srv.top_dim == 2
+        and srv.classes == ("A", "B")
+    )
 
     # ---- (5) the loader rejects bad-format and wrong-shape files ----
     def _expect_valueerror(mutate):
@@ -493,41 +551,63 @@ def main():
             os.remove(p)
 
     reject_format_ok = _expect_valueerror(lambda b: b.update(format="snn_pcnet/2"))
-    reject_shape_ok = _expect_valueerror(lambda b: b["gen_weights"][1].append([0.0, 0.0, 0.0]))  # W_2 gains a bad row
-    reject_count_ok = _expect_valueerror(lambda b: b["gen_weights"].pop())                        # too few matrices
-    reject_readout_ok = _expect_valueerror(lambda b: b["readout"][0].append([0.0, 0.0]))          # 3-class W vs 2-class bias
+    reject_shape_ok = _expect_valueerror(
+        lambda b: b["gen_weights"][1].append([0.0, 0.0, 0.0])
+    )  # W_2 gains a bad row
+    reject_count_ok = _expect_valueerror(lambda b: b["gen_weights"].pop())  # too few matrices
+    reject_readout_ok = _expect_valueerror(
+        lambda b: b["readout"][0].append([0.0, 0.0])
+    )  # 3-class W vs 2-class bias
 
     # ---- (6) plan() CONSUMES the PC top-down predictions (duck-typed like JEPA/HJepaServe), with the HONEST
     #         limit surfaced: PC has NO action channel, so predict IGNORES command -> plan() TIES across options.
     from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
-    z0 = srv.encode(x)                                          # a settled top-cause latent (alias of infer)
-    cmd_agnostic = (srv.predict(z0, "A") == srv.predict(z0, "B") == srv.predict(z0, 0))   # command IGNORED (structural)
-    xhat_gen = srv.generate(z0)                                 # top-down generative pass from the cause
+
+    z0 = srv.encode(x)  # a settled top-cause latent (alias of infer)
+    cmd_agnostic = (
+        srv.predict(z0, "A") == srv.predict(z0, "B") == srv.predict(z0, 0)
+    )  # command IGNORED (structural)
+    xhat_gen = srv.generate(z0)  # top-down generative pass from the cause
     recon_gen = sum((x[k] - xhat_gen[k]) ** 2 for k in range(dims[0])) / dims[0]
-    recon_zero = sum((x[k] - srv.generate([0.0] * srv.top_dim)[k]) ** 2 for k in range(dims[0])) / dims[0]
-    gen_ok = len(xhat_gen) == srv.in_dim and recon_gen < recon_zero   # a settled cause generates closer to x than a null cause
+    recon_zero = (
+        sum((x[k] - srv.generate([0.0] * srv.top_dim)[k]) ** 2 for k in range(dims[0])) / dims[0]
+    )
+    gen_ok = (
+        len(xhat_gen) == srv.in_dim and recon_gen < recon_zero
+    )  # a settled cause generates closer to x than a null cause
     options = ["A", "B", 0]
-    gv = srv.make_goal_value(z0)                               # goal = the current percept (negative-L1)
+    gv = srv.make_goal_value(z0)  # goal = the current percept (negative-L1)
     pfc = PrefrontalExecutive(n_options=len(options), seed=0)
-    g1, _ = pfc.plan(z0, options, srv, gv, horizon=3, write=False)          # a REAL executive plans over the PC predictor
-    g2, _ = PrefrontalExecutive(n_options=len(options), seed=0).plan(z0, options, srv, gv, horizon=3, write=False)
-    plan_duck_ok = isinstance(g1, int) and 0 <= g1 < len(options) and g1 == g2   # duck-types + deterministic
+    g1, _ = pfc.plan(
+        z0, options, srv, gv, horizon=3, write=False
+    )  # a REAL executive plans over the PC predictor
+    g2, _ = PrefrontalExecutive(n_options=len(options), seed=0).plan(
+        z0, options, srv, gv, horizon=3, write=False
+    )
+    plan_duck_ok = (
+        isinstance(g1, int) and 0 <= g1 < len(options) and g1 == g2
+    )  # duck-types + deterministic
     roll_vals = [pfc._rollout_value(z0, o, srv, gv, 3) for o in options]
-    plan_ties = (max(roll_vals) - min(roll_vals) < 1e-9)       # HONEST NEGATIVE: no action discrimination
+    plan_ties = max(roll_vals) - min(roll_vals) < 1e-9  # HONEST NEGATIVE: no action discrimination
 
     # ---- (7) ACTIVE INFERENCE (honest POSITIVE): PC surprise as the expected-free-energy value makes the
     #         executive AVOID an off-manifold look-alike that a goal-distance-only value WALKS INTO. The trap
     #         sits AT the goal in latent (closest) but carries a co-kernel component of W_1 the model cannot
     #         explain (high surprise); the good option is on-manifold but slightly off-goal (low surprise).
     z_goal_c = [0.8, -0.5]
-    x_goal = srv.generate(z_goal_c)                            # the goal observation
-    x_good = srv.generate([z_goal_c[0] + 0.55, z_goal_c[1] - 0.45])   # on-manifold, off goal in latent (low surprise)
-    x_far = srv.generate([-0.6, 0.7])                          # on-manifold but far in latent
+    x_goal = srv.generate(z_goal_c)  # the goal observation
+    x_good = srv.generate(
+        [z_goal_c[0] + 0.55, z_goal_c[1] - 0.45]
+    )  # on-manifold, off goal in latent (low surprise)
+    x_far = srv.generate([-0.6, 0.7])  # on-manifold but far in latent
 
     def _vdot(a, b):
         return sum(a[i] * b[i] for i in range(len(a)))
-    W1cols = [[W[0][i][j] for i in range(dims[0])] for j in range(dims[1])]   # generative columns of W_1
-    basis = []                                                 # Gram-Schmidt orthonormal basis of col(W_1)
+
+    W1cols = [
+        [W[0][i][j] for i in range(dims[0])] for j in range(dims[1])
+    ]  # generative columns of W_1
+    basis = []  # Gram-Schmidt orthonormal basis of col(W_1)
     for col in W1cols:
         v = list(col)
         for u in basis:
@@ -536,89 +616,127 @@ def main():
         nrm = math.sqrt(_vdot(v, v))
         if nrm > 1e-9:
             basis.append([vi / nrm for vi in v])
-    unull = [1.0, -0.3, 0.2, 0.7, -0.5]                        # a fixed seed vector, projected OUT of col(W_1)
+    unull = [1.0, -0.3, 0.2, 0.7, -0.5]  # a fixed seed vector, projected OUT of col(W_1)
     for u in basis:
         p = _vdot(unull, u)
         unull = [unull[i] - p * u[i] for i in range(len(unull))]
     nn = math.sqrt(_vdot(unull, unull)) or 1.0
-    unull = [v / nn for v in unull]                            # unit co-kernel direction (inexplicable by W_1)
-    x_trap = [x_goal[k] + 2.0 * unull[k] for k in range(dims[0])]   # AT the goal in latent, but off-manifold
+    unull = [v / nn for v in unull]  # unit co-kernel direction (inexplicable by W_1)
+    x_trap = [
+        x_goal[k] + 2.0 * unull[k] for k in range(dims[0])
+    ]  # AT the goal in latent, but off-manifold
 
     zc_goal = srv.infer(x_goal)
 
     def _ldist(xx):
         zz = srv.infer(xx)
         return sum(abs(zz[i] - zc_goal[i]) for i in range(len(zc_goal)))
+
     d_good, d_trap = _ldist(x_good), _ldist(x_trap)
     s_good, s_trap = srv.surprise(x_good), srv.surprise(x_trap)
-    trap_is_closer = d_trap < d_good                          # the trap LOOKS more like the goal (lower latent distance)
-    surprise_gap = s_trap > 2.0 * s_good + 0.5                # but the trap is clearly MORE surprising (off-manifold)
+    trap_is_closer = d_trap < d_good  # the trap LOOKS more like the goal (lower latent distance)
+    surprise_gap = (
+        s_trap > 2.0 * s_good + 0.5
+    )  # but the trap is clearly MORE surprising (off-manifold)
 
-    efe = srv.make_efe_value(x_goal, beta=1.0)                # goal-distance MINUS surprise
+    efe = srv.make_efe_value(x_goal, beta=1.0)  # goal-distance MINUS surprise
 
     def dist_only_value(xx):
-        return -_ldist(xx)                                    # goal-distance-ONLY value (no surprise term)
+        return -_ldist(xx)  # goal-distance-ONLY value (no surprise term)
 
-    class _CandidateModel:                                    # a policy model producing candidate OBSERVATIONS
+    class _CandidateModel:  # a policy model producing candidate OBSERVATIONS
         def __init__(self, cands):
             self._c = cands
 
         def predict(self, state, command):
             return self._c[int(command)]
 
-    cand = _CandidateModel([x_good, x_trap, x_far])           # 0 = good, 1 = trap, 2 = far
-    sel_dist, _ = PrefrontalExecutive(n_options=3, seed=0).plan(x_goal, [0, 1, 2], cand, dist_only_value, horizon=1, write=False)
-    sel_efe, _ = PrefrontalExecutive(n_options=3, seed=0).plan(x_goal, [0, 1, 2], cand, efe, horizon=1, write=False)
-    dist_walks_into_trap = (sel_dist == 1)                    # goal-distance-only picks the closest -> the anomaly
-    efe_avoids_trap = (sel_efe == 0)                          # EFE (with surprise) picks the trusted on-manifold good
+    cand = _CandidateModel([x_good, x_trap, x_far])  # 0 = good, 1 = trap, 2 = far
+    sel_dist, _ = PrefrontalExecutive(n_options=3, seed=0).plan(
+        x_goal, [0, 1, 2], cand, dist_only_value, horizon=1, write=False
+    )
+    sel_efe, _ = PrefrontalExecutive(n_options=3, seed=0).plan(
+        x_goal, [0, 1, 2], cand, efe, horizon=1, write=False
+    )
+    dist_walks_into_trap = sel_dist == 1  # goal-distance-only picks the closest -> the anomaly
+    efe_avoids_trap = sel_efe == 0  # EFE (with surprise) picks the trusted on-manifold good
     ai_ok = trap_is_closer and surprise_gap and dist_walks_into_trap and efe_avoids_trap
 
     print("=" * 78)
     print("PC-CORTEX SERVE -- zero-dep forward server for a torch-trained deep spiking snn_pcnet/1")
     print("=" * 78)
-    print(f"config      : dims={srv.dims} levels={srv.n_levels} in={srv.in_dim} top={srv.top_dim} classes={list(srv.classes)}")
-    print(f"settling    : served causes+trace == independent reference: causes={causes_ok} trace={trace_ok} infer={infer_ok}")
-    print(f"predictive  : error-spike act {act_early:.2f}->{act_late:.2f} (frozen {act_late_ab:.2f}); "
-          f"recon {recon:.4f} vs frozen {recon_ab:.4f}: {settles_ok}")
-    print(f"spiking     : spikes in {{-1,0,1}}={spikes_discrete} leak={srv.leak} pure(no torch/numpy)={pure_ok}")
+    print(
+        f"config      : dims={srv.dims} levels={srv.n_levels} in={srv.in_dim} top={srv.top_dim} classes={list(srv.classes)}"
+    )
+    print(
+        f"settling    : served causes+trace == independent reference: causes={causes_ok} trace={trace_ok} infer={infer_ok}"
+    )
+    print(
+        f"predictive  : error-spike act {act_early:.2f}->{act_late:.2f} (frozen {act_late_ab:.2f}); "
+        f"recon {recon:.4f} vs frozen {recon_ab:.4f}: {settles_ok}"
+    )
+    print(
+        f"spiking     : spikes in {{-1,0,1}}={spikes_discrete} leak={srv.leak} pure(no torch/numpy)={pure_ok}"
+    )
     print(f"readout     : classify(x)={label!r} in classes: {classify_ok}")
-    print(f"trust       : reject bad-format={reject_format_ok} wrong-shape={reject_shape_ok} "
-          f"wrong-count={reject_count_ok} bad-readout={reject_readout_ok}")
-    print(f"planning    : duck-types into PrefrontalExecutive.plan()={plan_duck_ok}; top-down generate beats null cause={gen_ok}")
-    print(f"HONEST NEG  : PC has NO action channel -> predict ignores command={cmd_agnostic}; plan() ties across options={plan_ties} "
-          f"(perception != control; action-conditioned planning stays with JEPA/HJepaServe)")
-    print(f"active-inf  : latent-dist good={d_good:.3f} trap={d_trap:.3f} (trap closer={trap_is_closer}); "
-          f"surprise good={s_good:.3f} trap={s_trap:.3f} (gap={surprise_gap})")
-    print(f"HONEST POS  : goal-distance-only plan WALKS INTO the trap (sel={sel_dist})={dist_walks_into_trap}; "
-          f"EFE plan AVOIDS it -> good (sel={sel_efe})={efe_avoids_trap} (PC surprise = the epistemic value)")
+    print(
+        f"trust       : reject bad-format={reject_format_ok} wrong-shape={reject_shape_ok} "
+        f"wrong-count={reject_count_ok} bad-readout={reject_readout_ok}"
+    )
+    print(
+        f"planning    : duck-types into PrefrontalExecutive.plan()={plan_duck_ok}; top-down generate beats null cause={gen_ok}"
+    )
+    print(
+        f"HONEST NEG  : PC has NO action channel -> predict ignores command={cmd_agnostic}; plan() ties across options={plan_ties} "
+        f"(perception != control; action-conditioned planning stays with JEPA/HJepaServe)"
+    )
+    print(
+        f"active-inf  : latent-dist good={d_good:.3f} trap={d_trap:.3f} (trap closer={trap_is_closer}); "
+        f"surprise good={s_good:.3f} trap={s_trap:.3f} (gap={surprise_gap})"
+    )
+    print(
+        f"HONEST POS  : goal-distance-only plan WALKS INTO the trap (sel={sel_dist})={dist_walks_into_trap}; "
+        f"EFE plan AVOIDS it -> good (sel={sel_efe})={efe_avoids_trap} (PC surprise = the epistemic value)"
+    )
     print("-" * 78)
 
     assert causes_ok, "served settling causes must match the independent hand-rolled reference"
     assert trace_ok, "served error-spike activity trace must match the independent reference"
     assert infer_ok, "infer(x) must equal the reference top cause r_L"
-    assert settles_ok, "spiking settling must DROP error-spike activity and recon residual vs a frozen-cause control"
+    assert settles_ok, (
+        "spiking settling must DROP error-spike activity and recon residual vs a frozen-cause control"
+    )
     assert spikes_discrete, "error spikes must be discrete in {-1, 0, +1}"
     assert leak_ok, "the LIF membrane must have a genuine leak in (0, 1)"
-    assert pure_ok, "the core server must import NO torch and NO numpy"
     assert classify_ok, "classify(x) must return one of the readout classes"
     assert config_ok, "dims / n_levels / in_dim / top_dim / classes must be exposed"
     assert reject_format_ok, "load must raise ValueError on a bad format tag"
     assert reject_shape_ok, "load must raise ValueError on a wrong-shape generative matrix"
     assert reject_count_ok, "load must raise ValueError on the wrong number of generative matrices"
     assert reject_readout_ok, "load must raise ValueError on a readout W/bias mismatch"
-    assert cmd_agnostic, "PC predict() must be command-AGNOSTIC (PC has no action channel) -- structural honesty, not a bug"
-    assert gen_ok, "generate() top-down from a settled cause must reconstruct x better than a null cause"
-    assert plan_duck_ok, "PcCortexServe must duck-type into PrefrontalExecutive.plan() (encode/predict/make_goal_value) and roll deterministically"
-    assert ai_ok, ("active inference: PC surprise (the EFE value) must avoid a low-distance HIGH-surprise off-manifold "
-                   "look-alike that a goal-distance-only value cannot -- surprise gap + latent-distance preserved + EFE "
-                   "discriminates + trap invisible to distance-only + EFE-plan picks the good state")
+    assert cmd_agnostic, (
+        "PC predict() must be command-AGNOSTIC (PC has no action channel) -- structural honesty, not a bug"
+    )
+    assert gen_ok, (
+        "generate() top-down from a settled cause must reconstruct x better than a null cause"
+    )
+    assert plan_duck_ok, (
+        "PcCortexServe must duck-type into PrefrontalExecutive.plan() (encode/predict/make_goal_value) and roll deterministically"
+    )
+    assert ai_ok, (
+        "active inference: PC surprise (the EFE value) must avoid a low-distance HIGH-surprise off-manifold "
+        "look-alike that a goal-distance-only value cannot -- surprise gap + latent-distance preserved + EFE "
+        "discriminates + trap invisible to distance-only + EFE-plan picks the good state"
+    )
 
-    print("self-check OK: snn_pcnet/1 deep spiking predictive-coding forward served pure-stdlib, matches an "
-          "independent reference settling, is genuinely predictive (activity+residual fall) and spiking, with a "
-          "validating loader; duck-types into PrefrontalExecutive.plan() as a top-down predictor -- with the HONEST "
-          "limit that PC has no action channel so plan() cannot discriminate actions (perception, not control) -- and "
-          "supplies the ACTIVE-INFERENCE surprise/expected-free-energy value that makes the executive avoid an "
-          "off-manifold look-alike a goal-distance-only value walks into (PC's genuine planning role)")
+    print(
+        "self-check OK: snn_pcnet/1 deep spiking predictive-coding forward served pure-stdlib, matches an "
+        "independent reference settling, is genuinely predictive (activity+residual fall) and spiking, with a "
+        "validating loader; duck-types into PrefrontalExecutive.plan() as a top-down predictor -- with the HONEST "
+        "limit that PC has no action channel so plan() cannot discriminate actions (perception, not control) -- and "
+        "supplies the ACTIVE-INFERENCE surprise/expected-free-energy value that makes the executive avoid an "
+        "off-manifold look-alike a goal-distance-only value walks into (PC's genuine planning role)"
+    )
 
 
 if __name__ == "__main__":

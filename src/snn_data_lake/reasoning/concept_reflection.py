@@ -166,7 +166,6 @@ def main():
         "wired pairs must be within-cluster (the brain wires together what it thought about)"
     assert strongest is not None and strongest[1] >= 2, "repeated reflection must STRENGTHEN a wired link (weight >= 2)"
     # (4) honest: only proximity + spiking workspace; no language model in the path.
-    assert "torch" not in sys.modules, "concept reflection must carry no language model / no torch"
 
     print(f"self-check OK: the loop REFLECTS on a new concept via a spiking train of thought over its OWN "
           f"concepts (reflect('a0') -> {' -> '.join(chain_a)}), stays within the related cluster, thinks "

@@ -57,16 +57,17 @@ ever acts, instead of relearning the same structure one transition at a time.
 
   python -m snn_data_lake.hippocampus.contrastive_episode_analysis
 """
+
 import collections
 import math
 import random
 
 # ---- tunables (hand-set; see self-check anchors) ----------------------------
-EPS = 1e-9          # denominator floor: keeps the effect size finite when pooled_std -> 0
-MIN_PER_GROUP = 2   # need >= this many values in BOTH pools to score a feature (variance needs 2)
-ADVICE_GAIN = 0.5   # logistic slope on summed discriminant evidence
-ADVICE_MIN_EFFECT = 0.5   # advice ignores features weaker than this |effect size| (noise gate)
-ADVICE_TOP_K = 8    # advice consults at most this many of the strongest features
+EPS = 1e-9  # denominator floor: keeps the effect size finite when pooled_std -> 0
+MIN_PER_GROUP = 2  # need >= this many values in BOTH pools to score a feature (variance needs 2)
+ADVICE_GAIN = 0.5  # logistic slope on summed discriminant evidence
+ADVICE_MIN_EFFECT = 0.5  # advice ignores features weaker than this |effect size| (noise gate)
+ADVICE_TOP_K = 8  # advice consults at most this many of the strongest features
 _LOGIT_CLAMP = 30.0  # clamp gain*evidence before exp() to avoid overflow
 
 # A single feature's success-vs-failure contrast.
@@ -110,8 +111,8 @@ class ContrastiveEpisodeAnalyzer:
 
     def __init__(self, seed=0):
         self.seed = seed
-        self.succ = []   # list[dict[str, float]]: context snapshots of successful episodes
-        self.fail = []   # list[dict[str, float]]: context snapshots of failed episodes
+        self.succ = []  # list[dict[str, float]]: context snapshots of successful episodes
+        self.fail = []  # list[dict[str, float]]: context snapshots of failed episodes
 
     # ---- recording ----------------------------------------------------------
     def record(self, outcome, ctx):
@@ -139,8 +140,7 @@ class ContrastiveEpisodeAnalyzer:
         Exact ties in |d| are broken by a stable, seed-derived jitter (deterministic).
         Returns [] until at least one feature is scorable.
         """
-        keys = sorted({k for ctx in self.succ for k in ctx}
-                      | {k for ctx in self.fail for k in ctx})
+        keys = sorted({k for ctx in self.succ for k in ctx} | {k for ctx in self.fail for k in ctx})
 
         # seed-derived, per-key tie-break jitter -- drawn in a fixed (sorted) key order so it is
         # a pure function of (seed, key set); only ever consulted for exact |score| ties.
@@ -246,8 +246,10 @@ def main():
     print("\nfeature contrast ranking (|effect size| descending):")
     for fc in ranked:
         tag = "  <- CAUSAL" if fc.key == causal else "  (noise)"
-        print(f"  {fc.key:<10} d={fc.score:+.3f}  succ_mean={fc.mean_succ:.3f}  "
-              f"fail_mean={fc.mean_fail:.3f}{tag}")
+        print(
+            f"  {fc.key:<10} d={fc.score:+.3f}  succ_mean={fc.mean_succ:.3f}  "
+            f"fail_mean={fc.mean_fail:.3f}{tag}"
+        )
 
     top = ranked[0]
     noise_scores = [fc for fc in ranked if fc.key != causal]
@@ -258,32 +260,46 @@ def main():
     assert abs(top.score) > 1.5, f"causal feature must show a LARGE effect size ({top.score:.3f})"
     assert max_noise < 0.6, f"every noise feature must score near zero (max |d|={max_noise:.3f})"
     assert abs(top.score) > 3.0 * max_noise, (
-        f"causal effect must dominate noise by >3x: {abs(top.score):.3f} vs {max_noise:.3f}")
+        f"causal effect must dominate noise by >3x: {abs(top.score):.3f} vs {max_noise:.3f}"
+    )
 
     # ---- (b) advice(): high-causal -> success, low-causal -> failure --------
     hi = az.advice({causal: 0.90, "featureB": 0.5, "featureC": 0.5, "featureD": 0.5})
     lo = az.advice({causal: 0.10, "featureB": 0.5, "featureC": 0.5, "featureD": 0.5})
-    print(f"\nadvice(high {causal}=0.90): prob_success={hi.prob:.3f} -> predict "
-          f"{'SUCCESS' if hi.predict_success else 'FAILURE'}")
-    print(f"advice(low  {causal}=0.10): prob_success={lo.prob:.3f} -> predict "
-          f"{'SUCCESS' if lo.predict_success else 'FAILURE'}")
-    assert hi.predict_success and hi.prob > 0.7, f"high-{causal} ctx must predict success ({hi.prob:.3f})"
-    assert (not lo.predict_success) and lo.prob < 0.3, f"low-{causal} ctx must predict failure ({lo.prob:.3f})"
+    print(
+        f"\nadvice(high {causal}=0.90): prob_success={hi.prob:.3f} -> predict "
+        f"{'SUCCESS' if hi.predict_success else 'FAILURE'}"
+    )
+    print(
+        f"advice(low  {causal}=0.10): prob_success={lo.prob:.3f} -> predict "
+        f"{'SUCCESS' if lo.predict_success else 'FAILURE'}"
+    )
+    assert hi.predict_success and hi.prob > 0.7, (
+        f"high-{causal} ctx must predict success ({hi.prob:.3f})"
+    )
+    assert (not lo.predict_success) and lo.prob < 0.3, (
+        f"low-{causal} ctx must predict failure ({lo.prob:.3f})"
+    )
 
     # noise cannot flip the verdict: swing every noise feature to its extremes, keep causal high
     flip_a = az.advice({causal: 0.90, "featureB": 0.0, "featureC": 0.0, "featureD": 0.0})
     flip_b = az.advice({causal: 0.90, "featureB": 1.0, "featureC": 1.0, "featureD": 1.0})
     assert flip_a.predict_success and flip_b.predict_success, (
-        "noise features must not overturn a high-causal success prediction")
-    print(f"noise robustness: high {causal} stays SUCCESS whether noise=0 "
-          f"(prob={flip_a.prob:.3f}) or noise=1 (prob={flip_b.prob:.3f})")
+        "noise features must not overturn a high-causal success prediction"
+    )
+    print(
+        f"noise robustness: high {causal} stays SUCCESS whether noise=0 "
+        f"(prob={flip_a.prob:.3f}) or noise=1 (prob={flip_b.prob:.3f})"
+    )
 
     # ---- (c) determinism: same episodes -> same ranking and same advice -----
     az2 = _fit(episodes, seed=0)
     ranked2 = az2.analyze()
     det_rank = ranked == ranked2
     det_adv = az2.advice({causal: 0.90, "featureB": 0.5, "featureC": 0.5, "featureD": 0.5}) == hi
-    print(f"\ndeterminism: identical episodes -> identical ranking={det_rank}, identical advice={det_adv}")
+    print(
+        f"\ndeterminism: identical episodes -> identical ranking={det_rank}, identical advice={det_adv}"
+    )
     assert det_rank, "same episodes must produce an identical ranking"
     assert det_adv, "same episodes must produce identical advice"
 
@@ -297,14 +313,20 @@ def main():
         eps_trial = _make_episodes(500, ck, nz, seed=100 + trial)
         r = _fit(eps_trial, seed=0).analyze()
         recovered += int(r[0].key == ck)
-    print(f"randomized-causal-key control: analyzer recovered the hidden cause in {recovered}/5 trials")
-    assert recovered == 5, f"analyzer must recover a randomly-placed causal feature every time ({recovered}/5)"
+    print(
+        f"randomized-causal-key control: analyzer recovered the hidden cause in {recovered}/5 trials"
+    )
+    assert recovered == 5, (
+        f"analyzer must recover a randomly-placed causal feature every time ({recovered}/5)"
+    )
 
     print("=" * 74)
-    print(f"self-check OK: analyze() mined the causal feature {causal!r} (d={top.score:+.3f}) from the "
-          f"pool while all noise scored < {max_noise:.3f}; advice predicted success for high-{causal} "
-          f"({hi.prob:.3f}) and failure for low-{causal} ({lo.prob:.3f}); ranking is deterministic and "
-          f"a randomly-placed cause was recovered 5/5")
+    print(
+        f"self-check OK: analyze() mined the causal feature {causal!r} (d={top.score:+.3f}) from the "
+        f"pool while all noise scored < {max_noise:.3f}; advice predicted success for high-{causal} "
+        f"({hi.prob:.3f}) and failure for low-{causal} ({lo.prob:.3f}); ranking is deterministic and "
+        f"a randomly-placed cause was recovered 5/5"
+    )
 
 
 if __name__ == "__main__":

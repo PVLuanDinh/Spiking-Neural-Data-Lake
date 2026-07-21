@@ -47,6 +47,7 @@ Refs: Ito (1982); Miles & Lisberger (1981); Boyden, Katoh & Raymond (2004).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.gain_adaptation
 """
+
 import random
 
 from snn_data_lake.substrate._mathutils import mean
@@ -105,7 +106,7 @@ def _noisy_reversal(seed, commands, w_pos, w_neg, noise):
     """A full converge-then-reverse run under sub-dead sensor noise from random.Random(seed).
     Returns (reversal_g_trace, final_gain). Used for the determinism + noise-robustness check."""
     ad = GainAdapter(g0=0.0, lr=0.02, dead=0.05, clip=3.0, seed=seed)
-    _run(ad, w_pos, commands, noise=noise)          # converge to +W
+    _run(ad, w_pos, commands, noise=noise)  # converge to +W
     rev, _ = _run(ad, w_neg, commands, noise=noise)  # world reverses -> track to -W
     return rev, ad.g
 
@@ -126,13 +127,13 @@ def main():
 
     # ---- 2. SIGN REVERSAL: converge to +W, flip the world to -W, must cross zero to -W -----------
     a2 = GainAdapter(g0=0.0, lr=0.02, dead=0.05, clip=3.0, seed=0)
-    _run(a2, W_POS, cmds)                    # first calibrate to +1.5
+    _run(a2, W_POS, cmds)  # first calibrate to +1.5
     g_before = a2.g
-    rev_trace, _ = _run(a2, W_NEG, cmds)      # reversing prism / reversed VOR
+    rev_trace, _ = _run(a2, W_NEG, cmds)  # reversing prism / reversed VOR
     g_after = a2.g
     saw_pos = any(g > 0.0 for g in rev_trace)
     saw_neg = any(g < 0.0 for g in rev_trace)
-    min_abs_g = min(abs(g) for g in rev_trace)   # closest approach to zero during the crossing
+    min_abs_g = min(abs(g) for g in rev_trace)  # closest approach to zero during the crossing
 
     # ---- 3. DEAD-ZONE: sub-`dead` residuals are ignored (frozen) vs supra-`dead` residuals move ---
     # frozen: g0 only 0.02 from W, so |error| = 0.02*|u| <= 0.03 < dead for every command -> no move
@@ -156,42 +157,59 @@ def main():
     print("=" * 70)
     print("GAIN ADAPTATION -- flocculus feedforward gain+SIGN recalibration (VOR/reach)")
     print("=" * 70)
-    print(f"magnitude  : g0 0.000 -> g {g1_final:+.4f} (world {W_POS:+.3f}); "
-          f"slip |e| first-50 {first_slip:.4f} -> last-50 {last_slip:.4f}")
-    print(f"sign flip  : converged +{g_before:.3f}, world reversed to {W_NEG:+.3f} -> g {g_after:+.4f}; "
-          f"crossed zero (min |g| {min_abs_g:.4f}, saw +={saw_pos} -={saw_neg})")
-    print(f"dead-zone  : sub-dead error frozen g {g_frozen:.4f} (=g0 0.98); "
-          f"supra-dead error moved g0 0.85 -> {g_moved:.4f}")
-    print(f"determinism: same-seed identical trace {same_seed_same_trace}, diff-seed differs "
-          f"{diff_seed_diff_trace}; noisy g {g_noise_a:+.4f} -> world {W_NEG:+.3f}")
+    print(
+        f"magnitude  : g0 0.000 -> g {g1_final:+.4f} (world {W_POS:+.3f}); "
+        f"slip |e| first-50 {first_slip:.4f} -> last-50 {last_slip:.4f}"
+    )
+    print(
+        f"sign flip  : converged +{g_before:.3f}, world reversed to {W_NEG:+.3f} -> g {g_after:+.4f}; "
+        f"crossed zero (min |g| {min_abs_g:.4f}, saw +={saw_pos} -={saw_neg})"
+    )
+    print(
+        f"dead-zone  : sub-dead error frozen g {g_frozen:.4f} (=g0 0.98); "
+        f"supra-dead error moved g0 0.85 -> {g_moved:.4f}"
+    )
+    print(
+        f"determinism: same-seed identical trace {same_seed_same_trace}, diff-seed differs "
+        f"{diff_seed_diff_trace}; noisy g {g_noise_a:+.4f} -> world {W_NEG:+.3f}"
+    )
     print("=" * 70)
 
-    # ---- self-check: deterministic asserts, zero-dep stdlib, ASCII-only prints -------------------
-    assert abs(g1_final - W_POS) < 0.1, \
+    # ---- self-check: deterministic asserts, ASCII-only prints -------------------
+    assert abs(g1_final - W_POS) < 0.1, (
         f"magnitude: g must converge to the positive world gain from g0=0 (g {g1_final}, W {W_POS})"
-    assert last_slip < first_slip * 0.1, \
+    )
+    assert last_slip < first_slip * 0.1, (
         f"magnitude: recalibration must drive the residual slip down (|e| {first_slip} -> {last_slip})"
-    assert g_before > 0.9 * W_POS, \
+    )
+    assert g_before > 0.9 * W_POS, (
         f"sign: must first calibrate clearly to +W before the reversal (g_before {g_before})"
-    assert abs(g_after - W_NEG) < 0.1, \
+    )
+    assert abs(g_after - W_NEG) < 0.1, (
         f"sign: after the world reverses, g must track to the NEGATIVE world gain (g {g_after}, W {W_NEG})"
-    assert saw_pos and saw_neg, \
+    )
+    assert saw_pos and saw_neg, (
         f"sign: g must pass from positive to negative (saw + {saw_pos}, saw - {saw_neg})"
-    assert min_abs_g < 0.1, \
+    )
+    assert min_abs_g < 0.1, (
         f"sign: g must CROSS zero, not jump -- min |g| during reversal {min_abs_g} (flocculus signature)"
-    assert g_frozen == 0.98, \
+    )
+    assert g_frozen == 0.98, (
         f"dead-zone: a sub-`dead` residual must NOT move the gain at all (g {g_frozen}, expected 0.98)"
-    assert g_moved > 0.90, \
+    )
+    assert g_moved > 0.90, (
         f"dead-zone: a supra-`dead` residual MUST move the gain toward W (g {g_moved} from g0 0.85)"
-    assert same_seed_same_trace, \
-        "determinism: same seed must give a byte-identical g-trace"
-    assert diff_seed_diff_trace, \
-        "determinism: a different seed must change the (noisy) g-trace"
-    assert abs(g_noise_a - W_NEG) < 0.2, \
+    )
+    assert same_seed_same_trace, "determinism: same seed must give a byte-identical g-trace"
+    assert diff_seed_diff_trace, "determinism: a different seed must change the (noisy) g-trace"
+    assert abs(g_noise_a - W_NEG) < 0.2, (
         f"robustness: sign reversal must still converge to -W under sub-dead noise (g {g_noise_a}, W {W_NEG})"
-    print(f"self-check OK: gain {g1_final:+.3f}->world {W_POS:+.3f} (slip {first_slip:.3f}->{last_slip:.4f}); "
-          f"SIGN reversal +{g_before:.2f}->{g_after:+.3f} crossing zero (min |g| {min_abs_g:.3f}); "
-          f"dead-zone freezes at {g_frozen:.2f}; deterministic; noisy->{g_noise_a:+.3f}")
+    )
+    print(
+        f"self-check OK: gain {g1_final:+.3f}->world {W_POS:+.3f} (slip {first_slip:.3f}->{last_slip:.4f}); "
+        f"SIGN reversal +{g_before:.2f}->{g_after:+.3f} crossing zero (min |g| {min_abs_g:.3f}); "
+        f"dead-zone freezes at {g_frozen:.2f}; deterministic; noisy->{g_noise_a:+.3f}"
+    )
 
 
 if __name__ == "__main__":

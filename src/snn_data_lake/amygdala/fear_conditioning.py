@@ -38,22 +38,23 @@ seeds its own local random.Random, so two runs with the same seed are identical.
 
   python -m snn_data_lake.amygdala.fear_conditioning
 """
+
 import math
 import random
 
 from snn_data_lake.cortex.spike_preprocessing import N, T, encode_latency
 
 # ---- LIF / plasticity constants (hand-tuned; see self-check anchors) ---------
-LEAK = 0.90          # BLA membrane leak per step
-TH_BLA = 1.0         # BLA firing threshold (subtractive reset)
-US_CURRENT = 1.4     # unconditioned drive: the US makes the BLA fire on its own
-SAT_EXC = 14.0       # BLA spike count that saturates the excitatory response to 1.0
-LR_EXC = 0.10        # three-factor CS-US potentiation rate
-LR_INH = 0.22        # extinction (inhibitory) learning rate
-W_MAX = 1.0          # soft weight bound
-ERASE = 0.30         # per-trial excitatory decay in the ERASURE control model
-TAU_REC = 22.0       # inhibitory-trace recovery time constant (rest units)
-THETA_CEA = 0.30     # CeA threat threshold: threat >= THETA_CEA == conditioned response
+LEAK = 0.90  # BLA membrane leak per step
+TH_BLA = 1.0  # BLA firing threshold (subtractive reset)
+US_CURRENT = 1.4  # unconditioned drive: the US makes the BLA fire on its own
+SAT_EXC = 14.0  # BLA spike count that saturates the excitatory response to 1.0
+LR_EXC = 0.10  # three-factor CS-US potentiation rate
+LR_INH = 0.22  # extinction (inhibitory) learning rate
+W_MAX = 1.0  # soft weight bound
+ERASE = 0.30  # per-trial excitatory decay in the ERASURE control model
+TAU_REC = 22.0  # inhibitory-trace recovery time constant (rest units)
+THETA_CEA = 0.30  # CeA threat threshold: threat >= THETA_CEA == conditioned response
 
 
 def _by_step(cs):
@@ -77,9 +78,11 @@ class Amygdala:
         # brain that only ever pairs one outcome behaves EXACTLY as before. Pairing a new us_id GROWS
         # a fresh threat channel on demand -> the number of distinguishable aversive outcomes (shock
         # vs nausea vs ...) is unbounded, lifting the old single-scalar-US ceiling.
-        self.w_exc = {0: [0.0] * n}     # us_id -> BLA CS-feature -> threat association (built by pairing)
-        self.w_inh = {0: [0.0] * n}     # us_id -> CeA inhibitory suppression (built by extinction)
-        self.elapsed = 0.0         # rest time since extinction (drives inhibitory recovery)
+        self.w_exc = {
+            0: [0.0] * n
+        }  # us_id -> BLA CS-feature -> threat association (built by pairing)
+        self.w_inh = {0: [0.0] * n}  # us_id -> CeA inhibitory suppression (built by extinction)
+        self.elapsed = 0.0  # rest time since extinction (drives inhibitory recovery)
 
     def _ensure(self, us_id):
         """Allocate a fresh zero weight pair the first time an aversive category is used. Growth is
@@ -148,7 +151,7 @@ class Amygdala:
         the unconditioned BLA response (US drives the BLA regardless of w_exc)."""
         self._ensure(us_id)
         by, active = _by_step(cs)
-        ucr = self._bla_spikes(by, US_CURRENT, us_id)     # unconditioned response (US drive)
+        ucr = self._bla_spikes(by, US_CURRENT, us_id)  # unconditioned response (US drive)
         w = self.w_exc[us_id]
         for i in active:
             w[i] += LR_EXC * (1.0 - w[i] / W_MAX)
@@ -175,9 +178,11 @@ class Amygdala:
         if erasure:
             w = self.w_exc[us_id]
             for i in active:
-                w[i] *= (1.0 - ERASE)
+                w[i] *= 1.0 - ERASE
             return
-        exc = min(1.0, self._bla_spikes(by, 0.0, us_id) / SAT_EXC)   # prediction error = expected threat
+        exc = min(
+            1.0, self._bla_spikes(by, 0.0, us_id) / SAT_EXC
+        )  # prediction error = expected threat
         wi = self.w_inh[us_id]
         for i in active:
             wi[i] += LR_INH * exc * (1.0 - wi[i] / W_MAX)
@@ -217,8 +222,8 @@ def _condition(seed, erasure=False, rest_delay=30.0):
     rec     : conditioned cue threat AFTER a rest delay (spontaneous recovery)"""
     amyg = Amygdala(seed=seed)
     half = N // 2
-    paired_cs = _tone(1, 0, half)        # CS+ tone: lower feature band
-    unpaired_cs = _tone(2, half, N)      # CS- tone: upper feature band (disjoint)
+    paired_cs = _tone(1, 0, half)  # CS+ tone: lower feature band
+    unpaired_cs = _tone(2, half, N)  # CS- tone: upper feature band (disjoint)
     trng = random.Random(seed + 100)
 
     pre = amyg.threat(paired_cs)
@@ -226,7 +231,7 @@ def _condition(seed, erasure=False, rest_delay=30.0):
     # --- acquisition: paired cue gets CS+US; control cue gets CS alone (US never contingent) ---
     for _ in range(18):
         amyg.pair(_jitter(paired_cs, trng))
-        amyg.expose(_jitter(unpaired_cs, trng))   # presented equally, US never co-occurs
+        amyg.expose(_jitter(unpaired_cs, trng))  # presented equally, US never co-occurs
     paired = amyg.threat(paired_cs)
     unpaired = amyg.threat(unpaired_cs)
 
@@ -274,21 +279,26 @@ def main():
     # (2) AFTER paired training the paired CS is a threat, the unpaired control CS is not.
     assert paired >= THETA_CEA, f"paired CS must become a threat ({paired:.3f})"
     assert unpaired < THETA_CEA, f"unpaired control CS must NOT become a threat ({unpaired:.3f})"
-    assert paired > unpaired + 0.30, \
+    assert paired > unpaired + 0.30, (
         f"pairing (not mere exposure) must drive learning: {paired:.3f} vs {unpaired:.3f}"
+    )
     # (3) AFTER extinction the response drops, then spontaneously recovers on rest...
     assert ext < paired - 0.20, f"extinction must suppress the conditioned response ({ext:.3f})"
     assert ext < THETA_CEA, f"extinction should push the response below threshold ({ext:.3f})"
-    assert rec > ext + 0.15, \
+    assert rec > ext + 0.15, (
         f"conditioned response must spontaneously recover after rest ({rec:.3f})"
-    assert rec < paired, \
+    )
+    assert rec < paired, (
         f"spontaneous recovery is PARTIAL for a finite rest ({rec:.3f} vs {paired:.3f})"
+    )
     # ...but ONLY because the memory was suppressed, not erased: the erasure control cannot recover.
     assert e_ext < THETA_CEA, f"erasure control must also suppress the response ({e_ext:.3f})"
-    assert e_rec <= e_ext + 0.05, \
+    assert e_rec <= e_ext + 0.05, (
         f"erasure control must NOT recover (nothing left to unmask): {e_rec:.3f} vs {e_ext:.3f}"
-    assert rec > e_rec + 0.15, \
+    )
+    assert rec > e_rec + 0.15, (
         f"recovery is the signature of suppression-not-erasure: {rec:.3f} vs erasure {e_rec:.3f}"
+    )
     # determinism
     assert det, "same seed must produce identical numbers"
 
@@ -298,8 +308,8 @@ def main():
     # threat; the per-category readout reports WHICH outcome each cue predicts.
     multi = Amygdala(seed=7)
     half = N // 2
-    cs_shock = _tone(11, 0, half)          # cue A tone -> aversive category 0 (lower band)
-    cs_nausea = _tone(12, half, N)         # cue B tone -> aversive category 1 (disjoint upper band)
+    cs_shock = _tone(11, 0, half)  # cue A tone -> aversive category 0 (lower band)
+    cs_nausea = _tone(12, half, N)  # cue B tone -> aversive category 1 (disjoint upper band)
     mrng = random.Random(707)
     for _ in range(18):
         multi.pair(_jitter(cs_shock, mrng), us_id=0)
@@ -311,18 +321,24 @@ def main():
     print(f"  cue B predicts by-outcome {{{tb[0]:.2f}, {tb[1]:.2f}}}  (outcome 1 = nausea)")
     print("=" * 70)
     assert set(multi.w_exc) == {0, 1}, "pairing a new us_id must GROW a new aversive category"
-    assert ta[0] >= THETA_CEA and ta[1] < THETA_CEA, \
+    assert ta[0] >= THETA_CEA and ta[1] < THETA_CEA, (
         f"cue A must predict outcome 0, NOT outcome 1: {ta}"
-    assert tb[1] >= THETA_CEA and tb[0] < THETA_CEA, \
+    )
+    assert tb[1] >= THETA_CEA and tb[0] < THETA_CEA, (
         f"cue B must predict outcome 1, NOT outcome 0: {tb}"
-    assert multi.threat(cs_shock) == ta[0] and ta[0] > ta[1], \
+    )
+    assert multi.threat(cs_shock) == ta[0] and ta[0] > ta[1], (
         "aggregate threat() must SURFACE the strongest category: cue A's outcome-0 value, above outcome 1"
-    assert multi.threat(cs_nausea) == tb[1] and tb[1] > tb[0], \
+    )
+    assert multi.threat(cs_nausea) == tb[1] and tb[1] > tb[0], (
         "aggregate threat() must surface cue B's outcome-1 value, above outcome 0"
+    )
 
-    print(f"self-check OK: pairing learned threat ({paired:.3f}) while the equally-exposed "
-          f"unpaired control did not ({unpaired:.3f}); extinction suppressed it ({ext:.3f}) and it "
-          f"spontaneously recovered ({rec:.3f}) -- the erasure control did not ({e_rec:.3f})")
+    print(
+        f"self-check OK: pairing learned threat ({paired:.3f}) while the equally-exposed "
+        f"unpaired control did not ({unpaired:.3f}); extinction suppressed it ({ext:.3f}) and it "
+        f"spontaneously recovered ({rec:.3f}) -- the erasure control did not ({e_rec:.3f})"
+    )
 
 
 if __name__ == "__main__":

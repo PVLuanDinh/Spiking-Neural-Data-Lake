@@ -3,7 +3,7 @@ v0.43 — data-quality gates: block promotion to Gold unless the data passes.
 
 The Medallion lakehouse (lakehouse/medallion.py) refines Bronze -> Silver -> Gold. This adds
 the production discipline Gemini flagged: strict assertions enforced BEFORE the highly
-aggregated Gold layer. stdlib + self-checked (runs in CI with zero deps); medallion.py calls
+aggregated Gold layer. Self-checked (runs in CI); medallion.py calls
 `gate()` before it writes Gold, and the streaming ingest (dataflow_ingest.py) can call the
 same `gate()` in its DoFn.
 
@@ -15,11 +15,12 @@ Gates:
 
   python data_quality.py
 """
+
 import hashlib
 import math
 import struct
 
-_REC = "<qi"                       # one event = int64 time + int32 channel (12 bytes)
+_REC = "<qi"  # one event = int64 time + int32 channel (12 bytes)
 _SZ = struct.calcsize(_REC)
 
 
@@ -108,13 +109,18 @@ def gate(rows, n_channels, duration, gold=None, bronze_prior_hash=None):
     check_immutable(rows, bronze_prior_hash)
     if gold is not None:
         check_gold(gold)
-    return {"rows": len(rows), "bronze_hash": bronze_hash(rows)[:12],
-            "n_channels": n_channels, "duration": duration, "gold_checked": gold is not None}
+    return {
+        "rows": len(rows),
+        "bronze_hash": bronze_hash(rows)[:12],
+        "n_channels": n_channels,
+        "duration": duration,
+        "gold_checked": gold is not None,
+    }
 
 
 def main():
     n, dur = 8, 1000
-    rows = [(t, t % n) for t in range(0, dur, 5)]                 # valid Bronze
+    rows = [(t, t % n) for t in range(0, dur, 5)]  # valid Bronze
     good_gold = {"icr": 0.3, "rates": [0.1, 0.2, 0.0], "synchrony": 0.5}
     rep = gate(rows, n, dur, gold=good_gold)
     bh = bronze_hash(rows)

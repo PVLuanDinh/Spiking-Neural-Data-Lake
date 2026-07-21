@@ -25,19 +25,20 @@ Feature domain: a length-64 vector in [0,1] (FEATURES == spike_preprocessing.N =
 the same window the enrolled recognizers already consume. Labels are arbitrary strings supplied by the
 caller's library, so this is a TEXT/recognition path -- it returns a label, it never actuates an arm.
 
-Every adapter is PURE STDLIB, deterministic (per-instance random.Random(seed), zlib.crc32 for content
+Every adapter is deterministic (per-instance random.Random(seed), zlib.crc32 for content
 addressing; the one member that reaches a module-global RNG -- the MoE -- seeds+restores it so the
 decision is a pure function of the input), ASCII, and OFFLINE. Heavy modules import LAZILY inside each
 adapter's __init__, so importing recognizer_bank stays stdlib-cheap.
 
   Run: python -m snn_data_lake.cortex.recognizer_bank     # headless ensemble self-check
 """
+
 import contextlib
 import io
 import random
 import zlib
 
-FEATURES = 64            # feature-vector length (== spike_preprocessing.N == snn_classifier.N)
+FEATURES = 64  # feature-vector length (== spike_preprocessing.N == snn_classifier.N)
 _EPS = 1e-9
 
 
@@ -91,28 +92,29 @@ class LearnedMatcherRecognizer:
     member abstains rather than snapping the garbage to a nearest command."""
 
     name, module, source, uses = "learned-matcher", "learned_matcher", "reason", "stdlib"
-    gatekeeper = True                                             # calibrated Van Rossum OOD gate
+    gatekeeper = True  # calibrated Van Rossum OOD gate
 
     def __init__(self, library, seed=0):
         from snn_data_lake.cortex import learned_matcher as L
         from snn_data_lake.cortex.spike_preprocessing import encode_latency
         from snn_data_lake.substrate._mathutils import softmax
+
         self._L, self._softmax = L, softmax
         self.labels = list(library)
         self.nC = len(self.labels)
         self._refs_enc = [encode_latency(v) for v in library.values()]
         with _quiet():
-            self._W, _order = L.train_learned(library, seed=seed)     # _order == list(library)
+            self._W, _order = L.train_learned(library, seed=seed)  # _order == list(library)
         self._gate = L.calibrate_gate(library, self._refs_enc, seed=7)
 
     def recognize(self, features):
         idx, dist, _q = self._L.hybrid_match(self._W, self.nC, self._refs_enc, self._gate, features)
-        if idx is None:                                               # novelty gate rejected -> abstain
+        if idx is None:  # novelty gate rejected -> abstain
             return (None, 0.0, 0.0)
         currents = self._L.C.forward(self._W, self._L.binarize(features), self.nC)[0]
         p = sorted(self._softmax(currents), reverse=True)
         score = p[0]
-        appl = _clamp01(1.0 - dist / (self._gate + _EPS))            # closeness inside the calibrated gate
+        appl = _clamp01(1.0 - dist / (self._gate + _EPS))  # closeness inside the calibrated gate
         return (self.labels[idx], _clamp01(score), appl)
 
 
@@ -122,10 +124,11 @@ class TempotronRecognizer:
     neuron below threshold -> the member abstains."""
 
     name, module, source, uses = "tempotron", "tempotron", "reason", "stdlib"
-    gatekeeper = True                                             # trained SILENT for non-members -> OOD signal
+    gatekeeper = True  # trained SILENT for non-members -> OOD signal
 
     def __init__(self, library, per_class=6, epochs=8, seed=0):
         from snn_data_lake.cortex import tempotron as TP
+
         self._TP = TP
         self.labels = list(library)
         with _quiet():
@@ -139,7 +142,7 @@ class TempotronRecognizer:
         top_v = peaks[top]
         second_v = peaks[order[1]] if len(order) > 1 else -1e30
         thr = self._tm.tempo[top].thr
-        if top_v < 0.5 * thr:                                        # nothing fired convincingly -> novel
+        if top_v < 0.5 * thr:  # nothing fired convincingly -> novel
             return (None, 0.0, 0.0)
         sep = top_v - second_v
         appl = _clamp01(sep / (abs(top_v) + _EPS))
@@ -156,6 +159,7 @@ class LcaRecognizer:
 
     def __init__(self, library, lam=0.05):
         from snn_data_lake.cortex.lca_sparse_coding import LCAMatcher
+
         self._m = LCAMatcher(library, lam=lam)
         self.labels = self._m.labels
 
@@ -166,7 +170,7 @@ class LcaRecognizer:
         top = order[0]
         top_m = mags[top]
         second_m = mags[order[1]] if len(order) > 1 else 0.0
-        if top_m < 0.05:                                            # no atom survived competition -> novel
+        if top_m < 0.05:  # no atom survived competition -> novel
             return (None, 0.0, 0.0)
         appl = _clamp01((top_m - second_m) / (top_m + _EPS))
         score = _clamp01(top_m / (top_m + second_m + _EPS))
@@ -183,6 +187,7 @@ class MoeRecognizer:
     def __init__(self, library, seed=0, exemplars=12, train_noise=0.2):
         from snn_data_lake.cortex import learned_matcher as L
         from snn_data_lake.reasoning import snn_moe_classifier as M
+
         self._M, self._L = M, L
         self.labels = list(library)
         self.nC = len(self.labels)
@@ -211,7 +216,7 @@ class MoeRecognizer:
         order = sorted(range(self.nC), key=lambda c: -probs[c])
         top = order[0]
         margin = probs[top] - (probs[order[1]] if len(order) > 1 else 0.0)
-        if margin < 0.05:                                          # flat routing -> no confident vote
+        if margin < 0.05:  # flat routing -> no confident vote
             return (None, 0.0, 0.0)
         return (self.labels[top], _clamp01(probs[top]), _clamp01(margin / (probs[top] + _EPS)))
 
@@ -226,6 +231,7 @@ class StorageRecognizer:
 
     def __init__(self, library, k=12, n=FEATURES, steps=8):
         from snn_data_lake.reasoning import spiking_storage_prototype as S
+
         self._S = S
         self.labels = list(library)
         self.n, self.k, self.steps = n, k, steps
@@ -240,7 +246,7 @@ class StorageRecognizer:
         top = order[0]
         top_o = overlaps[top]
         second_o = overlaps[order[1]] if len(order) > 1 else 0.0
-        if top_o < 0.5:                                            # cue settled into no stored basin -> novel
+        if top_o < 0.5:  # cue settled into no stored basin -> novel
             return (None, 0.0, 0.0)
         return (self.labels[top], _clamp01(top_o), _clamp01(top_o - second_o))
 
@@ -256,13 +262,17 @@ class ParadigmBRecognizer:
     def __init__(self, library, thr=0.5, window=None):
         from snn_data_lake.cortex import paradigm_b_matcher as PB
         from snn_data_lake.cortex.spike_preprocessing import T
+
         self._PB = PB
         self.labels = list(library)
         self.thr = thr
         self._window = window or T
-        self._channels = [[i for i, v in enumerate(library[lab]) if v >= thr] for lab in self.labels]
-        self._queries = [PB.compile_query(ch, self._window, 1) if ch else None
-                         for ch in self._channels]
+        self._channels = [
+            [i for i, v in enumerate(library[lab]) if v >= thr] for lab in self.labels
+        ]
+        self._queries = [
+            PB.compile_query(ch, self._window, 1) if ch else None for ch in self._channels
+        ]
 
     def recognize(self, features):
         active = [i for i, v in enumerate(features) if v >= self.thr]
@@ -273,13 +283,13 @@ class ParadigmBRecognizer:
                 continue
             chset = set(ch)
             hits = [c for c in active if c in chset]
-            events = list(enumerate(hits))                          # (distinct time, channel), ascending
+            events = list(enumerate(hits))  # (distinct time, channel), ascending
             overlaps.append(len(self._PB.match_stream(events, q)) / len(ch))
         order = sorted(range(len(overlaps)), key=lambda i: -overlaps[i])
         top = order[0]
         top_o = overlaps[top]
         second_o = overlaps[order[1]] if len(order) > 1 else 0.0
-        if top_o < 0.34:                                           # too little coincidence to commit -> novel
+        if top_o < 0.34:  # too little coincidence to commit -> novel
             return (None, 0.0, 0.0)
         return (self.labels[top], _clamp01(top_o), _clamp01(top_o - second_o))
 
@@ -315,7 +325,7 @@ class RecognizerBank:
         for r in self._recognizers:
             try:
                 label, score, appl = r.recognize(features)
-            except Exception:                                       # a broken recognizer just abstains
+            except Exception:  # a broken recognizer just abstains
                 label, score, appl = None, 0.0, 0.0
             if label is None:
                 out.append((r, None, 0.0, 0.0))
@@ -349,13 +359,16 @@ class RecognizerBank:
         n_top = sum(1 for _r, lab, _s, _a in voters if lab == top_label)
         agree = n_top / n_applied
         margin = (top_w - second_w) / (top_w + _EPS)
-        gate_backing = sum(1 for r, lab, _s, _a in voters
-                           if lab == top_label and getattr(r, "gatekeeper", False))
+        gate_backing = sum(
+            1 for r, lab, _s, _a in voters if lab == top_label and getattr(r, "gatekeeper", False)
+        )
         confidence = round(top_w / (total_w + _EPS), 3)
-        known = (n_applied >= self.min_recognizers
-                 and agree >= self.min_agree
-                 and margin >= self.min_margin
-                 and gate_backing >= self.min_gatekeepers)
+        known = (
+            n_applied >= self.min_recognizers
+            and agree >= self.min_agree
+            and margin >= self.min_margin
+            and gate_backing >= self.min_gatekeepers
+        )
         return (top_label, confidence, bool(known))
 
 
@@ -392,11 +405,12 @@ class RecognizerBankExpert:
     def __init__(self, seed=0, library=None):
         self.seed = seed
         self._library = library
-        self._bank = None                                          # lazy: built on first applicable answer
+        self._bank = None  # lazy: built on first applicable answer
 
     @staticmethod
     def _parse(text):
         import re
+
         low = text.lower()
         if not any(kw in low for kw in ("recognize", "classify", "which pattern")):
             return None
@@ -414,19 +428,28 @@ class RecognizerBankExpert:
         if vec is None:
             return ("[honest gap] phrase a recognition query as 'recognize: v1 v2 ... vN'.", False)
         if len(vec) != FEATURES:
-            return (f"[honest gap] i recognize length-{FEATURES} feature vectors; got {len(vec)} numbers "
-                    "-- no padding, no bluff.", False)
+            return (
+                f"[honest gap] i recognize length-{FEATURES} feature vectors; got {len(vec)} numbers "
+                "-- no padding, no bluff.",
+                False,
+            )
         if self._bank is None:
             self._bank = build_default_bank(library=self._library, seed=self.seed)
         features = [_clamp01(v) for v in vec]
         label, confidence, known = self._bank.recognize(features)
         if not known:
-            return (f"[honest gap] the spiking recognizer panel did not agree on a label with enough margin "
-                    f"(best='{label}', confidence {confidence:.2f}) -- treated as out-of-distribution, "
-                    "no fabrication.", False)
-        return (f"[recognizer-bank] the spiking ensemble (learned-matcher / tempotron / LCA / MoE / "
-                f"associative-storage / paradigm-B) recognized the vector as '{label}' "
-                f"(confidence {confidence:.2f}, margin+agreement gate passed).", True)
+            return (
+                f"[honest gap] the spiking recognizer panel did not agree on a label with enough margin "
+                f"(best='{label}', confidence {confidence:.2f}) -- treated as out-of-distribution, "
+                "no fabrication.",
+                False,
+            )
+        return (
+            f"[recognizer-bank] the spiking ensemble (learned-matcher / tempotron / LCA / MoE / "
+            f"associative-storage / paradigm-B) recognized the vector as '{label}' "
+            f"(confidence {confidence:.2f}, margin+agreement gate passed).",
+            True,
+        )
 
 
 # ------------------------------------------------------------- headless self-check --------------------
@@ -439,7 +462,9 @@ def main():
     roster = bank.roster()
 
     print("=" * 96)
-    print("RECOGNIZER BANK -- heterogeneous spiking recognizer ensemble behind one recognize() contract")
+    print(
+        "RECOGNIZER BANK -- heterogeneous spiking recognizer ensemble behind one recognize() contract"
+    )
     print("=" * 96)
     print(f"panel ({len(roster)} recognizers; each a thin adapter over one dark spiking module):")
     for name, module, source, uses in roster:
@@ -462,9 +487,11 @@ def main():
                 if vlab is not None and appl > 0.0:
                     distinct_voters.add(name)
             total += 1
-            hit = (got == lab and known)
+            hit = got == lab and known
             known_ok += 1 if hit else 0
-            print(f"  {lab:<9} -> label={str(got):<9} conf={conf:.2f} known={known}  {'OK' if hit else 'MISS'}")
+            print(
+                f"  {lab:<9} -> label={str(got):<9} conf={conf:.2f} known={known}  {'OK' if hit else 'MISS'}"
+            )
 
     # out-of-distribution: uniform-random garbage vectors -> honest known=False (no fabrication)
     print("-" * 96)
@@ -476,28 +503,40 @@ def main():
         garbage = [ood_rng.random() for _ in range(FEATURES)]
         got, conf, known = bank.recognize(garbage)
         ood_rejected += 0 if known else 1
-        print(f"  ood#{t}     -> label={str(got):<9} conf={conf:.2f} known={known}  "
-              f"{'REJECTED' if not known else 'FABRICATED'}")
+        print(
+            f"  ood#{t}     -> label={str(got):<9} conf={conf:.2f} known={known}  "
+            f"{'REJECTED' if not known else 'FABRICATED'}"
+        )
 
     # determinism: recognize is a pure function of the input
     probe = jitter(library[labels[0]], 0.10)
     d1 = bank.recognize(probe)
     for _ in range(5):
-        random.random()                                            # perturb the module-global RNG
+        random.random()  # perturb the module-global RNG
     d2 = bank.recognize(probe)
 
     print("-" * 96)
     voters_str = ", ".join(sorted(distinct_voters))
-    print(f"coverage: {known_ok}/{total} in-distribution vectors recognized known=True; "
-          f"{ood_rejected}/{ood_trials} OOD vectors rejected; "
-          f"{len(distinct_voters)} DISTINCT recognizers fired: {voters_str}")
+    print(
+        f"coverage: {known_ok}/{total} in-distribution vectors recognized known=True; "
+        f"{ood_rejected}/{ood_trials} OOD vectors rejected; "
+        f"{len(distinct_voters)} DISTINCT recognizers fired: {voters_str}"
+    )
     print("=" * 96)
 
     # ---- assertions ----------------------------------------------------------------------------------
-    assert len(roster) >= 4, f"at least 4 distinct recognizers must be registered (got {len(roster)})"
-    assert known_ok >= total - 1, f"in-distribution vectors must recognize to the right label known=True ({known_ok}/{total})"
-    assert len(distinct_voters) >= 4, f"at least 4 DISTINCT recognizers must fire on real inputs (got {len(distinct_voters)}: {sorted(distinct_voters)})"
-    assert ood_rejected == ood_trials, f"every OOD vector must be an honest known=False (rejected {ood_rejected}/{ood_trials})"
+    assert len(roster) >= 4, (
+        f"at least 4 distinct recognizers must be registered (got {len(roster)})"
+    )
+    assert known_ok >= total - 1, (
+        f"in-distribution vectors must recognize to the right label known=True ({known_ok}/{total})"
+    )
+    assert len(distinct_voters) >= 4, (
+        f"at least 4 DISTINCT recognizers must fire on real inputs (got {len(distinct_voters)}: {sorted(distinct_voters)})"
+    )
+    assert ood_rejected == ood_trials, (
+        f"every OOD vector must be an honest known=False (rejected {ood_rejected}/{ood_trials})"
+    )
     assert d1 == d2, f"recognize() must be deterministic for identical input (got {d1!r} vs {d2!r})"
 
     # the reasoning-cortex hook: scores 0 on ordinary text (never perturbs other experts), fires only on
@@ -505,19 +544,28 @@ def main():
     class _Q:
         def __init__(self, text):
             self.text = text
+
     expert = RecognizerBankExpert(seed=0, library=library)
-    assert expert.score(_Q("what comes next in 2 4 6 8")) == 0.0, "hook must not claim ordinary text queries"
-    assert expert.score(_Q("please water the office plants")) == 0.0, "hook must not claim non-recognition text"
+    assert expert.score(_Q("what comes next in 2 4 6 8")) == 0.0, (
+        "hook must not claim ordinary text queries"
+    )
+    assert expert.score(_Q("please water the office plants")) == 0.0, (
+        "hook must not claim non-recognition text"
+    )
     good_vec = " ".join(f"{v:.3f}" for v in jitter(library[labels[1]], 0.10))
     reply, known = expert.answer(_Q("recognize: " + good_vec))
-    assert known and ("'" + labels[1] + "'") in reply, f"hook must recognize a well-formed in-distribution query: {reply}"
+    assert known and ("'" + labels[1] + "'") in reply, (
+        f"hook must recognize a well-formed in-distribution query: {reply}"
+    )
     _r2, k2 = expert.answer(_Q("recognize: 0.1 0.2 0.3"))
     assert not k2, "hook must honestly reject a wrong-length vector"
 
-    print(f"self-check OK: {len(roster)} heterogeneous spiking recognizers merged behind one recognize() "
-          f"contract; {known_ok}/{total} in-distribution known=True, {len(distinct_voters)} DISTINCT members "
-          f"fired, {ood_rejected}/{ood_trials} OOD vectors rejected (no fabrication); deterministic; "
-          "reasoning-cortex hook is opt-in + inert on ordinary text.")
+    print(
+        f"self-check OK: {len(roster)} heterogeneous spiking recognizers merged behind one recognize() "
+        f"contract; {known_ok}/{total} in-distribution known=True, {len(distinct_voters)} DISTINCT members "
+        f"fired, {ood_rejected}/{ood_trials} OOD vectors rejected (no fabrication); deterministic; "
+        "reasoning-cortex hook is opt-in + inert on ordinary text."
+    )
     return 0
 
 

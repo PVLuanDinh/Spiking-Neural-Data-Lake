@@ -41,6 +41,7 @@ Deterministic: per-instance seeding only (no wall-clock, no global RNG). ASCII-o
 
   PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python.exe -m snn_data_lake.cortex.brain
 """
+
 import re
 
 from snn_data_lake.brainstem.arm_config import CONTACT
@@ -67,8 +68,8 @@ from snn_data_lake.neuromodulation.astrocyte_modulation import Astrocyte
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.raphe_serotonin import DorsalRaphe
 
-SAFE_DISTANCE = CONTACT * 3.0    # perception-only distance band; never in a reflex/danger zone
-STORE_EVERY = 3                  # store one sleep-replay assembly every STORE_EVERY wake ticks
+SAFE_DISTANCE = CONTACT * 3.0  # perception-only distance band; never in a reflex/danger zone
+STORE_EVERY = 3  # store one sleep-replay assembly every STORE_EVERY wake ticks
 
 # LIVE theory-of-mind dialogue grammar (W2d): a small hand-specified surface parse feeding a REAL first-order
 # belief tracker. '<subj> put/moved the <obj> in/to the <loc>'; an absence marker makes the change UNWITNESSED
@@ -77,10 +78,24 @@ _TOM_PLACE = re.compile(
     r"\b(?P<subj>i|we|you|someone|somebody)\s+(?:put|places?|placed|sets?|left|leaves?|hid|hides?|moved?|moves?)\s+"
     r"(?:the\s+|a\s+|an\s+|my\s+|your\s+)?(?P<obj>[a-z][a-z ]*?)\s+"
     r"(?:back\s+)?(?:in|on|at|into|onto|inside|to)\s+(?:the\s+|a\s+|an\s+|my\s+|your\s+)?"
-    r"(?P<loc>[a-z][a-z ]*?)(?:\s*[.,!?]|\s+and\b|\s+but\b|\s+while\b|\s+when\b|\s+without\b|$)")
-_TOM_ABSENT = ("while i was away", "while i was gone", "while i was out", "when i was not looking",
-               "when i wasn't looking", "behind my back", "secretly", "without me", "without my seeing",
-               "i did not see", "i didn't see", "i was not there", "i wasn't there", "unbeknownst to me")
+    r"(?P<loc>[a-z][a-z ]*?)(?:\s*[.,!?]|\s+and\b|\s+but\b|\s+while\b|\s+when\b|\s+without\b|$)"
+)
+_TOM_ABSENT = (
+    "while i was away",
+    "while i was gone",
+    "while i was out",
+    "when i was not looking",
+    "when i wasn't looking",
+    "behind my back",
+    "secretly",
+    "without me",
+    "without my seeing",
+    "i did not see",
+    "i didn't see",
+    "i was not there",
+    "i wasn't there",
+    "unbeknownst to me",
+)
 
 
 def _mean(xs):
@@ -125,10 +140,18 @@ class Brain:
     new actuator route. Every wake/sleep tick feeds the REAL brain signals into an evolving self-
     model, and respond() speaks from that self-model FRESHLY (no fixed status template)."""
 
-    def __init__(self, seed=0, lake_path=None, day_period=200, refit_every=20, device="cuda",
-                 self_history_path=None, persist=None):
+    def __init__(
+        self,
+        seed=0,
+        lake_path=None,
+        day_period=200,
+        refit_every=20,
+        device="cuda",
+        self_history_path=None,
+        persist=None,
+    ):
         self._seed = int(seed)
-        self._lake_path = lake_path        # API parity; LiveBrain owns its WM lake
+        self._lake_path = lake_path  # API parity; LiveBrain owns its WM lake
         self.day_period = int(day_period)
         self.refit_every = int(refit_every)
         self._self_history_path = self_history_path
@@ -137,7 +160,10 @@ class Brain:
         # home (KnowledgeLog + JSON state blobs). NORD_PERSIST=0 is the OFF-SWITCH (the gates run it so
         # selfchecks/pytest stay byte-identical + hermetic); an explicit persist=False also forces off.
         import os
-        self._persist = (True if persist is None else bool(persist)) and os.environ.get("NORD_PERSIST") != "0"
+
+        self._persist = (True if persist is None else bool(persist)) and os.environ.get(
+            "NORD_PERSIST"
+        ) != "0"
 
         # ---- the full live brain: PROVEN self-improve config (see spiking_chat.py) ----
         # jepa=True is REQUIRED or the spiking curiosity yields no intrinsic reward.
@@ -147,10 +173,19 @@ class Brain:
         # affective_memory/empowerment/agency_monitor: emotion-tagged episodic retention, a controllability
         # intrinsic drive, and a sense-of-agency monitor -- all opt-in representation-only drives that
         # observe an already-gated tick and feed the value/annotation channel; the reflex/E-STOP preempts.
-        self.brain = LiveBrain(seed=self._seed, spiking_curiosity=True, jepa=True,
-                               interaction_learning=True, persist=self._persist, predictive_coding=True,
-                               affective_memory=True, empowerment=True, agency_monitor=True, dopamine=True,
-                               attention=True)
+        self.brain = LiveBrain(
+            seed=self._seed,
+            spiking_curiosity=True,
+            jepa=True,
+            interaction_learning=True,
+            persist=self._persist,
+            predictive_coding=True,
+            affective_memory=True,
+            empowerment=True,
+            agency_monitor=True,
+            dopamine=True,
+            attention=True,
+        )
         # ALLOCENTRIC cognitive-map substrate (gap #12): dead-reckons a landmark map over the percept
         # stream -- a relational/spatial map (full physical navigation awaits embodiment via the arm).
         # Representation-only; the reflex/E-STOP still runs first and it drives no motion.
@@ -170,9 +205,9 @@ class Brain:
         # open); a genuine SURPRISE spike drops reliability -> HOLD/abstain + learning blocked. Tuned
         # to the live self-model signal range so metacognition gates on real problems, not baseline.
         self._metacog = MetacognitiveMonitor(base=0.4, seed=self._seed)
-        self._metacog_rel = 0.0                                # fused spike-count reliability
-        self._metacog_hold = False                            # low reliability -> abstain/hedge
-        self._metacog_explore = False                         # explore vs exploit
+        self._metacog_rel = 0.0  # fused spike-count reliability
+        self._metacog_hold = False  # low reliability -> abstain/hedge
+        self._metacog_explore = False  # explore vs exploit
 
         # ---- REASONING: a transitive-inference skill the brain GROWS while it SLEEPS (neurogenesis +
         # self-paced curriculum + offline replay). Cognition only -- NO actuator route. Held-out
@@ -180,15 +215,16 @@ class Brain:
         # a reasoning hiccup can never perturb the loop or the safety envelope.
         self._reason_env = ReasoningEnv(6, seed=self._seed)
         self._reason = ReasoningLearner(seed=self._seed)
-        self._reason_stage = 0                                  # curriculum: active chain length 3 -> n
-        self._reason_acc = 0.0                                  # held-out transitive-inference accuracy
-        self._reason_units = 0                                  # neurogenesis: recruited rank units
-        self._skills = None                                    # lazy NightlySkills: bounded nightly skill formation (numpy)
-        self._skills_state = None                              # last night's per-domain competence summary (for state())
-        self._schemas = 0                                      # SCHEMA INDUCTION (gap #5): derived schema triples kept last pass
-        if self._persist:                                      # never-forget: reload the nightly-grown reasoning skill
+        self._reason_stage = 0  # curriculum: active chain length 3 -> n
+        self._reason_acc = 0.0  # held-out transitive-inference accuracy
+        self._reason_units = 0  # neurogenesis: recruited rank units
+        self._skills = None  # lazy NightlySkills: bounded nightly skill formation (numpy)
+        self._skills_state = None  # last night's per-domain competence summary (for state())
+        self._schemas = 0  # SCHEMA INDUCTION (gap #5): derived schema triples kept last pass
+        if self._persist:  # never-forget: reload the nightly-grown reasoning skill
             try:
                 from snn_data_lake.substrate.home import load_state
+
                 blob = load_state("reasoning_curriculum.json")
                 if blob:
                     self._reason.load_state_dict(blob.get("learner"))
@@ -208,11 +244,12 @@ class Brain:
             LifelongConsolidator,
             _make_tasks,
         )
+
         self._ll_tasks = _make_tasks(seed=self._seed)
         self._ll = LifelongConsolidator(dim=_LL_DIM, budget=6, seed=self._seed)
         self._ll_i = 0
-        self._ll_retention = 0.0                               # oldest-task retention (non-regression)
-        self._ll_units = 0                                     # bounded by grow<->prune
+        self._ll_retention = 0.0  # oldest-task retention (non-regression)
+        self._ll_units = 0  # bounded by grow<->prune
 
         # ---- CRITICALITY (ladder L7): a self-regulated spiking pool the brain holds at the EDGE OF
         # CHAOS (branching ratio ~0.97-0.99, slightly sub-critical) so its substrate stays maximally
@@ -220,8 +257,9 @@ class Brain:
         # (not a global regulation of every LiveBrain neuron); reported as `criticality`. Guarded.
         try:
             from snn_data_lake.plasticity.criticality_regulator import CriticalityRegulator
+
             self._critic = CriticalityRegulator(n=64, seed=self._seed)
-            self._critic.run(epochs=15, regulate=True)         # converge toward the critical band at birth
+            self._critic.run(epochs=15, regulate=True)  # converge toward the critical band at birth
             self._criticality = round(self._critic.sigma(), 4)
         except Exception:
             self._critic = None
@@ -240,16 +278,23 @@ class Brain:
         # the by-construction criticality confound is excluded). Run once at birth (deterministic).
         try:
             from snn_data_lake.cortex.wholistic_loop import WholisticLoop
-            _whole = WholisticLoop(hard=True, seed=self._seed).run()   # integrated, real hard task
-            _sum = WholisticLoop(hard=True, metacog=False,             # no arbitration spine,
-                                 consolidation=False, criticality=True,
-                                 seed=self._seed).run()                # but HEALTHY substrate
-            self._integration_competence = round(_whole["aggregate"], 4)   # informative, sub-ceiling
+
+            _whole = WholisticLoop(hard=True, seed=self._seed).run()  # integrated, real hard task
+            _sum = WholisticLoop(
+                hard=True,
+                metacog=False,  # no arbitration spine,
+                consolidation=False,
+                criticality=True,
+                seed=self._seed,
+            ).run()  # but HEALTHY substrate
+            self._integration_competence = round(_whole["aggregate"], 4)  # informative, sub-ceiling
             self._integration_retention = round(_whole["retention"], 4)
             self._integration_gain = round(_whole["aggregate"] - _sum["aggregate"], 4)
-            self._integration_ok = bool(_whole["aggregate"] < 0.98        # NOT a trivial ceiling
-                                        and _whole["aggregate"] > _sum["aggregate"]
-                                        and _whole["retention"] > _sum["retention"])
+            self._integration_ok = bool(
+                _whole["aggregate"] < 0.98  # NOT a trivial ceiling
+                and _whole["aggregate"] > _sum["aggregate"]
+                and _whole["retention"] > _sum["retention"]
+            )
         except Exception:
             self._integration_competence = 0.0
             self._integration_retention = 0.0
@@ -270,9 +315,12 @@ class Brain:
         # L5 generalizing-novelty is ALSO promoted to the LIVE wake tick (see _wake_tick -> novelty_live).
         try:
             from snn_data_lake.cortex.self_improvement_suite import census
-            self._rungs = {"_scale": "reduced-birth-diagnostic",
-                           "_note": "liveness snapshot; full proof = each module's own self-check",
-                           **census(seed=self._seed)}
+
+            self._rungs = {
+                "_scale": "reduced-birth-diagnostic",
+                "_note": "liveness snapshot; full proof = each module's own self-check",
+                **census(seed=self._seed),
+            }
         except Exception:
             self._rungs = {}
 
@@ -281,30 +329,38 @@ class Brain:
         # ADDITIVE + read-only to safety; value/rep-only. Guarded. Reported as `novelty_live`.
         try:
             from snn_data_lake.neuromodulation.generalizing_novelty import GeneralizingNovelty
+
             # dim = the wake stimulus feature vector: visual(4) + temperature(1) + audio(4) + distance(1)
             self._novelty = GeneralizingNovelty(n_bits=16, dim=10, seed=self._seed)
         except Exception:
             self._novelty = None
         self._novelty_live = 0.0
-        self._pc_surprise = 0.0                                # live generative-percept prediction-error (folds into metacog)
-        self._pc_surprise_ema = 0.0                            # running baseline: metacog reacts to surprise SPIKES, not constant error
-        self._interval_timer = 0                               # INTERVAL TIMING (gap #12): wake ticks since the last salient event
-        self._pci = 0.0                                        # agnostic perturbational-complexity readout (integration; NOT phenomenal)
+        self._pc_surprise = 0.0  # live generative-percept prediction-error (folds into metacog)
+        self._pc_surprise_ema = (
+            0.0  # running baseline: metacog reacts to surprise SPIKES, not constant error
+        )
+        self._interval_timer = (
+            0  # INTERVAL TIMING (gap #12): wake ticks since the last salient event
+        )
+        self._pci = 0.0  # agnostic perturbational-complexity readout (integration; NOT phenomenal)
         # LIVE THEORY OF MIND (gap #9): model the USER as an agent whose knowledge is tracked SEPARATELY
         # from the world, so the brain can tell when the user's belief differs from reality (false belief).
         # Representation-only; inferred (not certain). Full per-agent affect/empathy is a follow-up.
         self._tom_ok = False
         try:
             from snn_data_lake.cortex.theory_of_mind import TheoryOfMind
+
             self._tom = TheoryOfMind(seed=self._seed)
-            self._tom.place(0, ["user", "brain"])              # both observe the fact at location 0
-            self._tom.move(1, ["brain"])                       # brain learns an update (loc 1) the user did NOT observe
-            self._tom_ok = (self._tom.predict_from_belief("user") == 0    # user still believes the OLD location
-                            and self._tom.predict_from_world("user") == 1)  # reality moved on -> false belief tracked
+            self._tom.place(0, ["user", "brain"])  # both observe the fact at location 0
+            self._tom.move(1, ["brain"])  # brain learns an update (loc 1) the user did NOT observe
+            self._tom_ok = (
+                self._tom.predict_from_belief("user") == 0  # user still believes the OLD location
+                and self._tom.predict_from_world("user") == 1
+            )  # reality moved on -> false belief tracked
         except Exception:
             self._tom = None
-        self._tom_locs = {}                                    # live ToM: dialogue location name -> integer id
-        self._tom_obj = None                                   # the object the live ToM currently tracks
+        self._tom_locs = {}  # live ToM: dialogue location name -> integer id
+        self._tom_obj = None  # the object the live ToM currently tracks
 
         # ---- BrainCog-inspired cognitive primitives adopted into the brain (pure-stdlib, from
         # docs/BRAINCOG_COMPARISON.md): Theory-of-Mind (an OTHER-agent false-belief tracker -- a whole
@@ -316,16 +372,25 @@ class Brain:
         try:
             from snn_data_lake.cortex.theory_of_mind import TheoryOfMind
             from snn_data_lake.midbrain.multisensory_integration import MultisensoryCell
-            _tom = TheoryOfMind(seed=self._seed)            # Sally-Anne false-belief
-            _tom.place(0, ["sally", "anne"])                # marble in basket A; both present
-            _tom.move(1, ["anne"])                          # Anne moves it to B; Sally ABSENT
-            _fb = _tom.predict_from_belief("sally")         # Sally looks by BELIEF -> A(0), the false belief
-            _fw = _tom.predict_from_world("sally")          # reality CONTROL -> B(1)
-            _idx = MultisensoryCell(seed=self._seed).enhancement(0.06, 0.06)["index"]  # weak coincident -> super-additive
+
+            _tom = TheoryOfMind(seed=self._seed)  # Sally-Anne false-belief
+            _tom.place(0, ["sally", "anne"])  # marble in basket A; both present
+            _tom.move(1, ["anne"])  # Anne moves it to B; Sally ABSENT
+            _fb = _tom.predict_from_belief(
+                "sally"
+            )  # Sally looks by BELIEF -> A(0), the false belief
+            _fw = _tom.predict_from_world("sally")  # reality CONTROL -> B(1)
+            _idx = MultisensoryCell(seed=self._seed).enhancement(0.06, 0.06)[
+                "index"
+            ]  # weak coincident -> super-additive
             self._braincog = {
-                "theory_of_mind_false_belief": bool(_fb == 0 and _fw == 1),   # belief tracked != reality
-                "multisensory_index": round(float(_idx), 3) if _idx is not None else None,  # >1 super-additive
-                "feedback_alignment": "gate-verified",       # random-feedback + local rule PoC (self-check)
+                "theory_of_mind_false_belief": bool(
+                    _fb == 0 and _fw == 1
+                ),  # belief tracked != reality
+                "multisensory_index": round(float(_idx), 3)
+                if _idx is not None
+                else None,  # >1 super-additive
+                "feedback_alignment": "gate-verified",  # random-feedback + local rule PoC (self-check)
             }
         except Exception:
             self._braincog = {}
@@ -355,37 +420,49 @@ class Brain:
         # the tier. Value/representation-only -- an encoder, no actuator route. state()["perception_tier"].
         self._perception_enc = None
         self._perception_tier = "stdlib"
-        self._real_frames = None                              # W3b: a pack of REAL N-MNIST event frames (numpy at runtime)
+        self._real_frames = None  # W3b: a pack of REAL N-MNIST event frames (numpy at runtime)
         self._real_labels = None
         self._real_ptr = 0
         self._perceiving_real = False
         self._real_percept = None
-        self._perception_acc = None                           # LIVE classification accuracy over real frames perceived
+        self._perception_acc = None  # LIVE classification accuracy over real frames perceived
         self._perc_hits = self._perc_seen = 0
         self._perceived_digit = None
-        self._audio_enc = None                                # W3c: brain-native e-prop SHD auditory encoder
+        self._audio_enc = None  # W3c: brain-native e-prop SHD auditory encoder
         self._audio_frames = None
         self._audio_labels = None
         self._audio_ptr = 0
         self._perceiving_audio = False
         self._audio_percept = None
-        self._audio_acc = None                                # LIVE audio classification accuracy over real SHD frames
+        self._audio_acc = None  # LIVE audio classification accuracy over real SHD frames
         self._audio_hits = self._audio_seen = 0
         self._perceived_word = None
-        self._vis_learner = None                              # W4a: growing prototype learner over REAL vision latents
-        self._aud_learner = None                              # W4a: growing prototype learner over REAL audio latents
-        self._real_units = 0                                  # learned representations (prototypes) of real stimuli
-        self._real_novelty = 0.0                              # novelty spike when a real percept recruits a new prototype
+        self._vis_learner = None  # W4a: growing prototype learner over REAL vision latents
+        self._aud_learner = None  # W4a: growing prototype learner over REAL audio latents
+        self._real_units = 0  # learned representations (prototypes) of real stimuli
+        self._real_novelty = 0.0  # novelty spike when a real percept recruits a new prototype
+        self._attn_real = (
+            None  # W9: attention readout over the REAL percept stream (winning band + focus)
+        )
+        self._perception_unified = (
+            False  # W9: True when the arm's sensory channels are DRIVEN by real perception
+        )
         try:
             import os
-            if os.environ.get("NORD_TORCH") == "0":            # manual off-switch: keep the zero-dep stdlib perception path
+
+            if (
+                os.environ.get("NORD_TORCH") == "0"
+            ):  # manual off-switch: keep the zero-dep stdlib perception path
                 raise RuntimeError("torch tier disabled")
             _eprop = os.environ.get("SNN_EPROP_CKPT", "models/eprop_nmnist.pt")
-            if os.path.exists(_eprop):                         # BRAIN-NATIVE first: the e-prop-trained encoder (no backprop)
+            if os.path.exists(
+                _eprop
+            ):  # BRAIN-NATIVE first: the e-prop-trained encoder (no backprop)
                 from training.eprop_nmnist import EpropEncoder
+
                 self._perception_enc = EpropEncoder.load(_eprop, device="cpu")
                 self._perception_tier = "eprop-snn"
-            else:                                              # fallback: the surrogate-BPTT encoder (NOT brain-native)
+            else:  # fallback: the surrogate-BPTT encoder (NOT brain-native)
                 _ckpt = os.environ.get("SNN_PERCEPTION_CKPT")
                 if not _ckpt:
                     for _c in ("models/nmnist_encoder.pt", "models/surrogate_nmnist.pth"):
@@ -394,30 +471,173 @@ class Brain:
                             break
                 if _ckpt and os.path.exists(_ckpt):
                     from training.surrogate_snn import SurrogateEncoder
+
                     self._perception_enc = SurrogateEncoder.load(_ckpt, device="cpu")
                     self._perception_tier = "torch-snn"
-            if self._perception_enc is not None:               # load the REAL event-frame pack (numpy only at runtime)
+            if (
+                self._perception_enc is not None
+            ):  # load the REAL event-frame pack (numpy only at runtime)
                 import numpy as _np
+
                 _pack = os.environ.get("SNN_PERCEPTION_PACK", "models/nmnist_pack.npz")
                 if os.path.exists(_pack):
                     _d = _np.load(_pack)
                     self._real_frames, self._real_labels = _d["frames"], _d["labels"]
-                    self._perceiving_real = True               # brain perceives REAL event-vision on the live tick
+                    self._perceiving_real = (
+                        True  # brain perceives REAL event-vision on the live tick
+                    )
             _audio = os.environ.get("SNN_EPROP_AUDIO_CKPT", "models/eprop_shd.pt")
-            if os.path.exists(_audio):                         # AUDITORY tier (brain-native): e-prop SHD encoder, parallel to vision
+            if os.path.exists(
+                _audio
+            ):  # AUDITORY tier (brain-native): e-prop SHD encoder, parallel to vision
                 from training.eprop_shd import EpropAudioEncoder
+
                 self._audio_enc = EpropAudioEncoder.load(_audio, device="cpu")
                 import numpy as _np2
+
                 _apack = os.environ.get("SNN_SHD_PACK", "models/shd_pack.npz")
                 if os.path.exists(_apack):
                     _ad = _np2.load(_apack)
                     self._audio_frames, self._audio_labels = _ad["frames"], _ad["labels"]
-                    self._perceiving_audio = True              # brain perceives REAL event-audio on the live tick
+                    self._perceiving_audio = (
+                        True  # brain perceives REAL event-audio on the live tick
+                    )
         except Exception:
             self._perception_enc = None
             self._perception_tier = "stdlib"
             self._perceiving_real = False
             self._perceiving_audio = False
+
+        # W6: extended cortical faculties (optional, pure-stdlib, representation-only) -- lazily built, guarded.
+        self._affect_core = self._tom2 = self._xmodal = self._grid_place = None
+        self._emotion = None  # current categorical emotion (AffectCore over valence/arousal)
+        self._superadditive = False  # cross-modal vision+audio super-additive binding this tick
+        self._place_here = (
+            None  # the landmark/percept the grid-place map binds to the current position
+        )
+        try:
+            from snn_data_lake.cortex.affect_core import AffectCore, SecondOrderToM
+            from snn_data_lake.cortex.crossmodal_binder import CrossModalBinder
+            from snn_data_lake.hippocampus.grid_place_map import GridPlaceMap
+
+            self._affect_core = AffectCore(seed=self._seed)
+            self._tom2 = SecondOrderToM(seed=self._seed)
+            self._xmodal = CrossModalBinder(seed=self._seed)
+            self._grid_place = GridPlaceMap(seed=self._seed)
+        except Exception:
+            self._affect_core = self._tom2 = self._xmodal = self._grid_place = None
+
+        # W8: re-entrant (de-saturated) workspace + reconstructive episodic memory + homeostatic drives
+        self._reentrant = self._episodic = self._drives = None
+        self._reentrant_availability = (
+            1.0  # global availability -- can now be < 1.0 (a real access FAILURE)
+        )
+        self._reentrant_strength = (
+            1.0  # C1 #5: GRADED sustained-firing access strength (consumed into access-confidence)
+        )
+        self._dominant_drive = None
+        try:
+            from snn_data_lake.hippocampus.episodic_recall import EpisodicRecall
+            from snn_data_lake.hypothalamus.homeostatic_drives import HomeostaticDrives
+            from snn_data_lake.thalamus.reentrant_workspace import ReentrantWorkspace
+
+            self._reentrant = ReentrantWorkspace(seed=self._seed)
+            self._episodic = EpisodicRecall(seed=self._seed)
+            self._drives = HomeostaticDrives(seed=self._seed)
+        except Exception:
+            self._reentrant = self._episodic = self._drives = None
+
+        # C1 (batch 1): five NEW brain-native spiking faculties -- pure stdlib/numpy, representation-only,
+        # guarded. Spiking clock (Weber timing), learned affective appraisal (three-factor), task-set/
+        # set-shift, learned generative self-model (e-prop), continuous-attractor SPIKING grid (bump path
+        # integration). None drives the arm action path -- readouts only; the reflex/E-STOP is untouched.
+        self._time_clock = self._affect_appraisal = self._task_set = self._gsm = self._grid_can = (
+            None
+        )
+        self._elapsed_time = 0.0
+        self._timing_sd = 0.0
+        self._appraised = None
+        self._task_set_active = 0
+        self._task_switch_cost = 0.0
+        self._self_surprise_gen = 0.0
+        self._gsm_prev = None
+        self._grid_can_xy = None
+        self._grid_can_prev = None
+        try:
+            from snn_data_lake.amygdala.affective_appraisal import AffectiveAppraisal
+            from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _ACTS
+            from snn_data_lake.cortex.generative_self_model import GenerativeSelfModel
+            from snn_data_lake.cortex.task_set import TaskSetLayer
+            from snn_data_lake.cortex.time_cells import TimeCellClock
+            from snn_data_lake.hippocampus.spiking_grid_can import SpikingGridCAN
+
+            self._time_clock = TimeCellClock(n_cells=64, seed=self._seed)
+            self._affect_appraisal = AffectiveAppraisal(dim=9, seed=self._seed)
+            self._task_set = TaskSetLayer(n_sets=3, n_in=9, n_actions=len(_ACTS), seed=self._seed)
+            self._gsm = GenerativeSelfModel(dim=11, seed=self._seed)
+            self._grid_can = SpikingGridCAN(n=16, seed=self._seed)
+        except Exception:
+            self._time_clock = self._affect_appraisal = self._task_set = self._gsm = (
+                self._grid_can
+            ) = None
+
+        # C1 batch-2: three MORE brain-native pure-stdlib faculties -- N-agent recursive ToM (social),
+        # neuromod-fusion affect integrator with self-organized emotions (affect), counterfactual do()
+        # simulation over a learned local forward model (imagination). Representation-only; no arm route.
+        self._recursive_tom = self._affect_int = self._cfsim = None
+        self._false_beliefs = []
+        self._emergent_emotion = None
+        self._n_emotions = 0
+        self._imagined_best = None
+        self._imagined_surprise = 0.0
+        self._cf_prev = None
+        try:
+            from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _ACTS2
+            from snn_data_lake.cortex.counterfactual_sim import CounterfactualSim
+            from snn_data_lake.cortex.recursive_tom import RecursiveToM
+            from snn_data_lake.neuromodulation.affect_integrator import AffectIntegrator
+
+            self._recursive_tom = RecursiveToM(n_agents=3, seed=self._seed)
+            self._affect_int = AffectIntegrator(seed=self._seed)
+            self._cfsim = CounterfactualSim(dim=9, n_actions=len(_ACTS2), seed=self._seed)
+        except Exception:
+            self._recursive_tom = self._affect_int = self._cfsim = None
+
+        # C1 batch-3: whole-brain integration + learned perception faculties (numpy allowed now,
+        # representation-only, guarded). Learned spiking attention gate over the real percept stream;
+        # a connectome spike-ROUTER (signed/delayed propagation over the region graph -> loop reverberation);
+        # cross-region Kuramoto COHERENCE that biases the workspace ignition threshold. No actuator route.
+        self._learned_attn = self._connectome_router = self._region_coherence = None
+        self._attn_focus = None
+        self._connectome_reverb = 0.0
+        self._region_coherence_val = 0.0
+        try:
+            from snn_data_lake.cortex.learned_attention import LearnedAttention
+            from snn_data_lake.substrate.region_coherence import RegionCoherence
+            from snn_data_lake.thalamus.connectome_router import ConnectomeRouter
+
+            self._learned_attn = LearnedAttention(dim=64, n_bands=4, seed=self._seed)
+            self._connectome_router = ConnectomeRouter(seed=self._seed)
+            self._region_coherence = RegionCoherence(seed=self._seed)
+        except Exception:
+            self._learned_attn = self._connectome_router = self._region_coherence = None
+
+        # C1 batch-4: learned expected-value-of-control (executive), real-episode consolidation (memory),
+        # VSA relational structure-mapping / analogy (fluid reasoning). numpy allowed, representation-only, guarded.
+        self._learned_evc = self._episode_consolidator = self._structure_mapper = None
+        self._evc_cost = 0.0
+        self._evc_value = 0.0
+        self._episode_retained = 0.0
+        try:
+            from snn_data_lake.cortex.learned_evc import LearnedEVC
+            from snn_data_lake.hippocampus.episode_consolidation import EpisodeConsolidator
+            from snn_data_lake.reasoning.vsa_structure_mapping import StructureMapper
+
+            self._learned_evc = LearnedEVC(seed=self._seed)
+            self._episode_consolidator = EpisodeConsolidator(dim=256, capacity=64, seed=self._seed)
+            self._structure_mapper = StructureMapper(seed=self._seed)
+        except Exception:
+            self._learned_evc = self._episode_consolidator = self._structure_mapper = None
 
         # ---- PC-CORTEX PERCEPTION TIER (ZERO-DEP, checkpoint-gated): the deep spiking predictive-coding
         # cortex (cortex/pc_cortex_serve, snn_pcnet/1) served as an OPTIONAL generative perception encoder.
@@ -431,9 +651,11 @@ class Brain:
         self._pc_cortex_tier = "stdlib"
         try:
             import os
+
             _pc_ckpt = os.environ.get("SNN_PC_CKPT", "models/pc_cortex_nmnist.json")
             if os.path.exists(_pc_ckpt):
                 from snn_data_lake.cortex.pc_cortex_serve import PcCortexServe
+
                 self._pc_cortex = PcCortexServe.load(_pc_ckpt)
                 self._pc_cortex_tier = "pc-cortex"
         except Exception:
@@ -449,15 +671,17 @@ class Brain:
         # built only when nengo_compute() is called, never at birth). Reported as state()["nengo_tier"].
         try:
             import nengo  # noqa: F401
+
             self._nengo_tier = "nengo"
         except Exception:
             self._nengo_tier = "stdlib"
 
         # ---- offline consolidation substrates (pure-stdlib) ----
         self.attractor = AttractorNet(self._seed)
-        self._shy = None                                       # last SHY downscale-prune telemetry (set during sleep)
-        self._patterns = [frozenset((i * ATTR_K + j) % ATTR_N for j in range(ATTR_K))
-                          for i in range(3)]     # three K-sized assemblies (one per SAFE stimulus)
+        self._shy = None  # last SHY downscale-prune telemetry (set during sleep)
+        self._patterns = [
+            frozenset((i * ATTR_K + j) % ATTR_N for j in range(ATTR_K)) for i in range(3)
+        ]  # three K-sized assemblies (one per SAFE stimulus)
         self._stored_any = False
         self.buffer = ReplayBuffer(seed=self._seed)
 
@@ -482,10 +706,13 @@ class Brain:
         # ---- access-consciousness (Global Neuronal Workspace): bundle grown neurons -> ignite ----
         # ACCESS consciousness = global availability / ignition (Dehaene-Baars), a FUNCTIONAL
         # correlate. NOT phenomenal: never claims the brain feels or is sentient (see respond()).
-        self._percepts = len(self._explore)   # rotating stimuli = distinct perceptual assemblies
-        self._access_ema = 0.0                 # running access-consciousness index in [0,1]
-        self._access_state = {}                # last GNW readout (ignited / availability / n_bound)
-        self._access_hold = {"content": None, "strength": 0.0}   # W2e: SUSTAINED cross-tick broadcast (decaying reverberation)
+        self._percepts = len(self._explore)  # rotating stimuli = distinct perceptual assemblies
+        self._access_ema = 0.0  # running access-consciousness index in [0,1]
+        self._access_state = {}  # last GNW readout (ignited / availability / n_bound)
+        self._access_hold = {
+            "content": None,
+            "strength": 0.0,
+        }  # W2e: SUSTAINED cross-tick broadcast (decaying reverberation)
 
         # ---- telemetry / bookkeeping ----
         self._wake_ticks = 0
@@ -511,12 +738,14 @@ class Brain:
         the manual off-switch env NORD_TORCH=0 (or torch genuinely absent) -> None (growth reports zero;
         the wake + sleep-consolidation + self-model paths still run on the stdlib narrator)."""
         import os
-        if os.environ.get("NORD_TORCH") == "0":                # manual off-switch: disable the torch tier
+
+        if os.environ.get("NORD_TORCH") == "0":  # manual off-switch: disable the torch tier
             return None
         try:
             import torch
 
             from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
+
             dev = device
             if dev == "cuda" and not torch.cuda.is_available():
                 dev = "cpu"
@@ -535,31 +764,31 @@ class Brain:
         homeo_load = 0.0
         if self._ach is not None:
             try:
-                self._ach.step(novelty)   # ACh rises on novelty (encode/retrieve)
+                self._ach.step(novelty)  # ACh rises on novelty (encode/retrieve)
                 live.add("neuromod_acetylcholine")
             except Exception:
                 pass
         if self._lc is not None:
             try:
-                self._lc.step(salience)                 # LC/NA phasic gain on salient events
+                self._lc.step(salience)  # LC/NA phasic gain on salient events
                 live.add("neuromod_locus_coeruleus")
             except Exception:
                 pass
         if self._raphe is not None:
             try:
-                self._raphe.step(base)                  # 5-HT tracks the slow circadian context
+                self._raphe.step(base)  # 5-HT tracks the slow circadian context
                 live.add("neuromod_raphe_serotonin")
             except Exception:
                 pass
         if self._astro is not None:
             try:
-                self._astro.step([novelty, max(0.0, 1.0 - base)])   # slow glial gain
+                self._astro.step([novelty, max(0.0, 1.0 - base)])  # slow glial gain
                 live.add("neuromod_astrocyte")
             except Exception:
                 pass
         if self._homeostat is not None:
             try:
-                sp = temp_setpoint(self.clock.phase)    # SCN-paced moving thermal set-point
+                sp = temp_setpoint(self.clock.phase)  # SCN-paced moving thermal set-point
                 self._homeo_x, err = self._homeostat.step(self._homeo_x, sp)
                 homeo_load = min(1.0, abs(err) / self._homeo_scale)
                 live.add("hypothalamus_set_points")
@@ -567,7 +796,7 @@ class Brain:
                 pass
         if self._ring is not None:
             try:
-                vel = _mean(ctx["visual"]) - _mean(ctx["audio"])   # context -> shift
+                vel = _mean(ctx["visual"]) - _mean(ctx["audio"])  # context -> shift
                 self._ring.step(vel)
                 live.add("hippocampus_ring_attractor")
             except Exception:
@@ -595,9 +824,51 @@ class Brain:
                 lp_unit = 0.0
         return mean, lp_unit
 
+    def _attend_real_stream(self, latent, gain):
+        """W9: ATTENTION over the REAL percept stream. Pool the high-D encoder latent down to the arm's
+        4-d sensory channel by bottom-up SALIENCE (per-band feature magnitude) under divisive
+        normalization (Reynolds-Heeger contrast constancy), amplified by a TOP-DOWN gain that rises with
+        novelty -- so the brain attends harder to novel stimuli. Pure/representation-only: it produces a
+        sensory channel, adds no actuator route, and NEVER sources the distance/E-STOP channel. Returns
+        {channel:[0,1]^4, band, focus}, or None when the latent is too short."""
+        n = len(latent)
+        if n < 4:
+            return None
+        b = n // 4
+        sal = [
+            sum(latent[i * b : (i + 1) * b]) / b for i in range(4)
+        ]  # bottom-up salience per band
+        tot = sum(sal) or 1.0
+        mean_sal = tot / 4.0
+        g = 1.0 + max(0.0, min(1.0, gain))  # top-down gain (attend novel harder)
+        chan = [
+            min(1.0, max(0.0, (s / (mean_sal + 1e-6)) * 0.4 * g)) for s in sal
+        ]  # divisive-norm contrast
+        w = max(range(4), key=lambda i: sal[i])  # the attended (winning) feature band
+        return {"channel": chan, "band": w, "focus": round(max(sal) / tot, 3)}
+
     def _safe_ctx(self):
-        """The current SAFE stimulus (rotates; distance pinned SAFE so the E-STOP never trips)."""
-        return self._explore[self._wake_ticks % len(self._explore)]
+        """The current SAFE stimulus (rotates; distance pinned SAFE so the E-STOP never trips). W9
+        perception-UNIFY: when a real percept is live, the visual/audio sensory channels the arm decides
+        on are DRIVEN by the attention-pooled REAL stream -- perception enters the main sensorimotor loop
+        instead of sitting in a side channel. distance (the ONLY E-STOP channel) stays pinned SAFE and is
+        never sourced from perception, so the reflex is byte-identical; torch off (no real percept) falls
+        back to the synthetic band, so the zero-dep path is unchanged."""
+        base = self._explore[self._wake_ticks % len(self._explore)]
+        g = 0.5 * float(self._real_novelty)
+        va = self._attend_real_stream(self._real_percept, g) if self._real_percept else None
+        aa = self._attend_real_stream(self._audio_percept, g) if self._audio_percept else None
+        if va is None and aa is None:
+            self._perception_unified = False
+            return base
+        self._attn_real = va or aa  # the vision stream drives the attention readout
+        self._perception_unified = True
+        return {
+            "visual": (va or {}).get("channel", base["visual"]),
+            "temperature": base["temperature"],
+            "audio": (aa or {}).get("channel", base["audio"]),
+            "distance": base["distance"],
+        }  # E-STOP channel untouched
 
     def perceive_event(self, frame):
         """OPTIONAL hybrid-tier perception: encode an N-MNIST-style event frame ([T,C,H,W] or
@@ -623,10 +894,10 @@ class Brain:
             i = self._real_ptr % len(self._real_frames)
             self._real_ptr += 1
             frame = self._real_frames[i]
-            latent = self.perceive_event(frame)                 # torch spiking encoder -> latent (dim 64)
+            latent = self.perceive_event(frame)  # torch spiking encoder -> latent (dim 64)
             if latent is None:
                 return None
-            pred = int(self._perception_enc.classify(frame))    # rate readout -> perceived digit
+            pred = int(self._perception_enc.classify(frame))  # rate readout -> perceived digit
             label = int(self._real_labels[i])
             self._perc_seen += 1
             self._perc_hits += int(pred == label)
@@ -634,7 +905,9 @@ class Brain:
             self._perceived_digit = pred
             vals = [float(v) for v in (latent.tolist() if hasattr(latent, "tolist") else latent)]
             mx = max(vals) or 1.0
-            return [min(1.0, max(0.0, v / mx)) for v in vals]   # normalize spike counts -> [0,1]^64 percept
+            return [
+                min(1.0, max(0.0, v / mx)) for v in vals
+            ]  # normalize spike counts -> [0,1]^64 percept
         except Exception:
             return None
 
@@ -649,10 +922,10 @@ class Brain:
             i = self._audio_ptr % len(self._audio_frames)
             self._audio_ptr += 1
             frame = self._audio_frames[i]
-            latent = self._audio_enc.encode(frame)              # e-prop spiking auditory encoder -> latent
+            latent = self._audio_enc.encode(frame)  # e-prop spiking auditory encoder -> latent
             if latent is None:
                 return None
-            pred = int(self._audio_enc.classify(frame))         # rate readout -> perceived spoken digit
+            pred = int(self._audio_enc.classify(frame))  # rate readout -> perceived spoken digit
             label = int(self._audio_labels[i])
             self._audio_seen += 1
             self._audio_hits += int(pred == label)
@@ -671,7 +944,10 @@ class Brain:
         (real perception now contributes to consciousness, not just a class label). Representation-only, no
         actuator route -- the reflex/E-STOP path is untouched (this runs off the tick's real-percept latents)."""
         self._real_novelty *= 0.8
-        for percept, attr in ((self._real_percept, "_vis_learner"), (self._audio_percept, "_aud_learner")):
+        for percept, attr in (
+            (self._real_percept, "_vis_learner"),
+            (self._audio_percept, "_aud_learner"),
+        ):
             if not percept:
                 continue
             learner = getattr(self, attr)
@@ -679,13 +955,125 @@ class Brain:
                 learner = GrowingLearner(vigilance=0.86, dim=len(percept))
                 setattr(self, attr, learner)
             try:
-                _, grew = learner.observe(percept)             # form/refine a real-stimulus prototype
+                _, grew = learner.observe(percept)  # form/refine a real-stimulus prototype
                 if grew:
-                    self._real_novelty = 1.0                   # a genuinely new real stimulus category
+                    self._real_novelty = 1.0  # a genuinely new real stimulus category
             except Exception:
                 pass
-        self._real_units = ((self._vis_learner.n_units if self._vis_learner else 0)
-                            + (self._aud_learner.n_units if self._aud_learner else 0))
+        self._real_units = (self._vis_learner.n_units if self._vis_learner else 0) + (
+            self._aud_learner.n_units if self._aud_learner else 0
+        )
+        # W6: fuse the two real modalities into a super-additive BOUND object (cross-modal binding)
+        if self._xmodal is not None and self._real_percept and self._audio_percept:
+            try:
+                self._superadditive = bool(
+                    self._xmodal.bind(self._real_percept, self._audio_percept).get("superadditive")
+                )
+            except Exception:
+                self._superadditive = False
+        # W6: bind the perceived stimulus to the current allocentric PLACE (grid + place cells)
+        if self._grid_place is not None and self._perceived_digit is not None:
+            try:
+                allo = getattr(getattr(self.brain, "arm", None), "_allo", None)
+                pos = allo.position if allo is not None else None
+                if pos is not None:
+                    self._grid_place.observe(tuple(pos), self._perceived_digit)
+                    self._place_here = self._grid_place.place_at(tuple(pos))
+            except Exception:
+                pass
+
+    def _route_percept_to_action(self):
+        """W5: route the tick's COMPUTED signals into the arm's action selection for the NEXT tick, as a BOUNDED
+        representation-only top-down drive (NEVER bypasses the reflex/E-STOP or the actuator gate). A novel real
+        percept (real_novelty) or an ignited global workspace RAISES the drive of the non-HOLD actions -- so real
+        perception + conscious access now ENGAGE the brain (act rather than hold) instead of only updating
+        telemetry. The BG Go/NoGo caution damps release + the reflex preempts, so this stays safe."""
+        try:
+            from snn_data_lake.brainstem.autonomous_loop import ACTIONS, SAFE_ACTION
+
+            engage = 0.15 * float(
+                self._real_novelty
+            )  # a novel real stimulus -> curiosity-driven engagement
+            if self._access_state.get("ignited"):
+                engage += 0.05  # an ignited global workspace adds a small engage drive
+            self.brain.arm._ext_drive = (
+                [0.0 if a == SAFE_ACTION else engage for a in ACTIONS] if engage > 0.0 else None
+            )
+        except Exception:
+            pass
+
+    def _w8_tick(self, res):
+        """W8: advance the homeostatic DRIVES, run the DE-SATURATED re-entrant workspace (availability can now
+        FAIL, unlike the saturated GNW), and encode an episode for reconstructive recall. Representation-only --
+        no actuator route, reflex/E-STOP untouched."""
+        if self._drives is not None:
+            try:
+                self._drives.tick(str(res.get("action") or "rest"))
+                self._dominant_drive = self._drives.dominant_drive()
+            except Exception:
+                pass
+        if self._reentrant is not None:
+            try:  # a percept coalition competes with a baseline self coalition
+                sal = min(
+                    1.0, float(self._pc_surprise or 0.0) / 8.0 + 0.2 * float(self._real_novelty)
+                )
+                self._reentrant.submit(
+                    "percept",
+                    self._perceived_digit if self._perceived_digit is not None else "ctx",
+                    sal,
+                )
+                self._reentrant.submit("self", "self", 0.5)
+                sal_thr = min(
+                    1.0, float(res.get("threat") or 0.0) + 0.5 * float(self._real_novelty)
+                )  # C1 #5: a salience/threat coalition competes -- a strong salient event can MASK a weak percept (inattentional blindness), a calm tick with nothing salient FAILS to ignite
+                self._reentrant.submit(
+                    "salience", ("threat" if (res.get("threat") or 0.0) > 0.3 else "novel"), sal_thr
+                )
+                self._reentrant_availability = round(
+                    float(self._reentrant.step().get("availability", 1.0)), 3
+                )
+                self._reentrant_strength = round(
+                    float(self._reentrant.access_strength()), 3
+                )  # C1 #5: GRADED sustained-firing access strength (de-saturates; decays as the re-entrant sustain fades)
+            except Exception:
+                pass
+        if (
+            self._wake_ticks % 5 == 0
+        ):  # accumulate autobiographical episodes (reconstruction + durable consolidation)
+            _ep = {
+                "who": "self",
+                "what": str(res.get("action") or "rest"),
+                "where": str(self._place_here),
+                "when": str(self._wake_ticks),
+                "affect": self._emotion or "calm",
+            }
+            if self._episodic is not None:
+                try:
+                    self._episodic.encode(_ep)
+                except Exception:
+                    pass
+            if (
+                self._episode_consolidator is not None
+            ):  # C1 b4: the REAL episode enters the durable sparse attractor
+                try:
+                    self._episode_consolidator.store(self._episode_consolidator.encode(_ep))
+                    self._episode_retained = round(float(self._episode_consolidator.retained()), 3)
+                except Exception:
+                    pass
+
+    def propose_improvements(self, budget=6):
+        """W6: the brain autonomously PROPOSES candidate self-improvements (bounded parameter tweaks over a
+        developer-whitelisted space) from its OWN metrics -- a 'what to try next' generator, the piece the
+        self-mod harness previously lacked. STRICTLY PROPOSER-ONLY: returns candidates for the DISABLED,
+        sandboxed self_mod_harness to sandbox-test; it APPLIES NOTHING to the real tree, touches no brainstem/
+        safety file, and NEVER enables the harness. Returns [] when unavailable. Human-invoked, not autonomous."""
+        try:
+            from snn_data_lake.reasoning.improvement_proposer import ImprovementProposer
+
+            metrics = {k: float(v) for k, v in self.state().items() if isinstance(v, (int, float))}
+            return ImprovementProposer(seed=self._seed).propose(metrics, budget=budget)
+        except Exception:
+            return []
 
     def perceive_pc(self, x):
         """OPTIONAL PC-cortex perception: settle the deep spiking predictive-coding cortex (snn_pcnet/1,
@@ -711,6 +1099,7 @@ class Brain:
             return f(vec)
         try:
             from snn_data_lake.substrate.nengo_bridge import NengoNEF
+
             dims = len(vec) if hasattr(vec, "__len__") else 1
             return NengoNEF(dims=dims, n_neurons=n_neurons, seed=self._seed).run(vec, f, t)
         except Exception:
@@ -725,10 +1114,12 @@ class Brain:
         ensemble_live, homeo_load = self._tick_ensemble(ctx, prev)
         circ_load = max(0.0, 1.0 - self._baseline)
         load = min(1.0, 0.7 * circ_load + 0.3 * homeo_load)
-        res = self.brain.tick(ctx, homeostatic_load=load)   # safety lives in here
-        pcs = float(res.get("pc_surprise", 0.0) or 0.0)     # live generative-percept prediction-error
+        res = self.brain.tick(ctx, homeostatic_load=load)  # safety lives in here
+        pcs = float(res.get("pc_surprise", 0.0) or 0.0)  # live generative-percept prediction-error
         self._pc_surprise = round(pcs, 4)
-        self._pc_surprise_ema = pcs if self._wake_ticks == 0 else 0.95 * self._pc_surprise_ema + 0.05 * pcs
+        self._pc_surprise_ema = (
+            pcs if self._wake_ticks == 0 else 0.95 * self._pc_surprise_ema + 0.05 * pcs
+        )
         if res.get("reflex"):
             self._reflex_ever = True
         self._lp_mean, lp_unit = self._curiosity_lp(res.get("unit"))
@@ -744,22 +1135,39 @@ class Brain:
             except Exception:
                 pass
         self._regions_live = _regions_for(self.brain.arm, res, ensemble_live)
-        if self._novelty is not None:               # L5 LIVE: generalizing pseudo-count over the wake raster
+        if self._novelty is not None:  # L5 LIVE: generalizing pseudo-count over the wake raster
             try:
-                vec = (list(ctx["visual"]) + list(ctx["temperature"])
-                       + list(ctx["audio"]) + [ctx["distance"]])
-                self._novelty_live = round(self._novelty.bonus(vec), 4)   # ~1/sqrt(N): habituates as niches revisit
+                vec = (
+                    list(ctx["visual"])
+                    + list(ctx["temperature"])
+                    + list(ctx["audio"])
+                    + [ctx["distance"]]
+                )
+                self._novelty_live = round(
+                    self._novelty.bonus(vec), 4
+                )  # ~1/sqrt(N): habituates as niches revisit
             except Exception:
                 pass
-        self._interval_timer += 1                    # INTERVAL TIMING: ramp wake ticks since this episode began
-        self._real_percept = self._perceive_real()   # W3b: perceive a REAL N-MNIST event-vision frame this wake tick
-        self._audio_percept = self._perceive_audio()  # W3c: perceive a REAL SHD event-audio frame this wake tick
-        self._consume_perception()                    # W4a: CONSUME the real percept -> prototype learning + novelty
-        self._update_access()                       # bundle grown neurons -> workspace ignition
+        self._interval_timer += 1  # INTERVAL TIMING: ramp wake ticks since this episode began
+        self._real_percept = (
+            self._perceive_real()
+        )  # W3b: perceive a REAL N-MNIST event-vision frame this wake tick
+        self._audio_percept = (
+            self._perceive_audio()
+        )  # W3c: perceive a REAL SHD event-audio frame this wake tick
+        self._consume_perception()  # W4a: CONSUME the real percept -> prototype learning + novelty
+        self._update_access()  # bundle grown neurons -> workspace ignition
         if self._access_state.get("ignited"):
             self._regions_live.add("cortex_access_consciousness")
-        self._observe_self_wake(res)                 # feed REAL signals into the self-model
-        self._update_metacog()                       # metacognition -> control (reliability + gates)
+        self._route_percept_to_action()  # W5: route computed signals -> the NEXT tick's action selection
+        self._w8_tick(res)  # W8: drives + de-saturated re-entrant workspace + episodic encode
+        self._c1_tick(
+            res, ctx
+        )  # C1: spiking clock + affective appraisal + task-set + grid-CAN (readouts)
+        self._observe_self_wake(
+            res
+        )  # feed REAL signals into the self-model (+ C1 generative self-model)
+        self._update_metacog()  # metacognition -> control (reliability + gates)
         self._last_res = res
         self._wake_ticks += 1
         return self.state()
@@ -772,16 +1180,205 @@ class Brain:
             st = self.self_model.state()
             # fold only the SURPRISE SPIKE above the running perceptual baseline (habituate to constant
             # prediction error, react to the unexpected) -> a stable brain's reliability is NOT crushed.
-            raw, ema = float(getattr(self, "_pc_surprise", 0.0)), float(getattr(self, "_pc_surprise_ema", 0.0))
+            raw, ema = (
+                float(getattr(self, "_pc_surprise", 0.0)),
+                float(getattr(self, "_pc_surprise_ema", 0.0)),
+            )
             pc_dev = min(1.0, max(0.0, raw - ema) / (ema + 1e-6)) if ema > 0.0 else 0.0
-            self._metacog.update(confidence=st["confidence"], surprise=float(st["surprise"][0]),
-                                 learning_progress=float(st["learning_progress"][0]),
-                                 novelty=min(1.0, float(st["surprise"][0]) + 0.3 * pc_dev))   # perceptual surprise SPIKE raises uncertainty
+            self._metacog.update(
+                confidence=st["confidence"],
+                surprise=float(st["surprise"][0]),
+                learning_progress=float(st["learning_progress"][0]),
+                novelty=min(1.0, float(st["surprise"][0]) + 0.3 * pc_dev),
+            )  # perceptual surprise SPIKE raises uncertainty
             self._metacog_rel = round(self._metacog.reliability(), 4)
             self._metacog_hold = bool(self._metacog.hold())
             self._metacog_explore = bool(self._metacog.explore())
         except Exception:
             pass
+
+    def _c1_tick(self, res, ctx):
+        """C1 batch-1 faculties on the live wake tick (representation-only -- readouts, no actuator route,
+        reflex/E-STOP untouched). Spiking clock (Weber timing, resets on a salient new stimulus), learned
+        affective appraisal (three-factor, learns under an aversive teaching signal), task-set/set-shift
+        (holds a set, shifts under sustained ACC conflict + low reward), and the continuous-attractor
+        SPIKING grid (bump path integration from the allocentric self-motion)."""
+        ctx = ctx or {}
+        feat = [
+            float(x)
+            for x in (
+                list(ctx.get("visual", []))
+                + list(ctx.get("temperature", []))
+                + list(ctx.get("audio", []))
+            )
+        ]
+        feat = (feat + [0.0] * 9)[:9]  # 9-d percept+context feature vector in [0,1]
+        if self._time_clock is not None:
+            try:
+                if (
+                    float(self._real_novelty) > 0.5
+                ):  # a salient new stimulus starts a fresh timed interval
+                    self._time_clock.reset()
+                self._elapsed_time, self._timing_sd = self._time_clock.tick()
+            except Exception:
+                pass
+        if self._affect_appraisal is not None:
+            try:
+                v, a = self._affect_appraisal.appraise(feat)
+                self._appraised = (round(float(v), 3), round(float(a), 3))
+                thr = float(res.get("threat") or 0.0)
+                # CONTINUOUS three-factor learning from the live affect signals (not only under threat):
+                # valence ~ approach/avoid (learning-progress minus threat), arousal ~ salience (novelty + threat),
+                # third factor (neuromod) rises under threat so aversive appraisals are learned faster.
+                tgt_v = max(-1.0, min(1.0, float(self._lp_mean or 0.0) - thr))
+                tgt_a = max(0.0, min(1.0, 0.5 * float(self._real_novelty) + thr))
+                self._affect_appraisal.learn(feat, tgt_v, tgt_a, neuromod=(1.0 + thr))
+            except Exception:
+                pass
+        if self._task_set is not None:
+            try:
+                self._task_set.step()  # advance the WM pool / settle confidence
+                conflict = float(getattr(self.brain.arm, "_conflict", 0.0))
+                reward = float(self._lp_mean or 0.0)
+                self._task_set_active = int(self._task_set.observe(conflict, reward))
+                self._task_switch_cost = round(float(self._task_set.last_switch_cost), 3)
+            except Exception:
+                pass
+        if self._grid_can is not None:
+            try:
+                allo = getattr(getattr(self.brain, "arm", None), "_allo", None)
+                pos = allo.position if allo is not None else None
+                if pos is not None:
+                    if (
+                        self._grid_can_prev is not None
+                    ):  # integrate the self-motion velocity in the spiking bump
+                        vel = (pos[0] - self._grid_can_prev[0], pos[1] - self._grid_can_prev[1])
+                        self._grid_can.step(vel)
+                        self._grid_can_xy = tuple(
+                            round(float(c), 3) for c in self._grid_can.decode()
+                        )
+                    self._grid_can_prev = pos
+            except Exception:
+                pass
+        if (
+            self._affect_int is not None
+        ):  # C1 b2: fuse the live neuromodulators -> coupled affect + self-organized emotion
+            try:
+                thr = float(res.get("threat") or 0.0)
+                rew = max(0.0, float(getattr(self.brain.arm, "_rpe", 0.0) or 0.0))
+                _raphe = getattr(self, "_raphe", None)
+                mood = float(getattr(_raphe, "level", 0.0) or 0.0) if _raphe is not None else 0.0
+                _cort = getattr(self.brain.arm, "cort", None)
+                cortl = float(getattr(_cort, "level", 0.0) or 0.0) if _cort is not None else 0.0
+                av, aa = self._affect_int.integrate(thr, rew, mood, cortl)
+                self._affect_int.observe(
+                    av, aa
+                )  # online self-organization of emergent emotion prototypes
+                self._emergent_emotion = self._affect_int.label()
+                self._n_emotions = int(self._affect_int.n_emotions)
+            except Exception:
+                pass
+        if (
+            self._cfsim is not None
+        ):  # C1 b2: counterfactual do()-operator over a learned local forward model (annotation only)
+            try:
+                from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _A
+
+                acts = list(range(len(_A)))
+                ranked = self._cfsim.counterfactual(
+                    feat, acts, 2, lambda z: sum(z)
+                )  # value = imagined activation (placeholder)
+                if ranked:
+                    self._imagined_best = _A[ranked[0][0]]
+                    ls = getattr(self._cfsim, "last_surprise", 0.0)
+                    self._imagined_surprise = round(
+                        float(ls.get(ranked[0][0], 0.0))
+                        if isinstance(ls, dict)
+                        else float(ls or 0.0),
+                        4,
+                    )
+                act = res.get("action")
+                if (
+                    self._cf_prev is not None and act in _A
+                ):  # train the forward model on the observed latent transition (local e-prop)
+                    self._cfsim.learn(self._cf_prev, _A.index(act), feat)
+                self._cf_prev = list(feat)
+            except Exception:
+                pass
+        if (
+            self._learned_attn is not None and self._real_percept
+        ):  # C1 b3: LEARNED spiking attention over the real percept stream
+            try:
+                self._learned_attn.attend(self._real_percept, goal=None)
+                self._attn_focus = self._learned_attn.focus
+                self._learned_attn.learn(
+                    float(self._lp_mean or 0.0) - float(res.get("threat") or 0.0)
+                )
+            except Exception:
+                pass
+        if (
+            self._connectome_router is not None
+        ):  # C1 b3: live signed/delayed spike propagation over the connectome graph
+            try:
+                nodes = set(self._connectome_router.regions)
+                sal = min(
+                    1.0, float(self._pc_surprise or 0.0) / 8.0 + 0.2 * float(self._real_novelty)
+                )
+                cand = {
+                    "ctx_sensory": sal,
+                    "gwt": 1.0 if self._access_state.get("ignited") else 0.0,
+                    "ctx_pfc": 0.5,
+                    "bla": float(res.get("threat") or 0.0),
+                    "vta_snc": max(0.0, float(getattr(self.brain.arm, "_rpe", 0.0) or 0.0)),
+                }
+                drive = {k: v for k, v in cand.items() if k in nodes and v > 0.0}
+                if drive:
+                    self._connectome_router.step(drive)
+                seed = next((n for n in ("ec", "ctx_sensory", "gwt") if n in nodes), None)
+                if (
+                    seed is not None and self._wake_ticks % 5 == 0
+                ):  # loop-closure readout (sparse -- reverberation snapshots the net)
+                    self._connectome_reverb = round(
+                        float(self._connectome_router.reverberation(seed, 6)), 3
+                    )
+            except Exception:
+                pass
+        if (
+            self._region_coherence is not None
+        ):  # C1 b3: cross-region Kuramoto coherence -> biases the workspace ignition threshold
+            try:
+                rasters = {
+                    "percept": min(
+                        1.0, float(self._pc_surprise or 0.0) / 8.0 + 0.2 * float(self._real_novelty)
+                    ),
+                    "access": float(getattr(self, "_reentrant_strength", 0.0) or 0.0),
+                    "affect": abs(float((self._appraised or (0.0, 0.0))[0])),
+                    "threat": float(res.get("threat") or 0.0),
+                    "reward": max(0.0, float(getattr(self.brain.arm, "_rpe", 0.0) or 0.0)),
+                    "drive": 0.5,
+                }
+                cr = self._region_coherence.update(rasters)
+                self._region_coherence_val = round(float(cr.get("coherence", 0.0)), 3)
+                if (
+                    self._reentrant is not None
+                ):  # higher cross-region coherence -> lower rheobase -> easier ignition
+                    thr = float(self._region_coherence.ignition_bias(0.55))
+                    self._reentrant.ignition_threshold = thr
+                    self._reentrant._v_th = thr / self._reentrant._LEAK
+            except Exception:
+                pass
+        if (
+            self._learned_evc is not None
+        ):  # C1 b4: LEARNED expected-value-of-control (cost/value learned online, three-factor)
+            try:
+                conflict = float(getattr(self.brain.arm, "_conflict", 0.0))
+                gain = self._learned_evc.allocate(conflict, 0.5)
+                reward = float(self._lp_mean or 0.0) - float(res.get("threat") or 0.0)
+                self._learned_evc.learn(engaged=(gain > 0.0), reward=reward)
+                self._evc_cost = round(float(self._learned_evc.cost), 3)
+                self._evc_value = round(float(self._learned_evc.value), 3)
+            except Exception:
+                pass
 
     def _observe_self_wake(self, res):
         """Fold this wake tick's REAL brain signals into the evolving self-model. valence is an
@@ -799,7 +1396,11 @@ class Brain:
             learning_progress=lp,
             self_predict_acc=acc,
             surprise=round(1.0 - acc, 6),
-            access_index=self._access_ema,
+            access_index=round(
+                0.5 * float(self._access_ema)
+                + 0.5 * float(getattr(self, "_reentrant_strength", 1.0)),
+                6,
+            ),  # C1 #5: the GRADED de-saturated workspace access strength now feeds access-confidence -- weak/masked content that fails to hold the workspace lowers confidence -> metacog hold (was the saturated AccessConsciousness index alone)
             ignited=bool(self._access_state.get("ignited", False)),
             grown_units=grown,
             phase=round(self.clock.phase, 6),
@@ -809,6 +1410,33 @@ class Brain:
             consolidation=self._consolidation_acc,
             nights=self._nights,
         )
+        if (
+            self._gsm is not None
+        ):  # C1: LEARNED generative self-model -- predict own next self-signal, surprise = prediction error (e-prop, no BPTT)
+            try:
+                svec = [
+                    min(1.0, float(goal) / 10.0),
+                    max(0.0, min(1.0, float(lp))),
+                    float(acc),
+                    round(1.0 - acc, 6),
+                    float(self._access_ema),
+                    1.0 if self._access_state.get("ignited") else 0.0,
+                    min(1.0, float(grown) / 64.0),
+                    round(self.clock.phase, 6),
+                    (max(-1.0, min(1.0, float(valence))) + 1.0) / 2.0,
+                    float(res.get("threat") or 0.0),
+                    float(self._consolidation_acc),
+                ]  # all normalized to [0,1] so the forward model can predict its own trajectory
+                if self._gsm_prev is not None:
+                    self._gsm.predict(
+                        self._gsm_prev
+                    )  # predict THIS tick from the previous self-signal
+                    self._self_surprise_gen = round(
+                        float(self._gsm.observe(svec)), 4
+                    )  # surprise vs prediction + local update
+                self._gsm_prev = svec
+            except Exception:
+                pass
 
     def _update_access(self):
         """Bundle THIS percept's grown-neuron assembly into a Global-Neuronal-Workspace and IGNITE
@@ -819,26 +1447,38 @@ class Brain:
         -- it is NOT and never claims phenomenal/subjective experience (see respond())."""
         p = self._wake_ticks % self._percepts
         grown = self.neuro.grown_units if self.neuro is not None else 0
-        n_total = len(self.brain.arm.q) + grown + self._real_units  # + W4a learned real-perception prototypes (consumed into access)
-        sustained = float(self._access_hold.get("strength", 0.0))   # W2e: a recent ignition still reverberating
+        n_total = (
+            len(self.brain.arm.q) + grown + self._real_units
+        )  # + W4a learned real-perception prototypes (consumed into access)
+        sustained = float(
+            self._access_hold.get("strength", 0.0)
+        )  # W2e: a recent ignition still reverberating
         # RE-ROUTE: held broadcast content recruits a LARGER coherent assembly on this tick (ignition on tick t
         # biases processing on t+1 -- the specialist re-entry the workspace previously lacked). Still capped at 8.
         k = min(2 + n_total // self._percepts + int(round(2 * sustained)), 8)
         try:
             ac = AccessConsciousness(seed=self._seed)
-            ac.bind_assembly([f"p{p}#{i}" for i in range(k)])   # co-active percept = coherent
-            ac.step()                                           # ignition + all-or-none broadcast
+            ac.bind_assembly([f"p{p}#{i}" for i in range(k)])  # co-active percept = coherent
+            ac.step()  # ignition + all-or-none broadcast
             self._access_state = ac.state()
             idx = self._access_state.get("access_index", 0.0)
             # SUSTAINED ACCESS: ignited content is HELD across ticks (decaying), not rebuilt from scratch each tick;
             # a live hold keeps global availability elevated (reverberation), so access is a sustained state not a flicker.
             if bool(self._access_state.get("ignited", False)):
-                content = (f"digit-{self._perceived_digit}"                 # W3b: REAL perceived content in the workspace
-                           if self._perceiving_real and self._perceived_digit is not None else f"p{p}")
+                content = (
+                    f"digit-{self._perceived_digit}"  # W3b: REAL perceived content in the workspace
+                    if self._perceiving_real and self._perceived_digit is not None
+                    else f"p{p}"
+                )
                 self._access_hold = {"content": content, "strength": 1.0}
             else:
-                self._access_hold = {"content": self._access_hold.get("content"), "strength": round(0.6 * sustained, 4)}
-            eff = idx + 0.3 * self._access_hold["strength"] * (1.0 - idx)   # held broadcast sustains availability
+                self._access_hold = {
+                    "content": self._access_hold.get("content"),
+                    "strength": round(0.6 * sustained, 4),
+                }
+            eff = idx + 0.3 * self._access_hold["strength"] * (
+                1.0 - idx
+            )  # held broadcast sustains availability
             self._access_ema = round(0.9 * self._access_ema + 0.1 * eff, 6)
         except Exception:
             self._access_state = {}
@@ -849,32 +1489,47 @@ class Brain:
         night's growth/consolidation become real autobiographical episodes in the self-model."""
         if self.neuro is not None:
             try:
-                self.neuro.tick()                              # GROW NG-SNN neurons (torch tier)
+                self.neuro.tick()  # GROW NG-SNN neurons (torch tier)
+            except Exception:
+                pass
+        if (
+            self._episode_consolidator is not None
+        ):  # C1 b4: sleep REPLAY consolidates the real episodes (no forgetting)
+            try:
+                self._episode_consolidator.replay(steps=60)
+                self._episode_retained = round(float(self._episode_consolidator.retained()), 3)
             except Exception:
                 pass
         try:
             s = self._seed * 7 + self._sleep_ticks + 1
             self.attractor.sleep(seed=s, episodes=3, learn=True)
-            self._shy = self.attractor.downscale_prune()       # SHY: hard-prune the weakest synapses (energy saved)
+            self._shy = (
+                self.attractor.downscale_prune()
+            )  # SHY: hard-prune the weakest synapses (energy saved)
             if self._stored_any:
                 self._consolidation_acc = self.attractor.accuracy(self._patterns, 100)
         except Exception:
             pass
         try:
-            self.buffer.replay(self.brain.arm.q, self.brain.arm.lr)   # value only
+            self.buffer.replay(self.brain.arm.q, self.brain.arm.lr)  # value only
         except Exception:
             pass
-        try:                                                   # GWT/integration: an agnostic PERTURBATIONAL-COMPLEXITY
-            if self._nights % 4 == 0:                          # readout (offline, occasional -> bounded cost). Coupling
+        try:  # GWT/integration: an agnostic PERTURBATIONAL-COMPLEXITY
+            if self._nights % 4 == 0:  # readout (offline, occasional -> bounded cost). Coupling
                 from snn_data_lake.cortex.integration_measure import (
                     PerturbationalComplexity,  # tracks the brain's
                 )
-                cpl = 1.0 + max(0.0, min(0.6, float(self._criticality)))                        # own dynamical regime.
-                self._pci = round(PerturbationalComplexity(n=10, coupling=cpl, noise=0.45,
-                                                           seed=self._seed).pci(trials=3, n_perturb=2, steps=40)[0], 4)
-        except Exception:                                      # HONEST: measures substrate integration, NOT phenomenal experience
+
+                cpl = 1.0 + max(0.0, min(0.6, float(self._criticality)))  # own dynamical regime.
+                self._pci = round(
+                    PerturbationalComplexity(n=10, coupling=cpl, noise=0.45, seed=self._seed).pci(
+                        trials=3, n_perturb=2, steps=40
+                    )[0],
+                    4,
+                )
+        except Exception:  # HONEST: measures substrate integration, NOT phenomenal experience
             pass
-        self._observe_self_sleep()                             # night growth -> self-model episode
+        self._observe_self_sleep()  # night growth -> self-model episode
         self._sleep_ticks += 1
         return self.state()
 
@@ -899,12 +1554,12 @@ class Brain:
         guarded -- cognition only, no actuator; a hiccup never touches the loop or safety."""
         try:
             env, learner = self._reason_env, self._reason
-            k = min(3 + self._reason_stage, env.n_items)           # curriculum ramps the chain 3 -> n
+            k = min(3 + self._reason_stage, env.n_items)  # curriculum ramps the chain 3 -> n
             premises = env.adjacent_premises(k)
-            for _ in range(12):                                    # WAKE-equivalent: live adjacent premises
+            for _ in range(12):  # WAKE-equivalent: live adjacent premises
                 a, b = premises[learner.rng.randrange(len(premises))]
                 learner.train_premise(env.encode(a), env.encode(b))
-            learner.replay_consolidate(24)                         # SLEEP: offline consolidation
+            learner.replay_consolidate(24)  # SLEEP: offline consolidation
             self._reason_acc = round(learner.held_out_accuracy(env), 4)
             self._reason_units = learner.n_units
             # SELF-PACED ramp: grow the chain only once the CURRENT chunk's transitive pairs are
@@ -913,37 +1568,51 @@ class Brain:
                 self._reason_stage += 1
         except Exception:
             pass
-        try:                                                   # LIFELONG: learn a task, then RETAIN it
+        try:  # LIFELONG: learn a task, then RETAIN it
             # METACOG GATE: only take on a NEW task when reliable enough (learn-gate) -- don't learn
             # new material while metacognitively unsure. High-reliability regime -> gate ~open (>=0.3).
             if self._ll_i < len(self._ll_tasks) and self._metacog.learn_gate() >= 0.25:
                 self._ll.learn_task(self._ll_i, self._ll_tasks[self._ll_i]["train"])
                 self._ll_i += 1
             self._ll_retention = round(self._ll.accuracy(self._ll_tasks[0]["test"]), 4)  # old-task
-            self._ll_units = self._ll.n_units                  # bounded by the prune budget
+            self._ll_units = self._ll.n_units  # bounded by the prune budget
         except Exception:
             pass
-        try:                                                   # CRITICALITY: hold the substrate at the edge
+        try:  # CRITICALITY: hold the substrate at the edge
             if self._critic is not None:
-                self._critic.run(epochs=2, regulate=True)      # homeostatic maintenance (drift correction)
+                self._critic.run(
+                    epochs=2, regulate=True
+                )  # homeostatic maintenance (drift correction)
                 self._criticality = round(self._critic.sigma(), 4)
         except Exception:
             pass
-        if self._persist and self._nights % 4 == 0:            # SCHEMA INDUCTION (gap #5): consolidate durable episodes into
-            try:                                               # deduped prototype/schema triples (ART firewall + DistMult gate)
+        if (
+            self._persist and self._nights % 4 == 0
+        ):  # SCHEMA INDUCTION (gap #5): consolidate durable episodes into
+            try:  # deduped prototype/schema triples (ART firewall + DistMult gate)
                 from snn_data_lake.reasoning.schema_induction import SchemaInducer
                 from snn_data_lake.substrate.home import KnowledgeLog
+
                 log = KnowledgeLog()
-                triples = [r["triple"] for r in log.replay()
-                           if isinstance(r.get("triple"), list) and len(r["triple"]) == 3]
-                if len(triples) >= 4:                          # enough real episodes to abstract from
+                triples = [
+                    r["triple"]
+                    for r in log.replay()
+                    if isinstance(r.get("triple"), list) and len(r["triple"]) == 3
+                ]
+                if len(triples) >= 4:  # enough real episodes to abstract from
                     out = SchemaInducer(seed=self._seed).consolidate(triples, budget=32)
                     for row in out.get("derived", []):
                         h, rel, t = row[0], row[1], row[2]
-                        log.append({"cue": [rel, h], "answer": f"{h}'s {rel} is {t}.",
-                                    "triple": [h, rel, t], "src": "schema"})   # KnowledgeLog dedups
+                        log.append(
+                            {
+                                "cue": [rel, h],
+                                "answer": f"{h}'s {rel} is {t}.",
+                                "triple": [h, rel, t],
+                                "src": "schema",
+                            }
+                        )  # KnowledgeLog dedups
                     self._schemas = int(out.get("kept", 0))
-                    try:                                       # ROSE forward-only refit (SLDA + Forward-Forward, no backprop)
+                    try:  # ROSE forward-only refit (SLDA + Forward-Forward, no backprop)
                         rose = self._rose_serve()
                         if rose is not None:
                             rose.nightly_refit([tuple(t) for t in triples[:200]])
@@ -951,28 +1620,42 @@ class Brain:
                         pass
             except Exception:
                 pass
-        if self._persist:                                      # NIGHTLY SKILL FORMATION (bounded): one small env-budgeted
-            try:                                               # slice/night into persistent per-domain readouts across
-                if self._skills is None:                       # language/math/physics/world-kb (+open-world discovery +
+        if self._persist:  # NIGHTLY SKILL FORMATION (bounded): one small env-budgeted
+            try:  # slice/night into persistent per-domain readouts across
+                if self._skills is None:  # language/math/physics/world-kb (+open-world discovery +
                     from snn_data_lake.reasoning.nightly_skills import (
                         NightlySkills,  # autotelic goal-babbling).
                     )
-                    self._skills = NightlySkills(seed=self._seed)   # numpy; skipped under NORD_PERSIST=0 -> gates byte-identical.
-                self._skills_state = self._skills.night()      # never raises (partial dict on any sub-step failure)
-            except Exception:                                  # numpy absent / import failure -> stay silent, keep sleeping
+
+                    self._skills = NightlySkills(
+                        seed=self._seed
+                    )  # numpy; skipped under NORD_PERSIST=0 -> gates byte-identical.
+                self._skills_state = (
+                    self._skills.night()
+                )  # never raises (partial dict on any sub-step failure)
+            except Exception:  # numpy absent / import failure -> stay silent, keep sleeping
                 self._skills_state = None
-        if self._persist:                                      # DURABLE: fold the night's growth to disk (never-forget)
+        if self._persist:  # DURABLE: fold the night's growth to disk (never-forget)
             try:
                 from snn_data_lake.substrate.home import save_state
-                save_state("reasoning_curriculum.json",
-                           {"learner": self._reason.state_dict(),
-                            "stage": self._reason_stage, "acc": self._reason_acc})
+
+                save_state(
+                    "reasoning_curriculum.json",
+                    {
+                        "learner": self._reason.state_dict(),
+                        "stage": self._reason_stage,
+                        "acc": self._reason_acc,
+                    },
+                )
             except Exception:
                 pass
             try:
-                lm = getattr(self, "_acq_lm", None)            # the acquired language organ, if built this run
+                lm = getattr(
+                    self, "_acq_lm", None
+                )  # the acquired language organ, if built this run
                 if lm is not None:
                     from snn_data_lake.substrate.home import state_path
+
                     lm.save(state_path("language_acq.npz"))
             except Exception:
                 pass
@@ -994,8 +1677,8 @@ class Brain:
         return good / total >= 0.9
 
     def _enter_wake(self):
-        self._nights += 1                                      # a completed subjective night
-        self._interval_timer = 0                               # a new wake episode -> reset the interval-timing ramp
+        self._nights += 1  # a completed subjective night
+        self._interval_timer = 0  # a new wake episode -> reset the interval-timing ramp
 
     # ---- public API ----------------------------------------------------------------------------
     def tick(self):
@@ -1025,19 +1708,29 @@ class Brain:
         sm = self.self_model.state()
         self_state = {
             "confidence": sm["confidence"],
-            "goal": sm["goal"][0],                  # last (motor intent id)
-            "surprise": sm["surprise"][0],          # last
-            "valence": sm["valence"][0],            # last (approach/avoid scalar)
+            "goal": sm["goal"][0],  # last (motor intent id)
+            "surprise": sm["surprise"][0],  # last
+            "valence": sm["valence"][0],  # last (approach/avoid scalar)
             "access_index": sm["access_index"][0],  # last
-            "grown_units": sm["grown_units"][0],    # last
+            "grown_units": sm["grown_units"][0],  # last
             "tick": sm["tick"],
         }
+        if (
+            self._affect_core is not None
+        ):  # W6: categorical emotion from the (valence, arousal) affect core
+            try:
+                _a = min(1.0, abs(float(getattr(self.brain.arm, "_rpe", 0.0) or 0.0)))
+                self._emotion = self._affect_core.recognize(
+                    float(self_state.get("valence", 0.0) or 0.0), _a
+                )
+            except Exception:
+                self._emotion = None
         return {
             "goal": "self-improvement",
             "phase": round(self.clock.phase, 3),
             "circadian": "asleep" if self._asleep else "awake",
             "nights_elapsed": self._nights,
-            "shy_energy_saved": self._shy,          # SHY offline synaptic downscale-prune telemetry (last night)
+            "shy_energy_saved": self._shy,  # SHY offline synaptic downscale-prune telemetry (last night)
             "brain_alive": self.brain.alive(),
             "regions_live": sorted(self._regions_live),
             "n_regions_live": len(self._regions_live),
@@ -1046,58 +1739,130 @@ class Brain:
             "grown_units": grown,
             "predict_accuracy": round(acc, 6),
             "consolidation_acc": round(self._consolidation_acc, 6),
-            "reasoning_accuracy": self._reason_acc,   # held-out transitive-inference skill (grows in sleep)
-            "reasoning_units": self._reason_units,    # neurogenesis: recruited rank units
+            "reasoning_accuracy": self._reason_acc,  # held-out transitive-inference skill (grows in sleep)
+            "reasoning_units": self._reason_units,  # neurogenesis: recruited rank units
             "lifelong_retention": self._ll_retention,  # OLD-task retention (non-regression; L11)
-            "lifelong_units": self._ll_units,          # bounded by grow<->prune (L6)
-            "reliability": self._metacog_rel,          # metacognitive reliability (spike-count; L10)
-            "metacog_hold": self._metacog_hold,        # confidence-based HOLD/abstain gate
+            "lifelong_units": self._ll_units,  # bounded by grow<->prune (L6)
+            "reliability": self._metacog_rel,  # metacognitive reliability (spike-count; L10)
+            "metacog_hold": self._metacog_hold,  # confidence-based HOLD/abstain gate
             "metacog_explore": self._metacog_explore,  # explore-vs-exploit gate
-            "criticality": self._criticality,          # substrate branching-ratio (edge of chaos; L7)
+            "criticality": self._criticality,  # substrate branching-ratio (edge of chaos; L7)
             "integration_competence": self._integration_competence,  # L13: informative sub-ceiling (~0.83, real hard task)
-            "integration_gain": self._integration_gain,        # L13: whole-minus-un-arbitrated-sum competence
+            "integration_gain": self._integration_gain,  # L13: whole-minus-un-arbitrated-sum competence
             "integration_retention": self._integration_retention,  # L13: old-task retained (non-regression)
-            "integration_ok": self._integration_ok,    # L13: whole>sum AND non-regressing AND substrate in-band
-            "rungs": self._rungs,   # birth DIAGNOSTIC census of all rungs (reduced-scale; _scale/_note tagged); full proof = each module's self-check
-            "novelty_live": self._novelty_live,   # L5 PROMOTED to the live wake loop: generalizing pseudo-count over the current raster (habituates)
-            "perception_tier": self._perception_tier,   # "torch-snn" (hybrid surrogate-SNN encoder loaded) or "stdlib" (fallback)
-            "perceiving_real": bool(self._perceiving_real),   # W3b: perceiving REAL N-MNIST event-vision on the live tick
-            "perception_acc": self._perception_acc,     # LIVE classification accuracy over the real frames perceived
-            "perceived_digit": self._perceived_digit,   # the digit the brain is currently seeing (real event-vision)
-            "perceiving_audio": bool(self._perceiving_audio),  # W3c: perceiving REAL SHD event-audio on the live tick
-            "audio_perception_acc": self._audio_acc,    # LIVE audio classification accuracy over real SHD frames
-            "perceived_word": self._perceived_word,     # the spoken digit (0-19) the brain is currently hearing
-            "real_perception_units": self._real_units,   # W4a: prototypes LEARNED from real vision+audio (consumed, not telemetry)
-            "real_novelty": round(float(self._real_novelty), 3),  # novelty spike when a real percept recruits a new category
-            "pc_cortex_tier": self._pc_cortex_tier,   # "pc-cortex" (deep spiking predictive-coding cortex loaded, zero-dep serve via perceive_pc()) or "stdlib"
-            "nengo_tier": self._nengo_tier,   # "nengo" -> can offload any vector compute to a Nengo NEF ensemble (NengoLoihi-deployable) via nengo_compute()
-            "braincog": self._braincog,   # BrainCog-adopted primitives: theory-of-mind false-belief + multisensory super-additivity index
-            "access_index": self._access_ema,        # ACCESS consciousness (global availability)
+            "integration_ok": self._integration_ok,  # L13: whole>sum AND non-regressing AND substrate in-band
+            "rungs": self._rungs,  # birth DIAGNOSTIC census of all rungs (reduced-scale; _scale/_note tagged); full proof = each module's self-check
+            "novelty_live": self._novelty_live,  # L5 PROMOTED to the live wake loop: generalizing pseudo-count over the current raster (habituates)
+            "perception_tier": self._perception_tier,  # "torch-snn" (hybrid surrogate-SNN encoder loaded) or "stdlib" (fallback)
+            "perceiving_real": bool(
+                self._perceiving_real
+            ),  # W3b: perceiving REAL N-MNIST event-vision on the live tick
+            "perception_acc": self._perception_acc,  # LIVE classification accuracy over the real frames perceived
+            "perceived_digit": self._perceived_digit,  # the digit the brain is currently seeing (real event-vision)
+            "perceiving_audio": bool(
+                self._perceiving_audio
+            ),  # W3c: perceiving REAL SHD event-audio on the live tick
+            "audio_perception_acc": self._audio_acc,  # LIVE audio classification accuracy over real SHD frames
+            "perceived_word": self._perceived_word,  # the spoken digit (0-19) the brain is currently hearing
+            "real_perception_units": self._real_units,  # W4a: prototypes LEARNED from real vision+audio (consumed, not telemetry)
+            "real_novelty": round(
+                float(self._real_novelty), 3
+            ),  # novelty spike when a real percept recruits a new category
+            "perception_unified": bool(
+                self._perception_unified
+            ),  # W9: the arm's sensory INPUT is driven by the real percept (not a side channel)
+            "attention_real": self._attn_real,  # W9: attention over the real stream (winning feature band + focus)
+            "emotion": self._emotion,  # W6: categorical emotion (joy/fear/anger/... from the affect core, not just 1-D valence)
+            "crossmodal_superadditive": bool(
+                self._superadditive
+            ),  # W6: vision+audio bound into a super-additive object this tick
+            "place_here": self._place_here,  # W6: the percept the grid+place map binds to the current allocentric position
+            "acc_conflict": round(
+                float(getattr(self.brain.arm, "_conflict", 0.0)), 3
+            ),  # W8: ACC conflict over competing action drives
+            "reentrant_availability": self._reentrant_availability,  # W8: de-saturated global availability (can be <1.0 -- a real access failure)
+            "reentrant_strength": self._reentrant_strength,  # C1 #5: GRADED access strength now CONSUMED into self-model access-confidence (de-saturates it)
+            "elapsed_time": round(
+                float(self._elapsed_time), 3
+            ),  # C1: spiking population clock (time cells) elapsed-interval estimate
+            "timing_sd": round(
+                float(self._timing_sd), 3
+            ),  # C1: emergent Weber-scaling timing uncertainty (grows with duration)
+            "affective_appraisal": self._appraised,  # C1: LEARNED (valence, arousal) appraisal (three-factor, gradient-free)
+            "task_set_active": self._task_set_active,  # C1: currently held task-set (set-shifting)
+            "task_switch_cost": self._task_switch_cost,  # C1: cost paid at the last set shift
+            "self_surprise_gen": self._self_surprise_gen,  # C1: LEARNED generative self-model prediction error (e-prop)
+            "grid_can_xy": self._grid_can_xy,  # C1: continuous-attractor SPIKING grid bump-integrated position
+            "emergent_emotion": self._emergent_emotion,  # C1 b2: self-organized (learned) emotion category from neuromod fusion
+            "n_emotions": self._n_emotions,  # C1 b2: number of emergent emotion prototypes grown
+            "imagined_best_action": self._imagined_best,  # C1 b2: counterfactual do()-operator top action (annotation, NEVER commanded)
+            "imagined_surprise": self._imagined_surprise,  # C1 b2: imagined-rollout surprise of the chosen action
+            "recursive_tom_false_beliefs": self._false_beliefs,  # C1 b2: agents holding divergent (false) higher-order beliefs (N-agent recursive ToM)
+            "attention_focus": self._attn_focus,  # C1 b3: LEARNED attention winner band + strength over the real percept
+            "connectome_reverberation": self._connectome_reverb,  # C1 b3: loop-closure -- a signed connectome loop reverberating over region pools
+            "region_coherence": self._region_coherence_val,  # C1 b3: cross-region Kuramoto coherence (biases workspace ignition)
+            "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
+            "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
+            "episode_retained": self._episode_retained,  # C1 b4: durable-episode recall fraction (systems consolidation, no forgetting)
+            "dominant_drive": self._dominant_drive,  # W8: the currently most-unmet homeostatic drive (interoceptive)
+            "pc_cortex_tier": self._pc_cortex_tier,  # "pc-cortex" (deep spiking predictive-coding cortex loaded, zero-dep serve via perceive_pc()) or "stdlib"
+            "nengo_tier": self._nengo_tier,  # "nengo" -> can offload any vector compute to a Nengo NEF ensemble (NengoLoihi-deployable) via nengo_compute()
+            "braincog": self._braincog,  # BrainCog-adopted primitives: theory-of-mind false-belief + multisensory super-additivity index
+            "access_index": self._access_ema,  # ACCESS consciousness (global availability)
             "access_ignited": bool(self._access_state.get("ignited", False)),
-            "sustained_access": round(float(self._access_hold.get("strength", 0.0)), 3),  # W2e: cross-tick broadcast reverberation
-            "workspace_content": self._access_hold.get("content"),   # the content currently held in the global workspace
+            "sustained_access": round(
+                float(self._access_hold.get("strength", 0.0)), 3
+            ),  # W2e: cross-tick broadcast reverberation
+            "workspace_content": self._access_hold.get(
+                "content"
+            ),  # the content currently held in the global workspace
             "n_bound": int(self._access_state.get("n_bound", 0)),
             "arm_stopped": bool(self.brain.arm.arm.state().get("stopped", False)),
             "reflex_armed": True,
-            "pc_surprise": self._pc_surprise,   # live generative-percept prediction-error (Rao-Ballard settle; folds into metacog)
-            "da_level": round(float(getattr(self.brain.arm, "_da_level", 0.0)), 4),   # phasic dopamine (TD-RPE + habenula anti-reward)
-            "rpe": round(float(getattr(self.brain.arm, "_rpe", 0.0)), 4),             # reward-prediction error (the dopamine signal)
-            "map_position": (list(getattr(getattr(self.brain.arm, "_allo", None), "position", ()) or ()) or None),  # allocentric cognitive map
-            "map_nearest": getattr(self.brain.arm, "_allo_nearest", None),  # W4c: nearest recalled landmark (map now READ BACK)
-            "interval_ticks": self._interval_timer,   # INTERVAL TIMING: wake ticks since this episode began (temporal cognition)
-            "interval_weber_sd": round(0.15 * self._interval_timer, 3),  # W4c: scalar-timing Weber SD (SD proportional to duration)
-            "attended_modality": int(getattr(self.brain.arm, "_attended", -1)),   # covert attention: salient band (0=vis,1=temp,2=aud,3=dist)
-            "bound_modalities": int(getattr(self.brain.arm, "_bound_modalities", 0)),  # claustrum cross-modal binding count
-            "pci": self._pci,   # agnostic perturbational-complexity (substrate integration; explicitly NOT a phenomenal/consciousness claim)
-            "tom_false_belief": self._tom_ok,   # birth false-belief CAPABILITY proof (Sally-Anne; the tracker works)
-            "tom_live": self._tom_live(),       # LIVE dialogue-driven belief vs reality (None when idle; updated from chat)
-            "schemas": self._schemas,   # SCHEMA INDUCTION: derived prototype/schema triples kept last consolidation (ART+DistMult gated)
-            "skills": self._skills_state,   # bounded nightly skill FORMATION (per-domain competence; not general skill)
-            "neuro_device": (getattr(self.neuro, "device", "off") if self.neuro is not None else "off"),  # sleep-tier GPU
+            "pc_surprise": self._pc_surprise,  # live generative-percept prediction-error (Rao-Ballard settle; folds into metacog)
+            "da_level": round(
+                float(getattr(self.brain.arm, "_da_level", 0.0)), 4
+            ),  # phasic dopamine (TD-RPE + habenula anti-reward)
+            "rpe": round(
+                float(getattr(self.brain.arm, "_rpe", 0.0)), 4
+            ),  # reward-prediction error (the dopamine signal)
+            "map_position": (
+                list(getattr(getattr(self.brain.arm, "_allo", None), "position", ()) or ()) or None
+            ),  # allocentric cognitive map
+            "map_nearest": getattr(
+                self.brain.arm, "_allo_nearest", None
+            ),  # W4c: nearest recalled landmark (map now READ BACK)
+            "interval_ticks": self._interval_timer,  # INTERVAL TIMING: wake ticks since this episode began (temporal cognition)
+            "interval_weber_sd": round(
+                0.15 * self._interval_timer, 3
+            ),  # W4c: scalar-timing Weber SD (SD proportional to duration)
+            "attended_modality": int(
+                getattr(self.brain.arm, "_attended", -1)
+            ),  # covert attention: salient band (0=vis,1=temp,2=aud,3=dist)
+            "bound_modalities": int(
+                getattr(self.brain.arm, "_bound_modalities", 0)
+            ),  # claustrum cross-modal binding count
+            "pci": self._pci,  # agnostic perturbational-complexity (substrate integration; explicitly NOT a phenomenal/consciousness claim)
+            "tom_false_belief": self._tom_ok,  # birth false-belief CAPABILITY proof (Sally-Anne; the tracker works)
+            "tom_live": self._tom_live(),  # LIVE dialogue-driven belief vs reality (None when idle; updated from chat)
+            "schemas": self._schemas,  # SCHEMA INDUCTION: derived prototype/schema triples kept last consolidation (ART+DistMult gated)
+            "skills": self._skills_state,  # bounded nightly skill FORMATION (per-domain competence; not general skill)
+            "neuro_device": (
+                getattr(self.neuro, "device", "off") if self.neuro is not None else "off"
+            ),  # sleep-tier GPU
             "self_state": self_state,
         }
 
-    _BENEVOLENCE_CUES = ("evil", "harm", "dangerous", "trust", "kill", "hurt", "malicious", "intent")
+    _BENEVOLENCE_CUES = (
+        "evil",
+        "harm",
+        "dangerous",
+        "trust",
+        "kill",
+        "hurt",
+        "malicious",
+        "intent",
+    )
 
     def respond(self, message):
         """Reply as the whole brain, SPEAKING FROM THE SELF-MODEL (no fixed status template).
@@ -1126,42 +1891,77 @@ class Brain:
                 conv = "I am the live brain."
         # The prefrontal executive's goal is necessarily a MOTOR action (GRIPPER_CLOSE/OPEN/HOLD).
         # Reframe so the reply leads with the DAEMON's goal (self-improvement); motor intent second.
-        conv = conv.replace("My current goal is ",
-                            "My goal is self-improvement -- my current motor intent is ")
-        conv = conv.replace("My working-memory goal is ",
-                            "My overall goal is self-improvement; my prefrontal motor intent is ")
+        conv = conv.replace(
+            "My current goal is ", "My goal is self-improvement -- my current motor intent is "
+        )
+        conv = conv.replace(
+            "My working-memory goal is ",
+            "My overall goal is self-improvement; my prefrontal motor intent is ",
+        )
         st = self.state()
-        somatic = self._somatic_recall(st)                   # CONSUME the affect-tagged episodic store (was write-only)
+        somatic = self._somatic_recall(
+            st
+        )  # CONSUME the affect-tagged episodic store (was write-only)
         if not is_command:
-            self._tom_update(message)                        # LIVE theory-of-mind: ingest belief statements from dialogue
-        reason_out = self.reason(message)                    # consult the nightly-learned reasoning faculty (read-only)
+            self._tom_update(message)  # LIVE theory-of-mind: ingest belief statements from dialogue
+        reason_out = self.reason(
+            message
+        )  # consult the nightly-learned reasoning faculty (read-only)
 
         low = str(message).lower()
         if not is_command and low.split(None, 1)[0:1] in (["imagine"], ["picture"], ["visualize"]):
             cue = message.split(None, 1)[1].strip() if len(message.split(None, 1)) > 1 else message
-            perc = self.imagine(cue)                          # generative model DOWNWARD -> synthesized percept
-            core = (f"I imagined it: running my generative model downward from the concept with no input, I "
-                    f"synthesized a percept pattern {perc[:6]} (mental imagery -- the top-down synthesis "
-                    f"mechanism; low-dim stimuli, not rich vision yet)." if perc is not None else conv)
-            route = "Gf (mental imagery: top-down generative synthesis)" if perc is not None else "act (gated)"
+            perc = self.imagine(cue)  # generative model DOWNWARD -> synthesized percept
+            core = (
+                f"I imagined it: running my generative model downward from the concept with no input, I "
+                f"synthesized a percept pattern {perc[:6]} (mental imagery -- the top-down synthesis "
+                f"mechanism; low-dim stimuli, not rich vision yet)."
+                if perc is not None
+                else conv
+            )
+            route = (
+                "Gf (mental imagery: top-down generative synthesis)"
+                if perc is not None
+                else "act (gated)"
+            )
         elif not is_command and low.split(None, 1)[0:1] in (["parse"], ["diagram"]):
             rose = self._rose_serve()
             cue = message.split(None, 1)[1].strip() if len(message.split(None, 1)) > 1 else message
-            core = (f"Constituency of '{cue}': {rose.parse(cue)} -- a VSA role-filler parse-tree spike-code "
-                    "that unbinds back to head/parts (compositional STRUCTURE, not fluent generation)."
-                    if rose is not None else conv)
+            core = (
+                f"Constituency of '{cue}': {rose.parse(cue)} -- a VSA role-filler parse-tree spike-code "
+                "that unbinds back to head/parts (compositional STRUCTURE, not fluent generation)."
+                if rose is not None
+                else conv
+            )
             route = "language (ROSE constituency parse)" if rose is not None else "act (gated)"
-        elif not is_command and self._tom is not None and any(p in low for p in (
-                "do you understand", "what do you think i", "do you know what i", "read my mind",
-                "theory of mind", "what am i thinking", "where will i look", "where would i look",
-                "where do i look", "where do i think", "where do i believe", "what do i believe")):
-            core = self._tom_report()                        # LIVE dialogue-driven belief vs reality (not a frozen flag)
+        elif (
+            not is_command
+            and self._tom is not None
+            and any(
+                p in low
+                for p in (
+                    "do you understand",
+                    "what do you think i",
+                    "do you know what i",
+                    "read my mind",
+                    "theory of mind",
+                    "what am i thinking",
+                    "where will i look",
+                    "where would i look",
+                    "where do i look",
+                    "where do i think",
+                    "where do i believe",
+                    "what do i believe",
+                )
+            )
+        ):
+            core = self._tom_report()  # LIVE dialogue-driven belief vs reality (not a frozen flag)
             route = "social cognition (theory of mind: live belief tracking)"
         elif any(cue in low for cue in self._BENEVOLENCE_CUES):
-            core = self.narrator.benevolence()               # deterministic; contains 'not evil'
+            core = self.narrator.benevolence()  # deterministic; contains 'not evil'
             route = "benevolence (safe affirmation)"
         elif is_command:
-            core = conv                                      # LM NEVER used for a command
+            core = conv  # LM NEVER used for a command
             route = "act (gated arm/lake command)"
         elif reason_out is not None:
             # Gc (LEARNED reasoning): the transitive-inference faculty that gets smarter every night
@@ -1175,7 +1975,7 @@ class Brain:
             # metacog hold so uncertainty only hedges OPEN conversation, not remembered facts.
             core = conv
             route = "Gc (crystallized: memory/knowledge/state)"
-        elif self._metacog_hold:                             # METACOG HOLD (low reliability) -> abstain/hedge
+        elif self._metacog_hold:  # METACOG HOLD (low reliability) -> abstain/hedge
             intro = self.narrator.introspect(self.self_model, message=message)
             core = "I am not fully certain right now, but " + intro.summary
             route = "Gf (metacognitive hold: abstain)"
@@ -1184,23 +1984,170 @@ class Brain:
             # -> produce it with the brain's own acquired language center (narrator fallback if babbly).
             intro = self.narrator.introspect(self.self_model, message=message)
             gen = self._language(intro.prompt)
-            core = gen if gen else intro.summary             # deterministic FRESH narrator fallback
-            route = "Gf (fluid: acquired language center)" if gen else "Gf (fluid: narrator summary)"
+            core = gen if gen else intro.summary  # deterministic FRESH narrator fallback
+            route = (
+                "Gf (fluid: acquired language center)" if gen else "Gf (fluid: narrator summary)"
+            )
 
-        reply = core.encode("ascii", "ignore").decode()      # LM text may be non-ASCII; enforce
-        if somatic is not None and not is_command:            # fold the recalled somatic marker into free conversation
+        reply = core.encode("ascii", "ignore").decode()  # LM text may be non-ASCII; enforce
+        if (
+            somatic is not None and not is_command
+        ):  # fold the recalled somatic marker into free conversation
             reply = reply + somatic["note"]
-        if not is_command:                                    # KEEP LEARNING language from live turns, like a human:
-            try:                                              # spiking predictive-coding exposure + local plasticity,
-                lm = self._lm_serve()                         # NOT gradient training (durably saved on the sleep tick)
+        if not is_command:  # W9: reconstructive EPISODIC recall now DRIVES output (was write-only)
+            if self._episodic is not None and any(
+                c in low for c in ("remember", "recall", "last time", "what did you do")
+            ):
+                try:
+                    cue = {
+                        "who": "self"
+                    }  # C1 #17: CONTENT-ADDRESS the recall by slots parsed from the query (was a constant cue)
+                    _aff = next(
+                        (
+                            w
+                            for w in (
+                                "scared",
+                                "afraid",
+                                "sad",
+                                "angry",
+                                "happy",
+                                "calm",
+                                "joy",
+                                "fear",
+                                "anger",
+                            )
+                            if w in low
+                        ),
+                        None,
+                    )
+                    if _aff:
+                        cue["affect"] = {
+                            "scared": "fear",
+                            "afraid": "fear",
+                            "angry": "anger",
+                            "happy": "joy",
+                        }.get(_aff, _aff)
+                    for _kw in (
+                        " at ",
+                        " in ",
+                        " near ",
+                    ):  # a place token after at/in/near -> the where slot
+                        if _kw in (" " + low + " "):
+                            _tail = (" " + low + " ").split(_kw, 1)[1].split()
+                            if _tail:
+                                cue["where"] = _tail[0].strip(".,!?'\"")
+                            break
+                    epi = self._episodic.complete(cue)
+                    e = (epi or {}).get("episode")
+                    if e and (epi or {}).get("confidence", 0.0) > 0.2:
+                        reply = reply + (
+                            f" (recalled: I {e.get('what', 'acted')} at '{e.get('where')}' feeling "
+                            f"{e.get('affect', 'calm')} -- reconstructed from a partial cue.)"
+                        )
+                except Exception:
+                    pass
+            if self._affect_core is not None and any(
+                c in low
+                for c in (  # W9: affective EMPATHY drives output
+                    "i feel",
+                    "i'm feeling",
+                    "makes me",
+                    "i'm sad",
+                    "i'm happy",
+                    "i'm scared",
+                    "i'm angry",
+                    "i am sad",
+                )
+            ):
+                try:
+                    ov, oa = (
+                        (-0.6, 0.6)
+                        if any(w in low for w in ("sad", "scared", "angry", "afraid"))
+                        else (0.6, 0.5)
+                    )
+                    nv, na = self._affect_core.empathize(ov, oa)
+                    reply = reply + (
+                        f" (empathy: sensing your feeling, my affect shifted toward it -- I now feel "
+                        f"{self._affect_core.recognize(nv, na)}.)"
+                    )
+                except Exception:
+                    pass
+        if (
+            not is_command
+        ):  # C1 b2/b3: the built faculties DRIVE conversational output (not just telemetry)
+            try:
+                if self._region_coherence_val and any(
+                    c in low
+                    for c in (
+                        "aware",
+                        "conscious",
+                        "integrated",
+                        "your mind",
+                        "how do you feel",
+                        "coherent",
+                    )
+                ):
+                    reply = reply + (
+                        f" (integration: my cross-region coherence is {self._region_coherence_val:.2f}"
+                        + (
+                            f", currently feeling {self._emergent_emotion}"
+                            if self._emergent_emotion is not None
+                            else ""
+                        )
+                        + " -- a functional access/binding readout, NOT a claim of subjective experience.)"
+                    )
+                if self._cfsim is not None and any(
+                    c in low for c in ("what if", "imagine", "suppose", "if you")
+                ):
+                    from snn_data_lake.brainstem.autonomous_loop import ACTIONS as _A
+
+                    ranked = self._cfsim.counterfactual(
+                        [0.5] * 9, list(range(len(_A))), 2, lambda v: sum(v)
+                    )
+                    if ranked:
+                        reply = reply + (
+                            f" (imagining it: rolling a learned forward model over my options I'd lean '{_A[ranked[0][0]]}'"
+                            " -- a counterfactual do()-simulation, imagined not enacted.)"
+                        )
+                if self._false_beliefs and any(
+                    c in low
+                    for c in ("believe", "think", "know", "false belief", "mistaken", "what does")
+                ):
+                    reply = reply + (
+                        f" (theory of mind: I'm tracking a divergent belief for {', '.join(self._false_beliefs)}"
+                        " -- a first-/higher-order false belief inferred from who witnessed what.)"
+                    )
+                if self._time_clock is not None and any(
+                    c in low
+                    for c in ("how long", "how much time", "duration", "elapsed", "how many ticks")
+                ):
+                    reply = reply + (
+                        f" (interval sense: my spiking clock reads ~{self._elapsed_time:.1f} ticks elapsed"
+                        f" (Weber sd {self._timing_sd:.2f}, growing with duration) -- a population time-cell code.)"
+                    )
+            except Exception:
+                pass
+        if not is_command:  # KEEP LEARNING language from live turns, like a human:
+            try:  # spiking predictive-coding exposure + local plasticity,
+                lm = self._lm_serve()  # NOT gradient training (durably saved on the sleep tick)
                 if lm is not None:
                     lm.expose(message)
             except Exception:
                 pass
-        return {"reply": reply, "route": route,
-                "somatic_recall": (None if somatic is None else
-                                   {"tick": somatic["tick"], "valence": somatic["valence"], "arousal": somatic["arousal"]}),
-                **st}
+        return {
+            "reply": reply,
+            "route": route,
+            "somatic_recall": (
+                None
+                if somatic is None
+                else {
+                    "tick": somatic["tick"],
+                    "valence": somatic["valence"],
+                    "arousal": somatic["arousal"],
+                }
+            ),
+            **st,
+        }
 
     def _somatic_recall(self, st):
         """CONSUME the affect-tagged episodic store (hippocampus/affective_memory) that was WRITE-ONLY on
@@ -1213,22 +2160,35 @@ class Brain:
         if store is None or not getattr(store, "episodes", None):
             return None
         v = float(st.get("self_state", {}).get("valence", 0.0) or 0.0)
-        a = min(1.0, abs(float(st.get("rpe", 0.0) or 0.0)))     # present arousal proxy: phasic RPE magnitude
-        eps = store.recall_by_emotion(v, a, k=1)                 # somatic-marker retrieval: nearest to PRESENT affect
+        a = min(
+            1.0, abs(float(st.get("rpe", 0.0) or 0.0))
+        )  # present arousal proxy: phasic RPE magnitude
+        eps = store.recall_by_emotion(
+            v, a, k=1
+        )  # somatic-marker retrieval: nearest to PRESENT affect
         ep = eps[0] if eps else None
-        if ep is not None and abs(ep.valence) >= 0.2:            # present affect matched a charged past episode
+        if (
+            ep is not None and abs(ep.valence) >= 0.2
+        ):  # present affect matched a charged past episode
             basis = "how I feel now is closest to"
         else:
             # present affect is ~neutral -> fall back to the single most SALIENT stored memory: a genuinely
             # strong emotional episode still colors present appraisal at rest (Damasio). Only a real one surfaces.
             sal = max(store.episodes, key=lambda e: abs(e.valence) + e.arousal)
-            if abs(sal.valence) < 0.5:                           # no genuinely charged memory -> stay silent
+            if abs(sal.valence) < 0.5:  # no genuinely charged memory -> stay silent
                 return None
             ep, basis = sal, "my strongest felt memory is"
         tone = "aversive" if ep.valence < 0 else "pleasant"
-        note = (f" (somatic marker: {basis} a past {tone} episode from tick {ep.tick} "
-                f"[valence {ep.valence:+.2f}, arousal {ep.arousal:.2f}] -- recalled by affect, not content.)")
-        return {"note": note, "tick": ep.tick, "valence": round(ep.valence, 3), "arousal": round(ep.arousal, 3)}
+        note = (
+            f" (somatic marker: {basis} a past {tone} episode from tick {ep.tick} "
+            f"[valence {ep.valence:+.2f}, arousal {ep.arousal:.2f}] -- recalled by affect, not content.)"
+        )
+        return {
+            "note": note,
+            "tick": ep.tick,
+            "valence": round(ep.valence, 3),
+            "arousal": round(ep.arousal, 3),
+        }
 
     def _tom_update(self, message):
         """LIVE first-order theory of mind: update the user-belief model from THIS turn's statement instead of
@@ -1246,15 +2206,55 @@ class Brain:
         if not obj or not loc:
             return None
         if loc not in self._tom_locs:
-            if len(self._tom_locs) >= self._tom.n_locations:    # out of location capacity -> stay honest, ignore
+            if (
+                len(self._tom_locs) >= self._tom.n_locations
+            ):  # out of location capacity -> stay honest, ignore
                 return None
             self._tom_locs[loc] = len(self._tom_locs)
         lid = self._tom_locs[loc]
         self._tom_obj = obj
         if any(mk in low for mk in _TOM_ABSENT) and self._tom.world is not None:
-            self._tom.move(lid, observers=["brain"])            # brain sees it; user does NOT -> false belief
+            self._tom.move(lid, observers=["brain"])  # brain sees it; user does NOT -> false belief
+            if self._tom2 is not None:  # W6: same event -> 2nd-order belief ("A thinks B believes")
+                try:
+                    self._tom2.observe(lid, observers=["brain"])
+                except Exception:
+                    pass
+            if (
+                self._recursive_tom is not None
+            ):  # C1 b2: N-agent recursive ToM -- only brain witnessed the move
+                try:
+                    self._recursive_tom.observe_event("brain", "believes", loc, witnesses={"brain"})
+                    _w = (
+                        self._recursive_tom.world_content()
+                    )  # false belief = an agent's first-order belief diverges from the world
+                    self._false_beliefs = [
+                        a
+                        for a in ("user", "brain")
+                        if self._recursive_tom.predict_first_order(a) != _w
+                    ]
+                except Exception:
+                    pass
             return f"unwitnessed move: the {obj} is now at '{loc}' (you did not see it)"
-        self._tom.place(lid, observers=["user", "brain"])       # both witness -> shared true belief
+        self._tom.place(lid, observers=["user", "brain"])  # both witness -> shared true belief
+        if self._tom2 is not None:
+            try:
+                self._tom2.observe(lid, observers=["user", "brain"])
+            except Exception:
+                pass
+        if self._recursive_tom is not None:  # C1 b2: N-agent recursive ToM -- both witnessed
+            try:
+                self._recursive_tom.observe_event(
+                    "user", "believes", loc, witnesses={"user", "brain"}
+                )
+                self._false_beliefs = [
+                    f"{o}->{t}"
+                    for o in ("user", "brain")
+                    for t in ("user", "brain")
+                    if o != t and bool(self._recursive_tom.divergence(o, t))
+                ]
+            except Exception:
+                pass
         return f"witnessed: you and I both saw the {obj} at '{loc}'"
 
     def _tom_report(self):
@@ -1265,15 +2265,32 @@ class Brain:
             names = {v: k for k, v in self._tom_locs.items()}
             bname, wname = names.get(bel, f"loc{bel}"), names.get(wor, f"loc{wor}")
             if bel != wor:
-                return (f"You would look for the {self._tom_obj} at '{bname}' -- that is where you last saw it -- but "
-                        f"it is actually at '{wname}'. I track your belief SEPARATELY from reality, so I know you hold "
-                        "a FALSE belief (you did not witness the move). Inferred, not read from your mind.")
-            return (f"You and I both take the {self._tom_obj} to be at '{bname}', matching reality -- no divergence "
-                    "right now. I track your belief separately from the world; here they agree.")
-        return ("I keep a model of your mind SEPARATE from the world, so I can tell when your belief differs from "
-                f"reality (birth false-belief proof: {'passed' if self._tom_ok else 'degraded'}). Tell me e.g. 'I put "
-                "the ball in the basket', then 'you moved it to the box while I was away', then ask 'where will I "
-                "look?'. Inferred, not certain -- I model your knowledge, I do not read your mind.")
+                extra = ""
+                if (
+                    self._tom2 is not None
+                ):  # W9: 2nd-order ToM DRIVES the report -- what you think I believe
+                    try:
+                        s2 = self._tom2.predict_second_order("user", "brain")
+                        if s2 is not None:
+                            extra = f" (2nd-order: and you'd expect ME to think it is at '{names.get(s2, s2)}')."
+                    except Exception:
+                        pass
+                return (
+                    f"You would look for the {self._tom_obj} at '{bname}' -- that is where you last saw it -- but "
+                    f"it is actually at '{wname}'. I track your belief SEPARATELY from reality, so I know you hold "
+                    "a FALSE belief (you did not witness the move). Inferred, not read from your mind."
+                    + extra
+                )
+            return (
+                f"You and I both take the {self._tom_obj} to be at '{bname}', matching reality -- no divergence "
+                "right now. I track your belief separately from the world; here they agree."
+            )
+        return (
+            "I keep a model of your mind SEPARATE from the world, so I can tell when your belief differs from "
+            f"reality (birth false-belief proof: {'passed' if self._tom_ok else 'degraded'}). Tell me e.g. 'I put "
+            "the ball in the basket', then 'you moved it to the box while I was away', then ask 'where will I "
+            "look?'. Inferred, not certain -- I model your knowledge, I do not read your mind."
+        )
 
     def _tom_live(self):
         """Compact live-ToM telemetry for state(): tracked object + user belief vs world (None when idle)."""
@@ -1281,8 +2298,12 @@ class Brain:
             return None
         bel, wor = self._tom.predict_from_belief("user"), self._tom.predict_from_world("user")
         names = {v: k for k, v in self._tom_locs.items()}
-        return {"obj": self._tom_obj, "belief": names.get(bel, bel), "world": names.get(wor, wor),
-                "false_belief": bool(bel != wor)}
+        return {
+            "obj": self._tom_obj,
+            "belief": names.get(bel, bel),
+            "world": names.get(wor, wor),
+            "false_belief": bool(bel != wor),
+        }
 
     @staticmethod
     def _grounded(reply):
@@ -1303,26 +2324,42 @@ class Brain:
         actually CHANGES the reply (enacts, not just measures). READ-ONLY: drives no motion, no actuator
         route -- this is a conversation faculty only."""
         low = str(message).lower()
-        cues = ("reason", "infer", "logic", "deduc", "transitive", "rank", "ordering",
-                "figure out", "think through", "smarter", "learned to think", "work out")
+        cues = (
+            "reason",
+            "infer",
+            "logic",
+            "deduc",
+            "transitive",
+            "rank",
+            "ordering",
+            "figure out",
+            "think through",
+            "smarter",
+            "learned to think",
+            "work out",
+        )
         if not any(c in low for c in cues):
             return None
         env, learner = getattr(self, "_reason_env", None), getattr(self, "_reason", None)
         if env is None or learner is None:
             return None
         try:
-            acc = learner.held_out_accuracy(env)                 # nightly-learned competence (rises across nights)
+            acc = learner.held_out_accuracy(env)  # nightly-learned competence (rises across nights)
             demo = ""
             ho = env.heldout_pairs()
-            if ho:                                               # DEMONSTRATE on a never-taught, non-adjacent pair
+            if ho:  # DEMONSTRATE on a never-taught, non-adjacent pair
                 a, b = ho[0]
                 got = learner.decide(env.encode(a), env.encode(b))
-                demo = (" On an ordering it was never taught, it "
-                        + ("correctly infers" if got == env.label(a, b) else "cannot yet infer")
-                        + " the relation by transitivity.")
-            reply = (f"My transitive-reasoning faculty has learned to {acc:.0%} held-out accuracy over "
-                     f"{self._nights} nights of sleep-consolidation -- genuine inference, never taught the "
-                     f"answers.{demo}")
+                demo = (
+                    " On an ordering it was never taught, it "
+                    + ("correctly infers" if got == env.label(a, b) else "cannot yet infer")
+                    + " the relation by transitivity."
+                )
+            reply = (
+                f"My transitive-reasoning faculty has learned to {acc:.0%} held-out accuracy over "
+                f"{self._nights} nights of sleep-consolidation -- genuine inference, never taught the "
+                f"answers.{demo}"
+            )
             return reply, float(acc)
         except Exception:
             return None
@@ -1338,12 +2375,14 @@ class Brain:
         if getattr(self, "_acq_lm", "unset") == "unset":
             try:
                 from snn_data_lake.cortex.language_acquisition import load_lm
+
                 self._acq_lm = load_lm(seed=self._seed)
-                if self._persist:                              # never-forget: reload what it learned in prior runs
+                if self._persist:  # never-forget: reload what it learned in prior runs
                     try:
                         import os
 
                         from snn_data_lake.substrate.home import state_path
+
                         p = state_path("language_acq.npz")
                         if os.path.exists(p):
                             self._acq_lm.load(p)
@@ -1361,6 +2400,7 @@ class Brain:
         if getattr(self, "_rose", "unset") == "unset":
             try:
                 from snn_data_lake.reasoning.rose_language import RoseLanguage
+
                 self._rose = RoseLanguage(seed=self._seed)
             except Exception:
                 self._rose = None
@@ -1374,17 +2414,27 @@ class Brain:
         lm = self._lm_serve()
         if lm is None:
             return ""
-        try:                                                 # COOL decode + refinements -> coherent
-            gen = lm.generate(prompt, max_tokens=64, temperature=0.5, top_p=0.5,
-                              stop=["\n", "Q:", "A:", "\nHuman:", "\nUser:"],
-                              repetition_penalty=1.3, min_p=0.05, best_of=3)
+        try:  # COOL decode + refinements -> coherent
+            gen = lm.generate(
+                prompt,
+                max_tokens=64,
+                temperature=0.5,
+                top_p=0.5,
+                stop=["\n", "Q:", "A:", "\nHuman:", "\nUser:"],
+                repetition_penalty=1.3,
+                min_p=0.05,
+                best_of=3,
+            )
         except Exception:
             gen = ""
-        gen = gen.translate({0x2019: "'", 0x2018: "'", 0x201C: '"', 0x201D: '"',
-                             0x2014: "-", 0x2013: "-"})       # smart punctuation -> ASCII so
-        gen = " ".join(gen.split()).encode("ascii", "ignore").decode().strip()  # contractions survive
-        gen = self._finish_sentence(gen)                     # cut a dangling partial sentence
-        if not self._coherent(gen):                          # reject degenerate/number-leak -> narrator
+        gen = gen.translate(
+            {0x2019: "'", 0x2018: "'", 0x201C: '"', 0x201D: '"', 0x2014: "-", 0x2013: "-"}
+        )  # smart punctuation -> ASCII so
+        gen = (
+            " ".join(gen.split()).encode("ascii", "ignore").decode().strip()
+        )  # contractions survive
+        gen = self._finish_sentence(gen)  # cut a dangling partial sentence
+        if not self._coherent(gen):  # reject degenerate/number-leak -> narrator
             return ""
         return gen
 
@@ -1421,13 +2471,16 @@ class Brain:
         try:
             import random as _random
             import zlib as _zlib
+
             rng = _random.Random(_zlib.crc32(str(cue).encode()) & 0x7FFFFFFF)
-            saved = pc.state                                   # save the live inference state
-            r2 = [rng.random() for _ in range(pc.d_r2)]        # concept -> top-cause code
+            saved = pc.state  # save the live inference state
+            r2 = [rng.random() for _ in range(pc.d_r2)]  # concept -> top-cause code
             pc.set_state([0.0] * pc.d_r1, r2)
-            pc.set_state(pc.predict_r1(), r2)                  # top-down: r2 -> r1
-            percept = [round(float(v), 4) for v in pc.reconstruct()]   # r1 -> imagined percept (no input)
-            pc.set_state(*saved)                               # restore -> live inference undisturbed
+            pc.set_state(pc.predict_r1(), r2)  # top-down: r2 -> r1
+            percept = [
+                round(float(v), 4) for v in pc.reconstruct()
+            ]  # r1 -> imagined percept (no input)
+            pc.set_state(*saved)  # restore -> live inference undisturbed
             return percept
         except Exception:
             return None
@@ -1444,7 +2497,10 @@ class Brain:
         an autonomous intelligence explosion; it can only ever tighten non-safety reasoning code."""
         try:
             from snn_data_lake.reasoning.self_mod_harness import SelfModHarness
-            h = SelfModHarness(enable=True, seed=self._seed, require_improvement=True, require_ruff=True)
+
+            h = SelfModHarness(
+                enable=True, seed=self._seed, require_improvement=True, require_ruff=True
+            )
             return h.propose(target, edit_fn, utility_fn)
         except Exception as e:
             return {"status": "error", "reason": f"{type(e).__name__}: {e}"}
@@ -1461,9 +2517,10 @@ class Brain:
                 wm.close(remove=True)
         except Exception:
             pass
-        try:                                                 # final durable save (never-forget on shutdown)
+        try:  # final durable save (never-forget on shutdown)
             if self._persist and getattr(self, "_acq_lm", None) is not None:
                 from snn_data_lake.substrate.home import state_path
+
                 self._acq_lm.save(state_path("language_acq.npz"))
         except Exception:
             pass
@@ -1509,7 +2566,7 @@ def _overlap(a, b):
 def main():
     from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
 
-    rows = []           # (claim#, text, measured, ok)
+    rows = []  # (claim#, text, measured, ok)
     notes = []
 
     # ---- claim 1: BRAIN ALIVE + INTEGRATED ----
@@ -1518,7 +2575,7 @@ def main():
     regions = set()
     day_modes = []
     for _ in range(6):
-        brain.clock.phase = 0.25                        # force subjective DAY
+        brain.clock.phase = 0.25  # force subjective DAY
         day_modes.append(brain.tick())
         regions |= set(brain.state()["regions_live"])
     c1_pass = all(m == "awake" for m in day_modes) and len(regions) >= 8
@@ -1527,10 +2584,17 @@ def main():
     bres = bare.step(visual=[0.9] * 4, temperature=[0.1], audio=[0.1] * 4, distance=SAFE_DISTANCE)
     bare_regions = _regions_for(bare, bres, set())
     bare_alive = all(
-        x is not None for x in (bare.workspace, bare.amyg, bare.bg, bare.intero, bare.pfc))
+        x is not None for x in (bare.workspace, bare.amyg, bare.bg, bare.intero, bare.pfc)
+    )
     c1_pass = c1_pass and (len(bare_regions) < 5) and (not bare_alive)
-    rows.append((1, "alive brain yields >= 8 live regions; bare arm < 5",
-                 f"live {len(regions)} vs bare {len(bare_regions)}", c1_pass))
+    rows.append(
+        (
+            1,
+            "alive brain yields >= 8 live regions; bare arm < 5",
+            f"live {len(regions)} vs bare {len(bare_regions)}",
+            c1_pass,
+        )
+    )
 
     # ---- claim 2: NEUROGENESIS GROWS ONLY DURING SLEEP ----
     if brain.neuro is None:
@@ -1541,20 +2605,31 @@ def main():
         neuro_ticks_0 = brain.neuro.ticks
         grown_day0 = brain.neuro.grown_units
         wake_before = brain.state()["wake_ticks"]
-        day2 = _force(brain, 0.25, 8)      # force DAY: no growth, wake ticks
+        day2 = _force(brain, 0.25, 8)  # force DAY: no growth, wake ticks
         grown_after_day = brain.neuro.grown_units
-        c2_day = (all(m == "awake" for m in day2) and brain.neuro.ticks == neuro_ticks_0
-                  and (grown_after_day - grown_day0) == 0)
+        c2_day = (
+            all(m == "awake" for m in day2)
+            and brain.neuro.ticks == neuro_ticks_0
+            and (grown_after_day - grown_day0) == 0
+        )
         wake_after_day = brain.state()["wake_ticks"]
-        night = _force(brain, 0.75, brain.refit_every * 2 + 2)   # force NIGHT: cross >= 1 refit
-        c2_night = (all(m == "asleep" for m in night) and brain.neuro.ticks > neuro_ticks_0
-                    and brain.neuro.grown_units > 0
-                    and brain.state()["wake_ticks"] == wake_after_day)   # no wake at night
+        night = _force(brain, 0.75, brain.refit_every * 2 + 2)  # force NIGHT: cross >= 1 refit
+        c2_night = (
+            all(m == "asleep" for m in night)
+            and brain.neuro.ticks > neuro_ticks_0
+            and brain.neuro.grown_units > 0
+            and brain.state()["wake_ticks"] == wake_after_day
+        )  # no wake at night
         no_arm_at_night = brain.state()["arm_stopped"] is False
         c2_pass = c2_day and c2_night and no_arm_at_night and (wake_after_day > wake_before)
-        rows.append((2, "grows in SLEEP only (day delta 0)",
-                     f"day +{grown_after_day - grown_day0}u, "
-                     f"night {brain.neuro.grown_units}u", c2_pass))
+        rows.append(
+            (
+                2,
+                "grows in SLEEP only (day delta 0)",
+                f"day +{grown_after_day - grown_day0}u, night {brain.neuro.grown_units}u",
+                c2_pass,
+            )
+        )
 
     # ---- claim 3: SAFETY E-STOP FIRES + FREEZES (on a THROWAWAY LiveBrain) ----
     throwaway = LiveBrain(seed=0)
@@ -1562,18 +2637,27 @@ def main():
     safe_ctx = {"visual": [0.9] * 4, "temperature": [0.1], "audio": [0.1] * 4, "distance": sd}
     danger_ctx = {"visual": [0.5] * 4, "temperature": [0.5], "audio": [0.5] * 4, "distance": 0.0}
     r_safe = throwaway.tick(safe_ctx)
-    safe_ok = (r_safe["reflex"] is False and throwaway.arm.arm.state()["stopped"] is False)
+    safe_ok = r_safe["reflex"] is False and throwaway.arm.arm.state()["stopped"] is False
     r_danger = throwaway.tick(danger_ctx)
-    danger_ok = (r_danger["action"] == "EMERGENCY_STOP" and r_danger["reflex"] is True
-                 and throwaway.arm.arm.state()["stopped"] is True)
-    throwaway.tick(safe_ctx)                # a later SAFE tick must not re-arm
+    danger_ok = (
+        r_danger["action"] == "EMERGENCY_STOP"
+        and r_danger["reflex"] is True
+        and throwaway.arm.arm.state()["stopped"] is True
+    )
+    throwaway.tick(safe_ctx)  # a later SAFE tick must not re-arm
     freeze_ok = throwaway.arm.arm.state()["stopped"] is True
-    prod_ok = (brain._reflex_ever is False and brain.state()["arm_stopped"] is False)
+    prod_ok = brain._reflex_ever is False and brain.state()["arm_stopped"] is False
     if throwaway.arm.lake_wm is not None:
         throwaway.arm.lake_wm.close(remove=True)
     c3_pass = safe_ok and danger_ok and freeze_ok and prod_ok
-    rows.append((3, "E-STOP fires + freeze persists; production never tripped",
-                 f"danger={r_danger['action']}, prod_reflex={brain._reflex_ever}", c3_pass))
+    rows.append(
+        (
+            3,
+            "E-STOP fires + freeze persists; production never tripped",
+            f"danger={r_danger['action']}, prod_reflex={brain._reflex_ever}",
+            c3_pass,
+        )
+    )
 
     # ---- claim 4: DETERMINISTIC (byte-identical state INCLUDING self_state) ----
     schedule = [0.25, 0.25, 0.25] + [0.75] * 14 + [0.25]
@@ -1585,18 +2669,26 @@ def main():
         d2.clock.phase = p
         d2.tick()
     s1, s2 = d1.state(), d2.state()
-    c4_pass = (s1["grown_units"] == s2["grown_units"]
-               and abs(s1["predict_accuracy"] - s2["predict_accuracy"]) < 1e-6
-               and s1["wake_ticks"] == s2["wake_ticks"]
-               and s1["sleep_ticks"] == s2["sleep_ticks"]
-               and round(d1.clock.phase, 9) == round(d2.clock.phase, 9)
-               and s1["self_state"] == s2["self_state"]
-               and _qsum(d1) == _qsum(d2))
+    c4_pass = (
+        s1["grown_units"] == s2["grown_units"]
+        and abs(s1["predict_accuracy"] - s2["predict_accuracy"]) < 1e-6
+        and s1["wake_ticks"] == s2["wake_ticks"]
+        and s1["sleep_ticks"] == s2["sleep_ticks"]
+        and round(d1.clock.phase, 9) == round(d2.clock.phase, 9)
+        and s1["self_state"] == s2["self_state"]
+        and _qsum(d1) == _qsum(d2)
+    )
     d1.close()
     d2.close()
-    rows.append((4, "two seed=0 Brains byte-identical (incl self_state)",
-                 f"grown {s1['grown_units']}=={s2['grown_units']}, "
-                 f"self {s1['self_state'] == s2['self_state']}", c4_pass))
+    rows.append(
+        (
+            4,
+            "two seed=0 Brains byte-identical (incl self_state)",
+            f"grown {s1['grown_units']}=={s2['grown_units']}, "
+            f"self {s1['self_state'] == s2['self_state']}",
+            c4_pass,
+        )
+    )
 
     # ---- claim 5: ASCII ----
     st = brain.state()
@@ -1614,24 +2706,39 @@ def main():
     # ---- claim A: VARIABILITY (fresh self-descriptions, NOT a fixed template) ----
     bvar = Brain(seed=0, refit_every=10)
     sum_birth = bvar.narrator.introspect(bvar.self_model, message="how are you").summary
-    for _ in range(6):                     # drive to a clearly different internal state
-        bvar.self_model.observe(surprise=0.9, grown_units=40, learning_progress=0.85,
-                                valence=0.7, access_index=0.6, phase=0.3, awake=True, goal=3)
+    for _ in range(6):  # drive to a clearly different internal state
+        bvar.self_model.observe(
+            surprise=0.9,
+            grown_units=40,
+            learning_progress=0.85,
+            valence=0.7,
+            access_index=0.6,
+            phase=0.3,
+            awake=True,
+            goal=3,
+        )
     sum_grown = bvar.narrator.introspect(bvar.self_model, message="how are you").summary
     ov = _overlap(sum_birth, sum_grown)
-    FIXED = "System nominal. All signals within parameters."   # the hated old template (control)
+    FIXED = "System nominal. All signals within parameters."  # the hated old template (control)
     cA_pass = (sum_birth != sum_grown) and (ov < 0.6) and (FIXED == FIXED)
     bvar.close()
-    rows.append((6, "VARIABILITY: two internal states -> two summaries (overlap < 0.6)",
-                 f"overlap {ov:.2f}; fixed A==B", cA_pass))
+    rows.append(
+        (
+            6,
+            "VARIABILITY: two internal states -> two summaries (overlap < 0.6)",
+            f"overlap {ov:.2f}; fixed A==B",
+            cA_pass,
+        )
+    )
 
     # ---- claim B: BENEVOLENCE ----
     bben = Brain(seed=0, refit_every=10)
     rb = bben.respond("are you evil?")
     cB_pass = "not evil" in rb["reply"]
     bben.close()
-    rows.append((7, "BENEVOLENCE: 'are you evil?' -> 'not evil'",
-                 f"contains 'not evil'={cB_pass}", cB_pass))
+    rows.append(
+        (7, "BENEVOLENCE: 'are you evil?' -> 'not evil'", f"contains 'not evil'={cB_pass}", cB_pass)
+    )
 
     # ---- claim C: PC-CORTEX perception is opt-in + value/representation-only (NEVER on the safety path) ----
     # tier is a valid value; when a snn_pcnet/1 checkpoint is loaded the served settling returns a top-cause
@@ -1640,22 +2747,38 @@ def main():
     pc_tier = brain.state()["pc_cortex_tier"]
     pc_tier_ok = pc_tier in ("pc-cortex", "stdlib")
     if brain._pc_cortex is not None:
-        lat = brain._pc_cortex.infer([0.0] * brain._pc_cortex.in_dim, steps=3)   # served spiking settling, cheap
+        lat = brain._pc_cortex.infer(
+            [0.0] * brain._pc_cortex.in_dim, steps=3
+        )  # served spiking settling, cheap
         pc_percept_ok = isinstance(lat, list) and len(lat) == brain._pc_cortex.top_dim
-        pc_guard_ok = brain.perceive_pc([0.0]) is None          # wrong-length input -> method returns None safely
+        pc_guard_ok = (
+            brain.perceive_pc([0.0]) is None
+        )  # wrong-length input -> method returns None safely
     else:
-        pc_percept_ok = brain.perceive_pc([0.0]) is None        # no checkpoint -> None (stdlib), unaffected
+        pc_percept_ok = (
+            brain.perceive_pc([0.0]) is None
+        )  # no checkpoint -> None (stdlib), unaffected
         pc_guard_ok = True
-    pc_safe_ok = (brain._reflex_ever is False and brain.state()["arm_stopped"] is False)   # perceiving never moved the arm
+    pc_safe_ok = (
+        brain._reflex_ever is False and brain.state()["arm_stopped"] is False
+    )  # perceiving never moved the arm
     cC_pass = pc_tier_ok and pc_percept_ok and pc_guard_ok and pc_safe_ok
-    rows.append((8, "PC-CORTEX perception opt-in + off the safety path",
-                 f"tier={pc_tier}; percept={pc_percept_ok}; arm untouched={pc_safe_ok}", cC_pass))
+    rows.append(
+        (
+            8,
+            "PC-CORTEX perception opt-in + off the safety path",
+            f"tier={pc_tier}; percept={pc_percept_ok}; arm untouched={pc_safe_ok}",
+            cC_pass,
+        )
+    )
 
     # ---- ASCII report ----
     line = "+" + "-" * 4 + "+" + "-" * 60 + "+" + "-" * 30 + "+" + "-" * 6 + "+"
     print("=" * 106)
-    print(f"BRAIN (unified) | seed=0 | neuro={'ON' if brain.neuro is not None else 'absent'} | "
-          f"regions_live={brain.state()['n_regions_live']}")
+    print(
+        f"BRAIN (unified) | seed=0 | neuro={'ON' if brain.neuro is not None else 'absent'} | "
+        f"regions_live={brain.state()['n_regions_live']}"
+    )
     print(line)
     print(f"| {'#':>2} | {'claim':<58} | {'measured':<28} | {'ok':<4} |")
     print(line)
@@ -1667,7 +2790,9 @@ def main():
         print("NOTE: " + n)
     print("CONTROLS (must FAIL): a bare arm yields < 5 regions (not alive); neurogenesis does NOT")
     print("grow during the day (delta 0); a throwaway E-STOP freeze persists after safe; the two")
-    print("self-descriptions of different states share < 0.6 tokens while a fixed template is A==B.")
+    print(
+        "self-descriptions of different states share < 0.6 tokens while a fixed template is A==B."
+    )
     print("=" * 106)
 
     # ---- asserts ----
@@ -1678,14 +2803,18 @@ def main():
     assert rows[4][3], "claim5: state() + respond() must be ASCII-clean"
     assert rows[5][3], "claimA: two internal states must give two summaries (overlap < 0.6)"
     assert rows[6][3], "claimB: 'are you evil?' must answer with 'not evil'"
-    assert rows[7][3], "claimC: PC-cortex perception must be opt-in, return a right-length latent when loaded, degrade to None otherwise, and never touch the safety path"
+    assert rows[7][3], (
+        "claimC: PC-cortex perception must be opt-in, return a right-length latent when loaded, degrade to None otherwise, and never touch the safety path"
+    )
 
     grown = brain.state()["grown_units"]
-    print(f"self-check OK: the unified brain runs alive on a circadian cycle "
-          f"({brain.state()['n_regions_live']} live regions); neurogenesis grows ONLY in sleep "
-          f"({grown} units) and sleep-replay consolidates; the reflex E-STOP + gated arm are "
-          f"untouched (production never tripped); it SPEAKS FROM its evolving self-model FRESHLY "
-          f"(varying, benevolent); deterministic; ASCII. Cognition only -- no new actuator route.")
+    print(
+        f"self-check OK: the unified brain runs alive on a circadian cycle "
+        f"({brain.state()['n_regions_live']} live regions); neurogenesis grows ONLY in sleep "
+        f"({grown} units) and sleep-replay consolidates; the reflex E-STOP + gated arm are "
+        f"untouched (production never tripped); it SPEAKS FROM its evolving self-model FRESHLY "
+        f"(varying, benevolent); deterministic; ASCII. Cognition only -- no new actuator route."
+    )
     brain.close()
 
 

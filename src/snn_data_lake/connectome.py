@@ -28,6 +28,7 @@ region reaches the actuator except through the reflex/E-STOP-gated final common 
 
   python -m snn_data_lake.connectome        # (also run by run_selfchecks.py)
 """
+
 import json
 import os
 
@@ -79,15 +80,29 @@ NODES = {
 
 
 def _e(source, target, tract, sign, cls, loop=None, weight=1.0):
-    return {"source": source, "target": target, "tract": tract, "sign": sign,
-            "cls": cls, "loop": loop, "weight": weight}
+    return {
+        "source": source,
+        "target": target,
+        "tract": tract,
+        "sign": sign,
+        "cls": cls,
+        "loop": loop,
+        "weight": weight,
+    }
 
 
 # the directed, typed edge list (canonical long-range projections)
 EDGES = [
     # thalamocortical loop (+ the TRN inhibitory gate)
     _e("thal_relay", "ctx_sensory", "thalamocortical radiation", "exc", "relay", "thalamocortical"),
-    _e("ctx_sensory", "thal_relay", "corticothalamic feedback", "exc", "feedback", "thalamocortical"),
+    _e(
+        "ctx_sensory",
+        "thal_relay",
+        "corticothalamic feedback",
+        "exc",
+        "feedback",
+        "thalamocortical",
+    ),
     _e("ctx_sensory", "trn", "corticoreticular", "exc", "feedback", "thalamocortical"),
     _e("trn", "thal_relay", "reticulothalamic (gate)", "inh", "feedback", "thalamocortical"),
     # cortico-basal-ganglia-thalamo-cortical (CBGTC) selection loop
@@ -120,14 +135,28 @@ EDGES = [
     _e("ctx_sensory", "bla", "sensory -> amygdala (CS)", "exc", "relay", "amygdala"),
     _e("bla", "cea", "intra-amygdala", "exc", "relay", "amygdala"),
     _e("cea", "hypothal", "amygdala -> HPA (stress)", "exc", "descending", "amygdala"),
-    _e("cea", "bs_motor", "amygdala -> PAG/brainstem (freeze/defense)", "exc", "descending", "amygdala"),
+    _e(
+        "cea",
+        "bs_motor",
+        "amygdala -> PAG/brainstem (freeze/defense)",
+        "exc",
+        "descending",
+        "amygdala",
+    ),
     # ascending neuromodulatory broadcast
     _e("vta_snc", "ctx_pfc", "mesocortical dopamine", "da", "broadcast", None),
     _e("bf_ach", "ctx_sensory", "cholinergic broadcast", "ach", "broadcast", None),
     _e("bf_ach", "ec", "septohippocampal cholinergic", "ach", "broadcast", None),
     # descending corticospinal path to the effector -- THE gated final common path
     _e("ctx_motor", "bs_motor", "corticospinal tract", "exc", "descending", "corticospinal"),
-    _e("bs_motor", "actuator", "final common motor path (reflex/E-STOP gated)", "exc", "descending", "corticospinal"),
+    _e(
+        "bs_motor",
+        "actuator",
+        "final common motor path (reflex/E-STOP gated)",
+        "exc",
+        "descending",
+        "corticospinal",
+    ),
     # --- completed-anatomy pathways (v3.4): hypothalamus, midbrain, pons/ARAS, olfactory,
     #     epithalamus, claustrum, and the LC/raphe neuromodulatory broadcast ---
     # suprachiasmatic circadian pacing (hypothalamus)
@@ -141,57 +170,152 @@ EDGES = [
     _e("raphe", "ctx_pfc", "serotonergic projection (patience / mood)", "5ht", "broadcast"),
     _e("raphe", "striatum", "raphe -> striatum (5-HT, opponent to dopamine)", "5ht", "broadcast"),
     # ascending reticular activating system (ARAS): pontine reticular formation -> thalamic arousal
-    _e("prf", "thal_relay", "ascending reticular activating (ARAS) -> thalamus", "exc", "broadcast"),
+    _e(
+        "prf", "thal_relay", "ascending reticular activating (ARAS) -> thalamus", "exc", "broadcast"
+    ),
     _e("prf", "bf_ach", "ARAS -> basal forebrain (cholinergic arousal)", "exc", "broadcast"),
     # superior-colliculus orienting loop (tecto-thalamo-cortical)
     _e("ctx_sensory", "sc", "corticotectal (visual salience)", "exc", "relay", "orienting"),
     _e("sc", "thal_relay", "tectothalamic (orienting relay)", "exc", "relay", "orienting"),
     _e("ctx_pfc", "sc", "frontal eye field -> colliculus (saccade command)", "exc", "descending"),
     # lateral-habenula reward-opponent loop (anti-reward suppresses the dopamine burst via RMTg)
-    _e("ctx_pfc", "lhb", "prefrontal -> lateral habenula (disappointment)", "exc", "relay", "reward_opponent"),
-    _e("lhb", "vta_snc", "habenula -> RMTg -> VTA (dopamine suppression)", "inh", "feedback", "reward_opponent"),
+    _e(
+        "ctx_pfc",
+        "lhb",
+        "prefrontal -> lateral habenula (disappointment)",
+        "exc",
+        "relay",
+        "reward_opponent",
+    ),
+    _e(
+        "lhb",
+        "vta_snc",
+        "habenula -> RMTg -> VTA (dopamine suppression)",
+        "inh",
+        "feedback",
+        "reward_opponent",
+    ),
     # olfactory pathway (bulb decorrelation -> piriform association, with centrifugal feedback)
     _e("ob", "pir", "lateral olfactory tract (bulb -> piriform)", "exc", "relay", "olfactory"),
     _e("pir", "ob", "piriform -> bulb centrifugal feedback", "exc", "feedback", "olfactory"),
     _e("pir", "ctx_pfc", "piriform -> orbitofrontal (odor to cortex)", "exc", "relay"),
     _e("pir", "bla", "piriform -> amygdala (odor valence)", "exc", "relay"),
     # claustrum: cortical synchrony / salience broadcast hub
-    _e("ctx_sensory", "claustrum", "corticoclaustral (sensory)", "exc", "relay", "claustro_cortical"),
-    _e("claustrum", "ctx_sensory", "claustrocortical (salience broadcast)", "exc", "broadcast", "claustro_cortical"),
+    _e(
+        "ctx_sensory",
+        "claustrum",
+        "corticoclaustral (sensory)",
+        "exc",
+        "relay",
+        "claustro_cortical",
+    ),
+    _e(
+        "claustrum",
+        "ctx_sensory",
+        "claustrocortical (salience broadcast)",
+        "exc",
+        "broadcast",
+        "claustro_cortical",
+    ),
     _e("ctx_pfc", "claustrum", "corticoclaustral (prefrontal)", "exc", "relay"),
     _e("claustrum", "ctx_pfc", "claustrocortical broadcast (prefrontal)", "exc", "broadcast"),
     # --- medulla autonomic vital nuclei (v3.5): hypothalamic set-points descend to the medullary
     #     respiratory (pre-Botzinger) and cardiovascular (NTS/RVLM) rhythm generators, each closing a
     #     homeostatic reflex loop onto an autonomic effector (the viscera) -- never the arm actuator ---
-    _e("hypothal", "pbc", "hypothalamo-medullary drive (respiratory set-point)", "exc", "descending"),
-    _e("hypothal", "nts_rvlm", "hypothalamo-medullary drive (cardiovascular set-point)", "exc", "descending"),
-    _e("pbc", "viscera", "phrenic -> diaphragm (inspiratory drive)", "exc", "descending", "respiratory"),
-    _e("viscera", "pbc", "pulmonary stretch / chemoreceptor afferent (via NTS)", "exc", "feedback", "respiratory"),
-    _e("nts_rvlm", "viscera", "sympathetic / vagal cardiovascular efferent", "exc", "descending", "baroreflex"),
+    _e(
+        "hypothal",
+        "pbc",
+        "hypothalamo-medullary drive (respiratory set-point)",
+        "exc",
+        "descending",
+    ),
+    _e(
+        "hypothal",
+        "nts_rvlm",
+        "hypothalamo-medullary drive (cardiovascular set-point)",
+        "exc",
+        "descending",
+    ),
+    _e(
+        "pbc",
+        "viscera",
+        "phrenic -> diaphragm (inspiratory drive)",
+        "exc",
+        "descending",
+        "respiratory",
+    ),
+    _e(
+        "viscera",
+        "pbc",
+        "pulmonary stretch / chemoreceptor afferent (via NTS)",
+        "exc",
+        "feedback",
+        "respiratory",
+    ),
+    _e(
+        "nts_rvlm",
+        "viscera",
+        "sympathetic / vagal cardiovascular efferent",
+        "exc",
+        "descending",
+        "baroreflex",
+    ),
     _e("viscera", "nts_rvlm", "baroreceptor afferent (via NTS)", "exc", "feedback", "baroreflex"),
     # --- superior-colliculus deep motor layers (v3.5): the orienting winner becomes a gaze command
     #     that reaches the effector ONLY through the gated brainstem final common path (no new route) ---
     _e("sc", "sc_deep", "superficial -> deep collicular layers (motor error)", "exc", "relay"),
-    _e("sc_deep", "bs_motor", "tecto-reticulospinal gaze command (through the gate)", "exc", "descending"),
+    _e(
+        "sc_deep",
+        "bs_motor",
+        "tecto-reticulospinal gaze command (through the gate)",
+        "exc",
+        "descending",
+    ),
     # --- interoceptive arousal (v3.6): the medullary visceral state ascends (NTS -> LC) to drive
     #     arousal/caution, wired live into autonomous_loop as a caution-only bias (never a motor route) ---
     _e("nts_rvlm", "lc", "NTS -> locus coeruleus (interoceptive arousal drive)", "exc", "relay"),
     # --- prefrontal executive (v3.7): the "centre of thoughts" holds a goal in working memory and
     #     biases motor selection top-down toward it; wired live into autonomous_loop as a caution-safe
     #     preference that reaches the arm only through the gated final common path (never a bypass) ---
-    _e("ctx_pfc", "ctx_motor", "prefrontal top-down bias (goal -> motor selection)", "exc", "descending"),
+    _e(
+        "ctx_pfc",
+        "ctx_motor",
+        "prefrontal top-down bias (goal -> motor selection)",
+        "exc",
+        "descending",
+    ),
     # --- v3.36 completed-anatomy: the region->region edges the brain audit found genuinely missing.
     #     ALL are afferent / broadcast / modulatory -- none is an edge INTO the actuator, so the arm-safety
     #     gate invariant (actuator's sole in-edge is bs_motor; no node reaches it except through the gate) is
     #     preserved (verified by the self-check below). ---
     # hippocampo-cortical systems consolidation: SWR replay writes memories back to neocortex (the missing
     # ca1/sub -> cortex return that experience_replay / sleep_replay / sleep_consolidation implement)
-    _e("ca1", "ctx_pfc", "hippocampo-cortical (systems consolidation / SWR replay)", "exc", "broadcast"),
+    _e(
+        "ca1",
+        "ctx_pfc",
+        "hippocampo-cortical (systems consolidation / SWR replay)",
+        "exc",
+        "broadcast",
+    ),
     # basal-ganglia hyperdirect pathway: cortex -> STN fast global "stop" (bypasses the striatum)
     _e("ctx_pfc", "stn", "cortico-subthalamic (hyperdirect / fast stop)", "exc", "relay", "cbgtc"),
     # mesolimbic dopamine reward loop: VTA -> ventral striatum (NAcc) -> VTA (incentive salience)
-    _e("vta_snc", "nacc", "mesolimbic dopamine (reward / incentive salience)", "da", "broadcast", "mesolimbic"),
-    _e("nacc", "vta_snc", "ventral-striatal -> VTA (GABAergic feedback)", "inh", "feedback", "mesolimbic"),
+    _e(
+        "vta_snc",
+        "nacc",
+        "mesolimbic dopamine (reward / incentive salience)",
+        "da",
+        "broadcast",
+        "mesolimbic",
+    ),
+    _e(
+        "nacc",
+        "vta_snc",
+        "ventral-striatal -> VTA (GABAergic feedback)",
+        "inh",
+        "feedback",
+        "mesolimbic",
+    ),
     # amygdala LOW ROAD (LeDoux): thalamus -> BLA fast fear pathway, complementing the cortical high road
     _e("thal_relay", "bla", "thalamo-amygdala (low road, fast fear)", "exc", "relay"),
     # amygdala -> medullary autonomic: fear drives cardiovascular/respiratory arousal (onto viscera, NOT the arm)
@@ -199,16 +323,59 @@ EDGES = [
     # amygdala -> hippocampus: emotional modulation of memory encoding
     _e("bla", "ca1", "amygdala -> hippocampus (emotional memory modulation)", "exc", "relay"),
     # olivo-cerebellar climbing-fibre teaching loop: the error signal cerebellar learning is premised on
-    _e("io", "cb_ctx", "inferior olive climbing fibres (error / teaching signal)", "exc", "relay", "olivocerebellar"),
-    _e("cb_deep", "io", "deep-nuclei -> inferior olive (GABAergic feedback)", "inh", "feedback", "olivocerebellar"),
+    _e(
+        "io",
+        "cb_ctx",
+        "inferior olive climbing fibres (error / teaching signal)",
+        "exc",
+        "relay",
+        "olivocerebellar",
+    ),
+    _e(
+        "cb_deep",
+        "io",
+        "deep-nuclei -> inferior olive (GABAergic feedback)",
+        "inh",
+        "feedback",
+        "olivocerebellar",
+    ),
     # global-workspace (GNW) ignition hub: specialists compete for access, the winner is broadcast globally
-    _e("ctx_sensory", "gwt", "specialist -> global workspace (access competition)", "exc", "relay", "global_workspace"),
-    _e("ctx_pfc", "gwt", "prefrontal -> global workspace (access competition)", "exc", "relay", "global_workspace"),
-    _e("gwt", "ctx_pfc", "global workspace ignition broadcast (to prefrontal)", "exc", "broadcast", "global_workspace"),
-    _e("gwt", "ctx_sensory", "global workspace ignition broadcast (to sensory)", "exc", "broadcast"),
+    _e(
+        "ctx_sensory",
+        "gwt",
+        "specialist -> global workspace (access competition)",
+        "exc",
+        "relay",
+        "global_workspace",
+    ),
+    _e(
+        "ctx_pfc",
+        "gwt",
+        "prefrontal -> global workspace (access competition)",
+        "exc",
+        "relay",
+        "global_workspace",
+    ),
+    _e(
+        "gwt",
+        "ctx_pfc",
+        "global workspace ignition broadcast (to prefrontal)",
+        "exc",
+        "broadcast",
+        "global_workspace",
+    ),
+    _e(
+        "gwt", "ctx_sensory", "global workspace ignition broadcast (to sensory)", "exc", "broadcast"
+    ),
     # spinal reflex AFFERENT arc: sensory afferent into the gated brainstem/spinal motor node (the missing
     # ascending half of the reflex; it reaches the actuator ONLY through the bs_motor gate, never around it)
-    _e("ctx_sensory", "bs_motor", "dorsal-root sensory afferent (reflex arc, through the gate)", "exc", "relay"),
+    _e(
+        "ctx_sensory",
+        "bs_motor",
+        "dorsal-root sensory afferent (reflex arc, through the gate)",
+        "exc",
+        "relay",
+    ),
 ]
 
 # canonical loops as CLOSED node cycles (first repeated at the end)
@@ -232,7 +399,7 @@ LOOPS = {
 }
 
 ACTUATOR = "actuator"
-GATE_NODE = "bs_motor"   # the brainstem/spinal gated node -- the sole gateway to the actuator
+GATE_NODE = "bs_motor"  # the brainstem/spinal gated node -- the sole gateway to the actuator
 
 
 def _adjacency(block_node=None, block_edge=None):
@@ -287,7 +454,10 @@ def route(source, target):
 
 def is_closed_loop(nodes):
     """True if every consecutive pair in `nodes` is a real directed edge (the loop closes)."""
-    return all(has_edge(nodes[i], nodes[i + 1]) for i in range(len(nodes) - 1)) and nodes[0] == nodes[-1]
+    return (
+        all(has_edge(nodes[i], nodes[i + 1]) for i in range(len(nodes) - 1))
+        and nodes[0] == nodes[-1]
+    )
 
 
 def cortical_nodes():
@@ -318,15 +488,17 @@ def main():
     print("=" * 68)
     print("CONNECTOME -- mesoscale schematic wiring layer (canonical pathways)")
     print("=" * 68)
-    print(f"nodes={len(NODES)} (across {len(set(r for r, _ in NODES.values() if r))} regions) "
-          f"edges={n_edges} loops={n_loops}")
+    print(
+        f"nodes={len(NODES)} (across {len(set(r for r, _ in NODES.values() if r))} regions) "
+        f"edges={n_edges} loops={n_loops}"
+    )
     for name, nodes in LOOPS.items():
         print(f"  loop {name:<18} closed={is_closed_loop(nodes)}  ({' -> '.join(nodes)})")
     cs = route("ctx_motor", ACTUATOR)
     print(f"corticospinal route ctx_motor -> actuator: {' -> '.join(cs) if cs else None}")
     print("=" * 68)
 
-    # ---- self-check: graph-topological facts, zero-dep ----
+    # ---- self-check: graph-topological facts ----
     # every edge is well-typed and connects real nodes
     for e in EDGES:
         assert e["source"] in NODES and e["target"] in NODES, f"edge on unknown node: {e}"
@@ -338,26 +510,36 @@ def main():
         assert is_closed_loop(nodes), f"canonical loop {name} must be a closed cycle"
 
     # (b) SAFETY: the actuator is reachable ONLY through the gated brainstem node/edge.
-    assert reachable("ctx_motor", ACTUATOR), "motor cortex must reach the actuator (via corticospinal)"
+    assert reachable("ctx_motor", ACTUATOR), (
+        "motor cortex must reach the actuator (via corticospinal)"
+    )
     for c in cortical_nodes():
         # removing the brainstem gate node disconnects EVERY cortical node from the actuator
-        assert not reachable(c, ACTUATOR, block_node=GATE_NODE), \
+        assert not reachable(c, ACTUATOR, block_node=GATE_NODE), (
             f"{c} must not reach the actuator except through the gated brainstem node"
+        )
     # the actuator's only in-edge is the gated final common path
     in_edges = [(e["source"], e["target"]) for e in EDGES if e["target"] == ACTUATOR]
-    assert in_edges == [(GATE_NODE, ACTUATOR)], f"actuator must have exactly one (gated) in-edge, got {in_edges}"
-    assert not reachable("ctx_motor", ACTUATOR, block_edge=(GATE_NODE, ACTUATOR)), \
+    assert in_edges == [(GATE_NODE, ACTUATOR)], (
+        f"actuator must have exactly one (gated) in-edge, got {in_edges}"
+    )
+    assert not reachable("ctx_motor", ACTUATOR, block_edge=(GATE_NODE, ACTUATOR)), (
         "removing the gated final motor edge must cut cortex off from the actuator"
+    )
 
     # (b2) SAFETY: the SC deep gaze command and the ascending interoceptive drive can influence motor
     #      ONLY through the gate. The autonomic nuclei ascend to arousal (NTS->LC, v3.6), so -- like
     #      every other node -- removing the gate must cut them off from the actuator (no bypass route).
-    assert reachable("sc_deep", ACTUATOR), "SC deep gaze command must reach the actuator (via the gate)"
-    assert not reachable("sc_deep", ACTUATOR, block_node=GATE_NODE), \
+    assert reachable("sc_deep", ACTUATOR), (
+        "SC deep gaze command must reach the actuator (via the gate)"
+    )
+    assert not reachable("sc_deep", ACTUATOR, block_node=GATE_NODE), (
         "SC deep must reach the arm ONLY through the gated brainstem node (no new route to the actuator)"
+    )
     for auto in ("pbc", "nts_rvlm", "viscera"):
-        assert not reachable(auto, ACTUATOR, block_node=GATE_NODE), \
+        assert not reachable(auto, ACTUATOR, block_node=GATE_NODE), (
             f"autonomic vital node {auto!r} must reach the arm only through the gated brainstem node (no bypass)"
+        )
 
     # (c) FAIR CONTROL: imports lack the connectome's typing (not redundant with Python imports)
     checked, untyped = _import_graph_is_untyped()
@@ -366,9 +548,15 @@ def main():
     if checked:
         assert untyped, "import graph unexpectedly carries sign/loop typing (control invalid)"
 
-    print(f"self-check OK: {n_loops} canonical loops all closed cycles; the actuator is reachable "
-          f"ONLY through the gated brainstem edge (safety); {n_edges} edges typed sign+class+loop"
-          + (" > untyped import graph (fair control)" if checked else " (import-graph control skipped)"))
+    print(
+        f"self-check OK: {n_loops} canonical loops all closed cycles; the actuator is reachable "
+        f"ONLY through the gated brainstem edge (safety); {n_edges} edges typed sign+class+loop"
+        + (
+            " > untyped import graph (fair control)"
+            if checked
+            else " (import-graph control skipped)"
+        )
+    )
 
 
 if __name__ == "__main__":

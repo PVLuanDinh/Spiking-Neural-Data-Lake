@@ -5,7 +5,7 @@ that maps to choosing a game action. The brain's torch LANGUAGE tier (SpikeGPT) 
 a game policy; its torch PERCEPTION tier is trained on 34x34 N-MNIST event data and would not transfer
 to 64x64 arcade grids -- and neither co-installs with arc-agi's numpy>=2.2. So they are deliberately
 NOT used here; using them would be theatre, not function. What DOES play, composed below, is the brain's
-real zero-dep cognition:
+real cognition:
   * exploration  -- neuromodulation/intrinsic_motivation.CuriosityDrive (learning-progress + novelty)
                     + neuromodulation/generalizing_novelty.GeneralizingNovelty (SimHash pseudo-count);
   * rule discovery -- an online world model T (transitions) + model-based value iteration (planning);
@@ -21,9 +21,10 @@ them, so the agent's real action set per step is {simple legal actions} + {click
 Value/representation-ONLY: imports NOTHING from brainstem/; emits only LEGAL arcade actions; no actuator.
 Real arcade, real scorecard, NO overclaim -- ARC-AGI-3 is very hard; we report whatever the brain scores.
 
-Run (in the arc venv, with src on the path so the zero-dep brain modules import):
+Run (in the arc venv, with src on the path so the brain modules import):
     ARC_API_KEY=<key> PYTHONPATH=src .venv-arc/Scripts/python research/arc_agi/play_brain.py ls20 400
 """
+
 import os
 import random
 import sys
@@ -44,8 +45,8 @@ from snn_data_lake.cortex.metacognitive_monitor import MetacognitiveMonitor  # n
 from snn_data_lake.neuromodulation.generalizing_novelty import GeneralizingNovelty  # noqa: E402
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive  # noqa: E402
 
-_CLICK = GameAction.ACTION6.value                  # the one complex (x,y) action
-K = 8                                              # click grid: K*K targets tiled over the frame
+_CLICK = GameAction.ACTION6.value  # the one complex (x,y) action
+K = 8  # click grid: K*K targets tiled over the frame
 
 
 def _sig(grids):
@@ -55,7 +56,7 @@ def _sig(grids):
 
 def _to_list(grid):
     """Coerce a grid (numpy array from the arcade, or a list from the toy env) to a nested int list,
-    so the pure-stdlib rule-inducer + change detection never touch numpy truth-value semantics."""
+    so the rule-inducer + change detection never touch numpy truth-value semantics."""
     return [[int(v) for v in row] for row in grid]
 
 
@@ -85,9 +86,9 @@ class FullBrainArcadeAgent:
         self.cur = CuriosityDrive(seed=seed)
         self.gen = GeneralizingNovelty(n_bits=16, dim=16, seed=seed)
         self.meta = MetacognitiveMonitor(base=0.4, seed=seed)
-        self.T = {}                    # (sig, key) -> (sig2, reward, done)
-        self.Q = {}                    # sig -> {key: value}
-        self.tried = {}                # sig -> set(keys)
+        self.T = {}  # (sig, key) -> (sig2, reward, done)
+        self.Q = {}  # sig -> {key: value}
+        self.tried = {}  # sig -> set(keys)
         self.last = None
         self.prev_levels = 0
         self.steps = 0
@@ -96,13 +97,13 @@ class FullBrainArcadeAgent:
         # with InducedModel; else fall back. Also an object-change exploration bonus that attacks the
         # no-op problem (prefer actions that actually move objects). Honest: only games matching the
         # schema get the planner -- opaque frontier games (no single move-agent) fall back to curiosity.
-        self._trans = []               # [(grid, simple_action_id, grid2)] for induction
+        self._trans = []  # [(grid, simple_action_id, grid2)] for induction
         self._prev_grid = None
         self._prev_sig = None
-        self._model = None             # InducedModel when the schema fits, else None
-        self._model_Q = {}             # symbolic state -> [value per action] from the induced model
-        self.plan_hits = 0             # how many steps the reasoning layer chose the action
-        self.induce_ok = 0             # how many times a usable relational model was built
+        self._model = None  # InducedModel when the schema fits, else None
+        self._model_Q = {}  # symbolic state -> [value per action] from the induced model
+        self.plan_hits = 0  # how many steps the reasoning layer chose the action
+        self.induce_ok = 0  # how many times a usable relational model was built
 
     def _try_induce(self, grid):
         """Opportunistic relational induction: if the game FITS the move-agent schema (one agent that
@@ -115,7 +116,7 @@ class FullBrainArcadeAgent:
                 return
             model = InducedModel(rules, grid, 8)
             s = model.state_from_grid(grid)
-            if s is None:                      # schema does not fit this game -> no plan
+            if s is None:  # schema does not fit this game -> no plan
                 self._model = None
                 return
             self._model = model
@@ -156,9 +157,9 @@ class FullBrainArcadeAgent:
 
     def _emit(self, key):
         """Turn an action key into an arcade action object."""
-        if isinstance(key, tuple):                 # ('c', x, y) -> the complex click action
+        if isinstance(key, tuple):  # ('c', x, y) -> the complex click action
             return GameAction.ACTION6.set_data({"x": key[1], "y": key[2]})
-        return _BY_VALUE[key]                      # a simple action id
+        return _BY_VALUE[key]  # a simple action id
 
     def __call__(self, frame):
         self.steps += 1
@@ -170,19 +171,28 @@ class FullBrainArcadeAgent:
         done = frame.state in (GameState.WIN, GameState.GAME_OVER)
         grid0 = _to_list(grids[0]) if len(grids) else []
 
-        if self.last is not None:                  # fold the last transition into world model + drives
+        if self.last is not None:  # fold the last transition into world model + drives
             s0, k0 = self.last
             predicted = self.T.get((s0, k0), (None,))[0]
             pred_err = 0.0 if predicted == sig else 1.0
             self.cur.intrinsic_reward((s0, k0), pred_err)
-            changed = self._prev_sig is not None and sig != self._prev_sig   # crc32-based (numpy-safe)
-            eff = reward + (0.01 if changed else 0.0)   # frame-change bonus -> prefer non-no-op actions
+            changed = (
+                self._prev_sig is not None and sig != self._prev_sig
+            )  # crc32-based (numpy-safe)
+            eff = reward + (
+                0.01 if changed else 0.0
+            )  # frame-change bonus -> prefer non-no-op actions
             self.T[(s0, k0)] = (sig, eff, done)
             self.tried.setdefault(s0, set()).add(k0)
-            self.meta.update(confidence=1.0 - pred_err, surprise=pred_err,
-                             learning_progress=self.cur.learning_progress((s0, k0)),
-                             novelty=self.cur.novelty((s0, k0)))
-            if isinstance(k0, int) and self._prev_grid is not None:   # record a simple-action transition
+            self.meta.update(
+                confidence=1.0 - pred_err,
+                surprise=pred_err,
+                learning_progress=self.cur.learning_progress((s0, k0)),
+                novelty=self.cur.novelty((s0, k0)),
+            )
+            if (
+                isinstance(k0, int) and self._prev_grid is not None
+            ):  # record a simple-action transition
                 self._trans.append((self._prev_grid, k0, grid0))
                 if len(self._trans) > 4000:
                     self._trans = self._trans[-4000:]
@@ -190,10 +200,10 @@ class FullBrainArcadeAgent:
         if self.steps % 24 == 0:
             self._plan()
         if self.steps % 60 == 0 and len(self._trans) >= 40:
-            self._try_induce(grid0)                # opportunistic relational induction (fits some games)
+            self._try_induce(grid0)  # opportunistic relational induction (fits some games)
 
         keys = self._keys(frame)
-        planned = self._planned_action(grid0)      # REASONING: follow the induced plan when a game fits
+        planned = self._planned_action(grid0)  # REASONING: follow the induced plan when a game fits
         if planned is not None and planned in keys:
             key = planned
             self.plan_hits += 1
@@ -201,7 +211,7 @@ class FullBrainArcadeAgent:
             qv = self.Q.get(sig) or {}
             untried = [k for k in keys if k not in self.tried.get(sig, set())]
             if untried and (self.meta.explore() or not qv or max(qv.values(), default=0.0) <= 0.0):
-                key = self.rng.choice(untried)     # explore an untried (simple or click) action
+                key = self.rng.choice(untried)  # explore an untried (simple or click) action
             else:
                 vals = [qv.get(k, 0.0) for k in keys]
                 key = keys[self._race(vals)] if max(vals) > 0.0 else self.rng.choice(keys)
@@ -228,10 +238,13 @@ class FullBrainArcadeAgent:
     def _race(self, vals):
         mn, mx = min(vals), max(vals)
         span = mx - mn
-        drifts = ([self.race_scale * (v - mn) / span for v in vals] if span > 1e-9
-                  else [0.0] * len(vals))
+        drifts = (
+            [self.race_scale * (v - mn) / span for v in vals] if span > 1e-9 else [0.0] * len(vals)
+        )
         seed = (self.seed ^ (self.steps * 2654435761)) & 0xFFFFFFFF
-        return RaceAccumulator(drifts, bound=1.0, noise=0.3, dt=0.01, seed=seed, max_steps=400).decide()[0]
+        return RaceAccumulator(
+            drifts, bound=1.0, noise=0.3, dt=0.01, seed=seed, max_steps=400
+        ).decide()[0]
 
 
 def main():
@@ -239,10 +252,12 @@ def main():
     steps = int(sys.argv[2]) if len(sys.argv) > 2 else 400
     agent = FullBrainArcadeAgent(seed=0)
     frame, scorecard = play(agent_fn=agent, game=game, max_steps=steps)
-    print(f"BRAIN  game={frame.game_id}  state={frame.state.value}  "
-          f"levels={frame.levels_completed}/{frame.win_levels}  steps={agent.steps}  "
-          f"states_seen={len(agent.tried)}  model_transitions={len(agent.T)}  "
-          f"reasoning: schema_fit={agent.induce_ok} plan_actions={agent.plan_hits}")
+    print(
+        f"BRAIN  game={frame.game_id}  state={frame.state.value}  "
+        f"levels={frame.levels_completed}/{frame.win_levels}  steps={agent.steps}  "
+        f"states_seen={len(agent.tried)}  model_transitions={len(agent.T)}  "
+        f"reasoning: schema_fit={agent.induce_ok} plan_actions={agent.plan_hits}"
+    )
     print("scorecard:", scorecard)
 
 

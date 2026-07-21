@@ -41,38 +41,47 @@ cortex); Hopfield 1982 (auto-association); Dasgupta, Stevens & Navlakha 2017 (ex
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.olfactory.piriform_cortex
 """
+
 import random
 
-N_INPUT = 48               # receptor / bulb-output features feeding the cortex
-N_UNITS = 200              # piriform expansion units
-K_ACTIVE = 12              # winners kept by k-WTA (sparse code size)
-TAPS = 8                   # receptor features each unit sums
-GATE = 0.30                # familiarity threshold: min cue-vs-stored overlap to attempt recall
-ACCEPT = 0.60              # min completed overlap to count as a genuine recall
-ACTIVE_FEATURES = 18       # receptors an odor activates (sparse odor input)
+N_INPUT = 48  # receptor / bulb-output features feeding the cortex
+N_UNITS = 200  # piriform expansion units
+K_ACTIVE = 12  # winners kept by k-WTA (sparse code size)
+TAPS = 8  # receptor features each unit sums
+GATE = 0.30  # familiarity threshold: min cue-vs-stored overlap to attempt recall
+ACCEPT = 0.60  # min completed overlap to count as a genuine recall
+ACTIVE_FEATURES = 18  # receptors an odor activates (sparse odor input)
 
 
 class PiriformCortex:
     """Sparse expansion code + Hebbian recurrent attractors: store, complete, and reject odors."""
 
-    def __init__(self, n_input=N_INPUT, n_units=N_UNITS, k_active=K_ACTIVE, taps=TAPS,
-                 gate=GATE, accept=ACCEPT, seed=0):
+    def __init__(
+        self,
+        n_input=N_INPUT,
+        n_units=N_UNITS,
+        k_active=K_ACTIVE,
+        taps=TAPS,
+        gate=GATE,
+        accept=ACCEPT,
+        seed=0,
+    ):
         self.n_input = n_input
         self.m = n_units
         self.k = k_active
         self.gate = gate
         self.accept = accept
-        rng = random.Random(seed)                                          # all RNG seeded -> deterministic
+        rng = random.Random(seed)  # all RNG seeded -> deterministic
         self.proj = [tuple(rng.sample(range(n_input), taps)) for _ in range(n_units)]
-        self.W = [[0] * n_units for _ in range(n_units)]                   # recurrent Hebbian weights
-        self.codes = []                                                    # stored sparse codes (frozensets)
-        self.origs = []                                                    # stored original [0,1] vectors
+        self.W = [[0] * n_units for _ in range(n_units)]  # recurrent Hebbian weights
+        self.codes = []  # stored sparse codes (frozensets)
+        self.origs = []  # stored original [0,1] vectors
 
     def _encode(self, x):
         """Feature vector -> sparse binary code (top-k expansion units). Ties break to lower id."""
         act = [sum(x[i] for i in taps) for taps in self.proj]
         order = sorted(range(self.m), key=lambda u: (act[u], -u), reverse=True)
-        return frozenset(order[:self.k])
+        return frozenset(order[: self.k])
 
     def _match(self, s):
         """Best (overlap_fraction, stored_id) between code s and any stored code (0.0, -1 if none)."""
@@ -106,7 +115,7 @@ class PiriformCortex:
                 for j in range(self.m):
                     field[j] += row[j]
             order = sorted(range(self.m), key=lambda u: (field[u], -u), reverse=True)
-            s_new = frozenset(order[:self.k])
+            s_new = frozenset(order[: self.k])
             if s_new == s:
                 break
             s = s_new
@@ -117,7 +126,7 @@ class PiriformCortex:
         stored_id = -1 if the NOVELTY gate rejects the cue as unfamiliar (no false completion)."""
         s0 = self._encode(cue)
         pre_best, _ = self._match(s0)
-        if pre_best < self.gate:                       # familiarity / novelty gate
+        if pre_best < self.gate:  # familiarity / novelty gate
             return -1, 0.0, pre_best
         settled = self._settle(s0)
         post_best, post_id = self._match(settled)
@@ -160,8 +169,8 @@ def main():
         rid, post_ov, pre_ov = ctx.recall(cue)
         pre_sum += pre_ov
         post_sum += post_ov
-        comp_hits += (rid == ids[pid] and post_ov >= ctx.accept)
-        cross += (rid != -1 and rid != ids[pid])          # completed to a DIFFERENT stored odor
+        comp_hits += rid == ids[pid] and post_ov >= ctx.accept
+        cross += rid != -1 and rid != ids[pid]  # completed to a DIFFERENT stored odor
     comp_acc = comp_hits / T
     pre_overlap = pre_sum / T
     post_overlap = post_sum / T
@@ -172,31 +181,46 @@ def main():
     rejects = 0
     nov_pre = 0.0
     for _ in range(T):
-        novel = _sparse_odor(nrng, ctx.n_input, ACTIVE_FEATURES)   # same statistics as stored odors
+        novel = _sparse_odor(nrng, ctx.n_input, ACTIVE_FEATURES)  # same statistics as stored odors
         rid, _, pre_ov = ctx.recall(novel)
         nov_pre += pre_ov
-        rejects += (rid == -1)
+        rejects += rid == -1
     reject_rate = rejects / T
     novel_pre = nov_pre / T
 
     print("=" * 66)
     print("PIRIFORM CORTEX -- sparse associative expansion + pattern completion")
     print("=" * 66)
-    print(f"features = {ctx.n_input}, units = {ctx.m}, k-active = {ctx.k}, stored = {K}, mask = {MASK:.0%}")
+    print(
+        f"features = {ctx.n_input}, units = {ctx.m}, k-active = {ctx.k}, stored = {K}, mask = {MASK:.0%}"
+    )
     print(f"gate (familiarity) = {ctx.gate:.2f}, accept (completed overlap) = {ctx.accept:.2f}")
     print("-" * 66)
-    print(f"(a) LEARNED : partial-cue completion acc = {comp_acc:.3f}  "
-          f"[overlap {pre_overlap:.3f} (cue) -> {post_overlap:.3f} (completed)]")
-    print(f"(b) NOVEL   : rejection rate = {reject_rate:.3f}  [mean novel cue overlap = {novel_pre:.3f} < gate]")
-    print(f"(c) DISCRIM : cross-completion rate = {cross_rate:.3f}  [cue never completes to a WRONG odor]")
+    print(
+        f"(a) LEARNED : partial-cue completion acc = {comp_acc:.3f}  "
+        f"[overlap {pre_overlap:.3f} (cue) -> {post_overlap:.3f} (completed)]"
+    )
+    print(
+        f"(b) NOVEL   : rejection rate = {reject_rate:.3f}  [mean novel cue overlap = {novel_pre:.3f} < gate]"
+    )
+    print(
+        f"(c) DISCRIM : cross-completion rate = {cross_rate:.3f}  [cue never completes to a WRONG odor]"
+    )
     print("=" * 66)
 
-    # ---- self-check: deterministic asserts, zero-dep, ASCII-only ----
-    assert comp_acc >= 0.90, f"learned partial cues must complete to their odor (acc {comp_acc:.3f})"
+    # ---- self-check: deterministic asserts, ASCII-only ----
+    assert comp_acc >= 0.90, (
+        f"learned partial cues must complete to their odor (acc {comp_acc:.3f})"
+    )
     assert post_overlap > pre_overlap + 0.03, (
-        f"completion must recover MORE than the raw cue ({post_overlap:.3f} <= {pre_overlap:.3f})")
-    assert reject_rate >= 0.90, f"novel cues must be rejected, not falsely completed (rate {reject_rate:.3f})"
-    assert novel_pre < ctx.gate, f"novel cues must be unfamiliar (mean overlap {novel_pre:.3f} < gate {ctx.gate})"
+        f"completion must recover MORE than the raw cue ({post_overlap:.3f} <= {pre_overlap:.3f})"
+    )
+    assert reject_rate >= 0.90, (
+        f"novel cues must be rejected, not falsely completed (rate {reject_rate:.3f})"
+    )
+    assert novel_pre < ctx.gate, (
+        f"novel cues must be unfamiliar (mean overlap {novel_pre:.3f} < gate {ctx.gate})"
+    )
     assert cross_rate <= 0.02, f"stored odors must not cross-complete (cross rate {cross_rate:.3f})"
 
     d1 = PiriformCortex(seed=0)
@@ -214,8 +238,10 @@ def main():
             break
     assert det and d1.codes == d2.codes, "same seed must give identical codes and recalls"
 
-    print(f"self-check OK: learned completion {comp_acc:.3f} (overlap {pre_overlap:.3f} -> {post_overlap:.3f}), "
-          f"novel reject {reject_rate:.3f}, cross-talk {cross_rate:.3f}, deterministic")
+    print(
+        f"self-check OK: learned completion {comp_acc:.3f} (overlap {pre_overlap:.3f} -> {post_overlap:.3f}), "
+        f"novel reject {reject_rate:.3f}, cross-talk {cross_rate:.3f}, deterministic"
+    )
 
 
 if __name__ == "__main__":

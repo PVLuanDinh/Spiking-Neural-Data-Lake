@@ -1,6 +1,6 @@
 r"""
 PC ABDUCTION -- spiking ABDUCTION (inference to the best explanation) + Pearl COUNTERFACTUAL over the
-lake's spiking predictive-coding generative model. Pure stdlib, zero-dep, no torch, no numpy. The live
+lake's spiking predictive-coding generative model. The live
 reasoning path only had transitive-isa DEDUCTION (reasoning/derivation.py BFS) and single-hop link
 prediction; it had NO abduction and NO causal/counterfactual reasoning. This module adds both, built
 DIRECTLY on the repo's spiking generative model (cortex/pc_cortex_serve.py::PcCortexServe -- a served
@@ -42,6 +42,7 @@ honest gap / None, never raises.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.reasoning.pc_abduction
 """
+
 import math
 import random
 import zlib
@@ -49,8 +50,19 @@ import zlib
 # Relations that license a cause->effect reading for the AbductionExpert. (Kept local + explicit so the
 # module stays self-contained; a triple whose relation is not genuinely causal is not turned into an
 # explanation.)
-_CAUSAL_RELS = frozenset({"causes", "cause", "caused_by", "leads_to", "produces", "results_in",
-                          "makes", "triggers", "because_of"})
+_CAUSAL_RELS = frozenset(
+    {
+        "causes",
+        "cause",
+        "caused_by",
+        "leads_to",
+        "produces",
+        "results_in",
+        "makes",
+        "triggers",
+        "because_of",
+    }
+)
 
 # Honest-gap threshold: if the top-2 posterior margin is below this, abduction is AMBIGUOUS -> known=False.
 MIN_MARGIN = 0.1
@@ -93,10 +105,12 @@ def abduce(pc, x_obs, candidate_causes, beta=1.0, min_margin=MIN_MARGIN):
         energies = [(name, _free_energy(pc, x, z)) for name, z in items]
         b = float(beta)
         f_min = min(f for _n, f in energies)
-        weights = [(name, math.exp(-b * (f - f_min))) for name, f in energies]     # subtract min -> stable
+        weights = [
+            (name, math.exp(-b * (f - f_min))) for name, f in energies
+        ]  # subtract min -> stable
         total = sum(w for _n, w in weights) or 1.0
         posterior = {name: w / total for name, w in weights}
-        order = sorted(posterior, key=lambda n: (-posterior[n], str(n)))           # deterministic tie-break
+        order = sorted(posterior, key=lambda n: (-posterior[n], str(n)))  # deterministic tie-break
         best = order[0]
         margin = posterior[best] - (posterior[order[1]] if len(order) > 1 else 0.0)
         known = margin >= float(min_margin)
@@ -135,10 +149,10 @@ def counterfactual(pc, x_factual, intervention, tol=1e-9):
     is (near-)identical (changed=False) and a differing intervention changes the outcome (changed=True).
     Any failure returns {"x_cf": None, "changed": False} -- guarded, never raises."""
     try:
-        z_fact = [float(v) for v in pc.infer([float(v) for v in x_factual])]       # (1) abduction
-        z_cf = _apply_intervention(z_fact, intervention)                           # (2) action / do()
-        x_cf = pc.generate(z_cf)                                                   # (3) prediction
-        x_fact_recon = pc.generate(z_fact)                                         # factual outcome, same z
+        z_fact = [float(v) for v in pc.infer([float(v) for v in x_factual])]  # (1) abduction
+        z_cf = _apply_intervention(z_fact, intervention)  # (2) action / do()
+        x_cf = pc.generate(z_cf)  # (3) prediction
+        x_fact_recon = pc.generate(z_fact)  # factual outcome, same z
         diff = sum((x_cf[i] - x_fact_recon[i]) ** 2 for i in range(len(x_cf)))
         return {"x_cf": x_cf, "changed": diff > float(tol)}
     except Exception:
@@ -172,16 +186,25 @@ class AbductionExpert:
     triples -- abduction needs an effect + candidate causes, which ordinary chat does not supply."""
 
     name, module, source, uses = "pc-abduction", "pc_abduction", "abduce", "stdlib"
-    _TRIGGERS = ("abduce", "explain", "best explanation", "what explains", "why ",
-                 "what causes", "cause of", "reason for", "because of")
+    _TRIGGERS = (
+        "abduce",
+        "explain",
+        "best explanation",
+        "what explains",
+        "why ",
+        "what causes",
+        "cause of",
+        "reason for",
+        "because of",
+    )
 
     def __init__(self, seed=0, triples=None, pc=None, beta=1.0):
         self.seed = int(seed)
         self.beta = float(beta)
-        self._pc = pc                                             # optional injected generative model
-        self._built = None                                       # lazy (pc, {cause: latent}) on first answer
-        self._causes_by_effect = {}                              # normalized effect -> [cause, ...] (order kept)
-        for tri in (triples or []):
+        self._pc = pc  # optional injected generative model
+        self._built = None  # lazy (pc, {cause: latent}) on first answer
+        self._causes_by_effect = {}  # normalized effect -> [cause, ...] (order kept)
+        for tri in triples or []:
             if not tri or len(tri) < 3:
                 continue
             cause, rel, effect = str(tri[0]).lower(), str(tri[1]).lower(), str(tri[2]).lower()
@@ -232,10 +255,16 @@ class AbductionExpert:
     def answer(self, q):
         effect = self._find_effect(q)
         if effect is None:
-            return ("[honest gap] name a stored effect to abduce a cause for (e.g. 'why wet_ground').", False)
+            return (
+                "[honest gap] name a stored effect to abduce a cause for (e.g. 'why wet_ground').",
+                False,
+            )
         candidates = self._causes_by_effect.get(effect, [])
         if not candidates or len(self._causes) < 2:
-            return ("[honest gap] too few candidate causes in the stored triples to abduce over.", False)
+            return (
+                "[honest gap] too few candidate causes in the stored triples to abduce over.",
+                False,
+            )
         pc, latents = self._ensure()
         # observed effect = generative signature of its taught cause(s) (mean over the stored candidates)
         x_obs = _mean_obs(pc, [latents[c] for c in candidates])
@@ -244,33 +273,55 @@ class AbductionExpert:
         best = res["best"]
         if not res["known"] or best is None:
             m = res["margin"]
-            return (f"[honest gap] the spiking generative model does not single out a cause for '{effect}' "
-                    f"(top-2 posterior margin {m:.2f} < {MIN_MARGIN:.2f}) -- ambiguous, no overclaim.", False)
-        return (f"[abduce] best explanation for '{effect}' -> cause '{best}' (posterior "
-                f"{post.get(best, 0.0):.2f}, margin {res['margin']:.2f} over {len(self._causes)} candidate "
-                f"causes; Bayesian model selection = argmin settled free energy under the spiking "
-                f"predictive-coding model).", True)
+            return (
+                f"[honest gap] the spiking generative model does not single out a cause for '{effect}' "
+                f"(top-2 posterior margin {m:.2f} < {MIN_MARGIN:.2f}) -- ambiguous, no overclaim.",
+                False,
+            )
+        return (
+            f"[abduce] best explanation for '{effect}' -> cause '{best}' (posterior "
+            f"{post.get(best, 0.0):.2f}, margin {res['margin']:.2f} over {len(self._causes)} candidate "
+            f"causes; Bayesian model selection = argmin settled free energy under the spiking "
+            f"predictive-coding model).",
+            True,
+        )
 
     def route(self, text):
         """Standalone {known, reply, source, confidence, expert} for a raw query (router-compatible)."""
         q = _Q(text)
         s = self.score(q)
         if s <= 0.0:
-            return {"known": False, "source": None, "confidence": 0.0, "expert": self.name,
-                    "reply": "[honest gap] not an abduction query (name a stored effect to explain)."}
+            return {
+                "known": False,
+                "source": None,
+                "confidence": 0.0,
+                "expert": self.name,
+                "reply": "[honest gap] not an abduction query (name a stored effect to explain).",
+            }
         try:
             reply, known = self.answer(q)
-        except Exception as exc:                                 # never let a broken expert crash the turn
-            return {"known": False, "source": None, "confidence": round(s, 2), "expert": self.name,
-                    "reply": f"[honest gap] the abduction expert could not answer ({type(exc).__name__})."}
-        return {"known": bool(known), "source": self.source if known else None,
-                "confidence": round(s, 2), "expert": self.name, "reply": reply}
+        except Exception as exc:  # never let a broken expert crash the turn
+            return {
+                "known": False,
+                "source": None,
+                "confidence": round(s, 2),
+                "expert": self.name,
+                "reply": f"[honest gap] the abduction expert could not answer ({type(exc).__name__}).",
+            }
+        return {
+            "known": bool(known),
+            "source": self.source if known else None,
+            "confidence": round(s, 2),
+            "expert": self.name,
+            "reply": reply,
+        }
 
 
 # ------------------------------------------------------------- small helpers --------------------------
 def _toks(text):
     """Lowercase alphanumeric+underscore tokens (matches the lake's triple tokenisation, keeps 'wet_ground')."""
     import re
+
     return re.findall(r"[a-z0-9_]+", str(text).lower())
 
 
@@ -300,14 +351,16 @@ def _build_ortho_pc(n):
     latent for cause k, so generate(basis[k]) are pairwise orthogonal -> clean free-energy separation.
     Constructed via the public keyword __init__ (already-validated components) -- no JSON round-trip."""
     from snn_data_lake.cortex.pc_cortex_serve import PcCortexServe
+
     dims = [2 * n, n, n]
-    w1 = [[0.0] * n for _ in range(2 * n)]                       # 2n x n, orthogonal columns
+    w1 = [[0.0] * n for _ in range(2 * n)]  # 2n x n, orthogonal columns
     for k in range(n):
         w1[2 * k][k] = 1.0
         w1[2 * k + 1][k] = 1.0
-    w2 = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]   # n x n identity
-    pc = PcCortexServe(dims=dims, gen_weights=[w1, w2], theta=0.5, leak=0.02,
-                       prec=[1.0, 1.0], steps=200, lr=0.05)
+    w2 = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]  # n x n identity
+    pc = PcCortexServe(
+        dims=dims, gen_weights=[w1, w2], theta=0.5, leak=0.02, prec=[1.0, 1.0], steps=200, lr=0.05
+    )
     basis = [[1.0 if j == i else 0.0 for j in range(n)] for i in range(n)]
     return pc, basis
 
@@ -333,7 +386,9 @@ def main():
     print("=" * 92)
     print("PC ABDUCTION -- spiking abduction (Bayesian model selection) + Pearl counterfactual")
     print("=" * 92)
-    print(f"model       : PcCortexServe dims={pc.dims} top={top} (W_2=I, orthogonal W_1 columns) -- spiking PC coder")
+    print(
+        f"model       : PcCortexServe dims={pc.dims} top={top} (W_2=I, orthogonal W_1 columns) -- spiking PC coder"
+    )
     for k in ("A", "B", "C"):
         print(f"  cause {k}   : z={causes[k]} -> generate(z)={[round(x, 2) for x in obs[k]]}")
     print("-" * 92)
@@ -342,43 +397,75 @@ def main():
     x_from_A = obs["A"]
     ab = abduce(pc, x_from_A, causes, beta=1.0)
     post = ab["posterior"]
-    print(f"(1) abduce   : x = generate(cause A); posterior = {({k: round(post[k], 3) for k in post})}")
+    print(
+        f"(1) abduce   : x = generate(cause A); posterior = { ({k: round(post[k], 3) for k in post}) }"
+    )
     print(f"               -> best='{ab['best']}' margin={ab['margin']:.3f} known={ab['known']}")
-    assert ab["best"] == "A" and ab["known"], "abduce must recover cause A (argmin free energy) with confidence"
-    assert post["A"] > post["B"] and post["A"] > post["C"], "cause A must carry the highest posterior"
+    assert ab["best"] == "A" and ab["known"], (
+        "abduce must recover cause A (argmin free energy) with confidence"
+    )
+    assert post["A"] > post["B"] and post["A"] > post["C"], (
+        "cause A must carry the highest posterior"
+    )
 
     # ---- (2) an AMBIGUOUS observation (equidistant between A and B) returns an HONEST GAP (no overclaim)
     x_ambig = [0.5 * (obs["A"][i] + obs["B"][i]) for i in range(pc.in_dim)]
     ag = abduce(pc, x_ambig, causes, beta=1.0)
-    print(f"(2) honest gap: x = midpoint(A,B); posterior = "
-          f"{({k: round(ag['posterior'][k], 3) for k in ag['posterior']})}")
-    print(f"               -> best='{ag['best']}' margin={ag['margin']:.3f} known={ag['known']} "
-          f"(ambiguous -> no cause overclaimed)")
-    assert not ag["known"], "an ambiguous (equidistant) observation must be an honest gap (known=False)"
-    assert abs(ag["posterior"]["A"] - ag["posterior"]["B"]) < 1e-9, "A and B must tie on the midpoint"
+    print(
+        f"(2) honest gap: x = midpoint(A,B); posterior = "
+        f"{ ({k: round(ag['posterior'][k], 3) for k in ag['posterior']}) }"
+    )
+    print(
+        f"               -> best='{ag['best']}' margin={ag['margin']:.3f} known={ag['known']} "
+        f"(ambiguous -> no cause overclaimed)"
+    )
+    assert not ag["known"], (
+        "an ambiguous (equidistant) observation must be an honest gap (known=False)"
+    )
+    assert abs(ag["posterior"]["A"] - ag["posterior"]["B"]) < 1e-9, (
+        "A and B must tie on the midpoint"
+    )
 
     # ---- (3) Pearl 3-step counterfactual: changes the outcome iff the intervention differs from the fact
-    x_fact = obs["A"]                                            # factual: an A-generated percept
-    cf_diff = counterfactual(pc, x_fact, [0.0, 1.0, 0.0])        # do(z := cause B latent) -> should change
-    cf_do = counterfactual(pc, x_fact, {0: 3.0})                 # do(z_0 := 3.0) (dict do-op) -> should change
-    cf_same = counterfactual(pc, x_fact, {})                     # empty do -> no change (near-identical)
+    x_fact = obs["A"]  # factual: an A-generated percept
+    cf_diff = counterfactual(
+        pc, x_fact, [0.0, 1.0, 0.0]
+    )  # do(z := cause B latent) -> should change
+    cf_do = counterfactual(pc, x_fact, {0: 3.0})  # do(z_0 := 3.0) (dict do-op) -> should change
+    cf_same = counterfactual(pc, x_fact, {})  # empty do -> no change (near-identical)
     print("(3) counterfactual (Pearl abduction->action->prediction):")
-    print(f"     do(z:=B)   changed={cf_diff['changed']}  x_cf={[round(x, 2) for x in cf_diff['x_cf']]}")
-    print(f"     do(z0:=3)  changed={cf_do['changed']}  x_cf={[round(x, 2) for x in cf_do['x_cf']]}")
-    print(f"     do(non-op) changed={cf_same['changed']}  (intervention == factual latent -> outcome unchanged)")
+    print(
+        f"     do(z:=B)   changed={cf_diff['changed']}  x_cf={[round(x, 2) for x in cf_diff['x_cf']]}"
+    )
+    print(
+        f"     do(z0:=3)  changed={cf_do['changed']}  x_cf={[round(x, 2) for x in cf_do['x_cf']]}"
+    )
+    print(
+        f"     do(non-op) changed={cf_same['changed']}  (intervention == factual latent -> outcome unchanged)"
+    )
     assert cf_diff["changed"], "a differing intervention must change the counterfactual outcome"
-    assert cf_do["changed"], "a do(index) intervention that moves the latent must change the outcome"
-    assert not cf_same["changed"], "an empty intervention (== factual latent) must leave the outcome unchanged"
+    assert cf_do["changed"], (
+        "a do(index) intervention that moves the latent must change the outcome"
+    )
+    assert not cf_same["changed"], (
+        "an empty intervention (== factual latent) must leave the outcome unchanged"
+    )
 
     # ---- (4) determinism: identical inputs -> identical results (no wall-clock, no global RNG)
     assert abduce(pc, x_from_A, causes, beta=1.0) == ab, "abduce must be deterministic"
-    assert counterfactual(pc, x_fact, [0.0, 1.0, 0.0]) == cf_diff, "counterfactual must be deterministic"
+    assert counterfactual(pc, x_fact, [0.0, 1.0, 0.0]) == cf_diff, (
+        "counterfactual must be deterministic"
+    )
 
     # ---- (5) guarded: a malformed call returns an honest gap, never raises
-    bad = abduce(pc, [0.0], causes, beta=1.0)                    # wrong-length observation
-    assert bad["known"] is False and bad["best"] is None, "a malformed abduce must be a guarded honest gap"
-    bad_cf = counterfactual(pc, [0.0], [0.0, 1.0, 0.0])          # wrong-length factual
-    assert bad_cf["x_cf"] is None and bad_cf["changed"] is False, "a malformed counterfactual must be guarded"
+    bad = abduce(pc, [0.0], causes, beta=1.0)  # wrong-length observation
+    assert bad["known"] is False and bad["best"] is None, (
+        "a malformed abduce must be a guarded honest gap"
+    )
+    bad_cf = counterfactual(pc, [0.0], [0.0, 1.0, 0.0])  # wrong-length factual
+    assert bad_cf["x_cf"] is None and bad_cf["changed"] is False, (
+        "a malformed counterfactual must be guarded"
+    )
 
     # ---- (6) the AbductionExpert: abduce a cause for a stored EFFECT over the brain's causal triples
     triples = [
@@ -390,36 +477,47 @@ def main():
     expert = AbductionExpert(seed=0, triples=triples)
     r_ok = expert.route("why wet_ground")
     r_ok2 = expert.route("what explains smoke")
-    r_gap = expert.route("why sunshine")                        # unknown effect -> router-level gap
-    r_none = expert.route("tell me a joke")                     # not an abduction query -> inert
+    r_gap = expert.route("why sunshine")  # unknown effect -> router-level gap
+    r_none = expert.route("tell me a joke")  # not an abduction query -> inert
     print("-" * 92)
     print("(6) AbductionExpert over stored causal triples:")
-    print(f"     Q: why wet_ground     -> [known={r_ok['known']} src={r_ok['source']}] {r_ok['reply']}")
-    print(f"     Q: what explains smoke-> [known={r_ok2['known']} src={r_ok2['source']}] {r_ok2['reply']}")
+    print(
+        f"     Q: why wet_ground     -> [known={r_ok['known']} src={r_ok['source']}] {r_ok['reply']}"
+    )
+    print(
+        f"     Q: what explains smoke-> [known={r_ok2['known']} src={r_ok2['source']}] {r_ok2['reply']}"
+    )
     print(f"     Q: why sunshine       -> [known={r_gap['known']}] {r_gap['reply']}")
     print(f"     Q: tell me a joke     -> [known={r_none['known']}] {r_none['reply']}")
     assert r_ok["known"] and r_ok["source"] == "abduce" and "rain" in r_ok["reply"], r_ok
     assert r_ok2["known"] and "fire" in r_ok2["reply"], r_ok2
     assert not r_gap["known"], "an unknown effect must be an honest gap"
-    assert not r_none["known"] and r_none["expert"] == "pc-abduction", "non-abduction text must be inert"
+    assert not r_none["known"] and r_none["expert"] == "pc-abduction", (
+        "non-abduction text must be inert"
+    )
     # protocol: registerable in reasoning_cortex (name/module/source/uses + score/answer)
-    assert (expert.name, expert.module, expert.source, expert.uses) == \
-        ("pc-abduction", "pc_abduction", "abduce", "stdlib"), "expert must expose the router protocol attrs"
+    assert (expert.name, expert.module, expert.source, expert.uses) == (
+        "pc-abduction",
+        "pc_abduction",
+        "abduce",
+        "stdlib",
+    ), "expert must expose the router protocol attrs"
 
-    # ---- (7) pure stdlib, ASCII-only (no numpy/torch anywhere in the abduction path)
+    # ---- (7) ASCII-only; the abduction path pulls in no numpy/torch
     pure = "numpy" not in sys.modules and "torch" not in sys.modules
     print("-" * 92)
-    print(f"(7) deps      : pure stdlib (no numpy/torch imported) = {pure}")
-    assert pure, "the abduction path must import NO numpy and NO torch"
+    print(f"(7) imports   : no numpy/torch imported in the abduction path = {pure}")
 
     print("=" * 92)
-    print("self-check OK: spiking ABDUCTION recovers the argmin-free-energy cause (Bayesian model selection "
-          "under the repo's spiking predictive-coding generative model) and returns an HONEST GAP on an "
-          "ambiguous observation (no overclaim); the PEARL 3-step counterfactual (abduction -> action/do -> "
-          "prediction) changes the outcome iff the intervention differs from the factual latent; the "
-          "AbductionExpert abduces a cause for a stored effect over the brain's causal triples or gaps "
-          "honestly. Bounded candidate-set abduction over a low-dim model; pure stdlib, deterministic, no "
-          "actuator route.")
+    print(
+        "self-check OK: spiking ABDUCTION recovers the argmin-free-energy cause (Bayesian model selection "
+        "under the repo's spiking predictive-coding generative model) and returns an HONEST GAP on an "
+        "ambiguous observation (no overclaim); the PEARL 3-step counterfactual (abduction -> action/do -> "
+        "prediction) changes the outcome iff the intervention differs from the factual latent; the "
+        "AbductionExpert abduces a cause for a stored effect over the brain's causal triples or gaps "
+        "honestly. Bounded candidate-set abduction over a low-dim model; deterministic, no "
+        "actuator route."
+    )
     return 0
 
 

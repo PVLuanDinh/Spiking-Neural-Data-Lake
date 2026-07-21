@@ -16,11 +16,12 @@ the fast/slow neuromodulator pair the brain actually uses.
 
   python cortisol.py
 """
+
 import math
 
-TAU = 200.0        # slow decay (steps) — the "minutes" scale
-GAIN = 0.30        # how much one aversive event raises stress
-MAXMOD = 0.60      # cap on how strongly stress modulates
+TAU = 200.0  # slow decay (steps) — the "minutes" scale
+GAIN = 0.30  # how much one aversive event raises stress
+MAXMOD = 0.60  # cap on how strongly stress modulates
 
 
 class Cortisol:
@@ -59,9 +60,9 @@ def demo_episode():
 
     from snn_data_lake.brainstem.reflex import Reflex
 
-    cort = Cortisol(tau=40.0)            # short tau so the demo runs quickly
+    cort = Cortisol(tau=40.0)  # short tau so the demo runs quickly
     base_threshold = 0.10
-    danger = [500, 500, 500, 500, 500, 500, 950, 0]   # collision on ch6
+    danger = [500, 500, 500, 500, 500, 500, 950, 0]  # collision on ch6
 
     levels = []
     # phase A — 20 quiet ticks: stress stays near zero
@@ -73,7 +74,7 @@ def demo_episode():
     reflex = Reflex()
     fires = 0
     for _ in range(30):
-        reflex.threshold = base_threshold * cort.reflex_threshold_scale()   # hypervigilance
+        reflex.threshold = base_threshold * cort.reflex_threshold_scale()  # hypervigilance
         fired = reflex.step(danger)
         if fired:
             fires += 1
@@ -85,25 +86,36 @@ def demo_episode():
         levels.append(cort.step(0.0))
     recovered = cort.level
 
-    return {"quiet": quiet, "stressed": stressed, "recovered": recovered,
-            "fires": fires, "levels": levels}
+    return {
+        "quiet": quiet,
+        "stressed": stressed,
+        "recovered": recovered,
+        "fires": fires,
+        "levels": levels,
+    }
 
 
 def main():
     ep = demo_episode()
     stressed = Cortisol()
-    for _ in range(40):                  # drive a separate cortisol to high stress
+    for _ in range(40):  # drive a separate cortisol to high stress
         stressed.step(1.0)
 
     print("=" * 60)
     print("CORTISOL STRESS-STATE (slow tonic modulation)")
     print("=" * 60)
-    print(f"episode  quiet={ep['quiet']:.2f} -> danger burst -> stressed={ep['stressed']:.2f}"
-          f" -> recovered={ep['recovered']:.2f}  ({ep['fires']} reflex fires)")
+    print(
+        f"episode  quiet={ep['quiet']:.2f} -> danger burst -> stressed={ep['stressed']:.2f}"
+        f" -> recovered={ep['recovered']:.2f}  ({ep['fires']} reflex fires)"
+    )
     print(f"under stress (level={stressed.level:.2f}):")
-    print(f"  reflex threshold scale : {stressed.reflex_threshold_scale():.2f}  (<1 = fires sooner)")
-    print(f"  learn-rate scale  bad  : {stressed.learn_rate_scale(-1):.2f}  "
-          f"good : {stressed.learn_rate_scale(+1):.2f}")
+    print(
+        f"  reflex threshold scale : {stressed.reflex_threshold_scale():.2f}  (<1 = fires sooner)"
+    )
+    print(
+        f"  learn-rate scale  bad  : {stressed.learn_rate_scale(-1):.2f}  "
+        f"good : {stressed.learn_rate_scale(+1):.2f}"
+    )
     print(f"  caution bias           : {stressed.caution_bias():.2f}  (subtracted from valence)")
     print("=" * 60)
 
@@ -112,11 +124,14 @@ def main():
     assert ep["stressed"] > 0.5, "danger burst should raise stress"
     assert ep["recovered"] < ep["stressed"] * 0.5, "stress should decay (recover) when safe again"
     assert stressed.reflex_threshold_scale() < 1.0, "stress should lower the reflex threshold"
-    assert stressed.learn_rate_scale(-1) > stressed.learn_rate_scale(+1), \
+    assert stressed.learn_rate_scale(-1) > stressed.learn_rate_scale(+1), (
         "stress should amplify aversive learning specifically"
+    )
     assert stressed.caution_bias() > 0.0, "stress should add a caution (AVOID) bias"
-    print("self-check OK: stress rises on danger, recovers when safe, and under stress "
-          "sharpens reflex + amplifies aversive learning + biases toward caution")
+    print(
+        "self-check OK: stress rises on danger, recovers when safe, and under stress "
+        "sharpens reflex + amplifies aversive learning + biases toward caution"
+    )
 
 
 if __name__ == "__main__":

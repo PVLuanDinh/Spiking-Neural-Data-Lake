@@ -1,7 +1,6 @@
 """
 Spiking hierarchical predictive coding (Rao & Ballard 1999, spiking form) -- perceptual inference
-by prediction-error minimization over a 2-level generative hierarchy, carried by DISCRETE SPIKES
-(pure stdlib, no tensors).
+by prediction-error minimization over a 2-level generative hierarchy, carried by DISCRETE SPIKES.
 
 A layered GENERATIVE model where each level predicts the level below and ONLY the prediction ERROR
 propagates upward -- but here the ERRORS are encoded by LEAKY INTEGRATE-AND-FIRE (LIF) neuron
@@ -60,6 +59,7 @@ Refs: Rao & Ballard, Nat Neurosci 2:79 (1999); Friston, free-energy view.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.predictive_coding
 """
+
 import random
 
 
@@ -81,30 +81,34 @@ class PredictiveCodingNetwork:
     The prediction ERRORS are carried by LIF neuron populations (a signed ON/OFF pair per error
     component: membrane, threshold, spike, reset-by-subtraction). infer() settles the causes r1, r2
     by having them integrate the error SPIKES until the error populations fall silent; learn() then
-    adapts W1, W2 by a Hebbian-on-spikes rule. Deterministic given seed; pure stdlib (only random
+    adapts W1, W2 by a Hebbian-on-spikes rule. Deterministic given seed (only random
     for weight init). Inference is approximate -- it drives the prediction-error spike activity and
     the reconstruction residual DOWN, not to exactly zero."""
 
     # fixed LIF parameters (the constructor signature is part of the public API and cannot grow).
-    THETA = 0.5      # spike threshold for every error neuron
-    LEAK = 0.02      # membrane leak per step -> genuinely LEAKY integrate-and-fire
-    PREC0 = 1.0      # precision (gain) on the input-level mismatch drive
-    PREC1 = 1.0      # precision (gain) on the layer-1 mismatch drive
+    THETA = 0.5  # spike threshold for every error neuron
+    LEAK = 0.02  # membrane leak per step -> genuinely LEAKY integrate-and-fire
+    PREC0 = 1.0  # precision (gain) on the input-level mismatch drive
+    PREC1 = 1.0  # precision (gain) on the layer-1 mismatch drive
 
     def __init__(self, dims=(8, 4, 2), seed=0):
         self.d_in, self.d_r1, self.d_r2 = dims
         self.rng = random.Random(seed)
         # W1: predicts input x from r1 (d_in rows x d_r1 cols); W2: predicts r1 from r2.
-        self.w1 = [[self.rng.uniform(-0.5, 0.5) for _ in range(self.d_r1)] for _ in range(self.d_in)]
-        self.w2 = [[self.rng.uniform(-0.5, 0.5) for _ in range(self.d_r2)] for _ in range(self.d_r1)]
+        self.w1 = [
+            [self.rng.uniform(-0.5, 0.5) for _ in range(self.d_r1)] for _ in range(self.d_in)
+        ]
+        self.w2 = [
+            [self.rng.uniform(-0.5, 0.5) for _ in range(self.d_r2)] for _ in range(self.d_r1)
+        ]
         self.x = [0.0] * self.d_in
         self.reset()
 
     def reset(self):
         """Clear the inferred causes r1, r2 and every LIF membrane/spike/counter (call before
         inferring a new input)."""
-        self.r1 = [0.0] * self.d_r1                 # layer-1 causes (graded cause-neuron readout)
-        self.r2 = [0.0] * self.d_r2                 # layer-2 causes
+        self.r1 = [0.0] * self.d_r1  # layer-1 causes (graded cause-neuron readout)
+        self.r2 = [0.0] * self.d_r2  # layer-2 causes
         # LIF error-neuron membranes: signed ON/OFF pair per error component.
         self.v_e0_on = [0.0] * self.d_in
         self.v_e0_off = [0.0] * self.d_in
@@ -183,8 +187,12 @@ class PredictiveCodingNetwork:
         lr = 0.0 reads the error spikes WITHOUT moving the causes (a settled/ablated readout)."""
         self.x = list(x)
         e0, e1 = self.errors()
-        s_e0 = [self._lif(self.v_e0_on, self.v_e0_off, self.PREC0 * e0[k], k) for k in range(self.d_in)]
-        s_e1 = [self._lif(self.v_e1_on, self.v_e1_off, self.PREC1 * e1[j], j) for j in range(self.d_r1)]
+        s_e0 = [
+            self._lif(self.v_e0_on, self.v_e0_off, self.PREC0 * e0[k], k) for k in range(self.d_in)
+        ]
+        s_e1 = [
+            self._lif(self.v_e1_on, self.v_e1_off, self.PREC1 * e1[j], j) for j in range(self.d_r1)
+        ]
         self.s_e0, self.s_e1 = s_e0, s_e1
         activity = sum(1 for s in s_e0 if s) + sum(1 for s in s_e1 if s)
         for k in range(self.d_in):
@@ -192,8 +200,8 @@ class PredictiveCodingNetwork:
         for j in range(self.d_r1):
             self.cum_e1[j] += s_e1[j]
         self.n_steps += 1
-        g1 = _matvec_t(self.w1, s_e0)      # bottom-up error spikes W1^T @ s_e0 (length d_r1)
-        g2 = _matvec_t(self.w2, s_e1)      # bottom-up error spikes W2^T @ s_e1 (length d_r2)
+        g1 = _matvec_t(self.w1, s_e0)  # bottom-up error spikes W1^T @ s_e0 (length d_r1)
+        g2 = _matvec_t(self.w2, s_e1)  # bottom-up error spikes W2^T @ s_e1 (length d_r2)
         self.r1 = [self.r1[j] + lr * (g1[j] - s_e1[j]) for j in range(self.d_r1)]
         self.r2 = [self.r2[m] + lr * g2[m] for m in range(self.d_r2)]
         return activity
@@ -204,7 +212,7 @@ class PredictiveCodingNetwork:
         entry is a settled readout taken with the causes held fixed (lr = 0.0)."""
         self.x = list(x)
         trace = [self.infer_step(x, lr) for _ in range(steps)]
-        trace.append(self.infer_step(x, 0.0))       # settled error-spike readout, causes held
+        trace.append(self.infer_step(x, 0.0))  # settled error-spike readout, causes held
         return trace
 
     def learn(self, dataset, epochs=12, steps=120, lr=0.05, lr_w=0.02):
@@ -219,12 +227,12 @@ class PredictiveCodingNetwork:
                 self.infer(x, steps=steps, lr=lr)
                 e0, _ = self.errors()
                 epoch_mse += sum(v * v for v in e0) / self.d_in
-                rate0 = [self.cum_e0[k] / self.n_steps for k in range(self.d_in)]   # spike-rate ~ e0
-                rate1 = [self.cum_e1[j] / self.n_steps for j in range(self.d_r1)]   # spike-rate ~ e1
-                for k in range(self.d_in):                     # W1 += lr_w * outer(rate(s_e0), r1)
+                rate0 = [self.cum_e0[k] / self.n_steps for k in range(self.d_in)]  # spike-rate ~ e0
+                rate1 = [self.cum_e1[j] / self.n_steps for j in range(self.d_r1)]  # spike-rate ~ e1
+                for k in range(self.d_in):  # W1 += lr_w * outer(rate(s_e0), r1)
                     for j in range(self.d_r1):
                         self.w1[k][j] += lr_w * rate0[k] * self.r1[j]
-                for j in range(self.d_r1):                     # W2 += lr_w * outer(rate(s_e1), r2)
+                for j in range(self.d_r1):  # W2 += lr_w * outer(rate(s_e1), r2)
                     for m in range(self.d_r2):
                         self.w2[j][m] += lr_w * rate1[j] * self.r2[m]
             curve.append(epoch_mse / len(dataset))
@@ -240,12 +248,16 @@ class PredictiveCodingNetwork:
 def synth_dataset(n=8, d_in=8, rank=2, noise=0.02, seed=7):
     """A handful of vectors from a low-rank generative source (rank latent factors) + small noise."""
     rng = random.Random(seed)
-    basis = [[rng.uniform(-1.0, 1.0) for _ in range(rank)] for _ in range(d_in)]   # d_in x rank
+    basis = [[rng.uniform(-1.0, 1.0) for _ in range(rank)] for _ in range(d_in)]  # d_in x rank
     data = []
     for _ in range(n):
         coeff = [rng.uniform(-1.0, 1.0) for _ in range(rank)]
-        data.append([sum(basis[k][r] * coeff[r] for r in range(rank)) + rng.uniform(-noise, noise)
-                     for k in range(d_in)])
+        data.append(
+            [
+                sum(basis[k][r] * coeff[r] for r in range(rank)) + rng.uniform(-noise, noise)
+                for k in range(d_in)
+            ]
+        )
     return data
 
 
@@ -256,24 +268,23 @@ def _window_mean(trace, lo, hi):
 
 
 def main():
-    import sys
 
     # ---- 1. SPIKING INFERENCE settles: error-spike activity + recon residual FALL vs an ablated
     #         control whose cause->error pathway is severed (lr=0) so its error neurons never quiet.
     net = PredictiveCodingNetwork(dims=(8, 4, 2), seed=0)
     r2_true = [0.9, -0.6]
-    x = net.representable_input(r2_true)          # x = W1 @ (W2 @ r2_true)
+    x = net.representable_input(r2_true)  # x = W1 @ (W2 @ r2_true)
     net.reset()
     trace = net.infer(x, steps=800, lr=0.05)
     e0, _ = net.errors()
     recon_mse = sum(v * v for v in e0) / net.d_in
     total_spikes = sum(trace)
-    act_early = _window_mean(trace, 0, 50)        # prediction-error spike rate, start of inference
-    act_late = _window_mean(trace, len(trace) - 50, len(trace))   # ... near the settled point
+    act_early = _window_mean(trace, 0, 50)  # prediction-error spike rate, start of inference
+    act_late = _window_mean(trace, len(trace) - 50, len(trace))  # ... near the settled point
 
     ablate = PredictiveCodingNetwork(dims=(8, 4, 2), seed=0)
     ablate.reset()
-    trace_ab = ablate.infer(x, steps=800, lr=0.0)   # causes frozen -> mismatch never explained away
+    trace_ab = ablate.infer(x, steps=800, lr=0.0)  # causes frozen -> mismatch never explained away
     e0_ab, _ = ablate.errors()
     recon_mse_ab = sum(v * v for v in e0_ab) / ablate.d_in
     act_late_ab = _window_mean(trace_ab, len(trace_ab) - 50, len(trace_ab))
@@ -281,15 +292,15 @@ def main():
     # ---- 2. HIERARCHICAL spike message-passing: r2 moves ONLY when driven by layer-1 error SPIKES.
     net2 = PredictiveCodingNetwork(dims=(8, 4, 2), seed=1)
     r2_fixed = [0.5, -0.3]
-    r1_match = _matvec(net2.w2, r2_fixed)         # r1 = W2 @ r2 => e1 == 0 => NO e1 spikes
+    r1_match = _matvec(net2.w2, r2_fixed)  # r1 = W2 @ r2 => e1 == 0 => NO e1 spikes
     net2.set_state(r1_match, r2_fixed)
     net2.x = [0.0] * 8
     r2_before = list(net2.r2)
-    net2.infer_step([0.0] * 8, lr=0.1)            # s_e1 == 0 so r2 step = lr * W2^T @ 0 = 0
+    net2.infer_step([0.0] * 8, lr=0.1)  # s_e1 == 0 so r2 step = lr * W2^T @ 0 = 0
     frozen_move = max(abs(a - b) for a, b in zip(r2_before, net2.r2))
-    net2.set_state([v + 0.5 for v in r1_match], r2_fixed)   # residual e1 = +0.5 -> ON spikes
+    net2.set_state([v + 0.5 for v in r1_match], r2_fixed)  # residual e1 = +0.5 -> ON spikes
     r2_before2 = list(net2.r2)
-    for _ in range(30):                           # let the e1 spikes accumulate and drive r2
+    for _ in range(30):  # let the e1 spikes accumulate and drive r2
         net2.infer_step([0.0] * 8, lr=0.1)
     residual_move = max(abs(a - b) for a, b in zip(r2_before2, net2.r2))
 
@@ -311,55 +322,77 @@ def main():
 
     # spikes are discrete events in {-1, 0, +1} (assert on the last settled spike vectors).
     spikes_discrete = all(s in (-1, 0, 1) for s in net.s_e0 + net.s_e1)
-    no_tensors = "numpy" not in sys.modules and "torch" not in sys.modules
 
     print("=" * 68)
     print("SPIKING PREDICTIVE CODING -- 2-level Rao-Ballard, LIF error+cause populations")
     print("=" * 68)
-    print(f"inference : error-spike activity head {[trace[t] for t in range(3)]} "
-          f"tail {[trace[t] for t in range(len(trace) - 3, len(trace))]}")
-    print(f"            act early {act_early:.3f} -> late {act_late:.3f}  "
-          f"({act_early / max(act_late, 1e-9):.1f}x quieter)  total spikes {total_spikes}")
-    print(f"            recon MSE |x - x_hat|^2/d {recon_mse:.3e} (settled)  "
-          f"vs ablated {recon_mse_ab:.3e} (frozen causes)")
-    print(f"ablated   : error-spike activity stays high, late {act_late_ab:.3f} "
-          f"(vs settled {act_late:.3f})")
-    print(f"hierarchy : r2 move with e1 spikes==0 {frozen_move:.3e} -> frozen; "
-          f"r2 move with residual e1 spikes {residual_move:.4f} -> moves")
+    print(
+        f"inference : error-spike activity head {[trace[t] for t in range(3)]} "
+        f"tail {[trace[t] for t in range(len(trace) - 3, len(trace))]}"
+    )
+    print(
+        f"            act early {act_early:.3f} -> late {act_late:.3f}  "
+        f"({act_early / max(act_late, 1e-9):.1f}x quieter)  total spikes {total_spikes}"
+    )
+    print(
+        f"            recon MSE |x - x_hat|^2/d {recon_mse:.3e} (settled)  "
+        f"vs ablated {recon_mse_ab:.3e} (frozen causes)"
+    )
+    print(
+        f"ablated   : error-spike activity stays high, late {act_late_ab:.3f} "
+        f"(vs settled {act_late:.3f})"
+    )
+    print(
+        f"hierarchy : r2 move with e1 spikes==0 {frozen_move:.3e} -> frozen; "
+        f"r2 move with residual e1 spikes {residual_move:.4f} -> moves"
+    )
     print("learning  : per-epoch post-inference recon MSE ->")
     print("            " + " ".join(f"{v:.4f}" for v in curve))
-    print(f"            epoch 1 {first_mse:.4f} -> final {last_mse:.4f} "
-          f"({first_mse / last_mse:.1f}x lower)")
-    print(f"spiking   : spikes discrete in {{-1,0,1}} {spikes_discrete}; numpy/torch absent {no_tensors}")
+    print(
+        f"            epoch 1 {first_mse:.4f} -> final {last_mse:.4f} "
+        f"({first_mse / last_mse:.1f}x lower)"
+    )
+    print(f"spiking   : spikes discrete in {{-1,0,1}} {spikes_discrete}")
     print(f"determinism: identical weights {same_weights}; identical spike traces {same_trace}")
     print("=" * 68)
 
-    # ---- self-check: deterministic asserts, zero-dep stdlib, ASCII-only prints ----
+    # ---- self-check: deterministic asserts, ASCII-only prints ----
     # (a) FUNCTION -- spiking settling infers the cause and QUIETS the error neurons vs the control.
     assert total_spikes > 20, f"the network must actually emit discrete spikes ({total_spikes})"
-    assert act_late < 0.5 * act_early, \
+    assert act_late < 0.5 * act_early, (
         f"prediction-error spike activity must FALL as inference settles ({act_early:.3f}->{act_late:.3f})"
-    assert act_late < 0.5 * act_late_ab, \
+    )
+    assert act_late < 0.5 * act_late_ab, (
         f"settled error-spike activity must be far below the frozen-cause control ({act_late:.3f} vs {act_late_ab:.3f})"
-    assert recon_mse < 1e-2, f"spiking inference must reconstruct a representable input closely ({recon_mse:.3e})"
-    assert recon_mse < 0.2 * recon_mse_ab, \
+    )
+    assert recon_mse < 1e-2, (
+        f"spiking inference must reconstruct a representable input closely ({recon_mse:.3e})"
+    )
+    assert recon_mse < 0.2 * recon_mse_ab, (
         f"settled recon residual must be far below the ablated control ({recon_mse:.3e} vs {recon_mse_ab:.3e})"
+    )
     # (b) HIERARCHY -- r2 is driven ONLY by the layer-1 error spikes.
-    assert frozen_move < 1e-12, \
+    assert frozen_move < 1e-12, (
         f"with e1 spikes==0 the layer-1 error vanishes so r2 must NOT move ({frozen_move:.3e})"
-    assert residual_move > 1e-3, \
+    )
+    assert residual_move > 1e-3, (
         f"with residual e1 spikes, r2 MUST move to reduce the layer-1 error ({residual_move:.4f})"
+    )
     # (c) LEARNING -- Hebbian-on-spikes lowers post-inference recon MSE.
-    assert last_mse < first_mse * 0.5, \
+    assert last_mse < first_mse * 0.5, (
         f"learning must lower post-inference recon MSE ({first_mse:.4f} -> {last_mse:.4f})"
+    )
     # (d) GENUINELY SPIKING + DETERMINISM.
     assert spikes_discrete, "error signal must be carried by discrete spikes in {-1,0,+1}"
-    assert no_tensors, "must be pure stdlib -- numpy/torch must not be imported"
-    assert same_weights and same_trace, "same seed/input must give identical weights and spike traces"
-    print(f"self-check OK: spiking inference quiets error spikes {act_early:.2f}->{act_late:.2f} "
-          f"(control stays {act_late_ab:.2f}), recon MSE {recon_mse:.2e} (approx, not exact); "
-          f"r2 frozen at e1==0 ({frozen_move:.1e}) but moves on residual e1 spikes ({residual_move:.3f}); "
-          f"Hebbian-on-spikes {first_mse:.3f} -> {last_mse:.3f}; discrete spikes; deterministic")
+    assert same_weights and same_trace, (
+        "same seed/input must give identical weights and spike traces"
+    )
+    print(
+        f"self-check OK: spiking inference quiets error spikes {act_early:.2f}->{act_late:.2f} "
+        f"(control stays {act_late_ab:.2f}), recon MSE {recon_mse:.2e} (approx, not exact); "
+        f"r2 frozen at e1==0 ({frozen_move:.1e}) but moves on residual e1 spikes ({residual_move:.3f}); "
+        f"Hebbian-on-spikes {first_mse:.3f} -> {last_mse:.3f}; discrete spikes; deterministic"
+    )
 
 
 if __name__ == "__main__":

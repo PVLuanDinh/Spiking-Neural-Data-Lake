@@ -48,11 +48,12 @@ HONEST scope / deviations (this is a MECHANISM demo, not the full model):
     into identical copies. These are faithful to the FEELING principle, not extra supervision.
 
 Purely label-free: labels are used ONLY at eval time to READ OUT the unsupervised clusters (standard
-cluster-purity scoring), never to train. Pure standard library, zero-dep, deterministic (seeded),
+cluster-purity scoring), never to train. Deterministic (seeded),
 additive (a new member of the plasticity family; nothing existing changes).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.plasticity.competitive_learning
 """
+
 import math
 import random
 
@@ -69,35 +70,53 @@ class CompetitiveLearner:
     lateral competition (eq. 8). No teacher after a short symmetry-breaking init.
     """
 
-    def __init__(self, n_inputs, n_units, seed=0, alpha=0.04, gamma=0.05,
-                 tau_a=5.0, tau_theta=60.0, dv_th=0.45, tau_th=40.0,
-                 tau_m=20.0, v_threshold=0.9, refractory=2, w_norm=3.0, lat_init=-0.5):
+    def __init__(
+        self,
+        n_inputs,
+        n_units,
+        seed=0,
+        alpha=0.04,
+        gamma=0.05,
+        tau_a=5.0,
+        tau_theta=60.0,
+        dv_th=0.45,
+        tau_th=40.0,
+        tau_m=20.0,
+        v_threshold=0.9,
+        refractory=2,
+        w_norm=3.0,
+        lat_init=-0.5,
+    ):
         self.n_inputs = n_inputs
         self.n_units = n_units
-        self.alpha = alpha                 # eq. 6 feed-forward learning rate
-        self.gamma = gamma                 # eq. 8 lateral-inhibition learning rate
-        self.w_norm = w_norm               # per-neuron L1 budget: the paper's LIMITED resource
-        self.da = 1.0 - 1.0 / tau_a        # instant-activity EMA retention (eq. 1)
-        self.ka = 1.0 / tau_a              # instant-activity spike increment
-        self.dth = 1.0 - 1.0 / tau_theta   # average-activity EMA retention (eq. 2)
-        self.kth = 1.0 / tau_theta         # average-activity spike increment
-        self.dv_th = dv_th                 # dynamic-threshold spike increment (eq. 5)
-        self.th_decay = math.exp(-1.0 / tau_th)   # dynamic-threshold leak
+        self.alpha = alpha  # eq. 6 feed-forward learning rate
+        self.gamma = gamma  # eq. 8 lateral-inhibition learning rate
+        self.w_norm = w_norm  # per-neuron L1 budget: the paper's LIMITED resource
+        self.da = 1.0 - 1.0 / tau_a  # instant-activity EMA retention (eq. 1)
+        self.ka = 1.0 / tau_a  # instant-activity spike increment
+        self.dth = 1.0 - 1.0 / tau_theta  # average-activity EMA retention (eq. 2)
+        self.kth = 1.0 / tau_theta  # average-activity spike increment
+        self.dv_th = dv_th  # dynamic-threshold spike increment (eq. 5)
+        self.th_decay = math.exp(-1.0 / tau_th)  # dynamic-threshold leak
         rng = random.Random(seed)
         # feed-forward excitatory weights, small random init on the L1 resource simplex (each unit
         # starts as a random point of total weight w_norm) -- symmetry is broken by the supervised init
-        self.w = [self._renorm([rng.uniform(0.1, 1.0) for _ in range(n_inputs)]) for _ in range(n_units)]
+        self.w = [
+            self._renorm([rng.uniform(0.1, 1.0) for _ in range(n_inputs)]) for _ in range(n_units)
+        ]
         # intralayer inhibitory weights lat[j][k] = grip of competitor k onto j, in [-1, 0]; a small
         # baseline inhibition exists from the start (the paper: lateral inhibition "helps learn faster")
         # so units compete immediately instead of co-firing and locking into redundant copies
         self.lat = [[0.0 if j == k else lat_init for k in range(n_units)] for j in range(n_units)]
-        self.units = [LIFNeuron(tau_m=tau_m, v_threshold=v_threshold, refractory=refractory)
-                      for _ in range(n_units)]
-        self.a_in = [0.0] * n_inputs       # input instant activity a_i
-        self.th_in = [0.0] * n_inputs      # input average activity theta_i
-        self.a_out = [0.0] * n_units       # unit instant activity a_j
-        self.th_out = [0.0] * n_units      # unit average activity theta_j
-        self.adapt = [0.0] * n_units       # spike-frequency adaptation (dynamic threshold)
+        self.units = [
+            LIFNeuron(tau_m=tau_m, v_threshold=v_threshold, refractory=refractory)
+            for _ in range(n_units)
+        ]
+        self.a_in = [0.0] * n_inputs  # input instant activity a_i
+        self.th_in = [0.0] * n_inputs  # input average activity theta_i
+        self.a_out = [0.0] * n_units  # unit instant activity a_j
+        self.th_out = [0.0] * n_units  # unit average activity theta_j
+        self.adapt = [0.0] * n_units  # spike-frequency adaptation (dynamic threshold)
 
     def _renorm(self, wj):
         """Project a feed-forward weight vector onto the LIMITED-resource L1 budget (sum == w_norm,
@@ -142,11 +161,13 @@ class CompetitiveLearner:
             latj = self.lat[j]
             for k in range(self.n_units):
                 if k != j:
-                    cur += latj[k] * self.a_out[k]     # lat <= 0, a_out >= 0  -> inhibition
+                    cur += latj[k] * self.a_out[k]  # lat <= 0, a_out >= 0  -> inhibition
             if sup_unit is not None and j == sup_unit:
                 cur += sup_current
             currents[j] = cur
-            out[j] = self.units[j].step(cur - self.adapt[j])   # dynamic threshold as adaptation current
+            out[j] = self.units[j].step(
+                cur - self.adapt[j]
+            )  # dynamic threshold as adaptation current
 
         # 3. output activities (eq. 1-2) + adaptation (eq. 5) from this step's output spikes
         for j in range(self.n_units):
@@ -167,19 +188,27 @@ class CompetitiveLearner:
             if out[winner]:
                 wj = self.w[winner]
                 a_in, th_in, alpha = self.a_in, self.th_in, self.alpha
-                for i in range(self.n_inputs):         # eq. 6: strengthen above-average inputs,
-                    v = wj[i] + alpha * (a_in[i] - th_in[i])   # weaken the rest
+                for i in range(self.n_inputs):  # eq. 6: strengthen above-average inputs,
+                    v = wj[i] + alpha * (a_in[i] - th_in[i])  # weaken the rest
                     wj[i] = 0.0 if v < 0.0 else v
-                self.w[winner] = self._renorm(wj)      # limited-resource competition (re-distribute)
+                self.w[winner] = self._renorm(wj)  # limited-resource competition (re-distribute)
                 latw = self.lat[winner]
-                for k in range(self.n_units):          # eq. 8: active competitors grip the firer
+                for k in range(self.n_units):  # eq. 8: active competitors grip the firer
                     if k != winner:
                         v = latw[k] - self.gamma * (self.a_out[k] - self.th_out[k])
                         latw[k] = -1.0 if v < -1.0 else (0.0 if v > 0.0 else v)
         return out
 
-    def present(self, rate_vector, rng, steps, learn=True, sup_unit=None, sup_current=0.0,
-                reset_before=False):
+    def present(
+        self,
+        rate_vector,
+        rng,
+        steps,
+        learn=True,
+        sup_unit=None,
+        sup_current=0.0,
+        reset_before=False,
+    ):
         """Present one pattern (per-input firing rates) for `steps` timesteps of seeded Poisson input.
         Returns the per-unit output spike counts over the presentation."""
         if reset_before:
@@ -203,6 +232,7 @@ class CompetitiveLearner:
 # --------------------------------------------------------------------------------------------------
 # Synthetic multi-class spike dataset + unsupervised training + cluster-purity evaluation
 # --------------------------------------------------------------------------------------------------
+
 
 def make_prototypes(n_classes=4, n_inputs=16, width=6, hi=0.85, lo=0.08):
     """n_classes prototype firing-rate vectors: each class lights a contiguous, OVERLAPPING block of
@@ -233,8 +263,9 @@ def make_dataset(protos, rng, per_class):
     return data
 
 
-def train(learner, protos, seed, sup_per_class=25, unsup_presentations=900,
-          steps=45, sup_current=6.0):
+def train(
+    learner, protos, seed, sup_per_class=25, unsup_presentations=900, steps=45, sup_current=6.0
+):
     """Short SUPERVISED symmetry-breaking init (unit c gets an injected current on class c), then a
     FULLY UNSUPERVISED phase: random unlabeled variants, competition only. Returns nothing (in place)."""
     n_classes = len(protos)
@@ -242,8 +273,15 @@ def train(learner, protos, seed, sup_per_class=25, unsup_presentations=900,
     # supervised init: cycle classes, inject current into the matching unit to break symmetry
     for _ in range(sup_per_class):
         for c in range(n_classes):
-            learner.present(noisy_variant(protos[c], rng), rng, steps, learn=True,
-                            sup_unit=c, sup_current=sup_current, reset_before=True)
+            learner.present(
+                noisy_variant(protos[c], rng),
+                rng,
+                steps,
+                learn=True,
+                sup_unit=c,
+                sup_current=sup_current,
+                reset_before=True,
+            )
     # unsupervised: NO labels, NO injected current -- self-organization by competition alone
     for _ in range(unsup_presentations):
         c = rng.randrange(n_classes)
@@ -298,7 +336,7 @@ def _evaluate(seed, train_flag):
 
 
 def main():
-    seeds = [1, 3, 7, 11]                              # average over seeds -> no lucky-seed rigging
+    seeds = [1, 3, 7, 11]  # average over seeds -> no lucky-seed rigging
     chance = 1.0 / N_CLASSES
     trained = [_evaluate(s, train_flag=True) for s in seeds]
     control = [_evaluate(s, train_flag=False) for s in seeds]
@@ -313,30 +351,45 @@ def main():
     print("=" * 78)
     print("COMPETITIVE ACTIVITY-MAXIMIZATION (FEELING; Demin & Nekhaev 2018) -- unsupervised")
     print("=" * 78)
-    print(f"{N_CLASSES} synthetic spike classes over {N_INPUTS} inputs (heavily OVERLAPPING blocks); "
-          f"chance purity {chance:.2f}")
+    print(
+        f"{N_CLASSES} synthetic spike classes over {N_INPUTS} inputs (heavily OVERLAPPING blocks); "
+        f"chance purity {chance:.2f}"
+    )
     print(f"  seeds tested        : {seeds}")
-    print(f"  UNSUPERVISED-trained: purity {[round(p, 2) for p in t_pur]}  mean {t_mean:.2f}  "
-          f"families {t_cov} / {N_CLASSES}")
-    print(f"  CONTROL (untrained) : purity {[round(p, 2) for p in c_pur]}  mean {c_mean:.2f}  "
-          f"families {c_cov} / {N_CLASSES}")
+    print(
+        f"  UNSUPERVISED-trained: purity {[round(p, 2) for p in t_pur]}  mean {t_mean:.2f}  "
+        f"families {t_cov} / {N_CLASSES}"
+    )
+    print(
+        f"  CONTROL (untrained) : purity {[round(p, 2) for p in c_pur]}  mean {c_mean:.2f}  "
+        f"families {c_cov} / {N_CLASSES}"
+    )
     print("  (labels are used ONLY to read out the clusters at eval time; training saw no labels)")
     print("=" * 78)
 
-    # ---- self-check: deterministic asserts, zero-dep, ASCII only ----
-    assert all(p > 0.85 for p in t_pur), \
+    # ---- self-check: deterministic asserts, ASCII only ----
+    assert all(p > 0.85 for p in t_pur), (
         f"unsupervised FEELING must self-organize class-selective families every seed ({t_pur})"
-    assert all(cov == N_CLASSES for cov in t_cov), \
+    )
+    assert all(cov == N_CLASSES for cov in t_cov), (
         f"a distinct family must cover EACH class, every seed ({t_cov} vs {N_CLASSES})"
-    assert all(cov < N_CLASSES for cov in c_cov), \
+    )
+    assert all(cov < N_CLASSES for cov in c_cov), (
         f"the untrained control must FAIL to cover all classes (no families form) ({c_cov})"
-    assert all(tp > cp + 0.30 for tp, cp in zip(t_pur, c_pur)), \
+    )
+    assert all(tp > cp + 0.30 for tp, cp in zip(t_pur, c_pur)), (
         f"trained must beat the untrained control by a wide margin every seed ({t_pur} vs {c_pur})"
-    assert c_mean < 0.5 and c_mean < t_mean - 0.40, \
+    )
+    assert c_mean < 0.5 and c_mean < t_mean - 0.40, (
         f"untrained control must sit far below trained, near chance ({c_mean:.2f} vs {t_mean:.2f}, chance {chance:.2f})"
-    assert det_pur == t_pur[0], f"same seed -> identical purity (deterministic) ({det_pur} vs {t_pur[0]})"
-    print(f"self-check OK: unsupervised purity mean {t_mean:.2f} (all {N_CLASSES}/{N_CLASSES} families) "
-          f">> untrained {c_mean:.2f} ~ chance {chance:.2f}; label-free; deterministic")
+    )
+    assert det_pur == t_pur[0], (
+        f"same seed -> identical purity (deterministic) ({det_pur} vs {t_pur[0]})"
+    )
+    print(
+        f"self-check OK: unsupervised purity mean {t_mean:.2f} (all {N_CLASSES}/{N_CLASSES} families) "
+        f">> untrained {c_mean:.2f} ~ chance {chance:.2f}; label-free; deterministic"
+    )
 
 
 if __name__ == "__main__":

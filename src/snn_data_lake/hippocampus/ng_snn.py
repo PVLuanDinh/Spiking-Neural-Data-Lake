@@ -11,8 +11,8 @@ the pool out in ONE analytical shot (activity-regularized ridge, Eq. 9-12) -- no
 spiking, contribution-driven, single-shot successor to the rate/novelty prototype learner in
 `hippocampus/growing_learner.py`, which recruits on INPUT novelty and ignores correctness.
 
-TORCH EXCEPTION. This is the ONE core module that imports torch. The zero-dep core rule is otherwise
-non-negotiable; this single, user-authorized exception promotes the already-validated research
+TORCH TIER. This core module imports torch and runs in the GPU/training tier (numpy/torch are allowed
+project-wide). It promotes the already-validated research
 NG-SNN (research/ng_snn/model.py -- UCI Iris ~95.6% / Wine ~97.2%, MNIST 99.14% / N-MNIST 98.84% at
 scale) so the contribution-grown spiking classifier is a first-class brain-region module. The math
 is UNCHANGED from that validated model.
@@ -31,11 +31,12 @@ Method (faithful to Tang, Li, Zhang, Zeng, "NG-SNN", Neural Networks 199 (2026) 
     candidate SELECTION may score on a row subsample; the accepted neurons' S columns and the final
     solve always use FULL X/Y.
 
-Deterministic via torch.Generator(seed). NOT zero-dep -- runs in the torch tier (.venv-cu128); the
+Deterministic via torch.Generator(seed). Runs in the torch tier (.venv-cu128); the
 stdlib core never imports this.
 
   PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.hippocampus.ng_snn
 """
+
 import torch
 
 
@@ -50,21 +51,36 @@ class NGSNN:
     t_cand (candidates per scale per step); c1,k,c0 (activity-dependent regularizer); l_max, eps_tol
     (stop); reg_eps numerical floor; T (feature-mode integration window). Deterministic via `seed`."""
 
-    def __init__(self, tau_m=2.0, v_th=1.0, dt=1.0, lambdas=(0.1, 1.0, 5.0), r=0.9, t_cand=40,
-                 c1=1.0, k=0.1, c0=1e-4, l_max=200, eps_tol=1e-2, reg_eps=1e-6, T=15,
-                 device="cuda", seed=0):
+    def __init__(
+        self,
+        tau_m=2.0,
+        v_th=1.0,
+        dt=1.0,
+        lambdas=(0.1, 1.0, 5.0),
+        r=0.9,
+        t_cand=40,
+        c1=1.0,
+        k=0.1,
+        c0=1e-4,
+        l_max=200,
+        eps_tol=1e-2,
+        reg_eps=1e-6,
+        T=15,
+        device="cuda",
+        seed=0,
+    ):
         self.tau_m, self.v_th, self.dt = float(tau_m), float(v_th), float(dt)
-        self.T = int(T)                                      # LIF integration window (feature mode)
-        self.lam = self.dt / self.tau_m                      # LIF leak-integrate coefficient
+        self.T = int(T)  # LIF integration window (feature mode)
+        self.lam = self.dt / self.tau_m  # LIF leak-integrate coefficient
         self.lambdas = tuple(float(x) for x in lambdas)
         self.r, self.t_cand = float(r), int(t_cand)
         self.c1, self.k, self.c0 = float(c1), float(k), float(c0)
         self.l_max, self.eps_tol, self.reg_eps = int(l_max), float(eps_tol), float(reg_eps)
         self.device = device if (torch.cuda.is_available() or device == "cpu") else "cpu"
         self.g = torch.Generator(device=self.device).manual_seed(seed)
-        self.W = None        # (L, d_in) grown hidden input weights
-        self.b = None        # (L,)      grown hidden biases
-        self.beta = None     # (L, m)    analytical output weights
+        self.W = None  # (L, d_in) grown hidden input weights
+        self.b = None  # (L,)      grown hidden biases
+        self.beta = None  # (L, m)    analytical output weights
         self.d_in = None
         self.m = None
 
@@ -78,30 +94,30 @@ class NGSNN:
         genuinely spike-count-based, not a continuous-voltage readout."""
         L = W.shape[0]
         N = X.shape[0]
-        feat_mode = (X.ndim == 2)
+        feat_mode = X.ndim == 2
         T = self.T if feat_mode else X.shape[1]
         out = torch.empty(N, L, device=self.device)
         cnt_all = torch.empty(N, L, device=self.device) if return_state else None
         v_all = torch.empty(N, L, device=self.device) if return_state else None
         for s0 in range(0, N, batch):
-            xb = X[s0:s0 + batch].to(self.device)
+            xb = X[s0 : s0 + batch].to(self.device)
             cur = None
             if feat_mode:
-                A = xb @ W.t() + b                                  # (nb, L) constant input current
+                A = xb @ W.t() + b  # (nb, L) constant input current
             else:
-                cur = torch.einsum("ntd,ld->ntl", xb, W) + b       # (nb, T, L) input current
+                cur = torch.einsum("ntd,ld->ntl", xb, W) + b  # (nb, T, L) input current
             V = torch.zeros(xb.shape[0], L, device=self.device)
             cnt = torch.zeros(xb.shape[0], L, device=self.device)
             for t in range(T):
-                it = A if feat_mode else cur[:, t, :]              # this step's input current
-                V = (1.0 - self.lam) * V + self.lam * it          # Euler LIF (Eq. 2), V_rest=0
-                o = (V >= self.v_th).float()                       # spike (Eq. 3)
-                cnt += o                                           # integer spike count
-                V = V * (1.0 - o)                                  # hard reset (Eq. 4)
-            out[s0:s0 + batch] = cnt / T                           # response s (Eq. 5)
+                it = A if feat_mode else cur[:, t, :]  # this step's input current
+                V = (1.0 - self.lam) * V + self.lam * it  # Euler LIF (Eq. 2), V_rest=0
+                o = (V >= self.v_th).float()  # spike (Eq. 3)
+                cnt += o  # integer spike count
+                V = V * (1.0 - o)  # hard reset (Eq. 4)
+            out[s0 : s0 + batch] = cnt / T  # response s (Eq. 5)
             if return_state:
-                cnt_all[s0:s0 + batch] = cnt
-                v_all[s0:s0 + batch] = V
+                cnt_all[s0 : s0 + batch] = cnt
+                v_all[s0 : s0 + batch] = V
         if return_state:
             return out, cnt_all, v_all
         return out
@@ -109,10 +125,10 @@ class NGSNN:
     def _solve_beta(self, S, Y):
         """Activity-dependent regularized pseudoinverse (Eq. 9-12): gamma_j=c1 exp(-k mu_j)+c0,
         beta=(S^T S + diag(gamma))^-1 S^T Y."""
-        mu = S.mean(dim=0)                                          # (L,) average activity (Eq. 9)
-        gamma = self.c1 * torch.exp(-self.k * mu) + self.c0        # (L,) activity-dependent reg
-        A = S.t() @ S + torch.diag(gamma)                          # (L, L)
-        return torch.linalg.solve(A, S.t() @ Y)                    # (L, m) closed form (Eq. 12)
+        mu = S.mean(dim=0)  # (L,) average activity (Eq. 9)
+        gamma = self.c1 * torch.exp(-self.k * mu) + self.c0  # (L,) activity-dependent reg
+        A = S.t() @ S + torch.diag(gamma)  # (L, L)
+        return torch.linalg.solve(A, S.t() @ Y)  # (L, m) closed form (Eq. 12)
 
     def _eta(self, L):
         """Non-negative decreasing sequence eta_L <= 1-r, ->0 (paper leaves the form open); (1-r)/(L+1)."""
@@ -128,68 +144,77 @@ class NGSNN:
         the accepted neurons' S columns and the ridge solve always use the FULL X/Y."""
         X = X.to(self.device).float()
         N = X.shape[0]
-        d = X.shape[2] if X.ndim == 3 else X.shape[1]              # sequence (N,T,d) or features (N,d)
+        d = X.shape[2] if X.ndim == 3 else X.shape[1]  # sequence (N,T,d) or features (N,d)
         self.d_in, self.m = d, int(y.max().item()) + 1
-        Y = torch.zeros(N, self.m, device=self.device)             # one-hot targets Y (N, m)
+        Y = torch.zeros(N, self.m, device=self.device)  # one-hot targets Y (N, m)
         Y[torch.arange(N, device=self.device), y.to(self.device)] = 1.0
         delta = max(1, int(delta))
 
         # candidate SELECTION may run on a row subsample (acceleration); the accepted neurons' S
         # columns and the analytical solve ALWAYS use the full X/Y.
         use_sub = score_subsample is not None and int(score_subsample) < N
-        sel = (torch.randperm(N, generator=self.g, device=self.device)[:int(score_subsample)]
-               if use_sub else None)
+        sel = (
+            torch.randperm(N, generator=self.g, device=self.device)[: int(score_subsample)]
+            if use_sub
+            else None
+        )
         Xsel = X[sel] if use_sub else X
 
         W = torch.empty(0, d, device=self.device)
         b = torch.empty(0, device=self.device)
-        S = torch.empty(N, 0, device=self.device)                  # full hidden activity matrix S_L
+        S = torch.empty(N, 0, device=self.device)  # full hidden activity matrix S_L
         beta = torch.empty(0, self.m, device=self.device)
-        E = Y.clone()                                              # residual E_L = Y - S beta (L=0)
+        E = Y.clone()  # residual E_L = Y - S beta (L=0)
 
         while W.shape[0] < self.l_max:
-            if E.pow(2).mean().sqrt().item() < self.eps_tol:       # train RMSE target reached (Alg. 3)
+            if E.pow(2).mean().sqrt().item() < self.eps_tol:  # train RMSE target reached (Alg. 3)
                 break
-            Esel = E[sel] if use_sub else E                        # residual on the scoring rows
-            thresh = 1.0 - self.r - self._eta(W.shape[0])          # Eq. 7 acceptance bar (consistency)
-            enorm = (Esel * Esel).sum(dim=0)                       # (m,) per-class residual energy
+            Esel = E[sel] if use_sub else E  # residual on the scoring rows
+            thresh = 1.0 - self.r - self._eta(W.shape[0])  # Eq. 7 acceptance bar (consistency)
+            enorm = (Esel * Esel).sum(dim=0)  # (m,) per-class residual energy
 
             # Draw the whole multi-scale candidate POOL, evaluate it in ONE vectorized LIF pass over
             # the (possibly subsampled) rows, and keep the TOP-delta by residual reduction: the drop
             # from adding unit s is sum_q <e_q,s>^2/||s||^2 = sum_q C_q ||e_q||^2 (Eq. 6 weighted by
             # per-class residual norm). The consistency criterion (Eq. 7) is a preference tiebreak.
             poolW, poolb, poolscore, poolpass = [], [], [], []
-            for Lam in self.lambdas:                               # multi-scale candidate search (Alg. 1)
+            for Lam in self.lambdas:  # multi-scale candidate search (Alg. 1)
                 P = self.t_cand
-                Wp = (torch.rand(P, d, generator=self.g, device=self.device) * 2 - 1) * Lam   # (P,d)
-                bp = (torch.rand(P, generator=self.g, device=self.device) * 2 - 1) * Lam       # (P,)
-                Sp = self._rates(Xsel, Wp, bp)                     # (Nsel, P) candidate responses
-                proj = Sp.t() @ Esel                               # (P, m) <e_q, s_p>
-                spn = (Sp * Sp).sum(dim=0)                         # (P,)   ||s_p||^2
-                C = proj.pow(2) / (spn.unsqueeze(1) * enorm.unsqueeze(0) + self.reg_eps)   # (P,m) Eq.6
-                score = (C * enorm.unsqueeze(0)).sum(dim=1)        # (P,) residual reduction
-                passes = (C >= thresh).all(dim=1)                 # (P,) meets consistency criterion
-                poolW.append(Wp); poolb.append(bp); poolscore.append(score); poolpass.append(passes)
+                Wp = (torch.rand(P, d, generator=self.g, device=self.device) * 2 - 1) * Lam  # (P,d)
+                bp = (torch.rand(P, generator=self.g, device=self.device) * 2 - 1) * Lam  # (P,)
+                Sp = self._rates(Xsel, Wp, bp)  # (Nsel, P) candidate responses
+                proj = Sp.t() @ Esel  # (P, m) <e_q, s_p>
+                spn = (Sp * Sp).sum(dim=0)  # (P,)   ||s_p||^2
+                C = proj.pow(2) / (
+                    spn.unsqueeze(1) * enorm.unsqueeze(0) + self.reg_eps
+                )  # (P,m) Eq.6
+                score = (C * enorm.unsqueeze(0)).sum(dim=1)  # (P,) residual reduction
+                passes = (C >= thresh).all(dim=1)  # (P,) meets consistency criterion
+                poolW.append(Wp)
+                poolb.append(bp)
+                poolscore.append(score)
+                poolpass.append(passes)
             allW = torch.cat(poolW, 0)
             allb = torch.cat(poolb, 0)
             allscore = torch.cat(poolscore, 0)
             allpass = torch.cat(poolpass, 0)
 
-            rank = allscore + allpass.float() * 1e12               # prefer passing, then by score
+            rank = allscore + allpass.float() * 1e12  # prefer passing, then by score
             k = min(delta, self.l_max - W.shape[0])
             top = torch.topk(rank, k).indices
-            keep = [int(j) for j in top.tolist()
-                    if allscore[j].item() > 0.0 or bool(allpass[j].item())]   # genuinely contributing
-            if not keep:                                          # nothing contributes -> saturate
+            keep = [
+                int(j) for j in top.tolist() if allscore[j].item() > 0.0 or bool(allpass[j].item())
+            ]  # genuinely contributing
+            if not keep:  # nothing contributes -> saturate
                 break
             newW = allW[keep]
             newb = allb[keep]
-            Snew = self._rates(X, newW, newb)                     # FULL S columns for the block
+            Snew = self._rates(X, newW, newb)  # FULL S columns for the block
             W = torch.cat([W, newW], 0)
             b = torch.cat([b, newb], 0)
-            S = torch.cat([S, Snew], 1)                           # append accepted columns
-            beta = self._solve_beta(S, Y)                         # ONE analytical solve per block (Eq.12)
-            E = Y - S @ beta                                      # update residual
+            S = torch.cat([S, Snew], 1)  # append accepted columns
+            beta = self._solve_beta(S, Y)  # ONE analytical solve per block (Eq.12)
+            E = Y - S @ beta  # update residual
 
         self.W, self.b, self.beta = W, b, beta
         return self
@@ -216,9 +241,9 @@ def _make_task(dev, seed=0):
     N, d_noise, m = 520, 8, 4
     centers = torch.tensor([[0.2, 0.2], [0.2, 0.8], [0.8, 0.2], [0.8, 0.8]], device=dev)  # 4 blobs
     y = torch.randint(0, m, (N,), generator=g, device=dev)
-    rel = (centers[y] + 0.06 * torch.randn(N, 2, generator=g, device=dev)).clamp(0, 1)    # (N,2)
-    noise = torch.rand(N, d_noise, generator=g, device=dev)                               # (N,8) label-free
-    X = torch.cat([rel, noise], dim=1)                                                     # (N,10) in [0,1]
+    rel = (centers[y] + 0.06 * torch.randn(N, 2, generator=g, device=dev)).clamp(0, 1)  # (N,2)
+    noise = torch.rand(N, d_noise, generator=g, device=dev)  # (N,8) label-free
+    X = torch.cat([rel, noise], dim=1)  # (N,10) in [0,1]
     ntr = 360
     return X[:ntr], y[:ntr], X[ntr:], y[ntr:]
 
@@ -238,8 +263,8 @@ def _novelty_control(base, X, y):
     b = torch.empty(0, device=dev)
     S = torch.empty(N, 0, device=dev)
     beta = torch.empty(0, m, device=dev)
-    Rin = X - X.mean(dim=0, keepdim=True)                          # input residual (novelty target)
-    E = Y.clone()                                                 # label residual: MEASURED, not selected on
+    Rin = X - X.mean(dim=0, keepdim=True)  # input residual (novelty target)
+    E = Y.clone()  # label residual: MEASURED, not selected on
     while W.shape[0] < base.l_max:
         if E.pow(2).mean().sqrt().item() < base.eps_tol:
             break
@@ -248,22 +273,31 @@ def _novelty_control(base, X, y):
             P = base.t_cand
             Wp = (torch.rand(P, d, generator=base.g, device=dev) * 2 - 1) * Lam
             bp = (torch.rand(P, generator=base.g, device=dev) * 2 - 1) * Lam
-            Sp = base._rates(X, Wp, bp)                            # (N, P)
-            proj = Sp.t() @ Rin                                   # (P, d) response vs INPUT residual
-            spn = (Sp * Sp).sum(dim=0)                            # (P,)
-            score = proj.pow(2).sum(dim=1) / (spn + base.reg_eps)  # input-residual reduction (ignores Y)
+            Sp = base._rates(X, Wp, bp)  # (N, P)
+            proj = Sp.t() @ Rin  # (P, d) response vs INPUT residual
+            spn = (Sp * Sp).sum(dim=0)  # (P,)
+            score = proj.pow(2).sum(dim=1) / (
+                spn + base.reg_eps
+            )  # input-residual reduction (ignores Y)
             j = int(score.argmax().item())
             if float(score[j].item()) > best_sc:
-                best_sc, best_w, best_b, best_s = float(score[j].item()), Wp[j], bp[j:j + 1], Sp[:, j]
+                best_sc, best_w, best_b, best_s = (
+                    float(score[j].item()),
+                    Wp[j],
+                    bp[j : j + 1],
+                    Sp[:, j],
+                )
         if best_s is None or best_sc <= 0.0:
             break
         W = torch.cat([W, best_w.unsqueeze(0)], 0)
         b = torch.cat([b, best_b], 0)
         S = torch.cat([S, best_s.unsqueeze(1)], 1)
-        beta = base._solve_beta(S, Y)                             # readout still analytical on Y
+        beta = base._solve_beta(S, Y)  # readout still analytical on Y
         E = Y - S @ beta
-        coef = torch.linalg.solve(S.t() @ S + base.reg_eps * torch.eye(S.shape[1], device=dev), S.t() @ X)
-        Rin = X - S @ coef                                        # deflate input residual (novelty)
+        coef = torch.linalg.solve(
+            S.t() @ S + base.reg_eps * torch.eye(S.shape[1], device=dev), S.t() @ X
+        )
+        Rin = X - S @ coef  # deflate input residual (novelty)
     out = NGSNN(device=dev)
     out.W, out.b, out.beta = W, b, beta
     return out
@@ -298,20 +332,27 @@ def main():
     c2_pass = (ana_acc > 0.85) and (rnd_acc < 0.55) and (ana_acc - rnd_acc > 0.35)
 
     # ---- claim 3: GENUINELY SPIKING (decision is a function of INTEGER spike counts) ---------------
-    _, counts, v_final = contrib._rates(Xte.to(dev).float(), contrib.W, contrib.b, return_state=True)
-    counts_integer = bool(torch.equal(counts, counts.round()))    # spike counts are integers
-    driven = bool((counts.sum(dim=1) > 0).all().item())           # every sample drives >=1 spike
-    v_continuous = not bool(torch.equal(v_final, v_final.round()))  # CONTROL: membrane V is float, NOT integer
+    _, counts, v_final = contrib._rates(
+        Xte.to(dev).float(), contrib.W, contrib.b, return_state=True
+    )
+    counts_integer = bool(torch.equal(counts, counts.round()))  # spike counts are integers
+    driven = bool((counts.sum(dim=1) > 0).all().item())  # every sample drives >=1 spike
+    v_continuous = not bool(
+        torch.equal(v_final, v_final.round())
+    )  # CONTROL: membrane V is float, NOT integer
     c3_pass = counts_integer and driven and v_continuous
 
     # ---- claim 4: BOUNDED + DETERMINISTIC (+ block delta and score_subsample consistency) ----------
-    bounded = contrib.n_units < cfg["l_max"]                       # growth saturated under l_max
+    bounded = contrib.n_units < cfg["l_max"]  # growth saturated under l_max
     a = NGSNN(seed=7, **cfg).fit(Xtr, ytr)
     c = NGSNN(seed=7, **cfg).fit(Xtr, ytr)
-    deterministic = (a.n_units == c.n_units
-                     and torch.equal(a.W, c.W) and torch.equal(a.b, c.b)
-                     and torch.equal(a.predict(Xte), c.predict(Xte)))
-    blk = NGSNN(seed=7, **cfg).fit(Xtr, ytr, delta=5)              # block neurogenesis
+    deterministic = (
+        a.n_units == c.n_units
+        and torch.equal(a.W, c.W)
+        and torch.equal(a.b, c.b)
+        and torch.equal(a.predict(Xte), c.predict(Xte))
+    )
+    blk = NGSNN(seed=7, **cfg).fit(Xtr, ytr, delta=5)  # block neurogenesis
     blk_acc = _acc(blk, Xte, yte)
     delta_consistent = abs(blk_acc - c_acc) <= 0.10
     sub = NGSNN(seed=7, **cfg).fit(Xtr, ytr, score_subsample=180)  # subsampled candidate SELECTION
@@ -322,32 +363,52 @@ def main():
     # ---- ASCII report table ------------------------------------------------------------------------
     line = "+" + "-" * 4 + "+" + "-" * 46 + "+" + "-" * 34 + "+" + "-" * 6 + "+"
     print("=" * 94)
-    print(f"NG-SNN (torch core) self-check  |  device={dev}  d_in={contrib.d_in}  classes={contrib.m}")
+    print(
+        f"NG-SNN (torch core) self-check  |  device={dev}  d_in={contrib.d_in}  classes={contrib.m}"
+    )
     print(line)
     print(f"| {'#':>2} | {'claim':<44} | {'measured':<32} | {'ok':<4} |")
     print(line)
-    print(f"| {1:>2} | {'contribution grows FEWER than novelty':<44} | "
-          f"{f'contrib {c_units}u@{c_acc:.2f} < novelty {n_units}u@{n_acc:.2f}':<32} | {str(c1_pass):<4} |")
-    print(f"| {2:>2} | {'single-shot analytical >> random beta':<44} | "
-          f"{f'analytical {ana_acc:.2f} vs random {rnd_acc:.2f}':<32} | {str(c2_pass):<4} |")
-    print(f"| {3:>2} | {'decision on INTEGER spike counts':<44} | "
-          f"{f'counts int={counts_integer}; V float ctrl={v_continuous}':<32} | {str(c3_pass):<4} |")
-    print(f"| {4:>2} | {'bounded + deterministic + delta/sub':<44} | "
-          f"{f'<lmax={bounded} det={deterministic} d5={blk_acc:.2f} sub={sub_acc:.2f}':<32} | {str(c4_pass):<4} |")
+    print(
+        f"| {1:>2} | {'contribution grows FEWER than novelty':<44} | "
+        f"{f'contrib {c_units}u@{c_acc:.2f} < novelty {n_units}u@{n_acc:.2f}':<32} | {str(c1_pass):<4} |"
+    )
+    print(
+        f"| {2:>2} | {'single-shot analytical >> random beta':<44} | "
+        f"{f'analytical {ana_acc:.2f} vs random {rnd_acc:.2f}':<32} | {str(c2_pass):<4} |"
+    )
+    print(
+        f"| {3:>2} | {'decision on INTEGER spike counts':<44} | "
+        f"{f'counts int={counts_integer}; V float ctrl={v_continuous}':<32} | {str(c3_pass):<4} |"
+    )
+    print(
+        f"| {4:>2} | {'bounded + deterministic + delta/sub':<44} | "
+        f"{f'<lmax={bounded} det={deterministic} d5={blk_acc:.2f} sub={sub_acc:.2f}':<32} | {str(c4_pass):<4} |"
+    )
     print(line)
-    print("CONTROLS (must FAIL): novelty over-grows; random beta ~chance; float membrane V is not "
-          "an integer spike count.")
+    print(
+        "CONTROLS (must FAIL): novelty over-grows; random beta ~chance; float membrane V is not "
+        "an integer spike count."
+    )
     print("=" * 94)
 
     # ---- asserts -----------------------------------------------------------------------------------
-    assert c1_pass, f"claim1 parsimony: contrib {c_units}u@{c_acc:.2f} vs novelty {n_units}u@{n_acc:.2f}"
+    assert c1_pass, (
+        f"claim1 parsimony: contrib {c_units}u@{c_acc:.2f} vs novelty {n_units}u@{n_acc:.2f}"
+    )
     assert c_units < n_units, f"contrib must grow fewer neurons ({c_units} !< {n_units})"
     assert c2_pass, f"claim2 single-shot: analytical {ana_acc:.2f} vs random {rnd_acc:.2f}"
     assert ana_acc - rnd_acc > 0.35, "analytical readout must beat random output weights"
-    assert c3_pass, f"claim3 spiking: counts_int={counts_integer} driven={driven} V_float={v_continuous}"
+    assert c3_pass, (
+        f"claim3 spiking: counts_int={counts_integer} driven={driven} V_float={v_continuous}"
+    )
     assert counts_integer and driven, "decision must read INTEGER spike counts of a driven pool"
-    assert v_continuous, "CONTROL: continuous membrane V must NOT pass the integer-spike-count assert"
-    assert c4_pass, f"claim4 bounded/det: <lmax={bounded} det={deterministic} d5={blk_acc:.2f} sub={sub_acc:.2f}"
+    assert v_continuous, (
+        "CONTROL: continuous membrane V must NOT pass the integer-spike-count assert"
+    )
+    assert c4_pass, (
+        f"claim4 bounded/det: <lmax={bounded} det={deterministic} d5={blk_acc:.2f} sub={sub_acc:.2f}"
+    )
     assert bounded and deterministic, "growth must saturate under l_max and be seed-deterministic"
 
     print("self-check OK: torch core NG-SNN -- contribution-grown spiking classifier, single-shot")

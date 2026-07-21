@@ -6,7 +6,7 @@ Victor-Purpura edit distance in spike_preprocessing) -- an O(N) brute-force scan
 TWO-LEVEL hierarchical index over the VP distance so a query only rescans a candidate set: farthest-point
 sampling picks ~sqrt(N) medoids, every pattern is assigned to its nearest medoid, and a query probes only
 the nearest few medoids' members, then does an EXACT VP rescoring of just those candidates. No Euclidean /
-cosine / HNSW / IVF -- the geometry is the spike-train edit distance. Pure stdlib, deterministic.
+cosine / HNSW / IVF -- the geometry is the spike-train edit distance. Deterministic.
 
 Two query paths, with different guarantees:
   - nearest_exact(query, k)  -- TRUSTWORTHY exact k-NN. VP is a true metric (the triangle inequality
@@ -28,6 +28,7 @@ Scaling as the store GROWS -- OUT-OF-CORE recall with bounded resident memory:
 
   python -m snn_data_lake.substrate.proximity_index        # (also run by run_selfchecks.py)
 """
+
 import mmap
 import os
 import random
@@ -75,22 +76,22 @@ class ProximityIndex:
     def __init__(self, q=1.0, n_medoids=None, disk_threshold=4096, cache_cap=256):
         self.q = q
         self.n_medoids = n_medoids
-        self.disk_threshold = disk_threshold      # N <= this keeps the original all-in-RAM fast path
-        self.cache_cap = cache_cap                # bounded LRU page cache of decoded patterns (disk mode)
+        self.disk_threshold = disk_threshold  # N <= this keeps the original all-in-RAM fast path
+        self.cache_cap = cache_cap  # bounded LRU page cache of decoded patterns (disk mode)
         self.patterns, self.payloads, self.medoids, self.clusters = [], [], [], {}
-        self.pd = []      # N x m pivot-distance table (in-RAM fast path only); disk mode leaves it []
+        self.pd = []  # N x m pivot-distance table (in-RAM fast path only); disk mode leaves it []
         self._n = 0
         self._disk = False
         # disk-mode state (populated only when out-of-core)
         self._dir = None
         self._pat_mm = None
         self._pd_mm = None
-        self._offsets = None          # array('q'): byte offset of each pattern blob (N+1 entries)
-        self._medoid_patterns = {}    # resident pivot patterns: index -> event list
-        self._cache = None            # OrderedDict LRU of decoded non-pivot patterns
+        self._offsets = None  # array('q'): byte offset of each pattern blob (N+1 entries)
+        self._medoid_patterns = {}  # resident pivot patterns: index -> event list
+        self._cache = None  # OrderedDict LRU of decoded non-pivot patterns
         self._pd_fmt = None
         self._pd_rowbytes = 0
-        self._disk_reads = 0          # count of true mmap pattern fetches (for the bounded-memory check)
+        self._disk_reads = 0  # count of true mmap pattern fetches (for the bounded-memory check)
         self._finalizer = None
 
     def _d(self, ev_a, ev_b):
@@ -109,11 +110,11 @@ class ProximityIndex:
             return c
         lo = self._offsets[i]
         hi = self._offsets[i + 1]
-        ev = _decode_events(self._pat_mm[lo:hi])   # the only true disk read
+        ev = _decode_events(self._pat_mm[lo:hi])  # the only true disk read
         self._disk_reads += 1
         self._cache[i] = ev
         if len(self._cache) > self.cache_cap:
-            self._cache.popitem(last=False)        # evict least-recently-used (bounded working set)
+            self._cache.popitem(last=False)  # evict least-recently-used (bounded working set)
         return ev
 
     def _pd_row(self, i):
@@ -121,7 +122,7 @@ class ProximityIndex:
         if not self._disk:
             return self.pd[i]
         lo = i * self._pd_rowbytes
-        return list(struct.unpack(self._pd_fmt, self._pd_mm[lo:lo + self._pd_rowbytes]))
+        return list(struct.unpack(self._pd_fmt, self._pd_mm[lo : lo + self._pd_rowbytes]))
 
     def build(self, patterns, payloads=None):
         """patterns: list of encoded event lists ([(t, feature), ...]). payloads: parallel labels."""
@@ -129,7 +130,7 @@ class ProximityIndex:
         n = len(patterns)
         self._n = n
         self.payloads = list(payloads) if payloads is not None else list(range(n))
-        m = self.n_medoids or max(1, int(n ** 0.5))
+        m = self.n_medoids or max(1, int(n**0.5))
         # farthest-point sampling: seed at 0, then repeatedly add the pattern farthest from all medoids
         medoids = [0]
         while len(medoids) < min(m, n):
@@ -208,14 +209,19 @@ class ProximityIndex:
         self._pat_mm, self._pd_mm = pat_mm, pd_mm
         # release the temp store + mappings when this index is garbage-collected (no caller close() needed)
         self._finalizer = weakref.finalize(
-            self, _cleanup, self._dir, (pat_mm, pat_fh, pd_mm, pd_fh))
+            self, _cleanup, self._dir, (pat_mm, pat_fh, pd_mm, pd_fh)
+        )
 
     def nearest(self, query, k=1, probe=2):
         """Return (payloads[:k], n_candidates_scanned): probe the nearest `probe` medoids, then exact VP
         rank of only their members."""
-        near_medoids = sorted(self.medoids, key=lambda mi: self._d(query, self._pattern(mi)))[:probe]
-        cand = sorted({i for mi in near_medoids for i in self.clusters[mi]},
-                      key=lambda i: self._d(query, self._pattern(i)))
+        near_medoids = sorted(self.medoids, key=lambda mi: self._d(query, self._pattern(mi)))[
+            :probe
+        ]
+        cand = sorted(
+            {i for mi in near_medoids for i in self.clusters[mi]},
+            key=lambda i: self._d(query, self._pattern(i)),
+        )
         return [self.payloads[i] for i in cand[:k]], len(cand)
 
     def nearest_exact(self, query, k=1):
@@ -242,11 +248,11 @@ class ProximityIndex:
                     lb = b
             order.append((lb, i))
         order.sort()
-        best = []          # k smallest (dist, index) so far, sorted ascending (ties -> lower index)
+        best = []  # k smallest (dist, index) so far, sorted ascending (ties -> lower index)
         n_exact = 0
         for lb, i in order:
             if len(best) == k and lb > best[-1][0]:
-                break      # ascending lb: no remaining candidate can beat the current k-th best
+                break  # ascending lb: no remaining candidate can beat the current k-th best
             d = self._d(query, self._pattern(i))
             n_exact += 1
             best.append((d, i))
@@ -293,8 +299,8 @@ def main():
     # (same-class items are interchangeable, which would inflate any class-label recall toward 100%).
     idx = ProximityIndex(q=1.0).build(patterns, list(range(len(patterns))))
     trials = 60
-    exact_matches_bf = 0     # nearest_exact vs brute_force        (must agree on every query)
-    approx_exact_hits = 0    # nearest(probe=2) returns the EXACT nearest item (the honest recall)
+    exact_matches_bf = 0  # nearest_exact vs brute_force        (must agree on every query)
+    approx_exact_hits = 0  # nearest(probe=2) returns the EXACT nearest item (the honest recall)
     exact_scanned = 0
     for _ in range(trials):
         qi = rng.randrange(len(patterns))
@@ -314,30 +320,46 @@ def main():
     print("PROXIMITY INDEX - exact metric-pruned NN + honest approximate recall")
     print("=" * 62)
     print(f"{len(patterns)} patterns, {len(idx.medoids)} medoids; Victor-Purpura backend")
-    print(f"VP axioms: identity={identity:.1f}, symmetric={symmetric}; "
-          f"q-monotone {vp_q0:.0f}(q0) <= {vp_lo:.1f}(q.5) <= {vp_hi:.1f}(q2)")
+    print(
+        f"VP axioms: identity={identity:.1f}, symmetric={symmetric}; "
+        f"q-monotone {vp_q0:.0f}(q0) <= {vp_lo:.1f}(q.5) <= {vp_hi:.1f}(q2)"
+    )
     print(f"q->0 equals spike-count difference: {vp_q0:.1f} == {_counts_diff(a, b):.1f}")
-    print(f"nearest_exact vs brute_force : {exact_agree:.0%} identical (exact, trustworthy default)")
-    print(f"nearest_exact scan fraction  : {avg_exact_scanned:.0f}/{len(patterns)} candidates "
-          f"({scan_frac:.0%}) via LAESA pruning -- sublinear yet still EXACT")
-    print(f"nearest(probe=2) exact-NN recall: {approx_recall:.0%}  "
-          f"(HONEST -- fraction returning the true nearest ITEM, not just same class)")
+    print(
+        f"nearest_exact vs brute_force : {exact_agree:.0%} identical (exact, trustworthy default)"
+    )
+    print(
+        f"nearest_exact scan fraction  : {avg_exact_scanned:.0f}/{len(patterns)} candidates "
+        f"({scan_frac:.0%}) via LAESA pruning -- sublinear yet still EXACT"
+    )
+    print(
+        f"nearest(probe=2) exact-NN recall: {approx_recall:.0%}  "
+        f"(HONEST -- fraction returning the true nearest ITEM, not just same class)"
+    )
     print("=" * 62)
 
-    # ---- self-check: deterministic asserts, zero-dep, HONEST numbers ----
+    # ---- self-check: deterministic asserts, HONEST numbers ----
     assert identity == 0.0, f"VP(a,a) must be 0 (identity), got {identity}"
     assert symmetric, "VP must be symmetric"
     assert vp_q0 <= vp_lo <= vp_hi, f"VP must be non-decreasing in q ({vp_q0} {vp_lo} {vp_hi})"
     assert vp_q0 == _counts_diff(a, b), f"q->0 VP must equal the spike-count difference ({vp_q0})"
     # nearest_exact is the trustworthy path: it must reproduce brute_force exactly...
-    assert exact_agree == 1.0, f"nearest_exact must equal brute_force on every query ({exact_agree:.2f})"
+    assert exact_agree == 1.0, (
+        f"nearest_exact must equal brute_force on every query ({exact_agree:.2f})"
+    )
     # ...while actually pruning (computing exact VP for fewer than all patterns).
-    assert avg_exact_scanned < len(patterns), "nearest_exact must scan fewer than all patterns (pruning)"
+    assert avg_exact_scanned < len(patterns), (
+        "nearest_exact must scan fewer than all patterns (pruning)"
+    )
     # the approximate path's REAL exact-NN recall -- assert only an honest floor, report the true value.
-    assert approx_recall >= 0.5, f"approximate exact-NN recall below honest floor (real value {approx_recall:.2f})"
+    assert approx_recall >= 0.5, (
+        f"approximate exact-NN recall below honest floor (real value {approx_recall:.2f})"
+    )
     # existing guarantee: a full probe of the approximate path degenerates to brute force.
     bf_a = idx.brute_force(a, k=1)[0]
-    assert idx.nearest(a, k=1, probe=len(idx.medoids))[0][0] == bf_a, "full-probe index must match brute force"
+    assert idx.nearest(a, k=1, probe=len(idx.medoids))[0][0] == bf_a, (
+        "full-probe index must match brute force"
+    )
 
     # ---- OUT-OF-CORE scaling: bounded resident memory, identical recall, sublinear seeks ----
     # A shared large corpus queried by two indexes over IDENTICAL patterns/payloads: one forced all-in-RAM
@@ -346,8 +368,10 @@ def main():
     big_n = 2400
     big_patterns = [encode_latency(jitter(protos[i % 6])) for i in range(big_n)]
     big_labels = list(range(big_n))
-    ram = ProximityIndex(q=1.0, n_medoids=24, disk_threshold=10 ** 9).build(big_patterns, big_labels)
-    disk = ProximityIndex(q=1.0, n_medoids=24, disk_threshold=0, cache_cap=128).build(big_patterns, big_labels)
+    ram = ProximityIndex(q=1.0, n_medoids=24, disk_threshold=10**9).build(big_patterns, big_labels)
+    disk = ProximityIndex(q=1.0, n_medoids=24, disk_threshold=0, cache_cap=128).build(
+        big_patterns, big_labels
+    )
     assert not ram._disk and disk._disk, "mode selection: ram in-core, disk out-of-core"
 
     same_exact = same_approx = same_brute = 0
@@ -380,41 +404,71 @@ def main():
     qd = encode_latency(jitter(protos[0]))
     det = disk.nearest_exact(qd, k=5)[0] == disk.nearest_exact(qd, k=5)[0]
 
-    resident_patterns = len(disk._medoid_patterns) + len(disk._cache)   # decoded patterns held in RAM
+    resident_patterns = len(disk._medoid_patterns) + len(
+        disk._cache
+    )  # decoded patterns held in RAM
     avg_disk_scanned = disk_scanned / q_trials
 
     print("OUT-OF-CORE scaling (bounded resident memory)")
     print("-" * 62)
-    print(f"corpus: {big_n} patterns, {len(disk.medoids)} pivots; patterns + pivot table mmap'd from a temp store")
-    print(f"recall identical to in-RAM : nearest_exact {same_exact}/{q_trials}, "
-          f"nearest {same_approx}/{q_trials}, brute_force {same_brute}/{q_trials}")
+    print(
+        f"corpus: {big_n} patterns, {len(disk.medoids)} pivots; patterns + pivot table mmap'd from a temp store"
+    )
+    print(
+        f"recall identical to in-RAM : nearest_exact {same_exact}/{q_trials}, "
+        f"nearest {same_approx}/{q_trials}, brute_force {same_brute}/{q_trials}"
+    )
     print(f"LAESA still exact on disk  : nearest_exact == brute_force {disk_exact_bf}/{q_trials}")
-    print(f"resident decoded patterns  : {resident_patterns} (<= {len(disk.medoids)} pivots + "
-          f"{disk.cache_cap} cache) vs {big_n} total -- NOT O(N)")
-    print(f"pattern blobs read by seek : max {max_disk_reads}/query (< {big_n}); "
-          f"pd table + patterns held in RAM: pd={len(disk.pd)} patterns={len(disk.patterns)}")
-    print(f"exact scan fraction        : {avg_disk_scanned:.0f}/{big_n} "
-          f"({avg_disk_scanned / big_n:.0%}) via LAESA pruning")
+    print(
+        f"resident decoded patterns  : {resident_patterns} (<= {len(disk.medoids)} pivots + "
+        f"{disk.cache_cap} cache) vs {big_n} total -- NOT O(N)"
+    )
+    print(
+        f"pattern blobs read by seek : max {max_disk_reads}/query (< {big_n}); "
+        f"pd table + patterns held in RAM: pd={len(disk.pd)} patterns={len(disk.patterns)}"
+    )
+    print(
+        f"exact scan fraction        : {avg_disk_scanned:.0f}/{big_n} "
+        f"({avg_disk_scanned / big_n:.0%}) via LAESA pruning"
+    )
     print("=" * 62)
 
     # correctness: out-of-core is byte-identical to in-RAM on every query and every path
-    assert same_exact == q_trials, f"out-of-core nearest_exact must match in-RAM ({same_exact}/{q_trials})"
-    assert same_approx == q_trials, f"out-of-core nearest must match in-RAM ({same_approx}/{q_trials})"
-    assert same_brute == q_trials, f"out-of-core brute_force must match in-RAM ({same_brute}/{q_trials})"
-    assert disk_exact_bf == q_trials, "LAESA pruning on the disk index must stay exact vs brute_force"
+    assert same_exact == q_trials, (
+        f"out-of-core nearest_exact must match in-RAM ({same_exact}/{q_trials})"
+    )
+    assert same_approx == q_trials, (
+        f"out-of-core nearest must match in-RAM ({same_approx}/{q_trials})"
+    )
+    assert same_brute == q_trials, (
+        f"out-of-core brute_force must match in-RAM ({same_brute}/{q_trials})"
+    )
+    assert disk_exact_bf == q_trials, (
+        "LAESA pruning on the disk index must stay exact vs brute_force"
+    )
     # bounded memory: the disk index holds neither the pattern list nor the pivot table in RAM
-    assert disk.patterns == [] and disk.pd == [], "out-of-core index must not hold patterns/pd in RAM"
-    assert resident_patterns <= len(disk.medoids) + disk.cache_cap, "resident patterns must be bounded"
+    assert disk.patterns == [] and disk.pd == [], (
+        "out-of-core index must not hold patterns/pd in RAM"
+    )
+    assert resident_patterns <= len(disk.medoids) + disk.cache_cap, (
+        "resident patterns must be bounded"
+    )
     assert resident_patterns < big_n, "resident patterns must be sublinear in N (not O(N))"
     # bounded seeks: a query reads only candidate rows, never all N patterns
-    assert 0 < max_disk_reads < big_n, f"query must seek only candidates, not all N ({max_disk_reads})"
-    assert avg_disk_scanned < big_n, "nearest_exact must scan fewer than all patterns on the disk index"
+    assert 0 < max_disk_reads < big_n, (
+        f"query must seek only candidates, not all N ({max_disk_reads})"
+    )
+    assert avg_disk_scanned < big_n, (
+        "nearest_exact must scan fewer than all patterns on the disk index"
+    )
     assert det, "out-of-core recall must be deterministic (identical query -> identical result)"
 
-    print(f"self-check OK: VP axioms; nearest_exact == brute_force scanning {scan_frac:.0%} of patterns; "
-          f"nearest(probe=2) honest exact-NN recall {approx_recall:.0%}; "
-          f"out-of-core recall byte-identical to in-RAM with {resident_patterns} resident patterns "
-          f"(vs {big_n}) and <= {max_disk_reads} seeks/query; deterministic")
+    print(
+        f"self-check OK: VP axioms; nearest_exact == brute_force scanning {scan_frac:.0%} of patterns; "
+        f"nearest(probe=2) honest exact-NN recall {approx_recall:.0%}; "
+        f"out-of-core recall byte-identical to in-RAM with {resident_patterns} resident patterns "
+        f"(vs {big_n}) and <= {max_disk_reads} seeks/query; deterministic"
+    )
 
 
 if __name__ == "__main__":

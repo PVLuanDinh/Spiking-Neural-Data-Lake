@@ -1,5 +1,5 @@
 """
-SensoryEncoderBank -- a mixture-of-encoders sensory front-end behind ONE contract (pure stdlib).
+SensoryEncoderBank -- a mixture-of-encoders sensory front-end behind ONE contract.
 
 The live perception/intent path (cortex.interaction_learning.SpikingInteractionLearner.encode) turns a
 stimulus into a SPIKE TRAIN with exactly one operation: Thorpe rank-order latency coding
@@ -24,16 +24,16 @@ REUSED verbatim (import + thin adapter glue only; the primitives are NOT rewritt
 EXCLUDED on purpose: cortex.population_vector (an arm-adjacent population-vector DECODER, not an encoder --
 this bank is intent/perception encoding only; it adds NO actuator route).
 
-Additive / opt-in / deterministic: imports only stdlib + the reused primitives; each stage is a pure map
-seeded via random.Random(seed) (no module-level seed, no builtin hash); no numpy/torch. A stage may change
+Additive / opt-in / deterministic: each stage is a pure map
+seeded via random.Random(seed) (no module-level seed, no builtin hash). A stage may change
 width (maxpool downsamples, lca -> n_atoms); the width-preserving stages (rank, divnorm+rank, ttfs_phase,
 boltzmann, density_edge) are drop-in replacements for the live n_in-wide rank code.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.sensory_encoder_bank
 """
+
 import math
 import random
-import sys
 
 from snn_data_lake.cortex.divisive_normalization import DivisiveNormalization
 from snn_data_lake.cortex.lca_sparse_coding import LCA
@@ -44,6 +44,7 @@ from snn_data_lake.cortex.spike_slicer import SpikeSlicer
 from snn_data_lake.cortex.theta_gamma_code import ThetaGammaCode
 
 # ---- stages: each is a deterministic (vector, params) -> vector map wrapping one reused primitive -------
+
 
 def _stage_rank(x, p):
     """DEFAULT stage. Thorpe rank-order latency: descending rank per input (0 = largest = fires first).
@@ -63,10 +64,14 @@ def _stage_ttfs_phase(x, p):
     """Time-to-first-spike / theta-phase code via ThetaGammaCode: order dims by value (rank), place them in
     gamma slots, and read each dim's theta PHASE (2*pi*rank/n). Higher value -> earlier phase (fires first)."""
     n = len(x)
-    order = sorted(range(n), key=lambda i: x[i], reverse=True)   # descending value == rank order (stable)
-    tgc = ThetaGammaCode(capacity=max(n, 1), seed=p["seed"])     # capacity==n -> every dim keeps a slot
-    tgc.encode_sequence(order)                                   # items are dim indices, in rank order
-    return [tgc.slot_phase(tgc.slot_of(i)) for i in range(n)]    # per-dim theta phase == TTFS latency
+    order = sorted(
+        range(n), key=lambda i: x[i], reverse=True
+    )  # descending value == rank order (stable)
+    tgc = ThetaGammaCode(
+        capacity=max(n, 1), seed=p["seed"]
+    )  # capacity==n -> every dim keeps a slot
+    tgc.encode_sequence(order)  # items are dim indices, in rank order
+    return [tgc.slot_phase(tgc.slot_of(i)) for i in range(n)]  # per-dim theta phase == TTFS latency
 
 
 def _unit(v):
@@ -79,7 +84,7 @@ def _stage_lca(x, p):
     """LCA lateral-inhibition sparse code over a deterministic seeded dictionary of n_atoms atoms."""
     n = len(x)
     m = p["n_atoms"] if p["n_atoms"] else n
-    rng = random.Random(p["seed"] * 7919 + 17)                  # per-instance seeded dictionary (deterministic)
+    rng = random.Random(p["seed"] * 7919 + 17)  # per-instance seeded dictionary (deterministic)
     phi = [_unit([rng.uniform(-1.0, 1.0) for _ in range(n)]) for _ in range(m)]
     return LCA(phi, lam=p["lam"]).encode(list(x), steps=p["lca_steps"])
 
@@ -98,7 +103,7 @@ def _stage_boltzmann(x, p):
     """Stochastic-spiking marginal code: an independent (zero-weight) Boltzmann net whose biases are the
     scaled drives; return the per-unit spike marginal P(z_i=1) ~ sigmoid(gain*x_i). Deterministic per seed."""
     n = len(x)
-    weights = [[0.0] * n for _ in range(n)]                     # independent units (valid symmetric, zero diag)
+    weights = [[0.0] * n for _ in range(n)]  # independent units (valid symmetric, zero diag)
     biases = [p["bz_gain"] * float(v) for v in x]
     sampler = BoltzmannSampler(weights, biases, seed=p["seed"])
     return marginals(sampler.sample(p["bz_samples"], burn_in=p["bz_burn"], thin=n))
@@ -116,7 +121,7 @@ _STAGES = {
 
 # built-in presets: a named encoder == an ordered pipeline of stage names.
 _PRESETS = {
-    "rank": ["rank"],              # <-- DEFAULT: byte-identical to the live rank_code encode()
+    "rank": ["rank"],  # <-- DEFAULT: byte-identical to the live rank_code encode()
     "default": ["rank"],
     "divnorm_rank": ["divnorm", "rank"],
     "ttfs_phase": ["ttfs_phase"],
@@ -127,10 +132,16 @@ _PRESETS = {
 }
 
 _DEFAULT_PARAMS = {
-    "sigma": 0.5, "dn_exp": 2.0,          # divisive normalization
-    "n_atoms": None, "lam": 0.08, "lca_steps": 80,   # LCA (n_atoms None -> input width)
-    "pool_k": 2, "pool_stride": None,     # max-pool
-    "bz_gain": 2.0, "bz_samples": 32, "bz_burn": 50,  # neural sampling
+    "sigma": 0.5,
+    "dn_exp": 2.0,  # divisive normalization
+    "n_atoms": None,
+    "lam": 0.08,
+    "lca_steps": 80,  # LCA (n_atoms None -> input width)
+    "pool_k": 2,
+    "pool_stride": None,  # max-pool
+    "bz_gain": 2.0,
+    "bz_samples": 32,
+    "bz_burn": 50,  # neural sampling
 }
 
 
@@ -139,7 +150,7 @@ class SensoryEncoderBank:
 
     config -- a preset name (see list_encoders()), a list of stage names (a custom pipeline), or None for the
     DEFAULT ("rank"), which is byte-identical to rank_order_coding.rank_code(list(stimulus)). Extra keyword
-    params override the stage hyper-parameters. Deterministic per `seed`; pure stdlib; opt-in (nothing runs
+    params override the stage hyper-parameters. Deterministic per `seed`; opt-in (nothing runs
     until you call encode). Reuses the repo's dead encoding primitives; adds NO actuator route."""
 
     DEFAULT = "rank"
@@ -148,7 +159,7 @@ class SensoryEncoderBank:
         self.seed = int(seed)
         self.params = dict(_DEFAULT_PARAMS)
         self.params.update(params)
-        self.params["seed"] = self.seed        # seed is authoritative (drives every seeded stage)
+        self.params["seed"] = self.seed  # seed is authoritative (drives every seeded stage)
         self.config = self.DEFAULT if config is None else config
         self.stage_names, self.name = self._resolve(self.config)
         self.pipeline = [_STAGES[s] for s in self.stage_names]
@@ -158,7 +169,9 @@ class SensoryEncoderBank:
         """Return (ordered stage-name list, display name) for a preset name or an explicit pipeline list."""
         if isinstance(config, str):
             if config not in _PRESETS:
-                raise ValueError(f"unknown encoder preset {config!r}; choose from {sorted(_PRESETS)}")
+                raise ValueError(
+                    f"unknown encoder preset {config!r}; choose from {sorted(_PRESETS)}"
+                )
             return list(_PRESETS[config]), config
         names = list(config)
         for s in names:
@@ -196,7 +209,7 @@ def _finite(v):
 
 
 def main():
-    x = [0.20, 0.90, 0.50, 0.10, 0.70, 0.30, 0.80, 0.40]      # synthetic 8-d stimulus (distinct values)
+    x = [0.20, 0.90, 0.50, 0.10, 0.70, 0.30, 0.80, 0.40]  # synthetic 8-d stimulus (distinct values)
     n = len(x)
 
     # ---- 1. DEFAULT is byte-identical to the live rank_code encode() (OFF == today) ----
@@ -227,7 +240,7 @@ def main():
     # ---- 4. width-preserving encoders keep the live n_in width (drop-in for the rank code) ----
     keep_width = {"rank", "divnorm_rank", "ttfs_phase", "boltzmann", "density_edge"}
     width_preserved = all(widths[k] == n for k in keep_width)
-    pooled_w = widths["maxpool"]                                   # (n-k)//stride + 1 = (8-2)//2 + 1 = 4
+    pooled_w = widths["maxpool"]  # (n-k)//stride + 1 = (8-2)//2 + 1 = 4
 
     # ---- 5. divisive normalization is order-preserving: divnorm_rank == rank for nonnegative input ----
     divnorm_rank = SensoryEncoderBank("divnorm_rank").encode(x)
@@ -246,13 +259,11 @@ def main():
 
     # ---- 8. live-command-library wiring: the DEFAULT encodes a real 64-d command == rank_code (no drift) ----
     from snn_data_lake.brainstem.signal_loop import build_default_library
+
     library = build_default_library()
     cmd = library[list(library)[0]]
     lib_default = SensoryEncoderBank().encode(cmd)
     lib_ok = lib_default == rank_code(list(cmd)) and len(lib_default) == len(cmd)
-
-    # ---- 9. pure stdlib: numpy/torch not imported anywhere on this path ----
-    no_np_torch = ("numpy" not in sys.modules) and ("torch" not in sys.modules)
 
     print("=" * 74)
     print("SENSORY ENCODER BANK -- composable spike front-end (DEFAULT == live rank code)")
@@ -265,27 +276,44 @@ def main():
         print(f"    {name:<14s} -> width {widths[name]}")
     print(f"divnorm_rank == rank code  : {gain_invariant} (order-preserving gain control)")
     print(f"ttfs_phase (per-dim phase) : {[round(pv, 3) for pv in phase]}")
-    print(f"    highest-value dim {argmax} fires first (phase {phase[argmax]:.3f}); rank-ordered={ttfs_ordered}")
+    print(
+        f"    highest-value dim {argmax} fires first (phase {phase[argmax]:.3f}); rank-ordered={ttfs_ordered}"
+    )
     print(f"maxpool width              : {n} -> {pooled_w} (anti-low-pass downsample)")
-    print(f"composable pipeline        : ['divnorm','rank'] == preset 'divnorm_rank' -> {composable}")
+    print(
+        f"composable pipeline        : ['divnorm','rank'] == preset 'divnorm_rank' -> {composable}"
+    )
     print(f"live library wiring        : DEFAULT on a real 64-d command == rank_code -> {lib_ok}")
     print("=" * 74)
 
-    # ---- self-check: deterministic asserts, ASCII-only, zero-dep ----
-    assert byte_identical, "DEFAULT encoder must be byte-identical to rank_code(list(stimulus)) -- OFF == today"
-    assert valid, "every encoder must produce a valid fixed-width finite code matching code_width(n)"
-    assert deterministic, "same config+seed must give identical codes across fresh instances and repeat calls"
-    assert width_preserved, f"width-preserving encoders must keep n={n} ({[(k, widths[k]) for k in keep_width]})"
+    # ---- self-check: deterministic asserts, ASCII-only ----
+    assert byte_identical, (
+        "DEFAULT encoder must be byte-identical to rank_code(list(stimulus)) -- OFF == today"
+    )
+    assert valid, (
+        "every encoder must produce a valid fixed-width finite code matching code_width(n)"
+    )
+    assert deterministic, (
+        "same config+seed must give identical codes across fresh instances and repeat calls"
+    )
+    assert width_preserved, (
+        f"width-preserving encoders must keep n={n} ({[(k, widths[k]) for k in keep_width]})"
+    )
     assert pooled_w == (n - 2) // 2 + 1, f"maxpool must downsample deterministically ({pooled_w})"
-    assert gain_invariant, "divisive normalization is order-preserving: divnorm_rank must equal the rank code"
-    assert ttfs_first and ttfs_ordered, "TTFS/phase: highest value must fire first and phases must be rank-ordered"
+    assert gain_invariant, (
+        "divisive normalization is order-preserving: divnorm_rank must equal the rank code"
+    )
+    assert ttfs_first and ttfs_ordered, (
+        "TTFS/phase: highest value must fire first and phases must be rank-ordered"
+    )
     assert len(set(phase)) == n, "distinct-valued dims must map to distinct theta phases"
     assert composable, "an explicit stage pipeline must equal the equivalent preset (composability)"
     assert lib_ok, "the DEFAULT must encode a real live command identically to rank_code (no drift)"
-    assert no_np_torch, "must be pure stdlib: numpy/torch must not be imported"
-    print(f"self-check OK: DEFAULT byte-identical to rank_code (base {base}); {len(presets)} encoders all "
-          f"valid+fixed-width+deterministic; divnorm_rank==rank (gain-invariant); TTFS fires-first+ordered; "
-          f"pipeline composable; live 64-d command wired identically; pure stdlib")
+    print(
+        f"self-check OK: DEFAULT byte-identical to rank_code (base {base}); {len(presets)} encoders all "
+        f"valid+fixed-width+deterministic; divnorm_rank==rank (gain-invariant); TTFS fires-first+ordered; "
+        f"pipeline composable; live 64-d command wired identically"
+    )
 
 
 if __name__ == "__main__":

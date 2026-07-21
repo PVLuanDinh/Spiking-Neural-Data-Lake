@@ -22,7 +22,7 @@ The zoo REUSES (import + adapt, never rewrite) the repo's own neuron models:
   * reasoning.resonate_and_fire.ResonateFire -- frequency-selective     (units + reset() -> adapter)
   * reasoning.srm_neuron.SRMNeuron     -- kernel/soft-reset spike model (event API -> adapter)
 
-DEFAULT-SAFE population = the six pure-stdlib, always-finite point/reduced models above (SRM is a
+DEFAULT-SAFE population = the six always-finite point/reduced models above (SRM is a
 kernel model included in the safe set). Two BIOPHYSICAL models integrate forward-Euler ODEs that can
 diverge, so they are OPT-IN ONLY and NaN-GUARDED (a non-finite drive or a blown-up state is clamped /
 skipped, never propagated, never raised) and are EXCLUDED from the default population:
@@ -38,11 +38,12 @@ bits. It adds NO actuator route. A heterogeneous READOUT can, however, change wh
 argmax, so wiring it into the interaction-learning intent readout is ARM-ADJACENT and must be E-STOP
 re-verified by the main agent (see the integration-hook spec returned with this build).
 
-Pure standard library. Deterministic: per-instance random.Random(seed); no module-level seeding, no
-numpy, no torch, no wall-clock. ASCII-only output.
+Deterministic: per-instance random.Random(seed); no module-level seeding, no
+wall-clock. ASCII-only output.
 
   PYTHONUTF8=1 NORD_TORCH=0 PYTHONPATH=src python -m snn_data_lake.cortex.neuron_zoo
 """
+
 import math
 import random
 
@@ -60,10 +61,10 @@ from snn_data_lake.reasoning.srm_neuron import SRMNeuron
 #     work in other native units (pA for AdEx, arbitrary drive for the resonator, uA/cm^2 for HH, the
 #     Izhikevich current scale) get that common current mapped into their operating range by a fixed
 #     per-kind scale INSIDE the adapter. Pure re-scaling; it re-uses the model's own dynamics untouched.
-_ADEX_SCALE = 1500.0        # LIF-unit current -> pA (AdEx rheobase ~ a few hundred pA)
-_RES_SCALE = 130.0          # LIF-unit current -> resonator drive (fixed-point above threshold)
-_HH_SCALE = 45.0            # LIF-unit current -> uA/cm^2 (HH rheobase ~ a few uA/cm^2)
-_IZHI_SCALE = 55.0          # LIF-unit current -> Izhikevich current scale (~10 in the source module)
+_ADEX_SCALE = 1500.0  # LIF-unit current -> pA (AdEx rheobase ~ a few hundred pA)
+_RES_SCALE = 130.0  # LIF-unit current -> resonator drive (fixed-point above threshold)
+_HH_SCALE = 45.0  # LIF-unit current -> uA/cm^2 (HH rheobase ~ a few uA/cm^2)
+_IZHI_SCALE = 55.0  # LIF-unit current -> Izhikevich current scale (~10 in the source module)
 
 
 def _finite(x):
@@ -84,14 +85,14 @@ class _DendriticCell:
     kind = "dendritic"
 
     def __init__(self, seed=0):
-        self.raw = DendriticNeuron()          # deterministic; no internal randomness
+        self.raw = DendriticNeuron()  # deterministic; no internal randomness
         self.reset_state()
 
     def reset_state(self):
         self.raw.reset_state()
 
     def step(self, current):
-        return self.raw.step(current, 0.0)    # basal = common current, apical = 0
+        return self.raw.step(current, 0.0)  # basal = common current, apical = 0
 
 
 class _AdExCell:
@@ -101,7 +102,7 @@ class _AdExCell:
     kind = "adex"
 
     def __init__(self, seed=0, scale=_ADEX_SCALE):
-        self.raw = AdEx()                     # deterministic fixed-step forward Euler
+        self.raw = AdEx()  # deterministic fixed-step forward Euler
         self.scale = scale
         self.reset_state()
 
@@ -121,7 +122,7 @@ class _ResonateCell:
     kind = "resonate"
 
     def __init__(self, seed=0, scale=_RES_SCALE):
-        self.raw = ResonateFire(10.0)         # 10 Hz-tuned; deterministic
+        self.raw = ResonateFire(10.0)  # 10 Hz-tuned; deterministic
         self.scale = scale
         self.reset_state()
 
@@ -164,7 +165,7 @@ class _HodgkinHuxleyCell:
     blown-up membrane is clamped back to rest -- a non-finite value never escapes and never raises."""
 
     kind = "hh"
-    _LEVEL = 0.0                              # mV: an upward crossing of 0 mV counts as one AP
+    _LEVEL = 0.0  # mV: an upward crossing of 0 mV counts as one AP
 
     def __init__(self, seed=0, scale=_HH_SCALE):
         self.raw = HodgkinHuxley(seed=seed)
@@ -176,16 +177,18 @@ class _HodgkinHuxleyCell:
         self._prev = self.raw.v
 
     def step(self, current):
-        if not _finite(current):              # skip a non-finite drive; hold state
+        if not _finite(current):  # skip a non-finite drive; hold state
             return 0
         try:
             v = self.raw.step(current * self.scale)
-        except (OverflowError, ValueError):   # the gate ODEs (math.exp) can overflow on a wild V
+        except (OverflowError, ValueError):  # the gate ODEs (math.exp) can overflow on a wild V
             self.raw.reset()
             self._prev = self.raw.v
             return 0
-        if not _finite(v) or abs(v) > 1.0e4:  # divergence guard: a non-finite OR absurd (>1e4 mV) V ->
-            self.raw.reset()                  #   clamp back to rest so it cannot poison the next step
+        if (
+            not _finite(v) or abs(v) > 1.0e4
+        ):  # divergence guard: a non-finite OR absurd (>1e4 mV) V ->
+            self.raw.reset()  #   clamp back to rest so it cannot poison the next step
             self._prev = self.raw.v
             return 0
         spike = 1 if (self._prev < self._LEVEL <= v) else 0
@@ -203,7 +206,9 @@ class _IzhikevichCell:
     kind = "izhikevich"
 
     def __init__(self, seed=0, scale=_IZHI_SCALE, regime="regular-spiking", dt=0.5):
-        self.a, self.b, self.c, self.d = _IZHI_REGIMES[regime]   # reuse the module's canonical params
+        self.a, self.b, self.c, self.d = _IZHI_REGIMES[
+            regime
+        ]  # reuse the module's canonical params
         self.scale = scale
         self.dt = dt
         self.reset_state()
@@ -215,11 +220,11 @@ class _IzhikevichCell:
     def step(self, current):
         if not _finite(current):
             return 0
-        if not (_finite(self.v) and _finite(self.u)):    # a prior diverged state -> clamp
+        if not (_finite(self.v) and _finite(self.u)):  # a prior diverged state -> clamp
             self.reset_state()
             return 0
         spike = 0
-        if self.v >= 30.0:                    # spike recorded from the previous overshoot, then reset
+        if self.v >= 30.0:  # spike recorded from the previous overshoot, then reset
             spike = 1
             self.v = self.c
             self.u += self.d
@@ -227,17 +232,17 @@ class _IzhikevichCell:
         try:
             self.v += self.dt * (0.04 * self.v * self.v + 5.0 * self.v + 140.0 - self.u + i)
             self.u += self.dt * (self.a * (self.b * self.v - self.u))
-        except (OverflowError, ValueError):   # quadratic v-update can overflow -> clamp to rest
+        except (OverflowError, ValueError):  # quadratic v-update can overflow -> clamp to rest
             self.reset_state()
             return spike
-        if not _finite(self.v) or abs(self.v) > 1.0e6:   # divergence guard on the quadratic update
+        if not _finite(self.v) or abs(self.v) > 1.0e6:  # divergence guard on the quadratic update
             self.reset_state()
         return spike
 
 
 # native models already satisfy step(current)->0/1 + reset_state(); no adapter needed
 def _make_lif(seed=0):
-    return LIFNeuron()                        # default params -> the byte-identical anchor
+    return LIFNeuron()  # default params -> the byte-identical anchor
 
 
 def _make_alif(seed=0):
@@ -245,15 +250,26 @@ def _make_alif(seed=0):
 
 
 def _make_autapse(seed=0):
-    return AutapseNeuron(delays=(1, 2, 3), seed=seed)   # seed -> its random self-feedback weights
+    return AutapseNeuron(delays=(1, 2, 3), seed=seed)  # seed -> its random self-feedback weights
 
 
 # --------------------------------------------------------------------------------------------------
 # kind sets
 # --------------------------------------------------------------------------------------------------
-DEFAULT_KINDS = ("lif",)                      # a default pool is homogeneous LIF = byte-identical to today
-SAFE_KINDS = ("lif", "alif", "autapse", "dendritic", "adex", "resonate", "srm")   # always-finite, default-safe
-OPTIN_KINDS = ("hh", "izhikevich")            # biophysical ODEs: opt-in only, NaN-guarded, excluded by default
+DEFAULT_KINDS = ("lif",)  # a default pool is homogeneous LIF = byte-identical to today
+SAFE_KINDS = (
+    "lif",
+    "alif",
+    "autapse",
+    "dendritic",
+    "adex",
+    "resonate",
+    "srm",
+)  # always-finite, default-safe
+OPTIN_KINDS = (
+    "hh",
+    "izhikevich",
+)  # biophysical ODEs: opt-in only, NaN-guarded, excluded by default
 ALL_KINDS = SAFE_KINDS + OPTIN_KINDS
 
 
@@ -285,7 +301,9 @@ class NeuronZoo:
         try:
             builder = self._builders[kind]
         except KeyError:
-            raise ValueError(f"unknown neuron kind {kind!r}; known: {sorted(self._builders)}") from None
+            raise ValueError(
+                f"unknown neuron kind {kind!r}; known: {sorted(self._builders)}"
+            ) from None
         return builder(seed=seed)
 
     def sample(self, n, seed=0, kinds=DEFAULT_KINDS):
@@ -296,10 +314,10 @@ class NeuronZoo:
             raise ValueError(f"population size must be >= 0 (got {n})")
         if not kinds:
             raise ValueError("kinds must be a non-empty sequence of kind names")
-        rng = random.Random(seed)             # reserved for future jitter; determinism anchor
+        rng = random.Random(seed)  # reserved for future jitter; determinism anchor
         pool = []
         for i in range(n):
-            kind = kinds[i % len(kinds)]       # round-robin -> balanced, deterministic mix
+            kind = kinds[i % len(kinds)]  # round-robin -> balanced, deterministic mix
             pool.append(self.make(kind, seed=seed * 1000 + i + rng.randint(0, 0)))
         return pool
 
@@ -320,7 +338,7 @@ def sample_population(n, seed=0, kinds=DEFAULT_KINDS):
 
 
 # --------------------------------------------------------------------------------------------------
-# self-check (deterministic asserts, zero-dep, ASCII-only)
+# self-check (deterministic asserts, ASCII-only)
 # --------------------------------------------------------------------------------------------------
 def _train(neuron, currents):
     """Drive one neuron with a current stream from rest; return its 0/1 spike train."""
@@ -345,11 +363,11 @@ def main():
         per_kind[k] = sum(_train(nu, currents))
 
     # 2. BYTE-IDENTICAL HOMOGENEOUS LIF: default pool must equal a direct LIFNeuron pool, bit for bit.
-    homo = sample_population(6, seed=3)                      # default kinds = ('lif',)
+    homo = sample_population(6, seed=3)  # default kinds = ('lif',)
     homo_trains = [_train(nu, currents) for nu in homo]
     direct_trains = [_train(LIFNeuron(), currents) for _ in range(6)]
     byte_identical = homo_trains == direct_trains
-    homo_uniform = len(set(sum(tr) for tr in homo_trains)) == 1   # homogeneous -> all identical
+    homo_uniform = len(set(sum(tr) for tr in homo_trains)) == 1  # homogeneous -> all identical
 
     # 3. NaN GUARD (opt-in biophysical): pathological drives must never raise, never return non-0/1,
     #    never leave the state non-finite; the cell recovers and fires again on a normal drive.
@@ -359,7 +377,7 @@ def main():
     for kind in OPTIN_KINDS:
         cell = make_neuron(kind, seed=1)
         cell.reset_state()
-        for _ in range(20):                                 # warm it up on a normal drive first
+        for _ in range(20):  # warm it up on a normal drive first
             cell.step(0.3)
         for bad in pathological:
             s = cell.step(bad)
@@ -379,7 +397,10 @@ def main():
     izhi_spikes = sum(_train(make_neuron("izhikevich", seed=1), [0.5] * 400))
 
     # 4. DETERMINISM: same seed + same drive -> byte-identical pool trains.
-    het_again = [_train(nu, currents) for nu in sample_population(len(SAFE_KINDS) * 2, seed=3, kinds=SAFE_KINDS)]
+    het_again = [
+        _train(nu, currents)
+        for nu in sample_population(len(SAFE_KINDS) * 2, seed=3, kinds=SAFE_KINDS)
+    ]
     deterministic = het_again == trains
 
     print("=" * 74)
@@ -388,29 +409,53 @@ def main():
     print(f"registered kinds : {list(_ZOO.kinds())}")
     print(f"safe (default)   : {list(SAFE_KINDS)}")
     print(f"opt-in (guarded) : {list(OPTIN_KINDS)}  (excluded from the default population)")
-    print("per-kind spikes  : " + ", ".join(f"{k}={per_kind[k]}" for k in SAFE_KINDS) + f"  (I={drive_c}, T={T})")
-    print(f"heterogeneity    : {len(distinct_counts)} distinct spike-counts across the mixed pool {distinct_counts}")
+    print(
+        "per-kind spikes  : "
+        + ", ".join(f"{k}={per_kind[k]}" for k in SAFE_KINDS)
+        + f"  (I={drive_c}, T={T})"
+    )
+    print(
+        f"heterogeneity    : {len(distinct_counts)} distinct spike-counts across the mixed pool {distinct_counts}"
+    )
     print(f"homogeneous LIF  : zoo pool == direct LIFNeuron pool : {byte_identical}")
-    print(f"NaN guard        : opt-in cells survived {pathological} -> still 0/1, state finite : {guard_ok}")
-    print(f"opt-in live      : hh {hh_spikes} spikes, izhikevich {izhi_spikes} spikes under a benign drive")
+    print(
+        f"NaN guard        : opt-in cells survived {pathological} -> still 0/1, state finite : {guard_ok}"
+    )
+    print(
+        f"opt-in live      : hh {hh_spikes} spikes, izhikevich {izhi_spikes} spikes under a benign drive"
+    )
     print(f"deterministic    : same seed -> identical pool trains : {deterministic}")
     print("=" * 74)
 
     # ---- asserts ----
     assert all_bits_binary, "every neuron.step must return a 0/1 spike bit"
-    assert len(distinct_counts) >= 3, f"a mixed pool must show heterogeneous firing ({distinct_counts})"
-    assert per_kind["lif"] != per_kind["alif"], "adaptation (ALIF) must differ from plain LIF firing"
-    assert not all(tr == trains[0] for tr in trains), "a heterogeneous pool must not fire one identical train"
-    assert byte_identical, "homogeneous-LIF zoo pool must be BYTE-IDENTICAL to a direct LIFNeuron pool"
+    assert len(distinct_counts) >= 3, (
+        f"a mixed pool must show heterogeneous firing ({distinct_counts})"
+    )
+    assert per_kind["lif"] != per_kind["alif"], (
+        "adaptation (ALIF) must differ from plain LIF firing"
+    )
+    assert not all(tr == trains[0] for tr in trains), (
+        "a heterogeneous pool must not fire one identical train"
+    )
+    assert byte_identical, (
+        "homogeneous-LIF zoo pool must be BYTE-IDENTICAL to a direct LIFNeuron pool"
+    )
     assert homo_uniform, "a homogeneous LIF pool must fire one identical count across cells"
-    assert guard_ok, "opt-in biophysical cells must be NaN-guarded (never non-0/1, never raise, recover)"
+    assert guard_ok, (
+        "opt-in biophysical cells must be NaN-guarded (never non-0/1, never raise, recover)"
+    )
     assert hh_finite and izhi_finite, "opt-in cell state must stay finite through non-finite drives"
-    assert hh_spikes > 0 and izhi_spikes > 0, "opt-in cells must be able to spike under a benign drive"
+    assert hh_spikes > 0 and izhi_spikes > 0, (
+        "opt-in cells must be able to spike under a benign drive"
+    )
     assert deterministic, "same seed + drive -> identical pool trains (deterministic)"
 
-    print(f"self-check OK: {len(SAFE_KINDS)} safe + {len(OPTIN_KINDS)} opt-in kinds; heterogeneous pool "
-          f"{distinct_counts} distinct counts; homogeneous LIF byte-identical; HH/Izhikevich NaN-guarded "
-          f"(hh {hh_spikes}, izhi {izhi_spikes} spikes); deterministic")
+    print(
+        f"self-check OK: {len(SAFE_KINDS)} safe + {len(OPTIN_KINDS)} opt-in kinds; heterogeneous pool "
+        f"{distinct_counts} distinct counts; homogeneous LIF byte-identical; HH/Izhikevich NaN-guarded "
+        f"(hh {hh_spikes}, izhi {izhi_spikes} spikes); deterministic"
+    )
 
 
 if __name__ == "__main__":

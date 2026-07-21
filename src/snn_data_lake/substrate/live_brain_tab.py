@@ -18,6 +18,7 @@ readout, not phenomenal consciousness.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.live_brain_tab
 """
+
 import math
 import tkinter as tk
 from tkinter import scrolledtext, ttk
@@ -29,8 +30,8 @@ from snn_data_lake.cortex.live_brain import LiveBrain
 from snn_data_lake.substrate.control_panel import world_to_canvas
 
 WS_HEADER = "Global Workspace (functional global-broadcast, GWT) - not phenomenal consciousness"
-SAFE_D = CONTACT * 3.0            # a comfortably-in-range distance (no reflex)
-DANGER_D = CONTACT * 0.5          # a close-contact distance -> trips the reflex E-STOP
+SAFE_D = CONTACT * 3.0  # a comfortably-in-range distance (no reflex)
+DANGER_D = CONTACT * 0.5  # a close-contact distance -> trips the reflex E-STOP
 
 
 def _ctx(v, tmp, au, d):
@@ -43,14 +44,14 @@ class LiveBrainTab(ttk.Frame):
     watch the Global Workspace broadcast, the lake-backed working memory, attention/affect, and the
     gated arm. Drives the arm ONLY through LiveBrain.tick() -- no new actuator path."""
 
-    W, H, SCALE = 380, 300, 70          # canvas geometry (reach l1+l2=2m fits at scale 70)
+    W, H, SCALE = 380, 300, 70  # canvas geometry (reach l1+l2=2m fits at scale 70)
 
     def __init__(self, master, seed=0):
         super().__init__(master, padding=8)
         self._seed = seed
         self.brain = LiveBrain(seed=seed)
         self.playing = False
-        self.ignitions = 0                 # count of Global-Workspace broadcast changes
+        self.ignitions = 0  # count of Global-Workspace broadcast changes
         self._prev_thought = None
         self._last_action = "(none)"
 
@@ -71,24 +72,45 @@ class LiveBrainTab(ttk.Frame):
         self.play_btn.pack(side="left", padx=2)
         ttk.Button(top, text="Pause", command=self.pause).pack(side="left", padx=2)
         ttk.Button(top, text="Reset", command=self.reset).pack(side="left", padx=2)
-        tk.Button(top, text="DANGER", bg="#c00", fg="white",
-                  activebackground="#900", activeforeground="white",
-                  font=("TkDefaultFont", 9, "bold"),
-                  command=self.danger).pack(side="left", padx=(10, 2))
+        tk.Button(
+            top,
+            text="DANGER",
+            bg="#c00",
+            fg="white",
+            activebackground="#900",
+            activeforeground="white",
+            font=("TkDefaultFont", 9, "bold"),
+            command=self.danger,
+        ).pack(side="left", padx=(10, 2))
 
         ttk.Label(top, text="reward:").pack(side="left", padx=(10, 0))
         self.reward_var = tk.StringVar(value="(no reward)")
-        rc = ttk.Combobox(top, width=14, state="readonly", textvariable=self.reward_var,
-                          values=["(no reward)", *ACTIONS])
+        rc = ttk.Combobox(
+            top,
+            width=14,
+            state="readonly",
+            textvariable=self.reward_var,
+            values=["(no reward)", *ACTIONS],
+        )
         rc.pack(side="left", padx=2)
-        ttk.Label(top, text="(+1 for it, -1 else -> PFC forms a goal)",
-                  foreground="#555", font=("TkDefaultFont", 8)).pack(side="left")
+        ttk.Label(
+            top,
+            text="(+1 for it, -1 else -> PFC forms a goal)",
+            foreground="#555",
+            font=("TkDefaultFont", 8),
+        ).pack(side="left")
 
     def _build_arm_panel(self):
         armf = ttk.LabelFrame(self, text="Arm (2-link, gated) - driven only via LiveBrain.tick()")
         armf.grid(row=1, column=0, sticky="nw", padx=(0, 8))
-        self.canvas = tk.Canvas(armf, width=self.W, height=self.H, bg="white",
-                                highlightthickness=1, highlightbackground="#888")
+        self.canvas = tk.Canvas(
+            armf,
+            width=self.W,
+            height=self.H,
+            bg="white",
+            highlightthickness=1,
+            highlightbackground="#888",
+        )
         self.canvas.pack()
         self.arm_status = ttk.Label(armf, text="", font=("TkFixedFont", 9), justify="left")
         self.arm_status.pack(anchor="w", pady=(4, 0))
@@ -110,8 +132,9 @@ class LiveBrainTab(ttk.Frame):
         self.wm_goal.pack(anchor="w")
         self.wm_events = ttk.Label(wmf, text="", font=("TkFixedFont", 9))
         self.wm_events.pack(anchor="w")
-        self.wm_recall = ttk.Label(wmf, text="", font=("TkFixedFont", 9),
-                                   justify="left", wraplength=360)
+        self.wm_recall = ttk.Label(
+            wmf, text="", font=("TkFixedFont", 9), justify="left", wraplength=360
+        )
         self.wm_recall.pack(anchor="w")
 
         aff = ttk.LabelFrame(right, text="Attention / affect")
@@ -121,8 +144,9 @@ class LiveBrainTab(ttk.Frame):
         self.pb_cort, self.lb_cort = self._labeled_bar(aff, 2, "cortisol caution")
 
     def _labeled_bar(self, parent, row, name):
-        ttk.Label(parent, text=name, font=("TkFixedFont", 9), width=22,
-                  anchor="w").grid(row=row, column=0, sticky="w", pady=1)
+        ttk.Label(parent, text=name, font=("TkFixedFont", 9), width=22, anchor="w").grid(
+            row=row, column=0, sticky="w", pady=1
+        )
         pb = ttk.Progressbar(parent, length=140, maximum=1.0, mode="determinate")
         pb.grid(row=row, column=1, padx=4)
         lb = ttk.Label(parent, text="0.00", font=("TkFixedFont", 9), width=6)
@@ -130,22 +154,32 @@ class LiveBrainTab(ttk.Frame):
         return pb, lb
 
     def _build_inputs(self):
-        inf = ttk.LabelFrame(self, text="Context inputs (everything that drives the functional signals)")
+        inf = ttk.LabelFrame(
+            self, text="Context inputs (everything that drives the functional signals)"
+        )
         inf.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8, 0))
         self.v_visual = self._slider(inf, 0, "visual", 0.0, 1.0, 0.9)
         self.v_temp = self._slider(inf, 1, "temperature", 0.0, 1.0, 0.1)
         self.v_audio = self._slider(inf, 2, "audio", 0.0, 1.0, 0.1)
-        self.v_dist = self._slider(inf, 3, f"distance (< {CONTACT:.2f} m -> danger)", 0.0, 1.0, 0.30)
+        self.v_dist = self._slider(
+            inf, 3, f"distance (< {CONTACT:.2f} m -> danger)", 0.0, 1.0, 0.30
+        )
         self.v_load = self._slider(inf, 4, "homeostatic load", 0.0, 2.0, 0.0)
 
     def _slider(self, parent, row, label, frm, to, default):
-        ttk.Label(parent, text=label, font=("TkFixedFont", 9), width=26,
-                  anchor="w").grid(row=row, column=0, sticky="w", pady=1)
+        ttk.Label(parent, text=label, font=("TkFixedFont", 9), width=26, anchor="w").grid(
+            row=row, column=0, sticky="w", pady=1
+        )
         var = tk.DoubleVar(value=default)
         val = ttk.Label(parent, text=f"{default:.2f}", font=("TkFixedFont", 9), width=6)
-        ttk.Scale(parent, from_=frm, to=to, variable=var, length=260,
-                  command=lambda v, lb=val: lb.configure(text=f"{float(v):.2f}")
-                  ).grid(row=row, column=1, padx=4, sticky="ew")
+        ttk.Scale(
+            parent,
+            from_=frm,
+            to=to,
+            variable=var,
+            length=260,
+            command=lambda v, lb=val: lb.configure(text=f"{float(v):.2f}"),
+        ).grid(row=row, column=1, padx=4, sticky="ew")
         val.grid(row=row, column=2, sticky="w")
         return var
 
@@ -154,18 +188,26 @@ class LiveBrainTab(ttk.Frame):
         workspace, safety) and honest about consciousness; arm commands go through the gated arm. Not
         a general chatbot / language model."""
         chatf = ttk.LabelFrame(
-            self, text="Chat with the brain (grounded in its real state -- a functional model, not a chatbot)")
+            self,
+            text="Chat with the brain (grounded in its real state -- a functional model, not a chatbot)",
+        )
         chatf.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(8, 0))
         chatf.columnconfigure(0, weight=1)
-        self.chat_log = scrolledtext.ScrolledText(chatf, height=7, wrap="word",
-                                                  font=("TkFixedFont", 9), state="disabled")
+        self.chat_log = scrolledtext.ScrolledText(
+            chatf, height=7, wrap="word", font=("TkFixedFont", 9), state="disabled"
+        )
         self.chat_log.grid(row=0, column=0, columnspan=2, sticky="ew", padx=4, pady=4)
         self.chat_entry = ttk.Entry(chatf)
         self.chat_entry.grid(row=1, column=0, sticky="ew", padx=4, pady=(0, 4))
         self.chat_entry.bind("<Return>", lambda _e: self._send_chat())
-        ttk.Button(chatf, text="Send", command=self._send_chat).grid(row=1, column=1, padx=4, pady=(0, 4))
-        self._chat_say("brain", "Hi. Try 'hello', 'what is your goal', 'what do you remember', "
-                                "'are you conscious', or a command like 'close the gripper'.")
+        ttk.Button(chatf, text="Send", command=self._send_chat).grid(
+            row=1, column=1, padx=4, pady=(0, 4)
+        )
+        self._chat_say(
+            "brain",
+            "Hi. Try 'hello', 'what is your goal', 'what do you remember', "
+            "'are you conscious', or a command like 'close the gripper'.",
+        )
 
     def _chat_say(self, who, text):
         self.chat_log.configure(state="normal")
@@ -179,8 +221,10 @@ class LiveBrainTab(ttk.Frame):
             return
         self.chat_entry.delete(0, "end")
         self._chat_say("you", text)
-        self._chat_say("brain", self.brain.converse(text))     # grounded; a command goes through the gated arm
-        self._refresh()                                        # a chat command may have moved the gated arm -> repaint
+        self._chat_say(
+            "brain", self.brain.converse(text)
+        )  # grounded; a command goes through the gated arm
+        self._refresh()  # a chat command may have moved the gated arm -> repaint
 
     # ---- driving the brain ------------------------------------------------------
     def _reward_fn(self):
@@ -191,6 +235,7 @@ class LiveBrainTab(ttk.Frame):
 
         def rf(_unit, action, _t=target):
             return 1.0 if action == _t else -1.0
+
         return rf
 
     def step_once(self):
@@ -204,11 +249,10 @@ class LiveBrainTab(ttk.Frame):
         return self._tick(_ctx(0.5, 0.5, 0.5, DANGER_D))
 
     def _tick(self, ctx):
-        res = self.brain.tick(ctx, reward_fn=self._reward_fn(),
-                              homeostatic_load=self.v_load.get())
+        res = self.brain.tick(ctx, reward_fn=self._reward_fn(), homeostatic_load=self.v_load.get())
         self._last_action = res.get("action", "(none)")
         thought = self.brain.thought
-        if thought != self._prev_thought:              # a workspace ignition / broadcast change
+        if thought != self._prev_thought:  # a workspace ignition / broadcast change
             self.ignitions += 1
         self._prev_thought = thought
         self._refresh(res)
@@ -224,7 +268,7 @@ class LiveBrainTab(ttk.Frame):
         if not self.playing:
             return
         self.step_once()
-        self.after(500, self._auto)                    # same self.after() timer the other tabs use
+        self.after(500, self._auto)  # same self.after() timer the other tabs use
 
     def pause(self):
         self.playing = False
@@ -278,7 +322,7 @@ class LiveBrainTab(ttk.Frame):
     def _render_arm(self, state):
         """Draw the 2-link arm from the gated ArmSim -- REUSING world_to_canvas + the ArmTab render
         approach (no re-derived FK). Red when the arm is E-STOPped or colliding."""
-        c, arm = self.canvas, self.brain.arm.arm      # geometry from the gated sim
+        c, arm = self.canvas, self.brain.arm.arm  # geometry from the gated sim
         c.delete("all")
         colliding = arm.collision()
         stopped = bool(state.get("stopped"))
@@ -302,21 +346,27 @@ class LiveBrainTab(ttk.Frame):
         p2 = world_to_canvas(eex, eey, self.W, self.H, self.SCALE)
         c.create_line(*p0, *p1, fill=link, width=6, capstyle="round")
         c.create_line(*p1, *p2, fill=link, width=6, capstyle="round")
-        for (px_, py_) in (p0, p1):
+        for px_, py_ in (p0, p1):
             c.create_oval(px_ - 4, py_ - 4, px_ + 4, py_ + 4, fill="#333")
         eefill = "#080" if arm.gripper else "white"
-        c.create_oval(p2[0] - 6, p2[1] - 6, p2[0] + 6, p2[1] + 6, fill=eefill, outline="#080", width=2)
+        c.create_oval(
+            p2[0] - 6, p2[1] - 6, p2[0] + 6, p2[1] + 6, fill=eefill, outline="#080", width=2
+        )
         if stopped:
-            c.create_text(self.W // 2, 14, text="E-STOP", fill="#c00",
-                          font=("TkDefaultFont", 12, "bold"))
+            c.create_text(
+                self.W // 2, 14, text="E-STOP", fill="#c00", font=("TkDefaultFont", 12, "bold")
+            )
 
         grip = "CLOSED" if state.get("gripper") else "open"
         self.arm_status.configure(
-            text=(f"theta(deg) A={state['theta_deg'][0]:5.1f} B={state['theta_deg'][1]:5.1f}  "
-                  f"ee=({state['ee'][0]:+.2f},{state['ee'][1]:+.2f})  gripper={grip}\n"
-                  f"action={self._last_action}  stopped={state['stopped']}  "
-                  f"collision={state['collision']}"),
-            foreground=("#c00" if (colliding or stopped) else "#000"))
+            text=(
+                f"theta(deg) A={state['theta_deg'][0]:5.1f} B={state['theta_deg'][1]:5.1f}  "
+                f"ee=({state['ee'][0]:+.2f},{state['ee'][1]:+.2f})  gripper={grip}\n"
+                f"action={self._last_action}  stopped={state['stopped']}  "
+                f"collision={state['collision']}"
+            ),
+            foreground=("#c00" if (colliding or stopped) else "#000"),
+        )
 
     # ---- cleanup ----------------------------------------------------------------
     def _close_lake(self, remove=True):
@@ -333,7 +383,7 @@ class LiveBrainTab(ttk.Frame):
         self._close_lake(remove=remove)
 
     def _on_destroy(self, event=None):
-        if event is not None and event.widget is not self:   # ignore child-widget destroys
+        if event is not None and event.widget is not self:  # ignore child-widget destroys
             return
         self.close(remove=True)
 
@@ -351,18 +401,21 @@ def smoke():
     for _ in range(90):
         brain.tick(grasp, reward_fn=reward)
     assert brain.alive(), "the live brain must wire in every region"
-    assert brain.goal == ACTIONS.index("GRIPPER_OPEN"), \
+    assert brain.goal == ACTIONS.index("GRIPPER_OPEN"), (
         f"the PFC must form the rewarded goal ({ACTIONS[brain.goal] if brain.goal is not None else None})"
-    assert brain.arm.lake_wm is not None and brain.arm.lake_wm.n_events() > 0, \
+    )
+    assert brain.arm.lake_wm is not None and brain.arm.lake_wm.n_events() > 0, (
         "the working memory must be recorded in the data lake"
+    )
     wm = brain.recall(6)
     assert 0 < len(wm) <= 6, "recall must return a bounded window read back from the lake"
 
     # (b) DANGER: a close context trips the reflex E-STOP and freezes the arm ------
     guard = LiveBrain(seed=2)
     ev = guard.tick(_ctx(0.5, 0.5, 0.5, DANGER_D))
-    assert ev["action"] == "EMERGENCY_STOP" and ev["reflex"], \
+    assert ev["action"] == "EMERGENCY_STOP" and ev["reflex"], (
         "a danger context must trip the reflex E-STOP with the whole brain live"
+    )
     assert guard.arm.arm.state()["stopped"], "the reflex E-STOP must freeze the arm"
 
     # (c) determinism: same seed -> identical behaviour ---------------------------
@@ -371,16 +424,20 @@ def smoke():
         acts = [b.tick(grasp, reward_fn=reward)["action"] for _ in range(12)]
         b.arm.lake_wm.close(remove=True)
         return acts
+
     assert run(5) == run(5), "the live brain must be deterministic"
 
     # (c2) chat: the brain answers GROUNDED in its real state, and never claims consciousness ------
     _g = brain.converse("what is your goal?")
-    assert "improving myself" in _g.lower() and "GRIPPER_OPEN" in _g, "chat must report the standing telos + sub-goal"
+    assert "improving myself" in _g.lower() and "GRIPPER_OPEN" in _g, (
+        "chat must report the standing telos + sub-goal"
+    )
     _c = brain.converse("are you conscious?")
     assert "neither claim" in _c and "not a conscious agent" not in _c, (
-        "chat must answer consciousness AGNOSTICALLY (report correlates, neither claim nor deny), not DENY it")
+        "chat must answer consciousness AGNOSTICALLY (report correlates, neither claim nor deny), not DENY it"
+    )
 
-    brain.arm.lake_wm.close(remove=True)                # clean up the temp lake files
+    brain.arm.lake_wm.close(remove=True)  # clean up the temp lake files
     if guard.arm.lake_wm is not None:
         guard.arm.lake_wm.close(remove=True)
 
@@ -399,10 +456,12 @@ def smoke():
         if root is not None:
             root.destroy()
 
-    print(f"self-check OK: live brain forms the prefrontal goal {ACTIONS[brain.goal]} (rewarded); "
-          f"working memory read back from the data lake ({len(wm)} recent ticks, bounded); "
-          f"chat answers grounded in real state (honest about consciousness); "
-          f"danger -> gated E-STOP + freeze holds; deterministic; {mode}")
+    print(
+        f"self-check OK: live brain forms the prefrontal goal {ACTIONS[brain.goal]} (rewarded); "
+        f"working memory read back from the data lake ({len(wm)} recent ticks, bounded); "
+        f"chat answers grounded in real state (honest about consciousness); "
+        f"danger -> gated E-STOP + freeze holds; deterministic; {mode}"
+    )
 
 
 if __name__ == "__main__":

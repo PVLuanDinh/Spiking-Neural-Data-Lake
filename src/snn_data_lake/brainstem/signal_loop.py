@@ -1,6 +1,6 @@
 """
 v0.32 — real-time signal loop: Arduino signal -> spike encoding -> data lake ->
-        find matching signature -> emit to Interpreter.   (stdlib core, zero deps)
+        find matching signature -> emit to Interpreter.
 
 This is the "my part" of the robot-arm processing loop:
 
@@ -48,6 +48,7 @@ Arduino wire contract (full spec + example sketch in docs/arduino_contract.md):
   C raw channel samples -> one window. Values any range (auto-normalized); '#' and
   unparseable lines skipped.
 """
+
 import gzip
 import json
 import math
@@ -70,10 +71,10 @@ from snn_data_lake.neuromodulation.cortisol import (
 
 SIG_PATH = os.path.join(".", "data", "signatures.json")
 LAKE_PATH = os.path.join(".", "data", "lake.spc")
-UNK_PATH = os.path.join(".", "data", "unknowns.jsonl")   # novel signals, awaiting learning
-RATIO = 0.85               # match only if best < RATIO*second
-NOISE = 0.08               # simulated sensor jitter
-MIN_SUPPORT = 3            # repeats before a novel -> new signature
+UNK_PATH = os.path.join(".", "data", "unknowns.jsonl")  # novel signals, awaiting learning
+RATIO = 0.85  # match only if best < RATIO*second
+NOISE = 0.08  # simulated sensor jitter
+MIN_SUPPORT = 3  # repeats before a novel -> new signature
 
 # Default command library (the Interpreter maps these labels -> JOINT_A_ROTATE, etc.)
 COMMANDS = ["JOINT_A_ROTATE", "JOINT_B_ROTATE", "GRIPPER_CLOSE", "GRIPPER_OPEN", "HOME"]
@@ -102,7 +103,7 @@ def simulated_stream(library, n_events, seed=0, novel_every=7):
     labels = list(library)
     for k in range(n_events):
         if novel_every and k % novel_every == novel_every - 1:
-            yield None, [rng.random() for _ in range(N)]            # novel/unknown
+            yield None, [rng.random() for _ in range(N)]  # novel/unknown
         else:
             lab = labels[k % len(labels)]
             base = library[lab]
@@ -202,7 +203,7 @@ def build_matcher(library):
         scored = sorted(((van_rossum_distance(q, ev), lab) for lab, ev in refs))
         best_d, best_lab = scored[0]
         second_d = scored[1][0] if len(scored) > 1 else math.inf
-        matched = best_d < RATIO * second_d            # ratio (Lowe) test
+        matched = best_d < RATIO * second_d  # ratio (Lowe) test
         return (best_lab if matched else None), best_d, second_d, q
 
     return match
@@ -215,6 +216,7 @@ def build_learned_matcher(library):
     from snn_data_lake import (
         learned_matcher as L,  # lazy: avoids the signal_loop<->learned_matcher cycle
     )
+
     labels = list(library)
     nC = len(labels)
     refs_enc = [encode_latency(v) for v in library.values()]
@@ -237,8 +239,10 @@ def record_unknown_line(seq, dist, window, path=UNK_PATH):
     """Append one novel/rejected window to the unknowns store for later learning."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps({"seq": seq, "dist": round(dist, 4),
-                            "vec": [round(v, 4) for v in window]}) + "\n")
+        f.write(
+            json.dumps({"seq": seq, "dist": round(dist, 4), "vec": [round(v, 4) for v in window]})
+            + "\n"
+        )
 
 
 def _mean(vecs):
@@ -265,7 +269,7 @@ def cluster_unknowns(rows, library, min_support=MIN_SUPPORT, radius=None):
     A signal that recurs >= min_support times is a candidate new gesture.
     Returns promoted clusters [{vec: mean, size: k}] sorted by size desc."""
     radius = _auto_radius(library) if radius is None else radius
-    clusters = []                                    # {members:[vec], enc: encoded mean}
+    clusters = []  # {members:[vec], enc: encoded mean}
     for r in rows:
         v = r["vec"]
         e = encode_latency(v)
@@ -279,8 +283,11 @@ def cluster_unknowns(rows, library, min_support=MIN_SUPPORT, radius=None):
             best["enc"] = encode_latency(_mean(best["members"]))
         else:
             clusters.append({"members": [v], "enc": e})
-    promoted = [{"vec": _mean(c["members"]), "size": len(c["members"])}
-                for c in clusters if len(c["members"]) >= min_support]
+    promoted = [
+        {"vec": _mean(c["members"]), "size": len(c["members"])}
+        for c in clusters
+        if len(c["members"]) >= min_support
+    ]
     promoted.sort(key=lambda p: -p["size"])
     return promoted, len(clusters), radius
 
@@ -301,7 +308,7 @@ def learn_unknowns(library, persist=True, label=None):
         added[name] = p["size"]
     if persist and added:
         save_library(library)
-        open(UNK_PATH, "w").close()                  # consumed -> avoid re-discovering
+        open(UNK_PATH, "w").close()  # consumed -> avoid re-discovering
     return added, len(rows), n_clusters
 
 
@@ -335,13 +342,21 @@ def run(source, library, matcher=None, emit=True, on_unknown=None):
                 stats["correct"] += 1
         else:
             stats["rejected"] += 1
-            if on_unknown:                          # record the non-matching signal to learn later
+            if on_unknown:  # record the non-matching signal to learn later
                 on_unknown(stats["events"], d, window)
         if true_lab is not None:
             stats["labeled"] += 1
-        if emit:   # JSON line -> Interpreter reads stdin
-            print(json.dumps({"t": stats["events"], "match": label,
-                              "dist": round(d, 3), "confident": label is not None}))
+        if emit:  # JSON line -> Interpreter reads stdin
+            print(
+                json.dumps(
+                    {
+                        "t": stats["events"],
+                        "match": label,
+                        "dist": round(d, 3),
+                        "confident": label is not None,
+                    }
+                )
+            )
             sys.stdout.flush()
     return stats, lake
 
@@ -362,6 +377,7 @@ def parse_outcome(line):
 def serial_lines(port, baud):
     """Raw text lines from a serial port (for the feedback loop). Guarded import."""
     import serial
+
     ser = serial.Serial(port, baud, timeout=1)
     while True:
         line = ser.readline().decode("ascii", "ignore")
@@ -369,8 +385,17 @@ def serial_lines(port, baud):
             yield line
 
 
-def run_live(lines, library, matcher, reflex, valence, cortisol,
-             base_threshold=0.10, emit=None, on_unknown=None):
+def run_live(
+    lines,
+    library,
+    matcher,
+    reflex,
+    valence,
+    cortisol,
+    base_threshold=0.10,
+    emit=None,
+    on_unknown=None,
+):
     """Closed loop WITH outcome feedback. Each input line is either a signal window
     (CSV/space floats) or an Interpreter outcome ('OUTCOME <r>'). Live coupling:
       - cortisol scales the reflex threshold (hypervigilance) and the matcher's caution bias
@@ -378,38 +403,49 @@ def run_live(lines, library, matcher, reflex, valence, cortisol,
       - each OUTCOME drives dopamine learning (RPE) on the last acted window and moves stress
       - quiet signal ticks let cortisol decay (recovery)."""
     if emit is None:
+
         def emit(d):
-            print(json.dumps(d)); sys.stdout.flush()
+            print(json.dumps(d))
+            sys.stdout.flush()
+
     last_window = None
     seq = 0
     for line in lines:
         r = parse_outcome(line)
-        if r is not None:                                 # ---- Interpreter feedback ----
+        if r is not None:  # ---- Interpreter feedback ----
             if last_window is not None:
                 delta = valence.learn(last_window, r, lr_scale=cortisol.learn_rate_scale(r))
-                stress = cortisol.step(max(0.0, -r))      # bad outcome raises stress
+                stress = cortisol.step(max(0.0, -r))  # bad outcome raises stress
                 emit({"outcome": r, "dopamine": round(delta, 3), "stress": round(stress, 3)})
             continue
         p = parse_line(line)
         if p is None:
             continue
         seq += 1
-        if reflex is not None:                            # ---- reflex (cortisol-sharpened) ----
+        if reflex is not None:  # ---- reflex (cortisol-sharpened) ----
             reflex.threshold = base_threshold * cortisol.reflex_threshold_scale()
             act = reflex.step(p)
             if act:
-                stress = cortisol.step(1.0)               # reflex firing is itself stressful
+                stress = cortisol.step(1.0)  # reflex firing is itself stressful
                 emit({"t": seq, "reflex": act, "preempt": True, "stress": round(stress, 3)})
                 continue
-        window = normalize(resize_to_n(p))                # ---- recognize + valence overlay ----
+        window = normalize(resize_to_n(p))  # ---- recognize + valence overlay ----
         label, d, _, _ = matcher(window)
         v_action, v = valence.act(window, bias=cortisol.caution_bias())
         last_window = window
         if label is None and on_unknown:
             on_unknown(seq, d, window)
-        stress = cortisol.step(0.0)                        # quiet tick -> recovery
-        emit({"t": seq, "match": label, "dist": round(d, 3),
-              "instinct": v_action, "valence": round(v, 3), "stress": round(stress, 3)})
+        stress = cortisol.step(0.0)  # quiet tick -> recovery
+        emit(
+            {
+                "t": seq,
+                "match": label,
+                "dist": round(d, 3),
+                "instinct": v_action,
+                "valence": round(v, 3),
+                "stress": round(stress, 3),
+            }
+        )
 
 
 def main():
@@ -431,13 +467,16 @@ def main():
         label = args[args.index("--learn-as") + 1] if "--learn-as" in args else None
         added, n_rows, n_clusters = learn_unknowns(library, persist=True, label=label)
         if added:
-            print(f"learned {len(added)} signature(s) from {n_rows} unknowns "
-                  f"({n_clusters} clusters): "
-                  + ", ".join(f"{k} (x{v})" for k, v in added.items()))
+            print(
+                f"learned {len(added)} signature(s) from {n_rows} unknowns "
+                f"({n_clusters} clusters): " + ", ".join(f"{k} (x{v})" for k, v in added.items())
+            )
             print(f"library now {len(library)}: {list(library)}")
         else:
-            print(f"nothing learned: {n_rows} unknowns in {n_clusters} clusters "
-                  f"(need >= {MIN_SUPPORT} similar repeats). collect more, then --learn")
+            print(
+                f"nothing learned: {n_rows} unknowns in {n_clusters} clusters "
+                f"(need >= {MIN_SUPPORT} similar repeats). collect more, then --learn"
+            )
         return
 
     # matcher: hybrid (learned + novelty gate) is the DEFAULT; --fast = template
@@ -451,7 +490,7 @@ def main():
     # #2 reflex fast-path: instinctive STOP/WITHDRAW on danger channels, ahead of match
     reflex = Reflex() if "--reflex" in args else None
 
-    def emit_reflex(action, seq):                # preemptive instinct -> Interpreter
+    def emit_reflex(action, seq):  # preemptive instinct -> Interpreter
         print(json.dumps({"reflex": action, "t_sample": seq, "preempt": True}))
         sys.stdout.flush()
 
@@ -463,8 +502,10 @@ def main():
         valence = ValenceLearner()
         cortisol = Cortisol()
         m = matcher or build_matcher(library)
-        sys.stderr.write("feedback loop ON: 'OUTCOME <r>' lines drive dopamine; "
-                         "cortisol modulates reflex + caution live\n")
+        sys.stderr.write(
+            "feedback loop ON: 'OUTCOME <r>' lines drive dopamine; "
+            "cortisol modulates reflex + caution live\n"
+        )
         if "--serial" in args:
             port = args[args.index("--serial") + 1]
             baud = int(args[args.index("--baud") + 1]) if "--baud" in args else 115200
@@ -477,21 +518,31 @@ def main():
     if "--serial" in args:
         port = args[args.index("--serial") + 1]
         baud = int(args[args.index("--baud") + 1]) if "--baud" in args else 115200
-        sys.stderr.write(f"reading {port}@{baud} window={window}, {len(library)} "
-                         f"signatures, matcher={matcher_name}\n")
-        run(serial_stream(port, baud, window, reflex, emit_reflex), library, matcher,
-            on_unknown=record_unknown_line)                        # until interrupted
+        sys.stderr.write(
+            f"reading {port}@{baud} window={window}, {len(library)} "
+            f"signatures, matcher={matcher_name}\n"
+        )
+        run(
+            serial_stream(port, baud, window, reflex, emit_reflex),
+            library,
+            matcher,
+            on_unknown=record_unknown_line,
+        )  # until interrupted
         return
 
     if "--stdin" in args:
         sys.stderr.write(f"reading stdin window={window}, matcher={matcher_name}\n")
-        run(stdin_stream(window, reflex, emit_reflex), library, matcher,
-            on_unknown=record_unknown_line)                        # EOF
+        run(
+            stdin_stream(window, reflex, emit_reflex),
+            library,
+            matcher,
+            on_unknown=record_unknown_line,
+        )  # EOF
         return
 
     # default: simulated stream + report + self-check
     if os.path.exists(UNK_PATH):
-        open(UNK_PATH, "w").close()                  # fresh unknowns bin for the demo
+        open(UNK_PATH, "w").close()  # fresh unknowns bin for the demo
     src = simulated_stream(library, 40, seed=0)
     stats, lake = run(src, library, matcher, emit=True, on_unknown=record_unknown_line)
     raw, gz = flush_lake(lake)
@@ -502,13 +553,16 @@ def main():
     sys.stderr.write("=" * 60 + "\n")
     sys.stderr.write(f"matcher      : {matcher_name}\n")
     sys.stderr.write(f"library      : {len(library)} signatures {list(library)}\n")
-    sys.stderr.write(f"events       : {stats['events']} ({stats['labeled']} known, "
-                     f"{stats['events']-stats['labeled']} novel)\n")
+    sys.stderr.write(
+        f"events       : {stats['events']} ({stats['labeled']} known, "
+        f"{stats['events'] - stats['labeled']} novel)\n"
+    )
     sys.stderr.write(f"matched      : {stats['matched']}  rejected: {stats['rejected']}\n")
-    sys.stderr.write(f"recorded     : {stats['rejected']} novel -> {UNK_PATH} "
-                     f"(run `--learn` to cluster + enroll them)\n")
-    sys.stderr.write(f"accuracy     : {acc:.0%} on known signals (chance "
-                     f"{1/len(library):.0%})\n")
+    sys.stderr.write(
+        f"recorded     : {stats['rejected']} novel -> {UNK_PATH} "
+        f"(run `--learn` to cluster + enroll them)\n"
+    )
+    sys.stderr.write(f"accuracy     : {acc:.0%} on known signals (chance {1 / len(library):.0%})\n")
     sys.stderr.write(f"data lake    : {len(lake)} encoded windows, {raw} B -> {gz} B gzip\n")
     sys.stderr.write("=" * 60 + "\n")
 
@@ -524,31 +578,38 @@ def main():
     assert parse_line("# comment") is None and parse_line("   ") is None
     assert parse_line("0.1, 0.2 0.3") == [0.1, 0.2, 0.3], "CSV/space parse"
     assert parse_line("nope,nan?") is None, "malformed line must be skipped"
-    assert parse_line("1, nan, 2") is None, "a non-finite (nan) sample must skip the whole line (audit P1)"
+    assert parse_line("1, nan, 2") is None, (
+        "a non-finite (nan) sample must skip the whole line (audit P1)"
+    )
     assert parse_line("inf") is None and parse_line("1,-inf") is None, "inf samples must be skipped"
     assert len(resize_to_n([1.0] * 9)) == N and len(resize_to_n([1.0] * 999)) == N
     wins = list(line_windows([[float(i)] for i in range(3 * N)], window=N))
     assert len(wins) == 3 and all(len(w[1]) == N for w in wins), "windower shape wrong"
-    sys.stderr.write("self-check OK: known matched, novel rejected, lake stored, "
-                     "wire contract parses\n")
+    sys.stderr.write(
+        "self-check OK: known matched, novel rejected, lake stored, wire contract parses\n"
+    )
 
     # ---- continual-learning self-check: novel recurring gesture -> learn -> match
     rng = random.Random(1)
-    newg = _proto("NEW_GESTURE", None)               # a gesture NOT in the library
-    pre = build_matcher(library)(newg)[0]            # unknown today -> should be rejected
-    rows = [{"vec": [min(1.0, max(0.0, v + rng.uniform(-NOISE, NOISE))) for v in newg]}
-            for _ in range(MIN_SUPPORT + 2)]         # it recurs a few times (gets recorded)
+    newg = _proto("NEW_GESTURE", None)  # a gesture NOT in the library
+    pre = build_matcher(library)(newg)[0]  # unknown today -> should be rejected
+    rows = [
+        {"vec": [min(1.0, max(0.0, v + rng.uniform(-NOISE, NOISE))) for v in newg]}
+        for _ in range(MIN_SUPPORT + 2)
+    ]  # it recurs a few times (gets recorded)
     rows += [{"vec": [rng.random() for _ in range(N)]} for _ in range(4)]  # scattered noise
     promoted, n_clusters, _ = cluster_unknowns(rows, library)
     lib2 = dict(library)
     for i, p in enumerate(promoted):
-        lib2[f"DISCOVERED_{i + 1}"] = p["vec"]       # learn them into a copy
-    post = build_matcher(lib2)(newg)[0]              # same gesture now matches
+        lib2[f"DISCOVERED_{i + 1}"] = p["vec"]  # learn them into a copy
+    post = build_matcher(lib2)(newg)[0]  # same gesture now matches
     assert pre is None, "new gesture should start novel (rejected)"
     assert promoted, "recurring novel gesture was not discovered"
     assert post and post.startswith("DISCOVERED"), "learned gesture not matched after learning"
-    sys.stderr.write(f"continual-learning OK: novel rejected -> recorded -> clustered "
-                     f"({len(promoted)} new, scattered noise ignored) -> now matches '{post}'\n")
+    sys.stderr.write(
+        f"continual-learning OK: novel rejected -> recorded -> clustered "
+        f"({len(promoted)} new, scattered noise ignored) -> now matches '{post}'\n"
+    )
 
     # ---- live feedback self-check: outcomes drive dopamine + cortisol (no hardware) ------
     fb_lib = build_default_library()
@@ -556,19 +617,21 @@ def main():
     gline = ",".join(f"{x:.4f}" for x in gv)
     gw = normalize(resize_to_n([float(x) for x in gline.split(",")]))
     vlA, ctA = ValenceLearner(), Cortisol(tau=20.0)
-    fbA = [x for _ in range(30) for x in (gline, "OUTCOME 1.0")]      # signal then +reward x30
+    fbA = [x for _ in range(30) for x in (gline, "OUTCOME 1.0")]  # signal then +reward x30
     run_live(iter(fbA), fb_lib, build_matcher(fb_lib), None, vlA, ctA, emit=lambda d: None)
     assert vlA.act(gw, bias=ctA.caution_bias())[0] == "APPROACH", "no APPROACH learned from +reward"
     assert ctA.level < 0.2, "good outcomes should not raise stress"
     vlB, ctB = ValenceLearner(), Cortisol(tau=20.0)
-    fbB = [x for _ in range(20) for x in (gline, "OUTCOME -1.0")]     # signal then -reward x20
+    fbB = [x for _ in range(20) for x in (gline, "OUTCOME -1.0")]  # signal then -reward x20
     run_live(iter(fbB), fb_lib, build_matcher(fb_lib), None, vlB, ctB, emit=lambda d: None)
     assert vlB.act(gw)[0] == "AVOID", "no AVOID learned from -reward"
     assert ctB.level > 0.4, "bad outcomes should raise cortisol stress"
     assert ctB.reflex_threshold_scale() < 1.0, "stress should sharpen the reflex"
     assert parse_outcome("OUTCOME 0.5") == 0.5 and parse_outcome("500,500") is None, "outcome parse"
-    sys.stderr.write("feedback self-check OK: outcomes drive dopamine (APPROACH/AVOID) + "
-                     "cortisol stress; stress sharpens the reflex live\n")
+    sys.stderr.write(
+        "feedback self-check OK: outcomes drive dopamine (APPROACH/AVOID) + "
+        "cortisol stress; stress sharpens the reflex live\n"
+    )
 
 
 if __name__ == "__main__":

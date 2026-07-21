@@ -1,6 +1,6 @@
 """
 Global Workspace -- a SPIKING Global-Workspace / global-broadcast attention mechanism
-(pure stdlib, zero deps: only `math` + `random`).
+(stdlib + numpy/torch allowed project-wide; uses only `math` + `random`).
 
 Global Workspace Theory (Baars 1988; Dehaene & Changeux's Global Neuronal Workspace,
 Neuron 70:200, 2011): many specialist modules run in parallel and post candidate "contents";
@@ -54,6 +54,7 @@ distinguishes the spiking workspace from the rate one on this task, nothing more
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.thalamus.global_workspace
 """
+
 import random
 
 REGIONS = ("perception", "memory", "salience", "language", "motor")
@@ -77,32 +78,43 @@ class GlobalWorkspace:
     Everything else -- the same submissions, the same competition of candidates -- is identical.
     """
 
-    # -- fixed LIF network constants (per-instance; deterministic, ASCII, zero-dep) --------------
-    _T = 60                 # settling micro-steps per workspace tick
-    _LEAK = 0.5             # membrane leak (V decays toward input/leak each micro-step)
-    _W_SELF = 0.6           # recurrent self-excitation gain (within-tick attractor)
-    _TAU_SELF = 0.6         # within-tick self-excitation synaptic-trace decay
-    _K_INH = 0.30           # excitatory-spike -> shared inhibitory-pool drive
-    _LEAK_INH = 0.5         # shared inhibitory-pool leak
-    _G_INH = 2.4            # inhibitory-pool -> content-pool feedback gain (mutual/lateral)
-    _JITTER = 0.02          # tiny deterministic symmetry-break so exact ties yield ONE winner
+    # -- fixed LIF network constants (per-instance; deterministic, ASCII) --------------
+    _T = 60  # settling micro-steps per workspace tick
+    _LEAK = 0.5  # membrane leak (V decays toward input/leak each micro-step)
+    _W_SELF = 0.6  # recurrent self-excitation gain (within-tick attractor)
+    _TAU_SELF = 0.6  # within-tick self-excitation synaptic-trace decay
+    _K_INH = 0.30  # excitatory-spike -> shared inhibitory-pool drive
+    _LEAK_INH = 0.5  # shared inhibitory-pool leak
+    _G_INH = 2.4  # inhibitory-pool -> content-pool feedback gain (mutual/lateral)
+    _JITTER = 0.02  # tiny deterministic symmetry-break so exact ties yield ONE winner
 
-    def __init__(self, ignition_threshold=0.55, decay=0.85, hysteresis=0.20,
-                 self_boost=0.05, use_ignition=True, seed=0):
-        self.ignition_threshold = ignition_threshold     # rheobase current: a pool fires iff drive > this
-        self.decay = decay                               # cross-tick attractor decay (persistence fade)
-        self.hysteresis = hysteresis                     # incumbent's extra recurrent defence current...
-        self.self_boost = self_boost                     # ...(self_boost + hysteresis) holds the attractor
+    def __init__(
+        self,
+        ignition_threshold=0.55,
+        decay=0.85,
+        hysteresis=0.20,
+        self_boost=0.05,
+        use_ignition=True,
+        seed=0,
+    ):
+        self.ignition_threshold = (
+            ignition_threshold  # rheobase current: a pool fires iff drive > this
+        )
+        self.decay = decay  # cross-tick attractor decay (persistence fade)
+        self.hysteresis = hysteresis  # incumbent's extra recurrent defence current...
+        self.self_boost = self_boost  # ...(self_boost + hysteresis) holds the attractor
         self.use_ignition = use_ignition
-        self._v_th = ignition_threshold / self._LEAK     # membrane threshold s.t. rheobase == ignition_threshold
-        self._rng = random.Random(seed)      # per-instance RNG (deterministic symmetry-break jitter)
-        self._incumbent = None               # (source, content, g) occupying the slot, or None
-        self._buffer = []                    # this tick's submitted candidates
-        self._subscribers = []               # module callbacks receiving each broadcast
-        self._g = {}                         # (source, content) -> cross-tick attractor memory in [0,1]
-        self._jit = {}                        # (source, content) -> fixed tiny jitter current
-        self._last_total = {}                # (source, content) -> spikes this tick (spiking self-check)
-        self._last_late = {}                 # (source, content) -> 2nd-half spikes this tick (sustained)
+        self._v_th = (
+            ignition_threshold / self._LEAK
+        )  # membrane threshold s.t. rheobase == ignition_threshold
+        self._rng = random.Random(seed)  # per-instance RNG (deterministic symmetry-break jitter)
+        self._incumbent = None  # (source, content, g) occupying the slot, or None
+        self._buffer = []  # this tick's submitted candidates
+        self._subscribers = []  # module callbacks receiving each broadcast
+        self._g = {}  # (source, content) -> cross-tick attractor memory in [0,1]
+        self._jit = {}  # (source, content) -> fixed tiny jitter current
+        self._last_total = {}  # (source, content) -> spikes this tick (spiking self-check)
+        self._last_late = {}  # (source, content) -> 2nd-half spikes this tick (sustained)
 
     # -- specialist / module interface ----------------------------------------------------------
     def submit(self, source, content, salience):
@@ -154,37 +166,37 @@ class GlobalWorkspace:
         pool's spikes suppress the rest to silence -> a single sustained winner.
 
         Returns {key: total_spikes}, {key: second_half_spikes} -- discrete integer spike counts."""
-        keys = sorted(drives)                            # deterministic evaluation order
-        v = {k: 0.0 for k in keys}                       # membrane potentials
-        trace = {k: 0.0 for k in keys}                   # within-tick self-excitation traces
-        self_i = {k: 0.0 for k in keys}                  # each pool's own contribution to the inh pool
-        a_inh = 0.0                                      # shared inhibitory-pool activity (sum of all)
+        keys = sorted(drives)  # deterministic evaluation order
+        v = {k: 0.0 for k in keys}  # membrane potentials
+        trace = {k: 0.0 for k in keys}  # within-tick self-excitation traces
+        self_i = {k: 0.0 for k in keys}  # each pool's own contribution to the inh pool
+        a_inh = 0.0  # shared inhibitory-pool activity (sum of all)
         total = {k: 0 for k in keys}
         late = {k: 0 for k in keys}
         half = self._T // 2
         for t in range(self._T):
             spikes = {}
             for k in keys:
-                lateral = self._G_INH * max(0.0, a_inh - self_i[k])      # inhibition from OTHER pools
-                cur = drives[k] + self._W_SELF * trace[k] - lateral      # LIF input current
-                v[k] += cur - self._LEAK * v[k]                          # leaky integration
+                lateral = self._G_INH * max(0.0, a_inh - self_i[k])  # inhibition from OTHER pools
+                cur = drives[k] + self._W_SELF * trace[k] - lateral  # LIF input current
+                v[k] += cur - self._LEAK * v[k]  # leaky integration
                 if v[k] < 0.0:
                     v[k] = 0.0
                 s = 0
-                if v[k] >= self._v_th:                                   # DISCRETE SPIKE
-                    v[k] -= self._v_th                                   # subtract-threshold reset
+                if v[k] >= self._v_th:  # DISCRETE SPIKE
+                    v[k] -= self._v_th  # subtract-threshold reset
                     s = 1
                     total[k] += 1
                     if t >= half:
                         late[k] += 1
-                    trace[k] += 1.0                                      # self-excitation kick
+                    trace[k] += 1.0  # self-excitation kick
                 spikes[k] = s
                 trace[k] *= self._TAU_SELF
-            for k in keys:                                               # integrate the inhibitory pools
+            for k in keys:  # integrate the inhibitory pools
                 self_i[k] += self._K_INH * spikes[k] - self._LEAK_INH * self_i[k]
                 if self_i[k] < 0.0:
                     self_i[k] = 0.0
-            a_inh = sum(self_i.values())                                 # shared pool == sum of contributions
+            a_inh = sum(self_i.values())  # shared pool == sum of contributions
         return total, late
 
     def step(self):
@@ -246,7 +258,7 @@ class GlobalWorkspace:
 
         content = self.current
         self._buffer = []
-        self._deliver(content)                                 # BROADCAST to all subscribers
+        self._deliver(content)  # BROADCAST to all subscribers
         return content
 
 
@@ -261,8 +273,7 @@ def build_stream(n_ticks, seed=0):
     """
     rng = random.Random(seed)
     threat_window = set(range(30, 36))
-    means = {"perception": 0.66, "memory": 0.54, "salience": 0.54,
-             "language": 0.53, "motor": 0.52}
+    means = {"perception": 0.66, "memory": 0.54, "salience": 0.54, "language": 0.53, "motor": 0.52}
     sd = 0.11
     stream = []
     for t in range(n_ticks):
@@ -270,7 +281,7 @@ def build_stream(n_ticks, seed=0):
         for r in REGIONS:
             s = rng.gauss(means[r], sd)
             if r == "salience" and t in threat_window:
-                s = 0.98                                        # supra-threshold threat event
+                s = 0.98  # supra-threshold threat event
             tick[r] = min(1.0, max(0.0, s))
         stream.append(tick)
     return stream
@@ -282,7 +293,7 @@ def run_stream(stream, use_ignition, **params):
     broadcasts = []
     for tick in stream:
         for region, salience in tick.items():
-            ws.submit(region, region, salience)                # content == region label
+            ws.submit(region, region, salience)  # content == region label
         broadcasts.append(ws.step())
     return broadcasts
 
@@ -299,19 +310,19 @@ def _fmt(seq):
 
 # ======================================================================================================
 # DEEPENING: multi-item BINDING + the SPIKING-vs-RATE control (does synchrony buy anything over a rate
-# integrator with the same hysteresis?). Self-contained pure-stdlib LIF; used only by the self-check.
+# integrator with the same hysteresis?). Self-contained LIF; used only by the self-check.
 # ======================================================================================================
-_BIND_TSLOT = 6            # micro-steps per gamma slot (one bound object)
-_BIND_LEAK = 0.25         # binding-LIF leak per step
-_BIND_VTH = 1.0           # binding-LIF threshold
-_BIND_IGNITE = 0.6        # all-or-none ignition threshold for the binding broadcast
+_BIND_TSLOT = 6  # micro-steps per gamma slot (one bound object)
+_BIND_LEAK = 0.25  # binding-LIF leak per step
+_BIND_VTH = 1.0  # binding-LIF threshold
+_BIND_IGNITE = 0.6  # all-or-none ignition threshold for the binding broadcast
 
 
 def _bind_step(v, i):
     """One leaky integrate-and-fire step for the binding demo. Returns (new_v, spike)."""
     v = v * (1.0 - _BIND_LEAK) + i
     if v >= _BIND_VTH:
-        return 0.0, 1                                        # subtract-threshold reset -> discrete spike
+        return 0.0, 1  # subtract-threshold reset -> discrete spike
     return (v if v > 0.0 else 0.0), 0
 
 
@@ -326,7 +337,7 @@ def bind_broadcast_spiking(objs, n_color, n_shape, drive=1.0, sustain=4):
     drives its color and shape LIF with the SAME current in gamma slot k, so they spike SYNCHRONOUSLY
     (bound); re-entry sustains each after its slot. Returns (ignited, raster[t]=(fired_colors,fired_shapes))."""
     if drive < _BIND_IGNITE:
-        return False, []                                     # subliminal: no global broadcast
+        return False, []  # subliminal: no global broadcast
     vc = [0.0] * n_color
     vs = [0.0] * n_shape
     raster = []
@@ -335,8 +346,10 @@ def bind_broadcast_spiking(objs, n_color, n_shape, drive=1.0, sustain=4):
         slot = t // _BIND_TSLOT
         fc, fs = [], []
         for k, (c, s) in enumerate(objs):
-            in_slot = (k == slot)
-            cur = drive if in_slot else drive * 0.55         # re-entry current sustains (weaker), does not re-ignite
+            in_slot = k == slot
+            cur = (
+                drive if in_slot else drive * 0.55
+            )  # re-entry current sustains (weaker), does not re-ignite
             vc[c], sc = _bind_step(vc[c], cur)
             vs[s], ss = _bind_step(vs[s], cur)
             if sc:
@@ -383,7 +396,6 @@ def _bind_pair_acc(true_pairs, got_pairs):
 
 
 def main():
-    import sys
 
     # ---- FAIR CONTROL: same stream, spiking ignition ON vs OFF (pure per-tick argmax) ----------
     n_ticks = 48
@@ -400,8 +412,10 @@ def main():
     print("threat burst (region 'salience') at ticks 30-35\n")
     print(f"WITH ignition  (spiking LIF + inhibition): {_fmt(with_ig)}  switches={sw_with}")
     print(f"WITHOUT (pure per-tick argmax control)   : {_fmt(without)}  switches={sw_without}")
-    print(f"\n-> the spiking ignition non-linearity cut workspace switches from {sw_without} (flicker) "
-          f"to {sw_with} (stable)")
+    print(
+        f"\n-> the spiking ignition non-linearity cut workspace switches from {sw_without} (flicker) "
+        f"to {sw_with} (stable)"
+    )
 
     # threat must actually break through: a genuinely stronger supra-threshold signal ignites.
     threat_broadcast = any(c == "salience" for c in with_ig[30:36])
@@ -411,7 +425,7 @@ def main():
     b_ws = GlobalWorkspace(seed=0)
     b_ws.subscribe(seen.append)
     for r in REGIONS:
-        b_ws.submit(r, r, 0.90)                                # five simultaneous supra-threshold posts
+        b_ws.submit(r, r, 0.90)  # five simultaneous supra-threshold posts
     b_content = b_ws.step()
     bottleneck_ok = b_content is not None and len(seen) == 1 and seen[0] == b_content
 
@@ -428,13 +442,13 @@ def main():
 
     # ---- ANCHOR (ii) ALL-OR-NONE IGNITION: sub-threshold stays local, supra-threshold ignites --
     w_ws = GlobalWorkspace(seed=0)
-    w_ws.submit("perception", "weak", 0.40)                    # below rheobase -> never fires
+    w_ws.submit("perception", "weak", 0.40)  # below rheobase -> never fires
     sub = w_ws.step()
-    weak_spikes = sum(w_ws._last_total.values())               # a weak submission emits NO spikes
+    weak_spikes = sum(w_ws._last_total.values())  # a weak submission emits NO spikes
     s_ws = GlobalWorkspace(seed=0)
-    s_ws.submit("perception", "strong", 0.80)                  # above rheobase -> ignites
+    s_ws.submit("perception", "strong", 0.80)  # above rheobase -> ignites
     supra = s_ws.step()
-    strong_spikes = sum(s_ws._last_total.values())             # a strong submission DOES spike
+    strong_spikes = sum(s_ws._last_total.values())  # a strong submission DOES spike
     # not linear averaging: two sub-threshold posts do NOT sum into an ignition.
     n_ws = GlobalWorkspace(seed=0)
     n_ws.submit("memory", "half_a", 0.50)
@@ -456,15 +470,17 @@ def main():
     # ---- ANCHOR (iv) PERSISTENCE + DECAY: ignite, then no input -> attractor holds then fades ---
     d_ws = GlobalWorkspace(seed=0)
     d_ws.submit("memory", "trace", 0.95)
-    d_ws.step()                                                # ignite
+    d_ws.step()  # ignite
     life = []
     for _ in range(8):
-        life.append(d_ws.step())                               # no new submissions -> attractor decays
+        life.append(d_ws.step())  # no new submissions -> attractor decays
     persisted = sum(1 for c in life if c == "trace")
     released = life[-1] is None
     print("\npersistence/decay (ignite 'memory' at 0.95, then silence):")
-    print(f"   post-ignition life trace: {_fmt(life)}  "
-          f"(held 'trace' {persisted} ticks, released={released})")
+    print(
+        f"   post-ignition life trace: {_fmt(life)}  "
+        f"(held 'trace' {persisted} ticks, released={released})"
+    )
 
     # ---- DEEPENING: multi-item BINDING, spiking-vs-rate control (isolates whether SPIKES matter) --
     brng = random.Random(0)
@@ -490,40 +506,55 @@ def main():
 
     # ---- LIVE CONTRACT: the exact submit/step sequences autonomous_loop + live_brain rely on ----
     c_ws = GlobalWorkspace(seed=0)
-    c_ws.submit("perception", "unit0", 0.6)                    # safe tick: perception holds the slot...
-    c_ws.submit("salience", "threat", 0.2)                     # ...vs a low background threat
-    contract_safe = c_ws.step()                                # -> broadcasts the current percept
-    c_ws.submit("salience", "threat", 0.95)                    # danger tick: only the threat is posted
-    contract_danger = c_ws.step()                              # -> the threat ignites + is broadcast
+    c_ws.submit("perception", "unit0", 0.6)  # safe tick: perception holds the slot...
+    c_ws.submit("salience", "threat", 0.2)  # ...vs a low background threat
+    contract_safe = c_ws.step()  # -> broadcasts the current percept
+    c_ws.submit("salience", "threat", 0.95)  # danger tick: only the threat is posted
+    contract_danger = c_ws.step()  # -> the threat ignites + is broadcast
 
     # ---- DETERMINISM: identical stream+seed -> identical broadcasts and counts -----------------
     with_ig2 = run_stream(build_stream(n_ticks, seed=0), use_ignition=True, seed=0)
     deterministic = with_ig2 == with_ig and count_switches(with_ig2) == sw_with
 
-    print(f"\nlive contract : safe tick broadcasts {contract_safe!r}; "
-          f"proximity threat ignites {contract_danger!r}")
-    print(f"spiking WTA   : competitors 0.90/0.68/0.62 -> winner {g_content!r} keeps firing "
-          f"(late spikes {wta_winner_late}); losers silenced (late spikes {wta_losers_late})")
-    print(f"spiking readout: weak@0.40 spikes={weak_spikes}, strong@0.80 spikes={strong_spikes} "
-          f"(discrete integer spike events)")
+    print(
+        f"\nlive contract : safe tick broadcasts {contract_safe!r}; "
+        f"proximity threat ignites {contract_danger!r}"
+    )
+    print(
+        f"spiking WTA   : competitors 0.90/0.68/0.62 -> winner {g_content!r} keeps firing "
+        f"(late spikes {wta_winner_late}); losers silenced (late spikes {wta_losers_late})"
+    )
+    print(
+        f"spiking readout: weak@0.40 spikes={weak_spikes}, strong@0.80 spikes={strong_spikes} "
+        f"(discrete integer spike events)"
+    )
 
     # ============================ genuine self-checks (not rigged) ==============================
     # (a) FUNCTION -----------------------------------------------------------------------------
     # the spiking ignition stabilises the workspace vs the pure-argmax control, by a real margin.
     assert sw_without > sw_with, f"argmax control must flicker more ({sw_without} vs {sw_with})"
     assert sw_without >= 3 * max(sw_with, 1), (
-        f"stabilisation must be large, not marginal: with={sw_with} without={sw_without}")
-    assert sw_with <= 6, f"spiking workspace must be stable WITH ignition (few switches), got {sw_with}"
+        f"stabilisation must be large, not marginal: with={sw_with} without={sw_without}"
+    )
+    assert sw_with <= 6, (
+        f"spiking workspace must be stable WITH ignition (few switches), got {sw_with}"
+    )
     # bottleneck: exactly one content broadcast despite five supra-threshold candidates.
-    assert bottleneck_ok, "exactly one content must seize + be broadcast through the single-slot bottleneck"
+    assert bottleneck_ok, (
+        "exactly one content must seize + be broadcast through the single-slot bottleneck"
+    )
     assert isinstance(b_content, str), "the single broadcast content must be one region, not a set"
     # genuine spiking competition: among distinct-strength pools, the shared inhibitory pool leaves
     # only the strongest in sustained firing; the weaker pools are silenced (not merely out-ranked).
-    assert wta_ok, "the shared inhibitory pool must silence weaker pools so only the strongest ignites"
+    assert wta_ok, (
+        "the shared inhibitory pool must silence weaker pools so only the strongest ignites"
+    )
     # all-or-none ignition non-linearity: sub-threshold excluded, supra admitted, no summation.
     assert sub is None, f"a sub-threshold candidate must NOT ignite the workspace (got {sub!r})"
     assert supra == "strong", f"a supra-threshold candidate must ignite (got {supra!r})"
-    assert no_sum is None, "two sub-threshold candidates must NOT sum into an ignition (all-or-none)"
+    assert no_sum is None, (
+        "two sub-threshold candidates must NOT sum into an ignition (all-or-none)"
+    )
     # global reach: every subscriber received the identical broadcast sequence.
     assert reach_ok, "every subscriber must receive the identical broadcast (global reach)"
     # persistence + decay: the content is sustained several ticks, then fades below threshold.
@@ -532,21 +563,35 @@ def main():
     # a genuinely stronger, supra-threshold signal DID take over (workspace is not frozen).
     assert threat_broadcast, "the supra-threshold threat burst must break through and be broadcast"
     # the LIVE contract used by autonomous_loop (sec 8) + live_brain must hold exactly.
-    assert contract_safe is not None, "a safe tick must broadcast the current percept (ws_safe is not None)"
-    assert contract_danger == "threat", "a proximity threat must ignite + be broadcast (ws_danger == 'threat')"
+    assert contract_safe is not None, (
+        "a safe tick must broadcast the current percept (ws_safe is not None)"
+    )
+    assert contract_danger == "threat", (
+        "a proximity threat must ignite + be broadcast (ws_danger == 'threat')"
+    )
 
     # (b) GENUINELY SPIKING --------------------------------------------------------------------
     # discrete spikes: a sub-threshold pool emits ZERO spikes; a supra-threshold pool DOES spike.
-    assert all(isinstance(n, int) for n in s_ws._last_total.values()), "spikes must be discrete integer events"
-    assert weak_spikes == 0, f"a sub-threshold (0.40) pool must emit NO spikes (stays local), got {weak_spikes}"
-    assert no_sum_spikes == 0, f"two 0.50 pools must both stay sub-threshold (no spikes), got {no_sum_spikes}"
-    assert strong_spikes > 0, f"a supra-threshold (0.80) pool must emit discrete spikes, got {strong_spikes}"
+    assert all(isinstance(n, int) for n in s_ws._last_total.values()), (
+        "spikes must be discrete integer events"
+    )
+    assert weak_spikes == 0, (
+        f"a sub-threshold (0.40) pool must emit NO spikes (stays local), got {weak_spikes}"
+    )
+    assert no_sum_spikes == 0, (
+        f"two 0.50 pools must both stay sub-threshold (no spikes), got {no_sum_spikes}"
+    )
+    assert strong_spikes > 0, (
+        f"a supra-threshold (0.80) pool must emit discrete spikes, got {strong_spikes}"
+    )
     # winner by SUSTAINED firing: the ignited pool is still spiking in the second half of the window,
     # having silenced its competitors through the shared inhibitory pool.
-    assert s_ws._last_late["perception", "strong"] > 0, "the ignited winner must show sustained (2nd-half) firing"
-    assert wta_winner_late > 0 and wta_losers_late == 0, "sustained firing must belong to ONE pool (WTA)"
-    # zero-dep: no numerical framework was imported to run the spiking network.
-    assert "numpy" not in sys.modules and "torch" not in sys.modules, "must be pure stdlib (no numpy/torch)"
+    assert s_ws._last_late["perception", "strong"] > 0, (
+        "the ignited winner must show sustained (2nd-half) firing"
+    )
+    assert wta_winner_late > 0 and wta_losers_late == 0, (
+        "sustained firing must belong to ONE pool (WTA)"
+    )
 
     # (c) DETERMINISM --------------------------------------------------------------------------
     assert deterministic, "same seed must reproduce identical broadcasts and switch counts"
@@ -555,18 +600,22 @@ def main():
     assert bind_ig_strong and not bind_ig_weak, "binding broadcast ignition must be all-or-none"
     assert bind[1][0] - bind[1][1] < 0.05, (
         f"at K=1 spikes must NOT beat rate (single-item binding needs no spikes): "
-        f"{bind[1][0]:.2f} vs {bind[1][1]:.2f}")
+        f"{bind[1][0]:.2f} vs {bind[1][1]:.2f}"
+    )
     assert bind[2][0] > bind[2][1] + 0.15, (
         f"at K=2 the spiking workspace must bind better than the rate control (synchrony is load-bearing): "
-        f"{bind[2][0]:.2f} vs {bind[2][1]:.2f}")
+        f"{bind[2][0]:.2f} vs {bind[2][1]:.2f}"
+    )
     assert bind[4][0] > 0.9, f"spiking multi-item binding must stay high at K=4 ({bind[4][0]:.2f})"
 
-    print("\nself-check OK: "
-          f"spiking ignition switches {sw_with} vs argmax {sw_without} (>=3x stabler); "
-          f"single-slot bottleneck; spiking WTA silences losers; all-or-none (sub spikes={weak_spikes}, "
-          f"supra spikes={strong_spikes}); global-reach; persist {persisted}->release; threat ignited; "
-          f"live-contract holds; deterministic; BINDING spiking-vs-rate control honest "
-          f"(K1 tie {bind[1][0]:.0%}/{bind[1][1]:.0%}, K2 spikes {bind[2][0]:.0%}>{bind[2][1]:.0%})")
+    print(
+        "\nself-check OK: "
+        f"spiking ignition switches {sw_with} vs argmax {sw_without} (>=3x stabler); "
+        f"single-slot bottleneck; spiking WTA silences losers; all-or-none (sub spikes={weak_spikes}, "
+        f"supra spikes={strong_spikes}); global-reach; persist {persisted}->release; threat ignited; "
+        f"live-contract holds; deterministic; BINDING spiking-vs-rate control honest "
+        f"(K1 tie {bind[1][0]:.0%}/{bind[1][1]:.0%}, K2 spikes {bind[2][0]:.0%}>{bind[2][1]:.0%})"
+    )
 
 
 if __name__ == "__main__":

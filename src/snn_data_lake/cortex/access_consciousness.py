@@ -27,7 +27,7 @@ and NONE of the banned phenomenal keys appear in the state.
 
 HOW IT WORKS (GROW -> BUNDLE -> IGNITE -> BROADCAST -> report an ACCESS index)
 =============================================================================
-Built entirely on two existing zero-dep spiking primitives (no new mechanism reinvented):
+Built entirely on two existing spiking primitives (no new mechanism reinvented):
 
   * thalamus/global_workspace.GlobalWorkspace -- LIF pools that COMPETE and, above rheobase,
     IGNITE into sustained firing and BROADCAST to every subscriber (all-or-none global
@@ -49,12 +49,12 @@ The pipeline:
      NOT IIT Phi). It RISES as more coherent neurons are grown and bundled into the workspace.
 
 Determinism: per-instance random.Random(seed) for the workspace; neuron spike codes are
-crc32-seeded (no module-level / time seeding). Pure stdlib, zero dependencies. ASCII output.
+crc32-seeded (no module-level / time seeding). ASCII output.
 
   Run: python -m snn_data_lake.cortex.access_consciousness      # (also run by run_selfchecks.py)
 """
+
 import random
-import sys
 import zlib
 
 from snn_data_lake.cortex.vsa_reasoning import bundle, cleanup, hv, sim
@@ -74,16 +74,16 @@ class AccessConsciousness:
     integration -- and makes NO phenomenal / subjective-experience claim (see module docstring).
     """
 
-    _LABEL = "GLOBAL"          # hashable workspace handle for the (single) conscious-content slot
-    _SRC = "coalition"         # workspace source name for the grown assembly coalition
+    _LABEL = "GLOBAL"  # hashable workspace handle for the (single) conscious-content slot
+    _SRC = "coalition"  # workspace source name for the grown assembly coalition
 
     def __init__(self, seed=0, ignition_threshold=0.55, n_taps=4, k_sat=5, noise=0.05):
         self.seed = seed
         self.ignition_threshold = ignition_threshold
-        self.n_taps = max(2, int(n_taps))        # >=2 independent downstream taps (global reach)
-        self.k_sat = max(2, int(k_sat))          # neuron count at which completeness saturates
-        self.noise = noise                       # bit-flip fraction of a concept-member spike code
-        self._rng = random.Random(seed)          # (reserved) per-instance RNG, no global seeding
+        self.n_taps = max(2, int(n_taps))  # >=2 independent downstream taps (global reach)
+        self.k_sat = max(2, int(k_sat))  # neuron count at which completeness saturates
+        self.noise = noise  # bit-flip fraction of a concept-member spike code
+        self._rng = random.Random(seed)  # (reserved) per-instance RNG, no global seeding
         self._ws = GlobalWorkspace(ignition_threshold=ignition_threshold, seed=seed)
         # downstream taps: each independent subscriber records the content it last received.
         self._taps = []
@@ -94,7 +94,7 @@ class AccessConsciousness:
         # coalition grown across bind_assembly calls this cycle: list of (neuron_id, spike_code).
         self._members = []
         self._n_assemblies = 0
-        self._content_hv = None                  # the bundled conscious-content spike code
+        self._content_hv = None  # the bundled conscious-content spike code
         # last-step functional readout.
         self._ignited = False
         self._availability = 0.0
@@ -118,7 +118,7 @@ class AccessConsciousness:
         rng = random.Random(zlib.crc32(s.encode()))
         n_flip = int(round(self.noise * len(v)))
         for i in rng.sample(range(len(v)), n_flip):
-            v[i] = -v[i]                          # flip one spike line (up<->down)
+            v[i] = -v[i]  # flip one spike line (up<->down)
         return v
 
     # -- coherence / integration proxies ----------------------------------------------------------
@@ -155,12 +155,15 @@ class AccessConsciousness:
             self._members.append((str(nid), self.neuron_hv(nid)))
         self._n_assemblies += 1
         codes = [h for _, h in self._members]
-        self._content_hv = bundle(codes)                          # spike superposition -> ONE content
+        self._content_hv = bundle(codes)  # spike superposition -> ONE content
         coherence = self._coherence(codes)
         completeness = self._completeness(len(codes))
-        sal = self._salience(coherence, completeness) if salience is None \
+        sal = (
+            self._salience(coherence, completeness)
+            if salience is None
             else max(0.0, min(1.0, float(salience)))
-        self._ws.submit(self._SRC, self._LABEL, sal)              # post the candidate for ignition
+        )
+        self._ws.submit(self._SRC, self._LABEL, sal)  # post the candidate for ignition
         return self._LABEL
 
     def content_vector(self):
@@ -171,14 +174,15 @@ class AccessConsciousness:
     def step(self):
         """Advance the workspace one tick: ignition competition + all-or-none global broadcast.
         Returns whether IGNITION occurred (True/False) and refreshes the functional readout."""
-        content = self._ws.step()                                # broadcasts to every subscribed tap
+        content = self._ws.step()  # broadcasts to every subscribed tap
         self._ignited = content is not None
         received = sum(1 for tap in self._taps if tap and tap[-1] is not None)
         self._availability = received / self.n_taps
         if self._ignited:
             codes = [h for _, h in self._members]
-            self._integration = max(0.0, min(1.0,
-                                             self._coherence(codes) * self._completeness(len(codes))))
+            self._integration = max(
+                0.0, min(1.0, self._coherence(codes) * self._completeness(len(codes)))
+            )
             self._n_bound = self._n_assemblies
         else:
             self._integration = 0.0
@@ -232,37 +236,39 @@ def _coherent(concept, k):
 
 
 def _scrambled(k):
-    return [f"c{i}#0" for i in range(k)]          # k DIFFERENT concepts -> ~orthogonal (incoherent)
+    return [f"c{i}#0" for i in range(k)]  # k DIFFERENT concepts -> ~orthogonal (incoherent)
 
 
 def main():
     # ---- (1) IGNITION IS ALL-OR-NONE: coherent+salient ignites (reaches >=2 taps); weak/incoherent
     #          does NOT. The control (a scrambled assembly) proves ignition is a real threshold. ----
     strong = _fresh()
-    strong.bind_assembly(_coherent("cat", 5))            # 5 coincident neurons -> supra-threshold
+    strong.bind_assembly(_coherent("cat", 5))  # 5 coincident neurons -> supra-threshold
     strong.step()
     strong_reach = sum(1 for tap in strong._taps if tap and tap[-1] is not None)
 
     weak = _fresh()
-    weak.bind_assembly(_scrambled(5))                    # 5 orthogonal neurons -> sub-threshold
+    weak.bind_assembly(_scrambled(5))  # 5 orthogonal neurons -> sub-threshold
     weak.step()
 
     # ---- (2) BUNDLING BINDS: every bundled neuron is recoverable from the ONE content; a
     #          non-bundled distractor is NOT (control). Pure VSA superposition property. ----------
     ac = _fresh()
-    ids = [f"n{i}" for i in range(5)]                    # 5 distinct (orthogonal) neurons
+    ids = [f"n{i}" for i in range(5)]  # 5 distinct (orthogonal) neurons
     codes = [ac.neuron_hv(n) for n in ids]
-    content = bundle(codes)                              # bind them into ONE conscious content
-    distractor = ac.neuron_hv("distractor")             # never bundled in
+    content = bundle(codes)  # bind them into ONE conscious content
+    distractor = ac.neuron_hv("distractor")  # never bundled in
     member_sims = [sim(content, c) for c in codes]
     distractor_sim = sim(content, distractor)
     codebook = dict(zip(ids, codes))
     codebook["distractor"] = distractor
-    cleaned, _ = cleanup(content, codebook)             # snaps to a bundled member, not the distractor
-    bundling_binds = (min(member_sims) > distractor_sim
-                      and all(m > 0.0 for m in member_sims)
-                      and distractor_sim < 0.15
-                      and cleaned in ids)
+    cleaned, _ = cleanup(content, codebook)  # snaps to a bundled member, not the distractor
+    bundling_binds = (
+        min(member_sims) > distractor_sim
+        and all(m > 0.0 for m in member_sims)
+        and distractor_sim < 0.15
+        and cleaned in ids
+    )
 
     # ---- (3) GLOBAL AVAILABILITY: after ignition the content is readable from MULTIPLE independent
     #          taps; on a non-igniting input it is not (control). ---------------------------------
@@ -299,10 +305,13 @@ def main():
     gate = 1.0 if st["ignited"] else 0.0
     reproduced = gate * st["global_availability"] * st["integration"]
     no_phenomenal_key = all(all(tok not in key for tok in _BANNED) for key in st)
-    a1 = _fresh(); a1.bind_assembly(_coherent("cat", 5)); a1.step()
-    a2 = _fresh(); a2.bind_assembly(_coherent("cat", 5)); a2.step()
+    a1 = _fresh()
+    a1.bind_assembly(_coherent("cat", 5))
+    a1.step()
+    a2 = _fresh()
+    a2.bind_assembly(_coherent("cat", 5))
+    a2.step()
     deterministic = a1.state() == a2.state()
-    zero_dep = "numpy" not in sys.modules and "torch" not in sys.modules
 
     # -------------------------------------- ASCII report ------------------------------------------
     rows = [
@@ -311,59 +320,93 @@ def main():
         ("coalition bird(3+3)", coalition.state()),
     ]
     print("=" * 78)
-    print("ACCESS CONSCIOUSNESS -- Global Neuronal Workspace signature (FUNCTIONAL, not phenomenal)")
+    print(
+        "ACCESS CONSCIOUSNESS -- Global Neuronal Workspace signature (FUNCTIONAL, not phenomenal)"
+    )
     print("=" * 78)
-    print("pipeline: GROW neurons -> BUNDLE (VSA) -> IGNITE (all-or-none) -> BROADCAST -> ACCESS index")
-    print(f"taps={strong.n_taps}  ignition_threshold={strong.ignition_threshold}  "
-          f"index = ignition_gate * global_availability * integration\n")
+    print(
+        "pipeline: GROW neurons -> BUNDLE (VSA) -> IGNITE (all-or-none) -> BROADCAST -> ACCESS index"
+    )
+    print(
+        f"taps={strong.n_taps}  ignition_threshold={strong.ignition_threshold}  "
+        f"index = ignition_gate * global_availability * integration\n"
+    )
     print(f"{'scenario':<20}{'ignited':>9}{'avail':>8}{'n_bound':>9}{'integ':>8}{'access_idx':>12}")
     print("-" * 78)
     for name, s in rows:
-        print(f"{name:<20}{str(s['ignited']):>9}{s['global_availability']:>8.2f}"
-              f"{s['n_bound']:>9}{s['integration']:>8.3f}{s['access_index']:>12.3f}")
+        print(
+            f"{name:<20}{str(s['ignited']):>9}{s['global_availability']:>8.2f}"
+            f"{s['n_bound']:>9}{s['integration']:>8.3f}{s['access_index']:>12.3f}"
+        )
     print("-" * 78)
-    print(f"bundling recoverability: min member sim {min(member_sims):.3f} > distractor {distractor_sim:.3f}"
-          f"  (cleanup -> {cleaned!r})")
-    print(f"availability: ignited {avail_ignited:.2f} vs non-igniting {avail_nonignited:.2f}"
-          f"  (broadcast reached {strong_reach}/{strong.n_taps} taps)")
-    print(f"index coherent {index_coherent:.3f} > scrambled {index_scrambled:.3f}"
-          f"  |  accumulate-coherent-neurons trend (k=2..5): "
-          f"{', '.join(f'{x:.3f}' for x in trend)}")
-    print("MEASURES ACCESS (global availability / ignition), NOT phenomenal experience "
-          "-- no subjective-experience claim.")
+    print(
+        f"bundling recoverability: min member sim {min(member_sims):.3f} > distractor {distractor_sim:.3f}"
+        f"  (cleanup -> {cleaned!r})"
+    )
+    print(
+        f"availability: ignited {avail_ignited:.2f} vs non-igniting {avail_nonignited:.2f}"
+        f"  (broadcast reached {strong_reach}/{strong.n_taps} taps)"
+    )
+    print(
+        f"index coherent {index_coherent:.3f} > scrambled {index_scrambled:.3f}"
+        f"  |  accumulate-coherent-neurons trend (k=2..5): "
+        f"{', '.join(f'{x:.3f}' for x in trend)}"
+    )
+    print(
+        "MEASURES ACCESS (global availability / ignition), NOT phenomenal experience "
+        "-- no subjective-experience claim."
+    )
     print("=" * 78)
 
     # ------------------------------------- assertions ---------------------------------------------
     # (1) all-or-none ignition + control.
-    assert strong.ignited(), "a strong, coherent bundled assembly must IGNITE (all-or-none broadcast)"
+    assert strong.ignited(), (
+        "a strong, coherent bundled assembly must IGNITE (all-or-none broadcast)"
+    )
     assert strong_reach >= 2, f"ignition must broadcast to >=2 downstream taps, got {strong_reach}"
-    assert not weak.ignited(), "a weak/incoherent assembly must NOT ignite (ignition is a real threshold)"
+    assert not weak.ignited(), (
+        "a weak/incoherent assembly must NOT ignite (ignition is a real threshold)"
+    )
     # (2) bundling genuinely binds neurons into ONE recoverable content; the distractor stays out.
-    assert bundling_binds, "bundling must bind every member recoverably while excluding the distractor"
+    assert bundling_binds, (
+        "bundling must bind every member recoverably while excluding the distractor"
+    )
     # (3) global availability is present after ignition, absent otherwise.
-    assert avail_ignited > avail_nonignited, "ignited content must be globally available, non-igniting not"
-    assert avail_ignited == 1.0 and avail_nonignited == 0.0, "availability must be all-or-none across taps"
+    assert avail_ignited > avail_nonignited, (
+        "ignited content must be globally available, non-igniting not"
+    )
+    assert avail_ignited == 1.0 and avail_nonignited == 0.0, (
+        "availability must be all-or-none across taps"
+    )
     # (4) access_index rises with integration; coherent beats scrambled; index in [0,1]; trend climbs.
     assert index_coherent > index_scrambled + 0.2, (
-        f"coherent index must clearly beat scrambled ({index_coherent:.3f} vs {index_scrambled:.3f})")
-    assert 0.0 <= index_coherent <= 1.0 and 0.0 <= index_scrambled <= 1.0, "access_index must be in [0,1]"
+        f"coherent index must clearly beat scrambled ({index_coherent:.3f} vs {index_scrambled:.3f})"
+    )
+    assert 0.0 <= index_coherent <= 1.0 and 0.0 <= index_scrambled <= 1.0, (
+        "access_index must be in [0,1]"
+    )
     assert trend[-1] > trend[0], f"index must rise as coherent neurons accumulate: {trend}"
     assert all(trend[i + 1] >= trend[i] - 1e-9 for i in range(len(trend) - 1)), (
-        f"the accumulation trend must be monotone-ish (non-decreasing): {trend}")
-    assert coalition.ignited() and coalition.n_bound() == 2, "two coherent assemblies must fuse (n_bound==2)"
+        f"the accumulation trend must be monotone-ish (non-decreasing): {trend}"
+    )
+    assert coalition.ignited() and coalition.n_bound() == 2, (
+        "two coherent assemblies must fuse (n_bound==2)"
+    )
     # (5) honest ceiling: no phenomenal field; index reproduces from the 3 functional measures alone.
     assert no_phenomenal_key, f"state() must contain NO phenomenal key {_BANNED}: {list(st)}"
     assert abs(st["access_index"] - reproduced) < 1e-9, (
-        "access_index must be a pure function of ignition * global_availability * integration")
+        "access_index must be a pure function of ignition * global_availability * integration"
+    )
     assert deterministic, "two seed=0 instances must reach identical state after the same inputs"
-    assert zero_dep, "must be pure stdlib (no numpy/torch imported)"
 
-    print("self-check OK: "
-          f"all-or-none ignition (strong ignites/reaches {strong_reach} taps, weak does not); "
-          f"bundling binds {len(ids)} neurons (distractor excluded); global availability "
-          f"{avail_ignited:.1f} vs {avail_nonignited:.1f}; access_index coherent {index_coherent:.3f} > "
-          f"scrambled {index_scrambled:.3f}, accumulation trend {trend[0]:.3f}->{trend[-1]:.3f}; "
-          "functional-only (no phenomenal claim); deterministic")
+    print(
+        "self-check OK: "
+        f"all-or-none ignition (strong ignites/reaches {strong_reach} taps, weak does not); "
+        f"bundling binds {len(ids)} neurons (distractor excluded); global availability "
+        f"{avail_ignited:.1f} vs {avail_nonignited:.1f}; access_index coherent {index_coherent:.3f} > "
+        f"scrambled {index_scrambled:.3f}, accumulation trend {trend[0]:.3f}->{trend[-1]:.3f}; "
+        "functional-only (no phenomenal claim); deterministic"
+    )
 
 
 if __name__ == "__main__":

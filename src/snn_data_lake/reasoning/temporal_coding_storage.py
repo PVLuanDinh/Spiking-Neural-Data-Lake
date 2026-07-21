@@ -1,5 +1,5 @@
 """
-v0.11 — temporal (time-to-first-spike) coding  (stdlib-only, zero deps).
+v0.11 — temporal (time-to-first-spike) coding.
 
 Motivated by the Gemini architectural assessment (Paradigm C / the SpikE idea:
 "more significant or surprising data points cause earlier spikes"). Every other
@@ -21,21 +21,22 @@ two inference modes on the SAME weights:
                       class to cross threshold.
 and reports accuracy + the synaptic-operation (SynOps) reduction.
 """
+
 import random
 
 from snn_data_lake._mathutils import softmax
 
 random.seed(0)  # deterministic run + self-check
 
-N = 64           # input neurons
-C = 5            # classes
-T = 32           # time window (steps)
+N = 64  # input neurons
+C = 5  # classes
+T = 32  # time window (steps)
 TRAIN_PER = 60
 TEST_PER = 40
-NOISE = 0.12     # additive intensity noise
+NOISE = 0.12  # additive intensity noise
 LR = 0.3
 EPOCHS = 12
-FRAC = 0.55      # TTFS fires when leading current >= FRAC * typical final current
+FRAC = 0.55  # TTFS fires when leading current >= FRAC * typical final current
 
 
 # ---- graded data: each class is a random analog intensity vector in [0,1] ----
@@ -78,7 +79,7 @@ def infer_rate(W, x):
     ops = 0
     for _ in range(T):
         for i in range(N):
-            if random.random() < x[i]:          # Poisson spike, prob = intensity
+            if random.random() < x[i]:  # Poisson spike, prob = intensity
                 ops += C
                 for c in range(C):
                     cur[c] += W[c][i]
@@ -103,12 +104,12 @@ def infer_ttfs(W, x, thresh):
     cur = [0.0] * C
     ops = 0
     for t in range(T):
-        for i in buckets[t]:                     # fire this input's one spike
+        for i in buckets[t]:  # fire this input's one spike
             ops += C
             for c in range(C):
                 cur[c] += W[c][i]
         lead = max(range(C), key=lambda c: cur[c])
-        if cur[lead] >= thresh:                   # first class over threshold -> decide
+        if cur[lead] >= thresh:  # first class over threshold -> decide
             return lead, ops, t
     return max(range(C), key=lambda c: cur[c]), ops, T - 1
 
@@ -132,9 +133,12 @@ def main():
     t_ok = t_ops = t_dec = 0
     for x, y in test_data:
         pr, ro = infer_rate(W, x)
-        r_ok += (pr == y); r_ops += ro
+        r_ok += pr == y
+        r_ops += ro
         pt, to, td = infer_ttfs(W, x, thresh)
-        t_ok += (pt == y); t_ops += to; t_dec += td
+        t_ok += pt == y
+        t_ops += to
+        t_dec += td
 
     n = len(test_data)
     print("=" * 58)
@@ -142,17 +146,17 @@ def main():
     print("=" * 58)
     print(f"inputs N={N}  classes C={C}  window T={T}  test={n}  noise={NOISE:.0%}")
     print()
-    print(f"RATE inference  : acc={r_ok/n:.1%}   SynOps={r_ops:,}")
-    print(f"TTFS inference  : acc={t_ok/n:.1%}   SynOps={t_ops:,}")
-    print(f"  avg decision step : {t_dec/n:.1f} / {T}  (early exit)")
-    print(f"  compute reduction : {r_ops/max(1,t_ops):.1f}x  (1 spike/input + early exit)")
+    print(f"RATE inference  : acc={r_ok / n:.1%}   SynOps={r_ops:,}")
+    print(f"TTFS inference  : acc={t_ok / n:.1%}   SynOps={t_ops:,}")
+    print(f"  avg decision step : {t_dec / n:.1f} / {T}  (early exit)")
+    print(f"  compute reduction : {r_ops / max(1, t_ops):.1f}x  (1 spike/input + early exit)")
     print()
     print("STORAGE: data encoded in spike TIMING — 1 event per salient input")
     print("         (vs a rate-coded spike train), and the most salient inputs")
     print("         arrive first, so the answer is read from the earliest events.")
     print("=" * 58)
 
-    assert t_ok / n >= 0.85, f"TTFS accuracy too low: {t_ok/n:.2f}"
+    assert t_ok / n >= 0.85, f"TTFS accuracy too low: {t_ok / n:.2f}"
     assert t_ops < r_ops, "TTFS did not cut compute vs rate coding"
     print("self-check OK: TTFS acc>=85% AND fewer SynOps than rate coding")
 

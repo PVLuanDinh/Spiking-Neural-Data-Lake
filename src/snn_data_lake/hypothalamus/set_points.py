@@ -42,21 +42,22 @@ Credit: Cannon 1929 (homeostasis); Pittendrigh & Daan 1976 (SCN pacing of diurna
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hypothalamus.set_points
 """
+
 import math
 import random
 
 from snn_data_lake.hypothalamus.circadian_clock import CircadianClock
 
 # ---- temperature set-point constants (reduced core-body-temperature model) ---
-SET_POINT_TEMP = 37.0    # mean core body temperature set-point in C
-TEMP_AMP = 0.4           # circadian half-swing in C (peak-to-trough ~= 0.8 C, physiological)
-AMBIENT_TEMP = 24.0      # room temperature the body passively relaxes toward (the disturbance sink)
-DAY_PHASE = 0.25         # middle of subjective day (active phase): warmest set-point
-NIGHT_PHASE = 0.75       # middle of subjective night (rest phase): coolest set-point
+SET_POINT_TEMP = 37.0  # mean core body temperature set-point in C
+TEMP_AMP = 0.4  # circadian half-swing in C (peak-to-trough ~= 0.8 C, physiological)
+AMBIENT_TEMP = 24.0  # room temperature the body passively relaxes toward (the disturbance sink)
+DAY_PHASE = 0.25  # middle of subjective day (active phase): warmest set-point
+NIGHT_PHASE = 0.75  # middle of subjective night (rest phase): coolest set-point
 
 # ---- osmolarity set-point constants (reduced thirst/ADH model) ---------------
-SET_POINT_OSMO = 285.0   # plasma osmolarity set-point in mOsm/kg
-AMBIENT_OSMO = 305.0     # osmolarity drifts UP toward this with no ADH/thirst (ongoing water loss)
+SET_POINT_OSMO = 285.0  # plasma osmolarity set-point in mOsm/kg
+AMBIENT_OSMO = 305.0  # osmolarity drifts UP toward this with no ADH/thirst (ongoing water loss)
 
 
 def temp_setpoint(phase, base=SET_POINT_TEMP, amp=TEMP_AMP):
@@ -88,9 +89,9 @@ class Homeostat:
     to `ambient`, proving the closed loop, not the physics, is what holds the set-point."""
 
     def __init__(self, gain=1.2, leak=0.02, ambient=AMBIENT_TEMP, sensor_noise=0.0, seed=0):
-        self.gain = gain                  # proportional feedback gain (0 == open loop, no effector)
-        self.leak = leak                  # passive relaxation of the variable toward `ambient`
-        self.ambient = ambient            # value the plant drifts to with no effector (loss sink)
+        self.gain = gain  # proportional feedback gain (0 == open loop, no effector)
+        self.leak = leak  # passive relaxation of the variable toward `ambient`
+        self.ambient = ambient  # value the plant drifts to with no effector (loss sink)
         self.sensor_noise = sensor_noise  # sd of gaussian sensor noise on the sensed value
         self.rng = random.Random(seed)
 
@@ -132,27 +133,35 @@ def main():
 
     # ---- SCN pacing of the temperature set-point (real CircadianClock phase) -----
     steps = 300
-    phases = scn_phase_trace(steps, seed=0)                 # free-running SCN phase at each step
-    live_sp = [temp_setpoint(p) for p in phases]            # phase advances -> set-point oscillates
-    frozen = CircadianClock(seed=0)                         # never stepped -> phase held constant
+    phases = scn_phase_trace(steps, seed=0)  # free-running SCN phase at each step
+    live_sp = [temp_setpoint(p) for p in phases]  # phase advances -> set-point oscillates
+    frozen = CircadianClock(seed=0)  # never stepped -> phase held constant
     frozen_sp = [temp_setpoint(frozen.phase) for _ in range(steps)]
-    sp_day = temp_setpoint(DAY_PHASE)                       # midday (active) -> warmest
-    sp_night = temp_setpoint(NIGHT_PHASE)                   # midnight (rest) -> coolest
+    sp_day = temp_setpoint(DAY_PHASE)  # midday (active) -> warmest
+    sp_night = temp_setpoint(NIGHT_PHASE)  # midnight (rest) -> coolest
 
-    print(f"set-point mean {SET_POINT_TEMP:.1f} C, circadian half-swing +/-{TEMP_AMP:.1f} C, "
-          f"ambient {AMBIENT_TEMP:.1f} C")
-    print(f"SCN-paced set-point:  subjective DAY (phase {DAY_PHASE:.2f}) = {sp_day:.3f} C   "
-          f"subjective NIGHT (phase {NIGHT_PHASE:.2f}) = {sp_night:.3f} C")
-    print(f"  clock ADVANCING -> set-point swings {min(live_sp):.3f}..{max(live_sp):.3f} C   "
-          f"clock FROZEN -> flat {frozen_sp[0]:.3f} C")
+    print(
+        f"set-point mean {SET_POINT_TEMP:.1f} C, circadian half-swing +/-{TEMP_AMP:.1f} C, "
+        f"ambient {AMBIENT_TEMP:.1f} C"
+    )
+    print(
+        f"SCN-paced set-point:  subjective DAY (phase {DAY_PHASE:.2f}) = {sp_day:.3f} C   "
+        f"subjective NIGHT (phase {NIGHT_PHASE:.2f}) = {sp_night:.3f} C"
+    )
+    print(
+        f"  clock ADVANCING -> set-point swings {min(live_sp):.3f}..{max(live_sp):.3f} C   "
+        f"clock FROZEN -> flat {frozen_sp[0]:.3f} C"
+    )
 
     # ---- the homeostat TRACKS the moving SCN-paced set-point across the day ------
     thermo = Homeostat(gain=1.2, leak=0.02, ambient=AMBIENT_TEMP, seed=0)
     track = thermo.run(x0=live_sp[0], set_point=lambda t: live_sp[t], steps=steps)
-    tail = range(steps // 2, steps)                        # after the warm-up transient
+    tail = range(steps // 2, steps)  # after the warm-up transient
     track_err = max(abs(track[t] - live_sp[t]) for t in tail)
-    print(f"thermostat tracking the paced set-point: max tail error {track_err:.3f} C "
-          "(follows the SCN rhythm)")
+    print(
+        f"thermostat tracking the paced set-point: max tail error {track_err:.3f} C "
+        "(follows the SCN rhythm)"
+    )
 
     # ---- (1) feedback does the work: closed loop converges, open loop does not ----
     sp = sp_day
@@ -163,17 +172,23 @@ def main():
     err_closed = abs(sp - t_closed[-1])
     err_open = abs(sp - t_open[-1])
     print("-" * width)
-    print(f"(1) FEEDBACK: closed-loop final error {err_closed:.3f} C  vs  "
-          f"open-loop final error {err_open:.3f} C (relaxed to ambient)")
+    print(
+        f"(1) FEEDBACK: closed-loop final error {err_closed:.3f} C  vs  "
+        f"open-loop final error {err_open:.3f} C (relaxed to ambient)"
+    )
 
     # ---- (2) disturbance rejection: a cold shock is driven back to the set-point --
     shock_t, shock = 40, 5.0
     dist = Homeostat(gain=1.2, leak=0.02, ambient=AMBIENT_TEMP, seed=0)
-    t_dist = dist.run(x0=sp, set_point=sp, steps=100, disturb=lambda t: -shock if t == shock_t else 0.0)
+    t_dist = dist.run(
+        x0=sp, set_point=sp, steps=100, disturb=lambda t: -shock if t == shock_t else 0.0
+    )
     err_after = abs(sp - t_dist[shock_t + 1])
     err_recovered = abs(sp - t_dist[-1])
-    print(f"(2) DISTURBANCE: -{shock:.0f} C cold shock -> error {err_after:.3f} C, "
-          f"recovers to {err_recovered:.3f} C")
+    print(
+        f"(2) DISTURBANCE: -{shock:.0f} C cold shock -> error {err_after:.3f} C, "
+        f"recovers to {err_recovered:.3f} C"
+    )
 
     # ---- (4) bidirectional: too-cold and too-hot starts both corrected -----------
     cold = Homeostat(gain=1.2, leak=0.02, ambient=AMBIENT_TEMP, seed=0)
@@ -182,44 +197,68 @@ def main():
     t_hot = hot.run(x0=sp + 4.0, set_point=sp, steps=80)
     err_cold = abs(sp - t_cold[-1])
     err_hot = abs(sp - t_hot[-1])
-    drive_cold = cold.effector(sp - 4.0, sp)               # too cold -> raising effector (> 0)
-    drive_hot = hot.effector(sp + 4.0, sp)                 # too hot  -> lowering effector (< 0)
-    print(f"(4) BIDIRECTIONAL: cold start final {err_cold:.3f} C (effector {drive_cold:+.2f}), "
-          f"hot start final {err_hot:.3f} C (effector {drive_hot:+.2f})")
+    drive_cold = cold.effector(sp - 4.0, sp)  # too cold -> raising effector (> 0)
+    drive_hot = hot.effector(sp + 4.0, sp)  # too hot  -> lowering effector (< 0)
+    print(
+        f"(4) BIDIRECTIONAL: cold start final {err_cold:.3f} C (effector {drive_cold:+.2f}), "
+        f"hot start final {err_hot:.3f} C (effector {drive_hot:+.2f})"
+    )
 
     # ---- a second regulated variable: osmolarity (thirst / ADH) ------------------
     osmo_closed = Homeostat(gain=0.9, leak=0.03, ambient=AMBIENT_OSMO, seed=0)
     osmo_open = Homeostat(gain=0.0, leak=0.03, ambient=AMBIENT_OSMO, seed=0)
-    o_closed = osmo_closed.run(x0=SET_POINT_OSMO, set_point=SET_POINT_OSMO, steps=120,
-                               disturb=lambda t: 10.0 if t == 30 else 0.0)   # a salt load
+    o_closed = osmo_closed.run(
+        x0=SET_POINT_OSMO,
+        set_point=SET_POINT_OSMO,
+        steps=120,
+        disturb=lambda t: 10.0 if t == 30 else 0.0,
+    )  # a salt load
     o_open = osmo_open.run(x0=SET_POINT_OSMO, set_point=SET_POINT_OSMO, steps=120)
     err_osmo_closed = abs(SET_POINT_OSMO - o_closed[-1])
     err_osmo_open = abs(SET_POINT_OSMO - o_open[-1])
     print("-" * width)
-    print(f"OSMOLARITY (thirst/ADH): set-point {SET_POINT_OSMO:.0f} mOsm/kg  ->  "
-          f"closed-loop error {err_osmo_closed:.3f}  vs  open-loop error {err_osmo_open:.3f}")
+    print(
+        f"OSMOLARITY (thirst/ADH): set-point {SET_POINT_OSMO:.0f} mOsm/kg  ->  "
+        f"closed-loop error {err_osmo_closed:.3f}  vs  open-loop error {err_osmo_open:.3f}"
+    )
     print("=" * width)
 
     # ---- un-riggable self-checks (deterministic asserts) ------------------------
     # (1) FEEDBACK does the work: closed converges to the set-point, open relaxes to ambient.
     assert err_closed < 0.5, f"closed loop must converge to the set-point (err {err_closed:.3f})"
-    assert err_open > 5.0, f"open loop must relax to ambient, far off the set-point (err {err_open:.3f})"
+    assert err_open > 5.0, (
+        f"open loop must relax to ambient, far off the set-point (err {err_open:.3f})"
+    )
     assert err_open > 10.0 * err_closed, "feedback, not the plant, must be what holds the set-point"
     # (2) DISTURBANCE REJECTION: the post-shock error shrinks back toward the set-point.
-    assert err_after > 3.0, f"a -{shock:.0f} C cold shock must knock the variable far off ({err_after:.3f})"
-    assert err_recovered < 0.5, f"the loop must drive the shock back to the set-point ({err_recovered:.3f})"
+    assert err_after > 3.0, (
+        f"a -{shock:.0f} C cold shock must knock the variable far off ({err_after:.3f})"
+    )
+    assert err_recovered < 0.5, (
+        f"the loop must drive the shock back to the set-point ({err_recovered:.3f})"
+    )
     assert err_recovered < 0.25 * err_after, "the post-disturbance error must shrink over time"
     # (3) SCN PACES the set-point: night != day, and a frozen clock gives a flat set-point.
-    assert sp_night != sp_day, "the SCN-paced set-point must differ between subjective night and day"
-    assert sp_night < sp_day, "core temperature must run cooler at subjective night than subjective day"
+    assert sp_night != sp_day, (
+        "the SCN-paced set-point must differ between subjective night and day"
+    )
+    assert sp_night < sp_day, (
+        "core temperature must run cooler at subjective night than subjective day"
+    )
     assert max(live_sp) - min(live_sp) > 0.2, "an advancing clock must make the set-point oscillate"
     assert max(frozen_sp) - min(frozen_sp) == 0.0, "a frozen clock must give a flat set-point"
     assert track_err < 0.5, f"the homeostat must track the SCN-paced set-point ({track_err:.3f})"
     # (4) BIDIRECTIONAL: both a too-cold and a too-hot start converge via opposite-sign effectors.
-    assert err_cold < 0.5 and err_hot < 0.5, "both a cold and a hot start must be corrected to the set-point"
-    assert drive_cold > 0.0 > drive_hot, "the effectors must be antagonistic (raise if cold, lower if hot)"
+    assert err_cold < 0.5 and err_hot < 0.5, (
+        "both a cold and a hot start must be corrected to the set-point"
+    )
+    assert drive_cold > 0.0 > drive_hot, (
+        "the effectors must be antagonistic (raise if cold, lower if hot)"
+    )
     # osmolarity: the same generic homeostat regulates a second variable (closed converges, open drifts).
-    assert err_osmo_closed < 2.0, f"osmolarity must converge to its set-point ({err_osmo_closed:.3f})"
+    assert err_osmo_closed < 2.0, (
+        f"osmolarity must converge to its set-point ({err_osmo_closed:.3f})"
+    )
     assert err_osmo_open > 10.0, f"open-loop osmolarity must drift to ambient ({err_osmo_open:.3f})"
     # Determinism: same seed -> identical traces; a different seed -> a different trace (seed matters).
     a = Homeostat(gain=1.2, leak=0.02, ambient=AMBIENT_TEMP, sensor_noise=0.05, seed=7)
@@ -231,10 +270,14 @@ def main():
     assert ta == tb, "same seed must reproduce an identical trace"
     assert tc != ta, "a different seed must produce a different trace (the rng is really seeded)"
 
-    print(f"self-check OK: closed loop -> {err_closed:.2f} C vs open loop -> {err_open:.2f} C (feedback "
-          f"regulates); cold shock {err_after:.2f} -> {err_recovered:.2f} C (rejected);")
-    print(f"  SCN set-point night {sp_night:.2f} < day {sp_day:.2f} C, frozen clock flat; cold+hot both "
-          f"-> set-point via antagonistic effectors; osmolarity regulates too; deterministic")
+    print(
+        f"self-check OK: closed loop -> {err_closed:.2f} C vs open loop -> {err_open:.2f} C (feedback "
+        f"regulates); cold shock {err_after:.2f} -> {err_recovered:.2f} C (rejected);"
+    )
+    print(
+        f"  SCN set-point night {sp_night:.2f} < day {sp_day:.2f} C, frozen clock flat; cold+hot both "
+        f"-> set-point via antagonistic effectors; osmolarity regulates too; deterministic"
+    )
 
 
 if __name__ == "__main__":

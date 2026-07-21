@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  stdlib-self-checks:
-    name: self-checks (NORD_TORCH=0) ${{ matrix.os }} py${{ matrix.python-version }}
+  torchfree-self-checks:
+    name: self-checks (torch-free, NORD_TORCH=0) ${{ matrix.os }} py${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false                       # one cell failing must not mask the others
@@ -21,14 +21,15 @@ jobs:
         os: [ubuntu-latest, windows-latest]  # the product is Windows-first (record_and_run.ps1, COMx)
         python-version: ["3.11", "3.12", "3.13"]
     env:
-      NORD_TORCH: "0"                         # manual off-switch: proves the zero-dep stdlib path still passes
+      NORD_TORCH: "0"                         # runtime off-switch: the torch GROWTH tier is OFF (numpy still present)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          # no `cache: pip` — with NORD_TORCH=0 this job installs nothing (zero-dep), no pip cache to save
-      - name: Run every self-check with the torch tier OFF (zero deps, off-switch path)
+          cache: pip
+      - run: python -m pip install numpy   # numpy is a HARD core dep; torch omitted to exercise the torch-free runtime path
+      - name: Run every self-check with the torch growth tier OFF (numpy present, torch absent)
         run: python run_selfchecks.py       # canonical module list lives in run_selfchecks.py
 
   torch-self-checks:
@@ -55,7 +56,7 @@ jobs:
           cache: pip
       - run: python -m pip install -e ".[dev]"
       - run: ruff check .
-      - run: ruff format --check tests   # tests/ are fully formatted; the hand-aligned core is not
+      - run: ruff format --check src tests   # whole tree is ruff-formatted (2026-07-20 project-wide format)
 
   test:
     name: tests + coverage

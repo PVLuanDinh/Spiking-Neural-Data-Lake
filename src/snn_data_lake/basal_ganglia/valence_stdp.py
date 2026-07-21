@@ -23,13 +23,14 @@ neuromodulator pair.
 
   python valence_stdp.py
 """
+
 import math
 import random
 
 from snn_data_lake.cortex.spike_preprocessing import N, encode_latency
 
 LR = 0.05
-THETA = 0.30       # |valence| above this -> act
+THETA = 0.30  # |valence| above this -> act
 
 
 class ValenceLearner:
@@ -58,7 +59,7 @@ class ValenceLearner:
             return "APPROACH", v
         if v <= -THETA:
             return "AVOID", v
-        return None, v          # neutral: let the recognition matcher decide
+        return None, v  # neutral: let the recognition matcher decide
 
     def dopamine(self, window, reward):
         """Reward PREDICTION ERROR: delta = reward - predicted value. This is the dopamine
@@ -97,7 +98,9 @@ def main():
     print("=" * 64)
     print("RPE DOPAMINE — prediction error drives learning (not raw reward)")
     print("=" * 64)
-    print(f"untrained value : good {vl.valence(good):+.2f}  bad {vl.valence(bad):+.2f}  (neutral)\n")
+    print(
+        f"untrained value : good {vl.valence(good):+.2f}  bad {vl.valence(bad):+.2f}  (neutral)\n"
+    )
 
     # 1. ACQUISITION — dopamine is big on the first reward, shrinks as the value is learned
     print("acquisition (good, reward=+1): dopamine should SHRINK as value is learned")
@@ -108,11 +111,13 @@ def main():
         if t in (1, 2, 5, 10, 20, 40):
             print(f"  trial {t:>2}: dopamine={d:+.3f}  value={vl.valence(good):+.3f}")
     for _ in range(40):
-        vl.learn(_jitter(bad, rng), -1.0)             # also learn the bad signal
+        vl.learn(_jitter(bad, rng), -1.0)  # also learn the bad signal
     v_good = vl.valence(good)
-    act_good_acq = vl.act(good)[0]          # action AFTER acquisition (before extinction below)
-    print(f"learned: good -> {act_good_acq} ({v_good:+.2f})   "
-          f"bad -> {vl.act(bad)[0]} ({vl.valence(bad):+.2f})\n")
+    act_good_acq = vl.act(good)[0]  # action AFTER acquisition (before extinction below)
+    print(
+        f"learned: good -> {act_good_acq} ({v_good:+.2f})   "
+        f"bad -> {vl.act(bad)[0]} ({vl.valence(bad):+.2f})\n"
+    )
 
     # 2. EXTINCTION — good now pays nothing: dopamine dips, value decays toward neutral
     print("extinction (good, reward=0 now): dopamine dips, value decays")

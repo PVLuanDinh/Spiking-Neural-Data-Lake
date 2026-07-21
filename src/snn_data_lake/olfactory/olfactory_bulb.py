@@ -35,12 +35,13 @@ Credit: Atick & Redlich 1992 (decorrelation); Cleland 2010, Friedrich 2013 (bulb
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.olfactory.olfactory_bulb
 """
+
 import math
 import random
 
-N_GLOMERULI = 100          # glomerular / mitral channels
-BETA = 2.5                 # subtractive lateral-inhibition strength (granule feedback)
-GAMMA = 0.5                # divisive normalization strength (pool gain control)
+N_GLOMERULI = 100  # glomerular / mitral channels
+BETA = 2.5  # subtractive lateral-inhibition strength (granule feedback)
+GAMMA = 0.5  # divisive normalization strength (pool gain control)
 
 
 def _pearson(a, b):
@@ -83,8 +84,8 @@ class OlfactoryBulb:
 
     def __init__(self, n_glomeruli=N_GLOMERULI, beta=BETA, gamma=GAMMA, seed=0):
         self.n = n_glomeruli
-        self.beta = beta          # subtractive lateral-inhibition strength
-        self.gamma = gamma        # divisive normalization strength
+        self.beta = beta  # subtractive lateral-inhibition strength
+        self.gamma = gamma  # divisive normalization strength
         self.rng = random.Random(seed)
 
     def mitral(self, x):
@@ -93,10 +94,10 @@ class OlfactoryBulb:
         total = sum(x)
         out = []
         for i in range(n):
-            surround = (total - x[i]) / (n - 1)                  # granule estimate of common pool drive
-            driven = x[i] - self.beta * surround                # subtractive lateral inhibition
+            surround = (total - x[i]) / (n - 1)  # granule estimate of common pool drive
+            driven = x[i] - self.beta * surround  # subtractive lateral inhibition
             if driven < 0.0:
-                driven = 0.0                                    # mitral rate is non-negative (rectify)
+                driven = 0.0  # mitral rate is non-negative (rectify)
             out.append(driven / (1.0 + self.gamma * surround))  # divisive gain normalization
         return out
 
@@ -107,15 +108,17 @@ class OlfactoryBulb:
     def make_overlapping_odors(self, k, background=40, distinct=6):
         """k odors that SHARE a fixed background glomerular block (-> highly correlated) plus a few
         odor-DISTINCTIVE glomeruli each. The shared block is exactly what lateral inhibition cancels."""
-        shared = set(self.rng.sample(range(self.n), background))   # common receptors many odors drive
+        shared = set(
+            self.rng.sample(range(self.n), background)
+        )  # common receptors many odors drive
         free = [g for g in range(self.n) if g not in shared]
         odors = []
         for _ in range(k):
             x = [0.0] * self.n
             for g in shared:
-                x[g] = self.rng.uniform(0.50, 0.65)                # broad shared background drive
+                x[g] = self.rng.uniform(0.50, 0.65)  # broad shared background drive
             for g in self.rng.sample(free, distinct):
-                x[g] = self.rng.uniform(0.90, 1.00)                # sparse distinctive peaks
+                x[g] = self.rng.uniform(0.90, 1.00)  # sparse distinctive peaks
             odors.append(x)
         return odors
 
@@ -145,7 +148,7 @@ def main():
             c = _cosine(wq, tmpl)
             if c > best:
                 best, bid = c, tid
-        hits += (bid == pid)
+        hits += bid == pid
     id_acc = hits / T
 
     # no collapse: every whitened code is non-zero and all pairwise-distinct.
@@ -157,18 +160,30 @@ def main():
     print("=" * 66)
     print(f"glomeruli = {bulb.n}, odors = {K}, beta = {bulb.beta}, gamma = {bulb.gamma}")
     print("-" * 66)
-    print(f"(a) RAW input      : mean pairwise corr = {corr_raw:.3f}   [shared background -> correlated]")
-    print(f"(b) MITRAL output  : mean pairwise corr = {corr_mit:.3f}   [lateral inhibition decorrelates]")
-    print(f"(c) PASSTHROUGH    : mean pairwise corr = {corr_pass:.3f}   [beta=gamma=0 -> unchanged]")
+    print(
+        f"(a) RAW input      : mean pairwise corr = {corr_raw:.3f}   [shared background -> correlated]"
+    )
+    print(
+        f"(b) MITRAL output  : mean pairwise corr = {corr_mit:.3f}   [lateral inhibition decorrelates]"
+    )
+    print(
+        f"(c) PASSTHROUGH    : mean pairwise corr = {corr_pass:.3f}   [beta=gamma=0 -> unchanged]"
+    )
     print("-" * 66)
-    print(f"decorrelation      : corr {corr_raw:.3f} -> {corr_mit:.3f} (drop {corr_raw - corr_mit:.3f})")
+    print(
+        f"decorrelation      : corr {corr_raw:.3f} -> {corr_mit:.3f} (drop {corr_raw - corr_mit:.3f})"
+    )
     print(f"identity preserved : noisy-odor classify acc = {id_acc:.3f} over {T} trials")
     print(f"no collapse        : all mitral codes non-zero={nonzero} and distinct={distinct}")
     print("=" * 66)
 
-    # ---- self-check: deterministic asserts, zero-dep, ASCII-only ----
-    assert corr_mit < corr_raw - 0.30, f"bulb must decorrelate: {corr_mit:.3f} not << {corr_raw:.3f}"
-    assert abs(corr_pass - corr_raw) < 1e-9, f"passthrough must NOT decorrelate ({corr_pass:.3f} vs {corr_raw:.3f})"
+    # ---- self-check: deterministic asserts, ASCII-only ----
+    assert corr_mit < corr_raw - 0.30, (
+        f"bulb must decorrelate: {corr_mit:.3f} not << {corr_raw:.3f}"
+    )
+    assert abs(corr_pass - corr_raw) < 1e-9, (
+        f"passthrough must NOT decorrelate ({corr_pass:.3f} vs {corr_raw:.3f})"
+    )
     assert id_acc >= 0.90, f"identity must be preserved after whitening (acc {id_acc:.3f})"
     assert nonzero, "no whitened code may collapse to all-zero"
     assert distinct, "whitened odors must stay mutually distinct (no collapse to one code)"
@@ -176,10 +191,14 @@ def main():
     b2 = OlfactoryBulb(seed=0)
     odors2 = b2.make_overlapping_odors(K)
     mitral2 = [b2.mitral(x) for x in odors2]
-    assert odors2 == odors and mitral2 == mitral, "same seed must give identical odors and mitral output"
+    assert odors2 == odors and mitral2 == mitral, (
+        "same seed must give identical odors and mitral output"
+    )
 
-    print(f"self-check OK: corr {corr_raw:.3f} -> {corr_mit:.3f} (mitral), passthrough {corr_pass:.3f} "
-          f"unchanged; identity {id_acc:.3f}, no collapse, deterministic")
+    print(
+        f"self-check OK: corr {corr_raw:.3f} -> {corr_mit:.3f} (mitral), passthrough {corr_pass:.3f} "
+        f"unchanged; identity {id_acc:.3f}, no collapse, deterministic"
+    )
 
 
 if __name__ == "__main__":

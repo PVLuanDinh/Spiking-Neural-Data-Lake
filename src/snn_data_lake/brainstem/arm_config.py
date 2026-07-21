@@ -14,16 +14,16 @@ sensor-specific — see IR_PRESENT below).
 
 # ---- distance bins (metres) ----------------------------------------------------
 # NEAR/MID/FAR channels feed Paradigm B's order-aware sequence detector.
-NEAR_MAX = 0.30        # d <  NEAR_MAX            -> NEAR
-MID_MAX = 0.60         # NEAR_MAX <= d < MID_MAX  -> MID   (else FAR)
-IN_RANGE_MAX = 2.0     # d >= IN_RANGE_MAX        -> no object present (idle)
+NEAR_MAX = 0.30  # d <  NEAR_MAX            -> NEAR
+MID_MAX = 0.60  # NEAR_MAX <= d < MID_MAX  -> MID   (else FAR)
+IN_RANGE_MAX = 2.0  # d >= IN_RANGE_MAX        -> no object present (idle)
 
 # ---- reflex --------------------------------------------------------------------
-CONTACT = 0.04         # d < CONTACT -> imminent-contact reflex EMERGENCY_STOP
-TRAJ_DEV_MAX = 0.15    # end-effector deviation (m) from the intended pose that trips the
-                       # trajectory-deviation reflex (the "differential position comparator":
-                       # an external perturbation knocks the arm off its commanded path).
-                       # tied to arm reach (l1+l2=2m); re-tune per real rig/gripper.
+CONTACT = 0.04  # d < CONTACT -> imminent-contact reflex EMERGENCY_STOP
+TRAJ_DEV_MAX = 0.15  # end-effector deviation (m) from the intended pose that trips the
+# trajectory-deviation reflex (the "differential position comparator":
+# an external perturbation knocks the arm off its commanded path).
+# tied to arm reach (l1+l2=2m); re-tune per real rig/gripper.
 
 # ---- real-hardware safety gate -------------------------------------------------
 # CONTACT / joint-limit / reflex values here are PLACEHOLDERS tuned to the sim, NOT your rig.
@@ -32,15 +32,15 @@ TRAJ_DEV_MAX = 0.15    # end-effector deviation (m) from the intended pose that 
 SAFETY_CALIBRATED = False
 
 # ---- windowing -----------------------------------------------------------------
-W = 8                  # samples per recognition window
-STRIDE = W             # W = non-overlapping; < W = sliding (lower live latency)
+W = 8  # samples per recognition window
+STRIDE = W  # W = non-overlapping; < W = sliding (lower live latency)
 
 # ---- IR fusion (Sensor_2) ------------------------------------------------------
 # IR polarity/scale is sensor-specific and uncalibrated, so fusion is OFF by
 # default (None) — distance alone decides presence, exactly as before. Ceiling: idle vs
 # far-but-present object is distance-only. Upgrade: capture IR with/without a hand in
 # range, set IR_PRESENT to (">", v) or ("<", v) so IR confirms presence.
-IR_PRESENT = None      # e.g. (">", 500) means "present when Sensor_2 > 500"
+IR_PRESENT = None  # e.g. (">", 500) means "present when Sensor_2 > 500"
 
 NEAR, MID, FAR = 0, 1, 2
 
@@ -63,7 +63,7 @@ def present(d, ir=None):
         return by_dist
     op, thr = IR_PRESENT
     by_ir = ir > thr if op == ">" else ir < thr
-    return by_dist and by_ir       # both agree -> present (IR rejects distance ghosts)
+    return by_dist and by_ir  # both agree -> present (IR rejects distance ghosts)
 
 
 def bins_from_capture(distances, lo=0.33, hi=0.66):

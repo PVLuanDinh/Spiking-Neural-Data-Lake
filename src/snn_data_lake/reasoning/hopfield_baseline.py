@@ -1,5 +1,5 @@
 """
-Classical Hopfield capacity baseline  (stdlib-only, zero deps).
+Classical Hopfield capacity baseline  (stdlib + numpy/torch allowed project-wide).
 
 Context for spiking_storage_prototype.py: that prototype's "80 patterns @ 99.6%, 874x smaller"
 associative-memory result stood alone. This is the NAMED baseline it should be read against —

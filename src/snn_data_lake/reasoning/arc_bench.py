@@ -22,7 +22,7 @@ HONEST ANCHORS for reading any score this harness prints:
   - a score is only meaningful on tasks the solver has never been tuned against: report TRAINING and
     EVALUATION splits separately and never tune on evaluation
 
-Pure stdlib. No numpy, no torch. Representation-only: imports no brainstem, routes no actuator.
+Representation-only: imports no brainstem, routes no actuator.
 """
 
 import json

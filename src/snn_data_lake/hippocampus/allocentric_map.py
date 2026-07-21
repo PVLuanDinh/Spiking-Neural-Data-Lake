@@ -1,5 +1,5 @@
 """
-Allocentric landmark map with path-integration drift correction (pure stdlib).
+Allocentric landmark map with path-integration drift correction.
 
 WHAT THE BRAIN DOES. A hippocampal cognitive map is ALLOCENTRIC: it stores where
 things are in a world-centred frame (place fields anchored to landmarks), not just
@@ -34,10 +34,11 @@ grid_cells (whose step() integrates a clean velocity with no drift hook), so the
 correction are explicit and testable. Conceptually the estimate is the read-out of the entorhinal
 metric that this allocentric map is anchored onto.
 
-Pure stdlib (math, random). Deterministic (random.Random(seed)). ASCII output.
+Deterministic (random.Random(seed)). ASCII output.
 
   python -m snn_data_lake.hippocampus.allocentric_map     # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
@@ -57,8 +58,15 @@ class AllocentricMap:
         m.nearest(valence_pref=1.0)      # recall the best remembered place (approach good ones)
     """
 
-    def __init__(self, seed=0, drift_rate=0.06, drift_bias=(0.7, 0.5),
-                 drift_jitter=0.4, correct_gain=0.8, conf_gain=0.25):
+    def __init__(
+        self,
+        seed=0,
+        drift_rate=0.06,
+        drift_bias=(0.7, 0.5),
+        drift_jitter=0.4,
+        correct_gain=0.8,
+        conf_gain=0.25,
+    ):
         """
         Args:
             seed: RNG seed -> reproducible drift.
@@ -76,10 +84,10 @@ class AllocentricMap:
         self.correct_gain = float(correct_gain)
         self.conf_gain = float(conf_gain)
 
-        self.est = [0.0, 0.0]        # allocentric position estimate (drifts)
-        self.drift = [0.0, 0.0]      # accumulated dead-reckoning error (introspection only)
-        self._step = 0               # internal time counter
-        self.landmarks = {}          # name -> [x, y, valence, confidence, last_step]
+        self.est = [0.0, 0.0]  # allocentric position estimate (drifts)
+        self.drift = [0.0, 0.0]  # accumulated dead-reckoning error (introspection only)
+        self._step = 0  # internal time counter
+        self.landmarks = {}  # name -> [x, y, valence, confidence, last_step]
 
     @property
     def position(self):
@@ -116,21 +124,26 @@ class AllocentricMap:
         confidence. The stored landmark stays fixed -- it is the trusted anchor.
         """
         self._step += 1
-        if name not in self.landmarks:                       # register a new place
-            self.landmarks[name] = [self.est[0] + rel_x, self.est[1] + rel_y,
-                                    float(valence), 0.5, self._step]
+        if name not in self.landmarks:  # register a new place
+            self.landmarks[name] = [
+                self.est[0] + rel_x,
+                self.est[1] + rel_y,
+                float(valence),
+                0.5,
+                self._step,
+            ]
             return self.position
 
-        lm = self.landmarks[name]                            # re-sight a known place -> drift reset
-        target_x = lm[_X] - rel_x                            # where the agent must actually be
+        lm = self.landmarks[name]  # re-sight a known place -> drift reset
+        target_x = lm[_X] - rel_x  # where the agent must actually be
         target_y = lm[_Y] - rel_y
         err_x = target_x - self.est[0]
         err_y = target_y - self.est[1]
         self.est[0] += self.correct_gain * err_x
         self.est[1] += self.correct_gain * err_y
-        self.drift[0] *= (1.0 - self.correct_gain)           # drift is largely reset
-        self.drift[1] *= (1.0 - self.correct_gain)
-        lm[_CONF] = min(1.0, lm[_CONF] + self.conf_gain)     # familiarity grows on re-sighting
+        self.drift[0] *= 1.0 - self.correct_gain  # drift is largely reset
+        self.drift[1] *= 1.0 - self.correct_gain
+        lm[_CONF] = min(1.0, lm[_CONF] + self.conf_gain)  # familiarity grows on re-sighting
         lm[_STEP] = self._step
         if valence != 0.0:
             lm[_VAL] = 0.7 * float(valence) + 0.3 * lm[_VAL]
@@ -157,11 +170,11 @@ def main():
     m = AllocentricMap(seed=0)
     truth = [0.0, 0.0]
     home_true = (0.0, 0.0)
-    m.observe("home", 0.0, 0.0)                              # anchor home while est == truth
+    m.observe("home", 0.0, 0.0)  # anchor home while est == truth
     conf_before = m.landmarks["home"][_CONF]
 
     step = 0.5
-    legs = [(step, 0.0), (0.0, step), (-step, 0.0), (0.0, -step)]   # square loop, side 3.0
+    legs = [(step, 0.0), (0.0, step), (-step, 0.0), (0.0, -step)]  # square loop, side 3.0
     for vx, vy in legs:
         for _ in range(6):
             truth[0] += vx
@@ -170,7 +183,7 @@ def main():
     uncorrected_error = math.hypot(m.est[0] - truth[0], m.est[1] - truth[1])
 
     # ---- (b) re-sight the known 'home' landmark -> path-integration reset corrects drift ----
-    rel_x = home_true[0] - truth[0]                          # where the agent sees home, from truth
+    rel_x = home_true[0] - truth[0]  # where the agent sees home, from truth
     rel_y = home_true[1] - truth[1]
     m.observe("home", rel_x, rel_y)
     corrected_error = math.hypot(m.est[0] - truth[0], m.est[1] - truth[1])
@@ -185,44 +198,61 @@ def main():
                 mm.move(vx, vy)
         mm.observe("home", 0.0, 0.0)
         return mm
+
     ra, rb = run_loop(3), run_loop(3)
-    deterministic = (ra.est == rb.est and ra.landmarks == rb.landmarks)
+    deterministic = ra.est == rb.est and ra.landmarks == rb.landmarks
 
     # ---- nearest(): recall by confidence, and biased by valence (approach good places) ----
     r = AllocentricMap(seed=1)
-    r.observe("berries", 1.0, 0.0, valence=1.0)              # a good place
-    r.observe("cliff", -1.0, 0.0, valence=-1.0)             # a bad place
-    r.observe("cliff", -1.0, 0.0, valence=-1.0)             # re-sighted -> more confident
-    recall_conf = r.nearest(valence_pref=0.0)                # most-confident place
-    recall_good = r.nearest(valence_pref=2.0)                # approach the good place
+    r.observe("berries", 1.0, 0.0, valence=1.0)  # a good place
+    r.observe("cliff", -1.0, 0.0, valence=-1.0)  # a bad place
+    r.observe("cliff", -1.0, 0.0, valence=-1.0)  # re-sighted -> more confident
+    recall_conf = r.nearest(valence_pref=0.0)  # most-confident place
+    recall_good = r.nearest(valence_pref=2.0)  # approach the good place
 
     print("=" * 68)
     print("ALLOCENTRIC MAP -- landmark binding + path-integration drift reset")
     print("=" * 68)
-    print(f"loop truth returns to ({truth[0]:.2f},{truth[1]:.2f}); "
-          f"raw estimate ({m.est[0]:.2f},{m.est[1]:.2f}) before correction")
+    print(
+        f"loop truth returns to ({truth[0]:.2f},{truth[1]:.2f}); "
+        f"raw estimate ({m.est[0]:.2f},{m.est[1]:.2f}) before correction"
+    )
     print(f"dead-reckoning drift (uncorrected error) : {uncorrected_error:.3f}")
-    print(f"after re-sighting 'home' (corrected error): {corrected_error:.3f} "
-          f"(ratio {corrected_error / uncorrected_error:.2f})")
+    print(
+        f"after re-sighting 'home' (corrected error): {corrected_error:.3f} "
+        f"(ratio {corrected_error / uncorrected_error:.2f})"
+    )
     print(f"'home' confidence {conf_before:.2f} -> {conf_after:.2f} on re-sighting")
-    print(f"nearest by confidence -> '{recall_conf}' ; "
-          f"nearest with approach bias -> '{recall_good}'")
+    print(
+        f"nearest by confidence -> '{recall_conf}' ; nearest with approach bias -> '{recall_good}'"
+    )
     print(f"determinism (seed 3): identical estimate and landmarks {deterministic}")
     print("=" * 68)
 
-    # ---- self-check: deterministic asserts, zero-dep, un-riggable ----
-    assert uncorrected_error > 0.3, \
+    # ---- self-check: deterministic asserts, un-riggable ----
+    assert uncorrected_error > 0.3, (
         f"dead reckoning must actually drift far from truth ({uncorrected_error:.3f})"
-    assert corrected_error < 0.5 * uncorrected_error, \
+    )
+    assert corrected_error < 0.5 * uncorrected_error, (
         f"re-sighting must more than halve the drift ({corrected_error:.3f} vs {uncorrected_error:.3f})"
-    assert conf_after > conf_before, \
+    )
+    assert conf_after > conf_before, (
         f"a landmark's confidence must rise on re-sighting ({conf_before:.2f} -> {conf_after:.2f})"
-    assert recall_conf == "cliff", f"nearest by confidence must recall the most-confident place ({recall_conf})"
-    assert recall_good == "berries", f"approach bias must recall the positive-valence place ({recall_good})"
-    assert deterministic, "same seed + same ops must give identical estimate and landmarks (deterministic)"
-    print(f"self-check OK: dead-reckoning drift {uncorrected_error:.3f} -> {corrected_error:.3f} on "
-          f"landmark re-sighting (path-integration reset); confidence rises; nearest recall by "
-          f"confidence/valence; deterministic")
+    )
+    assert recall_conf == "cliff", (
+        f"nearest by confidence must recall the most-confident place ({recall_conf})"
+    )
+    assert recall_good == "berries", (
+        f"approach bias must recall the positive-valence place ({recall_good})"
+    )
+    assert deterministic, (
+        "same seed + same ops must give identical estimate and landmarks (deterministic)"
+    )
+    print(
+        f"self-check OK: dead-reckoning drift {uncorrected_error:.3f} -> {corrected_error:.3f} on "
+        f"landmark re-sighting (path-integration reset); confidence rises; nearest recall by "
+        f"confidence/valence; deterministic"
+    )
 
 
 if __name__ == "__main__":

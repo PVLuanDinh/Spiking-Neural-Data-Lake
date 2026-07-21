@@ -5,7 +5,7 @@ The prototypes across this repo already MEASURE synaptic operations (SynOps) and
 op-count ratios ("3.6-83x fewer ops"). This converts those into an estimated ENERGY figure —
 the number reviewers and an INRC/neuromorphic proposal actually ask for. It is analytical, not
 measured silicon: multiply an op count by a cited per-op energy. Idea borrowed from
-SpikingJelly's compute_energy/synop counters, kept pure-stdlib here (zero deps). The NeuroBench
+SpikingJelly's compute_energy/synop counters. The NeuroBench
 (arXiv:2304.04640, Nat.Comms 2025) metric definitions — effective ACs, activation sparsity, model
 footprint — are exposed too, so the efficiency claims are externally comparable (leaderboard-legible).
 
@@ -42,13 +42,13 @@ So the SNN wins only once spiking sparsity is below crossover_sparsity() -- see 
 """
 
 # ---- cited per-operation energies (Joules) -------------------------------------
-E_MAC_FP32_45NM = 4.6e-12   # dense ANN multiply-accumulate (Horowitz 2014)
-E_AC_FP32_45NM = 0.9e-12    # spiking accumulate-only op        (Horowitz 2014)
-E_SYNOP_LOIHI = 23.6e-12    # per-SynOp on Loihi, incl. overhead (arXiv:2210.13107)
+E_MAC_FP32_45NM = 4.6e-12  # dense ANN multiply-accumulate (Horowitz 2014)
+E_AC_FP32_45NM = 0.9e-12  # spiking accumulate-only op        (Horowitz 2014)
+E_SYNOP_LOIHI = 23.6e-12  # per-SynOp on Loihi, incl. overhead (arXiv:2210.13107)
 
 # ---- memory-access + quantized-baseline energies (what a compute-only SynOps count omits) -------
 # Horowitz, "Computing's Energy Problem", ISSCC 2014, 45 nm CMOS:
-E_MAC_INT8_45NM = 0.23e-12   # 8-bit integer MAC: 0.2 pJ (mult) + 0.03 pJ (add)
+E_MAC_INT8_45NM = 0.23e-12  # 8-bit integer MAC: 0.2 pJ (mult) + 0.03 pJ (add)
 E_MEM_SRAM32_45NM = 5.0e-12  # 32-bit on-chip SRAM read; grows with array size, so this is a floor
 E_MEM_DRAM32_45NM = 640e-12  # 32-bit off-chip DRAM read (dominates whenever weights spill off-chip)
 
@@ -106,8 +106,8 @@ def crossover_sparsity(connections, n_neurons, T, e_mem=E_MEM_SRAM32_45NM):
     spiking activity costs more (compute + memory) than doing the dense INT8 matvec once."""
     e_op = E_AC_FP32_45NM
     ann = connections * E_MAC_INT8_45NM + connections * e_mem
-    fixed = n_neurons * T * (2 * e_mem + e_op)     # neuron-update floor, independent of s
-    per_s = connections * T * (e_op + e_mem)       # SynOps energy per unit spike-probability
+    fixed = n_neurons * T * (2 * e_mem + e_op)  # neuron-update floor, independent of s
+    per_s = connections * T * (e_op + e_mem)  # SynOps energy per unit spike-probability
     if per_s <= 0:
         return 0.0
     s = (ann - fixed) / per_s
@@ -129,8 +129,8 @@ def neurobench(synops, dense_macs, n_params):
     """Leaderboard-legible summary: effective ACs (= the measured SynOps), the dense Eff-MAC
     baseline, and footprint. Adopts the NeuroBench definitions; leaves out its torch harness."""
     return {
-        "eff_acs": synops,                # spiking effective accumulate ops = measured SynOps
-        "eff_macs_dense": dense_macs,      # dense-ANN multiply-accumulate baseline
+        "eff_acs": synops,  # spiking effective accumulate ops = measured SynOps
+        "eff_macs_dense": dense_macs,  # dense-ANN multiply-accumulate baseline
         "footprint_bytes": footprint_bytes(n_params),
     }
 
@@ -150,34 +150,54 @@ def main():
     print("  45 nm CMOS (Horowitz 2014):")
     print(f"    dense ANN  (MAC 4.6 pJ)  : {r['ann_nj']:.1f} nJ/inference")
     print(f"    spiking    (AC 0.9 pJ)   : {r['snn_nj']:.1f} nJ/inference")
-    print(f"    energy reduction         : {r['energy_ratio']:.1f}x  "
-          f"(= {r['ops_ratio']:.1f}x ops x {E_MAC_FP32_45NM / E_AC_FP32_45NM:.1f}x MAC/AC)")
+    print(
+        f"    energy reduction         : {r['energy_ratio']:.1f}x  "
+        f"(= {r['ops_ratio']:.1f}x ops x {E_MAC_FP32_45NM / E_AC_FP32_45NM:.1f}x MAC/AC)"
+    )
     print(f"  Loihi lens (SynOp 23.6 pJ) : {loihi_nj:.1f} nJ  (incl. routing overhead;")
-    print("                               its win amortises at scale + sparsity, not this toy size)")
-    nb = neurobench(synops, dense_macs, n_params=4 * 64)          # classifier: 4 classes x 64 features
-    print(f"  NeuroBench   : Eff_ACs {nb['eff_acs']:,} vs dense Eff_MACs {nb['eff_macs_dense']:,};"
-          f" footprint {nb['footprint_bytes'] / 1024:.1f} KB  (defs: arXiv:2304.04640)")
+    print(
+        "                               its win amortises at scale + sparsity, not this toy size)"
+    )
+    nb = neurobench(synops, dense_macs, n_params=4 * 64)  # classifier: 4 classes x 64 features
+    print(
+        f"  NeuroBench   : Eff_ACs {nb['eff_acs']:,} vs dense Eff_MACs {nb['eff_macs_dense']:,};"
+        f" footprint {nb['footprint_bytes'] / 1024:.1f} KB  (defs: arXiv:2304.04640)"
+    )
 
     # ---- honest picture: memory access + a FAIR INT8 ANN baseline + the sparsity crossover ----
     # single-inference shape of this classifier: connections = N*C weights, C class neurons hold
     # membrane state, T = STEPS timesteps (N=64 inputs, C=4 classes, STEPS=20; 80-sample test set).
     samples, n_class_neurons, T = 80, 4, 20
-    connections = samples * 64 * 4                    # N*C weights, one dense INT8 matvec per sample
-    neuron_updates = samples * n_class_neurons * T    # membrane read/write per class neuron per timestep
+    connections = samples * 64 * 4  # N*C weights, one dense INT8 matvec per sample
+    neuron_updates = (
+        samples * n_class_neurons * T
+    )  # membrane read/write per class neuron per timestep
     e_snn_full = snn_energy_full(synops, neuron_updates) * 1e9
     e_ann_int8 = ann_energy_int8(connections) * 1e9
     s_cross = crossover_sparsity(connections, samples * n_class_neurons, T)
-    s_obs = synops / dense_macs                       # observed avg synapse-timestep spike fraction
+    s_obs = synops / dense_macs  # observed avg synapse-timestep spike fraction
     print("  honest picture (memory access + fair INT8 baseline included):")
-    print(f"    op count is baseline-dependent: dense_macs={dense_macs:,} charges the ANN N*C MACs on EVERY")
-    print(f"      of STEPS={dense_macs // connections} timesteps; a static image needs ONE matvec, so the fair dense")
-    print(f"      count is {connections:,} -- against it the {synops:,} SynOps are {synops / connections:.1f}x MORE ops, not fewer.")
-    print(f"    spiking WITH memory      : {e_snn_full:.1f} nJ  "
-          f"(compute-only was {r['snn_nj']:.1f} nJ; weight+state fetches dominate)")
+    print(
+        f"    op count is baseline-dependent: dense_macs={dense_macs:,} charges the ANN N*C MACs on EVERY"
+    )
+    print(
+        f"      of STEPS={dense_macs // connections} timesteps; a static image needs ONE matvec, so the fair dense"
+    )
+    print(
+        f"      count is {connections:,} -- against it the {synops:,} SynOps are {synops / connections:.1f}x MORE ops, not fewer."
+    )
+    print(
+        f"    spiking WITH memory      : {e_snn_full:.1f} nJ  "
+        f"(compute-only was {r['snn_nj']:.1f} nJ; weight+state fetches dominate)"
+    )
     print(f"    INT8 ANN  (fair baseline): {e_ann_int8:.1f} nJ  (0.23 pJ MAC + 5 pJ SRAM fetch)")
-    print(f"    crossover sparsity       : {s_cross:.1%}  (SNN wins only BELOW it; observed {s_obs:.1%})")
+    print(
+        f"    crossover sparsity       : {s_cross:.1%}  (SNN wins only BELOW it; observed {s_obs:.1%})"
+    )
     print("    => with memory + an INT8 baseline counted, the compute-only win shrinks or reverses")
-    print("       unless spiking sparsity is below the crossover (here observed activity is well above).")
+    print(
+        "       unless spiking sparsity is below the crossover (here observed activity is well above)."
+    )
     print("=" * 60)
 
     # ---- self-check: one runnable assert-based check ----
@@ -200,8 +220,10 @@ def main():
     e_ann_ref = ann_energy_int8(connections)
     assert e_below < e_ann_ref, "below crossover: SNN full energy must beat the INT8 ANN"
     assert e_above >= e_ann_ref, "above crossover: SNN full energy must NOT beat the INT8 ANN"
-    print("self-check OK: SynOps -> nJ/inference; spiking beats FP32 ANN on compute; with memory + INT8"
-          f" baseline the win reverses above the {s_cross:.1%} sparsity crossover")
+    print(
+        "self-check OK: SynOps -> nJ/inference; spiking beats FP32 ANN on compute; with memory + INT8"
+        f" baseline the win reverses above the {s_cross:.1%} sparsity crossover"
+    )
 
 
 if __name__ == "__main__":

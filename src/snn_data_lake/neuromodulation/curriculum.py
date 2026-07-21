@@ -39,11 +39,12 @@ Refs: Elman, "Learning and development in neural networks: the importance of sta
 Oudeyer & Kaplan, "What is intrinsic motivation? A typology of computational approaches" (2007)
 and developmental-robotics intrinsic-motivation work (self-paced exploration at the frontier).
 
-Pure stdlib (random, math, substrate._mathutils.mean), ASCII-only prints, deterministic
+Deps: random, math, substrate._mathutils.mean (numpy/torch allowed project-wide); ASCII-only prints, deterministic
 (per-instance random.Random(seed); the mastery/advance rule is fully deterministic).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.curriculum
 """
+
 import math
 import random
 
@@ -61,12 +62,16 @@ class Curriculum:
     difficulty() is stage/(n_stages-1) in [0,1]. Deterministic; per-instance random.Random(seed)."""
 
     def __init__(self, n_stages, mastery_threshold=0.02, patience=8, seed=0):
-        self.n_stages = max(1, int(n_stages))            # stages indexed 0..n_stages-1
-        self.mastery_threshold = float(mastery_threshold)  # learning_progress at/below this counts as "not learning"
-        self.patience = max(1, int(patience))            # consecutive low-LP calls needed to judge a stage LEARNED
-        self.rng = random.Random(seed)                   # per-instance rng (interleaved-review picks / determinism)
-        self._mastered = 0                               # number of stages completed (0..n_stages)
-        self._low_streak = 0                             # consecutive observe() calls with LP <= threshold this stage
+        self.n_stages = max(1, int(n_stages))  # stages indexed 0..n_stages-1
+        self.mastery_threshold = float(
+            mastery_threshold
+        )  # learning_progress at/below this counts as "not learning"
+        self.patience = max(
+            1, int(patience)
+        )  # consecutive low-LP calls needed to judge a stage LEARNED
+        self.rng = random.Random(seed)  # per-instance rng (interleaved-review picks / determinism)
+        self._mastered = 0  # number of stages completed (0..n_stages)
+        self._low_streak = 0  # consecutive observe() calls with LP <= threshold this stage
 
     def observe(self, learning_progress):
         """Feed the CURRENT stage's learning-progress for this tick. Returns True on the tick the
@@ -77,11 +82,11 @@ class Curriculum:
             return False
         lp = float(learning_progress)
         if lp <= self.mastery_threshold:
-            self._low_streak += 1                        # sustained low -> progress toward graduation
+            self._low_streak += 1  # sustained low -> progress toward graduation
         else:
-            self._low_streak = 0                         # still learning -> reset patience (no premature advance)
+            self._low_streak = 0  # still learning -> reset patience (no premature advance)
         if self._low_streak >= self.patience:
-            self._mastered += 1                          # this stage is mastered -> advance to the next (harder) one
+            self._mastered += 1  # this stage is mastered -> advance to the next (harder) one
             self._low_streak = 0
             return True
         return False
@@ -122,9 +127,9 @@ class Curriculum:
 # =====================================================================================================
 
 # A synthetic STAGED learner sharing ONE competence w in [0,1] across increasing-difficulty targets.
-_TARGETS = (0.25, 0.50, 0.75, 1.00)   # increasing-difficulty milestones of the SHARED competence w
-_REACH = 0.30                          # frontier of learnability: a target much farther than this yields ~no gradient
-_LR = 0.30                             # base learning rate (fraction of the in-reach gap closed per tick)
+_TARGETS = (0.25, 0.50, 0.75, 1.00)  # increasing-difficulty milestones of the SHARED competence w
+_REACH = 0.30  # frontier of learnability: a target much farther than this yields ~no gradient
+_LR = 0.30  # base learning rate (fraction of the in-reach gap closed per tick)
 
 
 def _learner_step(w, target):
@@ -133,7 +138,7 @@ def _learner_step(w, target):
     vanishing-gradient / sparse-reward frontier (progress is only possible NEAR current competence).
     Returns the new w. This is why a far ("hard") target cannot be learned cold, but a nearby one can."""
     gap = target - w
-    gain = math.exp(-(gap / _REACH) ** 2)
+    gain = math.exp(-((gap / _REACH) ** 2))
     return w + _LR * gain * gap
 
 
@@ -151,7 +156,9 @@ def _run_curriculum_learner(budget, seed):
         target = _TARGETS[cur.stage]
         before = abs(target - w)
         w = _learner_step(w, target)
-        lp = max(0.0, before - abs(target - w))          # learning progress = error reduction achieved this tick
+        lp = max(
+            0.0, before - abs(target - w)
+        )  # learning progress = error reduction achieved this tick
         cur.observe(lp)
     return w, cur.mastered, steps
 
@@ -181,7 +188,7 @@ def _advance_step(hi_steps, hi=0.3, lo=0.0, n_stages=4, seed=0):
     for _ in range(hi_steps):
         t += 1
         if cur.observe(hi):
-            return t                                      # (never happens while LP is high -> no premature advance)
+            return t  # (never happens while LP is high -> no premature advance)
     while True:
         t += 1
         if cur.observe(lo):
@@ -192,27 +199,31 @@ def main():
     T, patience = 20, 8
 
     # ---- (1) SELF-PACED (the key property): advance time TRACKS the learner's LP-dryup, not a clock ----
-    fast_adv = _advance_step(hi_steps=T)          # LP high for T then 0   -> advances ~T + patience
-    slow_adv = _advance_step(hi_steps=2 * T)      # slower learner: LP high 2T -> advances ~2T + patience
+    fast_adv = _advance_step(hi_steps=T)  # LP high for T then 0   -> advances ~T + patience
+    slow_adv = _advance_step(
+        hi_steps=2 * T
+    )  # slower learner: LP high 2T -> advances ~2T + patience
 
     # ---- (2) NO PREMATURE ADVANCE ----
     c_high = Curriculum(3, seed=0)
     for _ in range(100):
-        c_high.observe(0.3)                       # LP stays above threshold -> a still-learning stage is never skipped
+        c_high.observe(0.3)  # LP stays above threshold -> a still-learning stage is never skipped
     high_mastered = c_high.mastered
 
     c_dip = Curriculum(3, seed=0)
-    dip_trace = [0.3] * 5 + [0.0] + [0.3] * 20    # a single one-off dip below threshold, then learning resumes
+    dip_trace = (
+        [0.3] * 5 + [0.0] + [0.3] * 20
+    )  # a single one-off dip below threshold, then learning resumes
     dip_advanced = False
     for x in dip_trace:
         dip_advanced = c_dip.observe(x) or dip_advanced
     dip_mastered = c_dip.mastered
 
     c_diff = Curriculum(5, seed=0)
-    d_start = c_diff.difficulty()                 # fresh -> stage 0 -> difficulty 0.0
+    d_start = c_diff.difficulty()  # fresh -> stage 0 -> difficulty 0.0
     for _ in range(500):
-        c_diff.observe(0.0)                       # master every stage
-    d_end = c_diff.difficulty()                   # done -> hardest stage -> difficulty 1.0
+        c_diff.observe(0.0)  # master every stage
+    d_end = c_diff.difficulty()  # done -> hardest stage -> difficulty 1.0
 
     # ---- (3) CURRICULUM-HELPS via TRANSFER (the HARD, un-riggable control) ----
     budget = 300
@@ -223,59 +234,103 @@ def main():
 
     # ---- (4) DETERMINISM: two seed=s curricula fed the same LP trace agree exactly ----
     srng = random.Random(1234)
-    noisy = [0.3 + srng.uniform(-0.05, 0.05) for _ in range(10)] + [0.0] * 30   # seeded noisy LP trace (masters 3)
+    noisy = [0.3 + srng.uniform(-0.05, 0.05) for _ in range(10)] + [
+        0.0
+    ] * 30  # seeded noisy LP trace (masters 3)
     da, db = Curriculum(5, seed=7), Curriculum(5, seed=7)
     seq_a = [da.observe(x) for x in noisy]
     seq_b = [db.observe(x) for x in noisy]
     review_a = [da.review_stage() for _ in range(12)]
     review_b = [db.review_stage() for _ in range(12)]
-    learner_repro = (_run_curriculum_learner(budget, seed=0) == _run_curriculum_learner(budget, seed=0))
+    learner_repro = _run_curriculum_learner(budget, seed=0) == _run_curriculum_learner(
+        budget, seed=0
+    )
 
     print("=" * 78)
-    print("CURRICULUM -- self-paced developmental curriculum (starting small; graduates on mastery)")
+    print(
+        "CURRICULUM -- self-paced developmental curriculum (starting small; graduates on mastery)"
+    )
     print("=" * 78)
-    print(f"n_stages=4  mastery_threshold=0.02  patience={patience}  (mastery = LP <= thresh for `patience` ticks)")
+    print(
+        f"n_stages=4  mastery_threshold=0.02  patience={patience}  (mastery = LP <= thresh for `patience` ticks)"
+    )
     print("-" * 78)
-    print(f"(1) self-paced  : fast learner (LP high {T}) advances at tick {fast_adv}; "
-          f"slow learner (LP high {2 * T}) at tick {slow_adv}  (later by {slow_adv - fast_adv} = T)")
-    print(f"(2) no-premature: 100 high-LP ticks -> mastered={high_mastered}; a single dip -> mastered={dip_mastered}; "
-          f"difficulty {d_start:.2f} -> {d_end:.2f} across the curriculum")
-    print(f"(3) transfer    : curriculum reaches competence {cur_w:.3f} (mastered {cur_mastered}/4, {cur_stages} "
-          f"milestones, {cur_steps} steps) vs jump-to-hard {jump_w:.3f} ({jump_stages} milestones)")
-    print(f"(4) determinism : identical advance seq={seq_a == seq_b}  review seq={review_a == review_b}  "
-          f"learner reproducible={learner_repro}")
+    print(
+        f"(1) self-paced  : fast learner (LP high {T}) advances at tick {fast_adv}; "
+        f"slow learner (LP high {2 * T}) at tick {slow_adv}  (later by {slow_adv - fast_adv} = T)"
+    )
+    print(
+        f"(2) no-premature: 100 high-LP ticks -> mastered={high_mastered}; a single dip -> mastered={dip_mastered}; "
+        f"difficulty {d_start:.2f} -> {d_end:.2f} across the curriculum"
+    )
+    print(
+        f"(3) transfer    : curriculum reaches competence {cur_w:.3f} (mastered {cur_mastered}/4, {cur_stages} "
+        f"milestones, {cur_steps} steps) vs jump-to-hard {jump_w:.3f} ({jump_stages} milestones)"
+    )
+    print(
+        f"(4) determinism : identical advance seq={seq_a == seq_b}  review seq={review_a == review_b}  "
+        f"learner reproducible={learner_repro}"
+    )
     print("=" * 78)
 
     # ---- (1) SELF-PACED asserts (advance tracks LP-dryup, NOT a fixed schedule) ----
-    assert fast_adv == T + patience, "a fast learner must advance exactly `patience` ticks after its LP dries up"
-    assert slow_adv == 2 * T + patience, "a slower learner (LP high 2x as long) must advance at 2T + patience"
-    assert slow_adv - fast_adv == T, "the advance time must TRACK the LP-dryup (slow later by exactly T), not a clock"
-    assert fast_adv > T, "while LP is HIGH the curriculum must NOT advance (no premature graduation)"
+    assert fast_adv == T + patience, (
+        "a fast learner must advance exactly `patience` ticks after its LP dries up"
+    )
+    assert slow_adv == 2 * T + patience, (
+        "a slower learner (LP high 2x as long) must advance at 2T + patience"
+    )
+    assert slow_adv - fast_adv == T, (
+        "the advance time must TRACK the LP-dryup (slow later by exactly T), not a clock"
+    )
+    assert fast_adv > T, (
+        "while LP is HIGH the curriculum must NOT advance (no premature graduation)"
+    )
 
     # ---- (2) NO PREMATURE ADVANCE asserts ----
-    assert high_mastered == 0, "a still-learning stage (LP above threshold) must NEVER be mastered/skipped"
-    assert not dip_advanced and dip_mastered == 0, "a single one-off LP dip must NOT advance (patience holds)"
-    assert d_start == 0.0 and d_end == 1.0, "difficulty must rise 0 -> 1 as the curriculum is mastered end to end"
+    assert high_mastered == 0, (
+        "a still-learning stage (LP above threshold) must NEVER be mastered/skipped"
+    )
+    assert not dip_advanced and dip_mastered == 0, (
+        "a single one-off LP dip must NOT advance (patience holds)"
+    )
+    assert d_start == 0.0 and d_end == 1.0, (
+        "difficulty must rise 0 -> 1 as the curriculum is mastered end to end"
+    )
 
     # ---- (3) TRANSFER -- the HARD, un-riggable assert ----
     assert cur_w > 0.9, "the self-paced curriculum must reach HIGH final competence within budget"
-    assert jump_w < 0.1, "jump-to-hardest must stay stuck (the hard target starts out of the learnability frontier)"
-    assert cur_w > 5.0 * jump_w, \
+    assert jump_w < 0.1, (
+        "jump-to-hardest must stay stuck (the hard target starts out of the learnability frontier)"
+    )
+    assert cur_w > 5.0 * jump_w, (
         f"curriculum competence {cur_w:.3f} must FAR exceed jump-to-hard {jump_w:.3f} (transfer via starting small)"
-    assert cur_mastered > jump_stages and cur_stages > jump_stages, \
+    )
+    assert cur_mastered > jump_stages and cur_stages > jump_stages, (
         "the curriculum learner must master MORE milestones than the jump-to-hardest control within the same budget"
+    )
 
     # ---- (4) DETERMINISM asserts ----
-    assert seq_a == seq_b, "two Curriculum(seed=7) fed the same LP trace must give identical advance sequences"
+    assert seq_a == seq_b, (
+        "two Curriculum(seed=7) fed the same LP trace must give identical advance sequences"
+    )
     assert review_a == review_b, "seeded interleaved-review picks must be reproducible"
-    assert learner_repro, "the seeded curriculum learner must reproduce its (competence, mastered, steps) exactly"
+    assert learner_repro, (
+        "the seeded curriculum learner must reproduce its (competence, mastered, steps) exactly"
+    )
 
-    print(f"self-check OK: self-paced -- fast learner graduates at tick {fast_adv}, slow at {slow_adv} "
-          f"(later by exactly T={T}, tracking LP-dryup not a clock);")
-    print("  no premature advance (100 high-LP ticks + a one-off dip both keep mastered=0; difficulty 0->1);")
-    print(f"  TRANSFER (hard): starting-small curriculum reaches competence {cur_w:.3f} mastering {cur_mastered}/4 "
-          f"vs jump-to-hard {jump_w:.3f} ({jump_stages}/4) on the same {budget}-step budget "
-          f"(mean advance tick {mean([fast_adv, slow_adv]):.1f}); deterministic")
+    print(
+        f"self-check OK: self-paced -- fast learner graduates at tick {fast_adv}, slow at {slow_adv} "
+        f"(later by exactly T={T}, tracking LP-dryup not a clock);"
+    )
+    print(
+        "  no premature advance (100 high-LP ticks + a one-off dip both keep mastered=0; difficulty 0->1);"
+    )
+    print(
+        f"  TRANSFER (hard): starting-small curriculum reaches competence {cur_w:.3f} mastering {cur_mastered}/4 "
+        f"vs jump-to-hard {jump_w:.3f} ({jump_stages}/4) on the same {budget}-step budget "
+        f"(mean advance tick {mean([fast_adv, slow_adv]):.1f}); deterministic"
+    )
 
 
 if __name__ == "__main__":

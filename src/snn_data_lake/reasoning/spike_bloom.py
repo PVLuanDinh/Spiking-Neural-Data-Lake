@@ -12,10 +12,11 @@ On-thesis with spike_stream_sketch / streaming_hub / drift_monitor.
 
   python -m research.spike_bloom        # (also run by run_selfchecks.py, root on PYTHONPATH)
 """
+
 import math
 import random
 
-_P = (1 << 61) - 1                          # Mersenne prime: modulus for Carter-Wegman universal hashing
+_P = (1 << 61) - 1  # Mersenne prime: modulus for Carter-Wegman universal hashing
 
 
 def _digest(pattern):
@@ -34,11 +35,11 @@ class BloomFilter:
         self.k = k
         self.bits = bytearray(m)
         rng = random.Random(seed)
-        self.ab = [(rng.randrange(1, _P), rng.randrange(0, _P)) for _ in range(k)]   # per-hash (a,b)
+        self.ab = [(rng.randrange(1, _P), rng.randrange(0, _P)) for _ in range(k)]  # per-hash (a,b)
 
     def _idx(self, key):
         h = _digest(key)
-        return [((a * h + b) % _P) % self.m for a, b in self.ab]                      # universal hashes
+        return [((a * h + b) % _P) % self.m for a, b in self.ab]  # universal hashes
 
     def add(self, key):
         for i in self._idx(key):
@@ -87,16 +88,22 @@ def main():
     print(f"false positives : {fp_rate:.3f} observed vs {fp_theory:.3f} analytic bound")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert false_neg == 0, f"a Bloom filter must never give a false negative ({false_neg})"
-    assert fp_rate < 3 * fp_theory + 0.01, f"false-positive rate must track the analytic bound ({fp_rate:.3f} vs {fp_theory:.3f})"
-    assert bloom.contains(inserted[0]) and not BloomFilter(m=m, k=k).contains(inserted[0]), "empty filter contains nothing; add works"
+    assert fp_rate < 3 * fp_theory + 0.01, (
+        f"false-positive rate must track the analytic bound ({fp_rate:.3f} vs {fp_theory:.3f})"
+    )
+    assert bloom.contains(inserted[0]) and not BloomFilter(m=m, k=k).contains(inserted[0]), (
+        "empty filter contains nothing; add works"
+    )
     b2 = BloomFilter(m=m, k=k)
     for p in inserted:
         b2.add(p)
     assert b2.bits == bloom.bits, "same inserts -> identical filter (deterministic)"
-    print(f"self-check OK: {n_in} patterns, 0 false negatives, FP {fp_rate:.3f} ~ bound {fp_theory:.3f} "
-          f"in {m} bits; deterministic")
+    print(
+        f"self-check OK: {n_in} patterns, 0 false negatives, FP {fp_rate:.3f} ~ bound {fp_theory:.3f} "
+        f"in {m} bits; deterministic"
+    )
 
 
 if __name__ == "__main__":

@@ -57,7 +57,7 @@ STDP learner (accuracy lever = neuron SCALE, ~88% -> ~95% at 6400).
 Run (defaults finish a smoke run in a few minutes on GPU):
     NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python research/deep_stdp.py
 Scale knobs: NORD_C NORD_M NORD_TRAIN NORD_TEST NORD_GPU NORD_CTHRESH
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core stays zero-dep)
+Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
 """
 import os
 

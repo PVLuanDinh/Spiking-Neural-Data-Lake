@@ -1,4 +1,4 @@
-"""Loadable brain bundle -- a MANIFEST that packages a MODULAR multi-skill brain (zero-dep).
+"""Loadable brain bundle -- a MANIFEST that packages a MODULAR multi-skill brain.
 
 HONEST FRAMING (this is the whole point of the module -- read it before changing anything):
   * A brain bundle is NOT one monolithic network trained on everything, and it does NOT learn all
@@ -23,6 +23,7 @@ Per-skill spiking inference is DELEGATED to snn_data_lake.cortex.trained_brain -
 
   python -m snn_data_lake.substrate.brain_bundle        # (also run by run_selfchecks.py)
 """
+
 import json
 import os
 
@@ -43,8 +44,9 @@ def make_bundle(skills, instincts=None, motor=None, meta=None):
     """
     if not isinstance(skills, dict) or not skills:
         raise ValueError("make_bundle: skills must be a non-empty {name: brain_path} dict")
-    skill_entries = {str(name): {"kind": "trained_brain", "path": str(path)}
-                     for name, path in skills.items()}
+    skill_entries = {
+        str(name): {"kind": "trained_brain", "path": str(path)} for name, path in skills.items()
+    }
     return {
         "format": BUNDLE_FORMAT,
         "skills": skill_entries,
@@ -80,14 +82,22 @@ def load_bundle(path):
     base = os.path.dirname(os.path.abspath(path))
     loaded = {}
     for name, entry in skills.items():
-        if not isinstance(entry, dict) or entry.get("kind") != "trained_brain" or not entry.get("path"):
-            raise ValueError(f"{path}: skill {name!r} must be {{'kind':'trained_brain','path':<file>}}")
-        brain_path = os.path.join(base, entry["path"])       # resolve relative to the manifest dir
+        if (
+            not isinstance(entry, dict)
+            or entry.get("kind") != "trained_brain"
+            or not entry.get("path")
+        ):
+            raise ValueError(
+                f"{path}: skill {name!r} must be {{'kind':'trained_brain','path':<file>}}"
+            )
+        brain_path = os.path.join(base, entry["path"])  # resolve relative to the manifest dir
         loaded[str(name)] = trained_brain.load_brain(brain_path)  # validates the skill file itself
-    return BrainBundle(loaded,
-                       dict(manifest.get("instincts") or {}),
-                       dict(manifest.get("motor") or {}),
-                       dict(manifest.get("meta") or {}))
+    return BrainBundle(
+        loaded,
+        dict(manifest.get("instincts") or {}),
+        dict(manifest.get("motor") or {}),
+        dict(manifest.get("meta") or {}),
+    )
 
 
 class BrainBundle:
@@ -131,7 +141,9 @@ class BrainBundle:
 
     def describe(self):
         """Factual one-paragraph summary: the separate skills (+ in->out shape) and which primitives are wired."""
-        parts = [f"{n}: {self.skills[n]['in']}->{self.skills[n]['out']}" for n in self.skill_names()]
+        parts = [
+            f"{n}: {self.skills[n]['in']}->{self.skills[n]['out']}" for n in self.skill_names()
+        ]
         on_i = [n for n in sorted(self.instincts) if self.instincts[n]]
         on_m = [n for n in sorted(self.motor) if self.motor[n]]
         return (
@@ -150,7 +162,7 @@ def main():
 
     from snn_data_lake import snn_classifier as scl
 
-    random.seed(0)                                    # local, deterministic data generation
+    random.seed(0)  # local, deterministic data generation
     temps = scl.templates()
     C = len(temps)
     train_data = scl.dataset(scl.TRAIN_PER_CLASS, temps)
@@ -196,13 +208,15 @@ def main():
         print(f"wired motor     : {wired_m}   (hardwired flags, NOT weights)")
         print("=" * 66)
 
-        # ---- self-check: deterministic asserts, zero-dep ----
+        # ---- self-check: deterministic asserts ----
         assert bundle.skill_names() == ["shapes", "vision"], "skill_names must be sorted"
         # routing: the named skill really runs THAT skill's brain
         assert pred_vision == trained_brain.predict(brain_vision, x), "vision routing wrong"
         assert pred_shapes == trained_brain.predict(brain_shapes, x), "shapes routing wrong"
         assert pred_shapes != pred_vision, "routing must select the specific skill's brain"
-        assert bundle.scores("vision", x) == trained_brain.predict_scores(brain_vision, x), "scores route wrong"
+        assert bundle.scores("vision", x) == trained_brain.predict_scores(brain_vision, x), (
+            "scores route wrong"
+        )
         # a missing skill raises a clear KeyError
         missing = False
         try:
@@ -211,7 +225,9 @@ def main():
             missing = True
         assert missing, "predicting an absent skill must raise"
         # instinct / motor flags read back
-        assert bundle.has_instinct("reflex") and bundle.has_instinct("cortisol"), "instinct flags lost"
+        assert bundle.has_instinct("reflex") and bundle.has_instinct("cortisol"), (
+            "instinct flags lost"
+        )
         assert bundle.has_motor("pid") and not bundle.has_motor("cpg"), "motor flags lost"
         assert not bundle.has_instinct("nope"), "unknown primitive defaults to False"
         # manifest round-trips through save/load exactly, and a reloaded bundle routes identically
@@ -222,20 +238,25 @@ def main():
         # describe() names the skills + shapes and states the honest modular framing
         desc = bundle.describe()
         assert "vision" in desc and "shapes" in desc, "describe must name the skills"
-        assert f"{brain_vision['in']}->{brain_vision['out']}" in desc, "describe must show in->out shape"
-        assert "NOT one network trained on everything" in desc, "describe must state the honest framing"
+        assert f"{brain_vision['in']}->{brain_vision['out']}" in desc, (
+            "describe must show in->out shape"
+        )
+        assert "NOT one network trained on everything" in desc, (
+            "describe must state the honest framing"
+        )
         # determinism: identical inputs -> identical predictions on repeat (RNG-independent)
         s_before = bundle.scores("vision", x)
         for _ in range(5):
-            random.random()                           # perturb the global RNG between calls
+            random.random()  # perturb the global RNG between calls
         assert bundle.scores("vision", x) == s_before, "predictions must be deterministic"
         assert bundle.predict("shapes", x) == pred_shapes, "predictions must be deterministic"
 
         # trust boundary: a mis-shaped skill file is REJECTED by load_bundle
         with open(os.path.join(work, "bad_skill.json"), "w", encoding="utf-8") as f:
             json.dump({"format": "not-a-brain", "layers": []}, f)
-        bad_path = save_bundle(make_bundle({"broken": "bad_skill.json"}),
-                               os.path.join(work, "bad_bundle.json"))
+        bad_path = save_bundle(
+            make_bundle({"broken": "bad_skill.json"}), os.path.join(work, "bad_bundle.json")
+        )
         bad_rejected = False
         try:
             load_bundle(bad_path)
@@ -244,7 +265,9 @@ def main():
         assert bad_rejected, "a mis-shaped skill file must be rejected at the trust boundary"
         # a wrong bundle format and an empty skills dict are also rejected
         with open(os.path.join(work, "wrong_fmt.json"), "w", encoding="utf-8") as f:
-            json.dump({"format": "nope", "skills": {"v": {"kind": "trained_brain", "path": "x"}}}, f)
+            json.dump(
+                {"format": "nope", "skills": {"v": {"kind": "trained_brain", "path": "x"}}}, f
+            )
         with open(os.path.join(work, "empty.json"), "w", encoding="utf-8") as f:
             json.dump({"format": BUNDLE_FORMAT, "skills": {}}, f)
         for bad in ("wrong_fmt.json", "empty.json"):
@@ -257,9 +280,11 @@ def main():
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
-    print(f"self-check OK: bundle packages {len(manifest['skills'])} SEPARATE trained skills "
-          f"(routes to each; flags for wired reflex/cortisol/pid/cpg), round-trips, deterministic, "
-          f"and rejects bad skill files at the trust boundary")
+    print(
+        f"self-check OK: bundle packages {len(manifest['skills'])} SEPARATE trained skills "
+        f"(routes to each; flags for wired reflex/cortisol/pid/cpg), round-trips, deterministic, "
+        f"and rejects bad skill files at the trust boundary"
+    )
 
 
 if __name__ == "__main__":

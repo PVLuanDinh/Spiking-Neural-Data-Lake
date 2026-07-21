@@ -1,5 +1,5 @@
 """
-Spike-cardinality sketch -- HyperLogLog distinct-motif counting in fixed tiny memory (pure stdlib).
+Spike-cardinality sketch -- HyperLogLog distinct-motif counting in fixed tiny memory.
 
 The streaming lake ingests an unbounded flood of spike motifs. Three DIFFERENT questions recur, each answered
 by its own fixed-memory sketch:
@@ -24,7 +24,7 @@ Contrast with the sibling sketches, made explicit:
     HyperLogLog answers only the set's size and cannot test membership of any single motif. Together the three
     (frequency / membership / cardinality) cover the standard streaming-analytics questions in fixed memory.
 
-Fixed-memory analytics family: like spike_stream_sketch and research/spike_bloom this is a zero-dep, read-only
+Fixed-memory analytics family: like spike_stream_sketch and research/spike_bloom this is a read-only
 primitive that fits streaming_hub's live log -- "how many distinct motifs have streamed?" in O(m) memory that is
 independent of the count and carries to the documented scale-out path, not a saving on the local index.
 
@@ -35,17 +35,20 @@ far above anything the lake counts here, so that correction is deliberately omit
 
   python -m snn_data_lake.substrate.spike_cardinality        # (also run by run_selfchecks.py)
 """
+
 import hashlib
 import math
 
-_BITS = 64                                   # width of the hash used for index + rank extraction
+_BITS = 64  # width of the hash used for index + rank extraction
 _MASK64 = (1 << _BITS) - 1
 
 
 def _hash64(item, seed):
     """Deterministic 64-bit hash of a motif. Uses hashlib (NOT builtin hash(), which is per-process salted)."""
     if isinstance(item, (set, frozenset)):
-        payload = ",".join(str(x) for x in sorted(item))     # order-independent for a set of active features
+        payload = ",".join(
+            str(x) for x in sorted(item)
+        )  # order-independent for a set of active features
     elif isinstance(item, (list, tuple)):
         payload = ",".join(str(x) for x in item)
     else:
@@ -81,15 +84,15 @@ class HyperLogLog:
         self.p = p
         self.m = 1 << p
         self.seed = seed
-        self.registers = bytearray(self.m)             # each byte holds a rank rho (max (64-p)+1 <= 61)
-        self._tail = _BITS - p                          # bits left for the rank after the p index bits
+        self.registers = bytearray(self.m)  # each byte holds a rank rho (max (64-p)+1 <= 61)
+        self._tail = _BITS - p  # bits left for the rank after the p index bits
         self._alpha = _alpha_m(self.m)
 
     def add(self, item):
         """Fold one motif into the sketch: top p bits pick the register, keep the max leading-zero rank there."""
         h = _hash64(item, self.seed)
-        j = h >> self._tail                             # top p bits = register index
-        w = h & ((1 << self._tail) - 1)                 # remaining bits carry the rank
+        j = h >> self._tail  # top p bits = register index
+        w = h & ((1 << self._tail) - 1)  # remaining bits carry the rank
         rho = _rho(w, self._tail)
         if rho > self.registers[j]:
             self.registers[j] = rho
@@ -110,7 +113,7 @@ class HyperLogLog:
             if r == 0:
                 zeros += 1
         est = self._alpha * m * m / sum_inv
-        if est <= 2.5 * m and zeros > 0:                # low load: harmonic estimate is biased -> linear counting
+        if est <= 2.5 * m and zeros > 0:  # low load: harmonic estimate is biased -> linear counting
             est = m * math.log(m / zeros)
         return est
 
@@ -122,7 +125,9 @@ class HyperLogLog:
         if self.p != other.p:
             raise ValueError("cannot merge HLLs with different precision p")
         if self.seed != other.seed:
-            raise ValueError("cannot merge HLLs with different seed (registers use different hashes)")
+            raise ValueError(
+                "cannot merge HLLs with different seed (registers use different hashes)"
+            )
         out = HyperLogLog(p=self.p, seed=self.seed)
         for i in range(self.m):
             out.registers[i] = max(self.registers[i], other.registers[i])
@@ -137,7 +142,7 @@ class HyperLogLog:
 def main():
     p = 14
     m = 1 << p
-    se = 1.04 / math.sqrt(m)                             # theoretical relative std error
+    se = 1.04 / math.sqrt(m)  # theoretical relative std error
     bound = 3.0 * se
 
     # ---- 1. accuracy across scales: distinct N with duplicates mixed in, estimate within 3 sigma ----
@@ -148,7 +153,7 @@ def main():
         for i in range(n):
             hll.add(("motif", i))
             if i % 4 == 0:
-                hll.add(("motif", i))                   # duplicates in the stream (must not change the count)
+                hll.add(("motif", i))  # duplicates in the stream (must not change the count)
         hlls[n] = hll
         est = hll.count()
         rows.append((n, est, abs(est - n) / n))
@@ -159,7 +164,7 @@ def main():
     dup.add_all(("dup", i) for i in range(n_dup))
     before = dup.count()
     for _round in range(20):
-        dup.add_all(("dup", i) for i in range(n_dup))   # same distinct items, 20x more occurrences
+        dup.add_all(("dup", i) for i in range(n_dup))  # same distinct items, 20x more occurrences
     after = dup.count()
 
     # ---- 3. fixed tiny memory: same m registers for N=100 and N=100000 (a real id-set would grow with N) ----
@@ -171,7 +176,7 @@ def main():
     a = HyperLogLog(p=p, seed=0).add_all(("u", i) for i in range(0, 30000))
     b = HyperLogLog(p=p, seed=0).add_all(("u", i) for i in range(20000, 50000))
     union = a.merge(b)
-    union_truth = 50000                                 # |[0,30000) U [20000,50000)| = |[0,50000)|
+    union_truth = 50000  # |[0,30000) U [20000,50000)| = |[0,50000)|
     union_est = union.count()
     union_rel = abs(union_est - union_truth) / union_truth
 
@@ -183,29 +188,47 @@ def main():
     print("=" * 64)
     print("SPIKE-CARDINALITY SKETCH -- HyperLogLog distinct-motif counting")
     print("=" * 64)
-    print(f"registers m = 2^{p} = {m} bytes; std error 1.04/sqrt(m) = {se * 100:.2f}%; "
-          f"3 sigma bound {bound * 100:.2f}%")
+    print(
+        f"registers m = 2^{p} = {m} bytes; std error 1.04/sqrt(m) = {se * 100:.2f}%; "
+        f"3 sigma bound {bound * 100:.2f}%"
+    )
     print(f"{'true N':>9}  ->  {'estimate':>12}   {'rel err':>8}")
     for n, est, rel in rows:
         print(f"{n:>9}  ->  {est:>12.1f}   {rel * 100:>7.2f}%")
-    print(f"duplicate-insensitive: {n_dup} distinct, est before {before:.1f} -> after {after:.1f} "
-          f"(each item then added 20x more)")
-    print(f"fixed memory: m = {len(small.registers)} registers for N=100 AND N={max_n} "
-          f"(a real id-set would need {max_n} entries)")
-    print(f"merge = union: est {union_est:.1f} vs true {union_truth} (rel err {union_rel * 100:.2f}%)")
+    print(
+        f"duplicate-insensitive: {n_dup} distinct, est before {before:.1f} -> after {after:.1f} "
+        f"(each item then added 20x more)"
+    )
+    print(
+        f"fixed memory: m = {len(small.registers)} registers for N=100 AND N={max_n} "
+        f"(a real id-set would need {max_n} entries)"
+    )
+    print(
+        f"merge = union: est {union_est:.1f} vs true {union_truth} (rel err {union_rel * 100:.2f}%)"
+    )
     print(f"determinism: two fresh instances -> identical registers + estimate: {deterministic}")
     print("=" * 64)
 
-    # ---- asserts: deterministic, zero-dep; genuine estimates, not rigged ----
+    # ---- asserts: deterministic; genuine estimates, not rigged ----
     for n, _est, rel in rows:
-        assert rel < bound, f"N={n}: rel err {rel * 100:.2f}% exceeds 3 sigma bound {bound * 100:.2f}%"
+        assert rel < bound, (
+            f"N={n}: rel err {rel * 100:.2f}% exceeds 3 sigma bound {bound * 100:.2f}%"
+        )
     assert after == before, f"cardinality must ignore duplicates ({before} -> {after})"
-    assert len(small.registers) == m == len(big.registers), "register count must be exactly m regardless of N"
-    assert m < max_n, f"memory m={m} must be independent of (and below) the largest cardinality {max_n}"
-    assert union_rel < bound, f"merged union estimate {union_est:.1f} off by {union_rel * 100:.2f}% (> bound)"
+    assert len(small.registers) == m == len(big.registers), (
+        "register count must be exactly m regardless of N"
+    )
+    assert m < max_n, (
+        f"memory m={m} must be independent of (and below) the largest cardinality {max_n}"
+    )
+    assert union_rel < bound, (
+        f"merged union estimate {union_est:.1f} off by {union_rel * 100:.2f}% (> bound)"
+    )
     assert deterministic, "same p/seed/items must give identical registers and estimate"
-    print(f"self-check OK: distinct counted within {bound * 100:.2f}% across N in {list(scales)} using {m} bytes; "
-          f"duplicate-insensitive; merge=union; deterministic")
+    print(
+        f"self-check OK: distinct counted within {bound * 100:.2f}% across N in {list(scales)} using {m} bytes; "
+        f"duplicate-insensitive; merge=union; deterministic"
+    )
 
 
 if __name__ == "__main__":

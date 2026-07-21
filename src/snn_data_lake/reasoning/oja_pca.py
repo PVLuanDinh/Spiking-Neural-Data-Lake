@@ -12,6 +12,7 @@ On-thesis with bcm_plasticity / intrinsic_plasticity / population_encoding.
 
   python -m research.oja_pca        # (also run by run_selfchecks.py, root on PYTHONPATH)
 """
+
 import math
 import random
 
@@ -28,7 +29,9 @@ class OjaNeuron:
 
     def learn(self, x):
         y = dot(self.w, x)
-        self.w = [wi + self.lr * y * (xi - y * wi) for wi, xi in zip(self.w, x)]  # Oja: Hebb + self-normalizing decay
+        self.w = [
+            wi + self.lr * y * (xi - y * wi) for wi, xi in zip(self.w, x)
+        ]  # Oja: Hebb + self-normalizing decay
         return y
 
     def run(self, data, epochs=1):
@@ -46,7 +49,9 @@ def sanger(data, k, dim, lr=0.01, epochs=6, seed=0):
         for x in data:
             y = [dot(w[j], x) for j in range(k)]
             for j in range(k):
-                deflate = [sum(y[m] * w[m][i] for m in range(j + 1)) for i in range(dim)]  # subtract higher PCs
+                deflate = [
+                    sum(y[m] * w[m][i] for m in range(j + 1)) for i in range(dim)
+                ]  # subtract higher PCs
                 w[j] = [w[j][i] + lr * y[j] * (x[i] - deflate[i]) for i in range(dim)]
     return w
 
@@ -58,7 +63,7 @@ def _abs_cos(a, b):
 def main():
     rng = random.Random(1)
     dim = 8
-    e1 = unit([1.0, 0.6, -0.3, 0.2, -0.8, 0.1, 0.4, -0.5])     # planted dominant variance direction
+    e1 = unit([1.0, 0.6, -0.3, 0.2, -0.8, 0.1, 0.4, -0.5])  # planted dominant variance direction
     e2 = unit([-0.5, 0.4, 0.7, -0.1, 0.2, 0.3, -0.6, 0.1])
     e2 = unit([e2[i] - dot(e2, e1) * e1[i] for i in range(dim)])  # orthogonalize the 2nd direction
 
@@ -85,13 +90,19 @@ def main():
     print(f"Sanger k=2 : PC1.e1 = {cos_top:.3f}, PC2.e2 = {cos_2nd:.3f} (top-2 in order)")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert cos1 > 0.95, f"Oja neuron must converge to the top principal component ({cos1:.3f})"
     assert 0.9 < norm < 1.1, f"Oja must self-normalize the weight to ~unit norm ({norm:.3f})"
-    assert cos_top > 0.95 and cos_2nd > 0.9, f"Sanger must extract PC1,PC2 in order ({cos_top:.3f}, {cos_2nd:.3f})"
-    assert OjaNeuron(dim, seed=0).run(data, epochs=8) == w, "same data -> identical weight (deterministic)"
-    print(f"self-check OK: Oja neuron -> top PC (|cos| {cos1:.2f}, ||w|| {norm:.2f}); Sanger -> top-2 in order "
-          f"({cos_top:.2f}, {cos_2nd:.2f}); deterministic")
+    assert cos_top > 0.95 and cos_2nd > 0.9, (
+        f"Sanger must extract PC1,PC2 in order ({cos_top:.3f}, {cos_2nd:.3f})"
+    )
+    assert OjaNeuron(dim, seed=0).run(data, epochs=8) == w, (
+        "same data -> identical weight (deterministic)"
+    )
+    print(
+        f"self-check OK: Oja neuron -> top PC (|cos| {cos1:.2f}, ||w|| {norm:.2f}); Sanger -> top-2 in order "
+        f"({cos_top:.2f}, {cos_2nd:.2f}); deterministic"
+    )
 
 
 if __name__ == "__main__":

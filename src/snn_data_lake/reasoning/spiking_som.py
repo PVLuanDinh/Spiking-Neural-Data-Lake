@@ -10,6 +10,7 @@ is unchanged. Refs: Kohonen, "The self-organizing map", Proc. IEEE 78 (1990).
 
   python -m snn_data_lake.spiking_som        # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
@@ -69,7 +70,7 @@ def som_cluster(vectors, g=4, epochs=15, seed=0):
 def main():
     rng = random.Random(1)
     library = build_default_library()
-    gestures = list(library)[:3]                          # three distinct gestures to rediscover
+    gestures = list(library)[:3]  # three distinct gestures to rediscover
     per = 30
 
     labelled = []
@@ -84,6 +85,7 @@ def main():
     # purity: each BMU group's majority gesture; fraction of vectors matching their group's majority
     bmu_of = {id(v): som.bmu(v) for v, _ in labelled}
     from collections import Counter
+
     votes = {}
     for v, gi in labelled:
         votes.setdefault(bmu_of[id(v)], Counter())[gi] += 1
@@ -98,12 +100,14 @@ def main():
     print(f"active BMU cells: {len(groups)};  cluster purity: {purity:.0%}")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert purity >= 0.9, f"SOM clustering must separate the gestures ({purity:.2f})"
     assert len(groups) >= len(gestures), "distinct gestures must land in distinct BMU cells"
     assert som_cluster(vectors)[1].keys() == groups.keys(), "same seed -> identical clustering"
-    print(f"self-check OK: SOM groups {len(gestures)} gestures at {purity:.0%} purity over {len(groups)} "
-          f"BMU cells; additive backend, single-link cluster_unknowns unchanged; deterministic")
+    print(
+        f"self-check OK: SOM groups {len(gestures)} gestures at {purity:.0%} purity over {len(groups)} "
+        f"BMU cells; additive backend, single-link cluster_unknowns unchanged; deterministic"
+    )
 
 
 if __name__ == "__main__":

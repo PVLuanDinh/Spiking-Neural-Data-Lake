@@ -1,6 +1,6 @@
 """
 Efference copy / forward model -- action-conditioned sensory prediction that cancels self-generated
-sensation (reafference) and flags external perturbations (exafference). Pure stdlib, no tensors.
+sensation (reafference) and flags external perturbations (exafference).
 
 The reafference principle (von Holst & Mittelstaedt 1950) + internal forward models (Wolpert,
 Ghahramani & Jordan, Science 269:1880, 1995; Sperry's corollary discharge): when the system acts,
@@ -42,6 +42,7 @@ Refs: von Holst & Mittelstaedt (1950); Wolpert, Ghahramani & Jordan, Science 269
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.forward_model
 """
+
 import random
 
 from snn_data_lake.substrate._mathutils import mean
@@ -93,7 +94,7 @@ class ForwardModel:
         self.a_hat = float(a)
         self.b_hat = float(b)
         self.dt = float(dt)
-        self.seed = seed          # deterministic predictor; retained for API symmetry, not sampled
+        self.seed = seed  # deterministic predictor; retained for API symmetry, not sampled
 
     def predict(self, state, command):
         """Action-conditioned sensory prediction s_hat from the efference copy of `command`."""
@@ -157,7 +158,7 @@ def main():
     thresh = 0.05
     n2 = 60
     perturb_step, external = 30, 2.0
-    cmds2 = [random.Random(11).uniform(-1.0, 1.0) for _ in range(n2)]   # fixed command sequence
+    cmds2 = [random.Random(11).uniform(-1.0, 1.0) for _ in range(n2)]  # fixed command sequence
     plant2 = Plant(a_true, b_true, noise=0.005, dt=dt, seed=2)
     plant2.reset(0.0)
     fm2 = ForwardModel(a_true, b_true, dt=dt, seed=0)
@@ -177,21 +178,21 @@ def main():
     s0, u_d = 0.4, 0.7
     plant_self = Plant(a_true, b_true, noise=0.0, dt=dt, seed=0)
     plant_self.reset(s0)
-    nxt_self = plant_self.step(command=u_d, external=0.0)          # self-generated
+    nxt_self = plant_self.step(command=u_d, external=0.0)  # self-generated
     delta_self = nxt_self - s0
-    e_self = fm2.residual(s0, u_d, nxt_self)                       # efference copy present -> ~0
+    e_self = fm2.residual(s0, u_d, nxt_self)  # efference copy present -> ~0
     det_self = fm2.detect(s0, u_d, nxt_self, thresh)
 
     plant_ext = Plant(a_true, b_true, noise=0.0, dt=dt, seed=0)
     plant_ext.reset(s0)
-    ext_equiv = b_true * u_d                                       # dt*external == dt*b*u => equal ds
-    nxt_ext = plant_ext.step(command=0.0, external=ext_equiv)      # external, zero command
+    ext_equiv = b_true * u_d  # dt*external == dt*b*u => equal ds
+    nxt_ext = plant_ext.step(command=0.0, external=ext_equiv)  # external, zero command
     delta_ext = nxt_ext - s0
-    e_ext = fm2.residual(s0, 0.0, nxt_ext)                         # no efference copy -> large
+    e_ext = fm2.residual(s0, 0.0, nxt_ext)  # no efference copy -> large
     det_ext = fm2.detect(s0, 0.0, nxt_ext, thresh)
 
     # ---- 4. ONLINE ADAPTATION: start with WRONG gains, learn the plant from self-generated motion ----
-    fm_l = ForwardModel(a=a_true + 0.6, b=b_true - 0.5, dt=dt, seed=0)   # mismatched a_hat, b_hat
+    fm_l = ForwardModel(a=a_true + 0.6, b=b_true - 0.5, dt=dt, seed=0)  # mismatched a_hat, b_hat
     plant_l = Plant(a_true, b_true, noise=0.0, dt=dt, seed=0)
     plant_l.reset(0.0)
     rng_l = random.Random(5)
@@ -212,46 +213,65 @@ def main():
     print("=" * 70)
     print("FORWARD MODEL -- efference copy: cancel reafference, flag exafference")
     print("=" * 70)
-    print(f"reafference : mean self-generated e {mean_self:+.2e} (mean |e| {mean_abs_self:.2e} = "
-          f"sensor-noise floor) -> cancelled")
-    print(f"exafference : perturbed-step |e| {perturbed_err:.4f} vs baseline max |e| {baseline_err:.4f} "
-          f"(thresh {thresh}); flagged steps {detected_steps}")
-    print(f"discriminate: same delta-s self {delta_self:+.4f} / external {delta_ext:+.4f}; "
-          f"e_self {e_self:+.2e} (detect {det_self}) vs e_ext {e_ext:+.4f} (detect {det_ext})")
-    print(f"learning    : mean |e| first-20 {first_err:.4f} -> last-20 {last_err:.6f} "
-          f"({first_err / last_err:.0f}x lower); a_hat {fm_l.a_hat:+.3f} (a {a_true}) "
-          f"b_hat {fm_l.b_hat:+.3f} (b {b_true})")
+    print(
+        f"reafference : mean self-generated e {mean_self:+.2e} (mean |e| {mean_abs_self:.2e} = "
+        f"sensor-noise floor) -> cancelled"
+    )
+    print(
+        f"exafference : perturbed-step |e| {perturbed_err:.4f} vs baseline max |e| {baseline_err:.4f} "
+        f"(thresh {thresh}); flagged steps {detected_steps}"
+    )
+    print(
+        f"discriminate: same delta-s self {delta_self:+.4f} / external {delta_ext:+.4f}; "
+        f"e_self {e_self:+.2e} (detect {det_self}) vs e_ext {e_ext:+.4f} (detect {det_ext})"
+    )
+    print(
+        f"learning    : mean |e| first-20 {first_err:.4f} -> last-20 {last_err:.6f} "
+        f"({first_err / last_err:.0f}x lower); a_hat {fm_l.a_hat:+.3f} (a {a_true}) "
+        f"b_hat {fm_l.b_hat:+.3f} (b {b_true})"
+    )
     print(f"determinism : identical residual traces {same_trace}")
     print("=" * 70)
 
-    # ---- self-check: deterministic asserts, zero-dep stdlib, ASCII-only prints ----
-    assert abs(mean_self) < 5e-3, \
+    # ---- self-check: deterministic asserts, ASCII-only prints ----
+    assert abs(mean_self) < 5e-3, (
         f"matched model must cancel reafference: mean self-generated e ~0 ({mean_self:.2e})"
-    assert mean_abs_self > 1e-4, \
+    )
+    assert mean_abs_self > 1e-4, (
         f"there must be real sensor noise being cancelled, not a trivial zero ({mean_abs_self:.2e})"
-    assert perturbed_err > thresh, \
+    )
+    assert perturbed_err > thresh, (
         f"an external perturbation must spike the error above thresh ({perturbed_err:.4f})"
-    assert baseline_err < thresh, \
-        f"non-perturbed steps must stay below thresh ({baseline_err:.4f})"
-    assert detected_steps == [perturb_step], \
+    )
+    assert baseline_err < thresh, f"non-perturbed steps must stay below thresh ({baseline_err:.4f})"
+    assert detected_steps == [perturb_step], (
         f"detect must flag exactly the perturbed step ({detected_steps})"
-    assert perturbed_err > 10 * baseline_err, \
+    )
+    assert perturbed_err > 10 * baseline_err, (
         f"exafference must stand well clear of the reafference floor ({perturbed_err:.4f} vs {baseline_err:.4f})"
-    assert abs(delta_self - delta_ext) < 1e-9, \
+    )
+    assert abs(delta_self - delta_ext) < 1e-9, (
         f"the two paths must produce the SAME sensory change ({delta_self:.4f} vs {delta_ext:.4f})"
-    assert abs(e_self) < thresh and not det_self, \
+    )
+    assert abs(e_self) < thresh and not det_self, (
         f"the self-generated (commanded) change must be cancelled, not flagged (e {e_self:.2e})"
-    assert abs(e_ext) > thresh and det_ext, \
+    )
+    assert abs(e_ext) > thresh and det_ext, (
         f"the equal EXTERNAL change must be flagged as exafference (e {e_ext:.4f})"
-    assert last_err < first_err * 0.1, \
+    )
+    assert last_err < first_err * 0.1, (
         f"online learning must cut the reafference error clearly ({first_err:.4f} -> {last_err:.6f})"
-    assert abs(fm_l.a_hat - a_true) < 0.05 and abs(fm_l.b_hat - b_true) < 0.05, \
+    )
+    assert abs(fm_l.a_hat - a_true) < 0.05 and abs(fm_l.b_hat - b_true) < 0.05, (
         f"the model must converge to the true plant gains (a_hat {fm_l.a_hat}, b_hat {fm_l.b_hat})"
+    )
     assert same_trace, "same params/seed must give identical residual traces"
-    print(f"self-check OK: reafference cancelled (mean e {mean_self:.1e}); exafference flagged "
-          f"(|e| {perturbed_err:.3f} vs floor {baseline_err:.3f}); same delta-s {delta_self:.3f} "
-          f"read as self (e {e_self:.1e}) vs external (e {e_ext:.3f}); learning "
-          f"{first_err:.3f} -> {last_err:.4f}; deterministic")
+    print(
+        f"self-check OK: reafference cancelled (mean e {mean_self:.1e}); exafference flagged "
+        f"(|e| {perturbed_err:.3f} vs floor {baseline_err:.3f}); same delta-s {delta_self:.3f} "
+        f"read as self (e {e_self:.1e}) vs external (e {e_ext:.3f}); learning "
+        f"{first_err:.3f} -> {last_err:.4f}; deterministic"
+    )
 
 
 if __name__ == "__main__":

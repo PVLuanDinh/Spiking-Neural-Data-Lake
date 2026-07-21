@@ -32,10 +32,11 @@ Determinism & style invariants (per CLAUDE.md):
   * per-instance random.Random(seed); the projection is frozen at __init__ (no import-time
     or global RNG, no wall-clock).
   * bucket id via zlib.crc32 of the sign-code bytes -- NEVER the builtin hash().
-  * pure stdlib (math, random, zlib, substrate._mathutils.dot); ASCII-only prints.
+  * imports math, random, zlib, substrate._mathutils.dot (numpy/torch allowed project-wide); ASCII-only prints.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.generalizing_novelty
 """
+
 import math
 import random
 import zlib
@@ -63,8 +64,7 @@ class GeneralizingNovelty:
         rng = random.Random(seed)
         # K signed random hyperplanes through the origin, FROZEN at construction.
         self._planes = tuple(
-            tuple(rng.uniform(-1.0, 1.0) for _ in range(dim))
-            for _ in range(n_bits)
+            tuple(rng.uniform(-1.0, 1.0) for _ in range(dim)) for _ in range(n_bits)
         )
         self._counts = {}  # bucket id -> visit count
 
@@ -89,7 +89,7 @@ class GeneralizingNovelty:
 
 
 # --------------------------------------------------------------------------- #
-# self-check helpers (pure stdlib, deterministic)
+# self-check helpers (deterministic)
 # --------------------------------------------------------------------------- #
 def _ranks(xs):
     """1-based ranks with ties broken by AVERAGE rank (for Spearman)."""
@@ -141,9 +141,9 @@ def _distinct_states(rng, nov, count, dim):
 
 
 def main():
-    dim = 64          # matches the LIF raster width (cortex.spike_preprocessing.N)
+    dim = 64  # matches the LIF raster width (cortex.spike_preprocessing.N)
     n_states = 8
-    scale = 20        # true revisit counts are multiples of `scale` -> cleanly rank-ordered
+    scale = 20  # true revisit counts are multiples of `scale` -> cleanly rank-ordered
 
     print("=" * 68)
     print("GENERALIZING NOVELTY -- SimHash pseudo-count over the spike raster (SI-4)")
@@ -160,12 +160,11 @@ def main():
     true_counts = [(i + 1) * scale for i in range(n_states)]
     for s, r in zip(states, true_counts):
         for _ in range(r):
-            nov.bonus(_flip(rng, s, 2))          # each visit differs by 2 bits
+            nov.bonus(_flip(rng, s, 2))  # each visit differs by 2 bits
     predicted = [nov.pseudo_count(s) for s in states]  # held-out clean query
     rho = _spearman(predicted, true_counts)
     thr = 0.85
-    print(f"(1) MONOTONE: Spearman(bucket count, true revisits) = {rho:.3f} "
-          f"(threshold >= {thr})")
+    print(f"(1) MONOTONE: Spearman(bucket count, true revisits) = {rho:.3f} (threshold >= {thr})")
     print(f"    held-out clean-raster counts: {predicted}")
     print(f"    true revisit counts:          {true_counts}")
 
@@ -218,24 +217,28 @@ def main():
     base = [cn_rng.randint(0, 1) for _ in range(dim)]
 
     def collapsed_encode(_state):
-        return _flip(cn_rng, base, 1)            # ignores the state -> near-identical raster
+        return _flip(cn_rng, base, 1)  # ignores the state -> near-identical raster
 
     collapsed = GeneralizingNovelty(n_bits=16, dim=dim, seed=9)
     for _ in range(30):
         collapsed.bonus(collapsed_encode("familiar"))
-    novel_state = [1 - b for b in base]          # the bitwise OPPOSITE -> genuinely novel
+    novel_state = [1 - b for b in base]  # the bitwise OPPOSITE -> genuinely novel
     collapsed_bonus = collapsed.bonus(collapsed_encode(novel_state))
 
     separating = GeneralizingNovelty(n_bits=16, dim=dim, seed=9)
     for _ in range(30):
-        separating.bonus(_flip(cn_rng, base, 1))   # familiar rasters (near `base`)
+        separating.bonus(_flip(cn_rng, base, 1))  # familiar rasters (near `base`)
     separating_bonus = separating.bonus(novel_state)  # its OWN raster -> fresh bucket
 
     print("(4) HONEST NEGATIVE (printed, NOT asserted away) -- encoder-collapse inheritance:")
-    print(f"      collapsed encoder: genuinely-novel state bonus = {collapsed_bonus:.3f} "
-          f"(WRONGLY suppressed -- squashed into the busy bucket)")
-    print(f"      separating encoder: same novel state bonus     = {separating_bonus:.3f} "
-          f"(correct -- fresh bucket)")
+    print(
+        f"      collapsed encoder: genuinely-novel state bonus = {collapsed_bonus:.3f} "
+        f"(WRONGLY suppressed -- squashed into the busy bucket)"
+    )
+    print(
+        f"      separating encoder: same novel state bonus     = {separating_bonus:.3f} "
+        f"(correct -- fresh bucket)"
+    )
     print("      => SimHash runs OVER the raster, so it INHERITS the collapse; it fixes")
     print("         exact-key brittleness, NOT a collapsed upstream encoder.")
 
@@ -245,21 +248,27 @@ def main():
     assert rho >= thr, f"pseudo-count must be monotone in true revisits (Spearman {rho:.3f})"
     assert rho_solo < 0.30, f"single-bucket control must collapse to chance ({rho_solo:.3f})"
     assert abs(rho_shuf) < 0.30, f"shuffled-bucket control must collapse to chance ({rho_shuf:.3f})"
-    assert rho > rho_solo + 0.4 and rho > abs(rho_shuf) + 0.4, \
+    assert rho > rho_solo + 0.4 and rho > abs(rho_shuf) + 0.4, (
         "the real hash must beat BOTH controls by a wide margin"
-    assert alias[2] > alias[32], \
+    )
+    assert alias[2] > alias[32], (
         f"false-alias must shrink as K grows (K=2 {alias[2]:.2f} vs K=32 {alias[32]:.2f})"
+    )
     # the honest negative is a REAL failure, so we assert the failure EXISTS (not that it is fixed)
-    assert collapsed_bonus < 0.30 < separating_bonus, \
+    assert collapsed_bonus < 0.30 < separating_bonus, (
         "collapsed encoder must WRONGLY suppress the novel bonus that a separating encoder keeps"
+    )
     # determinism: same seed -> identical frozen projection -> identical bucket
     r0 = [random.Random(99).randint(0, 1) for _ in range(dim)]
-    assert GeneralizingNovelty(seed=0).bucket(r0) == GeneralizingNovelty(seed=0).bucket(r0), \
+    assert GeneralizingNovelty(seed=0).bucket(r0) == GeneralizingNovelty(seed=0).bucket(r0), (
         "same seed -> identical frozen projection -> identical bucket (deterministic)"
+    )
 
-    print(f"self-check OK: monotone Spearman {rho:.3f} >= {thr}; controls collapse "
-          f"({rho_solo:.3f}, {rho_shuf:.3f}); false-alias K=2 {alias[2]:.2f} > K=32 "
-          f"{alias[32]:.2f}; honest-negative collapse printed; deterministic.")
+    print(
+        f"self-check OK: monotone Spearman {rho:.3f} >= {thr}; controls collapse "
+        f"({rho_solo:.3f}, {rho_shuf:.3f}); false-alias K=2 {alias[2]:.2f} > K=32 "
+        f"{alias[32]:.2f}; honest-negative collapse printed; deterministic."
+    )
 
 
 if __name__ == "__main__":

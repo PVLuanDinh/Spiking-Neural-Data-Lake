@@ -23,7 +23,7 @@ import pathlib
 import random
 import sys
 
-# Load the gitignored .env (ARC_API_KEY) if present -- zero-dep, no python-dotenv needed. Does NOT
+# Load the gitignored .env (ARC_API_KEY) if present -- no python-dotenv needed. Does NOT
 # override an already-exported ARC_API_KEY. Must run before arc_agi.Arcade() reads the key.
 _envf = pathlib.Path(__file__).with_name(".env")
 if _envf.exists():
@@ -63,8 +63,10 @@ if __name__ == "__main__":
     steps = int(sys.argv[2]) if len(sys.argv) > 2 else 10
     random.seed(0)
     frame, scorecard = play(game=game, max_steps=steps)
-    print(f"game={frame.game_id} state={frame.state.value} "
-          f"levels={frame.levels_completed}/{frame.win_levels}")
+    print(
+        f"game={frame.game_id} state={frame.state.value} "
+        f"levels={frame.levels_completed}/{frame.win_levels}"
+    )
     print(scorecard)
     assert frame.frame and len(frame.frame[0]) == 64, "expected 64x64 frame"
     print("self-check OK")

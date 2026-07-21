@@ -18,7 +18,7 @@ WHY THIS IS GENUINELY SPIKING (not rate-level), on both axes the audit flagged:
       d in {-1,+1} gates it into the weights:  w[i] += lr * d * e[i]. This is the classic three-factor
       rule (pre x post x neuromodulator). There is NO error gradient, NO least-squares, NO EMA: the
       structural self-check re-derives every weight delta as exactly lr * reward * eligibility and
-      asserts equality, and asserts numpy/torch are not even imported.
+      asserts equality.
 
 The readout is spike-timing too: each response neuron's decision variable is its peak sub-threshold
 membrane response  v = sum_i w[i] * PSP(t_post - t_spike_i)  (a leaky-neuron / tempotron-style read
@@ -63,9 +63,9 @@ t_post < n_in, a spike-TIMING knob, so the membrane read keys on shared words, n
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.interaction_learning
 """
+
 import math
 import random
-import sys
 import zlib
 
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
@@ -78,13 +78,26 @@ class SpikingInteractionLearner:
     One RSTDPNeuron per response label, each fed by `n_in` input synapses. A stimulus (a vector of
     `n_in` scalars) is spike-encoded into per-synapse latencies by rank-order coding; the response is
     the neuron whose spike-timing membrane response peaks highest; learning is R-STDP gated by a
-    reward/teaching sign. Pure stdlib, deterministic per `seed`."""
+    reward/teaching sign. Deterministic per `seed`."""
 
-    def __init__(self, responses, n_in, seed=0, lr=0.06, tau=8.0, w0=0.3, t_post=None, naca=None, stack=None,
-                 bank=None, readout_zoo=None, readout_kinds=None):
-        self.responses = list(responses)          # response label names (intents / actions)
+    def __init__(
+        self,
+        responses,
+        n_in,
+        seed=0,
+        lr=0.06,
+        tau=8.0,
+        w0=0.3,
+        t_post=None,
+        naca=None,
+        stack=None,
+        bank=None,
+        readout_zoo=None,
+        readout_kinds=None,
+    ):
+        self.responses = list(responses)  # response label names (intents / actions)
         self.n_in = int(n_in)
-        self.tau = float(tau)                      # PSP == STDP eligibility time constant (shared)
+        self.tau = float(tau)  # PSP == STDP eligibility time constant (shared)
         self.lr = float(lr)
         self.seed = int(seed)
         # the readout / post-spike time. Default = n_in: fires AFTER every input spike (every synapse
@@ -96,12 +109,20 @@ class SpikingInteractionLearner:
         self.t_post = float(n_in) if t_post is None else float(t_post)
         # one reward-modulated STDP neuron per response; distinct seeds break the initial symmetry.
         self.neurons = [
-            RSTDPNeuron(self.n_in, lr=self.lr, a_plus=1.0, a_minus=1.0,
-                        tau_plus=self.tau, tau_minus=self.tau, w0=w0, seed=self.seed * 1000 + li + 1)
+            RSTDPNeuron(
+                self.n_in,
+                lr=self.lr,
+                a_plus=1.0,
+                a_minus=1.0,
+                tau_plus=self.tau,
+                tau_minus=self.tau,
+                w0=w0,
+                seed=self.seed * 1000 + li + 1,
+            )
             for li in range(len(self.responses))
         ]
-        self.rng = random.Random(self.seed)        # instance rng (e.g. training-order shuffles)
-        self._last = None                          # (label, eligibility, deltas, reward) of the last deposit
+        self.rng = random.Random(self.seed)  # instance rng (e.g. training-order shuffles)
+        self._last = None  # (label, eligibility, deltas, reward) of the last deposit
         # OPT-IN neuromodulation (NACABroadcast, duck-typed): a diffuse global gate that reshapes the LOCAL
         # R-STDP delta ADDITIVELY. None -> the local rule is untouched (byte-identical). It modulates
         # plasticity only; it adds NO actuator route (this router stays intent-recognition only).
@@ -128,9 +149,9 @@ class SpikingInteractionLearner:
         discrete times; invariant to any monotonic gain change on the stimulus."""
         if len(stimulus) != self.n_in:
             raise ValueError(f"stimulus has {len(stimulus)} dims, expected {self.n_in}")
-        if self.bank is not None:                  # OPT-IN sensory front-end (must preserve n_in width)
+        if self.bank is not None:  # OPT-IN sensory front-end (must preserve n_in width)
             return self.bank.encode(list(stimulus))
-        return rank_code(list(stimulus))           # list[int]: spike time (latency) per synapse
+        return rank_code(list(stimulus))  # list[int]: spike time (latency) per synapse
 
     def _psp(self, dt):
         """Leaky post-synaptic potential kernel; equals the STDP eligibility kernel so a reward on a
@@ -144,14 +165,18 @@ class SpikingInteractionLearner:
         for i, t in enumerate(code):
             v += neuron.w[i] * self._psp(self.t_post - t)
         if self.readout_zoo is None:
-            return v                                # BYTE-IDENTICAL linear membrane read (default)
+            return v  # BYTE-IDENTICAL linear membrane read (default)
         # OPT-IN heterogeneous spiking readout: pass the membrane read v through a small cached pool of
         # point neurons; the pool's total spike count is the decision variable. Not byte-identical.
         pool = getattr(neuron, "_zoo_pool", None)
         if pool is None:
             from snn_data_lake.cortex.neuron_zoo import SAFE_KINDS, sample_population
+
             pool = sample_population(
-                8, seed=self.seed * 7919 + self.neurons.index(neuron), kinds=self.readout_kinds or SAFE_KINDS)
+                8,
+                seed=self.seed * 7919 + self.neurons.index(neuron),
+                kinds=self.readout_kinds or SAFE_KINDS,
+            )
             neuron._zoo_pool = pool
         total = 0
         for cell in pool:
@@ -162,31 +187,48 @@ class SpikingInteractionLearner:
 
     def _argmax_label(self, code):
         drives = [self._drive(n, code) for n in self.neurons]
-        return max(range(len(drives)), key=lambda k: drives[k])   # ties -> lowest index (deterministic)
+        return max(
+            range(len(drives)), key=lambda k: drives[k]
+        )  # ties -> lowest index (deterministic)
 
     def _deposit(self, li, code, d):
         """One R-STDP deposit onto response neuron `li`: present the stimulus spike train, fire the
         post spike AFTER it (pre-before-post pairings build a spike-timing eligibility trace), then
         gate that trace into the weights by the reward/teaching sign d:  w[i] += lr * d * e[i]."""
         n = self.neurons[li]
-        n.e = [0.0] * self.n_in                    # fresh trial: clear eligibility + spike history
+        n.e = [0.0] * self.n_in  # fresh trial: clear eligibility + spike history
         n.t_pre = [None] * self.n_in
         n.t_post = None
-        for i, t in enumerate(code):               # deliver the input spike train
+        for i, t in enumerate(code):  # deliver the input spike train
             n.pre_spike(i, float(t))
-        n.post_spike(self.t_post)                  # post spike AFTER the inputs -> LTP eligibility
-        if self.stack is not None:                 # PRE: fast short-term dynamic gain modulates the deposit
-            d = float(d) * self.stack.pre_gain(li)  #      (Tsodyks-Markram release: onset strong, burst fades)
-        deltas = n.reward(float(d))                # three-factor gate (returns per-synapse deltas)
-        self._last = (li, list(n.e), list(deltas), float(d))   # the LOCAL delta stays exactly reward*eligibility
-        if self.naca is not None:                  # additive neuromodulatory correction ON TOP of the local delta
-            lam = self.naca.lam(li)                # input-type (response-class) expectation -> scalar neuromodulator
-            mod = self.naca.modulate(deltas, lam)  # -eta*f_local(lam)*delta; all zeros when the gate is off
+        n.post_spike(self.t_post)  # post spike AFTER the inputs -> LTP eligibility
+        if self.stack is not None:  # PRE: fast short-term dynamic gain modulates the deposit
+            d = float(d) * self.stack.pre_gain(
+                li
+            )  #      (Tsodyks-Markram release: onset strong, burst fades)
+        deltas = n.reward(float(d))  # three-factor gate (returns per-synapse deltas)
+        self._last = (
+            li,
+            list(n.e),
+            list(deltas),
+            float(d),
+        )  # the LOCAL delta stays exactly reward*eligibility
+        if self.naca is not None:  # additive neuromodulatory correction ON TOP of the local delta
+            lam = self.naca.lam(
+                li
+            )  # input-type (response-class) expectation -> scalar neuromodulator
+            mod = self.naca.modulate(
+                deltas, lam
+            )  # -eta*f_local(lam)*delta; all zeros when the gate is off
             for i in range(self.n_in):
                 n.w[i] += mod[i]
-        if self.stack is not None:                 # POST: homeostatic scaling + intrinsic plasticity STABILIZE
-            activity = [self._psp(self.t_post - t) for t in code]   # per-synapse PSP drive (>=0); y=sum(w*psp)=readout v
-            n.w = self.stack.stabilize(li, list(n.w), activity)     #   bound the live synapses + hold the firing rate
+        if self.stack is not None:  # POST: homeostatic scaling + intrinsic plasticity STABILIZE
+            activity = [
+                self._psp(self.t_post - t) for t in code
+            ]  # per-synapse PSP drive (>=0); y=sum(w*psp)=readout v
+            n.w = self.stack.stabilize(
+                li, list(n.w), activity
+            )  #   bound the live synapses + hold the firing rate
         return deltas
 
     def respond(self, stimulus):
@@ -202,16 +244,16 @@ class SpikingInteractionLearner:
           * a number -> SCALAR reward for the answer the learner just gave: reward only that neuron.
         Returns the response the learner gave (its pre-update best answer)."""
         code = self.encode(stimulus)
-        pred = self._argmax_label(code)            # the learner's own current answer (the action taken)
+        pred = self._argmax_label(code)  # the learner's own current answer (the action taken)
         given = self.responses[pred]
-        if isinstance(feedback, str):              # teaching signal: the correct response label
+        if isinstance(feedback, str):  # teaching signal: the correct response label
             if feedback not in self.responses:
                 raise ValueError(f"unknown response label: {feedback!r}")
             tgt = self.responses.index(feedback)
-            self._deposit(tgt, code, +1.0)         # reinforce the taught-correct neuron (dopamine +1)
+            self._deposit(tgt, code, +1.0)  # reinforce the taught-correct neuron (dopamine +1)
             if pred != tgt:
-                self._deposit(pred, code, -1.0)    # depress the wrongly-firing neuron (dopamine -1)
-        else:                                      # scalar reward for the response just produced
+                self._deposit(pred, code, -1.0)  # depress the wrongly-firing neuron (dopamine -1)
+        else:  # scalar reward for the response just produced
             self._deposit(pred, code, float(feedback))
         return given
 
@@ -246,7 +288,7 @@ class SpikingInteractionLearner:
 
 
 # --------------------------------------------------------------------------------------------------
-# self-check helpers (deterministic, zero-dep, ASCII)
+# self-check helpers (deterministic, ASCII)
 # --------------------------------------------------------------------------------------------------
 def _make_task(seed, responses, n_in, n_train, n_test, noise):
     """Build a separable (stimulus -> response) task: one random prototype per response, plus disjoint
@@ -257,8 +299,12 @@ def _make_task(seed, responses, n_in, n_train, n_test, noise):
     def sample(proto):
         return [min(1.0, max(0.0, v + rng.uniform(-noise, noise))) for v in proto]
 
-    train = [(sample(protos[li]), responses[li]) for li in range(len(responses)) for _ in range(n_train)]
-    test = [(sample(protos[li]), responses[li]) for li in range(len(responses)) for _ in range(n_test)]
+    train = [
+        (sample(protos[li]), responses[li]) for li in range(len(responses)) for _ in range(n_train)
+    ]
+    test = [
+        (sample(protos[li]), responses[li]) for li in range(len(responses)) for _ in range(n_test)
+    ]
     return train, test
 
 
@@ -277,7 +323,7 @@ def _spiking_task_selfcheck():
     """Cores 1-4: learns via spiking plasticity; teaching-shuffled control stays at chance; genuinely
     spiking (discrete spike events + reward*eligibility update); deterministic."""
     seed = 7
-    responses = ["reach", "grasp", "retract", "hold"]     # a small fixed set of response intents
+    responses = ["reach", "grasp", "retract", "hold"]  # a small fixed set of response intents
     n_in, epochs = 16, 40
     chance = 1.0 / len(responses)
     train, test = _make_task(seed, responses, n_in, n_train=8, n_test=8, noise=0.06)
@@ -290,12 +336,16 @@ def _spiking_task_selfcheck():
         sched.shuffle(o)
         epoch_orders.append(o)
 
-    real_targets = [correct for _stim, correct in train]  # the true teaching signal per training item
-    control_targets = list(real_targets)                  # the control: SAME labels, SHUFFLED away from
-    random.Random(seed + 42).shuffle(control_targets)     #   the stimuli -> reward carries no information
+    real_targets = [
+        correct for _stim, correct in train
+    ]  # the true teaching signal per training item
+    control_targets = list(real_targets)  # the control: SAME labels, SHUFFLED away from
+    random.Random(seed + 42).shuffle(
+        control_targets
+    )  #   the stimuli -> reward carries no information
 
     base = SpikingInteractionLearner(responses, n_in, seed=seed)
-    acc_chance = base.accuracy(test)                      # untrained -> chance
+    acc_chance = base.accuracy(test)  # untrained -> chance
     learned = _train(seed, responses, n_in, train, epoch_orders, real_targets)
     acc_learned = learned.accuracy(test)
     control = _train(seed, responses, n_in, train, epoch_orders, control_targets)
@@ -304,41 +354,55 @@ def _spiking_task_selfcheck():
     # determinism: same seed + same schedule -> byte-identical weights and identical responses
     again = _train(seed, responses, n_in, train, epoch_orders, real_targets)
     weights_identical = learned.weights() == again.weights()
-    responses_identical = [learned.respond(s) for s, _ in test] == [again.respond(s) for s, _ in test]
+    responses_identical = [learned.respond(s) for s, _ in test] == [
+        again.respond(s) for s, _ in test
+    ]
 
     # genuinely-spiking structural checks
     code = learned.encode(train[0][0])
     discrete_events = all(isinstance(t, int) for t in code) and sorted(code) == list(range(n_in))
     _li, elig, deltas, rew = learned._last
     three_factor = all(abs(deltas[i] - learned.lr * rew * elig[i]) < 1e-12 for i in range(n_in))
-    no_dense_dl = "numpy" not in sys.modules and "torch" not in sys.modules
 
     print("=" * 78)
     print("SPIKING INTERACTION LEARNER -- reward-modulated spike-timing plasticity (R-STDP)")
     print("=" * 78)
-    print(f"task: {len(responses)} responses, {n_in}-dim stimuli, rank-order spike encoding, "
-          "8 train / 8 test each")
-    print(f"held-out accuracy: chance {acc_chance:.2f}  ->  learned {acc_learned:.2f}   "
-          f"(control, teaching shuffled: {acc_control:.2f})")
+    print(
+        f"task: {len(responses)} responses, {n_in}-dim stimuli, rank-order spike encoding, "
+        "8 train / 8 test each"
+    )
+    print(
+        f"held-out accuracy: chance {acc_chance:.2f}  ->  learned {acc_learned:.2f}   "
+        f"(control, teaching shuffled: {acc_control:.2f})"
+    )
     print(f"spike code of a stimulus (per-synapse latency): {code}")
-    print(f"weight update check: delta == lr * reward * eligibility for every synapse: {three_factor}")
-    print(f"determinism: identical weights {weights_identical}, identical responses {responses_identical}")
+    print(
+        f"weight update check: delta == lr * reward * eligibility for every synapse: {three_factor}"
+    )
+    print(
+        f"determinism: identical weights {weights_identical}, identical responses {responses_identical}"
+    )
     print("=" * 78)
 
     # ---- un-riggable asserts ----
-    assert abs(acc_chance - chance) < 0.18, \
+    assert abs(acc_chance - chance) < 0.18, (
         f"untrained learner must sit near chance ({acc_chance:.2f} vs {chance:.2f})"
-    assert acc_learned > 0.85, \
-        f"R-STDP must lift held-out accuracy high ({acc_learned:.2f})"                        # core 1
-    assert acc_control < chance + 0.20, \
-        f"teaching-shuffled control must stay at chance ({acc_control:.2f})"                  # core 2
-    assert acc_learned > acc_control + 0.40, \
-        f"the gain must come from reward-modulated timing, not the encoding " \
-        f"({acc_learned:.2f} vs {acc_control:.2f})"                                           # core 2
-    assert discrete_events, "the stimulus must be BINARY spike events at DISCRETE times"      # core 3
-    assert three_factor, "weight update must be reward * spike-timing eligibility, not a gradient"  # core 3
-    assert no_dense_dl, "pure stdlib: numpy/torch must not be imported"                       # core 3
-    assert weights_identical and responses_identical, "same seed must be byte-identical"      # core 4
+    )
+    assert acc_learned > 0.85, (
+        f"R-STDP must lift held-out accuracy high ({acc_learned:.2f})"
+    )  # core 1
+    assert acc_control < chance + 0.20, (
+        f"teaching-shuffled control must stay at chance ({acc_control:.2f})"
+    )  # core 2
+    assert acc_learned > acc_control + 0.40, (
+        f"the gain must come from reward-modulated timing, not the encoding "
+        f"({acc_learned:.2f} vs {acc_control:.2f})"
+    )  # core 2
+    assert discrete_events, "the stimulus must be BINARY spike events at DISCRETE times"  # core 3
+    assert three_factor, (
+        "weight update must be reward * spike-timing eligibility, not a gradient"
+    )  # core 3
+    assert weights_identical and responses_identical, "same seed must be byte-identical"  # core 4
     return acc_chance, acc_learned, acc_control
 
 
@@ -354,7 +418,9 @@ def text_features(text, n_in):
     vec = [0.0] * n_in
     for pos, word in enumerate(text.lower().split()):
         b = zlib.crc32(word.encode("ascii", "ignore")) % n_in
-        vec[b] += 1.0 + 0.1 * (pos + 1) + 0.01 * len(word)     # break ties so rank order is well-defined
+        vec[b] += (
+            1.0 + 0.1 * (pos + 1) + 0.01 * len(word)
+        )  # break ties so rank order is well-defined
     return vec
 
 
@@ -364,7 +430,7 @@ def _brain_intent(reply):
     r = reply.lower()
     if reply.startswith("Hello. I am the live brain"):
         return "GREET"
-    if "neither claim" in r and "experience" in r:       # the agnostic consciousness reply
+    if "neither claim" in r and "experience" in r:  # the agnostic consciousness reply
         return "CONSCIOUS"
     if reply.startswith("Done") or "the arm is frozen" in r or "e-stop" in r:
         return "ARM"
@@ -413,13 +479,17 @@ def _live_brain_demo():
         return 1.0 if action == "GRIPPER_OPEN" else -1.0
 
     st = brain.tick(grasp, reward_fn=reward_fn)
-    print(f"tick   : grasp context -> brain action {st['action']} (reflex={st['reflex']}); "
-          "it is reasoning toward a goal")
+    print(
+        f"tick   : grasp context -> brain action {st['action']} (reflex={st['reflex']}); "
+        "it is reasoning toward a goal"
+    )
     print("-" * 78)
     print("BEFORE learning (routing is at chance):")
     for p in prompts:
         print(f"  you: {chr(39) + p + chr(39):<32} brain: {_short(replies[p])}")
-        print(f"       learner routes -> {learner.respond(feats[p]):<9} (brain's actual intent: {truth[p]})")
+        print(
+            f"       learner routes -> {learner.respond(feats[p]):<9} (brain's actual intent: {truth[p]})"
+        )
 
     # learn from repeated exchanges: ask, read the brain's intent, TEACH the learner the right label
     rounds = 40
@@ -433,12 +503,16 @@ def _live_brain_demo():
     for p in prompts:
         pred = learner.respond(feats[p])
         mark = "OK " if pred == truth[p] else "XX "
-        print(f"  {mark}you: {chr(39) + p + chr(39):<30} learner routes -> {pred:<9} (correct: {truth[p]})")
+        print(
+            f"  {mark}you: {chr(39) + p + chr(39):<30} learner routes -> {pred:<9} (correct: {truth[p]})"
+        )
     print("-" * 78)
-    print(f"routing accuracy on the brain's intents: before {acc_before:.2f}  ->  after {acc_after:.2f}")
+    print(
+        f"routing accuracy on the brain's intents: before {acc_before:.2f}  ->  after {acc_after:.2f}"
+    )
     print("=" * 78)
 
-    if brain.arm.lake_wm is not None:                # clean up the temp data-lake file the tick created
+    if brain.arm.lake_wm is not None:  # clean up the temp data-lake file the tick created
         brain.arm.lake_wm.close(remove=True)
 
     assert acc_after > acc_before, "talking to the brain must IMPROVE the learner's routing"
@@ -457,28 +531,68 @@ def _live_brain_demo():
 # bag-of-words spiking router can generalise. TRAIN and TEST strings are entirely DISJOINT.
 _CONV_INTENTS = ["GREET", "GOAL", "MEMORY", "CONSCIOUS", "ARM"]
 _CONV_TRAIN = {
-    "GREET":     ["hello my good friend nice day", "hey there my good friend today",
-                  "hi my dear good friend hello", "greetings my good friend nice day"],
-    "GOAL":      ["what is the goal you keep pursuing", "which objective do you aim at pursuing",
-                  "what do you plan on pursuing next", "what do you want to keep pursuing"],
-    "MEMORY":    ["what do you remember happened earlier here", "what is stored that happened earlier here",
-                  "can you recall what happened earlier here", "what memory of what happened earlier here"],
-    "CONSCIOUS": ["are you conscious with real inner self", "are you sentient with inner self experience",
-                  "do you feel real inner experience self", "are you a sapient inner self experience"],
-    "ARM":       ["close the claw onto the object", "grab the object with the claw",
-                  "grasp the object using the claw", "clamp the claw onto the object"],
+    "GREET": [
+        "hello my good friend nice day",
+        "hey there my good friend today",
+        "hi my dear good friend hello",
+        "greetings my good friend nice day",
+    ],
+    "GOAL": [
+        "what is the goal you keep pursuing",
+        "which objective do you aim at pursuing",
+        "what do you plan on pursuing next",
+        "what do you want to keep pursuing",
+    ],
+    "MEMORY": [
+        "what do you remember happened earlier here",
+        "what is stored that happened earlier here",
+        "can you recall what happened earlier here",
+        "what memory of what happened earlier here",
+    ],
+    "CONSCIOUS": [
+        "are you conscious with real inner self",
+        "are you sentient with inner self experience",
+        "do you feel real inner experience self",
+        "are you a sapient inner self experience",
+    ],
+    "ARM": [
+        "close the claw onto the object",
+        "grab the object with the claw",
+        "grasp the object using the claw",
+        "clamp the claw onto the object",
+    ],
 }
 _CONV_TEST = {
-    "GREET":     ["good morning my good friend hello", "my dear good friend nice day",
-                  "so good to see my friend", "what a nice day dear friend"],
-    "GOAL":      ["what are you pursuing right now", "what do you aim at pursuing",
-                  "tell me what you keep pursuing", "what are you pursuing and pursuing"],
-    "MEMORY":    ["what happened here earlier and earlier", "tell me what happened earlier here",
-                  "what happened earlier that also happened", "so what happened here earlier then"],
-    "CONSCIOUS": ["do you have a real inner self", "is there real inner experience inside you",
-                  "do you have inner self experience", "what is your real inner experience self"],
-    "ARM":       ["the claw should reach the object", "point the claw at the object",
-                  "the object is near the claw", "bring the claw to the object"],
+    "GREET": [
+        "good morning my good friend hello",
+        "my dear good friend nice day",
+        "so good to see my friend",
+        "what a nice day dear friend",
+    ],
+    "GOAL": [
+        "what are you pursuing right now",
+        "what do you aim at pursuing",
+        "tell me what you keep pursuing",
+        "what are you pursuing and pursuing",
+    ],
+    "MEMORY": [
+        "what happened here earlier and earlier",
+        "tell me what happened earlier here",
+        "what happened earlier that also happened",
+        "so what happened here earlier then",
+    ],
+    "CONSCIOUS": [
+        "do you have a real inner self",
+        "is there real inner experience inside you",
+        "do you have inner self experience",
+        "what is your real inner experience self",
+    ],
+    "ARM": [
+        "the claw should reach the object",
+        "point the claw at the object",
+        "the object is near the claw",
+        "bring the claw to the object",
+    ],
 }
 
 
@@ -491,7 +605,7 @@ def _conversation_generalization_selfcheck():
     conversation and MISSES the novel paraphrases; (2) a SPIKING router taught from the firewall's own
     grounded labels (self-supervised distillation) GENERALISES to a DISJOINT held-out set of those
     novel paraphrases, clearly beating the baseline; (3) shuffling the teaching signal collapses it to
-    chance; (4) the update is spike-timing reward*eligibility, discrete spike events, no numpy/torch;
+    chance; (4) the update is spike-timing reward*eligibility, discrete spike events;
     (5) deterministic. Also reports the honest LIMIT: on the firewall's OWN blind spots (novel lines it
     mislabels) self-supervised distillation inherits the error, and explicit FEEDBACK is what recovers."""
     from snn_data_lake.cortex.live_brain import LiveBrain
@@ -506,11 +620,13 @@ def _conversation_generalization_selfcheck():
     fw_test = [_brain_intent(brain.converse(u)) for u, _ in test]
     base_fw_acc = sum(fw_test[k] == test[k][1] for k in range(len(test))) / len(test)
     fw_test_again = [_brain_intent(brain.converse(u)) for u, _ in test]
-    fw_train = [_brain_intent(brain.converse(u)) for u, _ in train]   # the SELF-SUPERVISED labels
+    fw_train = [_brain_intent(brain.converse(u)) for u, _ in train]  # the SELF-SUPERVISED labels
 
     def _talk_and_learn(labels, seed_=seed):
         """Fresh spiking router; CONVERSE-AND-LEARN one turn at a time (R-STDP), on a fixed schedule."""
-        lrn = SpikingInteractionLearner(_CONV_INTENTS, n_in, seed=seed_, lr=lr, tau=tau, t_post=t_post)
+        lrn = SpikingInteractionLearner(
+            _CONV_INTENTS, n_in, seed=seed_, lr=lr, tau=tau, t_post=t_post
+        )
         order = list(range(len(train)))
         sched = random.Random(seed_ + 6)
         for _ in range(epochs):
@@ -523,12 +639,12 @@ def _conversation_generalization_selfcheck():
         return sum(lrn.route_text(u) == ti for u, ti in data) / len(data)
 
     base = SpikingInteractionLearner(_CONV_INTENTS, n_in, seed=seed, lr=lr, tau=tau, t_post=t_post)
-    before = _acc(base, test)                                          # spiking router, untrained
-    ss = _talk_and_learn(fw_train)                                     # (2) self-supervised distillation
+    before = _acc(base, test)  # spiking router, untrained
+    ss = _talk_and_learn(fw_train)  # (2) self-supervised distillation
     ss_acc = _acc(ss, test)
-    fb = _talk_and_learn([ti for _, ti in train])                     # explicit feedback (stronger signal)
+    fb = _talk_and_learn([ti for _, ti in train])  # explicit feedback (stronger signal)
     fb_acc = _acc(fb, test)
-    shuffled = [ti for _, ti in train]                                # (3) FAIR CONTROL: decorrelated label
+    shuffled = [ti for _, ti in train]  # (3) FAIR CONTROL: decorrelated label
     random.Random(seed + 99).shuffle(shuffled)
     ctl_acc = _acc(_talk_and_learn(shuffled), test)
 
@@ -539,7 +655,9 @@ def _conversation_generalization_selfcheck():
     fw_b = [_brain_intent(brain.converse(u)) for u, _ in b_train]
 
     def _talk_b(labels):
-        lrn = SpikingInteractionLearner(_CONV_INTENTS, n_in, seed=seed, lr=lr, tau=tau, t_post=t_post)
+        lrn = SpikingInteractionLearner(
+            _CONV_INTENTS, n_in, seed=seed, lr=lr, tau=tau, t_post=t_post
+        )
         order = list(range(len(b_train)))
         sched = random.Random(seed + 6)
         for _ in range(epochs):
@@ -549,24 +667,28 @@ def _conversation_generalization_selfcheck():
         return lrn
 
     blind_ss = sum(_talk_b(None).route_text(u) == ti for u, ti in b_test) / len(b_test)
-    blind_fb = sum(_talk_b([ti for _, ti in b_train]).route_text(u) == ti for u, ti in b_test) / len(b_test)
+    blind_fb = sum(
+        _talk_b([ti for _, ti in b_train]).route_text(u) == ti for u, ti in b_test
+    ) / len(b_test)
 
     # (4) STILL SPIKING (structural) + (5) DETERMINISM
     code = ss.encode(text_features(train[0][0], n_in))
     discrete_events = all(isinstance(t, int) for t in code) and sorted(code) == list(range(n_in))
     _li, elig, deltas, rew = ss._last
     three_factor = all(abs(deltas[i] - ss.lr * rew * elig[i]) < 1e-12 for i in range(n_in))
-    no_dense_dl = "numpy" not in sys.modules and "torch" not in sys.modules
     again = _talk_and_learn(fw_train)
-    deterministic = (ss.weights() == again.weights()
-                     and [ss.route_text(u) for u, _ in test] == [again.route_text(u) for u, _ in test])
+    deterministic = ss.weights() == again.weights() and [ss.route_text(u) for u, _ in test] == [
+        again.route_text(u) for u, _ in test
+    ]
 
     print()
     print("=" * 78)
     print("CONVERSING TO GENERALISE -- a SPIKING router taught by the brain's OWN keyword firewall")
     print("=" * 78)
     # a short readable TRANSCRIPT: keyword-bearing lines the firewall gets, then NOVEL paraphrases it misses
-    print("conversation (you -> the real LiveBrain.converse(); [fw] = the firewall's grounded intent):")
+    print(
+        "conversation (you -> the real LiveBrain.converse(); [fw] = the firewall's grounded intent):"
+    )
     for u, ti in [train[4], train[8], test[4], test[8], test[12], test[16]]:
         reply = brain.converse(u)
         fwi = _brain_intent(reply)
@@ -575,45 +697,66 @@ def _conversation_generalization_selfcheck():
         print(f"    brain: {_short(reply, 60)}")
         print(f"    [fw]->{fwi:<9} (meant {ti}) {tag}")
     print("-" * 78)
-    print(f"BASELINE  fixed converse() router on {len(test)} held-out NOVEL paraphrases: "
-          f"acc {base_fw_acc:.2f} (chance {chance:.2f}); re-asking is identical "
-          f"(no learning): {fw_test == fw_test_again}")
+    print(
+        f"BASELINE  fixed converse() router on {len(test)} held-out NOVEL paraphrases: "
+        f"acc {base_fw_acc:.2f} (chance {chance:.2f}); re-asking is identical "
+        f"(no learning): {fw_test == fw_test_again}"
+    )
     print("SPIKING   router on the SAME held-out novel paraphrases:")
-    print(f"          before conversing {before:.2f}  ->  self-supervised (firewall labels) {ss_acc:.2f}"
-          f"   [explicit feedback {fb_acc:.2f}]")
+    print(
+        f"          before conversing {before:.2f}  ->  self-supervised (firewall labels) {ss_acc:.2f}"
+        f"   [explicit feedback {fb_acc:.2f}]"
+    )
     print(f"          teaching-shuffled control: {ctl_acc:.2f} (chance)")
     print("per held-out paraphrase, AFTER self-supervised conversation:")
     for u, ti in test:
         p = ss.route_text(u)
         print(f"  {'OK ' if p == ti else 'XX '}[{ti:9}] router->{p:<9} :: {_short(u, 38)}")
     print("-" * 78)
-    print(f"HONEST LIMIT: trained on the firewall's OWN blind spots (novel lines it mislabels, "
-          f"{sum(fw_b[k] == b_train[k][1] for k in range(len(b_train))) / len(b_train):.2f} correct):")
-    print(f"          self-supervised (inherits firewall error) {blind_ss:.2f}  vs  "
-          f"explicit feedback {blind_fb:.2f}  -> feedback is what recovers the blind spots")
+    print(
+        f"HONEST LIMIT: trained on the firewall's OWN blind spots (novel lines it mislabels, "
+        f"{sum(fw_b[k] == b_train[k][1] for k in range(len(b_train))) / len(b_train):.2f} correct):"
+    )
+    print(
+        f"          self-supervised (inherits firewall error) {blind_ss:.2f}  vs  "
+        f"explicit feedback {blind_fb:.2f}  -> feedback is what recovers the blind spots"
+    )
     print("=" * 78)
 
     # ---- un-riggable asserts ----
-    assert base_fw_acc < 0.8, \
+    assert base_fw_acc < 0.8, (
         f"core 1: the fixed keyword router must MISS a measurable fraction of novel paraphrases ({base_fw_acc:.2f})"
-    assert fw_test == fw_test_again, "core 1: the fixed converse() router has no learning state (cannot improve)"
-    assert before < chance + 0.20, f"the untrained spiking router must start near chance ({before:.2f})"
-    assert ss_acc >= 0.85, f"core 2: after conversing, the spiking router must route novel paraphrases well ({ss_acc:.2f})"
-    assert ss_acc >= before + 0.40, \
+    )
+    assert fw_test == fw_test_again, (
+        "core 1: the fixed converse() router has no learning state (cannot improve)"
+    )
+    assert before < chance + 0.20, (
+        f"the untrained spiking router must start near chance ({before:.2f})"
+    )
+    assert ss_acc >= 0.85, (
+        f"core 2: after conversing, the spiking router must route novel paraphrases well ({ss_acc:.2f})"
+    )
+    assert ss_acc >= before + 0.40, (
         f"core 2: conversation must clearly IMPROVE held-out generalization ({before:.2f} -> {ss_acc:.2f})"
-    assert ctl_acc < chance + 0.20, f"core 3: teaching-shuffled control must stay at chance ({ctl_acc:.2f})"
-    assert ss_acc > ctl_acc + 0.40, \
+    )
+    assert ctl_acc < chance + 0.20, (
+        f"core 3: teaching-shuffled control must stay at chance ({ctl_acc:.2f})"
+    )
+    assert ss_acc > ctl_acc + 0.40, (
         f"core 3: the gain must come from reward-modulated timing, not the encoding ({ss_acc:.2f} vs {ctl_acc:.2f})"
+    )
     assert discrete_events, "core 4: the stimulus must be BINARY spike events at DISCRETE times"
-    assert three_factor, "core 4: the weight update must be reward * spike-timing eligibility, not a gradient"
-    assert no_dense_dl, "core 4: pure stdlib -- numpy/torch must not be imported"
+    assert three_factor, (
+        "core 4: the weight update must be reward * spike-timing eligibility, not a gradient"
+    )
     assert deterministic, "core 5: same seed must be byte-identical"
     # honest limit: on the firewall's own blind spots, feedback beats self-supervised distillation.
-    assert blind_fb > blind_ss + 0.40, \
-        f"explicit feedback must recover the firewall's blind spots where distillation cannot " \
+    assert blind_fb > blind_ss + 0.40, (
+        f"explicit feedback must recover the firewall's blind spots where distillation cannot "
         f"({blind_ss:.2f} -> {blind_fb:.2f})"
+    )
 
-    if brain.arm.lake_wm is not None:                                 # brain never ticked -> usually no lake file
+    if brain.arm.lake_wm is not None:  # brain never ticked -> usually no lake file
         brain.arm.lake_wm.close(remove=True)
     return base_fw_acc, before, ss_acc, fb_acc, ctl_acc, blind_ss, blind_fb
 
@@ -621,20 +764,25 @@ def _conversation_generalization_selfcheck():
 def main():
     acc_chance, acc_learned, acc_control = _spiking_task_selfcheck()
     acc_before, acc_after = _live_brain_demo()
-    base_fw_acc, gen_before, gen_ss, gen_fb, gen_ctl, blind_ss, blind_fb = \
+    base_fw_acc, gen_before, gen_ss, gen_fb, gen_ctl, blind_ss, blind_fb = (
         _conversation_generalization_selfcheck()
+    )
     print()
-    print(f"self-check OK: reward-modulated spike-timing plasticity lifted held-out accuracy "
-          f"{acc_chance:.2f} -> {acc_learned:.2f} while the teaching-shuffled control stayed at "
-          f"{acc_control:.2f}; the stimulus is binary spike events at discrete latencies and the "
-          f"weight update is exactly reward*eligibility (three-factor R-STDP, no gradient); talking "
-          f"to the LIVE brain improved intent routing {acc_before:.2f} -> {acc_after:.2f}; deterministic.")
-    print(f"conversation generalisation OK: the fixed keyword router MISSES novel paraphrases "
-          f"({base_fw_acc:.2f} on held-out) and cannot improve; a SPIKING router SELF-SUPERVISED from "
-          f"the firewall's own labels generalises to the DISJOINT novel set {gen_before:.2f} -> {gen_ss:.2f} "
-          f"(explicit feedback {gen_fb:.2f}), teaching-shuffled control {gen_ctl:.2f}; honest limit: on the "
-          f"firewall's OWN blind spots distillation stays {blind_ss:.2f} and explicit feedback recovers "
-          f"{blind_fb:.2f} -- same spike-timing R-STDP throughout.")
+    print(
+        f"self-check OK: reward-modulated spike-timing plasticity lifted held-out accuracy "
+        f"{acc_chance:.2f} -> {acc_learned:.2f} while the teaching-shuffled control stayed at "
+        f"{acc_control:.2f}; the stimulus is binary spike events at discrete latencies and the "
+        f"weight update is exactly reward*eligibility (three-factor R-STDP, no gradient); talking "
+        f"to the LIVE brain improved intent routing {acc_before:.2f} -> {acc_after:.2f}; deterministic."
+    )
+    print(
+        f"conversation generalisation OK: the fixed keyword router MISSES novel paraphrases "
+        f"({base_fw_acc:.2f} on held-out) and cannot improve; a SPIKING router SELF-SUPERVISED from "
+        f"the firewall's own labels generalises to the DISJOINT novel set {gen_before:.2f} -> {gen_ss:.2f} "
+        f"(explicit feedback {gen_fb:.2f}), teaching-shuffled control {gen_ctl:.2f}; honest limit: on the "
+        f"firewall's OWN blind spots distillation stays {blind_ss:.2f} and explicit feedback recovers "
+        f"{blind_fb:.2f} -- same spike-timing R-STDP throughout."
+    )
 
 
 if __name__ == "__main__":

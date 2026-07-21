@@ -19,6 +19,7 @@ arm_config). Refs: OeSNN streaming anomaly (PeerJ 2025 HABCOeSNN; Springer 2022 
 
   python drift_monitor.py        # self-check
 """
+
 import math
 
 from snn_data_lake.brainstem import arm_config
@@ -31,7 +32,7 @@ def _proportions(windows, dim, n_bins):
     hist = [[0.0] * n_bins for _ in range(dim)]
     for w in windows:
         for i in range(dim):
-            b = min(n_bins - 1, max(0, int(w[i] * n_bins)))   # clamp into [0, n_bins)
+            b = min(n_bins - 1, max(0, int(w[i] * n_bins)))  # clamp into [0, n_bins)
             hist[i][b] += 1.0
     for i in range(dim):
         tot = sum(hist[i]) or 1.0
@@ -59,8 +60,10 @@ class DriftMonitor:
         self.ref_hist = _proportions(reference, self.dim, n_bins)
         self.centroid = _centroid(reference, self.dim)
         spread = [_dist(w, self.centroid) for w in reference]
-        self.radius = (sum(spread) / len(spread)) * novelty_k    # novelty threshold from reference spread
-        self.novelty_warn = 0.30                                 # rate of novel windows that signals drift
+        self.radius = (
+            sum(spread) / len(spread)
+        ) * novelty_k  # novelty threshold from reference spread
+        self.novelty_warn = 0.30  # rate of novel windows that signals drift
         self.recent = []
 
     def is_novel(self, w):
@@ -79,8 +82,10 @@ class DriftMonitor:
         act = _proportions(self.recent, self.dim, self.n_bins)
         total = 0.0
         for i in range(self.dim):
-            total += sum((a - e) * math.log((a + _EPS) / (e + _EPS))
-                         for a, e in zip(act[i], self.ref_hist[i]))
+            total += sum(
+                (a - e) * math.log((a + _EPS) / (e + _EPS))
+                for a, e in zip(act[i], self.ref_hist[i])
+            )
         return total / self.dim
 
     def novelty_rate(self):
@@ -96,13 +101,16 @@ class DriftMonitor:
 
 def main():
     import random
+
     rng = random.Random(0)
     dim = 16
 
     def sample(shift=0.0):
         # a normalised feature window: a base profile + jitter, optionally shifted (a "rig move")
-        return [min(1.0, max(0.0, 0.5 + 0.3 * math.sin(i) + shift + rng.uniform(-0.05, 0.05)))
-                for i in range(dim)]
+        return [
+            min(1.0, max(0.0, 0.5 + 0.3 * math.sin(i) + shift + rng.uniform(-0.05, 0.05)))
+            for i in range(dim)
+        ]
 
     reference = [sample() for _ in range(60)]
 
@@ -129,12 +137,16 @@ def main():
     print("=" * 60)
     print(f"stable stream : PSI={psi_stable:.3f} novelty={nov_stable:.0%} warn={warn_stable}")
     print(f"drifted stream: PSI={psi_drift:.3f} novelty={nov_drift:.0%} warn={warn_drift}")
-    print(f"re-derive bins: {tuple(round(b, 2) for b in bins_before)} -> "
-          f"{tuple(round(b, 2) for b in bins_after)}  (shifted capture -> new cut points)")
+    print(
+        f"re-derive bins: {tuple(round(b, 2) for b in bins_before)} -> "
+        f"{tuple(round(b, 2) for b in bins_after)}  (shifted capture -> new cut points)"
+    )
     print("=" * 60)
 
     # ---- self-check: one runnable assert-based check; deterministic ----
-    assert not warn_stable, f"stable stream should not warn (PSI={psi_stable:.3f}, nov={nov_stable:.2f})"
+    assert not warn_stable, (
+        f"stable stream should not warn (PSI={psi_stable:.3f}, nov={nov_stable:.2f})"
+    )
     assert warn_drift, f"drifted stream should warn (PSI={psi_drift:.3f}, nov={nov_drift:.2f})"
     assert psi_drift > psi_stable, "drift PSI should exceed stable PSI"
     assert bins_after != bins_before, "a shifted capture should re-derive different bins"

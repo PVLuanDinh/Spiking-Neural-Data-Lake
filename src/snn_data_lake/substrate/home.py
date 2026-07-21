@@ -29,6 +29,7 @@ boot. Zero runtime deps (stdlib json + os); the data lake never touches torch. A
 
   python -m snn_data_lake.substrate.home   # self-check incl. a REAL cross-process never-forget proof
 """
+
 import json
 import os
 import sys
@@ -78,13 +79,15 @@ class KnowledgeLog:
     def __init__(self, path=None, dedup=True):
         self.path = path or knowledge_path()
         self.dedup = bool(dedup)
-        recs = list(self.replay())                                     # the one boot-time full pass
+        recs = list(self.replay())  # the one boot-time full pass
         self._seen = {self._key(r) for r in recs} if self.dedup else None
-        self._count = len(recs)                                        # maintained -> count() is O(1), not a re-replay
+        self._count = len(recs)  # maintained -> count() is O(1), not a re-replay
 
     @staticmethod
     def _key(record):
-        return json.dumps(record, ensure_ascii=True, sort_keys=True)   # canonical -> dedup key + on-disk line
+        return json.dumps(
+            record, ensure_ascii=True, sort_keys=True
+        )  # canonical -> dedup key + on-disk line
 
     def _ends_with_newline(self):
         with open(self.path, "rb") as f:
@@ -96,9 +99,9 @@ class KnowledgeLog:
         Flush + fsync so it survives a hard crash / power loss. Returns True if written, False if a dup."""
         if not isinstance(record, dict):
             raise TypeError("KnowledgeLog.append: record must be a JSON dict")
-        line = self._key(record)                                       # ASCII, canonical
+        line = self._key(record)  # ASCII, canonical
         if self.dedup and line in self._seen:
-            return False                                               # already known -> keep the lake lean
+            return False  # already known -> keep the lake lean
         with open(self.path, "a", encoding="ascii") as f:
             # a prior crash may have left a partial last line with no trailing newline; a plain append
             # would FUSE the new record onto that garbage (losing both). guarantee a clean boundary.
@@ -106,7 +109,7 @@ class KnowledgeLog:
                 f.write("\n")
             f.write(line + "\n")
             f.flush()
-            os.fsync(f.fileno())                                        # durable past process death
+            os.fsync(f.fileno())  # durable past process death
         if self.dedup:
             self._seen.add(line)
         self._count += 1
@@ -116,8 +119,10 @@ class KnowledgeLog:
         """Durably append many records (one fsync at the end -- for bulk import). Returns #written."""
         written = 0
         with open(self.path, "a", encoding="ascii") as f:
-            if os.path.getsize(self.path) and not self._ends_with_newline():   # same torn-tail guard as append()
-                f.write("\n")                                                  # -> a crash-torn last line can't fuse the batch
+            if (
+                os.path.getsize(self.path) and not self._ends_with_newline()
+            ):  # same torn-tail guard as append()
+                f.write("\n")  # -> a crash-torn last line can't fuse the batch
             for record in records:
                 if not isinstance(record, dict):
                     raise TypeError("KnowledgeLog.extend: every record must be a JSON dict")
@@ -146,7 +151,7 @@ class KnowledgeLog:
                 try:
                     yield json.loads(line)
                 except json.JSONDecodeError:
-                    continue                                            # a torn/partial line (crash mid-append) -> skip, never crash the boot
+                    continue  # a torn/partial line (crash mid-append) -> skip, never crash the boot
 
     def count(self):
         """Number of records stored (O(1) maintained counter -- callers poll this per round/request)."""
@@ -161,7 +166,7 @@ def save_state(name, obj):
         json.dump(obj, f, ensure_ascii=True, sort_keys=True)
         f.flush()
         os.fsync(f.fileno())
-    os.replace(tmp, path)                                              # atomic swap: no half-written state
+    os.replace(tmp, path)  # atomic swap: no half-written state
     return path
 
 
@@ -193,8 +198,10 @@ def main():
 
     work = tempfile.mkdtemp(prefix="snn_home_")
     try:
-        os.environ["NORD_HOME"] = work                    # point home() at an isolated temp dir
-        src_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # .../src
+        os.environ["NORD_HOME"] = work  # point home() at an isolated temp dir
+        src_root = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )  # .../src
         kpath = knowledge_path()
 
         print("=" * 74)
@@ -208,7 +215,7 @@ def main():
         log = KnowledgeLog()
         log.append({"cue": ["capital", "france"], "answer": "paris"})
         log.append({"cue": ["capital", "japan"], "answer": "tokyo"})
-        first = list(KnowledgeLog().replay())             # a FRESH object, no shared RAM
+        first = list(KnowledgeLog().replay())  # a FRESH object, no shared RAM
 
         # ---- PROPERTY 2: REAL cross-process never-forget ----
         # A SEPARATE python process appends a fact; then THIS process replays and must see all three.
@@ -218,8 +225,8 @@ def main():
             "from snn_data_lake.substrate.home import KnowledgeLog\n"
             f"KnowledgeLog({kpath!r}).append({{'cue': ['largest', 'planet'], 'answer': 'jupiter'}})\n"
         )
-        rc = subprocess.run([sys.executable, "-c", child]).returncode   # a SEPARATE python process
-        after = list(KnowledgeLog().replay())             # reload EVERYTHING from disk in this process
+        rc = subprocess.run([sys.executable, "-c", child]).returncode  # a SEPARATE python process
+        after = list(KnowledgeLog().replay())  # reload EVERYTHING from disk in this process
 
         # ---- PROPERTY 3: durable JSON state blob round-trips ----
         save_state("valence.json", {"GRIPPER_CLOSE": 0.83, "GRIPPER_OPEN": -0.11})
@@ -236,34 +243,51 @@ def main():
         print("=" * 74)
 
         # ---- self-checks (deterministic asserts) ----
-        assert [r["answer"] for r in first] == ["paris", "tokyo"], "in-process append+replay lost a fact"
+        assert [r["answer"] for r in first] == ["paris", "tokyo"], (
+            "in-process append+replay lost a fact"
+        )
         assert rc == 0, f"child process failed to append (rc={rc})"
         assert answers_after == ["paris", "tokyo", "jupiter"], (
-            f"cross-process never-forget FAILED: expected 3 facts across 2 processes, got {answers_after}")
+            f"cross-process never-forget FAILED: expected 3 facts across 2 processes, got {answers_after}"
+        )
         # append-only: the child's write ADDED to, never replaced, the parent's writes
-        assert len(after) == len(first) + 1, "the log must be append-only (child clobbered prior facts)"
-        assert state == {"GRIPPER_CLOSE": 0.83, "GRIPPER_OPEN": -0.11}, "durable state blob did not round-trip"
-        assert state_default == {"empty": True}, "load_state default not returned for a missing blob"
+        assert len(after) == len(first) + 1, (
+            "the log must be append-only (child clobbered prior facts)"
+        )
+        assert state == {"GRIPPER_CLOSE": 0.83, "GRIPPER_OPEN": -0.11}, (
+            "durable state blob did not round-trip"
+        )
+        assert state_default == {"empty": True}, (
+            "load_state default not returned for a missing blob"
+        )
         assert KnowledgeLog().count() == 3, "count() disagrees with replay()"
         # LEAN: re-appending a KNOWN fact must NOT grow the lake (never store the same fact twice)
         dup_written = KnowledgeLog().append({"cue": ["capital", "france"], "answer": "paris"})
-        assert dup_written is False and KnowledgeLog().count() == 3, "dedup failed: a duplicate fact grew the lake"
+        assert dup_written is False and KnowledgeLog().count() == 3, (
+            "dedup failed: a duplicate fact grew the lake"
+        )
         # CRASH-RECOVERY: a torn last line (crash mid-append, no trailing newline) must NOT crash the
         # next boot, and a new append must land cleanly (not fuse onto the garbage) and be replayed.
         with open(kpath, "a", encoding="ascii") as f:
-            f.write('{"cue": ["torn"], "ans')                 # partial JSON, no newline -> a crashed write
-        survived = KnowledgeLog().count()                     # construction must NOT raise on the torn line
+            f.write('{"cue": ["torn"], "ans')  # partial JSON, no newline -> a crashed write
+        survived = KnowledgeLog().count()  # construction must NOT raise on the torn line
         KnowledgeLog().append({"cue": ["moon"], "answer": "luna"})
         recovered = [r["answer"] for r in KnowledgeLog().replay()]
-        assert survived == 3, "a torn last line must be skipped, not crash every future KnowledgeLog()"
-        assert "luna" in recovered, "an append after a crash-torn line was lost (fused onto the garbage)"
+        assert survived == 3, (
+            "a torn last line must be skipped, not crash every future KnowledgeLog()"
+        )
+        assert "luna" in recovered, (
+            "an append after a crash-torn line was lost (fused onto the garbage)"
+        )
         # ASCII on disk (cp1252-safe): the whole log decodes as ASCII
         with open(kpath, encoding="ascii") as f:
             f.read()
 
-        print("self-check OK: knowledge appended in one process is REPLAYED in a separate process "
-              "(never forgotten across a restart); append-only; durable JSON state round-trips; "
-              "ASCII-on-disk (cp1252-safe). This is the shared home every entrypoint boots into.")
+        print(
+            "self-check OK: knowledge appended in one process is REPLAYED in a separate process "
+            "(never forgotten across a restart); append-only; durable JSON state round-trips; "
+            "ASCII-on-disk (cp1252-safe). This is the shared home every entrypoint boots into."
+        )
     finally:
         os.environ.pop("NORD_HOME", None)
         shutil.rmtree(work, ignore_errors=True)

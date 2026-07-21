@@ -40,8 +40,8 @@ assert their COSINE SIMILARITY is clearly positive. It is NOT 1.0 -- e-prop is a
 cosine is printed and asserted > 0.5.
 
 Minimal -- 3 inputs (store cue / recall cue / background) -> an 8-unit recurrent LIF
-layer -> a scalar leaky readout (+bias), on a tiny seeded store-and-recall task (T=24). Pure
-stdlib (`random` seeded + `math`; no numpy/torch), ASCII output, deterministic. Additive research
+layer -> a scalar leaky readout (+bias), on a tiny seeded store-and-recall task (T=24). Seeded
+`random` + `math`, ASCII output, deterministic. Additive research
 module; touches no core or safety-envelope file.
 
   Run: python eprop.py        # (also run by run_selfchecks.py)

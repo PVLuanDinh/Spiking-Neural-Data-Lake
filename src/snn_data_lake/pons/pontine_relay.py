@@ -36,15 +36,16 @@ Dasgupta, Stevens & Navlakha 2017 (random-expansion sparse tags).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.pons.pontine_relay
 """
+
 import random
 
-D_CORTEX = 24        # cortical motor-efference dimensionality
-EXPANSION = 16       # mossy-fibre fan-out factor (m = D_CORTEX * EXPANSION)
-WTA = 0.05           # fraction of mossy lines kept active (sparse granule code)
-SAMPLES = 6          # cortical dims each mossy line reads (sparse divergent projection)
-N_CLASSES = 10       # distinct cortical commands to relay
-PROBES = 30          # jittered probes per command for the nearest-code readout
-JITTER = 0.10        # per-dim cortical noise on a probe
+D_CORTEX = 24  # cortical motor-efference dimensionality
+EXPANSION = 16  # mossy-fibre fan-out factor (m = D_CORTEX * EXPANSION)
+WTA = 0.05  # fraction of mossy lines kept active (sparse granule code)
+SAMPLES = 6  # cortical dims each mossy line reads (sparse divergent projection)
+N_CLASSES = 10  # distinct cortical commands to relay
+PROBES = 30  # jittered probes per command for the nearest-code readout
+JITTER = 0.10  # per-dim cortical noise on a probe
 
 
 class PontineRelay:
@@ -54,16 +55,17 @@ class PontineRelay:
     so every input maps to a single constant code -- the un-riggable collapsed control.
     """
 
-    def __init__(self, d=D_CORTEX, expansion=EXPANSION, wta=WTA, samples=SAMPLES,
-                 collapse=False, seed=0):
+    def __init__(
+        self, d=D_CORTEX, expansion=EXPANSION, wta=WTA, samples=SAMPLES, collapse=False, seed=0
+    ):
         self.d = d
         self.m = d * expansion
         self.k = max(1, round(self.m * wta))
         rng = random.Random(seed)
         s = min(samples, d)
         if collapse:
-            shared = rng.sample(range(d), s)               # one shared sample for EVERY line
-            self.proj = [shared for _ in range(self.m)]     # degenerate: all lines read the same dims
+            shared = rng.sample(range(d), s)  # one shared sample for EVERY line
+            self.proj = [shared for _ in range(self.m)]  # degenerate: all lines read the same dims
         else:
             self.proj = [rng.sample(range(d), s) for _ in range(self.m)]
 
@@ -71,7 +73,7 @@ class PontineRelay:
         """Cortical vector -> sparse mossy code. Each line sums its sampled cortical dims; the
         top-k lines win. Deterministic tie-break by lowest index (matches fly_hash / hippocampus)."""
         act = [sum(x[i] for i in idx) for idx in self.proj]
-        winners = sorted(range(self.m), key=lambda j: (act[j], -j), reverse=True)[:self.k]
+        winners = sorted(range(self.m), key=lambda j: (act[j], -j), reverse=True)[: self.k]
         return frozenset(winners)
 
 
@@ -82,8 +84,11 @@ def code_distance(a, b):
 
 def min_pairwise_distance(codes):
     """Smallest distance between any two enrolled command codes -- the separability margin."""
-    return min(code_distance(codes[i], codes[j])
-               for i in range(len(codes)) for j in range(i + 1, len(codes)))
+    return min(
+        code_distance(codes[i], codes[j])
+        for i in range(len(codes))
+        for j in range(i + 1, len(codes))
+    )
 
 
 def make_commands(n, d, seed):
@@ -124,33 +129,42 @@ def main():
     dmin_f = min_pairwise_distance(codes_f)
     dmin_c = min_pairwise_distance(codes_c)
     chance = 1.0 / N_CLASSES
-    margin = faithful.k                                    # require class codes apart by >= k lines
+    margin = faithful.k  # require class codes apart by >= k lines
 
     print("=" * 68)
     print("PONTINE RELAY -- cortico-ponto-cerebellar mossy-fibre expansion")
     print("=" * 68)
-    print(f"cortical dim = {faithful.d}, mossy-fibre dim = {faithful.m} (x{EXPANSION} expansion), "
-          f"code = {faithful.k}/{faithful.m} active lines")
-    print(f"commands = {N_CLASSES}, probes/command = {PROBES}, jitter = {JITTER:.2f}, "
-          f"chance = {chance:.0%}")
+    print(
+        f"cortical dim = {faithful.d}, mossy-fibre dim = {faithful.m} (x{EXPANSION} expansion), "
+        f"code = {faithful.k}/{faithful.m} active lines"
+    )
+    print(
+        f"commands = {N_CLASSES}, probes/command = {PROBES}, jitter = {JITTER:.2f}, "
+        f"chance = {chance:.0%}"
+    )
     print("-" * 68)
-    print(f"(a) FAITHFUL relay  : nearest-code accuracy = {acc_f:.0%}   "
-          f"[{N_CLASSES}-way, chance {chance:.0%}]")
+    print(
+        f"(a) FAITHFUL relay  : nearest-code accuracy = {acc_f:.0%}   "
+        f"[{N_CLASSES}-way, chance {chance:.0%}]"
+    )
     print(f"    min pairwise code distance between commands = {dmin_f} lines  (margin {margin})")
-    print(f"(b) COLLAPSED relay : nearest-code accuracy = {acc_c:.0%}   "
-          "[all inputs -> one code]")
+    print(f"(b) COLLAPSED relay : nearest-code accuracy = {acc_c:.0%}   [all inputs -> one code]")
     print(f"    min pairwise code distance between commands = {dmin_c} lines  (indistinguishable)")
     print("=" * 68)
 
-    # ---- self-check: deterministic asserts, zero-dep, ASCII-only ----
+    # ---- self-check: deterministic asserts, ASCII-only ----
     # (1) faithful expansion PRESERVES the commands: probes decode far above chance.
     assert acc_f >= 0.9, f"faithful relay must decode commands ({acc_f:.2f} vs chance {chance:.2f})"
     # (2) faithful codes stay pairwise separable by the margin.
     assert dmin_f >= margin, f"command codes must stay apart by >= {margin} lines (min {dmin_f})"
     # (3) COLLAPSED control loses the distinctions: every input -> one constant code.
     assert dmin_c == 0, f"collapsed relay must map all commands to one code (min dist {dmin_c})"
-    assert acc_c <= 1.5 * chance, f"collapsed relay must fall to chance ({acc_c:.2f} vs {chance:.2f})"
-    assert acc_f > 3.0 * acc_c, f"faithful must markedly beat collapsed ({acc_f:.2f} vs {acc_c:.2f})"
+    assert acc_c <= 1.5 * chance, (
+        f"collapsed relay must fall to chance ({acc_c:.2f} vs {chance:.2f})"
+    )
+    assert acc_f > 3.0 * acc_c, (
+        f"faithful must markedly beat collapsed ({acc_f:.2f} vs {acc_c:.2f})"
+    )
 
     # (4) determinism: same seed -> identical projection, codes, data and accuracy.
     r1, r2 = PontineRelay(seed=0), PontineRelay(seed=0)
@@ -159,9 +173,11 @@ def main():
     acc_f2, _ = readout_accuracy(PontineRelay(seed=0), commands, PROBES, JITTER, seed=2)
     assert acc_f2 == acc_f, "same seed -> identical readout accuracy"
 
-    print(f"self-check OK: faithful expansion decodes {acc_f:.0%} ({N_CLASSES}-way, chance "
-          f"{chance:.0%}), codes apart >= {dmin_f} lines; collapsed relay -> one code "
-          f"({acc_c:.0%}, dist 0); expansion preserves the commands; deterministic")
+    print(
+        f"self-check OK: faithful expansion decodes {acc_f:.0%} ({N_CLASSES}-way, chance "
+        f"{chance:.0%}), codes apart >= {dmin_f} lines; collapsed relay -> one code "
+        f"({acc_c:.0%}, dist 0); expansion preserves the commands; deterministic"
+    )
 
 
 if __name__ == "__main__":

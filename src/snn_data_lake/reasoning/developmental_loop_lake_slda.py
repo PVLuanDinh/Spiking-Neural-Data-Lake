@@ -39,13 +39,13 @@ WHY PROXIMITY RETRIEVAL FEEDING SLDA REMOVES THE -3.1 CONTAMINATION COST (the 12
      while ADDING the durable, content-addressable long-term store the no-lake SLDA lacked.
 
 Feature learning stays UNSUPERVISED (frozen conv1). Only the SLDA readout is supervised.
-Zero-dep CORE untouched; research/GPU tier, ruff-excluded. ONE new file.
+CORE untouched; research/GPU tier, ruff-excluded. ONE new file.
 
 Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/developmental_loop_lake_slda.py
 Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(400) NORD_KREPLAY(150)
        NORD_RFF(2000) NORD_GAMMA(0.02) NORD_SHRINK(0.1) NORD_PROTO(0) NORD_TRAIN(12000)
        NORD_TEST(2000) NORD_GAMMA_SWEEP("g1,g2,...")
-Deps: numpy torch torchvision snntorch  (research/GPU tier; core stays zero-dep)
+Deps: numpy torch torchvision snntorch  (research/GPU tier; core untouched)
 """
 import os
 

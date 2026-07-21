@@ -44,6 +44,7 @@ Papers:
     optimal paths from chemical waves", Science 267(5199):868-871.
   Adamatzky, A. (2005), "Reaction-Diffusion Computers", Elsevier.
 """
+
 from collections import deque
 
 # ---- the fixed maze (hand-designed so the shortest path forces a long detour) ----
@@ -64,10 +65,10 @@ MAZE = [
     "#......T#",
     "#########",
 ]
-KNOWN_GEODESIC = 24    # hand-checked shortest S->T path length on the fixed maze
-REFRACTORY = 2         # r >= 1; the refractory tail enforces one-directional propagation
+KNOWN_GEODESIC = 24  # hand-checked shortest S->T path length on the fixed maze
+REFRACTORY = 2  # r >= 1; the refractory tail enforces one-directional propagation
 
-REST, EXCITED = "REST", "EXCITED"    # a refractory cell is stored as an int k >= 1
+REST, EXCITED = "REST", "EXCITED"  # a refractory cell is stored as an int k >= 1
 
 
 def parse(maze):
@@ -86,7 +87,7 @@ def parse(maze):
 
 def neighbours(cell):
     r, c = cell
-    return ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1))   # 4-connected von Neumann
+    return ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1))  # 4-connected von Neumann
 
 
 def bfs_dist(free, sources):
@@ -128,8 +129,8 @@ def excite_wave(free, sources, refractory=REFRACTORY):
                 else:
                     nxt[cell] = REST
             elif st == EXCITED:
-                nxt[cell] = refractory                      # EXCITED -> REFRACTORY(r)
-            else:                                            # REFRACTORY(k)
+                nxt[cell] = refractory  # EXCITED -> REFRACTORY(r)
+            else:  # REFRACTORY(k)
                 nxt[cell] = REST if st == 1 else st - 1
         state = nxt
         t += 1
@@ -159,9 +160,11 @@ def render(maze, path=()):
     pathset = set(path)
     rows = []
     for r, row in enumerate(maze):
-        rows.append("".join(
-            ch if ch in "ST" else ("*" if (r, c) in pathset else ch)
-            for c, ch in enumerate(row)))
+        rows.append(
+            "".join(
+                ch if ch in "ST" else ("*" if (r, c) in pathset else ch) for c, ch in enumerate(row)
+            )
+        )
     return "\n".join(rows)
 
 
@@ -186,8 +189,10 @@ def main():
     path = backtrace(arrival, tgt, src)
     steps = len(path) - 1
     manhattan = abs(src[0] - tgt[0]) + abs(src[1] - tgt[1])
-    print(f"shortest path S->T: {steps} steps "
-          f"(Manhattan {manhattan}, known geodesic {KNOWN_GEODESIC}) -- recovered path '*':")
+    print(
+        f"shortest path S->T: {steps} steps "
+        f"(Manhattan {manhattan}, known geodesic {KNOWN_GEODESIC}) -- recovered path '*':"
+    )
     print(render(MAZE, path))
     print()
 
@@ -196,8 +201,10 @@ def main():
     bdist2 = bfs_dist(free, [src, tgt])
     once = len(ev2) == len(free)
     minmatch = all(arr2[cell] == bdist2[cell] for cell in free)
-    print(f"two sources (S and T): excitation events {len(ev2)} == free cells {len(free)}"
-          f" -> each cell fires once: {once}")
+    print(
+        f"two sources (S and T): excitation events {len(ev2)} == free cells {len(free)}"
+        f" -> each cell fires once: {once}"
+    )
     print(f"each cell claimed by the NEARER front (arrival == min-distance BFS): {minmatch}")
     print("=" * 64)
 
@@ -224,10 +231,12 @@ def main():
     assert all(arr2[cell] == bdist2[cell] for cell in free), "two-source arrival != min-BFS"
     # 5. deterministic: no RNG -> byte-identical arrival field on a repeat run.
     assert excite_wave(free, [src])[0] == arrival, "nondeterministic wave"
-    print(f"self-check OK: excitable wave == BFS geodesic on {len(reachable)} cells; "
-          f"shortest path {steps} steps (Manhattan {manhattan}) recovered by steepest "
-          f"descent; single- & two-source annihilation (each cell fires exactly once); "
-          f"deterministic (zero RNG)")
+    print(
+        f"self-check OK: excitable wave == BFS geodesic on {len(reachable)} cells; "
+        f"shortest path {steps} steps (Manhattan {manhattan}) recovered by steepest "
+        f"descent; single- & two-source annihilation (each cell fires exactly once); "
+        f"deterministic (zero RNG)"
+    )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 """
-v0.20 — Paradigm B complete: an in-storage spike-query ENGINE  (stdlib, zero deps).
+v0.20 — Paradigm B complete: an in-storage spike-query ENGINE.
 
 v0.13–14 gave one query type (coincidence: >= k channels within W). A real in-storage
 search engine (NPUsearch-style) needs more than "fire together" — it needs the
@@ -18,6 +18,7 @@ emitting ONLY matches to the host:
 
 Run:  python paradigm_b_engine.py
 """
+
 import os
 import random
 
@@ -26,7 +27,7 @@ from snn_data_lake.cortex.paradigm_b_matcher import (
 )
 from snn_data_lake.substrate.spike_telemetry_hub import disk_query, synth
 
-_MAXT = 2 ** 31 - 1
+_MAXT = 2**31 - 1
 
 
 def match_sequence(events_sorted, ordered, W):
@@ -34,14 +35,14 @@ def match_sequence(events_sorted, ordered, W):
     Candidate state machine: a spike of ordered[stage] advances any candidate waiting
     for it; reaching the last stage emits a match. Order matters — reverse won't match."""
     L = len(ordered)
-    matches, cands = [], []                      # cands: [(start_time, stage), ...]
+    matches, cands = [], []  # cands: [(start_time, stage), ...]
     for t, ch in events_sorted:
-        cands = [c for c in cands if t - c[0] <= W]      # prune by window
+        cands = [c for c in cands if t - c[0] <= W]  # prune by window
         nxt = []
         for t0, stage in cands:
             if ch == ordered[stage]:
                 if stage + 1 == L:
-                    matches.append(t)            # completed in order, within W
+                    matches.append(t)  # completed in order, within W
                 else:
                     nxt.append((t0, stage + 1))
             else:
@@ -82,9 +83,9 @@ def main():
     N, DUR, RATE = 256, 100_000, 0.004
     BURST_CH, BURST = {7, 99}, (50_000, 52_000)
     SEQ, SEQ_WIN, SEQ_N = [5, 17, 42], (70_000, 75_000), 40
-    hub = synth(N, DUR, RATE, BURST_CH, BURST)         # coincidence burst on {7,99}
+    hub = synth(N, DUR, RATE, BURST_CH, BURST)  # coincidence burst on {7,99}
     rng = random.Random(1)
-    for _ in range(SEQ_N):                              # inject ordered motif 5->17->42
+    for _ in range(SEQ_N):  # inject ordered motif 5->17->42
         t0 = rng.randint(SEQ_WIN[0], SEQ_WIN[1] - 30)
         for j, c in enumerate(SEQ):
             hub.ingest(c, [t0 + j * 3 + rng.randint(0, 2)])
@@ -101,8 +102,10 @@ def main():
     # query 1: coincidence
     cm, cread, cbytes = eng.coincidence({7, 99}, W=50, k=2)
     cb = [m for m in cm if BURST[0] <= m < BURST[1]]
-    print(f"coincidence {{7,99}} W=50 k=2 : {len(cm)} matches ({len(cb)} in burst), "
-          f"read {100*cbytes/eng.file_bytes:.1f}% of file")
+    print(
+        f"coincidence {{7,99}} W=50 k=2 : {len(cm)} matches ({len(cb)} in burst), "
+        f"read {100 * cbytes / eng.file_bytes:.1f}% of file"
+    )
 
     # query 2: sequence (forward) vs reverse — the order discriminator
     sm, sread, sbytes = eng.sequence([5, 17, 42], W=20)
@@ -110,10 +113,14 @@ def main():
     rm, _, _ = eng.sequence([42, 17, 5], W=20)
     rb = [m for m in rm if SEQ_WIN[0] <= m < SEQ_WIN[1]]
     print(f"sequence  5->17->42  W=20  : {len(sm)} matches ({len(sb)} in motif window)")
-    print(f"sequence  42->17->5  W=20  : {len(rm)} matches ({len(rb)} in motif window)  <- reverse order")
-    print(f"  read {100*sbytes/eng.file_bytes:.1f}% of file (only the 3 queried channels)")
+    print(
+        f"sequence  42->17->5  W=20  : {len(rm)} matches ({len(rb)} in motif window)  <- reverse order"
+    )
+    print(f"  read {100 * sbytes / eng.file_bytes:.1f}% of file (only the 3 queried channels)")
     print()
-    print(f"host transfer: matches only ({len(cm)+len(sm)} stamps) vs {hub.n_events():,} raw events")
+    print(
+        f"host transfer: matches only ({len(cm) + len(sm)} stamps) vs {hub.n_events():,} raw events"
+    )
     print("=" * 64)
 
     # ---- self-checks --------------------------------------------------------
@@ -121,8 +128,10 @@ def main():
     assert len(sb) >= SEQ_N * 0.7, f"sequence missed the ordered motif ({len(sb)}/{SEQ_N})"
     assert len(rb) < len(sb) / 2, "reverse-order query should NOT match the forward motif"
     assert sbytes < eng.file_bytes and cbytes < eng.file_bytes, "queries read the whole file"
-    print("self-check OK: coincidence finds burst, sequence finds ordered motif AND "
-          "rejects reverse order, partial reads")
+    print(
+        "self-check OK: coincidence finds burst, sequence finds ordered motif AND "
+        "rejects reverse order, partial reads"
+    )
 
 
 if __name__ == "__main__":

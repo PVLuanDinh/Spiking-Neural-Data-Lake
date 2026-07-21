@@ -25,18 +25,21 @@ events/channel) live entirely in the tail, so nothing regresses for them.
 
   python streaming_hub.py
 """
+
 import os
 import struct
 from array import array
 from bisect import bisect_left, bisect_right
 
-_REC = struct.Struct("<II")     # DEFAULT record: (channel u32, time u32) = 8 bytes per event
-_REC_PACKED = struct.Struct("<I")   # OPT-IN packed record: one u32 = (channel << _PACK_TBITS) | time = 4 bytes
-_PACK_CBITS = 6                 # packed channel field: 6 bits -> channel in [0, 64)
-_PACK_TBITS = 26               # packed time field: 26 bits -> time in [0, 67108864)
-_INDEX_STRIDE = 1024            # coarse offset index: one (time, offset) sample every K events/channel
-_SCAN_CHUNK = 1 << 20          # bytes read per disk block while scanning (bounds resident memory)
-_MAX_T = 1 << 32               # exclusive upper bound over all u32 spike times (whole-lake scan)
+_REC = struct.Struct("<II")  # DEFAULT record: (channel u32, time u32) = 8 bytes per event
+_REC_PACKED = struct.Struct(
+    "<I"
+)  # OPT-IN packed record: one u32 = (channel << _PACK_TBITS) | time = 4 bytes
+_PACK_CBITS = 6  # packed channel field: 6 bits -> channel in [0, 64)
+_PACK_TBITS = 26  # packed time field: 26 bits -> time in [0, 67108864)
+_INDEX_STRIDE = 1024  # coarse offset index: one (time, offset) sample every K events/channel
+_SCAN_CHUNK = 1 << 20  # bytes read per disk block while scanning (bounds resident memory)
+_MAX_T = 1 << 32  # exclusive upper bound over all u32 spike times (whole-lake scan)
 
 
 class _ChannelStream:
@@ -55,14 +58,14 @@ class _ChannelStream:
     def _materialize(self):
         if self._cache is None:
             ev = self._hub.query_window(0, _MAX_T, channels=[self._c])
-            self._cache = sorted(t for t, _ in ev)          # ascending times, like the old in-RAM index
+            self._cache = sorted(t for t, _ in ev)  # ascending times, like the old in-RAM index
         return self._cache
 
     def __iter__(self):
         return iter(self._materialize())
 
     def __len__(self):
-        return self._hub._count[self._c]                    # O(1): resident per-channel counter
+        return self._hub._count[self._c]  # O(1): resident per-channel counter
 
     def __getitem__(self, k):
         return self._materialize()[k]
@@ -118,28 +121,31 @@ class StreamingHub:
         if packed and n_channels > (1 << _PACK_CBITS):
             raise ValueError(
                 f"packed=True needs n_channels <= {1 << _PACK_CBITS} (channel packs into {_PACK_CBITS} bits), "
-                f"got {n_channels}")
+                f"got {n_channels}"
+            )
         self.path = path
         self.n = n_channels
         self.flush_every = int(flush_every)
         self.packed = bool(packed)
-        self._rec = _REC_PACKED if self.packed else _REC     # fixed-width record struct (4 B packed / 8 B default)
-        self._pending = 0                                   # appends written but not yet flushed
-        self._K = _INDEX_STRIDE                             # coarse-index / tail block size
-        self._nrec = 0                                      # total records on disk (== events appended)
-        self._count = [0] * n_channels                      # events per channel (O(1) len())
+        self._rec = (
+            _REC_PACKED if self.packed else _REC
+        )  # fixed-width record struct (4 B packed / 8 B default)
+        self._pending = 0  # appends written but not yet flushed
+        self._K = _INDEX_STRIDE  # coarse-index / tail block size
+        self._nrec = 0  # total records on disk (== events appended)
+        self._count = [0] * n_channels  # events per channel (O(1) len())
         self._itimes = [array("I") for _ in range(n_channels)]  # coarse index: per-block start TIME
-        self._ioff = [array("Q") for _ in range(n_channels)]    # coarse index: per-block start OFFSET
-        self._tail = [[] for _ in range(n_channels)]        # current (< K) block per channel, RESIDENT
-        self._tail_off = [0] * n_channels                   # byte offset where the current block begins
-        self._last_t = [-1] * n_channels                    # last time appended (monotonicity check)
-        self._mono = [True] * n_channels                    # channel's on-disk times are non-decreasing
-        self._last_query_bytes = 0                          # bytes read by the most recent query (diag)
-        self.ch = _ChannelViews(self)                       # lazy out-of-core per-channel read view
+        self._ioff = [array("Q") for _ in range(n_channels)]  # coarse index: per-block start OFFSET
+        self._tail = [[] for _ in range(n_channels)]  # current (< K) block per channel, RESIDENT
+        self._tail_off = [0] * n_channels  # byte offset where the current block begins
+        self._last_t = [-1] * n_channels  # last time appended (monotonicity check)
+        self._mono = [True] * n_channels  # channel's on-disk times are non-decreasing
+        self._last_query_bytes = 0  # bytes read by the most recent query (diag)
+        self.ch = _ChannelViews(self)  # lazy out-of-core per-channel read view
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         if resume and os.path.exists(path):
             self._replay()
-        self._f = open(path, "ab")                          # durable append-only handle
+        self._f = open(path, "ab")  # durable append-only handle
 
     def _flush_pending(self):
         """Flush buffered appends (no-op when nothing is pending -> the default path never adds a
@@ -170,15 +176,15 @@ class StreamingHub:
         """Update the BOUNDED resident index for one on-disk record (shared by append + _replay,
         so the reconstructed state is identical whether written live or replayed from disk)."""
         cnt = self._count[channel]
-        if cnt % self._K == 0:                              # this event starts a new K-block -> checkpoint
+        if cnt % self._K == 0:  # this event starts a new K-block -> checkpoint
             self._itimes[channel].append(t)
             self._ioff[channel].append(off)
-            self._tail[channel] = []                        # prior block is durable + seekable; drop RAM
+            self._tail[channel] = []  # prior block is durable + seekable; drop RAM
             self._tail_off[channel] = off
         self._tail[channel].append(t)
         self._count[channel] = cnt + 1
         lt = self._last_t[channel]
-        if lt >= 0 and t < lt:                              # out-of-order arrival on this channel
+        if lt >= 0 and t < lt:  # out-of-order arrival on this channel
             self._mono[channel] = False
         self._last_t[channel] = t
 
@@ -189,11 +195,11 @@ class StreamingHub:
         if not 0 <= channel < self.n:
             raise IndexError(f"channel {channel} out of range [0,{self.n})")
         t = int(t)
-        off = self._nrec * self._rec.size                   # byte offset of the record about to be written
+        off = self._nrec * self._rec.size  # byte offset of the record about to be written
         self._f.write(self._pack(channel, t))
         self._nrec += 1
         self._pending += 1
-        if self._pending >= self.flush_every:               # default flush_every=1 -> durable per event
+        if self._pending >= self.flush_every:  # default flush_every=1 -> durable per event
             self._f.flush()
             self._pending = 0
         self._record_index(channel, t, off)
@@ -226,17 +232,17 @@ class StreamingHub:
 
         Recent windows are served from the resident tail (no I/O). Older ranges binary-search the
         coarse per-channel offset index and SEEK the log, scanning only the overlapping block(s)."""
-        self._flush_pending()                               # a query never misses buffered events
+        self._flush_pending()  # a query never misses buffered events
         t0 = int(t0)
         t1 = int(t1)
         out = []
         self._last_query_bytes = 0
-        for c in (channels if channels is not None else range(self.n)):
+        for c in channels if channels is not None else range(self.n):
             itimes = self._itimes[c]
             ioff = self._ioff[c]
-            j = len(itimes)                                 # index entries; entry j-1 is the current block
-            if j >= 2:                                      # completed blocks 0..j-2 live on disk
-                if self._mono[c]:                           # keys sorted -> seek only overlapping blocks
+            j = len(itimes)  # index entries; entry j-1 is the current block
+            if j >= 2:  # completed blocks 0..j-2 live on disk
+                if self._mono[c]:  # keys sorted -> seek only overlapping blocks
                     p = bisect_right(itimes, t0)
                     q = bisect_left(itimes, t1)
                     j0 = p - 1 if p > 0 else 0
@@ -245,9 +251,9 @@ class StreamingHub:
                         j1 = j - 2
                     if j0 <= j1:
                         self._last_query_bytes += self._scan(c, t0, t1, ioff[j0], ioff[j1 + 1], out)
-                else:                                       # rare out-of-order channel: scan its blocks
+                else:  # rare out-of-order channel: scan its blocks
                     self._last_query_bytes += self._scan(c, t0, t1, ioff[0], ioff[j - 1], out)
-            for tt in self._tail[c]:                        # current block (resident): recent fast path
+            for tt in self._tail[c]:  # current block (resident): recent fast path
                 if t0 <= tt < t1:
                     out.append((tt, c))
         return out
@@ -263,8 +269,9 @@ class StreamingHub:
         index could exact-count; the sketch is what carries to the cloud path). Read-only: streams the durable
         log in bounded chunks (does not slurp it) and touches no append/query state. Returns a list of channel
         frozensets, most frequent first."""
-        self._flush_pending()                               # durable up to this analytics read
+        self._flush_pending()  # durable up to this analytics read
         from snn_data_lake.substrate.spike_stream_sketch import HeavyHitters
+
         bins = {}
         rs = self._rec.size
         end = self._nrec * rs
@@ -288,14 +295,14 @@ class StreamingHub:
         return hh.heavy()
 
     def close(self):
-        self._flush_pending()                               # clean close always flushes the tail
+        self._flush_pending()  # clean close always flushes the tail
         self._f.close()
 
     def __enter__(self):
         return self
 
     def __exit__(self, *exc):
-        self.close()                                       # release the append handle even on an exception
+        self.close()  # release the append handle even on an exception
         return False
 
     # ---- recovery -----------------------------------------------------------
@@ -333,22 +340,23 @@ def main():
 
     # ---- record WHILE querying: two bursts, query between them --------------
     import random
+
     rng = random.Random(0)
     # burst 1 on ch3 in [1000,2000)
     for t in sorted(rng.sample(range(1000, 2000), 200)):
         hub.append(3, t)
-    q1 = hub.query_window(1000, 2000, channels=[3])          # query mid-stream
+    q1 = hub.query_window(1000, 2000, channels=[3])  # query mid-stream
     # burst 2 on ch3 in [3000,4000) — recorded AFTER the first query
     for t in sorted(rng.sample(range(3000, 4000), 150)):
         hub.append(3, t)
-    q2_old = hub.query_window(1000, 2000, channels=[3])      # old window unchanged
-    q2_new = hub.query_window(3000, 4000, channels=[3])      # new events now visible
+    q2_old = hub.query_window(1000, 2000, channels=[3])  # old window unchanged
+    q2_new = hub.query_window(3000, 4000, channels=[3])  # new events now visible
     # background traffic on other channels
     for c in range(N):
         for t in sorted(rng.sample(range(DUR), 30)):
             hub.append(c, t)
-    partial = hub.query_window(0, DUR, channels=[3])         # only ch3, not all 16
-    q_final = hub.query_window(1000, 2000, channels=[3])     # final state of that window
+    partial = hub.query_window(0, DUR, channels=[3])  # only ch3, not all 16
+    q_final = hub.query_window(1000, 2000, channels=[3])  # final state of that window
     disk_bytes = os.path.getsize(path)
     total = hub.n_events()
     hub.close()
@@ -360,11 +368,11 @@ def main():
     mhub = StreamingHub(motif_path, N)
     W = 10
     tt = 0
-    for _ in range(40):                                      # channels {1,4,7} co-fire, 40 times, distinct bins
+    for _ in range(40):  # channels {1,4,7} co-fire, 40 times, distinct bins
         for c in (1, 4, 7):
             mhub.append(c, tt + rng.randint(0, W - 1))
         tt += W
-    for _ in range(300):                                    # background: lone random channels in later bins
+    for _ in range(300):  # background: lone random channels in later bins
         mhub.append(rng.randrange(N), tt + rng.randint(0, W - 1))
         tt += W
     hot = mhub.hot_motifs(window=W, top_k=3)
@@ -381,9 +389,15 @@ def main():
     print("=" * 60)
     print(f"recorded     : {total:,} events -> {disk_bytes:,} B durable log (8 B/event)")
     print(f"mid-stream q : window [1000,2000) ch3 -> {len(q1)} events (during recording)")
-    print(f"after burst2 : same window still {len(q2_old)}; new window [3000,4000) -> {len(q2_new)}")
-    print(f"partial query: ch3 over full range -> {len(partial)} events (touched 1 of {N} channels)")
-    print(f"hot motifs   : top coactivation {sorted(hot[0])} (recurring {{1,4,7}}) via fixed-memory sketch")
+    print(
+        f"after burst2 : same window still {len(q2_old)}; new window [3000,4000) -> {len(q2_new)}"
+    )
+    print(
+        f"partial query: ch3 over full range -> {len(partial)} events (touched 1 of {N} channels)"
+    )
+    print(
+        f"hot motifs   : top coactivation {sorted(hot[0])} (recurring {{1,4,7}}) via fixed-memory sketch"
+    )
     print(f"replay       : restart from log -> {replayed:,} events, window q -> {len(q_after)}")
     print("=" * 60)
 
@@ -394,40 +408,47 @@ def main():
     assert len(partial) == 200 + 150 + 30, "partial query miscounted ch3"
     assert disk_bytes == total * _REC.size, "durable log size != events x 8"
     assert replayed == total and q_after == q_final, "replay did not reconstruct the store"
-    assert hot and set(hot[0]) == {1, 4, 7}, f"hot_motifs must surface the recurring coactivation motif ({hot})"
+    assert hot and set(hot[0]) == {1, 4, 7}, (
+        f"hot_motifs must surface the recurring coactivation motif ({hot})"
+    )
 
     # ---- v2.5 opt-in group-commit: default byte-identical; K>1 loses nothing on query/close ----
     gc_events = [(rng.randrange(N), rng.randrange(DUR)) for _ in range(500)]
-    p1 = os.path.join(".", "data", "gc_default.spkl")       # flush_every=1 (current behaviour)
-    pk = os.path.join(".", "data", "gc_group.spkl")         # flush_every=K (opt-in group-commit)
+    p1 = os.path.join(".", "data", "gc_default.spkl")  # flush_every=1 (current behaviour)
+    pk = os.path.join(".", "data", "gc_group.spkl")  # flush_every=K (opt-in group-commit)
     for p in (p1, pk):
         if os.path.exists(p):
             os.remove(p)
-    h1 = StreamingHub(p1, N)                                 # DEFAULT: flush every event
-    hk = StreamingHub(pk, N, flush_every=32)                 # K=32: buffer, flush every 32
+    h1 = StreamingHub(p1, N)  # DEFAULT: flush every event
+    hk = StreamingHub(pk, N, flush_every=32)  # K=32: buffer, flush every 32
     for c, t in gc_events:
         h1.append(c, t)
         hk.append(c, t)
-    q1 = h1.query_window(0, DUR)                             # query flushes hk's buffered tail
-    qk = hk.query_window(0, DUR)                             # ...so K>1 misses nothing on a query
-    tail_pending = len(gc_events) % 32                       # 500 % 32 = 20 buffered before close
-    h1.close(); hk.close()                                   # clean close flushes hk's last group
+    q1 = h1.query_window(0, DUR)  # query flushes hk's buffered tail
+    qk = hk.query_window(0, DUR)  # ...so K>1 misses nothing on a query
+    tail_pending = len(gc_events) % 32  # 500 % 32 = 20 buffered before close
+    h1.close()
+    hk.close()  # clean close flushes hk's last group
     with open(p1, "rb") as f:
         b1 = f.read()
     with open(pk, "rb") as f:
         bk = f.read()
-    hk2 = StreamingHub(pk, N, resume=True)                   # reload K-hub log from disk
+    hk2 = StreamingHub(pk, N, resume=True)  # reload K-hub log from disk
     replayed_k = hk2.n_events()
     hk2.close()
     expected = sorted((t, c) for c, t in gc_events)
-    print(f"group-commit : default {len(b1):,}B vs K=32 {len(bk):,}B "
-          f"(byte-identical={b1 == bk}); {tail_pending}-event tail flushed on close; "
-          f"query saw all {len(qk)} events")
+    print(
+        f"group-commit : default {len(b1):,}B vs K=32 {len(bk):,}B "
+        f"(byte-identical={b1 == bk}); {tail_pending}-event tail flushed on close; "
+        f"query saw all {len(qk)} events"
+    )
 
     assert len(b1) == len(gc_events) * _REC.size, "default (flush_every=1) on-disk log size drifted"
     assert b1 == bk, "group-commit changed the on-disk bytes vs flush-every-event default"
     assert sorted(q1) == sorted(qk) == expected, "group-commit dropped/reordered events in a query"
-    assert replayed_k == len(gc_events), "clean close did not flush the buffered tail to the durable log"
+    assert replayed_k == len(gc_events), (
+        "clean close did not flush the buffered tail to the durable log"
+    )
 
     # ---- OUT-OF-CORE: bounded resident memory as the lake GROWS -------------
     # Write a large MONOTONIC stream; show resident structures stay bounded (NOT O(total events))
@@ -438,16 +459,16 @@ def main():
             os.remove(p)
         h = StreamingHub(p, n_ch, flush_every=256)
         for tk in range(total_events):
-            h.append(tk % n_ch, tk)                          # round-robin -> each channel monotonic
+            h.append(tk % n_ch, tk)  # round-robin -> each channel monotonic
         recent = h.query_window(total_events - 40, total_events, channels=[0])  # recent -> RAM tail
         recent_bytes = h._last_query_bytes
-        old_ev = h.query_window(0, 8 * n_ch, channels=[0])   # earliest ticks -> must SEEK a block
+        old_ev = h.query_window(0, 8 * n_ch, channels=[0])  # earliest ticks -> must SEEK a block
         old_bytes = h._last_query_bytes
         r = {
             "path": p,
             "total": h.n_events(),
-            "resident": sum(len(a) for a in h._tail),        # RAM tail: the only per-event resident store
-            "index": sum(len(a) for a in h._itimes),         # coarse offset index: O(total / K)
+            "resident": sum(len(a) for a in h._tail),  # RAM tail: the only per-event resident store
+            "index": sum(len(a) for a in h._itimes),  # coarse offset index: O(total / K)
             "recent_n": len(recent),
             "recent_bytes": recent_bytes,
             "old": [t for t, _ in old_ev],
@@ -461,26 +482,34 @@ def main():
     BN = 8
     lo = _ooc_probe(1_000, BN)
     hi = _ooc_probe(100_000, BN)
-    cap = _INDEX_STRIDE * BN                                  # tail cap: K events/channel, total-independent
+    cap = _INDEX_STRIDE * BN  # tail cap: K events/channel, total-independent
 
-    big2 = StreamingHub(hi["path"], BN, resume=True)          # reopen the big lake purely from disk
+    big2 = StreamingHub(hi["path"], BN, resume=True)  # reopen the big lake purely from disk
     reopened_total = big2.n_events()
     reopened_old = [t for t, _ in big2.query_window(0, 8 * BN, channels=[0])]
     big2.close()
 
     print("-" * 60)
     print("OUT-OF-CORE (bounded resident memory as the lake grows):")
-    print(f"  1k events   : resident tail {lo['resident']} events, index {lo['index']} entries, "
-          f"old query {lo['old_bytes']} B (fully in-RAM)")
-    print(f"  100k events : resident tail {hi['resident']} events, index {hi['index']} entries, "
-          f"old query SEEK {hi['old_bytes']:,} B of {hi['file_bytes']:,} B "
-          f"({100 * hi['old_bytes'] / hi['file_bytes']:.1f}% of file)")
-    print(f"  tail cap    : {cap} events (K={_INDEX_STRIDE} x {BN} channels) -- independent of total; "
-          f"recent query read {hi['recent_bytes']} B")
+    print(
+        f"  1k events   : resident tail {lo['resident']} events, index {lo['index']} entries, "
+        f"old query {lo['old_bytes']} B (fully in-RAM)"
+    )
+    print(
+        f"  100k events : resident tail {hi['resident']} events, index {hi['index']} entries, "
+        f"old query SEEK {hi['old_bytes']:,} B of {hi['file_bytes']:,} B "
+        f"({100 * hi['old_bytes'] / hi['file_bytes']:.1f}% of file)"
+    )
+    print(
+        f"  tail cap    : {cap} events (K={_INDEX_STRIDE} x {BN} channels) -- independent of total; "
+        f"recent query read {hi['recent_bytes']} B"
+    )
     print("=" * 60)
 
     # (b) BOUNDED MEMORY: the resident per-event store is capped independent of total events.
-    assert lo["resident"] <= cap and hi["resident"] <= cap, "resident tail is not bounded by the cap"
+    assert lo["resident"] <= cap and hi["resident"] <= cap, (
+        "resident tail is not bounded by the cap"
+    )
     assert hi["total"] == 100_000, "big probe did not record all events"
     # the coarse offset index is O(total/K) -- small, NOT O(total events).
     assert hi["index"] <= hi["total"] // _INDEX_STRIDE + BN, "coarse index larger than O(total/K)"
@@ -488,7 +517,9 @@ def main():
     # small lake stays fully in-RAM; big lake SEEKS a bounded block (never the whole file).
     assert lo["old_bytes"] == 0, "small lake should answer from RAM (no disk read)"
     assert hi["recent_bytes"] == 0, "a recent-window query should hit the RAM tail (no disk read)"
-    assert 0 < hi["old_bytes"] < hi["file_bytes"] // 4, "old-range query did not SEEK a bounded block"
+    assert 0 < hi["old_bytes"] < hi["file_bytes"] // 4, (
+        "old-range query did not SEEK a bounded block"
+    )
     # (a) CORRECTNESS unchanged at scale + survives reopen from the durable lake.
     assert lo["old"] == lo["old_true"], "small-lake old-range query returned wrong events"
     assert hi["old"] == hi["old_true"], "seeked old-range query returned wrong events"
@@ -496,8 +527,12 @@ def main():
     assert reopened_old == hi["old"], "reopen changed the seeked query result"
     # (c) DETERMINISM: same construction -> same resident shape + same query answers.
     again = _ooc_probe(100_000, BN)
-    assert (again["resident"], again["index"], again["old"], again["old_bytes"]) == \
-           (hi["resident"], hi["index"], hi["old"], hi["old_bytes"]), "out-of-core path is not deterministic"
+    assert (again["resident"], again["index"], again["old"], again["old_bytes"]) == (
+        hi["resident"],
+        hi["index"],
+        hi["old"],
+        hi["old_bytes"],
+    ), "out-of-core path is not deterministic"
 
     # ---- PACKED 4 B record: 2x smaller on disk, LOSSLESS + byte-reversible, out-of-core unchanged ----
     # Write the SAME events to a default (8 B) and a packed (4 B) hub; the packed log must be exactly
@@ -509,16 +544,17 @@ def main():
     for p in (pd, pp):
         if os.path.exists(p):
             os.remove(p)
-    hd = StreamingHub(pd, PN)                                 # default 8 B
-    hp = StreamingHub(pp, PN, packed=True)                    # opt-in 4 B
+    hd = StreamingHub(pd, PN)  # default 8 B
+    hp = StreamingHub(pp, PN, packed=True)  # opt-in 4 B
     for c, t in pk_events:
         hd.append(c, t)
         hp.append(c, t)
     qd = sorted(hd.query_window(0, 1 << 20))
     qp = sorted(hp.query_window(0, 1 << 20))
     bytes_d, bytes_p = os.path.getsize(pd), os.path.getsize(pp)
-    hd.close(); hp.close()
-    hp2 = StreamingHub(pp, PN, resume=True, packed=True)      # reopen the packed log purely from disk
+    hd.close()
+    hp.close()
+    hp2 = StreamingHub(pp, PN, resume=True, packed=True)  # reopen the packed log purely from disk
     qp_reopen = sorted(hp2.query_window(0, 1 << 20))
     replayed_p = hp2.n_events()
     hp2.close()
@@ -526,28 +562,38 @@ def main():
     guard_ok = False
     hg = StreamingHub(os.path.join(".", "data", "packed_guard.spkl"), PN, packed=True)
     try:
-        hg.append(0, 1 << _PACK_TBITS)                       # time exactly at the field ceiling -> must raise
+        hg.append(0, 1 << _PACK_TBITS)  # time exactly at the field ceiling -> must raise
     except ValueError:
         guard_ok = True
     finally:
         hg.close()
     print("-" * 60)
     print("PACKED 4 B record (opt-in, lossless AER):")
-    print(f"  default 8 B log {bytes_d:,} B  vs  packed 4 B log {bytes_p:,} B  "
-          f"({bytes_d / bytes_p:.1f}x smaller); queries identical={qd == qp}")
-    print(f"  reopen-from-disk: {replayed_p} events, query matches live={qp == qp_reopen}; "
-          f"range guard raises={guard_ok}")
+    print(
+        f"  default 8 B log {bytes_d:,} B  vs  packed 4 B log {bytes_p:,} B  "
+        f"({bytes_d / bytes_p:.1f}x smaller); queries identical={qd == qp}"
+    )
+    print(
+        f"  reopen-from-disk: {replayed_p} events, query matches live={qp == qp_reopen}; "
+        f"range guard raises={guard_ok}"
+    )
     assert qd == qp, "packed record changed query results vs the default 8 B layout (not lossless)"
-    assert bytes_p == len(pk_events) * 4 and bytes_d == len(pk_events) * 8, "packed log is not 4 B/event"
-    assert qp_reopen == qp and replayed_p == len(pk_events), "packed log did not survive reopen from disk"
+    assert bytes_p == len(pk_events) * 4 and bytes_d == len(pk_events) * 8, (
+        "packed log is not 4 B/event"
+    )
+    assert qp_reopen == qp and replayed_p == len(pk_events), (
+        "packed log did not survive reopen from disk"
+    )
     assert guard_ok, "packed mode must RAISE on an out-of-range time (lossless), not truncate"
 
-    print("self-check OK: record-while-query works, queries are partial + live, "
-          "durable log replays exactly; hot_motifs surfaces the recurring coactivation motif; "
-          "group-commit default is byte-identical and flush_every=K loses nothing on query/close; "
-          "OUT-OF-CORE: resident memory bounded (tail cap + O(total/K) index), old-range queries "
-          "SEEK the log, results unchanged, deterministic, survive reopen; "
-          "PACKED 4 B record is 2x smaller, lossless + byte-reversible, out-of-core unchanged")
+    print(
+        "self-check OK: record-while-query works, queries are partial + live, "
+        "durable log replays exactly; hot_motifs surfaces the recurring coactivation motif; "
+        "group-commit default is byte-identical and flush_every=K loses nothing on query/close; "
+        "OUT-OF-CORE: resident memory bounded (tail cap + O(total/K) index), old-range queries "
+        "SEEK the log, results unchanged, deterministic, survive reopen; "
+        "PACKED 4 B record is 2x smaller, lossless + byte-reversible, out-of-core unchanged"
+    )
 
 
 if __name__ == "__main__":

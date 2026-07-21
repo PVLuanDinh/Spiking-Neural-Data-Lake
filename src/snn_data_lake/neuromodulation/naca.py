@@ -38,11 +38,12 @@ Refs: Zhang, Zeng et al., Sci. Adv. 2023 (adi2947); Izhikevich 2007 (the R-STDP 
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.naca
 """
+
 import random
 
-ETA = 0.5              # neuromodulatory correction gain (how strongly the broadcast reshapes the local delta)
-LAM_INV = 0.5          # inversion threshold: below it the gate is positive (damp), above it it flips sign
-THETA_MAX = 1.2        # peak height of the metaplasticity gate
+ETA = 0.5  # neuromodulatory correction gain (how strongly the broadcast reshapes the local delta)
+LAM_INV = 0.5  # inversion threshold: below it the gate is positive (damp), above it it flips sign
+THETA_MAX = 1.2  # peak height of the metaplasticity gate
 
 
 class NACABroadcast:
@@ -51,7 +52,7 @@ class NACABroadcast:
     Holds an input-type EXPECTATION matrix N_in (n_types x n_syn, random-uniform in [0,1]). For a given
     input-type signature it forms an expectation vector E, gates N_in by E, and averages to a scalar
     neuromodulator lambda_l in [0,1]. lambda_l passes through the nonlinear metaplasticity gate f_local
-    to yield an ADDITIVE correction on top of the local delta. Pure stdlib, deterministic per seed."""
+    to yield an ADDITIVE correction on top of the local delta. Deterministic per seed."""
 
     def __init__(self, n_syn, n_types, seed=0, eta=ETA, lam_inv=LAM_INV, theta_max=THETA_MAX):
         rng = random.Random(seed)
@@ -61,7 +62,9 @@ class NACABroadcast:
         self.lam_inv = float(lam_inv)
         self.theta_max = float(theta_max)
         # N_in: one random-uniform expectation lambda in [0,1] per (input type, synapse).
-        self.N_in = [[rng.uniform(0.0, 1.0) for _ in range(self.n_syn)] for _ in range(self.n_types)]
+        self.N_in = [
+            [rng.uniform(0.0, 1.0) for _ in range(self.n_syn)] for _ in range(self.n_types)
+        ]
 
     def _expectation(self, signature):
         """Turn an input-type signature into a convex expectation vector E over the input types. An int is a
@@ -117,7 +120,7 @@ class NACABroadcast:
 
 
 # --------------------------------------------------------------------------------------------------
-# self-check (deterministic, zero-dep, ASCII)
+# self-check (deterministic, ASCII)
 # --------------------------------------------------------------------------------------------------
 _N_IN = 20
 _TAU = 8.0
@@ -144,9 +147,11 @@ def _deposit(neuron, code, d, naca=None, ptype=0):
     for i, t in enumerate(code):
         neuron.pre_spike(i, float(t))
     neuron.post_spike(_T_POST)
-    deltas = neuron.reward(float(d))                      # local delta = lr * reward * eligibility (applied)
+    deltas = neuron.reward(float(d))  # local delta = lr * reward * eligibility (applied)
     if naca is not None:
-        mod = naca.modulate(deltas, naca.lam(ptype))     # additive correction ON TOP (0 when the gate is off)
+        mod = naca.modulate(
+            deltas, naca.lam(ptype)
+        )  # additive correction ON TOP (0 when the gate is off)
         for i in range(_N_IN):
             neuron.w[i] += mod[i]
     return deltas
@@ -164,15 +169,15 @@ def _off_path_byte_identity():
     from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 
     naca = NACABroadcast(n_syn=_N_IN, n_types=2, seed=1)
-    code = list(range(_N_IN))                             # a fixed rank-order spike train
+    code = list(range(_N_IN))  # a fixed rank-order spike train
 
     plain = RSTDPNeuron(_N_IN, seed=0)
     _deposit(plain, code, +1.0, naca=None)
     w_plain = list(plain.w)
 
     gated = RSTDPNeuron(_N_IN, seed=0)
-    local = _deposit(gated, code, +1.0, naca=None)        # apply the local rule first (same as plain)
-    mod = naca.modulate(local, naca.lam([0.0, 0.0]))      # empty expectation -> lambda=0 -> gate off
+    local = _deposit(gated, code, +1.0, naca=None)  # apply the local rule first (same as plain)
+    mod = naca.modulate(local, naca.lam([0.0, 0.0]))  # empty expectation -> lambda=0 -> gate off
     for i in range(_N_IN):
         gated.w[i] += mod[i]
 
@@ -189,38 +194,55 @@ def _consolidation_reversal_check():
 
     seed, noise, e1, e2 = 7, 0.05, 60, 60
     proto_rng = random.Random(seed)
-    protos = [[proto_rng.random() for _ in range(_N_IN)] for _ in range(2)]   # P0, P1
+    protos = [[proto_rng.random() for _ in range(_N_IN)] for _ in range(2)]  # P0, P1
 
     def code_of(li, rng):
-        return rank_code([min(1.0, max(0.0, protos[li][j] + rng.uniform(-noise, noise))) for j in range(_N_IN)])
+        return rank_code(
+            [min(1.0, max(0.0, protos[li][j] + rng.uniform(-noise, noise))) for j in range(_N_IN)]
+        )
 
-    def acc(neuron, pos, neg, rng):                       # P(drive(pos) > drive(neg)) over noisy samples
-        return sum(_drive(neuron, code_of(pos, rng)) > _drive(neuron, code_of(neg, rng)) for _ in range(50)) / 50.0
+    def acc(neuron, pos, neg, rng):  # P(drive(pos) > drive(neg)) over noisy samples
+        return (
+            sum(
+                _drive(neuron, code_of(pos, rng)) > _drive(neuron, code_of(neg, rng))
+                for _ in range(50)
+            )
+            / 50.0
+        )
 
     def run(naca_phase2):
         neuron = RSTDPNeuron(_N_IN, lr=_LR, tau_plus=_TAU, tau_minus=_TAU, w0=0.3, seed=seed)
         tr, ev = random.Random(seed + 1), random.Random(seed + 2)
-        for _ in range(e1):                               # task 1 (PLAIN, ungated): consolidate P0 over P1
+        for _ in range(e1):  # task 1 (PLAIN, ungated): consolidate P0 over P1
             _deposit(neuron, code_of(0, tr), +1.0, None)
             _deposit(neuron, code_of(1, tr), -1.0, None)
         w1, a1 = list(neuron.w), acc(neuron, 0, 1, ev)
-        for _ in range(e2):                               # task 2 (reversal): P1 over P0 -- conflicts with task 1
+        for _ in range(e2):  # task 2 (reversal): P1 over P0 -- conflicts with task 1
             _deposit(neuron, code_of(1, tr), +1.0, naca_phase2, 1)
             _deposit(neuron, code_of(0, tr), -1.0, naca_phase2, 0)
         a1_after, a2_rev = acc(neuron, 0, 1, ev), acc(neuron, 1, 0, ev)
         dw = [abs(neuron.w[i] - w1[i]) for i in range(_N_IN)]
         return a1, a1_after, a2_rev, dw
 
-    naca = NACABroadcast(n_syn=_N_IN, n_types=2, seed=seed + 50, eta=0.82, lam_inv=1.0, theta_max=1.2)
+    naca = NACABroadcast(
+        n_syn=_N_IN, n_types=2, seed=seed + 50, eta=0.82, lam_inv=1.0, theta_max=1.2
+    )
     p_a1, p_after, p_rev, p_dw = run(None)
     n_a1, n_after, n_rev, n_dw = run(naca)
 
     eps = 0.2
     total = _N_IN
     return {
-        "p_a1": p_a1, "p_after": p_after, "p_rev": p_rev, "p_sparse": sum(d < eps for d in p_dw) / total,
-        "n_a1": n_a1, "n_after": n_after, "n_rev": n_rev, "n_sparse": sum(d < eps for d in n_dw) / total,
-        "p_forget": p_a1 - p_after, "n_forget": n_a1 - n_after,
+        "p_a1": p_a1,
+        "p_after": p_after,
+        "p_rev": p_rev,
+        "p_sparse": sum(d < eps for d in p_dw) / total,
+        "n_a1": n_a1,
+        "n_after": n_after,
+        "n_rev": n_rev,
+        "n_sparse": sum(d < eps for d in n_dw) / total,
+        "p_forget": p_a1 - p_after,
+        "n_forget": n_a1 - n_after,
     }
 
 
@@ -233,11 +255,15 @@ def _wire_engages_check():
     responses, n = ["a", "b"], 12
     rng = random.Random(1)
     protos = [[rng.random() for _ in range(n)] for _ in responses]
-    data = [([min(1.0, max(0.0, v + rng.uniform(-0.05, 0.05))) for v in protos[li]], responses[li])
-            for li in range(2) for _ in range(6)]
+    data = [
+        ([min(1.0, max(0.0, v + rng.uniform(-0.05, 0.05))) for v in protos[li]], responses[li])
+        for li in range(2)
+        for _ in range(6)
+    ]
     plain = SpikingInteractionLearner(responses, n, seed=3)
-    gated = SpikingInteractionLearner(responses, n, seed=3,
-                                      naca=NACABroadcast(n, 2, seed=9, eta=0.5, lam_inv=1.0))
+    gated = SpikingInteractionLearner(
+        responses, n, seed=3, naca=NACABroadcast(n, 2, seed=9, eta=0.5, lam_inv=1.0)
+    )
     for _ in range(10):
         for stim, lab in data:
             plain.interact(stim, lab)
@@ -247,65 +273,104 @@ def _wire_engages_check():
 
 def main():
     print("=" * 78)
-    print("NACA -- Neuromodulation-Assisted Credit Assignment (global gate reshaping a LOCAL delta)")
+    print(
+        "NACA -- Neuromodulation-Assisted Credit Assignment (global gate reshaping a LOCAL delta)"
+    )
     print("=" * 78)
 
     rise, peak, fall, zero_lo, zero_hi, flipped, end = _gate_shape_check()
     print("metaplasticity gate f_local(lambda) (lambda_inv=0.5, theta_max=1.2):")
-    print(f"  f(0.0)={zero_lo:+.3f}  f(0.10)={rise:+.3f}  f(0.25)={peak:+.3f}  f(0.40)={fall:+.3f}  "
-          f"f(0.50)={zero_hi:+.3f}  f(0.75)={flipped:+.3f}  f(1.00)={end:+.3f}")
+    print(
+        f"  f(0.0)={zero_lo:+.3f}  f(0.10)={rise:+.3f}  f(0.25)={peak:+.3f}  f(0.40)={fall:+.3f}  "
+        f"f(0.50)={zero_hi:+.3f}  f(0.75)={flipped:+.3f}  f(1.00)={end:+.3f}"
+    )
     print("  -> rises toward theta_max, falls back to 0 at lambda_inv, then INVERTS SIGN above it")
 
     off_zero, identical = _off_path_byte_identity()
     print("-" * 78)
-    print("off path (lambda=0): NACA correction is all zeros -> combined update == unmodulated local rule")
-    print(f"  correction all-zero: {off_zero}   weights byte-identical to plain R-STDP: {identical}")
+    print(
+        "off path (lambda=0): NACA correction is all zeros -> combined update == unmodulated local rule"
+    )
+    print(
+        f"  correction all-zero: {off_zero}   weights byte-identical to plain R-STDP: {identical}"
+    )
 
     r = _consolidation_reversal_check()
     print("-" * 78)
-    print("catastrophic-interference probe: consolidate task1 (P0>P1), then the CONFLICTING reversal task2 (P1>P0):")
-    print(f"  PLAIN local rule : task1 {r['p_a1']:.2f} -> {r['p_after']:.2f}  (forgetting {r['p_forget']:+.2f})"
-          f"   reversal learned {r['p_rev']:.2f}   synapses left at ~0: {r['p_sparse']:.2f}")
-    print(f"  NACA-gated task2 : task1 {r['n_a1']:.2f} -> {r['n_after']:.2f}  (forgetting {r['n_forget']:+.2f})"
-          f"   reversal learned {r['n_rev']:.2f}   synapses left at ~0: {r['n_sparse']:.2f}")
-    print("  honest trade-off: NACA protects task1 by NOT learning the conflicting task2 (stability over plasticity)")
+    print(
+        "catastrophic-interference probe: consolidate task1 (P0>P1), then the CONFLICTING reversal task2 (P1>P0):"
+    )
+    print(
+        f"  PLAIN local rule : task1 {r['p_a1']:.2f} -> {r['p_after']:.2f}  (forgetting {r['p_forget']:+.2f})"
+        f"   reversal learned {r['p_rev']:.2f}   synapses left at ~0: {r['p_sparse']:.2f}"
+    )
+    print(
+        f"  NACA-gated task2 : task1 {r['n_a1']:.2f} -> {r['n_after']:.2f}  (forgetting {r['n_forget']:+.2f})"
+        f"   reversal learned {r['n_rev']:.2f}   synapses left at ~0: {r['n_sparse']:.2f}"
+    )
+    print(
+        "  honest trade-off: NACA protects task1 by NOT learning the conflicting task2 (stability over plasticity)"
+    )
 
     wire_live = _wire_engages_check()
     print("-" * 78)
-    print(f"opt-in wire (cortex.interaction_learning): naca set changes the learner's weights: {wire_live}")
-    print("  (naca=None is byte-identical -- proven by the unchanged interaction_learning self-check)")
+    print(
+        f"opt-in wire (cortex.interaction_learning): naca set changes the learner's weights: {wire_live}"
+    )
+    print(
+        "  (naca=None is byte-identical -- proven by the unchanged interaction_learning self-check)"
+    )
     print("=" * 78)
 
     # ---- un-riggable asserts ----
     # metaplasticity gate: rises to a positive crest, falls to 0 at the endpoints, inverts sign above lambda_inv
-    assert zero_lo == 0.0 and abs(zero_hi) < 1e-12, "f_local must be 0 at lambda=0 and at lambda_inv"
+    assert zero_lo == 0.0 and abs(zero_hi) < 1e-12, (
+        "f_local must be 0 at lambda=0 and at lambda_inv"
+    )
     assert 0.0 < rise < peak, "f_local must RISE from 0 toward the crest"
-    assert peak > fall > 0.0, "f_local must FALL back after the crest while staying positive below lambda_inv"
+    assert peak > fall > 0.0, (
+        "f_local must FALL back after the crest while staying positive below lambda_inv"
+    )
     assert abs(peak - THETA_MAX) < 1e-12, "the crest must reach theta_max"
-    assert flipped < 0.0 and end < 0.0, "f_local must INVERT SIGN above lambda_inv (polarity switch)"
+    assert flipped < 0.0 and end < 0.0, (
+        "f_local must INVERT SIGN above lambda_inv (polarity switch)"
+    )
     # off path: lambda=0 reduces EXACTLY to the unmodulated local rule (byte-identical)
     assert off_zero, "at lambda=0 the NACA correction must be exactly zero on every synapse"
     assert identical, "off path must be byte-identical to the plain local R-STDP update"
     # phase 1 (consolidation) is identical for both runs -> a fair comparison
-    assert r["p_a1"] == r["n_a1"] and r["p_a1"] > 0.85, "both must consolidate task 1 identically before task 2"
+    assert r["p_a1"] == r["n_a1"] and r["p_a1"] > 0.85, (
+        "both must consolidate task 1 identically before task 2"
+    )
     # headline: NACA yields SPARSE weight changes and LOWER forgetting of task 1
-    assert r["p_forget"] > 0.5, f"the plain local rule must catastrophically forget task 1 ({r['p_forget']:+.2f})"
-    assert r["n_forget"] < r["p_forget"] - 0.3, \
+    assert r["p_forget"] > 0.5, (
+        f"the plain local rule must catastrophically forget task 1 ({r['p_forget']:+.2f})"
+    )
+    assert r["n_forget"] < r["p_forget"] - 0.3, (
         f"NACA must forget task 1 LESS than the plain local rule ({r['n_forget']:+.2f} vs {r['p_forget']:+.2f})"
-    assert r["n_sparse"] > 0.5, f"NACA must leave a visible peak of synapses at ~0 ({r['n_sparse']:.2f})"
-    assert r["n_sparse"] > r["p_sparse"] + 0.2, \
+    )
+    assert r["n_sparse"] > 0.5, (
+        f"NACA must leave a visible peak of synapses at ~0 ({r['n_sparse']:.2f})"
+    )
+    assert r["n_sparse"] > r["p_sparse"] + 0.2, (
         f"NACA weight changes must be sparser than the plain local rule ({r['n_sparse']:.2f} vs {r['p_sparse']:.2f})"
+    )
     # honest trade-off: protection costs plasticity -- NACA does NOT learn the conflicting reversal
-    assert r["n_rev"] < r["p_rev"] - 0.3, \
+    assert r["n_rev"] < r["p_rev"] - 0.3, (
         f"NACA must trade plasticity for stability: it should NOT learn the conflicting task ({r['n_rev']:.2f})"
+    )
     # the opt-in wire is live (naca=None off path is byte-identical, via the existing self-check)
-    assert wire_live, "the interaction_learning wire must actually apply the modulation when naca is set"
+    assert wire_live, (
+        "the interaction_learning wire must actually apply the modulation when naca is set"
+    )
 
-    print(f"self-check OK: metaplasticity gate rises to {THETA_MAX:.1f}, falls, and inverts sign; the off path "
-          f"(lambda=0) is byte-identical to plain R-STDP; consolidating task1 then training the CONFLICTING "
-          f"task2, plain forgets {r['p_forget']:+.2f} while NACA holds task1 ({r['n_forget']:+.2f}) with "
-          f"{r['n_sparse']:.2f} of synapses left at ~0 (vs {r['p_sparse']:.2f}) -- at the honest cost of not "
-          f"learning the reversal ({r['n_rev']:.2f}); additive, opt-in, deterministic, zero-dep")
+    print(
+        f"self-check OK: metaplasticity gate rises to {THETA_MAX:.1f}, falls, and inverts sign; the off path "
+        f"(lambda=0) is byte-identical to plain R-STDP; consolidating task1 then training the CONFLICTING "
+        f"task2, plain forgets {r['p_forget']:+.2f} while NACA holds task1 ({r['n_forget']:+.2f}) with "
+        f"{r['n_sparse']:.2f} of synapses left at ~0 (vs {r['p_sparse']:.2f}) -- at the honest cost of not "
+        f"learning the reversal ({r['n_rev']:.2f}); additive, opt-in, deterministic"
+    )
 
 
 if __name__ == "__main__":

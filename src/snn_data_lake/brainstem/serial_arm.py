@@ -23,6 +23,7 @@ pure-stdlib and run in CI.
 
   python serial_arm.py        # self-check (fake serial, no hardware, no pyserial)
 """
+
 import re
 
 from snn_data_lake.brainstem import arm_config
@@ -30,7 +31,11 @@ from snn_data_lake.brainstem.arm_sim import ArmSim
 
 _JOINT = re.compile(r"JOINT_[AB]_ROTATE\([+-]?\d+(?:\.\d+)?deg\)")
 _FIXED = {"EMERGENCY_STOP", "HOME", "RETRACT_ALL", "GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD"}
-_ALLOWED_WHEN_STOPPED = {"EMERGENCY_STOP", "HOME", "RETRACT_ALL"}   # the only tokens allowed on the wire once latched
+_ALLOWED_WHEN_STOPPED = {
+    "EMERGENCY_STOP",
+    "HOME",
+    "RETRACT_ALL",
+}  # the only tokens allowed on the wire once latched
 
 
 def is_valid_command(command):
@@ -46,7 +51,8 @@ def assert_calibrated(allow_uncalibrated=False):
             "SerialArm refuses to drive real servos with placeholder safety limits. "
             "Set arm_config.SAFETY_CALIBRATED=True after replacing CONTACT/joint limits "
             "with your rig's real values (docs/arduino_requirements.md #3), or pass "
-            "allow_uncalibrated=True (with a fake writer=) for a bench/echo test.")
+            "allow_uncalibrated=True (with a fake writer=) for a bench/echo test."
+        )
 
 
 class SerialArm:
@@ -60,9 +66,10 @@ class SerialArm:
         assert_calibrated(allow_uncalibrated)
         if writer is None:
             import serial  # pyserial — only needed on real hardware
+
             writer = serial.Serial(port, baud, timeout=1)
         self.w = writer
-        self.mirror = ArmSim()                   # local twin so state()/gripper still work
+        self.mirror = ArmSim()  # local twin so state()/gripper still work
         self.mirror.apply("HOME")
 
     def apply(self, command):
@@ -71,7 +78,9 @@ class SerialArm:
         touches only the mirror; nothing goes to the servos. A serial failure raises (fail-safe)."""
         blocked_by_stop = self.mirror.stopped and command not in _ALLOWED_WHEN_STOPPED
         if blocked_by_stop or not is_valid_command(command):
-            return self.mirror.apply(command)    # frozen or unrecognised -> mirror only, WIRE stays silent
+            return self.mirror.apply(
+                command
+            )  # frozen or unrecognised -> mirror only, WIRE stays silent
         try:
             self.w.write((command + "\n").encode("ascii"))
             self.w.flush()
@@ -112,36 +121,38 @@ def main():
             pass
 
     fake = FakeSerial()
-    arm = SerialArm(writer=fake, allow_uncalibrated=True)      # bench must opt in explicitly now
+    arm = SerialArm(writer=fake, allow_uncalibrated=True)  # bench must opt in explicitly now
 
     arm.apply("GRIPPER_CLOSE")
     arm.apply("JOINT_A_ROTATE(+15deg)")
     arm.apply("EMERGENCY_STOP")
     # --- once stopped, the WIRE must stay silent for anything but stop/home/retract ---
-    arm.apply("GRIPPER_CLOSE")           # blocked by the E-STOP freeze -> NOT transmitted
-    arm.apply("JOINT_B_ROTATE(-5deg)")   # blocked by the E-STOP freeze -> NOT transmitted
+    arm.apply("GRIPPER_CLOSE")  # blocked by the E-STOP freeze -> NOT transmitted
+    arm.apply("JOINT_B_ROTATE(-5deg)")  # blocked by the E-STOP freeze -> NOT transmitted
     lines_during_stop = list(fake.lines)
-    arm.apply("HOME")                    # allowed while stopped -> transmitted, clears the latch
-    arm.apply("GRIPPER_OPEN")            # latch cleared -> transmitted again
+    arm.apply("HOME")  # allowed while stopped -> transmitted, clears the latch
+    arm.apply("GRIPPER_OPEN")  # latch cleared -> transmitted again
     # --- allow-list: an unrecognised command is never put on the wire ---
-    arm.apply("DROP_EVERYTHING")         # invalid token -> dropped, NOT transmitted
+    arm.apply("DROP_EVERYTHING")  # invalid token -> dropped, NOT transmitted
 
     print("=" * 58)
     print("SERIAL ARM — command-out sink (fake serial, no hardware)")
     print("=" * 58)
     print(f"lines sent     : {fake.lines}")
-    print(f"during E-STOP  : nothing new transmitted -> {lines_during_stop[-1]} was last before HOME")
+    print(
+        f"during E-STOP  : nothing new transmitted -> {lines_during_stop[-1]} was last before HOME"
+    )
     print(f"mirror gripper : {arm.gripper}   stopped: {arm.state()['stopped']}")
 
     # calibration gate: an INJECTED writer with no calibration + no opt-in must now be blocked too
     try:
-        SerialArm(writer=FakeSerial())       # writer= no longer bypasses the calibration gate
+        SerialArm(writer=FakeSerial())  # writer= no longer bypasses the calibration gate
         writer_gate_blocked = False
     except RuntimeError:
         writer_gate_blocked = True
     # calibration gate: opening a REAL port while uncalibrated must be blocked
     try:
-        SerialArm(port="COM_TEST")           # writer=None -> would open a real port
+        SerialArm(port="COM_TEST")  # writer=None -> would open a real port
         port_gate_blocked = False
     except RuntimeError:
         port_gate_blocked = True
@@ -149,29 +160,41 @@ def main():
     # fail-safe: a serial error must raise, not be swallowed
     fake.fail = True
     try:
-        arm.apply("GRIPPER_CLOSE")           # (arm is not stopped now; valid) -> attempts a write -> raises
+        arm.apply("GRIPPER_CLOSE")  # (arm is not stopped now; valid) -> attempts a write -> raises
         failsafe = False
     except RuntimeError:
         failsafe = True
 
-    print(f"calib gate     : injected-writer open blocked = {writer_gate_blocked}; real-port blocked = {port_gate_blocked}")
+    print(
+        f"calib gate     : injected-writer open blocked = {writer_gate_blocked}; real-port blocked = {port_gate_blocked}"
+    )
     print(f"fail-safe      : serial error raises           = {failsafe}")
     print("=" * 58)
 
     # ---- self-checks --------------------------------------------------------
-    assert fake.lines[:3] == ["GRIPPER_CLOSE", "JOINT_A_ROTATE(+15deg)", "EMERGENCY_STOP"], \
+    assert fake.lines[:3] == ["GRIPPER_CLOSE", "JOINT_A_ROTATE(+15deg)", "EMERGENCY_STOP"], (
         f"pre-stop commands not sent verbatim: {fake.lines}"
-    assert fake.lines.count("GRIPPER_CLOSE") == 1, \
+    )
+    assert fake.lines.count("GRIPPER_CLOSE") == 1, (
         f"a command after EMERGENCY_STOP reached the wire — the freeze is not enforced on serial: {fake.lines}"
+    )
     assert "JOINT_B_ROTATE(-5deg)" not in fake.lines, "a joint move after E-STOP reached the wire"
-    assert "HOME" in fake.lines and "GRIPPER_OPEN" in fake.lines, "HOME must clear the latch and re-enable the wire"
-    assert "DROP_EVERYTHING" not in fake.lines, "an unrecognised command was transmitted (allow-list defeated)"
+    assert "HOME" in fake.lines and "GRIPPER_OPEN" in fake.lines, (
+        "HOME must clear the latch and re-enable the wire"
+    )
+    assert "DROP_EVERYTHING" not in fake.lines, (
+        "an unrecognised command was transmitted (allow-list defeated)"
+    )
     assert not arm.state()["stopped"], "HOME after E-STOP should have cleared the freeze"
     assert writer_gate_blocked, "an injected writer with no calibration/opt-in must be refused"
-    assert port_gate_blocked or arm_config.SAFETY_CALIBRATED, "uncalibrated real-port open must be blocked"
+    assert port_gate_blocked or arm_config.SAFETY_CALIBRATED, (
+        "uncalibrated real-port open must be blocked"
+    )
     assert failsafe, "serial write failure must raise (fail-safe)"
-    print("self-check OK: pre-stop verbatim; E-STOP freezes the WIRE (post-stop commands dropped) + HOME clears it; "
-          "allow-list blocks unknown tokens; calibration gate covers injected writers; fail-safe active")
+    print(
+        "self-check OK: pre-stop verbatim; E-STOP freezes the WIRE (post-stop commands dropped) + HOME clears it; "
+        "allow-list blocks unknown tokens; calibration gate covers injected writers; fail-safe active"
+    )
 
 
 if __name__ == "__main__":

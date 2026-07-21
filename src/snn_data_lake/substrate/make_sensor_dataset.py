@@ -22,12 +22,13 @@ Outputs:
 
   python make_sensor_dataset.py
 """
+
 import os
 import random
 
 GESTURES = ["HAND_APPROACH", "HAND_RETREAT", "HOT_OBJECT", "COLD_OBJECT", "IDLE"]
-W = 16          # samples per gesture instance (~1.6 s at 10 Hz)
-R = 25          # instances per gesture
+W = 16  # samples per gesture instance (~1.6 s at 10 Hz)
+R = 25  # instances per gesture
 SEED = 0
 IDLE_TEMP = -1.0
 
@@ -46,15 +47,15 @@ def _sample(gesture, p, rng):
         d, t = 0.6, 8.0
     else:  # IDLE
         d, t = 3.6, IDLE_TEMP
-    d = max(0.02, d + rng.uniform(-0.04, 0.04))          # ultrasonic jitter
+    d = max(0.02, d + rng.uniform(-0.04, 0.04))  # ultrasonic jitter
     if t != IDLE_TEMP:
-        t += rng.uniform(-0.3, 0.3)                       # IR jitter
+        t += rng.uniform(-0.3, 0.3)  # IR jitter
     return round(d, 2), round(t, 2)
 
 
 def generate():
     rng = random.Random(SEED)
-    rows = []                                             # (label, d, t)
+    rows = []  # (label, d, t)
     for g in GESTURES:
         for _ in range(R):
             for i in range(W):
@@ -66,7 +67,7 @@ def _window_feats(rows):
     """Group consecutive W rows into flat [d0,t0,...,dW-1,tW-1] feature vectors + labels."""
     feats, labels = [], []
     for s in range(0, len(rows), W):
-        block = rows[s:s + W]
+        block = rows[s : s + W]
         if len(block) < W:
             continue
         feats.append([v for (_, d, t) in block for v in (d, t)])

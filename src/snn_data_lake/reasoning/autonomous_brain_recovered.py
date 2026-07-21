@@ -32,7 +32,7 @@ THIS FILE IS NOW A THIN WRAPPER: the loop body lives in research/developmental_c
 (research/brain_loop.py) share ONE source of truth. This wrapper runs the loop with its own temp lake
 and re-runs the SAME regression asserts (online > 90%, sleep-refit > 90%, durable, faculties active).
 
-Feature learning stays UNSUPERVISED (frozen conv1); only the readout is supervised. Zero-dep CORE is
+Feature learning stays UNSUPERVISED (frozen conv1); only the readout is supervised. The CORE is
 untouched: this file lives under research/ (ruff-excluded) and edits neither run_selfchecks nor pyproject.
 
 Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/autonomous_brain_recovered.py

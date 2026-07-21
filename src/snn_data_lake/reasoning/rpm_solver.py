@@ -12,7 +12,7 @@ NVSA's Hadamard-product / superposition / fractional-power / cosine / nearest-ne
 runs here with the same margins as the dense version; the genuine change is the substrate (discrete
 spikes) + the spike-domain operators, not the numbers. Every op below is a spike op.
 
-DESIGN (all over vsa_reasoning primitives; pure stdlib; NO numpy / NO torch):
+DESIGN (all over vsa_reasoning primitives):
   * ROLE-FILLER OBJECT / PANEL. An object = fold-bind(POS_role, type, size, color, ...) -- a 4-way
     Hadamard (spike-XOR) bind, NVSA's product object vector (position is the ROLE, attributes are
     FILLERS). A panel = bundle(objects) -- spike superposition; quasi-orthogonal codes keep the
@@ -47,6 +47,7 @@ none of these four rules returns an HONEST gap (known=False), never a bluffed ch
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.reasoning.rpm_solver
 """
+
 # ruff: noqa: UP031  -- %-format is the hand-aligned house style of every sibling in reasoning/
 # (which the repo excludes from `ruff check .`); kept for consistency, not reflowed to f-strings.
 import random
@@ -63,9 +64,9 @@ from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 RULE_ORDER = ("constant", "progression", "arithmetic", "distribute3")
 RULE_PRIORITY = {"constant": 4.0, "progression": 3.0, "arithmetic": 2.0, "distribute3": 1.0}
 
-_POS = hv("RPM_POS0")               # the single object-position ROLE (fillers = the attribute codes)
-_POOL = tuple(range(1, 9))          # candidate value pool for the self-check's synthetic distractors
-_ROLE_CACHE = {}                    # attribute -> its ROLE spike code (crc32-seeded, deterministic)
+_POS = hv("RPM_POS0")  # the single object-position ROLE (fillers = the attribute codes)
+_POOL = tuple(range(1, 9))  # candidate value pool for the self-check's synthetic distractors
+_ROLE_CACHE = {}  # attribute -> its ROLE spike code (crc32-seeded, deterministic)
 
 
 def _role(attr):
@@ -108,7 +109,7 @@ class RpmSolver:
     def __init__(self, seed=0):
         self.seed = seed
         self.rng = random.Random(seed)
-        self.bg = BasalGangliaGate(seed=seed)      # spiking Go/NoGo rule selection (stateless select)
+        self.bg = BasalGangliaGate(seed=seed)  # spiking Go/NoGo rule selection (stateless select)
 
     # -- codebooks ------------------------------------------------------------------------------
     def _books(self, cells):
@@ -123,18 +124,18 @@ class RpmSolver:
             for a, v in c.items():
                 seen[a].add(v)
                 cat.setdefault((a, v), hv("RPM|%s|%r" % (a, v)))
-        int_attrs = sorted(a for a in attrs
-                           if seen[a] and all(isinstance(v, int) for v in seen[a]))
+        int_attrs = sorted(a for a in attrs if seen[a] and all(isinstance(v, int) for v in seen[a]))
         hi = 0
         for a in int_attrs:
             hi = max(hi, max(seen[a]))
-        ordb = {n: code(n) for n in range(0, 2 * hi + 6)}      # covers sums / progression overshoot
+        ordb = {n: code(n) for n in range(0, 2 * hi + 6)}  # covers sums / progression overshoot
         return attrs, int_attrs, cat, ordb
 
     # -- per-attribute rule induction (example -> rule, the core Gf move) ------------------------
     def _induce_attr(self, attr, rc, complete, int_attrs, cat, ordb):
         """Induce ONE NVSA rule for `attr` from the complete rows and predict the missing cell (2,2).
         Returns (rule_name, predicted_value, evidence_weight) or None (this attribute has no rule)."""
+
         # values by (row, col); complete = rows with all 3 cells; (2,0),(2,1) are the row-2 knowns.
         def val(r, c):
             return rc.get((r, c))
@@ -154,9 +155,15 @@ class RpmSolver:
                 s = induce_shift([code(val(r, 0)), code(val(r, 1)), code(val(r, 2))])
                 shifts.append(s)
             s0 = shifts[0] if shifts else None
-            if s0 is not None and s0 != 0 and all(s == s0 for s in shifts) and \
-                    val(2, 1) - val(2, 0) == s0:
-                pred = _readout(permute(code(val(2, 1)), s0), ordb)     # EXECUTE: permute the last known
+            if (
+                s0 is not None
+                and s0 != 0
+                and all(s == s0 for s in shifts)
+                and val(2, 1) - val(2, 0) == s0
+            ):
+                pred = _readout(
+                    permute(code(val(2, 1)), s0), ordb
+                )  # EXECUTE: permute the last known
                 if pred is not None:
                     return ("progression", pred, RULE_PRIORITY["progression"])
 
@@ -167,7 +174,9 @@ class RpmSolver:
                     pred_val = val(2, 0) + sign * val(2, 1)
                     if pred_val < 0:
                         continue
-                    pred = _readout(permute(code(val(2, 0)), sign * val(2, 1)), ordb)   # compose permutes
+                    pred = _readout(
+                        permute(code(val(2, 0)), sign * val(2, 1)), ordb
+                    )  # compose permutes
                     if pred is not None and pred == pred_val:
                         return ("arithmetic:%s" % op, pred, RULE_PRIORITY["arithmetic"])
 
@@ -179,9 +188,12 @@ class RpmSolver:
             triple = rowsets[0]
             knowns = (val(2, 0), val(2, 1))
             if len(set(knowns)) == 2 and set(knowns) < set(triple):
-                r_ref = _fold_bind([cat[(attr, v)] for v in (val(complete[0], 0),
-                                                             val(complete[0], 1),
-                                                             val(complete[0], 2))])
+                r_ref = _fold_bind(
+                    [
+                        cat[(attr, v)]
+                        for v in (val(complete[0], 0), val(complete[0], 1), val(complete[0], 2))
+                    ]
+                )
                 # spike-XOR is self-inverse, so unbind == bind: r_ref XOR (know0 XOR know1) = the missing.
                 predicted_code = bind(r_ref, bind(cat[(attr, knowns[0])], cat[(attr, knowns[1])]))
                 subbook = {v: cat[(attr, v)] for v in triple}
@@ -197,9 +209,9 @@ class RpmSolver:
         drive = [fits[r][1] if r in fits else 0.0 for r in RULE_ORDER]
         if not any(d > 0 for d in drive):
             return None
-        res = self.bg.select(drive, da=0.80)                  # intact dopamine -> release the winner
+        res = self.bg.select(drive, da=0.80)  # intact dopamine -> release the winner
         win = res["winner"]
-        if win is None:                                       # tonic GPi never overcome -> fall back
+        if win is None:  # tonic GPi never overcome -> fall back
             win = res["disinhibited"]
         return RULE_ORDER[win]
 
@@ -228,7 +240,7 @@ class RpmSolver:
                 fits[base] = (value, weight)
             if not fits:
                 continue
-            chosen = self._select_rule(fits)                  # spiking basal-ganglia selection
+            chosen = self._select_rule(fits)  # spiking basal-ganglia selection
             if chosen is None or chosen not in fits:
                 continue
             rules[a] = (rule if rule.split(":", 1)[0] == chosen else chosen, fits[chosen][0])
@@ -241,9 +253,13 @@ class RpmSolver:
         failure returns an honest gap (known=False, answer_idx=0), never raises."""
         try:
             return self._solve(context_cells, candidates)
-        except Exception as exc:                              # honest gap, never a crash
-            return {"answer_idx": 0, "confidence": 0.0, "known": False,
-                    "rule": "gap:%s" % type(exc).__name__}
+        except Exception as exc:  # honest gap, never a crash
+            return {
+                "answer_idx": 0,
+                "confidence": 0.0,
+                "known": False,
+                "rule": "gap:%s" % type(exc).__name__,
+            }
 
     def _solve(self, context_cells, candidates):
         if len(context_cells) != 8 or len(candidates) < 2:
@@ -254,7 +270,7 @@ class RpmSolver:
         induced = self._induce_all(rows, attrs, int_attrs, cat, ordb)
         predicted, n_ruled = induced["predicted"], induced["n_ruled"]
 
-        if n_ruled == 0:                                      # no NVSA rule fits any attribute -> gap
+        if n_ruled == 0:  # no NVSA rule fits any attribute -> gap
             return {"answer_idx": 0, "confidence": 0.0, "known": False, "rule": "gap:no-rule"}
 
         # NVSA PANEL VECTORS: each cell -> bundle of role-filler bindings (attribute ROLE bound to its
@@ -269,10 +285,15 @@ class RpmSolver:
 
         int_match, saliences = [], []
         for cand in candidates:
-            m = sum(1 for a, pv in predicted.items()
-                    if cand.get(a) is not None and sim(_fill(a, cand[a]), _fill(a, pv)) > 0.99)
+            m = sum(
+                1
+                for a, pv in predicted.items()
+                if cand.get(a) is not None and sim(_fill(a, cand[a]), _fill(a, pv)) > 0.99
+            )
             int_match.append(m)
-            pairs = [bind(_role(a), _fill(a, cand[a])) for a in predicted if cand.get(a) is not None]
+            pairs = [
+                bind(_role(a), _fill(a, cand[a])) for a in predicted if cand.get(a) is not None
+            ]
             saliences.append(max(0.0, sim(bundle(pairs), pred_panel)) if pairs else 0.0)
 
         best_m = max(int_match)
@@ -284,17 +305,24 @@ class RpmSolver:
         ws = GlobalWorkspace(seed=self.seed)
         for i, s in enumerate(saliences):
             ws.submit("c%d" % i, i, s)
-        ignited = ws.step()                                   # broadcast content = winning index, or None
+        ignited = ws.step()  # broadcast content = winning index, or None
         answer_idx = ignited if isinstance(ignited, int) else argmax
 
         srt = sorted(saliences, reverse=True)
         confidence = round(srt[0] - (srt[1] if len(srt) > 1 else 0.0), 3)
-        known = (len(winners) == 1 and best_m == n_ruled and ignited is not None
-                 and answer_idx == argmax)
+        known = (
+            len(winners) == 1 and best_m == n_ruled and ignited is not None and answer_idx == argmax
+        )
 
-        rule_txt = ", ".join("%s:%s" % (a, rules_a[0]) for a, rules_a in sorted(induced["rules"].items()))
-        return {"answer_idx": answer_idx, "confidence": confidence, "known": bool(known),
-                "rule": rule_txt if known else ("low-confidence (%s)" % rule_txt)}
+        rule_txt = ", ".join(
+            "%s:%s" % (a, rules_a[0]) for a, rules_a in sorted(induced["rules"].items())
+        )
+        return {
+            "answer_idx": answer_idx,
+            "confidence": confidence,
+            "known": bool(known),
+            "rule": rule_txt if known else ("low-confidence (%s)" % rule_txt),
+        }
 
 
 # ---------------------------------------------------------------- reasoning_cortex expert adapter ----
@@ -349,27 +377,40 @@ class RpmExpert:
     def answer(self, q):
         parsed = _parse_raven(getattr(q, "text", ""))
         if parsed is None:
-            return ("[honest gap] i expected an 8-cell 'raven:' RPM grid plus candidates "
-                    "('raven: <8 cells> | <candidates>'), each cell 'type=..,size=..,color=..'.", False)
+            return (
+                "[honest gap] i expected an 8-cell 'raven:' RPM grid plus candidates "
+                "('raven: <8 cells> | <candidates>'), each cell 'type=..,size=..,color=..'.",
+                False,
+            )
         context, candidates = parsed
         res = self._solver.solve(context, candidates)
         if not res["known"]:
-            try:                                               # OUT-OF-GRAMMAR fallback: synthesize a NOVEL rule (no fixed menu)
+            try:  # OUT-OF-GRAMMAR fallback: synthesize a NOVEL rule (no fixed menu)
                 from snn_data_lake.reasoning.vsa_synthesize import VsaSynthesizer
+
                 if getattr(self, "_synth", None) is None:
                     self._synth = VsaSynthesizer(seed=0)
                 syn = self._synth.solve(context, candidates)
             except Exception:
                 syn = {"known": False}
             if syn.get("known"):
-                return ("[rpm/synth] the fixed NVSA rules gapped, so i SYNTHESIZED a novel rule as a VSA spike-op "
-                        "program (%s) -> answer is candidate #%d (confidence %.2f). out-of-grammar, no fixed menu."
-                        % (syn.get("program"), syn["answer_idx"], syn["confidence"]), True)
-            return ("[honest gap] neither the fixed NVSA rules nor out-of-grammar VSA synthesis completes this "
-                    "matrix over its attribute codes -- no bluffed choice.", False)
-        return ("[rpm] induced %s at test time -> answer is candidate #%d (confidence %.2f), chosen by "
-                "spiking role-filler NVSA over the brain's VSA. bounded to the NVSA rule set, not full ARC."
-                % (res["rule"], res["answer_idx"], res["confidence"]), True)
+                return (
+                    "[rpm/synth] the fixed NVSA rules gapped, so i SYNTHESIZED a novel rule as a VSA spike-op "
+                    "program (%s) -> answer is candidate #%d (confidence %.2f). out-of-grammar, no fixed menu."
+                    % (syn.get("program"), syn["answer_idx"], syn["confidence"]),
+                    True,
+                )
+            return (
+                "[honest gap] neither the fixed NVSA rules nor out-of-grammar VSA synthesis completes this "
+                "matrix over its attribute codes -- no bluffed choice.",
+                False,
+            )
+        return (
+            "[rpm] induced %s at test time -> answer is candidate #%d (confidence %.2f), chosen by "
+            "spiking role-filler NVSA over the brain's VSA. bounded to the NVSA rule set, not full ARC."
+            % (res["rule"], res["answer_idx"], res["confidence"]),
+            True,
+        )
 
 
 # ---------------------------------------------------------------- self-check --------------------------
@@ -404,7 +445,7 @@ def _build_task(kind, rng):
     """Hand-build one 3x3 RPM (attrs type/size/color) under a named rule regime; return (context,
     candidates, answer_idx, answer). Row 2 col 2 is the held-out cell."""
     attrs = ["color", "size", "type"]
-    grid = {}          # attr -> [[r0c0,r0c1,r0c2],[...],[...]]
+    grid = {}  # attr -> [[r0c0,r0c1,r0c2],[...],[...]]
     if kind == "distribute3":
         base = {"type": [1, 2, 3], "size": [3, 1, 2], "color": [2, 3, 1]}
         for a in attrs:
@@ -419,22 +460,28 @@ def _build_task(kind, rng):
         for a in attrs:
             grid[a] = [[vals[a][r]] * 3 for r in range(3)]
     elif kind == "arithmetic":
-        cols = {"type": ([1, 2, 1], [2, 1, 3]), "size": ([1, 1, 2], [1, 3, 2]),
-                "color": ([2, 1, 1], [1, 2, 3])}
+        cols = {
+            "type": ([1, 2, 1], [2, 1, 3]),
+            "size": ([1, 1, 2], [1, 3, 2]),
+            "color": ([2, 1, 1], [1, 2, 3]),
+        }
         for a in attrs:
             c0, c1 = cols[a]
             grid[a] = [[c0[r], c1[r], c0[r] + c1[r]] for r in range(3)]
     elif kind == "norule":
         # each row a DIFFERENT value set, no constant/progression/arithmetic -> no NVSA rule fires.
-        ragged = {"type": [[1, 2, 4], [3, 5, 6], [7, 8]],
-                  "size": [[2, 5, 3], [6, 1, 4], [7, 2]],
-                  "color": [[3, 6, 2], [1, 4, 7], [5, 3]]}
+        ragged = {
+            "type": [[1, 2, 4], [3, 5, 6], [7, 8]],
+            "size": [[2, 5, 3], [6, 1, 4], [7, 2]],
+            "color": [[3, 6, 2], [1, 4, 7], [5, 3]],
+        }
         context = []
         for r in range(3):
             for c in range(len(ragged["type"][r])):
                 context.append({a: ragged[a][r][c] for a in attrs})
-        candidates = [{"type": v, "size": (v % 5) + 1, "color": ((v + 2) % 5) + 1}
-                      for v in range(1, 9)]
+        candidates = [
+            {"type": v, "size": (v % 5) + 1, "color": ((v + 2) % 5) + 1} for v in range(1, 9)
+        ]
         return context, candidates, 0, None
 
     context = []
@@ -450,7 +497,9 @@ def _build_task(kind, rng):
 
 def main():
     print("=" * 78)
-    print("SPIKING NVSA RAVEN'S PROGRESSIVE MATRICES SOLVER (role-filler VSA over the brain's spikes)")
+    print(
+        "SPIKING NVSA RAVEN'S PROGRESSIVE MATRICES SOLVER (role-filler VSA over the brain's spikes)"
+    )
     print("=" * 78)
     solver = RpmSolver(seed=0)
     rng = random.Random(0)
@@ -461,9 +510,18 @@ def main():
         res = solver.solve(context, candidates)
         ok = res["known"] and res["answer_idx"] == idx
         passed.append(ok)
-        print("  [%s] %-12s -> answer #%d (truth #%d) known=%s conf=%.2f rule='%s'" %
-              ("PASS" if ok else "FAIL", kind, res["answer_idx"], idx, res["known"],
-               res["confidence"], res["rule"]))
+        print(
+            "  [%s] %-12s -> answer #%d (truth #%d) known=%s conf=%.2f rule='%s'"
+            % (
+                "PASS" if ok else "FAIL",
+                kind,
+                res["answer_idx"],
+                idx,
+                res["known"],
+                res["confidence"],
+                res["rule"],
+            )
+        )
 
     # role-filler object binding is genuine: bind POS+type+size+color, then unbind three factors to
     # recover the fourth by spike cleanup (the NVSA product-object recovery, in spikes).
@@ -472,28 +530,38 @@ def main():
     book = {"type1": tv, "typeX": hv("RPM|type|9"), "typeY": hv("RPM|type|7")}
     recovered = _readout(bind(bind(bind(obj, _POS), sv), cv), book)
     bind_ok = recovered == "type1"
-    print("  [%s] role-filler   -> unbound the object's 'type' filler back to %r (spike cleanup)" %
-          ("PASS" if bind_ok else "FAIL", recovered))
+    print(
+        "  [%s] role-filler   -> unbound the object's 'type' filler back to %r (spike cleanup)"
+        % ("PASS" if bind_ok else "FAIL", recovered)
+    )
 
     # honest gap: a grid whose attributes obey NO NVSA rule must return known=False (no bluff).
     ctx_nr, cand_nr, _idx, _ans = _build_task("norule", rng)
     gap = solver.solve(ctx_nr, cand_nr)
     gap_ok = not gap["known"]
-    print("  [%s] no-rule grid  -> known=%s conf=%.2f rule='%s' (must be an honest gap)" %
-          ("PASS" if gap_ok else "FAIL", gap["known"], gap["confidence"], gap["rule"]))
+    print(
+        "  [%s] no-rule grid  -> known=%s conf=%.2f rule='%s' (must be an honest gap)"
+        % ("PASS" if gap_ok else "FAIL", gap["known"], gap["confidence"], gap["rule"])
+    )
 
     # determinism: identical result on a second solve of the same task.
     ctx_d, cand_d, _i, _a = _build_task("distribute3", random.Random(0))
     det_ok = solver.solve(ctx_d, cand_d) == RpmSolver(seed=0).solve(ctx_d, cand_d)
-    print("  [%s] determinism   -> same task + seed reproduces the identical result dict" %
-          ("PASS" if det_ok else "FAIL"))
+    print(
+        "  [%s] determinism   -> same task + seed reproduces the identical result dict"
+        % ("PASS" if det_ok else "FAIL")
+    )
 
     n_pass = sum(passed)
     print("-" * 78)
-    print("solved %d/4 rule regimes correctly (chance on 8 candidates = 12.5%%); role-filler binding, "
-          "honest gap, and determinism all hold." % n_pass)
-    print("ceiling: bounded to the NVSA rule set (distribute-three / progression / constant / "
-          "arithmetic) over clean attribute codes; NOT full ARC, NOT open-domain abstraction.")
+    print(
+        "solved %d/4 rule regimes correctly (chance on 8 candidates = 12.5%%); role-filler binding, "
+        "honest gap, and determinism all hold." % n_pass
+    )
+    print(
+        "ceiling: bounded to the NVSA rule set (distribute-three / progression / constant / "
+        "arithmetic) over clean attribute codes; NOT full ARC, NOT open-domain abstraction."
+    )
 
     assert n_pass == 4, "all four NVSA rule regimes must solve correctly (got %d/4)" % n_pass
     assert bind_ok, "role-filler object binding must recover a filler by spike cleanup"
@@ -501,10 +569,12 @@ def main():
     assert det_ok, "the solver must be deterministic under a fixed seed"
 
     print("=" * 78)
-    print("self-check OK: spiking NVSA RPM solver -- role-filler object codes, example->rule induction "
-          "(distribute-three / progression / constant / arithmetic) executed as spike-XOR/permute/"
-          "cleanup ops, basal-ganglia rule gate + global-workspace answer ignition; 4/4 regimes solved "
-          "(>> 12.5%% chance), honest gap on a no-rule grid, deterministic, pure stdlib.")
+    print(
+        "self-check OK: spiking NVSA RPM solver -- role-filler object codes, example->rule induction "
+        "(distribute-three / progression / constant / arithmetic) executed as spike-XOR/permute/"
+        "cleanup ops, basal-ganglia rule gate + global-workspace answer ignition; 4/4 regimes solved "
+        "(>> 12.5%% chance), honest gap on a no-rule grid, deterministic."
+    )
     return 0
 
 

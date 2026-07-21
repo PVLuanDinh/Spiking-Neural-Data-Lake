@@ -16,8 +16,9 @@ tensor and module built afterwards lands on the GPU without threading `.to(devic
 through every call site; for CPU it is a no-op (default is already CPU).
 
 torch is imported lazily inside the functions, so importing this module never
-requires torch (keeps it harmless in the zero-dep environment).
+requires torch.
 """
+
 import os
 
 
@@ -34,11 +35,15 @@ def resolve_device(explicit=None):
         return "cpu"
     if want.startswith("cuda"):
         if torch.cuda.is_available():
-            print(f"GPU: {torch.cuda.get_device_name(0)} "
-                  f"(CUDA {torch.version.cuda}, torch {torch.__version__}) -> device={want}")
+            print(
+                f"GPU: {torch.cuda.get_device_name(0)} "
+                f"(CUDA {torch.version.cuda}, torch {torch.__version__}) -> device={want}"
+            )
             return want
-        print(f"WARNING: device '{want}' requested but torch.cuda.is_available() is False; "
-              "falling back to CPU.")
+        print(
+            f"WARNING: device '{want}' requested but torch.cuda.is_available() is False; "
+            "falling back to CPU."
+        )
         return "cpu"
     return want
 

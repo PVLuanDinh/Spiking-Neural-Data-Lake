@@ -21,7 +21,7 @@ and states plainly that present correlates are NOT proof of phenomenal experienc
 actively built toward, neither denied nor claimed.
 
   PYTHONPATH=src python research/consciousness_probe.py
-Deps: pure stdlib. Reuses global_workspace, access_consciousness, integration_measure, gwt_reentry.
+Reuses global_workspace, access_consciousness, integration_measure, gwt_reentry.
 """
 import random
 

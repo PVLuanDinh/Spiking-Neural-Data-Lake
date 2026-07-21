@@ -13,13 +13,14 @@ the live default. Refs: Gutig & Sompolinsky, Nature Neuroscience 9 (2006).
 
   python -m snn_data_lake.cortex.tempotron        # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
 from snn_data_lake.brainstem.signal_loop import build_default_library
 from snn_data_lake.cortex.spike_preprocessing import N, T, encode_latency
 
-TAU_M = 8.0                   # membrane time constant (steps), tuned to the T=32 latency window
+TAU_M = 8.0  # membrane time constant (steps), tuned to the T=32 latency window
 TAU_S = 2.0
 DT = 1.0
 _T0 = (TAU_M * TAU_S / (TAU_M - TAU_S)) * math.log(TAU_M / TAU_S)
@@ -117,14 +118,17 @@ def main():
     print(f"recognition accuracy: {acc:.0%}  (chance {1 / len(labels):.0%})")
     print("=" * 60)
 
-    # ---- self-check: deterministic asserts, zero-dep ----
+    # ---- self-check: deterministic asserts ----
     assert acc >= 0.9, f"tempotron matcher must recognize the commands ({acc:.2f})"
     clean = sum(matcher.label(library[lab]) == lab for lab in labels)
     assert clean == len(labels), "every clean command must be recognized exactly"
-    assert TempotronMatcher(library).label(library[labels[0]]) == \
-        TempotronMatcher(library).label(library[labels[0]]), "deterministic"
-    print(f"self-check OK: tempotron matcher {acc:.0%} on jittered windows, {clean}/{len(labels)} clean; "
-          f"spike-timing recognition wired to the command library; deterministic")
+    assert TempotronMatcher(library).label(library[labels[0]]) == TempotronMatcher(library).label(
+        library[labels[0]]
+    ), "deterministic"
+    print(
+        f"self-check OK: tempotron matcher {acc:.0%} on jittered windows, {clean}/{len(labels)} clean; "
+        f"spike-timing recognition wired to the command library; deterministic"
+    )
 
 
 if __name__ == "__main__":

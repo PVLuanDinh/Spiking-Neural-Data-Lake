@@ -44,11 +44,12 @@ Torch/GPU tier. Built on `resolve_device()` (from research/torch_device.py) with
 explicit `.to(device)` on every parameter -- it does NOT rely on set_default_device
 (that quirk lands `torch.normal` / freshly-wrapped `nn.Parameter` on CPU even under a
 cuda default). Deterministic (torch.manual_seed + per-instance generators). ASCII-only
-prints. Zero-dep CORE is untouched: this file lives under research/, imports nothing
+prints. CORE is untouched: this file lives under research/, imports nothing
 from src/, and edits neither run_selfchecks nor pyproject.
 
   NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/brain_adapters/growable_readout.py
 """
+
 import os
 import sys
 
@@ -253,9 +254,10 @@ class GrowableReadout(nn.Module):
             # phantom trap: preservation is EXACT (< 1e-6) AND the capacity is real.
             w1_p = self.W1.data[p].clone()
             std1 = (2.0 / self.in_dim) ** 0.5
-            noise = torch.normal(
-                0.0, 1.0, (self.in_dim,), generator=self._grow_gen
-            ).to(self.device) * std1
+            noise = (
+                torch.normal(0.0, 1.0, (self.in_dim,), generator=self._grow_gen).to(self.device)
+                * std1
+            )
             new_row = (w1_p + noise).unsqueeze(0)  # duplicate parent's incoming + fresh feature
             new_W1 = torch.cat([self.W1.data, new_row], dim=0)
             new_b1 = torch.cat([self.b1.data, self.b1.data[p : p + 1].clone()], dim=0)
@@ -375,8 +377,8 @@ def _make_task_blobs(n_per=150, in_dim=16, n_classes=6, sep=1.6, seed=0):
     Xs, ys = [], []
     for c in range(n_classes):
         center = torch.zeros(in_dim)
-        center[0] = pos_of_class[c] * sep                          # informative axis
-        center[1] = ((pos_of_class[c] % 2) * 2 - 1) * 0.5 * sep    # mild zig-zag on a 2nd axis
+        center[0] = pos_of_class[c] * sep  # informative axis
+        center[1] = ((pos_of_class[c] % 2) * 2 - 1) * 0.5 * sep  # mild zig-zag on a 2nd axis
         Xs.append(center + torch.normal(0.0, 1.0, (n_per, in_dim), generator=g))
         ys.append(torch.full((n_per,), c, dtype=torch.long))
     X = torch.cat(Xs, 0)
@@ -469,8 +471,10 @@ def main():
     print("=" * 70)
     print("GROWABLE READOUT -- function-preserving neurogenesis (Net2Net) -- research")
     print("=" * 70)
-    print(f"task: 6-band parity  N={X.shape[0]}  in_dim={in_dim}  classes={n_classes}  "
-          f"chance={chance:.3f}")
+    print(
+        f"task: 6-band parity  N={X.shape[0]}  in_dim={in_dim}  classes={n_classes}  "
+        f"chance={chance:.3f}"
+    )
 
     # Bottleneck baseline: 4 hidden units (< 5 kinks) CANNOT separate 6 stripes -> it
     # converges to a high-loss plateau. Any further loss drop after growth is therefore
@@ -480,8 +484,10 @@ def main():
     for _ in range(1500):
         loss_base = model.train_step(X, y, lr=1e-2, steps=1)
     acc_base = _accuracy(model, X, y)
-    print(f"baseline : hidden={model.n_hidden}  loss={loss_base:.4f}  acc={acc_base:.3f}  "
-          f"(4-unit ReLU has too few kinks for 6 stripes -> plateau)")
+    print(
+        f"baseline : hidden={model.n_hidden}  loss={loss_base:.4f}  acc={acc_base:.3f}  "
+        f"(4-unit ReLU has too few kinks for 6 stripes -> plateau)"
+    )
 
     # (1) FUNCTION-PRESERVING GROWTH: logits ~identical immediately after grow().
     logits_pre = model.predict(X).clone()
@@ -494,8 +500,10 @@ def main():
         f"grow() must be function-preserving: max abs logit diff {max_logit_diff:.3e} >= 1e-4"
     )
     loss_at_grow = float(F.cross_entropy(logits_post, y.to(model.device)))
-    print(f"(1) grow : hidden 4 -> {new_width}  max|dlogit|={max_logit_diff:.3e} (< 1e-4)  "
-          f"loss_at_grow={loss_at_grow:.4f} (~loss_base, preserved)")
+    print(
+        f"(1) grow : hidden 4 -> {new_width}  max|dlogit|={max_logit_diff:.3e} (< 1e-4)  "
+        f"loss_at_grow={loss_at_grow:.4f} (~loss_base, preserved)"
+    )
 
     # (2) CAPACITY USABLE: train the grown net; loss must drop FAR below the converged
     # 1-unit plateau (only possible if the split units genuinely differentiated).
@@ -510,8 +518,10 @@ def main():
     assert acc_grown > acc_base + 0.10, (
         f"grown net must classify better than the bottleneck: {acc_grown:.3f} vs {acc_base:.3f}"
     )
-    print(f"(2) usable: after grow+train  loss={loss_grown:.4f} (< base-0.10)  "
-          f"acc={acc_grown:.3f} (> base+0.10)  -> new capacity is real, not phantom")
+    print(
+        f"(2) usable: after grow+train  loss={loss_grown:.4f} (< base-0.10)  "
+        f"acc={acc_grown:.3f} (> base+0.10)  -> new capacity is real, not phantom"
+    )
 
     # (3) BEATS CHANCE on the toy task.
     assert acc_grown > 0.85, f"grown readout must beat chance decisively: {acc_grown:.3f} <= 0.85"
@@ -545,17 +555,29 @@ def main():
     print("-" * 70)
     print("(4) catastrophic forgetting -- Task A={0,1,2} -> Task B={3,4,5}, small A-replay")
     print("    retention = task-aware acc on Task-A classes (Task-IL); acc_B confirms B learned")
-    print(f"    nofreeze : acc_A {r_nf['before_ta']:.3f} -> {r_nf['after_ta']:.3f}   "
-          f"(all-class acc_A={r_nf['after_all']:.3f}, acc_B={r_nf['accB_ta']:.3f})")
-    print(f"    hidden   : acc_A {r_hd['before_ta']:.3f} -> {r_hd['after_ta']:.3f}   "
-          f"(all-class acc_A={r_hd['after_all']:.3f}, acc_B={r_hd['accB_ta']:.3f})  freeze features only")
-    print(f"    proper   : acc_A {r_pr['before_ta']:.3f} -> {r_pr['after_ta']:.3f}   "
-          f"(all-class acc_A={r_pr['after_all']:.3f}, acc_B={r_pr['accB_ta']:.3f})  features + old readout")
-    print(f"    frozen W1 rows max|diff| over Task B = {r_pr['w1_frozen_diff']:.3e} (must be 0.0)  |  "
-          f"new-unit rows max|diff| = {r_pr['w1_new_diff']:.3e} (> 0)")
-    print(f"    frozen old-class W2 rows max|diff| = {r_pr['w2_out_diff']:.3e} (must be 0.0, exact readout)")
-    print(f"    retention delta vs nofreeze: hidden-only={delta_hidden:+.3f} (partial)  "
-          f"proper={delta_proper:+.3f} (must be > +0.15)")
+    print(
+        f"    nofreeze : acc_A {r_nf['before_ta']:.3f} -> {r_nf['after_ta']:.3f}   "
+        f"(all-class acc_A={r_nf['after_all']:.3f}, acc_B={r_nf['accB_ta']:.3f})"
+    )
+    print(
+        f"    hidden   : acc_A {r_hd['before_ta']:.3f} -> {r_hd['after_ta']:.3f}   "
+        f"(all-class acc_A={r_hd['after_all']:.3f}, acc_B={r_hd['accB_ta']:.3f})  freeze features only"
+    )
+    print(
+        f"    proper   : acc_A {r_pr['before_ta']:.3f} -> {r_pr['after_ta']:.3f}   "
+        f"(all-class acc_A={r_pr['after_all']:.3f}, acc_B={r_pr['accB_ta']:.3f})  features + old readout"
+    )
+    print(
+        f"    frozen W1 rows max|diff| over Task B = {r_pr['w1_frozen_diff']:.3e} (must be 0.0)  |  "
+        f"new-unit rows max|diff| = {r_pr['w1_new_diff']:.3e} (> 0)"
+    )
+    print(
+        f"    frozen old-class W2 rows max|diff| = {r_pr['w2_out_diff']:.3e} (must be 0.0, exact readout)"
+    )
+    print(
+        f"    retention delta vs nofreeze: hidden-only={delta_hidden:+.3f} (partial)  "
+        f"proper={delta_proper:+.3f} (must be > +0.15)"
+    )
     assert r_pr["w1_frozen_diff"] == 0.0, (
         f"frozen units' W1 rows must be EXACTLY unchanged across Task B, got {r_pr['w1_frozen_diff']:.3e}"
     )
@@ -572,8 +594,10 @@ def main():
         f"PROPER isolation must retain Task A markedly better than nofreeze: "
         f"proper {r_pr['after_ta']:.3f} vs nofreeze {r_nf['after_ta']:.3f} (delta {delta_proper:+.3f} <= 0.15)"
     )
-    print("    -> proper parameter isolation prevents Task B from overwriting Task A "
-          "(features frozen exactly, old readout frozen exactly, new class still learned)")
+    print(
+        "    -> proper parameter isolation prevents Task B from overwriting Task A "
+        "(features frozen exactly, old readout frozen exactly, new class still learned)"
+    )
 
     # keep the summary line's variable names stable
     after_nf, after_fz, fdiff_fz = r_nf["after_ta"], r_pr["after_ta"], r_pr["w1_frozen_diff"]
@@ -587,12 +611,16 @@ def main():
     print("  drop below the plateau). Zero duplicate fan-out frees the duplicate's incoming")
     print("  to be a distinct feature that training recruits -- so the capacity is REAL.")
     print("=" * 70)
-    print(f"self-check OK: function-preserving grow (max|dlogit|={max_logit_diff:.3e}), "
-          f"capacity usable (loss {loss_base:.3f} -> {loss_grown:.3f}), "
-          f"acc {acc_base:.3f} -> {acc_grown:.3f} (chance {chance:.3f})")
-    print(f"  + neurogenesis-with-FREEZE beats forgetting: Task-A retention "
-          f"nofreeze {after_nf:.3f} vs freeze {after_fz:.3f} (delta {retention_delta:+.3f}), "
-          f"frozen rows exactly fixed (max|diff|={fdiff_fz:.3e})")
+    print(
+        f"self-check OK: function-preserving grow (max|dlogit|={max_logit_diff:.3e}), "
+        f"capacity usable (loss {loss_base:.3f} -> {loss_grown:.3f}), "
+        f"acc {acc_base:.3f} -> {acc_grown:.3f} (chance {chance:.3f})"
+    )
+    print(
+        f"  + neurogenesis-with-FREEZE beats forgetting: Task-A retention "
+        f"nofreeze {after_nf:.3f} vs freeze {after_fz:.3f} (delta {retention_delta:+.3f}), "
+        f"frozen rows exactly fixed (max|diff|={fdiff_fz:.3e})"
+    )
 
 
 if __name__ == "__main__":

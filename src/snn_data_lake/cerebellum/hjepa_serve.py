@@ -36,6 +36,7 @@ Pure stdlib (math, json + shared _mathutils dot/mean/unit), ASCII-only prints, d
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.hjepa_serve
 """
+
 import json
 import math
 
@@ -54,7 +55,7 @@ def _mlp(layers, x):
     for i, (W, b) in enumerate(layers):
         h = [dot(W[o], h) + b[o] for o in range(len(b))]
         if i < last:
-            h = [v if v > 0.0 else 0.0 for v in h]        # ReLU only BETWEEN layers
+            h = [v if v > 0.0 else 0.0 for v in h]  # ReLU only BETWEEN layers
     return h
 
 
@@ -72,7 +73,9 @@ def _validate_stack(name, layers, in_dim, out_dim):
     output; the first layer's input must equal `in_dim` and the last layer's output must equal
     `out_dim`. Raises ValueError on any structural or shape mismatch."""
     if not (isinstance(layers, list) and len(layers) >= 1):
-        raise ValueError(f"bad {HJEPA_FORMAT} file: {name} must be a non-empty list of [W, b] layers")
+        raise ValueError(
+            f"bad {HJEPA_FORMAT} file: {name} must be a non-empty list of [W, b] layers"
+        )
     parsed = []
     cur_in = in_dim
     for k, layer in enumerate(layers):
@@ -83,13 +86,19 @@ def _validate_stack(name, layers, in_dim, out_dim):
             raise ValueError(f"bad {HJEPA_FORMAT} file: {name}[{k}] W/b malformed")
         out_k = len(W)
         if len(b) != out_k:
-            raise ValueError(f"bad {HJEPA_FORMAT} file: {name}[{k}] bias length {len(b)} != rows {out_k}")
+            raise ValueError(
+                f"bad {HJEPA_FORMAT} file: {name}[{k}] bias length {len(b)} != rows {out_k}"
+            )
         if not all(isinstance(row, list) and len(row) == cur_in for row in W):
-            raise ValueError(f"bad {HJEPA_FORMAT} file: {name}[{k}] every W row must have length {cur_in}")
+            raise ValueError(
+                f"bad {HJEPA_FORMAT} file: {name}[{k}] every W row must have length {cur_in}"
+            )
         parsed.append((W, b))
         cur_in = out_k
     if cur_in != out_dim:
-        raise ValueError(f"bad {HJEPA_FORMAT} file: {name} final output {cur_in} != expected {out_dim}")
+        raise ValueError(
+            f"bad {HJEPA_FORMAT} file: {name} final output {cur_in} != expected {out_dim}"
+        )
     return parsed
 
 
@@ -102,8 +111,21 @@ class HJepaServe:
     over the abstract level. K / latent0 / latent1 / fine_actions / coarse_actions expose the config.
     Construct via HJepaServe.load(path); the __init__ trusts already-validated components."""
 
-    def __init__(self, *, in_dim, K, latent0, latent1, fine_actions, coarse_actions, tau,
-                 enc0, enc1, pred0, pred1):
+    def __init__(
+        self,
+        *,
+        in_dim,
+        K,
+        latent0,
+        latent1,
+        fine_actions,
+        coarse_actions,
+        tau,
+        enc0,
+        enc1,
+        pred0,
+        pred1,
+    ):
         self._in_dim = int(in_dim)
         self._K = int(K)
         self._latent0 = int(latent0)
@@ -115,7 +137,7 @@ class HJepaServe:
         self._fidx = {a: i for i, a in enumerate(self._fine_actions)}
         self._cidx = {a: i for i, a in enumerate(self._coarse_actions)}
         self.tau = float(tau)
-        self._enc0 = enc0        # online encoders / predictors (what inference uses)
+        self._enc0 = enc0  # online encoders / predictors (what inference uses)
         self._enc1 = enc1
         self._pred0 = pred0
         self._pred1 = pred1
@@ -130,7 +152,9 @@ class HJepaServe:
         with open(path, encoding="ascii") as f:
             obj = json.load(f)
         if not isinstance(obj, dict) or obj.get("format") != HJEPA_FORMAT:
-            raise ValueError(f"bad {HJEPA_FORMAT} file: missing/incorrect 'format' tag (expected {HJEPA_FORMAT})")
+            raise ValueError(
+                f"bad {HJEPA_FORMAT} file: missing/incorrect 'format' tag (expected {HJEPA_FORMAT})"
+            )
 
         in_dim = _pos_int(obj.get("in_dim"), "in_dim")
         K = _pos_int(obj.get("K"), "K")
@@ -139,10 +163,20 @@ class HJepaServe:
 
         fine = obj.get("fine_actions")
         coarse = obj.get("coarse_actions")
-        if not (isinstance(fine, list) and len(fine) >= 1 and all(isinstance(a, str) for a in fine)):
-            raise ValueError(f"bad {HJEPA_FORMAT} file: fine_actions must be a non-empty list of names")
-        if not (isinstance(coarse, list) and len(coarse) >= 1 and all(isinstance(a, str) for a in coarse)):
-            raise ValueError(f"bad {HJEPA_FORMAT} file: coarse_actions must be a non-empty list of names")
+        if not (
+            isinstance(fine, list) and len(fine) >= 1 and all(isinstance(a, str) for a in fine)
+        ):
+            raise ValueError(
+                f"bad {HJEPA_FORMAT} file: fine_actions must be a non-empty list of names"
+            )
+        if not (
+            isinstance(coarse, list)
+            and len(coarse) >= 1
+            and all(isinstance(a, str) for a in coarse)
+        ):
+            raise ValueError(
+                f"bad {HJEPA_FORMAT} file: coarse_actions must be a non-empty list of names"
+            )
         n_fine, n_coarse = len(fine), len(coarse)
 
         # online encoders + predictors (served); enc*_target are training EMA copies -- validate if present
@@ -156,9 +190,19 @@ class HJepaServe:
         pred0 = _validate_stack("pred0", obj.get("pred0"), latent0 + n_fine, latent0)
         pred1 = _validate_stack("pred1", obj.get("pred1"), latent1 + n_coarse, latent1)
 
-        return cls(in_dim=in_dim, K=K, latent0=latent0, latent1=latent1,
-                   fine_actions=fine, coarse_actions=coarse, tau=float(obj.get("tau", 0.0)),
-                   enc0=enc0, enc1=enc1, pred0=pred0, pred1=pred1)
+        return cls(
+            in_dim=in_dim,
+            K=K,
+            latent0=latent0,
+            latent1=latent1,
+            fine_actions=fine,
+            coarse_actions=coarse,
+            tau=float(obj.get("tau", 0.0)),
+            enc0=enc0,
+            enc1=enc1,
+            pred0=pred0,
+            pred1=pred1,
+        )
 
     # ---- config (read-only) ------------------------------------------------------------------------
     @property
@@ -218,7 +262,9 @@ class HJepaServe:
             return self.encode0(item)
         if n == self._latent0:
             return list(item)
-        raise ValueError(f"encode1 item length {n} is neither in_dim {self._in_dim} nor latent0 {self._latent0}")
+        raise ValueError(
+            f"encode1 item length {n} is neither in_dim {self._in_dim} nor latent0 {self._latent0}"
+        )
 
     def encode1(self, window):
         """L1 abstract encoder: unit(mlp(enc1, meanpool([encode0(o) for o in window]))). `window` is a
@@ -265,19 +311,30 @@ def _build_tiny_blob():
     """A hand-set snn_hjepa/1 dict: in_dim 3, latent0 2, latent1 2, K 2; enc0 is a 2-layer MLP (exercises
     the ReLU BETWEEN layers), enc1/pred0/pred1 are single raw layers. EMA targets copy the online encoders."""
     enc0 = [
-        [[[0.5, -0.5, 1.0], [1.0, 0.0, -1.0]], [0.1, -0.2]],      # layer 0: [2][3] -> relu
-        [[[1.0, 0.5], [-0.5, 1.0]], [0.0, 0.05]],                 # layer 1: [2][2] -> raw (last)
+        [[[0.5, -0.5, 1.0], [1.0, 0.0, -1.0]], [0.1, -0.2]],  # layer 0: [2][3] -> relu
+        [[[1.0, 0.5], [-0.5, 1.0]], [0.0, 0.05]],  # layer 1: [2][2] -> raw (last)
     ]
-    enc1 = [[[[1.0, -1.0], [0.5, 0.5]], [0.0, 0.0]]]              # [2][2] latent0 -> latent1
-    pred0 = [[[[0.2, -0.1, 0.3, 0.4], [0.1, 0.2, -0.2, 0.1]], [0.0, 0.0]]]   # [2][4] (latent0 + 2 fine)
-    pred1 = [[[[0.1, -0.2, 0.3, 0.0, 0.1], [0.2, 0.1, -0.1, 0.2, -0.3]], [0.0, 0.0]]]  # [2][5] (latent1 + 3 coarse)
+    enc1 = [[[[1.0, -1.0], [0.5, 0.5]], [0.0, 0.0]]]  # [2][2] latent0 -> latent1
+    pred0 = [
+        [[[0.2, -0.1, 0.3, 0.4], [0.1, 0.2, -0.2, 0.1]], [0.0, 0.0]]
+    ]  # [2][4] (latent0 + 2 fine)
+    pred1 = [
+        [[[0.1, -0.2, 0.3, 0.0, 0.1], [0.2, 0.1, -0.1, 0.2, -0.3]], [0.0, 0.0]]
+    ]  # [2][5] (latent1 + 3 coarse)
     return {
         "format": HJEPA_FORMAT,
-        "in_dim": 3, "K": 2, "latent0": 2, "latent1": 2,
-        "fine_actions": ["FWD", "BCK"], "coarse_actions": ["L", "R", "S"],
-        "enc0": enc0, "enc1": enc1,
-        "enc0_target": enc0, "enc1_target": enc1,             # EMA copies (validated, not served)
-        "pred0": pred0, "pred1": pred1,
+        "in_dim": 3,
+        "K": 2,
+        "latent0": 2,
+        "latent1": 2,
+        "fine_actions": ["FWD", "BCK"],
+        "coarse_actions": ["L", "R", "S"],
+        "enc0": enc0,
+        "enc1": enc1,
+        "enc0_target": enc0,
+        "enc1_target": enc1,  # EMA copies (validated, not served)
+        "pred0": pred0,
+        "pred1": pred1,
         "tau": 0.99,
         "predictors": {"pred0": "residual_mlp_unit", "pred1": "mlp_unit"},
         "meta": {"trained_by": "self-check", "unverified_on_hardware": True},
@@ -353,11 +410,13 @@ def main():
     z1 = srv.encode1(window)
     enc0_ok = close(z0a, r_encode0(obs_a)) and close(z0b, r_encode0(obs_b))
     enc1_ok = close(z1, r_encode1(window))
-    p0_ok = close(srv.predict0(z0a, "BCK"), r_predict0(z0a, "BCK")) and \
-        close(srv.predict0(z0a, 0), r_predict0(z0a, 0))                 # name AND index forms
-    p1_ok = close(srv.predict1(z1, "R"), r_predict1(z1, "R")) and \
-        close(srv.predict1(z1, 2), r_predict1(z1, 2))
-    unit_ok = abs(math.sqrt(sum(c * c for c in z1)) - 1.0) < 1e-9       # served latent is on the sphere
+    p0_ok = close(srv.predict0(z0a, "BCK"), r_predict0(z0a, "BCK")) and close(
+        srv.predict0(z0a, 0), r_predict0(z0a, 0)
+    )  # name AND index forms
+    p1_ok = close(srv.predict1(z1, "R"), r_predict1(z1, "R")) and close(
+        srv.predict1(z1, 2), r_predict1(z1, 2)
+    )
+    unit_ok = abs(math.sqrt(sum(c * c for c in z1)) - 1.0) < 1e-9  # served latent is on the sphere
 
     # ---- (2) encode1 accepts BOTH a window-of-obs and a window-of-latents (same result) ----
     lat_window = [srv.encode0(obs_a), srv.encode0(obs_b)]
@@ -367,12 +426,18 @@ def main():
     alias_ok = srv.predict(z1, "R") == srv.predict1(z1, "R")
 
     # ---- (4) config exposure ----
-    config_ok = (srv.K == 2 and srv.latent0 == 2 and srv.latent1 == 2 and srv.in_dim == 3 and
-                 srv.fine_actions == ("FWD", "BCK") and srv.coarse_actions == ("L", "R", "S"))
+    config_ok = (
+        srv.K == 2
+        and srv.latent0 == 2
+        and srv.latent1 == 2
+        and srv.in_dim == 3
+        and srv.fine_actions == ("FWD", "BCK")
+        and srv.coarse_actions == ("L", "R", "S")
+    )
 
     # ---- (5) the loader rejects bad-format and wrong-shape files ----
     def _expect_valueerror(mutate):
-        bad = json.loads(json.dumps(blob))                              # deep copy via round-trip
+        bad = json.loads(json.dumps(blob))  # deep copy via round-trip
         mutate(bad)
         p = os.path.join(tempfile.gettempdir(), "snn_hjepa1_bad.json")
         with open(p, "w", encoding="ascii") as fh:
@@ -389,7 +454,7 @@ def main():
         b["format"] = "snn_hjepa/2"
 
     def _bad_shape(b):
-        b["enc0"][-1][0].append([0.0, 0.0])                            # W2 -> 3 rows while bias stays len 2
+        b["enc0"][-1][0].append([0.0, 0.0])  # W2 -> 3 rows while bias stays len 2
 
     reject_format_ok = _expect_valueerror(_bad_format)
     reject_shape_ok = _expect_valueerror(_bad_shape)
@@ -397,30 +462,44 @@ def main():
     print("=" * 78)
     print("H-JEPA SERVE -- zero-dep forward server for a torch-trained 2-level snn_hjepa/1")
     print("=" * 78)
-    print(f"config      : in_dim={srv.in_dim} K={srv.K} latent0={srv.latent0} latent1={srv.latent1} "
-          f"fine={list(srv.fine_actions)} coarse={list(srv.coarse_actions)}")
+    print(
+        f"config      : in_dim={srv.in_dim} K={srv.K} latent0={srv.latent0} latent1={srv.latent1} "
+        f"fine={list(srv.fine_actions)} coarse={list(srv.coarse_actions)}"
+    )
     print(f"encode0     : matches independent reference (raw mlp+relu+unit): {enc0_ok}")
-    print(f"encode1     : matches reference (meanpool L0 -> enc1 -> unit): {enc1_ok}; on unit sphere: {unit_ok}")
+    print(
+        f"encode1     : matches reference (meanpool L0 -> enc1 -> unit): {enc1_ok}; on unit sphere: {unit_ok}"
+    )
     print(f"predict0    : residual fine, matches reference (name+index): {p0_ok}")
     print(f"predict1    : pure-MLP coarse, matches reference (name+index): {p1_ok}")
     print(f"encode1     : obs-window == latent-window: {both_windows_ok}")
     print(f"predict     : predict(state,cmd) == predict1(state,cmd): {alias_ok}")
-    print(f"trust       : load rejects bad-format={reject_format_ok}, wrong-shape={reject_shape_ok}")
+    print(
+        f"trust       : load rejects bad-format={reject_format_ok}, wrong-shape={reject_shape_ok}"
+    )
     print("-" * 78)
 
     assert enc0_ok, "encode0 must match the independent hand-rolled reference"
-    assert enc1_ok, "encode1 must match the independent hand-rolled reference (meanpool + enc1 head)"
+    assert enc1_ok, (
+        "encode1 must match the independent hand-rolled reference (meanpool + enc1 head)"
+    )
     assert unit_ok, "encode1 output must lie on the unit sphere"
     assert p0_ok, "predict0 (residual fine) must match the reference for name and index commands"
     assert p1_ok, "predict1 (pure-MLP coarse) must match the reference for name and index commands"
-    assert both_windows_ok, "encode1 must accept a window of obs OR a window of L0 latents identically"
+    assert both_windows_ok, (
+        "encode1 must accept a window of obs OR a window of L0 latents identically"
+    )
     assert alias_ok, "predict(state, cmd) must be exactly predict1(state, cmd)"
-    assert config_ok, "K / latent0 / latent1 / in_dim / fine_actions / coarse_actions must be exposed"
+    assert config_ok, (
+        "K / latent0 / latent1 / in_dim / fine_actions / coarse_actions must be exposed"
+    )
     assert reject_format_ok, "load must raise ValueError on a bad format tag"
     assert reject_shape_ok, "load must raise ValueError on a wrong-shape layer"
 
-    print("self-check OK: snn_hjepa/1 forward served pure-stdlib and matches the torch _HJepa forward "
-          "(encode0/encode1/predict0/predict1); dual-window encode1, predict==predict1, and a validating loader")
+    print(
+        "self-check OK: snn_hjepa/1 forward served pure-stdlib and matches the torch _HJepa forward "
+        "(encode0/encode1/predict0/predict1); dual-window encode1, predict==predict1, and a validating loader"
+    )
 
 
 if __name__ == "__main__":

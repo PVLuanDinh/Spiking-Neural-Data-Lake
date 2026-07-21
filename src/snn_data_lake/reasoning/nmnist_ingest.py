@@ -1,5 +1,5 @@
 """
-v0.31 — N-MNIST (real event-camera) ingestion  (stdlib core, zero deps).
+v0.31 — N-MNIST (real event-camera) ingestion.
 
 Closes the one real gap in Gemini's improvement brief: the repo trained only on
 static MNIST. N-MNIST is MNIST recorded by a Dynamic Vision Sensor — async
@@ -17,26 +17,27 @@ Pipeline (the data-lake leg, end to end):
 Real data path: `pip install tonic` then run — pulls torchvision-style N-MNIST
 (~1 GB on first run) via tonic.datasets.NMNIST. WITHOUT tonic the script falls
 back to deterministic synthetic events so the whole pipeline + self-checks run
-zero-dep (e.g. in CI). The synthetic blobs are class-separable by construction;
+without tonic (e.g. in CI). The synthetic blobs are class-separable by construction;
 they prove the plumbing, NOT a benchmark number — install tonic for that.
 
   python nmnist_ingest.py
   NMNIST_TRAIN=400 NMNIST_TEST=200 NMNIST_T=8 python nmnist_ingest.py
 """
+
 import os
 import gzip
 import math
 import random
 import struct
 
-H = W = 34          # N-MNIST sensor is 34x34
-P = 2               # two polarities (on/off)
-C = 10              # digit classes
-DUR = 300_000       # ~300 ms in microseconds (N-MNIST sample length)
+H = W = 34  # N-MNIST sensor is 34x34
+P = 2  # two polarities (on/off)
+C = 10  # digit classes
+DUR = 300_000  # ~300 ms in microseconds (N-MNIST sample length)
 
 TRAIN_N = int(os.environ.get("NMNIST_TRAIN", 200))
 TEST_N = int(os.environ.get("NMNIST_TEST", 100))
-T = int(os.environ.get("NMNIST_T", 6))          # time bins (ToFrame n_time_bins)
+T = int(os.environ.get("NMNIST_T", 6))  # time bins (ToFrame n_time_bins)
 SEED = int(os.environ.get("NMNIST_SEED", 0))
 
 
@@ -45,12 +46,12 @@ def _synth_sample(label, rng, n_events=600):
     """Deterministic class-separable event blob: each digit fires around a unique
     grid centroid, drifting over time. Synthetic stand-in — proves the
     ingest->feature->classify path; swap for tonic.datasets.NMNIST for real data."""
-    cx = 4 + (label % 5) * 6              # 5 columns of centroids
-    cy = 8 + (label // 5) * 16            # 2 rows
+    cx = 4 + (label % 5) * 6  # 5 columns of centroids
+    cy = 8 + (label // 5) * 16  # 2 rows
     ev = []
     for _ in range(n_events):
         t = rng.randrange(DUR)
-        drift = int((t / DUR) * 6) - 3    # blob drifts with time
+        drift = int((t / DUR) * 6) - 3  # blob drifts with time
         x = min(W - 1, max(0, int(rng.gauss(cx + drift, 2.2))))
         y = min(H - 1, max(0, int(rng.gauss(cy, 2.2))))
         ev.append((x, y, t, rng.randint(0, 1)))
@@ -61,6 +62,7 @@ def load_events(n_train, n_test):
     """Return (train, test) lists of (events, label); 'source' tag for honesty."""
     try:
         import tonic  # noqa
+
         ds_tr = tonic.datasets.NMNIST(save_to="./data", train=True)
         ds_te = tonic.datasets.NMNIST(save_to="./data", train=False)
 
@@ -177,11 +179,13 @@ def main():
     print("=" * 62)
     print(f"source        : {source}")
     print(f"samples       : {len(train)} train / {len(test)} test, {n_ev:,} events")
-    print(f"BRONZE store  : {len(raw)/1024:.1f} KB raw  -> {raw_gz/1024:.1f} KB gzip "
-          f"({len(raw)/max(1,raw_gz):.1f}x)")
+    print(
+        f"BRONZE store  : {len(raw) / 1024:.1f} KB raw  -> {raw_gz / 1024:.1f} KB gzip "
+        f"({len(raw) / max(1, raw_gz):.1f}x)"
+    )
     print(f"SILVER raster : {T}x{P}x{H}x{W}  ICR={sample_icr:.3f}  (lower = more structured)")
-    print(f"GOLD feature  : {P*H*W}-d rate vector, {sparsity*100:.0f}% active (sparse=cheap)")
-    print(f"ACCURACY      : {acc*100:.1f}%   (chance = {100/C:.0f}%)")
+    print(f"GOLD feature  : {P * H * W}-d rate vector, {sparsity * 100:.0f}% active (sparse=cheap)")
+    print(f"ACCURACY      : {acc * 100:.1f}%   (chance = {100 / C:.0f}%)")
     print("=" * 62)
 
     # ---- self-checks --------------------------------------------------------
@@ -191,8 +195,10 @@ def main():
     # roundtrip: Bronze byte store decodes to the same event count
     assert len(raw) // struct.calcsize("<HHIB") == n_ev, "Bronze store lost events"
     assert acc >= 0.30, f"accuracy {acc:.2f} below 0.30 (pipeline broken?)"
-    print(f"self-check OK: {n_ev:,} events ingested, raster + ICR valid, "
-          f"Bronze roundtrip intact, accuracy {acc*100:.0f}% > chance")
+    print(
+        f"self-check OK: {n_ev:,} events ingested, raster + ICR valid, "
+        f"Bronze roundtrip intact, accuracy {acc * 100:.0f}% > chance"
+    )
 
 
 if __name__ == "__main__":

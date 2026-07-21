@@ -1,7 +1,7 @@
 """
 v2.11 - nl_interface: a LOCAL natural-language front-end that turns English into a
 SAFE, allow-listed intent for the arm or a structured query for the data lake
-(stdlib-only core; the LLM backend is optional and injected).
+(the LLM backend is optional and injected).
 
 This is the safety FIREWALL between a language model and the robot. A backend (a local
 AirLLM model on-device, or the stdlib StubBackend here) only ever returns a short LABEL;
@@ -18,7 +18,7 @@ ALREADY accepts, or to a structured lake query, or REJECTS it. Key properties:
     .disk_query runs the lake read). So nothing here can bypass the envelope.
 
 Backend contract: any object with `.complete(prompt: str) -> str` returning a single label.
-StubBackend is the zero-dep default AND the offline / no-GPU fallback: a deterministic
+StubBackend is the default AND the offline / no-GPU fallback: a deterministic
 keyword router (no model, no network) -- so this module and its self-check run in CI with
 no torch and no weights. The AirLLM backend (local_llm/airllm_backend.py, optional [llm]
 extra) is a drop-in that returns the same labels from an on-device model.
@@ -30,14 +30,20 @@ here runs unless you call it; the arm/lake code paths are unchanged.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.nl_interface
 """
+
 from snn_data_lake.brainstem.serial_arm import is_valid_command
 
 # intent label -> a command token the wire allow-list already accepts. The VALUE is ours,
 # never the model's text, so the model can only choose among these, never inject a command.
 ARM_LABELS = {
-    "close": "GRIPPER_CLOSE", "open": "GRIPPER_OPEN", "hold": "HOLD",
-    "home": "HOME", "retract": "RETRACT_ALL", "stop": "EMERGENCY_STOP",
-    "rotate_a": "JOINT_A_ROTATE(+15deg)", "rotate_b": "JOINT_B_ROTATE(-10deg)",
+    "close": "GRIPPER_CLOSE",
+    "open": "GRIPPER_OPEN",
+    "hold": "HOLD",
+    "home": "HOME",
+    "retract": "RETRACT_ALL",
+    "stop": "EMERGENCY_STOP",
+    "rotate_a": "JOINT_A_ROTATE(+15deg)",
+    "rotate_b": "JOINT_B_ROTATE(-10deg)",
 }
 # English keyword cues -> intent label (first hit wins; safety cues checked first).
 _CUES = [
@@ -54,13 +60,13 @@ _CUES = [
 
 
 class StubBackend:
-    """Deterministic zero-dep keyword router: the offline fallback AND the CI test double.
+    """Deterministic keyword router: the offline fallback AND the CI test double.
     Scans the prompt text for the first matching cue and returns its label ('reject' if none)."""
 
     def complete(self, prompt):
         low = prompt.lower()
         if "request:" in low:
-            low = low.split("request:", 1)[1]               # scan the user's request, not the label menu
+            low = low.split("request:", 1)[1]  # scan the user's request, not the label menu
         for keys, label in _CUES:
             if any(k in low for k in keys):
                 return label
@@ -71,6 +77,7 @@ def _parse_query(text):
     """Very small structured lake-query extractor: channels (ints after 'channel'/'ch') +
     an optional window (int after 'window'/'last'). Defaults: all channels, window 1."""
     import re
+
     chans = [int(n) for n in re.findall(r"(?:channel|ch)\s*#?\s*(\d+)", text.lower())]
     win = re.search(r"(?:window|last|w)\s*=?\s*(\d+)", text.lower())
     return {"channels": chans or None, "window": int(win.group(1)) if win else 1}
@@ -81,12 +88,14 @@ class NLInterface:
 
     def __init__(self, backend=None, valid=is_valid_command):
         self.backend = backend or StubBackend()
-        self.valid = valid                                  # the wire allow-list (single source of truth)
+        self.valid = valid  # the wire allow-list (single source of truth)
 
     def _prompt(self, text):
         labels = ", ".join(sorted(ARM_LABELS) + ["query", "reject"])
-        return (f"Pick ONE label for the request. Labels: {labels}. "
-                f"Answer with the label only.\nRequest: {text}")
+        return (
+            f"Pick ONE label for the request. Labels: {labels}. "
+            f"Answer with the label only.\nRequest: {text}"
+        )
 
     def interpret(self, text):
         """text -> {"kind":"arm","command":...} | {"kind":"lake","query":...} | {"kind":"reject","reason":...}.
@@ -94,7 +103,7 @@ class NLInterface:
         label = self.backend.complete(self._prompt(text)).strip().lower()
         if label in ARM_LABELS:
             cmd = ARM_LABELS[label]
-            if self.valid(cmd):                             # defense in depth: never emit a non-allow-listed token
+            if self.valid(cmd):  # defense in depth: never emit a non-allow-listed token
                 return {"kind": "arm", "label": label, "command": cmd}
             return {"kind": "reject", "reason": f"command failed the allow-list: {cmd}"}
         if label == "query":
@@ -113,7 +122,7 @@ class _AdversarialBackend:
 
 
 def main():
-    nl = NLInterface()                                      # default StubBackend, real allow-list
+    nl = NLInterface()  # default StubBackend, real allow-list
 
     print("=" * 62)
     print("NL INTERFACE (English -> safe allow-listed arm intent / lake query)")
@@ -140,31 +149,48 @@ def main():
 
     # 2 LAKE MAPPING: a query phrase -> a structured query intent (never an arm command).
     q = nl.interpret("read telemetry from channel 3 and channel 7, window 64")
-    assert q["kind"] == "lake" and q["query"]["channels"] == [3, 7] and q["query"]["window"] == 64, q
+    assert (
+        q["kind"] == "lake" and q["query"]["channels"] == [3, 7] and q["query"]["window"] == 64
+    ), q
 
     # 3 SAFETY / REJECT: unrecognised or unsafe English -> reject, NEVER an arm command.
     for bad in ("what time is it", "delete all the files", "smash everything to pieces", ""):
         out = nl.interpret(bad)
-        assert out["kind"] != "arm", f"unsafe/unknown text produced an arm command: {bad!r} -> {out}"
+        assert out["kind"] != "arm", (
+            f"unsafe/unknown text produced an arm command: {bad!r} -> {out}"
+        )
 
     # 4 FIREWALL: an ADVERSARIAL backend that returns raw/unsafe command strings must be rejected
     #   -- the model can never inject a command; only fixed labels map to fixed allow-listed tokens.
-    for payload in ("DROP_EVERYTHING", "JOINT_A_ROTATE(+9999deg)", "GRIPPER_CLOSE; rm -rf /",
-                    "EMERGENCY_STOP\nJOINT_B_ROTATE(+40deg)", "rotate_a EVIL"):
+    for payload in (
+        "DROP_EVERYTHING",
+        "JOINT_A_ROTATE(+9999deg)",
+        "GRIPPER_CLOSE; rm -rf /",
+        "EMERGENCY_STOP\nJOINT_B_ROTATE(+40deg)",
+        "rotate_a EVIL",
+    ):
         out = NLInterface(backend=_AdversarialBackend(payload)).interpret("do it")
         assert out["kind"] == "reject", f"firewall breached: payload {payload!r} -> {out}"
 
     # 5 DETERMINISM: same text -> identical intent.
-    assert nl.interpret("close the gripper") == nl.interpret("close the gripper"), "must be deterministic"
+    assert nl.interpret("close the gripper") == nl.interpret("close the gripper"), (
+        "must be deterministic"
+    )
 
-    print(f"1 ARM MAP    : {arm_ok}/{len(cases)} phrases -> correct allow-listed command (all is_valid_command)")
-    print(f"2 LAKE MAP   : query phrase -> channels={q['query']['channels']} window={q['query']['window']}")
+    print(
+        f"1 ARM MAP    : {arm_ok}/{len(cases)} phrases -> correct allow-listed command (all is_valid_command)"
+    )
+    print(
+        f"2 LAKE MAP   : query phrase -> channels={q['query']['channels']} window={q['query']['window']}"
+    )
     print("3 REJECT     : unknown/unsafe English -> reject, never an arm command")
     print("4 FIREWALL   : adversarial backend payloads (raw commands / injection) all rejected")
     print("5 DETERMINISM: same text -> identical intent")
     print("=" * 62)
-    print(f"self-check OK: {arm_ok} arm phrases mapped to allow-listed commands; lake query parsed; "
-          f"unsafe + adversarial-backend inputs rejected (LLM can only pick allow-listed labels); deterministic")
+    print(
+        f"self-check OK: {arm_ok} arm phrases mapped to allow-listed commands; lake query parsed; "
+        f"unsafe + adversarial-backend inputs rejected (LLM can only pick allow-listed labels); deterministic"
+    )
 
 
 if __name__ == "__main__":

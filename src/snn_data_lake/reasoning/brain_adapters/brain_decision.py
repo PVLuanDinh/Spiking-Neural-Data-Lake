@@ -22,7 +22,7 @@ The loop KEEPS owning its curiosity drive + curriculum and passes their per-cand
 curiosity signal into choose(); this adapter only fuses value + metacognition on top.
 
 This is a RESEARCH-tier adapter: it lives outside src/ and only imports/composes the
-shipped zero-dep modules. It does not edit the core, run_selfchecks, or pyproject.
+shipped modules. It does not edit the core, run_selfchecks, or pyproject.
 
 Mappings (competence -> module inputs), stated once and used everywhere below:
   z   (LatentQ latent state)  = the length-`state_dim` competence vector, as-is.
@@ -37,11 +37,12 @@ Mappings (competence -> module inputs), stated once and used everywhere below:
   monitor.learning_progress   = learning_progress            (>=0 inside the monitor).
   monitor.novelty             = novelty.
 
-Pure standard library. Deterministic: per-instance random.Random(seed); LatentQ and the
+Deterministic: per-instance random.Random(seed); LatentQ and the
 monitor are seeded from the same seed. ASCII-only prints.
 
   PYTHONPATH=src python research/brain_adapters/brain_decision.py
 """
+
 import random
 
 from snn_data_lake.basal_ganglia.latent_q import LatentQ
@@ -73,13 +74,13 @@ class BrainDecision:
         self.n_actions = int(n_actions)
         self.state_dim = int(state_dim)
         self.seed = seed
-        self.rng = random.Random(seed)                       # per-instance rng (tie-breaks only)
+        self.rng = random.Random(seed)  # per-instance rng (tie-breaks only)
         # digits 0..n_actions-1 are the LatentQ action NAMES (integers; .value duck-types them).
         self.q = LatentQ(tuple(range(self.n_actions)), self.state_dim, lr=0.1, seed=seed)
         self.monitor = MetacognitiveMonitor(seed=seed)
         # weight placed on CURIOSITY (vs value) when the monitor says explore / exploit.
-        self.alpha_explore = 0.8                             # explore -> favor curiosity / novelty
-        self.alpha_exploit = 0.2                             # exploit -> favor learned value
+        self.alpha_explore = 0.8  # explore -> favor curiosity / novelty
+        self.alpha_exploit = 0.2  # exploit -> favor learned value
 
     def _z(self, competence_vec):
         """Coerce the competence vector to a length-state_dim list of floats (the latent z)."""
@@ -92,7 +93,7 @@ class BrainDecision:
         """Expected learning value of studying each digit given competence_vec, as a
         length-n_actions list. Q(z, a) from LatentQ over z = the competence vector."""
         z = self._z(competence_vec)
-        row = self.q.values(z)                               # {digit: Q(z, digit)}
+        row = self.q.values(z)  # {digit: Q(z, digit)}
         return [row[a] for a in range(self.n_actions)]
 
     def choose(self, candidates, competence_vec, curiosity_scores):
@@ -127,8 +128,7 @@ class BrainDecision:
         tied = [cands[i] for i in range(len(cands)) if combined[i] >= best - 1e-12]
         return tied[0] if len(tied) == 1 else self.rng.choice(tied)
 
-    def observe(self, objective, competence_before, competence_after,
-                learning_progress, novelty):
+    def observe(self, objective, competence_before, competence_after, learning_progress, novelty):
         """Learn from the outcome of studying `objective` this cycle.
 
         (1) LatentQ.update(z=competence_before, a=objective, target=realised learning
@@ -143,7 +143,7 @@ class BrainDecision:
         self.q.update(zb, obj, target)
         lp = float(learning_progress)
         self.monitor.update(
-            confidence=za[obj],                              # scalar competence at the studied digit
+            confidence=za[obj],  # scalar competence at the studied digit
             surprise=abs(lp),
             learning_progress=lp,
             novelty=float(novelty),
@@ -174,7 +174,7 @@ class BrainDecision:
 
 N_ACT = 10
 STATE = 10
-HARD = 7                  # this digit never improves when studied (lp stays ~0)
+HARD = 7  # this digit never improves when studied (lp stays ~0)
 CYCLES = 20
 
 
@@ -182,7 +182,7 @@ def _run_loop(seed):
     """Drive BrainDecision through CYCLES developmental cycles on a synthetic trajectory.
     Returns a dict of pure numbers/bools so two runs compare byte-for-byte (determinism)."""
     brain = BrainDecision(n_actions=N_ACT, state_dim=STATE, seed=seed)
-    competence = [0.05] * STATE                              # everyone starts near-incompetent
+    competence = [0.05] * STATE  # everyone starts near-incompetent
     times_studied = [0] * N_ACT
     candidates = list(range(N_ACT))
 
@@ -205,7 +205,7 @@ def _run_loop(seed):
         gain = 0.0 if obj == HARD else min(0.15, 1.0 - competence[obj])
         competence[obj] = competence[obj] + gain
         after = list(competence)
-        lp = gain                                            # realised learning progress this cycle
+        lp = gain  # realised learning progress this cycle
         # novelty: high on a digit's first visits, decays with how often it has been studied.
         novelty = 0.5 ** times_studied[obj]
         times_studied[obj] += 1
@@ -229,7 +229,7 @@ def _run_loop(seed):
     v_learn0 = vb.value_scores(z_fixed)[d_learn]
     for _ in range(12):
         after = list(z_fixed)
-        after[d_learn] = z_fixed[d_learn] + 0.4              # realised gain -> positive target
+        after[d_learn] = z_fixed[d_learn] + 0.4  # realised gain -> positive target
         vb.observe(d_learn, z_fixed, after, 0.4, 0.5)
     scores = vb.value_scores(z_fixed)
     v_learn1 = scores[d_learn]
@@ -251,7 +251,7 @@ def _run_loop(seed):
 
 def main():
     r = _run_loop(0)
-    r2 = _run_loop(0)                                        # determinism control
+    r2 = _run_loop(0)  # determinism control
 
     print("=" * 78)
     print("BRAIN DECISION -- curiosity + basal-ganglia VALUE + metacognitive control")
@@ -259,15 +259,20 @@ def main():
     print(f"cycles={CYCLES} | n_actions={N_ACT} | state_dim={STATE} | hard_digit={HARD}")
     print("-" * 78)
     print(f"(a) choose() always returned a valid candidate : {r['chose_valid']}")
-    print(f"(b) value learning: Q(d={2}) {r['v_learn0']:+.4f} -> {r['v_learn1']:+.4f} "
-          f"vs untouched Q(d={9})={r['v_untouched']:+.4f}")
+    print(
+        f"(b) value learning: Q(d={2}) {r['v_learn0']:+.4f} -> {r['v_learn1']:+.4f} "
+        f"vs untouched Q(d={9})={r['v_untouched']:+.4f}"
+    )
     print(f"    => studied-digit value rose above untouched : {r['v_learn1'] > r['v_untouched']}")
-    print(f"(c) metacog gates typed / reliability in [0,1]  : "
-          f"{r['gate_types_ok']} / {r['rel_in_range']}")
-    print(f"(d) grow_trigger fired {r['n_grow_fires']}/{CYCLES} cycles "
-          f"(>=1 and < {CYCLES}, i.e. not constant)")
-    print(f"    hard digit {HARD} stayed low (never learned)  : "
-          f"{r['hard_competence']:.3f}")
+    print(
+        f"(c) metacog gates typed / reliability in [0,1]  : "
+        f"{r['gate_types_ok']} / {r['rel_in_range']}"
+    )
+    print(
+        f"(d) grow_trigger fired {r['n_grow_fires']}/{CYCLES} cycles "
+        f"(>=1 and < {CYCLES}, i.e. not constant)"
+    )
+    print(f"    hard digit {HARD} stayed low (never learned)  : {r['hard_competence']:.3f}")
     print(f"(e) determinism: two seed=0 runs identical       : {r == r2}")
     print("=" * 78)
 
@@ -277,10 +282,12 @@ def main():
     # ---- (b) LatentQ value MOVED with observe(): learned digit > untouched digit ----
     assert r["v_learn1"] > r["v_learn0"], (
         f"studying a digit that yielded learning must raise its value "
-        f"({r['v_learn0']:.4f} -> {r['v_learn1']:.4f})")
+        f"({r['v_learn0']:.4f} -> {r['v_learn1']:.4f})"
+    )
     assert r["v_learn1"] > r["v_untouched"], (
         f"the learned digit's value {r['v_learn1']:.4f} must exceed the untouched "
-        f"digit's value {r['v_untouched']:.4f} -- value learning is real, not shared")
+        f"digit's value {r['v_untouched']:.4f} -- value learning is real, not shared"
+    )
 
     # ---- (c) metacog gates are sane booleans and reliability is a valid probability ----
     assert r["gate_types_ok"], "explore()/grow_trigger() must return real booleans"
@@ -293,11 +300,15 @@ def main():
     # ---- (e) determinism ----
     assert r == r2, "two seed=0 runs must be byte-for-byte identical"
 
-    print(f"self-check OK: choose() fuses curiosity + LatentQ value under the metacog "
-          f"explore/exploit gate;")
-    print(f"  value learning moved Q(studied) {r['v_learn0']:+.4f}->{r['v_learn1']:+.4f} "
-          f"above untouched {r['v_untouched']:+.4f}; grow_trigger fired "
-          f"{r['n_grow_fires']}/{CYCLES} (novel+learnable only); deterministic")
+    print(
+        f"self-check OK: choose() fuses curiosity + LatentQ value under the metacog "
+        f"explore/exploit gate;"
+    )
+    print(
+        f"  value learning moved Q(studied) {r['v_learn0']:+.4f}->{r['v_learn1']:+.4f} "
+        f"above untouched {r['v_untouched']:+.4f}; grow_trigger fired "
+        f"{r['n_grow_fires']}/{CYCLES} (novel+learnable only); deterministic"
+    )
 
 
 if __name__ == "__main__":

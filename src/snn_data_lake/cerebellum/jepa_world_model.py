@@ -44,10 +44,11 @@ Refs: LeCun, "A Path Towards Autonomous Machine Intelligence" (2022, the JEPA pr
 "Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture" / I-JEPA (2023);
 Bardes, Ponce & LeCun, "VICReg: Variance-Invariance-Covariance Regularization" (2022).
 
-Pure stdlib (math, random, json), ASCII-only prints, deterministic (random.Random(seed) per instance).
+Deps: math, random, json (numpy/torch allowed project-wide); ASCII-only prints, deterministic (random.Random(seed) per instance).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.jepa_world_model
 """
+
 import json
 import math
 import random
@@ -69,39 +70,60 @@ class JepaWorldModel:
     is collapse telemetry; make_goal_value() builds a negative-L1 latent goal_value for plan(); save/load persist
     the weights as tagged JSON with a trust-boundary check."""
 
-    def __init__(self, actions, in_dim=64, latent_dim=16, tau=0.99, lr=0.05,
-                 lambda_inv=1.0, lambda_var=1.0, lambda_cov=1.0, buffer=32,
-                 anti_collapse=True, seed=0, reward_shaping=False, lambda_reward=1.0):
-        self.actions = tuple(actions)                 # ordered action names, e.g. ("GRIPPER_CLOSE", ...)
+    def __init__(
+        self,
+        actions,
+        in_dim=64,
+        latent_dim=16,
+        tau=0.99,
+        lr=0.05,
+        lambda_inv=1.0,
+        lambda_var=1.0,
+        lambda_cov=1.0,
+        buffer=32,
+        anti_collapse=True,
+        seed=0,
+        reward_shaping=False,
+        lambda_reward=1.0,
+    ):
+        self.actions = tuple(actions)  # ordered action names, e.g. ("GRIPPER_CLOSE", ...)
         self.n_act = len(self.actions)
         self._aidx = {a: i for i, a in enumerate(self.actions)}
         self.in_dim = int(in_dim)
         self.L = int(latent_dim)
-        self.tau = float(tau)                          # EMA target coefficient (~1 -> slow target)
+        self.tau = float(tau)  # EMA target coefficient (~1 -> slow target)
         self.lr = float(lr)
-        self.lambda_inv = float(lambda_inv)            # weight of the JEPA invariance (prediction) loss
-        self.lambda_var = float(lambda_var)            # weight of the VICReg variance hinge
-        self.lambda_cov = float(lambda_cov)            # weight of the VICReg covariance decorrelation
-        self.buffer = int(buffer)                      # ring-buffer size for the VICReg batch statistics
-        self.anti_collapse = bool(anti_collapse)       # False == ablation: no VICReg + target tied to online
+        self.lambda_inv = float(lambda_inv)  # weight of the JEPA invariance (prediction) loss
+        self.lambda_var = float(lambda_var)  # weight of the VICReg variance hinge
+        self.lambda_cov = float(lambda_cov)  # weight of the VICReg covariance decorrelation
+        self.buffer = int(buffer)  # ring-buffer size for the VICReg batch statistics
+        self.anti_collapse = bool(
+            anti_collapse
+        )  # False == ablation: no VICReg + target tied to online
         self.seed = seed
-        self.rng = random.Random(seed)                 # per-instance rng; identical seed -> identical weights
+        self.rng = random.Random(seed)  # per-instance rng; identical seed -> identical weights
 
         # ---- fixed internal constants (not exposed on the contract) ----
-        self.gamma = 1.0                               # VICReg target std (hinge threshold)
-        self.eps = 1e-4                                # VICReg variance floor
-        self.z_clip = 3.0                              # predicted-latent clamp -> bounded rollout
-        self.rho_max = 0.9                             # max row-abs-sum of Wz (contractive spectral proxy)
-        self.wd = 1e-3                                 # tiny weight decay on Wz each step
-        self.lambda_roll = 0.3                         # weight of the optional 2-step rollout consistency term
-        self.use_rollout = True                        # fight teacher-forcing drift with a 2-step term
+        self.gamma = 1.0  # VICReg target std (hinge threshold)
+        self.eps = 1e-4  # VICReg variance floor
+        self.z_clip = 3.0  # predicted-latent clamp -> bounded rollout
+        self.rho_max = 0.9  # max row-abs-sum of Wz (contractive spectral proxy)
+        self.wd = 1e-3  # tiny weight decay on Wz each step
+        self.lambda_roll = 0.3  # weight of the optional 2-step rollout consistency term
+        self.use_rollout = True  # fight teacher-forcing drift with a 2-step term
 
         # ---- parameter init (all draws from the per-instance rng, so seed => byte-identical weights) ----
-        se = 1.0 / math.sqrt(self.in_dim)              # encoder scale (fan-in)
-        self.We = [[self.rng.uniform(-1.0, 1.0) * se for _ in range(self.in_dim)] for _ in range(self.L)]
+        se = 1.0 / math.sqrt(self.in_dim)  # encoder scale (fan-in)
+        self.We = [
+            [self.rng.uniform(-1.0, 1.0) * se for _ in range(self.in_dim)] for _ in range(self.L)
+        ]
         self.be = [0.0] * self.L
-        self.Wz = [[self.rng.uniform(-1.0, 1.0) * 0.02 for _ in range(self.L)] for _ in range(self.L)]  # SMALL
-        self.Wa = [[self.rng.uniform(-1.0, 1.0) * 0.05 for _ in range(self.n_act)] for _ in range(self.L)]
+        self.Wz = [
+            [self.rng.uniform(-1.0, 1.0) * 0.02 for _ in range(self.L)] for _ in range(self.L)
+        ]  # SMALL
+        self.Wa = [
+            [self.rng.uniform(-1.0, 1.0) * 0.05 for _ in range(self.n_act)] for _ in range(self.L)
+        ]
         self.b = [0.0] * self.L
         # EMA target starts as a copy of the online encoder (standard); ablation re-ties it every step
         self.Wt = [row[:] for row in self.We]
@@ -120,17 +142,19 @@ class JepaWorldModel:
         self.Wr = None
         self.br = None
         if self.reward_shaping:
-            sr = 1.0 / math.sqrt(self.L)               # reward-head fan-in scale (over the latent)
-            self.Wr = [[self.rng.uniform(-1.0, 1.0) * sr for _ in range(self.L)] for _ in range(self.n_act)]
+            sr = 1.0 / math.sqrt(self.L)  # reward-head fan-in scale (over the latent)
+            self.Wr = [
+                [self.rng.uniform(-1.0, 1.0) * sr for _ in range(self.L)] for _ in range(self.n_act)
+            ]
             self.br = [0.0] * self.n_act
 
-        self._buf = []                                 # ring buffer of recent online latents (VICReg + telemetry)
-        self._prev = None                              # (prev online latent, prev action index) for 2-step term
+        self._buf = []  # ring buffer of recent online latents (VICReg + telemetry)
+        self._prev = None  # (prev online latent, prev action index) for 2-step term
         # OPTIONAL pre-encoder HIDDEN LAYER [W1, b1] (a DEEPER encoder trained in the torch tier and imported via
         # load_weights(snn_jepa/2)). When set, encode() becomes a 2-layer MLP and the deep encoder is SERVED and
         # FROZEN (only the predictor keeps adapting online); a freshly-constructed model is always linear (None).
-        self.enc_hidden = None                         # online encoder's hidden layer [W1, b1], or None (linear)
-        self.tgt_hidden = None                         # EMA target encoder's hidden layer [W1t, b1t], or None
+        self.enc_hidden = None  # online encoder's hidden layer [W1, b1], or None (linear)
+        self.tgt_hidden = None  # EMA target encoder's hidden layer [W1t, b1t], or None
 
     # ---- action handling -------------------------------------------------------------------------------
     def _idx(self, command):
@@ -192,22 +216,24 @@ class JepaWorldModel:
         aj = self._idx(action_t)
         # a loaded snn_jepa/2 deep encoder is FROZEN (trained in the torch tier); only the predictor adapts online.
         frozen = self.enc_hidden is not None
-        xin = self._hidden(x, self.enc_hidden)          # output-layer input (x if linear, else the hidden activations)
+        xin = self._hidden(
+            x, self.enc_hidden
+        )  # output-layer input (x if linear, else the hidden activations)
 
         # -- forward: online encode of x, keeping pre-activation h, tanh t, and norm n for the backprop --
         h = [dot(self.We[i], xin) + self.be[i] for i in range(L)]
         t = [math.tanh(v) for v in h]
         n = math.sqrt(sum(c * c for c in t)) or 1.0
-        z = [c / n for c in t]                          # online latent = unit(tanh(...))
+        z = [c / n for c in t]  # online latent = unit(tanh(...))
 
-        self._buf.append(z[:])                          # telemetry + VICReg batch (ring buffer)
+        self._buf.append(z[:])  # telemetry + VICReg batch (ring buffer)
         if len(self._buf) > self.buffer:
             self._buf.pop(0)
 
         # -- target latent of the next observation --
         ty = ny = None
         if self.anti_collapse:
-            zt = self.target_encode(y)                  # EMA target, stop-gradient
+            zt = self.target_encode(y)  # EMA target, stop-gradient
         else:
             # ablation: target tied to the ONLINE encoder, and NO stop-grad (gradient flows into it too) so the
             # two encodings are pulled together with nothing holding variance up -> guaranteed collapse.
@@ -233,7 +259,7 @@ class JepaWorldModel:
         gp = [2.0 * self.lambda_inv * r[i] for i in range(L)]
         for i in range(L):
             gb[i] += gp[i]
-            gWa[i][aj] += gp[i]                          # onehot picks column aj
+            gWa[i][aj] += gp[i]  # onehot picks column aj
             gi = gp[i]
             row = gWz[i]
             for k in range(L):
@@ -261,11 +287,16 @@ class JepaWorldModel:
                 for j in range(L):
                     sd = math.sqrt(var[j] + self.eps)
                     Lvar += max(0.0, self.gamma - sd)
-                    if self.gamma - sd > 0.0:           # hinge active -> push var up (move z away from the mean)
+                    if (
+                        self.gamma - sd > 0.0
+                    ):  # hinge active -> push var up (move z away from the mean)
                         gz[j] += self.lambda_var * (-(z[j] - mu[j]) / (L * m * sd))
                 Lvar /= L
                 # covariance: decorrelate the off-diagonal latent dimensions
-                cov = [[sum(cen[p_][k] * cen[p_][j] for p_ in range(m)) / m for j in range(L)] for k in range(L)]
+                cov = [
+                    [sum(cen[p_][k] * cen[p_][j] for p_ in range(m)) / m for j in range(L)]
+                    for k in range(L)
+                ]
                 for k in range(L):
                     gk = 0.0
                     for j in range(L):
@@ -280,12 +311,12 @@ class JepaWorldModel:
             #    existing unit(tanh) backprop handles it); the head itself is updated by SGD. Task-aligns z so a
             #    downstream value head can separate contexts the pure-SSL objective would collapse. --
             if self.reward_shaping and reward is not None and self.Wr is not None:
-                rerr = (dot(self.Wr[aj], z) + self.br[aj]) - reward     # r_hat[aj] - reward
-                gr = 2.0 * self.lambda_reward * rerr                    # dL_r/d r_hat
+                rerr = (dot(self.Wr[aj], z) + self.br[aj]) - reward  # r_hat[aj] - reward
+                gr = 2.0 * self.lambda_reward * rerr  # dL_r/d r_hat
                 wraj = self.Wr[aj]
                 for k in range(L):
-                    gz[k] += gr * wraj[k]                               # dL_r/dz = gr * Wr[aj] -> into the shared gz
-                for k in range(L):                                      # SGD the head (uses the pre-update z)
+                    gz[k] += gr * wraj[k]  # dL_r/dz = gr * Wr[aj] -> into the shared gz
+                for k in range(L):  # SGD the head (uses the pre-update z)
                     wraj[k] -= self.lr * gr * z[k]
                 self.br[aj] -= self.lr * gr
 
@@ -300,23 +331,29 @@ class JepaWorldModel:
         Lroll = 0.0
         if self.use_rollout and self._prev is not None:
             z0, a0 = self._prev
-            w = [z0[i] + dot(self.Wz[i], z0) + self.Wa[i][a0] + self.b[i] for i in range(L)]     # inner predict
-            p2 = [w[i] + dot(self.Wz[i], w) + self.Wa[i][aj] + self.b[i] for i in range(L)]      # outer predict
-            r2 = [p2[i] - zt[i] for i in range(L)]      # 2-step (a0 then a_t) should reach the same next latent
+            w = [
+                z0[i] + dot(self.Wz[i], z0) + self.Wa[i][a0] + self.b[i] for i in range(L)
+            ]  # inner predict
+            p2 = [
+                w[i] + dot(self.Wz[i], w) + self.Wa[i][aj] + self.b[i] for i in range(L)
+            ]  # outer predict
+            r2 = [
+                p2[i] - zt[i] for i in range(L)
+            ]  # 2-step (a0 then a_t) should reach the same next latent
             Lroll = sum(v * v for v in r2)
             gp2 = [2.0 * self.lambda_roll * r2[i] for i in range(L)]
-            for i in range(L):                          # outer layer
+            for i in range(L):  # outer layer
                 gb[i] += gp2[i]
                 gWa[i][aj] += gp2[i]
                 for k in range(L):
                     gWz[i][k] += gp2[i] * w[k]
-            gw = [0.0] * L                              # dL/dw = gp2 + Wz^T gp2
+            gw = [0.0] * L  # dL/dw = gp2 + Wz^T gp2
             for k in range(L):
                 s = gp2[k]
                 for i in range(L):
                     s += gp2[i] * self.Wz[i][k]
                 gw[k] = s
-            for i in range(L):                          # inner layer
+            for i in range(L):  # inner layer
                 gb[i] += gw[i]
                 gWa[i][a0] += gw[i]
                 for k in range(L):
@@ -344,7 +381,7 @@ class JepaWorldModel:
         # -- spectral bound on Wz: small weight decay + row-scaling so max row-abs-sum stays < 1 (contractive) --
         for i in range(L):
             for k in range(L):
-                self.Wz[i][k] *= (1.0 - self.wd)
+                self.Wz[i][k] *= 1.0 - self.wd
         rowmax = max(sum(abs(self.Wz[i][k]) for k in range(L)) for i in range(L))
         if rowmax > self.rho_max:
             f = self.rho_max / rowmax
@@ -365,9 +402,13 @@ class JepaWorldModel:
                 self.Wt = [row[:] for row in self.We]
                 self.bt = self.be[:]
 
-        self._prev = (z[:], aj)                          # detached latent for the next 2-step term
-        return self.lambda_inv * loss_inv + self.lambda_var * Lvar + self.lambda_cov * Lcov \
+        self._prev = (z[:], aj)  # detached latent for the next 2-step term
+        return (
+            self.lambda_inv * loss_inv
+            + self.lambda_var * Lvar
+            + self.lambda_cov * Lcov
             + (self.lambda_roll * Lroll if self.use_rollout else 0.0)
+        )
 
     def prediction_error(self, pattern_t, action_t, pattern_next):
         """The invariance (prediction) loss for ONE transition WITHOUT updating -- the world-model 'surprise'
@@ -384,7 +425,7 @@ class JepaWorldModel:
 
         unit Jacobian: dz_i/dt_j = delta_ij/n - t_i t_j / n^3 ; tanh': dt_j/dh_j = 1 - t_j^2 ; h = We@x + be."""
         L, D = self.L, self.in_dim
-        sdot = sum(gz[i] * t[i] for i in range(L))      # gz . t (the unit-normalization coupling term)
+        sdot = sum(gz[i] * t[i] for i in range(L))  # gz . t (the unit-normalization coupling term)
         n3 = n * n * n
         for j in range(L):
             dLdt = gz[j] / n - sdot * t[j] / n3
@@ -425,21 +466,34 @@ class JepaWorldModel:
         encoder (a deep encoder imported from the torch tier) writes `snn_jepa/2` with the encoder as an ordered
         list of [W, b] layers `enc_layers`/`tgt_layers`. Floats round-trip exactly."""
         obj = {
-            "actions": list(self.actions), "in_dim": self.in_dim, "latent_dim": self.L,
-            "tau": self.tau, "lr": self.lr, "lambda_inv": self.lambda_inv,
-            "lambda_var": self.lambda_var, "lambda_cov": self.lambda_cov,
-            "buffer": self.buffer, "anti_collapse": self.anti_collapse,
-            "Wz": self.Wz, "Wa": self.Wa, "b": self.b,
+            "actions": list(self.actions),
+            "in_dim": self.in_dim,
+            "latent_dim": self.L,
+            "tau": self.tau,
+            "lr": self.lr,
+            "lambda_inv": self.lambda_inv,
+            "lambda_var": self.lambda_var,
+            "lambda_cov": self.lambda_cov,
+            "buffer": self.buffer,
+            "anti_collapse": self.anti_collapse,
+            "Wz": self.Wz,
+            "Wa": self.Wa,
+            "b": self.b,
         }
         if self.enc_hidden is None:
-            obj.update({"format": "snn_jepa/1", "We": self.We, "be": self.be, "Wt": self.Wt, "bt": self.bt})
+            obj.update(
+                {"format": "snn_jepa/1", "We": self.We, "be": self.be, "Wt": self.Wt, "bt": self.bt}
+            )
         else:
             th = self.tgt_hidden if self.tgt_hidden is not None else self.enc_hidden
-            obj.update({
-                "format": "snn_jepa/2", "hidden": len(self.enc_hidden[1]),
-                "enc_layers": [[self.enc_hidden[0], self.enc_hidden[1]], [self.We, self.be]],
-                "tgt_layers": [[th[0], th[1]], [self.Wt, self.bt]],
-            })
+            obj.update(
+                {
+                    "format": "snn_jepa/2",
+                    "hidden": len(self.enc_hidden[1]),
+                    "enc_layers": [[self.enc_hidden[0], self.enc_hidden[1]], [self.We, self.be]],
+                    "tgt_layers": [[th[0], th[1]], [self.Wt, self.bt]],
+                }
+            )
         with open(path, "w", encoding="ascii") as f:
             json.dump(obj, f)
 
@@ -452,39 +506,53 @@ class JepaWorldModel:
             obj = json.load(f)
         fmt = obj.get("format") if isinstance(obj, dict) else None
         if fmt not in ("snn_jepa/1", "snn_jepa/2"):
-            raise ValueError("bad JEPA weight file: missing/incorrect 'format' tag (expected snn_jepa/1 or /2)")
+            raise ValueError(
+                "bad JEPA weight file: missing/incorrect 'format' tag (expected snn_jepa/1 or /2)"
+            )
         L = int(obj.get("latent_dim", -1))
         D = int(obj.get("in_dim", -1))
         na = len(obj.get("actions", []))
         Wz, Wa, b = obj.get("Wz"), obj.get("Wa"), obj.get("b")
 
         def _shape_ok(M, rows, cols):
-            return isinstance(M, list) and len(M) == rows and all(
-                isinstance(row, list) and len(row) == cols for row in M)
+            return (
+                isinstance(M, list)
+                and len(M) == rows
+                and all(isinstance(row, list) and len(row) == cols for row in M)
+            )
 
         if not (L > 0 and D > 0 and na > 0):
             raise ValueError("bad JEPA weight file: non-positive dimensions")
-        if not (_shape_ok(Wz, L, L) and _shape_ok(Wa, L, na) and isinstance(b, list) and len(b) == L):
+        if not (
+            _shape_ok(Wz, L, L) and _shape_ok(Wa, L, na) and isinstance(b, list) and len(b) == L
+        ):
             raise ValueError("bad JEPA weight file: predictor shape mismatch")
 
         if fmt == "snn_jepa/1":
             We, be, Wt, bt = obj.get("We"), obj.get("be"), obj.get("Wt"), obj.get("bt")
             if not (_shape_ok(We, L, D) and isinstance(be, list) and len(be) == L):
                 raise ValueError("bad JEPA weight file: encoder shape mismatch")
-            if Wt is None or bt is None:                # a torch /1 export may ship only the online encoder
+            if Wt is None or bt is None:  # a torch /1 export may ship only the online encoder
                 Wt, bt = [row[:] for row in We], be[:]
             elif not (_shape_ok(Wt, L, D) and isinstance(bt, list) and len(bt) == L):
                 raise ValueError("bad JEPA weight file: target-encoder shape mismatch")
             enc_hidden = tgt_hidden = None
-        else:                                           # snn_jepa/2: a 2-layer deep encoder
+        else:  # snn_jepa/2: a 2-layer deep encoder
             enc_layers, tgt_layers = obj.get("enc_layers"), obj.get("tgt_layers")
             if not (isinstance(enc_layers, list) and len(enc_layers) == 2):
-                raise ValueError("bad JEPA weight file: snn_jepa/2 needs enc_layers=[[W1,b1],[W2,b2]]")
+                raise ValueError(
+                    "bad JEPA weight file: snn_jepa/2 needs enc_layers=[[W1,b1],[W2,b2]]"
+                )
             (W1, b1), (We, be) = enc_layers[0], enc_layers[1]
             H = len(b1) if isinstance(b1, list) else -1
-            if not (_shape_ok(W1, H, D) and _shape_ok(We, L, H) and isinstance(be, list) and len(be) == L):
+            if not (
+                _shape_ok(W1, H, D)
+                and _shape_ok(We, L, H)
+                and isinstance(be, list)
+                and len(be) == L
+            ):
                 raise ValueError("bad JEPA weight file: deep-encoder shape mismatch")
-            if tgt_layers is None:                      # default the target to a copy of the online deep encoder
+            if tgt_layers is None:  # default the target to a copy of the online deep encoder
                 W1t, b1t, Wt, bt = [r[:] for r in W1], b1[:], [r[:] for r in We], be[:]
             else:
                 (W1t, b1t), (Wt, bt) = tgt_layers[0], tgt_layers[1]
@@ -542,7 +610,7 @@ def _render(u, encoders, rng, noise):
     """Banded [0,1]^in_dim rendering of u: concatenate each factor's RBF population activations, add noise."""
     pat = []
     for i in range(len(u)):
-        pat.extend(encoders[i].activations(u[i]))       # continuous Gaussian activations in [0,1]
+        pat.extend(encoders[i].activations(u[i]))  # continuous Gaussian activations in [0,1]
     return [_clamp(v + rng.uniform(-noise, noise), 0.0, 1.0) for v in pat]
 
 
@@ -571,7 +639,7 @@ def _gen_stream(n, seed, encoders, d, noise, actions, start=(0.5, 0.5)):
 
 
 def _fit_linear(feats, targets, out_dim, epochs, lr, seed):
-    """Fit W (out_dim x feat_dim) mapping feats -> targets by plain LMS (no matrix inverse, pure stdlib)."""
+    """Fit W (out_dim x feat_dim) mapping feats -> targets by plain LMS (no matrix inverse)."""
     fd = len(feats[0])
     W = [[0.0] * fd for _ in range(out_dim)]
     rng = random.Random(seed)
@@ -606,51 +674,87 @@ def main():
     from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 
     IN_DIM, K, LATENT = 64, 2, 16
-    BAND = IN_DIM // K                                   # 32 neurons per factor
+    BAND = IN_DIM // K  # 32 neurons per factor
     D, NOISE = 0.20, 0.02
     ACTIONS = ("GRIPPER_CLOSE", "GRIPPER_OPEN", "HOLD")
-    OPEN = 1                                             # index of GRIPPER_OPEN (the goal action) in ACTIONS
+    OPEN = 1  # index of GRIPPER_OPEN (the goal action) in ACTIONS
     STEPS, LR = 1200, 0.08
-    LV, LC = 20.0, 2.0                                   # VICReg weights (default is 1.0; the unit-sphere latent
+    LV, LC = 20.0, 2.0  # VICReg weights (default is 1.0; the unit-sphere latent
     #                                                      caps per-dim energy, so the anti-collapse pressure is
     #                                                      scaled up here for both models to visibly hold variance)
-    encoders = [PopulationEncoder(n=BAND, lo=0.0, hi=1.0, max_spikes=10, overlap=1.0) for _ in range(K)]
+    encoders = [
+        PopulationEncoder(n=BAND, lo=0.0, hi=1.0, max_spikes=10, overlap=1.0) for _ in range(K)
+    ]
     centers0 = encoders[0].centers
 
     # ---- train the full JEPA and the fair control on the SAME seeded stream / steps / architecture ----
-    train, train_hidden = _gen_stream(STEPS, 1, encoders, D, NOISE, ACTIONS)   # keep hidden (reused below)
-    full = JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, lr=LR,
-                          lambda_var=LV, lambda_cov=LC, anti_collapse=True, seed=0)
-    ctrl = JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, lr=LR,
-                          lambda_var=LV, lambda_cov=LC, anti_collapse=False, seed=0)
-    for (x, a, y) in train:
+    train, train_hidden = _gen_stream(
+        STEPS, 1, encoders, D, NOISE, ACTIONS
+    )  # keep hidden (reused below)
+    full = JepaWorldModel(
+        ACTIONS,
+        in_dim=IN_DIM,
+        latent_dim=LATENT,
+        lr=LR,
+        lambda_var=LV,
+        lambda_cov=LC,
+        anti_collapse=True,
+        seed=0,
+    )
+    ctrl = JepaWorldModel(
+        ACTIONS,
+        in_dim=IN_DIM,
+        latent_dim=LATENT,
+        lr=LR,
+        lambda_var=LV,
+        lambda_cov=LC,
+        anti_collapse=False,
+        seed=0,
+    )
+    for x, a, y in train:
         full.train_step(x, a, y)
-    for (x, a, y) in train:
+    for x, a, y in train:
         ctrl.train_step(x, a, y)
     full_std, ctrl_std = full.latent_std(), ctrl.latent_std()
     # by construction the ablation ties the target encoder to the online encoder every step
-    tied = (ctrl.Wt == ctrl.We and ctrl.bt == ctrl.be)
+    tied = ctrl.Wt == ctrl.We and ctrl.bt == ctrl.be
 
     # ---- (2) BASELINES on HELD-OUT episodes of the same world ----
     hold, hidden = _gen_stream(350, 2, encoders, D, NOISE, ACTIONS)
     # (2a) JEPA next-latent MSE beats an IDENTITY predictor (predict(z,a)=z), in the SAME latent space
-    err_j = [sum((full.predict(full.encode(x), a)[i] - full.target_encode(y)[i]) ** 2 for i in range(LATENT))
-             for (x, a, y) in hold]
-    err_id = [sum((full.encode(x)[i] - full.target_encode(y)[i]) ** 2 for i in range(LATENT))
-              for (x, a, y) in hold]
+    err_j = [
+        sum(
+            (full.predict(full.encode(x), a)[i] - full.target_encode(y)[i]) ** 2
+            for i in range(LATENT)
+        )
+        for (x, a, y) in hold
+    ]
+    err_id = [
+        sum((full.encode(x)[i] - full.target_encode(y)[i]) ** 2 for i in range(LATENT))
+        for (x, a, y) in hold
+    ]
     mse_j_lat, mse_id_lat = mean(err_j), mean(err_id)
 
     # (2b) JEPA beats a 1-D linear ForwardModel on a scalar projection -- fair common target: predict next u.
-    CMD = {"GRIPPER_OPEN": 1.0, "GRIPPER_CLOSE": 1.0, "HOLD": -1.0}   # OPEN/CLOSE share a command: the scalar
-    fm = ForwardModel(a=0.0, b=0.0, dt=1.0, seed=0)                   # readout of u0 cannot distinguish them
+    CMD = {
+        "GRIPPER_OPEN": 1.0,
+        "GRIPPER_CLOSE": 1.0,
+        "HOLD": -1.0,
+    }  # OPEN/CLOSE share a command: the scalar
+    fm = ForwardModel(a=0.0, b=0.0, dt=1.0, seed=0)  # readout of u0 cannot distinguish them
     for _ep in range(4):
-        for (x, a, y) in train:
-            fm.update(_band0_centroid(x, centers0, BAND), CMD[a], _band0_centroid(y, centers0, BAND), lr=0.15)
+        for x, a, y in train:
+            fm.update(
+                _band0_centroid(x, centers0, BAND),
+                CMD[a],
+                _band0_centroid(y, centers0, BAND),
+                lr=0.15,
+            )
     # JEPA feature -> u readout, and ForwardModel feature -> u readout, both LMS-fit on the training stream
     jf = [full.predict(full.encode(x), a) for (x, a, _y) in train]
     ff = [[fm.predict(_band0_centroid(x, centers0, BAND), CMD[a]), 1.0] for (x, a, _y) in train]
-    ut = [un for (_u, _a, un) in hidden]                             # held-out hidden next-state targets
-    utr = [un for (_u, _a, un) in train_hidden]                      # training hidden next-state targets
+    ut = [un for (_u, _a, un) in hidden]  # held-out hidden next-state targets
+    utr = [un for (_u, _a, un) in train_hidden]  # training hidden next-state targets
     Wj = _fit_linear(jf, utr, 2, 12, 0.05, seed=3)
     Wf = _fit_linear(ff, utr, 2, 12, 0.05, seed=3)
     jf_h = [full.predict(full.encode(x), a) for (x, a, _y) in hold]
@@ -680,7 +784,7 @@ def main():
     gv = full.make_goal_value(z_goal)
     HZ = 4
 
-    def roll_val(pred, s0, cmd, horizon, value):        # terminal value of a horizon-step rollout
+    def roll_val(pred, s0, cmd, horizon, value):  # terminal value of a horizon-step rollout
         s = s0
         for _ in range(horizon):
             s = pred.predict(s, cmd)
@@ -694,39 +798,52 @@ def main():
     # command, so its rollout values for them are PROVABLY identical -> it cannot represent the task.
     s_start = _band0_centroid(start_pat, centers0, BAND)
     s_goal = _band0_centroid(goal_pat, centers0, BAND)
-    scal_gv = (lambda s: -(s - s_goal) ** 2)
+    scal_gv = lambda s: -((s - s_goal) ** 2)
     fm_val = {a: roll_val(fm, s_start, CMD[a], HZ, scal_gv) for a in ACTIONS}
     fm_gap = abs(fm_val["GRIPPER_OPEN"] - fm_val["GRIPPER_CLOSE"])
 
     # drive PrefrontalExecutive.plan() with the JEPA as its (duck-typed) predictor
     pfc = PrefrontalExecutive(n_options=len(ACTIONS), seed=5)
     plan_goal, _rt = pfc.plan(z_start, [0, 1, 2], full, gv, horizon=HZ)
-    plan_goal2, _rt2 = PrefrontalExecutive(n_options=len(ACTIONS), seed=5).plan(z_start, [0, 1, 2], full, gv,
-                                                                                horizon=HZ)
-    plan_det = (plan_goal == plan_goal2)
+    plan_goal2, _rt2 = PrefrontalExecutive(n_options=len(ACTIONS), seed=5).plan(
+        z_start, [0, 1, 2], full, gv, horizon=HZ
+    )
+    plan_det = plan_goal == plan_goal2
 
     # ---- DETERMINISM: two seed=7 models on the same stream -> byte-identical weights ----
     det_a = JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, lr=LR, seed=7)
     det_b = JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, lr=LR, seed=7)
-    for (x, a, y) in train[:200]:
+    for x, a, y in train[:200]:
         det_a.train_step(x, a, y)
         det_b.train_step(x, a, y)
-    same_weights = (det_a.We == det_b.We and det_a.be == det_b.be and det_a.Wz == det_b.Wz
-                    and det_a.Wa == det_b.Wa and det_a.b == det_b.b and det_a.Wt == det_b.Wt
-                    and det_a.bt == det_b.bt)
+    same_weights = (
+        det_a.We == det_b.We
+        and det_a.be == det_b.be
+        and det_a.Wz == det_b.Wz
+        and det_a.Wa == det_b.Wa
+        and det_a.b == det_b.b
+        and det_a.Wt == det_b.Wt
+        and det_a.bt == det_b.bt
+    )
 
     # ---- SAVE / LOAD round-trip (exact) ----
     import os
     import tempfile
+
     tmp = os.path.join(tempfile.gettempdir(), "snn_jepa_roundtrip.json")
     full.save_weights(tmp)
     loaded = JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, seed=99)
     loaded.load_weights(tmp)
     probe = _render([0.3, 0.7], encoders, random.Random(4), NOISE)
-    roundtrip = (loaded.We == full.We and loaded.Wz == full.Wz and loaded.Wa == full.Wa
-                 and loaded.b == full.b and loaded.Wt == full.Wt
-                 and loaded.encode(probe) == full.encode(probe)
-                 and loaded.predict(loaded.encode(probe), "HOLD") == full.predict(full.encode(probe), "HOLD"))
+    roundtrip = (
+        loaded.We == full.We
+        and loaded.Wz == full.Wz
+        and loaded.Wa == full.Wa
+        and loaded.b == full.b
+        and loaded.Wt == full.Wt
+        and loaded.encode(probe) == full.encode(probe)
+        and loaded.predict(loaded.encode(probe), "HOLD") == full.predict(full.encode(probe), "HOLD")
+    )
     os.remove(tmp)
 
     # ---- HIDDEN ENCODER (snn_jepa/2): a served DEEP encoder represents structure a single linear layer can't ----
@@ -735,81 +852,125 @@ def main():
     xor_in = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]]
     xor_lab = [[0.0], [1.0], [1.0], [0.0]]
     W1x, b1x = [[8.0, 8.0], [8.0, 8.0]], [-4.0, -12.0]  # hidden: h0 ~ OR(x0,x1), h1 ~ AND(x0,x1)
-    Wex, bex = [[1.0, -1.0], [0.0, 1.0]], [0.0, 0.0]    # output: latent ~ [OR-AND, AND] -> XOR lives in z0
+    Wex, bex = (
+        [[1.0, -1.0], [0.0, 1.0]],
+        [0.0, 0.0],
+    )  # output: latent ~ [OR-AND, AND] -> XOR lives in z0
     deep = JepaWorldModel(ACTIONS, in_dim=2, latent_dim=2, seed=0)
     deep.enc_hidden, deep.tgt_hidden = [W1x, b1x], [[r[:] for r in W1x], b1x[:]]
     deep.We, deep.be, deep.Wt, deep.bt = Wex, bex, [r[:] for r in Wex], bex[:]
     p2 = os.path.join(tempfile.gettempdir(), "snn_jepa2_roundtrip.json")
-    deep.save_weights(p2)                               # writes snn_jepa/2 (the deep encoder as enc_layers)
+    deep.save_weights(p2)  # writes snn_jepa/2 (the deep encoder as enc_layers)
     served = JepaWorldModel(ACTIONS, in_dim=2, latent_dim=2, seed=1)
-    served.load_weights(p2)                             # round-trip a deep encoder
+    served.load_weights(p2)  # round-trip a deep encoder
     os.remove(p2)
     deep_lat = [served.encode(x) for x in xor_in]
-    v2_roundtrip = (deep_lat == [deep.encode(x) for x in xor_in])
-    lin = JepaWorldModel(ACTIONS, in_dim=2, latent_dim=2, seed=2)   # ablation: SAME output layer, NO hidden layer
+    v2_roundtrip = deep_lat == [deep.encode(x) for x in xor_in]
+    lin = JepaWorldModel(
+        ACTIONS, in_dim=2, latent_dim=2, seed=2
+    )  # ablation: SAME output layer, NO hidden layer
     lin.We, lin.be = Wex, bex
     lin_lat = [lin.encode(x) for x in xor_in]
 
-    def _xor_acc(latents):                              # fit a linear readout latent -> XOR label, count correct
+    def _xor_acc(latents):  # fit a linear readout latent -> XOR label, count correct
         w = _fit_linear(latents, xor_lab, 1, 400, 0.1, seed=0)
         return sum(1 for lt, lb in zip(latents, xor_lab) if (dot(w[0], lt) > 0.5) == (lb[0] > 0.5))
+
     deep_acc, lin_acc = _xor_acc(deep_lat), _xor_acc(lin_lat)
-    served_We0 = [r[:] for r in served.We]              # a loaded deep encoder must be FROZEN under train_step
+    served_We0 = [r[:] for r in served.We]  # a loaded deep encoder must be FROZEN under train_step
     for _ in range(30):
         served.train_step(xor_in[1], "HOLD", xor_in[2])
-    enc_frozen = (served.We == served_We0 and served.enc_hidden[0] == W1x)
+    enc_frozen = served.We == served_We0 and served.enc_hidden[0] == W1x
 
     print("=" * 78)
-    print("JEPA WORLD MODEL -- minimal linear latent world model (encoder + predictor + EMA target + VICReg)")
+    print(
+        "JEPA WORLD MODEL -- minimal linear latent world model (encoder + predictor + EMA target + VICReg)"
+    )
     print("=" * 78)
-    print(f"world       : hidden u in R^{K}, {len(ACTIONS)} actions {ACTIONS}, obs [0,1]^{IN_DIM} banded RBF")
+    print(
+        f"world       : hidden u in R^{K}, {len(ACTIONS)} actions {ACTIONS}, obs [0,1]^{IN_DIM} banded RBF"
+    )
     print(f"train       : {STEPS} steps, latent_dim={LATENT}, lr={LR}, tau={full.tau}")
-    print(f"(1) collapse: full latent std {full_std:.4f} vs control (ablation) {ctrl_std:.4f} "
-          f"[target tied to online in control: {tied}]")
-    print(f"(2a) latent : JEPA next-latent MSE {mse_j_lat:.4f} < identity-predictor MSE {mse_id_lat:.4f}")
-    print(f"(2b) vs 1-D : JEPA->u MSE {mse_j_u:.4f} < scalar ForwardModel->u MSE {mse_f_u:.4f} (common target u)")
-    print(f"(3) rollout : 40-step rollout bounded={roll_bounded} (max |z_i| {roll_max:.3f} < 10) for all actions")
+    print(
+        f"(1) collapse: full latent std {full_std:.4f} vs control (ablation) {ctrl_std:.4f} "
+        f"[target tied to online in control: {tied}]"
+    )
+    print(
+        f"(2a) latent : JEPA next-latent MSE {mse_j_lat:.4f} < identity-predictor MSE {mse_id_lat:.4f}"
+    )
+    print(
+        f"(2b) vs 1-D : JEPA->u MSE {mse_j_u:.4f} < scalar ForwardModel->u MSE {mse_f_u:.4f} (common target u)"
+    )
+    print(
+        f"(3) rollout : 40-step rollout bounded={roll_bounded} (max |z_i| {roll_max:.3f} < 10) for all actions"
+    )
     print(f"(4) plan    : JEPA terminal values { {a: round(v, 3) for a, v in jepa_val.items()} }")
-    print(f"              JEPA best action {ACTIONS[jepa_best]} (gap OPEN-CLOSE {jepa_gap:+.4f}); "
-          f"scalar OPEN==CLOSE gap {fm_gap:.2e} (indifferent)")
-    print(f"              plan() with JEPA commits option {plan_goal} = {ACTIONS[plan_goal]} "
-          f"(deterministic: {plan_det})")
-    print(f"determinism : two seed=7 models byte-identical: {same_weights}; save/load round-trip: {roundtrip}")
-    print(f"(5) hidden  : deep 2-layer encoder separates XOR {deep_acc}/4 vs single-layer control {lin_acc}/4; "
-          f"snn_jepa/2 round-trip={v2_roundtrip}, frozen under train_step={enc_frozen}")
+    print(
+        f"              JEPA best action {ACTIONS[jepa_best]} (gap OPEN-CLOSE {jepa_gap:+.4f}); "
+        f"scalar OPEN==CLOSE gap {fm_gap:.2e} (indifferent)"
+    )
+    print(
+        f"              plan() with JEPA commits option {plan_goal} = {ACTIONS[plan_goal]} "
+        f"(deterministic: {plan_det})"
+    )
+    print(
+        f"determinism : two seed=7 models byte-identical: {same_weights}; save/load round-trip: {roundtrip}"
+    )
+    print(
+        f"(5) hidden  : deep 2-layer encoder separates XOR {deep_acc}/4 vs single-layer control {lin_acc}/4; "
+        f"snn_jepa/2 round-trip={v2_roundtrip}, frozen under train_step={enc_frozen}"
+    )
     print("=" * 78)
 
     # ---- (1) FAIR CONTROL: the ablation collapses; the full model preserves latent variance ----
-    assert tied, "with anti_collapse=False the target encoder must be tied to the online encoder every step"
-    assert ctrl_std < 0.05 or ctrl_std < 0.30 * full_std, \
+    assert tied, (
+        "with anti_collapse=False the target encoder must be tied to the online encoder every step"
+    )
+    assert ctrl_std < 0.05 or ctrl_std < 0.30 * full_std, (
         f"the control (no VICReg, no EMA/stop-grad asymmetry) must collapse (std {ctrl_std:.4f} vs full {full_std:.4f})"
-    assert full_std > 0.05 and full_std > 3.0 * ctrl_std, \
+    )
+    assert full_std > 0.05 and full_std > 3.0 * ctrl_std, (
         f"the full model must preserve latent variance well above the collapsed control ({full_std:.4f} vs {ctrl_std:.4f})"
+    )
 
     # ---- (2) BASELINES (not shuffled targets): beat identity and the 1-D ForwardModel ----
-    assert mse_j_lat < mse_id_lat, \
+    assert mse_j_lat < mse_id_lat, (
         f"JEPA next-latent prediction must beat the identity predictor ({mse_j_lat:.4f} vs {mse_id_lat:.4f})"
-    assert mse_j_u < mse_f_u, \
+    )
+    assert mse_j_u < mse_f_u, (
         f"JEPA must predict the 2-factor next-state better than the 1-D scalar ForwardModel ({mse_j_u:.4f} vs {mse_f_u:.4f})"
+    )
 
     # ---- (3) BOUNDED ROLLOUT: the spectral bound + clamp keep a 40-step rollout finite and bounded ----
-    assert roll_bounded, f"a 40-step rollout must stay finite and bounded for every action (max |z_i| {roll_max:.3f})"
+    assert roll_bounded, (
+        f"a 40-step rollout must stay finite and bounded for every action (max |z_i| {roll_max:.3f})"
+    )
 
     # ---- (4) LATENT > SCALAR: JEPA reaches the 2-factor goal; the scalar model is provably indifferent ----
-    assert jepa_best == OPEN, \
+    assert jepa_best == OPEN, (
         f"the JEPA plan must pick GRIPPER_OPEN, the only action reaching the (high u0, low u1) goal (got {ACTIONS[jepa_best]})"
-    assert jepa_gap > 1e-3, \
+    )
+    assert jepa_gap > 1e-3, (
         f"the JEPA must clearly prefer OPEN over the CLOSE decoy in latent space (gap {jepa_gap:+.4f})"
-    assert fm_gap < 1e-9, \
+    )
+    assert fm_gap < 1e-9, (
         f"the 1-D scalar model must be provably indifferent between OPEN and CLOSE (gap {fm_gap:.2e})"
-    assert plan_goal == OPEN and plan_det, \
+    )
+    assert plan_goal == OPEN and plan_det, (
         f"PrefrontalExecutive.plan() driven by the JEPA must deterministically commit GRIPPER_OPEN (got {plan_goal})"
+    )
 
     # ---- (5) HIDDEN ENCODER (snn_jepa/2): a served deep encoder represents XOR a single layer cannot ----
-    assert deep_acc == 4, f"a hidden (2-layer) deep encoder must make XOR linearly separable ({deep_acc}/4)"
-    assert lin_acc < 4, f"the single-layer control must NOT separate XOR (fair ablation) ({lin_acc}/4)"
+    assert deep_acc == 4, (
+        f"a hidden (2-layer) deep encoder must make XOR linearly separable ({deep_acc}/4)"
+    )
+    assert lin_acc < 4, (
+        f"the single-layer control must NOT separate XOR (fair ablation) ({lin_acc}/4)"
+    )
     assert v2_roundtrip, "snn_jepa/2 save/load must round-trip the deep encoder exactly"
-    assert enc_frozen, "a loaded deep encoder must stay FROZEN under train_step (only the predictor adapts)"
+    assert enc_frozen, (
+        "a loaded deep encoder must stay FROZEN under train_step (only the predictor adapts)"
+    )
 
     # ---- (6) REWARD-SHAPING: task-align the latent where pure SSL collapses a few repeating contexts ----
     # Pure SSL (invariance + VICReg) drives a small set of repeating contexts TOGETHER (the online arm latent
@@ -821,10 +982,12 @@ def main():
     _rstr = [(_rsx[d], d) for d in range(3)]
 
     def _rs_run(shaped):
-        j = JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, lr=LR, seed=1, reward_shaping=shaped)
+        j = JepaWorldModel(
+            ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, lr=LR, seed=1, reward_shaping=shaped
+        )
         rng = random.Random(4)
         prev = None
-        for _ in range(600):                                # online, OBSERVED-reward-only (like the arm)
+        for _ in range(600):  # online, OBSERVED-reward-only (like the arm)
             p, opt = _rstr[rng.randrange(3)]
             a = rng.randrange(len(ACTIONS))
             r = 1.0 if a == opt else -1.0
@@ -832,48 +995,81 @@ def main():
                 j.train_step(prev[0], prev[1], p, reward=prev[2])
             prev = (p, a, r)
         zs = [j.encode(p) for p, _ in _rstr]
-        sp = max(math.sqrt(sum((zs[i][k] - zs[m][k]) ** 2 for k in range(LATENT)))
-                 for i in range(3) for m in range(i + 1, 3))
-        wr = _fit_linear([j.encode(p) for p, _ in _rstr],
-                         [[1.0 if a == o else -1.0 for a in range(len(ACTIONS))] for _, o in _rstr],
-                         len(ACTIONS), 300, 0.1, seed=0)
-        acc = sum(1 for p, o in _rstr if max(range(len(ACTIONS)),
-                  key=lambda a: dot(wr[a], j.encode(p))) == o) / len(_rstr)
+        sp = max(
+            math.sqrt(sum((zs[i][k] - zs[m][k]) ** 2 for k in range(LATENT)))
+            for i in range(3)
+            for m in range(i + 1, 3)
+        )
+        wr = _fit_linear(
+            [j.encode(p) for p, _ in _rstr],
+            [[1.0 if a == o else -1.0 for a in range(len(ACTIONS))] for _, o in _rstr],
+            len(ACTIONS),
+            300,
+            0.1,
+            seed=0,
+        )
+        acc = sum(
+            1
+            for p, o in _rstr
+            if max(range(len(ACTIONS)), key=lambda a: dot(wr[a], j.encode(p))) == o
+        ) / len(_rstr)
         return sp, acc, j
+
     rs_plain_sp, rs_plain_acc, _jp = _rs_run(False)
     rs_shaped_sp, rs_shaped_acc, _js = _rs_run(True)
     rs_off_none = JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, seed=3).Wr is None
     # byte-identity when OFF: the reward head is drawn ONLY when enabled, so a plain model's weights are unchanged
-    rs_bytesame = (JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, seed=3).We
-                   == JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, seed=3).We)
+    rs_bytesame = (
+        JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, seed=3).We
+        == JepaWorldModel(ACTIONS, in_dim=IN_DIM, latent_dim=LATENT, seed=3).We
+    )
     # determinism of the reward-shaped path
     _jd = _rs_run(True)[2]
-    rs_det = (_js.We == _jd.We and _js.Wr == _jd.Wr)
+    rs_det = _js.We == _jd.We and _js.Wr == _jd.Wr
 
-    print(f"(6) reward  : pure-SSL few-context spread {rs_plain_sp:.3f} (collapsed, readout {rs_plain_acc:.2f}) -> "
-          f"reward-shaped {rs_shaped_sp:.3f} (readout {rs_shaped_acc:.2f}); head off => Wr None {rs_off_none}")
+    print(
+        f"(6) reward  : pure-SSL few-context spread {rs_plain_sp:.3f} (collapsed, readout {rs_plain_acc:.2f}) -> "
+        f"reward-shaped {rs_shaped_sp:.3f} (readout {rs_shaped_acc:.2f}); head off => Wr None {rs_off_none}"
+    )
     print("=" * 78)
 
     # ---- (6) REWARD-SHAPING: pure SSL collapses the few contexts; the reward head task-aligns + separates them ----
-    assert rs_plain_sp < 0.1, f"pure SSL must collapse a few repeating contexts (spread {rs_plain_sp:.3f})"
-    assert rs_shaped_sp > 0.4, f"reward-shaping must separate the contexts (spread {rs_shaped_sp:.3f})"
-    assert rs_shaped_acc > rs_plain_acc + 0.3, \
-        f"a linear readout must recover the rule from the reward-shaped latent, not the collapsed one " \
+    assert rs_plain_sp < 0.1, (
+        f"pure SSL must collapse a few repeating contexts (spread {rs_plain_sp:.3f})"
+    )
+    assert rs_shaped_sp > 0.4, (
+        f"reward-shaping must separate the contexts (spread {rs_shaped_sp:.3f})"
+    )
+    assert rs_shaped_acc > rs_plain_acc + 0.3, (
+        f"a linear readout must recover the rule from the reward-shaped latent, not the collapsed one "
         f"({rs_shaped_acc:.2f} vs {rs_plain_acc:.2f})"
-    assert rs_off_none and rs_bytesame, "reward_shaping OFF must draw no reward head (Wr None) and leave weights byte-identical"
+    )
+    assert rs_off_none and rs_bytesame, (
+        "reward_shaping OFF must draw no reward head (Wr None) and leave weights byte-identical"
+    )
     assert rs_det, "the reward-shaped training path must be deterministic (same seed + stream)"
 
     # ---- DETERMINISM + persistence ----
-    assert same_weights, "two JepaWorldModel(seed=7) trained on the same stream must have byte-identical weights"
+    assert same_weights, (
+        "two JepaWorldModel(seed=7) trained on the same stream must have byte-identical weights"
+    )
     assert roundtrip, "save/load must round-trip the weights and predictions exactly"
 
-    print(f"self-check OK: control collapses (std {ctrl_std:.3f}) while full preserves variance ({full_std:.3f}); "
-          f"JEPA beats identity ({mse_j_lat:.3f}<{mse_id_lat:.3f}) and 1-D scalar ({mse_j_u:.3f}<{mse_f_u:.3f});")
-    print(f"  40-step rollout bounded (max |z_i| {roll_max:.2f}); latent>scalar via plan() -> commits "
-          f"{ACTIONS[plan_goal]} (scalar OPEN==CLOSE gap {fm_gap:.1e}); deterministic + exact save/load;")
-    print(f"  hidden encoder (snn_jepa/2) separates XOR {deep_acc}/4 vs single-layer {lin_acc}/4 (served + frozen);")
-    print(f"  reward-shaping task-aligns few-context latents (spread {rs_plain_sp:.3f}->{rs_shaped_sp:.3f}, "
-          f"readout {rs_plain_acc:.2f}->{rs_shaped_acc:.2f}) where pure SSL collapses")
+    print(
+        f"self-check OK: control collapses (std {ctrl_std:.3f}) while full preserves variance ({full_std:.3f}); "
+        f"JEPA beats identity ({mse_j_lat:.3f}<{mse_id_lat:.3f}) and 1-D scalar ({mse_j_u:.3f}<{mse_f_u:.3f});"
+    )
+    print(
+        f"  40-step rollout bounded (max |z_i| {roll_max:.2f}); latent>scalar via plan() -> commits "
+        f"{ACTIONS[plan_goal]} (scalar OPEN==CLOSE gap {fm_gap:.1e}); deterministic + exact save/load;"
+    )
+    print(
+        f"  hidden encoder (snn_jepa/2) separates XOR {deep_acc}/4 vs single-layer {lin_acc}/4 (served + frozen);"
+    )
+    print(
+        f"  reward-shaping task-aligns few-context latents (spread {rs_plain_sp:.3f}->{rs_shaped_sp:.3f}, "
+        f"readout {rs_plain_acc:.2f}->{rs_shaped_acc:.2f}) where pure SSL collapses"
+    )
 
 
 if __name__ == "__main__":

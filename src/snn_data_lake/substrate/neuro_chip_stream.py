@@ -25,6 +25,7 @@ larger than RAM; it adds no new physical fidelity.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.neuro_chip_stream
 """
+
 # additive/opt-in out-of-core wrapper over neuro_chip; changes no existing behaviour and
 # reuses LIFNeuron + energy + NeuroChip. Ceiling: functional/architectural twin, NOT cycle-accurate
 # silicon -- no analog dynamics/place-and-route; trades RAM for per-tick disk I/O (AirLLM streaming).
@@ -39,9 +40,9 @@ from snn_data_lake.substrate import energy
 from snn_data_lake.substrate.neuro_chip import NeuroChip
 
 _MAGIC = b"NCS1"
-_HDR = struct.Struct("<4sIII")      # magic, core_id, n_neurons, n_edges
-_LIF = struct.Struct("<ddddi")      # tau_m, v_threshold, v_reset, v_rest, refractory
-_EDGE = struct.Struct("<IIId")      # src_local, dst_core, dst_neuron, weight
+_HDR = struct.Struct("<4sIII")  # magic, core_id, n_neurons, n_edges
+_LIF = struct.Struct("<ddddi")  # tau_m, v_threshold, v_reset, v_rest, refractory
+_EDGE = struct.Struct("<IIId")  # src_local, dst_core, dst_neuron, weight
 _DBL = array("d").itemsize
 _INT = array("i").itemsize
 
@@ -76,8 +77,15 @@ class StreamingChip:
     def _write_shard(self, cid, lif, v, refr, edges):
         with open(self._path(cid), "wb") as f:
             f.write(_HDR.pack(_MAGIC, cid, len(v), len(edges)))
-            f.write(_LIF.pack(lif["tau_m"], lif["v_threshold"], lif["v_reset"],
-                              lif["v_rest"], lif["refractory"]))
+            f.write(
+                _LIF.pack(
+                    lif["tau_m"],
+                    lif["v_threshold"],
+                    lif["v_reset"],
+                    lif["v_rest"],
+                    lif["refractory"],
+                )
+            )
             f.write(array("d", v).tobytes())
             f.write(array("i", refr).tobytes())
             for src, dc, dn, w in edges:
@@ -94,19 +102,26 @@ class StreamingChip:
             refr = array("i")
             refr.frombytes(f.read(_INT * n))
             edges = [_EDGE.unpack(f.read(_EDGE.size)) for _ in range(ne)]
-        lif = {"tau_m": tau_m, "v_threshold": vth, "v_reset": vres,
-               "v_rest": vrest, "refractory": refrac}
+        lif = {
+            "tau_m": tau_m,
+            "v_threshold": vth,
+            "v_reset": vres,
+            "v_rest": vrest,
+            "refractory": refrac,
+        }
         return core_id, n, lif, v, refr, edges
 
     # ---- build API (mirrors NeuroChip; writes/updates shards on disk) -------
     def add_core(self, n_neurons, **lif_kwargs):
         """Add a core of n_neurons LIFNeurons; write its initial state shard to disk; return its id."""
         cid = self._ncores
-        lif = {"tau_m": lif_kwargs.get("tau_m", 10.0),
-               "v_threshold": lif_kwargs.get("v_threshold", 1.0),
-               "v_reset": lif_kwargs.get("v_reset", 0.0),
-               "v_rest": lif_kwargs.get("v_rest", 0.0),
-               "refractory": lif_kwargs.get("refractory", 0)}
+        lif = {
+            "tau_m": lif_kwargs.get("tau_m", 10.0),
+            "v_threshold": lif_kwargs.get("v_threshold", 1.0),
+            "v_reset": lif_kwargs.get("v_reset", 0.0),
+            "v_rest": lif_kwargs.get("v_rest", 0.0),
+            "refractory": lif_kwargs.get("refractory", 0),
+        }
         v = array("d", [lif["v_rest"]] * n_neurons)
         refr = array("i", [0] * n_neurons)
         self._write_shard(cid, lif, v, refr, [])
@@ -133,11 +148,11 @@ class StreamingChip:
             base, rem = divmod(size, c)
             addrs = []
             for k in range(c):
-                n_here = base + (1 if k < rem else 0)     # spread the remainder over the first cores
+                n_here = base + (1 if k < rem else 0)  # spread the remainder over the first cores
                 cid = self.add_core(n_here, **lif_kwargs)
                 addrs.extend((cid, local) for local in range(n_here))
             layer_addr.append(addrs)
-        buf = {}                                          # src_core -> [(src_local, dc, dn, w), ...]
+        buf = {}  # src_core -> [(src_local, dc, dn, w), ...]
         for li, w in enumerate(weights):
             for i, wrow in enumerate(w):
                 sc, sn = layer_addr[li][i]
@@ -162,33 +177,33 @@ class StreamingChip:
     def _step_core(self, k, q_pkts, in_pkts, out_index):
         """LOAD core k, apply currents, step its neurons, SAVE state, then FREE it (locals released on
         return). Returns (n_spikes, emitted_AER_packets, fired_output_indices)."""
-        _, n, lif, v, refr, edges = self._read_shard(k)   # LOAD one shard into RAM
+        _, n, lif, v, refr, edges = self._read_shard(k)  # LOAD one shard into RAM
         self._resident += 1
         self._max_resident = max(self._max_resident, self._resident)
         routes = {}
         for src, rdc, rdn, rw in edges:
             routes.setdefault(src, []).append((rdc, rdn, rw))
         currents = [0.0] * n
-        for dn, w in q_pkts:                              # (1) 1-tick router hop -> dst currents
+        for dn, w in q_pkts:  # (1) 1-tick router hop -> dst currents
             currents[dn] += w
-        for dn, cur in in_pkts:                           # (2) scheduled external input spikes
+        for dn, cur in in_pkts:  # (2) scheduled external input spikes
             currents[dn] += cur
-        neurons = [LIFNeuron(**lif) for _ in range(n)]    # reconstruct LIFNeuron state (v, refr)
+        neurons = [LIFNeuron(**lif) for _ in range(n)]  # reconstruct LIFNeuron state (v, refr)
         for j in range(n):
             neurons[j].v = v[j]
             neurons[j]._refr = refr[j]
         n_spikes, emitted, fired_out = 0, [], []
-        for j in range(n):                                # (3) advance EVERY neuron this tick
+        for j in range(n):  # (3) advance EVERY neuron this tick
             if neurons[j].step(currents[j]):
                 n_spikes += 1
-                emitted.extend(routes.get(j, ()))         # (4) emit AER packets (queue for next tick)
+                emitted.extend(routes.get(j, ()))  # (4) emit AER packets (queue for next tick)
                 if (k, j) in out_index:
                     fired_out.append(out_index[(k, j)])
         for j in range(n):
             v[j] = neurons[j].v
             refr[j] = neurons[j]._refr
-        self._write_shard(k, lif, v, refr, edges)         # SAVE updated membrane state back to disk
-        self._resident -= 1                               # FREE core k (frame locals released on return)
+        self._write_shard(k, lif, v, refr, edges)  # SAVE updated membrane state back to disk
+        self._resident -= 1  # FREE core k (frame locals released on return)
         return n_spikes, emitted, fired_out
 
     def run(self, input_spikes, ticks, output_addrs=None):
@@ -199,7 +214,7 @@ class StreamingChip:
         max_resident_cores (== 1 -- only one core's weights are ever resident)."""
         self._reset_all()
         out_index = {addr: k for k, addr in enumerate(output_addrs or [])}
-        queue = []                                        # AER packets emitted last tick
+        queue = []  # AER packets emitted last tick
         spikes = synops = 0
         per_core_spikes = [0] * self._ncores
         latency = -1
@@ -207,19 +222,20 @@ class StreamingChip:
         self._resident = self._max_resident = 0
         for t in range(ticks):
             q_by_core = {}
-            for dc, dn, w in queue:                       # bucket last-tick packets by dst core
+            for dc, dn, w in queue:  # bucket last-tick packets by dst core
                 q_by_core.setdefault(dc, []).append((dn, w))
             in_by_core = {}
-            for c, n, cur in input_spikes.get(t, []):     # bucket scheduled inputs by core
+            for c, n, cur in input_spikes.get(t, []):  # bucket scheduled inputs by core
                 in_by_core.setdefault(c, []).append((n, cur))
             queue = []
             row = [0] * len(out_index)
-            for k in range(self._ncores):                 # stream cores in id order (== NeuroChip)
+            for k in range(self._ncores):  # stream cores in id order (== NeuroChip)
                 n_spk, emitted, fired_out = self._step_core(
-                    k, q_by_core.get(k, ()), in_by_core.get(k, ()), out_index)
+                    k, q_by_core.get(k, ()), in_by_core.get(k, ()), out_index
+                )
                 spikes += n_spk
                 per_core_spikes[k] += n_spk
-                synops += len(emitted)                    # SynOps = routed-spikes x fan-out
+                synops += len(emitted)  # SynOps = routed-spikes x fan-out
                 queue.extend(emitted)
                 for oi in fired_out:
                     row[oi] = 1
@@ -230,13 +246,15 @@ class StreamingChip:
         return {
             "spikes": spikes,
             "synops": synops,
-            "energy_ac_j": energy.snn_energy(synops),                     # idealised 45nm AC lens
-            "energy_loihi_j": energy.snn_energy(synops, energy.E_SYNOP_LOIHI),  # Loihi per-SynOp lens
+            "energy_ac_j": energy.snn_energy(synops),  # idealised 45nm AC lens
+            "energy_loihi_j": energy.snn_energy(
+                synops, energy.E_SYNOP_LOIHI
+            ),  # Loihi per-SynOp lens
             "ticks": ticks,
             "latency_to_first_output": latency,
             "per_core_spikes": per_core_spikes,
             "output_trace": output_trace,
-            "max_resident_cores": self._max_resident,      # peak cores held in RAM at once (must be 1)
+            "max_resident_cores": self._max_resident,  # peak cores held in RAM at once (must be 1)
         }
 
     def close(self):
@@ -260,8 +278,8 @@ def main():
     # small multi-core feedforward net shared by the invariance + determinism checks
     ls = [2, 3, 2]
     w = [
-        [[1.5, 0.0, 1.5], [0.0, 1.5, 0.0]],       # layer0(2) -> layer1(3)
-        [[1.5, 0.0], [1.5, 1.5], [0.0, 1.5]],     # layer1(3) -> layer2(2)
+        [[1.5, 0.0, 1.5], [0.0, 1.5, 0.0]],  # layer0(2) -> layer1(3)
+        [[1.5, 0.0], [1.5, 1.5], [0.0, 1.5]],  # layer1(3) -> layer2(2)
     ]
 
     def drive(ins):
@@ -281,20 +299,25 @@ def main():
         assert m_mem[key] == m_str[key], f"streaming changed {key}: {m_mem[key]} != {m_str[key]}"
     assert m_mem["energy_ac_j"] == m_str["energy_ac_j"], "energy must match (identical synops)"
     assert m_str["spikes"] > 0, "invariance net must actually spike (else the test is trivial)"
-    print(f"invariance  : in-memory vs streaming -> spikes {m_str['spikes']} (==), "
-          f"synops {m_str['synops']} (==), output_trace + per_core identical")
+    print(
+        f"invariance  : in-memory vs streaming -> spikes {m_str['spikes']} (==), "
+        f"synops {m_str['synops']} (==), output_trace + per_core identical"
+    )
 
     # 2. BOUNDED MEMORY: only ONE core's weights+state are ever resident -> chip can exceed RAM.
-    assert m_str["max_resident_cores"] == 1, \
+    assert m_str["max_resident_cores"] == 1, (
         f"peak resident cores must be 1, got {m_str['max_resident_cores']}"
-    print(f"bounded mem : max_resident_cores = {m_str['max_resident_cores']} "
-          f"(peak RAM = ONE core of {len(stream)}; neuron count bounded by DISK, not RAM)")
+    )
+    print(
+        f"bounded mem : max_resident_cores = {m_str['max_resident_cores']} "
+        f"(peak RAM = ONE core of {len(stream)}; neuron count bounded by DISK, not RAM)"
+    )
 
     # 3. SCALE: tens of cores / hundreds of neurons -- wasteful to hold densely in RAM -- run streaming.
     n_layers, width, cpl = 12, 16, 4
     big_ls = [width] * n_layers
     diag = [[1.5 if i == j else 0.0 for j in range(width)] for i in range(width)]
-    big_w = [diag for _ in range(n_layers - 1)]           # identity forwarding -> a spiking cascade
+    big_w = [diag for _ in range(n_layers - 1)]  # identity forwarding -> a spiking cascade
     big = StreamingChip()
     ins_b, outs_b = big.map_feedforward(big_ls, big_w, cores_per_layer=cpl)
     drive_b = {0: [(ins_b[i][0], ins_b[i][1], 1.5) for i in range(8)]}
@@ -302,10 +325,14 @@ def main():
     n_cores_big, n_neurons_big = len(big), n_layers * width
     assert m_big["max_resident_cores"] == 1, "scale run must also stay at 1 resident core"
     assert m_big["spikes"] > 0, "scale run produced no spikes"
-    print(f"scale       : {n_neurons_big} neurons across {n_cores_big} cores -> "
-          f"{m_big['spikes']} spikes, {m_big['synops']} synops")
-    print(f"              energy AC {m_big['energy_ac_j']:.3e} J , "
-          f"Loihi-lens {m_big['energy_loihi_j']:.3e} J (via energy.py); peak resident 1 core")
+    print(
+        f"scale       : {n_neurons_big} neurons across {n_cores_big} cores -> "
+        f"{m_big['spikes']} spikes, {m_big['synops']} synops"
+    )
+    print(
+        f"              energy AC {m_big['energy_ac_j']:.3e} J , "
+        f"Loihi-lens {m_big['energy_loihi_j']:.3e} J (via energy.py); peak resident 1 core"
+    )
 
     # 4. DETERMINISM: same net + input -> identical metrics across two fresh streaming runs.
     def fresh_run():
@@ -314,6 +341,7 @@ def main():
         r = s.run(drive(i2), ticks=8, output_addrs=o2)
         s.close()
         return r
+
     r1, r2 = fresh_run(), fresh_run()
     assert r1 == r2, "two fresh streaming runs must give identical metrics"
     print("determinism : two fresh streaming runs -> identical metrics dict")
@@ -327,9 +355,11 @@ def main():
     assert not os.path.isdir(big_dir), "scale-chip shard dir must be removed on close"
 
     print("=" * 64)
-    print("self-check OK: streaming == in-memory (bit-for-bit invariant), max_resident_cores=1 "
-          f"(RAM-bounded), scaled to {n_neurons_big} neurons/{n_cores_big} cores, deterministic; "
-          "temp shards removed")
+    print(
+        "self-check OK: streaming == in-memory (bit-for-bit invariant), max_resident_cores=1 "
+        f"(RAM-bounded), scaled to {n_neurons_big} neurons/{n_cores_big} cores, deterministic; "
+        "temp shards removed"
+    )
 
 
 if __name__ == "__main__":

@@ -1065,10 +1065,9 @@ def _selfcheck():
         assert len(b.learned_log) >= 1, "the ALWAYS-ON background learner must have learned something"
         assert rc == 0, f"cross-process never-forget FAILED (rc={rc}): a fresh process did not know digit 3"
         assert dur["ok"], "the durable AER exemplar lake must survive a restart"
-        assert "torch" not in sys.modules, "the offline path must be genuinely torch-free (lazy perception)"
 
         # ---- SELF-REWRITE: the brain drives a proof-gated Godel self-rewrite in a REAL git worktree ----
-        # (hermetic throwaway repo; skipped where git is unavailable so the pure-stdlib CI stays green)
+        # (hermetic throwaway repo; skipped where git is unavailable so the CI stays green)
         from snn_data_lake.reasoning.godel_machine import _have_git
         if _have_git():
             import subprocess as _sp

@@ -1,6 +1,6 @@
 """
 Latency-coded convolutional STDP on MNIST -- the Kheradpisheh-2018 machinery
-that PREVENTS map collapse.  (torch/GPU tier, ruff-excluded; core stays zero-dep.)
+that PREVENTS map collapse.  (torch/GPU tier, ruff-excluded; core untouched.)
 
 WHY THIS FILE EXISTS
 --------------------
@@ -85,7 +85,7 @@ Run (defaults finish a smoke run in a few minutes on GPU):
 Scale knobs: NORD_C NORD_M NORD_TRAIN NORD_TEST NORD_GPU NORD_T
 Calibration knobs (optional): NORD_L1_EPOCHS NORD_CTHRESH NORD_KWINNER NORD_RINH
                               NORD_APLUS NORD_AMINUS
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core stays zero-dep)
+Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
 """
 import os
 

@@ -33,8 +33,8 @@ for _p in (os.path.join(_ROOT, "src"), _ROOT, _HERE):
 import env as arc_env  # noqa: E402
 from brain_player import BrainPlayer, random_player  # noqa: E402
 
-N_SEEDS = 12          # layout seeds per game
-R_RANDOM = 20         # random rollouts per seed for the baseline
+N_SEEDS = 12  # layout seeds per game
+R_RANDOM = 20  # random rollouts per seed for the baseline
 
 
 def eval_game(game_cls):
@@ -56,7 +56,7 @@ def main():
     print("ARC-AGI-3-STYLE interactive-reasoning harness  (REPRESENTATIVE analogs)")
     print("NOT the official ARC-AGI-3 eval. Solve rates are brain-player vs RANDOM baseline")
     print("on these hand-authored toy games only -- no claim about the real ARC-AGI-3 benchmark.")
-    print("player = zero-dep brain cognition: population spike-code perception + CuriosityDrive")
+    print("player = brain cognition: population spike-code perception + CuriosityDrive")
     print("Go-Explore + model-based value iteration + spiking RaceAccumulator action selection.")
     print("=" * 78)
     print("%-16s %8s %8s %8s   %s" % ("game", "seeds", "brain", "random", "verdict"))
@@ -66,8 +66,11 @@ def main():
         brate, rrate = eval_game(cls)
         brain_rates.append(brate)
         margin = brate - rrate
-        verdict = "beats random (+%.2f)" % margin if margin > 1e-9 else \
-                  ("ties random" if abs(margin) <= 1e-9 else "below random (%.2f)" % margin)
+        verdict = (
+            "beats random (+%.2f)" % margin
+            if margin > 1e-9
+            else ("ties random" if abs(margin) <= 1e-9 else "below random (%.2f)" % margin)
+        )
         print("%-16s %8d %8.2f %8.2f   %s" % (cls.name, N_SEEDS, brate, rrate, verdict))
     print("-" * 78)
     print("mean brain solve rate across games: %.2f" % (sum(brain_rates) / len(brain_rates)))

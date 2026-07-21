@@ -1,5 +1,5 @@
 """
-v2.68 — adaptive sigma-delta spike coding  (stdlib-only, zero deps).
+v2.68 — adaptive sigma-delta spike coding.
 
 An ADAPTIVE SPIKING NEURON (ASN) encoder: a *predictive* / sigma-delta coder that turns a
 continuous analog signal s(t) into a sparse train of signed spikes. It is a CORE peer to the
@@ -39,20 +39,29 @@ Refs:
   Bohte, S.M. (2012), "Efficient Spike-Coding with Multiplicative Adaptation in a Spike Response
     Model", NeurIPS 2012.
 """
+
 import math
 
 from snn_data_lake.substrate._mathutils import pearson
 
-THETA0 = 0.05       # baseline / resting threshold (fine tracking resolution)
-BUMP = 1.4          # multiplicative theta bump applied AFTER each spike (> 1)
-DECAY = 0.5         # per-step relaxation of (theta - theta0) toward the baseline (0..1)
-KAPPA = 1.0         # impulse size as a fraction of the current threshold
-THETA_MAX = 8.0     # cap on theta so a runaway transient cannot diverge
+THETA0 = 0.05  # baseline / resting threshold (fine tracking resolution)
+BUMP = 1.4  # multiplicative theta bump applied AFTER each spike (> 1)
+DECAY = 0.5  # per-step relaxation of (theta - theta0) toward the baseline (0..1)
+KAPPA = 1.0  # impulse size as a fraction of the current threshold
+THETA_MAX = 8.0  # cap on theta so a runaway transient cannot diverge
 
 
 # ---- ASN encoder + reconstruction -------------------------------------------
-def encode(signal, theta0=THETA0, bump=BUMP, decay=DECAY, kappa=KAPPA,
-           s_hat0=0.0, adapt=True, theta_max=THETA_MAX):
+def encode(
+    signal,
+    theta0=THETA0,
+    bump=BUMP,
+    decay=DECAY,
+    kappa=KAPPA,
+    s_hat0=0.0,
+    adapt=True,
+    theta_max=THETA_MAX,
+):
     """Adaptive sigma-delta encode: continuous `signal` -> [(t, signed_impulse), ...].
 
     Walks the signal once holding a reconstruction s_hat and an adaptive threshold theta. At each
@@ -128,11 +137,11 @@ def fixed_control_at_error(signal, target_rmse, s_hat0=0.0, iters=90):
         return rmse(signal, reconstruct(sp, length, s_hat0)), sp
 
     lo, hi = 1e-4, 0.05
-    while rmse_of(hi)[0] < target_rmse and hi < 1000.0:   # expand until the step is coarse enough
+    while rmse_of(hi)[0] < target_rmse and hi < 1000.0:  # expand until the step is coarse enough
         hi *= 2.0
     for _ in range(iters):
         mid = 0.5 * (lo + hi)
-        if rmse_of(mid)[0] > target_rmse:                 # too coarse -> shrink the step
+        if rmse_of(mid)[0] > target_rmse:  # too coarse -> shrink the step
             hi = mid
         else:
             lo = mid
@@ -187,25 +196,33 @@ def main():
     seg = 120
     const = [0.4] * seg
     fast = [0.9 * math.sin(2 * math.pi * i / 8.0) for i in range(seg)]
-    n_const = len(encode(const, s_hat0=const[0]))     # seeded at its own level -> pure-variation test
+    n_const = len(encode(const, s_hat0=const[0]))  # seeded at its own level -> pure-variation test
     n_fast = len(encode(fast, s_hat0=fast[0]))
 
     # determinism
-    deterministic = (encode(sig) == encode(sig))
+    deterministic = encode(sig) == encode(sig)
 
     print("=" * 64)
     print("ADAPTIVE SIGMA-DELTA SPIKE CODING  (ASN, Zambrano-Bohte)")
     print("=" * 64)
-    print(f"signal            : {length} samples, range [{min(sig):.2f}, {max(sig):.2f}], "
-          f"mixed slow/hold/burst/jumps")
+    print(
+        f"signal            : {length} samples, range [{min(sig):.2f}, {max(sig):.2f}], "
+        f"mixed slow/hold/burst/jumps"
+    )
     print("efficiency @ MATCHED reconstruction error (RMSE, not matched threshold):")
     print(f"  adaptive        : {n_a:4d} spikes   RMSE {rmse_a:.4f}   corr {corr_a:.4f}")
-    print(f"  non-adaptive    : {n_f:4d} spikes   RMSE {rmse_f:.4f}   corr "
-          f"{correlation(sig, reconstruct(sp_f, length)):.4f}   (theta_fix {theta_fix:.4f})")
-    print(f"  -> matched to {match_rel*100:.2f}% error; adaptive uses {n_f - n_a} FEWER spikes "
-          f"({n_f / n_a:.2f}x) at equal fidelity")
-    print(f"variation scaling : equal-length ({seg}) segments -> "
-          f"constant {n_const} spikes vs fast {n_fast} spikes")
+    print(
+        f"  non-adaptive    : {n_f:4d} spikes   RMSE {rmse_f:.4f}   corr "
+        f"{correlation(sig, reconstruct(sp_f, length)):.4f}   (theta_fix {theta_fix:.4f})"
+    )
+    print(
+        f"  -> matched to {match_rel * 100:.2f}% error; adaptive uses {n_f - n_a} FEWER spikes "
+        f"({n_f / n_a:.2f}x) at equal fidelity"
+    )
+    print(
+        f"variation scaling : equal-length ({seg}) segments -> "
+        f"constant {n_const} spikes vs fast {n_fast} spikes"
+    )
     print(f"determinism       : {deterministic}  (identical spikes on a repeat encode)")
     print("=" * 64)
 
@@ -233,8 +250,10 @@ def main():
     # reconstruction is a faithful running sum of the impulses the encoder tracked
     assert reconstruct(sp_a, length) == rec_a, "reconstruct is not a pure function of the spikes"
 
-    print("self-check OK: high-fidelity reconstruction, FEWER spikes than the fixed-threshold "
-          "control at matched error, spike count scales with variation not duration, deterministic")
+    print(
+        "self-check OK: high-fidelity reconstruction, FEWER spikes than the fixed-threshold "
+        "control at matched error, spike count scales with variation not duration, deterministic"
+    )
 
 
 if __name__ == "__main__":

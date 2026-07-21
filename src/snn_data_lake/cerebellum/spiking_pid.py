@@ -29,10 +29,11 @@ themselves are carried by discrete spike events through real membranes.
 Front-end: the error is still fed through the RBF population code (population_encoding) for
 noise-robust transduction, but the PID itself is now spikes end-to-end.
 
-Pure stdlib (math, random). Deterministic: random.Random(seed) per instance.
+Deps: math, random (numpy/torch allowed project-wide). Deterministic: random.Random(seed) per instance.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.spiking_pid   # self-check
 """
+
 import random
 
 from snn_data_lake.brainstem.arm_sim import ArmSim
@@ -99,7 +100,7 @@ class SpikingPID:
         self.kp, self.ki, self.kd, self.dt = kp, ki, kd, dt
         self.err_max = err_max
         self.n = n
-        self.window = 40                      # LIF micro-steps integrated per control step
+        self.window = 40  # LIF micro-steps integrated per control step
         self.rng = random.Random(seed)
         self.enc = PopulationEncoder(n=n, lo=-err_max, hi=err_max, max_spikes=20)
 
@@ -115,7 +116,7 @@ class SpikingPID:
         i_tune = _tuning(n, self.rng, gain_spread=0.15, bias_max=0.0, theta=0.5, theta_spread=0.1)
         self.i_on = _LIFPopulation(0.9995, *i_tune)
         self.i_off = _LIFPopulation(0.9995, *i_tune)
-        self.integral_spikes = 0              # cumulative net (ON-OFF) integrator spikes == the integral
+        self.integral_spikes = 0  # cumulative net (ON-OFF) integrator spikes == the integral
 
         # --- derivative: fast/slow opponent (adapting) LIF pair per polarity, state PERSISTS ---
         d_tune = _tuning(n, self.rng, gain_spread=0.3, bias_max=0.0, theta=0.5, theta_spread=0.3)
@@ -132,11 +133,11 @@ class SpikingPID:
         ref, w, g = self.err_max, self.window, self._g
 
         self.p_on.reset()
-        self._Kp = (self.p_on.run(g * ref, w) or 1) / ref          # P spikes per deg (per step)
+        self._Kp = (self.p_on.run(g * ref, w) or 1) / ref  # P spikes per deg (per step)
         self.p_on.reset()
 
         self.i_on.reset()
-        self._Ki = (self.i_on.run(g * ref, w) or 1) / ref          # integrator spikes per deg per step
+        self._Ki = (self.i_on.run(g * ref, w) or 1) / ref  # integrator spikes per deg per step
         self.i_on.reset()
 
         # fast/slow steady-state rates, each normalized to |e|
@@ -155,14 +156,17 @@ class SpikingPID:
         d_ramp, e_r = 0.0, 0.0
         for _ in range(40):
             e_r += 1.0
-            d_ramp = self.d_fast_on.run(g * e_r, w) / self._Kf - self.d_slow_on.run(g * e_r, w) / self._Ks
+            d_ramp = (
+                self.d_fast_on.run(g * e_r, w) / self._Kf
+                - self.d_slow_on.run(g * e_r, w) / self._Ks
+            )
         self._d_scale = 1.0 / d_ramp if d_ramp else 1.0
         for pop in (self.d_fast_on, self.d_slow_on, self.d_fast_off, self.d_slow_off):
             pop.reset()
 
     def _encode_error(self, e):
         """NEF front-end: error -> population spikes -> decoded error (robust to per-neuron noise)."""
-        e = max(-self.err_max + 1e-6, min(self.err_max - 1e-6, e))   # clamp into the coded range
+        e = max(-self.err_max + 1e-6, min(self.err_max - 1e-6, e))  # clamp into the coded range
         est = self.enc.decode(self.enc.encode(e))
         return e if est is None else est
 
@@ -181,15 +185,21 @@ class SpikingPID:
         integral_est = self.integral_spikes / self._Ki
 
         # derivative: fast/slow opponent spike-rate difference == d(error)/dt (signed via ON/OFF)
-        d_on = self.d_fast_on.run(g * e_on, w) / self._Kf - self.d_slow_on.run(g * e_on, w) / self._Ks
-        d_off = self.d_fast_off.run(g * e_off, w) / self._Kf - self.d_slow_off.run(g * e_off, w) / self._Ks
+        d_on = (
+            self.d_fast_on.run(g * e_on, w) / self._Kf - self.d_slow_on.run(g * e_on, w) / self._Ks
+        )
+        d_off = (
+            self.d_fast_off.run(g * e_off, w) / self._Kf
+            - self.d_slow_off.run(g * e_off, w) / self._Ks
+        )
         d_net = (d_on - d_off) * self._d_scale
 
         return self.kp * p_net + self.ki * integral_est + self.kd * d_net
 
 
-def drive_to(target_deg, steps=60, noise=0.0, spiking=True, seed=0,
-             perturb_at=None, perturb_deg=25.0):
+def drive_to(
+    target_deg, steps=60, noise=0.0, spiking=True, seed=0, perturb_at=None, perturb_deg=25.0
+):
     """Drive arm_sim joint A to target_deg; return (error trace, final angle, breach count).
     If perturb_at is set, an external shove is injected at that step and arm_sim's
     trajectory-deviation comparator (v0.51) flags the off-path event -- the controller then
@@ -203,18 +213,18 @@ def drive_to(target_deg, steps=60, noise=0.0, spiking=True, seed=0,
     for step in range(steps):
         measured = arm.state()["theta_deg"][0] + (rng.uniform(-noise, noise) if noise else 0.0)
         e = target_deg - measured
-        errs.append(target_deg - arm.state()["theta_deg"][0])      # true error (no noise)
+        errs.append(target_deg - arm.state()["theta_deg"][0])  # true error (no noise)
         if spiking:
             u = pid.step(e)
-        else:                                                       # plain numeric PID baseline
+        else:  # plain numeric PID baseline
             integ += e * 1.0
             u = kp * e + ki * integ + kd * (e - prev)
             prev = e
-        u = max(-15.0, min(15.0, u))                                # per-step slew limit
-        arm.apply(f"JOINT_A_ROTATE({u:+.4f}deg)")                   # commanded pose -> expected_ee
+        u = max(-15.0, min(15.0, u))  # per-step slew limit
+        arm.apply(f"JOINT_A_ROTATE({u:+.4f}deg)")  # commanded pose -> expected_ee
         if perturb_at is not None and step == perturb_at:
-            arm.perturb(da_deg=perturb_deg)                         # external shove off the path
-            if arm.trajectory_breach():                            # comparator catches it
+            arm.perturb(da_deg=perturb_deg)  # external shove off the path
+            if arm.trajectory_breach():  # comparator catches it
                 breaches += 1
     return errs, arm.state()["theta_deg"][0], breaches
 
@@ -264,7 +274,9 @@ def main():
     print(f"target             : {target} deg")
     print(f"spiking PID        : final {final_s:.2f} deg | settle RMSE {_rmse(errs_s):.2f}")
     print(f"numeric PID (ref)  : final {final_n:.2f} deg | settle RMSE {_rmse(errs_n):.2f}")
-    print(f"+4deg noise spk    : final {final_sn:.2f} deg | steady |err| {abs(target-final_sn):.2f}")
+    print(
+        f"+4deg noise spk    : final {final_sn:.2f} deg | steady |err| {abs(target - final_sn):.2f}"
+    )
     print(f"perturb +25deg@20  : comparator breaches {breaches} -> recovered to {final_pr:.2f} deg")
     print("-- disturbance-rejection plant (x += u - load), final |error| ---------------------")
     print(f"spiking PID        : {abs(dist_s):.2f} deg   (integral cancels the load)")
@@ -275,26 +287,31 @@ def main():
     # ---- (a) FUNCTION: the spiking PID drives error down; fair controls do worse ------------
     assert abs(final_s - target) < 1.0, f"spiking PID did not converge: {final_s}"
     assert abs(errs_s[0]) > abs(errs_s[-1]), "error did not shrink over the run"
-    overshoot = max(0.0, -min(errs_s))          # error went negative => overshoot past target
+    overshoot = max(0.0, -min(errs_s))  # error went negative => overshoot past target
     assert overshoot < 0.4 * target, f"excessive overshoot: {overshoot:.1f} deg"
     assert abs(final_sn - target) < 2.0, f"spiking PID not noise-robust: {final_sn}"
     assert breaches >= 1, "trajectory comparator missed the injected perturbation"
-    assert abs(final_pr - target) < 2.0, f"controller did not recover from the perturbation: {final_pr}"
+    assert abs(final_pr - target) < 2.0, (
+        f"controller did not recover from the perturbation: {final_pr}"
+    )
     # the spiking integral rejects a disturbance that a fair P-only / no-control baseline cannot
-    assert abs(dist_s) < abs(dist_p) < abs(dist_none), \
+    assert abs(dist_s) < abs(dist_p) < abs(dist_none), (
         f"spiking PID must beat fair controls under load: {abs(dist_s):.2f} !< {abs(dist_p):.2f} !< {abs(dist_none):.2f}"
+    )
     assert abs(dist_s) < 1.0, f"spiking PID did not reject the disturbance: {abs(dist_s):.2f}"
 
     # ---- (b) GENUINELY SPIKING: real LIF membranes emitting discrete 0/1 spike events -------
-    import sys
-    assert "numpy" not in sys.modules and "torch" not in sys.modules, "must be pure stdlib"
     pid = SpikingPID()
     assert isinstance(pid.p_on.v, list) and pid.p_on.theta, "LIF membrane + threshold must exist"
     single = _LIFPopulation(0.9, *_tuning(1, random.Random(1), bias_max=0.4, theta=0.5))
-    events = {single.advance(0.3) for _ in range(200)}              # one neuron: spikes each micro-step
-    assert events and events <= {0, 1}, f"per-neuron spikes must be discrete 0/1, got {sorted(events)}"
-    counts = [pid.p_on.advance(0.4) for _ in range(50)]             # population: integer spike counts
-    assert all(isinstance(c, int) and 0 <= c <= pid.n for c in counts), "spike counts must be discrete"
+    events = {single.advance(0.3) for _ in range(200)}  # one neuron: spikes each micro-step
+    assert events and events <= {0, 1}, (
+        f"per-neuron spikes must be discrete 0/1, got {sorted(events)}"
+    )
+    counts = [pid.p_on.advance(0.4) for _ in range(50)]  # population: integer spike counts
+    assert all(isinstance(c, int) and 0 <= c <= pid.n for c in counts), (
+        "spike counts must be discrete"
+    )
     assert any(c > 0 for c in counts), "LIF population must actually spike"
 
     # ---- (c) DETERMINISM: same seed => byte-identical --------------------------------------
@@ -308,10 +325,12 @@ def main():
     d2 = drive_to(target, seed=3)
     assert repr(d1) == repr(d2), "drive_to must be deterministic for a fixed seed"
 
-    print(f"self-check OK: spiking PID -> {final_s:.2f}deg (target {target}), overshoot {overshoot:.1f}deg; "
-          f"under load spiking {abs(dist_s):.2f} < P-only {abs(dist_p):.2f} < none {abs(dist_none):.2f} deg; "
-          f"noise-robust {abs(target-final_sn):.2f}deg, perturb caught ({breaches}) + recovered to {final_pr:.2f}deg; "
-          f"LIF membranes emit discrete 0/1 spikes; deterministic per seed")
+    print(
+        f"self-check OK: spiking PID -> {final_s:.2f}deg (target {target}), overshoot {overshoot:.1f}deg; "
+        f"under load spiking {abs(dist_s):.2f} < P-only {abs(dist_p):.2f} < none {abs(dist_none):.2f} deg; "
+        f"noise-robust {abs(target - final_sn):.2f}deg, perturb caught ({breaches}) + recovered to {final_pr:.2f}deg; "
+        f"LIF membranes emit discrete 0/1 spikes; deterministic per seed"
+    )
 
 
 if __name__ == "__main__":

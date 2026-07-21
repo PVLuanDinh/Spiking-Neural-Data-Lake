@@ -59,7 +59,7 @@ HONEST framing -- what is and is not spiking, and what this does NOT prove:
     demonstrated on a spiking-policy sandbox, with every eval a pure value/representation
     function -- no actuator, no motor command, no arm (control 3 asserts this).
 
-Self-check (deterministic, ASCII, zero-dep) -- four un-riggable controls that MUST fail:
+Self-check (deterministic, ASCII) -- four un-riggable controls that MUST fail:
   (1) COVERAGE: MAP-Elites fills more BEHAVIOR cells than random search at EQUAL budget;
       AND a control whose descriptor is read from policy PARAMETERS (not the rollout
       population code) does NOT reproduce the coverage win -> the BEHAVIORAL descriptor is
@@ -78,10 +78,11 @@ Lehman & Stanley, "Abandoning Objectives: Evolution through the Search for Novel
 Ecoffet, Huizinga, Lehman, Stanley & Clune, "Go-Explore" (Nature 2021);
 Cully, Clune, Tarapore & Mouret, "Robots that can adapt like animals" (Nature 2015).
 
-Pure stdlib (math, random), per-instance random.Random(seed), ASCII-only, deterministic.
+Per-instance random.Random(seed), ASCII-only, deterministic.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.quality_diversity
 """
+
 import math
 import random
 
@@ -101,16 +102,16 @@ from snn_data_lake.substrate._mathutils import mean
 # But raw coverage does NOT prove the archive: a SCALE-MATCHED i.i.d. random search (weights across the
 # full mutation range) matches/beats QD coverage with no archive -- QD only beats the NARROW-INIT random
 # by diffusing out of the small init scale. The archive is load-bearing only on the deceptive task (2).
-DPOS = 4              # RBF channels population-coding EACH of x and y
-D_INPUTS = 2 * DPOS   # 8 input channels = [ code(x) | code(y) ]
-K_NEURONS = 12        # LIF neurons: 4 movement groups (right, left, up, down) of GROUP each
+DPOS = 4  # RBF channels population-coding EACH of x and y
+D_INPUTS = 2 * DPOS  # 8 input channels = [ code(x) | code(y) ]
+K_NEURONS = 12  # LIF neurons: 4 movement groups (right, left, up, down) of GROUP each
 GROUP = K_NEURONS // 4
-T_STEPS = 20          # closed-loop drift steps per rollout
-STEP = 0.04           # per-step drift magnitude (small: i.i.d. votes cancel and stay central)
-GRID = 6              # bins per behavior axis -> GRID*GRID niches
-W_INIT = 0.05         # init/random-sample weight scale (near-balanced firing -> centered endpoint)
-W_CLIP = 0.30         # mutation clamps weights to [0, W_CLIP] (allows strong one-directional drive)
-SIGMA = 0.05          # Gaussian mutation step on a weight
+T_STEPS = 20  # closed-loop drift steps per rollout
+STEP = 0.04  # per-step drift magnitude (small: i.i.d. votes cancel and stay central)
+GRID = 6  # bins per behavior axis -> GRID*GRID niches
+W_INIT = 0.05  # init/random-sample weight scale (near-balanced firing -> centered endpoint)
+W_CLIP = 0.30  # mutation clamps weights to [0, W_CLIP] (allows strong one-directional drive)
+SIGMA = 0.05  # Gaussian mutation step on a weight
 
 
 # =====================================================================================================
@@ -129,7 +130,7 @@ class SpikingPolicy:
     Gaussian-perturbed, clamped child. Deterministic given the weights."""
 
     def __init__(self, weights):
-        self.W = weights                                 # W[k][d], all >= 0
+        self.W = weights  # W[k][d], all >= 0
 
     @classmethod
     def random(cls, rng, scale=W_INIT):
@@ -150,11 +151,17 @@ class SpikingPolicy:
             n.reset_state()
         x, y = 0.5, 0.5
         for _ in range(T_STEPS):
-            inp = encoder.activations(x) + encoder.activations(y)          # closed-loop state feedback
-            s = [neurons[k].step(sum(self.W[k][d] * inp[d] for d in range(D_INPUTS)))
-                 for k in range(K_NEURONS)]
-            dx = (sum(s[0:GROUP]) - sum(s[GROUP:2 * GROUP])) * STEP         # right-group minus left-group votes
-            dy = (sum(s[2 * GROUP:3 * GROUP]) - sum(s[3 * GROUP:4 * GROUP])) * STEP   # up minus down
+            inp = encoder.activations(x) + encoder.activations(y)  # closed-loop state feedback
+            s = [
+                neurons[k].step(sum(self.W[k][d] * inp[d] for d in range(D_INPUTS)))
+                for k in range(K_NEURONS)
+            ]
+            dx = (
+                sum(s[0:GROUP]) - sum(s[GROUP : 2 * GROUP])
+            ) * STEP  # right-group minus left-group votes
+            dy = (
+                sum(s[2 * GROUP : 3 * GROUP]) - sum(s[3 * GROUP : 4 * GROUP])
+            ) * STEP  # up minus down
             x = min(1.0, max(0.0, x + dx))
             y = min(1.0, max(0.0, y + dy))
         return (x, y)
@@ -210,15 +217,15 @@ class QualityDiversityArchive:
     on the same yardstick."""
 
     def __init__(self, descriptor_fn, objective_fn, behavior_fn, seed=0):
-        self.descriptor_fn = descriptor_fn               # policy -> descriptor the ARCHIVE is keyed by
-        self.objective_fn = objective_fn                 # policy -> scalar quality (elite tie-break)
-        self.behavior_fn = behavior_fn                   # policy -> behavior descriptor (the coverage yardstick)
-        self.cells = {}                                  # cell -> (policy, score, descriptor)
-        self.behavior_seen = set()                       # every behavior cell ever evaluated (shared metric)
-        self.drive = CuriosityDrive(seed=seed)           # scores WHICH elite to expand (novelty/LP)
-        self.buf = ReplayBuffer(seed=seed)               # SWR consolidation of elite objectives
-        self.q = {}                                      # cell-index -> {0: consolidated value} (value-only)
-        self.rng = random.Random(seed)                   # per-instance rng (init + mutation stream)
+        self.descriptor_fn = descriptor_fn  # policy -> descriptor the ARCHIVE is keyed by
+        self.objective_fn = objective_fn  # policy -> scalar quality (elite tie-break)
+        self.behavior_fn = behavior_fn  # policy -> behavior descriptor (the coverage yardstick)
+        self.cells = {}  # cell -> (policy, score, descriptor)
+        self.behavior_seen = set()  # every behavior cell ever evaluated (shared metric)
+        self.drive = CuriosityDrive(seed=seed)  # scores WHICH elite to expand (novelty/LP)
+        self.buf = ReplayBuffer(seed=seed)  # SWR consolidation of elite objectives
+        self.q = {}  # cell-index -> {0: consolidated value} (value-only)
+        self.rng = random.Random(seed)  # per-instance rng (init + mutation stream)
 
     def _cell_index(self, cell):
         return cell[1] * GRID + cell[0]
@@ -232,7 +239,7 @@ class QualityDiversityArchive:
         cur = self.cells.get(cell)
         if cur is None or score > cur[1]:
             self.cells[cell] = (policy, score, self.descriptor_fn(policy))
-            idx = self._cell_index(cell)                 # consolidate the elite's value (SWR replay, value-only)
+            idx = self._cell_index(cell)  # consolidate the elite's value (SWR replay, value-only)
             self.q.setdefault(idx, {0: 0.0})
             self.buf.add(idx, 0, score)
             self.buf.replay(self.q, lr=0.3, batch=8)
@@ -255,7 +262,7 @@ class QualityDiversityArchive:
         """Pick which elite to expand next: the filled cell of maximal curiosity value (novelty +
         frontier learning-progress). Observing the chosen cell's frontier error habituates it and
         folds LP in, so selection walks the frontier instead of re-mining one niche."""
-        keys = sorted(self.cells)                        # deterministic candidate order before the rng tie-break
+        keys = sorted(self.cells)  # deterministic candidate order before the rng tie-break
         cell = self.drive.most_curious(keys)
         self.drive.observe(cell, self._unfilled_neighbor_frac(cell))
         return self.cells[cell][0]
@@ -329,13 +336,13 @@ def greedy_hillclimb(n_evals, objective_fn, behavior_fn, seed=0):
 
 
 # =====================================================================================================
-# Self-check: four un-riggable, deterministic controls (ASCII, zero-dep).
+# Self-check: four un-riggable, deterministic controls (ASCII).
 # =====================================================================================================
 
 
 def _make_ctx():
     """A rollout context: the position encoder + a reusable pool of K LIFNeuron. The encoder is stateless;
-    each rollout resets the pool, so one context can be reused for a whole experiment. Zero-dep."""
+    each rollout resets the pool, so one context can be reused for a whole experiment."""
     enc = PopulationEncoder(n=DPOS, lo=0.0, hi=1.0, max_spikes=10)
     neurons = [LIFNeuron(tau_m=10.0, v_threshold=1.0) for _ in range(K_NEURONS)]
     return (enc, neurons)
@@ -369,8 +376,10 @@ def main():
     curve = qd_beh.run(budget, n_init=25, checkpoints=checkpoints)
     cov_qd = len(qd_beh.behavior_seen)
 
-    cov_random = len(random_search(budget, beh_desc, seed=1))                    # NARROW-init random
-    cov_random_matched = len(random_search(budget, beh_desc, seed=1, scale=W_CLIP))  # FAIR scale-matched
+    cov_random = len(random_search(budget, beh_desc, seed=1))  # NARROW-init random
+    cov_random_matched = len(
+        random_search(budget, beh_desc, seed=1, scale=W_CLIP)
+    )  # FAIR scale-matched
 
     qd_par = QualityDiversityArchive(param_descriptor, coverage_objective, beh_desc, seed=1)
     qd_par.run(budget, n_init=25)
@@ -379,12 +388,12 @@ def main():
     # ---------------------------------------------------------------------------------------------
     # (2) DECEPTIVE task: objective peaks at a TRAP; the true target is a far, low-objective niche.
     # ---------------------------------------------------------------------------------------------
-    trap_cell = (4, 3)                                   # the deceptive objective peaks here (mid-right)
-    goal_cell = (0, 3)                                   # the true target: a far LEFT-edge niche
+    trap_cell = (4, 3)  # the deceptive objective peaks here (mid-right)
+    goal_cell = (0, 3)  # the true target: a far LEFT-edge niche
     trap_pt = ((trap_cell[0] + 0.5) / GRID, (trap_cell[1] + 0.5) / GRID)
 
     def deceptive_objective(policy, _c=ctx):
-        b = _behavior_of(policy, _c)                     # objective = closeness to the TRAP only
+        b = _behavior_of(policy, _c)  # objective = closeness to the TRAP only
         return 1.0 - math.hypot(b[0] - trap_pt[0], b[1] - trap_pt[1]) / math.sqrt(2.0)
 
     dec_budget = 400
@@ -392,7 +401,9 @@ def main():
     qd_dec.run(dec_budget, n_init=20)
     qd_reached_goal = goal_cell in qd_dec.behavior_seen
 
-    greedy_visited, greedy_best = greedy_hillclimb(dec_budget, deceptive_objective, beh_desc, seed=2)
+    greedy_visited, greedy_best = greedy_hillclimb(
+        dec_budget, deceptive_objective, beh_desc, seed=2
+    )
     greedy_reached_goal = goal_cell in greedy_visited
     greedy_trap_dist = math.hypot(greedy_best[0] - trap_cell[0], greedy_best[1] - trap_cell[1])
 
@@ -411,8 +422,11 @@ def main():
     # (3) NO-ACTUATOR invariant: this module imports nothing from brainstem/arm; evals are pure.
     # ---------------------------------------------------------------------------------------------
     with open(__file__, encoding="utf-8") as fh:
-        import_lines = [ln for ln in fh.read().splitlines()
-                        if ln.startswith("import ") or ln.startswith("from ")]
+        import_lines = [
+            ln
+            for ln in fh.read().splitlines()
+            if ln.startswith("import ") or ln.startswith("from ")
+        ]
     # un-riggable: no IMPORT statement in this file may pull the actuator / safety-envelope package.
     forbidden = ("brainstem", "serial_arm", "arm_sim", "arm_config")
     hits = [tok for tok in forbidden if any(tok in ln for ln in import_lines)]
@@ -420,45 +434,73 @@ def main():
     _probe_pol = SpikingPolicy.random(random.Random(9))
     ev1 = _behavior_of(_probe_pol, ctx)
     ev2 = _behavior_of(_probe_pol, ctx)
-    eval_is_pure = (ev1 == ev2) and isinstance(ev1, tuple) and all(isinstance(x, float) for x in ev1)
-    post_clamp_cov = len(qd_beh.behavior_seen)           # unchanged by the invariant (pure value bookkeeping)
+    eval_is_pure = (
+        (ev1 == ev2) and isinstance(ev1, tuple) and all(isinstance(x, float) for x in ev1)
+    )
+    post_clamp_cov = len(
+        qd_beh.behavior_seen
+    )  # unchanged by the invariant (pure value bookkeeping)
     post_clamp_spread = qd_beh.behavioral_spread()
 
     # ---------------------------------------------------------------------------------------------
     # (4) HONEST-NEGATIVE: coverage-vs-iteration PLATEAUS -> forbids the open-endedness claim.
     # ---------------------------------------------------------------------------------------------
-    early_gain = curve[2][1] - curve[0][1]               # cells gained over checkpoints 0..2 (early third-ish)
-    late_gain = curve[-1][1] - curve[-3][1]              # cells gained over the last two checkpoints (late)
+    early_gain = curve[2][1] - curve[0][1]  # cells gained over checkpoints 0..2 (early third-ish)
+    late_gain = curve[-1][1] - curve[-3][1]  # cells gained over the last two checkpoints (late)
 
     # consolidated-elite value memory (reused ReplayBuffer), value-only
     consolidated_niches = len(qd_beh.q)
 
     print("=" * 92)
-    print("BOUNDED QUALITY-DIVERSITY -- MAP-Elites / Go-Explore over SPIKING policies (L12 / SI-13)")
+    print(
+        "BOUNDED QUALITY-DIVERSITY -- MAP-Elites / Go-Explore over SPIKING policies (L12 / SI-13)"
+    )
     print("=" * 92)
-    print(f"sandbox: {K_NEURONS} LIF neurons, {T_STEPS}-step closed-loop drift in an abstract box, "
-          f"{GRID}x{GRID}={GRID * GRID} niches; NO actuator, NO arm -- pure value/representation")
+    print(
+        f"sandbox: {K_NEURONS} LIF neurons, {T_STEPS}-step closed-loop drift in an abstract box, "
+        f"{GRID}x{GRID}={GRID * GRID} niches; NO actuator, NO arm -- pure value/representation"
+    )
     print("-" * 92)
     print(f"(1) COVERAGE @ budget={budget} evals (equal for all):")
     print(f"      MAP-Elites (behavior desc)    fills {cov_qd:2d} behavior cells")
-    print(f"      random  (NARROW init scale)   fills {cov_random:2d}  (QD beats THIS only by diffusing out of the small init scale)")
-    print(f"      random  (SCALE-MATCHED, fair) fills {cov_random_matched:2d}  <- HONEST-NEGATIVE: matches/BEATS QD -> raw coverage does NOT need the archive")
-    print(f"      MAP-Elites (PARAM desc)       fills {cov_par:2d}  <- param descriptor does NOT reproduce the behavior-keyed win")
-    print(f"      archive elites={len(qd_beh.cells)}  behavioral spread(L1)={qd_beh.behavioral_spread():.3f}  "
-          f"consolidated niches(SWR)={consolidated_niches}")
-    print(f"(2) DECEPTIVE  @ budget={dec_budget} evals  (trap niche {trap_cell}, true target {goal_cell}) "
-          f"-- this is where the archive/novelty is LOAD-BEARING:")
-    print(f"      novelty/LP QD reached target={qd_reached_goal}   "
-          f"objective-only greedy reached target={greedy_reached_goal}")
-    print(f"      greedy stuck near trap: best behavior cell {greedy_best}, "
-          f"{greedy_trap_dist:.1f} cells from trap; visited {len(greedy_visited)} cells")
-    print(f"      SEED-SENSITIVE per run, so AGGREGATE over {len(dec_seeds)} seeds: novelty/LP QD escapes "
-          f"{qd_escapes}/{len(dec_seeds)} vs objective-only greedy {greedy_escapes}/{len(dec_seeds)} (clear advantage)")
-    print(f"(3) NO-ACTUATOR: forbidden-import hits={hits}  eval_is_pure_value={eval_is_pure}  "
-          f"post-clamp coverage={post_clamp_cov} spread={post_clamp_spread:.3f}")
+    print(
+        f"      random  (NARROW init scale)   fills {cov_random:2d}  (QD beats THIS only by diffusing out of the small init scale)"
+    )
+    print(
+        f"      random  (SCALE-MATCHED, fair) fills {cov_random_matched:2d}  <- HONEST-NEGATIVE: matches/BEATS QD -> raw coverage does NOT need the archive"
+    )
+    print(
+        f"      MAP-Elites (PARAM desc)       fills {cov_par:2d}  <- param descriptor does NOT reproduce the behavior-keyed win"
+    )
+    print(
+        f"      archive elites={len(qd_beh.cells)}  behavioral spread(L1)={qd_beh.behavioral_spread():.3f}  "
+        f"consolidated niches(SWR)={consolidated_niches}"
+    )
+    print(
+        f"(2) DECEPTIVE  @ budget={dec_budget} evals  (trap niche {trap_cell}, true target {goal_cell}) "
+        f"-- this is where the archive/novelty is LOAD-BEARING:"
+    )
+    print(
+        f"      novelty/LP QD reached target={qd_reached_goal}   "
+        f"objective-only greedy reached target={greedy_reached_goal}"
+    )
+    print(
+        f"      greedy stuck near trap: best behavior cell {greedy_best}, "
+        f"{greedy_trap_dist:.1f} cells from trap; visited {len(greedy_visited)} cells"
+    )
+    print(
+        f"      SEED-SENSITIVE per run, so AGGREGATE over {len(dec_seeds)} seeds: novelty/LP QD escapes "
+        f"{qd_escapes}/{len(dec_seeds)} vs objective-only greedy {greedy_escapes}/{len(dec_seeds)} (clear advantage)"
+    )
+    print(
+        f"(3) NO-ACTUATOR: forbidden-import hits={hits}  eval_is_pure_value={eval_is_pure}  "
+        f"post-clamp coverage={post_clamp_cov} spread={post_clamp_spread:.3f}"
+    )
     print(f"(4) PLATEAU (behavior cells vs evals): {[c for (_, c) in curve]}")
-    print(f"      early gain (evals {curve[0][0]}->{curve[2][0]})={early_gain} cells  vs  "
-          f"late gain (evals {curve[-3][0]}->{curve[-1][0]})={late_gain} cells  -> flattening (NOT open-ended)")
+    print(
+        f"      early gain (evals {curve[0][0]}->{curve[2][0]})={early_gain} cells  vs  "
+        f"late gain (evals {curve[-3][0]}->{curve[-1][0]})={late_gain} cells  -> flattening (NOT open-ended)"
+    )
     print("=" * 92)
 
     # ---- (1) COVERAGE asserts -- what is HONEST here (NO stepping-stone / illumination claim) ----
@@ -466,39 +508,56 @@ def main():
     #     SCALE-MATCHED random matches/BEATS QD, so raw coverage does NOT need the archive -- QD's win
     #     over NARROW-init random is diffusion out of the init scale, not stepping-stone illumination.
     #     (The narrow-init random number is printed for context but is NOT asserted as a QD win.)
-    assert cov_random_matched >= cov_qd - 3, \
-        f"HONEST-NEGATIVE: a scale-matched random must MATCH/BEAT QD ({cov_random_matched} vs {cov_qd}) -- " \
+    assert cov_random_matched >= cov_qd - 3, (
+        f"HONEST-NEGATIVE: a scale-matched random must MATCH/BEAT QD ({cov_random_matched} vs {cov_qd}) -- "
         f"raw coverage does NOT need the archive (load-bearing only on the deceptive task)"
-    assert cov_qd >= cov_par + 5, \
-        f"the PARAM-descriptor control must NOT reproduce the coverage win ({cov_qd} vs param {cov_par}) -- " \
+    )
+    assert cov_qd >= cov_par + 5, (
+        f"the PARAM-descriptor control must NOT reproduce the coverage win ({cov_qd} vs param {cov_par}) -- "
         f"the behavioral descriptor is load-bearing"
+    )
 
     # ---- (2) DECEPTIVE asserts -- novelty/LP QD escapes the trap, objective-only greedy does not ----
-    assert qd_reached_goal, "novelty/LP-driven QD must REACH the true target niche on the deceptive task"
-    assert not greedy_reached_goal, "objective-only greedy must NOT reach the target (it is stuck in the trap)"
-    assert greedy_trap_dist <= 1.5, \
+    assert qd_reached_goal, (
+        "novelty/LP-driven QD must REACH the true target niche on the deceptive task"
+    )
+    assert not greedy_reached_goal, (
+        "objective-only greedy must NOT reach the target (it is stuck in the trap)"
+    )
+    assert greedy_trap_dist <= 1.5, (
         f"objective-only greedy must converge INTO the deceptive trap (best {greedy_best} vs trap {trap_cell})"
-    assert qd_escapes >= greedy_escapes + 3, \
-        f"novelty/LP QD must escape the deceptive trap markedly MORE OFTEN than objective-only greedy " \
+    )
+    assert qd_escapes >= greedy_escapes + 3, (
+        f"novelty/LP QD must escape the deceptive trap markedly MORE OFTEN than objective-only greedy "
         f"across seeds ({qd_escapes} vs {greedy_escapes} / {len(dec_seeds)}) -- per-run seed-sensitive, aggregate advantage real"
+    )
 
     # ---- (3) NO-ACTUATOR invariant ----
     assert hits == [], f"module must import NOTHING from brainstem/arm (found {hits})"
-    assert eval_is_pure, "every eval must be a pure value/representation function (deterministic, no emit)"
+    assert eval_is_pure, (
+        "every eval must be a pure value/representation function (deterministic, no emit)"
+    )
 
     # ---- (4) HONEST-NEGATIVE: coverage plateaus (forbids open-endedness) ----
-    assert late_gain < early_gain, \
+    assert late_gain < early_gain, (
         f"coverage must PLATEAU (late gain {late_gain} < early gain {early_gain}) -- bounded, NOT open-ended"
+    )
     assert curve[-1][1] == cov_qd, "the plateau curve must end at the final coverage"
 
-    print(f"self-check OK: HONEST coverage -- behavior-keyed {cov_qd} >> param-keyed {cov_par} (descriptor "
-          f"load-bearing), but a SCALE-MATCHED random {cov_random_matched} MATCHES/BEATS QD -> raw coverage "
-          f"does NOT need the archive (no stepping-stone claim; QD only beats NARROW-init random {cov_random});")
-    print(f"  the archive/novelty is LOAD-BEARING on the DECEPTIVE task: across {len(dec_seeds)} seeds QD "
-          f"escapes the trap {qd_escapes}/{len(dec_seeds)} vs objective-only greedy {greedy_escapes}/{len(dec_seeds)} "
-          f"(per-run seed-sensitive, aggregate advantage clear);")
-    print(f"  no-actuator invariant holds (hits={hits}, pure value evals), coverage PLATEAUS "
-          f"early {early_gain} -> late {late_gain} cells (bounded QD, NOT open-endedness); deterministic")
+    print(
+        f"self-check OK: HONEST coverage -- behavior-keyed {cov_qd} >> param-keyed {cov_par} (descriptor "
+        f"load-bearing), but a SCALE-MATCHED random {cov_random_matched} MATCHES/BEATS QD -> raw coverage "
+        f"does NOT need the archive (no stepping-stone claim; QD only beats NARROW-init random {cov_random});"
+    )
+    print(
+        f"  the archive/novelty is LOAD-BEARING on the DECEPTIVE task: across {len(dec_seeds)} seeds QD "
+        f"escapes the trap {qd_escapes}/{len(dec_seeds)} vs objective-only greedy {greedy_escapes}/{len(dec_seeds)} "
+        f"(per-run seed-sensitive, aggregate advantage clear);"
+    )
+    print(
+        f"  no-actuator invariant holds (hits={hits}, pure value evals), coverage PLATEAUS "
+        f"early {early_gain} -> late {late_gain} cells (bounded QD, NOT open-endedness); deterministic"
+    )
 
 
 if __name__ == "__main__":

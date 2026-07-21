@@ -42,16 +42,17 @@ Credit: Pittendrigh & Daan 1976 (free-run + PRC entrainment); Czeisler et al. 19
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hypothalamus.circadian_clock
 """
+
 import math
 import random
 
 # ---- oscillator constants (hand-tuned; see the self-check anchors) -----------
-INTRINSIC = 24.2     # free-running period tau in abstract hour-steps (human free-run ~24.2h)
-COUPLING = 0.012     # light PRC amplitude; sets the entrainment (Arnold-tongue) half-width
-DAY_TARGET = 0.25    # phase the light pulls toward: the middle of subjective day (active phase)
-MOL_NOISE = 0.0003   # tiny per-step molecular jitter (deterministic via the per-instance rng)
-REST_ONSET = 0.5     # subjective night starts here: phase in [0.5, 1.0) == rest / consolidation
-SOLAR_DAY = 24       # the environmental light-cycle period used as the entraining zeitgeber
+INTRINSIC = 24.2  # free-running period tau in abstract hour-steps (human free-run ~24.2h)
+COUPLING = 0.012  # light PRC amplitude; sets the entrainment (Arnold-tongue) half-width
+DAY_TARGET = 0.25  # phase the light pulls toward: the middle of subjective day (active phase)
+MOL_NOISE = 0.0003  # tiny per-step molecular jitter (deterministic via the per-instance rng)
+REST_ONSET = 0.5  # subjective night starts here: phase in [0.5, 1.0) == rest / consolidation
+SOLAR_DAY = 24  # the environmental light-cycle period used as the entraining zeitgeber
 
 
 def circular_diff(target, phase):
@@ -76,15 +77,16 @@ class CircadianClock:
     day [0, 0.5) is the active phase; subjective night [0.5, 1.0) is the rest / consolidation phase.
     """
 
-    def __init__(self, intrinsic=INTRINSIC, coupling=COUPLING, target=DAY_TARGET,
-                 noise=MOL_NOISE, seed=0):
+    def __init__(
+        self, intrinsic=INTRINSIC, coupling=COUPLING, target=DAY_TARGET, noise=MOL_NOISE, seed=0
+    ):
         self.tau = intrinsic
-        self.f0 = 1.0 / intrinsic          # intrinsic angular frequency (cycles per step)
+        self.f0 = 1.0 / intrinsic  # intrinsic angular frequency (cycles per step)
         self.k = coupling
         self.target = target
         self.noise = noise
         self.rng = random.Random(seed)
-        self.phase = self.rng.random()     # seed-dependent starting phase (deterministic)
+        self.phase = self.rng.random()  # seed-dependent starting phase (deterministic)
 
     # ---- dynamics -----------------------------------------------------------
     def prc(self, light):
@@ -102,7 +104,7 @@ class CircadianClock:
         delta = self.f0 + self.prc(light) + self.rng.gauss(0.0, self.noise)
         prev = self.phase
         self.phase = (self.phase + delta) % 1.0
-        return self.phase < prev           # wrapped through dawn == one subjective day elapsed
+        return self.phase < prev  # wrapped through dawn == one subjective day elapsed
 
     def run(self, steps, zeitgeber=None):
         """Advance `steps` steps under an optional zeitgeber schedule(t)->intensity (None == constant
@@ -148,9 +150,9 @@ def _jetlag(seed, period, shift, warm=2000, recover_cycles=18):
     err_after_recovery) -- the alignment error right after the shift and after re-entraining."""
     clock = CircadianClock(seed=seed)
     base = light_cycle(period, offset=0)
-    for t in range(warm):                                  # settle into the pre-travel lock
+    for t in range(warm):  # settle into the pre-travel lock
         clock.step(base(t))
-    locked = []                                            # steady phase sampled at lights-on
+    locked = []  # steady phase sampled at lights-on
     t = warm
     for _ in range(6 * period):
         onset = ((t) % period) == 0
@@ -160,7 +162,7 @@ def _jetlag(seed, period, shift, warm=2000, recover_cycles=18):
         t += 1
     p_lock = sum(locked) / len(locked)
 
-    shifted = light_cycle(period, offset=shift)            # the travelled (advanced) schedule
+    shifted = light_cycle(period, offset=shift)  # the travelled (advanced) schedule
     errs = []
     for _ in range(recover_cycles):
         onset_phase = None
@@ -180,7 +182,9 @@ def main():
     print("SCN CIRCADIAN CLOCK -- a master phase oscillator (free-run + light entrainment)")
     print("timing FUNCTION only -- not sleep, not wakefulness, not awareness")
     print("=" * width)
-    print(f"intrinsic period tau = {INTRINSIC} hour-steps (free-run), zeitgeber Tz = {SOLAR_DAY} (solar day)")
+    print(
+        f"intrinsic period tau = {INTRINSIC} hour-steps (free-run), zeitgeber Tz = {SOLAR_DAY} (solar day)"
+    )
     print(f"coupling k = {COUPLING}, light pulls phase toward subjective day (target {DAY_TARGET})")
 
     # ---- diurnal profile across one subjective day (pure functions of phase) ----
@@ -199,35 +203,63 @@ def main():
     far = measure_period(CircadianClock(seed=1), 3600, light_cycle(far_period))
     print("-" * width)
     print("FAIR CONTROL -- same intrinsic clock, only the light schedule differs:")
-    print(f"  (a) constant darkness      : measured period = {dd:.3f}  (~= tau {INTRINSIC}, ENDOGENOUS free-run)")
-    print(f"  (b) entraining LD (Tz={SOLAR_DAY})   : measured period = {ld:.3f}  (LOCKED to Tz, differs from DD)")
-    print(f"  (c) far LD (Tz={far_period}, no lock) : measured period = {far:.3f}  (IGNORES it, free-runs at ~= tau)")
+    print(
+        f"  (a) constant darkness      : measured period = {dd:.3f}  (~= tau {INTRINSIC}, ENDOGENOUS free-run)"
+    )
+    print(
+        f"  (b) entraining LD (Tz={SOLAR_DAY})   : measured period = {ld:.3f}  (LOCKED to Tz, differs from DD)"
+    )
+    print(
+        f"  (c) far LD (Tz={far_period}, no lock) : measured period = {far:.3f}  (IGNORES it, free-runs at ~= tau)"
+    )
 
     # ---- jet lag: advance the light schedule and watch the phase re-align ----
     p_lock, err0, err_end = _jetlag(seed=3, period=SOLAR_DAY, shift=8)
     print("-" * width)
     print(f"JET LAG -- advance the lights-on schedule by 8 hour-steps (locked phase {p_lock:.3f}):")
     print(f"  phase-alignment error right after the shift : {err0:.3f}")
-    print(f"  phase-alignment error after re-entraining   : {err_end:.3f}  (re-aligned to the new day)")
+    print(
+        f"  phase-alignment error after re-entraining   : {err_end:.3f}  (re-aligned to the new day)"
+    )
     print("=" * width)
 
     # ---- un-riggable anchors (deterministic asserts) ------------------------
     # (1) constant darkness: the rhythm persists at ~= the intrinsic period (endogenous free-run).
-    assert abs(dd - INTRINSIC) < 0.15, f"constant-darkness period must ~= intrinsic tau ({dd:.3f} vs {INTRINSIC})"
+    assert abs(dd - INTRINSIC) < 0.15, (
+        f"constant-darkness period must ~= intrinsic tau ({dd:.3f} vs {INTRINSIC})"
+    )
     # (2) an entraining zeitgeber LOCKS the period to Tz, and that differs from the free-run.
     assert abs(ld - SOLAR_DAY) < 0.10, f"entrained period must lock to Tz ({ld:.3f} vs {SOLAR_DAY})"
-    assert abs(dd - ld) > 0.12, f"entrained period must DIFFER from the free-run ({ld:.3f} vs DD {dd:.3f})"
+    assert abs(dd - ld) > 0.12, (
+        f"entrained period must DIFFER from the free-run ({ld:.3f} vs DD {dd:.3f})"
+    )
     # (3) a far-out-of-range zeitgeber does NOT entrain -- it free-runs back at the intrinsic period.
-    assert abs(far - far_period) > 3.0, f"far Tz must NOT capture the clock ({far:.3f} vs Tz {far_period})"
-    assert abs(far - dd) < 0.10, f"an un-entraining clock must free-run at ~= tau ({far:.3f} vs DD {dd:.3f})"
+    assert abs(far - far_period) > 3.0, (
+        f"far Tz must NOT capture the clock ({far:.3f} vs Tz {far_period})"
+    )
+    assert abs(far - dd) < 0.10, (
+        f"an un-entraining clock must free-run at ~= tau ({far:.3f} vs DD {dd:.3f})"
+    )
     # (4) diurnal outputs: baseline peaks at dawn, troughs at dusk; night is the rest/gate phase.
-    assert ref.baseline(0.0) > 0.99 and ref.baseline(0.5) < 0.01, "baseline must peak at dawn, trough at dusk"
-    assert ref.baseline(0.0) > ref.baseline(0.25) > ref.baseline(0.5), "baseline must fall from dawn to dusk"
-    assert not ref.is_rest(0.25) and ref.is_rest(0.75), "subjective day == active, subjective night == rest"
-    assert ref.consolidation_gate(0.75) and not ref.consolidation_gate(0.25), "consolidation gates to the rest phase"
+    assert ref.baseline(0.0) > 0.99 and ref.baseline(0.5) < 0.01, (
+        "baseline must peak at dawn, trough at dusk"
+    )
+    assert ref.baseline(0.0) > ref.baseline(0.25) > ref.baseline(0.5), (
+        "baseline must fall from dawn to dusk"
+    )
+    assert not ref.is_rest(0.25) and ref.is_rest(0.75), (
+        "subjective day == active, subjective night == rest"
+    )
+    assert ref.consolidation_gate(0.75) and not ref.consolidation_gate(0.25), (
+        "consolidation gates to the rest phase"
+    )
     # (5) jet lag: the locked phase re-aligns to the shifted schedule over several cycles.
-    assert err0 > 0.25, f"an 8-step schedule shift must first knock the clock out of phase ({err0:.3f})"
-    assert err_end < 0.25 * err0 and err_end < 0.05, f"the clock must re-entrain to the new schedule ({err_end:.3f})"
+    assert err0 > 0.25, (
+        f"an 8-step schedule shift must first knock the clock out of phase ({err0:.3f})"
+    )
+    assert err_end < 0.25 * err0 and err_end < 0.05, (
+        f"the clock must re-entrain to the new schedule ({err_end:.3f})"
+    )
 
     # (6) determinism: two clocks with the same seed evolve identically.
     a = CircadianClock(seed=5)
@@ -237,9 +269,11 @@ def main():
     pb = [(b.step(zeit(t)), round(b.phase, 12)) for t in range(600)]
     assert pa == pb, "same seed must produce an identical trajectory"
 
-    print(f"self-check OK: constant-dark free-run {dd:.2f} ~= tau {INTRINSIC} (endogenous); "
-          f"an LD cycle locked the period to Tz {ld:.2f} (differs from free-run); a far Tz={far_period} did NOT "
-          f"entrain ({far:.2f} ~= tau); jet-lag re-aligned {err0:.2f} -> {err_end:.2f}; deterministic")
+    print(
+        f"self-check OK: constant-dark free-run {dd:.2f} ~= tau {INTRINSIC} (endogenous); "
+        f"an LD cycle locked the period to Tz {ld:.2f} (differs from free-run); a far Tz={far_period} did NOT "
+        f"entrain ({far:.2f} ~= tau); jet-lag re-aligned {err0:.2f} -> {err_end:.2f}; deterministic"
+    )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 """
-Sliding-window spike counting -- DGIM approximate "1s in the last W ticks" in O(log^2 W) memory (pure stdlib).
+Sliding-window spike counting -- DGIM approximate "1s in the last W ticks" in O(log^2 W) memory.
 
 The streaming lake sees a binary event stream: each tick either a spike fired (1) or it did not (0). A recurring
 question is recency-scoped -- "how many spikes in the last W ticks?" -- and it must be answered continuously while
@@ -35,6 +35,7 @@ than mod-2W. Not a spiking implementation, not cognition.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.substrate.sliding_window_count   # (also run by selfchecks)
 """
+
 import math
 import random
 from collections import deque
@@ -57,17 +58,19 @@ class SlidingWindowCounter:
 
     def reset(self):
         """Drop all buckets and rewind time -- start a fresh count over a new stream."""
-        self.buckets = []          # list of [timestamp, size]; index 0 = newest (largest t, smallest size)
-        self.t = 0                 # current tick (advances by 1 on every add)
+        self.buckets = []  # list of [timestamp, size]; index 0 = newest (largest t, smallest size)
+        self.t = 0  # current tick (advances by 1 on every add)
 
     def add(self, bit):
         """Advance one tick with a 0/1 event; expire, then insert+cascade if it is a 1. Returns the estimate."""
         self.t += 1
         horizon = self.t - self.window
-        while self.buckets and self.buckets[-1][0] <= horizon:   # expire buckets that slid out of the window
+        while (
+            self.buckets and self.buckets[-1][0] <= horizon
+        ):  # expire buckets that slid out of the window
             self.buckets.pop()
         if bit:
-            self.buckets.insert(0, [self.t, 1])                  # newest size-1 bucket at the front
+            self.buckets.insert(0, [self.t, 1])  # newest size-1 bucket at the front
             self._cascade()
         return self.count()
 
@@ -83,20 +86,24 @@ class SlidingWindowCounter:
         while True:
             idxs = [i for i, b in enumerate(self.buckets) if b[1] == size]
             if len(idxs) <= self.k:
-                break                                            # this size is legal -> nothing above it changed
-            older, newer = idxs[-1], idxs[-2]                    # two oldest of this size (largest indices)
-            ts = self.buckets[newer][0]                          # merged timestamp = the more-recent of the two
-            del self.buckets[older]                              # delete the higher index first (keeps `newer` valid)
+                break  # this size is legal -> nothing above it changed
+            older, newer = idxs[-1], idxs[-2]  # two oldest of this size (largest indices)
+            ts = self.buckets[newer][0]  # merged timestamp = the more-recent of the two
+            del self.buckets[older]  # delete the higher index first (keeps `newer` valid)
             del self.buckets[newer]
-            self.buckets.insert(newer, [ts, size * 2])           # merged bucket is the newest of the doubled size
-            size *= 2                                            # the double size may now overflow -> keep cascading
+            self.buckets.insert(
+                newer, [ts, size * 2]
+            )  # merged bucket is the newest of the doubled size
+            size *= 2  # the double size may now overflow -> keep cascading
 
     def count(self):
         """Estimate of 1s in the last `window` ticks: sum of all in-window buckets minus half the oldest one."""
         if not self.buckets:
             return 0.0
-        total = sum(b[1] for b in self.buckets)                 # all stored buckets are in-window (expired above)
-        return total - self.buckets[-1][1] / 2.0                # oldest straddles the boundary -> count half of it
+        total = sum(b[1] for b in self.buckets)  # all stored buckets are in-window (expired above)
+        return (
+            total - self.buckets[-1][1] / 2.0
+        )  # oldest straddles the boundary -> count half of it
 
     @property
     def n_buckets(self):
@@ -107,43 +114,43 @@ class SlidingWindowCounter:
 def main():
     W = 4096
     k = 8
-    bound = 1.0 / (k - 1)                # conservative DGIM guarantee; empirical worst case is ~1/(2*(k-1))
-    p = 0.4                              # P(spike) per tick
-    n_ticks = 20000                      # warmup W ticks to fill the window, then query every tick after
-    L = int(math.log2(W))                # 12 for W=4096
+    bound = 1.0 / (k - 1)  # conservative DGIM guarantee; empirical worst case is ~1/(2*(k-1))
+    p = 0.4  # P(spike) per tick
+    n_ticks = 20000  # warmup W ticks to fill the window, then query every tick after
+    L = int(math.log2(W))  # 12 for W=4096
 
     # ---- 1 & 2. accuracy within the guarantee + sublinear memory: drive a seeded binary stream, compare the
     # DGIM estimate to the EXACT last-W count from a full ring buffer (the oracle -- allowed here, NOT part of
     # the algorithm) at every tick once the window is full. ----
     rng = random.Random(12345)
     counter = SlidingWindowCounter(W, max_buckets=k)
-    oracle = deque(maxlen=W)             # full W-bit buffer = ground truth (what DGIM avoids storing)
+    oracle = deque(maxlen=W)  # full W-bit buffer = ground truth (what DGIM avoids storing)
     exact_sum = 0
     rel_errors = []
     peak_buckets = 0
     for tick in range(1, n_ticks + 1):
         bit = 1 if rng.random() < p else 0
         if len(oracle) == W:
-            exact_sum -= oracle[0]       # the bit about to be evicted by the maxlen deque
+            exact_sum -= oracle[0]  # the bit about to be evicted by the maxlen deque
         oracle.append(bit)
         exact_sum += bit
         est = counter.add(bit)
         peak_buckets = max(peak_buckets, counter.n_buckets)
-        if tick >= W and exact_sum > 0:                          # measure only once the window is genuinely full
+        if tick >= W and exact_sum > 0:  # measure only once the window is genuinely full
             rel_errors.append(abs(est - exact_sum) / exact_sum)
 
     mean_rel = sum(rel_errors) / len(rel_errors)
     max_rel = max(rel_errors)
-    mem_bound = k * L * L                                        # small multiple of k*log2(W)^2 (O(log^2 W))
+    mem_bound = k * L * L  # small multiple of k*log2(W)^2 (O(log^2 W))
 
     # ---- 3. sliding / expiry: a burst of 1s must lift the estimate, then a run of 0s longer than W slides the
     # whole burst out of the window and the estimate must decay back to ~0. ----
     burst = SlidingWindowCounter(W, max_buckets=k)
     b_ones = 1000
     burst.add_all([1] * b_ones)
-    burst_est = burst.count()                                   # ~b_ones (all still in the window)
-    burst.add_all([0] * W)                                      # W zeros -> every burst 1 has slid out
-    after_est = burst.count()                                   # -> 0 (no in-window buckets left)
+    burst_est = burst.count()  # ~b_ones (all still in the window)
+    burst.add_all([0] * W)  # W zeros -> every burst 1 has slid out
+    after_est = burst.count()  # -> 0 (no in-window buckets left)
 
     # ---- 4. determinism: same window / k / seeded stream -> identical estimates across two fresh instances. ----
     def run(n):
@@ -155,6 +162,7 @@ def main():
             if i % 500 == 0:
                 out.append(round(e, 9))
         return out
+
     det_a, det_b = run(8000), run(8000)
     deterministic = det_a == det_b
 
@@ -168,27 +176,45 @@ def main():
     print("=" * 68)
     print(f"stream: {n_ticks} ticks, P(spike)={p}, W={W}, k(max buckets/size)={k}")
     print(f"error bound 1/(k-1) = {bound * 100:.2f}%  (empirical worst case ~1/(2(k-1)))")
-    print(f"accuracy   : mean rel err {mean_rel * 100:.3f}%, max rel err {max_rel * 100:.3f}% "
-          f"over {len(rel_errors)} queries")
-    print(f"memory     : peak {peak_buckets} buckets vs W={W} bits "
-          f"(~k*log2(W)={k * L}; bound k*log2(W)^2={mem_bound})")
-    print(f"expiry     : burst estimate {burst_est:.1f} (~{b_ones}) -> after W zeros {after_est:.1f}")
-    print(f"determinism: two fresh instances, same W/k/seeded stream -> identical estimates: {deterministic}")
+    print(
+        f"accuracy   : mean rel err {mean_rel * 100:.3f}%, max rel err {max_rel * 100:.3f}% "
+        f"over {len(rel_errors)} queries"
+    )
+    print(
+        f"memory     : peak {peak_buckets} buckets vs W={W} bits "
+        f"(~k*log2(W)={k * L}; bound k*log2(W)^2={mem_bound})"
+    )
+    print(
+        f"expiry     : burst estimate {burst_est:.1f} (~{b_ones}) -> after W zeros {after_est:.1f}"
+    )
+    print(
+        f"determinism: two fresh instances, same W/k/seeded stream -> identical estimates: {deterministic}"
+    )
     print("=" * 68)
 
-    # ---- asserts: deterministic, zero-dep; genuine estimates vs a real oracle, nothing rigged ----
-    assert max_rel <= bound, f"a query broke the DGIM guarantee: max rel err {max_rel:.4f} > 1/(k-1) {bound:.4f}"
-    assert mean_rel < bound / 3, f"mean rel err {mean_rel:.4f} should be far under the bound {bound:.4f}"
-    assert peak_buckets <= mem_bound, f"buckets {peak_buckets} exceed O(log^2 W) bound k*log2(W)^2={mem_bound}"
+    # ---- asserts: deterministic; genuine estimates vs a real oracle, nothing rigged ----
+    assert max_rel <= bound, (
+        f"a query broke the DGIM guarantee: max rel err {max_rel:.4f} > 1/(k-1) {bound:.4f}"
+    )
+    assert mean_rel < bound / 3, (
+        f"mean rel err {mean_rel:.4f} should be far under the bound {bound:.4f}"
+    )
+    assert peak_buckets <= mem_bound, (
+        f"buckets {peak_buckets} exceed O(log^2 W) bound k*log2(W)^2={mem_bound}"
+    )
     assert peak_buckets < W // 4, f"buckets {peak_buckets} not dramatically below W={W}"
     assert powers_of_2, f"every bucket size must be a power of 2 ({sizes})"
     assert non_decreasing, f"bucket sizes must be non-decreasing into the past ({sizes})"
     assert burst_est >= 0.8 * b_ones, f"burst must lift the estimate ({burst_est:.1f} vs {b_ones})"
-    assert after_est == 0.0, f"the burst must decay to 0 once slid out of the window ({after_est:.1f})"
+    assert after_est == 0.0, (
+        f"the burst must decay to 0 once slid out of the window ({after_est:.1f})"
+    )
     assert deterministic, "same W/k/seeded stream must give identical estimates"
-    print(f"self-check OK: {len(rel_errors)} queries all within 1/(k-1)={bound * 100:.2f}% "
-          f"(mean {mean_rel * 100:.3f}%, max {max_rel * 100:.3f}%); peak {peak_buckets} buckets << W={W}; "
-          f"burst {burst_est:.0f}->{after_est:.0f} on expiry; deterministic")
+    print(
+        f"self-check OK: {len(rel_errors)} queries all within 1/(k-1)={bound * 100:.2f}% "
+        f"(mean {mean_rel * 100:.3f}%, max {max_rel * 100:.3f}%); peak {peak_buckets} buckets << W={W}; "
+        f"burst {burst_est:.0f}->{after_est:.0f} on expiry; deterministic"
+    )
 
 
 if __name__ == "__main__":

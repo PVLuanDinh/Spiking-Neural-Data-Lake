@@ -22,7 +22,7 @@ Honest ceiling (carried verbatim from brain_loop's design):
   * ABSENCE OF A PROOF IS NOT FALSITY. A genuine miss returns ``None`` (the
     caller's honest gap then stands); it is never dressed up as a "no".
 
-Pure stdlib (``re`` + ``sys`` only) -- no numpy, no torch, no brainstem import.
+Uses only ``re`` + ``sys``; no brainstem import.
 """
 
 import re
@@ -217,10 +217,6 @@ def _selfcheck():
     assert reason_question("is rain wet ground", records) is None
     assert derive(records, "rain", "causes") is None
     print("(4) non-chaining relations (causes/has/is) refuse to deduce -- no fabrication")
-
-    # (5) pure stdlib: no numeric/ML stack was dragged in.
-    assert "numpy" not in sys.modules and "torch" not in sys.modules, "must stay pure stdlib"
-    print("(5) pure stdlib confirmed (no numpy/torch in sys.modules)")
 
     print("self-check OK: transitive deduction reproduces brain_loop (proof-carrying BFS, honest refusal)")
 

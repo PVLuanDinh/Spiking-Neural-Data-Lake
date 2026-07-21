@@ -1,5 +1,5 @@
 """
-Frequency-gated cell-assembly associative memory (FIP/FID) -- stdlib-only, zero deps.
+Frequency-gated cell-assembly associative memory (FIP/FID).
 
 Implements the DESCRIBED mechanism of Lei, Li, Li, Chen, Zhang, Jin & Yang, "How to
 form brain-like memory in spiking neural networks with the help of frequency-induced
@@ -38,6 +38,7 @@ builtin hash()).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.frequency_memory
 """
+
 import random
 
 
@@ -51,14 +52,15 @@ class FrequencyMemory:
     lr:        Hebbian potentiation step. wmax: recurrent weight ceiling.
     recall_th: recurrent input a silent neuron needs to fire during recall."""
 
-    def __init__(self, n=60, ema=0.35, fip_high=0.5, fid_low=0.25,
-                 lr=0.25, wmax=1.0, recall_th=3.0, seed=0):
+    def __init__(
+        self, n=60, ema=0.35, fip_high=0.5, fid_low=0.25, lr=0.25, wmax=1.0, recall_th=3.0, seed=0
+    ):
         self.n = n
         self.ema, self.fip_high, self.fid_low = ema, fip_high, fid_low
         self.lr, self.wmax, self.recall_th = lr, wmax, recall_th
-        self.rng = random.Random(seed)                 # all RNG seeded -> deterministic
-        self.w = [[0.0] * n for _ in range(n)]         # recurrent weights, start empty
-        self.freq = [0.0] * n                          # per-neuron firing-rate EMA
+        self.rng = random.Random(seed)  # all RNG seeded -> deterministic
+        self.w = [[0.0] * n for _ in range(n)]  # recurrent weights, start empty
+        self.freq = [0.0] * n  # per-neuron firing-rate EMA
 
     def pattern(self, size):
         """A random pattern = a sorted list of `size` distinct neuron ids."""
@@ -70,13 +72,14 @@ class FrequencyMemory:
         on = set(pat)
         for i in range(self.n):
             a = 1.0 if i in on else 0.0
-            self.freq[i] += self.ema * (a - self.freq[i])          # EMA toward activity
+            self.freq[i] += self.ema * (a - self.freq[i])  # EMA toward activity
         return [self.freq[i] >= self.fip_high for i in range(self.n)]
 
     def states(self):
         """Per-neuron state: 'FIP' (plastic), 'FID' (frozen), '-' (neutral band)."""
-        return ["FIP" if f >= self.fip_high else "FID" if f <= self.fid_low else "-"
-                for f in self.freq]
+        return [
+            "FIP" if f >= self.fip_high else "FID" if f <= self.fid_low else "-" for f in self.freq
+        ]
 
     def learn(self, pat, epochs=25):
         """Present `pat` repeatedly. Its neurons' frequency rises into FIP; Hebbian +
@@ -86,7 +89,7 @@ class FrequencyMemory:
         assembly = set()
         for _ in range(epochs):
             fip = self._drive(pat)
-            active_fip = [i for i in pat if fip[i]]               # co-active AND FIP
+            active_fip = [i for i in pat if fip[i]]  # co-active AND FIP
             for i in active_fip:
                 for j in active_fip:
                     if i != j:
@@ -128,7 +131,7 @@ def main():
     print("=" * 64)
 
     N, M, EP = 60, 12, 25
-    k = round(0.4 * M)                                  # partial-cue size (40% of A)
+    k = round(0.4 * M)  # partial-cue size (40% of A)
 
     # 1 FORMATION: present A repeatedly -> a cell assembly forms; the co-active FIP
     #   neurons' mutual recurrent weights strengthen far above baseline.
@@ -140,22 +143,25 @@ def main():
     n_fip = sum(1 for s in m1.states() if s == "FIP")
     assert asmA == frozenset(A), "assembly must be exactly the driven FIP neurons"
     assert w_in > 0.8, f"assembly weight must potentiate high (got {w_in:.3f})"
-    assert w_in > 20 * max(w_base, 1e-9), \
+    assert w_in > 20 * max(w_base, 1e-9), (
         f"assembly weight must dwarf baseline ({w_in:.3f} vs {w_base:.3f})"
+    )
 
     # 1b FREQUENCY-GATING (the core FIP claim): an INFREQUENT one-shot pattern stays below
     #    the FIP threshold -> NO potentiation; only a FREQUENT (repeated) pattern crosses
     #    into FIP and forms an assembly. Frequency is the gate, not mere co-activation.
     m1b = FrequencyMemory(n=N, seed=0)
     C = m1b.pattern(M)
-    once = m1b.learn(C, epochs=1)                        # one shot: frequency stays sub-FIP
+    once = m1b.learn(C, epochs=1)  # one shot: frequency stays sub-FIP
     w_once = m1b.mean_weight(C)
-    many = m1b.learn(C, epochs=EP)                       # repeated: crosses FIP -> forms
+    many = m1b.learn(C, epochs=EP)  # repeated: crosses FIP -> forms
     w_many = m1b.mean_weight(C)
-    assert once == frozenset() and w_once == 0.0, \
+    assert once == frozenset() and w_once == 0.0, (
         "an infrequent one-shot pattern must NOT potentiate (FIP gate closed)"
-    assert many == frozenset(C) and w_many > 0.8, \
+    )
+    assert many == frozenset(C) and w_many > 0.8, (
         "a frequent repeated pattern must form the assembly (FIP gate opens)"
+    )
 
     # 2 RECOLLECTION: a 40% partial cue of A completes the FULL assembly while non-A
     #   neurons stay quiet (pattern completion / convergence).
@@ -181,15 +187,16 @@ def main():
     m4.learn(ai, epochs=EP)
     cue_a = ai[:k]
     acc_before = len(m4.recall(cue_a) & set(ai)) / M
-    a_only = [i for i in ai if i not in set(bi)]        # A neurons frozen while B learns
+    a_only = [i for i in ai if i not in set(bi)]  # A neurons frozen while B learns
     w_only_before = m4.mean_weight(a_only)
     m4.learn(bi, epochs=EP)
     acc_after = len(m4.recall(cue_a) & set(ai)) / M
     w_only_after = m4.mean_weight(a_only)
     st = m4.states()
     a_only_fid = sum(1 for i in a_only if st[i] == "FID")
-    assert acc_after >= acc_before, \
+    assert acc_after >= acc_before, (
         f"learning B must NOT degrade recall of A ({acc_before:.2f} -> {acc_after:.2f})"
+    )
     assert acc_after >= 0.8, f"A must still recall after learning B (got {acc_after:.2f})"
     assert w_only_after == w_only_before, "A's own assembly weights must be frozen during B"
     assert a_only_fid == len(a_only), "A-only neurons must be FID (frozen) after learning B"
@@ -208,16 +215,22 @@ def main():
 
     print(f"units n={N}  pattern={M}  epochs={EP}  FIP={n_fip} after A")
     print(f"1 FORMATION    : assembly w={w_in:.3f} vs baseline w={w_base:.3f}")
-    print(f"1b FREQ-GATE   : one-shot -> no assembly (w={w_once:.3f}); repeated -> forms (w={w_many:.3f})")
+    print(
+        f"1b FREQ-GATE   : one-shot -> no assembly (w={w_once:.3f}); repeated -> forms (w={w_many:.3f})"
+    )
     print(f"2 RECOLLECTION : 40% cue ({k}/{M}) -> recall acc={acc:.2f}, spurious={spurious}")
     print(f"3 SEPARATION   : |A&B|={inter} |AUB|={union} Jaccard={jacc:.2f}")
-    print(f"4 INTERFERENCE : recall-A before={acc_before:.2f} after B={acc_after:.2f} "
-          f"(A-only FID={a_only_fid}/{len(a_only)})")
+    print(
+        f"4 INTERFERENCE : recall-A before={acc_before:.2f} after B={acc_after:.2f} "
+        f"(A-only FID={a_only_fid}/{len(a_only)})"
+    )
     print("5 DETERMINISM  : identical patterns, assemblies, weights, recall")
     print("=" * 64)
-    print(f"self-check OK: assembly w={w_in:.3f}>>base {w_base:.3f}, recollection {acc:.2f}, "
-          f"separation J={jacc:.2f}, recall-A {acc_before:.2f}->{acc_after:.2f} after B "
-          f"(frozen); deterministic")
+    print(
+        f"self-check OK: assembly w={w_in:.3f}>>base {w_base:.3f}, recollection {acc:.2f}, "
+        f"separation J={jacc:.2f}, recall-A {acc_before:.2f}->{acc_after:.2f} after B "
+        f"(frozen); deterministic"
+    )
 
 
 if __name__ == "__main__":

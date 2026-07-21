@@ -60,11 +60,12 @@ recalls from -- the raw sensory log vs. the consolidated hippocampal trace. reco
 overlap-based nearest-attractor completion (content-addressable), a faithful CA3 auto-association
 at the algorithmic level, not a full recurrent-spiking energy descent. Deterministic: per-instance
 random.Random, zlib.crc32 for signatures/sub-seeds (never builtin hash()), exact float Benna-Fusi
-diffusion, no wall-clock, no global RNG. ASCII-only output. Zero-dep core: the whole reuse chain is
-pure stdlib, so NORD_TORCH=0 runs it unchanged (torch is never imported here).
+diffusion, no wall-clock, no global RNG. ASCII-only output. NORD_TORCH=0 runs it unchanged (torch
+is never imported here).
 
   PYTHONUTF8=1 NORD_TORCH=0 PYTHONPATH=src python -m snn_data_lake.substrate.lake_memory
 """
+
 import json
 import os
 import random
@@ -76,19 +77,19 @@ from snn_data_lake.plasticity.benna_fusi import BennaFusiSynapse
 from snn_data_lake.substrate.reservoir_sampling import Reservoir
 from snn_data_lake.substrate.streaming_hub import StreamingHub
 
-_MAX_T = 1 << 32                 # exclusive upper bound over all u32 tick times (whole-lake query)
+_MAX_T = 1 << 32  # exclusive upper bound over all u32 tick times (whole-lake query)
 
 # ---- consolidation dynamics (deterministic; a single SHY-style offline pass) ----
-DOWNSCALE = 0.5                  # homeostatic global synaptic downscale applied to every trace (SHY)
-REPLAY_GAIN = 0.30               # per-replay reinforcement deposited into a replayed trace's fast beaker
-REPLAY_BATCH = 24                # SWR replay batch size per consolidation
-DIFFUSE_STEPS = 3                # metaplastic seep steps (fast -> deep) after downscale + replay
-PRUNE_EPS = 0.05                 # evict every trace whose effective importance falls below this
-SALIENT_CAP = 128                # hard cap on the consolidated long-term store (bound, event-count independent)
-RESERVOIR_K = 64                 # bounded uniform sample of the WHOLE stream (idle firehose can't grow the store)
-TRACE_HARDCAP = 4096             # mid-epoch guard: never hold more than this many live traces (evict weakest)
-COMPLETE_TH = 0.5                # reconstruct: min (cue-in-pattern) overlap for a partial cue to complete
-NOVELTY_CAP = 8192               # bounded novelty table for auto-salience (drops oldest when full)
+DOWNSCALE = 0.5  # homeostatic global synaptic downscale applied to every trace (SHY)
+REPLAY_GAIN = 0.30  # per-replay reinforcement deposited into a replayed trace's fast beaker
+REPLAY_BATCH = 24  # SWR replay batch size per consolidation
+DIFFUSE_STEPS = 3  # metaplastic seep steps (fast -> deep) after downscale + replay
+PRUNE_EPS = 0.05  # evict every trace whose effective importance falls below this
+SALIENT_CAP = 128  # hard cap on the consolidated long-term store (bound, event-count independent)
+RESERVOIR_K = 64  # bounded uniform sample of the WHOLE stream (idle firehose can't grow the store)
+TRACE_HARDCAP = 4096  # mid-epoch guard: never hold more than this many live traces (evict weakest)
+COMPLETE_TH = 0.5  # reconstruct: min (cue-in-pattern) overlap for a partial cue to complete
+NOVELTY_CAP = 8192  # bounded novelty table for auto-salience (drops oldest when full)
 
 
 def _sig(channels):
@@ -112,7 +113,7 @@ class _Trace:
         self.t = int(t)
         self.channels = frozenset(int(c) for c in channels)
         self.syn = BennaFusiSynapse()
-        if importance is not None:                          # reloaded-from-disk trace: re-prime the cascade
+        if importance is not None:  # reloaded-from-disk trace: re-prime the cascade
             self.syn.deposit(float(importance))
 
     def deposit(self, salience):
@@ -140,14 +141,22 @@ class MemoryLake:
       n_events()              -- total events in the durable lossless lake (== appends)
       n_kept()                -- size of the bounded consolidated store (post-prune)
       reopen() / close(remove=) -- restart recovery / cleanup, drop-in for LakeWorkingMemory
-    Deterministic given `seed`; ASCII; zero-dep core."""
+    Deterministic given `seed`; ASCII."""
 
-    def __init__(self, n_channels=256, path=None, seed=0, cap=SALIENT_CAP, reservoir_k=RESERVOIR_K, vitals=False):
+    def __init__(
+        self,
+        n_channels=256,
+        path=None,
+        seed=0,
+        cap=SALIENT_CAP,
+        reservoir_k=RESERVOIR_K,
+        vitals=False,
+    ):
         if n_channels <= 0:
             raise ValueError("n_channels must be positive")
         if path is None:
             fd, path = tempfile.mkstemp(suffix=".spkl")
-            os.close(fd)                                    # StreamingHub opens its own handle
+            os.close(fd)  # StreamingHub opens its own handle
             self._created_temp = True
         else:
             self._created_temp = False
@@ -155,24 +164,27 @@ class MemoryLake:
         self.seed = int(seed)
         self.cap = int(cap)
         self.path = path
-        self.sidecar = path + ".mem"                        # ASCII JSON: the consolidated store, durable
-        self.last_t = None                                  # the "now" cursor (latest tick written)
+        self.sidecar = path + ".mem"  # ASCII JSON: the consolidated store, durable
+        self.last_t = None  # the "now" cursor (latest tick written)
         # ---- reused durable substrate + bounded sampler + importance traces ----
-        self.hub = StreamingHub(path, self.n, resume=os.path.exists(path) and os.path.getsize(path) > 0)
+        self.hub = StreamingHub(
+            path, self.n, resume=os.path.exists(path) and os.path.getsize(path) > 0
+        )
         self.reservoir = Reservoir(reservoir_k, seed=zlib.crc32(b"reservoir") ^ self.seed)
-        self.traces = {}                                    # sig -> _Trace (live, pre/post consolidation)
-        self.attractor = []                                 # consolidated survivors: [(sig, t, frozenset, imp)]
-        self._novel = {}                                    # bounded novelty counts for auto-salience
+        self.traces = {}  # sig -> _Trace (live, pre/post consolidation)
+        self.attractor = []  # consolidated survivors: [(sig, t, frozenset, imp)]
+        self._novel = {}  # bounded novelty counts for auto-salience
         # OPT-IN read-only "Lake Vitals": a fixed-memory streaming self-monitor (HLL/CMS/DGIM/P2/AMS/
         # MinHash/Reservoir/Morris) over the durable spike/motif stream. None -> off, byte-identical.
         if vitals:
             from snn_data_lake.substrate.stream_sketch_panel import StreamSketchPanel
+
             self._vitals = StreamSketchPanel(seed=seed)
         else:
             self._vitals = None
-        if self.hub.n_events():                             # resumed a non-empty lake: recover the cursor
+        if self.hub.n_events():  # resumed a non-empty lake: recover the cursor
             self.last_t = max((t for t, _ in self.hub.query_window(0, _MAX_T)), default=None)
-        self._load_sidecar()                                # recover the consolidated store if one was persisted
+        self._load_sidecar()  # recover the consolidated store if one was persisted
 
     # ---- WRITE (with salience) ------------------------------------------------
     def write(self, t, active_channels, salience=None):
@@ -185,26 +197,30 @@ class MemoryLake:
         t = int(t)
         chans = [int(c) for c in active_channels]
         for c in chans:
-            self.hub.append(c, t)                           # durable lossless append (unchanged StreamingHub API)
+            self.hub.append(c, t)  # durable lossless append (unchanged StreamingHub API)
         self.last_t = t if self.last_t is None else max(self.last_t, t)
         if not chans:
             return
         sig = _sig(chans)
-        self.reservoir.add((t, tuple(sorted(chans))))       # one-pass fair sample of the WHOLE stream (bounds it)
-        count = self._novel.get(sig, 0)                     # prior occurrences of this exact assembly
+        self.reservoir.add(
+            (t, tuple(sorted(chans)))
+        )  # one-pass fair sample of the WHOLE stream (bounds it)
+        count = self._novel.get(sig, 0)  # prior occurrences of this exact assembly
         self._novel[sig] = count + 1
         if len(self._novel) > NOVELTY_CAP:
-            self._novel.pop(next(iter(self._novel)))         # drop the oldest (insertion order) -> bounded table
+            self._novel.pop(
+                next(iter(self._novel))
+            )  # drop the oldest (insertion order) -> bounded table
         base = 1.0 if salience is None else float(salience)
-        effective = base / (1.0 + count)                     # habituation: redundant repeats deposit ever less
+        effective = base / (1.0 + count)  # habituation: redundant repeats deposit ever less
         tr = self.traces.get(sig)
         if tr is None:
             tr = _Trace(sig, t, chans)
             self.traces[sig] = tr
             self._enforce_trace_hardcap()
-        tr.t = t                                             # remember the most recent occurrence
+        tr.t = t  # remember the most recent occurrence
         tr.deposit(effective)
-        if self._vitals is not None:                        # read-only Lake Vitals tap (chans is non-empty here)
+        if self._vitals is not None:  # read-only Lake Vitals tap (chans is non-empty here)
             self._vitals.observe(frozenset(chans))
 
     def add(self, event, salience=None):
@@ -248,13 +264,15 @@ class MemoryLake:
                 u[k] *= DOWNSCALE
 
         # 2. SWR replay: importance-weighted reinforcement of the significant traces (reused ReplayBuffer)
-        buf = ReplayBuffer(capacity=max(256, 16 * (before + 1)),
-                           seed=zlib.crc32(b"swr") ^ self.seed ^ (before & 0xFFFFFFFF))
-        for tr in self.traces.values():                      # multiplicity ~ importance -> significant traces dominate
+        buf = ReplayBuffer(
+            capacity=max(256, 16 * (before + 1)),
+            seed=zlib.crc32(b"swr") ^ self.seed ^ (before & 0xFFFFFFFF),
+        )
+        for tr in self.traces.values():  # multiplicity ~ importance -> significant traces dominate
             for _ in range(int(tr.importance() * 8)):
                 buf.add(tr.sig, 0, tr.importance())
         picks = buf.sample(REPLAY_BATCH)
-        for sig, _a, _r in picks + picks[::-1]:              # forward sweep then reverse sweep (SWR)
+        for sig, _a, _r in picks + picks[::-1]:  # forward sweep then reverse sweep (SWR)
             tr = self.traces.get(sig)
             if tr is not None:
                 tr.deposit(REPLAY_GAIN)
@@ -269,17 +287,29 @@ class MemoryLake:
 
         # 5. cap the consolidated store (importance-weighted retention -> bound independent of #events)
         if len(survivors) > self.cap:
-            ranked = sorted(survivors.values(),
-                            key=lambda tr: (tr.importance(), tr.consolidated(), tr.sig), reverse=True)
-            survivors = {tr.sig: tr for tr in ranked[:self.cap]}
+            ranked = sorted(
+                survivors.values(),
+                key=lambda tr: (tr.importance(), tr.consolidated(), tr.sig),
+                reverse=True,
+            )
+            survivors = {tr.sig: tr for tr in ranked[: self.cap]}
 
         self.traces = survivors
-        self.attractor = [(tr.sig, tr.t, tr.channels, round(tr.importance(), 6))
-                          for tr in survivors.values()]
-        self.attractor.sort(key=lambda r: (-r[3], r[1], r[0]))     # deterministic order (importance, t, sig)
+        self.attractor = [
+            (tr.sig, tr.t, tr.channels, round(tr.importance(), 6)) for tr in survivors.values()
+        ]
+        self.attractor.sort(
+            key=lambda r: (-r[3], r[1], r[0])
+        )  # deterministic order (importance, t, sig)
         self._save_sidecar()
-        return {"before": before, "downscaled": before, "pruned": pruned,
-                "kept": len(survivors), "cap": self.cap, "reservoir": len(self.reservoir)}
+        return {
+            "before": before,
+            "downscaled": before,
+            "pruned": pruned,
+            "kept": len(survivors),
+            "cap": self.cap,
+            "reservoir": len(self.reservoir),
+        }
 
     # ---- RECONSTRUCT: pattern-complete a partial cue from the attractor store ---
     def reconstruct(self, cue, k=5):
@@ -295,11 +325,13 @@ class MemoryLake:
         scored = []
         denom = float(len(cue_set))
         for _signature, t, channels, imp in self.attractor:
-            overlap = len(cue_set & channels) / denom        # fraction of the cue explained by this assembly
+            overlap = (
+                len(cue_set & channels) / denom
+            )  # fraction of the cue explained by this assembly
             if overlap >= COMPLETE_TH:
                 scored.append((overlap, imp, t, channels))
-        scored.sort(key=lambda r: (-r[0], -r[1], r[2]))       # best overlap, then importance, then time
-        return [(t, channels) for _o, _i, t, channels in scored[:max(0, int(k))]]
+        scored.sort(key=lambda r: (-r[0], -r[1], r[2]))  # best overlap, then importance, then time
+        return [(t, channels) for _o, _i, t, channels in scored[: max(0, int(k))]]
 
     @staticmethod
     def _as_channels(cue):
@@ -311,7 +343,7 @@ class MemoryLake:
             return {int(c) for c in cue}
         if isinstance(cue, (list, tuple)):
             if len(cue) == 2 and isinstance(cue[0], int) and hasattr(cue[1], "__iter__"):
-                return {int(c) for c in cue[1]}              # an (t, channels) record
+                return {int(c) for c in cue[1]}  # an (t, channels) record
             return {int(c) for c in cue}
         return {int(c) for c in cue}
 
@@ -356,8 +388,13 @@ class MemoryLake:
         """Persist the consolidated store to an ASCII JSON sidecar (deterministic, sorted) so the pruned
         memory + reconstruct capability survive a restart."""
         blob = {
-            "n": self.n, "seed": self.seed, "last_t": self.last_t, "cap": self.cap,
-            "attractor": [[sig, t, sorted(channels), imp] for sig, t, channels, imp in self.attractor],
+            "n": self.n,
+            "seed": self.seed,
+            "last_t": self.last_t,
+            "cap": self.cap,
+            "attractor": [
+                [sig, t, sorted(channels), imp] for sig, t, channels, imp in self.attractor
+            ],
             "reservoir": [[t, list(ch)] for t, ch in self.reservoir.sample()],
         }
         tmp = self.sidecar + ".tmp"
@@ -365,7 +402,7 @@ class MemoryLake:
             json.dump(blob, f, ensure_ascii=True, sort_keys=True)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp, self.sidecar)                         # atomic swap: no half-written store
+        os.replace(tmp, self.sidecar)  # atomic swap: no half-written store
 
     def _load_sidecar(self):
         """Recover the consolidated store from the sidecar (if present) -> reconstruct works after a
@@ -376,7 +413,7 @@ class MemoryLake:
             with open(self.sidecar, encoding="ascii") as f:
                 blob = json.load(f)
         except (ValueError, OSError):
-            return                                            # torn/partial sidecar -> start from the durable log only
+            return  # torn/partial sidecar -> start from the durable log only
         self.attractor = []
         self.traces = {}
         for sig, t, channels, imp in blob.get("attractor", []):
@@ -414,9 +451,9 @@ def main():
     print("=" * 74)
 
     N_CH = 64
-    IDLE_TICKS = 1000                # idle-loop noise: low-salience, redundant
-    SALIENT = 20                     # distinct, salient events
-    FILLER = (48, 49, 50)            # shared filler channels every salient assembly includes
+    IDLE_TICKS = 1000  # idle-loop noise: low-salience, redundant
+    SALIENT = 20  # distinct, salient events
+    FILLER = (48, 49, 50)  # shared filler channels every salient assembly includes
 
     def build(seed, path=None):
         """Stream IDLE noise + SALIENT events into a fresh MemoryLake and consolidate. Deterministic.
@@ -425,15 +462,15 @@ def main():
         shared FILLER channels -> a 5-channel assembly. The unique pair is the partial cue: it is a
         subset of ONLY event i, so a 2-of-5 cue completes to exactly that event."""
         lk = MemoryLake(n_channels=N_CH, path=path, seed=seed)
-        rng = random.Random(seed)                            # per-instance RNG (never global)
+        rng = random.Random(seed)  # per-instance RNG (never global)
         # ---- ~1000 low-salience IDLE ticks: a few channels in a small idle band, redundant/prunable ----
         for t in range(IDLE_TICKS):
-            active = sorted(rng.sample(range(0, 8), 2))      # idle band [0,8) -> redundant / prunable
+            active = sorted(rng.sample(range(0, 8), 2))  # idle band [0,8) -> redundant / prunable
             lk.write(t, active, salience=0.01)
         # ---- 20 DISTINCT SALIENT events: unique signature pair + shared filler, salience 1.0 ----
         salient = {}
         for i in range(SALIENT):
-            pair = (8 + 2 * i, 9 + 2 * i)                    # unique to event i (disjoint across events)
+            pair = (8 + 2 * i, 9 + 2 * i)  # unique to event i (disjoint across events)
             assembly = sorted(set(pair) | set(FILLER))
             t = IDLE_TICKS + i
             salient[t] = assembly
@@ -449,7 +486,7 @@ def main():
     reconstructed = 0
     example = None
     for _t, assembly in salient.items():
-        cue = assembly[:2]                                   # a HARD partial cue: 2 of the 5 channels
+        cue = assembly[:2]  # a HARD partial cue: 2 of the 5 channels
         out = lk.reconstruct(cue, k=3)
         hit = any(frozenset(assembly) == chans for _t, chans in out)
         reconstructed += 1 if hit else 0
@@ -458,21 +495,31 @@ def main():
     # an idle cue (channels from the idle band) must NOT complete to any consolidated memory
     idle_out = lk.reconstruct([0, 1], k=5)
 
-    print(f"streamed     : {IDLE_TICKS} idle ticks + {SALIENT} salient events "
-          f"-> {total:,} durable events (lossless log)")
-    print(f"consolidate  : before {tele['before']} traces -> pruned {tele['pruned']} "
-          f"-> kept {tele['kept']} (cap {tele['cap']}); reservoir sample {tele['reservoir']}")
-    print(f"kept vs total: n_kept={kept} is BOUNDED and << {IDLE_TICKS + SALIENT} total ticks "
-          f"({100.0 * kept / (IDLE_TICKS + SALIENT):.1f}% -> idle-loop noise pruned)")
+    print(
+        f"streamed     : {IDLE_TICKS} idle ticks + {SALIENT} salient events "
+        f"-> {total:,} durable events (lossless log)"
+    )
+    print(
+        f"consolidate  : before {tele['before']} traces -> pruned {tele['pruned']} "
+        f"-> kept {tele['kept']} (cap {tele['cap']}); reservoir sample {tele['reservoir']}"
+    )
+    print(
+        f"kept vs total: n_kept={kept} is BOUNDED and << {IDLE_TICKS + SALIENT} total ticks "
+        f"({100.0 * kept / (IDLE_TICKS + SALIENT):.1f}% -> idle-loop noise pruned)"
+    )
     print("-" * 74)
     ex_cue, ex_full, ex_out = example
     print(f"reconstruct  : cue {ex_cue} (2 of 5 channels) -> completed {ex_out[0][1]}")
     print(f"               (full stored assembly {ex_full} recovered from the partial cue)")
-    print(f"salient recon: {reconstructed}/{SALIENT} salient events reconstructable from a partial cue")
-    print(f"idle recon   : cue [0, 1] (idle band) -> {idle_out} (pruned noise does NOT reconstruct)")
+    print(
+        f"salient recon: {reconstructed}/{SALIENT} salient events reconstructable from a partial cue"
+    )
+    print(
+        f"idle recon   : cue [0, 1] (idle band) -> {idle_out} (pruned noise does NOT reconstruct)"
+    )
 
     # ---- (c) DURABLE: consolidated store survives close + reopen (fresh object, disk only) ----
-    lk.close()                                               # flush + release; sidecar already persisted
+    lk.close()  # flush + release; sidecar already persisted
     reop = MemoryLake(n_channels=N_CH, path=lk.path, seed=0)  # a FRESH object, same durable path
     kept_reopen = reop.n_kept()
     t0, asm0 = next(iter(salient.items()))
@@ -481,10 +528,14 @@ def main():
     events_reopen = reop.n_events()
 
     print("-" * 74)
-    print(f"persistence  : reopened from disk -> n_events {events_reopen:,} (lossless log intact), "
-          f"n_kept {kept_reopen} (consolidated store intact)")
-    print(f"               reconstruct after restart: cue {asm0[:2]} -> hit={reop_hit} "
-          f"(the pruned memory survived the restart)")
+    print(
+        f"persistence  : reopened from disk -> n_events {events_reopen:,} (lossless log intact), "
+        f"n_kept {kept_reopen} (consolidated store intact)"
+    )
+    print(
+        f"               reconstruct after restart: cue {asm0[:2]} -> hit={reop_hit} "
+        f"(the pruned memory survived the restart)"
+    )
 
     # ---- (d) DETERMINISM: same seed -> same kept set ----
     lkA, _sa, _ta = build(seed=7)
@@ -498,15 +549,23 @@ def main():
 
     # ---- self-check asserts (deterministic; all four properties) --------------
     # (a) PRUNING happened: the consolidated store is BOUNDED and << the total streamed ticks.
-    assert kept <= SALIENT_CAP, f"consolidated store must be bounded by the cap ({kept} > {SALIENT_CAP})"
-    assert kept < (IDLE_TICKS + SALIENT) // 4, \
+    assert kept <= SALIENT_CAP, (
+        f"consolidated store must be bounded by the cap ({kept} > {SALIENT_CAP})"
+    )
+    assert kept < (IDLE_TICKS + SALIENT) // 4, (
         f"pruning must shrink the store far below the stream ({kept} not << {IDLE_TICKS + SALIENT})"
+    )
     assert tele["pruned"] > 0, "consolidate must have pruned idle/weak traces"
-    assert total == IDLE_TICKS * 2 + SALIENT * 5, "durable lossless log lost events (n_events wrong)"
+    assert total == IDLE_TICKS * 2 + SALIENT * 5, (
+        "durable lossless log lost events (n_events wrong)"
+    )
     # (b) RECONSTRUCT: every salient event completes from a partial cue; idle noise does not.
-    assert reconstructed == SALIENT, \
+    assert reconstructed == SALIENT, (
         f"every salient event must reconstruct from a partial cue ({reconstructed}/{SALIENT})"
-    assert idle_out == [], "pruned idle noise must NOT reconstruct (it was evicted, not consolidated)"
+    )
+    assert idle_out == [], (
+        "pruned idle noise must NOT reconstruct (it was evicted, not consolidated)"
+    )
     # (c) DURABLE: the consolidated store + reconstruct survive a real close + reopen from disk.
     assert kept_reopen == kept, f"consolidated store must survive reopen ({kept_reopen} != {kept})"
     assert events_reopen == total, "durable lossless log must survive reopen (n_events changed)"
@@ -514,15 +573,17 @@ def main():
     # (d) DETERMINISM: same seed -> identical kept set.
     assert deterministic, "same seed must produce the same kept set"
 
-    print(f"self-check OK: {IDLE_TICKS + SALIENT} ticks -> BOUNDED consolidated store n_kept={kept} "
-          f"(<< total, idle pruned); all {SALIENT}/{SALIENT} salient events reconstruct from a partial "
-          f"cue while idle noise does not; survives close+reopen (n_kept {kept_reopen}, reconstruct "
-          f"hit={reop_hit}); deterministic. Reused StreamingHub + Reservoir + ReplayBuffer + "
-          f"BennaFusiSynapse; the durable lossless lake API is untouched.")
+    print(
+        f"self-check OK: {IDLE_TICKS + SALIENT} ticks -> BOUNDED consolidated store n_kept={kept} "
+        f"(<< total, idle pruned); all {SALIENT}/{SALIENT} salient events reconstruct from a partial "
+        f"cue while idle noise does not; survives close+reopen (n_kept {kept_reopen}, reconstruct "
+        f"hit={reop_hit}); deterministic. Reused StreamingHub + Reservoir + ReplayBuffer + "
+        f"BennaFusiSynapse; the durable lossless lake API is untouched."
+    )
 
     # ---- cleanup: release the reopened handle FIRST (it shares lk's temp file), then delete ----
-    reop.close()                                             # drop the shared-file handle before removal
-    lk.close(remove=True)                                    # lk owns the temp file -> delete .spkl + sidecar
+    reop.close()  # drop the shared-file handle before removal
+    lk.close(remove=True)  # lk owns the temp file -> delete .spkl + sidecar
     lkA.close(remove=True)
     lkB.close(remove=True)
 

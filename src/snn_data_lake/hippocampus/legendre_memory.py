@@ -1,5 +1,5 @@
 """
-Legendre Memory Unit (LMU) delay network -- an optimal linear window memory (pure stdlib).
+Legendre Memory Unit (LMU) delay network -- an optimal linear window memory.
 
 A Legendre Memory Unit maintains a rolling window of its scalar input, of length theta, by
 projecting that recent history onto the first d shifted-Legendre polynomials. The state is a
@@ -41,6 +41,7 @@ not cognition. Deterministic (no randomness; seed kept only for API symmetry). C
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.hippocampus.legendre_memory
 """
+
 import math
 
 
@@ -79,7 +80,7 @@ class LegendreMemory:
         self.order = order
         self.theta = float(theta)
         self.dt = float(dt)
-        self.seed = seed                       # kept for API symmetry; the system is deterministic
+        self.seed = seed  # kept for API symmetry; the system is deterministic
         self.A, self.B = self._delay_matrices(order)
         self.reset()
 
@@ -158,7 +159,7 @@ def main():
     n_win = int(theta / dt)
     lmu = LegendreMemory(order=order, theta=theta, dt=dt)
     trace = _feed_sine(lmu, f)
-    steady = range(4 * n_win, len(trace))     # after the window has filled several times over
+    steady = range(4 * n_win, len(trace))  # after the window has filled several times over
 
     # ---- 1. DELAY LINE (the test): reconstruct(1.0) tracks u(t - theta) over the steady run ----
     pred_full = [_decode_state(trace[k], 1.0) for k in steady]
@@ -171,7 +172,7 @@ def main():
     for lf in lags:
         pred = [_decode_state(trace[k], lf) for k in steady]
         true = [_sine(k * dt - lf * theta, f) for k in steady]
-        per_lag[lf] = _nrmse_corr(pred, true)      # (rmse, nrmse, corr)
+        per_lag[lf] = _nrmse_corr(pred, true)  # (rmse, nrmse, corr)
 
     # ---- 3. ORDER INCREASES CAPACITY: higher d reconstructs the window better than a small d ----
     def full_delay_rmse(d):
@@ -179,6 +180,7 @@ def main():
         p = [_decode_state(tr[k], 1.0) for k in range(4 * n_win, len(tr))]
         t = [_sine(k * dt - theta, f) for k in range(4 * n_win, len(tr))]
         return _nrmse_corr(p, t)[0]
+
     err_low = full_delay_rmse(3)
     err_high = full_delay_rmse(order)
 
@@ -192,29 +194,38 @@ def main():
     print("LEGENDRE MEMORY UNIT -- optimal linear window memory (delay network)")
     print("=" * 72)
     print(f"order d={order}  theta={theta}  dt={dt}  (dt/theta={dt / theta:.4f})  input sin f={f}")
-    print(f"delay line  reconstruct(1.0) vs u(t-theta) : nrmse {nrmse_full:.4f}  corr {corr_full:.4f}"
-          f"  (rmse {rmse_full:.4f})")
+    print(
+        f"delay line  reconstruct(1.0) vs u(t-theta) : nrmse {nrmse_full:.4f}  corr {corr_full:.4f}"
+        f"  (rmse {rmse_full:.4f})"
+    )
     print("whole-window readout  reconstruct(lag) vs u(t - lag*theta):")
     for lf in lags:
         rmse_l, nrmse_l, corr_l = per_lag[lf]
         print(f"    lag {lf:.2f} -> nrmse {nrmse_l:.4f}  corr {corr_l:.4f}  (rmse {rmse_l:.4f})")
-    print(f"order vs capacity  full-delay rmse : d=3 {err_low:.4f}  ->  d={order} {err_high:.4f}"
-          f"  ({err_low / err_high:.1f}x finer)")
+    print(
+        f"order vs capacity  full-delay rmse : d=3 {err_low:.4f}  ->  d={order} {err_high:.4f}"
+        f"  ({err_low / err_high:.1f}x finer)"
+    )
     print(f"determinism  two fresh instances identical trace : {deterministic}")
     print("=" * 72)
 
     # ---- self-check: deterministic asserts, ASCII-only ----
     assert corr_full > 0.99 and nrmse_full < 0.08, (
-        f"delay line: reconstruct(1.0) must track u(t-theta) (corr {corr_full:.4f}, nrmse {nrmse_full:.4f})")
+        f"delay line: reconstruct(1.0) must track u(t-theta) (corr {corr_full:.4f}, nrmse {nrmse_full:.4f})"
+    )
     worst_nrmse = max(per_lag[lf][1] for lf in lags)
     assert worst_nrmse < 0.10, (
-        f"whole-window: every lag must reconstruct u(t - lag*theta) well (worst nrmse {worst_nrmse:.4f})")
+        f"whole-window: every lag must reconstruct u(t - lag*theta) well (worst nrmse {worst_nrmse:.4f})"
+    )
     assert err_high < 0.5 * err_low, (
-        f"order must increase capacity: err(d={order})={err_high:.4f} not << err(d=3)={err_low:.4f}")
+        f"order must increase capacity: err(d={order})={err_high:.4f} not << err(d=3)={err_low:.4f}"
+    )
     assert deterministic, "same order/theta/dt/signal must give an identical state trace"
-    print(f"self-check OK: delay line reconstruct(1.0)->u(t-theta) corr {corr_full:.4f} (nrmse "
-          f"{nrmse_full:.4f}); whole window worst-lag nrmse {worst_nrmse:.4f}; order raises capacity "
-          f"(d=3 {err_low:.4f} -> d={order} {err_high:.4f}); deterministic")
+    print(
+        f"self-check OK: delay line reconstruct(1.0)->u(t-theta) corr {corr_full:.4f} (nrmse "
+        f"{nrmse_full:.4f}); whole window worst-lag nrmse {worst_nrmse:.4f}; order raises capacity "
+        f"(d=3 {err_low:.4f} -> d={order} {err_high:.4f}); deterministic"
+    )
 
 
 if __name__ == "__main__":

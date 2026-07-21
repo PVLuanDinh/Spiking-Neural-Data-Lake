@@ -44,6 +44,7 @@ set_points.py.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.medulla.interoceptive_arousal
 """
+
 import math
 
 from snn_data_lake.hypothalamus.set_points import SET_POINT_TEMP, Homeostat
@@ -64,20 +65,20 @@ class InteroceptiveArousal:
         self,
         seed=0,
         # thermal homeostat (hypothalamic temperature set-point)
-        thermo_gain=1.2,       # closed-loop proportional gain (0 == open loop, no effector)
-        thermo_leak=0.02,      # passive relaxation of temperature toward ambient
-        thermal_scale=1.0,     # C of per-step thermal disturbance per unit load
-        thermo_steps=40,       # small settle budget for the thermal loop (keep sense() cheap)
+        thermo_gain=1.2,  # closed-loop proportional gain (0 == open loop, no effector)
+        thermo_leak=0.02,  # passive relaxation of temperature toward ambient
+        thermal_scale=1.0,  # C of per-step thermal disturbance per unit load
+        thermo_steps=40,  # small settle budget for the thermal loop (keep sense() cheap)
         # medullary chemoreflex (CO2 set-point)
-        base_prod=0.05,        # baseline metabolic CO2 production (load 0 -> steady CO2 == set-point)
-        chemo_scale=0.02,      # extra CO2 production per unit load
-        chemo_steps=60,        # small settle budget for the chemoreflex (keep sense() cheap)
+        base_prod=0.05,  # baseline metabolic CO2 production (load 0 -> steady CO2 == set-point)
+        chemo_scale=0.02,  # extra CO2 production per unit load
+        chemo_steps=60,  # small settle budget for the chemoreflex (keep sense() cheap)
         # aggregation + ascending map
-        thermo_weight=1.0,     # weight of the thermal residual in the aggregate error
-        chemo_weight=1.0,      # weight of the CO2 residual in the aggregate error
-        stress_scale=5.0,      # aggregate error that maps to full stress (normalizer)
-        caution_k=2.5,         # saturation sharpness of the stress -> caution map
-        gain_cap=3.0,          # maximum LC-like arousal gain (gain is bounded to [1, gain_cap])
+        thermo_weight=1.0,  # weight of the thermal residual in the aggregate error
+        chemo_weight=1.0,  # weight of the CO2 residual in the aggregate error
+        stress_scale=5.0,  # aggregate error that maps to full stress (normalizer)
+        caution_k=2.5,  # saturation sharpness of the stress -> caution map
+        gain_cap=3.0,  # maximum LC-like arousal gain (gain is bounded to [1, gain_cap])
     ):
         self.seed = seed
         self.thermo_gain = thermo_gain
@@ -104,13 +105,18 @@ class InteroceptiveArousal:
         ambient == the set-point, so at load 0 the loop sits exactly on target (zero residual)."""
         gain = self.thermo_gain if feedback else 0.0
         homeostat = Homeostat(
-            gain=gain, leak=self.thermo_leak, ambient=SET_POINT_TEMP,
-            sensor_noise=noise, seed=self.seed,
+            gain=gain,
+            leak=self.thermo_leak,
+            ambient=SET_POINT_TEMP,
+            sensor_noise=noise,
+            seed=self.seed,
         )
         disturbance = self.thermal_scale * load
         trace = homeostat.run(
-            x0=SET_POINT_TEMP, set_point=SET_POINT_TEMP,
-            steps=self.thermo_steps, disturb=lambda _t: disturbance,
+            x0=SET_POINT_TEMP,
+            set_point=SET_POINT_TEMP,
+            steps=self.thermo_steps,
+            disturb=lambda _t: disturbance,
         )
         return abs(SET_POINT_TEMP - trace[-1])
 
@@ -122,8 +128,11 @@ class InteroceptiveArousal:
         core = MedullaVitalNuclei(seed=self.seed)
         production = self.base_prod + self.chemo_scale * load
         res = core.run_chemoreflex(
-            steps=self.chemo_steps, co2_production=production,
-            co2_init=core.co2_set_point, feedback=feedback, noise=noise,
+            steps=self.chemo_steps,
+            co2_production=production,
+            co2_init=core.co2_set_point,
+            feedback=feedback,
+            noise=noise,
         )
         return abs(core.steady_co2(res) - core.co2_set_point)
 
@@ -150,8 +159,8 @@ class InteroceptiveArousal:
         raw = self._raw_error(load, feedback, noise)
         excess = max(0.0, raw - base)
         stress = min(1.0, excess / self.stress_scale)
-        caution = 1.0 - math.exp(-self.caution_k * stress)   # saturating, 0 at stress 0, < 1
-        gain = 1.0 + (self.gain_cap - 1.0) * caution          # in [1, gain_cap]
+        caution = 1.0 - math.exp(-self.caution_k * stress)  # saturating, 0 at stress 0, < 1
+        gain = 1.0 + (self.gain_cap - 1.0) * caution  # in [1, gain_cap]
         return {"stress": stress, "caution": caution, "gain": gain, "load": load}
 
 
@@ -178,13 +187,19 @@ def main():
     print("INTEROCEPTIVE AROUSAL -- visceral homeostatic error -> caution / arousal gain")
     print("ascending NTS -> LC map; caution-only, commands no movement, no actuator")
     print("=" * width)
-    print(f"composed loops: chemoreflex (CO2 set-point {MedullaVitalNuclei().co2_set_point:.0f}) + "
-          f"thermal Homeostat (set-point {SET_POINT_TEMP:.0f} C)")
-    print(f"gain cap: {ia.gain_cap:.1f} | thermo settle steps: {ia.thermo_steps} | "
-          f"chemo settle steps: {ia.chemo_steps}")
+    print(
+        f"composed loops: chemoreflex (CO2 set-point {MedullaVitalNuclei().co2_set_point:.0f}) + "
+        f"thermal Homeostat (set-point {SET_POINT_TEMP:.0f} C)"
+    )
+    print(
+        f"gain cap: {ia.gain_cap:.1f} | thermo settle steps: {ia.thermo_steps} | "
+        f"chemo settle steps: {ia.chemo_steps}"
+    )
     print("-" * width)
-    print(f"(1) homeostasis (load 0.0): stress {rest['stress']:.3f}  caution {rest['caution']:.3f}  "
-          f"gain {rest['gain']:.3f}  (no spurious arousal)")
+    print(
+        f"(1) homeostasis (load 0.0): stress {rest['stress']:.3f}  caution {rest['caution']:.3f}  "
+        f"gain {rest['gain']:.3f}  (no spurious arousal)"
+    )
     print("-" * width)
     print("(2) graded response (rising metabolic/thermal load):")
     for x, s, c, g in zip(sweep, stresses, cautions, gains):
@@ -206,8 +221,9 @@ def main():
     assert all(b > a for a, b in zip(gains, gains[1:])), "gain must rise with load"
     # (3) FEEDBACK BOUNDS THE STRESS: closed-loop stress << open-loop stress at the same load.
     assert closed["stress"] < openl["stress"], "feedback must yield lower stress than open loop"
-    assert closed["stress"] < 0.5 * openl["stress"], \
+    assert closed["stress"] < 0.5 * openl["stress"], (
         "the bounded caution must come from the real closed-loop regulation, not a hardcoded curve"
+    )
     # (4) PURE MODULATOR, BOUNDED: every caution in [0, 1], every gain in [1, cap]; no motor command.
     allr = graded + [rest, closed, openl]
     assert all(0.0 <= r["caution"] <= 1.0 for r in allr), "caution must stay in [0, 1]"
@@ -222,11 +238,15 @@ def main():
     assert trace_a == trace_b, "same seed must reproduce an identical sense() trace"
     assert trace_a != trace_c, "a different seed must produce a different trace (the rng is seeded)"
 
-    print(f"self-check OK: homeostasis stress {rest['stress']:.3f}/caution {rest['caution']:.3f}/"
-          f"gain {rest['gain']:.3f}; stress {stresses[0]:.2f}->{stresses[-1]:.2f}, "
-          f"gain {gains[0]:.2f}->{gains[-1]:.2f} rise with load;")
-    print(f"  feedback bounds stress {closed['stress']:.2f} vs open-loop {openl['stress']:.2f}; "
-          f"caution in [0,1], gain in [1,{ia.gain_cap:.0f}]; deterministic")
+    print(
+        f"self-check OK: homeostasis stress {rest['stress']:.3f}/caution {rest['caution']:.3f}/"
+        f"gain {rest['gain']:.3f}; stress {stresses[0]:.2f}->{stresses[-1]:.2f}, "
+        f"gain {gains[0]:.2f}->{gains[-1]:.2f} rise with load;"
+    )
+    print(
+        f"  feedback bounds stress {closed['stress']:.2f} vs open-loop {openl['stress']:.2f}; "
+        f"caution in [0,1], gain in [1,{ia.gain_cap:.0f}]; deterministic"
+    )
 
 
 if __name__ == "__main__":

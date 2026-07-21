@@ -11,6 +11,7 @@ into dopamine + cortisol every tick. This is the schematic's full reaction loop 
 Run:
   python closed_loop.py        # scripted episode + self-check
 """
+
 from snn_data_lake import arm_bridge as AB
 from snn_data_lake import signal_loop as S
 from snn_data_lake.brainstem.interpreter import Interpreter
@@ -18,8 +19,15 @@ from snn_data_lake.brainstem.reflex import Reflex
 from snn_data_lake.substrate import home
 
 
-def run_episode(signals, lib=None, assume_success=True, base_threshold=0.10, trace=None,
-                bridge=None, valence_init=None):
+def run_episode(
+    signals,
+    lib=None,
+    assume_success=True,
+    base_threshold=0.10,
+    trace=None,
+    bridge=None,
+    valence_init=None,
+):
     """Drive raw signal lines through the whole stack with live reward feedback.
     Returns the live state objects so callers can inspect what was learned.
 
@@ -30,7 +38,7 @@ def run_episode(signals, lib=None, assume_success=True, base_threshold=0.10, tra
     matcher = S.build_matcher(lib)
     reflex = Reflex()
     valence = S.ValenceLearner()
-    if valence_init is not None:                              # resume a learned value function from disk
+    if valence_init is not None:  # resume a learned value function from disk
         valence.w = [float(x) for x in valence_init]
     cort = S.Cortisol(tau=30.0)
     itp = Interpreter(assume_success=assume_success)
@@ -45,36 +53,55 @@ def run_episode(signals, lib=None, assume_success=True, base_threshold=0.10, tra
         ract = reflex.step(p)
         if ract:
             cmd, reward = itp.interpret({"reflex": ract})
-            cort.step(1.0)                                   # danger = stressor (raises cortisol)
+            cort.step(1.0)  # danger = stressor (raises cortisol)
             # NOTE: we do NOT punish the previous gesture's value here — a collision is its
             # own danger signal, not necessarily caused by the last action. Causal credit
             # assignment ("did that command cause the danger?") is a separate open problem.
             if trace is not None:
-                trace.append({"signal": "DANGER", "command": cmd, "reward": reward,
-                              "stress": round(cort.level, 3)})
+                trace.append(
+                    {
+                        "signal": "DANGER",
+                        "command": cmd,
+                        "reward": reward,
+                        "stress": round(cort.level, 3),
+                    }
+                )
             continue
 
         # recognize -> valence overlay -> interpret -> command + reward
         window = S.normalize(S.resize_to_n(p))
         label, d, _, _ = matcher(window)
         v_action, v = valence.act(window, bias=cort.caution_bias())
-        cmd, reward = itp.interpret({"match": label, "instinct": v_action,
-                                     "valence": round(v, 3), "stress": round(cort.level, 3)})
+        cmd, reward = itp.interpret(
+            {
+                "match": label,
+                "instinct": v_action,
+                "valence": round(v, 3),
+                "stress": round(cort.level, 3),
+            }
+        )
         # feed the Interpreter's outcome straight back into dopamine + cortisol.
         # bridge set -> route the reward over the arm_bridge UDP back-channel first (the
         # split-process deployment: Interpreter and loop on different processes). Transparent.
         if reward is not None and bridge is not None:
             AB.send_outcome(reward, bridge.port, token=bridge.token)
-            reward = bridge.recv_outcome()               # UDP back-channel: may be None on loss/timeout
+            reward = bridge.recv_outcome()  # UDP back-channel: may be None on loss/timeout
         if reward is not None:
             valence.learn(window, reward, lr_scale=cort.learn_rate_scale(reward))
             cort.step(max(0.0, -reward))
         else:
-            cort.step(0.0)                               # no outcome (unmapped, or a dropped datagram) -> no learning
+            cort.step(0.0)  # no outcome (unmapped, or a dropped datagram) -> no learning
         if trace is not None:
-            trace.append({"match": label, "command": cmd, "instinct": v_action,
-                          "reward": reward, "value": round(valence.valence(window), 3),
-                          "stress": round(cort.level, 3)})
+            trace.append(
+                {
+                    "match": label,
+                    "command": cmd,
+                    "instinct": v_action,
+                    "reward": reward,
+                    "value": round(valence.valence(window), 3),
+                    "stress": round(cort.level, 3),
+                }
+            )
 
     return {"valence": valence, "cortisol": cort, "reflex": reflex, "lib": lib}
 
@@ -93,11 +120,13 @@ def main():
     # commands are NEVER persisted or replayed; only the learned value function is durable.)
     if "--persist" in sys.argv:
         print(home.banner("closed-loop", lake=False))
-        w0 = home.load_state("valence.json")                 # prior learned values (None on first run)
+        w0 = home.load_state("valence.json")  # prior learned values (None on first run)
         st = run_episode([good_line] * 30, lib=lib, valence_init=w0)
-        home.save_state("valence.json", st["valence"].w)     # durable: remembered next launch
-        print(f"[persist] {'resumed prior' if w0 else 'no prior'} valence, learned this run, saved -> "
-              f"value(GRIPPER_CLOSE)={st['valence'].valence(good_win):+.2f} (accumulates across launches)")
+        home.save_state("valence.json", st["valence"].w)  # durable: remembered next launch
+        print(
+            f"[persist] {'resumed prior' if w0 else 'no prior'} valence, learned this run, saved -> "
+            f"value(GRIPPER_CLOSE)={st['valence'].valence(good_win):+.2f} (accumulates across launches)"
+        )
         return
 
     # episode: repeat the GRIPPER_CLOSE gesture (executed, rewarded), then a collision
@@ -110,15 +139,20 @@ def main():
     print("CLOSED LOOP — signal -> match -> command -> reward -> learn")
     print("=" * 60)
     first, last, collision = trace[0], trace[29], trace[30]
-    print(f"first  : match={first['match']} cmd={first['command']} "
-          f"value={first['value']:+.2f}")
-    print(f"learned: match={last['match']} cmd={last['command']} "
-          f"value={last['value']:+.2f}  (dopamine raised it)")
-    print(f"danger : {collision['signal']} cmd={collision['command']} "
-          f"reward={collision['reward']} stress={collision['stress']:.2f}")
-    print(f"final  : value(GRIPPER_CLOSE)={val.valence(good_win):+.2f} "
-          f"({val.act(good_win)[0]})  stress={cort.level:.2f}  "
-          f"reflex_thresh_scale={cort.reflex_threshold_scale():.2f}")
+    print(f"first  : match={first['match']} cmd={first['command']} value={first['value']:+.2f}")
+    print(
+        f"learned: match={last['match']} cmd={last['command']} "
+        f"value={last['value']:+.2f}  (dopamine raised it)"
+    )
+    print(
+        f"danger : {collision['signal']} cmd={collision['command']} "
+        f"reward={collision['reward']} stress={collision['stress']:.2f}"
+    )
+    print(
+        f"final  : value(GRIPPER_CLOSE)={val.valence(good_win):+.2f} "
+        f"({val.act(good_win)[0]})  stress={cort.level:.2f}  "
+        f"reflex_thresh_scale={cort.reflex_threshold_scale():.2f}"
+    )
     print("=" * 60)
 
     # ---- self-checks --------------------------------------------------------
@@ -135,38 +169,46 @@ def main():
     br = AB.OutcomeBridge(timeout=1.0)
     bstate = run_episode([good_line] * 30, lib=lib, assume_success=True, bridge=br)
     br.close()
-    assert bstate["valence"].act(good_win)[0] == "APPROACH", \
+    assert bstate["valence"].act(good_win)[0] == "APPROACH", (
         "reward routed over the UDP back-channel did not close the loop"
-    print(f"bridged: OUTCOME routed over arm_bridge UDP -> "
-          f"value(GRIPPER_CLOSE)={bstate['valence'].valence(good_win):+.2f} (loop still closes)")
+    )
+    print(
+        f"bridged: OUTCOME routed over arm_bridge UDP -> "
+        f"value(GRIPPER_CLOSE)={bstate['valence'].valence(good_win):+.2f} (loop still closes)"
+    )
 
     # ---- DURABLE never-forget: the learned valence policy SURVIVES a restart ----
     # (isolated temp home so the deterministic self-check never touches the real ~/.snn_data_lake)
     import shutil
     import tempfile
+
     _prev, _tmp = os.environ.get("NORD_HOME"), tempfile.mkdtemp(prefix="snn_loop_home_")
     os.environ["NORD_HOME"] = _tmp
     try:
-        s1 = run_episode([good_line] * 30, lib=lib, assume_success=True)       # learn from scratch
-        home.save_state("valence.json", s1["valence"].w)                       # persist the learned policy
+        s1 = run_episode([good_line] * 30, lib=lib, assume_success=True)  # learn from scratch
+        home.save_state("valence.json", s1["valence"].w)  # persist the learned policy
         v_saved = s1["valence"].valence(good_win)
         w_reload = home.load_state("valence.json")
-        s2 = run_episode([], lib=lib, valence_init=w_reload)                   # FRESH loop, NO signals: pure reload
+        s2 = run_episode([], lib=lib, valence_init=w_reload)  # FRESH loop, NO signals: pure reload
         v_reload = s2["valence"].valence(good_win)
         assert w_reload is not None and s2["valence"].act(good_win)[0] == "APPROACH", (
-            "a reloaded loop must already value the learned gesture (durable policy)")
+            "a reloaded loop must already value the learned gesture (durable policy)"
+        )
         assert abs(v_reload - v_saved) < 1e-9, (
-            f"the learned valence was FORGOTTEN across a restart: reloaded {v_reload:+.4f} != saved {v_saved:+.4f}")
+            f"the learned valence was FORGOTTEN across a restart: reloaded {v_reload:+.4f} != saved {v_saved:+.4f}"
+        )
     finally:
         os.environ.pop("NORD_HOME", None)
         if _prev is not None:
             os.environ["NORD_HOME"] = _prev
         shutil.rmtree(_tmp, ignore_errors=True)
 
-    print("self-check OK: gesture -> command, reward raised its value to APPROACH, "
-          "collision -> EMERGENCY_STOP + stress -> sharpened reflex, UDP back-channel transparent (loop closed); "
-          "learned valence policy SURVIVES a restart (durable home, resumed by a fresh loop). "
-          "Launch with --persist to accumulate it across runs.")
+    print(
+        "self-check OK: gesture -> command, reward raised its value to APPROACH, "
+        "collision -> EMERGENCY_STOP + stress -> sharpened reflex, UDP back-channel transparent (loop closed); "
+        "learned valence policy SURVIVES a restart (durable home, resumed by a fresh loop). "
+        "Launch with --persist to accumulate it across runs."
+    )
 
 
 if __name__ == "__main__":

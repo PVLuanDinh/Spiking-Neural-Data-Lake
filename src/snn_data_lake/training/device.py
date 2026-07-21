@@ -16,7 +16,7 @@ tensor and module built afterwards lands on the GPU without threading ``.to(devi
 through every call site; for CPU it is a no-op (default is already CPU).
 
 torch is imported LAZILY inside the functions, so importing this module never
-requires torch (keeps it harmless in the zero-dep environment).
+requires torch (keeps it harmless when torch is absent).
 """
 import os
 

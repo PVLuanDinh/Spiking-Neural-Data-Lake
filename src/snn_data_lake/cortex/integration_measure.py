@@ -1,6 +1,6 @@
 """
 Perturbational Complexity Index (PCI) -- a TRACTABLE, HONESTLY-NAMED integration proxy over a small
-spiking network (pure stdlib, zero deps).
+spiking network.
 
 WHAT THIS MEASURES -- READ THIS FIRST (non-negotiable framing)
 =============================================================
@@ -51,20 +51,20 @@ a synchronous/saturated control (integrated-but-undifferentiated) that also scor
 while the independent-noise bank fires AT LEAST AS MUCH as the integrated network, so a skeptic cannot
 attribute the gap to activity level.
 
-SUBSTRATE. A small recurrent LIF subnet (n=12; reuses cortex.lif_neuron.LIFNeuron, the canonical zero-dep
+SUBSTRATE. A small recurrent LIF subnet (n=12; reuses cortex.lif_neuron.LIFNeuron, the canonical
 spiking primitive). The DYNAMICAL REGIME is set by the recurrent COUPLING and background NOISE; PCI peaks
 near the edge of chaos, the same slightly-subcritical band that plasticity.criticality_regulator holds a
 spiking pool in (branching ratio ~1, maximal stimulus separability). This module measures that band's
 perturbational signature; it does not regulate it.
 
-Zero-dep stdlib (no numpy/torch); per-instance random.Random(seed); zlib.crc32 for child seeds (never
+Per-instance random.Random(seed); zlib.crc32 for child seeds (never
 hash()); zlib for the gzip cross-check compressor; deterministic; ASCII-only output.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.integration_measure   # (run_selfchecks.py)
 """
+
 import math
 import random
-import sys
 import zlib
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
@@ -83,7 +83,7 @@ def lz76_complexity(s):
     """Lempel-Ziv 1976 complexity c(L): the number of distinct phrases in the exhaustive left-to-right
     LZ parse of the binary string `s` (Kaspar & Schuster 1987 form). This is the complexity term of
     Casali's PCI. A stereotyped/periodic string yields few phrases (low c); a structurally rich string
-    yields many. Pure stdlib, deterministic."""
+    yields many. Deterministic."""
     n = len(s)
     if n < 2:
         return 1
@@ -160,8 +160,17 @@ class PerturbationalComplexity:
     normalized-LZ complexity of that binarized footprint over a battery of perturbations. Deterministic
     given `seed`."""
 
-    def __init__(self, n=12, coupling=1.1, noise=0.45, weight_mode="balanced",
-                 density=0.5, tau_m=10.0, refractory=1, seed=0):
+    def __init__(
+        self,
+        n=12,
+        coupling=1.1,
+        noise=0.45,
+        weight_mode="balanced",
+        density=0.5,
+        tau_m=10.0,
+        refractory=1,
+        seed=0,
+    ):
         self.n = n
         self.coupling = coupling
         self.noise = noise
@@ -193,9 +202,13 @@ class PerturbationalComplexity:
         `noise_seed` so a perturbed and an unperturbed run share the EXACT same noise realization (their
         difference is then the pure causal footprint of the perturbation). Returns spikes[t] = [0/1]*n."""
         rng = random.Random(_child_seed(self.seed, f"noise:{noise_seed}"))
-        noise_arr = [[rng.gauss(0.0, 1.0) * self.noise for _ in range(self.n)] for _ in range(steps)]
-        neurons = [LIFNeuron(tau_m=self.tau_m, v_threshold=1.0, refractory=self.refractory)
-                   for _ in range(self.n)]
+        noise_arr = [
+            [rng.gauss(0.0, 1.0) * self.noise for _ in range(self.n)] for _ in range(steps)
+        ]
+        neurons = [
+            LIFNeuron(tau_m=self.tau_m, v_threshold=1.0, refractory=self.refractory)
+            for _ in range(self.n)
+        ]
         pset = set(perturb) if perturb else set()
         spikes = []
         prev = [0] * self.n
@@ -217,7 +230,9 @@ class PerturbationalComplexity:
             prev = sp
         return spikes
 
-    def causal_response(self, noise_seed, perturb, pulse_t=20, pulse_len=3, pulse_current=5.0, steps=80):
+    def causal_response(
+        self, noise_seed, perturb, pulse_t=20, pulse_len=3, pulse_current=5.0, steps=80
+    ):
         """The binarized CAUSAL footprint of one perturbation: response[t'][i] = 1 iff the perturbed run
         and the same-noise unperturbed run differ at unit i, time t, over the POST-stimulus window
         t in [pulse_t+pulse_len, steps). Spontaneous noise cancels in the difference; only what the
@@ -225,8 +240,9 @@ class PerturbationalComplexity:
         base = self._run(noise_seed, None, pulse_t, pulse_len, pulse_current, steps)
         pert = self._run(noise_seed, perturb, pulse_t, pulse_len, pulse_current, steps)
         w0 = pulse_t + pulse_len
-        return [[1 if pert[t][i] != base[t][i] else 0 for i in range(self.n)]
-                for t in range(w0, steps)]
+        return [
+            [1 if pert[t][i] != base[t][i] else 0 for i in range(self.n)] for t in range(w0, steps)
+        ]
 
     @staticmethod
     def _serialize(response):
@@ -240,11 +256,20 @@ class PerturbationalComplexity:
         where per_trial is a list of (pci, lz_complexity, n_ones, source_entropy, gzip_len)."""
         per = []
         for t in range(trials):
-            perturb = random.Random(_child_seed(self.seed, f"perturb:{t}")).sample(range(self.n), n_perturb)
+            perturb = random.Random(_child_seed(self.seed, f"perturb:{t}")).sample(
+                range(self.n), n_perturb
+            )
             resp = self.causal_response(t, perturb, pulse_t, pulse_len, pulse_current, steps)
             s = self._serialize(resp)
-            per.append((normalized_lz(s), lz76_complexity(s) if "1" in s else 0,
-                        s.count("1"), source_entropy(s), gzip_complexity(s)))
+            per.append(
+                (
+                    normalized_lz(s),
+                    lz76_complexity(s) if "1" in s else 0,
+                    s.count("1"),
+                    source_entropy(s),
+                    gzip_complexity(s),
+                )
+            )
         mean = sum(p[0] for p in per) / len(per)
         return mean, per
 
@@ -254,7 +279,9 @@ class PerturbationalComplexity:
         is robust to the compressor choice (LZ76 vs DEFLATE)."""
         total = 0.0
         for t in range(trials):
-            perturb = random.Random(_child_seed(self.seed, f"perturb:{t}")).sample(range(self.n), n_perturb)
+            perturb = random.Random(_child_seed(self.seed, f"perturb:{t}")).sample(
+                range(self.n), n_perturb
+            )
             resp = self.causal_response(t, perturb, pulse_t, pulse_len, pulse_current, steps)
             total += gzip_complexity(self._serialize(resp))
         return total / trials
@@ -327,27 +354,49 @@ def main():
     spread_indep = spread(indep)
 
     print("=" * 84)
-    print("PERTURBATIONAL COMPLEXITY INDEX (PCI) -- a tractable integration proxy over a spiking subnet")
+    print(
+        "PERTURBATIONAL COMPLEXITY INDEX (PCI) -- a tractable integration proxy over a spiking subnet"
+    )
     print("=" * 84)
-    print("perturb a small recurrent LIF subnet (n=12); compress the CAUSAL footprint (perturbed run")
-    print("minus same-noise baseline run) with Lempel-Ziv; PCI = c(L)*log2(L)/L. NOT consciousness, NOT")
+    print(
+        "perturb a small recurrent LIF subnet (n=12); compress the CAUSAL footprint (perturbed run"
+    )
+    print(
+        "minus same-noise baseline run) with Lempel-Ziv; PCI = c(L)*log2(L)/L. NOT consciousness, NOT"
+    )
     print("IIT Phi -- a substrate/dynamics property, reported as an integration proxy.")
     print("")
-    print("  regime          PCI       gzip(bytes)   firing-rate   causal-spread(units)   H-ceiling")
-    print(f"  integrated    {pci_integ:6.4f}     {gz_integ:7.2f}       {rate_integ:6.3f}          "
-          f"{spread_integ:5.1f} / {integ.n}            {h_integ:5.3f}")
-    print(f"  independent   {pci_indep:6.4f}     {gz_indep:7.2f}       {rate_indep:6.3f}          "
-          f"{spread_indep:5.1f} / {indep.n}            {h_indep:5.3f}")
-    print(f"  synchronous   {pci_sync:6.4f}     {'':7}       {rate_sync:6.3f}          (saturated burst)")
-    print(f"  silent        {pci_silent:6.4f}     {gz_silent:7.2f}       {rate_silent:6.3f}          "
-          f"(no dynamics)")
+    print(
+        "  regime          PCI       gzip(bytes)   firing-rate   causal-spread(units)   H-ceiling"
+    )
+    print(
+        f"  integrated    {pci_integ:6.4f}     {gz_integ:7.2f}       {rate_integ:6.3f}          "
+        f"{spread_integ:5.1f} / {integ.n}            {h_integ:5.3f}"
+    )
+    print(
+        f"  independent   {pci_indep:6.4f}     {gz_indep:7.2f}       {rate_indep:6.3f}          "
+        f"{spread_indep:5.1f} / {indep.n}            {h_indep:5.3f}"
+    )
+    print(
+        f"  synchronous   {pci_sync:6.4f}     {'':7}       {rate_sync:6.3f}          (saturated burst)"
+    )
+    print(
+        f"  silent        {pci_silent:6.4f}     {gz_silent:7.2f}       {rate_silent:6.3f}          "
+        f"(no dynamics)"
+    )
     print("")
-    print(f"  -> integrated PCI {pci_integ:.3f} is {pci_integ / max(pci_indep, 1e-9):.1f}x the independent-"
-          f"noise bank {pci_indep:.3f}")
-    print(f"  -> and the independent bank fires MORE ({rate_indep:.3f} >= {rate_integ:.3f}) yet scores far "
-          f"lower: the gap is INTEGRATION, not activity")
-    print(f"  -> the perturbation reached {spread_integ:.1f}/{integ.n} units when coupled vs "
-          f"{spread_indep:.1f}/{indep.n} uncoupled (causal spread)")
+    print(
+        f"  -> integrated PCI {pci_integ:.3f} is {pci_integ / max(pci_indep, 1e-9):.1f}x the independent-"
+        f"noise bank {pci_indep:.3f}"
+    )
+    print(
+        f"  -> and the independent bank fires MORE ({rate_indep:.3f} >= {rate_integ:.3f}) yet scores far "
+        f"lower: the gap is INTEGRATION, not activity"
+    )
+    print(
+        f"  -> the perturbation reached {spread_integ:.1f}/{integ.n} units when coupled vs "
+        f"{spread_indep:.1f}/{indep.n} uncoupled (causal spread)"
+    )
 
     # determinism: a fresh identical build reproduces the PCI exactly.
     pci_integ2, _ = integrated_network(seed=0).pci(trials=trials)
@@ -356,40 +405,55 @@ def main():
     # ============================ genuine self-checks (not rigged) ==============================
     # (1) THE NOISE TRAP: an integrated network scores strictly, substantially higher than a bank of
     #     independent noisy units -- which has MAXIMAL differentiation but ZERO integration.
-    assert pci_integ > 0.25, f"an integrated near-critical net must reach a high PCI (got {pci_integ:.3f})"
-    assert pci_indep < 0.15, f"independent noise must score LOW PCI (max differentiation, no integration): {pci_indep:.3f}"
-    assert pci_integ > 3.0 * pci_indep, \
+    assert pci_integ > 0.25, (
+        f"an integrated near-critical net must reach a high PCI (got {pci_integ:.3f})"
+    )
+    assert pci_indep < 0.15, (
+        f"independent noise must score LOW PCI (max differentiation, no integration): {pci_indep:.3f}"
+    )
+    assert pci_integ > 3.0 * pci_indep, (
         f"PCI(integrated) must dwarf PCI(independent-noise): {pci_integ:.3f} vs {pci_indep:.3f}"
+    )
     # (2) the gap is INTEGRATION, not activity: the independent bank fires at least as much, yet loses.
-    assert rate_indep >= rate_integ, \
+    assert rate_indep >= rate_integ, (
         f"the independent-noise control must be AT LEAST as active (rate {rate_indep:.3f} vs {rate_integ:.3f})"
-    assert pci_indep > pci_silent, \
+    )
+    assert pci_indep > pci_silent, (
         f"independent noise must still be genuinely ACTIVE (PCI {pci_indep:.3f} > silent {pci_silent:.3f})"
+    )
     # (3) SILENT ~ 0: a frozen network evokes no causal response.
     assert pci_silent < 1e-9, f"a silent/frozen network must score ~0 PCI (got {pci_silent:.3g})"
     assert rate_silent == 0.0, f"the silent network must not spike (rate {rate_silent:.3f})"
     # (4) DIFFERENTIATION is required too: a synchronous/saturated (integrated-but-stereotyped) network
     #     scores ~0 despite firing hard -- PCI rewards differentiation AND integration TOGETHER.
-    assert pci_sync < 0.05, f"a synchronous saturated net must score ~0 PCI (undifferentiated): {pci_sync:.3f}"
-    assert rate_sync > 0.2, f"the synchronous control must actually be saturated/active (rate {rate_sync:.3f})"
-    assert pci_integ > 3.0 * pci_sync, \
+    assert pci_sync < 0.05, (
+        f"a synchronous saturated net must score ~0 PCI (undifferentiated): {pci_sync:.3f}"
+    )
+    assert rate_sync > 0.2, (
+        f"the synchronous control must actually be saturated/active (rate {rate_sync:.3f})"
+    )
+    assert pci_integ > 3.0 * pci_sync, (
         f"PCI(integrated) must dwarf PCI(synchronous): {pci_integ:.3f} vs {pci_sync:.3f}"
+    )
     # (5) causal spread confirms the mechanism: the perturbation reaches many units when coupled, few when not.
-    assert spread_integ > 2.0 * spread_indep, \
+    assert spread_integ > 2.0 * spread_indep, (
         f"the perturbation must spread further when coupled ({spread_integ:.1f} vs {spread_indep:.1f} units)"
+    )
     # (6) the gzip cross-check reproduces the SAME ordering -> robust to the compressor choice.
-    assert gz_integ > gz_indep > gz_silent, \
+    assert gz_integ > gz_indep > gz_silent, (
         f"gzip cross-check must give the same ordering (integ {gz_integ:.1f} > indep {gz_indep:.1f} > silent {gz_silent:.1f})"
-    # (7) spiking + determinism + zero-dep.
+    )
+    # (7) spiking + determinism.
     assert deterministic, "same seed must reproduce an identical PCI"
-    assert "numpy" not in sys.modules and "torch" not in sys.modules, "must be pure stdlib (no numpy/torch)"
 
     print("")
-    print(f"self-check OK: PCI integrated {pci_integ:.3f} > independent-noise {pci_indep:.3f} "
-          f"({pci_integ / max(pci_indep, 1e-9):.1f}x) > silent {pci_silent:.3f}; synchronous(saturated) "
-          f"{pci_sync:.3f} ~0 (differentiation required); independent fires MORE ({rate_indep:.3f}>="
-          f"{rate_integ:.3f}) so the gap is INTEGRATION; causal spread {spread_integ:.1f}vs{spread_indep:.1f}"
-          f"/{integ.n} units; gzip cross-check agrees; deterministic; zero-dep. NOT consciousness, NOT IIT Phi.")
+    print(
+        f"self-check OK: PCI integrated {pci_integ:.3f} > independent-noise {pci_indep:.3f} "
+        f"({pci_integ / max(pci_indep, 1e-9):.1f}x) > silent {pci_silent:.3f}; synchronous(saturated) "
+        f"{pci_sync:.3f} ~0 (differentiation required); independent fires MORE ({rate_indep:.3f}>="
+        f"{rate_integ:.3f}) so the gap is INTEGRATION; causal spread {spread_integ:.1f}vs{spread_indep:.1f}"
+        f"/{integ.n} units; gzip cross-check agrees; deterministic. NOT consciousness, NOT IIT Phi."
+    )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 r"""
-Content signature -- the domain-agnostic 64-dim bag-of-tokens key, PURE STDLIB.
+Content signature -- the domain-agnostic 64-dim bag-of-tokens key.
 
 Extracted from skill_builder so the two-world reasoning bridge (spike_chat_lake) can import it WITHOUT
 pulling skill_builder's numpy chain (language_readout_slda etc.). crc32 (persistence-stable, never the
@@ -28,7 +28,7 @@ def _self_check():
     a, b = signature(["dog", "cat"]), signature(["dog", "cat"])
     assert a == b and len(a) == SIG and max(a) == 1.0, "signature must be deterministic, width SIG, [0,1]"
     assert signature(["x"]) != signature(["y"]), "different tokens must land in (generally) different bins"
-    print("content_signature self-check OK: deterministic crc32 bag-of-tokens, pure stdlib.")
+    print("content_signature self-check OK: deterministic crc32 bag-of-tokens.")
     return 0
 
 

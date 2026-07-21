@@ -58,12 +58,13 @@ modules from here):
     spent where commands still have leverage instead of on a dead channel: the direct
     antidote to learned helplessness.
 
-Pure standard library (math, random, zlib). Determinism: per-instance random.Random(seed)
+Determinism: per-instance random.Random(seed)
 used ONLY for tie-breaks; zlib.crc32 for channel keys (never builtin hash()); ASCII-only
 prints; plain-float EMAs updated in a fixed order so two seed=0 runs are byte-identical.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.agency_monitor
 """
+
 import math
 import random
 import zlib
@@ -91,33 +92,55 @@ class AgencyMonitor:
     never revives it). agency() fuses channels into a mean agency_signal plus a route-around
     hint. Deterministic; per-instance random.Random(seed) breaks ties only."""
 
-    def __init__(self, alpha=0.02, dead_thresh=0.35, high_thresh=0.55,
-                 delay=48, recover_n=32, warmup=120, var_floor=1e-4,
-                 eps=1e-9, seed=0):
-        self.alpha = float(alpha)              # EMA rate (~1/alpha tick memory)
+    def __init__(
+        self,
+        alpha=0.02,
+        dead_thresh=0.35,
+        high_thresh=0.55,
+        delay=48,
+        recover_n=32,
+        warmup=120,
+        var_floor=1e-4,
+        eps=1e-9,
+        seed=0,
+    ):
+        self.alpha = float(alpha)  # EMA rate (~1/alpha tick memory)
         self.dead_thresh = float(dead_thresh)  # controllability below this = a "low" reading
-        self.high_thresh = float(high_thresh)  # controllability at/above this = a "high" reading (> dead_thresh: dead-band)
-        self.delay = int(delay)                # consecutive low readings before declaring 'lost'
-        self.recover_n = int(recover_n)        # consecutive high readings before reviving 'lost' -> 'ok'
-        self.warmup = int(warmup)              # per-channel observations before any scoring (EMA settle)
-        self.var_floor = float(var_floor)      # command variance below this -> channel not exercised -> unscored
-        self.eps = float(eps)                  # denominator guard for the Pearson ratio
-        self.rng = random.Random(seed)         # per-instance RNG (tie-breaks only)
-        self._ch = {}                          # crc32(channel) -> per-channel state dict
+        self.high_thresh = float(
+            high_thresh
+        )  # controllability at/above this = a "high" reading (> dead_thresh: dead-band)
+        self.delay = int(delay)  # consecutive low readings before declaring 'lost'
+        self.recover_n = int(recover_n)  # consecutive high readings before reviving 'lost' -> 'ok'
+        self.warmup = int(warmup)  # per-channel observations before any scoring (EMA settle)
+        self.var_floor = float(
+            var_floor
+        )  # command variance below this -> channel not exercised -> unscored
+        self.eps = float(eps)  # denominator guard for the Pearson ratio
+        self.rng = random.Random(seed)  # per-instance RNG (tie-breaks only)
+        self._ch = {}  # crc32(channel) -> per-channel state dict
 
     # ---- channel bookkeeping -------------------------------------------------
     def _key(self, channel):
         """Deterministic channel key via zlib.crc32 (never builtin hash())."""
-        return zlib.crc32(str(channel).encode("ascii")) & 0xffffffff
+        return zlib.crc32(str(channel).encode("ascii")) & 0xFFFFFFFF
 
     def _slot(self, channel):
         """Fetch (or lazily create) a channel's state dict."""
         k = self._key(channel)
         s = self._ch.get(k)
         if s is None:
-            s = {"label": str(channel), "n": 0,
-                 "ec": 0.0, "ef": 0.0, "ecf": 0.0, "ecc": 0.0, "eff": 0.0,
-                 "below": 0, "high": 0, "status": "ok"}
+            s = {
+                "label": str(channel),
+                "n": 0,
+                "ec": 0.0,
+                "ef": 0.0,
+                "ecf": 0.0,
+                "ecc": 0.0,
+                "eff": 0.0,
+                "below": 0,
+                "high": 0,
+                "status": "ok",
+            }
             self._ch[k] = s
         return s
 
@@ -179,30 +202,35 @@ class AgencyMonitor:
         if s is None:
             return {"status": "warmup", "ctrl": 0.0, "below": 0, "high": 0, "n": 0}
         ctrl, _ = self._ctrl_var(s)
-        return {"status": self.status(channel), "ctrl": ctrl,
-                "below": s["below"], "high": s["high"], "n": s["n"]}
+        return {
+            "status": self.status(channel),
+            "ctrl": ctrl,
+            "below": s["below"],
+            "high": s["high"],
+            "n": s["n"],
+        }
 
     # ---- the sustained-loss state machine (window + hysteresis) --------------
     def _advance(self, s):
         """Advance one channel's status from its current controllability reading."""
         if s["n"] < self.warmup:
-            return                                     # still settling the EMAs
+            return  # still settling the EMAs
         ctrl, var_c = self._ctrl_var(s)
         if var_c < self.var_floor:
-            return                                     # command not exercised -> cannot assess -> hold
+            return  # command not exercised -> cannot assess -> hold
         if ctrl < self.dead_thresh:
             s["below"] += 1
             s["high"] = 0
             if s["status"] == "ok" and s["below"] > self.delay:
-                s["status"] = "lost"                   # sustained loss of self-causation
+                s["status"] = "lost"  # sustained loss of self-causation
         else:
             s["below"] = 0
             if ctrl >= self.high_thresh:
                 s["high"] += 1
                 if s["status"] == "lost" and s["high"] >= self.recover_n:
-                    s["status"] = "ok"                 # revived only after recover_n consecutive highs
+                    s["status"] = "ok"  # revived only after recover_n consecutive highs
             else:
-                s["high"] = 0                          # dead-band reading: breaks both streaks
+                s["high"] = 0  # dead-band reading: breaks both streaks
 
     # ---- fuse channels into one agency signal + route-around hint ------------
     def agency(self):
@@ -224,11 +252,13 @@ class AgencyMonitor:
         signal = sum(ctrls.values()) / len(ctrls) if ctrls else 0.0
         route = {lbl: (0.0 if lbl in lost else ctrls[lbl]) for lbl in ctrls}
         reroute_to = self._pick_target(ctrls, lost)
-        return {"agency_signal": round(signal, 6),
-                "lost": sorted(lost),
-                "route_around": route,
-                "reroute_to": reroute_to,
-                "n_scored": len(ctrls)}
+        return {
+            "agency_signal": round(signal, 6),
+            "lost": sorted(lost),
+            "route_around": route,
+            "reroute_to": reroute_to,
+            "n_scored": len(ctrls),
+        }
 
     def _pick_target(self, ctrls, lost):
         """Most controllable non-lost channel; ties broken by the per-instance RNG."""
@@ -273,7 +303,7 @@ def _experiment(seed):
     for _ in range(l_decouple):
         ca, cb = cmd(), cmd()
         mon.observe("reach", ca, heal_fb(ca))
-        mon.observe("grasp", cb, rng.uniform(-1.0, 1.0))   # feedback no longer caused by command
+        mon.observe("grasp", cb, rng.uniform(-1.0, 1.0))  # feedback no longer caused by command
         if mon.status("reach") != "ok":
             reach_ok_through_decouple = False
     lost = mon.agency()
@@ -282,9 +312,9 @@ def _experiment(seed):
     status_reach_lost = mon.status("reach")
 
     # ---- phase 3: 'grasp' RECOVERS -- feedback tracks command again ----
-    first_high_while_lost_status = None   # status at the FIRST high reading while still 'lost'
+    first_high_while_lost_status = None  # status at the FIRST high reading while still 'lost'
     saw_high_while_lost = False
-    high_at_flip = None                   # value of the consecutive-high counter when it flips to 'ok'
+    high_at_flip = None  # value of the consecutive-high counter when it flips to 'ok'
     recovered = False
     for _ in range(l_recover):
         ca, cb = cmd(), cmd()
@@ -295,7 +325,7 @@ def _experiment(seed):
         if prev == "lost" and snap["ctrl"] >= mon.high_thresh:
             saw_high_while_lost = True
             if first_high_while_lost_status is None:
-                first_high_while_lost_status = prev    # 'lost' -- a single good tick must NOT flip it
+                first_high_while_lost_status = prev  # 'lost' -- a single good tick must NOT flip it
         if prev == "lost" and snap["status"] == "ok" and not recovered:
             recovered = True
             high_at_flip = snap["high"]
@@ -339,67 +369,107 @@ def main():
     _p(lines, "AGENCY MONITOR -- per-channel controllability / learned-helplessness substrate")
     _p(lines, "=" * 78)
     _p(lines, "controllability(c) = |Pearson(command, feedback)| over an EMA window (alpha=0.02);")
-    _p(lines, "sustained collapse -> 'lost' (delay window); revive only after recover_n consec highs")
+    _p(
+        lines,
+        "sustained collapse -> 'lost' (delay window); revive only after recover_n consec highs",
+    )
     _p(lines, "-" * 78)
     _p(lines, "phases: [1] both healthy  [2] 'grasp' decouples (fb->noise)  [3] 'grasp' recovers")
     _p(lines, "-" * 78)
     _p(lines, "                         reach            grasp")
-    _p(lines, f"  [1] healthy   ctrl :   {r['ctrl_reach_heal']:.3f}            {r['ctrl_grasp_heal']:.3f}")
-    _p(lines, f"      status         :   {r['status_reach_heal']:<6}           {r['status_grasp_heal']}")
+    _p(
+        lines,
+        f"  [1] healthy   ctrl :   {r['ctrl_reach_heal']:.3f}            {r['ctrl_grasp_heal']:.3f}",
+    )
+    _p(
+        lines,
+        f"      status         :   {r['status_reach_heal']:<6}           {r['status_grasp_heal']}",
+    )
     _p(lines, f"  [2] decoupled ctrl :   (stays ok)       {r['ctrl_grasp_lost']:.3f}")
-    _p(lines, f"      status         :   {r['status_reach_lost']:<6}           {r['status_grasp_lost']}")
+    _p(
+        lines,
+        f"      status         :   {r['status_reach_lost']:<6}           {r['status_grasp_lost']}",
+    )
     _p(lines, f"  [3] recovered stat :                    {r['status_grasp_recovered']}")
     _p(lines, "-" * 78)
-    _p(lines, f"(a) controllable    : reach ctrl {r['ctrl_reach_heal']:.3f} high, status '{r['status_reach_heal']}', "
-              f"agency_signal {r['heal_signal']:.3f} high, lost set {r['heal_lost_set']}")
-    _p(lines, f"(b) helplessness    : grasp ctrl collapsed to {r['ctrl_grasp_lost']:.3f} -> status "
-              f"'{r['status_grasp_lost']}'; agency dropped {r['heal_signal']:.3f}->{r['lost_signal']:.3f}; "
-              f"reroute_to '{r['lost_reroute_to']}'")
-    _p(lines, f"(c) hysteresis      : a high reading while lost did NOT flip it "
-              f"(first_high status='{r['first_high_while_lost_status']}'); needed {r['high_at_flip']} "
-              f"consec highs (>= recover_n {r['recover_n']}) to revive")
+    _p(
+        lines,
+        f"(a) controllable    : reach ctrl {r['ctrl_reach_heal']:.3f} high, status '{r['status_reach_heal']}', "
+        f"agency_signal {r['heal_signal']:.3f} high, lost set {r['heal_lost_set']}",
+    )
+    _p(
+        lines,
+        f"(b) helplessness    : grasp ctrl collapsed to {r['ctrl_grasp_lost']:.3f} -> status "
+        f"'{r['status_grasp_lost']}'; agency dropped {r['heal_signal']:.3f}->{r['lost_signal']:.3f}; "
+        f"reroute_to '{r['lost_reroute_to']}'",
+    )
+    _p(
+        lines,
+        f"(c) hysteresis      : a high reading while lost did NOT flip it "
+        f"(first_high status='{r['first_high_while_lost_status']}'); needed {r['high_at_flip']} "
+        f"consec highs (>= recover_n {r['recover_n']}) to revive",
+    )
     _p(lines, f"(d) determinism     : two seed=0 runs identical={_experiment(0) == r}")
     _p(lines, "=" * 78)
     for line in lines:
         print(line)
 
     # ---- (a) A CONTROLLABLE channel reads high, stays 'ok', lifts agency ----
-    assert r["ctrl_reach_heal"] >= 0.9, \
+    assert r["ctrl_reach_heal"] >= 0.9, (
         f"a channel whose feedback tracks command must read high controllability ({r['ctrl_reach_heal']:.3f})"
+    )
     assert r["ctrl_grasp_heal"] >= 0.9, "grasp starts controllable too"
-    assert r["status_reach_heal"] == "ok" and r["status_grasp_heal"] == "ok", "healthy channels must be 'ok'"
-    assert r["heal_signal"] >= 0.9, f"all-controllable agency_signal must be high ({r['heal_signal']:.3f})"
+    assert r["status_reach_heal"] == "ok" and r["status_grasp_heal"] == "ok", (
+        "healthy channels must be 'ok'"
+    )
+    assert r["heal_signal"] >= 0.9, (
+        f"all-controllable agency_signal must be high ({r['heal_signal']:.3f})"
+    )
     assert r["heal_lost_set"] == [], "no channel lost while both are controllable"
 
     # ---- (b) a DECOUPLED channel -> sustained 'lost' + agency drops ----
-    assert r["ctrl_grasp_lost"] < 0.35, \
+    assert r["ctrl_grasp_lost"] < 0.35, (
         f"decoupled feedback must collapse controllability ({r['ctrl_grasp_lost']:.3f})"
-    assert r["status_grasp_lost"] == "lost", "sustained decoupling past the delay window must flip status to 'lost'"
-    assert r["status_reach_lost"] == "ok" and r["reach_ok_through_decouple"], \
+    )
+    assert r["status_grasp_lost"] == "lost", (
+        "sustained decoupling past the delay window must flip status to 'lost'"
+    )
+    assert r["status_reach_lost"] == "ok" and r["reach_ok_through_decouple"], (
         "the still-controllable channel must stay 'ok' throughout -- loss is PER CHANNEL"
-    assert r["lost_signal"] < r["heal_signal"] - 0.3, \
+    )
+    assert r["lost_signal"] < r["heal_signal"] - 0.3, (
         f"agency_signal must drop when a channel is lost ({r['heal_signal']:.3f}->{r['lost_signal']:.3f})"
-    assert r["lost_lost_set"] == ["grasp"] and r["lost_route_grasp_w"] == 0.0, \
+    )
+    assert r["lost_lost_set"] == ["grasp"] and r["lost_route_grasp_w"] == 0.0, (
         "the route-around hint must name grasp as lost and down-weight it to 0.0"
+    )
     assert r["lost_reroute_to"] == "reach", "reroute_to must point at the controllable channel"
 
     # ---- (c) HYSTERESIS: one good tick does NOT revive; needs recover_n consecutive ----
-    assert r["saw_high_while_lost"], "recovery must produce high readings while the channel is still 'lost'"
-    assert r["first_high_while_lost_status"] == "lost", \
+    assert r["saw_high_while_lost"], (
+        "recovery must produce high readings while the channel is still 'lost'"
+    )
+    assert r["first_high_while_lost_status"] == "lost", (
         "a single good (high) tick must NOT flip 'lost' -> 'ok'"
+    )
     assert r["recovered"] and r["high_at_flip"] is not None, "the channel must eventually recover"
-    assert r["high_at_flip"] >= r["recover_n"], \
+    assert r["high_at_flip"] >= r["recover_n"], (
         f"revival required {r['high_at_flip']} consecutive highs (>= recover_n {r['recover_n']}) -- hysteresis"
+    )
     assert r["status_grasp_recovered"] == "ok", "grasp must be 'ok' again after sustained recovery"
 
     # ---- (d) DETERMINISM ----
     assert _experiment(0) == r, "two seed=0 runs must be byte-for-byte identical"
 
-    print(f"self-check OK: controllable channel reads {r['ctrl_reach_heal']:.2f} (status ok); a decoupled "
-          f"channel collapses to {r['ctrl_grasp_lost']:.2f} -> 'lost' after the delay window,")
-    print(f"  dropping agency_signal {r['heal_signal']:.2f}->{r['lost_signal']:.2f} and rerouting to "
-          f"'{r['lost_reroute_to']}'; revival needed {r['high_at_flip']} consecutive highs "
-          f"(recover_n={r['recover_n']}) -- one good tick never flips it; deterministic")
+    print(
+        f"self-check OK: controllable channel reads {r['ctrl_reach_heal']:.2f} (status ok); a decoupled "
+        f"channel collapses to {r['ctrl_grasp_lost']:.2f} -> 'lost' after the delay window,"
+    )
+    print(
+        f"  dropping agency_signal {r['heal_signal']:.2f}->{r['lost_signal']:.2f} and rerouting to "
+        f"'{r['lost_reroute_to']}'; revival needed {r['high_at_flip']} consecutive highs "
+        f"(recover_n={r['recover_n']}) -- one good tick never flips it; deterministic"
+    )
 
 
 if __name__ == "__main__":
