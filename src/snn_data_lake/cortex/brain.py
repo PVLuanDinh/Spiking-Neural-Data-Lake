@@ -518,7 +518,7 @@ class Brain:
         self._place_here = (
             None  # the landmark/percept the grid-place map binds to the current position
         )
-        self._place_value = {}  # C2 #1: R-STDP learned value per place -> drives approach on re-entry
+        self._place_value = {}  # C2 #1: R-STDP learned value per (place, action) -> action-specific approach on re-entry
         self._learned_latency = 0  # C2 #3: learned reward latency -> opens a timed Go window
         # C2 BRAIN-NATIVE: the approach drive's per-source weights are LEARNED (three-factor,
         # dopamine-gated, baseline-subtracted -- see _route_percept_to_action), not hand-set. They
@@ -1068,7 +1068,7 @@ class Brain:
             except Exception:
                 pass
 
-    def _route_percept_to_action(self):
+    def _route_percept_to_action(self, action=None):
         """W5: route the tick's COMPUTED signals into the arm's action selection for the NEXT tick, as a BOUNDED
         representation-only top-down drive (NEVER bypasses the reflex/E-STOP or the actuator gate). A novel real
         percept (real_novelty) or an ignited global workspace RAISES the drive of the non-HOLD actions -- so real
@@ -1098,14 +1098,30 @@ class Brain:
                 "timing": 0.0,
                 "reroute": 0.0,
             }
-            # R-STDP place-VALUE: eligibility = the place occupied, dopamine = RPE. A place that PAID
-            # OFF gains value, so RE-ENTERING it raises approach. Bounded + local, no gradient.
+            # R-STDP place->ACTION value: eligibility = the (place, action just taken), dopamine =
+            # RPE. Keyed on the ACTION, not the place alone, because a place-SCALAR broadcast equally
+            # to both non-HOLD actions can raise "approach" but never say WHICH approach -- measured,
+            # it flipped the arm's choice on 0/200 ticks, so the whole spatial signal was
+            # behaviourally inert. Keyed per action, a place where ENGAGE paid off biases ENGAGE
+            # specifically on re-entry, so the spatial code can finally discriminate ENGAGE vs
+            # RELEASE. Bounded + local, no gradient.
             place = self._place_here
-            if place is not None:
-                v = self._place_value.get(place, 0.0)
+            if place is not None and action is not None and action != SAFE_ACTION:
+                key = (place, action)
+                v = self._place_value.get(key, 0.0)
                 v = max(-1.0, min(1.0, v + self._place_lr * da * (1.0 - abs(v))))
-                self._place_value[place] = round(v, 4)
-                elig["place"] = max(0.0, v)
+                self._place_value[key] = round(v, 4)
+            # the place SOURCE eligibility (for the drive-weight competition) = the strongest action
+            # value this place has learned -> how much this place drives approach AT ALL
+            if place is not None:
+                elig["place"] = max(
+                    [0.0]
+                    + [
+                        max(0.0, self._place_value.get((place, a), 0.0))
+                        for a in ACTIONS
+                        if a != SAFE_ACTION
+                    ]
+                )
             # TIMED Go window: a rewarded outcome teaches the spiking clock WHEN reward arrives, and
             # proximity to that learned latency opens the window. Reward ONSET is detected relative to
             # the running |RPE| baseline (adaptation), not against a fixed cutoff.
@@ -1130,7 +1146,6 @@ class Brain:
                     elig["reroute"] = min(1.0, self._reroute_bias)
                 except Exception:
                     pass
-            engage = sum(self._drive_w[k] * elig[k] for k in elig)
             # three-factor competitive update: dw = lr * dopamine * (eligibility - mean eligibility)
             mean_e = sum(elig.values()) / len(elig)
             for k, e in elig.items():
@@ -1142,9 +1157,30 @@ class Brain:
             self._nov_base = (1.0 - self._base_tau) * self._nov_base + self._base_tau * elig[
                 "novelty"
             ]
-            self.brain.arm._ext_drive = (
-                [0.0 if a == SAFE_ACTION else engage for a in ACTIONS] if engage > 0.0 else None
+            # OUTPUT: a PER-ACTION drive vector. The undirected salience sources (novelty, ignition,
+            # timing, reroute -- these say "act", not which act) add to both non-HOLD actions
+            # equally; the PLACE source is action-specific, so ENGAGE and RELEASE receive DIFFERENT
+            # drive and a learned place can actually tip the choice between them. SAFE_ACTION (HOLD)
+            # gets none. The reflex/E-STOP still preempts and the gated arm is untouched.
+            undirected = (
+                self._drive_w["novelty"] * elig["novelty"]
+                + self._drive_w["ignition"] * elig["ignition"]
+                + self._drive_w["timing"] * elig["timing"]
+                + self._drive_w["reroute"] * elig["reroute"]
             )
+
+            def _drive_for(a):
+                if a == SAFE_ACTION:
+                    return 0.0
+                place_a = (
+                    self._drive_w["place"] * max(0.0, self._place_value.get((place, a), 0.0))
+                    if place is not None
+                    else 0.0
+                )
+                return undirected + place_a
+
+            ext = [_drive_for(a) for a in ACTIONS]
+            self.brain.arm._ext_drive = ext if any(x > 0.0 for x in ext) else None
         except Exception:
             pass
 
@@ -1315,7 +1351,9 @@ class Brain:
         self._update_access()  # bundle grown neurons -> workspace ignition
         if self._access_state.get("ignited"):
             self._regions_live.add("cortex_access_consciousness")
-        self._route_percept_to_action()  # W5: route computed signals -> the NEXT tick's action selection
+        self._route_percept_to_action(
+            res.get("action")
+        )  # W5: route computed signals -> the NEXT tick's action selection
         self._w8_tick(res)  # W8: drives + de-saturated re-entrant workspace + episodic encode
         self._c1_tick(
             res, ctx
@@ -1644,8 +1682,20 @@ class Brain:
         k = min(2 + n_total // self._percepts + int(round(2 * sustained)), 8)
         try:
             ac = AccessConsciousness(seed=self._seed)
-            ac.bind_assembly([f"p{p}#{i}" for i in range(k)])  # co-active percept = coherent
-            ac.step()  # ignition + all-or-none broadcast
+            # ACCESS CAN FAIL: the co-active assembly is coherent by construction, so with the
+            # default coherence-driven salience it ignited by FIAT on every tick -- global
+            # availability was pinned at 1.0 and carried no information. Pass an EXPLICIT salience
+            # gated by REAL percept strength instead: a confident real percept or a novel one clears
+            # the ignition rheobase, but a fully habituated, non-perceived synthetic tick can fall
+            # below it and LAPSE -- the repetition-suppression / inattentional access failure the
+            # workspace is supposed to model. This un-pins availability from a constant 1.0 using a
+            # real signal (novelty + perception presence), not a fabricated dropout. Functional
+            # access only; no phenomenal claim.
+            nov = float(self._real_novelty or 0.0)
+            real = 1.0 if (self._perceiving_real and self._perceived_digit is not None) else 0.0
+            strength = max(0.0, min(1.0, 0.40 + 0.30 * real + 0.35 * nov))
+            ac.bind_assembly([f"p{p}#{i}" for i in range(k)], salience=strength)
+            ac.step()  # ignition + all-or-none broadcast (may FAIL when strength is low)
             self._access_state = ac.state()
             idx = self._access_state.get("access_index", 0.0)
             # SUSTAINED ACCESS: ignited content is HELD across ticks (decaying), not rebuilt from scratch each tick;
@@ -1983,11 +2033,19 @@ class Brain:
             ),  # W6: vision+audio bound into a super-additive object this tick
             "place_here": self._place_here,  # W6: the percept the grid+place map binds to the current allocentric position
             "place_value": (
-                self._place_value.get(self._place_here, 0.0)
+                max(
+                    [0.0]
+                    + [
+                        self._place_value.get((self._place_here, a), 0.0)
+                        for a in ("ENGAGE", "RELEASE")
+                    ]
+                )
                 if self._place_here is not None
                 else 0.0
-            ),  # C2 #1: R-STDP learned value of the CURRENT place (drives approach on re-entry)
-            "places_valued": len(self._place_value),  # C2 #1: how many places carry a learned value
+            ),  # C2 #1: best learned action-value of the CURRENT place (drives approach on re-entry)
+            "places_valued": len(
+                self._place_value
+            ),  # C2 #1: how many (place, action) pairs carry a learned value
             "learned_latency": self._learned_latency,  # C2 #3: learned reward latency (opens the timed Go window)
             "place_correction": self._place_correction,  # C2 #8: landmark phase-reset magnitude correcting bump drift
             "reroute_bias": self._reroute_bias,  # C2 #11: GWT broadcast re-route bias now driving the action specialist
