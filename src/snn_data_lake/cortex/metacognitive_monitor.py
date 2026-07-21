@@ -96,7 +96,6 @@ class MetacognitiveMonitor:
         w_surprise=0.9,
         base=0.0,
         bias_spread=0.4,
-        r_hold=0.12,
         r_explore=0.30,
         nov_hi=0.4,
         lp_eps=1e-6,
@@ -112,7 +111,7 @@ class MetacognitiveMonitor:
         self.w_lp = float(w_lp)  # rising learning-progress -> excitation
         self.w_surprise = float(w_surprise)  # persistent-surprise-without-progress -> inhibition
         self.base = float(base)
-        self.r_hold = float(r_hold)  # reliability below this -> HOLD / abstain
+        # (r_hold retired: the HOLD bar is now `_rel_floor`, measured from this pool below)
         self.r_explore = float(r_explore)  # reliability below this -> explore
         self.nov_hi = float(nov_hi)  # novelty at/above this counts as "novel"
         self.lp_eps = float(lp_eps)  # learning-progress above this counts as "learnable"
@@ -124,6 +123,29 @@ class MetacognitiveMonitor:
         self._rel = 0.0  # windowed spike-count firing rate in [0,1]
         self._spikes = 0  # integer spike count over the window
         self._mem = 0.0  # mean final membrane (CONTROL comparison ONLY)
+        self._conf = 0.0
+        self._surprise = 0.0
+        self._lp = 0.0
+        self._nov = 0.0
+        # DERIVED HOLD FLOOR -- what this very pool emits with NO positive evidence (zero
+        # confidence, maximal surprise). Replaces the hand-set `r_hold` cut, which was an absolute
+        # number on a quantity whose scale is set elsewhere: reliability is driven by
+        # self_model.confidence(), a PRODUCT whose access factor used to be pinned at 1.0. Once that
+        # factor became real the whole reliability distribution shifted down, and the fixed 0.12
+        # landed above its median -- so the hold fired on 71.3% of ticks purely as an artifact of
+        # scale. Measured then: hold was NOT informative, access strength on held ticks (median
+        # 0.406) was actually slightly HIGHER than on committed ticks (0.375), i.e. it discriminated
+        # in the wrong direction by -0.031.
+        # The floor is measured from the pool itself, so it moves with any rescaling of the input
+        # and needs no calibration: abstain when reliability is no better than no-evidence.
+        self._rel_floor = self.update(
+            confidence=0.0, surprise=1.0, learning_progress=0.0, novelty=0.0
+        )
+        for _n in self.pool:  # restore the pristine pool -- the probe must leave no trace
+            _n.reset_state()
+        self._rel = 0.0
+        self._spikes = 0
+        self._mem = 0.0
         self._conf = 0.0
         self._surprise = 0.0
         self._lp = 0.0
@@ -201,11 +223,15 @@ class MetacognitiveMonitor:
         return self._nov >= self.nov_hi and self._lp > self.lp_eps
 
     def hold(self):
-        """HOLD / abstain: reliability very low -> do not commit a decision. lesion ->
-        False (ungated: always commit)."""
+        """HOLD / abstain: reliability no better than NO EVIDENCE -> do not commit a decision.
+
+        The bar is `_rel_floor`, the rate this same pool emits when driven with zero confidence and
+        maximal surprise (see __init__) -- derived from the mechanism rather than configured, so it
+        tracks any rescaling of the upstream confidence instead of silently encoding the scale it
+        happened to be picked under. lesion -> False (ungated: always commit)."""
         if self.lesion:
             return False
-        return self._rel < self.r_hold
+        return self._rel <= self._rel_floor
 
     def abstain(self):
         """Alias of hold() -- do not commit a decision when reliability is very low."""
