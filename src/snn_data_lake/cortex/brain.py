@@ -249,6 +249,7 @@ class Brain:
         self._ll = LifelongConsolidator(dim=_LL_DIM, budget=6, seed=self._seed)
         self._ll_i = 0
         self._ll_retention = 0.0  # oldest-task retention (non-regression)
+        self._lg_base = 0.0  # running mean learn-gate -> the RELATIVE "reliable enough" criterion
         self._ll_units = 0  # bounded by grow<->prune
 
         # ---- CRITICALITY (ladder L7): a self-regulated spiking pool the brain holds at the EDGE OF
@@ -1763,7 +1764,19 @@ class Brain:
         try:  # LIFELONG: learn a task, then RETAIN it
             # METACOG GATE: only take on a NEW task when reliable enough (learn-gate) -- don't learn
             # new material while metacognitively unsure. High-reliability regime -> gate ~open (>=0.3).
-            if self._ll_i < len(self._ll_tasks) and self._metacog.learn_gate() >= 0.25:
+            # RELATIVE, not an absolute cut. The old `>= 0.25` was calibrated when the workspace's
+            # access strength was pinned at 1.0, so the access factor of self_model.confidence() --
+            # which feeds this monitor's reliability -- was effectively a constant. De-saturating
+            # that readout multiplies confidence by a real value below 1, and the absolute cut then
+            # mis-fires: measured, the gate opened on 12.2% of ticks before and 9.0% after, and
+            # old-task retention fell 0.667 -> 0.333. The threshold was coupled to another
+            # mechanism's scale, exactly the failure mode this cycle keeps finding. Comparing the
+            # gate against its OWN running mean makes "reliable enough to take on something new"
+            # mean reliable relative to how this brain has been doing lately, which survives a
+            # change of scale in any upstream factor.
+            gate = float(self._metacog.learn_gate())
+            self._lg_base = gate if self._lg_base <= 0.0 else 0.98 * self._lg_base + 0.02 * gate
+            if self._ll_i < len(self._ll_tasks) and gate >= self._lg_base:
                 self._ll.learn_task(self._ll_i, self._ll_tasks[self._ll_i]["train"])
                 self._ll_i += 1
             self._ll_retention = round(self._ll.accuracy(self._ll_tasks[0]["test"]), 4)  # old-task

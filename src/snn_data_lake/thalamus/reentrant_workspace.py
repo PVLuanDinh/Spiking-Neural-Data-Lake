@@ -86,6 +86,20 @@ class ReentrantWorkspace:
     _HEBB_LR = 0.25  # local Hebbian potentiation rate for a co-igniting (source, content)
     _HEBB_DECAY = 0.05  # passive decay of associations that did NOT co-ignite this tick
 
+    # -- graded access readout population (see access_strength) -----------------------------------
+    # Thresholds are spread across the MEASURED operating band rather than chosen. The band is the
+    # distribution of the quantity the readout actually receives -- the WINNER'S DRIVE, bottom-up
+    # base PLUS the re-entrant sustain current (_SUSTAIN = 1.10), which is a different and much
+    # higher quantity than bottom-up salience alone. Measured over 360 ignited wake ticks across 3
+    # seeds: min 0.871, p05 1.603, median 1.688, p95 1.797, max 1.899, with 144 distinct values.
+    # (Setting the band from the bottom-up salience range 0.668-1.000 was tried first and clipped
+    # almost every tick to the ceiling -- the underlying signal was rich, the readout was not.)
+    # _ACC_N is 32 rather than 12 because the operating bulk p05..p95 is only ~0.19 wide inside a
+    # ~1.03-wide band, so a 12-unit population resolves the bulk into ~2 levels; 32 gives ~6.
+    _ACC_N = 32  # readout neurons (cf. the spiking_curiosity heterogeneous-pool idiom)
+    _ACC_LO = 0.85  # lowest unit threshold, in drive units (just under the measured min)
+    _ACC_HI = 1.90  # highest unit threshold, in drive units (just over the measured max)
+
     def __init__(self, ignition_threshold=0.55, reentry=True, seed=0):
         self.ignition_threshold = ignition_threshold  # rheobase: a coalition fires iff drive > this
         # The construction-time rheobase, kept immutable. `ignition_threshold` above is LIVE and may be
@@ -235,6 +249,10 @@ class ReentrantWorkspace:
             self._incumbent = None
             self._hebb_update(None, set())
 
+        # the winner's DRIVE (bottom-up base + re-entrant sustain) is what the graded access readout
+        # in access_strength() reads. Kept here because `drives` is local to this cycle.
+        self._last_drive = float(drives.get(winner, 0.0)) if ignited else 0.0
+
         # re-entrant current fades each tick (used NEXT tick); only a bottom-up ignition re-charges it.
         self._g_reentry *= self._REENTRY_DECAY
         if self._g_reentry < 1e-6:
@@ -287,16 +305,58 @@ class ReentrantWorkspace:
         return self._assoc.get((str(source), content), 0.0)
 
     def access_strength(self):
-        """Graded access strength in [0,1]: the winner's SUSTAINED (2nd-half) firing rate -- the fraction
-        of late micro-steps the ignited coalition kept firing. Unlike the binary `availability`, this GRADES
-        how strongly content holds the workspace and DECAYS as the re-entrant sustain fades under weak/masked
-        input (0.0 on a dark tick), so a downstream access-confidence read de-saturates instead of pinning."""
+        """Graded access strength in [0,1]: the fraction of a downstream HETEROGENEOUS READOUT
+        POPULATION that sustains firing on the ignited coalition's drive. 0.0 on a dark tick.
+
+        This replaces a single pool's sustained (2nd-half) firing RATE, which was documented as
+        graded but measured PINNED: over 300 live wake ticks it took exactly ONE distinct value,
+        1.000. The cause is structural, not a tuning problem -- that rate is capped at one spike per
+        micro-step, and with `_LEAK = 0.5` the membrane threshold is `0.55 / 0.5 = 1.1` while a
+        winning coalition's current (drive 0.668-1.000 measured, plus `_W_SELF` self-excitation of
+        about +0.9 once it is firing) sits far above it. A single pool therefore fires every
+        micro-step for every drive the brain ever produces, and the ratio is 1.0 by construction.
+        The measure was graded only in a narrow band just above rheobase that the brain never
+        occupies.
+
+        A POPULATION rate code does not have that ceiling: spread the units' thresholds across the
+        drive band and the FRACTION that sustains grades smoothly, saturating only past the highest
+        threshold. Same idiom as `neuromodulation/spiking_curiosity.py` (`_POOL_N = 12`
+        heterogeneous LIF units, whose docstring gives the same reason -- heterogeneity makes a
+        pool's rate a SMOOTH function of drive instead of mode-locking).
+
+        The readout is genuinely simulated rather than solved analytically, so units sitting near
+        their threshold fire intermittently and contribute partial evidence.
+
+        This reads the coalition's DRIVE, not its within-settle current: the self-excitation that
+        creates the all-or-none attractor is exactly what destroys gradation, and drive (bottom-up
+        base + re-entrant sustain) is the quantity that actually varies with how well the content is
+        supported. Access still DECAYS as the re-entrant sustain fades under weak/masked input,
+        which is the property this measure exists to provide.
+
+        FUNCTIONAL access strength -- how strongly content holds the workspace. NOT a claim about
+        phenomenal experience."""
         if not self._last.get("ignited"):
             return 0.0
-        half = max(1, self._T // 2)
-        return round(
-            max(0.0, min(1.0, float(self._last_late.get(self._last.get("winner"), 0)) / half)), 4
-        )
+        drive = float(getattr(self, "_last_drive", 0.0))
+        if drive <= 0.0:
+            return 0.0
+        steps = max(1, self._T // 2)
+        sustained = 0
+        for i in range(self._ACC_N):
+            # thresholds spread across the MEASURED operating band (see _ACC_LO/_ACC_HI), expressed
+            # in drive units then converted to a membrane threshold by the shared leak.
+            d_i = self._ACC_LO + (self._ACC_HI - self._ACC_LO) * i / (self._ACC_N - 1)
+            v_th = d_i / self._LEAK
+            v = 0.0
+            spikes = 0
+            for _ in range(steps):
+                v += drive - self._LEAK * v
+                if v >= v_th:
+                    v -= v_th
+                    spikes += 1
+            if spikes * 2 >= steps:  # fired on at least half the window -> this unit sustains
+                sustained += 1
+        return round(sustained / self._ACC_N, 4)
 
     def inbox(self, name):
         """The sequence of broadcasts a subscribed specialist has received (None on a dark tick)."""
