@@ -534,6 +534,8 @@ class Brain:
         )
         self._place_value = {}  # C2 #1: R-STDP learned value per (place, action) -> action-specific approach on re-entry
         self._percept_value = {}  # master lever: R-STDP value per (percept-class, action) -> perception drives action
+        self._recall_value = {}  # master lever: R-STDP value per (recalled-episode, action) -> episodic memory drives action
+        self._recall_conf = 0.0  # confidence of the current tick's episodic pattern-completion (gates the recall drive)
         self._percept_conf = 1.0  # perceptual-confidence gate on the percept drive (set live by the no-backprop laminar readout B'; 1.0 = ungated)
         self._percept_readout = None  # Slice B: lazy LIVE no-backprop laminar readout (B') over the real percept latent; learns online, sets _percept_conf
         self._learned_latency = 0  # C2 #3: learned reward latency -> opens a timed Go window
@@ -541,7 +543,7 @@ class Brain:
         # dopamine-gated, baseline-subtracted -- see _route_percept_to_action), not hand-set. They
         # start EQUAL so no source is privileged by hand; the brain learns which ones pay off.
         self._drive_w = dict.fromkeys(
-            ("novelty", "ignition", "place", "timing", "reroute", "help", "percept"), 0.1
+            ("novelty", "ignition", "place", "timing", "reroute", "help", "percept", "recall"), 0.1
         )
         self._help_drive = (
             0.0  # C (Brain-Cog social): decaying empathic ENGAGE-toward-distress drive
@@ -552,6 +554,7 @@ class Brain:
         self._drive_lr = 0.02  # three-factor learning rate for the approach-drive synapses
         self._place_lr = 0.25  # R-STDP rate for per-place value
         self._percept_lr = 0.25  # R-STDP rate for per-(percept-class, action) value
+        self._recall_lr = 0.25  # R-STDP rate for per-(recalled-episode, action) value
         self._base_tau = 0.02  # adaptation rate of the running baselines below
         self._rpe_base = 0.0  # running |RPE| baseline -> the RELATIVE reward-onset threshold
         self._nov_base = 0.0  # running novelty baseline -> the RELATIVE explore/fidget threshold
@@ -1151,6 +1154,9 @@ class Brain:
                 # only, now drives action (assigned below). Always present so it competes in the
                 # three-factor weight update and the mean-eligibility baseline like every other source.
                 "percept": 0.0,
+                # MASTER LEVER (episodic memory -> action): pattern-completed recall drives action
+                # (assigned below); always present so it competes in the weight update + baseline.
+                "recall": 0.0,
             }
             # R-STDP place->ACTION value: eligibility = the (place, action just taken), dopamine =
             # RPE. Keyed on the ACTION, not the place alone, because a place-SCALAR broadcast equally
@@ -1202,6 +1208,40 @@ class Brain:
                     [0.0]
                     + [
                         max(0.0, self._percept_value.get((pcls, a), 0.0))
+                        for a in ACTIONS
+                        if a != SAFE_ACTION
+                    ]
+                )
+            # MASTER LEVER (episodic memory -> action): pattern-completed episodic recall now DRIVES
+            # action. Content-address the episodic store by the CURRENT partial context (where + affect,
+            # NOT the action/time) -- hippocampal completion retrieves the past episode for this cue --
+            # and learn an R-STDP value per (recalled-episode, action): a recalled episode after which
+            # ENGAGE paid off biases ENGAGE on re-recall. Gated by recall confidence. Recall was write-
+            # only for action (it fed only speech/self-model); this charges memory into behaviour.
+            # Bounded + local, no gradient; an empty/uncertain recall (confidence 0) drives nothing.
+            rkey = None
+            self._recall_conf = 0.0
+            if self._episodic is not None:
+                try:
+                    cue = {"where": str(place), "affect": self._emotion or "calm"}
+                    rec = self._episodic.complete(cue)
+                    rc = float(rec.get("confidence", 0.0) or 0.0)
+                    if rc > 0.0 and rec.get("key") is not None:
+                        rkey = rec["key"]
+                        self._recall_conf = max(0.0, min(1.0, rc))
+                except Exception:
+                    rkey = None
+            rconf = self._recall_conf
+            if rkey is not None and action is not None and action != SAFE_ACTION:
+                rk = (rkey, action)
+                rv = self._recall_value.get(rk, 0.0)
+                rv = max(-1.0, min(1.0, rv + self._recall_lr * da * (1.0 - abs(rv))))
+                self._recall_value[rk] = round(rv, 4)
+            if rkey is not None:
+                elig["recall"] = rconf * max(
+                    [0.0]
+                    + [
+                        max(0.0, self._recall_value.get((rkey, a), 0.0))
                         for a in ACTIONS
                         if a != SAFE_ACTION
                     ]
@@ -1275,7 +1315,17 @@ class Brain:
                     if pcls is not None
                     else 0.0
                 )
-                return undirected + place_a + help_a + percept_a
+                # recall is action-specific like place/percept: a confidence-gated learned
+                # per-(recalled-episode, action) value, so a completed memory that paid off under an
+                # action drives that action specifically when the same context is recalled again.
+                recall_a = (
+                    self._drive_w["recall"]
+                    * rconf
+                    * max(0.0, self._recall_value.get((rkey, a), 0.0))
+                    if rkey is not None
+                    else 0.0
+                )
+                return undirected + place_a + help_a + percept_a + recall_a
 
             ext = [_drive_for(a) for a in ACTIONS]
             self.brain.arm._ext_drive = ext if any(x > 0.0 for x in ext) else None
