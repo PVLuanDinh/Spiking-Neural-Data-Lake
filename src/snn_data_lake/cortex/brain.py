@@ -557,6 +557,7 @@ class Brain:
                 "recall",
                 "surprise",
                 "drive",
+                "taskset",
             ),
             0.1,
         )
@@ -605,6 +606,9 @@ class Brain:
             1.0  # C1 #5: GRADED sustained-firing access strength (consumed into access-confidence)
         )
         self._dominant_drive = None
+        self._task_pref = (
+            None  # MASTER LEVER: task-set per-action preference (bias vec), fed to _route
+        )
         self._drive_activity = (
             None  # C2 #11: the drive-vocabulary activity actually performed this tick
         )
@@ -1221,6 +1225,9 @@ class Brain:
                 # MASTER LEVER (interoceptive motivation -> action): the dominant homeostatic need
                 # (assigned below); always present so it competes in the weight update + baseline.
                 "drive": 0.0,
+                # MASTER LEVER (set-shifting -> action): the active task-set's per-action preference
+                # (assigned below); always present so it competes in the weight update + baseline.
+                "taskset": 0.0,
             }
             # R-STDP place->ACTION value: eligibility = the (place, action just taken), dopamine =
             # RPE. Keyed on the ACTION, not the place alone, because a place-SCALAR broadcast equally
@@ -1341,6 +1348,17 @@ class Brain:
             # LEARNED _drive_w["drive"]. Motivation to act rises with need; the three-factor weight learns
             # whether acting-when-deficient pays off. This is what makes the interoceptive signal DECISIVE.
             elig["drive"] = max(0.0, min(1.0, urg))
+            # MASTER LEVER (set-shifting -> action): the active task-set's per-action preference vector
+            # (task_set.bias, cached in _c1_tick, index-aligned with ACTIONS) -- how strongly the HELD set
+            # wants to ACT (max over the non-HOLD actions, clamped into the source band). It is also
+            # DIRECTED per action in _drive_for below. bias() already scales by settle confidence, so a
+            # just-shifted (unsettled) set drives weakly and recovers -> the switch cost is now behavioural.
+            tp = self._task_pref
+            if tp is not None and len(tp) == len(ACTIONS):
+                elig["taskset"] = max(
+                    [0.0]
+                    + [max(0.0, min(1.0, tp[i])) for i, a in enumerate(ACTIONS) if a != SAFE_ACTION]
+                )
             # TIMED Go window: a rewarded outcome teaches the spiking clock WHEN reward arrives, and
             # proximity to that learned latency opens the window. Reward ONSET is detected relative to
             # the running |RPE| baseline (adaptation), not against a fixed cutoff.
@@ -1431,7 +1449,16 @@ class Brain:
                     if dname is not None
                     else 0.0
                 )
-                return undirected + place_a + help_a + percept_a + recall_a + drive_a
+                # taskset is action-specific like place/percept/recall/drive: the active set's learned
+                # input->action rule readout for THIS action (bias vector), clamped into the source band and
+                # weighted by the LEARNED _drive_w["taskset"] -- context-dependent S-R remapping tips ENGAGE
+                # vs RELEASE by which set is currently held (Stroop-like set-shifting control of behaviour).
+                taskset_a = (
+                    self._drive_w["taskset"] * max(0.0, min(1.0, tp[ACTIONS.index(a)]))
+                    if (tp is not None and len(tp) == len(ACTIONS))
+                    else 0.0
+                )
+                return undirected + place_a + help_a + percept_a + recall_a + drive_a + taskset_a
 
             ext = [_drive_for(a) for a in ACTIONS]
             self.brain.arm._ext_drive = ext if any(x > 0.0 for x in ext) else None
@@ -1707,6 +1734,11 @@ class Brain:
                 reward = float(self._lp_mean or 0.0)
                 self._task_set_active = int(self._task_set.observe(conflict, reward))
                 self._task_switch_cost = round(float(self._task_set.last_switch_cost), 3)
+                # MASTER LEVER (set-shifting -> action): cache the active set's per-action preference
+                # (scaled by settle confidence -> weak just after a shift, recovers as it settles) so
+                # _route_percept_to_action consumes it NEXT tick. bias() was computed only in the module's
+                # own self-check -- its output dead-ended in telemetry. Now the switch COST is behavioural.
+                self._task_pref = self._task_set.bias(feat)
             except Exception:
                 pass
         if self._grid_can is not None:
