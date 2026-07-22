@@ -79,25 +79,35 @@ class BasalGangliaGate:
         order = sorted(range(len(values)), key=lambda i: (values[i], -i), reverse=True)
         return set(order[:k])
 
-    def _striatum(self, drive, da):
+    def _striatum(self, drive, da, tonic=None):
         """Cortex -> D1/D2 -> GPi outputs. Returns (go, nogo, gpi) per channel.
 
         High dopamine raises the Go gain and suppresses NoGo. Only the k-WTA Go winner opens
-        its gate (lateral inhibition), so at most one channel's GPi drops below tonic.
+        its gate (lateral inhibition), so at most one channel's GPi drops below tonic. `tonic`
+        overrides the baseline GPi inhibition -- the STN hyperdirect brake raises it (see select).
         """
+        tonic = self.tonic if tonic is None else tonic
         go = [d * (self.d1_base + self.da_gain * da) for d in drive]
         nogo = [d * max(0.0, self.d2_base - self.da_gain * da) for d in drive]
         winners = self._kwta(go, self.k)
         gpi = []
         for j in range(len(drive)):
             go_eff = go[j] if j in winners else 0.0  # losers: lateral inhibition shuts Go
-            gpi.append(max(0.0, self.tonic - go_eff + nogo[j]))  # Go disinhibits, NoGo inhibits
+            gpi.append(max(0.0, tonic - go_eff + nogo[j]))  # Go disinhibits, NoGo inhibits
         return go, nogo, gpi
 
-    def select(self, drive, da):
+    def select(self, drive, da, stn=0.0):
         """Run the circuit. Returns a dict: winner channel + latency, or winner=None if the
-        tonic GPi inhibition is never overcome (no action released)."""
-        go, nogo, gpi = self._striatum(drive, da)
+        tonic GPi inhibition is never overcome (no action released).
+
+        STN HYPERDIRECT BRAKE (Frank 2006, 'hold your horses'): `stn` >= 0 RAISES the tonic GPi
+        inhibition on EVERY channel -- a global, proactive decision-threshold raise under cortical
+        CONFLICT (computed upstream as ACC conflict over the drive vector, previously a
+        computed-but-unconsumed signal). It can only make release HARDER (more HOLD), never easier,
+        so it strictly ADDS caution and can never cause a spurious action; the reflex/E-STOP still
+        preempts selection entirely. stn=0.0 -> byte-identical to the pre-STN gate."""
+        eff_tonic = max(0.0, self.tonic + max(0.0, stn))
+        go, nogo, gpi = self._striatum(drive, da, tonic=eff_tonic)
         v = [0.0] * len(drive)
         fired = [False] * len(drive)
         released = []

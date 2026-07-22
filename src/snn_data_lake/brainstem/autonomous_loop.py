@@ -309,6 +309,19 @@ class AutonomousArm:
         self._exec = None  # W8: ACC/EVC executive (lazily bound)
         self._conflict = 0.0  # W8: ACC conflict over the competing action drives (readout)
         self._control_gain = 0.0  # W9: EVC control gain -- scales the PFC top-down bias by conflict
+        # STN hyperdirect brake (Brain-Cog-adopted, consumes the ACC conflict into selection). The
+        # brake gain is LEARNED (three-factor), the trigger is RELATIVE to a running conflict
+        # baseline -- no magic constant. STN only ever raises caution, so it is safe by construction.
+        self._stn_gain = 0.3  # learned gain: conflict-above-baseline -> global GPi brake strength
+        self._stn_lr = 0.02  # its three-factor learning rate
+        self._stn_elig = 0.0  # eligibility: did the brake engage last tick (credited by this RPE)
+        self._stn_base = (
+            0.0  # running mean of the brake eligibility (baseline-subtracted competition)
+        )
+        self._conflict_base = (
+            0.0  # running mean conflict -> the RELATIVE brake trigger (adaptation)
+        )
+        self._stn_tau = 0.02  # adaptation rate of the two baselines above
         self._learned_ctl = (
             None  # C2 #9: (cost, value) of control LEARNED by the cortex (None -> fixed constants)
         )
@@ -485,7 +498,29 @@ class AutonomousArm:
                 pass
         caution = min(1.0, self.cort.caution_bias() + threat + intero + reliability_hold)
         da = max(0.0, min(1.0, max(drive) * (1.0 - caution)))
-        res = self.bg.select(drive, da)
+        # STN HYPERDIRECT BRAKE (Frank 2006): the ACC conflict signal -- computed just above and,
+        # until now, CONSUMED BY NOTHING -- raises a global GPi brake that makes release harder when
+        # the current choice is UNUSUALLY conflicted (conflict above its own running baseline, so the
+        # trigger is relative/adaptive, not a magic cutoff). The brake gain is LEARNED by three-factor
+        # (eligibility = braked last tick, dopamine = the arm's RPE), so proactive braking strengthens
+        # only when holding under conflict pays. The STN can only ADD caution (raise the threshold),
+        # never release an action, so it is safe by construction; the reflex/E-STOP preempts selection
+        # regardless. Activates the cortex->STN hyperdirect edge declared in connectome.py.
+        conf = float(self._conflict or 0.0)
+        stn = self._stn_gain * max(0.0, conf - self._conflict_base)
+        self._conflict_base = (1.0 - self._stn_tau) * self._conflict_base + self._stn_tau * conf
+        da_rpe = float(
+            getattr(self, "_rpe", 0.0) or 0.0
+        )  # last-tick dopamine credits the last brake
+        self._stn_gain = min(
+            2.0,
+            max(0.0, self._stn_gain + self._stn_lr * da_rpe * (self._stn_elig - self._stn_base)),
+        )
+        self._stn_base = (1.0 - self._stn_tau) * self._stn_base + self._stn_tau * self._stn_elig
+        self._stn_elig = (
+            1.0 if stn > 1e-6 else 0.0
+        )  # did the brake engage this tick (credited next)
+        res = self.bg.select(drive, da, stn=stn)
         return SAFE_ACTION if res["winner"] is None else ACTIONS[res["winner"]]
 
     def greedy(self, unit):

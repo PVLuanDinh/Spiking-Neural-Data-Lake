@@ -87,6 +87,7 @@ REGIONS = {
         "learned_attention",  # C1 batch-3: learned spiking reticular attention gate (local plasticity)
         "learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
         "second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
+        "heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
         "pc_cortex_serve",
         "brain",
@@ -232,6 +233,8 @@ REGIONS = {
         "growable",
         "coordinated_growth",
         "region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> GWT ignition bias
+        "basic_components",  # Brain-Cog-adopted composition interface: node + local-rule + connection palette
+        "similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
     ],
 }
 

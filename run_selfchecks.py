@@ -52,6 +52,7 @@ CORE = [
     "cortex.learned_attention",   # C1 batch-3: learned spiking reticular attention gate
     "cortex.learned_evc",   # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
     "cortex.second_order_access",   # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
+    "cortex.heterogeneous_microcircuit",   # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
     # hippocampus — memory formation, spatial coding, replay
     "hippocampus.hippocampus", "hippocampus.grid_cells", "hippocampus.htm_sequence_memory", "hippocampus.frequency_memory",
     "hippocampus.experience_replay", "hippocampus.sleep_replay", "hippocampus.ring_attractor", "hippocampus.growing_learner",
@@ -116,6 +117,8 @@ CORE = [
     "substrate.web_ingest", "substrate.lake_working_memory", "substrate.live_brain_tab", "substrate.home",
     "substrate.binlog", "substrate.growable", "substrate.coordinated_growth",
     "substrate.region_coherence",   # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
+    "substrate.basic_components",   # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
+    "substrate.similarity_sized_growth",   # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
 ]
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [
