@@ -2272,11 +2272,25 @@ class Brain:
                 return r.returncode == 0 and "self-checks passed" in r.stdout
 
             props = self.propose_improvements(budget=3)
+            if self._selfbuild_proposer is not None and self._selfbuild_proposer.should_skip(props):
+                # CIRCUIT BREAKER (harness robustness): this exact candidate set already failed the gate
+                # _FUTILE_LIMIT times in a row -> skip the multi-minute gate until the set changes, instead
+                # of re-running a deterministically-doomed gate every cycle forever.
+                self._selfbuild_last = {
+                    "night": self._nights,
+                    "proposed": len(props),
+                    "kept": 0,
+                    "skipped": "circuit_breaker",
+                }
+                return self._selfbuild_last
             out = SelfBuildLoop(enable=True, gate_fn=_gate).run(props)
             if self._selfbuild_proposer is not None:
                 # THREE-FACTOR LEARN from the gate outcomes (kept +1 / rolled -1): the brain-native self-
                 # build learns which de-hardcode transforms are gate-safe; weights persist across restarts.
                 self._selfbuild_proposer.observe(out)
+                self._selfbuild_proposer.note_cycle(
+                    props, out
+                )  # update the circuit-breaker counter
             kept = sum(1 for o in out if o.get("status") == "kept")
             self._selfbuild_last = {"night": self._nights, "proposed": len(props), "kept": kept}
             return self._selfbuild_last

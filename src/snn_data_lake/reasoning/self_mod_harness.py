@@ -207,6 +207,11 @@ class SelfModHarness:
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONPATH": "src",
             "NORD_HOME": home,
+            # ANTI-RECURSION (uniform guard): neutralize NORD_SELFMOD inside the sandbox gate so a brain
+            # self-check run here can NEVER trigger a nested autonomous self-build (which would recurse:
+            # sandbox -> run_selfchecks -> self-build -> sandbox ...). The promote gate already sets this;
+            # setting it here too makes the guard uniform across BOTH subprocess gates, not incidental.
+            "NORD_SELFMOD": "0",
         }
         try:
             r = subprocess.run(

@@ -62,6 +62,11 @@ _SELECT_LR = 0.02  # three-factor learning rate (matches Brain._drive_lr) -- a s
 _W0 = 0.1  # uniform initial preference (matches Brain._drive_w init) -- pre-learning tie
 _REWARD_KEPT = 1.0
 _REWARD_ROLLED = -1.0
+# CIRCUIT-BREAKER backstop: after this many consecutive futile cycles (candidates proposed, none kept)
+# on the SAME candidate set, skip the expensive gate until the set changes. A retry LIMIT (robustness
+# backstop), NOT a behaviour-arbitrating cognitive threshold -- and correct here because a fixed
+# candidate set's gate result is DETERMINISTIC (unlike transient-recoverable nightly consolidation).
+_FUTILE_LIMIT = 3
 
 # --- EXTENDED FIREWALL (guard G5): the monotonic correctness ratchet must NOT be relaxable by any
 #     whitelisted self-edit. On top of self_mod_harness._PROTECTED (5 brainstem safety files +
@@ -379,6 +384,14 @@ class BrainNativeSelfBuildProposer:
         ] * n  # exact uniform init (drop RSTDPNeuron's +-0.05 jitter: symmetric start)
         self._state_path = state_path or os.path.join(self._repo, "data", "selfbuild_state.json")
         self._tally = {"proposed": 0, "kept": 0, "rolled_back": 0}
+        # CIRCUIT BREAKER (harness robustness principle): a candidate set that always rolls back is
+        # re-proposed forever (byte-exact rollback -> is_applied stays False) and re-runs the FULL
+        # multi-minute gate every cycle. Track consecutive futile cycles (proposed>0, kept==0) for the
+        # SAME candidate set; should_skip() then lets the caller skip the expensive gate until the set
+        # changes (a NEW commit / a newly-applicable candidate resets it -- so it is a cooldown on a
+        # DETERMINISTICALLY-doomed set, never a permanent abandonment of transient-recoverable work).
+        self._futile = 0
+        self._last_cand_key = []
         self.log = []
         self._load()
 
@@ -396,6 +409,10 @@ class BrainNativeSelfBuildProposer:
         for k in self._tally:
             if isinstance(t.get(k), int):
                 self._tally[k] = t[k]
+        if isinstance(st.get("futile"), int):
+            self._futile = st["futile"]
+        if isinstance(st.get("last_cand_key"), list):
+            self._last_cand_key = [str(x) for x in st["last_cand_key"]]
 
     def _save(self):
         weights = {tid: self._cell.w[self._idx[tid]] for tid in self._ids}
@@ -403,7 +420,17 @@ class BrainNativeSelfBuildProposer:
         try:
             os.makedirs(os.path.dirname(self._state_path), exist_ok=True)
             with open(tmp, "w", encoding="utf-8") as f:
-                json.dump({"weights": weights, "tally": self._tally}, f, indent=2, sort_keys=True)
+                json.dump(
+                    {
+                        "weights": weights,
+                        "tally": self._tally,
+                        "futile": self._futile,
+                        "last_cand_key": self._last_cand_key,
+                    },
+                    f,
+                    indent=2,
+                    sort_keys=True,
+                )
             os.replace(tmp, self._state_path)
         except OSError:
             pass
@@ -523,6 +550,33 @@ class BrainNativeSelfBuildProposer:
             self._cell.reward(reward)  # w[j] += lr*reward*(elig_j - mean_e)
             self._cell.w = [min(1.0, max(0.0, wj)) for wj in self._cell.w]  # clip to [0,1]
             self.log.append((tid, status, f"reward {reward:+.0f} -> w {self._cell.w[k]:.4f}"))
+        self._save()
+
+    # -------- circuit breaker (harness robustness): skip the expensive gate on a doomed candidate set --
+    def should_skip(self, proposed):
+        """True if this EXACT candidate set has already been proposed-and-all-rolled-back _FUTILE_LIMIT
+        consecutive times -> skip the multi-minute gate (cooldown). Reset when the set changes (a new
+        commit / newly-applicable candidate), so a deterministically-doomed set is paused, never a
+        transient-recoverable one permanently abandoned. Cheap: compares the (already-computed) proposal
+        ids, runs no gate."""
+        key = sorted(p.get("id") for p in (proposed or ()))
+        return bool(key) and key == self._last_cand_key and self._futile >= _FUTILE_LIMIT
+
+    def note_cycle(self, proposed, outcomes):
+        """Update the futile-cycle counter AFTER a gated cycle. A NEW candidate set resets the counter
+        (the situation changed -> worth retrying); the SAME set with zero kept increments it; any kept
+        resets it. Persisted, so the cooldown survives daemon restarts."""
+        key = sorted(p.get("id") for p in (proposed or ()))
+        if key != self._last_cand_key:
+            self._futile = 0
+            self._last_cand_key = key
+        attempted = len(proposed or ())
+        kept = sum(1 for o in (outcomes or ()) if o.get("status") == "kept")
+        if kept > 0:
+            self._futile = 0
+        elif attempted > 0:
+            self._futile += 1
+        self.log.append(("*", "cycle", f"attempted {attempted} kept {kept} futile {self._futile}"))
         self._save()
 
     # -------- guard G3: net-hardcode ledger --------
@@ -882,6 +936,35 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
             "       MIN_SAMPLES, proposes a data-calibrated SALIENCE_TH from the recorded P75 + marker;"
         )
         _emit("       applied -> not re-proposed; firewall rejects brainstem/protected targets")
+
+        # ---- CIRCUIT BREAKER (harness robustness): a doomed set skips the gate after _FUTILE_LIMIT ------
+        # (should_skip/note_cycle read only p["id"], so a synthetic candidate set exercises the logic
+        # directly -- the toy transforms are already applied by the tests above, so propose() is empty.)
+        cb = BrainNativeSelfBuildProposer(
+            seed=0, repo=fake, sources=[], state_path=os.path.join(work, "cb.json"), ids=ids
+        )
+        doomed = [{"id": ids[0]}, {"id": ids[1]}]
+        assert not cb.should_skip(doomed), "a fresh candidate set must NOT skip the gate"
+        rolled = [{"id": c["id"], "status": "rolled_back"} for c in doomed]
+        for _ in range(_FUTILE_LIMIT):
+            cb.note_cycle(doomed, rolled)  # all rolled back, same set
+        assert cb.should_skip(doomed), (
+            f"a set rolled back {_FUTILE_LIMIT}x in a row must skip the gate"
+        )
+        cb.note_cycle(doomed, [{"id": doomed[0]["id"], "status": "kept"}])
+        assert not cb.should_skip(doomed), "a KEPT outcome must reset the breaker"
+        for _ in range(_FUTILE_LIMIT):
+            cb.note_cycle(doomed, rolled)
+        assert cb.should_skip(doomed), "re-armed after another run of futile cycles"
+        assert not cb.should_skip([{"id": "recalib:salience_th"}]), (
+            "a CHANGED candidate set must NOT skip (the situation changed -> worth retrying)"
+        )
+        _emit(
+            "  [OK] circuit breaker: a doomed set skips the multi-minute gate after _FUTILE_LIMIT futile"
+        )
+        _emit(
+            "       cycles; a KEPT outcome or a CHANGED candidate set resets it (cooldown, not permanent)"
+        )
 
     finally:
         os.environ.pop("NORD_SELFMOD", None)
