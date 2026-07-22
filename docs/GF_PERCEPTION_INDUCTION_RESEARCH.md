@@ -183,6 +183,34 @@ G13 COLOR-PAIRING + the deferred witness-correspondences for G7/G8 (the Phase-3 
 The generators are inert until the Phase-3 mint CONSUMES them to hypothesize out-of-closure typed primitives.
 Building the vocabulary does not by itself move the score; it is the necessary substrate the mint reads from.
 
+#### Phase 2 BUILD — batch 2 SHIPPED (v4.21) — the vocabulary is COMPLETE
+
+The remaining 7 generators + the two deferred witnesses, authored + adversarially verified via a 4-cluster
+Workflow (8 agents), then integrated + gate-verified by the main agent. All in `reasoning/arc_scene.py`,
+same additive contract (reuse `components()`/`background`/`_d8`/`shape_class`, reimplement no segmentation):
+- **G11 SYM** `symmetry_axes(g)` — per-axis agreement **score ∈ [0,1] + witness correspondence** +
+  occlusion-aware `bg_wildcard_score` (never a magic-cutoff boolean).
+- **G7 witness** `shape_match(a,b)` — the aligning D8 transform + full cell-to-cell **bijection** (the id-only
+  batch-1 gap closed).
+- **G12 LOCI** — `segment` / `ray` / `row_line` / `col_line` / `perimeter` / `locus_meet`, all **cellset**-valued.
+- **G8 witness** — `object_locus` (centroid segment), `crossings` (cellset-locus intersection, index witness),
+  `border_pairs` (opposite-border pairing).
+- **G2 LATTICE** `separators(g)` — monochrome row/col separators → merged bands + carved panels.
+- **G3 PERIOD** `period(g)` — smallest **sub-full** tiling period + consensus template + exactness.
+- **G9 DIST** `voronoi(g)` — multi-source BFS ownership + hop distance over background cells.
+- **G10 PROG** `progression(points)` — exact arithmetic progression + collinearity + regularity score.
+- **G13 COLOR-PAIRING** `color_pairing(obj,g)` — legend/key colour correspondence along the short axis.
+
+**Adversarial verify caught 3 real defects, fixed on merge (kept, not papered over):** (1) `segment`/
+`object_locus`/`crossings` were order-dependent (Bresenham asymmetric on non-45 slopes) → `segment`
+canonicalises endpoint order (undirected). (2) `period`'s exactness was a **provable constant 1.0** (the
+full grid always tiles itself) — the "measures nothing / saturated signal" trap; fixed by excluding the
+trivial full-grid tiling so exactness is informative (<1.0 for aperiodic). (3) `color_pairing` crashed on a
+`bbox`-less object → guarded. Unified module self-check exercises all 16 generators; **selfchecks 295/295,
+pytest, ruff+format, atlas** green. **Still measurement-only, no ARC-eval change** — the vocabulary is now
+COMPLETE; the score moves only when Phase-3 consumes it. **The P2 obligation stands:** Phase-3 must migrate
+`synthesize` onto the scene and delete the closed 5-key schema, or the additive amber hardens.
+
 ### Phase 3 — The mint: MDL-scored hypothesis generation + typed promotion  (3–5 sessions; the bottleneck)
 - **Goal:** close decomposition gap **(ii)** — the unsolved one — by generating out-of-closure operation
   hypotheses *from* the Phase-2 predicate space, scoring by two-part MDL, promoting winners as typed
