@@ -70,6 +70,28 @@ relation.)
 - **Anti-theater rule:** an oracle primitive must be generic + parameterized (bounded AST, no task-
   specific grids, plausibly fires elsewhere). A `solve_task_X` primitive rescues trivially, proves nothing.
 
+#### Phase 1 RESULT (measured — GO)
+
+Executed: 44 eval tasks scanned → **41 depth-3 misses**; split 20 **dev** (inspectable) / 21 **locked**
+(`scratchpad/oracle_locked.txt`, never opened). Four Fable-5 agents hand-wrote one **generic** missing-
+concept primitive per dev task; each passed an AST genericity/safety audit (no literal-grid smuggling, no
+banned calls, no task-specific constants); injected per-task into `_BASE`, run through unchanged depth-3
+`synthesize()`.
+
+**Rescue rate = 19/20 = 95%** (well above the 15% kill line → **GO**). Concept-class histogram of the
+rescues: geometry 4, symmetry 3, region_fill 3, relation 3, color_logic 2, object_transform 2, counting 1,
+grouping 1 — a small, diverse set of *measurement-expressible* concepts (the Phase-2 generator-set target).
+
+**Honest reading (do not overclaim):** this is the **oracle ceiling** — it proves the expressiveness wall
+is *breachable by generic measurement-based primitives* (the missing concepts ARE expressible), NOT that
+SNDL's ARC-eval improved (it is unchanged ~3%; the oracle prims live in `scratchpad/`, are **not** committed
+to `_BASE` — committing hand-authored primitives is exactly the grammar-widening theater guard #1 forbids).
+The *realized* gain requires the Phase-3 **mint** to DISCOVER these concepts from perception (the unsolved
+no-LLM bottleneck); per the ceiling calibration, expect it to realize ~1/3 of this. Two primitives honestly
+encode a *measurement* + rely on the existing `_fit_colormap` closer (the mapping-*type* limitation Phase-3's
+type extension must address). The 21 locked tasks remain reserved for a future held-out check; cross-task
+generalization of the concepts is a Phase-4 question, untested here.
+
 ### Phase 2 — Open the perceptual schema: pre-registered measurement generators  (2–3 sessions)
 - **Goal:** replace the closed schema with an extensible attribute/relation registry populated by a
   **fixed, pre-registered** generator set (frozen in a committed manifest *before* any eval inspection
