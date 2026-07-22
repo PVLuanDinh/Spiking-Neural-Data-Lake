@@ -156,6 +156,33 @@ booleans); LOCI must be **cellset-valued**; the consumer set is the concrete sha
 **Next concrete step:** the `components()` → registry refactor in `arc_solver.py` (schema ~L150, cached
 like `_SEG_CACHE`), implementing G1–G13 as bounded deterministic generators — a 2–3 session build.
 
+#### Phase 2 BUILD — batch 1 SHIPPED (`reasoning/arc_scene.py`)
+
+**Design deviation (honest, deliberate):** the manifest above said "refactor `components()` in `arc_solver.py`".
+Instead the registry ships as a **NEW additive module** `reasoning/arc_scene.py` that REUSES
+`arc_solver.components()` as the seed and NEVER mutates it or `_BASE`. Reason: `arc_solver.synthesize` +
+`arc_diagnostic` depend on the closed 5-key object schema and `_BASE` ordering; a new module gets the
+extensible scene without risking that stability. `scene(grid, conn, same_color)` copies each `components()`
+object (never mutates the `_SEG_CACHE` entry) and appends the generator measurements.
+
+**Batch 1 = 6 of the 13 generators, self-check-verified on toy grids, gate-green:**
+- **G1 CONN** — the 4 competing abstractions `(4,8)×(same,multi)` exposed via `CONN_ABSTRACTIONS` + `scene(...)`.
+- **G4 PALETTE** — grid colour stats: background, per-colour counts, modal, rarest, ABSENT(free) colours, n_colors.
+- **G5 MORPH** — bbox h/w/side/area, solid-rectangle test, interior(8-erosion)/boundary cell-sets, line test.
+- **G6 TOPO** — per-object enclosed holes (padded-bbox border-flood; unreached bg = holes) as cell-sets + count.
+- **G7 SHAPE-EQ** — D8-invariant `shape_class` id (crc32 of the min dihedral normalization) + non-contiguous
+  same-shape grouping (`shape_groups`). *(WITNESS CORRESPONDENCE deferred to batch 2 — currently id-only.)*
+- **G8 ALIGN/ADJ** — pairwise same-row/col (bbox overlap), bbox-adjacency, containment. *(cellset-locus
+  intersection + opposite-border pairing deferred to batch 2.)*
+
+Registered in `run_selfchecks.py` (**295/295 green**, +1); ruff + ruff-format clean; pytest + brain_atlas
+parity green. **Batch 2 (next session):** G2 LATTICE, G3 PERIOD, G9 DIST, G10 PROG, G11 SYM, G12 LOCI,
+G13 COLOR-PAIRING + the deferred witness-correspondences for G7/G8 (the Phase-3 `correspondence` type needs them).
+
+**HONEST:** this is a MEASUREMENT vocabulary — **no synthesis, no ARC-eval change** (brain still ~3%).
+The generators are inert until the Phase-3 mint CONSUMES them to hypothesize out-of-closure typed primitives.
+Building the vocabulary does not by itself move the score; it is the necessary substrate the mint reads from.
+
 ### Phase 3 — The mint: MDL-scored hypothesis generation + typed promotion  (3–5 sessions; the bottleneck)
 - **Goal:** close decomposition gap **(ii)** — the unsolved one — by generating out-of-closure operation
   hypotheses *from* the Phase-2 predicate space, scoring by two-part MDL, promoting winners as typed

@@ -176,6 +176,7 @@ RESEARCH = [
     "reasoning.arc_bench",          # ARC-AGI: exact-match pass@2 over 800 tasks; controls must score ~0
     "reasoning.blimp_bench",        # BLiMP: 67 paradigms x 1000 minimal pairs; chance 50%, human 88.6%
     "reasoning.arc_solver",         # test-time program synthesis over 2-D grids (object DSL + iterative deepening)
+    "reasoning.arc_scene",          # Gf Phase-2 perceptual VOCABULARY: extensible attribute/relation registry (palette/morph/topo/shape-eq/align) over components() -- measurement only, feeds the Phase-3 mint
 ]
 # TORCH/NUMPY-GATED CORE -- modules that import a heavy numeric dep (torch or numpy); run ONLY where
 # it is importable and SKIPPED-with-notice otherwise, so the pure-stdlib CI matrix + the in-process
