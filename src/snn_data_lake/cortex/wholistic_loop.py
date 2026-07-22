@@ -57,9 +57,18 @@ Each spine component (metacog / consolidation / criticality) can be DISABLED
 individually so the self-check can prove -- with a control that FAILS -- that the whole
 beats the un-arbitrated sum and that every spine part is load-bearing.
 
-Pure standard library (math, random, zlib). Per-instance random.Random(seed);
-zlib.crc32 for bucketing (never hash()); no wall-clock, no global RNG; ASCII-only
-prints; deterministic.
+Pure standard library (math, random, zlib) on the DEFAULT path. Per-instance
+random.Random(seed); zlib.crc32 for bucketing (never hash()); no wall-clock, no global
+RNG; ASCII-only prints; deterministic.
+
+OPT-IN similarity-sized recruitment (default OFF, byte-identical when OFF): pass
+similarity_sized=True to size each task's fresh-unit recruit CAP by how NOVEL its
+perceptual signature is vs tasks already learned, and ROUTE a familiar task to its
+FROZEN prior expert instead of growing. It REUSES the ART developmental match
+(hippocampus.growing_learner._best -- the same cosine match the live tick already runs)
+at the per-task-centroid granularity via substrate.similarity_sized_growth; that advisor
+is imported LAZILY only when the flag is on, so the default path stays pure stdlib and
+every default run is bit-for-bit unchanged.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.wholistic_loop
 """
@@ -292,7 +301,16 @@ class WholisticLoop:
     configuration -- only the arbitration spine is ablatable. Value/representation-only:
     no actuator, no self-rewrite. Deterministic; per-instance random.Random(seed)."""
 
-    def __init__(self, *, metacog=True, consolidation=True, criticality=True, hard=False, seed=0):
+    def __init__(
+        self,
+        *,
+        metacog=True,
+        consolidation=True,
+        criticality=True,
+        hard=False,
+        similarity_sized=False,
+        seed=0,
+    ):
         self.metacog = bool(metacog)
         self.consolidation = bool(consolidation)
         self.criticality = bool(criticality)
@@ -336,6 +354,24 @@ class WholisticLoop:
             self.reg.run(epochs=CRIT_EPOCHS, regulate=True)
         self.sigma = self.reg.sigma()
         self.fidelity = self._fidelity(self.sigma)
+
+        # ---- OPT-IN similarity-sized recruitment governor (default OFF = byte-identical) --------
+        # When ON, a per-TASK advisor (substrate.similarity_sized_growth) SIZES how many fresh units
+        # this task may recruit by how NOVEL its perceptual signature is vs tasks already learned, and
+        # ROUTES a familiar task to its FROZEN prior expert (recruit cap 0 -> reuse, no new growth).
+        # It REUSES the ART developmental match (GrowingLearner._best -- the same cosine match the loop
+        # already runs per sample) at the task-centroid granularity; it does NOT recompute novelty.
+        # advisor stays None in the default config, so every code path below is byte-identical to today.
+        self.advisor = None
+        self._task_cap = 0  # fresh units this task may recruit (advisor-sized; 0 -> route/reuse)
+        self._task_recruited = 0  # live-tick recruit events so far this task (vs the cap)
+        self.growth_log = []  # per-task {action, novelty, recruit_cap, units_recruited, ...} when ON
+        if similarity_sized:
+            from snn_data_lake.substrate.similarity_sized_growth import SimilaritySizedGrowth
+
+            self.advisor = SimilaritySizedGrowth(
+                dim=self._dim, n_classes=N_CLASSES, cap_max=BUDGET, cap_min=1, route_frac=0.5
+            )
 
     # ---- slow substrate-health -> perception fidelity --------------------------------
     def _fidelity(self, sigma):
@@ -386,19 +422,66 @@ class WholisticLoop:
             engage = True
         if not engage:
             return
+        # OPT-IN novelty-sized recruit cap (default OFF): once this task has recruited its advisor-
+        # sized quota of fresh units, block any further NEW-unit growth (a routed/familiar task caps
+        # at 0 -> its samples refine/reuse existing prototypes, never grow). Refinement of recognized
+        # samples is untouched; only novel recruitment is gated.
+        if self.advisor is not None and not recognized and self._task_recruited >= self._task_cap:
+            return
         n0 = self.con.n_units
         self.con._observe(x, label)  # GROW (neurogenesis) or refine + credit
-        if self.con.n_units > n0 and label < 0:
+        grew = self.con.n_units > n0
+        if grew and label < 0:
             self._noise_units += 1  # bookkeeping: a noise-born unit
+        if self.advisor is not None and grew:
+            self._task_recruited += 1  # charge this recruit against the task's novelty-sized cap
         fresh.append((label, tuple(x)))  # exemplar (committed at task boundary)
         if self.consolidation and len(self.con.memory):
             self.con._replay_once()  # CONSOLIDATE: interleaved OLD-task replay
+
+    # ---- opt-in similarity-sized recruitment governor (advisor present only) ---------
+    def _task_signature(self, task):
+        """Label-free centroid of a task's CLASS samples -- the per-task routing key the advisor
+        matches against tasks already learned. Raw sensory vectors (pre-substrate) so forming it
+        never perturbs the substrate-corruption RNG; noise samples (label < 0) are excluded."""
+        vs = [vec for label, vec in task["stream"] if label >= 0]
+        if not vs:
+            return [0.0] * self._dim
+        return [mean(col) for col in zip(*vs)]
+
+    def _grow_task_expert(self, task, dec, seed):
+        """Train + FREEZE the advisor's freshly-grown per-task expert on this task's (class sample,
+        label) pairs, so an OLD task's competence is retained by a read-only frozen readout after
+        later tasks grow their own (the no-catastrophic-forgetting guarantee). The expert lives on the
+        raw sensory vectors (consistent with _task_signature). Returns (own_acc, heldout) to log."""
+        X = [vec for label, vec in task["stream"] if label >= 0]
+        y = [label for label, vec in task["stream"] if label >= 0]
+        exp = self.advisor.experts[dec.expert_id]
+        exp.learn(X, y, epochs=20, seed=seed)  # LOCAL error-modulated Hebbian rule, then...
+        exp.freeze()  # ...read-only: later tasks cannot overwrite it -> retention is structural
+        rng = random.Random(5000 + seed)  # fresh held-out draws for a retention probe
+        held = [
+            (self._sample(c, i % 2, rng), c)
+            for c in task["classes"]
+            for i in range(HELDOUT_PER_CLASS)
+        ]
+        own_acc = exp.accuracy([x for x, _ in held], [yy for _, yy in held])
+        return round(own_acc, 6), held
 
     # ---- run the whole sequence ------------------------------------------------------
     def run(self):
         """Learn A -> B -> C in order; old tasks never re-shown live. Returns a result
         dict of pure numbers/bools (byte-comparable for the determinism check)."""
-        for task in self._tasks:
+        for t_idx, task in enumerate(self._tasks):
+            dec = None
+            if (
+                self.advisor is not None
+            ):  # SIZE this task's recruit cap by its novelty; route familiar
+                dec = self.advisor.route_or_grow(self._task_signature(task))
+                self._task_cap = (
+                    dec.recruit_cap if dec.grew else 0
+                )  # familiar -> 0 -> reuse, no growth
+                self._task_recruited = 0
             self.con.utility = [u * TASK_DECAY for u in self.con.utility]  # recency pressure
             fresh = []
             for label, vec in task["stream"]:
@@ -407,6 +490,23 @@ class WholisticLoop:
                 self.con.memory.add(lbl, xt, 0.0)
             self.con._prune_to_budget()  # bounded capacity (always on)
             self._max_units = max(self._max_units, self.con.n_units)
+            if self.advisor is not None:
+                own_acc, held = (None, None)
+                if dec.grew:  # a novel task grows -> train + freeze its retained expert
+                    own_acc, held = self._grow_task_expert(task, dec, seed=self.seed + t_idx)
+                self.growth_log.append(
+                    {
+                        "task": t_idx,
+                        "action": dec.action,
+                        "novelty": round(dec.novelty, 6),
+                        "recruit_cap": dec.recruit_cap,
+                        "grew": dec.grew,
+                        "expert_id": dec.expert_id,
+                        "units_recruited": self._task_recruited,
+                        "own_acc": own_acc,
+                        "heldout": held,
+                    }
+                )
         agg = self._heldout_acc(range(N_CLASSES))  # competence over ALL real tasks
         ret = self._heldout_acc(self._tasks[0]["classes"])  # old-task (A) retention
         return {
