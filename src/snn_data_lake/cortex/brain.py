@@ -543,6 +543,9 @@ class Brain:
         self._help_drive = (
             0.0  # C (Brain-Cog social): decaying empathic ENGAGE-toward-distress drive
         )
+        self._tom_protect = (
+            0.0  # C2 (Brain-Cog): decaying caution from a tracked agent's false belief
+        )
         self._drive_lr = 0.02  # three-factor learning rate for the approach-drive synapses
         self._place_lr = 0.25  # R-STDP rate for per-place value
         self._base_tau = 0.02  # adaptation rate of the running baselines below
@@ -1211,6 +1214,15 @@ class Brain:
             self.brain.arm._ext_drive = ext if any(x > 0.0 for x in ext) else None
             # the empathic drive FADES if no fresh distress is perceived (a bounded, decaying pull)
             self._help_drive = round(0.85 * float(getattr(self, "_help_drive", 0.0)), 4)
+            # C2 (Brain-Cog belief-guided safety): a tracked agent holding a DANGEROUS FALSE BELIEF
+            # (recursive_tom divergence -- until now a readout that drove nothing) now pushes a
+            # decaying SOCIAL-RISK caution to the arm, so the brain HOLDS more under social
+            # uncertainty. Bounded, caution-only (the reflex/E-STOP preempts); no new actuator route.
+            fb = len(self._false_beliefs) if self._false_beliefs else 0
+            self._tom_protect = max(
+                min(1.0, 0.34 * fb), 0.9 * float(getattr(self, "_tom_protect", 0.0))
+            )
+            self.brain.arm._social_risk = round(self._tom_protect, 4)
         except Exception:
             pass
 

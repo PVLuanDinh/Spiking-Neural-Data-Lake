@@ -443,8 +443,12 @@ class AutonomousArm:
                 qa, threat, intero, pfc_bias, reliability_hold, unit
             )  # BG Go/NoGo gate disinhibits the exploit choice
         bias = (
-            self.cort.caution_bias() + threat + intero + reliability_hold
-        )  # stress + threat + intero + drift-hold -> favour safe
+            self.cort.caution_bias()
+            + threat
+            + intero
+            + reliability_hold
+            + float(getattr(self, "_social_risk", 0.0) or 0.0)
+        )  # stress + threat + intero + drift-hold + social-risk -> favour safe
         td = pfc_bias or [0.0] * len(ACTIONS)  # prefrontal top-down preference per action
         td = self._route_signals(
             td
@@ -496,7 +500,18 @@ class AutonomousArm:
                 self._conflict = round(float(self._exec.conflict(drive)), 4)
             except Exception:
                 pass
-        caution = min(1.0, self.cort.caution_bias() + threat + intero + reliability_hold)
+        # C2 (Brain-Cog belief-guided safety): `_social_risk`, pushed by the brain when a tracked
+        # agent holds a DANGEROUS FALSE BELIEF (recursive_tom divergence -- until now a tracker that
+        # drove nothing), adds to caution exactly like threat/intero -> more HOLD under social
+        # uncertainty. Caution-only (safe by construction); the reflex/E-STOP preempts regardless.
+        caution = min(
+            1.0,
+            self.cort.caution_bias()
+            + threat
+            + intero
+            + reliability_hold
+            + float(getattr(self, "_social_risk", 0.0) or 0.0),
+        )
         da = max(0.0, min(1.0, max(drive) * (1.0 - caution)))
         # STN HYPERDIRECT BRAKE (Frank 2006): the ACC conflict signal -- computed just above and,
         # until now, CONSUMED BY NOTHING -- raises a global GPi brake that makes release harder when
