@@ -556,6 +556,7 @@ class Brain:
                 "percept",
                 "recall",
                 "surprise",
+                "drive",
             ),
             0.1,
         )
@@ -569,6 +570,8 @@ class Brain:
         self._place_lr = 0.25  # R-STDP rate for per-place value
         self._percept_lr = 0.25  # R-STDP rate for per-(percept-class, action) value
         self._recall_lr = 0.25  # R-STDP rate for per-(recalled-episode, action) value
+        self._drive_val_lr = 0.25  # R-STDP rate for per-(dominant homeostatic drive, action) value
+        self._drive_value = {}  # MASTER LEVER: R-STDP value per (dominant homeostatic drive, action)
         self._base_tau = 0.02  # adaptation rate of the running baselines below
         self._rpe_base = 0.0  # running |RPE| baseline -> the RELATIVE reward-onset threshold
         self._nov_base = 0.0  # running novelty baseline -> the RELATIVE explore/fidget threshold
@@ -1194,6 +1197,9 @@ class Brain:
                 "surprise": max(
                     0.0, min(1.0, float(getattr(self, "_surprise_signal", 0.0) or 0.0))
                 ),
+                # MASTER LEVER (interoceptive motivation -> action): the dominant homeostatic need
+                # (assigned below); always present so it competes in the weight update + baseline.
+                "drive": 0.0,
             }
             # R-STDP place->ACTION value: eligibility = the (place, action just taken), dopamine =
             # RPE. Keyed on the ACTION, not the place alone, because a place-SCALAR broadcast equally
@@ -1283,6 +1289,37 @@ class Brain:
                         if a != SAFE_ACTION
                     ]
                 )
+            # MASTER LEVER (interoceptive motivation -> action): the homeostatic dominant drive + its
+            # urgency were computed EVERY tick (HomeostaticDrives) but never touched behaviour --
+            # motivational_bias()/action_values() had ZERO callers in src/. Now the dominant internal
+            # need drives action: an R-STDP value per (dominant-drive, action) learns which action
+            # relieved which need FROM DOPAMINE (not hand-mapped), GATED by the drive's urgency SHARE u
+            # -- a self-normalizing softmax in (0,1], baseline-relative, NOT a fixed threshold. Arm
+            # actions don't service the modelled drives, so da (RPE) charges need-CONDITIONED reward-
+            # predictive action value -- the faculty the module was built to feed. Bounded + local.
+            dname = getattr(self, "_dominant_drive", None)
+            u = urg = 0.0
+            if self._drives is not None and dname is not None:
+                try:
+                    u = float(self._drives.motivational_bias().get(dname, 0.0) or 0.0)
+                    urg = float(
+                        self._drives.deficit().get(dname, 0.0) or 0.0
+                    )  # dominant need's deficit
+                except Exception:
+                    u = urg = 0.0
+            # DIRECTED: learn which action relieves the dominant need (R-STDP, dopamine-gated) -- refines
+            # WHICH action the urgency biases toward, per (drive, action).
+            if dname is not None and action is not None and action != SAFE_ACTION:
+                dk = (dname, action)
+                dv = self._drive_value.get(dk, 0.0)
+                dv = max(-1.0, min(1.0, dv + self._drive_val_lr * da * (1.0 - abs(dv))))
+                self._drive_value[dk] = round(dv, 4)
+            # UNDIRECTED "act when a need is urgent": the dominant need's graded perceived deficit (bounded
+            # [0,1], a GRADED salience, not a magic threshold) is the drive source's primary activation --
+            # like novelty/surprise it says "ACT" (biases the non-HOLD actions over HOLD), weighted by the
+            # LEARNED _drive_w["drive"]. Motivation to act rises with need; the three-factor weight learns
+            # whether acting-when-deficient pays off. This is what makes the interoceptive signal DECISIVE.
+            elig["drive"] = max(0.0, min(1.0, urg))
             # TIMED Go window: a rewarded outcome teaches the spiking clock WHEN reward arrives, and
             # proximity to that learned latency opens the window. Reward ONSET is detected relative to
             # the running |RPE| baseline (adaptation), not against a fixed cutoff.
@@ -1329,6 +1366,8 @@ class Brain:
                 + self._drive_w["timing"] * elig["timing"]
                 + self._drive_w["reroute"] * elig["reroute"]
                 + self._drive_w["surprise"] * elig["surprise"]
+                # interoceptive motivation: an urgent need biases ACT over HOLD (undirected salience)
+                + self._drive_w["drive"] * elig["drive"]
             )
 
             # HELP is action-directional like place: empathy drives the APPROACH/assist action
@@ -1363,7 +1402,15 @@ class Brain:
                     if rkey is not None
                     else 0.0
                 )
-                return undirected + place_a + help_a + percept_a + recall_a
+                # drive is action-specific like place/percept/recall: the dominant homeostatic need's
+                # learned per-(drive, action) value, urgency-gated, so the need biases the action that
+                # has relieved it before -- interoceptive motivation finally tips ENGAGE vs RELEASE.
+                drive_a = (
+                    self._drive_w["drive"] * u * max(0.0, self._drive_value.get((dname, a), 0.0))
+                    if dname is not None
+                    else 0.0
+                )
+                return undirected + place_a + help_a + percept_a + recall_a + drive_a
 
             ext = [_drive_for(a) for a in ACTIONS]
             self.brain.arm._ext_drive = ext if any(x > 0.0 for x in ext) else None
