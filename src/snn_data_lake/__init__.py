@@ -227,6 +227,7 @@ REGIONS = {
         "reaction_diffusion_compute",
         "web_ingest",
         "lake_working_memory",
+        "chat_memory",  # durable content-addressable chat memory on the spike lake (noise-filtered)
         "live_brain_tab",
         "nengo_bridge",
         "home",
