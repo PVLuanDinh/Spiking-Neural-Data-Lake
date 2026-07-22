@@ -12,6 +12,9 @@ packaging/installer/
 # personal local Claude Code settings (self-build permission rule)
 .claude/settings.local.json
 
+# brain daemon runtime log
+brain_daemon.log
+
 # Virtual envs
 .venv/
 .venv-lake/

@@ -70,6 +70,7 @@ from snn_data_lake.neuromodulation.raphe_serotonin import DorsalRaphe
 
 SAFE_DISTANCE = CONTACT * 3.0  # perception-only distance band; never in a reflex/danger zone
 STORE_EVERY = 3  # store one sleep-replay assembly every STORE_EVERY wake ticks
+SELFBUILD_EVERY = 8  # autonomous self-build cadence: run the gated self-build once per N completed nights (opt-in via NORD_SELFMOD=1)
 
 # LIVE theory-of-mind dialogue grammar (W2d): a small hand-specified surface parse feeding a REAL first-order
 # belief tracker. '<subj> put/moved the <obj> in/to the <loc>'; an absence marker makes the change UNWITNESSED
@@ -795,6 +796,7 @@ class Brain:
         self._wake_ticks = 0
         self._sleep_ticks = 0
         self._nights = 0
+        self._selfbuild_last = None  # last autonomous self-build result (opt-in via NORD_SELFMOD=1)
         self._lp_mean = 0.0
         self._consolidation_acc = 0.0
         self._reflex_ever = False
@@ -2144,9 +2146,49 @@ class Brain:
                 total += 1
         return good / total >= 0.9
 
+    def _maybe_autonomous_self_build(self):
+        """AUTONOMOUS self-building (gated, OPT-IN): the brain proposes its OWN improvements, sandbox-
+        verifies + gate-promotes them (keep byte-verified, ROLL BACK on any failure), auto-applying the
+        survivors to the source tree so they take effect on the next launch. DISABLED unless env
+        NORD_SELFMOD=1 -- a plain no-op otherwise, so the gates and a normal run never trigger it. The 5
+        brainstem arm-safety files are FIREWALLED (never a legal target; crc-verified unchanged); only
+        whitelisted NON-safety params can change. Heavy (the gate is a full run_selfchecks), so _enter_wake
+        calls this only once every SELFBUILD_EVERY nights. Never raises (guarded)."""
+        import os as _os
+
+        if _os.environ.get("NORD_SELFMOD") != "1":
+            return None  # disabled by default: the brain does not self-modify unless the operator opts in
+        try:
+            import subprocess as _sp
+            import sys as _sys
+
+            from snn_data_lake.reasoning.self_build_loop import SelfBuildLoop
+
+            def _gate():
+                # CRITICAL: run the correctness gate with NORD_SELFMOD UNSET, so the gate's own in-process
+                # brain self-check does NOT recursively trigger another self-build (infinite regress).
+                env = {**_os.environ, "NORD_SELFMOD": "0"}
+                r = _sp.run(
+                    [_sys.executable, "run_selfchecks.py"], capture_output=True, text=True, env=env
+                )
+                return r.returncode == 0 and "self-checks passed" in r.stdout
+
+            props = self.propose_improvements(budget=3)
+            out = SelfBuildLoop(enable=True, gate_fn=_gate).run(props)
+            kept = sum(1 for o in out if o.get("status") == "kept")
+            self._selfbuild_last = {"night": self._nights, "proposed": len(props), "kept": kept}
+            return self._selfbuild_last
+        except Exception:
+            return None
+
     def _enter_wake(self):
         self._nights += 1  # a completed subjective night
         self._interval_timer = 0  # a new wake episode -> reset the interval-timing ramp
+        # AUTONOMOUS self-building (opt-in via env NORD_SELFMOD=1): once every SELFBUILD_EVERY nights the
+        # brain runs its own GATED self-build (propose -> sandbox-verify -> gate-promote/rollback,
+        # auto-apply). No-op by default; arm-safety firewalled; guarded so it never breaks the wake path.
+        if self._nights % SELFBUILD_EVERY == 0:
+            self._maybe_autonomous_self_build()
 
     # ---- public API ----------------------------------------------------------------------------
     def tick(self):
