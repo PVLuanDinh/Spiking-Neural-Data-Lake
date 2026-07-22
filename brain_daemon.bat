@@ -10,7 +10,10 @@ REM   firewalled, rolled back byte-exact on any gate failure).
 REM ============================================================================================
 cd /d D:\AI-project\spiking-neural-data-lake
 
-REM set NORD_SELFMOD=1
+set NORD_SELFMOD=1
+REM ^ AUTONOMOUS self-build ON: every 8 nights the brain gate-verifies + applies its own improvements
+REM   (sandbox-verified, arm-safety firewalled, rolled back byte-exact on any gate failure). Comment out
+REM   this line to make the daemon learn-only. The self-build pauses the tick for minutes when it fires.
 REM set NORD_TORCH=0    REM  (lighter stdlib perception tier, if the always-on torch tier is too heavy)
 
 :loop
