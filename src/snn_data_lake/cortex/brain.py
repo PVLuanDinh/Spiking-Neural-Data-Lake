@@ -538,12 +538,25 @@ class Brain:
         self._recall_conf = 0.0  # confidence of the current tick's episodic pattern-completion (gates the recall drive)
         self._percept_conf = 1.0  # perceptual-confidence gate on the percept drive (set live by the no-backprop laminar readout B'; 1.0 = ungated)
         self._percept_readout = None  # Slice B: lazy LIVE no-backprop laminar readout (B') over the real percept latent; learns online, sets _percept_conf
+        self._percept_surprise = None  # loop C2: lazy online unsupervised SURPRISE (Oja-PCA reconstruction residual) over the percept latent
+        self._surprise_signal = 0.0  # loop C2: current-tick predictive surprise (off-manifold), an orienting drive; set in _perceive_real
         self._learned_latency = 0  # C2 #3: learned reward latency -> opens a timed Go window
         # C2 BRAIN-NATIVE: the approach drive's per-source weights are LEARNED (three-factor,
         # dopamine-gated, baseline-subtracted -- see _route_percept_to_action), not hand-set. They
         # start EQUAL so no source is privileged by hand; the brain learns which ones pay off.
         self._drive_w = dict.fromkeys(
-            ("novelty", "ignition", "place", "timing", "reroute", "help", "percept", "recall"), 0.1
+            (
+                "novelty",
+                "ignition",
+                "place",
+                "timing",
+                "reroute",
+                "help",
+                "percept",
+                "recall",
+                "surprise",
+            ),
+            0.1,
         )
         self._help_drive = (
             0.0  # C (Brain-Cog social): decaying empathic ENGAGE-toward-distress drive
@@ -997,6 +1010,19 @@ class Brain:
                 _pc, self._percept_conf = self._percept_readout.infer(percept)
             except Exception:
                 pass
+            # loop C2: online unsupervised SURPRISE over the percept latent -- an Oja-PCA (local
+            # Hebbian, no gradient) reconstruction residual STANDARDIZED against its running mean/scale
+            # (off-manifold = surprising). A familiar percept reads ~0, a genuinely novel one ~1; it
+            # feeds an orienting drive (elig "surprise") in _route_percept_to_action. Distinct from the
+            # prototype-novelty source (measured novelty_corr ~0.26): subspace-residual vs nearest-proto.
+            try:
+                if self._percept_surprise is None:
+                    from snn_data_lake.cortex.percept_surprise import PerceptSurprise
+
+                    self._percept_surprise = PerceptSurprise(in_dim=len(percept), k=8, seed=0)
+                self._surprise_signal = float(self._percept_surprise.observe(percept))
+            except Exception:
+                pass
             return percept
         except Exception:
             return None
@@ -1157,6 +1183,12 @@ class Brain:
                 # MASTER LEVER (episodic memory -> action): pattern-completed recall drives action
                 # (assigned below); always present so it competes in the weight update + baseline.
                 "recall": 0.0,
+                # loop C2 (perception -> orienting): unsupervised predictive SURPRISE (an off-manifold
+                # percept, Oja-PCA residual set in _perceive_real) as an UNDIRECTED salience source like
+                # novelty -- it says "act/orient", not which action. Distinct from novelty (corr ~0.26).
+                "surprise": max(
+                    0.0, min(1.0, float(getattr(self, "_surprise_signal", 0.0) or 0.0))
+                ),
             }
             # R-STDP place->ACTION value: eligibility = the (place, action just taken), dopamine =
             # RPE. Keyed on the ACTION, not the place alone, because a place-SCALAR broadcast equally
@@ -1291,6 +1323,7 @@ class Brain:
                 + self._drive_w["ignition"] * elig["ignition"]
                 + self._drive_w["timing"] * elig["timing"]
                 + self._drive_w["reroute"] * elig["reroute"]
+                + self._drive_w["surprise"] * elig["surprise"]
             )
 
             # HELP is action-directional like place: empathy drives the APPROACH/assist action

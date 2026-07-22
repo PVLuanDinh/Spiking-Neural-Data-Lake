@@ -53,6 +53,7 @@ CORE = [
     "cortex.learned_evc",   # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
     "cortex.second_order_access",   # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
     "cortex.heterogeneous_microcircuit",   # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
+    "cortex.percept_surprise",   # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
     # hippocampus — memory formation, spatial coding, replay
     "hippocampus.hippocampus", "hippocampus.grid_cells", "hippocampus.htm_sequence_memory", "hippocampus.frequency_memory",
     "hippocampus.experience_replay", "hippocampus.sleep_replay", "hippocampus.ring_attractor", "hippocampus.growing_learner",

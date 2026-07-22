@@ -88,6 +88,7 @@ REGIONS = {
         "learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
         "second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
         "heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
+        "percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
         "pc_cortex_serve",
         "brain",
