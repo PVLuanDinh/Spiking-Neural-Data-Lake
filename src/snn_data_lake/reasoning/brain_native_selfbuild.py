@@ -253,6 +253,85 @@ class DataIngestSource(SelfBuildSource):
         )
 
 
+# ------------------------------------------------------- data-recalibration targets (the real ingest) --
+# Each target: a band-gated threshold whose GATING SIGNAL the brain records live (substrate/signal_calibrator,
+# Step-0) -> recalibrate the hand-guessed literal to a percentile of the RECORDED distribution. `signal` must
+# match the SignalCalibrator name recorded in brain.py. NEVER a brainstem/protected/scorer file.
+RECALIB_TARGETS = (
+    {
+        "id": "recalib:salience_th",
+        "signal": "salience_th",  # the salience drive fed to LocusCoeruleus each tick (brain.py _w8_tick)
+        "target": "src/snn_data_lake/neuromodulation/locus_coeruleus.py",
+        "const": "SALIENCE_TH",
+        "orig": "0.50",
+        "marker": "# DATA-CALIBRATED:salience",
+        "lo": 0.02,  # plausibility clamp on the bounded [0,1] signal; the module self-check is the real judge
+        "hi": 0.98,
+    },
+)
+
+
+class ThresholdRecalibrationSource(SelfBuildSource):
+    """The FIRST REAL DataIngestSource: recalibrate a band-gated threshold from the brain's OWN recorded
+    signal distribution (a persisted P2 quantile, substrate/signal_calibrator Step-0). Distils a FIXED
+    data-calibrated literal (NOT a running baseline -- the module docstring proves the per-instance-baseline
+    swap rolls back) and emits a DehardcodeSource-style patch; the existing SelfModHarness + SelfBuildLoop
+    gate KEEPS it iff it lands in the module's behavioural-band self-check, else rolls back byte-exact.
+
+    HONEST CEILING: the gate certifies COMPATIBILITY (the value stays consistent with the module's own
+    self-check), NOT correctness -- reward=kept != "the value is more right". It does NOT learn from the
+    internet (web text unit-mismatches every legal target); it recalibrates the brain's OWN operating point
+    from its OWN recorded data. Honest-null until the log has >= MIN_SAMPLES real samples -- NO smuggled
+    seed constant. Converges to honest-null once each threshold is data-calibrated or the recorded value
+    resists (its self-check band rejects it)."""
+
+    name = "data_recalibrate"
+    MIN_SAMPLES = (
+        50  # DATA-SUFFICIENCY (not a behaviour threshold): only propose on real recorded data
+    )
+
+    def __init__(self, recalibs=None, calib_path=None):
+        self._recalibs = tuple(recalibs) if recalibs is not None else RECALIB_TARGETS
+        self._calib_path = calib_path
+        for r in self._recalibs:
+            if _forbidden(r["target"]):
+                raise ValueError(
+                    f"FIREWALL: recalib {r['id']} targets an illegal file {r['target']}"
+                )
+
+    def candidates(self, repo):
+        from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
+
+        path = self._calib_path or os.path.join(repo, "data", "signal_calib.json")
+        out = []
+        for r in self._recalibs:
+            is_applied = _is_applied_fn(r["target"], r["marker"])
+            if is_applied(repo):
+                continue  # already data-calibrated -> not a candidate (drains toward honest-null)
+            res = SignalCalibrator.load_result(path, r["signal"])
+            if not res or res["value"] is None or res["n"] < self.MIN_SAMPLES:
+                continue  # HONEST-NULL: no / too little recorded data -> propose NOTHING (no fabricated value)
+            val = round(max(r["lo"], min(r["hi"], float(res["value"]))), 4)
+            pct = int(round(res["p"] * 100))
+            new_line = f"{r['const']} = {val!r}  {r['marker']}@{res['n']} (P{pct} of recorded {r['signal']}, was {r['orig']})"
+            patches = ((rf"^{re.escape(r['const'])} = [^\n#]*(?:#.*)?$", new_line, 1),)
+            out.append(
+                {
+                    "id": r["id"],
+                    "source": self.name,
+                    "target": r["target"],
+                    "kind": "recalibrate",
+                    "rationale": (
+                        f"recalibrate {r['const']} {r['orig']} -> data P{pct} {val} (n={res['n']}) of the "
+                        f"brain's OWN recorded {r['signal']} signal; gate certifies compatibility not correctness"
+                    ),
+                    "edit_fn": _patch_edit_fn(r["target"], patches, r["marker"]),
+                    "is_applied": is_applied,
+                }
+            )
+        return out
+
+
 # ------------------------------------------------------------------- authored transform registry --
 # Developer-authored de-hardcode transforms. Kept SMALL + honest: each targets a real absolute
 # behaviour-arbitrating threshold; the LIVE gate is the arbiter of which are safe (a transform whose
@@ -262,9 +341,9 @@ DEHARDCODE_TRANSFORMS = ()  # seeded empty: the toy self-check proves the mechan
 #                             added only once verified gate-green (grows in later loop cycles). Honest-null
 #                             until then -- never a fake change. See the module docstring's finding.
 
-# All transform IDs the learner has a synapse for (stable order == synapse index). Extend as the registry
+# All candidate IDs the learner has a synapse for (stable order == synapse index). Extend as the registry
 # grows; existing persisted weights keep their index. A tiny fixed capacity avoids resizing the bank.
-_ALL_IDS = tuple(s["id"] for s in DEHARDCODE_TRANSFORMS)
+_ALL_IDS = tuple(s["id"] for s in DEHARDCODE_TRANSFORMS) + tuple(r["id"] for r in RECALIB_TARGETS)
 
 
 # ================================================================================================
@@ -284,7 +363,9 @@ class BrainNativeSelfBuildProposer:
         self._repo = os.path.abspath(repo) if repo else _repo_root()
         self._seed = int(seed)
         self._sources = (
-            list(sources) if sources is not None else [DehardcodeSource(), DataIngestSource()]
+            list(sources)
+            if sources is not None
+            else [DehardcodeSource(), ThresholdRecalibrationSource(), DataIngestSource()]
         )
         self._ids = tuple(ids) if ids is not None else _ALL_IDS
         self._idx = {tid: i for i, tid in enumerate(self._ids)}
@@ -706,6 +787,75 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
             "same seed -> same order"
         )
         _emit("  [OK] deterministic: same seed reproduces the ranked candidate order")
+
+        # ---- ThresholdRecalibrationSource (first real DataIngestSource): honest-null + propose + firewall ----
+        from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
+
+        calib_path = os.path.join(work, "signal_calib.json")
+        rc = ThresholdRecalibrationSource(calib_path=calib_path)
+        assert rc.candidates(fake) == [], (
+            "recalibration must honest-null with NO recorded data (no file)"
+        )
+        sc = SignalCalibrator("salience_th", p=0.75)
+        for _ in range(10):
+            sc.observe(0.4)  # below MIN_SAMPLES
+        SignalCalibrator.save_all(calib_path, [sc])
+        assert rc.candidates(fake) == [], (
+            "must honest-null below MIN_SAMPLES (no smuggled seed constant)"
+        )
+        # >= MIN_SAMPLES of a real distribution -> it proposes a data-calibrated recalibration
+        sc2 = SignalCalibrator("salience_th", p=0.75)
+        for i in range(200):
+            sc2.observe(
+                0.30 + 0.40 * ((i % 5) / 4.0)
+            )  # spread ~[0.3,0.7], P75 ~0.6 (a plausible SALIENCE_TH)
+        SignalCalibrator.save_all(calib_path, [sc2])
+        rel = "src/snn_data_lake/neuromodulation/locus_coeruleus.py"
+        dst = os.path.join(fake, *rel.split("/"))
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        with open(dst, "w", encoding="utf-8", newline="") as f:
+            f.write("SALIENCE_TH = 0.50  # drive >= this is salient\n")
+        cands = rc.candidates(fake)
+        assert len(cands) == 1 and cands[0]["id"] == "recalib:salience_th", cands
+        cands[0]["edit_fn"](fake)  # apply to the fake target tree
+        with open(dst, encoding="utf-8", newline="") as f:
+            newlc = f.read()
+        assert "# DATA-CALIBRATED:salience" in newlc and "= 0.50 " not in newlc, newlc
+        assert _is_applied_fn(rel, "# DATA-CALIBRATED:salience")(fake), (
+            "the marker must mark it applied"
+        )
+        assert rc.candidates(fake) == [], (
+            "an APPLIED recalibration must not be re-proposed (drains to null)"
+        )
+        rej = 0
+        for bad in ("src/snn_data_lake/brainstem/reflex.py", "run_selfchecks.py"):
+            try:
+                ThresholdRecalibrationSource(
+                    recalibs=(
+                        {
+                            "id": "x",
+                            "signal": "s",
+                            "target": bad,
+                            "const": "C",
+                            "orig": "1",
+                            "marker": "# m",
+                            "lo": 0.0,
+                            "hi": 1.0,
+                        },
+                    )
+                )
+            except ValueError:
+                rej += 1
+        assert rej == 2, (
+            "recalib targeting a protected/brainstem file must be rejected at construction"
+        )
+        _emit(
+            "  [OK] ThresholdRecalibrationSource: honest-null with no/insufficient data (no seed); once >="
+        )
+        _emit(
+            "       MIN_SAMPLES, proposes a data-calibrated SALIENCE_TH from the recorded P75 + marker;"
+        )
+        _emit("       applied -> not re-proposed; firewall rejects brainstem/protected targets")
 
     finally:
         os.environ.pop("NORD_SELFMOD", None)

@@ -769,6 +769,20 @@ class Brain:
         # ---- drivable-region ENSEMBLE: extra stateful regions NOT already inside LiveBrain ----
         self._ach = self._try(lambda: Acetylcholine())
         self._lc = self._try(lambda: LocusCoeruleus(seed=self._seed))
+        # Step-0 of DATA SELF-RECALIBRATION: record the salience drive fed to the LC (below, _w8_tick) as
+        # a durable running quantile so the self-build can recalibrate SALIENCE_TH from the brain's OWN
+        # recorded distribution (reasoning/brain_native_selfbuild.ThresholdRecalibrationSource, gate-verified).
+        self._salience_calib = None
+        try:
+            from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
+
+            self._salience_calib = SignalCalibrator("salience_th", p=0.75)
+            if self._persist:
+                from snn_data_lake.substrate.home import state_path
+
+                SignalCalibrator.load_into(state_path("signal_calib.json"), [self._salience_calib])
+        except Exception:
+            self._salience_calib = None
         self._raphe = self._try(lambda: DorsalRaphe())
         self._astro = self._try(lambda: Astrocyte(n_domains=2, seed=self._seed))
         self._homeostat = self._try(lambda: Homeostat(seed=self._seed))
@@ -845,6 +859,13 @@ class Brain:
         live = set()
         novelty = 1.0 if prev.get("grew") else min(1.0, max(0.0, self._lp_mean))
         salience = max(0.0, float(prev.get("threat") or 0.0))
+        if self._salience_calib is not None:
+            try:
+                self._salience_calib.observe(
+                    salience
+                )  # record the live salience distribution (Step-0)
+            except Exception:
+                pass
         base = self._baseline
         homeo_load = 0.0
         if self._ach is not None:
@@ -3152,6 +3173,14 @@ class Brain:
                 from snn_data_lake.substrate.home import state_path
 
                 self._acq_lm.save(state_path("language_acq.npz"))
+        except Exception:
+            pass
+        try:  # Step-0: persist the recorded signal-calibration quantiles (resumable across restarts)
+            if self._persist and getattr(self, "_salience_calib", None) is not None:
+                from snn_data_lake.substrate.home import state_path
+                from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
+
+                SignalCalibrator.save_all(state_path("signal_calib.json"), [self._salience_calib])
         except Exception:
             pass
         try:

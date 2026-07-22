@@ -115,7 +115,7 @@ CORE = [
     "substrate.neuro_chip", "substrate.neuro_chip_stream", "substrate.nir_export", "substrate.sensor_csv_ingest",
     "substrate.esp32_encoder_path", "substrate.make_sensor_dataset", "substrate.sensor_demo", "substrate.demo",
     "substrate.control_panel", "substrate.brain_bundle", "substrate.reaction_diffusion_compute",
-    "substrate.web_ingest", "substrate.lake_working_memory", "substrate.chat_memory", "substrate.live_brain_tab", "substrate.home",
+    "substrate.web_ingest", "substrate.lake_working_memory", "substrate.chat_memory", "substrate.signal_calibrator", "substrate.live_brain_tab", "substrate.home",
     "substrate.binlog", "substrate.growable", "substrate.coordinated_growth",
     "substrate.region_coherence",   # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
     "substrate.basic_components",   # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
