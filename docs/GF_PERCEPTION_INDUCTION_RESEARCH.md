@@ -109,6 +109,53 @@ generalization of the concepts is a Phase-4 question, untested here.
   brain-native; wiring `rank_order_coding`/`lca_sparse_coding` is a *later, optional* experiment that must
   earn its place by measured contribution.
 
+#### Phase 2 DE-RISK RESULT (GO) + FROZEN GENERATOR MANIFEST
+
+Coverage probe run against the 20 Phase-1 concepts. **Coverage = 13/20 (a) COVERED + 1/20 (b) general
+new generator = 70%** (inside the predicted 50–80% band → **GO**, falsifier not triggered). By concept
+class: region_fill 3/3, counting 1/1, grouping 1/1, color_logic 2/2, relation 3/4, symmetry 2/3,
+object_transform 1/2, **geometry 1/4**.
+
+**FROZEN generator manifest (13, pre-registered — committed here BEFORE any further eval inspection, per
+theater guard #1; no task-specific generator may be added after seeing more eval):**
+
+| # | Generator | Measurement |
+|---|---|---|
+| G1 CONN | components under {4,8}×{same,multi}-colour (ARGA competing abstractions; `components()` = the seed) |
+| G2 LATTICE | full-row/col monochrome separators + support-band partition; interval-merge bands |
+| G3 PERIOD | tiling periodicity: modal tile size, per-cell consensus template over repeats |
+| G4 PALETTE | colour stats grid/per-object: background, modal, rarest, per-colour counts, absent(free) colours |
+| G5 MORPH | interior(8-erosion) vs boundary; solid-rectangle test; k×k solid core (denoise); bbox h/w/side/aspect |
+| G6 TOPO | enclosure (bg regions not touching border); per-object hole count + hole regions as cell-sets |
+| G7 SHAPE-EQ | normalized shape class-id; equivalence under D8×integer-scale returning **witness transform + cell correspondence**; non-contiguous same-shape grouping |
+| G8 ALIGN/ADJ | pairwise: same-row/col, adjacency, containment, cellset-locus intersection, border position + opposite-border pairing |
+| G9 DIST | distance field / nearest-object partition (1-D bands, 2-D Voronoi ownership) |
+| G10 PROG | exact arithmetic progression of point sets (step vector, spacing); collinearity |
+| G11 SYM | partial-symmetry discovery: all mirror axes / rotations / glides + agreement score + **cell-to-cell correspondence**, occlusion-aware |
+| G12 LOCI | linear loci as **cellset values**: segment between two cells; row/col line through a cell; ray to border; grid perimeter; locus meets |
+| G13 COLOR-PAIRING | colour correspondence read from paired cells along an object's short axis (legend/key reading) — the (b) refinement |
+
+Universal registry consumers (fixed, concept-independent plumbing extending the existing `sel/del/filter`
+pattern): `select-by-attribute`, `paint(cellset,color)`, `paint-through-measured-correspondence`,
+`crop(bbox)`, `materialize-measured-matrix-as-grid`. These paint/copy/select/crop cell-sets + values
+already determined by measurements on the INPUT scene — they never invent geometry.
+
+**THE HONEST LIMITATION (quantified):** the remaining **6/20 = 30% are OPERATION-not-measurement** —
+constructive geometry the measurement thesis cannot supply, reducing to 3 generic operation families:
+(i) lattice/product **stamp constructors** (invented output frames: 3H×3W tiling, H²×W² fractal product),
+(ii) **sequential path construction** with conventions (spirals, ordered elbow visits),
+(iii) **stateful fold/transport** (threaded-anchor object chaining, order-preserving material sweep).
+Consequence: predicate-space-only bounds the realized dev ceiling at ~0.70 × 95% ≈ **66%** of dev misses
+before search costs. **Phase-3's mint must either grow an operation-synthesis arm over these 3 families,
+or accept the ~66% cap.** This is the honest scope correction the Phase-2 probe bought.
+
+**Registry design requirements surfaced:** SHAPE-EQ + SYM must return **witness correspondences** (not
+booleans); LOCI must be **cellset-valued**; the consumer set is the concrete shape of Phase-3's
+`count`/`objectset`/`relation`/`correspondence` type extension.
+
+**Next concrete step:** the `components()` → registry refactor in `arc_solver.py` (schema ~L150, cached
+like `_SEG_CACHE`), implementing G1–G13 as bounded deterministic generators — a 2–3 session build.
+
 ### Phase 3 — The mint: MDL-scored hypothesis generation + typed promotion  (3–5 sessions; the bottleneck)
 - **Goal:** close decomposition gap **(ii)** — the unsolved one — by generating out-of-closure operation
   hypotheses *from* the Phase-2 predicate space, scoring by two-part MDL, promoting winners as typed
