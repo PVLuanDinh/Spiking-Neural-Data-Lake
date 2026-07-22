@@ -9,6 +9,9 @@ build/
 dist/
 packaging/installer/
 
+# personal local Claude Code settings (self-build permission rule)
+.claude/settings.local.json
+
 # Virtual envs
 .venv/
 .venv-lake/
