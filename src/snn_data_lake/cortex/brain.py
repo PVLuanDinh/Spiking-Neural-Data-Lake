@@ -1455,6 +1455,17 @@ class Brain:
             from snn_data_lake.reasoning.improvement_proposer import ImprovementProposer
 
             metrics = {k: float(v) for k, v in self.state().items() if isinstance(v, (int, float))}
+            # ALSO expose the birth self-improvement CENSUS metrics (goal_reach / qd_coverage /
+            # consolidation_retention / drive_regulation / metaplast_gain, in self._rungs). The
+            # proposer's whitelist targets THESE metrics, so without them it proposes nothing (the brain
+            # could not build itself). Census keys win on collision -- they are the self-improvement axes.
+            metrics.update(
+                {
+                    k: float(v)
+                    for k, v in getattr(self, "_rungs", {}).items()
+                    if isinstance(v, (int, float))
+                }
+            )
             return ImprovementProposer(seed=self._seed).propose(metrics, budget=budget)
         except Exception:
             return []
