@@ -52,7 +52,15 @@ _CONSTS_pi = (1, 2, 3)                        # the atomic integer constants the
 _MAX_SIZE = 7                              # node budget (raise -> larger programs, unbounded in principle)
 
 
-# An expression is a nested tuple: ('n',) ('t1',) ('t2',) ('c', k) ('+', a, b) ('-', a, b) ('*', a, b).
+def _digit_sum(v):
+    """sum of the base-10 digits of |v|. A NEW general grammar primitive (digitsum(t[n-1])) -- not a
+    per-item special case: it composes with +/-/* like any other terminal, so it reaches any sequence
+    whose step is a function of the previous term's digits (e.g. t[n]=t[n-1]+digitsum(t[n-1]))."""
+    return sum(int(ch) for ch in str(abs(int(v))))
+
+
+# An expression is a nested tuple: ('n',) ('t1',) ('t2',) ('d1',) ('c', k) ('+', a, b) ('-', a, b) ('*', a, b).
+# 'd1' = digitsum(t[n-1]) -- a general terminal, composable with the rest of the grammar.
 
 def _evaluate_pi(expr, n, t1, t2):
     tag = expr[0]
@@ -62,6 +70,8 @@ def _evaluate_pi(expr, n, t1, t2):
         return t1
     if tag == "t2":
         return t2
+    if tag == "d1":
+        return _digit_sum(t1)
     if tag == "c":
         return expr[1]
     a = _evaluate_pi(expr[1], n, t1, t2)
@@ -75,10 +85,22 @@ def _uses_pi(expr, sym):
     return len(expr) == 3 and (_uses_pi(expr[1], sym) or _uses_pi(expr[2], sym))
 
 
+def _min_start_pi(expr):
+    """The earliest history index this expr can be evaluated at: needs t[n-2] (t2) -> 2; needs t[n-1]
+    (t1, or d1 which is a function OF t1 and so needs the same history) -> 1; a pure f(n) -> 0."""
+    if _uses_pi(expr, "t2"):
+        return 2
+    if _uses_pi(expr, "t1") or _uses_pi(expr, "d1"):
+        return 1
+    return 0
+
+
 def _render_pi(expr):
     tag = expr[0]
     if tag in ("n", "t1", "t2"):
         return {"n": "n", "t1": "t[n-1]", "t2": "t[n-2]"}[tag]
+    if tag == "d1":
+        return "digitsum(t[n-1])"
     if tag == "c":
         return str(expr[1])
     return f"({_render_pi(expr[1])} {tag} {_render_pi(expr[2])})"
@@ -91,7 +113,7 @@ def _layers(max_size):
     """The expression layers up to max_size, built ONCE and cached (it is a pure function of max_size).
     Rebuilding the size-7 grammar cost ~16 ms on every induce/consistent call before this cache."""
     if max_size not in _LAYER_CACHE:
-        layers = {1: [("n",), ("t1",), ("t2",)] + [("c", k) for k in _CONSTS_pi]}
+        layers = {1: [("n",), ("t1",), ("t2",), ("d1",)] + [("c", k) for k in _CONSTS_pi]}
         for size in range(2, max_size + 1):
             built = []
             for op in ("+", "-", "*"):
@@ -130,7 +152,7 @@ def induce_program_full(values):
         return None
     last = len(values) - 1
     for size, expr in _expressions_by_size(_MAX_SIZE):
-        start = 2 if _uses_pi(expr, "t2") else 1 if _uses_pi(expr, "t1") else 0
+        start = _min_start_pi(expr)
         if last - start < 2:                                   # too few equations to identify a program
             continue
         if not _consistent(expr, values, start):
@@ -160,7 +182,7 @@ def consistent_programs(values, top_n=8):
     last = len(values) - 1
     out, seen = [], set()
     for _size, expr in _expressions_by_size(_MAX_SIZE):
-        start = 2 if _uses_pi(expr, "t2") else 1 if _uses_pi(expr, "t1") else 0
+        start = _min_start_pi(expr)
         if last - start < 2:
             continue
         if not _consistent(expr, values, start):
@@ -570,6 +592,7 @@ HONEST CEILING (measured, not hidden -- the probe asserts these GAP rather than 
 Deps: stdlib + the brain's own snn_data_lake.cortex.vsa_reasoning (no LLM).
   PYTHONPATH=src .venv-lake/Scripts/python research/gf_inducer.py    # scripted probe + self-check
 """
+import re
 import string
 import sys
 from fractions import Fraction
@@ -684,6 +707,53 @@ def _periodic_additive_next(values):
     return None
 
 
+def _op_candidates(v0, v1):
+    """Small set of (kind, param) that map v0 -> v1 EXACTLY: additive is always offered; a clean
+    integer multiplicative ratio (!=1, no remainder) is offered too when one exists."""
+    out = [("+", v1 - v0)]
+    if v0 != 0 and v1 % v0 == 0:
+        ratio = v1 // v0
+        if ratio != 1:
+            out.append(("*", ratio))
+    return out
+
+
+def _apply_op(kind, param, v):
+    return v + param if kind == "+" else v * param
+
+
+def _parity_op_next(values):
+    """Two DIFFERENT operators alternating by the PARITY of the transition index (5 10 7 14 11 22:
+    x2 on even transitions, -3 on odd) -- a rule _periodic_additive_next cannot express (that one
+    needs one constant additive STEP repeating; here the transition itself changes KIND per parity).
+    Infers (kind, param) independently for even- and odd-indexed transitions from the observed
+    values, then LEAVE-ONE-OUT verifies: the induced pair of rules must reproduce every transition,
+    including the LAST one held out of the fit, before it is trusted. None -> honest gap."""
+    if len(values) < 6:                       # >=2 transitions/parity to fit + 1 held out to verify
+        return None
+    pairs = list(zip(values, values[1:]))
+    train, held = pairs[:-1], pairs[-1]
+    even_train, odd_train = train[0::2], train[1::2]
+    if len(even_train) < 2 or not odd_train:
+        return None
+
+    def _fit(cls_pairs):
+        for cand in _op_candidates(*cls_pairs[0]):
+            if all(_apply_op(cand[0], cand[1], a) == b for a, b in cls_pairs):
+                return cand
+        return None
+
+    op_even, op_odd = _fit(even_train), _fit(odd_train)
+    if op_even is None or op_odd is None:
+        return None
+    held_op = op_even if len(train) % 2 == 0 else op_odd
+    if _apply_op(held_op[0], held_op[1], held[0]) != held[1]:      # leave-one-out on the held-out term
+        return None
+    next_op = op_even if len(pairs) % 2 == 0 else op_odd
+    nxt = _apply_op(next_op[0], next_op[1], values[-1])
+    return nxt, f"parity op-alternation (even:{op_even[0]}{op_even[1]}, odd:{op_odd[0]}{op_odd[1]})"
+
+
 def _interleave_next(values):
     """Two INDEPENDENT subsequences interleaved (1 10 2 20 3 30 = [1 2 3] woven with [10 20 30]) -- a
     depth-2 program the flat families cannot see. Split even/odd positions, SYNTHESISE each half
@@ -705,7 +775,7 @@ def synthesize_sequence(values):
     bounded searcher has: the rule is a PROGRAM synthesised for this problem, not a menu lookup.
     Anything outside the DSL / beyond this depth returns None -- an honest, structural gap."""
     for generator in (_poly_next, _geometric_next, _recurrence_next,
-                      _periodic_additive_next, _interleave_next, induce_program):
+                      _periodic_additive_next, _parity_op_next, _interleave_next, induce_program):
         got = generator(values)
         if got is not None:
             return got
@@ -783,14 +853,125 @@ def raven_dist3(rows):
     return max(syms, key=lambda s: coincidence(bundle([book[c] for c in present] + [book[s]]), want))
 
 
+def _variable_shift_next(letters):
+    """Extend letter succession to a shift that is ITSELF a function of position (a b d g k: shift
+    grows +1,+2,+3,+4) -- the constant-shift path above induces a single fixed step only. Extract the
+    per-transition shifts as a plain integer sequence and hand THAT to the general, leave-one-out
+    guarded program-inducer (induce_program): any shift-growth law expressible in its grammar (linear,
+    quadratic, ...) is reached, not just a hardcoded arithmetic-shift case. The induced next shift is
+    applied to the final letter; a result that would run off the alphabet is an honest gap, not a wrap."""
+    idx = [_LETTERS.index(c) for c in letters]
+    shifts = [b - a for a, b in zip(idx, idx[1:])]
+    got = induce_program(shifts)
+    if got is None:
+        return None
+    next_shift, _label = got
+    target = idx[-1] + next_shift
+    return _LETTERS[target] if 0 <= target < len(_LETTERS) else None
+
+
+def _letter_shift(a, b):
+    """Signed a..z alphabet step from letter a to letter b, or None if either side is not a single
+    lowercase letter (guards the Raven-grid helpers below from non-letter cells)."""
+    if len(a) != 1 or len(b) != 1 or a not in _LETTERS or b not in _LETTERS:
+        return None
+    return _LETTERS.index(b) - _LETTERS.index(a)
+
+
+def _row_shift_pair(triple):
+    """[shift(cell0->cell1), shift(cell1->cell2)] for a fully-known 3-letter row/column, or None if
+    either shift is not a clean single a..z step."""
+    s1, s2 = _letter_shift(triple[0], triple[1]), _letter_shift(triple[1], triple[2])
+    return None if s1 is None or s2 is None else (s1, s2)
+
+
+def raven_arith_grid(rows):
+    """Raven grid whose ROWS each follow the SAME per-column letter shift AND whose COLUMNS each
+    follow the SAME per-row letter shift ('a b c; c d e; e f ?' -> the row shift is +1,+1 and the
+    column shift is +2,+2) -- a rule gf.raven_dist3 cannot see (it only handles distribution-of-
+    three). Both the row-rule and the column-rule are induced from every OTHER complete row/column
+    (never from the target alone), then cross-checked against the target's own known cells before
+    being applied; when BOTH are computable they must AGREE (composed relational integration, verified
+    two independent ways) or it is an honest gap, never a guess."""
+    if len(rows) != 3 or any(len(r) != 3 for r in rows):
+        return None
+    blanks = [(i, j) for i, r in enumerate(rows) for j, c in enumerate(r) if c is None]
+    if len(blanks) != 1:
+        return None
+    ri, cj = blanks[0]
+
+    def _predict(target, other_lines, blank_pos):
+        pairs = [_row_shift_pair(line) for line in other_lines]
+        if not pairs or any(p is None for p in pairs) or len(set(pairs)) != 1:
+            return None
+        s1, s2 = pairs[0]
+        if blank_pos == 2 and _letter_shift(target[0], target[1]) == s1:
+            idx = _LETTERS.index(target[1]) + s2
+        elif blank_pos == 0 and _letter_shift(target[1], target[2]) == s2:
+            idx = _LETTERS.index(target[1]) - s1
+        elif blank_pos == 1 and _letter_shift(target[0], target[2]) == s1 + s2:
+            idx = _LETTERS.index(target[0]) + s1
+        else:
+            return None
+        return _LETTERS[idx] if 0 <= idx < len(_LETTERS) else None
+
+    row_pred = _predict(rows[ri], [r for k, r in enumerate(rows) if k != ri], cj)
+    cols = [[rows[i][j] for i in range(3)] for j in range(3)]
+    col_pred = _predict(cols[cj], [c for k, c in enumerate(cols) if k != cj], ri)
+    if row_pred is not None and col_pred is not None:
+        return row_pred if row_pred == col_pred else None    # composed: must agree, else honest gap
+    return row_pred if row_pred is not None else col_pred
+
+
+_CELL_RE = re.compile(r"^([a-z])(\d)$")
+
+
+def raven_cell_attrs(rows):
+    """Raven grid whose cells COMPOSE two independent attributes -- a letter (Latin-square
+    distribution-of-three, checked by ROW and corroborated by COLUMN) and a digit that is purely
+    POSITIONAL (constant within its column, verified across every OTHER column too). gf.raven_dist3
+    alone sees 9 atomic 2-character symbols and bails; this decomposes each cell first. None on an
+    honest gap in either attribute (never a guessed letter or digit)."""
+    if len(rows) != 3 or any(len(r) != 3 for r in rows):
+        return None
+    parsed = [[None if c is None else _CELL_RE.match(c) for c in r] for r in rows]
+    if any(c is not None and m is None for r, pr in zip(rows, parsed) for c, m in zip(r, pr)):
+        return None                                # a cell isn't clean letter+digit -> not this family
+    letters = [[None if m is None else m.group(1) for m in r] for r in parsed]
+    digits = [[None if m is None else int(m.group(2)) for m in r] for r in parsed]
+
+    letter_row = raven_dist3(letters)
+    cols_l = [[letters[i][j] for i in range(3)] for j in range(3)]
+    letter_col = raven_dist3(cols_l)
+    if letter_row is not None and letter_col is not None and letter_row != letter_col:
+        return None                                # row-rule and column-rule disagree -> honest gap
+    letter_pred = letter_row if letter_row is not None else letter_col
+    if letter_pred is None:
+        return None
+
+    blanks = [(i, j) for i, r in enumerate(digits) for j, c in enumerate(r) if c is None]
+    if len(blanks) != 1:
+        return None
+    ri, cj = blanks[0]
+    col_digits = {digits[i][cj] for i in range(3) if i != ri}
+    if len(col_digits) != 1:
+        return None                                # digit isn't column-invariant -> honest gap
+    for j in range(3):                             # corroborate: every OTHER column is ALSO constant
+        if j != cj and len({digits[i][j] for i in range(3)}) != 1:
+            return None
+    return f"{letter_pred}{next(iter(col_digits))}"
+
+
 def letter_series(letters):
     """Extrapolate a letter succession the same way, reading out over the a..z spike codebook. A shift
-    that runs off the end of the alphabet re-encodes inexactly -> honest gap (never a wrapped letter)."""
+    that runs off the end of the alphabet re-encodes inexactly -> honest gap (never a wrapped letter).
+    Falls back to a POSITION-DEPENDENT shift search (_variable_shift_next) when no single constant
+    shift fits every transition."""
     codes = [_LETTER_BOOK[c] for c in letters]
     s = induce_shift(codes)
-    if s is None or not all(sim(permute(codes[i], s), codes[i + 1]) == 1.0 for i in range(len(codes) - 1)):
-        return None
-    return _exact_readout(permute(codes[-1], s), _LETTER_BOOK)
+    if s is not None and all(sim(permute(codes[i], s), codes[i + 1]) == 1.0 for i in range(len(codes) - 1)):
+        return _exact_readout(permute(codes[-1], s), _LETTER_BOOK)
+    return _variable_shift_next(letters)
 
 
 def letter_analogy(a, b, c):
@@ -809,6 +990,43 @@ def letter_analogy(a, b, c):
             return None
         out.append(label)
     return "".join(out)
+
+
+_NUMBER_WORDS = {
+    w: i
+    for i, w in enumerate(
+        [
+            "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+            "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
+            "eighteen", "nineteen", "twenty",
+        ]
+    )
+}
+_VOWELS = set("aeiou")
+_WORD_ATTRS = (
+    ("letter count", len),
+    ("vowel count", lambda w: sum(c in _VOWELS for c in w)),
+    ("consonant count", lambda w: sum(c.isalpha() and c not in _VOWELS for c in w)),
+    ("unique letter count", lambda w: len(set(w))),
+    ("spelled-out numeral value", lambda w: _NUMBER_WORDS.get(w)),
+)
+
+
+def word_number_relation(a, b, c):
+    """Induce which countable ATTRIBUTE of a word a number stands for from ONE example (a -> b): try
+    a small set of candidate word->number relations smallest/most-primitive first (Occam) and keep
+    the FIRST whose value on `a` equals `b`. Honest ordering, not a fit to a known answer -- the
+    taught 'spelled-out numeral' shortcut IS a candidate but sits last and is REJECTED outright
+    whenever the example does not actually match it (e.g. one -> 3 is not one's numeral value 1), so
+    a KB-style shortcut cannot win by familiarity alone. Returns the same attribute applied to `c`,
+    or None when no candidate is consistent with the one given example (an honest, structural
+    ambiguity -- a single example cannot always identify the relation)."""
+    for _name, fn in _WORD_ATTRS:
+        val = fn(a)
+        if val is not None and val == b:
+            out = fn(c)
+            return out if out is not None else None
+    return None
 
 
 # ------------------------------------------------------------- the fresh Gf probe ------------------
@@ -1072,6 +1290,64 @@ class Library:
     @classmethod
     def load(cls):
         return cls(load_state(cls._STATE, default={}))
+
+
+def function_from_pairs(pairs, query_x, max_size=7):
+    """Induce f(x) from explicit (x, y) example PAIRS ('if 3 -> 10, 5 -> 26, 7 -> 50, then 9 -> ?') --
+    as opposed to a flat number SERIES, this is example -> rule induction over independent inputs.
+    Reuses the active_learner grammar (E := n | c | E+E | E-E | E*E, n standing in for x) via the
+    same _enumerate/_evaluate_al machinery, smallest-first. LEAVE-ONE-OUT guarded: the LAST given
+    pair is held out of the fit, and a program is trusted only once it BOTH reproduces every earlier
+    pair AND correctly predicts the held-out one (this is what stops a coincidental 2-point fit from
+    being trusted on 3 examples). Returns (value, label) for f(query_x), or None -- an honest gap (no
+    program in the grammar reproduces every given pair)."""
+    if len(pairs) < 3:
+        return None
+    *train, held = pairs
+    lib = Library()
+    for _size, expr in _enumerate(max_size, lib.prims):
+        if any(_evaluate_al(expr, x, lib) != y for x, y in train):
+            continue
+        if _evaluate_al(expr, held[0], lib) != held[1]:
+            continue
+        return _evaluate_al(expr, query_x, lib), "f(x)=%s" % _render_al(expr).replace("n", "x")
+    return None
+
+
+_STR_TRANSFORMS = (
+    ("id", lambda s: s),
+    ("rev", lambda s: s[::-1]),
+    ("upper", lambda s: s.upper()),
+    ("lower", lambda s: s.lower()),
+)
+_STR_SUFFIXES = (
+    ("", lambda s: ""),
+    ("+len", lambda s: str(len(s))),
+    ("+first", lambda s: s[0] if s else ""),
+    ("+last", lambda s: s[-1] if s else ""),
+)
+
+
+def string_from_pairs(pairs, query):
+    """Induce a COMPOSED string program f(s) = transform(s) + suffix(original s) from explicit
+    (in, out) example pairs -- e.g. reverse-then-append-length ('cat' -> 'tac3'). A small
+    compositional DSL (4 whole-string transforms x 4 length/first/last/none suffixes), tried
+    smallest-first; LEAVE-ONE-OUT guarded exactly like function_from_pairs: the induced program must
+    reproduce every earlier pair AND correctly predict the held-out LAST pair before it is trusted,
+    then it is applied to the queried word. None -- no program in this small DSL reproduces every
+    given pair (an honest, structural gap, not a guess)."""
+    if len(pairs) < 3:
+        return None
+    *train, held = pairs
+    for t_name, t_fn in _STR_TRANSFORMS:
+        for s_name, s_fn in _STR_SUFFIXES:
+
+            def prog(s, t_fn=t_fn, s_fn=s_fn):
+                return t_fn(s) + s_fn(s)
+
+            if all(prog(x) == y for x, y in train) and prog(held[0]) == held[1]:
+                return prog(query), "%s(s)+%s" % (t_name, s_name if s_name else "''")
+    return None
 
 
 class ActiveLearner:

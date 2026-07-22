@@ -40,6 +40,8 @@ _INT_TOK = re.compile(r"-?\d+")
 _EQ_PAIR = re.compile(r"\b([a-z][a-z0-9_]*)\s*=\s*([a-z0-9_]+)")
 _ARROW_PAIR = re.compile(r"\b([a-z0-9_]+)\s*->\s*([a-z0-9_]+)")
 _ANALOGY = re.compile(r"([a-z]+)\s*:\s*([a-z]+)\s*::\s*([a-z]+)\s*:\s*\?")
+_QUERY_ARROW = re.compile(r"\b([a-z0-9_]+)\s*->\s*\?")
+_WORD_NUM_ANALOGY = re.compile(r"\b([a-z]+)\s*:\s*(\d+)\s*::\s*([a-z]+)\s*:\s*\?")
 
 
 class Query:
@@ -64,6 +66,8 @@ class Query:
         self.eq_pairs = list(_EQ_PAIR.findall(self.low))  # [(role, filler), ...]
         self.arrow_pairs = list(_ARROW_PAIR.findall(self.low))  # [(key, value), ...]
         self.analogy = _ANALOGY.search(self.low)
+        self.query_arrow = _QUERY_ARROW.search(self.low)  # trailing 'x -> ?' -- the queried input
+        self.word_num_analogy = _WORD_NUM_ANALOGY.search(self.low)  # 'word : N :: word2 : ?'
         self.single_letters = re.findall(r"\b[a-z]\b", self.low)
         # a Raven grid: 3 groups (';' or newline), 3 cells each, exactly one '?' blank
         groups = [g.strip() for g in re.split(r"[;\n]", text) if g.strip()]
@@ -168,30 +172,107 @@ class LetterExpert:
 
 
 class RavenExpert:
-    """gf.py -- Raven's DISTRIBUTION-OF-THREE grid completion (relational integration across rows).
-    Wraps gf.raven_dist3; the missing cell is the symbol whose bundle best completes the required set."""
+    """gf.py -- Raven grid completion. Tries DISTRIBUTION-OF-THREE first (gf.raven_dist3, relational
+    integration across rows via the spiking VSA); when that gaps, falls back to a COMPOSED row x
+    column arithmetic grid (gf.raven_arith_grid) for single-letter cells, or a two-attribute
+    letter+digit Latin-square grid (gf.raven_cell_attrs) for letter-digit cells."""
 
     name, module, source, uses = "gf-raven", "gf", "gf", "stdlib"
 
     def __init__(self, seed=0):
-        from snn_data_lake.reasoning.gf import raven_dist3
+        from snn_data_lake.reasoning.gf import raven_arith_grid, raven_cell_attrs, raven_dist3
 
-        self._raven = raven_dist3
+        self._raven, self._arith, self._cell_attrs = raven_dist3, raven_arith_grid, raven_cell_attrs
 
     def score(self, q):
         return 0.93 if q.raven else 0.0
 
     def answer(self, q):
         rows = [[None if c == "?" else c for c in r] for r in q.raven]
-        got = self._raven(rows)
         stmt = " / ".join(" ".join(r) for r in q.raven)
+        got = self._raven(rows)
+        label = "distribution-of-three"
         if got is None:
-            return ("[honest gap] '%s' is not a Raven distribution-of-three item." % stmt, False)
+            if any(len(c) > 1 for r in rows for c in r if c is not None):
+                got, label = self._cell_attrs(rows), "composed letter+digit (Latin square + positional digit)"
+            else:
+                got, label = self._arith(rows), "composed row x column arithmetic"
+        if got is None:
+            return (
+                "[honest gap] '%s' is not a Raven distribution-of-three, arithmetic-grid, or "
+                "cell-attribute item i can solve." % stmt,
+                False,
+            )
         return (
-            "[gf] Raven distribution-of-three %s -> the blank is '%s' (relational integration across "
-            "rows via the spiking VSA)." % (stmt, got),
+            "[gf] Raven %s %s -> the blank is '%s' (relational integration across rows/columns via "
+            "the spiking VSA)." % (label, stmt, got),
             True,
         )
+
+
+class PairInductionExpert:
+    """gf.py -- example -> rule INDUCTION from explicit (x, y) PAIRS ('if 3 -> 10, 5 -> 26, 7 -> 50,
+    then 9 -> ?'), as opposed to a flat number SERIES. Wraps gf.function_from_pairs (numeric grammar)
+    and gf.string_from_pairs (composed string-op grammar); both are LEAVE-ONE-OUT guarded over the
+    given pairs before being applied to the queried input."""
+
+    name, module, source, uses = "gf-pair-induction", "gf", "gf", "stdlib"
+
+    def __init__(self, seed=0):
+        from snn_data_lake.reasoning.gf import function_from_pairs, string_from_pairs
+
+        self._num, self._str = function_from_pairs, string_from_pairs
+
+    def score(self, q):
+        return 0.9 if (q.query_arrow and len(q.arrow_pairs) >= 2) else 0.0
+
+    def answer(self, q):
+        pairs, query = q.arrow_pairs, q.query_arrow.group(1)
+        numeric = all(re.fullmatch(r"-?\d+", k) and re.fullmatch(r"-?\d+", v) for k, v in pairs) and re.fullmatch(
+            r"-?\d+", query
+        )
+        got = self._num([(int(k), int(v)) for k, v in pairs], int(query)) if numeric else self._str(pairs, query)
+        if got is None:
+            return (
+                "[honest gap] no program (numeric or string) induced from the given pairs "
+                "reproduces every example under leave-one-out.",
+                False,
+            )
+        val, label = got
+        return (
+            "[gf] induced %s from the given pairs at test time (leave-one-out verified) -> %s = %s. "
+            "not a stored fact." % (label, query, val),
+            True,
+        )
+
+
+class WordRelationExpert:
+    """gf.py -- word:number analogy whose relation is some countable ATTRIBUTE of the word (letter
+    count, vowel count, ...) rather than a taught KB fact ('one : 3 :: three : ?'). Wraps
+    gf.word_number_relation: a small ordered set of candidate word->number attributes is tried,
+    smallest/most-primitive first, and the FIRST whose value on the given word matches the given
+    number is trusted (Occam), then applied to the queried word."""
+
+    name, module, source, uses = "gf-word-relation", "gf", "gf", "stdlib"
+
+    def __init__(self, seed=0):
+        from snn_data_lake.reasoning.gf import word_number_relation
+
+        self._rel = word_number_relation
+
+    def score(self, q):
+        return 0.9 if q.word_num_analogy else 0.0
+
+    def answer(self, q):
+        a, b, c = q.word_num_analogy.group(1), q.word_num_analogy.group(2), q.word_num_analogy.group(3)
+        got = self._rel(a, int(b), c)
+        if got is None:
+            return (
+                "[honest gap] no candidate word attribute maps '%s'->%s consistently, so i won't "
+                "guess '%s'->?." % (a, b, c),
+                False,
+            )
+        return ("[gf] induced word relation from %s:%s -> applied to %s:? = %d." % (a, b, c, got), True)
 
 
 class ArcExpert:
@@ -836,19 +917,22 @@ class ReasoningCortex:
 def build_default_cortex(
     seed=0, triples=None, enable_recognizer_bank=False, enable_abduction=False, enable_rpm=False
 ):
-    """Register the ten live reasoning experts (each a thin adapter over one reasoning/ study --
-    incl. the ARC grid expert, inert unless the query is an explicit 'arc:' grid task, and the
+    """Register the twelve live reasoning experts (each a thin adapter over one reasoning/ study --
+    incl. the ARC grid expert, inert unless the query is an explicit 'arc:' grid task, the pair- and
+    word-relation inducers, inert unless the query carries explicit example pairs/analogies, and the
     relational structure-mapping solver, inert unless the query carries two 'rel(a,b) :: rel(c,d)'
     proposition sets).
     With `triples` (the caller's OWN stored (head, relation, tail) KB facts), also register the
     RelationalCompletionExpert: LEARNED link prediction (kb_ranking.DistMult) over those triples --
-    generalized relational inference past exact lookup. triples=None/empty -> the 8-expert cortex,
-    byte-identical to before (the ninth expert is skipped, numpy is never touched)."""
+    generalized relational inference past exact lookup. triples=None/empty -> the 12-expert cortex,
+    byte-identical to before (the extra expert is skipped, numpy is never touched)."""
     cortex = ReasoningCortex()
     for expert_cls in (
         NumberSeriesExpert,
         LetterExpert,
         RavenExpert,
+        PairInductionExpert,
+        WordRelationExpert,
         BindingExpert,
         DistributedRecallExpert,
         AssociativeRecallExpert,
@@ -1018,7 +1102,8 @@ def main():
     assert "snn_data_lake.reasoning.kb_ranking" not in sys.modules, (
         "building the cortex must not import kb_ranking/numpy -- training is lazy"
     )
-    # (e) no regression: with the ninth expert registered, the other 8 still take their queries...
+    # (e) no regression: with the extra (relational) expert registered, the base experts still take
+    # their queries...
     for pq, we, _wa in probes[:10]:
         assert kbx.route(pq)["expert"] == we, "expert %s must still take %r" % (we, pq)
     # ...and routing those non-relational queries never touched numpy (score() is pure stdlib)
