@@ -773,9 +773,10 @@ class Brain:
         # ---- drivable-region ENSEMBLE: extra stateful regions NOT already inside LiveBrain ----
         self._ach = self._try(lambda: Acetylcholine())
         self._lc = self._try(lambda: LocusCoeruleus(seed=self._seed))
-        # Step-0 of DATA SELF-RECALIBRATION: record the salience drive fed to the LC (below, _w8_tick) as
-        # a durable running quantile so the self-build can recalibrate SALIENCE_TH from the brain's OWN
-        # recorded distribution (reasoning/brain_native_selfbuild.ThresholdRecalibrationSource, gate-verified).
+        # DATA SELF-RECALIBRATION (live): record the salience drive fed to the LC (below, _w8_tick) as a
+        # durable running quantile AND consume it LIVE -- _w8_tick sets self._lc.salience_th to this quantile
+        # every tick, so the LC gate is baseline-relative instead of a frozen literal. Supersedes the nightly
+        # source-edit path (reasoning/brain_native_selfbuild.ThresholdRecalibrationSource, now target-less).
         self._salience_calib = None
         try:
             from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
@@ -865,9 +866,26 @@ class Brain:
         salience = max(0.0, float(prev.get("threat") or 0.0))
         if self._salience_calib is not None:
             try:
-                self._salience_calib.observe(
-                    salience
-                )  # record the live salience distribution (Step-0)
+                self._salience_calib.observe(salience)  # record the live salience distribution
+                # CONSUME IT LIVE (master lever): the LC salience gate tracks a RUNNING quantile of the
+                # brain's OWN recorded salience -- baseline-relative, updated every tick, never a frozen
+                # literal. This supersedes the nightly source-edit recalibration -- SALIENCE_TH is no longer
+                # a constant kept fixed. Two validity conditions (neither a tuned behaviour knob):
+                #   n >= 50   -- data-sufficiency: the quantile needs samples to mean anything.
+                #   value > 0 -- a MATHEMATICAL validity floor: salience = max(0, threat) is non-negative,
+                #                so a threshold <= 0 cannot separate salient from non-salient (everything is
+                #                >= 0) and would jam the gate always-phasic. When the recorded quantile is 0
+                #                (the current dormant-arm regime records all-zero salience -> no salient
+                #                events to calibrate from) we HONEST-NULL to the module default prior; the
+                #                live threshold engages only once real salient events give the signal spread.
+                r = self._salience_calib.result()
+                if (
+                    self._lc is not None
+                    and r["n"] >= 50
+                    and r["value"] is not None
+                    and r["value"] > 0.0
+                ):
+                    self._lc.salience_th = float(r["value"])
             except Exception:
                 pass
         base = self._baseline

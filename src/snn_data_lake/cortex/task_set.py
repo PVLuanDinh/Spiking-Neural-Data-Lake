@@ -28,16 +28,22 @@ Mechanism (spiking, deterministic, per-instance rng):
      internal proxy for it).
   3. SHIFT TRIGGER = an ACC-style conflict/reward monitor gates a THREE-FACTOR R-STDP vote over
      which alternate set to shift into, reusing basal_ganglia.r_stdp.RSTDPNeuron directly (one
-     synapse per candidate set, not reimplemented). Every observe() tick that conflict stays at or
-     above conflict_thresh AND reward stays at or below reward_thresh: every candidate (non-active)
+     synapse per candidate set, not reimplemented). The set is "failing" on a tick when reward is
+     net-negative (reward <= reward_thresh -- the reward SIGN, a scale-natural zero, not a tuned
+     knob) AND conflict is high RELATIVE TO a LEARNED baseline: the running mean of the conflict seen
+     during GOOD (rewarded) ticks. That baseline is learned from the module's own experience, never a
+     magic constant; during a sustained bad patch no good ticks arrive, so it FREEZES at the good-time
+     level and conflict stays anomalous -- the trigger keeps firing (it does not habituate to a
+     persistently-bad set, which is exactly what set-shifting needs). Before any good tick has been
+     seen the reward-sign arm alone decides. While the trigger holds: every candidate (non-active)
      set's synapse gets a pre-synaptic probe and the ACC's own error crossing is the post-synaptic
      pairing (STDP deposits a pre-before-post eligibility on the candidates); an RPE-flavoured
-     "dopamine" magnitude -- how far conflict/reward sit past their thresholds, the same
-     reward-prediction-error convention valence_stdp.py uses (`reward - predicted`, here `predicted`
-     is the threshold) -- gates that eligibility into weight via RSTDPNeuron.reward(). Once this
-     persists `patience` ticks in a row, the highest-weighted candidate WINS and shift() commits
-     it: a genuinely reward-gated, spike-timing-driven re-mapping, not a scripted counter. With
-     only one task set there is no candidate to shift to, so the set is simply held.
+     "dopamine" magnitude -- how far conflict/reward sit past their references (the learned good-time
+     conflict baseline, and the reward sign), the same reward-prediction-error convention
+     valence_stdp.py uses (`reward - predicted`) -- gates that eligibility into weight via
+     RSTDPNeuron.reward(). Once this persists `patience` ticks in a row, the highest-weighted
+     candidate WINS and shift() commits it: a genuinely reward-gated, spike-timing-driven re-mapping,
+     not a scripted counter. With only one task set there is no candidate to shift to, so it is held.
   4. SWITCH COST. shift() snapshots the outgoing set's settled confidence just before the cold
      reset and reports it as last_switch_cost (how much settle confidence was just given up); the
      same drop is visible live in bias()'s compressed preferences on the very next call, and
@@ -62,6 +68,25 @@ import random
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
 
 
+class _RunningMean:
+    """Running mean of a scalar (incremental count+mean). mean() returns None until the first sample
+    so a caller can tell 'no baseline yet' from a real 0.0. Baseline-relative form, kept inline so
+    this module depends only on r_stdp (no cross-region import for a six-line primitive)."""
+
+    __slots__ = ("_n", "_mean")
+
+    def __init__(self):
+        self._n = 0
+        self._mean = 0.0
+
+    def observe(self, x):
+        self._n += 1
+        self._mean += (x - self._mean) / self._n
+
+    def mean(self):
+        return self._mean if self._n else None
+
+
 class TaskSetLayer:
     """n_sets candidate input->action rule mappings; one persistent-activity LIF pool holds the
     ACTIVE set (working memory); bias() reads the active mapping scaled by its settle confidence;
@@ -74,7 +99,6 @@ class TaskSetLayer:
         n_in=4,
         n_actions=4,
         seed=0,
-        conflict_thresh=0.6,
         reward_thresh=0.0,
         patience=6,
         leak=0.2,
@@ -85,9 +109,13 @@ class TaskSetLayer:
         self.n_sets = n_sets
         self.n_in = n_in
         self.n_actions = n_actions
-        self.conflict_thresh = conflict_thresh  # ACC monitor: conflict at/above this is "bad"
-        self.reward_thresh = reward_thresh  # ACC monitor: reward at/below this is "bad"
+        self.reward_thresh = (
+            reward_thresh  # ACC monitor: reward at/below this is "bad" (reward SIGN)
+        )
         self.patience = patience  # consecutive bad ticks needed to commit a shift
+        # conflict "high" is judged RELATIVE to the running mean of conflict during GOOD ticks -- a
+        # learned baseline, not a fixed cutoff (freezes during sustained-bad -> no habituation).
+        self._good_conflict = _RunningMean()
         self.rng = random.Random(seed)
 
         # ---- fixed per-set input -> action rule matrices (the mapping each task set encodes) ---
@@ -154,19 +182,29 @@ class TaskSetLayer:
         return self._confidence
 
     def observe(self, conflict, reward):
-        """One ACC-monitor tick. While `conflict` stays at/above conflict_thresh AND `reward`
-        stays at/below reward_thresh, every non-active (candidate) set is STDP-paired against the
-        ACC's own error crossing and gated by an RPE-style dopamine magnitude into
-        basal_ganglia.r_stdp.RSTDPNeuron's per-set weight. Once this persists `patience` ticks in
-        a row, the highest-weighted candidate set commits via shift(). Returns active_set."""
+        """One ACC-monitor tick. The set is "failing" when reward is net-negative (reward <=
+        reward_thresh, the reward sign) AND conflict is high relative to the LEARNED good-time
+        conflict baseline (the running mean of conflict during rewarded ticks; before any good tick
+        the reward-sign arm alone decides, and during a sustained bad patch the baseline freezes so
+        the trigger keeps firing without habituating). While failing, every non-active (candidate)
+        set is STDP-paired against the ACC's own error crossing and gated by an RPE-style dopamine
+        magnitude into basal_ganglia.r_stdp.RSTDPNeuron's per-set weight. Once this persists
+        `patience` ticks in a row, the highest-weighted candidate set commits via shift(). Returns
+        active_set."""
         self._t += 1
-        bad = conflict >= self.conflict_thresh and reward <= self.reward_thresh
+        if reward > self.reward_thresh:  # a GOOD tick: learn the typical good-time conflict level
+            self._good_conflict.observe(conflict)
+        cref = self._good_conflict.mean()  # None until the first good tick has been seen
+        conflict_high = cref is None or conflict >= cref
+        bad = reward <= self.reward_thresh and conflict_high
         if bad:
             for s in range(self.n_sets):
                 if s != self._active:
                     self._shifter.pre_spike(s, self._t)  # candidate pathway probed
             self._shifter.post_spike(self._t)  # the ACC's own error = the post pairing
-            dopamine = (conflict - self.conflict_thresh) + (self.reward_thresh - reward)
+            # RPE-style: how far conflict/reward sit past their references (the learned good-time
+            # conflict baseline -- 0.0 while none exists yet -- and the reward sign).
+            dopamine = (conflict - (cref or 0.0)) + (self.reward_thresh - reward)
             self._shifter.reward(dopamine if dopamine > 0.0 else 0.05)
             self._bad_streak += 1
         else:
@@ -237,6 +275,27 @@ def main():
         recovery.append(_mag(multi.bias(x)))
     recovered_mag = recovery[-1]
 
+    # ---- (d) the conflict trigger is BASELINE-RELATIVE, not a fixed cutoff -----------------------
+    # SAME test conflict (0.7) + SAME bad reward, but different LEARNED good-time baselines: it must
+    # shift when the good-time conflict was LOW (0.7 is anomalous) and HOLD when it was HIGH (0.7 is
+    # normal). A fixed 0.6 cutoff would shift in BOTH -- this is the control a constant fails.
+    def _relative(good_conflict):
+        layer = TaskSetLayer(n_sets=3, n_in=4, n_actions=3, seed=5, patience=3)
+        for _ in range(12):
+            layer.step()
+            layer.observe(conflict=good_conflict, reward=0.5)  # GOOD ticks establish the baseline
+        s0 = layer.active_set
+        shifted = False
+        for _ in range(8):
+            layer.step()
+            layer.observe(conflict=0.7, reward=-0.4)  # SAME test conflict, now bad reward
+            if layer.active_set != s0:
+                shifted = True  # a shift fired at any point (it may later oscillate back)
+        return shifted
+
+    shift_when_baseline_low = _relative(0.3)  # 0.7 >> 0.3 good-time norm -> anomalous -> shift
+    hold_when_baseline_high = not _relative(0.9)  # 0.7 < 0.9 good-time norm -> normal -> held
+
     print("=" * 72)
     print("SPIKING TASK-SET / SET-SHIFTING LAYER (LIF working memory + R-STDP-gated shift)")
     print("=" * 72)
@@ -251,6 +310,11 @@ def main():
     print(
         f"(c) switch cost: pre-shift mapping mag {pre_shift_mag:.3f} -> post-shift {post_shift_mag:.3f} "
         f"(cost {switch_cost:.3f}) -> recovered over 25 ticks to {recovered_mag:.3f}"
+    )
+    print(
+        f"(d) relative   : conflict 0.7 + bad reward SHIFTS vs a 0.3 good-time baseline "
+        f"({shift_when_baseline_low}) but HOLDS vs a 0.9 baseline ({hold_when_baseline_high}) "
+        f"-- a fixed cutoff cannot do both"
     )
     print("=" * 72)
 
@@ -273,6 +337,15 @@ def main():
     assert switch_cost > 0.05, f"a real switch cost must be recorded ({switch_cost:.3f})"
     assert post_shift_mag < pre_shift_mag, "mapping strength must drop right after the shift"
     assert recovered_mag > post_shift_mag, "mapping strength must recover as the new set re-settles"
+
+    # (d) the conflict trigger is genuinely baseline-relative: the SAME conflict (0.7) shifts against
+    # a low learned good-time baseline and holds against a high one -- a fixed cutoff cannot do both.
+    assert shift_when_baseline_low, (
+        "conflict 0.7 is anomalous vs a 0.3 good-time baseline -> must shift"
+    )
+    assert hold_when_baseline_high, (
+        "the same conflict 0.7 is normal vs a 0.9 good-time baseline -> must hold"
+    )
 
     # determinism: same seed -> identical shift tick, active set and confidence trajectory.
     def _scenario(seed):

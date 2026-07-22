@@ -1,13 +1,16 @@
 """
 SIGNAL CALIBRATOR -- distil a live scalar signal's operating point from the brain's OWN operation.
 
-Step-0 of honest self-recalibration (the first real DataIngestSource): record a named live neural signal
-(e.g. the salience drive fed to LocusCoeruleus each tick) as a running P2 QUANTILE
-(substrate/streaming_quantile.P2Quantile -- 5 markers, O(1) memory, NEVER stores the raw observations),
-persist the full estimator state so it RESUMES across restarts (the always-on daemon restarts on every new
-build), and expose the distilled {p, value, n}. reasoning/brain_native_selfbuild.ThresholdRecalibrationSource
-reads that distilled operating point and proposes replacing a hand-guessed threshold with the data value,
-gate-verified.
+Record a named live neural signal (e.g. the salience drive fed to LocusCoeruleus each tick) as a running
+P2 QUANTILE (substrate/streaming_quantile.P2Quantile -- 5 markers, O(1) memory, NEVER stores the raw
+observations), persist the full estimator state so it RESUMES across restarts (the always-on daemon
+restarts on every new build), and expose the distilled {p, value, n}.
+
+Primary consumer (adopt-better): brain.py _w8_tick reads the distilled quantile and CONSUMES IT LIVE into
+the LC salience gate every tick (self._lc.salience_th = result value, when the quantile is valid), so the
+threshold is baseline-relative at runtime rather than a constant kept fixed. The older path --
+reasoning/brain_native_selfbuild.ThresholdRecalibrationSource freezing the value into the source as a
+literal -- is the inferior, superseded mechanism (it remains only as a target-less extension point).
 
 HONEST: this is plumbing, not learning. It records the brain's own signal distribution and reports a
 percentile of it -- a data operating point. Whether recalibrating a threshold TO that point is an

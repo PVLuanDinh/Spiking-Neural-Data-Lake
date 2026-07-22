@@ -262,33 +262,37 @@ class DataIngestSource(SelfBuildSource):
 # Each target: a band-gated threshold whose GATING SIGNAL the brain records live (substrate/signal_calibrator,
 # Step-0) -> recalibrate the hand-guessed literal to a percentile of the RECORDED distribution. `signal` must
 # match the SignalCalibrator name recorded in brain.py. NEVER a brainstem/protected/scorer file.
-RECALIB_TARGETS = (
-    {
-        "id": "recalib:salience_th",
-        "signal": "salience_th",  # the salience drive fed to LocusCoeruleus each tick (brain.py _w8_tick)
-        "target": "src/snn_data_lake/neuromodulation/locus_coeruleus.py",
-        "const": "SALIENCE_TH",
-        "orig": "0.50",
-        "marker": "# DATA-CALIBRATED:salience",
-        "lo": 0.02,  # plausibility clamp on the bounded [0,1] signal; the module self-check is the real judge
-        "hi": 0.98,
-    },
-)
+#
+# ADOPT-BETTER + RETIRE: the former target `recalib:salience_th` was a nightly SOURCE-EDIT that FROZE
+# locus_coeruleus.SALIENCE_TH to the recorded P75 as a fixed literal. That is superseded -- brain.py's
+# _w8_tick now CONSUMES the live running quantile straight into the LC gate every tick (self._lc.salience_th
+# = calibrator.result()), so the threshold is genuinely baseline-relative and never a constant kept fixed.
+# Freezing a literal is the inferior mechanism and was retired, not left additive beside the live path.
+# RECALIB_TARGETS therefore drains to empty (an honest-null extension point, exactly like DEHARDCODE_TRANSFORMS
+# below): the source-edit mechanism stays available for a FUTURE recorded-signal threshold that has no live
+# consumer wired, but it holds no live target today.
+RECALIB_TARGETS = ()
 
 
 class ThresholdRecalibrationSource(SelfBuildSource):
-    """The FIRST REAL DataIngestSource: recalibrate a band-gated threshold from the brain's OWN recorded
-    signal distribution (a persisted P2 quantile, substrate/signal_calibrator Step-0). Distils a FIXED
-    data-calibrated literal (NOT a running baseline -- the module docstring proves the per-instance-baseline
-    swap rolls back) and emits a DehardcodeSource-style patch; the existing SelfModHarness + SelfBuildLoop
-    gate KEEPS it iff it lands in the module's behavioural-band self-check, else rolls back byte-exact.
+    """A DataIngestSource: recalibrate a band-gated threshold from the brain's OWN recorded signal
+    distribution (a persisted P2 quantile, substrate/signal_calibrator Step-0), emitting a
+    DehardcodeSource-style source patch; the existing SelfModHarness + SelfBuildLoop gate KEEPS it iff it
+    lands in the module's behavioural-band self-check, else rolls back byte-exact.
 
-    HONEST CEILING: the gate certifies COMPATIBILITY (the value stays consistent with the module's own
-    self-check), NOT correctness -- reward=kept != "the value is more right". It does NOT learn from the
-    internet (web text unit-mismatches every legal target); it recalibrates the brain's OWN operating point
-    from its OWN recorded data. Honest-null until the log has >= MIN_SAMPLES real samples -- NO smuggled
-    seed constant. Converges to honest-null once each threshold is data-calibrated or the recorded value
-    resists (its self-check band rejects it)."""
+    SUPERSEDED FOR ITS ORIGINAL TARGET: this source distils a FIXED data-calibrated literal into the
+    source, which is INFERIOR to consuming the running quantile LIVE at runtime (a frozen literal is still
+    a constant kept fixed). Its one real target, locus_coeruleus.SALIENCE_TH, has been retired here and is
+    now consumed live in brain.py _w8_tick (self._lc.salience_th = calibrator.result() every tick). So
+    RECALIB_TARGETS drains to empty and this class remains a general, honest-null EXTENSION POINT for a
+    future recorded-signal threshold that has no live consumer wired -- not a live production mechanism.
+
+    HONEST CEILING (when it does hold a target): the gate certifies COMPATIBILITY (the value stays
+    consistent with the module's own self-check), NOT correctness -- reward=kept != "the value is more
+    right". It does NOT learn from the internet; it recalibrates the brain's OWN operating point from its
+    OWN recorded data. Honest-null until the log has >= MIN_SAMPLES real samples -- NO smuggled seed
+    constant. Converges to honest-null once the threshold is data-calibrated or the recorded value resists
+    (its self-check band rejects it)."""
 
     name = "data_recalibrate"
     MIN_SAMPLES = (
@@ -868,15 +872,33 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
         )
         _emit("  [OK] deterministic: same seed reproduces the ranked candidate order")
 
-        # ---- ThresholdRecalibrationSource (first real DataIngestSource): honest-null + propose + firewall ----
+        # ---- ThresholdRecalibrationSource: honest-null + propose + firewall (SYNTHETIC target) ----
+        # RECALIB_TARGETS now ships EMPTY (salience_th moved to live consumption in brain.py), so the
+        # mechanism is exercised against a SYNTHETIC recorded-signal threshold via the recalibs= override.
         from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
+        assert RECALIB_TARGETS == (), (
+            "default recalib targets drain to empty (salience_th is live-consumed)"
+        )
+        assert ThresholdRecalibrationSource().candidates(fake) == [], (
+            "with no default targets the source is a pure honest-null (nothing to recalibrate)"
+        )
+        synth = {
+            "id": "recalib:probe_th",
+            "signal": "probe_th",
+            "target": "src/snn_data_lake/reasoning/_selfbuild_recalib_probe.py",  # fake, non-protected
+            "const": "PROBE_TH",
+            "orig": "0.50",
+            "marker": "# DATA-CALIBRATED:probe",
+            "lo": 0.02,
+            "hi": 0.98,
+        }
         calib_path = os.path.join(work, "signal_calib.json")
-        rc = ThresholdRecalibrationSource(calib_path=calib_path)
+        rc = ThresholdRecalibrationSource(recalibs=(synth,), calib_path=calib_path)
         assert rc.candidates(fake) == [], (
             "recalibration must honest-null with NO recorded data (no file)"
         )
-        sc = SignalCalibrator("salience_th", p=0.75)
+        sc = SignalCalibrator("probe_th", p=0.75)
         for _ in range(10):
             sc.observe(0.4)  # below MIN_SAMPLES
         SignalCalibrator.save_all(calib_path, [sc])
@@ -884,24 +906,22 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
             "must honest-null below MIN_SAMPLES (no smuggled seed constant)"
         )
         # >= MIN_SAMPLES of a real distribution -> it proposes a data-calibrated recalibration
-        sc2 = SignalCalibrator("salience_th", p=0.75)
+        sc2 = SignalCalibrator("probe_th", p=0.75)
         for i in range(200):
-            sc2.observe(
-                0.30 + 0.40 * ((i % 5) / 4.0)
-            )  # spread ~[0.3,0.7], P75 ~0.6 (a plausible SALIENCE_TH)
+            sc2.observe(0.30 + 0.40 * ((i % 5) / 4.0))  # spread ~[0.3,0.7], P75 ~0.6
         SignalCalibrator.save_all(calib_path, [sc2])
-        rel = "src/snn_data_lake/neuromodulation/locus_coeruleus.py"
+        rel = synth["target"]
         dst = os.path.join(fake, *rel.split("/"))
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         with open(dst, "w", encoding="utf-8", newline="") as f:
-            f.write("SALIENCE_TH = 0.50  # drive >= this is salient\n")
+            f.write("PROBE_TH = 0.50  # drive >= this is salient\n")
         cands = rc.candidates(fake)
-        assert len(cands) == 1 and cands[0]["id"] == "recalib:salience_th", cands
+        assert len(cands) == 1 and cands[0]["id"] == "recalib:probe_th", cands
         cands[0]["edit_fn"](fake)  # apply to the fake target tree
         with open(dst, encoding="utf-8", newline="") as f:
             newlc = f.read()
-        assert "# DATA-CALIBRATED:salience" in newlc and "= 0.50 " not in newlc, newlc
-        assert _is_applied_fn(rel, "# DATA-CALIBRATED:salience")(fake), (
+        assert "# DATA-CALIBRATED:probe" in newlc and "= 0.50 " not in newlc, newlc
+        assert _is_applied_fn(rel, "# DATA-CALIBRATED:probe")(fake), (
             "the marker must mark it applied"
         )
         assert rc.candidates(fake) == [], (
@@ -930,12 +950,15 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
             "recalib targeting a protected/brainstem file must be rejected at construction"
         )
         _emit(
-            "  [OK] ThresholdRecalibrationSource: honest-null with no/insufficient data (no seed); once >="
+            "  [OK] ThresholdRecalibrationSource: default targets empty (salience_th now live-consumed);"
         )
         _emit(
-            "       MIN_SAMPLES, proposes a data-calibrated SALIENCE_TH from the recorded P75 + marker;"
+            "       on a SYNTHETIC target it honest-nulls with no/insufficient data (no seed), then once"
         )
-        _emit("       applied -> not re-proposed; firewall rejects brainstem/protected targets")
+        _emit(
+            "       >= MIN_SAMPLES proposes a data-calibrated literal + marker; applied -> not re-proposed;"
+        )
+        _emit("       firewall rejects brainstem/protected targets")
 
         # ---- CIRCUIT BREAKER (harness robustness): a doomed set skips the gate after _FUTILE_LIMIT ------
         # (should_skip/note_cycle read only p["id"], so a synthetic candidate set exercises the logic
