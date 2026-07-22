@@ -537,7 +537,12 @@ class Brain:
         # C2 BRAIN-NATIVE: the approach drive's per-source weights are LEARNED (three-factor,
         # dopamine-gated, baseline-subtracted -- see _route_percept_to_action), not hand-set. They
         # start EQUAL so no source is privileged by hand; the brain learns which ones pay off.
-        self._drive_w = dict.fromkeys(("novelty", "ignition", "place", "timing", "reroute"), 0.1)
+        self._drive_w = dict.fromkeys(
+            ("novelty", "ignition", "place", "timing", "reroute", "help"), 0.1
+        )
+        self._help_drive = (
+            0.0  # C (Brain-Cog social): decaying empathic ENGAGE-toward-distress drive
+        )
         self._drive_lr = 0.02  # three-factor learning rate for the approach-drive synapses
         self._place_lr = 0.25  # R-STDP rate for per-place value
         self._base_tau = 0.02  # adaptation rate of the running baselines below
@@ -1111,6 +1116,10 @@ class Brain:
                 "place": 0.0,
                 "timing": 0.0,
                 "reroute": 0.0,
+                # C (Brain-Cog social): observed-other DISTRESS resonates into an approach-to-help
+                # drive (set in respond() by affect_core.empathize; decays below) -- the empathy
+                # signal now DRIVES an action instead of only narrating an emotion word.
+                "help": max(0.0, float(getattr(self, "_help_drive", 0.0))),
             }
             # R-STDP place->ACTION value: eligibility = the (place, action just taken), dopamine =
             # RPE. Keyed on the ACTION, not the place alone, because a place-SCALAR broadcast equally
@@ -1183,6 +1192,10 @@ class Brain:
                 + self._drive_w["reroute"] * elig["reroute"]
             )
 
+            # HELP is action-directional like place: empathy drives the APPROACH/assist action
+            # (ENGAGE) specifically, not a scalar over both non-HOLD actions. ACTIONS[0] is ENGAGE.
+            help_action = ACTIONS[0]
+
             def _drive_for(a):
                 if a == SAFE_ACTION:
                     return 0.0
@@ -1191,10 +1204,13 @@ class Brain:
                     if place is not None
                     else 0.0
                 )
-                return undirected + place_a
+                help_a = self._drive_w["help"] * elig["help"] if a == help_action else 0.0
+                return undirected + place_a + help_a
 
             ext = [_drive_for(a) for a in ACTIONS]
             self.brain.arm._ext_drive = ext if any(x > 0.0 for x in ext) else None
+            # the empathic drive FADES if no fresh distress is perceived (a bounded, decaying pull)
+            self._help_drive = round(0.85 * float(getattr(self, "_help_drive", 0.0)), 4)
         except Exception:
             pass
 
@@ -2403,6 +2419,13 @@ class Brain:
                         else (0.6, 0.5)
                     )
                     nv, na = self._affect_core.empathize(ov, oa)
+                    # C (Brain-Cog social): observed DISTRESS (ov<0) now sets a decaying ENGAGE-to-
+                    # help DRIVE the arm consumes (learned three-factor in _route_percept_to_action),
+                    # turning empathy from a narration string into a consumed behavioural signal. The
+                    # magnitude is the resonated own-aversiveness after empathizing; the reflex/E-STOP
+                    # and BG caution still preempt, and no new actuator route is added.
+                    if ov < 0.0:
+                        self._help_drive = max(0.0, min(1.0, -float(nv) + 0.4 * float(na)))
                     reply = reply + (
                         f" (empathy: sensing your feeling, my affect shifted toward it -- I now feel "
                         f"{self._affect_core.recognize(nv, na)}.)"
