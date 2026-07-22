@@ -320,6 +320,9 @@ class ThresholdRecalibrationSource(SelfBuildSource):
                     "id": r["id"],
                     "source": self.name,
                     "target": r["target"],
+                    "symbol": r[
+                        "const"
+                    ],  # for impact-analysis blast radius (harness LSP principle)
                     "kind": "recalibrate",
                     "rationale": (
                         f"recalibrate {r['const']} {r['orig']} -> data P{pct} {val} (n={res['n']}) of the "
@@ -452,10 +455,27 @@ class BrainNativeSelfBuildProposer:
         # jitter amplitude tracks the running weight spread; when spread==0 (cold start) it is the ONLY
         # differentiator -> deterministic round-robin (honestly reported), never a fixed exploration knob.
         jitter_amp = spread if spread > 1e-12 else 1.0
+        # IMPACT ANALYSIS (the harness LSP principle, native): each candidate's PRE-MUTATION blast radius
+        # (reasoning/impact_analysis -- graphify dep edges + ast symbol refs) makes the self-build PREFER
+        # SURGICAL changes (fewer dependents affected) as a SECONDARY key after the learned weight, relative
+        # to the candidate set (no fixed threshold). Advisory: the full gate + byte-exact rollback stay the
+        # safety backstop; this just consumes graphify's cross-file edges the self-build was ignoring.
+        from snn_data_lake.reasoning.impact_analysis import blast_radius
+
+        for c in cands:
+            try:
+                c["blast_radius"] = blast_radius(
+                    repo_root=self._repo, target_rel=c["target"], symbol=c.get("symbol")
+                )["radius"]
+            except Exception:
+                c["blast_radius"] = 0
         ranked = sorted(
             cands,
             key=lambda c: (
                 -w.get(c["id"], _W0),
+                c.get(
+                    "blast_radius", 0
+                ),  # surgical preference: fewer dependents affected ranks first
                 -(zlib.crc32(f"{self._seed}|{c['id']}".encode("ascii", "replace")) % 100003)
                 * 1e-9
                 * jitter_amp,
@@ -465,7 +485,13 @@ class BrainNativeSelfBuildProposer:
         self._tally["proposed"] += len(out)
         for c in out:
             c["param"] = c["id"]  # SelfBuildLoop.run summary key
-        self.log.append(("*", "proposed", f"{len(out)}/{len(cands)} (spread {spread:.4g})"))
+        self.log.append(
+            (
+                "*",
+                "proposed",
+                f"{len(out)}/{len(cands)} (spread {spread:.4g}, blast {[c.get('blast_radius') for c in out]})",
+            )
+        )
         self._save()
         return out
 
