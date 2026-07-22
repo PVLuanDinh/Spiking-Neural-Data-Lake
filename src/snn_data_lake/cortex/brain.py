@@ -533,12 +533,15 @@ class Brain:
             None  # the landmark/percept the grid-place map binds to the current position
         )
         self._place_value = {}  # C2 #1: R-STDP learned value per (place, action) -> action-specific approach on re-entry
+        self._percept_value = {}  # master lever: R-STDP value per (percept-class, action) -> perception drives action
+        self._percept_conf = 1.0  # perceptual-confidence gate on the percept drive (set live by the no-backprop laminar readout B'; 1.0 = ungated)
+        self._percept_readout = None  # Slice B: lazy LIVE no-backprop laminar readout (B') over the real percept latent; learns online, sets _percept_conf
         self._learned_latency = 0  # C2 #3: learned reward latency -> opens a timed Go window
         # C2 BRAIN-NATIVE: the approach drive's per-source weights are LEARNED (three-factor,
         # dopamine-gated, baseline-subtracted -- see _route_percept_to_action), not hand-set. They
         # start EQUAL so no source is privileged by hand; the brain learns which ones pay off.
         self._drive_w = dict.fromkeys(
-            ("novelty", "ignition", "place", "timing", "reroute", "help"), 0.1
+            ("novelty", "ignition", "place", "timing", "reroute", "help", "percept"), 0.1
         )
         self._help_drive = (
             0.0  # C (Brain-Cog social): decaying empathic ENGAGE-toward-distress drive
@@ -548,6 +551,7 @@ class Brain:
         )
         self._drive_lr = 0.02  # three-factor learning rate for the approach-drive synapses
         self._place_lr = 0.25  # R-STDP rate for per-place value
+        self._percept_lr = 0.25  # R-STDP rate for per-(percept-class, action) value
         self._base_tau = 0.02  # adaptation rate of the running baselines below
         self._rpe_base = 0.0  # running |RPE| baseline -> the RELATIVE reward-onset threshold
         self._nov_base = 0.0  # running novelty baseline -> the RELATIVE explore/fidget threshold
@@ -968,9 +972,29 @@ class Brain:
             self._perceived_digit = pred
             vals = [float(v) for v in (latent.tolist() if hasattr(latent, "tolist") else latent)]
             mx = max(vals) or 1.0
-            return [
+            percept = [
                 min(1.0, max(0.0, v / mx)) for v in vals
             ]  # normalize spike counts -> [0,1]^64 percept
+            # Slice B (LIVE, NO-BACKPROP): a laminar B' readout (feedback alignment + local delta, no
+            # gradient) learns ONLINE from the TRUE label over this percept; its calibrated confidence
+            # GATES how much the percept drives action (self._percept_conf, consumed in
+            # _route_percept_to_action). A live local learner whose output is CONSUMED, not telemetry.
+            # SAFE: confidence in [0,1] can only DAMP the (already bounded, caution-gated) percept drive,
+            # never raise it or reach the reflex/E-STOP path.
+            try:
+                if self._percept_readout is None:
+                    from snn_data_lake.reasoning.brain_adapters.laminar_local_readout import (
+                        LaminarLocalReadout,
+                    )
+
+                    self._percept_readout = LaminarLocalReadout(
+                        in_dim=len(percept), n_classes=10, seed=0
+                    )
+                self._percept_readout.observe(percept, label)  # online, local, no gradient
+                _pc, self._percept_conf = self._percept_readout.infer(percept)
+            except Exception:
+                pass
+            return percept
         except Exception:
             return None
 
@@ -1123,6 +1147,10 @@ class Brain:
                 # drive (set in respond() by affect_core.empathize; decays below) -- the empathy
                 # signal now DRIVES an action instead of only narrating an emotion word.
                 "help": max(0.0, float(getattr(self, "_help_drive", 0.0))),
+                # MASTER LEVER (percept->action): the live perceived CLASS, until now representation-
+                # only, now drives action (assigned below). Always present so it competes in the
+                # three-factor weight update and the mean-eligibility baseline like every other source.
+                "percept": 0.0,
             }
             # R-STDP place->ACTION value: eligibility = the (place, action just taken), dopamine =
             # RPE. Keyed on the ACTION, not the place alone, because a place-SCALAR broadcast equally
@@ -1144,6 +1172,36 @@ class Brain:
                     [0.0]
                     + [
                         max(0.0, self._place_value.get((place, a), 0.0))
+                        for a in ACTIONS
+                        if a != SAFE_ACTION
+                    ]
+                )
+            # MASTER LEVER (percept -> action): R-STDP value per (percept-class, action). A class after
+            # which ENGAGE paid off biases ENGAGE on re-perception, so perception finally discriminates
+            # WHICH action -- closing the percept->action loop the re-sweep named. Keyed with a modality
+            # tag ("d"/"w") so a seen digit-3 and a heard word-3 are distinct. Gated by perceptual
+            # confidence self._percept_conf (set live by the no-backprop laminar readout B'; 1.0 =
+            # ungated), so an uncertain percept drives action less. Bounded + local, no gradient.
+            pcls = (
+                ("d", self._perceived_digit)
+                if getattr(self, "_perceived_digit", None) is not None
+                else (
+                    ("w", self._perceived_word)
+                    if getattr(self, "_perceived_word", None) is not None
+                    else None
+                )
+            )
+            pconf = max(0.0, min(1.0, float(getattr(self, "_percept_conf", 1.0) or 0.0)))
+            if pcls is not None and action is not None and action != SAFE_ACTION:
+                pk = (pcls, action)
+                pv = self._percept_value.get(pk, 0.0)
+                pv = max(-1.0, min(1.0, pv + self._percept_lr * da * (1.0 - abs(pv))))
+                self._percept_value[pk] = round(pv, 4)
+            if pcls is not None:
+                elig["percept"] = pconf * max(
+                    [0.0]
+                    + [
+                        max(0.0, self._percept_value.get((pcls, a), 0.0))
                         for a in ACTIONS
                         if a != SAFE_ACTION
                     ]
@@ -1208,7 +1266,16 @@ class Brain:
                     else 0.0
                 )
                 help_a = self._drive_w["help"] * elig["help"] if a == help_action else 0.0
-                return undirected + place_a + help_a
+                # percept is action-specific like place: a confidence-gated learned per-(class, action)
+                # value, so a perceived class that paid off under ENGAGE drives ENGAGE specifically.
+                percept_a = (
+                    self._drive_w["percept"]
+                    * pconf
+                    * max(0.0, self._percept_value.get((pcls, a), 0.0))
+                    if pcls is not None
+                    else 0.0
+                )
+                return undirected + place_a + help_a + percept_a
 
             ext = [_drive_for(a) for a in ACTIONS]
             self.brain.arm._ext_drive = ext if any(x > 0.0 for x in ext) else None
