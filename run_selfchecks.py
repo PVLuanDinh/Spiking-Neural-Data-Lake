@@ -165,7 +165,7 @@ RESEARCH = [
     "reasoning.vsa_synthesize",     # OUT-OF-GRAMMAR Gf: synthesizes novel rules as VSA spike-op programs (no fixed menu)
     "reasoning.semantic_memory",    # W6: VSA meaning-based recall (paraphrase-invariant, beyond the lexical crc32 gate)
     "reasoning.pragmatics",         # W8: speech-act recognition + Gricean implicature + indirect-request detection
-    "reasoning.improvement_proposer", # W6: gated autonomous parameter-tweak PROPOSER (proposer-only; harness stays disabled)
+    "reasoning.brain_native_selfbuild", # OPEN-ENDED brain-native self-build: three-factor-learned de-hardcode proposer (retired the numeric tuner)
     "reasoning.ar_spiking_lm_serve", # forward-only Spiking-RWKV serve: order-sensitive logprob (the BLiMP lever)
     "reasoning.eprop_lm_serve",     # BRAIN-NATIVE e-prop recurrent-spiking LM serve: order-sensitive logprob (no backprop)
     "reasoning.eprop_lm_alif_serve", # deep-ALIF e-prop LM serve: adaptive-threshold long-range, order-sensitive logprob

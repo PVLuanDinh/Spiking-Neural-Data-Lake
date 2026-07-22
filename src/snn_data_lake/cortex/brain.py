@@ -797,6 +797,9 @@ class Brain:
         self._sleep_ticks = 0
         self._nights = 0
         self._selfbuild_last = None  # last autonomous self-build result (opt-in via NORD_SELFMOD=1)
+        self._selfbuild_proposer = (
+            None  # lazily-built brain-native self-build proposer (three-factor learner)
+        )
         self._lp_mean = 0.0
         self._consolidation_acc = 0.0
         self._reflex_ever = False
@@ -1448,27 +1451,22 @@ class Brain:
                     pass
 
     def propose_improvements(self, budget=6):
-        """W6: the brain autonomously PROPOSES candidate self-improvements (bounded parameter tweaks over a
-        developer-whitelisted space) from its OWN metrics -- a 'what to try next' generator, the piece the
-        self-mod harness previously lacked. STRICTLY PROPOSER-ONLY: returns candidates for the DISABLED,
-        sandboxed self_mod_harness to sandbox-test; it APPLIES NOTHING to the real tree, touches no brainstem/
-        safety file, and NEVER enables the harness. Returns [] when unavailable. Human-invoked, not autonomous."""
+        """The brain autonomously PROPOSES candidate self-improvements via the OPEN-ENDED, three-factor-
+        learned brain-native self-build (reasoning/brain_native_selfbuild). Each candidate is a running-
+        baseline DE-HARDCODING (replace a fixed absolute behaviour-arbitrating threshold with a mean+std
+        form) -- or, once built, a DataIngestSource change -- RANKED BY A LEARNED WEIGHT, not a fixed
+        heuristic. STRICTLY PROPOSER-ONLY: returns candidates for the DISABLED, sandboxed loop to gate-test;
+        it APPLIES NOTHING to the real tree, touches no brainstem/safety file, never enables the harness.
+        Returns [] (honest-null) when nothing is applicable. Replaces the retired numeric-constant tuner
+        (reasoning/improvement_proposer): the self-build is now brain-native (learned, not hardcoded)."""
         try:
-            from snn_data_lake.reasoning.improvement_proposer import ImprovementProposer
+            if self._selfbuild_proposer is None:
+                from snn_data_lake.reasoning.brain_native_selfbuild import (
+                    BrainNativeSelfBuildProposer,
+                )
 
-            metrics = {k: float(v) for k, v in self.state().items() if isinstance(v, (int, float))}
-            # ALSO expose the birth self-improvement CENSUS metrics (goal_reach / qd_coverage /
-            # consolidation_retention / drive_regulation / metaplast_gain, in self._rungs). The
-            # proposer's whitelist targets THESE metrics, so without them it proposes nothing (the brain
-            # could not build itself). Census keys win on collision -- they are the self-improvement axes.
-            metrics.update(
-                {
-                    k: float(v)
-                    for k, v in getattr(self, "_rungs", {}).items()
-                    if isinstance(v, (int, float))
-                }
-            )
-            return ImprovementProposer(seed=self._seed).propose(metrics, budget=budget)
+                self._selfbuild_proposer = BrainNativeSelfBuildProposer(seed=self._seed)
+            return self._selfbuild_proposer.propose(budget=budget)
         except Exception:
             return []
 
@@ -2175,6 +2173,10 @@ class Brain:
 
             props = self.propose_improvements(budget=3)
             out = SelfBuildLoop(enable=True, gate_fn=_gate).run(props)
+            if self._selfbuild_proposer is not None:
+                # THREE-FACTOR LEARN from the gate outcomes (kept +1 / rolled -1): the brain-native self-
+                # build learns which de-hardcode transforms are gate-safe; weights persist across restarts.
+                self._selfbuild_proposer.observe(out)
             kept = sum(1 for o in out if o.get("status") == "kept")
             self._selfbuild_last = {"night": self._nights, "proposed": len(props), "kept": kept}
             return self._selfbuild_last
