@@ -71,7 +71,7 @@ class LakeMemory:
     durability_check(): close+reopen the `.spkl` and confirm every consolidated exemplar survives.
     """
 
-    def __init__(self, path=None, seed=0, band=T, q=1.0, probe=3, packed=True):
+    def __init__(self, path=None, seed=0, band=T, q=1.0, probe=3, packed=True, durable=None):
         """Create/open the durable lake store and the proximity index.
 
         `path` None -> a unique temp `.spkl` is created; else the given path is used (resume if it
@@ -104,6 +104,11 @@ class LakeMemory:
         self._payloads = []  # parallel replay ids (row index and/or label)
         self._features = []  # raw feature vectors (for class-representative queries)
         self.index = None  # rebuilt on each consolidate()
+        # OPTIONAL durable sink = home.SpikeLake over the ONE brain lake. When set, consolidate() also
+        # writes each exemplar (feature vector + payload) DURABLY, and rebuild_from_durable() re-populates
+        # the in-RAM index from it at boot -- so AER memory is durable + boot-reconstructable (the payload
+        # otherwise lives only in RAM and the index resets on restart: durable bytes, but not durable memory).
+        self._durable = durable
 
     # ---- encode one feature vector into the lake/index pattern format --------
     def _encode(self, vec):
@@ -139,11 +144,38 @@ class LakeMemory:
             pattern = self._encode(vec)
             base = e * self.band
             for t, feat in pattern:
-                self.hub.append(feat, base + t)  # durable append to the spike lake
+                self.hub.append(
+                    feat, base + t
+                )  # spike lake (index-rebuild source; a scratch when durable)
             self._patterns.append(pattern)
             self._payloads.append(pay)
             self._features.append(vec)
+            if self._durable is not None:
+                self._durable.append(
+                    vec, pay
+                )  # DURABLE: exemplar vector+payload in the ONE brain lake
         self._dirty = True  # mark the index stale; build once on the next retrieve
+        return self
+
+    def rebuild_from_durable(self):
+        """Re-populate the in-RAM proximity index + payload map from the DURABLE SpikeLake at boot, so
+        retrieve() works immediately after a restart. Fixes the AER durability gap: the payload map + index
+        otherwise live only in RAM and reset on boot (the .spkl holds spikes but not the MEMORY). No-op
+        without a durable sink; re-ingests into RAM only (does not re-write the durable records)."""
+        if self._durable is None:
+            return self
+        for vec, pay in self._durable.replay():
+            e = len(self._patterns)
+            pattern = self._encode(vec)
+            base = e * self.band
+            for t, feat in pattern:
+                self.hub.append(
+                    feat, base + t
+                )  # rebuild the scratch spike lake + patterns from durable
+            self._patterns.append(pattern)
+            self._payloads.append(pay)
+            self._features.append(_to_floats(vec))
+        self._dirty = True
         return self
 
     def _ensure_index(self):

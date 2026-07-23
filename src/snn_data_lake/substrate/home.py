@@ -32,16 +32,19 @@ boot. Zero runtime deps (stdlib json + os); the data lake never touches torch. A
 
 import json
 import os
+import struct
 import sys
 
-from snn_data_lake.substrate.binlog import BinLog, pack_fact, unpack_fact
+from snn_data_lake.substrate.binlog import BinLog, pack_array, pack_fact, unpack_array, unpack_fact
 
 # The ONE brain lake is RAW BINARY (spiking exemplars + skill vectors are native binary; symbolic facts +
 # chat turns ride as compact pack_fact byte-records in the SAME file). Each record carries a 1-byte TYPE
-# tag so the symbolic view (KnowledgeLog) and the spike consumers read only their own records from the one
-# file. FACT = pack_fact({cue,answer,triple?,src?}); SPIKE/ARRAY tags are added when the AER + skill lakes
-# fold in. Weights/calibration stay separate STATE (save_state), never in the memory lake.
+# tag so the symbolic view (KnowledgeLog) and the spike consumers (SpikeLake) read only their own records
+# from the one file. FACT = pack_fact({cue,answer,triple?,src?}); SPIKE = a feature vector + payload for a
+# durable AER exemplar. Weights/calibration stay separate STATE (save_state), never in the memory lake.
 _T_FACT = b"\x01"
+_T_SPIKE = b"\x02"
+_U32 = struct.Struct("<I")
 
 
 def home():
@@ -143,6 +146,46 @@ class KnowledgeLog:
         self._bin.rewrite(foreign + [_T_FACT + pack_fact(r) for r in keep_records])
         self._count = self._bin.count() - len(foreign)
         return self._count, before - self._count
+
+
+class SpikeLake:
+    """The SPIKING view of the ONE durable brain lake -- durable AER exemplars (a feature vector + a small
+    payload: replay id / class / task) as _T_SPIKE binary records in the SAME brain_lake.bin, alongside the
+    symbolic FACT records. append(vec, payload); replay() -> (vec, payload). The spike PATTERN is a
+    deterministic function of the vector (cortex.spike_preprocessing.encode_latency), so only the vector is
+    stored (float16 via binlog.pack_array). The proximity retrieval index is REBUILT at boot from these
+    records (the LakeChat scratch-index pattern), which makes AER memory genuinely DURABLE + boot-
+    reconstructable -- today the payload lives only in RAM and the index resets on boot, so the AER lake is
+    durable bytes but not durable memory; this fixes that. Record = _T_SPIKE [u32 plen][payload][pack_array].
+    KnowledgeLog.replay skips these (tag != _T_FACT) and KnowledgeLog.consolidate preserves them untouched,
+    so the symbolic sleep prune never drops a spike exemplar."""
+
+    def __init__(self, path=None, dedup=True):
+        self._bin = BinLog(path or knowledge_path(), dedup=dedup)
+
+    def append(self, vec, payload=""):
+        """Durably append one AER exemplar (feature vector + payload). Deduped + fsync'd by BinLog."""
+        pb = str(payload).encode("utf-8")
+        rec = _T_SPIKE + _U32.pack(len(pb)) + pb + pack_array(list(vec))
+        return self._bin.append(rec)
+
+    def replay(self):
+        """Yield (feature_vector, payload_str) for every _T_SPIKE record, in append order; FACT/other
+        records are skipped, so the spiking view never chokes on the mixed one lake."""
+        for p in self._bin.replay():
+            if p[:1] != _T_SPIKE:
+                continue
+            try:
+                (plen,) = _U32.unpack_from(p, 1)
+                payload = p[5 : 5 + plen].decode("utf-8")
+                vec = unpack_array(p[5 + plen :])
+                yield vec, payload
+            except Exception:  # noqa: BLE001 - a malformed spike record must never crash the boot rebuild
+                continue
+
+    def count(self):
+        """Number of durable AER exemplars stored (a scan; spike-count is not on a hot polling path)."""
+        return sum(1 for p in self._bin.replay() if p[:1] == _T_SPIKE)
 
 
 def save_state(name, obj):
@@ -263,6 +306,29 @@ def main():
             "a torn trailing frame must be skipped, not crash every future KnowledgeLog()"
         )
         assert "luna" in recovered, "an append after a crash-torn binary frame was lost"
+
+        # ---- SPIKING view shares the ONE lake: FACT + SPIKE records coexist, isolated, survive the prune ----
+        slake = SpikeLake()
+        slake.append([0.1, 0.9, 0.5], "exemplar-A")
+        slake.append([0.2, 0.8, 0.4], 7)
+        spikes = list(
+            SpikeLake().replay()
+        )  # a FRESH reader off disk -> durable AER memory (vec + payload)
+        assert len(spikes) == 2 and spikes[0][1] == "exemplar-A" and spikes[1][1] == "7", spikes
+        assert all(abs(a - b) < 1e-2 for a, b in zip(spikes[0][0], [0.1, 0.9, 0.5])), (
+            "spike vector lost"
+        )
+        facts_now = (
+            KnowledgeLog().count()
+        )  # the FACT view reads ONLY facts (spike records are skipped)
+        assert facts_now == 4, f"spike records leaked into the FACT count: {facts_now}"
+        klog = (
+            KnowledgeLog()
+        )  # sleep consolidation of the FACT side must PRESERVE the spike exemplars
+        klog.consolidate(list(klog.replay()))
+        assert SpikeLake().count() == 2 and KnowledgeLog().count() == 4, (
+            "sleep consolidation of facts dropped durable spike exemplars (or lost facts)"
+        )
 
         print(
             "self-check OK: knowledge appended in one process is REPLAYED in a separate process (never "
