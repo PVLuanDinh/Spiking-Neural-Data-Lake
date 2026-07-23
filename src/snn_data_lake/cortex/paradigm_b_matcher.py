@@ -113,7 +113,7 @@ def main():
     N, DUR, RATE = 256, 100_000, 0.004
     BURST_CH, BURST = {7, 99}, (50_000, 52_000)
     hub = synth(N, DUR, RATE, BURST_CH, BURST)
-    path = os.path.join(".", "data", "telemetry.spk")
+    path = os.path.join(__import__("tempfile").mkdtemp(prefix="snn_sc_"), "telemetry.spk")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     nbytes = hub.save(path)
 

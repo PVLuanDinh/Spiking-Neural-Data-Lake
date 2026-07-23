@@ -89,7 +89,7 @@ def main():
         t0 = rng.randint(SEQ_WIN[0], SEQ_WIN[1] - 30)
         for j, c in enumerate(SEQ):
             hub.ingest(c, [t0 + j * 3 + rng.randint(0, 2)])
-    path = os.path.join(".", "data", "telemetry.spk")
+    path = os.path.join(__import__("tempfile").mkdtemp(prefix="snn_sc_"), "telemetry.spk")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     hub.save(path)
     eng = SpikeQueryEngine(path)

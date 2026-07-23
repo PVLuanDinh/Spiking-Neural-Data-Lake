@@ -332,7 +332,12 @@ class StreamingHub:
 
 
 def main():
-    path = os.path.join(".", "data", "stream.spkl")
+    import shutil
+    import tempfile
+
+    # self-check artifacts go to a TEMP dir, never the repo data/ (it is not brain memory -- do not litter).
+    sc = tempfile.mkdtemp(prefix="snn_streamhub_sc_")
+    path = os.path.join(sc, "stream.spkl")
     if os.path.exists(path):
         os.remove(path)
     N, DUR = 16, 10_000
@@ -362,7 +367,7 @@ def main():
     hub.close()
 
     # ---- opt-in analytics: a recurring channel-coactivation motif surfaces as a hot motif -----
-    motif_path = os.path.join(".", "data", "motif.spkl")
+    motif_path = os.path.join(sc, "motif.spkl")
     if os.path.exists(motif_path):
         os.remove(motif_path)
     mhub = StreamingHub(motif_path, N)
@@ -414,8 +419,8 @@ def main():
 
     # ---- v2.5 opt-in group-commit: default byte-identical; K>1 loses nothing on query/close ----
     gc_events = [(rng.randrange(N), rng.randrange(DUR)) for _ in range(500)]
-    p1 = os.path.join(".", "data", "gc_default.spkl")  # flush_every=1 (current behaviour)
-    pk = os.path.join(".", "data", "gc_group.spkl")  # flush_every=K (opt-in group-commit)
+    p1 = os.path.join(sc, "gc_default.spkl")  # flush_every=1 (current behaviour)
+    pk = os.path.join(sc, "gc_group.spkl")  # flush_every=K (opt-in group-commit)
     for p in (p1, pk):
         if os.path.exists(p):
             os.remove(p)
@@ -454,7 +459,7 @@ def main():
     # Write a large MONOTONIC stream; show resident structures stay bounded (NOT O(total events))
     # while an OLD-range query SEEKS one coarse block off disk and a small lake stays fully in-RAM.
     def _ooc_probe(total_events, n_ch):
-        p = os.path.join(".", "data", f"ooc_{total_events}.spkl")
+        p = os.path.join(sc, f"ooc_{total_events}.spkl")
         if os.path.exists(p):
             os.remove(p)
         h = StreamingHub(p, n_ch, flush_every=256)
@@ -539,8 +544,8 @@ def main():
     # half the bytes and every query / replay result must be identical (channel<64, time<2^26).
     PN = 16
     pk_events = [(rng.randrange(PN), rng.randrange(1 << 20)) for _ in range(600)]
-    pd = os.path.join(".", "data", "packed_default.spkl")
-    pp = os.path.join(".", "data", "packed_4b.spkl")
+    pd = os.path.join(sc, "packed_default.spkl")
+    pp = os.path.join(sc, "packed_4b.spkl")
     for p in (pd, pp):
         if os.path.exists(p):
             os.remove(p)
@@ -560,7 +565,7 @@ def main():
     hp2.close()
     # range guard: an out-of-range value must RAISE, never silently truncate (lossless contract)
     guard_ok = False
-    hg = StreamingHub(os.path.join(".", "data", "packed_guard.spkl"), PN, packed=True)
+    hg = StreamingHub(os.path.join(sc, "packed_guard.spkl"), PN, packed=True)
     try:
         hg.append(0, 1 << _PACK_TBITS)  # time exactly at the field ceiling -> must raise
     except ValueError:
@@ -594,6 +599,8 @@ def main():
         "SEEK the log, results unchanged, deterministic, survive reopen; "
         "PACKED 4 B record is 2x smaller, lossless + byte-reversible, out-of-core unchanged"
     )
+
+    shutil.rmtree(sc, ignore_errors=True)  # remove the self-check temp dir
 
 
 if __name__ == "__main__":

@@ -282,7 +282,7 @@ def main():
             _ = ev
     precomputed = time.perf_counter() - t0
 
-    path = os.path.join(".", "data", "spikes.spc")
+    path = os.path.join(__import__("tempfile").mkdtemp(prefix="snn_sc_"), "spikes.spc")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     cbytes = save_cache(path, enc, T)
     enc2, _ = load_cache(path)

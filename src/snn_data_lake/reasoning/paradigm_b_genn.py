@@ -30,21 +30,21 @@ to validate the GPU match counts against; tune Vthresh/TauM there first.
 
 Run on a GeNN box:  python paradigm_b_genn.py
 """
+
 import os
 
 # --- GeNN 5 / PyGeNN API (guarded: import only where the toolchain exists) ---
 try:
     import numpy as np
-    from pygenn import (GeNNModel, init_weight_update, init_postsynaptic,
-                        init_sparse_connectivity)
+    from pygenn import GeNNModel, init_postsynaptic, init_sparse_connectivity, init_weight_update
+
     _HAVE_GENN = True
-except Exception as _e:                      # noqa: BLE001 — any import failure -> stub
+except Exception as _e:  # noqa: BLE001 — any import failure -> stub
     _HAVE_GENN = False
     _IMPORT_ERR = _e
 
-import sys
 pass  # migrated: sys.path bootstrap removed (now an importable package)
-from snn_data_lake.spike_telemetry_hub import disk_query, synth, SpikeTelemetryHub
+from snn_data_lake.spike_telemetry_hub import disk_query, synth
 
 
 def build_and_run(spk_path, channels, window, k, weight=1.0):
@@ -76,32 +76,56 @@ def build_and_run(spk_path, channels, window, k, weight=1.0):
     model.dt = 1.0
     n = len(channels)
     ssa = model.add_neuron_population(
-        "In", n, "SpikeSourceArray", {},
-        {"startSpike": np.array(starts), "endSpike": np.array(ends)})
+        "In",
+        n,
+        "SpikeSourceArray",
+        {},
+        {"startSpike": np.array(starts), "endSpike": np.array(ends)},
+    )
     ssa.extra_global_params["spikeTimes"].set_values(np.array(spike_times, dtype=np.float32))
 
     # per-channel one-shot sub-detector: 1 input spike -> fire; refractory = W
-    sub_params = {"C": 1.0, "TauM": 1.0, "Vrest": 0.0, "Vreset": 0.0,
-                  "Vthresh": 0.5 * weight, "Ioffset": 0.0, "TauRefrac": float(window)}
-    sub = model.add_neuron_population("Sub", n, "LIF", sub_params,
-                                      {"V": 0.0, "RefracTime": 0.0})
-    model.add_synapse_population(                       # In[i] -> Sub[i] only
-        "In_Sub", "SPARSE", ssa, sub,
+    sub_params = {
+        "C": 1.0,
+        "TauM": 1.0,
+        "Vrest": 0.0,
+        "Vreset": 0.0,
+        "Vthresh": 0.5 * weight,
+        "Ioffset": 0.0,
+        "TauRefrac": float(window),
+    }
+    sub = model.add_neuron_population("Sub", n, "LIF", sub_params, {"V": 0.0, "RefracTime": 0.0})
+    model.add_synapse_population(  # In[i] -> Sub[i] only
+        "In_Sub",
+        "SPARSE",
+        ssa,
+        sub,
         init_weight_update("StaticPulse", {}, {"g": weight}),
         init_postsynaptic("DeltaCurr"),
-        init_sparse_connectivity("OneToOne", {}))
+        init_sparse_connectivity("OneToOne", {}),
+    )
 
     # counter: leak ~ W; >= k distinct sub-pulses within W cross threshold; one match
     # per coincidence (refractory = W, mirroring the CPU reference's reset-after-match)
-    cnt_params = {"C": 1.0, "TauM": float(window), "Vrest": 0.0, "Vreset": 0.0,
-                  "Vthresh": (k - 0.5) * weight, "Ioffset": 0.0, "TauRefrac": float(window)}
-    cnt = model.add_neuron_population("Cnt", 1, "LIF", cnt_params,
-                                      {"V": 0.0, "RefracTime": 0.0})
+    cnt_params = {
+        "C": 1.0,
+        "TauM": float(window),
+        "Vrest": 0.0,
+        "Vreset": 0.0,
+        "Vthresh": (k - 0.5) * weight,
+        "Ioffset": 0.0,
+        "TauRefrac": float(window),
+    }
+    cnt = model.add_neuron_population("Cnt", 1, "LIF", cnt_params, {"V": 0.0, "RefracTime": 0.0})
     cnt.spike_recording_enabled = True
-    model.add_synapse_population(                       # all Sub -> Cnt
-        "Sub_Cnt", "DENSE", sub, cnt,
+    model.add_synapse_population(  # all Sub -> Cnt
+        "Sub_Cnt",
+        "DENSE",
+        sub,
+        cnt,
         init_weight_update("StaticPulse", {}, {"g": weight}),
-        init_postsynaptic("DeltaCurr"))
+        init_postsynaptic("DeltaCurr"),
+    )
 
     # 4. run the whole stream on device; only the COUNTER's spikes (matches) recorded
     model.build()
@@ -124,7 +148,7 @@ def main():
         print("  Verified CPU equivalent: python paradigm_b_matcher.py")
         return
 
-    path = os.path.join(".", "data", "telemetry.spk")
+    path = os.path.join(__import__("tempfile").mkdtemp(prefix="snn_sc_"), "telemetry.spk")
     if not os.path.exists(path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         synth(256, 100_000, 0.004, {7, 99}, (50_000, 52_000)).save(path)
