@@ -119,8 +119,44 @@ def _shutdown(b, mem):
     print("[learn-daemon] persisted (brain durable save + chat lake flushed).", flush=True)
 
 
+_LOCK_FH = None  # keeps the single-instance lock handle alive for the whole process lifetime
+
+
+def _acquire_singleton():
+    """ONE daemon only: hold an OS-level exclusive lock on <home>/learn_daemon.lock. The OS releases it
+    automatically on exit OR crash (no stale PID files to reap). Returns True if this process acquired the
+    lock; False if another daemon already holds it (a second launch then exits, so exactly one runs)."""
+    global _LOCK_FH
+    from snn_data_lake.substrate.home import home
+
+    fh = open(os.path.join(home(), "learn_daemon.lock"), "a+")
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return False
+    _LOCK_FH = fh
+    return True
+
+
 def main():
     from snn_data_lake.substrate.home import knowledge_path
+
+    if (
+        not _acquire_singleton()
+    ):  # combine into ONE daemon: a second launch detects the lock and exits
+        print(
+            "[learn-daemon] another instance already holds the single-instance lock -> exiting.",
+            flush=True,
+        )
+        return
 
     b = Brain(
         seed=0
