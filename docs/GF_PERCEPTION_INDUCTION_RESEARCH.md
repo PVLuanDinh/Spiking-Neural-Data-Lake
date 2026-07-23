@@ -261,6 +261,34 @@ at shallow rank. Build the mint with held-out-validated functional induction + c
 arm; do **not** fall back to hand-authoring predicates (theater-guard #1). Next concrete step: the
 depth-2 parameterised enumerator with a held-out validation pair, over the full arc_scene generator set.
 
+#### Phase 3 MINT v1 SHIPPED — `reasoning/arc_mint.py`
+
+The first real mint: hypothesise grid→grid primitives FROM arc_scene, induce their free parameters
+memorisation-resistantly, keep only programs that reproduce every train pair. Authored by the main agent,
+then **adversarially verified by a 4-lens Workflow** (false-positive / determinism / policy / induction).
+
+- **Memorisation-resistant induction** (the de-risk requirement, delivered): functional forms
+  (`const / mod-k / offset / affine` — parametric, generalise to unseen attrs) preferred in MDL order +
+  **leave-one-out validated**; memorisation-class forms (`rank`, `lookup`) accepted only if consistent,
+  **FLAGGED**, and return `None` on an unseen attribute (no answer, never a wrong guess). Held-out is the metric.
+- **The adversarial workflow caught 3 real honesty defects, all fixed (kept, not papered over):** (1) `rank`
+  was mis-tiered as *functional* though it is a permutation table (None-on-unseen, behaviourally a lookup) →
+  reclassified memorisation-class (`_MEMO_KINDS`); (2) a **dead MDL branch** (`kind == "functional"` never
+  matched the rule *name*) made functional and lookup recolors cost the same → fixed so functional is
+  genuinely preferred; (3) the self-check **over-claimed** "induces functional rules" while producing zero
+  functional held-out solves → framing corrected. The other three lenses passed hard: false-positive =
+  400-task sweep with **0 wrong grids ever counted**; determinism = byte-identical across `PYTHONHASHSEED`;
+  induction = no misprediction of its own training observations.
+- **HONEST RESULT:** dev held-out **2/20** (= the de-risk), kinds `{structural:1, lookup:1}`, **functional
+  held-out = 0**. The functional apparatus is *unit-verified* but contributes no dev-set solve yet — the
+  dev tasks have no clean-functional recolour in the current producer/attr set. This is the mechanism, not
+  an eval gain; the number moves only with more producers/attributes/composition.
+- **Policies:** consumes arc_scene / `components()` (no reimplemented segmentation); every skeleton is a
+  generic induced form (theater-guard #1 — no hand-authored task answers); `enclosed_regions` is grid-level
+  TOPO (genuinely distinct from per-object `object_holes`). Registered in `run_selfchecks` (**296/296**).
+  **The P2 obligation (migrate `synthesize` onto the scene, delete the 5-key schema) + the operation-
+  synthesis arm + synthesize-composition remain the next Phase-3 steps.**
+
 ### Phase 4 — Cross-task reuse: a library of minted concepts  (2–3 sessions)
 - **Goal:** make minted predicates persistent + reusable *without* re-importing the falsified within-
   closure library trap.

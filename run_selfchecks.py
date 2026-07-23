@@ -177,6 +177,7 @@ RESEARCH = [
     "reasoning.blimp_bench",        # BLiMP: 67 paradigms x 1000 minimal pairs; chance 50%, human 88.6%
     "reasoning.arc_solver",         # test-time program synthesis over 2-D grids (object DSL + iterative deepening)
     "reasoning.arc_scene",          # Gf Phase-2 perceptual VOCABULARY: extensible attribute/relation registry (palette/morph/topo/shape-eq/align) over components() -- measurement only, feeds the Phase-3 mint
+    "reasoning.arc_mint",           # Gf Phase-3 MINT: hypothesize out-of-closure primitives from arc_scene + memorization-resistant functional induction (LOO-validated); held-out metric
 ]
 # TORCH/NUMPY-GATED CORE -- modules that import a heavy numeric dep (torch or numpy); run ONLY where
 # it is importable and SKIPPED-with-notice otherwise, so the pure-stdlib CI matrix + the in-process
