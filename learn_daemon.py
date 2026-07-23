@@ -41,6 +41,13 @@ import time
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, "src")
 
+# GPU-PRIORITIZED, ALWAYS-ON: the live brain prefers CUDA whenever it is available. The [train]/perception
+# tier -- neurogenesis growth, the e-prop/surrogate perception encoders, the growable/laminar readouts, the
+# develop curriculum -- then runs on the GPU; the light stdlib narrator/bookkeeping stays on CPU (forcing
+# scalar ops onto CUDA only adds transfer overhead). Launch under .venv-cu128 (learn_daemon.bat) to get a
+# real GPU; in the torch-CPU stdlib venv this resolves to CPU gracefully (byte-identical). Off: NORD_GPU=0.
+os.environ.setdefault("NORD_GPU", "1")
+
 from snn_data_lake.cortex.brain import Brain
 from snn_data_lake.substrate.chat_memory import DurableChatMemory
 

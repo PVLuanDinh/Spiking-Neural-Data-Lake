@@ -17,7 +17,10 @@ REM   (sandbox-verified, arm-safety firewalled, rolled back byte-exact on any ga
 REM   this line to make the daemon learn-only. The self-build pauses the tick for minutes when it fires.
 
 :loop
-".venv-lake\Scripts\python.exe" learn_daemon.py >> chat_learn.log 2>&1
+REM GPU-prioritized, always-on: run the live brain under the CUDA venv (.venv-cu128 = torch+cu128, RTX).
+REM The torch/perception/neurogenesis tier then runs on the GPU; NORD_GPU=1 is set inside learn_daemon.py.
+REM (The CPU gate env .venv-lake stays for run_selfchecks/pytest -- deterministic; not this always-on path.)
+".venv-cu128\Scripts\python.exe" learn_daemon.py >> chat_learn.log 2>&1
 echo [%date% %time%] learn-daemon exited (code %errorlevel%); relaunching in 8s >> chat_learn.log
 timeout /t 8 /nobreak >nul
 goto loop
