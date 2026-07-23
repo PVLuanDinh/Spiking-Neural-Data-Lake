@@ -50,7 +50,7 @@ import threading
 import time
 from collections import deque
 
-from snn_data_lake.substrate.home import KnowledgeLog, banner, home, lake_path, save_state
+from snn_data_lake.substrate.home import KnowledgeLog, SpikeLake, banner, home, lake_path, save_state
 from snn_data_lake.substrate.binlog import BinLog, pack_array, pack_fact, unpack_array, unpack_fact
 from snn_data_lake.plasticity.competitive_learning import CompetitiveLearner
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
@@ -138,7 +138,18 @@ class Brain:
         self.chat.ingest_kb(triples)
         self.chat.seed_reasoning()
         self.protos = [unpack_array(p) for p in self.protolog.replay()]
-        self.lake = LakeMemory(path=lake_path(), seed=self.seed, packed=True)   # durable AER exemplars
+        # ONE durable lake: AER exemplars now persist (vector + payload) to the shared brain_lake.bin via
+        # SpikeLake. The .spkl at lake_path() is a per-boot SCRATCH index (deleted fresh so its stale spikes
+        # never DOUBLE the rehydrate), and rebuild_from_durable() re-populates the RAM proximity index from
+        # the ONE durable lake at boot. Fixes the AER durability gap: pre-fold the payload map lived only in
+        # RAM and reset on restart (durable bytes on the .spkl, but not durable MEMORY).
+        _scratch = lake_path()
+        try:
+            os.remove(_scratch)  # stale scratch from a prior boot; the durable store is now brain_lake.bin
+        except FileNotFoundError:
+            pass
+        self.lake = LakeMemory(path=_scratch, seed=self.seed, packed=True, durable=SpikeLake())
+        self.lake.rebuild_from_durable()  # rehydrate the proximity index from the ONE durable lake
         self.reflector = ConceptReflector(seed=self.seed)
         # ---- the CONVERSATION (what a stateless lookup lacks) ----
         # ONE workspace for the whole conversation: its cross-tick attractor + hysteresis is the thought
