@@ -131,6 +131,19 @@ class KnowledgeLog:
         """Number of FACT records stored (O(1) maintained counter -- callers poll this per round/request)."""
         return self._count
 
+    def consolidate(self, keep_records):
+        """SLEEP CONSOLIDATION: replace the durable FACT records with `keep_records` (the survivors a
+        consolidation policy chose -- redundant merged, re-derivable/stale pruned), preserving any non-FACT
+        (spiking) records in the one lake untouched. Atomic compaction via BinLog.rewrite. This is the PRUNE
+        half of sleep consolidation -- without it the symbolic lake only ever grows. Returns (kept, dropped)."""
+        foreign = [
+            p for p in self._bin.replay() if p[:1] != _T_FACT
+        ]  # spike/array records stay as-is
+        before = self._count
+        self._bin.rewrite(foreign + [_T_FACT + pack_fact(r) for r in keep_records])
+        self._count = self._bin.count() - len(foreign)
+        return self._count, before - self._count
+
 
 def save_state(name, obj):
     """Durably write a JSON-serialisable state blob to <home>/<name>, atomically (temp + os.replace)."""

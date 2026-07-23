@@ -2206,6 +2206,19 @@ class Brain:
                         pass
             except Exception:
                 pass
+        if (
+            self._persist and self._nights % 8 == 0
+        ):  # SLEEP CONSOLIDATION of the symbolic durable lake:
+            try:  # the PRUNE half -- cap re-derivable dictionary bulk (WordNet/ConceptNet re-derive at boot)
+                #     + keep genuinely-learned, so a never-off brain's lake stays LIVE + BOUNDED, not ballooning.
+                from snn_data_lake.hippocampus.lake_consolidation import LakeConsolidation
+                from snn_data_lake.substrate.home import KnowledgeLog
+
+                klog = KnowledgeLog()
+                survivors = LakeConsolidation().consolidate(list(klog.replay()))
+                self._lake_kept, self._lake_pruned = klog.consolidate(survivors)
+            except Exception:
+                pass
         if self._persist:  # NIGHTLY SKILL FORMATION (bounded): one small env-budgeted
             try:  # slice/night into persistent per-domain readouts across
                 if self._skills is None:  # language/math/physics/world-kb (+open-world discovery +

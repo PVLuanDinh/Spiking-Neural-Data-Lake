@@ -138,6 +138,27 @@ class BinLog:
         """Number of records stored (O(1) maintained counter -- polled per round/request by daemons)."""
         return self._count
 
+    def rewrite(self, survivors):
+        """LOG COMPACTION -- atomically rewrite the whole log to exactly `survivors` (an iterable of payload
+        bytes, in the order given). This is the mechanism the brain's SLEEP consolidation uses to PRUNE +
+        CONSOLIDATE the durable lake: replay -> a policy selects/merges survivors -> rewrite. Atomic (temp
+        file + fsync + os.replace), so a crash mid-compaction leaves the OLD log intact -- never a half lake.
+        Returns the new record count."""
+        survivors = [bytes(p) for p in survivors]
+        tmp = self.path + ".compact.tmp"
+        with open(tmp, "wb") as f:
+            f.write(_MAGIC)
+            for p in survivors:
+                f.write(_LEN.pack(len(p)) + p)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(
+            tmp, self.path
+        )  # atomic swap: readers see either the whole old or the whole new log
+        self._seen = set(survivors) if self.dedup else None
+        self._count = len(survivors)
+        return self._count
+
 
 # ---- compact RAW-BINARY serialization of a knowledge fact (NOT JSON) --------------------------------
 def _s(x):
