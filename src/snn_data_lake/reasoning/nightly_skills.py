@@ -24,8 +24,8 @@ Persistence (real memory only, bounded, deduped -- never noise):
                                  signature exemplars that index the skill in the router lake.
   <home>/skills/open_world.npz   discovered-domain centroids + counts + stream position (the
                                  novelty buffer and per-domain item lists are ephemeral/bounded).
-  <home>/skills.spkl             the durable proximity-router lake (LakeMemory / StreamingHub);
-                                 on reload the in-RAM index is rebuilt from the persisted
+  <home>/skills.spkl             a per-boot SCRATCH proximity-router index (LakeMemory / StreamingHub),
+                                 NOT a durable store -- deleted fresh and rebuilt from the persisted
                                  exemplars WITHOUT re-appending, so the lake never bloats.
   <home>/nightly_skills.json     curiosity + selection bookkeeping, autotelic labels, summary.
 
@@ -50,6 +50,7 @@ language_readout_slda (via Domain), kb_ranking, lake_memory, spiking_curiosity,
 open_world_loop, autotelic_goals, substrate.home. Deterministic: per-instance
 random.Random(seed) / np.random.RandomState(seed); no wall-clock; crc32 signatures only.
 """
+
 import os
 import random
 
@@ -77,9 +78,9 @@ from snn_data_lake.substrate.home import home, lake_path, load_state, save_state
 _SKILL_IDS = {"language": 0, "math": 1, "physics": 2, "world-kb": 3}
 _ID_NAMES = {v: k for k, v in _SKILL_IDS.items()}
 _STATE_JSON = "nightly_skills.json"
-_CURIO_LOG_CAP = 240          # bounded chronological (domain, error) log replayed into the drive on reload
-_EXEMPLAR_CAP = 150           # signature exemplars per skill (the existing signature_exemplars size)
-_OW_ITEM_CAP = 150            # bounded per-discovered-domain item lists (never noise, never unbounded)
+_CURIO_LOG_CAP = 240  # bounded chronological (domain, error) log replayed into the drive on reload
+_EXEMPLAR_CAP = 150  # signature exemplars per skill (the existing signature_exemplars size)
+_OW_ITEM_CAP = 150  # bounded per-discovered-domain item lists (never noise, never unbounded)
 
 _SCALE_NOTE = (
     "bounded nightly skill FORMATION: one small env-budgeted slice per night into per-domain "
@@ -108,7 +109,9 @@ def _rng_state_arrays(rng):
 
 
 def _set_rng_state(rng, keys, pos, has_gauss, cached):
-    rng.set_state(("MT19937", np.asarray(keys, dtype=np.uint32), int(pos), int(has_gauss), float(cached)))
+    rng.set_state(
+        ("MT19937", np.asarray(keys, dtype=np.uint32), int(pos), int(has_gauss), float(cached))
+    )
 
 
 class _NightKB:
@@ -123,13 +126,15 @@ class _NightKB:
         if max_triples and len(tr_s) > int(max_triples):
             tr_s = tr_s[: int(max_triples)]
         ent, rel = {}, {}
-        eid = lambda e: ent.setdefault(e, len(ent))   # noqa: E731
-        rid = lambda r: rel.setdefault(r, len(rel))   # noqa: E731
+        eid = lambda e: ent.setdefault(e, len(ent))  # noqa: E731
+        rid = lambda r: rel.setdefault(r, len(rel))  # noqa: E731
         self.tr = np.array([[eid(h), rid(r), eid(t)] for h, r, t in tr_s], dtype=np.int64)
-        self.te = np.array([[eid(h), rid(r), eid(t)] for h, r, t in te_s
-                            if h in ent and r in rel and t in ent], dtype=np.int64)
-        if len(self.te) < 40 and len(self.tr) > 200:      # capped train left too few evaluable test
-            k = max(40, len(self.tr) // 10)               # triples -> carve a held-out tail from train
+        self.te = np.array(
+            [[eid(h), rid(r), eid(t)] for h, r, t in te_s if h in ent and r in rel and t in ent],
+            dtype=np.int64,
+        )
+        if len(self.te) < 40 and len(self.tr) > 200:  # capped train left too few evaluable test
+            k = max(40, len(self.tr) // 10)  # triples -> carve a held-out tail from train
             self.te = self.tr[-k:]
             self.tr = self.tr[:-k]
         self.ient = {v: k for k, v in ent.items()}
@@ -142,15 +147,16 @@ class _NightKB:
         self.name = name
         self.vocab = ["<distmult-ranking-head>"]
         self.eval_n = int(eval_n)
-        self.baseline = 10.0 / max(1, self.n_ent)         # random-ranking Hits@10
+        self.baseline = 10.0 / max(1, self.n_ent)  # random-ranking Hits@10
         self.competence = 0.0
         self.visits = 0
         self.registered = False
-        self.train = self.tr                              # duck-type alias
+        self.train = self.tr  # duck-type alias
         self.rng = np.random.RandomState(0)
         self.tr_pos = 0
-        self.test = [([self.irel[int(r)], self.ient[int(h)]], self.ient[int(t)])
-                     for h, r, t in self.te[:500]]
+        self.test = [
+            ([self.irel[int(r)], self.ient[int(h)]], self.ient[int(t)]) for h, r, t in self.te[:500]
+        ]
 
     def study(self, slice_n):
         """Train the NEXT budget-sized rolling slice of the accumulated KB (not a full epoch), then
@@ -186,8 +192,9 @@ class NightlySkills:
     """The sleep loop's persistent, bounded nightly skill-formation step.
 
     One instance owns four lazily-built domains (language / math / physics / world-kb -- the
-    meta_skill_loop set), a SpikingCuriosityDrive meta-controller keyed on domain name, a durable
-    proximity router (SkillRegistry over LakeMemory at <home>/skills.spkl), a persistent
+    meta_skill_loop set), a SpikingCuriosityDrive meta-controller keyed on domain name, a rebuildable
+    proximity router (SkillRegistry over a SCRATCH LakeMemory at <home>/skills.spkl, rebuilt from the
+    npz STATE on load), a persistent
     open-world discovery controller and an accumulated autotelic goal-label store. Construction
     RELOADS any persisted state under home() so a reboot resumes with competence intact
     (order-invariant SLDA == continual, so restoring the sufficient statistics restores the head
@@ -216,28 +223,28 @@ class NightlySkills:
         self._ow_batch = _envi("NORD_NIGHT_OW", 120)
         self._goal_eps = _envi("NORD_NIGHT_GOALS", 6)
         # state
-        self._domains = None                    # name -> Domain/_NightKB (lazy, built ONCE per instance)
+        self._domains = None  # name -> Domain/_NightKB (lazy, built ONCE per instance)
         self._lake = None
         self._registry = None
-        self._exemplars = {}                    # name -> [<=150 signature vectors] (the router build set)
-        self._router_order = []                 # consolidation order (band alignment across reloads)
-        self._pending = {}                      # name -> raw npz dict, applied when the domain is built
+        self._exemplars = {}  # name -> [<=150 signature vectors] (the router build set)
+        self._router_order = []  # consolidation order (band alignment across reloads)
+        self._pending = {}  # name -> raw npz dict, applied when the domain is built
         self.meta = SpikingCuriosityDrive(seed=self.seed)
-        self._curio_log = []                    # bounded chronological [(name, error)] -> drive replay
-        self._last = {}                         # name -> last cycle studied (staleness guard)
+        self._curio_log = []  # bounded chronological [(name, error)] -> drive replay
+        self._last = {}  # name -> last cycle studied (staleness guard)
         self._cycle = 0
         self._nights = 0
         self._ow = None
         self._ow_pool = None
         self._ow_pos = 0
         self._pending_ow = None
-        self._auto_labels = {}                  # (state, goal) -> direction (deduped by construction)
+        self._auto_labels = {}  # (state, goal) -> direction (deduped by construction)
         self._auto_visited = set()
         self._auto_reach = None
         self._summary = {}
         try:
             self.load()
-        except Exception as exc:                # a corrupt home must never block a boot
+        except Exception as exc:  # a corrupt home must never block a boot
             print(f"[nightly-skills] load skipped ({exc!r}); starting fresh")
 
     # ------------------------------------------------------------------ lazy builds
@@ -248,7 +255,16 @@ class NightlySkills:
 
     def _ensure_lake(self):
         if self._lake is None:
-            self._lake = LakeMemory(path=lake_path("skills.spkl"), seed=self.seed)
+            # skills.spkl is a per-boot SCRATCH proximity index -- NOT a durable store. The durable skill
+            # memory is the per-domain <home>/skills/*.npz STATE (exemplars + readout weights); load()
+            # rebuilds this index from it. Deleted fresh at first build so it is never a second durable
+            # copy of the exemplars -- one durable lake (brain_lake.bin), no more no less.
+            sp = lake_path("skills.spkl")
+            try:
+                os.remove(sp)
+            except FileNotFoundError:
+                pass
+            self._lake = LakeMemory(path=sp, seed=self.seed)
             self._registry = SkillRegistry(self._lake)
             for n in self._router_order:
                 self._registry.names[_SKILL_IDS[n]] = n
@@ -256,10 +272,12 @@ class NightlySkills:
 
     def _ensure_ow(self):
         if self._ow is None:
-            self._ow = OpenWorldController(lam=_envf("NORD_NIGHT_LAM", 1.7),
-                                           harvest=_envi("NORD_NIGHT_HARVEST", 60),
-                                           min_ev=_envi("NORD_NIGHT_MINEV", 12),
-                                           cap=_envi("NORD_NIGHT_CAP", 8))
+            self._ow = OpenWorldController(
+                lam=_envf("NORD_NIGHT_LAM", 1.7),
+                harvest=_envi("NORD_NIGHT_HARVEST", 60),
+                min_ev=_envi("NORD_NIGHT_MINEV", 12),
+                cap=_envi("NORD_NIGHT_CAP", 8),
+            )
             if self._pending_ow is not None:
                 z = self._pending_ow
                 for i, did in enumerate(z["dids"].tolist()):
@@ -278,17 +296,35 @@ class NightlySkills:
         cmudict, _ = load_cmudict()
         words, _ = load_text()
         doms = {}
-        doms["language"] = Domain("language",
-                                  list(phoneme_stream(words, cmudict, k=self.ctx, limit=self._lang_limit)),
-                                  ARPABET, self.ctx, self._rff, self._gamma)
-        doms["math"] = Domain("math", math_stream(n_expr=self._mathn, ctx=self.ctx, seed=0),
-                              MATH_VOCAB, self.ctx, self._rff, self._gamma)
-        doms["physics"] = Domain("physics", physics_stream(n_traj=self._traj, ctx=self.ctx, seed=0),
-                                 [str(b) for b in range(20)] + [" "], self.ctx, self._rff, self._gamma)
+        doms["language"] = Domain(
+            "language",
+            list(phoneme_stream(words, cmudict, k=self.ctx, limit=self._lang_limit)),
+            ARPABET,
+            self.ctx,
+            self._rff,
+            self._gamma,
+        )
+        doms["math"] = Domain(
+            "math",
+            math_stream(n_expr=self._mathn, ctx=self.ctx, seed=0),
+            MATH_VOCAB,
+            self.ctx,
+            self._rff,
+            self._gamma,
+        )
+        doms["physics"] = Domain(
+            "physics",
+            physics_stream(n_traj=self._traj, ctx=self.ctx, seed=0),
+            [str(b) for b in range(20)] + [" "],
+            self.ctx,
+            self._rff,
+            self._gamma,
+        )
         try:
-            doms["world-kb"] = _NightKB("world-kb", dim=self._kbdim, seed=0,
-                                        eval_n=self._kbeval, max_triples=self._kbcap)
-        except Exception as exc:                # KB dataset unavailable -> a 3-domain night, not a crash
+            doms["world-kb"] = _NightKB(
+                "world-kb", dim=self._kbdim, seed=0, eval_n=self._kbeval, max_triples=self._kbcap
+            )
+        except Exception as exc:  # KB dataset unavailable -> a 3-domain night, not a crash
             print(f"[nightly-skills] world-kb domain unavailable ({exc!r}); 3-domain night")
         for name, d in doms.items():
             z = self._pending.pop(name, None)
@@ -352,7 +388,8 @@ class NightlySkills:
     def save(self):
         """Persist everything to home(): one npz per built domain (learned arrays + bookkeeping +
         exemplars), the open-world controller's centroids, and the json summary. The router lake
-        (<home>/skills.spkl) is already durable via StreamingHub appends. Atomic writes."""
+        (<home>/skills.spkl) is a rebuildable SCRATCH index (rebuilt from these npz exemplars on load),
+        NOT a durable store -- the durable skill memory is the npz STATE. Atomic writes."""
         sk = self._skills_dir()
         for name, d in (self._domains or {}).items():
             path = os.path.join(sk, name + ".npz")
@@ -363,46 +400,87 @@ class NightlySkills:
             if isinstance(d, _NightKB):
                 mk, mp, mg, mgv = _rng_state_arrays(d.model.rng)
                 ek, ep, eg, egv = _rng_state_arrays(d.rng)
-                np.savez_compressed(tmp, E=d.model.E, R=d.model.R,
-                                    mkeys=mk, mpos=mp, mg=mg, mgv=mgv,
-                                    ekeys=ek, epos=ep, eg=eg, egv=egv,
-                                    tr_pos=d.tr_pos, competence=d.competence, visits=d.visits,
-                                    baseline=d.baseline, registered=int(d.registered), exemplars=ex)
+                np.savez_compressed(
+                    tmp,
+                    E=d.model.E,
+                    R=d.model.R,
+                    mkeys=mk,
+                    mpos=mp,
+                    mg=mg,
+                    mgv=mgv,
+                    ekeys=ek,
+                    epos=ep,
+                    eg=eg,
+                    egv=egv,
+                    tr_pos=d.tr_pos,
+                    competence=d.competence,
+                    visits=d.visits,
+                    baseline=d.baseline,
+                    registered=int(d.registered),
+                    exemplars=ex,
+                )
             else:
                 s = d.slda
-                np.savez_compressed(tmp, W=s.W, b=s.b, sum_c=s.sum_c, cnt_c=s.cnt_c, ZZt=s.ZZt,
-                                    pos=d.pos, competence=d.competence, visits=d.visits,
-                                    baseline=d.baseline, registered=int(d.registered),
-                                    inV=d.inV, V=d.V, ctx=d.ctx, exemplars=ex)
+                np.savez_compressed(
+                    tmp,
+                    W=s.W,
+                    b=s.b,
+                    sum_c=s.sum_c,
+                    cnt_c=s.cnt_c,
+                    ZZt=s.ZZt,
+                    pos=d.pos,
+                    competence=d.competence,
+                    visits=d.visits,
+                    baseline=d.baseline,
+                    registered=int(d.registered),
+                    inV=d.inV,
+                    V=d.V,
+                    ctx=d.ctx,
+                    exemplars=ex,
+                )
             os.replace(tmp, path)
         if self._ow is not None and self._ow.cents:
             dids = sorted(self._ow.cents)
             path = os.path.join(sk, "open_world.npz")
             tmp = path + ".tmp.npz"
-            np.savez_compressed(tmp,
-                                cents=np.array([self._ow.cents[k] for k in dids], dtype=np.float64),
-                                dids=np.array(dids, dtype=np.int64),
-                                counts=np.array([self._ow.counts.get(k, 0) for k in dids], dtype=np.int64),
-                                pos=self._ow_pos)
+            np.savez_compressed(
+                tmp,
+                cents=np.array([self._ow.cents[k] for k in dids], dtype=np.float64),
+                dids=np.array(dids, dtype=np.int64),
+                counts=np.array([self._ow.counts.get(k, 0) for k in dids], dtype=np.int64),
+                pos=self._ow_pos,
+            )
             os.replace(tmp, path)
         doms = dict(self._summary.get("domains", {}))
         if self._domains:
             for n, d in self._domains.items():
-                doms[n] = {"competence": float(d.competence), "visits": int(d.visits),
-                           "baseline": float(d.baseline)}
+                doms[n] = {
+                    "competence": float(d.competence),
+                    "visits": int(d.visits),
+                    "baseline": float(d.baseline),
+                }
         self._curio_log = self._curio_log[-_CURIO_LOG_CAP:]
         summary = {
-            "nights": int(self._nights), "cycle": int(self._cycle), "backend": self.backend,
+            "nights": int(self._nights),
+            "cycle": int(self._cycle),
+            "backend": self.backend,
             "last": {k: int(v) for k, v in self._last.items()},
             "curio_log": [[n, float(e)] for n, e in self._curio_log],
             "router_order": list(self._router_order),
             "domains": doms,
-            "autotelic": {"labels": {f"{s},{g}": int(a) for (s, g), a in self._auto_labels.items()},
-                          "visited": sorted(int(v) for v in self._auto_visited),
-                          "heldout_reach": (None if self._auto_reach is None else float(self._auto_reach))},
-            "open_world": {"pos": int(self._ow_pos),
-                           "n_domains": (len(self._ow.cents) if self._ow is not None else
-                                         int(self._summary.get("open_world", {}).get("n_domains", 0)))},
+            "autotelic": {
+                "labels": {f"{s},{g}": int(a) for (s, g), a in self._auto_labels.items()},
+                "visited": sorted(int(v) for v in self._auto_visited),
+                "heldout_reach": (None if self._auto_reach is None else float(self._auto_reach)),
+            },
+            "open_world": {
+                "pos": int(self._ow_pos),
+                "n_domains": (
+                    len(self._ow.cents)
+                    if self._ow is not None
+                    else int(self._summary.get("open_world", {}).get("n_domains", 0))
+                ),
+            },
         }
         self._summary = summary
         save_state(_STATE_JSON, summary)
@@ -455,11 +533,12 @@ class NightlySkills:
                 for v in self._exemplars[n]:
                     pats.append(lake._encode(v))
             expected = sum(len(p) for p in pats)
-            if lake.hub.n_events() == 0:                        # lake file was lost -> rewrite it
+            if lake.hub.n_events() == 0:  # lake file was lost -> rewrite it
                 for n in order:
-                    lake.consolidate(self._exemplars[n],
-                                     payloads=[_SKILL_IDS[n]] * len(self._exemplars[n]))
-            elif lake.hub.n_events() == expected:               # durable events intact -> RAM-only rebuild
+                    lake.consolidate(
+                        self._exemplars[n], payloads=[_SKILL_IDS[n]] * len(self._exemplars[n])
+                    )
+            elif lake.hub.n_events() == expected:  # durable events intact -> RAM-only rebuild
                 i = 0
                 for n in order:
                     for v in self._exemplars[n]:
@@ -468,15 +547,16 @@ class NightlySkills:
                         lake._features.append([float(x) for x in v])
                         i += 1
                 lake._dirty = True
-            else:                                               # stale/foreign lake -> rebuild losslessly
+            else:  # stale/foreign lake -> rebuild losslessly
                 lake.close()
                 os.remove(lake.path)
                 self._lake = None
                 self._registry = None
                 lake = self._ensure_lake()
                 for n in order:
-                    lake.consolidate(self._exemplars[n],
-                                     payloads=[_SKILL_IDS[n]] * len(self._exemplars[n]))
+                    lake.consolidate(
+                        self._exemplars[n], payloads=[_SKILL_IDS[n]] * len(self._exemplars[n])
+                    )
             for n in order:
                 self._registry.names[_SKILL_IDS[n]] = n
                 self._registry.experts[_SKILL_IDS[n]] = {"ctx": self.ctx}
@@ -485,7 +565,9 @@ class NightlySkills:
     def _register(self, name, d):
         ex = d.signature_exemplars(_EXEMPLAR_CAP)
         self._ensure_lake()
-        self._registry.register(_SKILL_IDS[name], name, ex, {"vocab": list(d.vocab), "ctx": self.ctx})
+        self._registry.register(
+            _SKILL_IDS[name], name, ex, {"vocab": list(d.vocab), "ctx": self.ctx}
+        )
         d.registered = True
         self._exemplars[name] = [[float(x) for x in v] for v in ex]
         if name not in self._router_order:
@@ -514,10 +596,13 @@ class NightlySkills:
             c, nx, lbl = self._ow_pool[(self._ow_pos + i) % len(self._ow_pool)]
             ow.observe(c, nx, lbl, self._ow_pos + i)
         self._ow_pos += n
-        for did in list(ow.items):                             # bounded item lists (never unbounded RAM)
+        for did in list(ow.items):  # bounded item lists (never unbounded RAM)
             ow.items[did] = ow.items[did][-_OW_ITEM_CAP:]
-        return {"domains": len(ow.cents), "new_domains": len(ow.cents) - before,
-                "seen": int(self._ow_pos)}
+        return {
+            "domains": len(ow.cents),
+            "new_domains": len(ow.cents) - before,
+            "seen": int(self._ow_pos),
+        }
 
     def _autotelic_step(self):
         """One bounded autotelic goal-babbling sub-step: a few hindsight-relabeled episodes merged
@@ -526,7 +611,7 @@ class NightlySkills:
         one metric hindsight cannot inflate). Near-tabular; no transfer claim."""
         if self._goal_eps <= 0:
             return None
-        sd = (self.seed * 1000003 + self._nights) % (2 ** 31 - 1)
+        sd = (self.seed * 1000003 + self._nights) % (2**31 - 1)
         examples, _buf = collect_labels(self._goal_eps, hindsight=True, seed=sd)
         before = len(self._auto_labels)
         for s, g, a in examples:
@@ -538,14 +623,24 @@ class NightlySkills:
             ro = GoalConditionedReadout(seed=self.seed)
             ro.train(sorted((s, g, a) for (s, g), a in self._auto_labels.items()))
             self._auto_reach = _reach_rate(ro, EVAL_STARTS, HELDOUT_GOALS, H, REACH_LO, REACH_HI)
-        return {"labels": len(self._auto_labels), "new_labels": int(new),
-                "heldout_reach": float(self._auto_reach), "visited": len(self._auto_visited)}
+        return {
+            "labels": len(self._auto_labels),
+            "new_labels": int(new),
+            "heldout_reach": float(self._auto_reach),
+            "visited": len(self._auto_visited),
+        }
 
     def night(self):
         """ONE bounded night of skill formation. Never raises: every stage is guarded so a sleep
         tick cannot crash the brain; failures degrade to a partial result dict."""
-        out = {"domain": None, "competence": 0.0, "progress": 0.0, "visits": 0,
-               "discovered": None, "autotelic": None}
+        out = {
+            "domain": None,
+            "competence": 0.0,
+            "progress": 0.0,
+            "visits": 0,
+            "discovered": None,
+            "autotelic": None,
+        }
         errors = []
         self._nights += 1
         try:
@@ -605,13 +700,18 @@ class NightlySkills:
         doms = {}
         if self._domains:
             for n, d in self._domains.items():
-                doms[n] = {"competence": float(d.competence), "visits": int(d.visits),
-                           "baseline": float(d.baseline)}
+                doms[n] = {
+                    "competence": float(d.competence),
+                    "visits": int(d.visits),
+                    "baseline": float(d.baseline),
+                }
         else:
             for n, rec in self._summary.get("domains", {}).items():
-                doms[n] = {"competence": float(rec.get("competence", 0.0)),
-                           "visits": int(rec.get("visits", 0)),
-                           "baseline": float(rec.get("baseline", 0.0))}
+                doms[n] = {
+                    "competence": float(rec.get("competence", 0.0)),
+                    "visits": int(rec.get("visits", 0)),
+                    "baseline": float(rec.get("baseline", 0.0)),
+                }
         return {"domains": doms, "_scale": _SCALE_NOTE}
 
     def close(self):
@@ -630,10 +730,18 @@ def main():
     import shutil
     import tempfile
 
-    small = {"NORD_NIGHT_LANG": "2500", "NORD_NIGHT_MATHN": "400", "NORD_NIGHT_TRAJ": "40",
-             "NORD_NIGHT_KBDIM": "24", "NORD_NIGHT_KBEVAL": "60", "NORD_NIGHT_KBTRIPLES": "1500",
-             "NORD_NIGHT_RFF": "300", "NORD_NIGHT_OW": "90", "NORD_NIGHT_GOALS": "4",
-             "NORD_NIGHT_BUDGET": "300"}
+    small = {
+        "NORD_NIGHT_LANG": "2500",
+        "NORD_NIGHT_MATHN": "400",
+        "NORD_NIGHT_TRAJ": "40",
+        "NORD_NIGHT_KBDIM": "24",
+        "NORD_NIGHT_KBEVAL": "60",
+        "NORD_NIGHT_KBTRIPLES": "1500",
+        "NORD_NIGHT_RFF": "300",
+        "NORD_NIGHT_OW": "90",
+        "NORD_NIGHT_GOALS": "4",
+        "NORD_NIGHT_BUDGET": "300",
+    }
     saved_env = {k: os.environ.get(k) for k in list(small) + ["NORD_HOME"]}
     work = tempfile.mkdtemp(prefix="sndl_night_")
     work2 = tempfile.mkdtemp(prefix="sndl_night2_")
@@ -643,16 +751,22 @@ def main():
 
         print("=" * 96)
         print("NIGHTLY SKILLS -- persistent bounded nightly skill formation for the sleep loop")
-        print("(coverage/staleness/curiosity pick ONE frontier domain per night; everything persists under home())")
+        print(
+            "(coverage/staleness/curiosity pick ONE frontier domain per night; everything persists under home())"
+        )
         print("=" * 96)
 
         # ---- instance A: two nights, then persist ------------------------------------------
         a = NightlySkills(seed=0)
         r1 = a.night()
         r2 = a.night()
-        print(f"  night 1: {r1['domain']:9s} competence {r1['competence']:.1%} (visit {r1['visits']}) "
-              f"discovered={r1['discovered']} autotelic={r1['autotelic']}")
-        print(f"  night 2: {r2['domain']:9s} competence {r2['competence']:.1%} (visit {r2['visits']})")
+        print(
+            f"  night 1: {r1['domain']:9s} competence {r1['competence']:.1%} (visit {r1['visits']}) "
+            f"discovered={r1['discovered']} autotelic={r1['autotelic']}"
+        )
+        print(
+            f"  night 2: {r2['domain']:9s} competence {r2['competence']:.1%} (visit {r2['visits']})"
+        )
         assert "errors" not in r1, f"night 1 had guarded errors: {r1.get('errors')}"
         assert "errors" not in r2, f"night 2 had guarded errors: {r2.get('errors')}"
         assert r1["domain"] == "language" and r2["domain"] == "math", "coverage-first order broken"
@@ -666,7 +780,8 @@ def main():
         st_b = b.state()["domains"]
         for n in ("language", "math"):
             assert st_b[n]["competence"] >= comp_a[n] - 1e-9 and st_b[n]["competence"] > 0.0, (
-                f"'{n}' competence NOT restored ({st_b[n]['competence']} vs {comp_a[n]})")
+                f"'{n}' competence NOT restored ({st_b[n]['competence']} vs {comp_a[n]})"
+            )
             assert st_b[n]["visits"] == 1, f"'{n}' visits not restored"
         # the restored READOUT itself (not just the stored number) reproduces competence exactly
         b._ensure_domains()
@@ -674,7 +789,8 @@ def main():
         yte = np.array([dl.ridx[nx] for _, nx in lang_test])
         re_eval = float((dl.slda.predict(dl._X(lang_test)) == yte).mean())
         assert abs(re_eval - comp_a["language"]) < 1e-9, (
-            f"restored SLDA head re-evaluates {re_eval} vs saved {comp_a['language']}")
+            f"restored SLDA head re-evaluates {re_eval} vs saved {comp_a['language']}"
+        )
         # router index survived: durable lake + rebuilt RAM index recall the right skill
         lake = b._ensure_lake()
         got = lake.retrieve(b._exemplars["language"][0], k=1)
@@ -683,8 +799,10 @@ def main():
         assert dur["ok"], f"router lake failed the durability round-trip: {dur}"
         routed = b.route(["3", "+", "4"])
         assert routed in _SKILL_IDS, f"route() returned no known skill ({routed})"
-        print(f"  reload  : competence restored (language re-eval {re_eval:.1%} == saved "
-              f"{comp_a['language']:.1%}); router durable={dur['ok']}; route(['3','+','4']) -> {routed}")
+        print(
+            f"  reload  : competence restored (language re-eval {re_eval:.1%} == saved "
+            f"{comp_a['language']:.1%}); router durable={dur['ok']}; route(['3','+','4']) -> {routed}"
+        )
 
         # ---- instance B: keep forming skills; some domain must clear its own baseline ------
         r3 = b.night()
@@ -701,11 +819,17 @@ def main():
         cleared = [n for n, d in b._domains.items() if d.visits > 0 and d.competence >= d.baseline]
         assert cleared, "no domain reached its own baseline after bounded nightly accumulation"
         st = b.state()
-        print(f"  nights  : {b._nights} total; baseline cleared by {cleared}; "
-              f"open-world domains {len(b._ow.cents) if b._ow else 0}; "
-              f"autotelic heldout reach {b._auto_reach}")
-        assert b._ow is not None and len(b._ow.cents) >= 1, "open-world discovery never spawned a domain"
-        assert b._auto_reach is not None and b._auto_reach >= 0.0, "autotelic sub-step never measured"
+        print(
+            f"  nights  : {b._nights} total; baseline cleared by {cleared}; "
+            f"open-world domains {len(b._ow.cents) if b._ow else 0}; "
+            f"autotelic heldout reach {b._auto_reach}"
+        )
+        assert b._ow is not None and len(b._ow.cents) >= 1, (
+            "open-world discovery never spawned a domain"
+        )
+        assert b._auto_reach is not None and b._auto_reach >= 0.0, (
+            "autotelic sub-step never measured"
+        )
         assert st["_scale"], "honest _scale note missing"
         b.close()
 
@@ -715,15 +839,18 @@ def main():
         rc = c.night()
         c.close()
         assert rc["domain"] == r1["domain"] and abs(rc["competence"] - r1["competence"]) < 1e-9, (
-            f"nondeterministic night 1: {rc['domain']}/{rc['competence']} vs {r1['domain']}/{r1['competence']}")
+            f"nondeterministic night 1: {rc['domain']}/{rc['competence']} vs {r1['domain']}/{r1['competence']}"
+        )
 
-        ok = (f"self-check OK: {b._nights} bounded nights formed+persisted skills across "
-              f"{len(st['domains'])} domains (baseline cleared by {','.join(sorted(cleared))}); reload "
-              f"restored competence EXACTLY (SLDA sufficient statistics) and the proximity router "
-              f"survived the restart; open-world discovered {len(b._ow.cents)} signature domains; "
-              f"autotelic heldout reach {b._auto_reach:.2f}; deterministic night 1 across fresh homes. "
-              f"Honest scope: {_SCALE_NOTE.split(';')[0]}.")
-        ok.encode("ascii")                                     # ASCII-only guarantee (Windows cp1252)
+        ok = (
+            f"self-check OK: {b._nights} bounded nights formed+persisted skills across "
+            f"{len(st['domains'])} domains (baseline cleared by {','.join(sorted(cleared))}); reload "
+            f"restored competence EXACTLY (SLDA sufficient statistics) and the proximity router "
+            f"survived the restart; open-world discovered {len(b._ow.cents)} signature domains; "
+            f"autotelic heldout reach {b._auto_reach:.2f}; deterministic night 1 across fresh homes. "
+            f"Honest scope: {_SCALE_NOTE.split(';')[0]}."
+        )
+        ok.encode("ascii")  # ASCII-only guarantee (Windows cp1252)
         print("=" * 96)
         print(ok)
         return 0
