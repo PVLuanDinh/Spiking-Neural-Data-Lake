@@ -10,9 +10,10 @@ Runs the whole circadian brain forever and learns from everything it can:
       never externally actuated.
   (2) CHAT INGEST: new user/assistant turns from the project chat transcripts are fed to respond()
       (teaches the intent router + theory-of-mind) AND remembered into a DURABLE, content-addressable
-      chat memory on the spike lake (substrate/chat_memory.DurableChatMemory) -- but ONLY the REAL turns:
-      the noise filter drops tool output, system-reminders, code dumps, and logs, so it saves real
-      memory, not noise. Queryable later via DurableChatMemory(path).recall(query).
+      chat memory in the ONE durable brain lake (substrate/chat_memory.DurableChatMemory, a VIEW over the
+      shared home knowledge.jsonl) -- but ONLY the REAL turns: the noise filter drops tool output,
+      system-reminders, code dumps, and logs, so it saves real memory, not noise. Because it is the SAME
+      lake LakeChat replays, LakeChat converses from what the daemon learned. Queryable via .recall(query).
   (3) AUTO-UPDATE: polls `git rev-parse HEAD`; when a NEW COMMIT lands (a new brain build), it persists
       (brain + chat lake) and exits, so the launcher (learn_daemon.bat's restart loop) relaunches with
       the new code. Only COMMITTED builds trigger a reload -- never a mid-edit working tree. Learning
@@ -24,7 +25,7 @@ comprehend. It learns from these transcripts + its own sensory/arm-sim loop, nev
 
   ./.venv-lake/Scripts/python.exe learn_daemon.py            (learn only)
   NORD_SELFMOD=1 ./.venv-lake/Scripts/python.exe learn_daemon.py   (+ autonomous self-build)
-Env: SNDL_CHAT_TRANSCRIPT (glob), SNDL_CHAT_MEM (lake path), SNDL_TICKS (ticks/cycle), SNDL_POLL. ASCII only.
+Env: SNDL_CHAT_TRANSCRIPT (glob), NORD_HOME (the one-lake home), SNDL_TICKS (ticks/cycle), SNDL_POLL. ASCII only.
 """
 
 # ruff: noqa: E402, E501  -- root-level runner: intentional pre-import path setup + long descriptive lines
@@ -46,7 +47,6 @@ from snn_data_lake.substrate.chat_memory import DurableChatMemory
 TRANSCRIPTS = os.environ.get(
     "SNDL_CHAT_TRANSCRIPT", r"C:\Users\vinhl\.claude\projects\D--AI-project\*.jsonl"
 )
-CHAT_MEM_PATH = os.environ.get("SNDL_CHAT_MEM", "data/chat_memory.spkl")
 TICKS_PER_CYCLE = int(os.environ.get("SNDL_TICKS", "20"))
 CHUNK_LINES = int(os.environ.get("SNDL_CHAT_CHUNK", "400"))
 POLL = float(os.environ.get("SNDL_POLL", "5"))
@@ -84,7 +84,9 @@ def _new_turns(path, start):
             text = content
         elif isinstance(content, list):
             text = " ".join(
-                b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text"
+                b.get("text", "")
+                for b in content
+                if isinstance(b, dict) and b.get("type") == "text"
             )
         else:
             text = ""
@@ -111,14 +113,20 @@ def _shutdown(b, mem):
 
 
 def main():
-    b = Brain(seed=0)  # FULL brain, persist ON; sim arm = dormant internal substrate (no real hardware)
-    mem = DurableChatMemory(path=CHAT_MEM_PATH)  # durable content-addressable chat lake (noise-filtered)
+    from snn_data_lake.substrate.home import knowledge_path
+
+    b = Brain(
+        seed=0
+    )  # FULL brain, persist ON; sim arm = dormant internal substrate (no real hardware)
+    mem = (
+        DurableChatMemory()
+    )  # a VIEW over the ONE durable brain lake (home knowledge.jsonl), noise-filtered
     atexit.register(lambda: _shutdown(b, mem))
     start_head = _head()
     offsets, n, remembered = {}, 0, 0
     sb = "ON" if os.environ.get("NORD_SELFMOD") == "1" else "off"
     print(
-        f"[learn-daemon] FULL-brain learning; chat->durable lake ({CHAT_MEM_PATH}); self-build={sb}; "
+        f"[learn-daemon] FULL-brain learning; chat->the ONE lake ({knowledge_path()}); self-build={sb}; "
         f"auto-restart on new commit. head={start_head[:8]}",
         flush=True,
     )
@@ -136,7 +144,9 @@ def main():
             for role, text in turns:
                 try:
                     if mem.remember(role, text):  # durable + noise-filtered (real memory only)
-                        b.respond(text[:2000])  # learn from the real turn (free text -> no arm actuation)
+                        b.respond(
+                            text[:2000]
+                        )  # learn from the real turn (free text -> no arm actuation)
                         remembered += 1
                 except Exception as e:
                     print(f"[learn-daemon] ingest err: {type(e).__name__}: {e}", flush=True)
@@ -147,7 +157,9 @@ def main():
                 flush=True,
             )
             _shutdown(b, mem)
-            os._exit(0)  # the launcher's restart loop relaunches with the new code; learning reloads from disk
+            os._exit(
+                0
+            )  # the launcher's restart loop relaunches with the new code; learning reloads from disk
         n += 1
         if n % LOG_EVERY == 0:
             try:

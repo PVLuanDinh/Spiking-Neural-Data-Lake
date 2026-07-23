@@ -228,6 +228,17 @@ class LakeChat:
         # replayed at boot() so a fact taught in a PRIOR run (even another process) is remembered.
         # persist=False (the deterministic demo) keeps the chat fully in-RAM, touching no home files.
         self.log = KnowledgeLog() if persist else None
+        # the ONE lake's chat turns (daemon-ingested conversation, src="chat:*") are served by a FAST
+        # bag-of-words VIEW over the SAME lake -- consulted in converse() so LakeChat answers from what the
+        # daemon learned, WITHOUT indexing thousands of noisy turns into the heavy spike/semantic fact index.
+        self._chat_mem = None
+        if persist:
+            try:
+                from snn_data_lake.substrate.chat_memory import DurableChatMemory
+
+                self._chat_mem = DurableChatMemory(log=self.log)
+            except Exception:
+                self._chat_mem = None
         # a host (e.g. the unified Brain) can own durability instead of self.log: set a hook that
         # persists each taught record to ITS store (knowledge.bin). Without this, a persist=False chat
         # inside the Brain would learn a taught fact only in RAM -- so a build's stored PROCESS, taught
@@ -985,6 +996,23 @@ class LakeChat:
                     )
             except Exception:
                 pass
+        if (
+            self._chat_mem is not None
+        ):  # the ONE lake's daemon-learned chat turns (fast bag-of-words view)
+            try:
+                for hit in self._chat_mem.recall(text, k=1):
+                    # a genuinely on-topic remembered turn competes (below a covered fact/reasoning, above
+                    # a stray-word match) -- so a real fact still outdrives it, but chat surfaces on a gap.
+                    if hit["score"] >= 0.34:
+                        candidates.append(
+                            (
+                                "recall",
+                                f"[from a remembered conversation] {hit['text']}",
+                                0.45 + 0.3 * hit["score"],
+                            )
+                        )
+            except Exception:
+                pass
         source, reply = self._ignite(
             candidates
         )  # GLOBAL WORKSPACE competition -> the broadcast winner
@@ -1495,6 +1523,10 @@ def boot(chat, wordnet=True):
     replayed = 0
     if getattr(chat, "log", None) is not None:
         for rec in chat.log.replay():  # durable never-forget store, in append order
+            if str(rec.get("src", "")).startswith("chat:"):
+                continue  # ONE lake, two treatments: chat turns are served by the fast bag-of-words chat
+                #            VIEW in converse(), NOT the heavy spike/semantic fact index (which would make
+                #            boot pathologically slow + pollute fact retrieval with noisy conversational prose)
             chat.learn(
                 rec["cue"], rec["answer"], triple=rec.get("triple")
             )  # re-learn (+triple) WITHOUT re-persisting

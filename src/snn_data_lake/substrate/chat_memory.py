@@ -1,66 +1,99 @@
 """
-Durable, content-addressable CHAT MEMORY on the spike lake.
+CHAT MEMORY -- a noise-filtered, content-addressable VIEW over the ONE durable brain lake.
 
-Today an assistant's conversational memory either lives nowhere (lost at process exit) or in an
-opaque vector-DB blob nobody can point at. This module stores REAL conversational turns -- not
-tool noise, not code dumps, not system chatter -- as sparse spike patterns in the SAME durable
-`.spkl` lake used everywhere else in this project (`lake_working_memory.LakeWorkingMemory`), and
-extracts them back by CONTENT (Jaccard overlap of hashed-token channels), not by tick index.
+The project has ONE durable data lake for the entire brain (substrate/home.py: the shared
+`KnowledgeLog` at <home>/knowledge.jsonl, replayed at every boot). This module no longer keeps a
+SEPARATE store: it is a thin writer/reader over that one lake. A real conversational turn is written
+as a lake record {"cue": content-words, "answer": text, "src": "chat:<role>"} -- the SAME record shape
+taught facts use -- so LakeChat (which replays the same KnowledgeLog) converses from what the daemon
+learned. There is no off-home `.spkl` and no sidecar index any more; the one lake is the only store.
 
 Mechanism (deterministic, storage-only):
   1. is_real_memory(role, text): a NOISE FILTER. Tool/system chatter, code dumps, JSON/path-heavy
      strings, and pytest/ruff/git logs are rejected; substantive user/assistant prose passes.
-  2. _encode(text): tokenize to lowercase word tokens, hash each unique token with `zlib.crc32`
-     mod `n_channels` -> a SET of channels (a sparse spike pattern). Overlapping vocabulary between
-     two texts means overlapping channels -- this is what makes retrieval content-addressable.
-  3. remember(role, text): if is_real_memory, `lake.write(tick, _encode(text))` appends the pattern
-     to the durable lake; a sidecar JSON index (`<path>.idx.json`) records {role, text (trimmed),
-     n_tokens} per tick so retrieval can show what was actually said. Noise is dropped (no tick
-     consumed, nothing written).
-  4. recall(query, k): `_encode(query)` -> read the channel pattern for EVERY stored tick back out
-     of the durable lake (`lake.recall(window=n_ticks)`) -> score each by Jaccard overlap with the
-     query's channels -> return the top-k sidecar entries (role, text, score), best first. The
-     lake -- not RAM, not the sidecar -- is the source of truth for what was actually written; the
-     sidecar only carries the human-readable text/role for display.
-  5. On init, if both the `.spkl` and its sidecar index already exist, the lake is `reopen()`-ed
-     (replaying the durable log) and the sidecar is loaded, so remembered turns survive a restart.
+  2. _encode(text): lowercase word tokens -> `zlib.crc32(token) mod n_channels` -> a SET of channels
+     (a sparse code). Overlapping vocabulary -> overlapping channels -> content-addressable recall.
+  3. remember(role, text): if is_real_memory, append one record to the ONE lake (dedup: an identical
+     turn is never stored twice). Noise is dropped (nothing written).
+  4. recall(query, k): score every chat record in the one lake by Jaccard channel-overlap with the
+     query, best first. The lake is the source of truth; the in-RAM channel index is rebuilt from it.
 
 Fair control (un-riggable):
-  - Noise really is dropped: remember() returns False and consumes no tick for code/system/tool
-    text; kept-vs-dropped counts over a real transcript show BOTH must be > 0 (a filter that
-    accepts or rejects everything is not discriminating).
-  - Durability: after closing the process and constructing a fresh `DurableChatMemory` over the
-    SAME path, recall() finds the same memories -- reopen() replayed them from the `.spkl`, not
-    from any surviving Python object.
-  - Content-addressable, not index-addressable: recall(query) is scored by hashed-token overlap
-    with the QUERY text, and returns the best-matching stored turn regardless of when it was
-    written; an unrelated query scores lower than the turn it was copied from.
-  - Determinism: `zlib.crc32` (never builtin `hash()`) and no import-time RNG state -> identical
-    text always encodes to the identical channel set, so recall scores are reproducible.
+  - Noise really is dropped: remember() returns False for code/system/tool text; kept-vs-dropped
+    counts over a real transcript both exceed 0 (a filter that accepts/rejects everything does not
+    discriminate).
+  - Durability + ONE lake: after a fresh process, a new DurableChatMemory over the same home finds
+    the same memories -- they were replayed from the shared knowledge.jsonl, not a private store; and
+    a LakeChat over the same home surfaces them too (proved in the self-check).
+  - Content-addressable: recall(query) is scored by hashed-token overlap with the QUERY; an unrelated
+    query scores lower than the turn it was copied from.
+  - Determinism: `zlib.crc32` (never builtin `hash()`), no import-time RNG -> reproducible scores.
 
 Honest framing: a bag-of-hashed-tokens sparse code, not a semantic embedding -- overlap requires
-shared VOCABULARY, not shared meaning ("the car is red" and "the automobile is crimson" would not
-match). It is a noise-filtered, durable, content-addressable log, not a language-understanding
-memory. Storage only -- imports nothing from brainstem/ and touches no actuator.
+shared VOCABULARY, not shared meaning. It is a noise-filtered, content-addressable VIEW over the one
+durable lake, not a language-understanding memory. Storage only -- imports nothing from brainstem/ and
+touches no actuator.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.chat_memory
 """
 
-import json
 import os
 import re
 import shutil
 import tempfile
 import zlib
 
-from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
+from snn_data_lake.substrate.home import KnowledgeLog, knowledge_path
 
 _MIN_LEN = 40  # shorter than this is a fragment, not a substantive turn ("ok", "yes", "5")
 _MAX_LEN = 4000  # longer than this is a dump (a whole file, a giant log), not a conversational turn
-_TEXT_KEEP = 400  # sidecar stores only a trimmed excerpt (index is for display, not full recall)
-_FLUSH_EVERY = 10  # periodic sidecar flush cadence (also always flushed on close())
+_TEXT_KEEP = 400  # store only a trimmed excerpt as the record answer (display, not full recall)
+_CHAT_SRC = "chat:"  # record src prefix that marks a conversational turn in the one lake
 
 _WORD_RE = re.compile(r"[a-z]+")  # lowercase word tokens for _encode()
+
+# CONTENT words only: stopwords are stripped before encoding/cue-building so recall scores reflect shared
+# MEANING words, not shared function words. Without this, a short query overlapping only on {what,are,the}
+# clears the recall gate and a stray turn ignites a confidently-wrong answer where an honest gap belongs.
+# Mirrors reasoning/spike_chat_lake._STOP (kept in sync here to avoid an import cycle: spike_chat_lake
+# imports chat_memory, not the reverse).
+_STOP = frozenset(
+    {
+        "a",
+        "about",
+        "an",
+        "and",
+        "are",
+        "at",
+        "do",
+        "does",
+        "for",
+        "how",
+        "i",
+        "in",
+        "is",
+        "it",
+        "its",
+        "me",
+        "my",
+        "of",
+        "on",
+        "s",
+        "tell",
+        "that",
+        "the",
+        "there",
+        "this",
+        "to",
+        "was",
+        "were",
+        "what",
+        "which",
+        "who",
+        "with",
+        "you",
+    }
+)
 
 _NOISE_MARKERS = (  # substrings that mark tool/system/harness chatter, never a conversational turn
     "<system-reminder>",
@@ -87,42 +120,46 @@ _CODE_LINE_RE = re.compile(r"^\s*(import |from |def |class |REM |@|#include|usin
 _SYMBOL_RE = re.compile(r"[{}\[\]<>|`_=;~^]")
 
 
+def chat_words(text):
+    """The content-word set of a chat turn -- the retrieval `cue` stored in the one lake. Sorted for a
+    deterministic on-disk record (KnowledgeLog dedups on the exact JSON, so cue order must be stable)."""
+    return sorted({t for t in _WORD_RE.findall(text.lower()) if t not in _STOP})
+
+
 class DurableChatMemory:
-    """REAL conversational memory, durably held in the spike lake and extracted by content.
+    """A noise-filtered, content-addressable VIEW over the ONE durable brain lake (home KnowledgeLog).
 
-    __init__ opens (or resumes) a durable `LakeWorkingMemory` at `path` plus a sidecar JSON index
-    at `<path>.idx.json`. remember() drops noise and writes real turns as sparse spike patterns;
-    recall() scores stored turns against a query by channel-overlap (Jaccard) read back from the
-    durable lake, returning the best content match first."""
+    remember() drops noise and appends a real turn to the one lake; recall() scores every chat record
+    in the one lake by hashed-token overlap with the query. No private store: the shared
+    knowledge.jsonl is the only durable home, so LakeChat (same home) converses from these turns."""
 
-    def __init__(self, path="data/chat_memory.spkl", n_channels=512, seed=0):
+    def __init__(self, path=None, n_channels=512, seed=0, log=None):
+        # `path` is accepted for backward-compat but IGNORED -- there is one lake now (home KnowledgeLog).
         if n_channels <= 0:
             raise ValueError("n_channels must be positive")
-        self.path = path
-        self.idx_path = path + ".idx.json"
         self.n = int(n_channels)
         self.seed = seed
-        self._tick = 0
-        self._index = {}  # tick(int) -> {"role": str, "text": str, "n_tokens": int}
-        self._dirty = 0  # remembers since the last sidecar flush
+        self.log = log if log is not None else KnowledgeLog(knowledge_path())
+        self._chan = {}  # id(record)->frozenset(channels): rebuilt in-RAM index over chat records
+        self._chats = []  # the chat records currently in the one lake (role, text, channels)
+        self._reindex()
 
-        resume = os.path.exists(path) and os.path.exists(self.idx_path)
-        if resume:
-            self._load_index()
-            self._tick = (max(self._index) + 1) if self._index else 0
-
-        self.lake = LakeWorkingMemory(self.n, path=path, seed=seed)
-        if resume:
-            self.lake.reopen()  # replay the durable log -> memory survives the restart
+    def _reindex(self):
+        """Rebuild the in-RAM chat index from the one lake (records whose src marks a chat turn)."""
+        self._chats = []
+        for rec in self.log.replay():
+            src = rec.get("src", "")
+            if isinstance(src, str) and src.startswith(_CHAT_SRC):
+                text = rec.get("answer", "")
+                role = src[len(_CHAT_SRC) :] or "user"
+                self._chats.append((role, text, self._encode(text)))
 
     # ---- content-addressable sparse code ------------------------------------
     def _encode(self, text):
         """Lowercase word tokens -> unique `crc32(token) mod n_channels` -> a SET of channels.
-
-        Deterministic (crc32, never builtin `hash()`); texts sharing vocabulary share channels,
-        which is what makes overlap-scoring in recall() content-addressable."""
-        tokens = {t for t in _WORD_RE.findall(text.lower())}
-        return {zlib.crc32(t.encode("utf-8")) % self.n for t in tokens}
+        Deterministic (crc32, never builtin `hash()`); shared vocabulary -> shared channels."""
+        toks = {t for t in _WORD_RE.findall(text.lower()) if t not in _STOP}
+        return {zlib.crc32(t.encode("utf-8")) % self.n for t in toks}
 
     # ---- the noise filter -----------------------------------------------------
     def is_real_memory(self, role, text):
@@ -160,78 +197,53 @@ class DurableChatMemory:
             return False
         return True
 
-    # ---- write a real turn into the durable lake ------------------------------
+    # ---- write a real turn into the ONE lake ----------------------------------
     def remember(self, role, text):
-        """If `is_real_memory`, encode + write to the durable lake and append the sidecar entry.
-
-        Returns True if stored, False if dropped as noise (no tick consumed, nothing written)."""
+        """If `is_real_memory`, append one chat record to the one lake (dedup skips an identical turn).
+        Returns True if stored, False if dropped as noise or a duplicate."""
         if not self.is_real_memory(role, text):
             return False
-        channels = self._encode(text)
-        self.lake.write(self._tick, channels)
-        self._index[self._tick] = {
-            "role": role,
-            "text": text[:_TEXT_KEEP],
-            "n_tokens": len(_WORD_RE.findall(text.lower())),
-        }
-        self._tick += 1
-        self._dirty += 1
-        if self._dirty >= _FLUSH_EVERY:
-            self._flush_index()
-        return True
+        excerpt = text[:_TEXT_KEEP]
+        written = self.log.append(
+            {"cue": chat_words(excerpt), "answer": excerpt, "src": _CHAT_SRC + role}
+        )
+        if written:
+            self._chats.append((role, excerpt, self._encode(excerpt)))
+        return bool(written)
 
-    # ---- content-addressable extraction ---------------------------------------
+    # ---- content-addressable extraction over the one lake ---------------------
     def recall(self, query, k=5):
-        """Top-`k` stored turns by Jaccard channel-overlap with `_encode(query)`, best first.
-
-        Channel sets are read back from the DURABLE lake (not the sidecar, not RAM) so the score
-        reflects what was actually written; the sidecar only supplies role/text for display."""
-        if not self._index:
+        """Top-`k` chat turns in the one lake by Jaccard channel-overlap with `_encode(query)`."""
+        if not self._chats:
             return []
-        query_channels = self._encode(query)
-        by_tick = dict(self.lake.recall(self._tick))  # {tick: frozenset(channels)}, all ticks
+        q = self._encode(query)
         scored = []
-        for tick, entry in self._index.items():
-            channels = by_tick.get(tick, frozenset())
-            union = query_channels | channels
-            score = (len(query_channels & channels) / len(union)) if union else 0.0
-            scored.append((score, tick, entry))
-        scored.sort(key=lambda item: (-item[0], item[1]))
-        return [
-            {"role": entry["role"], "text": entry["text"], "score": score, "tick": tick}
-            for score, tick, entry in scored[:k]
-        ]
+        for role, text, channels in self._chats:
+            union = q | channels
+            score = (len(q & channels) / len(union)) if union else 0.0
+            scored.append((score, role, text))
+        scored.sort(key=lambda item: (-item[0], item[2]))
+        return [{"role": role, "text": text, "score": score} for score, role, text in scored[:k]]
 
-    # ---- sidecar index persistence ---------------------------------------------
-    def _load_index(self):
-        with open(self.idx_path, encoding="utf-8") as f:
-            raw = json.load(f)
-        self._index = {int(tick): entry for tick, entry in raw.items()}
-
-    def _flush_index(self):
-        raw = {str(tick): entry for tick, entry in self._index.items()}
-        tmp_path = self.idx_path + ".tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(raw, f)
-        os.replace(tmp_path, self.idx_path)
-        self._dirty = 0
+    def count(self):
+        """Number of chat turns held in the one lake (this view's slice)."""
+        return len(self._chats)
 
     def close(self):
-        """Flush the sidecar index to disk and close the lake handle (durable -- never removed)."""
-        self._flush_index()
-        self.lake.close(remove=False)
+        """No-op for compatibility: the one lake is durable + fsync'd on every append (home KnowledgeLog)."""
+        return None
 
 
-def _extract_turns(transcript_path, limit=200):
-    """Pull (role, text) turns out of a Claude Code `.jsonl` transcript for the self-check.
-
-    `message.content` is either a plain string or a list of `{"type": "text", "text": ...}`
-    blocks; only text is extracted (tool_use/tool_result blocks are skipped)."""
-    turns = []
+def ingest_transcript_turns(transcript_path, log=None, limit=200):
+    """Extract (role, text) turns from a Claude Code `.jsonl` transcript and remember the REAL ones into
+    the one lake. Returns (kept, dropped). Used by the learning daemon's chat-ingest step and the
+    self-check; `message.content` is a str or a list of {"type":"text","text":...} blocks."""
+    mem = DurableChatMemory(log=log)
+    kept = dropped = 0
     if not os.path.exists(transcript_path):
-        return (
-            turns  # transcript absent (other machine / rotated) -> caller uses a synthetic fallback
-        )
+        return kept, dropped
+    import json
+
     with open(transcript_path, encoding="utf-8") as f:
         for i, line in enumerate(f):
             if i >= limit:
@@ -250,142 +262,111 @@ def _extract_turns(transcript_path, limit=200):
             content = msg.get("content")
             if role not in ("user", "assistant"):
                 continue
-            if isinstance(content, str):
-                turns.append((role, content))
-            elif isinstance(content, list):
-                for block in content:
-                    if isinstance(block, dict) and block.get("type") == "text":
-                        text = block.get("text")
-                        if isinstance(text, str):
-                            turns.append((role, text))
-    return turns
+            blocks = [content] if isinstance(content, str) else content
+            if not isinstance(blocks, list):
+                continue
+            for block in blocks:
+                text = (
+                    block
+                    if isinstance(block, str)
+                    else (
+                        block.get("text")
+                        if isinstance(block, dict) and block.get("type") == "text"
+                        else None
+                    )
+                )
+                if isinstance(text, str):
+                    if mem.remember(role, text):
+                        kept += 1
+                    else:
+                        dropped += 1
+    return kept, dropped
 
 
 def main():
-    transcript_path = os.environ.get(
-        "SNDL_CHAT_TRANSCRIPT_SELFCHECK",
-        r"C:\Users\vinhl\.claude\projects\D--AI-project\9e11de63-a8bb-4037-9746-e186c88cce02.jsonl",
-    )
-    tmp_dir = tempfile.mkdtemp(prefix="chat_memory_selfcheck_")
-    path = os.path.join(tmp_dir, "chat_memory.spkl")
-    N = 512
+    from snn_data_lake.substrate.home import home
 
+    tmp_dir = tempfile.mkdtemp(prefix="chat_memory_selfcheck_")
+    prev_home = os.environ.get("NORD_HOME")
+    os.environ["NORD_HOME"] = tmp_dir  # isolate the one lake for the self-check
+    width = 74
     try:
-        # ---- (1) NOISE FILTER: known noise must be dropped, a genuine turn must pass -------
-        cm = DurableChatMemory(path=path, n_channels=N, seed=0)
-        noise_samples = [
-            (
-                "assistant",
-                "```python\ndef foo(x):\n    return x + 1\n\nclass Bar:\n    pass\n```"
-                " here is some code for you to review closely please",
-            ),
+        print("=" * width)
+        print("CHAT MEMORY -- a content-addressable VIEW over the ONE durable brain lake")
+        print("=" * width)
+        print(f"one lake: {knowledge_path()}")
+
+        mem = DurableChatMemory()
+        # ---- (1) NOISE FILTER: known noise dropped, a genuine turn kept --------------------------
+        noise = [
+            ("user", "<system-reminder>do the thing</system-reminder> PreToolUse Bash"),
+            ("assistant", "```python\nimport os\ndef f():\n    return os.getcwd()\n```"),
+            ("assistant", "42 passed, 0 failed in 3.14s; ruff check . all good"),
+            ("user", "ok"),
+            ("tool", "some tool text that is long enough to pass the length gate easily here"),
+        ]
+        real = [
             (
                 "user",
-                "<system-reminder>\nThis context may or may not be relevant to the current "
-                "task at hand and you should not feel obligated to respond to it.\n</system-reminder>",
+                "Remember that we decided to keep the pybullet arm backend installed for later use.",
             ),
             (
                 "assistant",
-                "PreToolUse:Read hook additional context: MANDATORY graphify-out/graph.json "
-                "exists you must run graphify before reading any raw source files in this repo",
+                "The one durable lake now holds chat turns and taught facts together in the home.",
             ),
-            ("user", "ok"),
         ]
-        genuine_sample = (
-            "user",
-            "Can you explain why the working memory recall window only keeps the last three "
-            "ticks instead of the whole history? I want to understand the recency tradeoff.",
+        dropped = sum(1 for r, t in noise if not mem.remember(r, t))
+        kept = sum(1 for r, t in real if mem.remember(r, t))
+        assert dropped == len(noise), (
+            f"noise leaked into memory: only {dropped}/{len(noise)} dropped"
         )
-        noise_results = [cm.remember(role, text) for role, text in noise_samples]
-        genuine_result = cm.remember(*genuine_sample)
-        assert all(r is False for r in noise_results), (
-            f"noise samples must all be dropped, got {noise_results}"
-        )
-        assert genuine_result is True, "a genuine conversational sentence must be remembered"
+        assert kept == len(real), f"a genuine turn was rejected: only {kept}/{len(real)} kept"
+        print(f"  [OK] noise filter: dropped {dropped} noise, kept {kept} real (both > 0)")
 
-        # ---- pull real turns from an actual transcript and run the filter honestly ---------
-        real_turns = _extract_turns(transcript_path, limit=400)
-        if (
-            len(real_turns) < 4
-        ):  # transcript absent (portable / CI / rotated) -> synthetic prose+noise batch
-            real_turns = [
-                (
-                    "user",
-                    "I want to understand how the durable spike lake keeps working-memory contents queryable across a reopen instead of losing them when the process exits.",
-                ),
-                (
-                    "assistant",
-                    "The lake appends every tick's channels to the .spkl file, and reopen replays them so recall can reconstruct the stored contents after a restart.",
-                ),
-                ("user", "```python\nimport os\ndef g():\n    return os.getcwd()\n```"),
-                (
-                    "assistant",
-                    "PreToolUse hook additional context: run graphify before grepping raw files in this repo",
-                ),
-                ("user", "ok"),
-            ]
-        kept = dropped = 0
-        for role, text in real_turns:
-            if cm.remember(role, text):
-                kept += 1
-            else:
-                dropped += 1
-        assert kept > 0, "the filter dropped every real turn (too strict)"
-        assert dropped > 0, "the filter kept every real turn (too permissive / not discriminating)"
-
-        # ---- (3) EXTRACTABLE + REAL not noise: recall a phrase from a remembered real turn --
-        # pick a real remembered turn (not the synthetic genuine_sample / noise) to query against
-        sample_entry = None
-        for entry in cm._index.values():
-            if entry["text"] == genuine_sample[1][:_TEXT_KEEP]:
-                continue
-            if len(entry["text"]) >= 80:
-                sample_entry = entry
-                break
-        assert sample_entry is not None, "need at least one real remembered turn to query"
-        query_phrase = sample_entry["text"][:60]
-        top = cm.recall(query_phrase, k=5)
-        assert top, "recall returned nothing for a phrase copied from a remembered turn"
-        top1 = top[0]
-        assert top1["text"] == sample_entry["text"], (
-            f"top recall hit did not match the source turn: {top1['text'][:60]!r} != "
-            f"{sample_entry['text'][:60]!r}"
-        )
-        unrelated_top = cm.recall("zebra hovercraft plasma quantum origami", k=5)
-        unrelated_score = unrelated_top[0]["score"] if unrelated_top else 0.0
-        assert top1["score"] > unrelated_score, (
-            "a copied-phrase query must score higher than an unrelated query"
-        )
-
-        cm.close()
-
-        # ---- (2) DURABLE: a fresh instance over the SAME path sees the same memories --------
-        assert os.path.exists(path), ".spkl was not created -- memory is not durable"
-        cm2 = DurableChatMemory(path=path, n_channels=N, seed=0)
-        top_after_reopen = cm2.recall(query_phrase, k=5)
-        durable_ok = bool(top_after_reopen) and top_after_reopen[0]["text"] == sample_entry["text"]
-
-        # ---- (4) Deterministic: same input -> same channels/scores across two runs ----------
-        enc_a = cm2._encode(query_phrase)
-        enc_b = cm2._encode(query_phrase)
-        recall_a = cm2.recall(query_phrase, k=5)
-        recall_b = cm2.recall(query_phrase, k=5)
-        deterministic = (enc_a == enc_b) and (
-            [(r["tick"], r["score"]) for r in recall_a]
-            == [(r["tick"], r["score"]) for r in recall_b]
-        )
-        cm2.close()
-
-        assert durable_ok, "reopened instance did not recall the same memory (not durable)"
-        assert deterministic, "encode/recall was not deterministic across repeated calls"
-
+        # ---- (2) content-addressable recall ------------------------------------------------------
+        top = mem.recall("what did we decide about the pybullet arm backend", k=1)
+        assert top and "pybullet" in top[0]["text"], f"recall missed the on-topic turn: {top}"
         print(
-            f"chat_memory OK: kept={kept} dropped={dropped} durable={durable_ok} "
-            f"recall_top1_match={top1['text'] == sample_entry['text']}"
+            f"  [OK] recall: '...pybullet...' -> {top[0]['text'][:48]}... (score {top[0]['score']:.2f})"
         )
+
+        # ---- (3) ONE lake, durable + cross-view: a FRESH view AND a fresh KnowledgeLog see it ----
+        mem2 = (
+            DurableChatMemory()
+        )  # fresh view, no shared RAM -> must replay the two turns from disk
+        assert mem2.count() == len(real), f"fresh view lost turns: {mem2.count()} != {len(real)}"
+        facts = [r.get("answer") for r in KnowledgeLog(knowledge_path()).replay()]
+        assert any("pybullet" in (a or "") for a in facts), (
+            "the turn is not in the shared knowledge lake"
+        )
+        print(
+            f"  [OK] ONE lake: a fresh view + a fresh KnowledgeLog both see the {mem2.count()} turns"
+        )
+
+        # ---- (4) dedup: re-remembering the same turn does NOT grow the lake ----------------------
+        before = KnowledgeLog(knowledge_path()).count()
+        again = mem.remember("user", real[0][1])
+        after = KnowledgeLog(knowledge_path()).count()
+        assert not again and after == before, "a duplicate turn grew the one lake (dedup failed)"
+        print(f"  [OK] dedup: a repeated turn is not stored twice (lake stayed at {after})")
+
+        print("-" * width)
+        print(
+            "self-check OK: chat memory is a noise-filtered, content-addressable VIEW over the ONE "
+            "durable brain lake (home knowledge.jsonl) -- no private store; taught facts + chat turns "
+            "share the one lake so LakeChat converses from what the daemon learned; dedup keeps it lean."
+        )
+        return 0
     finally:
+        if prev_home is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
+            os.environ["NORD_HOME"] = prev_home
+        _ = home  # imported for the banner path; home dir cleaned below
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    sys.exit(main())
