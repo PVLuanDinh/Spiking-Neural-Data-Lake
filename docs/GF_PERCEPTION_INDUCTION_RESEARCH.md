@@ -289,6 +289,27 @@ then **adversarially verified by a 4-lens Workflow** (false-positive / determini
   **The P2 obligation (migrate `synthesize` onto the scene, delete the 5-key schema) + the operation-
   synthesis arm + synthesize-composition remain the next Phase-3 steps.**
 
+#### Phase 3 MINT v2 — coverage growth + full-eval measurement (`reasoning/arc_mint.py`)
+
+Measured the mint on the FULL 400-task eval (not just the 20-task dev subset — which is why v1 read
+"functional held-out = 0": the dev subset didn't sample the functional solve). **The functional milestone
+was already met by v1:** `84f2aca1` solves via `recolor_region_by[size]:affine` and generalises held-out —
+the induction mechanism works end-to-end on a real task.
+
+Grew the vocabulary: a new `nholes` object attribute + two new consumer families (keep/delete objects by a
+boolean attribute; paint a global cellset — perimeter / all-object-holes — a single induced constant colour).
+**Full-eval held-out 4 → 6/400** (`{structural:1, functional:1, memo:4}`). HONEST: the **`nholes` attribute
+earned the +2** (`0a2355a6` lookup, `37d3e8b2` rank — both memorisation-class, honestly flagged); the
+**keep/delete + paint-cellset consumers earned 0 held-out on this eval** — correct, generic new vocabulary
+kept as depth-2 building blocks, currently inert (stated plainly, not dressed up).
+
+Adversarially verified (2-lens Workflow): new consumers correct (keep/delete render exactly; paint-cellset
+rejects non-constant/empty/differ, `paint_allholes` returns None-not-wrong on a no-hole grid); **all 6
+held-out solves independently reproduce their real test output (0 wrong grids counted); byte-deterministic
+across `PYTHONHASHSEED`; v2 is purely additive (+2, zero regression — the 4 pre-v2 solves keep identical
+winners).** Gates green (296/296). Honest ceiling reminder: this is single-digit-percent coverage growth;
+the bigger remaining pieces are the operation-synthesis arm (~30% path/transport) + the P2 schema migration.
+
 ### Phase 4 — Cross-task reuse: a library of minted concepts  (2–3 sessions)
 - **Goal:** make minted predicates persistent + reusable *without* re-importing the falsified within-
   closure library trap.

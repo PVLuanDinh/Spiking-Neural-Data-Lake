@@ -40,7 +40,7 @@ Determinism (CLAUDE.md): pure functions of the task; no random; no builtin hash;
 
 from collections import Counter, deque
 
-from snn_data_lake.reasoning.arc_scene import period, shape_class
+from snn_data_lake.reasoning.arc_scene import object_holes, period, shape_class
 from snn_data_lake.reasoning.arc_solver import background, components
 
 _T = tuple
@@ -134,6 +134,8 @@ def _obj_attr(o, attr):
         return len(o["shape"])
     if attr == "shapeclass":
         return shape_class(o["shape"])
+    if attr == "nholes":
+        return object_holes(o)[1]
     return None
 
 
@@ -327,6 +329,93 @@ def _crop_sel(g, key):
     return _T(_T(g[r][b[1] : b[3] + 1]) for r in range(b[0], b[2] + 1))
 
 
+def _render(objs, h, w, bg):
+    """Render only `objs` (their cells + colours) on a background canvas -- keep/delete output."""
+    out = [[bg] * w for _ in range(h)]
+    for o in objs:
+        for r, c in o["cells"]:
+            out[r][c] = o["color"]
+    return _T(_T(row) for row in out)
+
+
+def _obj_has(o, attr, os_, h, w):
+    """Boolean object predicate (structural selection -- no free colour rule to induce)."""
+    if attr == "holes":
+        return object_holes(o)[1] > 0
+    if attr == "solid_rect":
+        r0, c0, r1, c1 = o["bbox"]
+        return o["size"] == (r1 - r0 + 1) * (c1 - c0 + 1)
+    if attr == "largest":
+        return o is max(os_, key=lambda x: (x["size"], -x["bbox"][0]))
+    if attr == "border":
+        return any(r in (0, h - 1) or c in (0, w - 1) for r, c in o["cells"])
+    return False
+
+
+def _filter_objs(g, attr, keep):
+    """Keep (keep=True) or delete (keep=False) objects satisfying a boolean attribute, rendered on bg."""
+    os_ = _objs(g)
+    if not os_:
+        return None
+    bg = background(g)
+    h, w = len(g), len(g[0])
+    sel = [o for o in os_ if _obj_has(o, attr, os_, h, w) == keep]
+    return _render(sel, h, w, bg)
+
+
+def _perimeter_cells(g):
+    h, w = len(g), len(g[0])
+    ring = {(0, c) for c in range(w)} | {(h - 1, c) for c in range(w)}
+    ring |= {(r, 0) for r in range(h)} | {(r, w - 1) for r in range(h)}
+    return frozenset(ring)
+
+
+def _all_holes_cells(g):
+    cells = set()
+    for o in _objs(g):
+        for hs in object_holes(o)[0]:
+            cells |= set(hs)
+    return frozenset(cells)
+
+
+def _induce_paint_cellset(train, cellset_fn):
+    """Paint a global CELLSET (perimeter / all object-holes) a single colour induced from train. The
+    colour must be CONSTANT across all pairs (parametric const -> generalises); returns the program fn
+    (grid-general) or None. Keeps the grid shape."""
+    color = None
+    pairs = []
+    for pair in train:
+        gi, go = _grid(pair["in"]), _grid(pair["out"])
+        if len(gi) != len(go) or len(gi[0]) != len(go[0]):
+            return None
+        cells = cellset_fn(gi)
+        if not cells:
+            return None
+        cc = {go[r][c] for r, c in cells}
+        if len(cc) != 1:
+            return None
+        col = next(iter(cc))
+        if color is None:
+            color = col
+        elif color != col:
+            return None  # not a constant colour across pairs
+        pairs.append((gi, go))
+
+    def fn(gg, col=color):
+        cells = cellset_fn(gg)
+        if not cells:
+            return None
+        out = [list(row) for row in gg]
+        for r, c in cells:
+            out[r][c] = col
+        return _T(_T(row) for row in out)
+
+    for gi, go in pairs:
+        if fn(gi) != go:
+            return None
+    return fn
+
+
 # ---- SKELETONS: candidate primitives (name, build(train)->fn|None, mdl_len, kind) ------------------
 # A skeleton with a free rule INDUCES the rule from the train pairs' (attr, out-colour) observations and
 # returns a grid-general program, or None if it does not fit+verify. Structural skeletons have no free
@@ -339,6 +428,7 @@ _RECOLOR_UNITS = (
     ("object", "size", _object_units("size")),
     ("object", "side", _object_units("side")),
     ("object", "color", _object_units("color")),
+    ("object", "nholes", _object_units("nholes")),
 )
 
 
@@ -402,6 +492,19 @@ def candidates(train):
         )
     for key in ("largest", "smallest", "rarest"):
         out.append((f"crop[{key}]", lambda gg, k=key: _crop_sel(gg, k), 3, "structural"))
+
+    # -- structural depth-1: keep / delete objects by a boolean attribute (rendered on bg) --
+    for attr in ("holes", "solid_rect", "largest", "border"):
+        out.append((f"keep[{attr}]", lambda gg, a=attr: _filter_objs(gg, a, True), 3, "structural"))
+        out.append(
+            (f"delete[{attr}]", lambda gg, a=attr: _filter_objs(gg, a, False), 4, "structural")
+        )
+
+    # -- parameterised depth-1: paint a global cellset a single induced (constant) colour --
+    for name, cs_fn in (("perimeter", _perimeter_cells), ("allholes", _all_holes_cells)):
+        fn = _induce_paint_cellset(train, cs_fn)
+        if fn:
+            out.append((f"paint_{name}[const]", fn, 3, "const"))
 
     # -- parameterised depth-1: recolour units by an induced rule --
     for unit_name, attr, unit_fn in _RECOLOR_UNITS:
@@ -572,11 +675,13 @@ def main():
     _emit(
         "memorisation-class rules (rank/lookup) are FLAGGED and return None on an unseen attr, never a guess."
     )
+    n_memo = sum(v for k, v in kinds.items() if k in _MEMO_KINDS)
+    n_struct = kinds.get("structural", 0)
     _emit(
         "HONEST RESULT: on THIS 20-task dev set the functional apparatus contributes ZERO held-out solves --"
     )
     _emit(
-        f"the {len(held_out)} held-out generalisations are a structural tile + a flagged memorisation recolor."
+        f"the {len(held_out)} held-out = {n_struct} structural + {n_memo} flagged-memorisation recolour(s) + {n_func} functional."
     )
     _emit(
         "The number moves only with more producers/attributes/composition. NO overclaim: the operation-"
