@@ -228,6 +228,39 @@ COMPLETE; the score moves only when Phase-3 consumes it. **The P2 obligation sta
   primitive; plus a per-primitive **novelty audit** (old closure at depth 5 cannot reproduce the minted
   predicate's extension on probe grids).
 
+#### Phase 3 DE-RISK RESULT (GO, conditional) — `scratchpad/phase3_derisk.py`
+
+Ran the enumerate-and-check probe on the 20 Phase-1 dev tasks (LOCKED split still sealed): candidate
+primitives = structural transforms (reflect / tile-stamp / crop / materialize-period) + **parameterised
+induce-verify skeletons** (fill-regions-by-attr, recolor-objects-by-attr, global colour map) — each
+skeleton **induces its map from all train pairs, then must reproduce every pair**. MDL-ordered
+(shortest-first). Verdict axes:
+
+- **The falsifier ("correct predicates rank too DEEP to find within budget") is NOT triggered.** The
+  solving candidates sit at **shallow rank (14–19 of ~21)** in a tiny space. Search tractability is *not*
+  the wall — the bottleneck is skeleton/operation COVERAGE, not enumeration depth.
+- **Train-fit reachability = 15% (3/20); HELD-OUT generalization = 10% (2/20)** — the honest metric. The
+  gap is real: `recolor_objects_by[ncolors_shape]` fit all train pairs but **failed the held-out test** =
+  a lookup-map **memorisation**. The two genuine held-out solves: `fill_regions_by[side]` (size-coded
+  region fill, region_fill 1/3) and `tile_alt[3x3]` (alternate-mirror stamp, symmetry 1/3).
+- **Probe self-audit (discipline):** an early run reported a false 5% — `_induce_apply` induced the map
+  from train *pair-0 only*, so it couldn't colour a later pair's unseen region. Fixed to induce from ALL
+  pairs → real 15%/10%. Lesson reaffirmed: *verify the probe before trusting its verdict.*
+
+**TWO design requirements the probe EXPOSED (must hold while building the mint):**
+1. **Memorisation-resistant induction.** A lookup map fit on train overfits (train-fit 15% > held-out
+   10%). The mint must induce **functional rules** (arithmetic/relational on the attribute) or hold out a
+   validation pair *during* induction — not promote raw lookups. The honest metric is held-out, always.
+2. **Coverage, not depth.** This stub is depth-1 with ~5 skeletons. Climbing toward the Phase-1 95%
+   ceiling needs composition **depth-2** + many more skeletons + an **operation-synthesis arm** for the
+   ~30% operation-not-measurement family (sequential path / stateful transport — e.g. `chain_objects_diag`
+   still misses by design).
+
+**VERDICT: GO (conditional).** Tractability holds — 2/20 genuine held-out from a 5-skeleton depth-1 stub,
+at shallow rank. Build the mint with held-out-validated functional induction + composition + the operation
+arm; do **not** fall back to hand-authoring predicates (theater-guard #1). Next concrete step: the
+depth-2 parameterised enumerator with a held-out validation pair, over the full arc_scene generator set.
+
 ### Phase 4 — Cross-task reuse: a library of minted concepts  (2–3 sessions)
 - **Goal:** make minted predicates persistent + reusable *without* re-importing the falsified within-
   closure library trap.
