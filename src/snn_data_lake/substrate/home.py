@@ -10,9 +10,9 @@ knowledge log, so learned knowledge ACCUMULATES across runs and across entrypoin
 
   home()            -> the persistence dir (env NORD_HOME, else ~/.snn_data_lake), created on demand
   lake_path()       -> <home>/lake.spkl        the durable spike lake (StreamingHub / LakeMemory)
-  knowledge_path()  -> <home>/knowledge.jsonl  durable append-only symbolic knowledge (cue->answer, ...)
+  knowledge_path()  -> <home>/brain_lake.bin   the ONE durable brain lake (RAW BINARY, BinLog-backed)
   state_path(name)  -> <home>/<name>           a durable JSON state blob (e.g. a learned value fn)
-  KnowledgeLog      -> append-only JSONL knowledge store: .append(rec) durably, .replay() to reload
+  KnowledgeLog      -> the symbolic VIEW of the one lake: .append(rec) durably (binary), .replay() to reload
   save_state/load_state(name, obj) -> durable JSON state blob round-trip (atomic write)
   banner(part)      -> one-line "<part> booted attached to durable home ..." string
 
@@ -34,6 +34,15 @@ import json
 import os
 import sys
 
+from snn_data_lake.substrate.binlog import BinLog, pack_fact, unpack_fact
+
+# The ONE brain lake is RAW BINARY (spiking exemplars + skill vectors are native binary; symbolic facts +
+# chat turns ride as compact pack_fact byte-records in the SAME file). Each record carries a 1-byte TYPE
+# tag so the symbolic view (KnowledgeLog) and the spike consumers read only their own records from the one
+# file. FACT = pack_fact({cue,answer,triple?,src?}); SPIKE/ARRAY tags are added when the AER + skill lakes
+# fold in. Weights/calibration stay separate STATE (save_state), never in the memory lake.
+_T_FACT = b"\x01"
+
 
 def home():
     """The durable persistence dir. `NORD_HOME` overrides; default is ~/.snn_data_lake. Created on demand."""
@@ -47,8 +56,10 @@ def lake_path(name="lake.spkl"):
     return os.path.join(home(), name)
 
 
-def knowledge_path(name="knowledge.jsonl"):
-    """Path to the durable append-only symbolic-knowledge log under home()."""
+def knowledge_path(name="brain_lake.bin"):
+    """Path to the ONE durable brain lake under home() -- a raw-binary append-only log (BinLog) holding
+    the whole brain's learned MEMORY (symbolic facts + chat turns as pack_fact records; spiking exemplars
+    + skill vectors fold in as binary records). The former knowledge.jsonl is retired into this file."""
     return os.path.join(home(), name)
 
 
@@ -58,16 +69,18 @@ def state_path(name):
 
 
 class KnowledgeLog:
-    """A durable, append-only JSONL knowledge store -- the project's 'never forgets' symbolic memory,
-    shared by the developmental loop (what it learns autonomously) and Spike Chat (what it converses from).
+    """The symbolic VIEW of the ONE durable brain lake -- a raw-BINARY, append-only, deduped, crash-safe,
+    cross-process never-forget store (substrate/binlog.BinLog at <home>/brain_lake.bin). Shared by the
+    developmental loop (what it learns autonomously) and Spike Chat (what it converses from).
 
-    Every learned record (a JSON dict) is appended to disk immediately and fsync-flushed, so a crash
-    or an exit cannot lose it. replay() streams every record back IN ORDER at the next boot, so a
-    fresh PROCESS reconstructs everything learned in every prior run -- nothing is held only in RAM.
+    Every learned record is written as a 1-byte-TYPE-tagged pack_fact BYTE-record (NOT JSON) and fsync'd,
+    so a crash cannot lose it; replay() streams every FACT record back IN ORDER at the next boot (skipping
+    any spiking/array records that share the one lake), so a fresh PROCESS reconstructs everything learned.
 
-    LEAN by default: dedup=True skips a record byte-identical to one already stored, so the loop can
-    re-see the same concept forever without bloating the SSD (the same fact is never written twice).
-    Append-only otherwise -- knowledge is added, never silently dropped.
+    LEAN by default: dedup=True (BinLog) skips a byte-identical record, so the loop can re-see the same
+    concept forever without bloating the SSD. Append-only otherwise. Same append(dict)/extend/
+    replay->dicts/count() API as the retired JSONL store -- every caller is unchanged; only the on-disk
+    format is now binary (spiking memory is naturally binary; symbolic text rides along as compact bytes).
 
     SHARED RECORD SCHEMA (what the loop writes and the chat + reasoner read):
       {"cue": ["content","words"],        # required: retrieval keys (content words)
@@ -77,84 +90,45 @@ class KnowledgeLog:
     """
 
     def __init__(self, path=None, dedup=True):
-        self.path = path or knowledge_path()
-        self.dedup = bool(dedup)
-        recs = list(self.replay())  # the one boot-time full pass
-        self._seen = {self._key(r) for r in recs} if self.dedup else None
-        self._count = len(recs)  # maintained -> count() is O(1), not a re-replay
-
-    @staticmethod
-    def _key(record):
-        return json.dumps(
-            record, ensure_ascii=True, sort_keys=True
-        )  # canonical -> dedup key + on-disk line
-
-    def _ends_with_newline(self):
-        with open(self.path, "rb") as f:
-            f.seek(-1, os.SEEK_END)
-            return f.read(1) == b"\n"
+        self._bin = BinLog(path or knowledge_path(), dedup=dedup)
+        # symbolic (FACT) record count -- excludes any spiking records sharing the one lake
+        self._count = sum(1 for p in self._bin.replay() if p[:1] == _T_FACT)
 
     def append(self, record):
-        """Durably append one JSON record (skipped if dedup and byte-identical to a stored one).
-        Flush + fsync so it survives a hard crash / power loss. Returns True if written, False if a dup."""
+        """Durably append one fact/chat record as a TYPE-tagged pack_fact byte-record (skipped if dedup
+        and byte-identical). fsync'd by BinLog. Returns True if written, False if a duplicate."""
         if not isinstance(record, dict):
-            raise TypeError("KnowledgeLog.append: record must be a JSON dict")
-        line = self._key(record)  # ASCII, canonical
-        if self.dedup and line in self._seen:
-            return False  # already known -> keep the lake lean
-        with open(self.path, "a", encoding="ascii") as f:
-            # a prior crash may have left a partial last line with no trailing newline; a plain append
-            # would FUSE the new record onto that garbage (losing both). guarantee a clean boundary.
-            if os.path.getsize(self.path) and not self._ends_with_newline():
-                f.write("\n")
-            f.write(line + "\n")
-            f.flush()
-            os.fsync(f.fileno())  # durable past process death
-        if self.dedup:
-            self._seen.add(line)
-        self._count += 1
-        return True
+            raise TypeError("KnowledgeLog.append: record must be a dict")
+        written = self._bin.append(_T_FACT + pack_fact(record))
+        if written:
+            self._count += 1
+        return written
 
     def extend(self, records):
         """Durably append many records (one fsync at the end -- for bulk import). Returns #written."""
-        written = 0
-        with open(self.path, "a", encoding="ascii") as f:
-            if (
-                os.path.getsize(self.path) and not self._ends_with_newline()
-            ):  # same torn-tail guard as append()
-                f.write("\n")  # -> a crash-torn last line can't fuse the batch
-            for record in records:
-                if not isinstance(record, dict):
-                    raise TypeError("KnowledgeLog.extend: every record must be a JSON dict")
-                line = self._key(record)
-                if self.dedup and line in self._seen:
-                    continue
-                f.write(line + "\n")
-                if self.dedup:
-                    self._seen.add(line)
-                written += 1
-            if written:
-                f.flush()
-                os.fsync(f.fileno())
+        payloads = []
+        for record in records:
+            if not isinstance(record, dict):
+                raise TypeError("KnowledgeLog.extend: every record must be a dict")
+            payloads.append(_T_FACT + pack_fact(record))
+        written = self._bin.extend(payloads)
         self._count += written
         return written
 
     def replay(self):
-        """Yield every stored record in append order. Missing file -> nothing learned yet (empty)."""
-        if not os.path.exists(self.path):
-            return
-        with open(self.path, encoding="ascii") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    yield json.loads(line)
-                except json.JSONDecodeError:
-                    continue  # a torn/partial line (crash mid-append) -> skip, never crash the boot
+        """Yield every stored FACT record as a dict, in append order. Records of another type (spiking
+        exemplars / arrays sharing the one lake) and torn frames are skipped -- the symbolic view never
+        crashes on a mixed lake."""
+        for payload in self._bin.replay():
+            if payload[:1] != _T_FACT:
+                continue
+            try:
+                yield unpack_fact(payload[1:])
+            except Exception:  # noqa: BLE001 - a malformed record must never crash the boot replay
+                continue
 
     def count(self):
-        """Number of records stored (O(1) maintained counter -- callers poll this per round/request)."""
+        """Number of FACT records stored (O(1) maintained counter -- callers poll this per round/request)."""
         return self._count
 
 
@@ -264,27 +238,23 @@ def main():
         assert dup_written is False and KnowledgeLog().count() == 3, (
             "dedup failed: a duplicate fact grew the lake"
         )
-        # CRASH-RECOVERY: a torn last line (crash mid-append, no trailing newline) must NOT crash the
-        # next boot, and a new append must land cleanly (not fuse onto the garbage) and be replayed.
-        with open(kpath, "a", encoding="ascii") as f:
-            f.write('{"cue": ["torn"], "ans')  # partial JSON, no newline -> a crashed write
-        survived = KnowledgeLog().count()  # construction must NOT raise on the torn line
+        # CRASH-RECOVERY (raw-binary): a torn trailing frame (crash mid-append -> a partial length prefix)
+        # must NOT crash the next boot; BinLog truncates to the last COMPLETE frame, and a new append lands
+        # cleanly after it (never fused onto the garbage) and is replayed.
+        with open(kpath, "ab") as f:
+            f.write(b"\x02\x00")  # 2 bytes: an incomplete u32 length prefix -> a crashed write
+        survived = KnowledgeLog().count()  # construction repairs the torn tail, must NOT raise
         KnowledgeLog().append({"cue": ["moon"], "answer": "luna"})
         recovered = [r["answer"] for r in KnowledgeLog().replay()]
         assert survived == 3, (
-            "a torn last line must be skipped, not crash every future KnowledgeLog()"
+            "a torn trailing frame must be skipped, not crash every future KnowledgeLog()"
         )
-        assert "luna" in recovered, (
-            "an append after a crash-torn line was lost (fused onto the garbage)"
-        )
-        # ASCII on disk (cp1252-safe): the whole log decodes as ASCII
-        with open(kpath, encoding="ascii") as f:
-            f.read()
+        assert "luna" in recovered, "an append after a crash-torn binary frame was lost"
 
         print(
-            "self-check OK: knowledge appended in one process is REPLAYED in a separate process "
-            "(never forgotten across a restart); append-only; durable JSON state round-trips; "
-            "ASCII-on-disk (cp1252-safe). This is the shared home every entrypoint boots into."
+            "self-check OK: knowledge appended in one process is REPLAYED in a separate process (never "
+            "forgotten across a restart); append-only; dedup; RAW-BINARY one lake (brain_lake.bin) with "
+            "torn-tail recovery; durable JSON state round-trips. The ONE shared home every entrypoint boots into."
         )
     finally:
         os.environ.pop("NORD_HOME", None)
