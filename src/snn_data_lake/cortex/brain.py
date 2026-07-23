@@ -2211,12 +2211,21 @@ class Brain:
         ):  # SLEEP CONSOLIDATION of the symbolic durable lake:
             try:  # the PRUNE half -- cap re-derivable dictionary bulk (WordNet/ConceptNet re-derive at boot)
                 #     + keep genuinely-learned, so a never-off brain's lake stays LIVE + BOUNDED, not ballooning.
-                from snn_data_lake.hippocampus.lake_consolidation import LakeConsolidation
+                from snn_data_lake.hippocampus.lake_consolidation import (
+                    LakeConsolidation,
+                    RecallTrace,
+                )
                 from snn_data_lake.substrate.home import KnowledgeLog
 
                 klog = KnowledgeLog()
-                survivors = LakeConsolidation().consolidate(list(klog.replay()))
+                records = list(klog.replay())
+                trace = (
+                    RecallTrace()
+                )  # USE IT OR LOSE IT: never-recalled learned records fall out first
+                survivors = LakeConsolidation().consolidate(records, trace=trace)
                 self._lake_kept, self._lake_pruned = klog.consolidate(survivors)
+                trace.prune_to(survivors)  # drop trace entries for pruned records, then persist
+                trace.save()
             except Exception:
                 pass
         if self._persist:  # NIGHTLY SKILL FORMATION (bounded): one small env-budgeted

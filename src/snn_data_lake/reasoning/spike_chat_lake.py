@@ -232,13 +232,21 @@ class LakeChat:
         # bag-of-words VIEW over the SAME lake -- consulted in converse() so LakeChat answers from what the
         # daemon learned, WITHOUT indexing thousands of noisy turns into the heavy spike/semantic fact index.
         self._chat_mem = None
+        self._recall_trace = (
+            None  # USE IT OR LOSE IT: bumped when a chat memory ignites; the daemon's
+        )
+        #                            sleep consolidation prunes the never-recalled learned records first.
         if persist:
             try:
                 from snn_data_lake.substrate.chat_memory import DurableChatMemory
 
                 self._chat_mem = DurableChatMemory(log=self.log)
+                from snn_data_lake.hippocampus.lake_consolidation import RecallTrace
+
+                self._recall_trace = RecallTrace()
             except Exception:
                 self._chat_mem = None
+                self._recall_trace = None
         # a host (e.g. the unified Brain) can own durability instead of self.log: set a hook that
         # persists each taught record to ITS store (knowledge.bin). Without this, a persist=False chat
         # inside the Brain would learn a taught fact only in RAM -- so a build's stored PROCESS, taught
@@ -1011,6 +1019,17 @@ class LakeChat:
                                 0.45 + 0.3 * hit["score"],
                             )
                         )
+                        if (
+                            self._recall_trace is not None
+                        ):  # USE IT: this memory was recalled for a query;
+                            from snn_data_lake.substrate.chat_memory import (  # the daemon's sleep prunes the
+                                chat_words,  # never-recalled learned records first (use it or lose it).
+                            )
+
+                            self._recall_trace.bump(
+                                {"cue": chat_words(hit["text"]), "answer": hit["text"]}
+                            )
+                            self._recall_trace.save()
             except Exception:
                 pass
         source, reply = self._ignite(
