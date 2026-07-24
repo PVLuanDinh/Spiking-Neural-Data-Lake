@@ -115,7 +115,6 @@ REGIONS = {
         "spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
         "episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
         "lake_consolidation",  # sleep-time prune of the symbolic durable lake (cap re-derivable bulk, keep learned)
-        "head_direction",  # C2 r2: spiking HD ring + goal-vector cells (heading, bearing, distance)
     ],
     "basal_ganglia": [
         "evidence_accumulation",

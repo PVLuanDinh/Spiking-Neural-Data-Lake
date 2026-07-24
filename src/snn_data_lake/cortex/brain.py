@@ -52,7 +52,6 @@ from snn_data_lake.cortex.reasoning_curriculum import ReasoningEnv, ReasoningLea
 from snn_data_lake.cortex.self_model import SelfModel, SelfNarrator
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
-from snn_data_lake.hippocampus.ring_attractor import RingAttractor
 from snn_data_lake.hippocampus.sleep_replay import AttractorNet
 from snn_data_lake.hippocampus.sleep_replay import K as ATTR_K
 from snn_data_lake.hippocampus.sleep_replay import N as ATTR_N
@@ -826,7 +825,6 @@ class Brain:
         self._raphe = self._try(lambda: DorsalRaphe())
         self._astro = self._try(lambda: Astrocyte(n_domains=2, seed=self._seed))
         self._homeostat = self._try(lambda: Homeostat(seed=self._seed))
-        self._ring = self._try(lambda: RingAttractor())
         self._homeo_x = float(AMBIENT_TEMP)
         self._homeo_scale = max(1.0, abs(SET_POINT_TEMP - AMBIENT_TEMP))
 
@@ -964,13 +962,6 @@ class Brain:
                 self._homeo_x, err = self._homeostat.step(self._homeo_x, sp)
                 homeo_load = min(1.0, abs(err) / self._homeo_scale)
                 live.add("hypothalamus_set_points")
-            except Exception:
-                pass
-        if self._ring is not None:
-            try:
-                vel = _mean(ctx["visual"]) - _mean(ctx["audio"])  # context -> shift
-                self._ring.step(vel)
-                live.add("hippocampus_ring_attractor")
             except Exception:
                 pass
         return live, homeo_load

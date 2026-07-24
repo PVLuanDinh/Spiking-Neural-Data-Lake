@@ -123,7 +123,6 @@ CORE = [
     "hippocampus.spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
     "hippocampus.episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
     "hippocampus.lake_consolidation",  # sleep-time PRUNE of the symbolic durable lake (cap re-derivable bulk, keep learned) -> live + bounded
-    "hippocampus.head_direction",  # C2 r2: spiking HD ring + goal-vector cells (heading, bearing, distance)
     # basal ganglia — action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation",
     "basal_ganglia.r_stdp",
