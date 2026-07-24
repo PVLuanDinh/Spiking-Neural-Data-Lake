@@ -3420,6 +3420,20 @@ def _overlap(a, b):
     return len(ta & tb) / len(ta | tb)
 
 
+def make_brain(**kwargs):
+    """THE single sanctioned way to construct the one canonical Brain (Policy 4: there is only ONE
+    brain; a build must UTILIZE it, never replicate it). Every consumer -- the always-on daemon, the
+    chat servers, demos, the nengo bridge -- obtains the brain through here instead of calling
+    ``Brain(...)`` directly, so there is exactly one construction path to evolve and the replication
+    guard (substrate/replication_guard.py) can enforce that no second brain stack is stood up.
+
+    Pass-through to ``Brain.__init__`` (seed, lake_path, day_period, refit_every, device,
+    self_history_path, persist). Returns a fresh Brain -- "one brain" means one canonical CLASS +
+    one construction path, not a process-wide singleton (the daemon, a chat session, and a test each
+    legitimately own their own instance)."""
+    return Brain(**kwargs)
+
+
 def main():
     from snn_data_lake.brainstem.autonomous_loop import AutonomousArm
 

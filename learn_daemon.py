@@ -48,7 +48,7 @@ sys.path.insert(0, "src")
 # real GPU; in the torch-CPU stdlib venv this resolves to CPU gracefully (byte-identical). Off: NORD_GPU=0.
 os.environ.setdefault("NORD_GPU", "1")
 
-from snn_data_lake.cortex.brain import Brain
+from snn_data_lake.cortex.brain import make_brain
 from snn_data_lake.substrate.chat_memory import DurableChatMemory
 
 TRANSCRIPTS = os.environ.get(
@@ -158,9 +158,9 @@ def main():
         )
         return
 
-    b = Brain(
+    b = make_brain(
         seed=0
-    )  # FULL brain, persist ON; sim arm = dormant internal substrate (no real hardware)
+    )  # Policy 4: the ONE sanctioned construction path; FULL brain, persist ON; sim arm = dormant substrate
     mem = (
         DurableChatMemory()
     )  # a VIEW over the ONE durable brain lake (home knowledge.jsonl), noise-filtered

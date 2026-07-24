@@ -153,6 +153,7 @@ EXEMPT = {
     ),
     "nir_export": ("permanent", "neuromorphic NIR export -- an offline hardware-export tool"),
     "dormancy_gate": ("permanent", "the Policy-3 gate itself -- a CI self-check, not a tick faculty"),
+    "replication_guard": ("permanent", "the Policy-4 guard itself -- a CI self-check, not a tick faculty"),
 }
 
 
