@@ -2101,7 +2101,12 @@ class Brain:
             # one falls under it and LAPSES (repetition suppression). A real percept adds a small
             # bump. Self-calibrating means access stays selective as the novelty distribution drifts,
             # instead of a fixed floor that flips the whole regime (0.40 -> 90% lapse, 0.50 -> 0%).
-            rheobase = 0.55  # AccessConsciousness ignition_threshold (anchor salience here)
+            rheobase = (
+                ac.ignition_threshold
+            )  # anchor salience AT the workspace's OWN ignition rheobase
+            #   (bound to the gate's source-of-truth, not a duplicated 0.55 literal). With novelty at its
+            #   running baseline this lands strength on the gate boundary, so ignition reduces to the
+            #   already-baseline-relative test 0.5*(nov - _nov_base) + 0.15*real > 0.
             strength = max(
                 0.0, min(1.0, rheobase + 0.5 * (nov - float(self._nov_base or 0.0)) + 0.15 * real)
             )
