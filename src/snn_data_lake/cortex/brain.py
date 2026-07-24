@@ -812,16 +812,25 @@ class Brain:
         # every tick, so the LC gate is baseline-relative instead of a frozen literal. Supersedes the nightly
         # source-edit path (reasoning/brain_native_selfbuild.ThresholdRecalibrationSource, now target-less).
         self._salience_calib = None
+        self._recall_conf_calib = None
         try:
             from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
             self._salience_calib = SignalCalibrator("salience_th", p=0.75)
+            # POLICY-1 (no magic constant): the respond() episodic-recall annotation gate was a frozen 0.2
+            # confidence floor. Record the brain's OWN live episodic-completion confidence (self._recall_conf,
+            # set each wake tick) into a running 25th-percentile calibrator, consumed as that gate below.
+            self._recall_conf_calib = SignalCalibrator("recall_conf_th", p=0.25)
             if self._persist:
                 from snn_data_lake.substrate.home import state_path
 
-                SignalCalibrator.load_into(state_path("signal_calib.json"), [self._salience_calib])
+                SignalCalibrator.load_into(
+                    state_path("signal_calib.json"),
+                    [self._salience_calib, self._recall_conf_calib],
+                )
         except Exception:
             self._salience_calib = None
+            self._recall_conf_calib = None
         self._raphe = self._try(lambda: DorsalRaphe())
         self._astro = self._try(lambda: Astrocyte(n_domains=2, seed=self._seed))
         self._homeostat = self._try(lambda: Homeostat(seed=self._seed))
@@ -1365,6 +1374,8 @@ class Brain:
                     if rc > 0.0 and rec.get("key") is not None:
                         rkey = rec["key"]
                         self._recall_conf = max(0.0, min(1.0, rc))
+                        if self._recall_conf_calib is not None:
+                            self._recall_conf_calib.observe(self._recall_conf)
                 except Exception:
                     rkey = None
             rconf = self._recall_conf
@@ -2834,7 +2845,19 @@ class Brain:
                             break
                     epi = self._episodic.complete(cue)
                     e = (epi or {}).get("episode")
-                    if e and (epi or {}).get("confidence", 0.0) > 0.2:
+                    # baseline-relative annotation floor (policy-1): the brain's running 25th-percentile
+                    # recall confidence once it has enough samples; honest-null to the prior 0.2 during warmup.
+                    _rcq = (
+                        self._recall_conf_calib.result()
+                        if self._recall_conf_calib is not None
+                        else None
+                    )
+                    _rc_th = (
+                        _rcq["value"]
+                        if (_rcq and _rcq.get("value") is not None and _rcq.get("n", 0) >= 50)
+                        else 0.2
+                    )
+                    if e and (epi or {}).get("confidence", 0.0) > _rc_th:
                         reply = reply + (
                             f" (recalled: I {e.get('what', 'acted')} at '{e.get('where')}' feeling "
                             f"{e.get('affect', 'calm')} -- reconstructed from a partial cue.)"
@@ -3352,7 +3375,10 @@ class Brain:
                 from snn_data_lake.substrate.home import state_path
                 from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
-                SignalCalibrator.save_all(state_path("signal_calib.json"), [self._salience_calib])
+                SignalCalibrator.save_all(
+                    state_path("signal_calib.json"),
+                    [self._salience_calib, self._recall_conf_calib],
+                )
         except Exception:
             pass
         try:
