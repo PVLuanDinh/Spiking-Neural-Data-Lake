@@ -37,9 +37,15 @@ CANON = {
 # key = (class_name, module_path); value = reason. Empty this out as the replicas are retired.
 PENDING_RETIREMENT = {
     ("Brain", f"{_PKG}.reasoning.brain_loop"): (
-        "2nd Brain class -- a parallel stack around LakeChat + its own workspace + learn-loop; retire "
-        "in the Policy-4 chat/brain consolidation (fold its deduction/induction/abduction layer into "
-        "the canonical LakeChat/Brain path first, verify no reasoning lost)"
+        "2nd Brain class -- a parallel stack around LakeChat + its own GlobalWorkspace + learn-loop. "
+        "Now INERT: its only front-end (reasoning/brain_web.py) was retired in v4.53, so it has ZERO "
+        "importers anywhere. Its reasoning layer IS already covered canonically -- deduction by "
+        "reasoning/derivation.py (a verbatim port of _relation_graph/_derive), abduction by "
+        "pc_abduction.AbductionExpert via LakeChat._abduce_reply, and induction by schema_induction, "
+        "which keeps the same refuse-to-generalise-on-thin-evidence guard (min_support). "
+        "BLOCKER on deletion: self_rewrite() -- user-authorized GATED self-modification -- exists ONLY "
+        "here; grep finds no canonical equivalent (Brain.propose_improvements is proposer-only). Port "
+        "self_rewrite into the canonical Brain and verify it, THEN delete. Do not drop it silently."
     ),
 }
 
