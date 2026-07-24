@@ -470,11 +470,13 @@ class Brain:
                 os.environ.get("NORD_TORCH") == "0"
             ):  # manual off-switch: keep the zero-dep stdlib perception path
                 raise RuntimeError("torch tier disabled")
-            # GPU-PRIORITIZED perception: load the encoders on the brain's device -- cuda when it was
-            # requested (device="cuda", the default) AND actually available, else cpu. The encoders'
-            # encode()/classify() move the input frame to self.device, so a cuda-loaded encoder is
-            # device-safe; a cuda-absent env (the CPU gate / the stdlib venv) resolves to cpu -> the load
-            # is byte-identical there. Any failure below still falls back to the stdlib perception path.
+            # GPU-PRIORITIZED perception with a ROBUST cpu fallback: prefer cuda when requested
+            # (device="cuda", the default) AND available, but if a cuda LOAD throws -- GPU busy / OOM under
+            # the always-on daemon's OWN GPU contention -- fall back to cpu so perception, and the cortical
+            # column + crossmodal binder that ride on it, stay ALIVE rather than silently dropping to the
+            # stdlib tier just because the GPU was momentarily unavailable. The encoders are per-frame +
+            # transfer-bound (encode()/classify() move the input to self.device), so cpu costs little; a busy
+            # GPU must never BLIND the brain. A cuda-absent env resolves to cpu directly (byte-identical gate).
             self._perception_device = "cpu"
             try:
                 import torch as _torch
@@ -483,13 +485,21 @@ class Brain:
                     self._perception_device = "cuda"
             except Exception:
                 self._perception_device = "cpu"
+
+            def _load_enc(loader, path):
+                try:
+                    return loader(path, device=self._perception_device)
+                except Exception:  # GPU busy/OOM -> stay ALIVE on cpu, never fall through to stdlib
+                    self._perception_device = "cpu"
+                    return loader(path, device="cpu")
+
             _eprop = os.environ.get("SNN_EPROP_CKPT", "models/eprop_nmnist.pt")
             if os.path.exists(
                 _eprop
             ):  # BRAIN-NATIVE first: the e-prop-trained encoder (no backprop)
                 from training.eprop_nmnist import EpropEncoder
 
-                self._perception_enc = EpropEncoder.load(_eprop, device=self._perception_device)
+                self._perception_enc = _load_enc(EpropEncoder.load, _eprop)
                 self._perception_tier = "eprop-snn"
             else:  # fallback: the surrogate-BPTT encoder (NOT brain-native)
                 _ckpt = os.environ.get("SNN_PERCEPTION_CKPT")
@@ -501,9 +511,7 @@ class Brain:
                 if _ckpt and os.path.exists(_ckpt):
                     from training.surrogate_snn import SurrogateEncoder
 
-                    self._perception_enc = SurrogateEncoder.load(
-                        _ckpt, device=self._perception_device
-                    )
+                    self._perception_enc = _load_enc(SurrogateEncoder.load, _ckpt)
                     self._perception_tier = "torch-snn"
             if (
                 self._perception_enc is not None
@@ -523,7 +531,7 @@ class Brain:
             ):  # AUDITORY tier (brain-native): e-prop SHD encoder, parallel to vision
                 from training.eprop_shd import EpropAudioEncoder
 
-                self._audio_enc = EpropAudioEncoder.load(_audio, device=self._perception_device)
+                self._audio_enc = _load_enc(EpropAudioEncoder.load, _audio)
                 import numpy as _np2
 
                 _apack = os.environ.get("SNN_SHD_PACK", "models/shd_pack.npz")
