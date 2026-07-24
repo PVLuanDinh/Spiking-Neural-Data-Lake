@@ -38,8 +38,6 @@ CORE = [
     "cortex.spike_preprocessing",
     "cortex.theta_gamma_code",
     "cortex.spike_slicer",
-    "cortex.adaptive_spiking",
-    "cortex.cue_integration",
     "cortex.spike_pooling",
     "cortex.rsnn_encoder",
     "cortex.lif_neuron",
@@ -48,17 +46,14 @@ CORE = [
     "cortex.hodgkin_huxley",
     "cortex.alif_neuron",
     "cortex.divisive_normalization",
-    "cortex.wilson_cowan",
     "cortex.neuronal_avalanches",
     "cortex.cortical_microcircuit",
     "cortex.stochastic_resonance",
-    "cortex.lt_gate",
     "cortex.lca_sparse_coding",
     "cortex.predictive_coding",
     "cortex.pc_cortex_serve",
     "cortex.is_snn_forward",
     "cortex.neural_sampling",
-    "cortex.restricted_boltzmann",
     "cortex.snn_classifier",
     "cortex.trained_brain",
     "cortex.learned_matcher",
@@ -66,9 +61,7 @@ CORE = [
     "cortex.paradigm_b_matcher",
     "cortex.paradigm_b_engine",
     "cortex.gesture_recognition",
-    "cortex.language_brain",
     "cortex.nl_interface",
-    "cortex.brain_reasoning",
     "cortex.spiking_lm_serve",
     "cortex.vsa_reasoning",
     "cortex.prefrontal_executive",
@@ -106,8 +99,6 @@ CORE = [
     # hippocampus — memory formation, spatial coding, replay
     "hippocampus.hippocampus",
     "hippocampus.grid_cells",
-    "hippocampus.htm_sequence_memory",
-    "hippocampus.frequency_memory",
     "hippocampus.experience_replay",
     "hippocampus.sleep_replay",
     "hippocampus.ring_attractor",
@@ -135,9 +126,7 @@ CORE = [
     "amygdala.affective_appraisal",  # C1: learned multi-dim affective appraisal (three-factor)
     # cerebellum — motor coordination, timing, forward/inverse models, oscillators
     "cerebellum.forward_model",
-    "cerebellum.kalman_filter",
     "cerebellum.spiking_pid",
-    "cerebellum.kuramoto_sync",
     "cerebellum.synfire_chain",
     "cerebellum.wavefront_planner",
     "cerebellum.jepa_world_model",
@@ -180,8 +169,6 @@ CORE = [
     # epithalamus — the lateral habenula (anti-reward / negative RPE)
     "epithalamus.habenula",
     # olfactory — bulb decorrelation + piriform association
-    "olfactory.olfactory_bulb",
-    "olfactory.piriform_cortex",
     # claustrum — cortical synchrony / salience hub
     "claustrum.claustrum",
     # neuromodulation — diffuse chemical modulators + glia (LC noradrenaline, raphe serotonin)
@@ -208,7 +195,6 @@ CORE = [
     "plasticity.competitive_learning",
     "plasticity.lifelong_consolidation",
     "plasticity.criticality_regulator",
-    "plasticity.feedback_alignment",
     "plasticity.meta_plasticity",
     "plasticity.benna_fusi",
     "plasticity.homeostatic_plasticity_stack",
@@ -238,7 +224,6 @@ CORE = [
     "substrate.sensor_csv_ingest",
     "substrate.esp32_encoder_path",
     "substrate.make_sensor_dataset",
-    "substrate.sensor_demo",
     "substrate.demo",
     "substrate.control_panel",
     "substrate.brain_bundle",
@@ -251,7 +236,6 @@ CORE = [
     "substrate.home",
     "substrate.binlog",
     "substrate.growable",
-    "substrate.coordinated_growth",
     "substrate.region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
     "substrate.dormancy_gate",  # Policy 3: assert every brain module is reachable from a live path or EXEMPT
     "substrate.replication_guard",  # Policy 4: assert one canonical Brain/LiveBrain/AutonomousArm (no replica)

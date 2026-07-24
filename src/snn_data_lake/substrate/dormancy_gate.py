@@ -70,39 +70,10 @@ _ENTRYPOINTS = (  # pyproject [project.scripts] + the always-on daemon's in-pack
 # ------------------------------------------------------------------------------------------------
 # key = module basename (unique across REGIONS per brain_atlas); value = (disposition, reason).
 EXEMPT = {
-    # ---- "retire": superseded / off-paradigm / no honest data source -> deleted in a Policy-2/3 wave ----
-    "kalman_filter": (
-        "retire",
-        "linear-Gaussian filter superseded by cerebellum.forward_model + JEPA",
-    ),
-    "kuramoto_sync": (
-        "retire",
-        "superseded by the live substrate.region_coherence Kuramoto coupling",
-    ),
-    "cue_integration": (
-        "retire",
-        "superseded by crossmodal_binder + midbrain.multisensory_integration",
-    ),
-    "adaptive_spiking": ("retire", "research primitive with no live consumer"),
-    "lt_gate": ("retire", "research gate primitive with no live consumer"),
-    "restricted_boltzmann": (
-        "retire",
-        "rate RBM superseded by the spiking neural_sampling BoltzmannSampler",
-    ),
-    "wilson_cowan": ("retire", "rate population model, off the spiking paradigm"),
-    "language_brain": ("retire", "superseded by nl_interface + spiking_lm_serve"),
-    "brain_reasoning": ("retire", "child of the retired language_brain"),
-    "frequency_memory": ("retire", "redundant sequence-memory (keep legendre_memory)"),
-    "htm_sequence_memory": ("retire", "redundant sequence-memory (keep legendre_memory)"),
-    "neurogenesis": (
-        "retire",
-        "stdlib version superseded by function_preserving_growth/growing_learner",
-    ),
-    "olfactory_bulb": ("retire", "no olfactory sensor exists in the loop -> no honest consumer"),
-    "piriform_cortex": ("retire", "no olfactory sensor exists in the loop -> no honest consumer"),
-    "feedback_alignment": ("retire", "research learning-rule primitive with no live consumer"),
-    "sensor_demo": ("retire", "demo script, superseded by the live sensor path"),
-    "coordinated_growth": ("retire", "duplicate growth primitive with no live consumer"),
+    # NOTE: the 17 "retire"-tagged modules (wilson_cowan/RBM/kalman/kuramoto/cue_integration/olfactory x2/
+    # 3 redundant seq-memories/neurogenesis-stdlib/language_brain+brain_reasoning/adaptive_spiking/lt_gate/
+    # feedback_alignment/sensor_demo/coordinated_growth) were DELETED in the Policy-2/3 retirement wave --
+    # they are gone from REGIONS, so they are no longer brain modules and need no exemption.
     # ---- "wire": valuable, just unplugged -> wired verify-first (neuter-A/B must CHARGE) in a wave ----
     "heterogeneous_microcircuit": (
         "wire",
@@ -152,8 +123,14 @@ EXEMPT = {
         "substrate lake primitive used by reasoning tools/apps, not the tick",
     ),
     "nir_export": ("permanent", "neuromorphic NIR export -- an offline hardware-export tool"),
-    "dormancy_gate": ("permanent", "the Policy-3 gate itself -- a CI self-check, not a tick faculty"),
-    "replication_guard": ("permanent", "the Policy-4 guard itself -- a CI self-check, not a tick faculty"),
+    "dormancy_gate": (
+        "permanent",
+        "the Policy-3 gate itself -- a CI self-check, not a tick faculty",
+    ),
+    "replication_guard": (
+        "permanent",
+        "the Policy-4 guard itself -- a CI self-check, not a tick faculty",
+    ),
 }
 
 

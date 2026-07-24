@@ -10,7 +10,8 @@ a large-scale, integrated, synchronized coalition. This module turns that into a
 signal over the brain's per-region spike activity each tick. It combines two complementary primitives:
 
   * PHASE SYNCHRONY -- the Kuramoto order parameter R = |mean_j e^{i*phase_j}| in [0,1] (Kuramoto 1975;
-    Strogatz, Physica D 143:1, 2000; the exact primitive reused from cerebellum.kuramoto_sync). Each region's
+    Strogatz, Physica D 143:1, 2000; the self-contained live Kuramoto primitive -- it superseded and retired
+    the standalone cerebellum.kuramoto_sync). Each region's
     instantaneous PHASE is read from its recent activity via the FFT-based analytic (Hilbert) signal of the
     mean-removed window -- the standard "Hilbert-like" instantaneous-phase estimate, robust to the oscillation
     frequency. R ~ 1 when the regions are phase-locked (synchronized), R near the finite-N floor ~1/sqrt(N)
