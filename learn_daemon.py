@@ -203,10 +203,12 @@ def main():
             os._exit(
                 0
             )  # the launcher's restart loop relaunches with the new code; learning reloads from disk
-        # (4) WIRED FACULTIES: charge every registered dormant/partial faculty this cycle (each guarded).
-        #     The registry (substrate.region_wiring + the verified adapters in wired_faculties) is re-imported
-        #     on every commit-reload, so a commit that registers a new faculty auto-extends the wired set --
-        #     the wired regions update after every commit. Empty registry -> a cheap no-op.
+        # (4) OPTIONAL per-cycle charge adapters (substrate.region_wiring): an explicit plug-point for
+        #     genuinely-PERIODIC faculties. Empty by default -> a cheap no-op. NOTE (Policy 3): this is NOT
+        #     how a dormant faculty is made live -- pinging a faculty here without routing its output into
+        #     behaviour is theater. The honest path is to WIRE the faculty into the tick (so it charges
+        #     behaviour) and let substrate.dormancy_gate enforce no-silent-dormancy. Authoritative coverage
+        #     = region_wiring.live_coverage() (delegates to the gate), logged below.
         try:
             from snn_data_lake.substrate import region_wiring
 
@@ -218,11 +220,14 @@ def main():
             try:
                 st = b.state()
                 cov = region_wiring.coverage()
+                lc = (
+                    region_wiring.live_coverage()
+                )  # Policy-3 authoritative coverage (dormancy gate)
                 print(
                     f"[learn-daemon] cycle {n}: nights={st.get('nights_elapsed')} "
                     f"grown_units={st.get('grown_units')} reasoning_acc={st.get('reasoning_accuracy')} "
-                    f"chat_remembered={remembered} | wired_faculties={cov['n_wired_faculties']} "
-                    f"regions_wired={cov['regions_wired']}/{cov['regions_total']}",
+                    f"chat_remembered={remembered} | wired={lc['reachable']}/{lc['total']} "
+                    f"exempt={lc['exempt']} dormant={lc['dormant']} adapters={cov['n_wired_faculties']}",
                     flush=True,
                 )
             except Exception:

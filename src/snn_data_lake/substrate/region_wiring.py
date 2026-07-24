@@ -82,6 +82,25 @@ def coverage():
     }
 
 
+def live_coverage():
+    """The AUTHORITATIVE wiring coverage (Policy 3), delegating to substrate.dormancy_gate: how many
+    brain modules are REACHABLE from a live path/entrypoint, how many are EXEMPT (with a reason), and
+    how many are (silently) DORMANT -- which is 0 unless the dormancy gate is failing. This is distinct
+    from coverage() above, which counts only the EXPLICIT per-cycle charge adapters registered here (an
+    optional mechanism for genuinely-periodic faculties -- NOT a way to fake liveness for a dormant
+    module; the honest way to make a faculty live is to WIRE it into the tick so it charges behaviour).
+    Returns {total, reachable, exempt, dormant}."""
+    from snn_data_lake.substrate import dormancy_gate
+
+    c = dormancy_gate.coverage()
+    return {
+        "total": c["total"],
+        "reachable": c["reachable"],
+        "exempt": c["exempt"],
+        "dormant": len(c["dormant"]),
+    }
+
+
 # ================================================================================================
 def main():
     global _WIRED
@@ -105,7 +124,13 @@ def main():
         assert cov["region_faculty_counts"].get("cortex") == 2, cov  # dummy_ok + dummy_bad
         assert cov["region_faculty_counts"].get("amygdala") == 1, cov
         assert cov["n_wired_faculties"] == 3, cov
+        lc = live_coverage()  # the AUTHORITATIVE Policy-3 coverage (delegates to the dormancy gate)
+        assert lc["dormant"] == 0 and lc["reachable"] > 0 and lc["total"] > lc["reachable"], lc
         print("region_wiring self-check OK:")
+        print(
+            f"  live_coverage (Policy-3, via dormancy_gate): wired {lc['reachable']}/{lc['total']} "
+            f"exempt {lc['exempt']} dormant {lc['dormant']}"
+        )
         print(
             "  charge_all charged",
             len(res),
