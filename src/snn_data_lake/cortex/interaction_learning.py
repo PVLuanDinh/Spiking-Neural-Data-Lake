@@ -91,7 +91,6 @@ class SpikingInteractionLearner:
         t_post=None,
         naca=None,
         stack=None,
-        bank=None,
         readout_zoo=None,
         readout_kinds=None,
     ):
@@ -134,9 +133,6 @@ class SpikingInteractionLearner:
         # OFF -> the learning path is BYTE-IDENTICAL to today. It stabilizes plasticity only and adds NO
         # actuator route (this router stays intent-recognition only).
         self.stack = stack
-        # OPT-IN sensory front-end (SensoryEncoderBank, duck-typed): re-codes the stimulus into the spike
-        # train. None -> the live rank_code() is BYTE-IDENTICAL. Must preserve the n_in code width.
-        self.bank = bank
         # OPT-IN heterogeneous spiking readout (NeuronZoo, duck-typed): feeds each neuron's membrane read
         # through a small point-neuron POOL. None -> the linear membrane read is BYTE-IDENTICAL. The
         # enabled path is NOT byte-identical (re-baseline routing before enabling); intent-recognition only.
@@ -149,8 +145,6 @@ class SpikingInteractionLearner:
         discrete times; invariant to any monotonic gain change on the stimulus."""
         if len(stimulus) != self.n_in:
             raise ValueError(f"stimulus has {len(stimulus)} dims, expected {self.n_in}")
-        if self.bank is not None:  # OPT-IN sensory front-end (must preserve n_in width)
-            return self.bank.encode(list(stimulus))
         return rank_code(list(stimulus))  # list[int]: spike time (latency) per synapse
 
     def _psp(self, dt):

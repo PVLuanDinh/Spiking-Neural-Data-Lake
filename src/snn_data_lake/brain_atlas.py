@@ -84,12 +84,8 @@ def main():
         old = importlib.import_module(f"snn_data_lake.{flat}")
         assert old is new, f"back-compat broken for {flat!r}: alias is not the regional module"
 
-    # the hippocampus name collision (module == region): both paths import + the package re-exports
-    pkg = importlib.import_module("snn_data_lake.hippocampus")
-    mod = importlib.import_module("snn_data_lake.hippocampus.hippocampus")
-    assert any(
-        getattr(pkg, n, None) is getattr(mod, n) for n in dir(mod) if not n.startswith("_")
-    ), "hippocampus region package must re-export its same-named module"
+    # (the old hippocampus name collision -- module == region -- is gone: that module was retired in the
+    # Policy-3 wave, so no region subpackage re-exports a same-named module any more.)
 
     # every region subpackage imports cleanly
     for region in REGIONS:

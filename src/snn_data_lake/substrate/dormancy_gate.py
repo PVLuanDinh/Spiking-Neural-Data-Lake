@@ -74,12 +74,17 @@ EXEMPT = {
     # 3 redundant seq-memories/neurogenesis-stdlib/language_brain+brain_reasoning/adaptive_spiking/lt_gate/
     # feedback_alignment/sensor_demo/coordinated_growth) were DELETED in the Policy-2/3 retirement wave --
     # they are gone from REGIONS, so they are no longer brain modules and need no exemption.
-    # ---- "wire": valuable, just unplugged -> wired verify-first (neuter-A/B must CHARGE) in a wave ----
+    # ---- "permanent": legitimately not a tick faculty, each with the evidence that settled it ----
     "heterogeneous_microcircuit": (
-        "wire",
-        "Brain-Cog composed microcircuit; also fix its false 'live' claim",
+        "permanent",
+        "PALETTE EXAMPLE: a worked demo of the basic_components composition palette (itself permanent). "
+        "The REGIONS comment claiming it is 'composed live under a local rule' was FALSE and is corrected",
     ),
-    "cortical_microcircuit": ("wire", "canonical L2/3-L5 microcircuit, unplugged"),
+    "cortical_microcircuit": (
+        "permanent",
+        "REFERENCE MODEL: Potjans-Diesmann 2014 validation dynamics with no input port -- its output is a "
+        "deterministic constant given its build parameters, so it can drive nothing",
+    ),
     # NOTE: plasticity_rule_stack + homeostatic_plasticity_stack + bcm_plasticity + inhibitory_stdp +
     # homeostatic_scaling + intrinsic_plasticity + short_term_plasticity are WIRED (Brain.__init__ attaches
     # PlasticityRuleStack to the live intent learner; _sleep_tick relaxes the cascades) -> exemptions retired.
@@ -95,28 +100,59 @@ EXEMPT = {
         "hard-tied to a synthetic task; it already delivered its finding (magnitude +53% over random at "
         "11.9% density). Wiring it would mean writing a NEW module, not wiring this one",
     ),
-    "sensory_encoder_bank": ("wire", "opt-in multi-sensor front-end"),
-    "spike_slicer": ("wire", "encoder-bank component"),
-    "spike_pooling": ("wire", "encoder-bank component"),
-    "neural_sampling": ("wire", "spiking Boltzmann sampler (also the RBM replacement)"),
-    "sensor_csv_ingest": ("wire", "real-sensor CSV ingest pipeline"),
-    "esp32_encoder_path": ("wire", "ESP32 real-sensor encoder path"),
-    "stochastic_resonance": ("wire", "noise-benefit encoding, plausible live consumer"),
-    "sc_deep_layers": ("wire", "superior-colliculus deep layers (saccade/orienting)"),
-    "superior_colliculus": ("wire", "orienting/saccade map"),
-    "population_vector": ("wire", "population-vector readout"),
-    "entropy_coder": ("wire", "lake spike-stream compression"),
-    "neuro_chip": ("wire", "neuromorphic chip energy model"),
-    "neuro_chip_stream": ("wire", "streaming chip energy model"),
-    "energy": ("wire", "spike-energy accounting"),
-    "legendre_memory": ("wire", "kept sequence-memory (Legendre delay network)"),
-    "hippocampus": ("wire", "core hippocampal memory, unplugged from the tick"),
-    "rsnn_encoder": ("wire", "recurrent-spiking encoder"),
-    "spiking_recurrent_cell": ("wire", "RSNN cell primitive"),
-    "spiking_jepa": ("wire", "spiking world-model; adopt-or-retire vs rate jepa_world_model in B3"),
-    "is_snn_forward": ("wire", "spiking-JEPA forward primitive; tied to spiking_jepa"),
-    "pontine_relay": ("wire", "pontine relay (lower confidence)"),
-    "reticular_formation": ("wire", "reticular arousal (lower confidence)"),
+    # NOTE: 11 more "wire" candidates were RETIRED after probing (entropy_coder, population_vector,
+    # stochastic_resonance, hippocampus, legendre_memory, spiking_recurrent_cell, sensory_encoder_bank,
+    # spike_slicer, spike_pooling, pontine_relay, reticular_formation) -- each had no honest consumer or
+    # duplicated a live+charged path. They are gone from REGIONS, so they need no exemption.
+    "neural_sampling": (
+        "permanent",
+        "LIBRARY: posterior sampling from a DEFINED energy model; the live tick has no such model and "
+        "no query asking for samples from one (it is also the retired RBM's replacement, on demand)",
+    ),
+    "sensor_csv_ingest": (
+        "permanent",
+        "TOOL: offline CLI ingest aimed at signal_loop, not the brain tick",
+    ),
+    "esp32_encoder_path": (
+        "permanent",
+        "AWAITING HARDWARE: real-sensor adapter; pyserial absent and arm_config SAFETY_CALIBRATED=False",
+    ),
+    "sc_deep_layers": (
+        "permanent",
+        "AWAITING EFFECTOR: a gaze MOTOR PLANT (burst pool -> neural integrator -> displacement); the "
+        "brain has no eyes/gaze motor, so there is nothing for it to drive",
+    ),
+    "superior_colliculus": (
+        "permanent",
+        "AWAITING EFFECTOR: orienting/saccade WTA map; its selection role on the percept is already "
+        "filled by the live attention gate, and there is no gaze effector to orient",
+    ),
+    "neuro_chip": (
+        "permanent",
+        "HARDWARE TWIN: software model of Loihi/SpiNNaker silicon, targeted for real via nir_export",
+    ),
+    "neuro_chip_stream": (
+        "permanent",
+        "HARDWARE TWIN: out-of-core shard-streaming sibling of neuro_chip",
+    ),
+    "energy": (
+        "permanent",
+        "BENCHMARK: analytical SynOps->Joules / NeuroBench harness; an accounting instrument, not a faculty",
+    ),
+    "rsnn_encoder": (
+        "permanent",
+        "TRAIN-TIER: recurrent-spiking encoder trained offline and SERVED frozen; emits no live-tick value",
+    ),
+    "spiking_jepa": (
+        "permanent",
+        "TRAIN-TIER world model. Probed as an adopt-or-retire vs the live rate JepaWorldModel and it is "
+        "NOT a drop-in: measured encode() output does not vary across 24 distinct live-width patterns, so "
+        "swapping it in would silently deaden the planner's transition_fn. Kept, unadopted, honestly",
+    ),
+    "is_snn_forward": (
+        "permanent",
+        "LIBRARY/BENCHMARK: spiking-forward primitive tied to spiking_jepa, not a tick faculty",
+    ),
     # ---- "permanent": legitimately not on the live tick, with a reason (infra / tool / library) ----
     "basic_components": (
         "permanent",

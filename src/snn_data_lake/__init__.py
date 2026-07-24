@@ -20,12 +20,9 @@ REGIONS = {
     "cortex": [
         "rank_order_coding",
         "population_encoding",
-        "population_vector",
         "multimodal_encoder",
         "spike_preprocessing",
         "theta_gamma_code",
-        "spike_slicer",
-        "spike_pooling",
         "lif_neuron",
         "dendritic_neuron",
         "izhikevich_neuron",
@@ -34,7 +31,6 @@ REGIONS = {
         "divisive_normalization",
         "neuronal_avalanches",
         "cortical_microcircuit",
-        "stochastic_resonance",
         "lca_sparse_coding",
         "predictive_coding",
         "is_snn_forward",
@@ -53,7 +49,6 @@ REGIONS = {
         "live_brain",
         "interaction_learning",
         "recognizer_bank",
-        "sensory_encoder_bank",
         "neuron_zoo",  # merges: recognizer ensemble / encoder bank / neuron population
         # higher cognition / self-model / self-improvement (v3.14+)
         "access_consciousness",
@@ -65,7 +60,6 @@ REGIONS = {
         "quality_diversity",
         "self_improvement_suite",
         "wholistic_loop",
-        "spiking_recurrent_cell",
         "autapse_neuron",
         "integration_measure",
         "agency_monitor",
@@ -80,7 +74,7 @@ REGIONS = {
         "learned_attention",  # C1 batch-3: learned spiking reticular attention gate (local plasticity)
         "learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
         "second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
-        "heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
+        "heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx worked EXAMPLE of the basic_components palette (not on the live tick)
         "percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
         # torch-trained tiers with a zero-dep serve/integration path (import cleanly without torch)
         "pc_cortex_serve",
@@ -88,13 +82,11 @@ REGIONS = {
         "rsnn_encoder",
     ],
     "hippocampus": [
-        "hippocampus",
         "grid_cells",
         "experience_replay",
         "sleep_replay",
         "ring_attractor",
         "growing_learner",
-        "legendre_memory",
         "function_preserving_growth",
         "sleep_consolidation",
         "affective_memory",
@@ -146,7 +138,7 @@ REGIONS = {
         "sc_deep_layers",
         "multisensory_integration",
     ],
-    "pons": ["pontine_relay", "reticular_formation"],
+    "pons": [],
     "medulla": ["vital_nuclei", "interoceptive_arousal"],
     "epithalamus": ["habenula"],
     "olfactory": [],
@@ -193,7 +185,6 @@ REGIONS = {
         "streaming_quantile",
         "minhash",
         "morris_counter",
-        "entropy_coder",
         "proximity_index",
         "energy",
         "data_quality",
@@ -238,8 +229,9 @@ TORCH_TIER = {
     "hippocampus": ["ng_snn"],
 }
 
-# old flat name -> "region.module". The hippocampus module shares its region's name, so it is
-# reached through the real snn_data_lake.hippocampus package (which re-exports it) -- not aliased.
+# old flat name -> "region.module". The `m != r` guard used to exempt the same-named hippocampus module
+# (region name == module name); that module was retired in the Policy-3 wave, so no such collision
+# remains today -- the guard is kept because it is what makes a future same-named module safe.
 _MOVED = {m: f"{r}.{m}" for r, mods in REGIONS.items() for m in mods if m != r}
 
 
