@@ -203,14 +203,26 @@ def main():
             os._exit(
                 0
             )  # the launcher's restart loop relaunches with the new code; learning reloads from disk
+        # (4) WIRED FACULTIES: charge every registered dormant/partial faculty this cycle (each guarded).
+        #     The registry (substrate.region_wiring + the verified adapters in wired_faculties) is re-imported
+        #     on every commit-reload, so a commit that registers a new faculty auto-extends the wired set --
+        #     the wired regions update after every commit. Empty registry -> a cheap no-op.
+        try:
+            from snn_data_lake.substrate import region_wiring
+
+            region_wiring.charge_all(b, {"cycle": n})
+        except Exception as e:
+            print(f"[learn-daemon] wiring err: {type(e).__name__}: {e}", flush=True)
         n += 1
         if n % LOG_EVERY == 0:
             try:
                 st = b.state()
+                cov = region_wiring.coverage()
                 print(
                     f"[learn-daemon] cycle {n}: nights={st.get('nights_elapsed')} "
                     f"grown_units={st.get('grown_units')} reasoning_acc={st.get('reasoning_accuracy')} "
-                    f"chat_remembered={remembered}",
+                    f"chat_remembered={remembered} | wired_faculties={cov['n_wired_faculties']} "
+                    f"regions_wired={cov['regions_wired']}/{cov['regions_total']}",
                     flush=True,
                 )
             except Exception:

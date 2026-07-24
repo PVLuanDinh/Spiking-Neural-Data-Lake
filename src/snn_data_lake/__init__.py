@@ -237,6 +237,7 @@ REGIONS = {
         "growable",
         "coordinated_growth",
         "region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> GWT ignition bias
+        "region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
         "basic_components",  # Brain-Cog-adopted composition interface: node + local-rule + connection palette
         "similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
     ],

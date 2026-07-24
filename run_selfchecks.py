@@ -15,6 +15,7 @@ package (src/snn_data_lake/, run as `-m snn_data_lake.<mod>`); RESEARCH = benchm
   python run_selfchecks.py          # run all, exit non-zero on any failure
   python run_selfchecks.py --list   # print the module list, one per line
 """
+
 import os
 import sys
 import subprocess
@@ -27,125 +28,291 @@ _ENV = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "PYTHONPAT
 # anatomical brain region (src/snn_data_lake/<region>/<module>.py); run as
 # `-m snn_data_lake.<region>.<module>`. snn_data_lake.brain_atlas renders + verifies the map.
 CORE = [
-    "brain_atlas", "connectome",
+    "brain_atlas",
+    "connectome",
     # cortex — sensing/encoding, cortical neuron models, microcircuit dynamics, readout, language
-    "cortex.rank_order_coding", "cortex.population_encoding", "cortex.population_vector", "cortex.multimodal_encoder",
-    "cortex.spike_preprocessing", "cortex.theta_gamma_code", "cortex.spike_slicer", "cortex.adaptive_spiking",
-    "cortex.cue_integration", "cortex.spike_pooling", "cortex.rsnn_encoder",
-    "cortex.lif_neuron", "cortex.dendritic_neuron", "cortex.izhikevich_neuron", "cortex.hodgkin_huxley", "cortex.alif_neuron",
-    "cortex.divisive_normalization", "cortex.wilson_cowan", "cortex.neuronal_avalanches", "cortex.cortical_microcircuit", "cortex.stochastic_resonance",
-    "cortex.lt_gate", "cortex.lca_sparse_coding", "cortex.predictive_coding", "cortex.pc_cortex_serve", "cortex.is_snn_forward", "cortex.neural_sampling",
+    "cortex.rank_order_coding",
+    "cortex.population_encoding",
+    "cortex.population_vector",
+    "cortex.multimodal_encoder",
+    "cortex.spike_preprocessing",
+    "cortex.theta_gamma_code",
+    "cortex.spike_slicer",
+    "cortex.adaptive_spiking",
+    "cortex.cue_integration",
+    "cortex.spike_pooling",
+    "cortex.rsnn_encoder",
+    "cortex.lif_neuron",
+    "cortex.dendritic_neuron",
+    "cortex.izhikevich_neuron",
+    "cortex.hodgkin_huxley",
+    "cortex.alif_neuron",
+    "cortex.divisive_normalization",
+    "cortex.wilson_cowan",
+    "cortex.neuronal_avalanches",
+    "cortex.cortical_microcircuit",
+    "cortex.stochastic_resonance",
+    "cortex.lt_gate",
+    "cortex.lca_sparse_coding",
+    "cortex.predictive_coding",
+    "cortex.pc_cortex_serve",
+    "cortex.is_snn_forward",
+    "cortex.neural_sampling",
     "cortex.restricted_boltzmann",
-    "cortex.snn_classifier", "cortex.trained_brain", "cortex.learned_matcher", "cortex.tempotron", "cortex.paradigm_b_matcher",
-    "cortex.paradigm_b_engine", "cortex.gesture_recognition",
-    "cortex.language_brain", "cortex.nl_interface", "cortex.brain_reasoning", "cortex.spiking_lm_serve", "cortex.vsa_reasoning",
-    "cortex.prefrontal_executive", "cortex.live_brain", "cortex.interaction_learning",
-    "cortex.recognizer_bank", "cortex.sensory_encoder_bank", "cortex.neuron_zoo",
-    "cortex.access_consciousness", "cortex.integration_measure", "cortex.self_model", "cortex.reasoning_curriculum",
-    "cortex.spiking_recurrent_cell", "cortex.autapse_neuron", "cortex.metacognitive_monitor",
-    "cortex.wholistic_loop", "cortex.autotelic_goals", "cortex.quality_diversity",
-    "cortex.self_improvement_suite", "cortex.theory_of_mind", "cortex.agency_monitor",
-    "cortex.affect_core", "cortex.crossmodal_binder",   # W6: categorical emotion + 2nd-order ToM; cross-modal super-additive binding
-    "cortex.executive_control",   # W8: ACC conflict + EVC + tree/sequence planning
-    "cortex.time_cells", "cortex.task_set", "cortex.generative_self_model",   # C1: spiking clock / task-set-shift / learned generative self-model
-    "cortex.recursive_tom", "cortex.counterfactual_sim",   # C1 batch-2: N-agent recursive ToM / counterfactual do()-operator
-    "cortex.learned_attention",   # C1 batch-3: learned spiking reticular attention gate
-    "cortex.learned_evc",   # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
-    "cortex.second_order_access",   # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
-    "cortex.heterogeneous_microcircuit",   # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
-    "cortex.percept_surprise",   # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
+    "cortex.snn_classifier",
+    "cortex.trained_brain",
+    "cortex.learned_matcher",
+    "cortex.tempotron",
+    "cortex.paradigm_b_matcher",
+    "cortex.paradigm_b_engine",
+    "cortex.gesture_recognition",
+    "cortex.language_brain",
+    "cortex.nl_interface",
+    "cortex.brain_reasoning",
+    "cortex.spiking_lm_serve",
+    "cortex.vsa_reasoning",
+    "cortex.prefrontal_executive",
+    "cortex.live_brain",
+    "cortex.interaction_learning",
+    "cortex.recognizer_bank",
+    "cortex.sensory_encoder_bank",
+    "cortex.neuron_zoo",
+    "cortex.access_consciousness",
+    "cortex.integration_measure",
+    "cortex.self_model",
+    "cortex.reasoning_curriculum",
+    "cortex.spiking_recurrent_cell",
+    "cortex.autapse_neuron",
+    "cortex.metacognitive_monitor",
+    "cortex.wholistic_loop",
+    "cortex.autotelic_goals",
+    "cortex.quality_diversity",
+    "cortex.self_improvement_suite",
+    "cortex.theory_of_mind",
+    "cortex.agency_monitor",
+    "cortex.affect_core",
+    "cortex.crossmodal_binder",  # W6: categorical emotion + 2nd-order ToM; cross-modal super-additive binding
+    "cortex.executive_control",  # W8: ACC conflict + EVC + tree/sequence planning
+    "cortex.time_cells",
+    "cortex.task_set",
+    "cortex.generative_self_model",  # C1: spiking clock / task-set-shift / learned generative self-model
+    "cortex.recursive_tom",
+    "cortex.counterfactual_sim",  # C1 batch-2: N-agent recursive ToM / counterfactual do()-operator
+    "cortex.learned_attention",  # C1 batch-3: learned spiking reticular attention gate
+    "cortex.learned_evc",  # C1 batch-4: learned expected-value-of-control (dopamine-gated cost/value)
+    "cortex.second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
+    "cortex.heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
+    "cortex.percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
     # hippocampus — memory formation, spatial coding, replay
-    "hippocampus.hippocampus", "hippocampus.grid_cells", "hippocampus.htm_sequence_memory", "hippocampus.frequency_memory",
-    "hippocampus.experience_replay", "hippocampus.sleep_replay", "hippocampus.ring_attractor", "hippocampus.growing_learner",
-    "hippocampus.legendre_memory", "hippocampus.function_preserving_growth", "hippocampus.sleep_consolidation",
-    "hippocampus.affective_memory", "hippocampus.contrastive_episode_analysis", "hippocampus.allocentric_map",
-    "hippocampus.grid_place_map",   # W6: live grid + place cells binding a percept to an allocentric location
-    "hippocampus.episodic_recall",   # W8: reconstructive pattern-completion autobiographical recall
-    "hippocampus.spiking_grid_can",   # C1: continuous-attractor SPIKING grid network (bump path integration)
-    "hippocampus.episode_consolidation",   # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
-    "hippocampus.lake_consolidation",   # sleep-time PRUNE of the symbolic durable lake (cap re-derivable bulk, keep learned) -> live + bounded
-    "hippocampus.head_direction",   # C2 r2: spiking HD ring + goal-vector cells (heading, bearing, distance)
+    "hippocampus.hippocampus",
+    "hippocampus.grid_cells",
+    "hippocampus.htm_sequence_memory",
+    "hippocampus.frequency_memory",
+    "hippocampus.experience_replay",
+    "hippocampus.sleep_replay",
+    "hippocampus.ring_attractor",
+    "hippocampus.growing_learner",
+    "hippocampus.legendre_memory",
+    "hippocampus.function_preserving_growth",
+    "hippocampus.sleep_consolidation",
+    "hippocampus.affective_memory",
+    "hippocampus.contrastive_episode_analysis",
+    "hippocampus.allocentric_map",
+    "hippocampus.grid_place_map",  # W6: live grid + place cells binding a percept to an allocentric location
+    "hippocampus.episodic_recall",  # W8: reconstructive pattern-completion autobiographical recall
+    "hippocampus.spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
+    "hippocampus.episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
+    "hippocampus.lake_consolidation",  # sleep-time PRUNE of the symbolic durable lake (cap re-derivable bulk, keep learned) -> live + bounded
+    "hippocampus.head_direction",  # C2 r2: spiking HD ring + goal-vector cells (heading, bearing, distance)
     # basal ganglia — action selection, reward-modulated learning, decision, Go/NoGo gating
-    "basal_ganglia.evidence_accumulation", "basal_ganglia.r_stdp", "basal_ganglia.valence_stdp",
-    "basal_ganglia.action_gating", "basal_ganglia.latent_q", "basal_ganglia.mlp_q",
+    "basal_ganglia.evidence_accumulation",
+    "basal_ganglia.r_stdp",
+    "basal_ganglia.valence_stdp",
+    "basal_ganglia.action_gating",
+    "basal_ganglia.latent_q",
+    "basal_ganglia.mlp_q",
     # amygdala — aversive/threat learning (CS-US fear conditioning)
-    "amygdala.fear_conditioning", "amygdala.affective_appraisal",   # C1: learned multi-dim affective appraisal (three-factor)
+    "amygdala.fear_conditioning",
+    "amygdala.affective_appraisal",  # C1: learned multi-dim affective appraisal (three-factor)
     # cerebellum — motor coordination, timing, forward/inverse models, oscillators
-    "cerebellum.forward_model", "cerebellum.kalman_filter", "cerebellum.spiking_pid", "cerebellum.kuramoto_sync",
-    "cerebellum.synfire_chain", "cerebellum.wavefront_planner", "cerebellum.jepa_world_model",
-    "cerebellum.hjepa_serve", "cerebellum.spiking_jepa", "cerebellum.gain_adaptation",
+    "cerebellum.forward_model",
+    "cerebellum.kalman_filter",
+    "cerebellum.spiking_pid",
+    "cerebellum.kuramoto_sync",
+    "cerebellum.synfire_chain",
+    "cerebellum.wavefront_planner",
+    "cerebellum.jepa_world_model",
+    "cerebellum.hjepa_serve",
+    "cerebellum.spiking_jepa",
+    "cerebellum.gain_adaptation",
     # brainstem + spinal cord — reflexes, actuation, sensorimotor loops, motor pattern generation
     # (the safety envelope lives here)
-    "brainstem.reflex", "brainstem.serial_arm", "brainstem.arm_sim", "brainstem.arm_config", "brainstem.interpreter",
-    "brainstem.live_arm", "brainstem.arm_bridge", "brainstem.closed_loop", "brainstem.autonomous_loop",
-    "brainstem.signal_loop", "brainstem.cpg_oscillator",
+    "brainstem.reflex",
+    "brainstem.serial_arm",
+    "brainstem.arm_sim",
+    "brainstem.arm_config",
+    "brainstem.interpreter",
+    "brainstem.live_arm",
+    "brainstem.arm_bridge",
+    "brainstem.closed_loop",
+    "brainstem.autonomous_loop",
+    "brainstem.signal_loop",
+    "brainstem.cpg_oscillator",
     # thalamus — the relay + global-broadcast hub (GWT) + reticular attentional gate
-    "thalamus.global_workspace", "thalamus.reticular_gate", "thalamus.reentrant_workspace",  # W8: de-saturated competitive ignition + re-entry
-    "thalamus.connectome_router",   # C1 batch-3: live signed/delayed spike propagation over the connectome graph
+    "thalamus.global_workspace",
+    "thalamus.reticular_gate",
+    "thalamus.reentrant_workspace",  # W8: de-saturated competitive ignition + re-entry
+    "thalamus.connectome_router",  # C1 batch-3: live signed/delayed spike propagation over the connectome graph
     # hypothalamus — homeostatic timing (the SCN circadian clock)
-    "hypothalamus.circadian_clock", "hypothalamus.set_points", "hypothalamus.homeostatic_drives",  # W8: drives as percepts
+    "hypothalamus.circadian_clock",
+    "hypothalamus.set_points",
+    "hypothalamus.homeostatic_drives",  # W8: drives as percepts
     # midbrain — dopamine source nuclei (VTA/SNc RPE) + superior-colliculus orienting + deep gaze layers
-    "midbrain.dopamine_nuclei", "midbrain.superior_colliculus", "midbrain.sc_deep_layers",
+    "midbrain.dopamine_nuclei",
+    "midbrain.superior_colliculus",
+    "midbrain.sc_deep_layers",
     "midbrain.multisensory_integration",
     # pons — cortico-ponto-cerebellar relay + the ascending reticular activating system (ARAS)
-    "pons.pontine_relay", "pons.reticular_formation",
+    "pons.pontine_relay",
+    "pons.reticular_formation",
     # medulla — the autonomic vital nuclei (respiratory / cardiac CPG) + interoceptive arousal
-    "medulla.vital_nuclei", "medulla.interoceptive_arousal",
+    "medulla.vital_nuclei",
+    "medulla.interoceptive_arousal",
     # epithalamus — the lateral habenula (anti-reward / negative RPE)
     "epithalamus.habenula",
     # olfactory — bulb decorrelation + piriform association
-    "olfactory.olfactory_bulb", "olfactory.piriform_cortex",
+    "olfactory.olfactory_bulb",
+    "olfactory.piriform_cortex",
     # claustrum — cortical synchrony / salience hub
     "claustrum.claustrum",
     # neuromodulation — diffuse chemical modulators + glia (LC noradrenaline, raphe serotonin)
-    "neuromodulation.acetylcholine", "neuromodulation.astrocyte_modulation", "neuromodulation.cortisol",
-    "neuromodulation.locus_coeruleus", "neuromodulation.raphe_serotonin", "neuromodulation.intrinsic_motivation",
-    "neuromodulation.curriculum", "neuromodulation.spiking_curiosity", "neuromodulation.generalizing_novelty",
-    "neuromodulation.drive_reduction", "neuromodulation.naca", "neuromodulation.empowerment", "neuromodulation.developmental_envelope",
-    "neuromodulation.affect_integrator",   # C1 batch-2: spiking neuromod fusion -> coupled affect + self-organized emotions
+    "neuromodulation.acetylcholine",
+    "neuromodulation.astrocyte_modulation",
+    "neuromodulation.cortisol",
+    "neuromodulation.locus_coeruleus",
+    "neuromodulation.raphe_serotonin",
+    "neuromodulation.intrinsic_motivation",
+    "neuromodulation.curriculum",
+    "neuromodulation.spiking_curiosity",
+    "neuromodulation.generalizing_novelty",
+    "neuromodulation.drive_reduction",
+    "neuromodulation.naca",
+    "neuromodulation.empowerment",
+    "neuromodulation.developmental_envelope",
+    "neuromodulation.affect_integrator",  # C1 batch-2: spiking neuromod fusion -> coupled affect + self-organized emotions
     # plasticity — Hebbian/STDP, homeostatic, developmental learning rules
-    "plasticity.bcm_plasticity", "plasticity.homeostatic_scaling", "plasticity.inhibitory_stdp", "plasticity.intrinsic_plasticity",
-    "plasticity.short_term_plasticity", "plasticity.developmental_pruning", "plasticity.competitive_learning",
-    "plasticity.lifelong_consolidation", "plasticity.criticality_regulator", "plasticity.feedback_alignment", "plasticity.meta_plasticity",
-    "plasticity.benna_fusi", "plasticity.homeostatic_plasticity_stack", "plasticity.plasticity_rule_stack",
+    "plasticity.bcm_plasticity",
+    "plasticity.homeostatic_scaling",
+    "plasticity.inhibitory_stdp",
+    "plasticity.intrinsic_plasticity",
+    "plasticity.short_term_plasticity",
+    "plasticity.developmental_pruning",
+    "plasticity.competitive_learning",
+    "plasticity.lifelong_consolidation",
+    "plasticity.criticality_regulator",
+    "plasticity.feedback_alignment",
+    "plasticity.meta_plasticity",
+    "plasticity.benna_fusi",
+    "plasticity.homeostatic_plasticity_stack",
+    "plasticity.plasticity_rule_stack",
     # substrate — the spiking data-lake, telemetry, and infra (not a brain region)
-    "substrate._mathutils", "substrate.spike_stream_sketch", "substrate.spike_cardinality", "substrate.reservoir_sampling", "substrate.lake_memory", "substrate.stream_sketch_panel",
-    "substrate.sliding_window_count", "substrate.frequency_moment", "substrate.streaming_quantile", "substrate.minhash",
-    "substrate.morris_counter", "substrate.entropy_coder", "substrate.proximity_index", "substrate.energy",
-    "substrate.data_quality", "substrate.drift_monitor", "substrate.spike_telemetry_hub", "substrate.streaming_hub",
-    "substrate.neuro_chip", "substrate.neuro_chip_stream", "substrate.nir_export", "substrate.sensor_csv_ingest",
-    "substrate.esp32_encoder_path", "substrate.make_sensor_dataset", "substrate.sensor_demo", "substrate.demo",
-    "substrate.control_panel", "substrate.brain_bundle", "substrate.reaction_diffusion_compute",
-    "substrate.web_ingest", "substrate.lake_working_memory", "substrate.chat_memory", "substrate.signal_calibrator", "substrate.live_brain_tab", "substrate.home",
-    "substrate.binlog", "substrate.growable", "substrate.coordinated_growth",
-    "substrate.region_coherence",   # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
-    "substrate.basic_components",   # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
-    "substrate.similarity_sized_growth",   # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
+    "substrate._mathutils",
+    "substrate.spike_stream_sketch",
+    "substrate.spike_cardinality",
+    "substrate.reservoir_sampling",
+    "substrate.lake_memory",
+    "substrate.stream_sketch_panel",
+    "substrate.sliding_window_count",
+    "substrate.frequency_moment",
+    "substrate.streaming_quantile",
+    "substrate.minhash",
+    "substrate.morris_counter",
+    "substrate.entropy_coder",
+    "substrate.proximity_index",
+    "substrate.energy",
+    "substrate.data_quality",
+    "substrate.drift_monitor",
+    "substrate.spike_telemetry_hub",
+    "substrate.streaming_hub",
+    "substrate.neuro_chip",
+    "substrate.neuro_chip_stream",
+    "substrate.nir_export",
+    "substrate.sensor_csv_ingest",
+    "substrate.esp32_encoder_path",
+    "substrate.make_sensor_dataset",
+    "substrate.sensor_demo",
+    "substrate.demo",
+    "substrate.control_panel",
+    "substrate.brain_bundle",
+    "substrate.reaction_diffusion_compute",
+    "substrate.web_ingest",
+    "substrate.lake_working_memory",
+    "substrate.chat_memory",
+    "substrate.signal_calibrator",
+    "substrate.live_brain_tab",
+    "substrate.home",
+    "substrate.binlog",
+    "substrate.growable",
+    "substrate.coordinated_growth",
+    "substrate.region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
+    "substrate.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
+    "substrate.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
+    "substrate.similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
 ]
 # RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [
-    "reasoning.spiking_storage_prototype", "reasoning.test_prototype", "reasoning.hopfield_baseline",
-    "reasoning.dense_associative_memory", "reasoning.sparse_distributed_memory", "reasoning.fly_hash",
+    "reasoning.spiking_storage_prototype",
+    "reasoning.test_prototype",
+    "reasoning.hopfield_baseline",
+    "reasoning.dense_associative_memory",
+    "reasoning.sparse_distributed_memory",
+    "reasoning.fly_hash",
     "reasoning.spiking_som",
     "reasoning.snn_moe_classifier",
-    "reasoning.temporal_coding_storage", "reasoning.spike_compression",
-    "reasoning.event_quadtree_compression", "reasoning.index_compression", "reasoning.spike_bloom",
+    "reasoning.temporal_coding_storage",
+    "reasoning.spike_compression",
+    "reasoning.event_quadtree_compression",
+    "reasoning.index_compression",
+    "reasoning.spike_bloom",
     "reasoning.spiking_ssm",
     "reasoning.spike_kg",
-    "reasoning.resonator_network", "reasoning.mcr_hdc", "reasoning.bayesian_snn", "reasoning.nmnist_ingest",
-    "reasoning.srm_neuron", "reasoning.nef_compute", "reasoning.nef_integrator", "reasoning.stats_bounds",
+    "reasoning.resonator_network",
+    "reasoning.mcr_hdc",
+    "reasoning.bayesian_snn",
+    "reasoning.nmnist_ingest",
+    "reasoning.srm_neuron",
+    "reasoning.nef_compute",
+    "reasoning.nef_integrator",
+    "reasoning.stats_bounds",
     "reasoning.loop_latency",
-    "reasoning.delay_learning", "reasoning.eprop",
-    "reasoning.polychronization", "reasoning.sn_p_system", "reasoning.oja_pca", "reasoning.resonate_and_fire",
-    "reasoning.free_energy_control", "reasoning.pc_active_inference", "reasoning.dishbrain_learning", "reasoning.adex_neuron", "reasoning.triplet_stdp",
-    "reasoning.cellular_neural_network", "reasoning.random_boolean_network", "reasoning.neural_heterogeneity",
-    "reasoning.burst_multiplexing", "reasoning.stdp_wta_bayes", "reasoning.sorn",
-    "reasoning.resume_learning", "reasoning.weight_perturbation",
+    "reasoning.delay_learning",
+    "reasoning.eprop",
+    "reasoning.polychronization",
+    "reasoning.sn_p_system",
+    "reasoning.oja_pca",
+    "reasoning.resonate_and_fire",
+    "reasoning.free_energy_control",
+    "reasoning.pc_active_inference",
+    "reasoning.dishbrain_learning",
+    "reasoning.adex_neuron",
+    "reasoning.triplet_stdp",
+    "reasoning.cellular_neural_network",
+    "reasoning.random_boolean_network",
+    "reasoning.neural_heterogeneity",
+    "reasoning.burst_multiplexing",
+    "reasoning.stdp_wta_bayes",
+    "reasoning.sorn",
+    "reasoning.resume_learning",
+    "reasoning.weight_perturbation",
     "reasoning.make_results_plot",
     # durable never-forget chat: contradiction reasoning, Hebbian skill wiring, autonomous scholarly
     # enrichment, and the lake-backed chat (all self-checks are deterministic + OFFLINE).
-    "reasoning.lake_reason", "reasoning.autonomous_enrich", "reasoning.spike_chat_lake",
-    "reasoning.train_of_thought", "reasoning.concept_reflection", "reasoning.open_world_loop",
+    "reasoning.lake_reason",
+    "reasoning.autonomous_enrich",
+    "reasoning.spike_chat_lake",
+    "reasoning.train_of_thought",
+    "reasoning.concept_reflection",
+    "reasoning.open_world_loop",
     "reasoning.open_meta_loop",
     "reasoning.model_builder",
     # the 5 Gf inducers COMBINED (not merged) into one file: reasoning.gf
@@ -155,30 +322,34 @@ RESEARCH = [
     # (reasoning.arc_diagnostic is deliberately NOT here -- a ~27 s offline instrument, covered by
     # tests/test_arc_diagnostic.py; the smoke gate stays fast.)
     "reasoning.real_rpm_bench",
-    "reasoning.vsa_structure_mapping",   # C1 batch-4: Gentner relational structure-mapping analogy (VSA/resonator)
-    "reasoning.reasoning_cortex",   # MoE router: ~8 dead reasoning studies made live on the converse path
-    "reasoning.derivation",         # multi-hop transitive DEDUCTION (proof-carrying BFS over taught facts)
+    "reasoning.vsa_structure_mapping",  # C1 batch-4: Gentner relational structure-mapping analogy (VSA/resonator)
+    "reasoning.reasoning_cortex",  # MoE router: ~8 dead reasoning studies made live on the converse path
+    "reasoning.derivation",  # multi-hop transitive DEDUCTION (proof-carrying BFS over taught facts)
     "reasoning.reasoning_compose",  # MULTI-STEP composition over the MoE router (bounded expert grammar)
-    "reasoning.pc_abduction",       # ABDUCTION (min-free-energy cause selection) + Pearl 3-step counterfactual
-    "reasoning.rose_language",      # ROSE fluent-language pipeline: VSA constituency + grounded semantics + SLDA competence
-    "reasoning.rpm_solver",         # spiking NVSA Raven's-matrix solver: role-filler + example->rule induction (Gf)
-    "reasoning.raven_bench",        # honest RPM benchmark (synthetic tasks + failing random control)
-    "reasoning.vsa_synthesize",     # OUT-OF-GRAMMAR Gf: synthesizes novel rules as VSA spike-op programs (no fixed menu)
-    "reasoning.semantic_memory",    # W6: VSA meaning-based recall (paraphrase-invariant, beyond the lexical crc32 gate)
-    "reasoning.pragmatics",         # W8: speech-act recognition + Gricean implicature + indirect-request detection
-    "reasoning.brain_native_selfbuild", # OPEN-ENDED brain-native self-build: three-factor-learned de-hardcode proposer (retired the numeric tuner)
-    "reasoning.impact_analysis",    # pre-mutation blast radius (harness LSP principle, native ast + graphify) -> self-build prefers surgical changes
-    "reasoning.ar_spiking_lm_serve", # forward-only Spiking-RWKV serve: order-sensitive logprob (the BLiMP lever)
-    "reasoning.eprop_lm_serve",     # BRAIN-NATIVE e-prop recurrent-spiking LM serve: order-sensitive logprob (no backprop)
-    "reasoning.eprop_lm_alif_serve", # deep-ALIF e-prop LM serve: adaptive-threshold long-range, order-sensitive logprob
-    "reasoning.self_improve", "reasoning.godel_machine", "reasoning.self_mod_harness", "reasoning.self_build_loop", "reasoning.content_signature",
+    "reasoning.pc_abduction",  # ABDUCTION (min-free-energy cause selection) + Pearl 3-step counterfactual
+    "reasoning.rose_language",  # ROSE fluent-language pipeline: VSA constituency + grounded semantics + SLDA competence
+    "reasoning.rpm_solver",  # spiking NVSA Raven's-matrix solver: role-filler + example->rule induction (Gf)
+    "reasoning.raven_bench",  # honest RPM benchmark (synthetic tasks + failing random control)
+    "reasoning.vsa_synthesize",  # OUT-OF-GRAMMAR Gf: synthesizes novel rules as VSA spike-op programs (no fixed menu)
+    "reasoning.semantic_memory",  # W6: VSA meaning-based recall (paraphrase-invariant, beyond the lexical crc32 gate)
+    "reasoning.pragmatics",  # W8: speech-act recognition + Gricean implicature + indirect-request detection
+    "reasoning.brain_native_selfbuild",  # OPEN-ENDED brain-native self-build: three-factor-learned de-hardcode proposer (retired the numeric tuner)
+    "reasoning.impact_analysis",  # pre-mutation blast radius (harness LSP principle, native ast + graphify) -> self-build prefers surgical changes
+    "reasoning.ar_spiking_lm_serve",  # forward-only Spiking-RWKV serve: order-sensitive logprob (the BLiMP lever)
+    "reasoning.eprop_lm_serve",  # BRAIN-NATIVE e-prop recurrent-spiking LM serve: order-sensitive logprob (no backprop)
+    "reasoning.eprop_lm_alif_serve",  # deep-ALIF e-prop LM serve: adaptive-threshold long-range, order-sensitive logprob
+    "reasoning.self_improve",
+    "reasoning.godel_machine",
+    "reasoning.self_mod_harness",
+    "reasoning.self_build_loop",
+    "reasoning.content_signature",
     # the two OUTSIDE yardsticks the depth ceilings are measured against. Both SKIP-with-notice when
     # their dataset is not downloaded, so the zero-dep CI matrix stays green either way.
-    "reasoning.arc_bench",          # ARC-AGI: exact-match pass@2 over 800 tasks; controls must score ~0
-    "reasoning.blimp_bench",        # BLiMP: 67 paradigms x 1000 minimal pairs; chance 50%, human 88.6%
-    "reasoning.arc_solver",         # test-time program synthesis over 2-D grids (object DSL + iterative deepening)
-    "reasoning.arc_scene",          # Gf Phase-2 perceptual VOCABULARY: extensible attribute/relation registry (palette/morph/topo/shape-eq/align) over components() -- measurement only, feeds the Phase-3 mint
-    "reasoning.arc_mint",           # Gf Phase-3 MINT: hypothesize out-of-closure primitives from arc_scene + memorization-resistant functional induction (LOO-validated); held-out metric
+    "reasoning.arc_bench",  # ARC-AGI: exact-match pass@2 over 800 tasks; controls must score ~0
+    "reasoning.blimp_bench",  # BLiMP: 67 paradigms x 1000 minimal pairs; chance 50%, human 88.6%
+    "reasoning.arc_solver",  # test-time program synthesis over 2-D grids (object DSL + iterative deepening)
+    "reasoning.arc_scene",  # Gf Phase-2 perceptual VOCABULARY: extensible attribute/relation registry (palette/morph/topo/shape-eq/align) over components() -- measurement only, feeds the Phase-3 mint
+    "reasoning.arc_mint",  # Gf Phase-3 MINT: hypothesize out-of-closure primitives from arc_scene + memorization-resistant functional induction (LOO-validated); held-out metric
 ]
 # TORCH/NUMPY-GATED CORE -- modules that import a heavy numeric dep (torch or numpy); run ONLY where
 # it is importable and SKIPPED-with-notice otherwise, so the pure-stdlib CI matrix + the in-process
@@ -189,8 +360,14 @@ RESEARCH = [
 # torch (Brain degrades to its deterministic narrator + no growth). SpikeGPT was SCRAPPED (v3.77): no
 # imported language model; conversation is the narrator + the brain-native cortex.language_acquisition
 # (numpy predictive-coding + local plasticity, gated here so it never pollutes the pure in-process test).
-TORCH_GATED = ["hippocampus.ng_snn", "cortex.brain", "cortex.neurogenesis_engine", "cortex.language_acquisition",
-               "reasoning.nightly_skills", "reasoning.schema_induction"]
+TORCH_GATED = [
+    "hippocampus.ng_snn",
+    "cortex.brain",
+    "cortex.neurogenesis_engine",
+    "cortex.language_acquisition",
+    "reasoning.nightly_skills",
+    "reasoning.schema_induction",
+]
 # NENGO-GATED -- the Nengo bridge (substrate.nengo_bridge) exposes the NEF/LIF/spiking substrate to
 # Nengo (sim + NengoLoihi deploy target); it imports `nengo` (optional). Run only where nengo is
 # importable, SKIPPED-with-notice otherwise (its own __main__ also self-SKIPs). Zero-dep core unaffected.
@@ -204,6 +381,7 @@ def _torch_ok():
         return False
     try:
         import torch  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -212,6 +390,7 @@ def _torch_ok():
 def _nengo_ok():
     try:
         import nengo  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -231,7 +410,7 @@ def run_all():
             print(f"SKIP  {m}  (nengo not importable -- zero-dep matrix stays green)")
     failed = []
     for m in MODULES:
-        cmd = [sys.executable, "-m", f"snn_data_lake.{m}"]                 # every module runs as a package module
+        cmd = [sys.executable, "-m", f"snn_data_lake.{m}"]  # every module runs as a package module
         r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", env=_ENV)
         ok = r.returncode == 0
         print(f"{'PASS' if ok else 'FAIL'}  {m}")
