@@ -4,7 +4,7 @@ laminar_local_readout -- a NO-BACKPROP drop-in replacement for LaminarReadout.
 LaminarReadout (brain_adapters/laminar_readout.py) is a torch nn.Module trained by Adam via a
 reverse-mode gradient tape through the L4 -> L2/3 -> L5 -> L6 laminar motif. This module ports
 the SAME four-role architecture but every layer learns LOCALLY -- the exact mechanism measured
-as variant B' (the winner) in reasoning/laminar_column.py's LaminarLocalReadout, here re-exposed
+as the winning variant B' of a four-way local-learning-readout study, here re-exposed
 behind LaminarReadout's public interface (n_hidden / train_step / predict / grow) so it is a
 true drop-in. Pure numpy. NO torch dependency, NO gradient tape, NO Adam, NO reverse-mode
 differentiation call:
@@ -27,7 +27,7 @@ pass -- the self-check verifies it by confirming loss decreases and weights move
 
 Refs: Lillicrap, Cownden, Tweed & Akerman, "Random synaptic feedback weights support error
 backpropagation for deep learning", Nat. Commun. 7 (2016) (feedback alignment). The mechanism
-this ports: reasoning/laminar_column.py, class LaminarLocalReadout (variant B').
+this ports: the variant-B' LaminarLocalReadout (L4 -> L2/3 -> L5 -> L6, local learning only).
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.reasoning.brain_adapters.laminar_local_readout
 """
@@ -49,7 +49,7 @@ class LaminarLocalReadout:
     train_step(X, y, lr, steps) -> loss, predict(X) -> logits, grow(k, freeze_old) -> n_hidden)
     but every parameter update is LOCAL: L2/3 by feedback alignment through a fixed random
     matrix B, L5 by a local delta rule, L6 is a fixed random top-down gain. See module
-    docstring for the full mechanism and the reasoning/laminar_column.py source it ports."""
+    docstring for the full mechanism (the variant-B' L4 -> L2/3 -> L5 -> L6 local-learning readout)."""
 
     def __init__(self, in_dim, n_classes=10, n4=96, n23=64, seed=0, use_l6=True):
         self.in_dim = int(in_dim)
@@ -225,10 +225,8 @@ def _load_nmnist_split(seed=7, test_frac=0.2):
 
 
 def _make_blob_dataset(seed=7, dim=12, k=6, n_train=35, n_test=15, n_sub=2, sep=3.0, noise=1.0):
-    """The SAME deterministic K-blob task as reasoning/laminar_column.py's make_dataset:
-    K classes in R^D, each class = union of n_sub Gaussian sub-blobs at random centers -> NOT
-    linearly separable. Balanced. Replicated here (not imported) to keep this file self-
-    contained and torch-free (laminar_column.py pulls in the spiking microcircuit)."""
+    """A deterministic K-blob task: K classes in R^D, each class = union of n_sub Gaussian sub-blobs
+    at random centers -> NOT linearly separable. Balanced. Self-contained and torch-free."""
     rng = np.random.default_rng(seed)
     centers = rng.normal(0.0, sep, size=(k, n_sub, dim))
     xtr, ytr, xte, yte = [], [], [], []
