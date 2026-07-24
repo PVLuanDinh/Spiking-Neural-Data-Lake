@@ -716,7 +716,12 @@ class Brain:
         self._attn_focus = None
         self._connectome_reverb = 0.0
         self._region_coherence_val = 0.0
+        self._synfire = (
+            None  # feedforward synfire chain -> the all-or-none SYNCHRONY-BINDING gate on ignition
+        )
+        self._bound = False  # True this tick when a coherence volley SURVIVED the synfire chain (reliable binding)
         try:
+            from snn_data_lake.cerebellum.synfire_chain import SynfireChain
             from snn_data_lake.cortex.learned_attention import LearnedAttention
             from snn_data_lake.substrate.region_coherence import RegionCoherence
             from snn_data_lake.thalamus.connectome_router import ConnectomeRouter
@@ -724,6 +729,7 @@ class Brain:
             self._learned_attn = LearnedAttention(dim=64, n_bands=4, seed=self._seed)
             self._connectome_router = ConnectomeRouter(seed=self._seed)
             self._region_coherence = RegionCoherence(seed=self._seed)
+            self._synfire = SynfireChain(seed=self._seed)
         except Exception:
             self._learned_attn = self._connectome_router = self._region_coherence = None
 
@@ -1898,13 +1904,26 @@ class Brain:
                 }
                 cr = self._region_coherence.update(rasters)
                 self._region_coherence_val = round(float(cr.get("coherence", 0.0)), 3)
+                # SYNFIRE BINDING GATE: turn the continuous coherence into an ALL-OR-NONE binding event.
+                # A synchronous volley (a0 = coherence * width; jitter sigma0 = window * (1 - coherence)) is
+                # propagated through the feedforward synfire chain; it SURVIVES only when synchrony crosses
+                # the chain's reliability threshold (~coherence 0.55). Binding is thus a THRESHOLD phenomenon,
+                # not a continuous nudge: only RELIABLE cross-region synchrony eases ignition -- incoherent
+                # noise no longer lowers the rheobase. Non-additive (it GATES the existing coherence bias) and
+                # free of any magic constant (a0/sigma0 come from the synfire's OWN width/window).
+                self._bound = False
+                if self._synfire is not None:
+                    a0 = self._region_coherence_val * self._synfire.width
+                    sigma0 = self._synfire.window * (1.0 - self._region_coherence_val)
+                    self._bound = bool(self._synfire.survives(a0, sigma0))
                 if (
                     self._reentrant is not None
-                ):  # higher cross-region coherence -> lower rheobase -> easier ignition
-                    thr = float(
-                        self._region_coherence.ignition_bias(
-                            self._reentrant.base_ignition_threshold
-                        )
+                ):  # RELIABLE binding (a survived volley) -> lower rheobase -> easier ignition
+                    base = self._reentrant.base_ignition_threshold
+                    thr = (
+                        float(self._region_coherence.ignition_bias(base))
+                        if self._bound
+                        else float(base)
                     )
                     self._reentrant.ignition_threshold = thr
                     self._reentrant._v_th = thr / self._reentrant._LEAK
@@ -2508,6 +2527,7 @@ class Brain:
             "attention_focus": self._attn_focus,  # C1 b3: LEARNED attention winner band + strength over the real percept
             "connectome_reverberation": self._connectome_reverb,  # C1 b3: loop-closure -- a signed connectome loop reverberating over region pools
             "region_coherence": self._region_coherence_val,  # C1 b3: cross-region Kuramoto coherence (biases workspace ignition)
+            "synfire_bound": self._bound,  # all-or-none synfire binding event this tick (gates the coherence->ignition bias)
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
             "evc_value": self._evc_value,  # C1 b4: LEARNED value-of-control
             "episode_retained": self._episode_retained,  # C1 b4: durable-episode recall fraction (systems consolidation, no forgetting)
