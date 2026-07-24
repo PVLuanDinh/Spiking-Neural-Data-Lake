@@ -536,6 +536,12 @@ class AutonomousArm:
             1.0 if stn > 1e-6 else 0.0
         )  # did the brake engage this tick (credited next)
         res = self.bg.select(drive, da, stn=stn)
+        # BG DECISION MARGIN (read-only, no actuation change): runner-up minus winner GPi disinhibition =
+        # how DECISIVELY the gate committed (large = a clean winner; small = a conflicted, near-tie decision).
+        # The BG gate computes the full gpi vector but the live path consumed only the winner; expose the
+        # margin so the metacognitive monitor can read it (a low-margin action is a LESS reliable decision).
+        _g = sorted(res.get("gpi") or [])
+        self._decision_margin = (_g[1] - _g[0]) if len(_g) >= 2 else 1.0
         return SAFE_ACTION if res["winner"] is None else ACTIONS[res["winner"]]
 
     def greedy(self, unit):

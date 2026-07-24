@@ -208,6 +208,9 @@ class Brain:
         self._metacog = MetacognitiveMonitor(base=0.4, seed=self._seed)
         self._metacog_rel = 0.0  # fused spike-count reliability
         self._metacog_hold = False  # low reliability -> abstain/hedge
+        self._margin_base = (
+            None  # running EMA of the BG decision margin -> baseline-relative decision confidence
+        )
         self._metacog_explore = False  # explore vs exploit
         # SECOND-ORDER access metacognition: a spiking monitor of whether content actually reached
         # global availability, distinct from the first-order reliability above. It reads the
@@ -1757,12 +1760,23 @@ class Brain:
                 float(getattr(self, "_pc_surprise_ema", 0.0)),
             )
             pc_dev = min(1.0, max(0.0, raw - ema) / (ema + 1e-6)) if ema > 0.0 else 0.0
+            # BG DECISION MARGIN -> reliability: a conflicted (below-baseline-margin) action selection is a
+            # LESS reliable decision, so it DISCOUNTS the fused confidence -> lower reliability -> more likely
+            # to HOLD/abstain. The margin (runner-up minus winner GPi disinhibition) was computed by the BG
+            # gate but dropped; consume it here. Baseline-relative (running EMA of the margin -> no magic
+            # constant): decision_conf = min(1, margin / margin_baseline), so only a below-average margin cuts
+            # confidence and a decisive one stays neutral.
+            dm = float(getattr(self.brain.arm, "_decision_margin", 1.0) or 0.0)
+            self._margin_base = (
+                dm if self._margin_base is None else 0.98 * self._margin_base + 0.02 * dm
+            )
+            decision_conf = min(1.0, dm / self._margin_base) if self._margin_base > 1e-9 else 1.0
             self._metacog.update(
-                confidence=st["confidence"],
+                confidence=st["confidence"] * decision_conf,
                 surprise=float(st["surprise"][0]),
                 learning_progress=float(st["learning_progress"][0]),
                 novelty=min(1.0, float(st["surprise"][0]) + 0.3 * pc_dev),
-            )  # perceptual surprise SPIKE raises uncertainty
+            )  # perceptual surprise SPIKE raises uncertainty; a conflicted BG decision lowers confidence
             self._metacog_rel = round(self._metacog.reliability(), 4)
             self._metacog_hold = bool(self._metacog.hold())
             self._metacog_explore = bool(self._metacog.explore())
