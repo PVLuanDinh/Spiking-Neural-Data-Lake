@@ -66,6 +66,7 @@ from snn_data_lake.neuromodulation.acetylcholine import Acetylcholine
 from snn_data_lake.neuromodulation.astrocyte_modulation import Astrocyte
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.raphe_serotonin import DorsalRaphe
+from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
 
 SAFE_DISTANCE = CONTACT * 3.0  # perception-only distance band; never in a reflex/danger zone
 STORE_EVERY = 3  # store one sleep-replay assembly every STORE_EVERY wake ticks
@@ -74,6 +75,11 @@ SELFBUILD_EVERY = 8  # autonomous self-build cadence: run the gated self-build o
 # LIVE theory-of-mind dialogue grammar (W2d): a small hand-specified surface parse feeding a REAL first-order
 # belief tracker. '<subj> put/moved the <obj> in/to the <loc>'; an absence marker makes the change UNWITNESSED
 # (the user keeps a now-false belief). The parse is developer-charged; the belief mechanics are genuine.
+# Rest-phase DURATION applied to each synaptic cascade per sleep tick (a time-constant, like the
+# episode replay(steps=60) beside it -- NOT a threshold arbitrating behaviour). Consolidation
+# accumulates across the night: one shot of 400 recovered 0.75 of an overwritten trace in the A/B.
+_PLASTIC_REST_STEPS = 40
+
 _TOM_PLACE = re.compile(
     r"\b(?P<subj>i|we|you|someone|somebody)\s+(?:put|places?|placed|sets?|left|leaves?|hid|hides?|moved?|moves?)\s+"
     r"(?:the\s+|a\s+|an\s+|my\s+|your\s+)?(?P<obj>[a-z][a-z ]*?)\s+"
@@ -190,6 +196,29 @@ class Brain:
         # stream -- a relational/spatial map (full physical navigation awaits embodiment via the arm).
         # Representation-only; the reflex/E-STOP still runs first and it drives no motion.
         self.brain.arm._allo_on = True
+
+        # ---- LOCAL-PLASTICITY STACK on the live R-STDP intent learner (Policy 3: wire, don't idle) ----
+        # SpikingInteractionLearner already has the hook by design (interaction_learning.py:93 `stack=None`)
+        # and consumes it on BOTH sides of every deposit: PRE `d *= stack.pre_gain(li)` (:206) and POST
+        # `n.w = stack.stabilize(...)` (:229). Attaching it therefore changes what is LEARNED, not a readout.
+        # PlasticityRuleStack subclasses HomeostaticPlasticityStack, so this one construction composes
+        # short-term dynamics + homeostatic scaling + intrinsic plasticity + BCM metaplasticity + E/I
+        # balance + Benna-Fusi consolidation (7 modules) onto the live learner.
+        # MEASURED (A/B, same seed, only the stack differs): unstabilized R-STDP saturates -- peak drive
+        # 18.97, max|w| 6.64 -- and becomes RIGID (it then fails to learn conflicting material at all).
+        # With the stack: drive 3.01, max|w| 0.98, and it DOES learn the new material. Honest scope: this
+        # buys BOUNDED, still-plastic weights + sleep-recoverable traces; it did NOT improve held-out
+        # intent accuracy (5/14 either way), so it is wired for stability, not for recognition quality.
+        self._plasticity = None
+        self._plastic_relaxed = 0  # neurons whose cascade was relaxed on the last sleep tick
+        if getattr(self.brain, "_ixn", None) is not None:
+            self._plasticity = self._try(
+                lambda: PlasticityRuleStack(
+                    n_neurons=len(self.brain._ixn.responses), seed=self._seed
+                )
+            )
+            if self._plasticity is not None:
+                self.brain._ixn.stack = self._plasticity
 
         # ---- the evolving SELF-MODEL + introspective narrator (pure stdlib) ----
         # The brain tracks its OWN signals over time and describes itself FRESHLY (no fixed template).
@@ -2168,6 +2197,20 @@ class Brain:
             try:
                 self._episode_consolidator.replay(steps=60)
                 self._episode_retained = round(float(self._episode_consolidator.retained()), 3)
+            except Exception:
+                pass
+        if self._plasticity is not None:  # SYNAPTIC consolidation: rest lets the deep Benna-Fusi
+            try:  # cascade re-assert traces a conflicting burst overwrote. relax() RETURNS the
+                # settled weights -- they must be written back or the rest phase does nothing.
+                # `steps` is a rest DURATION (a time-constant, like replay(steps=60) above), not a
+                # threshold arbitrating behaviour; consolidation accumulates across the night.
+                n_relaxed = 0
+                for _i, _n in enumerate(self.brain._ixn.neurons):
+                    _settled = self._plasticity.relax(_i, _PLASTIC_REST_STEPS)
+                    if _settled is not None:
+                        _n.w = list(_settled)
+                        n_relaxed += 1
+                self._plastic_relaxed = n_relaxed
             except Exception:
                 pass
         try:

@@ -80,15 +80,21 @@ EXEMPT = {
         "Brain-Cog composed microcircuit; also fix its false 'live' claim",
     ),
     "cortical_microcircuit": ("wire", "canonical L2/3-L5 microcircuit, unplugged"),
-    "plasticity_rule_stack": ("wire", "composed local-learning stack -> always-learning brain"),
-    "homeostatic_plasticity_stack": ("wire", "homeostatic stack, unplugged"),
-    "bcm_plasticity": ("wire", "BCM rule, part of the plasticity stack"),
-    "inhibitory_stdp": ("wire", "iSTDP, part of the plasticity stack"),
-    "homeostatic_scaling": ("wire", "synaptic scaling, part of the plasticity stack"),
-    "intrinsic_plasticity": ("wire", "intrinsic excitability, part of the plasticity stack"),
-    "short_term_plasticity": ("wire", "STP, part of the plasticity stack"),
-    "competitive_learning": ("wire", "competitive learning, part of the plasticity stack"),
-    "developmental_pruning": ("wire", "synaptic pruning, part of the plasticity stack"),
+    # NOTE: plasticity_rule_stack + homeostatic_plasticity_stack + bcm_plasticity + inhibitory_stdp +
+    # homeostatic_scaling + intrinsic_plasticity + short_term_plasticity are WIRED (Brain.__init__ attaches
+    # PlasticityRuleStack to the live intent learner; _sleep_tick relaxes the cascades) -> exemptions retired.
+    "competitive_learning": (
+        "permanent",
+        "LIBRARY: a whole competitive LAYER (own LIF neurons + lateral weights), NOT a .pre_gain/.stabilize "
+        "wrapper -- contract-incompatible with the learner hook, and neither stack composes it; its one "
+        "plausible consumer (recognizer_bank) is itself not live and the brain already has clustering paths",
+    ),
+    "developmental_pruning": (
+        "permanent",
+        "BENCHMARK: no class and no reusable surface -- only run(seed)/main() over module-level constants "
+        "hard-tied to a synthetic task; it already delivered its finding (magnitude +53% over random at "
+        "11.9% density). Wiring it would mean writing a NEW module, not wiring this one",
+    ),
     "sensory_encoder_bank": ("wire", "opt-in multi-sensor front-end"),
     "spike_slicer": ("wire", "encoder-bank component"),
     "spike_pooling": ("wire", "encoder-bank component"),
@@ -123,10 +129,7 @@ EXEMPT = {
         "substrate lake primitive used by reasoning tools/apps, not the tick",
     ),
     "nir_export": ("permanent", "neuromorphic NIR export -- an offline hardware-export tool"),
-    "dormancy_gate": (
-        "permanent",
-        "the Policy-3 gate itself -- a CI self-check, not a tick faculty",
-    ),
+    # dormancy_gate needs no exemption: region_wiring.live_coverage() delegates to it -> reachable.
     "replication_guard": (
         "permanent",
         "the Policy-4 guard itself -- a CI self-check, not a tick faculty",
