@@ -802,6 +802,9 @@ class Brain:
         # ---- drivable-region ENSEMBLE: extra stateful regions NOT already inside LiveBrain ----
         self._ach = self._try(lambda: Acetylcholine())
         self._lc = self._try(lambda: LocusCoeruleus(seed=self._seed))
+        self._lc_base = (
+            None  # running EMA of LC level -> baseline-relative phasic AROUSAL for the AJC gain
+        )
         # DATA SELF-RECALIBRATION (live): record the salience drive fed to the LC (below, _w8_tick) as a
         # durable running quantile AND consume it LIVE -- _w8_tick sets self._lc.salience_th to this quantile
         # every tick, so the LC gate is baseline-relative instead of a frozen literal. Supersedes the nightly
@@ -927,7 +930,16 @@ class Brain:
                 pass
         if self._lc is not None:
             try:
-                self._lc.step(salience)  # LC/NA phasic gain on salient events
+                # LC PART 1 -- BROADEN THE DRIVE: LC fires on SALIENT events, but it was fed threat only,
+                # and threat ~ 0 in the idle loop, so its level sat at a dead tonic constant. Feed it the
+                # real salience signals already computed this tick -- threat OR novelty OR predictive
+                # surprise -- so the phasic burst actually fires when something novel/surprising happens.
+                lc_sal = max(
+                    salience,
+                    float(novelty or 0.0),
+                    min(1.0, float(getattr(self, "_pc_surprise_ema", 0.0) or 0.0)),
+                )
+                self._lc.step(lc_sal)  # LC/NA phasic gain on salient events
                 live.add("neuromod_locus_coeruleus")
             except Exception:
                 pass
@@ -1088,6 +1100,18 @@ class Brain:
                     )
                 self._percept_readout.observe(percept, label)  # online, local, no gradient
                 _pc, self._percept_conf = self._percept_readout.infer(percept)
+                # LC PART 2 (Aston-Jones-Cohen adaptive gain): phasic NE arousal on a salient event sharpens
+                # the percept's grip on action. Scale the cortical column's percept confidence by LC's AROUSAL
+                # relative to its own running baseline -- an aroused (phasic, above-baseline) LC lets a salient
+                # percept drive action more decisively; at tonic it stays neutral. Baseline-relative (a running
+                # EMA of the LC level -> no magic behaviour-arbitrating constant); bounded to [0, 1].
+                if self._lc is not None:
+                    lvl = float(self._lc.level)
+                    self._lc_base = (
+                        lvl if self._lc_base is None else 0.98 * self._lc_base + 0.02 * lvl
+                    )
+                    arousal = max(0.0, lvl - self._lc_base)
+                    self._percept_conf = min(1.0, self._percept_conf * (1.0 + arousal))
             except Exception:
                 pass
             # loop C2: online unsupervised SURPRISE over the percept latent -- an Oja-PCA (local
