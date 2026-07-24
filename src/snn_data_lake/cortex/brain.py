@@ -1662,7 +1662,16 @@ class Brain:
         self._lp_mean, lp_unit = self._curiosity_lp(res.get("unit"))
         try:
             if res.get("unit") is not None and res.get("action"):
-                self.buffer.add(res["unit"], res["action"], lp_unit - self._lp_mean)
+                pr = lp_unit - self._lp_mean
+                # CHOLINERGIC ENCODING GAIN: ACh rises on novelty (self._ach.step runs each tick but its
+                # level was DROPPED). Consume it here -- a novel experience (high ACh -> ENCODE mode) is
+                # stamped into the replay buffer with proportionally higher priority, so it is consolidated
+                # more in sleep. No magic constant: gain = 1 + ach.level (both from ACh's own [0,1] level);
+                # a familiar tick (ACh ~ 0) leaves the curiosity priority unchanged. Textbook cholinergic
+                # encode-vs-retrieve gating of memory encoding strength.
+                if self._ach is not None:
+                    pr *= 1.0 + float(self._ach.level)
+                self.buffer.add(res["unit"], res["action"], pr)
         except Exception:
             pass
         if self._wake_ticks % STORE_EVERY == 0:
