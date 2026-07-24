@@ -38,7 +38,7 @@ The sleep-loop that grows the skill (develop()):
             still-improving FRONTIER premise instead of a uniform one.
   * SLEEP : offline REPLAY-consolidation (hippocampus/experience_replay.ReplayBuffer) re-applies the
             SAME rank update to sampled stored premises -- more learning per real interaction.
-  * RAMP  : a self-paced CURRICULUM (neuromodulation/curriculum) grows the active item set
+  * RAMP  : a self-paced CURRICULUM (neuromodulation/spiking_curiosity.SpikingCurriculum) grows the active item set
             small -> large as the learner's own learning-progress on the current chunk dries up.
   * SCORE : held_out_accuracy() over ALL non-adjacent pairs, evaluated in BOTH directions (so the
             held-out labels are BALANCED and a constant answer scores ~0.5), recorded per night.
@@ -70,8 +70,8 @@ import zlib
 from snn_data_lake.basal_ganglia.evidence_accumulation import DriftDiffusion
 from snn_data_lake.cortex.vsa_reasoning import cleanup, hv
 from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
-from snn_data_lake.neuromodulation.curriculum import Curriculum
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
+from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCurriculum
 from snn_data_lake.substrate._mathutils import sigmoid
 
 # ---- learner / decision constants ----------------------------------------------------------------
@@ -334,7 +334,7 @@ def develop(
     learner = ReasoningLearner(seed=seed, decay=decay)
     drive = CuriosityDrive(seed=seed) if curiosity else None
     if stage_sizes and not jump:
-        cur = Curriculum(len(stage_sizes), mastery_threshold=0.05, patience=1, seed=seed)
+        cur = SpikingCurriculum(len(stage_sizes), mastery_threshold=0.05, patience=1, seed=seed)
     else:
         cur = None
     trained_pairs = set()

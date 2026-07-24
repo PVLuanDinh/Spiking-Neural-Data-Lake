@@ -170,7 +170,6 @@ REGIONS = {
         "locus_coeruleus",
         "raphe_serotonin",
         "intrinsic_motivation",
-        "curriculum",
         "spiking_curiosity",
         "generalizing_novelty",
         "drive_reduction",

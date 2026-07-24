@@ -86,6 +86,11 @@ _TAU_ACC = (
 )
 _ACC_SAFETY = 1.000002  # tiny margin so the accumulator crosses threshold reliably AT `patience`, not one late
 
+# --- transfer-proof world (ported from the retired rate curriculum.py; the "starting small" control) ---
+_TARGETS = (0.25, 0.50, 0.75, 1.00)  # increasing-difficulty milestones of the SHARED competence w
+_REACH = 0.30  # frontier of learnability: a target much farther than this yields ~no gradient
+_LR = 0.30  # base learning rate (fraction of the in-reach gap closed per tick)
+
 
 class SpikingCuriosityDrive:
     """A GENUINELY SPIKING learning-progress curiosity drive -- a drop-in for CuriosityDrive.
@@ -332,6 +337,50 @@ _EPS = 0.5  # small ABSOLUTE bound: flat/noisy accumulated LP must sit near zero
 _POS = 3.0  # a genuinely learnable (falling-error) stream must accumulate clearly-positive LP well above this
 
 
+def _learner_step(w, target):
+    """One frontier-gated gradient step of the shared competence w toward `target`. The effective gain
+    decays as exp(-(gap/_REACH)**2): ~1 when the target is within reach, ~0 when it is far -- a stylized
+    vanishing-gradient / sparse-reward frontier (progress is only possible NEAR current competence).
+    Returns the new w. This is why a far ("hard") target cannot be learned cold, but a nearby one can."""
+    gap = target - w
+    gain = math.exp(-((gap / _REACH) ** 2))
+    return w + _LR * gain * gap
+
+
+def _run_curriculum_learner(budget, seed):
+    """Self-paced SPIKING curriculum learner: train the SHARED competence on the CURRENT stage's target,
+    and advance to the next (harder) target when the SpikingCurriculum LIF accumulator detects mastery
+    (learning progress dried up). The competence w PERSISTS across stages -> easy stages walk w forward
+    into reach of the hard one (transfer). Feeds the per-tick error REDUCTION as the learning-progress
+    signal. Returns (final competence w, stages mastered, steps used)."""
+    cur = SpikingCurriculum(len(_TARGETS), seed=seed)
+    w = 0.0
+    steps = 0
+    while steps < budget and not cur.done:
+        steps += 1
+        target = _TARGETS[cur.stage]
+        before = abs(target - w)
+        w = _learner_step(w, target)
+        lp = max(0.0, before - abs(target - w))  # learning progress = error reduction this tick
+        cur.observe(lp)
+    return w, cur.mastered, steps
+
+
+def _run_jump_learner(budget):
+    """Jump-to-hardest control: the SAME learner and SAME budget, spent ENTIRELY on the hardest target
+    with no curriculum. The hardest target starts out of reach (gap 1.0 >> _REACH) so the gradient is
+    ~0 and the competence barely moves. Returns the final competence w."""
+    w = 0.0
+    for _ in range(budget):
+        w = _learner_step(w, _TARGETS[-1])
+    return w
+
+
+def _stages_reached(w, tol=0.05):
+    """How many milestone targets the competence w has actually attained (within tol)."""
+    return sum(1 for t in _TARGETS if w >= t - tol)
+
+
 def main():
     # ---- (2) ANTI-NOISY-TV AT THE SPIKE LEVEL (the critical control) ----
     srng = random.Random(1234)
@@ -432,6 +481,19 @@ def main():
     curr_masters = cca.mastered
     curr_ticks = [i for i, a in enumerate(seq_a) if a]
 
+    # ---- (6) TRANSFER -- curriculum-HELPS via starting small (the HARD, un-riggable control, ported ----
+    # from the retired rate curriculum.py). The SPIKING curriculum must keep the property: mastering
+    # nearby stepping-stone targets walks the shared competence into reach of the hard one, so within the
+    # SAME step budget it reaches FAR higher final competence than a learner thrown straight at the hardest.
+    budget = 300
+    cur_w, cur_mastered, cur_steps = _run_curriculum_learner(budget, seed=0)
+    jump_w = _run_jump_learner(budget)
+    cur_stages = _stages_reached(cur_w)
+    jump_stages = _stages_reached(jump_w)
+    learner_repro = _run_curriculum_learner(budget, seed=0) == _run_curriculum_learner(
+        budget, seed=0
+    )
+
     # ---- (5) PURITY vs the rate CuriosityDrive (report only, NOT asserted -- different mechanisms) ----
     from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 
@@ -478,6 +540,11 @@ def main():
     print(
         f"(5) purity      : spiking learnable-LP peak {max(learn_per):.3f}/plateau {learn_per[-1]:.2e}  vs  "
         f"rate peak {rate_peak:.3f}/plateau {rate_plateau:.2e}  (same shape; win is PURITY)"
+    )
+    print(
+        f"(6) transfer    : spiking curriculum reaches competence {cur_w:.3f} (mastered {cur_mastered}/4, "
+        f"{cur_stages} milestones, {cur_steps} steps) vs jump-to-hard {jump_w:.3f} ({jump_stages}) "
+        f"reproducible={learner_repro}"
     )
     print("=" * 92)
 
@@ -530,6 +597,23 @@ def main():
         "two SpikingCurriculum(seed=7) fed the same LP trace must give identical advances + reviews"
     )
 
+    # ---- (6) TRANSFER -- the HARD, un-riggable control (ported): starting small must FAR exceed jump-to-hard ----
+    assert cur_w > 0.9, (
+        "the self-paced spiking curriculum must reach HIGH final competence within budget"
+    )
+    assert jump_w < 0.1, (
+        "jump-to-hardest must stay stuck (the hard target starts out of the learnability frontier)"
+    )
+    assert cur_w > 5.0 * jump_w, (
+        f"curriculum competence {cur_w:.3f} must FAR exceed jump-to-hard {jump_w:.3f} (transfer via starting small)"
+    )
+    assert cur_mastered > jump_stages and cur_stages > jump_stages, (
+        "the spiking curriculum learner must master MORE milestones than the jump-to-hardest control on the same budget"
+    )
+    assert learner_repro, (
+        "the seeded spiking curriculum learner must reproduce its (competence, mastered, steps) exactly"
+    )
+
     print(
         "self-check OK: GENUINELY SPIKING -- learning_progress read from INTEGER spike counts (a membrane .v "
         "readout fails the int-count control);"
@@ -544,7 +628,11 @@ def main():
     )
     print(
         f"  on a stationary/decaying task it matches the rate CuriosityDrive in shape (peak {max(learn_per):.3f} vs "
-        f"{rate_peak:.3f}) -- the win is spiking PURITY, not new capability."
+        f"{rate_peak:.3f}) -- the win is spiking PURITY, not new capability;"
+    )
+    print(
+        f"  TRANSFER (hard): starting-small spiking curriculum reaches competence {cur_w:.3f} ({cur_stages}/4 "
+        f"milestones) vs jump-to-hard {jump_w:.3f} ({jump_stages}/4) on the same {budget}-step budget."
     )
 
 

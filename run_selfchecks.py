@@ -191,7 +191,6 @@ CORE = [
     "neuromodulation.locus_coeruleus",
     "neuromodulation.raphe_serotonin",
     "neuromodulation.intrinsic_motivation",
-    "neuromodulation.curriculum",
     "neuromodulation.spiking_curiosity",
     "neuromodulation.generalizing_novelty",
     "neuromodulation.drive_reduction",

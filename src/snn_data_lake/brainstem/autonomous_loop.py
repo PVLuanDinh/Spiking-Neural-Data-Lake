@@ -44,12 +44,11 @@ from snn_data_lake.hippocampus.experience_replay import ReplayBuffer
 from snn_data_lake.hippocampus.growing_learner import GrowingLearner
 from snn_data_lake.medulla.interoceptive_arousal import InteroceptiveArousal
 from snn_data_lake.neuromodulation.cortisol import Cortisol
-from snn_data_lake.neuromodulation.curriculum import Curriculum
 from snn_data_lake.neuromodulation.developmental_envelope import DevelopmentalEnvelope
 from snn_data_lake.neuromodulation.empowerment import Empowerment
 from snn_data_lake.neuromodulation.intrinsic_motivation import CuriosityDrive
 from snn_data_lake.neuromodulation.naca import NACABroadcast
-from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
+from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
@@ -841,7 +840,7 @@ class AutonomousArm:
     def develop(self, stages, curriculum, batch=6, max_batches=50):
         """SELF-PACED developmental learning: work on the CURRENT curriculum stage's tasks and ADVANCE to the
         next stage AUTONOMOUSLY when this arm's own learning progress (curiosity) on it dries up -- the
-        Curriculum reads mastery off the learning-progress signal (not a clock). Needs curiosity + jepa.
+        SpikingCurriculum reads mastery off the learning-progress signal (not a clock). Needs curiosity + jepa.
         `stages` = a list of stages, each a list of (context_dict, optimal_action); reward = +1 for the optimal
         action else -1. Learning flows through the SAME gated step() -- the reflex/E-STOP still preempts and no
         new motor path is added. Returns a per-stage trace (stage, mastered, competence, advanced)."""
@@ -1917,7 +1916,7 @@ def main():
         devC[:4],
     ]  # 1,2,3,4 contexts -> 4 stages of increasing difficulty
     dev = AutonomousArm(seed=1, pfc=True, jepa=True, curiosity=True)
-    dtrace = dev.develop(dev_stages, Curriculum(n_stages=len(dev_stages), seed=1))
+    dtrace = dev.develop(dev_stages, SpikingCurriculum(n_stages=len(dev_stages), seed=1))
     dev_mastered = (
         dtrace[-1]["mastered"] if dtrace else 0
     )  # stages the arm graduated itself through
@@ -1927,7 +1926,7 @@ def main():
     )  # safety with the developmental loop
     dev_guard.develop(
         [[(_ctx(0.5, 0.5, 0.5, danger_d), "HOLD")]],
-        Curriculum(n_stages=1, seed=2),
+        SpikingCurriculum(n_stages=1, seed=2),
         batch=2,
         max_batches=1,
     )
@@ -1939,7 +1938,7 @@ def main():
         bot = AutonomousArm(seed=seed, pfc=True, jepa=True, curiosity=True)
         return [
             t["mastered"]
-            for t in bot.develop(dev_stages, Curriculum(n_stages=len(dev_stages), seed=seed))
+            for t in bot.develop(dev_stages, SpikingCurriculum(n_stages=len(dev_stages), seed=seed))
         ]
 
     dev_det = run_dev(5) == run_dev(5)
