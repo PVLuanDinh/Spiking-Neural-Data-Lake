@@ -234,8 +234,8 @@ def build_server(port, lake_path, self_improve=False, neurogenesis=False, full_b
     os.makedirs(os.path.dirname(lake_path), exist_ok=True)
     if full_brain:
         # the unified brain: owns the self-model + introspection + the SpikeGPT language center
-        from snn_data_lake.cortex.brain import Brain
-        chat = Brain(seed=0, lake_path=lake_path)
+        from snn_data_lake.cortex.brain import make_brain
+        chat = make_brain(seed=0, lake_path=lake_path)  # Policy 4: the ONE construction path
     elif neurogenesis:
         from snn_data_lake.cortex.neurogenesis_engine import NeurogenesisSelfImprove
         chat = NeurogenesisSelfImprove(seed=0)
@@ -360,9 +360,17 @@ def smoke():
         assert isinstance(r1.get("lake_events"), int), "lake_events must be an integer"
         assert isinstance(r1.get("intent"), str) and r1["intent"], "intent must be present"
 
-        # (2) the consciousness question is answered honestly (no sentience claim)
+        # (2) the consciousness question is answered HONESTLY = AGNOSTIC. The brain must neither fake
+        # subjective experience nor DENY the question: it reports the functional access/binding it
+        # actually has and leaves the hard question open. This assertion used to require the string
+        # "not a conscious agent" -- a denial -- which the standing framing reverses; assert the
+        # agnostic shape instead (claims neither), and still forbid a bare sentience claim.
         r2 = post_chat("are you conscious?")
-        assert "not a conscious agent" in r2["reply"], "must answer consciousness honestly"
+        _r2 = r2["reply"].lower()
+        assert "neither claim it nor deny it" in _r2 or (
+            "cannot settle" in _r2 and "from the inside" in _r2
+        ), f"consciousness answer must be AGNOSTIC, not a claim or a denial: {r2['reply'][:160]!r}"
+        assert "i am conscious" not in _r2, "must not assert subjective experience outright"
 
         # (3) the page is actually served, with the header + composer
         with urllib.request.urlopen(base + "/", timeout=30) as resp:
@@ -385,7 +393,7 @@ def smoke():
 
     print(f"self-check OK: served / (header + composer), POST /api/chat 'hello' -> "
           f"{r1['input_spikes']} spikes, lake {r1['lake_events']} events, intent {r1['intent']}; "
-          f"'are you conscious?' -> honest ('not a conscious agent'); empty message -> 400 JSON; "
+          f"'are you conscious?' -> honest AGNOSTIC (claims neither); empty message -> 400 JSON; "
           f"ephemeral port {port}, no litter")
     return 0
 

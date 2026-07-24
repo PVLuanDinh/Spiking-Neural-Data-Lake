@@ -43,9 +43,8 @@ import os
 import random
 import tempfile
 
-from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.autonomous_loop import ACTIONS
-from snn_data_lake.cortex.live_brain import LiveBrain
+from snn_data_lake.cortex.brain import make_brain
 from snn_data_lake.substrate.streaming_hub import StreamingHub
 
 N_CHANNELS = 128            # one channel per ASCII code point (ord(c) % 128)
@@ -118,62 +117,37 @@ class SpikingChat:
         existing = self.lake.query_window(0, 1 << 32)
         self._t_cursor = (max(t for t, _ in existing) + 2) if existing else 0
 
-        # ---- the live brain: prime it so it holds a real goal + working memory ----
-        # self-improve -> a curiosity-driven brain (needs jepa) + the spiking interaction learner,
-        # so it learns SELF-DIRECTED. Otherwise -> grasp-reward priming (fixed goal RELEASE).
-        # reasoning=True opts into the two-world bridge: converse falls through to the research
-        # reasoning/Gf/retrieval brain for turns the grounded intents don't claim. This is the
-        # web/chat app (not the zero-dep core), so numpy/research are fine; arm commands stay gated.
-        if self_improve:
-            # SI-1: the self-improvement drive is the GENUINELY-SPIKING learning-progress
-            # curiosity (SpikingCuriosityDrive, LP from LIF spike counts) -- now spiking.
-            self.brain = LiveBrain(seed=seed, spiking_curiosity=True, jepa=True,
-                                   interaction_learning=True, reasoning=True)
-        elif self.viz:
-            # --viz -> the WHOLE brain on: turn the full rich stack on so the 3D visualization
-            # reflects a genuinely-integrated brain -- JEPA world model + curiosity + predictive
-            # coding + bottom-up salience + empowerment + affective memory + agency monitor +
-            # contrastive episode analysis + developmental envelope + spiking interaction learning.
-            # ALL are representation/value drives only; arm commands still flow through the gated
-            # arm + reflex E-STOP inside converse() (safety envelope untouched).
-            self.brain = LiveBrain(seed=seed, jepa=True, curiosity=True, predictive_coding=True,
-                                   salience_novelty=True, empowerment=True, affective_memory=True,
-                                   agency_monitor=True, contrastive=True, develop_env=True,
-                                   interaction_learning=True, reasoning=True)
-        else:
-            self.brain = LiveBrain(seed=seed, reasoning=True)
-        _safe = CONTACT * 3.0
-        self._grasp = {"visual": [0.9] * 4, "temperature": [0.1],
-                       "audio": [0.1] * 4, "distance": _safe}
-        # a small rotation of SAFE stimuli (all safe distance -> no danger) so curiosity always has
-        # learnable novelty to improve on; distinct bands the value/JEPA substrate can separate.
-        self._explore = [
-            {"visual": [0.9] * 4, "temperature": [0.1], "audio": [0.1] * 4, "distance": _safe},
-            {"visual": [0.1] * 4, "temperature": [0.9], "audio": [0.1] * 4, "distance": _safe},
-            {"visual": [0.1] * 4, "temperature": [0.1], "audio": [0.9] * 4, "distance": _safe},
-        ]
-        if self_improve:
-            for _ in range(60):                   # prime via curiosity (no ext reward)
-                self.tick_self_improve()
-        else:
-            for _ in range(90):                   # form the goal (RELEASE) + fill lake WM
-                self.brain.tick(self._grasp, reward_fn=self._reward)
+        # ---- THE ONE BRAIN (Policy 4: utilize the canonical brain, never re-implement it) ----
+        # This app used to stand up its OWN LiveBrain in three different configurations. It now obtains
+        # the single canonical brain through cortex.brain.make_brain() -- the only sanctioned
+        # construction path -- and keeps `self.brain` as an ALIAS of that brain's inner LiveBrain, so
+        # every perception/arm/goal read below (and region_activity for the 3D view) is looking at the
+        # real brain rather than a parallel copy. The canonical Brain already builds its LiveBrain with
+        # the full rich stack (spiking curiosity + JEPA + interaction learning + predictive coding +
+        # affective memory + empowerment + agency monitor + dopamine + attention), which is a SUPERSET
+        # of all three configs this app used to hand-roll, so the 3D view still reflects an integrated
+        # brain. Arm commands stay gated: the reflex/E-STOP inside the arm is untouched.
+        self.full = make_brain(seed=seed)
+        self.brain = self.full.brain          # the inner LiveBrain -- alias, NOT a second brain
+        # Prime through the brain's OWN wake/sleep cycle (Policy 4: do not re-implement the drive
+        # loop). Brain.tick() runs the canonical circadian tick -- it drives itself from its own
+        # _safe_ctx and needs no chat-app-invented stimulus or reward function. The hand-rolled
+        # _grasp/_explore stimulus tables and the RELEASE reward_fn this app used to carry are gone
+        # with it: inventing a stimulus for the brain to react to is exactly the replication P4 bans.
+        for _ in range(90):
+            self.full.tick()
 
         # ---- intent prototypes: encode the example phrases once, sum per-channel counts ----
         self.prototypes = {intent: self._prototype(phrases)
                            for intent, phrases in INTENT_EXAMPLES.items()}
 
-    @staticmethod
-    def _reward(unit, action):
-        return 1.0 if action == "RELEASE" else -1.0
-
     def tick_self_improve(self):
-        """One SELF-IMPROVEMENT tick: curiosity-driven (intrinsic learning-progress reward, NO
-        external task reward) over a rotating SAFE stimulus -> the brain learns self-directed.
-        Gated + safe: the reflex E-STOP runs FIRST and curiosity feeds only the value update (no
-        motor route). Updates the learning-progress telemetry. Called by respond() + the daemon."""
-        ctx = self._explore[self._ticks % len(self._explore)]
-        self.brain.tick(ctx)                      # no reward_fn -> intrinsic curiosity drives it
+        """One SELF-IMPROVEMENT tick. The canonical brain is ALREADY curiosity-driven (it is built
+        with spiking_curiosity + jepa and takes no external task reward on its own tick), so this is
+        the same canonical tick -- kept as a named entry point for the server's daemon loop rather
+        than a second, hand-rolled drive path. Updates the learning-progress telemetry.
+        Gated + safe: the reflex E-STOP runs FIRST and curiosity feeds only the value update."""
+        self.full.tick()
         self._ticks += 1
         cur = self.brain.arm.curiosity
         if cur is not None and self.brain.arm.q:  # mean progress over grown units = "improving"
@@ -237,10 +211,11 @@ class SpikingChat:
 
     # ---- DECODE: spike-decided intent + real brain state -> grounded reply --------
     def decode(self, intent, text):
-        """The spiking classifier decided `intent`; the grounded reply is produced from the
-        brain's REAL state. LiveBrain.converse() gives the honest, state-grounded sentence
-        (it answers greeting/goal/memory/workspace/safety/consciousness from actual state and
-        routes arm commands through the gated arm) -- no language-model generation happens."""
+        """The spiking classifier decided `intent`; the grounded reply is produced from the brain's
+        REAL state by the CANONICAL Brain.respond() -- the full cognitive reply path (it composes the
+        self-model narrator, somatic/episodic recall, empathy, ToM and the workspace on top of
+        LiveBrain.converse, and routes arm commands through the gated arm). No language-model
+        generation happens. respond() returns the whole state dict; the spoken sentence is `reply`."""
         if self.self_improve and intent == "ask_goal":
             act = ACTIONS[self.brain.goal] if self.brain.goal is not None else "none"
             return ("My goal is to IMPROVE MYSELF: I run curiosity-driven -- an intrinsic "
@@ -248,7 +223,9 @@ class SpikingChat:
                     "learning from my own experience each tick. It is ONE primitive (curiosity + "
                     "spiking learning), NOT open-ended recursive self-improvement, and the reflex "
                     f"E-STOP still preempts every motor command. (Gated action bias: {act}.)")
-        return self.brain.converse(text)
+        state = self.full.respond(text)
+        self._last_state = state              # the ~100 live state keys, for the UI / 3D view
+        return state.get("reply", "")
 
     # ---- RESPOND: run the whole pipeline for one turn ----------------------------
     def respond(self, text):
@@ -257,10 +234,7 @@ class SpikingChat:
         spikes, _ = self.encode(text)
         self.store(spikes)
         intent, confidence = self.classify(spikes)
-        if self.self_improve:
-            self.tick_self_improve()              # advance one curiosity-driven tick
-        else:
-            self.brain.tick(self._grasp, reward_fn=self._reward)   # advance the live brain one tick
+        self.full.tick()                          # advance the ONE brain one canonical tick
         reply = self.decode(intent, text)
         action_goal = ACTIONS[self.brain.goal] if self.brain.goal is not None else None
         out = {
