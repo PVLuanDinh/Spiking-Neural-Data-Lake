@@ -283,10 +283,22 @@ class SpikingChat:
         return self._viz3d
 
     def _update_viz(self, text, reply):
-        """Compute this turn's per-region activity (honest region-level estimate from the brain's
-        REAL signals) and light the 3D brain. Called after each turn on the viz path only."""
-        from brain_region_activity import region_activity
-        activity = region_activity(self.brain, text, reply)
+        """Light the 3D brain from the brain's REAL per-region spike rates.
+
+        Policy 2 (adopt better, retire the inferior): this used to call `region_activity()`, a
+        heuristic that blended reply-intent with a few live baselines -- an ESTIMATE of what the
+        regions were doing. `LiveBrain.spike_snapshot()` is the measurement itself: 17 real
+        per-region rates in [0,1], already normalized, keys verified identical to the viz's REGIONS.
+        Using it makes the window an instrument instead of an illustration.
+
+        The heuristic is kept only as the self-check's sample profile; it no longer drives the live
+        view. If the snapshot is unavailable we fall back rather than fabricate, and say so once."""
+        try:
+            activity = self.brain.spike_snapshot()
+        except Exception as e:
+            from brain_region_activity import region_activity
+            print(f"[viz] spike_snapshot unavailable ({type(e).__name__}: {e}); using the estimate")
+            activity = region_activity(self.brain, text, reply)
         safe = (text or "")[:48].encode("ascii", "replace").decode("ascii")   # ASCII-only title
         try:
             self._ensure_viz().update(activity, title=f"turn: {safe!r}")

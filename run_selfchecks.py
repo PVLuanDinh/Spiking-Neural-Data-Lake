@@ -226,6 +226,7 @@ CORE = [
     "substrate.binlog",
     "substrate.growable",
     "substrate.region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
+    "substrate.brain_telemetry",  # snapshot contract + recorder + /api/state (no-orphan-panel gate)
     "substrate.dormancy_gate",  # Policy 3: assert every brain module is reachable from a live path or EXEMPT
     "substrate.replication_guard",  # Policy 4: assert one canonical Brain/LiveBrain/AutonomousArm (no replica)
     "substrate.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias

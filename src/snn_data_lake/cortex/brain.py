@@ -109,6 +109,21 @@ def _mean(xs):
     return sum(xs) / len(xs) if xs else 0.0
 
 
+def _lvl(mod, default=0.0):
+    """Read a diffuse modulator's .level, tolerating a module that failed to construct.
+
+    Every neuromodulator on Brain is built through `self._try(...)`, so any of them may legitimately
+    be None on a reduced install. Telemetry must degrade to a default rather than raise -- a dashboard
+    that crashes the brain it is observing is worse than a dashboard with a missing bar.
+    """
+    if mod is None:
+        return default
+    try:
+        return round(float(getattr(mod, "level", default) or default), 4)
+    except Exception:
+        return default
+
+
 def _regions_for(arm, res, ensemble_live):
     """The set of brain regions that produced live output this tick.
 
@@ -2535,6 +2550,19 @@ class Brain:
             "phase": round(self.clock.phase, 3),
             "circadian": "asleep" if self._asleep else "awake",
             "nights_elapsed": self._nights,
+            # ---- diffuse neuromodulator levels (stepped EVERY wake tick; previously live but unexposed) ----
+            # Raw levels only. Derived quantities (distance travelled, place error) are the reader's job --
+            # state() must not carry two representations of the same fact.
+            "neuromod_serotonin": _lvl(self._raphe),  # 5-HT: tracks the slow circadian baseline
+            "neuromod_noradrenaline": _lvl(self._lc),  # NA: phasic gain on salient events
+            "neuromod_acetylcholine": _lvl(self._ach),  # ACh: novelty -> encoding gain (consumed at :1730)
+            "neuromod_astrocyte": (  # slow glial gain, one per domain
+                [round(float(g), 4) for g in self._astro.gains] if self._astro is not None else []
+            ),
+            "cortisol": _lvl(getattr(self.brain.arm, "cort", None)),  # stress; flat while reward_fn is None
+            "curiosity_mag": round(
+                float(getattr(self.brain.arm, "_cur_mag", 0.0) or 0.0), 4
+            ),  # running |curiosity| -- the unit intrinsic reward is normalised by
             "shy_energy_saved": self._shy,  # SHY offline synaptic downscale-prune telemetry (last night)
             "brain_alive": self.brain.alive(),
             "regions_live": sorted(self._regions_live),

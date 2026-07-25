@@ -49,6 +49,7 @@ sys.path.insert(0, "src")
 os.environ.setdefault("NORD_GPU", "1")
 
 from snn_data_lake.cortex.brain import make_brain
+from snn_data_lake.substrate.brain_telemetry import Recorder, serve
 from snn_data_lake.substrate.chat_memory import DurableChatMemory
 
 TRANSCRIPTS = os.environ.get(
@@ -164,7 +165,18 @@ def main():
     mem = (
         DurableChatMemory()
     )  # a VIEW over the ONE durable brain lake (home knowledge.jsonl), noise-filtered
+    # Telemetry over the ONE brain: a loopback dashboard + an append-only JSONL trace. This does not
+    # construct a brain (Policy 4) -- it is a window onto the one above. Loopback-only by design; it is
+    # observability for a local process, not a network service.
+    tele_port = int(os.environ.get("NORD_TELEMETRY_PORT", "8137"))
+    try:
+        serve(b, port=tele_port, block=False)
+    except OSError as e:  # port taken (e.g. a second tool already watching) -- never kill the daemon
+        print(f"[learn-daemon] telemetry server not started: {e}", flush=True)
+    rec = Recorder(os.path.join(os.path.dirname(__file__), "data", "telemetry.jsonl"), every=TICKS_PER_CYCLE)
+
     atexit.register(lambda: _shutdown(b, mem))
+    atexit.register(rec.close)
     start_head = _head()
     offsets, n, remembered = {}, 0, 0
     sb = "ON" if os.environ.get("NORD_SELFMOD") == "1" else "off"
@@ -180,6 +192,10 @@ def main():
                 b.tick()
             except Exception as e:  # a bad tick must never kill the daemon
                 print(f"[learn-daemon] tick err: {type(e).__name__}: {e}", flush=True)
+        try:  # record one snapshot per cycle -- the replayable trace a renderer reads later
+            rec.write(b)
+        except Exception as e:  # telemetry must never take the brain down with it
+            print(f"[learn-daemon] telemetry err: {type(e).__name__}: {e}", flush=True)
         # (2) ingest new REAL chat turns -> durable memory + respond() learning (noise filtered out).
         for path in sorted(glob.glob(TRANSCRIPTS), key=lambda p: os.path.getmtime(p)):
             turns, off = _new_turns(path, offsets.get(path, 0))

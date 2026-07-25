@@ -246,10 +246,40 @@ def _graph():
     return g
 
 
+def _external_roots():
+    """In-package modules imported by REAL consumers that live OUTSIDE the scanned package.
+
+    Why this exists: `_ENTRYPOINTS` is hand-maintained, so anything the daemon or an app under
+    `integrations/` imports had to be remembered by a person. It was not, and the gate paid for it --
+    `integrations/chat_app/web_server.py` held the ONLY working attachment of the plasticity stack
+    while this gate reported that stack dormant. A hand-maintained allowlist cannot see a wire nobody
+    wrote down, so derive the roots from the source instead of trusting memory.
+
+    Scanned: repo-root scripts (learn_daemon.py and friends, non-recursive) + everything under
+    `integrations/`. Deliberately NOT tests/ or research/ -- reachable only from a test is dormant,
+    which is the distinction this whole gate exists to draw.
+    """
+    repo = os.path.dirname(os.path.dirname(_PKG_DIR))
+    out = set()
+    try:
+        for f in os.listdir(repo):
+            if f.endswith(".py"):
+                out |= _imports(os.path.join(repo, f))
+    except OSError:
+        pass
+    integ = os.path.join(repo, "integrations")
+    for root, _d, files in os.walk(integ):
+        for f in files:
+            if f.endswith(".py"):
+                out |= _imports(os.path.join(root, f))
+    return out
+
+
 def reachable():
-    """Brain modules reachable (transitively) from any live root or console entrypoint."""
+    """Brain modules reachable (transitively) from any live root, console entrypoint, or an
+    out-of-package consumer (root scripts + integrations/) discovered by _external_roots()."""
     g = _graph()
-    seen = set(r for r in _LIVE_ROOTS + _ENTRYPOINTS if r in g)
+    seen = set(r for r in _LIVE_ROOTS + _ENTRYPOINTS + tuple(_external_roots()) if r in g)
     stack = list(seen)
     while stack:
         for dep in g.get(stack.pop(), ()):
