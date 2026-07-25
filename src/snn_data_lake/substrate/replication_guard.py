@@ -35,19 +35,17 @@ CANON = {
 
 # known DUPLICATE definitions still on disk, pending retirement in a Policy-4 consolidation wave.
 # key = (class_name, module_path); value = reason. Empty this out as the replicas are retired.
-PENDING_RETIREMENT = {
-    ("Brain", f"{_PKG}.reasoning.brain_loop"): (
-        "2nd Brain class -- a parallel stack around LakeChat + its own GlobalWorkspace + learn-loop. "
-        "Now INERT: its only front-end (reasoning/brain_web.py) was retired in v4.53, so it has ZERO "
-        "importers anywhere. Its reasoning layer IS already covered canonically -- deduction by "
-        "reasoning/derivation.py (a verbatim port of _relation_graph/_derive), abduction by "
-        "pc_abduction.AbductionExpert via LakeChat._abduce_reply, and induction by schema_induction, "
-        "which keeps the same refuse-to-generalise-on-thin-evidence guard (min_support). "
-        "BLOCKER on deletion: self_rewrite() -- user-authorized GATED self-modification -- exists ONLY "
-        "here; grep finds no canonical equivalent (Brain.propose_improvements is proposer-only). Port "
-        "self_rewrite into the canonical Brain and verify it, THEN delete. Do not drop it silently."
-    ),
-}
+#
+# EMPTY as of v4.55 -- there is now literally ONE Brain class. The last replica
+# (reasoning/brain_loop.Brain) was retired once every capability was verified canonical: deduction ->
+# reasoning/derivation.py (a verbatim port of its _relation_graph/_derive), abduction ->
+# pc_abduction.AbductionExpert via LakeChat._abduce_reply, induction -> schema_induction (same
+# refuse-to-generalise-on-thin-evidence guard), teach/think/boot/repl -> LakeChat, develop ->
+# AutonomousArm.develop + developmental_core, start_learning -> the one learn_daemon, and
+# self_rewrite -> Brain.self_improve, which is STRICTLY better gated (crc32 byte-identity firewall
+# over the 9 safety/verifier files, NORD_SELFMOD=1 off-switch, and it applies NOTHING -- it returns a
+# proposal, where self_rewrite committed on utility gain). A new entry here means a replica shipped.
+PENDING_RETIREMENT = {}
 
 
 def _mpath(pyfile):
@@ -109,9 +107,8 @@ def main():
         f"that is not on PENDING_RETIREMENT: {a['replicas']}. Utilize the one brain (cortex.brain."
         f"make_brain / the canonical nesting), do not re-implement it."
     )
-    print(
-        "replication guard OK: one canonical Brain/LiveBrain/AutonomousArm (+ allowlisted replicas)"
-    )
+    _pend = f" (+ {len(PENDING_RETIREMENT)} allowlisted replica(s))" if PENDING_RETIREMENT else ""
+    print(f"replication guard OK: one canonical Brain/LiveBrain/AutonomousArm{_pend}")
 
 
 if __name__ == "__main__":

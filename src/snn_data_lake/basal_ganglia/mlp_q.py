@@ -1,6 +1,15 @@
 r"""
 Shared NONLINEAR (one-hidden-layer MLP) action-value over the JEPA latent -- the task-aligned
-NONLINEAR upgrade of the LINEAR basal_ganglia/latent_q.LatentQ.
+NONLINEAR counterpart of the LINEAR basal_ganglia/latent_q.LatentQ.
+
+WHY BOTH EXIST (Policy 2/4 note -- this pair is a MEASURED tradeoff, not un-retired bloat). MlpQ was
+once described as a "strict upgrade" that made LatentQ retirable. Its own self-check refutes that: on a
+NON-linear (XOR) rule MlpQ wins decisively (0.993 vs 0.467 ~ chance), but on a LINEARLY-separable rule
+it lands very slightly BEHIND the linear Q (0.983 vs 0.993) -- the extra hidden capacity costs a little
+where a linear map is already exact. So gate (3) is a NO-REGRESSION tolerance (within 0.05), NOT `>=`,
+and neither model dominates the other everywhere. Both stay, selected per task; and note BOTH are
+opt-in and default OFF in AutonomousArm (latent_q=False, mlp_q=False) -- the live substrate is the
+tabular per-context q, because the encoder near-collapses over the few live contexts on-robot.
 
 Honest framing (read this first). LatentQ is a SHARED LINEAR action-value Q(z, a) = dot(W[a], z) + b[a]:
 ONE weight set across all contexts, so a semi-gradient update from one latent transfers along the
@@ -228,7 +237,9 @@ def main():
     lin_nl = _acc(lin, nl_test, idx_of)
     mlp_nl_train = _acc(mlp, nl_train, idx_of)
 
-    # ---- (3) LINEARLY-separable control rule: MlpQ must be a strict upgrade (>= LatentQ), not a regression ----
+    # ---- (3) LINEARLY-separable control rule: MlpQ must NOT REGRESS vs LatentQ (gated within 0.05).
+    # Measured honestly: MlpQ is very slightly BEHIND the linear Q here (the extra hidden capacity costs
+    # a little on a rule a linear model fits exactly), so this is a capacity TRADEOFF, not a strict win. ----
     li_train = _make_contexts(N_TRAIN, LATENT, _linear_action, seed=3)
     li_test = _make_contexts(N_TEST, LATENT, _linear_action, seed=4)
     mlp_l = MlpQ(ACTIONS, LATENT, hidden=HIDDEN, lr=LR, seed=0)
@@ -270,8 +281,10 @@ def main():
     print(
         "rule (3): LINEARLY-separable (which side of z0 = z1) -- MlpQ must NOT regress vs LatentQ"
     )
+    _delta = mlp_lin - lat_lin
     print(
-        f"(3) linear  rule held-out     : MlpQ {mlp_lin:.3f}  >=  LatentQ {lat_lin:.3f}  -> strict upgrade"
+        f"(3) linear  rule held-out     : MlpQ {mlp_lin:.3f}  vs  LatentQ {lat_lin:.3f} "
+        f"(delta {_delta:+.3f}) -> NO REGRESSION (gate: within 0.05), not a strict upgrade"
     )
     print(
         f"(4) determin: two seed=11 MlpQ identical weights={same_w}, identical greedy={same_greedy}"
@@ -288,7 +301,8 @@ def main():
     assert mlp_nl > lin_nl + 0.30, (
         f"nonlinear head must beat the linear Q on the XOR rule by >0.30 ({mlp_nl:.3f} vs {lin_nl:.3f})"
     )
-    # (3) TRANSFER / strict upgrade: on a LINEARLY-separable rule the MLP is at least as good as the linear Q.
+    # (3) TRANSFER / NO-REGRESSION: on a LINEARLY-separable rule the MLP stays within 0.05 of the linear Q.
+    # This is deliberately a tolerance, not `>=`: the MLP does not dominate everywhere, and the gate says so.
     assert mlp_lin > 0.85, (
         f"MlpQ must also generalize on the linear rule (>0.85), got {mlp_lin:.3f}"
     )
@@ -304,7 +318,8 @@ def main():
         f"LatentQ cannot ({lin_nl:.3f} ~ chance);"
     )
     print(
-        f"  strict upgrade on the linear rule (MlpQ {mlp_lin:.3f} >= LatentQ {lat_lin:.3f}); "
+        f"  no regression on the linear rule (MlpQ {mlp_lin:.3f} vs LatentQ {lat_lin:.3f}, "
+        f"delta {_delta:+.3f}, gated within 0.05 -- a capacity TRADEOFF, not a strict upgrade); "
         "identical seed => byte-identical weights + greedy"
     )
 
