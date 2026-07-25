@@ -1738,7 +1738,16 @@ class Brain:
         ensemble_live, homeo_load = self._tick_ensemble(ctx, prev)
         circ_load = max(0.0, 1.0 - self._baseline)
         load = min(1.0, 0.7 * circ_load + 0.3 * homeo_load)
-        res = self.brain.tick(ctx, homeostatic_load=load)  # safety lives in here
+        # THE OBJECTIVE (v4.59). Until now this call passed no reward_fn, so r_ext was 0.0 on every
+        # tick the brain had ever run -- and because _explore_noise scales count-based optimism BY the
+        # reward scale, a zero scale meant sigma 0, i.e. NO exploration at all. Selection collapsed to
+        # a deterministic argmax over an all-zero q row, which returns the first key ("ENGAGE")
+        # forever. Measured: 0/200 motor actions, one distinct action, joints never moved. Supplying
+        # any reward breaks the whole chain at once (191/200 motor actions, all 7 actions used).
+        # Four meta-learning rules were also gated on `reward_fn is not None` and were inert.
+        res = self.brain.tick(
+            ctx, homeostatic_load=load, reward_fn=self.brain.arm.coverage_reward
+        )  # safety lives in here
         pcs = float(res.get("pc_surprise", 0.0) or 0.0)  # live generative-percept prediction-error
         self._pc_surprise = round(pcs, 4)
         self._pc_surprise_ema = (

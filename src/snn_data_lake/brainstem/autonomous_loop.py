@@ -31,6 +31,7 @@ from snn_data_lake.basal_ganglia.latent_q import LatentQ
 from snn_data_lake.basal_ganglia.mlp_q import MlpQ
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.brainstem.arm_sim import ArmSim
+from snn_data_lake.brainstem.cpg_oscillator import MatsuokaCPG
 from snn_data_lake.cerebellum.gain_adaptation import GainAdapter
 from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
@@ -66,6 +67,13 @@ _MOTOR = tuple(
 # precondition for closing it. ArmSim already accepted this exact command form; nothing in the
 # safety envelope changed, and `apply()` still ignores every one of these while `stopped` is set.
 ACTIONS = ("ENGAGE", "RELEASE", "HOLD") + _MOTOR  # the arm's autonomous action repertoire
+_ACT_IX = {a: i for i, a in enumerate(ACTIONS)}  # action -> index into the td preference vector
+_A_POS, _A_NEG = _MOTOR[0], _MOTOR[1]  # joint-A extend / retract: the CPG's rhythmic pair
+_CPG_DRIVE = 1.0  # tonic descending drive; the oscillation exists for any drive > 0
+_CPG_FLOOR = 0.25  # competence floor: the CPG's minimum share, so behaviour never collapses to
+# nothing when the learned row is confident. A deliberate invariant, not a tuned threshold -- the
+# analog of mhflocke's CompetenceGate.cpg_min = 0.40.
+_COVER_CELL = 0.10  # workspace discretisation for the coverage reward (metres); a scale, not a gate
 SAFE_ACTION = "HOLD"  # what caution biases toward under stress
 # W4c: self-motion step DERIVED from the chosen action (a real behavioral trajectory), not a constant drift.
 # Representation-only -- this feeds the allocentric MAP readout, never the actuator (the arm gate is separate).
@@ -122,6 +130,15 @@ class AutonomousArm:
         self.learner = GrowingLearner()
         self.cort = Cortisol(tau=40.0)
         self.q = {}  # unit_id -> {action: value}; grows alongside the learner
+        # COMPETENCE FLOOR + its gate. The oscillator is SNDL's own (Matsuoka 1985 / Ijspeert 2008),
+        # self-checked in cpg_oscillator; it simply had no caller on the brain's path until now.
+        # Slow constants (tau_r=0.5, tau_a=6.0) are the ones cpg_sweep already uses for smooth sweeps.
+        self.cpg = MatsuokaCPG(tau_r=0.5, tau_a=6.0)
+        self._cpg_w = 1.0  # current CPG share (competence-gated each tick, floored at _CPG_FLOOR)
+        self._cpg_spread_max = 0.0  # RUNNING scale for the competence gate -- baseline-relative (P1)
+        # WORKSPACE COVERAGE: the physical objective. Cells the end effector has actually reached.
+        self._covered = set()
+        self._cover_new = 0  # newly-reached cells this run -- the honest "is it getting better" line
         self.lr = lr
         self.explore = explore
         self.rng = random.Random(seed)
@@ -387,6 +404,84 @@ class AutonomousArm:
         self._mlp_q_on = mlp_q
         self.mlp_q = None  # lazily built on the first tick (sized to the JEPA latent dim)
 
+    def coverage_reward(self, unit, action):
+        """The physical objective: reward the end effector for REACHING somewhere it has not been.
+
+        Chosen over the obvious alternatives on honesty grounds. "Reach a target" needs an invented
+        goal object -- there is no target in this world, and fabricating one is the same class of
+        theatre as a panel with no signal behind it. "Minimise prediction error" is already what the
+        curiosity/JEPA term computes, so it would double-count rather than add an objective.
+
+        Coverage is physical (it is measured off ee, not off a model), dense (every tick scores),
+        needs nothing invented, and produces a genuinely rising line that SATURATES honestly once the
+        reachable workspace is exhausted -- at which point the curve flattening is a true statement
+        about the body, not a stalled learner. It is the arm's analog of mhflocke's "distance from
+        start", which is the metric that makes their video watchable.
+
+        Called AFTER arm.apply(), so `ee` is the post-action position -- the reward describes what the
+        action actually achieved rather than what it intended.
+
+        Sign convention matches the rest of the loop: [-1, 1]. A collision is the strongest negative
+        so the objective can never reward driving into the obstacle."""
+        st = self.arm.state()
+        if st.get("collision"):
+            return -1.0
+        ee = st.get("ee") or (0.0, 0.0)
+        cell = (round(float(ee[0]) / _COVER_CELL), round(float(ee[1]) / _COVER_CELL))
+        if cell in self._covered:
+            return -0.05  # mild cost for re-treading: makes standing still strictly worse than moving
+        self._covered.add(cell)
+        self._cover_new += 1
+        return 1.0
+
+    def _cpg_bias(self, td, qa):
+        """COMPETENCE FLOOR: a hand-written Matsuoka CPG biases joint selection, so the arm produces
+        rhythmic motion from tick 0 regardless of whether anything has been learned yet.
+
+        This is the mechanism mhflocke's demo actually runs on. Its robot walks because a central
+        pattern generator is the additive BASE (`controls = cpg_cmd * cpg_weight + correction`) and
+        the learned network is only a corrector -- so there is visible competence before learning
+        contributes anything. SNDL already owned an equivalent oscillator (cpg_oscillator.MatsuokaCPG,
+        Matsuoka 1985 / Ijspeert 2008, self-checked for >=4 reversals and >=20deg amplitude) but
+        `brain.py`, `live_brain.py` and `autonomous_loop.py` never imported it: the floor existed in a
+        different process and nothing arbitrated between it and the learned policy.
+
+        Entry point is the top-down `td` preference vector -- the SAME channel the PFC and the routed
+        novelty/salience signals already use. It therefore changes only WHICH action the gated
+        selection prefers; it adds no actuator route, and the reflex/E-STOP has already returned long
+        before this runs. An E-STOPped arm ignores every motor command regardless (ArmSim.apply).
+
+        Weight is competence-gated, not fixed (Policy 1): the CPG carries while the learned row is
+        undifferentiated and recedes to a floor as the row separates. `_cpg_spread_max` is a RUNNING
+        scale, so the gate is baseline-relative rather than a tuned threshold. The floor itself is a
+        deliberate invariant -- the whole point is that competence never drops to zero -- and is the
+        direct analog of mhflocke's `CompetenceGate.cpg_min`."""
+        if self.cpg is None:
+            return td
+        vals = [qa.get(a, 0.0) for a in ACTIONS]
+        spread = max(vals) - min(vals)
+        # NO-SPURIOUS-MOTION INVARIANT. When the value row is entirely flat the brain has no reason
+        # whatsoever to act, and the pre-existing safety contract is that selection then releases the
+        # SAFE action rather than moving. The competence floor must not override that: a floor is for
+        # carrying behaviour while learning is WEAK, not for thrashing an idle arm. Discovered by the
+        # autonomous_loop self-check ("no value drive -> the BG gate releases nothing -> HOLD"), which
+        # failed the moment the CPG was wired in. Relaxing that assertion to fit the feature was the
+        # wrong repair; gating the feature to respect it is the right one.
+        # Practical effect is small: with an objective live, the very first rewarded tick makes the row
+        # non-flat, so the floor engages from tick ~1 and only a genuinely purposeless arm stays still.
+        if spread <= 0.0:
+            return td
+        y1, y2 = self.cpg.step(_CPG_DRIVE)
+        phase = max(-1.0, min(1.0, y1 - y2))  # bounded anti-phase rhythm in [-1, 1]
+        self._cpg_spread_max = max(self._cpg_spread_max, spread)
+        comp = spread / self._cpg_spread_max if self._cpg_spread_max > 1e-9 else 0.0
+        self._cpg_w = max(_CPG_FLOOR, 1.0 - comp)  # learned competence displaces the CPG, never fully
+        out = list(td)
+        for act, sign in ((_A_POS, 1.0), (_A_NEG, -1.0)):
+            if act in _ACT_IX:
+                out[_ACT_IX[act]] += self._cpg_w * sign * phase
+        return out
+
     def _route_signals(self, td):
         """W5: fold the brain's ROUTED computed signals (an external top-down drive set from the OUTER loop --
         real-perception novelty / workspace salience) into the per-action preference, so signals that
@@ -464,6 +559,9 @@ class AutonomousArm:
         td = self._route_signals(
             td
         )  # W5: + routed computed signals (novelty/salience) -> behaviour
+        td = self._cpg_bias(td, qa)  # + the CPG competence floor (rhythm from tick 0; gated by
+        # learned competence, floored so behaviour never collapses). Preference-only: same gated
+        # selection, same caution, and the reflex/E-STOP already returned before this line.
 
         noise = self._explore_noise(unit, [qa[a] for a in ACTIONS])  # variability, still gated
 
@@ -490,6 +588,9 @@ class AutonomousArm:
         td = self._route_signals(
             td
         )  # W5: + routed computed signals (novelty/salience) -> behaviour
+        td = self._cpg_bias(td, qa)  # + the CPG competence floor (rhythm from tick 0; gated by
+        # learned competence, floored so behaviour never collapses). Preference-only: same gated
+        # selection, same caution, and the reflex/E-STOP already returned before this line.
         noise = self._explore_noise(unit, [qa[a] for a in ACTIONS])  # the BG gate still gates it
         drive = [max(0.0, max(0.0, qa[a]) + td[i] + noise[i]) for i, a in enumerate(ACTIONS)]
         # C3 #8: did the top-down vote actually CHANGE the ranking the BG gate arbitrates? Compared
