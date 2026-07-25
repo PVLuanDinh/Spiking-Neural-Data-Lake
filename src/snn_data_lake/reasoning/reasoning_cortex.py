@@ -194,7 +194,10 @@ class RavenExpert:
         label = "distribution-of-three"
         if got is None:
             if any(len(c) > 1 for r in rows for c in r if c is not None):
-                got, label = self._cell_attrs(rows), "composed letter+digit (Latin square + positional digit)"
+                got, label = (
+                    self._cell_attrs(rows),
+                    "composed letter+digit (Latin square + positional digit)",
+                )
             else:
                 got, label = self._arith(rows), "composed row x column arithmetic"
         if got is None:
@@ -228,10 +231,14 @@ class PairInductionExpert:
 
     def answer(self, q):
         pairs, query = q.arrow_pairs, q.query_arrow.group(1)
-        numeric = all(re.fullmatch(r"-?\d+", k) and re.fullmatch(r"-?\d+", v) for k, v in pairs) and re.fullmatch(
-            r"-?\d+", query
+        numeric = all(
+            re.fullmatch(r"-?\d+", k) and re.fullmatch(r"-?\d+", v) for k, v in pairs
+        ) and re.fullmatch(r"-?\d+", query)
+        got = (
+            self._num([(int(k), int(v)) for k, v in pairs], int(query))
+            if numeric
+            else self._str(pairs, query)
         )
-        got = self._num([(int(k), int(v)) for k, v in pairs], int(query)) if numeric else self._str(pairs, query)
         if got is None:
             return (
                 "[honest gap] no program (numeric or string) induced from the given pairs "
@@ -264,7 +271,11 @@ class WordRelationExpert:
         return 0.9 if q.word_num_analogy else 0.0
 
     def answer(self, q):
-        a, b, c = q.word_num_analogy.group(1), q.word_num_analogy.group(2), q.word_num_analogy.group(3)
+        a, b, c = (
+            q.word_num_analogy.group(1),
+            q.word_num_analogy.group(2),
+            q.word_num_analogy.group(3),
+        )
         got = self._rel(a, int(b), c)
         if got is None:
             return (
@@ -272,7 +283,10 @@ class WordRelationExpert:
                 "guess '%s'->?." % (a, b, c),
                 False,
             )
-        return ("[gf] induced word relation from %s:%s -> applied to %s:? = %d." % (a, b, c, got), True)
+        return (
+            "[gf] induced word relation from %s:%s -> applied to %s:? = %d." % (a, b, c, got),
+            True,
+        )
 
 
 class ArcExpert:
@@ -368,11 +382,23 @@ class BindingExpert:
 
     @staticmethod
     def _role_query(q):
-        m = re.search(r"(?:what is|unbind|recover|value of|\bget)\s+([a-z][a-z0-9_]*)", q.low)
+        # which ROLE to unbind. "who is"/"which"/"what's" are accepted too: a natural way to ask for a
+        # filler ("who is the agent") used to miss this regex while still scoring 0.9, so the expert was
+        # picked and then refused. Optional determiner so "what is THE color" resolves to 'color'.
+        m = re.search(
+            r"(?:what is|what's|who is|who's|which|unbind|recover|value of|\bget)\s+"
+            r"(?:the\s+|a\s+|an\s+)?([a-z][a-z0-9_]*)",
+            q.low,
+        )
         return m.group(1) if m else None
 
     def score(self, q):
-        if len(q.eq_pairs) >= 2 and (self._role_query(q) or q.has("bind", "binding", "role")):
+        # SCORE ONLY WHAT WE CAN ANSWER. answer() needs BOTH >=2 bindings AND a named role to unbind;
+        # scoring 0.9 on "bindings + the word bind" (with no role named) made the router hand this
+        # expert a turn it would immediately refuse -- confidence the answerer could not honour.
+        # Bindings without a named role still route (0.5 clears the threshold) so the caller gets the
+        # useful "tell me which role" prompt -- it just no longer claims high confidence for it.
+        if len(q.eq_pairs) >= 2 and self._role_query(q):
             return 0.9
         if len(q.eq_pairs) >= 2:
             return 0.5
@@ -651,7 +677,9 @@ class StructureMappingSolver:
         if self._parse(q):
             return 0.62  # a real relational analogy: competes, but under the single-purpose experts
         if _IS_TO_AS.search(q.low):
-            return 0.2  # plausible relational analogy, but no propositions to ground it -> won't fire
+            return (
+                0.2  # plausible relational analogy, but no propositions to ground it -> won't fire
+            )
         return 0.0
 
     def answer(self, q):
@@ -855,6 +883,36 @@ class RelationalCompletionExpert:
 # ------------------------------------------------------------- the router (SkillRegistry / MoE) ------
 
 
+# The expert scorers key on NOTATION, not on prose: they read structured query features (an
+# `a:b :: c:?` analogy, `x->y` pairs, `role=filler` bindings, a Raven grid, a run of integers). That is
+# a deliberate design -- the studies are symbolic -- but it is NOT discoverable: a query phrased as
+# ordinary English scores 0.0 everywhere and lands in the honest gap even when the matching study is
+# live and would have answered. Measured: a 16-query natural-prose spread routed to only 2 of 14
+# experts, while the same intents in the notation below answered 6/8. So the gap message TEACHES the
+# notation instead of only naming the studies.
+_FORMATS = (
+    ("gf-number-series", "what comes next in 2 4 6 8"),
+    ("gf-letter", "abc:abd :: ijk:?"),
+    ("gf-pair-induction", "2->4 3->9 4->16 5->?"),
+    ("gf-raven / rpm-raven", "a b c / d e f / g h ?"),
+    ("hdc-binding", "bind agent=john theme=ball ; what is the agent"),
+    ("sdm-recall", "recall lookup a->1 b->2 c->3 : b"),
+    ("dense-assoc", "nearest stored pattern to 10110"),
+    ("som-cluster", "cluster 1 2 3 40 41 42"),
+    ("triplet-stdp", "stdp 10 hz 20 hz plasticity"),
+    ("structure-map", "solar_system: sun->planet :: atom: nucleus->?"),
+)
+
+
+def format_hint(limit=4, closest=None):
+    """A compact 'how to phrase it' cheatsheet for the honest gap. `closest` (an expert name that
+    scored above zero but under threshold) is listed FIRST -- a near miss is the most useful hint."""
+    rows = list(_FORMATS)
+    if closest:
+        rows.sort(key=lambda r: 0 if r[0].startswith(closest) else 1)
+    return "; ".join(f"{n}: '{ex}'" for n, ex in rows[:limit])
+
+
 class ReasoningCortex:
     """Mixture-of-experts ROUTER over the reasoning studies. register(expert) adds a thin module
     adapter; route(query) scores every expert on cheap query features and dispatches the SINGLE best
@@ -863,6 +921,14 @@ class ReasoningCortex:
 
     def __init__(self, threshold=0.5):
         self.experts = []
+        # P1 NOTE -- this constant is a documented EXCEPTION, deliberately not baseline-relative.
+        # Expert scores are hand-assigned BOUNDED confidences on [0,1] (measured vocabulary: 0.0 x11,
+        # then 0.2/0.5/0.55/0.62 for weak-or-partial matches, then 0.8-0.95 for confident ones), so 0.5
+        # is a dimensionless "at least half-confident" cut on an already-normalized scale -- the same
+        # class as a `p >= 0.5` gate, not a magic number on a raw signal. Making it a running quantile
+        # would be actively WORSE: it would drift with query MIX, so a run of confident queries raises
+        # the bar and starts rejecting valid matches (the habituation failure mode that a contrastive
+        # baseline exists to avoid). Revisit only if scores ever become learned/unbounded.
         self.threshold = threshold
 
     def register(self, expert):
@@ -882,16 +948,24 @@ class ReasoningCortex:
         )  # highest score, then registration order
         best_score, _, best = scored[0] if scored else (0.0, 0, None)
         if best is None or best_score < self.threshold:
+            # DISCOVERABILITY: the scorers key on notation, so an in-scope question asked in prose lands
+            # here even though its study is live. Name the near miss (if any scored above zero) and show
+            # how to phrase it -- still an honest gap, never a bluff, just an actionable one.
+            near = best.name if (best is not None and best_score > 0.0) else None
+            lead = (
+                f"[honest gap] no reasoning expert is confident about this query (closest: "
+                f"{near} at {best_score:.2f}, under the {self.threshold} bar)."
+                if near
+                else "[honest gap] no reasoning expert is confident about this query."
+            )
             return {
                 "known": False,
                 "source": None,
                 "confidence": round(best_score, 2),
                 "expert": None,
                 "reply": (
-                    "[honest gap] no reasoning expert is confident about this query -- it is "
-                    "outside the live studies (Gf sequences/analogy/Raven, relational "
-                    "structure-mapping, HDC binding, SDM recall, dense associative memory, "
-                    "SOM clustering, triplet-STDP). no bluff."
+                    f"{lead} the live studies read STRUCTURED queries, not prose -- try, e.g.: "
+                    f"{format_hint(closest=near)}. no bluff."
                 ),
             }
         try:

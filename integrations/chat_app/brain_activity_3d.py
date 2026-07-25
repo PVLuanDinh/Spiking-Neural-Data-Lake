@@ -391,9 +391,19 @@ class BrainActivity3D:
         self.fig.canvas.draw_idle()
         return self
 
+    # Backends that render to a FILE and have no event loop. Everything else has a window.
+    # NOTE: this MUST be an exact-name check, not a substring test. The old guard was
+    # `"agg" not in get_backend().lower()`, which is True for headless "agg" -- but ALSO matches the
+    # GUI backends "tkagg" / "qtagg" / "wxagg" / "webagg", because their names CONTAIN "agg". On a
+    # normal desktop matplotlib (Windows default: TkAgg) that made show() and pause() silently no-op,
+    # so the 3D window never opened and nothing errored. Headless tests could not catch it either:
+    # under MPLBACKEND=Agg the no-op IS the correct behaviour, so the bug only ever showed on a real
+    # desktop run.
+    _NON_GUI = frozenset({"agg", "pdf", "ps", "svg", "cairo", "template", "pgf"})
+
     def _interactive(self):
         """True only on a GUI backend -- lets show()/pause() no-op cleanly under headless Agg."""
-        return "agg" not in matplotlib.get_backend().lower()
+        return matplotlib.get_backend().lower() not in self._NON_GUI
 
     def show(self):
         """Open the figure interactively (non-blocking, so a live chat loop can keep updating).

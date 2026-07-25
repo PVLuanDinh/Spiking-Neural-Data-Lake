@@ -223,9 +223,14 @@ class BrainNetPlot:
         self.fig.canvas.draw_idle()
         return self
 
+    # exact-name check, NOT a substring test -- "agg" is a substring of the GUI backends tkagg/qtagg/
+    # wxagg/webagg, so the old `"agg" not in ...` guard made show()/pause() no-op on a real desktop
+    # (Windows default TkAgg) and the window never opened. See brain_activity_3d._NON_GUI.
+    _NON_GUI = frozenset({"agg", "pdf", "ps", "svg", "cairo", "template", "pgf"})
+
     def _interactive(self):
         import matplotlib
-        return "agg" not in matplotlib.get_backend().lower()
+        return matplotlib.get_backend().lower() not in self._NON_GUI
 
     def show(self):
         if self._interactive():
