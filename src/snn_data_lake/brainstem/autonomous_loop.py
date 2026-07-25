@@ -424,15 +424,26 @@ class AutonomousArm:
         Sign convention matches the rest of the loop: [-1, 1]. A collision is the strongest negative
         so the objective can never reward driving into the obstacle."""
         st = self.arm.state()
-        if st.get("collision"):
-            return -1.0
         ee = st.get("ee") or (0.0, 0.0)
         cell = (round(float(ee[0]) / _COVER_CELL), round(float(ee[1]) / _COVER_CELL))
-        if cell in self._covered:
-            return -0.05  # mild cost for re-treading: makes standing still strictly worse than moving
-        self._covered.add(cell)
-        self._cover_new += 1
-        return 1.0
+        # RECORD FIRST, JUDGE SECOND. v4.59 returned the collision penalty BEFORE reaching this
+        # ledger, so from the moment the end effector dropped below FLOOR_Y the objective stopped
+        # COUNTING -- the arm went on traversing new territory and none of it was entered. That
+        # produced a "plateau at 9 cells, flat from tick 60" which was a measurement artifact: the
+        # SAME run reaches 57 cells by tick 600 and is still climbing while the metric still says 9.
+        # Whether the arm reached a cell is a fact about the body; whether that was a good idea is a
+        # separate judgement, and the penalty below still makes it a bad one. Conflating the two let
+        # a bad outcome erase the evidence of what happened.
+        # Measured over 8 seeds: mean coverage 23.50 -> 28.12, and the joint trajectory is byte
+        # identical in all 8 (first_divergence_tick = None) -- the arm does not move one degree
+        # differently, this only stops discarding what it already did.
+        fresh = cell not in self._covered
+        if fresh:
+            self._covered.add(cell)
+            self._cover_new += 1
+        if st.get("collision"):
+            return -1.0  # penalty deliberately UNCHANGED and still the strongest negative
+        return 1.0 if fresh else -0.05  # mild re-tread cost: standing still is worse than moving
 
     def _cpg_bias(self, td, qa):
         """COMPETENCE FLOOR: a hand-written Matsuoka CPG biases joint selection, so the arm produces
