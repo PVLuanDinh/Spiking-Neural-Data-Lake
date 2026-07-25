@@ -1077,6 +1077,20 @@ class Brain:
         never sourced from perception, so the reflex is byte-identical; torch off (no real percept) falls
         back to the synthetic band, so the zero-dep path is unchanged."""
         base = self._explore[self._wake_ticks % len(self._explore)]
+        # PROPRIOCEPTION (v4.58): the `temperature` band carries the arm's OWN joint configuration,
+        # so the next percept is a function of the last action. Before this the loop was causally
+        # OPEN -- the brain cycled three fixed stimuli forever, so its curiosity/empowerment reward
+        # (both functions of world-model prediction error) ran out of anything to be surprised by
+        # within a few ticks. A body that cannot feel itself move cannot learn that it moved.
+        # `distance` -- the ONLY E-STOP channel -- is deliberately untouched, so the reflex path is
+        # byte-identical and the safety envelope is unchanged.
+        try:
+            th = (self.brain.arm.arm.state() or {}).get("theta_deg") or []
+            if len(th) >= 2:  # fold both joints into one normalised proprioceptive scalar
+                prop = ((float(th[0]) % 360.0) / 360.0 + (float(th[1]) % 360.0) / 360.0) / 2.0
+                base = dict(base, temperature=[round(min(1.0, max(0.0, prop)), 4)])
+        except Exception:  # a body that cannot be read must not break perception
+            pass
         g = 0.5 * float(self._real_novelty)
         va = self._attend_real_stream(self._real_percept, g) if self._real_percept else None
         aa = self._attend_real_stream(self._audio_percept, g) if self._audio_percept else None

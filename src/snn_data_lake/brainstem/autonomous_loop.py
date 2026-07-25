@@ -53,7 +53,19 @@ from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
-ACTIONS = ("ENGAGE", "RELEASE", "HOLD")  # the arm's autonomous action repertoire
+# Action-space granularity, NOT a tuned threshold (Policy 1): it defines the vocabulary, it does not
+# arbitrate a decision. Sized small on purpose -- one step can neither cross the obstacle radius
+# (OBSTACLE_R=0.30) nor reach the floor from home, so a single exploratory move is always recoverable.
+_JOINT_STEP_DEG = 6.0
+_MOTOR = tuple(
+    f"JOINT_{j}_ROTATE({s}{_JOINT_STEP_DEG:g}deg)" for j in ("A", "B") for s in ("+", "-")
+)
+# The arm's autonomous action repertoire. Until v4.58 this was ENGAGE/RELEASE/HOLD only -- three
+# tokens, none of which move a joint, so the brain had no vocabulary with which to change its own
+# next observation and the sensorimotor loop was causally OPEN. The four motor tokens are the
+# precondition for closing it. ArmSim already accepted this exact command form; nothing in the
+# safety envelope changed, and `apply()` still ignores every one of these while `stopped` is set.
+ACTIONS = ("ENGAGE", "RELEASE", "HOLD") + _MOTOR  # the arm's autonomous action repertoire
 SAFE_ACTION = "HOLD"  # what caution biases toward under stress
 # W4c: self-motion step DERIVED from the chosen action (a real behavioral trajectory), not a constant drift.
 # Representation-only -- this feeds the allocentric MAP readout, never the actuator (the arm gate is separate).
@@ -1611,11 +1623,10 @@ def main():
     #     that biases selection toward the safe action -- caution-only, never a new actuator route.
     io = AutonomousArm(seed=1, interoception=True)
     io.explore = 0.0  # isolate the bias (no exploration noise)
-    io.q[0] = {
-        "ENGAGE": 0.05,
-        "RELEASE": 0.0,
-        "HOLD": 0.0,
-    }  # a mild non-safe preference
+    # Built FROM ACTIONS rather than as a literal: a hardcoded row silently encodes the size of the
+    # action space, and broke the moment motor tokens were added (KeyError in _select's score list).
+    # Derive it, override only what the probe is actually testing.
+    io.q[0] = dict.fromkeys(ACTIONS, 0.0) | {"ENGAGE": 0.05}  # a mild non-safe preference
     io_calm = io._interocept(0.0)  # homeostasis -> ~no caution
     io_stress = io._interocept(1.5)  # heavy homeostatic load -> strong caution
     pick_calm = io._select(0, intero=io_calm)  # no load -> keep the mild non-safe preference
