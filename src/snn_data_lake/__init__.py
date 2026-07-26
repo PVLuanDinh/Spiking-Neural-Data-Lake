@@ -121,6 +121,7 @@ REGIONS = {
         "reflex",
         "serial_arm",
         "arm_sim",
+        "arm_hardware",  # physical-arm build TARGET: spec + static torque budget + the sim-to-real gap
         "arm_config",
         "interpreter",
         "live_arm",

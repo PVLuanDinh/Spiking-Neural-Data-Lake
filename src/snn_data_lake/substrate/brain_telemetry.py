@@ -95,7 +95,8 @@ def snapshot(brain):
                     representations of the same fact
       gated      -- real variables their own source marks as never applied. `applied` is False.
     """
-    out = {"t": time.time(), "cognition": {}, "spikes": {}, "body": {}, "derived": {}, "gated": {}}
+    out = {"t": time.time(), "cognition": {}, "spikes": {}, "body": {},
+           "derived": {}, "gated": {}, "hardware": {}}
 
     try:
         st = brain.state()
@@ -138,6 +139,16 @@ def snapshot(brain):
     if len(app) >= 2:
         out["derived"]["valence"] = _num(app[0])
         out["derived"]["arousal"] = _num(app[1])
+
+    # ---- hardware TARGET: a plan, not a measurement. `built` is False and the UI must say so. ----
+    # Kept in its own section precisely so it can never be mistaken for body telemetry: `body` above
+    # is the live 2-DOF sim, this is the 6-DOF arm that does not exist yet.
+    try:
+        from snn_data_lake.brainstem.arm_hardware import state as _hw
+
+        out["hardware"] = _hw()
+    except Exception:
+        out["hardware"] = {}
 
     # ---- gated: real, live, and NOT routed to any action. Their source comments say so. ----
     a = getattr(getattr(brain, "brain", None), "arm", None)
@@ -275,8 +286,11 @@ canvas{width:100%;display:block}
     <div class="pan"><h2>WORLD MODEL</h2><div id="wm"></div></div>
     <div class="pan"><h2>LEARNING</h2><div id="lr"></div></div>
   </div>
-  <div class="pan" style="margin-top:12px"><h2>BODY &mdash; 2-DOF planar arm</h2><div id="bd"></div>
+  <div class="pan" style="margin-top:12px"><h2>BODY &mdash; 2-DOF planar arm (live sim)</h2><div id="bd"></div>
     <div class="note" id="bdnote"></div></div>
+  <div class="pan" style="margin-top:12px"><h2>HARDWARE TARGET &mdash; not built</h2>
+    <div id="hwhead"></div><div id="hw"></div>
+    <div class="note" id="hwnote"></div></div>
  </div>
  <div>
   <div class="pan"><h2>NEUROMODULATORS</h2><div id="nm"></div></div>
@@ -338,6 +352,25 @@ async function tick(){
    ['effector',b.effector],['collision',b.collision],['deviation',b.deviation]]);
   $('bdnote').textContent = b.moves===false
    ? 'Joints have not moved: the canonical tick emits no motor tokens, so only `effector` changes.' : '';
+  const hw=d.hardware||{};
+  if(hw.joints){
+   $('hwhead').innerHTML=
+    `<div class="row"><span>target</span><span>${hw.target_dof}-DOF &middot; ${hw.reach_mm}mm &middot; ${hw.payload_kg}kg</span></div>`+
+    `<div class="row"><span>we simulate</span><span class="na">${hw.sim_dof}-DOF, ${hw.sim_units}, dynamics ${hw.sim_has_dynamics}</span></div>`+
+    `<div class="row"><span>12V supply</span><span>${hw.peak_amps_3_stall}A peak (3 stalls) / ${hw.supply_amps}A ${hw.supply_ok?'OK':'UNDERSIZED'}</span></div>`;
+   $('hw').innerHTML='<div class="row" style="border-top:1px solid var(--ln);margin-top:6px;padding-top:6px">'+
+    '<span>joint</span><span>need / rated (kg&middot;cm)</span></div>'+
+    hw.joints.map(j=>{
+     const bad=!j.ok, dim=j.required_kgcm===0;
+     const col=bad?'var(--rd)':(dim?'var(--dim)':'var(--gr)');
+     return `<div class="row"><span${dim?' class="na"':''}>${j.joint}${j.estimated?' <em class="na">est</em>':''}</span>`+
+      `<span style="color:${col}">${j.required_kgcm.toFixed(2)} / ${j.rated_kgcm.toFixed(2)}`+
+      `${j.margin_x!==null?' &nbsp;'+j.margin_x.toFixed(2)+'&times;':''}${bad?' UNDER':''}</span></div>`}).join('');
+   $('hwnote').textContent = (hw.underpowered&&hw.underpowered.length)
+    ? 'Sized to RATED torque (stall/4) per the build notes. Underpowered: '+hw.underpowered.join(', ')
+      +'. Static gravity, horizontal pose, payload only — arm mass adds on top. Nothing here is measured.'
+    : 'Static gravity only. Nothing here is measured — this arm does not exist yet.';
+  }
   $('gt').innerHTML=Object.keys(g).length?Object.entries(g).map(([k,o])=>
    `<div class="row"><span>${k}</span><span>${fmt(o.value)} <em class="na">not applied</em></span></div>`).join('')
    :'<div class="row"><span class="na">none</span></div>';

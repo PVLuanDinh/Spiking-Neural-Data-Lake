@@ -130,6 +130,7 @@ CORE = [
     "brainstem.reflex",
     "brainstem.serial_arm",
     "brainstem.arm_sim",
+    "brainstem.arm_hardware",  # torque budget for the arm being built (asserts the shoulder shortfall)
     "brainstem.arm_config",
     "brainstem.interpreter",
     "brainstem.live_arm",
