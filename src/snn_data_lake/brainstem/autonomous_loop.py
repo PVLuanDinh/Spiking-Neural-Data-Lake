@@ -143,6 +143,7 @@ class AutonomousArm:
         # WORKSPACE COVERAGE: the physical objective. Cells the end effector has actually reached.
         self._covered = set()
         self._cover_new = 0  # newly-reached cells this run -- the honest "is it getting better" line
+        self._last_ee = None  # previous end-effector pose -> did this tick move the body at all?
         self._ground_ticks = 0  # consecutive ground-contact ticks (postural recovery reflex)
         self._recoveries = 0  # how many times the arm had to stand back up -- a real "falls" metric
         self.lr = lr
@@ -447,9 +448,24 @@ class AutonomousArm:
         if fresh:
             self._covered.add(cell)
             self._cover_new += 1
+        # STILLNESS MUST BE STRICTLY WORST OF THE NON-COLLISION OUTCOMES.
+        # v4.60 paid -0.05 for BOTH re-treading and standing still, which made them identical. Near
+        # the floor that is a losing bet: moving risks -1.0, staying is a guaranteed -0.05, so the
+        # rational policy is to stop moving -- and it did. Measured on seed 2: 4 of 6 learned units
+        # had a NON-motor argmax (ENGAGE/RELEASE/RELEASE/HOLD) and the arm sat at one pose for 241
+        # of 299 wake ticks, reaching 7 cells. The brain was not broken; it correctly optimised a
+        # reward that paid the same for exploring and for giving up.
+        # Coverage is the objective, so a tick that moves the body nowhere contributes nothing and
+        # must rank below a tick that at least travelled. Ordering, strict: new > re-tread > still.
+        moved = self._last_ee is None or (
+            abs(ee[0] - self._last_ee[0]) > 1e-9 or abs(ee[1] - self._last_ee[1]) > 1e-9
+        )
+        self._last_ee = (float(ee[0]), float(ee[1]))
         if st.get("collision"):
-            return -1.0  # penalty deliberately UNCHANGED and still the strongest negative
-        return 1.0 if fresh else -0.05  # mild re-tread cost: standing still is worse than moving
+            return -1.0  # deliberately UNCHANGED and still the strongest negative
+        if fresh:
+            return 1.0
+        return -0.02 if moved else -0.10  # re-tread beats stillness; both far above a collision
 
     def _cpg_bias(self, td, qa):
         """COMPETENCE FLOOR: a hand-written Matsuoka CPG biases joint selection, so the arm produces
