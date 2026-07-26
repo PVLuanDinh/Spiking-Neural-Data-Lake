@@ -147,6 +147,7 @@ class AutonomousArm:
         self._cover_new = (
             0  # newly-reached cells this run -- the honest "is it getting better" line
         )
+        self._last_disp = 0.0  # how far the end effector actually travelled on the last scored tick
         self._last_ee = None  # previous end-effector pose -> did this tick move the body at all?
         self._ground_ticks = 0  # consecutive ground-contact ticks (postural recovery reflex)
         self._recoveries = 0  # how many times the arm had to stand back up -- a real "falls" metric
@@ -463,6 +464,17 @@ class AutonomousArm:
         # must rank below a tick that at least travelled. Ordering, strict: new > re-tread > still.
         moved = self._last_ee is None or (
             abs(ee[0] - self._last_ee[0]) > 1e-9 or abs(ee[1] - self._last_ee[1]) > 1e-9
+        )
+        # Record the distance travelled HERE, where the previous pose still exists. Telemetry used to
+        # recompute this from `_last_ee` after the fact and always got 0.0, because the line below has
+        # already overwritten it with the current pose -- a readout that was structurally incapable of
+        # being non-zero. `moved` is deliberately left as the original per-axis test rather than being
+        # re-derived from this distance: the two disagree on sub-1e-9 diagonal steps, and `moved` is on
+        # the reward path, so changing it would alter what the arm learns.
+        self._last_disp = (
+            0.0
+            if self._last_ee is None
+            else math.hypot(ee[0] - self._last_ee[0], ee[1] - self._last_ee[1])
         )
         self._last_ee = (float(ee[0]), float(ee[1]))
         if st.get("collision"):

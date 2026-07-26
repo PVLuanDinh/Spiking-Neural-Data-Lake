@@ -49,15 +49,24 @@ sys.path.insert(0, "src")
 os.environ.setdefault("NORD_GPU", "1")
 
 from snn_data_lake.cortex.brain import make_brain
-from snn_data_lake.substrate.brain_telemetry import Recorder, serve
+from snn_data_lake.substrate.brain_telemetry import Recorder
 from snn_data_lake.substrate.chat_memory import DurableChatMemory
+from snn_data_lake.substrate.cockpit import Turns, serve
 
 TRANSCRIPTS = os.environ.get(
     "SNDL_CHAT_TRANSCRIPT", r"C:\Users\vinhl\.claude\projects\D--AI-project\*.jsonl"
 )
 TICKS_PER_CYCLE = int(os.environ.get("SNDL_TICKS", "20"))
 CHUNK_LINES = int(os.environ.get("SNDL_CHAT_CHUNK", "400"))
-POLL = float(os.environ.get("SNDL_POLL", "5"))
+# A tick costs ~33 ms; a cycle of 20 is ~0.7 s. At the old POLL=5 the brain was idle ~88% of the time,
+# which is fine for a background learner and useless for a live dashboard: the cockpit polls at 1 Hz and
+# had nothing new to show. Raise SNDL_POLL if you want the daemon to stop using a core.
+POLL = float(os.environ.get("SNDL_POLL", "0.5"))
+# Ingest is BOUNDED per cycle. respond() costs 0.1-6 s per turn, and the ingest loop used to run every
+# pending turn before returning to the tick loop -- so a burst of conversation could stall the brain for
+# a minute or more. Measured: ~0.25 ticks/sec against a capability of 30. The backlog is not dropped,
+# just spread over later cycles; the offsets only advance for turns actually consumed.
+MAX_INGEST_PER_CYCLE = int(os.environ.get("SNDL_MAX_INGEST", "4"))
 LOG_EVERY = int(os.environ.get("SNDL_LOG_EVERY", "50"))
 
 _shutdown_done = False
@@ -73,35 +82,55 @@ def _head():
 
 
 def _new_turns(path, start):
-    """New (role, text) turns from a Claude Code .jsonl beyond line `start`, at most CHUNK_LINES lines."""
+    """New (role, text) turns from a Claude Code .jsonl beyond BYTE offset `start`, <= CHUNK_LINES lines.
+
+    `start` is a byte offset, not a line index. The first version called f.readlines() and sliced
+    [start:start+CHUNK_LINES], which read the WHOLE file every cycle to look at 400 lines -- across 45
+    transcripts totalling 319 MB, that was ~319 MB of I/O per cycle to extract a few kilobytes. It was
+    the single largest cost in the daemon loop by two orders of magnitude, and it grew every time the
+    user said anything, so the brain got slower the more it was talked to.
+
+    Only complete lines advance the offset: a transcript being appended to while we read it can hand
+    back a torn final line, and consuming it would skip that turn forever once the writer completes it.
+    """
+    out = []
+    pos = start
     try:
         with open(path, encoding="utf-8", errors="replace") as f:
-            lines = f.readlines()
+            f.seek(start)
+            for _ in range(CHUNK_LINES):
+                line = f.readline()
+                if not line:
+                    break
+                if not line.endswith("\n"):
+                    break  # torn tail: leave the offset before it, re-read once it is finished
+                pos = f.tell()
+                _collect_turn(line, out)
     except OSError:
         return [], start
-    out = []
-    for line in lines[start : start + CHUNK_LINES]:
-        try:
-            rec = json.loads(line)
-        except Exception:
-            continue
-        m = rec.get("message") or {}
-        role = m.get("role")
-        content = m.get("content")
-        if isinstance(content, str):
-            text = content
-        elif isinstance(content, list):
-            text = " ".join(
-                b.get("text", "")
-                for b in content
-                if isinstance(b, dict) and b.get("type") == "text"
-            )
-        else:
-            text = ""
-        text = text.strip()
-        if text and role in ("user", "assistant"):
-            out.append((role, text))
-    return out, min(start + CHUNK_LINES, len(lines))
+    return out, pos
+
+
+def _collect_turn(line, out):
+    """Parse one transcript line; append (role, text) if it is a real user/assistant turn."""
+    try:
+        rec = json.loads(line)
+    except Exception:
+        return
+    m = rec.get("message") or {}
+    role = m.get("role")
+    content = m.get("content")
+    if isinstance(content, str):
+        text = content
+    elif isinstance(content, list):
+        text = " ".join(
+            b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text"
+        )
+    else:
+        text = ""
+    text = text.strip()
+    if text and role in ("user", "assistant"):
+        out.append((role, text))
 
 
 def _shutdown(b, mem):
@@ -169,16 +198,23 @@ def main():
     # construct a brain (Policy 4) -- it is a window onto the one above. Loopback-only by design; it is
     # observability for a local process, not a network service.
     tele_port = int(os.environ.get("NORD_TELEMETRY_PORT", "8137"))
+    turns = Turns()  # chat typed into the cockpit; drained BELOW, on this thread. See pump() note.
     try:
-        serve(b, port=tele_port, block=False)
-    except OSError as e:  # port taken (e.g. a second tool already watching) -- never kill the daemon
-        print(f"[learn-daemon] telemetry server not started: {e}", flush=True)
-    rec = Recorder(os.path.join(os.path.dirname(__file__), "data", "telemetry.jsonl"), every=TICKS_PER_CYCLE)
+        serve(b, port=tele_port, turns=turns, block=False)
+    except (
+        OSError
+    ) as e:  # port taken (e.g. a second tool already watching) -- never kill the daemon
+        print(f"[learn-daemon] cockpit not started: {e}", flush=True)
+    # every=1, NOT TICKS_PER_CYCLE. Recorder.every counts CALLS to write(), and write() is called once
+    # per cycle below -- so every=TICKS_PER_CYCLE meant one snapshot per 20 cycles (400 ticks), 20x
+    # sparser than the "one snapshot per cycle" the call site claims. The two disagreed silently.
+    rec = Recorder(os.path.join(os.path.dirname(__file__), "data", "telemetry.jsonl"), every=1)
 
     atexit.register(lambda: _shutdown(b, mem))
     atexit.register(rec.close)
     start_head = _head()
     offsets, n, remembered = {}, 0, 0
+    backlog = {}  # path -> turns read but not yet ingested (the per-cycle cap defers, never drops)
     sb = "ON" if os.environ.get("NORD_SELFMOD") == "1" else "off"
     print(
         f"[learn-daemon] FULL-brain learning; chat->the ONE lake ({knowledge_path()}); self-build={sb}; "
@@ -192,23 +228,49 @@ def main():
                 b.tick()
             except Exception as e:  # a bad tick must never kill the daemon
                 print(f"[learn-daemon] tick err: {type(e).__name__}: {e}", flush=True)
+            # (1b) COCKPIT CHAT: drain queued turns HERE, on the thread that owns the tick loop.
+            # respond() writes _help_drive into the motor-drive path, exposes the language organ to
+            # plasticity the sleep tick durably saves, and can route a command through the gated arm
+            # -- and there is no lock anywhere in the brain stack. Answering from the HTTP thread
+            # would be a data race on an object that is also writing to disk, so the server only
+            # queues and this loop is the only thing that ever touches the brain.
+            #
+            # Per TICK, not per cycle: a cycle is 20 ticks plus ingest plus POLL, so pumping once per
+            # cycle made a typed message wait for the whole cycle before it was even looked at. That
+            # is the difference between a chat box and a suggestion box.
+            try:
+                turns.pump(b, budget=1)
+            except Exception as e:  # a bad turn must never stop the loop
+                print(f"[learn-daemon] chat err: {type(e).__name__}: {e}", flush=True)
         try:  # record one snapshot per cycle -- the replayable trace a renderer reads later
             rec.write(b)
         except Exception as e:  # telemetry must never take the brain down with it
             print(f"[learn-daemon] telemetry err: {type(e).__name__}: {e}", flush=True)
         # (2) ingest new REAL chat turns -> durable memory + respond() learning (noise filtered out).
+        # Budget counts respond() calls, not turns looked at: the noise filter is microseconds, so
+        # skipping a thousand tool-output lines is free and must not consume the cap. Turns that do
+        # not fit this cycle stay in `backlog` and the byte offset is NOT re-advanced past them, so
+        # nothing is dropped -- a burst of conversation is spread over cycles instead of stalling one.
+        budget = MAX_INGEST_PER_CYCLE
         for path in sorted(glob.glob(TRANSCRIPTS), key=lambda p: os.path.getmtime(p)):
-            turns, off = _new_turns(path, offsets.get(path, 0))
-            offsets[path] = off
-            for role, text in turns:
+            if budget <= 0:
+                break
+            pend = backlog.get(path) or []
+            if not pend:
+                pend, off = _new_turns(path, offsets.get(path, 0))
+                offsets[path] = off
+            while pend and budget > 0:
+                role, text = pend.pop(0)
                 try:
                     if mem.remember(role, text):  # durable + noise-filtered (real memory only)
                         b.respond(
                             text[:2000]
                         )  # learn from the real turn (free text -> no arm actuation)
                         remembered += 1
+                        budget -= 1
                 except Exception as e:
                     print(f"[learn-daemon] ingest err: {type(e).__name__}: {e}", flush=True)
+            backlog[path] = pend
         # (3) AUTO-UPDATE: a NEW COMMIT (HEAD changed) -> persist + exit so the launcher loads the new build.
         if _head() != start_head:
             print(

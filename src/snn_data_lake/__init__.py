@@ -213,7 +213,9 @@ REGIONS = {
         "growable",
         "region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> GWT ignition bias
         "region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
-        "brain_telemetry",  # the ONE snapshot contract + JSONL recorder + stdlib /api/state server
+        "brain_telemetry",  # the ONE snapshot contract + JSONL recorder + provenance table
+        "brain_geometry",  # hand-authored anatomical layout + the REAL connectome tracts (stdlib)
+        "cockpit",  # THE one frontend: live brain + arm + hardware target + chat, one page
         "dormancy_gate",  # Policy 3: the no-silent-dormancy CI gate (reachable-or-EXEMPT over REGIONS)
         "replication_guard",  # Policy 4: the one-brain guard (canonical stack classes defined once)
         "basic_components",  # Brain-Cog-adopted composition interface: node + local-rule + connection palette
