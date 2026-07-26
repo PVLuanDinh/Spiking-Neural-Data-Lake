@@ -1,4 +1,9 @@
-"""Brain telemetry: ONE snapshot contract, an append-only recorder, and a stdlib HTTP server.
+"""Brain telemetry: the ONE snapshot contract, its provenance table, and an append-only recorder.
+
+    This is the DATA layer only. It used to carry a second HTTP server and a second dashboard of its
+    own, on the same default port as the cockpit -- two frontends racing for :8137, and a docstring in
+    substrate/cockpit.py that called this one "retired" while it was still live. `substrate/cockpit.py`
+    is the single frontend; everything here is what that frontend is allowed to read.
 
 WHY THIS EXISTS
     `Brain.state()` has carried the docstring "Telemetry for /api/state" since it was written, and
@@ -43,18 +48,15 @@ THE HONESTY CONTRACT (the whole point -- read before adding a panel)
        difference is written down.
 
 NOT A SECOND BRAIN (Policy 4)
-    This module never constructs a Brain. It takes one that already exists. `serve()` is handed the
-    live brain by its caller -- the daemon or the chat app -- so there is exactly one brain and this
-    is a window onto it.
+    This module never constructs a Brain. `snapshot()` is handed one that already exists, so there is
+    exactly one brain and this is a window onto it.
 """
 
 from __future__ import annotations
 
 import json
 import math
-import threading
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # Keys the bundled dashboard reads. verify_contract() asserts every one is producible, so deleting a
 # brain signal breaks the build instead of silently blanking a panel.
@@ -332,193 +334,10 @@ class Recorder:
             self._fh = None
 
 
-def _handler(get_snap):
-    class H(BaseHTTPRequestHandler):
-        def _send(self, code, body, ctype="application/json"):
-            data = body if isinstance(body, bytes) else body.encode("utf-8")
-            self.send_response(code)
-            self.send_header("Content-Type", ctype)
-            self.send_header("Content-Length", str(len(data)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(data)
-
-        def do_GET(self):
-            path = self.path.split("?")[0]
-            try:
-                if path in ("/", "/index.html"):
-                    return self._send(200, DASHBOARD_HTML, "text/html; charset=utf-8")
-                snap = get_snap()
-                if path == "/api/state":
-                    return self._send(200, json.dumps(snap["cognition"]))
-                if path == "/api/spikes":
-                    return self._send(200, json.dumps(snap["spikes"]))
-                if path == "/api/all":
-                    return self._send(200, json.dumps(snap))
-                return self._send(404, json.dumps({"error": "not found"}))
-            except Exception as e:
-                return self._send(500, json.dumps({"error": str(e)}))
-
-        def log_message(self, *a):  # keep the brain's stdout clean
-            return
-
-    return H
-
-
-def serve(brain, port=8137, block=True):
-    """Serve the live brain's telemetry. Does NOT construct a brain -- Policy 4: exactly one brain.
-
-    Binds loopback only. This is an observability surface over a running process, not a public API,
-    and it should not become reachable from the network by default.
-    """
-    srv = ThreadingHTTPServer(("127.0.0.1", int(port)), _handler(lambda: snapshot(brain)))
-    print(f"[telemetry] http://127.0.0.1:{port}/  (/api/state /api/spikes /api/all)")
-    if not block:
-        threading.Thread(target=srv.serve_forever, daemon=True).start()
-        return srv
-    try:
-        srv.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        srv.server_close()
-    return srv
-
-
-DASHBOARD_HTML = """<!doctype html><meta charset="utf-8"><title>SNDL brain telemetry</title>
-<style>
-:root{--bg:#080b12;--pan:#0e1420;--ln:#1c2740;--fg:#c7d4ea;--dim:#5f708c;--cy:#39c6e8;--am:#e8a33d;--gr:#4fd48a;--rd:#e85f6b}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);
-font:13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
-header{padding:10px 16px;border-bottom:1px solid var(--ln);display:flex;gap:18px;align-items:baseline}
-h1{font-size:15px;margin:0;color:var(--cy);letter-spacing:.14em}
-.badge{padding:1px 8px;border:1px solid var(--ln);border-radius:9px;font-size:11px}
-main{display:grid;grid-template-columns:1fr 340px;gap:12px;padding:12px}
-.pan{background:var(--pan);border:1px solid var(--ln);border-radius:6px;padding:10px 12px}
-.pan h2{font-size:10px;letter-spacing:.16em;color:var(--cy);margin:0 0 8px;font-weight:600}
-.row{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
-.row span:last-child{color:#fff}
-.bar{height:5px;background:#16203352;border-radius:3px;overflow:hidden;margin:3px 0 6px}
-.bar i{display:block;height:100%;background:var(--cy)}
-.na{color:var(--dim)!important}
-.note{color:var(--dim);font-size:11px;margin-top:6px;font-style:italic}
-canvas{width:100%;display:block}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-</style>
-<header>
-  <h1>SNDL</h1><span class="badge" id="circ">--</span><span class="badge" id="tk">--</span>
-  <span class="badge" id="ni">--</span><span class="badge" id="err" style="color:var(--rd)"></span>
-</header>
-<main>
- <div>
-  <div class="pan"><h2>REGION SPIKE RATES &mdash; live, 17 regions</h2>
-    <canvas id="sp" height="230"></canvas>
-    <div class="note">Region-resolved, not cell-type-resolved. Absent snapshot renders empty, never fabricated.</div>
-  </div>
-  <div class="grid2" style="margin-top:12px">
-    <div class="pan"><h2>WORLD MODEL</h2><div id="wm"></div></div>
-    <div class="pan"><h2>LEARNING</h2><div id="lr"></div></div>
-  </div>
-  <div class="pan" style="margin-top:12px"><h2>BODY &mdash; 2-DOF planar arm (live sim)</h2><div id="bd"></div>
-    <div class="note" id="bdnote"></div></div>
-  <div class="pan" style="margin-top:12px"><h2>HARDWARE TARGET &mdash; not built</h2>
-    <div id="hwhead"></div><div id="hw"></div>
-    <div class="note" id="hwnote"></div></div>
- </div>
- <div>
-  <div class="pan"><h2>NEUROMODULATORS</h2><div id="nm"></div></div>
-  <div class="pan" style="margin-top:12px"><h2>AFFECT</h2>
-    <canvas id="va" height="150"></canvas><div id="af"></div></div>
-  <div class="pan" style="margin-top:12px"><h2>ACCESS &amp; INTEGRATION</h2><div id="ai"></div></div>
-  <div class="pan" style="margin-top:12px"><h2>COMPUTED, NOT APPLIED</h2><div id="gt"></div>
-    <div class="note">Live variables their own source marks as never routed to an action.</div></div>
- </div>
-</main>
-<script>
-const $=i=>document.getElementById(i);
-const fmt=v=>(v===null||v===undefined||v==='')?'&mdash;':(typeof v==='number'?(Math.abs(v)<1e-4&&v!==0?v.toExponential(1):v.toFixed(Math.abs(v)>=100?0:3)):v);
-const na=v=>(v===null||v===undefined)?' class="na"':'';
-function rows(el,pairs){el.innerHTML=pairs.map(([k,v])=>
- `<div class="row"><span>${k}</span><span${na(v)}>${fmt(v)}</span></div>`).join('')}
-function bars(el,pairs){el.innerHTML=pairs.map(([k,v])=>{
- if(v===null||v===undefined)return `<div class="row"><span>${k}</span><span class="na">&mdash;</span></div>`;
- const p=Math.max(0,Math.min(1,v))*100;
- return `<div class="row"><span>${k}</span><span>${fmt(v)}</span></div><div class="bar"><i style="width:${p}%"></i></div>`}).join('')}
-function spikes(c,s){const ks=Object.keys(s).sort();const ctx=c.getContext('2d');
- const w=c.width=c.clientWidth*2,h=c.height=460;ctx.scale(1,1);ctx.clearRect(0,0,w,h);
- if(!ks.length){ctx.fillStyle='#5f708c';ctx.font='22px monospace';ctx.fillText('no spike snapshot',20,40);return}
- const bh=h/ks.length;ctx.font='20px ui-monospace,monospace';
- ks.forEach((k,i)=>{const v=s[k]||0,y=i*bh;
-  ctx.fillStyle='#162033';ctx.fillRect(300,y+4,w-340,bh-8);
-  ctx.fillStyle=v>.66?'#39c6e8':v>.33?'#4fd48a':'#e8a33d';ctx.fillRect(300,y+4,(w-340)*v,bh-8);
-  ctx.fillStyle=v?'#c7d4ea':'#5f708c';ctx.fillText(k,8,y+bh/2+7);
-  ctx.fillStyle='#fff';ctx.fillText(v.toFixed(2),w-70,y+bh/2+7)})}
-function circumplex(c,v,a){const ctx=c.getContext('2d');const w=c.width=c.clientWidth*2,h=c.height=300;
- ctx.clearRect(0,0,w,h);const cx=w/2,cy=h/2,r=Math.min(cx,cy)-14;
- ctx.strokeStyle='#1c2740';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.stroke();
- ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx+r,cy);ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy+r);ctx.stroke();
- if(v===null||v===undefined||a===null||a===undefined){ctx.fillStyle='#5f708c';ctx.font='18px monospace';
-  ctx.fillText('no affect signal',cx-70,cy-8);return}
- const x=cx+Math.max(-1,Math.min(1,v))*r,y=cy-Math.max(-1,Math.min(1,a))*r;
- ctx.fillStyle='#39c6e8';ctx.beginPath();ctx.arc(x,y,7,0,7);ctx.fill()}
-async function tick(){
- try{const r=await fetch('/api/all');const d=await r.json();$('err').textContent='';
-  const s=d.cognition||{},g=d.gated||{},b=d.body||{},dv=d.derived||{};
-  $('circ').textContent=(s.circadian||'--').toUpperCase();
-  $('tk').textContent='tick '+((s.wake_ticks||0)+(s.sleep_ticks||0));
-  $('ni').textContent='night '+(s.nights_elapsed??'--');
-  spikes($('sp'),d.spikes||{});
-  bars($('nm'),[['dopamine',s.da_level],['serotonin',s.neuromod_serotonin],
-   ['noradrenaline',s.neuromod_noradrenaline],['acetylcholine',s.neuromod_acetylcholine],
-   ['cortisol',s.cortisol]]);
-  circumplex($('va'),dv.valence,dv.arousal);
-  rows($('af'),[['emotion',s.emotion],['drive',s.dominant_drive],['valence',dv.valence],
-   ['arousal',dv.arousal],['RPE',s.rpe]]);
-  bars($('ai'),[['access index',s.access_index],['criticality',s.criticality],
-   ['region coherence',s.region_coherence],['integration',s.integration_competence]]);
-  rows($('wm'),[['pc surprise',s.pc_surprise],['curiosity mag',s.curiosity_mag],
-   ['attended modality',s.attended_modality],['distance',dv.distance_from_origin],
-   ['place error',dv.place_error]]);
-  rows($('lr'),[['grown units',s.grown_units],['predict acc',s.predict_accuracy],
-   ['reasoning acc',s.reasoning_accuracy],['reliability',s.reliability]]);
-  rows($('bd'),[['theta (deg)',(b.theta_deg||[]).join(', ')],['end effector',(b.ee||[]).join(', ')],
-   ['effector',b.effector],['collision',b.collision],['deviation',b.deviation]]);
-  $('bdnote').textContent = b.moves===false
-   ? 'Joints have not moved: the canonical tick emits no motor tokens, so only `effector` changes.' : '';
-  const hw=d.hardware||{};
-  if(hw.joints){
-   $('hwhead').innerHTML=
-    `<div class="row"><span>target</span><span>${hw.target_dof}-DOF &middot; ${hw.reach_mm}mm &middot; ${hw.payload_kg}kg</span></div>`+
-    `<div class="row"><span>we simulate</span><span class="na">${hw.sim_dof}-DOF, ${hw.sim_units}, dynamics ${hw.sim_has_dynamics}</span></div>`+
-    `<div class="row"><span>12V supply</span><span>${hw.peak_amps_3_stall}A peak (3 stalls) / ${hw.supply_amps}A ${hw.supply_ok?'OK':'UNDERSIZED'}</span></div>`;
-   $('hw').innerHTML='<div class="row" style="border-top:1px solid var(--ln);margin-top:6px;padding-top:6px">'+
-    '<span>joint</span><span>need / rated (kg&middot;cm)</span></div>'+
-    hw.joints.map(j=>{
-     const bad=!j.ok, dim=j.required_kgcm===0;
-     const col=bad?'var(--rd)':(dim?'var(--dim)':'var(--gr)');
-     return `<div class="row"><span${dim?' class="na"':''}>${j.joint}${j.estimated?' <em class="na">est</em>':''}</span>`+
-      `<span style="color:${col}">${j.required_kgcm.toFixed(2)} / ${j.rated_kgcm.toFixed(2)}`+
-      `${j.margin_x!==null?' &nbsp;'+j.margin_x.toFixed(2)+'&times;':''}${bad?' UNDER':''}</span></div>`}).join('');
-   $('hwnote').textContent = (hw.underpowered&&hw.underpowered.length)
-    ? 'Sized to RATED torque (stall/4) per the build notes. Underpowered: '+hw.underpowered.join(', ')
-      +'. Static gravity, horizontal pose, payload only — arm mass adds on top. Nothing here is measured.'
-    : 'Static gravity only. Nothing here is measured — this arm does not exist yet.';
-  }
-  $('gt').innerHTML=Object.keys(g).length?Object.entries(g).map(([k,o])=>
-   `<div class="row"><span>${k}</span><span>${fmt(o.value)} <em class="na">not applied</em></span></div>`).join('')
-   :'<div class="row"><span class="na">none</span></div>';
- }catch(e){$('err').textContent='disconnected'}
-}
-tick();setInterval(tick,1000);
-</script>
-"""
-
-
 def main():
     """Self-check: the contract holds against a real brain, the recorder round-trips, HTTP answers."""
     import os
     import tempfile
-    import urllib.request
 
     from snn_data_lake.cortex.brain import make_brain
 
@@ -596,26 +415,14 @@ def main():
     assert lines[0]["spikes"], "recorded snapshot has no spike section"
     os.remove(tmp)
 
-    # server answers on loopback. port=0 -> the OS assigns a free one: a hardcoded port makes this
-    # self-check fail whenever anything else holds it, including a second copy of ITSELF. That is not
-    # hypothetical -- it flaked exactly that way under pytest while a manual run was live, and a gate
-    # that fails for a reason unrelated to what it tests teaches people to ignore it.
-    srv = serve(brain, port=0, block=False)
-    base = f"http://127.0.0.1:{srv.server_address[1]}"
-    try:
-        with urllib.request.urlopen(f"{base}/api/state", timeout=5) as r:
-            got = json.loads(r.read().decode())
-        assert "circadian" in got, "/api/state did not return brain state"
-        with urllib.request.urlopen(f"{base}/api/spikes", timeout=5) as r:
-            sp = json.loads(r.read().decode())
-        assert len(sp) == 17, "/api/spikes did not return 17 regions"
-    finally:
-        srv.shutdown()
-        srv.server_close()
+    # No HTTP here any more -- serving is substrate/cockpit.py's job, and it self-checks its own
+    # endpoints. This module is the data layer; a second server on the same default port was the
+    # duplication that made "which dashboard am I looking at?" a real question.
 
     print(
         f"brain_telemetry OK: {len(snap['cognition'])} cognition keys, {len(snap['spikes'])} regions, "
-        f"{len(snap['gated'])} gated readouts, contract clean, recorder+HTTP verified"
+        f"{len(snap['gated'])} gated readouts, {len(prov)} provenance tags, contract clean, "
+        f"recorder round-trips"
     )
 
 

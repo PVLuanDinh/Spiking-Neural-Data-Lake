@@ -193,7 +193,10 @@ def serve(brain, port=8137, turns=None, block=True):
     turns = Turns() if turns is None else turns
     srv = ThreadingHTTPServer(("127.0.0.1", int(port)), _handler(lambda: snapshot(brain), turns))
     srv.turns = turns
-    print(f"[cockpit] http://127.0.0.1:{port}/  (live brain, arm, hardware target, chat)")
+    # the BOUND port, not the requested one: port=0 means "OS, pick one", and printing the request
+    # would tell the reader to open http://127.0.0.1:0/
+    bound = srv.server_address[1]
+    print(f"[cockpit] http://127.0.0.1:{bound}/  (live brain, arm, hardware target, chat)")
     if not block:
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         return srv
