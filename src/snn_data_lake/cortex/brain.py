@@ -2578,11 +2578,15 @@ class Brain:
             # state() must not carry two representations of the same fact.
             "neuromod_serotonin": _lvl(self._raphe),  # 5-HT: tracks the slow circadian baseline
             "neuromod_noradrenaline": _lvl(self._lc),  # NA: phasic gain on salient events
-            "neuromod_acetylcholine": _lvl(self._ach),  # ACh: novelty -> encoding gain (consumed at :1730)
+            "neuromod_acetylcholine": _lvl(
+                self._ach
+            ),  # ACh: novelty -> encoding gain (consumed at :1730)
             "neuromod_astrocyte": (  # slow glial gain, one per domain
                 [round(float(g), 4) for g in self._astro.gains] if self._astro is not None else []
             ),
-            "cortisol": _lvl(getattr(self.brain.arm, "cort", None)),  # stress; flat while reward_fn is None
+            "cortisol": _lvl(
+                getattr(self.brain.arm, "cort", None)
+            ),  # stress; flat while reward_fn is None
             "curiosity_mag": round(
                 float(getattr(self.brain.arm, "_cur_mag", 0.0) or 0.0), 4
             ),  # running |curiosity| -- the unit intrinsic reward is normalised by

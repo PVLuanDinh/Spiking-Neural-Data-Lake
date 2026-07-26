@@ -36,9 +36,24 @@ from __future__ import annotations
 _RATED_FRACTION_OF_STALL = 0.25
 
 SERVOS = {
-    "ST3215-1:345": {"stall_kgcm_12v": 30.0, "stall_kgcm_7v4": 19.5, "ratio": 345, "role": "base, shoulder"},
-    "ST3215-1:191": {"stall_kgcm_12v": 16.6, "stall_kgcm_7v4": 10.8, "ratio": 191, "role": "elbow, wrist pitch"},
-    "ST3215-1:147": {"stall_kgcm_12v": 12.8, "stall_kgcm_7v4": 8.3, "ratio": 147, "role": "wrist roll"},
+    "ST3215-1:345": {
+        "stall_kgcm_12v": 30.0,
+        "stall_kgcm_7v4": 19.5,
+        "ratio": 345,
+        "role": "base, shoulder",
+    },
+    "ST3215-1:191": {
+        "stall_kgcm_12v": 16.6,
+        "stall_kgcm_7v4": 10.8,
+        "ratio": 191,
+        "role": "elbow, wrist pitch",
+    },
+    "ST3215-1:147": {
+        "stall_kgcm_12v": 12.8,
+        "stall_kgcm_7v4": 8.3,
+        "ratio": 147,
+        "role": "wrist roll",
+    },
     "SC-series": {"stall_kgcm_12v": 8.0, "stall_kgcm_7v4": 5.0, "ratio": 0, "role": "gripper"},
 }
 
@@ -177,7 +192,9 @@ def main():
 
     # the headline finding, asserted so a future edit cannot quietly erase it
     sh = rows["shoulder_pitch"]
-    assert sh["required_kgcm"] == 15.0, f"payload-only shoulder torque changed: {sh['required_kgcm']}"
+    assert sh["required_kgcm"] == 15.0, (
+        f"payload-only shoulder torque changed: {sh['required_kgcm']}"
+    )
     assert sh["rated_kgcm"] == 7.5, f"ST3215 1:345 rated changed: {sh['rated_kgcm']}"
     assert not sh["ok"], "shoulder must read UNDERPOWERED for 500g at 300mm"
     assert sh["margin_x"] == 0.5, f"shoulder margin changed: {sh['margin_x']}"

@@ -139,10 +139,14 @@ class AutonomousArm:
         # Slow constants (tau_r=0.5, tau_a=6.0) are the ones cpg_sweep already uses for smooth sweeps.
         self.cpg = MatsuokaCPG(tau_r=0.5, tau_a=6.0)
         self._cpg_w = 1.0  # current CPG share (competence-gated each tick, floored at _CPG_FLOOR)
-        self._cpg_spread_max = 0.0  # RUNNING scale for the competence gate -- baseline-relative (P1)
+        self._cpg_spread_max = (
+            0.0  # RUNNING scale for the competence gate -- baseline-relative (P1)
+        )
         # WORKSPACE COVERAGE: the physical objective. Cells the end effector has actually reached.
         self._covered = set()
-        self._cover_new = 0  # newly-reached cells this run -- the honest "is it getting better" line
+        self._cover_new = (
+            0  # newly-reached cells this run -- the honest "is it getting better" line
+        )
         self._last_ee = None  # previous end-effector pose -> did this tick move the body at all?
         self._ground_ticks = 0  # consecutive ground-contact ticks (postural recovery reflex)
         self._recoveries = 0  # how many times the arm had to stand back up -- a real "falls" metric
@@ -508,7 +512,9 @@ class AutonomousArm:
         phase = max(-1.0, min(1.0, y1 - y2))  # bounded anti-phase rhythm in [-1, 1]
         self._cpg_spread_max = max(self._cpg_spread_max, spread)
         comp = spread / self._cpg_spread_max if self._cpg_spread_max > 1e-9 else 0.0
-        self._cpg_w = max(_CPG_FLOOR, 1.0 - comp)  # learned competence displaces the CPG, never fully
+        self._cpg_w = max(
+            _CPG_FLOOR, 1.0 - comp
+        )  # learned competence displaces the CPG, never fully
         out = list(td)
         for act, sign in ((_A_POS, 1.0), (_A_NEG, -1.0)):
             if act in _ACT_IX:
