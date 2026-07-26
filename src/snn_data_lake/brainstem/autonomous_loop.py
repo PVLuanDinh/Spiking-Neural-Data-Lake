@@ -74,6 +74,10 @@ _CPG_FLOOR = 0.25  # competence floor: the CPG's minimum share, so behaviour nev
 # nothing when the learned row is confident. A deliberate invariant, not a tuned threshold -- the
 # analog of mhflocke's CompetenceGate.cpg_min = 0.40.
 _COVER_CELL = 0.10  # workspace discretisation for the coverage reward (metres); a scale, not a gate
+# Consecutive ground-contact ticks before the postural recovery reflex fires. Small enough that the
+# arm cannot spend a run underground, large enough that a single grazing contact is not treated as a
+# fall. A latency, not a tuned threshold -- the condition itself (ArmSim reports GROUND) is exact.
+_GROUND_RECOVER_TICKS = 3
 SAFE_ACTION = "HOLD"  # what caution biases toward under stress
 # W4c: self-motion step DERIVED from the chosen action (a real behavioral trajectory), not a constant drift.
 # Representation-only -- this feeds the allocentric MAP readout, never the actuator (the arm gate is separate).
@@ -139,6 +143,8 @@ class AutonomousArm:
         # WORKSPACE COVERAGE: the physical objective. Cells the end effector has actually reached.
         self._covered = set()
         self._cover_new = 0  # newly-reached cells this run -- the honest "is it getting better" line
+        self._ground_ticks = 0  # consecutive ground-contact ticks (postural recovery reflex)
+        self._recoveries = 0  # how many times the arm had to stand back up -- a real "falls" metric
         self.lr = lr
         self.explore = explore
         self.rng = random.Random(seed)
@@ -1105,6 +1111,33 @@ class AutonomousArm:
             reliability_hold=reliability_hold,
         )  # threat/intero caution + PFC bias + drift hold (SAFE_ACTION only)
         state = self.arm.apply(action)  # gated: frozen after E-STOP, collision-checked
+        # POSTURAL RECOVERY REFLEX. ArmSim REPORTS ground contact but deliberately does not prevent
+        # it -- its self-check asserts a command CAN drive the arm into the floor ("reflex would
+        # EMERGENCY_STOP"), because a real arm can be, and a sim that silently refused would hide the
+        # failure mode from the safety layer. But nothing ever consumed that signal: the reflex fires
+        # on `distance < CONTACT` (a proximity sensor), never on collision. So the arm sank below
+        # FLOOR_Y and stayed -- measured P(collide at t+1 | collided at t) = 0.991, effectively an
+        # absorbing state, with the end effector reaching y = -0.809 and 53 of 73 wake ticks spent
+        # underground. This is the same computed-but-not-consumed gap as everywhere else.
+        # HOME is the sanctioned recovery command and is the analog of the OpenCat pose-recovery that
+        # is mhflocke's ONLY fall handling.
+        # SAFETY: gated on `not stopped`. ArmSim.apply("HOME") clears `stopped`, so firing this while
+        # E-STOPPED would un-freeze an emergency-stopped arm. It must never run in that state, and the
+        # E-STOP early-return at the top of step() means a stopped arm normally never reaches here.
+        if state.get("collision") == "GROUND" and not state.get("stopped"):
+            self._ground_ticks += 1
+            if self._ground_ticks >= _GROUND_RECOVER_TICKS:
+                # LOCAL lift, not HOME. HOME was tried first and measured NET NEGATIVE over 5 seeds
+                # at 600 ticks (84.4 -> 80.2 cells) because it resets theta to [0,0], teleporting the
+                # arm back to the origin and destroying the position it had explored to. Escaping the
+                # floor should not cost you where you were. One +A step is the minimal motion that
+                # raises the end effector (geometry: from a sunken pose, escape needs consecutive
+                # +A rotations), so the arm climbs out and carries on from where it fell.
+                state = self.arm.apply(_A_POS)
+                self._ground_ticks = 0
+                self._recoveries += 1
+        else:
+            self._ground_ticks = 0
         goal_val = (
             self.pfc.goal if self.pfc is not None else None
         )  # the prefrontal working-memory goal
