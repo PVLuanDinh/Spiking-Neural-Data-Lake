@@ -55,10 +55,11 @@ reactive — a top-down *preference* that still yields to caution and the reflex
 `cortex/live_brain` runs the whole stack together as one self-driving loop: the brain is **live**,
 centred on reasoning, acting only through the gate.
 
-The running brain is drivable interactively — `substrate/live_brain_tab` adds a "Live Brain" tab to the
-control panel that surfaces the functional signatures (the Global Workspace broadcast, the held goal,
-threat / interoceptive caution) and the gated arm, presented as *functional correlates* and explicitly
-**not** a claim of consciousness. Its working memory is backed by the **spike data lake**: with
+The running brain is watchable and drivable interactively — `substrate/cockpit` (the ONE frontend,
+served by the always-on daemon at `http://127.0.0.1:8137/`) surfaces the functional signatures (the
+Global Workspace broadcast, the held goal, threat / interoceptive caution), the gated arm, and chat,
+presented as *functional correlates* and explicitly **not** a claim of consciousness. Its working
+memory is backed by the **spike data lake**: with
 `lake_wm` on, each tick is stored in and recalled from the durable `.spkl` lake
 (`substrate/lake_working_memory`), so the data lake literally holds the working memory.
 

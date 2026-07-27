@@ -186,7 +186,7 @@ class Brain:
             "NORD_PERSIST"
         ) != "0"
 
-        # ---- the full live brain: PROVEN self-improve config (see spiking_chat.py) ----
+        # ---- the full live brain: PROVEN self-improve config ----
         # jepa=True is REQUIRED or the spiking curiosity yields no intrinsic reward.
         # predictive_coding=True: each live tick SETTLES a 2-level Rao-Ballard spiking generative model
         # on the perceived pattern, exposing a generative percept + a prediction-error SURPRISE that

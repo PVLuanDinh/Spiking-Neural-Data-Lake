@@ -2,16 +2,17 @@
 
 Two modes:
 
-  python packaging/make_bundle.py --exe
+  python integrations/packaging/make_bundle.py --exe
       -> dist/spiking-neural-data-lake-<ver>-windows-x64.zip
-      Zips the prebuilt standalone GUI executable (dist/snn-ui.exe) with QUICKSTART,
-      LICENSE, and the build/run docs. Build the exe first: python packaging/build_exe.py
+      Zips the prebuilt standalone executable (dist/snn-ui.exe -- the daemon + cockpit) with
+      QUICKSTART, LICENSE, and the build/run docs. Build the exe first:
+      python integrations/packaging/build_exe.py
 
-  python packaging/make_bundle.py --full
+  python integrations/packaging/make_bundle.py --full
       -> dist/spiking-neural-data-lake-<ver>-full-src.zip
       Zips the entire runnable repo (source, research/, docs, tests, sample captures,
-      install.bat / install.sh / packaging/install.py) minus VCS/tooling noise and
-      data/model artifacts, for the "install Python 3.11+ and all extras" distribution.
+      install.bat / install.sh / integrations/packaging/install.py) minus VCS/tooling noise
+      and data/model artifacts, for the "install Python 3.11+ and all extras" distribution.
 
 Pure standard library. The <ver> string is read from pyproject.toml so a bundle can
 never ship a version mismatched from the package.
@@ -25,8 +26,8 @@ import tomllib
 import zipfile
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
 PACKAGING_DIR = Path(__file__).resolve().parent
+REPO_ROOT = PACKAGING_DIR.parent.parent          # integrations/packaging -> repo root
 
 # --- full-source bundle: what NOT to ship (rebuilt/re-downloaded on the user's machine) ---
 EXCLUDE_DIRS = {
@@ -72,8 +73,8 @@ def build_exe_bundle(version):
     sync_iss_version(version)
     exe_path = REPO_ROOT / "dist" / "snn-ui.exe"
     if not exe_path.exists():
-        print("dist/snn-ui.exe not found - build it first: python packaging/build_exe.py",
-              file=sys.stderr)
+        print("dist/snn-ui.exe not found - build it first: "
+              "python integrations/packaging/build_exe.py", file=sys.stderr)
         sys.exit(1)
 
     files = [
@@ -128,7 +129,8 @@ def build_full_bundle(version):
                 count += 1
 
     names = zipfile.ZipFile(out).namelist()
-    required = [f"{top}/install.bat", f"{top}/install.sh", f"{top}/packaging/install.py",
+    required = [f"{top}/install.bat", f"{top}/install.sh",
+                f"{top}/integrations/packaging/install.py",
                 f"{top}/pyproject.toml", f"{top}/run_selfchecks.py"]
     missing = [r for r in required if r not in names]
     if missing:
@@ -142,15 +144,19 @@ def build_full_bundle(version):
         print(f"Skipped {skipped_big} file(s) over {MAX_FILE_BYTES // (1024 * 1024)} MB "
               f"({skipped_bytes / (1024 * 1024):.0f} MB total) -- datasets/models/artifacts, "
               f"regenerated or re-downloaded on install/run, not shipped as source.")
-    print("Verified present: install.bat, install.sh, packaging/install.py, pyproject.toml, run_selfchecks.py")
+    print("Verified present: install.bat, install.sh, integrations/packaging/install.py, "
+          "pyproject.toml, run_selfchecks.py")
     print("Distribution: unzip -> run install.bat (Windows) or ./install.sh (POSIX).")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Assemble a release bundle for the Spiking Neural Data Lake.")
+    parser = argparse.ArgumentParser(
+        description="Assemble a release bundle for the Spiking Neural Data Lake.")
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--exe", action="store_true", help="bundle the prebuilt dist/snn-ui.exe (windows-x64.zip)")
-    mode.add_argument("--full", action="store_true", help="bundle the full runnable source tree (full-src.zip)")
+    mode.add_argument("--exe", action="store_true",
+                      help="bundle the prebuilt dist/snn-ui.exe (windows-x64.zip)")
+    mode.add_argument("--full", action="store_true",
+                      help="bundle the full runnable source tree (full-src.zip)")
     args = parser.parse_args()
 
     version = read_version()

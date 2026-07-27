@@ -46,7 +46,9 @@ Train on a GPU and export weights back to the zero-dep core: [docs/TRAINING.md](
 snn-demo     # the whole neuromorphic loop in one runnable file
 snn-arm      # live gesture -> arm loop (add --serial/--actuate for real hardware)
 snn-loop     # full closed loop: gesture -> command -> reward -> learn
-snn-ui       # zero-dependency tkinter desktop control panel (arm + recognition + lake)
+
+python learn_daemon.py      # the always-on brain; serves the cockpit -- the ONE frontend --
+                            # at http://127.0.0.1:8137/ (live brain, arm, hardware target, chat)
 
 python run_selfchecks.py    # run every module's self-check (138 total)
 ```
@@ -100,9 +102,9 @@ src/snn_data_lake/   107 zero-dependency core modules across 10 anatomical brain
                      connectome.py (region->region wiring) + lakehouse/ (Medallion Bronze→Gold)
 research/            benchmarks and experiments, kept for reproducibility (ruff-excluded, not the product)
 tests/               pytest suite (>=70% coverage)
-packaging/           build the tkinter GUI into a standalone Windows .exe (PyInstaller + Inno Setup)
-local_llm/           optional on-device NL interface (AirLLM backend, [llm] extra, no cloud)
-deploy/              ESP32 actuator firmware (fail-safe, echo-only by default)
+integrations/        packaging/ (daemon + cockpit -> standalone Windows .exe, PyInstaller + Inno Setup),
+                     local_llm/ (optional on-device NL interface, AirLLM backend, [llm] extra, no cloud),
+                     deploy/ (ESP32 actuator firmware, fail-safe, echo-only by default), robot arm/
 docs/                install, hardware setup, storage formats, architecture notes
 run_selfchecks.py    canonical self-check runner (single source of truth for the module list)
 ```
@@ -144,10 +146,11 @@ Numbers are fixed-seed; rerun to reproduce.
 
 ## Download (Windows, no Python needed)
 
-A standalone GUI executable is published on the
+A standalone executable is published on the
 [v3.27 release](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/tag/v3.27): unzip
-and run `snn-ui.exe` (verify headlessly with `snn-ui.exe --smoke`). A full-source zip is also
-attached there for a Python 3.11+ install via `install.bat` / `install.sh`.
+and run `snn-ui.exe`, which starts the brain daemon and opens the cockpit in your browser (verify
+headlessly with `snn-ui.exe --smoke`). A full-source zip is also attached there for a Python 3.11+
+install via `install.bat` / `install.sh`.
 
 ## Provenance & license
 

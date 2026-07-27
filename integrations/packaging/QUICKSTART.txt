@@ -2,43 +2,67 @@ SPIKING NEURAL DATA LAKE - QUICKSTART
 =====================================
 
 WHAT IS THIS?
-A zero-dependency neuromorphic robot-arm control panel + spiking data lakehouse.
+A neuromorphic brain that runs continuously, plus a spiking data lakehouse.
 Desktop app for Windows 64-bit.  No Python install required.
 
 HOW TO RUN
 1. Unzip this archive to a folder.
-2. Double-click snn-ui.exe to launch.
+2. Double-click snn-ui.exe.
 
-THE FIVE TABS
-  Arm Control      Live 2-link arm (simulated by default). Every button is safety-gated:
-                   collision, EMERGENCY_STOP, allow-list. Connect serial (COM) to drive
-                   a REAL arm -- calibration-gated, no bypass.
+   A console window opens and the brain starts ticking. Once it is up, your
+   default browser opens the COCKPIT at http://127.0.0.1:8137/ -- if it does
+   not, open that address yourself. The console keeps printing the boot
+   banner, the cockpit URL, and a per-cycle learning line; closing it stops
+   the brain.
 
-  Live Recognition Replay the bundled sample gesture captures as live arm commands
-                   (step or auto-play); Open CSV... to load your OWN capture.
+THE COCKPIT - ONE PAGE, ONE BRAIN
+  The whole frontend is a single web page served by the running brain. There
+  are no tabs. It shows:
 
-  Lake Browser     Load the demo store, Open your OWN .spk, or use Import data... (a wizard
-                   for spike-event OR dense sensor CSV -> a queryable store); run queries.
+  Anatomy view    The brain in 3D: one dot per module, coloured and sized by
+                  its region's live spike rate. The lines between regions are
+                  the REAL typed connectome, not decoration. Drag to steer the
+                  camera; double-click to stop it. The rotation is a camera
+                  and nothing else moves without data.
 
-  NL Command       Type an English command ("close the effector", "go home",
-                   "STOP", "read telemetry channel 7 window 1000"). It maps to a
-                   safe allow-listed arm action (driven through the same gated
-                   Arm Control path) or a lake query, or is rejected. Zero-dep
-                   keyword backend by default.
+  Arm + workspace The simulated 2-link arm's pose and the workspace cells it
+                  has reached. No hardware is connected or driven.
 
-  Diagnostics      Run the ENTIRE core from inside the app: every core module's
-                   self-check, PASS/FAIL live (a build / self-test diagnostic). The
-                   whole core is bundled in this .exe. Headless: snn-ui.exe --run-core
+  Hardware target A 6-DOF torque budget from the build notes: required vs
+                  rated kg-cm per joint, and the 12V supply headroom. This is
+                  a PLAN, not telemetry -- the page labels it NOT BUILT, and
+                  nothing there is measured.
+
+  Live telemetry  Motor mix, behaviour and emotion, neuromodulators, world
+                  model, and the bottom strip: coverage, reach, stability,
+                  affect, global access, life (nights slept), lake census.
+
+  Chat            Type to the brain. Your turn is queued and answered by the
+                  thread that owns the tick loop, so the reply takes as long
+                  as the brain takes.
+
+  Anything the brain cannot supply renders as an em-dash, never as a zero
+  bar. Anything it can supply but that does not mean what a live bar implies
+  (frozen at construction, sleep-only, a literal) is drawn with a provenance
+  tag beside it.
+
+WHAT IT REMEMBERS
+  Learning accumulates in a durable home at %USERPROFILE%\.snn_data_lake.
+  Close the app and reopen it and the brain resumes -- it does not start over.
+  Only one brain may run at a time; a second launch detects the lock, exits,
+  and its browser tab shows the cockpit of the one already running.
 
 SMOKE TEST (No Display)
-  If you have no GUI display, verify the app works:
+  Verify the app without a browser or display:
     snn-ui.exe --smoke
-  Should print a self-check line and exit with code 0.
+  Serves the cockpit page, checks it against the brain's telemetry contract,
+  round-trips one chat turn, and exits 0. Writes nothing durable.
 
 SAFETY NOTES
-  The arm is SIMULATED by default (no hardware connected).
-  All motor commands pass through collision detection and EMERGENCY_STOP.
-  The allow-list gate restricts which commands can be sent.
+  The arm is SIMULATED. This app connects to no hardware and drives none.
+  Motor commands pass through collision detection and EMERGENCY_STOP.
+  The cockpit binds 127.0.0.1 only -- it is a window onto a local process,
+  never reachable from another machine.
 
 SOURCE, DOCS, ISSUES
   https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake

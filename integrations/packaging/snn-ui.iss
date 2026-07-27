@@ -1,10 +1,10 @@
 ; Inno Setup script — wrap dist/snn-ui.exe into a Windows installer (setup.exe) with
 ; Start-Menu and optional desktop shortcuts.
 ;
-; 1. Build the exe first:      python packaging/build_exe.py     -> dist/snn-ui.exe
+; 1. Build the exe first:  python integrations/packaging/build_exe.py  -> dist/snn-ui.exe
 ; 2. Compile this installer with Inno Setup 6 (https://jrsoftware.org/isinfo.php):
-;      "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\snn-ui.iss
-;    -> packaging/installer/snn-ui-setup.exe
+;      "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" integrations\packaging\snn-ui.iss
+;    -> integrations/packaging/installer/snn-ui-setup.exe
 ;
 ; The .exe is already portable/double-click-runnable on its own; this installer is only for
 ; a Start-Menu entry + uninstaller.

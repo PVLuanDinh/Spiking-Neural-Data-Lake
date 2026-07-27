@@ -2,14 +2,15 @@
 """Full-repo installer for the Spiking Neural Data Lake.
 
 Requires Python 3.11+. Builds a virtual environment and installs the package plus every
-optional extra it can on THIS machine, in stages, reporting each one. The zero-dep core is
+optional extra it can on THIS machine, in stages, reporting each one. The core package is
 the ONLY hard requirement; every extra is best-effort, so a heavy or compiler-gated
-dependency (gpu/torch, genn) can never brick the base install -- you always end up with a
-working core, plus a clear report of which optional features are available here.
+dependency (genn) can never brick the base install -- you always end up with a working
+core, plus a clear report of which optional features are available here.
 
-    python packaging/install.py                  # venv at ./.venv, install everything possible
-    python packaging/install.py --venv .venv     # explicit venv location
-    python packaging/install.py --skip gpu,genn  # skip the ~2 GB torch stack + the compiler-gated port
+    python integrations/packaging/install.py                 # venv at ./.venv, install all
+    python integrations/packaging/install.py --venv .venv    # explicit venv location
+    python integrations/packaging/install.py --skip gpu,genn # skip the extra GPU wheels + the
+                                                             # compiler-gated port
 
 This script has ZERO third-party dependencies (standard library only) -- it must run BEFORE
 anything is installed.
@@ -24,15 +25,15 @@ import venv
 
 MIN_PY = (3, 11)
 
-# (extra, human description, hard_required). extra=None -> the zero-dep core package itself.
+# (extra, human description, hard_required). extra=None -> the core package itself.
 STAGES = [
-    (None,     "core (pure standard library, zero runtime deps)",         True),
+    (None,     "core (pulls the default torch + numpy dependencies)",     True),
     ("dev",    "tests + lint (pytest, pytest-cov, ruff, pre-commit)",     False),
     ("arm",    "real serial robot arm (pyserial)",                        False),
     ("lake",   "lakehouse query engine (polars, pyarrow, deltalake)",     False),
     ("nmnist", "N-MNIST event-camera data (tonic)",                       False),
     ("llm",    "on-device NL command backend (airllm)",                   False),
-    ("exe",    "build the standalone Windows GUI exe (pyinstaller)",      False),
+    ("exe",    "build the standalone Windows exe (pyinstaller)",          False),
     ("gpu",    "GPU / torch research (torch, snntorch, bindsnet, numpy)", False),
     ("genn",   "GeNN GPU port (pygenn -- needs a C++ compiler + CUDA)",   False),
 ]
@@ -44,8 +45,9 @@ def die(msg):
 
 
 def repo_root():
-    # packaging/install.py -> the repo/bundle root is this file's parent's parent.
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # integrations/packaging/install.py -> the repo/bundle root is three levels up.
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.dirname(os.path.dirname(here))
 
 
 def venv_python(vdir):
@@ -139,10 +141,12 @@ def main():
     if failset:
         print(f"unavailable on this machine (optional): {', '.join(failset)}")
         if "genn" in failset:
-            print("  - genn (pygenn) needs a C++ compiler + CUDA toolkit; absent on most machines. Expected.")
+            print("  - genn (pygenn) needs a C++ compiler + CUDA toolkit; absent on most")
+            print("    machines. Expected.")
         if "gpu" in failset:
-            print("  - gpu pulls ~2 GB of torch; a network/disk/CUDA hiccup can fail it. The core + other")
-            print("    extras still work. Retry later with:  python packaging/install.py --skip genn")
+            print("  - gpu pulls the GPU/training wheels; a network/disk/CUDA hiccup can fail")
+            print("    it. The core + other extras still work. Retry later with:")
+            print("      python integrations/packaging/install.py --skip genn")
 
     # ---- how to run ----
     if os.name == "nt":
@@ -153,10 +157,11 @@ def main():
     print("RUN IT  (activate the venv, then use any of these)")
     print("=" * 72)
     print(f"  {act}")
-    print("  snn-ui                    # desktop control panel (tkinter GUI)")
+    print("  python learn_daemon.py    # the always-on brain; serves the cockpit (the ONE")
+    print("                            # frontend) at http://127.0.0.1:8137/")
     print("  snn-demo                  # one-file whole-loop demo")
     print("  snn-loop                  # full closed loop: sensor -> arm -> reward -> learn")
-    print("  snn-arm --help            # live/replay gesture -> arm (add --serial COMx for hardware)")
+    print("  snn-arm --help            # live/replay gesture -> arm (--serial COMx = hardware)")
     print("  python run_selfchecks.py  # run every core module's self-check")
     print("  pytest                    # the test suite (needs the 'dev' extra)")
     print("  # research/ (needs the 'gpu' extra):  python research/<module>.py")

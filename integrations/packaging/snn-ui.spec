@@ -1,37 +1,39 @@
-# PyInstaller spec — build a standalone Windows .exe of the zero-dep tkinter desktop app.
+# PyInstaller spec -- build a standalone Windows .exe of the brain daemon + its cockpit.
 #
 #   pip install ".[exe]"
-#   python packaging/build_exe.py           # or: pyinstaller packaging/snn-ui.spec
+#   python integrations/packaging/build_exe.py     # or: pyinstaller integrations/packaging/snn-ui.spec
 #
-# Produces dist/snn-ui.exe (onefile, windowed). tkinter is in the standard library, so the
-# bundle carries Python + tkinter only — NO third-party runtime dependency (the optional
-# torch/polars/pyserial/... addons are explicitly excluded below and never bundled).
+# Produces dist/snn-ui.exe (onefile, console). The .exe runs the always-on learning daemon and
+# opens the cockpit (substrate/cockpit.py -- a stdlib http.server page) in the default browser.
+# The bundle carries Python + numpy; torch and the other optional-dep addons are excluded below
+# and never shipped (the frozen entry point pins NORD_TORCH=0 for exactly that reason).
 import os
 import sys
 
 from PyInstaller.utils.hooks import collect_submodules
 
-ROOT = os.path.dirname(SPECPATH)                 # packaging/ -> repo root  (SPECPATH: PyInstaller global)
+ROOT = os.path.dirname(os.path.dirname(SPECPATH))  # integrations/packaging -> repo root  (SPECPATH: PyInstaller global)
 SRC = os.path.join(ROOT, "src")
 sys.path.insert(0, SRC)                          # so collect_submodules can import the package
 
-hiddenimports = collect_submodules("snn_data_lake") + ["run_selfchecks"]   # bundle every snn_data_lake
-# module + run_selfchecks (the canonical CORE list) so the Core Runner tab / --run-core work in the .exe
+hiddenimports = collect_submodules("snn_data_lake") + ["learn_daemon"]   # bundle every
+# snn_data_lake module + learn_daemon (the root-level script the entry point runs; it is not part
+# of the package, so PyInstaller only finds it via ROOT on pathex below)
 
 a = Analysis(
     [os.path.join(SPECPATH, "snn_ui_main.py")],
-    pathex=[SRC, SPECPATH, ROOT],                # ROOT so PyInstaller finds run_selfchecks.py
+    pathex=[SRC, SPECPATH, ROOT],                # ROOT so PyInstaller finds learn_daemon.py
     binaries=[],
-    datas=[(os.path.join(ROOT, "robot arm", f"{g}.csv"), "robot arm")   # ship sample gesture
-           for g in ("IDLE", "HAND_APPROACH", "HAND_RETREAT")],          # captures -> populated on first launch
+    datas=[],                                    # the cockpit page is a module constant and its
+                                                 # geometry is computed -- no data files to ship
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["numpy", "torch", "torchvision", "snntorch", "bindsnet",   # optional-dep addons:
-              "polars", "pyarrow", "deltalake", "serial", "airllm",       # never part of the GUI
+    excludes=["torch", "torchvision", "snntorch", "bindsnet",             # optional-dep addons:
+              "polars", "pyarrow", "deltalake", "serial", "airllm",       # never part of the app
               "transformers", "tonic", "pytest",
-              "snn_data_lake.hippocampus.ng_snn"],                        # torch-gated core module (not in the GUI)
+              "snn_data_lake.hippocampus.ng_snn"],                        # torch-gated core module
     noarchive=False,
 )
 pyz = PYZ(a.pure)
@@ -48,7 +50,9 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,                              # windowed GUI (no console window)
+    console=True,               # the daemon logs its boot banner, the cockpit URL, and per-cycle
+                                # lines to stdout, and --smoke prints its result there. Windowed
+                                # would throw all of that away -- the UI is the browser page.
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

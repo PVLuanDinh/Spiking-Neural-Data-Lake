@@ -55,7 +55,7 @@ _ENTRYPOINTS = (  # pyproject [project.scripts] + the always-on daemon's in-pack
     f"{_PKG}.substrate.demo",
     f"{_PKG}.brainstem.live_arm",
     f"{_PKG}.brainstem.closed_loop",
-    f"{_PKG}.substrate.control_panel",
+    f"{_PKG}.substrate.cockpit",  # THE frontend (served by the daemon); replaced control_panel
     f"{_PKG}.training.cli",
     f"{_PKG}.substrate.web_ingest",
     f"{_PKG}.substrate.nengo_bridge",

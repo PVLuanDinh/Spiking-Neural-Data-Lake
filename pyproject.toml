@@ -48,8 +48,11 @@ nmnist = ["tonic"]                                                       # resea
 nengo = ["nengo"]                                                       # substrate/nengo_bridge: run the brain's NEF/LIF substrate on Nengo (sim + NengoLoihi deploy); nengo-gated, zero-dep core never imports it
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
 genn = ["pygenn", "ml_genn"]                                             # research/*_genn + training/mnist_genn GPU trainer (needs a C++ compiler + CUDA)
-exe = ["pyinstaller"]                                                   # build a standalone Windows .exe of the tkinter GUI (build-time only; core stays zero-dep)
-viz = ["matplotlib", "netplotbrain", "pandas", "scikit-image", "nibabel", "templateflow"]  # chat --viz: real MNI152 template brain via netplotbrain (brain_netplot) + the self-contained ellipsoid-hull fallback (brain_activity_3d); core never imports any of these. netplotbrain fetches the MNI152 template from TemplateFlow on first render (cached ~/.cache/templateflow).
+exe = ["pyinstaller"]                                                   # build a standalone Windows .exe (build-time only)
+# [viz] RETIRED with the matplotlib/netplotbrain frontends (brain_activity_3d, brain_netplot,
+# spiking_chat). The one frontend is substrate/cockpit.py, which draws the anatomical brain, the
+# region rates and the arm in browser Canvas 2D from stdlib -- no matplotlib, no netplotbrain, and
+# no TemplateFlow download on first render. Nothing in the tree imports those six packages now.
 dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.15.20", "pre-commit"]       # tests + lint/format (NOT runtime; ruff floor matches .pre-commit-config)
 all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist,train]"]             # every addon (genn excluded — needs a compiler)
 
@@ -65,7 +68,11 @@ all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist,train]"]             # ever
 snn-demo = "snn_data_lake.substrate.demo:main"         # one-file demo loop
 snn-arm  = "snn_data_lake.brainstem.live_arm:main"     # live gesture -> arm (add --serial/--actuate for hardware)
 snn-loop = "snn_data_lake.brainstem.closed_loop:main"  # full closed loop: gesture -> command -> reward -> learn
-snn-ui   = "snn_data_lake.substrate.control_panel:main"  # zero-dep tkinter desktop control panel (arm + recognition + lake)
+# snn-ui RETIRED: the tkinter control panel is gone. The ONE frontend is substrate/cockpit.py, served
+# by the always-on daemon (`python learn_daemon.py` -> http://127.0.0.1:8137/). It is deliberately NOT
+# a console script: the cockpit never constructs a Brain (Policy 4), so a standalone launcher would
+# either stand up a second brain against the same durable lake or duplicate the daemon's drive loop.
+# One brain, one loop, one frontend.
 snn-train = "snn_data_lake.training.cli:main"  # [train] extra: surrogate-gradient GPU trainer -> exports weights to the zero-dep core
 snn-fetch-corpus = "snn_data_lake.substrate.web_ingest:cli"  # firewalled web -> training-corpus fetch (zero-dep urllib)
 snn-nengo-launch = "snn_data_lake.substrate.nengo_bridge:launch"  # [nengo] extra: run the whole brain LIVE under nengo.Simulator (per-tick trace; NengoLoihi-deployable, observation-only)

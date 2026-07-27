@@ -66,8 +66,8 @@ Verified in this repo:
   33 RESEARCH PoCs) with no GPU, no network, no LLM. The whole core program — the
   robot-arm control loop (`reflex`, E-STOP, collision-gated `arm_sim`/`serial_arm`,
   `interpreter`, `autonomous_loop`, `closed_loop`), the spiking lakehouse
-  (`spike_telemetry_hub`, `streaming_hub`), and the tkinter GUI (`control_panel`,
-  shipped as a Windows .exe) — is in the CORE list and runs without AirLLM.
+  (`spike_telemetry_hub`, `streaming_hub`), and the cockpit (`substrate/cockpit`, the ONE
+  frontend, shipped as a Windows .exe) — is in the CORE list and runs without AirLLM.
 - `local_llm/airllm_backend.py` is **not** in the self-check gate, and CI never
   installs the `[llm]` extra (verified: no `airllm`/`[llm]` reference in
   `.github/workflows/ci.yml`). Its own smoke test skips gracefully when

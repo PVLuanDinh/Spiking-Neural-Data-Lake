@@ -109,7 +109,7 @@ operations than dense-ANN equivalents across the classifier/temporal-coding prot
 | Arm loop + safety envelope | `reflex`, `serial_arm`, `arm_sim`, `arm_config`, `interpreter`, `closed_loop`, `autonomous_loop`, `live_arm`, `arm_bridge`, `spiking_pid`, `cpg_oscillator` | ~12-15 |
 | Sensor/data ingest | `esp32_encoder_path`, `sensor_csv_ingest`, `make_sensor_dataset`, `sensor_demo` | ~4 |
 | Classifier / recognition | `snn_classifier`, `learned_matcher`, `gesture_recognition`, `tempotron`, `nir_export` | ~5 |
-| UI / demo / entrypoints | `demo.py` (`snn-demo`), `control_panel.py` (`snn-ui`) | 2 |
+| UI / demo / entrypoints | `demo.py` (`snn-demo`), `substrate/cockpit.py` (the ONE frontend, served by the daemon) | 2 |
 | **Core total** | `src/snn_data_lake/**/*.py` | **~91** |
 | **Research (quarantined)** | `research/**/*.py` (MNIST STDP/D&C, spiking-MBRL/Dreamer, KG embeddings, compression, associative memory) | **~45** |
 
@@ -138,8 +138,8 @@ out of the core import path:
 - `[genn]` — `pygenn`, for GeNN GPU ports (needs a C++ compiler + CUDA).
 - `[llm]` — an optional local-first AirLLM backend for a natural-language command
   interface (`local_llm/`), quarantined from core, not in CI.
-- `[exe]` — `pyinstaller` (build-time only), to package the tkinter GUI into a
-  standalone Windows executable (`packaging/`).
+- `[exe]` — `pyinstaller` (build-time only), to package the brain daemon + its cockpit
+  into a standalone Windows executable (`integrations/packaging/`).
 - `[dev]` — `pytest`, `pytest-cov`, `ruff`, `pre-commit` for the test/lint gates.
 
 This produces a strict two-tier structure:
@@ -203,10 +203,15 @@ not "cognition." Specific ceilings called out in the project's own voice:
   the complete repository layout.
 - **`python run_selfchecks.py`** — the fastest way to confirm the whole zero-dep core
   works on your machine; it is exactly what CI runs, module by module.
-- **`snn-ui`** (or `python -m snn_data_lake.control_panel --gui`) — the zero-dependency
-  tkinter desktop control panel: Arm Control (live 2-link arm + EMERGENCY_STOP), Live
-  Recognition (step/replay a captured gesture through the real classify -> Interpreter ->
-  arm path), and Lake Browser (open a `.spk` store and run windowed queries).
+- **`python learn_daemon.py`** — the always-on brain, which serves the **cockpit** (the ONE
+  frontend, `substrate/cockpit.py`) at `http://127.0.0.1:8137/`: one page carrying the live
+  anatomical brain view over the real connectome, the simulated 2-link arm and its workspace,
+  a 6-DOF hardware torque-budget target (a plan from the build notes, labelled NOT BUILT),
+  the live telemetry strip, and chat. Loopback only. The cockpit is not a separate launcher:
+  `serve()` never constructs a Brain (Policy 4), so the daemon that owns the tick loop is the
+  only thing that serves it.
+- **`python -m snn_data_lake.substrate.spike_telemetry_hub --query store.spk --window 0,10`**
+  — open a `.spk` store and run windowed queries (`--ingest CSV --out store.spk` imports one).
 - From there: `snn-demo` for the one-file whole-loop demo, `snn-arm` for the live/replay
   gesture-to-arm loop, `snn-loop` for the full closed loop with reward learning, and
   `docs/RUNNING.md` / `docs/HARDWARE_SETUP.md` for the full local + hardware runbook.

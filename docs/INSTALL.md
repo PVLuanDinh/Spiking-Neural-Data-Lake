@@ -2,15 +2,15 @@
 
 There are two distributions, for two different needs.
 
-| | **Standalone GUI** | **Full-source install** (this doc) |
+| | **Standalone app** | **Full-source install** (this doc) |
 |---|---|---|
 | File | `spiking-neural-data-lake-<ver>-windows-x64.zip` | `spiking-neural-data-lake-<ver>-full-src.zip` |
 | Needs Python? | **No** | **Yes — Python 3.11+** |
-| What runs | The zero-dep tkinter control panel + the whole core (GUI, recognition, lake, self-checks) | **Everything in the repo** — the core, all optional-dependency features, the demos, the tests, and the `research/` tree |
+| What runs | The always-on brain daemon + its cockpit (the ONE frontend) in your browser | **Everything in the repo** — the core, all optional-dependency features, the demos, the tests, and the `research/` tree |
 | Optional deps (pyserial, polars, torch, …) | Not included | **Installed** (best-effort per machine) |
 | Size | ~11 MB | small download; the installer then pulls the deps |
 
-If you just want to click and use the app, grab the **Standalone GUI** zip — unzip, double-click `snn-ui.exe`. This document is for the **full-source install**, which sets up everything the repo can do.
+If you just want to click and use the app, grab the **Standalone app** zip — unzip, double-click `snn-ui.exe`, and the cockpit opens in your browser. This document is for the **full-source install**, which sets up everything the repo can do.
 
 ---
 
@@ -69,7 +69,8 @@ Activate the venv, then use any entry point:
 # Linux / macOS
 source .venv/bin/activate
 
-snn-ui                    # desktop control panel (tkinter GUI)
+python learn_daemon.py    # the always-on brain; serves the cockpit (the ONE frontend)
+                          # at http://127.0.0.1:8137/ -- live brain, arm, chat
 snn-demo                  # one-file whole-loop demo
 snn-loop                  # full closed loop: sensor -> arm -> reward -> learn
 snn-arm --help            # live/replay gesture -> arm (add --serial COMx for hardware)

@@ -1,10 +1,10 @@
-"""Build dist/snn-ui.exe from packaging/snn-ui.spec.
+"""Build dist/snn-ui.exe from integrations/packaging/snn-ui.spec.
 
-Needs the build-time `exe` extra (the core stays zero-dep — PyInstaller is NOT a runtime
-dependency):
+The .exe runs the always-on learning daemon and opens its cockpit in a browser. Needs the
+build-time `exe` extra (PyInstaller is NOT a runtime dependency):
 
     pip install ".[exe]"
-    python packaging/build_exe.py            # clean build -> dist/snn-ui.exe
+    python integrations/packaging/build_exe.py    # clean build -> dist/snn-ui.exe
 
 Verify the result headlessly (no display needed):
 
@@ -14,8 +14,9 @@ import os
 import subprocess
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SPEC = os.path.join(ROOT, "packaging", "snn-ui.spec")
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(HERE))   # integrations/packaging -> repo root
+SPEC = os.path.join(HERE, "snn-ui.spec")
 
 
 def main():

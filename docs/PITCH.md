@@ -383,7 +383,8 @@ collaborator:
   pip install -e .                 # zero runtime deps
   python run_selfchecks.py         # 123/123 module self-checks — exactly what CI runs
   snn-demo                         # one-file whole-loop demo
-  snn-ui                           # zero-dep tkinter desktop control panel
+  python learn_daemon.py           # the always-on brain, serving the cockpit (the ONE
+                                   # frontend) at http://127.0.0.1:8137/
   ```
 - **No-Python install (Windows):** download the standalone `.exe` release from the repo's
   Releases page; run `snn-ui.exe --smoke` for a headless verification.

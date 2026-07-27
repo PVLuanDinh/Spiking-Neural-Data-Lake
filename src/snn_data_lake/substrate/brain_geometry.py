@@ -8,10 +8,14 @@ WHAT THIS IS
     (a matplotlib figure, a web cockpit, a text dump) can consume it; this module draws nothing and
     imports nothing but the standard library plus the package's own region/connectome maps.
 
-    It is the pure-stdlib extraction of the placement half of `integrations/chat_app/brain_activity_3d.py`
-    (which additionally owns the matplotlib figure, the hull mesh, and the per-turn activity colouring).
-    The literals, the placement rules and -- critically -- the RNG draw ORDER are carried over byte for
-    byte, so both modules produce the same coordinates for the same package census.
+    It is the pure-stdlib extraction of the placement half of the retired
+    `integrations/chat_app/brain_activity_3d.py` (which additionally owned the matplotlib figure, the
+    hull mesh, and the per-turn activity colouring -- all of which the cockpit now draws in Canvas 2D).
+    The literals, the placement rules and -- critically -- the RNG draw ORDER were carried over byte
+    for byte and verified identical against that module for all 339 of its modules before it was
+    deleted. The draw order is load-bearing: it consumes ONE random.Random(1605) in package-census
+    order, so adding or removing a module reshuffles every coordinate after it. That is why the
+    self-check pins a seed contract rather than trusting the rules alone.
 
 THE HONESTY CONTRACT (read before trusting a coordinate)
     The coordinates are HAND-AUTHORED APPROXIMATE ANATOMY. They were typed by a human from a mental
