@@ -401,8 +401,58 @@ def run_all():
     return not failed
 
 
+def run_one_in_process(mod):
+    """Run one module's self-check IN-PROCESS via runpy, capturing its output. Returns (ok, text).
+
+    run_all() uses subprocesses, which is the better isolation and stays the default. This exists for
+    one situation subprocesses cannot serve: a frozen PyInstaller build has no interpreter to spawn,
+    so `python -m snn_data_lake.<mod>` is unavailable and the packaged app would otherwise have no way
+    to verify that the core it bundled is actually runnable.
+
+    sys.argv is isolated to [mod] so a module sees no stray caller flags -- several modules dispatch on
+    argv (spike_telemetry_hub runs its CLI when given any, control_panel used to run --smoke on none),
+    and leaking the parent's arguments would silently run the wrong entry point.
+    """
+    import io
+    import runpy
+    from contextlib import redirect_stderr, redirect_stdout
+
+    buf = io.StringIO()
+    saved_argv = sys.argv
+    sys.argv = [mod]
+    try:
+        with redirect_stdout(buf), redirect_stderr(buf):
+            runpy.run_module(f"snn_data_lake.{mod}", run_name="__main__")
+        return True, buf.getvalue()
+    except SystemExit as e:  # a module may sys.exit(0) on success
+        return (e.code in (0, None)), buf.getvalue()
+    except BaseException as e:  # AssertionError / any self-check failure
+        return False, f"{buf.getvalue()}\n{type(e).__name__}: {e}"
+    finally:
+        sys.argv = saved_argv
+
+
+def run_all_in_process(emit=print):
+    """Every CORE module's self-check, in-process. True iff all passed. See run_one_in_process."""
+    failed = []
+    for m in CORE:
+        ok, out = run_one_in_process(m)
+        emit(f"{'PASS' if ok else 'FAIL'}  {m}")
+        if not ok:
+            failed.append(m)
+            emit(out[-2000:])
+    emit("=" * 56)
+    emit(
+        f"{len(CORE) - len(failed)}/{len(CORE)} core self-checks passed (in-process)"
+        + (f"   FAILED: {', '.join(failed)}" if failed else "")
+    )
+    return not failed
+
+
 if __name__ == "__main__":
     if "--list" in sys.argv:
         print("\n".join(MODULES))
         sys.exit(0)
+    if "--in-process" in sys.argv:
+        sys.exit(0 if run_all_in_process() else 1)
     sys.exit(0 if run_all() else 1)

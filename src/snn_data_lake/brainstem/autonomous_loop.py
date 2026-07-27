@@ -147,6 +147,12 @@ class AutonomousArm:
         self._cover_new = (
             0  # newly-reached cells this run -- the honest "is it getting better" line
         )
+        # Global-Workspace ignitions: how many times the single broadcast slot changed hands. A
+        # running count of "something new became globally available", which is a different claim from
+        # access_index (how available) or pci (how integrated) -- both of which can sit high while the
+        # same content is held. Counted in _workspace_tick, the one place the workspace steps.
+        self._ignitions = 0
+        self._prev_thought = None
         self._last_disp = 0.0  # how far the end effector actually travelled on the last scored tick
         self._last_ee = None  # previous end-effector pose -> did this tick move the body at all?
         self._ground_ticks = 0  # consecutive ground-contact ticks (postural recovery reflex)
@@ -954,7 +960,14 @@ class AutonomousArm:
             self.workspace.submit(
                 "salience", "novelty", self._novelty
             )  # bottom-up stimulus salience competes
-        return self.workspace.step()
+        content = self.workspace.step()
+        # Purely observational: count a change of broadcast content. This used to be tallied by the
+        # tkinter live-brain tab, which meant the number only existed while a window was open and
+        # reset when it closed. It is a fact about the brain, so it lives on the brain.
+        if content != self._prev_thought:
+            self._ignitions += 1
+        self._prev_thought = content
+        return content
 
     @classmethod
     def from_bundle(cls, bundle_or_path, **kwargs):

@@ -98,6 +98,7 @@ DASHBOARD_KEYS = (
     "cpg_weight",
     "displacement",
     "td_flipped",
+    "ignitions",
 )
 
 # Keys outside `cognition | derived` that the cockpit reads. Split out because they live in their own
@@ -223,6 +224,7 @@ def snapshot(brain):
             ("cpg_weight", "_cpg_w"),
             ("cpg_spread_max", "_cpg_spread_max"),
             ("td_flipped", "_td_flipped"),
+            ("ignitions", "_ignitions"),
             # Displacement, deliberately NOT called speed: ArmSim has no dt, no mass and no dynamics
             # (arm_hardware.SIM_GAP.sim_has_dynamics is False), so dividing by a timestep would invent
             # a velocity the simulator cannot support. This is the chord length of the last scored
