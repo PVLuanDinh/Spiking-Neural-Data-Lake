@@ -137,6 +137,33 @@ columnar voting. Both are serious theories of the same phenomenon; SNDL has **no
 the swap was refused. An external framework being newer, or more elegant, or better publicised is not
 evidence. This guard is what stops P2 from becoming a fashion treadmill.
 
+**OPEN P2 DEBT, measured 2026-07-28: two workspaces run additively.** `thalamus/global_workspace.py`
+and `thalamus/reentrant_workspace.py` are both live and both fed every tick. Measured over 40 wake
+ticks on a real brain: **72 submits each**, with 3 content values reaching both. Their public surfaces
+are near-identical — `submit(source, content, salience)`, `subscribe`, `current`, `step` on both — and
+`ReentrantWorkspace` adds `broadcast_to`, `association`, `access_strength`, `inbox`. On interface
+alone it is a superset. That is exactly the shape this policy says must resolve to one survivor.
+
+It is **not** resolved here, for the reason this policy already gives: *"better" requires a measurement
+that exists*, and SNDL still has no consensus benchmark — no ambiguous multi-source evidence with a
+known right answer — so neither can be shown better. Retiring `GlobalWorkspace` on interface elegance
+alone would be the fashion-treadmill move this guard exists to stop, and it has **8 importers**
+(`access_consciousness`, `executive_control`, `consciousness_probe`, `concept_reflection`,
+`autonomous_loop`, …) against ReentrantWorkspace's 3.
+
+What DID get fixed is a defect that had to be cleared before any comparison could be fair: the
+`AccessConsciousness` wrapper was **constructed inside the wake tick**, so a fresh `GlobalWorkspace`
+was built every tick — measured **25 constructions over 40 ticks** against ReentrantWorkspace's **1**.
+Every instance took exactly one step, making incumbent defence, hysteresis and decay structurally
+unreachable, while a comment eighteen lines below promised "ignited content is HELD across ticks, not
+rebuilt from scratch each tick". Now persisted: **25 → 2** constructions, `access_index` still varying
+across 25 distinct values. Any future A/B between the two workspaces would previously have compared a
+persistent mechanism against one that was destroyed before it could express itself.
+
+**The benchmark that would settle it**, stated so the debt is actionable rather than perpetual: a set
+of ambiguous multi-source inputs with a known correct winner, scored on which workspace's ignited
+content matches it. Until that exists, both stay and this entry is the honest record of why.
+
 **Corollary — a research direction is not a policy.** "Adopt architecture X" governs *what* we build;
 policies govern *how*. Proposals of that shape belong in a design note, not in this file.
 

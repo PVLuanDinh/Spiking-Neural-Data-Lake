@@ -773,7 +773,8 @@ class Brain:
         # cross-region Kuramoto COHERENCE that biases the workspace ignition threshold. No actuator route.
         self._learned_attn = self._connectome_router = self._region_coherence = None
         self._attn_focus = None
-        self._connectome_reverb = 0.0
+        self._connectome_reverb = None  # structural constant, computed once on first wake tick
+        self._connectome_propagation = 0.0  # live: mean connectome network rate (graded, varies)
         self._region_coherence_val = 0.0
         self._synfire = (
             None  # feedforward synfire chain -> the all-or-none SYNCHRONY-BINDING gate on ignition
@@ -1998,14 +1999,31 @@ class Brain:
                 }
                 drive = {k: v for k, v in cand.items() if k in nodes and v > 0.0}
                 if drive:
-                    self._connectome_router.step(drive)
-                seed = next((n for n in ("ec", "ctx_sensory", "gwt") if n in nodes), None)
-                if (
-                    seed is not None and self._wake_ticks % 5 == 0
-                ):  # loop-closure readout (sparse -- reverberation snapshots the net)
-                    self._connectome_reverb = round(
-                        float(self._connectome_router.reverberation(seed, 6)), 3
+                    # CONSUME the return (v4.79). `step()` was called for its side effect and its
+                    # result dropped -- measured, it returns a per-region rate dict with THIRTY keys
+                    # that vary across ticks. The only thing escaping this block was a constant. The
+                    # motor-path rate is the honest scalar to keep: it is what "the connectome is
+                    # propagating toward action" means in this graph.
+                    rates = self._connectome_router.step(drive) or {}
+                    # Mean network rate, chosen by measurement over two candidates: max(actuator,
+                    # bs_motor) is effectively BINARY (2 distinct values over 120 ticks -- the motor
+                    # nodes saturate), while the mean over all regions is graded (9 distinct,
+                    # 0.025-0.700). A binary would have been a worse signal wearing the same name.
+                    self._connectome_propagation = (
+                        round(sum(rates.values()) / len(rates), 4) if rates else 0.0
                     )
+                # REVERBERATION IS STRUCTURAL, NOT LIVE -- compute it ONCE (v4.79). It resets the
+                # router, drives a fixed seed at a fixed 1.0 for a fixed count, averages, and restores;
+                # it never reads the live drive. Proven: identical (0.25) across five different live
+                # states. It is a pure function of the connectome topology, and re-running it every 5
+                # ticks paid 0.43 ms to recompute the same number -- the observer-cost pattern in
+                # miniature. PROVENANCE now tags it as structural so no dashboard reads it as a signal.
+                if self._connectome_reverb is None:
+                    seed = next((n for n in ("ec", "ctx_sensory", "gwt") if n in nodes), None)
+                    if seed is not None:
+                        self._connectome_reverb = round(
+                            float(self._connectome_router.reverberation(seed, 6)), 3
+                        )
             except Exception:
                 pass
         if (
@@ -2164,7 +2182,18 @@ class Brain:
         # biases processing on t+1 -- the specialist re-entry the workspace previously lacked). Still capped at 8.
         k = min(2 + n_total // self._percepts + int(round(2 * sustained)), 8)
         try:
-            ac = AccessConsciousness(seed=self._seed)
+            # PERSIST the workspace across ticks (v4.79). This was `AccessConsciousness(seed=...)`
+            # constructed INSIDE the wake tick, so a fresh instance -- and a fresh GlobalWorkspace
+            # inside it -- was built every tick: measured 25 GlobalWorkspace constructions over 40
+            # ticks against ONE ReentrantWorkspace. Every instance therefore took exactly one step,
+            # which makes the workspace's own temporal machinery (incumbent defence, hysteresis,
+            # decay) structurally unreachable: none of it can express itself in a single step. The
+            # comment eighteen lines below already promised the opposite -- "ignited content is HELD
+            # across ticks, not rebuilt from scratch each tick" -- while the object holding it was
+            # discarded on every tick. The arm's own GlobalWorkspace was persistent all along.
+            if getattr(self, "_access", None) is None:
+                self._access = AccessConsciousness(seed=self._seed)
+            ac = self._access
             # ACCESS CAN FAIL: the co-active assembly is coherent by construction, so with the
             # default coherence-driven salience it ignited by FIAT on every tick -- global
             # availability was pinned at 1.0 and carried no information. Pass an EXPLICIT salience
@@ -2591,13 +2620,13 @@ class Brain:
             "neuromod_noradrenaline": _lvl(self._lc),  # NA: phasic gain on salient events
             "neuromod_acetylcholine": _lvl(
                 self._ach
-            ),  # ACh: novelty -> encoding gain (consumed at :1730)
+            ),  # ACh: novelty -> encoding gain (stepped at :996, consumed at :1767)
             "neuromod_astrocyte": (  # slow glial gain, one per domain
                 [round(float(g), 4) for g in self._astro.gains] if self._astro is not None else []
             ),
             "cortisol": _lvl(
                 getattr(self.brain.arm, "cort", None)
-            ),  # stress; flat while reward_fn is None
+            ),  # stress. NOT flat: this comment said 'flat while reward_fn is None', but :1754 passes reward_fn=coverage_reward on every wake tick (v4.79)
             "curiosity_mag": round(
                 float(getattr(self.brain.arm, "_cur_mag", 0.0) or 0.0), 4
             ),  # running |curiosity| -- the unit intrinsic reward is normalised by
@@ -2688,7 +2717,8 @@ class Brain:
             "imagined_surprise": self._imagined_surprise,  # C1 b2: imagined-rollout surprise of the chosen action
             "recursive_tom_false_beliefs": self._false_beliefs,  # C1 b2: agents holding divergent (false) higher-order beliefs (N-agent recursive ToM)
             "attention_focus": self._attn_focus,  # C1 b3: LEARNED attention winner band + strength over the real percept
-            "connectome_reverberation": self._connectome_reverb,  # C1 b3: loop-closure -- a signed connectome loop reverberating over region pools
+            "connectome_reverberation": self._connectome_reverb,  # STRUCTURAL constant (topology only, computed once) -- see PROVENANCE
+            "connectome_propagation": self._connectome_propagation,  # LIVE: mean connectome network rate -- graded, 9 distinct values over 120 ticks
             "region_coherence": self._region_coherence_val,  # C1 b3: cross-region Kuramoto coherence (biases workspace ignition)
             "synfire_bound": self._bound,  # all-or-none synfire binding event this tick (gates the coherence->ignition bias)
             "evc_cost": self._evc_cost,  # C1 b4: LEARNED cost-of-control (dopamine-gated, replaces fixed 0.1)
@@ -3049,7 +3079,8 @@ class Brain:
                     c in low for c in ("what if", "imagine", "suppose", "if you")
                 ):
                     # Report the imagination ALREADY rolled this tick from the REAL feature vector
-                    # (_wake_c1_faculties). It used to re-run the forward model here on a literal
+                    # (_c1_tick -- this said `_wake_c1_faculties`, a name that appears nowhere else in the repo).
+                    # It used to re-run the forward model here on a literal
                     # [0.5]*9 constant, so the spoken answer described a state the brain was never in.
                     reply = reply + (
                         f" (imagining it: rolling a learned forward model over my options from my"

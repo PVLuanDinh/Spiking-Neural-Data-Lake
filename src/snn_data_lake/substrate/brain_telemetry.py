@@ -134,6 +134,12 @@ PROVENANCE = {
         "+8.4% tick cost. Left off deliberately (v4.78)"
     ),
     "spikes.substrate": "duplicate of hippocampus (same expression)",
+    # STRUCTURAL, not live: reverberation() resets the router, drives a FIXED seed at a fixed 1.0 for a
+    # fixed count and restores -- it never reads the live drive, so it is a pure function of the
+    # connectome topology. Proven identical (0.25) across five different live states; it was being
+    # recomputed every 5 ticks at 0.43 ms a call to produce the same number. Now computed once
+    # (brain.py:2021). The graded live counterpart is `connectome_propagation` (v4.79).
+    "connectome_reverberation": "structural: topology only, computed once, cannot vary",
 }
 
 
