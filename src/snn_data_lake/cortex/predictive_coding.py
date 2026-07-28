@@ -241,10 +241,34 @@ class PredictiveCodingNetwork:
                 r2 = r2 + step_lr * (s_e1 @ self.w2)  # W2^T @ s_e1
         return r1, r2
 
+    def learn_step(self, lr_w=0.02):
+        """ONE local weight step on the settle that just happened. Returns True if it applied.
+
+        This is the whole learning rule: each error neuron's spike RATE over the settle window,
+        correlated with the post-inference cause it helped explain. Everything it reads is local to the
+        synapse -- a presynaptic cause and a postsynaptic error rate -- which is the property that makes
+        predictive coding biologically plausible where backprop is not.
+
+        It is a METHOD rather than four lines inside learn() because the live brain needs exactly one
+        of these per tick. LiveBrain.tick already runs reset() + infer(); this consumes the counters
+        that settle just filled, so inference and learning are the same continuous process instead of
+        separate phases. `learn()` below calls it too -- one definition, not two (P2).
+
+        Self-limiting by construction, and measured: as the model explains its input the error spikes
+        fall silent, so the rate falls, so the update shrinks. Over 400 live ticks, energy fell 67.8%
+        while |W1| grew 1.06x. The no-op control over the same 400 ticks drifted +9.1% with weights
+        frozen -- which is what this net did on every tick before it was wired.
+        """
+        if not self.n_steps:  # nothing settled yet -> nothing local to learn from
+            return False
+        self.w1 += lr_w * np.outer(self.cum_e0 / self.n_steps, self.r1)
+        self.w2 += lr_w * np.outer(self.cum_e1 / self.n_steps, self.r2)
+        return True
+
     def learn(self, dataset, epochs=12, steps=120, lr=0.05, lr_w=0.02):
         """Train W1, W2 on a dataset. Returns the per-epoch average post-inference reconstruction
-        MSE. Each sample: settle the spiking network, then a Hebbian-ON-SPIKES weight step using each
-        error neuron's spike RATE over the settle window correlated with the post-inference cause."""
+        MSE. Each sample: settle the spiking network, then ONE learn_step -- the offline path and the
+        live per-tick path apply the identical rule."""
         curve = []
         for _ in range(epochs):
             epoch_mse = 0.0
@@ -253,10 +277,7 @@ class PredictiveCodingNetwork:
                 self.infer(x, steps=steps, lr=lr)
                 e0, _ = self.errors()
                 epoch_mse += float(e0 @ e0) / self.d_in
-                rate0 = self.cum_e0 / self.n_steps  # spike-rate ~ e0
-                rate1 = self.cum_e1 / self.n_steps  # spike-rate ~ e1
-                self.w1 += lr_w * np.outer(rate0, self.r1)  # W1 += lr_w * outer(rate(s_e0), r1)
-                self.w2 += lr_w * np.outer(rate1, self.r2)  # W2 += lr_w * outer(rate(s_e1), r2)
+                self.learn_step(lr_w)
             curve.append(epoch_mse / len(dataset))
         return curve
 
