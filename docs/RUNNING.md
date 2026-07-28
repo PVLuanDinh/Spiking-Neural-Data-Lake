@@ -29,7 +29,7 @@ python research/spike_knowledge_graph.py       # Paradigm C: relational spike em
 ```
 Run the whole suite (what CI runs) — CORE product + `research/` self-checks:
 ```bash
-python run_selfchecks.py       # 273/273, one source of truth for the module list
+python run_selfchecks.py       # 275/275, one source of truth for the module list
 python run_selfchecks.py --in-process   # same CORE list without subprocesses (for a frozen build,
                                         # which has no interpreter to spawn); prefer the default
                                         # subprocess isolation everywhere else

@@ -16,7 +16,7 @@ pip install -e ".[dev]"          # pytest, ruff, pre-commit
 Every change must keep all four green; CI enforces them on {ubuntu, windows} x {3.11, 3.12, 3.13}.
 
 ```bash
-python run_selfchecks.py                  # every registered module's __main__ self-check (273)
+python run_selfchecks.py                  # every registered module's __main__ self-check (275)
 pytest                                    # unit suite, >=70% line coverage gate
 python -m ruff check .                    # lint (rules E, F, I, UP, B)
 python -m ruff format --check src tests   # formatting -- this exact scope is what CI runs

@@ -52,7 +52,7 @@ snn-loop     # full closed loop: gesture -> command -> reward -> learn
 python learn_daemon.py      # the always-on brain; serves the cockpit -- the ONE frontend --
                             # at http://127.0.0.1:8137/ (live brain, arm, hardware target, chat)
 
-python run_selfchecks.py    # run every module's self-check (273; 274 with nengo, 267 torch-free)
+python run_selfchecks.py    # run every module's self-check (275; 276 with nengo, 269 torch-free)
 ```
 
 ## Results (measured)
@@ -120,8 +120,8 @@ Safety-critical arm code (`brainstem/reflex.py`, `brainstem/serial_arm.py`, `bra
 Four gates, all green on every push:
 
 ```bash
-python run_selfchecks.py               # 273 module self-checks (deterministic, assert-based)
-pytest                                 # unit suite, >=70% line coverage gate (currently ~88%)
+python run_selfchecks.py               # 275 module self-checks (deterministic, assert-based)
+pytest                                 # unit suite, >=70% line coverage gate (currently 90.19%)
 python -m ruff check .                 # lint (E, F, I, UP, B)
 python -m ruff format --check src tests   # formatting (CI checks this scope exactly)
 ```
