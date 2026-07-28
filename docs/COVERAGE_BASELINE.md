@@ -57,7 +57,18 @@ and `training/eprop_shd.py` regenerate them. That is now written down in
 [`TRAINING.md`](TRAINING.md); until this baseline it was not, anywhere, which made the perception tier
 exactly the kind of unreproducible claim the rubric exists to prevent.
 
-## Highest-leverage gaps, all verified
+## Highest-leverage gaps — two of the top four did not survive re-checking
+
+Before acting on any of these I re-measured them myself. **Gap 1's finding was confirmed but its
+proposed fix rejected; gap 2 was refuted outright.** That is a 50% failure rate among the top-ranked
+"cheap wires", from a sweep that had already been through one adversarial pass — which is the strongest
+argument in this document for never wiring straight off an audit's ranked list.
+
+Note especially how gap 2 failed: the same auditor who correctly found that `models/` ships empty then
+measured a *downstream consequence of that same emptiness* and reported it as an independent defect.
+One cause, counted twice. The Executive category fell 9 points for the identical reason at a different
+scale — four probe points on one serial chain, scored as four faculties.
+
 
 Cheap wires first. The ceiling applies throughout: wiring a faculty into the three-way arm decision at
 `cortex/brain.py::_route_percept_to_action` can raise **Executive, Affect, SpatialTemporal and
@@ -66,7 +77,7 @@ action-relevant Perception**, and cannot raise Language, Imagination, Gf, Consci
 | # | gap | target |
 |---|---|---|
 | 1 | ~~**The amygdala can never learn**~~ — **finding confirmed, disposition REJECTED.** `threat()` is indeed a measured constant: called 38× per 80 ticks, returns exactly 0.0 every time, and that zero propagates into every episode's arousal tag, the LC salience quantile and the workspace threat bid. But the cause is not a defect. `pair()`'s one live call site (`autonomous_loop.py:1108`) sits **inside the SAFETY-FIRST early return** at `:1102` — it fires only on real contact, which also trips E-STOP. That is correct fear-conditioning semantics. With `SAFETY_CALIBRATED = False` and no physical arm, there are no aversive events, and 0.0 is the honest output of a brain that has never been hurt. The proposed wire — bind `pair()` to the negative-reward signal — would condition the amygdala on **disappointment rather than nociception**, a semantic change to a safety-adjacent faculty made to move a number. Disposition: P3 **exempt, awaiting a real sensor**; it starts learning with no code change once the arm exists | none — see `amygdala/fear_conditioning.py` header |
-| 2 | **`GridPlaceMap` never observes** — the guard at `brain.py:1282` requires `_perceived_digit`, measured `None` on 120/120 ticks, so every episodic trace carries `where='None'` | `cortex/brain.py:1282` |
+| 2 | ~~**`GridPlaceMap` never observes**~~ — **REFUTED on runtime evidence.** Re-measured over 120 live ticks with the checkpoints present: `perception_tier=eprop-snn`, `perceiving_real=True`, `_perceived_digit` takes **eight distinct values (0–7)**, and `place_here` populates (`6`, `6@1`, `6@2`). The guard at `brain.py:1282` fires. The auditor almost certainly measured in the no-checkpoint state — which is the artifact caveat above, not a second independent defect. **Two findings, one cause.** | none |
 | 3 | **`Pragmatics` has zero callers** outside its own module | Social |
 | 4 | The faculty-charge registry has zero registrations (`region_wiring.py:34`) — and is honesty-trapped: its own source warns that registering telemetry adapters would fake liveness | `substrate/region_wiring.py` |
 
