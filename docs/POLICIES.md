@@ -1,6 +1,7 @@
-# Development Policies (P1–P5)
+# Development Policies (P0–P5)
 
-Five standing policies govern how this brain is built. They are **mechanized** where possible (a CI
+**P0 is the purpose; P1–P5 are how it is pursued without lying to ourselves.**
+Six standing policies govern this brain. They are **mechanized** where possible (a CI
 self-check that fails on violation) and otherwise enforced by review. Each has an **honesty guard** —
 the rule that stops the policy from being satisfied by theater.
 
@@ -8,6 +9,7 @@ the rule that stops the policy from being satisfied by theater.
 
 | | mechanized in CI | enforced by review only |
 |---|---|---|
+| **P0 autonomous self-improvement** | — | yes (its guards are P2/P3/verify-first) |
 | P1 no-hardcode | — | yes |
 | P2 adopt-or-merge | — | yes |
 | P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE) | the per-METHOD amendment; the charge tier |
@@ -25,6 +27,50 @@ motivating case), the other produced 58 failures where 1 was claimed (adoption w
 
 What the audits mostly returned was not governance but **defects**, and they clustered into one
 recognisable family, recorded under P3.
+
+---
+
+## P0 — The brain must autonomously improve itself, by every available avenue
+
+**This is the project's purpose, and it outranks the rest.** P1–P5 describe how to build well; P0
+describes what is being built. The brain must not be a fixed artifact that a human upgrades between
+releases — it must get better on its own, continuously, through every channel it can reach: **writing
+its own code, acquiring knowledge, and growing its own neural substrate.** Where an avenue of
+self-improvement is missing, that is a gap to close, not a boundary to respect.
+
+**The avenues, and their honest status today.** "By every available avenue" is only meaningful if we
+say which are open:
+
+| avenue | status |
+|---|---|
+| **self-building code** | `reasoning/self_mod_harness.py` (648), `brain_native_selfbuild.py` (1088), `godel_machine.py`, `self_build_loop.py`, `self_improve.py`. Fires every 8 nights, **only** under `NORD_SELFMOD=1` (enabled in `learn_daemon.bat:14`) |
+| **knowledge acquisition** | live — chat ingest → the one durable lake (`substrate/chat_memory.py`), `substrate/web_ingest.py`, reasoning-curriculum growth during sleep |
+| **neural growth** | live — neurogenesis grows **only during sleep** (asserted: `cortex/brain.py:3772`), plus `hippocampus/{growing_learner,function_preserving_growth}.py`, `substrate/similarity_sized_growth.py`, `cortex/neurogenesis_engine.py` |
+| **cortical column construction** | **NOT live.** `cortex/cortical_microcircuit.py` is a faithful 8-population Potjans-Diesmann circuit that is EXEMPT-permanent in `substrate/dormancy_gate.py:83` — *it has no input port*. This is the clearest open avenue named in this policy, and closing it is P0 work |
+| **self-recalibration** | live — `substrate/signal_calibrator.py`, running-baseline forms per P1 |
+
+**Honesty guard — growth is not improvement, and this is where P0 would otherwise rot.** Adding
+neurons, adding code, adding knowledge records: none of these is improvement until something
+*measurably gets better*. A self-improving system that reports its own progress is the single easiest
+place in this project to generate theater, and every other policy exists partly to stop that:
+
+- a grown unit that changes no outcome is **dormant** (P3), not progress;
+- a self-written module that duplicates a mechanism is **bloat** (P2), not capability;
+- a "capability" reported without a measurement is a **fake capability** (verify-first), not a gain;
+- the census of what the brain has is **not** a measure of what it can do — count improvements by
+  their effect, never by their number.
+
+Real example of the failure mode: predictive-coding *inference* ran on every tick for the life of the
+feature while its *learning* method was never called (v4.71). The brain had the machinery, reported the
+signal, and improved at nothing.
+
+**Safety is what makes aggressive self-improvement possible, not what limits it.** The self-modification
+path is sandbox-verified, arm-safety firewalled, and rolled back byte-exact on any gate failure —
+which is precisely why it can be left ON. A self-improving system that cannot be rolled back is one
+that gets switched off after its first bad night, and then it improves at zero. The safety envelope
+(five brainstem files, E-STOP never relaxed) is **not** an avenue of self-improvement and is never a
+target of it: the brain may rewrite what it thinks, never what stops it. That boundary is what buys
+the freedom in the rest of this policy.
 
 ---
 
