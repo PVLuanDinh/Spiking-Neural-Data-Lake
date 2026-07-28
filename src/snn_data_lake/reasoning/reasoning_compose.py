@@ -75,8 +75,18 @@ class CompositionalSolver:
 
     def __init__(self, cortex, records=None, seed=0):
         self.cortex = cortex  # from build_default_cortex(...)
-        self.records = list(records or [])  # optional caller KB (unused by routing here)
-        self._rng = random.Random(seed)  # per-instance seed; NO global RNG / clock
+        # BOTH of these are stored and NEVER READ (verified tree-wide, v4.78). They are kept rather
+        # than deleted because `records` has a LIVE caller that believes otherwise:
+        # reasoning/spike_chat_lake.py:1087 passes `records=self.records`, i.e. LakeChat hands this
+        # solver its knowledge base expecting the chain to consult it. It does not -- routing goes
+        # through `self.cortex` alone. Deleting the parameter would break that call site and hide the
+        # mismatch; the honest state is that the caller's expectation is unmet. Either wire `records`
+        # into _route()'s miss path or drop the argument at :1087 -- but do not leave a third reader
+        # believing a KB is in play.
+        self.records = list(records or [])  # STORED, NOT READ -- see above
+        self._rng = random.Random(
+            seed
+        )  # STORED, NOT READ -- no stochastic step exists in this class
 
     def _route(self, text):
         """Dispatch ONE sub-step through the existing cortex router, guarded so a broken expert or a

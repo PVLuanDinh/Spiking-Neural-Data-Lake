@@ -149,7 +149,21 @@ class KnowledgeLog:
 
 
 class SpikeLake:
-    """The SPIKING view of the ONE durable brain lake -- durable AER exemplars (a feature vector + a small
+    """LIVE STATUS, MEASURED 2026-07-28 (v4.78): **this class has no runtime constructor.** The only
+    `SpikeLake()` calls in the tree are in this module's own self-check below. The production lake
+    holds **19,525 _T_FACT records and 0 _T_SPIKE records** -- the AER half described here has never
+    been written to, so the "boot-reconstructable AER memory" the docstring goes on to promise is a
+    capability that exists and has never run.
+
+    DISPOSITION: P3 exempt-awaiting-a-prerequisite, and the prerequisite is a DESIGN decision rather
+    than plumbing. An audit proposed passing `durable=SpikeLake(...)` at the `LakeMemory(...)` sites --
+    but every one of those sites is in `reasoning/` orphans (`autonomous_brain.py`,
+    `developmental_core.py`, `developmental_loop_lake*.py`) with zero live importers, so wiring the
+    parameter there would connect two things that are both off the live path. What is actually missing
+    is a reason for the LIVE brain to append AER exemplars at all: nothing on the wake/sleep tick
+    currently produces exemplars it wants back after a restart. Give it one, and this class is ready.
+
+    The SPIKING view of the ONE durable brain lake -- durable AER exemplars (a feature vector + a small
     payload: replay id / class / task) as _T_SPIKE binary records in the SAME brain_lake.bin, alongside the
     symbolic FACT records. append(vec, payload); replay() -> (vec, payload). The spike PATTERN is a
     deterministic function of the vector (cortex.spike_preprocessing.encode_latency), so only the vector is

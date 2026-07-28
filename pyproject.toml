@@ -33,8 +33,10 @@ dependencies = ["torch", "numpy"]   # TORCH TIER ON BY DEFAULT (user policy, 202
 
 # TORCH TIER = ON BY DEFAULT (user policy, 2026-07-18). torch is now a HARD default dependency: a plain
 # `pip install .` pulls torch+numpy and the torch BRAIN TIER runs by default -- hippocampus/ng_snn.py
-# (NG-SNN classifier) + cortex/{brain,language_center,neurogenesis_engine}.py (the unified Brain, its
-# SpikeGPT language center, the neurogenesis engine) grow/learn on torch out of the box. This
+# (NG-SNN classifier) + cortex/{brain,language_acquisition,neurogenesis_engine}.py (the unified Brain,
+# language acquisition, the neurogenesis engine) grow/learn on torch out of the box. Corrected
+# 2026-07-28: this listed `cortex/language_center.py` and "its SpikeGPT language center", and that
+# module does not exist -- TORCH_TIER in __init__.py names language_acquisition. This
 # INTENTIONALLY supersedes the former zero-dep-core contract. MANUAL OFF-SWITCH: set env `NORD_TORCH=0`
 # to run torch-free -- the torch tier then degrades to the deterministic stdlib narrator (no growth) and
 # run_selfchecks.py skips the torch-gated modules, so a torch-free path still exists on demand. It is

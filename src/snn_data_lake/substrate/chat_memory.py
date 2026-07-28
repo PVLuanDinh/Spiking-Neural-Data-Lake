@@ -140,7 +140,13 @@ class DurableChatMemory:
         self.n = int(n_channels)
         self.seed = seed
         self.log = log if log is not None else KnowledgeLog(knowledge_path())
-        self._chan = {}  # id(record)->frozenset(channels): rebuilt in-RAM index over chat records
+        # STORED, NEVER READ (verified tree-wide, v4.78). The comment here used to describe it as an
+        # index "rebuilt" over the chat records -- it is assigned empty once and nothing ever writes
+        # or reads it, so the description asserted a mechanism that does not exist. Channel filtering
+        # actually runs off `self._chats` below. Left in place with an honest label rather than
+        # deleted, because an index keyed by record identity is the right shape if channel lookup ever
+        # needs to stop being a linear scan.
+        self._chan = {}  # STORED, NOT READ -- not an index; nothing populates or consults it
         self._chats = []  # the chat records currently in the one lake (role, text, channels)
         self._reindex()
 

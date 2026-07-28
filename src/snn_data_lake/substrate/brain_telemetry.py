@@ -36,11 +36,11 @@ THE HONESTY CONTRACT (the whole point -- read before adding a panel)
 
        This exists because rule 2 was not enough. An audit of this file's own dashboard found four
        signals being drawn as live bars that are nothing of the kind: `integration_competence` is
-       assigned only inside `Brain.__init__` (brain.py:352,361) and never again; `pci` is computed
-       only inside the sleep tick and only when `nights % 4 == 0` (brain.py:2275); `spikes.midbrain`
+       assigned only inside `Brain.__init__` (brain.py:362, and its except-branch sibling) and never again; `pci` is computed
+       only inside the sleep tick and only when `nights % 4 == 0` (brain.py:2279); `spikes.midbrain`
        reduces to a constant 0.05 because its `novelty` term is written only under a `_salience_on`
-       flag that is never enabled (autonomous_loop.py:1045); and `spikes.substrate` is the SAME
-       expression as `spikes.hippocampus` (live_brain.py:244,265), so the two bars are byte-identical
+       flag that is never enabled (autonomous_loop.py:1124); and `spikes.substrate` is the SAME
+       expression as `spikes.hippocampus` (live_brain.py:255,:276), so the two bars are byte-identical
        every tick and only one of them is a region.
 
        A number that has not changed since construction, drawn as a live bar, is a lie told slowly.
@@ -114,15 +114,15 @@ DASHBOARD_SECTION_KEYS = {
 # Deleting an entry is how a future build declares a signal fixed; adding one is how it stays honest.
 # Every claim here was verified against the cited source line, not inferred.
 PROVENANCE = {
-    # assigned once inside Brain.__init__ and never touched by any tick (brain.py:352,361 -> :2606)
+    # assigned once inside Brain.__init__ and never touched by any tick (brain.py:362 + its except-branch sibling -> state() at :2621)
     "integration_competence": "frozen at construction",
     "integration_gain": "frozen at construction",
     "integration_retention": "frozen at construction",
     "integration_ok": "frozen at construction",
-    # written only in the sleep tick; pci additionally only when nights % 4 == 0 (brain.py:2275,:2349)
+    # written only in the sleep tick; pci additionally only when nights % 4 == 0 (pci brain.py:2279; criticality brain.py:2353)
     "pci": "sleep-only, refreshes every 4th night",
     "criticality": "sleep-only",
-    # string/bool literals in state(), not readings (brain.py:2572,:2701)
+    # string/bool literals in state(), not readings (brain.py:2583,:2716)
     "goal": "hardcoded literal",
     "reflex_armed": "hardcoded literal",
     # spike-section rows that are not independent live regions
@@ -294,7 +294,7 @@ def snapshot(brain):
 
     # ---- gated: NOT routed to any action -- and, it turns out, not computed either. ----
     # These were labelled "computed but not applied" until an audit checked the write sites: all three
-    # are assigned only inside blocks guarded by `_gain_on` / `_dev_on` (autonomous_loop.py:1412,:1451),
+    # are assigned only inside blocks guarded by `_gain_on` / `_dev_on` (autonomous_loop.py:1505,:1542),
     # and those flags come from LiveBrain kwargs that Brain never passes (brain.py:197-209). So they
     # hold their init 0.0 forever. `computed` records that, because "a gain that is never applied" and
     # "a gain that was never calculated" are different failures and the second one is worse.

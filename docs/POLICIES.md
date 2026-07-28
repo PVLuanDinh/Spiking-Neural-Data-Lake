@@ -45,7 +45,7 @@ say which are open:
 |---|---|
 | **self-building code** | `reasoning/self_mod_harness.py` (648), `brain_native_selfbuild.py` (1088), `godel_machine.py`, `self_build_loop.py`, `self_improve.py`. Fires every 8 nights, **only** under `NORD_SELFMOD=1` (enabled in `learn_daemon.bat:14`) |
 | **knowledge acquisition** | live — chat ingest → the one durable lake (`substrate/chat_memory.py`), `substrate/web_ingest.py`, reasoning-curriculum growth during sleep |
-| **neural growth** | live — neurogenesis grows **only during sleep** (asserted: `cortex/brain.py:3772`), plus `hippocampus/{growing_learner,function_preserving_growth}.py`, `substrate/similarity_sized_growth.py`, `cortex/neurogenesis_engine.py` |
+| **neural growth** | live — neurogenesis grows **only during sleep** (asserted: `cortex/brain.py:3780`), plus `hippocampus/{growing_learner,function_preserving_growth}.py`, `substrate/similarity_sized_growth.py`, `cortex/neurogenesis_engine.py` |
 | **cortical column construction** | **NOT live.** `cortex/cortical_microcircuit.py` is a faithful 8-population Potjans-Diesmann circuit that is EXEMPT-permanent in `substrate/dormancy_gate.py:83` — *it has no input port*. This is the clearest open avenue named in this policy, and closing it is P0 work |
 | **self-recalibration** | live — `substrate/signal_calibrator.py`, running-baseline forms per P1 |
 
@@ -186,7 +186,7 @@ than CI, and all are cited from this tree:
 | # | shape | worked example |
 |---|---|---|
 | 1 | **method never called** — the module is live, one of its methods is not | `PredictiveCodingNetwork.learn()` — inference ran every tick, learning had one caller: its own `__main__`. Fixed v4.71 |
-| 2 | **return value discarded** — a live call whose result goes nowhere | `connectome_router.step()` at `cortex/brain.py:2000`; its only export reaches telemetry alone, measured constant 0.250 over 122 ticks |
+| 2 | **return value discarded** — a live call whose result goes nowhere | `connectome_router.step()` at `cortex/brain.py:2001`; its only export reaches telemetry alone, measured constant 0.250 over 122 ticks |
 | 3 | **key-space mismatch** — a learned path structurally unreachable | `thalamus/reentrant_workspace.py` potentiates on `(source, winner)` at `:271`, looks up `(subscriber, winner)` at `:289`; disjoint live, so the learned re-route took 2 values in 122 ticks |
 | 4 | **write-only consumer** — a faculty fed every tick, never read | `cortex/agency_monitor.py` — `observe()` runs live; nothing reads `agency()` / `controllability()` / `status()`, and no key reaches telemetry |
 | 5 | **constant wearing a signal's clothes** — present, plausible, never varies | `spikes.midbrain` (its novelty term is never enabled); `integration_competence` (assigned only in `Brain.__init__`); the `gated` trio (never *computed*, not merely never applied) |
