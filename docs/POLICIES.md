@@ -4,6 +4,27 @@ Four standing policies govern how this brain is built. They are **mechanized** w
 self-check that fails on violation) and otherwise enforced by review. Each has an **honesty guard** —
 the rule that stops the policy from being satisfied by theater.
 
+**Enforcement status, stated plainly, because it is easy to assume a gate exists:**
+
+| | mechanized in CI | enforced by review only |
+|---|---|---|
+| P1 no-hardcode | — | yes |
+| P2 adopt-or-merge | — | yes |
+| P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE) | the per-METHOD amendment; the charge tier |
+| P4 one brain | `substrate/replication_guard.py` | — |
+| e-prop not backprop | — | yes |
+
+**Provenance of the 2026-07 amendments.** Three independent audits mapped this codebase against
+external frameworks — predictive coding, the Thousand Brains Theory, and quantum-consciousness
+theories. They proposed five policies between them; **one** survived adversarial review, and the
+rejections were as instructive as the survivor. Two proposed gates were *implemented before adoption*
+and killed by their own output: one scored 0 failures / 47 UNCERTAIN (it could not catch its own
+motivating case), the other produced 58 failures where 1 was claimed (adoption would have meant a
+58-entry rubber-stamp allowlist). That bar is now itself a rule — see *Adding a policy* below.
+
+What the audits mostly returned was not governance but **defects**, and they clustered into one
+recognisable family, recorded under P3.
+
 ---
 
 ## P1 — Brain-native / no-hardcode
@@ -21,14 +42,46 @@ the persisted policy** (e.g. a durable-reload contract persists weights but not 
 Reuse anchors: `basal_ganglia/r_stdp.py` (`w += lr*d*e`), `substrate/signal_calibrator.py`, the
 `_*_base` running-EMA idiom, `cortex/brain.py::_drive_w`.
 
-## P2 — Adopt-better + retire the inferior (non-additive)
+## P2 — Adopt-better **or merge**, then retire the inferior (non-additive)
 
-When two mechanisms do the same job, make the **better** one THE path and **delete** the other. Do not
-leave both live "additively" — that dilutes the signal and grows bloat. Merge when it yields high value.
+When two mechanisms do the same job, exactly **one** survives. There are two legitimate routes to that,
+and they are co-equal — the choice between them is a judgement about the mechanisms, not a fallback:
 
-**Honesty guard:** prove the swap is behaviour-equivalent (or superior) **before** deleting — an A/B on
-identical inputs, gate-verified no regression, and any unique capability of the retired mechanism ported
-first. Reject the swap with evidence if it regresses (verify-first works when it says *stop*).
+1. **ADOPT** — one is better on evidence; it becomes THE path and the other is **deleted**.
+2. **MERGE** — neither dominates, or each holds something the other needs; build the **one** mechanism
+   that supersedes both, then retire both originals. A merge is not a compromise or a coexistence; it
+   ends with fewer moving parts than it started with.
+
+What is forbidden is the third option: leaving both live "additively". That dilutes the signal, grows
+bloat, and leaves every later reader guessing which one is authoritative.
+
+**Worked merge:** `cortex/neuron_zoo.py` — the repo's neuron models each had their own constructor and
+step signature, so a population was always homogeneous. The zoo is one heterogeneous population behind
+a single contract, and it earns the name because it *"does NOT re-implement any dynamics -- it IMPORTS
+the existing neuron modules and puts a thin adapter in front of each"*. One surviving interface, zero
+duplicated dynamics. Smaller-scale: `PredictiveCodingNetwork.learn()` now calls `learn_step()` (v4.71),
+so the offline trainer and the live tick apply the identical rule — one definition, not two.
+
+**Honesty guard:** prove the adopt-or-merge is behaviour-equivalent (or superior) **before** deleting —
+an A/B on identical inputs, gate-verified no regression, and any unique capability of the retired
+mechanism ported first. Reject it with evidence if it regresses (verify-first works when it says *stop*).
+
+**Merge-specific guard — a merge must actually reduce.** "Merging" that keeps both code paths behind a
+flag, a mode switch, or an `if` is additive with extra steps, and is the failure this policy exists to
+prevent wearing a more respectable name. Count the survivors: if two implementations of the same job are
+still reachable when you are done, it was not a merge.
+
+**"Better" requires a measurement that exists.** If the two mechanisms cannot be compared by any
+benchmark in this repo, the swap is not P2-eligible and the answer is *build the benchmark first*, not
+*pick the more fashionable one*. Worked case: the Thousand Brains audit proposed replacing the Global
+Workspace (`thalamus/global_workspace.py`, one broadcast slot, winner-take-all) with peer-to-peer
+columnar voting. Both are serious theories of the same phenomenon; SNDL has **no consensus benchmark**
+— no ambiguous multi-source evidence with a known right answer — so neither could be shown better, and
+the swap was refused. An external framework being newer, or more elegant, or better publicised is not
+evidence. This guard is what stops P2 from becoming a fashion treadmill.
+
+**Corollary — a research direction is not a policy.** "Adopt architecture X" governs *what* we build;
+policies govern *how*. Proposals of that shape belong in a design note, not in this file.
 
 ## P3 — No dormancy
 
@@ -54,6 +107,28 @@ faked with a dead consumer. (History: a coverage-audit once flagged PFC / amygda
 synfire as dormant; every one was REFUTED on runtime A/B. Static grep proves import-absence, not
 behavioural inertness — mark unproven cases UNCERTAIN, not dormant.)
 
+### The dormancy family — six observed shapes of "live but inert"
+
+The module gate asks one question: *is this module imported from a live root?* Every defect below
+answered **yes** and was still dead. They are the same failure wearing different clothes, and naming
+them is most of what makes the next one findable. All six are real, all were found by audit rather
+than CI, and all are cited from this tree:
+
+| # | shape | worked example |
+|---|---|---|
+| 1 | **method never called** — the module is live, one of its methods is not | `PredictiveCodingNetwork.learn()` — inference ran every tick, learning had one caller: its own `__main__`. Fixed v4.71 |
+| 2 | **return value discarded** — a live call whose result goes nowhere | `connectome_router.step()` at `cortex/brain.py:2000`; its only export reaches telemetry alone, measured constant 0.250 over 122 ticks |
+| 3 | **key-space mismatch** — a learned path structurally unreachable | `thalamus/reentrant_workspace.py` potentiates on `(source, winner)` at `:271`, looks up `(subscriber, winner)` at `:289`; disjoint live, so the learned re-route took 2 values in 122 ticks |
+| 4 | **write-only consumer** — a faculty fed every tick, never read | `cortex/agency_monitor.py` — `observe()` runs live; nothing reads `agency()` / `controllability()` / `status()`, and no key reaches telemetry |
+| 5 | **constant wearing a signal's clothes** — present, plausible, never varies | `spikes.midbrain` (its novelty term is never enabled); `integration_competence` (assigned only in `Brain.__init__`); the `gated` trio (never *computed*, not merely never applied) |
+| 6 | **silent default** — a lookup table missing the cases that matter | `_ALLO_MOVE` had no entry for the four `JOINT_*_ROTATE` tokens, so `.get(action, (0.0, 0.0))` meant the commands that actually move the arm contributed **zero** to path integration. Fixed v4.72 |
+
+**The transferable rule:** *presence is not participation.* Being imported, being called, being in the
+snapshot, and having a value are four different things, and none of them is *changing an outcome*. When
+auditing a faculty, name which of the four you verified — and shapes 5 and 6 are why
+`substrate/brain_telemetry.py::PROVENANCE` exists: a signal that cannot vary must say so beside its own
+number, or a dashboard turns it into a claim.
+
 ### P3 amendment — dormancy is per-METHOD, not per-module
 
 **If a module on a live path computes a prediction error, free energy, or any other learning signal,
@@ -61,15 +136,26 @@ the update rule that consumes it must also be called from a live path.** A learn
 reachable module with no live-path call site is dormant, and must be wired, retired, or listed in
 `EXEMPT_METHOD` with a disposition and a reason.
 
-**Why module granularity is not enough.** `dormancy_gate.py:71` keys on the module basename, so a
-module passes P3 clean with half its capability dead. That is the live state of
-`cortex/predictive_coding.py`: the brain settles its 3-level Rao-Ballard net on **every wake tick**
-(`cortex/live_brain.py:161`), and the error-neuron architecture is implemented faithfully — but
-`PredictiveCodingNetwork.learn()` (`:244`) has exactly **one** call site in the tree, inside the
-module's own `__main__` self-check (`:332`). The live path calls `reset()` + `infer()` only, against
-weights that are seeded random at construction and never change (verified: `w1` is `array_equal`
-before and after 40 further wake ticks). We built predictive coding's inference and left its learning
-uncalled, and the module-level gate cannot see that.
+**Why module granularity is not enough — a worked case, since fixed.** `dormancy_gate.py:71` keys on
+the module basename, so a module passes P3 clean with half its capability dead.
+
+`cortex/predictive_coding.py` was exactly that. The brain settled its 3-level Rao-Ballard net on every
+wake tick (`cortex/live_brain.py:161`) with the error-neuron architecture implemented faithfully — while
+`PredictiveCodingNetwork.learn()` had **one** call site in the tree, inside the module's own `__main__`
+self-check. The live path called `reset()` + `infer()` only, against weights seeded random at
+construction that never changed (verified: `w1` was `array_equal` before and after 40 further wake
+ticks). Inference wired, learning never called, and the module-level gate saw a live, imported,
+fully-compliant module.
+
+**That case is now closed** (v4.71): the per-sample rule was extracted as `learn_step()`
+(`predictive_coding.py:244`) and is called every tick at `cortex/live_brain.py:185`. Measured over 400
+ticks — prediction-error energy −67.8% with the call, +9.1% without it (weights frozen).
+
+Fixing it does not retract the argument; it completes it. The blind spot is no longer hypothetical: a
+half-dead module demonstrably passed the module gate, for as long as that feature had existed, and was
+found by an audit rather than by CI. That is the evidence this amendment rests on. The candidate set
+below was produced by the import-scoped pass described next and has NOT been re-adjudicated since the
+predictive-coding fix — treat it as a starting list to verify, not a verdict.
 
 **Mechanization: SPECIFIED, NOT YET BUILT.** A pure static AST pass (~1 s, no runtime cost). Two
 details are load-bearing, both found by implementing the naive version first and watching it fail:
@@ -82,9 +168,11 @@ details are load-bearing, both found by implementing the naive version first and
    module produces a real false positive (`plasticity/meta_plasticity.py:261` legitimately drives
    `_Unit.learn` at `:131`). The `__main__` guard is precisely what isolates the genuine case.
 
-Under that rule the current candidate set is 5: `cortex/predictive_coding.py:244`,
-`hippocampus/affective_memory.py:173`, `neuromodulation/drive_reduction.py:196`,
-`neuromodulation/empowerment.py:86`, `plasticity/meta_plasticity.py:131`.
+Under that rule the candidate set was 5. One — `cortex/predictive_coding.py` — has since been wired
+and charge-proven (above). The remaining four are unverified since: `hippocampus/affective_memory.py:173`,
+`neuromodulation/drive_reduction.py:196`, `neuromodulation/empowerment.py:86`,
+`plasticity/meta_plasticity.py:131`. Each still needs the three-way P3 disposition applied to it —
+wire-and-prove-charge, retire, or `EXEMPT_METHOD` with a reason — and none of that is done.
 
 **Honesty guard.** (a) P3's neuter-A/B tier applies unchanged — a call site proves a *caller*, not a
 *charge*; adding a dead consumer to silence the gate is the failure this policy already forbids.
@@ -92,10 +180,15 @@ Under that rule the current candidate set is 5: `cortex/predictive_coding.py:244
 entries tagged `wire` that outlive their wave are reported as a standing TODO, so exempting everything
 is visible rather than silent.
 
-**Stated honestly: this amendment would have caught no past incident.** The audited history is
-*consumption* gaps (a producer with callers whose output nothing reads) and an unsupplied constructor
-argument — a call-site check passes all of them. It earns its place on the one live case it finds
-today, not on precedent.
+**Stated honestly: this amendment would have caught no *earlier* incident.** The audited history before
+it is *consumption* gaps (a producer with callers whose output nothing reads) and an unsupplied
+constructor argument — a call-site check passes all of them. It earns its place on the predictive-coding
+case above: found by audit, confirmed by measurement, and invisible to the module gate throughout.
+
+**Standing caution for this section.** It was written while its motivating case was still open, and went
+stale within two commits when that case was fixed — the text asserted dead code that had become live.
+An amendment justified by a live example has to be re-read whenever that example changes, or the policy
+file starts describing a codebase that no longer exists.
 
 ## P4 — One brain / no replication
 
@@ -141,5 +234,28 @@ verify nothing is lost (P2 discipline).
   non-local. Absence of `.backward()` is not evidence of locality.
 - **Verify-first + honest framing:** probe → act → prove (A/B / gate) → commit; report the true number
   including a regression; reject theater with evidence; never fake a capability, a metric, or a consumer.
+- **Runtime evidence outranks static reading.** Every decisive finding in the 2026-07 audits came from
+  *running* the system, and the static reads were wrong in both directions. Monkeypatching
+  `torch.Tensor.backward` over 80 live ticks proved no backprop on the tick (0 hits) where grep could
+  only have found call sites. A neuter-A/B on `pc_surprise` proved it decisive (59/60 ticks changed
+  `reentrant_strength`). A matched **control** proved predictive-coding learning real — error −67.8%
+  with the update, +9.1% *without* it. Conversely a `cProfile` ranking sent a whole optimisation plan
+  after the wrong function: 244,768 calls to `lif_neuron.step` looked like the hot path, and neutering
+  it entirely moved the tick 43.6 → 41.2 ms (a 6% ceiling — per-call profiler overhead attributed as
+  time). **Before optimising a hotspot, neuter it and measure the delta; before believing a signal is
+  live, neuter it and watch what changes.**
+- **A performance regression can be correctness-green.** v4.64 put a ~1 s static-import-graph census
+  inside `snapshot()`, which the cockpit polls at 1 Hz — so the dashboard made the daemon re-scan its
+  own source every second, starving the tick loop it existed to display. Every suite stayed green
+  throughout, because self-checks call `snapshot()` a handful of times where a second is invisible; the
+  cost only bites at rate against a live loop. It was found by watching the running system. **Anything
+  that observes the brain must be cheap enough not to become the load** — and no gate here can tell you
+  that.
+- **Adding a policy: implement the gate before adopting the rule.** A proposed mechanization must be
+  built and run against this tree, and its output counted, *before* the policy lands. Two proposals died
+  exactly there — 0 failures / 47 UNCERTAIN, and 58 failures where 1 was claimed. Also required: quote
+  the source line the rule derives from (a general good-practice rule in a costume is a reject), and
+  name the real past incident it would have caught, or state plainly that there is none and say what it
+  earns its place on instead. Fewer, sharper policies win; "no new policy" is a complete result.
 - **Gated + reversible:** one change per commit, full gate green (`run_selfchecks` + `pytest` + `ruff`),
   commit + tag locally; a regression is isolated to its own change.
