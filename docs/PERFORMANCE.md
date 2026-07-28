@@ -57,6 +57,66 @@ speedup — the core's spiking modules are KB-scale, so streaming them from disk
 overhead. The zero-dependency `StubBackend` covers the default NL path; use AirLLM only if you
 deliberately want a large local model. See [AIRLLM_ANALYSIS.md](AIRLLM_ANALYSIS.md).
 
+## Neural capacity scales with real data (measured 2026-07-28)
+
+How wide the brain grows is set by how much real structure it is given, not by a constant. NG-SNN
+grows a hidden unit only while it still reduces error on rows the solve did not fit to; there is no
+preset ceiling (`l_max=None` derives the hard bound as L <= N).
+
+Streamed from Hugging Face (`ylecun/mnist`, 8x8 features, held-out on unseen rows, `patience=16`):
+
+| train rows | earned capacity | held-out accuracy |
+|---:|---:|---:|
+| 1,000 | 53 | 0.794 |
+| 2,000 | 1,997 | 0.929 |
+| 2,500 | 126 | 0.879 |
+| 5,000 | 160 | 0.901 |
+| 10,000 | 2,334 | 0.956 |
+
+(The 2,500/5,000 rows were measured at `patience=3`, the old default, and are kept to show what the
+impatient setting cost -- 126 units and 0.879 where 2,000 rows at `patience=16` reached 1,997 and
+0.929.)
+
+**Two findings worth more than the table.**
+
+A **fixed cap of 200** -- the previous default -- loses to earned capacity at every scale tried
+(0.878 vs 0.929 at 2k rows; 0.908 vs 0.956 at 10k). It is an artificial ceiling that truncates real
+learning, and it bound at exactly 200/200 on every synthetic task tried, including trivially easy
+ones.
+
+**A synthetic benchmark gave the wrong tuning.** On a 6-class prototype task, growing past a few
+hundred units looked actively harmful, which argued for `patience=3`. Real data reversed it: capacity
+kept paying an order of magnitude further. The synthetic task's tight clusters saturate quickly, and
+generalising from them to real perception was the error. Tune capacity policy on the data the system
+will actually see.
+
+**Why this matters for the GPU, and where it stops.** The measured CUDA-graph crossover is N ~ 4,096
+(see [POLICIES.md](POLICIES.md) P5): below it numpy wins, above it the RTX 5070 wins by 3-6x. Live
+populations are 24-240 wide, which is why the live tick does not belong on the GPU. Grown capacity
+gets far closer -- but it **saturates before the crossover on this task**, measured on the card:
+
+| rows | grown L | held-out | fit time (RTX 5070) |
+|---:|---:|---:|---:|
+| 10,000 | 2,254 | 0.955 | 64 s |
+| 16,000 | 2,576 | 0.957 | 269 s |
+| 24,000 | **2,071** | **0.960** | 554 s |
+
+Capacity peaks around 16k rows and then FALLS while accuracy still rises: 24k rows produced 20% FEWER
+units and the best held-out score of the three. That is the earn-your-place rule behaving correctly --
+a larger held-out slice locates the optimum sooner, so the pool stops earlier and generalises better.
+Fewer neurons, better brain.
+
+An earlier extrapolation from the steep 1k-10k segment suggested a few hundred thousand rows would
+reach 4,096. These three points refute it: the curve is not merely flattening, it is non-monotonic and
+saturated. MNIST at 8x8 runs out of exploitable structure around 2,000-2,600 units, and past that the
+extra rows are repeats of what the pool already represents.
+
+So the honest statement is: **capacity is data-limited, but only up to the richness of the task.**
+Reaching GPU-relevant width needs a HARDER problem -- more classes, higher-dimensional input, real
+temporal structure -- not simply more rows of an easy one. Note also that fit cost grows superlinearly
+(4x for 1.6x data, the O(L^2 N) ridge solve), so the card is already earning its place on the growth
+tier even below the elementwise crossover.
+
 ## Disk-streaming & growth (the lake scales out-of-core)
 
 The spike lake is built to grow beyond RAM without adding a heavy dependency. Two layers:

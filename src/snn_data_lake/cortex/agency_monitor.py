@@ -1,4 +1,23 @@
 r"""
+LIVE STATUS, MEASURED 2026-07-28 (v4.80): write-only, and NOT a wire candidate. `observe()` runs every
+tick (`autonomous_loop.py:1498`) and nothing reads `agency()` / `controllability()` / `status()`. The
+obvious P3 fix -- consume `route_around` into action selection -- was investigated and REJECTED on the
+measurement, not on taste.
+
+Over 600 live ticks exactly ONE channel of seven crossed `warmup`: HOLD, with 129 observations. The
+rest got 70, 44, 19, 15, 11 and 6. `agency_signal` took two values (0.0, 0.459), and no channel was
+ever reported lost. Wiring `route_around` in that state would scale HOLD's drive by 0.459 and leave
+the other six actions untouched -- a spurious penalty on one action, not "route around a dead
+effector". It would move a coverage number while making behaviour worse, which is exactly the theater
+Policy 0's honesty guard exists to refuse.
+
+The cause is structural and NOT a miscalibrated constant: `warmup=120` is ~2.4x the EMA memory implied
+by `alpha=0.02`, which is a principled settle criterion in units of OBSERVATIONS. The live path simply
+delivers those observations split across seven channels, so scoring all of them needs roughly 4,000+
+ticks. DISPOSITION: P3 exempt-awaiting-sufficient-per-channel-experience. It becomes genuinely useful
+on a long-running daemon, and it starts working with no code change -- what it needs is uptime and a
+body whose effectors can actually fail.
+
 Sense-of-agency / per-channel CONTROLLABILITY monitor -- the learned-helplessness
 substrate. Asks, for every action channel the brain drives: "do MY commands still
 cause their expected sensory change?" and flags the SUSTAINED loss of that

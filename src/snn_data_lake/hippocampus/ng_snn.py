@@ -64,6 +64,7 @@ class NGSNN:
         c0=1e-4,
         l_max=None,  # None = DERIVED from the data (see below). An int still pins it explicitly.
         eps_tol=1e-2,
+        patience=16,  # blocks without held-out gain before growth stops; MEASURED, see fit()
         reg_eps=1e-6,
         T=15,
         device="cuda",
@@ -83,6 +84,7 @@ class NGSNN:
         # avenue of self-improvement is a gap to close, not a boundary to respect.
         self.l_max = None if l_max is None else int(l_max)
         self.eps_tol, self.reg_eps = float(eps_tol), float(reg_eps)
+        self.patience = int(patience)
         self.device = device if (torch.cuda.is_available() or device == "cpu") else "cpu"
         self.g = torch.Generator(device=self.device).manual_seed(seed)
         self.W = None  # (L, d_in) grown hidden input weights
@@ -173,18 +175,28 @@ class NGSNN:
         beta = torch.empty(0, self.m, device=self.device)
         E = Y.clone()  # residual E_L = Y - S beta (L=0)
 
-        # CAPACITY BOUND, EARNED RATHER THAN PRESET (v4.80). Three options were measured before this
-        # shape was chosen, on a 6-class prototype task with shared train/test structure:
+        # CAPACITY BOUND, EARNED RATHER THAN PRESET (v4.80), and the tuning story matters because a
+        # synthetic benchmark gave the WRONG answer first.
         #
-        #   noise 0.35   cap=200 -> 0.865 held-out   unbounded(600) -> 0.850
-        #   noise 0.55   cap=200 -> 0.608            unbounded(600) -> 0.560
-        #   noise 0.80   cap=200 -> 0.417            unbounded(600) -> 0.382
+        # On a 6-class synthetic prototype task, growing to the hard bound looked harmful -- cap=200
+        # beat unbounded at every noise level (0.865/0.608/0.417 vs 0.850/0.560/0.382) -- which
+        # argued for stopping early, and patience=3 was chosen on that basis.
         #
-        # So a FIXED cap of 200 is an artificial ceiling that fires even on easy problems (measured:
-        # it bound at exactly 200/200 on every task tried), but removing it entirely is WORSE at every
-        # difficulty -- the surplus units interpolate noise. Unbounded growth does not make the brain
-        # bigger, it makes it memorise. That is Policy 0's honesty guard in its sharpest form: growth
-        # is not improvement, and here the extra units change the outcome for the worse.
+        # Real streamed data (HF ylecun/mnist, 8x8, held-out on unseen rows) reversed it:
+        #
+        #   rows    patience=3        patience=16          fixed cap 200
+        #   2,000   L=75   0.828      L=1997  0.929        L=200  0.878
+        #   10,000  L=262  0.919      L=2334  0.956        L=200  0.908
+        #
+        # More capacity kept paying far past where the synthetic task said it would stop, so
+        # patience=3 was leaving accuracy on the table on exactly the data the brain is meant to
+        # learn from. The synthetic task has low intrinsic dimensionality -- tight prototype clusters
+        # saturate quickly -- and generalising from it to real perception was the error. Default is
+        # now 16, chosen on the real-data curve.
+        #
+        # The fixed 200 loses to earned capacity at BOTH scales, which is the durable finding: it is
+        # an artificial ceiling that fires even on easy problems (measured: it bound at exactly
+        # 200/200 on every synthetic task tried) and it truncates real learning.
         #
         # So the ceiling is neither preset nor absent: capacity grows while it still EARNS itself on
         # data the fit has not seen, and stops when it stops paying. `l_max=None` means "no preset
@@ -255,9 +267,7 @@ class NGSNN:
                     best_err, best_L, stale = ve, W.shape[0], 0
                 else:
                     stale += 1
-                    if (
-                        stale >= 3
-                    ):  # three blocks with no held-out gain -> capacity has stopped paying
+                    if stale >= self.patience:  # no held-out gain for this long -> stop
                         break
 
         # roll back to the width that was actually best on held-out data, so the units that only
