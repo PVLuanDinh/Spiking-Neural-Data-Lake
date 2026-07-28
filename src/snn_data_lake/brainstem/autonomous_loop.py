@@ -82,6 +82,16 @@ SAFE_ACTION = "HOLD"  # what caution biases toward under stress
 # W4c: self-motion step DERIVED from the chosen action (a real behavioral trajectory), not a constant drift.
 # Representation-only -- this feeds the allocentric MAP readout, never the actuator (the arm gate is separate).
 _ALLO_MOVE = {"ENGAGE": (0.05, 0.0), "RELEASE": (-0.05, 0.0), "HOLD": (0.0, 0.04)}
+# ^ nominal displacements for the three NON-kinematic tokens. They move no joint, so there is no
+# geometry to derive a displacement from; a nominal step is the only honest option and it is what the
+# map integrates for them.
+#
+# The four JOINT_*_ROTATE tokens are deliberately ABSENT, and were silently worth (0,0) via the
+# `.get(action, (0.0, 0.0))` default until v4.72 -- so the commands that actually move the body
+# contributed NOTHING to path integration. The brain dead-reckoned its position while ignoring its own
+# limb. A table cannot fix that: for a 2-link arm the end-effector displacement of a 6-degree joint
+# rotation depends on the CURRENT configuration (the Jacobian), so the same token means a different
+# move at every pose. `_self_motion` below derives it instead.
 
 
 class AutonomousArm:
@@ -153,6 +163,7 @@ class AutonomousArm:
         # same content is held. Counted in _workspace_tick, the one place the workspace steps.
         self._ignitions = 0
         self._prev_thought = None
+        self._allo_last_ee = None  # previous end-effector pose, for _self_motion's dead reckoning
         self._last_disp = 0.0  # how far the end effector actually travelled on the last scored tick
         self._last_ee = None  # previous end-effector pose -> did this tick move the body at all?
         self._ground_ticks = 0  # consecutive ground-contact ticks (postural recovery reflex)
@@ -488,6 +499,41 @@ class AutonomousArm:
         if fresh:
             return 1.0
         return -0.02 if moved else -0.10  # re-tread beats stillness; both far above a collision
+
+    def _self_motion(self, action):
+        """Self-motion for path integration: how far the body moved as a result of `action`.
+
+        Non-kinematic tokens (ENGAGE / RELEASE / HOLD) take their nominal step from _ALLO_MOVE. The
+        JOINT_*_ROTATE tokens are DERIVED, because a fixed number cannot describe them: rotating joint
+        A by 6 degrees sweeps the end effector a different distance and direction at every arm pose.
+        Before this existed they defaulted to (0, 0), so the four commands that actually move the body
+        were invisible to the map -- the brain tracked its position while ignoring its own limb.
+
+        HONEST ABOUT WHAT THIS IS. This dead-reckons from the arm's own end-effector position, so it is
+        PROPRIOCEPTIVE reafference, not a pure efference copy predicted from the outgoing command. The
+        difference is not cosmetic and the choice is deliberate: every motor command here passes a
+        safety gate that can refuse it (E-STOP freeze, collision, joint limit). An open-loop efference
+        copy would integrate the *intended* move and drift permanently every time the gate said no --
+        biologically real, but here it would corrupt the map on exactly the ticks safety intervened.
+        Reading the realised position makes a refused command contribute zero, which is correct.
+
+        No external reference is used: the end effector comes from the arm's own forward kinematics
+        over its own joint angles, which is why this stays dead reckoning rather than becoming
+        localisation.
+        """
+        nominal = _ALLO_MOVE.get(action)
+        prev = self._allo_last_ee
+        try:
+            ee = self.arm.state().get("ee") or (0.0, 0.0)
+            now = (float(ee[0]), float(ee[1]))
+        except Exception:  # a map readout must never be able to break the tick
+            return nominal or (0.0, 0.0)
+        self._allo_last_ee = now
+        if nominal is not None:
+            return nominal
+        if prev is None:  # first motor command of the run: no baseline to difference against
+            return (0.0, 0.0)
+        return (now[0] - prev[0], now[1] - prev[1])
 
     def _cpg_bias(self, td, qa):
         """COMPETENCE FLOOR: a hand-written Matsuoka CPG biases joint selection, so the arm produces
@@ -1430,7 +1476,13 @@ class AutonomousArm:
                 self._affmem.store(
                     pattern, valence=math.tanh(r_int + rx), arousal=threat, reward=rx
                 )
-            if self._agency_on:  # controllability of action -> realized value (sense of agency)
+            # WRITE-ONLY as of today: AgencyMonitor.observe() is fed every tick, but nothing in src/
+            # or tests/ reads agency() / controllability() / status(), and no `agency` key reaches the
+            # telemetry contract or the cockpit. The comment here used to read "controllability of
+            # action -> realized value (sense of agency)", whose arrow asserted a consumer that does
+            # not exist. It is a P3 case awaiting its disposition -- wire and prove the charge, retire,
+            # or EXEMPT with a reason -- not a live signal.
+            if self._agency_on:
                 if self._agency is None:
                     self._agency = AgencyMonitor(seed=self._seed)
                 self._agency.observe(action, cmd=qmax, fb=(rx if reward_fn is not None else r_int))
@@ -1466,9 +1518,7 @@ class AutonomousArm:
             if self._allo_on:  # allocentric landmark map dead-reckoned from the stream
                 if self._allo is None:
                     self._allo = AllocentricMap(seed=self._seed)
-                dx, dy = _ALLO_MOVE.get(
-                    action, (0.0, 0.0)
-                )  # W4c: self-motion DERIVED from the chosen action (not a constant)
+                dx, dy = self._self_motion(action)  # self-motion DERIVED from the chosen action
                 self._allo.move(dx, dy)  # path integration reflects the real behavioral trajectory
                 self._allo.observe(
                     str(action), rel_x=intero, rel_y=threat, valence=math.tanh(r_int + rx)
