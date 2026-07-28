@@ -51,19 +51,43 @@ _VALUE_TABLE = {
 }
 
 
+class _PinnedWeights(dict):
+    """A `_drive_w` whose neutered key CANNOT rise. This is the airtight neuter, and the naive
+    version it replaces was measurably leaky.
+
+    Zeroing the weight after each `b.tick()` is not enough. `brain.py:1523-1528` applies the
+    competitive update `dw = lr * da * (e - mean_e)` to every key INSIDE the tick, and `:1539-1550`
+    consumes the weight afterwards -- so a key zeroed at the end of tick N is re-incremented partway
+    through tick N+1 and is non-zero by the time the drive is computed. Measured on `recall`: over 60
+    ticks the post-tick weight was non-zero on **12 of them**, up to 0.0033 against a 0.1 nominal.
+
+    That leak biases arm B toward arm A, which pushes verdicts toward CONSUMED-BUT-NOT-DECISIVE --
+    the direction that makes a live faculty look dead and invites retiring it. A partial neuter is
+    worse than no neuter, because it still returns a confident answer.
+    """
+
+    def __init__(self, src, pinned):
+        super().__init__(src)
+        self._pinned = pinned
+
+    def __setitem__(self, k, v):
+        super().__setitem__(k, 0.0 if k == self._pinned else v)
+
+
 def run(source, n, neuter):
     b = make_brain(seed=0, persist=False)  # Policy 4: the ONE sanctioned construction path
+    tbl = _VALUE_TABLE.get(source)
+    if neuter:
+        b._drive_w = _PinnedWeights(b._drive_w, source)
+        b._drive_w[source] = 0.0
     stopped, pos = [], []
     for _ in range(n):
         b.tick()
         st = b.state()
         stopped.append(bool(st.get("arm_stopped")))
         pos.append(tuple(st.get("map_position") or ()))
-        if neuter:
-            tbl = _VALUE_TABLE.get(source)
-            if tbl is not None:
-                getattr(b, tbl).clear()
-            b._drive_w[source] = 0.0
+        if neuter and tbl is not None:
+            getattr(b, tbl).clear()
     return b, stopped, pos
 
 
@@ -115,14 +139,22 @@ def main():
             "and the weight moving only reflects the competitive -mean_e term) -- no charge verdict"
         )
         return 2
-    if tbl is None:
-        print(
-            "NOTE: undirected source, no value table -- eligibility cannot be established from here"
-        )
-
     if act_flips > 0 or pos_flips > 0:
         print("BEHAVIOURAL CHARGE OK")
         return 0
+
+    # An undirected source (novelty / ignition / timing / reroute / surprise) has no value table, so
+    # there is no way from out here to tell "fired and did not matter" from "never fired". A NEGATIVE
+    # verdict on those would be a confident answer to a question this probe cannot ask -- and the
+    # negative verdict is the dangerous one, because it is the one that gets a faculty retired. So
+    # they return UNKNOWN (exit 2), not CONSUMED-BUT-NOT-DECISIVE. A POSITIVE verdict above is still
+    # sound for them: divergence proves the signal mattered regardless of eligibility.
+    if tbl is None:
+        print(
+            "UNKNOWN: undirected source with no value table -- no divergence observed, but eligibility "
+            "cannot be established from outside, so this is NOT evidence the source is inert"
+        )
+        return 2
     print("CONSUMED-BUT-NOT-DECISIVE")
     return 1
 
