@@ -10,9 +10,9 @@ primitives (leaky-integrate-and-fire neurons, spike-timing codes, Hebbian/STDP l
 a spiking-network toolkit, a spike-native data lakehouse, and a closed-loop robot-arm
 controller.
 
-The **core product** (`src/snn_data_lake/`, ~91 modules) has **zero runtime dependencies**
-(`dependencies = []` in `pyproject.toml`) — it is `pip install`-able and runs anywhere Python
-3.11+ runs, with no GPU, no compiled extensions, no third-party packages. Every efficiency
+The **core product** (`src/snn_data_lake/`, ~91 modules) declares two runtime dependencies
+(`dependencies = ["torch", "numpy"]` in `pyproject.toml`) — it is `pip install`-able and runs
+anywhere Python 3.11+ runs, with no GPU required. Every efficiency
 claim in the README (synaptic-operation counts, storage bytes, query I/O) is measured against
 a dense baseline and reproducible by running the file that makes the claim — the project has
 an explicit honesty policy (see CHANGELOG) about which numbers are achieved vs. targets.
@@ -20,7 +20,7 @@ an explicit honesty policy (see CHANGELOG) about which numbers are achieved vs. 
 A second, clearly separated tier — **`research/`** (45 files) plus a `neuromorphic_torch/`
 subproject — holds GPU/torch experiments (MNIST STDP/Diehl-and-Cook, spiking model-based RL,
 knowledge-graph embeddings). This tier is ruff/CI-excluded and needs its own virtual
-environment; it is explicitly **not** part of the shipped, zero-dep product.
+environment; it is explicitly **not** part of the shipped product.
 
 ## The three pillars
 
@@ -117,16 +117,18 @@ The exact, canonical module list that CI runs is `run_selfchecks.py` — it is t
 source of truth (previously this list drifted between the CI workflow and docs; now both
 point at one file).
 
-## Zero-dependency design & the core-vs-research tiers
+## Dependency design & the core-vs-research tiers
 
-The core's `pyproject.toml` declares `dependencies = []`. This is treated as a
-non-negotiable invariant, not an accident: it means `pip install -e .` (or the packaged
-`.exe`) needs nothing beyond the Python 3.11+ standard library, so the project is
-clone-and-run and fully covered by a CI matrix of `{ubuntu-latest, windows-latest} x
+The core's `pyproject.toml` declares `dependencies = ["torch", "numpy"]` (user policy,
+2026-07-18: the torch tier is on by default; the former zero-dep-core contract is removed).
+`pip install -e .` (or the packaged `.exe`) pulls those two on Python 3.11+, so the project
+is clone-and-run and fully covered by a CI matrix of `{ubuntu-latest, windows-latest} x
 {3.11, 3.12, 3.13}` — the Windows-first hardware product is actually exercised on Windows,
-not just Linux CI runners.
+not just Linux CI runners. `NORD_TORCH=0` is a runtime off-switch that degrades the torch
+growth tier to the deterministic stdlib narrator; it is not a zero-dependency mode, since
+numpy is always present.
 
-Everything that needs a third-party package is pushed behind **optional extras** and kept
+Everything beyond those two is pushed behind **optional extras** and kept
 out of the core import path:
 
 - `[arm]` — `pyserial`, for the real ESP32/serial actuator path (lazily imported; CI never
@@ -145,7 +147,7 @@ out of the core import path:
 This produces a strict two-tier structure:
 
 - **Core** (`src/snn_data_lake/`) — CI-gated on every commit via three gates: the
-  zero-dep self-check runner (`python run_selfchecks.py`, ~91/91 modules — the count
+  core self-check runner (`python run_selfchecks.py`, ~91/91 modules — the count
   moves as modules land), the pytest suite (>=70% coverage gate, currently ~85%), and
   `ruff check .`.
 - **`research/`** — GPU/torch prototypes and literature reproductions, explicitly
@@ -201,7 +203,7 @@ not "cognition." Specific ceilings called out in the project's own voice:
 
 - **`README.md`** — the full pitch, the measured-results tables, competitive context, and
   the complete repository layout.
-- **`python run_selfchecks.py`** — the fastest way to confirm the whole zero-dep core
+- **`python run_selfchecks.py`** — the fastest way to confirm the whole core
   works on your machine; it is exactly what CI runs, module by module.
 - **`python learn_daemon.py`** — the always-on brain, which serves the **cockpit** (the ONE
   frontend, `substrate/cockpit.py`) at `http://127.0.0.1:8137/`: one page carrying the live

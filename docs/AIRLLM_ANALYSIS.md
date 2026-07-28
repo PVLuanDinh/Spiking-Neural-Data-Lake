@@ -3,12 +3,12 @@
 **Question:** can AirLLM (https://github.com/lyogavin/airllm) infrastructure run the
 "full core program" of this repo locally, and what does that actually require?
 
-**Short answer:** the question is backwards. The full core already runs locally with
-**zero dependencies** and does not use AirLLM at all. AirLLM powers exactly one
+**Short answer:** the question is backwards. The full core already runs locally on its
+**two declared dependencies** (torch, numpy) and does not use AirLLM at all. AirLLM powers exactly one
 **optional** add-on: the natural-language front-end (`nl_interface` via
 `local_llm/airllm_backend.py`). For that job — classifying an English phrase into one
 of ~10 fixed labels — AirLLM works, but it is heavy machinery for a small task. The
-zero-dep `StubBackend` or a small instruct model covers it; AirLLM only earns its keep
+built-in `StubBackend` or a small instruct model covers it; AirLLM only earns its keep
 if you deliberately want a genuinely large (70B+) local model and accept the disk and
 latency cost.
 
@@ -60,9 +60,9 @@ open source. Verified against its README and PyPI:
 
 Verified in this repo:
 
-- `pyproject.toml`: `dependencies = []` — the core is pure standard library by design.
-  AirLLM appears only in the optional extra `llm = ["airllm", "torch"]`.
-- `python run_selfchecks.py` runs **88 zero-dep modules** (55 CORE product modules +
+- `pyproject.toml`: `dependencies = ["torch", "numpy"]` — the core needs those two and
+  nothing else. AirLLM appears only in the optional extra `llm = ["airllm", "torch"]`.
+- `python run_selfchecks.py` runs **88 core modules** (55 CORE product modules +
   33 RESEARCH PoCs) with no GPU, no network, no LLM. The whole core program — the
   robot-arm control loop (`reflex`, E-STOP, collision-gated `arm_sim`/`serial_arm`,
   `interpreter`, `autonomous_loop`, `closed_loop`), the spiking lakehouse
@@ -164,7 +164,7 @@ SNN_LLM=1 python local_llm/run_local.py   # or: python local_llm/run_local.py --
 
 | Your need | Use | Cost |
 |---|---|---|
-| Deterministic label routing, zero install, CI-provable, offline | `StubBackend` (the default) | none — pure stdlib |
+| Deterministic label routing, zero extra install, CI-provable, offline | `StubBackend` (the default) | none beyond the core install |
 | More robust free-text phrasing on modest hardware | Small instruct model (0.5B-3B), via the AirLLM backend's default Qwen2.5-0.5B or plain `transformers` | ~multi-GB pip install, ~1GB weights, CPU-viable; AirLLM's layer-streaming adds no value at this size |
 | A genuinely large local model (70B+) doing the routing; offline after download; privacy | AirLLM with a large `model_id` | 100s of GB disk, first-run download + split, high per-token latency, >= 4GB VRAM (or slow CPU) |
 
@@ -190,7 +190,7 @@ nothing in the core requires it. AirLLM is a legitimate, verified-real piece of
 infrastructure whose specific talent — streaming 70B-671B models layer-by-layer
 through tiny VRAM at the price of disk-bound per-token latency — is aimed at a much
 bigger problem than this repo's NL front-end has: picking one of ten labels. For that
-job the pragmatic defaults are the zero-dep `StubBackend` (deterministic, CI-proven)
+job the pragmatic defaults are the built-in `StubBackend` (deterministic, CI-proven)
 or a small instruct model; AirLLM is the right choice only for users who specifically
 want a large local model doing the routing and will pay for it in disk and latency.
 The integration as shipped is honest about this: opt-in, lazily imported, stub

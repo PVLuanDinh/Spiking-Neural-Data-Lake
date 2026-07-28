@@ -39,7 +39,7 @@ compiler-gated dependency can never break the base install:
 
 | Stage | What | Notes |
 |---|---|---|
-| `core` | the pure-stdlib package | **always installs** (zero deps) |
+| `core` | the base package | **always installs** (pulls torch + numpy) |
 | `dev` | pytest, pytest-cov, ruff, pre-commit | run the tests + lint |
 | `arm` | pyserial | drive a **real** serial robot arm |
 | `lake` | polars, pyarrow, deltalake | the lakehouse query engine |

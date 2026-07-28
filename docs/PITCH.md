@@ -1,9 +1,9 @@
-# Spiking Neural Data Lake: a zero-dependency, reproducible artifact for spike-native data systems and safety-gated neuromorphic robotics
+# Spiking Neural Data Lake: a reproducible artifact for spike-native data systems and safety-gated neuromorphic robotics
 
 **Repository:** https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake
 **Version:** v2.70 (v0.1 → v2.70; see CHANGELOG.md)
 **License:** MIT
-**Core dependencies:** none (`dependencies = []`)
+**Core dependencies:** torch, numpy
 
 ---
 
@@ -17,11 +17,11 @@ one set of shared primitives (leaky-integrate-and-fire neurons, spike-timing cod
 Hebbian/STDP learning): a **spiking data-lakehouse** with three storage/query/reasoning
 paradigms implemented directly over spike trains, a **closed-loop, safety-gated robot-arm
 controller** whose reflex, reward learning, stress state, and motor control are themselves
-spiking networks, and a **library of ~95 pure-standard-library neuromorphic primitives**
-(neuron models, plasticity rules, coding schemes, streaming sketches, cognitive-map
-mechanisms) that both systems are built from. The product core has **zero runtime
-dependencies**, runs on Python 3.11+ with no GPU and no compiled extensions, is covered by a
-CI matrix of `{ubuntu, windows} × {3.11, 3.12, 3.13}`, and treats "every claim reruns by
+spiking networks, and a **library of ~95 neuromorphic primitives** (neuron models,
+plasticity rules, coding schemes, streaming sketches, cognitive-map mechanisms) that both
+systems are built from. The product core runs on Python 3.11+ with no GPU required, is
+covered by a CI matrix of `{ubuntu, windows} × {3.11, 3.12, 3.13}`, and treats "every claim
+reruns by
 running the file that makes it" as a design invariant rather than an afterthought. Measured
 results include 61–162× less data moved for spike-native storage and query versus dense
 baselines, 3.6–83.5× fewer synaptic operations across compute-efficiency prototypes, and
@@ -32,7 +32,7 @@ best measured accuracy here is **90.0% at 1600 neurons**, and the tuned 6400-neu
 not yet been executed at that scale (a compute-cost gap, not a method gap). This is offered to the community as a
 reproducible engineering-and-research artifact, not a state-of-the-art accuracy paper: read
 it for the data-systems-over-spikes paradigm, the safety-gated bio-layered arm-control
-architecture, and a clone-and-run zero-dependency baseline you can fork, extend, or hold your
+architecture, and a clone-and-run baseline you can fork, extend, or hold your
 own work against.
 
 ---
@@ -56,7 +56,7 @@ its robustness.
 This project's thesis is that both threads can share one substrate. If sparse spike events
 are cheaper to move and store than dense floats (a claim this repo measures, not assumes),
 then the same event-driven primitives that make a data lake efficient can drive a
-reflex-gated, reward-learning robot-arm loop — and a single zero-dependency codebase can
+reflex-gated, reward-learning robot-arm loop — and a single codebase can
 demonstrate both, reproducibly, on a laptop.
 
 ## 2. Contributions
@@ -91,7 +91,7 @@ explicit data-system paradigms directly over spike trains:
   **[PoC]** — a proof-of-concept lakehouse at Medallion scale, not a production query
   engine (see Limitations).
 
-### 2.2 ~90 pure-standard-library neuromorphic primitives **[validated]**
+### 2.2 ~90 neuromorphic primitives **[validated]**
 
 The `src/snn_data_lake/` core (~91 modules) implements a working library of neuron models
 (LIF, Izhikevich, Hodgkin-Huxley, Adaptive-Exponential, resonate-and-fire, dendritic, SRM),
@@ -100,12 +100,11 @@ delay learning, Oja PCA), neural coding schemes (rate, population/RBF, temporal/
 rank-order, multimodal fusion), cognitive-map/hippocampal mechanisms (ring attractor, HTM
 sequence memory, dentate-gyrus separation + CA3 completion), and a family of streaming
 sketches reimplemented for spike/event streams (Count-Min, HyperLogLog, MinHash, AMS F2,
-DGIM windowed count, P² quantiles, Morris counter, reservoir sampling) — every one with zero
-runtime dependencies and its own deterministic, assert-based self-check. This is a
-contribution in its own right: a citable, reproducible reference implementation of
-textbook/literature primitives with no numpy, no torch, no compiled extension — useful as a
-teaching artifact, a correctness baseline, or a component library for other zero-dep
-neuromorphic work.
+DGIM windowed count, P² quantiles, Morris counter, reservoir sampling) — every one with its
+own deterministic, assert-based self-check. This is a contribution in its own right: a
+citable, reproducible reference implementation of textbook/literature primitives, each
+runnable on its own — useful as a teaching artifact, a correctness baseline, or a component
+library for other neuromorphic work.
 
 ### 2.3 Biologically-layered, safety-gated robot-arm control loop **[validated in sim, PoC on real hardware]**
 
@@ -134,18 +133,14 @@ subsystems, all routed through one safety gate:
 signal on real hardware is currently a placeholder (`--assume-success`) pending full sensor
 fusion (see Limitations).
 
-### 2.4 Zero-dependency reproducibility as a first-class contribution **[validated]**
+### 2.4 Reproducibility as a first-class contribution **[validated]**
 
-The core's `pyproject.toml` declares `dependencies = []` as a non-negotiable invariant, not an
-accident of scope. Every third-party need (serial I/O, Parquet/Delta, torch/GPU, event-camera
-data, an LLM backend, PyInstaller packaging) is pushed behind an opt-in extra and kept off the
-core import path, so the base install can never fail. This, combined with a CI matrix that
-actually exercises the claimed platform (Windows, not just Linux), a >=70%-enforced coverage
-gate (currently 84%), and a documented policy that persisted hashing uses `zlib.crc32()`
-(never Python's salted `hash()`) and seeding always uses per-instance `random.Random(seed)`
-(never import-time global seeding) — is treated by the project as scientific infrastructure,
-not packaging hygiene. The claim is: every number in the README traces to a file you can run
-yourself, on your own machine, and get the same answer.
+A CI matrix that actually exercises the claimed platform (Windows, not just Linux), a
+>=70%-enforced coverage gate (currently 84%), and a documented policy that persisted hashing
+uses `zlib.crc32()` (never Python's salted `hash()`) and seeding always uses per-instance
+`random.Random(seed)` (never import-time global seeding) — is treated by the project as
+scientific infrastructure, not packaging hygiene. The claim is: every number in the README
+traces to a file you can run yourself, on your own machine, and get the same answer.
 
 ## 3. System overview
 
@@ -226,7 +221,7 @@ configuration. Compute = synaptic operations (SynOps); storage = bytes.
 | Conductance Diehl & Cook MNIST, GPU (RTX 5070, BindsNET) | **90.0% @ 1600 neurons** (scale-tuned); 86.4% @ 400n; 47.8% @ 6400n with untuned defaults | literature ~95% target — the tuned 6400n/~95% run **has not yet been executed at that scale, not a method gap** | README.md, "Trainable MNIST models" table + "Status at a glance" |
 | N-MNIST event-camera ingest (real DVS data, 1.25M events, nearest-prototype, no learning) | 71.0% | flagged off-theme "pipeline/plumbing demo," not a benchmark (SOTA ~99.3% elsewhere in the literature) | README.md, "Trainable MNIST models" table + Limitations |
 | Test coverage | 84% (`--cov-fail-under=70` enforced gate) | — | README.md badges + `pyproject.toml` `[tool.pytest.ini_options]` |
-| Zero-dep self-checks | 123/123 modules pass | — | README.md "Status at a glance"; `run_selfchecks.py` |
+| Core module self-checks | 123/123 modules pass | — | README.md "Status at a glance"; `run_selfchecks.py` |
 
 **The honest distinction that matters most:** the robot-arm **gesture** 95% is *achieved* on
 real ESP32 hardware captures. The MNIST conductance-Diehl-and-Cook "~95%" is
@@ -237,9 +232,10 @@ compute/access gap, not evidence the method doesn't scale.
 
 ## 6. Reproducibility
 
-- **Zero runtime dependencies in core.** `pip install -e .` (or the packaged Windows `.exe`)
-  needs nothing beyond the Python 3.11+ standard library — no GPU, no compiled extension, no
-  third-party package.
+- **Two core runtime dependencies.** `pip install -e .` (or the packaged Windows `.exe`)
+  pulls torch and numpy on Python 3.11+; no GPU is required. Every other third-party need
+  (serial I/O, Parquet/Delta, GPU/training wheels, event-camera data, an LLM backend,
+  PyInstaller packaging) is an opt-in extra.
 - **CI matrix:** `{ubuntu-latest, windows-latest} × {3.11, 3.12, 3.13}`, plus separate lint
   (`ruff check .`) and coverage jobs. The Windows-first hardware product is actually tested on
   Windows, not inferred from Linux CI.
@@ -251,14 +247,13 @@ compute/access gap, not evidence the method doesn't scale.
   records the exact GPU/torch configuration (env vars, hardware) for the research-tier rows
   that require a separate venv.
 - **Two independent verification gates.** `python run_selfchecks.py` runs every core module's
-  `__main__` self-check (123/123, exactly what CI runs) as a fast zero-dep smoke gate;
+  `__main__` self-check (123/123, exactly what CI runs) as a fast smoke gate;
   `pytest` (via the `[dev]` extra) runs the debuggable/coverable unit suite with a
   `--cov-fail-under=70` enforced gate (currently 84%).
 - **Two install paths for non-developers.** A standalone Windows `.exe` (no Python needed,
   `snn-ui.exe --smoke` for headless verification) and a full-source installer
   (`install.bat` / `install.sh`) that builds a venv and installs every optional extra it can,
-  reporting exactly which extras succeeded — the base install cannot fail because core has no
-  required dependencies.
+  reporting exactly which extras succeeded.
 - **Explicit core/research separation.** `src/snn_data_lake/` (the ~91-module product core) is
   CI-gated on every commit; `research/` (~45 files) holds GPU/torch experiments, is
   ruff-excluded and CI-excluded, and needs its own virtual environment — kept for lineage and
@@ -275,11 +270,11 @@ different:
   the project's own `research/` tier *uses* (e.g., BindsNET for the conductance Diehl & Cook
   runs) — this repo is not a competing framework. The contribution is one level up: a
   data-systems architecture (store/query/reason) and a safety-gated robotics loop built *on
-  top of* spiking primitives, most of which are hand-rolled in pure stdlib specifically so the
-  product core doesn't need any of these frameworks.
+  top of* spiking primitives, most of which are hand-rolled specifically so the product core
+  doesn't need any of these frameworks.
 - **vs. Nengo / NEF-style frameworks.** The arm loop borrows the NEF idea of population-coded
   representations for the spiking PID controller, but implements it directly rather than
-  depending on Nengo, keeping the runtime dependency count at zero.
+  depending on Nengo (the `[nengo]` bridge is an opt-in extra, not a core dependency).
 - **vs. Intel Loihi / neuromorphic silicon.** The project targets these as a *future substrate*
   rather than a dependency — Paradigm B's in-storage query and the spiking control loop are
   architected for event-driven hardware, and the stdlib `energy.py` module already estimates a
@@ -297,7 +292,7 @@ different:
   query compilation, and a knowledge graph embedded in spike timing — which is a less common
   framing in the neuromorphic-hardware or event-camera literature.
 - **What is different, stated fairly.** The differentiator is not raw accuracy — it's (1) a
-  zero-dependency, clone-and-run reproducibility bar rare in SNN research code, (2) the
+  clone-and-run reproducibility bar rare in SNN research code, (2) the
   data-lake-over-spikes framing applied to storage/query/reasoning rather than just
   classification, and (3) an integrated, safety-gated path from spikes to a real actuator with
   a fail-safe hardware interface, not just a simulator. This is offered as a reproducible
@@ -343,12 +338,12 @@ Stated in the project's own voice (README "Limitations & open problems", CHANGEL
 ## 9. Future work / collaboration
 
 The project maintains a literature-grounded research backlog (`docs/RESEARCH_SCAN.md`,
-cycle-3 scan of 49 candidates ranked by on-thesis fit, effort, and zero-dep feasibility) and a
+cycle-3 scan of 49 candidates ranked by on-thesis fit, effort, and implementation feasibility) and a
 broader engineering/research audit (`docs/IMPROVEMENTS.md`). Concrete extension points for a
 collaborator:
 
 - **Log-sum-ReLU / Epanechnikov energy for the dense associative memory** (top-ranked
-  next zero-dep build in the research scan) — a one-kernel swap that removes softmax/overflow
+  next build in the research scan) — a one-kernel swap that removes softmax/overflow
   fragility while keeping exponential capacity; effort S.
 - **Resonator-network VSA factorization** (unbind-and-cleanup) to extend `spiking_vsa.py`
   beyond bind/bundle/permute toward decomposition and analogy over the existing
@@ -369,7 +364,7 @@ collaborator:
 - **A collaborator could plug in** at any of three natural seams: (1) a new neuron/plasticity
   primitive dropped into `src/snn_data_lake/` with its own self-check, following the existing
   pattern; (2) a new research direction under `research/` (own venv, ruff/CI-excluded, no
-  obligation to keep it zero-dep); or (3) a hardware target — the sense/act boundary
+  obligation to match the core's dependency set); or (3) a hardware target — the sense/act boundary
   (`esp32_encoder_path.py` in, `serial_arm.py`/`arm_bridge.py` out) is the intended
   integration point for a different sensor or actuator.
 
@@ -380,7 +375,7 @@ collaborator:
   ```bash
   git clone https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake.git
   cd Spiking-Neural-Data-Lake
-  pip install -e .                 # zero runtime deps
+  pip install -e .                 # core install: torch + numpy
   python run_selfchecks.py         # 123/123 module self-checks — exactly what CI runs
   snn-demo                         # one-file whole-loop demo
   python learn_daemon.py           # the always-on brain, serving the cockpit (the ONE

@@ -1,10 +1,12 @@
 # Installable src/ package (snn_data_lake). TORCH TIER ON BY DEFAULT (user policy 2026-07-18): the
 # default `dependencies` include torch+numpy, so `pip install .` gives the torch brain tier out of the
-# box. Set env NORD_TORCH=0 to run torch-free (the non-torch modules are all pure stdlib, so the brain
-# still works, just without the torch growth/learning tier). `pip install ".[all]"` adds every addon
-# (arm+lake+gpu+nmnist+train); training is a first-class GPU tier (.[train] -> snn-train).
+# box. Set env NORD_TORCH=0 to run torch-free -- the brain still works, just without the torch
+# growth/learning tier. This is NOT a zero-dependency mode: numpy is always required (verified
+# 2026-07-27: make_brain() under NORD_TORCH=0 imports numpy and never torch). `pip install ".[all]"`
+# adds every addon (arm+lake+gpu+nmnist+train); training is a first-class GPU tier (.[train] -> snn-train).
 #
-# DEPENDENCY SCOPE (user policy 2026-07-19): the former ZERO-DEP-CORE contract is RELAXED -- new
+# DEPENDENCY SCOPE (user policy 2026-07-20): the zero-dependency rule is REMOVED entirely,
+# project-wide -- there is no zero-dep-core contract and no pure-stdlib purity gate. New
 # dependencies MAY be added as the project grows, and the user VERIFIES each one. numpy is a core dep
 # (the brain-native language acquisition + growth/learning tiers use it); the interactive-viz stack
 # (matplotlib/netplotbrain/pandas/scikit-image/nibabel/templateflow) lives in the [viz] extra. Keep
@@ -16,7 +18,7 @@ build-backend = "hatchling.build"
 [project]
 name = "spiking-neural-data-lake"
 version = "3.28.0"
-description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Torch tier on by default (NORD_TORCH=0 for a zero-dep stdlib brain)."
+description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Torch tier on by default (NORD_TORCH=0 for a torch-free brain)."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -35,17 +37,18 @@ dependencies = ["torch", "numpy"]   # TORCH TIER ON BY DEFAULT (user policy, 202
 # SpikeGPT language center, the neurogenesis engine) grow/learn on torch out of the box. This
 # INTENTIONALLY supersedes the former zero-dep-core contract. MANUAL OFF-SWITCH: set env `NORD_TORCH=0`
 # to run torch-free -- the torch tier then degrades to the deterministic stdlib narrator (no growth) and
-# run_selfchecks.py skips the torch-gated modules, so the pure-stdlib path still exists on demand. Every
-# non-torch module remains pure stdlib, so `NORD_TORCH=0` gives a fully-working zero-dep brain. The
-# [gpu]/[train] extras below pin the GPU/training wheels (torchvision/snntorch/tonic) on top of the
-# default torch.
+# run_selfchecks.py skips the torch-gated modules, so a torch-free path still exists on demand. It is
+# NOT a zero-dependency path: numpy is imported unguarded at module top level across cortex/,
+# hippocampus/, thalamus/ and substrate/, so `NORD_TORCH=0` gives a torch-free brain, not a
+# stdlib-only one. The [gpu]/[train] extras below pin the GPU/training wheels
+# (torchvision/snntorch/tonic) on top of the default torch.
 [project.optional-dependencies]
 arm = ["pyserial"]                                                       # live_arm --serial / --actuate
 lake = ["polars", "pyarrow", "deltalake"]                               # lakehouse/medallion + delta_demo
 gpu = ["torch", "torchvision", "snntorch==1.0.0", "bindsnet", "numpy"]   # research/ GPU training
-train = ["torch", "torchvision", "snntorch>=0.9", "numpy"]              # GPU trainers (snn-train; training/surrogate_snn.py hybrid N-MNIST perception encoder, +[nmnist] for tonic) -> export weights to the Brain's OPTIONAL torch perception tier; zero-dep core never imports it
+train = ["torch", "torchvision", "snntorch>=0.9", "numpy"]              # GPU trainers (snn-train; training/surrogate_snn.py hybrid N-MNIST perception encoder, +[nmnist] for tonic) -> export weights to the Brain's OPTIONAL torch perception tier; the default install never imports it
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
-nengo = ["nengo"]                                                       # substrate/nengo_bridge: run the brain's NEF/LIF substrate on Nengo (sim + NengoLoihi deploy); nengo-gated, zero-dep core never imports it
+nengo = ["nengo"]                                                       # substrate/nengo_bridge: run the brain's NEF/LIF substrate on Nengo (sim + NengoLoihi deploy); nengo-gated, the default install never imports it
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
 genn = ["pygenn", "ml_genn"]                                             # research/*_genn + training/mnist_genn GPU trainer (needs a C++ compiler + CUDA)
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe (build-time only)
@@ -62,7 +65,7 @@ all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist,train]"]             # ever
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 #   pip install ".[train]"        # (or ".[gpu]") -- torch is already satisfied by the cu128 build above
 # The repo's verified GPU env is `.venv-cu128` (torch 2.11.0+cu128); `NORD_GPU=1` routes tensors to cuda.
-# The zero-dep CORE never needs any of this -- it runs on pure stdlib, CPU, anywhere (see docs/PERFORMANCE.md).
+# The default install never needs any of this -- it runs on CPU, anywhere (see docs/PERFORMANCE.md).
 
 [project.scripts]
 snn-demo = "snn_data_lake.substrate.demo:main"         # one-file demo loop
@@ -73,8 +76,8 @@ snn-loop = "snn_data_lake.brainstem.closed_loop:main"  # full closed loop: gestu
 # a console script: the cockpit never constructs a Brain (Policy 4), so a standalone launcher would
 # either stand up a second brain against the same durable lake or duplicate the daemon's drive loop.
 # One brain, one loop, one frontend.
-snn-train = "snn_data_lake.training.cli:main"  # [train] extra: surrogate-gradient GPU trainer -> exports weights to the zero-dep core
-snn-fetch-corpus = "snn_data_lake.substrate.web_ingest:cli"  # firewalled web -> training-corpus fetch (zero-dep urllib)
+snn-train = "snn_data_lake.training.cli:main"  # [train] extra: surrogate-gradient GPU trainer -> exports weights to the core
+snn-fetch-corpus = "snn_data_lake.substrate.web_ingest:cli"  # firewalled web -> training-corpus fetch (stdlib urllib)
 snn-nengo-launch = "snn_data_lake.substrate.nengo_bridge:launch"  # [nengo] extra: run the whole brain LIVE under nengo.Simulator (per-tick trace; NengoLoihi-deployable, observation-only)
 
 [project.urls]
@@ -83,8 +86,8 @@ Homepage = "https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake"
 [tool.hatch.build.targets.wheel]
 packages = ["src/snn_data_lake"]
 
-# ---- dev tooling (all in the `dev` extra; core stays zero-dep) ------------------
-# pytest: the debuggable/coverable suite beside run_selfchecks.py's zero-dep smoke gate.
+# ---- dev tooling (all in the `dev` extra; never a runtime dep) ------------------
+# pytest: the debuggable/coverable suite beside run_selfchecks.py's smoke gate.
 # src on path so `snn_data_lake.*` imports without an install; "." so tests can reuse the
 # canonical run_selfchecks.CORE list. cov gate enforces the >=70% acceptance bar.
 [tool.pytest.ini_options]
@@ -103,7 +106,7 @@ source = ["snn_data_lake"]
 # ruff-excluded for the same reason).
 omit = ["*/reasoning/*", "*/training/*"]
 
-# ruff: scoped to the zero-dep core + tests. research/ and the standalone "robot arm/" sketch are
+# ruff: scoped to the core + tests. research/ and the standalone "robot arm/" sketch are
 # excluded on purpose (linting them means editing quarantined / optional-dep code — out of scope
 # here; see docs/IMPROVEMENTS.md A4).
 [tool.ruff]
@@ -120,4 +123,4 @@ select = ["E", "F", "I", "UP", "B"]
 # yield-from) are still fixed. New code under tests/ is held to the full ruleset.
 [tool.ruff.lint.per-file-ignores]
 "src/**" = ["E501", "E702", "E731", "E741", "B905"]
-"run_selfchecks.py" = ["E501", "I001"]   # kept byte-for-byte as-is (A1: the zero-dep smoke gate)
+"run_selfchecks.py" = ["E501", "I001"]   # kept byte-for-byte as-is (A1: the smoke gate)

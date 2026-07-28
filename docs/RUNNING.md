@@ -1,6 +1,6 @@
 # Running the Spiking Neural Data Lake — Local
 
-Run everything on one machine, mostly zero-dependency.
+Run everything on one machine.
 
 - Windows paths use `.venv\Scripts\python`; macOS/Linux use `.venv/bin/python`. Pick yours.
 - The pure-Python core needs **nothing** but Python 3.11+. Only the lakehouse / real-data /
@@ -15,10 +15,10 @@ Run everything on one machine, mostly zero-dependency.
 git clone https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake.git
 cd Spiking-Neural-Data-Lake
 python --version          # need 3.11+
-pip install -e .          # editable install (core = zero runtime deps)
+pip install -e .          # editable install (core = torch + numpy)
 ```
 
-### 1. Core self-checks (zero runtime deps)
+### 1. Core self-checks
 Every stdlib module runs standalone with an assert-based self-check — the fastest way to see
 each piece work:
 ```bash
@@ -43,7 +43,7 @@ python -m snn_data_lake.substrate.spike_telemetry_hub --query data.spk --window 
 
 ### 2. The robot-arm closed loop (the application)
 Encode → data lake → match → command → reward → learn (with reflex + RPE dopamine + cortisol +
-the Interpreter), all zero-dep, on `main`:
+the Interpreter), on `main`:
 ```bash
 python -m snn_data_lake.closed_loop        # full stack end-to-end: gesture -> command, collision -> STOP
 python -m snn_data_lake.signal_loop        # the loop alone (hybrid matcher) + self-check
@@ -66,7 +66,7 @@ python -m venv .venv-lake
 python -m venv .venv-nmnist
 .venv-nmnist/bin/pip install tonic                 # pulls ~1 GB N-MNIST on first run
 .venv-nmnist/bin/python research/nmnist_ingest.py
-# no tonic? `python research/nmnist_ingest.py` runs on synthetic events (zero-dep)
+# no tonic? `python research/nmnist_ingest.py` runs on synthetic events (no tonic needed)
 ```
 
 ### 5. GPU training (optional, needs CUDA + torch)
