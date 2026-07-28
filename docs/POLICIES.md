@@ -1,6 +1,6 @@
-# Development Policies (P1–P4)
+# Development Policies (P1–P5)
 
-Four standing policies govern how this brain is built. They are **mechanized** where possible (a CI
+Five standing policies govern how this brain is built. They are **mechanized** where possible (a CI
 self-check that fails on violation) and otherwise enforced by review. Each has an **honesty guard** —
 the rule that stops the policy from being satisfied by theater.
 
@@ -12,6 +12,7 @@ the rule that stops the policy from being satisfied by theater.
 | P2 adopt-or-merge | — | yes |
 | P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE) | the per-METHOD amendment; the charge tier |
 | P4 one brain | `substrate/replication_guard.py` | — |
+| P5 use the GPU where it helps | — | yes |
 | e-prop not backprop | — | yes |
 
 **Provenance of the 2026-07 amendments.** Three independent audits mapped this codebase against
@@ -211,6 +212,51 @@ process-wide singleton (the daemon, a chat session, and a test each legitimately
 
 **Honesty guard:** before retiring a replica, port its unique capability into the canonical path and
 verify nothing is lost (P2 discipline).
+
+## P5 — Use the GPU for everything it actually speeds up
+
+**Standing owner authorization (2026-07-27): the RTX 5070 is available to the whole project, and any
+work that the GPU genuinely accelerates SHOULD use it.** Default to GPU for that work; do not leave it
+idle out of habit, and do not treat CUDA as a special-occasion tier. Hardware: RTX 5070, 12 GB, torch
+`2.11.0+cu128`, verified `cuda.is_available() == True`. Env `NORD_GPU=1`; the verified environment is
+`.venv-cu128` (the CPU gate env `.venv-lake` stays for deterministic `run_selfchecks`/`pytest`).
+
+**"That it actually speeds up" is the operative clause, and it is decided by measurement, not by
+assumption.** Ship the GPU path when a benchmark on the real workload shows it faster; do not ship it
+because CUDA is available. This is P2's "better requires a measurement that exists" applied to hardware.
+
+**MEASURED CROSSOVER — do not re-litigate this without new numbers.** For SNDL's elementwise
+spiking-update kernels, eager torch-CUDA on this card beats numpy-on-CPU only between
+**N ≈ 24,576 and 32,768** elements. Every population on the live tick is **24–240** wide — 100× to
+1300× short of that. Consequences, all measured:
+
+- Vectorizing `cortex/prefrontal_executive.py::_decide_spiking` at its real width of 38 **regresses**:
+  0.36× on numpy, 0.05× on torch-CPU, **0.01× on torch-CUDA**. Kernel-launch latency alone exceeds the
+  whole per-call budget.
+- `cortex/lif_neuron.py::step` looks like the hot path (244,768 calls per 10 ticks) and is not: neutering
+  it entirely moves an awake tick 43.6 → 41.2 ms, a **6% ceiling**. Moving it to CUDA cannot beat that
+  ceiling and would pay launch latency for every one of ~24.5k tiny calls.
+- The real win on that hot path was **CPU-side batching**, not hardware: `AttractorNet.accuracy` folded
+  36 independent recall trials into one array pass for a measured **6.93×**, bit-exact (v4.68).
+
+**Where the GPU therefore pays today, and should be used without hesitation:** the `[train]` / `[gpu]`
+tiers — surrogate-gradient training, `hippocampus/ng_snn.py`, `cortex/neurogenesis_engine.py`, the
+torch readout studies under `reasoning/brain_adapters/`, and any offline sweep over a real dataset.
+These are wide, batched, and repeated, which is exactly the regime the crossover favours. The daemon
+already sets `NORD_GPU=1` and runs under `.venv-cu128` so this tier lands on the card by default.
+
+**Where it does not pay today:** the live wake/sleep tick, at current population widths. That is a
+statement about widths, not a prohibition — **the moment a live population crosses the measured
+threshold, this policy says put it on the GPU.** Re-measure when populations grow; the crossover is a
+number, not a doctrine.
+
+**Honesty guard.** (a) A GPU path ships with its benchmark, on the real workload, against the CPU path
+it replaces — a speedup asserted from `cuda.is_available()` is not a speedup. (b) Report regressions:
+"we tried CUDA here and it was 0.01×" is a result worth keeping, and this policy exists partly to stop
+that experiment being repeated. (c) The deterministic CPU gate stays authoritative — `run_selfchecks`
+and `pytest` run on `.venv-lake` so results are reproducible on machines without this card, and a GPU
+path must not become the only way to verify the project. (d) Correctness first: a GPU rewrite carries
+the same bit-exactness burden as any other P2 swap.
 
 ---
 
