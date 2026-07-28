@@ -163,7 +163,15 @@ def _handler(get_snap, turns):
                     return self._send(200, json.dumps(snap))
                 return self._send(404, json.dumps({"error": "not found"}))
             except Exception as e:
-                return self._send(500, json.dumps({"error": str(e)}))
+                # The 500 itself can fail: if the client already gave up, the socket is gone and
+                # end_headers() raises ConnectionAbortedError *inside* the handler for the first
+                # error. That second exception is unhandled, so socketserver prints a full traceback
+                # -- which is how this log reached 5.4 MB of WinError 10053 dumps. An error reply is
+                # best-effort by nature; nobody is listening.
+                try:
+                    return self._send(500, json.dumps({"error": str(e)}))
+                except OSError:
+                    return None
 
         def do_POST(self):
             if self.path.split("?")[0] != "/api/chat":
@@ -191,7 +199,24 @@ def serve(brain, port=8137, turns=None, block=True):
     accepts writes -- so it must not become reachable off the machine by default.
     """
     turns = Turns() if turns is None else turns
-    srv = ThreadingHTTPServer(("127.0.0.1", int(port)), _handler(lambda: snapshot(brain), turns))
+
+    class _Server(ThreadingHTTPServer):
+        def handle_error(self, request, client_address):
+            """A client that hangs up is normal, not an incident.
+
+            The default implementation prints the whole traceback to stderr. A browser tab closing
+            mid-poll, or a curl that times out, produces ConnectionAbortedError/ConnectionResetError
+            every time -- and the daemon appends stderr to a log file, so this alone wrote 5.4 MB of
+            WinError 10053 dumps and buried the messages that actually mattered. Anything that is NOT
+            a disconnect still surfaces.
+            """
+            import sys
+            import traceback
+
+            if not isinstance(sys.exc_info()[1], (ConnectionError, TimeoutError)):
+                traceback.print_exc()
+
+    srv = _Server(("127.0.0.1", int(port)), _handler(lambda: snapshot(brain), turns))
     srv.turns = turns
     # the BOUND port, not the requested one: port=0 means "OS, pick one", and printing the request
     # would tell the reader to open http://127.0.0.1:0/

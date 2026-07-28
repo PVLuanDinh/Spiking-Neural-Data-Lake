@@ -139,6 +139,33 @@ def _num(v, nd=4):
     return None if not math.isfinite(v) else round(float(v), nd)
 
 
+_COVERAGE = None  # process-lifetime cache; see _coverage_census
+
+
+def _coverage_census():
+    """The Policy-3 module census, computed ONCE PER PROCESS.
+
+    `region_wiring.live_coverage()` walks the package's static import graph. Measured cost: ~1.03 s,
+    which was 100% of a snapshot. Calling it per snapshot meant the cockpit's 1 Hz poll forced a full
+    AST scan every second INSIDE the daemon process -- starving the tick loop it exists to observe, and
+    making responses slow enough that clients abandoned them mid-write.
+
+    Caching is safe for a structural reason rather than a hopeful one: this is a census of the code on
+    disk, and the daemon EXITS when git HEAD changes (learn_daemon's auto-update loop), so a cached
+    value cannot outlive the code it describes. A process that somehow did outlive its code would
+    report a stale census -- which is why this is a census of MODULES, never of live behaviour.
+    """
+    global _COVERAGE
+    if _COVERAGE is None:
+        try:
+            from snn_data_lake.substrate import region_wiring
+
+            _COVERAGE = {f"coverage_{k}": v for k, v in region_wiring.live_coverage().items()}
+        except Exception:
+            _COVERAGE = {}
+    return _COVERAGE
+
+
 def snapshot(brain):
     """The single telemetry contract: everything a panel may read, and nothing invented.
 
@@ -248,14 +275,7 @@ def snapshot(brain):
 
     # ---- Policy-3 census. `reachable` is REACHABILITY, not proof a faculty charges behaviour; the
     # policy is explicit that the two are different, so the key keeps the gate's own word for it.
-    try:
-        from snn_data_lake.substrate import region_wiring
-
-        out["derived"].update(
-            {f"coverage_{k}": v for k, v in region_wiring.live_coverage().items()}
-        )
-    except Exception:
-        pass
+    out["derived"].update(_coverage_census())
 
     # ---- hardware TARGET: a plan, not a measurement. `built` is False and the UI must say so. ----
     # Kept in its own section precisely so it can never be mistaken for body telemetry: `body` above
