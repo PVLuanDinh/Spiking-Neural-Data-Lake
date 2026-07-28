@@ -1,6 +1,28 @@
 """
 Spiking CS-US fear conditioning -- the amygdala as a real learned threat detector.
 
+LIVE STATUS, MEASURED 2026-07-28 (v4.78): on the running brain `threat()` is called 38 times per 80
+wake ticks and returns EXACTLY 0.0 every time. The amygdala never learns, and three downstream signals
+are constant as a result -- every stored episode's arousal tag, the LC salience quantile, and the
+workspace threat bid (`autonomous_loop.py:1004`).
+
+The cause is NOT a bug, and the distinction matters because a coverage audit proposed "fixing" it.
+`pair()` has exactly one live call site, `autonomous_loop.py:1108`, and it sits INSIDE the SAFETY-FIRST
+early return at `:1102` -- it fires only when `distance < CONTACT`, i.e. only on a real contact event
+that also trips the reflex E-STOP. That is correct fear-conditioning semantics: fear binds to actual
+aversive events, not to safe exploration. Meanwhile `cortex/brain.py:898` feeds all three rotating
+explore stimuli at `SAFE_DISTANCE = CONTACT * 3.0`, and `brainstem/arm_config.py:32` still has
+`SAFETY_CALIBRATED = False` because the arm has not been physically built. So there are no aversive
+events to condition on, and a threat readout of 0.0 is the HONEST output of a brain that has never
+been hurt.
+
+DISPOSITION: P3 "exempt -- awaiting a prerequisite" (a real proximity sensor and a real body), NOT
+"wire it". The proposed wire was to bind `pair()` to the negative-reward signal cortisol already
+consumes, which would make the amygdala condition on DISAPPOINTMENT rather than on nociception -- a
+semantic change to a safety-adjacent faculty, made to move a coverage number. That is the theater P0's
+honesty guard exists to refuse. When the arm is built and the sensor is calibrated, this faculty starts
+learning with no code change at all.
+
 Models associative aversive conditioning as a small spiking mechanism, in three parts that
 mirror the amygdala micro-circuit:
 
