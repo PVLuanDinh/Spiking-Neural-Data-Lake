@@ -9,6 +9,33 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [v4.79] -- work the audit backlog: nine of the ranked top-ten, three of them refuted as framed (2026-07-28)
+
+Works `docs/AUDIT_BACKLOG.md` in ranked order. Nine items closed. The useful result is that **three
+did not hold as the audit framed them**, which is the same lesson v4.78 recorded one level up: an
+audit's ranked list is a set of hypotheses, not a work order.
+
+- **#2 `dormancy_gate` -- partly refuted.** "Honouring the two dead flags turns dormant 0 into 9" does
+  not reproduce: neither dead flag guards an import. Making the walk guard-aware was then tried and
+  REJECTED -- dropping every conditional import moves 169/0 to 94/75, because most guards are flags the
+  Brain does pass. The gate now REPORTS its permissiveness (71 conditional in-package imports).
+- **#5 `reentrant_workspace` -- fixed.** Potentiated on `(source, content)`, read on
+  `(subscriber, content)`; disjoint live, so `_assoc` learned toward 1.0 with no reader.
+  `reroute_bias` 1 pinned value -> 22 distinct over 60 ticks.
+- **#7 `nengo_compute` retired** (zero callers; its own comment claimed "every built module routes
+  through" it). **#8 `schema_induction`** now reports `confidence_gate_ran` and the caller refuses the
+  durable write when the second firewall did not run. **#6 `learn_daemon`**'s coverage report no longer
+  sits in a message-less except.
+- **#10 `SpikeLake` -- confirmed, disposition changed.** 19,525 FACT / 0 SPIKE verified independently,
+  but every `LakeMemory(durable=)` site is a `reasoning/` orphan, so the proposed wire joins two things
+  both off the live path.
+- **"dead kwargs" -- refuted as framed.** `records=` has a LIVE caller that expects it consulted.
+- **Nine stale citations** corrected, three of which the audit had not flagged -- including six in
+  `brain_telemetry`'s PROVENANCE header, whose stated premise is that every claim there was verified
+  against its cited line.
+
+Gates: 275/275 self-checks, pytest 90.95%, ruff check + format clean.
+
 ## [v4.78] -- audit the whole tree against P0-P5, and mechanize the two gates the policy enforced from memory (2026-07-28)
 
 A full-tree P0-P5 audit plus a brain-coverage re-baseline. 159 audit findings raised / 35 refuted /

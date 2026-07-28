@@ -3,11 +3,29 @@
 An 11-shard read-only audit of every tracked `.py` and `.md`, with an independent refuter attacking
 every high-severity finding. **159 raised, 35 refuted, 124 surviving.**
 
-ACTIONED in the v4.78 series: H12 (SECURITY.md paths + a remediation command that errored out), H13
-(AGENTS.md), H14 (TRAINING.md documenting a retired module), H15 (ANATOMY.md pons/olfactory),
-H16/H18 (the zero-dependency claims), and M1 + M2 -- both against `tools/charge_probe.py`, added in
-this same session, the second a real leak in the neuter. Everything else below is OPEN, recorded here
-rather than dropped.
+## Actioned
+
+**v4.78:** H12 (SECURITY.md paths + a remediation command that errored out), H13 (AGENTS.md), H14
+(TRAINING.md documenting a retired module), H15 (ANATOMY.md pons/olfactory), H16/H18 (the
+zero-dependency claims), M1 + M2 (both against `tools/charge_probe.py`, added that same session — the
+second a real leak in the neuter), and H1 (the dopamine dip reported as a burst).
+
+**v4.79 — the ranked top-ten, worked in order.** Nine closed. Three of them did **not** hold as the
+audit framed them, and the corrections are the useful part:
+
+| # | outcome |
+|---|---|
+| 2 | `dormancy_gate` — **partly refuted.** Neither dead flag guards an import, so "dormant 0 → 9" does not reproduce. Making the walk guard-aware was tried and rejected (169/0 → 94/75; most guards are flags the Brain *does* pass). The gate now **reports** its own permissiveness — 71 conditional in-package imports — instead of faking a precision the static pass cannot have |
+| 5 | `reentrant_workspace` — **fixed.** Write key `(source, content)`, read key `(subscriber, content)`, disjoint live. `reroute_bias` 1 pinned value → **22 distinct** over 60 ticks |
+| 6 | `learn_daemon` — **fixed.** Import hoisted out of the try, handler typed like the file's five others |
+| 7 | `nengo_compute` — **retired.** Zero callers; the only references to the name were the comments advertising it. `_nengo_tier` kept (`nengo_gui_brain.py:47` reads it) |
+| 8 | `schema_induction` — **fixed.** `confidence_gate_ran` added; `brain.py` refuses the durable write when the second firewall did not run |
+| 9 | doc sweep — **fixed.** `conftest.py`'s rationale had outlived its reason (the purity asserts it cited were stripped 2026-07-20); the setting is correct and stays |
+| 10 | `SpikeLake` — **confirmed, disposition changed.** 19,525 FACT / 0 SPIKE verified independently, but every `LakeMemory(durable=)` site is a `reasoning/` orphan, so the proposed wire joins two things both off the live path. Exempt-awaiting-a-prerequisite, prerequisite named |
+| — | "dead kwargs" — **refuted as framed.** `records=` has a *live* caller (`spike_chat_lake.py:1087`) that expects it to be consulted. Labelled, not deleted |
+| — | stale citations — **fixed, and three the audit missed.** Nine total across POLICIES.md and `brain_telemetry`'s PROVENANCE header, whose whole premise is "every claim here was verified against the cited source line" |
+
+Everything else below is OPEN, recorded here rather than dropped.
 
 Two cautions carry over from the coverage sweep and apply to this list too:
 
