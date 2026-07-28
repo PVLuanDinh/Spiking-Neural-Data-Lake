@@ -365,6 +365,34 @@ between 32,768 and 262,144. The run was under machine load, which penalises nump
 this errs in the conservative direction. The practical consequence is unchanged and now has more
 headroom: live populations of 24-240 are nowhere near it.
 
+**CUDA GRAPHS TESTED 2026-07-28 — they move the crossover 6-8x, and the conclusion still holds.**
+The measurements above are EAGER torch, where each tiny op pays a separate kernel launch. CUDA graphs
+capture a whole op sequence and replay it with a single `cudaGraphLaunch`, which is aimed exactly at
+the CPU-dispatch overhead that made the width-38 test read 0.01x. Measured on the RTX 5070, 200
+sequential LIF-shaped ops (`v = v*decay + in; s = v >= theta; v -= theta*s`), best-of-20 after warmup:
+
+| N | numpy | CUDA graph | winner |
+|---:|---:|---:|---|
+| 24 | 0.578 ms | 1.118 ms | numpy 0.52x |
+| 240 | 0.613 ms | 1.127 ms | numpy 0.54x |
+| 1,024 | 0.788 ms | 1.129 ms | numpy 0.70x |
+| 3,072 | 1.088 ms | 1.224 ms | numpy 0.89x |
+| **4,096** | 1.233 ms | 1.225 ms | **graph 1.01x** |
+| 24,576 | 4.010 ms | 1.223 ms | graph 3.28x |
+| 65,536 | 8.975 ms | 1.425 ms | graph 6.30x |
+
+Two results, both worth keeping. **Graphs beat EAGER CUDA everywhere** (2.2 ms vs 7.4-26.6 ms on the
+same sequence) — the launch-overhead hypothesis is confirmed, and any future GPU path here should
+capture rather than dispatch. And **the crossover drops from ~24,576-32,768 to ~4,096**, because
+replay cost is flat in N while numpy's is linear.
+
+But live populations are **24-240**, still ~17x below even the improved crossover, so **the
+conclusion is unchanged: the live tick does not belong on the GPU.** This is the strongest technique
+available tested against the real shape, and it loses by 2x at our widths. Recording it under guard
+(b): "we tried CUDA graphs here and it was 0.54x" is a result, and it should stop this experiment
+being repeated a third time. The number that would change the answer is population WIDTH — at 4,096
+the GPU starts paying, so a genuinely wide population is the thing to look for, not a faster kernel.
+
 **The live-tick CUDA perception path is measured at last, and it does not pay.** `cortex/brain.py:170`
 defaults `device="cuda"` and `_perceive_real()` runs a per-frame batch-of-1 forward pass every wake
 tick -- a GPU path that shipped without the benchmark honesty guard (a) demands. On the real live shape
