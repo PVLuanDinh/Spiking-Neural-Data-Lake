@@ -1521,6 +1521,14 @@ def demo():
             os.environ["NORD_HOME"] = _prev_home
         _sh.rmtree(_tmp_home, ignore_errors=True)
 
+    # SAFETY, ported from reasoning/spike_chat_live.py:180 before that module was retired (Policy 2
+    # requires the unique capability to move BEFORE the deletion, and this assertion was the only
+    # place in the tree holding this particular line). The chat path must never pull in the real arm
+    # serial: a motor intent expressed in conversation must not be able to move hardware.
+    assert "snn_data_lake.brainstem.serial_arm" not in sys.modules, (
+        "chat must NEVER import the real arm serial"
+    )
+
     print("=" * 96)
     print(
         f"self-check OK: the brain converses from its OWN self-built lake ({seeded} learned facts), answers "
