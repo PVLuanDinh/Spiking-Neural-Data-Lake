@@ -177,7 +177,10 @@ def _handler(get_snap, turns):
             if self.path.split("?")[0] != "/api/chat":
                 return self._send(404, json.dumps({"error": "not found"}))
             try:
-                n = int(self.headers.get("Content-Length") or 0)
+                # Cap the read at the length a turn can actually be. Content-Length is a claim made
+                # by the client, and `read(n)` on an unbounded claim allocates whatever it asks for.
+                # Loopback-only binding makes this low-risk, not no-risk -- anything local can POST.
+                n = min(int(self.headers.get("Content-Length") or 0), _MAX_CHAT_CHARS * 4)
                 body = json.loads(self.rfile.read(n) or b"{}")
                 text = (body.get("text") or "").strip()
                 if not text:

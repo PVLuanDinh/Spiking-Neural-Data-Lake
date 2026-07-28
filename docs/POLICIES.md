@@ -89,6 +89,16 @@ the persisted policy** (e.g. a durable-reload contract persists weights but not 
 Reuse anchors: `basal_ganglia/r_stdp.py` (`w += lr*d*e`), `substrate/signal_calibrator.py`, the
 `_*_base` running-EMA idiom, `cortex/brain.py::_drive_w`.
 
+**Fourth case, stated because the tree contains it and the three above do not cover it: raw physical
+limits inside the safety envelope stay fixed, by design.** `brainstem/arm_config.py:22`
+(`CONTACT = 0.04`) and `brainstem/reflex.py:22` (`DEFAULT_RULES`) arbitrate behaviour and are constants
+— which the three exceptions would flag. They are correct anyway: a reflex threshold that drifts with a
+running baseline is a reflex that can be trained away, and the whole point of the envelope is that it
+cannot. The resolution currently lives only in code (`arm_config.py:29` declares these sim placeholders;
+`serial_arm.py:46-52` refuses real hardware on every construction while `SAFETY_CALIBRATED = False`),
+so it is written here too. Safety constants are exempt from P1 *because* they are safety constants, not
+because nobody noticed them.
+
 ## P2 — Adopt-better **or merge**, then retire the inferior (non-additive)
 
 When two mechanisms do the same job, exactly **one** survives. There are two legitimate routes to that,
@@ -320,7 +330,7 @@ the same bit-exactness burden as any other P2 swap.
   e-prop on measured evidence: 73.14% vs the repo's backprop SSM at ~32%), which was the gap — a rule
   enforced only by whoever remembered it.
   **It is NOT mechanized, and a `.backward()` tripwire would be theatre:** it passes green today while
-  `cerebellum/jepa_world_model.py:272` performs explicit weight transport on every wake tick (the same
+  `cerebellum/jepa_world_model.py:277` performs explicit weight transport on every wake tick (the same
   `Wz` used forward and transposed backward, in hand-written numpy) and `hippocampus/ng_snn.py:137`
   runs a closed-form batch solve over its whole buffer each sleep tick. Neither uses autograd; both are
   non-local. Absence of `.backward()` is not evidence of locality.
