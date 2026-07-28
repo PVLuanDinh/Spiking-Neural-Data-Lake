@@ -283,10 +283,25 @@ class ReentrantWorkspace:
         """Broadcast the winner to every subscriber and set its top-down bias toward the ignited
         content. Returns global availability = fraction of subscribers reached (0 if none ignited)."""
         reached = 0
-        for name, s in self._subs.items():
+        for _name, s in self._subs.items():  # _name: the key-space fix removed this loop's only use
             if ignited:
                 s["inbox"].append(winner)
-                assoc = self._assoc.get((name, winner), 0.0)
+                # KEY-SPACE FIX (v4.78). This read was `self._assoc.get((name, winner), 0.0)`, where
+                # `name` is a SUBSCRIBER -- but `_hebb_update` potentiates `(source, content)`, where
+                # source is a SUBMITTER. The two namespaces are disjoint live ({percept, self,
+                # salience} vs {action, language}), so the lookup missed on every tick and the learned
+                # term contributed exactly nothing: the bias was pinned at the base gain forever while
+                # `_assoc` dutifully learned toward 1.0 with no reader.
+                #
+                # The docstring on broadcast_to() says what was intended -- "scaled by the learned
+                # (source, content) association" -- so the WRITE key is the correct one and the read
+                # invented a per-subscriber axis that is never learned. Support for the ignited CONTENT
+                # is a property of the content, shared by every subscriber receiving it, so aggregate
+                # over the sources that potentiated it.
+                assoc = max(
+                    (v for (_src, c), v in self._assoc.items() if c == winner),
+                    default=0.0,
+                )
                 # base re-route (immediate) scaled by the learned association (adaptive). Re-entry OFF
                 # cuts the top-down bias entirely (fair control).
                 bias = self._REENTRY_GAIN * (1.0 + assoc) if self.reentry else 0.0

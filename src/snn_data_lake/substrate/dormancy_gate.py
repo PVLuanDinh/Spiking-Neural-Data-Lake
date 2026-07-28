@@ -298,6 +298,45 @@ def reachable():
     return seen & BRAIN_MODULES
 
 
+def conditional_import_count():
+    """How many in-package imports across the tree sit INSIDE a conditional.
+
+    THIS GATE IS PERMISSIVE BY CONSTRUCTION, and the number is here so the headline `dormant 0`
+    is read with that in mind. `_imports()` walks the AST unconditionally, so an import nested in
+    `if <flag>:` confers reachability whether or not the flag is ever true -- and this tree has
+    genuinely dead flags: `gain_adapt` is never passed True ANYWHERE, and `develop_env` is only
+    passed True inside `cortex/live_brain.py`'s own `main()`.
+
+    Making the walk guard-aware was tried and rejected: naively dropping every conditional import
+    moves the count from `reachable 169 / dormant 0` to `reachable 94 / dormant 75`, which is
+    nonsense -- most of those guards are flags the Brain DOES pass. Deciding which guards are dead
+    needs per-flag constructor tracing, and a static pass that guesses would fail in the direction
+    that retires live faculties. So the honest move is to report the surface, not to pretend to a
+    precision this analysis does not have.
+
+    An audit (2026-07-28, backlog H2) claimed honouring the two dead flags turns `dormant 0` into
+    `dormant 9`. It does not reproduce: NEITHER dead flag guards an import. The mechanism it
+    describes is real; the specific number was not."""
+    n = 0
+    for dp, _dn, fn in os.walk(_PKG_DIR):
+        for f in fn:
+            if not f.endswith(".py"):
+                continue
+            try:
+                tree = ast.parse(open(os.path.join(dp, f), encoding="utf-8").read())
+            except (OSError, SyntaxError):
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.If):
+                    continue
+                for c in ast.walk(node):
+                    if isinstance(c, (ast.Import, ast.ImportFrom)):
+                        mod = c.module if isinstance(c, ast.ImportFrom) else c.names[0].name
+                        if mod and _PKG in str(mod):
+                            n += 1
+    return n
+
+
 def coverage():
     reach = reachable()
     exempt = {_CANON[m] for m in EXEMPT if m in _CANON}
@@ -311,6 +350,7 @@ def coverage():
         "exempt": len(exempt),
         "dormant": [d.replace(_PKG + ".", "") for d in dormant],
         "stale_exempt": stale,
+        "conditional_imports": conditional_import_count(),
     }
 
 
@@ -328,6 +368,11 @@ def main():
             f"NOTE: {len(cov['stale_exempt'])} EXEMPT entries are now reachable (retire them): "
             f"{cov['stale_exempt']}"
         )
+    print(
+        f"NOTE: reachability counts {cov['conditional_imports']} in-package imports that sit inside a "
+        f"conditional. This gate is PERMISSIVE by construction -- an import under a never-taken guard "
+        f"still confers reachability. See conditional_import_count()."
+    )
     if cov["dormant"]:
         print("--- DORMANT (unreached AND unexempted) ---")
         for d in cov["dormant"]:

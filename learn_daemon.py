@@ -295,12 +295,17 @@ def main():
             print(f"[learn-daemon] wiring err: {type(e).__name__}: {e}", flush=True)
         n += 1
         if n % LOG_EVERY == 0:
+            # `region_wiring` is imported OUT of the try above deliberately: it used to be bound only
+            # inside that block, so an import failure left this reporter raising NameError into a
+            # message-less `except: pass` -- the Policy-3 coverage number would simply stop appearing,
+            # with nothing in the log saying why. That is the exact silent-degradation shape this
+            # project keeps burning on: a stage fails, swallows it, and the absence looks like calm.
+            from snn_data_lake.substrate import region_wiring as _rw
+
             try:
                 st = b.state()
-                cov = region_wiring.coverage()
-                lc = (
-                    region_wiring.live_coverage()
-                )  # Policy-3 authoritative coverage (dormancy gate)
+                cov = _rw.coverage()
+                lc = _rw.live_coverage()  # Policy-3 authoritative coverage (dormancy gate)
                 print(
                     f"[learn-daemon] cycle {n}: nights={st.get('nights_elapsed')} "
                     f"grown_units={st.get('grown_units')} reasoning_acc={st.get('reasoning_accuracy')} "
@@ -308,8 +313,8 @@ def main():
                     f"exempt={lc['exempt']} dormant={lc['dormant']} adapters={cov['n_wired_faculties']}",
                     flush=True,
                 )
-            except Exception:
-                pass
+            except Exception as e:  # typed, like the file's five other handlers
+                print(f"[learn-daemon] coverage-report err: {type(e).__name__}: {e}", flush=True)
         time.sleep(POLL)
 
 

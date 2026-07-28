@@ -248,7 +248,19 @@ class SchemaInducer:
         """Run ONE bounded consolidation pass over the durable triples. Returns
         {"prototypes": int, "derived": [[h,rel,t,'schema'], ...], "kept": int, "rejected": int}.
         Guarded: on any failure returns a partial dict, never raises. Does NOT mutate any KnowledgeLog."""
-        result = {"prototypes": 0, "derived": [], "kept": 0, "rejected": 0}
+        # confidence_gate_ran: whether the SECOND firewall actually ran. _train_distmult() returns
+        # (None,)*5 on any import failure, and the filter below is `if model is not None and not
+        # confident(...)` -- so a missing numpy/kb_ranking silently downgrades "two firewalls in
+        # series" to one, passes EVERY candidate, and leaves `rejected` reading a constant 0 with
+        # nothing in the result to say the gate was skipped. Callers that write these triples to the
+        # durable lake need to be able to tell those two zeros apart (v4.78).
+        result = {
+            "prototypes": 0,
+            "derived": [],
+            "kept": 0,
+            "rejected": 0,
+            "confidence_gate_ran": False,
+        }
         try:
             self.rng = random.Random(self.seed)  # per-call reset -> deterministic
             clean = self._normalize(triples)
@@ -267,6 +279,7 @@ class SchemaInducer:
                     proto_by_parent.setdefault(p["parent"], set()).update(p["members"])
 
             model, ent, rel, known, topk = self._train_distmult(clean)
+            result["confidence_gate_ran"] = model is not None
 
             original = set(clean)
             seen, derived, rejected = set(), [], 0
@@ -348,7 +361,10 @@ def _selfcheck():
     )
     for d in res["derived"]:
         print(f"            {d[0]:<8} {d[1]:<5} {d[2]:<8}  [{d[3]}]")
-    print(f"            kept={res['kept']}  rejected={res['rejected']}")
+    print(
+        f"            kept={res['kept']}  rejected={res['rejected']}  "
+        f"confidence_gate_ran={res['confidence_gate_ran']}"
+    )
     print(
         f"control   : {len(control)} random triples -> {resc['prototypes']} prototypes; "
         f"kept={resc['kept']} rejected={resc['rejected']} (firewall)"

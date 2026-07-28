@@ -835,13 +835,14 @@ class Brain:
             self._pc_cortex = None
             self._pc_cortex_tier = "stdlib"
 
-        # ---- NENGO backend (optional): the brain can OFFLOAD any vector computation to a Nengo NEF
-        # ensemble via substrate/nengo_bridge -- it runs on the Nengo simulator and is DEPLOYABLE to
-        # NengoLoihi neuromorphic hardware. This is the generic vector/spike <-> ensemble bridge every
-        # built module routes through (verified faithful vs the zero-dep NEF: decode RMSE ~0.003, LIF
-        # rate match ~0.3Hz). nengo-GATED: "nengo" when importable, else "stdlib" (the brain computes the
-        # same value directly). Value/representation-only; live loop UNCHANGED (LAZY -- an ensemble is
-        # built only when nengo_compute() is called, never at birth). Reported as state()["nengo_tier"].
+        # ---- NENGO backend (optional): a PROBE of whether nengo is importable, and nothing more.
+        # This comment used to say the brain "can OFFLOAD any vector computation to a Nengo NEF
+        # ensemble" and that this was "the generic vector/spike <-> ensemble bridge every built module
+        # routes through". Both claims were false: the method they described (nengo_compute) had zero
+        # callers and was retired in v4.78. What is real: substrate/nengo_bridge runs the whole brain
+        # under nengo.Simulator via the `snn-nengo-launch` entrypoint, and this flag reports whether
+        # that path is available. nengo-GATED: "nengo" when importable, else "stdlib". Read by
+        # reasoning/nengo_gui_brain.py:47 via state()["nengo_tier"].
         try:
             import nengo  # noqa: F401
 
@@ -1725,22 +1726,12 @@ class Brain:
         except Exception:
             return None
 
-    def nengo_compute(self, vec, func=None, n_neurons=120, t=0.2):
-        """OPTIONAL Nengo backend: represent `vec` in a Nengo NEF ensemble and decode func(vec) from its
-        SPIKES (NEF principles) -- the substrate ANY brain module can offload a vector computation to,
-        deployable to NengoLoihi. Returns the Nengo-decoded value when nengo is present, else func(vec)
-        computed directly (the honest stdlib fallback). Value/representation-ONLY -- no actuator route,
-        no safety path touched. Lazy: builds/simulates an ensemble on call, never in the live loop."""
-        f = func if func is not None else (lambda x: x)
-        if self._nengo_tier != "nengo":
-            return f(vec)
-        try:
-            from snn_data_lake.substrate.nengo_bridge import NengoNEF
-
-            dims = len(vec) if hasattr(vec, "__len__") else 1
-            return NengoNEF(dims=dims, n_neurons=n_neurons, seed=self._seed).run(vec, f, t)
-        except Exception:
-            return f(vec)
+    # nengo_compute() RETIRED v4.78 (Policy 2/3): it had ZERO callers in the entire tree -- the only
+    # two references to the name were the comments that advertised it. Its docstring called it "the
+    # substrate ANY brain module can offload a vector computation to", and the comment above the tier
+    # probe claimed it was "the generic bridge every built module routes through". Nothing routed
+    # through it, ever. `_nengo_tier` is KEPT: reasoning/nengo_gui_brain.py:47 genuinely reads
+    # state()["nengo_tier"], and substrate/nengo_bridge.py remains the real Nengo path.
 
     # ---- the two tick kinds --------------------------------------------------------------------
     def _wake_tick(self):
@@ -2377,6 +2368,13 @@ class Brain:
                 ]
                 if len(triples) >= 4:  # enough real episodes to abstract from
                     out = SchemaInducer(seed=self._seed).consolidate(triples, budget=32)
+                    # REFUSE the durable write when the SECOND firewall did not run. SchemaInducer's
+                    # DistMult gate silently no-ops if its import fails, passing every candidate with
+                    # `rejected` still reading 0 -- so "0 rejected because the evidence was good" and
+                    # "0 rejected because nothing was checked" looked identical here, and both wrote
+                    # to the durable lake. Only the first is a reason to write (v4.78).
+                    if not out.get("confidence_gate_ran", False):
+                        out = {"derived": [], "kept": 0}
                     for row in out.get("derived", []):
                         h, rel, t = row[0], row[1], row[2]
                         log.append(
@@ -2703,7 +2701,7 @@ class Brain:
                 self._xmodal_known
             ),  # C2 #19: bimodal objects the binder has learned
             "pc_cortex_tier": self._pc_cortex_tier,  # "pc-cortex" (deep spiking predictive-coding cortex loaded, zero-dep serve via perceive_pc()) or "stdlib"
-            "nengo_tier": self._nengo_tier,  # "nengo" -> can offload any vector compute to a Nengo NEF ensemble (NengoLoihi-deployable) via nengo_compute()
+            "nengo_tier": self._nengo_tier,  # "nengo" -> nengo is importable, so `snn-nengo-launch` can run the brain under nengo.Simulator. NOT a per-call offload path (nengo_compute retired v4.78, zero callers)
             "braincog": self._braincog,  # BrainCog-adopted primitives: theory-of-mind false-belief + multisensory super-additivity index
             "access_index": self._access_ema,  # ACCESS consciousness (global availability)
             "access_ignited": bool(self._access_state.get("ignited", False)),
