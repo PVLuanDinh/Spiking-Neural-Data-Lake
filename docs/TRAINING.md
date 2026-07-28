@@ -1,10 +1,30 @@
 # Training & acceleration
 
-The core (`src/snn_data_lake/`) is zero-dependency and stays that way: `pip install .` gives a
-clone-and-run inference library with no torch, no GPU, no compiled extensions. **Training is a
-first-class, opt-in GPU tier** — the one place the zero-dependency rule is loosened — that trains
-on CUDA and **exports its weights back into the zero-dep core**, so a clone-and-run install serves
-GPU-trained models with nothing installed but the standard library.
+`pip install .` pulls the core dependencies (`torch`, `numpy`); the former zero-dependency-core
+contract was removed project-wide on 2026-07-20. **Training is a first-class, opt-in GPU tier** that
+trains on CUDA and **exports its weights back into the core**, so an ordinary install serves
+GPU-trained models.
+
+## Regenerating the perception weights — read this first on a fresh clone
+
+`models/` is **gitignored** (`.gitignore:76`) and has zero tracked files, because the checkpoints are
+large binaries. A fresh clone therefore has **no real perception**: `cortex/brain.py:545` and `:577`
+look for `models/eprop_nmnist.pt` and `models/eprop_shd.pt`, and without them the brain falls back to
+`perception_tier=stdlib` with `perceiving_real=False` — a synthetic band instead of event-camera input,
+and `LearnedAttention.attend` never called at all.
+
+That is by design, but until 2026-07-28 it was written down nowhere, which made the whole perception
+tier an unreproducible claim. The two commands that restore it:
+
+```bash
+.venv-cu128/Scripts/python training/eprop_nmnist.py    # -> models/eprop_nmnist.pt  (vision, N-MNIST)
+.venv-cu128/Scripts/python training/eprop_shd.py       # -> models/eprop_shd.pt     (audio, SHD)
+```
+
+Both need their datasets on disk (`data/nmnist_cache`, `data/SHD`) and the GPU env `.venv-cu128`. To
+point the brain at checkpoints elsewhere, set `SNN_EPROP_CKPT` / `SNN_EPROP_AUDIO_CKPT`. Anything that
+reports a perception number should say which of these two states it measured in — see
+[`COVERAGE_BASELINE.md`](COVERAGE_BASELINE.md).
 
 ## Install the training tier
 

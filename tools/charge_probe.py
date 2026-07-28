@@ -84,8 +84,8 @@ def main():
     w = round(bA._drive_w[source], 4)
     tbl = _VALUE_TABLE.get(source)
     pairs = len(getattr(bA, tbl)) if tbl else None
-    act_flips = sum(1 for x, y in zip(sA, sB) if x != y)
-    pos_flips = sum(1 for x, y in zip(pA, pB) if x != y)
+    act_flips = sum(1 for x, y in zip(sA, sB, strict=True) if x != y)
+    pos_flips = sum(1 for x, y in zip(pA, pB, strict=True) if x != y)
     bA.close()
     bB.close()
 
@@ -116,7 +116,9 @@ def main():
         )
         return 2
     if tbl is None:
-        print("NOTE: undirected source, no value table -- eligibility cannot be established from here")
+        print(
+            "NOTE: undirected source, no value table -- eligibility cannot be established from here"
+        )
 
     if act_flips > 0 or pos_flips > 0:
         print("BEHAVIOURAL CHARGE OK")

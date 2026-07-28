@@ -132,3 +132,7 @@ select = ["E", "F", "I", "UP", "B"]
 # reflowing 282 printf-format strings in research code is churn, not governance.
 "src/snn_data_lake/reasoning/**" = ["E501", "E702", "E731", "E741", "B905", "UP031", "I001", "E402", "F541", "B007"]
 "run_selfchecks.py" = ["E501", "I001"]   # kept byte-for-byte as-is (A1: the smoke gate)
+# tools/ is operator tooling written in the src/** style -- long explanatory comments that carry the
+# measurement behind a decision. E501 is relaxed there for the same reason it is on src/**; every
+# correctness rule (F, B, UP, I) stays ON, which is what caught the two bare zip()s here.
+"tools/**" = ["E501"]

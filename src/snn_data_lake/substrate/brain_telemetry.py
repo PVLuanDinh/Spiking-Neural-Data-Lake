@@ -127,7 +127,12 @@ PROVENANCE = {
     "reflex_armed": "hardcoded literal",
     # spike-section rows that are not independent live regions
     "spikes.olfactory": "no input stream -- constant 0.0",
-    "spikes.midbrain": "constant: its novelty term is never enabled",
+    "spikes.midbrain": (
+        "constant: its novelty term is never enabled -- and MEASURED inert, not merely unwired. "
+        "Enabling salience_novelty takes this row from 1 to 32 distinct values over 60 ticks, then "
+        "changes 0/200 workspace winners, 0/200 act-hold decisions and 0/200 trajectories, at "
+        "+8.4% tick cost. Left off deliberately (v4.78)"
+    ),
     "spikes.substrate": "duplicate of hippocampus (same expression)",
 }
 

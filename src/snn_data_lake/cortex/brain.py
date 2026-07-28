@@ -206,6 +206,16 @@ class Brain:
             agency_monitor=True,
             dopamine=True,
             attention=True,
+            # salience_novelty is deliberately NOT passed, and this comment is the measurement that
+            # settles why. Enabling it (v4.78 probe) does make the signal real: `arm._novelty` and
+            # `spikes.midbrain` go from ONE distinct value over 60 ticks to 32 each. But a neuter-A/B
+            # over 200 ticks then showed it changes NOTHING -- 0/200 workspace-content flips, 0/200
+            # act/hold decisions, 0/200 trajectory -- while costing +8.4% tick time (49.0 -> 53.1 ms).
+            # Its own source calls the GWT competitor its only consumer, and the competitor's winner
+            # never changes. So this is a faculty that is inert in fact, not merely unwired, and P3 is
+            # explicit that a wire which does not charge is reverted rather than shipped as coverage.
+            # The control that makes this trustworthy: the same 200-tick harness DOES show the `drive`
+            # source flipping 22/60 trajectories, so the observable is not degenerate.
         )
         # ALLOCENTRIC cognitive-map substrate (gap #12): dead-reckons a landmark map over the percept
         # stream -- a relational/spatial map (full physical navigation awaits embodiment via the arm).
