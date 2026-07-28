@@ -2,8 +2,8 @@
 
 ## Setup
 
-Python 3.11+ (CI runs 3.11 / 3.12 / 3.13). The core has no runtime dependencies; only the
-dev tooling and optional integrations need installing.
+Python 3.11+ (CI runs 3.11 / 3.12 / 3.13). `pip install -e .` pulls the core dependencies
+(`torch`, `numpy`); the dev tooling and optional integrations are extras on top.
 
 ```bash
 python -m venv .venv-lake
@@ -11,35 +11,40 @@ python -m venv .venv-lake
 pip install -e ".[dev]"          # pytest, ruff, pre-commit
 ```
 
-## The three gates
+## The four gates
 
-Every change must keep all three green; CI enforces them on {ubuntu, windows} x {3.11, 3.12, 3.13}.
+Every change must keep all four green; CI enforces them on {ubuntu, windows} x {3.11, 3.12, 3.13}.
 
 ```bash
-python run_selfchecks.py         # runs every registered module's __main__ self-check
-pytest                           # unit suite, >=70% line coverage
-python -m ruff check .           # lint (rules E, F, I, UP, B)
-python -m ruff format --check tests
+python run_selfchecks.py                  # every registered module's __main__ self-check (273)
+pytest                                    # unit suite, >=70% line coverage gate
+python -m ruff check .                    # lint (rules E, F, I, UP, B)
+python -m ruff format --check src tests   # formatting -- this exact scope is what CI runs
 ```
 
 ## Invariants
 
-- **Zero-dependency core.** `src/snn_data_lake/` is standard-library only — `dependencies = []`
-  in `pyproject.toml` stays empty. Integrations that need third-party packages go behind an
-  optional extra (`arm`, `lake`, `gpu`, ...) or in `research/` (ruff-excluded, not in CI's core gate).
+- **Dependencies.** `torch` and `numpy` are core deps; the zero-dependency-core contract was removed
+  project-wide on 2026-07-20. Modules may import them freely. Anything heavier goes behind an
+  optional extra (`arm`, `lake`, `gpu`, ...). `NORD_TORCH=0` gives a torch-free path, not a
+  stdlib-only one.
 - **Determinism.** Seed with `random.Random(seed)` per instance — never module-level import-time
   seeding. Use `zlib.crc32()` for persisted hashes, not the builtin `hash()`.
 - **ASCII-only output.** Windows cp1252 crashes on non-ASCII in `print()`. Keep console output ASCII.
-- **Line length.** E501 is intentionally relaxed on `src/**` (the core is hand-aligned). Do not reflow.
+- **Formatting.** The tree is `ruff format`-clean; run `ruff format src tests` before a gate. E501
+  stays relaxed on `src/**` because `ruff format` does not wrap long lines.
 
 ## Adding a module
 
-1. Give it an `if __name__ == "__main__"` self-check: assert-based, deterministic, zero-dependency.
-   State the honest baseline/control it is measured against — no rigged comparisons.
-2. Register it in `run_selfchecks.py` — the `CORE` list for a reusable library primitive
-   (importable as `snn_data_lake.<mod>`, ruff-enforced), or the `RESEARCH` list for a
-   `research/` module.
-3. Run the three gates.
+1. Give it an `if __name__ == "__main__"` self-check: assert-based and deterministic. State the
+   honest baseline/control it is measured against — no rigged comparisons.
+2. Register it in **both** `src/snn_data_lake/__init__.py` `REGIONS` **and** `run_selfchecks.py`
+   (the `CORE` list for a product module, `RESEARCH` for a `snn_data_lake.reasoning.*` build).
+   `brain_atlas` asserts filesystem↔map parity for every `REGIONS` directory, so an unregistered
+   module there fails the gate.
+3. Make it reachable from a live path, or add it to `substrate/dormancy_gate.py` `EXEMPT` with a
+   reason — Policy 3 fails CI otherwise.
+4. Run the four gates.
 
 ## Safety-critical code
 

@@ -4,11 +4,11 @@
 [![Release](https://img.shields.io/github/v/tag/Aighluvsekks/Spiking-Neural-Data-Lake?label=release)](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Core: zero deps](https://img.shields.io/badge/core-zero%20dependencies-success.svg)](#install)
 
-A pure-standard-library Python toolkit for event-driven (spiking) computation, in three parts:
+A Python toolkit for event-driven (spiking) computation, in three parts:
 
-- **A neuromorphic primitive library:** 107 zero-dependency modules under `src/snn_data_lake/`,
+- **A neuromorphic primitive library:** 373 modules under `src/snn_data_lake/`, 187 of them mapped
+  into the brain atlas,
   organized by brain anatomy (cortex, hippocampus, basal_ganglia, amygdala, cerebellum, brainstem,
   thalamus, neuromodulation, plasticity, and a non-anatomical substrate tier), wired by an explicit
   `connectome`. Integrate-and-fire and
@@ -23,7 +23,9 @@ A pure-standard-library Python toolkit for event-driven (spiking) computation, i
   with a reflex, a population-coded PID, and neuromodulation, where every motor command passes a
   safety gate (`ArmSim.apply()`) and the real serial path is disabled until explicitly calibrated.
 
-The core has **no runtime dependencies** (`dependencies = []`); optional integrations (real
+`numpy` and `torch` are core dependencies (`dependencies = ["torch", "numpy"]`) — the former
+zero-dependency-core contract was removed project-wide on 2026-07-20. Setting `NORD_TORCH=0` gives a
+**torch-free** brain, not a stdlib-only one: numpy is always required. Optional integrations (real
 hardware, Parquet/Delta, GPU training, on-device LLM) live behind extras. Every efficiency figure
 below is measured against a dense baseline and reproduced by running the referenced module.
 
@@ -32,13 +34,13 @@ below is measured against a dense baseline and reproduced by running the referen
 ```bash
 git clone https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake
 cd Spiking-Neural-Data-Lake
-pip install -e .            # zero-dependency core
+pip install -e .            # core (pulls torch + numpy)
 pip install -e ".[all]"     # + optional extras (arm, lake, gpu, nmnist, llm, ...)
 ```
 
 Python 3.11+. Full guide, including per-extra notes, in [docs/INSTALL.md](docs/INSTALL.md).
 GPU / accelerator notes (opt-in CUDA for training) in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
-Train on a GPU and export weights back to the zero-dep core: [docs/TRAINING.md](docs/TRAINING.md).
+Train on a GPU and export weights back to the core: [docs/TRAINING.md](docs/TRAINING.md).
 
 ## Quickstart
 
@@ -50,7 +52,7 @@ snn-loop     # full closed loop: gesture -> command -> reward -> learn
 python learn_daemon.py      # the always-on brain; serves the cockpit -- the ONE frontend --
                             # at http://127.0.0.1:8137/ (live brain, arm, hardware target, chat)
 
-python run_selfchecks.py    # run every module's self-check (138 total)
+python run_selfchecks.py    # run every module's self-check (273; 274 with nengo, 267 torch-free)
 ```
 
 ## Results (measured)
@@ -96,10 +98,11 @@ Dreamer-lite 1.03→0.48 m), and MNIST (unsupervised STDP 82.3% CPU; conductance
 ## Repository layout
 
 ```
-src/snn_data_lake/   107 zero-dependency core modules across 10 anatomical brain regions (cortex,
+src/snn_data_lake/   373 modules; 187 of them mapped into the brain atlas across 17 regions (cortex,
                      hippocampus, basal_ganglia, amygdala, cerebellum, brainstem, thalamus,
-                     neuromodulation, plasticity, substrate) + brain_atlas.py (region->module map) +
-                     connectome.py (region->region wiring) + lakehouse/ (Medallion Bronze→Gold)
+                     neuromodulation, plasticity, substrate, ...) + brain_atlas.py (region->module
+                     map) + connectome.py (region->region wiring) + lakehouse/ (Medallion
+                     Bronze→Gold) + reasoning/ (folded research builds; ruff- and coverage-excluded)
 research/            benchmarks and experiments, kept for reproducibility (ruff-excluded, not the product)
 tests/               pytest suite (>=70% coverage)
 integrations/        packaging/ (daemon + cockpit -> standalone Windows .exe, PyInstaller + Inno Setup),
@@ -114,12 +117,13 @@ Safety-critical arm code (`brainstem/reflex.py`, `brainstem/serial_arm.py`, `bra
 
 ## Testing & CI
 
-Three gates, all green on every push:
+Four gates, all green on every push:
 
 ```bash
-python run_selfchecks.py           # 138 module self-checks (deterministic, assert-based)
-pytest                             # unit suite, >=70% line coverage (currently ~91%)
-python -m ruff check .             # lint (E, F, I, UP, B)
+python run_selfchecks.py               # 273 module self-checks (deterministic, assert-based)
+pytest                                 # unit suite, >=70% line coverage gate (currently ~88%)
+python -m ruff check .                 # lint (E, F, I, UP, B)
+python -m ruff format --check src tests   # formatting (CI checks this scope exactly)
 ```
 
 CI runs the matrix `{ubuntu, windows} × {3.11, 3.12, 3.13}` plus lint and coverage. See

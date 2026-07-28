@@ -62,8 +62,8 @@ Verified in this repo:
 
 - `pyproject.toml`: `dependencies = ["torch", "numpy"]` — the core needs those two and
   nothing else. AirLLM appears only in the optional extra `llm = ["airllm", "torch"]`.
-- `python run_selfchecks.py` runs **88 core modules** (55 CORE product modules +
-  33 RESEARCH PoCs) with no GPU, no network, no LLM. The whole core program — the
+- `python run_selfchecks.py` runs **273 modules** (187 CORE product modules +
+  80 RESEARCH PoCs + torch/nengo-gated) with no GPU, no network, no LLM. The whole core program — the
   robot-arm control loop (`reflex`, E-STOP, collision-gated `arm_sim`/`serial_arm`,
   `interpreter`, `autonomous_loop`, `closed_loop`), the spiking lakehouse
   (`spike_telemetry_hub`, `streaming_hub`), and the cockpit (`substrate/cockpit`, the ONE
@@ -183,8 +183,8 @@ SNN_LLM=1 python local_llm/run_local.py   # or: python local_llm/run_local.py --
 
 ## 8. Verdict
 
-The full core program of the Spiking Neural Data Lake **already runs locally with zero
-dependencies** — 88 stdlib self-check modules, the arm safety loop, the lakehouse, and
+The full core program of the Spiking Neural Data Lake **already runs locally on `torch` +
+`numpy` alone** — 273 self-check modules, the arm safety loop, the lakehouse, and
 the GUI need no GPU, no network, and no LLM, so "can AirLLM run the core" is moot:
 nothing in the core requires it. AirLLM is a legitimate, verified-real piece of
 infrastructure whose specific talent — streaming 70B-671B models layer-by-layer

@@ -7,10 +7,16 @@ masks nothing, a plan with no reward, a recall that is write-only). This registr
 point: each wired faculty registers a `charge(brain, ctx)` adapter the daemon runs EVERY cycle, so a dormant
 faculty becomes live WITHOUT editing the daemon loop.
 
-AUTO-UPDATE AFTER EVERY COMMIT: the daemon imports `wired_faculties` (which registers every adapter) at
-boot, and it reloads on every new commit (learn_daemon exits -> the launcher relaunches the new build). So a
-commit that adds/edits a registration is picked up automatically on the next reload -- the wired set tracks
-the code, no daemon edit per faculty.
+STATUS, STATED PLAINLY: **the registry is EMPTY in production and always has been.** This docstring used
+to claim "the daemon imports `wired_faculties` (which registers every adapter) at boot" -- there is no
+`wired_faculties` module in the tree, `learn_daemon.py` imports only this module, and nothing anywhere
+calls `wire()` outside the self-check below (which deliberately clears `_WIRED` first, so it proves the
+mechanism and says nothing about production). So `charge_all()` iterates an empty list every cycle and the
+daemon logs `adapters=0`. The plug point works; it has never been plugged. Registering a faculty here is
+real P3 work, and claiming otherwise was the same species of defect this registry exists to expose.
+
+Once registrations exist, they are picked up automatically: learn_daemon exits when git HEAD changes and
+the launcher relaunches the new build, so the wired set tracks the code with no daemon edit per faculty.
 
 HONEST COVERAGE: coverage() reports the EXPLICITLY-wired faculties per region against the brain-atlas region
 map. It is NOT a claim that every module is exercised (Brain.tick charges more transitively; the coverage
