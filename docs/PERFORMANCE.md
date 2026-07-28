@@ -14,7 +14,9 @@ large-batch neural-network **training** in `research/`.
 | `[genn]` | pygenn | the `research/*_genn` GPU SNN ports | GeNN compiles a CUDA backend directly |
 | `[llm]` | airllm, torch | the optional NL interface (`local_llm/`) for **large** local models | AirLLM layer-by-layer disk streaming |
 
-The core installs with none of these (`pip install -e .`, `dependencies = []`).
+`pip install -e .` installs none of these EXTRAS, but it does pull the core dependencies:
+`dependencies = ["torch", "numpy"]` (corrected 2026-07-28 -- this line quoted `dependencies = []`
+as a literal citation long after the zero-dependency contract was removed).
 
 ## Using the GPU for training
 

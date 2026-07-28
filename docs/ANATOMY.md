@@ -18,17 +18,19 @@ not its cell-level microcircuitry or phenomenology.
 | Amygdala | present | `amygdala/fear_conditioning` — CS-US threat learning (BLA→CeA), extinction |
 | Hypothalamus | present | `hypothalamus/` — `circadian_clock` (SCN spiking clock) + `set_points` (thermo/osmo homeostats the SCN paces); HPA in `neuromodulation/cortisol` |
 | Midbrain | present | `midbrain/` — `dopamine_nuclei` (VTA/SNc RPE source) + `superior_colliculus` (orienting) + `sc_deep_layers` (gaze burst generator, gated) |
-| Pons | present | `pons/` — `pontine_relay` (cortico-ponto-cerebellar) + `reticular_formation` (ARAS arousal) |
+| Pons | **ABSENT** | `pons/` holds only `__init__.py`; `REGIONS` maps 0 modules to it. `pontine_relay` and `reticular_formation` are NOT implemented (corrected 2026-07-28 — this row read "present" with both named). The directory is a placeholder, and `live_brain.py:262` still emits a `spikes.pons` row from a proxy signal |
 | Epithalamus | present | `epithalamus/habenula` — lateral habenula anti-reward (negative RPE, dopamine opponent via RMTg) |
-| Olfactory pathway | present | `olfactory/` — `olfactory_bulb` (decorrelation) + `piriform_cortex` (association / completion) |
+| Olfactory pathway | **ABSENT** | `olfactory/` holds only `__init__.py`; `REGIONS` maps 0 modules to it. `olfactory_bulb` and `piriform_cortex` are NOT implemented (corrected 2026-07-28). `spikes.olfactory` is a constant 0.0 and `PROVENANCE` says so |
 | Claustrum | present | `claustrum/claustrum` — coincidence-gated cortical synchrony / salience hub |
 | Basal forebrain / neuromodulators | present | `neuromodulation/` — ACh, LC-noradrenaline, raphe-serotonin, astrocyte, cortisol; dopamine in `midbrain` |
-| Reticular activating system (ARAS) | present | `pons/reticular_formation` — bistable sleep-wake arousal switch |
+| Reticular activating system (ARAS) | **ABSENT** | `pons/reticular_formation` does not exist (corrected 2026-07-28). The wake/sleep switch that DOES run is the circadian clock in `cortex/brain.py`, which is not an ARAS model |
 | White-matter connectome | present (schematic) | `connectome.py` — typed/directed/signed/loop-aware edge list (37 nodes, 11 closed loops) |
 | Medulla | present | `medulla/` — `vital_nuclei` (pre-Botzinger respiratory CPG + NTS/RVLM baroreflex, homeostatic set-point loops onto the viscera) + `interoceptive_arousal` (visceral error -> bounded caution/gain, wired live) |
 
-**Roughly:** the Allen top-level structural ontology is now fully covered — 15 anatomical regions
-present (each a functional model) plus a schematic connectome; no top-level structure remains partial.
+**Corrected 2026-07-28:** the Allen top-level ontology is **NOT** fully covered. This paragraph read
+"fully covered ... no top-level structure remains partial" while **pons** and **olfactory** were empty
+directories holding only `__init__.py`, and the ARAS row pointed at a module that does not exist.
+15 regions carry real modules; **2 of the 17 `REGIONS` keys map to zero modules**.
 The medulla's autonomic vital nuclei (the last partial) are now a real homeostatic pattern generator.
 
 ## Canonical loops (asserted closed in `connectome.py`)
@@ -65,7 +67,8 @@ memory is backed by the **spike data lake**: with
 
 ## Roadmap (next honest primitives, ranked)
 
-The Allen top-level ontology is complete, the medullary/hypothalamic homeostats are wired live as
+The Allen top-level ontology is complete **except pons and olfactory, which are empty** (see the
+correction above), the medullary/hypothalamic homeostats are wired live as
 caution-only arousal, and the **prefrontal executive** now runs the whole brain **live** as a
 goal-directed loop (`cortex/live_brain`). The next honest primitives deepen the reasoning centre:
 

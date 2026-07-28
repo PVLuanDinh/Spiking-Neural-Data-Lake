@@ -2,15 +2,14 @@
 
 ## What it is
 
-The **Spiking Neural Data Lake** is a pure-Python, standard-library-only neuromorphic
-system built on one thesis: sparse, event-driven spikes can store, query, and reason over
+The **Spiking Neural Data Lake** is a pure-Python neuromorphic system built on one thesis: sparse, event-driven spikes can store, query, and reason over
 data — and drive a real robot arm — with measurably less compute and storage than dense
 floating-point tensors. It is not a single demo but three integrated systems built on shared
 primitives (leaky-integrate-and-fire neurons, spike-timing codes, Hebbian/STDP learning):
 a spiking-network toolkit, a spike-native data lakehouse, and a closed-loop robot-arm
 controller.
 
-The **core product** (`src/snn_data_lake/`, ~91 modules) declares two runtime dependencies
+The **core product** (`src/snn_data_lake/`, 373 modules; 189 in the self-check gate) declares two runtime dependencies
 (`dependencies = ["torch", "numpy"]` in `pyproject.toml`) — it is `pip install`-able and runs
 anywhere Python 3.11+ runs, with no GPU required. Every efficiency
 claim in the README (synaptic-operation counts, storage bytes, query I/O) is measured against

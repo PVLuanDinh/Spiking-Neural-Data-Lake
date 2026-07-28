@@ -58,7 +58,7 @@ python run_selfchecks.py    # run every module's self-check (275; 276 with nengo
 ## Results (measured)
 
 All figures are reproduced by running the referenced module. Compute = synaptic operations
-(SynOps); storage = bytes. These three tables run in CI (pure stdlib).
+(SynOps); storage = bytes. These three tables run in CI on the torch-free matrix job (numpy only).
 
 **Data lake: store, search, reason**
 

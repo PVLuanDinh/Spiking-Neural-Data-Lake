@@ -128,24 +128,21 @@ gradients larger than VRAM). AirLLM has no backward pass, so it is not a trainer
 
 ## Reasoning: the SNN brain + a local LLM
 
-Where AirLLM's disk-streaming genuinely fits *alongside* the SNN: the brain does perception, a large
-local LLM does the language layer. `brain_reasoning.BrainReasoner` wraps a `trained_brain` with an
-optional LLM backend (any `generate(prompt) -> str`, e.g. `AirLLMBackend`):
+> **Corrected 2026-07-28.** This section used to document `brain_reasoning.BrainReasoner` with a
+> runnable import and two calls. **That module does not exist** — it was retired in the Policy-2/3
+> wave and is recorded as such at `substrate/dormancy_gate.py:74`. The example would have raised
+> `ModuleNotFoundError` for anyone who tried it. What follows is the path that actually exists.
 
-```python
-from snn_data_lake.trained_brain import load_brain
-from snn_data_lake.brain_reasoning import BrainReasoner
-# from local_llm.airllm_backend import AirLLMBackend   # optional [llm]: a 70B streamed from disk
+The brain's language layer is `reasoning/spike_chat_lake.py::LakeChat`, reached live from
+`cortex/live_brain.py:450`, with `reasoning/rose_language.py` (`cortex/brain.py:3349`) behind it. It
+answers from the brain's own durable lake — learned facts, not a language model — and it is honest
+about gaps rather than fabricating: a query with no supporting fact returns `known=False`.
 
-r = BrainReasoner(load_brain("brain.json"))             # no backend -> zero-dep templated summary
-print(r.explain(pixels)["text"])
-# r = BrainReasoner(brain, backend=AirLLMBackend())     # a big local LLM reasons in natural language
-```
-
-With no backend it gives a deterministic, zero-dependency summary (clone-and-run). With
-`AirLLMBackend` a large model — disk-streamed so it fits beside the SNN on one GPU — turns the brain's
-prediction, or a `.spk` store (`summarize_store` / `reason_over_store`), into natural language. That
-is AirLLM's honest role here: not accelerating the tiny SNN, but running a big LLM next to it.
+AirLLM's role, if you want it, is unchanged and remains **optional and small**: it backs the
+natural-language *command* front-end (`cortex/nl_interface.py` via `local_llm/airllm_backend.py`,
+`[llm]` extra), classifying an English phrase into one of ~10 fixed labels. It is not in the
+self-check gate and CI never installs it. See [AIRLLM_ANALYSIS.md](AIRLLM_ANALYSIS.md) for why that
+is a poor fit for AirLLM specifically — the default backend is a deterministic stdlib keyword router.
 
 ## What needs what
 
