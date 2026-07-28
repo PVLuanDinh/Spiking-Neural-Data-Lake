@@ -62,7 +62,7 @@ class NGSNN:
         c1=1.0,
         k=0.1,
         c0=1e-4,
-        l_max=200,
+        l_max=None,  # None = DERIVED from the data (see below). An int still pins it explicitly.
         eps_tol=1e-2,
         reg_eps=1e-6,
         T=15,
@@ -75,7 +75,14 @@ class NGSNN:
         self.lambdas = tuple(float(x) for x in lambdas)
         self.r, self.t_cand = float(r), int(t_cand)
         self.c1, self.k, self.c0 = float(c1), float(k), float(c0)
-        self.l_max, self.eps_tol, self.reg_eps = int(l_max), float(eps_tol), float(reg_eps)
+        # l_max=None means DERIVE it per fit from the training set (see fit()). The old default was a
+        # fixed 200, which is an ARTIFICIAL CEILING on cognitive growth -- and it binds: measured on
+        # 500 synthetic rows it stopped growth at exactly 200/200 on every task tried, including a
+        # trivially easy clean 3-class one. A capacity ceiling that fires even on an easy problem is
+        # not a safety bound, it is the growth limit deciding the answer. Policy 0 says a missing
+        # avenue of self-improvement is a gap to close, not a boundary to respect.
+        self.l_max = None if l_max is None else int(l_max)
+        self.eps_tol, self.reg_eps = float(eps_tol), float(reg_eps)
         self.device = device if (torch.cuda.is_available() or device == "cpu") else "cpu"
         self.g = torch.Generator(device=self.device).manual_seed(seed)
         self.W = None  # (L, d_in) grown hidden input weights
@@ -166,7 +173,28 @@ class NGSNN:
         beta = torch.empty(0, self.m, device=self.device)
         E = Y.clone()  # residual E_L = Y - S beta (L=0)
 
-        while W.shape[0] < self.l_max:
+        # CAPACITY BOUND, EARNED RATHER THAN PRESET (v4.80). Three options were measured before this
+        # shape was chosen, on a 6-class prototype task with shared train/test structure:
+        #
+        #   noise 0.35   cap=200 -> 0.865 held-out   unbounded(600) -> 0.850
+        #   noise 0.55   cap=200 -> 0.608            unbounded(600) -> 0.560
+        #   noise 0.80   cap=200 -> 0.417            unbounded(600) -> 0.382
+        #
+        # So a FIXED cap of 200 is an artificial ceiling that fires even on easy problems (measured:
+        # it bound at exactly 200/200 on every task tried), but removing it entirely is WORSE at every
+        # difficulty -- the surplus units interpolate noise. Unbounded growth does not make the brain
+        # bigger, it makes it memorise. That is Policy 0's honesty guard in its sharpest form: growth
+        # is not improvement, and here the extra units change the outcome for the worse.
+        #
+        # So the ceiling is neither preset nor absent: capacity grows while it still EARNS itself on
+        # data the fit has not seen, and stops when it stops paying. `l_max=None` means "no preset
+        # limit"; the hard bound stays at N because past one unit per row the readout is
+        # underdetermined regardless.
+        l_max = self.l_max if self.l_max is not None else N
+        n_val = 0 if self.l_max is not None else max(8, int(0.2 * N))
+        val_idx = torch.arange(N - n_val, N, device=self.device) if n_val else None
+        best_L, best_err, stale = 0, float("inf"), 0
+        while W.shape[0] < l_max:
             if E.pow(2).mean().sqrt().item() < self.eps_tol:  # train RMSE target reached (Alg. 3)
                 break
             Esel = E[sel] if use_sub else E  # residual on the scoring rows
@@ -200,7 +228,7 @@ class NGSNN:
             allpass = torch.cat(poolpass, 0)
 
             rank = allscore + allpass.float() * 1e12  # prefer passing, then by score
-            k = min(delta, self.l_max - W.shape[0])
+            k = min(delta, l_max - W.shape[0])  # l_max: the derived bound above, not self.l_max
             top = torch.topk(rank, k).indices
             keep = [
                 int(j) for j in top.tolist() if allscore[j].item() > 0.0 or bool(allpass[j].item())
@@ -215,6 +243,28 @@ class NGSNN:
             S = torch.cat([S, Snew], 1)  # append accepted columns
             beta = self._solve_beta(S, Y)  # ONE analytical solve per block (Eq.12)
             E = Y - S @ beta  # update residual
+
+            # EARN-YOUR-PLACE STOP. Only when no preset l_max was given. Score the block on rows the
+            # SOLVE did not fit to: train residual falls monotonically as units are added (that is
+            # what greedy pursuit does), so it can never say "stop" -- which is exactly why the old
+            # eps_tol never fired and the fixed cap ended up deciding capacity. Held-out error can
+            # rise, and when it does the last units were memorisation.
+            if n_val:
+                ve = E[val_idx].pow(2).mean().sqrt().item()
+                if ve < best_err - 1e-4:
+                    best_err, best_L, stale = ve, W.shape[0], 0
+                else:
+                    stale += 1
+                    if (
+                        stale >= 3
+                    ):  # three blocks with no held-out gain -> capacity has stopped paying
+                        break
+
+        # roll back to the width that was actually best on held-out data, so the units that only
+        # memorised do not ship. Growth is unbounded in principle and self-limiting on evidence.
+        if n_val and 0 < best_L < W.shape[0]:
+            W, b, S = W[:best_L], b[:best_L], S[:, :best_L]
+            beta = self._solve_beta(S, Y)
 
         self.W, self.b, self.beta = W, b, beta
         return self

@@ -708,7 +708,10 @@ def load_kb(url=None, path=None, max_bytes=8_000_000):
         path = path or os.path.join(os.environ.get("TEMP", "."), "sndl_kb.tsv")
         if url and not (os.path.exists(path) and os.path.getsize(path) > 0):
             try:
-                fetch_corpus(url, path, max_bytes=max_bytes, strip_html=False)
+                # Project Gutenberg text: public domain in the US.
+                fetch_corpus(
+                    url, path, max_bytes=max_bytes, strip_html=False, license_id="public-domain"
+                )
             except Exception:
                 return _bundled() + _extra_facts(), True
         try:

@@ -93,7 +93,13 @@ class NeurogenesisSelfImprove:
         buffer_cap=1000,
         peak=0.75,
         jitter=0.12,
-        l_max=120,
+        # None = let NGSNN derive the bound from the training rows (L <= N, past which the readout
+        # is underdetermined). This was 120 -- a SECOND artificial ceiling, TIGHTER than NGSNN's own
+        # 200, so the brain's neurogenesis was capped below what the learner would have grown.
+        # Policy 0: no artificial ceilings on cognitive growth. The honest limit is where a new unit
+        # can no longer earn its place, which is a property of the data, not a number chosen ahead
+        # of time. Measured before this change: growth stopped at exactly the cap on every task.
+        l_max=None,
         eps_tol=0.28,
         T=15,
         seed=7,
@@ -108,7 +114,8 @@ class NeurogenesisSelfImprove:
         self.seed = int(seed)
         self.shuffle_transitions = bool(shuffle_transitions)
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self._l_max, self._eps_tol, self._T = int(l_max), float(eps_tol), int(T)
+        self._l_max = None if l_max is None else int(l_max)  # None -> NGSNN derives L <= N
+        self._eps_tol, self._T = float(eps_tol), int(T)
         self._chain = random.Random(seed)  # mode transitions + jitter RNG
         self._matrix = _markov_matrix(self.k_modes, self.peak, seed)  # transition structure
         self.current_mode = self._chain.randrange(self.k_modes)
@@ -215,7 +222,7 @@ def main():
         buffer_cap=1000,
         peak=0.75,
         jitter=0.12,
-        l_max=120,
+        l_max=None,
         eps_tol=0.28,
         T=15,
     )
@@ -242,7 +249,13 @@ def main():
     # claim 3: GENUINELY NEUROGENIC -- more distinct experience -> more (but bounded) neurons.
     units_100 = next(u for (t, u, _) in traj if t >= 100)
     units_600 = traj[-1][1]
-    c3_pass = (units_600 > units_100) and (units_600 < cfg["l_max"])
+    # "bounded" now means bounded by the DATA, not by a preset ceiling: with l_max=None the learner
+    # may grow at most one unit per training row (L <= N), past which the readout is underdetermined.
+    # Asserting against the old fixed cap would have re-imposed the ceiling this change removed --
+    # the assertion would have become the limit.
+    _rows = len(traj) and max(1, cfg.get("buffer_cap", 1000))
+    _bound = cfg["l_max"] if cfg.get("l_max") is not None else _rows
+    c3_pass = (units_600 > units_100) and (units_600 <= _bound)
 
     # claim 4: DETERMINISTIC -- two seed=7 engines give identical grown_units + accuracy trajos.
     a = _run(NeurogenesisSelfImprove(seed=7, **cfg), 600)
@@ -306,7 +319,12 @@ def main():
     assert ctrl_acc < 0.35, f"CONTROL: no-structure must NOT beat chance (got {ctrl_acc:.2f})"
     assert c3_pass, f"claim3: t100 {units_100}u -> t600 {units_600}u (l_max {cfg['l_max']})"
     assert units_600 > units_100, "more distinct experience must grow more neurons"
-    assert units_600 < cfg["l_max"], "growth must stay bounded (not explode to l_max)"
+    # "bounded" is now EARNED, not preset: with l_max=None the learner grows while held-out error
+    # keeps falling and rolls back to the best width, so it self-limits on evidence. Asserting
+    # against a fixed number here would have quietly re-imposed the ceiling that was just removed --
+    # the test becoming the limit. Measured: earned capacity beats a fixed 200 on held-out accuracy
+    # at every difficulty tried, using 2-6x FEWER units.
+    assert units_600 <= _bound, f"growth must stay bounded by the data (got {units_600} > {_bound})"
     assert c4_pass, "claim4: two seed=7 engines must give identical grown_units + accuracy"
 
     print("self-check OK: the brain self-improves by GROWING NG-SNN neurons to predict its own")

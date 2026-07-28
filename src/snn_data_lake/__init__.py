@@ -218,6 +218,7 @@ REGIONS = {
         "replication_guard",  # Policy 4: the one-brain guard (canonical stack classes defined once)
         "import_manifest",  # Policy 3: the cross-tier canary (governed -> ungoverned lazy imports)
         "method_dormancy_gate",  # Policy 3 amendment: per-METHOD dormancy (update rules with no live caller)
+        "ingest_guard",  # content boundary for outside data: licence deny-by-default + injection flagging
         "basic_components",  # Brain-Cog-adopted composition interface: node + local-rule + connection palette
         "similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
     ],

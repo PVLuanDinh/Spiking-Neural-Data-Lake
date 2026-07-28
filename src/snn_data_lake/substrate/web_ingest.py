@@ -139,17 +139,37 @@ def html_to_text(html):
 
 
 def fetch_corpus(
-    url, out_path, max_bytes=DEFAULT_MAX_BYTES, timeout=DEFAULT_TIMEOUT, strip_html=None
+    url,
+    out_path,
+    max_bytes=DEFAULT_MAX_BYTES,
+    timeout=DEFAULT_TIMEOUT,
+    strip_html=None,
+    license_id=None,
 ):
-    """Fetch url, optionally strip HTML, write text to out_path. Returns (out_path, n_chars)."""
+    """Fetch url, optionally strip HTML, write text to out_path. Returns (out_path, n_chars, flags).
+
+    `license_id` is REQUIRED and deny-by-default (substrate/ingest_guard). This is a deliberate
+    behaviour change: the tool downloads other people's text to train on, and it used to do that
+    without ever asking under what terms. Stating the licence is now the caller's job, because it is
+    the caller who knows -- and "no licence stated" must not be the silent default when the answer
+    determines whether the download was allowed at all.
+
+    The returned `flags` are instruction-shaped passages found in the corpus. They do not block the
+    write: the corpus is a FILE a trainer consumes, never a fact entering the durable lake and never
+    a string handed to anything that acts, so the boundary is structural. The flags exist so a corpus
+    that is full of prompt-injection reads as suspicious instead of arriving silently.
+    """
+    from snn_data_lake.substrate.ingest_guard import guard
+
     text = fetch_text(url, max_bytes=max_bytes, timeout=timeout)
     if strip_html is None:
         strip_html = bool(re.search(r"(?i)<!doctype html|<html|<body", text[:2048]))
     if strip_html:
         text = html_to_text(text)
+    rec = guard(text, license_id, url)  # raises LicenseRefused before anything is written
     with open(out_path, "w", encoding="utf-8") as f:
-        f.write(text)
-    return out_path, len(text)
+        f.write(rec["text"])
+    return out_path, len(rec["text"]), rec["injection_flags"]
 
 
 def cli(argv=None):
@@ -162,19 +182,29 @@ def cli(argv=None):
     ap.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
     ap.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     ap.add_argument("--raw", action="store_true", help="do not strip HTML tags")
+    ap.add_argument(
+        "--license",
+        required=True,
+        help="licence the source is published under (deny-by-default; see ingest_guard.LICENSE_ALLOW). "
+        "Required: this downloads other people's text to train on, and silence is not permission.",
+    )
     a = ap.parse_args(argv)
     try:
-        path, n = fetch_corpus(
+        path, n, flags = fetch_corpus(
             a.url,
             a.out,
             max_bytes=a.max_bytes,
             timeout=a.timeout,
             strip_html=(False if a.raw else None),
+            license_id=a.license,
         )
     except (ValueError, urllib.error.URLError, OSError) as e:
         print(f"fetch failed: {e}")
         return 1
     print(f"wrote {n} chars to {path}")
+    if flags:
+        print(f"WARNING: instruction-shaped passages in this corpus: {flags}")
+        print("  it is a training file, not a fact and not a command -- but read it before use.")
     print(f"now train on it:  snn-train --lm --corpus {path}")
     return 0
 

@@ -186,7 +186,10 @@ def load_cmudict(path=None, url=DEFAULT_CMUDICT_URL, max_bytes=6_000_000):
     path = path or os.path.join(os.environ.get("TEMP", "."), "sndl_cmudict.dict")
     if not (os.path.exists(path) and os.path.getsize(path) > 0):
         try:
-            fetch_corpus(url, path, max_bytes=max_bytes, strip_html=False)
+            # CMUdict is BSD-2-Clause (cmusphinx/cmudict LICENSE).
+            fetch_corpus(
+                url, path, max_bytes=max_bytes, strip_html=False, license_id="bsd-2-clause"
+            )
         except Exception:
             return dict(_SAMPLE_DICT), True  # offline -> bundled sample dict
     d = {}
@@ -219,7 +222,8 @@ def load_text(path=None, url=DEFAULT_CORPUS_URL, max_bytes=8_000_000):
     path = path or os.path.join(os.environ.get("TEMP", "."), "sndl_corpus.txt")
     if not (os.path.exists(path) and os.path.getsize(path) > 0):
         try:
-            fetch_corpus(url, path, max_bytes=max_bytes)
+            # Project Gutenberg text: public domain in the US (PG 1342, Pride and Prejudice).
+            fetch_corpus(url, path, max_bytes=max_bytes, license_id="public-domain")
         except Exception:
             return _tokenize(_SAMPLE_TEXT), True
     try:

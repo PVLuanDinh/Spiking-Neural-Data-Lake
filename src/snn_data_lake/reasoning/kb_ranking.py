@@ -52,7 +52,17 @@ def _fetch_triples(url, name):
 
     path = os.path.join(os.environ.get("TEMP", "."), f"sndl_{name}.txt")
     if not (os.path.exists(path) and os.path.getsize(path) > 0):
-        fetch_corpus(url, path, max_bytes=40_000_000, strip_html=False)
+        # FB15k-237 derives from Freebase, which was released CC-BY. The redistributing repo
+        # (villmow/datasets_knowledge_embedding) states no licence of its own, so this asserts the
+        # UPSTREAM terms. Override with SNDL_FB15K_LICENSE if your reading differs -- this is the
+        # least certain licence claim in the tree and it is written down rather than assumed.
+        fetch_corpus(
+            url,
+            path,
+            max_bytes=40_000_000,
+            strip_html=False,
+            license_id=os.environ.get("SNDL_FB15K_LICENSE", "cc-by-4.0"),
+        )
     out = []
     with open(path, encoding="utf-8", errors="ignore") as f:
         for line in f:
