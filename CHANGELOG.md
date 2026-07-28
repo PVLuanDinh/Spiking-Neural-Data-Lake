@@ -9,6 +9,39 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [v4.78] -- audit the whole tree against P0-P5, and mechanize the two gates the policy enforced from memory (2026-07-28)
+
+A full-tree P0-P5 audit plus a brain-coverage re-baseline. 159 audit findings raised / 35 refuted /
+124 surviving, and an 11-category coverage sweep in which every category above 40 was handed to a
+refuter. Headline: **coverage 37.5% weighted, and that is an UPPER BOUND** -- only the 3 categories
+above 40 were verified and all 3 fell, so the unchecked 8 are exempted by their own low score, not by
+evidence.
+
+**Two new Policy-3 gates**, closing holes both mechanized gates were blind to:
+- `substrate/method_dormancy_gate.py` -- the per-METHOD amendment POLICIES carried as
+  SPECIFIED-NOT-BUILT while enforcing it by review. 56 update rules, 0 dormant, 16 UNCERTAIN.
+  Three runs gave three answers (0 / 59 / 2) before the scope matched the amendment's wording; the
+  final version independently found the one method a manual audit had proved dead.
+- `substrate/import_manifest.py` -- the cross-tier canary. 15 `reasoning/` modules are load-bearing
+  for the governed tiers through lazy imports inside bare `except` swallows, including both halves of
+  P0's self-building avenue. Deleting one left every gate green.
+
+**Governance:** `reasoning/` (172 modules) brought under lint after four exclusions had stacked on it;
+570 findings -> 88 genuine -> 0. **P2:** three duplicates retired, with an arm-safety assertion ported
+off one of them first. **P5:** the recorded CUDA crossover re-measured and found optimistic; the
+live-tick CUDA perception path benchmarked at 1.00x. **e-prop:** verdict returned on both standing
+cases. **Correctness:** a dopamine DIP was being reported as a BURST (two nuclei, two tonic baselines,
+one variable) -- 110/110 negative-RPE ticks above baseline, now 0/110.
+
+**Three things measured and deliberately NOT shipped**, recorded so they are not redone:
+`salience_novelty` (makes the signal vary, changes 0/200 outcomes, costs +8.4% tick), the amygdala wire
+(would condition fear on disappointment rather than nociception), and flipping the perception device
+off CUDA (1.00x, not worth an unmeasured numerics shift).
+
+New: `docs/COVERAGE_RUBRIC.md`, `docs/COVERAGE_BASELINE.md`, `docs/AUDIT_BACKLOG.md`,
+`tools/charge_probe.py`. Gates: 275/275 self-checks, pytest 90.94%, ruff check + format clean, E-STOP
+latched under max drive.
+
 ## [v4.77] -- three audit fixes: an unbounded read, a stale line cite, a missing P1 case (2026-07-28)
 ## [v4.76] -- P0: the brain must autonomously improve itself, by every available avenue (2026-07-28)
 ## [v4.75] -- P5: use the GPU for everything it actually speeds up (2026-07-28)
