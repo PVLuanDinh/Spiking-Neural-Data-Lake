@@ -170,6 +170,15 @@ EXEMPT = {
         "permanent",
         "the Policy-4 guard itself -- a CI self-check, not a tick faculty",
     ),
+    "method_dormancy_gate": (
+        "permanent",
+        "the Policy-3 per-METHOD amendment's gate -- a CI self-check, not a tick faculty",
+    ),
+    "import_manifest": (
+        "permanent",
+        "the cross-tier canary -- a CI self-check covering the governed -> ungoverned lazy imports "
+        "this gate cannot see (reasoning/ and training/ are outside BRAIN_MODULES), not a tick faculty",
+    ),
 }
 
 

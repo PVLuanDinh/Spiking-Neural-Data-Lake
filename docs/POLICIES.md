@@ -12,7 +12,7 @@ the rule that stops the policy from being satisfied by theater.
 | **P0 autonomous self-improvement** | — | yes (its guards are P2/P3/verify-first) |
 | P1 no-hardcode | — | yes |
 | P2 adopt-or-merge | — | yes |
-| P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE) | the per-METHOD amendment; the charge tier |
+| P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE), `substrate/method_dormancy_gate.py` (per-METHOD), `substrate/import_manifest.py` (cross-tier) | the charge tier |
 | P4 one brain | `substrate/replication_guard.py` | — |
 | P5 use the GPU where it helps | — | yes |
 | e-prop not backprop | — | yes |
@@ -155,6 +155,18 @@ utilized appropriately.** A faculty is not "done" until it is one of three dispo
 and asserts every REGIONS/TORCH_TIER module is **reachable from a live root/entrypoint OR in the EXEMPT
 allowlist** — a new build that no live path imports and that is not exempted FAILS CI.
 
+**Also mechanized: the CROSS-TIER edge, `substrate/import_manifest.py`.** `BRAIN_MODULES` is built from
+REGIONS + TORCH_TIER, so `reasoning/` (172 modules) and `training/` are outside the gate entirely — and
+they are also ruff-excluded and omitted from the coverage denominator. The governed tiers nonetheless
+reach into them through **lazy imports inside bare `except Exception:` swallows** (67 such swallows in
+`cortex/brain.py` alone). Delete or break one of those targets and every gate stays green while the
+brain sets the faculty to `None` and ticks on without it — including `self_build_loop` and
+`self_mod_harness`, which *are* P0's self-building-code avenue, and `rose_language`, which is language.
+The canary derives the manifest by AST walk (never hand-maintained — the `_external_roots()` lesson) and
+asserts each target still imports. Current output: **15 ungoverned modules load-bearing for the governed
+tiers across 17 call sites.** It proves import-ability, not charge; that is deliberate, because
+import-ability is precisely what a deletion breaks and what the swallows hide.
+
 **Honesty guard (the crux):** reachability proves a module is *imported*, NOT that its output changes
 behaviour. "Utilized **appropriately**" (does the wire actually *charge*) is a second, per-faculty tier,
 proven by the runtime **neuter-A/B probe** (`scratchpad/smoke_drive_charge.py` → "BEHAVIOURAL CHARGE OK"
@@ -179,6 +191,7 @@ than CI, and all are cited from this tree:
 | 4 | **write-only consumer** — a faculty fed every tick, never read | `cortex/agency_monitor.py` — `observe()` runs live; nothing reads `agency()` / `controllability()` / `status()`, and no key reaches telemetry |
 | 5 | **constant wearing a signal's clothes** — present, plausible, never varies | `spikes.midbrain` (its novelty term is never enabled); `integration_competence` (assigned only in `Brain.__init__`); the `gated` trio (never *computed*, not merely never applied) |
 | 6 | **silent default** — a lookup table missing the cases that matter | `_ALLO_MOVE` had no entry for the four `JOINT_*_ROTATE` tokens, so `.get(action, (0.0, 0.0))` meant the commands that actually move the arm contributed **zero** to path integration. Fixed v4.72 |
+| 7 | **the registry nobody registered with** — a plug point, called every cycle, with zero plugs | `substrate/region_wiring.py` is *the* documented per-cycle faculty-charge registry, and its docstring asserted that "the daemon imports `wired_faculties` (which registers every adapter) at boot". **There is no `wired_faculties` module**, `learn_daemon.py:291` imports only `region_wiring`, and nothing anywhere calls `wire()` outside the self-check — which clears `_WIRED` first, so it proves the mechanism and says nothing about production. `charge_all()` has iterated an empty list every cycle for the life of the feature and the daemon logs `adapters=0`. Docstring corrected; the registry is still empty, and filling it is open P3 work |
 
 **The transferable rule:** *presence is not participation.* Being imported, being called, being in the
 snapshot, and having a value are four different things, and none of them is *changing an outcome*. When
@@ -214,8 +227,15 @@ found by an audit rather than by CI. That is the evidence this amendment rests o
 below was produced by the import-scoped pass described next and has NOT been re-adjudicated since the
 predictive-coding fix — treat it as a starting list to verify, not a verdict.
 
-**Mechanization: SPECIFIED, NOT YET BUILT.** A pure static AST pass (~1 s, no runtime cost). Two
-details are load-bearing, both found by implementing the naive version first and watching it fail:
+**Mechanization: BUILT — `substrate/method_dormancy_gate.py`, in `run_selfchecks` CORE.** A pure
+static AST pass (~1 s, no runtime cost). Current output on this tree: **56 update rules scanned,
+0 dormant, 16 UNCERTAIN, 5 `EXEMPT_METHOD` entries** (one of them an open `wire` reported as a
+standing TODO). That count is what makes it adoptable — an earlier draft of this same gate produced
+59 failures, which is the rubber-stamp shape that killed a different proposal above.
+
+**Three details are load-bearing, each found by implementing the naive version first and watching it
+fail.** The first two were predicted when this section was written; the third and the correction to
+the second were found by building it:
 
 1. **Import-scoped resolution.** Matching bare `ast.Attribute` call names across all reachable modules
    scores 0 failures / 47 UNCERTAIN — the name `learn` resolves in 20 unrelated modules, so it cannot
@@ -224,12 +244,32 @@ details are load-bearing, both found by implementing the naive version first and
 2. **Same-module callers COUNT, except under `if __name__ == "__main__"`.** Excluding the defining
    module produces a real false positive (`plasticity/meta_plasticity.py:261` legitimately drives
    `_Unit.learn` at `:131`). The `__main__` guard is precisely what isolates the genuine case.
+   **Correction found by building it:** that guard block is almost always a single line — `main()`.
+   The self-check's real body lives in a top-level `def main()`, so marking only the literal `if`
+   counts every assertion inside `main()` as a live caller. The first run scored 0 dormant *while its
+   own motivating case sat there dead*. The functions the guard calls must be marked too.
+3. **A function used as a VALUE is used.** `reasoning/arc_mint.py:224-228` registers its fitters in a
+   dispatch table — `("affine", 3, _fit_affine)` — so a pass inspecting only `ast.Call` reported all
+   five as dead: 5 false positives out of 12. Bare `Name`/`Attribute` references count as use.
 
-Under that rule the candidate set was 5. One — `cortex/predictive_coding.py` — has since been wired
-and charge-proven (above). The remaining four are unverified since: `hippocampus/affective_memory.py:173`,
-`neuromodulation/drive_reduction.py:196`, `neuromodulation/empowerment.py:86`,
-`plasticity/meta_plasticity.py:131`. Each still needs the three-way P3 disposition applied to it —
-wire-and-prove-charge, retire, or `EXEMPT_METHOD` with a reason — and none of that is done.
+**Scope, and it is the difference between adoptable and useless.** The gate audits a learning-verb
+**method** (inside a class) on a module the **module gate already proves reachable**. Widening either
+half re-introduces the 59-failure list — mostly module-level helpers inside `reasoning/` and
+`training/` files that the module gate deliberately scopes out.
+
+**Adjudication of the candidate set, now done.** The five-candidate list this section used to carry
+was stale, as it warned. Re-run under the built gate: `cortex/predictive_coding.py` wired and
+charge-proven (v4.71); `plasticity/meta_plasticity.py:131` and `neuromodulation/drive_reduction.py:196`
+confirmed **non-findings** — both have real non-`__main__` callers and reach the live path through the
+birth-time `census()` chain (`cortex/brain.py:379-385`), so they belong to the charge tier, not the
+call-site tier. `neuromodulation/empowerment.py:86` `reward()` is genuinely dead — its only call site
+is inside its own `main()`, and the live path calls the sibling `step_reward()` (`:91`), which
+recomputes rather than delegating; it is a **retire** candidate, and it is out of this gate's scope
+because it computes a signal rather than applying an update. `hippocampus/affective_memory.py:173`
+`consolidate()` is **confirmed dormant by the gate itself** and held as an open `wire` exemption.
+The gate also found one the list never had: `neuromodulation/drive_reduction.py:238 learned_map()`,
+a readout the verb match catches on the word "learn" — exempted as a named false positive rather than
+narrowed away, because narrowing to dodge it would also hide accessors that genuinely should be read.
 
 **Honesty guard.** (a) P3's neuter-A/B tier applies unchanged — a call site proves a *caller*, not a
 *charge*; adding a dead consumer to silence the gate is the failure this policy already forbids.
@@ -334,6 +374,23 @@ the same bit-exactness burden as any other P2 swap.
   `Wz` used forward and transposed backward, in hand-written numpy) and `hippocampus/ng_snn.py:137`
   runs a closed-form batch solve over its whole buffer each sleep tick. Neither uses autograd; both are
   non-local. Absence of `.backward()` is not evidence of locality.
+
+  **Verdict on both, since "review-enforced" had so far meant "unadjudicated" (2026-07-28):**
+
+  - `cerebellum/jepa_world_model.py:275-278` is a **real violation of the locality principle, on the
+    live wake tick.** `s += gp[i] * self.Wz[i][k]` reads the forward weight matrix transposed to carry
+    error backward — weight transport is precisely the biological implausibility e-prop exists to
+    avoid, and hand-writing it in numpy rather than calling autograd changes nothing about that. The
+    e-prop-compatible fix is **feedback alignment** (Lillicrap 2016): replace the transpose with a
+    *fixed random* feedback matrix `Bz`, which is local, needs no weight symmetry, and is known to
+    work on problems this shape. It is cheap and it is measurable — prediction error before/after on
+    the real tick, plus cosine against the transport gradient — so it is P2-eligible in a way most
+    swaps here are not. **Open work, with its benchmark already specified.**
+  - `hippocampus/ng_snn.py:137` `fit()` is **not** a violation. Greedy matching pursuit with an
+    analytical beta per block is a direct solve: no gradient is propagated through a network and no
+    weight is transported. It IS non-local, and the policy should say so distinctly rather than
+    lumping it in — "non-local" and "backprop" are different claims, and only the second is what this
+    rule forbids. Disposition: keep, and stop citing it as a pending violation.
 - **Verify-first + honest framing:** probe → act → prove (A/B / gate) → commit; report the true number
   including a regression; reject theater with evidence; never fake a capability, a metric, or a consumer.
 - **Runtime evidence outranks static reading.** Every decisive finding in the 2026-07 audits came from

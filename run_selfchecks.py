@@ -230,6 +230,8 @@ CORE = [
     "substrate.cockpit",  # THE one frontend: page + contract gate + queued-not-raced chat turn
     "substrate.dormancy_gate",  # Policy 3: assert every brain module is reachable from a live path or EXEMPT
     "substrate.replication_guard",  # Policy 4: assert one canonical Brain/LiveBrain/AutonomousArm (no replica)
+    "substrate.import_manifest",  # Policy 3: assert every reasoning/ module the live brain lazily imports still imports
+    "substrate.method_dormancy_gate",  # Policy 3 amendment: assert no update rule on a live module lacks a live caller
     "substrate.region_coherence",  # C1 batch-3: cross-region Kuramoto coherence + integration -> ignition bias
     "substrate.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
     "substrate.similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
