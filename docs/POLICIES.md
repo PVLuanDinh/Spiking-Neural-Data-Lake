@@ -321,7 +321,33 @@ idle out of habit, and do not treat CUDA as a special-occasion tier. Hardware: R
 assumption.** Ship the GPU path when a benchmark on the real workload shows it faster; do not ship it
 because CUDA is available. This is P2's "better requires a measurement that exists" applied to hardware.
 
-**MEASURED CROSSOVER — do not re-litigate this without new numbers.** For SNDL's elementwise
+**CROSSOVER RE-MEASURED 2026-07-28, and it MOVED — this policy asked for exactly that ("re-measure
+when populations grow; the crossover is a number, not a doctrine").** The range recorded below was
+optimistic. Measured again on the RTX 5070, torch 2.11.0+cu128, 300 iterations per point:
+
+| N | numpy | torch-CUDA | winner |
+|---:|---:|---:|---|
+| 240 | 0.0022 ms | 0.0627 ms | numpy, 34x |
+| 4,096 | 0.0028 ms | 0.0139 ms | numpy, 5x |
+| **24,576** | 0.0069 ms | 0.0136 ms | **numpy, 2x** |
+| **32,768** | 0.0075 ms | 0.0133 ms | **numpy, 1.8x** |
+| 262,144 | 0.5499 ms | 0.0133 ms | CUDA, 41x |
+
+numpy still wins at BOTH ends of the recorded 24,576-32,768 band, so the true crossover is somewhere
+between 32,768 and 262,144. The run was under machine load, which penalises numpy more than CUDA, so
+this errs in the conservative direction. The practical consequence is unchanged and now has more
+headroom: live populations of 24-240 are nowhere near it.
+
+**The live-tick CUDA perception path is measured at last, and it does not pay.** `cortex/brain.py:170`
+defaults `device="cuda"` and `_perceive_real()` runs a per-frame batch-of-1 forward pass every wake
+tick -- a GPU path that shipped without the benchmark honesty guard (a) demands. On the real live shape
+(1 frame x 15 timesteps x 2x34x34 -> 128 -> 64): **torch-CPU 0.073 ms, torch-CUDA 0.073 ms, 1.00x.**
+Not a regression like the 0.01x at width 38, but not a gain either -- it holds VRAM and adds a
+host-device transfer dependency for nothing. The default is LEFT AS IS pending a bit-exactness check,
+because guard (d) cuts both ways: moving a live numeric path OFF CUDA carries the same burden as moving
+one onto it. Flipping it is a follow-up with a controlled A/B, not a free win.
+
+**The original measurement, still valid.** For SNDL's elementwise
 spiking-update kernels, eager torch-CUDA on this card beats numpy-on-CPU only between
 **N ≈ 24,576 and 32,768** elements. Every population on the live tick is **24–240** wide — 100× to
 1300× short of that. Consequences, all measured:
