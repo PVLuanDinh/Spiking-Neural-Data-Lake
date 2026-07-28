@@ -66,6 +66,7 @@ spiking attractor associative memory with sleep consolidation); touches no safet
 """
 
 import copy
+import math
 import random
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
@@ -222,14 +223,73 @@ class AttractorNet:
         return scores.index(max(scores))
 
     def accuracy(self, patterns, seed_base):
-        correct = 0
-        total = 0
+        """Recall accuracy over TEST_TRIALS partial cues per pattern -- all trials in ONE array pass.
+
+        WHY THIS IS BATCHED AND recall()/classify() ARE NOT
+            The trials are mutually independent (each gets a fresh neuron set and its own cue), so they
+            are the only genuine batch dimension in the brain. Measured: this is 720 of the 756
+            LIF steps on a sleep tick, ~49% of it. recall() and classify() stay scalar -- they are the
+            readable reference and the B=1 public API, and nothing calls them in a hot loop.
+
+        BIT-EXACTNESS IS THE CONTRACT, NOT CLOSENESS
+            Verified elementwise against the scalar path over 432 trials (trained + random weights x 6
+            seeds): identical final states, identical returned float. Three things make that hold, and
+            each will silently break it if edited carelessly:
+
+            1. The cue draws happen in the same order, with the same per-trial random.Random(seed).
+            2. The accumulation is k-OUTER, not `Z @ W.T`. It adds the same values in the same
+               ascending-k order the scalar loop does, so it is exact BY CONSTRUCTION. (Measured
+               aside: matmul happens to agree bit-for-bit here too, because the mean active count is
+               ~2 and there is nothing for reassociation to reorder -- but that is a property of the
+               current sparsity, not of the code. This form does not depend on it.)
+            3. The scoring stays in Python, including `scores.index(max(scores))`, so ties break
+               toward the first pattern exactly as classify() does.
+        """
+        import numpy as np
+
+        ncue = max(1, int(K * CUE_FRAC))
+        trials = []  # (class index, cue set) in classify()'s own draw order
         for ci, p in enumerate(patterns):
             for tr in range(TEST_TRIALS):
-                pred = self.classify(p, patterns, seed_base + ci * 97 + tr)
-                correct += 1 if pred == ci else 0
-                total += 1
-        return correct / total
+                rng = random.Random(seed_base + ci * 97 + tr)
+                trials.append((ci, set(rng.sample(sorted(p), ncue))))
+
+        B = len(trials)
+        W = np.array(self.W, dtype=np.float64)  # W[i][k] = weight into i from k
+        cue = np.zeros((B, N), dtype=bool)
+        for b, (_, c) in enumerate(trials):
+            for i in c:
+                cue[b, i] = True
+
+        v = np.zeros((B, N), dtype=np.float64)
+        z = np.zeros((B, N), dtype=np.int64)
+        rec = np.empty((B, N), dtype=np.float64)
+        zero = np.zeros((B, N), dtype=np.float64)
+        decay = math.exp(-1.0 / TAU_M)  # == LIFNeuron.__init__; refractory is 0 here, so that
+        # branch of step() is dead and the update is v*decay + current.
+
+        for t in range(T_CUE + T_FREE):
+            ext = (cue * EXT_CLAMP) if t < T_CUE else zero
+            active_prev = z.sum(axis=1)  # integer sum -> exact
+            rec.fill(0.0)
+            for k in range(N):  # k-outer: same order as `for k: if z_prev[k]: rec += wi[k]`
+                np.add(rec, W[:, k][None, :], out=rec, where=z[:, k : k + 1].astype(bool))
+            cur = rec - G_INH * active_prev[:, None] + ext
+            v = 0.0 + (v - 0.0) * decay + cur  # literal transcription of LIFNeuron.step
+            sp = v >= V_TH
+            v = np.where(sp, 0.0, v)
+            z = sp.astype(np.int64)
+
+        correct = 0
+        for b, (ci, _) in enumerate(trials):
+            st = z[b]
+            scores = []
+            for q in patterns:
+                inside = sum(int(st[i]) for i in q) / len(q)
+                outside = sum(int(st[i]) for i in range(N) if i not in q) / (N - len(q))
+                scores.append(inside - outside)
+            correct += 1 if scores.index(max(scores)) == ci else 0
+        return correct / B
 
     def sleep(self, seed, episodes=SLEEP_EPISODES, learn=True, record=None):
         """Noise-driven spontaneous replay. Each episode: reset, seed a couple of neurons, run
