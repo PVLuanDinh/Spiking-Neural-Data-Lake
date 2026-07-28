@@ -9,7 +9,7 @@ the rule that stops the policy from being satisfied by theater.
 ## P1 — Brain-native / no-hardcode
 
 Every behaviour-arbitrating value must be a **learned weight** or a **running-baseline-relative** form
-(three-factor R-STDP / e-prop / feedback alignment; running EMA or `SignalCalibrator` quantile), not a
+(three-factor R-STDP / e-prop; running EMA or `SignalCalibrator` quantile), not a
 magic constant. Corollary: **never keep a constant fixed** — when a hardcode resists replacement, the
 blocking constraint is usually the bug, not the number.
 
@@ -54,6 +54,49 @@ faked with a dead consumer. (History: a coverage-audit once flagged PFC / amygda
 synfire as dormant; every one was REFUTED on runtime A/B. Static grep proves import-absence, not
 behavioural inertness — mark unproven cases UNCERTAIN, not dormant.)
 
+### P3 amendment — dormancy is per-METHOD, not per-module
+
+**If a module on a live path computes a prediction error, free energy, or any other learning signal,
+the update rule that consumes it must also be called from a live path.** A learning-verb method on a
+reachable module with no live-path call site is dormant, and must be wired, retired, or listed in
+`EXEMPT_METHOD` with a disposition and a reason.
+
+**Why module granularity is not enough.** `dormancy_gate.py:71` keys on the module basename, so a
+module passes P3 clean with half its capability dead. That is the live state of
+`cortex/predictive_coding.py`: the brain settles its 3-level Rao-Ballard net on **every wake tick**
+(`cortex/live_brain.py:161`), and the error-neuron architecture is implemented faithfully — but
+`PredictiveCodingNetwork.learn()` (`:244`) has exactly **one** call site in the tree, inside the
+module's own `__main__` self-check (`:332`). The live path calls `reset()` + `infer()` only, against
+weights that are seeded random at construction and never change (verified: `w1` is `array_equal`
+before and after 40 further wake ticks). We built predictive coding's inference and left its learning
+uncalled, and the module-level gate cannot see that.
+
+**Mechanization: SPECIFIED, NOT YET BUILT.** A pure static AST pass (~1 s, no runtime cost). Two
+details are load-bearing, both found by implementing the naive version first and watching it fail:
+
+1. **Import-scoped resolution.** Matching bare `ast.Attribute` call names across all reachable modules
+   scores 0 failures / 47 UNCERTAIN — the name `learn` resolves in 20 unrelated modules, so it cannot
+   even catch its own motivating case. A call site counts only if its module imports the defining
+   module.
+2. **Same-module callers COUNT, except under `if __name__ == "__main__"`.** Excluding the defining
+   module produces a real false positive (`plasticity/meta_plasticity.py:261` legitimately drives
+   `_Unit.learn` at `:131`). The `__main__` guard is precisely what isolates the genuine case.
+
+Under that rule the current candidate set is 5: `cortex/predictive_coding.py:244`,
+`hippocampus/affective_memory.py:173`, `neuromodulation/drive_reduction.py:196`,
+`neuromodulation/empowerment.py:86`, `plasticity/meta_plasticity.py:131`.
+
+**Honesty guard.** (a) P3's neuter-A/B tier applies unchanged — a call site proves a *caller*, not a
+*charge*; adding a dead consumer to silence the gate is the failure this policy already forbids.
+(b) An unresolved name is UNCERTAIN and hand-adjudicated, never auto-dormant. (c) `EXEMPT_METHOD`
+entries tagged `wire` that outlive their wave are reported as a standing TODO, so exempting everything
+is visible rather than silent.
+
+**Stated honestly: this amendment would have caught no past incident.** The audited history is
+*consumption* gaps (a producer with callers whose output nothing reads) and an unsupplied constructor
+argument — a call-site check passes all of them. It earns its place on the one live case it finds
+today, not on precedent.
+
 ## P4 — One brain / no replication
 
 **There is only 1 brain.** A build must **utilize** the canonical brain functionality, never
@@ -84,6 +127,18 @@ verify nothing is lost (P2 discipline).
   `arm_config.py`, `interpreter.py` — are modified only with explicit approval; the reflex E-STOP and
   cortisol/safety paths are never relaxed. Every wired drive enters selection **after** the E-STOP
   early-return, so it is safe by construction (proven: max drive + distance 0 → EMERGENCY_STOP).
+- **E-prop, not backprop (review-enforced, NO GATE).** Any backprop consideration pivots to **e-prop**
+  (Bellec 2020) — a local eligibility trace times a broadcast learning signal; no BPTT, no weight
+  transport — verified **cosine > 0.5** against an independent reverse-mode BPTT gradient. Verification
+  anchor: `reasoning/eprop.py:38-40`, with the independent gradient at `:191-192`.
+  This rule governed the project before it was written down (it is why v3.79 pivoted all learning to
+  e-prop on measured evidence: 73.14% vs the repo's backprop SSM at ~32%), which was the gap — a rule
+  enforced only by whoever remembered it.
+  **It is NOT mechanized, and a `.backward()` tripwire would be theatre:** it passes green today while
+  `cerebellum/jepa_world_model.py:272` performs explicit weight transport on every wake tick (the same
+  `Wz` used forward and transposed backward, in hand-written numpy) and `hippocampus/ng_snn.py:137`
+  runs a closed-form batch solve over its whole buffer each sleep tick. Neither uses autograd; both are
+  non-local. Absence of `.backward()` is not evidence of locality.
 - **Verify-first + honest framing:** probe → act → prove (A/B / gate) → commit; report the true number
   including a regression; reject theater with evidence; never fake a capability, a metric, or a consumer.
 - **Gated + reversible:** one change per commit, full gate green (`run_selfchecks` + `pytest` + `ruff`),

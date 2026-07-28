@@ -452,7 +452,10 @@ class Brain:
                 "multisensory_index": round(float(_idx), 3)
                 if _idx is not None
                 else None,  # >1 super-additive
-                "feedback_alignment": "gate-verified",  # random-feedback + local rule PoC (self-check)
+                # `feedback_alignment: "gate-verified"` was removed here: plasticity/feedback_alignment.py
+                # was DELETED in the Policy-2/3 retirement wave (dormancy_gate.py:75), but this key kept
+                # asserting the capability as a hardcoded string -- a P1 hardcode AND a claim about a
+                # mechanism the brain no longer contains. Nothing read it.
             }
         except Exception:
             self._braincog = {}
