@@ -12,6 +12,7 @@ fundamental computing problem", Science 358 (2017); BioHash, Ryali et al., ICML 
 
   python -m snn_data_lake.fly_hash        # (also run by run_selfchecks.py)
 """
+
 import random
 
 from snn_data_lake.signal_loop import build_default_library
@@ -31,7 +32,7 @@ class FlyHash:
 
     def tag(self, x):
         act = [sum(x[i] for i in idx) for idx in self.proj]
-        winners = sorted(range(self.m), key=lambda j: (act[j], -j), reverse=True)[:self.k]
+        winners = sorted(range(self.m), key=lambda j: (act[j], -j), reverse=True)[: self.k]
         return frozenset(winners)
 
 
@@ -44,7 +45,7 @@ class FlyHashIndex:
 
     def __init__(self, d=N, **kw):
         self.fh = FlyHash(d, **kw)
-        self.entries = []                                # [(tag, payload)]
+        self.entries = []  # [(tag, payload)]
 
     def add(self, vec, payload):
         self.entries.append((self.fh.tag(vec), payload))
@@ -64,7 +65,7 @@ def main():
         return [min(1.0, max(0.0, x + rng.uniform(-n, n))) for x in v]
 
     index = FlyHashIndex(d=N)
-    for lab in labels:                                   # enroll many jittered windows per command
+    for lab in labels:  # enroll many jittered windows per command
         for _ in range(20):
             index.add(jitter(library[lab], 0.08), lab)
 
@@ -77,10 +78,20 @@ def main():
 
     # LSH property: near-duplicate tags overlap far more than random-pair tags
     fh = index.fh
-    near = sum(overlap(fh.tag(jitter(library[labels[0]], 0.05)), fh.tag(library[labels[0]]))
-               for _ in range(50)) / 50
-    far = sum(overlap(fh.tag(library[labels[0]]), fh.tag(library[labels[1 + i % (len(labels) - 1)]]))
-              for i in range(50)) / 50
+    near = (
+        sum(
+            overlap(fh.tag(jitter(library[labels[0]], 0.05)), fh.tag(library[labels[0]]))
+            for _ in range(50)
+        )
+        / 50
+    )
+    far = (
+        sum(
+            overlap(fh.tag(library[labels[0]]), fh.tag(library[labels[1 + i % (len(labels) - 1)]]))
+            for i in range(50)
+        )
+        / 50
+    )
 
     print("=" * 60)
     print("FLYHASH INDEX — bio-inspired LSH candidate filter over stored windows")
@@ -91,12 +102,19 @@ def main():
     print("=" * 60)
 
     # ---- self-check: deterministic asserts ----
-    assert recall >= 0.9, f"FlyHash index must return the right command as top candidate ({recall:.2f})"
-    assert near > 2 * far, f"same-command tags must overlap >> different-command ({near:.1f} vs {far:.1f})"
-    assert FlyHash(N, seed=0).tag(library[labels[0]]) == FlyHash(N, seed=0).tag(library[labels[0]]), \
-        "same seed -> identical tag (deterministic)"
-    print(f"self-check OK: recall@1 {recall:.0%}, LSH separation {near:.1f}>>{far:.1f}; additive "
-          f"candidate filter, default matcher/cluster path unchanged; deterministic")
+    assert recall >= 0.9, (
+        f"FlyHash index must return the right command as top candidate ({recall:.2f})"
+    )
+    assert near > 2 * far, (
+        f"same-command tags must overlap >> different-command ({near:.1f} vs {far:.1f})"
+    )
+    assert FlyHash(N, seed=0).tag(library[labels[0]]) == FlyHash(N, seed=0).tag(
+        library[labels[0]]
+    ), "same seed -> identical tag (deterministic)"
+    print(
+        f"self-check OK: recall@1 {recall:.0%}, LSH separation {near:.1f}>>{far:.1f}; additive "
+        f"candidate filter, default matcher/cluster path unchanged; deterministic"
+    )
 
 
 if __name__ == "__main__":

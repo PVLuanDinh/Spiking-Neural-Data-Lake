@@ -26,6 +26,7 @@ scope.
 
 Run (own venv):  .venv-arm/Scripts/python snn_dreamer_6dof.py
 """
+
 import torch
 import torch.nn as nn
 import snntorch as snn
@@ -34,8 +35,8 @@ from snn_data_lake.reasoning.torch_device import resolve_device, enable
 
 _DEVICE = enable(resolve_device())
 
-NJ, ZD, ED = 6, 16, 2                    # joints, latent dim, end-effector dim (planar)
-H, STEPS, HID = 4, 8, 128                # horizon, LIF steps/net, hidden width
+NJ, ZD, ED = 6, 16, 2  # joints, latent dim, end-effector dim (planar)
+H, STEPS, HID = 4, 8, 128  # horizon, LIF steps/net, hidden width
 LINK = 0.5
 
 
@@ -72,9 +73,13 @@ class MLP(nn.Module):
 
     def __init__(self, in_dim, out_dim, hidden=HID):
         super().__init__()
-        self.net = nn.Sequential(nn.Linear(in_dim, hidden), nn.ReLU(),
-                                 nn.Linear(hidden, hidden), nn.ReLU(),
-                                 nn.Linear(hidden, out_dim))
+        self.net = nn.Sequential(
+            nn.Linear(in_dim, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, out_dim),
+        )
 
     def forward(self, x):
         return self.net(x)
@@ -88,7 +93,7 @@ def _split(out):
     """Split a net output into (mu, logsig) with logsig clamped LOW -> stochastic but low-noise
     latent (so the decoder can still ground it). KL keeps posterior near the transition prior."""
     mu, ls = out.chunk(2, -1)
-    return mu, ls.clamp(-4.0, -2.0)            # sigma ~0.018-0.135: stochastic but low-noise
+    return mu, ls.clamp(-4.0, -2.0)  # sigma ~0.018-0.135: stochastic but low-noise
 
 
 def kl(mu_q, ls_q, mu_p, ls_p):
@@ -99,9 +104,9 @@ def kl(mu_q, ls_q, mu_p, ls_p):
 class WorldModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.enc = MLP(NJ, 2 * ZD)                # state -> posterior (mu, logsig)
-        self.trans = MLP(ZD + NJ, 2 * ZD)         # (z, action) -> next-latent prior
-        self.dec = MLP(ZD, ED)                    # z -> end-effector (grounds the latent)
+        self.enc = MLP(NJ, 2 * ZD)  # state -> posterior (mu, logsig)
+        self.trans = MLP(ZD + NJ, 2 * ZD)  # (z, action) -> next-latent prior
+        self.dec = MLP(ZD, ED)  # z -> end-effector (grounds the latent)
 
     def posterior(self, angles):
         return _split(self.enc(angles))
@@ -114,7 +119,7 @@ def reach(theta, target):
     return (fk6(theta) - target).pow(2).sum(-1).sqrt()
 
 
-LIM = 0.4                                # joint limit (rad) — keeps the 6-link FK smooth/learnable
+LIM = 0.4  # joint limit (rad) — keeps the 6-link FK smooth/learnable
 
 
 def start_target(batch, gen):
@@ -131,7 +136,7 @@ def collect(actor, wm, gen, batch=128, explore=0.3):
         for _ in range(H):
             z = sample(*wm.posterior(theta))
             a = actor(torch.cat([z, target], -1)) + explore * torch.randn(batch, NJ)
-            theta = (theta + 0.2 * torch.tanh(a)).clamp(-LIM, LIM)   # actuation + joint limits
+            theta = (theta + 0.2 * torch.tanh(a)).clamp(-LIM, LIM)  # actuation + joint limits
             seq.append((theta.clone(), a.clone(), fk6(theta)))
         return target, seq, reach(theta, target).mean().item()
 
@@ -156,7 +161,9 @@ def update_world_model(wm, w_opt, seq, iters=10):
                 kl_loss = kl_loss + kl(mu_q, ls_q, mu_p, ls_p)
             z_prev = z.detach()
         loss = recon / H + pred / max(1, H - 1) + 0.1 * kl_loss / max(1, H - 1)
-        w_opt.zero_grad(); loss.backward(); w_opt.step()
+        w_opt.zero_grad()
+        loss.backward()
+        w_opt.step()
     return (recon / H).item() ** 0.5
 
 
@@ -173,10 +180,12 @@ def update_actor_critic(wm, actor, critic, a_opt, c_opt, gen, iters=4):
         for t in range(H):
             a = actor(torch.cat([z, tgt], -1))
             z = sample(*wm.prior(z, a))
-            disc_r = disc_r + (0.95 ** t) * (-(wm.dec(z) - tgt).pow(2).sum(-1))
-        boot = (0.95 ** H) * critic(torch.cat([z, tgt], -1)).squeeze(-1).detach()
+            disc_r = disc_r + (0.95**t) * (-(wm.dec(z) - tgt).pow(2).sum(-1))
+        boot = (0.95**H) * critic(torch.cat([z, tgt], -1)).squeeze(-1).detach()
         a_loss = -(disc_r + boot).mean()
-        a_opt.zero_grad(); a_loss.backward(); a_opt.step()
+        a_opt.zero_grad()
+        a_loss.backward()
+        a_opt.step()
 
         # CRITIC: no-grad rollout -> Monte-Carlo returns, fit V(z_t)
         with torch.no_grad():
@@ -185,15 +194,19 @@ def update_actor_critic(wm, actor, critic, a_opt, c_opt, gen, iters=4):
             for t in range(H):
                 a = actor(torch.cat([z, tgt], -1))
                 z = sample(*wm.prior(z, a))
-                zs.append(z); rs.append(-(wm.dec(z) - tgt).pow(2).sum(-1))
+                zs.append(z)
+                rs.append(-(wm.dec(z) - tgt).pow(2).sum(-1))
             ret, tgts = torch.zeros(B), []
             for t in reversed(range(H)):
-                ret = rs[t] + 0.95 * ret; tgts.insert(0, ret)
+                ret = rs[t] + 0.95 * ret
+                tgts.insert(0, ret)
             targets, zstack = torch.stack(tgts), torch.stack(zs)
         tgt_rep = tgt.unsqueeze(0).expand(H, B, ED)
         value = critic(torch.cat([zstack, tgt_rep], -1).reshape(H * B, ZD + ED)).reshape(H, B)
         c_loss = (value - targets).pow(2).mean()
-        c_opt.zero_grad(); c_loss.backward(); c_opt.step()
+        c_opt.zero_grad()
+        c_loss.backward()
+        c_opt.step()
         c_loss_val = c_loss.item()
     for p in wm.parameters():
         p.requires_grad_(True)
@@ -236,7 +249,9 @@ def main():
     print("DREAMER-LITE 6-DOF — spiking world-model agent (stochastic latent + value)")
     print("=" * 66)
     print(f"backend         : torch {torch.__version__}, snntorch (surrogate)")
-    print(f"arm             : {NJ}-joint planar redundant arm (6 actuators -> 2D tip); latent ZD={ZD}")
+    print(
+        f"arm             : {NJ}-joint planar redundant arm (6 actuators -> 2D tip); latent ZD={ZD}"
+    )
     print(f"real reach dist : no-op {noop:.3f} m  ->  trained {final:.3f} m")
     print(f"world-model recon (decoded EE): {recon0:.3f} -> {recon_err:.3f} m")
     print(f"critic loss     : {crit0:.3f} -> {crit_final:.3f}  (value fit to imagined returns)")
@@ -246,10 +261,14 @@ def main():
     # bound tolerant to snntorch-version init variance (0.26 on the pinned 1.0.0, ~0.34 on newer);
     # still >3x below the untrained recon (~1.33) -> the latent is grounded either way.
     assert recon_err < 0.40, f"latent world model never grounded to EE: recon {recon_err:.3f} m"
-    assert final < 0.7 * noop, f"actor did not learn to reach the 6-joint arm: {noop:.3f}->{final:.3f}"
+    assert final < 0.7 * noop, (
+        f"actor did not learn to reach the 6-joint arm: {noop:.3f}->{final:.3f}"
+    )
     assert crit_final < crit0, f"value function did not fit returns: {crit0:.3f}->{crit_final:.3f}"
-    print(f"self-check OK: 6-DOF spiking Dreamer — stochastic-latent world model grounded "
-          f"(recon {recon_err:.3f} m), value-guided actor reaches (real {noop:.3f}->{final:.3f} m)")
+    print(
+        f"self-check OK: 6-DOF spiking Dreamer — stochastic-latent world model grounded "
+        f"(recon {recon_err:.3f} m), value-guided actor reaches (real {noop:.3f}->{final:.3f} m)"
+    )
 
 
 if __name__ == "__main__":

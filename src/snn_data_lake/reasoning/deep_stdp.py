@@ -59,6 +59,7 @@ Run (defaults finish a smoke run in a few minutes on GPU):
 Scale knobs: NORD_C NORD_M NORD_TRAIN NORD_TEST NORD_GPU NORD_CTHRESH
 Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
 """
+
 import os
 
 import torch
@@ -81,7 +82,7 @@ from snn_data_lake.reasoning.snn_mnist_stdp import (
     load_mnist,
 )
 
-K = 5          # conv kernel size (single input channel, valid conv, stride 1)
+K = 5  # conv kernel size (single input channel, valid conv, stride 1)
 
 
 def _env(key, default):
@@ -102,41 +103,41 @@ class FcStdp:
     def __init__(self, n_in, m):
         self.n_in = n_in
         self.m = m
-        self.W = torch.rand(m, n_in) * 0.3        # lands on default device (GPU-safe)
+        self.W = torch.rand(m, n_in) * 0.3  # lands on default device (GPU-safe)
         self._normalise()
         # snn.Leaky with unreachable threshold: pure leaky integration, then our
         # own adaptive-threshold + WTA (same trick as snn_mnist_stdp).
         self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
-        self.theta = torch.zeros(m)               # per-neuron adaptive threshold
+        self.theta = torch.zeros(m)  # per-neuron adaptive threshold
 
     def _normalise(self):
         s = self.W.sum(dim=1, keepdim=True).clamp_min(1e-6)
-        self.W *= (W_NORM / s)
+        self.W *= W_NORM / s
 
     def run(self, vec, learn):
         """Rate-code the [n_in] intensity vector and simulate T steps. Returns the
         prototype spike-count vector [m]. STDP + k-WTA=1 only when learn=True."""
-        vec = vec.to(self.W.device).reshape(-1)   # GPU-safe: match network device
+        vec = vec.to(self.W.device).reshape(-1)  # GPU-safe: match network device
         mem = self.lif.init_leaky()
         x_pre = torch.zeros(self.n_in)
         counts = torch.zeros(self.m)
         rates = vec * MAX_RATE
         for _ in range(T):
-            s_in = (torch.rand(self.n_in) < rates).float()   # Poisson input spikes
-            x_pre = x_pre * self.pre_decay + s_in            # pre-synaptic trace
+            s_in = (torch.rand(self.n_in) < rates).float()  # Poisson input spikes
+            x_pre = x_pre * self.pre_decay + s_in  # pre-synaptic trace
             cur = self.W @ s_in
-            _, mem = self.lif(cur, mem)                      # leaky integration
+            _, mem = self.lif(cur, mem)  # leaky integration
             eff = mem - self.theta
             cand = (eff > THRESH).nonzero(as_tuple=True)[0]
             if cand.numel() > 0:
-                wi = int(cand[torch.topk(eff[cand], 1).indices].item())   # k-WTA=1
+                wi = int(cand[torch.topk(eff[cand], 1).indices].item())  # k-WTA=1
                 counts[wi] += 1
                 if learn:
-                    self.W[wi] += LR * x_pre                 # STDP potentiation
+                    self.W[wi] += LR * x_pre  # STDP potentiation
                     self.W[wi].clamp_(0.0, WMAX)
-                    self.theta[wi] += THETA_PLUS             # raise its own bar
-                mem = torch.zeros(self.m)                    # lateral inhibition reset
+                    self.theta[wi] += THETA_PLUS  # raise its own bar
+                mem = torch.zeros(self.m)  # lateral inhibition reset
             if learn:
                 self.theta *= THETA_DECAY
         if learn:
@@ -151,42 +152,42 @@ class ConvStdp:
     def __init__(self, C, k=K, cthresh=None):
         self.C = C
         self.k = k
-        self.hout = 28 - k + 1                    # valid conv, stride 1 -> 24 for k=5
+        self.hout = 28 - k + 1  # valid conv, stride 1 -> 24 for k=5
         self.cthresh = THRESH if cthresh is None else cthresh
         # Fan-in-proportional homeostasis: scale the kernel-sum target by the
         # patch/full-image input-count ratio so each conv weight has ~the same
         # magnitude as a flat-layer weight -> the reused THRESH stays meaningful.
         self.cwnorm = W_NORM * (k * k) / N_IN
-        self.Wc = torch.rand(C, k * k) * 0.3      # shared kernels, one row per map
+        self.Wc = torch.rand(C, k * k) * 0.3  # shared kernels, one row per map
         self._normalise()
         self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
-        self.theta = torch.zeros(C)              # per-map adaptive threshold
-        self.pool = max(1, self.hout // 6)       # max-pool to ~6x6 (keeps layer-2
+        self.theta = torch.zeros(C)  # per-map adaptive threshold
+        self.pool = max(1, self.hout // 6)  # max-pool to ~6x6 (keeps layer-2
         #                                          FC in its calibrated fan-in regime)
 
     def _normalise(self):
         s = self.Wc.sum(dim=1, keepdim=True).clamp_min(1e-6)
-        self.Wc *= (self.cwnorm / s)
+        self.Wc *= self.cwnorm / s
 
     def _forward(self, image):
         """Simulate one image for T steps. Returns (spike-count map [C,hout,hout],
         final presynaptic input trace [28,28])."""
-        img = image.to(self.Wc.device).reshape(28, 28)       # GPU-safe
-        weight = self.Wc.view(self.C, 1, self.k, self.k)     # [C,1,k,k] for conv2d
+        img = image.to(self.Wc.device).reshape(28, 28)  # GPU-safe
+        weight = self.Wc.view(self.C, 1, self.k, self.k)  # [C,1,k,k] for conv2d
         mem = self.lif.init_leaky()
         x_pre = torch.zeros(28, 28)
         cnt = torch.zeros(self.C, self.hout, self.hout)
         rates = img * MAX_RATE
         for _ in range(T):
-            s_in = (torch.rand(28, 28) < rates).float()      # Poisson input spikes
-            x_pre = x_pre * self.pre_decay + s_in            # pre-synaptic trace
-            cur = F.conv2d(s_in.view(1, 1, 28, 28), weight)[0]   # [C,hout,hout]
-            _, mem = self.lif(cur, mem)                      # leaky integration
+            s_in = (torch.rand(28, 28) < rates).float()  # Poisson input spikes
+            x_pre = x_pre * self.pre_decay + s_in  # pre-synaptic trace
+            cur = F.conv2d(s_in.view(1, 1, 28, 28), weight)[0]  # [C,hout,hout]
+            _, mem = self.lif(cur, mem)  # leaky integration
             eff = mem - self.theta.view(self.C, 1, 1)
             sp = eff > self.cthresh
             cnt += sp.to(cnt.dtype)
-            mem = mem * (~sp).to(mem.dtype)                  # soft-reset spiked units
+            mem = mem * (~sp).to(mem.dtype)  # soft-reset spiked units
         return cnt, x_pre
 
     def train_image(self, image):
@@ -195,21 +196,21 @@ class ConvStdp:
         patch, adaptive-threshold homeostasis, kernel renormalisation."""
         cnt, x_pre = self._forward(image)
         flat = cnt.view(self.C, -1)
-        best_val, best_idx = flat.max(dim=1)     # per map: its strongest location
+        best_val, best_idx = flat.max(dim=1)  # per map: its strongest location
         order = torch.argsort(best_val, descending=True)
         taken = set()
         for m in order.tolist():
-            if best_val[m].item() <= 0:          # never crossed threshold -> skip
+            if best_val[m].item() <= 0:  # never crossed threshold -> skip
                 continue
             pos = int(best_idx[m].item())
-            if pos in taken:                     # at most one map wins a position
+            if pos in taken:  # at most one map wins a position
                 continue
             taken.add(pos)
-            y, x = divmod(pos, self.hout)        # output loc -> input patch top-left
-            patch = x_pre[y:y + self.k, x:x + self.k].reshape(-1)
-            self.Wc[m] += LR * patch             # STDP toward the local input trace
+            y, x = divmod(pos, self.hout)  # output loc -> input patch top-left
+            patch = x_pre[y : y + self.k, x : x + self.k].reshape(-1)
+            self.Wc[m] += LR * patch  # STDP toward the local input trace
             self.Wc[m].clamp_(0.0, WMAX)
-            self.theta[m] += THETA_PLUS          # this map raises its own bar
+            self.theta[m] += THETA_PLUS  # this map raises its own bar
         self.theta *= THETA_DECAY
         self._normalise()
 
@@ -243,7 +244,7 @@ class TwoLayerNet:
     """Deep: frozen conv-STDP layer 1 -> pooled features -> FC-STDP prototypes."""
 
     def __init__(self, conv, m):
-        self.conv = conv                         # already trained + frozen
+        self.conv = conv  # already trained + frozen
         self.fc = FcStdp(conv.feat_dim(), m)
 
     def train_image(self, image):
@@ -262,7 +263,7 @@ def assign_labels(net, X, Y, m):
         resp[:, int(y)] += net.run(img, learn=False)
         per_class[int(y)] += 1
     resp /= per_class.clamp_min(1)
-    return resp.argmax(dim=1)                     # neuron -> assigned class
+    return resp.argmax(dim=1)  # neuron -> assigned class
 
 
 def evaluate(net, X, Y, assignment, m):
@@ -273,7 +274,7 @@ def evaluate(net, X, Y, assignment, m):
         for c in range(10):
             mask = assignment == c
             if mask.any():
-                scores[c] = counts[mask].sum()   # predicted = best-voting class
+                scores[c] = counts[mask].sum()  # predicted = best-voting class
         if int(scores.argmax().item()) == int(y):
             correct += 1
     return correct / len(Y)

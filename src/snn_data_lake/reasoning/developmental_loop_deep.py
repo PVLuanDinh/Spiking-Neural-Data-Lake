@@ -60,6 +60,7 @@ Scale knobs (env): NORD_CYCLES (15, >10 so phase-2 revisits) NORD_C1 (30) NORD_T
                    NORD_CAP (1, anti-fixation) NORD_TRAIN (10000) NORD_TEST (2000) NORD_GPU
 Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
 """
+
 import os
 import sys
 import time
@@ -81,9 +82,13 @@ from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
 # reference accuracies to compare against (printed, and used as the honest acceptance bar):
-VOTE_LOOP_BAR = 0.85    # developmental_loop.py STDP-prototype + neuron-label VOTE readout (best 88.8%)
-STATIC_JOINT = 0.951    # deep_stdp_readout.py (v3.53) LINEAR readout on frozen conv1, joint over all digits
-BASE_LR = 0.01          # linear-readout Adam lr (matches deep_stdp_readout.linear_readout)
+VOTE_LOOP_BAR = (
+    0.85  # developmental_loop.py STDP-prototype + neuron-label VOTE readout (best 88.8%)
+)
+STATIC_JOINT = (
+    0.951  # deep_stdp_readout.py (v3.53) LINEAR readout on frozen conv1, joint over all digits
+)
+BASE_LR = 0.01  # linear-readout Adam lr (matches deep_stdp_readout.linear_readout)
 WEIGHT_DECAY = 1e-4
 
 
@@ -119,24 +124,36 @@ def main():
     dev = resolve_device()
     torch.manual_seed(0)
 
-    CYCLES = _envi("NORD_CYCLES", 15)      # >10 so curiosity REVISITS the weakest digits after covering all 10
-    C1 = _envi("NORD_C1", 30)              # conv1 feature maps
-    T_LAT = _envi("NORD_T", 15)            # latency steps
+    CYCLES = _envi(
+        "NORD_CYCLES", 15
+    )  # >10 so curiosity REVISITS the weakest digits after covering all 10
+    C1 = _envi("NORD_C1", 30)  # conv1 feature maps
+    T_LAT = _envi("NORD_T", 15)  # latency steps
     L1_EPOCHS = _envi("NORD_L1_EPOCHS", 3)  # unsupervised conv1 pre-training epochs
-    PER = _envi("NORD_PER", 300)           # objective-digit train features per cycle
-    REPLAY = _envi("NORD_REPLAY", 200)     # replayed exemplars stored + rehearsed per learned digit (anti-forgetting).
+    PER = _envi("NORD_PER", 300)  # objective-digit train features per cycle
+    REPLAY = _envi(
+        "NORD_REPLAY", 200
+    )  # replayed exemplars stored + rehearsed per learned digit (anti-forgetting).
     #                                        200/300 verified: 93.5% (-1.6% vs joint); 80/150 gave 90.7% (-4.4%) --
     #                                        more rehearsal narrows the continual-vs-joint forgetting gap.
-    SGD = _envi("NORD_SGD", 300)           # Adam steps per cycle on the objective + replay batch
-    CAP = _envi("NORD_CAP", 1)             # max consecutive revisits of the SAME digit (anti-fixation -> diversify)
+    SGD = _envi("NORD_SGD", 300)  # Adam steps per cycle on the objective + replay batch
+    CAP = _envi(
+        "NORD_CAP", 1
+    )  # max consecutive revisits of the SAME digit (anti-fixation -> diversify)
     TRAIN_N = _envi("NORD_TRAIN", 10000)
     TEST_N = _envi("NORD_TEST", 2000)
 
     print("=" * 90)
-    print("DEEP DEVELOPMENTAL LOOP -- unsupervised conv1 features (frozen) + CONTINUAL linear readout")
-    print("  autonomy machinery (curiosity/curriculum/replay) preserved; accuracy path = conv1 + linear")
-    print(f"device={dev}  cycles={CYCLES}  C1={C1}  T={T_LAT}  L1_epochs={L1_EPOCHS}  per={PER}  "
-          f"replay={REPLAY}  sgd={SGD}  cap={CAP}  train={TRAIN_N}  test={TEST_N}")
+    print(
+        "DEEP DEVELOPMENTAL LOOP -- unsupervised conv1 features (frozen) + CONTINUAL linear readout"
+    )
+    print(
+        "  autonomy machinery (curiosity/curriculum/replay) preserved; accuracy path = conv1 + linear"
+    )
+    print(
+        f"device={dev}  cycles={CYCLES}  C1={C1}  T={T_LAT}  L1_epochs={L1_EPOCHS}  per={PER}  "
+        f"replay={REPLAY}  sgd={SGD}  cap={CAP}  train={TRAIN_N}  test={TEST_N}"
+    )
     print("=" * 90)
 
     print("loading MNIST...")
@@ -144,17 +161,23 @@ def main():
 
     # ---- STAGE 1: UNSUPERVISED PERCEPTION (pre-train conv1, no labels, then FREEZE) ----
     torch.manual_seed(0)
-    print(f"\n[stage 1] pre-training conv1 latency-STDP (UNSUPERVISED, {L1_EPOCHS} epochs, no labels)...")
+    print(
+        f"\n[stage 1] pre-training conv1 latency-STDP (UNSUPERVISED, {L1_EPOCHS} epochs, no labels)..."
+    )
     conv = ConvLatencyStdp(C1, T_LAT)
     for ep in range(L1_EPOCHS):
         for i, img in enumerate(Xtr):
             conv.train_image(img)
             if (i + 1) % 2000 == 0:
                 print(f"  conv1 ep{ep + 1}/{L1_EPOCHS}: {i + 1}/{len(Xtr)} images")
-        print(f"  [conv1] epoch {ep + 1}/{L1_EPOCHS} kernel diversity (cos-sim) = {conv.kernel_diversity():.3f}")
+        print(
+            f"  [conv1] epoch {ep + 1}/{L1_EPOCHS} kernel diversity (cos-sim) = {conv.kernel_diversity():.3f}"
+        )
     diversity = conv.kernel_diversity()
-    print(f"[stage 1] conv1 FROZEN; feat_dim = {conv.feat_dim()}; kernel diversity = {diversity:.3f} "
-          f"({'no collapse' if diversity < 0.6 else 'WARNING: collapse (>=0.6)'})")
+    print(
+        f"[stage 1] conv1 FROZEN; feat_dim = {conv.feat_dim()}; kernel diversity = {diversity:.3f} "
+        f"({'no collapse' if diversity < 0.6 else 'WARNING: collapse (>=0.6)'})"
+    )
 
     # ---- CACHE conv1 features ONCE for the whole train + test pool (the speed win) ----
     print("\n[cache] pre-computing frozen conv1 features for train + test pools (once)...")
@@ -165,21 +188,25 @@ def main():
     D = Ftr.shape[1]
     tr_by = {d: (Ytr == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
     te_by = {d: (Yte == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
-    print(f"[cache] train cache {tuple(Ftr.shape)}  test cache {tuple(Fte.shape)}  (train/test kept separate)")
+    print(
+        f"[cache] train cache {tuple(Ftr.shape)}  test cache {tuple(Fte.shape)}  (train/test kept separate)"
+    )
 
     # ---- STAGE 2: the CONTINUAL linear readout (single persistent head, never re-initialised) ----
     clf = nn.Linear(D, 10).to(dev)
     opt = torch.optim.Adam(clf.parameters(), lr=BASE_LR, weight_decay=WEIGHT_DECAY)
 
     # ---- the loop's OWN autonomy machinery (verbatim from developmental_loop.py) ----
-    curiosity = SpikingCuriosityDrive(seed=0)                         # spiking learning-progress + novelty
-    curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)   # self-paced mastery gate (LIF accumulator)
-    lc = LocusCoeruleus()                                             # noradrenaline: salient/novel -> higher gain
-    learned = []                                                     # digits chosen/learned so far
-    competence = {d: 0.0 for d in range(10)}                        # self-measured competence per digit (test cache)
-    replay_pool = {}                                                # REPLAY: stored cached-feature rows per learned digit
-    consec = {d: 0 for d in range(10)}                             # consecutive-pick counter (phase-2 fixation guard)
-    curve = []                                                      # overall test accuracy per cycle (the accuracy CURVE)
+    curiosity = SpikingCuriosityDrive(seed=0)  # spiking learning-progress + novelty
+    curriculum = SpikingCurriculum(
+        n_stages=10, patience=2, seed=0
+    )  # self-paced mastery gate (LIF accumulator)
+    lc = LocusCoeruleus()  # noradrenaline: salient/novel -> higher gain
+    learned = []  # digits chosen/learned so far
+    competence = {d: 0.0 for d in range(10)}  # self-measured competence per digit (test cache)
+    replay_pool = {}  # REPLAY: stored cached-feature rows per learned digit
+    consec = {d: 0 for d in range(10)}  # consecutive-pick counter (phase-2 fixation guard)
+    curve = []  # overall test accuracy per cycle (the accuracy CURVE)
 
     for cyc in range(1, CYCLES + 1):
         # ---- DECISION: spiking curiosity picks the objective. Phase 1 explores UNSEEN digits;
@@ -187,27 +214,31 @@ def main():
         #      frontier, with the NORD_CAP anti-fixation guard (copied verbatim). ----
         unseen = [d for d in range(10) if d not in learned]
         candidates = unseen if unseen else list(range(10))
-        if not unseen:                                             # phase 2: block a digit revisited CAP times in a row
+        if not unseen:  # phase 2: block a digit revisited CAP times in a row
             allowed = [d for d in candidates if consec[d] < CAP]
             candidates = allowed or candidates
         objective = curiosity.most_curious(candidates)
         consec = {d: (consec[d] + 1 if d == objective else 0) for d in range(10)}
         is_new = objective not in learned
-        print(f"\nCYCLE {cyc}  ->  OBJECTIVE: digit {objective}  "
-              f"[{'explore (novel)' if is_new else 'revisit (curiosity frontier)'}; "
-              f"curiosity_value={curiosity.curiosity_value(objective):.3f}, novelty={curiosity.novelty(objective):.2f}]")
+        print(
+            f"\nCYCLE {cyc}  ->  OBJECTIVE: digit {objective}  "
+            f"[{'explore (novel)' if is_new else 'revisit (curiosity frontier)'}; "
+            f"curiosity_value={curiosity.curiosity_value(objective):.3f}, novelty={curiosity.novelty(objective):.2f}]"
+        )
 
         # ---- NEUROMODULATION: a novel / hard objective is SALIENT -> locus-coeruleus phasic NA burst
         #      -> a (bounded, stable) boost to the readout learning rate. Faithful to the loop's neuromod. ----
         salience = 1.0 if is_new else (1.0 - competence[objective])
-        na = lc.step(salience)                                     # NA firing rate in [0,1]
-        gain = 1.0 + 0.5 * na                                      # gentle 1x..1.5x lr boost (kept stable, not 3x)
+        na = lc.step(salience)  # NA firing rate in [0,1]
+        gain = 1.0 + 0.5 * na  # gentle 1x..1.5x lr boost (kept stable, not 3x)
         for g in opt.param_groups:
             g["lr"] = BASE_LR * gain
 
         # ---- LEARN: continual SGD on the objective digit's cached features + a BALANCED REPLAY of every
         #      previously-learned digit's stored cached features (rehearsal = anti-forgetting). ----
-        n_train = PER if is_new else max(REPLAY, PER // 4)         # revisits use a lighter dose (mirror the loop)
+        n_train = (
+            PER if is_new else max(REPLAY, PER // 4)
+        )  # revisits use a lighter dose (mirror the loop)
         obj_rows = tr_by[objective][:n_train]
         others = [d for d in learned if d != objective]
         replay_rows = [r for d in others for r in replay_pool.get(d, [])]
@@ -216,26 +247,32 @@ def main():
         Xb, yb = Ftr[idx], ytr[idx]
         t0 = time.time()
         clf.train()
-        for _ in range(SGD):                                      # full-batch Adam on the objective + replay batch
+        for _ in range(SGD):  # full-batch Adam on the objective + replay batch
             opt.zero_grad()
             loss = F.cross_entropy(clf(Xb), yb)
             loss.backward()
             opt.step()
         clf.eval()
         dt = time.time() - t0
-        if is_new:                                                # store this digit's replay pool (held-out from the training rows)
-            replay_pool[objective] = tr_by[objective][n_train:n_train + REPLAY]
+        if is_new:  # store this digit's replay pool (held-out from the training rows)
+            replay_pool[objective] = tr_by[objective][n_train : n_train + REPLAY]
             learned.append(objective)
-        print(f"  [neuromod]         locus-coeruleus NA {na:.2f} ({lc.mode()}) on salience {salience:.2f} "
-              f"-> readout lr gain x{gain:.2f}")
-        print(f"  [continual-readout] {SGD} Adam steps on {len(obj_rows)} digit-{objective} feats + "
-              f"{len(replay_rows)} replayed feats (loss {float(loss):.3f}, {dt:.1f}s)")
+        print(
+            f"  [neuromod]         locus-coeruleus NA {na:.2f} ({lc.mode()}) on salience {salience:.2f} "
+            f"-> readout lr gain x{gain:.2f}"
+        )
+        print(
+            f"  [continual-readout] {SGD} Adam steps on {len(obj_rows)} digit-{objective} feats + "
+            f"{len(replay_rows)} replayed feats (loss {float(loss):.3f}, {dt:.1f}s)"
+        )
 
         # ---- MEASURE competence: held-out linear-readout accuracy per learned digit on the TEST cache
         #      (the loop's self-evaluation). Overall (pooled) + per-digit. Train/test never mix. ----
         for d in learned:
             competence[d] = _accuracy(clf, Fte, yte, te_by[d])
-        pooled_test_idx = torch.tensor([r for d in learned for r in te_by[d]], dtype=torch.long, device=dev)
+        pooled_test_idx = torch.tensor(
+            [r for d in learned for r in te_by[d]], dtype=torch.long, device=dev
+        )
         overall = _accuracy(clf, Fte, yte, pooled_test_idx.tolist())
         curve.append(overall)
 
@@ -244,27 +281,35 @@ def main():
         curiosity.observe(objective, 1.0 - competence[objective])
         lp = curiosity.learning_progress(objective)
         mastered_now = curriculum.observe(lp)
-        print(f"  [self-improve]      competence over {sorted(learned)} = {overall:.1%}  (digit {objective}: "
-              f"{competence[objective]:.1%}, spiking learning-progress={lp:.3f}); "
-              f"curriculum mastered {curriculum.mastered}/10{' [+advanced]' if mastered_now else ''}")
+        print(
+            f"  [self-improve]      competence over {sorted(learned)} = {overall:.1%}  (digit {objective}: "
+            f"{competence[objective]:.1%}, spiking learning-progress={lp:.3f}); "
+            f"curriculum mastered {curriculum.mastered}/10{' [+advanced]' if mastered_now else ''}"
+        )
 
     # ---- SUMMARY: final competence + the accuracy CURVE + honest comparison to the two references ----
     final_mean = sum(competence[d] for d in learned) / max(1, len(learned))
     final_overall = curve[-1] if curve else 0.0
     gap_joint = final_overall - STATIC_JOINT
     print("\n" + "=" * 90)
-    print(f"DEEP DEVELOPMENTAL LOOP COMPLETE: the loop autonomously chose + learned {sorted(learned)} over "
-          f"{CYCLES} cycles;\n  perception UNSUPERVISED (frozen conv1), only the CONTINUAL linear readout supervised; "
-          f"curriculum mastered {curriculum.mastered}/10.")
+    print(
+        f"DEEP DEVELOPMENTAL LOOP COMPLETE: the loop autonomously chose + learned {sorted(learned)} over "
+        f"{CYCLES} cycles;\n  perception UNSUPERVISED (frozen conv1), only the CONTINUAL linear readout supervised; "
+        f"curriculum mastered {curriculum.mastered}/10."
+    )
     print("-" * 90)
     print(f"  final mean competence over the {len(learned)} self-chosen digits : {final_mean:.1%}")
     print(f"  final OVERALL held-out test accuracy (all learned digits)      : {final_overall:.1%}")
     print(f"  accuracy CURVE (overall per cycle) : " + " ".join(f"{a:.2f}" for a in curve))
     print("-" * 90)
-    print(f"  reference VOTE developmental loop (STDP prototypes + vote)     : ~{VOTE_LOOP_BAR:.0%} (best 88.8%)")
+    print(
+        f"  reference VOTE developmental loop (STDP prototypes + vote)     : ~{VOTE_LOOP_BAR:.0%} (best 88.8%)"
+    )
     print(f"  reference STATIC joint linear readout (conv1, all digits once) : {STATIC_JOINT:.1%}")
-    print(f"  continual (this) vs static joint                               : {gap_joint:+.1%} "
-          f"({'continual reaches joint' if gap_joint >= 0 else 'continual learning costs accuracy'})")
+    print(
+        f"  continual (this) vs static joint                               : {gap_joint:+.1%} "
+        f"({'continual reaches joint' if gap_joint >= 0 else 'continual learning costs accuracy'})"
+    )
     print("=" * 90)
 
     # self-check: the continual readout must be a REAL improvement over the vote loop (> ~0.85) AND beat
@@ -274,10 +319,17 @@ def main():
     assert final_overall > 0.10, f"continual readout at/below chance: {final_overall:.2f}"
     assert final_overall > VOTE_LOOP_BAR, (
         f"continual readout {final_overall:.3f} did NOT beat the vote-loop bar {VOTE_LOOP_BAR:.2f} -- "
-        "the deep readout should improve on the STDP-vote path; report the honest number, do not lower the bar.")
-    verdict = "reaches the static joint" if gap_joint >= 0 else f"costs {-gap_joint:.1%} vs the static joint"
-    print(f"self-check OK: continual deep readout {final_overall:.1%} > vote-loop ~{VOTE_LOOP_BAR:.0%} and > chance; "
-          f"conv1 unsupervised (diversity {diversity:.3f}); continual {verdict} (honest).")
+        "the deep readout should improve on the STDP-vote path; report the honest number, do not lower the bar."
+    )
+    verdict = (
+        "reaches the static joint"
+        if gap_joint >= 0
+        else f"costs {-gap_joint:.1%} vs the static joint"
+    )
+    print(
+        f"self-check OK: continual deep readout {final_overall:.1%} > vote-loop ~{VOTE_LOOP_BAR:.0%} and > chance; "
+        f"conv1 unsupervised (diversity {diversity:.3f}); continual {verdict} (honest)."
+    )
     return 0
 
 

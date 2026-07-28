@@ -34,13 +34,20 @@ loop with measurable learning curves and un-riggable controls, NOT competence or
   Knobs: NORD_CTX(3) NORD_NIN(48) NORD_CYCLES(12) NORD_PER(400) NORD_VOCAB(60) NORD_LIMIT(0=all)
 Deps: stdlib (reuses src/ spiking primitives + research/brain_adapters/lake_memory).
 """
+
 import os
 import random
 
 from snn_data_lake.cortex.interaction_learning import SpikingInteractionLearner
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
-from snn_data_lake.reasoning.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream, word_stream
+from snn_data_lake.reasoning.corpus_stream import (
+    ARPABET,
+    load_cmudict,
+    load_text,
+    phoneme_stream,
+    word_stream,
+)
 
 
 def _envi(k, d):
@@ -56,12 +63,12 @@ def _positional_code(tokens, vindex, V, ctx):
     vec = [0.0] * (V * ctx)
     toks = list(tokens)[-ctx:]
     m = len(toks)
-    for j, tok in enumerate(toks):                 # j=0 oldest .. m-1 most recent
+    for j, tok in enumerate(toks):  # j=0 oldest .. m-1 most recent
         idx = vindex.get(tok)
         if idx is None:
             continue
-        slot = ctx - m + j                          # right-align: most recent -> slot ctx-1
-        vec[idx + slot * V] = float(slot + 1)       # recency weight -> recent fires earliest
+        slot = ctx - m + j  # right-align: most recent -> slot ctx-1
+        vec[idx + slot * V] = float(slot + 1)  # recency weight -> recent fires earliest
     return vec
 
 
@@ -98,7 +105,7 @@ def _train_eval(pairs, responses, ctx, per, seed=0, shuffle_labels=False, shuffl
     third = max(1, len(train) // 3)
     first_acc = last_acc = 0.0
     for i, (cx, nxt) in enumerate(train):
-        label = rng.choice(rset) if shuffle_labels else nxt      # control: teach random labels
+        label = rng.choice(rset) if shuffle_labels else nxt  # control: teach random labels
         learner.interact(stim(cx), label)
         if i == third:
             first_acc = heldout_acc()
@@ -131,6 +138,7 @@ def _assembly_separation(learner, responses):
 
 def _frequent(words, k):
     from collections import Counter
+
     return [w for w, _ in Counter(words).most_common(k)]
 
 
@@ -144,14 +152,20 @@ def main():
         os.remove(lake_path)
 
     print("=" * 94)
-    print("LANGUAGE SELF-BUILD -- autonomous self-supervised spiking assemblies: phonetics/semantics/syntax")
-    print(f"ctx={CTX}  per={PER}  vocab={VOCAB}  n_in=V*ctx  (labels never used; next-token IS the signal)")
+    print(
+        "LANGUAGE SELF-BUILD -- autonomous self-supervised spiking assemblies: phonetics/semantics/syntax"
+    )
+    print(
+        f"ctx={CTX}  per={PER}  vocab={VOCAB}  n_in=V*ctx  (labels never used; next-token IS the signal)"
+    )
     print("=" * 94)
 
     cmudict, dict_off = load_cmudict()
     words, text_off = load_text()
-    print(f"[data] {len(words):,} word tokens ({'offline sample' if text_off else 'real corpus'}); "
-          f"cmudict {len(cmudict):,} ({'offline' if dict_off else 'real'})")
+    print(
+        f"[data] {len(words):,} word tokens ({'offline sample' if text_off else 'real corpus'}); "
+        f"cmudict {len(cmudict):,} ({'offline' if dict_off else 'real'})"
+    )
 
     ph_pairs = list(phoneme_stream(words, cmudict, k=CTX, limit=LIMIT))
     wd_pairs = list(word_stream(words, k=CTX, limit=LIMIT))
@@ -168,26 +182,36 @@ def main():
     ph_bigram = _bigram_baseline(ph_pairs)
     ph_sep = _assembly_separation(ph_learn, ARPABET)
     curiosity.observe("phonetics", 1.0 - ph_final)
-    print(f"  next-phoneme held-out: first-third {ph_first:.1%} -> last-third {ph_last:.1%}  "
-          f"(bigram {ph_bigram:.1%}, shuffled-teach control {ph_shuf:.1%})")
+    print(
+        f"  next-phoneme held-out: first-third {ph_first:.1%} -> last-third {ph_last:.1%}  "
+        f"(bigram {ph_bigram:.1%}, shuffled-teach control {ph_shuf:.1%})"
+    )
     print(f"  assembly separation (inter/intra van Rossum): {ph_sep:.2f}")
 
-    print("\n[SEMANTICS] self-supervised next-word over the %d most frequent words, R-STDP..." % VOCAB)
+    print(
+        "\n[SEMANTICS] self-supervised next-word over the %d most frequent words, R-STDP..." % VOCAB
+    )
     wd_first, wd_last, wd_final, wd_learn = _train_eval(wd_pairs, freq_words, CTX, PER, seed=1)
     wd_shuf = _train_eval(wd_pairs, freq_words, CTX, PER, seed=1, shuffle_labels=True)[1]
     wd_uni = _unigram_baseline(wd_pairs, freq_words)
     wd_sep = _assembly_separation(wd_learn, freq_words)
     curiosity.observe("semantics", 1.0 - wd_final)
-    print(f"  next-word held-out: first-third {wd_first:.1%} -> last-third {wd_last:.1%}  "
-          f"(unigram {wd_uni:.1%}, shuffled-teach control {wd_shuf:.1%})")
+    print(
+        f"  next-word held-out: first-third {wd_first:.1%} -> last-third {wd_last:.1%}  "
+        f"(unigram {wd_uni:.1%}, shuffled-teach control {wd_shuf:.1%})"
+    )
     print(f"  assembly separation: {wd_sep:.2f}  (vocab bounded at {VOCAB} -- honest scale limit)")
 
     print("\n[SYNTAX] order sensitivity: next-word with ORDER-PRESERVING vs SHUFFLED context...")
     _, syn_ordered, _, _ = _train_eval(wd_pairs, freq_words, CTX, PER, seed=2)
     _, syn_shuffled, _, _ = _train_eval(wd_pairs, freq_words, CTX, PER, seed=2, shuffle_ctx=True)
-    print(f"  next-word acc: ordered context {syn_ordered:.1%}  vs  shuffled-order context {syn_shuffled:.1%}")
-    print(f"  order-sensitivity delta: {(syn_ordered - syn_shuffled) * 100:+.1f} pts "
-          f"(> 0 => the readout uses WORD ORDER, i.e. local syntax)")
+    print(
+        f"  next-word acc: ordered context {syn_ordered:.1%}  vs  shuffled-order context {syn_shuffled:.1%}"
+    )
+    print(
+        f"  order-sensitivity delta: {(syn_ordered - syn_shuffled) * 100:+.1f} pts "
+        f"(> 0 => the readout uses WORD ORDER, i.e. local syntax)"
+    )
 
     # ---- CONSOLIDATE the learned assemblies to the durable lake (content-addressable, durable) ----
     for i, n in enumerate(ph_learn.neurons):
@@ -199,15 +223,25 @@ def main():
     print("\n" + "=" * 94)
     print("LANGUAGE SELF-BUILD -- the skill built ITSELF (autonomous, self-supervised, spiking):")
     print("-" * 94)
-    print(f"  PHONETICS : next-phoneme {ph_first:.1%} -> {ph_last:.1%}  (bigram {ph_bigram:.1%}, "
-          f"shuffle {ph_shuf:.1%}); assembly sep {ph_sep:.2f}")
-    print(f"  SEMANTICS : next-word {wd_first:.1%} -> {wd_last:.1%}  (unigram {wd_uni:.1%}, "
-          f"shuffle {wd_shuf:.1%}); assembly sep {wd_sep:.2f}")
-    print(f"  SYNTAX    : order-sensitivity {(syn_ordered - syn_shuffled) * 100:+.1f} pts "
-          f"(ordered {syn_ordered:.1%} > shuffled {syn_shuffled:.1%})")
-    print(f"  LAKE      : {lake.n_stored} phoneme assemblies consolidated; durable across restart = {dur['ok']}")
+    print(
+        f"  PHONETICS : next-phoneme {ph_first:.1%} -> {ph_last:.1%}  (bigram {ph_bigram:.1%}, "
+        f"shuffle {ph_shuf:.1%}); assembly sep {ph_sep:.2f}"
+    )
+    print(
+        f"  SEMANTICS : next-word {wd_first:.1%} -> {wd_last:.1%}  (unigram {wd_uni:.1%}, "
+        f"shuffle {wd_shuf:.1%}); assembly sep {wd_sep:.2f}"
+    )
+    print(
+        f"  SYNTAX    : order-sensitivity {(syn_ordered - syn_shuffled) * 100:+.1f} pts "
+        f"(ordered {syn_ordered:.1%} > shuffled {syn_shuffled:.1%})"
+    )
+    print(
+        f"  LAKE      : {lake.n_stored} phoneme assemblies consolidated; durable across restart = {dur['ok']}"
+    )
     print("-" * 94)
-    print("  honest scope: local-order syntax only; cross-level theta-gamma/workspace binding is the NEXT slice.")
+    print(
+        "  honest scope: local-order syntax only; cross-level theta-gamma/workspace binding is the NEXT slice."
+    )
     print("=" * 94)
 
     # ---- HONEST NEGATIVE (printed, not asserted): the single-layer spiking readout does NOT beat the
@@ -216,23 +250,33 @@ def main():
     #      a pure spike-timing readout underperforms. The WIN here is the autonomous, self-supervised,
     #      real-corpus ASSEMBLY-FORMATION loop (learning above the shuffle control + separated
     #      assemblies), NOT competence -- do not oversell it as beating n-grams. ----
-    print(f"\n  HONEST: the spiking readout does NOT beat n-grams (phonetics {ph_last:.1%} vs bigram "
-          f"{ph_bigram:.1%}; semantics {wd_last:.1%} vs unigram {wd_uni:.1%}) -- the readout-is-the-lever ceiling.")
+    print(
+        f"\n  HONEST: the spiking readout does NOT beat n-grams (phonetics {ph_last:.1%} vs bigram "
+        f"{ph_bigram:.1%}; semantics {wd_last:.1%} vs unigram {wd_uni:.1%}) -- the readout-is-the-lever ceiling."
+    )
 
     # ---- un-riggable self-checks: assemblies FORMED + learned above the shuffle control + durable ----
-    assert ph_last > ph_first, f"phonetics learning curve did not rise ({ph_first:.3f}->{ph_last:.3f})"
+    assert ph_last > ph_first, (
+        f"phonetics learning curve did not rise ({ph_first:.3f}->{ph_last:.3f})"
+    )
     assert ph_last > ph_shuf + 0.02, (
-        f"phonetics no better than the shuffled-teaching control ({ph_last:.3f} vs {ph_shuf:.3f})")
+        f"phonetics no better than the shuffled-teaching control ({ph_last:.3f} vs {ph_shuf:.3f})"
+    )
     assert ph_sep > 1.2, f"phoneme assemblies not separated (inter/intra cos {ph_sep:.2f} <= 1.2)"
     assert wd_sep > 1.2, f"word assemblies not separated ({wd_sep:.2f} <= 1.2)"
-    assert wd_last > wd_shuf, f"semantics no better than shuffled-teaching control ({wd_last:.3f} vs {wd_shuf:.3f})"
+    assert wd_last > wd_shuf, (
+        f"semantics no better than shuffled-teaching control ({wd_last:.3f} vs {wd_shuf:.3f})"
+    )
     assert syn_ordered >= syn_shuffled, (
-        f"syntax: ordered context not >= shuffled ({syn_ordered:.3f} vs {syn_shuffled:.3f})")
+        f"syntax: ordered context not >= shuffled ({syn_ordered:.3f} vs {syn_shuffled:.3f})"
+    )
     assert dur["ok"], "consolidated language assemblies did not survive the lake restart"
-    print(f"self-check OK: assemblies FORMED + separated (phon {ph_sep:.1f}, sem {wd_sep:.1f}); phonetics "
-          f"learned above the shuffle control ({ph_first:.1%}->{ph_last:.1%} vs shuffle {ph_shuf:.1%}); "
-          f"syntax prefers legal order; {lake.n_stored} assemblies durable -- the skill built itself, no "
-          f"labels. Competence below n-grams (honest spiking-readout ceiling).")
+    print(
+        f"self-check OK: assemblies FORMED + separated (phon {ph_sep:.1f}, sem {wd_sep:.1f}); phonetics "
+        f"learned above the shuffle control ({ph_first:.1%}->{ph_last:.1%} vs shuffle {ph_shuf:.1%}); "
+        f"syntax prefers legal order; {lake.n_stored} assemblies durable -- the skill built itself, no "
+        f"labels. Competence below n-grams (honest spiking-readout ceiling)."
+    )
     lake.close()
     return 0
 
@@ -240,6 +284,7 @@ def main():
 def _bigram_baseline(pairs):
     """Most-frequent-next-token given the immediate previous token; held-out on the same 20% tail."""
     from collections import defaultdict, Counter
+
     cut = int(len(pairs) * 0.8)
     train, test = pairs[:cut], pairs[cut:]
     tbl = defaultdict(Counter)
@@ -251,12 +296,13 @@ def _bigram_baseline(pairs):
     for c, nx in test:
         prev = c[-1] if c else None
         if tbl[prev]:
-            ok += (tbl[prev].most_common(1)[0][0] == nx)
+            ok += tbl[prev].most_common(1)[0][0] == nx
     return ok / len(test)
 
 
 def _unigram_baseline(pairs, responses):
     from collections import Counter
+
     rset = set(responses)
     cut = int(len(pairs) * 0.8)
     train, test = pairs[:cut], [(c, nx) for c, nx in pairs[cut:] if nx in rset]

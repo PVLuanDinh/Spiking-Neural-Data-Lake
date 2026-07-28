@@ -22,6 +22,7 @@ TORCH TIER: this module imports torch at module load, so it is imported LAZILY b
   Standalone: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/autonomous_brain_recovered.py
 Deps: numpy torch torchvision snntorch scikit-learn
 """
+
 import os
 
 import torch
@@ -44,13 +45,21 @@ from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 def cfg_from_env():
     """The NORD_* knobs, exactly as the standalone loop read them."""
     return {
-        "cycles": envi("NORD_CYCLES", 18), "c1": envi("NORD_C1", 30), "t_lat": envi("NORD_T", 15),
-        "l1_epochs": envi("NORD_L1_EPOCHS", 3), "per": envi("NORD_PER", 400),
-        "kreplay": envi("NORD_KREPLAY", 150), "store": envi("NORD_STORE", 400),
-        "rff0": envi("NORD_RFF", 2000), "grow_rff": envi("NORD_GROW_RFF", 200),
-        "gamma": envf("NORD_GAMMA", 0.04), "shrink": envf("NORD_SHRINK", 0.1),
-        "maintain": envi("NORD_MAINTAIN", 20), "train": envi("NORD_TRAIN", 12000),
-        "test": envi("NORD_TEST", 2000), "reflect_thr": envf("NORD_REFLECT_THR", 0.55),
+        "cycles": envi("NORD_CYCLES", 18),
+        "c1": envi("NORD_C1", 30),
+        "t_lat": envi("NORD_T", 15),
+        "l1_epochs": envi("NORD_L1_EPOCHS", 3),
+        "per": envi("NORD_PER", 400),
+        "kreplay": envi("NORD_KREPLAY", 150),
+        "store": envi("NORD_STORE", 400),
+        "rff0": envi("NORD_RFF", 2000),
+        "grow_rff": envi("NORD_GROW_RFF", 200),
+        "gamma": envf("NORD_GAMMA", 0.04),
+        "shrink": envf("NORD_SHRINK", 0.1),
+        "maintain": envi("NORD_MAINTAIN", 20),
+        "train": envi("NORD_TRAIN", 12000),
+        "test": envi("NORD_TEST", 2000),
+        "reflect_thr": envf("NORD_REFLECT_THR", 0.55),
     }
 
 
@@ -96,6 +105,7 @@ def develop_cycles(cfg, *, lake=None, reflector=None, emit=None, quiet=False):
     if reflector is None:
         reflector = ConceptReflector(threshold=cfg["reflect_thr"], seed=0)
     if emit is None:
+
         def emit(_c, _p, _f):
             return None
 
@@ -103,7 +113,9 @@ def develop_cycles(cfg, *, lake=None, reflector=None, emit=None, quiet=False):
 
     # ---- PERCEPTION: unsupervised spiking features (frozen), batched extraction + <=64-dim lake keys ----
     torch.manual_seed(0)
-    say(f"\n[perception] conv1 latency-STDP C1={cfg['c1']} (unsupervised, {cfg['l1_epochs']} epochs)...")
+    say(
+        f"\n[perception] conv1 latency-STDP C1={cfg['c1']} (unsupervised, {cfg['l1_epochs']} epochs)..."
+    )
     conv = ConvLatencyStdp(cfg["c1"], cfg["t_lat"])
     for ep in range(cfg["l1_epochs"]):
         _train(conv, Xtr, f"conv1 ep{ep + 1}/{cfg['l1_epochs']}")
@@ -147,17 +159,21 @@ def develop_cycles(cfg, *, lake=None, reflector=None, emit=None, quiet=False):
 
         # ---- CONSOLIDATE a held-out slice of a NEW digit TO THE DURABLE LAKE ----
         if is_new:
-            pool = tr_by[objective][cfg["per"]:cfg["per"] + cfg["store"]]
+            pool = tr_by[objective][cfg["per"] : cfg["per"] + cfg["store"]]
             lake.consolidate([Gtr[r].tolist() for r in pool], payloads=pool)
             mem_rows[objective] = pool
             learned.append(objective)
 
         # ---- LEARN: the objective's own exemplars + LIFELONG replay PULLED BY PROXIMITY ----
-        obj_idx = torch.tensor(tr_by[objective][:cfg["per"]], dtype=torch.long, device=dev)
+        obj_idx = torch.tensor(tr_by[objective][: cfg["per"]], dtype=torch.long, device=dev)
         F_parts, y_parts = [Ftr[obj_idx]], [ytr[obj_idx]]
         replay_n = 0
         if objective in mem_rows and lake.n_stored > 0:
-            q = Gtr[torch.tensor(mem_rows[objective], dtype=torch.long, device=dev)].mean(0).tolist()
+            q = (
+                Gtr[torch.tensor(mem_rows[objective], dtype=torch.long, device=dev)]
+                .mean(0)
+                .tolist()
+            )
             rows = [int(r) for r in lake.retrieve(q, k=cfg["kreplay"])]
             if rows:
                 ridx = torch.tensor(rows, dtype=torch.long, device=dev)
@@ -186,7 +202,7 @@ def develop_cycles(cfg, *, lake=None, reflector=None, emit=None, quiet=False):
             chain = reflector.reflect(str(objective))
             if len(chain) >= 2:
                 reflected = f"  [reflect: {' -> '.join(chain)}]"
-            emit(objective, proto, chain)          # caller narrates + persists (keeps narration torch-free)
+            emit(objective, proto, chain)  # caller narrates + persists (keeps narration torch-free)
 
         # ---- MEASURE competence (the understanding), feed self-direction ----
         for d in learned:
@@ -196,25 +212,44 @@ def develop_cycles(cfg, *, lake=None, reflector=None, emit=None, quiet=False):
         curiosity.observe(objective, 1.0 - competence[objective])
         lp = curiosity.learning_progress(objective)
         curriculum.observe(lp)
-        meta.update(confidence=competence[objective], surprise=abs(lp), learning_progress=lp,
-                    novelty=curiosity.novelty(objective))
-        say(f"CYCLE {cyc:2d} propose {proposed}->WM {objective} ({'new' if is_new else 'rev'})  "
-            f"understand={overall:.1%}  lake={lake.n_stored}  replay={replay_n}  gain={gain:.2f}{grew}{reflected}")
+        meta.update(
+            confidence=competence[objective],
+            surprise=abs(lp),
+            learning_progress=lp,
+            novelty=curiosity.novelty(objective),
+        )
+        say(
+            f"CYCLE {cyc:2d} propose {proposed}->WM {objective} ({'new' if is_new else 'rev'})  "
+            f"understand={overall:.1%}  lake={lake.n_stored}  replay={replay_n}  gain={gain:.2f}{grew}{reflected}"
+        )
 
     online = curve[-1] if curve else 0.0
 
     # ---- SLEEP CONSOLIDATION: refit an RBF-SVM on ALL lake-consolidated exemplars (readout upgrade) ----
     all_rows = [r for d in learned for r in mem_rows[d]]
     pooled_te = [r for d in learned for r in te_by[d]]
-    say(f"\n[sleep-refit] RBF-SVM on {len(all_rows)} lake-consolidated exemplars (offline consolidation)...")
+    say(
+        f"\n[sleep-refit] RBF-SVM on {len(all_rows)} lake-consolidated exemplars (offline consolidation)..."
+    )
     rbf_acc, n_used = _rbf_refit_eval(Ftr, Ytr, all_rows, Fte, yte_np, pooled_te)
     durable = lake.durability_check()
     res = {
-        "online": online, "rbf": rbf_acc, "n_used": n_used, "learned": learned,
-        "competence": competence, "curve": curve, "grow_events": grow_events, "wm_hits": wm_hits,
-        "rff": rff, "links": reflector.association_graph(), "strongest": reflector.strongest_link(),
-        "durable": bool(durable.get("ok")), "n_stored": lake.n_stored, "cycles": cfg["cycles"],
-        "conv_diversity": conv.kernel_diversity(), "curriculum_mastered": curriculum.mastered,
+        "online": online,
+        "rbf": rbf_acc,
+        "n_used": n_used,
+        "learned": learned,
+        "competence": competence,
+        "curve": curve,
+        "grow_events": grow_events,
+        "wm_hits": wm_hits,
+        "rff": rff,
+        "links": reflector.association_graph(),
+        "strongest": reflector.strongest_link(),
+        "durable": bool(durable.get("ok")),
+        "n_stored": lake.n_stored,
+        "cycles": cfg["cycles"],
+        "conv_diversity": conv.kernel_diversity(),
+        "curriculum_mastered": curriculum.mastered,
     }
     if own_lake:
         lake.close()

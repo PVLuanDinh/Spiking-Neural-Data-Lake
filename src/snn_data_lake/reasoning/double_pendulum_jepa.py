@@ -22,6 +22,7 @@ the predictable part of a genuinely chaotic world; it is not a claim to have tam
   Knobs: NORD_STEPS(9000) NORD_NOISE(24) NORD_LAT(16) NORD_TRAJ(300)
 Deps: numpy (probe) + stdlib (JepaWorldModel).
 """
+
 import math
 import os
 import random
@@ -44,10 +45,14 @@ def _deriv(s, tau, g=9.8):
     th1, th2, w1, w2 = s
     d = th1 - th2
     den = 3.0 - math.cos(2.0 * d)
-    dw1 = (-3.0 * g * math.sin(th1) - g * math.sin(th1 - 2.0 * th2)
-           - 2.0 * math.sin(d) * (w2 * w2 + w1 * w1 * math.cos(d))) / den + tau
-    dw2 = (2.0 * math.sin(d) * (2.0 * w1 * w1 + 2.0 * g * math.cos(th1)
-           + w2 * w2 * math.cos(d))) / den
+    dw1 = (
+        -3.0 * g * math.sin(th1)
+        - g * math.sin(th1 - 2.0 * th2)
+        - 2.0 * math.sin(d) * (w2 * w2 + w1 * w1 * math.cos(d))
+    ) / den + tau
+    dw2 = (
+        2.0 * math.sin(d) * (2.0 * w1 * w1 + 2.0 * g * math.cos(th1) + w2 * w2 * math.cos(d))
+    ) / den
     return [w1, w2, dw1, dw2]
 
 
@@ -65,8 +70,12 @@ def gen_chaos(n_traj=300, steps=40, dt=0.02, seed=0):
     rng = random.Random(seed)
     tr = []
     for _ in range(n_traj):
-        s = [math.pi + rng.uniform(-0.4, 0.4), math.pi + rng.uniform(-0.4, 0.4),
-             rng.uniform(-1, 1), rng.uniform(-1, 1)]
+        s = [
+            math.pi + rng.uniform(-0.4, 0.4),
+            math.pi + rng.uniform(-0.4, 0.4),
+            rng.uniform(-1, 1),
+            rng.uniform(-1, 1),
+        ]
         for _ in range(steps):
             a = rng.choice(ACTIONS)
             ns = _rk4(s, _TORQUE[a], dt)
@@ -85,8 +94,16 @@ def _norm(s):
 
 def _signal(state):
     th1, th2, w1, w2 = state
-    return [math.sin(th1), math.cos(th1), math.sin(th2), math.cos(th2), w1, w2,
-            math.sin(th1 - th2), math.cos(th1 - th2)]
+    return [
+        math.sin(th1),
+        math.cos(th1),
+        math.sin(th2),
+        math.cos(th2),
+        w1,
+        w2,
+        math.sin(th1 - th2),
+        math.cos(th1 - th2),
+    ]
 
 
 def _lift(state, n_noise, rng):
@@ -122,9 +139,15 @@ def main():
 
     sep = _lyapunov_check()
     print("=" * 92)
-    print("DOUBLE-PENDULUM JEPA -- action-conditioned latent prediction over a genuinely CHAOTIC system")
-    print(f"obs dim {IN} = 8 nonlinear state features + {N_NOISE} noise; latent {LAT}; steps {STEPS}")
-    print(f"chaos check: two trajectories 1e-6 apart diverge to {sep:.2e} after 300 steps (>> 1e-6 => chaotic)")
+    print(
+        "DOUBLE-PENDULUM JEPA -- action-conditioned latent prediction over a genuinely CHAOTIC system"
+    )
+    print(
+        f"obs dim {IN} = 8 nonlinear state features + {N_NOISE} noise; latent {LAT}; steps {STEPS}"
+    )
+    print(
+        f"chaos check: two trajectories 1e-6 apart diverge to {sep:.2e} after 300 steps (>> 1e-6 => chaotic)"
+    )
     print("=" * 92)
 
     trans = gen_chaos(n_traj=_envi("NORD_TRAJ", 300), steps=40, seed=0)
@@ -155,22 +178,33 @@ def main():
 
     print("-" * 92)
     print(f"  JEPA invariance loss : {loss0:.4f} -> {lossN:.4f}")
-    print(f"  latent std (collapse): full {std_full:.3f}  vs  anti-collapse-OFF ablation {std_abl:.3f}")
-    print(f"  probe MSE to true next-state: learned {mse_learned:.4f}  vs  random {mse_random:.4f}  "
-          f"({lift:+.1f}% {'BETTER' if lift > 0 else 'worse'})")
+    print(
+        f"  latent std (collapse): full {std_full:.3f}  vs  anti-collapse-OFF ablation {std_abl:.3f}"
+    )
+    print(
+        f"  probe MSE to true next-state: learned {mse_learned:.4f}  vs  random {mse_random:.4f}  "
+        f"({lift:+.1f}% {'BETTER' if lift > 0 else 'worse'})"
+    )
     print("-" * 92)
     print("  on a genuinely chaotic double pendulum, the JEPA keeps the short-horizon predictable")
-    print("  structure and drops the rest, beating a random encoder. Not a claim to have tamed chaos.")
+    print(
+        "  structure and drops the rest, beating a random encoder. Not a claim to have tamed chaos."
+    )
     print("=" * 92)
 
     assert sep > 1e-3, f"system is not chaotic enough (divergence {sep:.2e})"
     assert lossN < loss0, f"invariance loss did not drop ({loss0:.4f} -> {lossN:.4f})"
-    assert std_full > std_abl * 2, f"full model did not avoid collapse ({std_full:.3f} vs {std_abl:.3f})"
+    assert std_full > std_abl * 2, (
+        f"full model did not avoid collapse ({std_full:.3f} vs {std_abl:.3f})"
+    )
     assert mse_learned < mse_random, (
-        f"learned latent must beat the random encoder on the chaotic system ({mse_learned:.4f} vs {mse_random:.4f})")
-    print(f"self-check OK: double-pendulum (chaotic, divergence {sep:.1e}) JEPA -- learned latent decodes "
-          f"next-state {lift:+.0f}% better than random (loss {loss0:.3f}->{lossN:.3f}, no collapse "
-          f"{std_full:.2f}>>{std_abl:.2f}). Predict-in-latent extracts the predictable part of chaos.")
+        f"learned latent must beat the random encoder on the chaotic system ({mse_learned:.4f} vs {mse_random:.4f})"
+    )
+    print(
+        f"self-check OK: double-pendulum (chaotic, divergence {sep:.1e}) JEPA -- learned latent decodes "
+        f"next-state {lift:+.0f}% better than random (loss {loss0:.3f}->{lossN:.3f}, no collapse "
+        f"{std_full:.2f}>>{std_abl:.2f}). Predict-in-latent extracts the predictable part of chaos."
+    )
     return 0
 
 

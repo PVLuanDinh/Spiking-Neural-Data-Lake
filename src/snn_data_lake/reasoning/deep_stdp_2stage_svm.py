@@ -70,6 +70,7 @@ Scale knobs : NORD_C1(30) NORD_C2(150) NORD_T(15) NORD_L1_EPOCHS(4) NORD_L2_EPOC
               NORD_POOL1(2) NORD_K2 NORD_TRAIN(15000) NORD_TEST(3000) NORD_GPU
 Deps: numpy torch torchvision snntorch scikit-learn  (research/GPU tier; core untouched)
 """
+
 import os
 
 import numpy as np
@@ -104,10 +105,12 @@ def _conv1_both(conv1, image):
                    -> length-C1 (one translation-invariant value per conv1 map).
     """
     st = conv1._dog_latency(image)
-    fired, _ = conv1._forward(st)                                  # [C1,h1,h1] long
-    val = torch.where(fired < conv1.t_lat,
-                      (conv1.t_lat - fired).float() / conv1.t_lat,
-                      torch.zeros_like(fired, dtype=torch.float32))  # [C1,h1,h1]
+    fired, _ = conv1._forward(st)  # [C1,h1,h1] long
+    val = torch.where(
+        fired < conv1.t_lat,
+        (conv1.t_lat - fired).float() / conv1.t_lat,
+        torch.zeros_like(fired, dtype=torch.float32),
+    )  # [C1,h1,h1]
     # (b) GLOBAL pooling: max over the two spatial dims -> [C1]
     global_vec = val.amax(dim=(1, 2))
     # (a) SPATIAL baseline: identical recipe to conv1.features()
@@ -122,12 +125,14 @@ def _conv2_global(conv1, conv2, image):
     [C2,h2,h2] -> GLOBAL-max-pool over BOTH spatial dims -> length-C2 vector
     (one composite-part activation per conv2 map; translation invariant). This is
     the Kheradpisheh feature. Reuses _stage1_volley + conv2._forward2 unchanged."""
-    st = _stage1_volley(conv1, image, conv2.pool1)                # [C1,H,W] volley
-    fired, _ = conv2._forward2(st)                                # [C2,h2,h2] long
-    val = torch.where(fired < conv2.t_lat,
-                      (conv2.t_lat - fired).float() / conv2.t_lat,
-                      torch.zeros_like(fired, dtype=torch.float32))  # [C2,h2,h2]
-    return val.amax(dim=(1, 2))                                   # [C2]
+    st = _stage1_volley(conv1, image, conv2.pool1)  # [C1,H,W] volley
+    fired, _ = conv2._forward2(st)  # [C2,h2,h2] long
+    val = torch.where(
+        fired < conv2.t_lat,
+        (conv2.t_lat - fired).float() / conv2.t_lat,
+        torch.zeros_like(fired, dtype=torch.float32),
+    )  # [C2,h2,h2]
+    return val.amax(dim=(1, 2))  # [C2]
 
 
 def _extract(conv1, conv2, X, tag):
@@ -152,9 +157,9 @@ def _svm_eval(Xtr_f, ytr, Xte_f, yte):
     """StandardScaler (fit on TRAIN only) -> LinearSVC AND RBF SVC. Both fit ONLY
     on train, scored ONLY on the held-out test set. Returns (acc_linear, acc_rbf).
     No leakage: scaler and both SVMs never see test at fit time."""
-    scaler = StandardScaler().fit(Xtr_f)                          # fit on TRAIN only
+    scaler = StandardScaler().fit(Xtr_f)  # fit on TRAIN only
     Xtr_s = scaler.transform(Xtr_f)
-    Xte_s = scaler.transform(Xte_f)                               # test only transformed
+    Xte_s = scaler.transform(Xte_f)  # test only transformed
     lin = LinearSVC(C=1.0, dual=False, max_iter=5000, random_state=0)
     lin.fit(Xtr_s, ytr)
     acc_lin = float(lin.score(Xte_s, yte))
@@ -166,7 +171,7 @@ def _svm_eval(Xtr_f, ytr, Xte_f, yte):
 
 def main():
     enable(resolve_device())
-    torch.manual_seed(0)                       # deterministic conv weight init
+    torch.manual_seed(0)  # deterministic conv weight init
     C1 = _env("NORD_C1", 30)
     C2 = _env("NORD_C2", 150)
     T_LAT = _env("NORD_T", 15)
@@ -193,25 +198,36 @@ def main():
     conv1 = ConvLatencyStdp(C1, T_LAT)
     for ep in range(L1_EPOCHS):
         _train(conv1, Xtr, f"stage1 ep{ep + 1}/{L1_EPOCHS}")
-        print(f"  [stage1] epoch {ep + 1}/{L1_EPOCHS} kernel diversity (cos-sim) = "
-              f"{conv1.kernel_diversity():.3f}")
+        print(
+            f"  [stage1] epoch {ep + 1}/{L1_EPOCHS} kernel diversity (cos-sim) = "
+            f"{conv1.kernel_diversity():.3f}"
+        )
     div1 = conv1.kernel_diversity()
-    print(f"[stage1] frozen; diversity={div1:.3f} (expect < 0.4)  "
-          f"hout1={conv1.hout}  spatial feat_dim={conv1.feat_dim()}  global feat_dim={C1}")
+    print(
+        f"[stage1] frozen; diversity={div1:.3f} (expect < 0.4)  "
+        f"hout1={conv1.hout}  spatial feat_dim={conv1.feat_dim()}  global feat_dim={C1}"
+    )
 
     # ---------- STAGE 2: unsupervised conv-STDP over the stage-1 volley (freeze) ----------
-    print(f"\n[stage2] training conv-latency-STDP on the stage-1 volley "
-          f"(unsupervised, {L2_EPOCHS} epochs)...")
+    print(
+        f"\n[stage2] training conv-latency-STDP on the stage-1 volley "
+        f"(unsupervised, {L2_EPOCHS} epochs)..."
+    )
     conv2 = ConvLatencyStdp2(C1, C2, T_LAT, conv1.hout, POOL1)
-    print(f"  stage-2 geometry: input {C1}x{conv2.h_in}x{conv2.h_in} "
-          f"-> conv(k2={conv2.k2}) -> {C2}x{conv2.hout}x{conv2.hout}  (global feat_dim={C2})")
+    print(
+        f"  stage-2 geometry: input {C1}x{conv2.h_in}x{conv2.h_in} "
+        f"-> conv(k2={conv2.k2}) -> {C2}x{conv2.hout}x{conv2.hout}  (global feat_dim={C2})"
+    )
     assert conv2.hout >= 1, (
         f"stage-2 output spatial size = {conv2.hout} < 1: k2={conv2.k2} too large for the "
-        f"pooled stage-1 size h_in={conv2.h_in}. Lower NORD_K2 or NORD_POOL1.")
+        f"pooled stage-1 size h_in={conv2.h_in}. Lower NORD_K2 or NORD_POOL1."
+    )
     for ep in range(L2_EPOCHS):
         _train2(conv2, conv1, Xtr, f"stage2 ep{ep + 1}/{L2_EPOCHS}")
-        print(f"  [stage2] epoch {ep + 1}/{L2_EPOCHS} kernel diversity (cos-sim) = "
-              f"{conv2.kernel_diversity():.3f}")
+        print(
+            f"  [stage2] epoch {ep + 1}/{L2_EPOCHS} kernel diversity (cos-sim) = "
+            f"{conv2.kernel_diversity():.3f}"
+        )
     div2 = conv2.kernel_diversity()
     print(f"[stage2] frozen; diversity={div2:.3f}")
 
@@ -220,14 +236,16 @@ def main():
     s_tr, g1_tr, g2_tr = _extract(conv1, conv2, Xtr, "train")
     print("[features] extracting frozen feature matrices (test)...")
     s_te, g1_te, g2_te = _extract(conv1, conv2, Xte, "test")
-    print(f"[features] shapes: conv1-spatial {s_tr.shape} | conv1-global {g1_tr.shape} | "
-          f"conv1+conv2-global {g2_tr.shape}")
+    print(
+        f"[features] shapes: conv1-spatial {s_tr.shape} | conv1-global {g1_tr.shape} | "
+        f"conv1+conv2-global {g2_tr.shape}"
+    )
 
     # ---------- SVM readout on each feature set (fit train, score test) ----------
     print("\n[svm] fitting LinearSVC + RBF-SVC per feature set (fit on TRAIN, score on TEST)...")
-    lin_a, rbf_a = _svm_eval(s_tr, ytr, s_te, yte)      # (a) conv1 SPATIAL (~95% baseline)
-    lin_b, rbf_b = _svm_eval(g1_tr, ytr, g1_te, yte)    # (b) conv1 GLOBAL
-    lin_c, rbf_c = _svm_eval(g2_tr, ytr, g2_te, yte)    # (c) conv1+conv2 GLOBAL (Kheradpisheh)
+    lin_a, rbf_a = _svm_eval(s_tr, ytr, s_te, yte)  # (a) conv1 SPATIAL (~95% baseline)
+    lin_b, rbf_b = _svm_eval(g1_tr, ytr, g1_te, yte)  # (b) conv1 GLOBAL
+    lin_c, rbf_c = _svm_eval(g2_tr, ytr, g2_te, yte)  # (c) conv1+conv2 GLOBAL (Kheradpisheh)
 
     best_a = max(lin_a, rbf_a)
     best_c = max(lin_c, rbf_c)
@@ -245,10 +263,14 @@ def main():
     print("-" * 74)
     print(f"  best (a) conv1 SPATIAL          : {best_a:.1%}")
     print(f"  best (c) conv1+conv2 GLOBAL     : {best_c:.1%}")
-    print(f"  delta (c minus a)              : {delta:+.1%}   "
-          f"({'2-STAGE GLOBAL BEATS conv1' if delta > 0 else ('TIE' if delta == 0 else 'conv1 STILL WINS')})")
+    print(
+        f"  delta (c minus a)              : {delta:+.1%}   "
+        f"({'2-STAGE GLOBAL BEATS conv1' if delta > 0 else ('TIE' if delta == 0 else 'conv1 STILL WINS')})"
+    )
     print(f"  approaching ~98% Kheradpisheh?  : best 2-stage = {best_c:.1%}")
-    print(f"  stage-1 diversity {div1:.3f} | stage-2 diversity {div2:.3f}  (lower = more specialised)")
+    print(
+        f"  stage-1 diversity {div1:.3f} | stage-2 diversity {div2:.3f}  (lower = more specialised)"
+    )
     print("=" * 74)
 
     # self-check: guard the PIPELINE only -- conv1-SPATIAL + SVM must beat chance AND
@@ -258,9 +280,12 @@ def main():
     assert best_a >= 0.85, (
         f"conv1-spatial + SVM = {best_a:.2f} -- below the ~0.90+ ballpark of the frozen "
         "95%-baseline features. The feature extraction or scaling is broken (fix the "
-        "pipeline, do NOT lower the bar).")
-    print(f"self-check OK: conv1-spatial + SVM = {best_a:.1%} (>10% chance, in the ~0.90+ "
-          f"ballpark); 2-stage-global delta {delta:+.1%} reported honestly.")
+        "pipeline, do NOT lower the bar)."
+    )
+    print(
+        f"self-check OK: conv1-spatial + SVM = {best_a:.1%} (>10% chance, in the ~0.90+ "
+        f"ballpark); 2-stage-global delta {delta:+.1%} reported honestly."
+    )
 
 
 if __name__ == "__main__":

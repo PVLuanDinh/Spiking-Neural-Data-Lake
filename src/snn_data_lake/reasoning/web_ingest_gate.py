@@ -27,7 +27,6 @@ Deps: stdlib (+ numpy via spike_chat_lake). Reuses substrate.web_ingest (SSRF fi
 
 import json
 import os
-import sys
 import urllib.request
 from urllib.parse import quote, urlparse
 

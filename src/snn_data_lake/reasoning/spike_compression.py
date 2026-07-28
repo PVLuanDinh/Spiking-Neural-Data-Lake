@@ -11,6 +11,7 @@ both the fixed 4-byte store and generic gzip, losslessly. Refs: lossless event c
 
   python spike_compression.py        # (also run by run_selfchecks.py)
 """
+
 import gzip
 import random
 
@@ -56,7 +57,7 @@ def encode(spikes):
         buf += _leb128(ch) + _leb128(len(times))
         prev = 0
         for t in times:
-            buf += _leb128(t - prev)        # sorted -> non-negative deltas, usually tiny
+            buf += _leb128(t - prev)  # sorted -> non-negative deltas, usually tiny
             prev = t
     return bytes(buf)
 
@@ -99,17 +100,25 @@ def main():
     print("=" * 60)
     print(f"{n_spikes:,} spikes over {len(spikes)} channels")
     print(f"  fixed uint32 (.spk-style) : {len(raw):>8,} B  ({len(raw) / n_spikes:.2f} B/spike)")
-    print(f"  gzip(fixed)               : {len(gz_raw):>8,} B  ({len(raw) / len(gz_raw):.1f}× vs fixed)")
+    print(
+        f"  gzip(fixed)               : {len(gz_raw):>8,} B  ({len(raw) / len(gz_raw):.1f}× vs fixed)"
+    )
     print(f"  delta+varint (spike-native): {len(var):>8,} B  ({len(raw) / len(var):.1f}× vs fixed)")
-    print(f"  gzip(delta+varint)        : {len(gz_var):>8,} B  ({len(raw) / len(gz_var):.1f}× vs fixed)")
+    print(
+        f"  gzip(delta+varint)        : {len(gz_var):>8,} B  ({len(raw) / len(gz_var):.1f}× vs fixed)"
+    )
     print("=" * 60)
 
     # ---- self-check: one runnable assert-based check; deterministic ----
     assert decode(var) == spikes, "codec not lossless (round-trip mismatch)"
     assert len(var) < len(raw), "delta+varint should beat the fixed-precision store"
-    assert len(gz_var) < len(gz_raw), "spike-native codec should beat generic gzip on the fixed store"
-    print(f"self-check OK: lossless; delta+varint {len(raw) / len(var):.1f}× < fixed and "
-          f"gzip(varint) {len(gz_raw) / len(gz_var):.1f}× smaller than gzip(fixed)")
+    assert len(gz_var) < len(gz_raw), (
+        "spike-native codec should beat generic gzip on the fixed store"
+    )
+    print(
+        f"self-check OK: lossless; delta+varint {len(raw) / len(var):.1f}× < fixed and "
+        f"gzip(varint) {len(gz_raw) / len(gz_var):.1f}× smaller than gzip(fixed)"
+    )
 
 
 if __name__ == "__main__":

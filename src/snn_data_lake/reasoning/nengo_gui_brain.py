@@ -13,8 +13,8 @@ Nengo's clock; every numeric brain.state() signal (including the torch/nengo/pc 
 as scalars) is re-encoded into its own spiking NEF population. Observation-only -- no actuator route;
 deployable to NengoLoihi. Right-click an ensemble in the GUI for a spike raster / value / firing-rate plot.
 """
+
 import os
-import sys
 
 _here = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 pass  # migrated: sys.path bootstrap removed (now an importable package)
@@ -30,18 +30,43 @@ _sig0 = brain_signals(_brain)
 
 # a curated, readable subset so the GUI graph stays legible (falls back to the first 12 signals). The
 # GROWTH signals lead: grown_units (torch neurogenesis) + reasoning_units climb during the sleep phases.
-_SHOW = [k for k in ("grown_units", "reasoning_units", "brain_alive", "access_index", "access_ignited",
-                      "novelty_live", "criticality", "phase", "wake_ticks", "reflex_armed", "arm_stopped",
-                      "nengo_tier", "pc_cortex_tier", "perception_tier") if k in _sig0]
+_SHOW = [
+    k
+    for k in (
+        "grown_units",
+        "reasoning_units",
+        "brain_alive",
+        "access_index",
+        "access_ignited",
+        "novelty_live",
+        "criticality",
+        "phase",
+        "wake_ticks",
+        "reflex_armed",
+        "arm_stopped",
+        "nengo_tier",
+        "pc_cortex_tier",
+        "perception_tier",
+    )
+    if k in _sig0
+]
 _keys = _SHOW or list(_sig0)[:12]
 # count/growth signals grow past 1.0, so give them a generous NEF radius (else the ensemble saturates)
-_COUNTS = {"grown_units", "reasoning_units", "wake_ticks", "sleep_ticks", "nights_elapsed", "lifelong_units"}
+_COUNTS = {
+    "grown_units",
+    "reasoning_units",
+    "wake_ticks",
+    "sleep_ticks",
+    "nights_elapsed",
+    "lifelong_units",
+}
 _scales = {k: (25.0 if k in _COUNTS else max(1.0, 1.5 * abs(_sig0[k]))) for k in _keys}
 
 model = nengo.Network(label="SNDL whole brain (live under Nengo)")
 with model:
+
     def _tap(t):
-        _brain.tick()                                   # one GUI sim step = one brain tick
+        _brain.tick()  # one GUI sim step = one brain tick
         s = brain_signals(_brain)
         return [s.get(k, 0.0) for k in _keys]
 
@@ -52,5 +77,9 @@ with model:
 
 
 if __name__ == "__main__":
-    print(f"NengoGUI model ready: {len(model.ensembles)} labeled spiking ensembles over {len(_keys)} brain signals.")
-    print(r"Launch the GUI:  D:\AI-project\.venv-nengo\Scripts\nengo.exe research\nengo_gui_brain.py")
+    print(
+        f"NengoGUI model ready: {len(model.ensembles)} labeled spiking ensembles over {len(_keys)} brain signals."
+    )
+    print(
+        r"Launch the GUI:  D:\AI-project\.venv-nengo\Scripts\nengo.exe research\nengo_gui_brain.py"
+    )

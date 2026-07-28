@@ -687,7 +687,6 @@ def main():
     # ---- (2) grow(k, freeze_old=True) on L2/3: function-preserving + frozen bit-exact ---
     logits_pre = model.predict(X).clone()
     n23_before = model.n_hidden
-    frozen_before = model._frozen.clone()  # all currently plastic
     new_width = model.grow(k=8, freeze_old=True)  # freeze the old L2/3 units, add 8
     logits_post = model.predict(X)
     max_logit_diff = float((logits_pre - logits_post).abs().max())

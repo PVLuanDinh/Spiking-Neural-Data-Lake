@@ -9,13 +9,14 @@ algebra the lake's reason tier uses ("do more per byte").
 
   Run: python mcr_hdc.py       # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 import zlib
 
 random.seed(0)
 
-Q = 8            # phase levels per component -> log2(Q)=3 bits/component
+Q = 8  # phase levels per component -> log2(Q)=3 bits/component
 TAU = 2.0 * math.pi
 
 
@@ -25,7 +26,7 @@ def mcr_hv(label, d):
 
 
 def mcr_bind(a, b):
-    return [(x + y) % Q for x, y in zip(a, b)]          # modular add; self-inverse via sub
+    return [(x + y) % Q for x, y in zip(a, b)]  # modular add; self-inverse via sub
 
 
 def mcr_unbind(c, b):
@@ -70,7 +71,7 @@ def record_recovery(k_pairs, seed, backend, d, vocab_n=64):
     for i in range(k_pairs):
         probe = unbind(record, roles[i])
         best = max(vocab, key=lambda kk: sim(probe, vocab[kk]))
-        ok += (best == chosen[i])
+        ok += best == chosen[i]
     return ok / k_pairs
 
 
@@ -91,18 +92,23 @@ def main():
     print("=" * 60)
     print(f"MCR : D={d_mcr} q={Q} -> {bits_mcr:.0f} bits/hv | {k}-pair recovery {rec_mcr:.0%}")
     print(f"bipolar : D={d_bip} -> {bits_bip:.0f} bits/hv | {k}-pair recovery {rec_bip:.0%}")
-    print(f"memory : MCR uses {bits_bip / bits_mcr:.2f}x fewer bits at comparable recovery "
-          f"(paper: up to 4x across 123 datasets)")
+    print(
+        f"memory : MCR uses {bits_bip / bits_mcr:.2f}x fewer bits at comparable recovery "
+        f"(paper: up to 4x across 123 datasets)"
+    )
     print(f"algebra: bind/unbind round-trip lossless = {roundtrip}")
     print("=" * 60)
 
     # ---- self-check: one runnable assert-based check; deterministic ----
     assert roundtrip, "MCR bind must be invertible by modular unbind"
     assert rec_mcr >= 0.9, f"MCR record recovery should be clean: {rec_mcr:.2f}"
-    assert bits_mcr < bits_bip and rec_mcr >= rec_bip - 0.05, \
+    assert bits_mcr < bits_bip and rec_mcr >= rec_bip - 0.05, (
         f"MCR should match bipolar recovery at fewer bits ({bits_mcr:.0f} vs {bits_bip:.0f} bits)"
-    print(f"self-check OK: MCR algebra invertible; {rec_mcr:.0%} recovery at "
-          f"{bits_bip / bits_mcr:.2f}x fewer bits than bipolar")
+    )
+    print(
+        f"self-check OK: MCR algebra invertible; {rec_mcr:.0%} recovery at "
+        f"{bits_bip / bits_mcr:.2f}x fewer bits than bipolar"
+    )
 
 
 if __name__ == "__main__":

@@ -91,7 +91,7 @@ def score(scorer, per_paradigm=None, root=None, only=None, verbose=False):
     }
 
 
-def random_scorer(sentence, _rng=random.Random(0)):
+def random_scorer(sentence, _rng=random.Random(0)):  # noqa: B008 -- ONE seeded Random bound at def time is the point: the control must be reproducible across calls
     """Control: must land near 50%."""
     return _rng.random()
 
@@ -151,24 +151,32 @@ def main():
     # GPU train (training/ar_spiking_lm.py). Never fabricates: unavailable -> a printed SKIP, no number.
     try:
         serve, label = None, "e-prop spik-LM"
-        try:                                         # PREFER the deep-ALIF long-range LM (W4b architectural upgrade)
+        try:  # PREFER the deep-ALIF long-range LM (W4b architectural upgrade)
             from snn_data_lake.reasoning.eprop_lm_alif_serve import EpropAlifLMServe
+
             _alif = EpropAlifLMServe()
             if _alif.available():
                 serve, label = _alif, "e-prop ALIF-LM"
         except Exception:
             pass
-        if serve is None:                            # else the flat single-layer e-prop LM
+        if serve is None:  # else the flat single-layer e-prop LM
             from snn_data_lake.reasoning.eprop_lm_serve import EpropLMServe
+
             serve = EpropLMServe()
         if serve.available():
-            def _eprop_scorer(s):                    # one forward pass per sentence; None -> -inf, never faked
+
+            def _eprop_scorer(s):  # one forward pass per sentence; None -> -inf, never faked
                 lp = serve.logprob(s)
                 return lp if lp is not None else -1e18
+
             r = score(_eprop_scorer, per_paradigm=n)
-            print(f"  {label:<15}: {100 * r['accuracy']:5.1f}%  ({r['correct']}/{r['total']}) [brain-native, order-sensitive logprob]")
+            print(
+                f"  {label:<15}: {100 * r['accuracy']:5.1f}%  ({r['correct']}/{r['total']}) [brain-native, order-sensitive logprob]"
+            )
         else:
-            print("  e-prop spik-LM  :  n/a  (no frozen artifact -- needs the real-scale e-prop GPU train)")
+            print(
+                "  e-prop spik-LM  :  n/a  (no frozen artifact -- needs the real-scale e-prop GPU train)"
+            )
     except Exception as exc:
         print(f"  e-prop spik-LM  :  n/a  ({type(exc).__name__}: serve unavailable)")
 

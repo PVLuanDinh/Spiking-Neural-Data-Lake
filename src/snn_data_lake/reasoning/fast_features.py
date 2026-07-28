@@ -48,6 +48,7 @@ Run the correctness + speed self-check:
 Knobs: NORD_C NORD_T NORD_TRAIN NORD_CORRECT NORD_SPEED NORD_BATCH NORD_GPU
 Deps: numpy torch torchvision snntorch   (research/GPU tier)
 """
+
 import os
 import time
 
@@ -88,20 +89,20 @@ def _dog_latency_batch(conv, imgs):
     it never fires. Byte-identical to stacking the per-image results.
     """
     t_lat = conv.t_lat
-    resp = F.conv2d(imgs, conv.dog, padding=DOG_SIZE // 2)[:, 0]        # [B,28,28]
+    resp = F.conv2d(imgs, conv.dog, padding=DOG_SIZE // 2)[:, 0]  # [B,28,28]
     on = F.relu(resp)
     off = F.relu(-resp)
-    combined = torch.stack((on, off), dim=1)                           # [B,2,28,28]
-    vmax = combined.amax(dim=(1, 2, 3), keepdim=True)                  # [B,1,1,1]
+    combined = torch.stack((on, off), dim=1)  # [B,2,28,28]
+    vmax = combined.amax(dim=(1, 2, 3), keepdim=True)  # [B,1,1,1]
     thr = DOG_THRESH * vmax
-    active = combined > thr                                            # per-image sparse mask
+    active = combined > thr  # per-image sparse mask
     # divide by vmax exactly where vmax>0 (matches per-image `if vmax>0`); where
     # vmax==0 the mask is all-False so the chosen denom is irrelevant -> use 1.
     denom = torch.where(vmax > 0, vmax, torch.ones_like(vmax))
     norm = (combined / denom).clamp(0.0, 1.0)
     times = torch.round((1.0 - norm) * (t_lat - 1)).long()
     never = torch.full_like(times, t_lat)
-    return torch.where(active, times, never)                          # [B,2,28,28] long
+    return torch.where(active, times, never)  # [B,2,28,28] long
 
 
 def _forward_batch(conv, spike_time):
@@ -115,13 +116,12 @@ def _forward_batch(conv, spike_time):
     t_lat = conv.t_lat
     device = conv.device
     cum = torch.zeros(B, 2, 28, 28, device=device)
-    fired = torch.full((B, conv.C, conv.hout, conv.hout), t_lat,
-                       dtype=torch.long, device=device)
+    fired = torch.full((B, conv.C, conv.hout, conv.hout), t_lat, dtype=torch.long, device=device)
     for t in range(t_lat):
-        vol = (spike_time == t).float()                               # [B,2,28,28]
+        vol = (spike_time == t).float()  # [B,2,28,28]
         cum = cum + vol
-        pot = F.conv2d(cum, conv.Wc)                                  # [B,C,hout,hout]
-        newly = (pot >= conv.cthresh) & (fired == t_lat)             # first crossing, per neuron
+        pot = F.conv2d(cum, conv.Wc)  # [B,C,hout,hout]
+        newly = (pot >= conv.cthresh) & (fired == t_lat)  # first crossing, per neuron
         fired = torch.where(newly, torch.full_like(fired, t), fired)
     return fired
 
@@ -139,14 +139,16 @@ def batched_features(conv, X, batch=256):
     out = []
     with torch.no_grad():
         for i in range(0, N, batch):
-            xb = _as_batch(X[i:i + batch], device)
-            st = _dog_latency_batch(conv, xb)                         # [B,2,28,28]
-            fired = _forward_batch(conv, st)                          # [B,C,hout,hout]
-            val = torch.where(fired < t_lat,
-                              (t_lat - fired).float() / t_lat,
-                              torch.zeros_like(fired, dtype=torch.float32))
-            pooled = F.max_pool2d(val, conv.pool)                     # [B,C,ph,ph]
-            feat = pooled.reshape(val.shape[0], -1)                   # [B, feat_dim]
+            xb = _as_batch(X[i : i + batch], device)
+            st = _dog_latency_batch(conv, xb)  # [B,2,28,28]
+            fired = _forward_batch(conv, st)  # [B,C,hout,hout]
+            val = torch.where(
+                fired < t_lat,
+                (t_lat - fired).float() / t_lat,
+                torch.zeros_like(fired, dtype=torch.float32),
+            )
+            pooled = F.max_pool2d(val, conv.pool)  # [B,C,ph,ph]
+            feat = pooled.reshape(val.shape[0], -1)  # [B, feat_dim]
             feat = feat / feat.amax(dim=1, keepdim=True).clamp_min(1e-6)
             out.append(feat)
     return torch.cat(out, dim=0)
@@ -178,17 +180,19 @@ def batched_features_and_keys(conv, X, batch=256):
     keys = []
     with torch.no_grad():
         for i in range(0, N, batch):
-            xb = _as_batch(X[i:i + batch], device)
-            st = _dog_latency_batch(conv, xb)                         # [B,2,28,28]
-            fired = _forward_batch(conv, st)                          # [B,C,hout,hout]
-            val = torch.where(fired < t_lat,
-                              (t_lat - fired).float() / t_lat,
-                              torch.zeros_like(fired, dtype=torch.float32))
-            pooled = F.max_pool2d(val, conv.pool)                     # [B,C,ph,ph]
-            feat = pooled.reshape(val.shape[0], -1)                   # [B, feat_dim]
+            xb = _as_batch(X[i : i + batch], device)
+            st = _dog_latency_batch(conv, xb)  # [B,2,28,28]
+            fired = _forward_batch(conv, st)  # [B,C,hout,hout]
+            val = torch.where(
+                fired < t_lat,
+                (t_lat - fired).float() / t_lat,
+                torch.zeros_like(fired, dtype=torch.float32),
+            )
+            pooled = F.max_pool2d(val, conv.pool)  # [B,C,ph,ph]
+            feat = pooled.reshape(val.shape[0], -1)  # [B, feat_dim]
             feat = feat / feat.amax(dim=1, keepdim=True).clamp_min(1e-6)
             spat.append(feat)
-            keys.append(val.amax(dim=(2, 3)))                         # [B, C] global key
+            keys.append(val.amax(dim=(2, 3)))  # [B, C] global key
     return torch.cat(spat, dim=0), torch.cat(keys, dim=0)
 
 
@@ -208,8 +212,10 @@ def main():
     print("=" * 66)
     print("BATCHED conv1 FEATURE EXTRACTOR  (correctness + speedup self-check)")
     print("=" * 66)
-    print(f"device={device}  C={C}  T={T_LAT}  train={TRAIN_N}  correct-N={CORRECT_N}  "
-          f"speed-N={SPEED_N}  batch={BATCH}")
+    print(
+        f"device={device}  C={C}  T={T_LAT}  train={TRAIN_N}  correct-N={CORRECT_N}  "
+        f"speed-N={SPEED_N}  batch={BATCH}"
+    )
     print("loading MNIST...")
     Xtr, Ytr, Xte, Yte = load_mnist(TRAIN_N, max(CORRECT_N, SPEED_N))
 
@@ -218,14 +224,15 @@ def main():
     for ep in range(EPOCHS):
         for img in Xtr:
             conv.train_image(img)
-        print(f"  epoch {ep + 1}/{EPOCHS} kernel diversity (cos-sim) = "
-              f"{conv.kernel_diversity():.3f}")
+        print(
+            f"  epoch {ep + 1}/{EPOCHS} kernel diversity (cos-sim) = {conv.kernel_diversity():.3f}"
+        )
     print(f"layer-1 frozen; feat_dim = {conv.feat_dim()}")
 
     # -------- CORRECTNESS (the non-negotiable gate) --------
     Xc = Xte[:CORRECT_N]
-    ref = torch.stack([conv.features(x) for x in Xc])                 # per-image loop
-    fast = batched_features(conv, Xc, batch=BATCH)                    # batched
+    ref = torch.stack([conv.features(x) for x in Xc])  # per-image loop
+    fast = batched_features(conv, Xc, batch=BATCH)  # batched
     assert fast.shape == ref.shape, f"shape mismatch: {fast.shape} vs {ref.shape}"
     max_diff = float((fast - ref).abs().max().item())
     print("\n" + "-" * 66)
@@ -233,7 +240,8 @@ def main():
     print(f"  max abs diff (batched vs per-image loop) = {max_diff:.3e}")
     assert max_diff < 1e-4, (
         f"FEATURES DIFFER: max abs diff {max_diff:.3e} >= 1e-4 -- the batched "
-        "extractor is NOT numerically equivalent; the optimization is invalid.")
+        "extractor is NOT numerically equivalent; the optimization is invalid."
+    )
     print("  PASS: batched features match the per-image loop (< 1e-4).")
 
     # -------- ONE-PASS spatial+keys (byte-equivalence gate) --------
@@ -241,14 +249,21 @@ def main():
         """Reference per-image key -- exact copy of developmental_loop_lake._global_key."""
         st = c._dog_latency(img)
         fired, _ = c._forward(st)
-        val = torch.where(fired < c.t_lat, (c.t_lat - fired).float() / c.t_lat,
-                          torch.zeros_like(fired, dtype=torch.float32))
-        return val.amax(dim=(1, 2))                                   # [C1]
+        val = torch.where(
+            fired < c.t_lat,
+            (c.t_lat - fired).float() / c.t_lat,
+            torch.zeros_like(fired, dtype=torch.float32),
+        )
+        return val.amax(dim=(1, 2))  # [C1]
 
     spatial_1p, keys_1p = batched_features_and_keys(conv, Xc, batch=BATCH)
-    key_ref = torch.stack([_ref_global_key(conv, x) for x in Xc])     # [N, C1] per-image loop
-    assert spatial_1p.shape == ref.shape, f"spatial shape mismatch: {spatial_1p.shape} vs {ref.shape}"
-    assert keys_1p.shape == key_ref.shape, f"keys shape mismatch: {keys_1p.shape} vs {key_ref.shape}"
+    key_ref = torch.stack([_ref_global_key(conv, x) for x in Xc])  # [N, C1] per-image loop
+    assert spatial_1p.shape == ref.shape, (
+        f"spatial shape mismatch: {spatial_1p.shape} vs {ref.shape}"
+    )
+    assert keys_1p.shape == key_ref.shape, (
+        f"keys shape mismatch: {keys_1p.shape} vs {key_ref.shape}"
+    )
     spatial_diff = float((spatial_1p - ref).abs().max().item())
     key_diff = float((keys_1p - key_ref).abs().max().item())
     print("\n" + "-" * 66)
@@ -257,10 +272,12 @@ def main():
     print(f"  keys    vs _global_key stack   max abs diff = {key_diff:.3e}")
     assert spatial_diff < 1e-4, (
         f"ONE-PASS SPATIAL DIFFERS: {spatial_diff:.3e} >= 1e-4 -- not equivalent to "
-        "batched_features; the single-pass refactor is invalid.")
+        "batched_features; the single-pass refactor is invalid."
+    )
     assert key_diff < 1e-4, (
         f"ONE-PASS KEYS DIFFER: {key_diff:.3e} >= 1e-4 -- not equivalent to the "
-        "per-image _global_key stack; the single-pass refactor is invalid.")
+        "per-image _global_key stack; the single-pass refactor is invalid."
+    )
     print("  PASS: one-pass spatial AND keys both match their two-pass references (< 1e-4).")
 
     # -------- SPEEDUP (same images, wall-clock) --------
@@ -288,10 +305,11 @@ def main():
     print("=" * 66)
 
     assert speed_diff < 1e-4, f"speed-run features diverged: {speed_diff:.3e}"
-    assert t_batch < t_loop, (
-        f"batched not faster: batched {t_batch:.3f}s vs loop {t_loop:.3f}s")
-    print(f"self-check OK: features MATCH (max diff {max_diff:.3e} < 1e-4) AND "
-          f"batched is {speedup:.1f}x FASTER ({t_batch:.3f}s vs {t_loop:.3f}s).")
+    assert t_batch < t_loop, f"batched not faster: batched {t_batch:.3f}s vs loop {t_loop:.3f}s"
+    print(
+        f"self-check OK: features MATCH (max diff {max_diff:.3e} < 1e-4) AND "
+        f"batched is {speedup:.1f}x FASTER ({t_batch:.3f}s vs {t_loop:.3f}s)."
+    )
 
 
 if __name__ == "__main__":

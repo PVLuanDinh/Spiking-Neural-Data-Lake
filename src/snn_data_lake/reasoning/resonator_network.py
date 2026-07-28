@@ -11,16 +11,17 @@ composite / answer analogy queries" over the exact bipolar HD vectors the repo a
 
   Run: python resonator_network.py       # (also run by run_selfchecks.py)
 """
+
 import random
 
 from snn_data_lake import vsa_reasoning as vsa  # core module (PYTHONPATH=src); reuse hv/bind/sim/D
 
 random.seed(0)
 
-M = 12            # codebook size per factor
-STEPS = 25        # resonator iterations per restart
-RESTARTS = 3      # random restarts (escape spurious fixed points; keep best reconstruction)
-TRIALS = 20       # random factorizations to test
+M = 12  # codebook size per factor
+STEPS = 25  # resonator iterations per restart
+RESTARTS = 3  # random restarts (escape spurious fixed points; keep best reconstruction)
+TRIALS = 20  # random factorizations to test
 
 
 def cleanup_project(v, codebook):
@@ -49,7 +50,7 @@ def _resonate(c, books, steps):
         for f, bk in enumerate(books):
             unbound = c[0]
             for g, o in enumerate(est):
-                if g != f:                                 # unbind the OTHER factors (bind = self-inverse)
+                if g != f:  # unbind the OTHER factors (bind = self-inverse)
                     unbound = vsa.bind(unbound, o)
             new.append(cleanup_project(unbound, bk))
         if new == est:
@@ -64,7 +65,7 @@ def factorize(comp, books, steps=STEPS, restarts=RESTARTS):
     best_idx, best_s = None, -2.0
     for r in range(restarts):
         if r == 0:
-            seeds = [vsa.bundle(bk) for bk in books]        # superposition of each book
+            seeds = [vsa.bundle(bk) for bk in books]  # superposition of each book
         else:
             rr = random.Random(r * 7 + 1)
             seeds = [[rr.choice((-1, 1)) for _ in range(vsa.D)] for _ in books]
@@ -97,17 +98,19 @@ def main():
     print("RESONATOR NETWORK — VSA factorization (decompose a bound product)")
     print("=" * 58)
     print(f"D={vsa.D}  codebook/factor={M}  steps={STEPS}  trials={TRIALS}")
-    print(f"2-factor recovery : {acc2:.0%}   (search space {M ** 2})")
-    print(f"3-factor recovery : {acc3:.0%}   (search space {M ** 3})")
+    print(f"2-factor recovery : {acc2:.0%}   (search space {M**2})")
+    print(f"3-factor recovery : {acc3:.0%}   (search space {M**3})")
     print("gives Paradigm C the decode/analogy step bind/bundle/cleanup alone cannot: recover the")
     print("factors of a composite by superposition search over the existing bipolar codebook.")
     print("=" * 58)
 
     # ---- self-check: one runnable assert-based check; deterministic ----
     assert acc2 >= 0.9, f"2-factor resonator should recover reliably: {acc2:.2f}"
-    assert acc3 >= 0.6, f"3-factor recovery should beat chance ({1 / M ** 3:.1e}) clearly: {acc3:.2f}"
-    print(f"self-check OK: resonator factorizes 2-factor at {acc2:.0%}, 3-factor at {acc3:.0%} "
-          f"(vs chance {1 / M ** 3:.1e}) — the unbind vsa_reasoning lacked")
+    assert acc3 >= 0.6, f"3-factor recovery should beat chance ({1 / M**3:.1e}) clearly: {acc3:.2f}"
+    print(
+        f"self-check OK: resonator factorizes 2-factor at {acc2:.0%}, 3-factor at {acc3:.0%} "
+        f"(vs chance {1 / M**3:.1e}) — the unbind vsa_reasoning lacked"
+    )
 
 
 if __name__ == "__main__":

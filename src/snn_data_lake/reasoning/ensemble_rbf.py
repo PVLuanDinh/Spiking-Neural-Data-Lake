@@ -17,6 +17,7 @@ Knobs: NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(4) NORD_TRAIN(10000) NORD_TEST(2000
        NORD_HIDDEN(32) NORD_CYCLES(15) NORD_SGD(300) NORD_PER(300) NORD_REPLAY(200)
 Deps: numpy torch torchvision snntorch scikit-learn
 """
+
 import os
 
 import numpy as np
@@ -74,7 +75,9 @@ def main():
     conv = ConvLatencyStdp(C1, T_LAT)
     for ep in range(L1_EPOCHS):
         _train(conv, Xtr, f"conv1 ep{ep + 1}/{L1_EPOCHS}")
-    print(f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}")
+    print(
+        f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}"
+    )
 
     print("[cache] conv1 spatial features (train+test)...")
     Ftr, Fte = _cache(conv, Xtr, dev), _cache(conv, Xte, dev)
@@ -107,12 +110,12 @@ def main():
             col.grow(1, freeze_old=True)
         col.train_step(Ftr[idx], ytr[idx], lr=0.01, steps=SGD)
         if is_new:
-            memory[obj] = tr_by[obj][n_train:n_train + REPLAY]
+            memory[obj] = tr_by[obj][n_train : n_train + REPLAY]
             learned.append(obj)
         with torch.no_grad():
             cl = col.predict(Fte)
         for d in learned:
-            m = (Yte == d)
+            m = Yte == d
             comp[d] = float((cl[m.to(dev)].argmax(1) == yte[m.to(dev)]).float().mean())
     with torch.no_grad():
         P_col = _softmax_np(col.predict(Fte))
@@ -125,9 +128,9 @@ def main():
     # skips the slow Platt CV so RBF-SVC scales to larger train sets (30k+) in reasonable time.
     rbf = SVC(kernel="rbf", gamma="scale", decision_function_shape="ovr", random_state=0)
     rbf.fit(sc.transform(Xtr_np), Ytr.numpy())
-    dec = rbf.decision_function(sc.transform(Xte_np))               # [N,10] one-vs-rest scores
+    dec = rbf.decision_function(sc.transform(Xte_np))  # [N,10] one-vs-rest scores
     dec = dec - dec.max(axis=1, keepdims=True)
-    P_rbf = np.exp(dec) / np.exp(dec).sum(axis=1, keepdims=True)     # softmax -> probability surrogate
+    P_rbf = np.exp(dec) / np.exp(dec).sum(axis=1, keepdims=True)  # softmax -> probability surrogate
 
     # ---- singles ----
     a_lin, a_col, a_rbf = _acc(P_lin, yte_np), _acc(P_col, yte_np), _acc(P_rbf, yte_np)
@@ -136,11 +139,10 @@ def main():
     def ens(*Ps):
         return _acc(sum(Ps) / len(Ps), yte_np)
 
-    e_old = ens(P_lin, P_col)                 # the earlier ensemble (linear + columns)
-    e_new = ens(P_lin, P_col, P_rbf)          # + RBF
-    e_lr = ens(P_lin, P_rbf)                  # linear + RBF
-    e_cr = ens(P_col, P_rbf)                  # columns + RBF
-    e_all = e_new
+    e_old = ens(P_lin, P_col)  # the earlier ensemble (linear + columns)
+    e_new = ens(P_lin, P_col, P_rbf)  # + RBF
+    e_lr = ens(P_lin, P_rbf)  # linear + RBF
+    e_cr = ens(P_col, P_rbf)  # columns + RBF
 
     # ---- error correlation (both-wrong) for the informative pairs ----
     def both_wrong(P, Q):
@@ -154,9 +156,15 @@ def main():
     print(f"    progressive columns       : {a_col:.1%}")
     print(f"    RBF-SVM (nonlinear)       : {a_rbf:.1%}")
     print("  ENSEMBLES (probability average):")
-    print(f"    linear + columns  (OLD)   : {e_old:.1%}   ({e_old - max(a_lin, a_col):+.1%} vs best member)")
-    print(f"    linear + RBF              : {e_lr:.1%}   ({e_lr - max(a_lin, a_rbf):+.1%} vs best member)")
-    print(f"    columns + RBF             : {e_cr:.1%}   ({e_cr - max(a_col, a_rbf):+.1%} vs best member)")
+    print(
+        f"    linear + columns  (OLD)   : {e_old:.1%}   ({e_old - max(a_lin, a_col):+.1%} vs best member)"
+    )
+    print(
+        f"    linear + RBF              : {e_lr:.1%}   ({e_lr - max(a_lin, a_rbf):+.1%} vs best member)"
+    )
+    print(
+        f"    columns + RBF             : {e_cr:.1%}   ({e_cr - max(a_col, a_rbf):+.1%} vs best member)"
+    )
     print(f"    linear + columns + RBF    : {e_new:.1%}   ({e_new - a_rbf:+.1%} vs RBF alone)")
     print("  ERROR CORRELATION (both wrong, lower = more decorrelated):")
     print(f"    linear vs columns         : {both_wrong(P_lin, P_col):.1%}")
@@ -164,8 +172,10 @@ def main():
     print(f"    columns vs RBF            : {both_wrong(P_col, P_rbf):.1%}")
     print("=" * 76)
     best = max(a_lin, a_col, a_rbf, e_old, e_new, e_lr, e_cr)
-    print(f"self-check OK: best single RBF {a_rbf:.1%}; best ensemble {max(e_old, e_new, e_lr, e_cr):.1%}; "
-          f"overall best {best:.1%} (honest -- ensemble helps only if it beats {a_rbf:.1%})")
+    print(
+        f"self-check OK: best single RBF {a_rbf:.1%}; best ensemble {max(e_old, e_new, e_lr, e_cr):.1%}; "
+        f"overall best {best:.1%} (honest -- ensemble helps only if it beats {a_rbf:.1%})"
+    )
     assert a_rbf > 0.5, "RBF-SVM failed to beat chance"
 
 

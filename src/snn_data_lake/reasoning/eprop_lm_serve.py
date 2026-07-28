@@ -38,6 +38,7 @@ model cannot back.
   PYTHONPATH=src python -m snn_data_lake.reasoning.eprop_lm_serve            # fast stdlib+numpy proof
   PYTHONPATH=src python -m snn_data_lake.reasoning.eprop_lm_serve --train    # + strict trained proof
 """
+
 import json
 import os
 import random
@@ -48,14 +49,14 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
 DEFAULT_ARTIFACT = os.path.join(_ROOT, "models", "eprop_lm.npz")
 
-FORMAT = "eprop_lm.v1"            # frozen-artifact schema tag (trainer + serve must agree)
+FORMAT = "eprop_lm.v1"  # frozen-artifact schema tag (trainer + serve must agree)
 # ---- LIF dynamics defaults (mirror training/eprop_lm.py; per-artifact values override via meta) ----
-ALPHA = 0.90                     # membrane decay
-V_TH = 0.6                       # spike threshold (soft reset subtracts V_TH)
-KAPPA = 0.9                      # leaky-readout decay
-W_IN_SCALE = 0.9                 # random-init input-weight std (test artifacts only)
-W_REC_SCALE = 0.2                # random-init recurrent-weight std
-W_OUT_SCALE = 0.2                # random-init readout-weight std
+ALPHA = 0.90  # membrane decay
+V_TH = 0.6  # spike threshold (soft reset subtracts V_TH)
+KAPPA = 0.9  # leaky-readout decay
+W_IN_SCALE = 0.9  # random-init input-weight std (test artifacts only)
+W_REC_SCALE = 0.2  # random-init recurrent-weight std
+W_OUT_SCALE = 0.2  # random-init readout-weight std
 
 _WEIGHTS = ("W_in", "W_rec", "W_out", "b_out", "b_hid")
 
@@ -64,6 +65,7 @@ def _load_numpy():
     """Lazy numpy import (numpy-lazy contract). Returns the module or None if unavailable."""
     try:
         import numpy as np
+
         return np
     except Exception:
         return None
@@ -83,11 +85,11 @@ def build_random_artifact(path, text, hidden=32, seed=0):
     v_n, n = len(vocab), int(hidden)
 
     def rng_for(name):
-        salt = zlib.crc32(name.encode("ascii")) & 0xFFFFFFFF   # crc32, never builtin hash()
+        salt = zlib.crc32(name.encode("ascii")) & 0xFFFFFFFF  # crc32, never builtin hash()
         return np.random.RandomState((int(seed) ^ salt) & 0xFFFFFFFF)
 
     w_rec = rng_for("W_rec").standard_normal((n, n)) * W_REC_SCALE
-    np.fill_diagonal(w_rec, 0.0)                                # no self-loop
+    np.fill_diagonal(w_rec, 0.0)  # no self-loop
     w = {
         "W_in": rng_for("W_in").standard_normal((n, v_n)) * W_IN_SCALE,
         "W_rec": w_rec,
@@ -96,8 +98,14 @@ def build_random_artifact(path, text, hidden=32, seed=0):
         "b_hid": np.zeros(n),
     }
     meta = {
-        "format": FORMAT, "vocab": vocab, "hidden": n, "vsize": v_n,
-        "alpha": ALPHA, "kappa": KAPPA, "v_th": V_TH, "trained": False,
+        "format": FORMAT,
+        "vocab": vocab,
+        "hidden": n,
+        "vsize": v_n,
+        "alpha": ALPHA,
+        "kappa": KAPPA,
+        "v_th": V_TH,
+        "trained": False,
         "note": "random-init frozen artifact (NOT trained) -- proves forward-serve + order-sensitivity only",
     }
     dirn = os.path.dirname(path)
@@ -251,11 +259,15 @@ def _try_train_inline(art, text):
         if tdir not in sys.path:
             sys.path.insert(0, tdir)
         import eprop_lm as trainer
-        trainer.train(text, hidden=48, ctx=48, steps=400, seed=0, out_path=art, batch=16,
-                      lr=4e-3, log_every=0)
+
+        trainer.train(
+            text, hidden=48, ctx=48, steps=400, seed=0, out_path=art, batch=16, lr=4e-3, log_every=0
+        )
         return True
     except Exception as exc:
-        print(f"  [note] inline torch train unavailable ({type(exc).__name__}); using random-init artifact")
+        print(
+            f"  [note] inline torch train unavailable ({type(exc).__name__}); using random-init artifact"
+        )
         return False
 
 
@@ -265,8 +277,11 @@ def _selfcheck(with_train=False):
         print("SKIP eprop_lm_serve self-check: numpy unavailable")
         return 0
     import tempfile
+
     print("=" * 92)
-    print("E-PROP RECURRENT-SPIKING LM SERVE -- forward-only numpy; full-sentence AR log-prob is the")
+    print(
+        "E-PROP RECURRENT-SPIKING LM SERVE -- forward-only numpy; full-sentence AR log-prob is the"
+    )
     print("order lever, and the model was trained the brain-native way (e-prop, no BPTT)")
     print("=" * 92)
 
@@ -295,9 +310,13 @@ def _selfcheck(with_train=False):
     print(f"  logprob(in-dist)={lp:.4f}  logprob(shuffled)={lps:.4f}  diff={lp - lps:.4f}")
     if trained:
         assert lp > lps, "a trained AR LM must score the in-distribution string ABOVE its shuffle"
-        print("  ORDER PROOF (trained): in-dist logprob > shuffled logprob -> LEARNED order-sensitivity.")
+        print(
+            "  ORDER PROOF (trained): in-dist logprob > shuffled logprob -> LEARNED order-sensitivity."
+        )
     else:
-        assert abs(lp - lps) > 1e-3, "shuffling MUST change the AR logprob (i.e. NOT order-invariant)"
+        assert abs(lp - lps) > 1e-3, (
+            "shuffling MUST change the AR logprob (i.e. NOT order-invariant)"
+        )
         print("  ORDER PROOF (random-init): shuffling CHANGES the AR logprob -> the model is NOT")
         print("  order-invariant. Strict in-dist>shuffled needs training (run with --train).")
 
@@ -312,13 +331,17 @@ def _selfcheck(with_train=False):
     assert miss.available() is False, "a missing artifact must report unavailable"
     assert miss.logprob("hello world") is None, "unavailable logprob must be None, not a fake score"
     assert miss.generate("hello") == "", "unavailable generate must return empty string"
-    print("  honest-unavailable: missing artifact -> available()=False, logprob()=None (no fake score).")
+    print(
+        "  honest-unavailable: missing artifact -> available()=False, logprob()=None (no fake score)."
+    )
 
     # torch-absence proof #2: the full serve path (load + logprob + generate) imported no torch.
     if not with_train:
         print("  torch-absent: 'torch' not in sys.modules after import + logprob + generate.")
     else:
-        print("  note: --train imported torch ONLY to TRAIN the artifact; the serve forward stays numpy.")
+        print(
+            "  note: --train imported torch ONLY to TRAIN the artifact; the serve forward stays numpy."
+        )
 
     for p in (art,):
         try:
@@ -331,9 +354,15 @@ def _selfcheck(with_train=False):
         pass
 
     print("-" * 92)
-    print("self-check OK: forward-only numpy serve reloads a frozen e-prop recurrent-spiking artifact; the")
-    print("full-sentence AR log-prob is ORDER-SENSITIVE (the recurrent membrane state carries history).")
-    print("HONEST: this proves the ARCHITECTURE + e-prop train->freeze->serve PIPELINE; a tiny model sits")
+    print(
+        "self-check OK: forward-only numpy serve reloads a frozen e-prop recurrent-spiking artifact; the"
+    )
+    print(
+        "full-sentence AR log-prob is ORDER-SENSITIVE (the recurrent membrane state carries history)."
+    )
+    print(
+        "HONEST: this proves the ARCHITECTURE + e-prop train->freeze->serve PIPELINE; a tiny model sits"
+    )
     print("near n-gram on real grammar. A grammar-moving result needs a real-scale GPU e-prop run")
     print("(training/eprop_lm.py --full) exported to models/eprop_lm.npz.")
     print("=" * 92)

@@ -12,6 +12,7 @@ This is the faithful extraction. It only does a LIF forward pass (an encoder);
 it does NOT store/recall data. The actual storage demo is in
 spiking_storage_prototype.py (stdlib-only, no deps).
 """
+
 import torch
 import torch.nn as nn
 import snntorch as snn
@@ -25,7 +26,9 @@ class SpikingStorageCore(nn.Module):
         # Linear mapping to project data into structural weights
         self.fc = nn.Linear(input_dim, latent_dim)
         # Leaky Integrate-and-Fire neuron to handle temporal state (RAM emulation)
-        self.lif = snn.Leaky(beta=0.9, init_hidden=False)  # doc had True; False to thread mem manually
+        self.lif = snn.Leaky(
+            beta=0.9, init_hidden=False
+        )  # doc had True; False to thread mem manually
 
     def forward(self, spike_train_in, steps):
         # Initialize the internal membrane potential state
@@ -52,4 +55,6 @@ if __name__ == "__main__":
     spike_train = (torch.rand(steps, 1, input_dim) < 0.2).float()
     spikes, mem = core(spike_train, steps)
     print(f"output spikes shape : {tuple(spikes.shape)}")
-    print(f"mean spike rate     : {spikes.mean().item():.3f}  (sparsity {1 - spikes.mean().item():.1%})")
+    print(
+        f"mean spike rate     : {spikes.mean().item():.3f}  (sparsity {1 - spikes.mean().item():.1%})"
+    )

@@ -185,7 +185,9 @@ def main():
         with open(toy, "w", encoding="ascii") as f:
             f.write(original)
         with open(toy, "rb") as f:
-            before_crc = zlib.crc32(f.read())  # actual file bytes (text-mode write may add CRLF on win)
+            before_crc = zlib.crc32(
+                f.read()
+            )  # actual file bytes (text-mode write may add CRLF on win)
         loop_bad = SelfBuildLoop(repo_root=tmp, enable=True, gate_fn=lambda: False)
         r_roll = loop_bad.promote(_toy_edit_fn("X", "9.0"), "toy_mod.py")
         with open(toy, "rb") as f:

@@ -10,6 +10,7 @@ SNNs, DATE 2024).
 
   Run: python bayesian_snn.py       # (also run by run_selfchecks.py)
 """
+
 import random
 
 random.seed(0)
@@ -46,12 +47,14 @@ def main():
         for i in rng.sample(range(FEAT), 4):
             x[i] = -x[i]
         pred, u = bayesian_predict(x, protos, rng)
-        acc += (pred == c)
+        acc += pred == c
         unc_in.append(u)
 
     # out-of-distribution: random cues far from every prototype (should be UNcertain)
-    unc_ood = [bayesian_predict([rng.choice((-1, 1)) for _ in range(FEAT)], protos, rng)[1]
-               for _ in range(60)]
+    unc_ood = [
+        bayesian_predict([rng.choice((-1, 1)) for _ in range(FEAT)], protos, rng)[1]
+        for _ in range(60)
+    ]
 
     m_in = sum(unc_in) / len(unc_in)
     m_ood = sum(unc_ood) / len(unc_ood)
@@ -62,16 +65,24 @@ def main():
     print("=" * 58)
     print(f"feat={FEAT} classes={CLASSES} passes={PASSES} keep-prob={KEEP}")
     print(f"in-distribution : accuracy {accuracy:.0%}  mean uncertainty {m_in:.2f}")
-    print(f"out-of-dist     : mean uncertainty {m_ood:.2f}  ({m_ood / max(m_in, 1e-6):.1f}x higher)")
-    print("attaches 'answer + how sure' to KG queries / the novelty gate; composes with drift_monitor.")
+    print(
+        f"out-of-dist     : mean uncertainty {m_ood:.2f}  ({m_ood / max(m_in, 1e-6):.1f}x higher)"
+    )
+    print(
+        "attaches 'answer + how sure' to KG queries / the novelty gate; composes with drift_monitor."
+    )
     print("=" * 58)
 
     # ---- self-check: one runnable assert-based check; deterministic ----
     assert accuracy >= 0.95, f"in-distribution recall should stay accurate: {accuracy:.2f}"
     assert m_in < 0.2, f"clean cues should be confident (low uncertainty): {m_in:.2f}"
-    assert m_ood > m_in + 0.2, f"OOD cues should be measurably less certain: ood={m_ood:.2f} in={m_in:.2f}"
-    print(f"self-check OK: {accuracy:.0%} accurate + confident in-dist ({m_in:.2f}); "
-          f"OOD uncertainty {m_ood:.2f} flags 'don't trust this answer'")
+    assert m_ood > m_in + 0.2, (
+        f"OOD cues should be measurably less certain: ood={m_ood:.2f} in={m_in:.2f}"
+    )
+    print(
+        f"self-check OK: {accuracy:.0%} accurate + confident in-dist ({m_in:.2f}); "
+        f"OOD uncertainty {m_ood:.2f} flags 'don't trust this answer'"
+    )
 
 
 if __name__ == "__main__":

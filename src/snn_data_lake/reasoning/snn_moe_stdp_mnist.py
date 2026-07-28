@@ -25,10 +25,11 @@ training by majority vote, exactly as in v0.3.
 Run:  python snn_moe_stdp_mnist.py
 Scale: NORD_EXPERTS / NORD_EXPERT_M / NORD_TOPK / NORD_TRAIN / NORD_TEST env vars.
 """
+
 import os
 import torch
 import snntorch as snn
-from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist   # reuse the MNIST loader (v0.3)
+from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist  # reuse the MNIST loader (v0.3)
 from snn_data_lake.reasoning.torch_device import resolve_device, enable
 
 _DEVICE = enable(resolve_device())
@@ -42,8 +43,8 @@ def _env(key, default):
 
 # ---- config -----------------------------------------------------------------
 N_EXPERTS = _env("NORD_EXPERTS", 6)
-EXPERT_M = _env("NORD_EXPERT_M", 60)   # neurons per expert
-TOP_K = _env("NORD_TOPK", 2)           # experts activated per image
+EXPERT_M = _env("NORD_EXPERT_M", 60)  # neurons per expert
+TOP_K = _env("NORD_TOPK", 2)  # experts activated per image
 T = 25
 MAX_RATE = 0.35
 BETA = 0.92
@@ -55,7 +56,7 @@ W_NORM = 78.0
 WMAX = 1.0
 THRESH = 8.0
 THETA_PLUS = 0.4
-LOAD_BALANCE = 6.0   # router penalty on over-used experts (spreads the load)
+LOAD_BALANCE = 6.0  # router penalty on over-used experts (spreads the load)
 N_IN = 28 * 28
 
 
@@ -69,11 +70,11 @@ class StdpExpert:
         self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
         self.theta = torch.zeros(EXPERT_M)
-        self.colsum = self.W.sum(dim=0)   # cached input drive per pixel (router)
+        self.colsum = self.W.sum(dim=0)  # cached input drive per pixel (router)
 
     def _normalise(self):
         s = self.W.sum(dim=1, keepdim=True).clamp_min(1e-6)
-        self.W *= (W_NORM / s)
+        self.W *= W_NORM / s
 
     def affinity(self, rates):
         """firing-rate routing score: how hard this image drives the expert."""
@@ -102,7 +103,7 @@ class StdpExpert:
                 mem = torch.zeros(EXPERT_M)
         if learn:
             self._normalise()
-            self.colsum = self.W.sum(dim=0)   # refresh router cache after update
+            self.colsum = self.W.sum(dim=0)  # refresh router cache after update
         return counts, synops
 
 
@@ -110,8 +111,10 @@ def route(experts, image, usage):
     """Pick TOP_K experts by firing-rate affinity minus a load-balance penalty."""
     rates = image * MAX_RATE
     total = max(1, sum(usage))
-    scores = [e.affinity(rates) - LOAD_BALANCE * (usage[i] / total) * e.affinity(rates)
-              for i, e in enumerate(experts)]
+    scores = [
+        e.affinity(rates) - LOAD_BALANCE * (usage[i] / total) * e.affinity(rates)
+        for i, e in enumerate(experts)
+    ]
     return sorted(range(len(experts)), key=lambda i: -scores[i])[:TOP_K]
 
 
@@ -123,8 +126,10 @@ def main():
     Xtr, Ytr, Xte, Yte = load_mnist(TRAIN_N, TEST_N)
     experts = [StdpExpert(seed=i + 1) for i in range(N_EXPERTS)]
     usage = [0] * N_EXPERTS
-    print(f"experts N={N_EXPERTS} x {EXPERT_M} neurons  top-K={TOP_K}  "
-          f"train={TRAIN_N} test={TEST_N}  (NO labels, NO backprop, NO learned router)\n")
+    print(
+        f"experts N={N_EXPERTS} x {EXPERT_M} neurons  top-K={TOP_K}  "
+        f"train={TRAIN_N} test={TEST_N}  (NO labels, NO backprop, NO learned router)\n"
+    )
 
     print("training (routed unsupervised STDP)...")
     for i, img in enumerate(Xtr):
@@ -132,7 +137,7 @@ def main():
             experts[e].run(img, learn=True)
             usage[e] += 1
         if (i + 1) % 1000 == 0:
-            print(f"  {i+1}/{TRAIN_N}  expert usage={usage}")
+            print(f"  {i + 1}/{TRAIN_N}  expert usage={usage}")
 
     print("\nassigning neuron labels (per expert, majority vote)...")
     # assignment[e] = tensor[EXPERT_M] -> class
@@ -166,12 +171,16 @@ def main():
     print(f"\nTEST ACCURACY : {acc:.1%}   (chance = 10%)\n")
     print("COMPUTE on test set (lower = less power):")
     print(f"  active SynOps (top-{TOP_K})   : {active_synops:,}")
-    print(f"  dense-MoE (all {N_EXPERTS} experts) : {int(dense_moe):,}  -> {dense_moe/active_synops:.1f}x saved by routing")
-    print(f"  dense ANN (T*N*allneurons) : {dense_ann:,}  -> {dense_ann/active_synops:.1f}x")
+    print(
+        f"  dense-MoE (all {N_EXPERTS} experts) : {int(dense_moe):,}  -> {dense_moe / active_synops:.1f}x saved by routing"
+    )
+    print(f"  dense ANN (T*N*allneurons) : {dense_ann:,}  -> {dense_ann / active_synops:.1f}x")
     print()
     print("STORAGE:")
-    print(f"  expert weights : {N_EXPERTS}*{EXPERT_M}*{N_IN} = {N_EXPERTS*EXPERT_M*N_IN:,}")
-    print(f"  router params  : 0 (routing is the spike drive)  vs {N_EXPERTS*N_IN:,} for a learned router")
+    print(f"  expert weights : {N_EXPERTS}*{EXPERT_M}*{N_IN} = {N_EXPERTS * EXPERT_M * N_IN:,}")
+    print(
+        f"  router params  : 0 (routing is the spike drive)  vs {N_EXPERTS * N_IN:,} for a learned router"
+    )
     print("=" * 60)
 
     assert acc >= 0.55, f"hybrid did not learn: acc={acc:.2f}"

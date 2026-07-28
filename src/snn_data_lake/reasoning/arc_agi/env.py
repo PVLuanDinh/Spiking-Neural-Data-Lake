@@ -57,10 +57,10 @@ DOOR = 4
 BOX = 5
 TARGET = 6
 GOAL = 7
-MARK = 9          # toggle-game agent marker on its own row
-COL0 = 10         # color_lock / toggle palette base (COL0, COL0+1, COL0+2)
+MARK = 9  # toggle-game agent marker on its own row
+COL0 = 10  # color_lock / toggle palette base (COL0, COL0+1, COL0+2)
 
-_DELTAS = ((-1, 0), (1, 0), (0, -1), (0, 1))          # up, down, left, right
+_DELTAS = ((-1, 0), (1, 0), (0, -1), (0, 1))  # up, down, left, right
 _MOVE_NAMES = ("up", "down", "left", "right")
 
 
@@ -71,6 +71,7 @@ def _clone(grid):
 # =====================================================================================================
 # Game 1 -- key_door : DEPENDENCY rule (key must be collected before the door opens).
 # =====================================================================================================
+
 
 class KeyDoor:
     """5x5 open room. Reach the DOOR, but the door is SOLID until you have walked over the KEY.
@@ -134,10 +135,12 @@ class KeyDoor:
 # Game 2 -- push_box : PUSH/physics rule (Sokoban-lite).
 # =====================================================================================================
 
+
 def _pushbox_solvable(size, agent, box, target):
     """BFS over (agent, box) states to confirm the box can reach the target. Used only during
     layout generation -- the player never sees this oracle."""
     from collections import deque
+
     seen = {(agent, box)}
     dq = deque([(agent, box)])
     while dq:
@@ -208,7 +211,7 @@ class PushBox:
         if (nr, nc) == (self.br, self.bc):
             pr, pc = self.br + dr, self.bc + dc
             if not (0 <= pr < self.size and 0 <= pc < self.size):
-                return self.render(), 0.0, False          # box against the wall -- blocked
+                return self.render(), 0.0, False  # box against the wall -- blocked
             self.br, self.bc = pr, pc
             self.ar, self.ac = nr, nc
             if (self.br, self.bc) == self._target:
@@ -229,8 +232,10 @@ class PushBox:
 # Game 3 -- color_lock : COLOR-navigation rule (one hidden safe color is walkable).
 # =====================================================================================================
 
+
 def _colorlock_solvable(size, colors, start, goal, safe):
     from collections import deque
+
     seen = {start}
     dq = deque([start])
     while dq:
@@ -316,7 +321,7 @@ class ColorLock:
         if self._colors[nr][nc] == self._safe:
             self.ar, self.ac = nr, nc
         else:
-            self.ar, self.ac = self._start          # wrong color -> sent back to the entrance
+            self.ar, self.ac = self._start  # wrong color -> sent back to the entrance
         return self.render(), 0.0, False
 
     def snapshot(self):
@@ -330,6 +335,7 @@ class ColorLock:
 # =====================================================================================================
 # Game 4 -- toggle_to_goal : TOGGLE rule (cycle every tile to the hidden target color).
 # =====================================================================================================
+
 
 class ToggleToGoal:
     """A row of T tiles, each showing a color. Cycle each tile until EVERY tile matches the hidden
@@ -352,7 +358,7 @@ class ToggleToGoal:
         self._target = rng.randrange(self.n_colors)
         while True:
             tiles = [rng.randrange(self.n_colors) for _ in range(self.n_tiles)]
-            if any(t != self._target for t in tiles):        # not already solved
+            if any(t != self._target for t in tiles):  # not already solved
                 self._tiles0 = tiles
                 break
         self._astart = rng.randrange(self.n_tiles)

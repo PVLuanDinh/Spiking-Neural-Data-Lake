@@ -28,6 +28,7 @@ The association is proximity; the workspace supplies the ignition-gated serial c
   PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python research/concept_reflection.py
 Deps: numpy + stdlib. Reuses train_of_thought (spiking GlobalWorkspace); zero core edits.
 """
+
 import numpy as np
 
 from snn_data_lake.reasoning.train_of_thought import TrainOfThought
@@ -46,11 +47,13 @@ class ConceptReflector:
     it thinks about together (Hebbian). Accumulates a concept-association graph across the loop."""
 
     def __init__(self, threshold=0.55, top_k=3, seed=0):
-        self.threshold = threshold        # min prototype cosine for an association to "come to mind" (ignite)
-        self.top_k = top_k                # at most this many candidates compete per hop
+        self.threshold = (
+            threshold  # min prototype cosine for an association to "come to mind" (ignite)
+        )
+        self.top_k = top_k  # at most this many candidates compete per hop
         self.seed = seed
-        self.protos = {}                  # concept (str) -> prototype vector (np.ndarray)
-        self.hebb = {}                    # frozenset({a, b}) -> association weight (strengthened by reflection)
+        self.protos = {}  # concept (str) -> prototype vector (np.ndarray)
+        self.hebb = {}  # frozenset({a, b}) -> association weight (strengthened by reflection)
 
     def register(self, concept, prototype):
         """Record a concept's learned prototype (mean feature vector). Concept must be a hashable str."""
@@ -61,6 +64,7 @@ class ConceptReflector:
         """associate(broadcast, chain) -> [(concept, salience), ...]: the nearest OTHER learned concepts
         by prototype cosine, above threshold, mapped to a supra-rheobase workspace drive. Only concepts
         related enough IGNITE (come to mind); unrelated ones stay sub-threshold."""
+
         def associate(broadcast, chain):
             if broadcast not in self.protos:
                 return []
@@ -72,10 +76,13 @@ class ConceptReflector:
                     continue
                 sim = _cos(v, p)
                 if sim >= self.threshold:
-                    sal = min(1.0, 0.55 + 0.44 * sim)      # sim in [thr,1] -> salience above rheobase (0.55)
+                    sal = min(
+                        1.0, 0.55 + 0.44 * sim
+                    )  # sim in [thr,1] -> salience above rheobase (0.55)
                     cands.append((c, sal))
             cands.sort(key=lambda x: (-x[1], x[0]))
             return cands[: self.top_k]
+
         return associate
 
     def reflect(self, new_concept, max_steps=8):
@@ -85,14 +92,17 @@ class ConceptReflector:
         c = str(new_concept)
         tot = TrainOfThought(seed=self.seed)
         chain = tot.think(c, self._associate(), max_steps=max_steps)
-        for a, b in zip(chain, chain[1:]):                 # fire together, wire together
+        for a, b in zip(chain, chain[1:]):  # fire together, wire together
             k = frozenset((a, b))
             self.hebb[k] = self.hebb.get(k, 0.0) + 1.0
         return chain
 
     def association_graph(self):
         """The concept-association graph the brain has built by reflecting: {(a, b): weight}, sorted."""
-        return {tuple(sorted(k)): w for k, w in sorted(self.hebb.items(), key=lambda kv: (-kv[1], sorted(kv[0])))}
+        return {
+            tuple(sorted(k)): w
+            for k, w in sorted(self.hebb.items(), key=lambda kv: (-kv[1], sorted(kv[0])))
+        }
 
     def strongest_link(self):
         """The concept pair the brain has most strongly wired together (or None)."""
@@ -117,13 +127,15 @@ def _proto(cluster, idx, dim=16):
 
 
 def main():
-    import sys
 
     # three concept clusters (A: a0,a1,a2 ; B: b0,b1 ; and one isolated concept z) ------------------
     protos = {
-        "a0": _proto(0, 0), "a1": _proto(0, 1), "a2": _proto(0, 2),
-        "b0": _proto(1, 0), "b1": _proto(1, 1),
-        "z": _proto(3, 0),                       # its own band -> related to nothing else
+        "a0": _proto(0, 0),
+        "a1": _proto(0, 1),
+        "a2": _proto(0, 2),
+        "b0": _proto(1, 0),
+        "b1": _proto(1, 1),
+        "z": _proto(3, 0),  # its own band -> related to nothing else
     }
     ref = ConceptReflector(threshold=0.55, seed=0)
     for c, p in protos.items():
@@ -141,7 +153,9 @@ def main():
     strongest = ref.strongest_link()
 
     print("=" * 90)
-    print("CONCEPT REFLECTION -- the loop thinks (train of thought) about what it learns + wires it")
+    print(
+        "CONCEPT REFLECTION -- the loop thinks (train of thought) about what it learns + wires it"
+    )
     print("=" * 90)
     print(f"reflect('a0') train of thought : {' -> '.join(chain_a)}")
     print(f"reflect('z')  (isolated)       : {' -> '.join(chain_z)}  (nothing related ignited)")
@@ -154,24 +168,35 @@ def main():
 
     # ---- self-checks (deterministic) ----------------------------------------------------------------
     # (1) reflecting on a cluster-A concept chains ONLY related (cluster-A) concepts, never B or z.
-    assert len(chain_a) >= 2, "reflection must chain the new concept to >=1 related concept it thought about"
+    assert len(chain_a) >= 2, (
+        "reflection must chain the new concept to >=1 related concept it thought about"
+    )
     assert chain_a[0] == "a0", "the train of thought must start at the reflected concept"
-    assert all(c.startswith("a") for c in chain_a), f"reflection must stay within the related cluster, got {chain_a}"
-    assert "z" not in chain_a and not any(c.startswith("b") for c in chain_a), "unrelated concepts must NOT ignite"
+    assert all(c.startswith("a") for c in chain_a), (
+        f"reflection must stay within the related cluster, got {chain_a}"
+    )
+    assert "z" not in chain_a and not any(c.startswith("b") for c in chain_a), (
+        "unrelated concepts must NOT ignite"
+    )
     # (2) an isolated concept ignites no association -> honest: the brain thinks of only itself (len 1).
     assert chain_z == ["z"], f"an isolated concept must reflect to itself only, got {chain_z}"
     # (3) reflection is LOAD-BEARING: it wired related concepts together, and repetition strengthened them.
     assert graph, "reflection must build a concept-association graph (wire concepts together)"
-    assert all(a.startswith("a") == b.startswith("a") for (a, b) in graph if not (a == "z" or b == "z")), \
-        "wired pairs must be within-cluster (the brain wires together what it thought about)"
-    assert strongest is not None and strongest[1] >= 2, "repeated reflection must STRENGTHEN a wired link (weight >= 2)"
+    assert all(
+        a.startswith("a") == b.startswith("a") for (a, b) in graph if not (a == "z" or b == "z")
+    ), "wired pairs must be within-cluster (the brain wires together what it thought about)"
+    assert strongest is not None and strongest[1] >= 2, (
+        "repeated reflection must STRENGTHEN a wired link (weight >= 2)"
+    )
     # (4) honest: only proximity + spiking workspace; no language model in the path.
 
-    print(f"self-check OK: the loop REFLECTS on a new concept via a spiking train of thought over its OWN "
-          f"concepts (reflect('a0') -> {' -> '.join(chain_a)}), stays within the related cluster, thinks "
-          f"only of itself for an isolated concept (honest), and WIRES what it thought about together "
-          f"(strongest link {strongest[0]} weight {strongest[1]:.0f}) -- reflection is load-bearing, not "
-          f"annotation. Relatedness is feature-prototype proximity gated by ignition, not semantics.")
+    print(
+        f"self-check OK: the loop REFLECTS on a new concept via a spiking train of thought over its OWN "
+        f"concepts (reflect('a0') -> {' -> '.join(chain_a)}), stays within the related cluster, thinks "
+        f"only of itself for an isolated concept (honest), and WIRES what it thought about together "
+        f"(strongest link {strongest[0]} weight {strongest[1]:.0f}) -- reflection is load-bearing, not "
+        f"annotation. Relatedness is feature-prototype proximity gated by ignition, not semantics."
+    )
     return 0
 
 

@@ -41,6 +41,7 @@ may not fully clear. This module claims no benchmark number a tiny model cannot 
   PYTHONPATH=src python -m snn_data_lake.reasoning.eprop_lm_alif_serve            # fast stdlib+numpy proof
   PYTHONPATH=src python -m snn_data_lake.reasoning.eprop_lm_alif_serve --train    # + strict trained proof
 """
+
 import json
 import os
 import random
@@ -51,23 +52,24 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
 DEFAULT_ARTIFACT = os.path.join(_ROOT, "models", "eprop_lm_alif.npz")
 
-FORMAT = "eprop_lm_alif.v1"      # frozen-artifact schema tag (trainer + serve must agree)
+FORMAT = "eprop_lm_alif.v1"  # frozen-artifact schema tag (trainer + serve must agree)
 # ---- ALIF dynamics defaults (mirror training/eprop_lm_alif.py; per-artifact values override via meta) ----
-ALPHA = 0.90                     # fast membrane decay
-RHO = 0.98                       # slow adaptation decay (tau_a >> tau_m)
-BETA = 0.12                      # threshold adaptation gain
-V_TH = 0.6                       # baseline spike threshold (soft reset subtracts V_TH)
-KAPPA = 0.9                      # leaky-readout decay
-W_IN_SCALE = 0.9                 # random-init input-weight std (test artifacts only)
-W_REC_SCALE = 0.2                # random-init recurrent-weight std
-W_FF_SCALE = 0.6                 # random-init inter-layer-weight std
-W_OUT_SCALE = 0.2                # random-init readout-weight std
+ALPHA = 0.90  # fast membrane decay
+RHO = 0.98  # slow adaptation decay (tau_a >> tau_m)
+BETA = 0.12  # threshold adaptation gain
+V_TH = 0.6  # baseline spike threshold (soft reset subtracts V_TH)
+KAPPA = 0.9  # leaky-readout decay
+W_IN_SCALE = 0.9  # random-init input-weight std (test artifacts only)
+W_REC_SCALE = 0.2  # random-init recurrent-weight std
+W_FF_SCALE = 0.6  # random-init inter-layer-weight std
+W_OUT_SCALE = 0.2  # random-init readout-weight std
 
 
 def _load_numpy():
     """Lazy numpy import (numpy-lazy contract). Returns the module or None if unavailable."""
     try:
         import numpy as np
+
         return np
     except Exception:
         return None
@@ -86,7 +88,7 @@ def build_random_artifact(path, text, hidden=32, layers=2, seed=0):
     v_n, n, L = len(vocab), int(hidden), int(layers)
 
     def rng_for(name):
-        salt = zlib.crc32(name.encode("ascii")) & 0xFFFFFFFF   # crc32, never builtin hash()
+        salt = zlib.crc32(name.encode("ascii")) & 0xFFFFFFFF  # crc32, never builtin hash()
         return np.random.RandomState((int(seed) ^ salt) & 0xFFFFFFFF)
 
     w = {
@@ -96,16 +98,25 @@ def build_random_artifact(path, text, hidden=32, layers=2, seed=0):
     }
     for l in range(L):
         w_rec = rng_for("W_rec_%d" % l).standard_normal((n, n)) * W_REC_SCALE
-        np.fill_diagonal(w_rec, 0.0)                            # no self-loop
+        np.fill_diagonal(w_rec, 0.0)  # no self-loop
         w["W_rec_%d" % l] = w_rec
         w["b_hid_%d" % l] = np.zeros(n)
         if l > 0:
             w["W_ff_%d" % l] = rng_for("W_ff_%d" % l).standard_normal((n, n)) * W_FF_SCALE
     meta = {
-        "format": FORMAT, "vocab": vocab, "hidden": n, "layers": L, "vsize": v_n,
-        "alpha": ALPHA, "rho": RHO, "beta": BETA, "kappa": KAPPA, "v_th": V_TH, "trained": False,
+        "format": FORMAT,
+        "vocab": vocab,
+        "hidden": n,
+        "layers": L,
+        "vsize": v_n,
+        "alpha": ALPHA,
+        "rho": RHO,
+        "beta": BETA,
+        "kappa": KAPPA,
+        "v_th": V_TH,
+        "trained": False,
         "note": "random-init frozen deep-ALIF artifact (NOT trained) -- proves forward-serve + "
-                "order-sensitivity only",
+        "order-sensitivity only",
     }
     dirn = os.path.dirname(path)
     if dirn:
@@ -191,18 +202,22 @@ class EpropAlifLMServe:
         yr = np.zeros(v_n)
         logits = np.empty((len(ids), v_n))
         for t, cid in enumerate(ids):
-            z_below = w["W_in"][:, cid]                       # drive into layer 0 is the char current
+            z_below = w["W_in"][:, cid]  # drive into layer 0 is the char current
             for l in range(L):
                 if l == 0:
                     cur = z_below + w["W_rec_0"] @ z_prev[0] + w["b_hid_0"]
                 else:
-                    cur = w["W_ff_%d" % l] @ z_below + w["W_rec_%d" % l] @ z_prev[l] + w["b_hid_%d" % l]
+                    cur = (
+                        w["W_ff_%d" % l] @ z_below
+                        + w["W_rec_%d" % l] @ z_prev[l]
+                        + w["b_hid_%d" % l]
+                    )
                 v[l] = self.alpha * v[l] - self.v_th * z_prev[l] + cur
                 a[l] = self.rho * a[l] + z_prev[l]
                 z = (v[l] >= self.v_th + self.beta * a[l]).astype(np.float64)
                 z_prev[l] = z
-                z_below = z                                   # feed this layer's spikes upward
-            yr = self.kappa * yr + w["W_out"] @ z_below       # readout integrates the top layer
+                z_below = z  # feed this layer's spikes upward
+            yr = self.kappa * yr + w["W_out"] @ z_below  # readout integrates the top layer
             logits[t] = yr + w["b_out"]
         return logits
 
@@ -277,11 +292,24 @@ def _try_train_inline(art, text):
         if tdir not in sys.path:
             sys.path.insert(0, tdir)
         import eprop_lm_alif as trainer
-        trainer.train(text, hidden=48, layers=2, ctx=48, steps=400, seed=0, out_path=art, batch=16,
-                      lr=4e-3, log_every=0)
+
+        trainer.train(
+            text,
+            hidden=48,
+            layers=2,
+            ctx=48,
+            steps=400,
+            seed=0,
+            out_path=art,
+            batch=16,
+            lr=4e-3,
+            log_every=0,
+        )
         return True
     except Exception as exc:
-        print(f"  [note] inline torch train unavailable ({type(exc).__name__}); using random-init artifact")
+        print(
+            f"  [note] inline torch train unavailable ({type(exc).__name__}); using random-init artifact"
+        )
         return False
 
 
@@ -291,9 +319,14 @@ def _selfcheck(with_train=False):
         print("SKIP eprop_lm_alif_serve self-check: numpy unavailable")
         return 0
     import tempfile
+
     print("=" * 96)
-    print("DEEP-ALIF E-PROP RECURRENT-SPIKING LM SERVE -- forward-only numpy; full-sentence AR log-prob is")
-    print("the order lever, and the model was trained the brain-native way (deep ALIF, e-prop, no BPTT)")
+    print(
+        "DEEP-ALIF E-PROP RECURRENT-SPIKING LM SERVE -- forward-only numpy; full-sentence AR log-prob is"
+    )
+    print(
+        "the order lever, and the model was trained the brain-native way (deep ALIF, e-prop, no BPTT)"
+    )
     print("=" * 96)
 
     # torch-absence proof #1: importing + being about to USE the serve pulls no torch.
@@ -309,8 +342,10 @@ def _selfcheck(with_train=False):
 
     srv = EpropAlifLMServe(art, seed=0)
     assert srv.available() is True, "a valid frozen artifact must load"
-    print(f"  loaded: {srv.layers} ALIF layers x {srv.hidden} units, vocab={len(srv.vocab)}, "
-          f"rho={srv.rho} beta={srv.beta} (slow adaptation memory)")
+    print(
+        f"  loaded: {srv.layers} ALIF layers x {srv.hidden} units, vocab={len(srv.vocab)}, "
+        f"rho={srv.rho} beta={srv.beta} (slow adaptation memory)"
+    )
 
     # (2) ORDER-SENSITIVITY -- the whole point (the recurrence + slow adaptation carry history).
     seq = text[80:120]
@@ -323,9 +358,13 @@ def _selfcheck(with_train=False):
     print(f"  logprob(in-dist)={lp:.4f}  logprob(shuffled)={lps:.4f}  diff={lp - lps:.4f}")
     if trained:
         assert lp > lps, "a trained AR LM must score the in-distribution string ABOVE its shuffle"
-        print("  ORDER PROOF (trained): in-dist logprob > shuffled logprob -> LEARNED order-sensitivity.")
+        print(
+            "  ORDER PROOF (trained): in-dist logprob > shuffled logprob -> LEARNED order-sensitivity."
+        )
     else:
-        assert abs(lp - lps) > 1e-3, "shuffling MUST change the AR logprob (i.e. NOT order-invariant)"
+        assert abs(lp - lps) > 1e-3, (
+            "shuffling MUST change the AR logprob (i.e. NOT order-invariant)"
+        )
         print("  ORDER PROOF (random-init): shuffling CHANGES the AR logprob -> the model is NOT")
         print("  order-invariant. Strict in-dist>shuffled needs training (run with --train).")
 
@@ -340,13 +379,17 @@ def _selfcheck(with_train=False):
     assert miss.available() is False, "a missing artifact must report unavailable"
     assert miss.logprob("hello world") is None, "unavailable logprob must be None, not a fake score"
     assert miss.generate("hello") == "", "unavailable generate must return empty string"
-    print("  honest-unavailable: missing artifact -> available()=False, logprob()=None (no fake score).")
+    print(
+        "  honest-unavailable: missing artifact -> available()=False, logprob()=None (no fake score)."
+    )
 
     # torch-absence proof #2: the full serve path (load + logprob + generate) imported no torch.
     if not with_train:
         print("  torch-absent: 'torch' not in sys.modules after import + logprob + generate.")
     else:
-        print("  note: --train imported torch ONLY to TRAIN the artifact; the serve forward stays numpy.")
+        print(
+            "  note: --train imported torch ONLY to TRAIN the artifact; the serve forward stays numpy."
+        )
 
     for p in (art,):
         try:
@@ -360,11 +403,21 @@ def _selfcheck(with_train=False):
 
     print("-" * 96)
     print("self-check OK: forward-only numpy serve reloads a frozen DEEP-ALIF e-prop artifact; the")
-    print("full-sentence AR log-prob is ORDER-SENSITIVE (the recurrent membrane + slow adaptation carry")
-    print("history). HONEST: this proves the ARCHITECTURE + e-prop train->freeze->serve PIPELINE; a tiny")
-    print("model sits near n-gram on real grammar. ALIF + depth is the principled long-range lever, but a")
-    print("grammar-moving result needs a real-scale GPU e-prop run (training/eprop_lm_alif.py --full)")
-    print("exported to models/eprop_lm_alif.npz, and even then the language ceiling may not fully clear.")
+    print(
+        "full-sentence AR log-prob is ORDER-SENSITIVE (the recurrent membrane + slow adaptation carry"
+    )
+    print(
+        "history). HONEST: this proves the ARCHITECTURE + e-prop train->freeze->serve PIPELINE; a tiny"
+    )
+    print(
+        "model sits near n-gram on real grammar. ALIF + depth is the principled long-range lever, but a"
+    )
+    print(
+        "grammar-moving result needs a real-scale GPU e-prop run (training/eprop_lm_alif.py --full)"
+    )
+    print(
+        "exported to models/eprop_lm_alif.npz, and even then the language ceiling may not fully clear."
+    )
     print("=" * 96)
     return 0
 

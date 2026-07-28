@@ -22,16 +22,19 @@ random ranking decisively, at open-vocab scale a classifier cannot touch.
          NORD_FB_TRAIN(url) NORD_FB_TEST(url)
 Deps: numpy (+ stdlib). Reuses world_kb_stream bundled facts as the offline fallback.
 """
+
 import os
 
 import numpy as np
 
 _FB_TRAIN = os.environ.get(
     "NORD_FB_TRAIN",
-    "https://raw.githubusercontent.com/villmow/datasets_knowledge_embedding/master/FB15k-237/train.txt")
+    "https://raw.githubusercontent.com/villmow/datasets_knowledge_embedding/master/FB15k-237/train.txt",
+)
 _FB_TEST = os.environ.get(
     "NORD_FB_TEST",
-    "https://raw.githubusercontent.com/villmow/datasets_knowledge_embedding/master/FB15k-237/test.txt")
+    "https://raw.githubusercontent.com/villmow/datasets_knowledge_embedding/master/FB15k-237/test.txt",
+)
 
 
 def _envi(k, d):
@@ -46,6 +49,7 @@ def _envf(k, d):
 
 def _fetch_triples(url, name):
     from snn_data_lake.substrate.web_ingest import fetch_corpus
+
     path = os.path.join(os.environ.get("TEMP", "."), f"sndl_{name}.txt")
     if not (os.path.exists(path) and os.path.getsize(path) > 0):
         fetch_corpus(url, path, max_bytes=40_000_000, strip_html=False)
@@ -69,8 +73,10 @@ def load_dataset():
     except Exception:
         pass
     from snn_data_lake.reasoning.world_kb_stream import load_kb
+
     triples, _ = load_kb()
     import random
+
     random.Random(0).shuffle(triples)
     cut = int(len(triples) * 0.8)
     return triples[:cut], triples[cut:], True
@@ -89,14 +95,14 @@ class DistMult:
     def train_epoch(self, tr, lr, batch):
         self.rng.shuffle(tr)
         for i in range(0, len(tr), batch):
-            b = tr[i:i + batch]
+            b = tr[i : i + batch]
             h, r, t = b[:, 0], b[:, 1], b[:, 2]
-            tn = self.rng.randint(0, self.E.shape[0], size=len(b))     # corrupted tails (negatives)
+            tn = self.rng.randint(0, self.E.shape[0], size=len(b))  # corrupted tails (negatives)
             eh, wr, et, en = self.E[h], self.R[r], self.E[t], self.E[tn]
-            sp = np.sum(eh * wr * et, axis=1)                          # positive scores
-            sn = np.sum(eh * wr * en, axis=1)                          # negative scores
-            gp = (self._sig(sp) - 1.0)[:, None]                        # d/ds -log sig(sp)
-            gn = (self._sig(sn))[:, None]                              # d/ds -log sig(-sn)
+            sp = np.sum(eh * wr * et, axis=1)  # positive scores
+            sn = np.sum(eh * wr * en, axis=1)  # negative scores
+            gp = (self._sig(sp) - 1.0)[:, None]  # d/ds -log sig(sp)
+            gn = (self._sig(sn))[:, None]  # d/ds -log sig(-sn)
             # gradients (DistMult is symmetric trilinear)
             gEh = gp * (wr * et) + gn * (wr * en)
             gEt = gp * (eh * wr)
@@ -130,15 +136,21 @@ def main():
         return rel.setdefault(r, len(rel))
 
     tr = np.array([[eid(h), rid(r), eid(t)] for h, r, t in tr_s], dtype=np.int64)
-    te = np.array([[eid(h), rid(r), eid(t)] for h, r, t in te_s
-                   if h in ent and r in rel and t in ent], dtype=np.int64)
+    te = np.array(
+        [[eid(h), rid(r), eid(t)] for h, r, t in te_s if h in ent and r in rel and t in ent],
+        dtype=np.int64,
+    )
     n_ent, n_rel = len(ent), len(rel)
 
     print("=" * 90)
-    print("KB RANKING HEAD -- open-vocab completion via a DistMult scorer (rank all tails, not classify)")
+    print(
+        "KB RANKING HEAD -- open-vocab completion via a DistMult scorer (rank all tails, not classify)"
+    )
     print("=" * 90)
-    print(f"dataset: {'bundled real facts' if offline else 'FB15k-237'}; "
-          f"{len(tr):,} train / {len(te):,} test triples; {n_ent:,} entities, {n_rel} relations")
+    print(
+        f"dataset: {'bundled real facts' if offline else 'FB15k-237'}; "
+        f"{len(tr):,} train / {len(te):,} test triples; {n_ent:,} entities, {n_rel} relations"
+    )
 
     # filtered ranking: know every true tail for a (h, r) so we do not penalize other correct answers
     known = {}
@@ -151,39 +163,49 @@ def main():
 
     # evaluate filtered Hits@k / MRR on a sample of test
     rng = np.random.RandomState(0)
-    idx = rng.permutation(len(te))[:min(EVAL, len(te))]
+    idx = rng.permutation(len(te))[: min(EVAL, len(te))]
     hits10 = hits1 = 0
     rr = 0.0
     for j in idx:
         h, r, t = int(te[j, 0]), int(te[j, 1]), int(te[j, 2])
         scores = model.rank_tails(h, r)
         gold = scores[t]
-        for other in known.get((h, r), ()):                # filter: remove other true tails
+        for other in known.get((h, r), ()):  # filter: remove other true tails
             if other != t:
                 scores[other] = -1e30
-        rank = int(np.sum(scores > gold)) + 1               # 1-based rank of the true tail
+        rank = int(np.sum(scores > gold)) + 1  # 1-based rank of the true tail
         rr += 1.0 / rank
-        hits10 += (rank <= 10)
-        hits1 += (rank == 1)
+        hits10 += rank <= 10
+        hits1 += rank == 1
     n = len(idx)
     mrr, h10, h1 = rr / n, hits10 / n, hits1 / n
     # random-ranking baseline (expected)
-    rnd_h10, rnd_mrr = 10.0 / n_ent, (np.log(n_ent) + 0.577) / n_ent   # ~harmonic/n
+    rnd_h10, rnd_mrr = 10.0 / n_ent, (np.log(n_ent) + 0.577) / n_ent  # ~harmonic/n
 
     print("-" * 90)
-    print(f"  DistMult (dim {DIM}, {EPOCHS} epochs): Hits@10 {h10:.3f}  Hits@1 {h1:.3f}  MRR {mrr:.3f}  "
-          f"[eval n={n}]")
+    print(
+        f"  DistMult (dim {DIM}, {EPOCHS} epochs): Hits@10 {h10:.3f}  Hits@1 {h1:.3f}  MRR {mrr:.3f}  "
+        f"[eval n={n}]"
+    )
     print(f"  random-ranking baseline           : Hits@10 {rnd_h10:.4f}  MRR ~{rnd_mrr:.4f}")
-    print(f"  lift over random: Hits@10 x{h10 / max(rnd_h10, 1e-9):.0f}, MRR x{mrr / max(rnd_mrr, 1e-9):.0f}")
+    print(
+        f"  lift over random: Hits@10 x{h10 / max(rnd_h10, 1e-9):.0f}, MRR x{mrr / max(rnd_mrr, 1e-9):.0f}"
+    )
     print("-" * 90)
-    print("  the ranking head scales the world-KB skill to OPEN vocab (14k+ tails) a classifier cannot.")
+    print(
+        "  the ranking head scales the world-KB skill to OPEN vocab (14k+ tails) a classifier cannot."
+    )
     print("=" * 90)
 
-    assert h10 > 10 * rnd_h10, f"ranking head barely beats random Hits@10 ({h10:.3f} vs {rnd_h10:.4f})"
+    assert h10 > 10 * rnd_h10, (
+        f"ranking head barely beats random Hits@10 ({h10:.3f} vs {rnd_h10:.4f})"
+    )
     assert mrr > 10 * rnd_mrr, f"ranking head barely beats random MRR ({mrr:.3f} vs {rnd_mrr:.4f})"
-    print(f"self-check OK: DistMult ranking head Hits@10 {h10:.1%}, MRR {mrr:.3f} on "
-          f"{'FB15k-237' if not offline else 'bundled facts'} ({n_ent:,} entities) -- open-vocab KB "
-          f"completion, {h10 / max(rnd_h10, 1e-9):.0f}x random. The world-KB skill's scale competence head.")
+    print(
+        f"self-check OK: DistMult ranking head Hits@10 {h10:.1%}, MRR {mrr:.3f} on "
+        f"{'FB15k-237' if not offline else 'bundled facts'} ({n_ent:,} entities) -- open-vocab KB "
+        f"completion, {h10 / max(rnd_h10, 1e-9):.0f}x random. The world-KB skill's scale competence head."
+    )
     return 0
 
 

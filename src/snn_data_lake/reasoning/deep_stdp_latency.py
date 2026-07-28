@@ -87,6 +87,7 @@ Calibration knobs (optional): NORD_L1_EPOCHS NORD_CTHRESH NORD_KWINNER NORD_RINH
                               NORD_APLUS NORD_AMINUS
 Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
 """
+
 import os
 
 import torch
@@ -96,10 +97,10 @@ from snn_data_lake.reasoning.torch_device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp import FcStdp, OneLayerNet, assign_labels, evaluate
 
-K = 5              # conv kernel size (2 input channels, valid conv, stride 1)
-A_PLUS = 0.004     # multiplicative STDP potentiation rate (pre-before-post)
-A_MINUS = 0.003    # multiplicative STDP depression rate (pre-after / never)
-DOG_SIZE = 7       # Difference-of-Gaussians window
+K = 5  # conv kernel size (2 input channels, valid conv, stride 1)
+A_PLUS = 0.004  # multiplicative STDP potentiation rate (pre-before-post)
+A_MINUS = 0.003  # multiplicative STDP depression rate (pre-after / never)
+DOG_SIZE = 7  # Difference-of-Gaussians window
 DOG_C_SIGMA = 1.0  # center Gaussian sigma
 DOG_S_SIGMA = 2.0  # surround Gaussian sigma
 DOG_THRESH = 0.10  # zero DoG responses below this fraction of the per-image max
@@ -126,7 +127,7 @@ def _dog_kernel(size, c_sigma, s_sigma):
     surround = torch.exp(-r2 / (2.0 * s_sigma * s_sigma))
     surround = surround / surround.sum().clamp_min(1e-6)
     dog = center - surround
-    return dog - dog.mean()          # exact zero-sum -> flat regions give 0
+    return dog - dog.mean()  # exact zero-sum -> flat regions give 0
 
 
 class ConvLatencyStdp:
@@ -137,8 +138,8 @@ class ConvLatencyStdp:
     def __init__(self, C, t_lat, k=K, cthresh=None, k_winner=None, r_inh=None):
         self.C = C
         self.k = k
-        self.t_lat = t_lat                       # latency steps (== NORD_T)
-        self.hout = 28 - k + 1                    # valid conv, stride 1 -> 24 for k=5
+        self.t_lat = t_lat  # latency steps (== NORD_T)
+        self.hout = 28 - k + 1  # valid conv, stride 1 -> 24 for k=5
         self.cthresh = _envf("NORD_CTHRESH", 5.0) if cthresh is None else cthresh
         self.k_winner = _env("NORD_KWINNER", 5) if k_winner is None else k_winner
         self.r_inh = _env("NORD_RINH", 2) if r_inh is None else r_inh
@@ -150,8 +151,12 @@ class ConvLatencyStdp:
         # (a torch quirk) and lands on CPU, so pin every tensor to the resolved device.
         self.device = resolve_device()
         self.Wc = torch.normal(0.8, 0.05, size=(C, 2, k, k)).clamp_(0.0, 1.0).to(self.device)
-        self.dog = _dog_kernel(DOG_SIZE, DOG_C_SIGMA, DOG_S_SIGMA).view(1, 1, DOG_SIZE, DOG_SIZE).to(self.device)
-        self.pool = max(1, self.hout // 6)       # spatial max-pool to ~6x6
+        self.dog = (
+            _dog_kernel(DOG_SIZE, DOG_C_SIGMA, DOG_S_SIGMA)
+            .view(1, 1, DOG_SIZE, DOG_SIZE)
+            .to(self.device)
+        )
+        self.pool = max(1, self.hout // 6)  # spatial max-pool to ~6x6
 
     # -- mechanism 1 + 2: DoG ON/OFF -> intensity-bucketed latency spike times ----
     def _dog_latency(self, image):
@@ -159,15 +164,15 @@ class ConvLatencyStdp:
         neuron, or t_lat (== "never") where there is no contrast. Stronger contrast
         fires EARLIER; each input fires at most once."""
         img = image.to(self.device).reshape(1, 1, 28, 28)
-        resp = F.conv2d(img, self.dog, padding=DOG_SIZE // 2)[0, 0]     # [28,28]
+        resp = F.conv2d(img, self.dog, padding=DOG_SIZE // 2)[0, 0]  # [28,28]
         on = F.relu(resp)
         off = F.relu(-resp)
-        combined = torch.stack((on, off), dim=0)                       # [2,28,28]
+        combined = torch.stack((on, off), dim=0)  # [2,28,28]
         vmax = combined.max()
         st = torch.full((2, 28, 28), self.t_lat, dtype=torch.long, device=self.device)
         if float(vmax) > 0:
             thr = DOG_THRESH * vmax
-            active = combined > thr                                    # sparse mask
+            active = combined > thr  # sparse mask
             norm = (combined / vmax).clamp(0.0, 1.0)
             # strongest contrast -> time 0 ; weakest active -> time t_lat-1
             times = torch.round((1.0 - norm) * (self.t_lat - 1)).long()
@@ -180,15 +185,16 @@ class ConvLatencyStdp:
         t_lat == never, final potential map [C,hout,hout]). Non-leaky IF => potential
         is the conv of the CUMULATIVE input volley, so it is monotonic and the first
         threshold crossing is well defined."""
-        weight = self.Wc                                              # [C,2,k,k]
+        weight = self.Wc  # [C,2,k,k]
         cum = torch.zeros(2, 28, 28, device=self.device)
-        fired = torch.full((self.C, self.hout, self.hout), self.t_lat,
-                           dtype=torch.long, device=self.device)
+        fired = torch.full(
+            (self.C, self.hout, self.hout), self.t_lat, dtype=torch.long, device=self.device
+        )
         pot = torch.zeros(self.C, self.hout, self.hout, device=self.device)
         for t in range(self.t_lat):
-            vol = (spike_time == t).float()                           # [2,28,28]
+            vol = (spike_time == t).float()  # [2,28,28]
             cum = cum + vol
-            pot = F.conv2d(cum.unsqueeze(0), weight)[0]               # [C,hout,hout]
+            pot = F.conv2d(cum.unsqueeze(0), weight)[0]  # [C,hout,hout]
             newly = (pot >= self.cthresh) & (fired == self.t_lat)
             if newly.any():
                 fired = torch.where(newly, torch.full_like(fired, t), fired)
@@ -202,7 +208,7 @@ class ConvLatencyStdp:
         mask = fired < self.t_lat
         if not bool(mask.any()):
             return []
-        idx = mask.nonzero(as_tuple=False)                            # [N,3] f,y,x
+        idx = mask.nonzero(as_tuple=False)  # [N,3] f,y,x
         times = fired[mask].float()
         pots = pot[mask]
         # order: earliest spike first, break ties by stronger potential
@@ -215,13 +221,13 @@ class ConvLatencyStdp:
         for f, y, x in idx:
             if len(winners) >= self.k_winner:
                 break
-            if f in maps_won:                                         # intra-map WTA
+            if f in maps_won:  # intra-map WTA
                 continue
-            if (y, x) in claimed:                                     # inter-map WTA
+            if (y, x) in claimed:  # inter-map WTA
                 continue
             winners.append((f, y, x))
             maps_won.add(f)
-            for dy in range(-r, r + 1):                               # claim its patch
+            for dy in range(-r, r + 1):  # claim its patch
                 for dx in range(-r, r + 1):
                     claimed.add((y + dy, x + dx))
         return winners
@@ -231,17 +237,16 @@ class ConvLatencyStdp:
         """Update shared kernel f toward the winning input patch. Pre inputs that
         fired at/before the post spike potentiate; the rest depress; w*(1-w) soft
         bound drives each weight toward 0 or 1 (no renormalisation)."""
-        patch = spike_time[:, y:y + self.k, x:x + self.k]             # [2,k,k] times
-        pre_before = (patch <= post_time) & (patch < self.t_lat)     # actually fired
+        patch = spike_time[:, y : y + self.k, x : x + self.k]  # [2,k,k] times
+        pre_before = (patch <= post_time) & (patch < self.t_lat)  # actually fired
         w = self.Wc[f]
-        dw = torch.where(pre_before, self.a_plus * w * (1.0 - w),
-                         -self.a_minus * w * (1.0 - w))
+        dw = torch.where(pre_before, self.a_plus * w * (1.0 - w), -self.a_minus * w * (1.0 - w))
         self.Wc[f] = (w + dw).clamp_(0.0, 1.0)
 
     def train_image(self, image):
         st = self._dog_latency(image)
         fired, pot = self._forward(st)
-        for (f, y, x) in self._compete(fired, pot):
+        for f, y, x in self._compete(fired, pot):
             self._stdp(f, y, x, st, int(fired[f, y, x].item()))
 
     # -- frozen feature extraction for layer 2 ------------------------------------
@@ -250,9 +255,11 @@ class ConvLatencyStdp:
         = 0) -> spatial max-pool -> flatten -> rescale to [0,1] (layer-2 FC input)."""
         st = self._dog_latency(image)
         fired, _ = self._forward(st)
-        val = torch.where(fired < self.t_lat,
-                          (self.t_lat - fired).float() / self.t_lat,
-                          torch.zeros_like(fired, dtype=torch.float32))
+        val = torch.where(
+            fired < self.t_lat,
+            (self.t_lat - fired).float() / self.t_lat,
+            torch.zeros_like(fired, dtype=torch.float32),
+        )
         pooled = F.max_pool2d(val.view(1, self.C, self.hout, self.hout), self.pool)
         feat = pooled.reshape(-1)
         return feat / feat.max().clamp_min(1e-6)
@@ -275,7 +282,7 @@ class TwoLayerNet:
     """Deep: frozen conv-latency-STDP layer 1 -> pooled features -> FC-STDP prototypes."""
 
     def __init__(self, conv, m):
-        self.conv = conv                          # already trained + frozen
+        self.conv = conv  # already trained + frozen
         self.fc = FcStdp(conv.feat_dim(), m)
 
     def train_image(self, image):
@@ -304,11 +311,14 @@ def main():
     print("LATENCY CONV-STDP vs SINGLE-LAYER  (MNIST, Kheradpisheh-2018 machinery)")
     print("=" * 66)
     print(f"C={C}  M={M}  k={K}  latency-steps T={T_LAT}  train={TRAIN_N}  test={TEST_N}")
-    print(f"conv-thresh={_envf('NORD_CTHRESH', 5.0)}  k_winner={_env('NORD_KWINNER', 5)}  "
-          f"r_inh={_env('NORD_RINH', 2)}  a+={_envf('NORD_APLUS', A_PLUS)}  "
-          f"a-={_envf('NORD_AMINUS', A_MINUS)}")
-    print("DoG ON/OFF -> latency rank-order -> conv-IF first-spike 2-axis WTA -> "
-          "mult soft-bound STDP")
+    print(
+        f"conv-thresh={_envf('NORD_CTHRESH', 5.0)}  k_winner={_env('NORD_KWINNER', 5)}  "
+        f"r_inh={_env('NORD_RINH', 2)}  a+={_envf('NORD_APLUS', A_PLUS)}  "
+        f"a-={_envf('NORD_AMINUS', A_MINUS)}"
+    )
+    print(
+        "DoG ON/OFF -> latency rank-order -> conv-IF first-spike 2-axis WTA -> mult soft-bound STDP"
+    )
     print("(NO labels, NO backprop; labels only in the final neuron-label vote)\n")
     print("loading MNIST...")
     Xtr, Ytr, Xte, Yte = load_mnist(TRAIN_N, TEST_N)
@@ -330,8 +340,10 @@ def main():
     conv = ConvLatencyStdp(C, T_LAT)
     for ep in range(L1_EPOCHS):
         _train(conv, Xtr, f"2-layer L1 ep{ep + 1}/{L1_EPOCHS}")
-        print(f"  [L1] epoch {ep + 1}/{L1_EPOCHS} kernel diversity (cos-sim) = "
-              f"{conv.kernel_diversity():.3f}")
+        print(
+            f"  [L1] epoch {ep + 1}/{L1_EPOCHS} kernel diversity (cos-sim) = "
+            f"{conv.kernel_diversity():.3f}"
+        )
     diversity = conv.kernel_diversity()
     print(f"[2-layer] layer-1 frozen; feature dim = {conv.feat_dim()}")
     print(f"[2-layer] LAYER-1 KERNEL DIVERSITY (mean pairwise cos-sim) = {diversity:.3f}")
@@ -365,9 +377,12 @@ def main():
     assert diversity < 0.6, (
         f"layer-1 maps COLLAPSED: mean pairwise cos-sim={diversity:.3f} (need < 0.6). "
         "The two-axis WTA or multiplicative STDP is not separating the maps -- fix "
-        "the mechanism (do NOT lower the bar).")
-    print(f"self-check OK: 1-layer acc={acc1:.1%} (>10% chance); kernels DIVERSE "
-          f"(cos-sim {diversity:.3f} < 0.6, no collapse); 2-layer delta {delta:+.1%} (honest).")
+        "the mechanism (do NOT lower the bar)."
+    )
+    print(
+        f"self-check OK: 1-layer acc={acc1:.1%} (>10% chance); kernels DIVERSE "
+        f"(cos-sim {diversity:.3f} < 0.6, no collapse); 2-layer delta {delta:+.1%} (honest)."
+    )
 
 
 if __name__ == "__main__":

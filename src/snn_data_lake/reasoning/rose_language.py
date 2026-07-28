@@ -47,6 +47,7 @@ honestly, the pipeline still works). No torch anywhere.
 
   PYTHONPATH=src python -m snn_data_lake.reasoning.rose_language
 """
+
 import random
 
 # --- pure-stdlib spiking substrate (no numpy): VSA algebra, world KB, theta-gamma, polychronization ---
@@ -56,7 +57,9 @@ from snn_data_lake.reasoning.world_kb_stream import load_kb
 # syntactic roles (beim Graben et al. 2020 role-filler slots) -> each a spike-polarity role code via hv
 ROLE_HEAD, ROLE_COMP, ROLE_SPEC, ROLE_MOD = "HEAD", "COMP", "SPEC", "MOD"
 _ROLE_NAMES = (ROLE_HEAD, ROLE_COMP, ROLE_SPEC, ROLE_MOD)
-_DETERMINERS = frozenset(("the", "a", "an", "this", "that", "these", "those", "my", "your", "its", "his", "her"))
+_DETERMINERS = frozenset(
+    ("the", "a", "an", "this", "that", "these", "those", "my", "your", "its", "his", "her")
+)
 _STOP_DISTRACTORS = ("thing", "object", "place", "other", "none", "unknown")  # cleanup distractors
 
 
@@ -73,11 +76,11 @@ class Constituent:
     __slots__ = ("cat", "slots", "hv", "codebook", "order")
 
     def __init__(self, cat, slots, hvec, codebook, order):
-        self.cat = cat                 # phrase category tag, e.g. "NP" / "S"
-        self.slots = slots             # [(role, filler), ...]  filler = word str | Constituent
-        self.hv = hvec                 # the constituent's spike-polarity code
-        self.codebook = codebook       # {label: hypervector} cleanup snaps to
-        self.order = order             # {id(filler): permute_k} order-of-repeated-role shift
+        self.cat = cat  # phrase category tag, e.g. "NP" / "S"
+        self.slots = slots  # [(role, filler), ...]  filler = word str | Constituent
+        self.hv = hvec  # the constituent's spike-polarity code
+        self.codebook = codebook  # {label: hypervector} cleanup snaps to
+        self.order = order  # {id(filler): permute_k} order-of-repeated-role shift
 
     @property
     def label(self):
@@ -108,7 +111,7 @@ class RoseLanguage:
         self._triples = set(norm_triples)
         self._facts = {}
         for h, r, t in norm_triples:
-            self._facts.setdefault((h, r), t)        # first tail wins -> deterministic
+            self._facts.setdefault((h, r), t)  # first tail wins -> deterministic
         self._relations = {r for _, r, _ in norm_triples}
         self._entities = {h for h, _, _ in norm_triples} | {t for _, _, t in norm_triples}
         # ---- role + grounding-anchor spike codes (deterministic via crc32 seed inside hv) ----
@@ -116,8 +119,8 @@ class RoseLanguage:
         self._ENTITY = hv("__ENTITY__")
         self._RELATION = hv("__RELATION__")
         # ---- lazily-built numpy-bearing stages (R percept latent, E competence head) ----
-        self._acq = "unset"            # cortex/language_acquisition instance or None
-        self._readout = None           # {"slda":..., "iidx":..., "ridx":..., "ctx":...} or None
+        self._acq = "unset"  # cortex/language_acquisition instance or None
+        self._readout = None  # {"slda":..., "iidx":..., "ridx":..., "ctx":...} or None
 
     # ================================================================= R: grounded lexis =============
     def _word_hv(self, word):
@@ -135,6 +138,7 @@ class RoseLanguage:
                     LanguageAcquisition,
                     _fold,
                 )
+
                 self._acq = (LanguageAcquisition(seed=self.seed), _STOI, _fold)
             except Exception:
                 self._acq = None
@@ -143,7 +147,7 @@ class RoseLanguage:
         try:
             la, stoi, fold = self._acq
             ids = [stoi[fold(ch)] for ch in _norm(word)] or [stoi[" "]]
-            latent = la._encode_ctx(ids)             # settle causes by minimising prediction error
+            latent = la._encode_ctx(ids)  # settle causes by minimising prediction error
             return [round(float(v), 6) for v in latent]
         except Exception:
             return None
@@ -163,9 +167,11 @@ class RoseLanguage:
             return None
         return {
             "word": w,
-            "type": kind,               # "entity" | "relation"
-            "referent": w,              # the KB symbol the word points at
-            "grounded_hv": bind(self._word_hv(w), anchor),   # word bound to its role anchor (spike code)
+            "type": kind,  # "entity" | "relation"
+            "referent": w,  # the KB symbol the word points at
+            "grounded_hv": bind(
+                self._word_hv(w), anchor
+            ),  # word bound to its role anchor (spike code)
         }
 
     # ================================================================= O: constituency ===============
@@ -186,7 +192,7 @@ class RoseLanguage:
             start = 1
         head_i = len(toks) - 1
         for j in range(start, head_i):
-            slots.append((ROLE_MOD, toks[j]))         # ordered modifiers (permuted at encode)
+            slots.append((ROLE_MOD, toks[j]))  # ordered modifiers (permuted at encode)
         slots.append((ROLE_HEAD, toks[head_i]))
         return slots
 
@@ -199,16 +205,16 @@ class RoseLanguage:
         for role, filler in slots:
             if isinstance(filler, Constituent):
                 fhv, key = filler.hv, filler.label
-                codebook.update(filler.codebook)      # child leaves stay resolvable
+                codebook.update(filler.codebook)  # child leaves stay resolvable
             else:
                 fhv, key = self._word_hv(filler), filler
-            k = role_counts.get(role, 0)              # 0 for the first filler of a role, 1 for the next...
+            k = role_counts.get(role, 0)  # 0 for the first filler of a role, 1 for the next...
             role_counts[role] = k + 1
             order[id(filler)] = k
-            fcode = permute(fhv, k) if k else fhv      # axonal-delay line-shift encodes order
+            fcode = permute(fhv, k) if k else fhv  # axonal-delay line-shift encodes order
             pairs.append(bind(self._role_hv[role], fcode))
             codebook[key] = fhv
-        for d in _STOP_DISTRACTORS:                    # cleanup distractors so a round-trip is a real test
+        for d in _STOP_DISTRACTORS:  # cleanup distractors so a round-trip is a real test
             codebook.setdefault(d, hv(d))
         hvec = bundle(pairs) if pairs else hv(cat)
         return hvec, codebook, order
@@ -250,7 +256,7 @@ class RoseLanguage:
         try:
             noisy = bind(constituent.hv, self._role_hv[role])
             if k:
-                noisy = permute(noisy, (D - k) % D)    # inverse line-shift to isolate the k-th filler
+                noisy = permute(noisy, (D - k) % D)  # inverse line-shift to isolate the k-th filler
             return cleanup(noisy, constituent.codebook)
         except Exception:
             return (None, 0.0)
@@ -266,8 +272,15 @@ class RoseLanguage:
             role_counts[role] = k + 1
             lab, s = self.unbind(c, role, k)
             want = filler.label if isinstance(filler, Constituent) else filler
-            read.append({"role": role, "expected": want, "recovered": lab, "sim": round(s, 3),
-                         "ok": lab == want})
+            read.append(
+                {
+                    "role": role,
+                    "expected": want,
+                    "recovered": lab,
+                    "sim": round(s, 3),
+                    "ok": lab == want,
+                }
+            )
         return {"structure": c.label, "slots": read, "hv_dim": D}
 
     # ================================================================= S: timescale structure ========
@@ -277,6 +290,7 @@ class RoseLanguage:
         stdlib), or [] on failure."""
         try:
             from snn_data_lake.cortex.theta_gamma_code import ThetaGammaCode
+
             toks = [t for t in (_norm(w) for w in str(text).split()) if t]
             tgc = ThetaGammaCode(capacity=7, seed=self.seed)
             tgc.encode_sequence(toks)
@@ -298,13 +312,17 @@ class RoseLanguage:
                 T1,
                 DelayNetwork,
             )
+
             net = DelayNetwork(8)
             # a0,a1,a2 converge on T1 with delays 3,2,1 -> fire at offsets 0,1,2 to co-arrive (a dependency
             # satisfied only when the words arrive in that temporal order); a3 completes the downstream hop
-            net.connect(A0, T1, 0.4, 3); net.connect(A1, T1, 0.4, 2); net.connect(A2, T1, 0.4, 1)
-            net.connect(T1, D1, 0.6, 2); net.connect(A3, D1, 0.6, 2)
+            net.connect(A0, T1, 0.4, 3)
+            net.connect(A1, T1, 0.4, 2)
+            net.connect(A2, T1, 0.4, 1)
+            net.connect(T1, D1, 0.6, 2)
+            net.connect(A3, D1, 0.6, 2)
             good = net.run({A0: {0}, A1: {1}, A2: {2}, A3: {3}}, steps=12)
-            bad = net.run({A0: {2}, A1: {1}, A2: {0}, A3: {3}}, steps=12)   # scrambled order
+            bad = net.run({A0: {2}, A1: {1}, A2: {0}, A3: {3}}, steps=12)  # scrambled order
             ignited = bool(good.get(T1) and good.get(D1))
             silent = not bad.get(T1)
             return (ignited and silent) if forward_first else ignited
@@ -323,13 +341,14 @@ class RoseLanguage:
 
             from snn_data_lake.reasoning.language_readout_slda import SLDA_RFF_np
             from snn_data_lake.reasoning.language_self_build import _positional_code
+
             # sort BEFORE slicing: self._triples is a set -> its iteration order varies per process
             # (hash randomization); sorting makes the subset + train/test split deterministic.
             rows = sorted((h, r, t) for (h, r, t) in self._triples if r in relations)[:max_facts]
             if len(rows) < 30:
                 self._readout = None
                 return None
-            pairs = [([r, h], t) for h, r, t in rows]        # context = [relation, head], target = tail
+            pairs = [([r, h], t) for h, r, t in rows]  # context = [relation, head], target = tail
             random.Random(self.seed).shuffle(pairs)
             tails = sorted({t for _, t in pairs})
             ridx = {t: i for i, t in enumerate(tails)}
@@ -340,15 +359,32 @@ class RoseLanguage:
             train, test = pairs[:cut], pairs[cut:]
 
             def X(rowset):
-                return np.array([_positional_code(c, iidx, len(ivocab), ctx) for c, _ in rowset],
-                                dtype=np.float64)
+                return np.array(
+                    [_positional_code(c, iidx, len(ivocab), ctx) for c, _ in rowset],
+                    dtype=np.float64,
+                )
 
-            slda = SLDA_RFF_np(len(ivocab) * ctx, len(tails), rff=rff, gamma=0.2, shrink=0.1, seed=self.seed)
+            slda = SLDA_RFF_np(
+                len(ivocab) * ctx, len(tails), rff=rff, gamma=0.2, shrink=0.1, seed=self.seed
+            )
             slda.observe(X(train), np.array([ridx[t] for _, t in train]))
-            acc = float((slda.predict(X(test)) == np.array([ridx[t] for _, t in test])).mean()) if test else 0.0
-            self._readout = {"slda": slda, "iidx": iidx, "ridx": ridx, "tails": tails, "ctx": ctx,
-                             "ivocab": ivocab, "acc": acc, "n": len(test), "_np": np,
-                             "_pos": _positional_code}
+            acc = (
+                float((slda.predict(X(test)) == np.array([ridx[t] for _, t in test])).mean())
+                if test
+                else 0.0
+            )
+            self._readout = {
+                "slda": slda,
+                "iidx": iidx,
+                "ridx": ridx,
+                "tails": tails,
+                "ctx": ctx,
+                "ivocab": ivocab,
+                "acc": acc,
+                "n": len(test),
+                "_np": np,
+                "_pos": _positional_code,
+            }
             return self._readout
         except Exception:
             self._readout = None
@@ -360,8 +396,12 @@ class RoseLanguage:
         r = self._build_readout()
         if not r:
             return {"available": False, "note": "numpy absent or too few facts"}
-        return {"available": True, "held_out_acc": round(r["acc"], 4), "n": r["n"],
-                "classes": len(r["tails"])}
+        return {
+            "available": True,
+            "held_out_acc": round(r["acc"], 4),
+            "n": r["n"],
+            "classes": len(r["tails"]),
+        }
 
     def nightly_refit(self, examples):
         """E local refit hook (the seam cortex/brain.py's nightly refit calls): a Forward-Forward /
@@ -375,8 +415,11 @@ class RoseLanguage:
         try:
             np, pos_code = r["_np"], r["_pos"]
             iidx, ridx, ctx, n_in = r["iidx"], r["ridx"], r["ctx"], len(r["ivocab"])
-            pos = [([_norm(rel), _norm(h)], _norm(t)) for h, rel, t in examples
-                   if _norm(t) in ridx and _norm(rel) in iidx]
+            pos = [
+                ([_norm(rel), _norm(h)], _norm(t))
+                for h, rel, t in examples
+                if _norm(t) in ridx and _norm(rel) in iidx
+            ]
             if not pos:
                 return None
             n_cls = len(r["tails"])
@@ -385,11 +428,13 @@ class RoseLanguage:
             # Forward-Forward / CSDP goodness: score each context PAIRED with its TRUE label (positive
             # pass) vs paired with a CORRUPTED label (negative pass); the local goodness is the
             # forward discriminant-score margin between the two pairings -- no backprop, no autograd.
-            sc = r["slda"].scores(Xpos)                       # [n, C] forward pass over the RFF layer
+            sc = r["slda"].scores(Xpos)  # [n, C] forward pass over the RFF layer
             rows = np.arange(len(ys))
-            gpos = float(sc[rows, ys].mean())                 # positive pairing: true-label goodness
-            gneg = float(sc[rows, (ys + 1) % n_cls].mean())   # negative pairing: corrupted-label goodness
-            r["slda"].observe(Xpos, ys)                       # forward-only sufficient-statistic fold-in
+            gpos = float(sc[rows, ys].mean())  # positive pairing: true-label goodness
+            gneg = float(
+                sc[rows, (ys + 1) % n_cls].mean()
+            )  # negative pairing: corrupted-label goodness
+            r["slda"].observe(Xpos, ys)  # forward-only sufficient-statistic fold-in
             return round(gpos - gneg, 6)
         except Exception:
             return None
@@ -411,17 +456,27 @@ class RoseLanguage:
                 return {"known": False, "answer": None, "proposition": None, "reason": "ungrounded"}
             rel, head = rels[0], ents[0]
             tail = next((e for e in ents[1:] if e != head), None)
-            if tail is None:                              # query form: look the tail up via grounded (head,rel)
+            if tail is None:  # query form: look the tail up via grounded (head,rel)
                 ans = self._facts.get((head, rel))
                 if ans is None:
                     return {"known": False, "answer": None, "proposition": (head, rel, None)}
-                return {"known": True, "answer": ans, "verdict": True, "proposition": (head, rel, ans)}
+                return {
+                    "known": True,
+                    "answer": ans,
+                    "verdict": True,
+                    "proposition": (head, rel, ans),
+                }
             prop = (head, rel, tail)
             if prop in self._triples:
                 return {"known": True, "answer": "true", "verdict": True, "proposition": prop}
-            if (head, rel) in self._facts:                # we KNOW the real tail -> the claim is false
-                return {"known": True, "answer": "false", "verdict": False, "proposition": prop,
-                        "correct_tail": self._facts[(head, rel)]}
+            if (head, rel) in self._facts:  # we KNOW the real tail -> the claim is false
+                return {
+                    "known": True,
+                    "answer": "false",
+                    "verdict": False,
+                    "proposition": prop,
+                    "correct_tail": self._facts[(head, rel)],
+                }
             return {"known": False, "answer": None, "proposition": prop, "reason": "unknown_pair"}
         except Exception:
             return {"known": False, "answer": None, "proposition": None, "reason": "error"}
@@ -478,26 +533,34 @@ def main():
     spec_slot = next((s for s in parsed["slots"] if s["role"] == ROLE_SPEC), None)
     print(f"[O] parse {phrase!r:15} -> {parsed['structure']}")
     for s in parsed["slots"]:
-        print(f"       {s['role']:5} expected={s['expected']:8} recovered={str(s['recovered']):8} "
-              f"sim={s['sim']:+.3f} ok={s['ok']}")
+        print(
+            f"       {s['role']:5} expected={s['expected']:8} recovered={str(s['recovered']):8} "
+            f"sim={s['sim']:+.3f} ok={s['ok']}"
+        )
     # recursion: nest the NP inside an S and unbind the top HEAD back to the verb; and the subject NP
     subj = rose.parse("the dog")
     sent = rose.compose("S", spec=subj, head="runs")
     top_head, top_sim = rose.unbind(sent, ROLE_HEAD)
     subj_lab, subj_sim = rose.unbind(sent, ROLE_SPEC)
     print(f"[O] recursion  {sent.label}")
-    print(f"       top HEAD unbinds -> {top_head!r} (sim {top_sim:+.3f}); nested SPEC -> {subj_lab!r} (sim {subj_sim:+.3f})")
+    print(
+        f"       top HEAD unbinds -> {top_head!r} (sim {top_sim:+.3f}); nested SPEC -> {subj_lab!r} (sim {subj_sim:+.3f})"
+    )
 
     # ---- (2) R: a grounded word resolves to its world_kb referent -----------------------------------
     g_fr = rose.ground("France")
     g_rel = rose.ground("continent")
     g_none = rose.ground("wibblewobble")
     percept = rose._percept("france")
-    print(f"[R] ground('France')     -> {g_fr and (g_fr['type'], g_fr['referent'])}   "
-          f"(spike-code grounded_hv dim={len(g_fr['grounded_hv']) if g_fr else 0})")
+    print(
+        f"[R] ground('France')     -> {g_fr and (g_fr['type'], g_fr['referent'])}   "
+        f"(spike-code grounded_hv dim={len(g_fr['grounded_hv']) if g_fr else 0})"
+    )
     print(f"[R] ground('continent')  -> {g_rel and (g_rel['type'], g_rel['referent'])}")
     print(f"[R] ground('wibble...')  -> {g_none}  (honest lexical gap)")
-    print(f"[R] predictive-coding percept latent: {'len ' + str(len(percept)) if percept else 'numpy absent -> None (honest)'}")
+    print(
+        f"[R] predictive-coding percept latent: {'len ' + str(len(percept)) if percept else 'numpy absent -> None (honest)'}"
+    )
 
     # ---- (3) comprehend accepts a TRUE proposition, rejects a FALSE one, gaps an UNKNOWN one --------
     c_true = rose.comprehend("france continent europe")
@@ -510,12 +573,16 @@ def main():
     # ---- S: timescale structure (theta-gamma order readout + polychronous dependency) ---------------
     order = rose.order_by_phase(phrase)
     dep_ok = rose.dependency_order_ok()
-    print(f"[S] theta-gamma order readout {phrase!r} -> {order}  (order recovered from LIF spike phase)")
+    print(
+        f"[S] theta-gamma order readout {phrase!r} -> {order}  (order recovered from LIF spike phase)"
+    )
     print(f"[S] polychronous dependency: in-order ignites & scrambled silent = {dep_ok}")
 
     # ---- E: competence head (numpy) + a Forward-Forward/CSDP-style local refit -----------------------
     comp = rose.competence()
-    margin = rose.nightly_refit([("germany", "continent", "europe"), ("japan", "continent", "asia")])
+    margin = rose.nightly_refit(
+        [("germany", "continent", "europe"), ("japan", "continent", "asia")]
+    )
     print(f"[E] SLDA-RFF competence head (order-invariant, forward-served): {comp}")
     print(f"[E] Forward-Forward local refit goodness margin (pos-neg, no backprop): {margin}")
 
@@ -525,10 +592,12 @@ def main():
 
     # ---- (4) determinism: a second instance reproduces parse/ground/comprehend exactly ---------------
     rose2 = RoseLanguage(seed=0)
-    det = (rose2.parse(phrase).hv == rose.parse(phrase).hv
-           and rose2.ground("France") == g_fr
-           and rose2.comprehend("france continent europe") == c_true
-           and rose2.comprehend("france continent asia") == c_false)
+    det = (
+        rose2.parse(phrase).hv == rose.parse(phrase).hv
+        and rose2.ground("France") == g_fr
+        and rose2.comprehend("france continent europe") == c_true
+        and rose2.comprehend("france continent asia") == c_false
+    )
 
     ascii_ok = all(_is_ascii(s) for s in (parsed["structure"], gen, str(c_true), str(c_false)))
 
@@ -536,32 +605,56 @@ def main():
 
     # ================= assertions (each is a real, un-riggable claim) =================
     # (1) VSA constituency round-trip: HEAD (and SPEC) unbind back to the placed words
-    assert head_slot["ok"] and head_slot["recovered"] == "dog", f"HEAD must round-trip to 'dog': {head_slot}"
+    assert head_slot["ok"] and head_slot["recovered"] == "dog", (
+        f"HEAD must round-trip to 'dog': {head_slot}"
+    )
     assert spec_slot is not None and spec_slot["ok"], f"SPEC must round-trip to 'the': {spec_slot}"
-    assert top_head == "runs", f"recursion: nested S HEAD must unbind back to 'runs' (got {top_head!r})"
+    assert top_head == "runs", (
+        f"recursion: nested S HEAD must unbind back to 'runs' (got {top_head!r})"
+    )
     # (2) grounding resolves a word to its KB referent, with the right type, and gaps a non-word
-    assert g_fr and g_fr["type"] == "entity" and g_fr["referent"] == "france", f"france must ground as entity: {g_fr}"
-    assert g_rel and g_rel["type"] == "relation" and g_rel["referent"] == "continent", f"continent must ground as relation: {g_rel}"
-    assert g_none is None, "a non-KB word must return None (honest lexical gap), not a fabricated referent"
-    assert g_fr["grounded_hv"] != rose._word_hv("france"), "grounding must BIND the word to its anchor (change the code)"
+    assert g_fr and g_fr["type"] == "entity" and g_fr["referent"] == "france", (
+        f"france must ground as entity: {g_fr}"
+    )
+    assert g_rel and g_rel["type"] == "relation" and g_rel["referent"] == "continent", (
+        f"continent must ground as relation: {g_rel}"
+    )
+    assert g_none is None, (
+        "a non-KB word must return None (honest lexical gap), not a fabricated referent"
+    )
+    assert g_fr["grounded_hv"] != rose._word_hv("france"), (
+        "grounding must BIND the word to its anchor (change the code)"
+    )
     # (3) comprehend: accept true, reject false, gap unknown
-    assert c_true["known"] and c_true.get("verdict") is True, f"a true proposition must be accepted: {c_true}"
-    assert c_false["known"] and c_false.get("verdict") is False, f"a false proposition must be rejected: {c_false}"
-    assert c_false.get("correct_tail") == "europe", f"rejecting false must know the real tail: {c_false}"
-    assert c_unknown["known"] is False and c_unknown["answer"] is None, f"an unknown proposition must gap, not guess: {c_unknown}"
+    assert c_true["known"] and c_true.get("verdict") is True, (
+        f"a true proposition must be accepted: {c_true}"
+    )
+    assert c_false["known"] and c_false.get("verdict") is False, (
+        f"a false proposition must be rejected: {c_false}"
+    )
+    assert c_false.get("correct_tail") == "europe", (
+        f"rejecting false must know the real tail: {c_false}"
+    )
+    assert c_unknown["known"] is False and c_unknown["answer"] is None, (
+        f"an unknown proposition must gap, not guess: {c_unknown}"
+    )
     # S structure genuinely reconstructs order + is timing-selective (soft-guarded to stay pure-stdlib safe)
-    assert order == [_norm(w) for w in phrase.split()], f"theta-gamma must read word order back from spike phase: {order}"
+    assert order == [_norm(w) for w in phrase.split()], (
+        f"theta-gamma must read word order back from spike phase: {order}"
+    )
     assert dep_ok, "polychronous dependency must ignite in-order and stay silent when scrambled"
     # (4) determinism + ASCII
     assert det, "same seed must reproduce parse-code / grounding / comprehension exactly"
     assert ascii_ok, "all output must be ASCII (Windows cp1252 safety)"
 
-    print("self-check OK: ROSE assembled from live spiking modules -- VSA constituency round-trips "
-          "(HEAD/SPEC/recursion unbind back), lexis GROUNDED to world_kb referents (entity/relation, "
-          "honest gap on non-words), comprehend accepts TRUE / rejects FALSE / gaps UNKNOWN against the "
-          "KB, theta-gamma recovers word order from LIF spike phase, polychronous group is timing-"
-          "selective; competence rides a forward-served SLDA-RFF head with a Forward-Forward LOCAL refit "
-          "(no backprop); generation is grounded-mechanism + ceiling named (NOT fluent GPT). Deterministic, ASCII.")
+    print(
+        "self-check OK: ROSE assembled from live spiking modules -- VSA constituency round-trips "
+        "(HEAD/SPEC/recursion unbind back), lexis GROUNDED to world_kb referents (entity/relation, "
+        "honest gap on non-words), comprehend accepts TRUE / rejects FALSE / gaps UNKNOWN against the "
+        "KB, theta-gamma recovers word order from LIF spike phase, polychronous group is timing-"
+        "selective; competence rides a forward-served SLDA-RFF head with a Forward-Forward LOCAL refit "
+        "(no backprop); generation is grounded-mechanism + ceiling named (NOT fluent GPT). Deterministic, ASCII."
+    )
     return 0
 
 

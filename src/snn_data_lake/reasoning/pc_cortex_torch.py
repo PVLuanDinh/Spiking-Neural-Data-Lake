@@ -48,11 +48,11 @@ orchestrator runs the full GPU pass.
   # full GPU run (N-MNIST; orchestrator runs this):
   NORD_GPU=1 PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python research/pc_cortex_torch.py
 """
+
 import argparse
 import json
 import os
 import struct
-import sys
 import time
 
 import torch
@@ -81,7 +81,7 @@ class DeepSpikingPC:
         self.W = []
         for l in range(self.L):
             fan = dims[l + 1]
-            a = (0.5 / (fan ** 0.5)) if init_scale is None else init_scale
+            a = (0.5 / (fan**0.5)) if init_scale is None else init_scale
             w = (torch.rand(dims[l], dims[l + 1], generator=g, device="cpu") * 2.0 - 1.0) * a
             self.W.append(w.to(device=device, dtype=dtype))
         self.prec = [1.0] * self.L
@@ -97,13 +97,17 @@ class DeepSpikingPC:
         r = [torch.zeros(B, dims[j + 1], device=dev, dtype=dt) for j in range(L)]
         v_on = [torch.zeros(B, dims[i], device=dev, dtype=dt) for i in range(L)]
         v_off = [torch.zeros(B, dims[i], device=dev, dtype=dt) for i in range(L)]
-        rate = [torch.zeros(B, dims[i], device=dev, dtype=dt) for i in range(L)] if collect_rate else None
+        rate = (
+            [torch.zeros(B, dims[i], device=dev, dtype=dt) for i in range(L)]
+            if collect_rate
+            else None
+        )
         trace = []
-        n = steps + 1                                     # server loops range(steps+1)
+        n = steps + 1  # server loops range(steps+1)
         for _ in range(n):
             # top-down predictions -> analog errors e_0..e_{L-1}
-            errs = [x - r[0] @ W[0].t()]                  # e_0 = x - W_1 @ r_1
-            for lvl in range(1, L):                       # e_l = r_l - W_{l+1} @ r_{l+1}
+            errs = [x - r[0] @ W[0].t()]  # e_0 = x - W_1 @ r_1
+            for lvl in range(1, L):  # e_l = r_l - W_{l+1} @ r_{l+1}
                 errs.append(r[lvl - 1] - r[lvl] @ W[lvl].t())
             # encode each error into signed ON/OFF LIF spikes (reset-by-subtraction, single spike/step)
             spikes = []
@@ -124,7 +128,7 @@ class DeepSpikingPC:
             trace.append(sum(float(s.abs().sum().item()) for s in spikes))
             # integrate error spikes into causes: r_j += lr*(W_j^T @ s_{j-1} - s_j); top has no s_L
             for j in range(L):
-                up = spikes[j] @ W[j]                      # [B, dims[j+1]]  (== W_j^T @ s_{j-1})
+                up = spikes[j] @ W[j]  # [B, dims[j+1]]  (== W_j^T @ s_{j-1})
                 if j < L - 1:
                     r[j] = r[j] + lr * (up - spikes[j + 1])
                 else:
@@ -141,7 +145,7 @@ class DeepSpikingPC:
         NO gradient crosses a level -- each update touches only its own two adjacent levels."""
         B = r[0].shape[0]
         for l in range(self.L):
-            dW = rate[l].t() @ r[l] / B                   # [dims[l], dims[l+1]]
+            dW = rate[l].t() @ r[l] / B  # [dims[l], dims[l+1]]
             self.W[l] = self.W[l] + lr_w * dW
 
     def export_weights(self):
@@ -200,7 +204,7 @@ def load_nmnist_rate(n_train=None, n_test=None, n_time_bins=15):
         xs = torch.empty(m, 2 * 34 * 34, dtype=torch.float32, device="cpu")
         ys = torch.empty(m, dtype=torch.long, device="cpu")
         for i in range(m):
-            frames, label = ds[i]                         # frames: (T, 2, 34, 34)
+            frames, label = ds[i]  # frames: (T, 2, 34, 34)
             rate = np.asarray(frames, dtype=np.float32).sum(axis=0).reshape(-1)  # collapse time
             mx = rate.max()
             if mx > 0:
@@ -224,13 +228,13 @@ def train_ridge_readout(R, y, n_classes, lam=1.0):
     dev, dt = R.device, torch.float64
     R = R.to(dt)
     N, D = R.shape
-    Rb = torch.cat([R, torch.ones(N, 1, device=dev, dtype=dt)], dim=1)   # [N, D+1]
+    Rb = torch.cat([R, torch.ones(N, 1, device=dev, dtype=dt)], dim=1)  # [N, D+1]
     Y = torch.zeros(N, n_classes, device=dev, dtype=dt)
     Y[torch.arange(N, device=dev), y.to(dev)] = 1.0
     A = Rb.t() @ Rb + lam * torch.eye(D + 1, device=dev, dtype=dt)
-    Wb = torch.linalg.solve(A, Rb.t() @ Y)              # [D+1, n_classes]
-    W = Wb[:D, :].t().contiguous()                      # [n_classes, D]
-    b = Wb[D, :].contiguous()                           # [n_classes]
+    Wb = torch.linalg.solve(A, Rb.t() @ Y)  # [D+1, n_classes]
+    W = Wb[:D, :].t().contiguous()  # [n_classes, D]
+    b = Wb[D, :].contiguous()  # [n_classes]
     return W.to("cpu").tolist(), b.to("cpu").tolist()
 
 
@@ -238,7 +242,7 @@ def train_ridge_readout(R, y, n_classes, lam=1.0):
 def readout_acc(R, y, W, b):
     """Top-1 accuracy of a linear head (python-list W,b) over settled top causes R [N, D]."""
     dev = R.device
-    Wt = torch.tensor(W, device=dev, dtype=torch.float64).t()          # [D, n_classes]
+    Wt = torch.tensor(W, device=dev, dtype=torch.float64).t()  # [D, n_classes]
     bt = torch.tensor(b, device=dev, dtype=torch.float64)
     logits = R.to(torch.float64) @ Wt + bt
     pred = logits.argmax(dim=1).to("cpu")
@@ -250,7 +254,7 @@ def settle_all(net, X, steps, lr, batch):
     """Settle X [N, d_in] in minibatches; return the settled TOP causes r_L stacked [N, dims[-1]]."""
     tops = []
     for i in range(0, X.shape[0], batch):
-        r, _ = net.settle(X[i:i + batch].to(net.device), steps=steps, lr=lr)
+        r, _ = net.settle(X[i : i + batch].to(net.device), steps=steps, lr=lr)
         tops.append(r[-1].to("cpu"))
     return torch.cat(tops, dim=0)
 
@@ -265,10 +269,10 @@ def depth_toy(device, seed=0):
     label is XOR(bit_a, bit_b). Raw averaging (a linear readout on pooled means) cannot separate XOR; a
     deeper nonlinear-through-settling hierarchy has a chance. Returns (acc3, acc2, acc_avg)."""
     g = torch.Generator(device="cpu").manual_seed(seed)
-    ndim, per = 16, 8                                    # 2 groups of 8 dims
+    ndim, per = 16, 8  # 2 groups of 8 dims
     N = 400
     bits = (torch.rand(N, 2, generator=g, device="cpu") > 0.5).to(torch.float32)
-    y = (bits[:, 0].long() ^ bits[:, 1].long())
+    y = bits[:, 0].long() ^ bits[:, 1].long()
     X = torch.zeros(N, ndim, device="cpu")
     for i in range(N):
         X[i, :per] = 0.8 * bits[i, 0] + 0.05 * torch.randn(per, generator=g, device="cpu")
@@ -279,7 +283,7 @@ def depth_toy(device, seed=0):
 
     def run(dims):
         net = DeepSpikingPC(dims, device, seed=seed, init_scale=0.2)
-        for _ in range(30):                              # local Hebbian epochs
+        for _ in range(30):  # local Hebbian epochs
             r, rate, _ = net.settle(Xtr.to(device), steps=40, lr=0.1, collect_rate=True)
             net.hebb_update(rate, r, lr_w=0.02)
         Rtr = settle_all(net, Xtr, 40, 0.1, 128)
@@ -287,8 +291,8 @@ def depth_toy(device, seed=0):
         W, b = train_ridge_readout(Rtr, ytr, 2, lam=1.0)
         return readout_acc(Rte, yte, W, b)
 
-    acc3 = run([ndim, 8, 4, 2])                          # 3 cause levels
-    acc2 = run([ndim, 4, 2])                             # 2 cause levels
+    acc3 = run([ndim, 8, 4, 2])  # 3 cause levels
+    acc2 = run([ndim, 4, 2])  # 2 cause levels
     # raw-averaging linear baseline: 2 pooled group-means -> ridge
     Ptr = torch.stack([Xtr[:, :per].mean(1), Xtr[:, per:].mean(1)], dim=1)
     Pte = torch.stack([Xte[:, :per].mean(1), Xte[:, per:].mean(1)], dim=1)
@@ -307,12 +311,18 @@ def write_artifact(path, dims, gen_weights, prec, steps, lr, classes, readout, d
         "dims": [int(d) for d in dims],
         "gen_weights": gen_weights,
         "prec": [float(p) for p in prec],
-        "theta": THETA, "leak": LEAK,
-        "steps": int(steps), "lr": float(lr),
+        "theta": THETA,
+        "leak": LEAK,
+        "steps": int(steps),
+        "lr": float(lr),
         "classes": list(classes),
         "readout": readout,
-        "meta": {"trained_by": "pc_cortex_torch", "dataset": dataset,
-                 "test_acc": float(test_acc), "unverified_on_hardware": True},
+        "meta": {
+            "trained_by": "pc_cortex_torch",
+            "dataset": dataset,
+            "test_acc": float(test_acc),
+            "unverified_on_hardware": True,
+        },
     }
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="ascii") as f:
@@ -324,7 +334,8 @@ def verify_export_fidelity(path, net, X, steps, lr, n=4, tol=1e-4):
     """Load the emitted artifact with the pure-stdlib PcCortexServe and assert its settling top causes
     match this trainer's (both in float64) on n samples -- proves the export serves faithfully."""
     from snn_data_lake.cortex.pc_cortex_serve import PcCortexServe
-    srv = PcCortexServe.load(path)                       # trust-boundary validation must pass
+
+    srv = PcCortexServe.load(path)  # trust-boundary validation must pass
     # trainer side: settle in float64 on CPU for an apples-to-apples comparison with the server
     net64 = DeepSpikingPC(net.dims, "cpu", dtype=torch.float64, seed=0)
     net64.W = [w.to("cpu", torch.float64) for w in net.W]
@@ -333,7 +344,7 @@ def verify_export_fidelity(path, net, X, steps, lr, n=4, tol=1e-4):
     top_torch = r_torch[-1].tolist()
     max_err = 0.0
     for i in range(n):
-        r_srv = srv.settle(xs[i].tolist(), steps=steps, lr=lr)   # server's pure-python settling
+        r_srv = srv.settle(xs[i].tolist(), steps=steps, lr=lr)  # server's pure-python settling
         top_srv = r_srv[-1]
         for a, b in zip(top_torch[i], top_srv):
             max_err = max(max_err, abs(a - b))
@@ -343,14 +354,16 @@ def verify_export_fidelity(path, net, X, steps, lr, n=4, tol=1e-4):
 # =========================================================================================================
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--smoke", action="store_true", help="tiny CPU config (MNIST-rate), fast, no tonic")
+    ap.add_argument(
+        "--smoke", action="store_true", help="tiny CPU config (MNIST-rate), fast, no tonic"
+    )
     ap.add_argument("--dataset", choices=["nmnist", "mnist"], default=None)
     ap.add_argument("--out", default="models/pc_cortex_nmnist.json")
     args = ap.parse_args()
 
     t0 = time.time()
     if args.smoke:
-        device = "cpu"                                   # force CPU for a portable smoke
+        device = "cpu"  # force CPU for a portable smoke
         dataset = args.dataset or "mnist"
         n_train, n_test = 500, 300
         steps, settle_lr, lr_w, epochs, batch = 25, 0.05, 0.02, 3, 500
@@ -363,7 +376,9 @@ def main():
         hidden = [128, 64, 32]
 
     print("=" * 80)
-    print("PC-CORTEX TORCH -- deep spiking predictive-coding, LOCAL learning (no cross-level backprop)")
+    print(
+        "PC-CORTEX TORCH -- deep spiking predictive-coding, LOCAL learning (no cross-level backprop)"
+    )
     print("=" * 80)
     print(f"device={device}  dataset={dataset}  smoke={args.smoke}  torch={torch.__version__}")
 
@@ -371,14 +386,18 @@ def main():
     if dataset == "nmnist":
         try:
             xtr, ytr, xte, yte, d_in, classes = load_nmnist_rate(n_train, n_test)
-        except Exception as e:                           # noqa: BLE001
-            print(f"NOTE: N-MNIST load failed ({type(e).__name__}: {e}); FALLING BACK to MNIST-rate.")
+        except Exception as e:  # noqa: BLE001
+            print(
+                f"NOTE: N-MNIST load failed ({type(e).__name__}: {e}); FALLING BACK to MNIST-rate."
+            )
             dataset = "mnist"
     if dataset == "mnist":
         xtr, ytr, xte, yte, d_in, classes = load_mnist_rate(n_train=n_train, n_test=n_test)
     dims = [d_in] + hidden
     n_classes = len(classes)
-    print(f"data: train={xtr.shape[0]} test={xte.shape[0]} d_in={d_in}  dims={dims}  classes={n_classes}")
+    print(
+        f"data: train={xtr.shape[0]} test={xte.shape[0]} d_in={d_in}  dims={dims}  classes={n_classes}"
+    )
 
     xtr = xtr.to(device)
     xte_d = xte.to(device)
@@ -389,7 +408,7 @@ def main():
     for ep in range(epochs):
         perm = torch.randperm(xtr.shape[0], device=device)
         for i in range(0, xtr.shape[0], batch):
-            xb = xtr[perm[i:i + batch]]
+            xb = xtr[perm[i : i + batch]]
             r, rate, _ = net.settle(xb, steps=steps, lr=settle_lr, collect_rate=True)
             net.hebb_update(rate, r, lr_w=lr_w)
     weights_moved = float((net.W[0] - W_before).abs().max().item())
@@ -400,7 +419,7 @@ def main():
     acc_pc = readout_acc(Rte, yte, W_ro, b_ro)
 
     # ---- (2) BASELINE (i): random-weight generative matrices + a trained readout ----
-    net_rand = DeepSpikingPC(dims, device, seed=123)     # never learned
+    net_rand = DeepSpikingPC(dims, device, seed=123)  # never learned
     Rtr_r = settle_all(net_rand, xtr, steps, settle_lr, batch)
     Rte_r = settle_all(net_rand, xte_d, steps, settle_lr, batch)
     W_r, b_r = train_ridge_readout(Rtr_r, ytr, n_classes, lam=1.0)
@@ -417,19 +436,32 @@ def main():
                     if k in obj and isinstance(obj[k], (int, float)):
                         surro_acc = float(obj[k])
                         break
-        except Exception as e:                           # noqa: BLE001
-            print(f"NOTE: could not read {surro} ({type(e).__name__}); treating as unlabeled reference.")
+        except Exception as e:  # noqa: BLE001
+            print(
+                f"NOTE: could not read {surro} ({type(e).__name__}); treating as unlabeled reference."
+            )
 
     # ---- export + fidelity check against the zero-dep server ----
     gen_weights = net.export_weights()
-    blob = write_artifact(args.out, dims, gen_weights, net.prec, steps, settle_lr,
-                          classes, [W_ro, b_ro], dataset, acc_pc)
+    write_artifact(
+        args.out,
+        dims,
+        gen_weights,
+        net.prec,
+        steps,
+        settle_lr,  # writes args.out
+        classes,
+        [W_ro, b_ro],
+        dataset,
+        acc_pc,
+    )
     srv, fid_err, fid_ok = verify_export_fidelity(args.out, net, xte, steps, settle_lr)
     srv_acc = None
     # sanity: server.classify on a few samples agrees with the trainer readout direction (loose)
     n_chk = min(50, xte.shape[0])
-    srv_correct = sum(1 for i in range(n_chk)
-                      if srv.classify(xte[i].tolist()) == classes[int(yte[i])])
+    srv_correct = sum(
+        1 for i in range(n_chk) if srv.classify(xte[i].tolist()) == classes[int(yte[i])]
+    )
     srv_acc = srv_correct / n_chk
 
     # ---- (4) depth-earns-its-place toy ----
@@ -438,36 +470,62 @@ def main():
     dt = time.time() - t0
     print("-" * 80)
     print(f"[1] PRIMARY  local-PC cortex test acc         : {acc_pc:.4f}")
-    print(f"[2] BASE(i)  random-gen + trained readout acc : {acc_rand:.4f}  "
-          f"(PC-learning gain: {acc_pc - acc_rand:+.4f})")
+    print(
+        f"[2] BASE(i)  random-gen + trained readout acc : {acc_rand:.4f}  "
+        f"(PC-learning gain: {acc_pc - acc_rand:+.4f})"
+    )
     if surro_acc is not None:
-        print(f"[3] BASE(ii) surrogate-backprop SNN ceiling   : {surro_acc:.4f}  "
-              f"(local-PC -> backprop gap: {surro_acc - acc_pc:+.4f})")
+        print(
+            f"[3] BASE(ii) surrogate-backprop SNN ceiling   : {surro_acc:.4f}  "
+            f"(local-PC -> backprop gap: {surro_acc - acc_pc:+.4f})"
+        )
     else:
-        print(f"[3] BASE(ii) surrogate-backprop reference     : models/surrogate_nmnist.pth present="
-              f"{os.path.exists(surro)} (no acc field found; backprop reference, gap not auto-readable)")
-    print(f"[4] DEPTH    XOR-over-pooled toy: 3-level PC={acc3:.3f}  2-level PC={acc2:.3f}  "
-          f"raw-avg={acc_avg:.3f}")
+        print(
+            f"[3] BASE(ii) surrogate-backprop reference     : models/surrogate_nmnist.pth present="
+            f"{os.path.exists(surro)} (no acc field found; backprop reference, gap not auto-readable)"
+        )
+    print(
+        f"[4] DEPTH    XOR-over-pooled toy: 3-level PC={acc3:.3f}  2-level PC={acc2:.3f}  "
+        f"raw-avg={acc_avg:.3f}"
+    )
     depth_helps = acc3 > max(acc2, acc_avg) + 0.05
-    print(f"             depth earns its place (3lvl beats 2lvl AND raw-avg by >0.05): {depth_helps}")
+    print(
+        f"             depth earns its place (3lvl beats 2lvl AND raw-avg by >0.05): {depth_helps}"
+    )
     if not depth_helps:
-        print("             HONEST: depth did NOT clearly separate this toy at this scale (printed, not asserted).")
+        print(
+            "             HONEST: depth did NOT clearly separate this toy at this scale (printed, not asserted)."
+        )
     print("-" * 80)
-    print(f"locality    : learning is LOCAL Hebbian-on-spikes; NO autograd graph (all settling under "
-          f"no_grad), gen[0] moved {weights_moved:.3e}")
-    print(f"export      : wrote {args.out}  (dims={dims}, dataset={dataset}, test_acc={acc_pc:.4f})")
-    print(f"fidelity    : PcCortexServe.load OK; server settling matches trainer top causes "
-          f"max_err={fid_err:.2e} (<=1e-4): {fid_ok}")
-    print(f"            : server.classify agrees with labels on {n_chk} samples: {srv_acc:.3f} "
-          f"(trainer readout acc on same head: consistency check)")
-    print(f"spiking     : discrete ON/OFF LIF spikes in {{-1,0,+1}}, theta={THETA} leak={LEAK}; "
-          f"settling matches the zero-dep server byte-for-byte")
+    print(
+        f"locality    : learning is LOCAL Hebbian-on-spikes; NO autograd graph (all settling under "
+        f"no_grad), gen[0] moved {weights_moved:.3e}"
+    )
+    print(
+        f"export      : wrote {args.out}  (dims={dims}, dataset={dataset}, test_acc={acc_pc:.4f})"
+    )
+    print(
+        f"fidelity    : PcCortexServe.load OK; server settling matches trainer top causes "
+        f"max_err={fid_err:.2e} (<=1e-4): {fid_ok}"
+    )
+    print(
+        f"            : server.classify agrees with labels on {n_chk} samples: {srv_acc:.3f} "
+        f"(trainer readout acc on same head: consistency check)"
+    )
+    print(
+        f"spiking     : discrete ON/OFF LIF spikes in {{-1,0,+1}}, theta={THETA} leak={LEAK}; "
+        f"settling matches the zero-dep server byte-for-byte"
+    )
     print(f"elapsed     : {dt:.1f}s")
     print("=" * 80)
 
-    assert fid_ok, f"EXPORT FIDELITY FAILED: server settling does not match trainer (max_err={fid_err:.2e})"
-    print("DONE: snn_pcnet/1 exported and verified server-loadable + settling-faithful. "
-          "unverified_on_hardware=True until the GPU pass.")
+    assert fid_ok, (
+        f"EXPORT FIDELITY FAILED: server settling does not match trainer (max_err={fid_err:.2e})"
+    )
+    print(
+        "DONE: snn_pcnet/1 exported and verified server-loadable + settling-faithful. "
+        "unverified_on_hardware=True until the GPU pass."
+    )
 
 
 if __name__ == "__main__":

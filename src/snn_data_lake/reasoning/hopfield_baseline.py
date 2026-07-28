@@ -20,15 +20,16 @@ delivers the gains. No SNN here on purpose — this is the yardstick, not the me
 
   Run: python hopfield_baseline.py       # (also run by run_selfchecks.py)
 """
+
 import random
 
 random.seed(0)  # fixed seed -> deterministic self-check. Not a calibration knob.
 
-N = 128                 # neurons; small enough that the O(N²) dense matvec sweep stays fast in CI
+N = 128  # neurons; small enough that the O(N²) dense matvec sweep stays fast in CI
 FLIP = round(0.10 * N)  # cue corruption: bits flipped before recall (10%)
-STEPS = 4               # synchronous sign-update passes (a dense Hopfield settles in a few)
-CAP_THRESH = 0.99       # mean overlap at/above which recall counts as "clean"
-FRACS = (0.05, 0.10, 0.138, 0.20, 0.30, 0.40)   # P/N sweep points (0.138 = the AGS bound)
+STEPS = 4  # synchronous sign-update passes (a dense Hopfield settles in a few)
+CAP_THRESH = 0.99  # mean overlap at/above which recall counts as "clean"
+FRACS = (0.05, 0.10, 0.138, 0.20, 0.30, 0.40)  # P/N sweep points (0.138 = the AGS bound)
 
 
 def make_patterns(p, n):
@@ -49,7 +50,7 @@ def train(patterns, n):
                 w[row + j] += xi * x[j]
     inv = 1.0 / n
     for i in range(n):
-        w[i * n + i] = 0.0                 # no self-connection
+        w[i * n + i] = 0.0  # no self-connection
     return [v * inv for v in w]
 
 
@@ -64,7 +65,7 @@ def recall(w, cue, n, steps):
             for j in range(n):
                 h += w[row + j] * s[j]
             nxt.append(1 if h >= 0.0 else -1)
-        if nxt == s:                        # settled onto an attractor
+        if nxt == s:  # settled onto an attractor
             break
         s = nxt
     return s
@@ -94,7 +95,7 @@ def mean_recall(p, n, sample_cap=20):
 
 
 def main():
-    bound = 0.138 * N                       # theoretical capacity (AGS 1985)
+    bound = 0.138 * N  # theoretical capacity (AGS 1985)
     sweep = [(round(f * N), f) for f in FRACS]
     results = [(p, f, mean_recall(p, N)) for p, f in sweep]
 
@@ -102,11 +103,11 @@ def main():
     clean = [p for p, _, m in results if m >= CAP_THRESH]
     emp_cap = max(clean) if clean else 0
 
-    p_lo = results[0]                       # ~0.05·N — well below capacity
-    p_hi = results[-1]                      # ~0.40·N — well above capacity
+    p_lo = results[0]  # ~0.05·N — well below capacity
+    p_hi = results[-1]  # ~0.40·N — well above capacity
 
     # storage: dense W is O(N²) regardless of P; the factored prototype is O(P·k).
-    dense_w_bytes = N * N * 8               # float64 N×N weight matrix
+    dense_w_bytes = N * N * 8  # float64 N×N weight matrix
     # prototype's headline scale (N=256, K=20): factored store at its measured 80-pattern capacity
     proto_n, proto_k, proto_caps = 256, 20, 80
     proto_dense_bytes = proto_n * proto_n * 8
@@ -123,27 +124,36 @@ def main():
         mark = "  <- clean" if m >= CAP_THRESH else ("  <- broken down" if m < 0.85 else "")
         print(f"    {p:>4}        {f:>5.3f}       {m:>6.1%}{mark}")
     print()
-    print(f"empirical capacity (overlap>={CAP_THRESH:.2f}) : {emp_cap} patterns "
-          f"(~{emp_cap / N:.2f}·N, bound is 0.138·N)")
+    print(
+        f"empirical capacity (overlap>={CAP_THRESH:.2f}) : {emp_cap} patterns "
+        f"(~{emp_cap / N:.2f}·N, bound is 0.138·N)"
+    )
     print()
     print("STORAGE (why the prototype factors it away):")
     print(f"  dense Hopfield W here (N={N})   : {dense_w_bytes:,} B  (O(N²), P-independent)")
     print(f"  prototype @ N={proto_n} K={proto_k}, {proto_caps} patterns:")
     print(f"    dense N×N matrix             : {proto_dense_bytes:,} B")
-    print(f"    factored O(P·k)              : {proto_factored_bytes:,} B  ({proto_ratio:.0f}x smaller)")
-    print(f"  and {proto_caps} patterns > the dense 0.138·N={0.138 * proto_n:.0f} bound "
-          f"at N={proto_n} — the sparse code lifts capacity too.")
+    print(
+        f"    factored O(P·k)              : {proto_factored_bytes:,} B  ({proto_ratio:.0f}x smaller)"
+    )
+    print(
+        f"  and {proto_caps} patterns > the dense 0.138·N={0.138 * proto_n:.0f} bound "
+        f"at N={proto_n} — the sparse code lifts capacity too."
+    )
     print("=" * 62)
 
     # ---- self-check: one runnable assert-based check ----
     assert p_lo[2] >= 0.98, f"below capacity should recall near-perfectly: {p_lo[2]:.2f}"
     assert p_hi[2] <= 0.90, f"above capacity should break down, got overlap {p_hi[2]:.2f}"
     assert p_hi[2] < p_lo[2] - 0.05, "no capacity cliff — recall did not degrade with load"
-    assert round(0.03 * N) <= emp_cap <= round(0.25 * N), \
+    assert round(0.03 * N) <= emp_cap <= round(0.25 * N), (
         f"empirical capacity {emp_cap} not bracketing the 0.138·N bound"
+    )
     assert proto_factored_bytes < proto_dense_bytes, "factored store not smaller than dense W"
-    print("self-check OK: recall collapses past ~0.138·N (named baseline), storage is O(N²) — "
-          "the prototype beats both via a sparse code + factored storage")
+    print(
+        "self-check OK: recall collapses past ~0.138·N (named baseline), storage is O(N²) — "
+        "the prototype beats both via a sparse code + factored storage"
+    )
 
 
 if __name__ == "__main__":

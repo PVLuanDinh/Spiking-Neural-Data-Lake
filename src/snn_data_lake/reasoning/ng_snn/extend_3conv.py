@@ -5,6 +5,7 @@ block 2 (1536ch) unsupervised (1 epoch, greedy); extracts the 13824-d frozen fea
 
   PYTHONUTF8=1 .venv-cu128/Scripts/python research/ng_snn/extend_3conv.py
 """
+
 import os
 import time
 
@@ -37,7 +38,9 @@ def main():
 
     model = SoftHebbCNN(n_blocks=3, seed=0).to(dev)
     sd = torch.load("softhebb_mnist.pt", map_location=dev, weights_only=False)
-    missing, unexpected = model.load_state_dict(sd, strict=False)   # block 2 absent from ckpt -> stays at init
+    missing, unexpected = model.load_state_dict(
+        sd, strict=False
+    )  # block 2 absent from ckpt -> stays at init
     print(f"loaded 2-conv ckpt | missing(block2)={len(missing)} unexpected={len(unexpected)}")
 
     # GREEDY: freeze blocks 0/1 (eval BN + no plasticity); train ONLY block 2 (train BN + plasticity on).
@@ -51,10 +54,12 @@ def main():
     t0 = time.perf_counter()
     with torch.no_grad():
         for x, _ in ld:
-            model(x.to(dev))                                       # block 2 learns locally per batch
+            model(x.to(dev))  # block 2 learns locally per batch
     frac, rmean, rstd = model.blocks[2].conv.convergence()
-    print(f"block2 trained 1 epoch [{time.perf_counter() - t0:.0f}s] | ||w||_p converge frac={frac:.2f} "
-          f"r_mean={rmean:.3f} r_std={rstd:.3f}")
+    print(
+        f"block2 trained 1 epoch [{time.perf_counter() - t0:.0f}s] | ||w||_p converge frac={frac:.2f} "
+        f"r_mean={rmean:.3f} r_std={rstd:.3f}"
+    )
 
     # FREEZE all + extract features
     model.eval()
@@ -84,7 +89,9 @@ def main():
     Y[torch.arange(Xtr.shape[0]), yt] = 1.0
     W = torch.linalg.solve(Xtr.t() @ Xtr + 1e2 * torch.eye(d, device=dev), Xtr.t() @ Y)
     acc = 100.0 * ((Xte @ W).argmax(1) == ye).float().mean().item()
-    print(f"3-conv LINEAR-PROBE (ridge) MNIST test = {acc:.2f}%  (target ~99.35%; 2-conv was 99.01%)")
+    print(
+        f"3-conv LINEAR-PROBE (ridge) MNIST test = {acc:.2f}%  (target ~99.35%; 2-conv was 99.01%)"
+    )
 
 
 if __name__ == "__main__":

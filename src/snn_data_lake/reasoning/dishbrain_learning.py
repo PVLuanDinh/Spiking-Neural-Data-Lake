@@ -37,24 +37,25 @@ feedback it gets back is a CONSISTENT replay or a SCRAMBLED random pattern, and 
 
   python research/dishbrain_learning.py        # (also run by run_selfchecks.py)
 """
+
 import random
 
 # --- the 1-D Pong world -------------------------------------------------------------------------
-H = 11                   # vertical positions 0..H-1 (the play-field)
-START = H // 2           # paddle starts centred
-W_HALF = 1               # paddle covers [p - W_HALF, p + W_HALF]  (HIT if |ball - paddle| <= W_HALF)
-SUBSTEPS = H             # motor steps the agent gets to move the paddle before the ball arrives
+H = 11  # vertical positions 0..H-1 (the play-field)
+START = H // 2  # paddle starts centred
+W_HALF = 1  # paddle covers [p - W_HALF, p + W_HALF]  (HIT if |ball - paddle| <= W_HALF)
+SUBSTEPS = H  # motor steps the agent gets to move the paddle before the ball arrives
 
 # --- the spiking agent + DishBrain plasticity ---------------------------------------------------
-N_OFF = 2 * H - 1        # place-coded RELATIVE position: offset d = ball - paddle, unit idx = d + (H-1)
-ETA = 0.0004             # plasticity step (consolidation / random-stimulation magnitude)
-NOISE = 0.10             # exploration: jitter on the motor drives (keeps behaviour stochastic while naive)
-LAMBDA = 0.0003          # homeostatic decay per rally: relaxes every weight toward the neutral prior
-CAP = 1.0                # soft weight clip (keeps dynamics bounded + deterministic)
+N_OFF = 2 * H - 1  # place-coded RELATIVE position: offset d = ball - paddle, unit idx = d + (H-1)
+ETA = 0.0004  # plasticity step (consolidation / random-stimulation magnitude)
+NOISE = 0.10  # exploration: jitter on the motor drives (keeps behaviour stochastic while naive)
+LAMBDA = 0.0003  # homeostatic decay per rally: relaxes every weight toward the neutral prior
+CAP = 1.0  # soft weight clip (keeps dynamics bounded + deterministic)
 
 # --- training / measurement ---------------------------------------------------------------------
 N_TRIALS = 8000
-WINDOW = 1000            # first-WINDOW (early / naive baseline) vs last-WINDOW (late / trained) hit-rate
+WINDOW = 1000  # first-WINDOW (early / naive baseline) vs last-WINDOW (late / trained) hit-rate
 
 
 class DishBrainAgent:
@@ -64,9 +65,9 @@ class DishBrainAgent:
     feedback rule -- the entropy STRUCTURE of post-rally stimulation, never a reward number."""
 
     def __init__(self, seed, contingent=True):
-        self.rng = random.Random(seed)          # ONE per-instance rng threaded through EVERYTHING
+        self.rng = random.Random(seed)  # ONE per-instance rng threaded through EVERYTHING
         self.contingent = contingent
-        self.w_up = [0.0] * N_OFF               # neutral prior: no built-in policy
+        self.w_up = [0.0] * N_OFF  # neutral prior: no built-in policy
         self.w_down = [0.0] * N_OFF
 
     def _motor(self, idx):
@@ -83,7 +84,7 @@ class DishBrainAgent:
         p = START
         elig = []
         for _ in range(SUBSTEPS):
-            idx = (y - p) + (H - 1)             # place code of the RELATIVE ball offset
+            idx = (y - p) + (H - 1)  # place code of the RELATIVE ball offset
             a = self._motor(idx)
             elig.append((idx, a))
             p = min(H - 1, max(0, p + a))
@@ -104,9 +105,9 @@ class DishBrainAgent:
             w = self.w_up if a > 0 else self.w_down
             delta = ETA if predictable else ETA * self.rng.uniform(-1.0, 1.0)
             w[idx] = min(CAP, max(-CAP, w[idx] + delta))
-        for i in range(N_OFF):                  # synaptic homeostasis (relax toward the neutral prior)
-            self.w_up[i] *= (1.0 - LAMBDA)
-            self.w_down[i] *= (1.0 - LAMBDA)
+        for i in range(N_OFF):  # synaptic homeostasis (relax toward the neutral prior)
+            self.w_up[i] *= 1.0 - LAMBDA
+            self.w_down[i] *= 1.0 - LAMBDA
 
 
 def train(seed, contingent=True, n_trials=N_TRIALS):
@@ -128,7 +129,7 @@ def _rate(hits, lo, hi):
 
 def _deciles(hits):
     n = len(hits) // 10
-    return [round(sum(hits[i * n:(i + 1) * n]) / n, 2) for i in range(10)]
+    return [round(sum(hits[i * n : (i + 1) * n]) / n, 2) for i in range(10)]
 
 
 def main():
@@ -138,43 +139,57 @@ def main():
 
     s_early, s_late = _rate(struct, 0, WINDOW), _rate(struct, N_TRIALS - WINDOW, N_TRIALS)
     c_early, c_late = _rate(control, 0, WINDOW), _rate(control, N_TRIALS - WINDOW, N_TRIALS)
-    chance = (2 * W_HALF + 1) / H            # a static centred paddle covers this fraction of balls
+    chance = (2 * W_HALF + 1) / H  # a static centred paddle covers this fraction of balls
 
     print("=" * 72)
     print("DISHBRAIN -- embodied spiking Pong learned from FEEDBACK PREDICTABILITY (free energy)")
     print("=" * 72)
-    print(f"world: {H} positions, paddle half-width {W_HALF} (covers {2 * W_HALF + 1}/{H}), "
-          f"{SUBSTEPS} motor steps/rally, {N_TRIALS} rallies")
-    print("feedback: HIT -> predictable replay (consolidate) | MISS -> random scramble (dissipates)")
+    print(
+        f"world: {H} positions, paddle half-width {W_HALF} (covers {2 * W_HALF + 1}/{H}), "
+        f"{SUBSTEPS} motor steps/rally, {N_TRIALS} rallies"
+    )
+    print(
+        "feedback: HIT -> predictable replay (consolidate) | MISS -> random scramble (dissipates)"
+    )
     print(f"geometric chance (static paddle): {chance:.2f}")
     print("-" * 72)
     print(f"structured learning curve (deciles): {_deciles(struct)}")
     print(f"control    learning curve (deciles): {_deciles(control)}")
     print("-" * 72)
     print("hit-rate      early   late    delta")
-    print(f"structured    {s_early:.2f}    {s_late:.2f}   {s_late - s_early:+.2f}   <- LEARNS "
-          f"(contingent feedback)")
-    print(f"control       {c_early:.2f}    {c_late:.2f}   {c_late - c_early:+.2f}   <- flat "
-          f"(random feedback, NO contingency)")
+    print(
+        f"structured    {s_early:.2f}    {s_late:.2f}   {s_late - s_early:+.2f}   <- LEARNS "
+        f"(contingent feedback)"
+    )
+    print(
+        f"control       {c_early:.2f}    {c_late:.2f}   {c_late - c_early:+.2f}   <- flat "
+        f"(random feedback, NO contingency)"
+    )
     print("=" * 72)
 
     # ---- self-check (deterministic asserts; the paper's control; EMERGENT, nothing hardcoded) ----
     # (a) the STRUCTURED agent LEARNS: late hit-rate clearly above its early baseline AND above chance.
-    assert s_late > s_early + 0.15, \
+    assert s_late > s_early + 0.15, (
         f"structured agent must LEARN: late {s_late:.2f} not clearly above early {s_early:.2f}"
-    assert s_late > chance + 0.15, \
+    )
+    assert s_late > chance + 0.15, (
         f"structured late {s_late:.2f} must beat geometric chance {chance:.2f} comfortably"
+    )
     # (b) the CONTROL (random feedback regardless of outcome) does NOT learn -- proving CONTINGENCY,
     #     not mere stimulation, drives learning. Its late rate ~= its early rate, and structured wins.
-    assert abs(c_late - c_early) < 0.12, \
+    assert abs(c_late - c_early) < 0.12, (
         f"control must NOT learn: early {c_early:.2f} -> late {c_late:.2f} changed too much"
-    assert s_late > c_late + 0.15, \
+    )
+    assert s_late > c_late + 0.15, (
         f"structured {s_late:.2f} must beat the no-contingency control {c_late:.2f}"
+    )
     # (c) determinism: same seed -> byte-identical hit-rate trajectory.
     assert train(seed, contingent=True) == struct, "same seed must reproduce the exact trajectory"
-    print(f"self-check OK: contingent feedback LEARNS ({s_early:.2f} -> {s_late:.2f}, > chance "
-          f"{chance:.2f}); random-feedback control stays flat ({c_early:.2f} -> {c_late:.2f}); "
-          f"contingency drives it; deterministic")
+    print(
+        f"self-check OK: contingent feedback LEARNS ({s_early:.2f} -> {s_late:.2f}, > chance "
+        f"{chance:.2f}); random-feedback control stays flat ({c_early:.2f} -> {c_late:.2f}); "
+        f"contingency drives it; deterministic"
+    )
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ statistical band flags genuine regressions while tolerating expected stochastic 
 
   python stats_bounds.py
 """
+
 import math
 
 
@@ -19,7 +20,7 @@ def mean_std(samples):
     m = sum(samples) / n
     if n == 1:
         return m, 0.0
-    var = sum((x - m) ** 2 for x in samples) / (n - 1)      # sample variance
+    var = sum((x - m) ** 2 for x in samples) / (n - 1)  # sample variance
     return m, math.sqrt(var)
 
 
@@ -37,8 +38,10 @@ def within(value, samples, k=3.0):
 def assert_within(value, samples, k=3.0, name="metric"):
     lo, hi = bound(samples, k)
     if not (lo <= value <= hi):
-        raise AssertionError(f"{name}={value:.4f} outside statistical band "
-                             f"[{lo:.4f}, {hi:.4f}] (mean±{k}sigma over {len(samples)} runs)")
+        raise AssertionError(
+            f"{name}={value:.4f} outside statistical band "
+            f"[{lo:.4f}, {hi:.4f}] (mean±{k}sigma over {len(samples)} runs)"
+        )
     return True
 
 
@@ -71,8 +74,10 @@ def main():
     # the FASER point: a loose hand-picked floor (0.5) would have MISSED this regression
     hand_floor = 0.50
     missed = floor_misses_regression(base, hand_floor, regressed)
-    print(f"hand floor {hand_floor}: regression 0.62 passes the floor but the band rejects it "
-          f"-> floor would MISS the bug = {missed}")
+    print(
+        f"hand floor {hand_floor}: regression 0.62 passes the floor but the band rejects it "
+        f"-> floor would MISS the bug = {missed}"
+    )
     print("=" * 60)
 
     # ---- self-checks --------------------------------------------------------

@@ -22,12 +22,24 @@ is allowed; CORE untouched).
   Knobs: NORD_CTX(3) NORD_PER(6000) NORD_VOCAB(60) NORD_RFF(1500) NORD_GAMMA(0.15) NORD_SHRINK(0.1)
 Deps: numpy (+ stdlib). Reuses corpus_stream + language_self_build's positional code + baselines.
 """
+
 import os
 
 import numpy as np
 
-from snn_data_lake.reasoning.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream, word_stream
-from snn_data_lake.reasoning.language_self_build import _positional_code, _frequent, _bigram_baseline, _unigram_baseline
+from snn_data_lake.reasoning.corpus_stream import (
+    ARPABET,
+    load_cmudict,
+    load_text,
+    phoneme_stream,
+    word_stream,
+)
+from snn_data_lake.reasoning.language_self_build import (
+    _positional_code,
+    _frequent,
+    _bigram_baseline,
+    _unigram_baseline,
+)
 
 
 def _envi(k, d):
@@ -133,12 +145,16 @@ def main():
 
     print("=" * 92)
     print("LANGUAGE READOUT (STRONG) -- SLDA-RFF decoder over the spiking context code vs n-gram")
-    print(f"ctx={CTX}  per={PER}  vocab={VOCAB}  rff={RFF}  gamma={GAMMA}  (hybrid: spiking repr + strong decoder)")
+    print(
+        f"ctx={CTX}  per={PER}  vocab={VOCAB}  rff={RFF}  gamma={GAMMA}  (hybrid: spiking repr + strong decoder)"
+    )
     print("=" * 92)
     cmudict, dict_off = load_cmudict()
     words, text_off = load_text()
-    print(f"[data] {len(words):,} tokens ({'offline' if text_off else 'real corpus'}); "
-          f"cmudict {len(cmudict):,} ({'offline' if dict_off else 'real'})")
+    print(
+        f"[data] {len(words):,} tokens ({'offline' if text_off else 'real corpus'}); "
+        f"cmudict {len(cmudict):,} ({'offline' if dict_off else 'real'})"
+    )
 
     ph_pairs = list(phoneme_stream(words, cmudict, k=CTX))
     wd_pairs = list(word_stream(words, k=CTX))
@@ -152,23 +168,35 @@ def main():
     print("\n" + "-" * 92)
     print("RESULT -- strong SLDA-RFF decoder over the SAME spiking positional context code")
     print("-" * 92)
-    print(f"  PHONETICS next-phoneme: SLDA-RFF {ph_slda:.1%}  vs  bigram {ph_bigram:.1%}  "
-          f"vs  R-STDP ~7.1% (from language_self_build)   [held-out n={ph_n}]")
-    print(f"  SEMANTICS next-word   : SLDA-RFF {wd_slda:.1%}  vs  unigram {wd_uni:.1%}  "
-          f"vs  R-STDP ~2.1%   [held-out n={wd_n}]")
+    print(
+        f"  PHONETICS next-phoneme: SLDA-RFF {ph_slda:.1%}  vs  bigram {ph_bigram:.1%}  "
+        f"vs  R-STDP ~7.1% (from language_self_build)   [held-out n={ph_n}]"
+    )
+    print(
+        f"  SEMANTICS next-word   : SLDA-RFF {wd_slda:.1%}  vs  unigram {wd_uni:.1%}  "
+        f"vs  R-STDP ~2.1%   [held-out n={wd_n}]"
+    )
     print("-" * 92)
     print(f"  phonetics gap vs bigram: {(ph_slda - ph_bigram) * 100:+.1f} pts")
-    print("  the assemblies/representation stay SPIKING; competence rides the strong decoder (the hybrid).")
-    print("  SLDA-RFF is order-invariant (continual==joint, no forgetting) -> the GENERAL skill-competence head.")
+    print(
+        "  the assemblies/representation stay SPIKING; competence rides the strong decoder (the hybrid)."
+    )
+    print(
+        "  SLDA-RFF is order-invariant (continual==joint, no forgetting) -> the GENERAL skill-competence head."
+    )
     print("=" * 92)
 
     assert ph_slda > ph_bigram, (
-        f"strong readout must CLOSE the n-gram gap: SLDA-RFF {ph_slda:.3f} vs bigram {ph_bigram:.3f}")
+        f"strong readout must CLOSE the n-gram gap: SLDA-RFF {ph_slda:.3f} vs bigram {ph_bigram:.3f}"
+    )
     assert wd_slda >= wd_uni, (
-        f"strong readout must at least match the word unigram: {wd_slda:.3f} vs {wd_uni:.3f}")
-    print(f"self-check OK: SLDA-RFF decoder over the spiking context CLOSES the n-gram gap "
-          f"(phonetics {ph_slda:.1%} > bigram {ph_bigram:.1%}); the hybrid (spiking repr + strong "
-          f"order-invariant decoder) is the general competence head for autonomously-built skills.")
+        f"strong readout must at least match the word unigram: {wd_slda:.3f} vs {wd_uni:.3f}"
+    )
+    print(
+        f"self-check OK: SLDA-RFF decoder over the spiking context CLOSES the n-gram gap "
+        f"(phonetics {ph_slda:.1%} > bigram {ph_bigram:.1%}); the hybrid (spiking repr + strong "
+        f"order-invariant decoder) is the general competence head for autonomously-built skills."
+    )
     return 0
 
 

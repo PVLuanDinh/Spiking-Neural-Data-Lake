@@ -37,12 +37,13 @@ SPIKES (vs a rate integrator with the same hysteresis) are load-bearing. This mo
 
   python research/gwt_deep.py
 """
+
 import random
 
-T_SLOT = 6           # time steps per gamma slot (one bound object)
-LEAK = 0.25          # LIF leak per step
-V_TH = 1.0           # LIF threshold
-IGNITE_TH = 0.6      # workspace ignition threshold (all-or-none)
+T_SLOT = 6  # time steps per gamma slot (one bound object)
+LEAK = 0.25  # LIF leak per step
+V_TH = 1.0  # LIF threshold
+IGNITE_TH = 0.6  # workspace ignition threshold (all-or-none)
 
 
 class LIF:
@@ -77,14 +78,16 @@ def spiking_broadcast(objs, n_color, n_shape, drive=1.0, sustain_ticks=4):
     fires its color and shape LIF SYNCHRONOUSLY in gamma slot k; re-entry sustains each assembly for
     `sustain_ticks` after its slot. Returns (ignited, raster) where raster[t] = (fired_colors, fired_shapes)."""
     if drive < IGNITE_TH:
-        return False, []                                  # subliminal: no global broadcast
+        return False, []  # subliminal: no global broadcast
     col = [LIF() for _ in range(n_color)]
     shp = [LIF() for _ in range(n_shape)]
     raster = []
-    active = []                                           # (color, shape, ticks_left) currently re-entrant
+    active = []  # (color, shape, ticks_left) currently re-entrant
     for k, (c, s) in enumerate(objs):
         active.append([c, s, T_SLOT + sustain_ticks])
-    T = len(objs) * T_SLOT + sustain_ticks               # extra steps AFTER the last slot -> re-entry persistence is observable
+    T = (
+        len(objs) * T_SLOT + sustain_ticks
+    )  # extra steps AFTER the last slot -> re-entry persistence is observable
     for t in range(T):
         slot = t // T_SLOT
         fc, fs = [], []
@@ -94,8 +97,10 @@ def spiking_broadcast(objs, n_color, n_shape, drive=1.0, sustain_ticks=4):
                 continue
             # object fires in its OWN slot (bottom-up ignite) OR while re-entry sustains it (top-down),
             # BUT color+shape of one object are driven by the SAME current -> they spike together (bound).
-            in_slot = (objs.index((c, s)) == slot)
-            cur = drive if in_slot else (drive * 0.55)    # re-entry current (weaker, sustains not ignites)
+            in_slot = objs.index((c, s)) == slot
+            cur = (
+                drive if in_slot else (drive * 0.55)
+            )  # re-entry current (weaker, sustains not ignites)
             if col[c].step(cur):
                 fc.append(c)
             if shp[s].step(cur):
@@ -112,7 +117,7 @@ def spiking_decode(raster):
     for fc, fs in raster:
         for c in fc:
             for s in fs:
-                pairs.add((c, s))                         # co-firing -> bound
+                pairs.add((c, s))  # co-firing -> bound
     return pairs
 
 
@@ -127,7 +132,7 @@ def rate_broadcast(objs, n_color, n_shape, drive=1.0):
         return False, [], []
     color_act = [0.0] * n_color
     shape_act = [0.0] * n_shape
-    for c, s in objs:                                     # superposition: all channels summed, no pairing
+    for c, s in objs:  # superposition: all channels summed, no pairing
         color_act[c] += drive
         shape_act[s] += drive
     return True, color_act, shape_act
@@ -154,23 +159,31 @@ def main():
     N_COLOR, N_SHAPE = 8, 8
     TRIALS = 200
     print("=" * 90)
-    print("GWT DEEP -- ignition + re-entry + binding; the SPIKING-vs-RATE control (what do spikes buy?)")
+    print(
+        "GWT DEEP -- ignition + re-entry + binding; the SPIKING-vs-RATE control (what do spikes buy?)"
+    )
     print("=" * 90)
 
     # ---- (1) IGNITION is all-or-none: strong input broadcasts, sub-threshold stays subliminal ----
     objs1 = _objects(N_COLOR, N_SHAPE, 2, rng)
     ig_strong, _ = spiking_broadcast(objs1, N_COLOR, N_SHAPE, drive=1.0)
     ig_weak, _ = spiking_broadcast(objs1, N_COLOR, N_SHAPE, drive=0.4)
-    print(f"(1) ignition all-or-none: strong drive -> broadcast={ig_strong}, sub-threshold -> broadcast={ig_weak}")
+    print(
+        f"(1) ignition all-or-none: strong drive -> broadcast={ig_strong}, sub-threshold -> broadcast={ig_weak}"
+    )
 
     # ---- (2) RE-ENTRY sustains the assembly after the slot (persistent activity) ----
     _, raster = spiking_broadcast([(3, 5)], N_COLOR, N_SHAPE, drive=1.0, sustain_ticks=6)
     fired_after_slot = sum(1 for t in range(T_SLOT, len(raster)) if raster[t][0] or raster[t][1])
-    print(f"(2) re-entry sustains: object still firing {fired_after_slot} steps AFTER its input slot ended")
+    print(
+        f"(2) re-entry sustains: object still firing {fired_after_slot} steps AFTER its input slot ended"
+    )
 
     # ---- (3+4) BINDING: spiking vs rate across K, over many trials ----
     print("-" * 90)
-    print(f"{'K objects':>9} | {'spiking pair-acc':>16} | {'rate pair-acc':>13} | spikes load-bearing?")
+    print(
+        f"{'K objects':>9} | {'spiking pair-acc':>16} | {'rate pair-acc':>13} | spikes load-bearing?"
+    )
     print("-" * 90)
     results = {}
     for k in (1, 2, 3, 4):
@@ -184,28 +197,42 @@ def main():
         sp_acc /= TRIALS
         rt_acc /= TRIALS
         results[k] = (sp_acc, rt_acc)
-        verdict = "TIE (spikes not needed)" if abs(sp_acc - rt_acc) < 0.05 else f"YES (+{(sp_acc-rt_acc)*100:.0f} pts)"
+        verdict = (
+            "TIE (spikes not needed)"
+            if abs(sp_acc - rt_acc) < 0.05
+            else f"YES (+{(sp_acc - rt_acc) * 100:.0f} pts)"
+        )
         print(f"{k:>9} | {sp_acc:>15.1%} | {rt_acc:>12.1%} | {verdict}")
     print("-" * 90)
     print("  HONEST: at K=1 spiking and rate TIE -- single-item selection does NOT justify spikes.")
     print("  At K>=2 the spiking workspace BINDS via synchrony (theta-gamma slots) where the rate")
-    print("  workspace superposes and loses the pairing -- THAT is what spikes buy here (multi-item")
-    print("  binding). Contested (Shadlen-Movshon) + reader-dependent + not the only solution; reported honestly.")
+    print(
+        "  workspace superposes and loses the pairing -- THAT is what spikes buy here (multi-item"
+    )
+    print(
+        "  binding). Contested (Shadlen-Movshon) + reader-dependent + not the only solution; reported honestly."
+    )
     print("=" * 90)
 
     # ---- un-riggable self-checks ----
-    assert ig_strong and not ig_weak, "ignition is not all-or-none (strong must broadcast, weak must not)"
+    assert ig_strong and not ig_weak, (
+        "ignition is not all-or-none (strong must broadcast, weak must not)"
+    )
     assert fired_after_slot > 0, "re-entry did not sustain the assembly after its input slot"
     assert results[1][0] - results[1][1] < 0.05, (
         f"at K=1 spiking must NOT beat rate (spikes not load-bearing for single-item): "
-        f"{results[1][0]:.2f} vs {results[1][1]:.2f}")
+        f"{results[1][0]:.2f} vs {results[1][1]:.2f}"
+    )
     assert results[2][0] > results[2][1] + 0.15, (
         f"at K=2 spiking must beat rate on binding (the load-bearing case): "
-        f"{results[2][0]:.2f} vs {results[2][1]:.2f}")
+        f"{results[2][0]:.2f} vs {results[2][1]:.2f}"
+    )
     assert results[4][0] > 0.9, f"spiking binding should stay high at K=4 ({results[4][0]:.2f})"
-    print(f"self-check OK: deepened GWT ignites all-or-none + re-entry sustains; spiking-vs-rate control is "
-          f"HONEST -- ties at K=1 (spikes not needed), spiking binds {results[2][0]:.0%} vs rate {results[2][1]:.0%} "
-          f"at K=2 (spikes load-bearing for multi-item binding via synchrony).")
+    print(
+        f"self-check OK: deepened GWT ignites all-or-none + re-entry sustains; spiking-vs-rate control is "
+        f"HONEST -- ties at K=1 (spikes not needed), spiking binds {results[2][0]:.0%} vs rate {results[2][1]:.0%} "
+        f"at K=2 (spikes load-bearing for multi-item binding via synchrony)."
+    )
     return 0
 
 

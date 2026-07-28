@@ -8,9 +8,10 @@ contexts separate in one shared metric space. skill_builder re-exports these for
 
 Deps: stdlib only (zlib).
 """
+
 import zlib
 
-SIG = 64                                    # signature width = lake/proximity channel width N=64
+SIG = 64  # signature width = lake/proximity channel width N=64
 
 
 def signature(context_tokens):
@@ -24,10 +25,13 @@ def signature(context_tokens):
 
 
 def _self_check():
-    import sys
     a, b = signature(["dog", "cat"]), signature(["dog", "cat"])
-    assert a == b and len(a) == SIG and max(a) == 1.0, "signature must be deterministic, width SIG, [0,1]"
-    assert signature(["x"]) != signature(["y"]), "different tokens must land in (generally) different bins"
+    assert a == b and len(a) == SIG and max(a) == 1.0, (
+        "signature must be deterministic, width SIG, [0,1]"
+    )
+    assert signature(["x"]) != signature(["y"]), (
+        "different tokens must land in (generally) different bins"
+    )
     print("content_signature self-check OK: deterministic crc32 bag-of-tokens.")
     return 0
 

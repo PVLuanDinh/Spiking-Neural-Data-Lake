@@ -17,6 +17,7 @@ feature ceiling (the audit's key caveat: past this, only a better ENCODER helps 
   Knobs: NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_RFF(2000) NORD_TRAIN(12000) NORD_TEST(2000)
 Deps: numpy torch torchvision snntorch (feature extraction) + numpy readouts.
 """
+
 import os
 
 import numpy as np
@@ -48,7 +49,7 @@ def _softmax_scores(slda, F):
     sc = Z @ W.T + bias
     sc -= sc.max(1, keepdims=True)
     e = np.exp(sc)
-    return e / e.sum(1, keepdims=True)                       # normalized -> comparable across members
+    return e / e.sum(1, keepdims=True)  # normalized -> comparable across members
 
 
 class MLPHead:
@@ -67,7 +68,7 @@ class MLPHead:
         for _ in range(epochs):
             idx = rng.permutation(len(X))
             for i in range(0, len(X), batch):
-                b = idx[i:i + batch]
+                b = idx[i : i + batch]
                 xb, yb = X[b], Y[b]
                 h = np.maximum(0, xb @ self.W1 + self.b1)
                 s = h @ self.W2 + self.b2
@@ -93,7 +94,7 @@ class MLPHead:
 
 def main():
     enable(resolve_device())
-    dev = resolve_device()
+    resolve_device()  # called for its device-selection side effect; the handle is unused here
     torch.manual_seed(0)
     C1 = _envi("NORD_C1", 30)
     T_LAT = _envi("NORD_T", 15)
@@ -101,7 +102,9 @@ def main():
     RFF = _envi("NORD_RFF", 2000)
 
     print("=" * 90)
-    print("READOUT BOOST (Tier-2) -- ensemble + MLP head over FROZEN conv-STDP features vs the 98.2% ceiling")
+    print(
+        "READOUT BOOST (Tier-2) -- ensemble + MLP head over FROZEN conv-STDP features vs the 98.2% ceiling"
+    )
     print("=" * 90)
     Xtr, Ytr, Xte, Yte = load_mnist(_envi("NORD_TRAIN", 12000), _envi("NORD_TEST", 2000))
     torch.manual_seed(0)
@@ -134,20 +137,34 @@ def main():
 
     print("-" * 90)
     print(f"  single SLDA-RFF (gamma 0.02)        : {acc_single:.1%}")
-    print(f"  ENSEMBLE of {len(members)} SLDA-RFF (soft-vote) : {acc_ens:.1%}   ({(acc_ens - acc_single) * 100:+.1f} pts)")
-    print(f"  nonlinear MLP head (1x256)          : {acc_mlp:.1%}   ({(acc_mlp - acc_single) * 100:+.1f} pts)")
+    print(
+        f"  ENSEMBLE of {len(members)} SLDA-RFF (soft-vote) : {acc_ens:.1%}   ({(acc_ens - acc_single) * 100:+.1f} pts)"
+    )
+    print(
+        f"  nonlinear MLP head (1x256)          : {acc_mlp:.1%}   ({(acc_mlp - acc_single) * 100:+.1f} pts)"
+    )
     print("-" * 90)
-    print(f"  reference: static-joint linear 95.1%   single RBF-SVM ~96.2%   RBF ENSEMBLE 98.2% (ceiling)")
-    print(f"  honest: gains are bounded by the 98.2% FROZEN-FEATURE ceiling; past it only a better ENCODER")
-    print(f"  helps (Tier 3: learnable delays + adaptive-LIF on TEMPORAL data, served frozen into core).")
+    print(
+        f"  reference: static-joint linear 95.1%   single RBF-SVM ~96.2%   RBF ENSEMBLE 98.2% (ceiling)"
+    )
+    print(
+        f"  honest: gains are bounded by the 98.2% FROZEN-FEATURE ceiling; past it only a better ENCODER"
+    )
+    print(
+        f"  helps (Tier 3: learnable delays + adaptive-LIF on TEMPORAL data, served frozen into core)."
+    )
     print("=" * 90)
 
     assert acc_single > 0.90, f"single SLDA-RFF regressed ({acc_single:.3f})"
     assert acc_ens >= acc_single, f"ensembling must not hurt ({acc_ens:.3f} vs {acc_single:.3f})"
-    assert max(acc_ens, acc_mlp) <= 0.99, "a readout implausibly beat the frozen-feature RBF ceiling -- check for leakage"
-    print(f"self-check OK: on FROZEN features, ensembling {acc_single:.1%}->{acc_ens:.1%} and an MLP head "
-          f"{acc_mlp:.1%}; all bounded by the 98.2% feature ceiling -- the readout is near its limit, so "
-          f"the next real gain is a better encoder (Tier 3), not more decoder engineering.")
+    assert max(acc_ens, acc_mlp) <= 0.99, (
+        "a readout implausibly beat the frozen-feature RBF ceiling -- check for leakage"
+    )
+    print(
+        f"self-check OK: on FROZEN features, ensembling {acc_single:.1%}->{acc_ens:.1%} and an MLP head "
+        f"{acc_mlp:.1%}; all bounded by the 98.2% feature ceiling -- the readout is near its limit, so "
+        f"the next real gain is a better encoder (Tier 3), not more decoder engineering."
+    )
     return 0
 
 

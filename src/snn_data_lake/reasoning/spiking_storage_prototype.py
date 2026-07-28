@@ -33,7 +33,6 @@ Recall math (so the factored form is exact, not an approximation):
 """
 
 import random
-from array import array
 
 random.seed(0)  # fixed seed -> deterministic self-check. Not a calibration knob.
 

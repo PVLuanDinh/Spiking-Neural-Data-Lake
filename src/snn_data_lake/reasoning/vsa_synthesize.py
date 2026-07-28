@@ -53,7 +53,6 @@ answer. Honest gap (known=False) whenever no program in the space fits -- never 
 # ruff: noqa: UP031  -- %-format is the hand-aligned house style of every sibling in reasoning/
 # (which the repo excludes from `ruff check .`); kept for consistency, not reflowed to f-strings.
 import random
-import sys
 
 from snn_data_lake.cortex.vsa_reasoning import bind, bundle, hv, permute
 from snn_data_lake.reasoning.gf import code

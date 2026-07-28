@@ -46,27 +46,28 @@ module; touches no core or safety-envelope file.
 
   Run: python eprop.py        # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
 # ---- network / neuron constants (discrete-time LIF) ----
-N_IN = 3            # input channels: [0]=store cue (early), [1]=recall cue (late), [2]=background
-N_REC = 8           # recurrent LIF units
-T = 24              # sequence length (steps); the store cue is early, the answer is at the END
-ALPHA = 0.90        # membrane decay exp(-dt/tau_m): the diagonal of the recurrent Jacobian
-V_TH = 0.6          # spike threshold (soft reset subtracts V_TH)
-GAMMA = 0.5         # pseudo-derivative half-width: psi = DAMP*max(0, 1 - |v-V_TH|/GAMMA)
-DAMP = 0.3          # pseudo-derivative dampening factor
-KAPPA = 0.9         # leaky-readout decay (also the eligibility-trace output filter)
-BG_LEVEL = 0.3      # tonic background CURRENT: keep neurons near threshold (not saturated)
-W_IN_SCALE = 0.4    # input-weight init half-range
-W_REC_SCALE = 0.2   # recurrent-weight init half-range
-W_OUT_SCALE = 0.2   # readout-weight init half-range
+N_IN = 3  # input channels: [0]=store cue (early), [1]=recall cue (late), [2]=background
+N_REC = 8  # recurrent LIF units
+T = 24  # sequence length (steps); the store cue is early, the answer is at the END
+ALPHA = 0.90  # membrane decay exp(-dt/tau_m): the diagonal of the recurrent Jacobian
+V_TH = 0.6  # spike threshold (soft reset subtracts V_TH)
+GAMMA = 0.5  # pseudo-derivative half-width: psi = DAMP*max(0, 1 - |v-V_TH|/GAMMA)
+DAMP = 0.3  # pseudo-derivative dampening factor
+KAPPA = 0.9  # leaky-readout decay (also the eligibility-trace output filter)
+BG_LEVEL = 0.3  # tonic background CURRENT: keep neurons near threshold (not saturated)
+W_IN_SCALE = 0.4  # input-weight init half-range
+W_REC_SCALE = 0.2  # recurrent-weight init half-range
+W_OUT_SCALE = 0.2  # readout-weight init half-range
 
 # ---- task / training constants ----
-CUE_LO, CUE_HI = 2, 7          # early STORE-cue window (steps [CUE_LO, CUE_HI))
-WIN_LEN = 5                    # readout / RECALL window = the last WIN_LEN steps
-N_TRAIN, N_TEST = 24, 24       # balanced (half positive, half negative)
+CUE_LO, CUE_HI = 2, 7  # early STORE-cue window (steps [CUE_LO, CUE_HI))
+WIN_LEN = 5  # readout / RECALL window = the last WIN_LEN steps
+N_TRAIN, N_TEST = 24, 24  # balanced (half positive, half negative)
 LR = 0.08
 EPOCHS = 120
 
@@ -82,12 +83,12 @@ def make_dataset(n, rng):
     data = []
     for m in range(n):
         cls = 1 if m % 2 == 0 else -1
-        start = CUE_LO + rng.randint(0, 1)          # small jitter on store-cue onset
+        start = CUE_LO + rng.randint(0, 1)  # small jitter on store-cue onset
         xs = []
         for t in range(T):
             x_store = 1.0 if (cls == 1 and start <= t < CUE_HI) else 0.0
-            x_recall = 1.0 if t >= T - WIN_LEN else 0.0       # 'answer now' trigger, both classes
-            x_bg = BG_LEVEL                                   # gentle tonic drive: both classes spike
+            x_recall = 1.0 if t >= T - WIN_LEN else 0.0  # 'answer now' trigger, both classes
+            x_bg = BG_LEVEL  # gentle tonic drive: both classes spike
             xs.append((x_store, x_recall, x_bg))
         data.append((xs, float(cls)))
     return data
@@ -107,11 +108,15 @@ class Net:
 
     def __init__(self, seed):
         rng = random.Random(seed)
-        self.Win = [[rng.uniform(-W_IN_SCALE, W_IN_SCALE) for _ in range(N_IN)] for _ in range(N_REC)]
-        self.Wrec = [[0.0 if j == k else rng.uniform(-W_REC_SCALE, W_REC_SCALE) for k in range(N_REC)]
-                     for j in range(N_REC)]
+        self.Win = [
+            [rng.uniform(-W_IN_SCALE, W_IN_SCALE) for _ in range(N_IN)] for _ in range(N_REC)
+        ]
+        self.Wrec = [
+            [0.0 if j == k else rng.uniform(-W_REC_SCALE, W_REC_SCALE) for k in range(N_REC)]
+            for j in range(N_REC)
+        ]
         self.Wout = [rng.uniform(-W_OUT_SCALE, W_OUT_SCALE) for _ in range(N_REC)]
-        self.bout = 0.0            # readout bias: lets the baseline (no-cue) class map to -1
+        self.bout = 0.0  # readout bias: lets the baseline (no-cue) class map to -1
 
     def forward(self, xs):
         """Roll the net forward. Returns (v, z, psi, y): membrane, spikes, pseudo-derivative
@@ -122,7 +127,7 @@ class Net:
         z = [[0.0] * N_REC for _ in range(T)]
         psi = [[0.0] * N_REC for _ in range(T)]
         y = [0.0] * T
-        yr_prev = 0.0                                       # leaky readout integrator (no bias)
+        yr_prev = 0.0  # leaky readout integrator (no bias)
         for t in range(T):
             z_prev = z[t - 1] if t > 0 else [0.0] * N_REC
             v_prev = v[t - 1] if t > 0 else [0.0] * N_REC
@@ -133,12 +138,12 @@ class Net:
                 for k in range(N_REC):
                     if k != j:
                         cur += self.Wrec[j][k] * z_prev[k]
-                vj = ALPHA * v_prev[j] - V_TH * z_prev[j] + cur       # soft reset: subtract V_TH
+                vj = ALPHA * v_prev[j] - V_TH * z_prev[j] + cur  # soft reset: subtract V_TH
                 v[t][j] = vj
                 z[t][j] = 1.0 if vj >= V_TH else 0.0
                 psi[t][j] = DAMP * max(0.0, 1.0 - abs(vj - V_TH) / GAMMA)
             yr = KAPPA * yr_prev + sum(self.Wout[j] * z[t][j] for j in range(N_REC))
-            y[t] = yr + self.bout                           # bias is a DIRECT output offset (stable)
+            y[t] = yr + self.bout  # bias is a DIRECT output offset (stable)
             yr_prev = yr
         return v, z, psi, y
 
@@ -172,20 +177,20 @@ class Net:
             z_prev = z[t - 1] if t > 0 else [0.0] * N_REC
             for j in range(N_REC):
                 pj = psi[t][j]
-                lj = self.Wout[j] * err[t]                 # broadcast learning signal L_j(t)
+                lj = self.Wout[j] * err[t]  # broadcast learning signal L_j(t)
                 for i in range(N_IN):
-                    eps_in[j][i] = ALPHA * eps_in[j][i] + xs[t][i]       # eligibility VECTOR
-                    ebar_in[j][i] = KAPPA * ebar_in[j][i] + pj * eps_in[j][i]   # filtered TRACE
+                    eps_in[j][i] = ALPHA * eps_in[j][i] + xs[t][i]  # eligibility VECTOR
+                    ebar_in[j][i] = KAPPA * ebar_in[j][i] + pj * eps_in[j][i]  # filtered TRACE
                     dWin[j][i] += lj * ebar_in[j][i]
                 for k in range(N_REC):
                     if k != j:
                         eps_rec[j][k] = ALPHA * eps_rec[j][k] + z_prev[k]
                         ebar_rec[j][k] = KAPPA * ebar_rec[j][k] + pj * eps_rec[j][k]
                         dWrec[j][k] += lj * ebar_rec[j][k]
-            for j in range(N_REC):                         # readout weights: exact (non-recurrent)
+            for j in range(N_REC):  # readout weights: exact (non-recurrent)
                 zbar[j] = KAPPA * zbar[j] + z[t][j]
                 dWout[j] += err[t] * zbar[j]
-            dbout += err[t]                                 # readout bias: direct offset, exact
+            dbout += err[t]  # readout bias: direct offset, exact
         return dWin, dWrec, dWout, dbout
 
     def grad_bptt(self, xs, tgt):
@@ -202,16 +207,16 @@ class Net:
         for t in range(T - 1, -1, -1):
             dy[t] = err[t] + (KAPPA * dy[t + 1] if t + 1 < T else 0.0)
             for j in range(N_REC):
-                s = self.Wout[j] * dy[t]                   # z_j[t] -> readout y[t]
+                s = self.Wout[j] * dy[t]  # z_j[t] -> readout y[t]
                 if t + 1 < T:
                     for k in range(N_REC):
                         if k != j:
-                            s += self.Wrec[k][j] * dv[t + 1][k]   # z_j[t] -> recurrent input of k
-                    s += (-V_TH) * dv[t + 1][j]            # z_j[t] -> own reset at t+1
+                            s += self.Wrec[k][j] * dv[t + 1][k]  # z_j[t] -> recurrent input of k
+                    s += (-V_TH) * dv[t + 1][j]  # z_j[t] -> own reset at t+1
                 dz[t][j] = s
-                dvj = psi[t][j] * dz[t][j]                 # v_j[t] -> z_j[t]
+                dvj = psi[t][j] * dz[t][j]  # v_j[t] -> z_j[t]
                 if t + 1 < T:
-                    dvj += ALPHA * dv[t + 1][j]            # v_j[t] -> v_j[t+1]
+                    dvj += ALPHA * dv[t + 1][j]  # v_j[t] -> v_j[t+1]
                 dv[t][j] = dvj
         dWin = [[0.0] * N_IN for _ in range(N_REC)]
         dWrec = [[0.0] * N_REC for _ in range(N_REC)]
@@ -226,7 +231,7 @@ class Net:
                     if k != j:
                         dWrec[j][k] += dv[t][j] * z_prev[k]
                 dWout[j] += dy[t] * z[t][j]
-            dbout += err[t]                                 # bias is a direct output offset: dL/db = err
+            dbout += err[t]  # bias is a direct output offset: dL/db = err
         return dWin, dWrec, dWout, dbout
 
     def apply(self, dWin, dWrec, dWout, dbout, lr):
@@ -240,8 +245,8 @@ class Net:
 
     def predict(self, xs):
         _, _, _, y = self.forward(xs)
-        win = sum(y[t] for t in range(T - WIN_LEN, T)) / WIN_LEN   # mean over the readout window
-        return 1.0 if win >= 0.0 else -1.0                 # the window is what the loss optimizes
+        win = sum(y[t] for t in range(T - WIN_LEN, T)) / WIN_LEN  # mean over the readout window
+        return 1.0 if win >= 0.0 else -1.0  # the window is what the loss optimizes
 
 
 def _batch_grad(net, data, grad_fn):
@@ -307,15 +312,18 @@ def run(seed):
     init_acc = _accuracy(net, test)
     traj = [init_loss]
     for _ in range(EPOCHS):
-        gWin, gWrec, gWout, gbout = _batch_grad(net, train, net.grad_eprop)   # train with e-prop
+        gWin, gWrec, gWout, gbout = _batch_grad(net, train, net.grad_eprop)  # train with e-prop
         net.apply(gWin, gWrec, gWout, gbout, LR / N_TRAIN)
         traj.append(_mean_loss(net, train))
     final_loss = traj[-1]
     final_acc = _accuracy(net, test)
     return {
-        "init_loss": init_loss, "final_loss": final_loss,
-        "init_acc": init_acc, "final_acc": final_acc,
-        "cosine": cosine, "traj": traj,
+        "init_loss": init_loss,
+        "final_loss": final_loss,
+        "init_acc": init_acc,
+        "final_acc": final_acc,
+        "cosine": cosine,
+        "traj": traj,
     }
 
 
@@ -327,31 +335,43 @@ def main():
 
     r = run(0)
     print(f"task            : store-and-recall, T={T}, {N_REC} recurrent LIF units, readout=1")
-    print(f"1 learns (loss) : initial {r['init_loss']:.4f} -> final {r['final_loss']:.4f}  "
-          f"(ratio {r['final_loss'] / r['init_loss']:.3f})")
+    print(
+        f"1 learns (loss) : initial {r['init_loss']:.4f} -> final {r['final_loss']:.4f}  "
+        f"(ratio {r['final_loss'] / r['init_loss']:.3f})"
+    )
     print(f"2 accuracy      : {r['init_acc']:.0%} -> {r['final_acc']:.0%}  (chance 50%)")
-    print(f"3 e-prop vs BPTT: cosine(e-prop grad, INDEPENDENT reverse-mode BPTT grad) = "
-          f"{r['cosine']:.4f}")
-    print("4 memory        : eligibility updated forward per-step -> O(neurons+synapses), "
-          "independent of T (no BPTT history stored)")
+    print(
+        f"3 e-prop vs BPTT: cosine(e-prop grad, INDEPENDENT reverse-mode BPTT grad) = "
+        f"{r['cosine']:.4f}"
+    )
+    print(
+        "4 memory        : eligibility updated forward per-step -> O(neurons+synapses), "
+        "independent of T (no BPTT history stored)"
+    )
 
     # determinism: same seed -> identical trajectory + identical cosine.
     r2 = run(0)
-    identical = (r["traj"] == r2["traj"] and r["cosine"] == r2["cosine"])
+    identical = r["traj"] == r2["traj"] and r["cosine"] == r2["cosine"]
     print(f"5 determinism   : same seed -> identical loss trajectory + cosine = {identical}")
     print("=" * 70)
 
     # ---- self-check (deterministic asserts; (b) is the non-riggable gold standard) ----
-    assert r["final_loss"] < 0.5 * r["init_loss"], \
+    assert r["final_loss"] < 0.5 * r["init_loss"], (
         f"(a) e-prop must LEARN: final loss {r['final_loss']:.4f} !< 0.5*initial {r['init_loss']:.4f}"
-    assert r["final_acc"] >= 0.9, f"(a) task accuracy must rise well above chance: {r['final_acc']:.2f}"
-    assert r["cosine"] > 0.5, \
+    )
+    assert r["final_acc"] >= 0.9, (
+        f"(a) task accuracy must rise well above chance: {r['final_acc']:.2f}"
+    )
+    assert r["cosine"] > 0.5, (
         f"(b) e-prop gradient must ALIGN with the true BPTT gradient: cosine {r['cosine']:.4f} !> 0.5"
+    )
     assert identical, "(d) same seed must reproduce the loss trajectory and cosine byte-identically"
-    print(f"self-check OK: LEARNS loss {r['init_loss']:.4f}->{r['final_loss']:.4f} "
-          f"(acc {r['init_acc']:.0%}->{r['final_acc']:.0%}); e-prop~BPTT cosine {r['cosine']:.4f} "
-          f"(>0.5, factored gradient confirmed vs an INDEPENDENT reverse-mode reference); "
-          f"eligibility memory O(neurons), not O(T); deterministic")
+    print(
+        f"self-check OK: LEARNS loss {r['init_loss']:.4f}->{r['final_loss']:.4f} "
+        f"(acc {r['init_acc']:.0%}->{r['final_acc']:.0%}); e-prop~BPTT cosine {r['cosine']:.4f} "
+        f"(>0.5, factored gradient confirmed vs an INDEPENDENT reverse-mode reference); "
+        f"eligibility memory O(neurons), not O(T); deterministic"
+    )
 
 
 if __name__ == "__main__":

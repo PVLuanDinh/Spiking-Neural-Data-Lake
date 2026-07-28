@@ -20,19 +20,22 @@ gradients (the reliable regime for a small smooth problem). True high-dim model-
 
 Run (own venv):  .venv-arm/Scripts/python snn_world_model_rl.py
 """
+
 import torch
 import torch.nn as nn
 import snntorch as snn
 from snntorch import surrogate
 
-from snn_data_lake.reasoning.snn_motor_control import fk            # differentiable 2-link forward kinematics (reuse)
+from snn_data_lake.reasoning.snn_motor_control import (
+    fk,
+)  # differentiable 2-link forward kinematics (reuse)
 from snn_data_lake.reasoning.torch_device import resolve_device, enable
 
 _DEVICE = enable(resolve_device())
 
-GAIN = torch.tensor([1.0, 0.5])             # per-joint actuation gain (joint B weaker) — the
-H = 5                                       # rollout horizon (steps per episode)   nonlinearity
-STEPS = 10                                  # LIF timesteps per net evaluation
+GAIN = torch.tensor([1.0, 0.5])  # per-joint actuation gain (joint B weaker) — the
+H = 5  # rollout horizon (steps per episode)   nonlinearity
+STEPS = 10  # LIF timesteps per net evaluation
 
 
 def real_step(theta, delta):
@@ -63,8 +66,8 @@ class _SpikingNet(nn.Module):
 
 
 def start_and_target(batch, gen):
-    theta = (torch.rand(batch, 2, generator=gen) * 2 - 1)
-    goal = theta + (torch.rand(batch, 2, generator=gen) * 2 - 1) * 0.6   # reachable in H steps
+    theta = torch.rand(batch, 2, generator=gen) * 2 - 1
+    goal = theta + (torch.rand(batch, 2, generator=gen) * 2 - 1) * 0.6  # reachable in H steps
     return theta, fk(goal)
 
 
@@ -76,7 +79,9 @@ def collect_real(policy, gen, batch=128):
         for _ in range(H):
             delta = policy(torch.cat([theta, target], 1))
             nt = real_step(theta, delta)
-            ths.append(theta); dts.append(delta); nxt.append(nt - theta)   # store real dtheta
+            ths.append(theta)
+            dts.append(delta)
+            nxt.append(nt - theta)  # store real dtheta
             theta = nt
         reach = (fk(theta) - target).pow(2).sum(1).sqrt().mean().item()
     return (torch.cat(ths), torch.cat(dts), torch.cat(nxt)), reach
@@ -88,7 +93,9 @@ def train_world_model(wm, opt, trans, iters=8):
     for _ in range(iters):
         pred = wm(torch.cat([th, dt], 1))
         loss = lossf(pred, real_dtheta)
-        opt.zero_grad(); loss.backward(); opt.step()
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
     return loss.item()
 
 
@@ -101,9 +108,11 @@ def improve_policy(policy, wm, opt, gen, batch=128, iters=8):
         cost = 0.0
         for _ in range(H):
             delta = policy(torch.cat([theta, target], 1))
-            theta = theta + wm(torch.cat([theta, delta], 1))      # imagine via learned dynamics
+            theta = theta + wm(torch.cat([theta, delta], 1))  # imagine via learned dynamics
             cost = cost + (fk(theta) - target).pow(2).sum(1).mean()
-        opt.zero_grad(); (cost / H).backward(); opt.step()
+        opt.zero_grad()
+        (cost / H).backward()
+        opt.step()
     for p in wm.parameters():
         p.requires_grad_(True)
 
@@ -111,18 +120,17 @@ def improve_policy(policy, wm, opt, gen, batch=128, iters=8):
 def main():
     torch.manual_seed(0)
     gen = torch.Generator(device=_DEVICE).manual_seed(0)
-    policy = _SpikingNet(4, 2, scale=1.2)   # (theta, target_ee) -> action delta
-    wm = _SpikingNet(4, 2, scale=1.2)       # (theta, delta)     -> predicted joint change dtheta
+    policy = _SpikingNet(4, 2, scale=1.2)  # (theta, target_ee) -> action delta
+    wm = _SpikingNet(4, 2, scale=1.2)  # (theta, delta)     -> predicted joint change dtheta
     p_opt = torch.optim.Adam(policy.parameters(), lr=3e-3)
     w_opt = torch.optim.Adam(wm.parameters(), lr=3e-3)
 
-    _, noop_reach = collect_real(policy, gen)            # untrained baseline
-    first_reach = noop_reach
+    _, noop_reach = collect_real(policy, gen)  # untrained baseline
     wm_err = None
     for epoch in range(60):
-        trans, reach = collect_real(policy, gen)         # 1. ACT in the real arm
-        wm_err = train_world_model(wm, w_opt, trans)     # 2. LEARN the dynamics
-        improve_policy(policy, wm, p_opt, gen)           # 3. IMAGINE -> improve policy
+        trans, reach = collect_real(policy, gen)  # 1. ACT in the real arm
+        wm_err = train_world_model(wm, w_opt, trans)  # 2. LEARN the dynamics
+        improve_policy(policy, wm, p_opt, gen)  # 3. IMAGINE -> improve policy
     _, final_reach = collect_real(policy, gen)
 
     # world-model accuracy on fresh real transitions
@@ -133,7 +141,9 @@ def main():
     print("=" * 64)
     print("JOINT WORLD-MODEL RL — spiking policy learns THROUGH a learned spiking model")
     print("=" * 64)
-    print(f"backend         : torch {torch.__version__}, snntorch (surrogate, analytic-gradient MBRL)")
+    print(
+        f"backend         : torch {torch.__version__}, snntorch (surrogate, analytic-gradient MBRL)"
+    )
     print(f"dynamics        : theta' = theta + [1.0,0.5]*tanh(delta)  (nonlinear, per-joint gain)")
     print(f"horizon / steps : H={H} rollout, {STEPS} LIF steps/net")
     print(f"real reach dist : no-op {noop_reach:.3f} m  ->  trained {final_reach:.3f} m")
@@ -141,10 +151,14 @@ def main():
     print("=" * 64)
 
     # ---- self-checks --------------------------------------------------------
-    assert final_reach < 0.5 * noop_reach, f"policy did not learn to reach: {noop_reach:.3f}->{final_reach:.3f}"
+    assert final_reach < 0.5 * noop_reach, (
+        f"policy did not learn to reach: {noop_reach:.3f}->{final_reach:.3f}"
+    )
     assert wm_pred_err < 0.1, f"world model never learned the actuation map: {wm_pred_err:.3f}"
-    print(f"self-check OK: closed RL loop — policy learned to reach THROUGH the learned spiking world "
-          f"model (real reach {noop_reach:.3f}->{final_reach:.3f} m, world-model err {wm_pred_err:.3f} rad)")
+    print(
+        f"self-check OK: closed RL loop — policy learned to reach THROUGH the learned spiking world "
+        f"model (real reach {noop_reach:.3f}->{final_reach:.3f} m, world-model err {wm_pred_err:.3f} rad)"
+    )
 
 
 if __name__ == "__main__":

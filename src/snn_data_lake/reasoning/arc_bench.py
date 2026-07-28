@@ -150,7 +150,7 @@ def main():
             ok = False
 
     # An oracle that reads the answer must score 100% -- proves the harness can register a success.
-    def oracle(train, test_input, attempts=2, _tasks=dict(tasks)):
+    def oracle(train, test_input, attempts=2, _tasks=dict(tasks)):  # noqa: B006,B008 -- deliberate: snapshots `tasks` at def time so the oracle cannot see later mutations
         for _tid, t in tasks:
             for p in t.get("test", []):
                 if _grids_equal(p["input"], test_input):

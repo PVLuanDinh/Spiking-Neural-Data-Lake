@@ -548,7 +548,9 @@ def main():
     b = panel_code(perceive_panel(render_panel(_s(SQR, 2, 4))))
     c = panel_code(perceive_panel(render_panel(_s(DOT, 7, 0))))
     code_ok = sim(a, b) == 1.0 and sim(a, c) < 0.6
-    print(f"  role-filler panel codes: identical sim={sim(a, b):.2f}, different sim={sim(a, c):.2f}")
+    print(
+        f"  role-filler panel codes: identical sim={sim(a, b):.2f}, different sim={sim(a, c):.2f}"
+    )
 
     # (3) the benchmark itself.
     result = run_benchmark(seed=0)
@@ -612,8 +614,12 @@ def main():
             f"designed-to-fail item {name} must NOT report known=True -- kept failing"
         )
     assert abs(acc - 0.8) < 1e-9, f"accuracy moved from the audited 8/10 -- re-audit ({acc:.3f})"
-    assert 0.0 <= ctrl_shuf <= 0.30, f"shuffled-answer control must sit near chance: {ctrl_shuf:.3f}"
-    assert 0.0 <= ctrl_scram <= 0.30, f"scrambled-panel control must sit near chance: {ctrl_scram:.3f}"
+    assert 0.0 <= ctrl_shuf <= 0.30, (
+        f"shuffled-answer control must sit near chance: {ctrl_shuf:.3f}"
+    )
+    assert 0.0 <= ctrl_scram <= 0.30, (
+        f"scrambled-panel control must sit near chance: {ctrl_scram:.3f}"
+    )
     assert det_ok, "solves must be deterministic under a fixed seed"
 
     print("=" * 78)

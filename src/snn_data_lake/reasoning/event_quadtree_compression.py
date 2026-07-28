@@ -10,6 +10,7 @@ event compression; the learned octree/hyperprior variant arXiv:2411.03010 is the
 
   Run: python event_quadtree_compression.py       # (also run by run_selfchecks.py)
 """
+
 import gzip
 import random
 
@@ -17,7 +18,7 @@ import snn_data_lake.reasoning.spike_compression as sc  # research/ on sys.path;
 
 random.seed(0)
 
-C, T = 64, 256   # channels × time bins (both powers of two)
+C, T = 64, 256  # channels × time bins (both powers of two)
 
 
 def clustered_events(seed, n_bursts=10):
@@ -46,7 +47,7 @@ def quad_encode(evs, c0, t0, cs, ts, bits):
         return
     bits.append(1)
     if cs == 1 and ts == 1:
-        return                                          # leaf: the '1' is the spike
+        return  # leaf: the '1' is the spike
     for cc, csz, tt, tsz in _split(c0, t0, cs, ts):
         sub = [e for e in evs if cc <= e[0] < cc + csz and tt <= e[1] < tt + tsz]
         quad_encode(sub, cc, tt, csz, tsz, bits)
@@ -86,15 +87,18 @@ def main():
     lossless = set(out) == evs
 
     # baselines
-    raw_bytes = n * ((C - 1).bit_length() + (T - 1).bit_length()) / 8      # fixed bits per (c,t)
-    gz_raw = len(gzip.compress(b"".join(c.to_bytes(1, "little") + t.to_bytes(2, "little")
-                                        for c, t in sorted(evs)), 9))
+    raw_bytes = n * ((C - 1).bit_length() + (T - 1).bit_length()) / 8  # fixed bits per (c,t)
+    gz_raw = len(
+        gzip.compress(
+            b"".join(c.to_bytes(1, "little") + t.to_bytes(2, "little") for c, t in sorted(evs)), 9
+        )
+    )
     spikes = {}
     for c, t in evs:
         spikes.setdefault(c, []).append(t)
     for c in spikes:
         spikes[c].sort()
-    onedim = len(sc.encode(spikes))                     # spike_compression delta+varint (1-D)
+    onedim = len(sc.encode(spikes))  # spike_compression delta+varint (1-D)
 
     print("=" * 60)
     print("QUADTREE EVENT COMPRESSION (2-D spatial, lossless)")
@@ -102,17 +106,25 @@ def main():
     print(f"{n} events on a {C}x{T} grid (bursty co-firing)")
     print(f"  fixed-bit raw     : {raw_bytes:>7.0f} B")
     print(f"  gzip(raw)         : {gz_raw:>7} B  ({raw_bytes / gz_raw:.1f}x)")
-    print(f"  1-D delta+varint  : {onedim:>7} B  ({raw_bytes / onedim:.1f}x)  (spike_compression.py)")
-    print(f"  2-D quadtree      : {len(qbytes):>7} B  ({raw_bytes / len(qbytes):.1f}x)  [{nbits} bits]")
+    print(
+        f"  1-D delta+varint  : {onedim:>7} B  ({raw_bytes / onedim:.1f}x)  (spike_compression.py)"
+    )
+    print(
+        f"  2-D quadtree      : {len(qbytes):>7} B  ({raw_bytes / len(qbytes):.1f}x)  [{nbits} bits]"
+    )
     print("quadtree exploits spatial burst clustering the per-channel 1-D codec cannot.")
     print("=" * 60)
 
     # ---- self-check: one runnable assert-based check; deterministic ----
     assert lossless, "quadtree codec must be lossless (decoded event set != original)"
     assert len(qbytes) < gz_raw, f"quadtree ({len(qbytes)} B) should beat gzip(raw) ({gz_raw} B)"
-    assert len(qbytes) < onedim, f"on bursty data quadtree ({len(qbytes)} B) should beat 1-D ({onedim} B)"
-    print(f"self-check OK: lossless; quadtree {len(qbytes)} B beats gzip {gz_raw} B and 1-D {onedim} B "
-          "on bursty co-firing data")
+    assert len(qbytes) < onedim, (
+        f"on bursty data quadtree ({len(qbytes)} B) should beat 1-D ({onedim} B)"
+    )
+    print(
+        f"self-check OK: lossless; quadtree {len(qbytes)} B beats gzip {gz_raw} B and 1-D {onedim} B "
+        "on bursty co-firing data"
+    )
 
 
 if __name__ == "__main__":

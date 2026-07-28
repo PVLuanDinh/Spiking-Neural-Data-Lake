@@ -14,9 +14,7 @@ Pure standard library, deterministic. On-thesis with delay_learning / izhikevich
   python -m research.polychronization        # (also run by run_selfchecks.py, root on PYTHONPATH)
 """
 
-import sys
 from collections import defaultdict
-from pathlib import Path
 
 pass  # migrated: sys.path bootstrap removed (now an importable package)
 from snn_data_lake.lif_neuron import LIFNeuron  # noqa: E402

@@ -18,6 +18,7 @@ at the same `per`:
   Knobs: NORD_CTX(3) NORD_PERS("400,1200,3600,6000") NORD_RFF(1500) NORD_GAMMA(0.15)
 Deps: numpy (+ stdlib). Reuses corpus_stream, language_self_build, language_readout_slda.
 """
+
 import os
 from collections import Counter, defaultdict
 
@@ -52,7 +53,7 @@ def _ngram_acc(train, test, k):
     for c, nx in test:
         key = tuple(c[-k:]) if k else ()
         if tbl[key]:
-            ok += (tbl[key].most_common(1)[0][0] == nx)
+            ok += tbl[key].most_common(1)[0][0] == nx
     return ok / len(test)
 
 
@@ -71,7 +72,9 @@ def _rstdp_acc(train, test, vocab, ctx):
 def _slda_acc(train, test, vocab, ctx, rff, gamma):
     ridx = {r: i for i, r in enumerate(vocab)}
     V = len(vocab)
-    X = lambda rows: np.array([_positional_code(c, ridx, V, ctx) for c, _ in rows], dtype=np.float64)  # noqa: E731
+    X = lambda rows: np.array(
+        [_positional_code(c, ridx, V, ctx) for c, _ in rows], dtype=np.float64
+    )  # noqa: E731
     s = SLDA_RFF_np(V * ctx, V, rff=rff, gamma=gamma, shrink=0.1, seed=0)
     s.observe(X(train), np.array([ridx[nx] for _, nx in train]))
     return float((s.predict(X(test)) == np.array([ridx[nx] for _, nx in test])).mean())
@@ -90,10 +93,16 @@ def main():
     train_all, test = pairs[:cut], pairs[cut:]
 
     print("=" * 92)
-    print("READOUT FAIR COMPARE -- decoder effect at EQUAL training budget (isolates the data confound)")
-    print(f"next-phoneme, ctx={CTX}, held-out n={len(test)}; each readout trained on the SAME `per` pairs")
+    print(
+        "READOUT FAIR COMPARE -- decoder effect at EQUAL training budget (isolates the data confound)"
+    )
+    print(
+        f"next-phoneme, ctx={CTX}, held-out n={len(test)}; each readout trained on the SAME `per` pairs"
+    )
     print("=" * 92)
-    print(f"{'per':>6} | {'R-STDP':>8} | {'SLDA-RFF':>9} | {'bigram':>7} | {'trigram':>8} | decoder delta (SLDA-R-STDP)")
+    print(
+        f"{'per':>6} | {'R-STDP':>8} | {'SLDA-RFF':>9} | {'bigram':>7} | {'trigram':>8} | decoder delta (SLDA-R-STDP)"
+    )
     print("-" * 92)
     rows = []
     for per in PERS:
@@ -103,27 +112,39 @@ def main():
         b = _ngram_acc(tr, test, 1)
         t3 = _ngram_acc(tr, test, 2)
         rows.append((per, r, s, b, t3))
-        print(f"{per:>6} | {r:>7.1%} | {s:>8.1%} | {b:>6.1%} | {t3:>7.1%} | {(s - r) * 100:>+5.1f} pts")
+        print(
+            f"{per:>6} | {r:>7.1%} | {s:>8.1%} | {b:>6.1%} | {t3:>7.1%} | {(s - r) * 100:>+5.1f} pts"
+        )
     print("-" * 92)
     # honest readings at the LARGEST equal budget
     per, r, s, b, t3 = rows[-1]
     rstdp_degrades = rows[-1][1] < rows[0][1]
     ngram_best = max(b, t3)
-    print(f"  at per={per} (equal budget): SLDA-RFF {s:.1%} vs R-STDP {r:.1%} = a {(s-r)*100:+.1f}-pt DECODER "
-          f"gain (not a data artifact)")
-    print(f"  vs the best n-gram at the SAME budget (trigram {t3:.1%}): SLDA-RFF {s:.1%} = {(s-ngram_best)*100:+.1f} pts "
-          f"-- so at equal data the readout only about TIES the n-gram, NOT the decisive win the 15x-data confound suggested")
-    print(f"  NEW honest finding: the single-layer R-STDP readout DEGRADES with more data "
-          f"({rows[0][1]:.1%} at per={rows[0][0]} -> {r:.1%} at per={per}) -- it saturates/overwrites, "
-          f"the same recency problem that sank the enclosed-loop MLP.")
+    print(
+        f"  at per={per} (equal budget): SLDA-RFF {s:.1%} vs R-STDP {r:.1%} = a {(s - r) * 100:+.1f}-pt DECODER "
+        f"gain (not a data artifact)"
+    )
+    print(
+        f"  vs the best n-gram at the SAME budget (trigram {t3:.1%}): SLDA-RFF {s:.1%} = {(s - ngram_best) * 100:+.1f} pts "
+        f"-- so at equal data the readout only about TIES the n-gram, NOT the decisive win the 15x-data confound suggested"
+    )
+    print(
+        f"  NEW honest finding: the single-layer R-STDP readout DEGRADES with more data "
+        f"({rows[0][1]:.1%} at per={rows[0][0]} -> {r:.1%} at per={per}) -- it saturates/overwrites, "
+        f"the same recency problem that sank the enclosed-loop MLP."
+    )
     print("=" * 92)
     # self-checks: the DECODER swap helps at equal budget; SLDA-RFF (unlike R-STDP) still improves with data
     assert s > r, f"SLDA-RFF must beat R-STDP at EQUAL budget ({s:.3f} vs {r:.3f})"
     assert rows[-1][2] >= rows[0][2], "SLDA-RFF did not benefit from more data (sanity)"
-    assert rstdp_degrades, "expected R-STDP to degrade with data at this budget (the honest finding)"
-    print(f"self-check OK: at EQUAL budget the decoder swap (R-STDP -> SLDA-RFF) is worth {(s-r)*100:+.1f} pts; "
-          f"at equal data SLDA-RFF only ~ties the n-gram ({s:.1%} vs trigram {t3:.1%}); R-STDP DEGRADES with more "
-          f"data. The earlier 7%-vs-22% comparison conflated a 15x data difference -- corrected.")
+    assert rstdp_degrades, (
+        "expected R-STDP to degrade with data at this budget (the honest finding)"
+    )
+    print(
+        f"self-check OK: at EQUAL budget the decoder swap (R-STDP -> SLDA-RFF) is worth {(s - r) * 100:+.1f} pts; "
+        f"at equal data SLDA-RFF only ~ties the n-gram ({s:.1%} vs trigram {t3:.1%}); R-STDP DEGRADES with more "
+        f"data. The earlier 7%-vs-22% comparison conflated a 15x data difference -- corrected."
+    )
     return 0
 
 

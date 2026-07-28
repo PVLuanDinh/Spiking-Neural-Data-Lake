@@ -44,14 +44,15 @@ Knobs: NORD_DATASET(synthetic|shd|nmnist) NORD_T NORD_HIDDEN NORD_MAXDELAY NORD_
        NORD_TRAIN NORD_TEST NORD_RFF NORD_LR NORD_SMOKE(=1 tiny) NORD_GPU NORD_DATA_DIR
 Deps: torch (+ tonic/torchvision for shd/nmnist). research/GPU tier; the served core stays zero-dep.
 """
+
 import json
 import math
 import os
 
 RSNN_FORMAT = "snn_rsnn/1"
-RHO_ADAPT = 0.9                    # shared spike-triggered-adaptation decay (fixed hyperparam, mirrored in core)
-V_TH = 1.0                         # fixed base firing threshold (exported per-neuron as a constant vector)
-SURR_BETA = 10.0                   # fast-sigmoid surrogate sharpness (backward only)
+RHO_ADAPT = 0.9  # shared spike-triggered-adaptation decay (fixed hyperparam, mirrored in core)
+V_TH = 1.0  # fixed base firing threshold (exported per-neuron as a constant vector)
+SURR_BETA = 10.0  # fast-sigmoid surrogate sharpness (backward only)
 
 
 def _envi(k, d):
@@ -79,10 +80,12 @@ def build_model(n_in, n_class, hidden, max_delay, learn_delays=True, adaptive=Tr
     class _SpikeFn(torch.autograd.Function):
         """Heaviside forward (u>=thr -> spike); fast-sigmoid surrogate gradient in backward ONLY, so the
         forward is IDENTICAL to the zero-dep core's hard threshold (the bridge check depends on this)."""
+
         @staticmethod
-        def forward(ctx, x):                       # x = u - thr
+        def forward(ctx, x):  # x = u - thr
             ctx.save_for_backward(x)
             return (x >= 0).to(x.dtype)
+
         @staticmethod
         def backward(ctx, g):
             (x,) = ctx.saved_tensors
@@ -92,6 +95,7 @@ def build_model(n_in, n_class, hidden, max_delay, learn_delays=True, adaptive=Tr
         """DCLS delay layer: a dense synapse W[out][in] plus a per-synapse learnable delay position
         P[out][in] rendered as a Gaussian bump along a length-max_delay 1-D temporal conv kernel. `hard`
         replaces the bump with a Dirac at round(P) -> the integer tap the core serves."""
+
         def __init__(self, nin, nout, maxd, learn, g):
             super().__init__()
             self.nin, self.nout, self.maxd = nin, nout, maxd
@@ -111,28 +115,30 @@ def build_model(n_in, n_class, hidden, max_delay, learn_delays=True, adaptive=Tr
             else:
                 self.register_buffer("P", torch.zeros(nout, nin))
                 self.learn = False
-            self.sigma = max(0.5, (maxd - 1) / 2.0)      # annealed toward ~0.5 during training
+            self.sigma = max(0.5, (maxd - 1) / 2.0)  # annealed toward ~0.5 during training
 
         def _kernel(self, hard):
             dev = self.W.device
-            dcoord = torch.arange(self.maxd, device=dev, dtype=self.W.dtype)      # delay axis 0..maxd-1
+            dcoord = torch.arange(self.maxd, device=dev, dtype=self.W.dtype)  # delay axis 0..maxd-1
             P = self.P.clamp(0.0, self.maxd - 1).to(self.W.dtype)
             if hard:
                 Pr = P.round()
-                bump = (dcoord.view(1, 1, -1) == Pr.unsqueeze(-1)).to(self.W.dtype)   # Dirac at round(P)
+                bump = (dcoord.view(1, 1, -1) == Pr.unsqueeze(-1)).to(
+                    self.W.dtype
+                )  # Dirac at round(P)
             else:
-                d = dcoord.view(1, 1, -1) - P.unsqueeze(-1)                            # [out,in,maxd]
+                d = dcoord.view(1, 1, -1) - P.unsqueeze(-1)  # [out,in,maxd]
                 bump = torch.exp(-0.5 * (d / self.sigma) ** 2)
-                bump = bump / (bump.sum(-1, keepdim=True) + 1e-8)                      # unit-mass -> W is the gain
-            kern_d = self.W.unsqueeze(-1) * bump                                       # indexed by delay d
-            return torch.flip(kern_d, dims=[-1])                                       # conv tau = maxd-1-d
+                bump = bump / (bump.sum(-1, keepdim=True) + 1e-8)  # unit-mass -> W is the gain
+            kern_d = self.W.unsqueeze(-1) * bump  # indexed by delay d
+            return torch.flip(kern_d, dims=[-1])  # conv tau = maxd-1-d
 
         def forward(self, x, hard=False):
             # x [B,T,nin] -> currents [B,T,nout]; causal left-pad so I[t] = sum_i W*x[t-d] + bias.
-            xc = x.transpose(1, 2)                                                     # [B,nin,T]
-            k = self._kernel(hard)                                                     # [nout,nin,maxd]
-            y = F.conv1d(F.pad(xc, (self.maxd - 1, 0)), k)                             # [B,nout,T]
-            return y.transpose(1, 2) + self.bias                                       # + per-neuron bias current
+            xc = x.transpose(1, 2)  # [B,nin,T]
+            k = self._kernel(hard)  # [nout,nin,maxd]
+            y = F.conv1d(F.pad(xc, (self.maxd - 1, 0)), k)  # [B,nout,T]
+            return y.transpose(1, 2) + self.bias  # + per-neuron bias current
 
         def int_delays(self):
             return self.P.detach().clamp(0.0, self.maxd - 1).round().to(torch.int64).cpu()
@@ -141,27 +147,36 @@ def build_model(n_in, n_class, hidden, max_delay, learn_delays=True, adaptive=Tr
         """Adaptive-LIF population: per-neuron membrane decay beta=sigmoid(beta_raw) (heterogeneous,
         trainable when adaptive) and per-neuron adaptation coupling a=softplus(a_raw). adaptive=False ->
         a homogeneous FIXED beta and a=0 (a plain LIF), the tau-ablation control."""
+
         def __init__(self, nout, adaptive, g):
             super().__init__()
             self.nout, self.adaptive = nout, adaptive
             if adaptive:
                 # heterogeneous betas spread across (0.5,0.95) via the logit of a uniform spread.
                 b_target = 0.5 + torch.rand(nout, generator=g, device="cpu") * 0.45
-                self.beta_raw = nn.Parameter(torch.log(b_target / (1.0 - b_target)))         # on CPU (b_target is)
-                self.a_raw = nn.Parameter(torch.full((nout,), -2.0, device="cpu")
-                                          + torch.rand(nout, generator=g, device="cpu") * 0.5)
+                self.beta_raw = nn.Parameter(
+                    torch.log(b_target / (1.0 - b_target))
+                )  # on CPU (b_target is)
+                self.a_raw = nn.Parameter(
+                    torch.full((nout,), -2.0, device="cpu")
+                    + torch.rand(nout, generator=g, device="cpu") * 0.5
+                )
             else:
-                self.register_buffer("beta_raw", torch.full((nout,), math.log(0.9 / 0.1), device="cpu"))  # fixed beta=0.9
-                self.a_raw = None                                                            # a == 0
+                self.register_buffer(
+                    "beta_raw", torch.full((nout,), math.log(0.9 / 0.1), device="cpu")
+                )  # fixed beta=0.9
+                self.a_raw = None  # a == 0
             self.register_buffer("v_th", torch.full((nout,), V_TH, device="cpu"))
 
         def beta(self):
             import torch
+
             return torch.sigmoid(self.beta_raw)
 
         def a(self):
             import torch
             import torch.nn.functional as F
+
             if self.a_raw is None:
                 return torch.zeros(self.nout, device=self.v_th.device, dtype=self.v_th.dtype)
             return F.softplus(self.a_raw)
@@ -169,6 +184,7 @@ def build_model(n_in, n_class, hidden, max_delay, learn_delays=True, adaptive=Tr
         def forward(self, I):
             # I [B,T,nout] currents -> spikes [B,T,nout]. Sequential ALIF recurrence over T (mirrors core).
             import torch
+
             B, T, N = I.shape
             beta = self.beta().to(I.dtype)
             a = self.a().to(I.dtype)
@@ -196,10 +212,14 @@ def build_model(n_in, n_class, hidden, max_delay, learn_delays=True, adaptive=Tr
                 self.delays.append(_DclsDelay(prev, w, max_delay, learn_delays, g))
                 self.alifs.append(_Alif(w, adaptive, g))
                 prev = w
-            self.readout = nn.Linear(prev, n_class, device="cpu")  # count-readout head (NOT served; SLDA replaces it)
+            self.readout = nn.Linear(
+                prev, n_class, device="cpu"
+            )  # count-readout head (NOT served; SLDA replaces it)
             with torch.no_grad():
                 self.readout.weight.mul_(0.0).add_(
-                    (torch.rand(n_class, prev, generator=g, device="cpu") * 2.0 - 1.0) / math.sqrt(prev))
+                    (torch.rand(n_class, prev, generator=g, device="cpu") * 2.0 - 1.0)
+                    / math.sqrt(prev)
+                )
                 self.readout.bias.zero_()
             self.max_delay = max_delay
             self.learn_delays = learn_delays
@@ -214,14 +234,14 @@ def build_model(n_in, n_class, hidden, max_delay, learn_delays=True, adaptive=Tr
                 spikes = al(dl(h, hard=hard))
                 per_layer.append(spikes)
                 h = spikes
-            counts = spikes.sum(dim=1)                             # [B, Hlast] spike counts over time
+            counts = spikes.sum(dim=1)  # [B, Hlast] spike counts over time
             return counts, per_layer
 
         def features(self, x, hard=False):
             return self.encode(x, hard=hard)[0]
 
         def forward(self, x, hard=False):
-            return self.readout(self.features(x, hard=hard))       # logits
+            return self.readout(self.features(x, hard=hard))  # logits
 
         def anneal_sigma(self, frac):
             """Anneal every DCLS sigma from its init toward ~0.5 as training progresses (frac in [0,1])."""
@@ -255,7 +275,7 @@ def slda_rff_accuracy(Ftr, ytr, Fte, yte, n_cls, rff=1024, gamma=0.02, shrink=0.
     sum_c = torch.zeros(n_cls, rff, device=dev)
     cnt_c = torch.zeros(n_cls, device=dev)
     for c in range(n_cls):
-        m = (ytr == c)
+        m = ytr == c
         if m.any():
             sum_c[c] = Ztr[m].sum(0)
             cnt_c[c] = float(m.sum().item())
@@ -279,30 +299,41 @@ class _Synthetic:
     """A temporal spiking classification task where classes differ ONLY in the TIMING pattern of the same
     active input channels -- so a timing-blind (rate) encoder is near chance while a delay-aware encoder
     can separate them. Deterministic. Held fully in memory (tiny)."""
+
     def __init__(self, gen, n_in, n_class, T, n_train, n_test, k_active=4, jitter=1, noise=0.02):
         import torch
+
         self.n_in, self.n_class, self.T = n_in, n_class, T
         # the dataset lives on CPU (like a DataLoader); training moves batches to device -- NEVER build it
         # on the cuda default device, since `gen` is a CPU generator (the set_default_device trap).
-        chans = torch.arange(k_active, device="cpu") * max(1, n_in // (k_active + 1)) + 1   # fixed active channels
+        chans = (
+            torch.arange(k_active, device="cpu") * max(1, n_in // (k_active + 1)) + 1
+        )  # fixed active channels
         tmpl = []
-        for c in range(n_class):                                                   # per-class spike TIMES
-            tmpl.append((torch.rand(k_active, generator=gen, device="cpu") * (T - 2 - jitter) + 1).long())
+        for c in range(n_class):  # per-class spike TIMES
+            tmpl.append(
+                (torch.rand(k_active, generator=gen, device="cpu") * (T - 2 - jitter) + 1).long()
+            )
         self.tmpl, self.chans, self.jitter, self.noise = tmpl, chans, jitter, noise
         self.Xtr, self.ytr = self._make(gen, n_train)
         self.Xte, self.yte = self._make(gen, n_test)
 
     def _make(self, gen, n):
         import torch
+
         X = torch.zeros(n, self.T, self.n_in, device="cpu")
         y = torch.randint(0, self.n_class, (n,), generator=gen, device="cpu")
         for s in range(n):
             c = int(y[s])
             for i, ch in enumerate(self.chans):
-                jt = int(torch.randint(-self.jitter, self.jitter + 1, (1,), generator=gen, device="cpu"))
+                jt = int(
+                    torch.randint(-self.jitter, self.jitter + 1, (1,), generator=gen, device="cpu")
+                )
                 t = min(self.T - 1, max(0, int(self.tmpl[c][i]) + jt))
                 X[s, t, int(ch)] = 1.0
-            noise = (torch.rand(self.T, self.n_in, generator=gen, device="cpu") < self.noise).float()
+            noise = (
+                torch.rand(self.T, self.n_in, generator=gen, device="cpu") < self.noise
+            ).float()
             X[s] = torch.clamp(X[s] + noise, 0.0, 1.0)
         return X, y
 
@@ -315,7 +346,7 @@ class _Synthetic:
     @staticmethod
     def _iter(X, y, bs):
         for i in range(0, len(X), bs):
-            yield X[i:i + bs], y[i:i + bs]
+            yield X[i : i + bs], y[i : i + bs]
 
 
 def load_dataset(name, T, n_train, n_test, data_dir, seed=0):
@@ -330,7 +361,10 @@ def load_dataset(name, T, n_train, n_test, data_dir, seed=0):
         return _Synthetic(g, n_in, n_class, T, n_train or 2000, n_test or 500)
 
     if name == "nmnist":
-        from snn_data_lake.reasoning.ng_snn.data import make_nmnist_loaders                 # disk-streaming N-MNIST frames [B,T,2,34,34]
+        from snn_data_lake.reasoning.ng_snn.data import (
+            make_nmnist_loaders,
+        )  # disk-streaming N-MNIST frames [B,T,2,34,34]
+
         tr, te = make_nmnist_loaders(save_to=data_dir, n_time_bins=T, batch_size=128, num_workers=0)
         return _LoaderDataset(tr, te, n_in=2 * 34 * 34, n_class=10, T=T, flatten=True)
 
@@ -338,7 +372,8 @@ def load_dataset(name, T, n_train, n_test, data_dir, seed=0):
         import tonic
         import tonic.transforms as TT
         from torch.utils.data import DataLoader
-        sensor = tonic.datasets.SHD.sensor_size                     # (700, 1, 1)
+
+        sensor = tonic.datasets.SHD.sensor_size  # (700, 1, 1)
         to_frame = TT.ToFrame(sensor_size=sensor, n_time_bins=T)
         tf = TT.Compose([to_frame, _ToBinTensor()])
         tr_ds = tonic.datasets.SHD(save_to=data_dir, train=True, transform=tf)
@@ -347,6 +382,7 @@ def load_dataset(name, T, n_train, n_test, data_dir, seed=0):
         # DataLoader(shuffle=True)'s RandomSampler calls torch.randperm(generator=...); under
         # set_default_device(cuda) that generator must be on cuda too (the documented device trap).
         from snn_data_lake.reasoning.torch_device import resolve_device as _rdev
+
         gen = torch.Generator(device=_rdev())
         tr = DataLoader(tr_ds, shuffle=True, generator=gen, **common)
         te = DataLoader(te_ds, shuffle=False, **common)
@@ -358,9 +394,11 @@ def load_dataset(name, T, n_train, n_test, data_dir, seed=0):
 class _ToBinTensor:
     """Picklable frame -> binarized float32 spike tensor (module-level class so Windows num_workers>0 can
     pickle it). tonic ToFrame emits event COUNTS per bin; binarize to {0,1} to keep the input spike-driven."""
+
     def __call__(self, frames):
         import numpy as np
         import torch
+
         return (torch.from_numpy(np.asarray(frames, dtype="float32")) > 0).float()
 
 
@@ -370,11 +408,10 @@ class _LoaderDataset:
         self.n_in, self.n_class, self.T, self.flatten = n_in, n_class, T, flatten
 
     def _wrap(self, loader, bs_ignored):
-        import torch
         for x, y in loader:
             xf = x.float()
             if self.flatten:
-                xf = xf.reshape(xf.shape[0], xf.shape[1], -1)      # [B,T,*] -> [B,T,nin]
+                xf = xf.reshape(xf.shape[0], xf.shape[1], -1)  # [B,T,*] -> [B,T,nin]
                 xf = (xf > 0).float()
             yield xf, y.long()
 
@@ -403,21 +440,29 @@ def train_model(model, data, device, epochs, bs, lr, scaler=None, log=""):
         for x, y in data.train_iter(bs):
             x, y = x.to(device), y.to(device)
             opt.zero_grad(set_to_none=True)
-            with torch.autocast(device_type="cuda" if is_cuda else "cpu", enabled=bool(scaler and is_cuda)):
+            with torch.autocast(
+                device_type="cuda" if is_cuda else "cpu", enabled=bool(scaler and is_cuda)
+            ):
                 logits = model(x)
                 loss = F.cross_entropy(logits, y)
             if scaler and is_cuda:
-                scaler.scale(loss).backward(); scaler.step(opt); scaler.update()
+                scaler.scale(loss).backward()
+                scaler.step(opt)
+                scaler.update()
             else:
-                loss.backward(); opt.step()
+                loss.backward()
+                opt.step()
             seen += len(y)
         if log:
-            print(f"  [{log}] epoch {ep + 1}/{epochs}  seen={seen}  last-loss={float(loss.detach()):.4f}")
+            print(
+                f"  [{log}] epoch {ep + 1}/{epochs}  seen={seen}  last-loss={float(loss.detach()):.4f}"
+            )
     return ce_accuracy(model, data, device, bs)
 
 
 def ce_accuracy(model, data, device, bs, hard=False):
     import torch
+
     model.eval()
     ok = tot = 0
     with torch.no_grad():
@@ -431,6 +476,7 @@ def ce_accuracy(model, data, device, bs, hard=False):
 def extract_features(model, data, device, bs, hard=False):
     """Penultimate spike-count features + labels for train and test (what SLDA-RFF consumes)."""
     import torch
+
     model.eval()
 
     def _collect(it):
@@ -461,11 +507,14 @@ def rate_collapsed_accuracy(data, device, bs, n_proj, seed=0):
         Fs, ys = [], []
         for x, y in it:
             x = x.to(device)
-            r = x.sum(dim=1)                                        # [B, nin] rate (timing destroyed)
+            r = x.sum(dim=1)  # [B, nin] rate (timing destroyed)
             if Wp is None:
-                Wp = ((torch.rand(r.shape[1], n_proj, generator=g, device="cpu") * 2 - 1)
-                      / math.sqrt(r.shape[1])).to(device)
-            Fs.append(F.relu(r @ Wp)); ys.append(y.to(device))
+                Wp = (
+                    (torch.rand(r.shape[1], n_proj, generator=g, device="cpu") * 2 - 1)
+                    / math.sqrt(r.shape[1])
+                ).to(device)
+            Fs.append(F.relu(r @ Wp))
+            ys.append(y.to(device))
         return torch.cat(Fs), torch.cat(ys)
 
     Ftr, ytr = _collect(data.train_iter(bs))
@@ -479,7 +528,6 @@ def rate_collapsed_accuracy(data, device, bs, n_proj, seed=0):
 def export_rsnn(model, path):
     """Write the core `snn_rsnn/1` JSON: per layer W[out][in] (NO transpose), FINALIZED integer delays,
     per-neuron beta/a/v_th, max_delay; layers in application order. Every shape asserted. Returns the dict."""
-    import torch
 
     layers = []
     for dl, al in zip(model.delays, model.alifs):
@@ -491,14 +539,37 @@ def export_rsnn(model, path):
         v_th = al.v_th.detach().cpu().tolist()
         nout, nin = len(W), len(W[0])
         assert all(len(r) == nin for r in W), "W rows must be [in]"
-        assert len(delays) == nout and all(len(r) == nin for r in delays), "delays must be [out][in]"
-        assert all(isinstance(d, int) and 0 <= d < dl.maxd for r in delays for d in r), "delays must be int taps"
-        assert len(bias) == nout and len(beta) == nout and len(a) == nout and len(v_th) == nout, "bias/beta/a/v_th must be [out]"
-        layers.append({"W": W, "delays": delays, "max_delay": int(dl.maxd),
-                       "bias": bias, "beta": beta, "a": a, "v_th": v_th})
-    blob = {"format": RSNN_FORMAT, "n_in": int(model.delays[0].nin), "rho": RHO_ADAPT, "layers": layers,
-            "meta": {"trained_by": "rsnn_delays_torch", "learn_delays": bool(model.learn_delays),
-                     "adaptive": bool(model.adaptive)}}
+        assert len(delays) == nout and all(len(r) == nin for r in delays), (
+            "delays must be [out][in]"
+        )
+        assert all(isinstance(d, int) and 0 <= d < dl.maxd for r in delays for d in r), (
+            "delays must be int taps"
+        )
+        assert len(bias) == nout and len(beta) == nout and len(a) == nout and len(v_th) == nout, (
+            "bias/beta/a/v_th must be [out]"
+        )
+        layers.append(
+            {
+                "W": W,
+                "delays": delays,
+                "max_delay": int(dl.maxd),
+                "bias": bias,
+                "beta": beta,
+                "a": a,
+                "v_th": v_th,
+            }
+        )
+    blob = {
+        "format": RSNN_FORMAT,
+        "n_in": int(model.delays[0].nin),
+        "rho": RHO_ADAPT,
+        "layers": layers,
+        "meta": {
+            "trained_by": "rsnn_delays_torch",
+            "learn_delays": bool(model.learn_delays),
+            "adaptive": bool(model.adaptive),
+        },
+    }
     with open(path, "w", encoding="ascii") as f:
         json.dump(blob, f)
     return blob
@@ -522,10 +593,12 @@ def verify_transfer(path, model, n_probe=4, tol=1e-6):
     T = _envi("NORD_PROBE_T", 12)
     n_in = model.delays[0].nin
     g = torch.Generator(device="cpu").manual_seed(321)
-    probes = (torch.rand(n_probe, T, n_in, generator=g, device="cpu") < 0.15).double()   # sparse spike trains, CPU
+    probes = (
+        torch.rand(n_probe, T, n_in, generator=g, device="cpu") < 0.15
+    ).double()  # sparse spike trains, CPU
     max_err = 0.0
     with torch.no_grad():
-        counts_ref = ref.features(probes, hard=True)                                     # [n_probe, feat_dim] float64
+        counts_ref = ref.features(probes, hard=True)  # [n_probe, feat_dim] float64
     for s in range(n_probe):
         frames = [[float(v) for v in probes[s, t]] for t in range(T)]
         c_core = core.features(frames)
@@ -534,7 +607,9 @@ def verify_transfer(path, model, n_probe=4, tol=1e-6):
         for a, b in zip(c_core, c_ref):
             assert math.isfinite(a) and math.isfinite(b), "non-finite feature in bridge check"
             max_err = max(max_err, abs(a - b))
-    assert max_err < tol, f"export->core bridge mismatch: max |core-torch| spike-count diff = {max_err:.3e} > tol {tol:.1e}"
+    assert max_err < tol, (
+        f"export->core bridge mismatch: max |core-torch| spike-count diff = {max_err:.3e} > tol {tol:.1e}"
+    )
     return {"ok": True, "max_err": max_err, "n_probe": n_probe, "feat_dim": len(c_ref)}
 
 
@@ -564,16 +639,25 @@ def main():
     torch.manual_seed(0)
 
     dataset = os.environ.get("NORD_DATASET", "synthetic")
-    if smoke:                                              # tiny, standalone (no download), fast on CPU
+    if smoke:  # tiny, standalone (no download), fast on CPU
         dataset = os.environ.get("NORD_DATASET", "synthetic")
-        T = _envi("NORD_T", 16); hidden = [_envi("NORD_HIDDEN", 24)]; maxd = _envi("NORD_MAXDELAY", 6)
-        epochs = _envi("NORD_EPOCHS", 2); bs = _envi("NORD_BATCH", 64)
-        n_train = _envi("NORD_TRAIN", 240); n_test = _envi("NORD_TEST", 120); rff = _envi("NORD_RFF", 256)
+        T = _envi("NORD_T", 16)
+        hidden = [_envi("NORD_HIDDEN", 24)]
+        maxd = _envi("NORD_MAXDELAY", 6)
+        epochs = _envi("NORD_EPOCHS", 2)
+        bs = _envi("NORD_BATCH", 64)
+        n_train = _envi("NORD_TRAIN", 240)
+        n_test = _envi("NORD_TEST", 120)
+        rff = _envi("NORD_RFF", 256)
     else:
         T = _envi("NORD_T", 100 if dataset == "shd" else 20)
         hidden = [int(w) for w in os.environ.get("NORD_HIDDEN", "256,256").split(",")]
-        maxd = _envi("NORD_MAXDELAY", 25); epochs = _envi("NORD_EPOCHS", 30); bs = _envi("NORD_BATCH", 128)
-        n_train = _envi("NORD_TRAIN", 0); n_test = _envi("NORD_TEST", 0); rff = _envi("NORD_RFF", 2048)
+        maxd = _envi("NORD_MAXDELAY", 25)
+        epochs = _envi("NORD_EPOCHS", 30)
+        bs = _envi("NORD_BATCH", 128)
+        n_train = _envi("NORD_TRAIN", 0)
+        n_test = _envi("NORD_TEST", 0)
+        rff = _envi("NORD_RFF", 2048)
     lr = _envf("NORD_LR", 3e-3)
     data_dir = os.environ.get("NORD_DATA_DIR", "data")
 
@@ -585,7 +669,9 @@ def main():
     print("=" * 74)
     print(f"backend  : torch {torch.__version__}  device={device}  amp={is_cuda}  smoke={smoke}")
     print(f"dataset  : {dataset}  n_in={n_in}  n_class={n_class}  T={T}")
-    print(f"model    : hidden={hidden}  max_delay={maxd}  epochs={epochs}  bs={bs}  rff={rff}  lr={lr}")
+    print(
+        f"model    : hidden={hidden}  max_delay={maxd}  epochs={epochs}  bs={bs}  rff={rff}  lr={lr}"
+    )
     print("-" * 74)
 
     def _scaler():
@@ -595,26 +681,34 @@ def main():
         return slda_rff_accuracy(Ftr, ytr, Fte, yte, n_class, rff=rff)
 
     # ---- FULL model: delays ON + adaptive ON ----
-    full = build_model(n_in, n_class, hidden, maxd, learn_delays=True, adaptive=True, seed=0).to(device)
+    full = build_model(n_in, n_class, hidden, maxd, learn_delays=True, adaptive=True, seed=0).to(
+        device
+    )
     ce_full = train_model(full, data, device, epochs, bs, lr, _scaler(), log="full")
-    ce_full_hard = ce_accuracy(full, data, device, bs, hard=True)            # finalized integer-delay re-eval
+    ce_full_hard = ce_accuracy(full, data, device, bs, hard=True)  # finalized integer-delay re-eval
     Ftr, ytr, Fte, yte = extract_features(full, data, device, bs, hard=True)
     slda_full = _slda(Ftr, ytr, Fte, yte)
 
     # ---- CONTROL: RANDOM-INIT encoder (frozen, untrained) -- the critical honesty check ----
-    rnd = build_model(n_in, n_class, hidden, maxd, learn_delays=True, adaptive=True, seed=7).to(device)
+    rnd = build_model(n_in, n_class, hidden, maxd, learn_delays=True, adaptive=True, seed=7).to(
+        device
+    )
     Rtr, ry, Rte, rye = extract_features(rnd, data, device, bs, hard=True)
     slda_random = _slda(Rtr, ry, Rte, rye)
 
     # ---- CONTROL: DELAYS OFF (all delays frozen to 0), retrained ----
-    nod = build_model(n_in, n_class, hidden, maxd, learn_delays=False, adaptive=True, seed=0).to(device)
-    ce_nod = train_model(nod, data, device, epochs, bs, lr, _scaler(), log="no-delay")
+    nod = build_model(n_in, n_class, hidden, maxd, learn_delays=False, adaptive=True, seed=0).to(
+        device
+    )
+    train_model(nod, data, device, epochs, bs, lr, _scaler(), log="no-delay")  # trains in place
     Dtr, dy, Dte, dye = extract_features(nod, data, device, bs, hard=True)
     slda_nodelay = _slda(Dtr, dy, Dte, dye)
 
     # ---- CONTROL: ADAPTIVE tau OFF (homogeneous fixed-tau plain LIF), retrained ----
-    noa = build_model(n_in, n_class, hidden, maxd, learn_delays=True, adaptive=False, seed=0).to(device)
-    ce_noa = train_model(noa, data, device, epochs, bs, lr, _scaler(), log="no-adapt")
+    noa = build_model(n_in, n_class, hidden, maxd, learn_delays=True, adaptive=False, seed=0).to(
+        device
+    )
+    train_model(noa, data, device, epochs, bs, lr, _scaler(), log="no-adapt")  # trains in place
     Atr, ay, Ate, aye = extract_features(noa, data, device, bs, hard=True)
     slda_noadapt = _slda(Atr, ay, Ate, aye)
 
@@ -642,29 +736,49 @@ def main():
     print(f"  CE head (FINALIZED integer delays)    : {ce_full_hard:.1%}")
     print("-" * 74)
     print(f"  TRAINED encoder (delays+adaptive)     : {slda_full:.1%}   <- ceiling")
-    print(f"  control: delays OFF (retrained)       : {slda_nodelay:.1%}   delta(delays)   = {d_delay:+.1%}")
-    print(f"  control: adaptive tau OFF (retrained) : {slda_noadapt:.1%}   delta(adaptive) = {d_adapt:+.1%}")
-    print(f"  control: RANDOM-INIT (frozen)         : {slda_random:.1%}   delta(vs random)= {d_random:+.1%}")
-    print(f"  control: TIMING-COLLAPSED rate        : {slda_rate:.1%}   delta(ceiling)  = {d_ceiling:+.1%}")
+    print(
+        f"  control: delays OFF (retrained)       : {slda_nodelay:.1%}   delta(delays)   = {d_delay:+.1%}"
+    )
+    print(
+        f"  control: adaptive tau OFF (retrained) : {slda_noadapt:.1%}   delta(adaptive) = {d_adapt:+.1%}"
+    )
+    print(
+        f"  control: RANDOM-INIT (frozen)         : {slda_random:.1%}   delta(vs random)= {d_random:+.1%}"
+    )
+    print(
+        f"  control: TIMING-COLLAPSED rate        : {slda_rate:.1%}   delta(ceiling)  = {d_ceiling:+.1%}"
+    )
     print("-" * 74)
     fd = bridge["feat_dim"] if bridge and bridge.get("ok") else "?"
     if bridge and bridge.get("ok"):
-        print(f"  bridge   : core snn_rsnn/1 == torch forward (feat_dim={fd}, max count-diff "
-              f"{bridge['max_err']:.1e} over {bridge['n_probe']} probes)")
+        print(
+            f"  bridge   : core snn_rsnn/1 == torch forward (feat_dim={fd}, max count-diff "
+            f"{bridge['max_err']:.1e} over {bridge['n_probe']} probes)"
+        )
     else:
         print("  bridge   : NOT confirmed")
     print(f"  exported : {RSNN_FORMAT} -> {export_path}  ({len(blob['layers'])} layers)")
     print("=" * 74)
-    print("HONEST NOTES: expect delta(delays) >= +3% and delta(vs random) large on TEMPORAL data (SHD); on")
-    print("static/near-linear tasks delays and the trained-vs-random margin can be small -- reported as-is.")
-    print("The rate baseline is the temporal stand-in for a frozen conv-STDP spatial encoder (image-only).")
+    print(
+        "HONEST NOTES: expect delta(delays) >= +3% and delta(vs random) large on TEMPORAL data (SHD); on"
+    )
+    print(
+        "static/near-linear tasks delays and the trained-vs-random margin can be small -- reported as-is."
+    )
+    print(
+        "The rate baseline is the temporal stand-in for a frozen conv-STDP spatial encoder (image-only)."
+    )
 
     # asserts: only the RIGGABLE-if-broken plumbing invariants (never the honest deltas, which are data-dependent)
     assert bridge is not None and bridge.get("ok"), "export->core bridge must match (plumbing)"
-    assert 0.0 <= slda_full <= 1.0 and 0.0 <= slda_random <= 1.0, "accuracies must be valid fractions"
+    assert 0.0 <= slda_full <= 1.0 and 0.0 <= slda_random <= 1.0, (
+        "accuracies must be valid fractions"
+    )
     assert ce_full_hard > 0.0, "finalized-delay CE head must run"
-    print(f"self-check OK: bridge matches (max count-diff {bridge['max_err']:.1e}); trained SLDA-RFF "
-          f"{slda_full:.1%} vs random {slda_random:.1%} (delta {d_random:+.1%}), delays delta {d_delay:+.1%}.")
+    print(
+        f"self-check OK: bridge matches (max count-diff {bridge['max_err']:.1e}); trained SLDA-RFF "
+        f"{slda_full:.1%} vs random {slda_random:.1%} (delta {d_random:+.1%}), delays delta {d_delay:+.1%}."
+    )
     return 0
 
 

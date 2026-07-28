@@ -9,6 +9,7 @@ batches N to the GPU); the grown S is (60000, L<=2000) < 0.5 GB.
 
   PYTHONUTF8=1 .venv-cu128/Scripts/python research/ng_snn/grow_head_nmnist.py
 """
+
 import os
 import sys
 import time
@@ -26,8 +27,8 @@ except AttributeError:
     pass
 
 DATA = Path(__file__).resolve().parents[2] / "data" / "ng_snn"
-RANDOM_LIF = 98.84      # prior random-LIF head on the same features
-LINEAR_CEIL = 99.42     # linear readout ceiling on the same features
+RANDOM_LIF = 98.84  # prior random-LIF head on the same features
+LINEAR_CEIL = 99.42  # linear readout ceiling on the same features
 
 
 def load_split(split):
@@ -45,8 +46,8 @@ def main():
         print("WARNING: CUDA not available -- NGSNN will fall back to CPU (very slow for N-MNIST).")
 
     print("loading 3-conv mean+max N-MNIST features ...")
-    Xtr_np, ytr_np = load_split("train")     # (60000, 49152) float32, (60000,)
-    Xte_np, yte_np = load_split("test")      # (10000, 49152) float32, (10000,)
+    Xtr_np, ytr_np = load_split("train")  # (60000, 49152) float32, (60000,)
+    Xte_np, yte_np = load_split("test")  # (10000, 49152) float32, (10000,)
 
     # per-feature min-max to [0,1] on TRAIN stats (in-place -> no 11.8 GB copy)
     lo = Xtr_np.min(axis=0)
@@ -57,13 +58,14 @@ def main():
         A /= rng
         np.clip(A, 0.0, 1.0, out=A)
 
-    Xtr = torch.from_numpy(Xtr_np)           # CPU float32 tensor (kept on CPU; _rates batches to GPU)
+    Xtr = torch.from_numpy(Xtr_np)  # CPU float32 tensor (kept on CPU; _rates batches to GPU)
     ytr = torch.from_numpy(ytr_np).long()
     Xte = torch.from_numpy(Xte_np)
     yte = torch.from_numpy(yte_np).long()
 
-    clf = NGSNN(lambdas=(0.05, 0.1, 0.3, 0.5), r=0.9, t_cand=200, l_max=2000,
-                T=15, device="cuda", seed=0)
+    clf = NGSNN(
+        lambdas=(0.05, 0.1, 0.3, 0.5), r=0.9, t_cand=200, l_max=2000, T=15, device="cuda", seed=0
+    )
 
     print("growing NG-SNN head (delta=64 block-neurogenesis, score_subsample=8000) ...")
     t0 = time.perf_counter()
@@ -75,7 +77,7 @@ def main():
     if dev == "cuda":
         torch.cuda.empty_cache()
 
-    preds = clf.predict(Xte).cpu()           # predict moves the 10000-row test set to GPU (fits)
+    preds = clf.predict(Xte).cpu()  # predict moves the 10000-row test set to GPU (fits)
     acc = (preds == yte).float().mean().item()
 
     del Xte, Xte_np

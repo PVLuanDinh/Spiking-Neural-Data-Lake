@@ -30,21 +30,22 @@ and proofs (verifier-reward) are the next adapters, not built here.
   Knobs: NORD_CTX(3) NORD_PER(6000) NORD_RFF(1500) NORD_GAMMA(0.15) NORD_MATHN(4000)
 Deps: numpy (+ stdlib). Reuses corpus_stream, language_self_build, language_readout_slda, lake_memory.
 """
+
 import os
 import random
-import zlib
 
-import numpy as np
 
 from snn_data_lake.reasoning.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
-from snn_data_lake.reasoning.language_self_build import _positional_code, _bigram_baseline
-from snn_data_lake.reasoning.language_readout_slda import SLDA_RFF_np, _slda_acc
+from snn_data_lake.reasoning.language_self_build import _bigram_baseline
+from snn_data_lake.reasoning.language_readout_slda import _slda_acc
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 
-from snn_data_lake.reasoning.content_signature import SIG, signature   # extracted to a stdlib module; re-exported for back-compat
+from snn_data_lake.reasoning.content_signature import (
+    signature,
+)  # extracted to a stdlib module; re-exported for back-compat
 
-MATH_VOCAB = list("0123456789+-*= ")        # the arithmetic domain's token inventory
+MATH_VOCAB = list("0123456789+-*= ")  # the arithmetic domain's token inventory
 
 
 def _envi(k, d):
@@ -82,8 +83,8 @@ class SkillRegistry:
 
     def __init__(self, lake):
         self.lake = lake
-        self.experts = {}                   # skill_id -> dict(readout, vocab, ctx)
-        self.names = {}                     # skill_id -> human name
+        self.experts = {}  # skill_id -> dict(readout, vocab, ctx)
+        self.names = {}  # skill_id -> human name
 
     def register(self, skill_id, name, sig_exemplars, expert):
         """Index the skill by consolidating MANY signature exemplars (not one centroid) with the skill
@@ -111,7 +112,7 @@ def build_skill(name, pairs, vocab, ctx, per, rff, gamma, seed):
     comp, n = _slda_acc(pairs, vocab, ctx, per, rff, gamma, 0.1, seed=seed)
     # a learning curve proxy: readout trained on the first half vs all of train (competence rises)
     half = max(30, len(train) // 2)
-    c0, _ = _slda_acc(usable[:half * 2], vocab, ctx, half, rff, gamma, 0.1, seed=seed)
+    c0, _ = _slda_acc(usable[: half * 2], vocab, ctx, half, rff, gamma, 0.1, seed=seed)
     # signature EXEMPLARS: ~150 sampled training-context signatures -> the skill's indexed keys
     ex = [signature(c) for c, _ in train[:3000]]
     step = max(1, len(ex) // 150)
@@ -131,8 +132,12 @@ def main():
         os.remove(lake_path)
 
     print("=" * 96)
-    print("SKILL BUILDER -- one autonomous loop builds + INDEXES its own skill for ANY domain (stream)")
-    print(f"ctx={CTX}  per={PER}  rff={RFF}  (spiking representation + strong SLDA-RFF competence head)")
+    print(
+        "SKILL BUILDER -- one autonomous loop builds + INDEXES its own skill for ANY domain (stream)"
+    )
+    print(
+        f"ctx={CTX}  per={PER}  rff={RFF}  (spiking representation + strong SLDA-RFF competence head)"
+    )
     print("=" * 96)
 
     # ---- domain streams (real): LANGUAGE (corpus) + MATH (generated arithmetic) ----
@@ -140,16 +145,20 @@ def main():
     words, toff = load_text()
     lang_pairs = list(phoneme_stream(words, cmudict, k=CTX))
     math_pairs = math_stream(n_expr=MATHN, ctx=CTX, seed=0)
-    print(f"[data] language {len(lang_pairs):,} phoneme pairs ({'offline' if toff else 'real corpus'}); "
-          f"math {len(math_pairs):,} arithmetic-char pairs (generated)")
+    print(
+        f"[data] language {len(lang_pairs):,} phoneme pairs ({'offline' if toff else 'real corpus'}); "
+        f"math {len(math_pairs):,} arithmetic-char pairs (generated)"
+    )
 
     lake = LakeMemory(path=lake_path, seed=0)
     registry = SkillRegistry(lake)
     # META-CONTROLLER: a top-level curiosity over DOMAIN ids picks which skill to build next by
     # cross-domain learning-progress (the frontier). Here both are built; the order is curiosity-driven.
     meta = SpikingCuriosityDrive(seed=0)
-    domains = {0: ("language", lang_pairs, ARPABET, _bigram_baseline(lang_pairs)),
-               1: ("math", math_pairs, MATH_VOCAB, _bigram_baseline(math_pairs))}
+    domains = {
+        0: ("language", lang_pairs, ARPABET, _bigram_baseline(lang_pairs)),
+        1: ("math", math_pairs, MATH_VOCAB, _bigram_baseline(math_pairs)),
+    }
 
     results = {}
     order = []
@@ -159,17 +168,19 @@ def main():
         name, pairs, vocab, base = domains[did]
         comp, c0, sig, expert = build_skill(name, pairs, vocab, CTX, PER, RFF, GAMMA, seed=did)
         registry.register(did, name, sig, expert)
-        meta.observe(did, 1.0 - comp)             # low competence -> stays curious about it
+        meta.observe(did, 1.0 - comp)  # low competence -> stays curious about it
         results[did] = (name, comp, c0, base)
         order.append(name)
         remaining.discard(did)
-        print(f"  built skill '{name}': competence {comp:.1%} (baseline {base:.1%}, early {c0:.1%})  "
-              f"-> indexed as skill {did}")
+        print(
+            f"  built skill '{name}': competence {comp:.1%} (baseline {base:.1%}, early {c0:.1%})  "
+            f"-> indexed as skill {did}"
+        )
 
     # ---- ROUTING: recall the right skill for held-out inputs of each domain, BY PROXIMITY ----
     def route_acc(did):
         _, pairs, _, _ = domains[did]
-        test = pairs[int(len(pairs) * 0.8):]
+        test = pairs[int(len(pairs) * 0.8) :]
         sample = test[:: max(1, len(test) // 500)][:500]
         return sum(registry.route(c) == did for c, _ in sample) / max(1, len(sample))
 
@@ -183,25 +194,41 @@ def main():
     print("-" * 96)
     for did in sorted(results):
         nm, comp, c0, base = results[did]
-        print(f"  {nm:9s}: competence {comp:.1%} (early {c0:.1%} -> {comp:.1%}); domain baseline {base:.1%}")
+        print(
+            f"  {nm:9s}: competence {comp:.1%} (early {c0:.1%} -> {comp:.1%}); domain baseline {base:.1%}"
+        )
     print(f"  meta-curiosity build order: {order}")
-    print(f"  ROUTING (proximity, no domain-id): language {r_lang:.0%}, math {r_math:.0%}  "
-          f"(chance {1 / len(domains):.0%})")
+    print(
+        f"  ROUTING (proximity, no domain-id): language {r_lang:.0%}, math {r_math:.0%}  "
+        f"(chance {1 / len(domains):.0%})"
+    )
     print(f"  LAKE: {lake.n_stored} skill signatures indexed; durable across restart = {dur['ok']}")
     print("-" * 96)
-    print("  one loop, many domains: same build+index mechanism; competence via the strong hybrid head.")
-    print("  next adapters (not built): physics (JEPA latent next-state), proofs (verifier reward).")
+    print(
+        "  one loop, many domains: same build+index mechanism; competence via the strong hybrid head."
+    )
+    print(
+        "  next adapters (not built): physics (JEPA latent next-state), proofs (verifier reward)."
+    )
     print("=" * 96)
 
     # ---- un-riggable self-checks ----
     for did, (nm, comp, c0, base) in results.items():
-        assert comp >= base - 0.02, f"{nm}: strong readout below its domain baseline ({comp:.3f} vs {base:.3f})"
-    assert router > 1.5 / len(domains), f"router no better than chance ({router:.2f} vs chance {1/len(domains):.2f})"
-    assert r_lang > 0.6 and r_math > 0.6, f"per-domain routing weak (lang {r_lang:.2f}, math {r_math:.2f})"
+        assert comp >= base - 0.02, (
+            f"{nm}: strong readout below its domain baseline ({comp:.3f} vs {base:.3f})"
+        )
+    assert router > 1.5 / len(domains), (
+        f"router no better than chance ({router:.2f} vs chance {1 / len(domains):.2f})"
+    )
+    assert r_lang > 0.6 and r_math > 0.6, (
+        f"per-domain routing weak (lang {r_lang:.2f}, math {r_math:.2f})"
+    )
     assert dur["ok"], "skill index did not survive the lake restart"
-    print(f"self-check OK: one loop built+indexed {len(results)} skills across DIFFERENT domains "
-          f"(competence >= baseline each); proximity router {router:.0%} >> chance {1/len(domains):.0%}; "
-          f"{lake.n_stored} signatures durable -- the brain builds and indexes its own skills, no labels.")
+    print(
+        f"self-check OK: one loop built+indexed {len(results)} skills across DIFFERENT domains "
+        f"(competence >= baseline each); proximity router {router:.0%} >> chance {1 / len(domains):.0%}; "
+        f"{lake.n_stored} signatures durable -- the brain builds and indexes its own skills, no labels."
+    )
     lake.close()
     return 0
 

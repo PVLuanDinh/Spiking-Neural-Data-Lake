@@ -14,6 +14,7 @@ firing — the temporal richness hard-reset IF lacks. stdlib + self-checked.
 
   python srm_neuron.py
 """
+
 import math
 
 
@@ -21,8 +22,8 @@ class SRMNeuron:
     def __init__(self, tau_m=8.0, tau_s=2.0, tau_r=6.0, eta0=2.0, thresh=1.0, rest=0.0):
         self.tau_m, self.tau_s, self.tau_r = tau_m, tau_s, tau_r
         self.eta0, self.thresh, self.rest = eta0, thresh, rest
-        self.inputs = []        # (t_in, weight)
-        self.fires = []         # t_fire
+        self.inputs = []  # (t_in, weight)
+        self.fires = []  # t_fire
 
     def eps(self, s):
         """PSP kernel: 0 at s<=0, rises to a peak, decays back to 0 (double-exponential)."""
@@ -63,7 +64,7 @@ class IFNeuron:
         self.u += sum(in_weights)
         if self.u >= self.thresh:
             self.fires.append(t)
-            self.u = 0.0                 # hard reset
+            self.u = 0.0  # hard reset
             return True
         return False
 
@@ -88,7 +89,8 @@ def main():
 
     # 3. strong constant drive: SRM's refractory regulates firing; IF (hard reset) fires more
     def strong(t):
-        return (0.6,)                    # steady input every step
+        return (0.6,)  # steady input every step
+
     srm2, iff = SRMNeuron(), IFNeuron()
     srm_fires = run(srm2, 40, strong)
     if_fires = run(iff, 40, strong)
@@ -102,11 +104,15 @@ def main():
     print("=" * 60)
     print(f"eps PSP kernel : peak at s={peak}, decays to {e[29]:+.3f} (temporal PSP)")
     print(f"eta refractory : eta(0)={srm.eta(0):+.2f} -> eta(50)={srm.eta(50):+.2f}")
-    print(f"strong drive   : SRM {len(srm_fires)} spikes (min gap {min_gap}) vs "
-          f"IF {len(if_fires)} spikes (no refractory)")
+    print(
+        f"strong drive   : SRM {len(srm_fires)} spikes (min gap {min_gap}) vs "
+        f"IF {len(if_fires)} spikes (no refractory)"
+    )
     print("=" * 60)
-    print("self-check OK: eps PSP rises+decays, eta enforces refractoriness (soft reset), "
-          "SRM regulates firing where hard-reset IF runs away")
+    print(
+        "self-check OK: eps PSP rises+decays, eta enforces refractoriness (soft reset), "
+        "SRM regulates firing where hard-reset IF runs away"
+    )
 
 
 if __name__ == "__main__":

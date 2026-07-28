@@ -21,6 +21,7 @@ Un-riggable: (1) invariance loss drops; (2) no collapse vs the anti_collapse=Fal
   Knobs: NORD_STEPS(9000) NORD_NOISE(40) NORD_LAT(16)
 Deps: numpy (probe) + stdlib (JepaWorldModel). Reuses the physics dynamics from physics_jepa.
 """
+
 import os
 import random
 
@@ -66,11 +67,15 @@ def main():
     IN = 8 + N_NOISE
 
     print("=" * 92)
-    print("PHYSICS-JEPA (HIGH-DIM) -- learned latent should beat a random encoder when obs is mostly noise")
-    print(f"obs dim {IN} = 8 predictable signal + {N_NOISE} unpredictable noise; latent {LAT}; steps {STEPS}")
+    print(
+        "PHYSICS-JEPA (HIGH-DIM) -- learned latent should beat a random encoder when obs is mostly noise"
+    )
+    print(
+        f"obs dim {IN} = 8 predictable signal + {N_NOISE} unpredictable noise; latent {LAT}; steps {STEPS}"
+    )
     print("=" * 92)
 
-    trans = gen_dynamics(n_traj=300, steps=40, seed=0)      # (state, action, next_state)
+    trans = gen_dynamics(n_traj=300, steps=40, seed=0)  # (state, action, next_state)
     nrng = random.Random(123)
     # build observation transitions: obs_t (signal+noise) -> we also keep the TRUE next state for the probe
     obs_trans = [(_lift(s, N_NOISE, nrng), a, _lift(ns, N_NOISE, nrng)) for s, a, ns in trans]
@@ -92,28 +97,41 @@ def main():
         abl.train_step(o, a, on)
     std_abl = abl.latent_std()
 
-    rand = JepaWorldModel(ACTIONS, in_dim=IN, latent_dim=LAT, seed=7)   # untrained control
+    rand = JepaWorldModel(ACTIONS, in_dim=IN, latent_dim=LAT, seed=7)  # untrained control
     mse_learned = _probe_mse(jepa, probe_pairs)
     mse_random = _probe_mse(rand, probe_pairs)
     lift = (1 - mse_learned / mse_random) * 100
 
     print("-" * 92)
     print(f"  JEPA invariance loss : {loss0:.4f} -> {lossN:.4f}")
-    print(f"  latent std (collapse): full {std_full:.3f}  vs  anti-collapse-OFF ablation {std_abl:.3f}")
-    print(f"  probe MSE to true next-state: learned {mse_learned:.4f}  vs  random {mse_random:.4f}  "
-          f"({lift:+.1f}% {'BETTER' if lift > 0 else 'worse'})")
+    print(
+        f"  latent std (collapse): full {std_full:.3f}  vs  anti-collapse-OFF ablation {std_abl:.3f}"
+    )
+    print(
+        f"  probe MSE to true next-state: learned {mse_learned:.4f}  vs  random {mse_random:.4f}  "
+        f"({lift:+.1f}% {'BETTER' if lift > 0 else 'worse'})"
+    )
     print("-" * 92)
-    print(f"  with {N_NOISE} unpredictable noise dims, the JEPA learns to attend to the predictable signal;")
-    print("  the random encoder mixes noise in and decodes worse -- JEPA's advantage shows when obs is noisy.")
+    print(
+        f"  with {N_NOISE} unpredictable noise dims, the JEPA learns to attend to the predictable signal;"
+    )
+    print(
+        "  the random encoder mixes noise in and decodes worse -- JEPA's advantage shows when obs is noisy."
+    )
     print("=" * 92)
 
     assert lossN < loss0, f"invariance loss did not drop ({loss0:.4f} -> {lossN:.4f})"
-    assert std_full > std_abl * 2, f"full model did not avoid collapse ({std_full:.3f} vs {std_abl:.3f})"
+    assert std_full > std_abl * 2, (
+        f"full model did not avoid collapse ({std_full:.3f} vs {std_abl:.3f})"
+    )
     assert mse_learned < mse_random, (
-        f"HIGH-DIM: learned latent must beat the random encoder here ({mse_learned:.4f} vs {mse_random:.4f})")
-    print(f"self-check OK: high-dim JEPA -- learned latent decodes next-state {lift:+.0f}% better than a "
-          f"random encoder (loss {loss0:.3f}->{lossN:.3f}, no collapse {std_full:.2f}>>{std_abl:.2f}). "
-          f"JEPA's predict-in-latent advantage shows once the observation is high-dim and mostly noise.")
+        f"HIGH-DIM: learned latent must beat the random encoder here ({mse_learned:.4f} vs {mse_random:.4f})"
+    )
+    print(
+        f"self-check OK: high-dim JEPA -- learned latent decodes next-state {lift:+.0f}% better than a "
+        f"random encoder (loss {loss0:.3f}->{lossN:.3f}, no collapse {std_full:.2f}>>{std_abl:.2f}). "
+        f"JEPA's predict-in-latent advantage shows once the observation is high-dim and mostly noise."
+    )
     return 0
 
 

@@ -77,6 +77,7 @@ internal failure it returns a partial dict, it never raises.
 
   Run: python -m snn_data_lake.reasoning.schema_induction     # (also run by run_selfchecks.py)
 """
+
 import random
 import zlib
 from collections import Counter
@@ -92,8 +93,10 @@ class SchemaInducer:
 
     def __init__(self, seed=0, vigilance=0.7, max_prototypes=256):
         self.seed = int(seed)
-        self.vigilance = float(vigilance)          # ART rho: the abstraction knob / false-schema firewall
-        self.max_prototypes = int(max_prototypes)  # hard cap on committed prototypes (bounded memory)
+        self.vigilance = float(vigilance)  # ART rho: the abstraction knob / false-schema firewall
+        self.max_prototypes = int(
+            max_prototypes
+        )  # hard cap on committed prototypes (bounded memory)
 
         # spike-signature bit budgets (parent = rel+tail dominates; head is a minority -> vigilance bites)
         self.D = 512
@@ -102,16 +105,22 @@ class SchemaInducer:
         self.k_head = 8
 
         # ART + derivation knobs
-        self.alpha = 0.5           # ART choice-function tie-breaker (prefers smaller, more specific templates)
-        self.min_support = 2       # a hub must generalise >= this many members before we derive through it
-        self.replay_passes = 2     # teacher-student reactivation passes over the stored triples
+        self.alpha = (
+            0.5  # ART choice-function tie-breaker (prefers smaller, more specific templates)
+        )
+        self.min_support = (
+            2  # a hub must generalise >= this many members before we derive through it
+        )
+        self.replay_passes = 2  # teacher-student reactivation passes over the stored triples
 
         # DistMult confidence-gate knobs (compact; a nightly pass over a small store)
         self.dm_dim = 24
         self.dm_epochs = 250
         self.dm_lr = 0.15
         self.dm_batch = 64
-        self.dm_topk_frac = 0.34   # keep a candidate whose tail is in the top ceil(frac*n_ent) FILTERED ranks
+        self.dm_topk_frac = (
+            0.34  # keep a candidate whose tail is in the top ceil(frac*n_ent) FILTERED ranks
+        )
 
         # rolling state (last consolidate)
         self._n_proto = 0
@@ -150,10 +159,10 @@ class SchemaInducer:
         """Replay the triples and cluster their spike signatures into prototypes. A prototype updates
         ONLY on resonance above vigilance (w <- I AND w, local coincidence learning); otherwise reset +
         allocate a new uncommitted unit (bounded by max_prototypes). Returns [{parent, members}]."""
-        protos = []   # each: {"w": set[int], "members": set[triple], "parents": Counter[(rel,tail)]}
+        protos = []  # each: {"w": set[int], "members": set[triple], "parents": Counter[(rel,tail)]}
         order = list(clean)
         for _ in range(self.replay_passes):
-            self.rng.shuffle(order)                                     # reactivation stream (sampled teacher)
+            self.rng.shuffle(order)  # reactivation stream (sampled teacher)
             for tr in order:
                 inp = self._sig_bits(*tr)
                 if not inp:
@@ -163,23 +172,24 @@ class SchemaInducer:
                 for idx, p in enumerate(protos):
                     inter = len(inp & p["w"])
                     scored.append((inter / (self.alpha + len(p["w"])), inter, idx))
-                scored.sort(key=lambda x: (-x[0], x[2]))               # desc T, idx tie-break -> deterministic
+                scored.sort(key=lambda x: (-x[0], x[2]))  # desc T, idx tie-break -> deterministic
                 placed = False
                 for _t, inter, idx in scored:
-                    if inter / len(inp) >= self.vigilance:             # VIGILANCE match test (the firewall)
+                    if inter / len(inp) >= self.vigilance:  # VIGILANCE match test (the firewall)
                         p = protos[idx]
-                        p["w"] = inp & p["w"]                          # fast-learn: template erodes to invariant
+                        p["w"] = inp & p["w"]  # fast-learn: template erodes to invariant
                         p["members"].add(tr)
                         p["parents"][(tr[1], tr[2])] += 1
                         placed = True
-                        break                                         # first resonant category wins
+                        break  # first resonant category wins
                 if not placed and len(protos) < self.max_prototypes:
-                    protos.append({"w": set(inp), "members": {tr},
-                                   "parents": Counter({(tr[1], tr[2]): 1})})
+                    protos.append(
+                        {"w": set(inp), "members": {tr}, "parents": Counter({(tr[1], tr[2]): 1})}
+                    )
                 # if the cap is hit and nothing resonated, the episode stays UNCOMMITTED (stay bounded)
         out = []
         for p in protos:
-            parent, _ = p["parents"].most_common(1)[0]                 # dominant (rel, tail) of the prototype
+            parent, _ = p["parents"].most_common(1)[0]  # dominant (rel, tail) of the prototype
             heads = {tr[0] for tr in p["members"] if (tr[1], tr[2]) == parent}
             out.append({"parent": parent, "members": heads})
         return out
@@ -210,7 +220,9 @@ class SchemaInducer:
         rows = np.array([[eid(h), rid(r), eid(t)] for (h, r, t) in clean], dtype=np.int64)
         model = DistMult(len(ent), len(rel), dim=self.dm_dim, seed=self.seed)
         for _ in range(self.dm_epochs):
-            model.train_epoch(rows, self.dm_lr, self.dm_batch)         # rows shuffled in place; rows intact
+            model.train_epoch(
+                rows, self.dm_lr, self.dm_batch
+            )  # rows shuffled in place; rows intact
         known = {}
         for h, r, t in rows:
             known.setdefault((int(h), int(r)), set()).add(int(t))
@@ -225,7 +237,7 @@ class SchemaInducer:
             return True
         scores = (model.E[ent[a]] * model.R[rel[r]]) @ model.E.T
         gold = scores[ent[c]]
-        for other in known.get((ent[a], rel[r]), ()):                  # filtered ranking
+        for other in known.get((ent[a], rel[r]), ()):  # filtered ranking
             if other != ent[c]:
                 scores[other] = -1e30
         rank = int((scores > gold).sum()) + 1
@@ -238,7 +250,7 @@ class SchemaInducer:
         Guarded: on any failure returns a partial dict, never raises. Does NOT mutate any KnowledgeLog."""
         result = {"prototypes": 0, "derived": [], "kept": 0, "rejected": 0}
         try:
-            self.rng = random.Random(self.seed)                        # per-call reset -> deterministic
+            self.rng = random.Random(self.seed)  # per-call reset -> deterministic
             clean = self._normalize(triples)
             if len(clean) < 2:
                 self._n_proto, self._n_schema = 0, 0
@@ -258,16 +270,18 @@ class SchemaInducer:
 
             original = set(clean)
             seen, derived, rejected = set(), [], 0
-            for (b, relation, c) in clean:                             # (b rel c) is a candidate UPPER link
-                members = proto_by_parent.get((relation, b))           # heads a with (a rel b), supported
+            for b, relation, c in clean:  # (b rel c) is a candidate UPPER link
+                members = proto_by_parent.get((relation, b))  # heads a with (a rel b), supported
                 if not members:
                     continue
-                for a in sorted(members):                              # sorted -> deterministic (no set order)
+                for a in sorted(members):  # sorted -> deterministic (no set order)
                     cand = (a, relation, c)
                     if a == c or cand in original or cand in seen:
                         continue
                     seen.add(cand)
-                    if model is not None and not self._confident(model, ent, rel, known, topk, a, relation, c):
+                    if model is not None and not self._confident(
+                        model, ent, rel, known, topk, a, relation, c
+                    ):
                         rejected += 1
                         continue
                     if len(derived) >= budget:
@@ -276,12 +290,12 @@ class SchemaInducer:
                 if len(derived) >= budget:
                     break
 
-            derived.sort(key=lambda d: (d[0], d[1], d[2]))             # canonical order -> idempotent output
+            derived.sort(key=lambda d: (d[0], d[1], d[2]))  # canonical order -> idempotent output
             result["derived"] = derived
             result["kept"] = len(derived)
             result["rejected"] = rejected
             self._n_schema = len(derived)
-        except Exception as exc:                                       # guard: partial dict, never raise
+        except Exception as exc:  # guard: partial dict, never raise
             result["_note"] = "partial: " + str(exc)[:80]
         return result
 
@@ -290,11 +304,13 @@ class SchemaInducer:
         return {
             "prototypes": self._n_proto,
             "schemas": self._n_schema,
-            "_scale": (f"bounded ART-vigilance schema abstraction (rho={self.vigilance:.2f}): transitive/"
-                       f"prototype schemas gated by a support>={self.min_support} hub + a DistMult "
-                       f"confidence gate; NOT general concept learning -- it only generalises relations "
-                       f"already in the lake (no new relation invention, no cross-domain analogy), "
-                       f"<={self.max_prototypes} prototypes / <=budget derived per night."),
+            "_scale": (
+                f"bounded ART-vigilance schema abstraction (rho={self.vigilance:.2f}): transitive/"
+                f"prototype schemas gated by a support>={self.min_support} hub + a DistMult "
+                f"confidence gate; NOT general concept learning -- it only generalises relations "
+                f"already in the lake (no new relation invention, no cross-domain analogy), "
+                f"<={self.max_prototypes} prototypes / <=budget derived per night."
+            ),
         }
 
 
@@ -326,26 +342,36 @@ def _selfcheck():
     print("=" * 78)
     print("SCHEMA INDUCTION -- offline sleep-tick consolidation (ART vigilance + DistMult gate)")
     print("=" * 78)
-    print(f"taxonomy  : {len(taxonomy)} triples -> {res['prototypes']} prototypes; "
-          f"derived schemas (src='schema'):")
+    print(
+        f"taxonomy  : {len(taxonomy)} triples -> {res['prototypes']} prototypes; "
+        f"derived schemas (src='schema'):"
+    )
     for d in res["derived"]:
         print(f"            {d[0]:<8} {d[1]:<5} {d[2]:<8}  [{d[3]}]")
     print(f"            kept={res['kept']}  rejected={res['rejected']}")
-    print(f"control   : {len(control)} random triples -> {resc['prototypes']} prototypes; "
-          f"kept={resc['kept']} rejected={resc['rejected']} (firewall)")
+    print(
+        f"control   : {len(control)} random triples -> {resc['prototypes']} prototypes; "
+        f"kept={resc['kept']} rejected={resc['rejected']} (firewall)"
+    )
     print(f"state     : {si.state()['_scale']}")
     print("=" * 78)
 
     # ---- asserts ----
     # (1) at least one correct higher-level schema induced (transitive closure through a supported hub)
-    assert ("dog", "isa", "animal") in derived, "must derive dog isa animal via the mammal->animal chain"
-    assert ("cat", "isa", "animal") in derived, "must derive cat isa animal via the mammal->animal chain"
+    assert ("dog", "isa", "animal") in derived, (
+        "must derive dog isa animal via the mammal->animal chain"
+    )
+    assert ("cat", "isa", "animal") in derived, (
+        "must derive cat isa animal via the mammal->animal chain"
+    )
     assert res["kept"] >= 1, "at least one confident schema expected on a clean taxonomy"
     # (2) the firewall rejects noise: candidates were generated from the random data but the ART-support
     #     + DistMult filtered-rank gate rejected them, keeping far fewer schemas than the real taxonomy.
     assert resc["kept"] <= 1, "ART support + DistMult firewall must reject random-triple noise"
     assert resc["kept"] < res["kept"], "control must yield fewer schemas than the real taxonomy"
-    assert resc["rejected"] >= 1, "the DistMult gate must visibly reject noise candidates on the control"
+    assert resc["rejected"] >= 1, (
+        "the DistMult gate must visibly reject noise candidates on the control"
+    )
     # (3) determinism
     assert r_a == r_b, "two seed=0 runs must be identical"
     # (4) bounded
@@ -353,11 +379,15 @@ def _selfcheck():
     assert len(res["derived"]) <= 64, "derived must respect the budget"
     # ASCII-only output guarantee for anything we would hand back to the KnowledgeLog
     for d in res["derived"]:
-        assert all(ord(ch) < 128 for part in d[:3] for ch in str(part)), "derived triples must be ASCII"
+        assert all(ord(ch) < 128 for part in d[:3] for ch in str(part)), (
+            "derived triples must be ASCII"
+        )
 
-    print(f"self-check OK: induced {res['kept']} confident schema(s) incl. dog/cat isa animal from "
-          f"{res['prototypes']} prototypes; control noise -> {resc['kept']} kept (firewall); "
-          f"deterministic; bounded (<={si.max_prototypes} protos, <=budget derived).")
+    print(
+        f"self-check OK: induced {res['kept']} confident schema(s) incl. dog/cat isa animal from "
+        f"{res['prototypes']} prototypes; control noise -> {resc['kept']} kept (firewall); "
+        f"deterministic; bounded (<={si.max_prototypes} protos, <=budget derived)."
+    )
 
 
 if __name__ == "__main__":

@@ -41,6 +41,7 @@ Knobs: NORD_CYCLES(18) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(400) NO
        NORD_TRAIN(12000) NORD_TEST(2000) NORD_REFLECT_THR(0.55)
 Deps: numpy torch torchvision snntorch scikit-learn
 """
+
 from snn_data_lake.reasoning.torch_device import resolve_device
 from snn_data_lake.reasoning.developmental_core import cfg_from_env, develop_cycles
 
@@ -48,35 +49,59 @@ from snn_data_lake.reasoning.developmental_core import cfg_from_env, develop_cyc
 def main():
     cfg = cfg_from_env()
     print("=" * 96)
-    print("AUTONOMOUS BRAIN (RECOVERED) -- enclosed loop: perceive -> hold-in-WM -> learn (order-invariant)")
-    print("                               -> grow RFF neurons -> consolidate -> reflect -> sleep-refit -> repeat")
-    print(f"device={resolve_device()}  cycles={cfg['cycles']}  C1={cfg['c1']}  "
-          f"rff0={cfg['rff0']}(+{cfg['grow_rff']}/grow)  gamma={cfg['gamma']}  "
-          f"store={cfg['store']}/digit  retrieve-k={cfg['kreplay']}")
+    print(
+        "AUTONOMOUS BRAIN (RECOVERED) -- enclosed loop: perceive -> hold-in-WM -> learn (order-invariant)"
+    )
+    print(
+        "                               -> grow RFF neurons -> consolidate -> reflect -> sleep-refit -> repeat"
+    )
+    print(
+        f"device={resolve_device()}  cycles={cfg['cycles']}  C1={cfg['c1']}  "
+        f"rff0={cfg['rff0']}(+{cfg['grow_rff']}/grow)  gamma={cfg['gamma']}  "
+        f"store={cfg['store']}/digit  retrieve-k={cfg['kreplay']}"
+    )
     print("=" * 96)
 
-    res = develop_cycles(cfg)                     # own temp lake, no emit -> the standalone behaviour
+    res = develop_cycles(cfg)  # own temp lake, no emit -> the standalone behaviour
 
     online, rbf_acc = res["online"], res["rbf"]
     print("\n" + "=" * 96)
     print("AUTONOMOUS BRAIN (RECOVERED) -- one full enclosed cycle, all faculties active:")
     print("-" * 96)
-    print(f"  PERCEPTION   : unsupervised conv1 features (frozen), diversity {res['conv_diversity']:.3f}")
-    print(f"  WORKING MEM  : objective held in prefrontal persistent activity  {res['wm_hits']}/{res['cycles']} cycles")
-    print(f"  SELF-DIRECT  : curiosity + round-robin revisit + curriculum ({res['curriculum_mastered']}/10 mastered)")
-    print(f"  NEUROGENESIS : the brain GREW its RFF basis {res['grow_events']}x -> {res['rff']} projection "
-          f"neurons (order-invariant, no forgetting)")
-    print(f"  LIFELONG MEM : {res['n_stored']} exemplars in the DURABLE data lake; survives restart = {res['durable']}")
-    print(f"  REFLECTION   : thought a train of thought about each new concept (via the spiking workspace) "
-          f"+ WIRED what it thought together -> {len(res['links'])} concept links; strongest {res['strongest']}")
+    print(
+        f"  PERCEPTION   : unsupervised conv1 features (frozen), diversity {res['conv_diversity']:.3f}"
+    )
+    print(
+        f"  WORKING MEM  : objective held in prefrontal persistent activity  {res['wm_hits']}/{res['cycles']} cycles"
+    )
+    print(
+        f"  SELF-DIRECT  : curiosity + round-robin revisit + curriculum ({res['curriculum_mastered']}/10 mastered)"
+    )
+    print(
+        f"  NEUROGENESIS : the brain GREW its RFF basis {res['grow_events']}x -> {res['rff']} projection "
+        f"neurons (order-invariant, no forgetting)"
+    )
+    print(
+        f"  LIFELONG MEM : {res['n_stored']} exemplars in the DURABLE data lake; survives restart = {res['durable']}"
+    )
+    print(
+        f"  REFLECTION   : thought a train of thought about each new concept (via the spiking workspace) "
+        f"+ WIRED what it thought together -> {len(res['links'])} concept links; strongest {res['strongest']}"
+    )
     print(f"  UNDERSTANDING (online, SLDA-RFF)     : {online:.1%}")
-    print(f"  UNDERSTANDING (sleep-refit, RBF)     : {rbf_acc:.1%}   ({res['n_used']} consolidated exemplars)")
+    print(
+        f"  UNDERSTANDING (sleep-refit, RBF)     : {rbf_acc:.1%}   ({res['n_used']} consolidated exemplars)"
+    )
     print("-" * 96)
     print("  reference: original grow-and-freeze MLP loop = 47.4%   static RBF ceiling = 98.2%")
-    print(f"  RECOVERY: online {online:.1%} (+{(online - 0.474) * 100:.1f} pts) ; "
-          f"sleep-refit {rbf_acc:.1%} (+{(rbf_acc - 0.474) * 100:.1f} pts)")
-    print("  perceive -> hold-in-WM -> learn (order-invariant) -> grow RFF neurons -> consolidate -> "
-          "reflect -> sleep-refit -> REPEAT")
+    print(
+        f"  RECOVERY: online {online:.1%} (+{(online - 0.474) * 100:.1f} pts) ; "
+        f"sleep-refit {rbf_acc:.1%} (+{(rbf_acc - 0.474) * 100:.1f} pts)"
+    )
+    print(
+        "  perceive -> hold-in-WM -> learn (order-invariant) -> grow RFF neurons -> consolidate -> "
+        "reflect -> sleep-refit -> REPEAT"
+    )
     print("=" * 96)
 
     # ---- the SAME regression asserts as before the extraction ----
@@ -85,12 +110,16 @@ def main():
     # The sleep-refit RBF trains ONLY on the consolidated lake exemplars; honest floor, not a faked 98.
     assert rbf_acc > 0.90, f"sleep-refit RBF regressed below 90%: {rbf_acc:.3f}"
     assert res["durable"], "lifelong memory did not survive restart"
-    assert res["wm_hits"] > 0 and res["n_stored"] > 0 and res["grow_events"] > 0, "a faculty was inactive"
+    assert res["wm_hits"] > 0 and res["n_stored"] > 0 and res["grow_events"] > 0, (
+        "a faculty was inactive"
+    )
     assert len(res["learned"]) == 10, f"the loop did not learn all 10 concepts: {res['learned']}"
-    print(f"self-check OK: enclosed loop RECOVERED -- online {online:.1%} + sleep-refit {rbf_acc:.1%} "
-          f"(was 47.4%); perception+WM+self-direction+neurogenesis({res['grow_events']} RFF grows)+"
-          f"lifelong-lake(durable)+REFLECTION(train of thought about each concept, {len(res['links'])} concept "
-          f"links wired) all active over {res['cycles']} cycles.")
+    print(
+        f"self-check OK: enclosed loop RECOVERED -- online {online:.1%} + sleep-refit {rbf_acc:.1%} "
+        f"(was 47.4%); perception+WM+self-direction+neurogenesis({res['grow_events']} RFF grows)+"
+        f"lifelong-lake(durable)+REFLECTION(train of thought about each concept, {len(res['links'])} concept "
+        f"links wired) all active over {res['cycles']} cycles."
+    )
     return 0
 
 

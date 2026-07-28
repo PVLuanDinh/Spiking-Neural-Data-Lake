@@ -16,21 +16,40 @@ Run:  python snn_mnist_stdp_fast.py
 Config via env: NORD_M / NORD_TRAIN / NORD_TEST (shared with snn_mnist_stdp),
                 FAST_THRESH (latency firing threshold), SKIP_RATE=1 (fast only).
 """
+
 import os
 import time
 import torch
-from snn_data_lake.reasoning.snn_mnist_stdp import (load_mnist, StdpNetwork, assign_labels, evaluate,
-                            M, T, TRAIN_N, TEST_N, N_IN, BETA, LR, W_NORM, WMAX,
-                            TAU_PRE, THETA_PLUS, THETA_DECAY)
+from snn_data_lake.reasoning.snn_mnist_stdp import (
+    load_mnist,
+    StdpNetwork,
+    assign_labels,
+    evaluate,
+    M,
+    T,
+    TRAIN_N,
+    TEST_N,
+    N_IN,
+    BETA,
+    W_NORM,
+    WMAX,
+    TAU_PRE,
+    THETA_PLUS,
+    THETA_DECAY,
+)
 from snn_data_lake.reasoning.torch_device import resolve_device, enable
 
 torch.manual_seed(0)
 # v0.17 defaults = the gap-closer config (76.0% at M=300/6k, vs 68.8% pure latency).
 # Set FAST_BURST=1 FAST_XTAR=0 FAST_THRESH=0.7 FAST_LR=0.10 to recover v0.16 pure latency.
-FAST_THRESH = float(os.environ.get("FAST_THRESH", "2.0"))   # higher: burst raises membrane current
+FAST_THRESH = float(os.environ.get("FAST_THRESH", "2.0"))  # higher: burst raises membrane current
 FAST_LR = float(os.environ.get("FAST_LR", "0.05"))
-FAST_XTAR = float(os.environ.get("FAST_XTAR", "0.05"))      # LTD depression (Diehl&Cook x_tar) -> sharper prototypes
-FAST_BURST = int(os.environ.get("FAST_BURST", "4"))         # spikes/pixel ∝ intensity: restores magnitude info + trace
+FAST_XTAR = float(
+    os.environ.get("FAST_XTAR", "0.05")
+)  # LTD depression (Diehl&Cook x_tar) -> sharper prototypes
+FAST_BURST = int(
+    os.environ.get("FAST_BURST", "4")
+)  # spikes/pixel ∝ intensity: restores magnitude info + trace
 # v0.18 pair-based STDP kernel: pre-triggered LTD via a post-synaptic trace.
 # An input arriving AFTER the neuron fired (anti-causal) depresses that synapse,
 # in proportion to how recently the neuron fired (x_post). Available as an opt-in,
@@ -58,7 +77,8 @@ def encode_latency(img):
         p, t0, k = int(idx_all[j]), int(base[j]), int(nb[j])
         for s in range(k):
             if t0 + s < T:
-                times.append(t0 + s); idx.append(p)
+                times.append(t0 + s)
+                idx.append(p)
     return torch.tensor(times, dtype=torch.long), torch.tensor(idx, dtype=torch.long)
 
 
@@ -73,12 +93,12 @@ class FastStdpNetwork:
 
     def _normalise(self):
         s = self.W.sum(dim=1, keepdim=True).clamp_min(1e-6)
-        self.W *= (W_NORM / s)
+        self.W *= W_NORM / s
 
     def run(self, times, idx, learn):
         mem = torch.zeros(M)
         x_pre = torch.zeros(N_IN)
-        x_post = torch.zeros(M)                            # post-synaptic trace (pair STDP)
+        x_post = torch.zeros(M)  # post-synaptic trace (pair STDP)
         counts = torch.zeros(M)
         synops = 0
         for t in range(T):
@@ -87,11 +107,11 @@ class FastStdpNetwork:
             sel = times == t
             if bool(sel.any()):
                 fi = idx[sel]
-                if learn and FAST_AMINUS > 0:              # pair LTD: pre after post -> depress
+                if learn and FAST_AMINUS > 0:  # pair LTD: pre after post -> depress
                     self.W[:, fi] -= FAST_AMINUS * x_post.unsqueeze(1)
                     self.W[:, fi].clamp_(0.0, WMAX)
                 x_pre[fi] += 1.0
-                mem = mem * BETA + self.W[:, fi].sum(dim=1)   # spike-driven current
+                mem = mem * BETA + self.W[:, fi].sum(dim=1)  # spike-driven current
                 synops += fi.numel() * M
             else:
                 mem = mem * BETA
@@ -105,7 +125,7 @@ class FastStdpNetwork:
                     self.W[w] += FAST_LR * (x_pre - FAST_XTAR)
                     self.W[w].clamp_(0.0, WMAX)
                     self.theta[w] += THETA_PLUS
-                    x_post[w] += 1.0                       # mark this neuron just fired
+                    x_post[w] += 1.0  # mark this neuron just fired
                 mem = torch.zeros(M)
             if learn:
                 self.theta *= THETA_DECAY
@@ -171,17 +191,23 @@ def main():
     fast_train = time.perf_counter() - t0
     asg = fast_assign(fnet, enc_tr[:n_asg], Ytr[:n_asg])
     fast_acc, _ = fast_eval(fnet, enc_te, Yte, asg)
-    print(f"  precompute={pre_t:.1f}s  acc={fast_acc:.1%}  train={fast_train:.1f}s  "
-          f"train SynOps={fsyn:,}\n")
+    print(
+        f"  precompute={pre_t:.1f}s  acc={fast_acc:.1%}  train={fast_train:.1f}s  "
+        f"train SynOps={fsyn:,}\n"
+    )
 
     print("=" * 64)
     print("COMPARISON")
     print("=" * 64)
     if rate:
         ra, rt, rs = rate
-        print(f"  accuracy   : rate {ra:.1%}   vs   fast {fast_acc:.1%}   (Δ {100*(fast_acc-ra):+.1f} pts)")
-        print(f"  train time : rate {rt:.1f}s  vs   fast {fast_train:.1f}s  ({rt/max(0.01,fast_train):.1f}x)")
-        print(f"  train SynOps: rate {rs:,}  vs  fast {fsyn:,}  ({rs/max(1,fsyn):.1f}x fewer)")
+        print(
+            f"  accuracy   : rate {ra:.1%}   vs   fast {fast_acc:.1%}   (Δ {100 * (fast_acc - ra):+.1f} pts)"
+        )
+        print(
+            f"  train time : rate {rt:.1f}s  vs   fast {fast_train:.1f}s  ({rt / max(0.01, fast_train):.1f}x)"
+        )
+        print(f"  train SynOps: rate {rs:,}  vs  fast {fsyn:,}  ({rs / max(1, fsyn):.1f}x fewer)")
     print(f"  fast is deterministic (no RNG) + cacheable; rate is stochastic.")
     print("=" * 64)
 

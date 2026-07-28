@@ -45,7 +45,6 @@ DO NOT run without a GPU (the coordinator runs it).
 """
 
 import os
-import sys
 import time
 
 import numpy as np

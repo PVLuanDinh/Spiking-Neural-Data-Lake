@@ -14,6 +14,7 @@ point (A vs v_th) dimension-invariant -- the same nominal {0.1,1,5} that worked 
 
   PYTHONUTF8=1 .venv-cu128/Scripts/python research/ng_snn/train_mnist.py [T ...]
 """
+
 import sys
 import time
 
@@ -37,7 +38,7 @@ def main(Ts):
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     Ftr, ytr, Fte, yte = load_feats()
     d = Ftr.shape[1]
-    lo = Ftr.min(0, keepdims=True)                              # per-feature min-max on TRAIN -> [0,1]
+    lo = Ftr.min(0, keepdims=True)  # per-feature min-max on TRAIN -> [0,1]
     hi = Ftr.max(0, keepdims=True)
     rng = np.where(hi > lo, hi - lo, 1.0)
     Ftr = np.clip((Ftr - lo) / rng, 0, 1).astype(np.float32)
@@ -62,8 +63,10 @@ def main(Ts):
         clf.fit(Ftr, ytr)
         acc = 100.0 * (clf.predict(Fte) == yte).float().mean().item()
         best = max(best, acc)
-        print(f"T={T:2d}: MNIST test {acc:.2f}%  (grew {clf.n_units} LIF, 1 pass, "
-              f"{time.perf_counter() - t0:.0f}s)  |  paper 99.19%  gap {acc - 99.19:+.2f}")
+        print(
+            f"T={T:2d}: MNIST test {acc:.2f}%  (grew {clf.n_units} LIF, 1 pass, "
+            f"{time.perf_counter() - t0:.0f}s)  |  paper 99.19%  gap {acc - 99.19:+.2f}"
+        )
     print("=" * 78)
     print(f"best {best:.2f}% vs paper 99.19% (Tang et al., NG-SNN, Neural Networks 2026, Table 2)")
 

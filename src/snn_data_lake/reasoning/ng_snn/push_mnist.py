@@ -24,6 +24,7 @@ back to 24000 on CUDA OOM.
   PYTHONUTF8=1 ../../.venv-cu128/Scripts/python.exe push_mnist.py probe   # 1 config sanity (fast)
   PYTHONUTF8=1 ../../.venv-cu128/Scripts/python.exe push_mnist.py         # full sweep
 """
+
 import gc
 import sys
 import time
@@ -35,8 +36,8 @@ from model import NGSNN
 
 FDIR = "../../data/ng_snn"
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
-PAPER = 99.19          # NG-SNN + unsupervised front-end, MNIST test (Table 2)
-CEIL = 99.18           # this front-end's own ridge linear-probe ceiling
+PAPER = 99.19  # NG-SNN + unsupervised front-end, MNIST test (Table 2)
+CEIL = 99.18  # this front-end's own ridge linear-probe ceiling
 
 
 def free():
@@ -57,7 +58,7 @@ def load_norm():
     rng = np.where(hi > lo, hi - lo, 1.0)
     tr = np.clip((tr - lo) / rng, 0, 1).astype(np.float32)
     te = np.clip((te - lo) / rng, 0, 1).astype(np.float32)
-    Xtr = torch.from_numpy(tr)                 # CPU tensors (streamed by _rates)
+    Xtr = torch.from_numpy(tr)  # CPU tensors (streamed by _rates)
     Xte = torch.from_numpy(te)
     ytr = torch.from_numpy(ytr.astype(np.int64))
     yte = torch.from_numpy(yte.astype(np.int64))
@@ -72,7 +73,7 @@ def draw_pool(d, L, scales, bias_amp, seed):
     base = L // ns
     Ws, bs = [], []
     for i, s in enumerate(scales):
-        n = base + (L - base * ns if i == ns - 1 else 0)          # last scale absorbs remainder
+        n = base + (L - base * ns if i == ns - 1 else 0)  # last scale absorbs remainder
         Ws.append((torch.rand(n, d, generator=g, device=DEV) * 2 - 1) * s)
         amp = bias_amp if bias_amp > 0 else s
         bs.append((torch.rand(n, generator=g, device=DEV) * 2 - 1) * amp)
@@ -87,26 +88,26 @@ def eval_pool(L, T, scales, bias_amp, seed, Xtr, Xte, Ytr, yte, c1_list, plain_l
     """Compute the LIF firing rates for one random pool, free them before the LxL solve, then try
     every ridge variant (activity gamma-ridge for each c1, plus plain-lambda) reusing the SAME S^T S.
     Returns list of (ridge_name, test_acc%). Raises on CUDA OOM (caller may retry smaller)."""
-    clf = NGSNN(T=T, device=DEV)                                  # only used for _rates / gamma const
+    clf = NGSNN(T=T, device=DEV)  # only used for _rates / gamma const
     d = Xtr.shape[1]
     W, b = draw_pool(d, L, scales, bias_amp, seed)
-    Str = clf._rates(Xtr, W, b)                                   # (Ntr, L) GPU
-    Ste = clf._rates(Xte, W, b)                                   # (Nte, L) GPU
+    Str = clf._rates(Xtr, W, b)  # (Ntr, L) GPU
+    Ste = clf._rates(Xte, W, b)  # (Nte, L) GPU
     del W, b
     free()
-    mu = Str.mean(dim=0)                                          # (L,) mean activity (Eq. 9)
-    StS = Str.t() @ Str                                           # (L, L)
-    StY = Str.t() @ Ytr                                           # (L, 10)
-    del Str                                                       # free ~N*L*4 before the solve
+    mu = Str.mean(dim=0)  # (L,) mean activity (Eq. 9)
+    StS = Str.t() @ Str  # (L, L)
+    StY = Str.t() @ Ytr  # (L, 10)
+    del Str  # free ~N*L*4 before the solve
     free()
     idx = torch.arange(StS.shape[0], device=DEV)
     out = []
     # activity-dependent gamma-ridge (Eq. 12), sweep the gamma base c1
     for c1 in c1_list:
-        gamma = c1 * torch.exp(-clf.k * mu) + clf.c0             # (L,) same form as model._solve_beta
+        gamma = c1 * torch.exp(-clf.k * mu) + clf.c0  # (L,) same form as model._solve_beta
         StS[idx, idx] += gamma
         beta = torch.linalg.solve(StS, StY)
-        StS[idx, idx] -= gamma                                    # restore for next variant
+        StS[idx, idx] -= gamma  # restore for next variant
         acc = 100.0 * ((Ste @ beta).argmax(dim=1) == yte).float().mean().item()
         out.append((f"gamma c1={c1:g}", acc))
         del beta
@@ -146,12 +147,16 @@ def run_full(Xtr, Xte, ytr, yte):
     d = Xtr.shape[1]
     C1 = [0.5, 1.0, 2.0]
     PLAIN = [1.0, 10.0, 100.0]
-    log = []                                                     # (tag, cfg-dict, acc)
+    log = []  # (tag, cfg-dict, acc)
 
     print("=" * 92)
-    print(f"NG-SNN head push on 3-conv SoftHebb feats | d={d} train={Xtr.shape[0]} test={Xte.shape[0]}"
-          f" | dev={DEV}")
-    print(f"target(paper)={PAPER:.2f}%  front-end ridge ceiling={CEIL:.2f}%  baseline(20k,paper-scales,T=15)=99.10%")
+    print(
+        f"NG-SNN head push on 3-conv SoftHebb feats | d={d} train={Xtr.shape[0]} test={Xte.shape[0]}"
+        f" | dev={DEV}"
+    )
+    print(
+        f"target(paper)={PAPER:.2f}%  front-end ridge ceiling={CEIL:.2f}%  baseline(20k,paper-scales,T=15)=99.10%"
+    )
     print("=" * 92)
 
     # ---- Phase 1: T x (scales/bias) at L=20000, seed=0; pick best (T, scales, bias, ridge) ----
@@ -166,7 +171,9 @@ def run_full(Xtr, Xte, ytr, yte):
         rname, racc = best_of(res)
         dt = time.perf_counter() - t0
         allr = "  ".join(f"{n}:{a:.2f}" for n, a in res)
-        print(f"  T={T:2d} scales={paper_scales} bias=paper | best {rname}={racc:.2f}%  ({dt:.0f}s)")
+        print(
+            f"  T={T:2d} scales={paper_scales} bias=paper | best {rname}={racc:.2f}%  ({dt:.0f}s)"
+        )
         print(f"        {allr}")
         for n, a in res:
             log.append(("P1", dict(L=L1, T=T, scales=paper_scales, bias=0.0, seed=0, ridge=n), a))
@@ -180,7 +187,7 @@ def run_full(Xtr, Xte, ytr, yte):
         ((0.05, 0.1, 0.3), 0.3, "paper-scales bias~U(-.3,.3)"),
         ((0.05, 0.1, 0.3, 0.5), 0.3, "scales+0.5 bias~U(-.3,.3)"),
     ]
-    sb_best = (paper_scales, 0.0, t_best_acc, t_best_ridge)      # (scales, bias, acc, ridge)
+    sb_best = (paper_scales, 0.0, t_best_acc, t_best_ridge)  # (scales, bias, acc, ridge)
     for scales, bias, label in variants:
         t0 = time.perf_counter()
         res = eval_pool(L1, t_best, scales, bias, 0, Xtr, Xte, Ytr, yte_d, C1, PLAIN)
@@ -192,7 +199,9 @@ def run_full(Xtr, Xte, ytr, yte):
         if racc > sb_best[2]:
             sb_best = (scales, bias, racc, rname)
     b_scales, b_bias, b_acc20k, b_ridge = sb_best
-    print(f"  -> best cfg @L=20000: T={t_best} scales={b_scales} bias={b_bias} {b_ridge} = {b_acc20k:.2f}%")
+    print(
+        f"  -> best cfg @L=20000: T={t_best} scales={b_scales} bias={b_bias} {b_ridge} = {b_acc20k:.2f}%"
+    )
 
     # ---- Phase 2: scale L up to 30000 (OOM->24000) with the best cfg, seed=0 ----
     print("\n[Phase 2] scale L: 30000 (fallback 24000) with best cfg, seed=0")
@@ -201,7 +210,9 @@ def run_full(Xtr, Xte, ytr, yte):
     rname, racc = best_of(res)
     dt = time.perf_counter() - t0
     allr = "  ".join(f"{n}:{a:.2f}" for n, a in res)
-    print(f"  L={Lbig} T={t_best} scales={b_scales} bias={b_bias} | best {rname}={racc:.2f}%  ({dt:.0f}s)")
+    print(
+        f"  L={Lbig} T={t_best} scales={b_scales} bias={b_bias} | best {rname}={racc:.2f}%  ({dt:.0f}s)"
+    )
     print(f"        {allr}")
     for n, a in res:
         log.append(("P2", dict(L=Lbig, T=t_best, scales=b_scales, bias=b_bias, seed=0, ridge=n), a))
@@ -211,10 +222,12 @@ def run_full(Xtr, Xte, ytr, yte):
         w_L, w_ridge, w_acc0 = Lbig, rname, racc
     else:
         w_L, w_ridge, w_acc0 = L1, b_ridge, b_acc20k
-    print(f"  -> winner cfg: L={w_L} T={t_best} scales={b_scales} bias={b_bias} {w_ridge} (seed0={w_acc0:.2f}%)")
+    print(
+        f"  -> winner cfg: L={w_L} T={t_best} scales={b_scales} bias={b_bias} {w_ridge} (seed0={w_acc0:.2f}%)"
+    )
 
     # ---- Phase 3: seeds for the winner config (mean + best) ----
-    n_seeds = 5 if w_L <= 20000 else 3                           # fewer seeds for the memory-heavy big L
+    n_seeds = 5 if w_L <= 20000 else 3  # fewer seeds for the memory-heavy big L
     print(f"\n[Phase 3] winner cfg over {n_seeds} seeds (mean + best)")
     # parse the winning ridge to a single-variant list so we only solve the chosen ridge per seed
     if w_ridge.startswith("gamma"):
@@ -229,8 +242,10 @@ def run_full(Xtr, Xte, ytr, yte):
         Ls, res = eval_pool_oom(w_L, t_best, b_scales, b_bias, s, Xtr, Xte, Ytr, yte_d, c1w, plainw)
         acc = res[0][1]
         seed_accs.append(acc)
-        print(f"  seed={s} L={Ls} | {w_ridge} = {acc:.2f}%  ({time.perf_counter()-t0:.0f}s)")
-        log.append(("P3", dict(L=Ls, T=t_best, scales=b_scales, bias=b_bias, seed=s, ridge=w_ridge), acc))
+        print(f"  seed={s} L={Ls} | {w_ridge} = {acc:.2f}%  ({time.perf_counter() - t0:.0f}s)")
+        log.append(
+            ("P3", dict(L=Ls, T=t_best, scales=b_scales, bias=b_bias, seed=s, ridge=w_ridge), acc)
+        )
     smean = sum(seed_accs) / len(seed_accs)
     sbest = max(seed_accs)
     print(f"  -> seeds mean={smean:.2f}%  best={sbest:.2f}%  (over {n_seeds} seeds)")
@@ -238,16 +253,20 @@ def run_full(Xtr, Xte, ytr, yte):
     # ---- Phase 4: contribution-growth head (paper's compact mechanism) ----
     print("\n[Phase 4] contribution-growth head (NGSNN.fit) -- compactness comparison")
     growth = []
-    Xtr_g = Xtr.to(DEV).float()                                  # growth solves small L; full feats fit
+    Xtr_g = Xtr.to(DEV).float()  # growth solves small L; full feats fit
     ytr_g = ytr.to(DEV)
     for l_max in (500, 1000):
         t0 = time.perf_counter()
         try:
-            clf = NGSNN(lambdas=paper_scales, r=0.9, t_cand=50, l_max=l_max, T=t_best, device=DEV, seed=0)
+            clf = NGSNN(
+                lambdas=paper_scales, r=0.9, t_cand=50, l_max=l_max, T=t_best, device=DEV, seed=0
+            )
             clf.fit(Xtr_g, ytr_g)
             acc = 100.0 * (clf.predict(Xte.to(DEV).float()) == yte_d).float().mean().item()
-            print(f"  l_max={l_max}: grew {clf.n_units} LIF | MNIST test {acc:.2f}%  "
-                  f"({time.perf_counter()-t0:.0f}s)")
+            print(
+                f"  l_max={l_max}: grew {clf.n_units} LIF | MNIST test {acc:.2f}%  "
+                f"({time.perf_counter() - t0:.0f}s)"
+            )
             growth.append((l_max, clf.n_units, acc))
             del clf
             free()
@@ -263,10 +282,14 @@ def run_full(Xtr, Xte, ytr, yte):
     print("SUMMARY")
     print("-" * 92)
     print(f"BEST random-LIF test acc  : {overall[2]:.2f}%   cfg={overall[1]}")
-    print(f"cleared paper {PAPER:.2f}%?      : {'YES' if overall[2] >= PAPER else 'NO'} "
-          f"(gap {overall[2]-PAPER:+.2f}, front-end ceiling {CEIL:.2f}%)")
-    print(f"winner-cfg seed mean/best : {smean:.2f}% / {sbest:.2f}%  "
-          f"(L={w_L} T={t_best} scales={b_scales} bias={b_bias} {w_ridge}, n={n_seeds})")
+    print(
+        f"cleared paper {PAPER:.2f}%?      : {'YES' if overall[2] >= PAPER else 'NO'} "
+        f"(gap {overall[2] - PAPER:+.2f}, front-end ceiling {CEIL:.2f}%)"
+    )
+    print(
+        f"winner-cfg seed mean/best : {smean:.2f}% / {sbest:.2f}%  "
+        f"(L={w_L} T={t_best} scales={b_scales} bias={b_bias} {w_ridge}, n={n_seeds})"
+    )
     if growth:
         gline = "   ".join(f"l_max={lm}: {nu} neurons -> {a:.2f}%" for lm, nu, a in growth)
         print(f"contribution-growth head  : {gline}")
@@ -283,8 +306,11 @@ def run_probe(Xtr, Xte, ytr, yte):
     yte_d = yte.to(DEV)
     t0 = time.perf_counter()
     res = eval_pool(20000, 15, (0.05, 0.1, 0.3), 0.0, 0, Xtr, Xte, Ytr, yte_d, [1.0], [10.0])
-    print(f"[probe] L=20000 T=15 paper-scales seed=0 | " +
-          "  ".join(f"{n}={a:.2f}%" for n, a in res) + f"   ({time.perf_counter()-t0:.0f}s)")
+    print(
+        f"[probe] L=20000 T=15 paper-scales seed=0 | "
+        + "  ".join(f"{n}={a:.2f}%" for n, a in res)
+        + f"   ({time.perf_counter() - t0:.0f}s)"
+    )
     print("(expected ~99.10% for gamma c1=1 -- baseline reproduction check)")
 
 

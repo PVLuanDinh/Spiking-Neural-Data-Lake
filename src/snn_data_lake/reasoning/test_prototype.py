@@ -5,7 +5,14 @@ hold, and how much cue corruption can it tolerate, before recall breaks?
 Reuses the prototype's functions directly (no duplication). Run:
     python test_prototype.py
 """
-from snn_data_lake.reasoning.spiking_storage_prototype import make_patterns, train, recall, corrupt, overlap
+
+from snn_data_lake.reasoning.spiking_storage_prototype import (
+    make_patterns,
+    train,
+    recall,
+    corrupt,
+    overlap,
+)
 
 N, K, STEPS = 256, 20, 12
 TRIALS = 5  # average over a few random pattern sets for stable numbers
@@ -39,7 +46,7 @@ def capacity_sweep():
         r = mean_recall(num, drop=6, add=6)
         bar = "#" * int(r * 20)
         print(f"{num:>9} | {r:>10.1%} | {bar}")
-        if knee is None and r < 0.90:               # first load that drops below 90%
+        if knee is None and r < 0.90:  # first load that drops below 90%
             knee = num
     if knee:
         print(f"knee (recall first < 90%): ~{knee} patterns = {knee / N:.1f}x N")

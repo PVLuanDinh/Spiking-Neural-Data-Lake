@@ -26,10 +26,11 @@ amplification enabling all-or-none access. Open question, actively built toward,
 
   python research/gwt_reentry.py
 """
-_T = 40           # settling micro-steps per workspace tick
-_LEAK = 0.5       # LIF leak
-_V_TH = 0.55 / _LEAK   # membrane threshold s.t. rheobase (leak*v_th) == 0.55 ignition current
-_SELF = 0.35      # re-entrant self-sustain current once a content is broadcasting (the reverberation)
+
+_T = 40  # settling micro-steps per workspace tick
+_LEAK = 0.5  # LIF leak
+_V_TH = 0.55 / _LEAK  # membrane threshold s.t. rheobase (leak*v_th) == 0.55 ignition current
+_SELF = 0.35  # re-entrant self-sustain current once a content is broadcasting (the reverberation)
 
 
 def _settle(drive):
@@ -55,10 +56,12 @@ def run_loop(bottom_up, prior, reentry, ticks=10):
     for _ in range(ticks):
         top_down = 0.0
         if reentry:
-            top_down = prior + (_SELF if broadcasting else 0.0)   # broadcast feeds BACK as top-down current
-        broadcasting = _settle(bottom_up + top_down) > 0          # ignite iff sustained firing
+            top_down = prior + (
+                _SELF if broadcasting else 0.0
+            )  # broadcast feeds BACK as top-down current
+        broadcasting = _settle(bottom_up + top_down) > 0  # ignite iff sustained firing
         trace.append(broadcasting)
-    ignited = sum(trace[ticks // 2:]) > 0
+    ignited = sum(trace[ticks // 2 :]) > 0
     return ignited, trace
 
 
@@ -77,42 +80,72 @@ def run_gap(bottom_up, prior, reentry, on=4, gap=6):
 
 
 def main():
-    WEAK = 0.40       # bottom-up evidence, BELOW the 0.55 ignition current on its own
-    PRIOR = 0.30      # top-down expectation, also sub-threshold on its own
-    STRONG = 0.80     # clearly supra-threshold (sanity)
+    WEAK = 0.40  # bottom-up evidence, BELOW the 0.55 ignition current on its own
+    PRIOR = 0.30  # top-down expectation, also sub-threshold on its own
+    STRONG = 0.80  # clearly supra-threshold (sanity)
 
     print("=" * 88)
-    print("GWT RE-ENTRY -- closing the Global-Neuronal-Workspace loop (predictive completion, controlled)")
+    print(
+        "GWT RE-ENTRY -- closing the Global-Neuronal-Workspace loop (predictive completion, controlled)"
+    )
     print("=" * 88)
 
-    weak_alone, _ = run_loop(WEAK, prior=0.0, reentry=True)              # weak evidence, no expectation
-    prior_alone, _ = run_loop(0.0, prior=PRIOR, reentry=True)           # expectation, NO evidence
-    weak_expected_on, _ = run_loop(WEAK, prior=PRIOR, reentry=True)      # weak + expectation, loop CLOSED
-    weak_expected_off, _ = run_loop(WEAK, prior=PRIOR, reentry=False)    # weak + expectation, loop OPEN
-    strong, _ = run_loop(STRONG, prior=0.0, reentry=True)               # sanity: strong ignites regardless
-    held_on = run_gap(STRONG, PRIOR, reentry=True)                       # sustain across an input dropout...
-    held_off = run_gap(STRONG, PRIOR, reentry=False)                     # ...vs feedforward-only release
+    weak_alone, _ = run_loop(WEAK, prior=0.0, reentry=True)  # weak evidence, no expectation
+    prior_alone, _ = run_loop(0.0, prior=PRIOR, reentry=True)  # expectation, NO evidence
+    weak_expected_on, _ = run_loop(
+        WEAK, prior=PRIOR, reentry=True
+    )  # weak + expectation, loop CLOSED
+    weak_expected_off, _ = run_loop(
+        WEAK, prior=PRIOR, reentry=False
+    )  # weak + expectation, loop OPEN
+    strong, _ = run_loop(STRONG, prior=0.0, reentry=True)  # sanity: strong ignites regardless
+    held_on = run_gap(STRONG, PRIOR, reentry=True)  # sustain across an input dropout...
+    held_off = run_gap(STRONG, PRIOR, reentry=False)  # ...vs feedforward-only release
 
-    print(f"  weak evidence alone (0.40, no prior)          -> ignited = {weak_alone}   (subliminal, expected)")
-    print(f"  prior/expectation alone (0.30, no evidence)   -> ignited = {prior_alone}   (NO hallucination, expected)")
-    print(f"  weak + expectation, loop CLOSED (re-entry ON) -> ignited = {weak_expected_on}    <- predictive completion")
-    print(f"  weak + expectation, loop OPEN  (re-entry OFF) -> ignited = {weak_expected_off}   (loop is load-bearing)")
-    print(f"  sustain across a bottom-up dropout: re-entry held {held_on} gap-ticks vs feedforward {held_off}")
+    print(
+        f"  weak evidence alone (0.40, no prior)          -> ignited = {weak_alone}   (subliminal, expected)"
+    )
+    print(
+        f"  prior/expectation alone (0.30, no evidence)   -> ignited = {prior_alone}   (NO hallucination, expected)"
+    )
+    print(
+        f"  weak + expectation, loop CLOSED (re-entry ON) -> ignited = {weak_expected_on}    <- predictive completion"
+    )
+    print(
+        f"  weak + expectation, loop OPEN  (re-entry OFF) -> ignited = {weak_expected_off}   (loop is load-bearing)"
+    )
+    print(
+        f"  sustain across a bottom-up dropout: re-entry held {held_on} gap-ticks vs feedforward {held_off}"
+    )
     print("-" * 88)
-    print("  re-entry lets weak bottom-up meet top-down amplification -> all-or-none access (Dehaene GNW),")
-    print("  WITHOUT fabricating a percept from expectation alone, and the closed loop is what does it.")
+    print(
+        "  re-entry lets weak bottom-up meet top-down amplification -> all-or-none access (Dehaene GNW),"
+    )
+    print(
+        "  WITHOUT fabricating a percept from expectation alone, and the closed loop is what does it."
+    )
     print("=" * 88)
 
     # ---- un-riggable self-checks ----
     assert not weak_alone, "weak bottom-up alone must stay subliminal"
-    assert not prior_alone, "top-down expectation ALONE must NOT ignite (no hallucination -- the honest guard)"
-    assert weak_expected_on, "weak evidence + top-down expectation through the CLOSED loop must ignite (completion)"
-    assert not weak_expected_off, "with the loop OPEN the same weak+expected input must stay subliminal (loop load-bearing)"
+    assert not prior_alone, (
+        "top-down expectation ALONE must NOT ignite (no hallucination -- the honest guard)"
+    )
+    assert weak_expected_on, (
+        "weak evidence + top-down expectation through the CLOSED loop must ignite (completion)"
+    )
+    assert not weak_expected_off, (
+        "with the loop OPEN the same weak+expected input must stay subliminal (loop load-bearing)"
+    )
     assert strong, "a supra-threshold input must ignite regardless (sanity)"
-    assert held_on > held_off, f"re-entry must sustain across an input gap longer than feedforward ({held_on} vs {held_off})"
-    print("self-check OK: closed GNW re-entrant loop gives PREDICTIVE COMPLETION (weak+expected ignites) with "
-          "NO hallucination (expectation alone stays subliminal), the loop is load-bearing (open -> no completion), "
-          "and it sustains a content across a bottom-up dropout. Consciousness program, agnostic -- built toward, not claimed.")
+    assert held_on > held_off, (
+        f"re-entry must sustain across an input gap longer than feedforward ({held_on} vs {held_off})"
+    )
+    print(
+        "self-check OK: closed GNW re-entrant loop gives PREDICTIVE COMPLETION (weak+expected ignites) with "
+        "NO hallucination (expectation alone stays subliminal), the loop is load-bearing (open -> no completion), "
+        "and it sustains a content across a bottom-up dropout. Consciousness program, agnostic -- built toward, not claimed."
+    )
     return 0
 
 

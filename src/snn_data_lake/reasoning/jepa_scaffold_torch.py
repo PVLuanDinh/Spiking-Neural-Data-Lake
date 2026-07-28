@@ -62,28 +62,30 @@ References:
 Run (own venv, torch installed):  NORD_GPU=1 .venv-arm/Scripts/python research/jepa_scaffold_torch.py
 Run (no torch):                   python research/jepa_scaffold_torch.py  -> guidance, exit 0
 """
+
 import json
 import math
 
 IN_DIM = 64
 LATENT_DIM = 16
-DEFAULT_HIDDEN = 64                 # H: hidden width of the MLP encoder (the snn_jepa/2 scale knob)
+DEFAULT_HIDDEN = 64  # H: hidden width of the MLP encoder (the snn_jepa/2 scale knob)
 ACTIONS = ("ENGAGE", "RELEASE", "HOLD")
 N_ACT = len(ACTIONS)
 
 JEPA_FORMAT = "snn_jepa/2"
-DEFAULT_TAU = 0.99                  # EMA target momentum: xi <- tau*xi + (1-tau)*theta
-DEFAULT_VAR_COEF = 1.0             # VICReg variance-hinge weight
-DEFAULT_COV_COEF = 0.04            # VICReg covariance weight (standard VICReg default scale)
-VICREG_GAMMA = 1.0                 # target per-dim std for the variance hinge
+DEFAULT_TAU = 0.99  # EMA target momentum: xi <- tau*xi + (1-tau)*theta
+DEFAULT_VAR_COEF = 1.0  # VICReg variance-hinge weight
+DEFAULT_COV_COEF = 0.04  # VICReg covariance weight (standard VICReg default scale)
+VICREG_GAMMA = 1.0  # target per-dim std for the variance hinge
 
-DEFAULT_STEPS = 300               # a few optimization steps -- this is a scaffold, not a full run
+DEFAULT_STEPS = 300  # a few optimization steps -- this is a scaffold, not a full run
 DEFAULT_BATCH = 128
-K_FACTORS = 4                      # hidden factors in the synthetic world (multi-factor by construction)
+K_FACTORS = 4  # hidden factors in the synthetic world (multi-factor by construction)
 
 
-def build_model(in_dim=IN_DIM, latent_dim=LATENT_DIM, hidden=DEFAULT_HIDDEN,
-                n_act=N_ACT, tau=DEFAULT_TAU):
+def build_model(
+    in_dim=IN_DIM, latent_dim=LATENT_DIM, hidden=DEFAULT_HIDDEN, n_act=N_ACT, tau=DEFAULT_TAU
+):
     """Build the deeper action-conditioned latent JEPA. torch/nn imported lazily; the nn.Module
     is defined INSIDE here so importing this file never requires torch."""
     import torch
@@ -96,13 +98,13 @@ def build_model(in_dim=IN_DIM, latent_dim=LATENT_DIM, hidden=DEFAULT_HIDDEN,
             # online encoder: MLP read-in x -> h -> z  (exports to enc_layers, application order)
             self.enc = nn.ModuleList([nn.Linear(in_dim, hidden), nn.Linear(hidden, latent_dim)])
             # residual action-conditioned predictor: z_hat' = z + Wz.z + Wa.a + b
-            self.pred_z = nn.Linear(latent_dim, latent_dim, bias=False)     # Wz
-            self.pred_a = nn.Linear(n_act, latent_dim, bias=True)           # Wa (+ shared bias b)
+            self.pred_z = nn.Linear(latent_dim, latent_dim, bias=False)  # Wz
+            self.pred_a = nn.Linear(n_act, latent_dim, bias=True)  # Wa (+ shared bias b)
             # EMA target encoder: a frozen copy of the FULL encoder, updated by ema_update() only.
             self.tgt = nn.ModuleList([nn.Linear(in_dim, hidden), nn.Linear(hidden, latent_dim)])
             for pt, po in zip(self.tgt.parameters(), self.enc.parameters()):
-                pt.data.copy_(po.data)                                      # start = online encoder
-                pt.requires_grad_(False)                                    # # VERIFY(torch): no-grad target
+                pt.data.copy_(po.data)  # start = online encoder
+                pt.requires_grad_(False)  # # VERIFY(torch): no-grad target
             self.tau = float(tau)
 
         @staticmethod
@@ -111,8 +113,8 @@ def build_model(in_dim=IN_DIM, latent_dim=LATENT_DIM, hidden=DEFAULT_HIDDEN,
             # then L2-normalize the FINAL latent onto the unit sphere (matches the core geometry).
             h = x
             for lin in layers:
-                h = torch.tanh(lin(h))                                      # # VERIFY(torch): tanh per layer
-            return F.normalize(h, dim=-1)                                   # unit(.) == core _mathutils.unit
+                h = torch.tanh(lin(h))  # # VERIFY(torch): tanh per layer
+            return F.normalize(h, dim=-1)  # unit(.) == core _mathutils.unit
 
         def encode(self, x):
             return self._run_layers(self.enc, x)
@@ -130,7 +132,7 @@ def build_model(in_dim=IN_DIM, latent_dim=LATENT_DIM, hidden=DEFAULT_HIDDEN,
             # xi <- tau*xi + (1-tau)*theta, momentum-encoder update (I-JEPA / BYOL style).
             with torch.no_grad():
                 for pt, po in zip(self.tgt.parameters(), self.enc.parameters()):
-                    pt.mul_(self.tau).add_(po, alpha=1.0 - self.tau)        # # VERIFY(torch)
+                    pt.mul_(self.tau).add_(po, alpha=1.0 - self.tau)  # # VERIFY(torch)
 
     return _Jepa()
 
@@ -145,12 +147,12 @@ def vicreg_terms(z, gamma=VICREG_GAMMA, eps=1e-4):
     """
     import torch
 
-    std = torch.sqrt(z.var(dim=0) + eps)                 # [latent] per-dim std over the batch
+    std = torch.sqrt(z.var(dim=0) + eps)  # [latent] per-dim std over the batch
     var_loss = torch.relu(gamma - std).mean()
     zc = z - z.mean(dim=0, keepdim=True)
     n = max(1, z.shape[0] - 1)
-    cov = (zc.t() @ zc) / n                               # [latent, latent] covariance matrix
-    off = cov - torch.diag(torch.diagonal(cov))          # zero the diagonal (variance handled above)
+    cov = (zc.t() @ zc) / n  # [latent, latent] covariance matrix
+    off = cov - torch.diag(torch.diagonal(cov))  # zero the diagonal (variance handled above)
     cov_loss = off.pow(2).sum() / z.shape[1]
     return var_loss, cov_loss
 
@@ -166,8 +168,17 @@ class SyntheticStream:
     Deterministic given `gen`. torch is imported lazily so the module stays torch-free at import.
     """
 
-    def __init__(self, gen, device, in_dim=IN_DIM, n_act=N_ACT, k_factors=K_FACTORS,
-                 batch=DEFAULT_BATCH, step=0.15, noise=0.02):
+    def __init__(
+        self,
+        gen,
+        device,
+        in_dim=IN_DIM,
+        n_act=N_ACT,
+        k_factors=K_FACTORS,
+        batch=DEFAULT_BATCH,
+        step=0.15,
+        noise=0.02,
+    ):
         import torch
 
         assert in_dim % k_factors == 0, "in_dim must divide evenly into k_factors bands"
@@ -175,21 +186,25 @@ class SyntheticStream:
         self.in_dim, self.n_act, self.k = in_dim, n_act, k_factors
         self.batch, self.noise = batch, noise
         band = in_dim // k_factors
-        self.centers = torch.linspace(0.0, 1.0, band, device=device)               # [band] in [0,1]
-        self.sigma = 1.5 / max(1, band - 1)                                          # RBF width ~ band spacing
+        self.centers = torch.linspace(0.0, 1.0, band, device=device)  # [band] in [0,1]
+        self.sigma = 1.5 / max(1, band - 1)  # RBF width ~ band spacing
         # per-action drift on each factor, drawn ONCE (uniform in [-step, step]).  # VERIFY(torch)
-        self.effects = (torch.rand(n_act, k_factors, generator=gen, device=device) * 2.0 - 1.0) * step
-        self.u = torch.rand(batch, k_factors, generator=gen, device=device)         # hidden latent state
+        self.effects = (
+            torch.rand(n_act, k_factors, generator=gen, device=device) * 2.0 - 1.0
+        ) * step
+        self.u = torch.rand(batch, k_factors, generator=gen, device=device)  # hidden latent state
 
     def _render(self, u):
         import torch
 
         acts = []
         for k in range(self.k):
-            diff = self.centers.unsqueeze(0) - u[:, k:k + 1]                          # [batch, band]
+            diff = self.centers.unsqueeze(0) - u[:, k : k + 1]  # [batch, band]
             acts.append(torch.exp(-0.5 * (diff / self.sigma) ** 2))
-        x = torch.cat(acts, dim=1)                                                    # [batch, in_dim]
-        jitter = (torch.rand(x.shape, generator=self.gen, device=self.device) * 2.0 - 1.0) * self.noise
+        x = torch.cat(acts, dim=1)  # [batch, in_dim]
+        jitter = (
+            torch.rand(x.shape, generator=self.gen, device=self.device) * 2.0 - 1.0
+        ) * self.noise
         return (x + jitter).clamp(0.0, 1.0)
 
     def next_batch(self):
@@ -200,12 +215,19 @@ class SyntheticStream:
         x_t = self._render(self.u)
         u_next = (self.u + self.effects[a_idx]).clamp(0.0, 1.0)
         x_next = self._render(u_next)
-        self.u = u_next.detach()                                                     # carry trajectory forward
+        self.u = u_next.detach()  # carry trajectory forward
         return x_t, a_onehot, x_next
 
 
-def train_step(model, opt, batch, device="cpu", scaler=None,
-               var_coef=DEFAULT_VAR_COEF, cov_coef=DEFAULT_COV_COEF):
+def train_step(
+    model,
+    opt,
+    batch,
+    device="cpu",
+    scaler=None,
+    var_coef=DEFAULT_VAR_COEF,
+    cov_coef=DEFAULT_COV_COEF,
+):
     """One optimization step: invariance loss + VICReg, then an EMA target update. Optional AMP
     on CUDA via `scaler`. Returns the REAL loss components from this step (no fabricated numbers)."""
     import torch
@@ -213,23 +235,23 @@ def train_step(model, opt, batch, device="cpu", scaler=None,
     x_t, a_onehot, x_next = batch
     is_cuda = str(device).startswith("cuda")
     dev_type = "cuda" if is_cuda else "cpu"
-    use_amp = bool(scaler is not None and is_cuda)                                    # AMP optional
+    use_amp = bool(scaler is not None and is_cuda)  # AMP optional
     opt.zero_grad(set_to_none=True)
-    with torch.autocast(device_type=dev_type, enabled=use_amp):                      # # VERIFY(torch): AMP
-        z_t = model.encode(x_t)                          # online embedding of x_t
-        pred = model.predict(z_t, a_onehot)              # predicted next latent
-        target = model.encode_target(x_next)             # sg(EMA target) -- already no-grad
-        inv_loss = (pred - target).pow(2).sum(dim=1).mean()   # invariance (JEPA prediction loss)
-        var_loss, cov_loss = vicreg_terms(z_t)           # anti-collapse on online embeddings
+    with torch.autocast(device_type=dev_type, enabled=use_amp):  # # VERIFY(torch): AMP
+        z_t = model.encode(x_t)  # online embedding of x_t
+        pred = model.predict(z_t, a_onehot)  # predicted next latent
+        target = model.encode_target(x_next)  # sg(EMA target) -- already no-grad
+        inv_loss = (pred - target).pow(2).sum(dim=1).mean()  # invariance (JEPA prediction loss)
+        var_loss, cov_loss = vicreg_terms(z_t)  # anti-collapse on online embeddings
         loss = inv_loss + var_coef * var_loss + cov_coef * cov_loss
     if use_amp:
-        scaler.scale(loss).backward()                    # # VERIFY(torch): scaled backward
+        scaler.scale(loss).backward()  # # VERIFY(torch): scaled backward
         scaler.step(opt)
         scaler.update()
     else:
         loss.backward()
         opt.step()
-    model.ema_update()                                   # momentum target AFTER the online step
+    model.ema_update()  # momentum target AFTER the online step
     return {
         "loss": float(loss.detach().cpu()),
         "inv": float(inv_loss.detach().cpu()),
@@ -242,15 +264,16 @@ def save_checkpoint(model, opt, path):
     """Save a torch training checkpoint (model + optimizer state)."""
     import torch
 
-    torch.save({"model": model.state_dict(),
-                "opt": opt.state_dict() if opt is not None else None}, path)         # # VERIFY(torch)
+    torch.save(
+        {"model": model.state_dict(), "opt": opt.state_dict() if opt is not None else None}, path
+    )  # # VERIFY(torch)
 
 
 def load_checkpoint(model, opt, path, map_location="cpu"):
     """Load a torch training checkpoint into `model` (and `opt` if given). Returns `model`."""
     import torch
 
-    ckpt = torch.load(path, map_location=map_location)                               # # VERIFY(torch)
+    ckpt = torch.load(path, map_location=map_location)  # # VERIFY(torch)
     model.load_state_dict(ckpt["model"])
     if opt is not None and ckpt.get("opt") is not None:
         opt.load_state_dict(ckpt["opt"])
@@ -265,31 +288,38 @@ def export_jepa(model, path):
     export. Layers are emitted in APPLICATION order (input->hidden first, hidden->latent last).
     EVERY shape is ASSERTED before writing. Returns the written dict.
     """
+
     def _layers(module_list):
-        return [[lin.weight.detach().cpu().tolist(), lin.bias.detach().cpu().tolist()]
-                for lin in module_list]
+        return [
+            [lin.weight.detach().cpu().tolist(), lin.bias.detach().cpu().tolist()]
+            for lin in module_list
+        ]
 
-    enc_layers = _layers(model.enc)                      # [[W1[H][64], b1[H]], [W2[16][H], b2[16]]]
-    tgt_layers = _layers(model.tgt)                      # same shapes, EMA target encoder
-    Wz = model.pred_z.weight.detach().cpu().tolist()     # [latent][latent]
-    Wa = model.pred_a.weight.detach().cpu().tolist()     # [latent][n_act]
-    b = model.pred_a.bias.detach().cpu().tolist()        # [latent]
+    enc_layers = _layers(model.enc)  # [[W1[H][64], b1[H]], [W2[16][H], b2[16]]]
+    tgt_layers = _layers(model.tgt)  # same shapes, EMA target encoder
+    Wz = model.pred_z.weight.detach().cpu().tolist()  # [latent][latent]
+    Wa = model.pred_a.weight.detach().cpu().tolist()  # [latent][n_act]
+    b = model.pred_a.bias.detach().cpu().tolist()  # [latent]
 
-    hidden = len(enc_layers[0][1])                       # H = out-features of the first encoder layer
+    hidden = len(enc_layers[0][1])  # H = out-features of the first encoder layer
 
     def _assert_encoder(name, layers):
         assert len(layers) == 2, f"{name} must be a 2-layer MLP encoder, got {len(layers)} layers"
         (W1, b1), (W2, b2) = layers
-        assert len(W1) == hidden and all(len(r) == IN_DIM for r in W1), \
+        assert len(W1) == hidden and all(len(r) == IN_DIM for r in W1), (
             f"{name}[0] W must be [hidden={hidden}][in={IN_DIM}]"
+        )
         assert len(b1) == hidden, f"{name}[0] b must be [hidden={hidden}]"
-        assert len(W2) == LATENT_DIM and all(len(r) == hidden for r in W2), \
+        assert len(W2) == LATENT_DIM and all(len(r) == hidden for r in W2), (
             f"{name}[1] W must be [latent={LATENT_DIM}][hidden={hidden}]"
+        )
         assert len(b2) == LATENT_DIM, f"{name}[1] b must be [latent={LATENT_DIM}]"
 
     _assert_encoder("enc_layers", enc_layers)
     _assert_encoder("tgt_layers", tgt_layers)
-    assert len(Wz) == LATENT_DIM and all(len(r) == LATENT_DIM for r in Wz), "Wz must be [latent][latent]"
+    assert len(Wz) == LATENT_DIM and all(len(r) == LATENT_DIM for r in Wz), (
+        "Wz must be [latent][latent]"
+    )
     assert len(Wa) == LATENT_DIM and all(len(r) == N_ACT for r in Wa), "Wa must be [latent][n_act]"
     assert len(b) == LATENT_DIM, "b must be [latent]"
 
@@ -299,11 +329,13 @@ def export_jepa(model, path):
         "latent_dim": LATENT_DIM,
         "hidden": hidden,
         "actions": list(ACTIONS),
-        "enc_layers": enc_layers,                        # online encoder, application order
-        "tgt_layers": tgt_layers,                        # EMA target encoder, same shapes
-        "Wz": Wz, "Wa": Wa, "b": b,                      # residual predictor (as core snn_jepa/1)
+        "enc_layers": enc_layers,  # online encoder, application order
+        "tgt_layers": tgt_layers,  # EMA target encoder, same shapes
+        "Wz": Wz,
+        "Wa": Wa,
+        "b": b,  # residual predictor (as core snn_jepa/1)
         "tau": float(model.tau),
-        "predictor": "residual",                         # z' = z + Wz.z + Wa.a + b
+        "predictor": "residual",  # z' = z + Wz.z + Wa.a + b
         "meta": {"trained_by": "jepa_scaffold_torch", "unverified_on_hardware": True},
     }
     with open(path, "w", encoding="ascii") as f:
@@ -337,27 +369,29 @@ def verify_transfer(path, model, n_probe=5, tol=1e-4):
     n_act = model.pred_a.in_features
     ref = build_model(in_dim, latent, hidden, n_act, model.tau)
     ref.load_state_dict(model.state_dict())
-    ref = ref.double().to("cpu")                                                     # # VERIFY(torch)
+    ref = ref.double().to("cpu")  # # VERIFY(torch)
     ref.eval()
 
     core = JepaWorldModel(ACTIONS, in_dim=in_dim, latent_dim=latent)
     try:
-        core.load_weights(path)                          # requires the parallel snn_jepa/2 core support
+        core.load_weights(path)  # requires the parallel snn_jepa/2 core support
     except ValueError as e:
-        print(f"verify_transfer: core rejected {JEPA_FORMAT} ({e}); "
-              "ensure the parallel snn_jepa/2 core extension is installed.")
+        print(
+            f"verify_transfer: core rejected {JEPA_FORMAT} ({e}); "
+            "ensure the parallel snn_jepa/2 core extension is installed."
+        )
         return {"ok": False, "reason": "core-no-v2"}
 
     torch.manual_seed(123)
     # the bridge compares the CPU float64 ref vs the zero-dep (CPU) core, so the probe tensors MUST be on
     # CPU explicitly -- with NORD_GPU the default device is cuda, which would mismatch the CPU ref.
-    probes = torch.rand(n_probe, in_dim, dtype=torch.float64, device="cpu")           # probe inputs in [0,1]
+    probes = torch.rand(n_probe, in_dim, dtype=torch.float64, device="cpu")  # probe inputs in [0,1]
     max_err = 0.0
     with torch.no_grad():
-        z_ref = ref.encode(probes)                       # [n_probe, latent] float64
+        z_ref = ref.encode(probes)  # [n_probe, latent] float64
         for i in range(n_probe):
             x = [float(v) for v in probes[i]]
-            z_core = core.encode(x)                       # list[latent] from the zero-dep core
+            z_core = core.encode(x)  # list[latent] from the zero-dep core
             for a, b in zip(z_core, z_ref[i].tolist()):
                 assert math.isfinite(a) and math.isfinite(b), "non-finite latent in bridge check"
                 max_err = max(max_err, abs(a - b))
@@ -365,7 +399,7 @@ def verify_transfer(path, model, n_probe=5, tol=1e-4):
             for aj, action in enumerate(ACTIONS):
                 a_onehot = torch.zeros(1, n_act, dtype=torch.float64, device="cpu")
                 a_onehot[0, aj] = 1.0
-                p_ref = ref.predict(z_ref[i:i + 1], a_onehot)[0].tolist()
+                p_ref = ref.predict(z_ref[i : i + 1], a_onehot)[0].tolist()
                 p_core = core.predict(z_core, action)
                 for a, b in zip(p_core, p_ref):
                     max_err = max(max_err, abs(a - b))
@@ -395,16 +429,21 @@ def main():
     import os
     import tempfile
 
-    from snn_data_lake.reasoning.torch_device import enable, resolve_device      # reuse the shared cpu/cuda selector
+    from snn_data_lake.reasoning.torch_device import (
+        enable,
+        resolve_device,
+    )  # reuse the shared cpu/cuda selector
 
-    device = enable(resolve_device())                    # # VERIFY(torch): NORD_GPU -> cuda, else cpu
+    device = enable(resolve_device())  # # VERIFY(torch): NORD_GPU -> cuda, else cpu
     is_cuda = str(device).startswith("cuda")
     torch.manual_seed(0)
     gen = torch.Generator(device=device).manual_seed(0)  # # VERIFY(torch): device-side generator
 
     model = build_model().to(device)
     opt = torch.optim.Adam(model.parameters(), lr=3e-3)
-    scaler = torch.amp.GradScaler("cuda", enabled=is_cuda)  # # VERIFY(torch): AMP optional (no-op on cpu)
+    scaler = torch.amp.GradScaler(
+        "cuda", enabled=is_cuda
+    )  # # VERIFY(torch): AMP optional (no-op on cpu)
     stream = SyntheticStream(gen, device)
 
     last = {}
@@ -415,17 +454,20 @@ def main():
     # checkpoint save/load round-trip (real: reloaded weights must export byte-identically) ----
     ckpt_path = os.path.join(tempfile.gettempdir(), "snn_jepa2_ckpt.pt")
     save_checkpoint(model, opt, ckpt_path)
-    reloaded = load_checkpoint(build_model().to(device), None, ckpt_path,
-                               map_location=device)
+    reloaded = load_checkpoint(build_model().to(device), None, ckpt_path, map_location=device)
 
     export_path = os.path.join(tempfile.gettempdir(), "snn_jepa2_scaffold.json")
     blob = export_jepa(model, export_path)
-    reloaded_blob = export_jepa(reloaded,
-                                os.path.join(tempfile.gettempdir(), "snn_jepa2_reload.json"))
-    ckpt_ok = (reloaded_blob["enc_layers"] == blob["enc_layers"]
-               and reloaded_blob["Wz"] == blob["Wz"] and reloaded_blob["b"] == blob["b"])
+    reloaded_blob = export_jepa(
+        reloaded, os.path.join(tempfile.gettempdir(), "snn_jepa2_reload.json")
+    )
+    ckpt_ok = (
+        reloaded_blob["enc_layers"] == blob["enc_layers"]
+        and reloaded_blob["Wz"] == blob["Wz"]
+        and reloaded_blob["b"] == blob["b"]
+    )
 
-    verify = verify_transfer(export_path, model)          # export->core bridge check (CPU)
+    verify = verify_transfer(export_path, model)  # export->core bridge check (CPU)
 
     W1, b1 = blob["enc_layers"][0]
     W2, b2 = blob["enc_layers"][1]
@@ -435,19 +477,27 @@ def main():
     print("=" * 66)
     print(f"backend      : torch {torch.__version__}  device={device}  amp={is_cuda}")
     print(f"actions      : {list(ACTIONS)}")
-    print(f"encoder MLP  : enc_layers[0] W [{len(W1)}][{len(W1[0])}] b [{len(b1)}]  ->  "
-          f"enc_layers[1] W [{len(W2)}][{len(W2[0])}] b [{len(b2)}]  (z = unit(tanh(.)))")
+    print(
+        f"encoder MLP  : enc_layers[0] W [{len(W1)}][{len(W1[0])}] b [{len(b1)}]  ->  "
+        f"enc_layers[1] W [{len(W2)}][{len(W2[0])}] b [{len(b2)}]  (z = unit(tanh(.)))"
+    )
     print(f"target MLP   : tgt_layers same shapes (EMA tau={blob['tau']})")
-    print(f"predictor    : residual  Wz [{len(Wz)}][{len(Wz[0])}]  "
-          f"Wa [{len(Wa)}][{len(Wa[0])}]  b [{len(b)}]")
-    print(f"train ({DEFAULT_STEPS} steps): loss={last['loss']:.4f} inv={last['inv']:.4f} "
-          f"var={last['var']:.4f} cov={last['cov']:.4f}   (real, from this run)")
+    print(
+        f"predictor    : residual  Wz [{len(Wz)}][{len(Wz[0])}]  "
+        f"Wa [{len(Wa)}][{len(Wa[0])}]  b [{len(b)}]"
+    )
+    print(
+        f"train ({DEFAULT_STEPS} steps): loss={last['loss']:.4f} inv={last['inv']:.4f} "
+        f"var={last['var']:.4f} cov={last['cov']:.4f}   (real, from this run)"
+    )
     print(f"checkpoint   : save/load round-trip byte-identical export: {ckpt_ok}")
     if verify is None:
         print("bridge check : skipped (no torch)")
     elif verify.get("ok"):
-        print(f"bridge check : core serves {JEPA_FORMAT} == torch forward "
-              f"(max |diff| {verify['max_err']:.2e} over {verify['n_probe']} probes)")
+        print(
+            f"bridge check : core serves {JEPA_FORMAT} == torch forward "
+            f"(max |diff| {verify['max_err']:.2e} over {verify['n_probe']} probes)"
+        )
     else:
         print(f"bridge check : NOT confirmed ({verify.get('reason')})")
     print(f"exported     : {JEPA_FORMAT} -> {export_path}")

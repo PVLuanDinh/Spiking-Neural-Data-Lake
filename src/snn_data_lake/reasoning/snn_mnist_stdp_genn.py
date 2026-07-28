@@ -20,18 +20,18 @@ NOTE: GeNN's weight-update field names shift across versions — if build() reje
 field, check your GeNN 5 `create_weight_update_model` signature; the C++ bodies below
 are the part that matters and are version-stable.
 """
-import os
 
 try:
     import numpy as np
-    from pygenn import (GeNNModel, init_weight_update, init_postsynaptic,
-                        init_sparse_connectivity, create_weight_update_model)
+    from pygenn import GeNNModel, init_weight_update, init_postsynaptic, create_weight_update_model
+
     # data + the exact (CPU-verified) deterministic burst encoder (need torch) — only
     # importable on the GeNN box where torch is also installed:
-    from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist, M, T, TRAIN_N, TEST_N
-    from snn_data_lake.reasoning.snn_mnist_stdp_fast import encode_latency, FAST_LR, FAST_XTAR, WMAX, PRE_DECAY
+    from snn_data_lake.reasoning.snn_mnist_stdp import M, T
+    from snn_data_lake.reasoning.snn_mnist_stdp_fast import FAST_LR, FAST_XTAR, WMAX, PRE_DECAY
+
     _HAVE_GENN = True
-except Exception as _e:                       # noqa: BLE001 — any missing dep -> stub
+except Exception as _e:  # noqa: BLE001 — any missing dep -> stub
     _HAVE_GENN = False
     _IMPORT_ERR = _e
 
@@ -59,21 +59,40 @@ def build(n_inpt, n_exc, w_norm=78.0, thresh=2.0, theta_plus=0.8):
     model = GeNNModel("float", "stdp_mnist")
     model.dt = 1.0
     ssa = model.add_neuron_population(
-        "In", n_inpt, "SpikeSourceArray", {}, {"startSpike": np.zeros(n_inpt), "endSpike": np.zeros(n_inpt)})
+        "In",
+        n_inpt,
+        "SpikeSourceArray",
+        {},
+        {"startSpike": np.zeros(n_inpt), "endSpike": np.zeros(n_inpt)},
+    )
     # excitatory LIF (adaptive threshold via Vthresh + a slow theta would be added as a
     # custom neuron model; using fixed Vthresh here — see snn_mnist_stdp_fast for theta)
-    lif = {"C": 1.0, "TauM": 10.0, "Vrest": 0.0, "Vreset": 0.0,
-           "Vthresh": thresh, "Ioffset": 0.0, "TauRefrac": float(T)}
+    lif = {
+        "C": 1.0,
+        "TauM": 10.0,
+        "Vrest": 0.0,
+        "Vreset": 0.0,
+        "Vthresh": thresh,
+        "Ioffset": 0.0,
+        "TauRefrac": float(T),
+    }
     exc = model.add_neuron_population("Exc", n_exc, "LIF", lif, {"V": 0.0, "RefracTime": 0.0})
     exc.spike_recording_enabled = True
     # input -> exc with the CUSTOM plasticity rule (dense, learned)
-    g0 = (w_norm / n_inpt)
+    g0 = w_norm / n_inpt
     model.add_synapse_population(
-        "In_Exc", "DENSE", ssa, exc,
-        init_weight_update(burst_xtar_rule(),
-                           {"lr": FAST_LR, "xtar": FAST_XTAR, "wmax": WMAX, "preDecay": PRE_DECAY},
-                           {"g": g0}, {"preTrace": 0.0}),
-        init_postsynaptic("DeltaCurr"))
+        "In_Exc",
+        "DENSE",
+        ssa,
+        exc,
+        init_weight_update(
+            burst_xtar_rule(),
+            {"lr": FAST_LR, "xtar": FAST_XTAR, "wmax": WMAX, "preDecay": PRE_DECAY},
+            {"g": g0},
+            {"preTrace": 0.0},
+        ),
+        init_postsynaptic("DeltaCurr"),
+    )
     # lateral inhibition for WTA competition (all-but-self); full Diehl&Cook would use a
     # separate inhibitory population — see eth_mnist_bindsnet.py for that variant
     return model, ssa, exc
@@ -92,7 +111,7 @@ def main():
     # exact timestamps to the SpikeSourceArray, build()/load(), train, assign, evaluate.
     print("Building GeNN model with custom burst+x_tar plasticity...")
     model, ssa, exc = build(28 * 28, M)
-    model.build()                      # nvcc compiles model.cc -> CUDA binary
+    model.build()  # nvcc compiles model.cc -> CUDA binary
     model.load(num_recording_timesteps=T)
     print("Built. Feed SpikeSourceArray timestamps per image and step_time() T steps.")
     print("(Training/eval loop mirrors snn_mnist_stdp_fast.py; omitted for brevity —")

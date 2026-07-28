@@ -17,7 +17,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "spiking-neural-data-lake"
-version = "3.28.0"
+version = "4.77.0"
 description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Torch tier on by default (NORD_TORCH=0 for a torch-free brain)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -112,7 +112,7 @@ omit = ["*/reasoning/*", "*/training/*"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["research", "integrations", "src/snn_data_lake/training", "training", "src/snn_data_lake/reasoning", "scratchpad"]
+extend-exclude = ["research", "integrations", "src/snn_data_lake/training", "training", "scratchpad"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -123,4 +123,12 @@ select = ["E", "F", "I", "UP", "B"]
 # yield-from) are still fixed. New code under tests/ is held to the full ruleset.
 [tool.ruff.lint.per-file-ignores]
 "src/**" = ["E501", "E702", "E731", "E741", "B905"]
+# reasoning/ (172 folded research builds) was excluded from ruff ENTIRELY until 2026-07-28, which made
+# it the least-governed surface in the tree: not linted, not covered by brain_atlas parity, not in the
+# dormancy gate's BRAIN_MODULES, and omitted from the coverage denominator. Four exclusions stacking on
+# the directory that 15 live-brain lazy imports point into is how dead code accumulates unseen. It is
+# now linted for the rules that catch REAL defects -- F401 unused imports, F811 redefinitions, F841 dead
+# vars, B006/B008 mutable and call-valued defaults -- while the purely stylistic rules stay off, because
+# reflowing 282 printf-format strings in research code is churn, not governance.
+"src/snn_data_lake/reasoning/**" = ["E501", "E702", "E731", "E741", "B905", "UP031", "I001", "E402", "F541", "B007"]
 "run_selfchecks.py" = ["E501", "I001"]   # kept byte-for-byte as-is (A1: the smoke gate)

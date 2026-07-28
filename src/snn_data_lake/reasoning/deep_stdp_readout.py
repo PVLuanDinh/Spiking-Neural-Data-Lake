@@ -28,6 +28,7 @@ Scale knobs: NORD_C1 NORD_C2 NORD_TRAIN NORD_TEST NORD_T NORD_L1_EPOCHS NORD_L2_
              NORD_POOL1 NORD_READEP (linear-readout epochs)
 Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
 """
+
 import os
 
 import torch
@@ -87,10 +88,14 @@ def main():
     print("=" * 70)
     print("LINEAR READOUT on deep UNSUPERVISED spiking features  (MNIST)")
     print("=" * 70)
-    print(f"C1={C1}  C2={C2}  T={T_LAT}  train={TRAIN_N}  test={TEST_N}  "
-          f"L1ep={L1_EPOCHS}  L2ep={L2_EPOCHS}  readout_epochs={READEP}")
-    print("features are UNSUPERVISED (conv STDP, no labels); ONLY the linear readout "
-          "sees labels (Kheradpisheh protocol)\n")
+    print(
+        f"C1={C1}  C2={C2}  T={T_LAT}  train={TRAIN_N}  test={TEST_N}  "
+        f"L1ep={L1_EPOCHS}  L2ep={L2_EPOCHS}  readout_epochs={READEP}"
+    )
+    print(
+        "features are UNSUPERVISED (conv STDP, no labels); ONLY the linear readout "
+        "sees labels (Kheradpisheh protocol)\n"
+    )
     print("loading MNIST...")
     Xtr, Ytr, Xte, Yte = load_mnist(TRAIN_N, TEST_N)
 
@@ -102,7 +107,9 @@ def main():
         _train(conv1, Xtr, f"stage1 ep{ep + 1}/{L1_EPOCHS}")
     print(f"  stage-1 kernel diversity (cos-sim) = {conv1.kernel_diversity():.3f}")
 
-    print(f"\ntraining conv-latency-STDP stage 2 on the stage-1 volley (unsupervised, {L2_EPOCHS} epochs)...")
+    print(
+        f"\ntraining conv-latency-STDP stage 2 on the stage-1 volley (unsupervised, {L2_EPOCHS} epochs)..."
+    )
     conv2 = ConvLatencyStdp2(C1, C2, T_LAT, conv1.hout, POOL1)
     for ep in range(L2_EPOCHS):
         _train2(conv2, conv1, Xtr, f"stage2 ep{ep + 1}/{L2_EPOCHS}")
@@ -142,9 +149,12 @@ def main():
     print(f"  delta conv1      vs pixels : {a1 - apx:+.1%}")
     print(f"  delta conv1+conv2 vs pixels: {a2 - apx:+.1%}")
     print(f"  delta conv1+conv2 vs conv1 : {a2 - a1:+.1%}")
-    rises = a2 > apx and a1 >= apx - 0.005
-    print(f"  verdict: depth {'HELPS a linear readout (readout WAS the cap)' if a2 > apx else 'does NOT help even a linear readout'}")
-    print("  (compare v3.51 VOTE readout at this scale: pixels 58.0 -> conv1 53.9 -> conv1+conv2 48.9, i.e. depth HURT)")
+    print(
+        f"  verdict: depth {'HELPS a linear readout (readout WAS the cap)' if a2 > apx else 'does NOT help even a linear readout'}"
+    )
+    print(
+        "  (compare v3.51 VOTE readout at this scale: pixels 58.0 -> conv1 53.9 -> conv1+conv2 48.9, i.e. depth HURT)"
+    )
     print("=" * 70)
 
     # self-check: every linear readout must beat chance (guards the readout + features);
@@ -154,8 +164,10 @@ def main():
     for name in names:
         assert accs[name] >= 0.10, f"{name} linear readout at/below chance: {accs[name]:.2f}"
     verdict = "readout WAS the cap" if a2 > apx else "depth does not help even a linear readout"
-    print(f"self-check OK: pixel linear {apx:.1%} sane; all readouts > chance; "
-          f"depth-vs-pixels {a2 - apx:+.1%} -> {verdict} (honest).")
+    print(
+        f"self-check OK: pixel linear {apx:.1%} sane; all readouts > chance; "
+        f"depth-vs-pixels {a2 - apx:+.1%} -> {verdict} (honest)."
+    )
 
 
 if __name__ == "__main__":

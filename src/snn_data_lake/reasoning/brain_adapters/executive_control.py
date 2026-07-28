@@ -32,8 +32,6 @@ module's OWN plan_scene / goal_value demo, not guessed):
   PYTHONPATH=src python research/brain_adapters/executive_control.py
 """
 
-import random
-
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive
 from snn_data_lake.midbrain.dopamine_nuclei import DopamineNuclei
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace

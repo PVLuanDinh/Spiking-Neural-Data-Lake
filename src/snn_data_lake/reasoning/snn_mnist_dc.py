@@ -35,6 +35,7 @@ Run:  python snn_mnist_dc.py
 Scale: NORD_M / NORD_TRAIN / NORD_TEST (env). Tune: DC_THRESH / DC_INH / DC_TPLUS /
        DC_TDECAY / DC_BETA / DC_LR / DC_T (env).
 """
+
 import os
 import torch
 import snntorch as snn  # noqa: F401  (kept: same LIF lineage as the rest of the lake)
@@ -45,31 +46,33 @@ torch.manual_seed(0)
 
 
 def _ei(k, d):
-    v = os.environ.get(k);  return int(v) if v else d
+    v = os.environ.get(k)
+    return int(v) if v else d
 
 
 def _ef(k, d):
-    v = os.environ.get(k);  return float(v) if v else d
+    v = os.environ.get(k)
+    return float(v) if v else d
 
 
 # ---- config -----------------------------------------------------------------
 M = _ei("NORD_M", 100)
 TRAIN_N = _ei("NORD_TRAIN", 3000)
 TEST_N = _ei("NORD_TEST", 1500)
-T = _ei("DC_T", 60)                 # presentation window (timesteps)
-INPUT_RATE = _ef("DC_RATE", 0.40)   # Poisson rate for a fully-lit pixel
-BETA_E = _ef("DC_BETA", 0.90)       # excitatory membrane decay
-THRESH = _ef("DC_THRESH", 20.0)     # base firing threshold (v - theta > THRESH)
-INH = _ef("DC_INH", 0.6)            # lateral inhibition strength (all-but-self)
+T = _ei("DC_T", 60)  # presentation window (timesteps)
+INPUT_RATE = _ef("DC_RATE", 0.40)  # Poisson rate for a fully-lit pixel
+BETA_E = _ef("DC_BETA", 0.90)  # excitatory membrane decay
+THRESH = _ef("DC_THRESH", 20.0)  # base firing threshold (v - theta > THRESH)
+INH = _ef("DC_INH", 0.6)  # lateral inhibition strength (all-but-self)
 THETA_PLUS = _ef("DC_TPLUS", 0.20)  # adaptive-threshold bump per spike
 THETA_DECAY = _ef("DC_TDECAY", 0.9999)  # slow homeostatic decay
-LR = _ef("DC_LR", 0.01)             # STDP learning rate
-X_TAR = _ef("DC_XTAR", 0.10)        # presynaptic target (implicit depression)
+LR = _ef("DC_LR", 0.01)  # STDP learning rate
+X_TAR = _ef("DC_XTAR", 0.10)  # presynaptic target (implicit depression)
 TAU_PRE = 20.0
 W_NORM = 78.0
 WMAX = 1.0
 V_RESET = 0.0
-MIN_SPIKES = 5                      # re-present (boost rate) if fewer than this
+MIN_SPIKES = 5  # re-present (boost rate) if fewer than this
 N_IN = 28 * 28
 PRE_DECAY = float(torch.exp(torch.tensor(-1.0 / TAU_PRE)))
 
@@ -84,7 +87,7 @@ class DCNetwork:
 
     def _normalise(self):
         s = self.W.sum(dim=1, keepdim=True).clamp_min(1e-6)
-        self.W *= (W_NORM / s)
+        self.W *= W_NORM / s
 
     def _present(self, rates, learn):
         """One presentation of `rates` for T steps. Returns exc spike counts."""
@@ -95,13 +98,13 @@ class DCNetwork:
         for _ in range(T):
             s_in = (torch.rand(N_IN) < rates).float()
             x_pre = x_pre * PRE_DECAY + s_in
-            v = v * BETA_E + (self.W @ s_in) - inh        # integrate + inhibition
-            fired = (v - self.theta) > THRESH             # MANY may fire
+            v = v * BETA_E + (self.W @ s_in) - inh  # integrate + inhibition
+            fired = (v - self.theta) > THRESH  # MANY may fire
             spk = fired.float()
             n_spk = float(spk.sum())
             if n_spk > 0:
                 counts += spk
-                inh = INH * (n_spk - spk)                 # all-but-self inhibition
+                inh = INH * (n_spk - spk)  # all-but-self inhibition
                 v = torch.where(fired, torch.full_like(v, V_RESET), v)  # reset firers only
                 if learn:
                     # weight-dependent STDP toward recently-active inputs
@@ -157,14 +160,16 @@ def main():
     print("loading MNIST...")
     Xtr, Ytr, Xte, Yte = load_mnist(TRAIN_N, TEST_N)
     net = DCNetwork()
-    print(f"M={M}  T={T}  train={TRAIN_N} test={TEST_N}  "
-          f"INH={INH} THRESH={THRESH} THETA+={THETA_PLUS}  (NO labels, NO backprop)\n")
+    print(
+        f"M={M}  T={T}  train={TRAIN_N} test={TEST_N}  "
+        f"INH={INH} THRESH={THRESH} THETA+={THETA_PLUS}  (NO labels, NO backprop)\n"
+    )
 
     print("training (Diehl & Cook STDP + lateral inhibition)...")
     for i, img in enumerate(Xtr):
         net.run(img, learn=True)
         if (i + 1) % 1000 == 0:
-            print(f"  {i+1}/{TRAIN_N}")
+            print(f"  {i + 1}/{TRAIN_N}")
 
     print("\nassigning neuron labels (majority vote)...")
     assignment = assign_labels(net, Xtr, Ytr)
@@ -180,8 +185,10 @@ def main():
     # Documented NEGATIVE result (see header): this current-based D&C collapses
     # and underperforms hard-WTA. The check only confirms it ran end-to-end.
     assert acc > 0.05, f"network produced no usable output: acc={acc:.2f}"
-    print(f"ran OK (acc={acc:.1%}). NOTE: underperforms hard-WTA "
-          "(snn_mnist_stdp.py, 82.3%) — see this file's header for why.")
+    print(
+        f"ran OK (acc={acc:.1%}). NOTE: underperforms hard-WTA "
+        "(snn_mnist_stdp.py, 82.3%) — see this file's header for why."
+    )
 
 
 if __name__ == "__main__":

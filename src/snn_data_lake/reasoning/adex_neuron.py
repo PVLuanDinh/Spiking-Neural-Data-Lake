@@ -22,6 +22,7 @@ with lif_neuron / izhikevich_neuron / resonate_and_fire / intrinsic_plasticity.
 
   python -m research.adex_neuron        # (also run by run_selfchecks.py, root on PYTHONPATH)
 """
+
 import math
 
 # ---- exp-argument cap: the spike upswing diverges by design; cap the exponent so forward Euler cannot
@@ -32,11 +33,23 @@ _MAX_EXP_ARG = 30.0
 class AdEx:
     """Two-variable adaptive exponential integrate-and-fire neuron (Brette and Gerstner 2005)."""
 
-    def __init__(self, C=200.0, g_L=12.0, E_L=-70.0, V_T=-50.0, delta_T=2.0,
-                 a=2.0, tau_w=300.0, b=60.0, V_reset=-58.0, V_peak=0.0, dt=0.1):
-        self.C, self.g_L, self.E_L = C, g_L, E_L          # capacitance pF, leak nS, rest mV
-        self.V_T, self.delta_T = V_T, delta_T             # exp-threshold mV, sharpness mV
-        self.a, self.tau_w, self.b = a, tau_w, b          # subthreshold nS, adaptation ms, spike-jump pA
+    def __init__(
+        self,
+        C=200.0,
+        g_L=12.0,
+        E_L=-70.0,
+        V_T=-50.0,
+        delta_T=2.0,
+        a=2.0,
+        tau_w=300.0,
+        b=60.0,
+        V_reset=-58.0,
+        V_peak=0.0,
+        dt=0.1,
+    ):
+        self.C, self.g_L, self.E_L = C, g_L, E_L  # capacitance pF, leak nS, rest mV
+        self.V_T, self.delta_T = V_T, delta_T  # exp-threshold mV, sharpness mV
+        self.a, self.tau_w, self.b = a, tau_w, b  # subthreshold nS, adaptation ms, spike-jump pA
         self.V_reset, self.V_peak, self.dt = V_reset, V_peak, dt
         self.reset()
 
@@ -56,7 +69,7 @@ class AdEx:
         self.w += dw * self.dt
         if self.V >= self.V_peak or math.isinf(self.V) or math.isnan(self.V):
             self.V = self.V_reset
-            self.w += self.b                              # spike-triggered adaptation increment
+            self.w += self.b  # spike-triggered adaptation increment
             return 1
         return 0
 
@@ -94,8 +107,12 @@ def main():
     print("=" * 64)
     print("AdEx -- adaptive exponential integrate-and-fire (Brette & Gerstner 2005)")
     print("=" * 64)
-    print(f"adapting neuron : {len(st_adapt)} spikes/s, ISI {isi_adapt[0]:.1f} -> {isi_adapt[-1]:.1f} ms (grows)")
-    print(f"tonic neuron    : {len(st_tonic)} spikes/s, ISI {min(isi_tonic):.1f}..{max(isi_tonic):.1f} ms (flat)")
+    print(
+        f"adapting neuron : {len(st_adapt)} spikes/s, ISI {isi_adapt[0]:.1f} -> {isi_adapt[-1]:.1f} ms (grows)"
+    )
+    print(
+        f"tonic neuron    : {len(st_tonic)} spikes/s, ISI {min(isi_tonic):.1f}..{max(isi_tonic):.1f} ms (flat)"
+    )
     print(f"f-I curve       : I {currents} pA -> {fI} spikes/s (monotone)")
     print(f"subthreshold    : I=100 pA -> {len(st_sub)} spikes (below rheobase)")
     print("=" * 64)
@@ -105,20 +122,32 @@ def main():
     # spike-frequency adaptation: ISIs of the adapting neuron increase then saturate. Allow one dt of slack:
     # at the steady-state plateau the ISI wobbles by a single fixed-step grid cell (e.g. 76.0 vs 76.1 ms).
     _tol = adapting.dt + 1e-9
-    assert all(y >= x - _tol for x, y in zip(isi_adapt, isi_adapt[1:])), f"adapting ISIs must not shrink ({isi_adapt})"
-    assert isi_adapt[-1] > 1.3 * isi_adapt[0], f"adaptation must lengthen ISIs ({isi_adapt[0]:.2f} -> {isi_adapt[-1]:.2f})"
+    assert all(y >= x - _tol for x, y in zip(isi_adapt, isi_adapt[1:])), (
+        f"adapting ISIs must not shrink ({isi_adapt})"
+    )
+    assert isi_adapt[-1] > 1.3 * isi_adapt[0], (
+        f"adaptation must lengthen ISIs ({isi_adapt[0]:.2f} -> {isi_adapt[-1]:.2f})"
+    )
     # tonic neuron is regular: ISI spread is tiny relative to the mean
     mean_tonic = sum(isi_tonic) / len(isi_tonic)
-    assert (max(isi_tonic) - min(isi_tonic)) < 0.05 * mean_tonic, f"tonic ISIs must be near-constant ({isi_tonic})"
+    assert (max(isi_tonic) - min(isi_tonic)) < 0.05 * mean_tonic, (
+        f"tonic ISIs must be near-constant ({isi_tonic})"
+    )
     # adaptation reduces the firing rate: fewer spikes than the identically-driven tonic neuron
-    assert len(st_adapt) < len(st_tonic), "adaptation must lower the firing rate vs the non-adapting neuron"
+    assert len(st_adapt) < len(st_tonic), (
+        "adaptation must lower the firing rate vs the non-adapting neuron"
+    )
     # f-I monotone and subthreshold silent
     assert fI[0] < fI[1] < fI[2], f"f-I curve must be strictly increasing ({fI})"
     assert len(st_sub) == 0, "current below rheobase must not spike"
     # determinism: identical params + input -> identical spike train
-    assert AdEx(a=2.0, b=60.0, tau_w=300.0).run(500.0, ms) == st_adapt, "same params -> identical train (deterministic)"
-    print(f"self-check OK: adaptation grew ISI {isi_adapt[0]:.1f}->{isi_adapt[-1]:.1f} ms "
-          f"({len(st_adapt)} vs {len(st_tonic)} tonic spikes); f-I {fI} monotone; subthreshold silent; deterministic")
+    assert AdEx(a=2.0, b=60.0, tau_w=300.0).run(500.0, ms) == st_adapt, (
+        "same params -> identical train (deterministic)"
+    )
+    print(
+        f"self-check OK: adaptation grew ISI {isi_adapt[0]:.1f}->{isi_adapt[-1]:.1f} ms "
+        f"({len(st_adapt)} vs {len(st_tonic)} tonic spikes); f-I {fI} monotone; subthreshold silent; deterministic"
+    )
 
 
 if __name__ == "__main__":

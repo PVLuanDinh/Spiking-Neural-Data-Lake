@@ -37,6 +37,7 @@ Deps: stdlib + git (subprocess). The self-check builds a HERMETIC throwaway git 
 full worktree protocol on it (fast, touches nothing real); `attempt_on_repo` is the real-repo adapter.
   PYTHONPATH=src .venv-lake/Scripts/python research/godel_machine.py     # protocol on a temp git repo
 """
+
 import os
 import shutil
 import subprocess
@@ -78,7 +79,7 @@ class GodelMachine:
         if not self._verify(repo) or base is None:
             raise ValueError("refusing to start: HEAD does not pass its own gates")
         self._util = base
-        self.log = []              # (name, accepted, reason, utility-after) -- the audit trail
+        self.log = []  # (name, accepted, reason, utility-after) -- the audit trail
 
     @property
     def utility(self):
@@ -88,28 +89,43 @@ class GodelMachine:
         """Try ONE self-rewrite. `rewrite(worktree_dir)` writes the generated code into an ISOLATED git
         worktree (native code-generation / self-modification). Committed to main ONLY on proof."""
         self._n += 1
-        branch = f"godel/try-{self._n}-{os.getpid()}"          # unique per attempt (pid-tagged)
+        branch = f"godel/try-{self._n}-{os.getpid()}"  # unique per attempt (pid-tagged)
         wt = tempfile.mkdtemp(prefix="godel_wt_")
-        shutil.rmtree(wt)                                      # git worktree add wants a non-existent path
+        shutil.rmtree(wt)  # git worktree add wants a non-existent path
         _git(self.repo, "worktree", "add", "--quiet", "-b", branch, wt, "HEAD")
         try:
-            rewrite(wt)                                        # <-- the self-rewrite mutates code in the worktree
+            rewrite(wt)  # <-- the self-rewrite mutates code in the worktree
             # PROOF, measured FROM OUTSIDE (the kernel's pinned judgment, not the worktree's own tests):
             if not self._verify(wt):
-                return self._record(name, False, "rejected: a gate went red under the pinned verifier")
+                return self._record(
+                    name, False, "rejected: a gate went red under the pinned verifier"
+                )
             new_util = self._utility(wt)
             if new_util is None:
-                return self._record(name, False, "rejected: utility could not be measured (no proof)")
+                return self._record(
+                    name, False, "rejected: utility could not be measured (no proof)"
+                )
             if new_util <= self._util:
-                return self._record(name, False, f"rejected: utility {new_util} !> current {self._util} (no gain)")
+                return self._record(
+                    name, False, f"rejected: utility {new_util} !> current {self._util} (no gain)"
+                )
             # proof holds -> commit the rewrite and fast-forward main onto it (the machine has improved)
             _git(wt, "add", "-A")
-            _git(wt, *_GIT_ID, "commit", "--quiet", "-m", f"godel: {name} (utility {self._util}->{new_util})")
+            _git(
+                wt,
+                *_GIT_ID,
+                "commit",
+                "--quiet",
+                "-m",
+                f"godel: {name} (utility {self._util}->{new_util})",
+            )
             _git(self.repo, "merge", "--ff-only", "--quiet", branch)
             self._util = new_util
             return self._record(name, True, f"committed: green + utility {new_util}")
-        except Exception as e:                                # a proposal that crashes is discarded, main intact
-            return self._record(name, False, f"rejected: apply/verify raised {type(e).__name__}: {e}")
+        except Exception as e:  # a proposal that crashes is discarded, main intact
+            return self._record(
+                name, False, f"rejected: apply/verify raised {type(e).__name__}: {e}"
+            )
         finally:
             # ALWAYS discard the worktree + branch: on accept the commit is already on main (redundant
             # ref), on reject nothing merged. Keeps the repo clean and branch names collision-free.
@@ -130,10 +146,13 @@ class GodelMachine:
 # (so the "proof obligation preserves safety" claim actually holds -- it holds because the checker and
 # the safety envelope cannot be co-rewritten out of existence).
 _SAFETY_KERNEL = (
-    "src/snn_data_lake/brainstem/reflex.py", "src/snn_data_lake/brainstem/serial_arm.py",
-    "src/snn_data_lake/brainstem/arm_sim.py", "src/snn_data_lake/brainstem/arm_config.py",
+    "src/snn_data_lake/brainstem/reflex.py",
+    "src/snn_data_lake/brainstem/serial_arm.py",
+    "src/snn_data_lake/brainstem/arm_sim.py",
+    "src/snn_data_lake/brainstem/arm_config.py",
     "src/snn_data_lake/brainstem/interpreter.py",
-    "run_selfchecks.py", "src/snn_data_lake/reasoning/godel_machine.py",
+    "run_selfchecks.py",
+    "src/snn_data_lake/reasoning/godel_machine.py",
 )
 
 
@@ -142,7 +161,8 @@ def attempt_on_repo(repo, name, rewrite, pinned_probe, protected=_SAFETY_KERNEL)
     the verifier); if it leaves that intact it must make run_selfchecks + ruff GREEN in the worktree
     AND strictly raise the pinned external utility. NOT run in CI (spawns the full gate suite); this is
     the entrypoint a human invokes to let the brain rewrite its own core, one proven step at a time."""
-    _git(repo, "worktree", "prune", check=False)              # clear any worktree left by a prior hard-kill
+    _git(repo, "worktree", "prune", check=False)  # clear any worktree left by a prior hard-kill
+
     def verify(wt):
         # CORRIGIBILITY: refuse a rewrite that modified any fixed-kernel file (checked from git status,
         # BEFORE trusting the worktree's own gate -- so the gate cannot be co-rewritten to pass).
@@ -152,10 +172,19 @@ def attempt_on_repo(repo, name, rewrite, pinned_probe, protected=_SAFETY_KERNEL)
         touched = {entry[3:] for entry in status.split("\0") if len(entry) > 3}
         if touched & set(protected):
             return False
-        env = {**_ENV, "PYTHONPATH": "src", "NORD_HOME": tempfile.mkdtemp(prefix="godel_gate_home_")}
-        a = subprocess.run([sys.executable, "run_selfchecks.py"], cwd=wt, env=env, capture_output=True)
-        b = subprocess.run([sys.executable, "-m", "ruff", "check", "."], cwd=wt, capture_output=True)
+        env = {
+            **_ENV,
+            "PYTHONPATH": "src",
+            "NORD_HOME": tempfile.mkdtemp(prefix="godel_gate_home_"),
+        }
+        a = subprocess.run(
+            [sys.executable, "run_selfchecks.py"], cwd=wt, env=env, capture_output=True
+        )
+        b = subprocess.run(
+            [sys.executable, "-m", "ruff", "check", "."], cwd=wt, capture_output=True
+        )
         return a.returncode == 0 and b.returncode == 0
+
     return GodelMachine(repo, verify, pinned_probe).attempt(name, rewrite)
 
 
@@ -163,7 +192,7 @@ def attempt_on_repo(repo, name, rewrite, pinned_probe, protected=_SAFETY_KERNEL)
 
 _SYSTEM_V0 = "def predict(x):\n    return 0            # v0: always guesses 0 (poor)\n"
 # the machine's PINNED, EXTERNAL judgment -- defined HERE, never loaded from the repo under test.
-_BATTERY = [(0, 0), (1, 1), (2, 4), (3, 9), (4, 16)]        # the true task: x -> x*x
+_BATTERY = [(0, 0), (1, 1), (2, 4), (3, 9), (4, 16)]  # the true task: x -> x*x
 
 
 def _probe_source():
@@ -189,7 +218,9 @@ def _measure(worktree):
     probe = os.path.join(tempfile.gettempdir(), "godel_probe.py")
     with open(probe, "w") as f:
         f.write(_probe_source())
-    r = subprocess.run([sys.executable, probe], cwd=worktree, env=_ENV, capture_output=True, text=True)
+    r = subprocess.run(
+        [sys.executable, probe], cwd=worktree, env=_ENV, capture_output=True, text=True
+    )
     for line in r.stdout.splitlines():
         if line.startswith("UTIL "):
             return float(line.split()[1])
@@ -213,11 +244,18 @@ def main():
         _git(repo, "add", "-A")
         _git(repo, *_GIT_ID, "commit", "--quiet", "-m", "seed: system v0")
 
-        def verify(wt):                       # a gate: the module must import and predict an int, no crash
+        def verify(wt):  # a gate: the module must import and predict an int, no crash
             probe = os.path.join(tempfile.gettempdir(), "godel_gate.py")
             with open(probe, "w") as f:
-                f.write("import sys; sys.path.insert(0,'.')\nimport system\nassert isinstance(system.predict(0), int)\n")
-            return subprocess.run([sys.executable, probe], cwd=wt, env=_ENV, capture_output=True).returncode == 0
+                f.write(
+                    "import sys; sys.path.insert(0,'.')\nimport system\nassert isinstance(system.predict(0), int)\n"
+                )
+            return (
+                subprocess.run(
+                    [sys.executable, probe], cwd=wt, env=_ENV, capture_output=True
+                ).returncode
+                == 0
+            )
 
         gm = GodelMachine(repo, verify, _measure)
         start = gm.utility
@@ -226,15 +264,20 @@ def main():
         def improve(wt):
             with open(os.path.join(wt, "system.py"), "w") as f:
                 f.write("def predict(x):\n    return x + x        # closer, but wrong for x*x\n")
+
         # a BREAKING rewrite: the gate (predict returns int, no crash) fails
         def broken(wt):
             with open(os.path.join(wt, "system.py"), "w") as f:
                 f.write("def predict(x):\n    raise RuntimeError('boom')\n")
+
         # a WIREHEADING attempt: inflate a self-reported score, do NOT improve the real task
         def cheat(wt):
             with open(os.path.join(wt, "system.py"), "w") as f:
-                f.write("SELF_SCORE = 1.0        # claim perfection...\n"
-                        "def predict(x):\n    return x + x   # ...but the real accuracy is unchanged\n")
+                f.write(
+                    "SELF_SCORE = 1.0        # claim perfection...\n"
+                    "def predict(x):\n    return x + x   # ...but the real accuracy is unchanged\n"
+                )
+
         # the SELF-REWRITE that actually solves the task (x -> x*x): strict gain -> committed
         def solve(wt):
             with open(os.path.join(wt, "system.py"), "w") as f:
@@ -245,29 +288,49 @@ def main():
         r_cheat = gm.attempt("wirehead-self-score", cheat)
         r_solve = gm.attempt("solve-task", solve)
 
-        for nm, (ok, why) in [("improve-core", r_improve), ("faster-but-broken", r_broken),
-                              ("wirehead-self-score", r_cheat), ("solve-task", r_solve)]:
+        for nm, (ok, why) in [
+            ("improve-core", r_improve),
+            ("faster-but-broken", r_broken),
+            ("wirehead-self-score", r_cheat),
+            ("solve-task", r_solve),
+        ]:
             print(f"  [{'COMMIT' if ok else 'REJECT'}] {nm:22s} -> {why}")
         _, main_src = _git(repo, "show", "HEAD:system.py")
         _, n_commits = _git(repo, "rev-list", "--count", "HEAD")
-        print(f"\n  utility ratchet: {start} -> {gm.utility}   (commits on main: {n_commits.strip()})")
+        print(
+            f"\n  utility ratchet: {start} -> {gm.utility}   (commits on main: {n_commits.strip()})"
+        )
 
         # ---- gated self-check: the Godel protocol holds on real worktrees ----
         assert r_improve[0] is True, "a green, strictly-better rewrite must be COMMITTED"
         assert r_broken[0] is False, "a rewrite that reddens the gate must be REJECTED"
-        assert r_cheat[0] is False, "a wireheading rewrite (inflated self-score, no real gain) must be REJECTED"
-        assert "x * x" in main_src, "the committed core must be the genuinely-better one (self-rewrite landed)"
-        assert "boom" not in main_src and "SELF_SCORE" not in main_src, "no rejected rewrite may reach main"
-        assert r_solve[0] is True and gm.utility == 1.0, "the task-solving self-rewrite must reach full utility"
-        assert int(n_commits.strip()) == 3, "exactly the two accepted rewrites are committed on top of the seed"
+        assert r_cheat[0] is False, (
+            "a wireheading rewrite (inflated self-score, no real gain) must be REJECTED"
+        )
+        assert "x * x" in main_src, (
+            "the committed core must be the genuinely-better one (self-rewrite landed)"
+        )
+        assert "boom" not in main_src and "SELF_SCORE" not in main_src, (
+            "no rejected rewrite may reach main"
+        )
+        assert r_solve[0] is True and gm.utility == 1.0, (
+            "the task-solving self-rewrite must reach full utility"
+        )
+        assert int(n_commits.strip()) == 3, (
+            "exactly the two accepted rewrites are committed on top of the seed"
+        )
         utils = [start] + [row[3] for row in gm.log]
-        assert all(b >= a for a, b in zip(utils, utils[1:])), "utility must be MONOTONIC (a Godel machine never regresses)"
+        assert all(b >= a for a, b in zip(utils, utils[1:])), (
+            "utility must be MONOTONIC (a Godel machine never regresses)"
+        )
 
-        print("\nSELF-CHECK PASSED: real git-worktree self-rewrite -- the machine generated code into its "
-              "own core, committed the two PROVEN improvements, and rejected the broken and the "
-              "wireheading rewrites via an EXTERNAL measurement it cannot tamper. One immutable "
-              "meta-rule (commit only on external proof of strict gain); everything else rewritable. "
-              "Bounded by the gate, honest by construction -- not an intelligence explosion.")
+        print(
+            "\nSELF-CHECK PASSED: real git-worktree self-rewrite -- the machine generated code into its "
+            "own core, committed the two PROVEN improvements, and rejected the broken and the "
+            "wireheading rewrites via an EXTERNAL measurement it cannot tamper. One immutable "
+            "meta-rule (commit only on external proof of strict gain); everything else rewritable. "
+            "Bounded by the gate, honest by construction -- not an intelligence explosion."
+        )
         return 0
     finally:
         _git(repo, "worktree", "prune", check=False)

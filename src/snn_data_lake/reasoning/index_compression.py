@@ -10,6 +10,7 @@ Compression of Vector IDs for ANN Search", ~7x on ids).
 
   Run: python index_compression.py       # (also run by run_selfchecks.py)
 """
+
 import gzip
 import random
 
@@ -38,7 +39,7 @@ def encode(lists):
         buf += sc._leb128(len(ids))
         prev = 0
         for x in ids:
-            buf += sc._leb128(x - prev)          # sorted -> small non-negative gaps -> ~1 byte each
+            buf += sc._leb128(x - prev)  # sorted -> small non-negative gaps -> ~1 byte each
             prev = x
     return bytes(buf)
 
@@ -61,7 +62,7 @@ def raw_bytes(lists):
     for ids in lists:
         buf += len(ids).to_bytes(4, "little")
         for x in ids:
-            buf += x.to_bytes(4, "little")       # fixed 4-byte id
+            buf += x.to_bytes(4, "little")  # fixed 4-byte id
     return bytes(buf)
 
 
@@ -78,16 +79,22 @@ def main():
     print(f"{len(lists)} lists, {n_ids:,} ids over an id-space of {ID_SPACE:,}")
     print(f"  fixed 4-byte ids : {len(raw):>7,} B  ({len(raw) / n_ids:.2f} B/id)")
     print(f"  gzip(fixed)      : {gz:>7,} B  ({len(raw) / gz:.1f}x)")
-    print(f"  d-gap + varint   : {len(var):>7,} B  ({len(raw) / len(var):.1f}x)  ({len(var) / n_ids:.2f} B/id)")
-    print("compresses the query INDEX metadata (edges/ids), complementary to spike_compression's payload.")
+    print(
+        f"  d-gap + varint   : {len(var):>7,} B  ({len(raw) / len(var):.1f}x)  ({len(var) / n_ids:.2f} B/id)"
+    )
+    print(
+        "compresses the query INDEX metadata (edges/ids), complementary to spike_compression's payload."
+    )
     print("=" * 58)
 
     # ---- self-check: one runnable assert-based check; deterministic ----
     assert decode(var) == lists, "index codec must be lossless (round-trip mismatch)"
     assert len(var) < len(raw), "d-gap+varint should beat fixed 4-byte ids"
     assert len(var) < gz, f"order-invariant codec should beat generic gzip ({len(var)} !< {gz})"
-    print(f"self-check OK: lossless; d-gap+varint {len(raw) / len(var):.1f}x < fixed and beats gzip "
-          f"({gz} -> {len(var)} B)")
+    print(
+        f"self-check OK: lossless; d-gap+varint {len(raw) / len(var):.1f}x < fixed and beats gzip "
+        f"({gz} -> {len(var)} B)"
+    )
 
 
 if __name__ == "__main__":

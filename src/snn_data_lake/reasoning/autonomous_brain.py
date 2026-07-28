@@ -35,6 +35,7 @@ Knobs: NORD_CYCLES(18) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NO
        NORD_HIDDEN(32) NORD_GROW_K(16) NORD_HIDDEN_CAP(200) NORD_MAINTAIN(20) NORD_TRAIN(10000) NORD_TEST(2000)
 Deps: numpy torch torchvision snntorch
 """
+
 import os
 
 import torch
@@ -75,8 +76,12 @@ def main():
     lake_path = os.path.join(os.environ.get("TEMP", "."), "sndl_autonomous_brain.spkl")
 
     print("=" * 92)
-    print("AUTONOMOUS BRAIN -- enclosed self-directed loop: perceive -> hold-in-WM -> learn -> grow -> consolidate -> repeat")
-    print(f"device={dev}  cycles={CYCLES}  C1={C1}  hidden={HIDDEN}(+{GROW_K}/grow,cap {HIDDEN_CAP})  lake={lake_path}")
+    print(
+        "AUTONOMOUS BRAIN -- enclosed self-directed loop: perceive -> hold-in-WM -> learn -> grow -> consolidate -> repeat"
+    )
+    print(
+        f"device={dev}  cycles={CYCLES}  C1={C1}  hidden={HIDDEN}(+{GROW_K}/grow,cap {HIDDEN_CAP})  lake={lake_path}"
+    )
     print("=" * 92)
     Xtr, Ytr, Xte, Yte = load_mnist(envi("NORD_TRAIN", 10000), envi("NORD_TEST", 2000))
 
@@ -95,11 +100,13 @@ def main():
     te_by = {d: (Yte == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
 
     # ---- the faculties (all real, verified components) ----
-    readout = GrowableReadout(D, n_classes=10, hidden=HIDDEN, seed=0)   # UNDERSTANDING + NEUROGENESIS
-    lake = LakeMemory(path=lake_path, seed=0)                           # LIFELONG durable memory
-    wm = PrefrontalExecutive(n_options=10, seed=0)                      # WORKING MEMORY (persistent-activity pointer)
-    meta = MetacognitiveMonitor(seed=0)                                 # METACOGNITION (drives grow)
-    curiosity = SpikingCuriosityDrive(seed=0)                           # intrinsic learning-progress
+    readout = GrowableReadout(
+        D, n_classes=10, hidden=HIDDEN, seed=0
+    )  # UNDERSTANDING + NEUROGENESIS
+    lake = LakeMemory(path=lake_path, seed=0)  # LIFELONG durable memory
+    wm = PrefrontalExecutive(n_options=10, seed=0)  # WORKING MEMORY (persistent-activity pointer)
+    meta = MetacognitiveMonitor(seed=0)  # METACOGNITION (drives grow)
+    curiosity = SpikingCuriosityDrive(seed=0)  # intrinsic learning-progress
     curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)
     lc = LocusCoeruleus()
 
@@ -112,8 +119,8 @@ def main():
         proposed = curiosity.most_curious(candidates)
         wm.update(_evidence(proposed))
         for _ in range(MAINTAIN):
-            wm.maintain()                                              # reverberating hold, no input
-        objective = wm.goal if wm.goal is not None else proposed       # act on the WM-held pointer
+            wm.maintain()  # reverberating hold, no input
+        objective = wm.goal if wm.goal is not None else proposed  # act on the WM-held pointer
         wm_hits += int(objective == proposed)
         is_new = objective not in learned
         comp_before = competence[objective]
@@ -130,7 +137,7 @@ def main():
 
         # ---- CONSOLIDATE to LIFELONG lake memory ----
         if is_new:
-            pool = tr_by[objective][n_train:n_train + PER]
+            pool = tr_by[objective][n_train : n_train + PER]
             lake.consolidate([Gtr[r].tolist() for r in pool], payloads=pool)
             mem_rows[objective] = pool
             learned.append(objective)
@@ -143,8 +150,12 @@ def main():
         curiosity.observe(objective, 1.0 - competence[objective])
         lp = curiosity.learning_progress(objective)
         curriculum.observe(lp)
-        meta.update(confidence=competence[objective], surprise=abs(lp), learning_progress=lp,
-                    novelty=curiosity.novelty(objective))
+        meta.update(
+            confidence=competence[objective],
+            surprise=abs(lp),
+            learning_progress=lp,
+            novelty=curiosity.novelty(objective),
+        )
 
         # ---- NEUROGENESIS: the brain GROWS a fresh block of readout neurons for each NEW concept and FREEZES
         #      the old ones (function-preserving grow-and-freeze) -> new capacity per concept, no forgetting.
@@ -156,28 +167,44 @@ def main():
             readout.grow(GROW_K, freeze_old=True)
             grow_events += 1
             grew = f"  [+neurogenesis: grew to {readout.n_hidden} neurons]"
-        print(f"CYCLE {cyc:2d} propose {proposed}->WM {objective} ({'new' if is_new else 'rev'})  "
-              f"understand={overall:.1%}  lake={lake.n_stored}  metacog(rel={meta.reliability():.2f}){grew}")
+        print(
+            f"CYCLE {cyc:2d} propose {proposed}->WM {objective} ({'new' if is_new else 'rev'})  "
+            f"understand={overall:.1%}  lake={lake.n_stored}  metacog(rel={meta.reliability():.2f}){grew}"
+        )
 
     durable = lake.durability_check()
     final = curve[-1] if curve else 0.0
     print("\n" + "=" * 92)
     print("AUTONOMOUS BRAIN -- one full enclosed cycle, all faculties active:")
     print("-" * 92)
-    print(f"  PERCEPTION   : unsupervised conv1 features (frozen), diversity {conv.kernel_diversity():.3f}")
-    print(f"  WORKING MEM  : objective held in prefrontal persistent activity  {wm_hits}/{CYCLES} cycles")
-    print(f"  SELF-DIRECT  : curiosity + curriculum ({curriculum.mastered}/10 mastered) + metacognition chose every objective")
-    print(f"  NEUROGENESIS : the brain GREW its own readout {grow_events}x -> {readout.n_hidden} neurons")
-    print(f"  LIFELONG MEM : {lake.n_stored} exemplars in the DURABLE data lake; survives restart = {durable.get('ok')}")
+    print(
+        f"  PERCEPTION   : unsupervised conv1 features (frozen), diversity {conv.kernel_diversity():.3f}"
+    )
+    print(
+        f"  WORKING MEM  : objective held in prefrontal persistent activity  {wm_hits}/{CYCLES} cycles"
+    )
+    print(
+        f"  SELF-DIRECT  : curiosity + curriculum ({curriculum.mastered}/10 mastered) + metacognition chose every objective"
+    )
+    print(
+        f"  NEUROGENESIS : the brain GREW its own readout {grow_events}x -> {readout.n_hidden} neurons"
+    )
+    print(
+        f"  LIFELONG MEM : {lake.n_stored} exemplars in the DURABLE data lake; survives restart = {durable.get('ok')}"
+    )
     print(f"  UNDERSTANDING: held-out competence over {sorted(learned)} = {final:.1%}")
     print("-" * 92)
-    print("  perceive -> hold-in-WM -> learn -> deepen -> grow neurons -> consolidate to lifelong memory -> REPEAT")
+    print(
+        "  perceive -> hold-in-WM -> learn -> deepen -> grow neurons -> consolidate to lifelong memory -> REPEAT"
+    )
     print("=" * 92)
     assert final > 0.10, "autonomous brain at/below chance"
     assert durable.get("ok"), "lifelong memory did not survive restart"
     assert wm_hits > 0 and lake.n_stored > 0, "a faculty was inactive"
-    print(f"self-check OK: enclosed autonomous loop -- perception+WM+self-direction+neurogenesis({grow_events} grows)+"
-          f"lifelong-lake(durable)+understanding({final:.1%}) all active over {CYCLES} cycles.")
+    print(
+        f"self-check OK: enclosed autonomous loop -- perception+WM+self-direction+neurogenesis({grow_events} grows)+"
+        f"lifelong-lake(durable)+understanding({final:.1%}) all active over {CYCLES} cycles."
+    )
     return 0
 
 

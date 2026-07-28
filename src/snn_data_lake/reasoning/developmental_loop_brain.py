@@ -46,6 +46,7 @@ Scale knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(3
              NORD_HIDDEN_CAP(160) NORD_GPU
 Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
 """
+
 import os
 import sys
 import time
@@ -66,7 +67,11 @@ from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp
 from snn_data_lake.reasoning.brain_adapters.hippocampal_memory import HippocampalMemory
 from snn_data_lake.reasoning.brain_adapters.growable_readout import GrowableReadout
 from snn_data_lake.reasoning.brain_adapters.brain_decision import BrainDecision
-from snn_data_lake.reasoning.brain_adapters.executive_control import ExecutivePlanner, DopamineModulator, WorkspaceBroadcast
+from snn_data_lake.reasoning.brain_adapters.executive_control import (
+    ExecutivePlanner,
+    DopamineModulator,
+    WorkspaceBroadcast,
+)
 from snn_data_lake.reasoning.brain_adapters.laminar_readout import LaminarReadout, LaminarColumns
 
 
@@ -100,11 +105,14 @@ class _LinearReadout:
     def n_hidden(self):
         return 0
 
+
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
 
-VOTE_LOOP_BAR = 0.85    # developmental_loop.py STDP-prototype + neuron-label VOTE readout (best 88.8%)
-DEEP_LOOP_REF = 0.935   # developmental_loop_deep.py (v3.54) conv1 + continual LINEAR readout
+VOTE_LOOP_BAR = (
+    0.85  # developmental_loop.py STDP-prototype + neuron-label VOTE readout (best 88.8%)
+)
+DEEP_LOOP_REF = 0.935  # developmental_loop_deep.py (v3.54) conv1 + continual LINEAR readout
 BASE_LR = 0.01
 
 
@@ -150,16 +158,28 @@ def main():
     HIDDEN_CAP = _envi("NORD_HIDDEN_CAP", 160)
     # SLEEP consolidation (anti-forgetting): after the objective-skewed LEARN, replay a BALANCED interleaved
     # batch of ALL learned digits at reduced lr (hippocampal replay -> neocortical consolidation, CLS).
-    SLEEP_EVERY = _envi("NORD_SLEEP_EVERY", 1)     # run a sleep pass every N cycles
-    SLEEP_PER = _envi("NORD_SLEEP_PER", 200)       # balanced replay feats per learned digit in the sleep pass
-    SLEEP_STEPS = _envi("NORD_SLEEP_STEPS", 0)     # consolidation SGD steps (0 = sleep OFF, the default -- see below)
-    SLEEP_LR_SCALE = float(os.environ.get("NORD_SLEEP_LR", "0.5"))   # reduced plasticity during sleep
+    SLEEP_EVERY = _envi("NORD_SLEEP_EVERY", 1)  # run a sleep pass every N cycles
+    SLEEP_PER = _envi(
+        "NORD_SLEEP_PER", 200
+    )  # balanced replay feats per learned digit in the sleep pass
+    SLEEP_STEPS = _envi(
+        "NORD_SLEEP_STEPS", 0
+    )  # consolidation SGD steps (0 = sleep OFF, the default -- see below)
+    SLEEP_LR_SCALE = float(
+        os.environ.get("NORD_SLEEP_LR", "0.5")
+    )  # reduced plasticity during sleep
 
     print("=" * 92)
-    print("BRAIN-INTEGRATED DEVELOPMENTAL LOOP (Slice 1) -- real hippocampus + basal-ganglia + metacog + neurogenesis")
-    print("  conv1 (unsupervised) -> GrowableReadout ; memory=HippocampalMemory ; decision=curiosity+curriculum+BrainDecision")
-    print(f"device={dev}  cycles={CYCLES}  C1={C1}  per={PER}  replay={REPLAY}  sgd={SGD}  "
-          f"hidden={HIDDEN}(grow +{GROW_K}, cap {HIDDEN_CAP})  train={TRAIN_N}  test={TEST_N}")
+    print(
+        "BRAIN-INTEGRATED DEVELOPMENTAL LOOP (Slice 1) -- real hippocampus + basal-ganglia + metacog + neurogenesis"
+    )
+    print(
+        "  conv1 (unsupervised) -> GrowableReadout ; memory=HippocampalMemory ; decision=curiosity+curriculum+BrainDecision"
+    )
+    print(
+        f"device={dev}  cycles={CYCLES}  C1={C1}  per={PER}  replay={REPLAY}  sgd={SGD}  "
+        f"hidden={HIDDEN}(grow +{GROW_K}, cap {HIDDEN_CAP})  train={TRAIN_N}  test={TEST_N}"
+    )
     print("=" * 92)
 
     print("loading MNIST...")
@@ -167,7 +187,9 @@ def main():
 
     # ---- STAGE 1: UNSUPERVISED PERCEPTION (conv1, frozen) ----
     torch.manual_seed(0)
-    print(f"\n[perception] pre-training conv1 latency-STDP (UNSUPERVISED, {L1_EPOCHS} epochs, no labels)...")
+    print(
+        f"\n[perception] pre-training conv1 latency-STDP (UNSUPERVISED, {L1_EPOCHS} epochs, no labels)..."
+    )
     conv = ConvLatencyStdp(C1, T_LAT)
     for ep in range(L1_EPOCHS):
         for i, img in enumerate(Xtr):
@@ -175,8 +197,10 @@ def main():
             if (i + 1) % 2000 == 0:
                 print(f"  conv1 ep{ep + 1}/{L1_EPOCHS}: {i + 1}/{len(Xtr)} images")
     diversity = conv.kernel_diversity()
-    print(f"[perception] conv1 FROZEN; feat_dim={conv.feat_dim()}; kernel diversity={diversity:.3f} "
-          f"({'no collapse' if diversity < 0.6 else 'WARNING collapse'})")
+    print(
+        f"[perception] conv1 FROZEN; feat_dim={conv.feat_dim()}; kernel diversity={diversity:.3f} "
+        f"({'no collapse' if diversity < 0.6 else 'WARNING collapse'})"
+    )
 
     print("\n[cache] pre-computing frozen conv1 features (train + test, once)...")
     Ftr = _cache_features(conv, Xtr, dev, "train")
@@ -194,34 +218,52 @@ def main():
     # 78.6% at ~7 classes) where the linear readout does not. The neurogenesis mechanism is sound; MLP-continual-
     # forgetting is the cost. Kept opt-in for reproducibility.
     GROWABLE = _envi("NORD_GROWABLE", 0)
-    LAMINAR = _envi("NORD_LAMINAR", 0)     # readout as the 6-layer NEOCORTICAL motif (L4->L2/3->L5->L6) with
+    LAMINAR = _envi(
+        "NORD_LAMINAR", 0
+    )  # readout as the 6-layer NEOCORTICAL motif (L4->L2/3->L5->L6) with
     #                                        NEUROGENESIS (grow+freeze) in the L2/3 feature layer (v3.59: partial
     #                                        freeze insufficient -> 63.7%).
-    COLUMNS = _envi("NORD_COLUMNS", 0)     # per-digit ISOLATED cortical columns (progressive nets): each new digit
+    COLUMNS = _envi(
+        "NORD_COLUMNS", 0
+    )  # per-digit ISOLATED cortical columns (progressive nets): each new digit
     #                                        gets its OWN full L4+L2/3 column, whole old columns frozen -> frozen
     #                                        features always see stable (their own) input. Fixes v3.59's L4 drift.
-    FREEZE = _envi("NORD_FREEZE", 1)       # (with GROWABLE/LAMINAR/COLUMNS=1) grow-and-FREEZE progressive neurogenesis.
+    FREEZE = _envi(
+        "NORD_FREEZE", 1
+    )  # (with GROWABLE/LAMINAR/COLUMNS=1) grow-and-FREEZE progressive neurogenesis.
     if COLUMNS:
-        readout = LaminarColumns(D, n_classes=10, n23=HIDDEN, seed=0)       # per-digit isolated columns + shared L5
+        readout = LaminarColumns(
+            D, n_classes=10, n23=HIDDEN, seed=0
+        )  # per-digit isolated columns + shared L5
     elif LAMINAR:
-        readout = LaminarReadout(D, n_classes=10, n23=HIDDEN, seed=0)       # cortical-column readout + L2/3 neurogenesis
+        readout = LaminarReadout(
+            D, n_classes=10, n23=HIDDEN, seed=0
+        )  # cortical-column readout + L2/3 neurogenesis
     elif GROWABLE:
-        readout = GrowableReadout(D, n_classes=10, hidden=HIDDEN, seed=0)   # flat MLP + function-preserving neurogenesis
+        readout = GrowableReadout(
+            D, n_classes=10, hidden=HIDDEN, seed=0
+        )  # flat MLP + function-preserving neurogenesis
     else:
-        readout = _LinearReadout(D, n_classes=10, seed=0)                   # plain continual linear (v3.54 winner, 93.3%)
-    memory = HippocampalMemory(seed=0)                                  # real ReplayBuffer + SleepConsolidator
-    decision = BrainDecision(n_actions=10, state_dim=10, seed=0)        # LatentQ value + MetacognitiveMonitor
+        readout = _LinearReadout(
+            D, n_classes=10, seed=0
+        )  # plain continual linear (v3.54 winner, 93.3%)
+    memory = HippocampalMemory(seed=0)  # real ReplayBuffer + SleepConsolidator
+    decision = BrainDecision(
+        n_actions=10, state_dim=10, seed=0
+    )  # LatentQ value + MetacognitiveMonitor
     curiosity = SpikingCuriosityDrive(seed=0)
     curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)
     lc = LocusCoeruleus()
     # ---- Slice 2: executive planning + dopamine RPE neuromod + global-workspace broadcast (opt-in, default on) ----
-    EXEC = _envi("NORD_EXEC", 1)            # prefrontal_executive plans the objective (lookahead over competence)
-    DOPA = _envi("NORD_DOPA", 1)            # dopamine RPE modulates the readout lr alongside LC
-    WS = _envi("NORD_WS", 1)               # global_workspace broadcasts the current goal (coordination)
+    EXEC = _envi(
+        "NORD_EXEC", 1
+    )  # prefrontal_executive plans the objective (lookahead over competence)
+    DOPA = _envi("NORD_DOPA", 1)  # dopamine RPE modulates the readout lr alongside LC
+    WS = _envi("NORD_WS", 1)  # global_workspace broadcasts the current goal (coordination)
     planner = ExecutivePlanner(seed=0)
     dopamine = DopamineModulator(seed=0)
     workspace = WorkspaceBroadcast(seed=0)
-    da_gain = 1.0                          # dopamine lr multiplier (from the previous cycle's RPE)
+    da_gain = 1.0  # dopamine lr multiplier (from the previous cycle's RPE)
 
     learned = []
     competence = {d: 0.0 for d in range(10)}
@@ -241,20 +283,34 @@ def main():
         cur_scores = [curiosity.curiosity_value(d) for d in candidates]
         # EXECUTIVE: prefrontal_executive plans the objective by lookahead over competence dynamics (goal_value =
         # mean + min competence, predictor raises headroom-proportionally). Falls back to BrainDecision otherwise.
-        objective = planner.plan_objective(comp_vec, candidates) if EXEC else decision.choose(candidates, comp_vec, cur_scores)
+        objective = (
+            planner.plan_objective(comp_vec, candidates)
+            if EXEC
+            else decision.choose(candidates, comp_vec, cur_scores)
+        )
         consec = {d: (consec[d] + 1 if d == objective else 0) for d in range(10)}
         is_new = objective not in learned
         # GLOBAL WORKSPACE: broadcast the current goal (salience = how far from mastered). Coordination/faithfulness.
-        ws_ignited = workspace.broadcast("executive", f"study_digit_{objective}", 1.0 - competence[objective]) if WS else None
-        print(f"\nCYCLE {cyc}  ->  OBJECTIVE: digit {objective}  "
-              f"[{'explore (novel)' if is_new else 'revisit'}; {'EXEC-planned' if EXEC else 'metacog ' + ('EXPLORE' if decision.explore() else 'exploit')}, "
-              f"reliability={decision.reliability():.2f}, novelty={curiosity.novelty(objective):.2f}"
-              f"{'; workspace IGNITED' if ws_ignited else ''}]")
+        ws_ignited = (
+            workspace.broadcast(
+                "executive", f"study_digit_{objective}", 1.0 - competence[objective]
+            )
+            if WS
+            else None
+        )
+        print(
+            f"\nCYCLE {cyc}  ->  OBJECTIVE: digit {objective}  "
+            f"[{'explore (novel)' if is_new else 'revisit'}; {'EXEC-planned' if EXEC else 'metacog ' + ('EXPLORE' if decision.explore() else 'exploit')}, "
+            f"reliability={decision.reliability():.2f}, novelty={curiosity.novelty(objective):.2f}"
+            f"{'; workspace IGNITED' if ws_ignited else ''}]"
+        )
 
         # ---- NEUROMODULATION: locus-coeruleus NA on salience -> bounded readout lr gain ----
         salience = 1.0 if is_new else (1.0 - competence[objective])
         na = lc.step(salience)
-        gain = (1.0 + 0.5 * na) * (da_gain if DOPA else 1.0)   # LC noradrenaline x dopamine RPE (prev cycle)
+        gain = (1.0 + 0.5 * na) * (
+            da_gain if DOPA else 1.0
+        )  # LC noradrenaline x dopamine RPE (prev cycle)
 
         # ---- LEARN: continual readout SGD on the objective's cached features + BALANCED REPLAY sampled by
         #      the real HippocampalMemory (ReplayBuffer) of previously-learned digits. ----
@@ -268,7 +324,9 @@ def main():
         readout.train_step(Ftr[idx], ytr[idx], lr=BASE_LR * gain, steps=SGD)
         dt = time.time() - t0
         if is_new:
-            memory.store(tr_by[objective][n_train:n_train + REPLAY], objective)   # hippocampus remembers exemplars
+            memory.store(
+                tr_by[objective][n_train : n_train + REPLAY], objective
+            )  # hippocampus remembers exemplars
             learned.append(objective)
 
         # ---- SLEEP CONSOLIDATION (the anti-forgetting fix): the per-cycle LEARN above is objective-SKEWED, which a
@@ -276,14 +334,24 @@ def main():
         #      batch of ALL learned digits equally (no objective skew) at reduced lr -- hippocampal replay driving
         #      neocortical consolidation (Complementary Learning Systems). This is what stops the MLP crash. ----
         if learned and SLEEP_STEPS and (cyc % SLEEP_EVERY == 0):
-            sleep_rows = memory.sample(learned, SLEEP_PER)              # balanced across ALL learned (incl objective)
+            sleep_rows = memory.sample(
+                learned, SLEEP_PER
+            )  # balanced across ALL learned (incl objective)
             if sleep_rows:
                 sidx = torch.tensor(sleep_rows, dtype=torch.long, device=dev)
-                readout.train_step(Ftr[sidx], ytr[sidx], lr=BASE_LR * SLEEP_LR_SCALE, steps=SLEEP_STEPS)
-                print(f"  [sleep]         consolidated {len(learned)} digits, {len(sleep_rows)} balanced replay feats "
-                      f"x{SLEEP_STEPS} steps @ lr {BASE_LR * SLEEP_LR_SCALE:.4f} (interleaved, anti-forgetting)")
-        print(f"  [neuromod]      LC NA {na:.2f} ({lc.mode()}) salience {salience:.2f} -> readout lr gain x{gain:.2f}")
-        print(f"  [readout]       {SGD} steps on {len(obj_rows)} digit-{objective} + {len(replay_rows)} hippocampal-replay feats ({dt:.1f}s)")
+                readout.train_step(
+                    Ftr[sidx], ytr[sidx], lr=BASE_LR * SLEEP_LR_SCALE, steps=SLEEP_STEPS
+                )
+                print(
+                    f"  [sleep]         consolidated {len(learned)} digits, {len(sleep_rows)} balanced replay feats "
+                    f"x{SLEEP_STEPS} steps @ lr {BASE_LR * SLEEP_LR_SCALE:.4f} (interleaved, anti-forgetting)"
+                )
+        print(
+            f"  [neuromod]      LC NA {na:.2f} ({lc.mode()}) salience {salience:.2f} -> readout lr gain x{gain:.2f}"
+        )
+        print(
+            f"  [readout]       {SGD} steps on {len(obj_rows)} digit-{objective} + {len(replay_rows)} hippocampal-replay feats ({dt:.1f}s)"
+        )
 
         # ---- MEASURE competence on the held-out TEST cache (train/test never mix) ----
         for d in learned:
@@ -298,7 +366,13 @@ def main():
         lp = curiosity.learning_progress(objective)
         curriculum.observe(lp)
         comp_after_vec = [competence[d] for d in range(10)]
-        decision.observe(objective, [comp_before[d] for d in range(10)], comp_after_vec, lp, curiosity.novelty(objective))
+        decision.observe(
+            objective,
+            [comp_before[d] for d in range(10)],
+            comp_after_vec,
+            lp,
+            curiosity.novelty(objective),
+        )
         # DOPAMINE: reward-prediction-error on the realised competence gain sets NEXT cycle's lr multiplier.
         if DOPA:
             da_gain = dopamine.modulate(competence[objective] - comp_before[objective])
@@ -316,8 +390,10 @@ def main():
                 readout.grow(GROW_K)
                 grow_events += 1
                 grew = f" [+neurogenesis: readout hidden -> {readout.n_hidden}]"
-        print(f"  [self-improve]  competence over {sorted(learned)} = {overall:.1%}  (digit {objective}: "
-              f"{competence[objective]:.1%}, lp={lp:.3f}); curriculum {curriculum.mastered}/10{grew}")
+        print(
+            f"  [self-improve]  competence over {sorted(learned)} = {overall:.1%}  (digit {objective}: "
+            f"{competence[objective]:.1%}, lp={lp:.3f}); curriculum {curriculum.mastered}/10{grew}"
+        )
 
     # ---- consolidation pass (real SleepConsolidator over the learned digits) ----
     consol = memory.consolidate(learned)
@@ -325,19 +401,27 @@ def main():
     final_overall = curve[-1] if curve else 0.0
     gap_deep = final_overall - DEEP_LOOP_REF
     print("\n" + "=" * 92)
-    print(f"BRAIN-INTEGRATED LOOP COMPLETE: autonomously learned {sorted(learned)} over {CYCLES} cycles via the "
-          f"REAL brain subsystems;\n  perception unsupervised, readout grew {grow_events}x to hidden={readout.n_hidden} "
-          f"(function-preserving neurogenesis); curriculum mastered {curriculum.mastered}/10.")
+    print(
+        f"BRAIN-INTEGRATED LOOP COMPLETE: autonomously learned {sorted(learned)} over {CYCLES} cycles via the "
+        f"REAL brain subsystems;\n  perception unsupervised, readout grew {grow_events}x to hidden={readout.n_hidden} "
+        f"(function-preserving neurogenesis); curriculum mastered {curriculum.mastered}/10."
+    )
     print("-" * 92)
     print(f"  final OVERALL held-out test accuracy         : {final_overall:.1%}")
-    print(f"  accuracy CURVE (per cycle)                   : " + " ".join(f"{a:.2f}" for a in curve))
-    print(f"  hippocampal consolidation (SleepConsolidator): retention={consol.get('retention')}, "
-          f"value_margin={consol.get('value_margin')}, skills={consol.get('n_skills')}")
+    print(
+        f"  accuracy CURVE (per cycle)                   : " + " ".join(f"{a:.2f}" for a in curve)
+    )
+    print(
+        f"  hippocampal consolidation (SleepConsolidator): retention={consol.get('retention')}, "
+        f"value_margin={consol.get('value_margin')}, skills={consol.get('n_skills')}"
+    )
     print("-" * 92)
     print(f"  reference VOTE loop (STDP prototypes + vote) : ~{VOTE_LOOP_BAR:.0%} (best 88.8%)")
     print(f"  reference DEEP loop (conv1 + linear, v3.54)  : {DEEP_LOOP_REF:.1%}")
-    print(f"  brain-integrated (this) vs deep loop         : {gap_deep:+.1%} "
-          f"({'holds/gains -- faithfulness free' if gap_deep >= -0.01 else 'costs accuracy (honest)'})")
+    print(
+        f"  brain-integrated (this) vs deep loop         : {gap_deep:+.1%} "
+        f"({'holds/gains -- faithfulness free' if gap_deep >= -0.01 else 'costs accuracy (honest)'})"
+    )
     print("=" * 92)
 
     # self-check: routing through the real brain subsystems must still BEAT the vote loop (>0.85) + chance;
@@ -346,10 +430,17 @@ def main():
     assert final_overall > 0.10, f"brain loop at/below chance: {final_overall:.2f}"
     assert final_overall > VOTE_LOOP_BAR, (
         f"brain-integrated loop {final_overall:.3f} did not beat the vote-loop bar {VOTE_LOOP_BAR:.2f} -- "
-        "report the honest number, do not lower the bar.")
-    verdict = "holds/gains vs the deep loop" if gap_deep >= -0.01 else f"costs {-gap_deep:.1%} vs the deep loop"
-    print(f"self-check OK: brain-integrated loop {final_overall:.1%} > vote-loop ~{VOTE_LOOP_BAR:.0%} + chance; "
-          f"neurogenesis grew readout {grow_events}x; {verdict} (honest).")
+        "report the honest number, do not lower the bar."
+    )
+    verdict = (
+        "holds/gains vs the deep loop"
+        if gap_deep >= -0.01
+        else f"costs {-gap_deep:.1%} vs the deep loop"
+    )
+    print(
+        f"self-check OK: brain-integrated loop {final_overall:.1%} > vote-loop ~{VOTE_LOOP_BAR:.0%} + chance; "
+        f"neurogenesis grew readout {grow_events}x; {verdict} (honest)."
+    )
     return 0
 
 

@@ -88,14 +88,14 @@ def cnn_settle(u, A, B, z, dt=0.1, steps=200, boundary=-1.0):
     returns : settled output BITMAP, nested list of 0/1  (1 where y>0, i.e. saturated black)
     """
     rows, cols = len(u), len(u[0])
-    x = [[0.0] * cols for _ in range(rows)]                 # start from rest x=0
+    x = [[0.0] * cols for _ in range(rows)]  # start from rest x=0
     for _ in range(steps):
         y = [[f(x[i][j]) for j in range(cols)] for i in range(rows)]
         nxt = [[0.0] * cols for _ in range(rows)]
         for i in range(rows):
             for j in range(cols):
-                fb = _conv3x3(y, i, j, A, boundary)         # (A * y)_ij  feedback
-                ctrl = _conv3x3(u, i, j, B, boundary)       # (B * u)_ij  control
+                fb = _conv3x3(y, i, j, A, boundary)  # (A * y)_ij  feedback
+                ctrl = _conv3x3(u, i, j, B, boundary)  # (B * u)_ij  control
                 dx = -x[i][j] + fb + ctrl + z
                 nxt[i][j] = x[i][j] + dt * dx
         x = nxt
@@ -151,7 +151,9 @@ def main():
     print("CELLULAR NEURAL NETWORK -- locally-coupled analog array (Chua-Yang 1988)")
     print("=" * 64)
     print("template: dx/dt = -x + A*y + B*u + z  |  f(v)=0.5*(|v+1|-|v-1|)  |  dt=0.1")
-    print("feedback A center-only (a0=1) -> settled y_ij == sign((B*u)_ij + z), per-cell closed form")
+    print(
+        "feedback A center-only (a0=1) -> settled y_ij == sign((B*u)_ij + z), per-cell closed form"
+    )
     print("-" * 64)
     print("INPUT (6x6, solid 4x4 black block):")
     print(render(IN_BITS))
@@ -167,17 +169,23 @@ def main():
     # 1. edge detection: settled+thresholded grid == the block outline computed by hand from sign((B*u)+z)
     assert out_edge == EXPECTED_EDGE, f"edge-detect mismatch:\n{render(out_edge)}"
     # 2. interior black pixel nets w = 8 - 8 - 1 = -1 < 0 -> erased to white (a specific closed-form check)
-    interior = _conv3x3([[1.0 if b else -1.0 for b in r] for r in IN_BITS], 2, 2, B_EDGE, -1.0) + Z_EDGE
+    interior = (
+        _conv3x3([[1.0 if b else -1.0 for b in r] for r in IN_BITS], 2, 2, B_EDGE, -1.0) + Z_EDGE
+    )
     assert interior == -1.0 and out_edge[2][2] == 0, f"interior (2,2) w={interior}"
     # 3. an edge black pixel (top-left block corner) nets w = 8 - (-2) - 1 = 9 > 0 -> kept black
-    corner = _conv3x3([[1.0 if b else -1.0 for b in r] for r in IN_BITS], 1, 1, B_EDGE, -1.0) + Z_EDGE
+    corner = (
+        _conv3x3([[1.0 if b else -1.0 for b in r] for r in IN_BITS], 1, 1, B_EDGE, -1.0) + Z_EDGE
+    )
     assert corner == 9.0 and out_edge[1][1] == 1, f"corner (1,1) w={corner}"
     # 4. inversion: settled grid == pixelwise complement of the input
     assert out_not == EXPECTED_NOT, f"inversion mismatch:\n{render(out_not)}"
     # 5. deterministic (zero RNG): a repeat run yields the identical bitmap
     assert cnn_settle(u, A_EDGE, B_EDGE, Z_EDGE) == out_edge, "non-deterministic edge run"
-    print("self-check OK: center-only-A CNN settles to sign((B*u)+z); edge-detect == hand-computed "
-          "block outline (interior w=-1 erased, corner w=9 kept); inversion == pixelwise NOT; deterministic")
+    print(
+        "self-check OK: center-only-A CNN settles to sign((B*u)+z); edge-detect == hand-computed "
+        "block outline (interior w=-1 erased, corner w=9 kept); inversion == pixelwise NOT; deterministic"
+    )
 
 
 if __name__ == "__main__":

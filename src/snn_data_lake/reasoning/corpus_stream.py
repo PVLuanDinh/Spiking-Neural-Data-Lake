@@ -19,6 +19,7 @@ This is NOT toy scale: default targets are the full CMUdict and a multi-megabyte
 
   python research/corpus_stream.py        # self-check (offline sample or cached real corpus)
 """
+
 import os
 import re
 
@@ -26,9 +27,45 @@ from snn_data_lake.substrate.web_ingest import fetch_corpus
 
 # 39-phone ARPABET inventory (CMUdict stress digits stripped). The phonetics level's response set.
 ARPABET = [
-    "AA", "AE", "AH", "AO", "AW", "AY", "B", "CH", "D", "DH", "EH", "ER", "EY", "F", "G", "HH",
-    "IH", "IY", "JH", "K", "L", "M", "N", "NG", "OW", "OY", "P", "R", "S", "SH", "T", "TH", "UH",
-    "UW", "V", "W", "Y", "Z", "ZH",
+    "AA",
+    "AE",
+    "AH",
+    "AO",
+    "AW",
+    "AY",
+    "B",
+    "CH",
+    "D",
+    "DH",
+    "EH",
+    "ER",
+    "EY",
+    "F",
+    "G",
+    "HH",
+    "IH",
+    "IY",
+    "JH",
+    "K",
+    "L",
+    "M",
+    "N",
+    "NG",
+    "OW",
+    "OY",
+    "P",
+    "R",
+    "S",
+    "SH",
+    "T",
+    "TH",
+    "UH",
+    "UW",
+    "V",
+    "W",
+    "Y",
+    "Z",
+    "ZH",
 ]
 
 # A small BUNDLED real-English sample + real CMUdict pronunciations -- used ONLY when offline so the
@@ -46,44 +83,97 @@ _SAMPLE_TEXT = (
 
 # Real CMUdict entries for the sample vocabulary (ARPABET, stress stripped). Verbatim pronunciations.
 _SAMPLE_DICT = {
-    "the": ["DH", "AH"], "quick": ["K", "W", "IH", "K"], "brown": ["B", "R", "AW", "N"],
-    "fox": ["F", "AA", "K", "S"], "jumps": ["JH", "AH", "M", "P", "S"], "over": ["OW", "V", "ER"],
-    "lazy": ["L", "EY", "Z", "IY"], "dog": ["D", "AO", "G"], "and": ["AH", "N", "D"],
-    "runs": ["R", "AH", "N", "Z"], "after": ["AE", "F", "T", "ER"], "a": ["AH"],
-    "cat": ["K", "AE", "T"], "sat": ["S", "AE", "T"], "on": ["AA", "N"], "mat": ["M", "AE", "T"],
-    "while": ["W", "AY", "L"], "ran": ["R", "AE", "N"], "across": ["AH", "K", "R", "AO", "S"],
-    "yard": ["Y", "AA", "R", "D"], "in": ["IH", "N"], "bright": ["B", "R", "AY", "T"],
-    "sun": ["S", "AH", "N"], "she": ["SH", "IY"], "sells": ["S", "EH", "L", "Z"],
-    "sea": ["S", "IY"], "shells": ["SH", "EH", "L", "Z"], "shore": ["SH", "AO", "R"],
-    "shine": ["SH", "AY", "N"], "light": ["L", "AY", "T"], "we": ["W", "IY"],
-    "learn": ["L", "ER", "N"], "language": ["L", "AE", "NG", "G", "W", "AH", "JH"],
-    "from": ["F", "R", "AH", "M"], "sound": ["S", "AW", "N", "D"], "of": ["AH", "V"],
-    "words": ["W", "ER", "D", "Z"], "order": ["AO", "R", "D", "ER"], "that": ["DH", "AE", "T"],
-    "they": ["DH", "EY"], "come": ["K", "AH", "M"], "brain": ["B", "R", "EY", "N"],
-    "builds": ["B", "IH", "L", "D", "Z"], "meaning": ["M", "IY", "N", "IH", "NG"],
-    "company": ["K", "AH", "M", "P", "AH", "N", "IY"], "each": ["IY", "CH"],
-    "word": ["W", "ER", "D"], "keeps": ["K", "IY", "P", "S"], "time": ["T", "AY", "M"],
-    "when": ["W", "EH", "N"], "sets": ["S", "EH", "T", "S"], "sky": ["S", "K", "AY"],
-    "turns": ["T", "ER", "N", "Z"], "red": ["R", "EH", "D"], "birds": ["B", "ER", "D", "Z"],
-    "fly": ["F", "L", "AY"], "back": ["B", "AE", "K"], "to": ["T", "UW"],
-    "their": ["DH", "EH", "R"], "nests": ["N", "EH", "S", "T", "S"], "big": ["B", "IH", "G"],
-    "black": ["B", "L", "AE", "K"], "bug": ["B", "AH", "G"], "bit": ["B", "IH", "T"],
-    "bear": ["B", "EH", "R"], "bled": ["B", "L", "EH", "D"], "blood": ["B", "L", "AH", "D"],
-    "peter": ["P", "IY", "T", "ER"], "piper": ["P", "AY", "P", "ER"],
-    "picked": ["P", "IH", "K", "T"], "peck": ["P", "EH", "K"], "peppers": ["P", "EH", "P", "ER", "Z"],
-    "garden": ["G", "AA", "R", "D", "AH", "N"], "by": ["B", "AY"], "gate": ["G", "EY", "T"],
-    "over_the": ["OW", "V", "ER"], "runs_after": ["R", "AH", "N", "Z"],
-    "sun_sets": ["S", "AH", "N"], "shells_shine": ["SH", "EH", "L", "Z"],
-    "pickled": ["P", "IH", "K", "AH", "L", "D"], "pepper": ["P", "EH", "P", "ER"],
+    "the": ["DH", "AH"],
+    "quick": ["K", "W", "IH", "K"],
+    "brown": ["B", "R", "AW", "N"],
+    "fox": ["F", "AA", "K", "S"],
+    "jumps": ["JH", "AH", "M", "P", "S"],
+    "over": ["OW", "V", "ER"],
+    "lazy": ["L", "EY", "Z", "IY"],
+    "dog": ["D", "AO", "G"],
+    "and": ["AH", "N", "D"],
+    "runs": ["R", "AH", "N", "Z"],
+    "after": ["AE", "F", "T", "ER"],
+    "a": ["AH"],
+    "cat": ["K", "AE", "T"],
+    "sat": ["S", "AE", "T"],
+    "on": ["AA", "N"],
+    "mat": ["M", "AE", "T"],
+    "while": ["W", "AY", "L"],
+    "ran": ["R", "AE", "N"],
+    "across": ["AH", "K", "R", "AO", "S"],
+    "yard": ["Y", "AA", "R", "D"],
+    "in": ["IH", "N"],
+    "bright": ["B", "R", "AY", "T"],
+    "sun": ["S", "AH", "N"],
+    "she": ["SH", "IY"],
+    "sells": ["S", "EH", "L", "Z"],
+    "sea": ["S", "IY"],
+    "shells": ["SH", "EH", "L", "Z"],
+    "shore": ["SH", "AO", "R"],
+    "shine": ["SH", "AY", "N"],
+    "light": ["L", "AY", "T"],
+    "we": ["W", "IY"],
+    "learn": ["L", "ER", "N"],
+    "language": ["L", "AE", "NG", "G", "W", "AH", "JH"],
+    "from": ["F", "R", "AH", "M"],
+    "sound": ["S", "AW", "N", "D"],
+    "of": ["AH", "V"],
+    "words": ["W", "ER", "D", "Z"],
+    "order": ["AO", "R", "D", "ER"],
+    "that": ["DH", "AE", "T"],
+    "they": ["DH", "EY"],
+    "come": ["K", "AH", "M"],
+    "brain": ["B", "R", "EY", "N"],
+    "builds": ["B", "IH", "L", "D", "Z"],
+    "meaning": ["M", "IY", "N", "IH", "NG"],
+    "company": ["K", "AH", "M", "P", "AH", "N", "IY"],
+    "each": ["IY", "CH"],
+    "word": ["W", "ER", "D"],
+    "keeps": ["K", "IY", "P", "S"],
+    "time": ["T", "AY", "M"],
+    "when": ["W", "EH", "N"],
+    "sets": ["S", "EH", "T", "S"],
+    "sky": ["S", "K", "AY"],
+    "turns": ["T", "ER", "N", "Z"],
+    "red": ["R", "EH", "D"],
+    "birds": ["B", "ER", "D", "Z"],
+    "fly": ["F", "L", "AY"],
+    "back": ["B", "AE", "K"],
+    "to": ["T", "UW"],
+    "their": ["DH", "EH", "R"],
+    "nests": ["N", "EH", "S", "T", "S"],
+    "big": ["B", "IH", "G"],
+    "black": ["B", "L", "AE", "K"],
+    "bug": ["B", "AH", "G"],
+    "bit": ["B", "IH", "T"],
+    "bear": ["B", "EH", "R"],
+    "bled": ["B", "L", "EH", "D"],
+    "blood": ["B", "L", "AH", "D"],
+    "peter": ["P", "IY", "T", "ER"],
+    "piper": ["P", "AY", "P", "ER"],
+    "picked": ["P", "IH", "K", "T"],
+    "peck": ["P", "EH", "K"],
+    "peppers": ["P", "EH", "P", "ER", "Z"],
+    "garden": ["G", "AA", "R", "D", "AH", "N"],
+    "by": ["B", "AY"],
+    "gate": ["G", "EY", "T"],
+    "over_the": ["OW", "V", "ER"],
+    "runs_after": ["R", "AH", "N", "Z"],
+    "sun_sets": ["S", "AH", "N"],
+    "shells_shine": ["SH", "EH", "L", "Z"],
+    "pickled": ["P", "IH", "K", "AH", "L", "D"],
+    "pepper": ["P", "EH", "P", "ER"],
     "of_pickled": ["AH", "V"],
 }
 
 # public-domain plain-text corpus + CMUdict mirrors (real-scale defaults). Override via env.
 DEFAULT_CORPUS_URL = os.environ.get(
-    "NORD_CORPUS_URL", "https://www.gutenberg.org/files/1342/1342-0.txt")   # Pride and Prejudice
+    "NORD_CORPUS_URL", "https://www.gutenberg.org/files/1342/1342-0.txt"
+)  # Pride and Prejudice
 DEFAULT_CMUDICT_URL = os.environ.get(
-    "NORD_CMUDICT_URL",
-    "https://raw.githubusercontent.com/cmusphinx/cmudict/master/cmudict.dict")
+    "NORD_CMUDICT_URL", "https://raw.githubusercontent.com/cmusphinx/cmudict/master/cmudict.dict"
+)
 
 
 def _strip_stress(phones):
@@ -98,7 +188,7 @@ def load_cmudict(path=None, url=DEFAULT_CMUDICT_URL, max_bytes=6_000_000):
         try:
             fetch_corpus(url, path, max_bytes=max_bytes, strip_html=False)
         except Exception:
-            return dict(_SAMPLE_DICT), True                # offline -> bundled sample dict
+            return dict(_SAMPLE_DICT), True  # offline -> bundled sample dict
     d = {}
     try:
         with open(path, encoding="utf-8", errors="ignore") as f:
@@ -108,10 +198,10 @@ def load_cmudict(path=None, url=DEFAULT_CMUDICT_URL, max_bytes=6_000_000):
                 parts = line.split()
                 if len(parts) < 2:
                     continue
-                w = parts[0].lower().split("(")[0]         # cmudict variant marker "word(2)"
+                w = parts[0].lower().split("(")[0]  # cmudict variant marker "word(2)"
                 phones = []
                 for p in parts[1:]:
-                    if p.startswith("#"):                   # cmudict.dict trailing "# comment"
+                    if p.startswith("#"):  # cmudict.dict trailing "# comment"
                         break
                     phones.append(p)
                 arp = [p for p in _strip_stress(phones) if p in ARPABET]
@@ -179,10 +269,14 @@ def main():
     ph_pairs = list(phoneme_stream(words, cmudict, k=3))
     wd_pairs = list(word_stream(words, k=3))
     covered = sum(1 for w in set(words) if w in cmudict)
-    print(f"corpus words        : {len(words):,} tokens, {len(set(words)):,} types "
-          f"({'OFFLINE sample' if text_offline else 'real corpus'})")
-    print(f"cmudict             : {len(cmudict):,} entries "
-          f"({'OFFLINE sample' if dict_offline else 'real dict'}); {covered} corpus types covered")
+    print(
+        f"corpus words        : {len(words):,} tokens, {len(set(words)):,} types "
+        f"({'OFFLINE sample' if text_offline else 'real corpus'})"
+    )
+    print(
+        f"cmudict             : {len(cmudict):,} entries "
+        f"({'OFFLINE sample' if dict_offline else 'real dict'}); {covered} corpus types covered"
+    )
     print(f"phoneme pairs       : {len(ph_pairs):,} (context<=3 phonemes -> next phoneme)")
     print(f"word pairs          : {len(wd_pairs):,} (context<=3 words -> next word)")
     print(f"phoneme inventory   : {len(ARPABET)} ARPABET phones")
@@ -193,10 +287,14 @@ def main():
     # self-checks: the streams are real, non-empty, and every emitted phoneme is a known ARPABET phone
     assert len(ph_pairs) > 100, "phoneme stream too short -- ingestion failed"
     assert len(wd_pairs) > 100, "word stream too short -- ingestion failed"
-    assert all(nxt in ARPABET for _, nxt in ph_pairs), "a streamed phoneme is not a valid ARPABET phone"
+    assert all(nxt in ARPABET for _, nxt in ph_pairs), (
+        "a streamed phoneme is not a valid ARPABET phone"
+    )
     assert all(len(c) <= 3 for c, _ in ph_pairs), "context window exceeded k"
-    print(f"self-check OK: {len(ph_pairs):,} phoneme + {len(wd_pairs):,} word (context,next) pairs "
-          f"stream from real data (labels never faked; offline falls back to a bundled real sample).")
+    print(
+        f"self-check OK: {len(ph_pairs):,} phoneme + {len(wd_pairs):,} word (context,next) pairs "
+        f"stream from real data (labels never faked; offline falls back to a bundled real sample)."
+    )
     return 0
 
 

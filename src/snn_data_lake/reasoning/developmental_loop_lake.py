@@ -24,11 +24,10 @@ Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NO
        NORD_SGD(300) NORD_TRAIN(10000) NORD_TEST(2000)
 Deps: numpy torch torchvision snntorch  (research/GPU tier; core untouched)
 """
+
 import os
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 from snn_data_lake.reasoning.torch_device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
@@ -36,8 +35,8 @@ from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
 
 
-from snn_data_lake.reasoning._loop_common import envi as _envi, LinearReadout, acc as _acc   # noqa: E402 (shared DRY helpers)
-from snn_data_lake.reasoning.fast_features import batched_features_and_keys                  # noqa: E402 (one-pass spatial+keys)
+from snn_data_lake.reasoning._loop_common import envi as _envi, LinearReadout, acc as _acc  # noqa: E402 (shared DRY helpers)
+from snn_data_lake.reasoning.fast_features import batched_features_and_keys  # noqa: E402 (one-pass spatial+keys)
 
 
 def main():
@@ -57,8 +56,12 @@ def main():
     lake_path = os.path.join(scratch, "sndl_devloop_lake.spkl")
 
     print("=" * 84)
-    print("LAKE-BACKED DEVELOPMENTAL LOOP -- consolidate to the durable data lake, replay BY PROXIMITY")
-    print(f"device={dev}  cycles={CYCLES}  C1={C1}  per={PER}  replay(proximity-k)={REPLAY}  lake={lake_path}")
+    print(
+        "LAKE-BACKED DEVELOPMENTAL LOOP -- consolidate to the durable data lake, replay BY PROXIMITY"
+    )
+    print(
+        f"device={dev}  cycles={CYCLES}  C1={C1}  per={PER}  replay(proximity-k)={REPLAY}  lake={lake_path}"
+    )
     print("=" * 84)
     Xtr, Ytr, Xte, Yte = load_mnist(TRAIN_N, TEST_N)
 
@@ -67,20 +70,28 @@ def main():
     conv = ConvLatencyStdp(C1, T_LAT)
     for ep in range(L1_EPOCHS):
         _train(conv, Xtr, f"conv1 ep{ep + 1}/{L1_EPOCHS}")
-    print(f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}")
+    print(
+        f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}"
+    )
 
-    print("[cache] conv1 SPATIAL features (train+test) + compact C1 global KEYS (ONE forward pass)...")
-    Ftr, Gtr = batched_features_and_keys(conv, Xtr)                   # [Ntr, feat_dim], [Ntr, C1] proximity keys
-    Fte, _ = batched_features_and_keys(conv, Xte)                     # (test keys unused)
+    print(
+        "[cache] conv1 SPATIAL features (train+test) + compact C1 global KEYS (ONE forward pass)..."
+    )
+    Ftr, Gtr = batched_features_and_keys(conv, Xtr)  # [Ntr, feat_dim], [Ntr, C1] proximity keys
+    Fte, _ = batched_features_and_keys(conv, Xte)  # (test keys unused)
     ytr, yte = Ytr.long().to(dev), Yte.long().to(dev)
     D = Ftr.shape[1]
     tr_by = {d: (Ytr == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
     te_by = {d: (Yte == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
 
     readout = LinearReadout(D, seed=0)
-    lake = LakeMemory(path=lake_path, seed=0)            # DURABLE substrate lake + proximity index
-    from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
+    lake = LakeMemory(path=lake_path, seed=0)  # DURABLE substrate lake + proximity index
+    from snn_data_lake.neuromodulation.spiking_curiosity import (
+        SpikingCuriosityDrive,
+        SpikingCurriculum,
+    )
     from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
+
     curiosity = SpikingCuriosityDrive(seed=0)
     curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)
     lc = LocusCoeruleus()
@@ -98,8 +109,8 @@ def main():
         # ---- REPLAY PULLED BY PROXIMITY from the durable lake (content-addressable recall) ----
         replay_rows = []
         for d in [x for x in learned if x != objective]:
-            q = Gtr[mem_rows[d]].mean(0)                              # class-representative KEY for digit d
-            got = lake.retrieve(q.tolist(), k=REPLAY)                 # nearest stored exemplars from the lake
+            q = Gtr[mem_rows[d]].mean(0)  # class-representative KEY for digit d
+            got = lake.retrieve(q.tolist(), k=REPLAY)  # nearest stored exemplars from the lake
             replay_rows.extend(int(r) for r in got)
 
         n_train = PER if is_new else max(REPLAY, PER // 4)
@@ -109,8 +120,10 @@ def main():
 
         # ---- CONSOLIDATE this digit's held-out exemplars TO THE DATA LAKE (durable) ----
         if is_new:
-            pool = tr_by[objective][n_train:n_train + REPLAY]
-            lake.consolidate([Gtr[r].tolist() for r in pool], payloads=pool)   # keys -> durable lake + index
+            pool = tr_by[objective][n_train : n_train + REPLAY]
+            lake.consolidate(
+                [Gtr[r].tolist() for r in pool], payloads=pool
+            )  # keys -> durable lake + index
             mem_rows[objective] = pool
             learned.append(objective)
 
@@ -120,24 +133,34 @@ def main():
         curve.append(overall)
         curiosity.observe(objective, 1.0 - competence[objective])
         curriculum.observe(curiosity.learning_progress(objective))
-        print(f"CYCLE {cyc:2d} obj={objective} {'new' if is_new else 'rev'}  "
-              f"lake_stored={lake.n_stored}  proximity_replay={len(replay_rows)}  "
-              f"acc over {sorted(learned)} = {overall:.1%}")
+        print(
+            f"CYCLE {cyc:2d} obj={objective} {'new' if is_new else 'rev'}  "
+            f"lake_stored={lake.n_stored}  proximity_replay={len(replay_rows)}  "
+            f"acc over {sorted(learned)} = {overall:.1%}"
+        )
 
     # ---- durability proof: the consolidated memory survives a lake close+reopen ----
     durable = lake.durability_check()
     final = curve[-1] if curve else 0.0
     print("\n" + "=" * 84)
     print(f"LAKE LOOP COMPLETE: learned {sorted(learned)}; final held-out accuracy {final:.1%}")
-    print(f"  long-term memory: {lake.n_stored} exemplars CONSOLIDATED to the durable data lake ({lake_path})")
-    print(f"  replay each cycle was PULLED BY PROXIMITY (content-addressable), not random RAM sampling")
+    print(
+        f"  long-term memory: {lake.n_stored} exemplars CONSOLIDATED to the durable data lake ({lake_path})"
+    )
+    print(
+        f"  replay each cycle was PULLED BY PROXIMITY (content-addressable), not random RAM sampling"
+    )
     print(f"  DURABILITY (close+reopen the .spkl, memory survives): {durable}")
     print(f"  reference: developmental_loop_deep.py (RAM ring, random replay) = 93.3%")
     print("=" * 84)
-    assert final > 0.85, f"lake loop regressed below its ~90% claim: {final:.2f}"   # catch regressions, not just chance
+    assert final > 0.85, (
+        f"lake loop regressed below its ~90% claim: {final:.2f}"
+    )  # catch regressions, not just chance
     assert durable, "consolidated memory did NOT survive the lake reopen"
-    print(f"self-check OK: lake-backed loop {final:.1%} (proximity replay from the durable lake); "
-          f"{lake.n_stored} exemplars durable across restart; feature learning unsupervised.")
+    print(
+        f"self-check OK: lake-backed loop {final:.1%} (proximity replay from the durable lake); "
+        f"{lake.n_stored} exemplars durable across restart; feature learning unsupervised."
+    )
     return 0
 
 

@@ -794,7 +794,6 @@ def main():
         a = results[game_cls.name]
         for k in ("ind_held", "ind_scaled", "tab_scaled", "shuf_scaled"):
             det_ok = det_ok and abs(a[k] - res2[k]) < 1e-12
-    no_tensor = "numpy" not in sys.modules and "torch" not in sys.modules
 
     print("\n" + "=" * 90)
     print("VERDICT (un-riggable proof)")

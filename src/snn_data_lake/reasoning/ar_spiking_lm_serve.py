@@ -41,6 +41,7 @@ run. This module claims no BLiMP number a tiny model cannot back.
   PYTHONPATH=src python -m snn_data_lake.reasoning.ar_spiking_lm_serve            # fast stdlib+numpy proof
   PYTHONPATH=src python -m snn_data_lake.reasoning.ar_spiking_lm_serve --train    # + strict trained proof
 """
+
 import json
 import os
 import random
@@ -51,15 +52,29 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
 DEFAULT_ARTIFACT = os.path.join(_ROOT, "models", "ar_spiking_lm.npz")
 
-FORMAT = "spiking_lm.v1"          # frozen-artifact schema tag (trainer + serve must agree)
-EPS = 1e-5                        # layer-norm epsilon (matches torch F.layer_norm default)
-THR = 1.0                         # LIF spike threshold
+FORMAT = "spiking_lm.v1"  # frozen-artifact schema tag (trainer + serve must agree)
+EPS = 1e-5  # layer-norm epsilon (matches torch F.layer_norm default)
+THR = 1.0  # LIF spike threshold
 
 # The per-layer parameter names carried in the .npz, stored as "<name>.<layer_index>".
 _LAYER_PARAMS = (
-    "tln_g", "tln_b", "t_mix_k", "t_mix_v", "t_mix_r",
-    "t_Wk", "t_Wv", "t_Wr", "t_Wo", "t_decay",
-    "cln_g", "cln_b", "c_mix_k", "c_mix_r", "c_Wk", "c_Wv", "c_Wr",
+    "tln_g",
+    "tln_b",
+    "t_mix_k",
+    "t_mix_v",
+    "t_mix_r",
+    "t_Wk",
+    "t_Wv",
+    "t_Wr",
+    "t_Wo",
+    "t_decay",
+    "cln_g",
+    "cln_b",
+    "c_mix_k",
+    "c_mix_r",
+    "c_Wk",
+    "c_Wv",
+    "c_Wr",
 )
 
 
@@ -67,6 +82,7 @@ def _load_numpy():
     """Lazy numpy import (numpy-lazy contract). Returns the module or None if unavailable."""
     try:
         import numpy as np
+
         return np
     except Exception:
         return None
@@ -96,7 +112,7 @@ def build_random_artifact(path, text, dim=24, layers=2, d_ff=None, seed=0):
     ff = int(d_ff) if d_ff else 4 * d
 
     def rng_for(name):
-        salt = zlib.crc32(name.encode("ascii")) & 0xFFFFFFFF   # crc32, never builtin hash()
+        salt = zlib.crc32(name.encode("ascii")) & 0xFFFFFFFF  # crc32, never builtin hash()
         return np.random.RandomState((int(seed) ^ salt) & 0xFFFFFFFF)
 
     w = {"emb": rng_for("emb").standard_normal((v_n, d)) * 0.1}
@@ -126,8 +142,16 @@ def build_random_artifact(path, text, dim=24, layers=2, d_ff=None, seed=0):
 
     t_beta, c_beta = default_betas(l_n)
     meta = {
-        "format": FORMAT, "vocab": vocab, "dim": d, "layers": l_n, "d_ff": ff,
-        "thr": THR, "eps": EPS, "t_beta": t_beta, "c_beta": c_beta, "trained": False,
+        "format": FORMAT,
+        "vocab": vocab,
+        "dim": d,
+        "layers": l_n,
+        "d_ff": ff,
+        "thr": THR,
+        "eps": EPS,
+        "t_beta": t_beta,
+        "c_beta": c_beta,
+        "trained": False,
         "note": "random-init frozen artifact (NOT trained) -- proves forward-serve + order-sensitivity only",
     }
     dirn = os.path.dirname(path)
@@ -201,13 +225,13 @@ class SpikingLMServe:
     def _ln(self, x, g, b):
         np = self._np
         mu = x.mean(-1, keepdims=True)
-        var = x.var(-1, keepdims=True)                 # population variance == torch F.layer_norm
+        var = x.var(-1, keepdims=True)  # population variance == torch F.layer_norm
         return (x - mu) / np.sqrt(var + self.eps) * g + b
 
     def _shift(self, x):
         np = self._np
         xp = np.zeros_like(x)
-        xp[1:] = x[:-1]                                 # token-shift: row t <- x[t-1], row 0 == 0
+        xp[1:] = x[:-1]  # token-shift: row t <- x[t-1], row 0 == 0
         return xp
 
     def _timemix(self, x, l):
@@ -221,12 +245,12 @@ class SpikingLMServe:
         k = xk @ w[f"t_Wk.{l}"]
         v = xv @ w[f"t_Wv.{l}"]
         r = self._sigmoid(xr @ w[f"t_Wr.{l}"])
-        gate = self._sigmoid(k)                         # bounded input gate (stable, numpy-parity-safe)
-        decay = self._sigmoid(w[f"t_decay.{l}"])        # per-channel positional weight decay in (0,1)
+        gate = self._sigmoid(k)  # bounded input gate (stable, numpy-parity-safe)
+        decay = self._sigmoid(w[f"t_decay.{l}"])  # per-channel positional weight decay in (0,1)
         n, dim = x.shape
         wkv = self._np.empty_like(v)
         s = self._np.zeros(dim)
-        for t in range(n):                              # LIF-gated linear recurrence, O(1)/token state
+        for t in range(n):  # LIF-gated linear recurrence, O(1)/token state
             s = decay * s + gate[t] * v[t]
             wkv[t] = s
         out = (r * wkv) @ w[f"t_Wo.{l}"]
@@ -241,7 +265,7 @@ class SpikingLMServe:
         xk = xn * mk + xp * (1.0 - mk)
         xr = xn * mr + xp * (1.0 - mr)
         kk = np.maximum(xk @ w[f"c_Wk.{l}"], 0.0)
-        kk = kk * kk                                    # squared-ReLU channel activation (RWKV RFFN)
+        kk = kk * kk  # squared-ReLU channel activation (RWKV RFFN)
         kv = kk @ w[f"c_Wv.{l}"]
         r = self._sigmoid(xr @ w[f"c_Wr.{l}"])
         return self._lif(r * kv, self.c_beta[l])
@@ -251,7 +275,7 @@ class SpikingLMServe:
         n, dim = cur.shape
         spk = np.empty_like(cur)
         mem = np.zeros(dim)
-        for t in range(n):                              # leaky integrate-and-fire, subtractive reset
+        for t in range(n):  # leaky integrate-and-fire, subtractive reset
             mem = beta * mem + cur[t]
             fire = (mem > self.thr).astype(np.float64)
             spk[t] = fire
@@ -336,10 +360,13 @@ def _try_train_inline(art, text):
         if tdir not in sys.path:
             sys.path.insert(0, tdir)
         import ar_spiking_lm as trainer
+
         trainer.train(text, dim=24, layers=2, ctx=48, steps=200, seed=0, out_path=art, log_every=0)
         return True
     except Exception as exc:
-        print(f"  [note] inline torch train unavailable ({type(exc).__name__}); using random-init artifact")
+        print(
+            f"  [note] inline torch train unavailable ({type(exc).__name__}); using random-init artifact"
+        )
         return False
 
 
@@ -349,8 +376,11 @@ def _selfcheck(with_train=False):
         print("SKIP spiking_lm_serve self-check: numpy unavailable")
         return 0
     import tempfile
+
     print("=" * 92)
-    print("SPIKING-RWKV LM SERVE -- forward-only numpy; full-sentence AR log-prob is the order lever")
+    print(
+        "SPIKING-RWKV LM SERVE -- forward-only numpy; full-sentence AR log-prob is the order lever"
+    )
     print("=" * 92)
     workdir = tempfile.mkdtemp()
     art = os.path.join(workdir, "tiny_spiking_lm.npz")
@@ -375,11 +405,17 @@ def _selfcheck(with_train=False):
     print(f"  logprob(in-dist)={lp:.4f}  logprob(shuffled)={lps:.4f}  diff={lp - lps:.4f}")
     if trained:
         assert lp > lps, "a trained AR LM must score the in-distribution string ABOVE its shuffle"
-        print("  ORDER PROOF (trained): in-dist logprob > shuffled logprob -> LEARNED order-sensitivity.")
+        print(
+            "  ORDER PROOF (trained): in-dist logprob > shuffled logprob -> LEARNED order-sensitivity."
+        )
     else:
-        assert abs(lp - lps) > 1e-3, "shuffling MUST change the AR logprob (i.e. NOT order-invariant)"
+        assert abs(lp - lps) > 1e-3, (
+            "shuffling MUST change the AR logprob (i.e. NOT order-invariant)"
+        )
         print("  ORDER PROOF (random-init): shuffling CHANGES the AR logprob -> the model is NOT")
-        print("  order-invariant (structurally UNLIKE SLDA-RFF). Strict in-dist>shuffled needs training.")
+        print(
+            "  order-invariant (structurally UNLIKE SLDA-RFF). Strict in-dist>shuffled needs training."
+        )
 
     # (3) generate returns a non-empty ASCII string.
     gen = srv.generate("the ", max_tokens=24)
@@ -392,7 +428,9 @@ def _selfcheck(with_train=False):
     assert miss.available() is False, "a missing artifact must report unavailable"
     assert miss.logprob("hello world") is None, "unavailable logprob must be None, not a fake score"
     assert miss.generate("hello") == "", "unavailable generate must return empty string"
-    print("  honest-unavailable: missing artifact -> available()=False, logprob()=None (no fake score).")
+    print(
+        "  honest-unavailable: missing artifact -> available()=False, logprob()=None (no fake score)."
+    )
 
     try:
         os.remove(art)
@@ -405,9 +443,15 @@ def _selfcheck(with_train=False):
 
     print("-" * 92)
     print("self-check OK: forward-only numpy serve reloads a frozen Spiking-RWKV artifact; the")
-    print("full-sentence AR log-prob is ORDER-SENSITIVE -- the BLiMP lever the order-invariant SLDA-RFF")
-    print("structurally lacks. HONEST: this proves the ARCHITECTURE + serve PIPELINE only. Moving BLiMP")
-    print("off its ~57 pct floor needs a REAL-SCALE train (training/ar_spiking_lm.py, GPU, ~GPT-2-small,")
+    print(
+        "full-sentence AR log-prob is ORDER-SENSITIVE -- the BLiMP lever the order-invariant SLDA-RFF"
+    )
+    print(
+        "structurally lacks. HONEST: this proves the ARCHITECTURE + serve PIPELINE only. Moving BLiMP"
+    )
+    print(
+        "off its ~57 pct floor needs a REAL-SCALE train (training/ar_spiking_lm.py, GPU, ~GPT-2-small,"
+    )
     print("10-100M words) exported to models/spiking_lm.npz; a toy model sits at n-gram ~60 pct.")
     print("=" * 92)
     return 0

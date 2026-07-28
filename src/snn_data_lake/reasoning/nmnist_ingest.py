@@ -26,7 +26,6 @@ they prove the plumbing, NOT a benchmark number — install tonic for that.
 
 import os
 import gzip
-import math
 import random
 import struct
 

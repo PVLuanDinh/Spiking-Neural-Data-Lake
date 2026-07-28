@@ -13,7 +13,6 @@ ASCII-only output (cp1252-safe).
 """
 
 import os
-import sys
 import time
 import numpy as np
 import torch
@@ -61,11 +60,10 @@ def get_datasets():
 def train_block(model, k, train_ds):
     """Train block k's HebbConv while upstream blocks 0..k-1 stay frozen (eval)."""
     g = torch.Generator().manual_seed(SEED + k)
-    loader = DataLoader(train_ds, batch_size=UNSUP_BS, shuffle=True,
-                        num_workers=0, generator=g)
-    model.eval()                       # all BN use running stats, no updates
+    loader = DataLoader(train_ds, batch_size=UNSUP_BS, shuffle=True, num_workers=0, generator=g)
+    model.eval()  # all BN use running stats, no updates
     blk = model.blocks[k]
-    blk.train()                        # only this block's BN accumulates stats
+    blk.train()  # only this block's BN accumulates stats
     blk.conv.learning = True
     t0 = time.time()
     n = 0
@@ -74,13 +72,15 @@ def train_block(model, k, train_ds):
             x = x.to(DEVICE, non_blocking=True)
             for j in range(k):
                 x = model.blocks[j](x)  # frozen upstream (eval, no learning)
-            blk(x)                      # local plasticity update happens here
+            blk(x)  # local plasticity update happens here
             n += 1
     blk.conv.learning = False
     model.eval()
     frac, rmean, rstd = blk.conv.convergence(tol=5e-3)
-    log("  block %d trained: %d batches, %.1fs | ||w||_p mean=%.4f std=%.4f | "
-        "frac|r-1|<5e-3 = %.3f" % (k, n, time.time() - t0, rmean, rstd, frac))
+    log(
+        "  block %d trained: %d batches, %.1fs | ||w||_p mean=%.4f std=%.4f | "
+        "frac|r-1|<5e-3 = %.3f" % (k, n, time.time() - t0, rmean, rstd, frac)
+    )
     return frac, rmean, rstd
 
 
@@ -99,9 +99,7 @@ def extract_and_save(model, ds, d_fe, feat_path, label_path, bs=500):
     model.eval()
     n = len(ds)
     loader = DataLoader(ds, batch_size=bs, shuffle=False, num_workers=0)
-    feats = np.lib.format.open_memmap(
-        feat_path, mode="w+", dtype=np.float32, shape=(n, d_fe)
-    )
+    feats = np.lib.format.open_memmap(feat_path, mode="w+", dtype=np.float32, shape=(n, d_fe))
     labels = np.empty((n,), dtype=np.int64)
     i = 0
     with torch.no_grad():
@@ -109,8 +107,8 @@ def extract_and_save(model, ds, d_fe, feat_path, label_path, bs=500):
             x = x.to(DEVICE, non_blocking=True)
             f = model.features(x).float().cpu().numpy()
             b = f.shape[0]
-            feats[i:i + b] = f
-            labels[i:i + b] = y.numpy()
+            feats[i : i + b] = f
+            labels[i : i + b] = y.numpy()
             i += b
     feats.flush()
     del feats
@@ -121,8 +119,9 @@ def extract_and_save(model, ds, d_fe, feat_path, label_path, bs=500):
 # ----------------------------------------------------------------------------
 # Throwaway supervised Linear sanity head on FROZEN features
 # ----------------------------------------------------------------------------
-def sanity_linear(feat_train, lab_train, feat_test, lab_test, d_fe,
-                  max_epochs=30, bs=64, patience=6):
+def sanity_linear(
+    feat_train, lab_train, feat_test, lab_test, d_fe, max_epochs=30, bs=64, patience=6
+):
     # Load features onto GPU once (fits: ~4.5GB train + ~0.75GB test for 2-conv).
     Xtr = torch.from_numpy(np.load(feat_train)).to(DEVICE)
     ytr = torch.from_numpy(np.load(lab_train)).to(DEVICE)
@@ -141,7 +140,7 @@ def sanity_linear(feat_train, lab_train, feat_test, lab_test, d_fe,
         head.train()
         perm = torch.randperm(ntr, device=DEVICE)
         for s in range(0, ntr, bs):
-            idx = perm[s:s + bs]
+            idx = perm[s : s + bs]
             opt.zero_grad(set_to_none=True)
             out = head(Xtr[idx])
             loss = lossf(out, ytr[idx])
@@ -152,15 +151,14 @@ def sanity_linear(feat_train, lab_train, feat_test, lab_test, d_fe,
         with torch.no_grad():
             correct = 0
             for s in range(0, Xte.shape[0], 1000):
-                out = head(Xte[s:s + 1000])
-                correct += (out.argmax(1) == yte[s:s + 1000]).sum().item()
+                out = head(Xte[s : s + 1000])
+                correct += (out.argmax(1) == yte[s : s + 1000]).sum().item()
             acc = 100.0 * correct / Xte.shape[0]
         if acc > best:
             best, best_ep, since = acc, ep, 0
         else:
             since += 1
-        log("  head epoch %2d: test acc = %.2f%% (best %.2f%% @ep%d)"
-            % (ep, acc, best, best_ep))
+        log("  head epoch %2d: test acc = %.2f%% (best %.2f%% @ep%d)" % (ep, acc, best, best_ep))
         if since >= patience:
             log("  early stop (no test improvement for %d epochs)" % patience)
             break
@@ -171,14 +169,12 @@ def main():
     set_seed(SEED)
     torch.backends.cudnn.benchmark = True
     os.makedirs(OUT_DIR, exist_ok=True)
-    log("device=%s | blocks=%d | unsup_bs=%d | seed=%d" %
-        (DEVICE, N_BLOCKS, UNSUP_BS, SEED))
+    log("device=%s | blocks=%d | unsup_bs=%d | seed=%d" % (DEVICE, N_BLOCKS, UNSUP_BS, SEED))
     if DEVICE == "cuda":
         log("gpu=%s | torch=%s" % (torch.cuda.get_device_name(0), torch.__version__))
 
     train_ds, test_ds = get_datasets()
-    log("MNIST: train=%d test=%d (ToTensor, no normalize)" %
-        (len(train_ds), len(test_ds)))
+    log("MNIST: train=%d test=%d (ToTensor, no normalize)" % (len(train_ds), len(test_ds)))
 
     model = SoftHebbCNN(n_blocks=N_BLOCKS, seed=SEED).to(DEVICE)
 
@@ -221,8 +217,10 @@ def main():
     log("conv blocks used                : %d" % N_BLOCKS)
     log("d_FE                            : %d" % d_fe)
     for k, (frac, rmean, rstd) in enumerate(conv_report):
-        log("block %d ||w||_p converge frac    : %.3f (mean r=%.4f, std=%.4f)"
-            % (k, frac, rmean, rstd))
+        log(
+            "block %d ||w||_p converge frac    : %.3f (mean r=%.4f, std=%.4f)"
+            % (k, frac, rmean, rstd)
+        )
     log("LINEAR SANITY MNIST TEST ACC    : %.2f%%  (target >= 98.8%%)" % best)
     log("features (train)                : %s  shape=(%d, %d) float32" % (ftr, ntr, d_fe))
     log("labels   (train)                : %s  shape=(%d,) int64" % (ltr, ntr))

@@ -17,6 +17,7 @@ the same serial re-entrant loop the chat thinks with, pointed at a build plan.
 
 Deps: stdlib + train_of_thought (research). Deterministic: same thing -> byte-identical OBJ.
 """
+
 import math
 import os
 import sys
@@ -29,11 +30,20 @@ from snn_data_lake.reasoning.train_of_thought import TrainOfThought
 # A mesh is (vertices, faces): vertices = [(x, y, z), ...], faces = 0-indexed vertex-index tuples
 # (tris or quads -- OBJ takes both). Coordinates are rounded so the OBJ text is platform-stable.
 
+
 def box(w, h, d):
     """Axis-aligned box centered at the origin: 8 vertices, 6 quad faces."""
     x, y, z = w / 2.0, h / 2.0, d / 2.0
-    v = [(-x, -y, -z), (x, -y, -z), (x, y, -z), (-x, y, -z),
-         (-x, -y, z), (x, -y, z), (x, y, z), (-x, y, z)]
+    v = [
+        (-x, -y, -z),
+        (x, -y, -z),
+        (x, y, -z),
+        (-x, y, -z),
+        (-x, -y, z),
+        (x, -y, z),
+        (x, y, z),
+        (-x, y, z),
+    ]
     f = [(0, 1, 2, 3), (7, 6, 5, 4), (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0)]
     return v, f
 
@@ -43,25 +53,28 @@ def cylinder(r, h, n=12):
     lo, hi = -h / 2.0, h / 2.0
     ring = [(math.cos(2 * math.pi * i / n), math.sin(2 * math.pi * i / n)) for i in range(n)]
     v = [(r * c, r * s, lo) for c, s in ring] + [(r * c, r * s, hi) for c, s in ring]
-    v += [(0.0, 0.0, lo), (0.0, 0.0, hi)]                     # cap centers at 2n, 2n+1
+    v += [(0.0, 0.0, lo), (0.0, 0.0, hi)]  # cap centers at 2n, 2n+1
     f = []
     for i in range(n):
         j = (i + 1) % n
-        f.append((i, j, n + j, n + i))                        # side quad
-        f.append((j, i, 2 * n))                               # bottom cap tri (faces -Z)
-        f.append((n + i, n + j, 2 * n + 1))                   # top cap tri (faces +Z)
+        f.append((i, j, n + j, n + i))  # side quad
+        f.append((j, i, 2 * n))  # bottom cap tri (faces -Z)
+        f.append((n + i, n + j, 2 * n + 1))  # top cap tri (faces +Z)
     return v, f
 
 
 def cone(r, h, n=12):
     """Cone along +Z: base n-ring at z=0, apex at z=h, base center. Side + base tris."""
     ring = [(math.cos(2 * math.pi * i / n), math.sin(2 * math.pi * i / n)) for i in range(n)]
-    v = [(r * c, r * s, 0.0) for c, s in ring] + [(0.0, 0.0, h), (0.0, 0.0, 0.0)]   # apex n, center n+1
+    v = [(r * c, r * s, 0.0) for c, s in ring] + [
+        (0.0, 0.0, h),
+        (0.0, 0.0, 0.0),
+    ]  # apex n, center n+1
     f = []
     for i in range(n):
         j = (i + 1) % n
-        f.append((i, j, n))                                   # side tri to the apex
-        f.append((j, i, n + 1))                               # base tri (faces -Z)
+        f.append((i, j, n))  # side tri to the apex
+        f.append((j, i, n + 1))  # base tri (faces -Z)
     return v, f
 
 
@@ -82,6 +95,7 @@ def merge(meshes):
 
 # ---------------------------------------------------------------- catalog + recipes ----------------
 
+
 class PartCatalog:
     """The built-in procedural part source. acquire(primitive, **params) generates the part and
     records the acquisition (provenance: everything comes from HERE, not the internet)."""
@@ -89,7 +103,7 @@ class PartCatalog:
     _PRIMITIVES = {"box": box, "cylinder": cylinder, "cone": cone}
 
     def __init__(self):
-        self.acquired = []                                    # (primitive, params) provenance log
+        self.acquired = []  # (primitive, params) provenance log
 
     def acquire(self, primitive, **params):
         mesh = self._PRIMITIVES[primitive](**params)
@@ -117,7 +131,7 @@ RECIPES = {
     ],
     "house": [
         ("base", "box", {"w": 4.0, "h": 3.0, "d": 2.4}, (0.0, 0.0, 0.0)),
-        ("roof", "cone", {"r": 2.6, "h": 1.6, "n": 4}, (0.0, 0.0, 1.2)),   # n=4 -> a pyramid roof
+        ("roof", "cone", {"r": 2.6, "h": 1.6, "n": 4}, (0.0, 0.0, 1.2)),  # n=4 -> a pyramid roof
         ("door", "box", {"w": 0.8, "h": 0.2, "d": 1.4}, (0.0, -1.55, -0.5)),
         ("chimney", "box", {"w": 0.5, "h": 0.5, "d": 1.2}, (1.2, 0.6, 2.0)),
     ],
@@ -136,7 +150,7 @@ class ModelBuilder:
         (thing first). Unknown thing -> KeyError (the caller answers with an honest gap)."""
         labels = [label for label, _, _, _ in RECIPES[thing]]
         seq = [thing] + labels
-        adj = {a: [(b, 0.9)] for a, b in zip(seq, seq[1:])}   # linear assembly-order graph
+        adj = {a: [(b, 0.9)] for a, b in zip(seq, seq[1:])}  # linear assembly-order graph
 
         def associate(broadcast, chain):
             return [t for t in adj.get(broadcast, []) if t[0] not in chain]
@@ -165,20 +179,29 @@ class ModelBuilder:
 
     def knowledge(self, thing, labels, path):
         """The facts worth KEEPING: the process/how-to (durable knowledge), never the mesh."""
-        facts = [(["build", thing],
-                  f"to build a {thing}: acquire {', '.join(labels)} from the part catalog, place "
-                  f"each part, and write the mesh as an OBJ file (i saved {os.path.basename(path)}).",
-                  [thing, "builtfrom", labels[0]])]
-        facts += [([thing, lab.split()[-1]], f"a {thing} has a {lab}.", [thing, "madeof", lab])
-                  for lab in labels]
+        facts = [
+            (
+                ["build", thing],
+                f"to build a {thing}: acquire {', '.join(labels)} from the part catalog, place "
+                f"each part, and write the mesh as an OBJ file (i saved {os.path.basename(path)}).",
+                [thing, "builtfrom", labels[0]],
+            )
+        ]
+        facts += [
+            ([thing, lab.split()[-1]], f"a {thing} has a {lab}.", [thing, "madeof", lab])
+            for lab in labels
+        ]
         return facts
 
 
 # ---------------------------------------------------------------- self-check -----------------------
 
+
 def main():
     print("=" * 96)
-    print("MODEL BUILDER -- procedural 'build me a 3D model' engine (catalog parts + train-of-thought)")
+    print(
+        "MODEL BUILDER -- procedural 'build me a 3D model' engine (catalog parts + train-of-thought)"
+    )
     print("=" * 96)
     b = ModelBuilder()
 
@@ -201,8 +224,10 @@ def main():
         with open(path2) as fh:
             assert fh.read() == text, "non-deterministic OBJ"
         os.remove(path2)
-        print(f"  built {thing:10s} {len(labels)} parts, {len(verts):3d} verts, {len(faces):3d} faces"
-              f"  thought: {' -> '.join(chain)}")
+        print(
+            f"  built {thing:10s} {len(labels)} parts, {len(verts):3d} verts, {len(faces):3d} faces"
+            f"  thought: {' -> '.join(chain)}"
+        )
 
     # the process facts are about HOW, and never contain geometry
     facts = b.knowledge("spaceship", [lb for lb, _, _, _ in RECIPES["spaceship"]], "spaceship.obj")

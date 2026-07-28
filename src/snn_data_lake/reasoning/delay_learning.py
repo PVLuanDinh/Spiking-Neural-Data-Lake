@@ -11,21 +11,22 @@ factor delay learning rules for spiking neural networks"; +20% over weights-only
 
   Run: python delay_learning.py       # (also run by run_selfchecks.py)
 """
+
 import random
 
 random.seed(0)
 
-T = 50           # time window
-GAP = 8          # true lead/lag between the two channels
-W = 4.0          # coincidence window (triangular kernel half-width)
-LR = 0.3         # delay learning rate
+T = 50  # time window
+GAP = 8  # true lead/lag between the two channels
+W = 4.0  # coincidence window (triangular kernel half-width)
+LR = 0.3  # delay learning rate
 EPOCHS = 15
 
 
 def sample(cls, rng):
     """Two channels; class 0 = ch0 leads ch1 by GAP, class 1 = ch1 leads. Returns (t_ch0, t_ch1)."""
     t = rng.randrange(6, T - GAP - 6)
-    j = rng.uniform(-1.0, 1.0)                    # jitter on the gap
+    j = rng.uniform(-1.0, 1.0)  # jitter on the gap
     return (float(t), t + GAP + j) if cls == 0 else (t + GAP + j, float(t))
 
 
@@ -44,9 +45,9 @@ def train_delay(train):
     d0 = 0.0
     for _ in range(EPOCHS):
         for cls, s in train:
-            if cls == 0:                          # reward class: drive the delayed spikes to coincide
-                elig = (s[1] - (s[0] + d0))       # pre−post timing mismatch (eligibility)
-                d0 += LR * elig * 1.0             # × global reward (+1)
+            if cls == 0:  # reward class: drive the delayed spikes to coincide
+                elig = s[1] - (s[0] + d0)  # pre−post timing mismatch (eligibility)
+                d0 += LR * elig * 1.0  # × global reward (+1)
     return d0
 
 
@@ -54,13 +55,13 @@ def accuracy(data, d0):
     ok = 0
     for cls, s in data:
         pred = 0 if coincidence(s, d0, 0.0) > 0.5 else 1
-        ok += (pred == cls)
+        ok += pred == cls
     return ok / len(data)
 
 
 def main():
     train, test = balanced(80, 1), balanced(60, 2)
-    pre = accuracy(test, 0.0)                      # no delay learned yet
+    pre = accuracy(test, 0.0)  # no delay learned yet
     d0 = train_delay(train)
     post = accuracy(test, d0)
 
@@ -77,8 +78,10 @@ def main():
     assert pre <= 0.6, f"a zero-delay coincidence detector can't classify order: pre={pre:.2f}"
     assert post >= 0.9, f"learned delay should classify temporal order: post={post:.2f}"
     assert abs(d0 - GAP) <= 1.5, f"learned delay {d0:.2f} should converge near GAP={GAP}"
-    print(f"self-check OK: delay learned to {d0:.1f}~{GAP}; order accuracy {pre:.0%}->{post:.0%} "
-          "(timing learned, not weight)")
+    print(
+        f"self-check OK: delay learned to {d0:.1f}~{GAP}; order accuracy {pre:.0%}->{post:.0%} "
+        "(timing learned, not weight)"
+    )
 
 
 if __name__ == "__main__":

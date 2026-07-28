@@ -26,6 +26,7 @@ recall path (naive exp(β·dot) overflows once β·dot > ~709).
 
   Run: python dense_associative_memory.py       # (also run by run_selfchecks.py)
 """
+
 import math
 import random
 
@@ -33,14 +34,14 @@ import snn_data_lake.reasoning.stats_bounds as sb  # research/ is on sys.path wh
 
 random.seed(0)  # module-level determinism; per-run seeds below are fixed too
 
-N = 48                         # neurons; small enough that the n=4 sweep stays fast in CI
-FLIP = round(0.10 * N)         # cue corruption before recall
-STEPS = 3                      # synchronous update passes (dense AM settles fast)
-DEGREES = (2, 4)               # 2 = classical Hopfield; 4 = dense (super-linear capacity)
-SWEEP = (0.1, 0.5, 1.0, 2.0)   # P/N sweep points
-SEEDS = range(5)               # ≥5 seeds -> mean ± std (roadmap B5)
-SAMPLE = 12                    # patterns recall-tested per point (speed)
-THRESH = 0.95                  # mean overlap at/above which recall is "clean"
+N = 48  # neurons; small enough that the n=4 sweep stays fast in CI
+FLIP = round(0.10 * N)  # cue corruption before recall
+STEPS = 3  # synchronous update passes (dense AM settles fast)
+DEGREES = (2, 4)  # 2 = classical Hopfield; 4 = dense (super-linear capacity)
+SWEEP = (0.1, 0.5, 1.0, 2.0)  # P/N sweep points
+SEEDS = range(5)  # ≥5 seeds -> mean ± std (roadmap B5)
+SAMPLE = 12  # patterns recall-tested per point (speed)
+THRESH = 0.95  # mean overlap at/above which recall is "clean"
 
 
 def make_patterns(p, n, rng):
@@ -58,7 +59,7 @@ def dense_recall(patterns, cue, degree, steps):
             field = 0
             for p, pat in enumerate(patterns):
                 xi = pat[i]
-                a = dots[p] - xi * s[i]                    # field on i with neuron i removed
+                a = dots[p] - xi * s[i]  # field on i with neuron i removed
                 field += (a + xi) ** degree - (a - xi) ** degree
             nxt.append(1 if field >= 0 else -1)
         if nxt == s:
@@ -83,8 +84,10 @@ def mean_recall(p, degree, n, seed):
     rng = random.Random(seed)
     patterns = make_patterns(p, n, rng)
     tested = patterns if p <= SAMPLE else rng.sample(patterns, SAMPLE)
-    ov = [overlap(dense_recall(patterns, corrupt(x, n, FLIP, rng), degree, STEPS), x, n)
-          for x in tested]
+    ov = [
+        overlap(dense_recall(patterns, corrupt(x, n, FLIP, rng), degree, STEPS), x, n)
+        for x in tested
+    ]
     return sum(ov) / len(ov)
 
 
@@ -94,7 +97,7 @@ def softmax_weights(dots, beta, guard=True):
     exp(β·dot) overflows once β·dot > ~709 (raises OverflowError in pure Python)."""
     z = [beta * d for d in dots]
     m = max(z) if guard else 0.0
-    e = [math.exp(zi - m) for zi in z]                 # guard=False -> may raise OverflowError
+    e = [math.exp(zi - m) for zi in z]  # guard=False -> may raise OverflowError
     tot = sum(e) or 1.0
     return [ei / tot for ei in e]
 
@@ -105,7 +108,7 @@ def lsr_weights(dots, beta, window=1.0):
     overflow-free (no max-subtraction needed)."""
     z = [beta * d for d in dots]
     mz = max(z)
-    r = [max(0.0, zi - (mz - window)) for zi in z]     # bounded; exp-free
+    r = [max(0.0, zi - (mz - window)) for zi in z]  # bounded; exp-free
     tot = sum(r) or 1.0
     return [ri / tot for ri in r]
 
@@ -117,8 +120,10 @@ def modern_recall(patterns, cue, weights_fn, steps):
     for _ in range(steps):
         dots = [sum(pat[j] * s[j] for j in range(n)) for pat in patterns]
         w = weights_fn(dots)
-        nxt = [1 if sum(patterns[p][j] * w[p] for p in range(len(patterns))) >= 0 else -1
-               for j in range(n)]
+        nxt = [
+            1 if sum(patterns[p][j] * w[p] for p in range(len(patterns))) >= 0 else -1
+            for j in range(n)
+        ]
         if nxt == s:
             break
         s = nxt
@@ -127,8 +132,10 @@ def modern_recall(patterns, cue, weights_fn, steps):
 
 def mean_recall_modern(patterns, weights_fn, n, rng):
     tested = patterns if len(patterns) <= SAMPLE else rng.sample(patterns, SAMPLE)
-    ov = [overlap(modern_recall(patterns, corrupt(x, n, FLIP, rng), weights_fn, STEPS), x, n)
-          for x in tested]
+    ov = [
+        overlap(modern_recall(patterns, corrupt(x, n, FLIP, rng), weights_fn, STEPS), x, n)
+        for x in tested
+    ]
     return sum(ov) / len(ov)
 
 
@@ -141,8 +148,9 @@ def main():
             table[(deg, f)] = [mean_recall(p, deg, N, s) for s in SEEDS]
 
     # classical (n=2) empirical capacity: largest swept P still recalling cleanly
-    classical_cap = max((round(f * N) for f in SWEEP
-                         if sum(table[(2, f)]) / len(SEEDS) >= THRESH), default=0)
+    classical_cap = max(
+        (round(f * N) for f in SWEEP if sum(table[(2, f)]) / len(SEEDS) >= THRESH), default=0
+    )
     # the separating comparison at P = 2·N
     dense_hi = table[(4, 2.0)]
     classical_hi = table[(2, 2.0)]
@@ -157,14 +165,22 @@ def main():
     for f in SWEEP:
         m2, s2 = sb.mean_std(table[(2, f)])
         m4, s4 = sb.mean_std(table[(4, f)])
-        print(f"  {f:>4.1f}  {round(f * N):>4}    {m2:>6.1%} ± {s2:>4.1%}       {m4:>6.1%} ± {s4:>4.1%}")
+        print(
+            f"  {f:>4.1f}  {round(f * N):>4}    {m2:>6.1%} ± {s2:>4.1%}       {m4:>6.1%} ± {s4:>4.1%}"
+        )
     print()
-    print(f"classical (n=2) empirical capacity : ~{classical_cap} patterns (~{classical_cap / N:.2f}·N,"
-          f" bound 0.138·N — see hopfield_baseline.py)")
-    print(f"at P=2·N={round(2 * N)}:  classical {cm:.1%} ± {cs:.1%}   vs   dense {dm:.1%} ± {ds:.1%}")
-    print("spectrum: classical 0.138·N  ->  k-WTA factored prototype (80 patterns @ N=256, 874×"
-          " smaller storage)  ->  distributed-dense (n=4, clean past 2·N). Factoring vs dense"
-          " nonlinearity are orthogonal wins.")
+    print(
+        f"classical (n=2) empirical capacity : ~{classical_cap} patterns (~{classical_cap / N:.2f}·N,"
+        f" bound 0.138·N — see hopfield_baseline.py)"
+    )
+    print(
+        f"at P=2·N={round(2 * N)}:  classical {cm:.1%} ± {cs:.1%}   vs   dense {dm:.1%} ± {ds:.1%}"
+    )
+    print(
+        "spectrum: classical 0.138·N  ->  k-WTA factored prototype (80 patterns @ N=256, 874×"
+        " smaller storage)  ->  distributed-dense (n=4, clean past 2·N). Factoring vs dense"
+        " nonlinearity are orthogonal wins."
+    )
     print("=" * 64)
 
     # ---- modern energies at the dense load (P=2·N): softmax vs log-sum-ReLU (arXiv:2506.10801) ----
@@ -172,7 +188,7 @@ def main():
     pats = make_patterns(round(2 * N), N, rng)
     sm = mean_recall_modern(pats, lambda d: softmax_weights(d, beta=1.0), N, rng)
     lsr = mean_recall_modern(pats, lambda d: lsr_weights(d, beta=1.0), N, rng)
-    big = 20.0                                          # β·dot up to 20·48=960 -> exp overflows
+    big = 20.0  # β·dot up to 20·48=960 -> exp overflows
     try:
         softmax_weights([float(N), 0.0], beta=big, guard=False)
         overflowed = False
@@ -181,25 +197,38 @@ def main():
     sm_big = mean_recall_modern(pats, lambda d: softmax_weights(d, beta=big), N, rng)
     lsr_big = mean_recall_modern(pats, lambda d: lsr_weights(d, beta=big), N, rng)
 
-    print(f"modern energies @ P=2·N: softmax {sm:.1%} | log-sum-ReLU {lsr:.1%}  (both dense-capacity)")
-    print(f"robustness @ beta={big:.0f}: naive exp overflows={overflowed} | guarded-softmax {sm_big:.1%}"
-          f" | LSR {lsr_big:.1%} (exp-free, no clamp)")
+    print(
+        f"modern energies @ P=2·N: softmax {sm:.1%} | log-sum-ReLU {lsr:.1%}  (both dense-capacity)"
+    )
+    print(
+        f"robustness @ beta={big:.0f}: naive exp overflows={overflowed} | guarded-softmax {sm_big:.1%}"
+        f" | LSR {lsr_big:.1%} (exp-free, no clamp)"
+    )
     print("=" * 64)
 
     # ---- self-check: one runnable assert-based check; deterministic seeds ----
-    assert round(0.03 * N) <= classical_cap <= round(0.30 * N), \
+    assert round(0.03 * N) <= classical_cap <= round(0.30 * N), (
         f"n=2 should behave ~linearly (capacity {classical_cap} not near 0.138·N)"
+    )
     assert dm >= THRESH, f"dense (n=4) should still recall cleanly at 2·N: {dm:.2f}"
     assert cm <= 0.75, f"classical (n=2) should be broken down at 2·N: {cm:.2f}"
     # clean statistical separation (mean±3σ bands do not overlap) — the B5 reuse
     d_lo, _ = sb.bound(dense_hi, k=3.0)
     _, c_hi = sb.bound(classical_hi, k=3.0)
     assert d_lo > c_hi, f"dense/classical capacity bands overlap at 2·N ({d_lo:.2f} !> {c_hi:.2f})"
-    assert sm >= THRESH and lsr >= THRESH, f"modern energies not dense-capacity: sm={sm:.2f} lsr={lsr:.2f}"
-    assert overflowed, "naive exp(beta*dot) should overflow at large beta (this is why LSR/guard matter)"
-    assert lsr_big >= THRESH, f"log-sum-ReLU must stay robust (exp-free) at large beta: {lsr_big:.2f}"
-    print("self-check OK: n=2 == classical; n=4 + modern softmax/LSR store past 2·N; "
-          "LSR matches softmax capacity exp-free (robust where naive exp overflows)")
+    assert sm >= THRESH and lsr >= THRESH, (
+        f"modern energies not dense-capacity: sm={sm:.2f} lsr={lsr:.2f}"
+    )
+    assert overflowed, (
+        "naive exp(beta*dot) should overflow at large beta (this is why LSR/guard matter)"
+    )
+    assert lsr_big >= THRESH, (
+        f"log-sum-ReLU must stay robust (exp-free) at large beta: {lsr_big:.2f}"
+    )
+    print(
+        "self-check OK: n=2 == classical; n=4 + modern softmax/LSR store past 2·N; "
+        "LSR matches softmax capacity exp-free (robust where naive exp overflows)"
+    )
 
 
 if __name__ == "__main__":

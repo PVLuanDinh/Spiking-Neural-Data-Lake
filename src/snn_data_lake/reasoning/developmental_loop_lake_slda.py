@@ -47,6 +47,7 @@ Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(400) NO
        NORD_TEST(2000) NORD_GAMMA_SWEEP("g1,g2,...")
 Deps: numpy torch torchvision snntorch  (research/GPU tier; core untouched)
 """
+
 import os
 
 import torch
@@ -57,7 +58,10 @@ from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.fast_features import batched_features_and_keys
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
 from snn_data_lake.reasoning._loop_common import envi as _envi, envf as _envf
-from snn_data_lake.reasoning.developmental_loop_slda import SLDA_RFF, _acc     # reuse the RFF+streaming-LDA readout + learned-aware acc
+from snn_data_lake.reasoning.developmental_loop_slda import (
+    SLDA_RFF,
+    _acc,
+)  # reuse the RFF+streaming-LDA readout + learned-aware acc
 
 
 def main():
@@ -68,12 +72,12 @@ def main():
     C1 = _envi("NORD_C1", 30)
     T_LAT = _envi("NORD_T", 15)
     L1_EPOCHS = _envi("NORD_L1_EPOCHS", 3)
-    PER = _envi("NORD_PER", 400)                 # objective's own exemplars streamed raw each cycle
-    KREPLAY = _envi("NORD_KREPLAY", 150)         # lake store depth per class AND proximity retrieve-k
+    PER = _envi("NORD_PER", 400)  # objective's own exemplars streamed raw each cycle
+    KREPLAY = _envi("NORD_KREPLAY", 150)  # lake store depth per class AND proximity retrieve-k
     RFF = _envi("NORD_RFF", 2000)
     GAMMA = _envf("NORD_GAMMA", 0.02)
     SHRINK = _envf("NORD_SHRINK", 0.1)
-    PROTO = _envi("NORD_PROTO", 0) == 1          # LEVER 3: prototype replay instead of raw exemplars
+    PROTO = _envi("NORD_PROTO", 0) == 1  # LEVER 3: prototype replay instead of raw exemplars
     TRAIN_N = _envi("NORD_TRAIN", 12000)
     TEST_N = _envi("NORD_TEST", 2000)
     scratch = os.environ.get("TEMP", ".")
@@ -83,9 +87,13 @@ def main():
         os.remove(lake_path)
 
     print("=" * 92)
-    print("LAKE-BACKED + SLDA-RFF LOOP -- durable proximity replay feeding order-invariant SLDA statistics")
-    print(f"device={dev}  cycles={CYCLES}  C1={C1}  per={PER}  retrieve-k={KREPLAY}  rff={RFF}  "
-          f"gamma={GAMMA}  shrink={SHRINK}  proto={PROTO}")
+    print(
+        "LAKE-BACKED + SLDA-RFF LOOP -- durable proximity replay feeding order-invariant SLDA statistics"
+    )
+    print(
+        f"device={dev}  cycles={CYCLES}  C1={C1}  per={PER}  retrieve-k={KREPLAY}  rff={RFF}  "
+        f"gamma={GAMMA}  shrink={SHRINK}  proto={PROTO}"
+    )
     print(f"lake={lake_path}")
     print("=" * 92)
     Xtr, Ytr, Xte, Yte = load_mnist(TRAIN_N, TEST_N)
@@ -95,24 +103,34 @@ def main():
     conv = ConvLatencyStdp(C1, T_LAT)
     for ep in range(L1_EPOCHS):
         _train(conv, Xtr, f"conv1 ep{ep + 1}/{L1_EPOCHS}")
-    print(f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}")
+    print(
+        f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}"
+    )
 
-    print("[cache] conv1 SPATIAL features (train+test) + compact C1 global proximity KEYS (ONE forward pass)...")
-    Ftr, Gtr = batched_features_and_keys(conv, Xtr)      # [Ntr, feat_dim] spatial, [Ntr, C1] <=64-dim keys
-    Fte, _ = batched_features_and_keys(conv, Xte)        # test keys unused
+    print(
+        "[cache] conv1 SPATIAL features (train+test) + compact C1 global proximity KEYS (ONE forward pass)..."
+    )
+    Ftr, Gtr = batched_features_and_keys(
+        conv, Xtr
+    )  # [Ntr, feat_dim] spatial, [Ntr, C1] <=64-dim keys
+    Fte, _ = batched_features_and_keys(conv, Xte)  # test keys unused
     ytr, yte = Ytr.long().to(dev), Yte.long().to(dev)
     D = Ftr.shape[1]
     tr_by = {d: (Ytr == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
     te_by = {d: (Yte == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
 
     slda = SLDA_RFF(D, rff=RFF, gamma=GAMMA, shrink=SHRINK, seed=0)
-    lake = LakeMemory(path=lake_path, seed=0)            # durable substrate lake + proximity index
-    from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
+    lake = LakeMemory(path=lake_path, seed=0)  # durable substrate lake + proximity index
+    from snn_data_lake.neuromodulation.spiking_curiosity import (
+        SpikingCuriosityDrive,
+        SpikingCurriculum,
+    )
+
     curiosity = SpikingCuriosityDrive(seed=0)
     curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)
 
     learned, competence, mem_rows, class_proto, curve = [], {d: 0.0 for d in range(10)}, {}, {}, []
-    obs_F, obs_y = [], []                                # accumulate streamed batches (for the gamma sweep)
+    obs_F, obs_y = [], []  # accumulate streamed batches (for the gamma sweep)
     for cyc in range(1, CYCLES + 1):
         unseen = [d for d in range(10) if d not in learned]
         candidates = unseen if unseen else list(range(10))
@@ -121,15 +139,19 @@ def main():
 
         # ---- CONSOLIDATE a held-out slice of this digit TO THE DURABLE LAKE (keys + row-index payloads) ----
         if is_new:
-            pool = tr_by[objective][PER:PER + KREPLAY]            # held-out from the raw-streamed slice
+            pool = tr_by[objective][PER : PER + KREPLAY]  # held-out from the raw-streamed slice
             pool_idx = torch.tensor(pool, dtype=torch.long, device=dev)
             if PROTO:
                 # LEVER 3: store ONE class PROTOTYPE (mean key) with payload = class label; keep the mean feature.
                 pkey = Gtr[pool_idx].mean(0).tolist()
                 lake.consolidate([pkey], payloads=[objective])
-                class_proto[objective] = Ftr[pool_idx].mean(0)   # [D] mean feature -> streamed as replay
+                class_proto[objective] = Ftr[pool_idx].mean(
+                    0
+                )  # [D] mean feature -> streamed as replay
             else:
-                lake.consolidate([Gtr[r].tolist() for r in pool], payloads=pool)   # per-exemplar keys
+                lake.consolidate(
+                    [Gtr[r].tolist() for r in pool], payloads=pool
+                )  # per-exemplar keys
             mem_rows[objective] = pool
             learned.append(objective)
 
@@ -141,8 +163,12 @@ def main():
         # ---- RETRIEVAL-AUGMENTED replay: proximity neighbours of the objective's class-representative key ----
         replay_n = 0
         if objective in mem_rows and lake.n_stored > 0:
-            q = Gtr[torch.tensor(mem_rows[objective], dtype=torch.long, device=dev)].mean(0).tolist()
-            got = lake.retrieve(q, k=KREPLAY)                    # nearest stored payloads (row-idx or class-label)
+            q = (
+                Gtr[torch.tensor(mem_rows[objective], dtype=torch.long, device=dev)]
+                .mean(0)
+                .tolist()
+            )
+            got = lake.retrieve(q, k=KREPLAY)  # nearest stored payloads (row-idx or class-label)
             if PROTO:
                 classes = sorted({int(c) for c in got if int(c) in class_proto})
                 if classes:
@@ -154,11 +180,13 @@ def main():
                 if rows:
                     ridx = torch.tensor(rows, dtype=torch.long, device=dev)
                     F_parts.append(Ftr[ridx])
-                    y_parts.append(ytr[ridx])                    # TRUE labels -> contamination stays correctly-labelled
+                    y_parts.append(
+                        ytr[ridx]
+                    )  # TRUE labels -> contamination stays correctly-labelled
                     replay_n = len(rows)
 
         Fb, yb = torch.cat(F_parts, 0), torch.cat(y_parts, 0)
-        slda.observe(Fb, yb)                                     # additive, order-invariant accumulation
+        slda.observe(Fb, yb)  # additive, order-invariant accumulation
         obs_F.append(Fb)
         obs_y.append(yb)
 
@@ -168,9 +196,11 @@ def main():
         curve.append(overall)
         curiosity.observe(objective, 1.0 - competence[objective])
         curriculum.observe(curiosity.learning_progress(objective))
-        print(f"CYCLE {cyc:2d} obj={objective} {'new' if is_new else 'rev'}  lake_stored={lake.n_stored}  "
-              f"{'proto' if PROTO else 'proximity'}_replay={replay_n}  "
-              f"SLDA-RFF acc over {sorted(learned)} = {overall:.1%}")
+        print(
+            f"CYCLE {cyc:2d} obj={objective} {'new' if is_new else 'rev'}  lake_stored={lake.n_stored}  "
+            f"{'proto' if PROTO else 'proximity'}_replay={replay_n}  "
+            f"SLDA-RFF acc over {sorted(learned)} = {overall:.1%}"
+        )
 
     final = curve[-1] if curve else 0.0
 
@@ -212,15 +242,27 @@ def main():
     print(f"    gamma used in the loop = {GAMMA}; best swept gamma = {best_g} ({best_a:.1%})")
     print("-" * 92)
     if PROTO:
-        print("  LEVER 3 -- PROTOTYPE replay ON: replay streamed class mean-features (1 point/class) instead")
-        print("    of raw retrieved rows. Expected HONEST cost: a single mean point per class adds ~zero")
-        print("    within-class scatter, so SLDA's shared covariance is under-estimated -> typically <= raw.")
-        print("    Compare this run's accuracy to the default (NORD_PROTO=0, raw retrieval) to read the sign.")
+        print(
+            "  LEVER 3 -- PROTOTYPE replay ON: replay streamed class mean-features (1 point/class) instead"
+        )
+        print(
+            "    of raw retrieved rows. Expected HONEST cost: a single mean point per class adds ~zero"
+        )
+        print(
+            "    within-class scatter, so SLDA's shared covariance is under-estimated -> typically <= raw."
+        )
+        print(
+            "    Compare this run's accuracy to the default (NORD_PROTO=0, raw retrieval) to read the sign."
+        )
     else:
-        print("  LEVER 3 -- prototype replay OFF (raw-exemplar retrieval). Set NORD_PROTO=1 to compare.")
+        print(
+            "  LEVER 3 -- prototype replay OFF (raw-exemplar retrieval). Set NORD_PROTO=1 to compare."
+        )
     print("-" * 92)
-    print(f"  DURABILITY (close+reopen the .spkl, memory survives): {dur['ok']}  "
-          f"(events {dur['events_before']} -> {dur['events_after']}, {dur['n_stored']} exemplars)")
+    print(
+        f"  DURABILITY (close+reopen the .spkl, memory survives): {dur['ok']}  "
+        f"(events {dur['events_before']} -> {dur['events_after']}, {dur['n_stored']} exemplars)"
+    )
     print("=" * 92)
 
     # ---- self-checks (deterministic asserts) ----
@@ -228,15 +270,19 @@ def main():
     if PROTO:
         # LEVER-3 experiment: prototype replay is allowed to be an honest degradation; only guard chance.
         assert final > 0.10, f"proto-replay SLDA at/below chance: {final:.2f}"
-        print(f"self-check OK (PROTO): lake-SLDA {final:.1%} (prototype replay, honest experiment); "
-              f"lake durable across restart. Compare to raw retrieval for the sign of the effect.")
+        print(
+            f"self-check OK (PROTO): lake-SLDA {final:.1%} (prototype replay, honest experiment); "
+            f"lake durable across restart. Compare to raw retrieval for the sign of the effect."
+        )
     else:
         # DEFAULT: raw retrieval feeding order-invariant SLDA MUST beat the 90.2% linear lake loop.
         assert final > 0.90, f"lake-SLDA {final:.2f} did not beat the 90.2% linear lake loop"
-        print(f"self-check OK: lake-backed SLDA-RFF {final:.1%} > 90.2% linear lake "
-              f"({(final - 0.902) * 100:+.1f} pts); proximity replay feeds order-invariant statistics with "
-              f"TRUE labels (contamination stays correctly-labelled, no forgetting); {dur['n_stored']} "
-              f"exemplars durable across a lake restart.")
+        print(
+            f"self-check OK: lake-backed SLDA-RFF {final:.1%} > 90.2% linear lake "
+            f"({(final - 0.902) * 100:+.1f} pts); proximity replay feeds order-invariant statistics with "
+            f"TRUE labels (contamination stays correctly-labelled, no forgetting); {dur['n_stored']} "
+            f"exemplars durable across a lake restart."
+        )
     lake.close()
     return 0
 

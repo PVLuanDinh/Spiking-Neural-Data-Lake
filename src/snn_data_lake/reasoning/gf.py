@@ -13,7 +13,6 @@ public names (induce_program, OpenGf, synthesize_sequence, consistent_hypotheses
   PYTHONPATH=src python -m snn_data_lake.reasoning.gf
 """
 
-
 # ============================================================================================
 # --- program_inducer ---
 # ============================================================================================
@@ -48,8 +47,8 @@ Deps: stdlib (numpy/torch allowed project-wide).
 """
 import sys
 
-_CONSTS_pi = (1, 2, 3)                        # the atomic integer constants the grammar may use
-_MAX_SIZE = 7                              # node budget (raise -> larger programs, unbounded in principle)
+_CONSTS_pi = (1, 2, 3)  # the atomic integer constants the grammar may use
+_MAX_SIZE = 7  # node budget (raise -> larger programs, unbounded in principle)
 
 
 def _digit_sum(v):
@@ -61,6 +60,7 @@ def _digit_sum(v):
 
 # An expression is a nested tuple: ('n',) ('t1',) ('t2',) ('d1',) ('c', k) ('+', a, b) ('-', a, b) ('*', a, b).
 # 'd1' = digitsum(t[n-1]) -- a general terminal, composable with the rest of the grammar.
+
 
 def _evaluate_pi(expr, n, t1, t2):
     tag = expr[0]
@@ -106,7 +106,7 @@ def _render_pi(expr):
     return f"({_render_pi(expr[1])} {tag} {_render_pi(expr[2])})"
 
 
-_LAYER_CACHE = {}          # max_size -> {size: [expr, ...]} -- built once, reused across every call/turn
+_LAYER_CACHE = {}  # max_size -> {size: [expr, ...]} -- built once, reused across every call/turn
 
 
 def _layers(max_size):
@@ -148,17 +148,17 @@ def induce_program_full(values):
     smallest (next_value, "t[n]=...", nodes) that survives leave-one-out, or None. The node count lets
     a caller apply MDL -- a program that does not COMPRESS the data (nodes >= #terms) is a coincidental
     fit, not a pinned rule (the primes case), and an honest agent should ask rather than assert it."""
-    if len(values) < 4:                                        # need history to fit + a term to hold out
+    if len(values) < 4:  # need history to fit + a term to hold out
         return None
     last = len(values) - 1
     for size, expr in _expressions_by_size(_MAX_SIZE):
         start = _min_start_pi(expr)
-        if last - start < 2:                                   # too few equations to identify a program
+        if last - start < 2:  # too few equations to identify a program
             continue
         if not _consistent(expr, values, start):
             continue
         held_out = _evaluate_pi(expr, last + 1, values[last - 1], values[last - 2])
-        if held_out != values[last]:                          # leave-one-out: must predict the last term
+        if held_out != values[last]:  # leave-one-out: must predict the last term
             continue
         nxt = _evaluate_pi(expr, last + 2, values[last], values[last - 1])
         return nxt, f"t[n]={_render_pi(expr)}", size
@@ -188,7 +188,7 @@ def consistent_programs(values, top_n=8):
         if not _consistent(expr, values, start):
             continue
         if _evaluate_pi(expr, last + 1, values[last - 1], values[last - 2]) != values[last]:
-            continue                                           # leave-one-out: must predict the held-out term
+            continue  # leave-one-out: must predict the held-out term
         nxt = _evaluate_pi(expr, last + 2, values[last], values[last - 1])
         if nxt in seen:
             continue
@@ -211,7 +211,9 @@ def main_pi():
         ok = val == want
         passed.append(ok)
         prog = got[1] if got else "(no program found)"
-        print(f"  [{'PASS' if ok else 'FAIL'}] {name:28s} -> {val!r:>6}  (want {want!r:>6})  {prog}")
+        print(
+            f"  [{'PASS' if ok else 'FAIL'}] {name:28s} -> {val!r:>6}  (want {want!r:>6})  {prog}"
+        )
 
     # subsumes the menu ...
     check("arithmetic 2 4 6 8", [2, 4, 6, 8], 10)
@@ -219,11 +221,13 @@ def main_pi():
     check("squares    1 4 9 16 25", [1, 4, 9, 16, 25], 36)
     check("Fibonacci  1 1 2 3 5", [1, 1, 2, 3, 5], 8)
     # ... AND reaches programs the fixed menu could NOT
-    check("factorial  1 2 6 24 120", [1, 2, 6, 24, 120], 720)         # t[n] = n * t[n-1]
-    check("square-recur 2 4 16 256", [2, 4, 16, 256], 65536)          # t[n] = t[n-1] * t[n-1]
+    check("factorial  1 2 6 24 120", [1, 2, 6, 24, 120], 720)  # t[n] = n * t[n-1]
+    check("square-recur 2 4 16 256", [2, 4, 16, 256], 65536)  # t[n] = t[n-1] * t[n-1]
 
     n_pass = sum(passed)
-    print(f"\n  programs synthesised: {n_pass}/{len(passed)} (menu families + factorial + cross-terms)")
+    print(
+        f"\n  programs synthesised: {n_pass}/{len(passed)} (menu families + factorial + cross-terms)"
+    )
 
     # UNDERDETERMINATION (a real property of induction, not a bug): with few terms the SIMPLEST program
     # consistent with the data may not be the 'intended' rule. Given only 2 3 5 7 11 the inducer finds
@@ -231,8 +235,10 @@ def main_pi():
     # prime 13 -- because 'prime' is knowledge beyond the 5 numbers shown. This is honest: it returns a
     # program that DOES reproduce the data, and more terms would disambiguate. It is not a bluff.
     prime_prog = induce_program([2, 3, 5, 7, 11])
-    print(f"\n  underdetermination: primes 2 3 5 7 11 -> {prime_prog[1]} (fits the data, predicts "
-          f"{prime_prog[0]}; not 'prime' -- 5 terms underdetermine the rule)")
+    print(
+        f"\n  underdetermination: primes 2 3 5 7 11 -> {prime_prog[1]} (fits the data, predicts "
+        f"{prime_prog[0]}; not 'prime' -- 5 terms underdetermine the rule)"
+    )
 
     # the true structural wall -- NO program in the grammar/budget fits even the given terms -> gap
     print("\n  the wall -- no program in the bounded grammar fits the data at all, MUST gap:")
@@ -244,15 +250,23 @@ def main_pi():
         print(f"  [{'GAP ' if got is None else 'BLUFF'}] {name:24s} -> {got!r}")
 
     assert induce_program([1, 2, 6, 24, 120])[0] == 720, "must SYNTHESISE factorial (t[n]=n*t1)"
-    assert "t[n-1]" in induce_program([1, 2, 6, 24, 120])[1], "factorial program must reference t[n-1]"
+    assert "t[n-1]" in induce_program([1, 2, 6, 24, 120])[1], (
+        "factorial program must reference t[n-1]"
+    )
     assert induce_program([1, 1, 2, 3, 5])[0] == 8, "must synthesise the Fibonacci recurrence"
     assert induce_program([2, 4, 8, 16])[0] == 32, "must synthesise geometric"
-    assert prime_prog is not None, "underdetermination: it must find A program consistent with the data"
-    assert all(v is None for v in wall.values()), "a sequence with NO fitting program MUST honestly gap"
+    assert prime_prog is not None, (
+        "underdetermination: it must find A program consistent with the data"
+    )
+    assert all(v is None for v in wall.values()), (
+        "a sequence with NO fitting program MUST honestly gap"
+    )
 
-    print("\nSELF-CHECK PASSED: open-ended test-time program synthesis (unbounded in the size budget), "
-          "leave-one-out guarded; underdetermination surfaced honestly; structural gaps where no "
-          "program fits the data.")
+    print(
+        "\nSELF-CHECK PASSED: open-ended test-time program synthesis (unbounded in the size budget), "
+        "leave-one-out guarded; underdetermination surfaced honestly; structural gaps where no "
+        "program fits the data."
+    )
     return 0
 
 
@@ -289,7 +303,6 @@ Grammar: E := n | t[n-1] | t[n-2] | c(1,2,3) | <learned primitive> | E+E | E-E |
 guards overfit; a program is learned only if it COMPRESSES (nodes < #terms). Deps: stdlib + home.
   PYTHONPATH=src .venv-lake/Scripts/python research/open_gf.py     # open-ended growth self-check
 """
-import sys
 import time
 
 from snn_data_lake.substrate.home import load_state, save_state
@@ -299,7 +312,9 @@ _CONSTS_ogf = (1, 2, 3)
 # (triangular n(n+1)/2) and cyclic/modulo patterns become expressible. A raisable set -- the Godel
 # machine can extend it further at the code level when even this closure is short.
 _OPS_ogf = ("+", "-", "*", "//", "%")
-_DEDUP = range(1, 8)          # closed-form behaviour compared over these indices to dedup learned primitives
+_DEDUP = range(
+    1, 8
+)  # closed-form behaviour compared over these indices to dedup learned primitives
 
 
 def _ev(e, n, t1, t2, lib):
@@ -323,7 +338,7 @@ def _ev(e, n, t1, t2, lib):
     if tag == "*":
         return a * b
     if b == 0:
-        raise ZeroDivisionError                              # invalid on this input -> the program can't fit
+        raise ZeroDivisionError  # invalid on this input -> the program can't fit
     return a // b if tag == "//" else a % b
 
 
@@ -351,8 +366,18 @@ def _render_ogf(e):
 
 def _norm_ogf(e):
     # tuples <-> lists survive a JSON round-trip; normalise a loaded library to tuples for hashing/eval.
-    return tuple([e[0]] + ([e[1]] if e[0] == "c" else [e[1]] if e[0] == "lib" else
-                           [_norm_ogf(e[1]), _norm_ogf(e[2])] if len(e) == 3 else []))
+    return tuple(
+        [e[0]]
+        + (
+            [e[1]]
+            if e[0] == "c"
+            else [e[1]]
+            if e[0] == "lib"
+            else [_norm_ogf(e[1]), _norm_ogf(e[2])]
+            if len(e) == 3
+            else []
+        )
+    )
 
 
 class OpenGf:
@@ -363,18 +388,21 @@ class OpenGf:
     _STATE = "gf_library.json"
 
     def __init__(self, budget=12, persist=False, cap=60000):
-        self.budget = budget          # iterative-deepening ceiling (a RESOURCE guard, raisable)
-        self.cap = cap                # per-size hard node-count guard
+        self.budget = budget  # iterative-deepening ceiling (a RESOURCE guard, raisable)
+        self.cap = cap  # per-size hard node-count guard
         self.persist = persist
-        self.lib = {}                 # name -> expr (learned primitives, composable as terminals)
+        self.lib = {}  # name -> expr (learned primitives, composable as terminals)
         if persist:
             for name, expr in (load_state(self._STATE, default={}) or {}).items():
                 self.lib[name] = _norm_ogf(expr)
         self._layer_cache = {}
 
     def _terminals(self):
-        return ([("n",), ("t1",), ("t2",)] + [("c", k) for k in _CONSTS_ogf]
-                + [("lib", nm) for nm in sorted(self.lib)])
+        return (
+            [("n",), ("t1",), ("t2",)]
+            + [("c", k) for k in _CONSTS_ogf]
+            + [("lib", nm) for nm in sorted(self.lib)]
+        )
 
     def _layers(self, max_size):
         key = (max_size, tuple(sorted(self.lib)))
@@ -405,7 +433,7 @@ class OpenGf:
         if len(values) < 4:
             return None
         last = len(values) - 1
-        for size in range(1, self.budget + 1):                 # ITERATIVE DEEPENING (no fixed ceiling)
+        for size in range(1, self.budget + 1):  # ITERATIVE DEEPENING (no fixed ceiling)
             for e in self._layers(size).get(size, []):
                 start = 2 if _uses_ogf(e, "t2") else 1 if _uses_ogf(e, "t1") else 0
                 if last - start < 2:
@@ -413,11 +441,14 @@ class OpenGf:
                 try:
                     if not self._consistent(e, values, start):
                         continue
-                    if _ev(e, last + 1, values[last - 1], values[last - 2], self.lib) != values[last]:
-                        continue                               # leave-one-out
+                    if (
+                        _ev(e, last + 1, values[last - 1], values[last - 2], self.lib)
+                        != values[last]
+                    ):
+                        continue  # leave-one-out
                     nxt = _ev(e, last + 2, values[last], values[last - 1], self.lib)
                 except ZeroDivisionError:
-                    continue                                   # invalid (div-by-zero) on some input -> not a fit
+                    continue  # invalid (div-by-zero) on some input -> not a fit
                 if learn:
                     self._learn(e, values)
                 return nxt, _render_ogf(e), _nodes(e)
@@ -426,22 +457,22 @@ class OpenGf:
     def _learn(self, e, values):
         """Promote a solved rule to a NAMED PRIMITIVE if it COMPRESSES (a real rule, not a coincidental
         fit) and is a closed-form function of n (composable as a terminal). The grammar grows."""
-        if _nodes(e) >= len(values):                           # coincidental fit -> not a rule worth keeping
+        if _nodes(e) >= len(values):  # coincidental fit -> not a rule worth keeping
             return
-        if _uses_ogf(e, "t1") or _uses_ogf(e, "t2"):                   # a recurrence isn't a reusable f(n) primitive
+        if _uses_ogf(e, "t1") or _uses_ogf(e, "t2"):  # a recurrence isn't a reusable f(n) primitive
             return
         try:
             beh = tuple(_ev(e, k, 0, 0, self.lib) for k in _DEDUP)
         except ZeroDivisionError:
-            return                                             # divides by zero somewhere -> not a clean f(n)
-        for expr in self.lib.values():                         # dedup by BEHAVIOUR (don't relearn the same fn)
+            return  # divides by zero somewhere -> not a clean f(n)
+        for expr in self.lib.values():  # dedup by BEHAVIOUR (don't relearn the same fn)
             try:
                 if tuple(_ev(expr, k, 0, 0, self.lib) for k in _DEDUP) == beh:
                     return
             except ZeroDivisionError:
                 continue
         self.lib[f"p{len(self.lib)}"] = e
-        self._layer_cache.clear()                              # grammar changed -> rebuild layers next search
+        self._layer_cache.clear()  # grammar changed -> rebuild layers next search
         if self.persist:
             save_state(self._STATE, {k: v for k, v in self.lib.items()})
 
@@ -465,7 +496,7 @@ class OpenGf:
         'proven absent' (Rice/Solomonoff forbid certifying absence). With both guards left None it is
         truly unbounded: found-or-forever."""
         if len(values) < 4:
-            return None                                        # too short to fit -- raising the budget never helps
+            return None  # too short to fit -- raising the budget never helps
         entry, t0 = self.budget, time.perf_counter()
         b = self.budget
         try:
@@ -475,12 +506,12 @@ class OpenGf:
                 if r is not None:
                     return r
                 if max_budget is not None and b >= max_budget:
-                    return None                                # anytime gap: a resource limit, NOT proof of absence
+                    return None  # anytime gap: a resource limit, NOT proof of absence
                 if max_seconds is not None and time.perf_counter() - t0 >= max_seconds:
                     return None
                 b += step
         finally:
-            self.budget = entry                                # a query, not a reconfig -- never leave the budget raised
+            self.budget = entry  # a query, not a reconfig -- never leave the budget raised
 
 
 def main_ogf():
@@ -491,51 +522,67 @@ def main_ogf():
     # ---- 1) ITERATIVE DEEPENING: raising the budget reaches a program a smaller budget could not ----
     shallow = OpenGf(budget=4)
     deep = OpenGf(budget=9)
-    cubes = [1, 8, 27, 64, 125]                                # n^3 -> smallest program (n*(n*n)) has 5 nodes
-    print(f"\n  [deepening] n^3 at budget 4 -> {shallow.solve(cubes, learn=False)}  "
-          f"(too shallow); at budget 9 -> {deep.solve(cubes, learn=False)[:2]}")
-    assert shallow.solve(cubes, learn=False) is None, "a size-5 rule must be OUT of a budget-4 search"
-    assert deep.solve(cubes, learn=False)[0] == 216, "deepening the budget must reach it -> next is 216"
+    cubes = [1, 8, 27, 64, 125]  # n^3 -> smallest program (n*(n*n)) has 5 nodes
+    print(
+        f"\n  [deepening] n^3 at budget 4 -> {shallow.solve(cubes, learn=False)}  "
+        f"(too shallow); at budget 9 -> {deep.solve(cubes, learn=False)[:2]}"
+    )
+    assert shallow.solve(cubes, learn=False) is None, (
+        "a size-5 rule must be OUT of a budget-4 search"
+    )
+    assert deep.solve(cubes, learn=False)[0] == 216, (
+        "deepening the budget must reach it -> next is 216"
+    )
 
     # ---- 1b) UNBOUNDED deepening: no fixed ceiling -- keep raising the budget until the program fits ----
     # n^4's smallest program is 7 nodes -- OUT of a budget-4 search. solve() gaps; solve_unbounded()
     # deepens automatically (4->8) and FINDS it. Completeness: any program in the closure is reached.
-    n4 = [1, 16, 81, 256, 625, 1296]                           # f(n)=n^4, next=2401, smallest program 7 nodes
+    n4 = [1, 16, 81, 256, 625, 1296]  # f(n)=n^4, next=2401, smallest program 7 nodes
     small = OpenGf(budget=4)
-    assert small.solve(n4, learn=False) is None, "n^4 (7-node program) is OUT of a fixed budget-4 search"
+    assert small.solve(n4, learn=False) is None, (
+        "n^4 (7-node program) is OUT of a fixed budget-4 search"
+    )
     found = OpenGf(budget=4).solve_unbounded(n4, learn=False, max_budget=40)
     print(f"  [unbounded] n^4 bounded@4 -> None; solve_unbounded -> {found}")
     assert found is not None and found[0] == 2401 and found[2] == 7, (
-        "UNBOUNDED deepening must reach the out-of-budget program a fixed budget cannot (next 2401, 7 nodes)")
+        "UNBOUNDED deepening must reach the out-of-budget program a fixed budget cannot (next 2401, 7 nodes)"
+    )
     # HONEST TRADE: on a non-program series it would deepen FOREVER -- a max_budget guard makes it an
     # anytime gap ('no fit under budget B'), which is a resource limit, NOT a proof of absence.
     wall_guarded = OpenGf(budget=6).solve_unbounded([3, 1, 4, 1, 5, 9], learn=False, max_budget=14)
-    assert wall_guarded is None, "unbounded search must still gap (under a guard) on a genuine non-program series"
+    assert wall_guarded is None, (
+        "unbounded search must still gap (under a guard) on a genuine non-program series"
+    )
 
     # ---- 2) LIBRARY LEARNING: n^6 is out of budget from scratch, but reachable AFTER learning cube ----
     g = OpenGf(budget=7)
-    n6 = [1, 64, 729, 4096, 15625, 46656]                      # n^6: base program has 11 nodes -> out of budget 7
+    n6 = [1, 64, 729, 4096, 15625, 46656]  # n^6: base program has 11 nodes -> out of budget 7
     print(f"\n  [grow] n^6 from scratch (budget 7) -> {g.solve(n6, learn=False)} (out of budget)")
     assert g.solve(n6, learn=False) is None, "n^6 must be out of the base grammar within budget 7"
-    g.solve([1, 8, 27, 64, 125, 216])                          # learn n^3 (5 nodes < 6 terms -> compresses) = `cube`
-    grown = g.solve(n6, learn=False)                           # n^6 = cube*cube -- now one step away
+    g.solve([1, 8, 27, 64, 125, 216])  # learn n^3 (5 nodes < 6 terms -> compresses) = `cube`
+    grown = g.solve(n6, learn=False)  # n^6 = cube*cube -- now one step away
     print(f"  [grow] after learning n^3=cube (library {sorted(g.lib)}) -> n^6 = {grown}")
     assert grown is not None and grown[0] == 117649, "after the grammar grew, n^6 must be solvable"
-    assert "p" in grown[1] and grown[2] <= 3, "n^6 must REUSE the learned primitive in a tiny program (cube*cube)"
+    assert "p" in grown[1] and grown[2] <= 3, (
+        "n^6 must REUSE the learned primitive in a tiny program (cube*cube)"
+    )
 
     # ---- 3) DURABLE: the learned library persists -> a FRESH engine (new session) still solves n^6 ----
     import os
     import tempfile
+
     prev, tmp = os.environ.get("NORD_HOME"), tempfile.mkdtemp(prefix="opengf_")
     os.environ["NORD_HOME"] = tmp
     try:
         a = OpenGf(budget=7, persist=True)
-        a.solve([1, 8, 27, 64, 125, 216])                      # learns + PERSISTS cube (n^3)
-        b = OpenGf(budget=7, persist=True)                     # a NEW engine, same durable home
+        a.solve([1, 8, 27, 64, 125, 216])  # learns + PERSISTS cube (n^3)
+        b = OpenGf(budget=7, persist=True)  # a NEW engine, same durable home
         transferred = b.solve(n6, learn=False)
         print(f"\n  [durable] fresh engine reloaded library {sorted(b.lib)} -> n^6 = {transferred}")
         assert b.lib, "the learned library must persist across sessions"
-        assert transferred is not None and transferred[0] == 117649, "accumulated competence must transfer"
+        assert transferred is not None and transferred[0] == 117649, (
+            "accumulated competence must transfer"
+        )
     finally:
         os.environ.pop("NORD_HOME", None)
         if prev is not None:
@@ -543,22 +590,31 @@ def main_ogf():
 
     # ---- 3b) WIDER CLOSURE: // and % reach families {+,-,*} alone cannot ----
     w = OpenGf(budget=8)
-    r_mod = w.solve([1, 2, 0, 1, 2, 0], learn=False)           # cyclic period-3 = n%3 (no t1/t2 recurrence)
-    r_div = w.solve([0, 2, 4, 8, 12, 18], learn=False)         # (n*n)//2 -- integer division
+    r_mod = w.solve([1, 2, 0, 1, 2, 0], learn=False)  # cyclic period-3 = n%3 (no t1/t2 recurrence)
+    r_div = w.solve([0, 2, 4, 8, 12, 18], learn=False)  # (n*n)//2 -- integer division
     print(f"\n  [closure] n%3 cyclic -> {r_mod} ; (n*n)//2 -> {r_div}")
-    assert r_mod is not None and r_mod[0] == 1 and "%" in r_mod[1], "% widens the closure -> a cyclic rule is reachable"
-    assert r_div is not None and r_div[0] == 24 and "//" in r_div[1], "// widens the closure -> (n*n)//2 is reachable"
+    assert r_mod is not None and r_mod[0] == 1 and "%" in r_mod[1], (
+        "% widens the closure -> a cyclic rule is reachable"
+    )
+    assert r_div is not None and r_div[0] == 24 and "//" in r_div[1], (
+        "// widens the closure -> (n*n)//2 is reachable"
+    )
 
     # ---- 4) HONEST WALL: not everything is a program -- a random series still gaps at ANY budget ----
     huge = OpenGf(budget=10)
-    print(f"\n  [wall] random 3 1 4 1 5 9 at budget 10 -> {huge.solve([3, 1, 4, 1, 5, 9], learn=False)}")
+    print(
+        f"\n  [wall] random 3 1 4 1 5 9 at budget 10 -> {huge.solve([3, 1, 4, 1, 5, 9], learn=False)}"
+    )
     assert huge.solve([3, 1, 4, 1, 5, 9], learn=False) is None, (
-        "the wall MOVED, it did not vanish -- a genuinely non-program series still honestly gaps")
+        "the wall MOVED, it did not vanish -- a genuinely non-program series still honestly gaps"
+    )
 
-    print("\nSELF-CHECK PASSED: open-ended Gf -- iterative deepening (no fixed depth), library learning "
-          "(the grammar GROWS with experience: n^6 reachable only after learning cube), durable across "
-          "sessions; still an HONEST gap on what no program in the closure fits. Unbounded = self-"
-          "extending, not omniscient.")
+    print(
+        "\nSELF-CHECK PASSED: open-ended Gf -- iterative deepening (no fixed depth), library learning "
+        "(the grammar GROWS with experience: n^6 reachable only after learning cube), durable across "
+        "sessions; still an HONEST gap on what no program in the closure fits. Unbounded = self-"
+        "extending, not omniscient."
+    )
     return 0
 
 
@@ -594,13 +650,12 @@ Deps: stdlib + the brain's own snn_data_lake.cortex.vsa_reasoning (no LLM).
 """
 import re
 import string
-import sys
 from fractions import Fraction
 
 from snn_data_lake.cortex.vsa_reasoning import bundle, cleanup, coincidence, hv, permute, sim
 
 _ANCHOR = hv("GF_ORDERED_LINE_ANCHOR")
-_SHIFTS = range(-15, 16)                 # the transforms the model searches over (rule hypotheses)
+_SHIFTS = range(-15, 16)  # the transforms the model searches over (rule hypotheses)
 _LETTERS = string.ascii_lowercase
 
 
@@ -610,8 +665,8 @@ def code(n):
     return permute(_ANCHOR, n % len(_ANCHOR))
 
 
-_LETTER_BOOK = {c: code(i) for i, c in enumerate(_LETTERS)}     # a..z  -> code(0..25)
-_NUMBER_BOOK = {str(n): code(n) for n in range(100)}            # 0..99 (cleanup readout targets)
+_LETTER_BOOK = {c: code(i) for i, c in enumerate(_LETTERS)}  # a..z  -> code(0..25)
+_NUMBER_BOOK = {str(n): code(n) for n in range(100)}  # 0..99 (cleanup readout targets)
 
 
 def _best_shift(prev, curr):
@@ -638,6 +693,7 @@ def induce_shift(codes):
 # rule is found for THIS problem, not stored), but this higher-order search is SYMBOLIC arithmetic
 # over the observed values, not a spike operation. Honest split, stated plainly.
 
+
 def _diffs(xs):
     return [b - a for a, b in zip(xs, xs[1:], strict=False)]
 
@@ -658,7 +714,7 @@ def _poly_next(values):
             table = [list(values)]
             for _ in range(k):
                 table.append(_diffs(table[-1]))
-            table[-1].append(table[-1][-1])                    # extend the constant bottom row
+            table[-1].append(table[-1][-1])  # extend the constant bottom row
             for i in range(len(table) - 2, -1, -1):
                 table[i].append(table[i][-1] + table[i + 1][-1])
             return table[0][-1], ("constant difference" if k == 1 else f"constant {k}th-difference")
@@ -729,7 +785,7 @@ def _parity_op_next(values):
     Infers (kind, param) independently for even- and odd-indexed transitions from the observed
     values, then LEAVE-ONE-OUT verifies: the induced pair of rules must reproduce every transition,
     including the LAST one held out of the fit, before it is trusted. None -> honest gap."""
-    if len(values) < 6:                       # >=2 transitions/parity to fit + 1 held out to verify
+    if len(values) < 6:  # >=2 transitions/parity to fit + 1 held out to verify
         return None
     pairs = list(zip(values, values[1:]))
     train, held = pairs[:-1], pairs[-1]
@@ -747,7 +803,7 @@ def _parity_op_next(values):
     if op_even is None or op_odd is None:
         return None
     held_op = op_even if len(train) % 2 == 0 else op_odd
-    if _apply_op(held_op[0], held_op[1], held[0]) != held[1]:      # leave-one-out on the held-out term
+    if _apply_op(held_op[0], held_op[1], held[0]) != held[1]:  # leave-one-out on the held-out term
         return None
     next_op = op_even if len(pairs) % 2 == 0 else op_odd
     nxt = _apply_op(next_op[0], next_op[1], values[-1])
@@ -763,7 +819,7 @@ def _interleave_next(values):
     ra, rb = synthesize_sequence(values[0::2]), synthesize_sequence(values[1::2])
     if ra is None or rb is None:
         return None
-    nxt = ra if len(values) % 2 == 0 else rb                   # next position: even -> A, odd -> B
+    nxt = ra if len(values) % 2 == 0 else rb  # next position: even -> A, odd -> B
     return nxt[0], f"interleave(A: {ra[1]} | B: {rb[1]})"
 
 
@@ -774,8 +830,15 @@ def synthesize_sequence(values):
     period-p operation cycles and interleave (depth-2 combinators). This is the strongest form the
     bounded searcher has: the rule is a PROGRAM synthesised for this problem, not a menu lookup.
     Anything outside the DSL / beyond this depth returns None -- an honest, structural gap."""
-    for generator in (_poly_next, _geometric_next, _recurrence_next,
-                      _periodic_additive_next, _parity_op_next, _interleave_next, induce_program):
+    for generator in (
+        _poly_next,
+        _geometric_next,
+        _recurrence_next,
+        _periodic_additive_next,
+        _parity_op_next,
+        _interleave_next,
+        induce_program,
+    ):
         got = generator(values)
         if got is not None:
             return got
@@ -794,12 +857,14 @@ def analogy_over(order, a, b, c):
         out = []
         for ca, cb, cc in zip(a, b, c, strict=True):
             s = _best_shift(book[ca], book[cb])
-            if sim(permute(book[ca], s), book[cb]) != 1.0:     # shift outside the window -> spurious -> gap
+            if (
+                sim(permute(book[ca], s), book[cb]) != 1.0
+            ):  # shift outside the window -> spurious -> gap
                 return None
             out.append(_exact_readout(permute(book[cc], s), book))
-    except KeyError:                                           # a symbol not in the provided alphabet
+    except KeyError:  # a symbol not in the provided alphabet
         return None
-    return "".join(out) if all(o is not None for o in out) else None   # any off-alphabet slot -> gap
+    return "".join(out) if all(o is not None for o in out) else None  # any off-alphabet slot -> gap
 
 
 def _exact_readout(predicted, book):
@@ -816,17 +881,19 @@ def solve_series(values):
     other rule is found by test-time PROGRAM SYNTHESIS over the DSL (synthesize_sequence)."""
     if len(values) < 3:
         return None
-    if all(0 <= v < 90 for v in values):                       # within the orbit + readout codebook
+    if all(0 <= v < 90 for v in values):  # within the orbit + readout codebook
         codes = [code(v) for v in values]
         s = induce_shift(codes)
         # trust the spiking readout ONLY if the shift REALLY maps every prev->curr (not a spurious
         # argmax from the bounded search window) AND the answer re-encodes exactly (no wrap/overflow);
         # else fall through to the general synthesis, which handles any constant difference correctly.
-        if s is not None and all(sim(permute(codes[i], s), codes[i + 1]) == 1.0 for i in range(len(codes) - 1)):
+        if s is not None and all(
+            sim(permute(codes[i], s), codes[i + 1]) == 1.0 for i in range(len(codes) - 1)
+        ):
             label = _exact_readout(permute(codes[-1], s), _NUMBER_BOOK)
             if label is not None:
                 return int(label), "constant difference (spiking VSA)"
-    return synthesize_sequence(values)                         # test-time program synthesis over the DSL
+    return synthesize_sequence(values)  # test-time program synthesis over the DSL
 
 
 def number_series(values):
@@ -846,11 +913,13 @@ def raven_dist3(rows):
         return None
     target = next((r for r in rows if None in r), None)
     present = [c for c in target if c is not None] if target else []
-    if len(present) != 2 or len(set(present)) != 2:            # a valid dist-3 row has two DISTINCT knowns
+    if len(present) != 2 or len(set(present)) != 2:  # a valid dist-3 row has two DISTINCT knowns
         return None
     book = {s: hv(s) for s in syms}
-    want = bundle([book[s] for s in syms])                     # the required 3-symbol superposition
-    return max(syms, key=lambda s: coincidence(bundle([book[c] for c in present] + [book[s]]), want))
+    want = bundle([book[s] for s in syms])  # the required 3-symbol superposition
+    return max(
+        syms, key=lambda s: coincidence(bundle([book[c] for c in present] + [book[s]]), want)
+    )
 
 
 def _variable_shift_next(letters):
@@ -919,7 +988,7 @@ def raven_arith_grid(rows):
     cols = [[rows[i][j] for i in range(3)] for j in range(3)]
     col_pred = _predict(cols[cj], [c for k, c in enumerate(cols) if k != cj], ri)
     if row_pred is not None and col_pred is not None:
-        return row_pred if row_pred == col_pred else None    # composed: must agree, else honest gap
+        return row_pred if row_pred == col_pred else None  # composed: must agree, else honest gap
     return row_pred if row_pred is not None else col_pred
 
 
@@ -936,7 +1005,7 @@ def raven_cell_attrs(rows):
         return None
     parsed = [[None if c is None else _CELL_RE.match(c) for c in r] for r in rows]
     if any(c is not None and m is None for r, pr in zip(rows, parsed) for c, m in zip(r, pr)):
-        return None                                # a cell isn't clean letter+digit -> not this family
+        return None  # a cell isn't clean letter+digit -> not this family
     letters = [[None if m is None else m.group(1) for m in r] for r in parsed]
     digits = [[None if m is None else int(m.group(2)) for m in r] for r in parsed]
 
@@ -944,7 +1013,7 @@ def raven_cell_attrs(rows):
     cols_l = [[letters[i][j] for i in range(3)] for j in range(3)]
     letter_col = raven_dist3(cols_l)
     if letter_row is not None and letter_col is not None and letter_row != letter_col:
-        return None                                # row-rule and column-rule disagree -> honest gap
+        return None  # row-rule and column-rule disagree -> honest gap
     letter_pred = letter_row if letter_row is not None else letter_col
     if letter_pred is None:
         return None
@@ -955,8 +1024,8 @@ def raven_cell_attrs(rows):
     ri, cj = blanks[0]
     col_digits = {digits[i][cj] for i in range(3) if i != ri}
     if len(col_digits) != 1:
-        return None                                # digit isn't column-invariant -> honest gap
-    for j in range(3):                             # corroborate: every OTHER column is ALSO constant
+        return None  # digit isn't column-invariant -> honest gap
+    for j in range(3):  # corroborate: every OTHER column is ALSO constant
         if j != cj and len({digits[i][j] for i in range(3)}) != 1:
             return None
     return f"{letter_pred}{next(iter(col_digits))}"
@@ -969,7 +1038,9 @@ def letter_series(letters):
     shift fits every transition."""
     codes = [_LETTER_BOOK[c] for c in letters]
     s = induce_shift(codes)
-    if s is not None and all(sim(permute(codes[i], s), codes[i + 1]) == 1.0 for i in range(len(codes) - 1)):
+    if s is not None and all(
+        sim(permute(codes[i], s), codes[i + 1]) == 1.0 for i in range(len(codes) - 1)
+    ):
         return _exact_readout(permute(codes[-1], s), _LETTER_BOOK)
     return _variable_shift_next(letters)
 
@@ -982,11 +1053,13 @@ def letter_analogy(a, b, c):
         return None
     out = []
     for ca, cb, cc in zip(a, b, c, strict=True):
-        s = _best_shift(_LETTER_BOOK[ca], _LETTER_BOOK[cb])    # transform this position underwent
-        if sim(permute(_LETTER_BOOK[ca], s), _LETTER_BOOK[cb]) != 1.0:   # shift outside the search window
-            return None                                        # -> spurious argmax, would bluff: honest gap
+        s = _best_shift(_LETTER_BOOK[ca], _LETTER_BOOK[cb])  # transform this position underwent
+        if (
+            sim(permute(_LETTER_BOOK[ca], s), _LETTER_BOOK[cb]) != 1.0
+        ):  # shift outside the search window
+            return None  # -> spurious argmax, would bluff: honest gap
         label = _exact_readout(permute(_LETTER_BOOK[cc], s), _LETTER_BOOK)
-        if label is None:                                      # ran off the alphabet -> honest gap, no wrap
+        if label is None:  # ran off the alphabet -> honest gap, no wrap
             return None
         out.append(label)
     return "".join(out)
@@ -996,9 +1069,27 @@ _NUMBER_WORDS = {
     w: i
     for i, w in enumerate(
         [
-            "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-            "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
-            "eighteen", "nineteen", "twenty",
+            "zero",
+            "one",
+            "two",
+            "three",
+            "four",
+            "five",
+            "six",
+            "seven",
+            "eight",
+            "nine",
+            "ten",
+            "eleven",
+            "twelve",
+            "thirteen",
+            "fourteen",
+            "fifteen",
+            "sixteen",
+            "seventeen",
+            "eighteen",
+            "nineteen",
+            "twenty",
         ]
     )
 }
@@ -1031,6 +1122,7 @@ def word_number_relation(a, b, c):
 
 # ------------------------------------------------------------- the fresh Gf probe ------------------
 
+
 def main_gfi():
     print("=" * 96)
     print("FLUID-INTELLIGENCE PROBE -- test-time rule induction over the brain's spiking VSA")
@@ -1059,8 +1151,12 @@ def main_gfi():
     check("cubes       1 8 27 64 125", number_series([1, 8, 27, 64, 125]), 216)
     check("Fibonacci   1 1 2 3 5", number_series([1, 1, 2, 3, 5]), 8)
     check("Lucas-like  2 2 4 6 10", number_series([2, 2, 4, 6, 10]), 16)
-    check("Raven dist-3 rows", raven_dist3([["a", "b", "c"], ["b", "c", "a"], ["c", "a", None]]), "b")
-    check("Raven dist-3 rows2", raven_dist3([["x", "y", "z"], ["y", "z", "x"], ["z", None, "y"]]), "x")
+    check(
+        "Raven dist-3 rows", raven_dist3([["a", "b", "c"], ["b", "c", "a"], ["c", "a", None]]), "b"
+    )
+    check(
+        "Raven dist-3 rows2", raven_dist3([["x", "y", "z"], ["y", "z", "x"], ["z", None, "y"]]), "x"
+    )
     # PROGRAM SYNTHESIS -- depth-2 programs the flat rule families structurally CANNOT express
     check("period-2 step 1 3 6 8 11 13", number_series([1, 3, 6, 8, 11, 13]), 16)
     check("interleave 1 10 2 20 3 30", number_series([1, 10, 2, 20, 3, 30]), 4)
@@ -1073,18 +1169,22 @@ def main_gfi():
     check("square-recur 2 4 16 256", number_series([2, 4, 16, 256]), 65536)
 
     n_in, n_pass = len(passed), sum(passed)
-    print(f"\n  Gf items solved: {n_pass}/{n_in} (spiking-VSA shift + relational integration + test-time "
-          "program synthesis + novel-symbol transfer; the pre-inducer brain scored 0/11)")
+    print(
+        f"\n  Gf items solved: {n_pass}/{n_in} (spiking-VSA shift + relational integration + test-time "
+        "program synthesis + novel-symbol transfer; the pre-inducer brain scored 0/11)"
+    )
 
     # THE WALL (now that the unbounded program-inducer is wired in): a rule is out of reach only when
     # NO program in the grammar fits the data at all, or the structure is unalignable. (Sequences like
     # primes DO get a consistent-but-underdetermined program -- see program_inducer's own probe.)
-    print("\n  the wall -- no program/alignment fits the data at all, these MUST gap (honest), not bluff:")
+    print(
+        "\n  the wall -- no program/alignment fits the data at all, these MUST gap (honest), not bluff:"
+    )
     # (short sequences like primes / mixed-+-x are UNDERDETERMINED, not walls: the inducer returns a
     # simplest program that fits the shown terms -- see program_inducer's probe. The true walls are
     # sequences with NO fitting program and structurally unalignable analogy/grid items.)
     ceiling = {
-        "random      3 1 4 1 5": number_series([3, 1, 4, 1, 5]),         # no program fits the data
+        "random      3 1 4 1 5": number_series([3, 1, 4, 1, 5]),  # no program fits the data
         "random      5 3 9 2 7 6": number_series([5, 3, 9, 2, 7, 6]),
         "analogy unequal len": letter_analogy("ab", "abc", "ij"),
         "raven not dist-3": raven_dist3([["a", "b", "c"], ["a", "b", "d"], ["a", "b", None]]),
@@ -1096,18 +1196,29 @@ def main_gfi():
     # ---- gated self-check: the full DSL PASSES, everything past the wall honestly GAPS ----
     assert n_pass == n_in, f"all Gf items must pass, got {n_pass}/{n_in}"
     assert all(v is None for v in ceiling.values()), (
-        "a rule outside the bounded DSL must be an HONEST GAP, never a bluffed answer")
+        "a rule outside the bounded DSL must be an HONEST GAP, never a bluffed answer"
+    )
     # every solve is test-time program synthesis: the program is searched per problem, not stored.
     assert induce_shift([code(1), code(4), code(7)]) == 3, "must induce an unseen step at test time"
-    assert solve_series([1, 10, 2, 20, 3, 30])[1].startswith("interleave"), "must synthesise a depth-2 program"
-    assert solve_series([1, 3, 6, 8, 11, 13])[1].startswith("period-2"), "must find a periodic op-cycle"
-    assert analogy_over(list("qwert"), "q", "w", "e") == "r", "must transfer a rule to a novel alphabet"
-    assert number_series([1, 2, 6, 24, 120]) == 720, "the unbounded inducer must synthesise factorial"
+    assert solve_series([1, 10, 2, 20, 3, 30])[1].startswith("interleave"), (
+        "must synthesise a depth-2 program"
+    )
+    assert solve_series([1, 3, 6, 8, 11, 13])[1].startswith("period-2"), (
+        "must find a periodic op-cycle"
+    )
+    assert analogy_over(list("qwert"), "q", "w", "e") == "r", (
+        "must transfer a rule to a novel alphabet"
+    )
+    assert number_series([1, 2, 6, 24, 120]) == 720, (
+        "the unbounded inducer must synthesise factorial"
+    )
 
-    print("\nSELF-CHECK PASSED: fluid intelligence by TEST-TIME PROGRAM SYNTHESIS -- spiking-VSA shift, "
-          "relational-integration combinators (period/interleave), an UNBOUNDED program-inducer "
-          "(factorial, products, ...), and novel-symbol transfer; short sequences are underdetermined "
-          "(simplest fitting program) and genuinely patternless / unalignable items honestly gap.")
+    print(
+        "\nSELF-CHECK PASSED: fluid intelligence by TEST-TIME PROGRAM SYNTHESIS -- spiking-VSA shift, "
+        "relational-integration combinators (period/interleave), an UNBOUNDED program-inducer "
+        "(factorial, products, ...), and novel-symbol transfer; short sequences are underdetermined "
+        "(simplest fitting program) and genuinely patternless / unalignable items honestly gap."
+    )
     return 0
 
 
@@ -1151,13 +1262,11 @@ Deps: stdlib + snn_data_lake.substrate.home (durable library). Grammar is closed
 (so any position is directly queryable): E := n | c | lib | E+E | E-E | E*E.
   PYTHONPATH=src .venv-lake/Scripts/python research/active_learner.py     # the 3-escape self-check
 """
-import sys
 
-from snn_data_lake.substrate.home import load_state, save_state
 
 _CONSTS_al = (1, 2, 3)
 _OPS_al = ("+", "-", "*")
-_DEDUP_SPAN = range(1, 7)          # behaviours compared over these indices to dedup equal programs
+_DEDUP_SPAN = range(1, 7)  # behaviours compared over these indices to dedup equal programs
 
 
 def _evaluate_al(expr, n, library):
@@ -1184,7 +1293,7 @@ def _render_al(expr):
     return f"({_render_al(expr[1])} {tag} {_render_al(expr[2])})"
 
 
-_ENUM_CACHE = {}          # (max_size, library-names) -> {size: [expr,...]} -- built once, reused every call
+_ENUM_CACHE = {}  # (max_size, library-names) -> {size: [expr,...]} -- built once, reused every call
 
 
 def _enum_layers(max_size, library):
@@ -1353,7 +1462,7 @@ def string_from_pairs(pairs, query):
 class ActiveLearner:
     """Generate -> test-against-the-world -> prune -> (identify) -> grow the library."""
 
-    def __init__(self, library=None, max_size=7, span=range(1, 13), top_n=12, max_queries=10):
+    def __init__(self, library=None, max_size=7, span=range(1, 13), top_n=12, max_queries=10):  # noqa: B008 -- range is immutable; the default is a constant span, not shared state
         self.library = library or Library()
         self.max_size = max_size
         self.span = span
@@ -1373,7 +1482,7 @@ class ActiveLearner:
             if len(hyps) == 1:
                 return hyps[0], True, world.queries
             k = _discriminating_query(hyps, asked, self.span, self.library)
-            if k is None:                                      # cannot discriminate further in span
+            if k is None:  # cannot discriminate further in span
                 return hyps[0], False, world.queries
             obs.append((k, world.query(k)))
             asked.add(k)
@@ -1404,12 +1513,20 @@ def main_al():
     passive = consistent_hypotheses([(1, 1), (2, 4)], Library(), 7, 12)
     expr, ident, nq = lin.solve(w_lin, seeds=(1, 2))
     val = range(5, 12)
-    print(f"\n  [escape 3] world=3n-2. passive simplest fit on {{1,4}} = {_render_al(passive[0])} "
-          f"(predicts f(3)={_evaluate_al(passive[0], 3, Library())}, WRONG).")
-    print(f"             active agent asked the world {nq} times -> identified {_render_al(expr)} "
-          f"(identified={ident}); matches world on held-out f(5..11)={_matches(expr, w_lin._gen, lin.library, val)}")
-    assert _evaluate_al(passive[0], 3, Library()) != 3 * 3 - 2, "the passive trap: simplest fit must be wrong here"
-    assert ident and _matches(expr, w_lin._gen, lin.library, val), "active querying must identify the true rule"
+    print(
+        f"\n  [escape 3] world=3n-2. passive simplest fit on {{1,4}} = {_render_al(passive[0])} "
+        f"(predicts f(3)={_evaluate_al(passive[0], 3, Library())}, WRONG)."
+    )
+    print(
+        f"             active agent asked the world {nq} times -> identified {_render_al(expr)} "
+        f"(identified={ident}); matches world on held-out f(5..11)={_matches(expr, w_lin._gen, lin.library, val)}"
+    )
+    assert _evaluate_al(passive[0], 3, Library()) != 3 * 3 - 2, (
+        "the passive trap: simplest fit must be wrong here"
+    )
+    assert ident and _matches(expr, w_lin._gen, lin.library, val), (
+        "active querying must identify the true rule"
+    )
     assert nq > len((1, 2)), "it must have run at least one EXPERIMENT beyond the seeds"
 
     # -- ESCAPE (1): BOUNDED GRAMMAR broken by LIBRARY LEARNING ------------------------------------
@@ -1418,18 +1535,25 @@ def main_al():
     agent = ActiveLearner()
     w6_before, _, _ = agent.solve(World(lambda n: n**6, "n^6"), seeds=(2, 3))
     cube_expr, cube_ident, _ = agent.solve(World(lambda n: n**3, "n^3"), seeds=(2, 3, 4))
-    agent.learn("cube", cube_expr)                            # the grammar GROWS
+    agent.learn("cube", cube_expr)  # the grammar GROWS
     w6_after, w6_ident, _ = agent.solve(World(lambda n: n**6, "n^6"), seeds=(2, 3, 5))
-    print(f"\n  [escape 1] n^6 with the BASE grammar -> {w6_before!r} (out of budget). learned "
-          f"cube={_render_al(cube_expr)}; n^6 now -> {_render_al(w6_after)} (identified={w6_ident}).")
+    print(
+        f"\n  [escape 1] n^6 with the BASE grammar -> {w6_before!r} (out of budget). learned "
+        f"cube={_render_al(cube_expr)}; n^6 now -> {_render_al(w6_after)} (identified={w6_ident})."
+    )
     assert w6_before is None, "n^6 must be OUT of the base grammar's budget (the wall)"
-    assert cube_ident and w6_after is not None and w6_ident, "after learning cube, n^6 must be solvable"
-    assert _matches(w6_after, lambda n: n**6, agent.library, range(6, 10)), "n^6 solution must be the true rule"
+    assert cube_ident and w6_after is not None and w6_ident, (
+        "after learning cube, n^6 must be solvable"
+    )
+    assert _matches(w6_after, lambda n: n**6, agent.library, range(6, 10)), (
+        "n^6 solution must be the true rule"
+    )
     assert "cube" in _render_al(w6_after), "the n^6 solution must REUSE the learned cube primitive"
 
     # -- ESCAPE (2): no frozen corpus -- the library PERSISTS durably (accumulates across sessions) --
     import os
     import tempfile
+
     prev, tmp = os.environ.get("NORD_HOME"), tempfile.mkdtemp(prefix="snn_active_")
     os.environ["NORD_HOME"] = tmp
     try:
@@ -1438,11 +1562,15 @@ def main_al():
         lib.save()
         reloaded = Library.load()
         print(f"\n  [escape 2] library persisted durably and reloaded: primitives={list(reloaded)}")
-        assert "cube" in reloaded, "the learned library must persist across sessions (continual, not frozen)"
+        assert "cube" in reloaded, (
+            "the learned library must persist across sessions (continual, not frozen)"
+        )
         # and a fresh agent with the reloaded library solves n^6 immediately (accumulated competence)
         fresh = ActiveLearner(library=reloaded)
         w6, w6i, _ = fresh.solve(World(lambda n: n**6, "n^6"), seeds=(2, 3, 5))
-        assert w6i and _matches(w6, lambda n: n**6, reloaded, range(6, 10)), "reloaded competence must transfer"
+        assert w6i and _matches(w6, lambda n: n**6, reloaded, range(6, 10)), (
+            "reloaded competence must transfer"
+        )
     finally:
         os.environ.pop("NORD_HOME", None)
         if prev is not None:
@@ -1450,14 +1578,20 @@ def main_al():
 
     # -- the honest wall stays: a world outside the grammar with queries exhausted -> reported, not faked
     stumper = ActiveLearner(max_queries=6)
-    s_expr, s_ident, _ = stumper.solve(World(lambda n: 1 if n in (2, 3, 5, 7, 11) else 0, "is-prime-ish"), seeds=(1, 2))
-    print(f"\n  [honest wall] a world with no closed-form in the grammar -> identified={s_ident} "
-          f"(reports ambiguity/None rather than faking certainty)")
+    s_expr, s_ident, _ = stumper.solve(
+        World(lambda n: 1 if n in (2, 3, 5, 7, 11) else 0, "is-prime-ish"), seeds=(1, 2)
+    )
+    print(
+        f"\n  [honest wall] a world with no closed-form in the grammar -> identified={s_ident} "
+        f"(reports ambiguity/None rather than faking certainty)"
+    )
     assert not s_ident, "outside the grammar, it must NOT falsely claim to have identified the rule"
 
-    print("\nSELF-CHECK PASSED: an open-ended active learner -- breaks underdetermination by EXPERIMENT, "
-          "breaks the grammar budget by LIBRARY LEARNING, accumulates durably (no frozen corpus); and "
-          "still reports honest ambiguity where the world is outside its reach.")
+    print(
+        "\nSELF-CHECK PASSED: an open-ended active learner -- breaks underdetermination by EXPERIMENT, "
+        "breaks the grammar budget by LIBRARY LEARNING, accumulates durably (no frozen corpus); and "
+        "still reports honest ambiguity where the world is outside its reach."
+    )
     return 0
 
 
@@ -1489,10 +1623,9 @@ structural claim and it does NOT depend on model size.
 Deps: numpy (already used across research/) + stdlib + program_inducer.
   PYTHONPATH=src .venv-lake/Scripts/python research/sequence_learner.py     # train + contrast + check
 """
-import sys
 
 
-WINDOW = 4                                  # the model sees 4 consecutive terms, predicts the 5th
+WINDOW = 4  # the model sees 4 consecutive terms, predicts the 5th
 
 
 def _norm_sl(terms):
@@ -1506,10 +1639,10 @@ def _corpus(rng, n):
     """A large corpus drawn from the TRAINING families: arithmetic and geometric (random params)."""
     xs, ys = [], []
     for _ in range(n):
-        if rng.random() < 0.5:                                 # arithmetic: a, a+d, a+2d, ...
+        if rng.random() < 0.5:  # arithmetic: a, a+d, a+2d, ...
             a, d = rng.integers(-5, 10), rng.integers(-4, 6)
             seq = [int(a + d * i) for i in range(WINDOW + 1)]
-        else:                                                  # geometric: a, a*r, a*r^2, ...
+        else:  # geometric: a, a*r, a*r^2, ...
             a, r = rng.integers(1, 6), rng.integers(2, 5)
             seq = [int(a * r**i) for i in range(WINDOW + 1)]
         x, y, _ = _norm_sl(seq)
@@ -1537,10 +1670,10 @@ class MLP:
         for _ in range(epochs):
             idx = rng.permutation(n)
             for s in range(0, n, batch):
-                b = idx[s:s + batch]
+                b = idx[s : s + batch]
                 xb, yb = x[b], y[b]
                 h, pred = self.forward(xb)
-                g = (pred - yb) / len(b)                        # dMSE/dpred
+                g = (pred - yb) / len(b)  # dMSE/dpred
                 gw2 = h.T @ g
                 gb2 = g.sum(0)
                 gh = (g @ self.w2.T) * (1 - h**2)
@@ -1560,16 +1693,21 @@ class MLP:
 
 def main_sl():
     global np
-    import numpy as np                       # lazy: keep gf.py import numpy-free so the chat bridge stays pure
+    import numpy as np  # lazy: keep gf.py import numpy-free so the chat bridge stays pure
+
     print("=" * 96)
-    print("LARGE LEARNED MODEL vs PROGRAM-INDUCER -- does learning at scale buy fluid intelligence?")
+    print(
+        "LARGE LEARNED MODEL vs PROGRAM-INDUCER -- does learning at scale buy fluid intelligence?"
+    )
     print("=" * 96)
     rng = np.random.default_rng(0)
 
-    xtr, ytr = _corpus(rng, 8000)                              # a large learned corpus (Gc)
+    xtr, ytr = _corpus(rng, 8000)  # a large learned corpus (Gc)
     model = MLP(rng, hidden=32)
     model.train(xtr, ytr, epochs=400, lr=0.05, rng=rng)
-    print(f"  trained a {WINDOW}->32->1 MLP by SGD on {len(xtr)} sequences (arithmetic + geometric)")
+    print(
+        f"  trained a {WINDOW}->32->1 MLP by SGD on {len(xtr)} sequences (arithmetic + geometric)"
+    )
 
     # in-distribution: fresh arithmetic + geometric it did NOT train on (but from the SAME families)
     in_seqs = []
@@ -1581,26 +1719,39 @@ def main_sl():
     # OUT-OF-DISTRIBUTION: rule families HELD OUT of training (factorial, Fibonacci) as length-6
     # sequences -- predict the 6th. The learned model sees the last WINDOW terms; the program-inducer
     # sees the first 5 and SYNTHESISES the rule. Same information, two different mechanisms.
-    ood6 = [[1, 2, 6, 24, 120, 720], [2, 6, 24, 120, 720, 5040],   # factorial
-            [1, 1, 2, 3, 5, 8], [2, 3, 5, 8, 13, 21]]             # Fibonacci
+    ood6 = [
+        [1, 2, 6, 24, 120, 720],
+        [2, 6, 24, 120, 720, 5040],  # factorial
+        [1, 1, 2, 3, 5, 8],
+        [2, 3, 5, 8, 13, 21],
+    ]  # Fibonacci
     ind_ok = sum((induce_program(s[:-1]) or (None,))[0] == s[-1] for s in ood6) / len(ood6)
     mdl_ok = sum(model.predict_next(s[:-1]) == s[-1] for s in ood6) / len(ood6)
 
-    print(f"\n  IN-DISTRIBUTION (arithmetic+geometric, unseen samples)   learned model: {in_acc:.0%}")
+    print(
+        f"\n  IN-DISTRIBUTION (arithmetic+geometric, unseen samples)   learned model: {in_acc:.0%}"
+    )
     print("  OUT-OF-DISTRIBUTION (factorial+Fibonacci, held-out family):")
     print(f"      learned model (Gc, interpolates its training):         {mdl_ok:.0%}")
     print(f"      program-inducer (Gf, synthesises the rule per problem): {ind_ok:.0%}")
 
     # ---- the measured result: learning buys in-distribution competence, NOT out-of-distribution Gf --
-    assert in_acc >= 0.5, f"the learned model must actually LEARN its training families (got {in_acc:.0%})"
-    assert ind_ok == 1.0, f"the inducer must SYNTHESISE every held-out rule exactly (got {ind_ok:.0%})"
+    assert in_acc >= 0.5, (
+        f"the learned model must actually LEARN its training families (got {in_acc:.0%})"
+    )
+    assert ind_ok == 1.0, (
+        f"the inducer must SYNTHESISE every held-out rule exactly (got {ind_ok:.0%})"
+    )
     assert mdl_ok < ind_ok, (
         "the measured Gc-vs-Gf point: the learned model must FAIL the held-out family that the "
-        f"inducer solves (model {mdl_ok:.0%} vs inducer {ind_ok:.0%})")
+        f"inducer solves (model {mdl_ok:.0%} vs inducer {ind_ok:.0%})"
+    )
 
-    print("\nSELF-CHECK PASSED: a large learned model buys IN-DISTRIBUTION competence (Gc) but FAILS "
-          "the held-out rule family that test-time program synthesis (Gf) solves exactly. Scale moves "
-          "the boundary; it does not remove it -- learning is not synthesis.")
+    print(
+        "\nSELF-CHECK PASSED: a large learned model buys IN-DISTRIBUTION competence (Gc) but FAILS "
+        "the held-out rule family that test-time program synthesis (Gf) solves exactly. Scale moves "
+        "the boundary; it does not remove it -- learning is not synthesis."
+    )
     return 0
 
 
@@ -1618,4 +1769,5 @@ def main():
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

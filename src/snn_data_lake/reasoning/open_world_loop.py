@@ -34,14 +34,15 @@ This discovers, routes, and grows domains; it does not "understand" any of them.
   Knobs: NORD_CTX(3) NORD_LAM(1.7) NORD_HARVEST(240) NORD_MINEV(25) NORD_CAP(10) NORD_PERSRC(1200)
 Deps: numpy (+ stdlib). Reuses corpus_stream, skill_builder, meta_skill_loop, language_readout_slda, lake_memory.
 """
+
 import os
 import random
 import zlib
 
 import numpy as np
 
-from snn_data_lake.reasoning.corpus_stream import ARPABET, load_cmudict, load_text, phoneme_stream
-from snn_data_lake.reasoning.skill_builder import signature, math_stream, MATH_VOCAB
+from snn_data_lake.reasoning.corpus_stream import load_cmudict, load_text, phoneme_stream
+from snn_data_lake.reasoning.skill_builder import signature, math_stream
 from snn_data_lake.reasoning.meta_skill_loop import physics_stream
 from snn_data_lake.reasoning.language_self_build import _positional_code
 from snn_data_lake.reasoning.language_readout_slda import SLDA_RFF_np
@@ -62,7 +63,7 @@ def dna_stream(n=1500, ctx=3, seed=0):
     """A NEW kind of data: DNA-like base sequences with codon bias -> (prev ctx bases, next base).
     Bounded vocab {A,C,G,T}, real sequential structure, a signature region distinct from the others."""
     rng = random.Random(seed)
-    bias = {"AT": "G", "GC": "A", "TA": "C", "CG": "T"}     # simple learnable transition structure
+    bias = {"AT": "G", "GC": "A", "TA": "C", "CG": "T"}  # simple learnable transition structure
     bases = "ACGT"
     s = []
     for _ in range(n):
@@ -70,7 +71,7 @@ def dna_stream(n=1500, ctx=3, seed=0):
     seq = "".join(s)
     out = []
     for i in range(2, len(seq)):
-        nxt = bias.get(seq[i - 2:i], seq[i])                # inject structure the readout can learn
+        nxt = bias.get(seq[i - 2 : i], seq[i])  # inject structure the readout can learn
         lo = max(0, i - ctx)
         out.append((list(seq[lo:i]), nxt))
     return out
@@ -99,7 +100,7 @@ def _dpmeans(sigs, lam, max_iter=6):
                 assign[i] = len(cents) - 1
             else:
                 assign[i] = j
-        for k in range(len(cents)):                         # recompute centers
+        for k in range(len(cents)):  # recompute centers
             pts = [sigs[i] for i in range(len(sigs)) if assign[i] == k]
             if pts:
                 cents[k] = np.mean(pts, axis=0)
@@ -111,15 +112,15 @@ class OpenWorldController:
 
     def __init__(self, lam, harvest, min_ev, cap):
         self.lam, self.harvest, self.min_ev, self.cap = lam, harvest, min_ev, cap
-        self.cents = {}                                     # did -> centroid signature
-        self.counts = {}                                    # did -> routed count
-        self.items = {}                                     # did -> [(context, next, true_label)]
-        self.buffer = []                                    # [(sig, context, next, true_label)]
-        self.spawn_log = []                                 # (stream_pos, did) for growth-stability
+        self.cents = {}  # did -> centroid signature
+        self.counts = {}  # did -> routed count
+        self.items = {}  # did -> [(context, next, true_label)]
+        self.buffer = []  # [(sig, context, next, true_label)]
+        self.spawn_log = []  # (stream_pos, did) for growth-stability
 
     def _spawn(self, sig, seed_items, pos):
         if len(self.cents) >= self.cap:
-            return None                                     # cap: force-route, never spawn
+            return None  # cap: force-route, never spawn
         did = (max(self.cents) + 1) if self.cents else 0
         self.cents[did] = sig
         self.counts[did] = 0
@@ -147,16 +148,18 @@ class OpenWorldController:
                         _, ctx, nx, lbl = self.buffer[i]
                         self.items[did].append((ctx, nx, lbl))
                         self.counts[did] += 1
-        self.buffer = []                                    # DROP leftovers -> buffer bounded by `harvest`
+        self.buffer = []  # DROP leftovers -> buffer bounded by `harvest`
 
     def observe(self, context, nxt, label, pos):
         sig = np.array(signature(context), dtype=np.float64)
         did, dmin = _centroid_dist(sig, self.cents)
-        if did is not None and dmin <= self.lam:            # ROUTE (familiar)
+        if did is not None and dmin <= self.lam:  # ROUTE (familiar)
             self.counts[did] += 1
             self.items[did].append((context, nxt, label))
-            self.cents[did] = self.cents[did] + (sig - self.cents[did]) / self.counts[did]   # running mean
-        else:                                               # NOVEL -> buffer, harvest on evidence
+            self.cents[did] = (
+                self.cents[did] + (sig - self.cents[did]) / self.counts[did]
+            )  # running mean
+        else:  # NOVEL -> buffer, harvest on evidence
             self.buffer.append((sig, context, nxt, label))
             if len(self.buffer) >= self.harvest:
                 self._harvest(pos)
@@ -169,7 +172,7 @@ class OpenWorldController:
             for b in ids:
                 if a < b and a in self.cents and b in self.cents:
                     if float(np.sum((self.cents[a] - self.cents[b]) ** 2)) ** 0.5 <= self.lam * 0.6:
-                        self.items[a] += self.items[b]      # merge b into a
+                        self.items[a] += self.items[b]  # merge b into a
                         self.counts[a] += self.counts[b]
                         del self.cents[b], self.counts[b], self.items[b]
 
@@ -198,7 +201,7 @@ def _purity_and_competence(ctrl, held, uni_vocab, ctx):
     for c, nx, lbl in held:
         did = ctrl.route(c)
         if did in maj:
-            ok += (maj[did] == lbl)
+            ok += maj[did] == lbl
         tot += 1
     purity = ok / max(1, tot)
     # competence: per domain, SLDA over unified vocab on its routed items vs majority-next baseline
@@ -210,11 +213,14 @@ def _purity_and_competence(ctrl, held, uni_vocab, ctx):
             continue
         cut = int(len(us) * 0.8)
         tr, te = us[:cut], us[cut:]
-        X = lambda rows: np.array([_positional_code(c, ridx, len(uni_vocab), ctx) for c, _ in rows], dtype=np.float64)  # noqa: E731
+        X = lambda rows: np.array(
+            [_positional_code(c, ridx, len(uni_vocab), ctx) for c, _ in rows], dtype=np.float64
+        )  # noqa: E731
         s = SLDA_RFF_np(len(uni_vocab) * ctx, len(uni_vocab), rff=800, gamma=0.15, seed=0)
         s.observe(X(tr), np.array([ridx[nx] for _, nx in tr]))
         acc = float((s.predict(X(te)) == np.array([ridx[nx] for _, nx in te])).mean())
         from collections import Counter
+
         base = Counter(nx for _, nx in tr).most_common(1)[0][0]
         b = sum(nx == base for _, nx in te) / len(te)
         comps.append((did, maj.get(did, "?"), len(items), acc, b))
@@ -222,9 +228,9 @@ def _purity_and_competence(ctrl, held, uni_vocab, ctx):
 
 
 def _run(streams, lam, harvest, min_ev, cap, ctx, shuffled_sig=False):
-    data = _labelled({k: v[:int(len(v) * 0.8)] for k, v in streams.items()})
-    held = _labelled({k: v[int(len(v) * 0.8):] for k, v in streams.items()})
-    random.Random(0).shuffle(data)                          # interleave sources; labels hidden from the loop
+    data = _labelled({k: v[: int(len(v) * 0.8)] for k, v in streams.items()})
+    held = _labelled({k: v[int(len(v) * 0.8) :] for k, v in streams.items()})
+    random.Random(0).shuffle(data)  # interleave sources; labels hidden from the loop
     ctrl = OpenWorldController(lam, harvest, min_ev, cap)
     perm = None
     if shuffled_sig:
@@ -232,7 +238,7 @@ def _run(streams, lam, harvest, min_ev, cap, ctx, shuffled_sig=False):
         random.Random(1).shuffle(perm)
     for pos, (c, nx, lbl) in enumerate(data):
         cc = c
-        if shuffled_sig:                                    # control: destroy token identity in the signature
+        if shuffled_sig:  # control: destroy token identity in the signature
             cc = [f"{perm[zlib.crc32(str(t).encode()) % 64]}" for t in c]
         ctrl.observe(cc, nx, lbl, pos)
     ctrl.finalize(len(data))
@@ -252,7 +258,9 @@ def main():
 
     print("=" * 96)
     print("OPEN-WORLD LOOP -- domains DISCOVERED from a mixed unlabeled stream (not hand-coded)")
-    print(f"lambda={LAM}  harvest={HARVEST}  min_evidence={MINEV}  cap={CAP}  (true #domains hidden from the loop)")
+    print(
+        f"lambda={LAM}  harvest={HARVEST}  min_evidence={MINEV}  cap={CAP}  (true #domains hidden from the loop)"
+    )
     print("=" * 96)
 
     cmudict, _ = load_cmudict()
@@ -264,9 +272,13 @@ def main():
         "dna": dna_stream(n=PER, ctx=CTX, seed=0)[:PER],
     }
     true_k = len(streams)
-    uni_vocab = sorted({t for pairs in streams.values() for c, nx in pairs for t in ([nx] + list(c))})
-    print(f"[data] {true_k} hidden sources: {', '.join(f'{k}={len(v)}' for k, v in streams.items())}; "
-          f"unified vocab {len(uni_vocab)} tokens")
+    uni_vocab = sorted(
+        {t for pairs in streams.values() for c, nx in pairs for t in ([nx] + list(c))}
+    )
+    print(
+        f"[data] {true_k} hidden sources: {', '.join(f'{k}={len(v)}' for k, v in streams.items())}; "
+        f"unified vocab {len(uni_vocab)} tokens"
+    )
 
     ctrl, held, data = _run(streams, LAM, HARVEST, MINEV, CAP, CTX)
     purity, maj, comps = _purity_and_competence(ctrl, held, uni_vocab, CTX)
@@ -280,14 +292,16 @@ def main():
     dur = lake.durability_check()
 
     # ---- CONTROLS ----
-    ctrl_inf, _, _ = _run(streams, 1e9, HARVEST, MINEV, CAP, CTX)          # vigilance=inf -> nothing novel
+    ctrl_inf, _, _ = _run(streams, 1e9, HARVEST, MINEV, CAP, CTX)  # vigilance=inf -> nothing novel
     ctrl_shuf, held_s, _ = _run(streams, LAM, HARVEST, MINEV, CAP, CTX, shuffled_sig=True)
     pur_shuf, _, _ = _purity_and_competence(ctrl_shuf, held_s, uni_vocab, CTX)
 
     print("-" * 96)
     print(f"  DISCOVERED domains: {dhat}  (true hidden #domains = {true_k})")
     for did in sorted(ctrl.cents):
-        print(f"    domain {did}: {ctrl.counts.get(did, 0):5d} items, majority true-label = {maj.get(did, '?')}")
+        print(
+            f"    domain {did}: {ctrl.counts.get(did, 0):5d} items, majority true-label = {maj.get(did, '?')}"
+        )
     print(f"  routing purity vs hidden labels: {purity:.1%}  (chance {1 / true_k:.0%})")
     print(f"  per-discovered-domain competence (SLDA vs majority baseline):")
     for did, lb, n, acc, b in comps:
@@ -295,20 +309,34 @@ def main():
     print(f"  growth stability: {late_spawns} spawns in the final quarter (want 0)")
     print(f"  lake: {lake.n_stored} discovered-skill signatures durable = {dur['ok']}")
     print("-" * 96)
-    print(f"  CONTROL vigilance=inf  -> {len(ctrl_inf.cents)} domain(s) (want 1: discovery is distance-driven)")
-    print(f"  CONTROL shuffled-sig   -> purity {pur_shuf:.1%} (want ~chance {1 / true_k:.0%}: purity is real structure)")
+    print(
+        f"  CONTROL vigilance=inf  -> {len(ctrl_inf.cents)} domain(s) (want 1: discovery is distance-driven)"
+    )
+    print(
+        f"  CONTROL shuffled-sig   -> purity {pur_shuf:.1%} (want ~chance {1 / true_k:.0%}: purity is real structure)"
+    )
     print("=" * 96)
 
     assert true_k - 1 <= dhat <= true_k + 2, f"discovered {dhat} domains, expected ~{true_k}"
-    assert purity > 1.6 / true_k, f"routing purity {purity:.2f} not clearly above chance {1/true_k:.2f}"
-    assert late_spawns == 0, f"domain count still growing late in the stream ({late_spawns} late spawns)"
-    assert len(ctrl_inf.cents) == 1, f"vigilance=inf control did not collapse to 1 domain ({len(ctrl_inf.cents)})"
-    assert pur_shuf < purity - 0.15, f"shuffled-signature control did not drop purity ({pur_shuf:.2f} vs {purity:.2f})"
+    assert purity > 1.6 / true_k, (
+        f"routing purity {purity:.2f} not clearly above chance {1 / true_k:.2f}"
+    )
+    assert late_spawns == 0, (
+        f"domain count still growing late in the stream ({late_spawns} late spawns)"
+    )
+    assert len(ctrl_inf.cents) == 1, (
+        f"vigilance=inf control did not collapse to 1 domain ({len(ctrl_inf.cents)})"
+    )
+    assert pur_shuf < purity - 0.15, (
+        f"shuffled-signature control did not drop purity ({pur_shuf:.2f} vs {purity:.2f})"
+    )
     assert dur["ok"], "discovered-skill index did not survive the lake restart"
-    print(f"self-check OK: discovered {dhat} domains from a mixed unlabeled stream (true {true_k}); routing "
-          f"purity {purity:.0%} >> chance {1/true_k:.0%}; growth stopped (0 late spawns); controls fail "
-          f"correctly (inf->1 domain, shuffle->{pur_shuf:.0%}); {lake.n_stored} discovered skills durable. "
-          f"The meta-layer built ITSELF, no labels, no fixed domain count.")
+    print(
+        f"self-check OK: discovered {dhat} domains from a mixed unlabeled stream (true {true_k}); routing "
+        f"purity {purity:.0%} >> chance {1 / true_k:.0%}; growth stopped (0 late spawns); controls fail "
+        f"correctly (inf->1 domain, shuffle->{pur_shuf:.0%}); {lake.n_stored} discovered skills durable. "
+        f"The meta-layer built ITSELF, no labels, no fixed domain count."
+    )
     lake.close()
     return 0
 

@@ -26,7 +26,6 @@ Uses only ``re`` + ``sys``; no brainstem import.
 """
 
 import re
-import sys
 
 # relations that CHAIN (a IsA b, b IsA c => a IsA c). "has"/"resembles"/"causes"
 # do NOT chain, and pretending they do would manufacture false conclusions -- so
@@ -56,7 +55,7 @@ def relation_graph(records):
     Faithful port of ``brain_loop.Brain._relation_graph`` operating on a records list.
     """
     adj = {}
-    for rec in (records or []):
+    for rec in records or []:
         t = rec.get("triple") if isinstance(rec, dict) else None
         if not t or len(t) < 3:
             continue
@@ -81,10 +80,10 @@ def _derive_to_goal(adj, subject, target, max_hops=6):
             continue
         for rel, obj in adj.get(node, []):
             if rel.lower().replace(" ", "") not in _TRANSITIVE:
-                continue                                  # only chain what actually chains
+                continue  # only chain what actually chains
             step = path + [(node, rel, obj)]
             if obj == goal:
-                return step                               # proof found
+                return step  # proof found
             if obj not in seen:
                 seen.add(obj)
                 queue.append((obj, step))
@@ -112,7 +111,7 @@ def derive(records, subject, relation, max_hops=6):
         for rel, obj in adj.get(node, []):
             if rel.lower().replace(" ", "") == rel_norm and obj not in seen:
                 nxt = (rel, obj)
-                break                                     # first matching edge (deterministic)
+                break  # first matching edge (deterministic)
         if nxt is None:
             break
         proof.append((node, nxt[0], nxt[1]))
@@ -148,16 +147,23 @@ def reason_question(text, records):
 
     # form 1: yes/no. The article group MUST require a trailing space, else "(?:a|an|the)?"
     # eats the "a" of "animal" and leaves "n animal" as the target (the 2-hop bug brain_loop fixed).
-    m = re.match(r"^(?:is|are)\s+(?:(?:an|a|the)\s+)?(.+?)\s+(?:(?:an|a|the)\s+)?([\w' -]+?)\s*\??$", t)
+    m = re.match(
+        r"^(?:is|are)\s+(?:(?:an|a|the)\s+)?(.+?)\s+(?:(?:an|a|the)\s+)?([\w' -]+?)\s*\??$", t
+    )
     if m:
         subj, targ = m.group(1).strip(), m.group(2).strip()
         proof = _derive_to_goal(adj, subj, targ)
         if proof:
             answer = proof[-1][2]
-            return {"known": True, "coverage": 1.0, "ignited": True, "source": "derive",
-                    "reply": f"Yes -- {proof[0][0]} is {_art(answer)} {answer}. "
-                             f"(I worked it out: {_chain_str(proof)})"}
-        return None                                       # no proof -> honest None (not a "no")
+            return {
+                "known": True,
+                "coverage": 1.0,
+                "ignited": True,
+                "source": "derive",
+                "reply": f"Yes -- {proof[0][0]} is {_art(answer)} {answer}. "
+                f"(I worked it out: {_chain_str(proof)})",
+            }
+        return None  # no proof -> honest None (not a "no")
 
     # form 2: "what/which is the <relation> of <subject>"
     m2 = re.match(r"^(?:what|which)\s+is\s+the\s+([\w'-]+?)\s+of\s+(.+?)\s*\??$", t)
@@ -166,8 +172,13 @@ def reason_question(text, records):
         got = derive(records, subj, relation)
         if got:
             answer, proof = got
-            return {"known": True, "coverage": 1.0, "ignited": True, "source": "derive",
-                    "reply": f"{answer} (I worked it out: {_chain_str(proof)})"}
+            return {
+                "known": True,
+                "coverage": 1.0,
+                "ignited": True,
+                "source": "derive",
+                "reply": f"{answer} (I worked it out: {_chain_str(proof)})",
+            }
         return None
     return None
 
@@ -179,22 +190,37 @@ def _selfcheck():
     # a taught chain (dog -> mammal -> animal -> living thing) + a couple of unrelated triples.
     records = [
         {"cue": ["dog"], "answer": "a dog is a mammal.", "triple": ["dog", "isa", "mammal"]},
-        {"cue": ["mammal"], "answer": "a mammal is an animal.", "triple": ["mammal", "isa", "animal"]},
-        {"cue": ["animal"], "answer": "an animal is a living thing.",
-         "triple": ["animal", "isa", "living thing"]},
+        {
+            "cue": ["mammal"],
+            "answer": "a mammal is an animal.",
+            "triple": ["mammal", "isa", "animal"],
+        },
+        {
+            "cue": ["animal"],
+            "answer": "an animal is a living thing.",
+            "triple": ["animal", "isa", "living thing"],
+        },
         {"cue": ["car"], "answer": "a car has wheels.", "triple": ["car", "has", "wheels"]},
-        {"cue": ["rain"], "answer": "rain causes wet ground.", "triple": ["rain", "causes", "wet ground"]},
+        {
+            "cue": ["rain"],
+            "answer": "rain causes wet ground.",
+            "triple": ["rain", "causes", "wet ground"],
+        },
     ]
 
     print("=" * 88)
-    print("DERIVATION -- multi-hop transitive deduction (BFS <=6 hops, proof-carrying, over taught facts)")
+    print(
+        "DERIVATION -- multi-hop transitive deduction (BFS <=6 hops, proof-carrying, over taught facts)"
+    )
     print("=" * 88)
 
     # (1) a multi-hop proof: dog is an animal, via dog -> mammal -> animal.
     got = reason_question("is a dog an animal", records)
     assert got is not None, "expected a proof dict, got None"
     assert got["known"] and got["source"] == "derive", got
-    assert "dog -> mammal -> animal" in got["reply"], f"reply must show the multi-hop chain: {got['reply']!r}"
+    assert "dog -> mammal -> animal" in got["reply"], (
+        f"reply must show the multi-hop chain: {got['reply']!r}"
+    )
     print(f"(1) proof   : {got['reply']}")
 
     # (2) a NO-PATH control refuses: nothing chains dog to "mineral", so the proof is refused (None).
@@ -210,7 +236,9 @@ def _selfcheck():
     print(f"(2b) derive : dog --isa--> {term[0]}  [{_chain_str(term[1])}]")
 
     # (3) determinism: identical inputs -> identical outputs.
-    assert reason_question("is a dog an animal", records) == reason_question("is a dog an animal", records)
+    assert reason_question("is a dog an animal", records) == reason_question(
+        "is a dog an animal", records
+    )
     print("(3) determinism: stable across repeated calls")
 
     # (4) a non-chaining relation ("causes") never fabricates a deduction.
@@ -218,7 +246,9 @@ def _selfcheck():
     assert derive(records, "rain", "causes") is None
     print("(4) non-chaining relations (causes/has/is) refuse to deduce -- no fabrication")
 
-    print("self-check OK: transitive deduction reproduces brain_loop (proof-carrying BFS, honest refusal)")
+    print(
+        "self-check OK: transitive deduction reproduces brain_loop (proof-carrying BFS, honest refusal)"
+    )
 
 
 if __name__ == "__main__":

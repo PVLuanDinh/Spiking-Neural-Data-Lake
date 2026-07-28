@@ -38,29 +38,30 @@ three rules ran.
 
   python research/sorn.py       # (also run by run_selfchecks.py, root on PYTHONPATH)
 """
+
 import math
 import random
 
 # ---- network / task sizes (small: whole experiment runs twice in a few seconds) ----
-N_E = 100          # excitatory binary threshold units
-N_I = 20           # inhibitory units (~0.2 * N_E)
-P_EE = 0.10        # E->E connection probability (sparse recurrent excitation, plastic)
-P_IE = 0.20        # E->I connection probability (fixed)
-P_EI = 0.30        # I->E connection probability (fixed)
-T_E_MAX = 0.5      # initial excitatory thresholds ~ U(0, T_E_MAX) -- heterogeneous on purpose
-T_I_MAX = 0.8      # inhibitory thresholds ~ U(0, T_I_MAX), fixed
-I_IN = 1.0         # input drive to a symbol's E units (> T_E_MAX -> forces them to spike)
-IN_PER_SYM = 8     # E units driven by each symbol (disjoint blocks)
+N_E = 100  # excitatory binary threshold units
+N_I = 20  # inhibitory units (~0.2 * N_E)
+P_EE = 0.10  # E->E connection probability (sparse recurrent excitation, plastic)
+P_IE = 0.20  # E->I connection probability (fixed)
+P_EI = 0.30  # I->E connection probability (fixed)
+T_E_MAX = 0.5  # initial excitatory thresholds ~ U(0, T_E_MAX) -- heterogeneous on purpose
+T_I_MAX = 0.8  # inhibitory thresholds ~ U(0, T_I_MAX), fixed
+I_IN = 1.0  # input drive to a symbol's E units (> T_E_MAX -> forces them to spike)
+IN_PER_SYM = 8  # E units driven by each symbol (disjoint blocks)
 
-ETA_STDP = 0.004   # STDP learning rate on W_EE
-ETA_IP = 0.01      # intrinsic-plasticity rate on T_E
-H_IP = 0.10        # IP target mean firing rate (homeostatic set-point)
+ETA_STDP = 0.004  # STDP learning rate on W_EE
+ETA_IP = 0.01  # intrinsic-plasticity rate on T_E
+H_IP = 0.10  # IP target mean firing rate (homeostatic set-point)
 
-SELFORG_WORDS = 800   # words streamed through the plasticity (self-organization) phase
-TRAIN_WORDS = 220     # words for readout training (features + next-symbol targets)
-TEST_WORDS = 220      # held-out words for evaluation
-WASHOUT = 20          # leading steps dropped so the readout sees settled state
-RIDGE = 3.0           # ridge (L2) regularization for the least-squares readout
+SELFORG_WORDS = 800  # words streamed through the plasticity (self-organization) phase
+TRAIN_WORDS = 220  # words for readout training (features + next-symbol targets)
+TEST_WORDS = 220  # held-out words for evaluation
+WASHOUT = 20  # leading steps dropped so the readout sees settled state
+RIDGE = 3.0  # ridge (L2) regularization for the least-squares readout
 
 # Two words with a DISTINCT shared middle: word1 = A [g0..g(L-1)] D, word2 = E [same middle] F. The middle
 # transitions are all deterministic (no counting); only the last-middle-symbol -> end branch is ambiguous
@@ -70,7 +71,7 @@ RIDGE = 3.0           # ridge (L2) regularization for the least-squares readout
 # AMPLIFIES the noise and scrambles the stored word identity, whereas SORN's three rules pull it to a
 # sparse, homeostatic, NEAR-CRITICAL regime (branching ~1) that carries the signal through the noise.
 SHARED_LEN = 4
-NOISE_UNITS = 4        # spurious input spikes injected per step (seeded; shared by both nets)
+NOISE_UNITS = 4  # spurious input spikes injected per step (seeded; shared by both nets)
 
 
 def _build_task(shared_len):
@@ -119,13 +120,13 @@ def build_net(rng):
             if j != i and rng.random() < P_EE:
                 pre.append(j)
                 w.append(rng.random())
-        if not pre:                          # guarantee >=1 incoming so normalization is defined
+        if not pre:  # guarantee >=1 incoming so normalization is defined
             j = rng.randrange(N_E - 1)
             j = j + 1 if j >= i else j
             pre.append(j)
             w.append(rng.random())
         s = sum(w)
-        w = [x / s for x in w]               # normalize incoming to sum 1
+        w = [x / s for x in w]  # normalize incoming to sum 1
         ee_pre.append(pre)
         ee_w.append(w)
     # I->E incoming (fixed), per E post-unit i: list of (k, weight); rows normalized to sum 1
@@ -150,9 +151,16 @@ def build_net(rng):
     per = min(IN_PER_SYM, max(2, N_E // N_SYMBOLS))
     units = list(range(N_E))
     rng.shuffle(units)
-    in_units = [units[s * per:(s + 1) * per] for s in range(N_SYMBOLS)]
-    return {"ee_pre": ee_pre, "ee_w": ee_w, "ei": ei, "ie": ie,
-            "t_e": t_e, "t_i": t_i, "in_units": in_units}
+    in_units = [units[s * per : (s + 1) * per] for s in range(N_SYMBOLS)]
+    return {
+        "ee_pre": ee_pre,
+        "ee_w": ee_w,
+        "ei": ei,
+        "ie": ie,
+        "t_e": t_e,
+        "t_i": t_i,
+        "in_units": in_units,
+    }
 
 
 def _step(net, x_e, x_i, sym, noise=()):
@@ -201,7 +209,7 @@ def self_organize(net, stream):
                 d = ETA_STDP * (new_e[i] * x_e[j] - x_e[i] * new_e[j])
                 if d:
                     nv = w[idx] + d
-                    w[idx] = nv if nv > 0.0 else 0.0     # excitatory: clip at 0
+                    w[idx] = nv if nv > 0.0 else 0.0  # excitatory: clip at 0
                     changed = True
             # (2) synaptic normalization: re-scale incoming weights to sum 1
             if changed:
@@ -226,9 +234,9 @@ def collect(net, stream):
     feats, labels = [], []
     for t in range(WASHOUT, len(stream) - 1):
         act = [i for i in range(N_E) if states[t][i]]
-        act.append(N_E)                       # bias feature index
+        act.append(N_E)  # bias feature index
         feats.append(act)
-        labels.append(stream[t + 1][0])       # next symbol (drop its noise)
+        labels.append(stream[t + 1][0])  # next symbol (drop its noise)
     return feats, labels
 
 
@@ -243,7 +251,7 @@ def probe_rates(net, stream):
         for i in range(N_E):
             counts[i] += x_e[i]
         if prev_tot:
-            ratios.append(tot / prev_tot)     # spikes(t)/spikes(t-1): branching-ratio estimate
+            ratios.append(tot / prev_tot)  # spikes(t)/spikes(t-1): branching-ratio estimate
         prev_tot = tot
     n = len(stream)
     rates = [c / n for c in counts]
@@ -301,7 +309,7 @@ def accuracy(w, feats, labels):
                 sc += w[p][c]
             if bs is None or sc > bs:
                 bs, best = sc, c
-        ok += (best == lab)
+        ok += best == lab
     return ok / len(labels)
 
 
@@ -335,7 +343,7 @@ def run_experiment(seed):
     static_acc = accuracy(w0, ftx, lty)
 
     # SORN: same net, but run the three plasticity rules over the self-organization stream first
-    sorn = build_net(random.Random(seed))     # identical net (same seed -> same wiring/init)
+    sorn = build_net(random.Random(seed))  # identical net (same seed -> same wiring/init)
     self_organize(sorn, selforg)
     sorn_std = _weight_std(sorn)
     r1, br1 = probe_rates(sorn, probe)
@@ -347,11 +355,16 @@ def run_experiment(seed):
     m0, v0 = _mean_var(r0)
     m1, v1 = _mean_var(r1)
     return {
-        "static_acc": static_acc, "sorn_acc": sorn_acc,
-        "static_rate_mean": m0, "static_rate_var": v0,
-        "sorn_rate_mean": m1, "sorn_rate_var": v1,
-        "static_std": static_std, "sorn_std": sorn_std,
-        "static_branch": br0, "sorn_branch": br1,
+        "static_acc": static_acc,
+        "sorn_acc": sorn_acc,
+        "static_rate_mean": m0,
+        "static_rate_var": v0,
+        "sorn_rate_mean": m1,
+        "sorn_rate_var": v1,
+        "static_std": static_std,
+        "sorn_std": sorn_std,
+        "static_branch": br0,
+        "sorn_branch": br1,
         "static_silent": sum(1 for r in r0 if r < 0.005),
         "sorn_silent": sum(1 for r in r1 if r < 0.005),
     }
@@ -369,23 +382,37 @@ def main():
     print("SORN -- self-organizing recurrent net vs a static reservoir (Lazar 2009)")
     print("=" * 66)
     print(f"net: N_E={N_E} E + N_I={N_I} I binary threshold units; W_EE sparse p={P_EE} (plastic)")
-    print(f"task: word1 = A [{SHARED_LEN} shared syms] D, word2 = E [same {SHARED_LEN}] F -> next-after-shared")
-    print(f"      needs {SHARED_LEN + 1}-step memory of the start; {NOISE_UNITS} noise spikes/step; H_IP={H_IP}")
-    print(f"self-org {SELFORG_WORDS}w  train {TRAIN_WORDS}w  test {TEST_WORDS}w (held out)  seed={seed}")
+    print(
+        f"task: word1 = A [{SHARED_LEN} shared syms] D, word2 = E [same {SHARED_LEN}] F -> next-after-shared"
+    )
+    print(
+        f"      needs {SHARED_LEN + 1}-step memory of the start; {NOISE_UNITS} noise spikes/step; H_IP={H_IP}"
+    )
+    print(
+        f"self-org {SELFORG_WORDS}w  train {TRAIN_WORDS}w  test {TEST_WORDS}w (held out)  seed={seed}"
+    )
     print("-" * 66)
     print(f"{'net':<10}{'next-symbol acc':>18}{'mean E-rate (target ' + f'{H_IP:.2f})':>26}")
     print(f"{'static':<10}{res['static_acc']:>17.1%}{res['static_rate_mean']:>25.3f}")
     print(f"{'SORN':<10}{res['sorn_acc']:>17.1%}{res['sorn_rate_mean']:>25.3f}")
     print("-" * 66)
     margin = res["sorn_acc"] - res["static_acc"]
-    print(f"chance = {chance:.1%}   memoryless = {memoryless:.1%}   full ceiling = {ceiling:.1%}   "
-          f"SORN - static = {margin:+.1%}")
-    print(f"rate variance   static {res['static_rate_var']:.4f} -> SORN {res['sorn_rate_var']:.4f} "
-          "(IP homeostasis tightens the rate distribution)")
-    print(f"silent E units  static {res['static_silent']:>3d} -> SORN {res['sorn_silent']:>3d}  |  "
-          f"W_EE weight std {res['static_std']:.3f} -> {res['sorn_std']:.3f} (STDP broadens)")
-    print(f"branching ratio static {res['static_branch']:.2f} -> SORN {res['sorn_branch']:.2f} "
-          "(~1 == near-critical)")
+    print(
+        f"chance = {chance:.1%}   memoryless = {memoryless:.1%}   full ceiling = {ceiling:.1%}   "
+        f"SORN - static = {margin:+.1%}"
+    )
+    print(
+        f"rate variance   static {res['static_rate_var']:.4f} -> SORN {res['sorn_rate_var']:.4f} "
+        "(IP homeostasis tightens the rate distribution)"
+    )
+    print(
+        f"silent E units  static {res['static_silent']:>3d} -> SORN {res['sorn_silent']:>3d}  |  "
+        f"W_EE weight std {res['static_std']:.3f} -> {res['sorn_std']:.3f} (STDP broadens)"
+    )
+    print(
+        f"branching ratio static {res['static_branch']:.2f} -> SORN {res['sorn_branch']:.2f} "
+        "(~1 == near-critical)"
+    )
     print("=" * 66)
 
     # ---- self-checks (deterministic; the paper's comparison, nothing rigged) ----
@@ -393,22 +420,29 @@ def main():
     assert res["static_acc"] > chance, f"static reservoir at/under chance: {res['static_acc']:.3f}"
     assert res["sorn_acc"] > chance, f"SORN at/under chance: {res['sorn_acc']:.3f}"
     assert res["sorn_acc"] > res["static_acc"] + 0.03, (
-        f"SORN must clearly beat the static reservoir: {res['sorn_acc']:.3f} vs {res['static_acc']:.3f}")
+        f"SORN must clearly beat the static reservoir: {res['sorn_acc']:.3f} vs {res['static_acc']:.3f}"
+    )
     # (b) homeostasis signature: IP pulled mean E-rate to ~H_IP and dropped the rate variance
     assert abs(res["sorn_rate_mean"] - H_IP) < 0.05, (
-        f"IP should drive mean E-rate to ~H_IP={H_IP}: got {res['sorn_rate_mean']:.3f}")
+        f"IP should drive mean E-rate to ~H_IP={H_IP}: got {res['sorn_rate_mean']:.3f}"
+    )
     assert res["sorn_rate_var"] < res["static_rate_var"], (
-        f"IP should tighten the rate variance: {res['sorn_rate_var']:.4f} !< {res['static_rate_var']:.4f}")
+        f"IP should tighten the rate variance: {res['sorn_rate_var']:.4f} !< {res['static_rate_var']:.4f}"
+    )
     # (c) structure signature: STDP broadened the (initially normalized) W_EE weight distribution
     assert res["sorn_std"] > res["static_std"], (
-        f"STDP should broaden W_EE weights: {res['sorn_std']:.3f} !> {res['static_std']:.3f}")
+        f"STDP should broaden W_EE weights: {res['sorn_std']:.3f} !> {res['static_std']:.3f}"
+    )
     # (d) determinism: same seed -> identical accuracies on a repeat run
     res2 = run_experiment(seed)
     assert res2["sorn_acc"] == res["sorn_acc"] and res2["static_acc"] == res["static_acc"], (
-        "same seed must reproduce identical accuracies")
-    print(f"self-check OK: SORN {res['sorn_acc']:.1%} > static {res['static_acc']:.1%} "
-          f"(+{margin:.1%}); mean E-rate -> {res['sorn_rate_mean']:.3f} ~ H_IP {H_IP}; "
-          "rate var down; deterministic")
+        "same seed must reproduce identical accuracies"
+    )
+    print(
+        f"self-check OK: SORN {res['sorn_acc']:.1%} > static {res['static_acc']:.1%} "
+        f"(+{margin:.1%}); mean E-rate -> {res['sorn_rate_mean']:.3f} ~ H_IP {H_IP}; "
+        "rate var down; deterministic"
+    )
 
 
 if __name__ == "__main__":

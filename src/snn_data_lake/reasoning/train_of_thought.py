@@ -224,7 +224,6 @@ def _print_transcript(trace):
 
 
 def main():
-    import sys
 
     tot = TrainOfThought(seed=0)
     graph = _fact_graph()

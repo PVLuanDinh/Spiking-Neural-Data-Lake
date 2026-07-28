@@ -23,23 +23,23 @@ Differences from Nord (by necessity, all stdlib, no torch):
 Reuses the data + spike encoding from snn_classifier.py (no duplication).
 Run:  python snn_moe_classifier.py
 """
+
 import random
 import math
-import os
-import sys
+
 pass  # migrated: sys.path bootstrap removed (now an importable package)
-from snn_data_lake.snn_classifier import templates, noisy, dataset, N, STEPS, ON_RATE, OFF_RATE
+from snn_data_lake.snn_classifier import templates, dataset, N, STEPS, ON_RATE, OFF_RATE
 from snn_data_lake._mathutils import softmax
 
 random.seed(0)  # deterministic run + self-check
 
 # ---- MoE config -------------------------------------------------------------
 N_EXPERTS = 8
-TOP_K = 2                 # experts active per sample (sparse routing)
-N_CLUSTERS = 16           # input feature-clusters (must be divisible by N_EXPERTS)
+TOP_K = 2  # experts active per sample (sparse routing)
+N_CLUSTERS = 16  # input feature-clusters (must be divisible by N_EXPERTS)
 CLUSTERS_PER_EXPERT = N_CLUSTERS // N_EXPERTS
-ROUTE_TEMP = 0.5          # Nord's moe_route_temperature
-LB_RATE = 0.05            # homeostatic load-balance strength (bias nudging)
+ROUTE_TEMP = 0.5  # Nord's moe_route_temperature
+LB_RATE = 0.05  # homeostatic load-balance strength (bias nudging)
 LR = 0.5
 EPOCHS = 8
 TRAIN_PER_CLASS = 40
@@ -51,8 +51,9 @@ def sample_spikes(sample):
     Shared by routing and expert forward so both see the same spikes."""
     steps, counts = [], [0] * N
     for _ in range(STEPS):
-        active = [i for i, px in enumerate(sample)
-                  if random.random() < (ON_RATE if px else OFF_RATE)]
+        active = [
+            i for i, px in enumerate(sample) if random.random() < (ON_RATE if px else OFF_RATE)
+        ]
         steps.append(active)
         for i in active:
             counts[i] += 1
@@ -63,7 +64,7 @@ def sample_spikes(sample):
 def expert_scores(counts, expert_bias):
     """Nord's _compute_expert_scores: cluster firing rates -> per-expert score.
     cluster of input i = i % N_CLUSTERS; expert score = mean of its clusters."""
-    fr = [c / STEPS for c in counts]                       # firing rate per input
+    fr = [c / STEPS for c in counts]  # firing rate per input
     cluster_rate = [0.0] * N_CLUSTERS
     cluster_size = [0] * N_CLUSTERS
     for i, r in enumerate(fr):
@@ -73,7 +74,7 @@ def expert_scores(counts, expert_bias):
     cluster_rate = [cr / max(s, 1) for cr, s in zip(cluster_rate, cluster_size)]
     scores = []
     for e in range(N_EXPERTS):
-        cl = cluster_rate[e * CLUSTERS_PER_EXPERT:(e + 1) * CLUSTERS_PER_EXPERT]
+        cl = cluster_rate[e * CLUSTERS_PER_EXPERT : (e + 1) * CLUSTERS_PER_EXPERT]
         scores.append(sum(cl) / len(cl) / max(ROUTE_TEMP, 0.01) + expert_bias[e])
     return scores
 
@@ -106,7 +107,7 @@ def forward(experts, expert_bias, sample, n_classes):
     """route -> run only top-k experts -> gate-weighted class currents.
     Returns (probs, gates, counts, steps, expert_synops, route_synops)."""
     steps, counts = sample_spikes(sample)
-    route_synops = sum(len(a) for a in steps)        # routing = summing spikes into clusters
+    route_synops = sum(len(a) for a in steps)  # routing = summing spikes into clusters
     scores = expert_scores(counts, expert_bias)
     gates = route(scores)
     combined = [0.0] * n_classes
@@ -125,14 +126,15 @@ def forward(experts, expert_bias, sample, n_classes):
 def train(train_data, n_classes):
     experts = [[[0.0] * N for _ in range(n_classes)] for _ in range(N_EXPERTS)]
     expert_bias = [0.0] * N_EXPERTS
-    usage = [1.0 / N_EXPERTS] * N_EXPERTS           # EMA usage share
+    usage = [1.0 / N_EXPERTS] * N_EXPERTS  # EMA usage share
     target_share = TOP_K / N_EXPERTS
     total_synops = 0
     for epoch in range(EPOCHS):
         correct = 0
         for sample, label in train_data:
             probs, gates, counts, esynops, rsynops = forward(
-                experts, expert_bias, sample, n_classes)
+                experts, expert_bias, sample, n_classes
+            )
             total_synops += esynops
             if max(range(n_classes), key=lambda c: probs[c]) == label:
                 correct += 1
@@ -153,7 +155,7 @@ def train(train_data, n_classes):
                 hit = 1.0 if e in picked else 0.0
                 usage[e] += 0.05 * (hit - usage[e])
                 expert_bias[e] += LB_RATE * (target_share - usage[e])
-        print(f"  epoch {epoch+1}/{EPOCHS}  train_acc={correct/len(train_data):.1%}")
+        print(f"  epoch {epoch + 1}/{EPOCHS}  train_acc={correct / len(train_data):.1%}")
     return experts, expert_bias, usage, total_synops
 
 
@@ -179,29 +181,28 @@ def main():
     print("=" * 60)
     print("SPIKE-DRIVEN MoE CLASSIFIER  (Nord firing-rate routing, ported)")
     print("=" * 60)
-    print(f"experts={N_EXPERTS}  top_k={TOP_K}  clusters={N_CLUSTERS}  "
-          f"classes={C}  inputs N={N}")
+    print(f"experts={N_EXPERTS}  top_k={TOP_K}  clusters={N_CLUSTERS}  classes={C}  inputs N={N}")
     print(f"routing: firing-rate (NO learned router net)\n")
     experts, expert_bias, usage, _ = train(train_data, C)
     acc, moe_synops, used = evaluate(experts, expert_bias, test_data, C)
     print()
-    print(f"TEST ACCURACY : {acc:.1%}   (chance = {1/C:.0%})\n")
+    print(f"TEST ACCURACY : {acc:.1%}   (chance = {1 / C:.0%})\n")
 
     # --- compute: top-k sparse vs running ALL experts (dense MoE) ---
-    dense_all_synops = moe_synops * N_EXPERTS / TOP_K     # if every expert ran
+    dense_all_synops = moe_synops * N_EXPERTS / TOP_K  # if every expert ran
     print("COMPUTE on test set (lower = less power):")
     print(f"  MoE SynOps (top-{TOP_K})   : {moe_synops:,}")
     print(f"  all-{N_EXPERTS}-experts SynOps : {int(dense_all_synops):,}")
-    print(f"  reduction              : {N_EXPERTS/TOP_K:.1f}x  (= n_experts/top_k)")
+    print(f"  reduction              : {N_EXPERTS / TOP_K:.1f}x  (= n_experts/top_k)")
     print()
 
     # --- storage: firing-rate router vs a learned router network ---
-    fr_router = N_EXPERTS                                  # just the per-expert biases
-    learned_router = N * N_EXPERTS                         # a real router: N->n_experts
+    fr_router = N_EXPERTS  # just the per-expert biases
+    learned_router = N * N_EXPERTS  # a real router: N->n_experts
     print("ROUTER STORAGE (lower = less space):")
     print(f"  firing-rate router : {fr_router} params (biases only)")
     print(f"  learned router     : {learned_router} params (N x n_experts)")
-    print(f"  reduction          : {learned_router/fr_router:.0f}x  (no router net)")
+    print(f"  reduction          : {learned_router / fr_router:.0f}x  (no router net)")
     print()
 
     # --- load balance (Nord stat) ---

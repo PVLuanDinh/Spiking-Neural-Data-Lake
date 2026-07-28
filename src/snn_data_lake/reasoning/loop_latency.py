@@ -10,13 +10,14 @@ neuromorphic control ~20 ms (arXiv:2503.09636; iCub closed-loop ~20–23 ms).
 
   python loop_latency.py        # (also run by run_selfchecks.py)
 """
+
 import time
 
 from snn_data_lake import signal_loop
 from snn_data_lake.spike_preprocessing import encode_latency, van_rossum_distance
 
 N_WINDOWS = 300
-BUDGET_MS = 50.0     # generous ceiling — timing is machine-dependent; the check is STRUCTURAL
+BUDGET_MS = 50.0  # generous ceiling — timing is machine-dependent; the check is STRUCTURAL
 
 
 def percentile(sorted_vals, p):
@@ -25,15 +26,15 @@ def percentile(sorted_vals, p):
 
 def main():
     lib = signal_loop.build_default_library()
-    refs = [encode_latency(v) for v in lib.values()]                 # enrolled references (encoded once)
+    refs = [encode_latency(v) for v in lib.values()]  # enrolled references (encoded once)
     src = signal_loop.simulated_stream(lib, N_WINDOWS, seed=0)
 
     enc_ms, match_ms, total_ms = [], [], []
     for _, window in src:
         t0 = time.perf_counter()
-        q = encode_latency(window)                                    # stage 1: spike encoding
+        q = encode_latency(window)  # stage 1: spike encoding
         t1 = time.perf_counter()
-        _ = min(van_rossum_distance(q, r) for r in refs)              # stage 2: in-lake nearest match
+        _ = min(van_rossum_distance(q, r) for r in refs)  # stage 2: in-lake nearest match
         t2 = time.perf_counter()
         enc_ms.append((t1 - t0) * 1e3)
         match_ms.append((t2 - t1) * 1e3)
@@ -56,9 +57,12 @@ def main():
     # ---- self-check (timing is non-deterministic -> assert STRUCTURE, not a flaky number) ----
     assert p50 <= p95 <= p99, "percentiles must be monotone"
     assert p50 > 0.0, "latency must be positive"
-    assert p50 < BUDGET_MS, f"median sensor->command latency {p50:.3f} ms over budget {BUDGET_MS} ms"
-    assert abs((enc_mean + match_mean) - (sum(total_ms) / len(total_ms))) < 1e-6 + 0.5, \
+    assert p50 < BUDGET_MS, (
+        f"median sensor->command latency {p50:.3f} ms over budget {BUDGET_MS} ms"
+    )
+    assert abs((enc_mean + match_mean) - (sum(total_ms) / len(total_ms))) < 1e-6 + 0.5, (
         "stage times should sum to ~total"
+    )
     print(f"self-check OK: p50/p95/p99 = {p50:.2f}/{p95:.2f}/{p99:.2f} ms, monotone, under budget")
 
 

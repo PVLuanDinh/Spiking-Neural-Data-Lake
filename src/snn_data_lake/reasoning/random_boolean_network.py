@@ -35,6 +35,7 @@ matrix. Pure standard library, ASCII-only output.
 Paper: Kauffman, S.A. (1969), "Metabolic stability and epigenesis in randomly constructed genetic nets",
 J. Theoretical Biology 22(3):437-467.
 """
+
 from collections import namedtuple
 import random
 
@@ -45,8 +46,10 @@ def build_rbn(N, K, seed, p=0.5):
     """Seeded NK network: K distinct inputs per node (self-loops allowed) + a random 2^K truth table
     per node whose entries are iid Bernoulli(p). One rng threaded through wiring THEN tables."""
     rng = random.Random(seed)
-    inputs = [rng.sample(range(N), K) for _ in range(N)]                                  # wiring
-    tables = [[1 if rng.random() < p else 0 for _ in range(1 << K)] for _ in range(N)]    # truth tables
+    inputs = [rng.sample(range(N), K) for _ in range(N)]  # wiring
+    tables = [
+        [1 if rng.random() < p else 0 for _ in range(1 << K)] for _ in range(N)
+    ]  # truth tables
     return RBN(N, K, inputs, tables)
 
 
@@ -119,8 +122,12 @@ def main():
 
     # --- Derrida slope across K: measured vs the derived theory 0.5*K (p = 0.5) ---
     N, n_nets, n_states = 200, 20, 80
-    slopes = {K: derrida_slope(N, K, seed=1000 + K, n_nets=n_nets, n_states=n_states) for K in (1, 2, 3)}
-    print(f"N={N}  nets={n_nets}  states/net={n_states}  bias p=0.5   (Derrida slope = 2p(1-p)*K = 0.5*K)")
+    slopes = {
+        K: derrida_slope(N, K, seed=1000 + K, n_nets=n_nets, n_states=n_states) for K in (1, 2, 3)
+    }
+    print(
+        f"N={N}  nets={n_nets}  states/net={n_states}  bias p=0.5   (Derrida slope = 2p(1-p)*K = 0.5*K)"
+    )
     print("  K    measured slope    theory 0.5*K    regime")
     for K in (1, 2, 3):
         regime = "ordered" if K < 2 else ("critical" if K == 2 else "chaotic")
@@ -131,8 +138,10 @@ def main():
     net = build_rbn(aN, 2, seed=7)
     s0 = random_state(aN, seed=99)
     transient, cycle_len, _ = find_attractor(net, s0)
-    print(f"example attractor: N={aN} K=2 seed=7 -> transient {transient} steps, cycle length {cycle_len} "
-          f"(state space 2^{aN} = {1 << aN})")
+    print(
+        f"example attractor: N={aN} K=2 seed=7 -> transient {transient} steps, cycle length {cycle_len} "
+        f"(state space 2^{aN} = {1 << aN})"
+    )
     print("=" * 64)
 
     # ---- self-check (deterministic asserts; emergent -- expected values DERIVED, not hardcoded) ----
@@ -142,7 +151,9 @@ def main():
     tol = 0.15
     for K in (1, 2, 3):
         theory = 0.5 * K
-        assert abs(slopes[K] - theory) < tol, f"K={K}: slope {slopes[K]:.3f} not within {tol} of theory {theory:.3f}"
+        assert abs(slopes[K] - theory) < tol, (
+            f"K={K}: slope {slopes[K]:.3f} not within {tol} of theory {theory:.3f}"
+        )
     assert slopes[1] < 1.0 < slopes[3], f"order->chaos ordering broken: {slopes}"
     assert abs(slopes[2] - 1.0) < tol, f"critical K=2 slope {slopes[2]:.3f} not ~ 1.0"
 
@@ -153,9 +164,11 @@ def main():
     assert again == (transient, cycle_len, again[2]), "nondeterministic attractor on a repeat run"
     assert run(net, s0, 3) == run(build_rbn(aN, 2, seed=7), s0, 3), "nondeterministic trajectory"
 
-    print(f"self-check OK: Derrida slope tracks the derived 0.5*K for K in {{1,2,3}} "
-          f"(measured {slopes[1]:.2f}/{slopes[2]:.2f}/{slopes[3]:.2f} vs 0.5/1.0/1.5, transition at K=2); "
-          f"attractor periodic (cycle {cycle_len}) and deterministic")
+    print(
+        f"self-check OK: Derrida slope tracks the derived 0.5*K for K in {{1,2,3}} "
+        f"(measured {slopes[1]:.2f}/{slopes[2]:.2f}/{slopes[3]:.2f} vs 0.5/1.0/1.5, transition at K=2); "
+        f"attractor periodic (cycle {cycle_len}) and deterministic"
+    )
 
 
 if __name__ == "__main__":

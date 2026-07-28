@@ -47,6 +47,7 @@ Run (GPU on the RTX 5070):
 CPU (byte-identical logic, slower, needs the [train] extra for torch):
   PYTHONPATH=src python research/lake_skill_library.py
 """
+
 import os
 import random
 import sys
@@ -59,20 +60,26 @@ _SRC = os.path.join(os.path.dirname(_HERE), "src")
 if os.path.isdir(_SRC) and _SRC not in sys.path:
     pass  # migrated: sys.path bootstrap removed (now an importable package)
 
-from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory               # durable proximity router + skill store
-from snn_data_lake.hippocampus.sleep_consolidation import SleepConsolidator  # named-skill registry API
-from snn_data_lake.reasoning.torch_device import resolve_device                         # opt-in GPU (NORD_GPU=1), CPU default
+from snn_data_lake.reasoning.brain_adapters.lake_memory import (
+    LakeMemory,
+)  # durable proximity router + skill store
+from snn_data_lake.hippocampus.sleep_consolidation import (
+    SleepConsolidator,
+)  # named-skill registry API
+from snn_data_lake.reasoning.torch_device import (
+    resolve_device,
+)  # opt-in GPU (NORD_GPU=1), CPU default
 
 # ---- config (deterministic) -------------------------------------------------
 SEED = 0
-T_TASKS = 5          # number of tasks (chance router selection = 1/T = 0.20)
-K_CLASSES = 3        # classes per task
-D_DIM = 32           # feature width (MUST be <= 64: the lake/index channel width N)
-N_TRAIN = 40         # train points per class per task
-N_TEST = 20          # test points per class per task
-DIR_SCALE = 0.16     # class-mean offset from the task center along a direction (blob separation)
-NOISE_SIGMA = 0.03   # per-feature gaussian blob spread (tight -> classes separable)
-PRUNE_FRAC = 0.30    # fraction of expert weights pruned to zero (compact expert)
+T_TASKS = 5  # number of tasks (chance router selection = 1/T = 0.20)
+K_CLASSES = 3  # classes per task
+D_DIM = 32  # feature width (MUST be <= 64: the lake/index channel width N)
+N_TRAIN = 40  # train points per class per task
+N_TEST = 20  # test points per class per task
+DIR_SCALE = 0.16  # class-mean offset from the task center along a direction (blob separation)
+NOISE_SIGMA = 0.03  # per-feature gaussian blob spread (tight -> classes separable)
+PRUNE_FRAC = 0.30  # fraction of expert weights pruned to zero (compact expert)
 TRAIN_STEPS = 300
 LR = 0.05
 
@@ -99,10 +106,10 @@ def make_tasks(seed=SEED, T=T_TASKS, K=K_CLASSES, D=D_DIM, n_train=N_TRAIN, n_te
 
     tasks = []
     for t in range(T):
-        center = [rng.uniform(0.25, 0.85) for _ in range(D)]     # this task's distinct region
+        center = [rng.uniform(0.25, 0.85) for _ in range(D)]  # this task's distinct region
         class_means = []
         for k in range(K):
-            d = dirs[(k + t) % K]                                # cyclic shift -> cross-task conflict
+            d = dirs[(k + t) % K]  # cyclic shift -> cross-task conflict
             class_means.append([clip01(center[i] + DIR_SCALE * d[i]) for i in range(D)])
 
         def sample(cm):
@@ -118,8 +125,16 @@ def make_tasks(seed=SEED, T=T_TASKS, K=K_CLASSES, D=D_DIM, n_train=N_TRAIN, n_te
                 test_y.append(k)
         # centroid = mean TRAIN input = the proximity KEY (<= D <= 64 dims); sits in the task's region
         centroid = [sum(x[i] for x in train_X) / len(train_X) for i in range(D)]
-        tasks.append({"center": center, "train_X": train_X, "train_y": train_y,
-                      "test_X": test_X, "test_y": test_y, "centroid": centroid})
+        tasks.append(
+            {
+                "center": center,
+                "train_X": train_X,
+                "train_y": train_y,
+                "test_X": test_X,
+                "test_y": test_y,
+                "centroid": centroid,
+            }
+        )
     return tasks
 
 
@@ -128,6 +143,7 @@ def train_model(X, y, D, K, device, seed, steps=TRAIN_STEPS, lr=LR):
     """Train a torch nn.Linear(D,K) classifier on (X,y). Tensors placed EXPLICITLY on `device`
     (no set_default_device -> avoids the CPU-tensor-lands-on-GPU gotcha; the lake stays pure python)."""
     import torch
+
     torch.manual_seed(seed)
     model = torch.nn.Linear(D, K).to(device)
     Xt = torch.tensor(X, dtype=torch.float32, device=device)
@@ -145,12 +161,13 @@ def prune_and_freeze(model, frac=PRUNE_FRAC):
     """Zero the smallest-|w| `frac` of the Linear weight (compact expert), then freeze all params.
     Returns the achieved sparsity (fraction of weights set to exactly zero)."""
     import torch
+
     with torch.no_grad():
         w = model.weight.data
         sparsity = 0.0
         if frac > 0.0 and w.numel() > 0:
             k = max(1, int(frac * w.numel()))
-            thresh = w.abs().flatten().kthvalue(k).values.item()     # k-th smallest magnitude
+            thresh = w.abs().flatten().kthvalue(k).values.item()  # k-th smallest magnitude
             mask = (w.abs() > thresh).to(w.dtype)
             w.mul_(mask)
             sparsity = 1.0 - float(mask.mean().item())
@@ -163,6 +180,7 @@ def prune_and_freeze(model, frac=PRUNE_FRAC):
 def predict_one(model, x, device):
     """Frozen-expert prediction for a single input (python list) -> python int class."""
     import torch
+
     with torch.no_grad():
         t = torch.tensor([x], dtype=torch.float32, device=device)
         return int(model(t).argmax(dim=1).item())
@@ -171,6 +189,7 @@ def predict_one(model, x, device):
 def logits_one(model, x, device):
     """Frozen-expert logits for a single input -> python list (for composition; torch->python here)."""
     import torch
+
     with torch.no_grad():
         t = torch.tensor([x], dtype=torch.float32, device=device)
         return model(t)[0].detach().cpu().tolist()
@@ -179,6 +198,7 @@ def logits_one(model, x, device):
 def acc_batch(model, X, y, device):
     """Accuracy of a frozen model over a batch (python lists)."""
     import torch
+
     with torch.no_grad():
         t = torch.tensor(X, dtype=torch.float32, device=device)
         pred = model(t).argmax(dim=1).cpu().tolist()
@@ -201,12 +221,14 @@ def main():
     try:
         import torch  # noqa: F401
     except ImportError:
-        print("torch not installed; the expert/shared-model tier needs the [gpu]/[train] extra. "
-              "Skipping (the lake router/store are exercised by lake_memory.py).")
+        print(
+            "torch not installed; the expert/shared-model tier needs the [gpu]/[train] extra. "
+            "Skipping (the lake router/store are exercised by lake_memory.py)."
+        )
         return
 
     assert D_DIM <= 64, f"router key width D={D_DIM} must be <= 64 (the lake/index channel width N)"
-    device = resolve_device()                                   # 'cuda' if NORD_GPU=1 and available, else 'cpu'
+    device = resolve_device()  # 'cuda' if NORD_GPU=1 and available, else 'cpu'
 
     # ---- build the heterogeneous tasks ----
     tasks = make_tasks()
@@ -216,19 +238,20 @@ def main():
     bank = {}
     sparsities = []
     for t in range(T_TASKS):
-        m = train_model(tasks[t]["train_X"], tasks[t]["train_y"], D_DIM, K_CLASSES,
-                        device, seed=1000 + t)
-        sparsities.append(prune_and_freeze(m))                  # compact + frozen
+        m = train_model(
+            tasks[t]["train_X"], tasks[t]["train_y"], D_DIM, K_CLASSES, device, seed=1000 + t
+        )
+        sparsities.append(prune_and_freeze(m))  # compact + frozen
         bank[t] = m
 
     # ---- 3. CONSOLIDATE each expert as a durable, content-addressable SKILL ----
     # proximity KEY = task centroid; payload = task_id; durable in the substrate spike lake + index.
-    mem = LakeMemory(seed=SEED, probe=max(4, T_TASKS))          # probe >= n_medoids -> exact routing
+    mem = LakeMemory(seed=SEED, probe=max(4, T_TASKS))  # probe >= n_medoids -> exact routing
     mem.consolidate([tasks[t]["centroid"] for t in range(T_TASKS)], payloads=list(range(T_TASKS)))
     # register the durable NAMED skills (the SleepConsolidator skill API); quiescent() is never called.
     consolidator = SleepConsolidator(seed=SEED)
     for t in range(T_TASKS):
-        assembly = frozenset((t * 5 + j) % 24 for j in range(6))   # valid 6-unit subset of range(24)
+        assembly = frozenset((t * 5 + j) % 24 for j in range(6))  # valid 6-unit subset of range(24)
         consolidator.wake(skill_id=f"expert_task_{t}", assemblies=[assembly], reps=2)
 
     # ---- the SHARED baseline: ONE model of the SAME architecture on ALL tasks pooled ----
@@ -238,20 +261,22 @@ def main():
     shared.eval()
 
     # ---- the mixed, task-id-HIDDEN test stream (all tasks pooled, shuffled) ----
-    stream = [(x, t, c) for t in range(T_TASKS)
-              for x, c in zip(tasks[t]["test_X"], tasks[t]["test_y"])]
+    stream = [
+        (x, t, c) for t in range(T_TASKS) for x, c in zip(tasks[t]["test_X"], tasks[t]["test_y"])
+    ]
     random.Random(7).shuffle(stream)
 
     # ---- (a) specialist experts on their OWN task test set ----
-    spec_accs = [acc_batch(bank[t], tasks[t]["test_X"], tasks[t]["test_y"], device)
-                 for t in range(T_TASKS)]
+    spec_accs = [
+        acc_batch(bank[t], tasks[t]["test_X"], tasks[t]["test_y"], device) for t in range(T_TASKS)
+    ]
 
     # ---- (b) ROUTER selection acc + (c) ROUTED end-to-end acc (RECALL ONLY, no retraining) ----
     route_preds = [route(mem, x) for x, _, _ in stream]
     router_acc = _mean(rp == tt for rp, (_, tt, _) in zip(route_preds, stream))
     routed_correct = 0
     for (x, _tt, cc), rp in zip(stream, route_preds):
-        expert = bank.get(rp, bank[0])                          # selected purely by proximity
+        expert = bank.get(rp, bank[0])  # selected purely by proximity
         routed_correct += int(predict_one(expert, x, device) == cc)
     routed_acc = routed_correct / len(stream)
 
@@ -260,75 +285,114 @@ def main():
     delta = routed_acc - shared_acc
 
     # ---- (e) SKILL REUSE / durability: the routing skills survive a lake close+reopen ----
-    dur = mem.durability_check()                               # close + reopen the .spkl
-    route_preds_after = [route(mem, x) for x, _, _ in stream]  # recall-only routing after the reopen
+    dur = mem.durability_check()  # close + reopen the .spkl
+    route_preds_after = [
+        route(mem, x) for x, _, _ in stream
+    ]  # recall-only routing after the reopen
     recall_only_stable = route_preds_after == route_preds
 
     # ---- (f) COMPOSITION: average two experts' logits on an input between two task regions ----
     mid = [(tasks[0]["center"][i] + tasks[1]["center"][i]) / 2.0 for i in range(D_DIM)]
-    comp = [(a + b) / 2.0 for a, b in zip(logits_one(bank[0], mid, device),
-                                          logits_one(bank[1], mid, device))]
+    comp = [
+        (a + b) / 2.0
+        for a, b in zip(logits_one(bank[0], mid, device), logits_one(bank[1], mid, device))
+    ]
     comp_class = comp.index(max(comp))
 
     # ---- report ----
     print("=" * 78)
     print("LAKE SKILL LIBRARY -- Mixture-of-Task-Experts, proximity-routed over the data lake")
     print("=" * 78)
-    print(f"regime        : {T_TASKS} HETEROGENEOUS tasks x {K_CLASSES} classes in R^{D_DIM} "
-          f"(distinct regions, cyclically-shifted class geometry)")
-    print(f"device        : {device}   experts: nn.Linear({D_DIM},{K_CLASSES}) each, pruned "
-          f"{100 * sum(sparsities) / len(sparsities):.0f}% then frozen")
-    print(f"durable lake  : {os.path.basename(mem.path)}  {mem.n_stored} skill keys "
-          f"({mem.hub.n_events()} spike events); named skills registered = {len(consolidator.skills)}")
+    print(
+        f"regime        : {T_TASKS} HETEROGENEOUS tasks x {K_CLASSES} classes in R^{D_DIM} "
+        f"(distinct regions, cyclically-shifted class geometry)"
+    )
+    print(
+        f"device        : {device}   experts: nn.Linear({D_DIM},{K_CLASSES}) each, pruned "
+        f"{100 * sum(sparsities) / len(sparsities):.0f}% then frozen"
+    )
+    print(
+        f"durable lake  : {os.path.basename(mem.path)}  {mem.n_stored} skill keys "
+        f"({mem.hub.n_events()} spike events); named skills registered = {len(consolidator.skills)}"
+    )
     print("-" * 78)
-    print(f"(a) specialist experts (own test) : {[f'{a:.2f}' for a in spec_accs]}  "
-          f"mean {sum(spec_accs) / len(spec_accs):.2f}")
-    print(f"(b) proximity ROUTER selection    : {router_acc:.2f}   (chance 1/{T_TASKS} = {chance:.2f}) "
-          f"<- picks the correct task's expert with NO task-id")
-    print(f"(c) ROUTED end-to-end (recall)    : {routed_acc:.2f}   (route -> apply expert -> predict, "
-          f"no retraining)")
+    print(
+        f"(a) specialist experts (own test) : {[f'{a:.2f}' for a in spec_accs]}  "
+        f"mean {sum(spec_accs) / len(spec_accs):.2f}"
+    )
+    print(
+        f"(b) proximity ROUTER selection    : {router_acc:.2f}   (chance 1/{T_TASKS} = {chance:.2f}) "
+        f"<- picks the correct task's expert with NO task-id"
+    )
+    print(
+        f"(c) ROUTED end-to-end (recall)    : {routed_acc:.2f}   (route -> apply expert -> predict, "
+        f"no retraining)"
+    )
     print("-" * 78)
     print(f"(d) KEY COMPARISON on the heterogeneous mixed stream:")
     print(f"      routed expert library       : {routed_acc:.2f}")
     print(f"      ONE shared model (same arch) : {shared_acc:.2f}")
-    print(f"      delta (library - shared)     : {delta:+.2f}   <- experts WIN when tasks are dissimilar")
+    print(
+        f"      delta (library - shared)     : {delta:+.2f}   <- experts WIN when tasks are dissimilar"
+    )
     print("-" * 78)
-    print(f"(e) durability : close+reopen .spkl -> events {dur['events_before']} -> "
-          f"{dur['events_after']}, patterns match = {dur['patterns_match']}, ok = {dur['ok']}")
-    print(f"    recall-only routing stable across the reopen = {recall_only_stable} "
-          f"(the routing skills are durable in the lake, not RAM)")
-    print(f"(f) composition: mean of expert0+expert1 logits at the task0/task1 midpoint -> "
-          f"class {comp_class} (illustrative, not asserted)")
+    print(
+        f"(e) durability : close+reopen .spkl -> events {dur['events_before']} -> "
+        f"{dur['events_after']}, patterns match = {dur['patterns_match']}, ok = {dur['ok']}"
+    )
+    print(
+        f"    recall-only routing stable across the reopen = {recall_only_stable} "
+        f"(the routing skills are durable in the lake, not RAM)"
+    )
+    print(
+        f"(f) composition: mean of expert0+expert1 logits at the task0/task1 midpoint -> "
+        f"class {comp_class} (illustrative, not asserted)"
+    )
     print("-" * 78)
-    print("HONEST NOTE: this is the HETEROGENEOUS-task regime, where a per-task expert library beats a")
-    print("single shared model. On FEATURE-SHARING tasks (e.g. MNIST digits) a shared model wins instead")
-    print("-- one representation transfers across classes -- which the project has already measured. The")
+    print(
+        "HONEST NOTE: this is the HETEROGENEOUS-task regime, where a per-task expert library beats a"
+    )
+    print(
+        "single shared model. On FEATURE-SHARING tasks (e.g. MNIST digits) a shared model wins instead"
+    )
+    print(
+        "-- one representation transfers across classes -- which the project has already measured. The"
+    )
     print("expert weights live as torch objects in the bank; the LAKE durably stores the content-")
-    print("addressable ROUTING skill (centroid key -> task_id) + the named SleepConsolidator skill record.")
+    print(
+        "addressable ROUTING skill (centroid key -> task_id) + the named SleepConsolidator skill record."
+    )
     print("=" * 78)
 
     # ---- self-checks (deterministic asserts) ----
     # (i) proximity router selects the right expert far above chance (content-addressable, not guessing)
-    assert router_acc > chance + 0.4, \
+    assert router_acc > chance + 0.4, (
         f"router selection {router_acc:.2f} not clearly above chance {chance:.2f} (need > {chance + 0.4:.2f})"
+    )
     # specialists actually specialize (sanity that the experts are real)
-    assert sum(spec_accs) / len(spec_accs) > 0.8, \
+    assert sum(spec_accs) / len(spec_accs) > 0.8, (
         f"specialist experts too weak (mean {sum(spec_accs) / len(spec_accs):.2f})"
+    )
     # (ii) the routed library BEATS the one shared model -- the paradigm's win on heterogeneous tasks
-    assert routed_acc > shared_acc, \
+    assert routed_acc > shared_acc, (
         f"routed library ({routed_acc:.2f}) must beat the shared model ({shared_acc:.2f}) on heterogeneous tasks"
+    )
     # (iii) the routing skills survive the lake close+reopen (durable in the data lake, not RAM)
     assert dur["ok"], f"durability check failed: {dur}"
-    assert dur["events_after"] == dur["events_before"] > 0, "skill keys did not survive the lake reopen"
+    assert dur["events_after"] == dur["events_before"] > 0, (
+        "skill keys did not survive the lake reopen"
+    )
     assert recall_only_stable, "recall-only routing changed after reopening the durable lake"
     # every expert was registered as a durable named skill
     assert len(consolidator.skills) == T_TASKS, "not every expert was registered as a named skill"
 
     mem.close(remove=True)
-    print(f"self-check OK: proximity router selects experts {router_acc:.0%} >> chance {chance:.0%}; "
-          f"routed library {routed_acc:.2f} > shared model {shared_acc:.2f} (delta {delta:+.2f}, "
-          f"experts win on heterogeneous tasks); {mem.n_stored} routing skills + "
-          f"{dur['events_after']} events survive the lake close+reopen (durable, recall-only)")
+    print(
+        f"self-check OK: proximity router selects experts {router_acc:.0%} >> chance {chance:.0%}; "
+        f"routed library {routed_acc:.2f} > shared model {shared_acc:.2f} (delta {delta:+.2f}, "
+        f"experts win on heterogeneous tasks); {mem.n_stored} routing skills + "
+        f"{dur['events_after']} events survive the lake close+reopen (durable, recall-only)"
+    )
 
 
 if __name__ == "__main__":

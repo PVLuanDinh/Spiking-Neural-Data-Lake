@@ -21,6 +21,7 @@ Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(400) NO
        NORD_GAMMA(0.02) NORD_SHRINK(0.1) NORD_TRAIN(12000) NORD_TEST(2000)
 Deps: numpy torch torchvision snntorch
 """
+
 import os
 
 import torch
@@ -59,9 +60,11 @@ class SLDA_RFF:
         self.M = rff
         self.shrink = float(shrink)
         self.n_cls = 10
-        self.sum_c = torch.zeros(10, rff, device=self.dev)   # per-class sum of z
-        self.cnt_c = torch.zeros(10, device=self.dev)        # per-class count
-        self.ZZt = torch.zeros(rff, rff, device=self.dev)    # global sum of z z^T (for within-class cov)
+        self.sum_c = torch.zeros(10, rff, device=self.dev)  # per-class sum of z
+        self.cnt_c = torch.zeros(10, device=self.dev)  # per-class count
+        self.ZZt = torch.zeros(
+            rff, rff, device=self.dev
+        )  # global sum of z z^T (for within-class cov)
 
     def _rff(self, F):
         return self.scale * torch.cos(F @ self.W + self.b)
@@ -71,14 +74,14 @@ class SLDA_RFF:
         Z = self._rff(F)
         self.ZZt += Z.t() @ Z
         for c in range(10):
-            m = (y == c)
+            m = y == c
             if m.any():
                 self.sum_c[c] += Z[m].sum(0)
                 self.cnt_c[c] += int(m.sum().item())
 
     def _solve(self):
         cnt = self.cnt_c.clamp_min(1e-6)
-        mu = self.sum_c / cnt.unsqueeze(1)                    # [10, M] class means
+        mu = self.sum_c / cnt.unsqueeze(1)  # [10, M] class means
         n = self.cnt_c.sum().clamp_min(1)
         # within-class scatter Sw = ZZ^T - sum_c n_c mu_c mu_c^T ; shared covariance = Sw / N
         S = self.ZZt - (self.cnt_c.unsqueeze(1) * mu).t() @ mu
@@ -90,9 +93,9 @@ class SLDA_RFF:
     def predict(self, F, learned):
         Z = self._rff(F)
         mu, cinv = self._solve()
-        W = mu @ cinv                                        # [10, M] discriminant weights
-        bias = -0.5 * (W * mu).sum(1)                        # [10]
-        scores = Z @ W.t() + bias                            # [n, 10]
+        W = mu @ cinv  # [10, M] discriminant weights
+        bias = -0.5 * (W * mu).sum(1)  # [10]
+        scores = Z @ W.t() + bias  # [n, 10]
         mask = torch.full((10,), float("-inf"), device=self.dev)
         for c in learned:
             mask[c] = 0.0
@@ -132,11 +135,16 @@ def main():
     print(f"[perception] frozen; diversity={conv.kernel_diversity():.3f}")
 
     import time
+
     t0 = time.time()
-    Ftr = batched_features(conv, Xtr, batch=256)             # PERF: batched, ~135x faster than the per-image loop
+    Ftr = batched_features(
+        conv, Xtr, batch=256
+    )  # PERF: batched, ~135x faster than the per-image loop
     Fte = batched_features(conv, Xte, batch=256)
-    print(f"[cache] batched feature extraction of {len(Xtr) + len(Xte)} images in {time.time() - t0:.1f}s "
-          f"(near-free vs the per-image loop)")
+    print(
+        f"[cache] batched feature extraction of {len(Xtr) + len(Xte)} images in {time.time() - t0:.1f}s "
+        f"(near-free vs the per-image loop)"
+    )
     ytr, yte = Ytr.long().to(dev), Yte.long().to(dev)
     D = Ftr.shape[1]
     tr_by = {d: (Ytr == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
@@ -162,8 +170,10 @@ def main():
         curve.append(overall)
         curiosity.observe(objective, 1.0 - competence[objective])
         curriculum.observe(curiosity.learning_progress(objective))
-        print(f"CYCLE {cyc:2d} obj={objective} {'new' if is_new else 'rev'}  "
-              f"SLDA-RFF acc over {sorted(learned)} = {overall:.1%}")
+        print(
+            f"CYCLE {cyc:2d} obj={objective} {'new' if is_new else 'rev'}  "
+            f"SLDA-RFF acc over {sorted(learned)} = {overall:.1%}"
+        )
 
     final = curve[-1] if curve else 0.0
     print("\n" + "=" * 84)
@@ -176,8 +186,10 @@ def main():
     print(f"  feature extraction speedup (batched): ~135x (GPU)")
     print("=" * 84)
     assert final > 0.10, "SLDA-RFF at/below chance"
-    print(f"self-check OK: SLDA-on-RFF continual {final:.1%} vs linear 93.3% baseline; "
-          f"order-invariant (no replay), batched features ~135x faster.")
+    print(
+        f"self-check OK: SLDA-on-RFF continual {final:.1%} vs linear 93.3% baseline; "
+        f"order-invariant (no replay), batched features ~135x faster."
+    )
     return 0
 
 

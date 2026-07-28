@@ -284,7 +284,9 @@ def main():
     print("HELD-OUT RELATIONAL-ANALOGY BENCHMARK -- StructureMapper (Gentner SMT over VSA codes)")
     print("=" * 96)
     print("items are hand-written from the analogy literature, NOT emitted by a grammar the solver")
-    print("inverts. PASS = gold correspondence recovered AND systematicity > 0 (evidence, not luck).")
+    print(
+        "inverts. PASS = gold correspondence recovered AND systematicity > 0 (evidence, not luck)."
+    )
     print("-" * 96)
     print("%-28s %-8s %-6s %-9s %s" % ("item", "kind", "result", "sys/gold", "recovered"))
     for r in rows:
@@ -328,8 +330,11 @@ def main():
     print("  structure-disjoint  : systematicity=%.3f  map=%s" % (sd["sys"], sd["map"]))
     print(
         "  shuffled-corr       : recovered=%s  sys_gold=%.2f sys_shuffled=%.2f"
-        % ("SHUFFLED (bad)" if sh["recovered_is_shuffled"] else "gold (correct)",
-           sh["sys_gold"], sh["sys_shuffled"])
+        % (
+            "SHUFFLED (bad)" if sh["recovered_is_shuffled"] else "gold (correct)",
+            sh["sys_gold"],
+            sh["sys_shuffled"],
+        )
     )
     print("=" * 96)
 

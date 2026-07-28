@@ -67,12 +67,12 @@ import time
 
 from snn_data_lake.reasoning import arc_bench, arc_solver
 
-ATTEMPTS = 2                     # official ARC pass@2
-MAX_DEPTH = 3                    # the solver's own default program depth
-BASELINE_NODES = 4000            # the solver's shipped default node budget (make_solver)
-EXHAUST_CAP_S = 30.0             # wall-clock safety valve on the provably-untruncated runs
-RANK_ATTEMPTS = 128              # candidate cap for the rank probe
-_P_FALLBACK = 64                 # pool-size overestimate if reflection into arc_solver fails
+ATTEMPTS = 2  # official ARC pass@2
+MAX_DEPTH = 3  # the solver's own default program depth
+BASELINE_NODES = 4000  # the solver's shipped default node budget (make_solver)
+EXHAUST_CAP_S = 30.0  # wall-clock safety valve on the provably-untruncated runs
+RANK_ATTEMPTS = 128  # candidate cap for the rank probe
+_P_FALLBACK = 64  # pool-size overestimate if reflection into arc_solver fails
 
 # verdict threshold: guided search is "worth building" only if its measured ceiling could flip at
 # least this fraction of the current failures (budget wins + unresolved + re-rankable).
@@ -120,52 +120,74 @@ def node_bound(train_pairs, max_depth=MAX_DEPTH):
     return total + 1
 
 
-def probe_pair(train, test_input, want, baseline_nodes=BASELINE_NODES, attempts=ATTEMPTS,
-               max_depth=MAX_DEPTH, exhaust_cap_s=EXHAUST_CAP_S):
+def probe_pair(
+    train,
+    test_input,
+    want,
+    baseline_nodes=BASELINE_NODES,
+    attempts=ATTEMPTS,
+    max_depth=MAX_DEPTH,
+    exhaust_cap_s=EXHAUST_CAP_S,
+):
     """Classify ONE (train, test) pair. Returns {'status': ..., evidence...}; statuses are
     solved_baseline / budget_proven / budget_unresolved / coverage_proven / misranked /
     rank_unresolved (see module docstring for the exact meaning and proof obligations)."""
-    base_c, _bp = arc_solver.synthesize(train, test_input, attempts=attempts,
-                                        max_depth=max_depth, node_budget=baseline_nodes,
-                                        time_budget=None)
+    base_c, _bp = arc_solver.synthesize(
+        train,
+        test_input,
+        attempts=attempts,
+        max_depth=max_depth,
+        node_budget=baseline_nodes,
+        time_budget=None,
+    )
     if any(_eq(c, want) for c in base_c[:attempts]):
         return {"status": "solved_baseline"}
 
     bound = node_bound(train, max_depth)
     t0 = time.monotonic()
-    ex_c, ex_p = arc_solver.synthesize(train, test_input, attempts=attempts,
-                                       max_depth=max_depth, node_budget=bound,
-                                       time_budget=exhaust_cap_s)
+    ex_c, ex_p = arc_solver.synthesize(
+        train,
+        test_input,
+        attempts=attempts,
+        max_depth=max_depth,
+        node_budget=bound,
+        time_budget=exhaust_cap_s,
+    )
     ex_s = time.monotonic() - t0
     out = {"bound": bound, "exhaust_s": round(ex_s, 3), "n_cands": len(ex_c)}
     if any(_eq(c, want) for c in ex_c[:attempts]):
         out["status"] = "budget_proven"
         return out
     if ex_s >= exhaust_cap_s:
-        out["status"] = "budget_unresolved"       # hit the enlarged budget; nothing proven
+        out["status"] = "budget_unresolved"  # hit the enlarged budget; nothing proven
         return out
     # full enumeration completed. Did the search stop early because attempts filled with
     # consistent-but-wrong grids? (const-closer candidates are added AFTER the search ends and
     # never imply an early stop.)
     non_const = sum(1 for _names, closer in ex_p if closer != "const")
     if non_const < attempts:
-        out["status"] = "coverage_proven"         # whole space, no (more) consistent program
+        out["status"] = "coverage_proven"  # whole space, no (more) consistent program
         return out
     # rank probe: is the wanted grid ANYWHERE in the training-consistent candidate set?
     t0 = time.monotonic()
-    rk_c, _rp = arc_solver.synthesize(train, test_input, attempts=RANK_ATTEMPTS,
-                                      max_depth=max_depth, node_budget=bound,
-                                      time_budget=exhaust_cap_s)
+    rk_c, _rp = arc_solver.synthesize(
+        train,
+        test_input,
+        attempts=RANK_ATTEMPTS,
+        max_depth=max_depth,
+        node_budget=bound,
+        time_budget=exhaust_cap_s,
+    )
     rk_s = time.monotonic() - t0
     out["rank_s"] = round(rk_s, 3)
     out["rank_cands"] = len(rk_c)
     if any(_eq(c, want) for c in rk_c):
-        out["status"] = "misranked"               # expressible but ranked below the top-2
+        out["status"] = "misranked"  # expressible but ranked below the top-2
         return out
     if rk_s >= exhaust_cap_s or len(rk_c) >= RANK_ATTEMPTS:
         out["status"] = "rank_unresolved"
         return out
-    out["status"] = "coverage_proven"             # whole space, wanted grid not producible
+    out["status"] = "coverage_proven"  # whole space, wanted grid not producible
     return out
 
 
@@ -180,7 +202,7 @@ def diagnose_task(task, **kw):
         r = probe_pair(train, pair["input"], pair["output"], **kw)
         pairs.append(r)
         if r["status"] == "coverage_proven":
-            break                                 # this pair blocks the task at ANY budget/ranking
+            break  # this pair blocks the task at ANY budget/ranking
     sts = [r["status"] for r in pairs]
     if all(s == "solved_baseline" for s in sts):
         status = "solved"
@@ -189,41 +211,61 @@ def diagnose_task(task, **kw):
     elif "budget_unresolved" in sts or "rank_unresolved" in sts:
         status = "unresolved"
     elif "misranked" in sts:
-        status = "misranked"                      # budget alone provably cannot flip the task
+        status = "misranked"  # budget alone provably cannot flip the task
     else:
-        status = "budget_proven"                  # every failing pair flips with more budget
+        status = "budget_proven"  # every failing pair flips with more budget
     return {"status": status, "pairs": pairs}
 
 
 def synthetic_tasks():
     """Bundled fallback/control tasks: (tid, task_dict, expected_task_bin). Each expectation was
     verified against the real solver -- they double as the genuinely-failing controls."""
-    rot = {"train": [{"input": [[1, 2], [3, 0]], "output": [[0, 3], [2, 1]]},
-                     {"input": [[5, 0], [0, 6]], "output": [[6, 0], [0, 5]]}],
-           "test": [{"input": [[7, 0], [0, 8]], "output": [[8, 0], [0, 7]]}]}
+    rot = {
+        "train": [
+            {"input": [[1, 2], [3, 0]], "output": [[0, 3], [2, 1]]},
+            {"input": [[5, 0], [0, 6]], "output": [[6, 0], [0, 5]]},
+        ],
+        "test": [{"input": [[7, 0], [0, 8]], "output": [[8, 0], [0, 7]]}],
+    }
     # crop_content -> scale2; genuinely unsolvable at a 20-node baseline, solved at the bound
-    two = {"train": [{"input": [[0, 0], [0, 3]], "output": [[3, 3], [3, 3]]},
-                     {"input": [[5, 0], [0, 0]], "output": [[5, 5], [5, 5]]}],
-           "test": [{"input": [[0, 0], [9, 0]], "output": [[9, 9], [9, 9]]}]}
+    two = {
+        "train": [
+            {"input": [[0, 0], [0, 3]], "output": [[3, 3], [3, 3]]},
+            {"input": [[5, 0], [0, 0]], "output": [[5, 5], [5, 5]]},
+        ],
+        "test": [{"input": [[0, 0], [9, 0]], "output": [[9, 9], [9, 9]]}],
+    }
     # outputs of DIFFERENT shapes from same-shaped inputs, colours 8/9 never in any input:
     # full enumeration yields ZERO consistent programs (verified) -> coverage_proven, direct.
-    cov = {"train": [{"input": [[1, 2, 1], [2, 1, 2]], "output": [[9, 9], [9, 9], [9, 9]]},
-                     {"input": [[2, 1, 2], [1, 2, 1]], "output": [[8, 8, 8], [8, 8, 8]]}],
-           "test": [{"input": [[1, 1, 2], [2, 2, 1]], "output": [[7, 7], [7, 7]]}]}
+    cov = {
+        "train": [
+            {"input": [[1, 2, 1], [2, 1, 2]], "output": [[9, 9], [9, 9], [9, 9]]},
+            {"input": [[2, 1, 2], [1, 2, 1]], "output": [[8, 8, 8], [8, 8, 8]]},
+        ],
+        "test": [{"input": [[1, 1, 2], [2, 2, 1]], "output": [[7, 7], [7, 7]]}],
+    }
     # one ambiguous train pair: root colour-map + rot180 fill pass@2 first (both wrong on the
     # test); the true rule flip_h IS in the consistent set (verified) -> misranked.
-    mis = {"train": [{"input": [[1, 2]], "output": [[2, 1]]}],
-           "test": [{"input": [[3, 4], [5, 6]], "output": [[4, 3], [6, 5]]}]}
+    mis = {
+        "train": [{"input": [[1, 2]], "output": [[2, 1]]}],
+        "test": [{"input": [[3, 4], [5, 6]], "output": [[4, 3], [6, 5]]}],
+    }
     # same ambiguity but the wanted grid uses colour 9 that no consistent program can produce:
     # rank probe exhausts the space without finding it (verified) -> coverage_proven via rank.
-    cvr = {"train": [{"input": [[1, 2], [3, 4]], "output": [[3, 1], [4, 2]]},
-                     {"input": [[5, 6], [7, 8]], "output": [[8, 7], [6, 5]]}],
-           "test": [{"input": [[1, 5], [2, 6]], "output": [[9, 9], [9, 9]]}]}
-    return [("syn_rot180", rot, "solved"),
-            ("syn_budget", two, "budget_proven"),
-            ("syn_cover_direct", cov, "coverage_proven"),
-            ("syn_misranked", mis, "misranked"),
-            ("syn_cover_rank", cvr, "coverage_proven")]
+    cvr = {
+        "train": [
+            {"input": [[1, 2], [3, 4]], "output": [[3, 1], [4, 2]]},
+            {"input": [[5, 6], [7, 8]], "output": [[8, 7], [6, 5]]},
+        ],
+        "test": [{"input": [[1, 5], [2, 6]], "output": [[9, 9], [9, 9]]}],
+    }
+    return [
+        ("syn_rot180", rot, "solved"),
+        ("syn_budget", two, "budget_proven"),
+        ("syn_cover_direct", cov, "coverage_proven"),
+        ("syn_misranked", mis, "misranked"),
+        ("syn_cover_rank", cvr, "coverage_proven"),
+    ]
 
 
 def diagnose(split="training", limit=None, verbose=False, **kw):
@@ -249,11 +291,17 @@ def diagnose(split="training", limit=None, verbose=False, **kw):
     budget_side = counts["budget_proven"] + counts["unresolved"]
     coverage_side = counts["coverage_proven"] + counts["misranked"]
     rep = {
-        "data_source": data_source, "split": split, "n_tasks": n,
-        "solved": counts["solved"], "failing": failing,
-        "budget_proven": counts["budget_proven"], "unresolved": counts["unresolved"],
-        "misranked": counts["misranked"], "coverage_proven": counts["coverage_proven"],
-        "budget_exhausted": budget_side, "coverage_limited": coverage_side,
+        "data_source": data_source,
+        "split": split,
+        "n_tasks": n,
+        "solved": counts["solved"],
+        "failing": failing,
+        "budget_proven": counts["budget_proven"],
+        "unresolved": counts["unresolved"],
+        "misranked": counts["misranked"],
+        "coverage_proven": counts["coverage_proven"],
+        "budget_exhausted": budget_side,
+        "coverage_limited": coverage_side,
         "tasks": detail,
     }
     rep["verdict"] = _verdict(rep)
@@ -271,38 +319,59 @@ def _verdict(rep):
     guided_ceiling = budget_ceiling + rep["misranked"]
     n = rep["n_tasks"]
     worth = (guided_ceiling / f) >= WORTH_FRACTION
-    return ("VERDICT: neural-guided search over this DSL is %s -- of %d failures, %d (%.1f%%) are "
-            "provably coverage-limited; ceiling from ANY budget increase is +%d task(s) (+%.1f%% "
-            "absolute), plus %d re-rankable and %d unproven: guided-search ceiling +%d (+%.1f%% "
-            "absolute)." % ("WORTH BUILDING" if worth else "NOT worth building", f,
-                            rep["coverage_proven"], 100.0 * rep["coverage_proven"] / f,
-                            rep["budget_proven"], 100.0 * rep["budget_proven"] / n,
-                            rep["misranked"], rep["unresolved"],
-                            guided_ceiling, 100.0 * guided_ceiling / n))
+    return (
+        "VERDICT: neural-guided search over this DSL is %s -- of %d failures, %d (%.1f%%) are "
+        "provably coverage-limited; ceiling from ANY budget increase is +%d task(s) (+%.1f%% "
+        "absolute), plus %d re-rankable and %d unproven: guided-search ceiling +%d (+%.1f%% "
+        "absolute)."
+        % (
+            "WORTH BUILDING" if worth else "NOT worth building",
+            f,
+            rep["coverage_proven"],
+            100.0 * rep["coverage_proven"] / f,
+            rep["budget_proven"],
+            100.0 * rep["budget_proven"] / n,
+            rep["misranked"],
+            rep["unresolved"],
+            guided_ceiling,
+            100.0 * guided_ceiling / n,
+        )
+    )
 
 
 def report_lines(rep):
     """ASCII summary lines for a diagnose() report."""
     lines = [
-        "source=%s split=%s tasks=%d solved@baseline=%d failing=%d" %
-        (rep["data_source"], rep["split"], rep["n_tasks"], rep["solved"], rep["failing"]),
+        "source=%s split=%s tasks=%d solved@baseline=%d failing=%d"
+        % (rep["data_source"], rep["split"], rep["n_tasks"], rep["solved"], rep["failing"]),
         "%d failing tasks: %d budget-exhausted (%d proven fixed by budget, %d unresolved at cap), "
         "%d coverage-limited (%d no-consistent-program, %d consistent-but-misranked) (%.1f%% "
-        "coverage-limited)" %
-        (rep["failing"], rep["budget_exhausted"], rep["budget_proven"], rep["unresolved"],
-         rep["coverage_limited"], rep["coverage_proven"], rep["misranked"],
-         (100.0 * rep["coverage_limited"] / rep["failing"]) if rep["failing"] else 0.0),
+        "coverage-limited)"
+        % (
+            rep["failing"],
+            rep["budget_exhausted"],
+            rep["budget_proven"],
+            rep["unresolved"],
+            rep["coverage_limited"],
+            rep["coverage_proven"],
+            rep["misranked"],
+            (100.0 * rep["coverage_limited"] / rep["failing"]) if rep["failing"] else 0.0,
+        ),
         rep["verdict"],
     ]
     if rep["data_source"] == "synthetic-fallback":
-        lines.insert(0, "NOTE: no ARC data on disk -- synthetic fallback tasks only; these "
-                        "numbers say NOTHING about ARC.")
+        lines.insert(
+            0,
+            "NOTE: no ARC data on disk -- synthetic fallback tasks only; these "
+            "numbers say NOTHING about ARC.",
+        )
     return lines
 
 
 # ====================================================================================================
 # self-check -- controls whose expected classification was verified against the real solver
 # ====================================================================================================
+
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
@@ -318,12 +387,18 @@ def main(argv=None):
     if full:
         # measurement run: the whole split (or --limit N), per-task lines, honest headline
         print("=" * 96)
-        print("ARC BUDGET-VS-COVERAGE DIAGNOSTIC -- full run (baseline=%d nodes, cap=%.0fs)" %
-              (BASELINE_NODES, cap))
+        print(
+            "ARC BUDGET-VS-COVERAGE DIAGNOSTIC -- full run (baseline=%d nodes, cap=%.0fs)"
+            % (BASELINE_NODES, cap)
+        )
         print("=" * 96)
         t0 = time.monotonic()
-        rep = diagnose("training", limit=None if "--limit" not in argv else limit,
-                       verbose=True, exhaust_cap_s=cap)
+        rep = diagnose(
+            "training",
+            limit=None if "--limit" not in argv else limit,
+            verbose=True,
+            exhaust_cap_s=cap,
+        )
         for ln in report_lines(rep):
             print(ln)
         print("elapsed: %.0fs" % (time.monotonic() - t0))
@@ -338,7 +413,7 @@ def main(argv=None):
     for tid, task, expect in synthetic_tasks():
         kw = {}
         if tid == "syn_budget":
-            kw["baseline_nodes"] = 20             # the reduced baseline that makes it fail first
+            kw["baseline_nodes"] = 20  # the reduced baseline that makes it fail first
         r = diagnose_task(task, **kw)
         tag = "OK " if r["status"] == expect else "FAIL"
         print("  %s control %-18s -> %-15s (expected %s)" % (tag, tid, r["status"], expect))
@@ -383,10 +458,19 @@ def main(argv=None):
     print("on the wall cap. All claims live INSIDE the solver's depth<=3 program space -- nothing")
     print("here says what a deeper DSL or a richer vocabulary would do.")
     if ok:
-        print("self-check OK: arc_diagnostic classified %d/%d controls correctly; %s[:%d] -> "
-              "%d failing = %d budget / %d coverage-limited" %
-              (5, 5, rep["data_source"], rep["n_tasks"], rep["failing"],
-               rep["budget_exhausted"], rep["coverage_limited"]))
+        print(
+            "self-check OK: arc_diagnostic classified %d/%d controls correctly; %s[:%d] -> "
+            "%d failing = %d budget / %d coverage-limited"
+            % (
+                5,
+                5,
+                rep["data_source"],
+                rep["n_tasks"],
+                rep["failing"],
+                rep["budget_exhausted"],
+                rep["coverage_limited"],
+            )
+        )
         return 0
     print("arc_diagnostic self-check: FAILED")
     return 1

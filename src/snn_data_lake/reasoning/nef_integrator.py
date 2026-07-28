@@ -17,9 +17,6 @@ exactly as a real neural integrator leaks; not the continuous-time spiking simul
   python -m research.nef_integrator        # (also run by run_selfchecks.py, root on PYTHONPATH)
 """
 
-import sys
-from pathlib import Path
-
 pass  # migrated: sys.path bootstrap removed (now an importable package)
 from snn_data_lake.reasoning.nef_compute import NEFEnsemble  # noqa: E402
 

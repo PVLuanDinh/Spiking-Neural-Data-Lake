@@ -50,6 +50,7 @@ dead-pruning also fails to pay off: naive pruning COLLAPSES the net (inh=5 -> 52
 newborn-grace critical period fixes the collapse (~150-260 neurons / 58.2%) but pruning still HURTS accuracy
 (low-activity neurons carry useful class-vote mass). Default stays HARD-WTA, no pruning (88.8%).
 """
+
 import os
 import sys
 import time
@@ -60,8 +61,21 @@ pass  # migrated: sys.path bootstrap removed (now an importable package)
 
 import torch
 
-from snn_data_lake.reasoning.snn_mnist_stdp import (BETA, KWTA, LR, MAX_RATE, N_IN, T, TAU_PRE, THETA_DECAY,
-                            THETA_PLUS, THRESH, W_NORM, WMAX, load_mnist)
+from snn_data_lake.reasoning.snn_mnist_stdp import (
+    BETA,
+    KWTA,
+    LR,
+    MAX_RATE,
+    N_IN,
+    T,
+    TAU_PRE,
+    THETA_DECAY,
+    THETA_PLUS,
+    THRESH,
+    W_NORM,
+    WMAX,
+    load_mnist,
+)
 from snn_data_lake.reasoning.torch_device import enable, resolve_device
 
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
@@ -84,8 +98,12 @@ class GrowableSTDP:
 
     def __init__(self, device, inh=None, alpha=1.0):
         self.device = device
-        self.alpha = float(alpha)              # criticality metric slope (surrogate-derivative g'(u-Vth), arXiv 2311.16141)
-        self.last_crit = None                  # per-neuron criticality of the most recent run() (near-threshold-ness)
+        self.alpha = float(
+            alpha
+        )  # criticality metric slope (surrogate-derivative g'(u-Vth), arXiv 2311.16141)
+        self.last_crit = (
+            None  # per-neuron criticality of the most recent run() (near-threshold-ness)
+        )
         # inh=None -> HARD top-1 k-WTA + full lateral reset (the verified snn_mnist_stdp mechanic, best acc
         # 88.8% at 10-class scale). A float turns on experimental SOFT k-WTA (graded global coupling): kept
         # as an opt-in because it does NOT beat hard-WTA at 10 classes (peaks ~76% at inh=15) -- see docstring.
@@ -93,7 +111,9 @@ class GrowableSTDP:
         self.n = 0
         self.W = torch.zeros(0, N_IN, device=device)
         self.theta = torch.zeros(0, device=device)
-        self.birth = torch.zeros(0, device=device)   # cycle each neuron was recruited (newborn-protection critical period)
+        self.birth = torch.zeros(
+            0, device=device
+        )  # cycle each neuron was recruited (newborn-protection critical period)
         self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
 
@@ -116,10 +136,14 @@ class GrowableSTDP:
         if it grew."""
         if self.n == 0 or self.match(image) < vigilance:
             x = image.to(self.device)
-            w = (x / (x.sum() + 1e-6) * W_NORM).unsqueeze(0)   # the new prototype IS the novel pattern (ART recruit)
+            w = (x / (x.sum() + 1e-6) * W_NORM).unsqueeze(
+                0
+            )  # the new prototype IS the novel pattern (ART recruit)
             self.W = torch.cat([self.W, w], dim=0)
             self.theta = torch.cat([self.theta, torch.zeros(1, device=self.device)], dim=0)
-            self.birth = torch.cat([self.birth, torch.full((1,), float(cycle), device=self.device)], dim=0)
+            self.birth = torch.cat(
+                [self.birth, torch.full((1,), float(cycle), device=self.device)], dim=0
+            )
             self.n += 1
             return True
         return False
@@ -137,14 +161,14 @@ class GrowableSTDP:
             would (K = #dead-and-old), but pick the K LEAST-CRITICAL old neurons (lowest near-threshold score),
             keeping barely-excitable-but-informative sparse coders the activity rule wrongly deletes. Pure
             metric swap -> net-size trajectory identical, only the SELECTION differs."""
-        newborn = (cycle - self.birth) < grace              # protected: too young to prune
-        dead = (activity < min_spikes) & (~newborn)         # what the activity rule would drop
+        newborn = (cycle - self.birth) < grace  # protected: too young to prune
+        dead = (activity < min_spikes) & (~newborn)  # what the activity rule would drop
         k = int(dead.sum().item())
         if criticality is None or k == 0:
-            keep = (activity >= min_spikes) | newborn       # ACTIVITY rule (or nothing to prune)
-        else:                                               # CRITICALITY rule: drop the k least-critical OLD neurons
+            keep = (activity >= min_spikes) | newborn  # ACTIVITY rule (or nothing to prune)
+        else:  # CRITICALITY rule: drop the k least-critical OLD neurons
             score = criticality.clone()
-            score[newborn] = float("inf")                   # newborns never selected for pruning
+            score[newborn] = float("inf")  # newborns never selected for pruning
             drop_idx = torch.topk(score, k, largest=False).indices
             keep = torch.ones(self.n, dtype=torch.bool, device=self.device)
             keep[drop_idx] = False
@@ -165,16 +189,20 @@ class GrowableSTDP:
         mem = self.lif.init_leaky()
         x_pre = torch.zeros(N_IN, device=self.device)
         counts = torch.zeros(self.n, device=self.device)
-        crit = torch.zeros(self.n, device=self.device)     # CRITICALITY (arXiv 2311.16141): sum_t g'(eff - THRESH),
-        rates = image * MAX_RATE                            #   g'(x)=1/(1+alpha^2 x^2) peaks when membrane ~ threshold
+        crit = torch.zeros(
+            self.n, device=self.device
+        )  # CRITICALITY (arXiv 2311.16141): sum_t g'(eff - THRESH),
+        rates = image * MAX_RATE  #   g'(x)=1/(1+alpha^2 x^2) peaks when membrane ~ threshold
         for _ in range(T):
             s_in = (torch.rand(N_IN, device=self.device) < rates).float()
             x_pre = x_pre * self.pre_decay + s_in
             cur = self.W @ s_in
             _, mem = self.lif(cur, mem)
             eff = mem - self.theta
-            d = eff - THRESH                                # membrane-to-threshold distance (before any WTA reset)
-            crit += 1.0 / (1.0 + (self.alpha * d) ** 2)     # near-threshold = high criticality (barely-excitable)
+            d = eff - THRESH  # membrane-to-threshold distance (before any WTA reset)
+            crit += 1.0 / (
+                1.0 + (self.alpha * d) ** 2
+            )  # near-threshold = high criticality (barely-excitable)
             if self.inh is None:
                 # HARD top-1 k-WTA (the verified snn_mnist_stdp mechanic, KWTA=1): the single strongest neuron
                 # that clears threshold fires, then a FULL lateral-inhibition reset silences everyone that step.
@@ -188,13 +216,15 @@ class GrowableSTDP:
                         self.theta[w] += THETA_PLUS
                     mem = torch.zeros(self.n, device=self.device)
             else:
-                fired = eff > THRESH                       # SOFT k-WTA: the whole supra-threshold POPULATION fires
-                nf = int(fired.sum().item())               #   (graded competition, not a single hard winner)
+                fired = eff > THRESH  # SOFT k-WTA: the whole supra-threshold POPULATION fires
+                nf = int(fired.sum().item())  #   (graded competition, not a single hard winner)
                 if nf > 0:
                     idx = fired.nonzero(as_tuple=True)[0]
                     counts[idx] += 1
-                    if learn:                              # vectorised STDP for the co-firing population (all plastic)
-                        self.W[idx] += (LR * lr_scale) * x_pre.unsqueeze(0)   # LR scaled by the LC noradrenaline gain
+                    if learn:  # vectorised STDP for the co-firing population (all plastic)
+                        self.W[idx] += (LR * lr_scale) * x_pre.unsqueeze(
+                            0
+                        )  # LR scaled by the LC noradrenaline gain
                         self.W[idx].clamp_(0.0, WMAX)
                         self.theta[idx] += THETA_PLUS
                     # graded ALL-BUT-SELF lateral inhibition (a continuously-adjustable GLOBAL coupling): each neuron's
@@ -206,7 +236,7 @@ class GrowableSTDP:
                 self.theta *= THETA_DECAY
         if learn:
             s = self.W.sum(dim=1, keepdim=True).clamp_min(1e-6)
-            self.W *= (W_NORM / s)
+            self.W *= W_NORM / s
         self.last_crit = crit
         return counts
 
@@ -220,13 +250,13 @@ def assign_and_eval(net, probe_imgs, probe_lbls, classes):
     half = len(probe_imgs) // 2
     assign_imgs, assign_lbls = probe_imgs[:half], probe_lbls[:half]
     eval_imgs, eval_lbls = probe_imgs[half:], probe_lbls[half:]
-    if not eval_imgs:                                          # too few probe images -> fall back (no split possible)
+    if not eval_imgs:  # too few probe images -> fall back (no split possible)
         assign_imgs, assign_lbls = probe_imgs, probe_lbls
         eval_imgs, eval_lbls = probe_imgs, probe_lbls
     resp = torch.zeros(net.n, 10, device=net.device)
     per = torch.zeros(10, device=net.device)
-    activity = torch.zeros(net.n, device=net.device)          # per-neuron spike totals -> feeds pruning
-    for img, y in zip(assign_imgs, assign_lbls):              # ASSIGN neuron labels on the first half
+    activity = torch.zeros(net.n, device=net.device)  # per-neuron spike totals -> feeds pruning
+    for img, y in zip(assign_imgs, assign_lbls):  # ASSIGN neuron labels on the first half
         counts = net.run(img, learn=False)
         resp[:, int(y)] += counts
         activity += counts
@@ -234,7 +264,7 @@ def assign_and_eval(net, probe_imgs, probe_lbls, classes):
     assignment = (resp / per.clamp_min(1)).argmax(dim=1)
     correct = {c: 0 for c in classes}
     total = {c: 0 for c in classes}
-    for img, y in zip(eval_imgs, eval_lbls):                  # SCORE on the disjoint second half
+    for img, y in zip(eval_imgs, eval_lbls):  # SCORE on the disjoint second half
         c = int(y)
         if c not in classes:
             continue
@@ -255,21 +285,41 @@ def assign_and_eval(net, probe_imgs, probe_lbls, classes):
 def main():
     enable(resolve_device())
     dev = resolve_device()
-    CYCLES = _envi("NORD_CYCLES", 15)      # >10 so curiosity REVISITS the weakest digits after covering all 10
-    GROW = _envi("NORD_GROW", 40)          # neurons recruited per objective (neurogenesis)
-    PER = _envi("NORD_PER", 250)           # training images per digit (unsupervised)
-    PROBE = _envi("NORD_PROBE", 40)        # held-out probe images per digit
-    REPLAY = _envi("NORD_REPLAY", 60)      # exemplars stored + rehearsed per learned digit (anti-forgetting)
-    CAP = _envi("NORD_CAP", 1)             # max consecutive revisits of the SAME digit (anti-fixation -> diversify)
-    VIG = float(os.environ.get("NORD_VIG", "0.85"))   # neurogenesis vigilance: best-match below this = learnable-novel -> the brain recruits
-    PRUNE = _envi("NORD_PRUNE", 0)         # opt-in developmental pruning (HONEST: hurts here regardless -- see below)
-    INH = float(os.environ["NORD_INH"]) if os.environ.get("NORD_INH") else None   # None -> HARD top-1 WTA (default, best 88.8%); a float -> experimental SOFT k-WTA
-    CRIT = _envi("NORD_CRIT", 0)           # prune selection metric: 0 -> activity (v3.47), 1 -> CRITICALITY (arXiv 2311.16141)
-    ALPHA = float(os.environ.get("NORD_ALPHA", "1.0"))   # criticality metric slope g'(x)=1/(1+(alpha*x)^2)
+    CYCLES = _envi(
+        "NORD_CYCLES", 15
+    )  # >10 so curiosity REVISITS the weakest digits after covering all 10
+    GROW = _envi("NORD_GROW", 40)  # neurons recruited per objective (neurogenesis)
+    PER = _envi("NORD_PER", 250)  # training images per digit (unsupervised)
+    PROBE = _envi("NORD_PROBE", 40)  # held-out probe images per digit
+    REPLAY = _envi(
+        "NORD_REPLAY", 60
+    )  # exemplars stored + rehearsed per learned digit (anti-forgetting)
+    CAP = _envi(
+        "NORD_CAP", 1
+    )  # max consecutive revisits of the SAME digit (anti-fixation -> diversify)
+    VIG = float(
+        os.environ.get("NORD_VIG", "0.85")
+    )  # neurogenesis vigilance: best-match below this = learnable-novel -> the brain recruits
+    PRUNE = _envi(
+        "NORD_PRUNE", 0
+    )  # opt-in developmental pruning (HONEST: hurts here regardless -- see below)
+    INH = (
+        float(os.environ["NORD_INH"]) if os.environ.get("NORD_INH") else None
+    )  # None -> HARD top-1 WTA (default, best 88.8%); a float -> experimental SOFT k-WTA
+    CRIT = _envi(
+        "NORD_CRIT", 0
+    )  # prune selection metric: 0 -> activity (v3.47), 1 -> CRITICALITY (arXiv 2311.16141)
+    ALPHA = float(
+        os.environ.get("NORD_ALPHA", "1.0")
+    )  # criticality metric slope g'(x)=1/(1+(alpha*x)^2)
 
     print("=" * 88)
-    print("DEVELOPMENTAL LOOP -- unsupervised learning -> memorize -> grow neurons -> decide next -> repeat")
-    print(f"device={dev}  cycles={CYCLES}  grow/cycle={GROW}  train/digit={PER}  probe/digit={PROBE}")
+    print(
+        "DEVELOPMENTAL LOOP -- unsupervised learning -> memorize -> grow neurons -> decide next -> repeat"
+    )
+    print(
+        f"device={dev}  cycles={CYCLES}  grow/cycle={GROW}  train/digit={PER}  probe/digit={PROBE}"
+    )
     print("=" * 88)
 
     Xtr, Ytr, Xte, Yte = load_mnist(6000, 3000)
@@ -277,14 +327,20 @@ def main():
     probe_by = {d: (Yte == d).nonzero(as_tuple=True)[0][:PROBE] for d in range(10)}
 
     net = GrowableSTDP(dev, inh=INH, alpha=ALPHA)
-    learned = []                            # digits seen/being-learned so far
-    competence = {d: 0.0 for d in range(10)}   # self-measured competence per digit
-    memory = {}                             # MEMORIZATION: stored exemplars per learned digit (for rehearsal)
+    learned = []  # digits seen/being-learned so far
+    competence = {d: 0.0 for d in range(10)}  # self-measured competence per digit
+    memory = {}  # MEMORIZATION: stored exemplars per learned digit (for rehearsal)
     # the brain's OWN neuromodulatory decision machinery drives objective selection + pacing:
-    curiosity = SpikingCuriosityDrive(seed=0)                     # spiking learning-progress + novelty
-    curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)   # self-paced mastery gate (LIF accumulator)
-    lc = LocusCoeruleus()                   # noradrenaline: salient/novel input -> phasic burst -> higher learning gain
-    consec = {d: 0 for d in range(10)}     # consecutive-pick counter (fixation guard for the phase-2 revisits)
+    curiosity = SpikingCuriosityDrive(seed=0)  # spiking learning-progress + novelty
+    curriculum = SpikingCurriculum(
+        n_stages=10, patience=2, seed=0
+    )  # self-paced mastery gate (LIF accumulator)
+    lc = (
+        LocusCoeruleus()
+    )  # noradrenaline: salient/novel input -> phasic burst -> higher learning gain
+    consec = {
+        d: 0 for d in range(10)
+    }  # consecutive-pick counter (fixation guard for the phase-2 revisits)
 
     for cyc in range(1, CYCLES + 1):
         # ---- 4/DECISION: the brain's SPIKING CURIOSITY drive picks the objective (most_curious = novelty +
@@ -292,15 +348,17 @@ def main():
         #      the weakest-still-improving digit (the learnable frontier). No hand-coded heuristic. ----
         unseen = [d for d in range(10) if d not in learned]
         candidates = unseen if unseen else list(range(10))
-        if not unseen:                       # phase 2: block a digit revisited CAP times in a row -> diversify
+        if not unseen:  # phase 2: block a digit revisited CAP times in a row -> diversify
             allowed = [d for d in candidates if consec[d] < CAP]
             candidates = allowed or candidates
         objective = curiosity.most_curious(candidates)
         consec = {d: (consec[d] + 1 if d == objective else 0) for d in range(10)}
         is_new = objective not in learned
-        print(f"\nCYCLE {cyc}  ->  OBJECTIVE: digit {objective}  "
-              f"[{'explore (novel)' if is_new else 'revisit (curiosity frontier)'}; "
-              f"curiosity_value={curiosity.curiosity_value(objective):.3f}, novelty={curiosity.novelty(objective):.2f}]")
+        print(
+            f"\nCYCLE {cyc}  ->  OBJECTIVE: digit {objective}  "
+            f"[{'explore (novel)' if is_new else 'revisit (curiosity frontier)'}; "
+            f"curiosity_value={curiosity.curiosity_value(objective):.3f}, novelty={curiosity.novelty(objective):.2f}]"
+        )
 
         # ---- 3/NEUROGENESIS + 1/UNSUPERVISED LEARNING (interleaved): the STDP learner streams the objective's
         #      images + balanced replay; as it goes, the BRAIN'S OWN neurogenesis rule (the ART / hippocampus.
@@ -311,8 +369,8 @@ def main():
         # NEUROMODULATION -- locus coeruleus: a NOVEL / hard objective is SALIENT -> phasic NA burst -> higher
         # learning gain (the brain attends harder to what it does not yet know). gain scales the STDP step.
         salience = 1.0 if is_new else (1.0 - competence[objective])
-        na = lc.step(salience)                 # NA firing rate in [0,1] (phasic burst on a salient/novel event)
-        gain = 1.0 + 2.0 * na                  # noradrenaline boosts the STDP step 1x..3x on salient/novel input
+        na = lc.step(salience)  # NA firing rate in [0,1] (phasic burst on a salient/novel event)
+        gain = 1.0 + 2.0 * na  # noradrenaline boosts the STDP step 1x..3x on salient/novel input
 
         t0 = time.time()
         n_train = PER if is_new else max(REPLAY, PER // 4)
@@ -324,19 +382,27 @@ def main():
         recruited = 0
         for j in torch.randperm(len(stream)).tolist():
             img = stream[j]
-            if recruited < GROW and net.maybe_recruit(img, VIG, cycle=cyc):   # the brain decides: recruit iff learnable-novel
+            if recruited < GROW and net.maybe_recruit(
+                img, VIG, cycle=cyc
+            ):  # the brain decides: recruit iff learnable-novel
                 recruited += 1
-            net.run(img, learn=True, lr_scale=gain)                # LC noradrenaline gain modulates the STDP step
+            net.run(img, learn=True, lr_scale=gain)  # LC noradrenaline gain modulates the STDP step
         dt = time.time() - t0
         if is_new:
-            memory[objective] = [Xtr[i] for i in by_class[objective][n_train:n_train + REPLAY]]
+            memory[objective] = [Xtr[i] for i in by_class[objective][n_train : n_train + REPLAY]]
             learned.append(objective)
-        print(f"  [neurogenesis]   the BRAIN recruited {recruited} neurons on learnable-novelty (vigilance {VIG}); "
-              f"{m0} -> {net.n} neurons  [self-sized by the ART/grow-trigger rule, per-cycle cap {GROW}]")
-        print(f"  [neuromod]       locus-coeruleus NA {na:.2f} ({lc.mode()}) on salience {salience:.2f} "
-              f"-> STDP step gain x{gain:.2f}")
-        print(f"  [unsupervised]   STDP on {len(train_imgs)} digit-{objective} imgs + {len(rehearse)} replayed "
-              f"exemplars, no labels ({dt:.0f}s)")
+        print(
+            f"  [neurogenesis]   the BRAIN recruited {recruited} neurons on learnable-novelty (vigilance {VIG}); "
+            f"{m0} -> {net.n} neurons  [self-sized by the ART/grow-trigger rule, per-cycle cap {GROW}]"
+        )
+        print(
+            f"  [neuromod]       locus-coeruleus NA {na:.2f} ({lc.mode()}) on salience {salience:.2f} "
+            f"-> STDP step gain x{gain:.2f}"
+        )
+        print(
+            f"  [unsupervised]   STDP on {len(train_imgs)} digit-{objective} imgs + {len(rehearse)} replayed "
+            f"exemplars, no labels ({dt:.0f}s)"
+        )
 
         # ---- 3b/PRUNE (opt-in, NORD_PRUNE=1): the brain grows AND prunes (plasticity/developmental_pruning) --
         #      drop neurons dead over the training distribution, with a NEWBORN-GRACE critical period (a neuron
@@ -349,14 +415,18 @@ def main():
         if PRUNE:
             pact = torch.zeros(net.n, device=dev)
             pcrit = torch.zeros(net.n, device=dev)
-            for img in stream[:min(len(stream), 300)]:
+            for img in stream[: min(len(stream), 300)]:
                 pact += net.run(img, learn=False)
-                pcrit += net.last_crit                       # accumulate criticality over the same probe pass
-            crit_arg = pcrit if CRIT else None               # NORD_CRIT=1 -> rank pruning by criticality, else activity
+                pcrit += net.last_crit  # accumulate criticality over the same probe pass
+            crit_arg = (
+                pcrit if CRIT else None
+            )  # NORD_CRIT=1 -> rank pruning by criticality, else activity
             pruned = net.prune_dead(pact, min_spikes=1, cycle=cyc, grace=1, criticality=crit_arg)
             if pruned:
                 metric = "least-critical" if CRIT else "dead"
-                print(f"  [prune]          removed {pruned} {metric} neurons -> {net.n} live (NORD_PRUNE on)")
+                print(
+                    f"  [prune]          removed {pruned} {metric} neurons -> {net.n} live (NORD_PRUNE on)"
+                )
 
         # ---- 2/SELF-IMPROVEMENT: self-evaluate competence over ALL learned digits ----
         probe_imgs = [Xte[i] for d in learned for i in probe_by[d]]
@@ -369,16 +439,22 @@ def main():
         curiosity.observe(objective, 1.0 - competence[objective])
         lp = curiosity.learning_progress(objective)
         mastered_now = curriculum.observe(lp)
-        print(f"  [self-improve]   competence over {sorted(learned)} = {ov:.1%}  (digit {objective}: "
-              f"{competence[objective]:.1%}, spiking learning-progress={lp:.3f}); "
-              f"curriculum mastered {curriculum.mastered}/10{' [+advanced]' if mastered_now else ''}")
+        print(
+            f"  [self-improve]   competence over {sorted(learned)} = {ov:.1%}  (digit {objective}: "
+            f"{competence[objective]:.1%}, spiking learning-progress={lp:.3f}); "
+            f"curriculum mastered {curriculum.mastered}/10{' [+advanced]' if mastered_now else ''}"
+        )
 
     print("\n" + "=" * 88)
-    print(f"DEVELOPMENTAL LOOP COMPLETE: the brain autonomously learned {sorted(learned)} UNSUPERVISED over "
-          f"{CYCLES} cycles, grew {net.n} neurons, consolidated via replay, and CHOSE every objective itself "
-          f"through its spiking curiosity drive + curriculum (curriculum mastered {curriculum.mastered}/10).")
+    print(
+        f"DEVELOPMENTAL LOOP COMPLETE: the brain autonomously learned {sorted(learned)} UNSUPERVISED over "
+        f"{CYCLES} cycles, grew {net.n} neurons, consolidated via replay, and CHOSE every objective itself "
+        f"through its spiking curiosity drive + curriculum (curriculum mastered {curriculum.mastered}/10)."
+    )
     final = sum(competence[d] for d in learned) / len(learned)
-    print(f"final mean competence over the {len(learned)} self-chosen digits: {final:.1%}  (no labels used in training)")
+    print(
+        f"final mean competence over the {len(learned)} self-chosen digits: {final:.1%}  (no labels used in training)"
+    )
     print("=" * 88)
     return 0
 

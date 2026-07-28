@@ -21,15 +21,10 @@ Run with the cu128 GPU venv:
 ASCII-only output (cp1252-safe).
 """
 
-import os
-import time
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
 
 
 # ----------------------------------------------------------------------------
@@ -101,9 +96,10 @@ class HebbConv2d(nn.Module):
 
         # weight init: 'positive' -> U(0, weight_range)
         g = torch.Generator().manual_seed(seed)
-        w = weight_range * torch.rand(
-            (out_channels, in_channels, *self.kernel_size), generator=g
-        ) + weight_offset
+        w = (
+            weight_range * torch.rand((out_channels, in_channels, *self.kernel_size), generator=g)
+            + weight_offset
+        )
         self.register_buffer("weight", w)
         # per-neuron adaptive learning rate (recomputed from the weight radius)
         self.register_buffer("lr_pc", torch.ones(out_channels))
@@ -119,9 +115,7 @@ class HebbConv2d(nn.Module):
     def _update_lr(self):
         r = self._radius()
         # eta_i = lr_amp * (|r_i - 1| + 1e-10) ** power_lr  ; -> 0 as r_i -> 1
-        self.lr_pc = self.lr_amp * torch.pow(
-            torch.abs(r - 1.0) + 1e-10, self.power_lr
-        )
+        self.lr_pc = self.lr_amp * torch.pow(torch.abs(r - 1.0) + 1e-10, self.power_lr)
 
     def _current(self, x):
         # lebesgue_p pre-transform: sign(W)*|W|^(p-1)  (p=2 -> == W)
@@ -132,13 +126,13 @@ class HebbConv2d(nn.Module):
         # soft-Krotov, default mode 0: softmax responsibilities over OUTPUT
         # channels per spatial location; winner keeps +y, all others get -y.
         b, c, ho, wo = pre_x.shape
-        flat = pre_x.transpose(0, 1).reshape(c, -1)          # (C, B*Ho*Wo)
-        wta = torch.softmax(self.t_invert * flat, dim=0)     # over channels
+        flat = pre_x.transpose(0, 1).reshape(c, -1)  # (C, B*Ho*Wo)
+        wta = torch.softmax(self.t_invert * flat, dim=0)  # over channels
         wta = -wta
-        winners = torch.argmax(flat, dim=0)                  # (B*Ho*Wo,)
+        winners = torch.argmax(flat, dim=0)  # (B*Ho*Wo,)
         idx = torch.arange(flat.size(1), device=flat.device)
-        wta[winners, idx] = -wta[winners, idx]               # flip winner back to +
-        return wta.view(c, b, ho, wo).transpose(0, 1)        # (B, C, Ho, Wo)
+        wta[winners, idx] = -wta[winners, idx]  # flip winner back to +
+        return wta.view(c, b, ho, wo).transpose(0, 1)  # (B, C, Ho, Wo)
 
     def _delta_w(self, x, pre_x, wta):
         # yx: correlation of soft-WTA with input patches (conv trick, summed
@@ -153,8 +147,8 @@ class HebbConv2d(nn.Module):
         yx = yx[:, :, : self.kernel_size[0], : self.kernel_size[1]]
         # yu: sum over (B,Ho,Wo) of (wta * current) -> (out_ch,)
         yu = torch.sum(wta * pre_x, dim=(0, 2, 3))
-        dw = yx - yu.view(-1, 1, 1, 1) * self.weight          # Oja-style decay
-        dw = dw / (torch.abs(dw).amax() + 1e-30)              # global max-abs norm
+        dw = yx - yu.view(-1, 1, 1, 1) * self.weight  # Oja-style decay
+        dw = dw / (torch.abs(dw).amax() + 1e-30)  # global max-abs norm
         return dw
 
     def forward(self, x):
@@ -176,18 +170,15 @@ class HebbConv2d(nn.Module):
         return frac, float(r.mean()), float(r.std())
 
     def extra_repr(self):
-        return (
-            "in=%d out=%d k=%s s=%s p_mode=%s t_invert=%s lr_amp=%s power_lr=%s"
-            % (
-                self.in_channels,
-                self.out_channels,
-                self.kernel_size,
-                self.stride,
-                self.padding_mode,
-                self.t_invert,
-                self.lr_amp,
-                self.power_lr,
-            )
+        return "in=%d out=%d k=%s s=%s p_mode=%s t_invert=%s lr_amp=%s power_lr=%s" % (
+            self.in_channels,
+            self.out_channels,
+            self.kernel_size,
+            self.stride,
+            self.padding_mode,
+            self.t_invert,
+            self.lr_amp,
+            self.power_lr,
         )
 
 
@@ -226,8 +217,18 @@ class SoftHebbCNN(nn.Module):
         blocks.append(
             SoftHebbBlock(
                 nn.BatchNorm2d(1, affine=False),
-                HebbConv2d(1, 96, 5, stride=1, padding=2, padding_mode="reflect",
-                           t_invert=1.0, lr_amp=0.08, power_lr=0.5, seed=seed),
+                HebbConv2d(
+                    1,
+                    96,
+                    5,
+                    stride=1,
+                    padding=2,
+                    padding_mode="reflect",
+                    t_invert=1.0,
+                    lr_amp=0.08,
+                    power_lr=0.5,
+                    seed=seed,
+                ),
                 Triangle(0.7),
                 nn.MaxPool2d(4, 2, 1),
             )
@@ -236,8 +237,18 @@ class SoftHebbCNN(nn.Module):
         blocks.append(
             SoftHebbBlock(
                 nn.BatchNorm2d(96, affine=False),
-                HebbConv2d(96, 384, 3, stride=1, padding=1, padding_mode="zeros",
-                           t_invert=0.65, lr_amp=0.005, power_lr=0.5, seed=seed),
+                HebbConv2d(
+                    96,
+                    384,
+                    3,
+                    stride=1,
+                    padding=1,
+                    padding_mode="zeros",
+                    t_invert=0.65,
+                    lr_amp=0.005,
+                    power_lr=0.5,
+                    seed=seed,
+                ),
                 Triangle(1.4),
                 nn.MaxPool2d(4, 2, 1),
             )
@@ -247,8 +258,18 @@ class SoftHebbCNN(nn.Module):
             blocks.append(
                 SoftHebbBlock(
                     nn.BatchNorm2d(384, affine=False),
-                    HebbConv2d(384, 1536, 3, stride=1, padding=1, padding_mode="zeros",
-                               t_invert=0.25, lr_amp=0.01, power_lr=0.5, seed=seed),
+                    HebbConv2d(
+                        384,
+                        1536,
+                        3,
+                        stride=1,
+                        padding=1,
+                        padding_mode="zeros",
+                        t_invert=0.25,
+                        lr_amp=0.01,
+                        power_lr=0.5,
+                        seed=seed,
+                    ),
                     Triangle(1.0),
                     nn.AvgPool2d(2, 2, 0),
                 )

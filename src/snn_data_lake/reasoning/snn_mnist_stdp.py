@@ -25,6 +25,7 @@ inhibitory population; fixed thresholds, no adaptive homeostasis). Upgrade path
 noted at THRESH/INHIB below. Expect ~70-85% with 100 neurons on a subset, not
 the paper's 95% (which needs the full machinery + all 60k images).
 """
+
 import os
 import torch
 import snntorch as snn
@@ -32,6 +33,7 @@ from torchvision import datasets, transforms
 from snn_data_lake.reasoning.torch_device import resolve_device, enable
 
 torch.manual_seed(0)  # deterministic run + self-check
+
 
 # ---- config (tune here, or scale via env: NORD_M / NORD_TRAIN / NORD_TEST) ---
 def _env(key, default):  # scale knobs without editing the file
@@ -43,21 +45,22 @@ def _envf(key, default):  # float knobs (thresholds, learning rates)
     v = os.environ.get(key)
     return float(v) if v else default
 
-M = _env("NORD_M", 100)        # excitatory neurons (= number of learned prototypes)
-T = 30             # timesteps per image
-MAX_RATE = 0.35    # Poisson spike prob for a fully-lit pixel, per step
-BETA = 0.92        # LIF membrane decay (snnTorch Leaky)
-TRAIN_N = _env("NORD_TRAIN", 3000)   # training images (unsupervised)
-TEST_N = _env("NORD_TEST", 1500)     # test images
-LR = 0.012         # STDP learning rate
-TAU_PRE = 20.0     # pre-synaptic trace time constant (steps)
-W_NORM = 78.0      # target sum of each neuron's incoming weights (homeostasis)
-WMAX = 1.0         # weight clip
-THRESH = _envf("NORD_THRESH", 8.0)       # base membrane firing threshold
-THETA_PLUS = _envf("NORD_TPLUS", 0.4)    # adaptive-threshold bump per spike
-                   #   (homeostasis - forces neurons to specialise vs one-wins-all)
+
+M = _env("NORD_M", 100)  # excitatory neurons (= number of learned prototypes)
+T = 30  # timesteps per image
+MAX_RATE = 0.35  # Poisson spike prob for a fully-lit pixel, per step
+BETA = 0.92  # LIF membrane decay (snnTorch Leaky)
+TRAIN_N = _env("NORD_TRAIN", 3000)  # training images (unsupervised)
+TEST_N = _env("NORD_TEST", 1500)  # test images
+LR = 0.012  # STDP learning rate
+TAU_PRE = 20.0  # pre-synaptic trace time constant (steps)
+W_NORM = 78.0  # target sum of each neuron's incoming weights (homeostasis)
+WMAX = 1.0  # weight clip
+THRESH = _envf("NORD_THRESH", 8.0)  # base membrane firing threshold
+THETA_PLUS = _envf("NORD_TPLUS", 0.4)  # adaptive-threshold bump per spike
+#   (homeostasis - forces neurons to specialise vs one-wins-all)
 THETA_DECAY = _envf("NORD_TDECAY", 1.0)  # theta decay/step (<1 = equilibrium, key
-                   #   when training on many images so theta doesn't freeze cells)
+#   when training on many images so theta doesn't freeze cells)
 # v0.8: k-WTA graded lateral inhibition. Up to KWTA strongest neurons (that clear
 # threshold) may fire per timestep, not just one — a stable, working stand-in for
 # the inhibitory population that lets a small POPULATION co-activate per image.
@@ -88,29 +91,31 @@ class StdpNetwork:
         # membrane integration, then apply our own adaptive-threshold + WTA.
         self.lif = snn.Leaky(beta=BETA, threshold=1e9, reset_mechanism="none")
         self.pre_decay = torch.exp(torch.tensor(-1.0 / TAU_PRE))
-        self.theta = torch.zeros(M)   # per-neuron adaptive threshold (homeostasis)
+        self.theta = torch.zeros(M)  # per-neuron adaptive threshold (homeostasis)
 
     def _normalise(self):
         # homeostasis: keep each neuron's total incoming weight constant.
         s = self.W.sum(dim=1, keepdim=True).clamp_min(1e-6)
-        self.W *= (W_NORM / s)
+        self.W *= W_NORM / s
 
     def run(self, image, learn):
         """Simulate one image for T steps. Returns exc spike-count vector [M] and
         the number of synaptic operations performed (spike-driven)."""
-        image = image.to(self.W.device)          # GPU-safe: match the network device (input is loaded on CPU)
+        image = image.to(
+            self.W.device
+        )  # GPU-safe: match the network device (input is loaded on CPU)
         mem = self.lif.init_leaky()
         x_pre = torch.zeros(N_IN)
         counts = torch.zeros(M)
         synops = 0
         rates = image * MAX_RATE
         for _ in range(T):
-            s_in = (torch.rand(N_IN) < rates).float()      # Poisson input spikes
-            x_pre = x_pre * self.pre_decay + s_in          # pre-synaptic trace
-            cur = self.W @ s_in                            # sparse: drives exc
+            s_in = (torch.rand(N_IN) < rates).float()  # Poisson input spikes
+            x_pre = x_pre * self.pre_decay + s_in  # pre-synaptic trace
+            cur = self.W @ s_in  # sparse: drives exc
             synops += int(s_in.sum().item()) * M
-            _, mem = self.lif(cur, mem)                    # snnTorch leaky integration
-            eff = mem - self.theta                         # drive minus adaptive threshold
+            _, mem = self.lif(cur, mem)  # snnTorch leaky integration
+            eff = mem - self.theta  # drive minus adaptive threshold
             # k-WTA graded inhibition: the (up to KWTA) strongest neurons that
             # clear the base threshold co-fire; the rest are inhibited (reset).
             cand = (eff > THRESH).nonzero(as_tuple=True)[0]
@@ -123,8 +128,8 @@ class StdpNetwork:
                         # STDP potentiation toward recently-active inputs, clamp.
                         self.W[w] += LR * x_pre
                         self.W[w].clamp_(0.0, WMAX)
-                        self.theta[w] += THETA_PLUS        # raise its own bar
-                mem = torch.zeros(M)                        # lateral inhibition reset
+                        self.theta[w] += THETA_PLUS  # raise its own bar
+                mem = torch.zeros(M)  # lateral inhibition reset
             if learn:
                 self.theta *= THETA_DECAY
         if learn:
@@ -142,7 +147,7 @@ def assign_labels(net, X, Y):
         resp[:, int(y)] += counts
         per_class[int(y)] += 1
     resp /= per_class.clamp_min(1)
-    return resp.argmax(dim=1)          # neuron -> assigned class
+    return resp.argmax(dim=1)  # neuron -> assigned class
 
 
 def evaluate(net, X, Y, assignment):
@@ -176,10 +181,10 @@ def main():
     for i, img in enumerate(Xtr):
         net.run(img, learn=True)
         if (i + 1) % 500 == 0:
-            print(f"  {i+1}/{TRAIN_N} images")
+            print(f"  {i + 1}/{TRAIN_N} images")
 
     print("\nassigning neuron labels by majority vote...")
-    n_assign = min(len(Xtr), 6000)   # labelling needs only a representative subset
+    n_assign = min(len(Xtr), 6000)  # labelling needs only a representative subset
     assignment = assign_labels(net, Xtr[:n_assign], Ytr[:n_assign])
     counts_per_class = [int((assignment == c).sum().item()) for c in range(10)]
     print(f"  neurons per class: {counts_per_class}")
@@ -188,7 +193,7 @@ def main():
     acc, test_synops = evaluate(net, Xte, Yte, assignment)
     print(f"\nTEST ACCURACY : {acc:.1%}   (chance = 10%)\n")
 
-    dense_macs = TEST_N * T * N_IN * M     # dense same-arch over T steps
+    dense_macs = TEST_N * T * N_IN * M  # dense same-arch over T steps
     ratio = dense_macs / test_synops if test_synops else float("inf")
     print("COMPUTE on test set (spiking vs dense same-architecture):")
     print(f"  spiking SynOps : {test_synops:,}")
@@ -196,7 +201,7 @@ def main():
     print(f"  reduction      : {ratio:.1f}x  (from input-spike sparsity)")
     print()
     print("STORAGE:")
-    print(f"  prototypes in W : {M} x {N_IN} = {M*N_IN:,} weights (the stored data)")
+    print(f"  prototypes in W : {M} x {N_IN} = {M * N_IN:,} weights (the stored data)")
     print(f"  activations     : 1-bit spikes vs 32-bit floats (32x)")
     print("=" * 58)
 

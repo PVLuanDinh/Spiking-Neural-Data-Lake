@@ -29,14 +29,12 @@ Reuses:
   research/skill_builder.py :: signature(tokens) -> list[float] length 64 (crc32 bag-of-tokens,
   normalized to [0,1]); crc32 is the project's persistence-stable hash, never builtin hash().
 """
-import os
-import sys
 
 import numpy as np
 
 # research/ is sys.path[0] when run as a script, but be explicit so imports are robust.
 pass  # migrated: sys.path bootstrap removed (now an importable package)
-from snn_data_lake.reasoning.skill_builder import signature   # noqa: E402  (path set up above)
+from snn_data_lake.reasoning.skill_builder import signature  # noqa: E402  (path set up above)
 
 
 class SkillMap:
@@ -51,10 +49,10 @@ class SkillMap:
 
     def __init__(self, learning_rate=0.1, wired=0.45, automatic=0.85):
         self.lr = learning_rate
-        self.wired = wired          # weight at/above which a pair is "wired" (part of one skill)
+        self.wired = wired  # weight at/above which a pair is "wired" (part of one skill)
         self.automatic = automatic  # weight at/above which a pair is "automatic" (permanent skill)
-        self.sig = {}               # concept name -> np.ndarray content signature (the content key)
-        self.w = {}                 # concept name -> {other name -> Hebbian co-activation weight}
+        self.sig = {}  # concept name -> np.ndarray content signature (the content key)
+        self.w = {}  # concept name -> {other name -> Hebbian co-activation weight}
 
     @staticmethod
     def _name(words):
@@ -150,16 +148,16 @@ def _selfcheck():
         for g in groups.values():
             for i in range(len(g)):
                 for j in range(i + 1, len(g)):
-                    sm.practice(g[i], g[j])          # co-activation within the group
-        if rep == 2:                                  # after 3 reps (weight ~0.3): still effortful
+                    sm.practice(g[i], g[j])  # co-activation within the group
+        if rep == 2:  # after 3 reps (weight ~0.3): still effortful
             auto_early = sm.is_automatic(probe_a, probe_b)
-    auto_late = sm.is_automatic(probe_a, probe_b)     # after 12 reps (weight ~1.2): now automatic
+    auto_late = sm.is_automatic(probe_a, probe_b)  # after 12 reps (weight ~1.2): now automatic
 
     # PRACTICE ACROSS groups only ONCE -> stays weak and below the WIRED threshold.
     sm.practice(["add"], ["cell"])
 
-    within = sm.weight(["add"], ["multiply"])         # ~1.2 (12 reps)
-    across = sm.weight(["add"], ["cell"])             # ~0.1 (1 rep)
+    within = sm.weight(["add"], ["multiply"])  # ~1.2 (12 reps)
+    across = sm.weight(["add"], ["cell"])  # ~0.1 (1 rep)
 
     sk = sm.skills()
     want = sorted(tuple(sorted(" ".join(c) for c in g)) for g in groups.values())
@@ -184,10 +182,14 @@ def _selfcheck():
             print(f"{name:<12}{id_of[name]:<10}{label}")
     print("-" * 68)
     print("Hebbian co-activation weights (accumulated by practice):")
-    print(f"  within  add <-> multiply : {within:5.2f}   "
-          f"(wired={within >= sm.wired}, automatic={within >= sm.automatic})")
-    print(f"  across  add <-> cell     : {across:5.2f}   "
-          f"(wired={across >= sm.wired}, automatic={across >= sm.automatic})")
+    print(
+        f"  within  add <-> multiply : {within:5.2f}   "
+        f"(wired={within >= sm.wired}, automatic={within >= sm.automatic})"
+    )
+    print(
+        f"  across  add <-> cell     : {across:5.2f}   "
+        f"(wired={across >= sm.wired}, automatic={across >= sm.automatic})"
+    )
     print(f"  ratio within/across      : {within / across:5.1f}x")
     print("-" * 68)
     print("effort -> automatic (same pair, more practice):")
@@ -196,8 +198,10 @@ def _selfcheck():
     print("-" * 68)
     print("route new in-domain input -> nearest skill (signature proximity):")
     for label, r in (("MATH", r_math), ("BIO", r_bio), ("MUSIC", r_music)):
-        print(f"  {label:<6} probe -> concept '{r['concept']}' "
-              f"(cos={r['similarity']:.2f}) -> skill {sorted(r['skill'])}")
+        print(
+            f"  {label:<6} probe -> concept '{r['concept']}' "
+            f"(cos={r['similarity']:.2f}) -> skill {sorted(r['skill'])}"
+        )
     print("=" * 68)
 
     # ----- deterministic asserts -----
@@ -219,9 +223,11 @@ def _selfcheck():
     assert set(r_bio["skill"]) == {"cell", "gene", "protein"}, r_bio
     assert set(r_music["skill"]) == {"note", "chord", "tempo"}, r_music
 
-    print("self-check OK: repeated practice wired co-activated concepts into 3 skills that route "
-          "new inputs automatically (fire-together-wire-together); honestly a proximity cluster + "
-          "Hebbian co-activation counter over content signatures, not biological synaptogenesis")
+    print(
+        "self-check OK: repeated practice wired co-activated concepts into 3 skills that route "
+        "new inputs automatically (fire-together-wire-together); honestly a proximity cluster + "
+        "Hebbian co-activation counter over content signatures, not biological synaptogenesis"
+    )
 
 
 if __name__ == "__main__":

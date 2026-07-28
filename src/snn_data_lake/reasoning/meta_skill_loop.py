@@ -28,6 +28,7 @@ low-dim ODE); the JEPA latent-rollout variant for high-dim/continuous dynamics i
   Knobs: NORD_CTX(3) NORD_CYCLES(24) NORD_SLICE(1500) NORD_RFF(1200) NORD_GAMMA(0.15)
 Deps: numpy (+ stdlib). Reuses corpus_stream, language_self_build, language_readout_slda, skill_builder.
 """
+
 import os
 import random
 
@@ -66,12 +67,12 @@ def physics_stream(n_traj=400, ctx=3, seed=0, bins=20, steps=60):
         for _ in range(steps):
             v -= g * dt
             y += v * dt
-            if y <= 0.0:                      # floor bounce (damped)
+            if y <= 0.0:  # floor bounce (damped)
                 y = 0.0
                 v = -v * restitution
             b = min(bins - 1, max(0, int(y / top * bins)))
             seq.append(str(b))
-        seq.append(" ")                       # trajectory separator token
+        seq.append(" ")  # trajectory separator token
     pairs = []
     for i in range(1, len(seq)):
         lo = max(0, i - ctx)
@@ -85,9 +86,9 @@ class Domain:
 
     def __init__(self, name, pairs, vocab, ctx, rff, gamma, input_vocab=None, baseline=None):
         self.name = name
-        self.vocab = vocab                                  # TARGET vocab (the classes)
+        self.vocab = vocab  # TARGET vocab (the classes)
         self.ridx = {r: i for i, r in enumerate(vocab)}
-        self.ivocab = input_vocab or vocab                  # INPUT vocab (context tokens); differs for world-KB
+        self.ivocab = input_vocab or vocab  # INPUT vocab (context tokens); differs for world-KB
         self.iidx = {r: i for i, r in enumerate(self.ivocab)}
         self.inV = len(self.ivocab)
         self.ctx = ctx
@@ -103,8 +104,9 @@ class Domain:
         self.registered = False
 
     def _X(self, rows):
-        return np.array([_positional_code(c, self.iidx, self.inV, self.ctx) for c, _ in rows],
-                        dtype=np.float64)
+        return np.array(
+            [_positional_code(c, self.iidx, self.inV, self.ctx) for c, _ in rows], dtype=np.float64
+        )
 
     def study(self, slice_n):
         """Stream the next slice of this domain into the persistent readout (order-invariant
@@ -137,11 +139,13 @@ class RankingDomain:
     def __init__(self, name, dim=50, seed=0, eval_n=250):
         tr_s, te_s, self.offline = load_dataset()
         ent, rel = {}, {}
-        eid = lambda e: ent.setdefault(e, len(ent))   # noqa: E731
-        rid = lambda r: rel.setdefault(r, len(rel))   # noqa: E731
+        eid = lambda e: ent.setdefault(e, len(ent))  # noqa: E731
+        rid = lambda r: rel.setdefault(r, len(rel))  # noqa: E731
         self.tr = np.array([[eid(h), rid(r), eid(t)] for h, r, t in tr_s], dtype=np.int64)
-        self.te = np.array([[eid(h), rid(r), eid(t)] for h, r, t in te_s
-                            if h in ent and r in rel and t in ent], dtype=np.int64)
+        self.te = np.array(
+            [[eid(h), rid(r), eid(t)] for h, r, t in te_s if h in ent and r in rel and t in ent],
+            dtype=np.int64,
+        )
         self.ient = {v: k for k, v in ent.items()}
         self.irel = {v: k for k, v in rel.items()}
         self.n_ent = len(ent)
@@ -150,23 +154,27 @@ class RankingDomain:
             self.known.setdefault((int(h), int(r)), set()).add(int(t))
         self.model = DistMult(len(ent), len(rel), dim=dim, seed=seed)
         self.name = name
-        self.vocab = ["<distmult-ranking-head>"]     # expert metadata (routing uses signatures, not this)
+        self.vocab = [
+            "<distmult-ranking-head>"
+        ]  # expert metadata (routing uses signatures, not this)
         self.eval_n = eval_n
-        self.baseline = 10.0 / self.n_ent            # random-ranking Hits@10
+        self.baseline = 10.0 / self.n_ent  # random-ranking Hits@10
         self.competence = 0.0
         self.visits = 0
         self.registered = False
-        self.train = self.tr                         # alias for the data-count print
+        self.train = self.tr  # alias for the data-count print
         self.rng = np.random.RandomState(0)
         # test in (context_tokens, target) form so the meta-loop router works unchanged
-        self.test = [([self.irel[int(r)], self.ient[int(h)]], self.ient[int(t)])
-                     for h, r, t in self.te[:2000]]
+        self.test = [
+            ([self.irel[int(r)], self.ient[int(h)]], self.ient[int(t)])
+            for h, r, t in self.te[:2000]
+        ]
 
     def study(self, slice_n):
         """One more epoch of DistMult on the accumulated KB, then filtered Hits@10 on a test sample."""
         self.model.train_epoch(self.tr, lr=0.1, batch=1024)
         self.visits += 1
-        idx = self.rng.permutation(len(self.te))[:min(self.eval_n, len(self.te))]
+        idx = self.rng.permutation(len(self.te))[: min(self.eval_n, len(self.te))]
         hits = 0
         for j in idx:
             h, r, t = int(self.te[j, 0]), int(self.te[j, 1]), int(self.te[j, 2])
@@ -181,7 +189,9 @@ class RankingDomain:
 
     def signature_exemplars(self, n=150):
         idx = self.rng.permutation(len(self.te))[:n]
-        return [signature([self.irel[int(self.te[j, 1])], self.ient[int(self.te[j, 0])]]) for j in idx]
+        return [
+            signature([self.irel[int(self.te[j, 1])], self.ient[int(self.te[j, 0])]]) for j in idx
+        ]
 
 
 def main():
@@ -195,24 +205,40 @@ def main():
         os.remove(lake_path)
 
     print("=" * 98)
-    print("META SKILL LOOP -- standing loop: language / math / physics / world-kb compete by learning-progress")
-    print(f"ctx={CTX}  cycles={CYCLES}  slice={SLICE}  rff={RFF}  (persistent order-invariant heads; no forgetting)")
+    print(
+        "META SKILL LOOP -- standing loop: language / math / physics / world-kb compete by learning-progress"
+    )
+    print(
+        f"ctx={CTX}  cycles={CYCLES}  slice={SLICE}  rff={RFF}  (persistent order-invariant heads; no forgetting)"
+    )
     print("=" * 98)
 
     cmudict, doff = load_cmudict()
     words, toff = load_text()
     domains = {
-        0: Domain("language", list(phoneme_stream(words, cmudict, k=CTX)), ARPABET, CTX, RFF, GAMMA),
+        0: Domain(
+            "language", list(phoneme_stream(words, cmudict, k=CTX)), ARPABET, CTX, RFF, GAMMA
+        ),
         1: Domain("math", math_stream(n_expr=4000, ctx=CTX, seed=0), MATH_VOCAB, CTX, RFF, GAMMA),
-        2: Domain("physics", physics_stream(n_traj=400, ctx=CTX, seed=0), [str(b) for b in range(20)] + [" "],
-                  CTX, RFF, GAMMA),
-        3: RankingDomain("world-kb", dim=50, seed=0),   # OPEN-VOCAB DistMult ranking head (competence = Hits@10)
+        2: Domain(
+            "physics",
+            physics_stream(n_traj=400, ctx=CTX, seed=0),
+            [str(b) for b in range(20)] + [" "],
+            CTX,
+            RFF,
+            GAMMA,
+        ),
+        3: RankingDomain(
+            "world-kb", dim=50, seed=0
+        ),  # OPEN-VOCAB DistMult ranking head (competence = Hits@10)
     }
     kb = domains[3]
-    print(f"[data] language {len(domains[0].train):,} / math {len(domains[1].train):,} / "
-          f"physics {len(domains[2].train):,} phoneme|char|state pairs; world-kb "
-          f"{len(kb.tr):,} triples over {kb.n_ent:,} entities "
-          f"({'offline facts' if kb.offline else 'FB15k-237'}; competence=Hits@10, baseline=random {kb.baseline:.4f})")
+    print(
+        f"[data] language {len(domains[0].train):,} / math {len(domains[1].train):,} / "
+        f"physics {len(domains[2].train):,} phoneme|char|state pairs; world-kb "
+        f"{len(kb.tr):,} triples over {kb.n_ent:,} entities "
+        f"({'offline facts' if kb.offline else 'FB15k-237'}; competence=Hits@10, baseline=random {kb.baseline:.4f})"
+    )
 
     lake = LakeMemory(path=lake_path, seed=0)
     registry = SkillRegistry(lake)
@@ -226,7 +252,7 @@ def main():
     for cyc in range(1, CYCLES + 1):
         unstudied = [did for did in domains if domains[did].visits == 0]
         if unstudied:
-            did = min(unstudied)                                  # coverage first
+            did = min(unstudied)  # coverage first
         else:
             stale = [did for did in domains if cyc - last[did] >= len(domains)]
             did = min(stale, key=lambda x: last[x]) if stale else meta.most_curious(sorted(domains))
@@ -235,11 +261,13 @@ def main():
         before = d.competence
         comp = d.study(SLICE)
         prog = max(0.0, comp - before)
-        meta.observe(did, 1.0 - comp)             # low competence keeps a domain curious
-        if not d.registered and d.visits >= 1:    # index the skill on its first study
+        meta.observe(did, 1.0 - comp)  # low competence keeps a domain curious
+        if not d.registered and d.visits >= 1:  # index the skill on its first study
             registry.register(did, d.name, d.signature_exemplars(), {"vocab": d.vocab, "ctx": CTX})
             d.registered = True
-        print(f"  cycle {cyc:2d} : {d.name:9s} competence {comp:.1%}  (progress {prog:+.1%}, visit {d.visits})")
+        print(
+            f"  cycle {cyc:2d} : {d.name:9s} competence {comp:.1%}  (progress {prog:+.1%}, visit {d.visits})"
+        )
 
     # ---- ROUTING across the three indexed skills, by proximity, no domain-id ----
     def route_acc(did):
@@ -257,28 +285,39 @@ def main():
     print("-" * 98)
     for did in sorted(domains):
         d = domains[did]
-        print(f"  {d.name:9s}: competence {d.competence:.1%}  (baseline {d.baseline:.1%}, "
-              f"visits {d.visits}, +{(d.competence - d.baseline) * 100:.1f} pts)  route {racc[did]:.0%}")
+        print(
+            f"  {d.name:9s}: competence {d.competence:.1%}  (baseline {d.baseline:.1%}, "
+            f"visits {d.visits}, +{(d.competence - d.baseline) * 100:.1f} pts)  route {racc[did]:.0%}"
+        )
     print(f"  meta visit distribution (learning-progress driven): {visits}")
-    print(f"  ROUTING mean {router:.0%} (chance {1 / len(domains):.0%}); "
-          f"LAKE {lake.n_stored} signatures durable = {dur['ok']}")
+    print(
+        f"  ROUTING mean {router:.0%} (chance {1 / len(domains):.0%}); "
+        f"LAKE {lake.n_stored} signatures durable = {dur['ok']}"
+    )
     print("-" * 98)
-    print("  world-kb competence = DistMult ranking head (Hits@10 over open vocab, real FB15k-237);")
-    print("  physics-JEPA (target-encoder C) in physics_jepa.py + physics_jepa_highdim.py + double_pendulum_jepa.py.")
+    print(
+        "  world-kb competence = DistMult ranking head (Hits@10 over open vocab, real FB15k-237);"
+    )
+    print(
+        "  physics-JEPA (target-encoder C) in physics_jepa.py + physics_jepa_highdim.py + double_pendulum_jepa.py."
+    )
     print("=" * 98)
 
     # ---- un-riggable self-checks ----
     for d in domains.values():
         assert d.visits >= 2, f"{d.name} was starved by the meta-controller (visits {d.visits})"
         assert d.competence >= d.baseline - 0.03, (
-            f"{d.name}: competence below its domain baseline ({d.competence:.3f} vs {d.baseline:.3f})")
+            f"{d.name}: competence below its domain baseline ({d.competence:.3f} vs {d.baseline:.3f})"
+        )
     assert all(v >= 2 for v in visits.values()), "meta-controller did not fairly visit every domain"
     assert router > 1.5 / len(domains), f"router no better than chance ({router:.2f})"
     assert min(racc.values()) > 0.5, f"a domain routes below 50% ({racc})"
     assert dur["ok"], "skill index did not survive the lake restart"
-    print(f"self-check OK: one standing loop built+indexed {len(domains)} skills (language/math/physics/world-kb), "
-          f"each >= its baseline, chosen by cross-domain learning-progress; proximity router {router:.0%} "
-          f">> chance {1/len(domains):.0%}; {lake.n_stored} signatures durable -- open-ended, no labels.")
+    print(
+        f"self-check OK: one standing loop built+indexed {len(domains)} skills (language/math/physics/world-kb), "
+        f"each >= its baseline, chosen by cross-domain learning-progress; proximity router {router:.0%} "
+        f">> chance {1 / len(domains):.0%}; {lake.n_stored} signatures durable -- open-ended, no labels."
+    )
     lake.close()
     return 0
 

@@ -21,12 +21,10 @@ Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NO
        NORD_KREPLAY(100) NORD_SGD(300) NORD_KEYDIM(48) NORD_TRAIN(12000) NORD_TEST(2000)
 Deps: numpy torch torchvision snntorch scikit-learn
 """
+
 import os
 
-import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
@@ -34,11 +32,12 @@ from snn_data_lake.reasoning.torch_device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
-from snn_data_lake.reasoning._loop_common import envi as _envi, envf as _envf, LinearReadout, cache_features, acc as _acc
-
-
-
-
+from snn_data_lake.reasoning._loop_common import (
+    envi as _envi,
+    LinearReadout,
+    cache_features,
+    acc as _acc,
+)
 
 
 def _rbf_refit_eval(Ftr, Ytr, rows, Fte, yte_np, pooled_te):
@@ -62,18 +61,24 @@ def main():
     T_LAT = _envi("NORD_T", 15)
     L1_EPOCHS = _envi("NORD_L1_EPOCHS", 3)
     PER = _envi("NORD_PER", 300)
-    REPLAY = _envi("NORD_REPLAY", 300)          # exemplars consolidated per digit (the RBF sleep-refit trains on these)
-    KREPLAY = _envi("NORD_KREPLAY", 100)        # proximity-replay pulled per class per cycle (for the linear head)
+    REPLAY = _envi(
+        "NORD_REPLAY", 300
+    )  # exemplars consolidated per digit (the RBF sleep-refit trains on these)
+    KREPLAY = _envi(
+        "NORD_KREPLAY", 100
+    )  # proximity-replay pulled per class per cycle (for the linear head)
     SGD = _envi("NORD_SGD", 300)
-    KEYDIM = _envi("NORD_KEYDIM", 48)           # richer proximity key dim (<=64)
+    KEYDIM = _envi("NORD_KEYDIM", 48)  # richer proximity key dim (<=64)
     TRAIN_N = _envi("NORD_TRAIN", 12000)
     TEST_N = _envi("NORD_TEST", 2000)
     lake_path = os.path.join(os.environ.get("TEMP", "."), "sndl_lake99.spkl")
 
     print("=" * 88)
     print("LAKE LOOP -> 99: richer projected proximity KEY + RBF SLEEP-REFIT on the lake replay")
-    print(f"device={dev}  cycles={CYCLES}  C1={C1}  key_dim={KEYDIM}  consolidate/digit={REPLAY}  "
-          f"proximity_k={KREPLAY}")
+    print(
+        f"device={dev}  cycles={CYCLES}  C1={C1}  key_dim={KEYDIM}  consolidate/digit={REPLAY}  "
+        f"proximity_k={KREPLAY}"
+    )
     print("=" * 88)
     Xtr, Ytr, Xte, Yte = load_mnist(TRAIN_N, TEST_N)
 
@@ -82,7 +87,9 @@ def main():
     conv = ConvLatencyStdp(C1, T_LAT)
     for ep in range(L1_EPOCHS):
         _train(conv, Xtr, f"conv1 ep{ep + 1}/{L1_EPOCHS}")
-    print(f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}")
+    print(
+        f"[perception] frozen; feat_dim={conv.feat_dim()}; diversity={conv.kernel_diversity():.3f}"
+    )
 
     print("[cache] conv1 SPATIAL features + richer projected KEYS...")
     Ftr = cache_features(conv, Xtr, dev)
@@ -90,8 +97,8 @@ def main():
     D = Ftr.shape[1]
     # RICHER KEY: fixed random projection of the full spatial feature -> <=64-dim, sigmoid to [0,1].
     torch.manual_seed(12345)
-    R = (torch.randn(D, KEYDIM, device=dev) * 0.12)
-    Gtr = torch.sigmoid(Ftr @ R)                # [Ntr, KEYDIM] in (0,1) -- label-free richer proximity key
+    R = torch.randn(D, KEYDIM, device=dev) * 0.12
+    Gtr = torch.sigmoid(Ftr @ R)  # [Ntr, KEYDIM] in (0,1) -- label-free richer proximity key
     ytr, yte = Ytr.long().to(dev), Yte.long().to(dev)
     yte_np = Yte.numpy()
     tr_by = {d: (Ytr == d).nonzero(as_tuple=True)[0].tolist() for d in range(10)}
@@ -99,8 +106,12 @@ def main():
 
     readout = LinearReadout(D, seed=0)
     lake = LakeMemory(path=lake_path, seed=0)
-    from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum
+    from snn_data_lake.neuromodulation.spiking_curiosity import (
+        SpikingCuriosityDrive,
+        SpikingCurriculum,
+    )
     from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
+
     curiosity = SpikingCuriosityDrive(seed=0)
     curriculum = SpikingCurriculum(n_stages=10, patience=2, seed=0)
     lc = LocusCoeruleus()
@@ -123,8 +134,10 @@ def main():
         readout.train_step(Ftr[idx], ytr[idx], lr=0.01 * gain, steps=SGD)
 
         if is_new:
-            pool = tr_by[objective][n_train:n_train + REPLAY]
-            lake.consolidate([Gtr[r].tolist() for r in pool], payloads=pool)   # richer key -> durable lake
+            pool = tr_by[objective][n_train : n_train + REPLAY]
+            lake.consolidate(
+                [Gtr[r].tolist() for r in pool], payloads=pool
+            )  # richer key -> durable lake
             mem_rows[objective] = pool
             learned.append(objective)
 
@@ -134,13 +147,17 @@ def main():
         curve.append(overall)
         curiosity.observe(objective, 1.0 - competence[objective])
         curriculum.observe(curiosity.learning_progress(objective))
-        print(f"CYCLE {cyc:2d} obj={objective} {'new' if is_new else 'rev'}  lake={lake.n_stored}  "
-              f"proximity_replay={len(replay_rows)}  linear acc over {sorted(learned)} = {overall:.1%}")
+        print(
+            f"CYCLE {cyc:2d} obj={objective} {'new' if is_new else 'rev'}  lake={lake.n_stored}  "
+            f"proximity_replay={len(replay_rows)}  linear acc over {sorted(learned)} = {overall:.1%}"
+        )
 
     # ---- SLEEP CONSOLIDATION: refit an RBF-SVM on ALL lake-consolidated exemplars (readout upgrade) ----
     all_rows = [r for d in learned for r in mem_rows[d]]
     pooled_te = [r for d in learned for r in te_by[d]]
-    print(f"\n[sleep-refit] RBF-SVM on {len(all_rows)} lake-consolidated exemplars (readout upgrade)...")
+    print(
+        f"\n[sleep-refit] RBF-SVM on {len(all_rows)} lake-consolidated exemplars (readout upgrade)..."
+    )
     rbf_acc, n_used = _rbf_refit_eval(Ftr, Ytr, all_rows, Fte, yte_np, pooled_te)
     lin_final = curve[-1] if curve else 0.0
     durable = lake.durability_check()
@@ -157,10 +174,14 @@ def main():
     print(f"  RBF sleep-refit delta vs baseline 90.2%          : {rbf_acc - 0.902:+.1%}")
     print(f"  DURABILITY (lake survives close+reopen)          : {durable.get('ok')}")
     print("=" * 88)
-    assert lin_final > 0.85 and rbf_acc > 0.85, "a readout regressed below its ~90%+ claim"   # catch regressions
+    assert lin_final > 0.85 and rbf_acc > 0.85, (
+        "a readout regressed below its ~90%+ claim"
+    )  # catch regressions
     assert durable.get("ok"), "lake memory did not survive reopen"
-    print(f"self-check OK: richer-key linear {lin_final:.1%}, RBF sleep-refit {rbf_acc:.1%} "
-          f"(baseline 90.2%); {n_used} exemplars durable in the lake.")
+    print(
+        f"self-check OK: richer-key linear {lin_final:.1%}, RBF sleep-refit {rbf_acc:.1%} "
+        f"(baseline 90.2%); {n_used} exemplars durable in the lake."
+    )
     return 0
 
 

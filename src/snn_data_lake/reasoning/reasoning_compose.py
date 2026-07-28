@@ -74,9 +74,9 @@ class CompositionalSolver:
     """
 
     def __init__(self, cortex, records=None, seed=0):
-        self.cortex = cortex                                   # from build_default_cortex(...)
-        self.records = list(records or [])                     # optional caller KB (unused by routing here)
-        self._rng = random.Random(seed)                        # per-instance seed; NO global RNG / clock
+        self.cortex = cortex  # from build_default_cortex(...)
+        self.records = list(records or [])  # optional caller KB (unused by routing here)
+        self._rng = random.Random(seed)  # per-instance seed; NO global RNG / clock
 
     def _route(self, text):
         """Dispatch ONE sub-step through the existing cortex router, guarded so a broken expert or a
@@ -86,7 +86,7 @@ class CompositionalSolver:
             return None
         try:
             out = route(text)
-        except Exception:                                      # a broken expert never crashes the turn
+        except Exception:  # a broken expert never crashes the turn
             return None
         return out if isinstance(out, dict) else None
 
@@ -102,25 +102,30 @@ class CompositionalSolver:
         parts = _SPLIT.split(str(text).strip())
         steps = [p.strip() for p in parts if p.strip()][:3]
         if len(steps) < 2:
-            return None                                        # nothing to compose; single-shot is the router's job
+            return None  # nothing to compose; single-shot is the router's job
 
-        scratch = []                                           # [(resolved_step_text, answer), ...]
+        scratch = []  # [(resolved_step_text, answer), ...]
         prev = None
         for step in steps:
             stext = _substitute(step, prev) if prev is not None else step
             out = self._route(stext)
             if out is None or not out.get("known"):
-                return None                                    # a step is an honest gap -> the whole chain is
+                return None  # a step is an honest gap -> the whole chain is
             ans = _extract_answer(out.get("reply", ""))
             if ans is None:
-                return None                                    # no legible result to thread -> honest gap
+                return None  # no legible result to thread -> honest gap
             scratch.append((stext, ans))
             prev = ans
 
         final = scratch[-1][1]
         shown = "; ".join(f"[{i + 1}] {s} -> {a}" for i, (s, a) in enumerate(scratch))
-        return {"known": True, "coverage": 1.0, "ignited": True, "source": "compose",
-                "reply": f"{final} (steps: {shown})"}
+        return {
+            "known": True,
+            "coverage": 1.0,
+            "ignited": True,
+            "source": "compose",
+            "reply": f"{final} (steps: {shown})",
+        }
 
 
 # ------------------------------------------------------------- headless self-check -------------------
@@ -142,23 +147,31 @@ def _selfcheck():
     got = solver.solve(q)
     assert got is not None, "expected a compose dict, got None"
     assert got["known"] and got["source"] == "compose", got
-    assert "[1]" in got["reply"] and "[2]" in got["reply"], f"reply must show 2 steps: {got['reply']!r}"
+    assert "[1]" in got["reply"] and "[2]" in got["reply"], (
+        f"reply must show 2 steps: {got['reply']!r}"
+    )
     assert got["reply"].startswith("40"), f"final answer should thread to 40: {got['reply']!r}"
     print(f"(1) compose : {got['reply']}")
 
     # out-of-grammar / no chain -> honest gap (None), so the caller's honest gap stands.
-    none1 = solver.solve("tell me about your weekend plans")                       # single step, no connective
+    none1 = solver.solve("tell me about your weekend plans")  # single step, no connective
     assert none1 is None, f"single out-of-grammar query must be an honest gap (None), got {none1!r}"
-    none2 = solver.solve("what comes next in 2 4 6 8 ; tell me about your weekend")  # step 2 is a gap
+    none2 = solver.solve(
+        "what comes next in 2 4 6 8 ; tell me about your weekend"
+    )  # step 2 is a gap
     assert none2 is None, f"a chain with a gap step must return None, got {none2!r}"
-    print("(2) gap     : out-of-grammar refused (None) -- composition, not novel-operator synthesis")
+    print(
+        "(2) gap     : out-of-grammar refused (None) -- composition, not novel-operator synthesis"
+    )
 
     # determinism: identical inputs -> identical outputs.
     assert solver.solve(q) == solver.solve(q)
     print("(3) determinism: stable across repeated calls")
 
-    print("self-check OK: compositional multi-step over the bounded expert grammar (series/analogy/"
-          "binding/recall/KB), honest gap otherwise")
+    print(
+        "self-check OK: compositional multi-step over the bounded expert grammar (series/analogy/"
+        "binding/recall/KB), honest gap otherwise"
+    )
 
 
 if __name__ == "__main__":

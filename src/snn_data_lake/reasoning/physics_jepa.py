@@ -32,6 +32,7 @@ latent variant for the continuous case.
   PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python research/physics_jepa.py
 Deps: numpy (probe) + stdlib (JepaWorldModel is stdlib). Reuses lake_memory + skill_builder.signature.
 """
+
 import os
 import random
 
@@ -42,8 +43,13 @@ from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
 from snn_data_lake.reasoning.skill_builder import signature
 
 ACTIONS = ("coast", "up", "down", "left", "right")
-_THRUST = {"coast": (0.0, 0.0), "up": (0.0, 3.0), "down": (0.0, -3.0),
-           "left": (-3.0, 0.0), "right": (3.0, 0.0)}
+_THRUST = {
+    "coast": (0.0, 0.0),
+    "up": (0.0, 3.0),
+    "down": (0.0, -3.0),
+    "left": (-3.0, 0.0),
+    "right": (3.0, 0.0),
+}
 
 
 def _envi(k, d):
@@ -84,7 +90,7 @@ def _probe_mse(model, trans):
     Y = np.array([ns for _, _, ns in trans], dtype=np.float64)
     cut = int(len(Z) * 0.8)
     Ztr, Ytr, Zte, Yte = Z[:cut], Y[:cut], Z[cut:], Y[cut:]
-    Ztr = np.hstack([Ztr, np.ones((len(Ztr), 1))])          # bias
+    Ztr = np.hstack([Ztr, np.ones((len(Ztr), 1))])  # bias
     Zte = np.hstack([Zte, np.ones((len(Zte), 1))])
     W, *_ = np.linalg.lstsq(Ztr, Ytr, rcond=None)
     return float(((Zte @ W - Yte) ** 2).mean())
@@ -97,10 +103,14 @@ def main():
         os.remove(lake_path)
 
     print("=" * 92)
-    print("PHYSICS-JEPA -- action-conditioned LATENT next-state prediction over a real 2-D ODE (no labels)")
+    print(
+        "PHYSICS-JEPA -- action-conditioned LATENT next-state prediction over a real 2-D ODE (no labels)"
+    )
     print("=" * 92)
     trans = gen_dynamics(n_traj=300, steps=40, seed=0)
-    print(f"[data] {len(trans):,} (state, action, next-state) transitions; actions {ACTIONS}; state dim 4")
+    print(
+        f"[data] {len(trans):,} (state, action, next-state) transitions; actions {ACTIONS}; state dim 4"
+    )
 
     # ---- train the JEPA (self-supervised invariance loss), track the loss curve ----
     jepa = JepaWorldModel(ACTIONS, in_dim=4, latent_dim=16, seed=0)
@@ -133,34 +143,51 @@ def main():
     # ---- index the skill in the durable lake (state signatures -> skill id) ----
     lake = LakeMemory(path=lake_path, seed=0)
 
-    def sig(s):                                             # discretize state -> tokens -> 64-d signature
+    def sig(s):  # discretize state -> tokens -> 64-d signature
         return signature([f"{k}:{int(v * 6)}" for k, v in zip("xyuv", s)])
-    lake.consolidate([sig(s) for s, _, _ in trans[::40][:150]],
-                     payloads=[0] * len(trans[::40][:150]))
+
+    lake.consolidate(
+        [sig(s) for s, _, _ in trans[::40][:150]], payloads=[0] * len(trans[::40][:150])
+    )
     dur = lake.durability_check()
 
     print("-" * 92)
-    print(f"  JEPA invariance loss : {loss0:.4f} -> {lossN:.4f}  (drops as it learns to predict in latent space)")
-    print(f"  latent std (collapse): full {std_full:.3f}  vs  anti-collapse-OFF ablation {std_abl:.3f}")
-    print(f"  probe MSE to true next-state: learned {mse_learned:.4f}  vs  random encoder {mse_random:.4f}  "
-          f"(HONEST NEGATIVE: {(1 - mse_learned / mse_random) * 100:+.1f}%, random projection already decodes "
-          f"a linear world)")
+    print(
+        f"  JEPA invariance loss : {loss0:.4f} -> {lossN:.4f}  (drops as it learns to predict in latent space)"
+    )
+    print(
+        f"  latent std (collapse): full {std_full:.3f}  vs  anti-collapse-OFF ablation {std_abl:.3f}"
+    )
+    print(
+        f"  probe MSE to true next-state: learned {mse_learned:.4f}  vs  random encoder {mse_random:.4f}  "
+        f"(HONEST NEGATIVE: {(1 - mse_learned / mse_random) * 100:+.1f}%, random projection already decodes "
+        f"a linear world)"
+    )
     print(f"  lake: {lake.n_stored} state signatures indexed; durable across restart = {dur['ok']}")
     print("-" * 92)
-    print("  honest scope: a lake-indexable latent-dynamics SKILL with learning curves, NOT an accurate")
-    print("  simulator. Real wins = latent-space prediction + no collapse; the probe does NOT beat a random")
-    print("  encoder over this near-linear system (JL). Rate JEPA + spiking JEPA both hard to show at toy scale.")
+    print(
+        "  honest scope: a lake-indexable latent-dynamics SKILL with learning curves, NOT an accurate"
+    )
+    print(
+        "  simulator. Real wins = latent-space prediction + no collapse; the probe does NOT beat a random"
+    )
+    print(
+        "  encoder over this near-linear system (JL). Rate JEPA + spiking JEPA both hard to show at toy scale."
+    )
     print("=" * 92)
 
     assert lossN < loss0, f"JEPA invariance loss did not drop ({loss0:.4f} -> {lossN:.4f})"
     assert std_full > std_abl * 2, (
-        f"full model did not clearly avoid collapse vs the ablation ({std_full:.3f} vs {std_abl:.3f})")
+        f"full model did not clearly avoid collapse vs the ablation ({std_full:.3f} vs {std_abl:.3f})"
+    )
     assert dur["ok"], "physics skill signature did not survive the lake restart"
     # NOTE: the probe control is REPORTED, not asserted -- it is an honest negative (see above), and
     # forcing it would be dishonest on a near-linear world where random features already decode well.
-    print(f"self-check OK: JEPA learns to predict in latent space (loss {loss0:.3f}->{lossN:.3f}) without "
-          f"collapse ({std_full:.2f} >> ablation {std_abl:.2f}); physics latent-skill indexed + durable. "
-          f"HONEST: probe does not beat a random encoder here ({(1 - mse_learned / mse_random) * 100:+.0f}%).")
+    print(
+        f"self-check OK: JEPA learns to predict in latent space (loss {loss0:.3f}->{lossN:.3f}) without "
+        f"collapse ({std_full:.2f} >> ablation {std_abl:.2f}); physics latent-skill indexed + durable. "
+        f"HONEST: probe does not beat a random encoder here ({(1 - mse_learned / mse_random) * 100:+.0f}%)."
+    )
     lake.close()
     return 0
 
