@@ -1393,7 +1393,17 @@ class AutonomousArm:
                         rpe
                     )  # phasic dopamine LEVEL (tonic baseline shifted by RPE; burst on +RPE)
                     if rpe < 0.0:  # OPPONENT: an LHb burst drives DA BELOW baseline (RMTg relay)
-                        da = self._lhb.dopamine(predicted=pred, received=r)
+                        # SCALE FIX (v4.78): the two nuclei report on DIFFERENT tonic baselines --
+                        # dopamine_nuclei.tonic_baseline = 0.2, habenula.DA_BASE = 1.0 -- and both were
+                        # being assigned to the same `da`. So a negative RPE, which must DIP dopamine,
+                        # reported a value on the 1.0 scale and therefore came out far ABOVE the 0.2
+                        # baseline: measured 110/110 negative-RPE ticks above 0.2, min 0.300, mean
+                        # 0.592. The dip was being rendered as a burst. Express the LHb result as a
+                        # FRACTION of its own baseline, then put it on the nuclei's scale, so "half my
+                        # baseline" reads as half of 0.2 in both nuclei's language.
+                        _lhb_base = float(getattr(self._lhb, "da_base", 1.0)) or 1.0
+                        _tonic = float(getattr(self._dopa, "tonic_baseline", 0.2))
+                        da = _tonic * (self._lhb.dopamine(predicted=pred, received=r) / _lhb_base)
                     self._da_level, self._rpe = round(float(da), 4), round(float(rpe), 4)
                 except Exception:
                     pass
