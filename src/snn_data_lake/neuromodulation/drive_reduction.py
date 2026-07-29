@@ -78,7 +78,9 @@ class NeedPool:
     fires) -- a linear, UNBOUNDED level, the 'scalar in a fake neuron' anti-pattern.
 
     The eligibility that gates learning is the phasic rate DROP rate(before) - rate(after); the control
-    substitutes the unbounded membrane and destabilizes learning. Deterministic (noiseless readout ->
+    substitutes the unbounded membrane. MEASURED (seeds 0-6, see main()): that substitution destabilizes
+    learning at seed 0 ONLY and ties the spiking eligibility on the other six -- it is an honest negative,
+    not a failing control. Deterministic (noiseless readout ->
     rate is a pure fn of drive); per-instance thresholds drawn from random.Random(seed)."""
 
     def __init__(
@@ -331,7 +333,8 @@ def main():
         f"  (3) drive-LEVEL reward       [control b]  : {d_level:6.3f}   <-- level not reduction -> fails"
     )
     print(
-        f"  (4) MEMBRANE-value elig      [control c]  : {d_membrane:6.3f}   <-- non-spiking readout -> fails"
+        f"  (4) MEMBRANE-value elig      [control c]  : {d_membrane:6.3f}   <-- non-spiking readout -> "
+        f"SEED-SPECIFIC: fails at seed 0 only, ties the spiking elig on seeds 1-6"
     )
     print(f"      random service policy    [reference]  : {d_random:6.3f}")
     print(
@@ -357,7 +360,7 @@ def main():
         f"the drive-LEVEL reward must regulate worse than drive-REDUCTION ({d_level:.3f} vs {d_reduction:.3f})"
     )
 
-    # ---- (4) the eligibility is a REAL spiking DROP; the membrane-value control FAILS ----------------
+    # ---- (4) the eligibility is a REAL spiking DROP; the membrane-value control is an HONEST NEGATIVE -
     assert spikes_hi > 0, "the NEED pool must actually SPIKE for a real deficit (spike count > 0)"
     assert membrane_fires == 0, (
         "the membrane-value control must be a NON-spiking integrator (0 spikes)"
@@ -365,8 +368,21 @@ def main():
     assert rate_hi > 5.0 * max(rate_lo, 1e-9), (
         "the pool's rate must DROP sharply when the drive is satisfied"
     )
-    assert d_membrane > 2.0 * d_reduction, (
-        f"swapping the spiking DROP for a raw membrane VALUE must break regulation ({d_membrane:.3f} vs {d_reduction:.3f})"
+    # `assert d_membrane > 2.0 * d_reduction` used to stand here, claiming the non-spiking readout
+    # BREAKS regulation. Re-measured over seeds 0-6 (every condition retrained from scratch) that is
+    # true at SEED 0 ONLY -- and main() pins seed=0:
+    #     seed        0      1      2      3      4      5      6
+    #     membrane  72.650  0.450  0.450  0.450  0.450  0.450  0.450
+    #     reduction  0.450  0.450  0.450  0.450  0.450  0.450  0.450
+    # The unbounded membrane eligibility regulates exactly as well as the spiking rate DROP on 6 of 7
+    # seeds, so the clause was testing the seed, not the mechanism. What survives on every seed is the
+    # weaker true statement: the non-spiking control never BEATS the spiking one. The "reward must be
+    # drive REDUCTION" claim is carried by the two controls that do fail everywhere -- shuffled (68-72)
+    # and drive-LEVEL (107.5) -- and it is unaffected. Left standing as an open honest negative: at this
+    # toy scale the SPIKING eligibility buys no measurable regulation quality over the raw membrane.
+    assert d_membrane >= d_reduction - 1e-9, (
+        f"the non-spiking membrane eligibility must not BEAT the spiking rate DROP "
+        f"({d_membrane:.3f} vs {d_reduction:.3f})"
     )
 
     # ---- (5) HONEST NEGATIVE: the learned policy TIES (does NOT beat) the set_points controller ------
@@ -388,8 +404,12 @@ def main():
         f">2x better than random ({d_random:.3f});"
     )
     print(
-        f"  shuffled ({d_shuffled:.3f}) and drive-LEVEL ({d_level:.3f}) rewards FAIL; a real LIF NEED pool "
-        f"spikes ({spikes_hi} spikes) + drops on satisfaction, membrane-value elig fails ({d_membrane:.3f});"
+        f"  shuffled ({d_shuffled:.3f}) and drive-LEVEL ({d_level:.3f}) rewards FAIL on every seed; a real "
+        f"LIF NEED pool spikes ({spikes_hi} spikes) + drops on satisfaction;"
+    )
+    print(
+        f"  HONEST NEGATIVE: the non-spiking membrane elig ({d_membrane:.3f}) only fails at seed 0 -- on "
+        f"seeds 1-6 it ties the spiking DROP, so spiking eligibility buys no regulation gain at this scale"
     )
     print(
         f"  HONEST NEGATIVE: learned policy TIES the set_points controller ({d_reduction:.3f} vs "
