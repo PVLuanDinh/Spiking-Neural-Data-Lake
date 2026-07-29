@@ -393,6 +393,20 @@ available tested against the real shape, and it loses by 2x at our widths. Recor
 being repeated a third time. The number that would change the answer is population WIDTH — at 4,096
 the GPU starts paying, so a genuinely wide population is the thing to look for, not a faster kernel.
 
+**Update (2026-07-28): that width now exists, on the growth tier.** With the NG-SNN earn-your-place
+stop corrected (it had been scoring rows the solve already fit — see
+[PERFORMANCE.md](PERFORMANCE.md)), grown capacity is monotone in data and reaches **4,512 units at
+24,000 rows**, past the 4,096 crossover, on plain MNIST at 8x8. The earlier reading — that capacity
+saturates near 2,000-2,600 and that GPU-relevant width would need a harder problem — was an artifact
+of the broken criterion, not a property of the task.
+
+This does **not** move the live tick: those populations are still 24-240 and the conclusion above
+stands unchanged. What it changes is the `[train]`/`[gpu]` tier, which now belongs on the card by
+WIDTH and not merely by fit cost. It also relocates the thing worth re-measuring as the brain grows:
+this capacity curve, not the kernel. And it is a second instance of the guard-(b) lesson — the first
+saturation claim was refuted by fixing the instrument, exactly as the first two "the live tick should
+be on CUDA" claims were refuted by measuring it.
+
 **The live-tick CUDA perception path is measured at last, and it does not pay.** `cortex/brain.py:170`
 defaults `device="cuda"` and `_perceive_real()` runs a per-frame batch-of-1 forward pass every wake
 tick -- a GPU path that shipped without the benchmark honesty guard (a) demands. On the real live shape

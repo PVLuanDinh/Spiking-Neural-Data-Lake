@@ -64,7 +64,7 @@ class NGSNN:
         c0=1e-4,
         l_max=None,  # None = DERIVED from the data (see below). An int still pins it explicitly.
         eps_tol=1e-2,
-        patience=16,  # blocks without held-out gain before growth stops; MEASURED, see fit()
+        patience=48,  # blocks without held-out gain before growth stops; MEASURED, see fit()
         reg_eps=1e-6,
         T=15,
         device="cuda",
@@ -150,7 +150,9 @@ class NGSNN:
 
         delta>1: block neurogenesis -- admit the top-`delta` candidates per step, ONE ridge solve per
         block. score_subsample: candidate SELECTION scores on a random row subsample of that size;
-        the accepted neurons' S columns and the ridge solve always use the FULL X/Y."""
+        the accepted neurons' S columns always span every row. When capacity is derived (l_max=None)
+        the growth solve fits only the first 80% of rows and the rest decide when to stop; the
+        shipped readout is then refit on all of them."""
         X = X.to(self.device).float()
         N = X.shape[0]
         d = X.shape[2] if X.ndim == 3 else X.shape[1]  # sequence (N,T,d) or features (N,d)
@@ -159,53 +161,80 @@ class NGSNN:
         Y[torch.arange(N, device=self.device), y.to(self.device)] = 1.0
         delta = max(1, int(delta))
 
+        # THE HELD-OUT SPLIT, and it has to be taken before anything else touches the rows. When
+        # capacity is derived rather than preset, the last n_val rows are withheld from the growth
+        # solve ENTIRELY -- not merely scored separately afterwards. Scoring rows the solve already
+        # fit is in-sample under another name, and greedy pursuit drives in-sample residual toward
+        # zero by construction, so such a criterion can never say "stop". Measured before this was
+        # split properly: it grew 600 units to fit 600 RANDOM labels and reported that as earned.
+        n_val = 0 if self.l_max is not None else max(8, int(0.2 * N))
+        n_tr = N - n_val
+        val_idx = torch.arange(n_tr, N, device=self.device) if n_val else None
+
         # candidate SELECTION may run on a row subsample (acceleration); the accepted neurons' S
-        # columns and the analytical solve ALWAYS use the full X/Y.
-        use_sub = score_subsample is not None and int(score_subsample) < N
+        # columns and the growth solve always use the full set of TRAINING rows.
+        use_sub = score_subsample is not None and int(score_subsample) < n_tr
         sel = (
-            torch.randperm(N, generator=self.g, device=self.device)[: int(score_subsample)]
+            torch.randperm(n_tr, generator=self.g, device=self.device)[: int(score_subsample)]
             if use_sub
             else None
         )
-        Xsel = X[sel] if use_sub else X
+        Xsel = X[sel] if use_sub else X[:n_tr]
 
         W = torch.empty(0, d, device=self.device)
         b = torch.empty(0, device=self.device)
-        S = torch.empty(N, 0, device=self.device)  # full hidden activity matrix S_L
-        beta = torch.empty(0, self.m, device=self.device)
-        E = Y.clone()  # residual E_L = Y - S beta (L=0)
+        S = torch.empty(
+            N, 0, device=self.device
+        )  # hidden activity over ALL rows: the withheld ones
+        beta = torch.empty(0, self.m, device=self.device)  # still need columns to be scored against
+        E = Y[:n_tr].clone()  # residual E_L = Y - S beta (L=0), over the FITTED rows only
 
         # CAPACITY BOUND, EARNED RATHER THAN PRESET (v4.80), and the tuning story matters because a
         # synthetic benchmark gave the WRONG answer first.
         #
         # On a 6-class synthetic prototype task, growing to the hard bound looked harmful -- cap=200
         # beat unbounded at every noise level (0.865/0.608/0.417 vs 0.850/0.560/0.382) -- which
-        # argued for stopping early, and patience=3 was chosen on that basis.
+        # argued for stopping early, and patience=3 was chosen on that basis. Real data reversed it,
+        # the synthetic clusters having too low an intrinsic dimensionality to saturate like real
+        # perception does, and patience went to 16.
         #
-        # Real streamed data (HF ylecun/mnist, 8x8, held-out on unseen rows) reversed it:
+        # BOTH of those numbers were tuned against a measurement that was not measuring anything.
+        # The score came from rows the growth solve had already fit, so it fell monotonically and the
+        # stop never fired at ANY scale -- pre-fix, growth ran to the hard bound every time (2000 of
+        # 2000 rows, 3000 of 3000, 9984 of 10000). The table that used to sit here reported those cap
+        # hits as earned capacity.
         #
-        #   rows    patience=3        patience=16          fixed cap 200
-        #   2,000   L=75   0.828      L=1997  0.929        L=200  0.878
-        #   10,000  L=262  0.919      L=2334  0.956        L=200  0.908
+        # Re-measured with the split made real, scoring ylecun/mnist's own `test` split (8x8, 2,000
+        # unseen rows, majority-class floor 0.117, delta=8):
         #
-        # More capacity kept paying far past where the synthetic task said it would stop, so
-        # patience=3 was leaving accuracy on the table on exactly the data the brain is meant to
-        # learn from. The synthetic task has low intrinsic dimensionality -- tight prototype clusters
-        # saturate quickly -- and generalising from it to real perception was the error. Default is
-        # now 16, chosen on the real-data curve.
+        #   rows     grow to cap        patience=16       patience=48        fixed cap 200
+        #   2,000    L=2000  0.901      L=392  0.868      L=640  0.883       L=200  0.826
+        #   10,000   L=9984  0.951      L=1520 0.937      L=2096 0.939       L=200  0.871
         #
-        # The fixed 200 loses to earned capacity at BOTH scales, which is the durable finding: it is
-        # an artificial ceiling that fires even on easy problems (measured: it bound at exactly
-        # 200/200 on every synthetic task tried) and it truncates real learning.
+        # Read it honestly: the leak was NOT free accuracy that vanished. Growing to the cap really
+        # is the most accurate setting here -- extra units kept paying right up to one-per-row, so
+        # they were not merely memorising. What the corrected stop buys is a 3-5x smaller model for
+        # 1-2 points, plus the thing the old code could not do at all: on RANDOM labels it now stops
+        # at 16 units where it used to spend all 600, while still taking 256 on learnable data of
+        # the same shape. That 16x gap between signal and noise is the whole point of the criterion,
+        # and pre-fix it was 1.0x -- both ran to the bound. `tools/capacity_curve.py control` is
+        # that check, kept as a regression test with the bug's signature written into its assert.
+        #
+        # patience=48 rather than 16 because 48 and 128 land on the IDENTICAL result at both scales
+        # -- past 48 the contribution criterion saturates on its own and patience is no longer the
+        # binding constraint. That makes 48 the point the data picks, not a number chosen to taste.
+        #
+        # The fixed 200 loses to earned capacity at BOTH scales, which is the durable finding and the
+        # one thing that survived every correction: it is an artificial ceiling that fires even on
+        # easy problems (measured: it bound at exactly 200/200 on every synthetic task tried) and it
+        # truncates real learning.
         #
         # So the ceiling is neither preset nor absent: capacity grows while it still EARNS itself on
         # data the fit has not seen, and stops when it stops paying. `l_max=None` means "no preset
-        # limit"; the hard bound stays at N because past one unit per row the readout is
-        # underdetermined regardless.
-        l_max = self.l_max if self.l_max is not None else N
-        n_val = 0 if self.l_max is not None else max(8, int(0.2 * N))
-        val_idx = torch.arange(N - n_val, N, device=self.device) if n_val else None
-        best_L, best_err, stale = 0, float("inf"), 0
+        # limit"; the hard bound is the number of rows the growth solve actually fits, because past
+        # one unit per fitted row the readout is underdetermined regardless.
+        l_max = self.l_max if self.l_max is not None else n_tr
+        best_L, best_val, stale = 0, float("inf"), 0
         while W.shape[0] < l_max:
             if E.pow(2).mean().sqrt().item() < self.eps_tol:  # train RMSE target reached (Alg. 3)
                 break
@@ -253,18 +282,25 @@ class NGSNN:
             W = torch.cat([W, newW], 0)
             b = torch.cat([b, newb], 0)
             S = torch.cat([S, Snew], 1)  # append accepted columns
-            beta = self._solve_beta(S, Y)  # ONE analytical solve per block (Eq.12)
-            E = Y - S @ beta  # update residual
+            beta = self._solve_beta(S[:n_tr], Y[:n_tr])  # ONE analytical solve per block (Eq.12)
+            E = Y[:n_tr] - S[:n_tr] @ beta  # update residual, over the fitted rows only
 
             # EARN-YOUR-PLACE STOP. Only when no preset l_max was given. Score the block on rows the
             # SOLVE did not fit to: train residual falls monotonically as units are added (that is
             # what greedy pursuit does), so it can never say "stop" -- which is exactly why the old
             # eps_tol never fired and the fixed cap ended up deciding capacity. Held-out error can
             # rise, and when it does the last units were memorisation.
-            if n_val:
-                ve = E[val_idx].pow(2).mean().sqrt().item()
-                if ve < best_err - 1e-4:
-                    best_err, best_L, stale = ve, W.shape[0], 0
+            if n_val:  # beta above never saw these rows, so this can genuinely rise
+                # RMSE, and NOT the argmax accuracy the classifier is actually scored on -- which is
+                # counter-intuitive enough to be worth the lines. Scoring argmax directly was tried
+                # and measured WORSE: L=272/0.859 at 2k and L=688/0.918 at 10k, against 392/0.868
+                # and 1520/0.937 for RMSE. Held-out accuracy over a few hundred rows is a coarse
+                # step function that sits on flat plateaus long enough to exhaust `patience`, while
+                # the residual keeps registering the small continued gains underneath them. The
+                # smooth proxy is the better STOPPING signal precisely because it is smooth.
+                ve = (Y[val_idx] - S[val_idx] @ beta).pow(2).mean().sqrt().item()
+                if ve < best_val - 1e-4:
+                    best_val, best_L, stale = ve, W.shape[0], 0
                 else:
                     stale += 1
                     if stale >= self.patience:  # no held-out gain for this long -> stop
@@ -272,8 +308,11 @@ class NGSNN:
 
         # roll back to the width that was actually best on held-out data, so the units that only
         # memorised do not ship. Growth is unbounded in principle and self-limiting on evidence.
-        if n_val and 0 < best_L < W.shape[0]:
-            W, b, S = W[:best_L], b[:best_L], S[:, :best_L]
+        # Then fit the SHIPPED readout on every row: the withheld rows chose the width, and once it
+        # is chosen there is no reason to discard their signal.
+        if n_val:
+            if 0 < best_L < W.shape[0]:
+                W, b, S = W[:best_L], b[:best_L], S[:, :best_L]
             beta = self._solve_beta(S, Y)
 
         self.W, self.b, self.beta = W, b, beta

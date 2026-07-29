@@ -2,7 +2,7 @@
 
 WHY THIS EXISTS. The brain's growth is data-limited: NG-SNN grows a unit only while it still reduces
 held-out error, so how wide it gets is set by how much real structure it is fed. Measured on streamed
-MNIST it earns 2,000-2,600 units where synthetic prototypes earned 30-100. This is the supply line for
+MNIST it earns 2,096 units at 10k rows and 4,512 at 24k. This is the supply line for
 that, and it is a DATA-PREP tool: like `substrate/web_ingest.py` it sits outside the control path, is
 never imported by the arm loop or any safety-envelope module, and hands back arrays that a trainer
 consumes. It NEVER constructs a Brain (Policy 4).

@@ -63,59 +63,76 @@ How wide the brain grows is set by how much real structure it is given, not by a
 grows a hidden unit only while it still reduces error on rows the solve did not fit to; there is no
 preset ceiling (`l_max=None` derives the hard bound as L <= N).
 
-Streamed from Hugging Face (`ylecun/mnist`, 8x8 features, held-out on unseen rows, `patience=16`):
+Streamed by `substrate/hf_stream.py` (`ylecun/mnist`, 8x8 features, `delta=8`), scored on the
+dataset's own `test` split -- 2,000 rows the fit never sees, majority-class floor 0.117:
 
-| train rows | earned capacity | held-out accuracy |
-|---:|---:|---:|
-| 1,000 | 53 | 0.794 |
-| 2,000 | 1,997 | 0.929 |
-| 2,500 | 126 | 0.879 |
-| 5,000 | 160 | 0.901 |
-| 10,000 | 2,334 | 0.956 |
+| train rows | grow to the bound | `patience=16` | `patience=48` (default) | fixed cap 200 |
+|---:|---:|---:|---:|---:|
+| 2,000 | L=2,000 · 0.901 | L=392 · 0.868 | **L=640 · 0.883** | L=200 · 0.826 |
+| 10,000 | L=9,984 · 0.951 | L=1,520 · 0.937 | **L=2,096 · 0.939** | L=200 · 0.871 |
 
-(The 2,500/5,000 rows were measured at `patience=3`, the old default, and are kept to show what the
-impatient setting cost -- 126 units and 0.879 where 2,000 rows at `patience=16` reached 1,997 and
-0.929.)
+**An earlier version of this table was wrong, and how it was wrong is the useful part.** It reported
+capacity "held-out on unseen rows" while the score came from rows the growth solve had already fit --
+the validation slice was inside the ridge solve. In-sample residual falls monotonically under greedy
+pursuit, so the stop could never fire: pre-fix, growth ran to the hard bound at *every* scale (2,000
+of 2,000 rows; 3,000 of 3,000; 9,984 of 10,000) and those cap hits were being reported as earned
+capacity. The per-row curve that used to sit here is withdrawn rather than patched, because every row
+of it was scored the same broken way.
 
-**Two findings worth more than the table.**
+**Three findings worth more than the table.**
 
-A **fixed cap of 200** -- the previous default -- loses to earned capacity at every scale tried
-(0.878 vs 0.929 at 2k rows; 0.908 vs 0.956 at 10k). It is an artificial ceiling that truncates real
-learning, and it bound at exactly 200/200 on every synthetic task tried, including trivially easy
-ones.
+A **fixed cap of 200** loses to earned capacity at every scale tried, and this is the one claim that
+survived every correction (0.826 vs 0.883 at 2k rows; 0.871 vs 0.939 at 10k). It is an artificial
+ceiling that truncates real learning, and it bound at exactly 200/200 on every synthetic task tried,
+including trivially easy ones.
 
-**A synthetic benchmark gave the wrong tuning.** On a 6-class prototype task, growing past a few
-hundred units looked actively harmful, which argued for `patience=3`. Real data reversed it: capacity
-kept paying an order of magnitude further. The synthetic task's tight clusters saturate quickly, and
-generalising from them to real perception was the error. Tune capacity policy on the data the system
-will actually see.
+**Honest early stopping costs accuracy here, and that is worth stating plainly.** Growing to the
+bound really is the most accurate setting on this data -- the extra units were not merely memorising,
+they kept paying right up to one-per-row. What the corrected stop buys is a 3-5x smaller model for
+1-2 points, plus the capability the old code lacked entirely: on labels with no signal in them it
+stops at 16 units instead of spending all 600, while still taking 256 on learnable data of identical
+shape. That 16x signal-to-noise gap was 1.0x before the fix.
+
+Every number in this section is reproducible with `tools/capacity_curve.py`
+(`control` | `grid` | `saturation`) -- tracked precisely because the previous version of this table
+could not be re-derived by anyone who doubted it.
+
+**Two constants were tuned against that broken measurement**, so both were re-derived. `patience=48`
+because 48 and 128 give identical results at both scales -- past 48 the contribution criterion
+saturates on its own and patience stops being the binding constraint, which makes 48 the point the
+data picks. And the stop scores held-out **RMSE**, not the argmax accuracy the classifier is graded
+on: scoring argmax directly was tried and measured worse (L=272 · 0.859 and L=688 · 0.918), because
+accuracy over a few hundred rows is a coarse step function that sits on plateaus long enough to
+exhaust patience while the residual still registers the gains underneath. The smooth proxy is the
+better stopping signal precisely because it is smooth.
 
 **Why this matters for the GPU, and where it stops.** The measured CUDA-graph crossover is N ~ 4,096
 (see [POLICIES.md](POLICIES.md) P5): below it numpy wins, above it the RTX 5070 wins by 3-6x. Live
 populations are 24-240 wide, which is why the live tick does not belong on the GPU. Grown capacity
-gets far closer -- but it **saturates before the crossover on this task**, measured on the card:
+**reaches the crossover**, measured on the card (`tools/capacity_curve.py saturation`):
 
-| rows | grown L | held-out | fit time (RTX 5070) |
+| rows | grown L | test acc | fit time (RTX 5070) |
 |---:|---:|---:|---:|
-| 10,000 | 2,254 | 0.955 | 64 s |
-| 16,000 | 2,576 | 0.957 | 269 s |
-| 24,000 | **2,071** | **0.960** | 554 s |
+| 10,000 | 2,096 | 0.939 | 6 s |
+| 16,000 | 2,808 | 0.948 | 94 s |
+| 24,000 | **4,512** | **0.955** | 494 s |
 
-Capacity peaks around 16k rows and then FALLS while accuracy still rises: 24k rows produced 20% FEWER
-units and the best held-out score of the three. That is the earn-your-place rule behaving correctly --
-a larger held-out slice locates the optimum sooner, so the pool stops earlier and generalises better.
-Fewer neurons, better brain.
+Capacity and accuracy both rise monotonically, and at 24k rows the pool is 4,512 wide -- past the
+N ~ 4,096 elementwise crossover. None of the three is a bound hit (`l_max` was 8,000 / 12,800 /
+19,200 respectively), so each is a width the data actually earned.
 
-An earlier extrapolation from the steep 1k-10k segment suggested a few hundred thousand rows would
-reach 4,096. These three points refute it: the curve is not merely flattening, it is non-monotonic and
-saturated. MNIST at 8x8 runs out of exploitable structure around 2,000-2,600 units, and past that the
-extra rows are repeats of what the pool already represents.
+**This reverses what this section used to say**, and the reversal is instructive. The previous table
+reported capacity peaking near 16k and then FALLING to 2,071 at 24k, and concluded that MNIST at 8x8
+"runs out of exploitable structure around 2,000-2,600 units" and that reaching GPU-relevant width
+would need a harder problem -- more classes, higher-dimensional input, real temporal structure. That
+non-monotonic peak was an artifact of the leaked stopping criterion described above, not a property
+of the data. With the split made real the curve is monotone and clears the crossover on the same
+easy task. The lesson is narrower and more useful than the one it replaces: an apparent saturation
+is a claim about the STOPPING RULE at least as much as about the data.
 
-So the honest statement is: **capacity is data-limited, but only up to the richness of the task.**
-Reaching GPU-relevant width needs a HARDER problem -- more classes, higher-dimensional input, real
-temporal structure -- not simply more rows of an easy one. Note also that fit cost grows superlinearly
-(4x for 1.6x data, the O(L^2 N) ridge solve), so the card is already earning its place on the growth
-tier even below the elementwise crossover.
+Fit cost grows superlinearly (5x for 1.5x data, the O(L^2 N) ridge solve), so the card earns its
+place on the growth tier at every scale here -- and now for the direct reason too, not only the
+indirect one.
 
 ## Disk-streaming & growth (the lake scales out-of-core)
 
