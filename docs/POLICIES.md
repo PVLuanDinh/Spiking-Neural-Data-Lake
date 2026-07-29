@@ -43,7 +43,7 @@ say which are open:
 
 | avenue | status |
 |---|---|
-| **self-building code** | `reasoning/self_mod_harness.py` (648), `brain_native_selfbuild.py` (1088), `godel_machine.py`, `self_build_loop.py`, `self_improve.py`. Fires every 8 nights, **only** under `NORD_SELFMOD=1` (enabled in `learn_daemon.bat:14`) |
+| **self-building code** | **What fires:** `brain_native_selfbuild.py` (1088) at `cortex/brain.py:1708` and `self_build_loop.py` at `:2520`, every 8 nights, **only** under `NORD_SELFMOD=1` (enabled in `learn_daemon.bat:14`); `self_mod_harness.py` (648) is reached through `Brain.self_improve` at `:3485`. **What does NOT fire, corrected 2026-07-29:** `godel_machine.py` — its `attempt_on_repo` (`:159`) has **zero call sites** tree-wide, and the only reference to the module anywhere outside itself is its *filename as a string* in the self-build's protected-paths list (`brain_native_selfbuild.py:73`). This row previously listed it among the modules that fire every 8 nights. Wiring it is open P0 work; until then it is an unwired real-repo adapter, and saying otherwise was the census-counted-as-capability failure P0's own honesty guard names |
 | **knowledge acquisition** | live — chat ingest → the one durable lake (`substrate/chat_memory.py`), `substrate/web_ingest.py`, reasoning-curriculum growth during sleep |
 | **neural growth** | live — neurogenesis grows **only during sleep** (asserted: `cortex/brain.py:3780`), plus `hippocampus/{growing_learner,function_preserving_growth}.py`, `substrate/similarity_sized_growth.py`, `cortex/neurogenesis_engine.py` |
 | **cortical column construction** | **NOT live.** `cortex/cortical_microcircuit.py` is a faithful 8-population Potjans-Diesmann circuit that is EXEMPT-permanent in `substrate/dormancy_gate.py:83` — *it has no input port*. This is the clearest open avenue named in this policy, and closing it is P0 work |
@@ -185,8 +185,13 @@ allowlist** — a new build that no live path imports and that is not exempted F
 **Also mechanized: the CROSS-TIER edge, `substrate/import_manifest.py`.** `BRAIN_MODULES` is built from
 REGIONS + TORCH_TIER, so `reasoning/` (172 modules) and `training/` are outside the gate entirely — and
 they are also ruff-excluded and omitted from the coverage denominator. The governed tiers nonetheless
-reach into them through **lazy imports inside bare `except Exception:` swallows** (67 such swallows in
-`cortex/brain.py` alone). Delete or break one of those targets and every gate stays green while the
+reach into them through **lazy imports inside bare `except Exception:` swallows**. **Re-counted
+2026-07-29, with the definition stated, because the old figure was unreproducible and so was its
+correction:** `cortex/brain.py` has **111** bare `except Exception:` handlers (no `as name`), **39** of
+which wrap a `try` body containing an import; across the 245 governed-tier files it is **142** bare and
+**49** import-wrapping. This text said "67 such swallows in `cortex/brain.py` alone" and the audit that
+flagged it said "112 / 203" — neither states what it counted, which is why neither reproduces. The
+counter is `ast`-based and stated here so the next reader can re-derive it rather than inherit it. Delete or break one of those targets and every gate stays green while the
 brain sets the faculty to `None` and ticks on without it — including `self_build_loop` and
 `self_mod_harness`, which *are* P0's self-building-code avenue, and `rose_language`, which is language.
 The canary derives the manifest by AST walk (never hand-maintained — the `_external_roots()` lesson) and
@@ -196,7 +201,7 @@ import-ability is precisely what a deletion breaks and what the swallows hide.
 
 **Honesty guard (the crux):** reachability proves a module is *imported*, NOT that its output changes
 behaviour. "Utilized **appropriately**" (does the wire actually *charge*) is a second, per-faculty tier,
-proven by the runtime **neuter-A/B probe** (`scratchpad/smoke_drive_charge.py` → "BEHAVIOURAL CHARGE OK"
+proven by the runtime **neuter-A/B probe** (`tools/charge_probe.py` → "BEHAVIOURAL CHARGE OK"
 vs "CONSUMED-BUT-NOT-DECISIVE") during a wiring wave — too expensive for CI. So "never dormant" must NOT
 become "force-wire everything": a wire that does not charge is **reverted and retired/exempted**, never
 faked with a dead consumer. (History: a coverage-audit once flagged PFC / amygdala / cortical-column /
