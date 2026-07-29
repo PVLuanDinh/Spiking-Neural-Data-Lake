@@ -55,7 +55,8 @@ Fair control (un-riggable):
   - decision is spiking: over many trials the committed option is the one whose LIF pool wins the WTA
     competition (the highest-evidence option), and a wider evidence gap commits FASTER (shorter rt).
   - determinism: two executives with the same seed reproduce identical goals, biases and reaction
-    times; a different seed differs.
+    times. Across seeds only the REACTION TIME moves -- measured over seeds 0..199 the goals, WTA
+    winner and bias are identical on every seed, so the choices are evidence-driven, not RNG-driven.
 
 Honest framing: a reduced, genuinely-spiking model of the prefrontal central executive -- persistent-
 activity working memory (a bistable LIF attractor that keeps firing through a delay), spiking WTA
@@ -567,7 +568,7 @@ def main():
     assert bias_0 != bias_3, "the top-down bias must switch when the goal switches"
     assert biaser.top_down_bias(strength=2.0)[3] == 2.0, "bias strength must scale the held option"
 
-    # (5) determinism: same seed -> identical goals, biases, rts; a different seed differs.
+    # (5) determinism: same seed -> identical goals, biases, rts. Across seeds only the rt moves.
     def scenario(seed):
         p = PrefrontalExecutive(n_options=3, seed=seed)
         out = [p.update([2.0, 0.2, 0.2]), p.maintain()]
@@ -578,9 +579,26 @@ def main():
 
     same_a = scenario(5)
     same_b = scenario(5)
-    diff_c = scenario(6)
     assert same_a == same_b, "same seed must reproduce identical goals, biases and rts"
-    assert same_a != diff_c, "a different seed must differ"
+
+    # `assert same_a != diff_c` ("a different seed must differ", scenario(5) vs scenario(6)) used to
+    # stand here. Swept over seeds it holds 2/7. Measured over seeds 0..199 this scenario produces
+    # exactly ONE decision tuple -- goal 0, maintained 0, winner 1, bias (1.0, 0.0, 0.0), goal 2 -- on
+    # every single seed; the only seed-varying quantity is the deliberation RT, which takes just
+    # {11, 12, 13, 15} and is CONSTANT across runs of 16+ consecutive seeds. Seeds 5 and 6 happened to
+    # land on RT 12 vs 13, so the clause was reporting one lucky adjacent pair as evidence that the
+    # seed is wired in. There is no window size that makes "a different seed differs" true here.
+    # The real invariant is the opposite one, it is stronger, and it is what is asserted now: the
+    # executive's CHOICES are evidence-driven, not RNG-driven -- only its reaction time is stochastic.
+    def _choice_part(o):
+        return (o[0], o[1], o[2][0], o[3], o[4])  # everything except the deliberation RT
+
+    choices = {_choice_part(scenario(s)) for s in range(8)}
+    rts = {scenario(s)[2][1] for s in range(200)}
+    assert len(choices) == 1, (
+        f"goals/winner/bias must be evidence-driven, identical on every seed (got {len(choices)})"
+    )
+    assert len(rts) > 1, f"the deliberation RT must be the stochastic part (got {rts})"
 
     # (6) model-based lookahead changes behaviour: reactive takes the immediate trap, planning avoids it.
     assert _argmax(immediate_vals) == 1, (
