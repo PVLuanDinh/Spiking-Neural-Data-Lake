@@ -54,6 +54,7 @@ nengo = ["nengo"]                                                       # substr
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
 genn = ["pygenn", "ml_genn"]                                             # research/*_genn + training/mnist_genn GPU trainer (needs a C++ compiler + CUDA)
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe (build-time only)
+hf = ["datasets", "huggingface-hub", "pillow"]                            # substrate/hf_stream.py: streamed licensed datasets -> features
 desktop = ["pywebview"]                                                 # integrations/desktop/cockpit_desktop.py: the cockpit in a native GPU-composited window
 # [viz] RETIRED with the matplotlib/netplotbrain frontends (brain_activity_3d, brain_netplot,
 # spiking_chat). The one frontend is substrate/cockpit.py, which draws the anatomical brain, the

@@ -170,6 +170,12 @@ EXEMPT = {
         "permanent",
         "the Policy-4 guard itself -- a CI self-check, not a tick faculty",
     ),
+    "hf_stream": (
+        "permanent",
+        "TOOL: offline data-prep CLI -- streams a licensed HF dataset into feature rows for a "
+        "trainer. Same disposition as sensor_csv_ingest: it feeds the [train] tier, not the tick, "
+        "and the brain must never make a blocking network call mid-control",
+    ),
     "method_dormancy_gate": (
         "permanent",
         "the Policy-3 per-METHOD amendment's gate -- a CI self-check, not a tick faculty",

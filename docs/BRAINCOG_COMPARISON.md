@@ -176,7 +176,7 @@ These are real advantages, not consolation prizes:
   speaks freshly from real signals, and GNW ignition. BrainCog is a *toolkit* you
   assemble per experiment; it has no single integrated circadian creature.
 - **Zero-dependency determinism.** Pure stdlib, `zlib.crc32`-hashed reproducible
-  demos, a `run_selfchecks.py` runner (275 modules). BrainCog needs a full torch
+  demos, a `run_selfchecks.py` runner (277 modules). BrainCog needs a full torch
   stack and its results are stochastic GPU training runs. Ours is auditable and
   bit-reproducible.
 - **A hard safety envelope.** Reflex E-STOP (NaN fails closed), a gated
