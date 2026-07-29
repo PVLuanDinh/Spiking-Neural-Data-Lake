@@ -16,13 +16,13 @@ GENUINELY fails):
     j's own s_bar + EMA stats + frozen (stop-grad) lagged "echo". CONTROL: with the top frozen the bottom
     STILL learns from its own local loss; a weight-transport surrogate (bottom gated on the top's update)
     does NOT.
-  * PREDICTS ACTION-CONDITIONED LATENT DYNAMICS (claim 4). The bounded action-conditioned latent map
-    predict(state, command) -- a spectrally-contractive LINEAR residual (row-abs-sum < rho_max, clamp
-    +/- z_clip; copied from jepa_world_model, duck-typed for PrefrontalExecutive.plan()) -- is trained by the
-    JEPA invariance loss and genuinely beats an IDENTITY predictor on a held-out stream; a TIME-SHUFFLED
-    predictor loses that advantage. This is the learned payoff. The world drifts each shape by _DRIFT pixels
-    per action so actions carry real signal; the margin is modest (~20% at the self-check seed) and is a
-    TOY-SCALE demonstration of learned latent dynamics, not a benchmark.
+  * TRACKS ACTION-CONDITIONED LATENT DYNAMICS AT THE IDENTITY MAP'S ERROR SCALE (claim 4, weakened
+    honestly). The bounded action-conditioned latent map predict(state, command) -- a spectrally-
+    contractive LINEAR residual (row-abs-sum < rho_max, clamp +/- z_clip; copied from jepa_world_model,
+    duck-typed for PrefrontalExecutive.plan()) -- is trained by the JEPA invariance loss. ASSERTED: its
+    held-out MSE stays at the identity predictor's error scale, and TIME-SHUFFLED targets never train a
+    materially better predictor than the true order. "Beats the identity predictor" is NOT asserted --
+    it is a seed-level coin flip (see the honest negatives below and the note at the self-check assert).
 
 What this module does NOT claim (HONEST NEGATIVES -- MEASURED and REPORTED by the self-check, NOT asserted,
 because at this toy scale they cannot be demonstrated against a control that genuinely fails):
@@ -38,6 +38,11 @@ because at this toy scale they cannot be demonstrated against a control that gen
     objective is already near-satisfied by the backbone's naturally-slow features, so a genuinely-collapsing
     ablation cannot be built here. The self-check reports full vs anti-collapse-ablation latent std/rank as
     TELEMETRY only.
+  * NO "predictor beats identity / time-shuffle kills the advantage" claim (the old claim-4 ORDERINGS are
+    DROPPED to reported telemetry). Measured over 20 seed shifts: pred < ident on only 11/20 and
+    shuf >= ident on 15/20, margins in the 4th significant figure and stable under a 2000-transition hold
+    stream -- the drifting-shape latent is so slow that the identity map is already near-optimal. The ~20%
+    win at the pinned seed is seed luck, the same architecture-dominates-learning story as claims 3 and 5.
 
 Rule choice, honestly. The shipped default is the NON-CONTRASTIVE LPL slowness form (rule="lpl"). A
 CONTRASTIVE ESPP variant (rule="espp") is kept selectable, but at this toy scale (only 3 shape identities,
@@ -927,7 +932,7 @@ def main():
     retina = 20
     c = len(_SHAPES)
     steps = 600
-    epochs = 2  # 2 passes: enough for a STABLE predict-beats-identity margin
+    epochs = 2  # 2 passes (predict-vs-identity margin is seed-dependent either way; see claim 4)
     train = _gen_stream(steps, 1, retina)
     hold = _gen_stream(220, 2, retina)
 
@@ -1003,7 +1008,7 @@ def main():
     full_std, full_rank = _fill_buf(full, hold)
     ctrl_std, ctrl_rank = _fill_buf(ctrl3, hold)
 
-    # ============================ CLAIM 4: PREDICTS FUTURE LATENT > IDENTITY, killed by TIME-SHUFFLE ============================
+    # ========= CLAIM 4 (weakened honestly): PREDICTOR TRACKS FUTURE LATENT AT IDENTITY SCALE; beats-identity is seed-dependent =========
     def _mse(model_pred, predfn):
         tot = 0.0
         for x, a, y, _i, _p in hold:
@@ -1015,7 +1020,7 @@ def main():
     mse_pred = _mse(full, lambda mdl, x, a: mdl.predict(mdl.encode(x), a))
     mse_ident = _mse(full, lambda mdl, x, a: mdl.encode(x))
 
-    # CONTROL: retrain a predictor (on full's frozen encoder) with TIME-SHUFFLED next frames -> no advantage
+    # CONTROL: retrain a predictor (on full's frozen encoder) with TIME-SHUFFLED next frames
     shuf = SpikingJEPA(_ACTIONS, retina=retina, seed=0)
     shuf.Wff = [[row[:] for row in full.Wff[l]] for l in range(2)]
     shuf.Wrec = [[row[:] for row in full.Wrec[l]] for l in range(2)]
@@ -1160,7 +1165,7 @@ def main():
     )
     print(f"backbone   : firing rates layer0={rate0:.3f} layer1={rate1:.3f} (alive + bounded)")
     print(line)
-    print("ASSERTED CLAIMS (each vs a control that genuinely fails):")
+    print("ASSERTED CLAIMS (1, 2 vs a genuinely-failing control; 4 weakened to hold every seed):")
     print(
         f"(1) spiking      : inter-layer signals all in {{0,1}}={spiking_ok}; latent=f(int counts)="
         f"{latent_from_counts}  | CONTROL graded non-binary={graded_nonbinary}"
@@ -1170,8 +1175,9 @@ def main():
         f"transport bottom-delta={d_ctrl:.4e} (~0)"
     )
     print(
-        f"(4) predict      : pred MSE={mse_pred:.5f} < identity MSE={mse_ident:.5f}  | CONTROL "
-        f"time-shuffled MSE={mse_shuf:.5f} (>= identity)"
+        f"(4) predict      : pred MSE={mse_pred:.5f} ~ identity MSE={mse_ident:.5f} (same scale, "
+        f"asserted) | time-shuffled MSE={mse_shuf:.5f} (never materially better than pred, asserted; "
+        f"orderings vs identity are seed-flips, REPORTED only)"
     )
     print("HONEST DIAGNOSTICS (dropped claims -- MEASURED, NOT asserted; see docstring):")
     print(
@@ -1192,9 +1198,10 @@ def main():
     )
     print(line)
 
-    # ==================== ASSERTS (only genuine claims -- each with a control that GENUINELY fails) ====================
+    # ==================== ASSERTS (only what genuinely holds; anything seed-contingent is REPORTED) ====================
     # Claims 3 (no-collapse) and 5 (useful-latent-beats-random) are DROPPED and only REPORTED above: at this
     # toy scale neither can be shown against a control that genuinely fails, so asserting them would be a rig.
+    # Claim 4's ORDERINGS (pred beats identity, shuffle loses it) joined them -- see the honest note below.
     assert spiking_ok, "every inter-layer signal must be a 0/1 spike"
     assert latent_from_counts, "the latent must be a function of INTEGER spike counts"
     assert graded_nonbinary, (
@@ -1211,11 +1218,25 @@ def main():
         "local bottom-learning must dwarf the transport control"
     )
 
-    assert mse_pred < mse_ident, (
-        f"the action-conditioned predictor must beat the identity predictor in latent space ({mse_pred:.5f} < {mse_ident:.5f})"
+    # HONEST NOTE (the claim-4 ORDERINGS are refuted across seeds -- measured, not assumed). The old
+    # `mse_pred < mse_ident` held on 4/7 shifted seeds and `mse_shuf >= mse_ident` on 6/7; re-measured
+    # over 20 seed shifts, pred beats identity on only 11/20 (identity-minus-pred from -0.00082 to
+    # +0.00172, i.e. the 4th significant figure either way) and shuffle loses to identity on 15/20.
+    # Growing the hold stream 220 -> 2000 transitions flips NO losing seed to a win (the losses are
+    # properties of the trained backbone, not evaluation noise), and the mean gap over any 8
+    # consecutive shifts changes sign with the window -- the drifting-shape latent is so slow that
+    # the identity map is already near-optimal, leaving no stable margin for the predictor to beat
+    # (the same architecture-dominates-learning story as dropped claims 3 and 5). What DID hold on
+    # every one of the 20 measured seeds is asserted instead, at zero added runtime: the trained
+    # predictor tracks the future latent at the identity map's error scale (mse_pred/mse_ident in
+    # 0.72..1.37, plus one degenerate near-zero-MSE seed), and shuffled-target training never
+    # produces a materially BETTER predictor than true-order training (mse_shuf/mse_pred >= 0.90
+    # on all 20 seeds, shuffle strictly worse on 17/20).
+    assert mse_pred < 1.5 * mse_ident + 1e-9, (
+        f"the predictor must track the future latent at the identity map's error scale ({mse_pred:.5f} vs {mse_ident:.5f})"
     )
-    assert mse_shuf >= mse_ident, (
-        f"a time-shuffled predictor must lose that advantage ({mse_shuf:.5f} >= {mse_ident:.5f})"
+    assert mse_shuf > 0.8 * mse_pred - 1e-9, (
+        f"time-shuffled targets must never train a materially better predictor than the true order ({mse_shuf:.5f} vs {mse_pred:.5f})"
     )
 
     assert roll_bounded, (
@@ -1228,8 +1249,8 @@ def main():
 
     print(
         f"self-check OK: genuinely spiking (rates {rate0:.2f}/{rate1:.2f}, latent=f(counts)); genuinely local "
-        f"(bottom learns {d_prim:.1e} vs transport {d_ctrl:.1e}); predicts action-conditioned latent dynamics "
-        f"({mse_pred:.5f}<{mse_ident:.5f}, time-shuffled {mse_shuf:.5f});"
+        f"(bottom learns {d_prim:.1e} vs transport {d_ctrl:.1e}); predictor tracks latent at identity scale "
+        f"({mse_pred:.5f} vs {mse_ident:.5f}, time-shuffled {mse_shuf:.5f}; orderings seed-dependent, reported);"
     )
     print(
         f"  40-step bounded; deterministic + exact save/load (crc+shape guarded); rule={full.rule!r}. "
