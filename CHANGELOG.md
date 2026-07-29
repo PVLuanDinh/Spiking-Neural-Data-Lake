@@ -9,6 +9,37 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [v4.80] -- the tick was 90,000 ms and the growth stop was grading its own homework (2026-07-29)
+
+Seven commits that had been held back from `origin` pending review, released together. Two of them are
+instrument fixes, which is the pattern this project keeps rediscovering: the measurement was wrong
+before the thing being measured was.
+
+- **Two unbounded O(n^2) growths were eating the live tick: 90,000 -> 891 ms.** Found by counting ticks
+  and `py-spy`-ing the live pid rather than by reading the code -- a GPU sitting at 2% is not evidence
+  of an idle GPU, it is evidence of a GIL-bound Python loop in front of it.
+- **The NG-SNN earn-your-place stop was scoring rows the solve had already fit**, so "capacity
+  saturates near 2,000-2,600" was a property of the criterion, not of the task. Corrected, grown
+  capacity is monotone in data and reaches **4,512 units at 24,000 rows** -- past the 4,096 CUDA-graph
+  crossover. `tools/capacity_curve.py control` is the regression test, and it is TRACKED: this repo has
+  twice cited an instrument that was gitignored.
+- **Capacity re-tuned on real data.** The synthetic benchmark had been wrong three times, always in the
+  same direction -- stop growing too early.
+- **`substrate/ingest_guard.py`** -- a content boundary for outside data: licence deny-by-default, and
+  prompt injection **FLAGGED rather than filtered**, because a filter that silently edits untrusted
+  input is a filter you stop being able to audit.
+- **`substrate/hf_stream.py`** -- streamed Hugging Face datasets to features, with the licence read from
+  the Hub *before* any fetch. New `[hf]` extra.
+- **`integrations/desktop/cockpit_desktop.py`** -- the one frontend in a native GPU-composited
+  WebView2 window, verified on the RTX 5070. No second frontend: it renders `substrate/cockpit.py`.
+- **P3:** the connectome router's return value is consumed, a structural constant is cached, and the
+  workspace persists across ticks.
+
+Gates, measured at `6aeafd8d` on `.venv-lake`: **277/277** self-checks, **474 passed** with coverage
+**90.79%** (gate 70), `ruff check` clean, 421 files `ruff format`-clean. Two module registrations
+landed since v4.79, which is why that entry's 275/275 is not a discrepancy. `README.md`'s 90.19% and
+v4.79's 90.95% are both stale against this run.
+
 ## [v4.79] -- work the audit backlog: nine of the ranked top-ten, three of them refuted as framed (2026-07-28)
 
 Works `docs/AUDIT_BACKLOG.md` in ranked order. Nine items closed. The useful result is that **three
