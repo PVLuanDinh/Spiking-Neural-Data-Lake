@@ -131,17 +131,37 @@ class ProximityIndex:
         self._n = n
         self.payloads = list(payloads) if payloads is not None else list(range(n))
         m = self.n_medoids or max(1, int(n**0.5))
-        # farthest-point sampling: seed at 0, then repeatedly add the pattern farthest from all medoids
+        # FARTHEST-POINT SAMPLING, carrying a RUNNING MINIMUM. The direct form recomputes
+        # `min(d(i, mi) for mi in medoids)` from scratch for every candidate on every pass, which is
+        # |medoids| distance calls per candidate and O(n^2) over the build: 13.5M Victor-Purpura DPs
+        # at the live corpus size n=5,198, measured at ~9.4 MINUTES per rebuild -- and `_ensure_index`
+        # runs this on the tick thread whenever anything was consolidated, so the brain spent nearly
+        # all of its time here (wake_ticks frozen for minutes at a stretch).
+        #
+        # Carrying `mind[i]` = the distance from i to its NEAREST already-chosen medoid turns each new
+        # medoid into one O(n) update, so the build is O(m*n) = O(n^1.5): 374K calls at n=5,198.
+        # The medoid SEQUENCE is unchanged, not merely similar -- the minimum over a set equals the
+        # running minimum of that same set, and the scan keeps the same ascending order and the same
+        # strict `>`, so ties resolve to the same index. Verified equal on random corpora.
+        #
+        # `chosen` is a set because `if i in medoids` on a list is itself an O(m) scan per candidate,
+        # quietly contributing a second O(n^2) term.
         medoids = [0]
+        chosen = {0}
+        mind = [self._d(patterns[i], patterns[0]) for i in range(n)]
         while len(medoids) < min(m, n):
             best, best_d = None, -1.0
             for i in range(n):
-                if i in medoids:
+                if i in chosen:
                     continue
-                d = min(self._d(patterns[i], patterns[mi]) for mi in medoids)
-                if d > best_d:
-                    best_d, best = d, i
+                if mind[i] > best_d:
+                    best_d, best = mind[i], i
             medoids.append(best)
+            chosen.add(best)
+            for i in range(n):  # fold the new medoid into the running minimum
+                d = self._d(patterns[i], patterns[best])
+                if d < mind[i]:
+                    mind[i] = d
         self.medoids = medoids
         self.clusters = {mi: [] for mi in medoids}
 

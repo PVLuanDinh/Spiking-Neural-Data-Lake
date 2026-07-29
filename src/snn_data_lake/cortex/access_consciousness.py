@@ -56,6 +56,7 @@ crc32-seeded (no module-level / time seeding). ASCII output.
 
 import random
 import zlib
+from collections import deque
 
 from snn_data_lake.cortex.vsa_reasoning import bundle, cleanup, hv, sim
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
@@ -77,7 +78,9 @@ class AccessConsciousness:
     _LABEL = "GLOBAL"  # hashable workspace handle for the (single) conscious-content slot
     _SRC = "coalition"  # workspace source name for the grown assembly coalition
 
-    def __init__(self, seed=0, ignition_threshold=0.55, n_taps=4, k_sat=5, noise=0.05):
+    def __init__(
+        self, seed=0, ignition_threshold=0.55, n_taps=4, k_sat=5, noise=0.05, max_members=None
+    ):
         self.seed = seed
         self.ignition_threshold = ignition_threshold
         self.n_taps = max(2, int(n_taps))  # >=2 independent downstream taps (global reach)
@@ -91,8 +94,25 @@ class AccessConsciousness:
             inbox = []
             self._ws.subscribe(inbox.append)
             self._taps.append(inbox)
-        # coalition grown across bind_assembly calls this cycle: list of (neuron_id, spike_code).
-        self._members = []
+        # Coalition grown across bind_assembly calls THIS CYCLE: (neuron_id, spike_code) pairs.
+        #
+        # "this cycle" is what the design intends and what nothing enforced: no cycle boundary ever
+        # cleared this, so on the always-on daemon it grew for the life of the process. `_coherence`
+        # is mean PAIRWISE similarity, so the tick cost is O(M^2 * D) with M unbounded -- measured on
+        # the live brain at ~2,250 members after 321 wake ticks, where ONE bind_assembly took ~90
+        # seconds and the whole brain advanced one tick per 90s.
+        #
+        # The members past the first handful bought nothing, which is what makes this a leak rather
+        # than a trade: `_completeness` saturates at k_sat (5), and coherence over a large coalition
+        # converges to the ~0.018 chance similarity of independent spike codes -- an order of
+        # magnitude under `ignition_threshold`. So the tail could never change an ignition decision;
+        # it only cost quadratic time and slowly diluted the coherence of the members that mattered.
+        #
+        # A bounded deque restores the intended per-cycle scope without needing a reset call site:
+        # the coalition is the RECENT content, oldest members evicted. The default leaves generous
+        # headroom over k_sat so completeness still saturates exactly as before.
+        self._max_members = max(2 * self.k_sat, int(max_members or 8 * self.k_sat))
+        self._members = deque(maxlen=self._max_members)
         self._n_assemblies = 0
         self._content_hv = None  # the bundled conscious-content spike code
         # last-step functional readout.
