@@ -341,12 +341,25 @@ def _selfcheck():
     derived = {(d[0], d[1], d[2]) for d in res["derived"]}
 
     # (2) CONTROL: random unrelated triples -> the ART support + DistMult firewall should keep ~nothing.
+    #     `rejected` counts DistMult-gate rejections only, and one 30-triple draw often yields no
+    #     candidate at all (no supported hub with an upper link), so on a single draw the count is a
+    #     coin flip: re-measured across 7 seed shifts, the old single-draw `rejected >= 1` held on
+    #     3/7 seeds (rejected was 0 on 4 of them, 0..4 overall). across 32 fresh draws per seed the
+    #     gate rejects on 5..14 of the 32 draws, 8..29 rejections in total -- so the visibility
+    #     claim is asserted below on the 32-draw TOTAL (same >= 1 bar, 32x the sample, ~1 s extra);
+    #     the kept firewalls stay on the pinned first draw, which is byte-identical to the old one.
     crng = random.Random(3)
     pool = [f"e{i}" for i in range(40)]
     rels = ["r0", "r1", "r2", "r3"]
     control = [[crng.choice(pool), crng.choice(rels), crng.choice(pool)] for _ in range(30)]
     sic = SchemaInducer(seed=0, vigilance=0.7)
     resc = sic.consolidate(control, budget=64)
+    rejected_total = resc["rejected"]
+    for _ in range(31):  # 31 more control draws from the same stream -> the aggregate count
+        extra = [[crng.choice(pool), crng.choice(rels), crng.choice(pool)] for _ in range(30)]
+        rejected_total += SchemaInducer(seed=0, vigilance=0.7).consolidate(extra, budget=64)[
+            "rejected"
+        ]
 
     # (3) determinism: two fresh seed=0 instances agree exactly.
     r_a = SchemaInducer(seed=0).consolidate(taxonomy)
@@ -367,7 +380,8 @@ def _selfcheck():
     )
     print(
         f"control   : {len(control)} random triples -> {resc['prototypes']} prototypes; "
-        f"kept={resc['kept']} rejected={resc['rejected']} (firewall)"
+        f"kept={resc['kept']} rejected={resc['rejected']} (firewall); "
+        f"32 draws -> {rejected_total} rejections total"
     )
     print(f"state     : {si.state()['_scale']}")
     print("=" * 78)
@@ -385,8 +399,8 @@ def _selfcheck():
     #     + DistMult filtered-rank gate rejected them, keeping far fewer schemas than the real taxonomy.
     assert resc["kept"] <= 1, "ART support + DistMult firewall must reject random-triple noise"
     assert resc["kept"] < res["kept"], "control must yield fewer schemas than the real taxonomy"
-    assert resc["rejected"] >= 1, (
-        "the DistMult gate must visibly reject noise candidates on the control"
+    assert rejected_total >= 1, (
+        "the DistMult gate must visibly reject noise candidates across the 32 control draws"
     )
     # (3) determinism
     assert r_a == r_b, "two seed=0 runs must be identical"
