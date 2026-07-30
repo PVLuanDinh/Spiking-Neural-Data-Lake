@@ -655,5 +655,17 @@ result; the rule stands on the eight incidents above either way.
   used this, and it says so in its own text. The gate-first rule still binds anyone proposing a
   *mechanization*: the two proposals that died at this bar died on their own output, and that outcome —
   "the gate we built kills the rule" — remains the point of building it first.
+- **A third proposal died at this bar, 2026-07-30: "a tracked file may not cite an untracked `.py`
+  instrument."** It had the best motivation of any proposal here — three real incidents, two of them in
+  one session: `POLICIES.md` citing a `scratchpad/smoke_drive_charge.py` that never existed, the same
+  dead citation in `dormancy_gate.py`, and `DEPTH_CEILINGS.md`'s AR appendix citing nine gitignored
+  `scratchpad/ar_lm_*.py` scripts as its evidence *hours after* the first two were corrected. It was
+  built anyway, per this rule, and counted: **474 violations across 126 files, 195 in `CHANGELOG.md`
+  alone**, from 1,431 citations. Allowlist-shaped, eight times worse than the 58-failure proposal above,
+  so it is **not adopted**. The count also explained itself: a changelog citing a since-retired file is
+  correct, because the entry describes a tree that existed. The instrument is kept as a report at
+  `tools/citation_guard.py`, and the surviving narrower hypothesis is recorded there — the real defect is
+  an untracked script presented as a *runnable reproduction path*, not a filename in prose. Building the
+  naive version first is what distinguished those two, and it cost one file instead of a policy.
 - **Gated + reversible:** one change per commit, full gate green (`run_selfchecks` + `pytest` + `ruff`),
   commit + tag locally; a regression is isolated to its own change.
