@@ -957,7 +957,19 @@ class Brain:
             dev = device
             if dev == "cuda" and not torch.cuda.is_available():
                 dev = "cpu"
-            return NeurogenesisSelfImprove(seed=seed, refit_every=self.refit_every, device=dev)
+            eng = NeurogenesisSelfImprove(seed=seed, refit_every=self.refit_every, device=dev)
+            # RESTORE the grown substrate from the one durable lake. Before this the engine was
+            # rebuilt empty on every start, and the daemon relaunches on every new commit (~20 times
+            # in a working session), so nothing the brain grew ever compounded. A lake with no
+            # _T_GROWTH record returns None and the engine starts ungrown -- exactly today's
+            # behaviour, so an existing lake is unaffected.
+            try:
+                from snn_data_lake.substrate.home import load_growth
+
+                eng.restore_growth_state(load_growth())
+            except Exception:  # a broken or absent record must never block brain construction
+                pass
+            return eng
         except Exception:
             return None
 
@@ -2492,6 +2504,18 @@ class Brain:
             except Exception:  # numpy absent / import failure -> stay silent, keep sleeping
                 self._skills_state = None
         if self._persist:  # DURABLE: fold the night's growth to disk (never-forget)
+            try:
+                # The grown neural SUBSTRATE, into the one durable lake. Gated on
+                # substrate_is_retained() and NEVER on grown_units > 0: those two came apart for the
+                # whole life of this feature -- the counter read 8..120 while the model behind it was
+                # collected at the end of every refit -- so gating on the count is exactly how a
+                # counter gets written and an empty engine restored.
+                if self.neuro is not None and self.neuro.substrate_is_retained():
+                    from snn_data_lake.substrate.home import save_growth
+
+                    save_growth(self.neuro.growth_state_bytes())
+            except Exception:  # persistence must never take the sleep tick down
+                pass
             try:
                 from snn_data_lake.substrate.home import save_state
 

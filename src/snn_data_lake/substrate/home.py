@@ -53,6 +53,13 @@ from snn_data_lake.substrate.binlog import BinLog, pack_fact, unpack_fact
 # one git revert away if the prerequisite ever materializes.
 _T_FACT = b"\x01"
 _T_SPIKE = b"\x02"
+# _T_GROWTH added 2026-07-30: the grown neural substrate, in THE ONE LAKE rather than a sidecar file
+# (owner decision). Safe as an additive tag because the existing readers already ignore what they do
+# not recognise -- KnowledgeLog.replay filters on `payload[:1] == _T_FACT`, and consolidate() keeps
+# `p for p in ... if p[:1] != _T_FACT`, so a foreign record is skipped by the FACT view and PRESERVED
+# through a rewrite. That behaviour is self-checked (commit 9f620246), which is why this needed no
+# change to either method.
+_T_GROWTH = b"\x03"
 
 
 def home():
@@ -175,6 +182,40 @@ def load_state(name, default=None):
         return default
     with open(path, encoding="ascii") as f:
         return json.load(f)
+
+
+def save_growth(blob, path=None):
+    """Append one grown-substrate record to the ONE durable lake. Returns whatever BinLog.append
+    returns (a truthy written-flag), or 0 when there was nothing to write.
+
+    (This docstring said "Returns bytes written" for its first ten minutes of life, which the very
+    first round-trip run falsified by printing `wrote True bytes`. Recorded rather than quietly
+    corrected: a return-value claim nobody checks is the same defect class as a stale citation, and
+    this file's own project spent today removing several.)
+
+    Append-only, like every other record here: the newest _T_GROWTH record IS the current substrate,
+    and older ones are the growth history rather than garbage. `load_growth` therefore takes the LAST.
+
+    Refuses a falsy blob. `neurogenesis_engine.growth_state_bytes()` returns None (never an empty
+    blob) when nothing is grown, and this is the second half of that contract -- together they make it
+    impossible to persist "no substrate" as though it were substrate, which is the failure that would
+    otherwise restore an empty engine with a confident accuracy beside it."""
+    if not blob:
+        return 0
+    return BinLog(path or knowledge_path()).append(_T_GROWTH + bytes(blob))
+
+
+def load_growth(path=None):
+    """The most recent grown-substrate blob, or None if the lake holds none.
+
+    None is the honest answer for a lake written before this record type existed, and the caller
+    (`Brain._make_neuro`) treats it as "start ungrown" -- so an old lake behaves exactly as it did
+    before, which is the backward-compatibility requirement."""
+    latest = None
+    for payload in BinLog(path or knowledge_path()).replay():
+        if payload[:1] == _T_GROWTH:
+            latest = payload[1:]
+    return latest
 
 
 def banner(part, lake=True, knowledge=True):
