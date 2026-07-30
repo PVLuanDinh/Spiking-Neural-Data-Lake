@@ -1,0 +1,17 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/spatiotemporal_probe.py percept 60
+exit: 1
+commit: 946f72d0613f654f2219c6ac44ee9bd50b7eb164
+recorded_at: 2026-07-30T07:37:47Z
+recorded_by: opus-5 W3 adjudicator / docs/coverage/artifacts/spatiotemporal_probe.py (charge_probe verdict, daemon sys.path)
+python: 3.11.15
+--- stdout ---
+harness perception tier                       : eprop-snn (perceiving_real=True)
+source                                        : percept
+(percept, action) values learned from dopamine : 20 pairs
+source weight (0.1 uniform init -> ...)       : 0.0894  (moved=True)
+arm HOLD rate  A(wired) vs B(neutered)        : 0.000 vs 0.000
+act/hold decision changed by the signal       : 0/60 ticks
+arm trajectory changed by the signal          : 0/60 ticks
+CONSUMED-BUT-NOT-DECISIVE

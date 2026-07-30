@@ -311,6 +311,23 @@ P-violation stands as written.
   `acc_conflict_monitoring_evc`, both `(0/60, 47/60, 23/60)` with the same onset tick -- are invisible
   to W3 because it only compares within one category file. False positives inside a category, false
   negatives across them.
+  **W3 ADJUDICATOR, 2026-07-30: FALSE POSITIVE CONFIRMED a third time, on the full stdout, and all
+  three bands stand.** The check the two notes above assert was performed: the three artifacts were
+  compared line by line rather than by fingerprint. STATIC -- `imagination_ab.py:98-103` pins three
+  different objects on three different modules: `arm._planned_seq = []`, `b._cfsim = None`, and
+  `b.attractor.sleep` replaced by a no-op. RUNTIME, already in the recorded artifacts and never in the
+  fingerprint -- `ticks the signal was live (A)` reads **56/60** for `model_based_plan`, **57/60** for
+  `counterfactual` and **29/60** for `dream_replay` (the last being the sleep-tick count), and
+  `secondary read changed by the signal` reads **True** for `counterfactual` and **False** for the other
+  two. Three different liveness counts and a split secondary read cannot come from one signal probed at
+  three points. What the three artifacts *do* share -- `distinct A values act / traj / value-table :
+  1 / 32 / 58` -- is the un-neutered arm A's own baseline, identical because it is the same seed-0 arm
+  in all three runs, so it describes the instrument and not the faculties. And no band is inflated for a
+  mechanical reason as well: all three rows are at or below 40 (40, 35, 25), F8 only demands an exit-0
+  artifact above 40, and all three artifacts are exit-1 negatives -- the one row in this file that does
+  rest on an exit-0 artifact, `latent_world_model`, is not in the W3 group at all. The collision is the
+  regex: `_fingerprint` matches only `(\d+)/(\d+) ticks`, and every discriminating line above either
+  lacks the trailing `ticks` or is not a ratio.
 - **Tick-count sensitivity is unexplored.** All four artifacts are at n=60, chosen to match the
   `drive_60` control. The ledger's own W-list records that `drive 4` exits 1 and `drive 60` exits 0 on
   the same faculty and seed. The three negatives here could plausibly turn positive at n=500; I did not

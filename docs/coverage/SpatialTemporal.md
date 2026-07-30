@@ -234,6 +234,30 @@ honest band for a static-only claim is low and saying which evidence it rests on
   here: the shared fingerprint is the *null* fingerprint, which two unrelated faculties reach whenever
   neither moves the arm. W3's heuristic is aimed at shared *positive* fingerprints. I left both
   artifacts attached rather than changing a tick count to dodge the warning.
+
+  **Adjudicated 2026-07-30, independently: FALSE POSITIVE CONFIRMED, both bands stand.** The claim
+  above was checked rather than taken, by comparing the two artifacts' **full stdout** instead of their
+  fingerprints -- which is the whole point, since the fingerprint drops every line that distinguishes
+  them. They pin different `_drive_w` keys (`place` at `brain.py:1575-1576`, action-specific through
+  `_place_value.get((place, a))`; `timing` at `brain.py:1526`, entering the undirected sum with no
+  value table), they live in different modules (`hippocampus/grid_place_map.py` vs
+  `cortex/time_cells.py`), and the recorded stdout differs on three lines the fingerprint cannot see:
+  `st_place_60.txt` carries `(place, action) values learned from dopamine : 7 pairs` and weight
+  `0.107` and **exit 1 CONSUMED-BUT-NOT-DECISIVE**; `st_timing_60.txt` has no value-table line at all,
+  weight `0.01`, and **exit 2 UNKNOWN**. The two bands also rest on separate runtime instrumentation
+  recorded above -- place's 31 `observe` / 3 `place_at` asymmetry versus timing's `_elapsed_time` on
+  57/60 ticks with 27 distinct values -- so neither is a second reading of the other's measurement.
+  Both rows are at or below 40 (35 and 21) and F8 only demands an exit-0 artifact above 40, so no band
+  in this pair draws anything from the colliding fingerprint. RUNTIME for the artifact contents (both
+  are recorded probe runs), STATIC for the two key traces.
+
+  Separately, and **not** what W3 fired on: the genuine same-chain pair in this file is
+  `place_coding` and `grid_coding`, declared as such in the rule-4 analysis above ("it is the same
+  serial chain, and crediting it twice is the defect `coverage_score.py:126-130` warns about").
+  W3 cannot see it because `grid_coding` has no artifact. It is left as scored -- the two rows were
+  banded on different measured facts (place's binding freeze versus the grid population code being
+  computed on all 31 perceiving ticks) -- and flagged here so a later sweep resolves it on evidence
+  rather than on the tool's silence. Absence of W3 is not evidence of absence.
 - **One tick count, one seed.** 60 ticks at seed 0 throughout, chosen to match the control the ledger
   already cites. `coverage_score.py`'s own README names tick-count shopping as a live hole
   (`drive 4` exits 1, `drive 60` exits 0); I did not go looking for a longer run that would flip a

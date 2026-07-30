@@ -100,6 +100,44 @@ nothing are all-zero by definition, so they *must* collide. The chains are disti
 (`AffectCore.recognize` -> episodic cue; `AffectiveAppraisal.appraise` -> coherence raster;
 `AffectIntegrator.integrate` -> emergent prototype id) and the artifacts' `signal:` lines say so.
 
+**Adjudicated 2026-07-30: FALSE POSITIVE CONFIRMED, now MEASURED rather than asserted, and all three
+bands stand.** The paragraph above argued the three chains are distinct from their call sites. That is
+the argument W3 exists to distrust, so it was tested: if these were three probe points on one chain,
+one signal would be a function of another. RUNTIME, 150 wake ticks, `make_brain(seed=0,
+persist=False)` on the daemon `sys.path` (tier `eprop-snn`), logging the three signals the three
+artifacts each pin -- `_emotion` (`brain.py:2637`), `_emergent_emotion` (`brain.py:1941-1946`) and
+`_appraised` (`brain.py:1890`) -- per tick:
+
+- distinct values **5** (`anger, boredom, excited, fear, sadness`) / **6** (prototype ids `0..4`,
+  `None`) / **3** (`(0.0, 0.0)`, `(0.0, 0.062)`, `None`). Three different value domains.
+- the map between the two emotion-category readouts is **many-to-many in both directions**: all
+  **5 of 5** label keys map to several prototype ids (`fear` -> `{0,1,2,3,4}`), and **4 of 6**
+  prototype ids map back to several labels (`0` -> all five labels). Neither is a function of the
+  other, which is exactly what a serial chain could not produce.
+- they move on different ticks: **45 / 28 / 14** change ticks, with only 19 shared between the two
+  emotion readouts and 8 between emotion and appraisal.
+
+Reproduce with a 30-line census that ticks a brain and diffs the three attributes; no probe or neuter
+is involved, so nothing was recorded as an artifact -- it is a read of three live attributes, and the
+numbers above are the whole result. **Two further mechanical reasons no band here is inflated.** First,
+half of the six-element fingerprint is the probe's **self-control** (`SELF-CONTROL A vs A` at
+`0/73, 0/150, 0/150`), which is *required* to be zero for the run to be valid at all -- so three valid
+runs of this probe collide on three of six elements by construction, before any faculty is considered.
+Second, all three rows are at or below 40 (40, 30, 22) and F8 only demands an exit-0 artifact above 40;
+the three colliding artifacts are exit-1 honest negatives, so no row draws its band from them. The
+discriminating line is in the same stdout and outside the regex: `distinct values the signal took in A`
+reads **8** with a sample of labels, **6** with a sample of `None`/ints, and **8** with a sample of
+`None`/tuples.
+
+One thing this measurement settles that the adversarial pass below could not: it flags
+`neuromod_fused_affect_core` as "a second emotion-category system beside `categorical_emotion`" and
+declines to merge them for want of evidence. The many-to-many mapping is that evidence, and it supports
+not merging **for coverage**: these are two mechanisms computing an emotion category from different
+inputs (`recognize` reads self-model valence and `|rpe|`; `integrate` reads threat, `rpe`, raphe mood
+and cortisol), not one mechanism scored twice. That leaves the P2 question -- two mechanisms for one
+capability, one of which should be adopted and the other retired -- fully open, and it is a question
+about the code, not about this table.
+
 ## The three leads I was handed, adjudicated
 
 1. **`threat()` returns exactly 0.0 -- CONFIRMED, and confirmed to be correct rather than broken.**

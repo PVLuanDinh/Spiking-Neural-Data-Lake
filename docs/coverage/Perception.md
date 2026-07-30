@@ -237,11 +237,42 @@ Format: `capability` -- provider -- liveness.
 
 ## Notes on the scorer's own output for this file
 
-- The scorer will emit **W3** for `percept_class_to_action_drive` and `percept_surprise_orienting`
-  sharing the fingerprint `(0/60, 0/60)`. **That warning is correct.** Both probes returned all-zeros
-  for the *same single reason* -- `_perceive_real` never ran in the recorder shape -- so they are one
-  chain in that configuration, not two independent measurements. In the daemon shape they separate
-  (percept becomes eligible with 28 value pairs; surprise stays undirected).
+- The scorer emits **W3** for `percept_class_to_action_drive` and `percept_surprise_orienting`
+  sharing the fingerprint `(0/60, 0/60)`. **Adjudicated 2026-07-30: FALSE POSITIVE. These are two
+  faculties, not one chain, and both bands stand.** The earlier wording in this bullet said "that
+  warning is correct", which conceded the roster question the warning actually asks; it is corrected
+  here, with a measurement rather than a re-reading.
+  - **They pin different keys.** `percept` is `elig["percept"]` at `brain.py:1428`: a
+    confidence-gated, dopamine-learned per-`(class, action)` value table, so it is
+    **action-directed** -- `brain.py:1579-1583` weights it per candidate action. `surprise` is
+    `elig["surprise"]` at `brain.py:1372`, the standardized Oja-PCA reconstruction residual set inside
+    `_perceive_real` at `brain.py:1206`, and the code states its type outright: an "UNDIRECTED
+    salience source like novelty -- it says 'act/orient', not which action". Two `_drive_w` keys, two
+    modules, two signal types. Under the rule that two rows pinning one key are one faculty, these are
+    two. STATIC (a read of both call sites).
+  - **RUNTIME: restoring the shared precondition separates them.** The two colliding artifacts are
+    both null for one upstream reason -- `_perceive_real` never ran in the recorder shape -- so as
+    *measurements* they were not independent, which is the true part of the original concession. Re-run
+    on the daemon `sys.path` (`w3_percept_daemon_60.txt`, `w3_surprise_daemon_60.txt`, recorded at
+    HEAD `946f72d0` through `docs/coverage/artifacts/spatiotemporal_probe.py`, whose neuter and
+    exit-code contract are `charge_probe`'s unchanged) they diverge immediately: `percept` reports
+    `(percept, action) values learned from dopamine : 20 pairs`, weight `0.0894`, **exit 1
+    CONSUMED-BUT-NOT-DECISIVE**, while `surprise` reports no value-table line at all -- it cannot have
+    one -- weight `0.0889`, **exit 2 UNKNOWN**. One becomes eligible, the other stays structurally
+    undirected. A single serial chain cannot do that.
+  - **The fingerprint still collides, and that is the finding.** Both daemon-shape runs still print
+    `0/60 ticks` on both observables, so their fingerprint is *also* `(0/60, 0/60)`. **W3 here is not
+    fixable by better measurement**: every line that distinguishes the two faculties -- the
+    eligibility line, the value-table count, the verdict, the exit code -- sits outside
+    `_fingerprint`'s `(\d+)/(\d+) ticks` regex. The artifact column is therefore left as it is; a
+    swap would buy better evidence for a band that does not rest on it and would not clear the warning.
+  - **No band is inflated, and the mechanical reason is F8.** Both rows are at or below 40 (30 and 25),
+    earned from the live daemon-shape census, and F8 only demands an exit-0 artifact *above* 40. Both
+    colliding artifacts are exit-2 non-verdicts attached as honest nulls, so neither row draws its band
+    from the fingerprint W3 matched. There is nothing here of the shape that cost Executive 9 points --
+    that was four *positive* fingerprints on one chain.
+  - One correction while re-measuring: the "28 learned (class, action) pairs" figure quoted in the gap
+    list below is the 120-tick number. At 60 ticks it is **20**.
 - Three faculties here are plausibly claimable by another category and the sweep must resolve the
   double count rather than add it: `perceptual_novelty_salience` and
   `predictive_coding_prediction_error` both feed workspace ignition (Consciousness / WholeBrain), and
