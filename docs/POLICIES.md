@@ -1,7 +1,7 @@
 # Development Policies (P0–P5)
 
-**P0 is the purpose; P1–P5 are how it is pursued without lying to ourselves.**
-Six standing policies govern this brain. They are **mechanized** where possible (a CI
+**P0 is the purpose; P1–P6 are how it is pursued without lying to ourselves.**
+Seven standing policies govern this brain. They are **mechanized** where possible (a CI
 self-check that fails on violation) and otherwise enforced by review. Each has an **honesty guard** —
 the rule that stops the policy from being satisfied by theater.
 
@@ -15,6 +15,7 @@ the rule that stops the policy from being satisfied by theater.
 | P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE), `substrate/method_dormancy_gate.py` (per-METHOD), `substrate/import_manifest.py` (cross-tier) | the charge tier |
 | P4 one brain | `substrate/replication_guard.py` | — |
 | P5 use the GPU where it helps | — | yes |
+| **P6 mutual reach + use** | — | yes (provisional; its gate is specified but NOT built, see P6) |
 | e-prop not backprop | — | yes |
 
 **Provenance of the 2026-07 amendments.** Three independent audits mapped this codebase against
@@ -503,6 +504,81 @@ become the only way to verify the project. Both envs are now verified equivalent
 be used locally. Determinism itself comes from seeding — `random.Random(seed)` per instance,
 `zlib.crc32` never builtin `hash()` — not from the absence of hardware. (d) Correctness first: a GPU rewrite carries
 the same bit-exactness burden as any other P2 swap.
+
+---
+
+## P6 — Every build must be able to reach every other, and actually use it
+
+**Owner policy, 2026-07-29.** A faculty must not be an island. Every build in this brain must be able to
+**communicate with** the others and **utilize** them, the way regions of a real brain are mutually
+reachable and mutually consumed — not a shelf of correct components that never speak.
+
+**Stated as a checkable property, because "be like a real brain" is a research direction and this file
+rejects those** (see the corollary under P2): a faculty satisfies P6 when (a) it is **reachable** from at
+least one other faculty through a typed, declared route rather than only from an entrypoint or a chat
+handler, and (b) at least one other faculty **consumes its output** in a way that changes that consumer's
+own output. One-way is allowed — brains are full of one-way projections — but *zero*-way is not.
+
+**How this is NOT P3, since the two are easy to confuse and the distinction is the whole point.** P3 asks
+whether a faculty changes **behaviour** — the arm, a value, a weight, a reply. P6 asks whether a faculty
+changes **another faculty**. They come apart in both directions, and both directions are real here:
+
+- **P3-clean, P6-dead:** a faculty wired straight into `_route_percept_to_action` charges the arm decision
+  and talks to nothing. Most of this brain's wiring waves have this shape. The rubric's own pre-declared
+  ceiling says so — wiring into that one site "cannot raise Language, Imagination, Gf, Consciousness or
+  WholeBrain" — and a brain whose faculties all report to one action gate and never to each other is
+  precisely why that ceiling exists.
+- **P6-clean, P3-dead:** `MetacognitiveMonitor` feeds and is fed, and this session measured `explore()`
+  with no behavioural consumer at all — reachable, conversational, and inert.
+
+**Source lines it derives from, quoted so it is not a good-practice rule in a costume.** P3's own
+transferable rule: *"presence is not participation."* And `substrate/region_wiring.py`, whose docstring
+asserted that "the daemon imports `wired_faculties` (which registers every adapter) at boot" — **there is
+no `wired_faculties` module**, `charge_all()` has iterated an empty list for the life of the feature, and
+the daemon logs `adapters=0`. That registry is the plug point P6 names, and it has never had a plug.
+
+**Real past incidents it would have caught** — required by the bar below, and there is no shortage. Each
+row was **re-verified against the tree on 2026-07-29**, because several were fixed or reverted in the same
+session that wrote this policy, and a rule citing an already-closed defect as live is the drift this file
+keeps suffering. Rows marked FIXED are kept deliberately: the bar asks what the policy *would have caught*,
+and a closed incident is the better evidence precisely because its cause is known.
+
+| incident | shape |
+|---|---|
+| `region_wiring` registry: 0 registrations, `adapters=0` live | the plug point nobody plugged into |
+| `thalamus/connectome_router.step()` return discarded, export a constant 0.250 — **since FIXED** (`51bf5253`, v4.80); the return is now consumed at `brain.py:2010` | computed, reached no faculty |
+| `cortex/agency_monitor.py` `observe()` every tick; `agency()`/`controllability()`/`status()` zero readers | write-only organ |
+| `cortex/claustrum.py:193` `broadcast()` zero live call sites | a broadcast hub that broadcasts to nobody |
+| `reasoning/pragmatics.py` reachable only from `spike_chat_lake`, no `brain.py` caller | wired to chat, not to the brain |
+| `reasoning/arc_solver.py` — "imports stdlib only, with zero wiring to any perceptual machinery" | Gf isolated from Perception |
+| `reasoning/nightly_skills.py` forms and persists a skill every night; `route()` called only from its own `main()` | the brain never uses a skill it formed |
+| `cortex/neurogenesis_engine.py` has no persistence path, so grown units die on every restart | a faculty that cannot even reach its own future self |
+
+The last one is the sharpest: the brain has **one durable spiking lake** and the grown substrate is not in
+it, so P0's neural-growth avenue resets ~20 times in a working session and never compounds.
+
+**Honesty guard — a route is not a conversation.** The failure mode P6 will attract is a telemetry bus:
+wire every faculty into a shared dict, watch `adapters` climb, and declare harmony. `region_wiring`'s own
+source already warns that registering telemetry adapters would fake liveness. So a P6 claim needs the same
+evidence P3 demands, aimed one level over: neuter faculty A and show faculty B's **own output** changes.
+Adding a reader that stores a value is not consumption. And **do not force-wire** — a route that carries
+nothing is reverted and the faculty is exempted with a reason, exactly as under P3. Two faculties were
+reverted on that rule this session (PFC working memory, crossmodal binding), both at 0/200.
+
+**Mechanization: NOT BUILT, and this file's own bar says that matters.** *"Adding a policy: implement the
+gate before adopting the rule… its output counted, before the policy lands."* Two prior proposals died
+there. This policy lands **review-enforced and provisional** on the owner's instruction, with the debt
+stated rather than hidden: P6 is not mechanized, and until it is, it is enforced the way P0, P1, P2 and P5
+are — by review.
+
+**The gate that would settle it, specified so the debt is actionable.** `connectome.py` already declares
+the region→region wiring as typed, directed, signed loops; `substrate/import_manifest.py` already
+AST-derives a cross-tier edge set; `substrate/dormancy_gate.py` already builds the static import graph.
+So the instrument is: derive the actual faculty→faculty consumption graph, diff it against
+`connectome.py`'s declared edges, and report faculties whose in-degree **and** out-degree are both zero
+outside an entrypoint. **Build it and count its output before promoting P6 to mechanized** — and if it
+reports a rubber-stamp-sized list, that result kills the gate, not the tree. "No gate" is a complete
+result; the rule stands on the eight incidents above either way.
 
 ---
 

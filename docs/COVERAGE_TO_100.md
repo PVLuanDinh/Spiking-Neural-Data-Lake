@@ -157,9 +157,101 @@ Each phase ends with a measurement, and a phase that moves nothing is reported a
 | 1 | **Instrument** | `tools/coverage_score.py` re-derives a per-category % from tracked evidence files; refuses band-41+ without an A/B artifact and band-81+ without held-out evidence; the count of currently-unbacked category scores is published |
 | 2 | **Dependency + env** | one environment runs daemon, self-checks, pytest and ruff; zero-dep machinery gone; the added dependency list is recorded with a justification each |
 | 3 | **Attribute the tick** | where the 891 ms goes, by neuter-and-measure, not by profiler ranking; `learn_daemon.py:61` made true |
-| 4 | **Widen + fuse** | live populations past 4,096; per-region elementwise updates fused into one batched kernel captured as a CUDA graph; shipped only on a measured win against the CPU path, regressions reported |
+| 4 | ~~**Widen + fuse**~~ **REFUTED, done differently** | The widening premise was wrong and the measurement said so: the whole live brain holds **132** LIF cells, all per-tick neuron state fuses to ~1,700–3,500 elements (*inside* the crossover, not past it), and `AutonomousArm.step()` is **0.00%** of the profile — so fusing neurons would have optimised nothing. The real hot path was `coincidence`, a Python loop run once per stored episode per tick at **74.5%**. Fused bit-exactly via `(D + a·b)/2`: `complete()` 59.9 → 0.9 ms at N=2,000, and linear-in-N → **flat**. Shipped on CPU; this GEMV's measured crossover is ~1,600–2,000 rows, so a captured CUDA graph is a *loss* at our widths, and numba beats one by 16× on fused LIF. See P5. |
 | 5 | **Charge the dormant** | the open P3 findings resolved as wired-and-charged / retired / exempt-with-reason, each with a neuter-A/B. Never a dead consumer to silence a gate |
 | 6 | **Capability** | the two ceiling categories attacked where they are actually blocked: a real-scale AR spiking LM for Language, perceptual predicate induction for Gf. Held-out numbers or an honest null |
+| 7 | **Bound the growing substrate** | whether the brain can run continuously *at all* — see below. Ranks with phase 1, not after phase 6 |
+
+## Phase 7 — the growth this plan originally missed
+
+Every unbounded-growth defect chased so far was a **record store**: the two O(n²) tick growths (90,000 →
+891 ms), `_episodes` (the fused scan is flat in N, but memory still grows ~30 MB at N=15,000),
+`telemetry.jsonl` (69 → 160 MB in one session), the durable lake's facts (19,525 → 19,775), and the
+always-novel `when` filler at `brain.py:1680` (`str(self._wake_ticks)`, so every episode adds a codebook
+entry that can never match a future cue). Those are all **logs**.
+
+Nothing here has measured growth in the **learned substrate** — neurogenesis adding units every sleep
+night, weight matrices widening, state accumulating across nights. That omission is worth naming
+plainly, because **P0 requires the brain to grow continuously**, so unbounded weight growth is the
+failure mode this project's own purpose pushes toward, and no gate covers it.
+
+**What is measured (cheap, from the daemon's own log).** Across 733 samples spanning nights 41–8,004,
+`grown_units` stays in **8..120**, mean 46.7, with no upward trend. That is consistent with the prune
+machinery working: `attractor.sleep(learn=True)` + `downscale_prune()` (`brain.py:2289-2294`),
+Benna-Fusi metaplasticity, and `lake_memory`'s `SALIENT_CAP=128` / `TRACE_HARDCAP=4096` /
+`RESERVOIR_K=64`.
+
+**Two reasons that reassurance is not yet worth anything:**
+
+1. **It may be the wrong field.** I do not know from the log whether `grown_units` is a *current
+   population* or a *per-interval delta*. If it is a delta, the cumulative total is unmeasured and the
+   8..120 range says nothing. Reading its emit site is the first five minutes of this phase.
+2. **The night counter RESETS.** Observed in sequence: `364 → 41 → 81 → 122`. The daemon exits and
+   relaunches whenever a new commit lands, and ~20 commits landed in a single session — so "8,004
+   nights" is not 8,004 *continuous* nights of accumulated substrate, and the long-horizon behaviour
+   has rarely been exercised at all.
+
+**The decisive measurement is deliberately not the one above.** In-process pruning says nothing about
+on-disk accumulation. Snapshot the size *and shape* of every persisted weight artifact — `models/*.npz`,
+`brain_data/*.npz`, prototypes, `language_acq.npz`, the skills/curriculum JSON — at successive restarts
+and plot against cumulative nights. Plateau = bounded; monotone = not. Then check whether any weight
+**dimension** grows with no prune counterpart: `cortex/neurogenesis_engine.py`,
+`hippocampus/growing_learner.py`, `hippocampus/function_preserving_growth.py`,
+`substrate/similarity_sized_growth.py`.
+
+**The template for a principled grower already exists**: NG-SNN's earn-your-place stop, capacity
+monotone in data, 4,512 units at 24,000 rows — and note it only became trustworthy after the instrument
+grading it was fixed. **Do not add a cap.** P1 forbids a magic ceiling, and the honest fix for an
+unbounded grower is usually a prune rule rather than a limit; this repo's own record is that
+capacity constants tuned on synthetic tasks were wrong three times, always in the direction of stopping
+too early.
+
+**The general lesson, since it caught us twice today:** a value that *moves* is not a value that is
+*bounded*, and a faculty that prunes in-process is not a substrate that is bounded on disk.
+
+### The question inverts: growth is not unbounded, it is DISCARDED
+
+Raised by the owner, and verified: **the brain has one durable lake and the grown substrate is not in
+it.** `cortex/neurogenesis_engine.py` has **no `save`, `load`, `persist`, `restore` or `resume` method
+and writes no npz/json** — `grown_units` appears once, in a state dict at `:202`. `Brain._make_neuro`
+constructs the engine fresh on every start. So grown units do not survive a restart.
+
+`grown_units` was also confirmed to be a **population** attribute (`self.neuro.grown_units`, read at
+`brain.py:2100`, `:2198`, `:2355`, `:2620`), not a per-interval delta — which resolves the caveat above
+and makes the in-process 8..120 bound real. But it makes the restart finding worse, not better: a
+bounded live population that is rebuilt from nothing is not a substrate that compounds.
+
+**The daemon's persistence claim is true of what it names and false of what a reader will assume.**
+`learn_daemon.py:149` reports "brain durable save + chat lake flushed" and `:20` states that state
+"survives the restart via persist/reload". That holds for the durable lake, the chat store and the npz
+weights. It does not hold for the grown neural substrate, because the owning engine has nowhere to save
+to. Same shape as every other defect in this document: a claim accurate about its component and wrong
+about the thing it appears to cover.
+
+**Why this matters more than the bound.** The daemon exits and relaunches on every new commit — ~20
+times in a single session — and the night counter resetting (`364 → 41 → 81 → 122`) is that happening.
+So P0's "neural growth — live" avenue is real *per process* and resets constantly, meaning across 7,963
+nights it has never accumulated. Growth that is discarded is not growth, and this is the census-counted-
+as-capability failure P0's own honesty guard names, one level deeper than the census.
+
+**The work, in order:**
+
+1. **Enumerate what actually persists** across a restart versus what is rebuilt — the lake, chat, npz
+   weights, prototypes, curriculum, *and* the grown units — and write it down. The claim at
+   `learn_daemon.py:20` needs to become specific or go.
+2. **Give the grown substrate a home in the one durable lake.** `_T_FACT` and `_T_SPIKE` already exist in
+   the BinLog container (`substrate/home.py:45-46`), `_T_SPIKE` has just been freed by `SpikeLake`'s
+   retirement and is kept as a reserved tag, and the format's foreign-tag skip/preserve behaviour is now
+   self-checked — so an additive record type is the cheap, contract-respecting route. One lake, per the
+   design, rather than a new sidecar file.
+3. **Only then ask whether growth is bounded.** The disk snapshot described above answers a different
+   question once growth actually survives; measuring accumulation across restarts is meaningless while
+   the substrate resets at every one.
+
+**Sequencing note, stated so it is not lost:** this reorders phase 7. Persisting growth comes *before*
+bounding it — and it may well create the unbounded-growth problem this phase was originally written to
+look for. That is the correct order anyway: a brain that cannot accumulate cannot be measured for
+accumulation, and a prune rule designed against a substrate that resets daily would be fitted to noise.
 
 ## The standing honesty constraints for this program
 
@@ -173,3 +265,19 @@ Each phase ends with a measurement, and a phase that moves nothing is reported a
   and amygdala as dormant and both were refuted on runtime A/B.
 - Growth is not improvement. A grown unit that changes no outcome is dormant, not progress, and the
   census of what the brain has is not a measure of what it can do.
+- **P6 (added 2026-07-29) is the constraint that explains the ceiling above, so read it before planning
+  any wave.** Every build must be able to reach every other and actually use it — reachable from another
+  *faculty* through a declared route, and consumed by another faculty in a way that changes *that
+  consumer's* output. The reason wiring caps at 48.5% is precisely a P6 failure: faculties are wired into
+  the single three-way action gate at `cortex/brain.py::_route_percept_to_action` and not into each
+  other, so a wave can charge the arm decision and still leave Language, Imagination, Gf, Consciousness
+  and WholeBrain — **45% of the weight** — untouched. Those five categories are the ones that need
+  faculties talking to faculties, which is why the ceiling is structural rather than a budget problem.
+  Note P6 is **provisional and review-enforced**: its gate (diff the real faculty→faculty consumption
+  graph against `connectome.py`'s declared edges) is specified but NOT built, and this file's own bar says
+  that matters.
+- **A route is not a conversation.** The failure P6 attracts is a telemetry bus — wire every faculty into
+  a shared dict, watch `adapters` climb from 0, and call it harmony. `substrate/region_wiring.py`'s own
+  source warns that registering telemetry adapters would fake liveness. A P6 claim needs P3's evidence
+  aimed one level over: neuter faculty A, show faculty B's own output changes. Adding a reader that
+  stores a value is not consumption.
