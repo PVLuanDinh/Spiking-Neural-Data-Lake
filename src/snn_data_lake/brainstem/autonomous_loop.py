@@ -876,8 +876,11 @@ class AutonomousArm:
         if self.pfc is None:
             return [0.0] * len(ACTIONS)
         # THE PFC WORKING MEMORY IS UNREACHABLE FROM HERE, AND THE REASON IS THIS LOOP'S SHAPE.
-        # PrefrontalExecutive.maintain() and push_subgoal() have no live caller (their five real
-        # callers are all offline loops in reasoning/ and cortex/autotelic_goals.py), so `_wm_spikes`
+        # PrefrontalExecutive.maintain() and push_subgoal() have no live caller (their callers are 6
+        # call sites across 4 modules -- cortex/autotelic_goals.py:315, reasoning/autonomous_brain.py:122,
+        # reasoning/developmental_core.py:153, reasoning/developmental_loop_wm.py:56/:65/:128 -- all
+        # offline loops; "five real callers" here was neither the site count nor the module count,
+        # corrected 2026-07-29 by enumerating them), so `_wm_spikes`
         # keeps its birth 0, the goal stack never exceeds one frame, and `max_goals`, the HELD-parent
         # pop-back and top_down_bias's summation over frames are all dead live. Wiring maintain()
         # in here was built and measured, and REVERTED:

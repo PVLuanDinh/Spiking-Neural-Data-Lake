@@ -445,6 +445,25 @@ gap look wider than it is.
 
 ## Reproduce
 
+> **Not reproducible from a clone, and this needs saying because this repo has burned on it twice.**
+> Every `scratchpad/ar_lm_*.py` script and `scratchpad/ar_lm_*_out.txt` log cited by the AR appendix
+> below is **gitignored** (`.gitignore:88`), as are the `models/` artifacts and the `data/lang/` corpus
+> they consume. So the AR-appendix numbers — the round-trip deviations, the incumbent re-score, the
+> n-gram control, the disjointness proof, the BLiMP run — are recorded results, **not** re-runnable
+> instructions, on any machine but the one that produced them.
+>
+> This is the exact defect corrected elsewhere in the same session: the neuter-A/B probe had been cited
+> as `scratchpad/smoke_drive_charge.py`, which does not exist, and `tools/charge_probe.py` is tracked *on
+> purpose* for this reason. Reproducing it in a new file hours later is the honest thing to disclose
+> rather than the thing to quietly leave. **The fix is to promote the load-bearing scripts into
+> `tools/`** — where `charge_probe.py` and `capacity_curve.py` already live precisely because a cited
+> instrument must survive a clone. Not done here: they were written against local-only artifacts and
+> would need their inputs parameterised first, and shipping scripts I have not seen run on a clean
+> checkout would trade one false claim for another.
+>
+> The commands below that use only tracked modules (`run_selfchecks`, the `*_bench` self-checks) do work
+> on a clone; they skip cleanly when the datasets are absent.
+
 ```bash
 cd D:/AI-project/spiking-neural-data-lake
 
@@ -553,7 +572,14 @@ n-gram bar**, and prior comparisons of char models to 61.2% (including the "toy 
 > scorers plus the length-only control in one table, and it verifies the untrained-twin baseline by
 > building the twin rather than citing it. Where the two differ, prefer it.
 >
-> One number genuinely differs and is corrected here rather than quietly reconciled: this appendix says
+> **"Canonical" does NOT extend to the PPL comparison, corrected 2026-07-29.** The canonical section
+> quotes held-out char PPL **7.20 vs 4.56**, which compares across *different* slices; this appendix's
+> **6.54 vs 4.88** is the protocol-MATCHED pair (identical windowed protocol, same held-out slice), and on
+> that specific number the appendix is right and the canonical section is not. A blanket "prefer the
+> section above" was too broad, and saying so is cheaper than letting a mismatched comparison inherit
+> authority from a label.
+>
+> **Two numbers genuinely differ**, not one. First, this appendix says
 > the run reached **12%** of schedule, which is the last *logged* step (1700 / 14,000). The **checkpoint
 > that produced every measured number is step 1399 = 10%**. Both are true of the run; only the second is
 > true of the artifact, and the artifact is what was scored.

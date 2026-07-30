@@ -528,8 +528,13 @@ changes **another faculty**. They come apart in both directions, and both direct
   ceiling says so — wiring into that one site "cannot raise Language, Imagination, Gf, Consciousness or
   WholeBrain" — and a brain whose faculties all report to one action gate and never to each other is
   precisely why that ceiling exists.
-- **P6-clean, P3-dead:** `MetacognitiveMonitor` feeds and is fed, and this session measured `explore()`
-  with no behavioural consumer at all — reachable, conversational, and inert.
+- **P6-clean, P3-dead:** `MetacognitiveMonitor` feeds and is fed while its `hold()` output reaches only a
+  `respond()` branch the Gc branches preempt — reachable, conversational, and behaviourally inert. Its
+  `explore()` looks the same on a static read (`brain.py:1859` assigns `_metacog_explore`; the only other
+  appearances are the `__init__` default and a telemetry key) — but that is **UNCERTAIN and deliberately
+  not asserted**: this file records four dormancy claims of exactly that shape REFUTED on runtime A/B,
+  and a policy example resting on an unconfirmed read would be the failure P3's honesty guard names.
+  The `hold()` half is measured; the `explore()` half awaits a neuter-A/B.
 
 **Source lines it derives from, quoted so it is not a good-practice rule in a costume.** P3's own
 transferable rule: *"presence is not participation."* And `substrate/region_wiring.py`, whose docstring
@@ -642,5 +647,13 @@ result; the rule stands on the eight incidents above either way.
   the source line the rule derives from (a general good-practice rule in a costume is a reject), and
   name the real past incident it would have caught, or state plainly that there is none and say what it
   earns its place on instead. Fewer, sharper policies win; "no new policy" is a complete result.
+  **Amended 2026-07-29, because P6 broke this and leaving the invariant unqualified would have made this
+  file contradict itself.** The owner may adopt a policy with its gate UNBUILT. Such a policy lands
+  marked **provisional** in the enforcement table, must still meet every other requirement above
+  (quoted source line, named real incidents, each re-verified against the tree), and must carry the
+  gate's specification so the debt is actionable rather than perpetual. P6 is the only entry that has
+  used this, and it says so in its own text. The gate-first rule still binds anyone proposing a
+  *mechanization*: the two proposals that died at this bar died on their own output, and that outcome —
+  "the gate we built kills the rule" — remains the point of building it first.
 - **Gated + reversible:** one change per commit, full gate green (`run_selfchecks` + `pytest` + `ruff`),
   commit + tag locally; a regression is isolated to its own change.
