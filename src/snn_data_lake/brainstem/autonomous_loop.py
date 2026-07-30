@@ -875,6 +875,36 @@ class AutonomousArm:
         no motion and adds no actuator route."""
         if self.pfc is None:
             return [0.0] * len(ACTIONS)
+        # THE PFC WORKING MEMORY IS UNREACHABLE FROM HERE, AND THE REASON IS THIS LOOP'S SHAPE.
+        # PrefrontalExecutive.maintain() and push_subgoal() have no live caller (their five real
+        # callers are all offline loops in reasoning/ and cortex/autotelic_goals.py), so `_wm_spikes`
+        # keeps its birth 0, the goal stack never exceeds one frame, and `max_goals`, the HELD-parent
+        # pop-back and top_down_bias's summation over frames are all dead live. Wiring maintain()
+        # in here was built and measured, and REVERTED:
+        #
+        #     _wm_spikes        1 distinct (0 on 200/200) -> 22 distinct, nonzero on 195/200
+        #     goal-stack depth  max 1  ->  max 1   (unchanged)
+        #     held goal changed 0/200      selected action changed 0/200
+        #     arm act/hold      0/200      trajectory 0/200      units 4 vs 4
+        #
+        # So it turned a constant telemetry field into a varying one and changed nothing -- the same
+        # shape as the reverted salience_novelty wire, and keeping it would have made a dead
+        # mechanism look alive. The structural reason it cannot charge: a working-memory attractor
+        # exists to hold information across a GAP IN INPUT, and this loop has no gap. update() (or
+        # plan(), on the JEPA paths) re-deliberates and re-commits the primary goal on EVERY wake
+        # tick, and _gate_primary resets that frame's drive to 1.0 whenever the margin clears, which
+        # live it always does -- so the recurrent drive is refreshed before `recurrence` can ever
+        # decay it below hold_threshold and pop anything. The only ways to make the pop fire are to
+        # lower recurrence/hold_threshold or to stop re-committing, i.e. to retune the module's own
+        # constants until a number moves. push_subgoal() is worse off still: a sub-goal is a task
+        # DECOMPOSITION, and this loop is flat and reactive with no hierarchy to decompose, so there
+        # is no honest trigger for it at all.
+        #
+        # Correct disposition is EXEMPT-with-reason, not wiring: the WM attractor is real and is
+        # exercised by the offline loops that have actual delay periods; it is the live arm loop that
+        # has nothing for it to do. That belongs in substrate/dormancy_gate.EXEMPT (owned elsewhere
+        # this pass, so reported rather than edited). Do not re-wire this without first giving the
+        # loop a genuine input-free interval.
         gain = self.pfc_gain
         if self._exec:  # W9: EVC gates control by ACC conflict (closes the conflict->control loop)
             try:
