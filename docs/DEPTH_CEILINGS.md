@@ -111,6 +111,9 @@ grammatical feature. Automatic, needs **no LLM judge** — it cannot be passed b
 template bank, because both sentences share nearly every word.
 
 Anchors: chance **50.0%**, **word-level** 5-gram (83M words) **61.2%**, GPT-2 large **86.0%**, human **88.6%**.
+For the **character**-level models in this document the right yardstick is not 61.2% but a **char** 5-gram
+on this repo's own exposure: **53.0%** at held-out char PPL **4.56**. See *The language number was two
+defects, not one* below — and read every BLiMP number here as an **unnormalized sum-logprob** number.
 
 ### Before
 
@@ -340,6 +343,10 @@ order proof:  logprob(grammatical) != logprob(shuffled)   random-init diff 1.40 
 blimp_bench:  AR spiking-LM -> n/a  (no frozen artifact at models/ar_spiking_lm.npz)
 ```
 
+> **SUPERSEDED.** That `n/a` had a second cause this line did not name: `blimp_bench` never imported
+> `ar_spiking_lm_serve` at all, so no artifact could have moved it. Both causes are fixed and the model
+> is now measured — see *The language number was two defects, not one* below.
+
 **What is honest to claim.** BLiMP is **unchanged** — the serve degrades honestly to `n/a` because no
 real-scale artifact exists, and it fabricates no number. What is new is the **first representation in the
 stack that can encode word order at all**: unlike every bag/n-gram model measured above, shuffling the input
@@ -357,6 +364,84 @@ cited as language ability, and no BLiMP gain is claimed here.
 
 Both ceilings still stand. The wave converted each from "cause identified" to "cure built and instrumented",
 and left the honest number exactly where the evidence puts it.
+
+---
+
+## The language number was two defects, not one
+
+Two independent defects made every BLiMP number above unreadable. They are fixed, and the bench now
+prints what it actually measures.
+
+**Defect 1 — the AR model was never wired in.** `reasoning/blimp_bench.py` loaded `eprop_lm_alif_serve`,
+then `eprop_lm_serve`, and **never imported `ar_spiking_lm_serve`**. So the Wave-1 `n/a` above named only
+one of two causes: even with a frozen artifact present, no code path could score it. (The other cause, a
+trainer/serve artifact-path split, was fixed separately in `bcd53611`.) All three frozen char LMs are now
+scored, **each in its own row** — the old block preferred ALIF and silently dropped the others.
+
+**Defect 2 — the scorer had a length bias larger than any effect ever reported here.** Scoring was
+**unnormalized sum-logprob**. BLiMP's grammatical member is usually the *longer* one, and a weak char LM
+pays a roughly constant cost per character, so the sum systematically prefers the shorter, ungrammatical
+member. The size of the leak, measured: **sentence length ALONE scores 29.4%** — 20.6 points off chance,
+on the wrong side. A control that far from 50% is the whole reason to distrust an unnormalized column.
+
+### Measured — every model the bench can load, both scorings (67 × 25 = 1675 pairs)
+
+| scorer | sum-logprob | per-char | delta |
+|---|---|---|---|
+| length only (control) | **29.4%** | constant → all ties → 0% | — |
+| AR spiking-RWKV, `models/ar_spiking_lm.npz`, 10,339,425 params | 47.7% | 49.0% | +1.3 |
+| AR spiking-RWKV, **untrained twin** — identical shape, random init | **49.5%** | 48.4% | −1.1 |
+| e-prop ALIF-LM, `models/eprop_lm_alif.npz`, 812,256 params | 46.9% | 51.9% | +5.0 |
+| e-prop flat LM, `models/eprop_lm.npz`, 112,475 params | 48.3% | 50.4% | +2.1 |
+| char 5-gram on the same exposure (add-alpha backoff, untuned) | **53.0%** | not run | — |
+
+Normalizing turns the length control into a **constant** — the same value for every sentence, so every
+pair ties and ties score 0. That is the mechanism made visible: dividing by length is exactly what
+removes the surface term the sum was leaking.
+
+### What this does to the record
+
+- **The sub-chance 46.9% was not a broken model.** Length-normalized it is 51.9%. Below chance was the
+  scorer's bias, not an anti-grammatical model.
+- **The documented 51.0% incumbent is not a property of a model either.** It is one scoring convention's
+  output. Every historical BLiMP number in this document is an **unnormalized** number and is not
+  comparable to a normalized one. The bench therefore prints **both** columns rather than switching:
+  a silent switch would have made this document's own history incomparable without saying so.
+- **The 61.2% anchor was the wrong yardstick.** It is a **word**-level 5-gram on 83M words; every model
+  in the table is **character**-level. Measured on this repo's own exposure through the *same*
+  byte-addressed reader and the *same* proven-disjoint held-out slice, a char 5-gram (add-alpha backoff,
+  no tuned parameters, fit on 12M chars) scores **53.0%** (888/1675) at held-out char **PPL 4.5577**.
+  **53.0% is the honest char-level bar.** Every prior comparison of a char-level model to 61.2% compared
+  different units, and the gap it implied was partly a unit conversion.
+
+### The AR model's result is an honest null, and that is a complete result
+
+The frozen artifact is real: 10,339,425 params, dim 512, 3 layers, ctx 128, trained on 119,618,292 ASCII
+chars of WikiText-103, checkpointed on **held-out** char PPL (never on BLiMP) at step 1399 of a planned
+14,000 — **10% of its schedule**, with the run logged out to step 1700 (12%). Its checkpoint PPL is
+**7.2016**.
+
+Against its own untrained twin it measures **−1.8 points** under sum-logprob (47.7 vs 49.5) and **+0.7**
+under per-char (49.0 vs 48.4). At 1675 pairs the standard error is ~1.2 points, so **neither delta is
+distinguishable from zero, and the sign of "did training help?" flips with the choice of scorer.** That
+flip is the finding: at this point in the schedule the scorer moves the answer more than the training
+does. Nothing here is improved by picking the flattering column.
+
+It also loses to the char 5-gram on **both** axes at once — 47.7/49.0% vs 53.0% on BLiMP, and held-out
+char PPL 7.20 vs 4.56. A 10.3M-parameter spiking AR model at 10% of schedule is a **worse character
+predictor** than a count-based 5-gram, so its BLiMP number needs no separate explanation.
+
+**Contamination.** These numbers sit on a split whose disjointness is *proven*, not asserted — the lesson
+of `scratchpad/lang_word_big_out.VOID.txt` mechanized as integer byte intervals rather than an estimated
+chars-to-bytes ratio: exposure = bytes [0, 120,000,000), held-out = bytes [200,000,000, 200,400,000),
+an 80,000,000-byte gap; the trainer's guard verifiably refuses an exposure that reaches the held-out
+offset; 100/200/400-char verbatim probes from the held-out slice occur **nowhere** in the exposure; and
+**0 of 3350** BLiMP sentences (67 × 25, good *and* bad) occur verbatim in the 119.6M-char exposure.
+
+**Still unmoved.** The ceiling stands. The best number in the table is a count-based 5-gram at 53.0%, no
+model shows grammatical competence, and this section changes only what the numbers *mean*, not what they
+are: it removes a bias that was making models look worse than chance and an anchor that was making the
+gap look wider than it is.
 
 ## Reproduce
 
@@ -381,6 +466,13 @@ NORD_PERSIST=0 .venv-lake/Scripts/python.exe scratchpad/blimp_baseline.py 25
 # the ARC solver, both splits, library on/off
 PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/arc_score.py evaluation on
 PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/arc_score.py training off
+
+# the two-defect language section: the bench prints the whole table (both scorings, all three LMs,
+# length control) and needs data/lang/blimp + the gitignored models/*.npz artifacts
+PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.blimp_bench
+PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/ar_lm_untrained_control.py  # the random-init twin
+PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/ar_lm_ngram_control.py 12e6 # the char 5-gram bar
+PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/ar_lm_disjoint.py           # the disjointness proof
 
 # the language scale + mechanism study
 PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/lang_scale.py 1e3 1e4 1e5 1e6 1e7
