@@ -47,7 +47,7 @@ say which are open:
 |---|---|
 | **self-building code** | **What fires:** `brain_native_selfbuild.py` (1088) at `cortex/brain.py:1708` and `self_build_loop.py` at `:2520`, every 8 nights, **only** under `NORD_SELFMOD=1` (enabled in `learn_daemon.bat:14`); `self_mod_harness.py` (648) is reached through `Brain.self_improve` at `:3485`. **What does NOT fire, corrected 2026-07-29:** `godel_machine.py` — its `attempt_on_repo` (`:159`) has **zero call sites** tree-wide, and the only reference to the module anywhere outside itself is its *filename as a string* in the self-build's protected-paths list (`brain_native_selfbuild.py:73`). This row previously listed it among the modules that fire every 8 nights. Wiring it is open P0 work; until then it is an unwired real-repo adapter, and saying otherwise was the census-counted-as-capability failure P0's own honesty guard names |
 | **knowledge acquisition** | live — chat ingest → the one durable lake (`substrate/chat_memory.py`), `substrate/web_ingest.py`, reasoning-curriculum growth during sleep |
-| **neural growth** | live — neurogenesis grows **only during sleep** (asserted: `cortex/brain.py:3780`), plus `hippocampus/{growing_learner,function_preserving_growth}.py`, `substrate/similarity_sized_growth.py`, `cortex/neurogenesis_engine.py` |
+| **neural growth** | **Split into "grows" and "keeps what it grew", corrected 2026-07-30, because this row said "live" and meant only the first.** Growth runs **only during sleep** (asserted: `cortex/brain.py:3780`). What is KEPT differs per module and had never been checked: **`cortex/neurogenesis_engine.py` retains NOTHING** — its `NGSNN` is built at `:171`, fit at `:174`, scored at `:176`, has only `n_units`/`acc` read off it at `:177-178`, and is **never assigned to `self`** (verified: zero matches for `self.*model*=`), so it is collected at the end of **every refit** — not merely on restart. Its 8..120 `grown_units` range across nights 41–8004 is the size of the most recent throwaway fit, not an accumulating population. **`substrate/similarity_sized_growth.py:78` DOES retain** (`self.W`, an `(n_classes, dim)` array). `hippocampus/{growing_learner,function_preserving_growth}.py` **UNVERIFIED** — a narrow attribute scan found no retained weight array, which is not the same as proving there is none. And **nothing here is persisted across a restart**: the engine has no `save`/`load` at all, and the daemon relaunches on every new commit (~20 times in a working session; the night counter resetting `364 → 41 → 81 → 122` is that happening) |
 | **cortical column construction** | **NOT live.** `cortex/cortical_microcircuit.py` is a faithful 8-population Potjans-Diesmann circuit that is EXEMPT-permanent in `substrate/dormancy_gate.py:83` — *it has no input port*. This is the clearest open avenue named in this policy, and closing it is P0 work |
 | **self-recalibration** | live — `substrate/signal_calibrator.py`, running-baseline forms per P1 |
 
@@ -57,6 +57,16 @@ neurons, adding code, adding knowledge records: none of these is improvement unt
 place in this project to generate theater, and every other policy exists partly to stop that:
 
 - a grown unit that changes no outcome is **dormant** (P3), not progress;
+- **a grown unit that is not KEPT is not even growth** — added 2026-07-30, because the avenue table
+  above claimed neural growth was "live" while its main engine discarded every model it fit. This guard
+  had a gap the whole time: it tested whether growth *changes an outcome*, and never whether growth
+  *accumulates*. A measurement loop that reports rising accuracy as units grow is a legitimate and
+  useful thing, but it is an experiment about growth, not the growth itself. Note the honest
+  possibility, which is open work rather than a defect: retaining nothing may be CORRECT for a
+  measurement loop — in which case what needs fixing is the claim, not the engine, and this row is that
+  fix. Deciding whether the engine *should* keep its model is a design question about what growing
+  means here, and `hippocampus/ng_snn.py`'s earn-your-place stop (capacity monotone in data, 4,512
+  units at 24,000 rows) is the template for a grower whose result is worth keeping;
 - a self-written module that duplicates a mechanism is **bloat** (P2), not capability;
 - a "capability" reported without a measurement is a **fake capability** (verify-first), not a gain;
 - the census of what the brain has is **not** a measure of what it can do — count improvements by
