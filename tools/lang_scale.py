@@ -12,7 +12,9 @@ measure, all on the SAME text:
 NOTHING in src/ is modified. This script only READS the learner.
 
 -- WHY THIS IS FAST, AND WHY IT IS STILL THE REAL LEARNER ------------------------------------------
-The naive path runs at 280 chars/sec (measured, scratchpad/prof_encode.py), i.e. ~10 h for 1e7 chars.
+The naive path runs at 280 chars/sec -- a RECORDED measurement, not one you can re-run from a clone: it
+came from a scratchpad profiler that is gitignored and was not promoted with this file. At that rate 1e7
+chars is ~10 h, which is the whole reason for the fast path below.
 Two exact observations make it ~300x faster WITHOUT changing the model:
 
   (1) LanguageAcquisition._encode_ctx(ids) is a PURE DETERMINISTIC FUNCTION of the 8 context ids.
