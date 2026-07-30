@@ -44,7 +44,7 @@ the structural bar for Gf credit: developer-aware generalisation, zero gradient 
 
 ### Before
 
-`scratchpad/arc_baseline.py`, evaluation split, first 100 tasks, pass@2:
+`tools/arc_baseline.py`, evaluation split, first 100 tasks, pass@2:
 
 | interface | score |
 |---|---|
@@ -117,7 +117,7 @@ defects, not one* below — and read every BLiMP number here as an **unnormalize
 
 ### Before
 
-`scratchpad/blimp_baseline.py`, 67 paradigms × 25 pairs = 1675. Scoring is strictly read-only — no weight
+`tools/blimp_baseline.py`, 67 paradigms × 25 pairs = 1675. Scoring is strictly read-only — no weight
 update during evaluation, or the benchmark would teach the model its own test.
 
 | scorer | score |
@@ -445,24 +445,36 @@ gap look wider than it is.
 
 ## Reproduce
 
-> **Not reproducible from a clone, and this needs saying because this repo has burned on it twice.**
-> Every `scratchpad/ar_lm_*.py` script and `scratchpad/ar_lm_*_out.txt` log cited by the AR appendix
-> below is **gitignored** (`.gitignore:88`), as are the `models/` artifacts and the `data/lang/` corpus
-> they consume. So the AR-appendix numbers — the round-trip deviations, the incumbent re-score, the
-> n-gram control, the disjointness proof, the BLiMP run — are recorded results, **not** re-runnable
-> instructions, on any machine but the one that produced them.
+> **The instruments now survive a clone; the datasets still do not. Both halves matter.**
 >
-> This is the exact defect corrected elsewhere in the same session: the neuter-A/B probe had been cited
-> as `scratchpad/smoke_drive_charge.py`, which does not exist, and `tools/charge_probe.py` is tracked *on
-> purpose* for this reason. Reproducing it in a new file hours later is the honest thing to disclose
-> rather than the thing to quietly leave. **The fix is to promote the load-bearing scripts into
-> `tools/`** — where `charge_probe.py` and `capacity_curve.py` already live precisely because a cited
-> instrument must survive a clone. Not done here: they were written against local-only artifacts and
-> would need their inputs parameterised first, and shipping scripts I have not seen run on a clean
-> checkout would trade one false claim for another.
+> **What was fixed (2026-07-30).** Every script this section used to cite lived in `scratchpad/`, which is
+> gitignored (`.gitignore:88`), so on any machine but the one that produced the numbers this page listed
+> commands for files the reader did not have. Eight of them are now **tracked in `tools/`** — alongside
+> `charge_probe.py` and `capacity_curve.py`, which live there precisely because a cited instrument must
+> survive a clone: `arc_baseline.py`, `arc_score.py`, `blimp_baseline.py`, `ar_lm_ngram_control.py`,
+> `ar_lm_disjoint.py`, `lang_scale.py`, `lang_diag.py`, `lang_probe.py`. Each takes its inputs as an
+> explicit path (`--data` / `--corpus` / `--blimp`) instead of a hardcoded local one, and each **SKIPs
+> with a message and exit 0** when its input is absent rather than reporting a number computed from no
+> data. `tools/citation_guard.py` asserts this from now on, so the defect cannot come back silently.
 >
-> The commands below that use only tracked modules (`run_selfchecks`, the `*_bench` self-checks) do work
-> on a clone; they skip cleanly when the datasets are absent.
+> **What is still NOT reproducible from a clone, and is stated rather than papered over.** The
+> `data/lang/` corpus, the `data/arc/` tasks and the `models/*.npz` artifacts are gitignored local-only
+> data (the download commands are at the end of this section; the `.npz` has to be retrained). So a fresh
+> clone gets the instrument and a clean SKIP, not the number. That is a strictly weaker claim than
+> "reproducible", and it is the claim a static check can support: the reader is pointed at a file that
+> exists.
+>
+> **One command was deleted rather than promoted.** `ar_lm_untrained_control.py` — the random-init twin
+> behind the 49.5% baseline — **does not exist on disk at all** any more, so there was nothing to promote.
+> It is also redundant: the canonical section above builds the untrained twin inside
+> `reasoning.blimp_bench` rather than citing a separate script, and that path IS tracked. The 49.5% stays
+> in the table as a **recorded result**, reproducible through the bench, not through this deleted file.
+>
+> **Not covered by the promotion, and unchanged.** The `scratchpad/ar_lm_*_out.txt` logs holding the
+> training provenance (corpus size, PPL trace, step count) are still gitignored, and the `.npz` metadata
+> still records format/vocab/dims but none of that provenance. The round-trip deviations and the incumbent
+> re-score are still recorded results. Fixing that means writing provenance into the trainer's metadata,
+> and it is not fixed here.
 
 ```bash
 cd D:/AI-project/spiking-neural-data-lake
@@ -478,25 +490,28 @@ PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.rpm_solv
 PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.ar_spiking_lm_serve          # fast stdlib+numpy order proof
 PYTHONPATH=src .venv-cu128/Scripts/python.exe -m snn_data_lake.reasoning.ar_spiking_lm_serve --train  # strict trained order proof (torch)
 
-# before-state baselines
-NORD_PERSIST=0 .venv-lake/Scripts/python.exe scratchpad/arc_baseline.py 100
-NORD_PERSIST=0 .venv-lake/Scripts/python.exe scratchpad/blimp_baseline.py 25
+# before-state baselines (tracked in tools/ since 2026-07-30; each SKIPs cleanly without its dataset)
+.venv-lake/Scripts/python.exe tools/arc_baseline.py 100
+.venv-lake/Scripts/python.exe tools/blimp_baseline.py 25
 
 # the ARC solver, both splits, library on/off
-PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/arc_score.py evaluation on
-PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/arc_score.py training off
+.venv-lake/Scripts/python.exe tools/arc_score.py evaluation on
+.venv-lake/Scripts/python.exe tools/arc_score.py training off
 
 # the two-defect language section: the bench prints the whole table (both scorings, all three LMs,
-# length control) and needs data/lang/blimp + the gitignored models/*.npz artifacts
+# length control, and it BUILDS the untrained twin) and needs data/lang/blimp + the gitignored
+# models/*.npz artifacts
 PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.reasoning.blimp_bench
-PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/ar_lm_untrained_control.py  # the random-init twin
-PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/ar_lm_ngram_control.py 12e6 # the char 5-gram bar
-PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/ar_lm_disjoint.py           # the disjointness proof
+.venv-lake/Scripts/python.exe tools/ar_lm_ngram_control.py 12e6   # the char 5-gram bar (53.0%)
+.venv-lake/Scripts/python.exe tools/ar_lm_disjoint.py             # the disjointness proof
 
 # the language scale + mechanism study
-PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/lang_scale.py 1e3 1e4 1e5 1e6 1e7
-PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/lang_diag.py     # ablations D1-D7
-PYTHONPATH=src .venv-lake/Scripts/python.exe scratchpad/lang_probe.py    # decodability D8
+.venv-lake/Scripts/python.exe tools/lang_scale.py 1e3 1e4 1e5 1e6 1e7
+.venv-lake/Scripts/python.exe tools/lang_diag.py     # ablations D1-D7
+.venv-lake/Scripts/python.exe tools/lang_probe.py    # decodability D8
+
+# each of the eight takes its input as an explicit path, e.g. a corpus somewhere else entirely:
+.venv-lake/Scripts/python.exe tools/lang_scale.py 1e3 --corpus /data/wikitext/train0.txt
 ```
 
 Datasets (all gitignored under `data/`):
@@ -558,7 +573,7 @@ must be read with this bias in mind, and 51.0% must stop being cited as the curr
 
 The 61.2% "5-gram" anchor (Warstadt et al., Table 3) is a **word**-level model trained on 83M words.
 A char-level model cannot be compared to it. Measured on this repo's own corpus
-(`scratchpad/ar_lm_ngram_control.py`, char 5-gram, add-alpha backoff, nothing tuned): **51.4%** at 3M
+(`tools/ar_lm_ngram_control.py`, char 5-gram, add-alpha backoff, nothing tuned): **51.4%** at 3M
 chars, **53.0%** at 12M chars (held-out char PPL 5.39 / 4.56). **53.0% is the honest char-level
 n-gram bar**, and prior comparisons of char models to 61.2% (including the "toy sits at n-gram
 ~57-60%" lines above) were against the wrong yardstick.
@@ -591,9 +606,9 @@ n-gram bar**, and prior comparisons of char models to 61.2% (including the "toy 
 > artifact alone. That is worth fixing in the trainer's metadata, and is not fixed here.
 
 Setup (all in commit `bcd53611`): byte-addressed WikiText reader with a hard held-out guard
-(exposure `[0, E)` refuses to run when `E >= 200,000,000`, the offset `lang_scale.py` holds out —
+(exposure `[0, E)` refuses to run when `E >= 200,000,000`, the offset `tools/lang_scale.py` holds out —
 the `lang_word_big_out.VOID.txt` lesson mechanized). Disjointness **proven, not assumed**
-(`scratchpad/ar_lm_disjoint.py`): 100/200/400-char held-out probes absent from the exposure, and 0 of
+(`tools/ar_lm_disjoint.py`): 100/200/400-char held-out probes absent from the exposure, and 0 of
 3350 BLiMP sentences (good AND bad members) occur verbatim in the 119.6M-char training text. Model
 selection on held-out PPL, never on BLiMP.
 
