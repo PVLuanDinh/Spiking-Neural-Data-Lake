@@ -51,7 +51,7 @@ WHAT IT DOES NOT PROVE. That a tracked script RUNS, or that it reproduces the nu
 proves the weaker, checkable thing: the instrument a reader is pointed at exists in the repository they
 cloned. Deliberately weaker than the claim, because that is what a static pass can support.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.citation_guard
+  PYTHONUTF8=1 python tools/citation_guard.py
 """
 
 import os
@@ -65,7 +65,7 @@ _CITE = re.compile(r"(?<![\w./-])((?:[\w.-]+/)+[\w.-]+\.py)(?::\d+)?")
 # Files that may legitimately name an untracked .py:
 #   - .gitignore itself, which is where the ignoring is declared
 #   - this module, whose docstring quotes the offenders as its own motivating cases
-_EXEMPT_FILES = {".gitignore", "src/snn_data_lake/substrate/citation_guard.py"}
+_EXEMPT_FILES = {".gitignore", "tools/citation_guard.py"}
 
 # Prefixes that are not repo paths at all (upstream URLs, site-packages, other checkouts).
 _NOT_REPO = ("http", "www.", "site-packages/", "venv/", ".venv")
@@ -79,15 +79,25 @@ def _git(args, root):
 
 
 def repo_root():
+    # This file lives in tools/, so the root is ONE level up. It was three while the module sat in
+    # src/snn_data_lake/substrate/, and moving it without fixing this resolved to a directory outside
+    # the repo -- where `git ls-files` returns nothing, `scan()` returns None, and main() prints
+    # "SKIP: not a git checkout" and exits 0. A clean exit and no findings, which reads exactly like
+    # success. Caught by noticing the violation count had vanished from the output, not by the exit code:
+    # the same silent-degradation shape this session found six other instances of.
     here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.abspath(os.path.join(here, "..", "..", ".."))
+    return os.path.abspath(os.path.join(here, ".."))
 
 
 def scan(root):
     """(violations, n_files_scanned, n_citations). A violation is (citing_file, lineno, cited_path)."""
     tracked = set(_git(["ls-files"], root))
     if not tracked:
-        return None, 0, 0  # not a git checkout (or git absent) -- caller decides; never a silent pass
+        return (
+            None,
+            0,
+            0,
+        )  # not a git checkout (or git absent) -- caller decides; never a silent pass
 
     # Only text files worth citing from. Sources of truth for humans and for CI.
     scanned = [
@@ -175,7 +185,9 @@ def main():
     # before adopting the rule ... its output counted, before the policy lands" -- this pass exists to
     # be COUNTED first. Promoting it to an assert is a separate, deliberate change, and if the count
     # above is allowlist-shaped then the honest outcome is that this gate dies instead.
-    assert n_files > 100, f"scanned only {n_files} tracked files -- the walk is broken, not the tree"
+    assert n_files > 100, (
+        f"scanned only {n_files} tracked files -- the walk is broken, not the tree"
+    )
     assert n_cites > 50, f"found only {n_cites} .py citations -- the regex is broken, not the tree"
     print("\nself-check OK: walk and regex both live (counts above are the reportable result)")
     return 0
