@@ -57,6 +57,18 @@ neurons, adding code, adding knowledge records: none of these is improvement unt
 place in this project to generate theater, and every other policy exists partly to stop that:
 
 - a grown unit that changes no outcome is **dormant** (P3), not progress;
+- **Scaffolding a capability the project does not have yet is PERMITTED, and is not a fake capability
+  — owner decision, 2026-07-30.** This guard forbids *reporting* a capability without a measurement. It
+  does not forbid *building the channel* one will need. Those are different acts and this policy had
+  been read as conflating them: durable growth cannot be measured until growth is durable, so demanding
+  the measurement first makes the work unreachable. The conditions that keep it honest: the
+  infrastructure is labelled as infrastructure, no coverage band or P0 avenue may claim the capability
+  until it is measured, and the gap it exists to fill is named at the site — as
+  `neurogenesis_engine.substrate_is_retained()` names it, and as the ordering below enforces.
+  **Retention landed before the durable record type for exactly this reason**: persisting
+  `grown_units` while the model was discarded each refit would have written a counter and restored an
+  empty engine, which *would* have been a fake capability. Build the channel, then fill it, then
+  measure it — and do not credit it until the third step.
 - **a grown unit that is not KEPT is not even growth** — added 2026-07-30, because the avenue table
   above claimed neural growth was "live" while its main engine discarded every model it fit. This guard
   had a gap the whole time: it tested whether growth *changes an outcome*, and never whether growth

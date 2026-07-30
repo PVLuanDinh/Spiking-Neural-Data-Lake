@@ -124,6 +124,7 @@ class NeurogenesisSelfImprove:
         self.ticks = 0
         self._n_units = 0
         self._acc = 1.0 / self.k_modes  # chance until the first fit
+        self._model = None  # the retained grown NG-SNN; None until the first successful refit
         self.trajectory = []  # (tick, n_units, acc) per refit
 
     # ---- context stream ----------------------------------------------------------------------
@@ -177,6 +178,23 @@ class NeurogenesisSelfImprove:
         self._n_units = model.n_units
         self._acc = acc
         self.trajectory.append((self.ticks, model.n_units, acc))
+        # RETAIN the grown model (owner decision 2026-07-30, P0 amended to match). Until now this
+        # method read n_units and acc off `model` and let it fall out of scope, so the substrate was
+        # discarded at the end of EVERY refit -- not merely on restart -- and `grown_units` was a
+        # counter describing something already collected. Persisting that number would have restored
+        # an empty engine, which is why retention lands before the durable record type rather than
+        # after it.
+        #
+        # The prior behaviour was not a bug in isolation: as a MEASUREMENT LOOP (does held-out
+        # accuracy rise as units grow?) discarding the fit is coherent. Keeping it is what turns the
+        # loop into growth that accumulates, and that is the capability being built.
+        #
+        # This holds one NGSNN and its tensors for the process lifetime, replaced each refit. It is
+        # therefore a BOUNDED hold (one model, not a growing list) but a NEW resident cost, and the
+        # per-refit replacement is what keeps it bounded. Do NOT accumulate models here: the
+        # accumulation question belongs to the persistence layer, where it can be measured, and P1
+        # forbids answering it with a magic cap.
+        self._model = model
 
     # ---- read-only state ---------------------------------------------------------------------
     @property
@@ -186,6 +204,24 @@ class NeurogenesisSelfImprove:
     @property
     def grown_units(self):
         return self._n_units
+
+    @property
+    def grown_model(self):
+        """The retained grown NG-SNN, or None before the first successful refit.
+
+        Exposed as the handle the persistence layer will serialise. Read-only on purpose: a caller
+        that could REPLACE the model could restore a substrate the accuracy figure beside it never
+        measured, which is the shape of fake capability P0's honesty guard forbids. Writing it back is
+        the persistence layer's job, and it must carry the fit's accuracy with it."""
+        return self._model
+
+    def substrate_is_retained(self):
+        """True when there is grown substrate to persist, distinct from a nonzero unit COUNT.
+
+        These two came apart for the whole life of this feature: `grown_units` reported 8..120 while
+        the model behind it was collected at the end of every refit. Any persistence path must gate on
+        THIS, never on `grown_units > 0`, or it will write a counter and restore an empty engine."""
+        return self._model is not None
 
     @property
     def predict_accuracy(self):
