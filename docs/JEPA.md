@@ -78,9 +78,13 @@ and exits cleanly. Train + serve:
 
 ```bash
 pip install ".[gpu]"
-NORD_GPU=1 python research/jepa_scaffold_torch.py    # trains on the 5070, exports snn_jepa/2, verify_transfer
+NORD_GPU=1 python -m snn_data_lake.reasoning.jepa_scaffold_torch   # trains on the 5070, exports snn_jepa/2, verify_transfer
 # then in the zero-dep core: JepaWorldModel(...).load_weights("<export>.json") serves the deep encoder, no torch
 ```
+
+> Path corrected 2026-07-30: `research/` became `src/snn_data_lake/reasoning/` in v3.78 (`627b2e2b`),
+> so the runnable form is `python -m snn_data_lake.reasoning.<module>`. The files are the same files;
+> only the import path moved. `tools/citation_guard.py` found the three stale commands on this page.
 
 A latent-variable `z` for multimodality is a remaining depth axis.
 
@@ -114,7 +118,7 @@ not. (Also confirmed on CPU torch; the results are device-agnostic.)
 
 ```bash
 pip install ".[gpu]"   # a cu128 / Blackwell-sm_120 build for the 5070
-NORD_GPU=1 python research/hjepa_torch.py   # trains the nonlinear H-JEPA, prints [GPU-VERIFY] hierarchy-vs-flat
+NORD_GPU=1 python -m snn_data_lake.reasoning.hjepa_torch   # trains the nonlinear H-JEPA, prints [GPU-VERIFY] hierarchy-vs-flat
 ```
 
 **AirLLM does not apply here.** AirLLM is disk-streaming *inference* for a transformer too big for
@@ -132,7 +136,7 @@ PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.jepa_world_model
 PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.live_brain
 
 # the torch scale scaffold (prints a guidance banner without torch)
-python research/jepa_scaffold_torch.py
+PYTHONPATH=src python -m snn_data_lake.reasoning.jepa_scaffold_torch
 ```
 
 ## H-JEPA in the live brain (v3.14)

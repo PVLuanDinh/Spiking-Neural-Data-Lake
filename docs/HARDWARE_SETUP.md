@@ -141,7 +141,7 @@ Record labeled captures and run the whole thing with the helper:
 ```
 Or manually:
 ```powershell
-python "robot arm/sensor_reading.py" HAND_APPROACH COM8   # record one gesture (Ctrl-C to stop)
+python "integrations/robot arm/sensor_reading.py" HAND_APPROACH COM8   # record one gesture (Ctrl-C to stop)
 python -m snn_data_lake.live_arm --serial COM8                          # live, SIM arm (no actuation)
 python -m snn_data_lake.live_arm --serial COM8 --actuate COM8           # live, REAL arm (one UART, gated)
 ```

@@ -29,10 +29,14 @@ numbers of record exactly. Request the GPU with an environment variable (or the 
 # RTX 5070 = Blackwell sm_120 -> the cu128 wheel (the repo's verified GPU env = .venv-cu128, torch 2.11.0+cu128):
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install -e ".[gpu]"          # or ".[train]" -- torch already satisfied by the cu128 build above
-NORD_GPU=1 python research/snn_mnist_dc.py          # or NORD_DEVICE=cuda:0
+NORD_GPU=1 python -m snn_data_lake.reasoning.snn_mnist_dc     # or NORD_DEVICE=cuda:0
 ```
 
-`research/torch_device.py::resolve_device()` returns `cuda` only when the GPU is both requested
+> Path corrected 2026-07-30: `research/` became `src/snn_data_lake/reasoning/` in v3.78 (`627b2e2b`),
+> so the runnable form is `python -m snn_data_lake.reasoning.<module>`. Every bare module name listed
+> in "Covered scripts" below lives there now.
+
+`reasoning/torch_device.py::resolve_device()` returns `cuda` only when the GPU is both requested
 and `torch.cuda.is_available()`, else falls back to CPU with a clear message; `enable()` then
 calls `torch.set_default_device(...)` so every tensor and module built afterwards lands on the
 GPU. Scripts that construct an explicit `torch.Generator()` bind it to the resolved device so the

@@ -22,11 +22,19 @@ pip install -e .          # editable install (core = torch + numpy)
 Every stdlib module runs standalone with an assert-based self-check — the fastest way to see
 each piece work:
 ```bash
-python research/spiking_storage_prototype.py   # factored associative-memory storage
-python -m snn_data_lake.spike_telemetry_hub         # Paradigm A: sparse .spk store + windowed queries
-python -m snn_data_lake.paradigm_b_engine           # Paradigm B: in-storage spike-query engine
-python research/spike_knowledge_graph.py       # Paradigm C: relational spike embeddings
+python -m snn_data_lake.reasoning.spiking_storage_prototype   # factored associative-memory storage
+python -m snn_data_lake.spike_telemetry_hub                   # Paradigm A: sparse .spk store + windowed queries
+python -m snn_data_lake.paradigm_b_engine                     # Paradigm B: in-storage spike-query engine
+python -m snn_data_lake.reasoning.spike_kg                    # Paradigm C: relational spike embeddings
 ```
+
+> The top-level `research/` tree became `src/snn_data_lake/reasoning/` in v3.78 (commit `627b2e2b`,
+> 2026-07-19), so every `python research/<x>.py` command on this page is now
+> `python -m snn_data_lake.reasoning.<x>`. Paradigm C is the one that also changed NAME: the three
+> `spike_knowledge_graph*.py` modules were merged into a single `spike_kg` runner in commit `17067032`
+> (2026-07-08) and the originals deleted, so `--model {transe,rotate,relations}` selects what used to
+> be a separate file. Corrected 2026-07-30 after `tools/citation_guard.py` found all five commands on
+> this page pointing at paths absent from a clone.
 Run the whole suite (what CI runs) — CORE product + `research/` self-checks:
 ```bash
 python run_selfchecks.py       # 277/277, one source of truth for the module list
@@ -64,9 +72,9 @@ python -m venv .venv-lake
 ### 4. Real event-camera data — N-MNIST (optional, needs tonic)
 ```bash
 python -m venv .venv-nmnist
-.venv-nmnist/bin/pip install tonic                 # pulls ~1 GB N-MNIST on first run
-.venv-nmnist/bin/python research/nmnist_ingest.py
-# no tonic? `python research/nmnist_ingest.py` runs on synthetic events (no tonic needed)
+.venv-nmnist/bin/pip install -e ".[nmnist]"        # the package + tonic; pulls ~1 GB N-MNIST on first run
+.venv-nmnist/bin/python -m snn_data_lake.reasoning.nmnist_ingest
+# no tonic? the same command runs on deterministic synthetic events (no tonic needed)
 ```
 
 ### 5. GPU training (optional, needs CUDA + torch)
@@ -74,8 +82,9 @@ For the literature ~95% run (6400 neurons). RTX 50-series (Blackwell) needs CUDA
 ```bash
 python -m venv .venv
 .venv/bin/pip install --index-url https://download.pytorch.org/whl/cu128 torch torchvision
-.venv/bin/pip install snntorch==1.0.0 bindsnet numpy
-NORD_M=1600 NORD_INH=60 NORD_THETA_PLUS=0.20 .venv/bin/python research/eth_mnist_bindsnet.py --gpu
+.venv/bin/pip install -e . snntorch==1.0.0 bindsnet numpy
+NORD_M=1600 NORD_INH=60 NORD_THETA_PLUS=0.20 \
+  .venv/bin/python -m snn_data_lake.reasoning.eth_mnist_bindsnet --gpu
 # CPU fallback works automatically (slower); 400/20k ~ 86% in minutes
 ```
 

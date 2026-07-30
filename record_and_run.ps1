@@ -9,7 +9,9 @@ param(
     [int]$Duration = 40          # seconds recorded per gesture
 )
 $ErrorActionPreference = "Stop"
-$logger   = "robot arm/sensor_reading.py"
+# Path corrected 2026-07-30: the sketch tree moved under integrations/ in v3.78 (627b2e2b) and this
+# line was never updated, so every recording run died on a missing file at the first gesture.
+$logger   = "integrations/robot arm/sensor_reading.py"
 $gestures = "IDLE", "HAND_APPROACH", "HAND_RETREAT"
 
 # serial dep (no-op if already present)
