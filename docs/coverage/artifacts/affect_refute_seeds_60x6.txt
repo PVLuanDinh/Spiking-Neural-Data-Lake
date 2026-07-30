@@ -1,0 +1,20 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/affect_refute_probe.py seeds 60 6
+exit: 1
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:51:16Z
+recorded_by: refuter:Affect / docs/coverage/artifacts/affect_refute_probe.py seeds 60 6
+python: 3.11.15
+--- stdout ---
+multi-seed attack on Affect.md:9 (band 61)  : 6 seeds x 60 ticks
+seed 0: caution_bias max 0.600 (25 distinct) | self-control 0/31 ticks | gate da 15/31 calls | action 4/31 ticks first 23 onsets 3 | trajectory 21/60 ticks first 39
+seed 1: caution_bias max 0.051 (35 distinct) | self-control 0/35 ticks | gate da 3/35 calls | action 0/35 ticks first None onsets 0 | trajectory 0/60 ticks first None
+seed 2: caution_bias max 0.600 (19 distinct) | self-control 0/34 ticks | gate da 29/34 calls | action 16/34 ticks first 9 onsets 3 | trajectory 51/60 ticks first 9
+seed 3: caution_bias max 0.086 (30 distinct) | self-control 0/32 ticks | gate da 9/32 calls | action 0/32 ticks first None onsets 0 | trajectory 0/60 ticks first None
+seed 4: caution_bias max 0.600 (31 distinct) | self-control 0/32 ticks | gate da 27/32 calls | action 15/32 ticks first 6 onsets 9 | trajectory 54/60 ticks first 6
+seed 5: caution_bias max 0.214 (25 distinct) | self-control 0/26 ticks | gate da 7/26 calls | action 0/26 ticks first None onsets 0 | trajectory 0/60 ticks first None
+seeds where the gate input (da) moved       : 6/6
+seeds where the signal was eligible at all  : 6/6
+eligible seeds where the action changed     : 3/6
+REFUTED: the action change does not hold at a majority of eligible seeds

@@ -1,0 +1,15 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: tools/charge_probe.py taskset 60
+exit: 0
+commit: 852ae1d755633b60dc9f7bd1569387b265409587
+recorded_at: 2026-07-30T05:49:35Z
+recorded_by: opus-5 Executive auditor / tools/charge_probe.py
+python: 3.11.15
+--- stdout ---
+source                                        : taskset
+source weight (0.1 uniform init -> ...)       : 0.1171  (moved=True)
+arm HOLD rate  A(wired) vs B(neutered)        : 0.000 vs 0.000
+act/hold decision changed by the signal       : 0/60 ticks
+arm trajectory changed by the signal          : 22/60 ticks
+BEHAVIOURAL CHARGE OK

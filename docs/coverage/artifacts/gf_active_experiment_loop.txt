@@ -1,0 +1,20 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/gf_reply_ab.py active_experiment_loop
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:35:58Z
+recorded_by: opus-5 / docs/coverage/artifacts/gf_reply_ab.py active_experiment_loop
+python: 3.11.15
+--- stdout ---
+faculty                                       : active_experiment_loop
+queries                                       : 2
+wired replies carrying the faculty marker     : 1/2
+reply changed by neutering the faculty        : 1/2 turns
+  [0] Q: 2 3 5 7 11 what is next
+      A(wired)   : [experiment] my simplest fit is (t[n-2] + (t[n-2] + 1)) -> 15, but with 5 terms that program is as complex as the data, so it may be coincidental, not
+      B(neutered): [experiment] my simplest fit is (t[n-2] + (t[n-2] + 1)) -> 15, but with 5 terms that program is as complex as the data, so it may be coincidental, not
+  [1] Q: 13
+      A(wired)   : [with 13 added, no rule in my search fits] [honest gap] i recognise a number series but no program in my DSL fits it. i synthesise polynomial/geometri
+      B(neutered): [recalled by meaning] 13's parity is odd.
+REPLY CHARGE OK: the faculty's output reaches the brain's reply (rubric band 41-60). NOT band 61 -- no decision, action or weight is downstream; the route is read-only by construction (live_brain.py:443)

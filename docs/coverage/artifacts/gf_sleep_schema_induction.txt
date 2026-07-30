@@ -1,0 +1,16 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/gf_reply_ab.py sleep_schema_induction
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:37:05Z
+recorded_by: opus-5 / docs/coverage/artifacts/gf_reply_ab.py sleep_schema_induction
+python: 3.11.15
+--- stdout ---
+faculty                                       : sleep_schema_induction
+observable                                    : DURABLE WRITE, not a reply
+taught triples in the durable log             : 6 (A) / 6 (B)
+subjective nights completed                   : 11 (A) / 11 (B)
+derived src='schema' records written  A(wired): 2  [('cat', 'isa', 'animal'), ('dog', 'isa', 'animal')]
+derived src='schema' records written  B(neut) : 0  []
+MEMORY-WRITE CHARGE OK: neutering the inducer changes what the brain durably stores and can later retrieve (rubric band 41-60, 'a memory write'). NOT band 61 -- no decision, action or weight was shown to read it back

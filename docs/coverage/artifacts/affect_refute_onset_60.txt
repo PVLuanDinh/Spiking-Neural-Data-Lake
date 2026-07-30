@@ -1,0 +1,27 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/affect_refute_probe.py onset 60
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:42:40Z
+recorded_by: refuter:Affect / docs/coverage/artifacts/affect_refute_probe.py onset 60
+python: 3.11.15
+--- stdout ---
+attacked claim                              : Affect.md:9 band 61, 60 ticks, seed 0
+Cortisol.step call sites (autonomous_loop ln): {1436: 31}
+distinct `aversive` args it was given        : [0.0, 0.02, 0.1, 1.0]
+cort.level first nonzero at tick             : 4   max 1.0000
+caution_bias live range                     : 0.0000..0.6000
+caution_bias distinct values / mean          : 25  0.2789
+gate `da` A range                           : 0.0418..1.0000
+gate `da` changed by the neuter              : 15/31 calls
+selections made A / control / neutered       : 31 / 31 / 31
+SELF-CONTROL A vs A action                  : 0/31 ticks  first None  onsets 0  reconverge 0  (n=60)
+SELF-CONTROL A vs A trajectory              : 0/60 ticks  first None  onsets 0  reconverge 0
+NEUTER zero: action                         : 4/31 ticks  first 23  onsets 3  reconverge 2  (n=60)
+NEUTER zero: trajectory                     : 21/60 ticks  first 39  onsets 1  reconverge 0
+CONTROL half (dynamics kept, magnitude/2)   : 4/31 ticks  first 23  onsets 3  reconverge 2  (n=60)
+CONTROL half: trajectory                    : 21/60 ticks  first 39  onsets 1  reconverge 0
+CONTROL const-mean 0.2789 (dynamics gone)   : 6/31 ticks  first 0  onsets 5  reconverge 4  (n=60)
+CONTROL const-mean: trajectory              : 57/60 ticks  first 3  onsets 1  reconverge 0
+the flip at the first onset (A -> B)         : HOLD -> JOINT_A_ROTATE(+6deg)

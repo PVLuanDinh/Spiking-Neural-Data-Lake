@@ -1,0 +1,16 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/spatiotemporal_probe.py timing 60
+exit: 2
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:03:04Z
+recorded_by: opus-5 SpatialTemporal auditor / docs/coverage/artifacts/spatiotemporal_probe.py (charge_probe verdict, daemon sys.path)
+python: 3.11.15
+--- stdout ---
+harness perception tier                       : eprop-snn (perceiving_real=True)
+source                                        : timing
+source weight (0.1 uniform init -> ...)       : 0.01  (moved=True)
+arm HOLD rate  A(wired) vs B(neutered)        : 0.000 vs 0.000
+act/hold decision changed by the signal       : 0/60 ticks
+arm trajectory changed by the signal          : 0/60 ticks
+UNKNOWN: undirected source with no value table -- no divergence observed, but eligibility cannot be established from outside, so this is NOT evidence the source is inert

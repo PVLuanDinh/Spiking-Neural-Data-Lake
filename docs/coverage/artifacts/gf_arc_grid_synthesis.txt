@@ -1,0 +1,23 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/gf_reply_ab.py arc_grid_synthesis
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:35:39Z
+recorded_by: opus-5 / docs/coverage/artifacts/gf_reply_ab.py arc_grid_synthesis
+python: 3.11.15
+--- stdout ---
+faculty                                       : arc_grid_synthesis
+queries                                       : 3
+wired replies carrying the faculty marker     : 2/3
+reply changed by neutering the faculty        : 2/3 turns
+  [0] Q: arc: 11|22 -> 22|11 ; test 34|56
+      A(wired)   : [arc] induced a grid program at test time -> 34|56 (program: id+map, the smallest consistent with all 1 train pairs). a synthesized program, not a sto
+      B(neutered): I am not fully certain right now, but Right now all signals are holding steady.
+  [1] Q: arc: 12|34 -> 21|43 ; 56|78 -> 65|87 ; test 13|24
+      A(wired)   : [recalled by association] 13's parity is odd.
+      B(neutered): [recalled by association] 13's parity is odd.
+  [2] Q: arc: 00|11 -> 11|00 ; 22|33 -> 33|22 ; test 44|55
+      A(wired)   : [arc] induced a grid program at test time -> 44|55 (program: id+map, the smallest consistent with all 2 train pairs). a synthesized program, not a sto
+      B(neutered): I am not fully certain right now, but Right now all signals are holding steady.
+REPLY CHARGE OK: the faculty's output reaches the brain's reply (rubric band 41-60). NOT band 61 -- no decision, action or weight is downstream; the route is read-only by construction (live_brain.py:443)

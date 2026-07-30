@@ -1,0 +1,16 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: tools/charge_probe.py recall 300
+exit: 1
+commit: 8436b5e999519f0476ac64a1c0cd9f5318925a98
+recorded_at: 2026-07-30T05:47:19Z
+recorded_by: memory-auditor (opus-5) / tools/charge_probe.py
+python: 3.11.15
+--- stdout ---
+source                                        : recall
+(recall, action) values learned from dopamine : 33 pairs
+source weight (0.1 uniform init -> ...)       : 0.0837  (moved=True)
+arm HOLD rate  A(wired) vs B(neutered)        : 0.000 vs 0.000
+act/hold decision changed by the signal       : 0/300 ticks
+arm trajectory changed by the signal          : 0/300 ticks
+CONSUMED-BUT-NOT-DECISIVE

@@ -123,6 +123,24 @@ def _artifact(path):
     return head
 
 
+# KNOWN HOLE, found 2026-07-30 by the Gf refuter and NOT yet fixed. `_fingerprint` below matches only
+# `N/M ticks`. A probe that reports `3/3` or `3/3 turns` -- as every Gf A/B does -- therefore yields an
+# EMPTY tuple, and two things silently weaken:
+#
+#   1. `--rerun` compares () to (), so it checks the EXIT CODE ONLY. It is advertised as the forgery
+#      check; for those artifacts it is nearly vacuous. (The refuter compensated by diffing full stdout
+#      by hand: all 12 Gf artifacts reproduced, 9 byte-identically. So nothing was forged -- but the tool
+#      is not what proved it.)
+#   2. W3 (two faculties sharing an observable fingerprint = probably one serial chain scored twice)
+#      short-circuits at `if len(facs) > 1 and fp:` on the falsy empty tuple. So W3 CANNOT fire for such
+#      probes -- and Gf's two roster-duplication defects, which W3 exists to catch, passed the tool
+#      unflagged and were caught by a human reading the artifacts.
+#
+# The obvious fix -- widen the regex to `(\d+)/(\d+)` -- is deliberately NOT applied here, because it
+# changes the recorded fingerprint of EVERY existing artifact and so changes what `--rerun` compares
+# against. That needs a re-verification pass over the whole ledger, not a one-word edit at the end of a
+# session. Recorded as the honest state: the four W3 warnings this tool currently prints are a FLOOR on
+# serial-chain duplication, not a census, and absence of W3 is not evidence of absence.
 def _fingerprint(stdout):
     """The observable deltas a charge probe reports, as a tuple. Two faculties in one category with
     an identical fingerprint are probably two probe points on ONE serial chain -- the defect that cost

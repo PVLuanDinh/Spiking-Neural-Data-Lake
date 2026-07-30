@@ -1,0 +1,17 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/affect_ab_probe.py cortisol_caution 60
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:17:00Z
+recorded_by: opus-5 auditor:Affect / docs/coverage/artifacts/affect_ab_probe.py
+python: 3.11.15
+--- stdout ---
+signal                                        : cortisol_caution
+consumer-boundary neuter                      : pinned for the whole run
+distinct values the signal took in A          : 25  (sample [0.0, 0.0, 0.0, 0.0])
+SELF-CONTROL A vs A: action / stop / traj     : 0/31 ticks, 0/60 ticks, 0/60 ticks
+selected action changed by the signal         : 4/31 ticks
+arm stop decision changed by the signal       : 0/60 ticks
+arm trajectory changed by the signal          : 21/60 ticks
+BEHAVIOURAL CHARGE OK

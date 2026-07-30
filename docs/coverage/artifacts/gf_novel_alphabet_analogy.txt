@@ -1,0 +1,20 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/gf_reply_ab.py novel_alphabet_analogy
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:35:09Z
+recorded_by: opus-5 / docs/coverage/artifacts/gf_reply_ab.py novel_alphabet_analogy
+python: 3.11.15
+--- stdout ---
+faculty                                       : novel_alphabet_analogy
+queries                                       : 2
+wired replies carrying the faculty marker     : 2/2
+reply changed by neutering the faculty        : 2/2 turns
+  [0] Q: alphabet q w e r t then q:w :: e:?
+      A(wired)   : [induced] [alphabet q w e r t] q:w :: e:? -> r. the rule i synthesised for this problem at test time: novel-alphabet analogy. not a stored fact.
+      B(neutered): [honest gap] i recognise a novel-alphabet analogy but no program in my DSL fits it. i synthesise polynomial/geometric/recurrence/periodic/interleaved 
+  [1] Q: alphabet z y x w then z:y :: x:?
+      A(wired)   : [induced] [alphabet z y x w] z:y :: x:? -> w. the rule i synthesised for this problem at test time: novel-alphabet analogy. not a stored fact.
+      B(neutered): [honest gap] i recognise a novel-alphabet analogy but no program in my DSL fits it. i synthesise polynomial/geometric/recurrence/periodic/interleaved 
+REPLY CHARGE OK: the faculty's output reaches the brain's reply (rubric band 41-60). NOT band 61 -- no decision, action or weight is downstream; the route is read-only by construction (live_brain.py:443)

@@ -1,0 +1,23 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/gf_reply_ab.py pair_induction
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:35:28Z
+recorded_by: opus-5 / docs/coverage/artifacts/gf_reply_ab.py pair_induction
+python: 3.11.15
+--- stdout ---
+faculty                                       : pair_induction
+queries                                       : 3
+wired replies carrying the faculty marker     : 2/3
+reply changed by neutering the faculty        : 2/3 turns
+  [0] Q: if 3 -> 10, 5 -> 26, 7 -> 50, then 9 -> ?
+      A(wired)   : [gf] induced f(x)=(1 + (x * x)) from the given pairs at test time (leave-one-out verified) -> 9 = 82. not a stored fact.
+      B(neutered): I am not fully certain right now, but Right now all signals are holding steady.
+  [1] Q: if 2 -> 4, 3 -> 9, 4 -> 16, then 6 -> ?
+      A(wired)   : [recalled by association] 16's parity is even.
+      B(neutered): [recalled by association] 16's parity is even.
+  [2] Q: if 11 -> 23, 12 -> 25, 13 -> 27, then 14 -> ?
+      A(wired)   : [gf] induced f(x)=(x + (x + 1)) from the given pairs at test time (leave-one-out verified) -> 14 = 29. not a stored fact.
+      B(neutered): I am not fully certain right now, but Right now all signals are holding steady.
+REPLY CHARGE OK: the faculty's output reaches the brain's reply (rubric band 41-60). NOT band 61 -- no decision, action or weight is downstream; the route is read-only by construction (live_brain.py:443)

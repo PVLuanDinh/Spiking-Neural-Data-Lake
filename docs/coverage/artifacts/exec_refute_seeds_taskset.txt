@@ -1,0 +1,24 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/exec_refute_probe.py seeds taskset 60 1,2,3
+exit: 1
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:31:50Z
+recorded_by: opus-5 refuter / exec_refute_probe.py seeds taskset 60 1,2,3
+python: 3.11.15
+--- stdout ---
+mode                                          : seeds (taskset)
+neuter                                        : Brain._drive_w['taskset'] pinned at 0.0
+seed 1 wired activity                         : 59/60 ticks
+seed 1 selected action changed                : 0/60 ticks
+seed 1 arm trajectory changed                 : 0/60 ticks
+seed 1 act/hold changed                       : 0/60 ticks
+seed 2 wired activity                         : 59/60 ticks
+seed 2 selected action changed                : 0/60 ticks
+seed 2 arm trajectory changed                 : 0/60 ticks
+seed 2 act/hold changed                       : 0/60 ticks
+seed 3 wired activity                         : 59/60 ticks
+seed 3 selected action changed                : 16/60 ticks
+seed 3 arm trajectory changed                 : 40/60 ticks
+seed 3 act/hold changed                       : 0/60 ticks
+SEED-DEPENDENT: taskset showed no behavioural divergence at some seed

@@ -1,0 +1,16 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: heldout
+command: tools/arc_score.py evaluation on
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:20:22Z
+recorded_by: opus-5 / tools/arc_score.py evaluation on (400 held-out tasks, library learning ON)
+python: 3.11.15
+--- stdout ---
+split=evaluation lib=on limit=None : 12/400 = 3.00%  (438 s)
+solved_ids: 0c786b71,0c9aba6e,1a2e2828,31d5ba1a,34b99a2b,59341089,60c09cac,66f2d22f,833dafe3,bf699163,d282b262,e345f17b
+library learned 4 composites:
+  rot180>mirror_quad
+  modal_cell>scale3
+  mirror_h_l>mirror_h
+  flip_v>sel_last

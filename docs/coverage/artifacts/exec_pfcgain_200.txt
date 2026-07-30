@@ -1,0 +1,18 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/executive_ab_probe.py pfc_gain 200
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:09:42Z
+recorded_by: opus-5 Executive auditor / executive_ab_probe.py
+python: 3.11.15
+--- stdout ---
+signal                                        : pfc_gain
+neuter                                        : AutonomousArm.pfc_gain pinned at its birth value
+wired activity (pfc_gain != tick-1 value)     : 114/200 ticks
+distinct actions A(wired) vs B(neutered)      : 8 vs 8
+act/hold decision changed by the signal       : 0/200 ticks
+arm trajectory changed by the signal          : 38/200 ticks
+selected action changed by the signal         : 1/200 ticks
+first trajectory divergence at tick           : 162
+BEHAVIOURAL CHARGE OK

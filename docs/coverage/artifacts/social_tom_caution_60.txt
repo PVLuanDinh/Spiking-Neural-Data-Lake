@@ -1,0 +1,20 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/social_tom_ab_probe.py 60
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:10:42Z
+recorded_by: auditor:Social / docs/coverage/artifacts/social_tom_ab_probe.py 60
+python: 3.11.15
+--- stdout ---
+signal                                    : arm._social_risk (recursive_tom)
+dialogue turns injected at tick 30        : 2
+signal A(wired) max / live ticks           : 0.34 / 30 of 60
+signal B(neutered) max                     : 0.0  (held=True)
+arm HOLD rate A(wired) vs B(neutered)      : 0.000 vs 0.000
+act/hold decision changed by the signal    : 0/60 ticks
+arm trajectory changed by the signal       : 24/60 ticks
+C1 sham descriptor, nothing reads it       : 0/60 ticks act, 0/60 traj
+C2 neutered with NO dialogue               : 0/60 ticks act, 0/60 traj
+C3 determinism, two identical wired runs   : 0/60 ticks act, 0/60 traj
+BEHAVIOURAL CHARGE OK

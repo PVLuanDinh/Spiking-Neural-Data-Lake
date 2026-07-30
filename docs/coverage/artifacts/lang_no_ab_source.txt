@@ -1,0 +1,10 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: probe
+command: tools/charge_probe.py language 60
+exit: 2
+commit: 852ae1d755633b60dc9f7bd1569387b265409587
+recorded_at: 2026-07-30T05:52:24Z
+recorded_by: language-auditor / charge_probe eligibility check
+python: 3.11.15
+--- stdout ---
+unknown drive source 'language'; known sources: drive, help, ignition, novelty, percept, place, recall, reroute, surprise, taskset, timing

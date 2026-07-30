@@ -1,0 +1,22 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/wb_refute_probe.py drive 60
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:17:21Z
+recorded_by: opus-5 WholeBrain REFUTER / docs/coverage/artifacts/wb_refute_probe.py
+python: 3.11.15
+--- stdout ---
+source                                        : drive
+ticks per arm                                 : 60
+SELF-CONTROL A vs A: stop / traj / action     : 0/60 ticks, 0/60 ticks, 0/60 ticks
+act/hold decision changed by the signal       : 0/60 ticks
+arm trajectory changed by the signal          : 22/60 ticks
+  trajectory: first differing tick            : 39
+  trajectory: equal->differ ONSETS            : 1
+  trajectory: differ->equal re-convergences   : 0
+selected action changed by the signal         : 17/60 ticks
+  action: first differing tick / onsets       : 39 / 2
+distinct actions A(wired) vs B(neutered)      : 7 vs 7
+  actions seen in A                           : ['ENGAGE', 'HOLD', 'JOINT_A_ROTATE(+6deg)', 'JOINT_A_ROTATE(-6deg)', 'JOINT_B_ROTATE(+6deg)', 'JOINT_B_ROTATE(-6deg)', 'None']
+MULTI-EVENT: repeated divergence and/or a changed action

@@ -1,0 +1,20 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/gf_reply_ab.py letter_analogy
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:35:01Z
+recorded_by: opus-5 / docs/coverage/artifacts/gf_reply_ab.py letter_analogy
+python: 3.11.15
+--- stdout ---
+faculty                                       : letter_analogy
+queries                                       : 2
+wired replies carrying the faculty marker     : 2/2
+reply changed by neutering the faculty        : 2/2 turns
+  [0] Q: abc:abd :: ijk:?
+      A(wired)   : [induced] abc:abd :: ijk:? -> ijl. the rule i synthesised for this problem at test time: letter analogy. not a stored fact.
+      B(neutered): [honest gap] i recognise a letter analogy but no program in my DSL fits it. i synthesise polynomial/geometric/recurrence/periodic/interleaved rules, l
+  [1] Q: rst:rsu :: abc:?
+      A(wired)   : [induced] rst:rsu :: abc:? -> abd. the rule i synthesised for this problem at test time: letter analogy. not a stored fact.
+      B(neutered): [honest gap] i recognise a letter analogy but no program in my DSL fits it. i synthesise polynomial/geometric/recurrence/periodic/interleaved rules, l
+REPLY CHARGE OK: the faculty's output reaches the brain's reply (rubric band 41-60). NOT band 61 -- no decision, action or weight is downstream; the route is read-only by construction (live_brain.py:443)

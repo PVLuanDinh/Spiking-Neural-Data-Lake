@@ -1,0 +1,22 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/social_tom_refute_probe.py trigger
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:31:46Z
+recorded_by: refuter:Social / social_tom_refute_probe.py trigger (rubric rule 4 surface-form reachability)
+python: 3.11.15
+--- stdout ---
+rubric rule 4 -- which SURFACE FORMS of the same false-belief content fire the wire
+ fires   fb    risk  form
+   YES    1  0.3400  someone moved the marble to the table while i was away.   [the audited wording]
+   YES    1  0.3400  while i was away, someone moved the marble to the table.   [idiom first]
+   YES    1  0.3400  someone put the marble on the shelf when i wasn't looking.   [different verb+idiom, in list]
+    no    0  0.0000  the marble was moved to the table while i was away.   [passive voice]
+    no    0  0.0000  someone took the marble out of the basket while i was away.   [verb not in the list]
+    no    0  0.0000  my sister hid the keys in the drawer behind my back.   [third-party subject]
+    no    0  0.0000  someone moved the marble to the table while you were away.   [absent party is the brain]
+    no    0  0.0000  someone relocated the marble to the table while i was away.   [synonym verb]
+    no    0  0.0000  the marble is on the table now, i never saw it move.   [no put/move clause]
+   YES    1  0.3400  someone moved my marble to the kitchen table while i was away.   [two-word location]
+surface forms of one belief event that fire  : 4/10

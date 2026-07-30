@@ -1,0 +1,18 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/affect_refute_probe.py dose 60
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:42:19Z
+recorded_by: refuter:Affect / docs/coverage/artifacts/affect_refute_probe.py dose 60
+python: 3.11.15
+--- stdout ---
+dose-response on Affect.md:9, seed 0, 60 ticks
+caution_bias in A: 0.0000..0.6000, mean 0.2789
+SELF-CONTROL A vs A action                  : 0/31 ticks
+caution_bias x 0.99                         : action 1/31 ticks first 27 onsets 1 reconverge 1 | trajectory 4/60 first 56
+caution_bias x 0.9                          : action 2/31 ticks first 24 onsets 2 reconverge 2 | trajectory 7/60 first 53
+caution_bias x 0.75                         : action 4/31 ticks first 23 onsets 3 reconverge 2 | trajectory 21/60 first 39
+caution_bias x 0.5                          : action 4/31 ticks first 23 onsets 3 reconverge 2 | trajectory 21/60 first 39
+caution_bias x 0.25                         : action 4/31 ticks first 23 onsets 3 reconverge 2 | trajectory 21/60 first 39
+caution_bias x 0.0                          : action 4/31 ticks first 23 onsets 3 reconverge 2 | trajectory 21/60 first 39

@@ -1,0 +1,15 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: tools/charge_probe.py ignition 60
+exit: 0
+commit: 8436b5e999519f0476ac64a1c0cd9f5318925a98
+recorded_at: 2026-07-30T05:46:57Z
+recorded_by: opus-5 Consciousness auditor / tools/charge_probe.py
+python: 3.11.15
+--- stdout ---
+source                                        : ignition
+source weight (0.1 uniform init -> ...)       : 0.1285  (moved=True)
+arm HOLD rate  A(wired) vs B(neutered)        : 0.000 vs 0.000
+act/hold decision changed by the signal       : 0/60 ticks
+arm trajectory changed by the signal          : 47/60 ticks
+BEHAVIOURAL CHARGE OK

@@ -1,0 +1,26 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/exec_refute_probe.py marginal conflict stn 60
+exit: 1
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:28:57Z
+recorded_by: opus-5 refuter / exec_refute_probe.py marginal conflict stn 60
+python: 3.11.15
+--- stdout ---
+mode                                          : marginal (stn given conflict)
+arm A                                         : wired
+arm B                                         : conflict neutered
+arm C                                         : conflict + stn neutered
+neuter B                                      : ExecutiveControl.conflict -> 0.0
+neuter C adds                                 : the stn argument of BasalGangliaGate.select -> 0.0
+B vs A selected action changed                : 23/60 ticks
+C vs A selected action changed                : 23/60 ticks
+C vs B (MARGINAL) selected action changed     : 0/60 ticks
+B vs A arm trajectory changed                 : 47/60 ticks
+C vs A arm trajectory changed                 : 47/60 ticks
+C vs B (MARGINAL) arm trajectory changed      : 0/60 ticks
+C vs B (MARGINAL) act/hold changed            : 0/60 ticks
+C vs B (MARGINAL) decision_margin changed     : 0/60 ticks
+C vs B (MARGINAL) control_gain changed        : 0/60 ticks
+C vs B (MARGINAL) metacog_rel changed         : 0/60 ticks
+NESTED: neutering stn on top of conflict changes NO action, NO trajectory and NO act/hold -- one serial chain, not two faculties

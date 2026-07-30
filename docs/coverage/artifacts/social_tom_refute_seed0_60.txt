@@ -1,0 +1,22 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/social_tom_refute_probe.py arm 60 0
+exit: 0
+commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
+recorded_at: 2026-07-30T06:28:58Z
+recorded_by: refuter:Social / social_tom_refute_probe.py arm 60 0 (adds SELECTED ACTION + onset)
+python: 3.11.15
+--- stdout ---
+mode / neutered                            : arm / _social_risk
+seed / ticks / dialogue at tick            : 0 / 60 / 30
+signal A(wired) max / live ticks            : 0.34 / 30 of 60
+signal B(neutered) max                     : 0.0  (held=True)
+arm HOLD rate A(wired) vs B(neutered)      : 0.000 vs 0.000
+act/hold decision changed by the signal    : 0/60 ticks
+arm trajectory changed by the signal       : 24/60 ticks
+SELECTED ACTION changed by the signal      : 23/60 ticks   at [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58]
+first trajectory divergence at tick        : 36
+trajectory diff contiguous from onset      : True   (N - onset = 24)
+distinct actions A vs B                    : 7 vs 7
+C1 sham descriptor, nothing reads it       : 0/60 ticks act, 0 traj, 0 action
+BEHAVIOURAL CHARGE OK
