@@ -28,7 +28,7 @@ refused, and editing the row cannot change the exit code. It is not airtight —
 hand-write a transcript, which survives `score` and dies on `--rerun` — but it removes the *accidental*
 inflation this project keeps hitting.
 
-### `--rerun` needs an isolated `NORD_HOME`, and two artifacts cannot be reproduced at all
+### `record`/`rerun` now isolate `NORD_HOME` themselves, and two artifacts cannot be reproduced at all
 
 Established 2026-07-30 by re-executing **all 82 artifacts** after the `_fingerprint` regex was widened
 (see the comment above `_fingerprint` in `tools/coverage_score.py`). Three results worth having in one
@@ -39,9 +39,13 @@ place:
    `~/.snn_data_lake` continuously, most probes read it, and `consciousness_refute_probe.py` is
    well-behaved enough to *detect* the resulting noise and exit 2 with
    `UNKNOWN: arm A is not reproducible at seed=0 -- no verdict from a noisy harness` rather than emit a
-   verdict. **Run `--rerun` with `NORD_HOME` set to an empty scratch directory**, the way
-   `gf_reply_ab.py:66` already does for itself. `record` and `rerun` do not set it, which is the real
-   defect and is instrument work in `tools/**`.
+   verdict. **FIXED 2026-07-30: `record` and `rerun` now run every probe against a fresh empty
+   `NORD_HOME`** (a per-invocation temp dir), so the ledger no longer depends on what the operator's
+   brain happened to be doing. An explicit `NORD_HOME` in the caller's environment still wins, which
+   keeps a frozen-lake snapshot possible without editing the instrument. Confirmed by re-running all 82
+   under isolation: **80 reproduce, 2 fail** (the pair in point 2), and **not one artifact that
+   reproduced ambiently broke under isolation** — the risk worth checking first was that a cold lake
+   would turn real evidence into null evidence, and it did not, so nothing was re-recorded to reach 80.
 2. **`cons_refute_strength_iso_120` and `exec_refute_marg_taskset_given_pfcbias` are not reproducible in
    principle**, and neither was re-recorded. Both are deterministic *given* a lake, and both report a
    `metacog reliability` counter that reads that mutable durable state: `48/120` recorded, `48/120` on an

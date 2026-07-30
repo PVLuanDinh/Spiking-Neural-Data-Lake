@@ -55,6 +55,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 
 # The eleven rubric categories, verbatim from docs/COVERAGE_RUBRIC.md:26-38. This tuple IS the
@@ -402,12 +403,41 @@ def score(root, evdir):
 
 
 # ---------------------------------------------------------------- record / rerun
+# Probes run against an ISOLATED lake, decided by measurement on 2026-07-30 rather than by preference.
+# Before this, `record` and `rerun` passed only PYTHONPATH/PYTHONUTF8, so a probe read whatever
+# `~/.snn_data_lake` happened to hold -- and with the always-on daemon writing that lake continuously,
+# the ledger was unreproducible through no fault of the evidence. Ambient: 70 of 82 artifacts
+# reproduce. Under a fresh empty NORD_HOME: 80 of 82.
+#
+# The risk this had to clear first was the opposite of the obvious one. A cold lake could have turned
+# real evidence into null evidence -- a probe that legitimately reads accumulated state going quietly
+# flat, taking the floor out from under whatever band rested on it. That did NOT happen: not one
+# artifact that reproduced ambiently broke under isolation, so no probe's observables depend on the
+# ambient lake, and nothing was re-recorded to reach the 80.
+#
+# The 2 that fail under BOTH conditions are unreproducible in principle, not stale: they report a
+# metacog reliability counter that reads mutable durable state (48/120 recorded vs 50/120 live; 3/60
+# vs 5/60 vs 22/60). They are documented in docs/coverage/README.md and deliberately NOT re-recorded --
+# re-recording a moving number just freezes one more snapshot of it and calls the snapshot evidence.
+#
+# An explicit NORD_HOME in the caller's environment WINS, so pointing the ledger at a frozen lake
+# snapshot stays possible without touching this file.
+def _probe_env(root, home):
+    return {
+        **os.environ,
+        "PYTHONPATH": os.path.join(root, "src"),
+        "PYTHONUTF8": "1",
+        "NORD_HOME": home,
+    }
+
+
 def record(root, evdir, name, kind, cmd, extra):
     """Run a probe and capture it as an artifact. The header is machine-written on purpose: a claim
     whose provenance is typed by the same hand that typed the claim is not evidence."""
-    env = {**os.environ, "PYTHONPATH": os.path.join(root, "src"), "PYTHONUTF8": "1"}
     argv = [sys.executable] + cmd if cmd[0].endswith(".py") else cmd
-    r = subprocess.run(argv, cwd=root, capture_output=True, text=True, env=env, errors="replace")
+    with tempfile.TemporaryDirectory(prefix="coverage_home_") as _home:
+        env = _probe_env(root, os.environ.get("NORD_HOME") or _home)
+        r = subprocess.run(argv, cwd=root, capture_output=True, text=True, env=env, errors="replace")
     head = subprocess.run(["git", "-C", root, "rev-parse", "HEAD"], capture_output=True, text=True)
     os.makedirs(os.path.join(evdir, "artifacts"), exist_ok=True)
     path = os.path.join(evdir, "artifacts", name + ".txt")
@@ -435,9 +465,10 @@ def rerun(root, evdir, name):
         return 2
     a = _artifact(path)
     cmd = a["command"].split()
-    env = {**os.environ, "PYTHONPATH": os.path.join(root, "src"), "PYTHONUTF8": "1"}
     argv = [sys.executable] + cmd if cmd[0].endswith(".py") else cmd
-    r = subprocess.run(argv, cwd=root, capture_output=True, text=True, env=env, errors="replace")
+    with tempfile.TemporaryDirectory(prefix="coverage_home_") as _home:
+        env = _probe_env(root, os.environ.get("NORD_HOME") or _home)
+        r = subprocess.run(argv, cwd=root, capture_output=True, text=True, env=env, errors="replace")
     was, now = a["exit"], str(r.returncode)
     fp_was, fp_now = _fingerprint(a["_stdout"]), _fingerprint(r.stdout)
     print(f"{name}: recorded exit {was} / now {now}")
