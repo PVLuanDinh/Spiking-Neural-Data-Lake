@@ -800,6 +800,36 @@ class AutonomousArm:
                 if mx > 0
                 else None
             )  # biased competition, not a hard mask (no collapse)
+            # MEASURED DEAD, and left dead deliberately -- do not "fix" this cut without reading this.
+            # `norm` is r_i = d_i^2 / (0.25 + sum_j d_j^2), so the equal-share ceiling across 4 bands
+            # is 1/4 = 0.25 and clearing 0.15 in k bands at once needs raw energy above 0.2315 (k=2) /
+            # 0.2611 (k=3) / 0.3062 (k=4) in every one, out of an _energy() that is a MEAN. Live over
+            # 200 ticks: at most ONE band ever cleared 0.15 (>=2 bands 0/200, >=3 bands 0/200) and
+            # `_bound_modalities` was 0 on 200/200 while `_attended` varied -- detect() runs every
+            # tick and can never return anything. Claustrum.k is 3. Audio's normalized response never
+            # exceeds 0.0092 and distance's never 0.0537, so for two of four bands the cut is
+            # unreachable by an order of magnitude regardless of the others.
+            #
+            # THREE replacements were built and measured; all were reverted:
+            #   * share-relative (norm[i] > mean(norm))        -> >=3 bands on 0/200. No better.
+            #   * per-band upper quartile of `norm`            -> >=3 bands on 0/97 attend-ticks.
+            #   * per-band running MEDIAN of the RAW drives    -> binds on 25/200 ticks, and wiring
+            #     Claustrum.broadcast() into `_attn_gain` changed that gain on 25/200 -- but a
+            #     neuter-A/B moved NOTHING downstream: selected action 0/200, arm act/hold 0/200,
+            #     trajectory 0/200, recognized units 4 vs 4, grown units 6 vs 6. CONSUMED-BUT-NOT-
+            #     DECISIVE, so it was reverted rather than kept as a live-looking telemetry field.
+            # The quartile result is structural and is the real lesson: divisive normalization
+            # divides every band by a SHARED denominator, so its outputs are anti-correlated BY
+            # CONSTRUCTION. Binding is a CONJUNCTION; testing a conjunction on the output of a
+            # competition is a category error, because the normalizer's job is to make ONE band win.
+            # And even fed a reachable bar, a gain change in [0.5,1.0] has no leverage on a 4-unit
+            # prototype learner's vigilance test.
+            #
+            # So this path is honestly DORMANT: `_bound_modalities` is 0 forever and is read only by
+            # telemetry (cortex/brain.py:2799), and Claustrum.broadcast() has no live call site at
+            # all. It belongs in dormancy_gate.EXEMPT with that reason, not in a wiring wave. Leaving
+            # the constant-0 in place is the honest report; making it vary without changing an
+            # outcome would only make a dead faculty look alive on the cockpit.
             trains = [
                 [1 if norm[i] > 0.15 else 0] * 6 for i in range(4)
             ]  # crude per-band activity raster
