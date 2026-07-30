@@ -171,8 +171,17 @@ Read it from the artifact, never from a log:
 
 ```python
 from snn_data_lake.reasoning.ar_spiking_lm_serve import SpikingLMServe
-SpikingLMServe().provenance()   # dict over PROVENANCE_KEYS, or None when no artifact loads
+SpikingLMServe().provenance()          # dict over PROVENANCE_KEYS, or None when no artifact loads
+SpikingLMServe().provenance_status()   # "recorded" | "unrecorded" -- ask this FIRST
 ```
+
+**Ask `provenance_status()` before quoting `provenance()`.** All-`"unknown"` has two causes that a
+reader must not conflate: a trainer run that left fields empty (fillable) versus a file written before
+this schema (permanent). Every PROVENANCE_KEY is a training-run value and none is derivable from the
+weights, so a pre-schema artifact can never be re-stamped truthfully without its original checkpoint.
+**The shipped `models/ar_spiking_lm.npz` is exactly this case** — it reports `"unrecorded"`, and the
+step-1399 figure above is therefore log-sourced for that file, not artifact-verified. Every artifact
+exported after `852ae1d7` testifies for itself.
 
 **Backward compatibility:** an `.npz` exported before this schema (or a random-init test artifact)
 has no `provenance` key — it still loads everywhere, and `provenance()` reports every field as

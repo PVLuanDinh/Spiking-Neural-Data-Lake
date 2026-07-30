@@ -604,6 +604,9 @@ n-gram bar**, and prior comparisons of char models to 61.2% (including the "toy 
 > gitignored log (`scratchpad/ar_lm_full_out.txt`), and the `.npz` metadata records format/vocab/dims
 > but no corpus size, step count or PPL — so on a fresh clone these numbers are unreproducible from the
 > artifact alone. That is worth fixing in the trainer's metadata, and is not fixed here.
+> **Update 2026-07-30:** the TRAINER was fixed (`852ae1d7` added the provenance block, documented in
+> `docs/TRAINING.md`). THIS ARTIFACT was not, and cannot be — see the log-sourced note in the canonical
+> section below. The mechanism exists; this file predates it.
 
 Setup (all in commit `bcd53611`): byte-addressed WikiText reader with a hard held-out guard
 (exposure `[0, E)` refuses to run when `E >= 200,000,000`, the offset `tools/lang_scale.py` holds out —
@@ -618,6 +621,20 @@ words) of WikiText-103. **Stopped deliberately at step 1700 of 14000** (coordina
 repo gate); the shipped artifact is the best held-out checkpoint, step 1399, held-out char PPL
 7.2016 (32k-char eval slice) / **6.5423** over the full 200k-char held-out slice under the windowed
 protocol.
+
+> **LOG-SOURCED, NOT ARTIFACT-VERIFIED (checked 2026-07-30).** `models/ar_spiking_lm.npz` carries **no
+> `provenance` block** — `SpikingLMServe().provenance_status()` returns `"unrecorded"` and all ten
+> `PROVENANCE_KEYS` read `"unknown"`. It was exported before the schema landed (`852ae1d7`). So every
+> training number in this paragraph — step 1399, 14000 planned, the PPLs, the corpus size — is sourced
+> to the gitignored log `scratchpad/ar_lm_full_out.txt` and **cannot be checked against the file**.
+> What the artifact does testify to is what it holds: **10,339,425 params**, vocab 97, dim 512,
+> layers 3, d_ff 2048, `trained=True`. Those match, so the paragraph is not contradicted — it is
+> unverified, which is a different and weaker status.
+>
+> **This is permanent for this file, not a to-do.** No checkpoint survives to re-export from, and not
+> one PROVENANCE_KEY is derivable from weights. Retraining would produce a DIFFERENT model and
+> silently invalidate the BLiMP numbers recorded in `docs/coverage/` against this one, so it is not a
+> fix. The next real-scale run inherits the fixed exporter and will testify for itself.
 
 BLiMP, 67 x 25 = 1675 pairs, scored through the frozen numpy serve (`scratchpad/ar_lm_blimp.py`):
 

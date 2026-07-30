@@ -247,6 +247,26 @@ class SpikingLMServe:
         raw = self.meta.get("provenance") or {}
         return {k: (raw[k] if raw.get(k) is not None else "unknown") for k in PROVENANCE_KEYS}
 
+    def provenance_status(self):
+        """Whether this artifact's provenance was EVER recorded -- a different question from whether a
+        field is filled in, and the one a reader needs first.
+
+        `provenance()` answers "unknown" for both a field the trainer left empty and a file written
+        before the schema existed. Those are not the same: the first is a gap that a re-run fills, the
+        second is PERMANENT for that file, because every PROVENANCE_KEY is a training-run value
+        (corpus size, planned steps, checkpoint step, PPL, seed, batch, lr) and NOT ONE of them is
+        derivable from the weights. Without the original checkpoint there is nothing to re-export from,
+        and retraining would produce a different model -- so a pre-schema artifact's training numbers
+        can only ever be sourced to a log, never verified against the file.
+
+        Returns None when no artifact is loaded, "recorded" when the artifact carries the block, and
+        "unrecorded" otherwise. `models/ar_spiking_lm.npz` (the shipped real-scale LM) is "unrecorded":
+        it was exported before the schema landed, which is why docs quoting its step count mark that
+        number as log-sourced rather than artifact-verified."""
+        if not self._ok:
+            return None
+        return "recorded" if self.meta.get("provenance") else "unrecorded"
+
     # ---- encode / decode ----
     def _encode(self, s):
         return [self.stoi.get(c, self.unk) for c in s]
