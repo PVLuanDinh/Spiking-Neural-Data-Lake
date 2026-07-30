@@ -215,6 +215,95 @@ class NeurogenesisSelfImprove:
         the persistence layer's job, and it must carry the fit's accuracy with it."""
         return self._model
 
+    # ---- durable growth state (P0 scaffolding, step 2) ----------------------------------------
+    #
+    # WHAT IS ACTUALLY GROWN, and it is only three tensors: NGSNN grows `W` (L, d_in) hidden input
+    # weights, `b` (L,) biases and `beta` (L, m) analytical output weights, with `d_in`/`m` needed to
+    # interpret them (`hippocampus/ng_snn.py:90-94`). Everything else on that object is construction
+    # config or an RNG. So this serialises the substrate, NOT the engine.
+    #
+    # The ACCURACY TRAVELS WITH THE WEIGHTS, deliberately. A restored model carrying an accuracy
+    # measured on a different fit is a fake capability in P0's exact sense -- the number would describe
+    # a substrate that is no longer there. Storing them together makes that pairing structural rather
+    # than a convention someone has to remember.
+    #
+    # numpy .npz is the container: self-describing, tolerant of a missing key, and already how this
+    # repo stores weights (models/*.npz). The bytes are opaque to the lake, which only needs a tag and
+    # a length -- so this stays decoupled from binlog framing and can be wrapped by a `_T_GROWTH`
+    # record without either side knowing the other's format.
+    GROWTH_FORMAT = "ngsnn.growth.v1"
+
+    def growth_state_bytes(self):
+        """The retained substrate as an opaque blob, or None when there is nothing grown to save.
+
+        Returns None rather than an empty blob on purpose: a caller must not be able to persist
+        "no substrate" as though it were substrate."""
+        if self._model is None:
+            return None
+        import io
+
+        import numpy as np
+
+        m = self._model
+        if m.W is None or m.b is None or m.beta is None:
+            return None  # constructed but never fit -- not substrate
+        buf = io.BytesIO()
+        np.savez(
+            buf,
+            fmt=np.array(self.GROWTH_FORMAT),
+            W=m.W.detach().cpu().numpy(),
+            b=m.b.detach().cpu().numpy(),
+            beta=m.beta.detach().cpu().numpy(),
+            d_in=np.array(int(m.d_in)),
+            m_out=np.array(int(m.m)),
+            n_units=np.array(int(self._n_units)),
+            acc=np.array(float(self._acc)),  # the fit these weights came from, never a later one
+            ticks=np.array(int(self.ticks)),
+        )
+        return buf.getvalue()
+
+    def restore_growth_state(self, blob):
+        """Rebuild the retained substrate from `growth_state_bytes`. True if restored.
+
+        Refuses rather than half-restores: a wrong format tag, a missing array or a shape that does
+        not agree with itself leaves the engine exactly as it was. A persistence path that silently
+        produces a partly-populated model is worse than one that does nothing, because the accuracy
+        beside it would then describe weights that are not there."""
+        if not blob:
+            return False
+        import io
+
+        import numpy as np
+
+        try:
+            with np.load(io.BytesIO(blob), allow_pickle=False) as z:
+                if str(z["fmt"]) != self.GROWTH_FORMAT:
+                    return False
+                W, b, beta = z["W"], z["b"], z["beta"]
+                d_in, m_out = int(z["d_in"]), int(z["m_out"])
+                n_units, acc, ticks = int(z["n_units"]), float(z["acc"]), int(z["ticks"])
+        except Exception:
+            return False
+        if W.ndim != 2 or beta.ndim != 2 or b.ndim != 1:
+            return False
+        if W.shape[0] != b.shape[0] or W.shape[0] != beta.shape[0]:
+            return False  # L must agree across all three
+        if W.shape[1] != d_in or beta.shape[1] != m_out:
+            return False
+
+        model = NGSNN(
+            l_max=self._l_max, eps_tol=self._eps_tol, T=self._T, device=self.device, seed=self.seed
+        )
+        model.W = torch.tensor(W, dtype=torch.float32, device=model.device)
+        model.b = torch.tensor(b, dtype=torch.float32, device=model.device)
+        model.beta = torch.tensor(beta, dtype=torch.float32, device=model.device)
+        model.d_in, model.m = d_in, m_out
+        self._model = model
+        self._n_units = n_units
+        self._acc = acc
+        self.ticks = max(self.ticks, ticks)
+        return True
+
     def substrate_is_retained(self):
         """True when there is grown substrate to persist, distinct from a nonzero unit COUNT.
 
