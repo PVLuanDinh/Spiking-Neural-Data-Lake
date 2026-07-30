@@ -17,6 +17,7 @@ the rule that stops the policy from being satisfied by theater.
 | P5 use the GPU where it helps | — | yes |
 | **P6 mutual reach + use** | — | yes (provisional; its gate is specified but NOT built, see P6) |
 | e-prop not backprop | — | yes |
+| *(not a policy — repo hygiene)* citations resolve | `tools/citation_guard.py` (step in the `lint` CI job, asserting since 2026-07-30) | — |
 
 **Provenance of the 2026-07 amendments.** Three independent audits mapped this codebase against
 external frameworks — predictive coding, the Thousand Brains Theory, and quantum-consciousness
@@ -667,16 +668,38 @@ result; the rule stands on the eight incidents above either way.
   `tools/citation_guard.py`, and the surviving narrower hypothesis is recorded there — the real defect is
   an untracked script presented as a *runnable reproduction path*, not a filename in prose. Building the
   naive version first is what distinguished those two, and it cost one file instead of a policy.
-  **The narrow version was then built and counted too, and it SURVIVES: 21 violations across 5 files**
+  **The narrow version was then built and counted too, and it SURVIVED at 21 violations across 5 files**
   (`tools/citation_guard.py`, STRICT scope — a `.py` cited inside a shell-fenced block or under a
-  Reproduce/Usage heading). 21 is a work list, not an allowlist, so the rule is adoptable in that scope.
-  It is **not yet an asserting gate**, because promoting it means first clearing or exempting those 21 —
-  a work item, not a policy question. What it found is worse than the incident that motivated it:
-  **`docs/RUNNING.md`, the project's how-to-run page, has five commands pointing at files absent from a
-  clone.** The two dispositions differ and should not be lumped: `DEPTH_CEILINGS.md`'s `scratchpad/`
-  citations are real evidence needing promotion into `tools/`, whereas `RUNNING.md`, `JEPA.md` and
-  `PERFORMANCE.md` cite `research/` files that appear retired, so those commands need correcting or
-  deleting. Recorded here because "the broad rule died and the narrow one lived, at 475 vs 21" is the
-  result, and the only reason either number exists is that this bar demands counting before adopting.
+  Reproduce/Usage heading). 21 was a work list, not an allowlist, so the rule was adoptable in that
+  scope. What it found was worse than the incident that motivated it: **`docs/RUNNING.md`, the project's
+  how-to-run page, had five commands pointing at files absent from a clone.**
+  **FINAL STATE, same day: broad REJECTED at 475 across 127 files (report only, still non-asserting);
+  strict ADOPTED and ASSERTING at 0 unexempted violations with exactly 1 exemption.** The 21 were
+  cleared, not exempted, and the dispositions differed as predicted:
+  - **10 were stale paths.** `research/` became `src/snn_data_lake/reasoning/` in v3.78 (`627b2e2b`), and
+    `RUNNING.md` (×5), `JEPA.md` (×3), `PERFORMANCE.md` (×1) plus `HARDWARE_SETUP.md`'s sketch path were
+    never updated — the files had *moved*, not gone. Corrected to `python -m snn_data_lake.reasoning.<mod>`.
+    One was a genuine retirement: `spike_knowledge_graph.py` was merged into `spike_kg.py` (`17067032`).
+  - **8 were promoted into `tools/`** from gitignored `scratchpad/` — real evidence for real published
+    numbers, now tracked, with inputs taken as explicit paths and a clean SKIP when a dataset is absent.
+    Each was run; `lang_scale.py`, `lang_diag.py` and `lang_probe.py` reproduce their doc tables exactly
+    (53.4→53.1 decay ablation, 0/1675 fold collisions, 0.65% over 117,859 contexts, 2,992 params).
+  - **1 was deleted, not promoted:** `ar_lm_untrained_control.py` no longer exists on disk, and the
+    tracked bench builds the untrained twin anyway. Its command is gone and the doc now says the 49.5% is
+    a recorded result, not reproducible from that file.
+  - **1 exemption, `docs/HARDWARE_SETUP.md:144`.** The cited file IS tracked, at
+    `integrations/robot arm/sensor_reading.py`; the SPACE in the directory name truncates the guard's
+    path token, so it cannot resolve. Fixing that in the resolver was rejected because it would equally
+    resolve the stale `robot arm/...` form the line carried until it was corrected — the tokenizer fix
+    would hide a live defect class, so the false positive is exempted where the reason is readable.
+    `EXEMPT` follows `dormancy_gate.EXEMPT`'s pattern and, because line-keyed entries rot, the gate also
+    asserts every entry still matches a real violation: an exemption that blesses nothing fails loudly
+    instead of reading as coverage. Both asserts were tested by making them fire.
+  Registered as a step in `.github/workflows/ci.yml`'s lint job, not in `run_selfchecks.py`: the latter
+  only executes `python -m snn_data_lake.<mod>` package modules, so qualifying would mean moving it into
+  the package and churning the canonical 277 count quoted in five documents — to gate repo hygiene, which
+  is not a brain-faculty self-check. Recorded here because "the broad rule died at 475 and the narrow one
+  now holds the line at 0+1" is the result, and the only reason either number exists is that this bar
+  demands counting before adopting.
 - **Gated + reversible:** one change per commit, full gate green (`run_selfchecks` + `pytest` + `ruff`),
   commit + tag locally; a regression is isolated to its own change.

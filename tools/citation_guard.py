@@ -1,23 +1,46 @@
 """citation_guard -- a TRACKED file may not cite an UNTRACKED .py instrument.
 
-VERDICT: THE BROAD RULE IS DEAD, THE NARROW ONE IS ADOPTABLE, AND BOTH COUNTS ARE BELOW.
+VERDICT: THE BROAD RULE IS DEAD, THE NARROW ONE IS ADOPTED AND NOW ASSERTS.
 
-  STRICT (cited as a runnable reproduction path):  21 violations across  5 files  <- a work list
-  BROAD  (cited anywhere in a tracked file)      : 475 violations across 127 files <- an allowlist
+  STRICT (cited as a runnable reproduction path):    0 violations + 1 exemption  <- ASSERTING GATE
+  BROAD  (cited anywhere in a tracked file)      : ~452 across 127 files, 2026-07-30  <- report only
+
+The BROAD figure is a DATED OBSERVATION, not an invariant -- it moves with every changelog entry and
+every doc edit, and nothing asserts on it. Do not "fix" it when it drifts; re-date it if you re-measure.
+The STRICT line is the one that must stay at 0-unexempted, and the gate below enforces that.
 
 The strict scope is what the broad scope's own output argued for, and counting both is what made the
-difference visible. 21 is adoptable: it names five documents, each with a specific broken command.
-`docs/RUNNING.md` is the sharpest -- the project's how-to-run page has FIVE commands pointing at files
-absent from a clone (`research/spiking_storage_prototype.py`, `spike_knowledge_graph.py`,
-`nmnist_ingest.py` x2, `eth_mnist_bindsnet.py`), which is worse than the incident that motivated all
-this, because it is the first page a new reader executes.
+difference visible. 21 was adoptable because it named five documents, each with a specific broken
+command, and the work list was finite. **All 21 were cleared on 2026-07-30 and the strict scope now
+ASSERTS**; the broad count stays a printed report and stays non-asserting, for the two reasons recorded
+further down (a CHANGELOG citing a retired file is CORRECT, and prose naming a missing file in order to
+say it is missing is also correct -- neither is a defect, and gating on them buys a rubber-stamp
+allowlist of the exact shape that killed two earlier policy proposals here).
 
-NOT YET AN ASSERTING GATE, and that is a work item rather than a policy question. Promoting it means
-clearing or exempting those 21 first; asserting today would just redden CI. The pattern to follow is
-`dormancy_gate.EXEMPT` -- each survivor listed with a reason -- and the honest reasons here differ:
-DEPTH_CEILINGS' scratchpad citations need the scripts promoted into tools/ (they are real evidence for
-real numbers), while RUNNING.md / JEPA.md / PERFORMANCE.md cite research files that appear to have been
-retired, so those commands need correcting or deleting, not exempting.
+HOW THE 21 WERE CLEARED, because the dispositions differed and lumping them would have hidden that:
+
+  * 9 of 10 were STALE PATHS, not missing capabilities. The top-level `research/` tree became
+    `src/snn_data_lake/reasoning/` in v3.78 (commit 627b2e2b, 2026-07-19) and five documents were never
+    updated, so `docs/RUNNING.md` (x5), `docs/JEPA.md` (x3) and `docs/PERFORMANCE.md` (x1) were telling
+    readers to run files that had merely MOVED. Corrected to `python -m snn_data_lake.reasoning.<mod>`,
+    and the three replacements RUNNING.md names were run to a passing self-check first.
+  * 1 was a genuine RETIREMENT: `research/spike_knowledge_graph.py` was merged with two siblings into
+    `spike_kg.py` in commit 17067032 (2026-07-08) and deleted. The command names `spike_kg` now.
+  * 10 of 11 in `docs/DEPTH_CEILINGS.md` were real evidence for published numbers living in gitignored
+    `scratchpad/`. Eight scripts were PROMOTED into tools/ with their inputs parameterised as explicit
+    paths and a clean SKIP when an input is absent. `tools/lang_scale.py 1e3 1e4` reproduces the first
+    two rows of the doc's own scale table exactly, which is the strongest evidence available that a
+    promotion preserved the instrument rather than merely relocating a file.
+  * 1 was DELETED rather than promoted: `scratchpad/ar_lm_untrained_control.py` does not exist on disk
+    at all, so there was nothing to promote, and the canonical section BUILDS the untrained twin inside
+    the tracked `reasoning.blimp_bench` anyway. Its command is gone and the doc says the 49.5% is a
+    recorded result reached through the bench.
+  * 1 was EXEMPTED, and it is the only one. See EXEMPT below.
+
+Promoting an instrument means three checkable things, not just `git add`: the input is an EXPLICIT path
+argument rather than a hardcoded local one, an absent input prints SKIP and exits 0 rather than
+reporting a number computed from no data, and the script was RUN. Shipping an unverified script would
+have traded one false claim for another, which is the trade this whole exercise exists to refuse.
 
 Original verdict on the broad rule, kept because the reasoning is the finding. Built and counted under the
 standing rule "implement the gate before adopting the rule ... its output counted, *before* the policy
@@ -85,6 +108,28 @@ _CITE = re.compile(r"(?<![\w./-])((?:[\w.-]+/)+[\w.-]+\.py)(?::\d+)?")
 #   - .gitignore itself, which is where the ignoring is declared
 #   - this module, whose docstring quotes the offenders as its own motivating cases
 _EXEMPT_FILES = {".gitignore", "tools/citation_guard.py"}
+
+# STRICT-scope survivors: "path:line" -> why this citation legitimately stays. The pattern is
+# substrate/dormancy_gate.EXEMPT's -- every survivor named with its reason IN THE SOURCE, so an
+# exemption is something a reader can audit rather than a count quietly tolerated.
+#
+# Line-keyed exemptions go stale when a document is edited, and a stale exemption that silently blesses
+# nothing is worse than none: it reads like coverage. So main() also asserts that every key here still
+# matches a real strict violation. An exemption must keep earning its place or the gate says so.
+EXEMPT = {
+    "docs/HARDWARE_SETUP.md:144": (
+        "FALSE POSITIVE, and the tokenizer is why. The cited file IS tracked -- at "
+        "`integrations/robot arm/sensor_reading.py`. That directory name contains a SPACE, so _CITE's "
+        "path token cannot span it and captures only the tail `arm/sensor_reading.py`, which no tracked "
+        "path ends with on a `/` boundary. Fixing it in _resolves() (accepting a boundary of ' ' as well "
+        "as '/') was considered and REJECTED: it would also resolve the STALE `robot arm/...` form this "
+        "same line carried until 2026-07-30, when the sketch tree had already moved under integrations/ "
+        "-- so the tokenizer fix would have hidden the live defect instead of reporting it. The false "
+        "positive is exempted HERE, where the reason is readable, rather than dissolved into the "
+        "resolver where it would blind the gate to a whole class. Verified by hand: "
+        "`git ls-files | grep sensor_reading` returns the integrations/ path."
+    ),
+}
 
 # Prefixes that are not repo paths at all (upstream URLs, site-packages, other checkouts).
 _NOT_REPO = ("http", "www.", "site-packages/", "venv/", ".venv")
@@ -246,18 +291,40 @@ def main():
             print(f"    :{ln}  ->  {cited}")
     if not strict_files:
         print("  (none)")
-    print(f"\nSTRICT: {len(strict)} violation(s) across {len(strict_files)} file(s)")
-    print(f"BROAD : {len(viol)} violation(s) across {len(broad_files)} file(s)  [not adoptable]")
+    strict_keys = {f"{rel}:{ln}" for rel, ln, _c, _r in strict}
+    unexempt = [v for v in strict if f"{v[0]}:{v[1]}" not in EXEMPT]
+    stale = sorted(set(EXEMPT) - strict_keys)
 
-    # The gate ASSERTS nothing yet. Per the standing rule in docs/POLICIES.md -- "implement the gate
-    # before adopting the rule ... its output counted, before the policy lands" -- this pass exists to
-    # be COUNTED first. Promoting it to an assert is a separate, deliberate change, and if the count
-    # above is allowlist-shaped then the honest outcome is that this gate dies instead.
+    print(f"\nSTRICT: {len(unexempt)} unexempted violation(s), {len(EXEMPT)} exemption(s)")
+    for key, why in sorted(EXEMPT.items()):
+        print(f"  EXEMPT {key}")
+        print(f"         {why[:96]}...")
+    print(f"BROAD : {len(viol)} violation(s) across {len(broad_files)} file(s)  [report only]")
+
+    # These two came first and stay: they prove the INSTRUMENT is live before its findings are trusted.
+    # A broken walk resolves to zero findings, which reads exactly like success -- the silent-degradation
+    # shape repo_root()'s comment records catching the hard way.
     assert n_files > 100, (
         f"scanned only {n_files} tracked files -- the walk is broken, not the tree"
     )
     assert n_cites > 50, f"found only {n_cites} .py citations -- the regex is broken, not the tree"
-    print("\nself-check OK: walk and regex both live (counts above are the reportable result)")
+
+    # THE GATE. Asserting since 2026-07-30, after all 21 findings of the counted run were cleared --
+    # per the standing rule in docs/POLICIES.md, the gate was built and its output COUNTED before the
+    # rule landed. The BROAD count above deliberately does NOT assert; see the module docstring.
+    assert not stale, (
+        "stale EXEMPT entr(ies) -- these no longer match any strict violation, so they bless nothing "
+        "and only make the gate look more covered than it is. Delete them, or fix the line number if "
+        f"the document moved: {stale}"
+    )
+    assert not unexempt, (
+        "a tracked file presents an UNTRACKED .py as a runnable reproduction path, so a reader who "
+        "clones this repo is told to run a file they do not have. Fix the path if it moved, delete the "
+        "command if the capability is gone, or promote the script into tools/ if it is real evidence "
+        "for a real number -- and only add it to EXEMPT with a reason if it legitimately stays:\n"
+        + "\n".join(f"  {rel}:{ln} -> {cited}" for rel, ln, cited, _ in unexempt)
+    )
+    print("\ngate OK: no tracked file cites an untracked .py as a runnable reproduction path")
     return 0
 
 
