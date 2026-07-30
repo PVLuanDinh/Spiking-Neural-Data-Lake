@@ -361,17 +361,21 @@ _ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # ARTIFACT-GATED: module -> the repo-relative input it cannot run without.
 #
-# These are gitignored binaries with FIVE reader sites and ZERO producers anywhere in src/, training/,
-# tools/, integrations/ or research/ -- `docs/TRAINING.md` regenerates the `.pt` checkpoints and not
-# these packs. So a fresh clone genuinely cannot satisfy them, and a hard failure there would be red
-# for a reason no contributor can act on. Listing them here makes the skip EXPLICIT and separately
-# counted, which is the honest middle between the two failure modes this entry replaces: a bare-return
-# scored as PASS (a gate that could not fail), and a raise that reddens CI everywhere.
+# For a module whose self-check needs a gitignored binary that NOTHING in the tree can produce. Such a
+# module must still raise rather than bare-return when its input is missing (a bare return exits 0 and
+# is scored PASS -- a gate that cannot fail), so the decision to tolerate the absence is made HERE,
+# once and visibly, as a skip that is COUNTED SEPARATELY and never folded into the pass tally.
 #
 # Writing the producer removes entries from this dict. That is the fix; this is the accounting.
-ARTIFACT_GATED = {
-    "cortex.percept_surprise": "models/nmnist_pack.npz",
-}
+#
+# EMPTY as of 2026-07-29, and by the fix rather than by giving up on it: the sole entry was
+# `cortex.percept_surprise` -> `models/nmnist_pack.npz`, one of the two perception packs that had five
+# reader sites and no producer. `training/make_packs.py` is now that producer -- it rebuilds
+# nmnist_pack.npz and shd_pack.npz from tonic, byte-for-byte identical to the artifacts every
+# perception number in this repo was measured against (verified: 0 of 8,878,080 and 0 of 17,920,000
+# cells differ, crc32 0xb1bd2e57 / 0xaca9f8b2). A fresh clone can satisfy the gate, so it should have
+# to. The mechanism stays for the next artifact that genuinely has no producer.
+ARTIFACT_GATED = {}
 
 
 def _torch_ok():
@@ -419,16 +423,16 @@ def run_all():
     for m in MODULES:
         missing = ARTIFACT_GATED.get(m)
         if missing and not os.path.exists(os.path.join(_ROOT, missing)):
-            # ARTIFACT-GATED, added 2026-07-29. The module's own self-check now RAISES when its input
-            # artifact is absent, which is the right behaviour and closed a real hole: it used to print
-            # SKIP, bare-return, and be scored PASS on exit status alone -- a CORE gate entry that
-            # could not fail. But the artifacts it needs (models/*_pack.npz) have five readers and
-            # ZERO producers anywhere in the tree, so on any fresh clone that correct raise turns the
-            # whole suite red for a reason no contributor can fix.
+            # ARTIFACT-GATED, added 2026-07-29. A module's own self-check should RAISE when its input
+            # artifact is absent -- printing SKIP and bare-returning exits 0 and is scored PASS on exit
+            # status alone, which is a CORE gate entry that cannot fail. But when nothing in the tree
+            # can produce that artifact, the correct raise turns the whole suite red on every fresh
+            # clone for a reason no contributor can act on.
             # So the decision is made HERE, once, visibly, instead of by a bare-return inside the
             # module: a missing artifact is an explicit SKIP that is COUNTED SEPARATELY and never
             # folded into the pass tally. The module keeps its raise for the case that actually
-            # matters -- the artifact is present but unreadable.
+            # matters -- the artifact is present but unreadable. ARTIFACT_GATED is empty today (the
+            # perception packs it was built for now have a producer); this stays for the next one.
             print(f"SKIP  {m}  (missing artifact {missing} -- no producer exists in this tree)")
             artifact_skipped.append(m)
             continue

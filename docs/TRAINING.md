@@ -14,17 +14,45 @@ look for `models/eprop_nmnist.pt` and `models/eprop_shd.pt`, and without them th
 and `LearnedAttention.attend` never called at all.
 
 That is by design, but until 2026-07-28 it was written down nowhere, which made the whole perception
-tier an unreproducible claim. The two commands that restore it:
+tier an unreproducible claim. Perception needs **two kinds of artifact**, and both are regenerable:
+
+**1. The encoder weights** (`.pt`) — what does the perceiving:
 
 ```bash
 .venv-cu128/Scripts/python training/eprop_nmnist.py    # -> models/eprop_nmnist.pt  (vision, N-MNIST)
 .venv-cu128/Scripts/python training/eprop_shd.py       # -> models/eprop_shd.pt     (audio, SHD)
 ```
 
-Both need their datasets on disk (`data/nmnist_cache`, `data/SHD`) and the GPU env `.venv-cu128`. To
-point the brain at checkpoints elsewhere, set `SNN_EPROP_CKPT` / `SNN_EPROP_AUDIO_CKPT`. Anything that
-reports a perception number should say which of these two states it measured in — see
-[`COVERAGE_BASELINE.md`](COVERAGE_BASELINE.md).
+**2. The event-frame packs** (`.npz`) — what gets perceived. The encoders alone are not enough:
+`cortex/brain.py` only sets `perceiving_real` / `perceiving_audio` once it has loaded
+`models/nmnist_pack.npz` / `models/shd_pack.npz` (overridable via `SNN_PERCEPTION_PACK` /
+`SNN_SHD_PACK`), and two more readers depend on them — `cortex/percept_surprise.py` rate-codes the
+vision pack, `reasoning/reservoir_eprop.py` re-bins the audio pack. Until 2026-07-29 these two files
+had **five readers and no producer anywhere in the tree**, so this section regenerated only half of
+what perception needs. The producer:
+
+```bash
+.venv-cu128/Scripts/python training/make_packs.py           # -> models/nmnist_pack.npz + models/shd_pack.npz
+.venv-lake/Scripts/python training/make_packs.py --smoke    # self-check: no tonic, no dataset, no network
+```
+
+It downloads N-MNIST and SHD on demand (tonic 1.6.0 fetches whenever the files are absent — it has no
+`download=` keyword to pass), takes 256 samples from each **test** split with
+`random.Random(0).sample`, and bins them with `ToFrame(n_time_bins=15)` / `ToFrame(n_time_bins=100)`
+into `(256, 15, 2, 34, 34)` and `(256, 100, 700)` float32 event **counts**.
+
+The choice of split, sample selection and binning is not a guess — it was recovered from the committed
+artifacts and then **proven by reproduction**: a rebuild is byte-for-byte identical to the packs every
+perception number in this repo was measured against (0 of 8,878,080 and 0 of 17,920,000 cells differ).
+`make_packs.py` records each pack's crc32 (`0xb1bd2e57`, `0xaca9f8b2`) and **refuses to write** a
+rebuild that does not match, because a pack that loads fine but encodes differently would silently
+move every perception number — use `--allow-drift` only if that change is intended. `--compare-to DIR`
+prints the full generated-vs-existing comparison; `--dry-run` builds and compares without writing.
+
+All of the above need their datasets on disk (`data/NMNIST`, `data/SHD`; the `.pt` trainers also use
+`data/nmnist_cache`) and the GPU env `.venv-cu128`. To point the brain at checkpoints elsewhere, set
+`SNN_EPROP_CKPT` / `SNN_EPROP_AUDIO_CKPT`. Anything that reports a perception number should say which
+of these states it measured in — see [`COVERAGE_BASELINE.md`](COVERAGE_BASELINE.md).
 
 ## Install the training tier
 
@@ -149,6 +177,7 @@ is a poor fit for AirLLM specifically — the default backend is a deterministic
 | Capability | Command / entry | Requires |
 |------------|-----------------|----------|
 | Clone-and-run inference | `snn-demo`, `import snn_data_lake` | nothing (stdlib) |
+| Real event-vision/audio on the live tick | `training/make_packs.py` → `models/*_pack.npz` | `.[nmnist]` (tonic); downloads N-MNIST + SHD |
 | GPU training → export to core | `snn-train --gpu --export-core` | `.[train]` (torch, snntorch), a CUDA GPU |
 | GPU MNIST brain → serve zero-dep | `snn-train --mnist --export-brain`; `trained_brain.predict` | `.[train]` to train; nothing to serve |
 | Train larger than VRAM | `snn-train --offload` | `.[train]`, + `accelerate`/DeepSpeed for scale |
