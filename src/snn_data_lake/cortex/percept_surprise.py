@@ -175,8 +175,28 @@ def _run_stream(x_all, seed, n=200):
 def main():
     loaded = _load_latents()
     if loaded is None:
-        print("percept_surprise SKIP: models/nmnist_pack.npz not found")
-        return
+        # FAIL, do not SKIP. This branch used to print a SKIP line and bare-return, which exits 0 --
+        # and run_selfchecks.py scores a module PASS on exit status alone. So a CORE self-check whose
+        # only real input is absent reported itself as passing, which made it structurally incapable
+        # of failing: every claim below (surprise falls as the subspace learns, off-distribution
+        # reads more surprising, surprise is distinct from novelty, determinism) was unverified and
+        # counted as verified. An unverifiable check must be loud, not quiet.
+        #
+        # This will go RED on any checkout without models/nmnist_pack.npz, and that is the point:
+        # the pack has FIVE reader sites (this module, cortex/brain.py:583+599,
+        # reasoning/reservoir_eprop.py, reasoning/brain_adapters/laminar_local_readout.py) and NO
+        # producer anywhere in the tree -- no savez of it in src/, training/, tools/, integrations/
+        # or research/. It is a build artifact that only exists on a machine where someone made it
+        # by hand, while reservoir_eprop.py:43 calls it "the committed pack" and models/ is
+        # untracked. Generating it is a separate job for whoever owns training/; this check's job is
+        # to stop hiding that it is missing.
+        raise AssertionError(
+            "percept_surprise CANNOT VERIFY: models/nmnist_pack.npz is absent, so none of this "
+            "module's four claims were tested. Previously this printed SKIP and exited 0, which the "
+            "self-check runner scores as PASS. The pack has five readers and no producer in the "
+            "tree -- see the comment at this line. Provide the pack (or a producer for it) before "
+            "trusting any percept-surprise number."
+        )
     x_all, y_all = loaded
     in_dim = x_all.shape[1]
 
