@@ -140,6 +140,45 @@ install** — version-sensitive spots are flagged `# VERIFY(ml_genn):`, and GeNN
 *approximate* the core's, so weights transfer more loosely than the snnTorch path (`verify_transfer`
 reports the gap). Treat it as a starting point to iterate on your GPU, not a finished trainer.
 
+## The AR spiking char-LM artifact carries its own provenance
+
+`training/ar_spiking_lm.py` (the SpikeGPT-style Spiking-RWKV trainer) freezes to
+`models/ar_spiking_lm.npz`, served forward-only by `reasoning/ar_spiking_lm_serve.py`. Since
+2026-07-30 the trainer records **how the artifact was made inside the artifact**, under
+`meta["provenance"]` — before that, the published numbers (corpus size, checkpoint step, held-out
+PPL) lived only in a gitignored scratchpad log, so a fresh clone's artifact could not testify to its
+own training.
+
+Schema (all captured from the **live run at export time**, never typed in afterwards):
+
+| key | meaning |
+|-----|---------|
+| `corpus_chars` | characters in the training corpus actually consumed (e.g. 119,618,292 for the 120 MB WikiText-103 exposure) |
+| `ctx` | training context length in characters |
+| `steps_planned` | the run's planned step count (`steps` argument) |
+| `checkpoint_step` | **the step whose weights these ARE** — the checkpoint that was scored and saved |
+| `heldout_ppl` | held-out char PPL **at that checkpoint** (the value that triggered the save); `None`→"unknown" when no held-out eval ran |
+| `heldout_chars` | characters in the held-out slice |
+| `heldout_max_windows` | `eval_ppl` window cap, so the PPL's protocol is quotable (a full-slice re-eval can differ: the 7.2016 checkpoint eval vs 6.5423 over all 199,936 predicted chars are the same weights, different window counts) |
+| `seed`, `batch`, `lr` | the run's determinism/optimizer knobs |
+
+**Checkpoint vs run — the distinction the numbers turn on.** A run interrupted past its best
+checkpoint keeps logging steps that never reach the artifact (the real-scale run checkpointed at
+step 1399 of 14,000 but logged through 1700). `checkpoint_step` is the checkpoint figure; quoting
+the last logged step for the artifact would be provenance of a model that does not exist.
+
+Read it from the artifact, never from a log:
+
+```python
+from snn_data_lake.reasoning.ar_spiking_lm_serve import SpikingLMServe
+SpikingLMServe().provenance()   # dict over PROVENANCE_KEYS, or None when no artifact loads
+```
+
+**Backward compatibility:** an `.npz` exported before this schema (or a random-init test artifact)
+has no `provenance` key — it still loads everywhere, and `provenance()` reports every field as
+`"unknown"` rather than crashing. `blimp_bench` and any future report should quote these fields via
+`provenance()` instead of a scratchpad log.
+
 ## AirLLM — large-LLM local inference (not training)
 
 AirLLM streams a large language model's transformer layers from disk one at a time, so a 70B+ model

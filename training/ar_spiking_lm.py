@@ -208,8 +208,15 @@ class SpikingLM(nn.Module):
         return xo @ self.head_W + self.head_b
 
 
-def export_npz(model, path, trained=True):
-    """Freeze the trained model to a numpy .npz with the schema reasoning/ar_spiking_lm_serve.py reloads."""
+def export_npz(model, path, trained=True, provenance=None):
+    """Freeze the trained model to a numpy .npz with the schema reasoning/ar_spiking_lm_serve.py reloads.
+
+    `provenance` (dict or None) records HOW the artifact was made -- corpus size, planned steps, the
+    CHECKPOINTED step and its held-out PPL -- inside the artifact itself. Before this, those numbers
+    lived only in a gitignored scratchpad log, so on a fresh clone the artifact could not testify to
+    its own training. Written under meta["provenance"]; an artifact without the key (older exports,
+    the random-init test artifacts) still loads everywhere and is served as "unknown" (see
+    reasoning/ar_spiking_lm_serve.SpikingLMServe.provenance)."""
     import numpy as np
     w = {"emb": model.emb.detach().cpu().numpy()}
     for l, blk in enumerate(model.blocks):
@@ -227,6 +234,8 @@ def export_npz(model, path, trained=True):
         "trained": bool(trained),
         "note": "SpikeGPT-style Spiking-RWKV char LM; forward-served by reasoning/ar_spiking_lm_serve.py",
     }
+    if provenance:
+        meta["provenance"] = dict(provenance)
     dirn = os.path.dirname(path)
     if dirn:
         os.makedirs(dirn, exist_ok=True)
@@ -288,6 +297,22 @@ def train(corpus, dim=64, layers=2, ctx=64, steps=400, seed=0, out_path=None,
     last_loss = float("nan")
     out_path = out_path or DEFAULT_ARTIFACT
     best_ppl = float("inf")
+    # PROVENANCE base: everything below is captured from the LIVE run so the exported artifact can
+    # testify to how it was made (docs/TRAINING.md documents the schema). `checkpoint_step` and
+    # `heldout_ppl` are added AT EXPORT TIME, from export-time values -- so they are the figures of
+    # the checkpoint that was actually scored and saved, NEVER the last step the run happened to log
+    # (an interrupted run logs past its best checkpoint; the artifact must not quote that).
+    eval_windows = 256  # eval_ppl's window cap, recorded so the PPL's protocol is quotable
+    prov = {
+        "corpus_chars": int(n),
+        "ctx": int(ctx),
+        "steps_planned": int(steps),
+        "seed": int(seed),
+        "batch": int(batch),
+        "lr": float(lr),
+        "heldout_chars": len(heldout) if heldout else 0,
+        "heldout_max_windows": eval_windows,
+    }
     t0 = time.time()
     for step in range(steps):
         starts = rng.randint(0, n - ctx - 1, size=batch)
@@ -307,17 +332,19 @@ def train(corpus, dim=64, layers=2, ctx=64, steps=400, seed=0, out_path=None,
                      batch * ctx * (step + 1) / max(1e-9, el)), flush=True)
         # HELD-OUT selection: checkpoint only when PPL on the byte-disjoint slice IMPROVES.
         if heldout and eval_every and (step % eval_every == eval_every - 1 or step == steps - 1):
-            ppl = eval_ppl(model, heldout, ctx=ctx, device=device)
+            ppl = eval_ppl(model, heldout, ctx=ctx, max_windows=eval_windows, device=device)
             mark = ""
             if ppl < best_ppl:
                 best_ppl, mark = ppl, "  <- best, checkpointed"
-                export_npz(model, out_path, trained=True)
+                export_npz(model, out_path, trained=True,
+                           provenance={**prov, "checkpoint_step": step, "heldout_ppl": ppl})
             print("    step %d  HELD-OUT char PPL %.4f%s" % (step, ppl, mark), flush=True)
 
-    if not (heldout and eval_every):
-        export_npz(model, out_path, trained=True)
-    elif best_ppl == float("inf"):
-        export_npz(model, out_path, trained=True)
+    if not (heldout and eval_every) or best_ppl == float("inf"):
+        # no held-out selection ran: the export IS the final state, and there is no held-out PPL to
+        # claim -- record None rather than inventing one.
+        export_npz(model, out_path, trained=True,
+                   provenance={**prov, "checkpoint_step": steps - 1, "heldout_ppl": None})
     if log_every:
         print("saved frozen artifact -> %s (final train loss %.4f, best held-out PPL %s)"
               % (out_path, last_loss, "n/a" if best_ppl == float("inf") else "%.4f" % best_ppl))
@@ -472,8 +499,14 @@ def _selfcheck():
     meta = json.loads(str(data["meta"]))
     assert meta["format"] == FORMAT and meta["trained"] is True, "artifact metadata wrong"
     assert len(meta["vocab"]) >= 2 and len(meta["t_beta"]) == meta["layers"], "artifact meta inconsistent"
-    print("reload OK: %d arrays, vocab=%d, dim=%d, layers=%d"
-          % (len(data.files), len(meta["vocab"]), meta["dim"], meta["layers"]))
+    # the artifact must carry its own provenance (corpus size, steps, checkpoint) -- captured live
+    prov = meta.get("provenance")
+    assert prov, "trainer must write meta['provenance'] -- the artifact has to testify for itself"
+    assert prov["corpus_chars"] == len(_TINY_TEXT), "provenance corpus_chars wrong"
+    assert prov["steps_planned"] == 120 and prov["checkpoint_step"] == 119, "provenance steps wrong"
+    assert prov["heldout_ppl"] is None, "no held-out eval ran, so heldout_ppl must be None"
+    print("reload OK: %d arrays, vocab=%d, dim=%d, layers=%d, provenance %d keys"
+          % (len(data.files), len(meta["vocab"]), meta["dim"], meta["layers"], len(prov)))
 
     try:
         os.remove(out)

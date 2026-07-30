@@ -56,6 +56,25 @@ FORMAT = "spiking_lm.v1"  # frozen-artifact schema tag (trainer + serve must agr
 EPS = 1e-5  # layer-norm epsilon (matches torch F.layer_norm default)
 THR = 1.0  # LIF spike threshold
 
+# Training-provenance keys the trainer records inside the artifact (meta["provenance"]) so the
+# artifact testifies to how it was made -- corpus size, planned steps, the CHECKPOINTED step and its
+# held-out PPL -- instead of those numbers living only in a gitignored training log. Artifacts
+# written before this schema (and the random-init test artifacts) carry no "provenance" key and are
+# served with every field "unknown" -- they must keep loading, never crash. docs/TRAINING.md
+# documents the schema; training/ar_spiking_lm.export_npz writes it.
+PROVENANCE_KEYS = (
+    "corpus_chars",
+    "ctx",
+    "steps_planned",
+    "checkpoint_step",
+    "heldout_ppl",
+    "heldout_chars",
+    "heldout_max_windows",
+    "seed",
+    "batch",
+    "lr",
+)
+
 # The per-layer parameter names carried in the .npz, stored as "<name>.<layer_index>".
 _LAYER_PARAMS = (
     "tln_g",
@@ -210,6 +229,23 @@ class SpikingLMServe:
         missing = [k for k in need if k not in self.w]
         if missing:
             raise ValueError("frozen artifact missing weights: " + ", ".join(missing[:6]))
+
+    def provenance(self):
+        """How the loaded artifact was trained, from ITS OWN metadata -- never from a training log.
+
+        Returns a dict with every PROVENANCE_KEYS entry; a field the artifact does not carry (older
+        exports, random-init test artifacts, or a trainer run with no held-out eval) reads
+        "unknown" rather than raising -- backward compatibility is part of the contract. Returns
+        None when no artifact is loaded (honest-unavailable, like logprob).
+
+        READ `checkpoint_step` CAREFULLY: it is the step whose weights these ARE -- the checkpoint
+        that was scored and saved -- NOT the last step the training run logged. A run interrupted
+        past its best checkpoint logs further steps that never made it into the artifact; quoting
+        those for this file would be provenance of a model that does not exist."""
+        if not self._ok:
+            return None
+        raw = self.meta.get("provenance") or {}
+        return {k: (raw[k] if raw.get(k) is not None else "unknown") for k in PROVENANCE_KEYS}
 
     # ---- encode / decode ----
     def _encode(self, s):
@@ -394,6 +430,31 @@ def _selfcheck(with_train=False):
     srv = SpikingLMServe(art, seed=0)
     assert srv.available() is True, "a valid frozen artifact must load"
 
+    # (1b) PROVENANCE travels IN the artifact -- and a pre-schema artifact still loads, reporting
+    # every field "unknown" instead of crashing (backward compatibility is part of the contract).
+    prov = srv.provenance()
+    assert prov is not None and set(prov) == set(PROVENANCE_KEYS), (
+        "provenance() must return every schema key"
+    )
+    if trained:
+        assert prov["corpus_chars"] == len(text), "trained artifact must carry its corpus size"
+        assert prov["checkpoint_step"] != "unknown", "trained artifact must carry its checkpoint"
+        print(
+            "  provenance (from the artifact itself): corpus_chars=%s steps_planned=%s "
+            "checkpoint_step=%s heldout_ppl=%s"
+            % (
+                prov["corpus_chars"],
+                prov["steps_planned"],
+                prov["checkpoint_step"],
+                prov["heldout_ppl"],
+            )
+        )
+    else:
+        assert all(v == "unknown" for v in prov.values()), (
+            "an artifact without meta['provenance'] must serve every field as 'unknown'"
+        )
+        print("  provenance: pre-schema artifact -> every field 'unknown' (loads, never crashes)")
+
     # (2) ORDER-SENSITIVITY -- the whole point vs the order-invariant SLDA-RFF.
     seq = text[80:120]
     shuffled = list(seq)
@@ -428,6 +489,7 @@ def _selfcheck(with_train=False):
     assert miss.available() is False, "a missing artifact must report unavailable"
     assert miss.logprob("hello world") is None, "unavailable logprob must be None, not a fake score"
     assert miss.generate("hello") == "", "unavailable generate must return empty string"
+    assert miss.provenance() is None, "unavailable provenance must be None, not fabricated fields"
     print(
         "  honest-unavailable: missing artifact -> available()=False, logprob()=None (no fake score)."
     )
