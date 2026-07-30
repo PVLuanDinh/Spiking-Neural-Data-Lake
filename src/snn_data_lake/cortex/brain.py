@@ -584,9 +584,11 @@ class Brain:
                 if os.path.exists(_pack):
                     _d = _np.load(_pack)
                     self._real_frames, self._real_labels = _d["frames"], _d["labels"]
-                    self._perceiving_real = (
-                        True  # brain perceives REAL event-vision on the live tick
-                    )
+                    # a pack that LOADS is not a pack that carries rows. An empty .npz used to set this
+                    # flag, and the first index into it landed in the blanket except below -- so the
+                    # brain reported perceiving real event-vision while holding zero frames. The claim
+                    # now rests on a counted value.
+                    self._perceiving_real = bool(self._real_frames.size)
             _audio = os.environ.get("SNN_EPROP_AUDIO_CKPT", "models/eprop_shd.pt")
             if os.path.exists(
                 _audio
@@ -600,9 +602,8 @@ class Brain:
                 if os.path.exists(_apack):
                     _ad = _np2.load(_apack)
                     self._audio_frames, self._audio_labels = _ad["frames"], _ad["labels"]
-                    self._perceiving_audio = (
-                        True  # brain perceives REAL event-audio on the live tick
-                    )
+                    # same counted claim as vision above: loadable != carries rows.
+                    self._perceiving_audio = bool(self._audio_frames.size)
         except Exception:
             self._perception_enc = None
             self._perception_tier = "stdlib"

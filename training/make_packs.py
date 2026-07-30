@@ -30,15 +30,25 @@ The inference was verified the only way that settles it -- REPRODUCTION. Both pa
 TEST split (not train: the train split's event-count multiset does not contain the committed sums; the
 test split's does, for all 256/256), the sample choice is `random.Random(0).sample(range(len(ds)), 256)`
 (recovered by matching 194 independently identified source files to their dataset indices: 194/194),
-and regenerating on that basis reproduces both committed packs BYTE-FOR-BYTE. EXPECTED_CRC32 below
+and regenerating on that basis reproduces both committed packs BYTE-FOR-BYTE -- as of 2026-07-30 that
+is true of the FILES and not merely of the arrays inside them, which is a correction, not a boast:
+write_pack used np.savez where the artifacts are savez_compressed, so the claim held cell-for-cell
+while every rebuilt .npz came out 45x too large. See write_pack. EXPECTED_CRC32 below
 records each pack's fingerprint so that equality is a gate, not a claim: a rebuild that does not
 reproduce it REFUSES TO WRITE. A pack that loads but encodes differently would silently move every
 perception number in the project, which is strictly worse than having no producer.
 
-DOWNLOAD. `data/` is gitignored, so a fresh clone has neither dataset. tonic 1.6.0's `NMNIST` and `SHD`
-constructors take NO `download=` keyword -- they download unconditionally when `_check_exists()` is
-false, which is the download-on-demand this needs; constructing the dataset IS the download. Stated
-explicitly because "download=True" is not a flag that exists to pass at this tonic version.
+DOWNLOAD -- EXERCISED, not asserted. `data/` is gitignored, so a fresh clone has neither dataset.
+tonic 1.6.0's `NMNIST` and `SHD` constructors take NO `download=` keyword -- they download
+unconditionally when `_check_exists()` is false, which is the download-on-demand this needs;
+constructing the dataset IS the download. Stated explicitly because "download=True" is not a flag
+that exists to pass at this tonic version. The claim above was written from reading tonic's source;
+on 2026-07-30 it was finally RUN, both packs, against an empty `--data` directory on a machine that
+had never fetched either set -- `shd_test.h5.zip` (38,141,465 B) from zenkelab.org and `test.zip`
+(169,674,850 B) from the Mendeley record, extracted, binned, and compared cell-by-cell to the
+committed artifacts: 0 of 17,920,000 and 0 of 8,878,080 cells differ, crc32 0xaca9f8b2 and
+0xb1bd2e57, both gates MATCH. A cold clone really can restore perception from the network. What that
+run DID expose was the empty-pack hole documented on check_schema() below.
 
 WHAT THIS IS NOT (dependency direction). OPTIONAL torch/[nmnist] tier, like every other training/
 module: imports NOTHING from src/snn_data_lake/, and tonic is imported LAZILY so `--smoke` runs with
@@ -135,9 +145,25 @@ def check_schema(kind, frames, labels):
     per-sample shape, int64 labels in range, matching sample counts, and non-negative integral values
     (the readers sum and rate-code these -- a normalized or signed pack would read as valid and be
     silently wrong).
+
+    THE EMPTY PACK IS THE FIRST CHECK, and it is here because it was missing. Every content assertion
+    below is guarded on `frames.size` / `labels.size`, so a zero-sample pack skipped all of them and
+    this function returned [] -- a clean bill of health earned by measuring nothing. `--n 0` therefore
+    built a 510-byte .npz, printed `schema_problems=0`, and run_build WROTE it over
+    models/shd_pack.npz (the default --out) and exited 0. That pack still loads: cortex/brain.py sets
+    `_perceiving_real`/`_perceiving_audio` True on `np.load` succeeding, so the brain would report it
+    perceives real event vision and audio while holding zero frames, and the first index into them
+    would land in that loader's blanket `except Exception` and silently drop back to the stdlib tier.
+    A vacuous pass is worse than a failure, so 0 samples is now a violation like any other.
     """
     spec = SPECS[kind]
     bad = []
+    if frames.size == 0 or labels.size == 0:
+        bad.append(
+            "pack holds 0 samples (frames %s, labels %s); every content check below is guarded on "
+            "non-emptiness, so an empty pack would pass vacuously"
+            % (tuple(frames.shape), tuple(labels.shape))
+        )
     if frames.dtype != np.float32:
         bad.append("frames dtype is %s, must be float32" % frames.dtype.str)
     if labels.dtype != np.int64:
@@ -161,20 +187,36 @@ def check_schema(kind, frames, labels):
 
 
 def describe(frames, labels):
-    """The distribution numbers a comparison is actually judged on (all plain Python types)."""
+    """The distribution numbers a comparison is actually judged on (all plain Python types).
+
+    Every reduction is guarded on emptiness and reports None -- not 0.0 -- when there is nothing to
+    reduce. Two reasons, both learned from this function raising:
+      * UNGUARDED, a zero-sample pack killed compare_to_existing() here with numpy's
+        "zero-size array to reduction operation minimum which has no identity", i.e. the comparison
+        whose whole job is to REPORT that the pack is empty died before printing a word of it.
+      * 0.0 would be a constant sitting where a computed value belongs -- indistinguishable in the
+        report from a genuine pack whose frames really do min/max/mean to zero. None cannot be
+        mistaken for data, and it compares unequal to the reference's real number, so the row is
+        flagged DIFFERS rather than quietly matching.
+    total_events stays computed: an empty pack honestly holds 0 events.
+    """
+    # Guarded on size, not on ndim: reshape(0, -1) cannot infer the -1 from a size-0 array either
+    # ("cannot reshape array of size 0 into shape (0,newaxis)"), so the per-sample sums are simply
+    # not computed when there are no samples to sum.
+    per_sample = frames.reshape(frames.shape[0], -1).sum(1) if frames.size else frames.ravel()
     return {
         "shape": tuple(frames.shape),
         "dtype": frames.dtype.str,
         "labels_dtype": labels.dtype.str,
-        "min": float(frames.min()),
-        "max": float(frames.max()),
-        "mean": float(frames.mean()),
-        "nonzero_frac": float((frames > 0).mean()),
+        "min": float(frames.min()) if frames.size else None,
+        "max": float(frames.max()) if frames.size else None,
+        "mean": float(frames.mean()) if frames.size else None,
+        "nonzero_frac": float((frames > 0).mean()) if frames.size else None,
         "total_events": int(frames.sum()),
-        "per_sample_min": int(frames.reshape(frames.shape[0], -1).sum(1).min()),
-        "per_sample_max": int(frames.reshape(frames.shape[0], -1).sum(1).max()),
-        "label_min": int(labels.min()),
-        "label_max": int(labels.max()),
+        "per_sample_min": int(per_sample.min()) if per_sample.size else None,
+        "per_sample_max": int(per_sample.max()) if per_sample.size else None,
+        "label_min": int(labels.min()) if labels.size else None,
+        "label_max": int(labels.max()) if labels.size else None,
         "crc32": fingerprint(frames, labels),
     }
 
@@ -239,10 +281,23 @@ def build_pack(kind, data_dir, n_samples=None, seed=None):
 
 
 def write_pack(path, frames, labels):
+    """savez_COMPRESSED, because that is what the committed artifacts are and it was not what this
+    wrote.
+
+    Caught by running the download path and then looking at the file it produced rather than at the
+    arrays inside it. `np.savez` stores members uncompressed, so a rebuild that reproduced the
+    committed packs cell-for-cell still landed as 35,514,878 B + 71,682,558 B where the artifacts
+    every reader loads are 754,456 B + 1,648,240 B (both DEFLATED): 107 MB of models/ on a fresh
+    clone instead of 2.4 MB, a 45x miss. Nothing detected it, because the fingerprint and the
+    comparison are both over ARRAY bytes -- correctly, that is the pack's identity -- so "reproduces
+    the committed packs byte-for-byte" was true of the contents and quietly false of the artifact.
+    Safe for every reader: all five reader sites use plain np.load, none uses mmap_mode (which is
+    the one thing compression would break).
+    """
     d = os.path.dirname(os.path.abspath(path))
     if d:
         os.makedirs(d, exist_ok=True)
-    np.savez(path, frames=frames, labels=labels)
+    np.savez_compressed(path, frames=frames, labels=labels)
     return path
 
 
@@ -445,7 +500,11 @@ def run_smoke():
     assert check_schema("nmnist", sf, bad_lab), "out-of-range label must be caught"
     n_shd, l_shd = _synthetic("shd")
     assert check_schema("shd", n_shd.reshape(6, 100, 350, 2), l_shd), "wrong shd channel axis must be caught"
-    print("  schema: 8 negative cases all caught, both kinds accepted")
+    # The empty pack: every check above is guarded on non-emptiness, so before 2026-07-30 this one
+    # returned [] and `--n 0` wrote a 0-sample pack over models/ and exited 0. See check_schema.
+    assert check_schema("nmnist", sf[:0], sl[:0]), "an EMPTY pack must be caught, not pass vacuously"
+    assert describe(sf[:0], sl[:0])["min"] is None, "describe must survive an empty pack, reporting None"
+    print("  schema: 9 negative cases all caught (incl. the empty pack), both kinds accepted")
 
     # (4) ROUND-TRIP + COMPARISON on a real .npz in a temp dir: identical packs compare byte-exact,
     #     a one-count perturbation does not. This is the mechanism the fingerprint gate rests on.
@@ -491,7 +550,7 @@ def run_smoke():
     print("  fingerprint constants verified against %d/%d packs present on this machine" % (len(checked), len(SPECS)))
 
     print("SMOKE OK: selection is pinned to the rule that reproduces both committed packs; the schema")
-    print("check catches 8 ways a wrong pack still loads; the fingerprint gate separates a byte-exact")
+    print("check catches 9 ways a wrong pack still loads; the fingerprint gate separates a byte-exact")
     print("rebuild from a re-binned one. Nothing here touched tonic, a dataset, or the network.")
 
 
