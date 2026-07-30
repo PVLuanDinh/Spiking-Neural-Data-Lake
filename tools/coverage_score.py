@@ -166,8 +166,17 @@ def score(root, evdir):
     """(category -> {score, rows, unscored}, failures, warnings). Failures are REFUSALS: any one of
     them means there is no honest total to print."""
     cats, fail, warn = {}, [], []
+    # README.md is documentation living in the evidence directory, not a category. Without this
+    # exclusion the F2 check below refused it as an "unknown category file" and the tool exited 1
+    # WITHOUT printing a total -- on its own repository, from the day it shipped. Two claims depended
+    # on a number it never printed (this module's own docstring and docs/coverage/README.md), and
+    # `--check` was unreachable because `if fail: return 1` precedes it. Found by audit, not by use,
+    # which is the argument for running an instrument against the tree before quoting it.
+    _NOT_CATEGORIES = {"README"}
     present = (
-        {f[:-3] for f in os.listdir(evdir) if f.endswith(".md")} if os.path.isdir(evdir) else set()
+        {f[:-3] for f in os.listdir(evdir) if f.endswith(".md")} - _NOT_CATEGORIES
+        if os.path.isdir(evdir)
+        else set()
     )
     for extra in sorted(present - set(CATEGORIES)):
         fail.append(

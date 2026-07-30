@@ -76,9 +76,26 @@ that resolves to a line saying something else, which no cheap check can catch.
 
 ## What the ceiling looks like, so nobody plans past it
 
-Only 4 of the 11 categories are reachable by **wiring** at all — the rubric pre-declares that wiring
-into `cortex/brain.py::_route_percept_to_action` moves a three-way arm decision and cannot raise
-Language, Imagination, Gf, Consciousness or WholeBrain. At 9.09 headline points per category, taking all
-four wiring-reachable categories to band 70 yields **48.5%**, and that is the absolute ceiling of every
-wiring item combined. The remaining five categories are **45% of the weight** and move only on
-capability — which is why `COVERAGE_TO_100.md` puts capability last and largest, not first and cheapest.
+The rubric pre-declares that wiring into `cortex/brain.py::_route_percept_to_action` moves a three-way
+arm decision and **cannot** raise Language, Imagination, Gf, Consciousness or WholeBrain. That is
+**five categories excluded — 45% of the weight** at 9.09 points each — which move only on capability.
+
+**Corrected 2026-07-29, twice, and both errors were mine.** This paragraph said "only 4 of the 11
+categories are reachable", which does not add up: 11 − 5 excluded leaves **six**. The rubric explicitly
+names four that wiring can raise (Executive, Affect, SpatialTemporal, action-relevant Perception) and
+explicitly excludes five; **Memory and Social are simply unstated**, and quietly filing them under
+"unreachable" made the arithmetic wrong in the direction that flattered the plan.
+
+It also claimed a **48.5%** wiring ceiling. That number is **withdrawn**: it was computed from the
+*retired* 37.5% per-category roster, and this file forbids comparing anything to 37.5% two sections
+above. Quoting a ceiling derived from a withdrawn baseline is the same category error, one level up.
+
+Re-derived from the evidence this instrument actually reports (Perception 23.3, Memory 20.0, Executive
+26.2, Consciousness 5.0, Social 12.5, the rest 0.0): taking all **six** non-excluded categories to band
+70 yields **38.6%**; taking only the four named yields **25.9%**. Both figures are **provisional on a
+30-row partial roster** and will move once the ledger is populated properly — which is exactly why the
+number belongs here, next to the evidence, rather than in a plan document as a headline.
+
+The shape of the conclusion is unchanged and is the part that matters: **wiring cannot reach 100%, and
+the five excluded categories need capability.** That is why `COVERAGE_TO_100.md` puts capability last
+and largest, not first and cheapest.

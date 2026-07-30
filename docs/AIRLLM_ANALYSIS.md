@@ -62,8 +62,11 @@ Verified in this repo:
 
 - `pyproject.toml`: `dependencies = ["torch", "numpy"]` — the core needs those two and
   nothing else. AirLLM appears only in the optional extra `llm = ["airllm", "torch"]`.
-- `python run_selfchecks.py` runs **277 modules** (195 CORE product modules +
-  82 RESEARCH PoCs + torch/nengo-gated) with no GPU, no network, no LLM. The whole core program — the
+- `python run_selfchecks.py` runs **277 modules** (191 CORE product modules +
+  80 RESEARCH PoCs + 6 torch-gated; 278 with the optional nengo bridge) with no GPU, no network, no LLM.
+  Corrected 2026-07-29 by parsing the lists: the previous "195 CORE + 82 RESEARCH" summed to 277 on its
+  own, leaving nothing for the "+ torch/nengo-gated" the same sentence went on to add — a constant typed
+  where a computed value belongs. The whole core program — the
   robot-arm control loop (`reflex`, E-STOP, collision-gated `arm_sim`/`serial_arm`,
   `interpreter`, `autonomous_loop`, `closed_loop`), the spiking lakehouse
   (`spike_telemetry_hub`, `streaming_hub`), and the cockpit (`substrate/cockpit`, the ONE

@@ -587,14 +587,21 @@ UNTRAINED same architecture  : 49.5%  (829/1675)   <- the control that gives the
 controls  random 51.1% | length-only 29.4%         (chance 50.0)
 ```
 
-**BLiMP did not move: the learned delta over random init is -1.8 points (sum) / -0.5 (per-char).**
+**BLiMP did not move: the learned delta over random init is -1.8 points (sum) / +0.7 (per-char).**
+(The per-char figure read **-0.5** until 2026-07-29. That was a scorer mix-up: it subtracted the
+*sum-logprob* untrained baseline 49.5 from the *per-char* trained score 49.0. The untrained twin scores
+**48.4** per-char, so the correct per-char delta is **+0.7**. This is not cosmetic -- two negatives
+destroyed the canonical section's headline finding, which is that **the SIGN of "did training help?"
+flips with the choice of scorer**. Found by audit; the reconciliation note above said "one number
+genuinely differs" and this was a second.)
 This is a null result and it is reported as one. What the instruments say about why:
 
 1. The model had not yet learned even its own training data's local statistics: under an IDENTICAL
    windowed protocol on the SAME held-out slice, the spiking LM's char PPL is **6.54** vs **4.88**
    for a char 5-gram fitted on the same exposure (`scratchpad/ar_lm_final_eval.py`). A model still
    above the n-gram PPL bar has no business beating the n-gram's 53.0% BLiMP, and it does not.
-   The bottleneck at this scale is optimization time (the run got 12% of its schedule), not the
+   The bottleneck at this scale is optimization time (the scored checkpoint is step 1399 = 10% of
+schedule; 12% was the last LOGGED step, and only the checkpoint was scored), not the
    benchmark.
 2. The per-paradigm scatter is bimodal (100%/100%/100% next to 0%/0%/4%; 27/67 paradigms above
    chance), the signature of systematic surface preferences, not grammar — a random scatter would

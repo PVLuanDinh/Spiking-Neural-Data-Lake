@@ -1,4 +1,4 @@
-# Development Policies (P0–P5)
+# Development Policies (P0–P6)
 
 **P0 is the purpose; P1–P6 are how it is pursued without lying to ourselves.**
 Seven standing policies govern this brain. They are **mechanized** where possible (a CI
@@ -33,7 +33,7 @@ recognisable family, recorded under P3.
 
 ## P0 — The brain must autonomously improve itself, by every available avenue
 
-**This is the project's purpose, and it outranks the rest.** P1–P5 describe how to build well; P0
+**This is the project's purpose, and it outranks the rest.** P1–P6 describe how to build well; P0
 describes what is being built. The brain must not be a fixed artifact that a human upgrades between
 releases — it must get better on its own, continuously, through every channel it can reach: **writing
 its own code, acquiring knowledge, and growing its own neural substrate.** Where an avenue of
@@ -219,7 +219,7 @@ than CI, and all are cited from this tree:
 | # | shape | worked example |
 |---|---|---|
 | 1 | **method never called** — the module is live, one of its methods is not | `PredictiveCodingNetwork.learn()` — inference ran every tick, learning had one caller: its own `__main__`. Fixed v4.71 |
-| 2 | **return value discarded** — a live call whose result goes nowhere | `connectome_router.step()` at `cortex/brain.py:2001`; its only export reaches telemetry alone, measured constant 0.250 over 122 ticks |
+| 2 | **return value discarded** — a live call whose result goes nowhere | `connectome_router.step()`; its only export reached telemetry alone, measured constant 0.250 over 122 ticks. **SINCE FIXED** (`51bf5253`, v4.80): the return is consumed at `cortex/brain.py:2010`. The old cite `:2001` had also drifted onto an unrelated line — corrected 2026-07-29, because this table is the reference readers copy from |
 | 3 | **key-space mismatch** — a learned path structurally unreachable | `thalamus/reentrant_workspace.py` potentiates on `(source, winner)` at `:271`, looks up `(subscriber, winner)` at `:289`; disjoint live, so the learned re-route took 2 values in 122 ticks |
 | 4 | **write-only consumer** — a faculty fed every tick, never read | `cortex/agency_monitor.py` — `observe()` runs live; nothing reads `agency()` / `controllability()` / `status()`, and no key reaches telemetry |
 | 5 | **constant wearing a signal's clothes** — present, plausible, never varies | `spikes.midbrain` (its novelty term is never enabled); `integration_competence` (assigned only in `Brain.__init__`); the `gated` trio (never *computed*, not merely never applied) |
@@ -548,7 +548,7 @@ and a closed incident is the better evidence precisely because its cause is know
 | `region_wiring` registry: 0 registrations, `adapters=0` live | the plug point nobody plugged into |
 | `thalamus/connectome_router.step()` return discarded, export a constant 0.250 — **since FIXED** (`51bf5253`, v4.80); the return is now consumed at `brain.py:2010` | computed, reached no faculty |
 | `cortex/agency_monitor.py` `observe()` every tick; `agency()`/`controllability()`/`status()` zero readers | write-only organ |
-| `cortex/claustrum.py:193` `broadcast()` zero live call sites | a broadcast hub that broadcasts to nobody |
+| `claustrum/claustrum.py` `broadcast()` (defined `:118`) zero live call sites — its only caller is `:193`, inside its own `__main__` | a broadcast hub that broadcasts to nobody |
 | `reasoning/pragmatics.py` reachable only from `spike_chat_lake`, no `brain.py` caller | wired to chat, not to the brain |
 | `reasoning/arc_solver.py` — "imports stdlib only, with zero wiring to any perceptual machinery" | Gf isolated from Perception |
 | `reasoning/nightly_skills.py` forms and persists a skill every night; `route()` called only from its own `main()` | the brain never uses a skill it formed |

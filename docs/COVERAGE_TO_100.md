@@ -66,8 +66,13 @@ sweep and a stale entry inflates the next delta.
   `models/` is gitignored with 0 tracked files, so a fresh clone has no perception — that stands. But
   locally it **is** populated: `eprop_nmnist.pt`, `eprop_shd.pt`, `nmnist_pack.npz`, `shd_pack.npz`,
   `surrogate_nmnist.pth`, `pc_cortex_nmnist.json`, `eprop_lm.npz`, `eprop_lm_alif.npz`, `spikegpt/`.
-  The one genuinely absent artifact is `ar_spiking_lm.npz` — see below.
-- **BLiMP's `n/a` is a path mismatch, not only an untrained model.**
+  The one artifact absent when this was written was `ar_spiking_lm.npz`; **it now exists** (39.5 MB,
+  trained later the same day) — see below.
+- **BLiMP's `n/a` was a path mismatch, not only an untrained model — SINCE FIXED (`bcd53611`).**
+  Both halves now resolve `models/ar_spiking_lm.npz` (`training/ar_spiking_lm.py:51`,
+  `reasoning/ar_spiking_lm_serve.py:53`). Kept as the record of the defect, in the past tense it earned;
+  the description below is how it stood before the fix. A second, independent cause was found later and
+  is separate: `blimp_bench` never imported the AR serve at all.
   `training/ar_spiking_lm.py:48` exports to `models/spiking_lm.npz`; `reasoning/ar_spiking_lm_serve.py:53`
   loads `models/ar_spiking_lm.npz`. Neither half can see the other's file, and `:455` *prints* the
   trainer's path while the loader uses the other one — which is how it stayed invisible. The trainer's
@@ -268,11 +273,20 @@ accumulation, and a prune rule designed against a substrate that resets daily wo
 - **P6 (added 2026-07-29) is the constraint that explains the ceiling above, so read it before planning
   any wave.** Every build must be able to reach every other and actually use it — reachable from another
   *faculty* through a declared route, and consumed by another faculty in a way that changes *that
-  consumer's* output. The reason wiring caps at 48.5% is precisely a P6 failure: faculties are wired into
-  the single three-way action gate at `cortex/brain.py::_route_percept_to_action` and not into each
-  other, so a wave can charge the arm decision and still leave Language, Imagination, Gf, Consciousness
-  and WholeBrain — **45% of the weight** — untouched. Those five categories are the ones that need
-  faculties talking to faculties, which is why the ceiling is structural rather than a budget problem.
+  consumer's* output. The reason wiring has a ceiling at all is precisely a P6 failure: faculties are
+  wired into the single three-way action gate at `cortex/brain.py::_route_percept_to_action` and not into
+  each other, so a wave can charge the arm decision and still leave Language, Imagination, Gf,
+  Consciousness and WholeBrain — **five categories, 45% of the weight** — untouched. Those five are the
+  ones that need faculties talking to faculties, which is why the ceiling is structural rather than a
+  budget problem.
+  **The 48.5% figure this bullet used to quote is WITHDRAWN** (corrected 2026-07-29): it was computed
+  from the *retired* 37.5% per-category roster, which this document forbids comparing against, and it
+  rested on a second error — "only 4 of 11 reachable", when 11 − 5 excluded leaves **six** (the rubric
+  names four explicitly; Memory and Social are unstated). Re-derived from what the instrument actually
+  reports: six non-excluded categories at band 70 gives **38.6%**, four gives **25.9%**, both provisional
+  on a 30-row partial roster. See [`coverage/README.md`](coverage/README.md), where the number sits next
+  to its evidence. The conclusion is unchanged — wiring cannot reach 100% — and P6 does not depend on
+  which figure is right, only on the five categories being structurally out of wiring's reach.
   Note P6 is **provisional and review-enforced**: its gate (diff the real faculty→faculty consumption
   graph against `connectome.py`'s declared edges) is specified but NOT built, and this file's own bar says
   that matters.
