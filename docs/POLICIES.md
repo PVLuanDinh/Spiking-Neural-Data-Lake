@@ -667,5 +667,16 @@ result; the rule stands on the eight incidents above either way.
   `tools/citation_guard.py`, and the surviving narrower hypothesis is recorded there — the real defect is
   an untracked script presented as a *runnable reproduction path*, not a filename in prose. Building the
   naive version first is what distinguished those two, and it cost one file instead of a policy.
+  **The narrow version was then built and counted too, and it SURVIVES: 21 violations across 5 files**
+  (`tools/citation_guard.py`, STRICT scope — a `.py` cited inside a shell-fenced block or under a
+  Reproduce/Usage heading). 21 is a work list, not an allowlist, so the rule is adoptable in that scope.
+  It is **not yet an asserting gate**, because promoting it means first clearing or exempting those 21 —
+  a work item, not a policy question. What it found is worse than the incident that motivated it:
+  **`docs/RUNNING.md`, the project's how-to-run page, has five commands pointing at files absent from a
+  clone.** The two dispositions differ and should not be lumped: `DEPTH_CEILINGS.md`'s `scratchpad/`
+  citations are real evidence needing promotion into `tools/`, whereas `RUNNING.md`, `JEPA.md` and
+  `PERFORMANCE.md` cite `research/` files that appear retired, so those commands need correcting or
+  deleting. Recorded here because "the broad rule died and the narrow one lived, at 475 vs 21" is the
+  result, and the only reason either number exists is that this bar demands counting before adopting.
 - **Gated + reversible:** one change per commit, full gate green (`run_selfchecks` + `pytest` + `ruff`),
   commit + tag locally; a regression is isolated to its own change.

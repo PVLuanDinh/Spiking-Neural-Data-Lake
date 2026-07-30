@@ -1,6 +1,25 @@
 """citation_guard -- a TRACKED file may not cite an UNTRACKED .py instrument.
 
-VERDICT FIRST: THIS IS NOT A GATE, AND ITS OWN OUTPUT IS WHY. Built and counted 2026-07-30 under the
+VERDICT: THE BROAD RULE IS DEAD, THE NARROW ONE IS ADOPTABLE, AND BOTH COUNTS ARE BELOW.
+
+  STRICT (cited as a runnable reproduction path):  21 violations across  5 files  <- a work list
+  BROAD  (cited anywhere in a tracked file)      : 475 violations across 127 files <- an allowlist
+
+The strict scope is what the broad scope's own output argued for, and counting both is what made the
+difference visible. 21 is adoptable: it names five documents, each with a specific broken command.
+`docs/RUNNING.md` is the sharpest -- the project's how-to-run page has FIVE commands pointing at files
+absent from a clone (`research/spiking_storage_prototype.py`, `spike_knowledge_graph.py`,
+`nmnist_ingest.py` x2, `eth_mnist_bindsnet.py`), which is worse than the incident that motivated all
+this, because it is the first page a new reader executes.
+
+NOT YET AN ASSERTING GATE, and that is a work item rather than a policy question. Promoting it means
+clearing or exempting those 21 first; asserting today would just redden CI. The pattern to follow is
+`dormancy_gate.EXEMPT` -- each survivor listed with a reason -- and the honest reasons here differ:
+DEPTH_CEILINGS' scratchpad citations need the scripts promoted into tools/ (they are real evidence for
+real numbers), while RUNNING.md / JEPA.md / PERFORMANCE.md cite research files that appear to have been
+retired, so those commands need correcting or deleting, not exempting.
+
+Original verdict on the broad rule, kept because the reasoning is the finding. Built and counted under the
 standing rule "implement the gate before adopting the rule ... its output counted, *before* the policy
 lands". Counted on this tree: **474 violations across 126 files, 195 of them in CHANGELOG.md alone**,
 out of 1,431 .py citations in 574 tracked text files. That is the allowlist shape this project kills
@@ -19,8 +38,8 @@ Two reasons the count is legitimately that high, both of which the naive rule ca
 WHAT SURVIVES, and it is narrower than the rule I set out to build: the real defect in all three real
 incidents was an untracked script presented as a REPRODUCTION PATH -- inside a fenced command block or
 under a "Reproduce" heading -- not a filename mentioned in prose. `docs/DEPTH_CEILINGS.md` (20 hits here)
-is exactly that shape. Scoping to "cited as a runnable command" is the hypothesis worth testing next;
-until someone builds THAT and counts it, this stays a report and the rule stays unmechanized.
+is exactly that shape. **That hypothesis has since been built and counted -- see the STRICT verdict at
+the top of this docstring, 21 across 5. This paragraph predicted it and is kept as the prediction.**
 
 Kept rather than deleted because the count is the result. "We built the gate and its output killed it"
 is a complete finding, and this file is the evidence so the next person does not rebuild it from the
@@ -116,6 +135,7 @@ def scan(root):
                 lines = fh.readlines()
         except OSError:
             continue
+        runnable = _runnable_lines(lines) if rel.endswith(".md") else set()
         for i, line in enumerate(lines, 1):
             for m in _CITE.finditer(line):
                 cited = m.group(1)
@@ -123,8 +143,45 @@ def scan(root):
                     continue
                 n_cites += 1
                 if not _resolves(cited, tracked, suffix_index):
-                    viol.append((rel, i, cited))
+                    viol.append((rel, i, cited, i in runnable))
     return viol, len(scanned), n_cites
+
+
+# Fenced-block languages that mean "this is a command a reader will paste". A bare ``` fence is
+# EXCLUDED on purpose: in this repo those hold captured OUTPUT as often as commands, and counting them
+# put noise back into the number the strict scan exists to keep small.
+_SHELL_LANGS = {"bash", "sh", "shell", "console", "powershell", "ps", "ps1", "bat", "cmd"}
+
+# A heading that promises the reader can re-run what follows.
+_RUNNABLE_HEADING = re.compile(r"reproduc|^\s*#+\s*run\b|how to run|usage", re.I)
+
+
+def _runnable_lines(lines):
+    """Indices (1-based) of lines presented as RUNNABLE: inside a shell-fenced block, or under a
+    heading that promises reproduction.
+
+    This is the narrow scope the broad scan's own output argued for. The broad rule counted every
+    `.py` path anywhere in a tracked file and reported 475 violations across 127 files -- because a
+    CHANGELOG citing a retired file is correct, and because prose naming a missing file in order to
+    say it is missing is also correct. Neither is a defect. What IS a defect is an untracked script
+    sitting in a command block under a "Reproduce" heading, because that tells a reader to run
+    something their clone does not contain.
+    """
+    runnable, fence_lang, heading_ok = set(), None, False
+    for i, line in enumerate(lines, 1):
+        s = line.lstrip()
+        if s.startswith("```"):
+            if fence_lang is None:
+                fence_lang = s[3:].strip().split()[0].lower() if s[3:].strip() else ""
+            else:
+                fence_lang = None
+            continue
+        if fence_lang is None and s.startswith("#"):
+            heading_ok = bool(_RUNNABLE_HEADING.search(line))
+            continue
+        if (fence_lang in _SHELL_LANGS) or heading_ok:
+            runnable.add(i)
+    return runnable
 
 
 def _suffix_index(tracked):
@@ -172,14 +229,25 @@ def main():
         return 0
 
     print(f"scanned {n_files} tracked text files, {n_cites} .py citations")
-    by_file = {}
-    for rel, ln, cited in viol:
-        by_file.setdefault(rel, []).append((ln, cited))
-    for rel in sorted(by_file):
+
+    strict = [v for v in viol if v[3]]
+    broad_files = {v[0] for v in viol}
+    strict_files = {}
+    for rel, ln, cited, _ in strict:
+        strict_files.setdefault(rel, []).append((ln, cited))
+
+    print(
+        "\n--- STRICT scope: cited as a RUNNABLE reproduction path (shell fence or Reproduce/Usage"
+    )
+    print("    heading). This is the scope the broad count argued for. ---")
+    for rel in sorted(strict_files):
         print(f"\n  {rel}")
-        for ln, cited in by_file[rel]:
+        for ln, cited in strict_files[rel]:
             print(f"    :{ln}  ->  {cited}")
-    print(f"\n{len(viol)} violation(s) across {len(by_file)} file(s)")
+    if not strict_files:
+        print("  (none)")
+    print(f"\nSTRICT: {len(strict)} violation(s) across {len(strict_files)} file(s)")
+    print(f"BROAD : {len(viol)} violation(s) across {len(broad_files)} file(s)  [not adoptable]")
 
     # The gate ASSERTS nothing yet. Per the standing rule in docs/POLICIES.md -- "implement the gate
     # before adopting the rule ... its output counted, before the policy lands" -- this pass exists to
