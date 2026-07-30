@@ -395,3 +395,107 @@ curl -sL -o arc.zip   https://github.com/fchollet/ARC-AGI/archive/refs/heads/mas
 curl -sL -o blimp.zip https://github.com/alexwarstadt/blimp/archive/refs/heads/master.zip   # -> data/lang/blimp/
 # WikiText-103: HF parquet wikitext-103-raw-v1/train-00000-of-00002.parquet -> data/lang/wikitext/
 ```
+
+---
+
+## Appendix (2026-07-29) — the AR spiking-LM path split, a first real train, and three corrections to how every number above must be read
+
+This appendix records a defect fix and a set of measurements made on 2026-07-29. Every number below
+was measured this session; the scripts are in `scratchpad/ar_lm_*.py` and their outputs in
+`scratchpad/ar_lm_*_out.txt`.
+
+### The defect, and what the fix does and does not change
+
+`training/ar_spiking_lm.py` exported to `models/spiking_lm.npz`; `reasoning/ar_spiking_lm_serve.py`
+loaded `models/ar_spiking_lm.npz`. Neither half could ever see the other's file, and the serve
+self-check *printed* the trainer's path while its loader used the other one. Fixed (commit
+`bcd53611`): both halves now agree on `models/ar_spiking_lm.npz`. Audit of the same shape across the
+tree: `eprop_lm`/`eprop_lm_serve` and `eprop_lm_alif`/`eprop_lm_alif_serve` both agree and load — no
+further trainer/serve path mismatches (`scratchpad/ar_lm_pathaudit.py`).
+
+**Correction 1 — the `n/a` had TWO causes and one remains.** `blimp_bench.py` never imports
+`ar_spiking_lm_serve` at all: its opt-in scorer block (`blimp_bench.py:151-166`) loads
+`eprop_lm_alif_serve`, then `eprop_lm_serve`. The Wave-1 text above says the AR LM was "wired into
+`blimp_bench` as an opt-in real scorer" — as of this appendix that wiring **does not exist**. Until
+`blimp_bench` (or a successor) actually consumes `SpikingLMServe`, no AR-spiking-LM artifact can move
+the reported number, path fix or no path fix.
+
+**The "BYTE-FOR-BYTE" claim, measured** (`scratchpad/ar_lm_roundtrip.py`,
+`ar_lm_parity_artifact.py`): literally false, materially true. torch-f64 vs numpy-f64 logits max
+|dev| 1.776e-15 (float op-ordering); the real round trip (f32-trained weights served in f64) max
+|dev| 1.92e-6; **0 of 23,232 spikes differ** under either dtype pairing; full-sentence logprob dev
+2.84e-14. On the shipped `.npz` re-imported to torch: 1.07e-14, 0 argmax disagreements.
+
+### Correction 2 — the 51.0% incumbent is stale, and the live number is below chance for a localized reason
+
+Measured live (67 paradigms x 25 pairs = 1675, `scratchpad/ar_lm_incumbent.py`): what `blimp_bench`
+actually loads today scores
+
+```
+e-prop ALIF-LM (preferred) : 46.9% sum-logprob | 51.9% per-char-normalized
+e-prop flat LM (fallback)  : 48.3% sum-logprob | 50.4% per-char-normalized
+```
+
+Below chance is not a weak model; it is a systematic bias, and it is **localized**: the good member
+of a BLiMP pair is usually the longer one (`length_scorer` = 29.4%, i.e. preferring the shorter
+sentence is wrong ~70% of the time), and an unnormalized sum-logprob pays ~constant cost per
+character, so a weak LM systematically prefers the shorter = bad sentence. Dividing by sentence
+length flips both models back to ~chance (+5.0 / +2.1 points). Any future sum-logprob BLiMP score
+must be read with this bias in mind, and 51.0% must stop being cited as the current incumbent.
+
+### Correction 3 — the 61.2% anchor is WORD-level and was the wrong yardstick
+
+The 61.2% "5-gram" anchor (Warstadt et al., Table 3) is a **word**-level model trained on 83M words.
+A char-level model cannot be compared to it. Measured on this repo's own corpus
+(`scratchpad/ar_lm_ngram_control.py`, char 5-gram, add-alpha backoff, nothing tuned): **51.4%** at 3M
+chars, **53.0%** at 12M chars (held-out char PPL 5.39 / 4.56). **53.0% is the honest char-level
+n-gram bar**, and prior comparisons of char models to 61.2% (including the "toy sits at n-gram
+~57-60%" lines above) were against the wrong yardstick.
+
+### The first real train of the AR spiking-LM — an honest null, with the cause instrumented
+
+Setup (all in commit `bcd53611`): byte-addressed WikiText reader with a hard held-out guard
+(exposure `[0, E)` refuses to run when `E >= 200,000,000`, the offset `lang_scale.py` holds out —
+the `lang_word_big_out.VOID.txt` lesson mechanized). Disjointness **proven, not assumed**
+(`scratchpad/ar_lm_disjoint.py`): 100/200/400-char held-out probes absent from the exposure, and 0 of
+3350 BLiMP sentences (good AND bad members) occur verbatim in the 119.6M-char training text. Model
+selection on held-out PPL, never on BLiMP.
+
+Run: dim=512, layers=3, ctx=128, batch=28 — **10,339,425 params** (SpikeGPT-style Spiking-RWKV,
+BPTT + fast-sigmoid surrogate, RTX 5070) on the first 120,000,000 bytes (119.6M ASCII chars ~ 20M
+words) of WikiText-103. **Stopped deliberately at step 1700 of 14000** (coordinator halt for the
+repo gate); the shipped artifact is the best held-out checkpoint, step 1399, held-out char PPL
+7.2016 (32k-char eval slice) / **6.5423** over the full 200k-char held-out slice under the windowed
+protocol.
+
+BLiMP, 67 x 25 = 1675 pairs, scored through the frozen numpy serve (`scratchpad/ar_lm_blimp.py`):
+
+```
+TRAINED   sum-logprob        : 47.7%  (799/1675)
+TRAINED   per-char normalized: 49.0%  (821/1675)
+UNTRAINED same architecture  : 49.5%  (829/1675)   <- the control that gives the row above meaning
+controls  random 51.1% | length-only 29.4%         (chance 50.0)
+```
+
+**BLiMP did not move: the learned delta over random init is -1.8 points (sum) / -0.5 (per-char).**
+This is a null result and it is reported as one. What the instruments say about why:
+
+1. The model had not yet learned even its own training data's local statistics: under an IDENTICAL
+   windowed protocol on the SAME held-out slice, the spiking LM's char PPL is **6.54** vs **4.88**
+   for a char 5-gram fitted on the same exposure (`scratchpad/ar_lm_final_eval.py`). A model still
+   above the n-gram PPL bar has no business beating the n-gram's 53.0% BLiMP, and it does not.
+   The bottleneck at this scale is optimization time (the run got 12% of its schedule), not the
+   benchmark.
+2. The per-paradigm scatter is bimodal (100%/100%/100% next to 0%/0%/4%; 27/67 paradigms above
+   chance), the signature of systematic surface preferences, not grammar — a random scatter would
+   concentrate near 50%.
+3. Even the fully-converged char-level ceiling on this data is ~53% (correction 3). Char-level
+   models at this corpus scale sit within ~3 points of chance; the docstring's honest-scale
+   statement (~GPT-2-small on 10-100M WORDS for 70-80%) still stands, and word/subword units are
+   likely a precondition for the next honest increment, not more steps alone.
+
+**What this appendix claims:** the pipeline is now genuinely round-trip-verified at real scale, the
+eval split is proven disjoint, and the first real artifact exists at the path the serve loads.
+**What it does not claim:** any BLiMP movement. The language ceiling stands exactly where the
+mechanism section put it, and the two yardsticks it was being measured against (51.0% incumbent,
+61.2% n-gram) were both wrong in the flattering direction.
