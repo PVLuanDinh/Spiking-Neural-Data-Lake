@@ -1,0 +1,55 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/crosscat_jepa_vs_conflict_ab.py 60
+exit: 0
+commit: 0f46e6b6769d66298cf54bd01d1d6254d8708a0a
+recorded_at: 2026-07-30T07:59:37Z
+recorded_by: fable-5 W3 cross-category ADJUDICATOR / docs/coverage/artifacts/crosscat_jepa_vs_conflict_ab.py 60
+python: 3.11.15
+--- stdout ---
+arms: A wired / B1 jepa_prediction=0 / B2 conflict=0 / C both,  seed 0, n=60
+prediction_error calls on the wired run (A)   : 30
+wake ticks on the wired run (A)               : 31/60
+distinct A values act/action/traj             : 1 / 7 / 32
+--- reproduction check against the three recorded artifacts ---
+--- (A-B1 must equal imag_jepa_action_60, A-B2 exec_conflict_60, A-D novelty_60) ---
+A-B1 (jepa)       act/hold changed by the neuter : 0/60 ticks
+A-B1 (jepa)       selected action changed        : 23/60 ticks
+A-B1 (jepa)       arm trajectory changed        : 47/60 ticks
+A-B2 (conflict)   act/hold changed by the neuter : 0/60 ticks
+A-B2 (conflict)   selected action changed        : 23/60 ticks
+A-B2 (conflict)   arm trajectory changed        : 47/60 ticks
+A-D (novelty ctl) act/hold changed by the neuter : 0/60 ticks
+A-D (novelty ctl) selected action changed        : 0/60 ticks
+A-D (novelty ctl) arm trajectory changed        : 0/60 ticks
+--- the comparison neither existing probe can make ---
+B1-B2 (DECISIVE)  act/hold differs              : 0/60 ticks
+B1-B2 (DECISIVE)  selected action differs       : 1/60 ticks
+B1-B2 (DECISIVE)  arm trajectory differs        : 7/60 ticks
+B1-C (marg conf)  act/hold differs              : 0/60 ticks
+B1-C (marg conf)  selected action differs       : 5/60 ticks
+B1-C (marg conf)  arm trajectory differs        : 24/60 ticks
+B2-C (marg jepa)  act/hold differs              : 0/60 ticks
+B2-C (marg jepa)  selected action differs       : 5/60 ticks
+B2-C (marg jepa)  arm trajectory differs        : 24/60 ticks
+--- divergence TICK SETS, not counts ---
+action-flip ticks, jepa neuter                : (14, 32, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 57, 58, 59, 60)
+action-flip ticks, conflict neuter            : (14, 32, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 57, 58, 59, 60)
+action-flip ticks, novelty CONTROL neuter     : ()
+the two action-flip tick sets are identical   : True
+control tick set == the two under test        : False
+control shares 0 of the 23 flip ticks           : jaccard 0.000
+onset tick action/traj, jepa   (1-indexed)    : 14 / 14
+onset tick action/traj, conflict (1-indexed)  : 14 / 14
+--- both signals were LIVE before the shared onset tick 14 ---
+prediction_error calls on ticks 1..13                      : 9
+wired _conflict was nonzero on ticks 1..13                 : 9
+so neither neuter's onset is that signal's FIRST FIRING; it is the first tick on which a perturbation propagated to the gate's winner.
+--- what the arms actually chose at the first shared divergent ticks ---
+  tick  14 awake  perr_calls=1 conflict=0.67  A=JOINT_B_ROTATE(-6deg) B1=HOLD B2=HOLD C=HOLD
+  tick  32 awake  perr_calls=1 conflict=0.6563  A=JOINT_B_ROTATE(-6deg) B1=JOINT_B_ROTATE(+6deg) B2=JOINT_B_ROTATE(+6deg) C=JOINT_B_ROTATE(+6deg)
+  tick  39 awake  perr_calls=1 conflict=0.7587  A=JOINT_B_ROTATE(-6deg) B1=JOINT_B_ROTATE(+6deg) B2=JOINT_B_ROTATE(+6deg) C=JOINT_B_ROTATE(+6deg)
+  tick  40 awake  perr_calls=1 conflict=0.8247  A=HOLD B1=JOINT_A_ROTATE(+6deg) B2=JOINT_A_ROTATE(+6deg) C=JOINT_A_ROTATE(+6deg)
+  tick  41 asleep perr_calls=0 conflict=0.8247  A=HOLD B1=JOINT_A_ROTATE(+6deg) B2=JOINT_A_ROTATE(+6deg) C=JOINT_A_ROTATE(+6deg)
+  tick  42 asleep perr_calls=0 conflict=0.8247  A=HOLD B1=JOINT_A_ROTATE(+6deg) B2=JOINT_A_ROTATE(+6deg) C=JOINT_A_ROTATE(+6deg)
+DISTINCT MEASUREMENTS: the two neuters produce different arms

@@ -328,6 +328,71 @@ P-violation stands as written.
   rest on an exit-0 artifact, `latent_world_model`, is not in the W3 group at all. The collision is the
   regex: `_fingerprint` matches only `(\d+)/(\d+) ticks`, and every discriminating line above either
   lacks the trailing `ticks` or is not a ratio.
+- **The CROSS-CATEGORY collision this file flagged against `Executive.md` is also a FALSE POSITIVE, and
+  it was adjudicated on a four-arm probe rather than on a read.** New evidence:
+  `docs/coverage/artifacts/crosscat_jepa_vs_conflict_ab.py`, recorded as
+  `crosscat_jepa_vs_conflict_60.txt` (exit 0). It runs A wired, B1 `jepa_prediction=0`, B2
+  `conflict=0` and C both, at one seed, so it can make the comparison neither two-arm probe can:
+  **B1 against B2.** No band moved in either file.
+  **First, a correction to the claim two paragraphs up: these two artifacts do NOT share a
+  `_fingerprint`.** STATIC, measured with `coverage_score._fingerprint` itself:
+  `imag_jepa_action_60` yields a **9-tuple** and `exec_conflict_60` a **4-tuple**, because this file's
+  probe also prints a value-table count, a greedy-policy count and a whole scramble arm in `n/N ticks`
+  form while the Executive probe prints an eligibility counter. What the two share is the three
+  HUMAN-named behavioural observables -- act/hold `0/60`, trajectory `47/60`, selected action `23/60`.
+  So the collision was never machine-visible, and the new cross-category check added to
+  `coverage_score.py` this pass does not catch it either; that is recorded in the check's own comment
+  block rather than papered over.
+  **STATIC: the two probes pin different objects, and not on the same channel.**
+  `imagination_refute_ab.py:102` rebinds `JepaWorldModel.prediction_error` (cerebellum);
+  `executive_ab_probe.py:121` rebinds `ExecutiveControl.conflict` (cortex). Neither is a `_drive_w`
+  key. They also enter the loop in different PHASES: `_conflict` is computed at
+  `autonomous_loop.py:715`, before selection, and reaches the gate on the same tick through the STN
+  brake at `:740`; `prediction_error` is called at `:1314`, after the winner already exists (`:1310`
+  keys the visit count on the chosen `action`), and reaches behaviour only through the intrinsic
+  reward at `:1315` and hence a LATER tick's value table.
+  **STATIC: and here is the honest mechanism behind the coincidence.** The jepa error feeds `r_int`,
+  which updates the q-table, which is a term in the drive vector, which is the ARGUMENT of
+  `self._exec.conflict(drive)` at `:715`. So neutering the world model changes the conflict scalar's own
+  output. The two neuters are not one signal; they are two signals that arrive at **one junction**, the
+  conflict/STN brake on the BG gate. That is test 3 of the adjudication -- "both reading one upstream
+  drive" -- answered as a shared *channel*, not a shared *cause*.
+  **RUNTIME: the harness reproduces both recorded artifacts before it is trusted.** Arm A against B1
+  gives `0/60, 23/60, 47/60`, identical to `imag_jepa_action_60`; arm A against B2 gives
+  `0/60, 23/60, 47/60`, identical to `exec_conflict_60`; and the control arm D reproduces
+  `novelty_60.txt`'s `0/60, 0/60`. Three recorded artifacts reproduced by one harness.
+  **RUNTIME, the decisive test: the two neutered arms are NOT the same run.** `B1-B2` differs on
+  **1/60 selected actions and 7/60 trajectory positions**. The withdrawn baseline's Executive defect was
+  byte-identical action traces on 122/122 wake ticks (`COVERAGE_BASELINE.md:12`); this is not that
+  shape.
+  **RUNTIME: both marginals are nonzero, so neither row is a downstream consequence of the other.**
+  With the jepa error already zeroed, additionally killing `conflict` still changes **5/60 actions and
+  24/60 positions**; with `conflict` already zeroed, additionally killing the jepa error changes
+  **5/60 and 24/60**. `Executive.md:117-123` established this file's precedent for exactly this test and
+  kept two rows on a **4/60** marginal; the marginal here is larger, in both directions.
+  **RUNTIME, stated against myself, because it is the real finding.** The identical numbers are worse
+  than a shared count: the flip **tick sets are byte-identical**, all 23 of them
+  `(14, 32, 39, 40 ... 60)`, and at every displayed tick B1, B2 and C select the **same** alternative
+  action (tick 14: A `JOINT_B_ROTATE(-6deg)`, all three neutered arms `HOLD`). The mechanism is that
+  both perturbations flip the same knife-edge decision at tick 14 and then push the arm into the same
+  alternative trajectory, after which "differs from A" is a property of that trajectory. So `23/60` and
+  `47/60` are onset-and-trajectory artifacts -- the trap this file already records at lines 48-56 and
+  `Executive.md:110-116` records for its `22/60`, now measured to be worse than either said, because
+  the tick POSITIONS coincide and not merely the totals. **Neither row's 23/60 is independent evidence
+  of anything about the other**, and a reader should treat both as one shared measurement of where this
+  arm is fragile plus a small separable residual. The bands stand because they rest on the separable
+  residual and on the band's mechanical test, not on the shared 23.
+  **RUNTIME: the shared onset tick 14 is not either signal's first firing.** `prediction_error` was
+  called **9 times** on ticks 1-13 and `_conflict` was nonzero on **9** of them, so both signals were
+  live for a dozen ticks without mattering. Tick 14 is the first tick on which a perturbation
+  propagated to the gate's winner, which is a fact about the arbitration, not about either faculty.
+  **What this probe could NOT establish, and it is the gap a next pass should close.** Arm D, the
+  unrelated-neuter control (`_drive_w['novelty']` pinned), was meant to test whether ANY perturbation
+  lands on those same 23 fragile ticks -- which would prove the tick set is a harness constant outright.
+  It diverged on **0/60** of every observable, faithfully reproducing `novelty_60.txt` (exit 2,
+  UNKNOWN), so it is an inert control and the fragility reading remains an INFERENCE from the tick-14
+  mechanism rather than a measurement. A control that perturbs the drive vector and does diverge --
+  `taskset` is the obvious candidate at 17/60, though it is itself an Executive row -- would settle it.
 - **Tick-count sensitivity is unexplored.** All four artifacts are at n=60, chosen to match the
   `drive_60` control. The ledger's own W-list records that `drive 4` exits 1 and `drive 60` exits 0 on
   the same faculty and seed. The three negatives here could plausibly turn positive at n=500; I did not
@@ -416,3 +481,13 @@ held-out gap:
    and `Executive.md`'s `acc_conflict_monitoring_evc`. Two unrelated signals producing one triple is
    evidence that the triple is a harness constant; a check that noticed it would have caught the four
    points this pass removed, mechanically, instead of needing a refuter.
+   **DONE 2026-07-30, and it does NOT catch this collision -- which is itself the finding.** `W5` is
+   added to `coverage_score.py` (a non-fatal warning, mirroring W3 across category files instead of
+   within one) and across all 133 rows it reports exactly **one** cross-category group: the seven
+   all-zero `charge_probe` negatives sharing `(0/60, 0/60)` in Perception, Consciousness,
+   SpatialTemporal, Social and WholeBrain, none of them banded above 40, so no band rests on it. The
+   pair that prompted the check is invisible to it because their `_fingerprint`s are a 9-tuple and a
+   4-tuple and never collided; the shared triple was three human-named observables. Widening the regex
+   would catch it and is still refused -- it changes what `--rerun` compares against for every artifact
+   in the tree. So the honest state is unchanged in kind: W3 is a floor within a category, W5 is a floor
+   across them, and the collision that motivated both was found by a human reading artifacts.

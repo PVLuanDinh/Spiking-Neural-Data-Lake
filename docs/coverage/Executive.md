@@ -153,6 +153,46 @@ them a one-tick difference in an eligibility counter now defeats W3 for that cat
 `tools/**`, owned elsewhere this pass: either exclude the eligibility line from the fingerprint or
 build the fingerprint from named observables rather than from every `n/N` in the stream.
 
+### 8. The CROSS-CATEGORY collision against Imagination: FALSE POSITIVE. `acc_conflict_monitoring_evc` stays 61.
+
+`docs/coverage/Imagination.md:310-313` flagged that this file's `acc_conflict_monitoring_evc`
+(`exec_conflict_60.txt`) and Imagination's `latent_world_model` (`imag_jepa_action_60.txt`) report the
+same three behavioural numbers -- act/hold `0/60`, trajectory `47/60`, selected action `23/60` -- at the
+same onset tick, and that W3 cannot see it because W3 runs inside `coverage_score.score`'s per-category
+loop. Unlike the four adjudicated within-category warnings, **both artifacts exit 0 and both rows are
+banded 61**, so these bands do rest on the colliding numbers. Adjudicated 2026-07-30 on new evidence,
+`docs/coverage/artifacts/crosscat_jepa_vs_conflict_ab.py` recorded as
+`crosscat_jepa_vs_conflict_60.txt` (exit 0): four arms at one seed -- A wired, B1 `jepa_prediction=0`,
+B2 `conflict=0`, C both -- which is the B1-against-B2 comparison neither two-arm probe can make.
+**Verdict: two separable mechanisms. No band changed in either file.** The full evidence is recorded in
+`Imagination.md` under "The adversarial pass"; the four load-bearing items, from this file's side:
+
+- **STATIC, different objects on different modules.** `executive_ab_probe.py:121` rebinds
+  `ExecutiveControl.conflict`; `imagination_refute_ab.py:102` rebinds
+  `JepaWorldModel.prediction_error`. Neither is a `_drive_w` key, and they enter the loop in different
+  phases -- `_conflict` at `autonomous_loop.py:715` reaches the gate on the SAME tick via the STN brake
+  at `:740`, while `prediction_error` at `:1314` is called after the winner exists and reaches
+  behaviour only through `r_int` at `:1315` and a later tick's value table.
+- **STATIC, the mechanism behind the coincidence, and it is a shared CHANNEL not a shared cause.** The
+  jepa error feeds `r_int` -> the q-table -> the drive vector -> which is the argument of
+  `self._exec.conflict(drive)` at `:715`. So the Imagination neuter changes this row's scalar's own
+  output. Both perturbations arrive at one junction: the conflict/STN brake on the BG gate.
+- **RUNTIME, decisive.** The two neutered arms are not the same run: `B1-B2` differs on **1/60 selected
+  actions and 7/60 trajectory positions**. The withdrawn baseline's 9-point defect was byte-identical
+  traces on 122/122 wake ticks (`COVERAGE_BASELINE.md:12`); this is not that. And both marginals are
+  nonzero -- killing `conflict` on top of an already-zeroed jepa error still changes **5/60 actions and
+  24/60 positions**, and the reverse likewise. That is the same separability test section 5 above used
+  to keep two rows on a **4/60** marginal; this marginal is larger, both ways. The harness is trusted
+  because it first reproduces `exec_conflict_60`, `imag_jepa_action_60` and `novelty_60` exactly.
+- **RUNTIME, against the rows.** The coincidence is worse than section 6 recorded: not only are the
+  counts equal, the flip **tick sets are byte-identical** (all 23: `14, 32, 39, 40 ... 60`) and both
+  neutered arms select the same alternative action at each. Both perturbations flip one knife-edge
+  decision at tick 14 -- where both signals had already been live for 9 ticks without mattering -- and
+  then ride the same alternative trajectory. So `23/60` here and `23/60` in Imagination are **one**
+  shared measurement of where this arm is fragile, plus a small separable residual. This row's 61 rests
+  on the residual and on the multi-seed spread in section 5 (`24, 4, 26` per 60 at seeds 1-3), not on
+  the shared 23. A future pass that wants to move this row should attack the residual.
+
 ## What I checked and left alone
 
 - **Every citation in the table resolves to what it claims**, not merely to a line that exists (which
@@ -234,7 +274,10 @@ re-split them by refuting section 3 or 4 rather than by re-typing a band.
    bad-evidence criterion relative to a running baseline, not a smaller 6.
 4. **Fix W3's fingerprint (section 7) and W4's `max` over ratios.** Instrument work in `tools/**`
    that protects all eleven categories; until it lands, a 1-in-200 action count can present behind a
-   38/200 trajectory count.
+   38/200 trajectory count. **Partly addressed 2026-07-30:** `W5` now mirrors W3 ACROSS category files
+   (section 8), which closes the structural blind spot but not the regex one -- the eligibility line
+   section 7 names still defeats both checks, and `exec_conflict_60` and `exec_evc_60` still do not
+   collide under `_fingerprint` for exactly the reason recorded there. W5's own comment block says so.
 5. **Band 81+ remains structurally out of reach.** There is no held-out executive task in the tree,
    so nothing here can pass rubric rule 3 regardless of wiring. Multi-seed is *not* held-out
    evidence -- it is the same developer-constructed arm loop with a different random stream -- and

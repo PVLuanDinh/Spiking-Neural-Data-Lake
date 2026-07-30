@@ -184,6 +184,9 @@ def score(root, evdir):
     """(category -> {score, rows, unscored}, failures, warnings). Failures are REFUSALS: any one of
     them means there is no honest total to print."""
     cats, fail, warn = {}, [], []
+    # W5's accumulator. `prints` below is re-bound inside the per-category loop, which is what makes
+    # W3 per-category; this one outlives the loop so the same fingerprint can be seen in two files.
+    gprints = {}
     # README.md is documentation living in the evidence directory, not a category. Without this
     # exclusion the F2 check below refused it as an "unknown category file" and the tool exited 1
     # WITHOUT printing a total -- on its own repository, from the day it shipped. Two claims depended
@@ -254,7 +257,9 @@ def score(root, evdir):
                 if art and art != "-":  # an artifact on a low band is fine; still parse it
                     ap = os.path.join(evdir, "artifacts", art)
                     if os.path.isfile(ap):
-                        prints.setdefault(_fingerprint(_artifact(ap)["_stdout"]), []).append(fac)
+                        lowfp = _fingerprint(_artifact(ap)["_stdout"])
+                        prints.setdefault(lowfp, []).append(fac)
+                        gprints.setdefault(lowfp, []).append((cat, fac, b))
                 continue
 
             # ---- the refusal rules that make a band claim expensive to inflate
@@ -297,6 +302,7 @@ def score(root, evdir):
 
             fp = _fingerprint(a["_stdout"])
             prints.setdefault(fp, []).append(fac)
+            gprints.setdefault(fp, []).append((cat, fac, b))
             rates = [int(x) / int(y) for x, y in fp if int(y)]
             if b >= 61 and rates and max(rates) < 0.01:
                 warn.append(
@@ -320,6 +326,44 @@ def score(root, evdir):
             "rows": len(bands),
             "unscored": unscored,
         }
+
+    # W5, added 2026-07-30 by the adjudication of Imagination's `latent_world_model` against
+    # Executive's `acc_conflict_monitoring_evc`. W3 above is INSIDE the per-category loop -- `prints`
+    # is re-bound per category -- so it is structurally incapable of seeing one mechanism scored in two
+    # DIFFERENT categories. A cross-file duplicate is the worse of the two: no single auditor's write
+    # scope covers both halves, so neither is obliged to notice, and the withdrawn baseline's 9-point
+    # Executive defect was exactly this shape (four probe points on one serial chain).
+    #
+    # HONEST LIMIT, and it is the reason this check is a floor rather than a census: the collision that
+    # PROMPTED it is not one this check can see. `imag_jepa_action_60` fingerprints as a 9-tuple and
+    # `exec_conflict_60` as a 4-tuple, so they never collide under `_fingerprint`; their shared
+    # `(0/60, 47/60, 23/60)` is three HUMAN-named observables, and the two probes disagree on how many
+    # OTHER `n/N ticks` lines they print (an eligibility counter, a value-table count, a scramble arm).
+    # That is the regex hole recorded above `_fingerprint`, and widening the regex is still refused
+    # there for the same reason: it changes what `--rerun` compares against for every artifact in the
+    # tree. So W5 catches EXACT-fingerprint cross-category collisions and nothing weaker -- absence of
+    # W5 is not evidence of absence, the same caveat W3 already carries.
+    #
+    # The count of colliding rows banded ABOVE 40 is reported because that is the discriminator
+    # between noise and inflation: F8 demands an exit-0 A/B only above 40, so a band at or below 40
+    # does not rest on its artifact even when it names one, and a group of all-zero honest negatives
+    # sharing `(0/60, 0/60)` is the expected signature of independent nulls rather than of one chain.
+    for fp, hits in gprints.items():
+        hit_cats = sorted({c for c, _, _ in hits})
+        if not fp or len(hit_cats) < 2:
+            continue
+        hot = [f"{c}.{f}" for c, f, b in hits if b > 40]
+        rests = (
+            f"{len(hot)} of {len(hits)} rows are banded >40 ({', '.join(hot)}), so their band RESTS "
+            f"on this artifact"
+            if hot
+            else f"none of the {len(hits)} rows is banded >40, so no band rests on this artifact"
+        )
+        warn.append(
+            f"W5 cross-category: {', '.join(f'{c}.{f}' for c, f, _ in hits)} share observable "
+            f"fingerprint {fp} across {len(hit_cats)} categories ({', '.join(hit_cats)}) -- "
+            f"probably one serial chain scored in more than one category; {rests}"
+        )
     return cats, fail, warn
 
 
