@@ -118,16 +118,31 @@ def length_scorer(sentence):
     return -len(sentence)
 
 
+# Sentinel a sentence the served model could not score. Any real char-LM log-prob is orders of
+# magnitude above it, so an unscorable sentence always LOSES its comparison instead of winning one.
+UNSCORABLE = -1e18
+
+
 def per_char(logprob):
     """Length-normalized rescoring: sum-logprob / characters. The other half of the pair reported.
 
     This removes the surface length term the unnormalized sum inherits (see the module docstring).
     Note what it does to the length control: -len(s)/len(s) is the SAME value for every sentence, so
-    normalizing turns the length heuristic into a constant -- which is the mechanism, made visible."""
-    return lambda sentence: logprob(sentence) / max(1, len(sentence))
+    normalizing turns the length heuristic into a constant -- which is the mechanism, made visible.
+
+    UNSCORABLE passes through UNNORMALIZED, and that is the honesty point: UNSCORABLE/len(s) would be
+    a bigger number for a LONGER sentence, so a pair whose two sentences the model both failed to
+    score would be decided by length -- credit awarded for having no opinion, which score() forbids.
+    Passing it through keeps such a pair a tie, and ties count as wrong."""
+
+    def scorer(sentence):
+        lp = logprob(sentence)
+        return lp if lp <= UNSCORABLE else lp / max(1, len(sentence))
+
+    return scorer
 
 
-def cached_logprob(serve, unscorable=-1e18):
+def cached_logprob(serve, unscorable=UNSCORABLE):
     """Wrap serve.logprob in a per-sentence cache so BOTH scorings cost ONE forward pass per sentence.
 
     Honest-unavailable is preserved: a None logprob becomes a sentinel that always loses its comparison,
