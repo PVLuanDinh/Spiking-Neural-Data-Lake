@@ -32,19 +32,27 @@ boot. Zero runtime deps (stdlib json + os); the data lake never touches torch. A
 
 import json
 import os
-import struct
 import sys
 
-from snn_data_lake.substrate.binlog import BinLog, pack_array, pack_fact, unpack_array, unpack_fact
+from snn_data_lake.substrate.binlog import BinLog, pack_fact, unpack_fact
 
-# The ONE brain lake is RAW BINARY (spiking exemplars + skill vectors are native binary; symbolic facts +
-# chat turns ride as compact pack_fact byte-records in the SAME file). Each record carries a 1-byte TYPE
-# tag so the symbolic view (KnowledgeLog) and the spike consumers (SpikeLake) read only their own records
-# from the one file. FACT = pack_fact({cue,answer,triple?,src?}); SPIKE = a feature vector + payload for a
-# durable AER exemplar. Weights/calibration stay separate STATE (save_state), never in the memory lake.
+# The ONE brain lake is RAW BINARY (symbolic facts + chat turns ride as compact pack_fact byte-records).
+# Each record carries a 1-byte TYPE tag so the symbolic view (KnowledgeLog) reads only its own records
+# from the one file. FACT = pack_fact({cue,answer,triple?,src?}). Weights/calibration stay separate
+# STATE (save_state), never in the memory lake.
+#
+# _T_SPIKE is a RESERVED tag whose writer was RETIRED per P3 (2026-07-29). SpikeLake -- the durable
+# AER-exemplar view (record = _T_SPIKE [u32 plen][payload][pack_array(vec)]) -- was measured that day
+# at: 19,775 _T_FACT / 0 _T_SPIKE records in the production lake, zero constructors in the tree outside
+# this module's own self-check, zero samples in 45 s of live-daemon profiling, and its only designed
+# consumer (`reasoning/brain_adapters/lake_memory.py` `durable=`) a reasoning/ orphan off the live path.
+# Backlog H4/#10 named the missing prerequisite: a live producer of AER exemplars worth keeping across a
+# restart. Until one exists there is nothing to store, so the dead write path is retired instead of kept
+# as a format nobody writes. The tag stays reserved, every view SKIPS foreign records and consolidate()
+# PRESERVES them, so a historical lake containing spike records still replays fine -- and the class is
+# one git revert away if the prerequisite ever materializes.
 _T_FACT = b"\x01"
 _T_SPIKE = b"\x02"
-_U32 = struct.Struct("<I")
 
 
 def home():
@@ -61,8 +69,8 @@ def lake_path(name="lake.spkl"):
 
 def knowledge_path(name="brain_lake.bin"):
     """Path to the ONE durable brain lake under home() -- a raw-binary append-only log (BinLog) holding
-    the whole brain's learned MEMORY (symbolic facts + chat turns as pack_fact records; spiking exemplars
-    + skill vectors fold in as binary records). The former knowledge.jsonl is retired into this file."""
+    the whole brain's learned MEMORY (symbolic facts + chat turns as pack_fact records; other binary
+    record types may fold in under reserved tags). The former knowledge.jsonl is retired into this file."""
     return os.path.join(home(), name)
 
 
@@ -146,60 +154,6 @@ class KnowledgeLog:
         self._bin.rewrite(foreign + [_T_FACT + pack_fact(r) for r in keep_records])
         self._count = self._bin.count() - len(foreign)
         return self._count, before - self._count
-
-
-class SpikeLake:
-    """LIVE STATUS, MEASURED 2026-07-28 (v4.78): **this class has no runtime constructor.** The only
-    `SpikeLake()` calls in the tree are in this module's own self-check below. The production lake
-    holds **19,525 _T_FACT records and 0 _T_SPIKE records** -- the AER half described here has never
-    been written to, so the "boot-reconstructable AER memory" the docstring goes on to promise is a
-    capability that exists and has never run.
-
-    DISPOSITION: P3 exempt-awaiting-a-prerequisite, and the prerequisite is a DESIGN decision rather
-    than plumbing. An audit proposed passing `durable=SpikeLake(...)` at the `LakeMemory(...)` sites --
-    but every one of those sites is in `reasoning/` orphans (`autonomous_brain.py`,
-    `developmental_core.py`, `developmental_loop_lake*.py`) with zero live importers, so wiring the
-    parameter there would connect two things that are both off the live path. What is actually missing
-    is a reason for the LIVE brain to append AER exemplars at all: nothing on the wake/sleep tick
-    currently produces exemplars it wants back after a restart. Give it one, and this class is ready.
-
-    The SPIKING view of the ONE durable brain lake -- durable AER exemplars (a feature vector + a small
-    payload: replay id / class / task) as _T_SPIKE binary records in the SAME brain_lake.bin, alongside the
-    symbolic FACT records. append(vec, payload); replay() -> (vec, payload). The spike PATTERN is a
-    deterministic function of the vector (cortex.spike_preprocessing.encode_latency), so only the vector is
-    stored (float16 via binlog.pack_array). The proximity retrieval index is REBUILT at boot from these
-    records (the LakeChat scratch-index pattern), which makes AER memory genuinely DURABLE + boot-
-    reconstructable -- today the payload lives only in RAM and the index resets on boot, so the AER lake is
-    durable bytes but not durable memory; this fixes that. Record = _T_SPIKE [u32 plen][payload][pack_array].
-    KnowledgeLog.replay skips these (tag != _T_FACT) and KnowledgeLog.consolidate preserves them untouched,
-    so the symbolic sleep prune never drops a spike exemplar."""
-
-    def __init__(self, path=None, dedup=True):
-        self._bin = BinLog(path or knowledge_path(), dedup=dedup)
-
-    def append(self, vec, payload=""):
-        """Durably append one AER exemplar (feature vector + payload). Deduped + fsync'd by BinLog."""
-        pb = str(payload).encode("utf-8")
-        rec = _T_SPIKE + _U32.pack(len(pb)) + pb + pack_array(list(vec))
-        return self._bin.append(rec)
-
-    def replay(self):
-        """Yield (feature_vector, payload_str) for every _T_SPIKE record, in append order; FACT/other
-        records are skipped, so the spiking view never chokes on the mixed one lake."""
-        for p in self._bin.replay():
-            if p[:1] != _T_SPIKE:
-                continue
-            try:
-                (plen,) = _U32.unpack_from(p, 1)
-                payload = p[5 : 5 + plen].decode("utf-8")
-                vec = unpack_array(p[5 + plen :])
-                yield vec, payload
-            except Exception:  # noqa: BLE001 - a malformed spike record must never crash the boot rebuild
-                continue
-
-    def count(self):
-        """Number of durable AER exemplars stored (a scan; spike-count is not on a hot polling path)."""
-        return sum(1 for p in self._bin.replay() if p[:1] == _T_SPIKE)
 
 
 def save_state(name, obj):
@@ -321,28 +275,25 @@ def main():
         )
         assert "luna" in recovered, "an append after a crash-torn binary frame was lost"
 
-        # ---- SPIKING view shares the ONE lake: FACT + SPIKE records coexist, isolated, survive the prune ----
-        slake = SpikeLake()
-        slake.append([0.1, 0.9, 0.5], "exemplar-A")
-        slake.append([0.2, 0.8, 0.4], 7)
-        spikes = list(
-            SpikeLake().replay()
-        )  # a FRESH reader off disk -> durable AER memory (vec + payload)
-        assert len(spikes) == 2 and spikes[0][1] == "exemplar-A" and spikes[1][1] == "7", spikes
-        assert all(abs(a - b) < 1e-2 for a, b in zip(spikes[0][0], [0.1, 0.9, 0.5])), (
-            "spike vector lost"
-        )
+        # ---- the ONE lake tolerates FOREIGN record types: skipped by the FACT view, kept by the prune ----
+        # _T_SPIKE is a reserved tag (its SpikeLake writer was retired per P3 -- see the tag comment
+        # above). What must survive is the CONTAINER contract that let two views share one file: a
+        # record of an unknown/foreign type never leaks into the FACT view and is never dropped by the
+        # symbolic sleep prune, so any historical lake holding such records still replays fine.
+        foreign_rec = _T_SPIKE + b"reserved-tag payload (retired AER exemplar shape)"
+        assert BinLog(kpath).append(foreign_rec), "foreign record append failed"
         facts_now = (
             KnowledgeLog().count()
-        )  # the FACT view reads ONLY facts (spike records are skipped)
-        assert facts_now == 4, f"spike records leaked into the FACT count: {facts_now}"
+        )  # the FACT view reads ONLY facts (foreign records are skipped)
+        assert facts_now == 4, f"foreign records leaked into the FACT count: {facts_now}"
         klog = (
             KnowledgeLog()
-        )  # sleep consolidation of the FACT side must PRESERVE the spike exemplars
+        )  # sleep consolidation of the FACT side must PRESERVE the foreign records
         klog.consolidate(list(klog.replay()))
-        assert SpikeLake().count() == 2 and KnowledgeLog().count() == 4, (
-            "sleep consolidation of facts dropped durable spike exemplars (or lost facts)"
+        assert any(p == foreign_rec for p in BinLog(kpath).replay()), (
+            "sleep consolidation of facts dropped a foreign (reserved-tag) record"
         )
+        assert KnowledgeLog().count() == 4, "sleep consolidation lost facts"
 
         print(
             "self-check OK: knowledge appended in one process is REPLAYED in a separate process (never "

@@ -158,3 +158,41 @@ you outgrow the stdlib `.spkl` path.
 The CPU path is unchanged and covered by CI. The GPU path is code-reviewed and byte-compiled, but
 these torch scripts run in their own venv and are **not** part of the CI matrix (CI has no GPU), so
 the CUDA path is not executed here — smoke-test it on your CUDA machine on first use.
+
+## Disk-tier measurements (2026-07-29)
+
+Measured before touching anything, per the neuter-and-measure rule. Live daemon (pid 804, wake+sleep,
+45 s py-spy @ 200 Hz, 7,319 samples) plus offline benchmarks on `.venv-lake` (Python 3.11, NVMe).
+
+**Disk is NOT a live-tick bottleneck — that is the headline null result.**
+
+- Wake ticks: **0.00%** of samples in any I/O-classified leaf frame. The wake tick is compute
+  (`episode_consolidation._settle` 14.1%, `vsa_reasoning` coincidence ~10.6%, prefrontal spiking).
+- Sleep: 17.5% of all samples sit in I/O-adjacent leaves, but **15.6% is `zipfile` zlib *compression
+  CPU*** inside `numpy.savez_compressed` (nightly skills npz), not disk — the actual
+  `fileobj.write` leaf is **0.20%**. `binlog` (brain_lake.bin, fsync-per-append) leaves: 1.8%.
+  `streaming_hub` leaves: 0.15%.
+- The durable stores are small: `brain_lake.bin` 7.3 MB / 19,775 FACT records, full replay **0.05 s**;
+  `~/.snn_data_lake/lake.spkl` **0 bytes** (the spike half of the durable home has never received an
+  event); the only live `.spkl` with data is `brain_data/chat_wm.spkl` (6 MB). `data/telemetry.jsonl`
+  is 160 MB and append-only-growing (it was 69 MB when last audited) — a disposition question, not a
+  tick-latency one.
+
+**The out-of-core contract holds at scale** (first actual-RSS demonstration): a 20M-event / 152.6 MB
+store written at 2.06M events/s (`flush_every=65536`); a **fresh process** replays it in 6.3 s going
+14.6 -> 21.0 MB RSS (coarse index 19,584 entries = N/1024; resident tail 11,520 events), then a
+whole-lake single-channel query streams all 152.5 MB from disk returning 312,500 hits with peak RSS
+**53.6 MB** (mostly the O(hits) result list itself) — resident memory stays bounded while the file is
+~7x larger. An old-range query seeks 512 KB (0.3% of the file) in 6.3 ms.
+
+**Append flush cost (neutered A/B):** `flush_every=1` 255k events/s vs `flush_every=4096` 2.03M/s vs
+flush pinned to a no-op 2.01M/s — the per-append `flush()` IS the entire 8x gap (group-commit
+recovers all of it), and nothing on the live path appends anywhere near those rates.
+
+**One real disk defect found and fixed:** `MemoryLake`'s durable resume recovered its `last_t` cursor
+with `query_window(0, 2^32)` over every channel; each channel's blocks span the whole interleaved
+log, so the resume **re-read 62.8x the file** (383.5 MB for a 6.1 MB 64-channel store, 8.72 s).
+`StreamingHub.max_time()` (an O(1) resident scalar rebuilt by replay) now answers it: same store,
+same `last_t`/`n_events`, **0.25 s and 0 query bytes** (~35x faster resume). The packed-width silent
+misread (100 events reopened as 1 without `packed=True`) is fixed by the self-describing packed-store
+header — see STORAGE_FORMATS.md.

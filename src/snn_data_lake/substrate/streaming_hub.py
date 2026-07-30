@@ -11,8 +11,11 @@ the `.spk` with its channel index at save time. This is the STREAMING counterpar
 
 8 bytes/event on disk (channel u32, time u32) by default; OPT-IN `packed=True` uses a 4 B record
 (one u32 = channel<<26 | time, lossless for channel<64 + time<2^26) that halves the log while keeping
-the fixed-width out-of-core design intact. The distributed version of this is the cloud path
-(Pub/Sub -> Dataflow -> GCS Bronze); this is the single-machine one.
+the fixed-width out-of-core design intact. Every NEW packed store is stamped with an 8 B
+self-describing header (magic + version + record kind), so reopening can never silently misread the
+4 B width; default stores stay byte-identical headerless logs, and headerless files are read exactly
+as before. The distributed version of this is the cloud path (Pub/Sub -> Dataflow -> GCS Bronze);
+this is the single-machine one.
 
 OUT-OF-CORE (so it scales as the lake GROWS): the hub never holds O(total-events) resident and
 never slurps the whole `.spkl`. Per channel it keeps only (a) a RECENT TAIL of the current
@@ -37,9 +40,41 @@ _REC_PACKED = struct.Struct(
 )  # OPT-IN packed record: one u32 = (channel << _PACK_TBITS) | time = 4 bytes
 _PACK_CBITS = 6  # packed channel field: 6 bits -> channel in [0, 64)
 _PACK_TBITS = 26  # packed time field: 26 bits -> time in [0, 67108864)
+# SELF-DESCRIBING HEADER (2026-07-29): every NEW PACKED store is stamped with an 8 B header so the
+# 4 B record width can never be silently misread on reopen (a packed store reopened without
+# packed=True used to frame 4 B records as 8 B ones -- measured: 100 events read back as 1). DEFAULT
+# 8 B stores stay byte-identical headerless logs -- every existing producer, consumer and size
+# invariant in the tree (and the live `brain_data/*.spkl` stores) is untouched; only the opt-in
+# packed mode, whose width WAS the latent corruption, pays the 8 B. Headerless files are detected by
+# the absent magic and read exactly as before, under the caller's packed flag (the legacy contract).
+# Residual ambiguity is negligible by construction: a headerless 8 B store would need first-record
+# channel 0x4C4B5053 (~1.28e9, but channel < n_channels which is at most a few hundred here); a
+# headerless 4 B packed store would need two specific consecutive records. Neither occurs in any
+# real store.
+_MAGIC = b"SPKL"
+_FMT_VERSION = 1
+_HEADER = struct.Struct(
+    "<4sBBH"
+)  # magic, version, record kind (0 = 8 B, 1 = 4 B packed), reserved 0
 _INDEX_STRIDE = 1024  # coarse offset index: one (time, offset) sample every K events/channel
 _SCAN_CHUNK = 1 << 20  # bytes read per disk block while scanning (bounds resident memory)
 _MAX_T = 1 << 32  # exclusive upper bound over all u32 spike times (whole-lake scan)
+
+
+def _header_kind(path):
+    """Record kind from a store's self-describing header (0 = 8 B default, 1 = 4 B packed), or None
+    when the file is a legacy headerless store (whose bytes are raw records, read exactly as before)."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(_HEADER.size)
+    except OSError:
+        return None
+    if len(head) < _HEADER.size:
+        return None
+    magic, version, kind, reserved = _HEADER.unpack(head)
+    if magic != _MAGIC or version != _FMT_VERSION or kind not in (0, 1) or reserved != 0:
+        return None
+    return kind
 
 
 class _ChannelStream:
@@ -113,7 +148,10 @@ class StreamingHub:
             value outside that range raises (LOSSLESS: never silently truncated). The record is still
             FIXED WIDTH, so the whole out-of-core design is untouched -- offsets, coarse index, seek
             and replay all just use the 4 B record size. Reversible: unpack recovers (channel, time)
-            exactly. A packed store MUST be reopened with packed=True (the width is not self-describing)."""
+            exactly. The 4 B width IS self-describing: every new packed store is stamped with an 8 B
+            header, so reopening it no longer requires (or trusts) the caller's packed flag -- the
+            header decides, and an explicit packed=True against a header that says 8 B raises instead
+            of silently misreading. Headerless stores keep the old contract: the caller's flag."""
         if n_channels <= 0:
             raise ValueError("n_channels must be positive")
         if flush_every < 1:
@@ -140,12 +178,33 @@ class StreamingHub:
         self._tail_off = [0] * n_channels  # byte offset where the current block begins
         self._last_t = [-1] * n_channels  # last time appended (monotonicity check)
         self._mono = [True] * n_channels  # channel's on-disk times are non-decreasing
+        self._max_t = -1  # largest time ever recorded (O(1) resident; rebuilt by _replay)
         self._last_query_bytes = 0  # bytes read by the most recent query (diag)
         self.ch = _ChannelViews(self)  # lazy out-of-core per-channel read view
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        if resume and os.path.exists(path):
+        self._base = 0  # byte offset where records start (headered store: 8; legacy store: 0)
+        size = os.path.getsize(path) if os.path.exists(path) else 0
+        if size:
+            kind = _header_kind(path)
+            if kind is not None:  # self-describing store: the HEADER decides the record width
+                self._base = _HEADER.size
+                if self.packed and kind == 0:
+                    raise ValueError(
+                        f"{path}: store header says default 8 B records but packed=True was passed"
+                    )
+                self.packed = kind == 1
+                if self.packed and n_channels > (1 << _PACK_CBITS):
+                    raise ValueError(
+                        f"packed store needs n_channels <= {1 << _PACK_CBITS}, got {n_channels}"
+                    )
+                self._rec = _REC_PACKED if self.packed else _REC
+        if resume and size:
             self._replay()
         self._f = open(path, "ab")  # durable append-only handle
+        if size == 0 and self.packed:  # NEW packed store: stamp the header before any record
+            self._f.write(_HEADER.pack(_MAGIC, _FMT_VERSION, 1, 0))
+            self._f.flush()
+            self._base = _HEADER.size
 
     def _flush_pending(self):
         """Flush buffered appends (no-op when nothing is pending -> the default path never adds a
@@ -187,6 +246,8 @@ class StreamingHub:
         if lt >= 0 and t < lt:  # out-of-order arrival on this channel
             self._mono[channel] = False
         self._last_t[channel] = t
+        if t > self._max_t:
+            self._max_t = t
 
     # ---- record (live) ------------------------------------------------------
     def append(self, channel, t):
@@ -195,7 +256,9 @@ class StreamingHub:
         if not 0 <= channel < self.n:
             raise IndexError(f"channel {channel} out of range [0,{self.n})")
         t = int(t)
-        off = self._nrec * self._rec.size  # byte offset of the record about to be written
+        off = (
+            self._base + self._nrec * self._rec.size
+        )  # byte offset of the record about to be written
         self._f.write(self._pack(channel, t))
         self._nrec += 1
         self._pending += 1
@@ -261,6 +324,13 @@ class StreamingHub:
     def n_events(self):
         return sum(self._count)
 
+    def max_time(self):
+        """Largest spike time ever recorded into the resident index (live appends + resumed replay),
+        or None when the store is empty. O(1) resident scalar -- a durable-lake resume can recover its
+        "now" cursor from this instead of a whole-lake query_window (measured 62.8x the file size in
+        read amplification on a 64-channel store: every channel's blocks span the whole log)."""
+        return self._max_t if self._max_t >= 0 else None
+
     # ---- opt-in fixed-memory analytics (read-only) --------------------------
     def hot_motifs(self, window, top_k=3, depth=4, width=256):
         """Top-`top_k` most frequent channel-COACTIVATION motifs (the set of channels firing together within a
@@ -274,9 +344,10 @@ class StreamingHub:
 
         bins = {}
         rs = self._rec.size
-        end = self._nrec * rs
+        end = self._base + self._nrec * rs
         with open(self.path, "rb") as f:
-            pos = 0
+            f.seek(self._base)
+            pos = self._base
             while pos < end:
                 buf = f.read(min(_SCAN_CHUNK, end - pos))
                 if not buf:
@@ -314,10 +385,11 @@ class StreamingHub:
         coarse index and monotonicity flags -- and therefore all query results -- are identical."""
         rs = self._rec.size
         size = os.path.getsize(self.path)
-        nrec = size // rs
-        end = nrec * rs
+        nrec = max(0, size - self._base) // rs
+        end = self._base + nrec * rs
         with open(self.path, "rb") as f:
-            pos = 0
+            f.seek(self._base)
+            pos = self._base
             while pos < end:
                 buf = f.read(min(_SCAN_CHUNK, end - pos))
                 if not buf:
@@ -559,9 +631,11 @@ def main():
     bytes_d, bytes_p = os.path.getsize(pd), os.path.getsize(pp)
     hd.close()
     hp.close()
-    hp2 = StreamingHub(pp, PN, resume=True, packed=True)  # reopen the packed log purely from disk
+    # reopen the packed log purely from disk WITHOUT the packed flag: the header self-describes it
+    hp2 = StreamingHub(pp, PN, resume=True)
     qp_reopen = sorted(hp2.query_window(0, 1 << 20))
     replayed_p = hp2.n_events()
+    adopted_packed = hp2.packed
     hp2.close()
     # range guard: an out-of-range value must RAISE, never silently truncate (lossless contract)
     guard_ok = False
@@ -583,13 +657,67 @@ def main():
         f"range guard raises={guard_ok}"
     )
     assert qd == qp, "packed record changed query results vs the default 8 B layout (not lossless)"
-    assert bytes_p == len(pk_events) * 4 and bytes_d == len(pk_events) * 8, (
-        "packed log is not 4 B/event"
-    )
+    assert bytes_p == _HEADER.size + len(pk_events) * 4, "packed log is not header + 4 B/event"
+    assert bytes_d == len(pk_events) * 8, "default log is not 8 B/event (must stay headerless)"
     assert qp_reopen == qp and replayed_p == len(pk_events), (
         "packed log did not survive reopen from disk"
     )
+    assert adopted_packed, "reopen must ADOPT the packed width from the header (self-describing)"
     assert guard_ok, "packed mode must RAISE on an out-of-range time (lossless), not truncate"
+
+    # ---- SELF-DESCRIBING header: conflicts raise; LEGACY headerless stores read exactly as before ----
+    # (a) an explicit packed=True against a store whose header says 8 B records must RAISE, never
+    # silently misframe. (No current writer stamps kind=0 headers -- synthesize one to test the guard.)
+    hdr8 = os.path.join(sc, "headered_default.spkl")
+    with open(hdr8, "wb") as f:
+        f.write(_HEADER.pack(_MAGIC, _FMT_VERSION, 0, 0))
+        f.write(_REC.pack(1, 42))
+    conflict_ok = False
+    try:
+        StreamingHub(hdr8, PN, resume=True, packed=True)
+    except ValueError:
+        conflict_ok = True
+    h8 = StreamingHub(hdr8, PN, resume=True)  # a kind=0 header is adopted + records read past it
+    hdr8_events = h8.query_window(0, 100)
+    h8.close()
+    assert hdr8_events == [(42, 1)] and not h8.packed, (
+        "a kind=0 headered store must read its records past the header as default 8 B"
+    )
+    # (b) a LEGACY headerless 8 B store (any `.spkl` written before the header existed) still reads
+    # byte-exactly: synthesize one with raw struct writes and reopen it.
+    legacy = os.path.join(sc, "legacy_headerless.spkl")
+    legacy_events = [(rng.randrange(N), t) for t in range(300)]
+    with open(legacy, "wb") as f:
+        for c, t in legacy_events:
+            f.write(_REC.pack(c, t))
+    hl = StreamingHub(legacy, N, resume=True)
+    ql = sorted(hl.query_window(0, DUR))
+    legacy_n = hl.n_events()
+    hl.append(0, DUR - 1)  # appending must extend the legacy log, never insert a header mid-file
+    hl.close()
+    with open(legacy, "rb") as f:
+        first8 = f.read(_REC.size)
+    assert conflict_ok, "packed=True against a headered 8 B store must raise ValueError"
+    assert legacy_n == len(legacy_events) and ql == sorted((t, c) for c, t in legacy_events), (
+        "legacy headerless store no longer reads byte-exactly"
+    )
+    assert first8 == _REC.pack(*legacy_events[0]), "legacy store's first record was overwritten"
+    assert os.path.getsize(legacy) == (len(legacy_events) + 1) * _REC.size, (
+        "append to a legacy store must not add a header"
+    )
+    # (c) max_time(): O(1) "now" cursor -- equals the max appended time, survives resume, None if empty.
+    hl2 = StreamingHub(legacy, N, resume=True)
+    assert hl2.max_time() == max(max(t for _c, t in legacy_events), DUR - 1), (
+        "max_time must equal the largest appended time after resume"
+    )
+    hl2.close()
+    hempty = StreamingHub(os.path.join(sc, "empty_maxt.spkl"), N)
+    assert hempty.max_time() is None, "max_time on an empty store must be None"
+    hempty.close()
+    print(
+        f"self-describing: packed reopen adopts header (packed={adopted_packed}); conflicting "
+        f"packed=True raises; legacy headerless store reads {legacy_n} events byte-exactly"
+    )
 
     print(
         "self-check OK: record-while-query works, queries are partial + live, "

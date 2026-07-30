@@ -76,8 +76,6 @@ from snn_data_lake.plasticity.benna_fusi import BennaFusiSynapse
 from snn_data_lake.substrate.reservoir_sampling import Reservoir
 from snn_data_lake.substrate.streaming_hub import StreamingHub
 
-_MAX_T = 1 << 32  # exclusive upper bound over all u32 tick times (whole-lake query)
-
 # ---- consolidation dynamics (deterministic; a single SHY-style offline pass) ----
 DOWNSCALE = 0.5  # homeostatic global synaptic downscale applied to every trace (SHY)
 REPLAY_GAIN = 0.30  # per-replay reinforcement deposited into a replayed trace's fast beaker
@@ -181,8 +179,11 @@ class MemoryLake:
             self._vitals = StreamSketchPanel(seed=seed)
         else:
             self._vitals = None
-        if self.hub.n_events():  # resumed a non-empty lake: recover the cursor
-            self.last_t = max((t for t, _ in self.hub.query_window(0, _MAX_T)), default=None)
+        # resumed a non-empty lake: recover the "now" cursor from the hub's O(1) resident max-time
+        # scalar (rebuilt by replay). The former whole-lake query_window(0, _MAX_T) re-READ every
+        # channel's block span -- measured 383.5 MB (62.8x the file) for a 6.1 MB 64-channel store.
+        if self.hub.n_events():
+            self.last_t = self.hub.max_time()
         self._load_sidecar()  # recover the consolidated store if one was persisted
 
     # ---- WRITE (with salience) ------------------------------------------------
@@ -429,8 +430,7 @@ class MemoryLake:
         Returns self (LakeWorkingMemory-compatible)."""
         self.hub.close()
         self.hub = StreamingHub(self.path, self.n, resume=True)
-        events = self.hub.query_window(0, _MAX_T)
-        self.last_t = max((t for t, _ in events), default=None)
+        self.last_t = self.hub.max_time()  # O(1) resident cursor, no whole-lake re-read
         self._load_sidecar()
         return self
 
