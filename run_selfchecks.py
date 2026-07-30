@@ -1,5 +1,8 @@
 """
-v0.50 — single canonical runner for every pure-stdlib self-check.
+v0.50 — single canonical runner for every module self-check.
+
+(Said "every pure-stdlib self-check" until 2026-07-29, contradicting its own paragraph four lines
+down. That was backlog M52: the phrase outlived the rule by nine days.)
 
 The CI module list used to live hand-typed in BOTH .github/workflows/ci.yml and
 docs/RUNNING.md — add or rename a module and the two silently drift. This is the ONE
@@ -323,7 +326,8 @@ RESEARCH = [
     "reasoning.self_build_loop",
     "reasoning.content_signature",
     # the two OUTSIDE yardsticks the depth ceilings are measured against. Both SKIP-with-notice when
-    # their dataset is not downloaded, so the zero-dep CI matrix stays green either way.
+    # their dataset is not downloaded (data/ is gitignored), so CI stays green either way -- which is
+    # also why neither can be treated as a regression test for the ceilings it measures.
     "reasoning.arc_bench",  # ARC-AGI: exact-match pass@2 over 800 tasks; controls must score ~0
     "reasoning.blimp_bench",  # BLiMP: 67 paradigms x 1000 minimal pairs; chance 50%, human 88.6%
     "reasoning.arc_solver",  # test-time program synthesis over 2-D grids (object DSL + iterative deepening)
@@ -354,10 +358,11 @@ NENGO_GATED = ["substrate.nengo_bridge"]
 
 
 def _torch_ok():
-    # TORCH TIER ON BY DEFAULT: run the torch-gated modules whenever torch is importable. MANUAL
-    # OFF-SWITCH: env NORD_TORCH=0 forces the torch tier off (skip them) even if torch is installed.
-    if os.environ.get("NORD_TORCH") == "0":
-        return False
+    # torch is a core dependency, so this is normally True and TORCH_GATED runs. It stays a probe
+    # rather than an assumption only so a broken install fails with a clear skip notice instead of 6
+    # confusing import errors. The NORD_TORCH=0 off-switch was removed 2026-07-29: skipping the torch
+    # tier on demand was the zero-dependency rule's last mechanism, and that rule was retired
+    # 2026-07-20 when torch became unconditional in pyproject.
     try:
         import torch  # noqa: F401
 
@@ -382,11 +387,17 @@ MODULES = CORE + (TORCH_GATED if _TORCH else []) + (NENGO_GATED if _NENGO else [
 
 def run_all():
     if not _TORCH:
+        # torch is a CORE dependency, so this is a BROKEN INSTALL, not a supported configuration.
+        # The old message said "zero-dep matrix stays green" and reassured the reader that skipping
+        # 6 modules was fine -- true while the zero-dependency rule existed, misleading since it was
+        # retired. Left as a skip rather than promoted to a hard failure because that is a separate
+        # decision with its own blast radius; the message now says what the skip means.
         for m in TORCH_GATED:
-            print(f"SKIP  {m}  (torch not importable -- zero-dep matrix stays green)")
+            print(f"SKIP  {m}  (torch NOT IMPORTABLE -- broken install: torch is a core dependency)")
     if not _NENGO:
+        # nengo genuinely IS optional (the [nengo] extra), so this skip is a supported path.
         for m in NENGO_GATED:
-            print(f"SKIP  {m}  (nengo not importable -- zero-dep matrix stays green)")
+            print(f"SKIP  {m}  (nengo not importable -- optional [nengo] extra not installed)")
     failed = []
     for m in MODULES:
         cmd = [sys.executable, "-m", f"snn_data_lake.{m}"]  # every module runs as a package module

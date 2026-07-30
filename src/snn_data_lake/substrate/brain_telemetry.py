@@ -374,7 +374,8 @@ def main():
 
     from snn_data_lake.cortex.brain import make_brain
 
-    os.environ.setdefault("NORD_TORCH", "0")
+    # NORD_TORCH=0 dropped 2026-07-29 with the zero-dependency rule: this self-check now builds the
+    # brain in the configuration users actually get.
     brain = make_brain(seed=0)
     for _ in range(12):
         brain.tick()

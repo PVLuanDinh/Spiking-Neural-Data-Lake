@@ -1,12 +1,10 @@
 """Tests for cortex/counterfactual_sim.py -- brain-native counterfactual imagination.
 
 Verifies the learned forward model reduces imagination error with local training, the do()-operator
-ranks the target-reaching action first, determinism, and (via a fresh subprocess) that importing the
-module pulls in neither numpy nor torch (it must stay in the zero-dependency core)."""
+ranks the target-reaching action first, and determinism.
 
-import os
-import subprocess
-import sys
+(A fourth test asserted that importing the module pulled in neither numpy nor torch -- "it must
+stay in the zero-dependency core". Removed 2026-07-29 with that rule; note at the bottom.)"""
 
 from snn_data_lake.cortex.counterfactual_sim import CounterfactualSim, _toy_experiment
 
@@ -75,17 +73,14 @@ def test_learn_reduces_single_transition_error():
     assert last < 1e-4
 
 
-def test_import_has_no_numpy_or_torch():
-    # Fresh interpreter: importing the module must not drag numpy/torch into sys.modules.
-    env = dict(os.environ)
-    src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
-    env["PYTHONPATH"] = src + os.pathsep + env.get("PYTHONPATH", "")
-    code = (
-        "import sys; import snn_data_lake.cortex.counterfactual_sim as m; "
-        "assert 'numpy' not in sys.modules, 'numpy leaked'; "
-        "assert 'torch' not in sys.modules, 'torch leaked'; "
-        "print('clean')"
-    )
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
-    assert out.returncode == 0, out.stderr
-    assert "clean" in out.stdout
+# test_import_has_no_numpy_or_torch REMOVED 2026-07-29. It spawned a fresh interpreter and
+# asserted importing counterfactual_sim left 'numpy' and 'torch' out of sys.modules -- the last
+# EXECUTABLE enforcement of the zero-dependency rule in the tree (the 59 in-module purity asserts
+# went on 2026-07-20; this one survived by living in tests/).
+#
+# What is genuinely lost, because it is not nothing: as a side effect it protected IMPORT-TIME
+# HYGIENE for this module, and keeping a heavy dependency out of a light module is legitimate even
+# when that dependency is core. But it asserted the retired rule, not that principle -- it named
+# numpy and torch as forbidden rather than measuring import cost, and covered 1 module of 245.
+# If import time becomes a real constraint, the honest instrument measures import time across the
+# package with its own justification, not a purity assert outliving its rule.

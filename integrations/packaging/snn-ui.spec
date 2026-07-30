@@ -6,7 +6,7 @@
 # Produces dist/snn-ui.exe (onefile, console). The .exe runs the always-on learning daemon and
 # opens the cockpit (substrate/cockpit.py -- a stdlib http.server page) in the default browser.
 # The bundle carries Python + numpy; torch and the other optional-dep addons are excluded below
-# and never shipped (the frozen entry point pins NORD_TORCH=0 for exactly that reason).
+# and never shipped; the brain reaches its stdlib tier by catching the failed torch import.
 import os
 import sys
 

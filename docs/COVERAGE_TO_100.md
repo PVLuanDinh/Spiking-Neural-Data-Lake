@@ -120,13 +120,22 @@ calls with no array library at all.
 and `dependencies = ["torch", "numpy"]` is unconditional. What survived is the machinery that still
 acts as though it were in force, and it is being removed:
 
-- `tests/conftest.py:29` forces `NORD_TORCH=0` for the whole pytest run
-- `.github/workflows/ci.yml:15-33` runs a 6-cell `torchfree-self-checks` matrix that installs **only**
-  numpy
-- `tests/test_counterfactual_sim.py:79-86` is the last executable purity assert
-- `run_selfchecks.py:342-375` hand-maintains `TORCH_GATED` / `NENGO_GATED` escape hatches
-- `src/snn_data_lake/training/__init__.py:3-7` still describes exporting weights "back into the zero-dep
-  core"
+All of the following were **removed 2026-07-29** and are listed as the record of what the rule's
+machinery consisted of:
+
+- ~~`tests/conftest.py:29` forces `NORD_TORCH=0` for the whole pytest run~~ — file emptied to a
+  rationale-only docstring
+- ~~`.github/workflows/ci.yml:15-33` runs a 6-cell `torchfree-self-checks` matrix that installs **only**
+  numpy~~ — job deleted, its 2x3 OS/Python matrix moved onto the real self-check job
+- ~~`tests/test_counterfactual_sim.py:79-86` is the last executable purity assert~~ — removed
+- ~~`src/snn_data_lake/training/__init__.py:3-7` still describes exporting weights "back into the
+  zero-dep core"~~ — reframed as the serving-format argument it always was
+- plus the flag itself at `cortex/brain.py` (two sites), `brain_atlas.py`, `run_selfchecks.py`,
+  `substrate/cockpit.py`, `substrate/brain_telemetry.py`, and the frozen-exe entry point
+
+`run_selfchecks.py`'s `TORCH_GATED` / `NENGO_GATED` lists are **kept**: they are still hand-maintained,
+but they now mean "this module needs an optional extra", which is a real distinction, not a
+zero-dependency claim.
 - P5 honesty guard (c) makes the **CPU** env authoritative — `.venv-lake` (torch 2.13.0+cpu, numpy 2.4.6)
   against `.venv-cu128` (torch 2.11.0+cu128, numpy 1.26.4). Two different torch *and* numpy majors gate
   the same tree.

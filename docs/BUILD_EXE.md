@@ -53,9 +53,10 @@ The `.exe` above is already double-click-runnable. To produce a proper `setup.ex
   home. A second launch exits immediately, and its browser tab shows the cockpit of the
   instance already running.
 - **torch is excluded** from the bundle (a ~2 GB wheel), along with the other optional-dep
-  addons (polars / pyserial / airllm / ...). The frozen entry point pins `NORD_TORCH=0` for
-  exactly that reason, so the brain takes its deterministic stdlib tier instead of the torch
-  growth tier. `numpy` is a declared core dependency and **is** bundled.
+  addons (polars / pyserial / airllm / ...). The frozen brain therefore lands on its deterministic
+  stdlib tier the same way a broken install does — the torch import fails and the brain catches it.
+  It used to pin `NORD_TORCH=0` to force that; the flag was removed on 2026-07-29 and pinning it
+  became a no-op, so the pin went too. `numpy` is a declared core dependency and **is** bundled.
 - **No data files.** The cockpit's page is a module constant and its anatomical layout is
   computed at request time (`substrate/brain_geometry.py`), so the spec ships no `datas`.
 - **Safety envelope unchanged.** The arm is the internal simulator and every command still

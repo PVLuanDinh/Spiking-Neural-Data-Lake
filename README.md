@@ -24,8 +24,10 @@ A Python toolkit for event-driven (spiking) computation, in three parts:
   safety gate (`ArmSim.apply()`) and the real serial path is disabled until explicitly calibrated.
 
 `numpy` and `torch` are core dependencies (`dependencies = ["torch", "numpy"]`) — the former
-zero-dependency-core contract was removed project-wide on 2026-07-20. Setting `NORD_TORCH=0` gives a
-**torch-free** brain, not a stdlib-only one: numpy is always required. Optional integrations (real
+zero-dependency-core contract was removed project-wide on 2026-07-20, and its last mechanism, the
+`NORD_TORCH=0` off-switch, was removed on 2026-07-29. There is no torch-free mode: if torch is
+missing the install is broken, and the brain's stdlib fallback exists to keep that survivable rather
+than to make it a supported configuration. Optional integrations (real
 hardware, Parquet/Delta, GPU training, on-device LLM) live behind extras. Every efficiency figure
 below is measured against a dense baseline and reproduced by running the referenced module.
 

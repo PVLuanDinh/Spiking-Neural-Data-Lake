@@ -15,8 +15,9 @@ durable lake or duplicate the daemon's drive loop. One brain, one loop, one fron
     snn-ui.exe --smoke    # headless self-check (no display, no durable write); exits 0
 
 The bundle carries no torch (a ~2 GB wheel that a desktop build has no business shipping), so a
-frozen run pins NORD_TORCH=0 and the brain takes its deterministic stdlib tier instead of the
-torch growth tier. A source checkout with torch installed is unaffected.
+frozen run lands on the brain's deterministic stdlib tier: the torch import fails and the brain
+catches it, which is the same fallback a broken install takes. A source checkout with torch
+installed is unaffected and gets the growth tier.
 """
 
 import os
@@ -75,9 +76,14 @@ def main():
         cockpit.main()
         return
 
-    if getattr(sys, "frozen", False):
-        # no torch in the bundle -> take the stdlib tier deliberately, rather than crash on it
-        os.environ.setdefault("NORD_TORCH", "0")
+    # The frozen build used to pin NORD_TORCH=0 here so the bundled brain took the stdlib tier
+    # instead of crashing on an absent torch. That flag was removed from the brain 2026-07-29 with
+    # the zero-dependency rule, so setting it became a no-op -- a value that looks like a control and
+    # is not, which is the exact shape this project keeps finding and calling a defect.
+    # Nothing is lost: cortex/brain.py reaches the stdlib tier by CATCHING the failed torch import
+    # (_make_neuro returns None on any exception; the perception tier falls through to
+    # tier="stdlib"), so torch being absent from the bundle is itself the trigger. The flag only ever
+    # mattered when torch was PRESENT and we wanted it off.
 
     port = int(os.environ.get("NORD_TELEMETRY_PORT", "8137"))
     opener = threading.Thread(target=_wait_and_open, args=(port,), daemon=True)

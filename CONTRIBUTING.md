@@ -26,8 +26,9 @@ python -m ruff format --check src tests   # formatting -- this exact scope is wh
 
 - **Dependencies.** `torch` and `numpy` are core deps; the zero-dependency-core contract was removed
   project-wide on 2026-07-20. Modules may import them freely. Anything heavier goes behind an
-  optional extra (`arm`, `lake`, `gpu`, ...). `NORD_TORCH=0` gives a torch-free path, not a
-  stdlib-only one.
+  optional extra (`arm`, `lake`, `gpu`, ...). There is no torch-free path: the `NORD_TORCH=0`
+  off-switch was removed on 2026-07-29, so do not add a new one, and do not gate a module on
+  torch's absence.
 - **Determinism.** Seed with `random.Random(seed)` per instance — never module-level import-time
   seeding. Use `zlib.crc32()` for persisted hashes, not the builtin `hash()`.
 - **ASCII-only output.** Windows cp1252 crashes on non-ASCII in `print()`. Keep console output ASCII.

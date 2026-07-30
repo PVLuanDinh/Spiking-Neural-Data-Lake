@@ -41,7 +41,7 @@ re-verified by the main agent (see the integration-hook spec returned with this 
 Deterministic: per-instance random.Random(seed); no module-level seeding, no
 wall-clock. ASCII-only output.
 
-  PYTHONUTF8=1 NORD_TORCH=0 PYTHONPATH=src python -m snn_data_lake.cortex.neuron_zoo
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.neuron_zoo
 """
 
 import math

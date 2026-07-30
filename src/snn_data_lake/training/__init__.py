@@ -1,10 +1,17 @@
 """GPU training tier for the Spiking Neural Data Lake.
 
-This is the ONE installed subpackage where the project's zero-dependency rule is
-deliberately loosened: it depends on torch + snntorch (the optional ``[train]``
-extra) to train a surrogate-gradient spiking classifier on the GPU, then EXPORTS
-the learned weights back into the zero-dep core so a clone-and-run install can
-serve them with no torch present.
+The GPU training tier. It depends on torch + snntorch (the ``[train]`` extra) to
+train a surrogate-gradient spiking classifier, then EXPORTS the learned weights as
+a plain JSON file the core loads and serves.
+
+(Until 2026-07-29 this paragraph called itself "the ONE installed subpackage where
+the project's zero-dependency rule is deliberately loosened", exporting weights
+"back into the zero-dep core so a clone-and-run install can serve them with no
+torch present". There is no zero-dep core to export into -- torch and numpy became
+unconditional core dependencies on 2026-07-20. The weight export is still real and
+still useful, because a JSON weight file is smaller and faster to load than a torch
+checkpoint and needs no snntorch; that is a serving-format argument, which is what
+this always was. Backlog M56.)
 
 The trainer targets the exact task the core ``snn_data_lake.cortex.snn_classifier``
 defines -- 8x8 binary shapes (GRID=8, N=64 inputs), C=4 classes, STEPS=20 rate-

@@ -523,12 +523,15 @@ class Brain:
             False  # W9: True when the arm's sensory channels are DRIVEN by real perception
         )
         try:
-            import os
+            import os  # used below for SNN_EPROP_CKPT / SNN_PERCEPTION_PACK and their os.path checks
 
-            if (
-                os.environ.get("NORD_TORCH") == "0"
-            ):  # manual off-switch: keep the zero-dep stdlib perception path
-                raise RuntimeError("torch tier disabled")
+            # NORD_TORCH=0 off-switch REMOVED 2026-07-29. It used to raise here to force the stdlib
+            # perception path, simulating a torch-free install -- a contract pyproject retired on
+            # 2026-07-20, when torch became an unconditional core dependency. Nothing is lost by
+            # deleting it: torch genuinely ABSENT still lands on the stdlib tier, because the import
+            # below raises inside this same try and the handler sets tier="stdlib". The flag's only
+            # unique power was forcing the tier off while torch was present, which is the simulation
+            # being retired, not a capability.
             # GPU-PRIORITIZED perception with a ROBUST cpu fallback: prefer cuda when requested
             # (device="cuda", the default) AND available, but if a cuda LOAD throws -- GPU busy / OOM under
             # the always-on daemon's OWN GPU contention -- fall back to cpu so perception, and the cortical
@@ -939,13 +942,13 @@ class Brain:
             return None
 
     def _make_neuro(self, seed, device):
-        """Lazily build the torch neurogenesis engine from THIS cortex package. TORCH TIER ON BY DEFAULT;
-        the manual off-switch env NORD_TORCH=0 (or torch genuinely absent) -> None (growth reports zero;
-        the wake + sleep-consolidation + self-model paths still run on the stdlib narrator)."""
-        import os
+        """Lazily build the torch neurogenesis engine from THIS cortex package. torch is a core
+        dependency, so this normally succeeds; torch genuinely absent -> None (growth reports zero, and
+        the wake + sleep-consolidation + self-model paths still run on the stdlib narrator).
 
-        if os.environ.get("NORD_TORCH") == "0":  # manual off-switch: disable the torch tier
-            return None
+        The NORD_TORCH=0 off-switch was removed 2026-07-29 -- absence is already handled by the
+        `except Exception: return None` below, so the flag only ever added the ability to disable the
+        tier while torch was present, which was the retired zero-dependency simulation."""
         try:
             import torch
 

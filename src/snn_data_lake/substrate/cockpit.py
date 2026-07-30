@@ -637,7 +637,9 @@ def main():
 
     from snn_data_lake.cortex.brain import make_brain
 
-    os.environ.setdefault("NORD_TORCH", "0")
+    # NORD_TORCH=0 dropped 2026-07-29 with the zero-dependency rule: this self-check now builds the
+    # brain in the configuration users actually get. NORD_PERSIST stays -- it guards the durable lake,
+    # which is a real invariant and has nothing to do with dependencies.
     os.environ.setdefault("NORD_PERSIST", "0")  # a self-check must never write the durable lake
     brain = make_brain(seed=0)
     for _ in range(8):

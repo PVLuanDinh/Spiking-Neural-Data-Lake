@@ -60,10 +60,9 @@ recalls from -- the raw sensory log vs. the consolidated hippocampal trace. reco
 overlap-based nearest-attractor completion (content-addressable), a faithful CA3 auto-association
 at the algorithmic level, not a full recurrent-spiking energy descent. Deterministic: per-instance
 random.Random, zlib.crc32 for signatures/sub-seeds (never builtin hash()), exact float Benna-Fusi
-diffusion, no wall-clock, no global RNG. ASCII-only output. NORD_TORCH=0 runs it unchanged (torch
-is never imported here).
+diffusion, no wall-clock, no global RNG. ASCII-only output. This module imports no torch of its own.
 
-  PYTHONUTF8=1 NORD_TORCH=0 PYTHONPATH=src python -m snn_data_lake.substrate.lake_memory
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.lake_memory
 """
 
 import json

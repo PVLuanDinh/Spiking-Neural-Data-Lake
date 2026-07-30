@@ -123,9 +123,9 @@ The core's `pyproject.toml` declares `dependencies = ["torch", "numpy"]` (user p
 `pip install -e .` (or the packaged `.exe`) pulls those two on Python 3.11+, so the project
 is clone-and-run and fully covered by a CI matrix of `{ubuntu-latest, windows-latest} x
 {3.11, 3.12, 3.13}` — the Windows-first hardware product is actually exercised on Windows,
-not just Linux CI runners. `NORD_TORCH=0` is a runtime off-switch that degrades the torch
-growth tier to the deterministic stdlib narrator; it is not a zero-dependency mode, since
-numpy is always present.
+not just Linux CI runners. That matrix now installs the full dependency set: the torch-free
+matrix job and the `NORD_TORCH=0` off-switch it exercised were both removed on 2026-07-29 with
+the zero-dependency rule they implemented.
 
 Everything beyond those two is pushed behind **optional extras** and kept
 out of the core import path:

@@ -1,9 +1,15 @@
-# Installable src/ package (snn_data_lake). TORCH TIER ON BY DEFAULT (user policy 2026-07-18): the
-# default `dependencies` include torch+numpy, so `pip install .` gives the torch brain tier out of the
-# box. Set env NORD_TORCH=0 to run torch-free -- the brain still works, just without the torch
-# growth/learning tier. This is NOT a zero-dependency mode: numpy is always required (verified
-# 2026-07-27: make_brain() under NORD_TORCH=0 imports numpy and never torch). `pip install ".[all]"`
-# adds every addon (arm+lake+gpu+nmnist+train); training is a first-class GPU tier (.[train] -> snn-train).
+# Installable src/ package (snn_data_lake). torch + numpy are UNCONDITIONAL core dependencies, so
+# `pip install .` gives the full brain tier out of the box. `pip install ".[all]"` adds every addon
+# (arm+lake+gpu+nmnist+train); training is a first-class GPU tier (.[train] -> snn-train).
+#
+# The NORD_TORCH=0 off-switch is GONE as of 2026-07-29 -- removed from the brain, the atlas, the
+# self-check runner, the pytest bootstrap, the two module self-checks that set it, and the frozen-exe
+# entry point. It was the last mechanism implementing the zero-dependency rule that this file had
+# already declared removed on 2026-07-20, nine days earlier, and a flag that outlives its rule reads
+# as a supported configuration. Nothing degraded by deleting it: torch genuinely ABSENT still lands on
+# the stdlib tier, because both call sites reach that tier by CATCHING the failed import rather than
+# by consulting the flag. The flag's only unique power was disabling the tier while torch was present,
+# which is the simulation being retired, not a capability.
 #
 # DEPENDENCY SCOPE (user policy 2026-07-20): the zero-dependency rule is REMOVED entirely,
 # project-wide -- there is no zero-dep-core contract and no pure-stdlib purity gate. New
@@ -18,7 +24,7 @@ build-backend = "hatchling.build"
 [project]
 name = "spiking-neural-data-lake"
 version = "4.80.0"
-description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. Torch tier on by default (NORD_TORCH=0 for a torch-free brain)."
+description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch + numpy are core dependencies."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -37,12 +43,11 @@ dependencies = ["torch", "numpy"]   # TORCH TIER ON BY DEFAULT (user policy, 202
 # language acquisition, the neurogenesis engine) grow/learn on torch out of the box. Corrected
 # 2026-07-28: this listed `cortex/language_center.py` and "its SpikeGPT language center", and that
 # module does not exist -- TORCH_TIER in __init__.py names language_acquisition. This
-# INTENTIONALLY supersedes the former zero-dep-core contract. MANUAL OFF-SWITCH: set env `NORD_TORCH=0`
-# to run torch-free -- the torch tier then degrades to the deterministic stdlib narrator (no growth) and
-# run_selfchecks.py skips the torch-gated modules, so a torch-free path still exists on demand. It is
-# NOT a zero-dependency path: numpy is imported unguarded at module top level across cortex/,
-# hippocampus/, thalamus/ and substrate/, so `NORD_TORCH=0` gives a torch-free brain, not a
-# stdlib-only one. The [gpu]/[train] extras below pin the GPU/training wheels
+# INTENTIONALLY supersedes the former zero-dep-core contract, and as of 2026-07-29 there is no
+# off-switch left: torch is required, not preferred. If it is missing the install is broken, and the
+# brain's stdlib fallback exists to make that survivable rather than to make it a mode. numpy is
+# likewise imported unguarded at module top level across cortex/, hippocampus/, thalamus/ and
+# substrate/. The [gpu]/[train] extras below pin the GPU/training wheels
 # (torchvision/snntorch/tonic) on top of the default torch.
 [project.optional-dependencies]
 arm = ["pyserial"]                                                       # live_arm --serial / --actuate

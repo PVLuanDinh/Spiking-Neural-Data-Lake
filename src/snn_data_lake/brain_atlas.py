@@ -91,13 +91,12 @@ def main():
     for region in REGIONS:
         importlib.import_module(f"snn_data_lake.{region}")
 
-    # torch-tier annex: verify each module region-resolves + imports WHEN torch is present; SKIP-with-notice
-    # otherwise so the torch-free CI matrix stays green (these are the only atlas modules torch-gated at import).
+    # torch-tier annex: verify each module region-resolves + imports WHEN torch is present;
+    # SKIP-with-notice otherwise. torch is a core dependency so the skip is now a genuine
+    # broken-install path rather than a supported configuration -- the NORD_TORCH=0 off-switch that
+    # used to force this branch, and the torch-free CI matrix it kept green, were both removed
+    # 2026-07-29 with the zero-dependency rule they implemented.
     try:
-        import os
-
-        if os.environ.get("NORD_TORCH") == "0":  # off-switch: treat the torch tier as absent
-            raise ImportError
         import torch  # noqa: F401
 
         _torch = True
