@@ -172,7 +172,21 @@ class NeurogenesisSelfImprove:
         model = NGSNN(
             l_max=self._l_max, eps_tol=self._eps_tol, T=self._T, device=self.device, seed=self.seed
         )
-        model.fit(x_tr, y_tr)
+        # GROW-ON-TOP (2026-07-30). Seed from the substrate this engine already earned, so a refit
+        # EXTENDS it instead of replacing it. Until now `fit` always started from zero units, which is
+        # why retaining and even persisting the model still did not make growth accumulate -- the
+        # restored substrate was discarded by the next refit, roughly `refit_every` ticks after a
+        # restart. This line is the one that makes "the brain keeps what it grew" true.
+        prev = self._model
+        seed_W = prev.W if (prev is not None and prev.W is not None) else None
+        seed_b = prev.b if (prev is not None and prev.b is not None) else None
+        model.fit(x_tr, y_tr, init_W=seed_W, init_b=seed_b)
+        # EARN-YOUR-PLACE PRUNE, on the same held-out discipline that admits a unit. Only meaningful
+        # now that units are inherited: previously every refit began empty, so there was nothing old
+        # to drop. Without it, seeding makes the substrate monotonically grow -- accumulation with no
+        # way out is the unbounded-growth failure this project has hit three times, so the prune ships
+        # WITH the growth rather than after it.
+        self._pruned = model.prune_unearned(x_tr, y_tr)
         pred = model.predict(x_te)
         acc = (pred == y_te.to(model.device)).float().mean().item()
         self._n_units = model.n_units

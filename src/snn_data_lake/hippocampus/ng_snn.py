@@ -143,7 +143,69 @@ class NGSNN:
         """Non-negative decreasing sequence eta_L <= 1-r, ->0 (paper leaves the form open); (1-r)/(L+1)."""
         return (1.0 - self.r) / (L + 1)
 
-    def fit(self, X, y, delta=1, score_subsample=None):
+    def prune_unearned(self, X, y, tol=0.0):
+        """Drop units that no longer earn their place, judged on rows the readout was NOT solved on.
+
+        This is the counterpart grow-on-top makes necessary. While every refit started from scratch
+        there were no old units to prune -- the question could not even be asked. Once a refit inherits
+        units, some were earned against data that no longer arrives, and without a way out the
+        substrate only ever grows.
+
+        THE CRITERION IS THE SAME ONE THAT ADMITS A UNIT: does it reduce error on rows the solve did
+        not fit? A unit is dropped when removing it leaves held-out RMSE no worse than `tol`. That
+        deliberately reuses `fit`'s held-out discipline rather than inventing a second standard --
+        magnitude of `beta`, or activation energy, would be proxies for contribution, and this repo's
+        record is that a proxy tuned on convenient data gets the answer wrong (the capacity constant
+        was wrong three times before it was measured on real rows).
+
+        NO MAGIC THRESHOLD, per P1: `tol=0.0` means "keep only what pays for itself", derived from the
+        measurement rather than picked. A caller wanting hysteresis passes it explicitly.
+
+        KNOWN CEILING, stated rather than hidden: this is a SINGLE PASS. Each unit is scored against
+        the full model, so two units that are individually redundant but jointly necessary can both be
+        dropped, and a unit made redundant only by another's removal is not re-examined. Iterating to a
+        fixed point costs O(L^2) solves; the upgrade path is to loop this until it removes nothing.
+        The final re-solve below means the returned model is always self-consistent whatever is cut.
+        """
+        if self.W is None or self.beta is None or int(self.W.shape[0]) <= 1:
+            return 0
+        X = X.to(self.device).float()
+        N = X.shape[0]
+        y = y.to(self.device)
+        m = int(self.beta.shape[1])
+        Y = torch.zeros(N, m, device=self.device)
+        Y[torch.arange(N, device=self.device), y] = 1.0
+        n_val = max(8, int(0.2 * N))
+        n_tr = N - n_val
+        if n_tr < 2 or n_val < 2:
+            return 0  # too few rows to judge honestly -- keep everything
+
+        S = self._rates(X, self.W, self.b)  # (N, L)
+        L = int(S.shape[1])
+
+        def _val_rmse(cols):
+            beta = self._solve_beta(S[:n_tr][:, cols], Y[:n_tr])
+            resid = Y[n_tr:] - S[n_tr:][:, cols] @ beta
+            return resid.pow(2).mean().sqrt().item()
+
+        allc = list(range(L))
+        base = _val_rmse(allc)
+        drop = []
+        for j in range(L):
+            keep = [c for c in allc if c != j]
+            if not keep:
+                continue
+            if _val_rmse(keep) <= base + tol:  # removing it costs nothing -> it earns nothing
+                drop.append(j)
+        if not drop or len(drop) >= L:
+            return 0  # never prune to nothing: an empty substrate is not a pruned one
+        keep = [c for c in allc if c not in set(drop)]
+        self.W = self.W[keep]
+        self.b = self.b[keep]
+        self.beta = self._solve_beta(S[:n_tr][:, keep], Y[:n_tr])  # re-solve: beta must match W
+        return len(drop)
+
+    def fit(self, X, y, delta=1, score_subsample=None, init_W=None, init_b=None):
         """Grow the classifier on X (spike sequence {0,1}^(N,T,d_in) or features [0,1]^(N,d_in)) with
         integer labels y (N,). Greedy matching pursuit under the contribution criterion (Alg. 1),
         analytical beta after each block (Alg. 2), until train RMSE < eps_tol or l_max (Alg. 3).
@@ -188,6 +250,33 @@ class NGSNN:
         )  # hidden activity over ALL rows: the withheld ones
         beta = torch.empty(0, self.m, device=self.device)  # still need columns to be scored against
         E = Y[:n_tr].clone()  # residual E_L = Y - S beta (L=0), over the FITTED rows only
+
+        # GROW-ON-TOP (2026-07-30). `init_W`/`init_b` seed the growth from units this model already
+        # earned, so a refit EXTENDS the substrate instead of replacing it. Until now every refit
+        # started from `W = empty(0, d)` above, which is why persisting the grown model still did not
+        # make growth accumulate: the restored substrate was discarded by the next refit.
+        #
+        # The seed re-establishes exactly the invariant the greedy loop below maintains -- W, b, the
+        # full-row hidden activity S, the analytical beta, and the residual E over the fitted rows --
+        # so the loop cannot tell a seeded start from a grown one, and the earn-your-place stop keeps
+        # scoring on rows the solve never fit. beta is re-solved rather than restored on purpose: the
+        # readout must describe THESE rows, and a carried-over beta would be a number measured on data
+        # this fit has not seen.
+        #
+        # Refused rather than coerced when the input width disagrees: features of a different d_in are
+        # not the same substrate, and silently reshaping them would restore weights that no longer mean
+        # what they meant. A refusal falls back to a cold start, which is today's behaviour.
+        # DEFAULT PATH UNCHANGED: init_W=None leaves every line below byte-identical.
+        if init_W is not None and init_b is not None and int(init_W.shape[0]) > 0:
+            if int(init_W.shape[1]) != d:
+                init_W = None  # width mismatch -> cold start, and say so via n_seeded below
+            else:
+                W = init_W.to(self.device).float()
+                b = init_b.to(self.device).float()
+                S = self._rates(X, W, b)  # full rows, incl. the withheld ones
+                beta = self._solve_beta(S[:n_tr], Y[:n_tr])
+                E = Y[:n_tr] - S[:n_tr] @ beta
+        self.n_seeded = int(W.shape[0])  # units inherited, not grown by this call
 
         # CAPACITY BOUND, EARNED RATHER THAN PRESET (v4.80), and the tuning story matters because a
         # synthetic benchmark gave the WRONG answer first.
