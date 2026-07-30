@@ -1,0 +1,16 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: tools/charge_probe.py drive 4
+exit: 1
+commit: 42a78601578af8784306da130049c5f8de780313
+recorded_at: 2026-07-29T23:48:54Z
+recorded_by: fable-5 subagent / tools/charge_probe.py
+python: 3.11.15
+--- stdout ---
+source                                        : drive
+(drive, action) values learned from dopamine : 1 pairs
+source weight (0.1 uniform init -> ...)       : 0.0991  (moved=True)
+arm HOLD rate  A(wired) vs B(neutered)        : 0.000 vs 0.000
+act/hold decision changed by the signal       : 0/4 ticks
+arm trajectory changed by the signal          : 0/4 ticks
+CONSUMED-BUT-NOT-DECISIVE

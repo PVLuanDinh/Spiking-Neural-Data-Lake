@@ -1,5 +1,21 @@
 # Brain-Faculty Coverage — Baseline (2026-07-28, v4.78)
 
+> **WITHDRAWN 2026-07-29 as unreproducible. Do not cite the 37.5% below.**
+> The rubric forbids any band above 40 without a runtime A/B, and **there was not one recorded A/B
+> transcript in the repository** — all 602 tracked files searched, `BEHAVIOURAL CHARGE` present in
+> three (the rubric, POLICIES.md, and `tools/charge_probe.py` itself) and `act/hold decision changed`
+> in one (the probe). So the maximum re-derivable total was **40%**, and 37.5% sits at 94% of that
+> ceiling while the text below documents multiple rule-4 zeros. Worse, a category score is *defined*
+> as the mean over its faculties and no per-faculty band table was ever committed, so **0 of the 11
+> scores can be re-derived** — the rubric asked each auditor for exactly that table (`:85-91`) and the
+> deliverable was produced and discarded.
+> The instrument that ends this is now `tools/coverage_score.py` with the ledger in
+> [`coverage/`](coverage/); read [`coverage/README.md`](coverage/README.md) first. The number it
+> currently prints is a **floor on a partial roster** and is NOT comparable to 37.5% — treating them as
+> comparable is the same mistake `COVERAGE_RUBRIC.md:14-16` records for the earlier 22.8% and ~31%.
+> Everything below is kept as the record of what was claimed and how it was reasoned, which is still
+> the best available inventory of where the gaps are.
+
 Scored against [`COVERAGE_RUBRIC.md`](COVERAGE_RUBRIC.md) by eleven independent read-only auditors, one
 per category. Every category scoring above 40 was then handed to a separate agent whose only job was to
 **refute** it.

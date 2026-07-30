@@ -1,0 +1,16 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: tools/charge_probe.py recall 60
+exit: 1
+commit: 42a78601578af8784306da130049c5f8de780313
+recorded_at: 2026-07-29T23:49:16Z
+recorded_by: fable-5 subagent / tools/charge_probe.py
+python: 3.11.15
+--- stdout ---
+source                                        : recall
+(recall, action) values learned from dopamine : 14 pairs
+source weight (0.1 uniform init -> ...)       : 0.1197  (moved=True)
+arm HOLD rate  A(wired) vs B(neutered)        : 0.000 vs 0.000
+act/hold decision changed by the signal       : 0/60 ticks
+arm trajectory changed by the signal          : 0/60 ticks
+CONSUMED-BUT-NOT-DECISIVE
