@@ -1,4 +1,4 @@
-r"""training/spiking_lm.py -- offline [train] tier for the SpikeGPT-style Spiking-RWKV language model.
+r"""training/ar_spiking_lm.py -- offline [train] tier for the SpikeGPT-style Spiking-RWKV language model.
 
 WHY (the gap). Fluent open-domain LANGUAGE is stuck ~chance on BLiMP because the ROSE E-stage head
 (reasoning/language_readout_slda.SLDA_RFF_np) is ORDER-INVARIANT and structurally blind to BLiMP's
@@ -17,7 +17,8 @@ TRAIN (this is the OPTIONAL torch [train] tier -- torch + GPU allowed, .venv-cu1
 BPTT + a fast-sigmoid surrogate gradient (the SuperSpike / snntorch.surrogate.fast_sigmoid family,
 hand-rolled here so the trainer needs ONLY torch and the forward Heaviside is byte-exact for numpy
 parity) over the Gutenberg char stream from reasoning/corpus_stream.py (load_text -> word tokens joined
-into a char stream). Exports FROZEN weights + metadata to a numpy .npz (models/spiking_lm.npz).
+into a char stream). Exports FROZEN weights + metadata to a numpy .npz (models/ar_spiking_lm.npz --
+the SAME path reasoning/ar_spiking_lm_serve.DEFAULT_ARTIFACT loads; the two MUST stay equal).
 
 CONTRACT (mirrors training/surrogate_snn.py). Lazy imports of the corpus (no network at import time),
 NO import from brainstem/ or the zero-dep core, NO import-time side effects (training runs only under an
@@ -32,10 +33,12 @@ CPU-runnable end-to-end PROOF (small dim/layers, a few KB of in-file text, few s
 WORKS and exports a reloadable artifact -- NOT a BLiMP-competitive model. A toy model sits at n-gram
 ~60%; the real result is a SEPARATE real-scale GPU run. This file claims no BLiMP number it cannot back.
 
-  PYTHONUTF8=1 .venv-cu128/Scripts/python training/spiking_lm.py            # tiny CPU/GPU self-check
-  PYTHONUTF8=1 .venv-cu128/Scripts/python training/spiking_lm.py --demo     # small real-corpus train+save
+  PYTHONUTF8=1 .venv-cu128/Scripts/python training/ar_spiking_lm.py          # tiny CPU/GPU self-check
+  PYTHONUTF8=1 .venv-cu128/Scripts/python training/ar_spiking_lm.py --demo   # small real-corpus train+save
+  PYTHONUTF8=1 .venv-cu128/Scripts/python training/ar_spiking_lm.py --full   # REAL-scale GPU train (wikitext)
 """
 import json
+import math
 import os
 import sys
 
@@ -45,7 +48,7 @@ import torch.nn.functional as F
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.abspath(os.path.join(_HERE, ".."))
-DEFAULT_ARTIFACT = os.path.join(_ROOT, "models", "spiking_lm.npz")
+DEFAULT_ARTIFACT = os.path.join(_ROOT, "models", "ar_spiking_lm.npz")
 
 FORMAT = "spiking_lm.v1"          # frozen-artifact schema tag (serve + trainer must agree)
 EPS = 1e-5                        # layer-norm epsilon (matches numpy serve)
@@ -61,7 +64,7 @@ _LAYER_PARAMS = (
 
 def default_betas(layers):
     """Multi-timescale LIF decays -- a per-layer ramp (theta-over-gamma hierarchy). Kept in lockstep
-    with reasoning/spiking_lm_serve.default_betas so a trained model serves identically."""
+    with reasoning/ar_spiking_lm_serve.default_betas so a trained model serves identically."""
     span = max(1, layers - 1)
     t_beta = [round(0.50 + 0.45 * l / span, 4) for l in range(layers)]
     c_beta = [round(0.60 + 0.30 * l / span, 4) for l in range(layers)]
@@ -232,9 +235,15 @@ def export_npz(model, path, trained=True):
 
 
 def train(corpus, dim=64, layers=2, ctx=64, steps=400, seed=0, out_path=None,
-          batch=16, lr=3e-3, d_ff=None, log_every=50):
+          batch=16, lr=3e-3, d_ff=None, log_every=50, heldout=None, eval_every=0):
     """Train the Spiking-RWKV LM by BPTT + fast-sigmoid surrogate on a CHAR corpus, then export the
-    frozen artifact. `corpus` is a string; the vocab is its distinct characters. Returns out_path."""
+    frozen artifact. `corpus` is a string; the vocab is its distinct characters. Returns out_path.
+
+    `heldout` (optional) is text DISJOINT from `corpus`; every eval_every steps its per-character
+    perplexity is printed and the artifact is checkpointed, so a long run is selected on held-out
+    PPL and survives an interruption."""
+    import time
+
     import numpy as np
     torch.manual_seed(int(seed))
     if not isinstance(corpus, str):
@@ -243,7 +252,16 @@ def train(corpus, dim=64, layers=2, ctx=64, steps=400, seed=0, out_path=None,
     if len(vocab) < 2:
         raise ValueError("corpus needs at least 2 distinct characters")
     stoi = {c: i for i, c in enumerate(vocab)}
-    ids = torch.tensor([stoi[c] for c in corpus], dtype=torch.long)
+    # LUT encode via numpy when the corpus is ASCII: a list comprehension over a 1e8-char corpus
+    # costs ~1 GiB of pointers and a minute of wall clock. The ids are IDENTICAL either way -- this
+    # is plumbing, not math. Non-ASCII corpora take the slow exact path rather than a lossy encode.
+    if corpus.isascii():
+        lut = np.zeros(128, dtype=np.int64)
+        for c, i in stoi.items():
+            lut[ord(c)] = i
+        ids = torch.from_numpy(lut[np.frombuffer(corpus.encode("ascii"), dtype=np.uint8)])
+    else:
+        ids = torch.tensor([stoi[c] for c in corpus], dtype=torch.long)
     n = ids.numel()
     if n < ctx + 2:
         raise ValueError("corpus too short (%d chars) for ctx=%d" % (n, ctx))
@@ -255,10 +273,22 @@ def train(corpus, dim=64, layers=2, ctx=64, steps=400, seed=0, out_path=None,
         print("train: device=%s vocab=%d dim=%d layers=%d ctx=%d steps=%d params=%d"
               % (device, len(vocab), dim, layers, ctx, steps, n_params))
     opt = torch.optim.Adam(model.parameters(), lr=lr)
+    # Warmup + cosine decay rather than a fixed lr. Not decoration: over thousands of steps a fixed
+    # 1.5e-3 leaves the model oscillating around its optimum, and the held-out PPL this run is
+    # SELECTED on is the thing that pays for it. `steps` sets the period, so nothing is hand-tuned.
+    warm = max(1, int(0.02 * steps))
+    sched = torch.optim.lr_scheduler.LambdaLR(
+        opt,
+        lambda s: (s + 1) / warm if s < warm
+        else 0.05 + 0.95 * 0.5 * (1.0 + math.cos(math.pi * (s - warm) / max(1, steps - warm))),
+    )
     loss_fn = nn.CrossEntropyLoss()
     rng = np.random.RandomState(int(seed))
     model.train()
     last_loss = float("nan")
+    out_path = out_path or DEFAULT_ARTIFACT
+    best_ppl = float("inf")
+    t0 = time.time()
     for step in range(steps):
         starts = rng.randint(0, n - ctx - 1, size=batch)
         xb = torch.stack([ids[s:s + ctx] for s in starts]).to(device)
@@ -268,14 +298,29 @@ def train(corpus, dim=64, layers=2, ctx=64, steps=400, seed=0, out_path=None,
         opt.zero_grad()
         loss.backward()                                  # BPTT through the unrolled recurrences
         opt.step()
+        sched.step()
         last_loss = float(loss.item())
         if log_every and (step % log_every == 0 or step == steps - 1):
-            print("  step %d/%d  loss %.4f" % (step, steps, last_loss))
+            el = time.time() - t0
+            print("  step %d/%d  loss %.4f  ppl(train) %.2f  %.0fs  %.0f tok/s"
+                  % (step, steps, last_loss, min(1e9, math.exp(min(20.0, last_loss))), el,
+                     batch * ctx * (step + 1) / max(1e-9, el)), flush=True)
+        # HELD-OUT selection: checkpoint only when PPL on the byte-disjoint slice IMPROVES.
+        if heldout and eval_every and (step % eval_every == eval_every - 1 or step == steps - 1):
+            ppl = eval_ppl(model, heldout, ctx=ctx, device=device)
+            mark = ""
+            if ppl < best_ppl:
+                best_ppl, mark = ppl, "  <- best, checkpointed"
+                export_npz(model, out_path, trained=True)
+            print("    step %d  HELD-OUT char PPL %.4f%s" % (step, ppl, mark), flush=True)
 
-    out_path = out_path or DEFAULT_ARTIFACT
-    export_npz(model, out_path, trained=True)
+    if not (heldout and eval_every):
+        export_npz(model, out_path, trained=True)
+    elif best_ppl == float("inf"):
+        export_npz(model, out_path, trained=True)
     if log_every:
-        print("saved frozen artifact -> %s (final train loss %.4f)" % (out_path, last_loss))
+        print("saved frozen artifact -> %s (final train loss %.4f, best held-out PPL %s)"
+              % (out_path, last_loss, "n/a" if best_ppl == float("inf") else "%.4f" % best_ppl))
     return out_path
 
 
@@ -291,8 +336,107 @@ def _char_corpus_from_stream(max_chars=200000):
     return text[:max_chars], offline
 
 
+# ---------------------------------------------------------------------------------------------
+# REAL-SCALE corpus -- byte-addressed, with a HARD held-out disjointness guard.
+#
+# WHY THE GUARD IS BYTE-ADDRESSED. scratchpad/lang_word_big_out.VOID.txt is a voided run in this
+# repo: its reader took a CHARACTER budget, consumed int(n*1.6)+4096 BYTES to fill it, and at 2.5e8
+# chars that byte count swallowed the "held-out" slice at byte 200,000,000. The perplexity of 6.2 it
+# printed was the model being scored on text it had already read. An estimated exposure cannot be
+# audited, so this reader takes a BYTE budget and seeks by BYTE: the exposed interval is exactly
+# [0, exposure_bytes) and the held-out interval is exactly [HELDOUT_BYTE_OFFSET, +HELDOUT_BYTES).
+# Disjointness is then a property of two integers, not of a ratio that might drift.
+# ---------------------------------------------------------------------------------------------
+CORPUS_TXT = os.path.join(_ROOT, "data", "lang", "wikitext", "train0.txt")
+HELDOUT_BYTE_OFFSET = 200_000_000  # same offset scratchpad/lang_scale.py holds out
+HELDOUT_BYTES = 400_000
+
+
+def _ascii_only(raw):
+    """Decode a byte block and keep only ASCII (Windows cp1252-safe printing downstream)."""
+    txt = raw.decode("utf-8", errors="ignore")
+    return "".join(c for c in txt if ord(c) < 128)
+
+
+def wikitext_prefix(exposure_bytes, path=None):
+    """Return the ASCII-filtered text of the FIRST `exposure_bytes` bytes of the corpus.
+
+    Hard-fails if the exposure would reach HELDOUT_BYTE_OFFSET -- refusing to run beats printing a
+    flattering contaminated number (the VOID lesson above)."""
+    p = path or CORPUS_TXT
+    exposure_bytes = int(exposure_bytes)
+    if exposure_bytes >= HELDOUT_BYTE_OFFSET:
+        raise SystemExit(
+            "REFUSING TO RUN: exposure of %d bytes reaches the held-out slice at byte %d. "
+            "Max safe exposure is %d bytes." % (exposure_bytes, HELDOUT_BYTE_OFFSET, HELDOUT_BYTE_OFFSET - 1)
+        )
+    if not os.path.exists(p):
+        raise SystemExit("corpus not found: %s" % p)
+    with open(p, "rb") as fh:
+        raw = fh.read(exposure_bytes)
+        consumed = fh.tell()
+    assert consumed <= exposure_bytes, "reader over-read its byte budget"
+    return _ascii_only(raw)
+
+
+def wikitext_heldout(path=None, n_bytes=HELDOUT_BYTES):
+    """Return ASCII text from bytes [HELDOUT_BYTE_OFFSET, +n_bytes) -- never inside any exposure
+    wikitext_prefix() will hand out, because that function hard-fails at the offset."""
+    p = path or CORPUS_TXT
+    if not os.path.exists(p):
+        raise SystemExit("corpus not found: %s" % p)
+    with open(p, "rb") as fh:
+        fh.seek(HELDOUT_BYTE_OFFSET)
+        raw = fh.read(int(n_bytes))
+    return _ascii_only(raw)
+
+
+def eval_ppl(model, text, ctx=256, batch=32, max_windows=256, device=None):
+    """Per-character perplexity of `model` over `text`, in non-overlapping ctx-length windows.
+    Chars outside the model's vocab are mapped to space, exactly as the numpy serve does."""
+    device = device or next(model.parameters()).device
+    stoi = {c: i for i, c in enumerate(model.vocab)}
+    unk = stoi.get(" ", 0)
+    ids = [stoi.get(c, unk) for c in text]
+    wins = [ids[i : i + ctx + 1] for i in range(0, len(ids) - ctx - 1, ctx)][:max_windows]
+    if not wins:
+        return float("nan")
+    lossf = nn.CrossEntropyLoss(reduction="sum")
+    tot, cnt = 0.0, 0
+    model.eval()
+    with torch.no_grad():
+        for i in range(0, len(wins), batch):
+            chunk = torch.tensor(wins[i : i + batch], dtype=torch.long, device=device)
+            logits = model(chunk[:, :-1])
+            tot += float(lossf(logits.reshape(-1, model.vsize), chunk[:, 1:].reshape(-1)))
+            cnt += chunk[:, 1:].numel()
+    model.train()
+    return float(torch.exp(torch.tensor(tot / cnt)))
+
+
+def full(exposure_bytes=120_000_000, dim=512, layers=4, ctx=256, steps=6000, batch=48,
+         lr=1.5e-3, seed=0, out_path=None, log_every=100, eval_every=500):
+    """REAL-scale GPU train on the wikitext char prefix -> models/ar_spiking_lm.npz.
+
+    Reports held-out char perplexity on the byte-disjoint slice. Model selection is on held-out
+    PPL, never on BLiMP -- BLiMP is scored ONCE, afterwards, by the frozen artifact."""
+    torch.backends.cuda.matmul.allow_tf32 = True  # training-time only; exported weights are exact
+    torch.backends.cudnn.allow_tf32 = True
+    text = wikitext_prefix(exposure_bytes)
+    held = wikitext_heldout()
+    print("full: exposure bytes [0, %d) -> %d ASCII chars, vocab %d" % (exposure_bytes, len(text), len(set(text))))
+    print("full: held-out bytes [%d, %d) -> %d ASCII chars (DISJOINT by byte interval)"
+          % (HELDOUT_BYTE_OFFSET, HELDOUT_BYTE_OFFSET + HELDOUT_BYTES, len(held)))
+    out = train(text, dim=dim, layers=layers, ctx=ctx, steps=steps, seed=seed,
+                out_path=out_path or DEFAULT_ARTIFACT, batch=batch, lr=lr, log_every=log_every,
+                heldout=held, eval_every=eval_every)
+    print("HONEST: this is one run at the scale one card and one session allow. BLiMP-competitive")
+    print("grammar needs ~GPT-2-small on 10-100M WORDS; report the size trained and the number got.")
+    return out
+
+
 def main():
-    """Small demo: train on the real corpus_stream char stream and save to models/spiking_lm.npz."""
+    """Small demo: train on the real corpus_stream char stream and save to models/ar_spiking_lm.npz."""
     text, offline = _char_corpus_from_stream()
     print("demo: char corpus %d chars, vocab %d (%s)"
           % (len(text), len(set(text)), "offline sample" if offline else "real corpus"))
@@ -348,8 +492,30 @@ def _selfcheck():
     return 0
 
 
+def _flag(name, default, cast=int):
+    """Read --name=VALUE from argv (no argparse: this file stays importable with zero side effects)."""
+    for a in sys.argv[1:]:
+        if a.startswith("--%s=" % name):
+            return cast(a.split("=", 1)[1])
+    return default
+
+
 if __name__ == "__main__":
     if "--demo" in sys.argv:
         main()
+        sys.exit(0)
+    if "--full" in sys.argv:
+        full(
+            exposure_bytes=_flag("bytes", 120_000_000),
+            dim=_flag("dim", 512),
+            layers=_flag("layers", 4),
+            ctx=_flag("ctx", 256),
+            steps=_flag("steps", 6000),
+            batch=_flag("batch", 48),
+            lr=_flag("lr", 1.5e-3, float),
+            seed=_flag("seed", 0),
+            eval_every=_flag("eval_every", 500),
+            out_path=_flag("out", None, str),
+        )
         sys.exit(0)
     sys.exit(_selfcheck())

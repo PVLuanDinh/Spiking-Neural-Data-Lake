@@ -1,4 +1,4 @@
-r"""spiking_lm_serve -- forward-only (stdlib + numpy) server for a frozen Spiking-RWKV language model.
+r"""ar_spiking_lm_serve -- forward-only (stdlib + numpy) server for a frozen Spiking-RWKV language model.
 
 WHY THIS EXISTS (the gap it closes). The ROSE E-stage language head
 (reasoning/language_readout_slda.SLDA_RFF_np) is ORDER-INVARIANT by construction (its own docstring:
@@ -373,7 +373,7 @@ def _try_train_inline(art, text):
 def _selfcheck(with_train=False):
     np = _load_numpy()
     if np is None:
-        print("SKIP spiking_lm_serve self-check: numpy unavailable")
+        print("SKIP ar_spiking_lm_serve self-check: numpy unavailable")
         return 0
     import tempfile
 
@@ -452,7 +452,10 @@ def _selfcheck(with_train=False):
     print(
         "off its ~57 pct floor needs a REAL-SCALE train (training/ar_spiking_lm.py, GPU, ~GPT-2-small,"
     )
-    print("10-100M words) exported to models/spiking_lm.npz; a toy model sits at n-gram ~60 pct.")
+    print(
+        "10-100M words) exported to models/ar_spiking_lm.npz -- the SAME path DEFAULT_ARTIFACT loads;"
+    )
+    print("a toy model sits at n-gram ~60 pct.")
     print("=" * 92)
     return 0
 
