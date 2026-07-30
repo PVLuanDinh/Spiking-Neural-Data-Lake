@@ -356,6 +356,23 @@ TORCH_GATED = [
 # importable, SKIPPED-with-notice otherwise (its own __main__ also self-SKIPs). Zero-dep core unaffected.
 NENGO_GATED = ["substrate.nengo_bridge"]
 
+# The repo root, for resolving ARTIFACT_GATED paths regardless of the cwd the runner was invoked from.
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# ARTIFACT-GATED: module -> the repo-relative input it cannot run without.
+#
+# These are gitignored binaries with FIVE reader sites and ZERO producers anywhere in src/, training/,
+# tools/, integrations/ or research/ -- `docs/TRAINING.md` regenerates the `.pt` checkpoints and not
+# these packs. So a fresh clone genuinely cannot satisfy them, and a hard failure there would be red
+# for a reason no contributor can act on. Listing them here makes the skip EXPLICIT and separately
+# counted, which is the honest middle between the two failure modes this entry replaces: a bare-return
+# scored as PASS (a gate that could not fail), and a raise that reddens CI everywhere.
+#
+# Writing the producer removes entries from this dict. That is the fix; this is the accounting.
+ARTIFACT_GATED = {
+    "cortex.percept_surprise": "models/nmnist_pack.npz",
+}
+
 
 def _torch_ok():
     # torch is a core dependency, so this is normally True and TORCH_GATED runs. It stays a probe
@@ -398,8 +415,23 @@ def run_all():
         # nengo genuinely IS optional (the [nengo] extra), so this skip is a supported path.
         for m in NENGO_GATED:
             print(f"SKIP  {m}  (nengo not importable -- optional [nengo] extra not installed)")
-    failed = []
+    failed, artifact_skipped = [], []
     for m in MODULES:
+        missing = ARTIFACT_GATED.get(m)
+        if missing and not os.path.exists(os.path.join(_ROOT, missing)):
+            # ARTIFACT-GATED, added 2026-07-29. The module's own self-check now RAISES when its input
+            # artifact is absent, which is the right behaviour and closed a real hole: it used to print
+            # SKIP, bare-return, and be scored PASS on exit status alone -- a CORE gate entry that
+            # could not fail. But the artifacts it needs (models/*_pack.npz) have five readers and
+            # ZERO producers anywhere in the tree, so on any fresh clone that correct raise turns the
+            # whole suite red for a reason no contributor can fix.
+            # So the decision is made HERE, once, visibly, instead of by a bare-return inside the
+            # module: a missing artifact is an explicit SKIP that is COUNTED SEPARATELY and never
+            # folded into the pass tally. The module keeps its raise for the case that actually
+            # matters -- the artifact is present but unreadable.
+            print(f"SKIP  {m}  (missing artifact {missing} -- no producer exists in this tree)")
+            artifact_skipped.append(m)
+            continue
         cmd = [sys.executable, "-m", f"snn_data_lake.{m}"]  # every module runs as a package module
         r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", env=_ENV)
         ok = r.returncode == 0
@@ -407,8 +439,13 @@ def run_all():
         if not ok:
             failed.append(m)
             sys.stderr.write(r.stdout[-2000:] + r.stderr[-2000:] + "\n")
+    ran = len(MODULES) - len(artifact_skipped)
     print("=" * 56)
-    print(f"{len(MODULES) - len(failed)}/{len(MODULES)} self-checks passed")
+    print(f"{ran - len(failed)}/{ran} self-checks passed")
+    if artifact_skipped:
+        # Printed as its own line, not merged into the total, so "277/277" can never quietly mean
+        # "276 ran and one was skipped".
+        print(f"ARTIFACT-SKIPPED ({len(artifact_skipped)}): " + ", ".join(artifact_skipped))
     if failed:
         print("FAILED: " + ", ".join(failed))
     return not failed

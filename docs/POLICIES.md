@@ -466,12 +466,42 @@ statement about widths, not a prohibition — **the moment a live population cro
 threshold, this policy says put it on the GPU.** Re-measure when populations grow; the crossover is a
 number, not a doctrine.
 
+**The two gate environments, measured against each other 2026-07-29 — and why neither is "retired".**
+The instruction was to consolidate onto one environment and drop the CPU gate's veto. Measured, that
+turns out to be half right, and the half that is wrong matters: **CI has no GPU.** Every job runs on a
+GitHub runner, so a gate that requires this card cannot be the gate. What guard (c) below was really
+protecting is not the CPU *environment*, it is the property that the suite is runnable without one.
+
+So both are now verified equivalent rather than one being privileged. On a clean checkout at
+`598b07dc`, `.venv-cu128` (torch 2.11.0+cu128, numpy 1.26.4): **278/278** self-checks, **473 passed**,
+coverage **90.80%**. `.venv-lake` (torch 2.13.0+cpu, numpy 2.4.6): **277/277**, **473 passed**,
+**91.11%**. The 278-vs-277 is nengo being installed in the CUDA env, so `NENGO_GATED` runs instead of
+skipping. The coverage gap is the worktree having no `models/` (gitignored), so perception falls to the
+stdlib tier and less code executes — not a behavioural difference.
+
+**Two environment defects had to be fixed before that comparison was even possible, and both are worth
+knowing because neither is visible from reading `pyproject`:**
+
+1. **`nengo` ships a pytest plugin whose hook signature is invalid under pytest 9.1.1** —
+   `pytest_report_collectionfinish(config, startdir, items)`. Autoload aborts collection with
+   `PluginValidationError` before a single test runs, in any environment where nengo is installed.
+   It presents as a total test failure with nothing to do with this code. `-p no:nengo` is now in
+   `addopts`; it is inert where nengo is absent. **This is the actual reason the CPU env had been the
+   only place pytest could start** — that was never a policy preference, it was a broken plugin.
+2. **`ruff` was FLOORED at `>=0.15.20`, so installing the dev extra elsewhere resolved to 0.16.0** and
+   created a third formatting authority disagreeing with both `.pre-commit-config.yaml`'s pinned rev
+   and the 422 files formatted in-tree — arriving as a mysterious `ruff format --check` failure. Now
+   pinned. A formatter's version is part of the format.
+
 **Honesty guard.** (a) A GPU path ships with its benchmark, on the real workload, against the CPU path
 it replaces — a speedup asserted from `cuda.is_available()` is not a speedup. (b) Report regressions:
 "we tried CUDA here and it was 0.01×" is a result worth keeping, and this policy exists partly to stop
-that experiment being repeated. (c) The deterministic CPU gate stays authoritative — `run_selfchecks`
-and `pytest` run on `.venv-lake` so results are reproducible on machines without this card, and a GPU
-path must not become the only way to verify the project. (d) Correctness first: a GPU rewrite carries
+that experiment being repeated. (c) **The suite must stay runnable without a GPU** — restated 2026-07-29 from "the deterministic CPU
+gate stays authoritative", which named an *environment* when the property that matters is
+GPU-independence. CI has no card, so this is a hard constraint, not a preference; a GPU path must never
+become the only way to verify the project. Both envs are now verified equivalent (above), so either may
+be used locally. Determinism itself comes from seeding — `random.Random(seed)` per instance,
+`zlib.crc32` never builtin `hash()` — not from the absence of hardware. (d) Correctness first: a GPU rewrite carries
 the same bit-exactness burden as any other P2 swap.
 
 ---
