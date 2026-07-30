@@ -58,8 +58,11 @@ TRANSCRIPTS = os.environ.get(
 )
 TICKS_PER_CYCLE = int(os.environ.get("SNDL_TICKS", "20"))
 CHUNK_LINES = int(os.environ.get("SNDL_CHAT_CHUNK", "400"))
-# A tick costs ~33 ms; a cycle of 20 is ~0.7 s. At the old POLL=5 the brain was idle ~88% of the time,
-# which is fine for a background learner and useless for a live dashboard: the cockpit polls at 1 Hz and
+# A tick MEASURED >=240 ms under load (2026-07-30: daemon cycle counter sampled over 7.4 min, one
+# 50-cycle boundary crossed; a block is 1000 ticks), so a cycle of 20 is >=5 s. The "~33 ms" this
+# comment used to claim was the unloaded nominal figure and is STALE by ~7x -- treat 33 ms as the
+# budget, 240 ms as the observed floor. At the old POLL=5 the brain was idle ~88% of the time, which
+# is fine for a background learner and useless for a live dashboard: the cockpit polls at 1 Hz and
 # had nothing new to show. Raise SNDL_POLL if you want the daemon to stop using a core.
 POLL = float(os.environ.get("SNDL_POLL", "0.5"))
 # Ingest is BOUNDED per cycle. respond() costs 0.1-6 s per turn, and the ingest loop used to run every

@@ -56,6 +56,8 @@ from __future__ import annotations
 
 import json
 import math
+import os
+import threading
 import time
 
 # Keys the bundled dashboard reads. verify_contract() asserts every one is producible, so deleting a
@@ -337,18 +339,85 @@ def verify_contract(snap):
     return missing
 
 
+# ---- Recorder rotation thresholds: OPS parameters, not behaviour-arbitrating values. -------------
+# data/telemetry.jsonl grew unbounded (69 -> 176 MB in one session) because Recorder only ever
+# appended. These three constants bound it. P1's no-hardcode rule does not forbid them: they
+# arbitrate DISK USAGE only -- no learning rule, gate, or measurement reads them -- so they are named
+# ops knobs (like a log-rotation size), with the reasoning written down instead of a bare number.
+#   ROTATE_BYTES: one full-fidelity segment. At the observed ~8.7 KB/snapshot and one snapshot per
+#     ~5 s daemon cycle, 32 MiB is ~3,800 consecutive snapshots (~5 h). The recent window the
+#     Recorder guarantees at full fidelity is active+prev = one to two segments.
+#   TAIL_KEEP_1_IN: decimation stride. 1-in-10 keeps long-baseline statistics readable (the
+#     20,023-snapshot valence==0.0 finding survives a 1-in-10 sample) at a tenth of the bytes.
+#   TAIL_MAX_BYTES: when the decimated tail itself exceeds this, it is re-decimated in place by the
+#     same stride -- history gets 10x coarser per pass, but is never discarded outright.
+# Worst-case steady-state disk: active(~ROTATE) + prev(~ROTATE) + tail(<TAIL_MAX + one decimated
+# segment) ~= 131 MiB, vs unbounded before.
+TELEMETRY_ROTATE_BYTES = 32 * 2**20
+TELEMETRY_TAIL_KEEP_1_IN = 10
+TELEMETRY_TAIL_MAX_BYTES = 64 * 2**20
+
+_META_PREFIX = '{"_telemetry_meta"'  # decimation bookkeeping lines; always survive re-decimation
+
+
 class Recorder:
-    """Append-only JSONL of one snapshot per call. The FLOG equivalent: record first, render later.
+    """Append-only JSONL of one snapshot per call, BOUNDED by rotation. Record first, render later.
 
     Deliberately dependency-free and deliberately not on the hot path by default -- the caller
     decides when to `write()`, so a daemon can record every tick and a chat app can record none.
+
+    WHY BOUNDED, NOT RETIRED. This file has no reader in the tree, but it is read by ANALYSIS: the
+    strongest measurements this project has (derived.valence == 0.0 on 20,023/20,023 snapshots;
+    metacog_hold true on 74/20,023) came from exactly this file's long consecutive baseline. So the
+    longitudinal record is kept, and only its byte count is bounded:
+      <path>        ACTIVE segment: the newest snapshots, full fidelity
+      <path>.prev   PREVIOUS segment: full fidelity, held until the next rotation consumes it
+      <path>.tail   decimated history: 1-in-keep_1_in of every retired segment; re-decimated in
+                    place when it exceeds tail_max_bytes (coarser each pass, never discarded)
+    Decimation is deterministic (line index modulo stride, no RNG) and operates on raw lines (no
+    JSON parse). Every pass appends a `_telemetry_meta` line recording stride and counts, and meta
+    lines survive later passes, so the effective sampling stride of any stretch of tail stays
+    reconstructible by an analysis.
+
+    COST DISCIPLINE. The steady-state write path adds one integer add and one comparison. A rotation
+    on the tick thread is close + os.replace + reopen (~ms). Segment decimation runs on a background
+    daemon thread that only touches <path>.prev (which the writer never appends to again) and
+    <path>.tail (which only the compactor touches) -- no lock, no writer race, by construction.
+    A crash mid-compaction leaves <path>.prev behind; the next construction heals it. A crash after
+    the tail append but before the .prev delete duplicates one decimated segment in the tail (meta
+    lines make that visible); duplication is the failure chosen over data loss.
     """
 
-    def __init__(self, path, every=1):
+    def __init__(
+        self,
+        path,
+        every=1,
+        rotate_bytes=TELEMETRY_ROTATE_BYTES,
+        tail_max_bytes=TELEMETRY_TAIL_MAX_BYTES,
+        keep_1_in=TELEMETRY_TAIL_KEEP_1_IN,
+        threaded=True,
+    ):
         self.path = str(path)
         self.every = max(1, int(every))
         self.n = 0
         self._fh = None
+        self.rotate_bytes = int(rotate_bytes)
+        self.tail_max_bytes = int(tail_max_bytes)
+        self.keep_1_in = max(2, int(keep_1_in))
+        self.threaded = bool(threaded)  # False: compaction runs inline (deterministic self-checks)
+        self._compactor = None
+        self._prev = self.path + ".prev"
+        self._tail = self.path + ".tail"
+        try:
+            self._bytes = os.path.getsize(self.path)
+        except OSError:
+            self._bytes = 0
+        # Construction runs at daemon startup, never on the tick path, so healing and legacy
+        # adoption belong here rather than in write().
+        if os.path.exists(self._prev):
+            self._start_compaction()  # heal a crash that left a segment un-decimated
+        elif self._bytes >= 2 * self.rotate_bytes:
+            self._adopt_oversized()  # one-time adoption of a legacy unbounded file
 
     def write(self, brain):
         self.n += 1
@@ -357,19 +426,136 @@ class Recorder:
         snap = snapshot(brain)
         if self._fh is None:
             self._fh = open(self.path, "a", encoding="utf-8")
-        self._fh.write(json.dumps(snap, ensure_ascii=True) + "\n")
+        line = json.dumps(snap, ensure_ascii=True) + "\n"
+        self._fh.write(line)
         self._fh.flush()
+        self._bytes += len(line)  # ensure_ascii=True -> 1 char == 1 byte; no encode() just to count
+        if self._bytes >= self.rotate_bytes:
+            self._maybe_rotate()
         return snap
 
     def close(self):
         if self._fh is not None:
             self._fh.close()
             self._fh = None
+        c = self._compactor
+        if c is not None and c.is_alive():
+            # a clean shutdown finishes the decimation; an unclean one heals at next construction
+            c.join(timeout=10)
+
+    # ---- rotation (tick-thread side: cheap, never blocks on compaction) ----
+    def _maybe_rotate(self):
+        if self._compactor is not None:
+            if self._compactor.is_alive():
+                return  # previous segment still being decimated; retry on a later write
+            self._compactor = None
+        if os.path.exists(self._prev):
+            # first trigger (or healed crash): decimate the old segment first; the rename happens
+            # on a later write, once the compactor has consumed <path>.prev
+            self._start_compaction()
+            return
+        try:
+            if self._fh is not None:
+                self._fh.close()
+                self._fh = None
+            os.replace(self.path, self._prev)
+            self._bytes = 0
+        except OSError as e:
+            print(f"[telemetry] rotate skipped: {type(e).__name__}: {e}", flush=True)
+
+    def _start_compaction(self):
+        if self.threaded:
+            self._compactor = threading.Thread(
+                target=self._compact, name="telemetry-compact", daemon=True
+            )
+            self._compactor.start()
+        else:
+            self._compact()
+
+    # ---- compaction (background side: touches only files the writer never writes) ----
+    def _compact(self):
+        """Decimate <path>.prev 1-in-keep_1_in into <path>.tail, then bound the tail. Errors are
+        printed, never raised -- telemetry must never take the brain down with it."""
+        try:
+            kept = total = 0
+            with (
+                open(self._prev, encoding="utf-8") as src,
+                open(self._tail, "a", encoding="utf-8") as dst,
+            ):
+                for i, ln in enumerate(src):
+                    total += 1
+                    if i % self.keep_1_in == 0:
+                        dst.write(ln)
+                        kept += 1
+                dst.write(self._meta_line("decimate", total, kept))
+            os.remove(self._prev)
+            if os.path.getsize(self._tail) >= self.tail_max_bytes:
+                self._redecimate_tail()
+        except Exception as e:
+            print(f"[telemetry] compaction err: {type(e).__name__}: {e}", flush=True)
+
+    def _redecimate_tail(self):
+        """The tail outgrew its bound: thin it in place by the same stride. Meta lines always
+        survive, so every pass stays on the record and cumulative strides are reconstructible."""
+        tmp = self._tail + ".tmp"
+        kept = total = data_i = 0
+        with (
+            open(self._tail, encoding="utf-8") as src,
+            open(tmp, "w", encoding="utf-8") as dst,
+        ):
+            for ln in src:
+                total += 1
+                if ln.startswith(_META_PREFIX):
+                    dst.write(ln)
+                    kept += 1
+                    continue
+                if data_i % self.keep_1_in == 0:
+                    dst.write(ln)
+                    kept += 1
+                data_i += 1
+            dst.write(self._meta_line("redecimate", total, kept))
+        os.replace(tmp, self._tail)
+
+    def _meta_line(self, event, src_lines, kept):
+        rec = {
+            "_telemetry_meta": {
+                "event": event,
+                "keep_1_in": self.keep_1_in,
+                "src_lines": src_lines,
+                "kept": kept,
+                "t": time.time(),
+            }
+        }
+        return json.dumps(rec, ensure_ascii=True) + "\n"
+
+    def _adopt_oversized(self):
+        """One-time adoption of a legacy unbounded file (it reached 176 MB before rotation existed):
+        split it so the NEWEST rotate_bytes stay in the active segment at FULL fidelity and
+        everything older becomes a previous segment, which the normal compactor then decimates into
+        the tail. Runs at construction (daemon startup), never on the tick path."""
+        try:
+            cut = (
+                self._bytes - self.rotate_bytes
+            )  # legacy lines are ASCII: len(chars) == len(bytes)
+            tmp = self.path + ".tmp"
+            pos = 0
+            with (
+                open(self.path, encoding="utf-8") as src,
+                open(self._prev, "w", encoding="utf-8") as old,
+                open(tmp, "w", encoding="utf-8") as new,
+            ):
+                for ln in src:
+                    (old if pos < cut else new).write(ln)
+                    pos += len(ln)
+            os.replace(tmp, self.path)
+            self._bytes = os.path.getsize(self.path)
+            self._start_compaction()
+        except Exception as e:
+            print(f"[telemetry] adopt skipped: {type(e).__name__}: {e}", flush=True)
 
 
 def main():
     """Self-check: the contract holds against a real brain, the recorder round-trips, HTTP answers."""
-    import os
     import tempfile
 
     from snn_data_lake.cortex.brain import make_brain
@@ -448,6 +634,58 @@ def main():
     assert len(lines) == 3, f"recorder wrote {len(lines)} lines, expected 3"
     assert lines[0]["spikes"], "recorded snapshot has no spike section"
     os.remove(tmp)
+
+    # ---- rotation gate: the recorder BOUNDS its file. Tiny thresholds, threaded=False so the
+    # compaction runs inline and the check is deterministic. Three paths exercised: (a) legacy
+    # ADOPTION (a fresh Recorder over an oversized file splits it, newest window kept full
+    # fidelity), (b) steady-state ROTATE -> decimate-to-tail, (c) tail RE-decimation.
+    fd, rpath = tempfile.mkstemp(prefix="sndl_telemetry_rotate_", suffix=".jsonl")
+    os.close(fd)
+    line_b = len(json.dumps(snapshot(brain), ensure_ascii=True)) + 1  # ~one snapshot line, bytes
+    big = Recorder(rpath, every=1)  # defaults: rotate_bytes is huge here, so no rotation yet
+    stamps = []
+    for _ in range(10):
+        brain.tick()
+        stamps.append(big.write(brain)["t"])
+    big.close()
+    assert os.path.getsize(rpath) > 2 * (3 * line_b), "oversized fixture too small to adopt"
+    # (a) adoption: reopen with a small segment size -> split at construction, old part decimated
+    rec2 = Recorder(
+        rpath,
+        every=1,
+        rotate_bytes=3 * line_b,
+        tail_max_bytes=2 * line_b,
+        keep_1_in=2,
+        threaded=False,
+    )
+    tail_path, prev_path = rpath + ".tail", rpath + ".prev"
+    assert not os.path.exists(prev_path), "adoption must leave no un-decimated .prev behind"
+    assert os.path.exists(tail_path), "adoption must produce a decimated tail"
+    with open(rpath, encoding="utf-8") as fh:
+        active = [json.loads(x) for x in fh if x.strip()]
+    assert active and active[-1]["t"] == stamps[-1], (
+        "adoption must keep the NEWEST snapshots in the active segment at full fidelity"
+    )
+    # (b)+(c) steady state: keep writing; rotations rename, compactions decimate, tail re-decimates
+    for _ in range(12):
+        brain.tick()
+        stamps.append(rec2.write(brain)["t"])
+    rec2.close()
+    sizes = {p: os.path.getsize(p) for p in (rpath, prev_path, tail_path) if os.path.exists(p)}
+    assert sizes[rpath] <= 3 * line_b + 2 * line_b, f"active segment unbounded: {sizes}"
+    data_lines, metas = [], []
+    with open(tail_path, encoding="utf-8") as fh:
+        for ln in fh:
+            rec = json.loads(ln)
+            (metas if "_telemetry_meta" in rec else data_lines).append(rec)
+    events = [m["_telemetry_meta"]["event"] for m in metas]
+    assert "decimate" in events, "no decimation pass ran"
+    assert "redecimate" in events, "tail exceeded its bound but was never re-decimated"
+    assert data_lines and len(data_lines) < len(stamps), "tail must be a strict sample, not a copy"
+    assert all("spikes" in r for r in data_lines), "tail lines must be intact snapshots"
+    for p in (rpath, prev_path, tail_path, rpath + ".tmp", tail_path + ".tmp"):
+        if os.path.exists(p):
+            os.remove(p)
 
     # No HTTP here any more -- serving is substrate/cockpit.py's job, and it self-checks its own
     # endpoints. This module is the data layer; a second server on the same default port was the
