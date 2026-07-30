@@ -28,6 +28,33 @@ refused, and editing the row cannot change the exit code. It is not airtight —
 hand-write a transcript, which survives `score` and dies on `--rerun` — but it removes the *accidental*
 inflation this project keeps hitting.
 
+### `--rerun` needs an isolated `NORD_HOME`, and two artifacts cannot be reproduced at all
+
+Established 2026-07-30 by re-executing **all 82 artifacts** after the `_fingerprint` regex was widened
+(see the comment above `_fingerprint` in `tools/coverage_score.py`). Three results worth having in one
+place:
+
+1. **70 of 82 reproduced with the operator's live `learn_daemon.py` running; 80 of 82 reproduce once
+   `NORD_HOME` points at a scratch directory.** The ten-artifact gap is entirely the daemon: it writes
+   `~/.snn_data_lake` continuously, most probes read it, and `consciousness_refute_probe.py` is
+   well-behaved enough to *detect* the resulting noise and exit 2 with
+   `UNKNOWN: arm A is not reproducible at seed=0 -- no verdict from a noisy harness` rather than emit a
+   verdict. **Run `--rerun` with `NORD_HOME` set to an empty scratch directory**, the way
+   `gf_reply_ab.py:66` already does for itself. `record` and `rerun` do not set it, which is the real
+   defect and is instrument work in `tools/**`.
+2. **`cons_refute_strength_iso_120` and `exec_refute_marg_taskset_given_pfcbias` are not reproducible in
+   principle**, and neither was re-recorded. Both are deterministic *given* a lake, and both report a
+   `metacog reliability` counter that reads that mutable durable state: `48/120` recorded, `48/120` on an
+   empty lake but with the reply count moving `0/30 -> 1/30`, and `50/120` against a frozen copy of the
+   live lake; the Executive one reads `3/60`, `5/60` and `22/60` across the same three conditions.
+   Re-recording would capture one more snapshot of a moving number and call it evidence, which is the
+   failure this instrument exists to prevent. Stated as a known limit instead.
+3. **The regex widening caused none of this.** Every artifact was scored under both the old and the new
+   regex from the same execution: the same 70 pass and the same 12 fail either way, so no recorded
+   artifact was invalidated by the change. It did add one catch — under an isolated `NORD_HOME`,
+   `cons_refute_strength_iso_120`'s only divergence is a `N/M turns` line, which the old regex could not
+   see and would have passed as reproducing.
+
 ## The state of this ledger, stated plainly
 
 **It is a first pass, not the adversarially-verified sweep the rubric specifies.** The rubric's

@@ -47,6 +47,14 @@ including every reply string and every A/B verdict. The audit is not forged. It 
 disables the W3 duplicate-fingerprint check (`if len(facs) > 1 and fp:` short-circuits on the falsy
 empty tuple), which is how the two padding defects below survived the tool.
 
+**FINGERPRINT RE-VERIFICATION, 2026-07-30: the regex was widened and this paragraph is now half
+stale.** `FLIPS` accepts any bare `N/M` counter (lookarounds reject dates, paths and decimals), so all
+twelve Gf artifacts now carry a non-empty fingerprint and `--rerun` here is no longer an exit-code-only
+check: it compares `(2/2, 2/2)`-shaped observables as well. The ten `gf_reply_ab.py` A/Bs and both
+`arc_score.py` runs were re-executed under the widened regex and all twelve still reproduce. What did
+**not** change is the strength of the signal: see the roster-padding bullet below for what W3 caught
+once it could fire, and what it still cannot see.
+
 **REFUTED 1 -- `active_experiment_loop` is `number_series` re-entered, not a second faculty.**
 `_resume_experiment` (`spike_chat_lake.py:435-458`) has no induction mechanism of its own. Its entire
 body is `extended = pending + [int(nums[0])]`, then `out = self._number_reply(extended)`
@@ -323,11 +331,33 @@ refuter needs:
   (`gf.py:1048` vs `gf.py:848`, identical bodies). "Its own neuter target" was true and was the wrong
   test -- a distinct *function* is not a distinct *faculty*. The hand-check reported here reached the
   opposite conclusion from the code, which is the honest reason to distrust a self-administered W3.
-- **The W3 blindness is real and is now the sweep's problem, not this file's.** `_fingerprint` needs the
+- ~~**The W3 blindness is real and is now the sweep's problem, not this file's.** `_fingerprint` needs the
   literal token `ticks`; every probe in this category prints `turns`, so all twelve Gf fingerprints are
   `()` and the duplicate check silently passes. Four other categories drew W3 warnings; Gf drew none,
   and had the worst duplication in the ledger. Fixing `FLIPS` to accept `turns` would have caught both
-  defects above mechanically.
+  defects above mechanically.~~ **FIXED 2026-07-30, and the last sentence was wrong: it caught ONE of
+  the two, and brought two coincidences with it.** With the widened regex Gf draws three W3 warnings:
+  - `letter_analogy, novel_ordering_analogy, raven_distribution_of_three` share `(2/2, 2/2)`.
+    **REFUTED 2 confirmed mechanically** for the first pair -- one algorithm, two codebooks, exactly the
+    defect W3 exists to catch, and the bands already price it in (the general form keeps 45, the special
+    case is at 30). `raven_distribution_of_three` is **not** part of it: `gf.raven_dist3`
+    (`reasoning_cortex.py:174`) shares no code with `gf.analogy_over`, and it collides only because it
+    also posed 2 items and won dispatch on both. Band 42 stands.
+  - `example_to_rule_pair_induction, arc_grid_program_synthesis, relational_structure_mapping` share
+    `(2/3, 2/3)`. **Not a duplicate.** Three unrelated mechanisms (pair->function induction,
+    the ARC grid DSL, Gentner structure mapping); they collide because each posed 3 items and won 2.
+  - `held_out_novel_problem_solving, arc_cross_task_library_learning` share `(12/400)`. **Real, and it
+    is the finding rather than a defect**: these are one benchmark run twice with `lib=off` / `lib=on`,
+    and their numbers are identical because the library changes nothing -- which is why the second row
+    is banded 0. No band rests on the collision (10 and 0).
+
+  The reason two of the three are noise is structural and worth naming: because `flips == hits` in all
+  nine reply artifacts, a `gf_reply_ab.py` fingerprint is exactly `(hits/n, hits/n)`. It encodes how
+  many items the auditor posed and how many won dispatch -- **not** which mechanism answered them. So
+  W3 over this probe family collides on item count, and it still cannot see **REFUTED 1**
+  (`active_experiment_loop` is `number_series` re-entered): those two posed 2 and 3 items, so their
+  fingerprints are `(1/2, 1/2)` and `(3/3, 3/3)` and never meet. One of two defects caught is the
+  honest score. **No band changed as a result of any of the three warnings.**
 - **Five of the ten A/B rows are `gf.py` functions**, and the refuter acted on it: merging the analogy
   pair cost 20 points across two rows.
 - **A refuter who rejects the reading that a chat reply is band 41-60** and caps every row at 40 gets
@@ -426,9 +456,12 @@ python tools/coverage_score.py --rerun gf_number_series  # re-execute and compar
 python tools/arc_score.py evaluation off --data data/arc  # 400 held-out tasks, ~230 s
 ```
 
-**Do not trust `--rerun` alone for this category** -- it degrades to an exit-code check here, because
+~~**Do not trust `--rerun` alone for this category** -- it degrades to an exit-code check here, because
 `_fingerprint` requires the token `ticks` and these artifacts print `turns` (see "What the refuter
-found"). The check that actually has teeth is a full-stdout diff:
+found").~~ **No longer true as of the 2026-07-30 fingerprint fix:** `FLIPS` accepts any bare `N/M`
+counter, so `--rerun` compares this category's observables too, and all twelve artifacts reproduce
+under it. It still compares only the two counters the probe prints, so the stricter check remains a
+full-stdout diff:
 
 ```
 python docs/coverage/artifacts/gf_reply_ab.py <faculty> > fresh.txt

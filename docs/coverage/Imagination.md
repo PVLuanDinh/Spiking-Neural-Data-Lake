@@ -116,7 +116,17 @@ it to 30 for cross-file consistency was considered and **rejected as point-shavi
 does reach the bias vector (`:1018`, and `self.jepa.predict` really is its transition function at
 `:986`, so it is a world-model rollout and not merely Executive's planner re-rowed), and Executive
 measured that neutering it changes `_control_gain` on 33/60 ticks, which is an internal read. The upper
-end of 21-40 is defensible. `counterfactual_do_operator` at 40 was also checked and stands: its reply
+end of 21-40 is defensible.
+**W5 NOW FIRES ON THIS PAIR, 2026-07-30 -- and that is the check working, not a new finding.** After the
+fingerprint widening, `exec_plan_60` and `imag_plan_60` both fingerprint as
+`(56/60, 0/60, 0/60, 0/60)` and `coverage_score.py` reports the cross-category collision. It is the
+**first real serial-chain duplication W5 has caught**: same beam search, same call site, same liveness
+count, one step apart on one chain -- exactly what the paragraph above says. Both rows are banded at or
+below 40 (35 and 30), so no band rests on the shared artifact and none is licensed by it; the warning
+adds mechanical confirmation to a disclosure this file already made, and **no band changes**. The
+previous cross-category concern in this file (`latent_world_model` vs
+`acc_conflict_monitoring_evc`) is unaffected: those two still fingerprint as a 9-tuple and a 4-tuple
+and still do not collide, before or after the widening. `counterfactual_do_operator` at 40 was also checked and stands: its reply
 change is measured, and the F8 cap the auditor describes is real, not a judgment they made.
 
 **`mental_imagery` 30 -> 20, a band-definition correction.** The auditor scored this 30 while writing
@@ -328,6 +338,12 @@ P-violation stands as written.
   rest on an exit-0 artifact, `latent_world_model`, is not in the W3 group at all. The collision is the
   regex: `_fingerprint` matches only `(\d+)/(\d+) ticks`, and every discriminating line above either
   lacks the trailing `ticks` or is not a ratio.
+  **RETRACTED BY THE TOOL, 2026-07-30.** `FLIPS` was widened to any bare `N/M` counter, so
+  `ticks the signal was live (A)` -- the discriminating line this note had to read by hand -- is now
+  inside the fingerprint. The three artifacts fingerprint as `(56/60, ...)`, `(57/60, ...)` and
+  `(29/60, ...)`, they no longer collide, and `coverage_score.py` **no longer prints a W3 warning for
+  this category**. Three human adjudications of one false positive were replaced by the instrument
+  seeing what they saw. No band moved, in either direction.
 - **The CROSS-CATEGORY collision this file flagged against `Executive.md` is also a FALSE POSITIVE, and
   it was adjudicated on a four-arm probe rather than on a read.** New evidence:
   `docs/coverage/artifacts/crosscat_jepa_vs_conflict_ab.py`, recorded as
@@ -487,7 +503,13 @@ held-out gap:
    all-zero `charge_probe` negatives sharing `(0/60, 0/60)` in Perception, Consciousness,
    SpatialTemporal, Social and WholeBrain, none of them banded above 40, so no band rests on it. The
    pair that prompted the check is invisible to it because their `_fingerprint`s are a 9-tuple and a
-   4-tuple and never collided; the shared triple was three human-named observables. Widening the regex
+   4-tuple and never collided; the shared triple was three human-named observables. ~~Widening the regex
    would catch it and is still refused -- it changes what `--rerun` compares against for every artifact
-   in the tree. So the honest state is unchanged in kind: W3 is a floor within a category, W5 is a floor
-   across them, and the collision that motivated both was found by a human reading artifacts.
+   in the tree.~~ **WIDENED 2026-07-30 after the whole-ledger re-verification, and the struck sentence
+   was wrong on the merits: it does NOT catch that pair.** Both artifacts already had non-empty
+   fingerprints and the widening left them a 9-tuple and a 4-tuple, so they still never meet. What the
+   widening did do is give W5 a second group -- `Executive.multi_step_plan_sequence` against this file's
+   `model_based_plan_rollout` -- which is a genuine one-chain pair, and retract the false-positive W3 on
+   this file's three all-zero negatives. So the honest state is unchanged in kind: W3 is a floor within a
+   category, W5 is a floor across them, and the collision that motivated both is still one a human found
+   and the tool cannot.

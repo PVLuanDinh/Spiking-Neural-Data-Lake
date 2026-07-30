@@ -74,7 +74,12 @@ CATEGORIES = (
 )
 COLUMNS = ("faculty", "band", "citation", "artifact", "measured_by", "measured_at")
 ARTIFACT_KEYS = ("kind", "command", "exit", "commit", "recorded_at", "recorded_by")
-FLIPS = re.compile(r"(\d+)/(\d+) ticks")
+# Any bare `N/M` counter, with lookarounds that exclude the three shapes that would poison a
+# fingerprint: a date or path (`2026/07/30`, `logs/12/34` -- a `/` on either side), a decimal
+# (`1.5/2`, `12/400.5`), and a digit-glued suffix (the `\b` is what stops `\d+` from backtracking
+# into the middle of a date). Probes report their observables as `N/M ticks`, `N/M turns`, `N/M
+# calls`, `N/M` bare, and `(856/1675)`; all five are real counters and all five now count.
+FLIPS = re.compile(r"(?<![\d./\\])(\d+)/(\d+)\b(?![/\\])(?!\.\d)")
 
 
 # ---------------------------------------------------------------- evidence file parsing
@@ -123,24 +128,43 @@ def _artifact(path):
     return head
 
 
-# KNOWN HOLE, found 2026-07-30 by the Gf refuter and NOT yet fixed. `_fingerprint` below matches only
-# `N/M ticks`. A probe that reports `3/3` or `3/3 turns` -- as every Gf A/B does -- therefore yields an
-# EMPTY tuple, and two things silently weaken:
+# THE `ticks`-ONLY HOLE IS FIXED, 2026-07-30, after the whole-ledger re-verification it was waiting on.
+# It used to match only `N/M ticks`, so a probe reporting `3/3 turns` -- as every Gf A/B does -- yielded
+# an EMPTY tuple, `--rerun` compared () to () and degraded to an exit-code check, and W3/W5 could not
+# fire at all for those artifacts (both short-circuit on the falsy empty tuple). `FLIPS` above now takes
+# any bare `N/M`. A bare `(\d+)/(\d+)` was the wrong widening -- it eats dates, paths and decimals -- so
+# the lookarounds reject those three shapes; `tests/test_coverage_score_fingerprint.py` pins them.
 #
-#   1. `--rerun` compares () to (), so it checks the EXIT CODE ONLY. It is advertised as the forgery
-#      check; for those artifacts it is nearly vacuous. (The refuter compensated by diffing full stdout
-#      by hand: all 12 Gf artifacts reproduced, 9 byte-identically. So nothing was forged -- but the tool
-#      is not what proved it.)
-#   2. W3 (two faculties sharing an observable fingerprint = probably one serial chain scored twice)
-#      short-circuits at `if len(facs) > 1 and fp:` on the falsy empty tuple. So W3 CANNOT fire for such
-#      probes -- and Gf's two roster-duplication defects, which W3 exists to catch, passed the tool
-#      unflagged and were caught by a human reading the artifacts.
+# MEASURED EFFECT on the 82 tracked artifacts: 13 went from `()` to a real fingerprint, 19 already had
+# one and got a longer one, 50 are unchanged, and 2 are still `()` honestly (`gf_sleep_schema_induction`
+# reports `2 (A) / 0 (B)` counts and `lang_no_ab_source` is a one-line NOT-ELIGIBLE message -- neither
+# prints a ratio, so `--rerun` is still exit-code-only for those two, and that is the true state rather
+# than a hole). W3 went from 4 warnings to 6 and W5 from 1 group to 2. No band and no total moved:
+# fingerprints feed warnings only.
 #
-# The obvious fix -- widen the regex to `(\d+)/(\d+)` -- is deliberately NOT applied here, because it
-# changes the recorded fingerprint of EVERY existing artifact and so changes what `--rerun` compares
-# against. That needs a re-verification pass over the whole ledger, not a one-word edit at the end of a
-# session. Recorded as the honest state: the four W3 warnings this tool currently prints are a FLOOR on
-# serial-chain duplication, not a census, and absence of W3 is not evidence of absence.
+# WHAT SURVIVES, and it is why W3/W5 are STILL A FLOOR rather than a census. Widening only ever makes a
+# fingerprint LONGER, and the dominant remaining defect is that a longer fingerprint has more places to
+# differ:
+#
+#   1. The nuisance-counter defect (`docs/coverage/Executive.md:143-154`). `exec_conflict_60` and
+#      `exec_evc_60` are the same experiment on all three behavioural observables and still do not
+#      collide, because their eligibility line reads 56/60 in one and 55/60 in the other. Widening adds
+#      such counters to nineteen more artifacts, so it makes this failure mode MORE available, not less.
+#      The real fix is probe-side -- fingerprint NAMED observables, not every ratio in the stream --
+#      which needs six probe files to agree on a name and was out of scope for this pass.
+#   2. A fingerprint is only as discriminating as what the probe prints. `gf_reply_ab.py` prints exactly
+#      `hits/n` and `flips/n`, and `flips == hits` in all nine of its artifacts, so its fingerprint
+#      encodes the ITEM COUNT and nothing about the mechanism. Two of the three new Gf W3 groups are
+#      that coincidence (adjudicated individually in `docs/coverage/Gf.md`), and the one genuine Gf
+#      duplicate W3 still cannot see -- `active_experiment_loop` vs `number_series` -- is invisible
+#      because those two posed 2 and 3 items, so they fingerprint `(1/2, 1/2)` and `(3/3, 3/3)`.
+#
+# So the honest statement is narrower than before but the same in kind: absence of W3/W5 is not evidence
+# of absence, and a W3/W5 warning is a prompt to adjudicate, not a finding. The scoreboard for this fix:
+# it mechanically RETRACTED one false positive that three human passes had already retracted by hand
+# (Imagination's three all-zero negatives), mechanically CONFIRMED one real within-category duplicate
+# (Gf's letter/novel analogy pair) and one real cross-category one (Executive/Imagination's plan pair),
+# and added two coincidences. One of the two duplicates W3 was built to catch, caught.
 def _fingerprint(stdout):
     """The observable deltas a charge probe reports, as a tuple. Two faculties in one category with
     an identical fingerprint are probably two probe points on ONE serial chain -- the defect that cost
@@ -335,14 +359,24 @@ def score(root, evdir):
     # Executive defect was exactly this shape (four probe points on one serial chain).
     #
     # HONEST LIMIT, and it is the reason this check is a floor rather than a census: the collision that
-    # PROMPTED it is not one this check can see. `imag_jepa_action_60` fingerprints as a 9-tuple and
-    # `exec_conflict_60` as a 4-tuple, so they never collide under `_fingerprint`; their shared
+    # PROMPTED it is STILL not one this check can see. `imag_jepa_action_60` fingerprints as a 9-tuple
+    # and `exec_conflict_60` as a 4-tuple, so they never collide under `_fingerprint`; their shared
     # `(0/60, 47/60, 23/60)` is three HUMAN-named observables, and the two probes disagree on how many
-    # OTHER `n/N ticks` lines they print (an eligibility counter, a value-table count, a scramble arm).
-    # That is the regex hole recorded above `_fingerprint`, and widening the regex is still refused
-    # there for the same reason: it changes what `--rerun` compares against for every artifact in the
-    # tree. So W5 catches EXACT-fingerprint cross-category collisions and nothing weaker -- absence of
-    # W5 is not evidence of absence, the same caveat W3 already carries.
+    # OTHER ratios they print (an eligibility counter, a value-table count, a scramble arm).
+    #
+    # This paragraph used to blame the `ticks`-only regex and defer the widening. The widening happened
+    # on 2026-07-30 (see above `_fingerprint`) and the deferral's premise turned out to be wrong on the
+    # merits: BOTH of these artifacts already had non-empty fingerprints, the widening left them a
+    # 9-tuple and a 4-tuple, and they still do not meet. The blocker was never the regex -- it is that a
+    # fingerprint is a positional tuple of EVERY ratio in the stream, so one extra counter in one probe
+    # is enough to hide a real collision. Fixing THAT means fingerprinting named observables, which is a
+    # probe-side change across six files.
+    #
+    # What the widening did buy W5: a second group, `Executive.multi_step_plan_sequence` against
+    # `Imagination.model_based_plan_rollout` (`docs/coverage/Imagination.md:112-119`), which is a real
+    # one-chain pair -- the first genuine duplication W5 has caught rather than inherited from a human.
+    # So W5 catches EXACT-fingerprint cross-category collisions and nothing weaker -- absence of W5 is
+    # not evidence of absence, the same caveat W3 already carries.
     #
     # The count of colliding rows banded ABOVE 40 is reported because that is the discriminator
     # between noise and inflation: F8 demands an exit-0 A/B only above 40, so a band at or below 40

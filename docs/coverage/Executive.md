@@ -153,6 +153,18 @@ them a one-tick difference in an eligibility counter now defeats W3 for that cat
 `tools/**`, owned elsewhere this pass: either exclude the eligibility line from the fingerprint or
 build the fingerprint from named observables rather than from every `n/N` in the stream.
 
+**STATUS 2026-07-30: NOT FIXED, and the fingerprint widening of the same date made this half of the
+defect slightly worse, deliberately.** `FLIPS` was widened from `N/M ticks` to any bare `N/M` counter,
+which closed a different hole (probes printing `turns` fingerprinted as the empty tuple, so W3 could
+not fire for them at all). But widening only ever makes a fingerprint **longer**, and this defect is
+that a longer fingerprint has more places to differ: `exec_conflict_60` and `exec_evc_60` still do not
+collide, for exactly the reason recorded above, and the widening adds nuisance counters to nineteen
+other artifacts that could split a real collision the same way. Neither of the two fixes named in the
+paragraph above -- excluding the eligibility line, or fingerprinting named observables -- was applied,
+because both require the probes to agree on a name for their observables and that is a probe-side
+change across six files. This remains the single largest reason W3 and W5 are a floor rather than a
+census.
+
 ### 8. The CROSS-CATEGORY collision against Imagination: FALSE POSITIVE. `acc_conflict_monitoring_evc` stays 61.
 
 `docs/coverage/Imagination.md:310-313` flagged that this file's `acc_conflict_monitoring_evc`
@@ -278,6 +290,11 @@ re-split them by refuting section 3 or 4 rather than by re-typing a band.
    (section 8), which closes the structural blind spot but not the regex one -- the eligibility line
    section 7 names still defeats both checks, and `exec_conflict_60` and `exec_evc_60` still do not
    collide under `_fingerprint` for exactly the reason recorded there. W5's own comment block says so.
+   **Second partial, 2026-07-30:** the `FLIPS` regex was widened to any bare `N/M` counter after a
+   whole-ledger re-verification (all 82 artifacts re-executed). That closes the empty-fingerprint hole
+   -- W3 can now fire for probes that print `turns` rather than `ticks`, and it immediately drew three
+   Gf warnings and one new W5 group -- but it does **not** close the eligibility-counter hole this item
+   is about; see the STATUS note appended to section 7. W4's `max` over ratios is untouched.
 5. **Band 81+ remains structurally out of reach.** There is no held-out executive task in the tree,
    so nothing here can pass rubric rule 3 regardless of wiring. Multi-seed is *not* held-out
    evidence -- it is the same developer-constructed arm loop with a different random stream -- and

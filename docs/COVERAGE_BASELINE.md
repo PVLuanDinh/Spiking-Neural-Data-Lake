@@ -16,6 +16,12 @@
 > Everything below is kept as the record of what was claimed and how it was reasoned, which is still
 > the best available inventory of where the gaps are.
 
+**Equal-weighted total: 26.4%** — the current, re-derivable number. Run `python tools/coverage_score.py
+score` to reproduce it from the tracked ledger; `--check` parses the line above and refuses if this file
+and the evidence disagree. It is a FIRST MEASUREMENT, not a fall from 37.5%: the 37.5% is withdrawn as
+unreproducible (see the banner), so the two do not sit on a common scale and no delta between them means
+anything. The withdrawn table is kept below as history.
+
 Scored against [`COVERAGE_RUBRIC.md`](COVERAGE_RUBRIC.md) by eleven independent read-only auditors, one
 per category. Every category scoring above 40 was then handed to a separate agent whose only job was to
 **refute** it.
@@ -56,7 +62,9 @@ read with its error bar attached.
 
 Those were scored against a rubric that was never committed, with a different denominator and a
 different evidence standard. Any delta against them would be arithmetic across incompatible scales.
-**The next re-sweep compares to 37.5%, and to nothing before it.**
+**The next re-sweep compares to 37.5%, and to nothing before it.** ~~Struck 2026-07-30~~: 37.5% was
+withdrawn as unreproducible, so nothing compares to it either. The comparison base is the re-derived
+26.4% at the top of this file.
 
 ## The artifact caveat
 
