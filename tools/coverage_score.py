@@ -534,7 +534,42 @@ def report(root, evdir, check):
     return 0
 
 
+# Every token this CLI understands. An unrecognized one is REFUSED, not ignored: `rerun drive_60`
+# (positional, no dashes) used to fall straight through to `report()`, print a full coverage table and
+# exit 0 -- so the one verb that catches a forged artifact could be asked for, silently skipped, and
+# still leave the operator holding a confident number. It is the same silent-fallthrough shape the bare
+# `--rerun` guard below already fixed once, one layer further out, and it really did mislead a sweep
+# into reporting artifacts as reproducing while rerunning none of them.
+_VERBS = ("record", "score", "report")  # `score`/`report` both name the default action, explicitly
+_VALUE_FLAGS = ("--root", "--evidence", "--name", "--kind", "--by", "--rerun")
+_BARE_FLAGS = ("--check",)
+_USAGE = (
+    "usage: coverage_score.py [score|report] [--check] | --rerun NAME | "
+    "record --name N [--kind K] [--by B] -- COMMAND..."
+)
+
+
+def _unknown_arg(argv):
+    """The first token this CLI does not understand, or None. Tokens after `--` belong to the recorded
+    command, not to us, so validation stops there."""
+    argv = argv[: argv.index("--")] if "--" in argv else argv
+    skip = False
+    for tok in argv:
+        if skip:  # consumed as the previous flag's value, whatever it looks like
+            skip = False
+        elif tok in _VALUE_FLAGS:
+            skip = True
+        elif tok not in _BARE_FLAGS and tok not in _VERBS:
+            return tok
+    return None
+
+
 def main(argv):
+    bad = _unknown_arg(argv)
+    if bad:
+        print(f"unrecognized argument {bad!r} -- refusing rather than running something else")
+        print(_USAGE)
+        return 2
     root = os.path.abspath(
         _opt(argv, "--root") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
