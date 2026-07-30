@@ -138,7 +138,53 @@ import math
 import random
 import zlib
 
-from snn_data_lake.cortex.vsa_reasoning import bind, bundle, cleanup, coincidence, hv, sim
+import numpy as np
+
+from snn_data_lake.cortex.vsa_reasoning import (
+    D,
+    bind,
+    bundle,
+    cleanup,
+    coincidence_many,
+    hv,
+    sim,
+)
+
+
+class _RowStore:
+    """Append-only float32 row buffer with capacity doubling. Two users: the episode traces, and
+    each slot's filler codebook.
+
+    Both are append-only and never evicted, so rows sit in INSERTION order and `view()` hands back
+    the filled prefix in that order -- which is what makes a fused argmax break ties on the
+    first-stored row, exactly as `max()` and a stable sort do over the scalar counter.
+
+    It appends rather than rebuilding on purpose. The `when` codebook gains one row per episode
+    (brain.py:1680 fills that slot with str(self._wake_ticks), always novel), so rebuilding the
+    matrix per write would be O(rows*D) per write -- reintroducing the very per-tick cost this
+    replaces.
+    """
+
+    __slots__ = ("_buf", "_n")
+
+    def __init__(self, width, capacity=64):
+        self._buf = np.zeros((capacity, width), dtype=np.float32)
+        self._n = 0
+
+    def __len__(self):
+        return self._n
+
+    def add(self, vec):
+        if self._n == self._buf.shape[0]:
+            bigger = np.zeros((2 * self._buf.shape[0], self._buf.shape[1]), dtype=np.float32)
+            bigger[: self._n] = self._buf
+            self._buf = bigger
+        self._buf[self._n] = vec
+        self._n += 1
+
+    def view(self):
+        return self._buf[: self._n]
+
 
 # The developer-defined role slots (HONEST: these are hand-specified, not induced). An episode dict
 # may supply any subset; unknown keys are accepted and get their own role vector on first sight.
@@ -256,6 +302,14 @@ class EpisodicRecall:
         self._role = {}  # slot -> role spike code (fixed, crc32-seeded)
         self._codebook = {}  # slot -> {value_str: filler spike code}
         self._episodes = []  # list of {"key": crc32, "trace": spike code, "S": n bindings}
+        # Row-major mirrors of the two things retrieval scans, so a whole scan is one GEMV instead of
+        # one Python loop per stored item per wake tick. They are mirrors, never the source of truth:
+        # _episodes and _codebook stay authoritative, and each mirror is appended at the SINGLE site
+        # that appends to its source (encode for traces, _filler_code for fillers) so they cannot
+        # desync.
+        self._trace_rows = _RowStore(D)
+        self._book_rows = {}  # slot -> _RowStore of filler codes, in codebook insertion order
+        self._book_labels = {}  # slot -> [value_str], parallel to _book_rows
         for s in slots:
             self._ensure_slot(s)
 
@@ -308,6 +362,8 @@ class EpisodicRecall:
         if slot not in self._role:
             self._role[slot] = hv(f"ROLE|{slot}")
             self._codebook[slot] = {}
+            self._book_rows[slot] = _RowStore(D)
+            self._book_labels[slot] = []
 
     @staticmethod
     def _valstr(value):
@@ -322,8 +378,14 @@ class EpisodicRecall:
         self._ensure_slot(slot)
         vs = self._valstr(value)
         code = hv(f"FILLER|{slot}|{vs}")
-        if register:
+        if register and vs not in self._codebook[slot]:
+            # SINGLE codebook append site -> the only place the mirror can fall behind. Guarded on
+            # absence because the original assignment was an idempotent overwrite (hv is
+            # deterministic, so re-registering a value rewrites the identical code) and appending a
+            # duplicate row would break the label<->row correspondence.
             self._codebook[slot][vs] = code
+            self._book_rows[slot].add(code)
+            self._book_labels[slot].append(vs)
         return code
 
     # ---- encoding ---------------------------------------------------------------------
@@ -357,15 +419,23 @@ class EpisodicRecall:
         raw = "|".join(f"{s}={self._valstr(episode[s])}" for s in sorted(episode)).encode("ascii")
         key = zlib.crc32(raw)
         self._episodes.append({"key": key, "trace": trace, "S": n_slots})
+        self._trace_rows.add(trace)  # mirror; single append site, same order as _episodes
         return key
 
     # ---- retrieval + reconstruction ----------------------------------------------------
     def _retrieve(self, cue_trace, k=1):
         """Rank stored episodes by spike coincidence with the cue trace (content-addressable).
         Returns the top-k [(episode_record, sim)] most coincident, most-similar first."""
-        scored = [(coincidence(cue_trace, ep["trace"]), ep) for ep in self._episodes]
-        scored.sort(key=lambda t: t[0], reverse=True)
-        return [(ep, sim(cue_trace, ep["trace"])) for _c, ep in scored[:k]]
+        if not self._episodes:
+            return []
+        # One GEMV over the trace mirror, replacing one Python coincidence loop per stored episode
+        # per call. This was measured at 35.3% of the live wake tick on its own.
+        # Tie-identical to the sort it replaces: counts are integers held exactly in float32, and
+        # argsort(-counts, kind="stable") ranks equal counts by insertion order, which is what a
+        # stable sort(key=..., reverse=True) did. NOT argsort(counts)[::-1] -- that reverses ties too.
+        counts = coincidence_many(cue_trace, self._trace_rows.view())
+        order = np.argsort(-counts, kind="stable")[:k]
+        return [(self._episodes[int(i)], (2.0 * float(counts[i]) - D) / D) for i in order]
 
     def _reconstruct(self, trace):
         """UNBIND every role from a trace and CLEAN UP to the nearest filler -> full slot dict, plus
@@ -376,9 +446,13 @@ class EpisodicRecall:
             book = self._codebook.get(slot)
             if not book:
                 continue  # nothing ever stored in this slot -> cannot name it
-            label, s = cleanup(bind(trace, role), book)  # bind is self-inverse -> this unbinds
-            recon[slot] = label
-            conf[slot] = round(s, 3)
+            # bind is self-inverse -> this unbinds. One GEMV per slot over that slot's codebook
+            # mirror, replacing cleanup()'s Python max() over every stored filler: measured 29.9% of
+            # the live wake tick. argmax takes the first maximum, exactly as max() does.
+            counts = coincidence_many(bind(trace, role), self._book_rows[slot].view())
+            i = int(np.argmax(counts))
+            recon[slot] = self._book_labels[slot][i]
+            conf[slot] = round((2.0 * float(counts[i]) - D) / D, 3)
         return recon, conf
 
     def complete(self, partial_cue, cue_trace=None):

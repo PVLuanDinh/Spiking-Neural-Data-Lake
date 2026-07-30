@@ -434,6 +434,26 @@ spiking-update kernels, eager torch-CUDA on this card beats numpy-on-CPU only be
   ceiling and would pay launch latency for every one of ~24.5k tiny calls.
 - The real win on that hot path was **CPU-side batching**, not hardware: `AttractorNet.accuracy` folded
   36 independent recall trials into one array pass for a measured **6.93×**, bit-exact (v4.68).
+- **And it happened again, larger, 2026-07-29 — with the widening plan refuted on the way.** This
+  policy's standing invitation ("the moment a live population crosses the measured threshold, put it on
+  the GPU") was taken up: the plan was to widen the live populations past the ~4,096 CUDA-graph
+  crossover and move the tick. A runtime width inventory killed it. The whole live brain holds **132**
+  per-object LIF cells, and *all* live per-tick neuron state fused into one flat vector is
+  **~1,700–3,500** elements — inside the crossover band, not past it. `py-spy` on the live daemon then
+  showed why widening would have optimised nothing: **`AutonomousArm.step()` is 0.00% of the profile**
+  (`_c1_tick` 0.10%, `_tick_ensemble` 0.01%), while **74.5%** of samples sit in
+  `cortex/vsa_reasoning.py::coincidence` — a Python loop run once per stored episode per tick, entered
+  via `hippocampus/episodic_recall.py`. Fusing that as one GEMV, using the exact integer identity
+  `coincidence(a,b) == (D + a·b)/2` for ±1 spike codes, measured **`complete()` 59.946 → 0.909 ms at
+  N=2,000 (66×)**, bit-exact and tie-identical. The load-bearing part is not the factor: the scalar
+  cost was **linear in the episode count** (fitted `ms/tick = 56.60 + 0.0804·N_episodes`) and the fused
+  cost is **flat** (0.61–0.91 ms across N=60–2,000), so the growth term is gone rather than reduced.
+  Two further results worth keeping so they are not re-litigated: for this GEMV the measured CPU→GPU
+  crossover is **~1,600–2,000 rows**, so it ships on the **CPU** and a captured CUDA graph is a *loss*
+  below that; and for fused LIF at our real widths **numba beats a CUDA graph by ~16×**. `spikingjelly`
+  and `cupy` were rejected on a structural reason rather than a benchmark — their fused multi-step
+  kernels collapse the **time** axis `T`, and the live tick has `T=1` by construction, so the axis
+  those kernels exist to collapse is absent. Net new dependencies for all of the above: **none**.
 
 **Where the GPU therefore pays today, and should be used without hesitation:** the `[train]` / `[gpu]`
 tiers — surrogate-gradient training, `hippocampus/ng_snn.py`, `cortex/neurogenesis_engine.py`, the

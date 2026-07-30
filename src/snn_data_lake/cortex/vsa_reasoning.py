@@ -43,7 +43,6 @@ capacity point -- exactly as a spiking associative memory should.
 """
 
 import random
-import sys
 import zlib
 
 D = 512  # spike-code dimensionality (each dim = one spike on the up(+1) or down(-1) line)
@@ -93,6 +92,37 @@ def coincidence(a, b):
     """Spike coincidence: number of dimensions where both codes spike on the SAME line (matched
     spikes). A coincidence COUNT over discrete spikes -- the spiking similarity primitive."""
     return sum(1 for pa, pb in zip(a, b) if pa == pb)
+
+
+def coincidence_many(q, mat):
+    """Spike coincidence of ONE code against MANY stored codes -- the same COUNT as `coincidence`,
+    for every row at once.
+
+    This is the batched form of the primitive, not a different primitive. For a balanced two-line
+    spike code every dimension is +1 or -1, so per row
+
+        sum_i q_i*m_i  ==  matches - mismatches  ==  2*coincidence(q, m) - D
+        =>  coincidence(q, m) == (D + q.m) / 2
+
+    exactly, in integers. Every dot product is an integer in [-D, D], and D=512 is far inside
+    float32's exact-integer range (2**24), so the float32 route returns the SAME INTEGER the scalar
+    counter does -- verified against `coincidence` in this module's self-check. The spike semantics
+    are untouched: what comes back is still a count of matched spikes.
+
+    `mat` is shape (rows, D) with rows in INSERTION order, so `argmax` / `argsort(kind="stable")`
+    over the result breaks ties on the first-stored row, exactly as `max()` and a stable sort do
+    over the scalar counter. (`argsort(-x, kind="stable")` -- NOT `argsort(x)[::-1]`, which reverses
+    ties too.)
+
+    Reason it exists: `coincidence` was measured at 74.5% of the live wake tick (py-spy on the
+    daemon), entered through hippocampus.episodic_recall, because it is a Python loop run once per
+    stored episode per tick. Same precedent as AttractorNet.accuracy folding 36 recall trials into
+    one array pass for 6.93x, bit-exact.
+    """
+    import numpy as np  # local: keeps this module importable without numpy
+
+    q = np.asarray(q, dtype=np.float32)
+    return (q.shape[0] + np.asarray(mat, dtype=np.float32) @ q) / 2.0
 
 
 def sim(a, b):
@@ -158,7 +188,17 @@ def main():
     unbind_exact = bind(bind(a, b), a) == b  # spike XOR is exactly self-inverse
     bind_dissimilar = abs(sim(bind(a, b), a)) < 0.15  # a bound pair hides its factors
     permute_roundtrip = permute(permute(a, 1), D - 1) == a
-    no_tensor_libs = "numpy" not in sys.modules and "torch" not in sys.modules
+    # RETIRED 2026-07-29: this line used to be
+    #     no_tensor_libs = "numpy" not in sys.modules and "torch" not in sys.modules
+    # a numpy-absence boast that was PRINTED and never asserted. numpy is an unconditional core
+    # dependency (pyproject:32) and `coincidence_many` now uses it on purpose, so the claim is both
+    # obsolete and about to read False. What actually needs guarding is not numpy's absence but that
+    # the batched route returns the SAME COUNT as the scalar counter -- so the boast is replaced by an
+    # assertion of exactly that. A dead claim becomes a live gate.
+    _probe = (a, b, c, [-x for x in a])
+    batched_exact = [int(round(float(x))) for x in coincidence_many(a, _probe)] == [
+        coincidence(a, v) for v in _probe
+    ]
     deterministic = hv("Z") == hv("Z") and record_recovery(24, 3) == record_recovery(24, 3)
 
     print("=" * 62)
@@ -178,7 +218,7 @@ def main():
         print(f"   {k:>2} pairs : {m:>6.1%} +/- {s:>4.1%}")
     print(
         f"\nspiking: discrete-spikes={spikes_discrete}  self-coincidence={self_coincidence}  "
-        f"anti-coincidence={anti_coincidence}  no-numpy/torch={no_tensor_libs}"
+        f"anti-coincidence={anti_coincidence}  batched-count==scalar-count={batched_exact}"
     )
     print(
         f"structure: unbind(XOR) exact={unbind_exact}  bound-pair-hides-factors={bind_dissimilar}"
@@ -199,6 +239,10 @@ def main():
     assert near_margin > 0 and far_margin > 0, (
         "winning command must beat the runner-up on coincidence"
     )
+    # (a2) the BATCHED counter is the same primitive, not an approximation of it. This is the gate
+    # that lets hippocampus.episodic_recall rank a whole episode store with one GEMV instead of one
+    # Python loop per stored episode per wake tick (measured 74.5% of the live tick).
+    assert batched_exact, "coincidence_many disagrees with the scalar coincidence counter"
     lo_m, _ = mean_std(cap[4])
     hi_m, _ = mean_std(cap[64])
     assert lo_m >= THRESH, f"small record should recover cleanly by coincidence: {lo_m:.2f}"
