@@ -2103,11 +2103,19 @@ class Brain:
         lp = self._lp_mean
         cort = getattr(self.brain.arm, "cort", None)
         valence = max(-1.0, min(1.0, lp - (cort.level if cort is not None else 0.0)))
+        # LEARNED surprise, computed BEFORE observe() so the self-model gets a real prediction error.
+        # It used to be the algebraic `round(1.0 - acc, 6)`, and that made self_model.confidence()'s
+        # model_conf term collapse: model_conf = clamp01(0.5*acc + 0.5*(1 - (1-acc))) == clamp01(acc),
+        # unconditionally. Measured over 197 live wake ticks the identity held on 197/197 -- so the
+        # documented "blend of accuracy and surprise" was dead arithmetic restating accuracy, and the
+        # brain's REAL learned prediction error (the generative self-model's e-prop error) was
+        # computed a few lines further down and dropped into telemetry. Now it IS the surprise.
+        surprise = self._self_surprise(acc, goal, lp, valence, grown, res)
         self.self_model.observe(
             goal=goal,
             learning_progress=lp,
             self_predict_acc=acc,
-            surprise=round(1.0 - acc, 6),
+            surprise=surprise,
             # C1 #5: the GRADED de-saturated workspace access strength feeds access-confidence --
             # weak/masked content that fails to hold the workspace lowers confidence -> metacog hold
             # (was the saturated AccessConsciousness index alone).
@@ -2138,33 +2146,46 @@ class Brain:
             consolidation=self._consolidation_acc,
             nights=self._nights,
         )
-        if (
-            self._gsm is not None
-        ):  # C1: LEARNED generative self-model -- predict own next self-signal, surprise = prediction error (e-prop, no BPTT)
-            try:
-                svec = [
-                    min(1.0, float(goal) / 10.0),
-                    max(0.0, min(1.0, float(lp))),
-                    float(acc),
-                    round(1.0 - acc, 6),
-                    float(self._access_ema),
-                    1.0 if self._access_state.get("ignited") else 0.0,
-                    min(1.0, float(grown) / 64.0),
-                    round(self.clock.phase, 6),
-                    (max(-1.0, min(1.0, float(valence))) + 1.0) / 2.0,
-                    float(res.get("threat") or 0.0),
-                    float(self._consolidation_acc),
-                ]  # all normalized to [0,1] so the forward model can predict its own trajectory
-                if self._gsm_prev is not None:
-                    self._gsm.predict(
-                        self._gsm_prev
-                    )  # predict THIS tick from the previous self-signal
-                    self._self_surprise_gen = round(
-                        float(self._gsm.observe(svec)), 4
-                    )  # surprise vs prediction + local update
-                self._gsm_prev = svec
-            except Exception:
-                pass
+
+    def _self_surprise(self, acc, goal, lp, valence, grown, res):
+        """The self-model's SURPRISE for this tick: the LEARNED generative self-model's prediction
+        error (e-prop, no BPTT), which is a real error signal, rather than the algebraic `1 - acc`,
+        which is not (it makes self_model.confidence()'s model_conf term equal clamp01(acc)
+        identically -- verified on 197/197 live wake ticks).
+
+        Runs the GSM's predict/observe step and returns the error in [0,1]. Falls back to `1 - acc`
+        only when no learned error exists yet -- the very first wake tick (nothing to predict from)
+        or no GSM at all (the torch tier is off). Guarded: a GSM hiccup degrades to the algebraic
+        value rather than perturbing the loop."""
+        fallback = round(1.0 - acc, 6)
+        if self._gsm is None:
+            return fallback
+        try:
+            svec = [
+                min(1.0, float(goal) / 10.0),
+                max(0.0, min(1.0, float(lp))),
+                float(acc),
+                round(1.0 - acc, 6),
+                float(self._access_ema),
+                1.0 if self._access_state.get("ignited") else 0.0,
+                min(1.0, float(grown) / 64.0),
+                round(self.clock.phase, 6),
+                (max(-1.0, min(1.0, float(valence))) + 1.0) / 2.0,
+                float(res.get("threat") or 0.0),
+                float(self._consolidation_acc),
+            ]  # all normalized to [0,1] so the forward model can predict its own trajectory
+            have = self._gsm_prev is not None
+            if have:
+                self._gsm.predict(self._gsm_prev)  # predict THIS tick from the previous self-signal
+                self._self_surprise_gen = round(
+                    float(self._gsm.observe(svec)), 4
+                )  # surprise vs prediction + local update
+            self._gsm_prev = svec
+            if not have:
+                return fallback
+            return max(0.0, min(1.0, float(self._self_surprise_gen)))
+        except Exception:
+            return fallback
 
     def _update_access(self):
         """Bundle THIS percept's grown-neuron assembly into a Global-Neuronal-Workspace and IGNITE
@@ -2321,14 +2342,21 @@ class Brain:
         return self.state()
 
     def _observe_self_sleep(self):
-        """Fold the night's growth + consolidation into the self-model (awake=False)."""
+        """Fold the night's growth + consolidation into the self-model (awake=False).
+
+        `surprise` is deliberately NOT passed. It used to be `round(1.0 - acc, 6)` here as well, and
+        this was the SECOND writer of the algebraic-surprise defect fixed on the wake path: measured,
+        it re-imposed surprise == 1-acc on 101 of 197 ticks, overwriting the wake tick's real learned
+        prediction error with a restatement of accuracy roughly every other tick. Omitting the key
+        leaves the signal unchanged (see SelfModel.observe), which is also the honest semantics --
+        sleep makes no new self-prediction, so it has no new prediction error to report. Accuracy
+        itself still updates through `self_predict_acc`."""
         acc = self.neuro.predict_accuracy if self.neuro is not None else 0.0
         grown = self.neuro.grown_units if self.neuro is not None else 0
         self.self_model.observe(
             awake=False,
             grown_units=grown,
             self_predict_acc=acc,
-            surprise=round(1.0 - acc, 6),
             consolidation=self._consolidation_acc,
             phase=round(self.clock.phase, 6),
             nights=self._nights,

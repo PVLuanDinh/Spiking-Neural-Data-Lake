@@ -40,7 +40,10 @@ plus the current inputs:
                       high; exploit when reliability is high and the context familiar.
   * grow_trigger() -> bool: recruit a unit ONLY on novelty that is HIGH-but-LEARNABLE
                       (novel AND LP>0); NEVER on pure noise (high surprise, LP ~ 0).
-  * hold()/abstain()-> bool: reliability very low -> HOLD, do not commit a decision.
+  * hold()/abstain()-> bool: reliability in the bottom `hold_p` of this pool's OWN recent output
+                      -> HOLD, do not commit a decision. The bar is a running quantile, not a
+                      value: see __init__ for the measurement that retired the previous
+                      "no-evidence" floor (a structural zero on 197/197 live ticks).
   * reliability()  -> [0,1] the fused spike-count firing rate.
 
 Lesionability (the un-riggable control). Constructed with lesion=True every gate
@@ -51,7 +54,8 @@ having no monitor at all -- so the self-check can prove the GATES (not some inci
 plumbing) are what improve learning.
 
 Reuses (does NOT reimplement): cortex/lif_neuron.LIFNeuron (the spiking pool),
-substrate/_mathutils.{mean,sigmoid}. The self-check additionally drives
+substrate/_mathutils.{mean,sigmoid}, substrate/signal_calibrator.SignalCalibrator (the O(1)
+running quantile that is the HOLD bar). The self-check additionally drives
 hippocampus/growing_learner.GrowingLearner (a real neurogenesis learner whose capacity
 the monitor gates) and neuromodulation/intrinsic_motivation.CuriosityDrive (the honest
 learning-progress / novelty source), keyed off a coarse, label-free input bucket.
@@ -66,6 +70,7 @@ import math
 
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.substrate._mathutils import sigmoid
+from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
 
 def _clamp01(x):
@@ -99,6 +104,7 @@ class MetacognitiveMonitor:
         r_explore=0.30,
         nov_hi=0.4,
         lp_eps=1e-6,
+        hold_p=0.10,
         lesion=False,
         seed=0,
     ):
@@ -111,7 +117,7 @@ class MetacognitiveMonitor:
         self.w_lp = float(w_lp)  # rising learning-progress -> excitation
         self.w_surprise = float(w_surprise)  # persistent-surprise-without-progress -> inhibition
         self.base = float(base)
-        # (r_hold retired: the HOLD bar is now `_rel_floor`, measured from this pool below)
+        # (r_hold retired: the HOLD bar is now `_rel_floor`, a running quantile of this pool's rate)
         self.r_explore = float(r_explore)  # reliability below this -> explore
         self.nov_hi = float(nov_hi)  # novelty at/above this counts as "novel"
         self.lp_eps = float(lp_eps)  # learning-progress above this counts as "learnable"
@@ -127,29 +133,31 @@ class MetacognitiveMonitor:
         self._surprise = 0.0
         self._lp = 0.0
         self._nov = 0.0
-        # DERIVED HOLD FLOOR -- what this very pool emits with NO positive evidence (zero
-        # confidence, maximal surprise). Replaces the hand-set `r_hold` cut, which was an absolute
-        # number on a quantity whose scale is set elsewhere: reliability is driven by
-        # self_model.confidence(), a PRODUCT whose access factor used to be pinned at 1.0. Once that
-        # factor became real the whole reliability distribution shifted down, and the fixed 0.12
-        # landed above its median -- so the hold fired on 71.3% of ticks purely as an artifact of
-        # scale. Measured then: hold was NOT informative, access strength on held ticks (median
-        # 0.406) was actually slightly HIGHER than on committed ticks (0.375), i.e. it discriminated
-        # in the wrong direction by -0.031.
-        # The floor is measured from the pool itself, so it moves with any rescaling of the input
-        # and needs no calibration: abstain when reliability is no better than no-evidence.
-        self._rel_floor = self.update(
-            confidence=0.0, surprise=1.0, learning_progress=0.0, novelty=0.0
-        )
-        for _n in self.pool:  # restore the pristine pool -- the probe must leave no trace
-            _n.reset_state()
-        self._rel = 0.0
-        self._spikes = 0
-        self._mem = 0.0
-        self._conf = 0.0
-        self._surprise = 0.0
-        self._lp = 0.0
-        self._nov = 0.0
+        # DERIVED HOLD FLOOR -- a running LOW QUANTILE of the rate this pool has actually emitted.
+        #
+        # This replaces a one-shot "no-evidence" probe (update(confidence=0, surprise=1.0, lp=0) at
+        # construction) that was advertised as self-recalibrating and was in fact a STRUCTURAL ZERO.
+        # Measured over 197 live wake ticks it printed 0.0000 on 197/197, so hold() was not
+        # "reliability no better than no-evidence" but the much narrower "the pool emitted literally
+        # zero spikes". The cause is arithmetic, not tuning: that probe drives every neuron with
+        # base - w_surprise (0.4 - 0.9 = -0.5), and the widest bias is +bias_spread (+0.4), so the
+        # most excited neuron still sees -0.1. The drive is strictly negative for ANY
+        # base + bias_spread <= w_surprise, the LIF cannot fire, and the floor is 0 by construction.
+        #
+        # Re-probing at the LIVE operating point does not fix it either, and the reason is worth
+        # recording so it is not retried: the pool's rate is monotone in `drive`, so rel <= floor
+        # would reduce to w_conf*c + w_lp*lp + w_surprise*s*min(1,lp) <= 0, which for non-negative
+        # inputs is exactly (c == 0 and lp == 0). A live counterfactual floor is degenerate too,
+        # just in a different place.
+        #
+        # So the floor becomes DISTRIBUTION-relative instead of value-relative: abstain when this
+        # tick's reliability sits in the bottom `hold_p` of what this pool has recently emitted.
+        # That is the repo's own running-baseline idiom (cf. brain.py `_margin_base` / `_lg_base`)
+        # in its O(1)-memory quantile form, and it is scale-FREE -- rescaling the upstream
+        # confidence moves the samples and the quantile together, which is the property the old
+        # comment claimed and the old mechanism did not have.
+        self.hold_p = float(hold_p)
+        self._rel_q = SignalCalibrator("metacog_reliability", p=self.hold_p)
 
     def update(self, confidence, surprise, learning_progress, novelty=0.0):
         """Fuse one set of reliability signals into a spike-count reliability state.
@@ -184,6 +192,7 @@ class MetacognitiveMonitor:
             self.pop_size * self.steps
         )  # SPIKE-COUNT firing rate (not membrane)
         self._mem = memsum / float(self.pop_size)
+        self._rel_q.observe(self._rel)  # fold into the pool's own rate distribution (the HOLD bar)
         return self._rel
 
     def reliability(self):
@@ -222,16 +231,27 @@ class MetacognitiveMonitor:
             return self._nov >= self.nov_hi
         return self._nov >= self.nov_hi and self._lp > self.lp_eps
 
-    def hold(self):
-        """HOLD / abstain: reliability no better than NO EVIDENCE -> do not commit a decision.
+    @property
+    def _rel_floor(self):
+        """The live HOLD bar: the running `hold_p` quantile of this pool's own emitted rate, or None
+        before two samples exist. Kept under the original name so existing readers keep working."""
+        r = self._rel_q.result()
+        return r["value"] if r["n"] >= 2 else None
 
-        The bar is `_rel_floor`, the rate this same pool emits when driven with zero confidence and
-        maximal surprise (see __init__) -- derived from the mechanism rather than configured, so it
-        tracks any rescaling of the upstream confidence instead of silently encoding the scale it
-        happened to be picked under. lesion -> False (ungated: always commit)."""
+    def hold(self):
+        """HOLD / abstain: reliability in the BOTTOM `hold_p` of this pool's own recent output ->
+        do not commit a decision.
+
+        The bar is `_rel_floor`, a running low quantile of the rates this very pool has emitted (see
+        __init__ for why the previous no-evidence probe was a structural zero and why re-probing at
+        the live operating point is degenerate too). Distribution-relative, so it survives any
+        rescaling of the upstream confidence rather than encoding the scale it was picked under.
+        Requires >=2 samples -- a single observation is trivially its own quantile, which would make
+        the first update always hold. lesion -> False (ungated: always commit)."""
         if self.lesion:
             return False
-        return self._rel <= self._rel_floor
+        floor = self._rel_floor
+        return False if floor is None else self._rel <= floor
 
     def abstain(self):
         """Alias of hold() -- do not commit a decision when reliability is very low."""
