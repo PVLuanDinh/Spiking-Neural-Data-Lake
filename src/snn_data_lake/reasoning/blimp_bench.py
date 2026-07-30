@@ -18,12 +18,24 @@ and extract blimp-master/data/*.jsonl into data/lang/blimp/.
 HONEST ANCHORS for reading any score:
   - chance is 50.0% (the self-check asserts a random scorer lands near it -- the control that must fail)
   - human agreement is 88.6% (Warstadt et al. 2020, Table 3)
-  - a 5-gram LM trained on 83M words scores ~61%; GPT-2 large scores ~86% (same paper, Table 3)
-  So: <=55% means "no grammatical knowledge", ~61% means "n-gram level", >=80% means "real syntax".
+  - the published 61.2% 5-gram anchor is a WORD-level model on 83M words, and GPT-2 large's 86.0% is
+    word-level too (same paper, Table 3). NEITHER is the right yardstick for the CHARACTER-level models
+    served here. The measured char-level bar on this repo's own exposure is 53.0% (a char 5-gram,
+    held-out char PPL 4.56); see docs/DEPTH_CEILINGS.md.
+  So: <=53% means "at or below a char n-gram", >=80% means "real syntax".
+
+TWO SCORINGS, BOTH REPORTED. A full-sentence UNNORMALIZED sum-logprob carries a LENGTH BIAS: BLiMP's
+grammatical member is usually the longer one, and a weak char LM pays a roughly constant cost per
+character, so the sum systematically prefers the shorter (ungrammatical) member. Sentence length ALONE
+scores far off chance here (see the length control), which is the size of the leak. main() therefore
+prints EVERY model under BOTH sum-logprob and length-normalized (per-character) scoring, side by side.
+Switching silently to the normalized one would make every number this bench printed before incomparable
+without saying so; printing both keeps the record readable and puts the bias at the point of measurement.
 
 Representation-only: imports no brainstem, routes no actuator.
 """
 
+import importlib
 import json
 import os
 import random
@@ -106,6 +118,56 @@ def length_scorer(sentence):
     return -len(sentence)
 
 
+def per_char(logprob):
+    """Length-normalized rescoring: sum-logprob / characters. The other half of the pair reported.
+
+    This removes the surface length term the unnormalized sum inherits (see the module docstring).
+    Note what it does to the length control: -len(s)/len(s) is the SAME value for every sentence, so
+    normalizing turns the length heuristic into a constant -- which is the mechanism, made visible."""
+    return lambda sentence: logprob(sentence) / max(1, len(sentence))
+
+
+def cached_logprob(serve, unscorable=-1e18):
+    """Wrap serve.logprob in a per-sentence cache so BOTH scorings cost ONE forward pass per sentence.
+
+    Honest-unavailable is preserved: a None logprob becomes a sentinel that always loses its comparison,
+    never a fabricated number. The cache is a plain dict keyed by the sentence -- nothing is persisted,
+    so no builtin hash() value is ever written down."""
+    cache = {}
+
+    def logprob(sentence):
+        if sentence not in cache:
+            lp = serve.logprob(sentence)
+            cache[sentence] = unscorable if lp is None else lp
+        return cache[sentence]
+
+    return logprob
+
+
+# The frozen char-LM serves this bench scores, in artifact order. All three are ORDER-SENSITIVE
+# full-sentence AR log-prob models (unlike the order-invariant SLDA-RFF language head).
+SERVES = (
+    ("AR spik-RWKV", "ar_spiking_lm_serve", "SpikingLMServe"),
+    ("e-prop ALIF-LM", "eprop_lm_alif_serve", "EpropAlifLMServe"),
+    ("e-prop flat LM", "eprop_lm_serve", "EpropLMServe"),
+)
+
+
+def frozen_serves():
+    """Return [(label, serve_or_None), ...] for every entry of SERVES.
+
+    Unavailable serves are RETURNED, not dropped: models/ is gitignored, so a fresh clone has no
+    artifacts and the table must print an explicit n/a instead of quietly showing fewer rows."""
+    out = []
+    for label, mod, cls in SERVES:
+        try:
+            m = importlib.import_module("snn_data_lake.reasoning." + mod)
+            out.append((label, getattr(m, cls)()))
+        except Exception:
+            out.append((label, None))
+    return out
+
+
 def main():
     ok = True
     names = paradigms()
@@ -114,7 +176,10 @@ def main():
         return 0
 
     print(f"blimp_bench: {len(names)} paradigms at {DATA}")
-    n = 50  # per paradigm, keeps the self-check fast; full runs use per_paradigm=None
+    # Pairs per paradigm. 25 keeps the self-check affordable now that it scores three real LMs twice
+    # each, and it is the sample size the numbers recorded in docs/DEPTH_CEILINGS.md were measured at,
+    # so the printed table is directly comparable to the record. Full runs use per_paradigm=None.
+    n = 25
 
     r = score(random_scorer, per_paradigm=n)
     print(f"  control random  : {100 * r['accuracy']:5.1f}%  ({r['correct']}/{r['total']})")
@@ -129,7 +194,8 @@ def main():
         ok = False
 
     r = score(length_scorer, per_paradigm=n)
-    print(f"  control length  : {100 * r['accuracy']:5.1f}%  (surface-length leakage baseline)")
+    len_acc, n_pairs = r["accuracy"], r["total"]
+    print(f"  control length  : {100 * len_acc:5.1f}%  (surface-length leakage baseline)")
     if r["accuracy"] > 0.75:
         print("  FAIL: sentence length alone solves BLiMP; the loaded pairs are not minimal")
         ok = False
@@ -145,40 +211,35 @@ def main():
         print("  FAIL: oracle did not score 100% -- the harness cannot register a correct answer")
         ok = False
 
-    # OPT-IN real scorer: the order-sensitive AR Spiking-RWKV LM (the actual BLiMP lever). This is a
-    # MEASUREMENT, not a control -- no pass/fail assertion. It stays honestly dormant until a frozen
-    # artifact (models/ar_spiking_lm.npz) exists; moving BLiMP off the ~57% floor needs the real-scale
-    # GPU train (training/ar_spiking_lm.py). Never fabricates: unavailable -> a printed SKIP, no number.
-    try:
-        serve, label = None, "e-prop spik-LM"
-        try:  # PREFER the deep-ALIF long-range LM (W4b architectural upgrade)
-            from snn_data_lake.reasoning.eprop_lm_alif_serve import EpropAlifLMServe
-
-            _alif = EpropAlifLMServe()
-            if _alif.available():
-                serve, label = _alif, "e-prop ALIF-LM"
-        except Exception:
-            pass
-        if serve is None:  # else the flat single-layer e-prop LM
-            from snn_data_lake.reasoning.eprop_lm_serve import EpropLMServe
-
-            serve = EpropLMServe()
-        if serve.available():
-
-            def _eprop_scorer(s):  # one forward pass per sentence; None -> -inf, never faked
-                lp = serve.logprob(s)
-                return lp if lp is not None else -1e18
-
-            r = score(_eprop_scorer, per_paradigm=n)
-            print(
-                f"  {label:<15}: {100 * r['accuracy']:5.1f}%  ({r['correct']}/{r['total']}) [brain-native, order-sensitive logprob]"
-            )
-        else:
-            print(
-                "  e-prop spik-LM  :  n/a  (no frozen artifact -- needs the real-scale e-prop GPU train)"
-            )
-    except Exception as exc:
-        print(f"  e-prop spik-LM  :  n/a  ({type(exc).__name__}: serve unavailable)")
+    # OPT-IN real scorers: every frozen order-sensitive char LM, scored BOTH ways. These are
+    # MEASUREMENTS, not controls -- no pass/fail assertion, and no model is preferred over another
+    # (each gets its own row, so a weaker one cannot hide behind a stronger one's number). A model
+    # whose artifact is absent prints n/a: models/ is gitignored, and nothing is ever fabricated.
+    print(f"  real scorers, BOTH scorings ({n_pairs} pairs = {len(names)} x {n}):")
+    print(f"    {'model':<15}{'sum-logprob':>12}{'per-char':>10}{'delta':>8}")
+    print(
+        f"    {'length only':<15}{100 * len_acc:>11.1f}%{'const':>10}{'--':>8}"
+        "   surface length, no model"
+    )
+    for label, serve in frozen_serves():
+        if serve is None or not serve.available():
+            print(f"    {label:<15}{'n/a':>12}{'n/a':>10}{'--':>8}   no frozen artifact")
+            continue
+        logprob = cached_logprob(serve)
+        a_sum = score(logprob, per_paradigm=n)["accuracy"]
+        a_pc = score(per_char(logprob), per_paradigm=n)["accuracy"]
+        print(
+            f"    {label:<15}{100 * a_sum:>11.1f}%{100 * a_pc:>9.1f}%{100 * (a_pc - a_sum):>+8.1f}"
+        )
+    print(
+        "    read BOTH: the length-only control is far off chance, so the sum-logprob column carries a"
+    )
+    print(
+        "    length bias in unknown proportion; per-char removes the surface term (and makes the length"
+    )
+    print(
+        "    control a constant, hence 'const'). Neither column is 'the' number -- char-level bar 53.0%."
+    )
 
     print("blimp_bench self-check:", "OK" if ok else "FAILED")
     return 0 if ok else 1
