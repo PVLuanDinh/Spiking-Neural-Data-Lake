@@ -1,0 +1,27 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/ab_method.py amygdala.affective_appraisal AffectiveAppraisal learn 120
+exit: 1
+commit: b4ab0bddbe075db35d7a77d8dff1bbfc3db2b21f
+recorded_at: 2026-07-31T20:39:02Z
+recorded_by: opus-5 / phase5 T013 / TIER=eprop-snn (root+src on PYTHONPATH)
+python: 3.11.15
+--- stdout ---
+target                    : amygdala.affective_appraisal.AffectiveAppraisal.learn
+ticks                     : 120
+invocations A(wired)      : 61
+invocations B(neutered)   : 61
+behavioural digest A      : 8440155f5331eff9
+behavioural digest B      : 8440155f5331eff9
+behaviour changed         : NO
+internal reads changed    : 112 of 120 ticks
+    synfire_bound                                total |delta| 24
+    reentrant_availability                       total |delta| 23
+    affective_appraisal[1]                       total |delta| 14.819
+    affective_appraisal[0]                       total |delta| 11.123
+    region_coherence                             total |delta| 8.581
+    reroute_bias                                 total |delta| 4.0081
+    self_state.access_index                      total |delta| 3.084
+    reentrant_strength                           total |delta| 3.084
+STATE CHANGED on 112 of 120 ticks, behaviour did not. The fields above moved.
+NOT a band claim on its own. This harness reads state(), which mixes values the brain later CONSUMES with values only telemetry shows. Rubric 41-60 requires the former: before citing this as 41-60 evidence, grep each field above for a NON-TELEMETRY reader. If every reader is state()/a log/the cockpit, the honest verdict is CALLED-BUT-DISCARDED.

@@ -191,6 +191,35 @@ hide the very defect the gate exists to catch — the original `PredictiveCoding
 method named `learn`. The granularity is the defect; the key needs to become `module.Class.method`.
 Until then those two stay UNCERTAIN with their dispositions recorded here rather than silenced.
 
+### AffectiveAppraisal.learn charges a pool nothing reads (measured, `affect_appraisal_ab_eprop.txt`)
+
+Phase 5 / T013. The rule is called 61 times in 120 ticks on the correct receiver and updates real
+weights. Neuter it and the behavioural digest is **byte-identical** (`eb13865b2f0b8b56` both arms).
+What moves is `affective_appraisal[1]` — **arousal** — total |delta| 1.178 across 19 of 120 ticks.
+
+`_appraised` has exactly one non-telemetry consumer: `brain.py:2081`,
+`"affect": abs(float((self._appraised or (0.0, 0.0))[0]))`, which reads index **`[0]` — valence**.
+`brain.py:2794` is `state()` telemetry. **The pool that charges and the component that is consumed
+are disjoint**, so the learning is real and reaches nothing. Verdict: CALLED-BUT-DISCARDED in the
+eprop-snn tier. It is tier-dependent — the prior adjudication measured it charging in the stdlib
+tier — so the artifact's `recorded_by` names the tier, and this verdict does not generalise.
+
+**Two limits of the harness, stated because the first version tripped one of them.**
+`docs/coverage/artifacts/ab_method.py` originally walked only int/float/bool/dict leaves and reported
+`0 of 120` for a rule whose one effect is a `(valence, arousal)` TUPLE — a null that was an artifact
+of the measuring device's own blindness, which is the exact defect class this ledger exists to catch,
+reproduced inside the instrument on its first run. Fixed to expand sequences.
+
+Second, still open: the harness reads `state()`, which mixes values the brain later CONSUMES with
+values only telemetry shows. It therefore cannot award the rubric's 41–60 band by itself; its output
+says so and requires a non-telemetry reader to be named first. That is why this finding is
+CALLED-BUT-DISCARDED rather than "changes an internal read".
+
+Also note the artifact's fingerprint is empty: the harness prints `N of M`, never `N/M`, so
+`--rerun` verifies its exit code and not its observables. Deliberate — a ratio here would append an
+observable to every other artifact's fingerprint — but it means this artifact's reproduction check is
+weaker than a tick-counting probe's.
+
 ## The state of this ledger, stated plainly
 
 **It is a first pass, not the adversarially-verified sweep the rubric specifies.** The rubric's
