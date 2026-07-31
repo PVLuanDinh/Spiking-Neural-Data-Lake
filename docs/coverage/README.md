@@ -220,6 +220,34 @@ Also note the artifact's fingerprint is empty: the harness prints `N of M`, neve
 observable to every other artifact's fingerprint — but it means this artifact's reproduction check is
 weaker than a tick-counting probe's.
 
+### TimeCellClock.learn_interval: 32 calls, zero movement (`time_cells_ab_eprop.txt`)
+
+Phase 5 / T014 + T017. Called 32 times in 120 ticks on the correct receiver. Neutered, the
+behavioural digest is identical AND **0 of 120 ticks show any state change** — a stronger null than
+`AffectiveAppraisal`, which at least moved a telemetry field.
+
+That null alone would have been a half-truth, because `state()` never exposes what this rule writes:
+`learn_interval` mutates `self.thresholds[i]` inside `TimeCellClock`. So the A/B proves the effect
+does not PROPAGATE, and says nothing about whether the threshold moves. Measured directly instead:
+
+```
+learn_interval calls       : 32
+n_cells                    : 64
+distinct threshold vectors : 1        <- across all 120 ticks
+start == end               : True
+max |delta| over run       : 0.0
+first 4 thresholds         : [1.0, 2.0, 3.0, 4.0]   (start AND end)
+```
+
+**The "plastic" threshold is the initial ladder, unchanged.** 32 reward-modulated STDP updates moved
+it by exactly zero.
+
+**This is a P1 finding as much as a P3 one.** `cortex/time_cells.py`'s own header claims the module
+REPLACES a hand-coded interval constant with a learned one. Measured, the learned value is a de facto
+fixed constant — the "constant sitting where a computed value belongs" that P1 names as this
+project's signature defect, wearing a learning rule's clothes. The claim in the module header is
+contradicted by its own runtime behaviour and should not be quoted until the rule is fixed.
+
 ## The state of this ledger, stated plainly
 
 **It is a first pass, not the adversarially-verified sweep the rubric specifies.** The rubric's

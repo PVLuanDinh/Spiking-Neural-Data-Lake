@@ -1,0 +1,18 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/ab_method.py cortex.time_cells TimeCellClock learn_interval 120
+exit: 1
+commit: 6acb892f8c5f1ce952c010426ddd396ef5e5143b
+recorded_at: 2026-07-31T20:44:25Z
+recorded_by: opus-5 / phase5 T014 / TIER=eprop-snn
+python: 3.11.15
+--- stdout ---
+target                    : cortex.time_cells.TimeCellClock.learn_interval
+ticks                     : 120
+invocations A(wired)      : 25
+invocations B(neutered)   : 25
+behavioural digest A      : 8440155f5331eff9
+behavioural digest B      : 8440155f5331eff9
+behaviour changed         : NO
+internal reads changed    : 0 of 120 ticks
+CHANGED NOTHING: called, and no observable differs with it neutered
