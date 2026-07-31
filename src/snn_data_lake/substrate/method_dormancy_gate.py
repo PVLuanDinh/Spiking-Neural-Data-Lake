@@ -78,9 +78,28 @@ EXEMPT_METHOD = {
         "replay sampling whose only callers are inside its own main(). The module IS live, but its one "
         "cross-module importer (brainstem/autonomous_loop.py:41) calls .store() and never this. Open "
         "P3 work: wire it into the sleep replay and prove the charge with a neuter-A/B, or retire it. "
-        "Held as an OPEN exemption so this gate reports it as a standing TODO instead of hiding it",
+        "Held as an OPEN exemption so this gate reports it as a standing TODO instead of hiding it. "
+        "ADJUDICATED 2026-07-31 (runtime, adversarially reviewed): still dead, and the disposition "
+        "should become RETIRE rather than wire -- the promised wiring is not a call site but a "
+        "three-file redesign of Episode + ReplayBuffer, and the prioritised-replay capability it was "
+        "built for has no consumer today. Left as 'wire' pending the P2 port-before-retire step",
     ),
 }
+
+# NOT ADDED, and the reason is the gate's own shape. The 2026-07-31 adjudication produced two entries
+# that are dormant AND correct to be dormant -- PredictiveCodingNetwork.learn (the offline batch wrapper
+# over the live learn_step; wiring it would run the same rule twice) and latent_q._TabularQ.update (the
+# self-check's tabular control, which running live would be the bug). Both deserve a permanent
+# exemption. Neither can have one, because EXEMPT_METHOD is keyed by BARE METHOD NAME: adding "learn"
+# and "update" would blanket-exempt the two commonest learning verbs across all 194 modules and hide
+# precisely the defect this gate exists to catch -- the PredictiveCodingNetwork case itself was a
+# method named `learn`. Silencing it that way would be worse than the dormancy.
+#
+# So the granularity is the instrument defect, not the exemptions. Until the key becomes
+# module.Class.method, these two stay UNCERTAIN with their dispositions recorded in
+# docs/coverage/README.md, and LatentQ.update stays open P3 work. Also caught: the gate reports the
+# _TabularQ finding at latent_q.py:165 while the real class method is LatentQ.update at :102, so the
+# lineno names a different class than the finding is about.
 
 
 def _modname(path):

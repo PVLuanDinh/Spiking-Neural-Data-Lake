@@ -155,6 +155,42 @@ all of them fail `--rerun` — an instrument change invalidating the evidence it
 flip counts reproduce byte-identically either way, which is what proves this addition is not
 behavioural.
 
+### Phase 5, first pass: 17 learning-verb methods adjudicated at RUNTIME (2026-07-31)
+
+`method_dormancy_gate.audit()` reports 0 dormant but **16 UNCERTAIN** — a call with a matching NAME
+exists on a live module, but the gate cannot prove the receiver is that class. Name-matching is weaker
+evidence than reachability, and P3's guard is already "reachability is not charge". Each was resolved by
+following the receiver and instrumenting a real tick run, then adversarially reviewed.
+
+**8 LIVE with charge proven** — `LearnedAttention.learn`, `ValenceLearner.learn`,
+`JepaWorldModel.train_step`, `PrefrontalExecutive.update`, `Cortisol.learn_rate_scale`,
+`DriveReductionLearner.train`, `NGSNN.fit`, `KnowledgeLog.consolidate`.
+
+**6 DORMANT (never called on a live path)** — `LatentQ.update` (module imported, every method cold),
+`_TabularQ.update` (correct: a self-check control), `ForwardModel.update`, `DevelopmentalEnvelope.update`
+(dormant twice over — never called, and discarded even under its opt-in flag),
+`PredictiveCodingNetwork.learn` (correct: the offline wrapper over the live `learn_step`),
+`AffectiveEpisodicStore.consolidate`.
+
+**3 CALLED_BUT_DISCARDED** — called on the right receiver, changing nothing:
+- **`AffectiveAppraisal.learn`** — the first pass called this LIVE with a confirmed chain; the reviewer's
+  neuter-A/B found every behavioural hash byte-identical, only telemetry moving. The pool that charges
+  (`w_aro`) and the component that is consumed (`valence`, index `[0]`) are **disjoint**. Worse, it is
+  tier-dependent: it charges in the stdlib tier and is inert in the eprop-snn tier the daemon runs.
+- **`TimeCellClock.learn_interval`** — called ~66 times per 400 ticks and learns nothing; its plastic
+  threshold is a de facto fixed constant, contradicting the module's own headline claim to have replaced
+  a hand-coded interval constant. Also a P1 finding.
+- **`IntrinsicPlasticity.adapt`** — live call site, proven receiver, no charge on the route taken.
+
+**Two instrument defects found in the gate itself.** It reports the `_TabularQ` finding at
+`latent_q.py:165` while the real class method is `LatentQ.update` at `:102` — the lineno names a
+different class than the finding is about, which nearly got the wrong class adjudicated. And
+`EXEMPT_METHOD` is keyed by BARE METHOD NAME, so the two exemptions this pass earned cannot be written:
+`"learn"` and `"update"` would blanket-exempt the commonest learning verbs across all 194 modules and
+hide the very defect the gate exists to catch — the original `PredictiveCodingNetwork` case was itself a
+method named `learn`. The granularity is the defect; the key needs to become `module.Class.method`.
+Until then those two stay UNCERTAIN with their dispositions recorded here rather than silenced.
+
 ## The state of this ledger, stated plainly
 
 **It is a first pass, not the adversarially-verified sweep the rubric specifies.** The rubric's
