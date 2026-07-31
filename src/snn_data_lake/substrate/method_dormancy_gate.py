@@ -209,7 +209,14 @@ def audit():
                 if n.name.startswith("__"):
                     continue
                 if any(v in n.name.lower() for v in LEARN_VERBS):
-                    defs[(m, n.name)] = n.lineno
+                    # Keyed by (module, CLASS, name). The class was already in hand and thrown away,
+                    # and dropping it cost twice: two same-named defs in one module COLLAPSED to one
+                    # entry whose surviving lineno named whichever came last, and an exemption could
+                    # not distinguish them. basal_ganglia/latent_q.py is the case -- LatentQ.update at
+                    # :102 is genuinely dormant open work, _TabularQ.update at :165 is the self-check's
+                    # control and correctly dead. One key for both meant the finding was reported
+                    # against the wrong class, and exempting the control would have hidden the finding.
+                    defs[(m, cls.name, n.name)] = n.lineno
 
     # every use of a name, call or value-reference (detail 3), tagged with whether it is under __main__
     uses = {}
@@ -229,25 +236,35 @@ def audit():
             uses.setdefault((m, nm), []).append(n.lineno in guard)
 
     dormant, uncertain = [], []
-    for (dm, name), ln in sorted(defs.items()):
+    for (dm, dcls, name), ln in sorted(defs.items()):
         same_module = any(not g for g in uses.get((dm, name), []))
         importers = [
             cm
             for (cm, cn), flags in uses.items()
             if cn == name and cm != dm and dm in imports.get(cm, ()) and any(not f for f in flags)
         ]
-        entry = f"{dm}.py:{ln} {name}()"
+        entry = f"{dm}.py:{ln} {dcls}.{name}()"
         if same_module or importers:
             # A cross-module hit is a NAME match, not a proven receiver -- honesty guard (b).
             if not same_module and importers:
                 uncertain.append(f"{entry}  [name-matched in: {', '.join(sorted(set(importers)))}]")
             continue
-        # Qualified `module.method` FIRST, bare `method` second. The bare form exempts a name across all
-        # 194 modules, which is far too blunt for a real disposition: exempting `learn` to excuse ONE
-        # offline wrapper would also excuse the next PredictiveCodingNetwork.learn -- the exact case this
-        # gate was built for, and itself a method named `learn`. Bare keys stay honoured so the existing
-        # entries keep working; new dispositions should be qualified.
-        if f"{dm}.{name}" in EXEMPT_METHOD or name in EXEMPT_METHOD:
+        # Lookup order: module.Class.method -> module.method -> method. Most specific wins.
+        #
+        # The bare form exempts a name across all 194 modules, which is far too blunt for a real
+        # disposition: exempting `learn` to excuse ONE offline wrapper would also excuse the next
+        # PredictiveCodingNetwork.learn -- the exact case this gate was built for, and itself a method
+        # named `learn`. Module scope was still not enough: latent_q defines `update` on two classes
+        # with OPPOSITE correct dispositions, so `basal_ganglia.latent_q.update` would exempt the
+        # genuinely-dormant LatentQ.update in order to excuse the _TabularQ control. Class scope is the
+        # first granularity at which every disposition in this tree can be stated without collateral.
+        # Bare and module keys stay honoured so existing entries keep working; new dispositions should
+        # be class-qualified.
+        if (
+            f"{dm}.{dcls}.{name}" in EXEMPT_METHOD
+            or f"{dm}.{name}" in EXEMPT_METHOD
+            or name in EXEMPT_METHOD
+        ):
             continue
         dormant.append(entry)
 

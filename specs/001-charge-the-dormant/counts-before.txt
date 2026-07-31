@@ -1,0 +1,1 @@
+﻿{"dormant": 0, "uncertain": 16, "open_exempt": 1, "n_defs": 56}
