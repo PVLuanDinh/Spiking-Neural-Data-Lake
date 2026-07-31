@@ -84,22 +84,34 @@ EXEMPT_METHOD = {
         "three-file redesign of Episode + ReplayBuffer, and the prioritised-replay capability it was "
         "built for has no consumer today. Left as 'wire' pending the P2 port-before-retire step",
     ),
+    # QUALIFIED `module.method` key, added 2026-07-31 once the lookup learned to prefer them.
+    "cortex.predictive_coding.learn": (
+        "permanent",
+        "PredictiveCodingNetwork.learn (cortex/predictive_coding.py:268) -- the OFFLINE BATCH WRAPPER "
+        "over learn_step(), which IS called every wake tick at cortex/live_brain.py:185. Verified by "
+        "runtime instrumentation to be never called on a live path, and that is CORRECT: wiring the "
+        "batch form would run the same rule twice. P2 already holds -- one rule, one definition. It is "
+        "kept rather than retired because predictive_coding.py:353's self-check needs it for the "
+        "learning-curve assert, i.e. the module's own proof that the rule learns. Safe to qualify: "
+        "`learn` is the only def by that name in this module (learn_step is a distinct name)",
+    ),
 }
 
-# NOT ADDED, and the reason is the gate's own shape. The 2026-07-31 adjudication produced two entries
-# that are dormant AND correct to be dormant -- PredictiveCodingNetwork.learn (the offline batch wrapper
-# over the live learn_step; wiring it would run the same rule twice) and latent_q._TabularQ.update (the
-# self-check's tabular control, which running live would be the bug). Both deserve a permanent
-# exemption. Neither can have one, because EXEMPT_METHOD is keyed by BARE METHOD NAME: adding "learn"
-# and "update" would blanket-exempt the two commonest learning verbs across all 194 modules and hide
-# precisely the defect this gate exists to catch -- the PredictiveCodingNetwork case itself was a
-# method named `learn`. Silencing it that way would be worse than the dormancy.
+# STILL NOT EXEMPTIBLE: latent_q._TabularQ.update, and the reason is a REMAINING granularity limit.
+# It is the self-check's tabular control, constructed only inside main(); a control class that ran on a
+# live path would be the bug, so it is dormant AND correct to be dormant. But `basal_ganglia/latent_q.py`
+# defines `update` TWICE -- LatentQ.update at :102 and _TabularQ.update at :165 -- so even the qualified
+# `basal_ganglia.latent_q.update` key would exempt BOTH, and LatentQ.update is GENUINELY dormant open P3
+# work (module imported at autonomous_loop.py:30, every method cold). Exempting it to excuse the control
+# would hide the real finding, which is the failure this gate exists to prevent.
 #
-# So the granularity is the instrument defect, not the exemptions. Until the key becomes
-# module.Class.method, these two stay UNCERTAIN with their dispositions recorded in
-# docs/coverage/README.md, and LatentQ.update stays open P3 work. Also caught: the gate reports the
-# _TabularQ finding at latent_q.py:165 while the real class method is LatentQ.update at :102, so the
-# lineno names a different class than the finding is about.
+# Module qualification was enough for predictive_coding (one `learn` def); it is not enough here. The
+# key needs to reach module.Class.method, which means `_parse_all` tracking the enclosing ClassDef.
+# Until then _TabularQ stays UNCERTAIN with its disposition recorded in docs/coverage/README.md.
+#
+# Related defect, same root: `defs` is keyed (module, name), so two same-named defs in one module
+# collapse to ONE entry and the surviving lineno names whichever came last. That is why this finding was
+# reported at latent_q.py:165 (_TabularQ) when the class it is about is LatentQ at :102.
 
 
 def _modname(path):
@@ -230,7 +242,12 @@ def audit():
             if not same_module and importers:
                 uncertain.append(f"{entry}  [name-matched in: {', '.join(sorted(set(importers)))}]")
             continue
-        if name in EXEMPT_METHOD:
+        # Qualified `module.method` FIRST, bare `method` second. The bare form exempts a name across all
+        # 194 modules, which is far too blunt for a real disposition: exempting `learn` to excuse ONE
+        # offline wrapper would also excuse the next PredictiveCodingNetwork.learn -- the exact case this
+        # gate was built for, and itself a method named `learn`. Bare keys stay honoured so the existing
+        # entries keep working; new dispositions should be qualified.
+        if f"{dm}.{name}" in EXEMPT_METHOD or name in EXEMPT_METHOD:
             continue
         dormant.append(entry)
 
