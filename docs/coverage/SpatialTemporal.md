@@ -13,8 +13,8 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | sequence_binding_synfire | 35 | src/snn_data_lake/cerebellum/synfire_chain.py:170; src/snn_data_lake/cortex/brain.py:2069 | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
 | path_integration_spiking_can | 30 | src/snn_data_lake/hippocampus/spiking_grid_can.py:217; src/snn_data_lake/cortex/brain.py:1925 | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
 | interval_timing_wake_counter | 30 | src/snn_data_lake/cortex/brain.py:1801; src/snn_data_lake/cortex/brain.py:2793 | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
-| place_coding | 21 | src/snn_data_lake/hippocampus/grid_place_map.py:166; src/snn_data_lake/cortex/brain.py:1310 | st_place_60.txt | opus-5 auditor / call instrumentation + spatiotemporal_probe.py place 60 | 2026-07-30 |
-| grid_coding | 21 | src/snn_data_lake/hippocampus/grid_place_map.py:125; src/snn_data_lake/hippocampus/grid_cells.py:71 | - | opus-5 auditor / call instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
+| place_coding | 21 | src/snn_data_lake/hippocampus/grid_place_map.py:182; src/snn_data_lake/cortex/brain.py:1325 | st_place_60.txt | opus-5 auditor / call instrumentation + spatiotemporal_probe.py place 60; band UNCHANGED but its rationale is superseded, see "The freeze is fixed" | 2026-07-30 |
+| grid_coding | 21 | src/snn_data_lake/hippocampus/grid_place_map.py:122; src/snn_data_lake/hippocampus/grid_cells.py:71 | - | opus-5 auditor / call instrumentation, 60 ticks seed 0, daemon sys.path; band UNCHANGED, see "The freeze is fixed" | 2026-07-30 |
 | landmark_drift_correction | 21 | src/snn_data_lake/hippocampus/spiking_grid_can.py:250; src/snn_data_lake/cortex/brain.py:1322 | - | opus-5 auditor / return-value instrumentation, 60 ticks seed 0 | 2026-07-30 |
 | sequence_memory_polychronous | 15 | src/snn_data_lake/reasoning/polychronization.py:23; src/snn_data_lake/reasoning/rose_language.py:306 | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime) | 2026-07-30 |
 | sequence_prediction_sorn | 10 | src/snn_data_lake/reasoning/sorn.py:197 | - | opus-5 auditor / static importer trace (STATIC ONLY, not runtime) | 2026-07-30 |
@@ -93,6 +93,56 @@ module rather than a static positional basis -- velocity path integration (`Grid
 `grid_cells.py:71`) and multi-scale disambiguation (`GridModulePopulation`, `:89`) -- have no caller
 anywhere outside `run_selfchecks.py`. Scored 21, not at place's level and not at a fresh 40: it is the
 same serial chain, and crediting it twice is the defect `coverage_score.py:126-130` warns about.
+
+### The freeze is fixed (`3902f018`) — and the bands deliberately did NOT move
+
+The int-percept defect described above is repaired. `GridPlaceMap._key` normalizes at the class boundary,
+so `_places` is uniformly str-keyed and the variant scan no longer raises. Measured on the same harness,
+60 ticks seed 0:
+
+- `observe` calls / raises: 31 / **28** -> 31 / **0**
+- `place_at` calls: **3** -> **31**
+- distinct `_place_here`: **2** (`'6@1'` frozen for 51 ticks) -> **24**, tracking percepts to tick 59
+- learned `(place, action)` pairs: 7 -> **27**
+
+(Deliberately not a markdown table: `coverage_score.py`'s row parser reads any pipe-delimited line in this
+file as a faculty row, and a second table here is refused as a malformed one. F3 caught exactly that on the
+first draft of this section.)
+
+`st_place_60.txt` was **re-recorded** at `90e27f57`. That is a deliberate exception to this ledger's
+no-re-recording rule and it is not the forbidden kind: the two unreproducible artifacts stay un-re-recorded
+because their numbers MOVE ON THEIR OWN, whereas this one changed because committed code changed, and the
+old transcript documented a faculty that no longer behaves that way. The probe's verdict and exit code are
+unchanged (`CONSUMED-BUT-NOT-DECISIVE`, exit 1).
+
+**Both bands stay at 21, and the reason is rule 2.** The rationale that justified place's 21 — "the faculty
+runs three times and then stops, silently" — is now FALSE, and a stale justification under an unchanged
+number is its own defect, so it is corrected here rather than left to read as still true. But correcting a
+rationale is not evidence for a band. Moving into 41–60 ("changes an internal read") requires a runtime
+neuter A/B showing that removing place identity alters something the brain later reads. What exists is a
+before-fix/after-fix comparison, which is a different experiment: it compares two versions of the code, not
+a neutered signal against an intact one. The neuter that HAS been run still changes no arm decision, which
+is the 61–80 test failing, not the 41–60 test passing. **The measurement that would settle it:** neuter
+`_place_here` (pin it to a constant) on the fixed code and measure whether the learned `(place, action)`
+table and the drive term differ. Until someone runs that, 21 is what the evidence supports.
+
+**The `place_coding` / `grid_coding` duplicate is NOT collapsed, and the arithmetic is why.** These bands
+are 35,35,35,30,30,21,21,21,15,10,10 — sum 263 over 11 rows, mean 23.9. Dropping one 21 as a duplicate
+gives 242 over 10 = **24.2**. Removing a duplicated row RAISES this category's score, because the removed
+band sits below the mean. That makes de-duplication a way to score higher, which inverts the purpose of the
+W3/W5 checks entirely: they exist to stop a serial chain being credited twice, not to hand out points for
+admitting it was. Collapsing here would also mean re-banding the merged faculty on the post-fix behaviour,
+which is exactly the measurement that has not been run. So the duplicate stands, documented, until a
+category re-audit resolves the roster and the band together. **This is a known inflation, disclosed, and it
+inflates by at most the 0.3 points shown above.**
+
+**One more limit this exposed, worth stating because the tool is silent about it.** After the fix,
+`--rerun st_place_60` reported `reproduces` — the fingerprint compares the two neuter flip counts, and those
+did not move. Two un-fingerprinted lines did: learned pairs 7 → 27 and source weight 0.107 → 0.1136. So a
+probe whose measured substance changed materially passed the forgery check unchanged. This is the same hole
+the widened `_fingerprint` regex closed one layer up, surviving one layer down: `rerun` compares the
+observables a probe happens to print in `N/M` form and nothing else. **`reproduces` means "the flip counts
+match", not "the measurement is unchanged."**
 
 **path_integration_dead_reckoning** is the healthiest faculty in the category. `AllocentricMap.move`
 runs on 57/60 ticks with **31 distinct** positions, dead-reckoned from the arm's own end-effector
@@ -258,6 +308,10 @@ honest band for a static-only claim is low and saying which evidence it rests on
   banded on different measured facts (place's binding freeze versus the grid population code being
   computed on all 31 perceiving ticks) -- and flagged here so a later sweep resolves it on evidence
   rather than on the tool's silence. Absence of W3 is not evidence of absence.
+  **Revisited 2026-07-30 and still left as scored, for a NEW reason:** collapsing the pair would raise
+  this category from 23.9 to 24.2, because the removed band is below the mean. See "The freeze is fixed"
+  above -- de-duplication must not be a route to a higher score, and the post-fix re-band it would
+  require has not been measured.
 - **One tick count, one seed.** 60 ticks at seed 0 throughout, chosen to match the control the ledger
   already cites. `coverage_score.py`'s own README names tick-count shopping as a live hole
   (`drive 4` exits 1, `drive 60` exits 0); I did not go looking for a longer run that would flip a
