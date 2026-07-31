@@ -115,7 +115,7 @@ class GridPlaceMap:
                         )
                     )
         self.n_grid = len(self._cells)
-        self._places = {}  # percept -> {"template": grid code, "center": [x, y], "n": count}
+        self._places = {}  # percept KEY (always str, see _key) -> {"template", "center", "n"}
         self._lattice = None  # cached decode lattice: (points, grid codes)
 
     # ---- grid population (rate + spiking readout) ----
@@ -137,6 +137,21 @@ class GridPlaceMap:
         return spikes
 
     # ---- place cells: bind / query / recall ----
+    @staticmethod
+    def _key(percept):
+        """Normalize a percept to its place-cell KEY. Place keys are ALWAYS str.
+
+        The map already commits to str keys the moment a percept is seen at a second location --
+        variants are named `f"{percept}@{k}"` -- but the FIRST binding used to store the caller's
+        object verbatim, so a non-str percept left `_places` heterogeneously typed. The variant scan
+        in observe() then raised `AttributeError: 'int' object has no attribute 'startswith'` for
+        every later percept that was not that int. Measured on the live wake path: 28 of 31 observe
+        calls raised into brain.py's guard, place_at ran 3 times in 60 ticks, and `_place_here` froze
+        on one stale label for the remaining 51 -- a constant sitting where a computed value belongs.
+        Normalizing here makes the existing key contract TOTAL rather than partial, for every caller
+        rather than only the one that was caught."""
+        return percept if isinstance(percept, str) else str(percept)
+
     def _match_bar(self, acts, key):
         """The derived firing bar for `key`: the midpoint between a perfect self-match (1.0) and what
         the REST of the population reads here. See place_at() for the derivation."""
@@ -161,6 +176,7 @@ class GridPlaceMap:
         disagree: consolidate into the best-matching existing variant of this percept if it fires
         here, else open a new one. Variants are keyed `percept@k`; the first keeps the bare label, so
         a map with one location per percept is unchanged."""
+        percept = self._key(percept)
         code = self.grid_code(position)
         acts = self.place_activation(position)
         variants = [p for p in self._places if p == percept or p.startswith(f"{percept}@")]
@@ -242,7 +258,7 @@ class GridPlaceMap:
 
     def place_spikes(self, position, percept, window=None):
         """Literal spike count of one place cell here (rate->spikes on its correlation; on-field high, off ~0)."""
-        rec = self._places.get(percept)
+        rec = self._places.get(self._key(percept))
         if rec is None:
             return 0
         w = self.spike_window if window is None else int(window)
@@ -267,7 +283,7 @@ class GridPlaceMap:
         grid code best matches the imprinted template, so it round-trips only because the grid code is
         spatially unique. Returns (x, y), or None if the percept was never bound.
         """
-        rec = self._places.get(percept)
+        rec = self._places.get(self._key(percept))
         if rec is None:
             return None
         self._ensure_lattice()

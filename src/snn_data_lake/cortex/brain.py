@@ -668,6 +668,8 @@ class Brain:
         self._place_correction = (
             0.0  # C2 #8: last landmark phase-reset magnitude (drift correction)
         )
+        self._place_fault = None  # last exception that aborted the place binding (None = healthy)
+        self._place_faults = 0  # how many ticks the place binding aborted -> _place_here went STALE
         try:
             from snn_data_lake.cortex.affect_core import AffectCore, SecondOrderToM
             from snn_data_lake.cortex.crossmodal_binder import CrossModalBinder
@@ -1336,8 +1338,22 @@ class Brain:
                             )
                         except Exception:
                             pass
-            except Exception:
-                pass
+            except Exception as e:
+                # NOT `pass`. This guard exists so a faulty faculty cannot take the wake path down,
+                # and it stays -- but a swallowed exception here does not merely skip a tick: it
+                # skips the `place_at` on the line above, so `_place_here` KEEPS its previous value
+                # and every downstream consumer (the R-STDP place->action update, the place source
+                # eligibility, the drive term) goes on reading a stale constant as if it were
+                # computed. That is exactly how an int percept froze place identity for 51 of 60
+                # ticks with nothing to show for it. So: keep running, but leave a trace. The fault
+                # is counted and named in the snapshot (place_fault / place_faults), and the FIRST
+                # occurrence prints -- once, not per tick, because this is the always-on daemon.
+                self._place_fault = f"{type(e).__name__}: {e}"
+                self._place_faults += 1
+                if self._place_faults == 1:
+                    print(
+                        f"[brain] place binding aborted, _place_here is now STALE: {self._place_fault}"
+                    )
 
     def _route_percept_to_action(self, action=None):
         """W5: route the tick's COMPUTED signals into the arm's action selection for the NEXT tick, as a BOUNDED
@@ -2749,6 +2765,8 @@ class Brain:
             ),  # C2 #1: how many (place, action) pairs carry a learned value
             "learned_latency": self._learned_latency,  # C2 #3: learned reward latency (opens the timed Go window)
             "place_correction": self._place_correction,  # C2 #8: landmark phase-reset magnitude correcting bump drift
+            "place_fault": self._place_fault,  # last exception that aborted place binding (None = healthy)
+            "place_faults": self._place_faults,  # ticks the binding aborted -> place_here above is STALE, not computed
             "reroute_bias": self._reroute_bias,  # C2 #11: GWT broadcast re-route bias now driving the action specialist
             "place_from_spiking_bump": self._place_from_spiking_bump,  # C2 #16: place grounded on the spiking grid CAN
             "acc_conflict": round(

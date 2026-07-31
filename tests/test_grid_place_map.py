@@ -71,6 +71,29 @@ def test_revisiting_consolidates_instead_of_growing_the_map():
     assert counts[0] == counts[-1], f"revisiting known places must not open new cells ({counts})"
 
 
+def test_int_percept_does_not_break_later_lookups():
+    """REGRESSION. Place keys must be UNIFORMLY typed. The live caller binds `_perceived_digit`, an
+    INT, so the first sighting stored a bare int key while every later variant is `percept@k`, a
+    str. observe()'s variant scan then raised `AttributeError: 'int' object has no attribute
+    'startswith'` for any later percept that was not that int, brain.py's guard swallowed it, and
+    the place_at on the next line was skipped -- so `_place_here` froze on a stale label. Measured
+    on the live wake path over 60 ticks: observe ran 31 times, place_at only 3. Every test above
+    passes only str percepts, which is the hole that let this ship."""
+    gpm = GridPlaceMap(seed=0)
+    digits = [6, 3, 6, 1, 3, 8]
+    pts = ROUTE[: len(digits)]
+    for d, p in zip(digits, pts, strict=True):
+        gpm.observe(p, d)  # must not raise once a bare int key is in the map
+    kinds = {type(k) for k in gpm._places}
+    assert kinds == {str}, f"place keys must be uniformly str ({list(gpm._places)})"
+    answered = sum(gpm.place_at(p) is not None for p in pts)
+    assert answered == len(pts), f"every bound int percept stays queryable ({answered}/{len(pts)})"
+    # an int percept and its str spelling name the SAME place cell, from either spelling
+    assert gpm.place_at(pts[0]) == "6", "place_at must answer with the normalized str key"
+    assert gpm.recall_place(6) == gpm.recall_place("6") is not None
+    assert gpm.place_spikes(pts[0], 6) == gpm.place_spikes(pts[0], "6") > 0
+
+
 def test_deterministic():
     a, pts = _bound_map(seed=0)
     b, _ = _bound_map(seed=0)
