@@ -472,6 +472,16 @@ spiking-update kernels, eager torch-CUDA on this card beats numpy-on-CPU only be
   N=2,000 (66×)**, bit-exact and tie-identical. The load-bearing part is not the factor: the scalar
   cost was **linear in the episode count** (fitted `ms/tick = 56.60 + 0.0804·N_episodes`) and the fused
   cost is **flat** (0.61–0.91 ms across N=60–2,000), so the growth term is gone rather than reduced.
+  **Amended 2026-07-30 — the `0.00%` above is stale, and the way it went stale is the lesson.** Once the
+  74.5% term was removed, the intercept was attributed by wrapped timing (sum 56.71 ms against 56.64
+  measured): `AutonomousArm.step()` is **20.1 ms, 36%** of it, of which `_pfc_bias → pfc.plan →
+  deliberate` is 15.8. Nothing about the arm changed — a profile share is a share *of what else is
+  running*, so removing a dominant term promotes whatever sat underneath it, and a percentage measured
+  before a fix cannot be quoted after one. The intercept's two largest terms were then removed
+  bit-exactly (`AccessConsciousness._coherence` fused by the same `(a·b)/D` identity, and a discarded
+  coherence no longer computed), taking the instrumented tick **56.64 → 27.78 ms**. Still open and
+  deliberately not taken: `commit_races=25` is now ~46% of the remaining tick, but cutting it is
+  **behavioural**, needs a decision-distribution A/B, and is a fixed constant in a decision path (P1).
   Two further results worth keeping so they are not re-litigated: for this GEMV the measured CPU→GPU
   crossover is **~1,600–2,000 rows**, so it ships on the **CPU** and a captured CUDA graph is a *loss*
   below that; and for fused LIF at our real widths **numba beats a CUDA graph by ~16×**. `spikingjelly`

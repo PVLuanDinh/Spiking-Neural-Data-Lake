@@ -58,7 +58,9 @@ import random
 import zlib
 from collections import deque
 
-from snn_data_lake.cortex.vsa_reasoning import bundle, cleanup, hv, sim
+import numpy as np
+
+from snn_data_lake.cortex.vsa_reasoning import D, bundle, cleanup, hv, sim
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
 # phenomenal-consciousness vocabulary that MUST NEVER appear in the functional readout (claim 5).
@@ -147,9 +149,28 @@ class AccessConsciousness:
         """Mean pairwise POSITIVE spike-coincidence similarity among member codes, in [0,1].
 
         High for a mutually coincident (coherent) assembly, ~0 for an orthogonal (scrambled) one.
-        Binding is RELATIONAL: fewer than two neurons cannot be a bound assembly -> coherence 0."""
+        Binding is RELATIONAL: fewer than two neurons cannot be a bound assembly -> coherence 0.
+
+        FUSED, bit-exactly (v4.80). This was M*(M-1)/2 scalar `sim` calls and, at the bounded M=40
+        coalition, the single largest term in the live wake tick -- 26.3 ms of a measured 56.6 ms.
+        For the +-1 spike codes this class produces, sim(a,b) == (2*coincidence(a,b) - D)/D ==
+        (a.b)/D, the same integer identity the episodic-recall fusion used, so the whole pairwise
+        table is ONE matrix product. It is exact rather than close: |a.b| <= D and D is a power of
+        two, so each similarity is a dyadic multiple of 1/D that float64 holds exactly, and so is
+        every partial sum of at most M^2/2 of them -- the sum is therefore order-independent and
+        the closing division is the same single rounding the scalar loop performed. Codes that are
+        not +-1 (no caller produces any) take the scalar path rather than silently relying on an
+        identity that requires them."""
         if len(hvs) < 2:
             return 0.0
+        try:
+            m = np.asarray(hvs, dtype=np.float64)
+            if m.ndim == 2 and m.shape[1] == D and bool(np.all(np.abs(m) == 1.0)):
+                g = (m @ m.T) / D  # g[i, j] == sim(hvs[i], hvs[j]), exactly
+                pos = np.maximum(g[np.triu_indices(m.shape[0], 1)], 0.0)
+                return float(pos.sum()) / int(pos.size)
+        except (TypeError, ValueError):
+            pass  # ragged / non-numeric codes -> the scalar definition below
         tot = 0.0
         n = 0
         for i in range(len(hvs)):
@@ -176,13 +197,16 @@ class AccessConsciousness:
         self._n_assemblies += 1
         codes = [h for _, h in self._members]
         self._content_hv = bundle(codes)  # spike superposition -> ONE content
-        coherence = self._coherence(codes)
-        completeness = self._completeness(len(codes))
-        sal = (
-            self._salience(coherence, completeness)
-            if salience is None
-            else max(0.0, min(1.0, float(salience)))
-        )
+        # The coherence/size drive current is the DEFAULT salience only, and it is not a cheap
+        # default: `_coherence` is the O(M^2) pairwise table. The live wake tick
+        # (cortex/brain.py::_update_access) always passes an explicit novelty-gated salience, so
+        # this computed the expensive default on every tick and then discarded it -- a measured
+        # 13.1 ms of a 56.6 ms tick. Computing it only when it is the value actually used is
+        # bit-exact: `_coherence` is a pure function of `codes` with no other effect.
+        if salience is None:
+            sal = self._salience(self._coherence(codes), self._completeness(len(codes)))
+        else:
+            sal = max(0.0, min(1.0, float(salience)))
         self._ws.submit(self._SRC, self._LABEL, sal)  # post the candidate for ignition
         return self._LABEL
 
