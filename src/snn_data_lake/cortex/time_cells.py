@@ -86,9 +86,21 @@ class TimeCellClock:
         self.seed = seed
         self.drive = float(drive)
         self.noise_sd = float(noise_sd)
+        # GEOMETRIC tiling of 1..n_cells, not the integer ladder. With `float(i + 1)` and drive 1.0
+        # every nominal latency was exactly an integer tick, so cell i crossed at tick i+1 and the
+        # ACTUAL spike time equalled the NOMINAL one -- which made learn_interval's error term
+        # identically zero and the threshold unlearnable in principle, not merely in practice.
+        # Measured before this change: 32 learn calls, dt == 0.0 on every one, thresholds byte-identical
+        # after 120 ticks.
+        #
+        # Log spacing is what this module already claims to implement: its own self-check asserts
+        # Weber/scalar timing (sd growing with duration), and interval-timing populations tile time
+        # logarithmically. The span is still exactly 1..n_cells and the only input is n_cells, so no
+        # tuned constant is introduced (P1) -- the spacing is derived from the population size.
+        span = math.log(float(n_cells)) if n_cells > 1 else 0.0
         self.thresholds = [
-            float(i + 1) for i in range(n_cells)
-        ]  # staggered latencies tiling 1..n_cells
+            math.exp(span * (i / (n_cells - 1))) if n_cells > 1 else 1.0 for i in range(n_cells)
+        ]
         self.rng = random.Random(seed)
         self.reset()
 
