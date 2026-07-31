@@ -84,34 +84,35 @@ EXEMPT_METHOD = {
         "three-file redesign of Episode + ReplayBuffer, and the prioritised-replay capability it was "
         "built for has no consumer today. Left as 'wire' pending the P2 port-before-retire step",
     ),
-    # QUALIFIED `module.method` key, added 2026-07-31 once the lookup learned to prefer them.
-    "cortex.predictive_coding.learn": (
+    # CLASS-QUALIFIED keys. Each names exactly one rule and can suppress nothing else.
+    "basal_ganglia.latent_q._TabularQ.update": (
+        "permanent",
+        "_TabularQ.update (basal_ganglia/latent_q.py:165) -- the self-check's fair TABULAR CONTROL, "
+        "constructed only inside main(). A measurement baseline, not an update rule on the brain's "
+        "path: a control class that ran live would be the bug, so dormancy here is the correct state "
+        "rather than a gap. Adjudicated at runtime 2026-07-31 and adversarially reviewed. This key "
+        "MUST stay class-qualified: `basal_ganglia.latent_q.update` would also exempt LatentQ.update "
+        "at :102, which is GENUINELY dormant open P3 work, and exempting the real finding in order to "
+        "excuse the control is the failure this gate exists to prevent",
+    ),
+    "cortex.predictive_coding.PredictiveCodingNetwork.learn": (
         "permanent",
         "PredictiveCodingNetwork.learn (cortex/predictive_coding.py:268) -- the OFFLINE BATCH WRAPPER "
         "over learn_step(), which IS called every wake tick at cortex/live_brain.py:185. Verified by "
         "runtime instrumentation to be never called on a live path, and that is CORRECT: wiring the "
         "batch form would run the same rule twice. P2 already holds -- one rule, one definition. It is "
         "kept rather than retired because predictive_coding.py:353's self-check needs it for the "
-        "learning-curve assert, i.e. the module's own proof that the rule learns. Safe to qualify: "
-        "`learn` is the only def by that name in this module (learn_step is a distinct name)",
+        "learning-curve assert, i.e. the module's own proof that the rule learns. Re-keyed from the "
+        "module-qualified form to the class-qualified one on 2026-07-31, so every disposition in this "
+        "table names a class and none can reach a sibling",
     ),
 }
 
-# STILL NOT EXEMPTIBLE: latent_q._TabularQ.update, and the reason is a REMAINING granularity limit.
-# It is the self-check's tabular control, constructed only inside main(); a control class that ran on a
-# live path would be the bug, so it is dormant AND correct to be dormant. But `basal_ganglia/latent_q.py`
-# defines `update` TWICE -- LatentQ.update at :102 and _TabularQ.update at :165 -- so even the qualified
-# `basal_ganglia.latent_q.update` key would exempt BOTH, and LatentQ.update is GENUINELY dormant open P3
-# work (module imported at autonomous_loop.py:30, every method cold). Exempting it to excuse the control
-# would hide the real finding, which is the failure this gate exists to prevent.
-#
-# Module qualification was enough for predictive_coding (one `learn` def); it is not enough here. The
-# key needs to reach module.Class.method, which means `_parse_all` tracking the enclosing ClassDef.
-# Until then _TabularQ stays UNCERTAIN with its disposition recorded in docs/coverage/README.md.
-#
-# Related defect, same root: `defs` is keyed (module, name), so two same-named defs in one module
-# collapse to ONE entry and the surviving lineno names whichever came last. That is why this finding was
-# reported at latent_q.py:165 (_TabularQ) when the class it is about is LatentQ at :102.
+# STILL OPEN, and deliberately not exempted: LatentQ.update (basal_ganglia/latent_q.py:102). The module
+# is imported at brainstem/autonomous_loop.py:30 -- so the MODULE gate sees it reachable -- while every
+# method of the class is cold. That is exactly the shape the per-method amendment was written for, and
+# it is real P3 work: wire it and prove the charge, or retire it with its capability ported first.
+# It is NOT exempted here, because an exemption is a disposition and this rule does not have one yet.
 
 
 def _modname(path):
