@@ -966,12 +966,23 @@ class Brain:
             # in a working session), so nothing the brain grew ever compounded. A lake with no
             # _T_GROWTH record returns None and the engine starts ungrown -- exactly today's
             # behaviour, so an existing lake is unaffected.
-            try:
-                from snn_data_lake.substrate.home import load_growth
+            # GATED ON PERSIST, mirroring the save at `if self._persist:` further down. Unconditional,
+            # this made `Brain.__init__` read a file that a live daemon is concurrently appending to,
+            # so brain construction was not a pure function of its seed. Measured: the growth record
+            # changes every ~5.6 s, constructing a Brain takes ~2.15 s, and two seed=0 Brains built
+            # back to back therefore differed in ~42% of trials -- `grown_units` and
+            # `predict_accuracy` first, then four `self_state` fields. That is exactly claim 4 ("two
+            # seed=0 Brains must be byte-identical") failing intermittently, and subprocess isolation
+            # never protected it: a cold subprocess has a WIDER window than a warm in-process build.
+            # It also makes NORD_PERSIST=0 a real off-switch -- the save was gated and the load was
+            # not, so the documented "hermetic" mode restored state it refused to write.
+            if self._persist:
+                try:
+                    from snn_data_lake.substrate.home import load_growth
 
-                eng.restore_growth_state(load_growth())
-            except Exception:  # a broken or absent record must never block brain construction
-                pass
+                    eng.restore_growth_state(load_growth())
+                except Exception:  # a broken or absent record must never block brain construction
+                    pass
             return eng
         except Exception:
             return None

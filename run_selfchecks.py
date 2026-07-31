@@ -22,10 +22,29 @@ package (src/snn_data_lake/, run as `-m snn_data_lake.<mod>`); RESEARCH = benchm
 import os
 import sys
 import subprocess
+import tempfile
 
 # children print Unicode (φ, −, …); force UTF-8 so a Windows cp1252 console can't crash them.
 # PYTHONPATH="src" so `snn_data_lake` (the package) + research/ modules importing it resolve.
-_ENV = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8", "PYTHONPATH": "src"}
+#
+# NORD_HOME added 2026-07-31: an ISOLATED home for the whole gate run. Without it every child
+# inherited the operator's `~/.snn_data_lake` -- the same lake the always-on daemon appends to -- so
+# the gate both wrote into the live brain and read a file that was changing underneath it. That is
+# what made `cortex.brain`'s claim 4 ("two seed=0 Brains must be byte-identical") an intermittent
+# ~42% failure rather than a stable one; subprocess isolation was UNDER-SAMPLING the race, not
+# preventing it, since a cold subprocess leaves a wider window between the two constructions than a
+# warm in-process build does. NORD_PERSIST is deliberately NOT set to 0: several self-checks exist to
+# prove persistence works, and one shared isolated home lets them do that without touching the
+# operator's brain.
+_HOME = os.path.join(tempfile.gettempdir(), "snn_selfchecks_home")
+os.makedirs(_HOME, exist_ok=True)
+_ENV = {
+    **os.environ,
+    "PYTHONUTF8": "1",
+    "PYTHONIOENCODING": "utf-8",
+    "PYTHONPATH": "src",
+    "NORD_HOME": _HOME,
+}
 
 # CORE — the product: arm-loop + data-lake, clone-and-run (root). As of 3.0 organized by
 # anatomical brain region (src/snn_data_lake/<region>/<module>.py); run as

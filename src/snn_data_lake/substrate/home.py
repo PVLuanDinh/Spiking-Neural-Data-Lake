@@ -236,6 +236,7 @@ def main():
     import tempfile
 
     work = tempfile.mkdtemp(prefix="snn_home_")
+    _prior_home = os.environ.get("NORD_HOME")  # restored in the finally, NOT popped -- see below
     try:
         os.environ["NORD_HOME"] = work  # point home() at an isolated temp dir
         src_root = os.path.dirname(
@@ -342,7 +343,16 @@ def main():
             "torn-tail recovery; durable JSON state round-trips. The ONE shared home every entrypoint boots into."
         )
     finally:
-        os.environ.pop("NORD_HOME", None)
+        # RESTORE the caller's NORD_HOME, do not just drop it. A bare pop deletes the value the
+        # CALLER set, not merely the one this self-check set: run in-process (tests/test_selfchecks.py
+        # runs every module's __main__ in one interpreter), it silently un-isolated every module after
+        # this one, so ~17 self-checks fell back to `~/.snn_data_lake` and read and wrote the
+        # operator's live brain on every pytest run -- while the runner believed it had set an
+        # isolated home.
+        if _prior_home is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
+            os.environ["NORD_HOME"] = _prior_home
         shutil.rmtree(work, ignore_errors=True)
 
 
