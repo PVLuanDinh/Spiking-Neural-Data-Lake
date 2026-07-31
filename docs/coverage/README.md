@@ -248,6 +248,27 @@ fixed constant — the "constant sitting where a computed value belongs" that P1
 project's signature defect, wearing a learning rule's clothes. The claim in the module header is
 contradicted by its own runtime behaviour and should not be quoted until the rule is fixed.
 
+### IntrinsicPlasticity.adapt: measured NEVER CALLED, contradicting the earlier verdict
+
+Phase 5 / T015 (`intrinsic_plasticity_ab_eprop.txt`). On the `make_brain()` live path, seed 0,
+eprop-snn tier: **0 invocations at 120 ticks and 0 at 400 ticks**. Behavioural digest identical, 0 of
+400 ticks changed. The harness exits 2 (NEVER-CALLED) rather than returning a charge verdict, because
+neutering something that never ran proves nothing.
+
+**This contradicts the 2026-07-31 adjudication**, which recorded CALLED_BUT_DISCARDED with "a live
+call site and a proven receiver". The call site is real — `homeostatic_plasticity_stack.py:140`,
+`ctx["rate"] = self._ip[i].adapt(y)` — so the disagreement is not about whether the code exists. It
+is about whether that stack is reached on the path `make_brain()` actually takes.
+
+**Both readings are recorded and neither is deleted.** Either the earlier verdict measured a
+different entry point (calling the stack directly, or via `autonomous_loop` rather than the brain
+tick), or the stack is unreachable from the live tick and the rule's true disposition is
+wire-or-retire rather than a charge-strength question. That distinction changes which of P3's three
+dispositions applies, so it is worth resolving properly rather than by picking the more recent number.
+
+Left OPEN with the contradiction stated. Recording a confident verdict here would mean choosing
+between two measurements on the basis of which one ran last.
+
 ## The state of this ledger, stated plainly
 
 **It is a first pass, not the adversarially-verified sweep the rubric specifies.** The rubric's

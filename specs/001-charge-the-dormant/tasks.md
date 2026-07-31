@@ -12,11 +12,11 @@ check (Invariant 5: verify the verifier).
 
 ## Phase 1: Setup
 
-- [ ] T001 Create the measurement harness at `scratchpad/ab_method.py`: patch a named
+- [X] T001 Create the measurement harness at `scratchpad/ab_method.py`: patch a named
       `module.Class.method` to a no-op, run N ticks at seed 0 via `make_brain()`, and emit per-tick
       hashes over (actions, coherence, elapsed, bound) plus the numeric state leaves, as `N of M`
       counts never `N/M` ratios (see contracts/verdict-contract.md Â§1)
-- [ ] T002 Verify T001 against a known answer: reproduce the recorded `AffectiveAppraisal.learn`
+- [X] T002 Verify T001 against a known answer: reproduce the recorded `AffectiveAppraisal.learn`
       result (behavioural hashes identical, telemetry hash differs) in the eprop-snn tier, using the
       prerequisites in `quickstart.md`
 
@@ -75,18 +75,18 @@ consumer and why the value does not reach it.
 
 **Independent test**: each artifact re-runs to the same verdict under `--rerun`.
 
-- [ ] T013 [P] [US3] Record the `AffectiveAppraisal.learn` A/B in BOTH tiers via
+- [X] T013 [P] [US3] Record the `AffectiveAppraisal.learn` A/B in BOTH tiers via
       `tools/coverage_score.py record`, `--by` naming the tier; the artifact must show behavioural
       hashes identical in eprop-snn and divergent in stdlib
       (`src/snn_data_lake/amygdala/affective_appraisal.py:116`)
-- [ ] T014 [P] [US3] Record the `TimeCellClock.learn_interval` A/B showing the plastic threshold does
+- [X] T014 [P] [US3] Record the `TimeCellClock.learn_interval` A/B showing the plastic threshold does
       not move across the run (`src/snn_data_lake/cortex/time_cells.py:146`)
 - [ ] T015 [P] [US3] Record the `IntrinsicPlasticity.adapt` A/B showing no charge on the route taken
       (`src/snn_data_lake/plasticity/intrinsic_plasticity.py:31`)
-- [ ] T016 [US3] Write the disjoint-wiring finding into `docs/coverage/README.md`: for
+- [X] T016 [US3] Write the disjoint-wiring finding into `docs/coverage/README.md`: for
       `AffectiveAppraisal.learn`, the charging pool is `w_aro` while the sole non-telemetry consumer
       reads `valence` (index `[0]`), so the learned signal and the consumed signal never meet
-- [ ] T017 [US3] Record the P1 contradiction against `cortex/time_cells.py`'s own header claim to have
+- [X] T017 [US3] Record the P1 contradiction against `cortex/time_cells.py`'s own header claim to have
       replaced a hand-coded interval constant, citing the measurement from T014
 - [ ] T018 [US3] Verify all three artifacts reproduce: `--rerun` each, exit 0
 - [ ] T019 [US3] Commit Phase C (artifacts + docs only â€” no source behaviour changed yet)
@@ -174,4 +174,5 @@ one that can invalidate recorded artifacts â€” hence T027.
 **Stop condition**: if a port check (T020-T022) shows a retirement would drop a capability with no
 home, that rule stays OPEN with the reason recorded. An unresolved rule with a stated reason is a
 valid outcome; a silenced one is not.
+
 

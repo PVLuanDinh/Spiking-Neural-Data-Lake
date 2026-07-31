@@ -1,0 +1,18 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: ab
+command: docs/coverage/artifacts/ab_method.py plasticity.intrinsic_plasticity IntrinsicPlasticity adapt 400
+exit: 2
+commit: 33bc5d074a90c9287be96cfb2fbc671f7d1f785f
+recorded_at: 2026-07-31T20:49:11Z
+recorded_by: opus-5 / phase5 T015 / TIER=eprop-snn / 400 ticks seed 0 via make_brain
+python: 3.11.15
+--- stdout ---
+target                    : plasticity.intrinsic_plasticity.IntrinsicPlasticity.adapt
+ticks                     : 400
+invocations A(wired)      : 0
+invocations B(neutered)   : 0
+behavioural digest A      : be9a7c11541bdb0c
+behavioural digest B      : be9a7c11541bdb0c
+behaviour changed         : NO
+internal reads changed    : 0 of 400 ticks
+NEVER-CALLED: the rule did not run on this path -- a neuter proves nothing here
