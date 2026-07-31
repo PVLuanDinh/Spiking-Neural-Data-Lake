@@ -155,7 +155,19 @@ class TimeCellClock:
             range(self.n_cells),
             key=lambda idx: abs(self.thresholds[idx] / self.drive - target_steps),
         )
-        t_pre = self.thresholds[i] / self.drive
+        # 'pre' is when the cell ACTUALLY FIRED, not its nominal latency. Using the nominal made this
+        # rule self-referential and structurally unable to learn: `i` is selected as the cell nearest
+        # `target_steps` BY `thresholds[i]/drive`, so re-deriving t_pre from that same quantity gives
+        # dt == 0 whenever any cell sits on the target -- always, since the ladder is integers and the
+        # targets are integers. Measured on the live path before this fix: 32 calls, dt == 0.0 on all
+        # 32, delta == 0.0 on all 32, thresholds byte-identical after 120 ticks. The rule could only
+        # ever move when NO cell matched, i.e. exactly when it was worst placed.
+        #
+        # `spike_tick[i]` is the tick the cell crossed threshold under the noisy ramp (noise_sd=0.15),
+        # which is what "fired too early / too late" in the docstring above actually means, and what
+        # decode() already differences as its `deviations`. Unfired cells have no observed event, so
+        # they keep the nominal -- there is nothing measured to correct yet.
+        t_pre = float(self.spike_tick[i]) if self.fired[i] else self.thresholds[i] / self.drive
         dt = target_steps - t_pre
         if dt > 0:
             e = a_plus * math.exp(-dt / tau)  # fired too early -> LTP -> raise threshold (delay it)
