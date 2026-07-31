@@ -142,18 +142,24 @@ def per_char(logprob):
     return scorer
 
 
-def cached_logprob(serve, unscorable=UNSCORABLE):
+def cached_logprob(serve):
     """Wrap serve.logprob in a per-sentence cache so BOTH scorings cost ONE forward pass per sentence.
 
     Honest-unavailable is preserved: a None logprob becomes a sentinel that always loses its comparison,
     never a fabricated number. The cache is a plain dict keyed by the sentence -- nothing is persisted,
-    so no builtin hash() value is ever written down."""
+    so no builtin hash() value is ever written down.
+
+    The sentinel is UNSCORABLE and is NOT overridable. It used to be an `unscorable=` parameter, which
+    made two sources of truth for one value: `per_char` recognises the sentinel by testing
+    `lp <= UNSCORABLE` against the module constant, so a caller passing anything larger (say -1e9) got
+    a sentinel per_char could not see, which then divided it by sentence length -- resurrecting exactly
+    the length bug the constant exists to prevent, silently and only for that caller."""
     cache = {}
 
     def logprob(sentence):
         if sentence not in cache:
             lp = serve.logprob(sentence)
-            cache[sentence] = unscorable if lp is None else lp
+            cache[sentence] = UNSCORABLE if lp is None else lp
         return cache[sentence]
 
     return logprob

@@ -48,12 +48,22 @@ disables the W3 duplicate-fingerprint check (`if len(facs) > 1 and fp:` short-ci
 empty tuple), which is how the two padding defects below survived the tool.
 
 **FINGERPRINT RE-VERIFICATION, 2026-07-30: the regex was widened and this paragraph is now half
-stale.** `FLIPS` accepts any bare `N/M` counter (lookarounds reject dates, paths and decimals), so all
-twelve Gf artifacts now carry a non-empty fingerprint and `--rerun` here is no longer an exit-code-only
-check: it compares `(2/2, 2/2)`-shaped observables as well. The ten `gf_reply_ab.py` A/Bs and both
-`arc_score.py` runs were re-executed under the widened regex and all twelve still reproduce. What did
-**not** change is the strength of the signal: see the roster-padding bullet below for what W3 caught
-once it could fire, and what it still cannot see.
+stale.** `FLIPS` accepts any bare `N/M` counter (lookarounds reject dates, paths and decimals), so
+**eleven of the twelve** Gf artifacts now carry a non-empty fingerprint and `--rerun` for those eleven
+is no longer an exit-code-only check: it compares `(2/2, 2/2)`-shaped observables as well. The ten
+`gf_reply_ab.py` A/Bs and both `arc_score.py` runs were re-executed under the widened regex and all
+twelve still reproduce. What did **not** change is the strength of the signal: see the roster-padding
+bullet below for what W3 caught once it could fire, and what it still cannot see.
+
+**CORRECTED 2026-07-31 (policy audit).** This paragraph said "all twelve" and that was an overclaim.
+**`gf_sleep_schema_induction` still fingerprints as the EMPTY tuple** — its stdout reports
+`A(wired): 2` / `B(neutered): 0` as bare counts, never as an `N/M` ratio, so no widening of a
+`N/M` regex can see it. For that ONE artifact the original caveat stands unchanged: **`--rerun`
+compares `()` to `()` and therefore checks the exit code only**, and W3/W5 cannot fire on it. It
+matters more than the other eleven, not less: at **band 45** it is the joint-highest row in this
+category and sits above the >40 line where the ledger requires a reproducing A/B. Re-derive with
+`_fingerprint(_artifact(...)['_stdout'])` over `docs/coverage/artifacts/gf_*.txt` — 12 artifacts,
+1 empty. Absence of W3 is not evidence of absence, and it is still not evidence of absence HERE.
 
 **REFUTED 1 -- `active_experiment_loop` is `number_series` re-entered, not a second faculty.**
 `_resume_experiment` (`spike_chat_lake.py:435-458`) has no induction mechanism of its own. Its entire
