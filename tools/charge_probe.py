@@ -197,7 +197,15 @@ def main():
     # supports the rubric's 41-60 band ("changes an internal read") while the 61-80 band ("changes a
     # decision, action or learning update") still requires a flip. Returning 0 here would let weaker
     # evidence satisfy a stronger claim, which is the inflation this whole instrument exists to stop.
-    if read_ticks > 0:
+    # ORDERING IS LOAD-BEARING, and the first version got it wrong. This branch sat ABOVE the
+    # undirected-source UNKNOWN branch below, so a source whose eligibility this probe CANNOT
+    # determine stopped returning 2 (UNKNOWN) and started returning 1 -- converting "I cannot ask
+    # this question" into a confident verdict. That is the exact inversion the constitution's third
+    # standing invariant forbids, and it silently changed the recorded exit code of every UNKNOWN
+    # artifact in the ledger: st_timing_60 went `recorded exit 2 / now 1` and failed --rerun while its
+    # observables were byte-identical. Caught by an artifact refusing to reproduce, not by review.
+    # A graded read is only a verdict for a source whose eligibility is KNOWN.
+    if read_ticks > 0 and tbl is not None:
         print(
             f"INTERNAL-READ CHANGED on {read_ticks} of {n} ticks: the signal is CONSUMED and moves values "
             f"the brain later reads, but never flips the act/hold winner or the trajectory. Rubric "
