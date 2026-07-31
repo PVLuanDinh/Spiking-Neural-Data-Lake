@@ -59,6 +59,32 @@ place:
    `cons_refute_strength_iso_120`'s only divergence is a `N/M turns` line, which the old regex could not
    see and would have passed as reproducing.
 
+### Citation rot: 23 of this ledger's citations point at a comment or a blank line
+
+Added 2026-07-31, and **counted before any rule leans on it**, per the standing invariant for adding a
+gate. `_cite_ok` verified only that the cited FILE existed and that the line number was INSIDE it. A
+cited file that gains lines above the cited point therefore leaves the number in range and pointing at
+something else, and `score --check` stays green while every affected claim quietly stops naming its
+evidence. This is not hypothetical: `SpatialTemporal.md` cited `brain.py:1325` for the place binding,
+commit `2454355f` added 14 lines above it, and 1325 became a comment. A human caught it; the instrument
+could not.
+
+Two mechanisms now exist:
+
+1. **`#anchor`** — a citation may be written `path:line#symbol`, where `symbol` is the `def`/`class` the
+   line sits in (or `module`). F5 REFUSES it if the line no longer sits in that symbol. Anchored to the
+   symbol rather than to the line's text on purpose: reformatting a line whose meaning never changed
+   must not fail the gate, because these citations are claims about WHICH CODE, not which characters.
+   The bare `path:line` form still resolves, so no existing row was invalidated.
+2. **W6** — a WARNING (never fatal) naming every citation that points at a comment or blank line.
+
+**The census: 23 rows across 10 of the 11 categories**, overwhelmingly into `cortex/brain.py`, the most
+edited file in the tree. They are NOT yet repaired and NOT yet anchored, and the order is deliberate:
+pinning anchors now would freeze whatever each citation happens to point at TODAY, laundering existing
+drift as correct. Repair first, on evidence, then pin. Until then W6 is the honest statement of how much
+of this ledger's evidence layer has rotted: a green `--check` means the numbers re-derive, **not** that
+every citation still names the code it was written about.
+
 ## The state of this ledger, stated plainly
 
 **It is a first pass, not the adversarially-verified sweep the rubric specifies.** The rubric's

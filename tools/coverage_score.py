@@ -173,9 +173,60 @@ def _fingerprint(stdout):
     return tuple(FLIPS.findall(stdout))
 
 
+# A citation is `path:line`, optionally `path:line#anchor` where anchor is the def/class the line sits
+# in (or `module`). The bare form checks only that the file exists and the line number is INSIDE it --
+# which is why citations rot silently: a cited file that gains lines ABOVE the cited point leaves the
+# number in range and pointing at something else entirely, while `score --check` stays green. That is
+# not hypothetical: `SpatialTemporal.md` cited `brain.py:1325` for the place binding, commit 2454355f
+# added 14 lines above it, and 1325 became a COMMENT. A human caught it; the instrument could not.
+_DEF = re.compile(r"^(\s*)(?:async\s+)?(?:def|class)\s+(\w+)")
+
+
+def _enclosing_symbol(lines, lineno):
+    """The def/class the cited line sits inside, else 'module'. This is the citation ANCHOR.
+
+    Anchored to the enclosing SYMBOL rather than to the line's text on purpose: pinning the text would
+    fail the gate on any reformat of a line whose meaning never changed, and this ledger's citations are
+    claims about WHICH CODE, not about which characters. Editing inside a function keeps the anchor;
+    lines shifting the citation out of that function breaks it, which is exactly the drift to catch."""
+    target = lines[lineno - 1]
+    indent = len(target) - len(target.expandtabs().lstrip())
+    for i in range(lineno - 1, -1, -1):
+        m = _DEF.match(lines[i])
+        if not m:
+            continue
+        if i == lineno - 1 or len(m.group(1)) < indent:
+            return m.group(2)
+    return "module"
+
+
+def _cite_kind(root, cite):
+    """'code' | 'comment' | 'blank' | '' (unreadable). A citation should name CODE: a citation that has
+    drifted onto a comment or a blank line is the visible symptom of rot, and is cheap to census."""
+    path, _, lineno = cite.partition("#")[0].rpartition(":")
+    if not lineno.isdigit():
+        return ""
+    full = os.path.join(root, path.replace("/", os.sep))
+    if not os.path.isfile(full):
+        return ""
+    with open(full, encoding="utf-8", errors="replace") as fh:
+        lines = fh.read().splitlines()
+    if int(lineno) > len(lines):
+        return ""
+    text = lines[int(lineno) - 1].strip()
+    if not text:
+        return "blank"
+    return "comment" if text.startswith("#") else "code"
+
+
 def _cite_ok(root, cite):
-    """A citation resolves iff the file exists AND the line number is inside it. Cheap, and it catches
+    """A citation resolves iff the file exists, the line number is inside it, AND -- when the citation
+    carries an `#anchor` -- the line still sits in the def/class the anchor names. Cheap, and it catches
     the coarse drift this repo has already shipped twice: a moved module and a retired file."""
+    anchor = None
+    if "#" in cite:
+        cite, _, anchor = cite.partition("#")
+        anchor = anchor.strip()
     if ":" not in cite:
         return False, "not file:line"
     path, _, lineno = cite.rpartition(":")
@@ -185,9 +236,14 @@ def _cite_ok(root, cite):
     if not os.path.isfile(full):
         return False, "file does not exist"
     with open(full, encoding="utf-8", errors="replace") as fh:
-        n = sum(1 for _ in fh)
+        lines = fh.read().splitlines()
+    n = len(lines)
     if int(lineno) > n:
         return False, f"line {lineno} past EOF (file has {n})"
+    if anchor:
+        got = _enclosing_symbol(lines, int(lineno))
+        if got != anchor:
+            return False, f"anchor drift: cited #{anchor}, line {lineno} now sits in {got}"
     return True, ""
 
 
@@ -277,6 +333,16 @@ def score(root, evdir):
                     ok, why = _cite_ok(root, c)
                     if not ok:
                         fail.append(f"F5 {where}: citation {c} does not resolve ({why})")
+                    elif "#" not in c and _cite_kind(root, c) in ("comment", "blank"):
+                        # W6, added 2026-07-31: a WARNING, not a refusal, because this gate is being
+                        # counted before anything leans on it. A citation naming a comment or a blank
+                        # line is the visible symptom of rot -- the line number is still in range, so
+                        # F5 passes, but the code it claimed to name has moved. Add `#anchor` to a
+                        # citation to have F5 verify the enclosing def/class instead of guessing.
+                        warn.append(
+                            f"W6 {where}: citation {c} points at a "
+                            f"{_cite_kind(root, c)} line, not code -- it has probably drifted"
+                        )
 
             if b <= 40:
                 if art and art != "-":  # an artifact on a low band is fine; still parse it
