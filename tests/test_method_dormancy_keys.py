@@ -72,8 +72,12 @@ def test_a_class_qualified_exemption_cannot_suppress_its_sibling():
     Asserted against the REAL tree, not a fixture, because the sibling pair is real and the
     over-suppression this guards against would be invisible in a synthetic one.
     """
-    exempt = dict(gate.EXEMPT_METHOD)
-    exempt["basal_ganglia.latent_q._TabularQ.update"] = ("permanent", "self-check control")
+    # Built from ONE key, not from the live table. Copying the real table made this test assert
+    # something it does not mean: LatentQ.update later earned its own OPEN exemption (kind `wire`,
+    # a standing TODO), so the copy reported it exempt and the test failed for the right reason at
+    # the wrong level. The property under test is narrower -- the CONTROL's exemption must not, by
+    # itself, reach its sibling.
+    exempt = {"basal_ganglia.latent_q._TabularQ.update": ("permanent", "self-check control")}
     dm, name = "basal_ganglia.latent_q", "update"
     for dcls, expected in (("_TabularQ", True), ("LatentQ", False)):
         hit = (

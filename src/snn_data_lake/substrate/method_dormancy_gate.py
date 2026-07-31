@@ -82,7 +82,42 @@ EXEMPT_METHOD = {
         "ADJUDICATED 2026-07-31 (runtime, adversarially reviewed): still dead, and the disposition "
         "should become RETIRE rather than wire -- the promised wiring is not a call site but a "
         "three-file redesign of Episode + ReplayBuffer, and the prioritised-replay capability it was "
-        "built for has no consumer today. Left as 'wire' pending the P2 port-before-retire step",
+        "built for has no consumer today. PORT CHECK (Phase D): the CLASS is live -- constructed at "
+        "brainstem/autonomous_loop.py:1548, which calls .store() and never this -- so retiring the "
+        "method does not touch the store. What blocks deletion is P2: amygdala-weighted prioritised "
+        "replay is a capability with no home elsewhere, and it must be ported before the method goes",
+    ),
+    # OPEN dispositions from the Phase D port checks (2026-07-31, specs/001-charge-the-dormant).
+    # Kind is NOT `permanent`, so the gate keeps reporting each as a standing TODO rather than hiding
+    # it. Every one is dead as a METHOD while its CLASS is live, which is the per-method amendment's
+    # whole point -- and not one of them can be retired today, because P2 requires porting a unique
+    # capability before deletion and each still owns one.
+    "cerebellum.forward_model.ForwardModel.update": (
+        "retire",
+        "ForwardModel.update -- never called on a live path (its UNCERTAIN was a false positive from "
+        "dict.update). PORT CHECK: the class is NOT dead -- jepa_world_model.py:672 imports it as the "
+        "BASELINE its own model is fit against, and gain_adaptation.py:33 documents it as a read-only "
+        "predictor/comparator. So the learning rule is dead while the comparator lives, and P2's "
+        "adopt-better question (JEPA superseding it) is answered for PREDICTION but not for this "
+        "update rule. Retire the method only after confirming the baseline never needs to re-fit",
+    ),
+    "neuromodulation.developmental_envelope.DevelopmentalEnvelope.update": (
+        "wire",
+        "DevelopmentalEnvelope.update -- dormant twice over: never called on any live path, and "
+        "discarded even under its opt-in flag. PORT CHECK: the class IS live, constructed at "
+        "brainstem/autonomous_loop.py:1570, so this is a dead method on a live object rather than a "
+        "dead module. The anneal mechanism is real and self-check-proven (monotone, deterministic "
+        "RNG), which is why the disposition is wire rather than retire -- but wiring it must be a "
+        "real consumer of the envelope, never a call added to satisfy this gate (P3)",
+    ),
+    "basal_ganglia.latent_q.LatentQ.update": (
+        "wire",
+        "LatentQ.update -- never called on a live path while the module is imported at "
+        "brainstem/autonomous_loop.py:30, the exact shape the per-method amendment was written for. "
+        "PORT CHECK surfaces a P2 question rather than a P3 one: basal_ganglia/mlp_q.py documents "
+        "itself as the NONLINEAR counterpart 'once described as a strict upgrade that made LatentQ "
+        "retirable', and its own docstring walks that claim back. So the honest next step is to settle "
+        "which of the two survives on a benchmark, not to wire the loser",
     ),
     # CLASS-QUALIFIED keys. Each names exactly one rule and can suppress nothing else.
     "basal_ganglia.latent_q._TabularQ.update": (

@@ -81,15 +81,15 @@ consumer and why the value does not reach it.
       (`src/snn_data_lake/amygdala/affective_appraisal.py:116`)
 - [X] T014 [P] [US3] Record the `TimeCellClock.learn_interval` A/B showing the plastic threshold does
       not move across the run (`src/snn_data_lake/cortex/time_cells.py:146`)
-- [ ] T015 [P] [US3] Record the `IntrinsicPlasticity.adapt` A/B showing no charge on the route taken
+- [X] T015 [P] [US3] Record the `IntrinsicPlasticity.adapt` A/B showing no charge on the route taken
       (`src/snn_data_lake/plasticity/intrinsic_plasticity.py:31`)
 - [X] T016 [US3] Write the disjoint-wiring finding into `docs/coverage/README.md`: for
       `AffectiveAppraisal.learn`, the charging pool is `w_aro` while the sole non-telemetry consumer
       reads `valence` (index `[0]`), so the learned signal and the consumed signal never meet
 - [X] T017 [US3] Record the P1 contradiction against `cortex/time_cells.py`'s own header claim to have
       replaced a hand-coded interval constant, citing the measurement from T014
-- [ ] T018 [US3] Verify all three artifacts reproduce: `--rerun` each, exit 0
-- [ ] T019 [US3] Commit Phase C (artifacts + docs only â€” no source behaviour changed yet)
+- [X] T018 [US3] Verify all three artifacts reproduce: `--rerun` each, exit 0
+- [X] T019 [US3] Commit Phase C (artifacts + docs only â€” no source behaviour changed yet)
 
 **Checkpoint**: SC-004 satisfied for all three; no band moved yet.
 
@@ -102,21 +102,21 @@ consumer and why the value does not reach it.
 **Independent test**: for each, either a recorded A/B shows the wire charges, or a port record shows
 the unique capability landed elsewhere before deletion.
 
-- [ ] T020 [P] [US1] Port check for `AffectiveEpisodicStore.consolidate`
+- [X] T020 [P] [US1] Port check for `AffectiveEpisodicStore.consolidate`
       (`src/snn_data_lake/hippocampus/affective_memory.py:173`): identify any capability unique to it
       and whether a consumer exists today; record the finding either way (P2 port-before-retire)
-- [ ] T021 [P] [US1] Port check for `ForwardModel.update`
+- [X] T021 [P] [US1] Port check for `ForwardModel.update`
       (`src/snn_data_lake/cerebellum/forward_model.py:111`)
-- [ ] T022 [P] [US1] Port check for `DevelopmentalEnvelope.update`
+- [X] T022 [P] [US1] Port check for `DevelopmentalEnvelope.update`
       (`src/snn_data_lake/neuromodulation/developmental_envelope.py:54`)
-- [ ] T023 [US1] Decide wire-or-retire per rule using research.md D5: WIRE only where a real call
+- [X] T023 [US1] Decide wire-or-retire per rule using research.md D5: WIRE only where a real call
       site exists, never to satisfy the gate; otherwise RETIRE with the port recorded, or EXEMPT with
       kind `wire`/`retire` so the gate keeps reporting it as a standing TODO
 - [ ] T024 [US1] For each rule wired: record the A/B proving it charges. A wire that measures
       CHANGED_NOTHING is a dead consumer and MUST be reverted (P3, data-model.md validation)
-- [ ] T025 [US1] For `LatentQ.update`: decide and dispose, noting the module is imported at
+- [X] T025 [US1] For `LatentQ.update`: decide and dispose, noting the module is imported at
       `brainstem/autonomous_loop.py:30` while every method of the class is cold
-- [ ] T026 [US1] Commit Phase D â€” behavioural changes only, separate from every instrument commit
+- [X] T026 [US1] Commit Phase D â€” behavioural changes only, separate from every instrument commit
 - [ ] T027 [US1] Re-run `--rerun` across all ledger artifacts after the behavioural changes and fix
       or disclose any that stop reproducing (research.md R2)
 
@@ -126,9 +126,9 @@ the unique capability landed elsewhere before deletion.
 
 ## Phase 6: Polish & Cross-Cutting â€” Phase E
 
-- [ ] T028 Re-band only where a measurement from Phase C or D bears on a band, citing that
+- [X] T028 Re-band only where a measurement from Phase C or D bears on a band, citing that
       measurement in the row's `measured_by` cell (FR-007); where a band does not move, restate why
-- [ ] T029 [P] Update `docs/COVERAGE_TO_100.md` phase 5 with the outcome, including any rule left
+- [X] T029 [P] Update `docs/COVERAGE_TO_100.md` phase 5 with the outcome, including any rule left
       OPEN and the reason
 - [ ] T030 [P] Update `docs/POLICIES.md` P3 candidate set, which has not been re-adjudicated since it
       was written
@@ -174,5 +174,6 @@ one that can invalidate recorded artifacts â€” hence T027.
 **Stop condition**: if a port check (T020-T022) shows a retirement would drop a capability with no
 home, that rule stays OPEN with the reason recorded. An unresolved rule with a stated reason is a
 valid outcome; a silenced one is not.
+
 
 

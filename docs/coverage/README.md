@@ -269,6 +269,25 @@ dispositions applies, so it is worth resolving properly rather than by picking t
 Left OPEN with the contradiction stated. Recording a confident verdict here would mean choosing
 between two measurements on the basis of which one ran last.
 
+### Phase 5 re-band (T028): five bands examined, none moved, each restated
+
+Five ledger rows cite the nine rules' files. Every one was re-examined against the Phase C/D
+measurements. **None changed**, and SC-005 is satisfied by restating why rather than by silence:
+
+| row | band | why the measurement does not move it |
+|---|---|---|
+| `Affect.learned_affective_appraisal` | 22 | Band 21–40 IS "live, not consumed". The measurement — charges arousal, sole consumer reads valence — is precisely a not-consumed finding, so it CONFIRMS the band instead of weakening it. |
+| `SpatialTemporal.interval_timing_time_cells` | 35 | The band rests on the interval TIMER (`_interval_timer`, ramping every wake tick), not on `learn_interval`. The measurement shows the PLASTICITY half is inert; the timing readout it was banded for is untouched. **The row must not be read as evidence that the interval is learned.** |
+| `Imagination.efference_copy_forward_model` | 10 | Band 1–20 is "built, not live". `ForwardModel.update` never called on a live path — exactly that. Confirmed, not contradicted. |
+| `Affect.somatic_marker_recall` | 40 | Rests on the store/recall path. `AffectiveEpisodicStore` is constructed live at `autonomous_loop.py:1548` and `.store()` is called; only `.consolidate()` is dead. The dead method is not what the band cites. |
+| `Memory.affective_content_retrieval` | 10 | Same store, same reasoning, and 1–20 already claims no more than "built". |
+
+**The pattern is worth naming**: every one of these bands was ALREADY at or below 40 — "live, not
+consumed" or "built, not live". The rules measured dead this phase were never carrying a charge claim
+in the first place. That is the ledger's conservatism working: nine rules found inert, and not one
+band was inflated by them. It is also why this phase moved no number, which is the correct outcome
+and not a missing deliverable.
+
 ## The state of this ledger, stated plainly
 
 **It is a first pass, not the adversarially-verified sweep the rubric specifies.** The rubric's

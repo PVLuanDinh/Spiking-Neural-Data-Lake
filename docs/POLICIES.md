@@ -279,7 +279,21 @@ ticks — prediction-error energy −67.8% with the call, +9.1% without it (weig
 
 Fixing it does not retract the argument; it completes it. The blind spot is no longer hypothetical: a
 half-dead module demonstrably passed the module gate, for as long as that feature had existed, and was
-found by an audit rather than by CI. That is the evidence this amendment rests on. The candidate set
+found by an audit rather than by CI. That is the evidence this amendment rests on.
+
+**RE-ADJUDICATED 2026-07-31 at RUNTIME** (`specs/001-charge-the-dormant`, and see
+`docs/coverage/README.md` for the per-rule evidence). Seventeen learning-verb methods were resolved by
+following the RECEIVER and instrumenting real tick runs, then adversarially reviewed: 8 LIVE with
+charge proven, 6 never called on a live path, 3 called on the right receiver and changing nothing.
+Dispositions: 2 permanent exemptions (dormant AND correct to be dormant), 4 OPEN exemptions each
+carrying a disposition and a port finding, 3 measured inert. **Nothing was wired or retired** — every
+port check found either a live class or an unported capability, and P2 forbids deleting either.
+Two instrument defects were fixed en route: exemption keys are now class-granular (`module.Class.method`;
+`n_defs` 56→58, because two same-named defs in one module had been overwriting each other and the
+finding was reported against the wrong class), and `charge_probe` gained a graded observable after its
+argmax flip counts were shown to report live faculties as inert.
+
+The candidate set
 below was produced by the import-scoped pass described next and has NOT been re-adjudicated since the
 predictive-coding fix — treat it as a starting list to verify, not a verdict.
 
