@@ -9,8 +9,8 @@ coordination, homeostasis, self-improvement. The roster below is grouped in that
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| homeostatic_drive_to_action | 40 | src/snn_data_lake/cortex/brain.py:1502; src/snn_data_lake/cortex/brain.py:1600 | wb_drive_60.txt | opus-5 WholeBrain REFUTER (was 65) / rubric ceiling COVERAGE_RUBRIC.md:99-102 + wb_refute_onset_60.txt | 2026-07-30 |
-| circadian_wake_sleep_gate | 35 | src/snn_data_lake/cortex/brain.py:2605; src/snn_data_lake/cortex/brain.py:2607 | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
+| homeostatic_drive_to_action | 40 | src/snn_data_lake/cortex/brain.py:1502; src/snn_data_lake/cortex/brain.py:1640#_drive_for | wb_drive_60.txt | opus-5 WholeBrain REFUTER (was 65) / rubric ceiling COVERAGE_RUBRIC.md:99-102 + wb_refute_onset_60.txt | 2026-07-30 |
+| circadian_wake_sleep_gate | 35 | src/snn_data_lake/cortex/brain.py:2605; src/snn_data_lake/cortex/brain.py:2659#tick | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
 | cpg_rhythm_to_action_preference | 35 | src/snn_data_lake/brainstem/autonomous_loop.py:585; src/snn_data_lake/brainstem/autonomous_loop.py:665 | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
 | interoceptive_caution_to_selection | 35 | src/snn_data_lake/brainstem/autonomous_loop.py:864; src/snn_data_lake/brainstem/autonomous_loop.py:657; src/snn_data_lake/brainstem/autonomous_loop.py:1264 | - | opus-5 WholeBrain REFUTER (was 40) / unrecorded in-process run, recordable and not recorded | 2026-07-30 |
 | cross_region_coherence_ignition_gate | 30 | src/snn_data_lake/cortex/brain.py:2069; src/snn_data_lake/substrate/region_coherence.py:132 | - | opus-5 WholeBrain REFUTER (was 35) / outcome measured INVARIANT at every gain incl. 0.0 | 2026-07-30 |

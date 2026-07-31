@@ -78,12 +78,38 @@ Two mechanisms now exist:
    The bare `path:line` form still resolves, so no existing row was invalidated.
 2. **W6** — a WARNING (never fatal) naming every citation that points at a comment or blank line.
 
-**The census: 23 rows across 10 of the 11 categories**, overwhelmingly into `cortex/brain.py`, the most
-edited file in the tree. They are NOT yet repaired and NOT yet anchored, and the order is deliberate:
-pinning anchors now would freeze whatever each citation happens to point at TODAY, laundering existing
-drift as correct. Repair first, on evidence, then pin. Until then W6 is the honest statement of how much
-of this ledger's evidence layer has rotted: a green `--check` means the numbers re-derive, **not** that
-every citation still names the code it was written about.
+**The census was 23 rows across 10 of the 11 categories**, overwhelmingly into `cortex/brain.py`, the
+most edited file in the tree. **All 23 are now repaired and anchored: the census stands at 1.**
+
+Each re-point was derived by locating the cited line's ORIGINAL text at the baseline commit and finding
+where that byte-identical text lives now (the offsets are uniform per region — `+26`, `+40`, `+52` —
+because the drift is insertions above, not rewrites), then reviewed by a second pass told that accepting
+a wrong citation is worse than leaving a rotted one. No citation was snapped to a nearby plausible line
+to silence a warning, and no row was found whose mechanism had disappeared.
+
+**The 1 remaining warning is correct and expected.** `Executive.md:20`'s citation of
+`autonomous_loop.py:878` really does name a comment — deliberately: that comment is the documentation of
+why PFC working memory is *unreachable* from the loop, which is the faculty's finding. A negative result
+cited to the prose that records it. It keeps warning, and that is better than an exemption list.
+
+**W6 fires for ANCHORED citations too, and the first version did not.** It skipped them, so adding an
+anchor SILENCED the census instead of fixing anything — a suppression path built into the check whose
+whole purpose is to end silent suppression. Fixed the same day it shipped; the Executive row is the
+proof, since it would otherwise now read 0.
+
+### The census UNDERCOUNTS, and by how much is not yet known
+
+Repairing the 23 surfaced a harder class the comment/blank heuristic is structurally blind to: **a
+citation that drifted onto a DIFFERENT LINE OF CODE.** Confirmed instances found while repairing, none
+of which W6 can see — `brain.py:596` (was the `_audio_enc` assignment, now the import two lines above
+it), `:1254` (was in `_consume_perception`, now in `_perceive_audio`), `:1112` (was in `_safe_ctx`, now
+in `_attend_real_stream`), plus `:1464`, `:2322` and one that should read `:1620#_drive_for`. Two of
+those keep the SAME enclosing function, so even an anchor would pass them.
+
+So the honest state: the visible symptom is cleared, the underlying rot is not. The mechanical fix is to
+re-derive every citation from its baseline-commit line text — the same method used by hand above, run
+over all 133 rows — and that is the next piece of this work, not something the current number reflects.
+A green `--check` still means the numbers re-derive, **not** that every citation names its evidence.
 
 ## The state of this ledger, stated plainly
 

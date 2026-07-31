@@ -17,7 +17,7 @@ one that produced them.
 | response_inhibition_nogo | 35 | src/snn_data_lake/basal_ganglia/action_gating.py:99; src/snn_data_lake/brainstem/autonomous_loop.py:753 | - | opus-5 / live gate spy, 200 ticks (veto rate; counterfactual undefined) -- audited value, re-read not re-measured | 2026-07-30 |
 | multi_step_plan_sequence | 30 | src/snn_data_lake/brainstem/autonomous_loop.py:982; src/snn_data_lake/cortex/executive_control.py:149 | exec_plan_60.txt | opus-5 refuter / executive_ab_probe.py plan 60 (exit 1 honest negative, reproduces) | 2026-07-30 |
 | metacognitive_arbitration | 30 | src/snn_data_lake/cortex/brain.py:1858; src/snn_data_lake/cortex/brain.py:2401; src/snn_data_lake/cortex/brain.py:2949 | - | opus-5 / live trace, 200 ticks, both gates counted at their decision point -- audited value, citations re-verified | 2026-07-30 |
-| pfc_working_memory_maintenance | 15 | src/snn_data_lake/cortex/prefrontal_executive.py:333; src/snn_data_lake/brainstem/autonomous_loop.py:878 | - | opus-5 / live trace, 200 ticks + the reverted-wire record at the citation -- audited value, citations re-verified | 2026-07-30 |
+| pfc_working_memory_maintenance | 15 | src/snn_data_lake/cortex/prefrontal_executive.py:333; src/snn_data_lake/brainstem/autonomous_loop.py:878#_pfc_bias | - | opus-5 / live trace, 200 ticks + the reverted-wire record at the citation -- audited value, citations re-verified | 2026-07-30 |
 | task_set_shifting | 0 | src/snn_data_lake/cortex/task_set.py:213; src/snn_data_lake/cortex/task_set.py:221 | - | opus-5 / live trace, 200 ticks (rubric rule 4) -- audited value, citations re-verified | 2026-07-30 |
 
 **Mean over the eight rows: 277 / 8 = 34.6.** Two above 40 with a recorded, reproduced and now

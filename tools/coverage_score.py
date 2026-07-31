@@ -333,12 +333,18 @@ def score(root, evdir):
                     ok, why = _cite_ok(root, c)
                     if not ok:
                         fail.append(f"F5 {where}: citation {c} does not resolve ({why})")
-                    elif "#" not in c and _cite_kind(root, c) in ("comment", "blank"):
+                    elif _cite_kind(root, c) in ("comment", "blank"):
                         # W6, added 2026-07-31: a WARNING, not a refusal, because this gate is being
                         # counted before anything leans on it. A citation naming a comment or a blank
                         # line is the visible symptom of rot -- the line number is still in range, so
                         # F5 passes, but the code it claimed to name has moved. Add `#anchor` to a
                         # citation to have F5 verify the enclosing def/class instead of guessing.
+                        #
+                        # This deliberately fires for ANCHORED citations too. The first version skipped
+                        # them (`"#" not in c and ...`), which meant adding an anchor SILENCED the
+                        # census rather than fixing anything -- a suppression path built into the very
+                        # check meant to end silent suppression. An anchor proves the citation still
+                        # sits in the right function; it says nothing about whether the line is code.
                         warn.append(
                             f"W6 {where}: citation {c} points at a "
                             f"{_cite_kind(root, c)} line, not code -- it has probably drifted"

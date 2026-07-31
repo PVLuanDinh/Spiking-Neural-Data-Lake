@@ -17,12 +17,12 @@ and the fix are below. Bands are capped at 40 accordingly; see rubric rule 2.
 |---|---|---|---|---|---|
 | multimodal_rate_encoding | 40 | src/snn_data_lake/cortex/multimodal_encoder.py:62;src/snn_data_lake/brainstem/autonomous_loop.py:1183 | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
 | eprop_event_vision_tier | 40 | src/snn_data_lake/cortex/brain.py:564;src/snn_data_lake/cortex/brain.py:1151 | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
-| eprop_event_audio_tier | 40 | src/snn_data_lake/cortex/brain.py:596;src/snn_data_lake/cortex/brain.py:1224 | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
+| eprop_event_audio_tier | 40 | src/snn_data_lake/cortex/brain.py:596;src/snn_data_lake/cortex/brain.py:1250#_perceive_audio | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
 | learned_attention_real_stream | 40 | src/snn_data_lake/cortex/learned_attention.py:136;src/snn_data_lake/cortex/brain.py:1083;src/snn_data_lake/cortex/brain.py:1120 | - | opus-5 neuter-A/B 46 of 60 ticks, NOT recordable | 2026-07-30 |
-| perceptual_novelty_salience | 40 | src/snn_data_lake/cortex/brain.py:1254;src/snn_data_lake/cortex/brain.py:1353;src/snn_data_lake/cortex/brain.py:1112 | novelty_120.txt | opus-5 charge_probe novelty 120, both import shapes | 2026-07-30 |
-| predictive_coding_prediction_error | 40 | src/snn_data_lake/cortex/live_brain.py:169;src/snn_data_lake/cortex/brain.py:1759;src/snn_data_lake/cortex/brain.py:1654 | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
+| perceptual_novelty_salience | 40 | src/snn_data_lake/cortex/brain.py:1254;src/snn_data_lake/cortex/brain.py:1393#_route_percept_to_action;src/snn_data_lake/cortex/brain.py:1112 | novelty_120.txt | opus-5 charge_probe novelty 120, both import shapes | 2026-07-30 |
+| predictive_coding_prediction_error | 40 | src/snn_data_lake/cortex/live_brain.py:169;src/snn_data_lake/cortex/brain.py:1799#_wake_tick;src/snn_data_lake/cortex/brain.py:1694#_w8_tick | - | opus-5 live-brain census, 40 ticks, seed 0 | 2026-07-30 |
 | crossmodal_superadditive_binding | 30 | src/snn_data_lake/cortex/crossmodal_binder.py:153;src/snn_data_lake/cortex/brain.py:1291;src/snn_data_lake/cortex/brain.py:2707 | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
-| percept_class_to_action_drive | 30 | src/snn_data_lake/cortex/brain.py:1428;src/snn_data_lake/cortex/brain.py:1580 | percept_60.txt | opus-5 charge_probe percept 60 and 120 | 2026-07-30 |
+| percept_class_to_action_drive | 30 | src/snn_data_lake/cortex/brain.py:1468#_route_percept_to_action;src/snn_data_lake/cortex/brain.py:1580 | percept_60.txt | opus-5 charge_probe percept 60 and 120 | 2026-07-30 |
 | perceptual_confidence_gate | 25 | src/snn_data_lake/reasoning/brain_adapters/laminar_local_readout.py:172;src/snn_data_lake/cortex/brain.py:1181 | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |
 | percept_surprise_orienting | 25 | src/snn_data_lake/cortex/percept_surprise.py:125;src/snn_data_lake/cortex/brain.py:1206;src/snn_data_lake/cortex/brain.py:1372 | surprise_60.txt | opus-5 charge_probe surprise 60 and 120 | 2026-07-30 |
 | percept_to_place_binding | 25 | src/snn_data_lake/hippocampus/grid_place_map.py:146;src/snn_data_lake/cortex/brain.py:1310 | - | opus-5 live-brain census, daemon import shape | 2026-07-30 |

@@ -7,18 +7,18 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
 | episodic_retrieval_to_reply | 40 | src/snn_data_lake/cortex/brain.py:3016; src/snn_data_lake/cortex/brain.py:3031 | - | memory-auditor (opus-5) / live respond() instrumentation | 2026-07-30 |
-| swr_value_consolidation | 40 | src/snn_data_lake/cortex/brain.py:2322; src/snn_data_lake/cortex/brain.py:1778 | - | memory-auditor (opus-5) / untracked buffer-neuter A/B | 2026-07-30 |
+| swr_value_consolidation | 40 | src/snn_data_lake/cortex/brain.py:2322; src/snn_data_lake/cortex/brain.py:1818#_wake_tick | - | memory-auditor (opus-5) / untracked buffer-neuter A/B | 2026-07-30 |
 | affective_somatic_retrieval | 40 | src/snn_data_lake/cortex/brain.py:3183; src/snn_data_lake/cortex/brain.py:2972 | - | memory-auditor (opus-5) / live respond() instrumentation | 2026-07-30 |
 | episodic_encode | 30 | src/snn_data_lake/cortex/brain.py:1688 | - | memory-auditor (opus-5) / live-tick instrumentation | 2026-07-30 |
-| episodic_retrieval_to_action | 30 | src/snn_data_lake/cortex/brain.py:1448; src/snn_data_lake/cortex/brain.py:1464 | recall_300.txt | memory-auditor (opus-5) / tools/charge_probe.py recall 300 | 2026-07-30 |
+| episodic_retrieval_to_action | 30 | src/snn_data_lake/cortex/brain.py:1488#_route_percept_to_action; src/snn_data_lake/cortex/brain.py:1464 | recall_300.txt | memory-auditor (opus-5) / tools/charge_probe.py recall 300 | 2026-07-30 |
 | working_memory_store | 30 | src/snn_data_lake/brainstem/autonomous_loop.py:1042; src/snn_data_lake/cortex/live_brain.py:238 | - | memory-auditor (opus-5) / live-tick instrumentation | 2026-07-30 |
 | attractor_sleep_replay | 30 | src/snn_data_lake/cortex/brain.py:2313; src/snn_data_lake/cortex/brain.py:2318 | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
-| durable_episode_consolidation | 25 | src/snn_data_lake/cortex/brain.py:2293; src/snn_data_lake/hippocampus/episode_consolidation.py:332 | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
-| semantic_store_durable_lake | 25 | src/snn_data_lake/substrate/home.py:82 | - | memory-auditor (opus-5) / static read + read-only record count | 2026-07-30 |
+| durable_episode_consolidation | 25 | src/snn_data_lake/cortex/brain.py:2333#_sleep_tick; src/snn_data_lake/hippocampus/episode_consolidation.py:332 | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
+| semantic_store_durable_lake | 25 | src/snn_data_lake/substrate/home.py:89#KnowledgeLog | - | memory-auditor (opus-5) / static read + read-only record count | 2026-07-30 |
 | chat_memory_store_and_recall | 25 | src/snn_data_lake/substrate/chat_memory.py:208; src/snn_data_lake/reasoning/spike_chat_lake.py:1011 | - | memory-auditor (opus-5) / static read (call chain traced) | 2026-07-30 |
 | synaptic_consolidation_benna_fusi | 25 | src/snn_data_lake/cortex/brain.py:2304; src/snn_data_lake/plasticity/plasticity_rule_stack.py:217 | - | memory-auditor (opus-5) / live-tick instrumentation, taught vs untaught | 2026-07-30 |
-| use_it_or_lose_it_forgetting | 20 | src/snn_data_lake/reasoning/spike_chat_lake.py:1029; src/snn_data_lake/cortex/brain.py:2473 | - | memory-auditor (opus-5) / static read + live-tick instrumentation | 2026-07-30 |
-| semantic_schema_induction | 15 | src/snn_data_lake/cortex/brain.py:2430 | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
+| use_it_or_lose_it_forgetting | 20 | src/snn_data_lake/reasoning/spike_chat_lake.py:1029; src/snn_data_lake/cortex/brain.py:2513#_enter_sleep | - | memory-auditor (opus-5) / static read + live-tick instrumentation | 2026-07-30 |
+| semantic_schema_induction | 15 | src/snn_data_lake/cortex/brain.py:2470#_enter_sleep | - | memory-auditor (opus-5) / live-tick instrumentation, 6 nights | 2026-07-30 |
 | affective_content_retrieval | 10 | src/snn_data_lake/hippocampus/affective_memory.py:151 | - | memory-auditor (opus-5) / whole-tree caller grep | 2026-07-30 |
 | contrastive_episode_analysis | 10 | src/snn_data_lake/brainstem/autonomous_loop.py:1563; src/snn_data_lake/cortex/live_brain.py:79 | - | memory-auditor (opus-5) / live-tick instrumentation | 2026-07-30 |
 | chat_memory_flush_noop | 0 | src/snn_data_lake/substrate/chat_memory.py:239 | - | memory-auditor (opus-5) / static read | 2026-07-30 |
