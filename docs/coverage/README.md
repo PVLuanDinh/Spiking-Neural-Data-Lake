@@ -127,6 +127,34 @@ target and still need a human, and an anchor proves only that a citation sits in
 drift WITHIN a function passes both checks. A green `--check` means the numbers re-derive; it has never
 meant, and still does not mean, that every citation names its evidence.
 
+### The neuter probe now reports a GRADED observable, because its flip counts were masking live faculties
+
+`charge_probe`'s two observables — act/hold changed, trajectory changed — are ARGMAX tests over eleven
+competing drive sources. Removing one voice almost never moves the winner, so a source that genuinely
+shifts the decision variable scored `0/60` and read as inert. `SpatialTemporal.md` measured the shape
+exactly: all-eleven neuter gives **47/60** trajectory flips, every single-source neuter gives **0/60**.
+The pathway is decisive; no single voice is, because ten others carry the sum. Phase 5 of
+`COVERAGE_TO_100.md` asks for a neuter-A/B per dormant faculty — run on that probe it would have
+produced masked negatives across the board, and a negative verdict is the one that retires a faculty.
+
+The probe now also reports **`internal reads changed by the signal: N of M ticks`**, plus the top state
+fields by total |delta| — the values the brain itself later reads. New verdict tier between the two
+existing ones: **INTERNAL-READ CHANGED**, which maps to the rubric's 41–60 band ("changes an internal
+read") while 61–80 ("changes a decision") still requires a flip.
+
+**It is deliberately NOT exit 0.** Exit 0 is the >40 gate in `coverage_score` (F8); returning it here
+would let 41–60 evidence satisfy a 61–80 claim, which is the inflation this instrument exists to stop.
+
+Measured immediately on the ledger's own known-good control: `drive 60` under the corrected harness
+gives **0/60 flips but 55/60 ticks of changed internal reads**, moving `acc_conflict`, `evc_value`,
+`evc_cost` and `reliability`. The control that looked dead is consumed — with evidence.
+
+The new line prints `N of M`, not `N/M`, on purpose: `_fingerprint` harvests every bare ratio in a
+probe's stdout, so a ratio here appended a third observable to every artifact's fingerprint and made
+all of them fail `--rerun` — an instrument change invalidating the evidence it exists to check. The two
+flip counts reproduce byte-identically either way, which is what proves this addition is not
+behavioural.
+
 ## The state of this ledger, stated plainly
 
 **It is a first pass, not the adversarially-verified sweep the rubric specifies.** The rubric's
