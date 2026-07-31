@@ -552,6 +552,119 @@ def rerun(root, evdir, name):
     return 0
 
 
+# ---------------------------------------------------------------- repin
+def _blame_commit(root, path, lineno):
+    """The commit that last wrote this ledger LINE -- i.e. when the citation on it was recorded."""
+    r = subprocess.run(
+        ["git", "-C", root, "blame", "-L", f"{lineno},{lineno}", "--porcelain", "--", path],
+        capture_output=True,
+        text=True,
+    )
+    if r.returncode != 0 or not r.stdout:
+        return None
+    sha = r.stdout.split()[0]
+    if len(sha) < 7 or not all(c in "0123456789abcdef" for c in sha):
+        return None
+    # An UNCOMMITTED line blames as all-zeroes, which is all-hex and so passed the check above. `git
+    # show 0000000:path` then fails, and every freshly-edited row was reported "text gone" -- a tool
+    # that says the evidence vanished when the truth is "you have not committed yet". Caught by
+    # re-running --repin straight after --write and disbelieving the 269.
+    return None if set(sha) == {"0"} else sha
+
+
+def _line_at(root, sha, path, lineno):
+    """The text of `path:lineno` as of `sha`, or None."""
+    r = subprocess.run(
+        ["git", "-C", root, "show", f"{sha}:{path}"], capture_output=True, text=True, errors="replace"
+    )
+    if r.returncode != 0:
+        return None
+    lines = r.stdout.splitlines()
+    return lines[lineno - 1] if 0 < lineno <= len(lines) else None
+
+
+def repin(root, evdir, write):
+    """Re-derive every citation from the text it named WHEN IT WAS WRITTEN, and re-point it to wherever
+    that text lives now.
+
+    This exists because the comment/blank census (W6) can only see citations that drifted onto a comment
+    or a blank line. A citation that drifted onto a DIFFERENT LINE OF CODE looks perfectly healthy, and
+    an anchor does not help when the drift stayed inside the same function. Six such were found by hand
+    while repairing the 23 visible ones -- the invisible class is the larger one.
+
+    The method is mechanical and auditable rather than judgement-based: `git blame` the ledger row to get
+    the commit that wrote the citation, read the cited line's text at that commit, then find that exact
+    text at HEAD. A UNIQUE match is a re-point. Anything else -- absent, or ambiguous because the line
+    text occurs more than once -- is REPORTED, never guessed, because a wrong re-point launders a broken
+    evidence link as a working one and is worse than the rot it replaces.
+
+    KNOWN LIMIT, and it cost four citations the first time this ran: `git blame` is per-LINE, so editing
+    a ledger ROW resets provenance for EVERY citation on that row. Repair one citation by hand and the
+    others on its row now blame to your repair commit -- at which point their already-drifted text reads
+    as the original, and this function pins the drift as correct. RUN `--repin` BEFORE hand-editing
+    rows, not after. Where that order was already broken, the drift is invisible here and has to be
+    recovered from an explicit pre-drift commit instead."""
+    hits = {"same": 0, "moved": 0, "absent": 0, "ambiguous": 0, "no_blame": 0}
+    edits = []
+    for cat in CATEGORIES:
+        path = os.path.join(evdir, cat + ".md")
+        if not os.path.isfile(path):
+            continue
+        rel = os.path.relpath(path, root).replace(os.sep, "/")
+        src_lines = open(path, encoding="utf-8").read().splitlines(keepends=True)
+        for lineno, cells in _table(path):
+            cite = cells[2]
+            if not cite or cite == "-":
+                continue
+            sha = _blame_commit(root, rel, lineno)
+            if not sha:
+                hits["no_blame"] += 1
+                continue
+            new_parts, touched = [], False
+            for part in [x.strip() for x in cite.split(";")]:
+                bare, _, anchor = part.partition("#")
+                fpath, _, num = bare.rpartition(":")
+                if not num.isdigit():
+                    new_parts.append(part)
+                    continue
+                was = _line_at(root, sha, fpath, int(num))
+                full = os.path.join(root, fpath.replace("/", os.sep))
+                if was is None or not was.strip() or not os.path.isfile(full):
+                    hits["absent"] += 1
+                    new_parts.append(part)
+                    continue
+                now = open(full, encoding="utf-8", errors="replace").read().splitlines()
+                where = [i + 1 for i, ln in enumerate(now) if ln.rstrip() == was.rstrip()]
+                if len(where) != 1:
+                    hits["ambiguous" if len(where) > 1 else "absent"] += 1
+                    new_parts.append(part)
+                    continue
+                tgt = where[0]
+                sym = _enclosing_symbol(now, tgt)
+                fixed = f"{fpath}:{tgt}#{sym}"
+                if fixed != part:
+                    touched = True
+                    hits["moved" if tgt != int(num) else "same"] += 1
+                    if tgt != int(num) or anchor != sym:
+                        edits.append((cat, cells[0], part, fixed, sha[:8]))
+                else:
+                    hits["same"] += 1
+                new_parts.append(fixed)
+            if touched:
+                src_lines[lineno - 1] = src_lines[lineno - 1].replace(cite, "; ".join(new_parts))
+        if write:
+            open(path, "w", encoding="utf-8", newline="\n").write("".join(src_lines))
+
+    for cat, fac, old, new, sha in edits:
+        print(f"  {cat}.{fac}\n      {old}\n   -> {new}   (written at {sha})")
+    print(
+        f"\nrepin: {hits['moved']} moved, {hits['same']} already correct, {hits['absent']} text gone, "
+        f"{hits['ambiguous']} ambiguous (text occurs more than once), {hits['no_blame']} unblamable"
+    )
+    print("DRY RUN -- pass --write to apply" if not write else "WRITTEN")
+    return 0
+
+
 # ---------------------------------------------------------------- report
 def report(root, evdir, check):
     cats, fail, warn = score(root, evdir)
@@ -614,9 +727,9 @@ def report(root, evdir, check):
 # into reporting artifacts as reproducing while rerunning none of them.
 _VERBS = ("record", "score", "report")  # `score`/`report` both name the default action, explicitly
 _VALUE_FLAGS = ("--root", "--evidence", "--name", "--kind", "--by", "--rerun")
-_BARE_FLAGS = ("--check",)
+_BARE_FLAGS = ("--check", "--repin", "--write")
 _USAGE = (
-    "usage: coverage_score.py [score|report] [--check] | --rerun NAME | "
+    "usage: coverage_score.py [score|report] [--check] | --rerun NAME | --repin [--write] | "
     "record --name N [--kind K] [--by B] -- COMMAND..."
 )
 
@@ -665,6 +778,8 @@ def main(argv):
             print("--rerun needs an artifact name, e.g. --rerun drive_60")
             return 2
         return rerun(root, evdir, name)
+    if "--repin" in argv:
+        return repin(root, evdir, "--write" in argv)
     return report(root, evdir, "--check" in argv)
 
 

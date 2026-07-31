@@ -13,19 +13,19 @@ see "What the refuter found" below.
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| number_series_program_synthesis | 45 | src/snn_data_lake/reasoning/spike_chat_lake.py:482;src/snn_data_lake/reasoning/reasoning_cortex.py:89 | gf_number_series.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py number_series | 2026-07-30 |
-| letter_analogy | 30 | src/snn_data_lake/reasoning/gf.py:1048;src/snn_data_lake/reasoning/spike_chat_lake.py:605 | gf_letter_analogy.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py letter_analogy | 2026-07-30 |
-| novel_ordering_analogy | 45 | src/snn_data_lake/reasoning/gf.py:848;src/snn_data_lake/reasoning/spike_chat_lake.py:597 | gf_novel_alphabet_analogy.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py novel_alphabet_analogy | 2026-07-30 |
-| raven_distribution_of_three | 42 | src/snn_data_lake/reasoning/reasoning_cortex.py:174;src/snn_data_lake/reasoning/spike_chat_lake.py:619 | gf_raven_dist3.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py raven_dist3 | 2026-07-30 |
-| example_to_rule_pair_induction | 41 | src/snn_data_lake/reasoning/reasoning_cortex.py:216 | gf_pair_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py pair_induction | 2026-07-30 |
-| arc_grid_program_synthesis | 35 | src/snn_data_lake/reasoning/reasoning_cortex.py:292;src/snn_data_lake/reasoning/reasoning_cortex.py:1015 | gf_arc_grid_synthesis.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py arc_grid_synthesis | 2026-07-30 |
-| relational_structure_mapping | 32 | src/snn_data_lake/reasoning/reasoning_cortex.py:623;src/snn_data_lake/cortex/brain.py:815#__init__ | gf_relational_structure_mapping.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py relational_structure_mapping | 2026-07-30 |
-| active_experiment_loop | 30 | src/snn_data_lake/reasoning/spike_chat_lake.py:435;src/snn_data_lake/reasoning/spike_chat_lake.py:554 | gf_active_experiment_loop.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py active_experiment_loop | 2026-07-30 |
-| rpm_nvsa_matrix_solving | 25 | src/snn_data_lake/reasoning/rpm_solver.py:362;src/snn_data_lake/reasoning/spike_chat_lake.py:1113 | gf_rpm_nvsa.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py rpm_nvsa | 2026-07-30 |
-| sleep_schema_induction | 45 | src/snn_data_lake/cortex/brain.py:2416;src/snn_data_lake/cortex/brain.py:2470#_enter_sleep | gf_sleep_schema_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py sleep_schema_induction | 2026-07-30 |
-| held_out_novel_problem_solving | 10 | src/snn_data_lake/reasoning/arc_bench.py:86;src/snn_data_lake/reasoning/arc_solver.py:862 | gf_arc_eval_lib_off.txt | opus-5 / tools/arc_score.py evaluation off (400 held-out tasks) | 2026-07-30 |
-| arc_cross_task_library_learning | 0 | src/snn_data_lake/reasoning/arc_solver.py:880 | gf_arc_eval_lib_on.txt | opus-5 / tools/arc_score.py evaluation on vs off | 2026-07-30 |
-| arc_scene_mint_out_of_closure_induction | 0 | src/snn_data_lake/reasoning/arc_mint.py:558;src/snn_data_lake/reasoning/arc_mint.py:646;src/snn_data_lake/reasoning/arc_scene.py:189 | - | opus-5 / static: every `mint(` call site in the tree | 2026-07-30 |
+| number_series_program_synthesis | 45 | src/snn_data_lake/reasoning/spike_chat_lake.py:482#_number_reply; src/snn_data_lake/reasoning/reasoning_cortex.py:89#NumberSeriesExpert | gf_number_series.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py number_series | 2026-07-30 |
+| letter_analogy | 30 | src/snn_data_lake/reasoning/gf.py:1048#letter_analogy; src/snn_data_lake/reasoning/spike_chat_lake.py:605#_gf_request | gf_letter_analogy.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py letter_analogy | 2026-07-30 |
+| novel_ordering_analogy | 45 | src/snn_data_lake/reasoning/gf.py:848#analogy_over; src/snn_data_lake/reasoning/spike_chat_lake.py:597#_gf_request | gf_novel_alphabet_analogy.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py novel_alphabet_analogy | 2026-07-30 |
+| raven_distribution_of_three | 42 | src/snn_data_lake/reasoning/reasoning_cortex.py:174#RavenExpert; src/snn_data_lake/reasoning/spike_chat_lake.py:619#_gf_request | gf_raven_dist3.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py raven_dist3 | 2026-07-30 |
+| example_to_rule_pair_induction | 41 | src/snn_data_lake/reasoning/reasoning_cortex.py:216#PairInductionExpert | gf_pair_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py pair_induction | 2026-07-30 |
+| arc_grid_program_synthesis | 35 | src/snn_data_lake/reasoning/reasoning_cortex.py:292#ArcExpert; src/snn_data_lake/reasoning/reasoning_cortex.py:1015#build_default_cortex | gf_arc_grid_synthesis.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py arc_grid_synthesis | 2026-07-30 |
+| relational_structure_mapping | 32 | src/snn_data_lake/reasoning/reasoning_cortex.py:623#StructureMappingSolver; src/snn_data_lake/cortex/brain.py:815#__init__ | gf_relational_structure_mapping.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py relational_structure_mapping | 2026-07-30 |
+| active_experiment_loop | 30 | src/snn_data_lake/reasoning/spike_chat_lake.py:435#_resume_experiment; src/snn_data_lake/reasoning/spike_chat_lake.py:554#_number_reply | gf_active_experiment_loop.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py active_experiment_loop | 2026-07-30 |
+| rpm_nvsa_matrix_solving | 25 | src/snn_data_lake/reasoning/rpm_solver.py:362#RpmExpert; src/snn_data_lake/reasoning/spike_chat_lake.py:1113#_get_cortex | gf_rpm_nvsa.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py rpm_nvsa | 2026-07-30 |
+| sleep_schema_induction | 45 | src/snn_data_lake/cortex/brain.py:2416#_enter_sleep; src/snn_data_lake/cortex/brain.py:2470#_enter_sleep | gf_sleep_schema_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py sleep_schema_induction | 2026-07-30 |
+| held_out_novel_problem_solving | 10 | src/snn_data_lake/reasoning/arc_bench.py:86#score; src/snn_data_lake/reasoning/arc_solver.py:862#make_solver | gf_arc_eval_lib_off.txt | opus-5 / tools/arc_score.py evaluation off (400 held-out tasks) | 2026-07-30 |
+| arc_cross_task_library_learning | 0 | src/snn_data_lake/reasoning/arc_solver.py:880#solver | gf_arc_eval_lib_on.txt | opus-5 / tools/arc_score.py evaluation on vs off | 2026-07-30 |
+| arc_scene_mint_out_of_closure_induction | 0 | src/snn_data_lake/reasoning/arc_mint.py:558#mint; src/snn_data_lake/reasoning/arc_mint.py:646#main; src/snn_data_lake/reasoning/arc_scene.py:189#scene | - | opus-5 / static: every `mint(` call site in the tree | 2026-07-30 |
 
 ---
 

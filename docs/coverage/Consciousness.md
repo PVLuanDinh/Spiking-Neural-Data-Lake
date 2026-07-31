@@ -6,18 +6,18 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| access_strength_graded | 42 | src/snn_data_lake/thalamus/reentrant_workspace.py:322;src/snn_data_lake/cortex/brain.py:2136;src/snn_data_lake/cortex/brain.py:1852 | cons_refute_strength_iso_120.txt | opus-5 REFUTER / consciousness_refute_probe.py strength_iso 120 (55 REFUTED) | 2026-07-30 |
-| second_order_access | 42 | src/snn_data_lake/cortex/second_order_access.py:176;src/snn_data_lake/cortex/second_order_access.py:142;src/snn_data_lake/cortex/brain.py:2949 | consciousness_second_120.txt | opus-5 REFUTER / consciousness_refute_probe.py second_thin,c1,ws,av,st 120 (50 REFUTED) | 2026-07-30 |
-| self_model | 38 | src/snn_data_lake/cortex/self_model.py:274;src/snn_data_lake/cortex/brain.py:2113 | - | opus-5 / scratchpad measure_consciousness2.py + 4.py | 2026-07-30 |
-| reentry_sustain | 35 | src/snn_data_lake/thalamus/reentrant_workspace.py:218;src/snn_data_lake/thalamus/reentrant_workspace.py:257 | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
+| access_strength_graded | 42 | src/snn_data_lake/thalamus/reentrant_workspace.py:322#access_strength; src/snn_data_lake/cortex/brain.py:2176#_observe_self_wake; src/snn_data_lake/cortex/brain.py:1892#_update_metacog | cons_refute_strength_iso_120.txt | opus-5 REFUTER / consciousness_refute_probe.py strength_iso 120 (55 REFUTED) | 2026-07-30 |
+| second_order_access | 42 | src/snn_data_lake/cortex/second_order_access.py:176#hold; src/snn_data_lake/cortex/second_order_access.py:142#observe; src/snn_data_lake/cortex/brain.py:3003#respond | consciousness_second_120.txt | opus-5 REFUTER / consciousness_refute_probe.py second_thin,c1,ws,av,st 120 (50 REFUTED) | 2026-07-30 |
+| self_model | 38 | src/snn_data_lake/cortex/self_model.py:274#confidence; src/snn_data_lake/cortex/brain.py:2153#_observe_self_wake | - | opus-5 / scratchpad measure_consciousness2.py + 4.py | 2026-07-30 |
+| reentry_sustain | 35 | src/snn_data_lake/thalamus/reentrant_workspace.py:218#step; src/snn_data_lake/thalamus/reentrant_workspace.py:257#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
 | ignition | 30 | src/snn_data_lake/cortex/brain.py:2289#_update_access;src/snn_data_lake/cortex/brain.py:1394#_route_percept_to_action | ignition_60.txt | opus-5 / tools/charge_probe.py ignition 60 | 2026-07-30 |
-| reentry_reroute | 28 | src/snn_data_lake/thalamus/reentrant_workspace.py:301;src/snn_data_lake/cortex/brain.py:1533 | reroute_60.txt | opus-5 / tools/charge_probe.py reroute 60 | 2026-07-30 |
-| global_availability | 25 | src/snn_data_lake/thalamus/reentrant_workspace.py:315;src/snn_data_lake/cortex/access_consciousness.py:224#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
-| integration_measure_pci | 22 | src/snn_data_lake/cortex/brain.py:2332;src/snn_data_lake/cortex/brain.py:2801 | - | opus-5 / scratchpad measure_consciousness2.py, 200 ticks / 8 nights | 2026-07-30 |
-| arm_workspace_broadcast | 21 | src/snn_data_lake/brainstem/autonomous_loop.py:1072;src/snn_data_lake/cortex/live_brain.py:92 | - | opus-5 / scratchpad measure_consciousness4.py, 240 ticks | 2026-07-30 |
-| reentrant_predictive_completion | 15 | src/snn_data_lake/reasoning/gwt_reentry.py:50;src/snn_data_lake/reasoning/consciousness_probe.py:102 | - | opus-5 / static reachability + live respond() probe | 2026-07-30 |
-| reportability_of_access_content | 12 | src/snn_data_lake/cortex/live_brain.py:365;src/snn_data_lake/reasoning/spike_chat_lake.py:929 | - | opus-5 / live respond() on the three consciousness phrases | 2026-07-30 |
-| binding_of_broadcast_content | 10 | src/snn_data_lake/thalamus/global_workspace.py:335;src/snn_data_lake/thalamus/global_workspace.py:605 | - | opus-5 / static call-site search (self-check only) | 2026-07-30 |
+| reentry_reroute | 28 | src/snn_data_lake/thalamus/reentrant_workspace.py:301#_deliver; src/snn_data_lake/cortex/brain.py:1573#_route_percept_to_action | reroute_60.txt | opus-5 / tools/charge_probe.py reroute 60 | 2026-07-30 |
+| global_availability | 25 | src/snn_data_lake/thalamus/reentrant_workspace.py:315#_deliver; src/snn_data_lake/cortex/access_consciousness.py:224#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
+| integration_measure_pci | 22 | src/snn_data_lake/cortex/brain.py:2372#_sleep_tick; src/snn_data_lake/cortex/brain.py:2855#state | - | opus-5 / scratchpad measure_consciousness2.py, 200 ticks / 8 nights | 2026-07-30 |
+| arm_workspace_broadcast | 21 | src/snn_data_lake/brainstem/autonomous_loop.py:1072#_workspace_broadcast; src/snn_data_lake/cortex/live_brain.py:92#__init__ | - | opus-5 / scratchpad measure_consciousness4.py, 240 ticks | 2026-07-30 |
+| reentrant_predictive_completion | 15 | src/snn_data_lake/reasoning/gwt_reentry.py:50#run_loop; src/snn_data_lake/reasoning/consciousness_probe.py:102#probe_reentry | - | opus-5 / static reachability + live respond() probe | 2026-07-30 |
+| reportability_of_access_content | 12 | src/snn_data_lake/cortex/live_brain.py:365; src/snn_data_lake/reasoning/spike_chat_lake.py:929#converse | - | opus-5 / live respond() on the three consciousness phrases | 2026-07-30 |
+| binding_of_broadcast_content | 10 | src/snn_data_lake/thalamus/global_workspace.py:335#bind_broadcast_spiking; src/snn_data_lake/thalamus/global_workspace.py:605#main | - | opus-5 / static call-site search (self-check only) | 2026-07-30 |
 
 **Category score: 26.7** = 320 / 12, **down from the audited 28.4 after an adversarial pass in which
 both band-41+ rows fell** (55 -> 42 and 50 -> 42). Two rows still clear 40 on recorded neuter-A/Bs, but

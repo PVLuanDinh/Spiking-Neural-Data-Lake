@@ -106,10 +106,26 @@ it), `:1254` (was in `_consume_perception`, now in `_perceive_audio`), `:1112` (
 in `_attend_real_stream`), plus `:1464`, `:2322` and one that should read `:1620#_drive_for`. Two of
 those keep the SAME enclosing function, so even an anchor would pass them.
 
-So the honest state: the visible symptom is cleared, the underlying rot is not. The mechanical fix is to
-re-derive every citation from its baseline-commit line text — the same method used by hand above, run
-over all 133 rows — and that is the next piece of this work, not something the current number reflects.
-A green `--check` still means the numbers re-derive, **not** that every citation names its evidence.
+**Now mechanized: `python tools/coverage_score.py --repin [--write]`.** It `git blame`s each ledger row
+to find the commit that WROTE the citation, reads the cited line's text at that commit, and locates that
+byte-identical text at HEAD. A unique match is a re-point; absent or ambiguous is reported and never
+guessed. Dry run by default.
+
+**The first run found 81 drifted citation references — W6 had been able to see 23 of them.** Also 180
+already correct, 0 whose text had vanished, 16 ambiguous (the line text occurs more than once at HEAD,
+so no unique target exists). All 126 citation references now carry `#anchor`.
+
+**The ordering trap, recorded because it caught this repair.** `git blame` is per-LINE, so editing a
+ledger ROW resets provenance for every OTHER citation on that row. The 23 hand-repairs therefore erased
+the blame trail for their row-mates, and `--repin` then read their already-drifted text as the original
+and pinned the drift as correct — with an anchor on it, which made it look verified. Four citations were
+recovered from an explicit pre-drift commit instead (`brain.py:596→598`, `1254→1280`, `1112→1138`,
+`1464→1504`). **Run `--repin` BEFORE hand-editing rows, never after.**
+
+Two known gaps remain, stated rather than implied fixed: the 16 ambiguous references have no unique
+target and still need a human, and an anchor proves only that a citation sits in the right function —
+drift WITHIN a function passes both checks. A green `--check` means the numbers re-derive; it has never
+meant, and still does not mean, that every citation names its evidence.
 
 ## The state of this ledger, stated plainly
 
