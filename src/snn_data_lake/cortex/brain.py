@@ -1560,7 +1560,15 @@ class Brain:
                     if da > 0.0 and da > self._rpe_base:
                         self._learned_latency = max(1, int(round(el)))
                         self._time_clock.learn_interval(self._learned_latency, da)
-                        self._time_clock.reset()
+                        # REWARD TEACHES, IT DOES NOT RESTART THE CLOCK. This used to call
+                        # `self._time_clock.reset()` here, which made reward the start of the next
+                        # timed interval -- so elapsed-at-reward was 1-3 ticks, the target was almost
+                        # always 1, and there was nothing long enough to have timing error in it.
+                        # In the standard interval-timing paradigm the clock starts at the CUE (trial
+                        # onset) and reward marks the END of a criterion duration; the interval is
+                        # cue->reward, set by the task (Fixed-Interval schedules run 30-60 s in
+                        # animals). The cue-driven reset already exists below at the salient-stimulus
+                        # branch, which is the correct and only place an interval should begin.
                     elif self._learned_latency:
                         lat = float(self._learned_latency)
                         elig["timing"] = max(0.0, 1.0 - min(1.0, abs(el - lat) / max(1.0, lat)))

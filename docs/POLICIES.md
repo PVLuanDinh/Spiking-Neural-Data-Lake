@@ -566,6 +566,27 @@ least one other faculty through a typed, declared route rather than only from an
 handler, and (b) at least one other faculty **consumes its output** in a way that changes that consumer's
 own output. One-way is allowed — brains are full of one-way projections — but *zero*-way is not.
 
+**FIRST QUANTITATIVE P6 READING, 2026-07-31.** P6's gate is specified but not built, so until now it had
+no number. The global workspace is the one structure in this brain shaped like a mutual-consumption bus
+(the role a transformer's residual stream plays: many writers, and later computation READS it), so the
+checkable proxy is its write:read topology.
+
+Measured by AST over `src/snn_data_lake/` — **36 workspace writes across 8 modules, 2 reads across 2**.
+The breakdown is the finding, not the ratio: **25 of the 36 writes are inside the two workspace modules
+themselves** (`global_workspace` 14, `reentrant_workspace` 11), so real faculty broadcast is **11 writes
+from 6 faculties** — `train_of_thought`, `autonomous_loop`, `access_consciousness`, `rpm_solver`,
+`spike_chat_lake`, `executive_control`. The two readers are `cortex/live_brain.py:287` and
+`reasoning/developmental_loop_brain.py:295`, and **`live_brain` is the tick driver** — the action path.
+
+So the bus exists and is used as a **broadcast sink whose only live consumer is the action path**: the
+single action gate wearing a bus's clothes. Not one faculty reads another faculty's contribution, which
+is zero-way at the faculty level and precisely what this policy forbids.
+
+**The cheap remedy this implies**: faculties should READ the workspace, not only `submit()` to it. That
+is what makes one faculty's broadcast change another faculty's output — condition (b) — and it needs no
+new router, only consumers on a bus that already exists. Re-derive with the AST walk any time; a rising
+read count against a flat write count is what P6 progress looks like.
+
 **How this is NOT P3, since the two are easy to confuse and the distinction is the whole point.** P3 asks
 whether a faculty changes **behaviour** — the arm, a value, a weight, a reply. P6 asks whether a faculty
 changes **another faculty**. They come apart in both directions, and both directions are real here:
