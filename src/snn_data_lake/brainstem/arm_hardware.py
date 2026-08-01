@@ -30,6 +30,8 @@ THE FINDING THAT MOTIVATED WRITING THIS AS CODE
 
 from __future__ import annotations
 
+from snn_data_lake.brainstem import arm_config as _arm_config
+
 # ---- servos ---------------------------------------------------------------------------------
 # Feetech ST3215 family. Stall figures from the notes; RATED is derived as stall/4 per the notes'
 # own sizing rule, because a continuous-duty number is what a joint must actually be sized against.
@@ -86,14 +88,13 @@ TARGET = {
 # joint -> (servo, distance from that joint to the payload in mm). The distance is what converts a
 # payload mass into a torque at that joint; wrist roll and the gripper carry no bending moment from
 # the payload's weight, so their lever arm is 0.
-JOINTS = (
-    ("base_yaw", "ST3215-1:345", 0.0),  # vertical axis: carries no gravity moment, only inertia
-    ("shoulder_pitch", "ST3215-1:345", 300.0),
-    ("elbow_pitch", "ST3215-1:191", 180.0),
-    ("wrist_pitch", "ST3215-1:191", 60.0),
-    ("wrist_roll", "ST3215-1:147", 0.0),
-    ("gripper", "SC-series", 0.0),
-)
+# DERIVED from arm_config.JOINTS, not written twice. This used to be a literal, and a literal
+# here is a second source of truth for the same six rows -- rename a joint or re-spec a servo in
+# one place and the torque table silently describes a different arm than the vocabulary does.
+# arm_config owns the table (it is "calibration in ONE place"); this is the build-target view of
+# it: (alias, servo, lever_mm). base_yaw is a vertical axis and carries no gravity moment, only
+# inertia -- which is why its lever is 0.0 and its required torque comes out zero below.
+JOINTS = tuple((j.alias, j.servo, j.lever_mm) for j in _arm_config.JOINTS)
 
 
 def holding_torque_kgcm(lever_mm, payload_kg=None, arm_mass_kg=0.0, arm_cog_mm=None):

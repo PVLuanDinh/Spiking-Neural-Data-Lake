@@ -45,3 +45,99 @@ def test_bins_from_capture_percentiles_and_range_filter():
     caps = [0.05, 0.1, 0.2, 0.4, 0.5, 0.7, 0.9, 5.0]  # 5.0 is out of range -> must be dropped
     near, mid = ac.bins_from_capture(caps)
     assert 0.0 < near <= mid < ac.IN_RANGE_MAX  # monotone, in range, derived from real data
+
+
+# ---- SO-101 joint table (specs/004) -------------------------------------------------------
+# The limits are read from the vendored model rather than written here. These tests exist to
+# make that provenance enforceable: if someone "helpfully" transcribes the numbers, or swaps the
+# asset, the derived values stop matching the model and this fails.
+
+import hashlib  # noqa: E402
+import pathlib  # noqa: E402
+
+_SO101 = pathlib.Path(ac.__file__).parent / "so101"
+
+# sha256 of the model DEFINITION files (not the 16 MB of meshes -- those do not define behaviour).
+# Pinned so an asset swap is loud. If a model bump is intentional, update these in the same commit
+# and say why; that is the point of pinning, not an obstacle to it.
+_EXPECTED_MODEL_SHA = {
+    "scene.xml": "9ee80b36871b57c72dc63e0785491ebcc75ab895e0623e9982e2da3a4b4d1908",
+    "so101_new_calib.xml": "38182130d4ae18c53e872d1414dde8444865250d3fb2bcffa0286ec855185475",
+}
+
+
+def test_vendored_model_fingerprint():
+    """A silent asset swap changes the physics under every torque and limit assertion."""
+    for name, want in _EXPECTED_MODEL_SHA.items():
+        got = hashlib.sha256((_SO101 / name).read_bytes()).hexdigest()
+        assert got == want, (
+            f"{name} changed: {got[:16]}... != pinned {want[:16]}... "
+            "If the model bump is intentional, update the pin in the same commit."
+        )
+
+
+def test_joint_table_shape():
+    assert len(ac.JOINTS) == 6, "SO-101 is 6-DOF"
+    assert [j.qpos_index for j in ac.JOINTS] == list(range(6)), "table must be in qpos order"
+    assert len({j.name for j in ac.JOINTS}) == 6, "MJCF joint names must be unique"
+    assert len(ac.HOME_QPOS) == 6
+
+
+def test_joint_names_resolve_in_the_model():
+    """The MJCF name is the canonical identity -- it must actually exist in the asset."""
+    import mujoco
+
+    m = ac._model()
+    for j in ac.JOINTS:
+        jid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, j.name)
+        assert jid == j.qpos_index, f"{j.name}: table says qpos {j.qpos_index}, model says {jid}"
+
+
+def test_limits_are_read_from_the_model_not_transcribed():
+    """Every limit must equal the model's own value exactly."""
+    m = ac._model()
+    lim = ac.JOINT_LIMITS
+    for j in ac.JOINTS:
+        r = lim[j.name]
+        assert r["ctrl_lo"] == float(m.actuator_ctrlrange[j.qpos_index][0])
+        assert r["ctrl_hi"] == float(m.actuator_ctrlrange[j.qpos_index][1])
+        assert r["stop_lo"] == float(m.jnt_range[j.qpos_index][0])
+        assert r["stop_hi"] == float(m.jnt_range[j.qpos_index][1])
+
+
+def test_ctrl_and_stop_ranges_are_distinct():
+    """They are MEASURED unequal on this model, and conflating them is a defect.
+
+    Clamping to the physical stop would let a command through that the actuator then silently
+    pins at the rail -- the silent acceptance the spec forbids. Pinned so the distinction is not
+    "simplified away" by someone who assumes they are the same table.
+    """
+    lim = ac.JOINT_LIMITS
+    differing = [
+        j.name
+        for j in ac.JOINTS
+        if (lim[j.name]["ctrl_hi"], lim[j.name]["ctrl_lo"])
+        != (lim[j.name]["stop_hi"], lim[j.name]["stop_lo"])
+    ]
+    assert differing, (
+        "ctrl and stop ranges are now identical on every joint -- if the model really changed, "
+        "the two-table distinction still holds conceptually, but re-check the gate's clamp source."
+    )
+
+
+def test_home_pose_is_commandable():
+    lim = ac.JOINT_LIMITS
+    for j in ac.JOINTS:
+        r = lim[j.name]
+        assert r["ctrl_lo"] <= ac.HOME_QPOS[j.qpos_index] <= r["ctrl_hi"], (
+            f"{j.name}: HOME is outside the commandable range"
+        )
+
+
+def test_arm_hardware_rows_are_derived_from_this_table():
+    """arm_hardware.JOINTS must be a view of arm_config.JOINTS, not a second literal."""
+    from snn_data_lake.brainstem import arm_hardware
+
+    assert arm_hardware.JOINTS == tuple((j.alias, j.servo, j.lever_mm) for j in ac.JOINTS), (
+        "arm_hardware.JOINTS drifted from arm_config.JOINTS"
+    )

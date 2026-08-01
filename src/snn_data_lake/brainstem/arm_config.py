@@ -12,6 +12,10 @@ sensor-specific — see IR_PRESENT below).
   python arm_config.py        # self-check
 """
 
+import pathlib as _pathlib
+from collections import namedtuple as _namedtuple
+from functools import lru_cache as _lru_cache
+
 # ---- distance bins (metres) ----------------------------------------------------
 # NEAR/MID/FAR channels feed Paradigm B's order-aware sequence detector.
 NEAR_MAX = 0.30  # d <  NEAR_MAX            -> NEAR
@@ -75,6 +79,102 @@ def bins_from_capture(distances, lo=0.33, hi=0.66):
     return xs[int(lo * (len(xs) - 1))], xs[int(hi * (len(xs) - 1))]
 
 
+# ---- the SO-101 body: joint vocabulary, limits, home pose ------------------------------
+# v4.81 -- the arm becomes the MuJoCo SO-101 (specs/004). This is the ONE place the joint
+# vocabulary and the joint limits are defined, so a token, a limit and a servo row cannot
+# drift apart.
+#
+# P1: the LIMITS ARE NOT WRITTEN HERE. They are read from the vendored model, which is the
+# only thing that actually constrains the body -- transcribing six pairs of floats into this
+# file would create a second source of truth that silently goes stale when the model is bumped.
+# Only alias / servo / lever_mm are hand-written, because they describe the PHYSICAL build
+# target and have no counterpart in the simulation model.
+#
+# LOADED LAZILY, on purpose. Loading the model costs ~134 ms and this module is imported by a
+# wide fan-in (arm_sim, serial_arm, autonomous_loop, live_arm, fear_conditioning, ...), while
+# run_selfchecks spawns one subprocess per module. Paying 134 ms at import would tax every one
+# of them for a value most never read. Provenance is what P1 asks for, not import timing.
+
+_SO101_SCENE = _pathlib.Path(__file__).with_name("so101") / "scene.xml"
+
+#: One row per joint, in qpos order. `name` is the MJCF joint name and is the CANONICAL
+#: identity -- it is the only name that also exists outside this repo and must resolve through
+#: mj_name2id, so renaming it would fork the vendored asset. `alias` is the build-target name
+#: used by arm_hardware's torque table.
+JointSpec = _namedtuple("JointSpec", "qpos_index name alias servo lever_mm")
+
+JOINTS = (
+    JointSpec(0, "shoulder_pan", "base_yaw", "ST3215-1:345", 0.0),
+    JointSpec(1, "shoulder_lift", "shoulder_pitch", "ST3215-1:345", 300.0),
+    JointSpec(2, "elbow_flex", "elbow_pitch", "ST3215-1:191", 180.0),
+    JointSpec(3, "wrist_flex", "wrist_pitch", "ST3215-1:191", 60.0),
+    JointSpec(4, "wrist_roll", "wrist_roll", "ST3215-1:147", 0.0),
+    JointSpec(5, "gripper", "gripper", "SC-series", 0.0),
+)
+
+
+#: The rotate token for a joint. The REGEX that parses these is syntax; THIS TABLE is the
+#: vocabulary. A site that matches the shape without checking membership here can mint a token
+#: for a joint that does not exist, which is how the 2-DOF vocabulary came to be defined in
+#: eight places that disagreed.
+def token_for(name):
+    """MJCF joint name -> its rotate command token."""
+    return f"JOINT_{name.upper()}_ROTATE"
+
+
+TOKENS = tuple(token_for(j.name) for j in JOINTS if j.name != "gripper")
+
+#: The model carries no keyframe (nkey == 0), so the home pose is DECLARED by this repo rather
+#: than read from the asset. All-zeros is the model's own rest configuration. HOME is applied as
+#: a hard reset, never as "command zeros and let it settle" -- settling is not bitwise
+#: reproducible across start poses, and the home assertion depends on it being so.
+HOME_QPOS = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+
+@_lru_cache(maxsize=1)
+def _model():
+    """The vendored SO-101 model. Cached; see the lazy-loading note above."""
+    import mujoco  # local: keeps the ~134 ms off every import of this module
+
+    return mujoco.MjModel.from_xml_path(str(_SO101_SCENE))
+
+
+@_lru_cache(maxsize=1)
+def _joint_limits():
+    """Per-joint limits, read from the model.
+
+    TWO ranges, deliberately kept apart because they are MEASURED UNEQUAL on this model
+    (shoulder_pan: stop +/-1.91986218 vs ctrl +/-1.91986):
+
+      ctrl_lo/ctrl_hi -- actuator_ctrlrange: what BINDS A POSITION COMMAND. The gate clamps
+                         to this, so `clamped` is true exactly when the command was altered.
+      stop_lo/stop_hi -- jnt_range: the PHYSICAL STOP, enforced by the solver as a constraint.
+                         The contact probe gates on this, because a probe that ignores it
+                         reports out-of-range poses as collision-free.
+
+    Conflating them is a defect: clamping to the stop lets a command through that the actuator
+    then silently pins at the rail, which is the silent acceptance the spec forbids.
+    """
+    m = _model()
+    out = {}
+    for j in JOINTS:
+        out[j.name] = {
+            "ctrl_lo": float(m.actuator_ctrlrange[j.qpos_index][0]),
+            "ctrl_hi": float(m.actuator_ctrlrange[j.qpos_index][1]),
+            "stop_lo": float(m.jnt_range[j.qpos_index][0]),
+            "stop_hi": float(m.jnt_range[j.qpos_index][1]),
+        }
+    return out
+
+
+def __getattr__(name):
+    """PEP 562 lazy attribute so `arm_config.JOINT_LIMITS` reads naturally without the model
+    being loaded by every importer of this module."""
+    if name == "JOINT_LIMITS":
+        return _joint_limits()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 def main():
     assert dbin(0.1) == NEAR and dbin(0.45) == MID and dbin(0.9) == FAR
     assert dbin(3.0) is None, "out-of-range must read as idle"
@@ -90,7 +190,28 @@ def main():
     print(f"reflex     : CONTACT={CONTACT} m   window W={W} stride={STRIDE}")
     print(f"IR fusion  : {'OFF (distance-only)' if IR_PRESENT is None else IR_PRESENT}")
     print(f"derived bins from sample capture: NEAR<{near:.3f} MID<{mid:.3f}")
-    print("self-check OK: bins, presence, IR-gating, capture-derived bins")
+    # ---- SO-101 joint table -------------------------------------------------------
+    assert len(JOINTS) == 6, f"expected 6 joints, got {len(JOINTS)}"
+    assert [j.qpos_index for j in JOINTS] == list(range(6)), "JOINTS must be in qpos order"
+    assert len(set(j.name for j in JOINTS)) == 6, "duplicate MJCF joint name"
+    assert len(HOME_QPOS) == 6, "HOME_QPOS must have one entry per joint"
+    lim = _joint_limits()
+    assert set(lim) == {j.name for j in JOINTS}, "limits and vocabulary disagree"
+    for j in JOINTS:
+        r = lim[j.name]
+        assert r["ctrl_lo"] < r["ctrl_hi"], f"{j.name}: empty ctrl range"
+        assert r["stop_lo"] < r["stop_hi"], f"{j.name}: empty stop range"
+        assert r["ctrl_lo"] <= HOME_QPOS[j.qpos_index] <= r["ctrl_hi"], (
+            f"{j.name}: home pose is outside the commandable range"
+        )
+    print(f"joints     : {len(JOINTS)} (MJCF names, limits read from the model)")
+    print(f"tokens     : {len(TOKENS)} rotate tokens + ENGAGE/RELEASE for the gripper")
+    _pan = lim["shoulder_pan"]
+    print(
+        "limits     : ctrl and stop are DISTINCT -- shoulder_pan ctrl_hi="
+        f"{_pan['ctrl_hi']:.8f} vs stop_hi={_pan['stop_hi']:.8f}"
+    )
+    print("self-check OK: bins, presence, IR-gating, capture-derived bins, SO-101 joint table")
 
 
 if __name__ == "__main__":
