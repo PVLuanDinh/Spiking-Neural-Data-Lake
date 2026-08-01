@@ -51,7 +51,7 @@ def assert_calibrated(allow_uncalibrated=False):
             "SerialArm refuses to drive real servos with placeholder safety limits. "
             "Set arm_config.SAFETY_CALIBRATED=True after replacing CONTACT/joint limits "
             "with your rig's real values (docs/arduino_requirements.md #3), or pass "
-            "allow_uncalibrated=True (with a fake writer=) for a bench/echo test."
+            "allow_uncalibrated=True TOGETHER WITH a fake writer= for a bench/echo test."
         )
 
 
@@ -63,6 +63,19 @@ class SerialArm:
     def __init__(self, port=None, baud=115200, writer=None, allow_uncalibrated=False):
         # calibration is checked for EVERY construction, not just the auto-open branch, so an
         # injected `writer=` (e.g. the shared-UART live path) can no longer bypass the gate.
+        # THE ESCAPE HATCH CANNOT OPEN A REAL PORT. The docstring always said
+        # allow_uncalibrated was for a bench/echo test "(with a fake writer=)", but nothing
+        # enforced the pairing -- so `SerialArm(port=..., allow_uncalibrated=True)` passed the
+        # gate and then opened a real pyserial port, which is the single path to the servos that
+        # calibration exists to close. Enforced here rather than in assert_calibrated() because
+        # this is the only place that opens a port; the bare guard is also called by live_arm
+        # where no port is involved. A legitimate bench test already injects a writer, so this
+        # cannot break one.
+        if allow_uncalibrated and writer is None:
+            raise RuntimeError(
+                "allow_uncalibrated=True requires an injected writer= (a bench/echo test). "
+                "It is not a way to open a REAL port with placeholder safety limits."
+            )
         assert_calibrated(allow_uncalibrated)
         if writer is None:
             import serial  # pyserial — only needed on real hardware

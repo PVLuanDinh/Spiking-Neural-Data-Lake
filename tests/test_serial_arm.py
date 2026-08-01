@@ -100,3 +100,65 @@ def test_close_swallows_writer_errors():
     arm = SerialArm(writer=w, allow_uncalibrated=True)
     arm.close()
     assert w.closed is True
+
+
+# ---- T032 / FR-003: the calibration gate keeps its no-bypass property ----------------------
+# The owner authorised REIMPLEMENTING the arm's safety gate for the SO-101. That is authorisation
+# to rebuild it, not to weaken it. These pin the property independently of which body is
+# underneath, so swapping the arm cannot quietly open a path to the wire.
+
+
+def test_no_command_reaches_the_wire_while_uncalibrated():
+    """Refusal is at construction and applies to every port shape, not just the first tried."""
+    assert arm_config.SAFETY_CALIBRATED is False  # guard the test's own premise
+    for port in ("COM_TEST", "/dev/ttyUSB0", "COM9"):
+        with pytest.raises(RuntimeError, match="refuses to drive real servos"):
+            SerialArm(port=port)
+
+
+def test_injected_writer_does_not_bypass_the_gate():
+    """A fake writer bypasses the PORT, not the CALIBRATION CHECK.
+
+    This was once true the other way round -- an injected writer skipped the gate entirely -- and
+    the module docstring records the fix. Pinned so it cannot regress.
+    """
+    with pytest.raises(RuntimeError, match="refuses to drive real servos"):
+        SerialArm(writer=FakeWriter())
+
+
+def test_the_escape_hatch_is_the_only_one():
+    """`allow_uncalibrated` is a deliberate, documented bench-test opt-in. It must stay the ONLY
+    parameter that can stand in for calibration.
+
+    If a second one appears -- force=, unsafe=, skip_checks= -- this fails. One reviewed escape
+    hatch is a decision; two is a habit.
+    """
+    import inspect
+
+    params = set(inspect.signature(SerialArm.__init__).parameters)
+    forbidden = {"force", "unsafe", "skip_checks", "bypass", "no_gate", "ignore_calibration"}
+    assert not (params & forbidden), (
+        f"SerialArm gained a second calibration bypass: {sorted(params & forbidden)}"
+    )
+
+
+def test_escape_hatch_still_requires_an_explicit_opt_in():
+    """It must never be the default, and must not be reachable by omission."""
+    import inspect
+
+    sig = inspect.signature(SerialArm.__init__)
+    assert sig.parameters["allow_uncalibrated"].default is False, (
+        "the uncalibrated escape hatch became the default"
+    )
+
+
+def test_estop_freeze_keeps_the_wire_silent():
+    """The freeze gates the serial write itself, so it does not depend on firmware behaviour."""
+    arm = SerialArm(writer=FakeWriter(), allow_uncalibrated=True)
+    arm.apply("EMERGENCY_STOP")
+    sent_before = len(arm.w.lines)
+    for cmd in ("JOINT_A_ROTATE(+15deg)", "ENGAGE", "RELEASE"):
+        arm.apply(cmd)
+    assert len(arm.w.lines) == sent_before, (
+        f"a latched arm transmitted to the wire: {arm.w.lines[sent_before:]}"
+    )

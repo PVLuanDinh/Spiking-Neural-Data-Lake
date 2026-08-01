@@ -57,6 +57,44 @@ PHASE 3 — three gates after the benchmark (T017-T024)   ALL GREEN
   pytest                : PASS  exit 0, coverage 92.54%
   ruff format --check   : the same 3 pre-existing failures, none of them this feature's
 
+PHASE 4 — three gates after the gate itself (T025-T040)   ALL GREEN
+  ruff check .          : PASS
+  run_selfchecks.py     : PASS  278/278  <- +1, EXPECTED: so101_arm added while arm_sim still
+                          exists. Returns to 277 when arm_sim is deleted, which makes T067's
+                          count check a real assertion rather than a formality.
+  pytest                : PASS  exit 0, coverage 92.56%
+  brain_atlas           : PASS  195 modules across 17 regions
+  dormancy gate         : PASS  195 modules, 170 reachable, 25 exempt, 0 dormant
+
+PHASE 4 FINDINGS
+
+  1. THE CALIBRATION GATE HAD AN UNENFORCED PRECONDITION, now closed. serial_arm's docstring
+     always said allow_uncalibrated was for a bench/echo test "(with a fake writer=)", but
+     assert_calibrated only ever received the flag -- so
+        SerialArm(port="COM3", allow_uncalibrated=True)
+     passed the gate and then opened a REAL pyserial port with placeholder safety limits. That
+     is the single path to the servos calibration exists to close. Now enforced in the
+     CONSTRUCTOR (not in assert_calibrated, which live_arm.py:220 also calls with no port in
+     sight -- putting it there made a bare policy question raise). A legitimate bench test
+     already injects a writer, so nothing legitimate broke.
+
+  2. THREE OF MY OWN TESTS WERE WRONG; THE GATE WAS RIGHT. Two drove shoulder_lift to ctrl_LO,
+     which MEASURED reaches cleanly with no contact -- it is ctrl_HI that hits the floor
+     (commanded +100 deg, achieved +37.80, contact GROUND, blocked True). Wrong sign, not a
+     wrong gate. The third asserted EXACT pose equality after 50 HOLDs; a position servo droops
+     under gravity, so zero movement was never physically right. Rewritten as STATIONARITY --
+     drift must settle, not accumulate -- which keeps the intent (velocity cleared, no runaway)
+     and needs no invented threshold.
+
+  3. I MISREAD A PASSING GATE AS A GAP. brain_atlas and the dormancy gate appeared to accept the
+     unregistered module; I nearly reported a blind spot. They had caught it -- the summary
+     table prints BEFORE the assert, and `Select-Object -Last 6` showed the summary while the
+     traceback sat above it. Exit codes, not tail output.
+
+  4. `reached` needed a tolerance and a hardcoded one would violate P1. A position actuator's
+     steady-state droop is tau_gravity / kp, and BOTH are read from the model -- so the
+     tolerance is derived and tracks a model change instead of going stale.
+
 PHASE 3 FINDING — the benchmark nearly reported the OPPOSITE of the truth.
   The model's actuator_forcerange is 3.350 N*m = 34.1 kg*cm, which is STALL torque (the build
   notes quote ~30 kg*cm stall at 12V for this gear). The first run compared against it and

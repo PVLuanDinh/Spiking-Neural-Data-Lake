@@ -103,25 +103,25 @@ proposed three incompatible dicts; the contract is settled and tasks build to it
 
 ### Tests for User Story 2
 
-- [ ] T025 [P] [US2] Add `test_estop_latches_and_freezes` to `tests/test_so101_arm.py`: assert every command except `HOME`/`RETRACT_ALL` is a no-op while latched (FR-002, SC-003)
-- [ ] T026 [P] [US2] Add `test_estop_is_idempotent` to `tests/test_so101_arm.py`: apply `EMERGENCY_STOP` 1000× and assert state bit-identical to applying it once. Unguarded this drifts 35.16° over 20 000 repeats vs 0.0148° (FR-002)
-- [ ] T027 [P] [US2] Add `test_home_is_bitwise_reproducible` to `tests/test_so101_arm.py`: HOME from several distinct poses, assert identical end-effector position each time — an equality assert in the shape of `arm_sim.py:201` (FR-002)
-- [ ] T028 [P] [US2] Add `test_clamp_is_visible` to `tests/test_so101_arm.py`: command past a joint limit, assert `clamped` is true and the reported command matches what the arm received. MuJoCo's own clamp is silent (FR-009)
-- [ ] T029 [P] [US2] Add `test_live_contact_reports_and_prevents` to `tests/test_so101_arm.py`: drive into the floor, assert verdict `"GROUND"` AND achieved angle short of commanded — strictly stronger than the assertion it replaces (FR-008)
-- [ ] T030 [P] [US2] Add `test_probe_reports_without_preventing` to `tests/test_so101_arm.py`: query a penetrating pose, assert contact reported, `qpos` bit-unchanged, `qvel` zero (FR-008)
-- [ ] T031 [P] [US2] Add `test_probe_rejects_out_of_limit` to `tests/test_so101_arm.py`: assert an out-of-range pose returns the out-of-limit verdict, not FREE — without this 65.9% of the planner grid is falsely free (FR-008, FR-009)
-- [ ] T032 [P] [US2] Add `test_calibration_gate_no_bypass` to `tests/test_serial_arm.py`: with calibration unset, assert no command reaches the wire by any path (FR-003, SC-004)
+- [X] T025 [P] [US2] Add `test_estop_latches_and_freezes` to `tests/test_so101_arm.py`: assert every command except `HOME`/`RETRACT_ALL` is a no-op while latched (FR-002, SC-003)
+- [X] T026 [P] [US2] Add `test_estop_is_idempotent` to `tests/test_so101_arm.py`: apply `EMERGENCY_STOP` 1000× and assert state bit-identical to applying it once. Unguarded this drifts 35.16° over 20 000 repeats vs 0.0148° (FR-002)
+- [X] T027 [P] [US2] Add `test_home_is_bitwise_reproducible` to `tests/test_so101_arm.py`: HOME from several distinct poses, assert identical end-effector position each time — an equality assert in the shape of `arm_sim.py:201` (FR-002)
+- [X] T028 [P] [US2] Add `test_clamp_is_visible` to `tests/test_so101_arm.py`: command past a joint limit, assert `clamped` is true and the reported command matches what the arm received. MuJoCo's own clamp is silent (FR-009)
+- [X] T029 [P] [US2] Add `test_live_contact_reports_and_prevents` to `tests/test_so101_arm.py`: drive into the floor, assert verdict `"GROUND"` AND achieved angle short of commanded — strictly stronger than the assertion it replaces (FR-008)
+- [X] T030 [P] [US2] Add `test_probe_reports_without_preventing` to `tests/test_so101_arm.py`: query a penetrating pose, assert contact reported, `qpos` bit-unchanged, `qvel` zero (FR-008)
+- [X] T031 [P] [US2] Add `test_probe_rejects_out_of_limit` to `tests/test_so101_arm.py`: assert an out-of-range pose returns the out-of-limit verdict, not FREE — without this 65.9% of the planner grid is falsely free (FR-008, FR-009)
+- [X] T032 [P] [US2] Add `test_calibration_gate_no_bypass` to `tests/test_serial_arm.py`: with calibration unset, assert no command reaches the wire by any path (FR-003, SC-004)
 
 ### Implementation for User Story 2
 
-- [ ] T033 [US2] Create `src/snn_data_lake/brainstem/so101_arm.py` as a gate that owns a body: load the vendored model once, hold the live `MjData`, expose `apply()` as the only mutation path (FR-005)
-- [ ] T034 [US2] Implement the ordered checks in `src/snn_data_lake/brainstem/so101_arm.py` per `contracts/so101_arm.md` §1: latch check → vocabulary → clamp → actuate → report
-- [ ] T035 [US2] Implement the E-STOP latch in `src/snn_data_lake/brainstem/so101_arm.py`: set `stopped`, run `ctrl[:] = qpos` **only on the False→True edge**, and KEEP STEPPING. Not "stop stepping" (leaves 5.45 rad/s stored), not `ctrl:=0` (a move-to-zero command, 25.89° of slew), not limp (38.32° collapse) (FR-002)
-- [ ] T036 [US2] Implement HOME/RETRACT_ALL in `src/snn_data_lake/brainstem/so101_arm.py` as a hard reset (`mj_resetData`, `qpos:=HOME_QPOS`, `qvel:=0`, `qacc:=0`, `ctrl:=HOME_QPOS`, `mj_forward`), and handle the `d.time` rewind to 0 so nothing keyed on sim time sees time run backwards (FR-002)
-- [ ] T037 [US2] Implement gate-side clamping in `src/snn_data_lake/brainstem/so101_arm.py` against **`actuator_ctrlrange`** — the range that binds a position command (clarified 2026-08-01) — setting `clamped` true exactly when the command was altered. `jnt_range` remains the physical stop enforced by the solver and is what `probe_contact` gates on; the two are measured unequal and must not be conflated (FR-009)
-- [ ] T038 [US2] Implement the contact verdict in `src/snn_data_lake/brainstem/so101_arm.py` from `data.ncon` with labels resolved via `geom_bodyid` body names (30 of 31 geoms are unnamed). Verdict is `None | "GROUND" | "SELF"`; `OBSTACLE` is retired (FR-008)
-- [ ] T039 [US2] Implement `probe_contact(qpos)` in `src/snn_data_lake/brainstem/so101_arm.py` against a module-private, **never-stepped** `MjData` using `mj_kinematics` + `mj_collision`, gated on `jnt_range`. It must be unreachable from the live body by construction — teleporting the live data into a penetrating pose ejects it at 36.11 rad/s (FR-008)
-- [ ] T040 [US2] Implement `reached` / `blocked` / `tracking_error` / `deviation` in `src/snn_data_lake/brainstem/so101_arm.py` per `contracts/so101_arm.md` §3–§4, deriving `REACH_TOL` above the measured 0.0492° droop floor rather than picking it (FR-007, FR-009)
+- [X] T033 [US2] Create `src/snn_data_lake/brainstem/so101_arm.py` as a gate that owns a body: load the vendored model once, hold the live `MjData`, expose `apply()` as the only mutation path (FR-005)
+- [X] T034 [US2] Implement the ordered checks in `src/snn_data_lake/brainstem/so101_arm.py` per `contracts/so101_arm.md` §1: latch check → vocabulary → clamp → actuate → report
+- [X] T035 [US2] Implement the E-STOP latch in `src/snn_data_lake/brainstem/so101_arm.py`: set `stopped`, run `ctrl[:] = qpos` **only on the False→True edge**, and KEEP STEPPING. Not "stop stepping" (leaves 5.45 rad/s stored), not `ctrl:=0` (a move-to-zero command, 25.89° of slew), not limp (38.32° collapse) (FR-002)
+- [X] T036 [US2] Implement HOME/RETRACT_ALL in `src/snn_data_lake/brainstem/so101_arm.py` as a hard reset (`mj_resetData`, `qpos:=HOME_QPOS`, `qvel:=0`, `qacc:=0`, `ctrl:=HOME_QPOS`, `mj_forward`), and handle the `d.time` rewind to 0 so nothing keyed on sim time sees time run backwards (FR-002)
+- [X] T037 [US2] Implement gate-side clamping in `src/snn_data_lake/brainstem/so101_arm.py` against **`actuator_ctrlrange`** — the range that binds a position command (clarified 2026-08-01) — setting `clamped` true exactly when the command was altered. `jnt_range` remains the physical stop enforced by the solver and is what `probe_contact` gates on; the two are measured unequal and must not be conflated (FR-009)
+- [X] T038 [US2] Implement the contact verdict in `src/snn_data_lake/brainstem/so101_arm.py` from `data.ncon` with labels resolved via `geom_bodyid` body names (30 of 31 geoms are unnamed). Verdict is `None | "GROUND" | "SELF"`; `OBSTACLE` is retired (FR-008)
+- [X] T039 [US2] Implement `probe_contact(qpos)` in `src/snn_data_lake/brainstem/so101_arm.py` against a module-private, **never-stepped** `MjData` using `mj_kinematics` + `mj_collision`, gated on `jnt_range`. It must be unreachable from the live body by construction — teleporting the live data into a penetrating pose ejects it at 36.11 rad/s (FR-008)
+- [X] T040 [US2] Implement `reached` / `blocked` / `tracking_error` / `deviation` in `src/snn_data_lake/brainstem/so101_arm.py` per `contracts/so101_arm.md` §3–§4, deriving `REACH_TOL` above the measured 0.0492° droop floor rather than picking it (FR-007, FR-009)
 
 **Checkpoint**: the safety gate is rebuilt and demonstrably equivalent where semantics are defined.
 

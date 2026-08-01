@@ -70,6 +70,15 @@ _ENTRYPOINTS = (  # pyproject [project.scripts] + the always-on daemon's in-pack
 # ------------------------------------------------------------------------------------------------
 # key = module basename (unique across REGIONS per brain_atlas); value = (disposition, reason).
 EXEMPT = {
+    # ---- "wire": built and verified, awaiting the wiring phase that makes it the live arm ----
+    "so101_arm": (
+        "wire",
+        "The MuJoCo SO-101 gate (specs/004). Built, self-checked and covered by 17 tests, but "
+        "not yet on the live tick: it REPLACES brainstem/arm_sim.py, and the replacement is "
+        "staged so the safety gate is proven before the four live call sites move onto it. "
+        "This exemption is expected to be RETIRED in the same change that retires arm_sim -- "
+        "if it outlives that, the swap stalled and this entry is the evidence.",
+    ),
     # NOTE: the 17 "retire"-tagged modules (wilson_cowan/RBM/kalman/kuramoto/cue_integration/olfactory x2/
     # 3 redundant seq-memories/neurogenesis-stdlib/language_brain+brain_reasoning/adaptive_spiking/lt_gate/
     # feedback_alignment/sensor_demo/coordinated_growth) were DELETED in the Policy-2/3 retirement wave --

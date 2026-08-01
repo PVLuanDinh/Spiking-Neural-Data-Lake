@@ -152,6 +152,7 @@ CORE = [
     "brainstem.reflex",
     "brainstem.serial_arm",
     "brainstem.arm_sim",
+    "brainstem.so101_arm",
     "brainstem.arm_hardware",  # torque budget for the arm being built (asserts the shoulder shortfall)
     "brainstem.arm_config",
     "brainstem.interpreter",
@@ -433,7 +434,9 @@ def run_all():
         # retired. Left as a skip rather than promoted to a hard failure because that is a separate
         # decision with its own blast radius; the message now says what the skip means.
         for m in TORCH_GATED:
-            print(f"SKIP  {m}  (torch NOT IMPORTABLE -- broken install: torch is a core dependency)")
+            print(
+                f"SKIP  {m}  (torch NOT IMPORTABLE -- broken install: torch is a core dependency)"
+            )
     if not _NENGO:
         # nengo genuinely IS optional (the [nengo] extra), so this skip is a supported path.
         for m in NENGO_GATED:

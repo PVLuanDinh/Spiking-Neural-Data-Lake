@@ -121,6 +121,7 @@ REGIONS = {
         "reflex",
         "serial_arm",
         "arm_sim",
+        "so101_arm",  # the MuJoCo SO-101 gate; REPLACES arm_sim (specs/004), wired in its own phase
         "arm_hardware",  # physical-arm build TARGET: spec + static torque budget + the sim-to-real gap
         "arm_config",
         "interpreter",
