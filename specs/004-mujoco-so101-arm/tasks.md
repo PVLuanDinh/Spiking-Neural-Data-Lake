@@ -79,17 +79,17 @@ proposed three incompatible dicts; the contract is settled and tasks build to it
 
 ### Tests for User Story 1
 
-- [ ] T017 [P] [US1] Add `test_benchmark_reports_both_arms` to `tests/test_arm_benchmark.py`: assert the benchmark emits a row for each arm on the shared command subset and never silently omits one (FR-001)
-- [ ] T018 [P] [US1] Add `test_benchmark_torque_is_reported` to `tests/test_arm_benchmark.py`: assert per-joint N·m is present for the MuJoCo arm and explicitly reported as unavailable for `ArmSim` (FR-019)
+- [X] T017 [P] [US1] Add `test_benchmark_reports_both_arms` to `tests/test_arm_benchmark.py`: assert the benchmark emits a row for each arm on the shared command subset and never silently omits one (FR-001)
+- [X] T018 [P] [US1] Add `test_benchmark_torque_is_reported` to `tests/test_arm_benchmark.py`: assert per-joint N·m is present for the MuJoCo arm and explicitly reported as unavailable for `ArmSim` (FR-019)
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Create `tools/arm_benchmark.py` with explicit CLI arguments and no value computed from no data; it must run against a bare MuJoCo body and the existing `ArmSim`, so it does not depend on the gate (FR-001)
-- [ ] T020 [US1] Implement the shared-input comparison in `tools/arm_benchmark.py`: end-effector pose, contact verdict, and E-STOP behaviour side by side, naming what each arm structurally cannot report (SC-001)
-- [ ] T021 [US1] Implement per-joint hold-torque readout in `tools/arm_benchmark.py` from `qfrc_bias` and `actuator_force`, in N·m against the ±3.350 N·m actuator limit (FR-019, SC-002)
-- [ ] T022 [US1] Implement the 500 g payload case in `tools/arm_benchmark.py` — attach a payload body at the gripper TCP site via a repo-authored overlay that `<include>`s the vendored model, never by editing the vendored file (FR-012, SC-002)
-- [ ] T023 [US1] Cross-check the benchmark's payload result against the repo's existing figure in `src/snn_data_lake/brainstem/arm_hardware.py` — `shoulder_pitch` 15.0 kg·cm required vs 7.5 rated, `margin_x: 0.5`, `ok: false`. Corroboration strengthens the claim; a discrepancy is a finding to explain, not average away
-- [ ] T024 [US1] Write the P2 verdict into `specs/004-mujoco-so101-arm/benchmark.md`: whether the replacement is licensed, naming the inputs and what each arm could not report. A refusal legitimately stops the feature here (FR-001, FR-010)
+- [X] T019 [US1] Create `tools/arm_benchmark.py` with explicit CLI arguments and no value computed from no data; it must run against a bare MuJoCo body and the existing `ArmSim`, so it does not depend on the gate (FR-001)
+- [X] T020 [US1] Implement the shared-input comparison in `tools/arm_benchmark.py`: end-effector pose, contact verdict, and E-STOP behaviour side by side, naming what each arm structurally cannot report (SC-001)
+- [X] T021 [US1] Implement per-joint hold-torque readout in `tools/arm_benchmark.py` from `qfrc_bias` and `actuator_force`, in N·m against the ±3.350 N·m actuator limit (FR-019, SC-002)
+- [X] T022 [US1] Implement the 500 g payload case in `tools/arm_benchmark.py` — attach a payload body at the gripper TCP site via a repo-authored overlay that `<include>`s the vendored model, never by editing the vendored file (FR-012, SC-002)
+- [X] T023 [US1] Cross-check the benchmark's payload result against the repo's existing figure in `src/snn_data_lake/brainstem/arm_hardware.py` — `shoulder_pitch` 15.0 kg·cm required vs 7.5 rated, `margin_x: 0.5`, `ok: false`. Corroboration strengthens the claim; a discrepancy is a finding to explain, not average away
+- [X] T024 [US1] Write the P2 verdict into `specs/004-mujoco-so101-arm/benchmark.md`: whether the replacement is licensed, naming the inputs and what each arm could not report. A refusal legitimately stops the feature here (FR-001, FR-010)
 
 **Checkpoint**: the swap is licensed on evidence, or it is not. The build notes' torque question is answered.
 

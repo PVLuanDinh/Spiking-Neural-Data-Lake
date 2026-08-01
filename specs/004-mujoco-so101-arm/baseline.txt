@@ -51,6 +51,22 @@ T016 — three gates after Phase 2 (T009-T015)   ALL GREEN
 
   Nothing loosened, nothing silenced.
 
+PHASE 3 — three gates after the benchmark (T017-T024)   ALL GREEN
+  ruff check .          : PASS
+  run_selfchecks.py     : PASS  277/277  (count still unchanged)
+  pytest                : PASS  exit 0, coverage 92.54%
+  ruff format --check   : the same 3 pre-existing failures, none of them this feature's
+
+PHASE 3 FINDING — the benchmark nearly reported the OPPOSITE of the truth.
+  The model's actuator_forcerange is 3.350 N*m = 34.1 kg*cm, which is STALL torque (the build
+  notes quote ~30 kg*cm stall at 12V for this gear). The first run compared against it and
+  reported shoulder_lift at 86% utilisation -- comfortable headroom. Against RATED torque
+  (7.5 kg*cm, roughly a quarter of stall, which is the rule the notes state themselves) the
+  same load is 3.91x OVER. Three joints exceed continuous rating with 500 g at reach:
+  shoulder_lift 3.91x, elbow_flex 4.66x, wrist_flex 2.21x. None exceeds stall -- which is the
+  dangerous middle, where a joint moves, heats, and trips thermal cutoff.
+  Both columns are now reported and the rated one is marked as the deciding figure.
+
 PHASE 2 FINDINGS
 
   1. self_improve.py's PROTECTED named "research/self_improve.py" -- A PATH THAT RESOLVES
