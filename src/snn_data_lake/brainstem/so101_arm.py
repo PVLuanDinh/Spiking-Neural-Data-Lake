@@ -391,7 +391,23 @@ class So101Arm:
         tol = self._droop_tolerance()
         reached = bool(np.all(err <= np.maximum(tol, 1e-9) * 2.0 + 1e-6))
         collision = _verdict(m, d)
-        blocked = bool((not reached) and (collision is not None or bool(np.any(self._saturated()))))
+        # A saturated actuator means "full force", which is what a servo uses to ACCELERATE.
+        # Without the velocity term this reported blocked=True for the whole of an ordinary
+        # unobstructed move -- measured, while per-tick displacement was still growing -- and
+        # coverage_reward penalises blocked, so the objective paid -0.30 for moving and +0.15
+        # for standing still. The arm learned exactly that.
+        #
+        # Stopped-ness is derived from the droop envelope rather than picked: a joint that
+        # cannot clear its own steady-state error within a second is not travelling anywhere.
+        # Magnitudes, not per-joint: shoulder_pan's tolerance is exactly 0 (a yaw joint carries
+        # no gravity moment), so a per-joint test let 4.4e-12 rad/s of float noise count as
+        # motion and cleared `blocked` on an arm sitting in the floor.
+        moving = bool(np.linalg.norm(d.qvel[: m.nu]) > np.linalg.norm(self._droop_tolerance()))
+        blocked = bool(
+            (not reached)
+            and (collision is not None or bool(np.any(self._saturated())))
+            and not moving
+        )
         tracking = float(np.linalg.norm(err))
         return {
             "theta_deg": [float(v) / _DEG for v in d.qpos[: m.nu]],
