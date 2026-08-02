@@ -590,7 +590,7 @@ def _line_at(root, sha, path, lineno):
     return lines[lineno - 1] if 0 < lineno <= len(lines) else None
 
 
-def repin(root, evdir, write):
+def repin(root, evdir, write, from_commit=None):
     """Re-derive every citation from the text it named WHEN IT WAS WRITTEN, and re-point it to wherever
     that text lives now.
 
@@ -610,7 +610,12 @@ def repin(root, evdir, write):
     others on its row now blame to your repair commit -- at which point their already-drifted text reads
     as the original, and this function pins the drift as correct. RUN `--repin` BEFORE hand-editing
     rows, not after. Where that order was already broken, the drift is invisible here and has to be
-    recovered from an explicit pre-drift commit instead."""
+    recovered from an explicit pre-drift commit instead -- which is what `--repin-from SHA` is:
+    it ignores blame entirely and reads every cited line's text at SHA. Use it when the ledger has
+    uncommitted edits (blame returns the all-zero sha and every such row is reported `unblamable`,
+    so a plain `--repin` silently fixes nothing) and you know a commit at which the citations were
+    correct. MEASURED the first time it was needed: editing `cortex/brain.py` drifted 36 citations
+    while 84 of 88 rows were unblamable, so `--repin` could only reach 16 of them."""
     hits = {"same": 0, "moved": 0, "absent": 0, "ambiguous": 0, "no_blame": 0}
     edits = []
     for cat in CATEGORIES:
@@ -623,7 +628,7 @@ def repin(root, evdir, write):
             cite = cells[2]
             if not cite or cite == "-":
                 continue
-            sha = _blame_commit(root, rel, lineno)
+            sha = from_commit or _blame_commit(root, rel, lineno)
             if not sha:
                 hits["no_blame"] += 1
                 continue
@@ -733,10 +738,11 @@ def report(root, evdir, check):
 # `--rerun` guard below already fixed once, one layer further out, and it really did mislead a sweep
 # into reporting artifacts as reproducing while rerunning none of them.
 _VERBS = ("record", "score", "report")  # `score`/`report` both name the default action, explicitly
-_VALUE_FLAGS = ("--root", "--evidence", "--name", "--kind", "--by", "--rerun")
+_VALUE_FLAGS = ("--root", "--evidence", "--name", "--kind", "--by", "--rerun", "--repin-from")
 _BARE_FLAGS = ("--check", "--repin", "--write")
 _USAGE = (
-    "usage: coverage_score.py [score|report] [--check] | --rerun NAME | --repin [--write] | "
+    "usage: coverage_score.py [score|report] [--check] | --rerun NAME | "
+    "--repin [--repin-from SHA] [--write] | "
     "record --name N [--kind K] [--by B] -- COMMAND..."
 )
 
@@ -786,7 +792,7 @@ def main(argv):
             return 2
         return rerun(root, evdir, name)
     if "--repin" in argv:
-        return repin(root, evdir, "--write" in argv)
+        return repin(root, evdir, "--write" in argv, _opt(argv, "--repin-from"))
     return report(root, evdir, "--check" in argv)
 
 

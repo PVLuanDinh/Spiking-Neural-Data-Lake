@@ -7,9 +7,11 @@ STAGGERED threshold: cell i's nominal threshold is i+1, so cell 0 crosses first,
 on -- the population TILES elapsed time with one preferred latency per cell (hippocampal "time
 cells": MacDonald, Lepage, Eden & Eichenbaum 2011, Neuron, "Hippocampal time cells bridge the gap in
 memory for discontiguous events"). decode() reads elapsed time off this population with a rank-order
-code (how many cells have already crossed threshold = the coarse tick) refined by the PARTIAL ramp of
-the next not-yet-fired cell (a tempotron-style graded readout of the population's current activity,
-not just a spike count).
+code and NOTHING ELSE: "cells 0..k-1 have crossed, cell k has not" brackets the answer between two
+neighbouring nominal latencies, and the estimate is the geometric centre of that bracket. It used to
+refine the rank with the shared ramp's partial activation, which algebraically collapsed to the ramp
+itself -- so the readout was independent of the population and RMSE was bit-identical at widths 64
+through 512. See decode() for the measurement and the cost of the replacement.
 
 Every tick adds the same drift (`drive`) plus ONE shared Gaussian noise draw to a single internal
 ramp, and each cell's threshold is just a read-out level on that ramp (a driftdiffusion accumulator
@@ -65,8 +67,38 @@ per-instance, random.Random(seed), never module-level). Not cognition.
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.time_cells
 """
 
+import bisect as _bisect
 import math
 import random
+
+# The held-out interval grid, and the split ratio ported from `reasoning/ng_snn.py:178` -- the
+# DISCIPLINE transfers (teach on one portion, judge on a disjoint remainder, refuse when either is
+# too small), the POSITION does not. MEASURED at n=64: a literal trailing-20% split leaves only 4 of
+# 63 gaps able to move the metric and a stride over the raw integer axis gives 15 of 63, while this
+# gap-major grid gives 63 of 63. Lives here rather than in the probe because it is a property of the
+# population's own ladder, and one implementation is the rule (P2).
+GRID_PER_GAP = 10
+GRID_TEST_STRIDE = 5
+
+# The persisted lineage record. Bumping `STATE_FMT` is how an incompatible change refuses every blob
+# written before it, instead of misreading one.
+STATE_FMT = "time_cells/v1"
+STATE_NAME = "time_cells.json"
+
+
+def interval_grid(thresholds):
+    """(teach, test) over a ladder's own gaps: GRID_PER_GAP points per gap at
+    `lo + (hi-lo)*(p+0.5)/GRID_PER_GAP`, ordered gap-major, deterministic positional
+    1-in-GRID_TEST_STRIDE stride (`index % stride == stride-1` -> TEST). No RNG, so determinism
+    semantics survive; disjoint by construction; every gap is represented on both sides."""
+    universe = []
+    for j in range(len(thresholds) - 1):
+        lo, hi = thresholds[j], thresholds[j + 1]
+        for p in range(GRID_PER_GAP):
+            universe.append(lo + (hi - lo) * (p + 0.5) / GRID_PER_GAP)
+    teach = [t for i, t in enumerate(universe) if i % GRID_TEST_STRIDE != GRID_TEST_STRIDE - 1]
+    test = [t for i, t in enumerate(universe) if i % GRID_TEST_STRIDE == GRID_TEST_STRIDE - 1]
+    return teach, test
 
 
 class TimeCellClock:
@@ -82,6 +114,12 @@ class TimeCellClock:
     def __init__(self, n_cells=64, seed=0, drive=1.0, noise_sd=0.15):
         if n_cells < 1:
             raise ValueError("n_cells must be >= 1")
+        if float(drive) <= 0.0:
+            # decode() divides every nominal latency by `drive`; a non-positive drive makes the ramp
+            # never advance (or advance backwards) and turns that division into a sign flip or a
+            # ZeroDivisionError deep inside the live tick, where brain.py:1934's bare handler would
+            # swallow it and freeze the clock. Refuse at the boundary instead.
+            raise ValueError("drive must be > 0")
         self.n_cells = n_cells
         self.seed = seed
         self.drive = float(drive)
@@ -102,6 +140,15 @@ class TimeCellClock:
             math.exp(span * (i / (n_cells - 1))) if n_cells > 1 else 1.0 for i in range(n_cells)
         ]
         self.rng = random.Random(seed)
+        # Growth outcomes are counted, not inferred. `refused` is what makes a HALT observable rather
+        # than read off an absence of events -- the difference between an honest null and silence --
+        # and `failed` is kept separate from it because an exception on the growth path is a defect
+        # while a refusal is a normal outcome, and collapsing the two hides the defect inside the
+        # normal case (FR-011, FR-013).
+        self.grown = 0
+        self.refused = 0
+        self.failed = 0
+        self.restore_refused = 0
         self.reset()
 
     def reset(self):
@@ -126,26 +173,49 @@ class TimeCellClock:
         return self.decode()
 
     def decode(self):
-        """Rank-order + tempotron-style readout: (elapsed_estimate, sd).
+        """GEOMETRIC-MID POPULATION READOUT: (elapsed_estimate, sd).
 
-        elapsed_estimate = the nominal latency of the last-fired cell, refined by the FRACTIONAL
-        activation of the next not-yet-fired cell's threshold (a graded read of the population's
-        current activity, not just a spike count); clamped to be non-decreasing across calls (fired
-        cells never un-fire). sd = RMS of (actual spike tick - nominal noise-free latency) over the
-        cells that have fired so far -- an empirical measure of accumulator jitter that grows with how
-        many/how-late-thresholded cells have already fired, i.e. with elapsed time (Weber/scalar
-        timing)."""
+        The rank-order code is all this population actually knows: cells 0..k-1 have crossed, cell k
+        has not. That brackets elapsed time between two neighbouring NOMINAL LATENCIES, and on a
+        geometrically tiled axis the geometric mean is the centre of that bracket:
+
+            k == 0        -> 0.0                                        (nothing has fired yet)
+            k >= n_cells  -> thresholds[-1] / drive                     (saturated: the range ceiling)
+            otherwise     -> sqrt(t[k-1] * t[k]) / drive
+
+        Every term is existing state, so no constant is introduced. Latencies are in TICKS -- divided
+        by `drive`, which the previous readout never did while learn_interval always has (`:168`,
+        `:182`); MEASURED at drive=0.5, true elapsed 40, the old code reported 19.340 ramp units as if
+        they were ticks.
+
+        WHY NOT THE RAMP. The readout this replaces interpolated the shared accumulator `v` between
+        two thresholds, which algebraically collapses to `v` itself -- so it read the accumulator, not
+        the population. MEASURED consequence: RMSE against true elapsed was BIT-IDENTICAL at widths
+        64, 128, 256 and 512 (0.7276, 16 seeds, horizon 60). A population whose output cannot register
+        its own size cannot be grown on purpose; every growth experiment against it is unfalsifiable.
+        The cost of the swap is stated rather than hidden: +45% RMSE at the live width (1.0536 vs
+        0.7276), closing to +4% by n=512. That is the price of measurability.
+
+        WHAT IS STILL WRONG. The saturated branch is a ceiling, not an estimate -- once every cell has
+        fired the population has no information left, and RMSE against true elapsed diverges (292.8993
+        at t=600, n=64). This readout does not fix that and must not be credited with fixing it; only
+        extending the population's RANGE does, which is `grow("extend")` and is reported as
+        clamp-widening, never as earning.
+
+        `sd` is unchanged, byte for byte: the RMS of (actual spike tick - nominal noise-free latency)
+        over the cells that have fired, an empirical measure of accumulator jitter that grows with
+        elapsed time (Weber/scalar timing)."""
         k = self.n_fired
         if k == 0:
-            estimate = max(0.0, self.v / self.thresholds[0]) if self.thresholds[0] else 0.0
+            estimate = 0.0
+        elif k >= self.n_cells:
+            estimate = self.thresholds[-1] / self.drive
         else:
-            base = self.thresholds[k - 1]
-            if k < self.n_cells:
-                nxt_frac = max(0.0, min(1.0, (self.v - base) / (self.thresholds[k] - base)))
-                estimate = base + nxt_frac * (self.thresholds[k] - base)
-            else:
-                estimate = base
-        estimate = max(estimate, self._last_estimate)  # fired cells latch: estimate never regresses
+            estimate = math.sqrt(self.thresholds[k - 1] * self.thresholds[k]) / self.drive
+        # Fired cells latch, so the estimate may not regress WITHIN an interval -- learn_interval can
+        # lower a threshold mid-trial, and a clock that ran backwards would break the monotonicity
+        # contract three live readers depend on. reset() clears this.
+        estimate = max(estimate, self._last_estimate)
         self._last_estimate = estimate
 
         if k == 0:
@@ -190,8 +260,293 @@ class TimeCellClock:
         else:
             e = 0.0
         delta = lr * reward * e
-        self.thresholds[i] = max(0.5, self.thresholds[i] + delta)
+        # ORDER PRESERVATION BY REFUSAL, NOT BY CLAMPING. tick() walks `thresholds` in index order and
+        # stops at the first uncrossed level, so an inversion strands every higher cell permanently.
+        # This rule already produced them: MEASURED over 4000 ticks, 9 of 12 seeds inverted somewhere
+        # in the reset-driven regime (3 of 6 in the saturating one; seed 3 ended t[62]=75.505 above
+        # t[63]=52.401). Clamping the proposal into the neighbours' bracket was measured and rejected:
+        # it collapses the gap to 1 ULP (2.220e-16) against 5.298e-03 under refusal, with identical
+        # learning coverage (49.8 of 64 thresholds still move either way) -- and a 1-ULP gap is a
+        # denominator in the bracket readout decode() now uses. Dropping the update keeps the vector
+        # usable; the cell simply does not learn from an update it cannot legally apply.
+        proposed = max(0.5, self.thresholds[i] + delta)
+        lo = 0.5 if i == 0 else self.thresholds[i - 1]
+        hi = math.inf if i + 1 >= self.n_cells else self.thresholds[i + 1]
+        if lo < proposed < hi:
+            self.thresholds[i] = proposed
+        else:
+            delta = 0.0  # the update was refused; report no movement rather than a phantom one
         return i, delta
+
+    # ---------------------------------------------------------------- growth
+    def at_reset_boundary(self):
+        """The only state in which this population may gain a cell.
+
+        `n_fired` carries a dual role -- a count AND a sorted index into `thresholds` -- so inserting
+        below the ramp mid-interval either leaves `spike_tick[j] = None` (MEASURED: TypeError in
+        decode()'s deviations loop, swallowed by brain.py:1934's bare handler, which silently freezes
+        the clock) or fabricates a crossing time (MEASURED: shifts the live-consumed `sd` by +0.005256
+        with zero ticks elapsed). At a boundary the fired set is empty and neither can arise."""
+        return self.n_fired == 0 and self.v == 0.0 and all(s is None for s in self.spike_tick)
+
+    def widest_log_gap(self):
+        """Index j maximising log(t[j+1]) - log(t[j]) -- where this ladder resolves time worst.
+
+        Log space, because the ladder is geometrically tiled: the widest ABSOLUTE gap is always the
+        top one by construction, which would make 'widest' a synonym for 'append near the top' and
+        the placement rule vacuous."""
+        if self.n_cells < 2:
+            return None
+        return max(
+            range(self.n_cells - 1),
+            key=lambda j: math.log(self.thresholds[j + 1]) - math.log(self.thresholds[j]),
+        )
+
+    def grow(self, mode="interior", gap=None):
+        """Add one cell. Returns its threshold, or None if the attempt was REFUSED.
+
+        Two modes, and they are not interchangeable:
+
+        * ``interior`` -- split a gap at its geometric midpoint, `sqrt(t[j] * t[j+1])`. Defaults to
+          the widest log-gap; `gap` names one explicitly, which the held-out instrument's null arm
+          needs. This is the ONLY mode that can earn: a cell inside the traversed range can fire, so
+          it can change the readout for reasons that are about tiling.
+        * ``extend`` -- append at `n_cells + 1`, the constructor's own top for the next width. This
+          addresses SATURATION and nothing else, and any benefit it produces MUST be reported as
+          clamp-widening under FR-006. MEASURED: below saturation, appending at the top is inert
+          under every readout tested -- ties 20 of 20, max |delta| 0.000000 -- because a cell above
+          the ramp never enters the fired set, so `k` and every function of it are bit-identical.
+
+        Refusals (return None, `refused` increments, NO state changes): away from a reset boundary,
+        on an already non-ascending vector, on a degenerate gap whose midpoint would not sit strictly
+        between its neighbours, or on an unknown mode. A refusal is data, not an error.
+
+        Draws no random numbers: `rng.getstate()` is identical across a growth, which is what keeps
+        same-seed determinism green. `n_cells` is mutated LAST, so every intermediate state stays
+        in-bounds for a concurrent read."""
+        if not self._ascending() or not self.at_reset_boundary():
+            self.refused += 1
+            return None
+        try:
+            if mode == "interior":
+                j = self.widest_log_gap() if gap is None else int(gap)
+                if j is None or not (0 <= j < self.n_cells - 1):
+                    self.refused += 1
+                    return None
+                value = math.sqrt(self.thresholds[j] * self.thresholds[j + 1])
+                index = j + 1
+            elif mode == "extend":
+                value = float(self.n_cells + 1)
+                index = self.n_cells
+            else:
+                self.refused += 1
+                return None
+            lo = self.thresholds[index - 1]
+            hi = self.thresholds[index] if index < self.n_cells else math.inf
+            if not lo < value < hi:
+                # A gap already collapsed to (or below) one ULP has no interior to insert into.
+                self.refused += 1
+                return None
+
+            self.thresholds.insert(index, value)
+            self.fired.insert(index, False)
+            self.spike_tick.insert(index, None)
+            self.n_cells += 1  # last: bounds tick()'s loop and sizes reset()'s arrays
+
+            assert self._ascending(), "grow() broke the ascending-threshold invariant"
+            assert (
+                len(self.thresholds) == len(self.fired) == len(self.spike_tick) == self.n_cells
+            ), "grow() broke length coherence"
+        except Exception:
+            # An exception here is a DEFECT, and must not be laundered into the refusal count -- a
+            # refusal is a normal outcome and burying a defect inside one hides it (FR-013).
+            self.failed += 1
+            raise
+        self.grown += 1
+        return value
+
+    def _ascending(self):
+        return all(
+            self.thresholds[i] < self.thresholds[i + 1] for i in range(len(self.thresholds) - 1)
+        )
+
+    def nominal_estimate(self, tau):
+        """What this population would report for a true interval of `tau` ticks, NOISE-FREE.
+
+        Same branch structure as decode(), evaluated against a supplied elapsed time instead of the
+        live ramp. Noise-free on purpose: it asks how well the LADDER TILES time, which is the only
+        thing growth can change, without the accumulator's per-trial jitter on top."""
+        v = tau * self.drive
+        k = _bisect.bisect_right(self.thresholds, v)
+        if k == 0:
+            return 0.0
+        if k >= self.n_cells:
+            return self.thresholds[-1] / self.drive
+        return math.sqrt(self.thresholds[k - 1] * self.thresholds[k]) / self.drive
+
+    def heldout_rmse(self, intervals):
+        if not intervals:
+            raise ValueError("refusing to compute an RMSE over an empty interval set")
+        total = sum((self.nominal_estimate(tau) - tau) ** 2 for tau in intervals)
+        return math.sqrt(total / len(intervals))
+
+    def would_earn(self, mode="interior", gap=None, intervals=None):
+        """The change in held-out error this growth WOULD cause, without performing it.
+
+        Negative means the added cell earns its place. Returns None if the growth would be refused.
+        Evaluated on a copy, so a candidate that does not earn costs nothing and leaves no trace --
+        which is what lets growth be gated on benefit without needing a prune to undo a bad one.
+        (There is no prune, deliberately: a population that can shrink can shrink to zero.)"""
+        if intervals is None:
+            _teach, intervals = interval_grid(self.thresholds)
+        if not intervals:
+            return None
+        candidate = TimeCellClock(
+            n_cells=self.n_cells, seed=self.seed, drive=self.drive, noise_sd=self.noise_sd
+        )
+        candidate.thresholds = list(self.thresholds)
+        before = candidate.heldout_rmse(intervals)
+        if candidate.grow(mode, gap=gap) is None:
+            return None
+        return candidate.heldout_rmse(intervals) - before
+
+    def first_passage_sd(self, theta):
+        """The accumulator's OWN dispersion at level `theta`, in ticks.
+
+        For a Wiener process with drift mu and per-step variance sigma^2 hitting a boundary at theta,
+        Var[T] = theta * sigma^2 / mu^3 -- the result this module's header already cites and whose
+        consequence decode()'s `sd` already reports empirically. Used here as the RESOLUTION FLOOR."""
+        if self.noise_sd <= 0.0:
+            return 0.0
+        return math.sqrt(theta * self.noise_sd**2 / self.drive**3)
+
+    def resolvable(self, j):
+        """Can a cell inserted in gap `j` be resolved at all, or is the gap already finer than the
+        accumulator's own jitter there?"""
+        lo, hi = self.thresholds[j], self.thresholds[j + 1]
+        return (hi - lo) / self.drive > self.first_passage_sd(hi)
+
+    def grow_if_earned(self, mode="interior", gap=None, intervals=None):
+        """Grow only while the added cell still earns its place (FR-008), and REFUSE otherwise.
+
+        This is the halt condition, and it is a refusal rather than a silence: a regime in which
+        nothing further can be earned shows up as `refused` climbing while `grown` stands still,
+        which is observable in `state()`. Inferring a halt from an absence of growth events cannot
+        distinguish 'stopped because it stopped helping' from 'never ran'.
+
+        TWO conditions, and the second one is the load-bearing one. Held-out improvement ALONE is a
+        gate that cannot go red: on a noise-free tiling metric, splitting the widest gap ALWAYS
+        lowers held-out error, so `delta < 0` is satisfied by every insertion forever. MEASURED
+        before this was noticed: 600 live ticks grew the population 64 -> 104 with 0 refusals, which
+        is not a working earn-your-place rule but an unbounded one wearing its clothes -- exactly the
+        Standing-Invariant-5 failure this project keeps finding in its own instruments.
+
+        The real bar is the accumulator's own noise. A bracket narrower than the first-passage
+        dispersion at that level cannot be resolved by this population no matter how finely it is
+        tiled, so a cell that only subdivides below that floor buys precision the substrate cannot
+        deliver. `resolvable()` is derived entirely from existing state -- thresholds, `drive`,
+        `noise_sd` -- so no benefit threshold is introduced (P1)."""
+        if mode == "interior":
+            j = self.widest_log_gap() if gap is None else int(gap)
+            if j is None or not (0 <= j < self.n_cells - 1) or not self.resolvable(j):
+                self.refused += 1
+                return None
+        delta = self.would_earn(mode, gap=gap, intervals=intervals)
+        if delta is None or delta >= 0.0:
+            self.refused += 1
+            return None
+        return self.grow(mode, gap=gap)
+
+    # ---------------------------------------------------------------- persistence
+    def save(self, name=STATE_NAME):
+        """Persist the LEARNED state -- the threshold vector and the lineage keys that make it
+        interpretable -- as a small atomic JSON blob.
+
+        NOT the lake, and the lake's own owning file states the rule (`substrate/home.py:41-42`:
+        weights/calibration stay separate STATE, never in the memory lake). A threshold vector IS the
+        learned weight set. Three measurements agree: appending a clock-shaped npz under `_T_GROWTH`
+        makes `restore_growth_state()` return False and the NG-SNN silently start ungrown, swallowed
+        by `brain.py:984`'s bare handler; `growth_state_bytes()` returns None when `_model is None`,
+        so on the NORD_TORCH=0 job the clock's state would have no carrier at all; and `_T_GROWTH` is
+        180.0 of 187.5 MB (96.0%) of the real lake, whose prune policy is unbuilt. `load_state` costs
+        0.110 ms against `load_growth`'s 0.400 s and 187.5 MB resident PER BRAIN CONSTRUCTION.
+
+        Overwrite IS the prune policy, so FR-014 is satisfied without introducing a retention
+        constant to tune (P1).
+
+        Per-trial state (`v`, `fired`, `spike_tick`, `n_fired`, `t`) is deliberately NOT persisted:
+        it describes an interval in progress, that interval ended when the process died, and
+        restoring it against a fresh RNG would be a fabrication."""
+        from snn_data_lake.substrate import home
+
+        return home.save_state(
+            name,
+            {
+                "fmt": STATE_FMT,
+                "n_cells": int(self.n_cells),
+                "seed": self.seed,
+                "drive": float(self.drive),
+                "noise_sd": float(self.noise_sd),
+                "thresholds": [float(t) for t in self.thresholds],
+            },
+        )
+
+    def restored(self, name=STATE_NAME):
+        """Return the clock this one SHOULD be, given what was persisted. Never mutates `self`.
+
+        Returns `(clock, reason)`. On success `clock` is a NEW TimeCellClock rebuilt at the persisted
+        width with the persisted vector assigned -- adopt wholesale, which is the only reconciliation
+        that is not a lie. Never mutate `n_cells` in place (`reset()` sizes `fired`/`spike_tick` from
+        it), never merge element-wise, never truncate or pad: F3 leaves no way to reconstruct a
+        learned threshold that was dropped.
+
+        On refusal `clock` is `self` with `restore_refused` incremented and `reason` set. Refuses on
+        fmt mismatch, `len(thresholds) != n_cells`, `n_cells < 1`, a seed/drive/noise_sd lineage
+        mismatch, or a non-ascending vector. The lineage keys cost 24 bytes and are what makes
+        refusal possible at all: `learn_interval` takes `t_pre` from `spike_tick` under THAT RNG's
+        noise, so a vector learned under another seed is another lineage's state, not this one's."""
+        from snn_data_lake.substrate import home
+
+        blob = home.load_state(name, default=None)
+        if not isinstance(blob, dict):
+            return self, "nothing persisted"
+        why = self._restore_refusal(blob)
+        if why:
+            self.restore_refused += 1
+            return self, why
+        fresh = TimeCellClock(
+            n_cells=int(blob["n_cells"]),
+            seed=self.seed,
+            drive=self.drive,
+            noise_sd=self.noise_sd,
+        )
+        fresh.thresholds = [float(t) for t in blob["thresholds"]]
+        fresh.grown = self.grown
+        fresh.refused = self.refused
+        fresh.failed = self.failed
+        fresh.restore_refused = self.restore_refused
+        return fresh, ""
+
+    def _restore_refusal(self, blob):
+        """The reason this blob may not be adopted, or '' if it may. Split out so the refusal
+        conditions are one readable list rather than a nest inside the happy path."""
+        if blob.get("fmt") != STATE_FMT:
+            return f"fmt mismatch: {blob.get('fmt')!r} is not {STATE_FMT!r}"
+        n = blob.get("n_cells")
+        if not isinstance(n, int) or n < 1:
+            return f"persisted n_cells is not a positive int: {n!r}"
+        vec = blob.get("thresholds")
+        if not isinstance(vec, list) or len(vec) != n:
+            return f"length mismatch: {len(vec) if isinstance(vec, list) else vec!r} != {n}"
+        if blob.get("seed") != self.seed:
+            return f"lineage mismatch: seed {blob.get('seed')!r} is not {self.seed!r}"
+        if float(blob.get("drive", -1.0)) != self.drive:
+            return f"lineage mismatch: drive {blob.get('drive')!r} is not {self.drive!r}"
+        if float(blob.get("noise_sd", -1.0)) != self.noise_sd:
+            return f"lineage mismatch: noise_sd {blob.get('noise_sd')!r} is not {self.noise_sd!r}"
+        if any(vec[i] >= vec[i + 1] for i in range(len(vec) - 1)):
+            return "persisted vector is not strictly ascending"
+        return ""
 
 
 def main():
@@ -228,7 +583,7 @@ def main():
 
     print("=" * 76)
     print(
-        "TIME CELL CLOCK -- ramping-to-threshold population timing (rank-order/tempotron readout)"
+        "TIME CELL CLOCK -- ramping-to-threshold population timing (geometric-mid population readout)"
     )
     print("=" * 76)
     print(

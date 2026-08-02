@@ -1,0 +1,30 @@
+# coverage-artifact v1 -- machine-written by coverage_score.py record
+kind: heldout
+command: python tools/timing_heldout.py --seeds 12
+exit: 0
+commit: 51827048f800b80e9f73fa9a9d90ea3ecfbc16b5
+recorded_at: 2026-08-02T16:34:36Z
+recorded_by: coverage_score.py record
+python: 3.11.15
+--- stdout ---
+==============================================================================
+HELD-OUT A/B -- does one inserted time cell earn its place?
+==============================================================================
+readout      : geometric-mid population readout, eligible (perturbation + degenerate)
+split        : gap-major grid, positional 1-in-5 stride, no RNG
+               630 intervals -> 504 of 630 teach, 126 of 630 test
+               test coverage 63 of 63 gaps
+regime       : unsaturated (noise-free ladder evaluation; see specs/003/regimes.md)
+control      : null arm inserts at the LOWEST-teach-residual gap
+------------------------------------------------------------------------------
+main (widest log-gap)    mean d = -0.004970  sd 0.001050  se 0.000303
+                         improves 12 of 12   ties 0 of 12   refusals 0 of 12
+                         |mean/se| = 16.40   (2.0 bar MET, 3.0 bar MET)
+null-control             mean d = -0.000002  sd 0.000003  se 0.000001
+                         improves 10 of 12   ties 0 of 12   refusals 0 of 12
+                         |mean/se| = 3.07   (2.0 bar MET, 3.0 bar MET)
+------------------------------------------------------------------------------
+main - null (contrast)   mean d = -0.004967  sd 0.001050  se 0.000303
+                         main better 12 of 12   ties 0 of 12   |mean/se| = 16.39 (2.0 bar MET, 3.0 bar MET)
+------------------------------------------------------------------------------
+VERDICT: the inserted cell EARNS its place. Held-out RMSE falls 0.004970 at the widest log-gap against 0.000002 at the best-fitting one; the paired contrast is -0.004967 at |mean/se| 16.39, so the benefit is attributable to WHERE the cell went, not to having one more cell.

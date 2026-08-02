@@ -88,7 +88,8 @@ a wrong citation is worse than leaving a rotted one. No citation was snapped to 
 to silence a warning, and no row was found whose mechanism had disappeared.
 
 **The 1 remaining warning is correct and expected.** `Executive.md:20`'s citation of
-`autonomous_loop.py:878` really does name a comment — deliberately: that comment is the documentation of
+`autonomous_loop.py:969` (`:878` when this was written; re-anchored by `--repin` on 2026-08-02 after
+the loop grew ~600 lines) really does name a comment — deliberately: that comment is the documentation of
 why PFC working memory is *unreachable* from the loop, which is the faculty's finding. A negative result
 cited to the prose that records it. It keeps warning, and that is better than an exemption list.
 
@@ -96,6 +97,23 @@ cited to the prose that records it. It keeps warning, and that is better than an
 anchor SILENCED the census instead of fixing anything — a suppression path built into the check whose
 whole purpose is to end silent suppression. Fixed the same day it shipped; the Executive row is the
 proof, since it would otherwise now read 0.
+
+### `--repin` is blind to a ledger with uncommitted edits, and `--repin-from` is the fix
+
+Added 2026-08-02, the day it was needed. `--repin` finds the text a citation ORIGINALLY named by
+`git blame`-ing the ledger row for the commit that wrote it. A row edited but not committed blames to
+the all-zero sha, which `--repin` correctly refuses to read -- and then counts as `unblamable` and
+moves on.
+
+That is the normal state right after a repair. MEASURED: repairing this ledger and then editing
+`cortex/brain.py` in the same session drifted 36 citations, and **84 of 88 rows were unblamable**, so
+`--repin` reached 16 of them and printed a confident summary. A tool that fixes 16 of 36 and says
+nothing about the other 20 is worse than one that refuses.
+
+`--repin-from SHA` ignores blame and reads every cited line at a named pre-drift commit. From
+`51827048` it moved 114 with **0 unblamable**. The function's KNOWN LIMIT paragraph had already
+described this recovery path in prose -- *"has to be recovered from an explicit pre-drift commit
+instead"* -- without implementing it, which is its own small lesson about documented workarounds.
 
 ### The census UNDERCOUNTS, and by how much is not yet known
 
@@ -248,6 +266,28 @@ fixed constant — the "constant sitting where a computed value belongs" that P1
 project's signature defect, wearing a learning rule's clothes. The claim in the module header is
 contradicted by its own runtime behaviour and should not be quoted until the rule is fixed.
 
+> **SUPERSEDED, 2026-08-02 (specs/003).** Everything above was true when it was measured and is kept
+> as the record of *why* the rule was fixed, but it must not be quoted as current. Two things have
+> changed underneath it:
+>
+> - **The integer ladder `[1.0, 2.0, 3.0, 4.0]` no longer exists.** The constructor tiles
+>   geometrically, so the first four thresholds at n=64 are `1.0000, 1.0672, 1.1389, 1.2154`. The
+>   integer ladder was itself the reason the rule could not learn: with `float(i+1)` at `drive=1.0`
+>   every nominal latency was exactly an integer tick, so the actual spike time equalled the nominal
+>   one, `dt` was identically 0.0, and the threshold was unlearnable in principle rather than merely
+>   in practice. `time_cells_ab_eprop.txt` predates that change and the two others that followed it
+>   (`t_pre` taken from `spike_tick` rather than the nominal, and the order-preserving refusal), so
+>   the artifact is stale by design, not by neglect.
+> - **The rule now moves thresholds.** MEASURED over 4000 ticks x 12 seeds in the reset-driven
+>   regime: 36.58 of 64 thresholds move. The "32 calls, zero movement" figure describes the retired
+>   rule.
+>
+> What is NOT superseded is the methodological point, which still holds and is why the row was not
+> re-banded on the strength of a code change: `state()` exposing nothing about the clock's internals
+> meant `ab_method.py` was structurally blind to this rule, so its null was uninformative rather than
+> negative. That gap is closed separately — see `time_cells_width` / `_grown` / `_refused` /
+> `_failed` in `state()`.
+
 ### IntrinsicPlasticity.adapt: measured NEVER CALLED, contradicting the earlier verdict
 
 Phase 5 / T015 (`intrinsic_plasticity_ab_eprop.txt`). On the `make_brain()` live path, seed 0,
@@ -359,3 +399,66 @@ number belongs here, next to the evidence, rather than in a plan document as a h
 The shape of the conclusion is unchanged and is the part that matters: **wiring cannot reach 100%, and
 the five excluded categories need capability.** That is why `COVERAGE_TO_100.md` puts capability last
 and largest, not first and cheapest.
+
+---
+
+## One inserted time cell EARNS its place (`time_cells_growth_heldout.txt`)
+
+specs/003, T039–T040. `python tools/timing_heldout.py --seeds 12`, exit 0, recorded and verified
+`reproduces`. This is the verdict the whole growth feature was gated on, and it was permitted to be
+a null.
+
+```
+main (widest log-gap)    mean d = -0.004970  sd 0.001050  se 0.000303
+                         improves 12 of 12   ties 0 of 12   refusals 0 of 12   |mean/se| 16.40
+null-control             mean d = -0.000002  sd 0.000003  se 0.000001
+                         improves 10 of 12   ties 0 of 12   refusals 0 of 12   |mean/se|  3.07
+main - null (contrast)   mean d = -0.004967  sd 0.001050  se 0.000303
+                         main better 12 of 12   ties 0 of 12                   |mean/se| 16.39
+```
+
+**The held-out split**: the interval universe is derived from the population's OWN ladder — 10 points
+per gap at `lo + (hi-lo)*(p+0.5)/10`, ordered gap-major, deterministic positional 1-in-5 stride
+(`index % 5 == 4` → TEST). 630 intervals → 504 of 630 teach, 126 of 630 test, disjoint, with **63 of
+63 gaps** represented in the test set. The 20% ratio is the discipline ported from
+`reasoning/ng_snn.py:178-201`; the POSITION is not portable — a literal trailing-20% split leaves
+only 4 of 63 gaps able to move the metric.
+
+**The control**: a second cell inserted at the *lowest-teach-residual* gap — where the population
+already fits best. Its purpose is to answer "would any extra cell have done this?", and it says no:
+the same insertion elsewhere buys 0.04% of the benefit.
+
+**The regime**: unsaturated. `specs/003-grow-the-live-populations/regimes.md` measures **96.11% of
+live clock-advancing ticks unsaturated** (3 seeds x 600 ticks on `make_brain(persist=False)`). The
+readout's saturated branch is a range ceiling rather than an estimate, so nothing here licenses a
+claim about the saturated regime; only `grow("extend")` addresses that, and its benefit is
+clamp-widening under FR-006 and is never reported as earning.
+
+### Three things this result is not
+
+1. **It is not a claim that the brain times better.** The instrument evaluates the ladder noise-free,
+   which isolates how well the population TILES the interval and deliberately excludes the ramp's
+   own noise. Whether a point-estimate improvement can be attributed to tiling rather than to how
+   recently any cell fired remains open — geometric-mid was adopted because it reads only the
+   population, not because it is more accurate. Against true elapsed it is in fact **+45% RMSE worse
+   at the live width** (1.0536 vs 0.7276), closing to +4% by n=512. That cost is the price of
+   measurability and is stated wherever the benefit is.
+2. **It is not a big number.** 0.004970 of held-out RMSE. It is significant because the paired
+   dispersion is tiny, not because the effect is large.
+3. **The verdict rule was changed mid-measurement, and here is why.** The first version required the
+   control to be indistinguishable from zero. It scored exactly +0.000000, ties 12 of 12 — and that
+   was an artefact: the lowest-residual gap held **zero test intervals**, so nothing measured it. The
+   fix restricts the control to gaps a test interval actually falls in, at which point a
+   noise-free readout guarantees *some* movement and "indistinguishable from zero" becomes
+   unreachable by construction. The verdict now rests on the paired **contrast** between the arms at
+   the same seeds, which is what FR-006 was asking all along: is the benefit attributable to
+   placement? `tests/test_timing_heldout.py::test_null_control_gap_is_measurable` pins the repair so
+   the fake zero cannot come back.
+
+**Fingerprint is empty**, as with the artifact above: the harness prints `N of M`, never `N/M`, so
+`--rerun` checks the exit code and not the observables. Deliberate, and it means this artifact's
+reproduction check is weaker than a tick-counting probe's.
+
+**Ledger effect**: `record` writes no `metric:`/`baseline:` keys, so F10 caps a freshly recorded
+`kind: heldout` artifact at band 40. `SpatialTemporal.interval_timing_time_cells` sits at 35. The
+honest deliverable of this feature is a correct instrument, a real number, and at most five points.

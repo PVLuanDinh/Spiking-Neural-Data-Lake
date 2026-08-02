@@ -751,6 +751,25 @@ class Brain:
                 self._grid_can
             ) = None
 
+        # ---- specs/003: the time-cell population may GROW, and may remember how wide it grew.
+        # OFF BY DEFAULT, and the default is load-bearing twice over. (1) FR-016 wants an off-switch
+        # under which live behaviour is unchanged, and this is it -- with the flag unset the clock is
+        # constructed at 64 and never grows, exactly as before. (2) An UNCONDITIONAL restore makes
+        # brain construction stop being a pure function of its seed: it reads whatever the previous
+        # process left on disk, which measured as non-deterministic construction in ~42% of trials.
+        # A gate that must be asked for cannot do that to a test run.
+        self._time_cells_grow = os.environ.get("NORD_TIME_CELLS_GROW") == "1"
+        self._time_cells_restore_note = "disabled"
+        if self._time_clock is not None and self._time_cells_grow:
+            # Its OWN try. NOT the handler above -- that one nulls FIVE populations, so a bad state
+            # blob on disk would silently cost the brain its affect appraisal, task sets, self-model
+            # and grid cells as collateral. Also never inside TimeCellClock.__init__: the module's
+            # own self-check would then read the previous gate run's state.
+            try:
+                self._time_clock, self._time_cells_restore_note = self._time_clock.restored()
+            except Exception as _e:
+                self._time_cells_restore_note = f"restore raised: {_e}"
+
         # C1 batch-2: three MORE brain-native pure-stdlib faculties -- N-agent recursive ToM (social),
         # neuromod-fusion affect integrator with self-organized emotions (affect), counterfactual do()
         # simulation over a learned local forward model (imagination). Representation-only; no arm route.
@@ -1930,6 +1949,19 @@ class Brain:
                     float(self._real_novelty) > 0.5
                 ):  # a salient new stimulus starts a fresh timed interval
                     self._time_clock.reset()
+                    # AUTONOMOUS LIF GROWTH (specs/003, opt-in via NORD_TIME_CELLS_GROW=1). Here and
+                    # nowhere else: reset() has just established the only state in which a cell may
+                    # be inserted (fired set empty, ramp at zero), and the brain reaches it on its
+                    # own whenever something salient happens, so no growth schedule is invented.
+                    # grow_if_earned() refuses unless the candidate strictly improves the
+                    # population's held-out error, so the halt is a rising `refused` rather than an
+                    # absence of events.
+                    if self._time_cells_grow:
+                        try:
+                            if self._time_clock.grow_if_earned() is not None and self._persist:
+                                self._time_clock.save()
+                        except Exception:
+                            pass  # counted as `time_cells_failed`; never takes the tick down
                 self._elapsed_time, self._timing_sd = self._time_clock.tick()
             except Exception:
                 pass
@@ -2799,6 +2831,27 @@ class Brain:
             "timing_sd": round(
                 float(self._timing_sd), 3
             ),  # C1: emergent Weber-scaling timing uncertainty (grows with duration)
+            # specs/003 FR-011: the clock's WIDTH and its growth outcomes. Nothing in the tree could
+            # observe any of the three before -- `n_cells` appeared once, as the literal 64 at :744 --
+            # so ab_method.py's neuter-A/B was structurally blind to growth and a verdict from it
+            # would have been uninformative rather than negative. `refused` is what makes a HALT
+            # observable instead of inferred from an absence of events, and `failed` is separate
+            # because an exception is a defect while a refusal is a normal outcome (SC-007, FR-013).
+            "time_cells_width": (
+                int(self._time_clock.n_cells) if self._time_clock is not None else 0
+            ),
+            "time_cells_grown": (
+                int(self._time_clock.grown) if self._time_clock is not None else 0
+            ),
+            "time_cells_refused": (
+                int(self._time_clock.refused) if self._time_clock is not None else 0
+            ),
+            "time_cells_failed": (
+                int(self._time_clock.failed) if self._time_clock is not None else 0
+            ),
+            "time_cells_restore_refused": (
+                int(self._time_clock.restore_refused) if self._time_clock is not None else 0
+            ),
             "affective_appraisal": self._appraised,  # C1: LEARNED (valence, arousal) appraisal (three-factor, gradient-free)
             "task_set_active": self._task_set_active,  # C1: currently held task-set (set-shifting)
             "task_switch_cost": self._task_switch_cost,  # C1: cost paid at the last set shift

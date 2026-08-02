@@ -6,15 +6,15 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| latent_world_model | 61 | src/snn_data_lake/cortex/brain.py:200#__init__; src/snn_data_lake/brainstem/autonomous_loop.py:1314#step; src/snn_data_lake/brainstem/autonomous_loop.py:1619#step | imag_jepa_action_60.txt | opus-5 REFUTER / docs/coverage/artifacts/imagination_refute_ab.py 60 | 2026-07-30 |
-| counterfactual_do_operator | 40 | src/snn_data_lake/cortex/brain.py:1996#_c1_tick; src/snn_data_lake/cortex/brain.py:2012#_c1_tick; src/snn_data_lake/cortex/brain.py:3171#respond | imag_cf_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py counterfactual 60 | 2026-07-30 |
-| model_based_plan_rollout | 35 | src/snn_data_lake/brainstem/autonomous_loop.py:981#goal_value; src/snn_data_lake/brainstem/autonomous_loop.py:1018#_pfc_bias | imag_plan_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py model_based_plan 60 | 2026-07-30 |
-| mental_imagery | 20 | src/snn_data_lake/cortex/brain.py:3531#imagine; src/snn_data_lake/cortex/brain.py:2939#respond | - | opus-5 REFUTER / band-definition correction on the auditor's own live cue-sensitivity probe | 2026-07-30 |
-| dream_replay | 25 | src/snn_data_lake/cortex/brain.py:2353#_sleep_tick; src/snn_data_lake/hippocampus/sleep_replay.py:294#sleep | imag_dream_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py dream_replay 60 | 2026-07-30 |
-| spiking_world_model | 10 | src/snn_data_lake/substrate/dormancy_gate.py:146#module; src/snn_data_lake/cerebellum/spiking_jepa.py:101#SpikingJEPA | - | dormancy_gate EXEMPT permanent + its recorded encode() negative (static) | 2026-07-30 |
+| latent_world_model | 61 | src/snn_data_lake/cortex/brain.py:200#__init__; src/snn_data_lake/brainstem/autonomous_loop.py:1411#step; src/snn_data_lake/brainstem/autonomous_loop.py:1716#step | imag_jepa_action_60.txt | opus-5 REFUTER / docs/coverage/artifacts/imagination_refute_ab.py 60 | 2026-07-30 |
+| counterfactual_do_operator | 40 | src/snn_data_lake/cortex/brain.py:2036#_c1_tick; src/snn_data_lake/cortex/brain.py:2052#_c1_tick; src/snn_data_lake/cortex/brain.py:3232#respond | imag_cf_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py counterfactual 60 | 2026-07-30 |
+| model_based_plan_rollout | 35 | src/snn_data_lake/brainstem/autonomous_loop.py:1072#goal_value; src/snn_data_lake/brainstem/autonomous_loop.py:1109#_pfc_bias | imag_plan_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py model_based_plan 60 | 2026-07-30 |
+| mental_imagery | 20 | src/snn_data_lake/cortex/brain.py:3592#imagine; src/snn_data_lake/cortex/brain.py:3000#respond | - | opus-5 REFUTER / band-definition correction on the auditor's own live cue-sensitivity probe | 2026-07-30 |
+| dream_replay | 25 | src/snn_data_lake/cortex/brain.py:2393#_sleep_tick; src/snn_data_lake/hippocampus/sleep_replay.py:294#sleep | imag_dream_60.txt | opus-5 / docs/coverage/artifacts/imagination_ab.py dream_replay 60 | 2026-07-30 |
+| spiking_world_model | 10 | src/snn_data_lake/substrate/dormancy_gate.py:163#module; src/snn_data_lake/cerebellum/spiking_jepa.py:101#SpikingJEPA | - | dormancy_gate EXEMPT permanent + its recorded encode() negative (static) | 2026-07-30 |
 | efference_copy_forward_model | 10 | src/snn_data_lake/cortex/live_brain.py:329#deliberate_ahead; src/snn_data_lake/cerebellum/forward_model.py:81#ForwardModel | - | opus-5 / live_brain._planner is None after 20 ticks, seeds 0 and 3 | 2026-07-30 |
-| hierarchical_abstract_world_model | 0 | src/snn_data_lake/brainstem/autonomous_loop.py:118#__init__; src/snn_data_lake/brainstem/autonomous_loop.py:945#_pfc_bias; src/snn_data_lake/brainstem/autonomous_loop.py:2163#main | - | opus-5 / arm.hjepa_serve is None on make_brain(seed=0) | 2026-07-30 |
-| generative_recombination | 0 | src/snn_data_lake/cortex/self_improvement_suite.py:213#_rung_qd; src/snn_data_lake/substrate/dormancy_gate.py:107#module | - | opus-5 / caller search over src: no live-path generator | 2026-07-30 |
+| hierarchical_abstract_world_model | 0 | src/snn_data_lake/brainstem/autonomous_loop.py:169#__init__; src/snn_data_lake/brainstem/autonomous_loop.py:1036#_pfc_bias; src/snn_data_lake/brainstem/autonomous_loop.py:2260#main | - | opus-5 / arm.hjepa_serve is None on make_brain(seed=0) | 2026-07-30 |
+| generative_recombination | 0 | src/snn_data_lake/cortex/self_improvement_suite.py:213#_rung_qd; src/snn_data_lake/substrate/dormancy_gate.py:124#module | - | opus-5 / caller search over src: no live-path generator | 2026-07-30 |
 
 **Mean over the nine faculties: 201/9 = 22.3.** Nine rows, none UNSCORED, one above 40.
 

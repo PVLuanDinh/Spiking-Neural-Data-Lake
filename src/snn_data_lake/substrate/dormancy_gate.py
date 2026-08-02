@@ -74,17 +74,19 @@ EXEMPT = {
     # on the live tick now (autonomous_loop, serial_arm's mirror, live_arm, cpg_oscillator,
     # spiking_pid, ring_attractor and the planner all drive it), so it is reachable and needs no
     # exemption. Leaving the entry would have been the quiet lie the soft-report exists to catch.
-    "reaction_diffusion_compute": (
-        "retire",
-        "The excitable-medium wavefront. Its ONLY consumer was the grid planner in "
-        "cerebellum/wavefront_planner.py, which specs/004 replaced with a sampling planner "
-        "because the grid does not survive the dimension change: 36**6 is about 2.2 billion "
-        "cells against 2592 for two joints, so the wave cannot be run at all on a six-joint "
-        "arm. The primitive is correct and self-checked -- what ended is its USE, and P2 says "
-        "a superseded mechanism goes rather than lingering behind a flag. Listed rather than "
-        "deleted in the same change so the deletion is a decision taken on its own merits and "
-        "not a side effect of a planner rewrite.",
-    ),
+    # reaction_diffusion_compute: RETIRED AND DELETED 2026-08-02, as its own entry said it should be.
+    # The exemption existed for one reason -- so the deletion would be a decision taken on its merits
+    # rather than a side effect of the specs/004 planner rewrite -- and that decision is now taken.
+    # What was checked before deleting, because "no consumer" is a claim and not an observation:
+    #   * the only historical consumer, cerebellum/wavefront_planner.py, is now a bidirectional RRT;
+    #     the grid it needed is 36**6 ~ 2.2e9 cells at six joints against 2592 at two, so the wave
+    #     cannot run on the arm this repo actually has. Dimension retired it, not preference.
+    #   * there is no OTHER 2-D occupancy grid anywhere live. The brain's only spatial surface is the
+    #     allocentric landmark map behind `map_position`, which carries positions and landmarks and no
+    #     obstacles, so there is nothing over which a wavefront would compute a geodesic.
+    # Wiring it to the landmark map to keep it alive would have been a fake consumer, which P3 names
+    # explicitly. The primitive was correct, self-checked and cross-validated against an independent
+    # BFS; none of that is a reason to keep an unused mechanism (P2). It is recoverable from history.
     # NOTE: the 17 "retire"-tagged modules (wilson_cowan/RBM/kalman/kuramoto/cue_integration/olfactory x2/
     # 3 redundant seq-memories/neurogenesis-stdlib/language_brain+brain_reasoning/adaptive_spiking/lt_gate/
     # feedback_alignment/sensor_demo/coordinated_growth) were DELETED in the Policy-2/3 retirement wave --
