@@ -9,6 +9,72 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [v4.81] -- the population grows itself, and the first three stop-rules could not stop (2026-08-02)
+
+specs/003 implemented end to end, from a spec parked at Phase 1. The feature is real and small; the
+instructive part is that **three separate gates inside it were green lights that could not go red**,
+and each was caught by disbelieving an output rather than by reading code.
+
+- **The time-cell readout could not see its own population, so growth was unmeasurable by
+  construction.** `decode()` interpolated the shared ramp between two thresholds, which collapses
+  algebraically to the ramp itself: RMSE against true elapsed was BIT-IDENTICAL at widths 64, 128,
+  256 and 512. Replaced with the geometric-mid population readout -- `sqrt(t[k-1]*t[k])/drive`, every
+  term existing state. Stated cost, not hidden: **+45% RMSE at the live width** (1.0536 vs 0.7276),
+  closing to +4% by n=512. That is the price of measurability and it is paid up front.
+- **Two latent defects closed on their own merits.** `decode()` never divided by `drive` while
+  `learn_interval` always has (at `drive=0.5`, true elapsed 40 was reported as **19.340**); and the
+  learning rule could break the ascending-threshold invariant that `tick()` depends on, stranding
+  every higher cell. Fixed by REFUSING an order-breaking update, not clamping it -- clamping
+  collapses gaps to 1 ULP (2.220e-16 vs 5.298e-03) with identical learning coverage, and a 1-ULP gap
+  is a denominator in the new readout.
+- **`grow()`**: interior insertion at the geometric midpoint of the widest LOG gap, only at a reset
+  boundary, RNG-neutral, pre-existing thresholds bit-identical, `n_cells` mutated last. Append-at-top
+  is retained as a separate `extend` mode for saturation ONLY and its benefit is reported as
+  clamp-widening, never as earning -- below saturation it is measurably inert (ties 20 of 20).
+- **The held-out verdict: the inserted cell EARNS its place.** `tools/timing_heldout.py --seeds 12`,
+  exit 0, recorded and reproducing. Main arm -0.004970, null-control -0.000002, paired contrast
+  -0.004967 at |mean/se| 16.39, main better 12 of 12.
+
+### The three stop-rules that could not stop
+
+1. **The null control measured nothing.** It scored exactly +0.000000 with ties 12 of 12 -- because
+   the lowest-teach-residual gap held ZERO test intervals. A control whose zero is produced by the
+   instrument's own blindness launders the main arm's result. Now restricted to gaps a test interval
+   falls in, and pinned by `test_null_control_gap_is_measurable`.
+2. **The earn-your-place halt could not refuse.** On a noise-free tiling metric every split of the
+   widest gap lowers held-out error, so "grow if it improves" is satisfied forever: **600 live ticks
+   grew the population 64 -> 104 with 0 refusals**. The bar that binds is the accumulator's own
+   first-passage dispersion, `sqrt(theta*noise_sd^2/drive^3)` -- the result the module header already
+   cited. Growth now halts at **width 69 after 5 insertions**, identical at 600 and 2000 ticks.
+3. **The probe carried its own copy of the readout it was judging.** Retired; the instrument now
+   delegates to `TimeCellClock.nominal_estimate`, and the interval grid moved into the module that
+   owns the ladder (P2: one mechanism).
+
+Also: persistence via `save_state` (overwrite IS the prune policy, so no retention constant and no
+lake dependency -- 1422 durable bytes, flat); restore that adopts wholesale or REFUSES and records
+the refusal on fmt/length/lineage/order; `time_cells_width` / `_grown` / `_refused` / `_failed` /
+`_restore_refused` exported from `state()` after enumerating every consumer; and an off-switch
+(`NORD_TIME_CELLS_GROW`) that gates growth AND restore, because an unconditional restore made brain
+construction stop being a pure function of its seed.
+
+- **`substrate/reaction_diffusion_compute.py` DELETED**, taking the decision its own `"retire"`
+  exemption was written to defer. Checked before deleting: the only historical consumer is now an
+  RRT, and no other 2-D occupancy grid exists anywhere live -- the brain's one spatial surface is the
+  allocentric landmark map, which has no obstacles for a wavefront to flow around. Wiring it there
+  would have been the fake consumer P3 forbids. 195 modules -> 194, 25 exemptions -> 24, 0 dormant.
+- **The coverage ledger prints a faculty total again: 26.4%, unchanged.** It had refused -- "32
+  claim(s) are not supported by the evidence standard" -- because `autonomous_loop.py` grew ~600
+  lines and every citation past that point drifted. 121 re-anchored mechanically via `--repin`; 4
+  needed the original text recovered from the ledger's creating commit and disambiguated by
+  enclosing symbol, because their line text occurs more than once at HEAD.
+- **`--repin-from SHA` added, and it was needed immediately.** `--repin` blames each ledger row to
+  find the commit whose source text the citation named. Editing `cortex/brain.py` for specs/003
+  drifted 36 more citations -- but the ledger rows were themselves uncommitted, so blame returned
+  the all-zero sha and **84 of 88 rows came back `unblamable`**: a plain `--repin` could reach only
+  16 of them and would have reported success. `--repin-from` ignores blame and reads every cited
+  line at a named pre-drift commit; from `51827048` it moved 114 with 0 unblamable. This is the
+  recovery path the function's own KNOWN LIMIT paragraph already described and did not implement.
+
 ## [v4.80] -- the tick was 90,000 ms and the growth stop was grading its own homework (2026-07-29)
 
 Seven commits that had been held back from `origin` pending review, released together. Two of them are

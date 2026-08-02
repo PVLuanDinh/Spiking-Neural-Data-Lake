@@ -117,19 +117,11 @@ _EXEMPT_FILES = {".gitignore", "tools/citation_guard.py"}
 # nothing is worse than none: it reads like coverage. So main() also asserts that every key here still
 # matches a real strict violation. An exemption must keep earning its place or the gate says so.
 EXEMPT = {
-    "specs/003-grow-the-live-populations/quickstart.md:64": (
-        "NOT YET BUILT, and that is the point of the document. specs/003 is a spec whose "
-        "implementation is parked at Phase 1; a quickstart is by definition a validation guide "
-        "for the feature being specified, so it names the commands that will exist when the "
-        "work lands. Deleting them would remove the acceptance criteria the spec exists to "
-        "state, and promoting an empty tools/timing_heldout.py to satisfy a path check would "
-        "be worse -- a file that runs and measures nothing. Retire this entry the moment "
-        "specs/003 implements or is abandoned; if it outlives either, the spec is stale and "
-        "this line is the evidence."
-    ),
-    "specs/003-grow-the-live-populations/quickstart.md:77": (
-        "Same unbuilt tool as :64, cited again through the recorder. See that entry."
-    ),
+    # RETIRED 2026-08-02, on the terms the entry set for itself: specs/003 landed, so
+    # tools/timing_heldout.py exists, runs, and measures something. The two quickstart citations
+    # now resolve on their own and need no exemption. Recorded as a comment rather than deleted
+    # silently, because "retire this entry the moment specs/003 implements or is abandoned" was a
+    # promise, and a promise kept is worth as much evidence as one broken.
     "docs/HARDWARE_SETUP.md:144": (
         "FALSE POSITIVE, and the tokenizer is why. The cited file IS tracked -- at "
         "`integrations/robot arm/sensor_reading.py`. That directory name contains a SPACE, so _CITE's "

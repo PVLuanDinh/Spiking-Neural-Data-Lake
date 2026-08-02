@@ -201,7 +201,6 @@ REGIONS = {
         "make_sensor_dataset",
         "demo",
         "brain_bundle",
-        "reaction_diffusion_compute",
         "web_ingest",
         "lake_working_memory",
         "chat_memory",  # durable content-addressable chat memory on the spike lake (noise-filtered)

@@ -6,12 +6,12 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| generation_acquired_lm | 40 | src/snn_data_lake/cortex/brain.py:3480#_language; src/snn_data_lake/cortex/brain.py:3016#respond; src/snn_data_lake/cortex/language_acquisition.py:188#generate | lang_no_ab_source.txt | opus-5 language-auditor / live respond() route census, 40-tick brain, seed 0 | 2026-07-30 |
-| comprehension_intent_firewall | 40 | src/snn_data_lake/cortex/brain.py:2907#respond | - | opus-5 language-auditor / live respond() route census, seed 0 | 2026-07-30 |
-| generation_narrator | 35 | src/snn_data_lake/cortex/self_model.py:411#introspect; src/snn_data_lake/cortex/brain.py:2986#respond | - | opus-5 language-auditor / live respond() route census + benevolence turn, seed 0 | 2026-07-30 |
+| generation_acquired_lm | 40 | src/snn_data_lake/cortex/brain.py:3541#_language; src/snn_data_lake/cortex/brain.py:3077#respond; src/snn_data_lake/cortex/language_acquisition.py:188#generate | lang_no_ab_source.txt | opus-5 language-auditor / live respond() route census, 40-tick brain, seed 0 | 2026-07-30 |
+| comprehension_intent_firewall | 40 | src/snn_data_lake/cortex/brain.py:2968#respond | - | opus-5 language-auditor / live respond() route census, seed 0 | 2026-07-30 |
+| generation_narrator | 35 | src/snn_data_lake/cortex/self_model.py:411#introspect; src/snn_data_lake/cortex/brain.py:3047#respond | - | opus-5 language-auditor / live respond() route census + benevolence turn, seed 0 | 2026-07-30 |
 | pragmatics_implicature | 32 | src/snn_data_lake/reasoning/spike_chat_lake.py:1000#converse; src/snn_data_lake/reasoning/pragmatics.py:356#implicature | - | opus-5 language-auditor / live neuter-A/B on LakeChat._pragmatics, seed 0 | 2026-07-30 |
-| constituency_parse_rose | 28 | src/snn_data_lake/cortex/brain.py:2952#respond; src/snn_data_lake/reasoning/rose_language.py:222#parse | - | opus-5 language-auditor / live respond('parse ...') + shuffled-input control | 2026-07-30 |
-| nightly_language_skill | 25 | src/snn_data_lake/reasoning/nightly_skills.py:299#_ensure_domains; src/snn_data_lake/cortex/brain.py:2526#_enter_sleep | - | opus-5 language-auditor / static read of the sleep-tick consumer, NOT runtime | 2026-07-30 |
+| constituency_parse_rose | 28 | src/snn_data_lake/cortex/brain.py:3013#respond; src/snn_data_lake/reasoning/rose_language.py:222#parse | - | opus-5 language-auditor / live respond('parse ...') + shuffled-input control | 2026-07-30 |
+| nightly_language_skill | 25 | src/snn_data_lake/reasoning/nightly_skills.py:299#_ensure_domains; src/snn_data_lake/cortex/brain.py:2566#_enter_sleep | - | opus-5 language-auditor / static read of the sleep-tick consumer, NOT runtime | 2026-07-30 |
 | comprehension_learned_intent_router | 22 | src/snn_data_lake/cortex/live_brain.py:512#chat; src/snn_data_lake/cortex/live_brain.py:495#route | - | opus-5 language-auditor / caller search for the route() readout, static | 2026-07-30 |
 | grammar_competence_blimp | 12 | src/snn_data_lake/reasoning/blimp_bench.py:170#module; src/snn_data_lake/reasoning/ar_spiking_lm_serve.py:356#logprob | lang_blimp_bench_67x25.txt | opus-5 language-auditor / blimp_bench.py self-check, 67x25 pairs | 2026-07-30 |
 | core_spiking_lm_serve | 5 | src/snn_data_lake/cortex/spiking_lm_serve.py:96#generate | - | opus-5 language-auditor / weight-file search + caller search | 2026-07-30 |

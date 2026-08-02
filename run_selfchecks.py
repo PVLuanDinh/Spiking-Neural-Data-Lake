@@ -238,7 +238,6 @@ CORE = [
     "substrate.make_sensor_dataset",
     "substrate.demo",
     "substrate.brain_bundle",
-    "substrate.reaction_diffusion_compute",
     "substrate.web_ingest",
     "substrate.lake_working_memory",
     "substrate.chat_memory",

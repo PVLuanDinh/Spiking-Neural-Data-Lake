@@ -24,6 +24,27 @@ T002 — three gates at baseline           ALL GREEN
   pytest                  : PASS  (exit 0; total coverage 92.53%, floor is 70%)
 
 T009 — three gates after Phase 2 (T004-T008)
-  ruff check .            : pending
-  run_selfchecks.py       : pending
-  pytest                  : pending
+  ruff check .            : PASS  ("All checks passed!")
+  run_selfchecks.py       : PASS  (278/278 self-checks passed)
+  pytest                  : PASS  (exit 0)
+
+T017 — three gates after Phase 3 (the geometric-mid readout), NO assertion loosened
+  ruff check . + format   : PASS  (448 files already formatted)
+  run_selfchecks.py       : PASS  (278/278)
+  module self-check       : PASS  50 ticks -> decode 50.80 (true 50, err 0.80), monotonic=True
+                                  sd@10=0.7477 -> sd@50=0.8430 (Weber, ratio 1.13x)
+                                  learn_interval 0.1016 -> 0.0993
+  the four assertions the readout had to keep, all UNCHANGED in text:
+    monotonic (tests/test_time_cells.py:16), final_err < 5.0 (:20), Weber (:32),
+    same-seed determinism (:52)
+
+MEASURED FIGURES THAT DIFFER FROM THE PLAN'S EXPECTATIONS
+  learning coverage       : 36.58 of 64 thresholds move (plan said ~49.8). IDENTICAL pre- and
+                            post-fix per seed in the reset-driven regime, which is the claim that
+                            matters — the absolute number is harness-dependent.
+  inversions before fix   : 5 of 12 seeds in the SATURATING regime (plan said 9 of 12 reset-driven).
+                            This harness's reset-driven regime does not provoke them at all, which
+                            is why the test's control arm runs the saturating one.
+  unsaturated live share  : 96.11% (plan expected 92.5-95.8%)
+  growth halt             : width 64 -> 69, 5 growths, then refuses — identical at 600 and 2000
+                            ticks. See bounding.md; the first halt rule could not halt at all.

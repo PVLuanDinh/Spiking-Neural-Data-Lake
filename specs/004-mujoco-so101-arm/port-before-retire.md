@@ -38,9 +38,13 @@ change that updated all five registration sites (T066).
   `ee()`, `effector`, `stopped` and its own untested E-STOP. Its justification was
   dependency-freedom, which the project dropped in 2026-07. Now raises on construction; the demo
   drives the one real arm (T071).
-- **`substrate/reaction_diffusion_compute.py`** — not deleted, marked `"retire"` in
-  `dormancy_gate.EXEMPT`. Its only consumer was the grid planner. Recorded rather than deleted
-  in the same change, so that deletion is a decision on its own merits.
+- **`substrate/reaction_diffusion_compute.py`** — marked `"retire"` in `dormancy_gate.EXEMPT`
+  rather than deleted here, so that deletion would be a decision on its own merits.
+  **DELETED 2026-08-02**, and the merits were checked rather than assumed: the only historical
+  consumer is now an RRT, and there is no other 2-D occupancy grid anywhere live — the brain's one
+  spatial surface is the allocentric landmark map behind `map_position`, which has no obstacles for
+  a wavefront to flow around. Wiring it there to keep it alive would have been the fake consumer P3
+  forbids. Module count 195 → 194, exemptions 25 → 24, dormant 0.
 
 ## The five registration sites, all moved in one change
 
