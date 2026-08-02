@@ -1,6 +1,6 @@
 # Arm performance, determinism and environment (T073, T074, T076, T077)
 
-Measured 2026-08-01 with `scratchpad/perf.py`.
+Measured 2026-08-01. The measuring script was a throwaway run from a scratch directory and is deliberately NOT vendored: the numbers below are the artifact, and a script kept only to justify them would rot untested. Every figure is reproducible from the public API -- `So101Arm.set_substeps` + `apply` for the cost table, `mujoco.mj_step` over `arm_config._model()` for the digest.
 
 | | |
 |---|---|
@@ -40,8 +40,9 @@ final qpos [-0.327639635, 0.23388347, 0.263985081, -0.201499004, -0.179642058, -
 **Only one matrix cell is measured, and that is stated rather than glossed.** The task asks for
 a comparison across the CI matrix; this machine is one of its cells. The hash above is the
 reference value — a cross-OS claim requires the other cells to produce it, and until they run,
-"deterministic across OSes" is a hypothesis, not a result. Re-run `scratchpad/perf.py` on each
-cell and compare this digest.
+"deterministic across OSes" is a hypothesis, not a result. To extend it, step
+`arm_config._model()` 4000 times on each cell with ctrl resampled from `numpy.random.default_rng(0)`
+(seed 0) every 50 steps, then sha256 the concatenated `qpos` and `qvel` and compare to the digest above.
 
 What *is* established locally: the run is reproducible on this cell, and the planner, the
 reach sweep and the coverage sweep are all seeded so they reproduce too.

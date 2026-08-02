@@ -37,7 +37,7 @@ this gate.
   PYTHONPATH=src python -m snn_data_lake.brainstem.interpreter
   PYTHONPATH=src python -m snn_data_lake.brainstem.serial_arm
   PYTHONPATH=src python -m snn_data_lake.brainstem.arm_config
-  pytest tests/test_arm_sim.py tests/test_reflex.py tests/test_interpreter.py tests/test_arm_config.py tests/test_serial_arm.py
+  pytest tests/test_so101_arm.py tests/test_reflex.py tests/test_interpreter.py tests/test_arm_config.py tests/test_serial_arm.py tests/test_arm_vocabulary.py
   ```
 - Do not weaken an assertion, remove a limit check, or add a bypass path to make a demo pass.
 - The simulator's gate must stay at least as strict as the hardware path — the sim is the

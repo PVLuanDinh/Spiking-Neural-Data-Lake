@@ -1,8 +1,7 @@
 # Coverage-cell sweep (T053)
 
 **Measured 2026-08-01.** 60 000 poses sampled uniformly over the joint limits, TCP placed with
-`mj_kinematics` (no integration, no contact solve). Reproduce with
-`scratchpad/cover_sweep.py`.
+`mj_kinematics` (no integration, no contact solve). Sampled through `arm_config._model()` + `mujoco.mj_kinematics`; the sweep script was a throwaway and is not vendored, so the table below is the artifact rather than a pointer to one.
 
 ## Workspace
 
