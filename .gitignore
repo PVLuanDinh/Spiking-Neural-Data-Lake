@@ -78,7 +78,24 @@ Thumbs.db
 /assets/
 /gpu_scaling_sweep.sh
 vendor/
-models/
+
+# models/ holds trained artifacts that are rebuilt, not reviewed (ar_spiking_lm.npz is 39 MB).
+# `models/*` rather than `models/`, because git cannot un-exclude a file inside an excluded
+# DIRECTORY -- with `models/` the two negations below would silently do nothing.
+models/*
+
+# ...except the two perception packs, which are VENDORED on purpose.
+#
+# They are 0.72 MB and 1.57 MB. Every reader of them is a live faculty, and without them a
+# fresh clone has no perception at all -- which is not hypothetical: `cortex/percept_surprise`
+# asserts CANNOT VERIFY when the N-MNIST pack is missing (deliberately, replacing a SKIP that
+# scored as PASS), so CI has failed on every run since the assertion landed. The alternative was
+# a CI step installing the [nmnist] extra and downloading ~38 MB per job from zenodo and NYU to
+# regenerate a 0.72 MB file -- slower, and it makes the build depend on two external hosts
+# staying up. training/make_packs.py remains the reproducible producer and regenerates both
+# byte-for-byte, so vendoring costs reviewability of nothing: the recipe is in the tree.
+!models/nmnist_pack.npz
+!models/shd_pack.npz
 
 # ARC-AGI-3 arcade downloads (research/arc_agi/play.py)
 environment_files/
