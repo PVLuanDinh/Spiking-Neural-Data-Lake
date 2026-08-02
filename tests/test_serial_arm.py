@@ -12,6 +12,12 @@ import pytest
 from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.serial_arm import SerialArm, assert_calibrated
 
+# The joints the old joint A stood for. Derived, so the command that is SENT and the
+# command that is ASSERTED cannot drift apart.
+
+_MOVE = arm_config.command_for("shoulder_lift", 15)
+_MOVE2 = arm_config.command_for("shoulder_lift", 10)
+
 
 class FakeWriter:
     """Records the lines that would go out over serial; can be told to fail a write."""
@@ -50,10 +56,16 @@ def test_commands_sent_verbatim_and_mirrored():
     w = FakeWriter()
     arm = SerialArm(writer=w, allow_uncalibrated=True)  # bench: opt in past the gate
     arm.apply("ENGAGE")
-    arm.apply("JOINT_A_ROTATE(+15deg)")
+    arm.apply(_MOVE)
     arm.apply("EMERGENCY_STOP")
-    assert w.lines == ["ENGAGE", "JOINT_A_ROTATE(+15deg)", "EMERGENCY_STOP"]
-    assert arm.effector == 1.0  # mirror closed the effector
+    assert w.lines == ["ENGAGE", _MOVE, "EMERGENCY_STOP"]
+    # The mirror's gripper CLOSED. Direction, then the endpoint once it has travelled:
+    # effector is a physical closure ratio on this body, not a flag that snaps to 1.
+    assert arm.effector > 0.0909, "the mirror's gripper did not begin to close"
+    # Direction only, deliberately. Full closure cannot be asserted here: the arm is LATCHED by
+    # the EMERGENCY_STOP above, so every further ENGAGE is correctly ignored -- which is the
+    # property this test exists to protect. The gripper reaching exactly 1.0 is covered in
+    # test_so101_arm.py, on an arm that is not frozen.
     assert arm.state()["stopped"] is True  # EMERGENCY_STOP froze the mirror
 
 
@@ -70,7 +82,7 @@ def test_emergency_stop_freezes_the_wire():
     arm = SerialArm(writer=w, allow_uncalibrated=True)
     arm.apply("EMERGENCY_STOP")
     arm.apply("ENGAGE")  # blocked by the freeze -> not transmitted
-    arm.apply("JOINT_A_ROTATE(+10deg)")  # blocked -> not transmitted
+    arm.apply(_MOVE2)  # blocked -> not transmitted
     assert w.lines == ["EMERGENCY_STOP"]
     arm.apply("HOME")  # allowed while stopped -> clears the latch
     arm.apply("RELEASE")  # latch cleared -> transmitted again
@@ -157,7 +169,7 @@ def test_estop_freeze_keeps_the_wire_silent():
     arm = SerialArm(writer=FakeWriter(), allow_uncalibrated=True)
     arm.apply("EMERGENCY_STOP")
     sent_before = len(arm.w.lines)
-    for cmd in ("JOINT_A_ROTATE(+15deg)", "ENGAGE", "RELEASE"):
+    for cmd in (_MOVE, "ENGAGE", "RELEASE"):
         arm.apply(cmd)
     assert len(arm.w.lines) == sent_before, (
         f"a latched arm transmitted to the wire: {arm.w.lines[sent_before:]}"

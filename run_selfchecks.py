@@ -151,7 +151,6 @@ CORE = [
     # (the safety envelope lives here)
     "brainstem.reflex",
     "brainstem.serial_arm",
-    "brainstem.arm_sim",
     "brainstem.so101_arm",
     "brainstem.arm_hardware",  # torque budget for the arm being built (asserts the shoulder shortfall)
     "brainstem.arm_config",
@@ -248,6 +247,7 @@ CORE = [
     "substrate.binlog",
     "substrate.growable",
     "substrate.region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
+    "substrate.arm_view",  # stdlib PNG encoder + demand-gated offscreen arm frames
     "substrate.brain_telemetry",  # snapshot contract + recorder + /api/state (no-orphan-panel gate)
     "substrate.brain_geometry",  # anatomical layout (hand-authored coords, REAL connectome tracts)
     "substrate.cockpit",  # THE one frontend: page + contract gate + queued-not-raced chat turn

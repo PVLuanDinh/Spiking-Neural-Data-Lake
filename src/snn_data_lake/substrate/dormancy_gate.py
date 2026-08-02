@@ -70,14 +70,20 @@ _ENTRYPOINTS = (  # pyproject [project.scripts] + the always-on daemon's in-pack
 # ------------------------------------------------------------------------------------------------
 # key = module basename (unique across REGIONS per brain_atlas); value = (disposition, reason).
 EXEMPT = {
-    # ---- "wire": built and verified, awaiting the wiring phase that makes it the live arm ----
-    "so101_arm": (
-        "wire",
-        "The MuJoCo SO-101 gate (specs/004). Built, self-checked and covered by 17 tests, but "
-        "not yet on the live tick: it REPLACES brainstem/arm_sim.py, and the replacement is "
-        "staged so the safety gate is proven before the four live call sites move onto it. "
-        "This exemption is expected to be RETIRED in the same change that retires arm_sim -- "
-        "if it outlives that, the swap stalled and this entry is the evidence.",
+    # so101_arm's "wire" exemption is GONE, as its own text predicted it should be: the gate is
+    # on the live tick now (autonomous_loop, serial_arm's mirror, live_arm, cpg_oscillator,
+    # spiking_pid, ring_attractor and the planner all drive it), so it is reachable and needs no
+    # exemption. Leaving the entry would have been the quiet lie the soft-report exists to catch.
+    "reaction_diffusion_compute": (
+        "retire",
+        "The excitable-medium wavefront. Its ONLY consumer was the grid planner in "
+        "cerebellum/wavefront_planner.py, which specs/004 replaced with a sampling planner "
+        "because the grid does not survive the dimension change: 36**6 is about 2.2 billion "
+        "cells against 2592 for two joints, so the wave cannot be run at all on a six-joint "
+        "arm. The primitive is correct and self-checked -- what ended is its USE, and P2 says "
+        "a superseded mechanism goes rather than lingering behind a flag. Listed rather than "
+        "deleted in the same change so the deletion is a decision taken on its own merits and "
+        "not a side effect of a planner rewrite.",
     ),
     # NOTE: the 17 "retire"-tagged modules (wilson_cowan/RBM/kalman/kuramoto/cue_integration/olfactory x2/
     # 3 redundant seq-memories/neurogenesis-stdlib/language_brain+brain_reasoning/adaptive_spiking/lt_gate/

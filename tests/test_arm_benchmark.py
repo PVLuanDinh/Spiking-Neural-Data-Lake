@@ -21,23 +21,29 @@ pytest.importorskip("mujoco")
 from tools import arm_benchmark as ab  # noqa: E402
 
 
-def test_benchmark_reports_both_arms():
-    """Neither arm may be silently omitted."""
-    incumbent = ab.probe_armsim()
-    assert incumbent["dof"] == 2, "the incumbent is a 2-DOF planar arm"
-    assert incumbent["units"].startswith("dimensionless")
-    m = ab._model()
-    assert int(m.nu) == 6, "the candidate is 6-DOF"
+def test_benchmark_no_longer_probes_the_retired_arm():
+    """The A/B that licensed the swap is RECORDED, not re-run: the incumbent is deleted.
 
-
-def test_incumbent_torque_is_reported_as_unavailable_not_zero():
-    """`None` and `0.0` are different claims.
-
-    A zero would assert the arm needs no torque to hold a pose, which is a statement about
-    physics. `None` asserts the quantity does not exist in that body. Conflating them is how a
-    kinematic toy comes to look like it passed a torque check.
+    Re-printing its numbers as literals would turn a measurement into a transcription no run
+    could refute, which is the shape of fake measurement this project treats as a defect. The
+    comparison lives in specs/004-mujoco-so101-arm/benchmark.md; what remains here measures
+    the live arm only.
     """
-    assert ab.probe_armsim()["torque_nm"] is None
+    import ast
+    import pathlib
+
+    src = pathlib.Path(ab.__file__).read_text(encoding="utf-8")
+    names = {n.name for n in ast.walk(ast.parse(src)) if isinstance(n, ast.FunctionDef)}
+    assert "probe_armsim" not in names, "the benchmark still probes a deleted body"
+    imported = set()
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Import):
+            imported.update(a.name for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module)
+    assert not any("arm_sim" in n for n in imported), f"still imports the retired arm: {imported}"
+
+    assert "probe_mujoco" in names, "the live half of the benchmark went with it"
 
 
 def test_candidate_reports_per_joint_torque_in_newton_metres():

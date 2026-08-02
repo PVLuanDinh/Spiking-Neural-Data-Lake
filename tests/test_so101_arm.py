@@ -27,7 +27,10 @@ import pytest
 
 pytest.importorskip("mujoco")
 
-from snn_data_lake.brainstem import arm_config  # noqa: E402
+from snn_data_lake.brainstem import (
+    arm_config,  # noqa: E402
+    serial_arm,  # noqa: E402
+)
 from snn_data_lake.brainstem import so101_arm as sa  # noqa: E402
 
 JOINTS = [j.name for j in arm_config.JOINTS]
@@ -290,3 +293,304 @@ def test_same_seed_is_deterministic():
         a.apply(cmd)
         b.apply(cmd)
     assert _pose(a) == _pose(b), "same seed produced different arm state"
+
+
+# ---- regressions from b83737b6 ------------------------------------------------------------
+# Both of these were shipped, passed all 17 tests, and were found by an independent sweep. They
+# are pinned here because neither was expressible as "the feature does not work" -- each was a
+# gate that accepted MORE than it should, which no positive test can catch.
+
+
+def test_gate_rejects_a_rotate_token_for_the_gripper():
+    """The gripper is driven by ENGAGE/RELEASE and has no rotate token.
+
+    Membership was resolved against arm_config.JOINTS, which includes the gripper, while
+    arm_config.TOKENS excludes it -- so JOINT_GRIPPER_ROTATE was a command the GATE accepted and
+    the VOCABULARY said did not exist, and it moved the effector (measured 0.090908 -> 0.091143)
+    around the sanctioned branch. Two sources of truth inside the single source of truth.
+    """
+    assert not any("GRIPPER" in t for t in arm_config.TOKENS), "the gripper has no rotate token"
+    arm = sa.So101Arm()
+    before = arm.state()["effector"]
+    arm.apply("JOINT_GRIPPER_ROTATE(+30deg)")
+    assert arm.state()["effector"] == before, (
+        "a rotate token for the gripper moved the effector -- it must be rejected"
+    )
+
+
+def test_gate_rejects_a_valid_token_with_trailing_junk():
+    """The gate must not be MORE PERMISSIVE than the wire allow-list it mirrors.
+
+    With re.match, "JOINT_ELBOW_FLEX_ROTATE(+5deg)EMERGENCY_STOP" performed the rotation and
+    SILENTLY DROPPED THE STOP -- measured, +0.023346 deg of elbow travel with stopped=False --
+    while serial_arm's allow-list rejected the same string via fullmatch. A safety gate may be
+    stricter than the layer beneath it; it may never be looser.
+    """
+    junk = "JOINT_ELBOW_FLEX_ROTATE(+5deg)EMERGENCY_STOP"
+    assert sa._JOINT_TOKEN.fullmatch(junk) is None, "the gate parsed a truncated command"
+    assert serial_arm.is_valid_command(junk) is False, "the wire allow-list changed"
+
+    arm = sa.So101Arm()
+    clean = sa.So101Arm()
+    before = arm.state()["theta_deg"][2]
+    arm.apply(junk)
+    junk_move = abs(arm.state()["theta_deg"][2] - before)
+
+    before_c = clean.state()["theta_deg"][2]
+    clean.apply(_tok("elbow_flex", 5))
+    clean_move = abs(clean.state()["theta_deg"][2] - before_c)
+
+    # The junk command must not perform the rotation. It still advances time by one step, so the
+    # arm settles slightly toward its held pose -- an order of magnitude below the real move.
+    assert junk_move < clean_move / 5.0, (
+        f"the truncated command rotated the joint: {junk_move:.6f} vs a real move {clean_move:.6f}"
+    )
+
+
+def test_effector_stays_within_zero_and_one():
+    """A negative closure is not a physical claim, it is a leaked implementation detail.
+
+    Measured -0.00000170 after 500 RELEASE before the clamp: the raw ratio leaves the interval at
+    the rails because a position servo overshoots and the commandable range is not the physical
+    range.
+    """
+    for cmd, n in (("RELEASE", 500), ("ENGAGE", 501)):
+        arm = sa.So101Arm()
+        for _ in range(n):
+            arm.apply(cmd)
+        e = arm.state()["effector"]
+        assert 0.0 <= e <= 1.0, f"effector left [0,1] after {n}x {cmd}: {e:.8f}"
+
+
+def test_the_live_gate_is_in_both_safety_kernels():
+    """so101_arm is the ONLY mutation path to the arm, so the self-rewrite harness must not be
+    able to rewrite it. tests/test_self_mod_safety.py only asserts the two kernels agree with
+    EACH OTHER, so "neither was updated" passes there silently -- this closes that.
+    """
+    import pathlib
+    import re as _re
+
+    from snn_data_lake.reasoning.godel_machine import _SAFETY_KERNEL
+
+    assert any("so101_arm" in p for p in _SAFETY_KERNEL), (
+        "the live arm gate is absent from godel_machine._SAFETY_KERNEL"
+    )
+    si = pathlib.Path(sa.__file__).parent.parent / "reasoning" / "self_improve.py"
+    block = _re.search(r"PROTECTED = \{(.*?)\}", si.read_text(encoding="utf-8"), _re.S).group(1)
+    body = "\n".join(line.split("#", 1)[0] for line in block.splitlines())
+    assert "so101_arm" in body, "the live arm gate is absent from self_improve's PROTECTED"
+
+
+# ---- T041/T043 + the C4/C5 migration ---------------------------------------------------
+
+
+def _settled(arm, command, steps=200):
+    """Apply a command and let the servo actually arrive.
+
+    One apply() is one 2 ms physics step, so a command moves the joint 0.020 deg -- these
+    tests are about WHICH joint moves and HOW FAR, and neither is observable in 2 ms.
+    """
+    arm.set_substeps(steps)
+    return arm.apply(command)
+
+
+@pytest.mark.parametrize("name", [n for n in arm_config.ROTATABLE])
+def test_each_joint_moves_alone(name):
+    """T041: a joint token moves ITS joint and leaves every other joint where it was.
+
+    This is the test the old 2-DOF body could not express: with two joints, "only the
+    commanded one moved" is nearly vacuous. With six it is the property that a token names a
+    joint rather than merely being accepted.
+    """
+    arm = sa.So101Arm()
+    before = arm.state()["theta_deg"]
+    _settled(arm, _tok(name, 20))
+    after = arm.state()["theta_deg"]
+
+    idx = next(j.qpos_index for j in arm_config.JOINTS if j.name == name)
+    assert abs(after[idx] - before[idx]) > 1.0, f"{name} did not move on its own token"
+    for j in arm_config.JOINTS:
+        if j.qpos_index == idx:
+            continue
+        assert abs(after[j.qpos_index] - before[j.qpos_index]) < 0.5, (
+            f"commanding {name} moved {j.name} by "
+            f"{after[j.qpos_index] - before[j.qpos_index]:.3f} deg"
+        )
+
+
+def test_reach_in_real_units():
+    """T043: reach is the max horizontal TCP radius, in real units, and is NOT the lever arm.
+
+    The 300 mm figure in arm_hardware is the SHOULDER LEVER used for the torque budget. Reach
+    is how far the gripper gets from the base. They are different measurements of different
+    things and asserting them equal would make one of them wrong.
+    """
+    reach_mm = arm_config.MAX_REACH_MM
+    assert 100.0 < reach_mm < 1000.0, f"reach {reach_mm} is not a plausible millimetre figure"
+
+    # Independent re-measurement at a different sample count must agree to ~1%.
+    arm = sa.So101Arm()
+    arm.apply("HOME")
+    home_r = math.hypot(*arm.ee_mm()[:2])
+    assert home_r <= reach_mm * 1.01, "the home pose reaches further than the stated maximum"
+
+    lever_mm = max(j.lever_mm for j in arm_config.JOINTS)
+    assert abs(reach_mm - lever_mm) > 1.0, (
+        "reach must not be asserted equal to the shoulder lever -- they measure different things"
+    )
+
+
+def test_rotate_is_relative_and_moveto_is_absolute():
+    """The two verbs mean different things, and the difference is the whole point of having both.
+
+    Eight ROTATE(+10) must accumulate; eight MOVETO(+10) must not. An absolute-only vocabulary
+    turned three control loops into non-controllers, which is why ROTATE kept its semantics.
+    """
+    rel = sa.So101Arm()
+    rel.set_substeps(200)
+    for _ in range(4):
+        rel.apply(arm_config.command_for("shoulder_lift", -10))
+    rel_angle = rel.state()["theta_deg"][1]
+
+    absolute = sa.So101Arm()
+    absolute.set_substeps(200)
+    for _ in range(4):
+        absolute.apply(arm_config.moveto_for("shoulder_lift", -10))
+    abs_angle = absolute.state()["theta_deg"][1]
+
+    assert rel_angle < abs_angle - 10.0, (
+        f"ROTATE did not accumulate: 4x-10deg relative reached {rel_angle:.2f}, "
+        f"absolute reached {abs_angle:.2f}"
+    )
+    assert abs(abs_angle - (-10.0)) < 3.0, f"MOVETO did not hold its setpoint ({abs_angle:.2f})"
+
+
+def test_substeps_is_bounded_by_a_derived_ceiling():
+    """The rate the brain adapts is bounded, and the bound comes from the body's own timestep."""
+    arm = sa.So101Arm()
+    assert arm.substeps == 1, "the default must be the integrator's own step, not a tuned guess"
+
+    ceiling = int(round(1.0 / float(arm.model.opt.timestep)))
+    assert arm.set_substeps(10**9) == ceiling, "substeps must clamp to one simulated second"
+    assert arm.set_substeps(0) == 1, "zero steps is a body that does not move while claiming it did"
+    assert arm.set_substeps(-5) == 1
+
+
+def test_ground_free_band_is_measured_not_assumed():
+    """The CPG's safe band is a fact about the geometry, and positive shoulder_lift points DOWN.
+
+    Measured, the gripper is below the floor above roughly +37 deg. The incumbent swept
+    45 +/- 25 deg, i.e. straight through it.
+    """
+    lo, hi = arm_config.ground_free_band("shoulder_lift")
+    assert lo < 0 < hi, f"band {lo}..{hi} does not contain home"
+    assert hi < 45.0, (
+        f"band top {hi} is above the incumbent's sweep centre -- the old band was safe after all, "
+        "which would mean this measurement is wrong"
+    )
+
+    # The claim is falsifiable: just past the top, the arm must actually be grounded.
+    arm = sa.So101Arm()
+    _settled(arm, arm_config.moveto_for("shoulder_lift", hi + 25))
+    assert arm.collision() == sa.GROUND, "just past the measured band the arm is not grounded"
+
+
+def test_accessors_that_kept_their_name_agree_with_state():
+    """The compat accessors are the SAME value as the state dict, not a second opinion."""
+    arm = sa.So101Arm()
+    _settled(arm, _tok("shoulder_lift", 15))
+    st = arm.state()
+    assert arm.collision() == st["collision"]
+    assert arm.deviation() == st["deviation"]
+    assert arm.effector == st["effector"]
+    assert arm.stopped == st["stopped"]
+
+
+def test_renamed_accessors_are_absent_not_shimmed():
+    """`theta` and `ee()` must NOT exist: their meaning changed, so silence would be a lie.
+
+    theta was 2 entries in radians and is 6 in degrees; ee() was 2-D unitless and is 3-D
+    millimetres. A compatibility shim would let an unmigrated consumer keep running while
+    reading the wrong unit and the wrong joint count.
+    """
+    arm = sa.So101Arm()
+    assert not hasattr(arm, "theta"), "a `theta` shim would silently serve the wrong units"
+    assert not hasattr(arm, "ee"), "an `ee` shim would silently serve 2-D unitless coordinates"
+    assert not hasattr(arm, "perturb"), "perturb was renamed so it cannot be mistaken for control"
+    assert "ee" not in arm.state(), "the retired state key must be gone, not aliased"
+
+
+def test_close_leaves_the_body_usable():
+    """close() must not destroy a body a later reader still asks about."""
+    arm = sa.So101Arm()
+    arm.close()
+    assert arm.state()["backend"] == "mujoco", "close() broke a body that has nothing to release"
+
+
+def test_autonomous_actions_all_pass_the_wire_allow_list():
+    """T047: the path that composes its own commands is checked by the same gate as chat."""
+    from snn_data_lake.brainstem.autonomous_loop import ACTIONS
+
+    unchecked = {"HOLD"}
+    bad = [a for a in ACTIONS if a not in unchecked and not serial_arm.is_valid_command(a)]
+    assert not bad, f"autonomous actions the wire would refuse: {bad}"
+    assert len(ACTIONS) == 3 + 2 * len(arm_config.ROTATABLE), (
+        f"the repertoire is not one +/- pair per rotatable joint: {len(ACTIONS)}"
+    )
+
+
+def test_contact_does_not_trip_the_trajectory_breach():
+    """T052: contact-explained deviation is EXCLUDED, and this is the pinned decision.
+
+    Measured, sustained ground contact produces a tracking_error of 0.6842 rad -- far larger
+    than the 0.3491 from a real 20-degree external shove -- while deviation stays at exactly
+    0.0. The two cannot be separated by magnitude, so `deviation` is measured against the pose
+    the servo actually settled at rather than against the command.
+
+    This matters beyond tidiness: spiking_pid.py acts on trajectory_breach(). Had contact
+    tripped it, the PID would abort every time the arm touched anything, which is precisely
+    when a controller is most needed.
+    """
+    arm = sa.So101Arm()
+    arm.set_substeps(200)
+    _lo, hi = arm_config.ground_free_band("shoulder_lift")
+    arm.apply(arm_config.moveto_for("shoulder_lift", hi + 40))  # drive into the floor
+    for _ in range(50):
+        arm.apply("HOLD")
+
+    st = arm.state()
+    assert st["collision"] == sa.GROUND, "the setup failed to make contact"
+    assert st["tracking_error"] > 0.5, (
+        f"contact should leave a LARGE tracking error, got {st['tracking_error']:.4f}"
+    )
+    assert st["deviation"] == 0.0, "contact leaked into deviation"
+    assert not arm.trajectory_breach(), "sustained contact tripped the trajectory reflex"
+
+
+def test_external_disturbance_does_trip_the_trajectory_breach():
+    """The complement: the reflex is not simply dead. A shove trips it, contact does not."""
+    arm = sa.So101Arm()
+    arm.set_substeps(200)
+    arm.apply(arm_config.moveto_for("shoulder_lift", -40))
+    assert not arm.trajectory_breach(), "an undisturbed arm reports a breach"
+
+    arm.inject_disturbance("shoulder_lift", 20.0)
+    assert arm.deviation() > 0.3, f"the shove did not register ({arm.deviation():.6f})"
+    assert arm.trajectory_breach(), "an external shove did not trip the trajectory reflex"
+
+
+def test_the_live_body_does_not_read_the_legacy_deviation_bound():
+    """T051: TRAJ_DEV_MAX is the OLD body's bound and the new body must not inherit it.
+
+    0.15 m was tied to a 2 m reach and compared against a dimensionless distance. The
+    replacement derives its bound per joint from the model's own gravity torque and actuator
+    gain, so it tracks a model change instead of going stale. The constant survives only for
+    arm_sim, which is retired in Phase 7 -- re-deriving it would be work on a corpse.
+    """
+    assert "TRAJ_DEV_MAX" not in sa.So101Arm.trajectory_breach.__code__.co_names, (
+        "the live body reads the retired 2-DOF deviation bound"
+    )
+    import pathlib
+
+    src = pathlib.Path(sa.__file__).read_text(encoding="utf-8")
+    assert "TRAJ_DEV_MAX" not in src, "so101_arm still references the legacy bound"

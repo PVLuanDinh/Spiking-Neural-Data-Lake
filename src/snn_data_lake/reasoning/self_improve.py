@@ -157,7 +157,7 @@ def main():
     PROTECTED = {
         "brainstem/reflex.py",
         "brainstem/serial_arm.py",
-        "brainstem/arm_sim.py",
+        "brainstem/so101_arm.py",
         "brainstem/arm_config.py",
         "brainstem/interpreter.py",
         # Was research/self_improve.py (no such file) -- the self-modifier was not in fact

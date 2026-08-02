@@ -35,7 +35,6 @@ import mujoco  # noqa: E402
 import numpy as np  # noqa: E402
 
 from snn_data_lake.brainstem import arm_config, arm_hardware  # noqa: E402
-from snn_data_lake.brainstem.arm_sim import ArmSim  # noqa: E402
 
 SCENE = pathlib.Path(arm_config.__file__).parent / "so101" / "scene.xml"
 G = 9.81
@@ -43,35 +42,6 @@ KGCM_PER_NM = 100.0 / 9.81  # 1 N*m = 10.197 kg*cm
 
 
 # ---- the incumbent ---------------------------------------------------------------------
-
-
-def probe_armsim():
-    """What ArmSim can and cannot report, on its own terms."""
-    arm = ArmSim()
-    arm.apply("HOME")
-    home_ee = arm.ee()
-    arm.apply("JOINT_A_ROTATE(+30deg)")
-    moved_ee = arm.ee()
-    arm.apply("EMERGENCY_STOP")
-    frozen = arm.apply("JOINT_A_ROTATE(+30deg)")
-    latched = arm.stopped
-    ee_while_frozen = arm.ee()
-    arm.apply("HOME")
-    cleared = not arm.stopped
-    return {
-        "dof": len(arm.theta),
-        "home_ee": home_ee,
-        "moved_ee": moved_ee,
-        "estop_latches": latched,
-        "estop_freezes": ee_while_frozen == moved_ee,
-        "home_clears": cleared,
-        "units": "dimensionless (l1=l2=1.0)",
-        "collision": frozen.get("collision"),
-        "torque_nm": None,  # structurally unavailable: no mass, no gravity, no dt
-    }
-
-
-# ---- the candidate ---------------------------------------------------------------------
 
 
 def _model():
@@ -177,31 +147,30 @@ def main():
     ap.add_argument("--payload-kg", type=float, default=0.5, help="TCP payload (default 0.5)")
     args = ap.parse_args()
 
-    a = probe_armsim()
     b = probe_mujoco(args.payload_kg)
     joints = [j.name for j in arm_config.JOINTS]
 
     print("=" * 78)
-    print("ARM BENCHMARK -- incumbent ArmSim vs candidate MuJoCo SO-101")
+    print("ARM BENCHMARK -- the live MuJoCo SO-101")
     print("=" * 78)
 
-    print("\n-- what each body IS ------------------------------------------------------")
-    print(f"  {'':<22}{'ArmSim':<26}{'SO-101'}")
-    print(f"  {'degrees of freedom':<22}{a['dof']:<26}{b['dof']}")
-    print(f"  {'units':<22}{a['units']:<26}{b['units']}")
-    print(f"  {'integration step':<22}{'none (teleport)':<26}{b['timestep']} s")
-    print(f"  {'reach':<22}{'2.0 (dimensionless)':<26}{b['reach_m']:.4f} m horizontal")
+    print("\n-- what the body IS -------------------------------------------------------")
+    print(f"  {'degrees of freedom':<22}{b['dof']}")
+    print(f"  {'units':<22}{b['units']}")
+    print(f"  {'integration step':<22}{b['timestep']} s")
+    print(f"  {'reach':<22}{b['reach_m']:.4f} m horizontal")
+    print("  The A/B against the retired 2-DOF ArmSim -- the measurement that licensed this")
+    print("  swap under Policy 2 -- is recorded in specs/004-mujoco-so101-arm/benchmark.md.")
+    print("  It is NOT reproduced here: the incumbent is deleted, so re-printing its numbers")
+    print("  would be a transcription no run could refute.")
 
-    print("\n-- E-STOP, on identical commands ------------------------------------------")
-    print(f"  {'latches':<22}{str(a['estop_latches']):<26}{'gate property, not body'}")
-    print(f"  {'freezes motion':<22}{str(a['estop_freezes']):<26}{'gate property, not body'}")
-    print(f"  {'HOME clears latch':<22}{str(a['home_clears']):<26}{'gate property, not body'}")
-    print("  NOTE: the incumbent's E-STOP lives INSIDE the arm; the candidate's must live in")
-    print("        the gate that owns the body. Not a defect of either -- a design difference")
-    print("        the replacement has to carry deliberately.")
+    print("\n-- E-STOP ------------------------------------------------------------------")
+    print("  The latch is a property of the GATE that owns the body, not of the body: the")
+    print("  incumbent kept it inside the arm, and the replacement had to carry it across")
+    print("  deliberately. It is proven in brainstem/so101_arm.py and its tests, not here.")
 
-    print("\n-- holding torque, the capability the incumbent DOES NOT HAVE -------------")
-    print(f"  ArmSim: {a['torque_nm']}  <- no mass, no gravity, no dt. Cannot be measured.")
+    print("\n-- holding torque, the capability the incumbent DID NOT HAVE --------------")
+    print("  The retired ArmSim could not report this at all: no mass, no gravity, no dt.")
     lim = b["forcerange_nm"]
     stall_kgcm = lim * KGCM_PER_NM
     print(f"\n  The model's actuator forcerange is {lim:.3f} N*m = {stall_kgcm:.1f} kg*cm.")
@@ -248,7 +217,7 @@ def main():
 
     print("\n-- verdict ----------------------------------------------------------------")
     print("  Capability delta: the candidate reports per-joint torque in N*m; the incumbent")
-    print(f"  structurally cannot ({a['torque_nm']}). That is not a better number, it is a")
+    print("  structurally could not. That is not a better number, it is a")
     print("  quantity that does not exist in the incumbent at all.")
     print(f"\n  Over CONTINUOUS (rated) torque somewhere in the envelope: {over_rated or 'none'}")
     print(f"  Over STALL torque somewhere in the envelope:            {over_stall or 'none'}")

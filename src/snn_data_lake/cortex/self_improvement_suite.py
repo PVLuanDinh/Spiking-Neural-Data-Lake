@@ -296,7 +296,7 @@ def main():
             for ln in fh.read().splitlines()
             if ln.startswith("import ") or ln.startswith("from ")
         ]
-    forbidden = ("brainstem", "serial_arm", "arm_sim", "arm_config")
+    forbidden = ("brainstem", "serial_arm", "so101_arm", "arm_config")
     hits = [tok for tok in forbidden if any(tok in ln for ln in import_lines)]
     assert hits == [], f"suite must import NOTHING from brainstem/arm (found {hits})"
 

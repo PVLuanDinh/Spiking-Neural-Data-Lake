@@ -241,6 +241,16 @@ def main():
             # Per TICK, not per cycle: a cycle is 20 ticks plus ingest plus POLL, so pumping once per
             # cycle made a typed message wait for the whole cycle before it was even looked at. That
             # is the difference between a chat box and a suggestion box.
+            # (1c) ARM VIEW: draw the arm HERE, on the tick thread, for the same reason chat is
+            # pumped here. A MuJoCo Renderer owns a GL context bound to its creating thread;
+            # rendering from the HTTP thread does not raise, it returns garbage, and a lock does
+            # not help. Demand-gated inside render_if_wanted(), so a cockpit nobody has open
+            # costs one boolean per tick.
+            try:
+                _arm = b.brain.arm.arm
+                _arm.view.render_if_wanted(_arm.model, _arm.data)
+            except Exception:  # a picture must never be able to stop the brain
+                pass
             try:
                 turns.pump(b, budget=1)
             except Exception as e:  # a bad turn must never stop the loop

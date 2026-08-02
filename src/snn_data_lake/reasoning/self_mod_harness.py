@@ -33,8 +33,9 @@ MECHANISM when (and only when) enabled -- mirrors self_improve.py's discipline
                         accepts a candidate that keeps the gate green and does not regress utility).
 
 THE PROTECTED SET it enforces (the exact immutable files -- a rewrite may touch NONE of them):
-  godel_machine._SAFETY_KERNEL  = the 5 brainstem arm-safety files
-                                    (reflex.py, serial_arm.py, arm_sim.py, arm_config.py, interpreter.py)
+  godel_machine._SAFETY_KERNEL  = the 5 brainstem arm-safety files (so101_arm replaced the
+                                incoming gate, protected before it goes live)
+                                    (reflex.py, serial_arm.py, so101_arm.py, arm_config.py, interpreter.py)
                                   + run_selfchecks.py + reasoning/godel_machine.py
   PLUS reasoning/self_improve.py  (the bounded-self-improvement verifier)
   PLUS reasoning/self_mod_harness.py  (this proposer itself)
@@ -614,7 +615,12 @@ def main():
             and "src/snn_data_lake/reasoning/godel_machine.py" in _PROTECTED
         ), "verifier + godel kernel protected"
         assert len(_PROTECTED) == 9, (
-            "exactly the 9 immutable files (5 brainstem + run_selfchecks + godel + self_improve + self_mod)"
+            "exactly the 9 immutable files (5 brainstem + run_selfchecks + godel + self_improve "
+            "+ self_mod). Back to 9 as this assertion always said it would be: arm_sim.py was "
+            "retired (specs/004) and so101_arm.py took its place, so the brainstem count is "
+            "unchanged at 5 and the fifth file is now the MuJoCo gate. It was protected BEFORE "
+            "it went live, because the gap between 'is the live gate' and 'is immutable' is a "
+            "gap in which the self-rewrite harness could rewrite an E-STOP."
         )
         _emit(f"  [OK] deterministic; PROTECTED set = {len(_PROTECTED)} immutable files enforced")
 

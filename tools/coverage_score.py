@@ -509,7 +509,9 @@ def record(root, evdir, name, kind, cmd, extra):
     argv = [sys.executable] + cmd if cmd[0].endswith(".py") else cmd
     with tempfile.TemporaryDirectory(prefix="coverage_home_") as _home:
         env = _probe_env(root, os.environ.get("NORD_HOME") or _home)
-        r = subprocess.run(argv, cwd=root, capture_output=True, text=True, env=env, errors="replace")
+        r = subprocess.run(
+            argv, cwd=root, capture_output=True, text=True, env=env, errors="replace"
+        )
     head = subprocess.run(["git", "-C", root, "rev-parse", "HEAD"], capture_output=True, text=True)
     os.makedirs(os.path.join(evdir, "artifacts"), exist_ok=True)
     path = os.path.join(evdir, "artifacts", name + ".txt")
@@ -540,7 +542,9 @@ def rerun(root, evdir, name):
     argv = [sys.executable] + cmd if cmd[0].endswith(".py") else cmd
     with tempfile.TemporaryDirectory(prefix="coverage_home_") as _home:
         env = _probe_env(root, os.environ.get("NORD_HOME") or _home)
-        r = subprocess.run(argv, cwd=root, capture_output=True, text=True, env=env, errors="replace")
+        r = subprocess.run(
+            argv, cwd=root, capture_output=True, text=True, env=env, errors="replace"
+        )
     was, now = a["exit"], str(r.returncode)
     fp_was, fp_now = _fingerprint(a["_stdout"]), _fingerprint(r.stdout)
     print(f"{name}: recorded exit {was} / now {now}")
@@ -575,7 +579,10 @@ def _blame_commit(root, path, lineno):
 def _line_at(root, sha, path, lineno):
     """The text of `path:lineno` as of `sha`, or None."""
     r = subprocess.run(
-        ["git", "-C", root, "show", f"{sha}:{path}"], capture_output=True, text=True, errors="replace"
+        ["git", "-C", root, "show", f"{sha}:{path}"],
+        capture_output=True,
+        text=True,
+        errors="replace",
     )
     if r.returncode != 0:
         return None

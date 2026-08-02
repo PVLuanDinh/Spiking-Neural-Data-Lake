@@ -55,6 +55,17 @@ the real servo.
 - Q: The arm's only dense reward counts fresh spatial cells. On a 6-DOF body with 0.743 m of vertical TCP span, should the cell become 3-D? → A: Yes — 3-D, with the cell size re-derived from a published sweep rather than carried over. Three of five rotate joints move the TCP mainly vertically, so a 2-D cell cannot see most of what the new joints do.
 - Q: What consumes the `blocked` verdict, given it fires on 28% of in-limit targets? → A: Both — it penalises the action in autonomous selection (so the arm learns not to press into itself) AND appears in telemetry. Selection is the consumer that satisfies P3; telemetry alone would not.
 
+### Session 2026-08-01 (implementation)
+
+- Q: `JOINT_X_ROTATE(+10deg)` — the incumbent ADDS 10 deg (8 applies = 80 deg) while the first replacement gate treated it as GO TO 10 deg. Which semantics wins? → A: **Both verbs.** `ROTATE` is relative, matching the incumbent and its own name; `MOVETO` is an explicit absolute setpoint. Absolute-only would have silently turned `cpg_oscillator`, `spiking_pid` and `wavefront_planner` into non-controllers and collapsed the autonomous repertoire to two setpoints per joint — measured, 5 distinct 100 mm cells over 3000 ticks, so the arm's only dense reward could never fire.
+- Q: Does the new arm get a `perturb()`? Without an external-disturbance channel the trajectory reflex is structurally dead, and magnitude cannot separate a shove from ordinary motion (an ordinary commanded move peaks at 0.523 rad of tracking error, LARGER than the 0.350 from a 20 deg shove). → A: A clearly-named **test-only `inject_disturbance()`**, plus `deviation` measured against the pose the servo is actually holding rather than against a magnitude threshold. Measured, that separates them completely: deviation is 0.000000 for any commanded motion however large, and 0.349066 for a 20 deg external shove. In normal operation deviation is legitimately 0.0 because the simulated arm has no external disturbance source — a true statement about the body, not a stub.
+- Q: One `apply()` advances physics by a single 2 ms step, so a `+45deg` command moves the joint **0.020 deg** and needs ~150 applies to settle at 37.8 deg. The incumbent teleported, so every tick-count constant downstream was written against a body that arrived instantly. What should one motor command mean? → A: **No fixed step count — the brain updates the rate autonomously.** The body exposes `substeps` (default **1**, the integrator's own step, the only value that is a measured fact rather than a choice) and `set_substeps()`, bounded by a *derived* ceiling of one second of simulated time. `AutonomousArm._adapt_actuation()` raises the rate while commands fail to arrive and lets it decay while they succeed, driven by the `reached` flag the loop already reads back. This keeps P1 (no transcribed constant governing how far a command travels) and P0 (the rate becomes one more thing the brain improves), instead of replacing one magic number with another.
+
+  **Not yet verified to converge usefully, and stated as an open rather than a result.** Measured over 400 ticks the rate rises to 256 and then decays back to 1 and stays there: the loop drives a joint to its limit (span 100.000 deg, the full ctrl range), where every command trivially "arrives", so `reached` stays true and the rate falls away. Whether that is the adaptation working (a stuck arm should not buy longer ticks) or the exploration policy failing (the arm should not be parked on a limit) is not yet distinguished. A neuter A/B was attempted and **its result is discarded as invalid** — the neuter stubbed `set_substeps` but the pinned and adapting runs came back byte-identical on every reported quantity while the comparison still printed a difference, and the cell metric read an attribute that does not exist. The knob is therefore wired and driven by a real signal, but **not yet demonstrated to change an outcome**, which is what P3 actually requires.
+- Q (T052): What does `trajectory_breach()` return during sustained contact, given `spiking_pid.py:227` acts on it? → A: **Contact-explained deviation is EXCLUDED, and it is measured.** With the arm driven into the floor and held for 50 ticks: `collision=GROUND`, `tracking_error=0.6842` rad — *larger* than the 0.3496 from a genuine 20° external shove — and `deviation=0.0`, `breach=False`. An external shove on the same body gives `deviation=0.349066`, `breach=True`. The separation is total and is not a magnitude threshold: deviation is measured against the pose the servo actually settled at. Had contact tripped the breach, the PID would abort on every touch, which is exactly when a controller is needed. Pinned by two tests.
+- Q (T051): Re-derive `TRAJ_DEV_MAX` under load? → A: **No — retire it with `arm_sim`.** The constant (0.15 m, tied to a 2 m reach, compared against a dimensionless distance) is read *only* by `arm_sim.py`. `So101Arm.trajectory_breach()` never references it: it derives a per-joint bound from the model's own gravity torque and actuator gain, so it tracks a model change instead of going stale. Re-deriving a constant that only the retiring body reads is work on a corpse; the task is superseded by Phase 7. A test asserts the live body does not read it.
+- Q: Does growing `ACTIONS` 7 → 13 invalidate persisted policy? → A: **No — the premise was wrong.** `self.q` has no save path, is absent from `brain_bundle`, never reaches `brain_lake.bin`, and is keyed by action STRING via `.get(a, 0.0)`. It is rebuilt in memory each run, so new actions simply start at 0.0 and nothing is reindexed. No migration and no invalidation are needed.
+
 ## Findings already in hand (verified 2026-08-01)
 
 **F1 — The SO-101 model loads, steps, and renders offscreen on this machine.** MEASURED with
@@ -495,32 +506,25 @@ prevent (F12). Retirement is last because port-before-retire requires everything
 
 ## Status
 
-**This is the largest-blast-radius change in the repo's history and the owner has authorised it
-explicitly.** It replaces the safety gate every motor command passes through, changes the body's
-degrees of freedom, its units, and its reach by an order of magnitude, converts an optional dependency
-into a core one, and retires the zero-dependency path CI was built around.
+**COMPLETE 2026-08-01.** All 79 tasks across 8 phases done; all three gates green
+(self-checks 278/278, pytest 628 passed / 92.63% coverage, ruff clean).
 
-**The strongest argument for it is that the repo already made it.** `arm_hardware.py:146-163` names
-MuJoCo + SO-ARM100 as the bridge out of a "kinematic toy" and enumerates the exact missing degrees of
-freedom. This feature turns that dictionary entry into a body.
+The SO-101 is THE arm. `brainstem/arm_sim.py` is deleted, `test_arm_sim.py` with it, and
+`test_exactly_one_arm` asserts structurally that exactly one body implementation exists.
 
-**The hardest open problem is F4** — the old arm reports collision without preventing it, by design and
-under test, and MuJoCo prevents it by construction. That is not a detail to settle during
-implementation; it changes what the planner's "one collision authority" means.
+### Carried forward, stated rather than hidden
 
-**The first honest deliverable is the benchmark, not the arm.** P2 says "better" requires a benchmark
-that exists, and none does. Slice 1 also happens to answer the question that motivated the build notes:
-whether these servos can hold 500 g at 300 mm.
-
-**Recorded for a later reader: a recon pass recommended against this scope.** Given the same evidence,
-it argued for a read-only MuJoCo *mirror* that renders the arm but never emits a command — on the
-grounds that it touches none of the five approval-gated modules, needs no benchmark that does not
-exist, and leaves this route open later. Its precedent was the existing pybullet backend, which
-observes without arbitrating. **The owner considered that trade-off and chose full replacement**, with
-MuJoCo in the command path. The alternative is recorded here so the decision is legible rather than
-implicit, and so the fallback is known if slice 1's benchmark refuses the swap.
-
-**Cost is not the risk; semantics are.** Simulation is measured at ~105× realtime (F14), so nothing
-here is blocked on performance. The risk concentrates in three places: the collision contract inverting
-(F4), the safety gate being rebuilt rather than moved (US2), and two honesty assertions that will
-become false and must be rewritten rather than removed (F15).
+1. **The brain-owned actuation rate is wired but not proven to change an outcome.** It moves on
+   a real signal (`reached`) and is bounded by a derived ceiling, but over 400 ticks it rises to
+   256 and decays back to 1 because the loop parks a joint on its limit where every command
+   trivially arrives. Whether that is the adaptation behaving correctly or the exploration
+   policy failing is not yet distinguished, and the neuter A/B that would settle it was run and
+   **discarded as invalid**. Until a valid A/B exists this is a wired knob, not a proven one.
+2. **Cross-OS determinism is a hypothesis.** `perf.md` records the 4000-step digest for one CI
+   cell (Windows/AMD64/py3.11). The other cells have not run.
+3. **`reaction_diffusion_compute` is marked `"retire"`, not deleted.** Its only consumer was the
+   grid planner. Deleting a correct, self-checked primitive is a decision worth taking on its
+   own merits rather than as a side effect of a planner rewrite.
+4. **The arm is still not built.** `arm_hardware` still reports the shoulder needing 15.0 kg*cm
+   against 7.5 rated. A faithful simulation of an underpowered arm is an underpowered arm; if
+   anything the fidelity makes the shortfall easier to forget.

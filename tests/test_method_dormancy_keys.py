@@ -80,9 +80,7 @@ def test_a_class_qualified_exemption_cannot_suppress_its_sibling():
     exempt = {"basal_ganglia.latent_q._TabularQ.update": ("permanent", "self-check control")}
     dm, name = "basal_ganglia.latent_q", "update"
     for dcls, expected in (("_TabularQ", True), ("LatentQ", False)):
-        hit = (
-            f"{dm}.{dcls}.{name}" in exempt or f"{dm}.{name}" in exempt or name in exempt
-        )
+        hit = f"{dm}.{dcls}.{name}" in exempt or f"{dm}.{name}" in exempt or name in exempt
         assert hit is expected, f"{dcls}.{name} exemption={hit}, expected {expected}"
 
 

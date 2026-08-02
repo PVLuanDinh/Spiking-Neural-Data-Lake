@@ -14,6 +14,7 @@ sensor-specific — see IR_PRESENT below).
 
 import pathlib as _pathlib
 from collections import namedtuple as _namedtuple
+from functools import cache as _cache
 from functools import lru_cache as _lru_cache
 
 # ---- distance bins (metres) ----------------------------------------------------
@@ -118,11 +119,59 @@ JOINTS = (
 #: for a joint that does not exist, which is how the 2-DOF vocabulary came to be defined in
 #: eight places that disagreed.
 def token_for(name):
-    """MJCF joint name -> its rotate command token."""
+    """MJCF joint name -> its RELATIVE rotate token (prefix only; add the (+/-Ndeg) suffix)."""
     return f"JOINT_{name.upper()}_ROTATE"
 
 
-TOKENS = tuple(token_for(j.name) for j in JOINTS if j.name != "gripper")
+def moveto_token_for(name):
+    """MJCF joint name -> its ABSOLUTE setpoint token (prefix only)."""
+    return f"JOINT_{name.upper()}_MOVETO"
+
+
+def command_for(name, deg):
+    """A complete RELATIVE command: rotate this joint BY `deg` degrees.
+
+    Producers must call this rather than token_for(): token_for returns the PREFIX only, and a
+    bare prefix falls through the gate's no-op branch -- a silently ignored command, which is
+    the exact failure this vocabulary exists to remove. It also fixes the suffix format in one
+    place instead of four different float formats across the call sites.
+    """
+    return f"{token_for(name)}({deg:+g}deg)"
+
+
+def moveto_for(name, deg):
+    """A complete ABSOLUTE command: drive this joint TO `deg` degrees."""
+    return f"{moveto_token_for(name)}({deg:+g}deg)"
+
+
+#: The joints a JOINT_* token may name. Excludes the gripper, which is driven by
+#: ENGAGE/RELEASE and has no angle vocabulary. Producers import THIS rather than
+#: re-deriving `!= "gripper"`, so "which joints are addressable" is decided once.
+ROTATABLE = tuple(j.name for j in JOINTS if j.name != "gripper")
+
+#: The default step for a producer with no reason to choose its own magnitude.
+#:
+#: The incumbent scattered these: +15 deg at the interpreter, -10 for the second joint, 6.0
+#: in the autonomous loop, each formatted differently. They were arbitrary -- the interpreter
+#: said so in its own comment -- and being arbitrary in four places made them four things to
+#: keep in agreement instead of one. This is a command magnitude, not a behaviour-arbitrating
+#: threshold, so a single shared default is the honest form; the thresholds that DO arbitrate
+#: live in JOINT_LIMITS and are measured off the model.
+DEFAULT_STEP_DEG = 6.0
+
+#: The ROTATE tokens. Excludes the gripper, which is driven by ENGAGE/RELEASE.
+TOKENS = tuple(token_for(n) for n in ROTATABLE)
+
+#: The MOVETO tokens. Same joints, absolute semantics.
+#:
+#: TWO VERBS, DELIBERATELY. ROTATE is relative -- it adds to the current setpoint, which is what
+#: the incumbent arm did and what four control loops assume when they compute delta =
+#: target - current and send it as a token. MOVETO is absolute, for a caller that genuinely wants
+#: a setpoint. Collapsing them into one verb was a silent semantic change: an absolute-only
+#: ROTATE turns every one of those loops into a non-controller, and reduces the autonomous
+#: repertoire to two fixed setpoints per joint (measured: 5 distinct 100 mm cells over 3000
+#: ticks, so the arm's only dense reward can never fire).
+MOVETO_TOKENS = tuple(moveto_token_for(n) for n in ROTATABLE)
 
 #: The model carries no keyframe (nkey == 0), so the home pose is DECLARED by this repo rather
 #: than read from the asset. All-zeros is the model's own rest configuration. HOME is applied as
@@ -167,11 +216,83 @@ def _joint_limits():
     return out
 
 
+@_lru_cache(maxsize=1)
+def _max_reach_mm():
+    """Greatest horizontal distance from the base the gripper site can reach, in mm.
+
+    SAMPLED from the model, not transcribed. There is no closed form: the joint limits stop
+    the chain straightening, so the sum of the link lengths is an upper bound the arm cannot
+    actually attain. A sweep over the limits is the honest answer, and it is what any
+    workspace discretisation downstream has to be scaled against -- a cell size in metres
+    means nothing except as a fraction of the reach it divides up.
+
+    Deterministic (fixed seed, fixed count) so two runs discretise the workspace identically.
+    A coverage count that moved between runs because the grid shifted under it would not be
+    readable as progress. Lazy and cached, because most importers never touch the workspace.
+
+    mj_kinematics only: this places the bodies without integrating or solving contact, so it
+    cannot disturb any live arm and costs a fraction of a step.
+    """
+    import mujoco
+    import numpy as np
+
+    m = _model()
+    d = mujoco.MjData(m)
+    sid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "gripperframe")
+    lo, hi = m.jnt_range[: m.nu, 0], m.jnt_range[: m.nu, 1]
+    rng = np.random.default_rng(0)
+    best = 0.0
+    for _ in range(4000):
+        d.qpos[: m.nu] = lo + rng.random(m.nu) * (hi - lo)
+        mujoco.mj_kinematics(m, d)
+        x, y = d.site_xpos[sid][0], d.site_xpos[sid][1]
+        best = max(best, float((x * x + y * y) ** 0.5))
+    return best * 1000.0
+
+
+@_cache
+def ground_free_band(name):
+    """(lo_deg, hi_deg): the range over which this joint ALONE keeps the gripper off the floor.
+
+    Swept from the model at one-degree resolution with every other joint at home, which is
+    exactly the condition a single-joint rhythm runs under. MEASURED rather than chosen: which
+    way a joint points, and how far it can go before the gripper reaches the floor, are facts
+    about the geometry that change with the body. The incumbent's equivalent numbers were
+    written for a 2-link arm and silently described the wrong half of this one's travel.
+
+    mj_forward only -- placement and contact, no integration, so this cannot disturb anything.
+    """
+    import mujoco
+    import numpy as np
+
+    m = _model()
+    d = mujoco.MjData(m)
+    spec = next(j for j in JOINTS if j.name == name)
+    lim = _joint_limits()[name]
+    lo_deg = int(np.ceil(np.rad2deg(lim["ctrl_lo"])))
+    hi_deg = int(np.floor(np.rad2deg(lim["ctrl_hi"])))
+    ok = []
+    for deg in range(lo_deg, hi_deg + 1):
+        d.qpos[:] = 0.0
+        d.qpos[spec.qpos_index] = np.deg2rad(deg)
+        mujoco.mj_forward(m, d)
+        grounded = any(
+            0 in (m.geom_bodyid[c.geom1], m.geom_bodyid[c.geom2]) for c in d.contact[: d.ncon]
+        )
+        if not grounded:
+            ok.append(deg)
+    if not ok:  # a joint with no clear air is a fact worth raising, not silently defaulting
+        raise ValueError(f"{name}: no ground-free angle in [{lo_deg}, {hi_deg}] deg")
+    return (float(min(ok)), float(max(ok)))
+
+
 def __getattr__(name):
     """PEP 562 lazy attribute so `arm_config.JOINT_LIMITS` reads naturally without the model
     being loaded by every importer of this module."""
     if name == "JOINT_LIMITS":
         return _joint_limits()
+    if name == "MAX_REACH_MM":
+        return _max_reach_mm()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 

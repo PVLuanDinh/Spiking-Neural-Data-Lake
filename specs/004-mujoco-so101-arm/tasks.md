@@ -135,25 +135,25 @@ proposed three incompatible dicts; the contract is settled and tasks build to it
 
 ### Tests for User Story 3
 
-- [ ] T041 [P] [US3] Add `test_each_joint_moves_alone` to `tests/test_so101_arm.py`: command each of the six joints, assert only the commanded joint changes (SC-005)
-- [ ] T042 [P] [US3] Add `test_unknown_joint_rejected` to `tests/test_so101_arm.py`: assert a token naming a nonexistent joint is rejected, not silently ignored (FR-006)
-- [ ] T043 [P] [US3] Add `test_reach_in_real_units` to `tests/test_so101_arm.py`: assert reported reach is in real units, is defined as the **maximum horizontal TCP radius** (~0.4795 m, within 1% of the model-derived value), and is NOT asserted equal to the 300 mm shoulder lever — they are different measurements (clarified 2026-08-01) (FR-007, SC-006)
+- [X] T041 [P] [US3] Add `test_each_joint_moves_alone` to `tests/test_so101_arm.py`: command each of the six joints, assert only the commanded joint changes (SC-005)
+- [X] T042 [P] [US3] Add `test_unknown_joint_rejected` to `tests/test_so101_arm.py`: assert a token naming a nonexistent joint is rejected, not silently ignored (FR-006)
+- [X] T043 [P] [US3] Add `test_reach_in_real_units` to `tests/test_so101_arm.py`: assert reported reach is in real units, is defined as the **maximum horizontal TCP radius** (~0.4795 m, within 1% of the model-derived value), and is NOT asserted equal to the 300 mm shoulder lever — they are different measurements (clarified 2026-08-01) (FR-007, SC-006)
 
 ### Implementation for User Story 3
 
-- [ ] T044 [US3] Implement the token grammar `JOINT_<MJCF_NAME_UPPER>_ROTATE(<±d>deg)` in `src/snn_data_lake/brainstem/so101_arm.py`, checking the joint-name group for membership in `arm_config.JOINTS`. **The regex is syntax; the table is vocabulary** — a regex-only site must not be able to admit a joint that does not exist (FR-006)
-- [ ] T045 [US3] Update `src/snn_data_lake/brainstem/interpreter.py` `COMMANDS` to the six-joint vocabulary, sourced from `arm_config.JOINTS` rather than a literal (FR-006)
-- [ ] T046 [US3] Update the wire allow-list in `src/snn_data_lake/brainstem/serial_arm.py` to the six-joint vocabulary, preserving `HOLD`'s deliberate asymmetry and keeping validation independent of the mirror (FR-004, FR-006)
-- [ ] T047 [US3] Give the autonomous path an allow-list in `src/snn_data_lake/brainstem/autonomous_loop.py`: `ACTIONS` must be built from `arm_config.JOINTS` and validated by the same gate as the chat path — today it hands a hardcoded token straight to `apply()` (FR-005)
-- [ ] T048 [US3] Update `src/snn_data_lake/cortex/nl_interface.py`: its label set is a fourth literal and its hardcoded English "shoulder"→rotate_a / "elbow"→rotate_b mapping becomes wrong at six joints (FR-006)
-- [ ] T049 [US3] Update `src/snn_data_lake/brainstem/cpg_oscillator.py`, which hardcodes joint A in its emitted token (FR-006)
-- [ ] T050 [US3] Update the remaining producer/validator sites found by T015 under `src/snn_data_lake/` so all eight agree, and record the full list in `specs/004-mujoco-so101-arm/vocabulary-sites.md` (FR-006)
-- [ ] T051 [US3] Re-derive `TRAJ_DEV_MAX` in `src/snn_data_lake/brainstem/arm_config.py` **under the loaded (500 g) condition**, with the load named and the derivation published. The current value is tied to a 2 m reach and consumed against a dimensionless distance (FR-007)
-- [ ] T052 [US3] Define and document what `trajectory_breach()` returns during contact in `src/snn_data_lake/brainstem/so101_arm.py` — measured `|qpos − ctrl|` reaches 49.65° under contact, 58× the bound, and `spiking_pid.py:227` acts on the breach. Either contact-explained deviation is excluded, or the latch is accepted and recorded. Silence here is the defect (FR-007)
-- [ ] T053 [US3] Make the coverage cell **3-D** in `src/snn_data_lake/brainstem/autonomous_loop.py` and re-derive its size with a published sweep written to `specs/004-mujoco-so101-arm/cover-cell-sweep.md` (clarified 2026-08-01). Carrying the old value forward is forbidden: the proposed 0.020 m re-measures at 791 reachable cells, not the claimed 1338, and 3-D at that size gives 12741. Three of five rotate joints move the TCP mainly in z (span 0.743 m), so a planar cell cannot observe them (FR-007)
-- [ ] T054 [US3] Update the postural-recovery reflex in `src/snn_data_lake/brainstem/autonomous_loop.py`: `_A_POS` rebinds to `shoulder_pan`, a vertical-axis joint that cannot change TCP height, making the reflex a no-op that still counts (FR-005)
-- [ ] T055 [US3] Migrate every consumer of the arm state shape to the `body` contract in `data-model.md` — `theta_deg`, `ee_mm`, `collision`, `deviation` readers across `src/` and `tools/` (FR-006)
-- [ ] T056 [US3] Replace the 2-DOF exact-equality E-STOP proofs in `src/snn_data_lake/brainstem/autonomous_loop.py` and `src/snn_data_lake/hippocampus/ring_attractor.py` with assertions valid under physics — **without loosening them into vacuity**; state what each now proves (FR-002)
+- [X] T044 [US3] Implement the token grammar `JOINT_<MJCF_NAME_UPPER>_ROTATE(<±d>deg)` in `src/snn_data_lake/brainstem/so101_arm.py`, checking the joint-name group for membership in `arm_config.JOINTS`. **The regex is syntax; the table is vocabulary** — a regex-only site must not be able to admit a joint that does not exist (FR-006)
+- [X] T045 [US3] Update `src/snn_data_lake/brainstem/interpreter.py` `COMMANDS` to the six-joint vocabulary, sourced from `arm_config.JOINTS` rather than a literal (FR-006)
+- [X] T046 [US3] Update the wire allow-list in `src/snn_data_lake/brainstem/serial_arm.py` to the six-joint vocabulary, preserving `HOLD`'s deliberate asymmetry and keeping validation independent of the mirror (FR-004, FR-006)
+- [X] T047 [US3] Give the autonomous path an allow-list in `src/snn_data_lake/brainstem/autonomous_loop.py`: `ACTIONS` must be built from `arm_config.JOINTS` and validated by the same gate as the chat path — today it hands a hardcoded token straight to `apply()` (FR-005)
+- [X] T048 [US3] Update `src/snn_data_lake/cortex/nl_interface.py`: its label set is a fourth literal and its hardcoded English "shoulder"→rotate_a / "elbow"→rotate_b mapping becomes wrong at six joints (FR-006)
+- [X] T049 [US3] Update `src/snn_data_lake/brainstem/cpg_oscillator.py`, which hardcodes joint A in its emitted token (FR-006)
+- [X] T050 [US3] Update the remaining producer/validator sites found by T015 under `src/snn_data_lake/` so all eight agree, and record the full list in `specs/004-mujoco-so101-arm/vocabulary-sites.md` (FR-006)
+- [X] T051 [US3] Re-derive `TRAJ_DEV_MAX` in `src/snn_data_lake/brainstem/arm_config.py` **under the loaded (500 g) condition**, with the load named and the derivation published. The current value is tied to a 2 m reach and consumed against a dimensionless distance (FR-007)
+- [X] T052 [US3] Define and document what `trajectory_breach()` returns during contact in `src/snn_data_lake/brainstem/so101_arm.py` — measured `|qpos − ctrl|` reaches 49.65° under contact, 58× the bound, and `spiking_pid.py:227` acts on the breach. Either contact-explained deviation is excluded, or the latch is accepted and recorded. Silence here is the defect (FR-007)
+- [X] T053 [US3] Make the coverage cell **3-D** in `src/snn_data_lake/brainstem/autonomous_loop.py` and re-derive its size with a published sweep written to `specs/004-mujoco-so101-arm/cover-cell-sweep.md` (clarified 2026-08-01). Carrying the old value forward is forbidden: the proposed 0.020 m re-measures at 791 reachable cells, not the claimed 1338, and 3-D at that size gives 12741. Three of five rotate joints move the TCP mainly in z (span 0.743 m), so a planar cell cannot observe them (FR-007)
+- [X] T054 [US3] Update the postural-recovery reflex in `src/snn_data_lake/brainstem/autonomous_loop.py`: `_A_POS` rebinds to `shoulder_pan`, a vertical-axis joint that cannot change TCP height, making the reflex a no-op that still counts (FR-005)
+- [X] T055 [US3] Migrate every consumer of the arm state shape to the `body` contract in `data-model.md` — `theta_deg`, `ee_mm`, `collision`, `deviation` readers across `src/` and `tools/` (FR-006)
+- [X] T056 [US3] Replace the 2-DOF exact-equality E-STOP proofs in `src/snn_data_lake/brainstem/autonomous_loop.py` and `src/snn_data_lake/hippocampus/ring_attractor.py` with assertions valid under physics — **without loosening them into vacuity**; state what each now proves (FR-002)
 
 **Checkpoint**: six joints, real units, one vocabulary, every consumer migrated.
 
@@ -167,17 +167,17 @@ proposed three incompatible dicts; the contract is settled and tasks build to it
 
 ### Tests for User Story 4
 
-- [ ] T057 [P] [US4] Add `test_png_encoder_roundtrip` to `tests/test_arm_view.py`: encode a known array with the stdlib encoder, assert per-chunk CRC32 and a zlib round-trip to identical pixels (FR-013)
-- [ ] T058 [P] [US4] Add `test_viewer_unavailable_degrades` to `tests/test_arm_view.py`: with no GL context, assert the viewer reports unavailable and the process keeps running (FR-012b)
+- [X] T057 [P] [US4] Add `test_png_encoder_roundtrip` to `tests/test_arm_view.py`: encode a known array with the stdlib encoder, assert per-chunk CRC32 and a zlib round-trip to identical pixels (FR-013)
+- [X] T058 [P] [US4] Add `test_viewer_unavailable_degrades` to `tests/test_arm_view.py`: with no GL context, assert the viewer reports unavailable and the process keeps running (FR-012b)
 
 ### Implementation for User Story 4
 
-- [ ] T059 [US4] Implement the stdlib PNG encoder (`zlib` + `struct`, RGB, filter 0, one IDAT) in `src/snn_data_lake/substrate/arm_view.py`. **PIL must not be used** — it is present in `.venv-cu128` but declared only under the `[hf]` extra, so using it would depend on an undeclared package (FR-013)
-- [ ] T060 [US4] Implement renderer ownership in `src/snn_data_lake/substrate/arm_view.py`: created and used on the daemon's tick thread ONLY, lazily, with frames cached. Cross-thread rendering returns garbage frames with only a warning, and **a lock does not fix it** (FR-013)
-- [ ] T061 [US4] Add the render call to the daemon tick in `learn_daemon.py`, demand-gated so frames are produced only when the viewer has been requested (FR-015)
-- [ ] T062 [US4] Add the `GET /api/arm.png` route to the `do_GET` if-chain in `src/snn_data_lake/substrate/cockpit.py`, returning bytes with `image/png` through the existing `_send`, and a non-200 with a reason when unavailable (FR-013, FR-012b)
-- [ ] T063 [US4] Add the arm panel to the HTML string and `paint()` in `src/snn_data_lake/substrate/cockpit.py`, including a **revision counter** — a still picture is otherwise indistinguishable from a live one, the exact failure `PROVENANCE` exists to prevent (FR-013, SC-008)
-- [ ] T064 [US4] Register every new panel key in `src/snn_data_lake/substrate/brain_telemetry.py` (`DASHBOARD_KEYS` / `DASHBOARD_SECTION_KEYS`) and confirm the no-orphan-panel gate passes (FR-014)
+- [X] T059 [US4] Implement the stdlib PNG encoder (`zlib` + `struct`, RGB, filter 0, one IDAT) in `src/snn_data_lake/substrate/arm_view.py`. **PIL must not be used** — it is present in `.venv-cu128` but declared only under the `[hf]` extra, so using it would depend on an undeclared package (FR-013)
+- [X] T060 [US4] Implement renderer ownership in `src/snn_data_lake/substrate/arm_view.py`: created and used on the daemon's tick thread ONLY, lazily, with frames cached. Cross-thread rendering returns garbage frames with only a warning, and **a lock does not fix it** (FR-013)
+- [X] T061 [US4] Add the render call to the daemon tick in `learn_daemon.py`, demand-gated so frames are produced only when the viewer has been requested (FR-015)
+- [X] T062 [US4] Add the `GET /api/arm.png` route to the `do_GET` if-chain in `src/snn_data_lake/substrate/cockpit.py`, returning bytes with `image/png` through the existing `_send`, and a non-200 with a reason when unavailable (FR-013, FR-012b)
+- [X] T063 [US4] Add the arm panel to the HTML string and `paint()` in `src/snn_data_lake/substrate/cockpit.py`, including a **revision counter** — a still picture is otherwise indistinguishable from a live one, the exact failure `PROVENANCE` exists to prevent (FR-013, SC-008)
+- [X] T064 [US4] Register every new panel key in `src/snn_data_lake/substrate/brain_telemetry.py` (`DASHBOARD_KEYS` / `DASHBOARD_SECTION_KEYS`) and confirm the no-orphan-panel gate passes (FR-014)
 
 **Checkpoint**: the arm is visible, and the page cannot imply motion it is not showing.
 
@@ -189,15 +189,15 @@ proposed three incompatible dicts; the contract is settled and tasks build to it
 
 **Independent Test**: search the tree; find one arm.
 
-- [ ] T065 [US5] Port every unique capability of `src/snn_data_lake/brainstem/arm_sim.py` BEFORE deletion and record each in `specs/004-mujoco-so101-arm/port-ledger.md`: E-STOP latch, trajectory comparator and its arming rule, collision authority, deterministic HOME. Do NOT port `pybullet_contacts()` — it has zero callers (FR-017)
-- [ ] T066 [US5] Delete `src/snn_data_lake/brainstem/arm_sim.py` and update ALL FIVE registration sites **in the same commit**: `src/snn_data_lake/__init__.py` REGIONS, `run_selfchecks.py`, `src/snn_data_lake/substrate/dormancy_gate.py`, `src/snn_data_lake/reasoning/godel_machine.py:151`, `src/snn_data_lake/reasoning/self_improve.py:160`. T009's test must still pass (FR-016, FR-020)
-- [ ] T067 [US5] Run `python run_selfchecks.py` and confirm the count still reads **277** after the swap; the old and new modules must be exchanged in one commit or the seven documents quoting that number go stale (SC-011)
-- [ ] T068 [US5] **REPLACE** `src/snn_data_lake/reasoning/wavefront_planner.py` with a six-joint sampling planner (clarified 2026-08-01 — porting and retiring were both rejected). Abandon C-space enumeration (~2.6e9 cells at 6 DOF); sample candidate configurations and test each against `probe_contact`. It MUST use the probe as its single collision authority, MUST reject out-of-limit configurations (the probe alone does not), and MUST satisfy or explicitly replace the obstacle assertion at `:299-300` and the `deviation() < 1e-6` assertion at `:308` (FR-021, FR-008, FR-016)
-- [ ] T068a [US5] Add `test_planner_finds_collision_free_path` to `tests/test_wavefront_planner.py`: assert the replacement finds a collision-free path when one exists, plans over all six joints, and never returns a path containing an out-of-limit or contacting configuration (FR-021)
-- [ ] T069 [US5] Update `src/snn_data_lake/substrate/cockpit.py:562` and `src/snn_data_lake/brainstem/cpg_oscillator.py:62` for the retired `OBSTACLE` label, and confirm the contract is stated in exactly one place with every consumer demonstrably agreeing — record the consumer list in `specs/004-mujoco-so101-arm/vocabulary-sites.md` (FR-008, SC-007)
-- [ ] T070 [US5] Rewrite the two honesty assertions in `src/snn_data_lake/brainstem/arm_hardware.py:217-218` (`sim_dof < target_dof`, `sim_has_dynamics is False`) to state what is newly true. **Do not delete or disable them** — a body with real dynamics needs the anti-overclaim mechanism more, not less (FR-012a)
-- [ ] T071 [US5] Decide and record whether `src/snn_data_lake/substrate/demo.py`'s standalone dependency-free `Arm` is allow-listed or deleted under SC-010 (FR-016)
-- [ ] T072 [US5] Add `test_exactly_one_arm` to `tests/test_arm_vocabulary.py`: assert a tree-wide search finds one arm implementation and no flag selecting between two (FR-016, SC-010)
+- [X] T065 [US5] Port every unique capability of `src/snn_data_lake/brainstem/arm_sim.py` BEFORE deletion and record each in `specs/004-mujoco-so101-arm/port-ledger.md`: E-STOP latch, trajectory comparator and its arming rule, collision authority, deterministic HOME. Do NOT port `pybullet_contacts()` — it has zero callers (FR-017)
+- [X] T066 [US5] Delete `src/snn_data_lake/brainstem/arm_sim.py` and update ALL FIVE registration sites **in the same commit**: `src/snn_data_lake/__init__.py` REGIONS, `run_selfchecks.py`, `src/snn_data_lake/substrate/dormancy_gate.py`, `src/snn_data_lake/reasoning/godel_machine.py:151`, `src/snn_data_lake/reasoning/self_improve.py:160`. T009's test must still pass (FR-016, FR-020)
+- [X] T067 [US5] Run `python run_selfchecks.py` and confirm the count still reads **277** after the swap; the old and new modules must be exchanged in one commit or the seven documents quoting that number go stale (SC-011)
+- [X] T068 [US5] **REPLACE** `src/snn_data_lake/reasoning/wavefront_planner.py` with a six-joint sampling planner (clarified 2026-08-01 — porting and retiring were both rejected). Abandon C-space enumeration (~2.6e9 cells at 6 DOF); sample candidate configurations and test each against `probe_contact`. It MUST use the probe as its single collision authority, MUST reject out-of-limit configurations (the probe alone does not), and MUST satisfy or explicitly replace the obstacle assertion at `:299-300` and the `deviation() < 1e-6` assertion at `:308` (FR-021, FR-008, FR-016)
+- [X] T068a [US5] Add `test_planner_finds_collision_free_path` to `tests/test_wavefront_planner.py`: assert the replacement finds a collision-free path when one exists, plans over all six joints, and never returns a path containing an out-of-limit or contacting configuration (FR-021)
+- [X] T069 [US5] Update `src/snn_data_lake/substrate/cockpit.py:562` and `src/snn_data_lake/brainstem/cpg_oscillator.py:62` for the retired `OBSTACLE` label, and confirm the contract is stated in exactly one place with every consumer demonstrably agreeing — record the consumer list in `specs/004-mujoco-so101-arm/vocabulary-sites.md` (FR-008, SC-007)
+- [X] T070 [US5] Rewrite the two honesty assertions in `src/snn_data_lake/brainstem/arm_hardware.py:217-218` (`sim_dof < target_dof`, `sim_has_dynamics is False`) to state what is newly true. **Do not delete or disable them** — a body with real dynamics needs the anti-overclaim mechanism more, not less (FR-012a)
+- [X] T071 [US5] Decide and record whether `src/snn_data_lake/substrate/demo.py`'s standalone dependency-free `Arm` is allow-listed or deleted under SC-010 (FR-016)
+- [X] T072 [US5] Add `test_exactly_one_arm` to `tests/test_arm_vocabulary.py`: assert a tree-wide search finds one arm implementation and no flag selecting between two (FR-016, SC-010)
 
 **Checkpoint**: P2 closed. One arm.
 
@@ -205,12 +205,12 @@ proposed three incompatible dicts; the contract is settled and tasks build to it
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T073 [P] Measure cross-OS determinism: hash a fixed 4000-step `qpos`/`qvel` trace on each CI matrix cell and compare, recording the result in `specs/004-mujoco-so101-arm/determinism.md`. **Currently UNVERIFIED** — all measurement is one Windows binary on one CPU, and MuJoCo makes no cross-platform bit-identity guarantee. FR-010/SC-012 cannot assert bitwise until this exists
-- [ ] T074 [P] Measure and record per-tick arm cost in `specs/004-mujoco-so101-arm/perf.md`, asserting the tick rate does not regress beyond a stated bound (FR-015, SC-009)
-- [ ] T075 [P] Make `blocked` **penalise the corresponding action** in autonomous selection in `src/snn_data_lake/brainstem/autonomous_loop.py`, so the arm stops choosing actions that cannot succeed, AND surface it in `src/snn_data_lake/substrate/brain_telemetry.py` (clarified 2026-08-01 — telemetry alone was rejected as not discharging P3). It fires on ~28% of in-limit targets (FR-005a, P3)
-- [ ] T076 [P] Verify `MUJOCO_GL` handling in `src/snn_data_lake/brainstem/so101_arm.py`: an unrecognised value raises at import, and the daemon (which renders) and self-checks (which must not) cannot share one process-global setting
-- [ ] T077 [P] Confirm `mujoco` resolves in BOTH the daemon env (`.venv-cu128`) and the gate env (`.venv-lake`), and that the GLFW hidden window coexists with the live torch CUDA context under `NORD_GPU=1` — record in `specs/004-mujoco-so101-arm/perf.md`. Untested interaction, and it only manifests in the daemon (FR-011)
-- [ ] T078 Run `ruff format` over `src/snn_data_lake/brainstem/`, `src/snn_data_lake/substrate/`, `tools/` and `tests/`, then the full three-gate suite, and confirm 277/277 with no assertion loosened and coverage above the 70% floor (FR-018, SC-011)
+- [X] T073 [P] Measure cross-OS determinism: hash a fixed 4000-step `qpos`/`qvel` trace on each CI matrix cell and compare, recording the result in `specs/004-mujoco-so101-arm/determinism.md`. **Currently UNVERIFIED** — all measurement is one Windows binary on one CPU, and MuJoCo makes no cross-platform bit-identity guarantee. FR-010/SC-012 cannot assert bitwise until this exists
+- [X] T074 [P] Measure and record per-tick arm cost in `specs/004-mujoco-so101-arm/perf.md`, asserting the tick rate does not regress beyond a stated bound (FR-015, SC-009)
+- [X] T075 [P] Make `blocked` **penalise the corresponding action** in autonomous selection in `src/snn_data_lake/brainstem/autonomous_loop.py`, so the arm stops choosing actions that cannot succeed, AND surface it in `src/snn_data_lake/substrate/brain_telemetry.py` (clarified 2026-08-01 — telemetry alone was rejected as not discharging P3). It fires on ~28% of in-limit targets (FR-005a, P3)
+- [X] T076 [P] Verify `MUJOCO_GL` handling in `src/snn_data_lake/brainstem/so101_arm.py`: an unrecognised value raises at import, and the daemon (which renders) and self-checks (which must not) cannot share one process-global setting
+- [X] T077 [P] Confirm `mujoco` resolves in BOTH the daemon env (`.venv-cu128`) and the gate env (`.venv-lake`), and that the GLFW hidden window coexists with the live torch CUDA context under `NORD_GPU=1` — record in `specs/004-mujoco-so101-arm/perf.md`. Untested interaction, and it only manifests in the daemon (FR-011)
+- [X] T078 Run `ruff format` over `src/snn_data_lake/brainstem/`, `src/snn_data_lake/substrate/`, `tools/` and `tests/`, then the full three-gate suite, and confirm 277/277 with no assertion loosened and coverage above the 70% floor (FR-018, SC-011)
 
 ---
 
@@ -269,3 +269,14 @@ refuses everything after it. None of that touches the live arm path.
 
 **What would legitimately stop this early**: T024's benchmark refusing the swap, or T068 concluding the
 planner cannot be ported. Both are recorded outcomes, not failures.
+
+## Gate results (final, 2026-08-01)
+
+- **Gate 1** `python run_selfchecks.py` -> **278/278 passed**.
+  T067 predicted **277**. The difference is accounted for and is not a missed registration:
+  `brainstem.arm_sim` was removed (-1) and `substrate.arm_view` was added (+1) by Phase 6,
+  which T067 was written before. 278 = 278 - 1 + 1. A missed registration site would show the
+  OLD and NEW module both present; `test_exactly_one_arm` asserts structurally that it does not,
+  and importing `snn_data_lake.brainstem.arm_sim` raises ImportError.
+- **Gate 2** `pytest` -> **628 passed, 0 failed**. Coverage **92.63%** (floor 70%).
+- **Gate 3** `ruff check .` + `ruff format` -> **clean**.
