@@ -22,6 +22,7 @@ arm. This is adaptive + GROWING, NOT cognition. The four modality streams here a
   python -m snn_data_lake.brainstem.autonomous_loop
 """
 
+import functools as _functools
 import math
 import random
 
@@ -29,9 +30,11 @@ from snn_data_lake.amygdala.fear_conditioning import Amygdala
 from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate
 from snn_data_lake.basal_ganglia.latent_q import LatentQ
 from snn_data_lake.basal_ganglia.mlp_q import MlpQ
+from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.arm_config import CONTACT
-from snn_data_lake.brainstem.arm_sim import ArmSim
 from snn_data_lake.brainstem.cpg_oscillator import MatsuokaCPG
+from snn_data_lake.brainstem.serial_arm import is_valid_command
+from snn_data_lake.brainstem.so101_arm import So101Arm
 from snn_data_lake.cerebellum.gain_adaptation import GainAdapter
 from snn_data_lake.cerebellum.hjepa_serve import HJepaServe
 from snn_data_lake.cerebellum.jepa_world_model import JepaWorldModel
@@ -54,12 +57,15 @@ from snn_data_lake.substrate.brain_bundle import BrainBundle, load_bundle
 from snn_data_lake.substrate.lake_working_memory import LakeWorkingMemory
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 
-# Action-space granularity, NOT a tuned threshold (Policy 1): it defines the vocabulary, it does not
-# arbitrate a decision. Sized small on purpose -- one step can neither cross the obstacle radius
-# (OBSTACLE_R=0.30) nor reach the floor from home, so a single exploratory move is always recoverable.
-_JOINT_STEP_DEG = 6.0
+# Action-space granularity, NOT a tuned threshold (Policy 1): it defines the vocabulary, it does
+# not arbitrate a decision. Sized small on purpose so a single exploratory move is always
+# recoverable. The incumbent justified the size by what one step could NOT do on the old body
+# ("cannot cross OBSTACLE_R=0.30, cannot reach the floor from home"); both facts were properties
+# of a 2-link arm with reach 2.0 and neither survives the body swap, so the size now comes from
+# arm_config, where it sits next to the measured joint limits it has to stay small against.
+_JOINT_STEP_DEG = arm_config.DEFAULT_STEP_DEG
 _MOTOR = tuple(
-    f"JOINT_{j}_ROTATE({s}{_JOINT_STEP_DEG:g}deg)" for j in ("A", "B") for s in ("+", "-")
+    arm_config.command_for(n, s * _JOINT_STEP_DEG) for n in arm_config.ROTATABLE for s in (+1, -1)
 )
 # The arm's autonomous action repertoire. Until v4.58 this was ENGAGE/RELEASE/HOLD only -- three
 # tokens, none of which move a joint, so the brain had no vocabulary with which to change its own
@@ -67,13 +73,58 @@ _MOTOR = tuple(
 # precondition for closing it. ArmSim already accepted this exact command form; nothing in the
 # safety envelope changed, and `apply()` still ignores every one of these while `stopped` is set.
 ACTIONS = ("ENGAGE", "RELEASE", "HOLD") + _MOTOR  # the arm's autonomous action repertoire
+# Every action must pass the WIRE allow-list, checked once at import. HOLD is the deliberate
+# exception the safety envelope already documents: it is a decision not to move, consumed by
+# this loop, and is intentionally not transmissible to a real arm.
+_UNCHECKED = frozenset({"HOLD"})
+assert all(a in _UNCHECKED or is_valid_command(a) for a in ACTIONS), (
+    "an autonomous action is not accepted by the wire allow-list: "
+    f"{[a for a in ACTIONS if a not in _UNCHECKED and not is_valid_command(a)]}"
+)
+
 _ACT_IX = {a: i for i, a in enumerate(ACTIONS)}  # action -> index into the td preference vector
-_A_POS, _A_NEG = _MOTOR[0], _MOTOR[1]  # joint-A extend / retract: the CPG's rhythmic pair
+
+
+def _ee_m(st):
+    """End-effector position in METRES from a body state dict.
+
+    The body reports `ee_mm` because millimetres are the unit the real SO-101 is specified and
+    machined in. Everything in this loop -- the coverage cell, the allocentric step -- was
+    written in metres, so the conversion happens once, here, rather than at each reader where
+    one site would eventually be missed.
+    """
+    ee = st["ee_mm"]
+    return (float(ee[0]) / 1000.0, float(ee[1]) / 1000.0, float(ee[2]) / 1000.0)
+
+
+# The CPG's rhythmic pair, bound by joint NAME rather than by position in _MOTOR. The incumbent
+# indexed _MOTOR[0] and _MOTOR[1], which happened to be joint A's two directions only because
+# the tuple was built A-first; reordering the joint table would have silently re-pointed the
+# oscillator at a different joint with nothing failing. shoulder_lift is the successor to the
+# old joint A -- the same pitch joint, and the one the English cue "shoulder" already meant.
+_CPG_JOINT = "shoulder_lift"
+_A_POS = arm_config.command_for(_CPG_JOINT, +_JOINT_STEP_DEG)
+_A_NEG = arm_config.command_for(_CPG_JOINT, -_JOINT_STEP_DEG)
 _CPG_DRIVE = 1.0  # tonic descending drive; the oscillation exists for any drive > 0
 _CPG_FLOOR = 0.25  # competence floor: the CPG's minimum share, so behaviour never collapses to
 # nothing when the learned row is confident. A deliberate invariant, not a tuned threshold -- the
 # analog of mhflocke's CompetenceGate.cpg_min = 0.40.
-_COVER_CELL = 0.10  # workspace discretisation for the coverage reward (metres); a scale, not a gate
+# Workspace discretisation for the coverage reward, in metres; a scale, not a gate.
+#
+# DERIVED, because the incumbent's 0.10 m was 1/20th of a reach of 2.0 and the new arm reaches
+# roughly a quarter of a metre -- transcribing 0.10 across would have made a single cell wider
+# than the entire workspace, so the arm would have scored one cell no matter where it went and
+# the coverage reward would have read as "explored everything" from the first tick. What is
+# worth carrying over is the RESOLUTION the incumbent chose (twenty cells per reach), not the
+# length it happened to work out to on a different body.
+_COVER_CELLS_PER_REACH = 20  # the incumbent's resolution: reach 2.0 / cell 0.10
+
+
+@_functools.lru_cache(maxsize=1)
+def _cover_cell():
+    return (arm_config.MAX_REACH_MM / 1000.0) / _COVER_CELLS_PER_REACH
+
+
 # Consecutive ground-contact ticks before the postural recovery reflex fires. Small enough that the
 # arm cannot spend a run underground, large enough that a single grazing contact is not treated as a
 # fall. A latency, not a tuned threshold -- the condition itself (ArmSim reports GROUND) is exact.
@@ -138,7 +189,7 @@ class AutonomousArm:
         vitals_hold=False,
         vitals_hold_gain=0.5,
     ):
-        self.arm = ArmSim()
+        self.arm = So101Arm()
         self._seed = seed
         self.bundle = bundle  # optional BrainBundle of trained skills (perception, ...); additive
         self.learner = GrowingLearner()
@@ -433,6 +484,30 @@ class AutonomousArm:
         self._mlp_q_on = mlp_q
         self.mlp_q = None  # lazily built on the first tick (sized to the JEPA latent dim)
 
+    def _adapt_actuation(self, state):
+        """Update how long a motor command is allowed to act, from whether it arrived.
+
+        The body starts at one physics step per command -- the integrator's own step, and far
+        too short for a position servo to travel anywhere: measured, 0.020 deg of a commanded
+        45. Rather than transcribe a settling time, the loop raises the rate while commands
+        fail to arrive and lets it fall back while they succeed, so the arm converges on
+        whatever its own dynamics need and RE-converges if the body, the load or the payload
+        changes. That is the property a fixed step count cannot have.
+
+        A latched arm is skipped: it reports not-reached because it is frozen, which says
+        nothing about rate, and feeding that in would drive the rate to its ceiling during
+        every E-STOP.
+        """
+        if not isinstance(state, dict) or state.get("stopped"):
+            return
+        n = getattr(self.arm, "substeps", None)
+        if n is None:
+            return
+        if state.get("reached"):
+            self.arm.set_substeps(n - 1)  # give it back slowly: a longer tick is a real cost
+        else:
+            self.arm.set_substeps(max(n + 1, n * 2))  # find it fast
+
     def coverage_reward(self, unit, action):
         """The physical objective: reward the end effector for REACHING somewhere it has not been.
 
@@ -453,8 +528,13 @@ class AutonomousArm:
         Sign convention matches the rest of the loop: [-1, 1]. A collision is the strongest negative
         so the objective can never reward driving into the obstacle."""
         st = self.arm.state()
-        ee = st.get("ee") or (0.0, 0.0)
-        cell = (round(float(ee[0]) / _COVER_CELL), round(float(ee[1]) / _COVER_CELL))
+        # THREE dimensions now, because the body has them. The incumbent's arm was planar, so
+        # (x, y) named a position exactly; on a 6-DOF arm two poses that differ only in height
+        # would collapse to the same cell and lifting the gripper straight up would count as
+        # exploring nothing.
+        ee = _ee_m(st)
+        c = _cover_cell()
+        cell = (round(ee[0] / c), round(ee[1] / c), round(ee[2] / c))
         # RECORD FIRST, JUDGE SECOND. v4.59 returned the collision penalty BEFORE reaching this
         # ledger, so from the moment the end effector dropped below FLOOR_Y the objective stopped
         # COUNTING -- the arm went on traversing new territory and none of it was entered. That
@@ -496,6 +576,14 @@ class AutonomousArm:
         self._last_ee = (float(ee[0]), float(ee[1]))
         if st.get("collision"):
             return -1.0  # deliberately UNCHANGED and still the strongest negative
+        if st.get("blocked"):
+            # The command was accepted and the arm did not arrive -- pressed into a limit, into
+            # itself, or into the floor without registering contact. Measured on this body it
+            # fires on 28% of in-limit targets, so leaving it unconsumed meant the arm had no
+            # way to learn that a whole quarter of its reachable-looking commands do nothing.
+            # Ranked below stillness (it spent the tick pushing) and far above a collision.
+            self._blocked_ticks = getattr(self, "_blocked_ticks", 0) + 1
+            return -0.30
         if fresh:
             return 1.0
         return -0.02 if moved else -0.10  # re-tread beats stillness; both far above a collision
@@ -524,8 +612,11 @@ class AutonomousArm:
         nominal = _ALLO_MOVE.get(action)
         prev = self._allo_last_ee
         try:
-            ee = self.arm.state().get("ee") or (0.0, 0.0)
-            now = (float(ee[0]), float(ee[1]))
+            # metres, to stay in the same units as _ALLO_MOVE's nominal displacements. The
+            # body reports millimetres; differencing mm against a nominal step in metres
+            # would have scaled every real motion up by a thousand.
+            ee = _ee_m(self.arm.state())
+            now = (ee[0], ee[1])
         except Exception:  # a map readout must never be able to break the tick
             return nominal or (0.0, 0.0)
         self._allo_last_ee = now
@@ -1266,7 +1357,13 @@ class AutonomousArm:
             qa=qa,
             reliability_hold=reliability_hold,
         )  # threat/intero caution + PFC bias + drift hold (SAFE_ACTION only)
+        # Defence in depth: the same allow-list the chat path runs, applied to a token this
+        # loop composed itself. A token that reached here by another route -- a bundle, a
+        # learned policy, a direct caller -- is refused rather than actuated.
+        if action not in _UNCHECKED and not is_valid_command(action):
+            raise ValueError(f"autonomous action rejected by the wire allow-list: {action!r}")
         state = self.arm.apply(action)  # gated: frozen after E-STOP, collision-checked
+        self._adapt_actuation(state)
         # POSTURAL RECOVERY REFLEX. ArmSim REPORTS ground contact but deliberately does not prevent
         # it -- its self-check asserts a command CAN drive the arm into the floor ("reflex would
         # EMERGENCY_STOP"), because a real arm can be, and a sim that silently refused would hide the
@@ -1710,9 +1807,9 @@ def main():
     guard = AutonomousArm(seed=2)
     ev = guard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
     stopped = guard.arm.state()["stopped"]
-    ee_frozen = guard.arm.state()["ee"]
+    ee_frozen = guard.arm.state()["ee_mm"]
     guard.step(**a)  # a learned action after E-STOP
-    still_frozen = guard.arm.state()["stopped"] and guard.arm.state()["ee"] == ee_frozen
+    still_frozen = guard.arm.state()["stopped"] and guard.arm.state()["ee_mm"] == ee_frozen
 
     # 5. DETERMINISM
     def run(seed):
@@ -1746,9 +1843,9 @@ def main():
 
     rguard = AutonomousArm(seed=2, replay=True)  # danger, then a rewarded action, replay ON
     rev = rguard.step(**_ctx(0.5, 0.5, 0.5, danger_d))
-    ree = rguard.arm.state()["ee"]
+    ree = rguard.arm.state()["ee_mm"]
     rguard.step(**a, reward_fn=reward)  # replay-eligible tick after the E-STOP
-    replay_frozen = rguard.arm.state()["stopped"] and rguard.arm.state()["ee"] == ree
+    replay_frozen = rguard.arm.state()["stopped"] and rguard.arm.state()["ee_mm"] == ree
 
     def run_replay(seed):
         bot = AutonomousArm(seed=seed, replay=True)

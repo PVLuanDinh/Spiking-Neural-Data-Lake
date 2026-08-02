@@ -4,7 +4,7 @@ Spiking CPG (Matsuoka half-center oscillator) — a rhythmic motor primitive for
 PROMOTED from research/ into the product (v0.80). The arm loop has reactive control (spiking_pid,
 reflex, Interpreter commands) but no RHYTHM generator — the circuit that produces a sustained
 oscillatory sweep/wave from one tonic command, the way a biological CPG drives locomotion without
-per-step planning. This wires the Matsuoka oscillator into ArmSim: its two mutually-inhibiting
+per-step planning. This wires the Matsuoka oscillator into So101Arm: its two mutually-inhibiting
 half-centers give an anti-phase rhythm, and `cpg_sweep` maps that to rate-limited JOINT_A_ROTATE
 commands so the arm sweeps back and forth through a bounded, collision-free band — driven entirely
 through the existing (safety-checked) command API, so collision detection and EMERGENCY_STOP still
@@ -14,9 +14,8 @@ locomotion", Neural Networks 21 (2008).
   python -m snn_data_lake.brainstem.cpg_oscillator        # (also run by run_selfchecks.py)
 """
 
-import math
-
-from snn_data_lake.brainstem.arm_sim import ArmSim
+from snn_data_lake.brainstem import arm_config
+from snn_data_lake.brainstem.so101_arm import So101Arm
 
 
 class MatsuokaCPG:
@@ -42,12 +41,34 @@ class MatsuokaCPG:
         return max(0.0, self.x1), max(0.0, self.x2)
 
 
+#: The joint the rhythm drives, and its index into theta_deg. Named, not indexed: the
+#: incumbent drove "joint A", which was the shoulder PITCH; index 0 on this body is
+#: shoulder_pan, a YAW joint, so an unchanged index would have swept the arm sideways while
+#: every assertion about the sweep still passed.
+_CPG_JOINT = "shoulder_lift"
+_CPG_INDEX = next(j.qpos_index for j in arm_config.JOINTS if j.name == _CPG_JOINT)
+
+
+def _angle(arm):
+    return arm.state()["theta_deg"][_CPG_INDEX]
+
+
 def cpg_sweep(
-    arm, steps=1200, drive=1.0, centre_deg=45.0, amp_deg=25.0, max_step_deg=8.0, seed_cpg=None
+    arm, steps=1200, drive=1.0, centre_deg=None, amp_deg=None, max_step_deg=8.0, seed_cpg=None
 ):
-    """Drive ArmSim joint A with the CPG rhythm: joint A tracks centre +- amp*(y1-y2), via
-    rate-limited relative JOINT_A_ROTATE commands (bounded joint velocity). Returns the joint-A angle
-    trace (deg). Goes through arm.apply(), so collision detection + EMERGENCY_STOP still gate motion."""
+    """Drive the shoulder-lift joint with the CPG rhythm: the joint tracks centre +- amp*(y1-y2)
+    via rate-limited relative ROTATE commands (bounded joint velocity). Returns the joint angle
+    trace (deg). Goes through arm.apply(), so collision detection + EMERGENCY_STOP still gate
+    motion."""
+    # The band DEFAULTS to the joint's own ground-free travel. It used to default to centre 45
+    # +/- 25, which described where the previous arm's joint A had clear air; on this body
+    # positive shoulder_lift points DOWN and that band is through the floor. A caller may still
+    # pass a narrower band, but it can no longer inherit one measured on a different arm.
+    band_lo, band_hi = arm_config.ground_free_band(_CPG_JOINT)
+    if centre_deg is None:
+        centre_deg = (band_lo + band_hi) / 2.0
+    if amp_deg is None:
+        amp_deg = (band_hi - band_lo) / 2.0
     cpg = seed_cpg or MatsuokaCPG(tau_r=0.5, tau_a=6.0)  # slow -> smooth graceful sweeps
     cpg.reset()
     arm.apply("HOME")
@@ -55,10 +76,17 @@ def cpg_sweep(
     for _ in range(steps):
         y1, y2 = cpg.step(drive)
         target = centre_deg + amp_deg * max(-1.0, min(1.0, y1 - y2))  # bounded target band
-        cur = arm.theta[0] / (math.pi / 180.0)
-        delta = max(-max_step_deg, min(max_step_deg, target - cur))  # rate limit (joint velocity)
-        arm.apply(f"JOINT_A_ROTATE({delta:+.3f}deg)")
-        trace.append(arm.theta[0] / (math.pi / 180.0))
+        # ABSOLUTE, not relative. `target` is already an absolute angle -- the incumbent
+        # differenced it into a delta only because its body had no absolute verb. On a servo
+        # that lags, feeding back a delta computed from an angle the arm has not reached yet
+        # makes the commanded setpoint run away from the achieved one: measured, the sweep
+        # drove itself into the floor and reported GROUND after 85 of 1200 steps. The rate
+        # limit still bounds joint VELOCITY, by limiting how far the target may move from the
+        # angle the arm is actually at.
+        cur = _angle(arm)
+        want = max(cur - max_step_deg, min(cur + max_step_deg, target))
+        arm.apply(arm_config.moveto_for(_CPG_JOINT, round(want, 3)))
+        trace.append(_angle(arm))
         if arm.collision():  # safety: never keep driving into a collision
             break
     return trace
@@ -78,7 +106,7 @@ def _reversals(trace):
 
 
 def main():
-    arm = ArmSim()
+    arm = So101Arm()
     steps = 1200
     trace = cpg_sweep(arm, steps=steps)
     steady = trace[150:]  # drop the ramp-up from HOME; measure the steady sweep
@@ -87,21 +115,27 @@ def main():
     collision_free = len(trace) == steps  # cpg_sweep breaks on collision -> full length = clean
 
     # safety: an EMERGENCY_STOP mid-sweep must freeze the arm (motion goes through the gated API)
-    arm2 = ArmSim()
+    arm2 = So101Arm()
     cpg_sweep(arm2, steps=200)
     arm2.apply("EMERGENCY_STOP")
-    frozen_angle = arm2.theta[0]
+    frozen_angle = _angle(arm2)
     cpg2 = MatsuokaCPG()
     for _ in range(200):  # keep driving after the stop
         y1, y2 = cpg2.step(1.0)
-        arm2.apply("JOINT_A_ROTATE(+5deg)")
-    stayed = abs(arm2.theta[0] - frozen_angle) < 1e-9
+        arm2.apply(arm_config.moveto_for(_CPG_JOINT, 5))
+    stayed = _angle(arm2) == frozen_angle
 
     print("=" * 60)
     print("SPIKING CPG -> ARM — rhythmic motor primitive (Matsuoka half-center)")
     print("=" * 60)
-    print(f"joint A steady sweep over {len(steady)} steps: {rev} direction reversals (rhythmic)")
-    print(f"angle band: {lo:.1f} deg .. {hi:.1f} deg (target 20..70, collision-free)")
+    band_lo, band_hi = arm_config.ground_free_band(_CPG_JOINT)
+    print(
+        f"{_CPG_JOINT} steady sweep over {len(steady)} steps: {rev} direction reversals (rhythmic)"
+    )
+    print(
+        f"angle band: {lo:.1f} deg .. {hi:.1f} deg "
+        f"(ground-free band {band_lo:.0f}..{band_hi:.0f}, collision-free)"
+    )
     print(
         f"collision-free whole sweep: {collision_free};  EMERGENCY_STOP freezes the sweep: {stayed}"
     )
@@ -109,14 +143,23 @@ def main():
 
     # ---- self-check: deterministic asserts ----
     assert rev >= 4, f"CPG must drive a sustained rhythmic sweep ({rev} reversals)"
-    assert hi - lo >= 20.0, f"the sweep must have real amplitude, not a twitch ({lo:.1f}..{hi:.1f})"
-    assert 15.0 <= lo and hi <= 75.0, f"sweep must stay in the safe joint band ({lo:.1f}..{hi:.1f})"
+    # Amplitude as a FRACTION of the travel available, not an absolute degree count: the old
+    # 20-degree floor was a tenth of the previous arm's band and would be a different demand on
+    # any other body. A tenth of the clear air is the property that transfers.
+    assert (hi - lo) >= 0.1 * (band_hi - band_lo), (
+        f"the sweep must have real amplitude, not a twitch ({lo:.1f}..{hi:.1f} "
+        f"of {band_lo:.0f}..{band_hi:.0f})"
+    )
+    assert band_lo <= lo and hi <= band_hi, (
+        f"sweep left the measured ground-free band: {lo:.1f}..{hi:.1f} "
+        f"outside {band_lo:.0f}..{band_hi:.0f}"
+    )
     assert collision_free, "the bounded sweep must stay collision-free end to end"
     assert stayed, "EMERGENCY_STOP must freeze the CPG-driven sweep (safety API respected)"
-    assert cpg_sweep(ArmSim(), steps=300) == cpg_sweep(ArmSim(), steps=300), "deterministic"
+    assert cpg_sweep(So101Arm(), steps=300) == cpg_sweep(So101Arm(), steps=300), "deterministic"
     print(
         f"self-check OK: {rev} reversals in [{lo:.0f},{hi:.0f}]deg, collision-free, "
-        f"E-STOP-safe; CPG wired to ArmSim via the command API; deterministic"
+        f"E-STOP-safe; CPG wired to So101Arm via the command API; deterministic"
     )
 
 

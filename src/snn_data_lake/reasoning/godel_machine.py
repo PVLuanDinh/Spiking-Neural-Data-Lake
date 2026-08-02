@@ -148,7 +148,10 @@ class GodelMachine:
 _SAFETY_KERNEL = (
     "src/snn_data_lake/brainstem/reflex.py",
     "src/snn_data_lake/brainstem/serial_arm.py",
-    "src/snn_data_lake/brainstem/arm_sim.py",
+    # The incoming gate. Added BEFORE it goes live, deliberately: the window between "so101_arm
+    # is the live gate" and "so101_arm is protected" is a window in which the self-rewrite
+    # harness may rewrite the arm's E-STOP, and there is no acceptable length for that window.
+    "src/snn_data_lake/brainstem/so101_arm.py",
     "src/snn_data_lake/brainstem/arm_config.py",
     "src/snn_data_lake/brainstem/interpreter.py",
     "run_selfchecks.py",

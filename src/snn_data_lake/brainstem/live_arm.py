@@ -16,6 +16,7 @@ Opt-in arm primitives (OFF by default; every motion still goes through the safet
   python live_arm.py --serial COM8 --proprioception  # + encoder-free joint estimate & slip watchdog (read-only)
   python live_arm.py --reach 30      # spiking-PID drive joint A to 30 deg (spiking_pid.drive_to)
   python live_arm.py --sweep         # CPG rhythmic bounded joint sweep (cpg_oscillator.cpg_sweep)
+python live_arm.py --plan-xyz X Y Z  # sampling planner to a Cartesian goal, in millimetres
 
 Gesture -> command map (sensor domain): approach = grab the incoming object, retreat = release.
 """
@@ -27,12 +28,13 @@ import sys
 import time
 
 from snn_data_lake import signal_loop as S
+from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.arm_config import (  # reflex distance + window stride: calibration in arm_config
     CONTACT,
     STRIDE,
 )
-from snn_data_lake.brainstem.arm_sim import ArmSim
 from snn_data_lake.brainstem.interpreter import Interpreter
+from snn_data_lake.brainstem.so101_arm import So101Arm
 from snn_data_lake.cortex.gesture_recognition import W, classify, load_csv
 from snn_data_lake.substrate import home
 
@@ -43,12 +45,20 @@ SENSOR_COMMANDS = {
 }
 
 SLIP_DEG = 15.0  # |estimate - actual| above this flags an uncommanded slip
-_JOINT_A = re.compile(r"JOINT_A_ROTATE\(([+-]?\d+(?:\.\d+)?)deg\)")
+#: The joint the proprioceptive observer tracks. The observer estimates ONE joint angle, so
+#: it has to name which; the incumbent's joint A was the shoulder pitch, and shoulder_lift is
+#: that same joint on this body. Bound by name because the qpos INDEX moved: index 0 is now
+#: shoulder_pan, a yaw joint, and an unchanged `[0]` would have silently watched the wrong one.
+_OBS_JOINT = "shoulder_lift"
+_OBS_INDEX = next(j.qpos_index for j in arm_config.JOINTS if j.name == _OBS_JOINT)
+_JOINT_OBS = re.compile(
+    r"JOINT_" + _OBS_JOINT.upper() + r"_(?:ROTATE|MOVETO)\(([+-]?\d+(?:\.\d+)?)deg\)"
+)
 
 
-def _joint_a_delta(command):
-    """Commanded joint-A delta (deg) from an Interpreter command; 0.0 for effector / HOLD / stop."""
-    m = _JOINT_A.fullmatch(command or "")
+def _joint_obs_delta(command):
+    """Commanded delta (deg) for the observed joint; 0.0 for effector / HOLD / stop."""
+    m = _JOINT_OBS.fullmatch(command or "")
     return float(m.group(1)) if m else 0.0
 
 
@@ -115,7 +125,7 @@ def run(samples, arm, interp, emit, stride=STRIDE, observer=None):
             arm.apply(cmd)
             stats["reflex"] += 1
             buf = []
-            emit({"reflex": "STOP", "command": cmd, "ee": arm.state()["ee"]})
+            emit({"reflex": "STOP", "command": cmd, "ee_mm": arm.state()["ee_mm"]})
             continue
         buf.append((d, t))
         if len(buf) == W:
@@ -128,11 +138,11 @@ def run(samples, arm, interp, emit, stride=STRIDE, observer=None):
                 "gesture": gesture,
                 "command": cmd,
                 "effector": arm.effector,
-                "ee": arm.state()["ee"],
+                "ee_mm": arm.state()["ee_mm"],
             }
             if observer is not None:  # opt-in read-only proprioception
-                est = observer.command(_joint_a_delta(cmd))
-                mism = observer.mismatch_deg(arm.state()["theta_deg"][0])
+                est = observer.command(_joint_obs_delta(cmd))
+                mism = observer.mismatch_deg(arm.state()["theta_deg"][_OBS_INDEX])
                 ev["joint_est_deg"] = round(est, 1)
                 ev["joint_mismatch_deg"] = round(mism, 1)
                 ev["slip"] = mism > SLIP_DEG  # joint moved WITHOUT a command
@@ -169,7 +179,7 @@ def main():
         from snn_data_lake.cerebellum.spiking_pid import drive_to
 
         target = float(args[args.index("--reach") + 1])
-        errs, final, breaches = drive_to(target)  # drive_to uses ArmSim().apply() (gated)
+        errs, final, breaches = drive_to(target)  # drive_to uses So101Arm().apply() (gated)
         print(
             f"reach: spiking PID -> joint A {final:.2f} deg (target {target:.1f}) via gated apply(); "
             f"start err {errs[0]:+.1f} deg, trajectory breaches {breaches}"
@@ -180,34 +190,49 @@ def main():
     if "--sweep" in args:
         from snn_data_lake.brainstem.cpg_oscillator import cpg_sweep
 
-        trace = cpg_sweep(ArmSim())  # cpg_sweep drives arm.apply() (gated); stops on collision
+        trace = cpg_sweep(So101Arm())  # cpg_sweep drives arm.apply() (gated); stops on collision
         print(
             f"sweep: CPG rhythm -> joint A in [{min(trace):.1f}, {max(trace):.1f}] deg via gated apply() "
             f"({len(trace)} steps)"
         )
         return
 
-    # opt-in: plan a collision-free path around the obstacle to a Cartesian end-effector goal (--plan-xy X Y)
-    # or a joint config (--plan A B), executed THROUGH the safety-gated apply() -- a reaction-diffusion
-    # wavefront in configuration space (off by default; adds no new command token, moves via JOINT_*_ROTATE)
-    if "--plan-xy" in args or "--plan" in args:
-        from snn_data_lake.cerebellum.wavefront_planner import plan_to_config, plan_to_xy
+    # opt-in: plan a collision-free path to a Cartesian end-effector goal in MILLIMETRES
+    # (--plan-xyz X Y Z) or to a joint configuration (--plan a b c d e, degrees), executed
+    # THROUGH the safety-gated apply(). A sampling planner in configuration space; off by
+    # default, adds no new command token, moves via the MOVETO verb already allow-listed.
+    #
+    # xy became xyz because the workspace did: three of the arm's joints move the gripper
+    # vertically, so a planar target names a line rather than a point.
+    if "--plan-xyz" in args or "--plan" in args:
+        from snn_data_lake.cerebellum.wavefront_planner import (
+            JOINTS as PLAN_JOINTS,
+        )
+        from snn_data_lake.cerebellum.wavefront_planner import (
+            plan_to_config,
+            plan_to_xyz,
+        )
 
-        arm = ArmSim()
-        if "--plan-xy" in args:
-            gx = float(args[args.index("--plan-xy") + 1])
-            gy = float(args[args.index("--plan-xy") + 2])
-            res = plan_to_xy(arm, gx, gy)
-            goal = f"EE ({gx:.3f}, {gy:.3f})"
+        arm = So101Arm()
+        arm.set_substeps(10**9)  # a CLI move should complete, not crawl one 2 ms step
+        if "--plan-xyz" in args:
+            i = args.index("--plan-xyz")
+            gx, gy, gz = (float(args[i + 1]), float(args[i + 2]), float(args[i + 3]))
+            res = plan_to_xyz(arm, gx, gy, gz)
+            goal = f"EE ({gx:.1f}, {gy:.1f}, {gz:.1f}) mm"
         else:
-            ga = float(args[args.index("--plan") + 1])
-            gb = float(args[args.index("--plan") + 2])
-            res = plan_to_config(arm, ga, gb)
-            goal = f"config ({ga:.1f}, {gb:.1f}) deg"
-        ex, ey = arm.ee()
+            i = args.index("--plan")
+            cfg = [float(args[i + 1 + k]) for k in range(len(PLAN_JOINTS))]
+            res = plan_to_config(arm, cfg)
+            goal = "config " + ", ".join(f"{v:.1f}" for v in cfg) + " deg"
+        ex, ey, ez = arm.ee_mm()
+        if not res.get("planned"):
+            print(f"plan: {goal} -> REFUSED ({res.get('reason')})")
+            return
         print(
-            f"plan: {goal} -> status {res['status']}, {res['waypoints']} waypoints, "
-            f"{res['steps']} gated commands; final EE ({ex:.3f}, {ey:.3f}) via gated apply()"
+            f"plan: {goal} -> {res['reached']}/{res['waypoints']} waypoints reached, "
+            f"{res['applied']} gated commands; final EE "
+            f"({ex:.1f}, {ey:.1f}, {ez:.1f}) mm via gated apply()"
         )
         return
 
@@ -228,7 +253,7 @@ def main():
                 arm = serial_arm.SerialArm(actuate, baud)
                 samples = serial_samples(port, baud)
         else:
-            arm = ArmSim()
+            arm = So101Arm()
             samples = serial_samples(port, baud)
         sys.stderr.write(
             f"live: sensor={port}@{baud} actuate={actuate or 'sim'} stride={stride} "
@@ -239,7 +264,7 @@ def main():
         )  # until interrupted
         return
 
-    arm = ArmSim()  # stdlib backend (pybullet if installed)
+    arm = So101Arm()  # stdlib backend (pybullet if installed)
     if "--csv" in args:
         run(
             replay_samples([args[args.index("--csv") + 1]]),
@@ -257,23 +282,23 @@ def main():
     quiet = lambda d: None
 
     if have_real:
-        stats_a = run(replay_samples([gestures["HAND_APPROACH"]]), ArmSim(), interp, quiet)
-        stats_r = run(replay_samples([gestures["HAND_RETREAT"]]), ArmSim(), interp, quiet)
-        a_arm = ArmSim()
+        stats_a = run(replay_samples([gestures["HAND_APPROACH"]]), So101Arm(), interp, quiet)
+        stats_r = run(replay_samples([gestures["HAND_RETREAT"]]), So101Arm(), interp, quiet)
+        a_arm = So101Arm()
         run(replay_samples([gestures["HAND_APPROACH"]]), a_arm, interp, quiet)
         source = "real capture (robot arm/*.csv)"
     else:  # CI without data: synth streams
         appr = [(0.9 - 0.11 * i, 295.0) for i in range(W)] * 3 + [(0.02, 298.0)]
         retr = [(0.1 + 0.11 * i, 295.0) for i in range(W)] * 3
-        stats_a = run(iter(appr), ArmSim(), interp, quiet)
-        stats_r = run(iter(retr), ArmSim(), interp, quiet)
-        a_arm = ArmSim()
+        stats_a = run(iter(appr), So101Arm(), interp, quiet)
+        stats_r = run(iter(retr), So101Arm(), interp, quiet)
+        a_arm = So101Arm()
         run(iter(appr), a_arm, interp, quiet)
         source = "synthetic fallback"
 
     # audit P1 regression: a non-finite sensor sample must trip the contact reflex (fail-closed),
     # not slip past `d < CONTACT` (NaN < x is False). Runs in the CI/default path.
-    nan_stats = run(iter([(float("nan"), 298.0)]), ArmSim(), interp, quiet)
+    nan_stats = run(iter([(float("nan"), 298.0)]), So101Arm(), interp, quiet)
     assert nan_stats["reflex"] == 1, (
         "a NaN distance sample must trigger the contact reflex (fail-closed)"
     )
@@ -288,7 +313,7 @@ def main():
     )
     print(f"RETREAT file  : {stats_r.get('RELEASE', 0)} RELEASE")
     print(
-        f"arm after approach run: effector={a_arm.effector} ee={a_arm.state()['ee']} "
+        f"arm after approach run: effector={a_arm.effector} ee_mm={a_arm.state()['ee_mm']} "
         f"stopped={a_arm.stopped}"
     )
     print("=" * 62)
@@ -356,9 +381,9 @@ def main():
     # 1. --proprioception observer is READ-ONLY: the SAME stream, with vs without the observer,
     #    must drive the arm identically (it issues no command and never moves the joint).
     obs_stream = [(0.9 - 0.11 * i, 295.0) for i in range(W)] * 3 + [(0.02, 298.0)]
-    base_arm = ArmSim()
+    base_arm = So101Arm()
     base_stats = run(iter(obs_stream), base_arm, interp, quiet)
-    obs_arm = ArmSim()
+    obs_arm = So101Arm()
     events = []
     obs_stats = run(
         iter(obs_stream), obs_arm, interp, events.append, observer=ProprioceptiveEstimator()
@@ -372,9 +397,9 @@ def main():
     )
     # slip watchdog: a joint that moves with NO command must diverge estimate from truth
     watchdog = ProprioceptiveEstimator()  # estimate stays home (no commands issued to it)
-    slipped_arm = ArmSim()
-    slipped_arm.perturb(da_deg=25.0)  # joint moved WITHOUT a command
-    assert watchdog.mismatch_deg(slipped_arm.state()["theta_deg"][0]) > SLIP_DEG, (
+    slipped_arm = So101Arm()
+    slipped_arm.inject_disturbance(_OBS_JOINT, 25.0)  # joint moved WITHOUT a command
+    assert watchdog.mismatch_deg(slipped_arm.state()["theta_deg"][_OBS_INDEX]) > SLIP_DEG, (
         "slip watchdog did not flag an uncommanded joint move"
     )
 
@@ -389,15 +414,15 @@ def main():
     # 3. --sweep: CPG rhythmic bounded motion THROUGH the gated apply(), and E-STOP still freezes it.
     from snn_data_lake.brainstem.cpg_oscillator import cpg_sweep
 
-    sweep_trace = cpg_sweep(ArmSim(), steps=400)
+    sweep_trace = cpg_sweep(So101Arm(), steps=400)
     assert max(sweep_trace) - min(sweep_trace) > 15.0, "--sweep produced no rhythmic joint motion"
-    estop_arm = ArmSim()
+    estop_arm = So101Arm()
     cpg_sweep(estop_arm, steps=120)
     estop_arm.apply("EMERGENCY_STOP")
-    frozen = estop_arm.theta[0]
+    frozen = estop_arm.state()["theta_deg"]
     for _ in range(50):
         estop_arm.apply("JOINT_A_ROTATE(+5deg)")
-    assert abs(estop_arm.theta[0] - frozen) < 1e-9, (
+    assert estop_arm.state()["theta_deg"] == frozen, (
         "EMERGENCY_STOP failed to freeze the CPG-driven arm"
     )
 

@@ -120,7 +120,7 @@ REGIONS = {
     "brainstem": [
         "reflex",
         "serial_arm",
-        "arm_sim",
+        "so101_arm",  # the MuJoCo SO-101 gate; REPLACED arm_sim (specs/004)
         "arm_hardware",  # physical-arm build TARGET: spec + static torque budget + the sim-to-real gap
         "arm_config",
         "interpreter",
@@ -176,6 +176,7 @@ REGIONS = {
     ],
     "substrate": [
         "_mathutils",
+        "arm_view",
         "spike_stream_sketch",
         "spike_cardinality",
         "reservoir_sampling",

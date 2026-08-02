@@ -60,6 +60,7 @@ import zlib
 from snn_data_lake.basal_ganglia.valence_stdp import (
     ValenceLearner,  # #3 RPE dopamine (leaf: only imports spike_preprocessing)
 )
+from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.reflex import (  # #2 instinctive fast-path (no cycle: reflex is leaf)
     Reflex,
     reflex_guard,
@@ -76,8 +77,9 @@ RATIO = 0.85  # match only if best < RATIO*second
 NOISE = 0.08  # simulated sensor jitter
 MIN_SUPPORT = 3  # repeats before a novel -> new signature
 
-# Default command library (the Interpreter maps these labels -> JOINT_A_ROTATE, etc.)
-COMMANDS = ["JOINT_A_ROTATE", "JOINT_B_ROTATE", "ENGAGE", "RELEASE", "HOME"]
+# Default command library (the Interpreter maps these labels -> a concrete command string).
+# Derived, so a joint added to the arm becomes a learnable signature here without an edit.
+COMMANDS = [*arm_config.TOKENS, "ENGAGE", "RELEASE", "HOME"]
 
 
 # ---- signal source ----------------------------------------------------------

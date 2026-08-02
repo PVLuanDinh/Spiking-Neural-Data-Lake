@@ -132,7 +132,7 @@ def _geometry():
     return brain_geometry.layout()
 
 
-def _handler(get_snap, turns):
+def _handler(get_snap, turns, get_view=None):
     class H(BaseHTTPRequestHandler):
         def _send(self, code, body, ctype="application/json"):
             data = body if isinstance(body, bytes) else body.encode("utf-8")
@@ -150,6 +150,20 @@ def _handler(get_snap, turns):
                     return self._send(200, COCKPIT_HTML, "text/html; charset=utf-8")
                 if path == "/api/geom":
                     return self._send(200, json.dumps(_geometry()))
+                if path == "/api/arm.png":
+                    # Requesting is all this thread does. Drawing happens on the tick thread --
+                    # see substrate/arm_view.py -- so a browser poll only registers interest and
+                    # collects whatever the last tick produced.
+                    view = get_view() if get_view is not None else None
+                    if view is None:
+                        return self._send(503, json.dumps({"error": "no arm view"}))
+                    view.request()
+                    png, rev = view.frame()
+                    if png is None:
+                        # 503 with the REASON, not a placeholder image. A grey rectangle would
+                        # be indistinguishable from a genuinely grey arm.
+                        return self._send(503, json.dumps({"error": rev}))
+                    return self._send(200, png, "image/png")
                 if path == "/api/chat":
                     tid = dict(p.split("=", 1) for p in qs.split("&") if "=" in p).get("id", "")
                     rec = turns.result(tid) if tid.isdigit() else None
@@ -219,7 +233,13 @@ def serve(brain, port=8137, turns=None, block=True):
             if not isinstance(sys.exc_info()[1], (ConnectionError, TimeoutError)):
                 traceback.print_exc()
 
-    srv = _Server(("127.0.0.1", int(port)), _handler(lambda: snapshot(brain), turns))
+    def _view():
+        try:
+            return brain.brain.arm.arm.view
+        except Exception:
+            return None
+
+    srv = _Server(("127.0.0.1", int(port)), _handler(lambda: snapshot(brain), turns, _view))
     srv.turns = turns
     # the BOUND port, not the requested one: port=0 means "OS, pick one", and printing the request
     # would tell the reader to open http://127.0.0.1:0/
@@ -322,7 +342,10 @@ canvas{display:block}
  </div>
 
  <div id="widgets">
-   <div class="plate" style="flex:3"><h2>MOTOR MIX</h2><div id="wMotor"></div></div>
+   <div class="plate" style="flex:4"><h2>ARM</h2><img id="armImg" alt="live arm"
+   style="width:100%;border-radius:6px;background:#0b0f16;display:none">
+   <div id="wArm"></div></div>
+<div class="plate" style="flex:3"><h2>MOTOR MIX</h2><div id="wMotor"></div></div>
    <div class="plate" style="flex:4"><h2>BEHAVIOR &amp; EMOTION</h2><div id="wBeh"></div></div>
    <div class="plate" style="flex:5"><h2>HARDWARE TARGET &mdash; NOT BUILT</h2><div id="wHw"></div></div>
    <div class="plate" style="flex:3"><h2>NEUROMODULATORS</h2><div id="wNm"></div></div>
@@ -445,14 +468,17 @@ function drawWorld(b,d){
  x.fillStyle='rgba(10,15,10,.78)';x.fillRect(0,0,w,h);
  const cx=w/2,cy=h/2,R=Math.min(w,h)*0.40;
  x.strokeStyle='rgba(0,180,220,.45)';x.lineWidth=1;
- x.beginPath();x.arc(cx,cy,R,0,7);x.stroke();          /* reach = 2.0 sim units */
- const ee=(b&&b.ee)||null;
- if(ee&&ee.length>=2){
-  const px=cx+ee[0]/2*R, py=cy-ee[1]/2*R;
+ x.beginPath();x.arc(cx,cy,R,0,7);x.stroke();          /* the arm's measured reach */
+ /* ee_mm is 3-D millimetres and the circle is the arm's own max horizontal radius, so the
+    dot lands where the gripper actually is rather than where a hardcoded reach implied. */
+ const ee=(b&&b.ee_mm)||null, reach=(b&&b.reach_mm)||null;
+ if(ee&&ee.length>=2&&reach){
+  const px=cx+ee[0]/reach*R, py=cy-ee[1]/reach*R;
   x.fillStyle=b.collision?'#ff3c28':'#00ff64';
   x.beginPath();x.arc(px,py,3.5,0,7);x.fill();
   x.strokeStyle='rgba(0,255,100,.55)';x.beginPath();x.moveTo(cx,cy);x.lineTo(px,py);x.stroke();
- }else{x.fillStyle='#4d5a70';x.font='10px monospace';x.fillText('no arm pose',10,h-10);}
+ }else{x.fillStyle='#4d5a70';x.font='10px monospace';
+  x.fillText(ee?'no reach reported':'no arm pose',10,h-10);}
  x.fillStyle='rgba(150,160,180,.9)';x.font='10px ui-monospace,monospace';
  const c=d?d.cells_covered:null;
  x.fillText('cells '+(c===null||c===undefined?EM:c),8,h-8);
@@ -487,6 +513,7 @@ function drawVA(v,a){
 }
 
 /* ---------- panels ---------- */
+let LAST_AREV=null, LAST_AREV_T=0;
 function paint(d){
  const s=d.cognition||{}, sp=d.spikes||{}, b=d.body||{}, dv=d.derived||{},
        g=d.gated||{}, hw=d.hardware||{};
@@ -499,6 +526,28 @@ function paint(d){
  $('prog').firstElementChild.style.width=(((s.phase||0)%1)*100).toFixed(1)+'%';
 
  drawBrain(sp); drawTrace(sp); drawWorld(b,dv); drawRegions(sp);
+
+  /* ARM -- the picture, plus the counter that says whether it is still moving.
+     A frozen renderer and a stationary arm are pixel-identical; without the revision
+     nothing on this page could tell them apart, which is the failure PROVENANCE exists for. */
+  const av=d.arm_view||{}, arev=av.arm_view_revision;
+  const aimg=$('armImg');
+  if(av.arm_view_available){
+    /* cache-bust on the revision, so the browser cannot show a stale frame forever */
+    aimg.src='/api/arm.png?r='+(arev||0); aimg.style.display='';
+    if(arev!==LAST_AREV){LAST_AREV=arev; LAST_AREV_T=Date.now();}
+  }else{
+    aimg.style.display='none';
+    /* still poll, so the demand gate stays open and the tick thread keeps drawing */
+    fetch('/api/arm.png').catch(function(){});
+  }
+  const stale=(LAST_AREV_T&&(Date.now()-LAST_AREV_T)>4000);
+  $('wArm').innerHTML =
+    row('frames rendered',arev===undefined?null:arev)
+    +row('picture',av.arm_view_available?(stale?'STALE (not advancing)':'live'):'unavailable')
+    +(av.arm_view_reason?`<div class="note">${av.arm_view_reason}</div>`:'')
+    +`<div class="note">drawn on the tick thread, on demand. the frame counter is the
+       only thing distinguishing a live picture from a frozen one.</div>`;
  $('camtxt').textContent = SPIN?'camera rotating (drag to steer)':'camera held';
 
  /* MOTOR MIX -- the CPG share, and whether the goal actually overrode habit */
@@ -631,6 +680,49 @@ loop(); setInterval(loop,1000); spin();
 """
 
 
+def _http_get(brain, path):
+    """Drive one GET through the REAL handler without a socket. Returns (code, body bytes).
+
+    Subclasses the handler rather than imitating it, so the code under test is the code that
+    serves browsers -- a hand-rolled stand-in would be free to disagree with it. Only the
+    socket-facing methods are replaced; `_send` and `do_GET` are the originals.
+    """
+    captured = {}
+
+    def _view():
+        try:
+            return brain.brain.arm.arm.view
+        except Exception:
+            return None
+
+    base = _handler(lambda: snapshot(brain), Turns(), _view)
+
+    class _Offline(base):
+        def __init__(self):  # deliberately NOT calling BaseHTTPRequestHandler.__init__
+            self.path = path
+
+        def send_response(self, code, *_a):
+            captured["code"] = code
+
+        def send_header(self, *_a):
+            pass
+
+        def end_headers(self):
+            pass
+
+        @property
+        def wfile(self):
+            class _W:
+                @staticmethod
+                def write(data):
+                    captured["body"] = data
+
+            return _W()
+
+    _Offline().do_GET()
+    return captured.get("code"), captured.get("body", b"")
+
+
 def main():
     """Self-check: the page is served, the contract holds, and a chat turn round-trips via the queue."""
     import urllib.request
@@ -644,6 +736,25 @@ def main():
     brain = make_brain(seed=0)
     for _ in range(8):
         brain.tick()
+
+    # The arm picture, end to end. Rendering happens on the TICK thread, and this self-check
+    # IS the tick thread, so the sequence a browser produces is reproduced deliberately: the
+    # first request only registers demand and correctly gets a 503 with a reason, the next tick
+    # draws, and the request after that carries actual PNG bytes.
+    _arm = brain.brain.arm.arm
+    _first_code, _first_body = _http_get(brain, "/api/arm.png")
+    assert _first_code == 503, f"an undrawn view must not claim success (got {_first_code})"
+    assert json.loads(_first_body)["error"], "a 503 must carry a reason, not an empty body"
+
+    _drew = _arm.view.render_if_wanted(_arm.model, _arm.data)
+    if _drew:  # environments without a GL context keep the honest 503 path above
+        _code, _png = _http_get(brain, "/api/arm.png")
+        assert _code == 200, f"a drawn frame was not served: {_code}"
+        assert _png[:8] == b"\x89PNG\r\n\x1a\n", "the route did not return PNG bytes"
+        assert snapshot(brain)["arm_view"]["arm_view_revision"] == _drew, (
+            "the panel's frame counter disagrees with the renderer"
+        )
+    _arm.view.close()
 
     # the no-orphan-panel gate, now covering every section the page reads
     missing = verify_contract(snapshot(brain))

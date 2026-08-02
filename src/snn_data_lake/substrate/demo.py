@@ -71,9 +71,21 @@ def recognize(window):
 
 
 # ---- 2-link arm (forward kinematics + effector + collision) ------------------
-class Arm:
-    def __init__(self, l1=1.0, l2=1.0):
-        self.l1, self.l2, self.theta, self.effector, self.stopped = l1, l2, [0.0, 0.0], 0.0, False
+class _RetiredArm:
+    """RETIRED (specs/004). Kept only as a marker so the reason survives the deletion.
+
+    This was a private 2-link arm with its OWN apply(), ee(), effector and stopped -- a third
+    implementation of the safety gate, with a second E-STOP that no test ever exercised. It
+    existed so this demo could run without dependencies; the zero-dependency rule was removed
+    project-wide in 2026-07 and mujoco is a core dependency now, so that reason no longer
+    describes anything. The demo drives the one real arm instead.
+    """
+
+    def __init__(self, *_a, **_k):
+        raise RuntimeError(
+            "demo.Arm is retired: there is exactly one arm (brainstem/so101_arm.So101Arm). "
+            "Constructing a private arm here would re-implement the safety gate."
+        )
 
     def ee(self):
         a, b = self.theta[0], self.theta[0] + self.theta[1]
@@ -137,12 +149,15 @@ def run(stream, arm, narrate=True):
         buf.append((d, t))
         if len(buf) == W:
             gesture = recognize(buf)
-            cmd = arm.apply(COMMANDS[gesture])
+            # apply() returns the arm STATE, not the command. The retired demo Arm returned
+            # the string, which is why this looked like a one-liner.
+            cmd = COMMANDS[gesture]
+            arm.apply(cmd)
             acted.append((gesture, cmd))
             if narrate:
                 print(
                     f"  {note:20} -> recognize {gesture:14} -> command {cmd:14} "
-                    f"(effector={arm.effector}, ee={arm.ee()})"
+                    f"(effector={arm.effector:.3f}, ee_mm={tuple(round(v, 1) for v in arm.ee_mm())})"
                 )
             buf = []
     return acted
@@ -150,7 +165,12 @@ def run(stream, arm, narrate=True):
 
 def main():
     args = sys.argv[1:]
-    arm = Arm()
+    from snn_data_lake.brainstem.so101_arm import So101Arm
+
+    arm = So101Arm()
+    # Let a command complete: this demo shows the gesture -> command -> motion loop, and a
+    # single 2 ms physics step would move the joint 0.02 deg and make the loop look inert.
+    arm.set_substeps(10**9)
     print("=" * 70)
     print("SPIKING NEURAL DATA LAKE  ->  ROBOT ARM   (one-file demo)")
     print("=" * 70)

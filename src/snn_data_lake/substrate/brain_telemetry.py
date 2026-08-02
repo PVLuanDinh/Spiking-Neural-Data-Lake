@@ -60,6 +60,8 @@ import os
 import threading
 import time
 
+from snn_data_lake.brainstem import arm_config as _arm_config
+
 # Keys the bundled dashboard reads. verify_contract() asserts every one is producible, so deleting a
 # brain signal breaks the build instead of silently blanking a panel.
 DASHBOARD_KEYS = (
@@ -108,7 +110,11 @@ DASHBOARD_KEYS = (
 # cognition|derived, which meant a panel built on spikes.* or body.* had NO gate behind it at all.
 DASHBOARD_SECTION_KEYS = {
     "spikes": ("cortex", "hippocampus", "amygdala", "basal_ganglia", "thalamus", "brainstem"),
-    "body": ("theta_deg", "ee", "effector", "collision", "deviation"),
+    "body": ("theta_deg", "ee_mm", "reach_mm", "effector", "collision", "deviation"),
+    # The revision counter is part of the CONTRACT, not decoration. A still picture and a live
+    # one are pixel-identical to a viewer; without a counter that visibly advances, a frozen
+    # renderer looks exactly like a stationary arm. This is the failure PROVENANCE exists for.
+    "arm_view": ("arm_view_revision", "arm_view_available", "arm_view_reason"),
     "hardware": ("built", "joints", "underpowered", "sim_dof", "supply_ok"),
 }
 
@@ -220,11 +226,26 @@ def snapshot(brain):
         out["body"] = {k: _num(v) for k, v in arm.items()}
         # Stated, not hidden: the joints do not move on the canonical tick. A dashboard that let a
         # viewer assume otherwise would be the exact failure this module exists to prevent.
+        # The body's own max horizontal radius, so a panel can scale a position without
+        # hardcoding a reach that belongs to one particular arm.
+        out["body"]["reach_mm"] = float(_arm_config.MAX_REACH_MM)
         out["body"]["moves"] = bool(
             any(abs(float(a)) > 1e-9 for a in arm.get("theta_deg", []) or [])
         )
     except Exception:
         out["body"] = {}
+
+    # The viewer's own honesty row. `arm_view_revision` is the point of the section: a frozen
+    # renderer and a stationary arm produce the same picture, so the counter is what tells them
+    # apart. Reported even when unavailable, with the reason, rather than an absent panel.
+    try:
+        out["arm_view"] = brain.brain.arm.arm.view.status()
+    except Exception as e:
+        out["arm_view"] = {
+            "arm_view_revision": 0,
+            "arm_view_available": False,
+            "arm_view_reason": f"no arm view: {type(e).__name__}",
+        }
 
     # ---- derived (arithmetic only; no new state) ----
     pos = st.get("map_position") or []

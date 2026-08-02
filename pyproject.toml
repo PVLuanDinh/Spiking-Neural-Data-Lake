@@ -35,7 +35,18 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = ["torch", "numpy"]   # TORCH TIER ON BY DEFAULT (user policy, 2026-07-18)
+dependencies = [
+    "torch",
+    "numpy",
+    # THE BODY. Owner directive 2026-08-01: the MuJoCo SO-101 replaces the 2-DOF kinematic
+    # ArmSim as the arm, so the physics engine is core rather than an extra.
+    # EXACT PIN, not a floor, on this file's own recorded precedent for ruff ("a formatter's
+    # version is part of the format"): for a physics engine the SOLVER VERSION IS THE PHYSICS.
+    # Same-seed determinism and every torque assertion are numeric asserts against one build,
+    # so a floor would resolve to the newest release in a fresh env and reappear as a mystery
+    # failure. Verified: wheels exist for {ubuntu, windows} x {cp311, cp312, cp313}.
+    "mujoco==3.11.0",
+]   # TORCH TIER ON BY DEFAULT (user policy, 2026-07-18)
 
 # TORCH TIER = ON BY DEFAULT (user policy, 2026-07-18). torch is now a HARD default dependency: a plain
 # `pip install .` pulls torch+numpy and the torch BRAIN TIER runs by default -- hippocampus/ng_snn.py

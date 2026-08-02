@@ -27,9 +27,22 @@ pure-stdlib and run in CI.
 import re
 
 from snn_data_lake.brainstem import arm_config
-from snn_data_lake.brainstem.arm_sim import ArmSim
+from snn_data_lake.brainstem.so101_arm import So101Arm
 
-_JOINT = re.compile(r"JOINT_[AB]_ROTATE\([+-]?\d+(?:\.\d+)?deg\)")
+# The wire allow-list, built from the arm's own joint names -- INDEPENDENTLY of the mirror,
+# which is the property that caught a malformed token the mirror had accepted. Names are
+# escaped and alternated rather than matched with a loose [A-Z_]+ class, so a token naming a
+# joint this arm does not have is rejected here rather than reaching the hardware.
+# The two joints the self-check drives. Named once, so the command that is SENT and the
+# command that is ASSERTED cannot drift apart -- the incumbent spelled each out twice.
+_DEMO_MOVE = arm_config.command_for("shoulder_lift", 15)
+_DEMO_BLOCKED = arm_config.command_for("elbow_flex", -5)
+
+_JOINT = re.compile(
+    r"JOINT_(?:"
+    + "|".join(re.escape(n.upper()) for n in arm_config.ROTATABLE)
+    + r")_(?:ROTATE|MOVETO)\([+-]?\d+(?:\.\d+)?deg\)"
+)
 _FIXED = {"EMERGENCY_STOP", "HOME", "RETRACT_ALL", "ENGAGE", "RELEASE", "HOLD"}
 _ALLOWED_WHEN_STOPPED = {
     "EMERGENCY_STOP",
@@ -51,7 +64,7 @@ def assert_calibrated(allow_uncalibrated=False):
             "SerialArm refuses to drive real servos with placeholder safety limits. "
             "Set arm_config.SAFETY_CALIBRATED=True after replacing CONTACT/joint limits "
             "with your rig's real values (docs/arduino_requirements.md #3), or pass "
-            "allow_uncalibrated=True (with a fake writer=) for a bench/echo test."
+            "allow_uncalibrated=True TOGETHER WITH a fake writer= for a bench/echo test."
         )
 
 
@@ -63,13 +76,29 @@ class SerialArm:
     def __init__(self, port=None, baud=115200, writer=None, allow_uncalibrated=False):
         # calibration is checked for EVERY construction, not just the auto-open branch, so an
         # injected `writer=` (e.g. the shared-UART live path) can no longer bypass the gate.
+        # THE ESCAPE HATCH CANNOT OPEN A REAL PORT. The docstring always said
+        # allow_uncalibrated was for a bench/echo test "(with a fake writer=)", but nothing
+        # enforced the pairing -- so `SerialArm(port=..., allow_uncalibrated=True)` passed the
+        # gate and then opened a real pyserial port, which is the single path to the servos that
+        # calibration exists to close. Enforced here rather than in assert_calibrated() because
+        # this is the only place that opens a port; the bare guard is also called by live_arm
+        # where no port is involved. A legitimate bench test already injects a writer, so this
+        # cannot break one.
+        if allow_uncalibrated and writer is None:
+            raise RuntimeError(
+                "allow_uncalibrated=True requires an injected writer= (a bench/echo test). "
+                "It is not a way to open a REAL port with placeholder safety limits."
+            )
         assert_calibrated(allow_uncalibrated)
         if writer is None:
             import serial  # pyserial — only needed on real hardware
 
             writer = serial.Serial(port, baud, timeout=1)
         self.w = writer
-        self.mirror = ArmSim()  # local twin so state()/effector still work
+        # Local twin so state()/effector still work. NOT the wire validator: `is_valid_command`
+        # builds its allow-list from arm_config independently, which is what caught a token the
+        # mirror had accepted. Two readings of one source, not one reading trusted twice.
+        self.mirror = So101Arm()
         self.mirror.apply("HOME")
 
     def apply(self, command):
@@ -124,11 +153,11 @@ def main():
     arm = SerialArm(writer=fake, allow_uncalibrated=True)  # bench must opt in explicitly now
 
     arm.apply("ENGAGE")
-    arm.apply("JOINT_A_ROTATE(+15deg)")
+    arm.apply(_DEMO_MOVE)
     arm.apply("EMERGENCY_STOP")
     # --- once stopped, the WIRE must stay silent for anything but stop/home/retract ---
     arm.apply("ENGAGE")  # blocked by the E-STOP freeze -> NOT transmitted
-    arm.apply("JOINT_B_ROTATE(-5deg)")  # blocked by the E-STOP freeze -> NOT transmitted
+    arm.apply(_DEMO_BLOCKED)  # blocked by the E-STOP freeze -> NOT transmitted
     lines_during_stop = list(fake.lines)
     arm.apply("HOME")  # allowed while stopped -> transmitted, clears the latch
     arm.apply("RELEASE")  # latch cleared -> transmitted again
@@ -172,13 +201,13 @@ def main():
     print("=" * 58)
 
     # ---- self-checks --------------------------------------------------------
-    assert fake.lines[:3] == ["ENGAGE", "JOINT_A_ROTATE(+15deg)", "EMERGENCY_STOP"], (
+    assert fake.lines[:3] == ["ENGAGE", _DEMO_MOVE, "EMERGENCY_STOP"], (
         f"pre-stop commands not sent verbatim: {fake.lines}"
     )
     assert fake.lines.count("ENGAGE") == 1, (
         f"a command after EMERGENCY_STOP reached the wire — the freeze is not enforced on serial: {fake.lines}"
     )
-    assert "JOINT_B_ROTATE(-5deg)" not in fake.lines, "a joint move after E-STOP reached the wire"
+    assert _DEMO_BLOCKED not in fake.lines, "a joint move after E-STOP reached the wire"
     assert "HOME" in fake.lines and "RELEASE" in fake.lines, (
         "HOME must clear the latch and re-enable the wire"
     )

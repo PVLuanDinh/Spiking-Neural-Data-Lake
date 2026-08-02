@@ -22,6 +22,12 @@ jobs:
   self-checks:
     name: self-checks ${{ matrix.os }} py${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
+    # CI SIMULATES, IT NEVER RENDERS. mujoco reads MUJOCO_GL at import and raises on an
+    # unrecognised value, so the posture is DECLARED here rather than inferred from the absence
+    # of a display. `disable` short-circuits the GL block at import and exercises the
+    # viewer-unavailable path on every matrix cell for free.
+    env:
+      MUJOCO_GL: disable
     strategy:
       fail-fast: false                       # one cell failing must not mask the others
       matrix:
@@ -36,6 +42,36 @@ jobs:
       - run: python -m pip install -e .    # torch + numpy are DEFAULT deps -> the full tier runs
       - name: Run every self-check with the full dependency set
         run: python run_selfchecks.py       # canonical module list lives in run_selfchecks.py
+
+  wheel:
+    name: wheel packages the vendored model
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install build
+      - name: Build the wheel
+        run: python -m build --wheel
+      # The editable install CI otherwise uses resolves assets through the source tree, so a
+      # packaging mistake is invisible until someone installs the wheel. Assert the model is in it.
+      - name: Assert the SO-101 model is inside the wheel
+        run: |
+          python - <<'PY'
+          import glob, sys, zipfile
+          whl = sorted(glob.glob("dist/*.whl"))[-1]
+          names = set(zipfile.ZipFile(whl).namelist())
+          need = "snn_data_lake/brainstem/so101/scene.xml"
+          stls = [n for n in names if n.endswith(".stl")]
+          print(f"wheel: {whl}")
+          print(f"scene.xml present: {need in names}")
+          print(f"stl meshes packaged: {len(stls)}")
+          if need not in names or len(stls) != 13:
+              sys.exit("WHEEL IS MISSING THE VENDORED MODEL -- check .gitignore does not "
+                       "swallow the asset directory (hatchling honours it)")
+          PY
 
   lint:
     name: lint (ruff) + repo hygiene
@@ -63,6 +99,8 @@ jobs:
   test:
     name: tests + coverage
     runs-on: ubuntu-latest
+    env:
+      MUJOCO_GL: disable   # tests simulate, never render (see self-checks)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

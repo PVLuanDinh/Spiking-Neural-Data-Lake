@@ -18,7 +18,13 @@ so the arm's safety envelope and default behaviour are unchanged. Deterministic.
 
 import math
 
-from snn_data_lake.brainstem.arm_sim import ArmSim
+from snn_data_lake.brainstem import arm_config
+from snn_data_lake.brainstem.so101_arm import So101Arm
+
+#: The joint the proprioceptive observer watches. Named, not indexed: index 0 is shoulder_pan
+#: on this body, a yaw joint, where the incumbent's joint A was the shoulder pitch.
+_OBS_JOINT = "shoulder_lift"
+_OBS_INDEX = next(j.qpos_index for j in arm_config.JOINTS if j.name == _OBS_JOINT)
 
 
 class RingAttractor:
@@ -135,17 +141,27 @@ def main():
         ring.step(0.2)
     turned = math.degrees(ring.decode())
 
-    # ---- 2. PRODUCT integration: spiking proprioception on ArmSim (read-only observer) ----
-    arm = ArmSim()
+    # ---- 2. PRODUCT integration: spiking proprioception on So101Arm (read-only observer) ----
+    #
+    # NEGATIVE rotations: positive shoulder_lift points DOWN on this arm, and six +12 deg steps
+    # would put the gripper 72 deg into a floor it reaches at 37. The incumbent's +12 was safe
+    # on a 2-link arm whose joint A pointed the other way.
+    arm = So101Arm()
+    # Let each command complete. This demo measures whether the ESTIMATOR tracks a commanded
+    # motion, so the plant's settling lag is not the subject; one simulated second per command
+    # (the body's own derived ceiling) removes it. The live brain instead adapts this rate.
+    arm.set_substeps(10**9)
     est = ProprioceptiveEstimator()
-    for _ in range(6):  # six commanded +12 deg rotations of joint A
-        arm.apply("JOINT_A_ROTATE(+12deg)")
-        est.command(+12.0)
-    actual = arm.state()["theta_deg"][0]
+    for _ in range(6):  # six commanded -12 deg rotations of the shoulder-lift joint
+        arm.apply(arm_config.command_for(_OBS_JOINT, -12))
+        est.command(-12.0)
+    actual = arm.state()["theta_deg"][_OBS_INDEX]
     tracked_mismatch = est.mismatch_deg(actual)  # estimate should track the commanded motion
 
-    arm.perturb(da_deg=30.0)  # uncommanded disturbance -> NOT fed to the estimator
-    slipped = arm.state()["theta_deg"][0]
+    # Uncommanded disturbance -> NOT fed to the estimator. Test-only injector, never a control
+    # path: it writes qpos directly and leaves the commanded setpoint alone.
+    arm.inject_disturbance(_OBS_JOINT, 30.0)
+    slipped = arm.state()["theta_deg"][_OBS_INDEX]
     slip_mismatch = est.mismatch_deg(slipped)  # now estimate and truth diverge -> slip detected
 
     print("=" * 60)
@@ -174,7 +190,12 @@ def main():
     assert slip_mismatch > 20.0, (
         f"an uncommanded disturbance must diverge estimate from truth ({slip_mismatch:.1f} deg)"
     )
-    assert arm.state()["theta_deg"][0] == slipped, (
+    # EXACT equality, deliberately kept. Nothing steps this body between the read above and
+    # this assert -- physics only advances inside apply() -- so an exact comparison is both
+    # valid and the strongest available statement. Relaxing it to a tolerance would weaken a
+    # read-only proof for no reason: the concern that motivated the review (physics makes exact
+    # equality unstable) does not apply where no physics runs.
+    assert arm.state()["theta_deg"][_OBS_INDEX] == slipped, (
         "estimator is read-only: it must not move the arm"
     )
     est2 = ProprioceptiveEstimator()

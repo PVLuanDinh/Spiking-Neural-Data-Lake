@@ -151,7 +151,7 @@ CORE = [
     # (the safety envelope lives here)
     "brainstem.reflex",
     "brainstem.serial_arm",
-    "brainstem.arm_sim",
+    "brainstem.so101_arm",
     "brainstem.arm_hardware",  # torque budget for the arm being built (asserts the shoulder shortfall)
     "brainstem.arm_config",
     "brainstem.interpreter",
@@ -247,6 +247,7 @@ CORE = [
     "substrate.binlog",
     "substrate.growable",
     "substrate.region_wiring",  # the always-on daemon's faculty-wiring registry -> charge_all + honest coverage report
+    "substrate.arm_view",  # stdlib PNG encoder + demand-gated offscreen arm frames
     "substrate.brain_telemetry",  # snapshot contract + recorder + /api/state (no-orphan-panel gate)
     "substrate.brain_geometry",  # anatomical layout (hand-authored coords, REAL connectome tracts)
     "substrate.cockpit",  # THE one frontend: page + contract gate + queued-not-raced chat turn
@@ -433,7 +434,9 @@ def run_all():
         # retired. Left as a skip rather than promoted to a hard failure because that is a separate
         # decision with its own blast radius; the message now says what the skip means.
         for m in TORCH_GATED:
-            print(f"SKIP  {m}  (torch NOT IMPORTABLE -- broken install: torch is a core dependency)")
+            print(
+                f"SKIP  {m}  (torch NOT IMPORTABLE -- broken install: torch is a core dependency)"
+            )
     if not _NENGO:
         # nengo genuinely IS optional (the [nengo] extra), so this skip is a supported path.
         for m in NENGO_GATED:

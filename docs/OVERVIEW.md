@@ -75,8 +75,9 @@ Concretely, across the modules that implement each stage:
   (console entry points `snn-loop`, `snn-arm`, `snn-demo`).
 - **Reflex (fast path)** — `reflex.py` runs a sign-aware fast LIF over nociceptor/safety
   channels and can fire STOP/WITHDRAW *before* the slower recognition path completes.
-- **Act** — `arm_sim.py` (stdlib 2-link planar arm with FK + collision, CI-green; optional
-  PyBullet physics) or `serial_arm.py` (real ESP32 servos over serial) — **every** motion,
+- **Act** — `so101_arm.py` (the MuJoCo SO-101: six joints, real units, mass, gravity and
+  actuator forces matched to the STS3215) or `serial_arm.py` (real ESP32 servos over serial;
+  it mirrors the same body) — **every** motion,
   sim or real, is routed through the `ArmSim.apply()` safety gate.
 - **Reward + stress + learn** — `valence_stdp.py` implements dopamine-style
   reward-prediction-error STDP toward APPROACH/AVOID; `cortisol.py` is a slow tonic
@@ -105,7 +106,7 @@ operations than dense-ANN equivalents across the classifier/temporal-coding prot
 | Streaming sketches | `spike_stream_sketch` (Count-Min), `spike_cardinality` (HyperLogLog), `minhash`, `frequency_moment` (AMS), `sliding_window_count` (DGIM), `streaming_quantile` (P²), `morris_counter`, `reservoir_sampling` | ~9-10 |
 | Data-lake core (Paradigms A/B/C) | `spike_telemetry_hub`, `streaming_hub`, `paradigm_b_engine`, `paradigm_b_matcher`, `vsa_reasoning`, `proximity_index` | ~7 |
 | Lakehouse | `lakehouse/medallion.py`, `lakehouse/delta_demo.py` | 2 |
-| Arm loop + safety envelope | `reflex`, `serial_arm`, `arm_sim`, `arm_config`, `interpreter`, `closed_loop`, `autonomous_loop`, `live_arm`, `arm_bridge`, `spiking_pid`, `cpg_oscillator` | ~12-15 |
+| Arm loop + safety envelope | `reflex`, `serial_arm`, `so101_arm`, `arm_config`, `interpreter`, `closed_loop`, `autonomous_loop`, `live_arm`, `arm_bridge`, `spiking_pid`, `cpg_oscillator` | ~12-15 |
 | Sensor/data ingest | `esp32_encoder_path`, `sensor_csv_ingest`, `make_sensor_dataset`, `sensor_demo` | ~4 |
 | Classifier / recognition | `snn_classifier`, `learned_matcher`, `gesture_recognition`, `tempotron`, `nir_export` | ~5 |
 | UI / demo / entrypoints | `demo.py` (`snn-demo`), `substrate/cockpit.py` (the ONE frontend, served by the daemon) | 2 |
@@ -165,7 +166,7 @@ default `cp1252` console encoding will crash on stray Unicode.
 Five modules form the **safety envelope** around the physical arm and are treated as
 change-controlled: `reflex.py` (emergency-stop reflex), `serial_arm.py` (real hardware
 serial interface, fail-safe — a write error raises rather than silently continuing),
-`arm_sim.py` (the physics/kinematics mirror that every command — sim or real — is gated
+`so101_arm.py` (the MuJoCo SO-101 body, whose gate every command — sim or real — is gated
 through via `ArmSim.apply()`), `arm_config.py` (calibration, limits, the
 `SAFETY_CALIBRATED` flag), and `interpreter.py` (command validation). The real serial path
 refuses to operate on an uncalibrated port, with no bypass; recent hardening closed a
@@ -193,7 +194,7 @@ not "cognition." Specific ceilings called out in the project's own voice:
 - The N-MNIST event-camera ingest is explicitly flagged as a plumbing/pipeline demo
   (nearest-prototype, no learning), off-theme from the project's core claims.
 - The arm control loop is **sim-first**; the real-hardware path exists and is
-  safety-gated, but most iteration and the fullest test coverage happens in `arm_sim.py`.
+  safety-gated, but most iteration and the fullest test coverage happens in `so101_arm.py`.
 - Modules explicitly avoid speculative abstraction, and each CHANGELOG entry names a
   concrete "ceiling" for what was *not* built, on the theory that an honest limitation
   beats an inflated claim.

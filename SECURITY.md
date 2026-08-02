@@ -13,7 +13,7 @@ reaches a servo.
 | File | Role |
 |------|------|
 | `src/snn_data_lake/brainstem/interpreter.py` | validates and parses commands (allow-list grammar) |
-| `src/snn_data_lake/brainstem/arm_sim.py`     | physics simulator; mirrors and gates the live arm |
+| `src/snn_data_lake/brainstem/so101_arm.py`   | the body and its gate: MuJoCo SO-101, every motion passes through `apply()` |
 | `src/snn_data_lake/brainstem/reflex.py`      | emergency-stop reflex (imminent contact / trajectory deviation) |
 | `src/snn_data_lake/brainstem/serial_arm.py`  | real-hardware serial interface |
 | `src/snn_data_lake/brainstem/arm_config.py`  | calibration constants and joint limits |
@@ -33,11 +33,11 @@ this gate.
 
   ```bash
   PYTHONPATH=src python -m snn_data_lake.brainstem.reflex
-  PYTHONPATH=src python -m snn_data_lake.brainstem.arm_sim
+  PYTHONPATH=src python -m snn_data_lake.brainstem.so101_arm
   PYTHONPATH=src python -m snn_data_lake.brainstem.interpreter
   PYTHONPATH=src python -m snn_data_lake.brainstem.serial_arm
   PYTHONPATH=src python -m snn_data_lake.brainstem.arm_config
-  pytest tests/test_arm_sim.py tests/test_reflex.py tests/test_interpreter.py tests/test_arm_config.py tests/test_serial_arm.py
+  pytest tests/test_so101_arm.py tests/test_reflex.py tests/test_interpreter.py tests/test_arm_config.py tests/test_serial_arm.py tests/test_arm_vocabulary.py
   ```
 - Do not weaken an assertion, remove a limit check, or add a bypass path to make a demo pass.
 - The simulator's gate must stay at least as strict as the hardware path — the sim is the

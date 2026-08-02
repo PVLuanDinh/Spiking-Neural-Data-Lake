@@ -36,7 +36,8 @@ Deps: math, random (numpy/torch allowed project-wide). Deterministic: random.Ran
 
 import random
 
-from snn_data_lake.brainstem.arm_sim import ArmSim
+from snn_data_lake.brainstem import arm_config
+from snn_data_lake.brainstem.so101_arm import So101Arm
 from snn_data_lake.cortex.population_encoding import PopulationEncoder
 
 
@@ -197,6 +198,12 @@ class SpikingPID:
         return self.kp * p_net + self.ki * integral_est + self.kd * d_net
 
 
+#: The joint the controller drives. Named, not indexed: index 0 is shoulder_pan on this body,
+#: a yaw joint, where the incumbent's joint A was the shoulder pitch.
+_PID_JOINT = "shoulder_lift"
+_PID_INDEX = next(j.qpos_index for j in arm_config.JOINTS if j.name == _PID_JOINT)
+
+
 def drive_to(
     target_deg, steps=60, noise=0.0, spiking=True, seed=0, perturb_at=None, perturb_deg=25.0
 ):
@@ -205,15 +212,21 @@ def drive_to(
     trajectory-deviation comparator (v0.51) flags the off-path event -- the controller then
     drives the joint back. Controller + edge safety reflex working together."""
     rng = random.Random(seed)
-    arm = ArmSim()
+    arm = So101Arm()
+    # One simulated second per control step -- the body's own derived ceiling. This demo
+    # measures the CONTROLLER, so the plant's settling lag is deliberately removed rather than
+    # folded into the error signal. The live brain adapts this rate instead of pinning it.
+    arm.set_substeps(10**9)
     arm.apply("HOME")
     pid = SpikingPID(seed=seed) if spiking else None
     kp, ki, kd, integ, prev = 0.6, 0.05, 0.15, 0.0, 0.0
     errs, breaches = [], 0
     for step in range(steps):
-        measured = arm.state()["theta_deg"][0] + (rng.uniform(-noise, noise) if noise else 0.0)
+        measured = arm.state()["theta_deg"][_PID_INDEX] + (
+            rng.uniform(-noise, noise) if noise else 0.0
+        )
         e = target_deg - measured
-        errs.append(target_deg - arm.state()["theta_deg"][0])  # true error (no noise)
+        errs.append(target_deg - arm.state()["theta_deg"][_PID_INDEX])  # true error (no noise)
         if spiking:
             u = pid.step(e)
         else:  # plain numeric PID baseline
@@ -221,12 +234,12 @@ def drive_to(
             u = kp * e + ki * integ + kd * (e - prev)
             prev = e
         u = max(-15.0, min(15.0, u))  # per-step slew limit
-        arm.apply(f"JOINT_A_ROTATE({u:+.4f}deg)")  # commanded pose -> expected_ee
+        arm.apply(arm_config.command_for(_PID_JOINT, round(u, 4)))  # relative: PID output
         if perturb_at is not None and step == perturb_at:
-            arm.perturb(da_deg=perturb_deg)  # external shove off the path
+            arm.inject_disturbance(_PID_JOINT, perturb_deg)  # external shove off the path
             if arm.trajectory_breach():  # comparator catches it
                 breaches += 1
-    return errs, arm.state()["theta_deg"][0], breaches
+    return errs, arm.state()["theta_deg"][_PID_INDEX], breaches
 
 
 def _rmse(errs):
@@ -255,7 +268,13 @@ def _disturbed_plant(mode, steps=90, load=2.0, target=30.0, seed=0):
 
 
 def main():
-    target = 30.0
+    # DERIVED from the joint's measured ground-free travel, not transcribed. The incumbent's
+    # +30 deg sits within a degree or two of this arm's floor contact (the band tops out at
+    # ~37), so a +25 deg shove on top of it would drive the gripper through the ground and the
+    # run would measure contact recovery rather than disturbance rejection. The band midpoint
+    # leaves room for the shove in either direction.
+    _band_lo, _band_hi = arm_config.ground_free_band(_PID_JOINT)
+    target = round((_band_lo + _band_hi) / 2.0, 1)
 
     errs_s, final_s, _ = drive_to(target, spiking=True)
     errs_n, final_n, _ = drive_to(target, spiking=False)
@@ -287,8 +306,12 @@ def main():
     # ---- (a) FUNCTION: the spiking PID drives error down; fair controls do worse ------------
     assert abs(final_s - target) < 1.0, f"spiking PID did not converge: {final_s}"
     assert abs(errs_s[0]) > abs(errs_s[-1]), "error did not shrink over the run"
-    overshoot = max(0.0, -min(errs_s))  # error went negative => overshoot past target
-    assert overshoot < 0.4 * target, f"excessive overshoot: {overshoot:.1f} deg"
+    # Overshoot = how far past the setpoint the response travelled, measured along the
+    # direction of travel so it is meaningful for a target of either sign. With
+    # measured = target - err, going past the target by d gives err = -d * sign(target).
+    _s = 1.0 if target >= 0 else -1.0
+    overshoot = max(0.0, max(-e * _s for e in errs_s))
+    assert overshoot < 0.4 * abs(target), f"excessive overshoot: {overshoot:.1f} deg"
     assert abs(final_sn - target) < 2.0, f"spiking PID not noise-robust: {final_sn}"
     assert breaches >= 1, "trajectory comparator missed the injected perturbation"
     assert abs(final_pr - target) < 2.0, (

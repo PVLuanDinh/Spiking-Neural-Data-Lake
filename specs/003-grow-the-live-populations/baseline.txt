@@ -1,0 +1,29 @@
+BASELINE — specs/003-grow-the-live-populations
+Captured 2026-08-01, before any implementation task modified source.
+
+T001 — tree state
+  commit                  : c6ca8c8dec0548f1198882d3e6c8a77bc17477cd  (c6ca8c8d)
+  time_cells.py vs HEAD   : clean
+  brain.py vs HEAD        : clean
+  VERDICT                 : OK, baseline is attributable to a named commit
+
+T003 — decode() RMSE vs true elapsed  (16 seeds, horizon 60)
+  n_cells=  64            : 0.7276
+  n_cells= 128            : 0.7276
+  n_cells= 256            : 0.7276
+  n_cells= 512            : 0.7276
+  spread across widths    : 0.000000e+00
+  VERDICT                 : FLAT. The readout is independent of population width, so growth
+                            cannot change the consumed quantity by any amount. This is the
+                            control that makes slice 2 (readout replacement) necessary before
+                            any growth evidence can mean anything.
+
+T002 — three gates at baseline           ALL GREEN
+  ruff check .            : PASS  ("All checks passed!")
+  run_selfchecks.py       : PASS  (277/277 self-checks passed)
+  pytest                  : PASS  (exit 0; total coverage 92.53%, floor is 70%)
+
+T009 — three gates after Phase 2 (T004-T008)
+  ruff check .            : pending
+  run_selfchecks.py       : pending
+  pytest                  : pending

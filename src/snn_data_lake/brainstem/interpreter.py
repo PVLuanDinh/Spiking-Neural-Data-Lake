@@ -24,14 +24,19 @@ is a bad outcome), AVOID veto -> -0.3, executed command -> 0.0 (neutral, await r
 import json
 import sys
 
-# matched signature label -> concrete robot command (params are placeholders to tune)
+from snn_data_lake.brainstem import arm_config
+
+# matched signature label -> concrete robot command.
+#
+# DERIVED from the arm's own joint table rather than transcribed. The incumbent listed two
+# joints by hand with two arbitrary magnitudes ("placeholders to tune", per its own comment);
+# hand-listing meant the set could disagree with the body, and on a 6-DOF arm it would have
+# left four joints unaddressable with nothing failing to say so.
 COMMANDS = {
-    "JOINT_A_ROTATE": "JOINT_A_ROTATE(+15deg)",
-    "JOINT_B_ROTATE": "JOINT_B_ROTATE(-10deg)",
-    "ENGAGE": "ENGAGE",
-    "RELEASE": "RELEASE",
-    "HOME": "HOME",
+    arm_config.token_for(n): arm_config.command_for(n, arm_config.DEFAULT_STEP_DEG)
+    for n in arm_config.ROTATABLE
 }
+COMMANDS.update({"ENGAGE": "ENGAGE", "RELEASE": "RELEASE", "HOME": "HOME"})
 REFLEX_CMD = {"STOP": "EMERGENCY_STOP", "WITHDRAW": "RETRACT_ALL"}
 
 

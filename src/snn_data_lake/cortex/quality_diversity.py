@@ -428,7 +428,7 @@ def main():
             if ln.startswith("import ") or ln.startswith("from ")
         ]
     # un-riggable: no IMPORT statement in this file may pull the actuator / safety-envelope package.
-    forbidden = ("brainstem", "serial_arm", "arm_sim", "arm_config")
+    forbidden = ("brainstem", "serial_arm", "so101_arm", "arm_config")
     hits = [tok for tok in forbidden if any(tok in ln for ln in import_lines)]
     # value-only: evaluating a policy is a pure, side-effect-free function (identical twice, no emit).
     _probe_pol = SpikingPolicy.random(random.Random(9))

@@ -104,10 +104,19 @@ def test_command_priority_avoid_beats_match():
 
 
 def test_joint_b_rotate_match():
-    """Match JOINT_B_ROTATE -> command "JOINT_B_ROTATE(-10deg)" (default mapping)."""
+    """A joint label maps to the concrete command for THAT joint.
+
+    Was JOINT_B_ROTATE -> "JOINT_B_ROTATE(-10deg)". Joint B was the elbow of a 2-link arm; the
+    arm now has six named joints, so both the label and the magnitude come from arm_config.
+    Re-typing them here would only check that two literals still match each other.
+    """
     itp = Interpreter()
-    cmd, reward = itp.interpret({"match": "JOINT_B_ROTATE"})
-    assert cmd == "JOINT_B_ROTATE(-10deg)", f"JOINT_B_ROTATE mapped wrong, got {cmd}"
+    from snn_data_lake.brainstem import arm_config
+
+    label = arm_config.token_for("elbow_flex")  # the successor to the old joint B
+    cmd, reward = itp.interpret({"match": label})
+    want = arm_config.command_for("elbow_flex", arm_config.DEFAULT_STEP_DEG)
+    assert cmd == want, f"{label} mapped wrong, got {cmd}"
 
 
 def test_custom_commands_dict():

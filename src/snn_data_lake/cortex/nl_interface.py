@@ -31,6 +31,7 @@ here runs unless you call it; the arm/lake code paths are unchanged.
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.nl_interface
 """
 
+from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.serial_arm import is_valid_command
 
 # intent label -> a command token the wire allow-list already accepts. The VALUE is ours,
@@ -42,9 +43,14 @@ ARM_LABELS = {
     "home": "HOME",
     "retract": "RETRACT_ALL",
     "stop": "EMERGENCY_STOP",
-    "rotate_a": "JOINT_A_ROTATE(+15deg)",
-    "rotate_b": "JOINT_B_ROTATE(-10deg)",
 }
+# One label per rotatable joint, derived from the arm. The incumbent hand-listed two; on a
+# 6-DOF body that would have left four joints with no way to say them in English, and the
+# _CUES table below already spoke of "shoulder" and "elbow" as though they were separate
+# things -- they now genuinely are.
+ARM_LABELS.update(
+    {n: arm_config.command_for(n, arm_config.DEFAULT_STEP_DEG) for n in arm_config.ROTATABLE}
+)
 # English keyword cues -> intent label (first hit wins; safety cues checked first).
 _CUES = [
     (("stop", "halt", "freeze", "emergency", "abort"), "stop"),
@@ -53,8 +59,24 @@ _CUES = [
     (("close", "grip", "grab", "grasp", "pick up", "clamp"), "close"),
     (("open", "release", "let go", "drop"), "open"),
     (("home", "reset", "neutral", "center", "centre"), "home"),
-    (("rotate a", "joint a", "turn a", "shoulder"), "rotate_a"),
-    (("rotate b", "joint b", "turn b", "elbow"), "rotate_b"),
+    # Joint cues. FIRST HIT WINS, so every two-word form is listed before every bare word:
+    # "flex" belongs to two joints and "wrist" belongs to two, and a bare cue for either would
+    # steal the other's phrases outright rather than merely competing with them.
+    (("shoulder lift",), "shoulder_lift"),
+    (("shoulder pan",), "shoulder_pan"),
+    (("wrist flex",), "wrist_flex"),
+    (("wrist roll",), "wrist_roll"),
+    (("elbow flex",), "elbow_flex"),
+    # Unambiguous single words.
+    (("pan", "swivel", "base"), "shoulder_pan"),
+    (("roll", "twist"), "wrist_roll"),
+    (("lift", "raise"), "shoulder_lift"),
+    (("bend",), "wrist_flex"),
+    # Bare anatomical words last, resolving where the incumbent's table pointed them:
+    # "shoulder" was joint A and "elbow" was joint B.
+    (("shoulder",), "shoulder_lift"),
+    (("elbow",), "elbow_flex"),
+    (("wrist",), "wrist_flex"),
     (("query", "read", "show", "telemetry", "channel", "spikes", "lake", "select"), "query"),
 ]
 
@@ -137,8 +159,16 @@ def main():
         "STOP! emergency": "EMERGENCY_STOP",
         "withdraw and back off": "RETRACT_ALL",
         "just hold and wait": "HOLD",
-        "rotate joint a a bit": "JOINT_A_ROTATE(+15deg)",
-        "turn b / the elbow": "JOINT_B_ROTATE(-10deg)",
+        # One phrase per rotatable joint. The incumbent tested two because the arm had two;
+        # testing fewer than all of them is how a joint ends up with no way to say it.
+        **{
+            f"{n.replace('_', ' ')} please": arm_config.command_for(n, arm_config.DEFAULT_STEP_DEG)
+            for n in arm_config.ROTATABLE
+        },
+        # The bare anatomical words still have to resolve, and to the SAME joints the incumbent
+        # meant by them -- its cue table read "shoulder" as joint A and "elbow" as joint B.
+        "turn the elbow": arm_config.command_for("elbow_flex", arm_config.DEFAULT_STEP_DEG),
+        "raise the shoulder": arm_config.command_for("shoulder_lift", arm_config.DEFAULT_STEP_DEG),
     }
     arm_ok = 0
     for text, want in cases.items():

@@ -176,8 +176,14 @@ def test_run_build_refuses_to_write_an_empty_pack(tmp_path):
     """REGRESSION, end to end. `--n 0` used to write a 510-byte pack over models/ and exit 0."""
     out = tmp_path / "out"
     args = _args(
-        "--which", "shd", "--n", "0",
-        "--data", str(tmp_path / "data"), "--out", str(out),
+        "--which",
+        "shd",
+        "--n",
+        "0",
+        "--data",
+        str(tmp_path / "data"),
+        "--out",
+        str(out),
     )
     with _stub_tonic():
         ok = mp.run_build(args)
@@ -207,8 +213,16 @@ def test_run_build_writes_a_non_canonical_pack(tmp_path):
     -- with a caveat, and with the real row count on disk rather than a constant."""
     out = tmp_path / "out"
     args = _args(
-        "--which", "shd", "--n", "6", "--seed", "3",
-        "--data", str(tmp_path / "data"), "--out", str(out),
+        "--which",
+        "shd",
+        "--n",
+        "6",
+        "--seed",
+        "3",
+        "--data",
+        str(tmp_path / "data"),
+        "--out",
+        str(out),
     )
     with _stub_tonic():
         ok = mp.run_build(args)
@@ -249,8 +263,17 @@ def test_dry_run_builds_but_writes_nothing(tmp_path):
     """--dry-run must exercise the whole build and leave the output directory empty."""
     out = tmp_path / "out"
     args = _args(
-        "--which", "shd", "--n", "6", "--seed", "3", "--dry-run",
-        "--data", str(tmp_path / "data"), "--out", str(out),
+        "--which",
+        "shd",
+        "--n",
+        "6",
+        "--seed",
+        "3",
+        "--dry-run",
+        "--data",
+        str(tmp_path / "data"),
+        "--out",
+        str(out),
     )
     with _stub_tonic() as built:
         ok = mp.run_build(args)

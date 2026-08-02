@@ -157,10 +157,15 @@ def main():
     PROTECTED = {
         "brainstem/reflex.py",
         "brainstem/serial_arm.py",
-        "brainstem/arm_sim.py",
+        "brainstem/so101_arm.py",
         "brainstem/arm_config.py",
         "brainstem/interpreter.py",
-        "research/self_improve.py",
+        # Was research/self_improve.py (no such file) -- the self-modifier was not in fact
+        # protecting its own proposer. Package-relative now, like every other entry.
+        # Found 2026-08-01 by tests/test_self_mod_safety.py. Do not write paths in quotes
+        # inside this block: it is parsed for entries, and a quoted path in a comment reads
+        # as a real one.
+        "reasoning/self_improve.py",
     }
 
     imp = SelfImprover(base, verify, fitness, PROTECTED)
@@ -216,7 +221,7 @@ def main():
         "fitness must be MONOTONIC non-decreasing (no regression ever)"
     )
     # the verifier + safety files are un-writable by construction (they are in PROTECTED)
-    assert "research/self_improve.py" in PROTECTED, (
+    assert "reasoning/self_improve.py" in PROTECTED, (
         "the brain must not be able to rewrite its own verifier"
     )
 

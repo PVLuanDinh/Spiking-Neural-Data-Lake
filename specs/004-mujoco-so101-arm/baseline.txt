@@ -1,0 +1,122 @@
+BASELINE — specs/004-mujoco-so101-arm
+Captured 2026-08-01, before any implementation task modified source.
+
+T001 — tree state
+  commit                : c6ca8c8dec0548f1198882d3e6c8a77bc17477cd  (c6ca8c8d)
+  src/.../brainstem/    : clean vs HEAD
+  VERDICT               : OK, baseline attributable to a named commit
+
+T003 — pre-migration `body` contract, read from the LIVE daemon (GET /api/all)
+  keys                  : theta_deg, ee, effector, stopped, collision, deviation, backend, moves
+  theta_deg             : [12.0, 102.0]          <- 2 entries; becomes 6
+  ee                    : [0.571, 1.121]         <- 2-D, dimensionless; becomes 3-D millimetres
+  effector              : 1.0
+  stopped               : true                   <- E-STOP was LATCHED at capture time
+  collision             : "OBSTACLE"             <- SEE NOTE
+  deviation             : 0.0
+  backend               : "stdlib"               <- pybullet has never been reachable from the daemon
+  moves                 : true
+
+  NOTE ON "OBSTACLE" — this changes an assumption in the spec.
+  The verdict was recorded as ACTIVE on the live arm, not dormant. The end-effector at
+  (0.571, 1.121) sits 0.248 from the obstacle centre (0.4, 1.3) against a radius of 0.30, so
+  the arm is genuinely inside the modelled obstacle. Phase 0 established that the vendored
+  SO-101 scene has exactly one geom (`floor`) and therefore cannot ever produce this verdict,
+  and the clarified decision is to RETIRE the label. That retirement is therefore a live
+  behaviour change on a verdict currently being emitted, not the removal of a dead branch.
+  Consumers to update remain as specified: cockpit.py:562, cpg_oscillator.py:62, and the
+  planner's obstacle-existence assertion at wavefront_planner.py:299-300.
+
+  Also observed: the arm was latched (stopped=true) with a collision verdict standing — the
+  documented absorbing state ("P(collide at t+1 | collided at t) = 0.991").
+
+T002 — three gates at baseline            ALL GREEN
+  ruff check .          : PASS
+  run_selfchecks.py     : PASS  277/277
+  pytest                : PASS  exit 0, total coverage 92.53%, floor 70%
+
+T016 — three gates after Phase 2 (T009-T015)   ALL GREEN
+  ruff check .          : PASS
+  ruff format --check   : PASS for every file this feature touched.
+                          THREE PRE-EXISTING FAILURES remain in files this feature has not
+                          touched: tests/test_make_packs_download.py,
+                          tests/test_method_dormancy_keys.py, tools/coverage_score.py.
+                          Their content is identical to HEAD, ruff is 0.15.20 in both envs
+                          (matching the pyproject pin), so this is NOT the documented
+                          version-drift incident -- CI's lint job is already red on main.
+                          Left untouched: sweeping unrelated files into this change would
+                          hide the finding.
+  run_selfchecks.py     : PASS  277/277  <- COUNT UNCHANGED, as required
+  pytest                : PASS  exit 0, total coverage 92.54% (was 92.53%)
+
+  Nothing loosened, nothing silenced.
+
+PHASE 3 — three gates after the benchmark (T017-T024)   ALL GREEN
+  ruff check .          : PASS
+  run_selfchecks.py     : PASS  277/277  (count still unchanged)
+  pytest                : PASS  exit 0, coverage 92.54%
+  ruff format --check   : the same 3 pre-existing failures, none of them this feature's
+
+PHASE 4 — three gates after the gate itself (T025-T040)   ALL GREEN
+  ruff check .          : PASS
+  run_selfchecks.py     : PASS  278/278  <- +1, EXPECTED: so101_arm added while arm_sim still
+                          exists. Returns to 277 when arm_sim is deleted, which makes T067's
+                          count check a real assertion rather than a formality.
+  pytest                : PASS  exit 0, coverage 92.56%
+  brain_atlas           : PASS  195 modules across 17 regions
+  dormancy gate         : PASS  195 modules, 170 reachable, 25 exempt, 0 dormant
+
+PHASE 4 FINDINGS
+
+  1. THE CALIBRATION GATE HAD AN UNENFORCED PRECONDITION, now closed. serial_arm's docstring
+     always said allow_uncalibrated was for a bench/echo test "(with a fake writer=)", but
+     assert_calibrated only ever received the flag -- so
+        SerialArm(port="COM3", allow_uncalibrated=True)
+     passed the gate and then opened a REAL pyserial port with placeholder safety limits. That
+     is the single path to the servos calibration exists to close. Now enforced in the
+     CONSTRUCTOR (not in assert_calibrated, which live_arm.py:220 also calls with no port in
+     sight -- putting it there made a bare policy question raise). A legitimate bench test
+     already injects a writer, so nothing legitimate broke.
+
+  2. THREE OF MY OWN TESTS WERE WRONG; THE GATE WAS RIGHT. Two drove shoulder_lift to ctrl_LO,
+     which MEASURED reaches cleanly with no contact -- it is ctrl_HI that hits the floor
+     (commanded +100 deg, achieved +37.80, contact GROUND, blocked True). Wrong sign, not a
+     wrong gate. The third asserted EXACT pose equality after 50 HOLDs; a position servo droops
+     under gravity, so zero movement was never physically right. Rewritten as STATIONARITY --
+     drift must settle, not accumulate -- which keeps the intent (velocity cleared, no runaway)
+     and needs no invented threshold.
+
+  3. I MISREAD A PASSING GATE AS A GAP. brain_atlas and the dormancy gate appeared to accept the
+     unregistered module; I nearly reported a blind spot. They had caught it -- the summary
+     table prints BEFORE the assert, and `Select-Object -Last 6` showed the summary while the
+     traceback sat above it. Exit codes, not tail output.
+
+  4. `reached` needed a tolerance and a hardcoded one would violate P1. A position actuator's
+     steady-state droop is tau_gravity / kp, and BOTH are read from the model -- so the
+     tolerance is derived and tracks a model change instead of going stale.
+
+PHASE 3 FINDING — the benchmark nearly reported the OPPOSITE of the truth.
+  The model's actuator_forcerange is 3.350 N*m = 34.1 kg*cm, which is STALL torque (the build
+  notes quote ~30 kg*cm stall at 12V for this gear). The first run compared against it and
+  reported shoulder_lift at 86% utilisation -- comfortable headroom. Against RATED torque
+  (7.5 kg*cm, roughly a quarter of stall, which is the rule the notes state themselves) the
+  same load is 3.91x OVER. Three joints exceed continuous rating with 500 g at reach:
+  shoulder_lift 3.91x, elbow_flex 4.66x, wrist_flex 2.21x. None exceeds stall -- which is the
+  dangerous middle, where a joint moves, heats, and trips thermal cutoff.
+  Both columns are now reported and the rated one is marked as the deciding figure.
+
+PHASE 2 FINDINGS
+
+  1. self_improve.py's PROTECTED named "research/self_improve.py" -- A PATH THAT RESOLVES
+     NOWHERE. The module is at reasoning/self_improve.py, so the self-modifier was not in
+     fact protecting its own proposer while NORD_SELFMOD=1 runs self-build every 8 nights.
+     Found by writing T009's test, before the test even ran. Fixed, not exempted.
+
+  2. jnt_range != actuator_ctrlrange on the real model, confirming the clarified decision to
+     keep them distinct: shoulder_pan stop +/-1.91986218 vs ctrl +/-1.91986. arm_config now
+     exposes both; a test pins the distinction so it cannot be "simplified away".
+
+  3. Loading the model costs 134 ms and arm_config has wide fan-in, while run_selfchecks
+     spawns a subprocess per module. Limits are therefore loaded LAZILY (PEP 562 __getattr__
+     + lru_cache): import stays 50 ms, first access 339 ms, cached 0.004 ms. P1 asks for
+     provenance -- derived from the model, never transcribed -- not for import timing.

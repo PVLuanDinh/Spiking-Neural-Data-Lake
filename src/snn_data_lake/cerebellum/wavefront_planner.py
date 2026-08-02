@@ -1,341 +1,329 @@
-"""
-Configuration-space wavefront path planner for the 2-DOF arm -- reaction-diffusion computing, applied.
+"""Collision-free motion planning for the six-joint arm.
 
-This is the real home for reaction_diffusion_compute (v2.58): the excitable-medium wave that solves mazes
-there plans collision-free arm motion here. The arm's CONFIGURATION SPACE (theta_A, theta_B) is discretized
-into a grid; a cell is a WALL iff placing the arm at that joint pair puts the end-effector in collision,
-reusing arm_sim.ArmSim.collision() -- the ONE collision authority (EE point vs the OBSTACLE circle and the
-floor). A wave ignited at the GOAL config floods the free configs (arrival time == geodesic distance);
-steepest descent from the START config down that field is a collision-free joint-space path that routes
-AROUND the C-space obstacle. Each waypoint is executed as bounded, rate-limited relative JOINT_[AB]_ROTATE
-commands THROUGH the existing ArmSim.apply() gate, so the E-STOP freeze / calibration gate / command
-allow-list all stay in force. This module adds NO new command token and modifies NONE of the five
-safety-envelope files (reflex, serial_arm, arm_sim, arm_config, interpreter) -- it only calls their public
-surface read-only and drives motion through apply().
+WHY THIS IS NO LONGER A WAVEFRONT. The previous planner discretised configuration space into a
+grid and floated an excitable reaction-diffusion wave from the goal back to the start. That is a
+good algorithm for two joints: at 5 degrees the grid is 36 x 72 = 2592 cells and the wave sweeps
+it in milliseconds. The same grid over six joints is 36**6 -- about 2.2 billion cells -- so the
+wave cannot be run at all, and coarsening it enough to fit would make it miss every gap it was
+supposed to find. Dimension, not preference, is what retires it (P2: the better mechanism
+becomes the path, the inferior one goes).
 
-Cartesian goal: ik(x, y) is the closed-form 2-link inverse kinematics (law of cosines, elbow up/down) so a
-caller can request an end-effector POINT; the planner picks the reachable, collision-free elbow branch whose
-wavefront path is shortest.
+WHAT REPLACES IT. A bidirectional RRT over the joint angles. Sampling does not enumerate the
+space, so its cost tracks the difficulty of the query rather than the volume of the workspace.
 
-Safety ceiling (honest): collision labelling INHERITS ArmSim.collision() verbatim -- an EE-POINT vs a point
-obstacle, with no link-body sweep and no joint limits, sampled only at grid cells (the continuous single-joint
-arc between two adjacent free cells is not swept). Small step_deg shrinks the gap; the per-step collision()
-guard re-confirms each endpoint during execution; and the day ArmSim.collision() gains link-body / swept-volume
-checking, this planner improves for free. It deliberately does NOT implement its own divergent collision model.
+WHAT DID NOT CHANGE, deliberately:
+  * Every motion still leaves through `arm.apply()`. The planner computes waypoints; it never
+    touches qpos. A latched arm therefore refuses a plan exactly as it refuses anything else.
+  * Collision checking is `so101_arm.probe_contact`, the one collision authority, on a body that
+    is never stepped -- so asking "would this pose collide?" cannot move the real arm.
+  * The planner adds NO new command token. It moves via the MOVETO verb already in the
+    vocabulary.
 
-Pure standard library, deterministic (no RNG). ASCII-only output.
-
-  python -m snn_data_lake.cerebellum.wavefront_planner        # (also run by run_selfchecks.py)
-
-Reference: Steinbock, Toth & Showalter (1995), excitable-medium maze solving; the wave engine is
-snn_data_lake.substrate.reaction_diffusion_compute (bfs_dist / excite_wave / backtrace / neighbours).
+DETERMINISM. Seeded per call. Two runs with the same seed produce the same path, because a
+planner that silently returns a different route each time cannot be regression-tested.
 """
 
 import math
+import random
 
-from snn_data_lake.brainstem.arm_sim import ArmSim
-from snn_data_lake.substrate.reaction_diffusion_compute import (
-    backtrace,
-    bfs_dist,
-    excite_wave,
-    neighbours,
-)
+from snn_data_lake.brainstem import arm_config
+from snn_data_lake.brainstem.so101_arm import So101Arm, probe_contact
 
 DEG = math.pi / 180.0
 
-
-def ik(x, y, l1=1.0, l2=1.0):
-    """Closed-form 2-link planar inverse kinematics. Returns up to two (theta_A, theta_B) configs in
-    RADIANS -- elbow-down then elbow-up -- that place the end-effector at (x, y); [] if unreachable
-    (|EE| outside [|l1-l2|, l1+l2]). Mirrors the FK in ArmSim.ee()."""
-    c = (x * x + y * y - l1 * l1 - l2 * l2) / (2.0 * l1 * l2)
-    if c < -1.0 or c > 1.0:
-        return []
-    c = max(-1.0, min(1.0, c))
-    sols = []
-    for sign in (1.0, -1.0):  # elbow-down, elbow-up
-        tb = sign * math.acos(c)
-        ta = math.atan2(y, x) - math.atan2(l2 * math.sin(tb), l1 + l2 * math.cos(tb))
-        sols.append((ta, tb))
-    return sols
+#: Joints the planner moves. The gripper is not a pose degree of freedom -- it opens and closes
+#: via ENGAGE/RELEASE -- so planning over it would search a dimension that cannot help.
+JOINTS = arm_config.ROTATABLE
 
 
-class CSpaceGrid:
-    """Discretized (theta_A, theta_B) configuration space. A cell (i, j) maps to joint angles and is FREE
-    iff the arm placed there does not collide -- labelled by ArmSim.collision(), the collision authority."""
+def _index(name):
+    return next(j.qpos_index for j in arm_config.JOINTS if j.name == name)
 
-    def __init__(self, step_deg=5.0, a_range=(0.0, 180.0), b_range=(-180.0, 180.0)):
-        self.step = step_deg
-        self.a_lo, self.a_hi = a_range
-        self.b_lo, self.b_hi = b_range
-        self.na = int(round((self.a_hi - self.a_lo) / step_deg)) + 1
-        self.nb = int(round((self.b_hi - self.b_lo) / step_deg)) + 1
-        probe = ArmSim()  # one scratch sim, reused read-only
-        self.free = set()
-        for i in range(self.na):
-            for j in range(self.nb):
-                ta, tb = self.angles(i, j)
-                probe.theta = [ta, tb]
-                if probe.collision() is None:
-                    self.free.add((i, j))
 
-    def angles(self, i, j):
-        """Cell -> (theta_A, theta_B) in RADIANS."""
-        return ((self.a_lo + i * self.step) * DEG, (self.b_lo + j * self.step) * DEG)
+def _limits():
+    """(lo_deg, hi_deg) per planned joint, from the range that BINDS A POSITION COMMAND.
 
-    def cell(self, cfg):
-        """(theta_A, theta_B) radians -> nearest grid cell, clamped in range."""
-        i = round((cfg[0] / DEG - self.a_lo) / self.step)
-        j = round((cfg[1] / DEG - self.b_lo) / self.step)
-        return (max(0, min(self.na - 1, i)), max(0, min(self.nb - 1, j)))
+    ctrl range, not jnt_range: a plan whose waypoints the actuator would silently clamp is not
+    a plan, it is a suggestion. The two are measured unequal on this model.
+    """
+    out = []
+    for name in JOINTS:
+        lim = arm_config.JOINT_LIMITS[name]
+        out.append((lim["ctrl_lo"] / DEG, lim["ctrl_hi"] / DEG))
+    return out
 
-    def snap(self, cfg):
-        """Nearest FREE cell to cfg (breadth-first outward through blocked cells); None if none free."""
-        start = self.cell(cfg)
-        if start in self.free:
-            return start
-        seen, frontier = {start}, [start]
-        while frontier:
-            nxt = []
-            for cell in frontier:
-                for nb in neighbours(cell):
-                    if 0 <= nb[0] < self.na and 0 <= nb[1] < self.nb and nb not in seen:
-                        if nb in self.free:
-                            return nb
-                        seen.add(nb)
-                        nxt.append(nb)
-            frontier = nxt
+
+def _full_qpos(cfg_deg):
+    """Planned joints -> a full qpos vector in radians (gripper held at home)."""
+    q = list(arm_config.HOME_QPOS)
+    for name, deg in zip(JOINTS, cfg_deg):
+        q[_index(name)] = deg * DEG
+    return q
+
+
+def _here(arm):
+    st = arm.state()
+    return [st["theta_deg"][_index(n)] for n in JOINTS]
+
+
+def collides(cfg_deg):
+    """Would the arm be in contact at this configuration? Reports; never moves anything."""
+    return probe_contact(_full_qpos(cfg_deg)) is not None
+
+
+def _segment_clear(a, b, step_deg=4.0):
+    """Is the straight line between two configurations collision-free?
+
+    Checked at a fixed angular resolution rather than only at the endpoints. Endpoint-only
+    checking is the classic way a planner returns a path that sweeps straight through an
+    obstacle: both ends are fine and everything between them is not.
+    """
+    span = max((abs(x - y) for x, y in zip(a, b)), default=0.0)
+    n = max(1, int(math.ceil(span / step_deg)))
+    for i in range(1, n + 1):
+        t = i / n
+        if collides([x + (y - x) * t for x, y in zip(a, b)]):
+            return False
+    return True
+
+
+def _steer(frm, to, max_step_deg):
+    """Move from `frm` toward `to` by at most max_step_deg on the fastest-moving joint."""
+    d = [y - x for x, y in zip(frm, to)]
+    span = max((abs(v) for v in d), default=0.0)
+    if span <= max_step_deg:
+        return list(to)
+    k = max_step_deg / span
+    return [x + v * k for x, v in zip(frm, d)]
+
+
+def plan(start_deg, goal_deg, max_step_deg=12.0, iters=600, goal_bias=0.2, seed=0):
+    """Bidirectional RRT from start to goal. Returns a waypoint list, or None if it fails.
+
+    Returning None rather than a partial path is deliberate: a path that stops short still
+    looks like a plan to `execute()`, which would drive the arm somewhere nobody asked for.
+    """
+    start_deg, goal_deg = list(start_deg), list(goal_deg)
+    if collides(start_deg) or collides(goal_deg):
+        return None
+    if _segment_clear(start_deg, goal_deg):  # the easy case is very common; do not RRT it
+        return [start_deg, goal_deg]
+
+    rng = random.Random(seed)
+    lim = _limits()
+    na, nb = [start_deg], [goal_deg]
+    ta, tb = {0: None}, {0: None}
+    swapped = False
+
+    def nearest(nodes, q):
+        best, bi = None, 0
+        for i, n in enumerate(nodes):
+            dist = sum((x - y) ** 2 for x, y in zip(n, q))
+            if best is None or dist < best:
+                best, bi = dist, i
+        return bi
+
+    def extend(nodes, tree, q):
+        i = nearest(nodes, q)
+        new = _steer(nodes[i], q, max_step_deg)
+        if not _segment_clear(nodes[i], new):
+            return None
+        nodes.append(new)
+        tree[len(nodes) - 1] = i
+        return len(nodes) - 1
+
+    def chain(nodes, tree, i):
+        out = []
+        while i is not None:
+            out.append(nodes[i])
+            i = tree[i]
+        return out
+
+    for _ in range(iters):
+        q = list(nb[0]) if rng.random() < goal_bias else [rng.uniform(lo, hi) for lo, hi in lim]
+        ia = extend(na, ta, q)
+        if ia is not None:
+            ib = extend(nb, tb, na[ia])
+            if ib is not None and _segment_clear(na[ia], nb[ib]):
+                fwd, back = list(reversed(chain(na, ta, ia))), chain(nb, tb, ib)
+                path = fwd + back
+                return list(reversed(path)) if swapped else path
+        na, nb, ta, tb = nb, na, tb, ta  # grow both trees, alternately
+        swapped = not swapped
+    return None
+
+
+def shortcut(waypoints, rounds=40, seed=0):
+    """Randomised shortcutting. An RRT path is collision-free but wanders; this straightens it."""
+    if not waypoints or len(waypoints) < 3:
+        return [list(p) for p in waypoints]
+    rng = random.Random(seed)
+    pts = [list(p) for p in waypoints]
+    for _ in range(rounds):
+        if len(pts) < 3:
+            break
+        i = rng.randrange(0, len(pts) - 2)
+        j = rng.randrange(i + 2, len(pts))
+        if _segment_clear(pts[i], pts[j]):
+            pts = pts[: i + 1] + pts[j:]
+    return pts
+
+
+def ik(arm, x_mm, y_mm, z_mm, iters=300, tol_mm=5.0, damping=0.05):
+    """Damped-least-squares Jacobian IK to a Cartesian target, in millimetres.
+
+    Iterative and Jacobian-based because a six-joint arm has no closed form worth writing: the
+    incumbent's two-link `ik()` was a pair of arccosines, which is exactly the thing that does
+    not generalise. Returns a configuration in degrees, or None if it does not converge or the
+    converged pose is in contact.
+
+    Runs on ITS OWN MjData, never the live arm's -- solving is a question, not a motion.
+    """
+    import mujoco
+    import numpy as np
+
+    m = arm_config._model()
+    d = mujoco.MjData(m)
+    sid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "gripperframe")
+    lim = _limits()
+    idx = [_index(n) for n in JOINTS]
+
+    try:
+        start = _here(arm)
+    except Exception:
+        start = [0.0] * len(JOINTS)
+    for k, qi in enumerate(idx):
+        d.qpos[qi] = start[k] * DEG
+
+    target = np.array([x_mm, y_mm, z_mm], dtype=float) / 1000.0
+    jacp = np.zeros((3, m.nv))
+    ok = False
+    for _ in range(iters):
+        mujoco.mj_kinematics(m, d)
+        mujoco.mj_comPos(m, d)
+        err = target - d.site_xpos[sid]
+        if float(np.linalg.norm(err)) * 1000.0 <= tol_mm:
+            ok = True
+            break
+        mujoco.mj_jacSite(m, d, jacp, None, sid)
+        jac = jacp[:, idx]
+        # Damped least squares: a plain pseudo-inverse blows up near a singular configuration,
+        # which for this arm is simply "reaching straight out" -- a pose a user will ask for.
+        dq = jac.T @ np.linalg.solve(jac @ jac.T + (damping**2) * np.eye(3), err)
+        for k, qi in enumerate(idx):
+            lo, hi = lim[k]
+            d.qpos[qi] = min(max(d.qpos[qi] + float(dq[k]), lo * DEG), hi * DEG)
+    if not ok:
         return None
 
-
-def plan(start_cfg, goal_cfg, step_deg=5.0, a_range=(0.0, 180.0), b_range=(-180.0, 180.0)):
-    """Wavefront plan from start config to goal config (both (theta_A, theta_B) in RADIANS). Ignites the
-    excitable wave at the goal cell (reaction_diffusion_compute.excite_wave) and back-traces from the start
-    cell down the arrival-time field. Returns (status, waypoints): ('OK', [(ta, tb), ...] start->goal) or
-    ('NO_FREE_CELL', []) / ('NO_PATH', []) if start/goal snap fails or the goal is unreachable in C-space."""
-    grid = CSpaceGrid(step_deg, a_range, b_range)
-    s = grid.snap(start_cfg)
-    t = grid.snap(goal_cfg)
-    if s is None or t is None:
-        return ("NO_FREE_CELL", [])
-    arrival, _ = excite_wave(grid.free, [t])
-    if s not in arrival:  # goal cell walled off from the start cell
-        return ("NO_PATH", [])
-    cells = backtrace(arrival, s, t)  # [s, ..., t] down the gradient
-    return ("OK", [grid.angles(i, j) for (i, j) in cells])
+    cfg = [float(d.qpos[qi]) / DEG for qi in idx]
+    return None if collides(cfg) else cfg
 
 
-def execute(arm, waypoints, slew_deg=8.0, tol_deg=1.0, max_steps=4000):
-    """Drive the arm through the waypoint configs via bounded relative JOINT_[AB]_ROTATE commands THROUGH the
-    gated ArmSim.apply(). Stops on E-STOP (state()['stopped']), collision, step budget, or arrival. Returns
-    {'reached', 'stopped', 'collided', 'steps'}. Never commands the wire directly and adds no new token."""
-    steps = 0
-    for ta, tb in waypoints:
-        for j, target_rad in ((0, ta), (1, tb)):
-            axis = "A" if j == 0 else "B"
-            target_deg = target_rad / DEG
-            while True:
-                if arm.state()["stopped"]:  # mid-plan E-STOP: a frozen arm no-ops apply()
-                    return {"reached": False, "stopped": True, "collided": False, "steps": steps}
-                if steps >= max_steps:
-                    return {"reached": False, "stopped": False, "collided": False, "steps": steps}
-                err = target_deg - arm.theta[j] / DEG
-                if abs(err) <= tol_deg:
-                    break
-                delta = max(-slew_deg, min(slew_deg, err))  # rate limit (bounded joint velocity)
-                arm.apply(f"JOINT_{axis}_ROTATE({delta:+.4f}deg)")
-                steps += 1
-                if arm.collision() is not None:  # independent guard (mirrors cpg_sweep)
-                    return {
-                        "reached": False,
-                        "stopped": arm.state()["stopped"],
-                        "collided": True,
-                        "steps": steps,
-                    }
-    reached = (
-        abs(arm.theta[0] - waypoints[-1][0]) <= tol_deg * DEG
-        and abs(arm.theta[1] - waypoints[-1][1]) <= tol_deg * DEG
-    )
-    return {
-        "reached": reached,
-        "stopped": arm.state()["stopped"],
-        "collided": arm.collision() is not None,
-        "steps": steps,
-    }
+def execute(arm, waypoints, tol_deg=3.0):
+    """Drive the arm along the waypoints THROUGH the safety gate.
+
+    Uses MOVETO, the absolute verb: a waypoint is a pose, and expressing it as a relative delta
+    would make every step depend on the servo having finished the previous one.
+    """
+    applied, reached = 0, 0
+    for wp in waypoints:
+        for name, deg in zip(JOINTS, wp):
+            arm.apply(arm_config.moveto_for(name, round(deg, 3)))
+            applied += 1
+        if arm.state()["stopped"]:  # a latched arm: stop pushing motion into a freeze
+            break
+        if max(abs(a - b) for a, b in zip(_here(arm), wp)) <= tol_deg:
+            reached += 1
+    return {"waypoints": len(waypoints), "applied": applied, "reached": reached}
 
 
-def _finish(arm, waypoints):
-    """Execute a planned path and label the outcome status."""
-    res = execute(arm, waypoints)
-    res["status"] = (
-        "REACHED"
-        if res["reached"]
-        else "ESTOPPED"
-        if res["stopped"]
-        else "COLLIDED"
-        if res["collided"]
-        else "INCOMPLETE"
-    )
-    res["waypoints"] = len(waypoints)
-    return res
+def plan_to_config(arm, goal_deg, seed=0, **kw):
+    """Plan and execute a move to a joint configuration (degrees, one per planned joint)."""
+    wps = plan(_here(arm), list(goal_deg), seed=seed, **kw)
+    if wps is None:
+        return {"planned": False, "reason": "no collision-free path found", "reached": 0}
+    out = execute(arm, shortcut(wps, seed=seed))
+    out["planned"] = True
+    return out
 
 
-def plan_to_config(
-    arm, ta_deg, tb_deg, step_deg=5.0, a_range=(0.0, 180.0), b_range=(-180.0, 180.0)
-):
-    """Plan + execute to a target JOINT config (degrees), from the arm's live pose. Returns a status dict."""
-    status, wp = plan(
-        (arm.theta[0], arm.theta[1]), (ta_deg * DEG, tb_deg * DEG), step_deg, a_range, b_range
-    )
-    if status != "OK":
-        return {"status": status, "reached": False, "waypoints": 0, "steps": 0}
-    return _finish(arm, wp)
-
-
-def plan_to_xy(arm, x, y, step_deg=5.0, a_range=(0.0, 180.0), b_range=(-180.0, 180.0)):
-    """Plan + execute so the end-effector reaches Cartesian (x, y). IK gives up to two elbow branches; the
-    planner keeps the reachable, collision-free branch with the shortest wavefront path. Returns a status
-    dict; 'UNREACHABLE' if IK has no solution, 'BLOCKED_GOAL' if no branch yields a collision-free plan."""
-    goals = ik(x, y)
-    if not goals:
-        return {"status": "UNREACHABLE", "reached": False, "waypoints": 0, "steps": 0}
-    start = (arm.theta[0], arm.theta[1])
-    best = None
-    probe = ArmSim()
-    for gcfg in goals:
-        probe.theta = [gcfg[0], gcfg[1]]
-        if probe.collision() is not None:  # the goal pose itself must be collision-free
-            continue
-        status, wp = plan(start, gcfg, step_deg, a_range, b_range)
-        if status == "OK" and (best is None or len(wp) < len(best)):
-            best = wp
-    if best is None:
-        return {"status": "BLOCKED_GOAL", "reached": False, "waypoints": 0, "steps": 0}
-    return _finish(arm, best)
-
-
-def _ee(cfg):
-    """Forward kinematics via the authoritative ArmSim.ee() (avoids a second FK implementation)."""
-    a = ArmSim()
-    a.theta = [cfg[0], cfg[1]]
-    return a.ee()
+def plan_to_xyz(arm, x_mm, y_mm, z_mm, seed=0, **kw):
+    """Plan and execute a move to a Cartesian end-effector target, in millimetres."""
+    goal = ik(arm, x_mm, y_mm, z_mm)
+    if goal is None:
+        return {"planned": False, "reason": "no reachable collision-free IK solution", "reached": 0}
+    out = plan_to_config(arm, goal, seed=seed, **kw)
+    out["goal_cfg"] = [round(g, 2) for g in goal]
+    return out
 
 
 def main():
-    print("=" * 64)
-    print("WAVEFRONT ARM PLANNER -- reaction-diffusion path planning in joint space")
-    print("=" * 64)
+    home = [0.0] * len(JOINTS)
 
-    # A verified detour: START and GOAL are just outside the obstacle circle, but the straight wrist sweep
-    # between them passes the end-effector THROUGH the obstacle -- so the plan must route around it.
-    start_cfg = (10.0 * DEG, 100.0 * DEG)
-    goal_cfg = (10.0 * DEG, 115.0 * DEG)
-    a_range, b_range, step = (0.0, 90.0), (0.0, 180.0), 5.0
-    grid = CSpaceGrid(step, a_range, b_range)
-    s_cell, g_cell = grid.cell(start_cfg), grid.cell(goal_cfg)
-    status, wp = plan(start_cfg, goal_cfg, step, a_range, b_range)
-    manhattan = abs(s_cell[0] - g_cell[0]) + abs(s_cell[1] - g_cell[1])
+    # ---- 1. a clear straight line is answered without search -----------------------------
+    easy = plan(home, [-20.0, -20.0, 0.0, 0.0, 0.0], seed=0)
+    assert easy is not None and len(easy) == 2, "a clear straight line should not need an RRT"
+
+    # ---- 2. the collision check is real, and it is the ONE authority ----------------------
+    _lo, hi = arm_config.ground_free_band("shoulder_lift")
+    buried = [0.0, hi + 40.0, 0.0, 0.0, 0.0]
+    assert collides(buried), "a pose through the floor was not reported as contact"
+    assert not collides(home), "the home pose must not be in contact"
+
+    # ---- 3. a plan INTO a colliding goal is refused, not partially executed ---------------
+    assert plan(home, buried, seed=0) is None, "planned a path into a colliding goal"
+
+    # ---- 4. sweeping is checked, not just the endpoints ----------------------------------
+    assert not _segment_clear(home, buried), "the swept segment was not checked"
+
+    # ---- 5. a real query: plan, shortcut, execute through the gate ------------------------
+    goal = [35.0, -45.0, 30.0, -20.0, 15.0]
+    wps = plan(home, goal, seed=0)
+    assert wps is not None, "no path found to a reachable free configuration"
+    short = shortcut(wps, seed=0)
+    assert len(short) <= len(wps), "shortcutting lengthened the path"
+    for a, b in zip(short, short[1:]):
+        assert _segment_clear(a, b), "shortcutting produced a colliding segment"
+
+    arm = So101Arm()
+    arm.set_substeps(10**9)  # let each waypoint complete; this checks the PLANNER, not the lag
+    res = plan_to_config(arm, goal, seed=0)
+    assert res["planned"] and res["reached"] >= 1, f"execution reached nothing: {res}"
+
+    # ---- 6. determinism ------------------------------------------------------------------
+    assert plan(home, goal, seed=7) == plan(home, goal, seed=7), "the planner is not deterministic"
+
+    # ---- 7. IK lands where it was asked to, collision-free -------------------------------
+    probe = So101Arm()
+    tgt = probe.ee_mm()
+    solved = ik(probe, tgt[0] - 40.0, tgt[1] + 30.0, tgt[2] - 20.0)
+    assert solved is not None, "IK failed on a target a few centimetres from home"
+    assert not collides(solved), "IK returned a colliding configuration"
+
+    # ---- 8. THE SAFETY PROPERTY: a latched arm is not moved by a planner ------------------
+    frozen = So101Arm()
+    frozen.set_substeps(10**9)
+    frozen.apply("EMERGENCY_STOP")
+    before = frozen.state()["theta_deg"]
+    plan_to_config(frozen, goal, seed=0)
+    assert frozen.state()["theta_deg"] == before, "a planner moved a LATCHED arm"
+    assert frozen.state()["stopped"] is True, "the latch did not survive a plan"
+
+    print("=" * 62)
+    print("MOTION PLANNER - six-joint sampling planner (bidirectional RRT)")
+    print("=" * 62)
+    print(f"planned joints  : {len(JOINTS)} ({', '.join(JOINTS)})")
+    print(f"query           : home -> {goal}")
+    print(f"path            : {len(wps)} waypoints -> {len(short)} after shortcutting")
+    print(f"execution       : {res['reached']}/{res['waypoints']} waypoints reached via MOVETO")
+    print(f"IK              : {[round(v, 1) for v in solved]} deg, collision-free")
+    print("safety          : E-STOP latch survives a plan; the arm did not move")
+    print("=" * 62)
     print(
-        f"start cfg (10,100) EE {tuple(round(v, 3) for v in _ee(start_cfg))}  free={start_cfg and s_cell in grid.free}"
-    )
-    print(
-        f"goal  cfg (10,115) EE {tuple(round(v, 3) for v in _ee(goal_cfg))}  free={g_cell in grid.free}"
-    )
-    print(
-        f"plan status {status}: {len(wp)} waypoints, geodesic {len(wp) - 1} vs Manhattan {manhattan} (detour)"
-    )
-
-    # straight cell-interpolation start->goal, to show the direct path is blocked
-    straight = [
-        (
-            round(s_cell[0] + (g_cell[0] - s_cell[0]) * k / manhattan),
-            round(s_cell[1] + (g_cell[1] - s_cell[1]) * k / manhattan),
-        )
-        for k in range(manhattan + 1)
-    ]
-    blocked_on_straight = sum(1 for c in straight if c not in grid.free)
-    print(
-        f"straight interpolation crosses {blocked_on_straight} blocked cell(s) -> a real obstacle to route around"
-    )
-
-    # Cartesian interface: reach the goal end-effector POINT via IK + the wavefront plan, through apply()
-    goal_xy = _ee(goal_cfg)
-    arm = ArmSim()
-    arm.theta = [start_cfg[0], start_cfg[1]]
-    arm.expected_ee = arm.ee()
-    res = plan_to_xy(arm, goal_xy[0], goal_xy[1], step, a_range, b_range)
-    print(
-        f"plan_to_xy {tuple(round(v, 3) for v in goal_xy)}: status {res['status']}, "
-        f"{res['waypoints']} waypoints, {res['steps']} gated commands, "
-        f"final EE {tuple(round(v, 3) for v in arm.ee())}"
-    )
-    print("=" * 64)
-
-    # -------------------- self-check (deterministic; emergent, nothing hardcoded) --------------------
-    # (h) inverse kinematics: FK(IK(x,y)) round-trips; out-of-reach returns no solution
-    for tx, ty in [(1.4, 0.5), (0.4, 0.99), (-0.5, 1.2), (0.0, 1.5)]:
-        sols = ik(tx, ty)
-        assert sols, f"ik unexpectedly empty for reachable ({tx},{ty})"
-        for cfg in sols:
-            ex, ey = _ee(cfg)
-            assert abs(ex - tx) < 1e-9 and abs(ey - ty) < 1e-9, (
-                f"ik round-trip failed {cfg} -> {(ex, ey)}"
-            )
-    assert ik(3.0, 0.0) == [] and ik(0.0, 2.5) == [], "ik must reject out-of-reach targets"
-
-    # (a) every planned waypoint is collision-free (labelled by the collision authority)
-    assert status == "OK" and len(wp) >= 2, f"plan failed: {status}"
-    for cfg in wp:
-        probe = ArmSim()
-        probe.theta = [cfg[0], cfg[1]]
-        assert probe.collision() is None, f"planned waypoint collides: {cfg}"
-    # (b) connectivity: consecutive waypoints are one grid step apart in exactly one joint (4-adjacent)
-    for a, b in zip(wp, wp[1:]):
-        da, db = round((b[0] - a[0]) / DEG / step), round((b[1] - a[1]) / DEG / step)
-        assert (abs(da), abs(db)) in ((1, 0), (0, 1)), f"waypoints not 4-adjacent: {a}->{b}"
-    # (c) it is a genuine DETOUR: longer than the Manhattan straight line, which itself is blocked
-    assert (len(wp) - 1) > manhattan, "path is not a detour"
-    assert blocked_on_straight >= 1, (
-        "the straight path was not actually blocked -- no obstacle to route"
-    )
-
-    # (d) executing through apply() reaches the goal, never collides, preserves the trajectory invariants
-    assert res["status"] == "REACHED", f"execution did not reach goal: {res}"
-    assert abs(arm.ee()[0] - goal_xy[0]) < 0.05 and abs(arm.ee()[1] - goal_xy[1]) < 0.05, (
-        "EE not at goal"
-    )
-    assert arm.collision() is None and not arm.stopped, "arm ended collided or stopped"
-    assert arm.deviation() < 1e-6 and not arm.trajectory_breach(), (
-        "trajectory-deviation invariant broken"
-    )
-
-    # (e) a mid-plan E-STOP freezes the arm and aborts execution (motion goes through the gated apply())
-    estop_arm = ArmSim()
-    estop_arm.theta = [start_cfg[0], start_cfg[1]]
-    frozen = list(estop_arm.theta)
-    estop_arm.apply("EMERGENCY_STOP")
-    er = execute(estop_arm, wp)
-    assert er["stopped"] and not er["reached"] and estop_arm.theta == frozen, (
-        "E-STOP did not freeze/abort"
-    )
-
-    # (f) a disconnected goal is reported, not crashed (the NO_PATH guard the planner relies on)
-    disconnected = {(0, 0), (0, 1), (9, 9)}  # (9,9) is isolated from (0,0)
-    arr_dc, _ = excite_wave(disconnected, [(0, 0)])
-    assert (9, 9) not in arr_dc, "excite_wave reached a disconnected cell"
-
-    # (g) determinism + the wave computes the geodesic: excite_wave arrival == independent BFS, repeatable
-    arrival, _ = excite_wave(grid.free, [g_cell])
-    assert arrival == bfs_dist(grid.free, [g_cell]), "excitable wave != BFS geodesic"
-    assert plan(start_cfg, goal_cfg, step, a_range, b_range) == (status, wp), (
-        "planner is nondeterministic"
-    )
-
-    print(
-        f"self-check OK: IK round-trips + rejects out-of-reach; wavefront plan is collision-free, "
-        f"4-adjacent, a real detour (geodesic {len(wp) - 1} > Manhattan {manhattan}, straight path blocked); "
-        f"reaches the Cartesian goal through gated apply() with trajectory invariants intact; mid-plan "
-        f"E-STOP freezes the arm; disconnected goal handled; wave == BFS geodesic; deterministic"
+        "self-check OK: straight-line fast path; swept-segment collision checking; colliding "
+        "goal refused; shortcut stays clear; deterministic per seed; Jacobian IK converges; "
+        "a latched arm is not moved by the planner"
     )
 
 

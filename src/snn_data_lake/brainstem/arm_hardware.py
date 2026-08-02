@@ -30,6 +30,8 @@ THE FINDING THAT MOTIVATED WRITING THIS AS CODE
 
 from __future__ import annotations
 
+from snn_data_lake.brainstem import arm_config as _arm_config
+
 # ---- servos ---------------------------------------------------------------------------------
 # Feetech ST3215 family. Stall figures from the notes; RATED is derived as stall/4 per the notes'
 # own sizing rule, because a continuous-duty number is what a joint must actually be sized against.
@@ -86,14 +88,13 @@ TARGET = {
 # joint -> (servo, distance from that joint to the payload in mm). The distance is what converts a
 # payload mass into a torque at that joint; wrist roll and the gripper carry no bending moment from
 # the payload's weight, so their lever arm is 0.
-JOINTS = (
-    ("base_yaw", "ST3215-1:345", 0.0),  # vertical axis: carries no gravity moment, only inertia
-    ("shoulder_pitch", "ST3215-1:345", 300.0),
-    ("elbow_pitch", "ST3215-1:191", 180.0),
-    ("wrist_pitch", "ST3215-1:191", 60.0),
-    ("wrist_roll", "ST3215-1:147", 0.0),
-    ("gripper", "SC-series", 0.0),
-)
+# DERIVED from arm_config.JOINTS, not written twice. This used to be a literal, and a literal
+# here is a second source of truth for the same six rows -- rename a joint or re-spec a servo in
+# one place and the torque table silently describes a different arm than the vocabulary does.
+# arm_config owns the table (it is "calibration in ONE place"); this is the build-target view of
+# it: (alias, servo, lever_mm). base_yaw is a vertical axis and carries no gravity moment, only
+# inertia -- which is why its lever is 0.0 and its required torque comes out zero below.
+JOINTS = tuple((j.alias, j.servo, j.lever_mm) for j in _arm_config.JOINTS)
 
 
 def holding_torque_kgcm(lever_mm, payload_kg=None, arm_mass_kg=0.0, arm_cog_mm=None):
@@ -143,18 +144,24 @@ def peak_current_amps(n_simultaneous=3):
 
 
 # ---- the sim-to-real gap --------------------------------------------------------------------
-# What we currently simulate is NOT this arm, and the dashboard must not imply otherwise.
-# ArmSim is a 2-link planar arm in DIMENSIONLESS units (l1 = l2 = 1.0, reach 2.0), with no mass, no
-# gravity, no torque and no dt -- JOINT_x_ROTATE teleports the joint. It is a kinematic toy.
+# The KINEMATIC half of this gap is closed (specs/004). What we simulate is now the SO-101
+# itself: six joints, real units, mass, gravity and a 2 ms integration step, with actuator
+# force limits taken from the MJCF that TheRobotStudio matched to the real STS3215.
+#
+# The gap that REMAINS is the one that matters and the reason this module exists: the arm is
+# not BUILT, and the shoulder's torque budget does not close (15.0 kg*cm required against 7.5
+# rated). A faithful simulation of an underpowered arm is still an underpowered arm -- if
+# anything the simulation makes the shortfall easier to believe, which is exactly when a
+# dashboard is most tempted to imply the hardware exists.
 SIM_GAP = {
-    "sim_dof": 2,
+    "sim_dof": 6,
     "target_dof": 6,
-    "missing_dof": ("wrist_pitch", "wrist_roll", "gripper_articulation", "base_yaw"),
-    "sim_units": "dimensionless (l1=l2=1.0, reach 2.0)",
+    "missing_dof": (),  # the six simulated joints ARE the six target joints
+    "sim_units": "SI (metres, radians, N*m; MuJoCo SO-101)",
     "target_units": "mm (reach ~300)",
-    "mm_per_sim_unit": TARGET["reach_mm"] / 2.0,  # 150 mm per unit IF the toy is ever scaled
-    "sim_has_dynamics": False,
-    "sim_has_gravity": False,
+    "mm_per_sim_unit": 1000.0,  # metres -> mm; the sim is in real units now, not a scale factor
+    "sim_has_dynamics": True,
+    "sim_has_gravity": True,
     "bridge": (
         "MuJoCo + SO-ARM100 (TheRobotStudio) ships MJCF with motor properties matched to the real "
         "STS3215 -- a genuine digital twin. That is the path from this kinematic toy to a body whose "
@@ -214,8 +221,17 @@ def main():
     assert st["supply_ok"], "12V supply undersized for 3 simultaneous stalls"
 
     # the sim/target gap must stay stated, not smoothed over
-    assert SIM_GAP["sim_dof"] < SIM_GAP["target_dof"], "sim/target DOF gap vanished"
-    assert SIM_GAP["sim_has_dynamics"] is False, "ArmSim has no dynamics; do not claim otherwise"
+    # The DOF and dynamics gaps are closed, and saying so is the honest report. The assertion
+    # that replaces them guards the claim that actually still needs guarding: this module must
+    # never say the arm exists, and the torque shortfall must never quietly become "fine".
+    assert SIM_GAP["sim_dof"] == SIM_GAP["target_dof"], (
+        "the simulated body no longer matches the target DOF -- one of them changed"
+    )
+    assert SIM_GAP["sim_has_dynamics"] is True, "the SO-101 sim HAS dynamics; do not understate it"
+    assert SIM_GAP["missing_dof"] == (), "a joint went missing from the simulated body"
+    assert not sh["ok"] and st["built"] is False, (
+        "a faithful simulation is not a built arm: the shoulder is still underpowered"
+    )
 
     under = ", ".join(st["underpowered"]) or "none"
     print(
