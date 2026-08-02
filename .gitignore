@@ -9,8 +9,13 @@ build/
 dist/
 packaging/installer/
 
-# personal local Claude Code settings (self-build permission rule)
-.claude/settings.local.json
+# Claude Code working directory -- entirely local, never tracked.
+# Holds personal settings (the self-build permission rule), the project-scoped speckit
+# skills, and .claude/worktrees/: agent scratch checkouts that were measured at 332 MB
+# across 1352 files, including the models/*.npz packs this file deliberately excludes
+# elsewhere. Committing that would smuggle the ignored artifacts in by another path and
+# put a third of a gigabyte into history permanently.
+.claude/
 
 # brain daemon runtime logs
 brain_daemon.log
