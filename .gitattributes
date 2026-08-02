@@ -1,0 +1,22 @@
+# The vendored SO-101 model is FINGERPRINTED, so its bytes must not depend on the platform.
+#
+# tests/test_arm_config.py::test_vendored_model_fingerprint pins the sha256 of scene.xml and
+# so101_new_calib.xml, because a silent asset swap changes the physics under every torque and
+# limit assertion in the suite. Without an attribute here, git applied its default eol handling
+# to those two files: measured, the working copy was 23 and 165 bytes LARGER than the stored
+# blob on Windows, purely from CRLF. The pin was therefore computed on one platform and could
+# never match a checkout on another -- CI failed on exactly this, and the failure was real: a
+# fingerprint that changes with the checkout is not a fingerprint.
+#
+# `-text` means "store and check out these bytes verbatim, on every platform".
+src/snn_data_lake/brainstem/so101/*.xml -text
+src/snn_data_lake/brainstem/so101/SO-ARM100-LICENSE -text
+
+# The meshes were ALREADY safe -- git auto-detected them as binary and left them byte-identical
+# (blob size == working size, verified per file). This makes that a guarantee rather than a
+# lucky detection: an STL is a header plus packed floats, and 0d 0a occurs in that data by
+# coincidence, so anything that "helpfully" translated it would corrupt geometry silently.
+*.stl binary
+
+# The perception packs vendored for CI are zip containers; never translate them.
+*.npz binary

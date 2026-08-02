@@ -60,9 +60,16 @@ _SO101 = pathlib.Path(ac.__file__).parent / "so101"
 # sha256 of the model DEFINITION files (not the 16 MB of meshes -- those do not define behaviour).
 # Pinned so an asset swap is loud. If a model bump is intentional, update these in the same commit
 # and say why; that is the point of pinning, not an obstacle to it.
+#
+# REPINNED 2026-08-02, and the reason matters more than the values. The originals were computed
+# on a Windows checkout, where git's default eol handling had inflated these two files by 23 and
+# 165 bytes of CRLF over the stored blob. So the pin described one platform's checkout rather
+# than the asset, and CI failed against it on Linux -- correctly. `.gitattributes` now marks the
+# model `-text`, so every platform checks out the blob verbatim and these digests are the same
+# everywhere. Verified: working-copy size == blob size on both files after the change.
 _EXPECTED_MODEL_SHA = {
-    "scene.xml": "9ee80b36871b57c72dc63e0785491ebcc75ab895e0623e9982e2da3a4b4d1908",
-    "so101_new_calib.xml": "38182130d4ae18c53e872d1414dde8444865250d3fb2bcffa0286ec855185475",
+    "scene.xml": "3b79a253a742f55ff0b16682173609229560d97744be472a238ea2e0a6a31ef6",
+    "so101_new_calib.xml": "d75253eb568e8a7214db9c631ab7bed4217f608a26f7276ebe9a7636cac82580",
 }
 
 
