@@ -657,8 +657,8 @@ result; the rule stands on the eight incidents above either way.
 
 ## Cross-cutting invariants (never relaxed by any policy)
 
-- **Safety envelope untouched:** the five brainstem files — `reflex.py`, `serial_arm.py`, `arm_sim.py`,
-  `arm_config.py`, `interpreter.py` — are modified only with explicit approval; the reflex E-STOP and
+- **Safety envelope untouched:** the five brainstem files — `reflex.py`, `serial_arm.py`,
+  `so101_arm.py`, `arm_config.py`, `interpreter.py` — are modified only with explicit approval; the reflex E-STOP and
   cortisol/safety paths are never relaxed. Every wired drive enters selection **after** the E-STOP
   early-return, so it is safe by construction (proven: max drive + distance 0 → EMERGENCY_STOP).
 - **E-prop, not backprop (review-enforced, NO GATE).** Any backprop consideration pivots to **e-prop**

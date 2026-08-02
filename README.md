@@ -114,7 +114,7 @@ docs/                install, hardware setup, storage formats, architecture note
 run_selfchecks.py    canonical self-check runner (single source of truth for the module list)
 ```
 
-Safety-critical arm code (`brainstem/reflex.py`, `brainstem/serial_arm.py`, `brainstem/arm_sim.py`,
+Safety-critical arm code (`brainstem/reflex.py`, `brainstem/serial_arm.py`, `brainstem/so101_arm.py`,
 `brainstem/arm_config.py`, `brainstem/interpreter.py`) is documented in [SECURITY.md](SECURITY.md).
 
 ## Testing & CI

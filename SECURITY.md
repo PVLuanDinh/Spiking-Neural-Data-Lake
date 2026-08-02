@@ -13,7 +13,7 @@ reaches a servo.
 | File | Role |
 |------|------|
 | `src/snn_data_lake/brainstem/interpreter.py` | validates and parses commands (allow-list grammar) |
-| `src/snn_data_lake/brainstem/arm_sim.py`     | physics simulator; mirrors and gates the live arm |
+| `src/snn_data_lake/brainstem/so101_arm.py`   | the body and its gate: MuJoCo SO-101, every motion passes through `apply()` |
 | `src/snn_data_lake/brainstem/reflex.py`      | emergency-stop reflex (imminent contact / trajectory deviation) |
 | `src/snn_data_lake/brainstem/serial_arm.py`  | real-hardware serial interface |
 | `src/snn_data_lake/brainstem/arm_config.py`  | calibration constants and joint limits |
@@ -33,7 +33,7 @@ this gate.
 
   ```bash
   PYTHONPATH=src python -m snn_data_lake.brainstem.reflex
-  PYTHONPATH=src python -m snn_data_lake.brainstem.arm_sim
+  PYTHONPATH=src python -m snn_data_lake.brainstem.so101_arm
   PYTHONPATH=src python -m snn_data_lake.brainstem.interpreter
   PYTHONPATH=src python -m snn_data_lake.brainstem.serial_arm
   PYTHONPATH=src python -m snn_data_lake.brainstem.arm_config
