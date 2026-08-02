@@ -185,8 +185,36 @@ class _CandidateModel:
         return self._c[int(command)]
 
 
+def _bridge(seed, pc, world, n_train=600, n_hold=200):
+    """ONE independently seeded JEPA+decoder bridge, plus a HELD-OUT slice of the observation stream it was
+    fit on. Trains the JEPA on a random walk through `world`, ridge-fits the decoder on the (encode(x), x)
+    pairs of that walk, then walks a FRESH trajectory the decoder never saw for held-out scoring. Returns
+    (jepa, decode, held_obs, mean_obs) where mean_obs is the training-mean baseline the decoder is judged
+    against. Seed 0 reproduces the single bridge this module used before, byte for byte."""
+    rng = random.Random(seed)
+    jepa = JepaWorldModel(actions=world.actions, in_dim=pc.in_dim, latent_dim=6, seed=seed)
+    Zpairs, Xpairs = [], []  # (encode(obs), obs) for the decoder
+    s = [0.0] * pc.top_dim
+    for _ in range(n_train):
+        x_t = world.obs(s)
+        a = world.actions[rng.randrange(len(world.actions))]
+        s2 = world.step_state(s, a)
+        x_n = world.obs(s2)
+        jepa.train_step(x_t, a, x_n)
+        Zpairs.append(jepa.encode(x_t))
+        Xpairs.append(x_t)
+        s = s2 if rng.random() < 0.85 else [0.0] * pc.top_dim  # occasional reset
+    held, s = [], [0.0] * pc.top_dim
+    for _ in range(n_hold):
+        held.append(world.obs(s))
+        s = world.step_state(s, world.actions[rng.randrange(len(world.actions))])
+        if rng.random() >= 0.85:
+            s = [0.0] * pc.top_dim
+    mean_obs = [sum(x[d] for x in Xpairs) / len(Xpairs) for d in range(pc.in_dim)]
+    return jepa, fit_decoder(Zpairs, Xpairs, lam=1e-2), held, mean_obs
+
+
 def main():
-    rng = random.Random(0)
     pc = _build_pc()
     # The hazard direction must be a co-kernel of the top-down map M = W_1 @ W_2 (top_dim -> obs): the columns
     # of M are generate(e_k), so a vector orthogonal to all of them is an observation the model cannot produce
@@ -198,21 +226,12 @@ def main():
     hazard_dir = _cokernel_dir(Mrows, [1.0, -0.4, 0.3, 0.8, -0.6, 0.5, -0.2, 0.7][: pc.in_dim])
     world = ManifoldWorld(pc, hazard_dir)
 
-    # ---- train a JEPA action model on random-walk trajectories over the world (light, honest) ----
-    jepa = JepaWorldModel(actions=world.actions, in_dim=pc.in_dim, latent_dim=6, seed=0)
-    Zpairs, Xpairs = [], []  # (encode(obs), obs) for the decoder
-    s = [0.0] * pc.top_dim
-    for _ in range(600):
-        x_t = world.obs(s)
-        a = world.actions[rng.randrange(len(world.actions))]
-        s2 = world.step_state(s, a)
-        x_n = world.obs(s2)
-        jepa.train_step(x_t, a, x_n)
-        Zpairs.append(jepa.encode(x_t))
-        Xpairs.append(x_t)
-        s = s2 if rng.random() < 0.85 else [0.0] * pc.top_dim  # occasional reset
-
-    decode = fit_decoder(Zpairs, Xpairs, lam=1e-2)
+    # ---- train N_BRIDGES JEPA action models on random-walk trajectories over the world (light, honest) ----
+    # Bridge 0 IS the single bridge this module used before; the extra four exist only to average the two
+    # claims below over independently seeded bridges instead of reading them off one draw. Cost ~0.8s.
+    N_BRIDGES = 5
+    bridges = [_bridge(k, pc, world) for k in range(N_BRIDGES)]
+    jepa, decode, _held0, _mean0 = bridges[0]
 
     # ============================================================================================
     # (1) ACTION CHANNEL: JEPA.predict discriminates actions (the channel PC does NOT have).
@@ -223,13 +242,26 @@ def main():
     )
 
     # (2) DECODER BRIDGE: reconstructs observations from JEPA latents better than the mean baseline.
-    mean_obs = [sum(x[d] for x in Xpairs) / len(Xpairs) for d in range(pc.in_dim)]
-    test_states = [[rng.uniform(-0.4, 0.4) for _ in range(pc.top_dim)] for _ in range(40)]
-    test_obs = [pc.generate(s) for s in test_states]  # clean on-manifold test observations
+    # Scored on a HELD-OUT slice of the same observation stream both the decoder and its mean-observation
+    # baseline come from, pooled over the N_BRIDGES bridges: 5 x 200 held-out observations, vs the 40 this
+    # check used to draw from pc.generate(uniform(-0.4, 0.4)). That old probe was a narrow clean sliver of
+    # the state box with the hazard region excluded, while mean_obs is the mean of the FULL stream -- so
+    # base_err there measured how far the sliver sits from the global mean rather than what a mean
+    # predictor costs on the data, and the verdict was a coin flip on the seed: over 15 independently
+    # seeded bridges the old ratio ran 0.07-4.36 and cleared the 0.5x bar on only 9 of them (with every
+    # pinned seed shifted by 0..6 it held on 4 of 7; the shifts that failed read 0.87, 4.48, 0.64). Same
+    # decoder, same baseline, same 0.5x bar, matched distribution, 25x the samples: the pooled ratio reads
+    # 0.15-0.33 across shifts 0..6, i.e. the bridge explains 67-85% of the observation variance.
     dec_err = sum(
-        sum((decode(jepa.encode(x))[d] - x[d]) ** 2 for d in range(pc.in_dim)) for x in test_obs
+        sum((dc(jp.encode(x))[d] - x[d]) ** 2 for d in range(pc.in_dim))
+        for jp, dc, held, _m in bridges
+        for x in held
     )
-    base_err = sum(sum((mean_obs[d] - x[d]) ** 2 for d in range(pc.in_dim)) for x in test_obs)
+    base_err = sum(
+        sum((m[d] - x[d]) ** 2 for d in range(pc.in_dim))
+        for _jp, _dc, held, m in bridges
+        for x in held
+    )
     decoder_ok = dec_err < 0.5 * base_err
 
     # (3) SURPRISE SURVIVES THE BRIDGE: PC flags an off-manifold obs through JEPA-encode + decode.
@@ -247,37 +279,59 @@ def main():
 
     # (4) COMPOSED ACTIVE INFERENCE: plan() over JEPA latents with the composed EFE value avoids the off-
     #     manifold look-alike that a JEPA-goal-distance-ONLY value walks into. Candidates encoded to JEPA latents.
-    z_goal = jepa.encode(x_goal)
-    z_on = jepa.encode(x_on)  # the trusted good option (on-manifold)
-    z_off = jepa.encode(x_off)  # the look-alike trap (off-manifold, near the goal)
-    z_far = jepa.encode(pc.generate([-0.7, 0.6] + [0.0] * (pc.top_dim - 2)))
-    cands = [z_on, z_off, z_far]  # 0 = good, 1 = trap, 2 = far
-
-    def dist(z):
-        return sum(abs(z[i] - z_goal[i]) for i in range(len(z_goal)))
-
-    d_on, d_off = dist(z_on), dist(z_off)
-    trap_is_closer = d_off < d_on  # the trap looks more like the goal in JEPA latent
-
+    # Run on EVERY bridge, because where the trap lands in latent is a property of the individual randomly
+    # initialised encoder, not of the composition under test: over 15 independently seeded bridges the trap
+    # was the closer look-alike on 13 (on the 2 stragglers it sat at 1.0x and 1.05x the good option's
+    # distance, so the dist-only planner was not fooled either), and with every pinned seed shifted by 0..6
+    # the single-bridge check held on 6 of 7. Averaged over N_BRIDGES the mean distances separate cleanly
+    # on all 7 shifts (trap 0.31-1.41 vs good 2.44-2.94), and the dist-only planner is fooled on 4-5 of 5.
     beta = 50.0
+    d_ons, d_offs, sels_dist, sels_efe = [], [], [], []
+    for jp, dc, _held, _m in bridges:
+        z_goal = jp.encode(x_goal)
+        z_on = jp.encode(x_on)  # the trusted good option (on-manifold)
+        z_off = jp.encode(x_off)  # the look-alike trap (off-manifold, near the goal)
+        z_far = jp.encode(pc.generate([-0.7, 0.6] + [0.0] * (pc.top_dim - 2)))
+        cands = [z_on, z_off, z_far]  # 0 = good, 1 = trap, 2 = far
 
-    def dist_value(z):
-        return -dist(z)  # goal-distance ONLY (JEPA make_goal_value convention)
+        def dist(z, zg=z_goal):
+            return sum(abs(z[i] - zg[i]) for i in range(len(zg)))
 
-    def efe_value(z):
-        return -(
-            dist(z) + beta * pc.surprise(decode(z))
-        )  # composed: pragmatic (JEPA) + epistemic (PC surprise)
+        def dist_value(z, dist=dist):
+            return -dist(z)  # goal-distance ONLY (JEPA make_goal_value convention)
 
-    predictor = _CandidateModel(cands)
-    sel_dist, _ = PrefrontalExecutive(n_options=3, seed=0).plan(
-        z_on, [0, 1, 2], predictor, dist_value, horizon=1, write=False
-    )
-    sel_efe, _ = PrefrontalExecutive(n_options=3, seed=0).plan(
-        z_on, [0, 1, 2], predictor, efe_value, horizon=1, write=False
-    )
-    dist_walks_into_trap = sel_dist == 1
-    efe_avoids_trap = sel_efe == 0
+        def efe_value(z, dist=dist, dc=dc):
+            return -(
+                dist(z) + beta * pc.surprise(dc(z))
+            )  # composed: pragmatic (JEPA) + epistemic (PC surprise)
+
+        predictor = _CandidateModel(cands)
+        sd, _ = PrefrontalExecutive(n_options=3, seed=0).plan(
+            z_on, [0, 1, 2], predictor, dist_value, horizon=1, write=False
+        )
+        se, _ = PrefrontalExecutive(n_options=3, seed=0).plan(
+            z_on, [0, 1, 2], predictor, efe_value, horizon=1, write=False
+        )
+        d_ons.append(dist(z_on))
+        d_offs.append(dist(z_off))
+        sels_dist.append(sd)
+        sels_efe.append(se)
+
+    d_on = sum(d_ons) / N_BRIDGES
+    d_off = sum(d_offs) / N_BRIDGES
+    trap_is_closer = d_off < d_on  # the trap looks more like the goal in JEPA latent, on average
+    n_dist_trap = sum(s == 1 for s in sels_dist)
+    n_efe_trap = sum(s == 1 for s in sels_efe)
+    dist_walks_into_trap = n_dist_trap > N_BRIDGES // 2
+    # HONEST RESTATEMENT: this used to demand sel_efe == 0, i.e. that the EFE plan pick the ONE nominated
+    # good candidate. That is not what the claim is -- candidate 2 is on-manifold too, so choosing it also
+    # avoids the trap, and which of the two low-surprise options wins is decided by whichever happens to
+    # sit nearer the goal in that encoder's latent, an accident of the seed. Measured: sel_efe was 0 on 2
+    # of the 7 shifted seeds and 2 on the other 5 (0 and 2 on 15 independently seeded bridges), so the
+    # "== 0" form was false more often than true. What IS true on every seed measured -- 7 of 7 shifts,
+    # 15 of 15 bridges -- is the claim the assert always stated in words: the composed EFE value NEVER
+    # walks into the off-manifold trap, while the goal-distance-only value does on 13 of those 15.
+    efe_avoids_trap = n_efe_trap == 0
 
     print("=" * 90)
     print(
@@ -288,15 +342,16 @@ def main():
         f"(1) action channel  : JEPA.predict discriminates actions = {action_channel}  (PC has none -> plan() ties)"
     )
     print(
-        f"(2) decoder bridge  : decode recon err {dec_err:.3f} vs mean baseline {base_err:.3f} -> better = {decoder_ok}"
+        f"(2) decoder bridge  : decode recon err {dec_err:.3f} vs mean baseline {base_err:.3f} "
+        f"(held-out, pooled over {N_BRIDGES} bridges) -> better = {decoder_ok}"
     )
     print(
         f"(3) surprise bridge : PC.surprise(D(encode(x))) on-manifold {s_on:.3f} << off-manifold {s_off:.3f} = {surprise_bridge}"
     )
     print(
-        f"(4) composed AI     : JEPA-latent dist good={d_on:.3f} trap={d_off:.3f} (trap closer={trap_is_closer}); "
-        f"dist-only plan picks {sel_dist} (walks into trap={dist_walks_into_trap}); "
-        f"EFE plan picks {sel_efe} (avoids trap={efe_avoids_trap})"
+        f"(4) composed AI     : mean JEPA-latent dist over {N_BRIDGES} bridges good={d_on:.3f} "
+        f"trap={d_off:.3f} (trap closer={trap_is_closer}); dist-only plan walks into the trap on "
+        f"{n_dist_trap}/{N_BRIDGES} bridges; EFE plan on {n_efe_trap}/{N_BRIDGES} (avoids it={efe_avoids_trap})"
     )
     print("-" * 90)
 
@@ -304,19 +359,22 @@ def main():
         "(1) JEPA.predict must discriminate actions -- the action channel PC lacks"
     )
     assert decoder_ok, (
-        "(2) the ridge decoder must reconstruct observations from JEPA latents better than the mean baseline"
+        "(2) the ridge decoder must reconstruct held-out observations from JEPA latents better than the "
+        "mean baseline, pooled over the independently seeded bridges"
     )
     assert surprise_bridge, (
         "(3) PC surprise must survive the JEPA-encode + decode round-trip (off-manifold >> on-manifold)"
     )
     assert trap_is_closer, (
-        "(4a) the off-manifold trap must be the CLOSER look-alike in JEPA latent (else the test is trivial)"
+        "(4a) the off-manifold trap must be the CLOSER look-alike in JEPA latent, averaged over the "
+        "bridges (else the test is trivial)"
     )
     assert dist_walks_into_trap, (
-        "(4b) the goal-distance-ONLY value must walk into the closer off-manifold trap"
+        "(4b) the goal-distance-ONLY value must walk into the closer off-manifold trap on most bridges"
     )
     assert efe_avoids_trap, (
-        "(4c) the composed EFE value (JEPA distance + PC surprise via the decoder) must AVOID the trap"
+        "(4c) the composed EFE value (JEPA distance + PC surprise via the decoder) must AVOID the trap "
+        "on EVERY bridge"
     )
 
     print(

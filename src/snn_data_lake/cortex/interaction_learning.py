@@ -333,17 +333,35 @@ def _spiking_task_selfcheck():
     real_targets = [
         correct for _stim, correct in train
     ]  # the true teaching signal per training item
-    control_targets = list(real_targets)  # the control: SAME labels, SHUFFLED away from
-    random.Random(seed + 42).shuffle(
-        control_targets
-    )  #   the stimuli -> reward carries no information
 
-    base = SpikingInteractionLearner(responses, n_in, seed=seed)
-    acc_chance = base.accuracy(test)  # untrained -> chance
+    # "untrained sits at chance" and "shuffled teaching stays at chance" are claims about the ENSEMBLE of
+    # random inits / decorrelated teaching signals, not about one draw -- and read off ONE draw they were
+    # mostly noise. Re-running this check with every pinned seed shifted by 0..6: the SINGLE untrained
+    # learner scored 0.00-0.72 on the 32 held-out items (|dev| from chance 0.00-0.47, so the 0.18 bar held
+    # on only 3 of the 7), and the SINGLE shuffled control scored 0.00-0.62 (the chance+0.20 bar held on 6
+    # of 7 -- one lucky permutation left enough stimulus-label correlation to reach 0.62). Same quantities,
+    # same bars, many more samples: 24 independently seeded untrained learners and 8 independent teaching
+    # shuffles. Over shifts 0..10 that reads |dev| 0.005-0.078 and control 0.145-0.301. Costs ~0.23s.
+    n_draw, n_shuf = 24, 8
+    acc_chance = (
+        sum(
+            SpikingInteractionLearner(responses, n_in, seed=seed + k).accuracy(test)
+            for k in range(n_draw)
+        )
+        / n_draw
+    )  # untrained -> chance, averaged over n_draw random synaptic inits
     learned = _train(seed, responses, n_in, train, epoch_orders, real_targets)
     acc_learned = learned.accuracy(test)
-    control = _train(seed, responses, n_in, train, epoch_orders, control_targets)
-    acc_control = control.accuracy(test)
+    control_accs = []
+    for k in range(n_shuf):
+        control_targets = list(real_targets)  # the control: SAME labels, SHUFFLED away from
+        random.Random(seed + 42 + k).shuffle(
+            control_targets
+        )  #   the stimuli -> reward carries no information
+        control_accs.append(
+            _train(seed, responses, n_in, train, epoch_orders, control_targets).accuracy(test)
+        )
+    acc_control = sum(control_accs) / n_shuf
 
     # determinism: same seed + same schedule -> byte-identical weights and identical responses
     again = _train(seed, responses, n_in, train, epoch_orders, real_targets)
@@ -366,8 +384,8 @@ def _spiking_task_selfcheck():
         "8 train / 8 test each"
     )
     print(
-        f"held-out accuracy: chance {acc_chance:.2f}  ->  learned {acc_learned:.2f}   "
-        f"(control, teaching shuffled: {acc_control:.2f})"
+        f"held-out accuracy: chance {acc_chance:.2f} (mean of {n_draw} untrained)  ->  learned "
+        f"{acc_learned:.2f}   (control, teaching shuffled: {acc_control:.2f}, mean of {n_shuf} shuffles)"
     )
     print(f"spike code of a stimulus (per-synapse latency): {code}")
     print(
@@ -380,13 +398,14 @@ def _spiking_task_selfcheck():
 
     # ---- un-riggable asserts ----
     assert abs(acc_chance - chance) < 0.18, (
-        f"untrained learner must sit near chance ({acc_chance:.2f} vs {chance:.2f})"
+        f"untrained learners must sit near chance "
+        f"(mean of {n_draw}: {acc_chance:.2f} vs {chance:.2f})"
     )
     assert acc_learned > 0.85, (
         f"R-STDP must lift held-out accuracy high ({acc_learned:.2f})"
     )  # core 1
     assert acc_control < chance + 0.20, (
-        f"teaching-shuffled control must stay at chance ({acc_control:.2f})"
+        f"teaching-shuffled control must stay at chance (mean of {n_shuf}: {acc_control:.2f})"
     )  # core 2
     assert acc_learned > acc_control + 0.40, (
         f"the gain must come from reward-modulated timing, not the encoding "

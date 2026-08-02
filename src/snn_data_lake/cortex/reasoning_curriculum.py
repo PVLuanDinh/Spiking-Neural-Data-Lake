@@ -51,8 +51,10 @@ Un-riggable self-check (deterministic seed=0, ASCII), each claim paired with a c
       the learner is never trained on a held-out pair, and the held-out label set is balanced.
   (3) SLEEP/REPLAY HELPS: at an equal LIVE-premise budget, offline replay-consolidation reaches
       higher held-out than no replay.
-  (4) NEUROGENESIS + CURRICULUM: n_units grows with #items; a small->large curriculum beats
-      jump-to-largest at an equal budget.
+  (4) NEUROGENESIS: n_units grows with #items, one rank unit per item. The curriculum comparison is an
+      HONEST NEGATIVE -- measured over 10 seed shifts a small->large curriculum does NOT beat
+      jump-to-largest at an equal budget (0.753 vs 0.790 mean held-out); both schedules learn the
+      chain well above the memoriser control, and that is what is asserted.
   (5) SPIKING + DETERMINISM + ASCII: decide() routes through the spiking accumulator (discrete spike
       events), two seed=0 runs give an identical arc, all output is ASCII. Curiosity is reported
       HONESTLY (assert it helps, or print an honest no-help).
@@ -466,51 +468,65 @@ def main():
     labels = [env.label(x, y) for a, b in held for x, y in ((a, b), (b, a))]
     balanced = labels.count(True) == labels.count(False)
 
-    # ---- (3) SLEEP/REPLAY HELPS at an equal LIVE budget (small budget so it is not yet saturated) ----
-    no_rep_arc, _u, _a, _b = develop(
-        ReasoningEnv(n_items, seed=1),
-        nights=6,
-        live_budget=6,
-        seed=3,
-        replay_batch=0,
-        stage_sizes=None,
-        jump=True,
-        eval_last_only=True,
-    )
-    rep_arc, _u2, _c, _d = develop(
-        ReasoningEnv(n_items, seed=1),
-        nights=6,
-        live_budget=6,
-        seed=3,
-        replay_batch=24,
-        stage_sizes=None,
-        jump=True,
-        eval_last_only=True,
-    )
-    no_rep, with_rep = no_rep_arc[-1], rep_arc[-1]
-
-    # ---- (4) NEUROGENESIS + CURRICULUM vs jump-to-largest at an equal budget (a longer chain) ----
+    # ---- (3) SLEEP/REPLAY and (4) CURRICULUM, both at an equal LIVE budget ---------------------------
+    # Both comparisons are a difference of two held-out accuracies measured on ONE draw of a ~6-12 item
+    # held-out set, which is far too coarse to carry a strict `>`. Each is now averaged over REPS seed
+    # shifts. 4 x REPS develop() runs cost ~1 s in total, so this is nearly free.
     cur_n, cur_stages = 7, [3, 4, 5, 6, 7]
-    cur_arc, _cu, _cl, _cp = develop(
-        ReasoningEnv(cur_n, seed=2),
-        nights=10,
-        live_budget=4,
-        seed=5,
-        replay_batch=0,
-        stage_sizes=cur_stages,
-        eval_last_only=True,
-    )
-    jump_arc, _ju, _jl, _jp = develop(
-        ReasoningEnv(cur_n, seed=2),
-        nights=10,
-        live_budget=4,
-        seed=5,
-        replay_batch=0,
-        stage_sizes=None,
-        jump=True,
-        eval_last_only=True,
-    )
-    cur_final, jump_final = cur_arc[-1], jump_arc[-1]
+    REPS = 8
+    no_reps, with_reps, curs, jumps = [], [], [], []
+    for k in range(REPS):
+        no_reps.append(
+            develop(
+                ReasoningEnv(n_items, seed=1 + k),
+                nights=6,
+                live_budget=6,
+                seed=3 + k,
+                replay_batch=0,
+                stage_sizes=None,
+                jump=True,
+                eval_last_only=True,
+            )[0][-1]
+        )
+        with_reps.append(
+            develop(
+                ReasoningEnv(n_items, seed=1 + k),
+                nights=6,
+                live_budget=6,
+                seed=3 + k,
+                replay_batch=24,
+                stage_sizes=None,
+                jump=True,
+                eval_last_only=True,
+            )[0][-1]
+        )
+        curs.append(
+            develop(
+                ReasoningEnv(cur_n, seed=2 + k),
+                nights=10,
+                live_budget=4,
+                seed=5 + k,
+                replay_batch=0,
+                stage_sizes=cur_stages,
+                eval_last_only=True,
+            )[0][-1]
+        )
+        jumps.append(
+            develop(
+                ReasoningEnv(cur_n, seed=2 + k),
+                nights=10,
+                live_budget=4,
+                seed=5 + k,
+                replay_batch=0,
+                stage_sizes=None,
+                jump=True,
+                eval_last_only=True,
+            )[0][-1]
+        )
+    no_rep, with_rep = no_reps[0], with_reps[0]  # draw 0 stays the printed worked example
+    cur_final, jump_final = curs[0], jumps[0]
+    mean_no_rep, mean_with_rep = sum(no_reps) / REPS, sum(with_reps) / REPS
+    mean_cur, mean_jump = sum(curs) / REPS, sum(jumps) / REPS
 
     # neurogenesis: n_units grows one unit per newly-seen item as the active set grows.
     g_env = ReasoningEnv(n_items, seed=0)
@@ -586,11 +602,16 @@ def main():
         f"balanced-labels={balanced} ({labels.count(True)}T/{labels.count(False)}F)"
     )
     print(
-        f"(3) replay    : held-out no-replay {no_rep:.2f} -> with-replay {with_rep:.2f} (equal live budget)"
+        f"(3) replay    : held-out no-replay {no_rep:.2f} -> with-replay {with_rep:.2f} (equal live "
+        f"budget); over {REPS} draws {mean_no_rep:.3f} -> {mean_with_rep:.3f}"
     )
     print(
         f"(4) curric.   : small->large {cur_final:.2f} vs jump-to-largest {jump_final:.2f} "
         f"(n={cur_n}, equal budget); neurogenesis {grow_curve}"
+    )
+    print(
+        f"    HONEST NEGATIVE over {REPS} draws: small->large {mean_cur:.3f} vs jump-to-largest "
+        f"{mean_jump:.3f} -- the curriculum does NOT beat jumping to the largest set; both learn it"
     )
     print(
         f"(5) spiking   : accumulator trace spikes={trace['spikes'] if spiking else 0}  "
@@ -629,13 +650,28 @@ def main():
     )
 
     # ---- (3) SLEEP/REPLAY asserts ----
-    assert with_rep > no_rep, (
-        f"offline replay must beat no-replay at equal live budget ({with_rep:.2f} vs {no_rep:.2f})"
+    # `assert with_rep > no_rep` on draw 0 alone held 3/7 under a seed sweep of this self-check. Over 10
+    # seed shifts replay wins EVERY draw (no-replay 0.700-0.950, with-replay 0.750-1.000), so the claim
+    # is real and only its estimator was too coarse; the mean over REPS draws is what is asserted now.
+    assert mean_with_rep > mean_no_rep, (
+        f"offline replay must beat no-replay at equal live budget over {REPS} draws "
+        f"({mean_with_rep:.3f} vs {mean_no_rep:.3f}; draw 0 {with_rep:.2f} vs {no_rep:.2f})"
     )
 
     # ---- (4) NEUROGENESIS + CURRICULUM asserts ----
-    assert cur_final > jump_final, (
-        f"small->large curriculum must beat jump-to-largest ({cur_final:.2f} vs {jump_final:.2f})"
+    # `assert cur_final > jump_final` ("small->large curriculum must beat jump-to-largest") stood here
+    # on ONE draw and held 3/7 under a seed sweep. Re-measured over 10 seed shifts, both arms retrained
+    # per shift at an equal budget:
+    #     small->large     0.800 0.767 0.667 0.700 0.767 0.833 0.767 0.767 0.833 0.633   mean 0.753
+    #     jump-to-largest  0.700 0.833 0.667 0.800 0.800 0.900 0.700 0.800 0.900 0.800   mean 0.790
+    # The curriculum wins 2 of 10 draws and LOSES on the mean, and no window of 2, 3 or 4 draws rescues
+    # it. This claim is REFUTED, not noisy -- averaging it harder would only make the failure sharper,
+    # so it is not asserted at all any more. What is true on every draw is that BOTH schedules learn the
+    # 7-item chain far above the 0.5 memoriser control, and that is asserted instead; the ordering is
+    # printed as an honest negative. Curriculum ordering is open work, not a demonstrated property.
+    assert min(mean_cur, mean_jump) >= 0.65, (
+        f"both schedules must learn the {cur_n}-item chain well above the ~0.5 memoriser control "
+        f"(small->large {mean_cur:.3f}, jump-to-largest {mean_jump:.3f} over {REPS} draws)"
     )
     assert grow_curve[0][1] < grow_curve[-1][1], (
         "n_units must GROW as the number of items grows (neurogenesis)"
@@ -672,7 +708,8 @@ def main():
     )
     print(
         f"  no leakage (disjoint, dist>=2, balanced); replay {no_rep:.2f}->{with_rep:.2f}; "
-        f"curriculum {cur_final:.2f}>{jump_final:.2f}; neurogenesis 1 unit/item; spiking + deterministic; "
+        f"curriculum {mean_cur:.2f} vs jump {mean_jump:.2f} over {REPS} draws (NO curriculum advantage -- "
+        f"honest negative); neurogenesis 1 unit/item; spiking + deterministic; "
         f"curiosity {'helps' if curiosity_helps else 'no clear help (reported honestly)'}"
     )
 

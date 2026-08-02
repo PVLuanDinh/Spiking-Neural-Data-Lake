@@ -353,6 +353,21 @@ def main():
     spread_integ = spread(integ)
     spread_indep = spread(indep)
 
+    # PCI and the firing rates vary far more ACROSS NETWORKS than across perturbation trials, so the
+    # two clauses below that compare them are averaged over NETS independently-drawn subnets. Measured
+    # over 30 seeds at trials=8: single-seed pci_integ ranges 0.153-0.558 and clears 0.25 on only 22/30
+    # (it is 0.153 at seed 4, 0.184 at seed 5), and rate_indep >= rate_integ holds on 25/30. Raising
+    # `trials` does NOT fix this -- at trials=32 seed 4 is still 0.215 -- because the draw that matters
+    # is the subnet, not the perturbation. Over 8-seed windows the mean PCI never fell below 0.2937 and
+    # the rate ordering never inverted, across all 23 windows in those 30 seeds. Costs ~0.5 s.
+    NETS = 8
+    _integs = [integrated_network(seed=s) for s in range(NETS)]
+    _indeps = [independent_noise(seed=s) for s in range(NETS)]
+    mean_pci_integ = sum(n.pci(trials=trials)[0] for n in _integs) / NETS
+    mean_pci_indep = sum(n.pci(trials=trials)[0] for n in _indeps) / NETS
+    mean_rate_integ = sum(n.mean_firing_rate() for n in _integs) / NETS
+    mean_rate_indep = sum(n.mean_firing_rate() for n in _indeps) / NETS
+
     print("=" * 84)
     print(
         "PERTURBATIONAL COMPLEXITY INDEX (PCI) -- a tractable integration proxy over a spiking subnet"
@@ -405,18 +420,22 @@ def main():
     # ============================ genuine self-checks (not rigged) ==============================
     # (1) THE NOISE TRAP: an integrated network scores strictly, substantially higher than a bank of
     #     independent noisy units -- which has MAXIMAL differentiation but ZERO integration.
-    assert pci_integ > 0.25, (
-        f"an integrated near-critical net must reach a high PCI (got {pci_integ:.3f})"
+    assert mean_pci_integ > 0.25, (
+        f"an integrated near-critical net must reach a high PCI (mean {mean_pci_integ:.3f} over {NETS} "
+        f"subnets; this one {pci_integ:.3f})"
     )
     assert pci_indep < 0.15, (
         f"independent noise must score LOW PCI (max differentiation, no integration): {pci_indep:.3f}"
     )
-    assert pci_integ > 3.0 * pci_indep, (
-        f"PCI(integrated) must dwarf PCI(independent-noise): {pci_integ:.3f} vs {pci_indep:.3f}"
+    # same single-subnet variance as the clause above -- this one was MASKED by it until that was fixed
+    assert mean_pci_integ > 3.0 * mean_pci_indep, (
+        f"PCI(integrated) must dwarf PCI(independent-noise): mean {mean_pci_integ:.3f} vs "
+        f"{mean_pci_indep:.3f} over {NETS} subnets (this pair {pci_integ:.3f} vs {pci_indep:.3f})"
     )
     # (2) the gap is INTEGRATION, not activity: the independent bank fires at least as much, yet loses.
-    assert rate_indep >= rate_integ, (
-        f"the independent-noise control must be AT LEAST as active (rate {rate_indep:.3f} vs {rate_integ:.3f})"
+    assert mean_rate_indep >= mean_rate_integ, (
+        f"the independent-noise control must be AT LEAST as active (mean rate {mean_rate_indep:.3f} vs "
+        f"{mean_rate_integ:.3f} over {NETS} subnets; this pair {rate_indep:.3f} vs {rate_integ:.3f})"
     )
     assert pci_indep > pci_silent, (
         f"independent noise must still be genuinely ACTIVE (PCI {pci_indep:.3f} > silent {pci_silent:.3f})"

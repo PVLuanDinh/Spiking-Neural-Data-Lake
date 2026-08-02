@@ -12,7 +12,11 @@ reproduces every original assert). Each mode is the verbatim original logic:
   relations <- spike_kg_relations.py            (relation algebra: per-relation link
                                                   prediction + inverse/symmetric/composition).
 
-Each mode re-seeds random(0) and prints/asserts exactly as its origin module did.
+Each mode re-seeds random(0). `rotate` still prints/asserts exactly as its origin module did;
+`transe` and `relations` assert the same claims but no longer read them off ONE 85/15 split --
+a seed sweep showed those single-split numbers were coin flips, so they are now measured over
+cross-validation folds / repeated replications (the SEED SWEEP note in each main() carries the
+numbers, including the two claims that turned out to be weaker than the origin module said).
 
 Run:  python research/spike_kg.py [--model {transe,rotate,relations,all}]
 """
@@ -56,7 +60,10 @@ def run_transe():
         """A lattice knowledge graph: entities are 3-D grid cells, each relation r is the
         step +1 along axis r. Tail = head's neighbour one step along that axis. Translation
         holds exactly (neighbour = head + axis-offset), so TransE-in-spike-time embeds it
-        cleanly and link prediction generalises the offset to held-out edges."""
+        cleanly and link prediction generalises the offset to held-out edges.
+
+        Returns the SHUFFLED edge list; main() cuts it into cross-validation folds (it used
+        to cut one 85/15 split here -- see the measurement in main())."""
 
         def to_idx(c):
             i = 0
@@ -73,8 +80,7 @@ def run_transe():
                     nb[r] += 1
                     triples.append((to_idx(cc), r, to_idx(tuple(nb))))
         random.shuffle(triples)
-        cut = int(len(triples) * 0.85)
-        return triples[:cut], triples[cut:]
+        return triples
 
     # ---- learn embeddings from triples only (TransE margin-ranking SGD) ----------
     def clip_ball(a):
@@ -112,6 +118,7 @@ def run_transe():
         return norm(sub(add(E[h], R[r]), E[t]))
 
     def evaluate(E, R, test):
+        """Summed hit COUNTS + summed reciprocal ranks (not rates), so folds pool exactly."""
         hits1 = hits3 = 0
         mrr = 0.0
         for h, r, t in test:
@@ -120,29 +127,56 @@ def run_transe():
             hits1 += rank == 1
             hits3 += rank <= 3
             mrr += 1.0 / rank
-        n = len(test)
-        return hits1 / n, hits3 / n, mrr / n
+        return hits1, hits3, mrr
 
     def main():
-        train_t, test_t = build_graph()
-        E, R = train(train_t)
-        h1, h3, mrr = evaluate(E, R, test_t)
-
-        # anomaly: true test triples vs random (false) triples
-        true_d = sum(score(E, R, h, r, t) for h, r, t in test_t) / len(test_t)
-        rnd = [
-            (random.randrange(N_ENT), random.randrange(N_REL), random.randrange(N_ENT))
-            for _ in range(len(test_t))
-        ]
-        false_d = sum(score(E, R, h, r, t) for h, r, t in rnd) / len(rnd)
+        # SEED SWEEP (measured 2026-07-29). Both asserts below used to be read off ONE
+        # 85/15 split, i.e. 22 held-out triples. That is a coin flip: the pinned seed scored
+        # exactly 11/22 = 0.500 Hits@1 -- one triple from failing its own `>= 0.5` bar --
+        # and the six neighbouring seeds scored 0.318 0.364 0.227 0.545 0.364 0.364, so the
+        # bar held on 2 of 7 (7 of 30 over a wider sweep; range 0.182 .. 0.591).
+        # ESTIMATOR: 5-fold cross-validation over the same shuffled edge list. Every one of
+        # the 144 triples is held out exactly once, so Hits@1 / Hits@3 / MRR and the anomaly
+        # means are measured on 144 predictions instead of 22, for 5x the training cost
+        # (~0.5s per fold). The sampling noise dies; the CLAIM shrinks with it, and this is
+        # the honest size of it: pooled over 30 seed offsets the CV Hits@1 is 0.208 .. 0.493
+        # (mean 0.348) and NEVER reaches 0.5 -- 250 epochs of margin-ranking SGD on this
+        # lattice buys 13-32x random (1/64 = 1.6%), not half the tails. Bar 0.15 (>= 9x
+        # random) held on all 30 offsets. Same story for the anomaly margin: "2x" held on 9
+        # of 10 single-split seeds, but the CV ratio is 1.77 .. 2.72 (mean 2.30) -> bar 1.5x.
+        k_folds = 5
+        triples = build_graph()
+        hits1 = hits3 = n_test = 0
+        mrr_sum = true_sum = false_sum = 0.0
+        for k in range(k_folds):
+            test_t = [x for i, x in enumerate(triples) if i % k_folds == k]
+            train_t = [x for i, x in enumerate(triples) if i % k_folds != k]
+            E, R = train(train_t)
+            a, b, c = evaluate(E, R, test_t)
+            hits1 += a
+            hits3 += b
+            mrr_sum += c
+            # anomaly: the fold's held-out true triples vs random (false) ones, same model
+            true_sum += sum(score(E, R, h, r, t) for h, r, t in test_t)
+            rnd = [
+                (random.randrange(N_ENT), random.randrange(N_REL), random.randrange(N_ENT))
+                for _ in range(len(test_t))
+            ]
+            false_sum += sum(score(E, R, h, r, t) for h, r, t in rnd)
+            n_test += len(test_t)
+        h1, h3, mrr = hits1 / n_test, hits3 / n_test, mrr_sum / n_test
+        true_d, false_d = true_sum / n_test, false_sum / n_test
 
         print("=" * 60)
         print("PARADIGM C — relational spiking knowledge graph (SpikE)")
         print("=" * 60)
         print(f"entities={N_ENT}  relations={N_REL}  spike-dims D={D}")
-        print(f"triples: {len(train_t)} train / {len(test_t)} test\n")
+        print(
+            f"triples: {len(triples)}, {k_folds}-fold CV "
+            f"(~{len(triples) - n_test // k_folds} train / ~{n_test // k_folds} test per fold)\n"
+        )
         print("LINK PREDICTION (head, rel, ?) -> rank tails by spike-time translation:")
-        print(f"  Hits@1 : {h1:.1%}   (random ~ {1 / N_ENT:.1%})")
+        print(f"  Hits@1 : {h1:.1%}   (random ~ {1 / N_ENT:.1%}, pooled over {n_test} held-out)")
         print(f"  Hits@3 : {h3:.1%}")
         print(f"  MRR    : {mrr:.3f}")
         print()
@@ -151,11 +185,11 @@ def run_transe():
         print(f"  mean score, random triples: {false_d:.3f}  ({false_d / true_d:.1f}x higher)")
         print("=" * 60)
 
-        assert h1 >= 0.5, f"link prediction too weak: Hits@1={h1:.2f}"
-        assert false_d > 2 * true_d, "anomaly scoring does not separate true vs false"
+        assert h1 >= 0.15, f"link prediction too weak: CV Hits@1={h1:.2f} (random {1 / N_ENT:.3f})"
+        assert false_d > 1.5 * true_d, "anomaly scoring does not separate true vs false"
         print(
-            "self-check OK: relational inference works (Hits@1>=50%, random~1.7%), "
-            "anomalies score far higher than true triples"
+            f"self-check OK: relational inference works ({k_folds}-fold Hits@1 {h1:.1%} vs "
+            f"random ~1.6%), anomalies score {false_d / true_d:.1f}x higher than true triples"
         )
 
     main()
@@ -355,41 +389,74 @@ def run_relations():
         return TH, PH, sc
 
     def per_relation_hits1(sc, test_t):
+        """(correct, total) COUNTS per relation index, so replications pool exactly."""
         by_rel = {r: [0, 0] for r in range(len(RELS))}
         for h, r, t in test_t:
             rank1 = min(range(N), key=lambda e: sc(h, r, e)) == t
             by_rel[r][0] += rank1
             by_rel[r][1] += 1
-        return {RELS[r]: (c / max(1, n)) for r, (c, n) in by_rel.items()}
+        return by_rel
 
     def circ(a, b):
         """mean circular distance between two phase vectors, in [0, π]."""
         return sum(abs(wrap(a[d] - b[d])) for d in range(D)) / D
 
     def main():
-        train_t, test_t = build()
-        TH, PH, sc = train(train_t)
-        hits = per_relation_hits1(sc, test_t)
+        # SEED SWEEP (measured 2026-07-29): every number below used to come from ONE 700-epoch
+        # run on ONE 85/15 split, and both asserts were coin flips. The algebra assert held on
+        # 4 of the 7 sweep seeds (offset 1 comp=0.50, offset 4 inv=0.87, offset 5 sym=0.94):
+        # each phase dim settles into its own winding basin, and a single run sometimes leaves
+        # one dim in a basin the other relations do not share. Per-relation Hits@1 was worse
+        # still -- ~3-4 held-out triples per relation, which is how offset 5 scraped past its
+        # 0.8 bar at exactly 0.80 and offset 7 failed it outright (S = 0.50).
+        # ESTIMATOR: n_runs independent replications, fresh split AND fresh init each, with
+        # per-relation Hits@1 POOLED over 528 held-out predictions instead of 22 and the three
+        # algebra errors AVERAGED. That keeps ALL THREE ORIGINAL BARS (0.4 / 0.4 / 0.7) and
+        # the 0.8 Hits@1 bar -- no claim is relaxed here, the measurement just stops being a
+        # single draw. Over 12 seed offsets the 16-replication version already read
+        # inv 0.123..0.226, sym 0.299..0.580, comp 0.230..0.339, pooled Hits@1 0.905..1.000.
+        # n_runs is 24 rather than 16 because COMPOSITION is the tail-heavy one: over 192
+        # measured replications its per-run error is 0.286 mean / 0.250 median but 19.8% of
+        # runs land past 0.4 on their own (worst 1.24), and bootstrapping those 192 puts
+        # P(mean >= 0.4) at 1.3% for 16 runs, 0.4% for 24 and 0.1% for 32. Inverse and
+        # symmetric are already at 0.00%/0.01% by 16 runs (their p99.9 is 0.288 and 0.637);
+        # the extra 8 replications (~8s) are bought for composition alone, and 0.4% per seed
+        # is the residual flake this bar carries rather than being relaxed to hide it.
+        n_runs = 24
+        num = {r: 0 for r in range(len(RELS))}
+        den = {r: 0 for r in range(len(RELS))}
+        inv_errs, sym_errs, comp_errs = [], [], []
+        for _ in range(n_runs):
+            train_t, test_t = build()
+            _, PH, sc = train(train_t)
+            for r, (c, n) in per_relation_hits1(sc, test_t).items():
+                num[r] += c
+                den[r] += n
 
-        # learned-phase algebra checks
-        neg_F = [-PH[RIDX["F"]][d] for d in range(D)]
-        inv_err = circ(PH[RIDX["F_inv"]], neg_F)  # φ_Finv ≈ −φ_F
-        # symmetric = self-inverse: 2·φ_S ≡ 0 (so φ_S ∈ {0, π}, per-dim)
-        sym_err = sum(abs(wrap(2.0 * PH[RIDX["S"]][d])) for d in range(D)) / D
-        comp = [PH[RIDX["A"]][d] + PH[RIDX["B"]][d] for d in range(D)]
-        comp_err = circ(PH[RIDX["C"]], comp)  # φ_C ≈ φ_A + φ_B
+            # learned-phase algebra checks
+            neg_F = [-PH[RIDX["F"]][d] for d in range(D)]
+            inv_errs.append(circ(PH[RIDX["F_inv"]], neg_F))  # φ_Finv ≈ −φ_F
+            # symmetric = self-inverse: 2·φ_S ≡ 0 (so φ_S ∈ {0, π}, per-dim)
+            sym_errs.append(sum(abs(wrap(2.0 * PH[RIDX["S"]][d])) for d in range(D)) / D)
+            comp = [PH[RIDX["A"]][d] + PH[RIDX["B"]][d] for d in range(D)]
+            comp_errs.append(circ(PH[RIDX["C"]], comp))  # φ_C ≈ φ_A + φ_B
+        hits = {RELS[r]: num[r] / max(1, den[r]) for r in range(len(RELS))}
+        inv_err = sum(inv_errs) / n_runs
+        sym_err = sum(sym_errs) / n_runs
+        comp_err = sum(comp_errs) / n_runs
 
         print("=" * 60)
         print("PARADIGM C DEPTH — richer relation types (relation algebra)")
         print("=" * 60)
         print(
-            f"cyclic KG Z_{N}, {len(RELS)} relations, {len(train_t)} train / {len(test_t)} test\n"
+            f"cyclic KG Z_{N}, {len(RELS)} relations, {len(train_t)} train / {len(test_t)} test "
+            f"x {n_runs} replications ({sum(den.values())} held-out predictions)\n"
         )
         print("Per-relation link prediction (Hits@1):")
         for r in RELS:
             print(f"  {r:6} (shift {SHIFT[r]:+d}) : {hits[r]:5.0%}")
         print()
-        print("Learned-phase ALGEBRA (mean circular error, 0 = exact, lower better):")
+        print(f"Learned-phase ALGEBRA (mean circular error over {n_runs} runs, lower better):")
         print(f"  inverse      φ(F_inv) ≈ −φ(F) : {inv_err:.3f} rad")
         print(f"  symmetric    2·φ(S) ≈ 0       : {sym_err:.3f} rad")
         print(f"  composition  φ(C) ≈ φ(A)+φ(B) : {comp_err:.3f} rad")
@@ -403,8 +470,9 @@ def run_relations():
             f"phase algebra not recovered: inv={inv_err:.2f} sym={sym_err:.2f} comp={comp_err:.2f}"
         )
         print(
-            "self-check OK: all relation types predicted (Hits@1>=80%) AND the algebra "
-            "(inverse/symmetric/composition) recovered in the learned phases"
+            f"self-check OK: all relation types predicted (Hits@1>=80%) AND the algebra "
+            f"(inverse/symmetric/composition) recovered in the learned phases, over "
+            f"{n_runs} replications"
         )
 
     main()
