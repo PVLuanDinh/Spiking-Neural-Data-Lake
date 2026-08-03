@@ -2,10 +2,11 @@
 kind: heldout
 command: tools/arc_score.py evaluation off
 exit: 0
-commit: 8b6aff77b4a43033bb7445cc021496cb4aca1393
-recorded_at: 2026-07-30T06:12:53Z
+commit: 44ad051a6237540576567e68f20dd40d1bdc9381
+recorded_at: 2026-08-03T18:55:28Z
 recorded_by: opus-5 / tools/arc_score.py evaluation off (400 held-out tasks)
 python: 3.11.15
 --- stdout ---
-split=evaluation lib=off limit=None : 12/400 = 3.00%  (227 s)
-solved_ids: 0c786b71,0c9aba6e,1a2e2828,31d5ba1a,34b99a2b,59341089,60c09cac,66f2d22f,833dafe3,bf699163,d282b262,e345f17b
+NOTE: 'off' ignored -- the composite library is RETIRED (P2); one path remains
+split=evaluation limit=None : 19/400 = 4.75%  (229 s)
+solved_ids: 00576224,00dbd492,0a2355a6,0c786b71,0c9aba6e,1a2e2828,31d5ba1a,34b99a2b,37d3e8b2,59341089,60c09cac,66f2d22f,833dafe3,84f2aca1,ae58858e,bf699163,d282b262,e0fb7511,e345f17b

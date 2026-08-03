@@ -23,9 +23,9 @@ see "What the refuter found" below.
 | active_experiment_loop | 30 | src/snn_data_lake/reasoning/spike_chat_lake.py:435#_resume_experiment; src/snn_data_lake/reasoning/spike_chat_lake.py:554#_number_reply | gf_active_experiment_loop.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py active_experiment_loop | 2026-07-30 |
 | rpm_nvsa_matrix_solving | 25 | src/snn_data_lake/reasoning/rpm_solver.py:362#RpmExpert; src/snn_data_lake/reasoning/spike_chat_lake.py:1113#_get_cortex | gf_rpm_nvsa.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py rpm_nvsa | 2026-07-30 |
 | sleep_schema_induction | 45 | src/snn_data_lake/cortex/brain.py:2468#_enter_sleep; src/snn_data_lake/cortex/brain.py:2520#_enter_sleep | gf_sleep_schema_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py sleep_schema_induction | 2026-07-30 |
-| held_out_novel_problem_solving | 10 | src/snn_data_lake/reasoning/arc_bench.py:86#score; src/snn_data_lake/reasoning/arc_solver.py:885#make_solver | gf_arc_eval_lib_off.txt | opus-5 / tools/arc_score.py evaluation off (400 held-out tasks) | 2026-07-30 |
+| held_out_novel_problem_solving | 10 | src/snn_data_lake/reasoning/arc_bench.py:86#score; src/snn_data_lake/reasoning/arc_solver.py:862#make_solver | gf_arc_eval_lib_off.txt | opus-5 / tools/arc_score.py evaluation off (400 held-out tasks) | 2026-07-30 |
 | arc_cross_task_library_learning | UNSCORED | src/snn_data_lake/reasoning/arc_solver.py:1007#main | - | opus-5 / P2 retirement guard: the mechanism was deleted, the faculty stays absent | 2026-08-03 |
-| arc_scene_mint_out_of_closure_induction | 0 | src/snn_data_lake/reasoning/arc_mint.py:599#mint_records; src/snn_data_lake/reasoning/arc_mint.py:563#compile_record; src/snn_data_lake/reasoning/arc_scene.py:189#scene | - | opus-5 / static: every `mint(` call site in the tree | 2026-07-30 |
+| arc_scene_mint_out_of_closure_induction | 0 | src/snn_data_lake/reasoning/arc_mint.py:822#mint_records; src/snn_data_lake/reasoning/arc_mint.py:774#compile_record; src/snn_data_lake/reasoning/arc_scene.py:189#scene | - | opus-5 / static: every `mint(` call site in the tree | 2026-07-30 |
 
 ---
 
