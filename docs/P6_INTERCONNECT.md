@@ -949,3 +949,49 @@ Rejected, with reasons:
    REJECTED as a frame. Six regions produced 21 proposals and exactly one was a bus read; F1
    then killed it. Wave 1 contains one wire and it is not a bus read. That is the finding, not
    a shortfall: the bus is not where this brain's information lives.
+
+---
+
+## CORRECTION 2026-08-03 -- the payload fix is NECESSARY AND NOT SUFFICIENT, measured
+
+Everything above stands as written, and its FIRST RECOMMENDATION is now known to be insufficient on
+its own. This section was added after the fact by the coordinator; do not read the wave ordering
+above without it.
+
+The plan concluded: fix the content-blind payload (F1) first, then share the 11 private instances.
+An invention workflow then proposed a ledger carrying speaker identity through that payload, and
+prescribed a cheap Step 0 before writing any code -- census the per-tick (speaker x listener)
+activity and report the rank of the coincidence matrix. Its author predicted the census would come
+back RED and cancel their own design. It did.
+
+MEASURED, 300 brain ticks, instrumenting `submit()` and `step()` per tick:
+
+    ticks observed                        : 146
+    distinct (speakers, listeners) per tick: 1 of 146
+    speakers = ('percept', 'salience', 'self')   listeners = ('action', 'language')   x146
+
+**Rank 1.** `cortex/brain.py:1741-1757` submits all three sources unconditionally inside one `try`
+block every tick, and the two subscribers are registered once at `:727`. The speaker set and the
+listener set are CONSTANT. An identity channel added to the payload would therefore carry a constant,
+and a receiver that learned to weight speakers would learn one weight vector and never revise it.
+
+**This is a deeper reason for `faculty-to-faculty 0 of 9` than the one this document gives.** The
+payload discarding the speaker is real and worth fixing. But even a shared bus with a
+speaker-addressed payload connects nothing while every faculty speaks on every tick: there is no
+differential activity to learn from, nothing to attribute, and nothing to vote about.
+
+**What that changes about the wave ordering.** The prerequisite is not payload-then-share. It is:
+
+  W-1. DIFFERENTIATION. Some faculty must sometimes NOT speak, or speak differently, for reasons that
+       depend on its own state. Until that exists, W1 and W2 are building an addressing scheme for a
+       message everyone always sends. This is measurable with the census above and it currently
+       reads 1 of 146.
+  W1/W2 (payload, then instance sharing) stay in this order, behind W-1.
+
+The falsifier for the whole program stands unchanged and is now joined by a cheaper one: if the
+census still reports 1 of 146 distinct speaker sets after a wave lands, that wave did not create
+differentiation, whatever else it did.
+
+A first probe that killed a design in minutes, before a line was written, is the cheapest result in
+this document. It is recorded here because the temptation is to fix the payload -- it is a real
+defect, it is satisfying to fix, and on its own it would have changed nothing measurable.

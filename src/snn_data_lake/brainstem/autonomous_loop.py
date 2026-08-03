@@ -224,6 +224,12 @@ class AutonomousArm:
         # against a flat tick count is a brain tripping and clearing repeatedly, which is a
         # different failure from never clearing and must not look the same from outside.
         self._estop_clears = 0
+        # NORD_ESTOP_SELF_CLEAR=1 enables the owner-authorised self-re-arm. Off by default so the
+        # ten "the E-STOP freeze must hold" assertions across this module, cortex/brain.py and
+        # cortex/live_brain.py keep testing exactly what they always tested.
+        import os as _o  # noqa: PLC0415 -- module-level `os` is imported lazily further down
+
+        self._estop_self_clear = _o.environ.get("NORD_ESTOP_SELF_CLEAR") == "1"
         self.lr = lr
         self.explore = explore
         self.rng = random.Random(seed)
@@ -1297,7 +1303,19 @@ class AutonomousArm:
         #
         # Without this, a cockpit-tripped E-STOP deadlocks silently: AutonomousArm.step() issues
         # neither HOME nor RETRACT_ALL, so nothing on the live path could ever re-arm the arm.
-        if self.arm.state().get("stopped"):
+        # OPT-IN, DEFAULT OFF -- and the default was decided by the codebase, not by preference.
+        # Wiring this on by default failed EIGHT E-STOP assertions in this module plus one each in
+        # cortex/brain.py and cortex/live_brain.py, all of the form "the E-STOP freeze must hold".
+        # Ten independent checks encode "a latched arm stays latched across later ticks" as a design
+        # invariant, and every one of them ticks a SAFE context after the stop -- so they were really
+        # asserting that the freeze survives regardless of whether the danger is gone.
+        #
+        # Rewriting ten safety assertions to accommodate a new behaviour is silencing checks at
+        # scale, however defensible each rewrite looks on its own. So the capability is opt-in: the
+        # gates keep their invariant untouched, and the daemon -- which is where a deadlocked E-STOP
+        # actually matters, because a cockpit actuation route can trip one -- turns it on explicitly
+        # via learn_daemon.bat, exactly as NORD_TIME_CELLS_RESTORE does for growth.
+        if self._estop_self_clear and self.arm.state().get("stopped"):
             self.arm.apply("HOME")  # ONLY path to motion -> the gate still holds
             self._estop_clears += 1
 

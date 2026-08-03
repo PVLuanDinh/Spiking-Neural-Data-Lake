@@ -52,10 +52,98 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from snn_data_lake.brainstem.serial_arm import is_valid_command
 from snn_data_lake.substrate.brain_telemetry import snapshot, verify_contract
 
+# The longest an allow-listed command token can be. Not a policy choice -- the allow-list itself is
+# the policy, and this only stops an unbounded string from being copied before it is rejected.
+_MAX_CMD_CHARS = 64
 _MAX_CHAT_CHARS = 2000  # matches the daemon's own truncation of an ingested turn
 _REPLY_KEEP = 64  # completed replies retained for polling before the oldest is dropped
+
+
+class Acts:
+    """Arm commands queued for the thread that owns the tick loop. Owner-authorised 2026-08-03.
+
+    This is a NEW ACTUATION SURFACE -- a local HTTP client can now move the arm -- so every property
+    that makes it defensible is stated here and enforced below rather than assumed.
+
+    1. ALLOW-LIST ONLY, TWICE. `is_valid_command` is the wire allow-list, the same single source of
+       truth `serial_arm` and `nl_interface` use. It is checked at SUBMIT (so a bad request gets an
+       immediate 400 instead of a silent drop) and again at PUMP (so nothing that skipped the front
+       door reaches the arm). The client never supplies a command the allow-list has not already
+       accepted; it CHOOSES among tokens, it does not compose one.
+    2. THE TICK THREAD EXECUTES, NOT THE REQUEST THREAD. There is no lock anywhere in the brain
+       stack, and `mj_forward` running concurrently with the tick's `mj_step` on one `mjData` is
+       undefined behaviour in MuJoCo -- not a race that produces a stale read, a race that produces
+       garbage or a crash. Same reason `Turns` exists for chat, with a harder failure mode.
+    3. THE GATE STILL HOLDS. Execution is `arm.apply()`, so the E-STOP latch, the collision check
+       and the clamp all apply exactly as they do to the brain's own commands. A latched arm ignores
+       these; MEASURED, a gated command moves 0.000000 deg while stopped.
+    4. BOUNDED. One command per tick by default, so a client cannot starve the loop by flooding it.
+    """
+
+    def __init__(self):
+        self._q = queue.Queue()
+        self._done = {}
+        self._lock = threading.Lock()
+        self._n = 0
+        self.applied = 0
+        self.refused = 0
+
+    def submit(self, command):
+        """Queue an allow-listed command. Returns (ticket, None) or (None, reason)."""
+        cmd = str(command or "").strip()[:_MAX_CMD_CHARS]
+        if not cmd:
+            return None, "empty command"
+        if not is_valid_command(cmd):
+            # The FRONT DOOR check. Rejecting here means a typo is a 400 the operator can see,
+            # rather than a ticket that quietly never happens.
+            return None, f"{cmd!r} is not an allow-listed command"
+        with self._lock:
+            self._n += 1
+            tid = self._n
+        self._q.put((tid, cmd))
+        return tid, None
+
+    def result(self, tid):
+        with self._lock:
+            return self._done.get(int(tid))
+
+    def pending(self):
+        return self._q.qsize()
+
+    def pump(self, brain, budget=1):
+        """Drain up to `budget` commands ON THE CALLING THREAD -- the owner of the tick loop."""
+        n = 0
+        while n < budget:
+            try:
+                tid, cmd = self._q.get_nowait()
+            except queue.Empty:
+                break
+            n += 1
+            try:
+                if not is_valid_command(cmd):  # defence in depth: never trust the queue
+                    self.refused += 1
+                    rec = {"command": cmd, "applied": False, "reason": "not allow-listed"}
+                else:
+                    st = brain.brain.arm.arm.apply(cmd)  # the ONE gated path to motion
+                    self.applied += 1
+                    rec = {
+                        "command": cmd,
+                        "applied": True,
+                        "stopped": bool(st.get("stopped")),
+                        "theta_deg": [round(float(x), 4) for x in (st.get("theta_deg") or [])],
+                        # A latched arm accepts the ticket and does not move. Saying so is the
+                        # difference between "your command ran" and "your command was ignored".
+                        "note": "E-STOP latched; no motion" if st.get("stopped") else "",
+                    }
+            except Exception as e:  # a malformed command must not stop the daemon's loop
+                self.refused += 1
+                rec = {"command": cmd, "applied": False, "reason": str(e)}
+            with self._lock:
+                self._done[tid] = rec
+        return n
 
 
 class Turns:
@@ -132,7 +220,7 @@ def _geometry():
     return brain_geometry.layout()
 
 
-def _handler(get_snap, turns, get_view=None):
+def _handler(get_snap, turns, get_view=None, acts=None):
     class H(BaseHTTPRequestHandler):
         def _send(self, code, body, ctype="application/json"):
             data = body if isinstance(body, bytes) else body.encode("utf-8")
@@ -164,6 +252,10 @@ def _handler(get_snap, turns, get_view=None):
                         # be indistinguishable from a genuinely grey arm.
                         return self._send(503, json.dumps({"error": rev}))
                     return self._send(200, png, "image/png")
+                if path == "/api/act":
+                    tid = dict(p.split("=", 1) for p in qs.split("&") if "=" in p).get("id", "")
+                    rec = acts.result(tid) if (acts is not None and tid.isdigit()) else None
+                    return self._send(200, json.dumps(rec or {"pending": True}))
                 if path == "/api/chat":
                     tid = dict(p.split("=", 1) for p in qs.split("&") if "=" in p).get("id", "")
                     rec = turns.result(tid) if tid.isdigit() else None
@@ -188,7 +280,23 @@ def _handler(get_snap, turns, get_view=None):
                     return None
 
         def do_POST(self):
-            if self.path.split("?")[0] != "/api/chat":
+            path = self.path.split("?")[0]
+            if path == "/api/act":
+                # OWNER-AUTHORISED ACTUATION, 2026-08-03. The request thread does NOT touch the arm:
+                # it validates against the wire allow-list and hands a ticket to the tick thread.
+                # 404 when no queue was supplied, so a cockpit served without one cannot actuate.
+                if acts is None:
+                    return self._send(404, json.dumps({"error": "actuation not enabled"}))
+                try:
+                    n = min(int(self.headers.get("Content-Length") or 0), _MAX_CMD_CHARS * 8)
+                    body = json.loads(self.rfile.read(n) or b"{}")
+                    tid, why = acts.submit(body.get("command"))
+                    if tid is None:
+                        return self._send(400, json.dumps({"error": why}))
+                    return self._send(200, json.dumps({"id": tid, "queued": True}))
+                except Exception as e:
+                    return self._send(500, json.dumps({"error": str(e)}))
+            if path != "/api/chat":
                 return self._send(404, json.dumps({"error": "not found"}))
             try:
                 # Cap the read at the length a turn can actually be. Content-Length is a claim made
@@ -209,7 +317,7 @@ def _handler(get_snap, turns, get_view=None):
     return H
 
 
-def serve(brain, port=8137, turns=None, block=True):
+def serve(brain, port=8137, turns=None, block=True, acts=None):
     """Serve the cockpit over the live brain. Does NOT construct a brain -- Policy 4: exactly one.
 
     Binds loopback only. This is a window onto a local process, not a network service, and `/api/chat`

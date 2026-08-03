@@ -1,11 +1,15 @@
 # GAP CLOSURE -- the sequenced program for the nine gaps
 
-Status: DESIGN. Nothing in this document has been implemented. Every measurement below was
-re-derived under `.venv-lake` against the tree as it stands; where a proposal or a review is
-wrong, the correcting measurement is named inline. `tools/p6_gate.py` was run (399 of 399 files
-parsed, EXIT=0).
+Status: **DESIGN**. Nothing in this document has been implemented. No file under `src/`, `tests/`,
+`tools/`, `specs/`, `run_selfchecks.py` or `docs/coverage/` was modified to produce it.
 
-Counts are written "N of M", never "N/M".
+Every number tagged **[measured]** was re-derived on 2026-08-03 under
+`.venv-lake\Scripts\python.exe` against the tree as it stands. Where a proposal or a review is
+contradicted by a measurement, the measurement is named inline and the proposal is marked
+REJECTED with the reason. Probes live in the session scratchpad (`verify_nl.py`, `verify_nl2.py`,
+`verify_estop.py`, `verify_bind.py`) and are read-only.
+
+Counts are written "N of M", never "N/M". ASCII only.
 
 ---
 
@@ -15,900 +19,955 @@ Nine gaps, four terminal states.
 
 | state | count | gaps |
 |---|---|---|
-| **CLOSE NOW** -- no prerequisite, changes something today | **1 of 9** | GAP 3 (binding marker) |
-| **CHAINED** -- blocked on a prerequisite that is not itself a gap | **4 of 9** | GAP 1, GAP 2, GAP 7, GAP 9 |
-| **NEEDS A MEASUREMENT** -- verdict pending one clamped sweep | **3 of 9** | GAP 4, GAP 5, GAP 6 |
-| **PROVED IMPOSSIBLE** | **1 of 9** | GAP 8 (wikitext grounding) |
+| **CLOSE NOW** -- no prerequisite, changes something today | **1 of 9** | GAP 9 |
+| **CHAINED** -- blocked on a prerequisite that is not itself a gap | **4 of 9** | GAP 1, GAP 2, GAP 3, GAP 7 |
+| **NEEDS A MEASUREMENT** -- verdict pending one clamped A/B | **3 of 9** | GAP 4, GAP 5, GAP 6 |
+| **PROVED IMPOSSIBLE** | **1 of 9** | GAP 8 |
 
-Sub-items proved impossible inside gaps that are otherwise open: **2 more** -- GAP 3's A3
-source-permutation route, and GAP 7's C3 fifth-percept-band. **3 of the ledger's terminal
-results are proofs**, and a proof is a completed item, not a failure.
+Terminal states reached *inside* gaps that are otherwise open, which are completed work and not
+failures:
 
-**0 of 9 close as a shipped P6 faculty-to-faculty wire.** Not one. The gate's own status line is
-unchanged by everything in this program except GAP 1 and GAP 2, and both of those are chained
-behind an instrument that does not exist yet.
+| sub-item | state |
+|---|---|
+| GAP 3b -- derive the ignition constants | **PROVED POINTLESS** (2-point support cannot fill 3 bins) |
+| GAP 3c -- the re-typed `0.55` | **CLOSE NOW**, one line |
+| GAP 7 object placement, at runtime | **PROVED IMPOSSIBLE** (handle invalidation) |
+| GAP 7 object placement, at construction | **RE-OPENED** -- never evaluated, not proved anything |
+| GAP 7 disturbance | **PROVED BLOCKED** -- circular, see S5 |
 
-Three prerequisites in the critical path are **not gaps** and appear on no gap list:
+### The headline, stated before the program rather than after it
 
-- **W0.4**, the action-clamped A/B with a counterfactual recorder. Gates GAP 1, GAP 2, GAP 7-C2,
-  and the honest re-run of GAPs 4, 5, 6.
-- **P-INBOX**, a bound on the workspace subscriber inbox. Gates GAP 1 and GAP 2, both of which
-  multiply an unbounded append.
-- **P-IGNITE**, a standing *do not touch* on `_BIND_IGNITE`. Not work; a fence.
+**0 of 9 gaps close as a shipped, output-changing P6 faculty-to-faculty wire.** Not one.
+
+**0 of 9 gaps produce a change a user could observe.** The one item in this whole program that
+does is not a gap and appears on no gap list: the natural-language input surface, where
+**[measured]** a question moves the arm and 8 of 15 emergency stops are swallowed.
+
+Today's gate, run before any of this work **[measured]**, EXIT=0:
+
+```
+writers seen: 10 of 10 known writer modules found
+readers seen: 5 of 5 known reader modules found
+P6 STATUS: 0 faculty-to-faculty read(s). 7 writer module(s) read by nobody.
+```
+
+Three prerequisites dominate the critical path and none of them is a gap:
+
+- **S0** -- the NL firewall and the E-STOP path. Gates GAP 7 and is safety-critical on its own.
+- **P-INBOX** -- an unbounded per-tick append with no reader. Gates GAP 1 and GAP 2.
+- **S0.4** -- `integrations/local_llm/run_local.py`, whose dead self-check is the only gate in the
+  repo that names the S0 defect. It is what stops S0 from rotting again.
 
 ---
 
 ## 1. Program-level falsifier, pre-registered
 
 A program whose success criterion is "more exemptions than wires" cannot fail, and this document
-would otherwise apply a falsifier standard to every item except itself. Today's gate output, run
-before any of this work:
+would otherwise hold every item to a falsifier standard except itself.
 
-```
-FACULTY-to-FACULTY reads: 0 of 9
-WRITERS READ BY NOBODY:   7 of 10 writer modules
-P6 STATUS: 0 faculty-to-faculty read(s). 7 writer module(s) read by nobody.
-```
+**If `tools/p6_gate.py` still reads `0 faculty-to-faculty read(s), 7 writer module(s) read by
+nobody` when this program ends, it moved documentation and not topology, and it must be recorded
+as such.**
 
-**If both numbers are unchanged when this program ends, it moved documentation and not topology,
-and it should be recorded as such.** That is the whole falsifier. It is not a prediction that the
-numbers will move -- three of the four terminal states above are compatible with them not moving.
-It is a commitment to say so.
+That is not a prediction the numbers will move. Three of the four terminal states above are
+compatible with them not moving, and section 8 argues they will not. It is a commitment to say so.
 
----
+### 1.1 The structural falsifier rule this program adopts
 
-## 2. Corrections to the inputs, before any ordering
+From the smuggled-constant audit, and it is the single most valuable procedural finding in the
+review round:
 
-### C-1. The input-free interval already exists and unlocks nothing
+> **Every falsifier in this program must state, in advance, a choice it would be unable to
+> distinguish.**
 
-The ordering premise was that a quiescent interval, "if it is closable, unlocks three gaps at once
-and should come early." All three clauses are false.
-
-- `src/snn_data_lake/cortex/brain.py:2376` -- `_sleep_tick` docstring reads verbatim
-  *"ASLEEP: arm idle (NO brain.tick)"*. `tick()` dispatches to it on `clock.consolidation_gate()`.
-  12 to 14 consecutive input-free ticks per night already run in production.
-- Two of the three dependent items were never blocked by it. `plan()`'s reaction time is a
-  discarded return value; grown time cells already have a non-telemetry consumer at `brain.py:1601`
-  and `:1604`.
-- The third fails its own pre-registered falsifier (see GAP 4/5/6).
-
-**This is the finding that most changes the plan. The item expected to be the unlock is done, and
-what was going to be built on it should probably not be.**
-
-### C-2. `tools/p6_gate.py` exits 0
-
-Measured. The gate is a reporter, not an asserting gate. Any plan that assumed a red gate is
-planning against a signal that does not exist.
-
-### C-3. The bus write citations in `docs/P6_INTERCONNECT.md` are stale by 13 lines
-
-Section 0 cites `brain.py:1733`, `:1738`, `:1742`. Read today those are a comment, a
-`_drive_activity` assignment, and a `try:`. The live `_reentrant.submit` sites are **`:1746`,
-`:1751`, `:1755`** -- what the gate prints. `tools/citation_guard.py` cannot catch this: its
-`_CITE` pattern at `:105` requires a slash-bearing `.py` path, and these citations have none.
-
-### C-4. `prefrontal_executive.py` is under `cortex/`, not `reasoning/`
-
-The proposal and two of the three reviews cite it bare or as `reasoning/prefrontal_executive.py`.
-The file is `src/snn_data_lake/cortex/prefrontal_executive.py`. Every line number cited against it
-is correct; only the directory is wrong.
+GAP 3a is the proof that this rule is needed. Its stated falsifier ("an all-pairs decoder must
+score near 0; the K=1 case must be unchanged") is satisfied *identically* by two scorers that give
+**opposite verdicts on the consciousness marker** -- see C-D. Nobody would have noticed until the
+number was already published. Each item below carries an explicit "cannot distinguish" line.
 
 ---
 
-## 3. The root correction: what GAP 3 actually does
-
-This is the item the proposal called "the single highest-value item in the program" and claimed
-would flip a live user-facing consciousness self-report from 4 of 4 to 3 of 4. **Measured, the
-claim is false under every variant, including the two the reviews proposed.** The structural
-diagnosis behind it is correct; the prescription and the advertised outcome are not.
-
-### 3.1 What is true
-
-Re-derived from source, all four parts:
-
-- `_bind_step` (`global_workspace.py:321-326`) is `v = v * (1 - leak) + i`, so steady state is
-  `i / leak` and rheobase is `leak * v_th = 0.25 * 1.0 = 0.25`.
-- The sustain current at `:351` is `drive * 0.55 = 0.55`, which is **2.2x rheobase**.
-- `bind_decode_spiking` (`:363-370`) is a genuine `for c in fc: for s in fs` cross product.
-- `_bind_pair_acc` (`:394-395`) is `len(true & got) / len(true)` -- **recall only, no precision
-  term**. `bind_decode_rate` (`:386-391`) emits exactly K via `zip(cols, shps)`.
-
-So the K>=2 headline compares a K-squared guess budget against a K guess budget on a recall-only
-score. A decoder emitting all 64 pairs would score 100 percent. That much is real and is the
-reason to touch this at all.
-
-### 3.2 What is false: "every non-slot channel fires on every step"
-
-Measured raster, K=2, shipped constants, true pairs `[(6, 6), (7, 0)]`:
-
-```
-t= 0 fc=[6]    fs=[6]     <- exactly one of each
-t= 1 fc=[6]    fs=[6]     <- exactly one of each
-t= 2 fc=[6, 7] fs=[6, 0]     ambiguous
-t= 3 fc=[6]    fs=[6]     <- exactly one of each
-t= 4 fc=[6]    fs=[6]     <- exactly one of each
-t= 5 fc=[6, 7] fs=[6, 0]     ambiguous
-t= 6 fc=[7]    fs=[0]     <- exactly one of each
-...
-```
-
-The in-slot channel fires every step; the non-slot channels fire every **third** step, 4 of 12.
-**10 of 16 micro-steps at K=2 are unambiguous.** The phase multiplexing works. It is the *reader*
-that throws the information away, by unioning pairs across steps of different multiplicity. The
-defect is in the decoder and the score, not in the representation.
-
-### 3.3 Measured: every proposed variant, exact self-check protocol
-
-120 trials, `random.Random(0)`, 8x8, the protocol at `global_workspace.py:487-497`.
-
-| K | spiking recall | spiking precision | spiking F1 | strict F1 | rate | pairs emitted (cross) | pairs emitted (strict) |
-|---|---|---|---|---|---|---|---|
-| 1 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.00 | 1.00 |
-| 2 | 1.0000 | 0.5000 | 0.6667 | **1.0000** | 0.5083 | 4.00 | 2.00 |
-| 4 | 1.0000 | 0.2500 | 0.4000 | **1.0000** | 0.2646 | 16.00 | 4.00 |
-
-Against the three shipped asserts (`:601` K=1 tie under 0.05; `:605` K=2 margin over 0.15;
-`:609` K=4 spiking over 0.9):
-
-| variant | K=1 diff | K=2 margin | K=4 spiking | all three |
-|---|---|---|---|---|
-| recall only (today) | 0.0000 | +0.4917 | 1.0000 | PASS |
-| precision only | 0.0000 | **-0.0083** | **0.2500** | FAIL |
-| F1 over cross product | 0.0000 | **+0.1583** | **0.4000** | FAIL |
-| F1 over STRICT decoder | 0.0000 | +0.4917 | 1.0000 | PASS |
-
-Four consequences, each of which kills a version of the proposal:
-
-1. **The proposal's own two changes cancel.** Score F1 *and* cap the decoder at K, and you get
-   today's numbers back exactly. 0 of 3 verdicts change. That is `autonomous_loop.py:969` on the
-   item called most valuable -- and worse than `:969`, which at least moved its telemetry field.
-2. **F1 over the cross product passes the shipped `+0.15` gate by 0.0083.** Under one hundredth of
-   the gate's own width. Across seeds the sign of the precision margin flips at every K. A
-   consciousness self-report quoted to a human arbitrated by a 0.0083 margin against an underived
-   literal is exactly what P1 forbids, in the module being fixed for honesty.
-3. **`assert bind[4][0] > 0.9` at `:609` is the assert nobody counted.** Precision takes it to
-   0.2500, F1-over-cross to 0.4000. It fails hardest of the three because K=4 is where the
-   16-against-4 budget inflates recall most. Three asserts are at risk, not two.
-4. **The advertised 4-of-4 to 3-of-4 flip does not occur.** Not under the proposal, and not under
-   the repair below. It occurs only under precision-only or F1-over-cross, both of which take
-   `:609` red and both of which are decided by seed noise.
-
-### 3.4 The repair, and why it is the right one
-
-**Change the decoder's acceptance rule, and score precision as well as recall. Do not cap, do not
-re-choose a margin, do not touch `_BIND_IGNITE`.**
-
-The strict decoder accepts a micro-step only when **exactly one** color and **exactly one** shape
-fired. "Exactly one" is the arity of a `(color, shape)` pair -- structural, not a tunable. It
-introduces no constant. The rate control cannot produce such a step at all: `bind_broadcast_rate`
-returns two activation vectors with no timing, so no reader can do better than canonical pairing.
-The comparison stays fair.
-
-Both halves are required, and for different reasons. The strict decoder alone, scored on recall,
-still leaves a metric a degenerate "emit everything" reader would win. Scoring precision is what
-makes the decoder change *necessary* rather than cosmetic.
-
-**Measured against the proposal's own pre-declared falsifier** -- 26 perturbations over the
-binding-path literals (12 sustain multipliers 0.00 to 1.00, 7 values of `_BIND_TSLOT` 1 to 12,
-7 values of `_BIND_LEAK` 0.10 to 0.90), counting distinct PRESENT/ABSENT verdicts:
-
-| decoder | distinct K=2 F1 values | distinct verdicts | ABSENT at |
-|---|---|---|---|
-| F1 over cross product | 2 of 26 | **1 of 26** | nowhere |
-| F1 over STRICT decoder | 2 of 26 | **2 of 26** | sustain multiplier 1.00 (F1 0.0000, margin -0.45) |
-
-The proposal's version takes a telemetry field from 1 distinct value to 2 and changes 0 of 26
-decisions. **It fails its own falsifier and must revert by its own rule.** The strict decoder
-passes it: the marker acquires a region of parameter space where it reports ABSENT, which it did
-not have before.
-
-### 3.5 The honest statement of what this buys
-
-Say it plainly, because the temptation is to overclaim in the other direction now:
-
-**At the shipped constants the verdict does not change. The marker still reports PRESENT and the
-tally is still 4 of 4.** What changes is that the marker becomes capable of reporting ABSENT --
-0 of 26 perturbations flipped it before, 1 of 26 flips it now. A marker that cannot fail is worse
-than a marker that fails; this makes it one that can. That is the deliverable, and it is smaller
-and more defensible than "the system claims less."
-
-It also means the K>=2 result in the docstring at `:50-51` survives and was **right for the wrong
-reason**: synchrony really is recoverable, the recall-only score was masking a bad reader rather
-than a bad representation. Rewrite the docstring to say that, not to withdraw the claim.
-
-### 3.6 The live user-facing disclosure names the wrong constant
-
-`spike_chat_lake.py:1178-1186`, returned to a human at `:925-931`, currently says the binding
-marker is gated by `_BIND_IGNITE = 0.6` and that "one quarter of this score moves if somebody
-edits a constant."
-
-Measured: `probe_binding()` calls `bind_broadcast_spiking(objs, 8, 8)` at the default `drive=1.0`
-on 100 of 100 calls, so `if drive < _BIND_IGNITE` is False for every value in `[0.0, 1.0]`.
-**`_BIND_IGNITE` moves nothing on that path.** The constant that actually arbitrates the verdict is
-`consciousness_probe.py:84` -- `present = sp > rt + 0.15` -- which the proposal never named, and
-which is a second copy of the literal at `global_workspace.py:605`.
-
-**The rewrite of this disclosure and the metric change must land in one commit.** Removing the
-caveat about a harmless constant without naming the live one makes the user-facing text *less*
-honest while the commit message says the opposite.
-
----
-
-## 4. The sequence
-
-### STAGE 0 -- corrections needing no code and no measurement
-
-Cheap, and four of them are the tree asserting things that are measurably false.
-
-| # | correction | file | status |
-|---|---|---|---|
-| 0.1 | Section 8 says the input-free interval is missing. It exists at `brain.py:2376` and is live. | `docs/P6_INTERCONNECT.md` | CLOSE NOW |
-| 0.2 | `"_gate_primary resets... which live it always does"` -- measured 42 of 194 wake ticks | `src/snn_data_lake/brainstem/autonomous_loop.py:993-996` | CLOSE NOW |
-| 0.3 | Bus citations stale: `:1733/:1738/:1742` -> `:1746/:1751/:1755` | `docs/P6_INTERCONNECT.md` | CLOSE NOW |
-| 0.4a | Three stale VERIFIED rows: 100 percent ignition (measured 99.5 / 45.2 / 86.9); interval `(0.500, 0.668)` "never observed"; rheobase citation `brain.py:2143-2150` -> `:2166-2173` | `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md:75,78` | CLOSE NOW |
-| 0.4b | The `_ACC_LO` row | `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md:79` | **HOLD -- see below** |
-| 0.5 | `"0 of 9 live runtime consumers"` is wrong on the dormancy gate's own definition; importer set is exactly `['snn_data_lake.training.spiking_lm']` | `specs/005-language-organ/verdict.md:114-122` | CLOSE NOW |
-| 0.6 | `"the dynamics match and the learned weights transfer faithfully"` -- measured 20 of 40, 29 of 40, 24 of 40 argmax agreement across three seeds, against an untrained-twin control at 0 of 40, 0 of 40, 1 of 40 | `training/spiking_lm.py:353-359` **and** `docs/SPIKING_LM.md:65-69` | CLOSE NOW, one commit |
-| 0.7 | Pre-3.0 flat paths `src/snn_data_lake/spiking_lm_serve.py` | `docs/SPIKING_LM.md:9,18` | CLOSE NOW |
-| 0.8 | The `_BIND_IGNITE` caveat | `reasoning/spike_chat_lake.py:1181-1184` | **CLOSE WITH 3.4, not before** |
-
-**0.4b is held, and the correction may itself be the defect.** `reentrant_workspace.py:90-96` is
-unusually explicit about which distribution the `_ACC` band is calibrated on: *the winner's drive,
-bottom-up base PLUS the re-entrant sustain current (`_SUSTAIN = 1.10`)*, measured over 360 ignited
-wake ticks across 3 seeds -- min 0.871, p05 1.603, median 1.688, p95 1.797, max 1.899. The comment
-further records that *"setting the band from the bottom-up salience range 0.668-1.000 was tried
-first and clipped almost every tick to the ceiling."* The proposed correcting figure, a winner-drive
-p05 of 0.633, **matches neither 0.871 nor 0.668**. If it is a bottom-up quantity measured without
-`_SUSTAIN`, editing `PCA:79` reinstates the calibration the code says was tried and rejected.
-
-**Precondition to release 0.4b:** state which quantity 0.633 is, over how many ticks and seeds, and
-whether `_SUSTAIN = 1.10` was included. Until then the row is not proven stale.
-
-Census note, recorded and not acted on: `_ACC_LO = 0.85` sits 0.021 under a measured 0.871 and
-`_ACC_HI = 1.90` sits 0.001 over a measured 1.899. The two fudge widths differ by 20x. "Just under
-the measured min" is a derivation with a free parameter in it.
-
-**0.6 is a claim reduction and cannot break code, but `docs/SPIKING_LM.md:65-69` asserts the
-opposite.** Both change in one commit or the tree carries two contradictory claims.
-
----
-
-### STAGE 1 -- the three prerequisites
-
-#### P-IGNITE. Do NOT change `_BIND_IGNITE`. Standing fence.
-
-The proposal offered `_BIND_IGNITE = _BIND_LEAK * _BIND_VTH` (0.6 -> 0.25) as a consistency fix
-with a measured-zero delta. **It is not zero-delta and it deletes a control.**
-
-`global_workspace.py:500` is
-`bind_ig_weak, _ = bind_broadcast_spiking(bind_objects(8, 8, 2, brng), 8, 8, drive=0.4)`, and
-`:600` is `assert bind_ig_strong and not bind_ig_weak`. The weak arm requires
-`0.4 < _BIND_IGNITE`. At 0.25, `0.4` ignites, `bind_ig_weak` is True, and the assert fails under
-`run_selfchecks.py`. The "100 of 100 live calls at `drive=1.0`" basis counted `probe_binding()`'s
-calls and missed the one explicitly parameterised call that exists for no other purpose than
-exercising this threshold.
-
-Worse than a red assert: `0.4` was chosen as **subliminal**. Dropping the threshold to 0.25
-abolishes the subliminal condition -- it deletes the all-or-none control rather than deriving a
-constant. The repo's own precedent is exact: *the first fix deleted the check via a zero-tolerance
-yaw joint.*
-
-And the identity is circular anyway. `GlobalWorkspace.__init__` (`:107-109`) and
-`ReentrantWorkspace.__init__` (`:111-113`) both take `ignition_threshold` as the **free** parameter
-and derive `_v_th = ignition_threshold / _LEAK`. The binding module would take the leak and the
-threshold as free and derive the ignition point. With both conventions in one file, "derived" is
-unfalsifiable: point at either end and the other is the literal.
-
-- **Disposition:** leave the value. If the relationship is worth stating, state the true one as a
-  derived assertion -- `assert _BIND_IGNITE > _BIND_LEAK * _BIND_VTH` -- documenting that ignition
-  is deliberately **supra**-rheobase, and say which end of the identity is free and why.
-- **Falsifier:** run `global_workspace.py` main. Line 600 must stay green.
-- **Approval:** none.
-
-#### P-INBOX. Bound the workspace subscriber inbox. Must precede GAP 1 and GAP 2.
-
-`reentrant_workspace.py:137` creates `{"inbox": [], "bias": {}}`. `:288` and `:311` append on every
-`step()` for every subscriber. `:376-379` `inbox()` returns `list(s["inbox"])` -- a copy, not a
-drain. There is **no `.clear()` anywhere in `src/`**, and **0 callers of `inbox()`** across `src/`,
-`tools/`, and `tests/` -- the only match in the tree is the definition itself.
-
-The live daemon therefore appends one entry per subscriber per tick, forever. At the measured
-27.8 ms tick that is roughly 36 appends per second per subscriber. **GAP 2 multiplies subscriber
-count by 8; GAP 1 replaces the scalar winner with a structured payload.** The two chained gaps are
-precisely the two that turn a slow leak into a fast one.
-
-- **File:** `src/snn_data_lake/thalamus/reentrant_workspace.py:137`, to
-  `collections.deque(maxlen=N)` sized to the longest window any reader needs.
-- **Falsifier:** 10k ticks on a shared bus with `assert len(inbox) <= N`, plus confirmation that no
-  reader depends on unbounded history -- trivially true today, since there are no readers.
-- **Approval:** none.
-
-#### W0.4. The action-clamped A/B **with a counterfactual recorder**. The root.
-
-`tools/charge_probe.py:102` is `def run(source, n, neuter)`. Grep returns 0 matches for clamp,
-replay, forced action, or recorded trace. The instrument does not exist, and
-`docs/P6_INTERCONNECT.md` section 10 says W0.4 must precede every wire and section 3 says nothing
-downstream of it is interpretable without it. The reason is F3: `A -> gate -> action -> next-tick
-percept -> B` is live on every wake tick, so any unclamped measurement reporting "N of M actions
-changed" is measuring `_route_percept_to_action`, not a faculty edge.
-
-**This retroactively demotes the headline number.** "The wire changes 196 of 793 selected actions"
-is a change in the action gate's output -- the single terminal F3 exists to disqualify. It is
-evidence of a spoke, not of a faculty edge.
-
-**The specification as originally written produces a disqualified readout, and this must be fixed
-before anything is built on it.** "Replay a recorded `res["action"]` sequence in both arms" makes
-the executed action identical by construction. What `run()` reads today is
-`reads.append(_numeric_reads(st))` plus `stopped` and `pos`, and all three come from `b.state()` --
-the telemetry dict, one of the five terminals section 7 disqualifies. Under an action clamp all
-three become identical by construction. **The clamped probe as specified has no readout at all.**
-
-- **Requirement:** the clamp must **record the counterfactual** -- the action
-  `_route_percept_to_action` *would* have selected -- while executing the replayed one, then
-  compare intended-action sequences across arms under a bit-identical environment. The reflex and
-  E-STOP path at `autonomous_loop.py:1255-1271` stays intact and is never replayed.
-- **File:** `tools/charge_probe.py`.
-- **Falsifier for the instrument itself:** run it on the two existing reads (`elig["reroute"]` at
-  `brain.py:1610`, plus whatever GAP 1 surfaces). If every arm is identical clamped and unclamped,
-  the clamp is not engaging and the instrument is lying. It must retro-reproduce the
-  `autonomous_loop.py:969` and Claustrum reverts.
-- **Approval:** none. `tools/` only, no safety envelope.
-
----
-
-### STAGE 2 -- GAP 3, the only gap that closes now
-
-**Status: CLOSE NOW, in the rebuilt form of section 3.4. Not in the form originally proposed.**
-
-- **Change:** precision-and-recall scoring in `_bind_pair_acc`; strict acceptance rule in
-  `bind_decode_spiking` (exactly one color and exactly one shape per accepted micro-step). No cap.
-  No margin re-choice. No `_BIND_IGNITE` edit.
-- **Files:** `src/snn_data_lake/thalamus/global_workspace.py`,
-  `src/snn_data_lake/reasoning/consciousness_probe.py`,
-  `src/snn_data_lake/reasoning/spike_chat_lake.py`.
-- **CI blast radius, all three enumerated and pre-measured:** `global_workspace.py:601` (K=1 tie
-  under 0.05) measures 0.0000, stays green. `:605` (K=2 margin over 0.15) measures +0.4917, stays
-  green. `:609` (`bind[4][0] > 0.9`) measures 1.0000, stays green. `consciousness_probe.py:157-158`
-  stays green. **Under this repair 0 of 4 asserts go red** -- which is itself worth stating, since
-  the original proposal expected 2 red and would in fact have taken 3 red under precision or F1.
-- **What must still change even though nothing goes red:** `consciousness_probe.py:84` and
-  `global_workspace.py:605` both carry the same underived `+ 0.15`. Both should print `sp`, `rt`,
-  and the difference as a reported count rather than arbitrate a verdict on a literal. Applying the
-  "reported count, not a relaxed assert" treatment to `:157-158` while leaving `:84` as a
-  thresholded verdict fixes the assert and leaves the human-facing claim on the same footing.
-- **Falsifier:** re-run the 26-perturbation sweep and count distinct verdicts. Baseline today is
-  **1 of 26**. This repair measures **2 of 26**. If it comes back 1 of 26, this moved a telemetry
-  field and no decision, and it reverts.
-- **Approval:** **user-visible, though the count does not change.** `spike_chat_lake.py:1173-1193`
-  is the one path where a consciousness claim reaches a human. The tally stays 4 of 4; the
-  *disclosure text* changes, and it must name `consciousness_probe.py:84` rather than
-  `_BIND_IGNITE`. Ship 0.8 in the same commit. Not an arm-envelope approval, but it should not ship
-  silently.
-
-**Scope note, adopted from review:** the argument for this repair -- a marker that cannot report
-ABSENT is worse than one that can -- does not stop at binding. `consciousness_probe.py:95` gates
-INTEGRATION with `(pci_i > 3 * pci_n) and (pci_i > 0.25) and ...`, three more underived literals in
-the same four-marker tally. Either scope the claim to the binding marker explicitly in the
-disclosure, or add a census row for the other three markers so the next pass knows the tally is not
-clean. Do not silently imply the tally is now honest.
-
----
-
-### STAGE 3 -- verdicts pending a measurement, gated on W0.4
-
-#### GAP 4, GAP 5, GAP 6 -- the WM attractor.
-
-**Status: NEEDS MEASUREMENT, 7 seeds, ACTION-CLAMPED. Honest prior: EXEMPT under the shipped
-constants, with one structural blocker that is permanent.**
-
-The wire is one line with zero new constants. `self.brain.arm.pfc` is the correct attribute path,
-with the in-tree None-guard idiom at `brain.py:2204-2205`; each `_sleep_tick` block is
-`try`/`except`-wrapped and the insert must follow that shape. `maintain()` and `_run_wm_pool`
-(`cortex/prefrontal_executive.py:315-348`) draw **zero** random numbers, so the A/B carries no RNG
-drift. That part of the design is sound.
-
-Four things point the other way, and they are not equally strong. Sorting them is the point:
-
-| leg | kind | force |
+## 2. Corrections that reorder the program
+
+Four measurements change the sequencing. They are stated first because the rest of the document
+depends on them.
+
+### C-A. The blocking premise for GAP 4, 5 and 6 is false, and every prior verdict on it is a harness artifact
+
+`src/snn_data_lake/brainstem/autonomous_loop.py:996` states the premise verbatim: `_gate_primary`
+"resets that frame's drive to 1.0 whenever the margin clears, **which live it always does**". That
+sentence is load-bearing for the EXEMPT verdict and it is false -- the margin clears on at most
+200 of 1400 sampled ticks in any configuration, and non-clearing runs of 52 to 199 ticks occur
+against the 80 consecutive `maintain()` calls a pop needs (`0.98^79 = 0.2027 >= 0.2 >
+0.98^80 = 0.1987`).
+
+**The input-free interval already exists inside the wake loop.** It was never missing. What is
+missing is the call: `PrefrontalExecutive.maintain()` has no live caller. Confirmed -- its callers
+are `cortex/autotelic_goals.py:315`, `reasoning/autonomous_brain.py:122`,
+`reasoning/developmental_core.py:153`, `reasoning/developmental_loop_wm.py:56,65,128`, all
+offline, plus one self-check.
+
+**But the payoff is not measured by anyone.** Three prior adjudications reported 113 of 1400,
+27 of 1400, and 0 of 794 action changes. A fourth pass reproduces none of them and finds the
+effect swinging from 1 of 1400 to 268 of 1400 purely on the synthetic context stream, non-monotone
+in configuration richness. All four measured a property of their own harness and reported it as a
+property of the wire. That is `docs/DEPTH_CEILINGS.md`'s synthetic-benchmark failure mode and the
+standing "validate the validator" rule, firing on the adjudicators.
+
+**Consequence for ordering: the working-memory item unlocks nothing, gates nothing, and comes
+late.** It is independent of every other gap. The prior claim that it "unlocks three gaps at once
+and should come early" is REJECTED, and so is the counter-claim that it "unlocks nothing" as a
+reason to close the file -- both were arguing about an interval that already exists.
+
+### C-B. The "permanent structural blocker" on the working memory is real but non-blocking
+
+`cortex/prefrontal_executive.py:350-357` is confirmed verbatim: `top_down_bias` is
+`bias[frame[0]] += strength` and **never reads `frame[1]`**, so the decayed drive magnitude
+reaches no consumer.
+
+It does not block, and the reason is three lines up. `maintain()` at `:346-347` **pops** the frame
+when the drive falls below `hold_threshold`, and `_gate_primary` at `:262` is
+`if not self._stack or margin >= self.gate_threshold`. The empty-stack branch fires
+unconditionally and commits a different goal. **The decay reaches a consumer through the pop, not
+through the magnitude.**
+
+The rating "permanent, structural" is overstated and should read: *the drive magnitude is unread;
+the pop is the only channel.*
+
+### C-C. The input surface is broken in three ways, all live today, none of them a gap
+
+This is the most important correction in the document and it displaces the entire gap list from
+the front of the queue.
+
+**[measured]** through `LiveBrain(seed=0).converse(...)`, with `arm.state()["stopped"]` and
+`theta_deg` as ground truth:
+
+| finding | measured |
+|---|---|
+| emergency stops swallowed | **8 of 15** |
+| safety *questions* that the firewall parses as an arm command | **9 of 12** |
+| non-command utterances that issue an arm command | **16 of 16** |
+| gripper phrasings routed correctly | **10 of 15** |
+
+**(1) A comma decides whether the arm stops.** `cortex/live_brain.py:405` returns a reassuring
+sentence for any utterance whose word set intersects `{safe, safety, danger, dangerous, hurt,
+emergency}`, *before* the firewall runs at `:413`. The word set at `:354` is built with
+`t.replace("?"," ").replace("!"," ").replace("."," ").split()` -- commas are **not** stripped.
+**[measured]**:
+
+| utterance | arm stopped? |
+|---|---|
+| `that looks dangerous, stop` | **yes** |
+| `that looks dangerous stop` | **no -- swallowed** |
+| `emergency, stop` | **yes** |
+| `emergency stop!` | **no -- swallowed** |
+| `emergency stop` / `stop, emergency` / `is it safe? stop` / `stop it is dangerous` | **no -- swallowed** |
+| `hit the emergency stop` / `danger stop now` | **no -- swallowed** |
+| `STOP` / `halt now` / `freeze` / `abort abort` / `stop the arm immediately` | yes |
+
+The discriminator is **not** the word "emergency", as previously reported. It is whether a safety
+word survives punctuation-stripping as a bare token. Adding an exclamation mark to a working
+phrase breaks it. **That sentence belongs in the commit message.**
+
+**(2) A question moves the arm, today, with no code change.** `cortex/nl_interface.py:104` is
+`if any(k in low for k in keys)` -- **substring**, not word, matching. **[measured]** through
+`converse()`:
+
+| utterance | reply | arm moved |
 |---|---|---|
-| `top_down_bias` (`:350-357`) is `bias[frame[0]] += strength` and **never reads `frame[1]`** -- the decayed drive reaches no consumer at all | **structural** | permanent, no constant involved |
-| the pop needs `0.98^n < 0.2`, i.e. n >= 80 consecutive delay ticks against a 12-to-14 tick night | arithmetic on two constructor defaults (`recurrence=0.98`, `hold_threshold=0.2`, `cortex/prefrontal_executive.py:88-89`, unoverridden at `autonomous_loop.py:278`) | strong, but `recurrence=0.85` gives n = 11 |
-| the pre-declared falsifier already fired on seed 2 -- 8 pops, 0 of 794 actions, 0 of 794 trajectory, grown units 7 vs 7 | measurement | strong |
-| the scramble control beats it on coverage on 2 of 3 seeds (theta coverage, arms A, B, C: seed 0 gives 89, 229, 312; seed 1 gives 193, 213, 250; seed 2 gives 697, 697, 658) -- a coin explores more than the WM's own time constant | measurement | strong; suggests the RELEASE does the work, not the memory |
+| `what is in your database?` | `Done: 'JOINT_SHOULDER_PAN_ROTATE(+6deg)' -> effector closed.` | **0.0170 deg** |
+| `what is your baseline?` | same | **0.0170 deg** |
+| `are the results controlled for seed?` | `Done: 'JOINT_WRIST_ROLL_ROTATE(+6deg)' ...` | **0.0258 deg** |
 
-**Therefore the verdict word must be "EXEMPT under the shipped constants, plus one structural
-blocker", not "EXEMPT PERMANENTLY".** Only the `top_down_bias` leg earns "permanently"; the
-arithmetic leg rests on two unarbitrated defaults, and the honest reason it may not be retuned is
-already written at `autonomous_loop.py:991-993`: *the only ways to make the pop fire are to lower
-recurrence or hold_threshold, i.e. to retune the module's own constants until a number moves.* P1
-forbids that. It does not make the blocker structural.
+`database` and `baseline` contain `base`; `controlled` contains `roll`; `expand` and `company`
+contain `pan`; `threshold` and `household` contain `hold`; `shoplift` contains `lift`. Negation is
+not handled at all: **[measured]** `do not stop improving`, `never stop` and `why did you stop?`
+all return EMERGENCY_STOP, and `do not close the gripper` closes the gripper.
 
-- **Files if it ships:** `src/snn_data_lake/cortex/brain.py`, `docs/P6_INTERCONNECT.md`.
-- **Fourth falsifier, rated highest and added here:** seed 0's baseline is **latched** -- action
-  entropy 1.29 bits, longest run 72, lag-1 repeat 0.838, against seed 1 at 2.16 bits, run 11,
-  repeat 0.557 and seed 2 at 2.25 bits, run 19, repeat 0.557.
-  If effect size tracks how latched the baseline is, the finding is a latch defect in the live loop
-  and the WM wire is being credited for fixing it.
-- **Do NOT scale by K.** K=40 moves 121 of 194 actions at 400 ticks, but picking K because K=1
-  moved nothing is P1 laundering, and there is no principled conversion in the tree between a
-  circadian hour-step and a WM delay tick.
-- **The horizon must be pre-registered with its arithmetic, and both horizons reported.** The
-  derivation is clean and was left implicit: `brain.py:168` sets `day_period=200`; the pop needs
-  `ceil(ln(0.2) / ln(0.98)) = 80` `maintain()` calls; `maintain()` runs only inside `_sleep_tick`
-  at 12 to 14 ticks per night, so roughly 7 nights minimum; 1600 ticks is 8 nights with one night
-  of headroom. Print those four inputs. **Report 400 and 1600 in the same table.** Presenting the
-  horizon where the effect is nonzero as mandatory and the horizon where it is zero as forbidden,
-  without the arithmetic, is horizon selection after seeing the result -- the same defect as
-  choosing K=40, two paragraphs from where that is correctly refused.
-- **The distinction that makes this legitimate, stated once:** horizons are measured by counting,
-  gains are chosen. Report the observed `maintain()`-call count, not a tick budget, and the
-  objection dissolves.
-- **A real CI blind spot worth recording whichever way this lands:** `tests/test_time_cells.py:435-451`
-  is the only long live-brain test and runs 300 ticks. At 400 the wire is `:969` verbatim, so CI is
-  byte-identical and blind either way.
-- **Approval:** none. `maintain()` mutates only `pfc._stack` and its LIF membranes, calls no
-  `arm.apply`, and runs inside `_sleep_tick`, which by its own docstring never calls `brain.tick()`
-  or `arm.step()`. No safety-envelope contact.
+**(3) The gate that would have caught this exists and cannot run.**
+`integrations/local_llm/run_local.py` self-check Check 4 asserts exactly this defect
+(`intent["kind"] == "reject"` for an unsafe phrase). The module is import-broken: `:54-55` do
+`from snn_data_lake.nl_interface import ...` and `from snn_data_lake.arm_sim import ArmSim`, and
+**[measured]** neither `src/snn_data_lake/nl_interface.py` nor `src/snn_data_lake/arm_sim.py`
+exists -- both moved under subpackages. `run_selfchecks.py` has **0 references** to `local_llm` or
+`run_local`. The one gate that names this defect has been dead long enough for its import path to
+rot. That is this repo's own silent-degradation pattern applied to a safety gate.
 
-#### GAP 4a -- `plan()`'s spiking reaction time.
+### C-D. GAP 3a cannot ship unattended: its falsifier passes for two scorers with opposite verdicts
 
-**Status: NOT SCHEDULED. Precondition: name the consumer.**
+`reasoning/consciousness_probe.py:84` is `present = sp > rt + 0.15`, where both `sp` and `rt` are
+`_bind_pair_acc` outputs -- the exact function GAP 3a rewrites. **[measured]**, K=2 (the value
+`:82` hardcodes), n=100, seed 0:
 
-`plan()` returns `(goal, sum(rts) / len(rts))` at `cortex/prefrontal_executive.py:297`;
-`autonomous_loop.py:1047` and the call beginning at `:1058` are bare expression statements on both
-live JEPA paths. The reaction time is computed every wake tick and discarded. That much is
-verified.
+| scorer | sp | rt | sp - rt | verdict at margin 0.15 |
+|---|---|---|---|---|
+| recall (today) | 1.0000 | 0.4800 | 0.5200 | PRESENT |
+| F1 (beta=1) | 0.6667 | 0.4800 | **0.1867** | PRESENT |
+| Jaccard | 0.5000 | 0.4800 | **0.0200** | **ABSENT** |
 
-But this was scheduled as CLOSE NOW alongside the one item that actually changes behaviour, and it
-has **no named destination**. A wire proposed without a consumer *is* the `:969` pattern, before it
-is built. Two compounding problems: any use of a reaction time to modulate behaviour needs an
-rt-to-gain mapping, which is a new literal arbitrating behaviour; and by F3 whatever it modulates
-flows into `_route_percept_to_action`, so the terminal is the action gate -- the spoke this whole
-program spends its first section disqualifying.
+All-pairs strawman decoder: recall 1.0000, F1 **0.0606**, Jaccard **0.0312** -- both "near 0".
+K=1: **1.0000 under all three** -- unchanged.
 
-- **Precondition before it may be scheduled at all:** name the consumer and its falsifier. If
-  `mean_rt` lands only in `state()`, it is a telemetry wire and does not count. **Assigning the
-  value is not the deliverable; a consumer whose output changes is.**
-- **If it is scheduled:** pre-commit to a running-baseline form (`substrate/signal_calibrator.py`,
-  `POLICIES.md:52`) rather than a threshold, or the P1 defect recurs in a new module.
-- **If no honest consumer exists:** record it as EXEMPT with the measured reason -- *computed every
-  wake tick, no honest consumer exists in a flat reactive loop* -- and remove it from the closure
-  count rather than carrying it as pending work.
+So the stated falsifier is satisfied identically by F1 and by Jaccard, and those two flip the
+consciousness marker in opposite directions. The smuggled constant is not a number: it is the
+**combination rule**, a literal choice wearing methodology's clothes, read by a fixed `0.15`.
+Under F1 the marker survives on 0.0367 of headroom over a threshold already recorded as narrower
+than the seed band.
+
+**GAP 3a is therefore CHAINED, not CLOSE NOW.** See stage 4.
+
+---
+
+## 3. STAGE 0 -- the input surface. Ships first, ahead of every gap.
+
+Nothing in stages 1 to 6 is safety-critical. Everything in stage 0 is. Per the standing rule,
+this is main-agent work and is not delegated.
+
+### S0.1 -- word-boundary cue matching. Smallest diff, largest effect. DO THIS FIRST.
+
+**File:** `src/snn_data_lake/cortex/nl_interface.py:104`, inside `StubBackend.complete`.
+Replace substring containment with token membership -- the idiom `live_brain.py:400` already uses.
+Multi-word cues keep substring matching; bare cues become tokens.
+
+**This must land before anything touches `converse()`.** Every stage-0 item after it is measured
+against a firewall that already does word-boundary matching.
+
+### S0.2 -- delete the bare `"grip"` cue. A deletion, not a permutation.
+
+**File:** `src/snn_data_lake/cortex/nl_interface.py:59`. Remove `"grip"` from the close row,
+keeping `close`, `grab`, `grasp`, `pick up`, `clamp`.
+
+**REJECTED: the "ordering only" repair.** The earlier proposal was to move the open row above the
+close row and called this "ordering only, no constant". The order of a 20-row cue table *is* a
+behaviour-arbitrating literal -- a permutation of 20 elements -- and reordering it until four
+chosen phrases pass is tuning in permutation space. **[measured]**, the swap fixes 5 phrasings and
+**breaks 3** that no proposed falsifier tested: `don't drop it, grab it`, `grab it and don't let
+go`, and `pick up the ball then release it` all become RELEASE when the user asked to grasp.
+
+**REJECTED: "word-boundary matching fixes all 6 with zero regressions and zero reordering".**
+**[measured]** it fixes 3 of 5 and reaches 13 of 15, not 15 of 15. `open the grip` and `drop the
+grip` still close the gripper, because `grip` is a genuine bare token in those phrases and the
+close row is first. Both changes are needed, and the honest second change is the deletion above,
+not the permutation.
+
+### S0.3 -- an interrogative and negation guard, before cue scanning.
+
+**File:** `src/snn_data_lake/cortex/nl_interface.py`, at the top of `StubBackend.complete`.
+Reject when the utterance is interrogative (leading wh-word or auxiliary, or a trailing `?`) or
+carries a negation (`do not` / `don't` / `never` / `why did` / `what happens`). This is a
+**syntactic** property, not a new word list, which is why it is preferred over extending
+`_CUES`.
+
+**[measured]**, the four candidate repairs against four corpora:
+
+| config | safety Q -> arm | non-command -> arm | gripper correct | legit commands kept |
+|---|---|---|---|---|
+| today | 9 of 12 | 16 of 16 | 10 of 15 | 15 of 16 |
+| reorder only | 9 of 12 | 16 of 16 | 12 of 15 | 16 of 16 |
+| word-boundary only | 6 of 12 | 5 of 16 | 13 of 15 | 16 of 16 |
+| word-boundary + drop bare `grip` | 6 of 12 | 5 of 16 | 14 of 15 | 16 of 16 |
+| **+ interrogative/negation guard** | **0 of 12** | **0 of 16** | 12 of 15 | **16 of 16** |
+
+The guard costs 2 gripper phrases relative to the line above it, and **the cost is refusal, not
+misactuation**: `grip it`, `don't drop it, grab it` and `grab it and don't let go` return
+`reject` and issue nothing. Today's failure mode is a question closing a gripper. The repaired
+failure mode is a compound imperative being declined. Those are not the same kind of wrong, and
+the falsifier below says so explicitly rather than scoring them equally.
+
+- **Falsifier:** the four corpora must read 0 of 12, 0 of 16, and 16 of 16 legitimate commands
+  retained. Gripper correctness may *fall*, provided every residual failure is a `reject` and none
+  is a wrong-direction actuation. **A single wrong-direction gripper failure fails the item.**
+- **Cannot distinguish:** this falsifier cannot tell a well-chosen negation regex from an
+  over-broad one that rejects legitimate compound imperatives. It is measured at 3 of 15 today;
+  if a later corpus pushes it past 5 of 15, the regex is too broad and must be narrowed rather
+  than the corpus trimmed.
+- **Approval:** none. This strictly *narrows* the set of utterances reaching `arm.apply()`.
+
+### S0.4 -- the literal E-STOP check, at the top of `converse()`. Chat branch stays put.
+
+**File:** `src/snn_data_lake/cortex/live_brain.py`, before the word set is built at `:354`.
+A backend-independent literal check (`e-stop`, `emergency stop`, `stop now`, `stop the arm`,
+`halt`, `abort`, `freeze`) that calls `self.arm.arm.apply("EMERGENCY_STOP")` and returns.
+
+**REJECTED: both previously proposed repairs.** The proposals were to move the safety-chat branch
+after the firewall call, or to guard it with `interpret(text)["kind"] != "arm"`. These are the
+same change, and **[measured]** both route **9 of 12 safety questions** to the actuator --
+`what is your safety threshold?` -> HOLD, `how dangerous is the database?` ->
+`JOINT_SHOULDER_PAN_ROTATE(+6deg)`, `would it be dangerous to grab that?` -> ENGAGE. The claim
+that this "restores the envelope and widens nothing" is false; as specified it is a regression,
+and it is the program's own top-priority item. Note that with S0.1 to S0.3 landed first this
+number is already 0 of 12, which is exactly why the ordering inside stage 0 is not negotiable.
+
+- **Falsifier, two-sided and both sides required:** the 15-phrase table goes from 8 of 15
+  swallowed to **0 of 15**, AND the 12-question table stays at **0 of 12** arm commands. If the
+  second table moves at all, the repair widened the actuation surface and must be reverted.
+- **Negative control:** `are you safe?` must still return the safety sentence and issue nothing.
+  **[measured]** today it moves the arm 0.0000 deg and must continue to.
+- **Cannot distinguish:** a literal regex cannot tell an E-STOP request from a *question about*
+  an E-STOP. `is the emergency stop working?` will stop the arm. That is fail-safe and is
+  accepted; it is recorded here so it is not later reported as a defect.
 - **Approval:** none.
 
-#### GAP 4b -- grown time cells.
+### S0.5 -- repair or delete `integrations/local_llm/run_local.py`; wire Check 4 into `run_selfchecks.py`.
 
-**Status: NEEDS MEASUREMENT. Reframed from a wiring job to a neuter A/B.**
+**Files:** `integrations/local_llm/run_local.py:54-55` (import paths), `run_selfchecks.py`.
 
-The consumer already exists: `brain.py:1601` reads `_elapsed_time` into the timed-Go window and
-`:1604` feeds `learn_interval`. The open question is not "wire a consumer" but "does growth beyond
-width 64 change *that* consumer's output". Run the neuter A/B on `_time_clock`. The reframing is
-the whole correction.
+This is not cleanup. It is the only mechanism that stops S0.1 to S0.4 from rotting the way the
+original did. Shipping stage 0 without it means the next import-path move silently re-opens the
+defect.
 
----
-
-### STAGE 4 -- GAP 1 then GAP 2, both gated on W0.4 and P-INBOX
-
-Payload before instance sharing. `docs/P6_INTERCONNECT.md` section 9 states the reason -- *eleven
-private buses is a smaller defect than one bus whose single reader throws away which faculty
-spoke* -- and today's gate output makes the order tighter: the payload fix touches **one** module
-with its own self-check, while instance sharing touches **8** modules' constructors across 26
-instantiation sites, 11 of them outside the bus self-checks. Payload-first is cheaper, more
-reversible, and it is what makes the sharing measurable.
-
-#### GAP 1 -- bus payload. Status: CHAINED behind W0.4 and P-INBOX. Design-ready.
-
-- **The design constraint that must not be violated** (section 9): the per-subscriber axis v4.78
-  removed was removed *because it was never learned*. Any fix must derive the distinction from
-  something that exists -- the subscriber's declared interest, or the winner's source -- **not** a
-  new learnable weight nobody trains.
-- **Files:** `src/snn_data_lake/thalamus/reentrant_workspace.py` (`_deliver`, `:282-312`),
-  `src/snn_data_lake/cortex/brain.py:1610`, the one live drain.
-- **Falsifier, and it is sharp:** F3 records that `brain.py:1610` resolves into
-  `_route_percept_to_action`. A content-sensitive payload therefore delivers richer information
-  **to the action gate**. If after the fix the judged metric -- distinct non-gate terminals, today
-  **1 of 15** -- is still 1 of 15, the fix enriched a telemetry path and must revert. **A rising
-  read count is explicitly not sufficient**; the gate counts read sites, not distinct payloads.
+- **Falsifier:** Check 4 must **fail** against today's `nl_interface.py` and **pass** after S0.1
+  to S0.3. If it passes on both, it is asserting something other than what it reads.
 - **Approval:** none.
 
-#### GAP 2 -- instance sharing. Status: CHAINED behind GAP 1.
+### S0.6 -- P1 needs a written clause for safety vocabularies. Documentation, ships with stage 0.
 
-The gate prints its own precondition: *adding a reader is NOT sufficient while each writer holds a
-PRIVATE instance -- there is no shared object for a reader to read.* Sharing is necessary; it is
-not sufficient; doing it first buys nothing.
+**File:** `docs/POLICIES.md`, P1's fourth case.
 
-- **Files, the 8-module instance census, verified against gate output:**
-  `brainstem/autonomous_loop.py:230`, `cortex/access_consciousness.py:92`, `cortex/brain.py:708`,
-  `reasoning/brain_adapters/executive_control.py:102/230/233`,
-  `reasoning/developmental_loop_brain.py:265`, `reasoning/rpm_solver.py:305`,
-  `reasoning/spike_chat_lake.py:817`, `reasoning/train_of_thought.py:92/97`.
-- **Falsifier:** *orphaned faculty writers, today 7 of 10* must fall, **and** the two-sided
-  pathology check from section 6 must pass. One shared bus into a latching `step()` (`_SUSTAIN` on
-  `bottom_up_supported`) is the documented route to a workspace that ignites one content forever,
-  and per the section-6 table that reads as success on any distinct-count instrument.
-- **A free asset nobody has used:** `reentrant_workspace.py:399-409` already ships
-  `_Specialist.emit()` -- one faculty consuming another's broadcast -- passing inside the bus's own
-  self-check, used by 0 faculties. The pattern P6 asks for is already written.
+The chat/actuate arbitration is decided by precedence between two hand-written literal word sets
+(`live_brain.py:405` and `nl_interface.py:56`). P1's fourth case exempts raw physical limits
+inside the safety envelope and says **nothing** about vocabularies or precedence orders. So the
+single safety-critical item in this program currently rests on a behaviour-arbitrating literal set
+that no written exception covers. Extend the clause with the reasoning already there: a *learned*
+E-STOP vocabulary is a reflex that can be trained away, so the vocabulary is exempt **because** it
+is safety, not because nobody noticed it.
+
+---
+
+## 4. The sequenced program
+
+Dependency order. Each item names files, a falsifier, a "cannot distinguish" line, and an approval
+flag.
+
+### STAGE 1 -- completed proofs. Record them; they are finished items.
+
+#### GAP 8 -- wikitext grounding. PROVED IMPOSSIBLE.
+
+Structural plus measured. The language organ's SCENE area has no input from raw text, and the only
+derivable pairing (head+tail co-occurrence) yields 147 of 6463 sentences containing the relation
+word -- that construction **is** the `shuffled` null control at `specs/005-language-organ/
+research.md:319`, shipped as the treatment. The lexical half is closable (373 of 67000 pairs,
+45 of 67 paradigms at 100,000 chars) and that is what makes it dangerous: a 45x floor clearance is
+precisely what `plan.md` Risk 1 means by "it would look like diligence".
+
+- **Files (record only):** `specs/005-language-organ/verdict.md`, `research.md:409`.
+  **Do not** rewrite `coverage.md` (frozen, byte-reproducible). **Do not** re-run
+  `tools/lang_coverage.py` against a WikiText lexicon.
+- **Falsifier:** build the derived pairing, train, run `shuffled`. If shuffled scores materially
+  below joint, the pairing carried real referential information and the proof fails.
+- **Cannot distinguish:** the proof cannot rule out a *different* corpus with scene annotations.
+  It rules out WikiText, which is what was proposed.
 - **Approval:** none.
 
----
+#### GAP 3b -- derive the ignition constants. PROVED POINTLESS.
 
-### STAGE 5 -- GAP 7, blocked on owner approval and on a concurrency redesign
+`_BIND_IGNITE` arbitrates a variable with 2-point support across 822 calls, and the derivation
+route requires at least 3 consecutive occupied bins. Two points cannot fill three bins. That is a
+combinatorial argument, not a threshold. Independently, `base_ignition_threshold` is inert over
+`[0.05, 0.55]` on 4 of 4 seeds (0 of 240 tick-outcomes), with the shipped 0.55 at the top edge of
+an 11x dead band.
 
-**Status: SPLIT three ways. C3 proved impossible; C2 needs engineering *and* approval; C1 needs
-approval, engineering, and a recovery policy that does not exist.**
+**Correction accepted from review:** the "2-point support" evidence is itself a property of a
+self-check fixture -- the 0.4 point comes only from a literal `drive=0.4` in
+`global_workspace.py:500`'s own demo. The conclusion holds, but prefer the tree's *structural*
+argument (`reasoning/spike_chat_lake.py:1184-1187`: `probe_binding` calls with default
+`drive=1.0` against a 0.6 gate, so the gate passes on 100 of 100 calls and could be deleted
+without moving the marker). A structural argument does not depend on which self-checks ran.
 
-#### C3 -- fifth percept band. PROVED IMPOSSIBLE. Do not attempt.
-
-`_context_pattern` uses the fixed `encode_multimodal` (4 bands x 16, `B = 4` confirmed at
-`PCA:83`); switching to `add_modality` resizes the Amygdala, the growing learner, JEPA and the PC
-net. And there is no free band: `brain.py:1166-1177` shows `temperature` already carries
-proprioception. Structural, no constant in the argument.
-
-#### C2 -- disturbance channel. CHAINED behind a concurrency redesign, a clamp, AND approval.
-
-The mechanism exists (`so101_arm.py:198-214`), and the percept route is dead and measurable
-(`deviation` 1 distinct value, `trajectory_breach()` 0 of 200 fires). Its acceptance evidence is
-the action-clamped A/B, and the null was pre-declared correctly: *`deviation` gains distinct values
-and `trajectory_breach()` starts firing, but no consumer's output changes* is `:969` again.
-
-Three blockers, two of which were not named and one of which invalidates the measurement itself:
-
-1. **The `arm.stopped` guard is mandatory and the code does not have it.** `inject_disturbance`
-   (`so101_arm.py:210-214`) writes `self.data.qpos[...]` with no `stopped` check, so an HTTP client
-   could move an emergency-stopped arm and the measured bitwise-freeze property at
-   `so101_arm.py:15-18` becomes false. **This guard is correct with or without the measurement and
-   should not wait on W0.4.**
-2. **It also has no joint-limit and no finiteness check, and the illegal pose persists.**
-   `:212` is `self.data.qpos[spec.qpos_index] += deg * _DEG` with no range check -- while
-   `probe_contact` at `:110-114` explicitly validates `m.jnt_range` and returns `OUT_OF_LIMIT`. The
-   counterfactual body validates limits; the live body does not. Because it runs `mj_forward` and
-   not `mj_step`, no constraint solver runs, so `state()` reports the out-of-limit pose; and if the
-   arm is latched, `apply()` returns before `mj_step` (`:266-268`), so the illegal pose is the
-   arm's reported state indefinitely. Downstream, `brain.py:1169-1177` folds `theta_deg` into
-   proprioception inside a bare `except Exception: pass`, and `min(1.0, max(0.0, nan))` returns
-   `0.0` -- proprioception silently pins to a constant, the repo's own "a constant where a computed
-   value belongs" tell, reached without raising.
-   **Guard must be `if self.stopped or not math.isfinite(deg): return self.state()`, plus a clamp
-   to `arm_config.JOINT_LIMITS`. Falsifier: POST a 10 000-degree disturbance; `probe_contact` on
-   the resulting qpos must not return `OUT_OF_LIMIT`.**
-3. **A second POST route violates the cockpit's written no-lock contract, and the race erases C2's
-   own measurement.** `cockpit.py:37-43` states it: *there is no lock anywhere in the brain stack
-   ... calling that from an HTTP handler while the daemon ticks the same object is a data race on a
-   brain that is also writing to disk. `Turns` therefore hands the text to whoever owns the tick
-   loop.* The corruption argument needs no claim about MuJoCo's GIL behaviour: `apply()` is a
-   multi-statement Python sequence, and the tick thread can be preempted between
-   `d.ctrl[spec.qpos_index] = got` (`:315`) and the `mj_step` loop (`:330-331`), and again before
-   `self._settled = np.array(d.qpos[: m.nu], dtype=float)` (`:333`). An interleaved qpos write lands
-   inside the gate's critical section and `_settled` then records the disturbed pose as settled --
-   **erasing the very deviation C2 exists to create.** C2's measurement is self-defeating under
-   concurrency, in the direction that produces a **false null**. A trap for the implementer:
-   `brain.py:2714` `tick()` says *"Called under a lock -- returns fast"*, which is the daemon's
-   single-instance process lock, not a mutex, and reads as if mutation were already serialized.
-   **Repair: route the disturbance through the existing `Turns` queue, or a sibling queue drained by
-   the tick owner. Never call `inject_disturbance` from a request thread. Falsifier: compare
-   `threading.get_ident()` at the apply site against the tick owner's; if it can execute on a
-   handler thread, it is not fixed.**
-
-**C2 needs owner approval.** The claim that only C1 does is wrong -- see the folded question below.
-
-#### C1 -- object and proximity channel. Blocked on approval AND on a recovery policy.
-
-`brain.py:1158-1163` states the invariant C1 relaxes, twice: the docstring says *"distance pinned
-SAFE so the E-STOP never trips"* and the body comment says *"`distance` -- the ONLY E-STOP channel
--- is deliberately untouched, so the reflex path is byte-identical and the safety envelope is
-unchanged."* `CONTACT = 0.04` at `arm_config.py:27`.
-
-**Beyond approval, C1 as specified creates an unrecoverable E-STOP deadlock, and it was not
-named.** `_CLEARS_LATCH = ("HOME", "RETRACT_ALL")` (`so101_arm.py:75`), and `apply()` at `:266-269`
-returns `state()` **without stepping** for every other command while `stopped`. Only those two
-commands can ever un-latch the arm. Every issue site in `src/` is a self-check or a demo --
-`so101_arm.py:461/:465`, `cerebellum/spiking_pid.py:220`, `brainstem/cpg_oscillator.py:74`,
-`brainstem/serial_arm.py:102/:162` -- plus the separate `interpreter.py:40` reflex map used by
-`signal_loop`, and the `nl_interface.py:43-44` chat mapping. **`AutonomousArm.step()` issues
-neither.** Today this is inert only because `brain.py:1161-1163` pins `distance` SAFE. C1 relaxes
-exactly that pin: the first real proximity trip latches the arm, `apply()` then refuses every
-subsequent command, `_wake_tick` keeps running, the brain keeps selecting actions, `_settled` never
-updates, and learning continues against a body that cannot move. The failure is **silent** -- events
-look normal and only `state()["stopped"]` shows it.
-
-**And the obvious recovery is documented-forbidden.** `autonomous_loop.py:1377-1386` already
-records both halves: *"ArmSim.apply("HOME") clears `stopped`, so firing this while E-STOPPED would
-un-freeze an emergency-stopped arm. It must never run in that state"*, and separately that HOME was
-measured NET NEGATIVE over 5 seeds at 600 ticks (84.4 to 80.2 cells) and replaced by a local
-`_A_POS` lift. Compounding it, `_home()` (`:173-183`) calls `mujoco.mj_resetData` **and** HOME is in
-`_CLEARS_LATCH`, so one HOME deletes the scene object and un-freezes the arm in the same call --
-the arm resumes into a world whose hazard the sim just removed.
-
-- **Engineering prerequisite:** a bounded-latch recovery policy -- a re-arm path the brain can
-  reach (an explicit `RETRACT_ALL` in the action vocabulary, gated on N consecutive clear-distance
-  ticks), plus `stopped` in the loop's own assertion set. **Falsifier:** drive the arm into a latch
-  and count ticks-to-recovery; if unbounded, C1 does not ship.
-- **Constraint on that recovery:** it must not `mj_resetData`, or `_home()` must re-place the scene
-  object. **Falsifier:** place an object, latch, recover, assert the object survives in `d.qpos`.
-- **Two more that ship a lie if omitted from the same commit as C1:** an OBSTACLE verdict in
-  `_verdict()` -- measured, an object at the gripper gives body-id pairs (8,6) and (8,7), no body 0,
-  so the arm reports SELF-collision when a user hits it; and a decision on `mj_resetData` silently
-  un-placing the object on `_home()`, which is also the autonomous postural-recovery command at
-  `autonomous_loop.py:1389`.
-
-#### The approval questions
-
-None of these is a subagent's or a coordinator's to grant.
-
-| | question |
-|---|---|
-| **A1** | May a measured proximity drive the E-STOP channel -- relaxing `brain.py:1161-1163`? |
-| **A2** | **May a local HTTP client cause arm motion or trip the E-STOP?** One yes or one no. |
-| **A3** | May the vendored MuJoCo scene be augmented programmatically? (`so101/SO-ARM100-LICENSE` unread -- confirm it permits this.) |
-| **A6** | **May the brain clear its own E-STOP?** |
-
-**A2 is deliberately one question, not three.** `cockpit.py:186-188` 404s every POST but
-`/api/chat`; `cockpit.py:52` records *"loopback-only binding makes this low-risk, not no-risk --
-anything local can POST"*; `/api/chat` only enqueues text; and `brain.py:26-31` guarantees the chat
-path *"never sends HOME / RETRACT_ALL / JOINT_* / any motor command."* So the true statement is
-sharper than the three separate items it replaces: **today no HTTP request can cause arm motion at
-all.** C1 and C2 together make loopback HTTP the system's first actuation surface. Splitting that
-across a second POST route, a TEST-ONLY promotion, and an E-STOP reachability question lets it be
-approved piecemeal, which is how the envelope gets crossed without anyone deciding to cross it.
-
-**A6 is new and is a strictly larger authority than A1 or A2.** It follows from the deadlock: C1
-without a re-arm path is unshippable, and every re-arm path is the brain clearing its own emergency
-stop.
-
----
-
-### STAGE 6 -- GAP 9, chained behind a pin and a restatement
-
-**Status: CHAINED. And the item as proposed closes a different gap than the one stated.**
-
-There are **three** serve modules, not one:
-
-| module | status today |
-|---|---|
-| `cortex/spiking_lm_serve.py` | already executed by `run_selfchecks.py:83` |
-| `reasoning/ar_spiking_lm_serve.py` | already executed by `run_selfchecks.py:339`, already consumed by `reasoning/blimp_bench.py:171` (the `SERVES` table), already covered by `tests/test_blimp_bench_serve.py` |
-| `reasoning/eprop_lm_serve.py` | already executed by `run_selfchecks.py:340` |
-
-So "the serve is dormant" is not true of any of them. The proposed fix -- `.[dev,train]` plus a
-transfer test -- tests the torch-to-zero-dep **weight bridge**, which is a different claim from the
-gap. **Rename the item to what it is: a control-relative regression test for the training-to-serve
-weight bridge**, move it out of the gap ledger into ordinary test work, and restate GAP 9 with the
-three modules distinguished. It may already be closed, or may not exist.
-
-The test itself is worth building and its shape is right:
-
-- **Change:** add the extra to the CI test job; one new test asserting the transfer
-  **control-relatively** -- same-weights agreement must strictly exceed the untrained-twin control.
-  No literal arbitrates; the control does. Measured margin 20 to 29 of 40 versus 0 to 1 of 40.
-- **Pin the dependency.** `pyproject.toml:67` is `train = ["torch", "torchvision", "snntorch>=0.9",
-  "numpy"]` -- a **floor** -- while `:66` is `gpu = [..., "snntorch==1.0.0", ...]` -- a **pin**. The
-  file's own comment at `:79` insists ruff is pinned and not floored, and records the institutional
-  lesson from exactly this failure mode. An unpinned snntorch lets any minor release move the
-  argmax-agreement count the new test asserts on: CI determinism would depend on a third party's
-  release schedule. **Pin `snntorch==1.0.0` in whichever extra CI installs.**
-- **Name the seed before running.** `SpikingLM(cfg)` init is currently unseeded and agreement swung
-  35 of 40 to 25 of 40 across two unseeded runs. A 10-point swing means the seed is choosable after
-  seeing the result. State the value in the spec, and assert the control margin over at least 3
-  seeds so a single lucky draw cannot carry it. `40` should be stated as the eval-set size it is,
-  not a tuned n.
-- **CI install lines, corrected:** `.github/workflows/ci.yml:42` is `pip install -e .` on the
-  self-checks matrix job (py 3.11/3.12/3.13); `:85` and `:110` are the two `.[dev]` jobs. There are
-  three install lines, not one, and the item must say which it means.
-- **Falsifier:** substitute the untrained twin's weights; the assert must drop to 0 to 1 of 40. If
-  it does not, the test asserts nothing `run_selfchecks.py:83` does not already prove and should be
-  dropped rather than kept green. Second falsifier: if `importorskip("snntorch")` still skips in the
-  CI log after the install change, **the gate does not exist** -- a skipping test is not a gate, and
-  the honest fallback is a P3 case-3 EXEMPT with a measured reason, not a green skip.
-- **Do NOT wire the serve into the live brain.** 0 matches in `docs/P6_INTERCONNECT.md` and
-  `tools/`, no artifact to serve, and `docs/coverage/Language.md:243-249` pre-declares Language
-  unreachable by wiring.
+- **Files (record only):** extend the P-IGNITE fence in this document to cover
+  `ignition_threshold`; mark A3 in `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md:362-396`
+  BLOCKED-AND-POINTLESS; correct the stale VERIFIED row at `:78`.
+- **Risk if ignored:** theta is *not* globally inert -- it bites above 0.85 (34, 38, 54 and 10 of
+  60 outcome changes at 1.20). Ignition feeds `access_strength()` -> the metacognitive hold ->
+  whether a reply to a human is hedged. A "derived" high theta would silently change what the
+  brain says about itself with no held-out metric saying it is better. **Do not let a derived high
+  theta in through this door.**
 - **Approval:** none.
 
-**The coverage warning attached to this item is false and should be dropped.**
-`pyproject.toml:141` is `omit = ["*/reasoning/*", "*/training/*"]`, so `training/spiking_lm.py` is
-**already outside** the `--cov-fail-under=70` denominator; adding a test that imports it cannot move
-the gate. The adjacent risk that is real and was not named: `cortex/spiking_lm_serve.py` is **not**
-omitted, so a test importing the cortex serve does add statements to the denominator. Measure that
-one, and pre-commit to the disposition before seeing the number -- if an honest test would breach
-70 percent, the gate moves or the file is excluded, and the test lands. Deciding that order after
-seeing the number is how the test quietly disappears.
+### STAGE 2 -- close now, no prerequisites.
+
+#### GAP 9 -- `spiking_lm_serve`. CLOSE NOW. REPAIR, not retire.
+
+The retire recommendation is wrong on both halves. `cortex/spiking_lm_serve.py` **is**
+gate-reachable (`dormancy_gate.reachable()` returns it, via the function-local imports at
+`training/spiking_lm.py:407-408`), and the `snn_lm/1` format **is** producible.
+
+The real defect: the self-check catches **1 of 3** neuters. Silencing `_lif` and zeroing `_matvec`
+both leave it GREEN, because `_demo_lm()` at `:164-165` sets an all-zero `readout` matrix with
+`readout_b = [0.0, 5.0, 0.0, 0.0]` and the comment "bias hard toward char id 1" -- confirmed
+verbatim. The argmax is `'b'` regardless of the forward pass. **The only gate on the module proves
+nothing about the forward it exists to run.**
+
+- **Files:** `src/snn_data_lake/cortex/spiking_lm_serve.py`; corrections to
+  `specs/005-language-organ/verdict.md:114-122`, `shared-edits.md:52,60-61`,
+  `research.md:493,690`.
+- **Falsifier:** re-run the 3-neuter harness -- it must be **3 of 3**, not 1 of 3. If the repair
+  leaves it at 1 of 3 it changed a printed string and must be reverted, not kept green. Second
+  falsifier: the two new asserts must fail with `embed` zeroed, or they are reading the bias
+  vector again.
+- **Constraint accepted from review:** write the new asserts as exact equality against a
+  hand-computed logit, or with a float epsilon (`< 1e-9`). If either lands as a magnitude
+  comparison (`spikes > 3`, `logit > 0.5`), that literal **is** a gate and re-opens the item.
+  `_demo_lm`'s weights are fixture vectors in a self-check, so P1 does not reach them; a new
+  magnitude threshold would not be a fixture.
+- **Cannot distinguish:** a 3-of-3 neuter harness cannot tell a correct forward from a
+  consistently wrong one. It proves the gate is load-bearing, not that the model is right.
+- **Do not retire.** Retirement removes an 88.2 percent file from a 34,299-statement denominator,
+  moving `--cov-fail-under=70` **down** 0.068 points at the edge, and breaks two citations in
+  `docs/coverage/Language.md:17,266` (citation_guard STRICT scope).
+- **Approval:** none. No live-brain path, no arm, no persistence.
+
+#### GAP 3c -- the re-typed literal. CLOSE NOW, one line.
+
+`src/snn_data_lake/thalamus/reentrant_workspace.py:383` re-types `ignition_threshold=0.55` in
+`run_stream`'s signature, against that module's own instruction at `:107-108` ("Read this, never
+re-type the default"). Confirmed present. This is an uncited fourth site;
+`PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md:74` lists three.
+
+- **Falsifier:** `python -m snn_data_lake.thalamus.reentrant_workspace` stays green.
+- **Cannot distinguish:** nothing to distinguish; this is strictly constant-*removing*.
+- **Approval:** none.
+
+#### S2.3 -- narrow the silent swallow at `brain.py:1626`. Split out of GAP 1, ships alone.
+
+```python
+try:
+    rb = self._reentrant.broadcast_to("action")
+    self._reroute_bias = round(float(max(rb.values())), 4) if rb else 0.0
+    elig["reroute"] = min(1.0, self._reroute_bias)
+except Exception:
+    pass
+```
+
+Confirmed verbatim at `cortex/brain.py:1622-1627`.
+
+**Correction accepted from review, and it matters:** this `try` is currently *unreachable-failing*.
+`:1621` already guards `self._reentrant is not None`, and `broadcast_to` is total (returns `{}` for
+an unknown name at `:144`). So describing it in the present tense as "a live, varying, gate-feeding
+term pinned silently to zero" is wrong -- it is a hazard that GAP 1 would **create** by changing
+the return shape. Narrowing it is still correct and still cheap, but it is defensive work, not a
+live defect, and the commit message must say so.
+
+- **Files:** `src/snn_data_lake/cortex/brain.py:1622-1627`.
+- **Residual accepted from review:** on a future raise, `self._reroute_bias` retains the previous
+  tick's value and telemetry reports it as current. Assign `0.0` before the read, or set both in
+  one statement.
+- **Falsifier:** `elig["reroute"]` bit-identical on 300 of 300 live wake ticks.
+- **Approval:** none.
+
+#### P-INBOX -- the unbounded append. CLOSE NOW, own commit.
+
+`reentrant_workspace.py:137` creates `{"inbox": [], "bias": {}}`; `:288` and `:311` append one
+entry per subscriber per tick, unconditionally and forever -- the `else` branch appends `None` on
+dark ticks, so it grows regardless of ignition. **[measured]** the sole reader `inbox()` at `:376`
+has **0 call sites** tree-wide, and there is no `.clear()` or `maxlen` anywhere in `src/`.
+
+**REJECTED: `deque(maxlen=N)`.** The audit is right and this is the decisive argument: the stated
+falsifier is "since `inbox()` has 0 callers, any output difference means the premise was wrong" --
+a falsifier that requires **zero** output difference is, by construction, **insensitive to N**. No
+experiment can distinguish `maxlen=1` from `maxlen=100000`. A behaviour-arbitrating value that no
+measurement can constrain is the definition of a magic constant, and the cited precedent
+(`access_consciousness.py:120`, `max(2 * k_sat, 8 * k_sat)`) is defensible only because `k_sat` is
+a measured saturation knee with a real consumer. The inbox has no knee, because it has no reader.
+
+**Do instead:** delete both appends and `inbox()`. By the program's own argument this is a
+zero-output-change edit with zero constants, and it is honest that the channel is dead. If
+`inbox()` must survive as a public introspection surface, `maxlen=1` is the only value with a
+derivation ("the current tick") and the docstring must change from "the sequence of broadcasts" to
+"the most recent broadcast".
+
+- **Falsifier:** `elig["reroute"]`, availability, `access_strength` and the selected action
+  identical on 300 of 300 ticks. Structural, not hoped-for: with 0 readers, any difference falsifies
+  the premise outright.
+- **Cannot distinguish:** nothing -- and that is the point. The deletion has no free parameter,
+  which is exactly why it is preferred over the deque.
+- **Ship as its own commit.** It is a leak fix, not a P6 wire, and must not contaminate GAP 1's
+  scorecard.
+- **Approval:** none.
+
+### STAGE 3 -- the deferred prerequisite for the arm.
+
+#### S3.1 -- `so101_arm.py` `_settled` re-baselining. Prerequisite for GAP 7, measured separately.
+
+`so101_arm.py:333` re-baselines `_settled` at the end of **every** `apply()`, including the HOLD
+fall-through, so the deviation signal is destroyed one tick after creation.
+
+**REJECTED: "gate on the existing `reached` predicate -- no new constant".** Two independent
+failures.
+
+*(a) `reached` is not constant-free.* `so101_arm.py:392` is
+`reached = bool(np.all(err <= np.maximum(tol, 1e-9) * 2.0 + 1e-6))`. The epsilons are float noise
+and legitimate; the **`2.0`** is a pure behaviour-arbitrating literal multiplying a derived
+tolerance. Today it only affects a reported field. The proposal promotes it to gating the reflex
+baseline, escalating an existing smuggled constant onto the safety-adjacent path.
+
+*(b) The repair fails its own negative control immediately.* **[measured]**, simulating exactly
+the proposed gate on eight consecutive `JOINT_SHOULDER_LIFT_ROTATE(+6deg)` commands with **zero
+disturbance injected**:
+
+| tick | `reached` | deviation today | deviation under the proposal | tracking error |
+|---|---|---|---|---|
+| 0 | False | 0.000000 | 0.000000 | 0.104374 |
+| 3 | False | 0.000000 | 0.003002 | 0.415539 |
+| 7 | False | 0.000000 | **0.011169** | 0.826249 |
+
+`reached` is True on **0 of 8** ordinary commanded moves, so the gate never re-baselines at all:
+`_settled` freezes at HOME and deviation becomes cumulative travel -- 15x over the
+`0.000713 rad` droop envelope by tick 7, with nothing having pushed the arm. The reflex would fire
+on the first commanded motion after boot, forever. This is not an edge case, it is total.
+
+The module's own comment at `:425-432` already contains the reason: tracking error
+(0.52325 rad) **exceeds** a 20 degree external shove (0.34961 rad), so no pose-comparison baseline
+gated on a *tracking* predicate can separate exafference from tracking. The proposal reintroduces
+the exact confound `_settled` was built to avoid.
+
+**Do instead (candidate, must be measured before adoption):** re-baseline on a **commanded-value
+change**. `self._commanded` is already tracked at `:315` and moves only when a command alters the
+setpoint, so a HOLD fall-through would no longer erase the signal while an ordinary ROTATE would
+still re-baseline. Zero new constants, and it is the quantity that actually defines "the arm has
+been told something new".
+
+- **Falsifier, and both halves are required:** with the change and **no** perturbation, deviation
+  must stay at 0.000000 on 8 of 8 commanded moves and `trajectory_breach()` must stay False --
+  i.e. the negative control that the `reached` gate fails. With a shove injected and a HOLD
+  following, deviation must survive the HOLD.
+- **Cannot distinguish:** a commanded-change baseline cannot separate exafference from a
+  *mid-move* disturbance that arrives before the next command. It bounds the signal's lifetime to
+  one command, not one statement, which is the improvement being claimed and no more.
+- **Approval:** none for the `_settled` change itself. It does not expose a route.
+
+#### S3.2 -- `moving` is dimensionally incoherent. NOT in scope; do not ride it along.
+
+`so101_arm.py:405` compares `norm(qvel)` (rad/s) against `norm(_droop_tolerance())` (rad). The
+comment names the missing factor: "a joint that cannot clear its own steady-state error **within a
+second**". The 1 second is a chosen constant that appears nowhere in the expression -- smuggled as
+an implicit unity factor, the least detectable form of the defect. **[measured]** the droop norm is
+`0.000713 rad`, `opt.timestep` is 0.002 s and `substeps` at birth is 1, so one `apply()` spans
+0.002 s: the implicit horizon is 500x the actual command window.
+
+The honest form removes a constant rather than adding one:
+`norm(qvel) * (self.substeps * m.opt.timestep) > norm(droop_tol)` -- displacement against
+displacement, both in rad, with the horizon being the actuation window the brain already owns via
+`set_substeps()`.
+
+**Recorded, not scheduled.** `moving` gates `blocked`, and `blocked` is penalised by
+`coverage_reward`. This repo has already corrupted that objective once ("saturation is not
+obstruction"). It needs its own commit, its own falsifier and its own before/after on the reward,
+and it must not ride along inside a GAP 7 commit merely because GAP 7 edits the same file.
+
+### STAGE 4 -- GAP 3a, with the co-edit it was missing.
+
+#### GAP 3a -- the binding decoder. CHAINED on a pre-registered scorer decision.
+
+Distinct from GAP 3b and not contradicted by it. `global_workspace.py:394-395` is
+`len(true & got) / len(true)` -- recall only, no precision term -- so a K-squared guess budget is
+scored against a K budget and a decoder emitting all 64 pairs scores 100 percent. **[measured]**
+confirmed: all-pairs scores 1.0000 under today's scorer. The constants are inert (3b); the
+*scorer* is not.
+
+**REJECTED: GAP 3a as CLOSE NOW, and as an item "a user could observe".** Two corrections.
+
+*(a) A user observes nothing.* `_bind_pair_acc`'s only path to a human is `_consciousness()` at
+`spike_chat_lake.py:1173`, which prints `binding={bnd}` and `{sum} of 4`. The tree already records
+the measured result of this exact repair at `spike_chat_lake.py:1191-1194`: distinct verdicts
+across 26 perturbations go from 1 of 26 to 2 of 26 while **the count stays 4 of 4**. Both reply
+strings are byte-identical after the repair. Reclassify as **instrument sensitivity**, not
+observable behaviour.
+
+*(b) It closes a different item than the one filed.* The P1 finding is the undirected margin
+`present = sp > rt + 0.15` at `consciousness_probe.py:84`. Adding a precision term moves `sp` and
+`rt` and leaves `0.15` underived. **The P1 finding survives the closure filed against it.**
+
+- **Files:** `src/snn_data_lake/thalamus/global_workspace.py` (decoder and scorer);
+  **`src/snn_data_lake/reasoning/consciousness_probe.py:84` is a required co-edit, not a
+  bystander**; `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md`.
+- **Pre-registration, before anything runs:** name the combination rule *and its justification*,
+  and state the expected `sp - rt` for that rule. Post-hoc selection between F1 and Jaccard is
+  choosing the consciousness verdict.
+- **Falsifier 1:** the all-pairs decoder scores near 0 (F1 0.0606, Jaccard 0.0312 -- both pass);
+  K=1 unchanged at 1.0000 (both pass).
+- **Falsifier 2, the one that was missing:** *if the marker's verdict depends on the choice
+  between F1 and Jaccard, the marker is not measuring binding and must be reported as
+  inconclusive.* **[measured]** it does depend on it. **State now that flipping the marker to
+  ABSENT is an acceptable and publishable outcome**, because otherwise the only exit is retuning
+  `0.15`, which is P1's forbidden move on a consciousness claim.
+- **Cannot distinguish:** falsifier 1, alone, cannot distinguish F1 from Jaccard. That is the
+  entire finding.
+- **Open a separate P1 item for the `0.15` margin.** It is not closed by this work.
+- **Approval:** none.
+
+### STAGE 5 -- GAP 4, GAP 5, GAP 6. Needs a measurement, and two null controls it did not have.
+
+**Status: NEEDS A MEASUREMENT.** Neither EXEMPT nor CLOSE NOW is supported; see C-A.
+
+**Do not run this without both controls below. A positive result without them is unreportable.**
+
+#### Null control 1 -- `_stack.clear()`, the control that decides what the wire is
+
+Max stack depth is 1 (`autonomous_loop.py:985` records `max 1 -> max 1`). `maintain()` decays the
+top frame and pops it, leaving `_stack == []`. The next `update()` reaches `_gate_primary` at
+`:262`, whose empty-stack branch fires **unconditionally** and pushes this tick's reactive argmax
+(confirmed at `:262-266`: a non-empty stack *overwrites* `_stack[0]`, an empty stack *appends*).
+
+So the wire's entire causal content may be: *when the margin fails to clear and ~80 ticks elapse,
+discard the held goal and commit the current argmax anyway.* That is the removal of hysteresis. A
+working-memory attractor exists to **preserve** information across a gap; this insertion would
+make the loop **less** persistent. `action changed > 0 of N` cannot tell the two apart.
+
+**The control:** re-run the A/B with `self.pfc._stack.clear()` substituted for
+`self.pfc.maintain()` on the same schedule. At depth 1 the two are structurally identical. **If the
+action sequences match, the LIF pool, `recurrence`, `hold_threshold` and `_wm_spikes` contributed
+nothing and the effect is a timer, not working memory.**
+
+One attack that does *not* land, and it matters: `_run_wm_pool` (`:315-332`) draws no RNG, so
+inserting `maintain()` perturbs no shared random stream. The 1-of-1400 to 268-of-1400 divergence is
+causal, not chaotic. That is precisely why the gate-bypass reading is the surviving explanation
+rather than a competing one.
+
+#### Null control 2 -- first-divergence, not run-vs-run
+
+"Action changed 187 of 1400" is a run-vs-run diff. After the first divergence the two arms hold
+different state and every later tick is unattributable. The attributable metrics are
+**first-divergence tick** plus a **per-tick counterfactual** (recompute the no-maintain decision
+from the treatment's own state). The two-order-of-magnitude spread across harnesses is fully
+consistent with "the first divergence happened earlier".
+
+#### The measurement itself
+
+- **Insert:** `self.pfc.maintain()` immediately before `autonomous_loop.py:1007`, driven by
+  `Brain.tick()`'s **own** context construction, not a synthetic stream. 7 seeds, action-clamped,
+  with the observed `maintain()`-call count and margin-clear count printed as inputs. Report the
+  horizon's arithmetic, not a chosen tick budget.
+- **REJECTED: the `if self.pfc._stack:` guard.** `prefrontal_executive.py:340-342` already handles
+  the empty stack -- confirmed, it sets `self._wm_spikes = 0` when it does. The guard is redundant
+  and it leaves `_wm_spikes` **stale** rather than zeroed on empty-stack ticks. `_wm_spikes` is the
+  exact field the `autonomous_loop.py:969` precedent is adjudicated on. **The guard contaminates
+  the instrument.** Call `maintain()` unguarded.
+- **Third constant, previously unnamed:** the hold duration in wake ticks is
+  `f(recurrence, hold_threshold, cadence)`, and **cadence = one call per wake tick is a chosen
+  constant**. Pre-register it explicitly ("one `maintain()` per wake tick, so the pop horizon is 80
+  wake ticks") and pre-register its falsifier: *if the action-change count is sensitive to cadence,
+  the wire's effect is a property of the cadence and not of working memory.*
+- **P1 fence:** do not retune `recurrence=0.98` or `hold_threshold=0.2`
+  (`prefrontal_executive.py:88-89`), and do not scale by K. Both are "tune until a number moves".
+- **Pre-declared falsifier:** if held goal changes 0 of N and action changes 0 of N while
+  `_wm_spikes` goes from 1 distinct to ~20, revert and mark the item EXEMPT permanently. Note the
+  observed seed where held goal changed 40 of 200 while action changed **1** of 200 -- the
+  `autonomous_loop.py:969` shape appearing at the goal layer. **Goal movement is not the success
+  signal; action movement is.**
+- **Second falsifier, rated highest:** if effect size tracks how *latched* the baseline is
+  (seed 0 entropy 1.29 bits, longest run 72, versus seed 1 at 2.16 bits), the finding is a latch
+  defect and the wire is being credited for fixing it.
+- **Cannot distinguish:** the primary falsifier cannot distinguish a working-memory attractor from
+  a hysteresis-removal timer. Null control 1 exists solely to supply that distinction, which is why
+  it is not optional.
+- **Honesty cap:** the consumer chain is `top_down_bias -> pfc_bias -> _select/_bg_select`, i.e.
+  the single action gate. Under F3 that is a spoke, not a faculty-to-faculty edge. **Claim it under
+  P3 (a dormant mechanism made decisive), never as a P6 read.**
+- **Line drift, corrected:** the block runs `:974-1006` in the current tree; prior documents cite
+  `:969`, `:976-995` and `:1001`.
+- **Approval:** none **today**, conditional on GAP 7 never sourcing `distance` from the scene --
+  see the dependency in stage 6. Use a public `has_goal()` predicate rather than touching `_stack`
+  directly, so the intent does not silently become a no-op if the attribute is renamed.
+
+### STAGE 6 -- GAP 1, then GAP 2. Both chained; GAP 2 recommended for descope.
+
+#### GAP 1 -- the bus payload. PARKED until a listener exists.
+
+**REJECTED: GAP 1 as CLOSE AFTER.** The pass criterion is bitwise INVARIANCE on 300 of 300, and
+the shipped assert `broadcast_to("action") != broadcast_to("language")` fails 300 of 300
+**before and after**. The artefact is a payload field with no reader, a test red on both sides,
+and a narrowed `except` -- and the narrowing is separable and already scheduled as S2.3. By the
+program's own section 8 analysis the payload adds the **submitter** axis while F1 kills wires on
+the **listener** axis. Dormant on arrival. The concession and the CLOSE verdict cannot both stand.
+
+`_deliver`'s loop variable is literally named `_name` because the body never uses it, and
+`s["bias"] = {winner: bias}` is written identically for every subscriber -- both confirmed at
+`reentrant_workspace.py:285-315`. The listener axis is inexpressible, and the submitter axis does
+not create it.
+
+**When it is un-parked**, these constraints are non-negotiable:
+
+- **Replace, not accumulate.** `s["bias"]` is a single-entry replace today. A submitter axis
+  naturally implies keeping several submitters alive; the moment `s["bias"]` accumulates,
+  `max(rb.values())` becomes non-decreasing and `elig["reroute"]` drifts monotonically upward into
+  `undirected` at `brain.py:1648`. That is the `autonomous_loop.py:969` shape and it would present
+  as "the wire now varies more", i.e. as success. Add the assertion `len(broadcast_to(name)) == 1`
+  on every tick where anything ignited.
+- **Preserve `round(..., 4)` and `min(1.0, ...)` character-for-character.** `round(..., 4)` is a
+  1e-4 quantizer sitting on the action-selection path and `min(1.0, ...)` is an inert clamp
+  (`_REENTRY_GAIN = 0.08`, so the bias never exceeds 0.16). Neither is a unit conversion. If the
+  new expression drops, relocates or reorders the rounding, the run diverges for a reason unrelated
+  to the payload and the falsifier reports a defect that is not there. **Name the `4` as a known
+  unaudited constant on the decision path, to be swept separately, never in this commit.**
+- **Do not touch `:288` or `:311`.** Enriching the inbox append to store the payload dict takes
+  8.65 B to 368 B per entry, a 42x amplification. State this in the commit. (Moot if P-INBOX
+  deletes the appends first, which is the preferred order.)
+- **Falsifier:** `elig["reroute"]` bit-identical tick-for-tick over 300 live wake ticks, action
+  identical on 300 of 300. **If any of those move, it is a defect**, not progress.
+- **Cannot distinguish:** bitwise invariance cannot distinguish "the payload change is correctly
+  inert" from "the payload change is inert because nothing reads it". Only a named consumer can,
+  and that is the condition for un-parking.
+- **Approval:** none. Confined to `thalamus/` and `cortex/`; no brainstem safety module imports
+  either workspace class.
+
+#### GAP 2 -- instance sharing. RECLASSIFY as P2. RECOMMEND DESCOPE.
+
+Filed as a P6 interconnect finding and it is not one. The 7 `GlobalWorkspace` sites are private
+winner-take-all primitives *inside* algorithms (`rpm_solver` picks a candidate index;
+`train_of_thought` sequences thoughts), not faculties failing to reach each other. Unifying them
+buys P2 compliance (two mechanisms coexisting is a live violation) and **zero faculty coupling**.
+
+Sharing *first* is actively worse than useless: `ReentrantWorkspace` holds ONE slot (`:57`) with
+global lateral inhibition (`_G_INH`, `:81`). Routing 7 modules into `brain._reentrant` makes them
+contend with the percept, self and salience coalitions at `brain.py:1746-1757`. And the second
+subscriber's drain would be byte-identical to the one `brain.py:1623` already drains, so any read
+it adds is dormant on arrival.
+
+- **Tiers:** 5 of 8 sites are a one-line `step()` unwrap (`autonomous_loop.py:235,1168`;
+  `executive_control.py:102,112`; `rpm_solver.py:305-308`; `spike_chat_lake.py:817-825`).
+  2 modules are genuine behavioural ports: `cortex/access_consciousness.py:92-98` (the
+  `subscribe(fn)` callback idiom `ReentrantWorkspace` cannot express) and
+  `reasoning/train_of_thought.py:92,97,157-158,244` (depends on per-(source, content) decay;
+  `ReentrantWorkspace` has only a scalar `_g_reentry`).
+- **Falsifier, with the band the earlier version lacked:** measure the percept-coalition ignition
+  count over the **same 7 seeds** used elsewhere in this program, report min and max, and set the
+  criterion as "outside the measured 7-seed range". A bare "must stay at 996 of 1000" is either
+  exact equality (which will fail for unrelated reasons) or it needs a band -- and a hand-picked
+  band is itself an underived constant.
+- **Cannot distinguish:** an ignition-rate criterion cannot distinguish single-slot contention
+  from an unrelated seed effect. The 7-seed range is what supplies that separation.
+- **Approval:** none.
+
+### STAGE 7 -- GAP 7. Split three ways; needs owner approval on five items, not three.
+
+#### 7a. Target pose -- already reachable, extend vocabulary only
+
+`POST /api/chat -> Turns.pump -> Brain.respond ->` NL firewall `-> arm.apply()` is a working gated
+motor route from the cockpit today. It is coarse (one `DEFAULT_STEP_DEG = 6.0`, no MOVETO). Extend
+the firewall vocabulary; **do not build a second motor route**. `DEFAULT_STEP_DEG` survives the
+constant audit -- `arm_config.py:151-160` argues it is a command magnitude and not a threshold, and
+that argument continues to hold when the magnitude becomes user-supplied.
+
+Gated on all of stage 0. Approval: none beyond stage 0.
+
+#### 7b. Object placement -- runtime PROVED IMPOSSIBLE, construction-time RE-OPENED
+
+Both cited facts hold: `so101/scene.xml` has exactly one non-arm geom (`floor`, line 22), and
+`so101_arm.py:67-70` declines an OBSTACLE verdict deliberately ("a branch that cannot fire is the
+computed-but-not-consumed defect this project already names").
+
+**REJECTED: the blanket "PROVED IMPOSSIBLE".** The MjSpec / `self.data`-invalidation argument
+applies to placing an object **at runtime into a live model**. It does not apply to placing one
+**before compile** -- adding a `<geom>` or `<body>` to the scene at construction and building the
+arm around it recompiles nothing and invalidates no handle. "A verdict that was deliberately
+declined" is a design decision, not a structural bar; the comment's own reasoning ("a branch that
+cannot fire") stops applying the moment a second geom exists.
+
+**Correct verdict:** runtime placement is blocked by the handle argument; **construction-time
+placement was never evaluated and is not proved impossible.** The standing rule is that "it cannot
+be done" is valuable only when proved, and this one was asserted for the case that matters.
+Evaluate it before recording anything.
+
+#### 7c. Disturbance -- PROVED BLOCKED, by circularity
+
+Not "needs measurement". The chain closes on itself:
+
+1. `so101/scene.xml` has one non-arm geom, so the simulation has **no exafference source**.
+2. `inject_disturbance` is the **sole** out-of-band writer of `qpos`, and `so101_arm.py:201-208`
+   marks it TEST-ONLY and "deliberately NOT part of the command path".
+3. Therefore a consumer built on `deviation` can only ever be exercised by the test hook.
+4. Exposing the test hook is the approval-gated item. Return to 3.
+
+**[measured]** `arm_config.py:28 TRAJ_DEV_MAX = 0.15` occurs **exactly once tree-wide, at its own
+definition** -- 0 readers. The reflex it names was never implemented.
+
+**REJECTED: wiring `TRAJ_DEV_MAX` as the envelope.** It is a unit error and a stale body.
+`arm_config.py:28` documents it as "end-effector deviation (**m**)"; `so101_arm.py:438` computes
+`deviation` as `norm(qpos[:nu] - _settled)`, a **joint-space norm in radians**. Metres against
+radians. Its stated derivation ("tied to arm reach l1+l2=2m") is the **deleted 2-link arm**; this
+body's reach is sampled at `arm_config._max_reach_mm()`, and `so101_arm.py:60-70` records that the
+same 2 m circle already produced one wrong verdict. Either delete `TRAJ_DEV_MAX` (P2: two
+mechanisms, one survives) or restate it in metres against `ee_mm()` with a derivation from
+`_max_reach_mm()`. **Deleting is the honest option and is strictly constant-removing.** The derived
+per-joint envelope already exists: `trajectory_breach()` compares against `_droop_tolerance()`.
+
+**REJECTED: the "5 deg shove" falsifier.** Arbitrary. A **1.0 degree** shove already gives
+`deviation = 0.017453 rad` against a `0.000713 rad` droop envelope -- 24x over. 5 degrees is ~122x
+suprathreshold, so the test measures nothing about sensitivity. Use the derived stimulus: the
+smallest per-joint shove exceeding `_droop_tolerance()[j]`, which is computed rather than chosen.
+
+**Correction to a claim in the program:** "`deviation` and `trajectory_breach()` have zero live
+consumers" is falsifiable by a grep. `trajectory_breach()` has one caller,
+`cerebellum/spiking_pid.py:240`, immediately after `inject_disturbance` in the same loop iteration.
+"No *production* consumer" is the right claim -- and it sharpens the `_settled` finding, because
+that one reader works **only** because it reads before the next `apply()` re-baselines. The
+signal's lifetime is one statement and the sole reader sits inside it.
+
+**If the owner wants it anyway**, the honest design is a **latched** disturbance flag set by
+whatever writes `qpos` out of band -- not a pose comparison. But that flag is only ever set by the
+test hook, which returns to step 4.
+
+#### Approval gates for GAP 7 -- FIVE items, not three
+
+| # | item | why it needs the owner |
+|---|---|---|
+| 1 | Exposing `inject_disturbance` over HTTP | Contradicts a written standing decision (`so101_arm.py:201-208`, TEST-ONLY) |
+| 2 | Sourcing `distance` from the scene | `brain.py:1192` is pinned to `SAFE_DISTANCE` on purpose and is the **only** E-STOP channel (`autonomous_loop.py:1260-1261`). Without it **no cockpit perturbation can ever trip the reflex**, so "the reflex preempts" holds only in the weak sense that the latch blocks commands |
+| 3 | The latch-refusal helper | Changes a helper three self-checks use |
+| 4 | **The HTTP-thread / `mjData` race** | `learn_daemon.py:264-278` documents in-code that chat and rendering are drained on the tick thread because "there is no lock anywhere in the brain stack" and rendering from the HTTP thread "does not raise, it returns garbage". `inject_disturbance` writes `data.qpos` and calls `mj_forward`; `mjData` is not thread-safe and `mj_forward` concurrent with `mj_step` on the same `mjData` is undefined behaviour, not merely wrong numbers. **Any route must enqueue from the HTTP thread and execute inside the tick loop, before `b.tick()` at `learn_daemon.py:261`** -- a thread constraint, not a sequencing preference |
+| 5 | **`inject_disturbance` beats the E-STOP gate** | **[measured]** on a `So101Arm` with `stopped=True`: a gated `apply(JOINT_SHOULDER_PAN_ROTATE(+6deg))` moves the arm **0.000000 deg**; `inject_disturbance("shoulder_pan", 20.0)` moves it **20.000000 deg** (`deviation = 0.349066 rad`). The test hook is a **stronger actuator than the gated command path**, and it is the only code path in the repo that moves the arm while E-STOPPED. Exposing it is not "contradicting a standing decision", it is **adding the only E-STOP-bypassing actuator in the repo** |
+
+- **Falsifier for 7c, if it proceeds:** after the consumer, a derived-magnitude shove must change
+  strictly more than 0 of 200 actions. Today it changes 0 of 200 while the temperature band takes
+  63 distinct values versus baseline 50 -- `autonomous_loop.py:969` verbatim. If that stays true,
+  revert; do not tune the normaliser.
+- **Negative control that must NOT move:** with the consumer live and no perturbation, the run must
+  stay identical to baseline.
+- **Falsifier for item 4:** 10,000 HTTP perturbation posts against a live daemon under MuJoCo
+  validation; zero `mjData` corruption and zero garbage render frames.
+- **Files, if it proceeds:** `substrate/cockpit.py`, `learn_daemon.py`, `brainstem/so101_arm.py`,
+  `cortex/brain.py`, `cortex/live_brain.py`, `substrate/brain_telemetry.py`,
+  `brainstem/arm_config.py`, `cortex/nl_interface.py`, `tests/test_so101_arm.py`.
 
 ---
 
-## 5. Findings, not tasks
+## 5. Cross-stage dependency that is easy to miss
 
-Items that turned out to be completed results. A proof is a deliverable.
+**STAGE 5 and STAGE 7 are not independent.**
 
-### GAP 8 -- wikitext as a grounding source. PROVED IMPOSSIBLE.
+`autonomous_loop.py:1257-1275` -- `step()` returns at the reflex branch **before** `_pfc_bias` at
+`:1366`. So a `maintain()` inserted inside `_pfc_bias` is not called on reflex ticks, and **the
+working-memory drive does not decay while the arm is latched**.
 
-The proof rests on **one** leg, not two. Both were originally presented as independent structural
-proofs; only the second is extractor-independent.
+Its severity is conditional on GAP 7. Today `distance` is pinned to `SAFE_DISTANCE`
+(`brain.py:1192`), so reflex ticks essentially never fire live and the freeze is theoretical.
+**If GAP 7 approval item 2 is ever granted and `distance` is sourced from the scene, the freeze
+becomes real -- and it freezes goal state during exactly the emergency that should force
+re-planning.**
 
-- **Leg 1, demoted to a measurement.** 363 of 1,870,332 rough sentences contain a full KB triple,
-  0.019 percent -- an upper bound on **exact-symbol co-occurrence**, not on triple-asserting
-  sentences under any extractor. A paraphrase-tolerant extractor is not excluded by it. Still
-  decisive against the swap on its own terms: the incumbent `load_kb()` has **605 curated triples**,
-  so the hybrid yields fewer scenes than the source it would replace. 486 of 493 single-token KB
-  symbols do occur; the symbols are present, the scenes are not. The parquet footer settles intent:
-  one column, `{"text": {"dtype": "string"}}` -- no scene, no annotation, no alignment.
-- **Leg 2, and it carries the proof.** The restriction rule's job (`research.md:94-95`) is to keep
-  the organ off pairs it could not have acquired. Under a 338,235-type lexicon it admits
-  **41,567 of 67,000 pairs and 65 of 67 paradigms** -- overshoots of 208x and 8x against the
-  pre-registered floors. **A control that admits everything is not a control.** This disqualifies
-  the swap independently of pre-registration, and independently of any extractor. It is also
-  robust to the floors being wrong: 208x is far outside any plausible re-derivation.
-- **Amend `verdict.md`, which currently reads as if pre-registration were sufficient.** R6 *did*
-  pre-register wikitext. It fails on the second test, not the first.
-- **Falsifier, with its borrowed constant removed.** The original ">= 200 verified sentences" is the
-  BLiMP 200-pair floor wearing a different job's clothes: `research.md:64` sets that floor and
-  `:67-91` derives it from the standard error of a paired difference across a 2.6-point per-char
-  logprob band, on pair lists both arms score identically under contract B1. A wikitext sentence
-  count has no paired structure, no discordance rate, no scoring convention and no 2.6-point band --
-  every clause of the derivation is absent. **The constant-free falsifier is the incumbent: the swap
-  must produce more verified scenes than 605.** The measured co-occurrence ceiling of 363 already
-  fails it with no threshold at all.
-- **Files:** `specs/005-language-organ/research.md` (R6, line 409 -- cite the number instead of the
-  judgement), `specs/005-language-organ/verdict.md`.
-- **The live route costs one probe, not a feature:** an arm-state renderer's **lexicon only**, run
-  through `tools/lang_coverage.py` exactly as the KB lexicon was at `:309`, before any organ is
-  built. Prerequisite genuinely absent -- 0 matches for scene, describe, or caption across
-  `src/snn_data_lake/brainstem/`. Predicted 3 to 8 of 67 paradigms, at or below the floor. **If it
-  also misses, the conclusion is not "try a third corpus"** -- it is that BLiMP is the wrong
-  instrument, and `docs/POLICIES.md:155` applies: build the benchmark first.
-- **Why to record this loudly:** the risk runs the other way. Adopting wikitext would produce a
-  **green** A/B that is a corpus-size result wearing an assembly-calculus label. This repo has the
-  worked case in `probe_fluid.py`, saturated and now banned as a signal. A NOT-P2-ELIGIBLE record is
-  honest; a mislabelled green is not.
+**Explicit precondition: GAP 7 item 2 may not proceed until either the working-memory decay is made
+tick-driven rather than call-driven, or STAGE 5 is confirmed EXEMPT.**
 
-### GAP 3's A3 route -- source-permutation surrogate. PROVED IMPOSSIBLE, structurally.
-
-`brain.py:1746`, `:1751`, `:1755` post exactly three submits per tick with disjoint contents:
-`("percept", digit-or-"ctx")`, `("self", "self")`, `("salience", "threat"-or-"novel")`. That is a
-constant bijection, so **every coalition has exactly one supporter structurally, not merely on the
-seeds tested**. `reentrant_workspace.py:212` is
-`base[content] = min(1.2, base[content] + self._COAL_BONUS * (len(sources[content]) - 1))` with
-`sources` keyed by content, so `_COAL_BONUS = 0.06` multiplies 0 on every live tick. A3's surrogate
-is the identity map, `log(p_live / p_surr) == 0` on every bin, and no sign change exists to find. A
-dead constant cannot smuggle anything.
-
-Second, independent blocker: the recorded state is insufficient. 193 of 582 drive samples are
-recoverable, and they are the right tail only (winner min 0.515 versus all-drives min 0.078).
-
-**Do not build the H_live / H_surr ring buffer.** The cheap assertion
-`sorted(live_drives) != sorted(surr_drives)` goes red immediately today.
-
-**And do not build the named prerequisite either.** "A post topology where at least one content has
-more than one supporter" means arranging for two different sources to emit the *same content
-string*, purely so a dead constant becomes non-zero -- which makes `_COAL_BONUS` vary and moves the
-winner drive into the action gate. **Manufacturing a coincidence to animate a constant is the
-failure mode, not the route out of it.** State it as a finding: the coalition mechanism is
-unreachable under the live posting topology and is EXEMPT until some faculty independently has
-reason to post a content another faculty also posts. **Forbid engineering the collision.**
-
-### GAP 7's C3 -- fifth percept band. PROVED IMPOSSIBLE.
-
-See Stage 5. Structural, no constant in the argument.
-
-### Small corrections of record
-
-- **The non-slot binding channels fire 4 of 12 steps, not every step.** Asserted without
-  measurement in a document that demands measurement. The conclusion about the K-squared budget is
-  unaffected; the raster in section 3.2 is the correction.
-- **`trajectory_breach()` does not have zero callers.** Callers exist at
-  `cerebellum/spiking_pid.py:240`; `inject_disturbance` has callers at
-  `hippocampus/ring_attractor.py:163`, `cerebellum/spiking_pid.py:239`, `brainstem/live_arm.py:401`.
-  They look like self-check and demo paths, but "zero callers" as written is false. The live-percept
-  claim ("0 of 200 fires on the wake path") stands; the call-site claim does not.
-- **`run_selfchecks.py:83` is `cortex.spiking_lm_serve`, not the binding self-check.**
-  `thalamus.global_workspace` is at `:165`. The stage that corrects everyone else's citations
-  carried the same defect on its own flagship.
+Confirmed and surviving: `_pfc_bias` has exactly one production call site (`:1366`), so the
+per-call-versus-per-tick decay coupling does not exist today. The insert is safe on that axis.
 
 ---
 
-## 6. Explicitly rejected
+## 6. Build order
 
-Recorded so they are not re-proposed.
-
-**R-1. Rejected: "the most valuable single deliverable makes the system claim less, 4 of 4 to
-3 of 4."** Measured false under every variant. The proposal's own two changes cancel each other and
-leave 0 of 3 verdicts changed; the strict-decoder repair also leaves the verdict PRESENT at the
-shipped constants. Only precision-only (K=2 margin -0.0083, K=4 0.2500) or F1-over-cross (+0.1583,
-0.4000) flip it, and both take `global_workspace.py:609` red and are decided by a seed band wider
-than the margin. **The honest deliverable is a marker that can fail, not a smaller count.**
-
-**R-2. Rejected: capping `bind_decode_spiking` at K pairs.** It is the counter-fix -- it restores
-today's numbers exactly -- and it smuggles a selection rule. The function returns an unordered
-`set`; capping it at K requires a rule for *which* K, and every pair is equally synchronous, so the
-rule is either a ranking that does not exist or the iteration order of a Python set. It also
-promotes `_BIND_TSLOT = 6` and the `sustain=4` default into arbiters of a user-facing verdict; under
-the strict decoder both stay inert (strict F1 is 1.0000 across `_BIND_TSLOT` 1 through 12 and
-`_BIND_LEAK` 0.10 through 0.90).
-
-**R-3. Rejected: "precision-scored, spiking and rate are tied at every K, so report the identity and
-conclude synchrony buys nothing at K>=2."** The measurement behind it is right -- cross-product
-spiking precision is 0.5000 / 0.2500 against a rate control at 0.5083 / 0.2646, a tie -- but the
-conclusion is about the *reader*, not the representation. Under the strict decoder spiking precision
-is 1.0000 at K=1, 2 and 4 while the rate control is 1.0000 / 0.5083 / 0.2646. **They are not tied.**
-Concluding that synchrony is worthless from a decoder that unions across steps of different
-multiplicity is drawing a structural claim from a defect in the instrument -- the exact error this
-program exists to catch.
-
-**R-4. Rejected: `_BIND_IGNITE = _BIND_LEAK * _BIND_VTH` as a zero-delta consistency fix.** See
-P-IGNITE. It breaks `global_workspace.py:600` via the `drive=0.4` arm at `:500`, and it deletes the
-subliminal control rather than deriving a constant.
-
-**R-5. Rejected: the `_ACC_LO` row of Stage 0.4.** See 0.4b. The module's own comment records that
-the bottom-up calibration was tried and rejected, and the correcting figure matches neither measured
-quantity. Held pending a statement of what 0.633 is.
-
-**R-6. Rejected: GAP 4a as a CLOSE NOW item.** Reclassified to NOT SCHEDULED with a named
-precondition. A wire with a verified source, a verified discard, and no named destination is the
-`:969` pattern before it is built. Not reclassified all the way to EXEMPT, which is premature -- a
-consumer may exist; nobody has named one.
-
-**R-7. Rejected: the coverage-denominator warning on GAP 9.** `pyproject.toml:141` omits
-`*/training/*`, so the named module cannot move the gate. The adjacent real risk
-(`cortex/spiking_lm_serve.py`, not omitted) replaces it.
-
-**R-8. Rejected: the ">= 200 verified wikitext sentences" falsifier.** Borrowed from the BLiMP
-paired-difference floor, whose entire derivation is absent here. Replaced by the incumbent's 605
-triples, which needs no threshold.
-
-**R-9. Rejected: "EXEMPT PERMANENTLY" for GAPs 4/5/6 as a whole.** Only the `top_down_bias` leg is
-structural. The rest rests on two constructor defaults, and P1 is the reason not to move them --
-which is a policy blocker, not a permanent one. Say which.
-
-**R-10. Rejected: "a phase that ends with more exemptions than wires has succeeded" as this
-program's success criterion.** It is unfalsifiable and it exempts the program from the standard it
-applies to every item. Replaced by the pre-registered gate numbers in section 1.
+1. **S0.1** word-boundary cue matching. Smallest diff; **[measured]** takes non-commands issuing
+   arm commands from 16 of 16 to 5 of 16 on its own.
+2. **S0.2** delete the bare `grip` cue. **S0.3** interrogative and negation guard. Together:
+   0 of 12 and 0 of 16, with 16 of 16 legitimate commands retained.
+3. **S0.4** literal E-STOP check at the top of `converse()`, chat branch unmoved.
+4. **S0.5** repair or delete `run_local.py`; wire Check 4 into `run_selfchecks.py`. **S0.6** the
+   P1 clause for safety vocabularies.
+5. **P-INBOX** (deletion, own commit). **GAP 3c** (one line). **S2.3** (`except` narrowing, alone).
+6. **GAP 9** (repair, 3-of-3 neuter harness).
+7. **GAP 3a** with the `consciousness_probe.py:84` co-edit and a pre-registered scorer; open a
+   separate P1 item for the `0.15` margin.
+8. **STAGE 5** live-context A/B -- **only** with the `_stack.clear()` null and the first-divergence
+   metric. Without both, do not run it.
+9. **GAP 2** refiled under P2; recommend descope. **GAP 1** payload stays parked.
+10. **GAP 7**: 7a proceeds on the existing firewall vocabulary; 7b re-opened at construction time;
+    7c PROVED BLOCKED; five approval items.
 
 ---
 
-## 7. Build order
+## 7. Findings, not tasks
 
-Dependency-ordered. Items at the same number are order-independent with respect to each other.
+Items surfaced by this round that are conclusions rather than work.
 
-1. **W0.4 with the counterfactual recorder** (`tools/charge_probe.py`). The root: four items are
-   uninterpretable without it, and building it as originally specified would poison all four.
-2. **P-INBOX** (`reentrant_workspace.py:137`), one line, 0 readers, gates GAP 1 and GAP 2.
-   **P-IGNITE**, a fence, costs nothing.
-3. **GAP 3 rebuilt** (strict decoder + precision-and-recall + the disclosure rewrite from 0.8).
-   The only gap that closes now.
-4. Stage 0 corrections, minus 0.4b and 0.8.
-5. **GAPs 4/5/6** clamped sweep, both horizons reported. Expected outcome: EXEMPT with a measured
-   reason.
-6. **GAP 1**, then **GAP 2**. Payload before sharing.
-7. **GAP 9** renamed and rescoped, snntorch pinned, seed named.
-8. **GAP 7** -- nothing until A1, A2, A3, A6 are answered. C2 additionally needs the queue-routed
-   mutation and the limit clamp; C1 additionally needs a bounded-latch recovery policy.
+**F-1. Four independent adjudications of the same wire disagreed, and none of them was measuring
+the wire.** Reported action-change counts: 113 of 1400, 27 of 1400, 0 of 794, and a fourth pass
+spanning 1 of 1400 to 268 of 1400 across six synthetic context streams. Each measured a property of
+its own harness. This is the most valuable single finding of the round: **the disagreement was
+never about the mechanism.** Any future adjudication of a live-loop wire must be driven by the live
+loop's own context construction, with first-divergence rather than run-vs-run counting.
+
+**F-2. A comma decides whether the arm stops.** See C-C. Not a gap, not on any list, live today.
+
+**F-3. A question moves the arm.** `what is in your database?` rotates the shoulder pan and the
+cockpit reports `Done: ...` -- correctly, because the command really was issued. Live today.
+
+**F-4. The gate that names F-3 has been dead long enough for its import path to rot.**
+`run_local.py` Check 4 asserts exactly the defect and cannot run; `run_selfchecks.py` never
+referenced it. Silent degradation applied to a safety gate.
+
+**F-5. `inject_disturbance` is a stronger actuator than the gated command path.** **[measured]**
+20.000000 deg versus 0.000000 deg with `stopped=True`. The only E-STOP-bypassing path in the repo.
+
+**F-6. The GAP 3a falsifier cannot distinguish two scorers that flip the consciousness marker.**
+See C-D. This is what motivated the "cannot distinguish" line now required on every item.
+
+**F-7. Six of the ten constant-audit findings share one shape:** the proposal removes a numeric
+literal from the *text* while leaving the arbitration intact where the falsifier does not look.
+"No new constant" meant a `2.0` already inside `reached`. "Ordering only" meant a 20-element
+permutation. "The same remedy as `access_consciousness`" meant two multipliers over a knee that does
+not exist here. "Add a precision term" meant choosing between F1 and Jaccard. "Within a second"
+meant writing no factor at all.
+
+**F-8. `arm_config.py` is the standard the rest of the repo should be held to.** `_joint_limits()`
+read from the model, `_max_reach_mm()` sampled, `ground_free_band()` swept at 1-degree resolution,
+`HOME_QPOS` the model's rest configuration, `_droop_tolerance()` = `qfrc_bias / actuator_gainprm`,
+`kp[kp == 0.0] = 1.0` as a division guard. That is exactly why `TRAJ_DEV_MAX` stands out as the one
+survivor of a deleted body.
+
+**F-9. The GAP 3b conclusion is right and its stated evidence was not.** The "2-point support"
+came from a literal `drive=0.4` in the module's own demo -- a property of a self-check fixture. Use
+the structural argument in `spike_chat_lake.py:1184-1187` instead. A citation defect in a document
+whose entire value is auditable proofs.
+
+**F-10. `top_down_bias` never reads `frame[1]`, and it does not matter.** The pop is the channel,
+not the magnitude. A "permanent structural blocker" that blocks nothing.
 
 ---
 
-## 8. Is "all of them" achievable? No, and part of that is proved rather than asserted.
+## 8. Why the gate does not move, and what "all of them" would actually mean
 
-- **1 of 9 is PROVED IMPOSSIBLE.** GAP 8's disqualifying leg is a degenerate control admitting
-  41,567 of 67,000 pairs -- extractor-independent and robust to the floors being wrong. "All of
-  them" is false by proof, not by opinion.
-- **2 more sub-items are proved impossible**, GAP 3's A3 route and GAP 7's C3, both structurally.
-- **3 of 9** (GAPs 4, 5, 6) carry a structural blocker no measurement can remove: `top_down_bias`
-  discards the decayed drive. The remaining legs are blocked by P1, which is a policy, not physics
-  -- so the honest verdict is EXEMPT under the shipped constants, not EXEMPT permanently.
-- **1 of 9** (GAP 7) is gated on authority nobody in the engineering loop holds, and one of its four
-  approval questions -- may the brain clear its own E-STOP -- exists only because a deadlock was
-  found while writing this.
-- **2 of 9** (GAPs 1, 2) are the only items that could move the gate's status line, and both are
-  chained behind an instrument that does not exist.
-- **0 of 9 close as a shipped P6 faculty-to-faculty wire.**
+The section-1 falsifier predicts its own outcome, so it is argued rather than asserted.
 
-The single most consequential finding is not on any gap list: **the root is a missing instrument,
-not a missing wire.** `tools/charge_probe.py` has no action clamp, so every "N of M actions changed"
-number in the inputs is denominated in the one terminal F3 exists to disqualify. One missing
-instrument gates four gaps, and its first specification could only have read a disqualified
-terminal.
+`tools/p6_gate.py` counts faculty-to-faculty **reads**. Nothing in this program creates one:
 
-The second is that **the flagship deliverable does less than advertised and is still worth
-shipping.** It does not make the system claim less. It makes a marker that was structurally
-incapable of reporting ABSENT capable of it -- 0 of 26 perturbations flipped it before, 1 of 26
-flips it now -- on the one code path where a consciousness claim reaches a human. That is a smaller
-claim than the one it replaces, and it is one that measurement supports.
+- **GAP 1** adds the **submitter** axis. F1 kills wires on the **listener** axis, which `_deliver`
+  cannot express -- its loop variable is named `_name` because the body never uses it, and
+  `s["bias"]` is written identically for every subscriber. `broadcast_to("action") ==
+  broadcast_to("language")` on every tick, before and after. The 12 killed wires stay killed.
+- **GAP 2** would create shared instances, but the second subscriber's drain is byte-identical to
+  the one `brain.py:1623` already drains. Any read it adds is dormant on arrival.
+- **GAP 4, 5, 6**, if they survive stage 5, terminate at the single action gate. That is a P3 claim
+  (a dormant mechanism made decisive), not a P6 edge.
+- **GAP 3, 8, 9** and every stage-0 item touch no workspace topology at all.
+
+### Is "all of them" achievable? No, and the reason is not effort
+
+Counting by honest outcome rather than by ticked box:
+
+- **6 items close and change something real:** S0.1, S0.2, S0.3, S0.4 (safety), S0.5 (a gate that
+  can run), GAP 9 (a gate that can fail), plus GAP 3c and P-INBOX as constant-removing hygiene.
+  **Of these, only the stage-0 items change a behaviour a user could observe.** GAP 9 and P-INBOX
+  change what a gate can catch and what memory does over 30 days.
+- **2 are completed proofs:** GAP 8 and GAP 3b. Both are real proofs -- a structural argument plus
+  a measurement. Re-opening either is p-hacking.
+- **1 is a proof this round produced:** GAP 7c, blocked by circularity rather than by difficulty.
+- **1 was falsely proved and is re-opened:** GAP 7b at construction time.
+- **3 (GAP 4, 5, 6) are genuinely unmeasured**, and both prior verdicts were harness artifacts.
+- **2 (GAP 1, GAP 2) are chained**, and GAP 2 should be dropped from the P6 program and refiled
+  under P2 -- it buys compliance and zero coupling.
+- **1 (GAP 3a) closes as an instrument-sensitivity improvement**, not as the P1 item filed against
+  it, and it cannot ship without a pre-registered scorer choice that may flip a consciousness
+  marker to ABSENT.
+- **1 (GAP 7) is gated on authority nobody in the engineering loop holds**, and its most-wanted
+  property -- a user-placed hazard tripping the reflex -- is **not deliverable** without changing
+  the one channel the safety envelope is built on.
+
+So "all nine" is not achievable, and the blocking reason is structural in every case where it
+blocks: an absent listener axis, an absent exafference source, an absent scene geometry, an absent
+grounding signal, an owner decision. **Two of the nine are already finished as proofs, and treating
+a proof as an unclosed gap is the single easiest way to make this program look less complete than
+it is.**
+
+The most valuable line in this document is not a gap. It is that **`live_brain.py:405` swallows
+8 of 15 emergency stops, a comma decides which, and `what is in your database?` rotates the
+shoulder pan.** That ships first, ahead of everything else.

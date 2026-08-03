@@ -16,6 +16,15 @@ REM ^ AUTONOMOUS self-build ON: every 8 nights the brain gate-verifies + applies
 REM   (sandbox-verified, arm-safety firewalled, rolled back byte-exact on any gate failure). Comment out
 REM   this line to make the daemon learn-only. The self-build pauses the tick for minutes when it fires.
 
+set NORD_ESTOP_SELF_CLEAR=1
+REM ^ THE BRAIN MAY RE-ARM ITSELF after an emergency stop, but ONLY while the breach condition
+REM   reads clear, and every clear is counted into `estop_self_clears`. Owner-authorised 2026-08-03.
+REM   Default OFF everywhere else: ten "the E-STOP freeze must hold" assertions across
+REM   autonomous_loop / brain / live_brain encode "a latched arm stays latched across later ticks",
+REM   and enabling this globally would have meant rewriting all ten. The DAEMON is where it matters,
+REM   because a cockpit actuation route can trip an E-STOP and nothing on the live path could
+REM   previously clear one -- a tripped stop deadlocked the arm until restart.
+
 set NORD_TIME_CELLS_RESTORE=1
 REM ^ NEURAL GROWTH SURVIVES RESTART. Growing the time-cell population is on by default everywhere
 REM   (specs/003); RESTORING the grown width is opt-in, and this is the one place it is opted into.

@@ -402,6 +402,26 @@ class LiveBrain:
                 f"Right now my global workspace is broadcasting: {self.thought!r} -- the single content that "
                 "won attention this tick (a functional broadcast, not a conscious thought)."
             )
+        # STOP IS AN ACTION, NOT A TOPIC -- and it must be checked BEFORE the safety-information
+        # branch below. MEASURED before this fix: of 15 stop phrasings, 13 latched the arm and 2 did
+        # not -- "emergency stop" and "emergency stop now", which are the two a person is MOST likely
+        # to use in an emergency. The word "emergency" matched the information branch, so the most
+        # formal way of demanding a stop returned a paragraph ABOUT the safety system instead of
+        # engaging it. Every casual phrasing (stop, halt, freeze, abort) already worked, which is
+        # exactly why nobody noticed.
+        #
+        # THE ASYMMETRY IS DELIBERATE. Failing to stop when asked is unsafe; stopping when merely
+        # asked about stopping is a nuisance, and since 2026-08-03 it is a self-recovering one --
+        # AutonomousArm re-arms once the breach predicate reads clear. So this branch does NOT try to
+        # tell a command from a question. A system that debates whether you really meant it is the
+        # wrong system to put in front of an emergency stop.
+        if words & {"stop", "halt", "freeze", "abort", "estop", "e-stop"}:
+            st = self.arm.arm.apply("EMERGENCY_STOP")  # gated path; the latch is idempotent
+            return (
+                "EMERGENCY STOP engaged -- the arm is latched and will not move. "
+                f"(stopped={bool(st.get('stopped'))}) It re-arms itself once the proximity reading "
+                "is clear again; every self-clear is counted in `estop_self_clears`."
+            )
         if words & {"safe", "safety", "danger", "dangerous", "hurt", "emergency"}:
             st = self.arm.arm.state()
             return (

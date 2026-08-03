@@ -8,11 +8,11 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| path_integration_dead_reckoning | 35 | src/snn_data_lake/brainstem/autonomous_loop.py:1692#step; src/snn_data_lake/cortex/brain.py:2014#_c1_tick | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
+| path_integration_dead_reckoning | 35 | src/snn_data_lake/brainstem/autonomous_loop.py:1741#step; src/snn_data_lake/cortex/brain.py:2014#_c1_tick | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
 | interval_timing_time_cells | 35 | src/snn_data_lake/cortex/time_cells.py:164#tick; src/snn_data_lake/cortex/brain.py:1591#_route_percept_to_action | st_timing_60.txt | opus-5 auditor / spatiotemporal_probe.py timing 60 (charge_probe verdict) | 2026-07-30 |
 | sequence_binding_synfire | 35 | src/snn_data_lake/cerebellum/synfire_chain.py:170#survives; src/snn_data_lake/cortex/brain.py:2159#_c1_tick | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
 | path_integration_spiking_can | 30 | src/snn_data_lake/hippocampus/spiking_grid_can.py:217#step; src/snn_data_lake/cortex/brain.py:2015#_c1_tick | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
-| interval_timing_wake_counter | 30 | src/snn_data_lake/cortex/brain.py:1878#_wake_tick; src/snn_data_lake/cortex/brain.py:2918#state | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
+| interval_timing_wake_counter | 30 | src/snn_data_lake/cortex/brain.py:1878#_wake_tick; src/snn_data_lake/cortex/brain.py:2924#state | - | opus-5 auditor / live tick instrumentation, 60 ticks seed 0, daemon sys.path | 2026-07-30 |
 | place_coding | 21 | src/snn_data_lake/hippocampus/grid_place_map.py:182#observe; src/snn_data_lake/cortex/brain.py:1365#_consume_perception | st_place_60.txt | opus-5 auditor / call instrumentation + spatiotemporal_probe.py place 60; band UNCHANGED but its rationale is superseded, see "The freeze is fixed" | 2026-07-30 |
 | grid_coding | 21 | src/snn_data_lake/hippocampus/grid_place_map.py:122#grid_code; src/snn_data_lake/hippocampus/grid_cells.py:71 | - | opus-5 auditor / call instrumentation, 60 ticks seed 0, daemon sys.path; band UNCHANGED, see "The freeze is fixed" | 2026-07-30 |
 | landmark_drift_correction | 21 | src/snn_data_lake/hippocampus/spiking_grid_can.py:250#observe_landmark; src/snn_data_lake/cortex/brain.py:1377#_consume_perception | - | opus-5 auditor / return-value instrumentation, 60 ticks seed 0 | 2026-07-30 |

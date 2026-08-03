@@ -20,10 +20,22 @@ re-arming every few ticks. From a status light those are identical, which is why
 Run: pytest tests/test_estop_self_clear.py
 """
 
+import pytest
+
 from snn_data_lake.brainstem.autonomous_loop import CONTACT, AutonomousArm
 
 FAR = CONTACT * 3.0  # comfortably outside contact -- the breach predicate reads clear
 NEAR = CONTACT * 0.5  # inside contact -- the breach predicate trips
+
+
+@pytest.fixture(autouse=True)
+def _enable_self_clear(monkeypatch):
+    """The capability is OPT-IN and default-off. Ten "the E-STOP freeze must hold" assertions across
+    autonomous_loop, brain and live_brain encode "a latched arm stays latched across later ticks" as
+    a design invariant, and every one of them ticks a SAFE context afterwards -- so enabling this by
+    default would have required rewriting ten safety assertions, which is silencing checks at scale.
+    The gates keep their invariant; this suite turns the flag on explicitly."""
+    monkeypatch.setenv("NORD_ESTOP_SELF_CLEAR", "1")
 
 
 def _arm():

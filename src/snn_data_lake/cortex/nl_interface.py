@@ -31,6 +31,9 @@ here runs unless you call it; the arm/lake code paths are unchanged.
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.nl_interface
 """
 
+import re as _re
+from functools import cache
+
 from snn_data_lake.brainstem import arm_config
 from snn_data_lake.brainstem.serial_arm import is_valid_command
 
@@ -89,10 +92,79 @@ class StubBackend:
         low = prompt.lower()
         if "request:" in low:
             low = low.split("request:", 1)[1]  # scan the user's request, not the label menu
+        # WORD BOUNDARIES, not substrings. MEASURED with bare `k in low`: 15 of 16 ordinary
+        # non-command sentences and 11 of 12 questions produced an ARM COMMAND. "the store is
+        # closed" closed the gripper, "she centered the image" sent the arm HOME, "I was holding
+        # out hope" issued HOLD, "he dropped out of school" released. This is the firewall in
+        # front of a physical actuator, and it was matching inside words.
         for keys, label in _CUES:
-            if any(k in low for k in keys):
+            if any(_word_re(k).search(low) for k in keys):
+                # QUESTIONS AND NEGATIONS ARE NOT COMMANDS -- with ONE exception, below. Word
+                # boundaries alone still leave "is it safe to grip that" gripping, because `grip`
+                # really is a standalone word there; the sentence is interrogative, not imperative.
+                #
+                # STOP IS EXEMPT ON PURPOSE. "should I stop you" must still stop. Failing to stop
+                # when asked is unsafe; stopping on a question about stopping is a nuisance, and
+                # since 2026-08-03 a self-recovering one -- the arm re-arms once the proximity
+                # reading is clear. The asymmetry runs one way and the code says which way.
+                if label != "stop" and _is_non_imperative(low):
+                    return "reject"
                 return label
         return "reject"
+
+
+@cache
+def _word_re(cue):
+    """A cue matcher anchored at word boundaries. Cached because the cue set is fixed and small,
+    and this runs on every chat turn."""
+    return _re.compile(r"\b" + _re.escape(cue) + r"\b")
+
+
+#: Openers that make a sentence a question or a denial rather than an order. Derived from the two
+#: measured failure sets rather than imagined: every one of these appears in a phrase that reached
+#: the actuator through a cue it had no business triggering.
+_NON_IMPERATIVE = (
+    "is",
+    "are",
+    "was",
+    "were",
+    "do",
+    "does",
+    "did",
+    "can",
+    "could",
+    "should",
+    "would",
+    "will",
+    "what",
+    "why",
+    "how",
+    "when",
+    "where",
+    "who",
+    "which",
+    "am",
+    "have",
+    "has",
+    "if",
+    "whether",
+)
+_NEGATIONS = ("not", "n't", "never", "no ", "don't", "cannot", "stop asking")
+
+
+def _is_non_imperative(text):
+    """True when the text reads as a question or a denial. Three cheap signals, any of which is
+    enough: it ends in a question mark, it OPENS with an interrogative/auxiliary, or it contains a
+    negation. Deliberately crude -- this is a safety filter in front of an actuator, and the cost of
+    refusing a real command is one repetition while the cost of accepting a fake one is motion."""
+    t = text.strip()
+    if not t:
+        return False
+    if "?" in t:
+        return True
+    if t.split()[0] in _NON_IMPERATIVE:
+        return True
+    return any(n in t for n in _NEGATIONS)
 
 
 def _parse_query(text):

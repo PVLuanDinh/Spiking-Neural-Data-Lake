@@ -51,7 +51,7 @@ os.environ.setdefault("NORD_GPU", "1")
 from snn_data_lake.cortex.brain import make_brain
 from snn_data_lake.substrate.brain_telemetry import Recorder
 from snn_data_lake.substrate.chat_memory import DurableChatMemory
-from snn_data_lake.substrate.cockpit import Turns, serve
+from snn_data_lake.substrate.cockpit import Acts, Turns, serve
 
 TRANSCRIPTS = os.environ.get(
     "SNDL_CHAT_TRANSCRIPT", r"C:\Users\vinhl\.claude\projects\D--AI-project\*.jsonl"
@@ -232,8 +232,12 @@ def main():
     # observability for a local process, not a network service.
     tele_port = int(os.environ.get("NORD_TELEMETRY_PORT", "8137"))
     turns = Turns()  # chat typed into the cockpit; drained BELOW, on this thread. See pump() note.
+    # OWNER-AUTHORISED ACTUATION (2026-08-03): the cockpit may queue an allow-listed arm command.
+    # Drained on THIS thread beside the chat queue, for the reason Acts' docstring gives -- mj_forward
+    # from an HTTP thread while this one runs mj_step on the same mjData is undefined behaviour.
+    acts = Acts()
     try:
-        serve(b, port=tele_port, turns=turns, block=False)
+        serve(b, port=tele_port, turns=turns, acts=acts, block=False)
     except (
         OSError
     ) as e:  # port taken (e.g. a second tool already watching) -- never kill the daemon
@@ -283,6 +287,7 @@ def main():
                 pass
             try:
                 turns.pump(b, budget=1)
+                acts.pump(b, budget=1)  # bounded: one queued command per cycle
             except Exception as e:  # a bad turn must never stop the loop
                 print(f"[learn-daemon] chat err: {type(e).__name__}: {e}", flush=True)
         try:  # record one snapshot per cycle -- the replayable trace a renderer reads later

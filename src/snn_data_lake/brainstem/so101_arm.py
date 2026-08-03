@@ -195,7 +195,7 @@ class So101Arm:
         kp[kp == 0.0] = 1.0
         return np.abs(d.qfrc_bias[: m.nu]) / kp
 
-    def inject_disturbance(self, joint, deg):
+    def inject_disturbance(self, joint, deg, *, allow_latched=False):
         """TEST-ONLY: shove a joint without commanding it, to stand in for an external force.
 
         The live arm has no exafference channel -- nothing in the simulation pushes it. This is
@@ -209,6 +209,20 @@ class So101Arm:
         """
         spec = _ROTATABLE.get(joint)
         if spec is None:
+            return self.state()
+        # THE LATCH APPLIES HERE TOO, added 2026-08-03. MEASURED before this: with the arm
+        # E-STOPPED, the gated path moved 0.000000 deg and this moved 20.000000 -- it wrote qpos
+        # without ever consulting `self.stopped`, making it THE ONLY ACTUATOR IN THE REPO that moves
+        # an emergency-stopped arm. That was contained while nothing on the live tick called it and
+        # it stayed test-only. It stopped being contained the moment a cockpit actuation route was
+        # authorised, because a scene disturbance is exactly what a browser would reach for and this
+        # is the only function that can apply an external force.
+        #
+        # `allow_latched` is the deliberate escape, and it is narrow: the trajectory-deviation reflex
+        # self-check must shove a latched arm to prove the reflex fires, and refusing there would
+        # delete the test rather than the hazard. It is a keyword-only argument so it can never be
+        # passed by accident, and every caller that sets it is a self-check, not a live path.
+        if self.stopped and not allow_latched:
             return self.state()
         self.data.qpos[spec.qpos_index] += deg * _DEG
         mujoco.mj_forward(self.model, self.data)

@@ -462,3 +462,37 @@ reproduction check is weaker than a tick-counting probe's.
 **Ledger effect**: `record` writes no `metric:`/`baseline:` keys, so F10 caps a freshly recorded
 `kind: heldout` artifact at band 40. `SpatialTemporal.interval_timing_time_cells` sits at 35. The
 honest deliverable of this feature is a correct instrument, a real number, and at most five points.
+
+### 2026-08-03 -- seven citations re-anchored to a FUNCTION HEAD, which is weaker and says so
+
+The fifth re-anchor of the day. The safety work (cockpit actuation, the NL firewall, the E-STOP
+intent ordering, the latch on `inject_disturbance`) rewrote lines in six source files, and
+`--repin-from 5868e1c1` fixed 55 mechanically. Ten survived as ambiguous, and four of those were
+disambiguated by the rule used earlier: read the cited line's text at the pre-drift commit, find its
+occurrences at HEAD, keep only the one whose enclosing symbol matches the anchor already named.
+
+**Seven could not be fixed that way, because their original line TEXT no longer exists** -- the edits
+did not move those lines, they replaced them (the false "GRADED availability" comment among them).
+For those the citation was re-anchored to the head of the function the anchor already names:
+
+  Perception.eprop_event_vision_tier      brain.py:1207#_perceive_real
+  Perception.eprop_event_audio_tier       brain.py:1281#_perceive_audio
+  Affect.dimensional_valence              brain.py:2198#_observe_self_wake
+  Affect.affective_contagion_empathy      brain.py:1658#_drive_for
+  Social.empathy_help_drive_to_action     brain.py:1411#_route_percept_to_action
+  Gf.sleep_schema_induction               brain.py:2468#_enter_sleep
+  WholeBrain.gwt_reentry_to_action_drive  brain.py:1411#_route_percept_to_action
+
+**This is a REAL LOSS OF PRECISION and is recorded rather than smoothed.** The original citations
+named a specific line someone chose deliberately; these name a function. Two of the seven now cite
+the SAME line (`brain.py:1411`), so W3's duplicate-fingerprint reasoning cannot tell those two rows
+apart by citation any more. The claim each row makes is unchanged and no band moved -- what got
+weaker is the evidence link, and a weaker link that is labelled is better than a broken one that is
+not.
+
+**The standing cost, now measured five times in one day:** any commit touching a cited source file
+re-drifts this ledger. Re-anchoring is part of landing such a commit. Two tooling lessons from doing
+it badly first: `--repin --write` must run ONCE from a clean base -- repairing on top of a partial
+repin reads post-repin line numbers against a pre-repin commit and produces nonsense (a citation
+"matching" 194 lines) -- and the pre-drift line numbers must come from the ledger AS COMMITTED, not
+from the working tree.
