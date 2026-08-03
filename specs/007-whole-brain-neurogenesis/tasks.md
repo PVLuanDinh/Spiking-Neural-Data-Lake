@@ -40,7 +40,7 @@ counts, and the observables named in contracts/C3 are forbidden as evidence.
 baselines the feature is scored against, so that later movement is attributable.
 
 - [ ] T001 Record the pre-feature baseline into `specs/007-whole-brain-neurogenesis/baseline.md`: the three gate results (`run_selfchecks.py`, `pytest`, `ruff check`) with exact counts, plus current per-tick cost
-- [ ] T002 [P] Verify the safety envelope refuses growth by calling `is_safety_seam` in `src/snn_data_lake/substrate/growable.py` with arm/dof/joint/motor/actuator/effector/estop names, recording the returned values in `specs/007-whole-brain-neurogenesis/baseline.md`
+- [ ] T002 [P] Verify the safety envelope refuses growth by ATTEMPTING a real growth on a safety-named seam and observing the refusal, recording it in `specs/007-whole-brain-neurogenesis/baseline.md`. **Do NOT call `is_safety_seam` directly**: it returns True from a function nothing invokes (1 call site, inside the never-called `register_seam`), so a direct call reports the envelope protected when no growth path checks it. It is also a substring match -- `is_safety_seam('arm.learner')` is True while `is_safety_seam('autonomous_loop.learner')` is False for the same object
 
 ---
 
@@ -219,3 +219,18 @@ are blocked behind T013 and are NOT to be attempted as written.
 regions -- and was never examined as a producer FOR consumption. Its grown prototypes may reach a
 consumer that the timing estimate provably cannot. Do not write tasks for this until it has been
 probed to the same standard, including a matched A/A control.
+
+
+---
+
+## AMENDMENT 2026-08-03 (second) -- the retarget is dead; do not probe a third producer next
+
+The hippocampus retarget floated in the previous amendment was probed and returned RETARGET_DEAD on
+three independent kill paths. No tasks are written for it. See the second AMENDMENT in spec.md.
+
+**Both measured producers have now failed with the same shape**: growth that does not improve the
+quantity it is supposed to refine. The obvious next move -- probe a third producer -- is NOT
+recommended. Two failures of identical shape are evidence about the architecture, not about the two
+candidates, and the cheaper question is why growth carries no information here at all.
+
+Unaffected and still the recommended work: T009, T011, and the whole of Phase 4 (T018-T036).

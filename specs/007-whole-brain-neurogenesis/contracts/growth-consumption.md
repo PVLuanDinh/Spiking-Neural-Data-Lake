@@ -25,7 +25,19 @@ A region that grows MUST:
    count, or external schedule.
 6. **Preserve function.** Existing outputs MUST be unchanged at the moment of widening.
 7. **Refuse on the safety envelope.** Any seam matching arm / dof / joint / motor / actuator /
-   effector / estop refuses unconditionally.
+   effector / estop must refuse unconditionally.
+
+   **CORRECTED 2026-08-03 -- this is a REQUIREMENT, not a description of the tree.** As written it
+   implied the guard is enforced today. It is not. `is_safety_seam` is called from exactly 1 site
+   (`growable.py:139`, inside `register_seam`), and nothing in the tree ever calls `register_seam`,
+   so the check is structurally unreachable. It is also a substring match on the name, which makes
+   the same object safety-critical or not depending on the label passed:
+   `is_safety_seam('arm.learner') = True` but `is_safety_seam('autonomous_loop.learner') = False`.
+   Any mechanism admitted under this contract must ENFORCE the refusal at the growth call site,
+   and must be verified by attempting a real growth on a safety-named seam and observing the
+   refusal -- never by calling the predicate directly, which returns True from a function nobody
+   invokes. (Arm safety itself is unaffected: it comes from `ArmSim.apply()`'s gate and the reflex
+   E-STOP, both live and tested.)
 
 A region that cannot satisfy C1.1 is `admitted = False` and does not grow. **That is a passing
 outcome**, recorded as "no derivable floor", not a failure to be worked around.

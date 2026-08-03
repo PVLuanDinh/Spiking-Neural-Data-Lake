@@ -369,3 +369,123 @@ one downstream reader adds it equally to every option.** Each link is independen
 **A brain that grows more timing cells does not tell time better.** It shifts its point estimate,
 which nothing downstream is allowed to see. That is worth knowing before building a shared growth
 interface for fifteen regions, and it is the result this probe existed to find.
+
+---
+
+## AMENDMENT 2026-08-03 (second): the retarget is DEAD too, and both producers have now failed
+
+The hippocampus retarget named in the previous amendment was probed to the same standard. Verdict
+**RETARGET_DEAD**, on three independent kill paths, any one sufficient.
+
+### Kill 1: growth does not improve the learner on the only distribution that matters
+
+On 130 percepts captured from a live brain over 260 ticks, replayed through capped learners
+(held-out reconstruction fidelity, label-free):
+
+```
+units      1          3          5        6..40
+fid    0.991838   0.992471   0.991724   0.991724 (saturated)
+```
+
+Flat within 6.3e-4, **non-monotonic**, and the best value is at 3 units while it actually grows to
+5. One prototype already codes every live percept at cosine 0.9918 -- there is no variance left for
+growth to exploit. **This is the same shape that killed the time cells** (sd flat and non-monotonic
+across a 16x width range). Two different producers, two different quantities, identical result.
+
+The synthetic "improvement" is a counting identity. In the separable regime the headline accuracy
+equals the closed form `min(cap,K)/K` to 2.2e-16, and reproduces **bit-identically with all
+learning disabled** (`lr=0.00`): learning contributes exactly 0.0 of the rise. Even uniform random
+vectors improve 0.0500 -> 0.4809 on count alone. In the overlapping regime, where an honest residue
+does exist, learning's share is about 7 percent of the lift.
+
+This is the specs/003 defect in a new costume, and it is worth naming precisely: **a metric that
+cannot decrease when units are added is not measuring learning.** My own first pass at this fell
+into it -- a mean-best-cosine metric rose monotonically 0.216 -> 0.332 with width, which is
+guaranteed since a max over a larger set cannot shrink. Re-measured with a metric that penalises
+over-segmentation (held-out cluster recovery), the same runs invert completely:
+
+```
+vigilance  n_units  cluster-recovery F1
+   0.50        6.0      1.000000
+   0.85        9.8      0.963978    <- the shipped default already over-grows
+   0.96      283.2      0.193112
+   0.99      300.0      0.097384
+```
+
+Growth makes it monotonically WORSE. (Synthetic, K known -- held loosely, and the live measurement
+above is the one that decides.)
+
+### Kill 2: the growth gate is a hardcoded constant, at every site
+
+Contract C1.1 requires a halting condition computed from the region's own measured dispersion.
+`growing_learner.py:88` is `if best_id < 0 or best_sim < self.vigilance:  # novel -> neurogenesis`,
+and every vigilance in the tree is a literal:
+
+```
+plasticity/lifelong_consolidation.py:92      0.9
+neuromodulation/affect_integrator.py:85      0.82
+cortex/brain.py:1331                         0.86
+hippocampus/growing_learner.py:59            0.85   (default)
+substrate/similarity_sized_growth.py:144     1.0
+reasoning/schema_induction.py:94             0.7
+```
+
+**0 of 31 `vigilance =` occurrences derive from stdev, variance or dispersion.** There is also no
+refusal counter, so C1.3 fails as well. The contract's own disposition applies: `admitted = False`,
+recorded as "no derivable floor", which is a passing outcome rather than a defect to work around.
+
+### Kill 3: the one real consumer is permutation-invariant
+
+`brainstem/autonomous_loop.py`'s `self.q[unit]` passes C2(a), (b) and (d) -- genuinely cross-region,
+terminates in a motor action token, documented long before specs/007. It fails C2(c) bit-exactly:
+consistently relabelling unit ids while leaving the partition unchanged produces **0 of 300**
+differing actions, reproduced on 10 of 10 seeds by two independent probes, with an instrument check
+confirming the relabelling shim fired. C2.4 names this as its own disqualifier.
+
+Worse for the premise: at the repo default exploration, a **3-unit cap beats full growth by +43.9
+cells**, and full growth beats a random-id shuffle on only 5 of 10 seeds. The consumer does not just
+ignore growth; more growth is actively worse.
+
+---
+
+## CORRECTION to contract C1.7: the safety-seam refusal is NOT enforced
+
+`contracts/growth-consumption.md` C1.7 states that any seam matching arm / dof / joint / motor /
+actuator / effector / estop "refuses unconditionally". **That overstates the tree, and the error is
+mine.** Measured:
+
+```
+is_safety_seam('arm.learner')             = True
+is_safety_seam('autonomous_loop.learner') = False     <- the SAME object, different name string
+```
+
+It is a substring match on the name, so the same learner is safety-critical or not depending on
+which label is passed. And it is called from exactly 1 site -- `growable.py:139`, inside
+`register_seam` -- which nothing in the tree ever calls. **The guard cannot refuse anything, because
+no growth path registers a seam.**
+
+**What this does NOT mean**: the arm is not less safe. Arm safety comes from `ArmSim.apply()`'s gate
+and the reflex E-STOP, both live, tested and untouched by any of this. What is unenforced is the
+growth-specific seam check, which is unreachable for the same reason `GrowthCoordinator` is --
+a registry that is never registered.
+
+**Task T002 is corrected accordingly.** As written it would have called `is_safety_seam` directly,
+received `True`, and reported the envelope protected -- a green result from a function nobody calls.
+That is precisely the verify-the-verifier failure this feature exists to catch, and it was sitting
+in my own task list.
+
+## Where this leaves specs/007
+
+**Both measured producers have now failed, for different reasons.** Time cells: growth does not
+improve the quantity. GrowingLearner: growth improves nothing live, degrades structure recovery, is
+gated by a constant, and its only cross-region consumer is permutation-invariant.
+
+That is not a reason to weaken the acceptance criterion. It is a finding about the tree: **no
+existing growth mechanism in this brain produces something a consumer can use.** The feature as
+specified is not blocked by a missing wire; it is blocked by producers whose growth does not carry
+information.
+
+US2's floor programme and the standalone P1 fixes (T009, T011) remain valid and unaffected. What
+does NOT follow is that a third producer should be probed next -- two failures with the same shape
+suggest measuring WHY growth carries no information in this architecture before hunting a third
+candidate.
