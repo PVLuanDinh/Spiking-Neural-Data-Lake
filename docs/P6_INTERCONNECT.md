@@ -995,3 +995,62 @@ differentiation, whatever else it did.
 A first probe that killed a design in minutes, before a line was written, is the cheapest result in
 this document. It is recorded here because the temptation is to fix the payload -- it is a real
 defect, it is satisfying to fix, and on its own it would have changed nothing measurable.
+
+---
+
+## CORRECTION 2026-08-03 (second) -- the differentiation blocker was MISREAD, and the wave order is backwards
+
+The CORRECTION above concluded from `distinct (speakers, listeners) per tick : 1 of 146` that no
+faculty-to-faculty selection was happening, and re-ordered the waves to put **W-1 DIFFERENTIATION**
+ahead of the payload fix. **The census number is real and reproduces. The conclusion drawn from it
+is wrong, and the re-ordering it motivated is backwards.**
+
+**What the census actually counts.** It counts who is PRESENT in the submission buffer each tick,
+not who WINS. Presence is constant because the same three sources submit every tick -- that is the
+design, not a defect. Selection happens downstream of submission, and it varies.
+
+**Measured, seed 0, 300 ticks, brain built via `make_brain(seed=0, persist=False)`:**
+
+```
+distinct argmax keys over broadcasts  : 2        (self 105, ctx 39)
+```
+
+So the winning faculty identity DOES vary tick to tick. Differentiation is not missing. Reading
+constant presence as absent selection is the presence-is-not-participation error run in mirror
+image -- the usual form mistakes presence for participation; this one mistook constant presence for
+absent participation. Both are the same failure to distinguish the buffer from the outcome.
+
+**The real blocker is one line, and it is a CONSUMER defect.** `cortex/brain.py:1623`:
+
+```python
+rb = self._reentrant.broadcast_to("action")
+self._reroute_bias = round(float(max(rb.values())), 4) if rb else 0.0
+```
+
+`max(rb.values())` takes the MAGNITUDE and discards the KEY. The key is the identity of the winning
+faculty. The comment two lines above claims "a globally-available coalition CHANGES behaviour"; what
+crosses the wire is a scalar that could have come from anywhere.
+
+**The decisive A/B -- permute the keys, preserve the values.** Same multiset of magnitudes, winner
+identity maximally scrambled. If identity reached anything, this must move something:
+
+```
+                          ARM A (intact)      ARM B (keys permuted)
+reroute_bias              0.16                0.16
+full Brain.state() sha    d7a6d81fc43d83f9    d7a6d81fc43d83f9
+```
+
+Byte-identical. The winner's identity provably carries ZERO information downstream. It is already
+being handed to the reader; the reader throws it away.
+
+**Consequence for the plan.** W-1 DIFFERENTIATION is deprioritized, not promoted. Manufacturing more
+differentiation upstream of a consumer that discards identity cannot move any measured outcome -- the
+brain already produces variation this wire refuses to carry. **Fix the consumer first: make the
+reader take the key, not just the value.** Only after identity survives the wire does adding
+differentiation upstream have anywhere to land.
+
+**Standing falsifier, unchanged in spirit and corrected in target.** The old one asked whether the
+census still reports 1 of N distinct speaker sets. That question is now known to be the wrong one.
+The replacement: **permute the keys of `broadcast_to()`'s return while preserving its values; if
+`Brain.state()` is still byte-identical, the wire still carries no identity and the wave did not
+land, whatever else it changed.**
