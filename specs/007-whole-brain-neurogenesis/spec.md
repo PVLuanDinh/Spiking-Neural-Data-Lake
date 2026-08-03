@@ -276,3 +276,96 @@ without requiring all regions to be complete.
   with that fix rather than around it.
 - This feature depends on the existing region map and safety-seam refusal already present in the
   tree; it does not introduce them.
+
+---
+
+## AMENDMENT 2026-08-03: User Story 1 is BLOCKED as written
+
+This amendment is the pre-registered response to research.md Open Question 1. The probe returned
+**ONLY_ARTIFICIAL_POSSIBLE**, and tasks.md T013 requires that this be recorded rather than worked
+around. Nothing was wired.
+
+### Finding 1: no natural cross-region consumer of the timing estimate exists
+
+Four differently-shaped searches -- by branch site, by produced quantity, by uncertainty consumer,
+and an independent AST census over parameter names and return shapes -- put forward **18 candidate
+sites**. All 18 fail at least one clause of contracts/C2. The near-misses and their killing clause:
+
+| Candidate | Dies on |
+|---|---|
+| `cerebellum/synfire_chain.py:170` | magnitude -- see Finding 2 |
+| `basal_ganglia/action_gating.py:114` | C2.3 -- `range(1, steps+1)` forces an int, the same defect as `brain.py:1603` |
+| `midbrain/multisensory_integration.py:142` | C2.2 -- returns a graded float, no boolean in its public API |
+| `neuromodulation/locus_coeruleus.py:144`, `acetylcholine.py:75` | C2.4 -- both branch on salience or content mismatch, about WHAT not WHEN; also 0 live callers |
+| `brainstem/autonomous_loop.py:1398` | C2.2 -- blind add into `bias` |
+| `cortex/prefrontal_executive.py:276` | C2.1 -- cortex-internal, and quantised anyway |
+
+The structural reason, verified independently rather than taken from the probe:
+
+```
+_elapsed_time / _timing_sd / _learned_latency   : 14 occurrences, 1 of 1 files (cortex/brain.py)
+state() keys "elapsed_time" / "timing_sd"       : 1 of 1 files across all of src/
+```
+
+**There is no reader of any timing quantity outside cortex today.** The one live reader of the
+refined value adds it to both non-HOLD actions EQUALLY -- the code's own comment says so -- and it
+is then folded by `autonomous_loop.py:698`'s blind add, which research.md already disqualifies as
+transport.
+
+### Finding 2: growth does not reduce timing uncertainty -- measured
+
+This is the more consequential result, and it was not anticipated by the spec, the plan, or
+specs/003. Decoded sd at tick 30, seed 0, across a 16x range of population width:
+
+```
+n_cells    sd
+    64     0.827713114
+   128     0.850267196
+   256     0.801530835
+   512     0.804310127
+  1024     0.813205575
+```
+
+Flat, and non-monotonic -- sd rises at 128 and again at 1024. Growing the population **does not make
+the clock more certain**. Corroborating the same fact from the other direction: against an ungrown
+twin, growth saturating at 64 -> 68 gives `max |delta sd| = 1.741e-02` where the nearest consumer
+separatrix needs 0.107 (6.1x too small) and the live operating point needs 1.157 (66x too small).
+
+The consequence is stark. Most natural consumers of a clock would want its PRECISION -- that is what
+a confidence gate, a precision-weighted update, or an ignition threshold reads. Growth does not
+improve precision. Growth's only real product is the point ESTIMATE (`max |delta est| = 1.0136`
+ticks; est differs on 6 of 60 ticks while sd differs on 47 of 60 as noise), and the point estimate
+is exactly what `brain.py:1603`'s `max(1, int(round(el)))` destroys.
+
+So the value chain is: **growth refines an estimate -> an int cast discards the refinement -> the
+one downstream reader adds it equally to every option.** Each link is independently broken.
+
+### What this changes
+
+- **SC-001 is unachievable via the time-cell route.** Not because a consumer is missing, but because
+  growth's product is not the quantity a consumer would want, and the quantity it does refine is
+  quantised away.
+- **US1 is BLOCKED as written.** No consumer is wired. Adding a branch that reads timing purely so a
+  wider population changes an outcome would satisfy SC-001 and violate P3's honesty guard and
+  Standing Invariant 2. The pre-registered test -- would this consumer exist, and read this
+  quantity, if the feature had never been written? -- answers no for all 18 candidates.
+
+### What remains achievable, and is NOT blocked
+
+1. **T009's quantiser fix stands on its own merit.** It is a P1 hardcode defect independent of this
+   feature: a float refined by the clock is cast to an int before any consumer sees it.
+2. **T011's site-selection fix stands.** Independent of consumption.
+3. **US2's floor work stands entirely.** Deriving per-region floors and admitting regions to growth
+   only on a passing A/B is unaffected -- and the honest outcome for a region with no derivable
+   floor was already an accepted result.
+4. **The deletions and the M25 gate (T020-T024) stand.**
+5. **Retargeting US1 is open.** `time_cells` was chosen as the P1 producer because it is the only
+   grower that EARNS. The other real producer -- `hippocampus/growing_learner.py`, embedded by 4
+   regions -- was never probed as a producer for consumption. Its grown prototypes may reach a
+   consumer that the timing estimate cannot. That is a new probe, not a re-run of this one.
+
+### The honest headline
+
+**A brain that grows more timing cells does not tell time better.** It shifts its point estimate,
+which nothing downstream is allowed to see. That is worth knowing before building a shared growth
+interface for fifteen regions, and it is the result this probe existed to find.

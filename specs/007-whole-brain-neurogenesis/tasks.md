@@ -73,10 +73,10 @@ the A/A control at 0.
 - [ ] T009 [US1] Fix the quantiser at `src/snn_data_lake/cortex/brain.py:1603`: consume the float elapsed estimate instead of `max(1, int(round(el)))`, which today destroys 100 percent of the refinement (`_learned_latency` differs on 0 of 300 ticks)
 - [ ] T010 [US1] Re-run `tools/growth_charge_ab.py` after T009 and record whether `_learned_latency` now varies; this is the prerequisite check -- if it still differs on 0 of 300, the fix did not land and no consumer downstream can possibly see growth
 - [ ] T011 [P] [US1] Fix site selection in `src/snn_data_lake/cortex/time_cells.py` so `widest_log_gap()` selects the widest log gap AMONG RESOLVABLE gaps; today it argmaxes over gaps equal to within 8.882e-16 and can pick a site the floor then refuses
-- [ ] T012 [US1] Apply the Open Question 1 verdict: select the cross-region consumer to target, satisfying contracts/C2 -- outside cortex, branches rather than sums, not permutation-invariant, and natural to what the module already does
-- [ ] T013 [US1] Wire the selected consumer to the timing estimate, per contracts/C2. **If the verdict is ONLY_ARTIFICIAL_POSSIBLE, do NOT wire anything**: instead amend `specs/007-whole-brain-neurogenesis/spec.md` to record P1 as blocked and state which success criterion is unachievable as written
-- [ ] T014 [US1] Couple growth to the learning path so grown units stop emitting zero, using e-prop / forward-mode credit assignment only -- never `loss.backward()` on a live path
-- [ ] T015 [US1] Create `tests/test_neurogenesis_charge.py` asserting SC-001: at least 1 non-tautological field moves, the matched A/A control reads 0, and the forbidden observables are excluded from the count
+- [x] T012 [US1] Apply the Open Question 1 verdict -- DONE 2026-08-03, verdict ONLY_ARTIFICIAL_POSSIBLE. 18 of 18 candidate sites fail contracts/C2; timing quantities occur in 1 of 1 files across src/. No consumer selected. See the AMENDMENT in spec.md
+- [x] T013 [US1] BLOCKED BRANCH TAKEN 2026-08-03. Nothing wired. `specs/007-whole-brain-neurogenesis/spec.md` amended: SC-001 is unachievable via the time-cell route, because growth does not reduce timing uncertainty (sd flat and non-monotonic across widths 64 to 1024) and the estimate it does refine is quantised away at `src/snn_data_lake/cortex/brain.py:1603`
+- [ ] T014 [US1] BLOCKED on T013. Couple growth to the learning path so grown units stop emitting zero, using e-prop / forward-mode credit assignment only -- never `loss.backward()` on a live path
+- [ ] T015 [US1] BLOCKED on T013. Create `tests/test_neurogenesis_charge.py` asserting SC-001: at least 1 non-tautological field moves, the matched A/A control reads 0, and the forbidden observables are excluded from the count
 - [ ] T016 [US1] Assert graceful degradation in `tests/test_neurogenesis_charge.py` (FR-004): the brain functions with growth disabled and no consumer requires that growth has happened
 - [ ] T017 [US1] Run all three gates and record results; `run_selfchecks.py`, `pytest`, and `ruff check .` must all stay green
 
@@ -196,3 +196,26 @@ others.
 the consumer. The test is: would this consumer exist, and read this quantity, if the feature had
 never been written? If not, T013's blocked branch is the correct path -- and a blocked P1 honestly
 reported is a better outcome than a passing number that means nothing.
+
+
+---
+
+## AMENDMENT 2026-08-03 -- US1 blocked, work rerouted
+
+T012 and T013 are CLOSED by the Open Question 1 probe returning ONLY_ARTIFICIAL_POSSIBLE. T014-T016
+are blocked behind T013 and are NOT to be attempted as written.
+
+**Still live and unaffected**, and now the recommended next work:
+
+- T009 and T011 -- both are standalone P1 hardcode fixes whose merit does not depend on consumption.
+  T009 in particular is a defect on its own terms: a float refined by the clock is cast to an int
+  before any consumer can see it.
+- T017 -- gates.
+- All of Phase 4 (US2), T018-T036. The per-region floor work is unaffected, and "no derivable floor,
+  so it does not grow" was already an accepted outcome.
+
+**New candidate for a retargeted US1, requiring its own probe before any task is written**:
+`src/snn_data_lake/hippocampus/growing_learner.py` is the other real producer -- embedded by 4
+regions -- and was never examined as a producer FOR consumption. Its grown prototypes may reach a
+consumer that the timing estimate provably cannot. Do not write tasks for this until it has been
+probed to the same standard, including a matched A/A control.
