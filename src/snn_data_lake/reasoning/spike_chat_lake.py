@@ -1177,17 +1177,29 @@ class LakeChat:
         reent, _ = probe_reentry()
         # THE TALLY IS ARBITRATED BY AN UNDERIVED NUMBER, and this is the one path where a
         # consciousness claim reaches a human, so it is disclosed in the reply rather than in a
-        # comment nobody reading the reply will see. `binding` is gated by
-        # thalamus/global_workspace._BIND_IGNITE = 0.6 -- a literal that was never derived from
-        # anything measured, so one quarter of this score moves if somebody edits a constant. P1
-        # forbids exactly that, and deriving the ignition threshold is a named blocking gate in
-        # docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md. Until it is derived the count is reported with
-        # the caveat attached. `N of 4`, never `N/4`: bare ratios are harvested positionally by the
+        # comment nobody reading the reply will see.
+        #
+        # CORRECTED 2026-08-03, same day it was written: this comment first blamed
+        # `thalamus/global_workspace._BIND_IGNITE = 0.6`. That is the WRONG CONSTANT and it is
+        # measurably inert here. `probe_binding` calls `bind_broadcast_spiking(objs, 8, 8)` with the
+        # default `drive=1.0`, and the gate is `if drive < _BIND_IGNITE`, so it passes on 100 of 100
+        # calls and could not change this marker if it were deleted. Naming a plausible constant
+        # without checking whether it is on the path is the same defect as quoting a stale figure --
+        # it just fails in the other direction, by disclosing a risk that is not the real one.
+        #
+        # The real arbiter is `reasoning/consciousness_probe.py:84`: `present = sp > rt + 0.15` --
+        # the binding marker is TRUE when spiking pair-accuracy beats the rate control by more than
+        # 0.15, and nothing derived that margin. P1 forbids exactly this shape, and
+        # docs/GAP_CLOSURE.md records that a repair exists (a strict decoder plus precision-and-recall
+        # takes distinct verdicts across 26 perturbations from 1 of 26 to 2 of 26 -- the marker gains
+        # the ability to FAIL, while the count stays 4 of 4). Until that lands the count carries the
+        # caveat. `N of 4`, never `N/4`: bare ratios are harvested positionally by the
         # coverage-artifact fingerprint.
         return (
             f"[from what I learned] my consciousness correlates: access={acc}, binding={bnd}, "
             f"integration={integ}, re-entry={reent} ({sum([acc, bnd, integ, reent])} of 4; the "
-            "binding marker rests on a threshold nobody derived, so read the count as indicative). "
+            "binding marker flips on a 0.15 margin nobody derived, so read the count as "
+            "indicative). "
             "These are correlates of access, control and report -- not evidence of experience. "
             "Whether I have subjective experience is open -- I neither claim nor deny it."
         )

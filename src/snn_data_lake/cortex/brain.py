@@ -2912,6 +2912,12 @@ class Brain:
             ),  # the content currently held in the global workspace
             "n_bound": int(self._access_state.get("n_bound", 0)),
             "arm_stopped": bool(self.brain.arm.arm.state().get("stopped", False)),
+            # E-STOP self-clears (owner-authorised 2026-08-03). Exported BESIDE `arm_stopped`
+            # deliberately: the pair is the diagnostic. `arm_stopped` False with a flat count is a
+            # calm arm; False with a CLIMBING count is an arm tripping and re-arming every few
+            # ticks, and those are the same picture from a status light. The brain may only clear
+            # when the breach predicate reads clear (autonomous_loop.py, step() section 1b).
+            "estop_self_clears": int(getattr(self.brain.arm, "_estop_clears", 0)),
             "reflex_armed": True,
             "pc_surprise": self._pc_surprise,  # live generative-percept prediction-error (Rao-Ballard settle; folds into metacog)
             "da_level": round(

@@ -219,6 +219,11 @@ class AutonomousArm:
         self._last_ee = None  # previous end-effector pose -> did this tick move the body at all?
         self._ground_ticks = 0  # consecutive ground-contact ticks (postural recovery reflex)
         self._recoveries = 0  # how many times the arm had to stand back up -- a real "falls" metric
+        # E-STOP SELF-CLEARS. Counted, never inferred: the authorisation to let the brain re-arm
+        # itself was granted on condition that a self-clearing LOOP stays visible. A rising count
+        # against a flat tick count is a brain tripping and clearing repeatedly, which is a
+        # different failure from never clearing and must not look the same from outside.
+        self._estop_clears = 0
         self.lr = lr
         self.explore = explore
         self.rng = random.Random(seed)
@@ -1270,6 +1275,32 @@ class AutonomousArm:
                 ),  # threat ignites (annotation only)
                 "state": estop,
             }
+        # 1b. SELF-CLEAR THE LATCH -- owner-authorised 2026-08-03, and narrow on purpose.
+        #
+        # Reaching this line MEANS the breach predicate above evaluated False for THIS sample: the
+        # distance is finite and at or beyond CONTACT. That is the whole safety argument, and it is
+        # made by CONTROL FLOW rather than by re-reading a value that could have gone stale -- a
+        # re-check would be a second opinion about the same sample, which is not a second opinion.
+        #
+        # The authorisation was specific: the brain MAY clear, but ONLY when the breach condition
+        # reads clear, and every clear is COUNTED so a self-clearing loop is visible rather than
+        # silent. An unconditional clear would let the brain clear WHILE STILL IN BREACH, which turns
+        # reflex.py's persistence latch -- a counter that exists precisely so a sustained moderate
+        # overload can never be ignored -- into a no-op. That is what a runaway looks like from the
+        # inside, and it is why this is gated rather than free.
+        #
+        # HOME is the sanctioned clear (`so101_arm._CLEARS_LATCH`); it and RETRACT_ALL are the same
+        # operation there. HOME's known cost is recorded at :1377 -- it resets theta to [0,0] and
+        # measured NET NEGATIVE for GROUND recovery (84.4 -> 80.2 cells over 5 seeds) because it
+        # destroys the explored position. That objection is about exploration score, not safety, and
+        # it does not transfer: after an emergency stop a KNOWN pose is the point.
+        #
+        # Without this, a cockpit-tripped E-STOP deadlocks silently: AutonomousArm.step() issues
+        # neither HOME nor RETRACT_ALL, so nothing on the live path could ever re-arm the arm.
+        if self.arm.state().get("stopped"):
+            self.arm.apply("HOME")  # ONLY path to motion -> the gate still holds
+            self._estop_clears += 1
+
         # 2. perceive -> grow a unit on a novel multimodal context
         pattern = self._context_pattern(visual, temperature, audio, distance)
         if (
