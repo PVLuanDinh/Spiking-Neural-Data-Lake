@@ -43,6 +43,7 @@ Determinism (CLAUDE.md): pure functions of the task; no random; no builtin hash;
 from collections import Counter, deque
 from typing import NamedTuple
 
+from snn_data_lake.reasoning import arc_residual
 from snn_data_lake.reasoning.arc_scene import object_holes, period, shape_class
 from snn_data_lake.reasoning.arc_solver import background, components
 
@@ -440,6 +441,18 @@ def _induce_paint_cellset(train, cellset_fn):
 # A skeleton with a free rule INDUCES the rule from the train pairs' (attr, out-colour) observations and
 # returns a grid-general program, or None if it does not fit+verify. Structural skeletons have no free
 # rule. The mint enumerates these in MDL order.
+# NOT RETIRED -- and docs/INVENTION.md 3.4 item 2 is WRONG about this, measured. Design B claimed
+# the induced conjunction SUBSUMES this authored enumeration, so the six ("object", attr) tuples
+# could be deleted. They cannot. The two inductions express DIFFERENT task shapes:
+#   * this path fits ONE rule over EVERY unit, so a unit that does not change is still a legal
+#     observation -- (attr, the colour it already has) -- and a lookup absorbs it with no selector;
+#   * _build_selected_recolor() treats an unchanged unit as a NEGATIVE and must find a conjunction
+#     that excludes it, refusing outright when the alphabet cannot separate them.
+# Port-before-retire (research.md R6) caught the difference causally on evaluation task ae58858e:
+# retiring these six lost it (induce_selector returns None on 3-of-7, 3-of-9, 2-of-6, 1-of-6
+# changed-unit splits) while the authored path solves it via recolor_object_by[shapecells]:lookup.
+# Neither mechanism supersedes the other, so P2's adopt-and-retire does not apply here; recorded as
+# a measured delta against the design in specs/006-fixed-point-gf/designb/.
 _RECOLOR_UNITS = (
     ("region", "side", _region_units("side")),
     ("region", "size", _region_units("size")),
@@ -494,6 +507,200 @@ def _build_recolor(train, unit_fn):
 # record run showed every mint-earned solve is depth-1 through the searcher.)
 
 
+# ---- DESIGN B: recolour a unit set INDUCED as a conjunction over measured descriptors ------------
+# docs/INVENTION.md section 3. The authored (unit, attribute) enumeration above could only emit a
+# record when EVERY unit was explained; this induces WHICH units get written, so a task where some
+# objects change and others do not is now expressible. The empty conjunction is the always-true
+# selector and reproduces the authored all-units case exactly -- that is why the six authored object
+# tuples could be retired rather than kept beside this.
+
+
+def _split_changed(gi, go):
+    """Classify each object of `gi` against `go`: (positives, negatives) as (index, target_colour).
+
+    components(..., same_color=True) yields MONOCHROME objects, so a unit is either recoloured (its
+    output cells are one colour, different from its input colour), left alone (output cells identical
+    to input), or NEITHER -- and `neither` means a unit-recolour skeleton is simply the wrong shape
+    for this task, so the whole build refuses. Returns None on refusal. Cells outside every object
+    must be untouched: a recolour writes units, and nothing else."""
+    if len(gi) != len(go) or len(gi[0]) != len(go[0]):
+        return None
+    objs = _objs(gi)
+    if not objs:
+        return None
+    pos, neg, covered = [], [], set()
+    for idx, o in enumerate(objs):
+        cells = o["cells"]
+        covered |= set(cells)
+        outcols = {go[r][c] for r, c in cells}
+        if len(outcols) != 1:
+            return None  # not a monochrome write and not untouched -> wrong skeleton
+        col = next(iter(outcols))
+        if col == o["color"]:
+            neg.append((idx, col))
+        else:
+            pos.append((idx, col))
+    for r in range(len(gi)):
+        for c in range(len(gi[0])):
+            if (r, c) not in covered and gi[r][c] != go[r][c]:
+                return None  # a cell outside every unit moved -> this is not a unit recolour
+    return pos, neg
+
+
+def _apply_selected_recolor(g, key_pid, rule, selector):
+    """Write rule(key(v)) into every unit v the induced conjunction selects. A selector that selects
+    NOTHING returns None -- a primitive that cannot act must fail like any other, never hand back its
+    input as if it had answered."""
+    fams = arc_residual.families_for(selector, key_pid)
+    rows = arc_residual.descriptor_rows(g, fams)
+    objs = _objs(g)
+    if not objs or len(rows) != len(objs):
+        return None
+    out = [list(row) for row in g]
+    hit = 0
+    for o, row in zip(objs, rows):
+        if not arc_residual.selector_matches(row, selector):
+            continue
+        aval = row[key_pid]
+        if aval is None:
+            return None
+        col = rule(aval)
+        if col is None or not (0 <= col <= 9):
+            return None
+        hit += 1
+        for r, c in o["cells"]:
+            out[r][c] = col
+    if hit == 0:
+        return None
+    return _T(_T(row) for row in out)
+
+
+def _selector_survives_loo(splits, rows_per_pair):
+    """Leave-one-out on the SELECTOR, the same discipline induce_rule applies to the value rule: a
+    conjunction induced without one train pair must still classify that pair's units correctly. An
+    EMPTY conjunction is vacuous here (it selects everything by definition) and is not tested.
+
+    Applied only when the REFIT is still cross-pair constrained, i.e. n - 1 >= 2. That bound is
+    definitional, not tuned: a conjunction induced from a single pair has no agreement to satisfy,
+    so it will happily pick a literal true of that pair alone and the test would reject genuine
+    selectors rather than memorising ones. At n = 2 the cross-pair constraint is already carried by
+    induce_selector itself -- a literal must hold on EVERY positive of EVERY pair to be admissible,
+    which is what stops a per-pair accident like `color` from entering the conjunction."""
+    n = len(splits)
+    if n - 1 < 2:
+        return True
+    for i in range(n):
+        pos, neg = [], []
+        for j in range(n):
+            if j == i:
+                continue
+            p, g_ = splits[j]
+            pos.extend(rows_per_pair[j][k] for k, _c in p)
+            neg.extend(rows_per_pair[j][k] for k, _c in g_)
+        if not pos:
+            continue
+        sel = arc_residual.induce_selector(pos, neg)
+        if sel is None:
+            return False
+        hp, hn = splits[i]
+        if not all(arc_residual.selector_matches(rows_per_pair[i][k], sel) for k, _c in hp):
+            return False
+        if any(arc_residual.selector_matches(rows_per_pair[i][k], sel) for k, _c in hn):
+            return False
+    return True
+
+
+def _build_selected_recolor(train):
+    """Induce (selector, key descriptor, value rule) for the object-recolour consumer.
+
+    Returns a list of candidate tuples in the mint_records() shape. The selector is induced ONCE per
+    task (it separates written units from untouched ones and does not depend on the value key); each
+    integer descriptor is then tried as the rule KEY in the existing MDL order. A candidate is
+    emitted only if the compiled program reproduces EVERY train pair."""
+    splits, rows_per_pair = [], []
+    for pair in train:
+        gi, go = pair["in"], pair["out"]
+        got = _split_changed(gi, go)
+        if got is None:
+            return []
+        splits.append(got)
+        rows_per_pair.append(arc_residual.descriptor_rows(gi))
+    pos_rows, neg_rows = [], []
+    for (pos, neg), rows in zip(splits, rows_per_pair):
+        pos_rows.extend(rows[k] for k, _c in pos)
+        neg_rows.extend(rows[k] for k, _c in neg)
+    if not pos_rows:
+        return []  # nothing is written -> not a recolour task
+    selector = arc_residual.induce_selector(pos_rows, neg_rows)
+    if selector is None:
+        return []  # the alphabet cannot separate written from untouched units -> refuse
+    if selector and not _selector_survives_loo(splits, rows_per_pair):
+        return []
+    # With an EMPTY conjunction this induction and the authored _RECOLOR_UNITS path compile to the
+    # same program, so the keys the authored path already carries would be minted twice and charged
+    # twice against the node budget. Derived from _RECOLOR_UNITS, never hardcoded, so the two stay
+    # in step if either changes. A NON-empty conjunction is never a duplicate: the authored path
+    # cannot express it at all.
+    authored = {a for u, a, _f in _RECOLOR_UNITS if u == "object"} if not selector else set()
+    cand = []
+    for pid in range(arc_residual.N_DESCRIPTORS):
+        if arc_residual.DESCRIPTOR_NAMES[pid] in authored:
+            continue
+        obs_per_pair = []
+        ok = True
+        for (pos, _neg), rows in zip(splits, rows_per_pair):
+            obs = []
+            for k, col in pos:
+                aval = rows[k][pid]
+                if aval is None:
+                    ok = False
+                    break
+                obs.append((aval, col))
+            if not ok:
+                break
+            if obs:
+                obs_per_pair.append(obs)
+        if not ok or not obs_per_pair:
+            continue
+        got = induce_rule(obs_per_pair)
+        if got is None:
+            continue
+        _rule, kind, rule_mdl, params = got
+        memo = kind in _MEMO_KINDS
+        attr = arc_residual.DESCRIPTOR_NAMES[pid]
+        lits = "&".join(f"{arc_residual.DESCRIPTOR_NAMES[p]}={v}" for p, v in selector)
+        name = f"recolor_object_by[{attr}]" + (f"{{{lits}}}" if lits else "") + f":{kind}"
+        # MDL = the skeleton's own pre-existing hand-assigned 3 (NOT retired here: retiring it would
+        # change the pool ORDER and confound the selector measurement, so it is named as a surviving
+        # P1 offender in specs/006-fixed-point-gf/designb/) plus two COUNTS -- the rule form's
+        # description length from _RULE_FORMS and the number of induced selector literals. Both are
+        # counted, not chosen, and the memo forms already carry their cost there (rank 3, lookup 9).
+        cand.append(
+            (
+                3 + rule_mdl + len(selector),
+                name,
+                "object",
+                attr,
+                kind,
+                params,
+                "recolor_sel",
+                memo,
+                selector,
+            )
+        )
+    if not cand:
+        return []
+    # MDL, applied ACROSS the key alphabet and not just within one key. With few written units the
+    # value rule is weakly constrained, so a dozen descriptors fit it by coincidence and each would
+    # enter the pool as a separate primitive -- and at max_depth 3 the node count scales with the
+    # CUBE of the pool size, so an unbounded key sweep buys vocabulary by starving the budget that
+    # has to search it. Keeping the MDL-minimal keys is the module's existing arbiter doing the work
+    # it exists for (a min over counted description lengths), not a new cap: nothing numeric is
+    # chosen, and a key survives only by being the cheapest explanation on offer.
+    best = min(c[0] for c in cand)
+    return [c for c in cand if c[0] == best]
+
+
 def solves(fn, train):
     for pair in train:
         gi, go = _grid(pair["in"]), _grid(pair["out"])
@@ -523,6 +730,10 @@ class TypedPrimitiveRecord(NamedTuple):
     rule_params: tuple
     consumer: str  # recolor / crop / reflect / tile / materialize / paint / keep / delete
     memo_flag: bool
+    selector: tuple  # DESIGN B: induced conjunction, ((predicate id, value), ...) from
+    # arc_residual.DESCRIPTORS at DESCRIPTOR_VERSION. Literal values only -- never a pointer into
+    # mint-internal state -- so the record stays reconstructible from its own fields. () is the
+    # always-true conjunction. A version bump invalidates every stored record by construction.
     fn: object
 
 
@@ -560,14 +771,26 @@ _UNIT_FNS = {"object": _object_units, "region": _region_units}
 _PAINT_CELLSETS = {"perimeter": _perimeter_cells, "allholes": _all_holes_cells}
 
 
-def compile_record(unit, attribute, rule_form, rule_params, consumer):
+def compile_record(unit, attribute, rule_form, rule_params, consumer, selector=()):
     """Compile the DECLARATIVE fields of a typed record back into the grid -> grid-or-None
     program. mint_records() builds every emitted fn through here, and the reconstruction test
-    re-runs it from the fields alone -- the audit that nothing beyond the record crosses."""
+    re-runs it from the fields alone -- the audit that nothing beyond the record crosses.
+
+    `selector` is the DESIGN B induced conjunction over arc_residual.DESCRIPTORS; the default ()
+    is the always-true conjunction, so a record minted before Design B compiles unchanged."""
     if consumer == "recolor":
         unit_fn = _UNIT_FNS[unit](attribute)
         rule = _RULE_COMPILE[rule_form](rule_params)
         return lambda gg: _apply_recolor_units(gg, unit_fn, rule)
+    if consumer == "recolor_sel":
+        # DESIGN B: write only the units the induced conjunction selects. `attribute` names the KEY
+        # descriptor in arc_residual.DESCRIPTORS at DESCRIPTOR_VERSION; `selector` is the literal
+        # tuple. A DISTINCT consumer from "recolor" because it is a distinct induction, not a
+        # generalisation of it -- see the _RECOLOR_UNITS note on why neither subsumes the other.
+        key_pid = arc_residual.DESCRIPTOR_NAMES.index(attribute)
+        rule = _RULE_COMPILE[rule_form](rule_params)
+        sel = tuple((int(p), int(v)) for p, v in selector)
+        return lambda gg: _apply_selected_recolor(gg, key_pid, rule, sel)
     if consumer == "paint":
         cs_fn = _PAINT_CELLSETS[attribute]
         col = rule_params[0]
@@ -608,14 +831,14 @@ def mint_records(train):
     are deliberately NOT exported: composition is the one searcher's job after the merge."""
     pairs = [{"in": _grid(i), "out": _grid(o)} for i, o in train]
     cand = [
-        (mdl, name, unit, attribute, "const", params, consumer, False)
+        (mdl, name, unit, attribute, "const", params, consumer, False, ())
         for mdl, name, unit, attribute, params, consumer in _STRUCT_RECORDS
     ]
     for pname, cs_fn in sorted(_PAINT_CELLSETS.items()):
         got = _induce_paint_cellset(pairs, cs_fn)
         if got:
             cand.append(
-                (3, f"paint_{pname}[const]", "grid", pname, "const", (got[1],), "paint", False)
+                (3, f"paint_{pname}[const]", "grid", pname, "const", (got[1],), "paint", False, ())
             )
     for unit_name, attr, unit_fn in _RECOLOR_UNITS:
         built = _build_recolor(pairs, unit_fn)
@@ -632,17 +855,21 @@ def mint_records(train):
                     params,
                     "recolor",
                     memo,
+                    (),
                 )
             )
+    cand.extend(_build_selected_recolor(pairs))
     recs = []
-    for mdl, name, unit, attribute, rule_form, params, consumer, memo in sorted(
+    for mdl, name, unit, attribute, rule_form, params, consumer, memo, selector in sorted(
         cand, key=lambda c: (c[0], c[1])
     ):
-        fn = compile_record(unit, attribute, rule_form, params, consumer)
+        fn = compile_record(unit, attribute, rule_form, params, consumer, selector)
         if fn is None or not solves(fn, pairs):
             continue
         recs.append(
-            TypedPrimitiveRecord(name, unit, attribute, rule_form, params, consumer, memo, fn)
+            TypedPrimitiveRecord(
+                name, unit, attribute, rule_form, params, consumer, memo, selector, fn
+            )
         )
     return recs
 

@@ -105,7 +105,7 @@ def _pool_size(train_pairs):
     try:
         tin = tuple(_tup(i) for i, _o in train_pairs)
         tout = tuple(_tup(o) for _i, o in train_pairs)
-        return len(arc_solver._pool(tin, tout, None))
+        return len(arc_solver._pool(tin, tout))
     except (AttributeError, TypeError, ValueError, IndexError):
         return _P_FALLBACK
 

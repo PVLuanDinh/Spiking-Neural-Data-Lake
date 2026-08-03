@@ -24,7 +24,7 @@ see "What the refuter found" below.
 | rpm_nvsa_matrix_solving | 25 | src/snn_data_lake/reasoning/rpm_solver.py:362#RpmExpert; src/snn_data_lake/reasoning/spike_chat_lake.py:1113#_get_cortex | gf_rpm_nvsa.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py rpm_nvsa | 2026-07-30 |
 | sleep_schema_induction | 45 | src/snn_data_lake/cortex/brain.py:2468#_enter_sleep; src/snn_data_lake/cortex/brain.py:2520#_enter_sleep | gf_sleep_schema_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py sleep_schema_induction | 2026-07-30 |
 | held_out_novel_problem_solving | 10 | src/snn_data_lake/reasoning/arc_bench.py:86#score; src/snn_data_lake/reasoning/arc_solver.py:885#make_solver | gf_arc_eval_lib_off.txt | opus-5 / tools/arc_score.py evaluation off (400 held-out tasks) | 2026-07-30 |
-| arc_cross_task_library_learning | 0 | src/snn_data_lake/reasoning/arc_solver.py:903#solver | gf_arc_eval_lib_on.txt | opus-5 / tools/arc_score.py evaluation on vs off | 2026-07-30 |
+| arc_cross_task_library_learning | UNSCORED | src/snn_data_lake/reasoning/arc_solver.py:1007#main | - | opus-5 / P2 retirement guard: the mechanism was deleted, the faculty stays absent | 2026-08-03 |
 | arc_scene_mint_out_of_closure_induction | 0 | src/snn_data_lake/reasoning/arc_mint.py:599#mint_records; src/snn_data_lake/reasoning/arc_mint.py:563#compile_record; src/snn_data_lake/reasoning/arc_scene.py:189#scene | - | opus-5 / static: every `mint(` call site in the tree | 2026-07-30 |
 
 ---
@@ -213,6 +213,37 @@ would have got wrong:
 of any Gf faculty is a decision, an action, or a weight: `live_brain.py:443` states the route is
 read-only with no motor path, and I found no exception. A band-61 Gf claim needs a wire this brain does
 not have -- which is exactly what `COVERAGE_RUBRIC.md:99-106` pre-declares.
+
+## `arc_cross_task_library_learning`: the MECHANISM was retired, so the row goes UNSCORED -- it is not deleted
+
+The row scored **0** and cited `arc_solver.py#solver` against `gf_arc_eval_lib_on.txt`, an A/B of the
+composite library ON versus OFF. **`ArcLibrary` was deleted outright on 2026-08-03 under P2**, so that
+A/B no longer has two arms and the old citation no longer resolves. The row is re-pointed at the P2
+retirement guard and set to `UNSCORED`.
+
+**Deleting it was the obvious move and it was wrong.** The first repair drafted here removed the row
+outright, on the reasoning that a claim whose mechanism no longer exists cannot be measured. That is
+score fraud by arithmetic: the category score is the **mean** of the band column, so dropping a
+0-scoring row changes `380 / 13` into `380 / 12` and lifts Gf from **29.2 to 31.7** without one extra
+task being solved. This file's own header forbids exactly that -- *"a row is never deleted to raise a
+score"* -- and the rule earns its place here, because the deletion was not motivated by wanting a
+higher number and would have produced one anyway. `UNSCORED` keeps the denominator at 13 and the
+category at 29.2.
+
+Repinning was the other wrong move, in the opposite direction. `--repin` restores a citation to
+wherever `git blame` says the cited symbol drifted -- it cannot tell "this line moved" from "this
+mechanism no longer exists", so it would have pointed the claim at the surviving solver and produced a
+row that resolves cleanly, scores 0, and describes nothing in the tree. A citation that resolves is not
+the same as a claim that is true. The guard at `arc_solver.py:1007` is cited instead precisely because
+it asserts the **absence**: it fails the self-check if `ArcLibrary` ever comes back.
+
+The faculty itself stays absent and stays tracked. Cross-task library learning is a real capability
+this brain does not have; what was falsified is one attempt at it. The measurement behind that
+attempt was a **null** -- library ON and OFF returned byte-identical solved-ID sets on both splits
+while the library learned 4 composites, re-confirmed independently before anything was deleted. That
+null is the P2 case for retiring it, and it is why "the library learns composites" was never evidence
+that the library helps. `docs/COVERAGE_TO_100.md:167` still records the phase-6 null; that reference
+is history and stays.
 
 ## Prior claims this audit REFUTES
 

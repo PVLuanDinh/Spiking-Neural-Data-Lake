@@ -737,56 +737,34 @@ def _apply_map(g, m):
 # ====================================================================================================
 
 
-class ArcLibrary:
-    """Learned composite primitives -- OpenGf._learn's pattern in the grid domain: the winning
-    program of a solved task (>=2 steps, flattened, deduped) becomes ONE named step for later tasks."""
-
-    def __init__(self, cap=64):
-        self.cap = cap
-        self.progs = []  # [tuple(primitive names)]
-        self._defs = {}  # composite name -> flat name tuple
-        self._seen = set()
-
-    def learn(self, names):
-        flat = []
-        for n in names:
-            flat.extend(self._defs.get(n, (n,)))
-        flat = tuple(flat)
-        if len(flat) < 2 or flat in self._seen or len(self.progs) >= self.cap:
-            return False
-        self._seen.add(flat)
-        self.progs.append(flat)
-        self._defs["lib:" + ">".join(flat)] = flat
-        return True
+# ArcLibrary -- DELETED 2026-08-03 (P2, docs/INVENTION.md 3.4 item 1). It learned composite
+# primitives from solved tasks (OpenGf._learn's pattern in the grid domain) and it was measured
+# earning NOTHING: library on and off returned the BYTE-IDENTICAL solved-ID set on BOTH splits
+# (evaluation 18 of 400, training 53 of 400) while learning 4 and 10 composites respectively. The
+# budget arithmetic explains the null causally -- a composite is only reachable when every one of
+# its steps refits in the new task's context, and the winning programs that qualified were already
+# reachable at depth. Its `cap = 64` went with it, retiring one arbitrating literal. There is no
+# flag: a "merge" that keeps both paths behind a switch is additive with extra steps.
+# Record: specs/006-fixed-point-gf/designb/base_*.txt, specs/006-fixed-point-gf/verdict.md.
 
 
-def _pool(train_in, train_out, library):
-    """The per-task primitive pool: base + fitted + minted + library composites (refit in THIS
-    task's context). Minted entries are the typed bottleneck (specs/006 contract C10/C11):
-    ONLY TypedPrimitiveRecord crosses from arc_mint, appended after the fitted primitives in
+def _pool(train_in, train_out):
+    """The per-task primitive pool: base + fitted + minted, refit in THIS task's context.
+    Minted entries are the typed bottleneck (specs/006 contract C10/C11): ONLY
+    TypedPrimitiveRecord crosses from arc_mint, appended after the fitted primitives in
     the mint's deterministic MDL-then-name order. The import is deferred because arc_mint
     consumes this module's perception vocabulary (no import cycle at load time). A mint defect
     raises loudly here -- never a silent no-op pool."""
     prims = list(_BASE) + _fitted_prims(train_in, train_out)
-    from snn_data_lake.reasoning import arc_mint
+    from snn_data_lake.reasoning import arc_mint, arc_residual
+
+    # Design B descriptors are measured per GRID and the searcher re-reaches the same grids
+    # constantly, so they are cached exactly like _SEG_CACHE -- and cleared per task for the same
+    # reason: an unbounded cross-task cache is a memory leak, not a speed-up.
+    arc_residual.clear_cache()
 
     for rec in arc_mint.mint_records(tuple(zip(train_in, train_out))):
         prims.append(("mint:" + rec.name, rec.fn))
-    pmap = dict(prims)
-    if library is not None:
-        for names in library.progs:
-            if not all(n in pmap for n in names):
-                continue  # a fitted/minted step this task cannot refit
-            fns = [pmap[n] for n in names]
-
-            def comp(g, fns=fns):
-                for f in fns:
-                    g = f(g)
-                    if g is None:
-                        return None
-                return g
-
-            prims.append(("lib:" + ">".join(names), comp))
     return prims
 
 
@@ -797,7 +775,6 @@ def synthesize(
     max_depth=3,
     node_budget=4000,
     time_budget=None,
-    library=None,
     dsl="full",
 ):
     """Iterative-deepening program synthesis for ONE ARC task.
@@ -816,7 +793,7 @@ def synthesize(
         return [], []
 
     full = dsl == "full"
-    prims = _pool(train_in, train_out, library) if full else []
+    prims = _pool(train_in, train_out) if full else []
     cands, progs, seen_c = [], [], set()
 
     def close(state, names):
@@ -882,25 +859,22 @@ def synthesize(
     return cands, progs
 
 
-def make_solver(library=None, max_depth=3, node_budget=4000, time_budget=5.0, dsl="full"):
-    """An arc_bench-shaped solver(train_pairs, test_input, attempts) -> [candidate grids]. With a
-    library, each solved task's winning program is learned as a composite for the NEXT tasks."""
+def make_solver(max_depth=3, node_budget=4000, time_budget=5.0, dsl="full"):
+    """An arc_bench-shaped solver(train_pairs, test_input, attempts) -> [candidate grids].
+
+    Every task is solved independently: nothing carries over between tasks. The cross-task
+    composite library that used to live here was measured earning 0 solves and is deleted (P2)."""
 
     def solver(train, test_input, attempts=2):
-        cands, progs = synthesize(
+        cands, _progs = synthesize(
             train,
             test_input,
             attempts=attempts,
             max_depth=max_depth,
             node_budget=node_budget,
             time_budget=time_budget,
-            library=library,
             dsl=dsl,
         )
-        if library is not None and progs:
-            names, _closer = progs[0]
-            if len(names) >= 2:
-                library.learn(names)
         return cands
 
     return solver
@@ -1024,35 +998,22 @@ def main():
     if ctrl_hits:
         ok = False
 
-    # ---- (d) library learning: a 2-step solve becomes ONE step for the next task -------------------
-    lib = ArcLibrary()
-    solver = make_solver(library=lib, time_budget=None)
-    solver(t_two[0], t_two[1])  # learns ('crop_content','scale2')
-    got_nolib, _p = _solve1(t_two[0], t_two[1], max_depth=1)
-    got_lib, prog_lib = _solve1(t_two[0], t_two[1], max_depth=1, library=lib)
-    print(
-        "library: progs=%r; depth-1 without lib -> %s, with lib -> %s"
-        % (
-            lib.progs,
-            "solved" if got_nolib == t_two[2] else "unsolved",
-            "solved" if got_lib == t_two[2] else "unsolved",
-        )
-    )
-    lib_name = "lib:" + ">".join(lib.progs[0]) if lib.progs else None
-    if not (
-        len(lib.progs) == 1
-        and len(lib.progs[0]) == 2
-        and got_nolib != t_two[2]
-        and got_lib == t_two[2]
-        and prog_lib[0] == (lib_name,)
-    ):
-        print("  FAIL library: the learned composite must make the depth-1 solve possible")
+    # ---- (d) ArcLibrary is RETIRED (P2) -- assert it did not survive behind anything ---------------
+    # It was measured earning NOTHING, four times over: library on and off return the BYTE-IDENTICAL
+    # solved-ID set on both splits (18 of 400 evaluation, 53 of 400 training at the pre-Design-B
+    # baseline) while learning 4 and 10 composites respectively. A mechanism that learns and changes
+    # no outcome is the exact defect this repo reverts for, so it is deleted, not flag-parked.
+    # Record: specs/006-fixed-point-gf/designb/base_*.txt and verdict.md.
+    if any(hasattr(sys.modules[__name__], n) for n in ("ArcLibrary",)):
+        print("  FAIL P2: ArcLibrary must be deleted, not parked")
         ok = False
+    else:
+        print("library: RETIRED (P2) -- measured 0 solves gained, identical ID sets on both splits")
 
     # ---- (d2) pool order: the hand-authored _BASE prior must survive pooling exactly ---------------
     tin = tuple(_tup(i) for i, _o in t_two[0])
     tout = tuple(_tup(o) for _i, o in t_two[0])
-    pool_names = [n for n, _f in _pool(tin, tout, None)]
+    pool_names = [n for n, _f in _pool(tin, tout)]
     if pool_names[: len(_BASE)] != [n for n, _f in _BASE]:
         print("  FAIL pool: _pool must keep the hand-authored _BASE order exactly")
         ok = False

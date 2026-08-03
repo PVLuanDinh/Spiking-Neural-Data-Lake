@@ -26,9 +26,9 @@ _ROOT = os.path.abspath(os.path.join(_HERE, ".."))
 sys.path.insert(0, os.path.join(_ROOT, "src"))
 
 from snn_data_lake.reasoning import arc_bench  # noqa: E402
-from snn_data_lake.reasoning.arc_solver import ArcLibrary, make_solver  # noqa: E402
+from snn_data_lake.reasoning.arc_solver import make_solver  # noqa: E402
 
-USAGE = "usage: python tools/arc_score.py <training|evaluation> <on|off> [limit] [--data DIR]"
+USAGE = "usage: python tools/arc_score.py <training|evaluation> [limit] [--data DIR]"
 
 
 def pop_opt(argv, name, default):
@@ -47,12 +47,22 @@ def pop_opt(argv, name, default):
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     data = pop_opt(argv, "--data", os.path.join(_ROOT, "data", "arc"))
-    if len(argv) < 2:
+    if not argv:
         print(USAGE)
         return 2
-    split, lib = argv[0], argv[1]
-    limit = int(argv[2]) if len(argv) > 2 else None
-    if split not in arc_bench.SPLITS or lib not in ("on", "off"):
+    split = argv[0]
+    # The library A/B is RETIRED (P2, 2026-08-03): ArcLibrary was measured earning 0 solves --
+    # library on and off returned the byte-identical solved-ID set on BOTH splits -- and is deleted
+    # from arc_solver. A legacy `on|off` token is still ACCEPTED so the reproduction path quoted in
+    # docs/DEPTH_CEILINGS.md does not silently mean something new, but it selects nothing: there is
+    # exactly one code path now, and this says so out loud rather than pretending to switch.
+    if len(argv) > 1 and argv[1] in ("on", "off"):
+        print(
+            f"NOTE: '{argv[1]}' ignored -- the composite library is RETIRED (P2); one path remains"
+        )
+        del argv[1]
+    limit = int(argv[1]) if len(argv) > 1 else None
+    if split not in arc_bench.SPLITS:
         print(USAGE)
         return 2
 
@@ -66,20 +76,15 @@ def main(argv=None):
         )
         return 0
 
-    library = ArcLibrary() if lib == "on" else None
-    solver = make_solver(library=library, node_budget=4000, time_budget=5.0)
+    solver = make_solver(node_budget=4000, time_budget=5.0)
     t0 = time.time()
     r = arc_bench.score(solver, split, limit=limit, root=data)
     dt = time.time() - t0
     print(
-        f"split={split} lib={lib} limit={limit} : "
+        f"split={split} limit={limit} : "
         f"{r['solved']}/{r['total']} = {100 * r['rate']:.2f}%  ({dt:.0f} s)"
     )
     print(f"solved_ids: {','.join(r['solved_ids'])}")
-    if library is not None:
-        print(f"library learned {len(library.progs)} composites:")
-        for p in library.progs:
-            print(f"  {'>'.join(p)}")
     return 0
 
 

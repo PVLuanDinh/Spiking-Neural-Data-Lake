@@ -1,0 +1,19 @@
+================================================================================================
+DESIGN B -- telemetry and offline control arms | split=evaluation tasks=400
+descriptor alphabet version 1, 32 predicates, literal cap 4
+================================================================================================
+TELEMETRY (NOT an outcome -- INVENTION.md 3.6 forbids these in any success claim)
+  tasks minting at least one record : 9 of 400
+  records minted (total)            : 27
+  records carrying >=1 literal      : 14 of 27
+  selector-length distribution      : [(0, 13), (1, 14)]
+  descriptors winning literals (top): [('is_smallest', 10), ('is_inner', 2), ('n_adjacent', 2)]
+  pool size per task min/med/max    : 60 / 68 / 74
+------------------------------------------------------------------------------------------------
+CONTROL ARM 3 -- LABEL-SHUFFLED SELECTOR (the admission bar must be a bar)
+  tasks admitting a residual split  : 30 of 400
+  REAL labels    -> selector admitted: 15 of 30
+  SHUFFLED labels-> selector admitted: 6 of 30  (seed 0)
+  reading: a shuffled rate at or near the real rate means the alphabet can separate
+  ANY split of these units, so admission is not evidence the selector found structure.
+================================================================================================

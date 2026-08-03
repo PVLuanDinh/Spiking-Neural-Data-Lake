@@ -85,7 +85,12 @@ def test_records_reconstruct_from_declarative_fields():
         assert recs, "the mint must emit at least one verified record for its own dev tasks"
         for rec in recs:
             fn2 = arc_mint.compile_record(
-                rec.unit, rec.attribute, rec.rule_form, rec.rule_params, rec.consumer
+                rec.unit,
+                rec.attribute,
+                rec.rule_form,
+                rec.rule_params,
+                rec.consumer,
+                rec.selector,
             )
             for gi, go in train:
                 assert fn2(arc_mint._grid(gi)) == arc_mint._grid(go), (
@@ -97,7 +102,8 @@ def test_records_are_deterministic_and_mdl_then_name_ordered():
     train = _recolor_task_functional()
     a = arc_mint.mint_records(train)
     b = arc_mint.mint_records(train)
-    assert [r[:7] for r in a] == [r[:7] for r in b]
+    # r[:8] is every declarative field INCLUDING the Design B selector, minus only the compiled fn
+    assert [r[:8] for r in a] == [r[:8] for r in b]
     assert all(r.name.isascii() for r in a)
 
 
@@ -171,7 +177,7 @@ def test_pool_keeps_base_prior_and_appends_mint_after_fitted():
     train = _recolor_task_functional()
     tin = tuple(arc_solver._tup(i) for i, _o in train)
     tout = tuple(arc_solver._tup(o) for _i, o in train)
-    names = [n for n, _f in arc_solver._pool(tin, tout, None)]
+    names = [n for n, _f in arc_solver._pool(tin, tout)]
     assert names[: len(arc_solver._BASE)] == [n for n, _f in arc_solver._BASE]
     mint_idx = [i for i, n in enumerate(names) if n.startswith("mint:")]
     assert mint_idx, "the functional task must contribute minted entries to the pool"

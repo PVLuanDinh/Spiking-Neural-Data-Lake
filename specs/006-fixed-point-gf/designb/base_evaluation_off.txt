@@ -1,0 +1,2 @@
+split=evaluation lib=off limit=None : 18/400 = 4.50%  (217 s)
+solved_ids: 00576224,00dbd492,0a2355a6,0c786b71,0c9aba6e,1a2e2828,31d5ba1a,34b99a2b,37d3e8b2,59341089,60c09cac,66f2d22f,833dafe3,84f2aca1,ae58858e,bf699163,d282b262,e345f17b

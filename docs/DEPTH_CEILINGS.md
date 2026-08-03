@@ -88,6 +88,14 @@ scores and **identical solved-ID sets** (40/400 both ways), despite the library 
 demonstrably helps in a constructed depth-1 case in the self-check, and demonstrably does nothing at scale.
 Reported as measured, not quietly dropped.
 
+> **STALE 2026-08-03 -- this A/B no longer has two arms.** `ArcLibrary` was **deleted** under P2 on
+> 2026-08-03, so `tools/arc_score.py <split> on|off` now ignores its third argument and prints a note
+> saying so. The null above stands and is the reason for the deletion; it was re-confirmed at the
+> pre-deletion commit (byte-identical solved-ID sets on BOTH splits, 18 of 400 evaluation and 53 of
+> 400 training, while learning 4 composites) before anything was removed. Do not attempt to reproduce
+> the ON arm -- it does not exist. The 40/400 figure above is from an older tree and is kept as the
+> historical record of when the null was first seen, not as a current score.
+
 ### What is honest to claim
 
 The measured move is **0.0% → 2.75%** on held-out ARC-AGI-1, roughly 5× the trivial floor. Human performance

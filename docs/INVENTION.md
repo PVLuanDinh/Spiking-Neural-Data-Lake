@@ -505,17 +505,49 @@ population's own median, not a constant.
 
 ### 3.4 What it retires (P2)
 
-1. **`ArcLibrary` (`arc_solver.py:740-760`) -- deleted outright**, with its `cap = 64`, `_defs`,
-   `_seen`, the `lib:` pool branch, and the `library=` parameter of `make_solver` (`:885`). Four
-   independent measured nulls: library on and off solve the IDENTICAL 12 of 400 evaluation IDs
-   and 43 of 400 training IDs while learning 4 and 10 composites respectively, and lib=off was
-   115 s faster. The budget arithmetic explains the null causally.
-2. **`_fit_colormap` / `_apply_map` (`:713-731`) -- subsumed, then deleted**, after the general
-   induction reproduces its solve set exactly.
-3. **The hand-assigned MDL integers**: `_STRUCT_RECORDS`' `mdl` column (2, 3, 4) and
-   `3 + (2 if memo else 0)` in `mint_records`. Replaced by the ledger rank, falling back for
-   never-proposed records to the COUNTED number of induced free parameters (selector literals
-   plus rule params). The skeletons themselves are KEPT -- port before retire; they earn solves.
+**BUILT AND MEASURED 2026-08-03. One of these three retirements happened; two are withdrawn, and
+one of the two cost a solve before it was caught.** Corrections are inline below.
+
+1. **`ArcLibrary` (`arc_solver.py:740-760`) -- deleted outright.** DONE, with its `cap = 64`,
+   `_defs`, `_seen`, the `lib:` pool branch, and the `library=` parameter of `make_solver`
+   (`:885`). A self-check now fails if it reappears (`arc_solver.py:1007`), because P2 retirement
+   means deleted, not flag-parked.
+
+   **Two numbers in the original text are corrected.** The null is real and was re-confirmed
+   independently before anything was deleted -- library ON and OFF return **byte-identical**
+   solved-ID sets on both splits while learning 4 composites. But the counts quoted here, 12 of
+   400 evaluation and 43 of 400 training, were stale by two arcs: the measured pre-Design-B
+   baseline is **18 of 400 evaluation and 53 of 400 training**. And **the "115 s faster" claim is
+   withdrawn** -- re-measured at the current commit the two arms were within noise (215 s versus
+   217 s on evaluation). The P2 case never needed the timing claim and now rests where it should,
+   on the 0-solve delta alone.
+
+2. **`_fit_colormap` / `_apply_map` (`:713-731`) -- WITHDRAWN, not retired.** The claim was that
+   the general induction subsumes it. It does not: `_fit_colormap` is a whole-grid closer and
+   nothing in the widened alphabet ports that behaviour. It stays.
+
+3. **The hand-assigned MDL integers -- WITHDRAWN for now, and named as surviving P1 offenders.**
+   `_STRUCT_RECORDS`' `mdl` column (2, 3, 4) and `3 + (2 if memo else 0)` in `mint_records` are
+   still hardcoded. Replacing them changes pool ORDER, which would confound the one thing on
+   trial in the same commit. That is a scheduling reason, not an exemption -- P1 still owes this,
+   and section 3.5 below now records it as a surviving offender rather than a completed cleanup.
+   `SELECTOR_LITERAL_CAP = 4` is declared alongside it as a resource guard, and the descriptor
+   alphabet itself remains a developer-authored boundary -- charged against the 19 of 400, not
+   excused by it.
+
+**The retirement this section got most wrong is one it did not list: `_RECOLOR_UNITS`.** Section
+3.2 above argues the induced conjunction widens the authored 8-entry enumeration, with the
+implication that the authored tuples become dead weight. **Measured false.** Retiring the six
+object tuples lost clean evaluation ID `ae58858e` -- an intermediate run scored 18 of 400 with
+1 gained and 1 lost, and the net-zero total is exactly the shape that would have read as "no
+regression" if only the count had been checked instead of the ID set.
+
+The cause is structural, not a tuning miss. `induce_selector` returns `None` on that task's
+3-of-7, 3-of-9, 2-of-6 and 1-of-6 train splits, because the all-units path absorbs UNCHANGED
+units as observations mapping a value to the colour it already has -- an identity mapping that
+needs no selector at all. Neither mechanism contains the other. The tuples are restored and the
+counterexample is pinned as a synthetic regression test, so the next attempt to "simplify" this
+axis fails loudly instead of quietly costing a solve.
 
 ### 3.5 P1 audit
 
@@ -525,7 +557,7 @@ population's own median, not a constant.
 | Value rule form | existing MDL order plus leave-one-out | clean -- inherited discipline |
 | Minimum contributing tasks | at least 2 -- recurrence is not definable on 1 | clean -- definitional |
 | Admission bar | held-out solves, nodes-to-first-solve, `coverage_proven` movement | clean -- all measured, all on the TRAINING split |
-| Record ordering | ledger rank; fallback = counted free parameters | clean -- counts; retires the hand-assigned integers |
+| Record ordering | ledger rank; fallback = counted free parameters | **NOT CLEAN as built** -- the hand-assigned MDL integers SURVIVE; see 3.4 item 3 |
 | Retirement bar | population median proposals-per-successful-record | clean -- a median of counts |
 | Equivariance type | the largest subgroup under which the record commutes | clean -- computed, not chosen |
 
