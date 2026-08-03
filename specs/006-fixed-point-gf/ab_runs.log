@@ -1,0 +1,25 @@
+﻿A/B record runs (merged pool: fix twins + mint intake) started 2026-08-02T23:51:53.0468794-05:00; working tree = 95c3f806 + specs/006 Stage A+B
+===== arc_score evaluation on (adaptive, merged) =====
+split=evaluation lib=on limit=None : 18/400 = 4.50%  (181 s)
+solved_ids: 00576224,00dbd492,0a2355a6,0c786b71,0c9aba6e,1a2e2828,31d5ba1a,34b99a2b,37d3e8b2,59341089,60c09cac,66f2d22f,833dafe3,84f2aca1,ae58858e,bf699163,d282b262,e345f17b
+library learned 3 composites:
+  rot180>mirror_quad
+  mirror_h_l>mirror_h
+  flip_v>sel_last
+===== arc_score evaluation off (adaptive, merged) =====
+split=evaluation lib=off limit=None : 18/400 = 4.50%  (127 s)
+solved_ids: 00576224,00dbd492,0a2355a6,0c786b71,0c9aba6e,1a2e2828,31d5ba1a,34b99a2b,37d3e8b2,59341089,60c09cac,66f2d22f,833dafe3,84f2aca1,ae58858e,bf699163,d282b262,e345f17b
+===== arc_score training on (adaptive, merged) =====
+split=training lib=on limit=None : 51/400 = 12.75%  (83 s)
+solved_ids: 00d62c1b,0d3d703e,1cf80156,1f85a75f,23b5c85d,28bf18c6,3428a4f5,3af2c5a8,3c9b0459,445eab21,4c4377d9,5582e5ca,6150a2bd,62c24649,6430c8c4,67a3c6ac,67e8384a,68b16354,6d0aefbc,6e82a1ae,6f8cd79b,6fa7a44f,7468f01a,74dd1130,7b6016b9,7b7f7511,810b9b61,88a62173,8be77c9e,9172f3a0,9565186b,9dfd6313,a416b8f3,a5313dff,a740d043,b1948b0a,b2862040,be94b721,c0f76784,c59eb873,c8f0f002,c909285e,c9e6f938,d511f180,d5d6de2d,d9fac9be,e8593010,ed36ccf7,f25fbde4,f25ffba3,f2829549
+library learned 4 composites:
+  crop_content>tile_h2
+  flip_h>crop_content
+  crop_content>scale2
+  crop_content>mirror_v_t
+===== arc_score training off (adaptive, merged) =====
+split=training lib=off limit=None : 51/400 = 12.75%  (87 s)
+solved_ids: 00d62c1b,0d3d703e,1cf80156,1f85a75f,23b5c85d,28bf18c6,3428a4f5,3af2c5a8,3c9b0459,445eab21,4c4377d9,5582e5ca,6150a2bd,62c24649,6430c8c4,67a3c6ac,67e8384a,68b16354,6d0aefbc,6e82a1ae,6f8cd79b,6fa7a44f,7468f01a,74dd1130,7b6016b9,7b7f7511,810b9b61,88a62173,8be77c9e,9172f3a0,9565186b,9dfd6313,a416b8f3,a5313dff,a740d043,b1948b0a,b2862040,be94b721,c0f76784,c59eb873,c8f0f002,c909285e,c9e6f938,d511f180,d5d6de2d,d9fac9be,e8593010,ed36ccf7,f25fbde4,f25ffba3,f2829549
+===== arc_fixdepth_control evaluation (K from census.md) =====
+SKIP arc_fixdepth_control: D:\AI-project\spiking-neural-data-lake\specs\006-fixed-point-gf\census.md records 0 of 0 winning fix trajectories -- K is underivable and the control arm is vacuous (contract C18)
+done 2026-08-02T23:59:52.4285092-05:00

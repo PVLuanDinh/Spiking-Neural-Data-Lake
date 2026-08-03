@@ -102,6 +102,47 @@ thesis that the Gf ceiling *cannot be closed, only moved* — because every publ
 spiking or not, assumes a hand-specified attribute grammar, which the developer-aware clause charges against
 the score. No design in the surveyed space earns general Gf credit.
 
+### Addendum (2026-08-03) -- fixed-point depth NULLED, typed mint intake ADOPTED (specs/006-fixed-point-gf)
+
+The next architectural hypothesis after this measurement was tested and settled: **variable-depth
+computation via a fixed-point combinator** (iterate one pooled primitive to exact-equality
+convergence, classify every trajectory converged / cycle / diverged / budget -- no iteration cap,
+no tolerance constant), plus the standing P2 payment of merging `arc_mint`'s verified primitives
+into the one searcher through a **typed record bottleneck** (unit, attribute, rule form, rule
+params, consumer, memo-flag -- nothing else crosses).
+
+Three-arm record at identical budgets (node_budget=4000, time_budget=5.0, pass@2; full logs and
+per-ID accounts in `specs/006-fixed-point-gf/`):
+
+| arm | evaluation | training |
+|---|---|---|
+| baseline at `95c3f806` (re-measured; the documented 11/40 had drifted) | 12 of 400 = 3.00% | 43 of 400 = 10.75% |
+| fix combinator alone (census run) | 12 of 400 -- byte-identical ID set | -- |
+| fixed-K control (K = mean winning-fix depth, C18) | SKIP: K underivable -- 0 of 0 winning fix trajectories | -- |
+| **final: mint intake adopted, combinator retired** | **18 of 400 = 4.50%** | **53 of 400 = 13.25%** |
+
+**The combinator is an exact null with a cost, reported as measured.** The trajectory census
+(500918 of 500918 classified, zero non-termination) shows genuine multi-step contractions exist
+(5699 converged trajectories at depths 3..19) -- but not one winning program anywhere used a fix
+step, and the trajectories' node cost starved 2 of 400 training solves (both recovered on
+retirement). Same framing as the library-learning null above: the tasks this DSL misses lack
+VOCABULARY, not depth -- `arc_diagnostic`'s coverage verdict, independently reconfirmed. Per the
+adopt-or-retire policy the combinator was REMOVED, not flag-parked.
+
+**The mint merge earned its adoption.** All 16 gained IDs are depth-1 minted records through the
+one searcher; zero solved IDs lost on either split in the final state. Honesty qualifiers: 3 of
+the 6 evaluation gains (00576224, 00dbd492, 0a2355a6) sit in the mint's 20-task dev subset of
+this split and are charged as developed-on; the 3 clean gains include `84f2aca1` -- recoloured
+regions by an induced AFFINE rule on size, the first FUNCTIONAL (non-memorised) held-out ARC
+solve this project has produced. Memo-flagged wins print their flag in the program description.
+Exactly 1 of 1 end-to-end ARC solve paths remains (`synthesize()`; the mint's direct application
+path is deleted).
+
+Reproduce: `tools/arc_score.py evaluation on|off` and `training on|off` at the current HEAD for
+the final figures; `tools/arc_census.py` and `tools/arc_fixdepth_control.py` document the
+combinator measurement and reproduce it at the feature-measurement commit (both SKIP-print the
+record at HEAD -- a retired mechanism yields no fresh figure).
+
 ---
 
 ## Ceiling 2 — fluent open-domain language
@@ -275,6 +316,38 @@ The contaminated numbers are not used anywhere in this document.
 - The acquired-LM's BLiMP number **should not be cited as evidence of language ability** anywhere.
 - All four language designs put to the adversarial panel were **refuted**, several on measured wall-clock
   grounds (one encoder path benchmarked at 96 hours; one serving architecture at 25 days for a full sweep).
+
+### 2026-08-02 — an assembly-calculus organ was proposed and refused at the instrument stage. **There is no "After".**
+
+`specs/005-language-organ` proposed replacing `cortex/language_acquisition.py` with a brain-native
+Assembly-Calculus language organ (arXiv 2306.15364 / 2507.11788), to be decided by an A/B on
+`reasoning/blimp_bench.py`. **No "After" row is added to this ceiling, because there is no after**: the
+swap was refused before any organ code was written, so nothing was measured against the figures above
+and none of them moved.
+
+The refusal is a lexical-coverage one and it is structural, not marginal. The proposed grounded exposure
+source is `reasoning/world_kb_stream.py::load_kb()`, whose 605 triples render to a 508-word inventory of
+proper nouns, chemical symbols, taxonomic categories and integers. Against a rule requiring every word
+of both sentences of a pair to be in that inventory:
+
+| quantity | measured | floor |
+|---|---|---|
+| paradigms with at least one covered pair | **0 of 67** | >= 8 of 67 |
+| covered pairs | **0 of 67000** | >= 200 |
+| BLiMP word types inside the exposure lexicon | **39 of 2637** | — |
+| best per-pair word coverage reached | **50.0%** | rule requires 100% |
+
+The exposure plan contains **no function words at all**, and BLiMP's minimal pairs are built out of
+them — that is what makes a pair minimal. So the gap is one of kind, not of scale, and no quantity of
+further triples of the same kind closes it.
+
+Artifact: `specs/005-language-organ/coverage.md`, `tools/lang_coverage.py` exit **2**
+(`NOT-P2-ELIGIBLE`), commit `95c3f806f19fe3c1dc704336581ade75541578de`. Full record and the three
+things the spec got wrong: `specs/005-language-organ/verdict.md`.
+
+One incidental figure from the same run, recorded so it is not mistaken for drift: `length_scorer` over
+the **full** 67000 pairs scores **30.7%**, against the **29.4%** recorded above at 25 pairs per
+paradigm (1675 pairs). Sample size, not disagreement.
 
 ---
 

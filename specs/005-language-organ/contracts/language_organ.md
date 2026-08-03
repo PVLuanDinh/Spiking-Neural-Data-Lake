@@ -24,6 +24,25 @@ not raise the tier - no torch on the organ's path.
 
 ---
 
+## 0b. `PHON`'s text-to-spike encoder (added 2026-08-02, SNNLP scope change)
+
+Section 1's table describes `PHON` as *"the word string, folded to the existing inventory"*, which was a
+hand-wave. It is now a measured choice - see [`lang_ab.md`](./lang_ab.md) section C1 and `research.md`
+R10.
+
+- **C0.6** The encoder is a **pluggable, named** component of `PHON`, so the four arms of the C1 A/B
+  differ only in it. A hardcoded encoder makes the A/B unrunnable.
+- **C0.7** The encoder in the shipped organ is **whichever arm measured best**, named in the module
+  docstring together with its measured number. An existing repo encoding winning is a legitimate
+  outcome and is adopted as-is (FR-028) - the citation does not decide.
+- **C0.8** Any spike encoding here is deterministic given the organ's instance rng. Poisson rate-coding
+  in particular draws from `self.rng`, never a module-level or fresh `Random` (FR-018, C0.1).
+- **C0.9** No energy or sparsity figure from arXiv 2401.17911 may be quoted as this organ's property.
+  This repo has no hardware to measure them on, and FR-021 already forbids such a figure from being an
+  acceptance criterion.
+
+---
+
 ## 1. `Area(name, k, rng, *, n=None, p=None, beta=None)`
 
 One population with local inhibition.

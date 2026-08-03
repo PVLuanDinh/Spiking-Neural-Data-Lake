@@ -10,10 +10,11 @@ Honest scope of THIS build (do not overclaim):
     attribute with arc_scene, then recolour / crop / reflect / tile / materialise". The ~30% operation-not-
     measurement family (sequential path, stateful transport) is NOT covered -- that is the deferred
     operation-synthesis arm (Phase-3 continues).
-  * Depth-1 (a single minted primitive) + a bounded depth-2 composition. Not the full search.
-  * Programs are applied DIRECTLY here. Composing minted primitives INTO arc_solver.synthesize() + the
-    standing P2 obligation (migrate synthesize onto the arc_scene scene, delete the closed 5-key schema)
-    are the NEXT Phase-3 steps -- noted, not done here.
+  * MERGED (2026-08-03, specs/006-fixed-point-gf): the mint's ONLY consumer-facing surface is
+    mint_records(train) -> TypedPrimitiveRecord -> arc_solver._pool() as `mint:*` primitives; the
+    ONE searcher composes and applies them (contract C10-C13). The former direct-application path
+    (candidates()/mint(), depth-1 + a bounded depth-2 harness) is RETIRED -- measured at adoption:
+    evaluation 12 -> 18 of 400 and training 43 -> 53 of 400, no lost ID unaccounted (verdict.md).
 
 Policy compliance:
   * NON-ADDITIVE: perception is REUSED from arc_scene / arc_solver.components() -- no segmentation is
@@ -30,8 +31,9 @@ Policy compliance:
     apparatus contributes ZERO held-out solves today (the recolour generalisation is a flagged lookup);
     functional wins need more producers/attributes/composition. The mechanism is unit-verified, not the
     dev-set showcase.
-  * HONEST METRIC: mint() reports how a program was induced; the harness measures HELD-OUT generalisation
-    (arc_bench test outputs), never train-fit alone.
+  * HONEST METRIC: every record carries its rule_form and memo_flag, so a solve reports how it was
+    induced; the harness measures HELD-OUT generalisation (arc_bench test outputs), never train-fit
+    alone -- and scores THROUGH arc_solver.make_solver(), never by direct application.
 
 Determinism (CLAUDE.md): pure functions of the task; no random; no builtin hash; sorted iteration; ASCII.
 
@@ -39,6 +41,7 @@ Determinism (CLAUDE.md): pure functions of the task; no random; no builtin hash;
 """
 
 from collections import Counter, deque
+from typing import NamedTuple
 
 from snn_data_lake.reasoning.arc_scene import object_holes, period, shape_class
 from snn_data_lake.reasoning.arc_solver import background, components
@@ -162,7 +165,7 @@ def _region_units(attr):
 def _fit_const_modk(obs):
     for k in range(2, 11):
         if all(col == (a % k) for a, col in obs):
-            return lambda a, kk=k: a % kk
+            return (lambda a, kk=k: a % kk), (k,)
     return None
 
 
@@ -171,7 +174,7 @@ def _fit_offset_mod10(obs):
     a0, c0 = obs[0]
     b = (c0 - a0) % 10
     if all(col == (a + b) % 10 for a, col in obs):
-        return lambda a, bb=b: (a + bb) % 10
+        return (lambda a, bb=b: (a + bb) % 10), (b,)
     return None
 
 
@@ -191,7 +194,7 @@ def _fit_affine(obs):
     m = num // den
     b = ymap[x0] - m * x0
     if all(col == m * a + b and 0 <= m * a + b <= 9 for a, col in obs):
-        return lambda a, mm=m, bb=b: mm * a + bb
+        return (lambda a, mm=m, bb=b: mm * a + bb), (m, b)
     return None
 
 
@@ -203,7 +206,7 @@ def _fit_rank(obs):
         return None
     amap = {a: cols[i] for i, a in enumerate(attrs)}
     if all(col == amap[a] for a, col in obs):
-        return lambda a, mp=dict(amap): mp.get(a)
+        return (lambda a, mp=dict(amap): mp.get(a)), tuple(sorted(amap.items()))
     return None
 
 
@@ -212,14 +215,16 @@ def _fit_lookup(obs):
     for a, c in obs:
         if table.setdefault(a, c) != c:
             return None  # same attr -> two colours: not even a function
-    return lambda a, mp=dict(table): mp.get(a)
+    return (lambda a, mp=dict(table): mp.get(a)), tuple(sorted(table.items()))
 
 
 _RULE_FORMS = (
+    # every fit returns (rule_fn, rule_params) or None; rule_params fully determines the rule and
+    # is what crosses the typed bottleneck (specs/006 data-model "Typed primitive record")
     (
         "const_mod10",
         1,
-        lambda obs: (lambda a: a % 10) if all(c == a % 10 for a, c in obs) else None,
+        lambda obs: ((lambda a: a % 10), ()) if all(c == a % 10 for a, c in obs) else None,
     ),
     ("mod_k", 2, _fit_const_modk),
     ("offset_mod10", 2, _fit_offset_mod10),
@@ -227,6 +232,17 @@ _RULE_FORMS = (
     ("rank", 3, _fit_rank),  # MEMORISATION-class: an ordinal permutation table, None on unseen attr
     ("lookup", 9, _fit_lookup),  # MEMORISATION-class: a raw table, only when nothing else fits
 )
+
+# compile a rule back from (rule_form, rule_params) -- the auditable half of the bottleneck:
+# mint_records() builds fn THROUGH these, so the declarative fields must reproduce behaviour
+_RULE_COMPILE = {
+    "const_mod10": lambda p: lambda a: a % 10,
+    "mod_k": lambda p: lambda a, kk=p[0]: a % kk,
+    "offset_mod10": lambda p: lambda a, bb=p[0]: (a + bb) % 10,
+    "affine": lambda p: lambda a, mm=p[0], bb=p[1]: mm * a + bb,
+    "rank": lambda p: lambda a, mp=dict(p): mp.get(a),
+    "lookup": lambda p: lambda a, mp=dict(p): mp.get(a),
+}
 
 # rank + lookup are finite maps that return None on an unseen attribute -- they DO NOT generalise, so they
 # are flagged as memorisation-risk (never passed off as functional) and cost more MDL at candidate level.
@@ -252,14 +268,18 @@ def induce_rule(obs_per_pair):
         return None
     npairs = len(obs_per_pair)
     for name, mdl, fit in _RULE_FORMS:
-        rule = fit(flat)
-        if rule is None or not all(rule(a) == c for a, c in flat):
+        got = fit(flat)
+        if got is None:
+            continue
+        rule, params = got
+        if not all(rule(a) == c for a, c in flat):
             continue
         if name in _MEMO_KINDS:
             return (
                 rule,
                 name,
                 mdl,
+                params,
             )  # memorisation-class: flagged, held-out judges it, no LOO pre-rejection
         loo_ok = (
             True  # functional forms must survive leave-one-out (parametric -> should generalise)
@@ -271,11 +291,11 @@ def induce_rule(obs_per_pair):
                 if not rest or not held:
                     continue
                 r2 = fit(rest)
-                if r2 is None or any(r2(a) != c for a, c in held):
+                if r2 is None or any(r2[0](a) != c for a, c in held):
                     loo_ok = False
                     break
         if loo_ok:
-            return rule, name, mdl
+            return rule, name, mdl, params
     return None
 
 
@@ -413,7 +433,7 @@ def _induce_paint_cellset(train, cellset_fn):
     for gi, go in pairs:
         if fn(gi) != go:
             return None
-    return fn
+    return fn, color
 
 
 # ---- SKELETONS: candidate primitives (name, build(train)->fn|None, mdl_len, kind) ------------------
@@ -456,91 +476,22 @@ def _build_recolor(train, unit_fn):
     got = induce_rule(obs_per_pair)
     if got is None:
         return None
-    rule, kind, _mdl = got
+    rule, kind, _mdl, params = got
     fn = lambda gg: _apply_recolor_units(gg, unit_fn, rule)  # noqa: E731
     for gi, go in pairs:
         r = fn(gi)
         if r is None or not _ok(r) or r != go:
             return None
-    return fn, kind
+    return fn, kind, params
 
 
-def candidates(train):
-    """Yield (name, fn, mdl_len, kind) for every skeleton that FITS + VERIFIES on `train`, depth-1 then a
-    bounded depth-2 composition. `kind` is "structural" (no free rule) or the induced rule NAME
-    (const_mod10 / mod_k / offset_mod10 / affine = functional; rank / lookup = memorisation-class, see
-    _MEMO_KINDS). fn is grid-general."""
-    out = []
-
-    # -- structural depth-1 (no free rule) --
-    for ax in ("vertical_mirror", "horizontal_mirror", "rotate_180"):
-        out.append((f"reflect[{ax}]", lambda gg, a=ax: _reflect(gg, a), 2, "structural"))
-    out.append(
-        (
-            "materialize[period]",
-            lambda gg: period(gg)["template"] if period(gg)["periodic"] else None,
-            2,
-            "structural",
-        )
-    )
-    for kh, kw in ((3, 3), (2, 2), (1, 3), (3, 1), (2, 1), (1, 2)):
-        out.append(
-            (f"tile[{kh}x{kw}]", lambda gg, a=kh, b=kw: _tile(gg, a, b, False), 3, "structural")
-        )
-        out.append(
-            (f"tile_alt[{kh}x{kw}]", lambda gg, a=kh, b=kw: _tile(gg, a, b, True), 4, "structural")
-        )
-    for key in ("largest", "smallest", "rarest"):
-        out.append((f"crop[{key}]", lambda gg, k=key: _crop_sel(gg, k), 3, "structural"))
-
-    # -- structural depth-1: keep / delete objects by a boolean attribute (rendered on bg) --
-    for attr in ("holes", "solid_rect", "largest", "border"):
-        out.append((f"keep[{attr}]", lambda gg, a=attr: _filter_objs(gg, a, True), 3, "structural"))
-        out.append(
-            (f"delete[{attr}]", lambda gg, a=attr: _filter_objs(gg, a, False), 4, "structural")
-        )
-
-    # -- parameterised depth-1: paint a global cellset a single induced (constant) colour --
-    for name, cs_fn in (("perimeter", _perimeter_cells), ("allholes", _all_holes_cells)):
-        fn = _induce_paint_cellset(train, cs_fn)
-        if fn:
-            out.append((f"paint_{name}[const]", fn, 3, "const"))
-
-    # -- parameterised depth-1: recolour units by an induced rule --
-    for unit_name, attr, unit_fn in _RECOLOR_UNITS:
-        built = _build_recolor(train, unit_fn)
-        if built:
-            fn, kind = built
-            # `kind` is the rule NAME (const_mod10 / mod_k / affine / rank / lookup). A memorisation-class
-            # rule costs more MDL, so a genuine functional recolor is preferred over a memorised one.
-            mdl = 3 + (2 if kind in _MEMO_KINDS else 0)
-            out.append((f"recolor_{unit_name}_by[{attr}]:{kind}", fn, mdl, kind))
-
-    # -- bounded depth-2: crop-to-selected then recolour-by-rule (composition example) --
-    for key in ("largest", "rarest"):
-        for unit_name, attr, unit_fn in _RECOLOR_UNITS[:4]:
-
-            def _comp(gg, k=key, uf=unit_fn, tr=train):
-                cropped = _crop_sel(gg, k)
-                if cropped is None:
-                    return None
-                # induce the recolour rule on the CROPPED train grids (composition = crop then recolour)
-                sub = [{"in": _crop_sel(_grid(p["in"]), k), "out": _grid(p["out"])} for p in tr]
-                if any(s["in"] is None for s in sub):
-                    return None
-                if any(
-                    len(s["in"]) != len(s["out"]) or len(s["in"][0]) != len(s["out"][0])
-                    for s in sub
-                ):
-                    return None
-                b = _build_recolor(sub, uf)
-                if b is None:
-                    return None
-                return b[0](cropped)
-
-            out.append((f"crop[{key}]>>recolor_{unit_name}_by[{attr}]", _comp, 6, "functional"))
-
-    return sorted(out, key=lambda c: (c[2], c[0]))
+# (candidates() and mint() -- the mint's DIRECT end-to-end application path -- were retired
+# 2026-08-03 per specs/006-fixed-point-gf verdict.md (P2, contract C13): the A/B measured the
+# merged path at 18 of 400 evaluation / 53 of 400 training vs 12 / 43 baseline with every lost
+# ID accounted, so mint_records() -> arc_solver._pool() is now the ONE consumer-facing surface
+# and synthesize() the ONE end-to-end ARC solve path. The bounded depth-2 composition that only
+# candidates() carried is deliberately NOT ported: composition is the searcher's job, and the
+# record run showed every mint-earned solve is depth-1 through the searcher.)
 
 
 def solves(fn, train):
@@ -555,21 +506,145 @@ def solves(fn, train):
     return True
 
 
-def mint(train):
-    """The mint: return the shortest (MDL) candidate primitive that reproduces every train pair, as
-    {"fn", "name", "mdl", "kind", "rank"}, or None. `kind` flags memorisation risk (lookup)."""
-    cands = candidates(train)
-    for rank, (name, fn, mdl, kind) in enumerate(cands, 1):
-        if solves(fn, train):
-            return {
-                "fn": fn,
-                "name": name,
-                "mdl": mdl,
-                "kind": kind,
-                "rank": rank,
-                "n_cands": len(cands),
-            }
+# ---- the typed bottleneck: mint -> searcher (specs/006-fixed-point-gf, FR-005, contract C10) ----
+
+
+class TypedPrimitiveRecord(NamedTuple):
+    """The ONLY object that crosses the mint -> searcher boundary. The declarative fields fully
+    determine the program: `fn` is compiled FROM them by compile_record(), so the bottleneck is
+    auditable by construction -- no grid, train pair, or mint-internal state crosses. Memo-flagged
+    records keep refuse-on-unseen: fn returns None on an attribute value outside the induced
+    table, and the searcher treats that None exactly as a failed primitive."""
+
+    name: str
+    unit: str  # "object" / "region" / "grid"
+    attribute: str  # arc_scene attribute, or the structural variant this consumer applies
+    rule_form: str  # const_mod10 / mod_k / offset_mod10 / affine / rank / lookup / const
+    rule_params: tuple
+    consumer: str  # recolor / crop / reflect / tile / materialize / paint / keep / delete
+    memo_flag: bool
+    fn: object
+
+
+# structural skeleton templates: (mdl, name, unit, attribute, rule_params, consumer). Nothing is
+# induced for these; the tile shape lives in rule_params, the variant in `attribute`. NOTE the
+# consumer set extends data-model.md's six with keep/delete -- recorded as a measured delta: the
+# mint's keep/delete skeletons are real capability and the port-before-retire inventory (R6)
+# forbids dropping them silently.
+_STRUCT_RECORDS = tuple(
+    [
+        (2, f"reflect[{ax}]", "grid", ax, (), "reflect")
+        for ax in ("vertical_mirror", "horizontal_mirror", "rotate_180")
+    ]
+    + [(2, "materialize[period]", "grid", "period", (), "materialize")]
+    + [
+        (3, f"tile[{kh}x{kw}]", "grid", "tiling", (kh, kw, 0), "tile")
+        for kh, kw in ((3, 3), (2, 2), (1, 3), (3, 1), (2, 1), (1, 2))
+    ]
+    + [
+        (4, f"tile_alt[{kh}x{kw}]", "grid", "tiling", (kh, kw, 1), "tile")
+        for kh, kw in ((3, 3), (2, 2), (1, 3), (3, 1), (2, 1), (1, 2))
+    ]
+    + [(3, f"crop[{k}]", "object", k, (), "crop") for k in ("largest", "smallest", "rarest")]
+    + [
+        (3, f"keep[{a}]", "object", a, (), "keep")
+        for a in ("holes", "solid_rect", "largest", "border")
+    ]
+    + [
+        (4, f"delete[{a}]", "object", a, (), "delete")
+        for a in ("holes", "solid_rect", "largest", "border")
+    ]
+)
+
+_UNIT_FNS = {"object": _object_units, "region": _region_units}
+_PAINT_CELLSETS = {"perimeter": _perimeter_cells, "allholes": _all_holes_cells}
+
+
+def compile_record(unit, attribute, rule_form, rule_params, consumer):
+    """Compile the DECLARATIVE fields of a typed record back into the grid -> grid-or-None
+    program. mint_records() builds every emitted fn through here, and the reconstruction test
+    re-runs it from the fields alone -- the audit that nothing beyond the record crosses."""
+    if consumer == "recolor":
+        unit_fn = _UNIT_FNS[unit](attribute)
+        rule = _RULE_COMPILE[rule_form](rule_params)
+        return lambda gg: _apply_recolor_units(gg, unit_fn, rule)
+    if consumer == "paint":
+        cs_fn = _PAINT_CELLSETS[attribute]
+        col = rule_params[0]
+
+        def paint(gg, cs_fn=cs_fn, col=col):
+            cells = cs_fn(gg)
+            if not cells:
+                return None
+            out = [list(row) for row in gg]
+            for r, c in cells:
+                out[r][c] = col
+            return _T(_T(row) for row in out)
+
+        return paint
+    if consumer == "reflect":
+        return lambda gg, ax=attribute: _reflect(gg, ax)
+    if consumer == "tile":
+        kh, kw, alt = rule_params
+        return lambda gg, a=kh, b=kw, c=alt: _tile(gg, a, b, bool(c))
+    if consumer == "materialize":
+        return lambda gg: period(gg)["template"] if period(gg)["periodic"] else None
+    if consumer == "crop":
+        return lambda gg, k=attribute: _crop_sel(gg, k)
+    if consumer in ("keep", "delete"):
+        return lambda gg, a=attribute, kp=(consumer == "keep"): _filter_objs(gg, a, kp)
     return None
+
+
+def mint_records(train):
+    """The typed bottleneck (contract C10/C11): induce, validate and VERIFY primitives on
+    `train` -- a sequence of (input_grid, output_grid) pairs -- and return them as
+    TypedPrimitiveRecord in deterministic MDL-then-name order.
+
+    Emission rules: a record is emitted only if its compiled fn reproduces EVERY train pair
+    (the mint's own verification bar, unchanged); recolour rules additionally carry the
+    induce_rule discipline (functional forms leave-one-out-validated; rank/lookup accepted
+    without LOO but FLAGGED memo -- refuse-on-unseen). The mint's bounded depth-2 compositions
+    are deliberately NOT exported: composition is the one searcher's job after the merge."""
+    pairs = [{"in": _grid(i), "out": _grid(o)} for i, o in train]
+    cand = [
+        (mdl, name, unit, attribute, "const", params, consumer, False)
+        for mdl, name, unit, attribute, params, consumer in _STRUCT_RECORDS
+    ]
+    for pname, cs_fn in sorted(_PAINT_CELLSETS.items()):
+        got = _induce_paint_cellset(pairs, cs_fn)
+        if got:
+            cand.append(
+                (3, f"paint_{pname}[const]", "grid", pname, "const", (got[1],), "paint", False)
+            )
+    for unit_name, attr, unit_fn in _RECOLOR_UNITS:
+        built = _build_recolor(pairs, unit_fn)
+        if built:
+            _fn, kind, params = built
+            memo = kind in _MEMO_KINDS
+            cand.append(
+                (
+                    3 + (2 if memo else 0),
+                    f"recolor_{unit_name}_by[{attr}]:{kind}",
+                    unit_name,
+                    attr,
+                    kind,
+                    params,
+                    "recolor",
+                    memo,
+                )
+            )
+    recs = []
+    for mdl, name, unit, attribute, rule_form, params, consumer, memo in sorted(
+        cand, key=lambda c: (c[0], c[1])
+    ):
+        fn = compile_record(unit, attribute, rule_form, params, consumer)
+        if fn is None or not solves(fn, pairs):
+            continue
+        recs.append(
+            TypedPrimitiveRecord(name, unit, attribute, rule_form, params, consumer, memo, fn)
+        )
+    return recs
 
 
 # ================================================================================================
@@ -624,7 +699,21 @@ def main():
     assert induce_rule([[(1, 4)], [(1, 5)]]) is None, "same attr -> two colours must be rejected"
     _emit("  [OK] a non-function (same attr, two colours) is rejected outright")
 
-    # ---- end-to-end on the Phase-1 dev tasks, HELD-OUT metric ---------------------------------------
+    # ---- record reconstruction: the declarative fields alone must rebuild fn (C10 audit) -----------
+    demo = [
+        {"in": [[0, 7, 0], [7, 0, 7], [0, 7, 0]], "out": [[0, 7, 0], [7, 4, 7], [0, 7, 0]]},
+        {"in": [[7, 7, 0], [7, 0, 7], [0, 7, 7]], "out": [[7, 7, 0], [7, 4, 7], [0, 7, 7]]},
+    ]
+    demo_pairs = [(p["in"], p["out"]) for p in demo]
+    for rec in mint_records(demo_pairs):
+        fn2 = compile_record(rec.unit, rec.attribute, rec.rule_form, rec.rule_params, rec.consumer)
+        assert all(fn2(_grid(i)) == _grid(o) for i, o in demo_pairs), rec.name
+        assert rec.name.isascii()
+    _emit("  [OK] typed records rebuild from declarative fields alone (the auditable bottleneck)")
+
+    # ---- end-to-end on the Phase-1 dev tasks, HELD-OUT metric, THROUGH the one searcher ------------
+    # (specs/006 C13/Q4: the mint is the PRODUCER -- mint_records() -> arc_solver._pool() as
+    # mint:* entries; every solve below is scored through synthesize(), no direct application.)
     try:
         from snn_data_lake.reasoning.arc_bench import load_tasks
 
@@ -640,32 +729,58 @@ def main():
         )
         return 0
 
-    train_fit, held_out = [], []
+    from snn_data_lake.reasoning.arc_bench import _grids_equal
+    from snn_data_lake.reasoning.arc_solver import synthesize
+
+    minted, held_out = [], []
     for task in dev:
         tid = task["id"]
-        m = mint(task["train"])
-        if not m:
-            continue
-        train_fit.append(tid)
+        train = [(p["in"], p["out"]) for p in task["train"]]
+        if mint_records(train):
+            minted.append(tid)
         t = eval_tasks.get(tid)
-        gen = None
-        if t and t.get("test"):
-            gen = all(m["fn"](_grid(p["input"])) == _grid(p["output"]) for p in t["test"])
-        if gen:
-            held_out.append((tid, m["name"], m["kind"]))
+        if not (t and t.get("test")):
+            continue
+        ok_all, used = True, set()
+        for p in t["test"]:
+            cands, progs = synthesize(
+                train, p["input"], attempts=2, node_budget=4000, time_budget=5.0
+            )
+            hits = [i for i, c in enumerate(cands) if _grids_equal(c, p["output"])]
+            if not hits:
+                ok_all = False
+                break
+            used.update(
+                n
+                for n in progs[hits[0]][0]
+                if (n[4:] if n.startswith("fix:") else n).startswith("mint:")
+            )
+        if ok_all:
+            held_out.append((tid, tuple(sorted(used))))
     n = len(dev)
     _emit("-" * width)
-    _emit(f"dev tasks: {n} | TRAIN-FIT: {len(train_fit)} | HELD-OUT generalizing: {len(held_out)}")
-    for tid, name, kind in held_out:
-        _emit(f"    HELD-OUT SOLVE  {tid}  [{kind}]  {name}")
-    # regression guards: the two de-risk held-out solves must still land, honestly kind-tagged
-    ids = {tid for tid, _, _ in held_out}
+    _emit(
+        f"dev tasks: {n} of {n} scored | minted records on {len(minted)} of {n} | "
+        f"HELD-OUT solved through the ONE searcher: {len(held_out)} of {n}"
+    )
+    for tid, used in held_out:
+        via = ",".join(used) if used else "base DSL (no mint step in the winning program)"
+        _emit(f"    HELD-OUT SOLVE  {tid}  via {via}")
+    # regression guards: the two de-risk held-out solves must still land -- now THROUGH the searcher
+    ids = {tid for tid, _ in held_out}
     assert "00dbd492" in ids, "size-coded region fill must still generalize held-out"
     assert "00576224" in ids, "alt-mirror tile must still generalize held-out"
-    kinds = Counter(k for _, _, k in held_out)
-    n_func = sum(v for k, v in kinds.items() if k != "structural" and k not in _MEMO_KINDS)
+    kind_count = Counter()
+    for _tid, used in held_out:
+        for nm in used:
+            base = nm[4:] if nm.startswith("fix:") else nm
+            k = base.rsplit(":", 1)[-1] if base.startswith("mint:recolor") else "structural"
+            kind_count[k] += 1
+    n_func = sum(v for k, v in kind_count.items() if k not in _MEMO_KINDS and k != "structural")
+    n_memo = sum(v for k, v in kind_count.items() if k in _MEMO_KINDS)
+    n_struct = kind_count.get("structural", 0)
     _emit("-" * width)
-    _emit(f"held-out solve kinds: {dict(kinds)}   (functional held-out = {n_func})")
+    _emit(f"held-out mint-step kinds: {dict(kind_count)}   (functional held-out = {n_func})")
     _emit(
         "self-check OK (MECHANISM): functional-rule induction (const/mod-k/offset/affine) is unit-verified"
     )
@@ -675,20 +790,17 @@ def main():
     _emit(
         "memorisation-class rules (rank/lookup) are FLAGGED and return None on an unseen attr, never a guess."
     )
-    n_memo = sum(v for k, v in kinds.items() if k in _MEMO_KINDS)
-    n_struct = kinds.get("structural", 0)
     _emit(
         "HONEST RESULT: on THIS 20-task dev set the functional apparatus contributes ZERO held-out solves --"
     )
     _emit(
-        f"the {len(held_out)} held-out = {n_struct} structural + {n_memo} flagged-memorisation recolour(s) + {n_func} functional."
+        f"the {len(held_out)} held-out carry {n_struct} structural + {n_memo} flagged-memorisation +"
+        f" {n_func} functional mint steps."
     )
     _emit(
         "The number moves only with more producers/attributes/composition. NO overclaim: the operation-"
     )
-    _emit(
-        "synthesis arm + synthesize-composition + the P2 schema migration remain the next Phase-3 steps."
-    )
+    _emit("synthesis arm + the arc_scene schema migration remain future Phase-3 steps.")
     return 0
 
 

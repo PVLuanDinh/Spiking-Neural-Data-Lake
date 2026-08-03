@@ -1,0 +1,124 @@
+specs/005-language-organ -- BASELINE
+====================================
+
+Written by the implementation pass, 2026-08-02. Every figure below names the commit it was taken at.
+Where a task in tasks.md was NOT run, that is stated with the reason rather than left blank.
+
+
+T001 -- THE PIN
+---------------
+
+commit: 95c3f806f19fe3c1dc704336581ade75541578de
+
+clean-diff check, verbatim command:
+
+  git diff --quiet HEAD -- src/snn_data_lake/cortex/language_acquisition.py \
+      src/snn_data_lake/cortex/spiking_lm_serve.py src/snn_data_lake/cortex/brain.py \
+      src/snn_data_lake/reasoning/blimp_bench.py src/snn_data_lake/reasoning/world_kb_stream.py \
+      tools/
+
+  result: CLEAN (exit 0). `git status --porcelain` was empty at the pin.
+
+Note on the pin. tasks.md records that HEAD moved during authoring (5599e6ab -> 30d8e76a) because a
+second agent commits to this repo concurrently. At implementation time HEAD is 95c3f806, which is the
+commit the spec chain itself was committed at. Every figure in this file and in coverage.md and
+verdict.md names 95c3f806. No figure is attributed to 5599e6ab or 30d8e76a.
+
+
+T002 -- THE FOUR GATES AT THE PIN
+---------------------------------
+
+All four were started at the pin, on a clean tree, before any file of this feature existed.
+
+  ruff check .                            PASS  ("All checks passed!")
+  ruff format --check src tests tools     PASS  ("447 files already formatted")
+  run_selfchecks.py                       PASS  277 of 277 self-checks passed, exit 0
+  pytest (--cov-fail-under=70)            ONE FAILURE, exit 1 -- see below.
+                                          Coverage 92.62%, floor 70%, so the coverage gate itself
+                                          is green.
+
+THE ONE FAILURE, recorded rather than rounded to "green":
+
+  FAILED tests/test_selfchecks.py::test_core_selfcheck_in_process[brainstem.arm_hardware]
+
+  It is pre-existing at the pin and it is not this feature's. Three things establish that, and they
+  are recorded because "it was already broken" is exactly the claim that should not be taken on
+  trust:
+
+  1. The run started BEFORE any file of this feature was created. Nothing of specs/005 was on disk
+     or collected.
+  2. run_selfchecks.py -- which runs the SAME module self-check, as a subprocess -- passed the
+     brainstem.arm_hardware entry in the same window. So the module's self-check is fine and the
+     failure is specific to running it IN-PROCESS inside the pytest session.
+  3. Re-running that one test id alone passes. It is an ordering or in-process-state interaction,
+     not a deterministic failure of the module.
+
+  4. FOUND AFTERWARDS, and it changes the reading: `src/snn_data_lake/brainstem/arm_hardware.py` was
+     modified in this working tree by ANOTHER agent while the pytest run was in flight (+308 lines,
+     adding a `model_budget()` MuJoCo torque check; `src/snn_data_lake/substrate/cockpit.py` was
+     edited in the same window, +31/-1). `git status --porcelain` was EMPTY at the T001 pin, so both
+     edits landed after it. That is a far better explanation of an in-process self-check failing
+     while the same self-check passes as a subprocess and passes again in isolation, and it is
+     recorded in preference to the weaker "ordering flake" reading that was written here first.
+
+  The cause is still not CLAIMED -- nothing isolated the concurrent writer from the four live
+  learn_daemon.py processes (T003), and doing so would mean serialising two agents' work to chase a
+  failure in neither feature. What IS established is the three things above plus the timing: the
+  failure predates every file this feature added, and it is in a file this feature never touches.
+
+What this agent ran on its own files, which is a narrower claim and is recorded as narrower:
+
+  ruff check tools/lang_coverage.py tests/test_lang_coverage.py    PASS
+  ruff format tools/lang_coverage.py tests/test_lang_coverage.py   PASS (already formatted)
+  pytest tests/test_lang_coverage.py -q --no-cov                   PASS, 11 of 11
+
+FR-020 asks for the whole-tree gates green before and after every slice. Before: three of four, with
+the fourth failing for a reason that predates the slice. After: the coordinating agent's whole-tree
+run discharges it, not this line. No assertion was loosened and no check was silenced to make
+anything pass (SI-2).
+
+
+T003 -- THE ENVIRONMENT
+-----------------------
+
+  interpreter : D:\AI-project\spiking-neural-data-lake\.venv-lake\Scripts\python.exe
+  version     : Python 3.11.15
+  data/lang/blimp/     : PRESENT, 67 of 67 .jsonl paradigm files
+  data/lang/wikitext/  : PRESENT
+  learn_daemon running : YES -- four live `learn_daemon.py` processes were found at the pin, under
+                         .venv-cu128, .venv-lake and two uv pythons. Every probe in this feature
+                         therefore isolates NORD_HOME to a per-invocation temp directory
+                         (tools/lang_coverage.py does this at import time, before the first
+                         snn_data_lake import; tests/test_lang_coverage.py asserts the ordering).
+
+
+T013 / T014 / T015 / T016 / T017 -- NOT RUN
+-------------------------------------------
+
+Phase 3 did not execute. tasks.md T011 is a HARD STOP: `tools/lang_coverage.py` exited 2 with
+NOT-P2-ELIGIBLE, and the stop is stated in tasks.md before the work as "the feature stops at T011.
+It does not proceed to a wider corpus and a re-run."
+
+The Phase 3 baselines measure the incumbent and the char-bigram control ON THE FROZEN PAIR SET. No
+set was frozen, so there is nothing for them to be measured on. Running tools/blimp_baseline.py on
+the FULL 67 paradigms instead would produce a number that no verdict can use and that T014
+explicitly says is not the comparison ("This, not the full-set 51.0%, is the number the verdict
+compares against"). It is left unmeasured rather than substituted.
+
+One figure that WAS taken, because tools/lang_coverage.py takes it as an instrument check and it
+bears on a recorded number:
+
+  length_scorer over the FULL universe, 67 paradigms x all pairs = 67000 pairs, at 95c3f806:
+    30.7%  (20591 of 67000 correct)
+
+  docs/DEPTH_CEILINGS.md records 29.4% for the same control at 25 pairs per paradigm (1675 pairs).
+  The 1.3-point difference is a sample-size difference, not a contradiction: the recorded figure is
+  the first 25 pairs of each paradigm and this one is all 1000. Recorded here so the next reader
+  does not treat 30.7% as a drifted 29.4%.
+
+  random_scorer   over the same 67000 pairs: 49.9%  (33425 of 67000 correct)
+  constant_scorer over the same 67000 pairs:  0.0%  (0 of 67000 correct)
+
+  These three are the admission-control machinery demonstrated able to go red and green in the right
+  directions. They are NOT the A6 controls, which must run on the restricted set; the restricted set
+  is empty, so the A6 controls are not computable and that is itself a refusal (see coverage.md).

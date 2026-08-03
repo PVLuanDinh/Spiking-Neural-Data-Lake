@@ -708,8 +708,21 @@ class Brain:
             self._reentrant = ReentrantWorkspace(seed=self._seed)
             # C2 #11: SUBSCRIBE the downstream specialists so an ignited coalition is actually RE-ROUTED --
             # broadcast_to(name) returns a top-down bias the specialist ADDS to its NEXT output, closing the
-            # GWT loop into behaviour instead of recording a label. Subscribing also makes `availability` a
-            # GRADED fraction-of-subscribers-reached rather than a binary, de-saturating global access.
+            # GWT loop into behaviour instead of recording a label.
+            #
+            # THE SENTENCE THAT USED TO END THIS COMMENT WAS FALSE, corrected 2026-08-03. It claimed
+            # subscribing "makes `availability` a GRADED fraction-of-subscribers-reached rather than a
+            # binary, de-saturating global access". It does not. In ReentrantWorkspace._deliver
+            # (reentrant_workspace.py:285-315) `reached` increments inside the branch taken for EVERY
+            # subscriber whenever the coalition ignites, so `reached / len(self._subs)` is 0.0 or 1.0 and
+            # nothing else. Availability is binary with one subscriber and binary with ten.
+            #
+            # A second defect sits next to it and is worse: the bias handed to each subscriber is
+            # `{winner: bias}` computed once from the winning CONTENT, so broadcast_to("action") and
+            # broadcast_to("language") are byte-identical. The bus cannot carry which faculty spoke or
+            # which is listening. Both are measured in docs/P6_INTERCONNECT.md (F1, F2); fixing the
+            # content-blind payload has to come BEFORE sharing one workspace instance, because a shared
+            # bus whose reader cannot tell speakers apart connects nothing.
             for _spec in ("action", "language"):
                 self._reentrant.subscribe(_spec)
             self._episodic = EpisodicRecall(seed=self._seed)
@@ -758,9 +771,19 @@ class Brain:
         # brain construction stop being a pure function of its seed: it reads whatever the previous
         # process left on disk, which measured as non-deterministic construction in ~42% of trials.
         # A gate that must be asked for cannot do that to a test run.
-        self._time_cells_grow = os.environ.get("NORD_TIME_CELLS_GROW") == "1"
+        # GROWTH IS ON BY DEFAULT (changed 2026-08-02). It was opt-in for one measured reason -- an
+        # unconditional RESTORE read whatever the previous process left on disk and made brain
+        # construction non-deterministic in ~42% of trials -- and that reason belongs to the restore,
+        # not to the growth. Verified before flipping: with growth enabled, two seed-0 brains produce
+        # BYTE-IDENTICAL 300-tick state traces (width, elapsed_time, arm_stopped, map_position), so
+        # same-seed determinism survives. Growth draws no random numbers and happens only at a reset
+        # boundary the brain reaches on its own. `NORD_TIME_CELLS_GROW=0` is the off-switch.
+        self._time_cells_grow = os.environ.get("NORD_TIME_CELLS_GROW") != "0"
+        # RESTORE STAYS OPT-IN, separately, because it is the half that broke determinism: it makes
+        # construction depend on disk rather than on the seed. Enable with NORD_TIME_CELLS_RESTORE=1.
+        self._time_cells_restore = os.environ.get("NORD_TIME_CELLS_RESTORE") == "1"
         self._time_cells_restore_note = "disabled"
-        if self._time_clock is not None and self._time_cells_grow:
+        if self._time_clock is not None and self._time_cells_restore:
             # Its OWN try. NOT the handler above -- that one nulls FIVE populations, so a bad state
             # blob on disk would silently cost the brain its affect appraisal, task sets, self-model
             # and grid cells as collateral. Also never inside TimeCellClock.__init__: the module's

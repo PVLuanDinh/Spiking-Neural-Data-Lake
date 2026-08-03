@@ -341,7 +341,8 @@ class ArcExpert:
         cands, progs = self._synth(pairs, test, attempts=1, node_budget=1500, time_budget=2.0)
         if not cands:
             return (
-                "[honest gap] no program in my grid DSL (<=3 steps) reproduces all %d training "
+                "[honest gap] no program in my grid DSL (<=3 steps, including the primitives "
+                "minted from this task's own training pairs) reproduces all %d training "
                 "pairs of this arc task -- no bluffed grid." % len(pairs),
                 False,
             )

@@ -575,11 +575,109 @@ scored (FR-023) and is the only order in which that guarantee is possible.
 
 ---
 
+## R10. SNNLP (arXiv 2401.17911): adopted as the PHON encoder question, REJECTED as the arbiter
+
+Added 2026-08-02 by an owner scope change taken mid-implementation, after the paper was read. Recorded
+in full - including the rejection - so nobody re-proposes the part that was refused.
+
+### Source, and what it actually is
+
+arXiv **2401.17911**, *SNNLP: Energy-Efficient Natural Language Processing Using Spiking Neural
+Networks* (Knipper, Mishty, Sadi, Karmaker Santu, Jan 2024). **It is not a benchmark.** It is a
+**text-to-spike ENCODING** paper: it compares ways of turning text into spike trains, proposes one, and
+reports that the proposed encoding beats Poisson rate-coding by roughly **13%** on its downstream task,
+plus hardware energy figures of roughly **32x** at inference and **60x** at training. Its downstream
+task is **sentiment analysis**.
+
+**Provenance note, applying this document's own standard.** Those three figures are quoted from the
+owner directive that introduced the paper, not from a copy of the paper read in this repository and not
+re-measured here. They are therefore **CITED, UNVERIFIED** - the weakest evidence class this document
+uses - and no task below is permitted to lean on them. What the tasks lean on is the A/B this repo runs
+itself, which is the point of running one.
+
+### Decision 1: REJECTED as a replacement for BLiMP as the arbiter
+
+The verdict logic does not move. `ADOPT` / `NULL` / `NOT-P2-ELIGIBLE`, the frozen pair set, the four
+admission controls and the char-bigram bar are untouched. Three reasons, in the order of how much
+damage the swap would do:
+
+1. **It measures a different thing.** BLiMP measures grammatical acceptability on minimal pairs that
+   differ in exactly one syntactic feature. Sentiment measures a document-level label. This feature's
+   whole claim - stated in its title and in FR-006 - is about **syntax and semantics acquired jointly**.
+   A sentiment score is silent about syntax.
+2. **Its downstream task cannot fail an admission control on syntax.** This is the decisive reason and
+   it is the same one that set the char-bigram bar. **Sentiment is largely lexically solvable**: a bag
+   of words scores well on SST-2 while knowing no grammar at all. An instrument a bag of words can pass
+   cannot go red on the thing being claimed, and R2/SI-1 refuse a verdict from an instrument that
+   cannot go red. BLiMP's minimal pairs share almost every word between the two members, which is
+   exactly what makes them immune to that.
+3. **Swapping breaks comparability with the recorded baseline.** `docs/DEPTH_CEILINGS.md` Ceiling 2 is
+   a BLiMP record - chance 50.0, char bigram 52.8, char 5-gram 53.0, the withdrawn 51.0, the live
+   46.9/51.9 and 48.3/50.4 (R2a). Substituting the metric orphans every one of those numbers and
+   leaves the feature with a "before" it cannot subtract from. `blimp_bench.py`'s own docstring makes
+   the same argument about silently switching scoring conventions, for the same reason.
+
+The tempting counter-argument - *"sentiment is a task the organ can actually do, and BLiMP is a task it
+demonstrably cannot"* - is precisely why the swap must be refused. Choosing the metric the mechanism
+can pass, after learning it cannot pass the other one, is the same move as widening the corpus in R1.
+It is p-hacking at the level of the instrument rather than the sample.
+
+### Decision 2: ADOPTED as the PHON area's encoder, decided by an A/B and not by the citation
+
+The spec hand-waved how `PHON` turns a word form into spikes (R3's table says only *"the word string,
+folded to the existing inventory"*). SNNLP fills that hole with something the paper itself compares, so
+it is a **real P2 adopt question** rather than a preference: **SNNLP encoding versus Poisson
+rate-coding, both feeding an otherwise identical `PHON`, scored on the organ's own task.**
+
+What already exists in this tree and must not be duplicated (P2):
+
+| existing mechanism | what it encodes | relation to `PHON` |
+|---|---|---|
+| `cortex/population_encoding.py::PopulationEncoder` | one continuous scalar -> Gaussian RBF receptive fields -> spike counts | a **candidate third arm**, not a competitor to retire. It is a scalar front-end; a word form is not a scalar, so using it means choosing a scalar embedding of the word first, and that choice would then be doing the work |
+| `cortex/theta_gamma_code.py` | multi-item ordering within a theta cycle | a candidate for the `SEQ` schedule, **not** for text-to-spike. Named here so it is not mistaken for one |
+| `cortex/language_acquisition.py` | char -> position-tagged bag of graphemes -> predictive-coding latent (`_encode_ctx`, `:83`) | the **incumbent encoding**, and therefore the honest fourth arm: it is what the repo does today |
+
+**The A/B decides, not the citation.** If the incumbent `_encode_ctx` folding or the RBF population
+code scores better on the organ's own task, that one is kept and SNNLP is recorded as measured-and-not-
+adopted. This is the same rule the organ itself is held to.
+
+**Honest limit, stated now.** The encoder A/B is a comparison **within** the organ, so it is only
+meaningful once an organ exists and can be scored. It is not a fallback verdict for the feature and
+cannot substitute for the BLiMP A/B.
+
+### Decision 3: sentiment is a SECOND, NON-DECIDING capability metric, and cannot rescue a NULL
+
+**The hard constraint, written into the harness and not only into prose: if BLiMP returns `NULL`, the
+verdict is `NULL`, whatever sentiment says.** Sentiment is reported as a demonstrated capability, never
+as evidence about syntax. `tools/lang_organ_ab.py` computes the verdict from the BLiMP block alone and
+prints the sentiment block after it, below the verdict line.
+
+- **Corpus: SST-2**, small, standard and free. `data/` is gitignored (`.gitignore:43`) and
+  `reasoning/blimp_bench.py` sets the precedent exactly: the one-time download command lives in the
+  module docstring, the loader ships, the data does not. That pattern is followed rather than invented.
+- **The loader lives beside the organ** (`cortex/`), not in `reasoning/`.
+- **A bag-of-words control is mandatory and printed inline**, for the same reason the char-bigram
+  control is mandatory on BLiMP: sentiment is largely lexically solvable, so an organ that does not
+  beat a bag of words has demonstrated nothing, and the sentiment number is then not evidence of
+  anything either. It is reported as such rather than dropped.
+- **If the download is unavailable or the licence is unclear: STOP and report.** Substituting a
+  self-authored sentiment corpus is forbidden by name - a corpus authored alongside the mechanism it
+  scores is the weakest evidence available, and this document already refuses it twice (R1, R6).
+
+### Status at implementation time
+
+**All of R10's measurable content is blocked behind the T011 hard stop and none of it ran.** The
+encoder A/B needs a `PHON` area and the sentiment arm needs an organ; the feature stopped at
+`NOT-P2-ELIGIBLE` before either existed. The rejection in Decision 1 is the part of R10 that is
+*already* decided and does not need a measurement, which is why it is worth keeping on its own.
+
+---
+
 ## Summary of decisions
 
 | # | decision | status |
 |---|---|---|
-| R1 | Lexically-covered BLiMP subset, rule fixed before scoring, floors 8 of 67 paradigms and 200 pairs | floors stated; coverage unmeasured (T004) |
+| R1 | Lexically-covered BLiMP subset, rule fixed before scoring, floors 8 of 67 paradigms and 200 pairs | floors stated; **MEASURED 2026-08-02: 0 of 67 paradigms, 0 of 67000 pairs -> NOT-P2-ELIGIBLE** (`coverage.md`) |
 | R2 | Three existing degenerate controls plus an unexposed-organ control, all on the restricted set, inline with the verdict | decided |
 | R3 | Four areas, one `project` primitive, learned inter-area schedule; reuse existing local rules and VSA binding | decided; which local rule is a contract-time choice |
 | R4 | Joint acquisition shipped; staged / shuffled / frozen arms all built and reported | decided; staged-arm fairness OPEN |
@@ -588,3 +686,5 @@ scored (FR-023) and is the only order in which that guarantee is possible.
 | R7 | Compute is dense and slower - stated up front; activity floor computed each run and checked, not quoted | decided |
 | R8 | `language_acquisition.py` deleted on ADOPT after porting `expose()` and persistence or recording them dropped; `spiking_lm_serve.py` retire-by-default with a counted consumer report | decided |
 | R9 | Instrument, baseline, organ, verdict, retire - in that order | decided |
+| R10 | SNNLP (2401.17911) **rejected** as the arbiter (BLiMP stays); **adopted** as the `PHON` encoder question, decided by an A/B against Poisson rate-coding and the two existing encoders; SST-2 sentiment added as a **non-deciding** second capability metric with a mandatory bag-of-words control | rejection decided; the A/B and the sentiment arm are **blocked behind the T011 stop and unmeasured** |
+| R8 | `spiking_lm_serve.py` consumer count | **MEASURED 2026-08-02: 0 of 9 references are live runtime consumers; 0 trained `snn_lm/1` files in the tree** (`verdict.md` T057) |

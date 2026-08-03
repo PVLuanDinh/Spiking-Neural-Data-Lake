@@ -1,0 +1,34 @@
+﻿baseline arc_score runs at commit 95c3f806f19fe3c1dc704336581ade75541578de started 2026-08-02T17:13:41.5628604-05:00
+===== arc_score training on =====
+split=training lib=on limit=None : 43/400 = 10.75%  (164 s)
+solved_ids: 00d62c1b,0b148d64,0d3d703e,1cf80156,1f85a75f,23b5c85d,28bf18c6,3428a4f5,3af2c5a8,3c9b0459,445eab21,496994bd,4c4377d9,6150a2bd,62c24649,6430c8c4,67a3c6ac,67e8384a,68b16354,6d0aefbc,6fa7a44f,7468f01a,74dd1130,7b6016b9,88a62173,8be77c9e,9172f3a0,9dfd6313,a416b8f3,a5313dff,a740d043,b1948b0a,be94b721,c59eb873,c8f0f002,c9e6f938,d511f180,d5d6de2d,d9fac9be,ed36ccf7,f25fbde4,f25ffba3,f2829549
+library learned 10 composites:
+  keep_odd_color>crop_content
+  half_left>tile_h3
+  crop_content>tile_h2
+  half_left>tile_h3>sel_first_m8
+  half_top>mirror_v
+  scale3>sel_first
+  keep_odd_color>crop_content>unscale
+  flip_h>crop_content
+  crop_content>scale2
+  flip_v>half_top>mirror_v
+wall_s=164
+===== arc_score training off =====
+split=training lib=off limit=None : 43/400 = 10.75%  (173 s)
+solved_ids: 00d62c1b,0b148d64,0d3d703e,1cf80156,1f85a75f,23b5c85d,28bf18c6,3428a4f5,3af2c5a8,3c9b0459,445eab21,496994bd,4c4377d9,6150a2bd,62c24649,6430c8c4,67a3c6ac,67e8384a,68b16354,6d0aefbc,6fa7a44f,7468f01a,74dd1130,7b6016b9,88a62173,8be77c9e,9172f3a0,9dfd6313,a416b8f3,a5313dff,a740d043,b1948b0a,be94b721,c59eb873,c8f0f002,c9e6f938,d511f180,d5d6de2d,d9fac9be,ed36ccf7,f25fbde4,f25ffba3,f2829549
+wall_s=173
+===== arc_score evaluation on =====
+split=evaluation lib=on limit=None : 12/400 = 3.00%  (222 s)
+solved_ids: 0c786b71,0c9aba6e,1a2e2828,31d5ba1a,34b99a2b,59341089,60c09cac,66f2d22f,833dafe3,bf699163,d282b262,e345f17b
+library learned 4 composites:
+  rot180>mirror_quad
+  modal_cell>scale3
+  mirror_h_l>mirror_h
+  flip_v>sel_last
+wall_s=222
+===== arc_score evaluation off =====
+split=evaluation lib=off limit=None : 12/400 = 3.00%  (335 s)
+solved_ids: 0c786b71,0c9aba6e,1a2e2828,31d5ba1a,34b99a2b,59341089,60c09cac,66f2d22f,833dafe3,bf699163,d282b262,e345f17b
+wall_s=337
+done 2026-08-02T17:28:38.2649745-05:00

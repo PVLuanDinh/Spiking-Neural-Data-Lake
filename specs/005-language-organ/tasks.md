@@ -1,4 +1,19 @@
-# Tasks: The Brain-Native Assembly-Calculus Language Organ
+﻿# Tasks: The Brain-Native Assembly-Calculus Language Organ
+
+> ## EXECUTION STATUS, 2026-08-02 -- the feature stopped at T011, correctly
+>
+> **Outcome: `NOT-P2-ELIGIBLE`.** `tools/lang_coverage.py` exited **2** at commit `95c3f806`: the
+> exposure lexicon covers **0 of 67** paradigms and **0 of 67000** pairs, against floors of 8 and 200.
+> See [`verdict.md`](./verdict.md) and [`coverage.md`](./coverage.md).
+>
+> **Phase 1 and Phase 2 ran. Phases 3, 4, 5 and 6 did not**, per the hard stop this file states before
+> the work: *"if `tools/lang_coverage.py` exits 2 ... the feature stops at T011. It does not proceed to
+> a wider corpus and a re-run."* Of Phase 7, T057 and T059 ran (they run regardless of the verdict) and
+> T058 is written to [`shared-edits.md`](./shared-edits.md) because `docs/coverage/*.md` is shared state
+> a concurrently running agent also reads.
+>
+> An unchecked box below is **not-run-because-the-feature-stopped**, not forgotten. The reason is
+> recorded once here rather than repeated on each line.
 
 **Input**: Design documents from `/specs/005-language-organ/`
 
@@ -45,9 +60,9 @@ Single project. Source at `src/snn_data_lake/`, probes at `tools/`, tests at `te
 
 **Purpose**: pin the tree so every later figure has an owner.
 
-- [ ] T001 Pin the baseline: run `git diff --quiet HEAD -- src/snn_data_lake/cortex/language_acquisition.py src/snn_data_lake/cortex/spiking_lm_serve.py src/snn_data_lake/cortex/brain.py src/snn_data_lake/reasoning/blimp_bench.py src/snn_data_lake/reasoning/world_kb_stream.py tools/` and **ABORT if dirty**; record `git rev-parse HEAD` and the clean-diff result into `specs/005-language-organ/baseline.txt` (FR-003)
-- [ ] T002 [P] Confirm all four gates green at the pinned commit - `PY run_selfchecks.py`, `PY -m pytest`, `PY -m ruff check .`, `PY -m ruff format --check src tests tools` - and record pass/fail for each into `specs/005-language-organ/baseline.txt` (FR-020)
-- [ ] T003 [P] Record the environment into `specs/005-language-organ/baseline.txt`: interpreter path and version, presence and file count of `data/lang/blimp/` (expect 67 of 67 `.jsonl`), presence of `data/lang/wikitext/`, and whether a `learn_daemon` process is running (it writes `~/.snn_data_lake` continuously and every probe below must isolate `NORD_HOME`)
+- [X] T001 Pin the baseline: run `git diff --quiet HEAD -- src/snn_data_lake/cortex/language_acquisition.py src/snn_data_lake/cortex/spiking_lm_serve.py src/snn_data_lake/cortex/brain.py src/snn_data_lake/reasoning/blimp_bench.py src/snn_data_lake/reasoning/world_kb_stream.py tools/` and **ABORT if dirty**; record `git rev-parse HEAD` and the clean-diff result into `specs/005-language-organ/baseline.txt` (FR-003)
+- [X] T002 [P] Confirm all four gates green at the pinned commit - `PY run_selfchecks.py`, `PY -m pytest`, `PY -m ruff check .`, `PY -m ruff format --check src tests tools` - and record pass/fail for each into `specs/005-language-organ/baseline.txt` (FR-020)
+- [X] T003 [P] Record the environment into `specs/005-language-organ/baseline.txt`: interpreter path and version, presence and file count of `data/lang/blimp/` (expect 67 of 67 `.jsonl`), presence of `data/lang/wikitext/`, and whether a `learn_daemon` process is running (it writes `~/.snn_data_lake` continuously and every probe below must isolate `NORD_HOME`)
 
 **Checkpoint**: the tree is pinned and the gates are green. Every later figure names this commit.
 
@@ -68,18 +83,18 @@ gate's output before any rule leans on it.
 
 ### Tests for User Story 1
 
-- [ ] T004 [P] [US1] Create `tests/test_lang_coverage.py` with `test_rule_is_score_independent`: assert the restricted membership computed by `tools/lang_coverage.py` is a function of the lexicon and rule only - recomputing it after perturbing any arm's score leaves `pair_ids` byte-identical (contract A2, FR-023)
-- [ ] T005 [P] [US1] Add `test_floors_exit_two` to `tests/test_lang_coverage.py`: with an artificially tiny lexicon, assert the tool exits **2** with `NOT-P2-ELIGIBLE` rather than emitting a set (contract A4)
-- [ ] T006 [P] [US1] Add `test_absent_data_skips_not_passes` to `tests/test_lang_coverage.py`: with `--blimp` pointed at an empty directory, assert exit 0 with a `SKIP` line, and assert the emitted record is marked such that no downstream consumer can read it as a passed A/B (contract A8, US1 scenario 3)
+- [X] T004 [P] [US1] Create `tests/test_lang_coverage.py` with `test_rule_is_score_independent`: assert the restricted membership computed by `tools/lang_coverage.py` is a function of the lexicon and rule only - recomputing it after perturbing any arm's score leaves `pair_ids` byte-identical (contract A2, FR-023)
+- [X] T005 [P] [US1] Add `test_floors_exit_two` to `tests/test_lang_coverage.py`: with an artificially tiny lexicon, assert the tool exits **2** with `NOT-P2-ELIGIBLE` rather than emitting a set (contract A4)
+- [X] T006 [P] [US1] Add `test_absent_data_skips_not_passes` to `tests/test_lang_coverage.py`: with `--blimp` pointed at an empty directory, assert exit 0 with a `SKIP` line, and assert the emitted record is marked such that no downstream consumer can read it as a passed A/B (contract A8, US1 scenario 3)
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Create `tools/lang_coverage.py` per `specs/005-language-organ/contracts/lang_ab.md` section A: compute the exposure lexicon from `reasoning/world_kb_stream.py::load_kb()` rendered into sentences (**not** from a trained organ - A1), apply the stated coverage rule, and emit `pair_ids`. Isolate `NORD_HOME` to a per-invocation temp dir (A10). ASCII only; counts as `N of M` (A3)
-- [ ] T008 [US1] In `tools/lang_coverage.py`, run `blimp_bench.random_scorer`, `constant_scorer` and `length_scorer` on the **restricted** set in the same invocation, printing `random` (must be within 3 points of 50%), `constant` (must be 0%) and `length` leakage as a printed number, not a thresholded assert - its value IS the size of the leak (A6, A7, FR-002, SC-001)
-- [ ] T009 [US1] In `tools/lang_coverage.py`, enforce the floors from `research.md` R1 by exit code: `>= 8 of 67` paradigms and `>= 200` pairs, else exit **2** with `NOT-P2-ELIGIBLE` and the reason (A4). A control passing where it must fail also exits 2 (A7)
-- [ ] T010 [US1] Run `PY tools/lang_coverage.py` and write its full output to `specs/005-language-organ/coverage.md`, including the rule verbatim, `P of 67` paradigms, `N of M` pairs, the frozen `pair_ids`, the four control numbers, and the pinned commit from T001. **Commit this file before any arm is scored** (FR-023, A5)
-- [ ] T011 [US1] **HARD STOP CHECK.** If T010 exited 2, write the `NOT-P2-ELIGIBLE` outcome and its reason into `specs/005-language-organ/verdict.md`, update `docs/coverage/Language.md` to note that the swap was found not P2-eligible with no band change, and **stop - do not proceed to Phase 3**. Widening the corpus in response to this exit is choosing the pair set to get a verdict and is forbidden (research.md R1)
-- [ ] T012 [US1] Run all four gates; confirm green with no assertion loosened (FR-020)
+- [X] T007 [US1] Create `tools/lang_coverage.py` per `specs/005-language-organ/contracts/lang_ab.md` section A: compute the exposure lexicon from `reasoning/world_kb_stream.py::load_kb()` rendered into sentences (**not** from a trained organ - A1), apply the stated coverage rule, and emit `pair_ids`. Isolate `NORD_HOME` to a per-invocation temp dir (A10). ASCII only; counts as `N of M` (A3)
+- [X] T008 [US1] In `tools/lang_coverage.py`, run `blimp_bench.random_scorer`, `constant_scorer` and `length_scorer` on the **restricted** set in the same invocation, printing `random` (must be within 3 points of 50%), `constant` (must be 0%) and `length` leakage as a printed number, not a thresholded assert - its value IS the size of the leak (A6, A7, FR-002, SC-001)
+- [X] T009 [US1] In `tools/lang_coverage.py`, enforce the floors from `research.md` R1 by exit code: `>= 8 of 67` paradigms and `>= 200` pairs, else exit **2** with `NOT-P2-ELIGIBLE` and the reason (A4). A control passing where it must fail also exits 2 (A7)
+- [X] T010 [US1] Run `PY tools/lang_coverage.py` and write its full output to `specs/005-language-organ/coverage.md`, including the rule verbatim, `P of 67` paradigms, `N of M` pairs, the frozen `pair_ids`, the four control numbers, and the pinned commit from T001. **Commit this file before any arm is scored** (FR-023, A5)
+- [X] T011 [US1] **HARD STOP CHECK.** If T010 exited 2, write the `NOT-P2-ELIGIBLE` outcome and its reason into `specs/005-language-organ/verdict.md`, update `docs/coverage/Language.md` to note that the swap was found not P2-eligible with no band change, and **stop - do not proceed to Phase 3**. Widening the corpus in response to this exit is choosing the pair set to get a verdict and is forbidden (research.md R1)
+- [X] T012 [US1] Run all four gates; confirm green with no assertion loosened (FR-020)
 
 **Checkpoint**: the instrument is proven able to go red on the exact set that will decide the feature,
 and that set is frozen and committed. If not, the feature ended here, correctly.
@@ -195,10 +210,44 @@ reply-generation job are still reachable, it was not a merge.
 
 T057 and T058 run **regardless of the verdict**. T059-T060 close the feature either way.
 
-- [ ] T057 Adjudicate `src/snn_data_lake/cortex/spiking_lm_serve.py` to one of P3's three dispositions - wired, retired, or **exempt with a stated reason**. Count its readers and producers as `N of M` (it is the only torch-free `snn_lm/1` reader, so retiring it orphans `src/snn_data_lake/training/spiking_lm.py`'s export path) and record the decision and the count in `specs/005-language-organ/verdict.md`. Default is RETIRE; exempt-with-reason is permitted; leaving it undecided is not (FR-012, SC-011)
+- [X] T057 Adjudicate `src/snn_data_lake/cortex/spiking_lm_serve.py` to one of P3's three dispositions - wired, retired, or **exempt with a stated reason**. Count its readers and producers as `N of M` (it is the only torch-free `snn_lm/1` reader, so retiring it orphans `src/snn_data_lake/training/spiking_lm.py`'s export path) and record the decision and the count in `specs/005-language-organ/verdict.md`. Default is RETIRE; exempt-with-reason is permitted; leaving it undecided is not (FR-012, SC-011)
 - [ ] T058 [P] Update `docs/coverage/Language.md` to the measured outcome - up, down, or unchanged - citing `file:line` for every changed row and naming the recorded artifact. A downgrade is a result and is stated in the same sentence; a row is never deleted to raise a score (FR-025, SC-013)
-- [ ] T059 [P] Add the "After" row to `docs/DEPTH_CEILINGS.md` Ceiling 2 **only if there is an after** - i.e. only on ADOPT. On NULL, add a line recording that the organ was measured and did not beat the incumbent, with the artifact name
-- [ ] T060 Run `PY tools/citation_guard.py` and all four gates; confirm every `file:line` cited in `specs/005-language-organ/` and in the updated docs resolves, no tracked file cites an untracked `.py` as a runnable reproduction path, and nothing was loosened (FR-017, FR-020)
+- [X] T059 [P] Add the "After" row to `docs/DEPTH_CEILINGS.md` Ceiling 2 **only if there is an after** - i.e. only on ADOPT. On NULL, add a line recording that the organ was measured and did not beat the incumbent, with the artifact name
+- [X] T060 Run `PY tools/citation_guard.py` and all four gates; confirm every `file:line` cited in `specs/005-language-organ/` and in the updated docs resolves, no tracked file cites an untracked `.py` as a runnable reproduction path, and nothing was loosened (FR-017, FR-020)
+
+---
+
+## Phase 4b/5b: SNNLP (arXiv 2401.17911) - added 2026-08-02 by owner scope change
+
+**Status: NONE OF T061-T070 RAN.** Every one of them is downstream of the T011 hard stop - the encoder
+A/B needs a `PHON` area and the sentiment arm needs an organ to score, and the feature stopped at
+`NOT-P2-ELIGIBLE` before either existed. They are specified here with IDs and dependencies so the work
+is defined rather than deferred into memory.
+
+**These tasks are numbered separately but they are NOT a separate phase in execution.** T061-T066
+belong inside Phase 4 (they build parts of the organ) and T067-T070 inside Phase 5 (they print
+alongside the verdict). The dependency block below places each one.
+
+**The constraint that governs all of them** (FR-027, FR-029, contract C0): **BLiMP remains the sole
+arbiter and sentiment cannot rescue a `NULL`.** No task here may touch the ADOPT conjunction, the frozen
+pair set, the four admission controls or the char-bigram bar. A task in this section that changes a
+verdict criterion is a defect, not a feature.
+
+### The PHON encoder A/B (inside Phase 4)
+
+- [ ] T061 [P] Add `test_phon_encoder_is_pluggable` to `tests/test_language_organ.py`: assert `PHON`'s text-to-spike encoder is a named, swappable component and that the four arms of contract C1 differ **only** in it. A hardcoded encoder makes the A/B unrunnable (C0.6)
+- [ ] T062 [P] Add `test_poisson_encoder_is_deterministic` to `tests/test_language_organ.py`: assert the Poisson rate-coding arm draws from the organ's instance rng, never a module-level or fresh `Random`; two same-seed organs produce identical spike trains (C0.8, FR-018)
+- [ ] T063 In `src/snn_data_lake/cortex/language_organ.py`, implement the pluggable `PHON` encoder surface plus the four arms named in `contracts/lang_ab.md` C1: `snnlp`, `poisson`, `graphemefold` (reusing `cortex/language_acquisition.py::_encode_ctx`'s position-tagged grapheme fold, not reimplementing it - P2), and `rbfpop` (reusing `cortex/population_encoding.py::PopulationEncoder`). The `rbfpop` arm must **state which scalar embedding of the word form it used**, because that choice is then doing part of the work (C1 table)
+- [ ] T064 In `tools/lang_organ_ab.py`, run the four encoder arms on identical exposure, order, split and seed, and print all four with the winner named. **An existing repo encoding winning is a legitimate and expected outcome**: it is then adopted and SNNLP is recorded as measured-and-not-adopted (FR-028, C1.1, SC-014)
+- [ ] T065 In `src/snn_data_lake/cortex/language_organ.py`, name the **winning** encoder and its measured number in the module docstring (C0.7). Do not quote arXiv 2401.17911's ~13% figure as this organ's result - it is CITED, UNVERIFIED (research.md R10) and C1.2 forbids any criterion referencing it
+- [ ] T066 Confirm no energy or sparsity figure from arXiv 2401.17911 appears as an acceptance criterion or as a claimed property of this organ anywhere in `src/`, `tools/` or `specs/005-language-organ/` (C1.3, FR-021). This repo has no hardware to measure them on
+
+### The sentiment capability metric (inside Phase 5)
+
+- [ ] T067 Create the SST-2 loader beside the organ - `src/snn_data_lake/cortex/sst2_loader.py`, **not** in `reasoning/` - following `reasoning/blimp_bench.py`'s precedent exactly: the one-time download command in the module docstring, the loader shipped, the data NOT committed (`data/` is gitignored, `.gitignore:43`). Absent data prints `SKIP` and exits 0, recorded so it can never read downstream as a passed capability (C2.1, C2.2, C2.5, SC-016)
+- [ ] T068 **STOP-AND-REPORT GATE.** If the SST-2 download is unavailable or its licence is unclear, **stop and report**. Do not substitute a self-authored sentiment corpus - a corpus authored alongside the mechanism it scores is the weakest evidence available and `research.md` refuses it twice already (R1, R6). This is a hard stop of the same kind as T011 (C2.6, FR-030)
+- [ ] T069 In `tools/lang_organ_ab.py`, print the sentiment block **below the verdict line**, with the **bag-of-words control inline**. If the organ does not beat the bag of words, the block must say **in that same block** that the sentiment number is not evidence of anything - not omit the control, not drop the number (C2.3, FR-030)
+- [ ] T070 Add `test_sentiment_cannot_rescue_a_null` to `tests/test_language_organ.py`: force a `NULL` BLiMP block alongside a maximal sentiment block and assert the verdict is still `NULL`. Prose promising this is not enough; B8 already forbids a parameter that changes the verdict and this is the same guarantee for a second input (C0, FR-029, SC-015)
 
 ---
 
@@ -244,6 +293,34 @@ T001 (pin)
 - **T055 depends on T051, T052 and T053.** Delete last, after porting or recording-as-dropped, and after
   counting what else would be orphaned. Deleting before proving is what P2's honesty guard forbids.
 - **T057 depends on nothing in Phases 4-6.** `spiking_lm_serve.py` is dormant regardless of the verdict.
+
+**Where the SNNLP tasks sit in the graph** (added 2026-08-02):
+
+```
+Phase 4 (US3)
+  T019..T027  [P] tests   ... plus T061, T062  [P] (same file, tests/test_language_organ.py)
+  T028 -> T029 -> T030 -> T063 -> T031 -> T032 -> T033 -> T034
+                          ^^^^ the pluggable PHON encoder must exist before expose() uses it
+  T035 -> T036 -> T037 -> T064 -> T065 -> T066
+                          ^^^^ the encoder A/B needs the four arms (T063) and the harness (T036)
+Phase 5 (US4)
+  T039 -> T040 -> T041 -> T042 (the VERDICT -- computed from the BLiMP block ALONE)
+                            |
+                            +-> T067 -> T068 (STOP GATE) -> T069 -> T070
+                                sentiment prints BELOW the verdict line and cannot reach it
+```
+
+- **T063 blocks T031.** `expose()` drives `PHON`, so the encoder surface must exist before the joint
+  update is written against it. Retrofitting pluggability after `expose()` is written is how a
+  hardcoded encoder survives.
+- **T064 depends on T036**, not merely T063: the four encoder arms are scored through the same arm
+  harness the joint/staged/shuffled/frozen arms use, on identical exposure, order, split and seed.
+- **T068 can end the sentiment work** the way T011 can end the feature. It is a stop, not a checkpoint.
+- **T070 depends on T042 and T069 both existing** - it asserts the wall between them holds. It is the
+  only mechanized form of FR-029; every other statement of it is prose.
+- **Nothing in T061-T070 blocks T042.** That is the point of the ordering: the verdict is reachable
+  with the entire SNNLP addition removed, which is what makes it non-deciding in fact rather than by
+  assertion.
 
 ## Parallel Opportunities
 

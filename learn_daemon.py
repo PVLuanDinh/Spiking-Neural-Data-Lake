@@ -155,14 +155,10 @@ def _shutdown(b, mem):
 _LOCK_FH = None  # keeps the single-instance lock handle alive for the whole process lifetime
 
 
-def _acquire_singleton():
-    """ONE daemon only: hold an OS-level exclusive lock on <home>/learn_daemon.lock. The OS releases it
-    automatically on exit OR crash (no stale PID files to reap). Returns True if this process acquired the
-    lock; False if another daemon already holds it (a second launch then exits, so exactly one runs)."""
-    global _LOCK_FH
-    from snn_data_lake.substrate.home import home
-
-    fh = open(os.path.join(home(), "learn_daemon.lock"), "a+")
+def _lock_one(path):
+    """Take an OS-level exclusive lock on `path`, or return None. The OS releases it on exit OR crash,
+    so there are no stale PID files to reap."""
+    fh = open(path, "a+")
     try:
         if os.name == "nt":
             import msvcrt
@@ -174,8 +170,42 @@ def _acquire_singleton():
             fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         fh.close()
-        return False
-    _LOCK_FH = fh
+        return None
+    return fh
+
+
+def _acquire_singleton():
+    """ONE daemon per MACHINE. Returns True if this process may run.
+
+    WHY MACHINE-WIDE AND NOT PER-HOME, corrected 2026-08-02. This used to lock only
+    <home>/learn_daemon.lock, so "one daemon" meant one daemon PER NORD_HOME -- and two were found
+    running at once: the .venv-cu128 one the launcher starts, and a second on a bare uv cpython-3.11
+    with no torch installed at all. Two live Brains against one 414 MB append-only brain_lake.bin is
+    a data race nobody designed for, and it is also a P4 violation ("one brain"). The per-home lock
+    could not see it, because a different home is a different lock file.
+
+    So the machine-wide lock is the one that decides, and the per-home lock is kept as well: it still
+    catches the same-home case earlier and its file is where an operator looks.
+
+    ESCAPE HATCH, deliberately narrow: NORD_DAEMON_INSTANCE=<name> namespaces the machine-wide lock,
+    so a probe daemon on a scratch home can run beside the real one when someone means it. Unset --
+    the normal case -- there is exactly one."""
+    global _LOCK_FH
+    import tempfile
+
+    from snn_data_lake.substrate.home import home
+
+    instance = (os.environ.get("NORD_DAEMON_INSTANCE") or "").strip() or "default"
+    machine_lock = os.path.join(tempfile.gettempdir(), f"sndl_learn_daemon.{instance}.lock")
+    held = []
+    for path in (machine_lock, os.path.join(home(), "learn_daemon.lock")):
+        fh = _lock_one(path)
+        if fh is None:
+            for open_fh in held:
+                open_fh.close()
+            return False
+        held.append(fh)
+    _LOCK_FH = held  # both handles stay open for the process lifetime
     return True
 
 

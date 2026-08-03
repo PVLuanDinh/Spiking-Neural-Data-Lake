@@ -1,0 +1,39 @@
+﻿census run at 95c3f806f19fe3c1dc704336581ade75541578de (working tree: stage-A combinator, no mint intake) started 2026-08-02T23:44:29.5170419-05:00
+================================================================================================
+ARC TRAJECTORY CENSUS -- split=evaluation lib=off limit=None
+================================================================================================
+tasks completed: 400 of 400   wall_s=139
+solved: 12 of 400
+solved_ids: 0c786b71,0c9aba6e,1a2e2828,31d5ba1a,34b99a2b,59341089,60c09cac,66f2d22f,833dafe3,bf699163,d282b262,e345f17b
+trajectories: 500918 total, 0 of 500918 unclassified
+------------------------------------------------------------------------------------------------
+trajectory outcomes per primitive class:
+  base    : converged 209414 of 459009  cycle 38399 of 459009  diverged 210993 of 459009  budget 203 of 459009
+  fitted  : converged 4755 of 41909  cycle 0 of 41909  diverged 37120 of 41909  budget 34 of 41909
+  library : converged 0 of 0  cycle 0 of 0  diverged 0 of 0  budget 0 of 0
+  mint    : converged 0 of 0  cycle 0 of 0  diverged 0 of 0  budget 0 of 0
+------------------------------------------------------------------------------------------------
+converged-depth distribution (all converged trajectories):
+  depth  1: 80450 of 214169
+  depth  2: 128020 of 214169
+  depth  3: 3616 of 214169
+  depth  4: 1198 of 214169
+  depth  5: 456 of 214169
+  depth  6: 231 of 214169
+  depth  7: 70 of 214169
+  depth  8: 57 of 214169
+  depth  9: 28 of 214169
+  depth 10: 20 of 214169
+  depth 11: 8 of 214169
+  depth 12: 3 of 214169
+  depth 13: 4 of 214169
+  depth 14: 1 of 214169
+  depth 15: 1 of 214169
+  depth 16: 1 of 214169
+  depth 17: 2 of 214169
+  depth 18: 2 of 214169
+  depth 19: 1 of 214169
+------------------------------------------------------------------------------------------------
+winning-fix converged depths: []
+mean winning-fix depth: NONE (0 of 0 winning fix trajectories)
+exit=0 done 2026-08-02T23:46:54.6875021-05:00

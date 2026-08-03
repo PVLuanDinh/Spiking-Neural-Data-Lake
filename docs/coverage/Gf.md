@@ -18,14 +18,14 @@ see "What the refuter found" below.
 | novel_ordering_analogy | 45 | src/snn_data_lake/reasoning/gf.py:848#analogy_over; src/snn_data_lake/reasoning/spike_chat_lake.py:597#_gf_request | gf_novel_alphabet_analogy.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py novel_alphabet_analogy | 2026-07-30 |
 | raven_distribution_of_three | 42 | src/snn_data_lake/reasoning/reasoning_cortex.py:174#RavenExpert; src/snn_data_lake/reasoning/spike_chat_lake.py:619#_gf_request | gf_raven_dist3.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py raven_dist3 | 2026-07-30 |
 | example_to_rule_pair_induction | 41 | src/snn_data_lake/reasoning/reasoning_cortex.py:216#PairInductionExpert | gf_pair_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py pair_induction | 2026-07-30 |
-| arc_grid_program_synthesis | 35 | src/snn_data_lake/reasoning/reasoning_cortex.py:292#ArcExpert; src/snn_data_lake/reasoning/reasoning_cortex.py:1015#build_default_cortex | gf_arc_grid_synthesis.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py arc_grid_synthesis | 2026-07-30 |
-| relational_structure_mapping | 32 | src/snn_data_lake/reasoning/reasoning_cortex.py:623#StructureMappingSolver; src/snn_data_lake/cortex/brain.py:834#__init__ | gf_relational_structure_mapping.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py relational_structure_mapping | 2026-07-30 |
+| arc_grid_program_synthesis | 35 | src/snn_data_lake/reasoning/reasoning_cortex.py:292#ArcExpert; src/snn_data_lake/reasoning/reasoning_cortex.py:1016#build_default_cortex | gf_arc_grid_synthesis.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py arc_grid_synthesis | 2026-07-30 |
+| relational_structure_mapping | 32 | src/snn_data_lake/reasoning/reasoning_cortex.py:624#StructureMappingSolver; src/snn_data_lake/cortex/brain.py:844#__init__ | gf_relational_structure_mapping.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py relational_structure_mapping | 2026-07-30 |
 | active_experiment_loop | 30 | src/snn_data_lake/reasoning/spike_chat_lake.py:435#_resume_experiment; src/snn_data_lake/reasoning/spike_chat_lake.py:554#_number_reply | gf_active_experiment_loop.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py active_experiment_loop | 2026-07-30 |
 | rpm_nvsa_matrix_solving | 25 | src/snn_data_lake/reasoning/rpm_solver.py:362#RpmExpert; src/snn_data_lake/reasoning/spike_chat_lake.py:1113#_get_cortex | gf_rpm_nvsa.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py rpm_nvsa | 2026-07-30 |
-| sleep_schema_induction | 45 | src/snn_data_lake/cortex/brain.py:2456#_enter_sleep; src/snn_data_lake/cortex/brain.py:2510#_enter_sleep | gf_sleep_schema_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py sleep_schema_induction | 2026-07-30 |
-| held_out_novel_problem_solving | 10 | src/snn_data_lake/reasoning/arc_bench.py:86#score; src/snn_data_lake/reasoning/arc_solver.py:862#make_solver | gf_arc_eval_lib_off.txt | opus-5 / tools/arc_score.py evaluation off (400 held-out tasks) | 2026-07-30 |
-| arc_cross_task_library_learning | 0 | src/snn_data_lake/reasoning/arc_solver.py:880#solver | gf_arc_eval_lib_on.txt | opus-5 / tools/arc_score.py evaluation on vs off | 2026-07-30 |
-| arc_scene_mint_out_of_closure_induction | 0 | src/snn_data_lake/reasoning/arc_mint.py:558#mint; src/snn_data_lake/reasoning/arc_mint.py:646#main; src/snn_data_lake/reasoning/arc_scene.py:189#scene | - | opus-5 / static: every `mint(` call site in the tree | 2026-07-30 |
+| sleep_schema_induction | 45 | src/snn_data_lake/cortex/brain.py:2466#_enter_sleep; src/snn_data_lake/cortex/brain.py:2520#_enter_sleep | gf_sleep_schema_induction.txt | opus-5 / docs/coverage/artifacts/gf_reply_ab.py sleep_schema_induction | 2026-07-30 |
+| held_out_novel_problem_solving | 10 | src/snn_data_lake/reasoning/arc_bench.py:86#score; src/snn_data_lake/reasoning/arc_solver.py:885#make_solver | gf_arc_eval_lib_off.txt | opus-5 / tools/arc_score.py evaluation off (400 held-out tasks) | 2026-07-30 |
+| arc_cross_task_library_learning | 0 | src/snn_data_lake/reasoning/arc_solver.py:903#solver | gf_arc_eval_lib_on.txt | opus-5 / tools/arc_score.py evaluation on vs off | 2026-07-30 |
+| arc_scene_mint_out_of_closure_induction | 0 | src/snn_data_lake/reasoning/arc_mint.py:599#mint_records; src/snn_data_lake/reasoning/arc_mint.py:563#compile_record; src/snn_data_lake/reasoning/arc_scene.py:189#scene | - | opus-5 / static: every `mint(` call site in the tree | 2026-07-30 |
 
 ---
 
@@ -486,3 +486,55 @@ original audit's own spot-check of `gf_relational_structure_mapping`, `gf_arc_gr
 `coverage_score.py` will report W2 ("measured N commits ago") once HEAD moves past it, which is the
 warning working, not a defect. The probe writes only into a temp `NORD_HOME`, never
 `~/.snn_data_lake`, which matters because `sleep_schema_induction` runs with `persist=True`.
+
+### 2026-08-03 -- held-out ARC evaluation 12 of 400 -> 18 of 400 (4.50%), specs/006 mint merge
+
+Re-measured by the coordinator independently of the implementing agent, same command, same tree:
+`python tools/arc_score.py evaluation off` -> **18 of 400 = 4.50%** (235 s). Training: 53 of 400 =
+13.25%. **Zero lost IDs on either split** -- all 12 baseline IDs survive and 6 are gained.
+
+What produced it is NOT what the spec predicted. `specs/006-fixed-point-gf` was built on the
+fixed-point / variable-depth hypothesis (arXiv 2606.18206), and that hypothesis was **REFUSED by its
+own census**: depth exists in trajectory space (5,699 of 214,169 converged trajectories at depth 3
+through 19) and won **0 of 12** solves. Not one winning program used a `fix:` step. The combinator was
+RETIRED, not flag-parked, after a no-fix probe proved its node cost had starved 2 training solves.
+Every one of the 16 gains is a depth-1 `mint:` record arriving through the typed bottleneck -- the
+half of the spec that was framed as an independent P2 payment. The census diagnosis is that the DSL
+was missing VOCABULARY, not depth, which independently agrees with `arc_diagnostic`'s DSL-coverage
+verdict and Ceiling 1 in `docs/DEPTH_CEILINGS.md`.
+
+**CONTAMINATION QUALIFIER, and it must travel with the number.** 20 of the 400 evaluation tasks were
+the mint's development set (`scratchpad/oracle_dev.json`). **3 of the 6 gained IDs are in it**
+(00576224, 00dbd492, 0a2355a6); the other 3 were never inspected during development (37d3e8b2,
+84f2aca1, ae58858e). Verified by the coordinator against the dev-set file, not taken on report. The
+plain benchmark figure is 18 of 400 with this qualifier attached; the maximally conservative reading
+counts only the 3 clean gains.
+
+`84f2aca1` is worth naming: it is the first **FUNCTIONAL** held-out solve -- an affine rule that
+computes its answer rather than recalling a memorised one.
+
+**NO BAND CHANGES HERE.** `held_out_novel_problem_solving` stays at 10 and every other row stands.
+4.50% against a 0.5% trivial-solver floor is still nowhere near "holds outside the
+developer-constructed case", no A/B artifact was recorded for this change, and half the gain carries
+a contamination qualifier. The same budget caveat recorded above still applies in full: the solver
+runs at `time_budget=5.0` per task, so marginal tasks flip with machine speed and this figure is not
+reproducible to the task on other hardware.
+
+### 2026-08-03 -- `arc_scene_mint_out_of_closure_induction` re-cited, band UNCHANGED at 0
+
+The two citations this row carried named `arc_mint.mint()` and `arc_mint.main()`. Both were DELETED
+by specs/006's P2 retirement of the direct-application path, so `--repin` reported them as "text
+gone" rather than moved -- the only 2 of 268 citations in the ledger that a mechanical re-anchor
+could not fix, because the code they named no longer exists.
+
+Re-pointed at the surviving implementation: `mint_records()` (the typed bottleneck, now the searcher's
+only intake) and `compile_record()`. The port-before-retire inventory -- LOO validation, MDL ordering,
+memo-flagging, refuse-on-unseen, description visibility -- moved with it and is test-enforced on the
+surviving path, so the capability was ported rather than lost.
+
+**The band stays 0 and that is deliberate.** The mechanism became live-reachable on 2026-08-03 (the
+P3 cure of specs/006 finding F7: `arc_mint` previously had no importer outside itself,
+`method_dormancy_gate` and `run_selfchecks`), which is exactly the kind of change that tempts a
+re-band. The rubric does not allow it: raising a band above 40 needs a recorded A/B artifact with a
+passing exit code, and none was recorded for THIS row. A future auditor with that artifact can
+re-band it; the citation being correct again is not itself evidence of a capability.

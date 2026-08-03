@@ -6,12 +6,12 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 
 | faculty | band | citation | artifact | measured_by | measured_at |
 |---|---|---|---|---|---|
-| generation_acquired_lm | 40 | src/snn_data_lake/cortex/brain.py:3541#_language; src/snn_data_lake/cortex/brain.py:3077#respond; src/snn_data_lake/cortex/language_acquisition.py:188#generate | lang_no_ab_source.txt | opus-5 language-auditor / live respond() route census, 40-tick brain, seed 0 | 2026-07-30 |
-| comprehension_intent_firewall | 40 | src/snn_data_lake/cortex/brain.py:2968#respond | - | opus-5 language-auditor / live respond() route census, seed 0 | 2026-07-30 |
-| generation_narrator | 35 | src/snn_data_lake/cortex/self_model.py:411#introspect; src/snn_data_lake/cortex/brain.py:3047#respond | - | opus-5 language-auditor / live respond() route census + benevolence turn, seed 0 | 2026-07-30 |
+| generation_acquired_lm | 40 | src/snn_data_lake/cortex/brain.py:3551#_language; src/snn_data_lake/cortex/brain.py:3087#respond; src/snn_data_lake/cortex/language_acquisition.py:188#generate | lang_no_ab_source.txt | opus-5 language-auditor / live respond() route census, 40-tick brain, seed 0 | 2026-07-30 |
+| comprehension_intent_firewall | 40 | src/snn_data_lake/cortex/brain.py:2978#respond | - | opus-5 language-auditor / live respond() route census, seed 0 | 2026-07-30 |
+| generation_narrator | 35 | src/snn_data_lake/cortex/self_model.py:411#introspect; src/snn_data_lake/cortex/brain.py:3057#respond | - | opus-5 language-auditor / live respond() route census + benevolence turn, seed 0 | 2026-07-30 |
 | pragmatics_implicature | 32 | src/snn_data_lake/reasoning/spike_chat_lake.py:1000#converse; src/snn_data_lake/reasoning/pragmatics.py:356#implicature | - | opus-5 language-auditor / live neuter-A/B on LakeChat._pragmatics, seed 0 | 2026-07-30 |
-| constituency_parse_rose | 28 | src/snn_data_lake/cortex/brain.py:3013#respond; src/snn_data_lake/reasoning/rose_language.py:222#parse | - | opus-5 language-auditor / live respond('parse ...') + shuffled-input control | 2026-07-30 |
-| nightly_language_skill | 25 | src/snn_data_lake/reasoning/nightly_skills.py:299#_ensure_domains; src/snn_data_lake/cortex/brain.py:2566#_enter_sleep | - | opus-5 language-auditor / static read of the sleep-tick consumer, NOT runtime | 2026-07-30 |
+| constituency_parse_rose | 28 | src/snn_data_lake/cortex/brain.py:3023#respond; src/snn_data_lake/reasoning/rose_language.py:222#parse | - | opus-5 language-auditor / live respond('parse ...') + shuffled-input control | 2026-07-30 |
+| nightly_language_skill | 25 | src/snn_data_lake/reasoning/nightly_skills.py:299#_ensure_domains; src/snn_data_lake/cortex/brain.py:2576#_enter_sleep | - | opus-5 language-auditor / static read of the sleep-tick consumer, NOT runtime | 2026-07-30 |
 | comprehension_learned_intent_router | 22 | src/snn_data_lake/cortex/live_brain.py:512#chat; src/snn_data_lake/cortex/live_brain.py:495#route | - | opus-5 language-auditor / caller search for the route() readout, static | 2026-07-30 |
 | grammar_competence_blimp | 12 | src/snn_data_lake/reasoning/blimp_bench.py:170#module; src/snn_data_lake/reasoning/ar_spiking_lm_serve.py:356#logprob | lang_blimp_bench_67x25.txt | opus-5 language-auditor / blimp_bench.py self-check, 67x25 pairs | 2026-07-30 |
 | core_spiking_lm_serve | 5 | src/snn_data_lake/cortex/spiking_lm_serve.py:96#generate | - | opus-5 language-auditor / weight-file search + caller search | 2026-07-30 |
@@ -272,3 +272,25 @@ Saying that is the point of gap 1: `tools/` is where a cited instrument has to l
 (`DEPTH_CEILINGS.md:459-462`), and the `lang_*.py` / `ar_lm_*.py` scripts that document says were never
 promoted have since appeared there -- so the pattern is already being fixed for the LM scripts and not
 yet for the live-brain ones.
+
+### 2026-08-02 -- assembly-calculus language organ: NOT-P2-ELIGIBLE, no band change
+
+`specs/005-language-organ` proposed replacing `cortex/language_acquisition.py` with a brain-native
+Assembly-Calculus language organ (arXiv 2306.15364 / 2507.11788), to be decided by an A/B on
+`reasoning/blimp_bench.py`. It was refused at the INSTRUMENT stage, before any organ code was
+written, and no `src/` file was touched.
+
+The exposure plan's lexicon covers **0 of 67** BLiMP paradigms and **0 of 67000** pairs, against
+declared floors of 8 and 200. `world_kb_stream.load_kb()` renders proper nouns, chemical symbols and
+integers; BLiMP's minimal pairs are built out of function words, and the KB contains none. **39 of
+2637** BLiMP word types appear in the lexicon and the best per-pair coverage reached is 50.0%, where
+the rule requires 100%.
+
+Reproduce: `python tools/lang_coverage.py` (exit 2) at commit `95c3f806`. Detail in
+`specs/005-language-organ/coverage.md` and `verdict.md`.
+
+**No row changed and no row was deleted.** The incumbent was never scored on a frozen set, so nothing
+about it is newly known, and `generation_acquired_lm` and every other Language row stand where they
+were. **The blocker measured here is the exposure source, not the architecture** -- which is a
+different and more actionable statement than "the ceiling did not move". Widening the corpus in
+response to this exit was banned in advance by the spec's own R1 and was not done.

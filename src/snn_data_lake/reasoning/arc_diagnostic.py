@@ -97,13 +97,15 @@ def _eq(a, b):
 
 
 def _pool_size(train_pairs):
-    """Exact primitive-pool size for this task (base + fitted, no library) via READ-ONLY
-    reflection into arc_solver. Falls back to a conservative overestimate if internals move --
-    an overestimate keeps the bound valid, it just wastes budget headroom."""
+    """Exact primitive-pool size for this task (base + fitted + minted, no library) via
+    READ-ONLY use of arc_solver's own _pool builder -- exact BY CONSTRUCTION, so the node
+    bound tracks the pool even as intake changes (the specs/006 merge added per-task minted
+    records). Falls back to a conservative overestimate if internals move -- an overestimate
+    keeps the bound valid, it just wastes budget headroom."""
     try:
         tin = tuple(_tup(i) for i, _o in train_pairs)
         tout = tuple(_tup(o) for _i, o in train_pairs)
-        return len(arc_solver._BASE) + len(arc_solver._fitted_prims(tin, tout))
+        return len(arc_solver._pool(tin, tout, None))
     except (AttributeError, TypeError, ValueError, IndexError):
         return _P_FALLBACK
 

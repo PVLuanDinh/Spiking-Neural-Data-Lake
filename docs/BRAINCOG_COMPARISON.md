@@ -251,3 +251,44 @@ product's purpose. The right moves are the three small pure-stdlib primitives
 above (theory-of-mind, feedback credit-assignment, multisensory integration),
 which genuinely extend our brain in its own idiom, plus one honest torch-tier
 benchmark (DVS-Gesture) to keep our claims measurable against theirs.
+
+---
+
+## 6. External adopt-candidate queue (not BrainCog, same discipline)
+
+Mechanisms from outside this repo that are *candidates*, recorded so they are neither lost nor
+smuggled into an unrelated feature. Nothing here is adopted. Each needs an A/B against the mechanism
+it would replace, and P2 means exactly one survives.
+
+### CD-STDP -- consciousness-driven spike-timing-dependent plasticity (QUEUED, not started)
+
+**Source**: arXiv 2405.04546, Yadav & Chaudhary, 2024-05. STDP whose LTP/LTD coefficients are made
+dynamic, tied to current and past synaptic activity. Reports MNIST 98.6%, FashionMNIST 85.61%,
+CALTECH 99.0% on a single hidden layer.
+
+**Where it belongs**: the plasticity palette, as a competitor to `basal_ganglia/r_stdp.py` and
+`reasoning/eprop.py`. Coefficients modulated by current versus past synaptic activity is an
+eligibility trace under another name, so this is an ADOPT-OR-RETIRE question about an existing
+mechanism, not a new capability. We already carry BCM, triplet and STP in the palette; a sixth rule
+that is not measurably better is bloat (P2).
+
+**Where it does NOT belong, decided 2026-08-02**: Gf. Asked directly whether it could lift the fluid-
+intelligence ceiling, the answer is no, for a structural reason rather than a judgement of the work.
+`reasoning/arc_solver.synthesize()` is a discrete search over grid-transformation programs -- there
+are no synapses on that path for a plasticity rule to attach to. The measured cause of the Gf ceiling
+is architectural (fixed-depth compute; see `specs/006-fixed-point-gf`), not a learning-rate problem.
+And classification accuracy has never moved Gf here: 92.6% N-MNIST and 72.1% SHD are both live and
+both representation-only.
+
+**Before investing, verify the headline.** 99.0% on "CALTECH" from a single hidden layer is a strong
+claim and the paper does not disambiguate CALTECH-101 from the much easier CALTECH face set that STDP
+papers often use. Same rule we apply to our own numbers: the recorded 51.0% BLiMP incumbent and the
+recorded 11 of 400 ARC baseline both turned out wrong when re-measured this session.
+
+**On the name**: the "consciousness" in the title is a coefficient schedule over synaptic history.
+That is not a criticism of the work and not a reason to skip it, but it is not evidence about
+consciousness, and it must not be cited here as if it were -- we hold our own claims to that bar.
+
+**A/B if it is ever run**: against R-STDP and e-prop, on a task where credit assignment over PAST
+activity is the bottleneck rather than one where any local rule suffices. A win on MNIST would not
+settle it; MNIST is not where our rules are limited.

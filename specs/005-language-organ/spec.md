@@ -461,6 +461,36 @@ quietly reduced.
   sum-logprob advantage over the incumbent is not also present under per-character normalization MUST NOT
   be reported as a language improvement; it is a length-bias correction and MUST be named as one.
 
+### Added 2026-08-02 by owner scope change - SNNLP (arXiv 2401.17911). Full reasoning in `research.md` R10.
+
+- **FR-027**: **BLiMP remains the sole arbiter.** SNNLP MUST NOT replace `reasoning/blimp_bench.py` as
+  the deciding benchmark. The `ADOPT` / `NULL` / `NOT-P2-ELIGIBLE` criteria, the frozen pair set, the
+  four admission controls and the char-bigram bar are unchanged by this addition. Rationale, recorded
+  so it is not re-proposed: SNNLP measures a different thing, its downstream task **cannot fail an
+  admission control on syntax** because sentiment is largely lexically solvable, and substituting it
+  would orphan every recorded BLiMP figure in `docs/DEPTH_CEILINGS.md` Ceiling 2.
+- **FR-028**: The `PHON` area's text-to-spike encoding MUST be decided by a measured A/B, not by a
+  citation. The arms are: **SNNLP's proposed encoding**, **Poisson rate-coding** (the paper's own
+  comparison, which is what makes this a P2 adopt question rather than a preference), and the two
+  encodings that already exist in this tree - `cortex/language_acquisition.py::_encode_ctx`'s
+  position-tagged grapheme fold and `cortex/population_encoding.py::PopulationEncoder`. All arms feed
+  an otherwise identical `PHON`, on identical exposure, order, split and seed. **If an existing
+  encoding wins, it is kept and SNNLP is recorded as measured-and-not-adopted.**
+- **FR-029**: Sentiment MUST be a **second, non-deciding capability metric**. **If the BLiMP A/B
+  returns `NULL`, the verdict is `NULL` whatever sentiment says**, and this MUST be enforced in the
+  harness - the verdict is computed from the BLiMP block alone and the sentiment block is printed
+  after the verdict line, never as an input to it. Sentiment is reported as a demonstrated capability
+  and MUST NOT be reported as evidence about syntax.
+- **FR-030**: The sentiment arm MUST print a **bag-of-words control inline**, for the same reason the
+  char-bigram control is mandatory on BLiMP: sentiment is largely lexically solvable, so an organ that
+  does not beat a bag of words has demonstrated nothing and its sentiment number is not evidence of
+  anything either. That MUST be stated in the output rather than the number quietly dropped. The
+  corpus is **SST-2**; the one-time download command lives in the loader's module docstring and the
+  data is NOT committed, following `reasoning/blimp_bench.py`'s precedent exactly (`data/` is
+  gitignored, `.gitignore:43`). The loader lives beside the organ in `cortex/`. **If the download is
+  unavailable or the licence is unclear, the work STOPS and reports; a self-authored substitute
+  corpus is forbidden.**
+
 ## Key Entities
 
 - **Area** - a population of excitatory units with a per-area cap (local inhibition selecting the top-k
@@ -509,6 +539,16 @@ quietly reduced.
 - **SC-011**: `cortex/spiking_lm_serve.py` has a recorded disposition with a consumer count.
 - **SC-012**: Two same-seed organs produce identical output, asserted by a test.
 - **SC-013**: `docs/coverage/Language.md` reflects the measured outcome, up, down, or unchanged.
+- **SC-014**: The `PHON` encoder A/B reports all four encodings on identical exposure with the winner
+  named, and the winner is whichever measured best - including when that is an encoding this repo
+  already had.
+- **SC-015**: The sentiment block prints below the verdict line, prints the bag-of-words control
+  inline, and the harness demonstrably cannot turn a `NULL` into an `ADOPT` - asserted by a test that
+  forces a `NULL` BLiMP block alongside a maximal sentiment block and checks the verdict is still
+  `NULL`.
+- **SC-016**: If SST-2 is absent, the sentiment block SKIPs with a stated reason and exit 0, and the
+  skip can never be read downstream as a passed capability - the same treatment absent BLiMP data
+  gets.
 
 ## Assumptions
 

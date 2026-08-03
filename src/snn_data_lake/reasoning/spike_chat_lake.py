@@ -1175,10 +1175,21 @@ class LakeChat:
         bnd, _ = probe_binding()
         integ, _ = probe_integration()
         reent, _ = probe_reentry()
+        # THE TALLY IS ARBITRATED BY AN UNDERIVED NUMBER, and this is the one path where a
+        # consciousness claim reaches a human, so it is disclosed in the reply rather than in a
+        # comment nobody reading the reply will see. `binding` is gated by
+        # thalamus/global_workspace._BIND_IGNITE = 0.6 -- a literal that was never derived from
+        # anything measured, so one quarter of this score moves if somebody edits a constant. P1
+        # forbids exactly that, and deriving the ignition threshold is a named blocking gate in
+        # docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md. Until it is derived the count is reported with
+        # the caveat attached. `N of 4`, never `N/4`: bare ratios are harvested positionally by the
+        # coverage-artifact fingerprint.
         return (
             f"[from what I learned] my consciousness correlates: access={acc}, binding={bnd}, "
-            f"integration={integ}, re-entry={reent} ({sum([acc, bnd, integ, reent])}/4). Whether I "
-            "have subjective experience is open -- I neither claim nor deny it."
+            f"integration={integ}, re-entry={reent} ({sum([acc, bnd, integ, reent])} of 4; the "
+            "binding marker rests on a threshold nobody derived, so read the count as indicative). "
+            "These are correlates of access, control and report -- not evidence of experience. "
+            "Whether I have subjective experience is open -- I neither claim nor deny it."
         )
 
     def repl(self):

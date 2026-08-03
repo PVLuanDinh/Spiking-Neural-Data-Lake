@@ -64,21 +64,24 @@ python tools/lang_coverage.py [--blimp DIR] [--out specs/005-language-organ/cove
 
 ---
 
-# B. `tools/lang_organ_ab.py`
+# B. `tools/lang_organ_ab.py` — SPECIFIED, NEVER BUILT
+
+> **This file does not exist and no command below is runnable.** The feature stopped at the T011 hard
+> stop with `NOT-P2-ELIGIBLE` (see [`../verdict.md`](../verdict.md)), so the verdict harness was never
+> written. Section B is kept as the interface a future attempt must satisfy, **not** as a reproduction
+> path. The command lines are therefore given inline and unfenced, so `tools/citation_guard.py` is not
+> told that a reader who clones this repo can run a file that is not there — which is the exact defect
+> that guard exists to catch, and it would be a poor look for this document to commit it.
 
 The four arms, the head-to-head, and the verdict.
 
-## Usage
+## Interface (as specified; nothing implements it)
 
-```
-python tools/lang_organ_ab.py [--coverage specs/005-language-organ/coverage.md] [--seeds N] [--arms ...]
-```
+Invocation would be `tools/lang_organ_ab.py` with optional
+`--coverage specs/005-language-organ/coverage.md`, `--seeds N` and `--arms ...`.
 
-Recorded through the ledger, which is how the band ceiling comes from an exit code rather than a claim:
-
-```
-python tools/coverage_score.py record --kind ab --name lang_organ_ab -- tools/lang_organ_ab.py
-```
+Recording would go through the ledger, which is how the band ceiling comes from an exit code rather
+than a claim: `tools/coverage_score.py record --kind ab --name lang_organ_ab -- <the harness>`.
 
 ## The arms
 
@@ -153,3 +156,65 @@ python tools/coverage_score.py record --kind ab --name lang_organ_ab -- tools/la
 **Exit 0 does not mean ADOPT.** It means a verdict was legitimately produced. Anything reading this
 artifact must read the summary line, not merely the code, and the summary line's first token is the
 outcome.
+
+---
+
+# C. The SNNLP additions (arXiv 2401.17911)
+
+Added 2026-08-02 by owner scope change. Reasoning in [../research.md](../research.md) R10; requirements
+FR-027 to FR-030.
+
+**C0 - the constraint that makes this safe, and it is not optional.** The BLiMP verdict is computed
+from the BLiMP block **alone**. The `PHON` encoder A/B and the sentiment block are printed **after** the
+verdict line and are structurally incapable of reaching it. **If BLiMP returns `NULL`, the verdict is
+`NULL`, whatever sentiment says.** A test forces a `NULL` BLiMP block alongside a maximal sentiment
+block and asserts the verdict is still `NULL` (SC-015). Prose promising this is not enough - B8 already
+forbids any parameter that changes the verdict, and this is the same guarantee for a second input.
+
+## C1. The `PHON` encoder A/B
+
+Four arms, identical exposure, order, split and seed, all feeding an otherwise identical `PHON`:
+
+| arm | what it is | why it is here |
+|---|---|---|
+| `snnlp` | SNNLP's proposed text-to-spike encoding | the proposal |
+| `poisson` | Poisson rate-coding | **the paper's own comparison**, which is what makes this a P2 adopt question and not a preference |
+| `graphemefold` | `cortex/language_acquisition.py::_encode_ctx`'s position-tagged grapheme bag | what this repo does today. Omitting the incumbent would make "SNNLP is better" a comparison against nothing this tree uses |
+| `rbfpop` | `cortex/population_encoding.py::PopulationEncoder` | the repo's existing population code. Note it encodes a **scalar**, so this arm must state which scalar embedding of the word form it used, because that choice is then doing part of the work |
+
+- **C1.1** The winner is whichever measured best on the organ's own task. **An existing encoding
+  winning is a legitimate and expected outcome**, is adopted, and SNNLP is then recorded as
+  measured-and-not-adopted (FR-028).
+- **C1.2** The ~13% SNNLP-over-Poisson figure and the 32x/60x energy figures are **CITED, UNVERIFIED**
+  (research.md R10). No criterion may reference them. The A/B's own number is the only admissible one.
+- **C1.3** No energy or sparsity figure is an acceptance criterion here, exactly as FR-021 already
+  requires of the organ. This repo has no hardware to measure them on, and quoting the paper's would be
+  the decorative-citation pattern R7 refuses.
+- **C1.4** `theta_gamma_code.py` is **not** an arm. It encodes multi-item ordering within a cycle and is
+  a `SEQ` candidate, not a text-to-spike encoder. Named so it is not mistaken for one.
+
+## C2. The sentiment block
+
+- **C2.1** Corpus is **SST-2**. The one-time download command lives in the loader's module docstring and
+  the data is **not committed** - `data/` is gitignored (`.gitignore:43`) and `reasoning/blimp_bench.py`
+  sets this precedent exactly. Follow it; do not invent a second data convention.
+- **C2.2** The loader lives beside the organ, in `cortex/`. Not `reasoning/`.
+- **C2.3** **A bag-of-words control prints inline with the sentiment number.** Sentiment is largely
+  lexically solvable, so a bag of words scores well while knowing no grammar at all. If the organ does
+  not beat it, the output must say **in the same block** that the sentiment number is not evidence of
+  anything - not omit the control and not drop the number.
+- **C2.4** The sentiment block never appears above the verdict line, and no sentiment quantity is an
+  input to any ADOPT criterion (C0).
+- **C2.5** Absent SST-2 prints a `SKIP` with a stated reason and exits 0, and the skip is recorded such
+  that it can never be read downstream as a passed capability - the same treatment A8 gives absent
+  BLiMP data.
+- **C2.6** **If the download is unavailable or the licence is unclear, STOP and report.** A
+  self-authored substitute corpus is forbidden by name: a corpus authored alongside the mechanism it
+  scores is the weakest evidence available, and research.md refuses it twice already (R1, R6).
+
+## C3. What this section does NOT change
+
+Stated because the value of the whole apparatus is that it did not move: the frozen `pair_ids`, the
+restriction rule, the four admission controls, the char-bigram bar, the ADOPT conjunction in B6, the
+`NULL`-exits-0 rule in B7, and the no-verdict-changing-parameter rule in B8 are all **byte-for-byte
+unchanged** by the SNNLP addition.

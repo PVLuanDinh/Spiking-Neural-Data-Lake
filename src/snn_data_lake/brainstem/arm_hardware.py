@@ -96,6 +96,13 @@ TARGET = {
 # inertia -- which is why its lever is 0.0 and its required torque comes out zero below.
 JOINTS = tuple((j.alias, j.servo, j.lever_mm) for j in _arm_config.JOINTS)
 
+# UNIT CONVERSIONS, not tuned values -- P1 governs constants that arbitrate BEHAVIOUR, and these two
+# arbitrate nothing: they are the definition of the units servo datasheets are written in. 1 N*m is
+# 1/g kgf*m = 10.19716 kgf*cm; g is standard gravity, and MuJoCo's own gravity is read from the model
+# rather than assumed, so this appears only in the payload weight.
+KGCM_PER_NM = 10.19716
+G_MS2 = 9.81
+
 
 def holding_torque_kgcm(lever_mm, payload_kg=None, arm_mass_kg=0.0, arm_cog_mm=None):
     """Static gravity torque at a joint with the link held HORIZONTAL -- the worst case.
@@ -170,9 +177,238 @@ SIM_GAP = {
 }
 
 
+def model_budget(payload_kg=None, grid=25):
+    """Per-joint WORST-CASE gravity-hold torque taken from the MuJoCo SO-101 model itself.
+
+    `budget()` above is a hand formula: payload mass times a hand-written lever, with the arm's own
+    links weighing nothing (`arm_mass_kg=0.0`, documented there as "the most generous case"). This
+    function asks the body instead. `qfrc_bias` at zero velocity IS the gravity torque, computed from
+    the model's real link masses and real geometry, and the payload is added as `-J^T F` at the
+    gripper -- the same weight a servo would actually hold.
+
+    MEASURED 2026-08-02 over a 25 x 25 sweep of shoulder_lift x elbow_flex at 0.5 kg, and it is the
+    reason this function exists: the hand formula is OPTIMISTIC, on two counts that do not cancel.
+
+        joint             formula     model     rated    margin
+        shoulder_pitch      15.00     24.41      7.50      0.31
+        elbow_pitch          9.00     14.43      4.15      0.29
+        wrist_pitch          3.00      4.25      4.15      0.98   <- reported ok=True by the formula
+
+    The arm's own 0.632 kg was omitted entirely, and the hand-written 300 mm lever overstates the
+    model's actual 254.4 mm horizontal reach at q=0. The mass omission dominates. `wrist_pitch` was
+    reported OK and is not, so the formula was hiding a third underpowered joint.
+
+    Returns None when the model cannot be loaded (no mujoco, no scene) rather than guessing -- the
+    caller falls back to the formula and SAYS SO via the `source` key, because a number whose origin
+    is unknown is worse than a number that is merely rough."""
+    try:
+        import mujoco  # noqa: PLC0415 -- optional; absence must degrade, not crash
+        import numpy as np  # noqa: PLC0415
+
+        from snn_data_lake.brainstem import so101_arm  # noqa: PLC0415
+    except Exception:
+        return None
+    try:
+        m = so101_arm._load()
+        d = mujoco.MjData(m)
+        ee = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "gripper")
+    except Exception:
+        return None
+
+    payload_kg = TARGET["payload_kg"] if payload_kg is None else payload_kg
+    aliases = [j.alias for j in _arm_config.JOINTS]
+    rated = {r["joint"]: r["rated_kgcm"] for r in budget()}
+    worst = [0.0] * m.nv
+    feasible = total = 0
+    jacp, jacr = np.zeros((3, m.nv)), np.zeros((3, m.nv))
+    lo, hi = m.jnt_range[:, 0], m.jnt_range[:, 1]
+    for a in np.linspace(lo[1], hi[1], grid):
+        for b in np.linspace(lo[2], hi[2], grid):
+            d.qpos[:] = 0.0
+            d.qpos[1], d.qpos[2] = a, b
+            d.qvel[:] = 0.0
+            mujoco.mj_forward(m, d)
+            tau = np.array(d.qfrc_bias[: m.nv], dtype=float)
+            if payload_kg:
+                mujoco.mj_jacBody(m, d, jacp, jacr, ee)
+                # MINUS: the payload's weight and the links' weight both pull DOWN, so the two terms
+                # must ADD. With the opposite sign they cancel and the arm reads STRONGER than it is
+                # -- measured at q=0, shoulder goes -5.492 -> +5.712 (wrong) against -16.696 (right).
+                tau = tau - jacp.T @ np.array([0.0, 0.0, -payload_kg * G_MS2])
+            tau = np.abs(tau) * KGCM_PER_NM
+            total += 1
+            feasible += all(
+                tau[i] <= rated.get(aliases[i], float("inf"))
+                for i in range(min(m.nv, len(aliases)))
+            )
+            worst = [max(w, float(t)) for w, t in zip(worst, tau, strict=False)]
+
+    rows = []
+    for i, alias in enumerate(aliases[: m.nv]):
+        need, have = worst[i], rated.get(alias, 0.0)
+        rows.append(
+            {
+                "joint": alias,
+                # FOUR decimals, not two. At two, wrist_roll printed `required 0.00, margin 8368x`
+                # -- which reads as an enormously strong joint and is actually a divide by a number
+                # the display had rounded away. The margin is only interpretable next to a `required`
+                # precise enough to explain it.
+                "required_kgcm": round(need, 4),
+                "rated_kgcm": have,
+                "margin_x": (round(have / need, 2) if need > 1e-6 else None),
+                "ok": need <= have if need > 1e-6 else True,
+            }
+        )
+    return {
+        "source": "model",
+        "payload_kg": payload_kg,
+        "poses_swept": total,
+        "poses_within_rating": feasible,
+        "joints": rows,
+        "underpowered": [r["joint"] for r in rows if not r["ok"]],
+    }
+
+
+def _worst_torque(payload_kg, reach_scale, grid):
+    """(worst_total, worst_link_only) per DOF in kg.cm over the shoulder x elbow grid, or None.
+
+    Split because a counterbalance spring cancels the arm's OWN weight and not the payload's, so
+    the two terms have to be costed separately. `reach_scale` scales the moment arms and holds the
+    link masses fixed, which is CONSERVATIVE: a genuinely shorter arm is also a lighter one, so the
+    real torque at a shortened reach is below what this reports."""
+    try:
+        import mujoco  # noqa: PLC0415
+        import numpy as np  # noqa: PLC0415
+
+        from snn_data_lake.brainstem import so101_arm  # noqa: PLC0415
+
+        m = so101_arm._load()
+        d = mujoco.MjData(m)
+        ee = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "gripper")
+    except Exception:
+        return None
+    total = [0.0] * m.nv
+    link_only = [0.0] * m.nv
+    jacp, jacr = np.zeros((3, m.nv)), np.zeros((3, m.nv))
+    lo, hi = m.jnt_range[:, 0], m.jnt_range[:, 1]
+    for a in np.linspace(lo[1], hi[1], grid):
+        for b in np.linspace(lo[2], hi[2], grid):
+            d.qpos[:] = 0.0
+            d.qpos[1], d.qpos[2] = a, b
+            d.qvel[:] = 0.0
+            mujoco.mj_forward(m, d)
+            link = np.array(d.qfrc_bias[: m.nv], dtype=float)
+            mujoco.mj_jacBody(m, d, jacp, jacr, ee)
+            pay = -(jacp.T @ np.array([0.0, 0.0, -payload_kg * G_MS2]))
+            tot = np.abs((link + pay) * reach_scale) * KGCM_PER_NM
+            lnk = np.abs(link * reach_scale) * KGCM_PER_NM
+            total = [max(w, float(t)) for w, t in zip(total, tot, strict=False)]
+            link_only = [max(w, float(t)) for w, t in zip(link_only, lnk, strict=False)]
+    return total, link_only
+
+
+#: The five ways out the module header already names, as numbers a search can try. Grid values, not
+#: tuned parameters -- they are the discrete engineering choices available (a 2:1 or 3:1 reduction
+#: exists; a 2.37:1 does not), and the search reports which COMBINATIONS close the gap rather than
+#: optimising within them.
+MITIGATIONS = {
+    "payload_kg": (0.5, 0.35, 0.25),
+    "reach_scale": (1.0, 0.85, 0.7),
+    "counterbalance": (False, True),
+    "extra_reduction": (1.0, 2.0, 3.0, 4.0),
+    "parallel_shoulder": (1.0, 2.0),
+}
+
+
+def buildable_configurations(grid=21):
+    """Which COMBINATIONS of the header's five ways out put every joint inside its rating?
+
+    The header lists the escapes -- shorten the reach, drop the payload, gear the shoulder down,
+    two servos in parallel, counterbalance the upper arm -- and then says choosing among them is a
+    design decision. True, but which ones are even SUFFICIENT is arithmetic, and until it is done
+    the design decision is being made blind.
+
+    MEASURED 2026-08-02, 144 combinations x 441 poses. Four results the parts list could not show:
+
+      * EXTRA REDUCTION IS NOT OPTIONAL -- 0 of the 76 feasible configurations do without it. No
+        combination of payload cut, reach cut, counterbalance and a second servo closes the gap
+        alone. A parallel servo doubles the SHOULDER and does nothing for the elbow, which binds.
+      * THE ORIGINAL SPEC IS NOT REACHABLE. 500 g AND 300 mm together: **0 configurations**. One of
+        the two targets has to give, and that is the decision this search exists to surface.
+      * Keep 300 mm -> payload falls to 0.35 kg (best margin 1.25x at 4:1).
+        Keep 500 g -> reach falls to 255 mm (best margin 1.15x at 4:1, wrist-limited).
+      * 3:1 technically passes at 255 mm but leaves the elbow at 12.26 of 12.45 -- a 1.02x margin.
+        The notes' own rule is to size with headroom, so 4:1 is the honest choice even though 3:1
+        clears the bar.
+
+    `cost` counts how many things you have to change, so the cheapest sufficient recipe sorts first.
+    Returns None without mujoco."""
+    import itertools  # noqa: PLC0415
+
+    aliases = [j.alias for j in _arm_config.JOINTS]
+    rated = {r["joint"]: r["rated_kgcm"] for r in budget()}
+    sweeps, out, tried = {}, [], 0
+    for payload, reach in itertools.product(MITIGATIONS["payload_kg"], MITIGATIONS["reach_scale"]):
+        key = (payload, reach)
+        if key not in sweeps:
+            got = _worst_torque(payload, reach, grid)
+            if got is None:
+                return None
+            sweeps[key] = got
+        total, link_only = sweeps[key]
+        for cbal, gear, par in itertools.product(
+            MITIGATIONS["counterbalance"],
+            MITIGATIONS["extra_reduction"],
+            MITIGATIONS["parallel_shoulder"],
+        ):
+            tried += 1
+            need = list(total)
+            if cbal:  # a spring cancels the arm's own weight at the shoulder, never the payload's
+                need[1] = max(0.0, need[1] - link_only[1])
+            have = [rated.get(a, 0.0) for a in aliases[: len(need)]]
+            have[1] *= gear * par
+            have[2] *= gear
+            if not all(n <= h + 1e-9 for n, h in zip(need, have, strict=False)):
+                continue
+            out.append(
+                {
+                    "cost": sum(
+                        (
+                            payload != TARGET["payload_kg"],
+                            reach != 1.0,
+                            bool(cbal),
+                            gear > 1.0,
+                            par > 1.0,
+                        )
+                    ),
+                    "payload_kg": payload,
+                    "reach_scale": reach,
+                    "reach_mm": round(TARGET["reach_mm"] * reach, 1),
+                    "counterbalance": bool(cbal),
+                    "extra_reduction": gear,
+                    "parallel_shoulder": par,
+                    "tightest_joint": aliases[
+                        max(range(len(need)), key=lambda i: need[i] / have[i] if have[i] else 0.0)
+                    ],
+                    "tightest_margin_x": round(
+                        min((h / n) for n, h in zip(need, have, strict=False) if n > 1e-6), 2
+                    ),
+                }
+            )
+    # Ties on cost break on MARGIN, not on the smaller gear. Sorting cheapest-first alone put a
+    # 1.02x elbow at the top and called it the recommendation -- which contradicts the sizing rule
+    # this whole module exists to enforce. Same cost, more headroom, wins.
+    out.sort(
+        key=lambda c: (c["cost"], -c["tightest_margin_x"], -c["payload_kg"], -c["reach_scale"])
+    )
+    return {"tried": tried, "buildable": len(out), "configurations": out}
+
+
 def state():
     """The hardware section for telemetry. Explicitly a TARGET; `built` is False."""
     rows = budget()
+    measured = model_budget()
+    recipes = buildable_configurations()
     return {
         "built": False,  # nothing here is measured; this is a plan
         "target_dof": TARGET["dof"],
@@ -184,6 +420,21 @@ def state():
         "supply_ok": peak_current_amps(3) <= TARGET["supply_amps"],
         "joints": rows,
         "underpowered": [r["joint"] for r in rows if not r["ok"]],
+        # The model-derived budget, when the model is loadable. Reported ALONGSIDE the formula
+        # rather than replacing it, so the two can be compared and the formula's optimism stays
+        # visible instead of being quietly corrected away.
+        "torque_source": "model" if measured else "formula",
+        "measured_torque": measured,
+        "underpowered_measured": (measured or {}).get("underpowered", []),
+        "poses_within_rating": (measured or {}).get("poses_within_rating"),
+        "poses_swept": (measured or {}).get("poses_swept"),
+        # HOW TO MAKE IT BUILDABLE. The header lists five ways out and says choosing among them is a
+        # design decision; which ones SUFFICE is arithmetic, and this is it. The headline is that the
+        # original spec is not one of the answers: 500 g at 300 mm has zero feasible configurations.
+        "buildable": bool(recipes and recipes["buildable"]),
+        "buildable_count": (recipes or {}).get("buildable"),
+        "buildable_tried": (recipes or {}).get("tried"),
+        "buildable_recipes": (recipes or {}).get("configurations", [])[:6],
         "sim_dof": SIM_GAP["sim_dof"],
         "sim_units": SIM_GAP["sim_units"],
         "sim_has_dynamics": SIM_GAP["sim_has_dynamics"],
@@ -205,6 +456,63 @@ def main():
     assert sh["rated_kgcm"] == 7.5, f"ST3215 1:345 rated changed: {sh['rated_kgcm']}"
     assert not sh["ok"], "shoulder must read UNDERPOWERED for 500g at 300mm"
     assert sh["margin_x"] == 0.5, f"shoulder margin changed: {sh['margin_x']}"
+
+    # THE MODEL IS HARSHER THAN THE FORMULA, and that must stay visible too. The formula omits the
+    # arm's own 0.632 kg and uses a hand-written 300 mm lever against the model's actual 254.4 mm
+    # horizontal reach at q=0; the two errors do not cancel and the omission dominates. MEASURED
+    # 2026-08-02 over 25 x 25 poses at 0.5 kg: shoulder 24.41 vs the formula's 15.00, elbow 14.43 vs
+    # 9.00, and wrist_pitch 4.25 against a 4.15 rating -- a THIRD underpowered joint the formula
+    # reports as ok=True. Asserted so a future edit cannot quietly restore the optimistic picture.
+    meas = model_budget()
+    if meas is not None:  # mujoco absent -> the formula stands alone, and state() says so
+        mrows = {r["joint"]: r for r in meas["joints"]}
+        assert mrows["shoulder_pitch"]["required_kgcm"] > sh["required_kgcm"], (
+            "the model must not read EASIER than the payload-only formula: "
+            f"{mrows['shoulder_pitch']['required_kgcm']} vs {sh['required_kgcm']}"
+        )
+        assert not mrows["wrist_pitch"]["ok"], (
+            "wrist_pitch is underpowered once the arm's own mass is counted; the formula says ok"
+        )
+        assert set(meas["underpowered"]) >= {"shoulder_pitch", "elbow_pitch", "wrist_pitch"}, (
+            f"measured underpowered set shrank: {meas['underpowered']}"
+        )
+        assert meas["poses_within_rating"] < meas["poses_swept"], (
+            "a fully feasible workspace would contradict every row above"
+        )
+        print(
+            f"torque (model)  : {len(meas['underpowered'])} of 6 joints underpowered; "
+            f"{meas['poses_within_rating']} of {meas['poses_swept']} swept poses hold at "
+            f"{meas['payload_kg']} kg"
+        )
+
+        # THE WAY OUT IS ARITHMETIC, and these three facts are the deliverable. Asserted so a future
+        # edit that widens a rating or quietly restores the original spec has to argue with them.
+        rec = buildable_configurations()
+        assert rec and rec["buildable"], "no configuration closes the gap -- that would be news"
+        assert not [c for c in rec["configurations"] if c["extra_reduction"] <= 1.0], (
+            "a configuration with no extra reduction passed; every measured one needs gearing"
+        )
+        assert not [
+            c
+            for c in rec["configurations"]
+            if c["payload_kg"] == TARGET["payload_kg"] and c["reach_scale"] == 1.0
+        ], "500 g at 300 mm reads BUILDABLE -- the original spec was measured as unreachable"
+        # TWO archetypes, not one "best". Which target to sacrifice is the design decision this
+        # module has always refused to presume; what it can do is price both sides of it.
+        keep_reach = next((c for c in rec["configurations"] if c["reach_scale"] == 1.0), None)
+        keep_load = next(
+            (c for c in rec["configurations"] if c["payload_kg"] == TARGET["payload_kg"]), None
+        )
+        print(f"buildable       : {rec['buildable']} of {rec['tried']} configurations; 0 keep BOTH")
+        for label, c in (("keep 300mm reach", keep_reach), ("keep 0.5kg payload", keep_load)):
+            if c:
+                print(
+                    f"  {label:18s}: {c['payload_kg']} kg at {c['reach_mm']} mm, "
+                    f"{c['extra_reduction']:.0f}:1 reduction"
+                    f"{', counterbalanced' if c['counterbalance'] else ''}"
+                    f"{', 2 shoulder servos' if c['parallel_shoulder'] > 1 else ''}"
+                    f"  (tightest {c['tightest_joint']} {c['tightest_margin_x']}x)"
+                )
 
     # a vertical axis carries no gravity moment
     assert rows["base_yaw"]["required_kgcm"] == 0.0, "base yaw should carry no gravity moment"

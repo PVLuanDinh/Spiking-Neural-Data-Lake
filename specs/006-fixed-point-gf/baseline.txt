@@ -1,0 +1,63 @@
+baseline record -- specs/006-fixed-point-gf (write-once, then append-only)
+============================================================================
+
+commit: 95c3f806f19fe3c1dc704336581ade75541578de
+captured: 2026-08-02T17:13:41 to 2026-08-02T17:28:38 (-05:00)
+tree check (T001): git diff --quiet HEAD -- arc_solver.py arc_mint.py arc_scene.py
+  reasoning_cortex.py arc_bench.py tools/arc_score.py -> CLEAN at capture time.
+  (The whole tree was clean at capture start; the concurrent specs/005 agent's first
+  untracked file, tools/lang_coverage.py, appeared during capture but is outside the
+  measured import graph of tools/arc_score.py.)
+
+three-gate status at baseline (T002)
+------------------------------------
+ruff check .              : PASS for every tracked file at 95c3f806. The only finding
+                            (F401 in tools/lang_coverage.py) is in the concurrent
+                            specs/005 agent's UNTRACKED in-flight file, not in the
+                            pinned commit.
+ruff format --check       : same -- 447 of 448 files formatted; the 1 reformat
+                            candidate is the same untracked specs/005 file.
+run_selfchecks.py, pytest : NOT RUN in this session at baseline. DELTA vs tasks.md
+                            T002, recorded per discipline: a second agent was
+                            implementing specs/005 in the same working tree, so a
+                            full-gate run here would measure that agent's
+                            half-written files, not the pinned commit. The
+                            coordinating agent owns the full gate set. CI at the
+                            commit chain ending 95c3f806 is the standing green
+                            reference (9 of 9 jobs).
+
+arbiter figures at 95c3f806 (T003) -- tools/arc_score.py, node_budget=4000,
+time_budget=5.0, full runs, no limit (raw transcript: baseline_runs.log)
+----------------------------------------------------------------------------
+training   lib=on  : 43 of 400 = 10.75%  wall 164 s  (library learned 10 composites)
+training   lib=off : 43 of 400 = 10.75%  wall 173 s
+evaluation lib=on  : 12 of 400 =  3.00%  wall 222 s  (library learned 4 composites)
+evaluation lib=off : 12 of 400 =  3.00%  wall 337 s
+
+training solved_ids (identical lib on/off, 43 of 400):
+00d62c1b,0b148d64,0d3d703e,1cf80156,1f85a75f,23b5c85d,28bf18c6,3428a4f5,3af2c5a8,
+3c9b0459,445eab21,496994bd,4c4377d9,6150a2bd,62c24649,6430c8c4,67a3c6ac,67e8384a,
+68b16354,6d0aefbc,6fa7a44f,7468f01a,74dd1130,7b6016b9,88a62173,8be77c9e,9172f3a0,
+9dfd6313,a416b8f3,a5313dff,a740d043,b1948b0a,be94b721,c59eb873,c8f0f002,c9e6f938,
+d511f180,d5d6de2d,d9fac9be,ed36ccf7,f25fbde4,f25ffba3,f2829549
+
+evaluation solved_ids (identical lib on/off, 12 of 400):
+0c786b71,0c9aba6e,1a2e2828,31d5ba1a,34b99a2b,59341089,60c09cac,66f2d22f,833dafe3,
+bf699163,d282b262,e345f17b
+
+findings recorded at capture (results in their own right)
+----------------------------------------------------------
+1. THE DOCUMENTED BASELINE HAD DRIFTED. docs/DEPTH_CEILINGS.md says 11 of 400 =
+   2.75% evaluation and 40 of 400 = 10.00% training. Measured at 95c3f806: 12 of 400
+   = 3.00% and 43 of 400 = 10.75%. The A/B is judged against THESE measured figures,
+   never the quoted ones (FR-007/SC-001 -- measured-at-capture wins).
+2. THE COMPOSITE LIBRARY EARNS NOTHING ON EVALUATION. lib on and lib off solve the
+   IDENTICAL 12 evaluation task ids while the library learns 4 composites; lib=off
+   additionally cost 115 s MORE wall time on that split (222 s vs 337 s). On
+   training, identical 43 of 400 both ways (prior art: the documented library null).
+   A dormant capability by P3's definition, found incidentally -- recorded here, not
+   fixed in this feature.
+
+Wall-time caveat: runs executed while a second agent worked in the same checkout;
+wall figures carry that scheduling noise. The 2x census bound is read against the
+337 s lib=off evaluation figure.

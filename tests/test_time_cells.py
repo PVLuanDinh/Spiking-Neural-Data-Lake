@@ -432,31 +432,63 @@ def test_would_earn_leaves_no_trace():
     assert clock.grown == 0 and clock.refused == 0
 
 
+def _live_time_cells(tmp_path, monkeypatch, ticks=300, **env):
+    """Tick a real brain under a given environment and return its time-cell state."""
+    _isolated_home(tmp_path, monkeypatch)
+    for key, val in env.items():
+        if val is None:
+            monkeypatch.delenv(key, raising=False)
+        else:
+            monkeypatch.setenv(key, val)
+    from snn_data_lake.cortex.brain import make_brain
+
+    brain = make_brain(seed=0, persist=True)
+    try:
+        for _ in range(ticks):
+            brain.tick()
+        return brain.state()
+    finally:
+        brain.close()
+
+
+def test_growth_is_on_by_default(tmp_path, monkeypatch):
+    """CHANGED 2026-08-02: growth is DEFAULT-ON. Pinned so it cannot silently revert to opt-in.
+
+    It was opt-in for one measured reason -- an unconditional RESTORE made brain construction
+    non-deterministic in ~42% of trials -- and that reason belongs to the restore, which is still
+    opt-in behind its own flag. Growth itself draws no random numbers and happens only at a reset
+    boundary the brain reaches on its own."""
+    st = _live_time_cells(tmp_path, monkeypatch, NORD_TIME_CELLS_GROW=None)
+    assert st["time_cells_width"] > 64, "growth did not run at the default"
+    assert st["time_cells_grown"] >= 1
+    assert st["time_cells_failed"] == 0
+
+
 def test_off_switch_leaves_the_population_alone(tmp_path, monkeypatch):
-    """FR-016, SC-009. With NORD_TIME_CELLS_GROW unset the clock must not grow and must not read
-    what a previous process left on disk -- an unconditional restore measured as non-deterministic
-    brain construction in ~42% of trials, so 'off' has to mean off for BOTH halves.
+    """FR-016, SC-009. `NORD_TIME_CELLS_GROW=0` must stop growth completely.
 
-    The readout replacement and the learn_interval order fix are deliberately NOT behind the switch:
-    they are defect fixes owed regardless, and they do change live behaviour."""
+    The switch survived the default flip; only its polarity changed, and an off-switch nobody tests
+    is not an off-switch. The readout replacement and the learn_interval order fix are deliberately
+    NOT behind it -- they are defect fixes owed regardless, and they do change live behaviour."""
+    st = _live_time_cells(tmp_path, monkeypatch, NORD_TIME_CELLS_GROW="0")
+    assert st["time_cells_width"] == 64, "the off-switch did not stop growth"
+    assert st["time_cells_grown"] == 0
+    assert st["time_cells_refused"] == 0
+    assert st["time_cells_failed"] == 0
+
+
+def test_restore_stays_opt_in(tmp_path, monkeypatch):
+    """The half that broke determinism stays behind its OWN flag. With growth on but
+    NORD_TIME_CELLS_RESTORE unset, a state blob on disk must be ignored: construction is a function
+    of the seed, not of what the previous process left behind."""
     home = _isolated_home(tmp_path, monkeypatch)
-    monkeypatch.delenv("NORD_TIME_CELLS_GROW", raising=False)
-
     grown = _taught_clock()
     grown.grow("interior")
     grown.save()
     assert home.load_state("time_cells.json")["n_cells"] == 65
 
-    from snn_data_lake.cortex.brain import make_brain
-
-    brain = make_brain(seed=0, persist=True)
-    try:
-        for _ in range(120):
-            brain.tick()
-        st = brain.state()
-    finally:
-        brain.close()
-    assert st["time_cells_width"] == 64, "the off-switch did not stop the restore"
-    assert st["time_cells_grown"] == 0
-    assert st["time_cells_refused"] == 0
-    assert st["time_cells_failed"] == 0
+    st = _live_time_cells(
+        tmp_path, monkeypatch, ticks=5, NORD_TIME_CELLS_GROW="0", NORD_TIME_CELLS_RESTORE=None
+    )
+    assert st["time_cells_width"] == 64, "a persisted width was adopted without the restore flag"
+    assert st["time_cells_restore_refused"] == 0, "restore ran at all -- it must not have"

@@ -25,6 +25,20 @@ This module is the same induction idiom transplanted to the grid domain:
                    grids on all pairs collapse), a hard node budget and an optional wall-time budget
                    per task (the clock is a RESOURCE GUARD only, never in the logic). Two CLOSERS
                    finish a program: exact match, and a colour-map fitted from the training pairs.
+
+(A fixed-point combinator -- a `fix:` twin for every pooled entry, iterating a step to exact-
+equality convergence with cycle/diverged/budget classification -- was built and MEASURED here
+per specs/006-fixed-point-gf: on the full evaluation split not one winning program used a fix
+step (0 of 12 winners; mean winning-fix depth underivable), and its trajectory node cost starved
+2 of 400 training solves. A null with a cost. Per the adopt-or-retire policy it was REMOVED --
+the record lives in specs/006-fixed-point-gf/{census.md,verdict.md} and docs/DEPTH_CEILINGS.md;
+the tasks the DSL misses lack VOCABULARY, not depth, consistent with arc_diagnostic's verdict.)
+
+  3.5 MINTED INTAKE: arc_mint.mint_records(train) -- per-task primitives INDUCED from arc_scene
+                   measurements, crossing ONLY as typed records (specs/006 contract C10/C11) --
+                   join the pool after the fitted primitives. This merge retired the mint's
+                   direct program-application path: synthesize() is the ONE end-to-end solver,
+                   and it earned +6 held-out evaluation solves (12 -> 18 of 400) at adoption.
   4. LIBRARY     : a solved task's winning program (>=2 steps) becomes ONE named composite primitive
                    -- OpenGf._learn's pattern in the grid domain -- so later tasks reach deeper
                    within the same size budget. Measured ON vs OFF; a null result is reported as-is.
@@ -747,13 +761,22 @@ class ArcLibrary:
 
 
 def _pool(train_in, train_out, library):
-    """The per-task primitive pool: base + fitted + library composites (refit in THIS task's context)."""
+    """The per-task primitive pool: base + fitted + minted + library composites (refit in THIS
+    task's context). Minted entries are the typed bottleneck (specs/006 contract C10/C11):
+    ONLY TypedPrimitiveRecord crosses from arc_mint, appended after the fitted primitives in
+    the mint's deterministic MDL-then-name order. The import is deferred because arc_mint
+    consumes this module's perception vocabulary (no import cycle at load time). A mint defect
+    raises loudly here -- never a silent no-op pool."""
     prims = list(_BASE) + _fitted_prims(train_in, train_out)
+    from snn_data_lake.reasoning import arc_mint
+
+    for rec in arc_mint.mint_records(tuple(zip(train_in, train_out))):
+        prims.append(("mint:" + rec.name, rec.fn))
     pmap = dict(prims)
     if library is not None:
         for names in library.progs:
             if not all(n in pmap for n in names):
-                continue  # a fitted step this task cannot refit
+                continue  # a fitted/minted step this task cannot refit
             fns = [pmap[n] for n in names]
 
             def comp(g, fns=fns):
@@ -962,7 +985,7 @@ def main():
         if not passed:
             print("  FAIL primitive: %s" % name)
             ok = False
-    print("primitives: %d/%d unit checks pass" % (sum(p for _n, p in checks), len(checks)))
+    print("primitives: %d of %d unit checks pass" % (sum(p for _n, p in checks), len(checks)))
 
     # ---- (b) synthetic tasks (hand-built here; NO benchmark data touched) --------------------------
     t_rot = (
@@ -995,7 +1018,8 @@ def main():
         if _solve1(pairs, ti, dsl="identity")[0] == want
     )
     print(
-        "control (identity-only DSL) on the 3 synthetic tasks: %d/3 solved (must be 0)" % ctrl_hits
+        "control (identity-only DSL) on the 3 synthetic tasks: %d of 3 solved (must be 0)"
+        % ctrl_hits
     )
     if ctrl_hits:
         ok = False
@@ -1028,11 +1052,15 @@ def main():
     # ---- (d2) pool order: the hand-authored _BASE prior must survive pooling exactly ---------------
     tin = tuple(_tup(i) for i, _o in t_two[0])
     tout = tuple(_tup(o) for _i, o in t_two[0])
-    base_names = [n for n, _f in _pool(tin, tout, None)]
-    if base_names[: len(_BASE)] != [n for n, _f in _BASE]:
+    pool_names = [n for n, _f in _pool(tin, tout, None)]
+    if pool_names[: len(_BASE)] != [n for n, _f in _BASE]:
         print("  FAIL pool: _pool must keep the hand-authored _BASE order exactly")
         ok = False
-    print("pool order: _BASE prior preserved (%d base primitives)" % len(_BASE))
+    n_mint = sum(1 for n in pool_names if n.startswith("mint:"))
+    print(
+        "pool order: _BASE prior preserved (%d of %d base primitives); %d minted record(s)"
+        " joined after the fitted primitives" % (len(_BASE), len(_BASE), n_mint)
+    )
 
     # ---- (e) TRAINING-split spot score (develop on training; evaluation is NEVER read here) --------
     from snn_data_lake.reasoning import arc_bench
@@ -1049,11 +1077,11 @@ def main():
             make_solver(node_budget=1500, time_budget=3.0, dsl="identity"), "training", limit=n
         )
         print(
-            "training[:%d]  full DSL   : %d/%d = %.1f%%   solved=%s"
+            "training[:%d]  full DSL   : %d of %d = %.1f%%   solved=%s"
             % (n, r_full["solved"], r_full["total"], 100 * r_full["rate"], r_full["solved_ids"])
         )
         print(
-            "training[:%d]  identity   : %d/%d = %.1f%%   (the failing control)"
+            "training[:%d]  identity   : %d of %d = %.1f%%   (the failing control)"
             % (n, r_ctrl["solved"], r_ctrl["total"], 100 * r_ctrl["rate"])
         )
         if not (
@@ -1070,8 +1098,8 @@ def main():
             print("  FAIL: two budget-bound runs must solve the identical task set")
             ok = False
         print(
-            "determinism: two node-budget-bound runs solve the identical set (%d tasks)"
-            % r_again["solved"]
+            "determinism: two node-budget-bound runs solve the identical set (%d of %d tasks)"
+            % (r_again["solved"], r_again["total"])
         )
 
     print("-" * 96)

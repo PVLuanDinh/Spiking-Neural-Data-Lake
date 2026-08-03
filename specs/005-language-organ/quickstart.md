@@ -6,6 +6,22 @@
 Runnable scenarios, in the order they become meaningful. Each names the requirement it validates and what
 a failure means. Nothing here is a substitute for the gates; it is what you run to believe the result.
 
+> ## 2026-08-02 — ONLY THE FIRST SCENARIO IS RUNNABLE. The rest describe things that were never built.
+>
+> The feature stopped at the T011 hard stop with **`NOT-P2-ELIGIBLE`** — see [`verdict.md`](./verdict.md)
+> and [`coverage.md`](./coverage.md). `tools/lang_coverage.py` exists and reproduces byte-identically;
+> `src/snn_data_lake/cortex/language_organ.py` and `tools/lang_organ_ab.py` **do not exist**, and
+> `cortex/language_acquisition.py` is present and unmodified.
+>
+> The two commands that work today, both from the repo root:
+>
+> - `.venv-lake\Scripts\python.exe tools/lang_coverage.py` — exits **2** with `NOT-P2-ELIGIBLE`, which
+>   is the tool doing its job.
+> - `.venv-lake\Scripts\python.exe -m pytest tests/test_lang_coverage.py -q --no-cov` — 11 of 11.
+>
+> Everything below that names the organ or the A/B harness is kept as the interface a future attempt
+> must satisfy, not as instructions. Do not read an unrunnable scenario here as a missing step.
+
 ## Prerequisites
 
 - Interpreter: `.venv-lake\Scripts\python.exe`. **Not** the `python` on PATH.

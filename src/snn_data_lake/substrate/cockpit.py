@@ -580,7 +580,36 @@ function paint(d){
       `<span class="v" style="color:${col}">${j.required_kgcm.toFixed(2)} / ${j.rated_kgcm.toFixed(2)}`+
       `${j.margin_x!==null?'  '+j.margin_x.toFixed(2)+'×':''}${bad?' UNDER':''}</span></div>`;}).join('')
    +`<div class="note">${(hw.underpowered||[]).length?'UNDERPOWERED: '+hw.underpowered.join(', ')+'. ':''}`
-   +`Rated = stall/4 per the build notes. Static gravity, horizontal pose, payload only. Nothing measured.</div>`;
+   +`Rated = stall/4 per the build notes. Static gravity, horizontal pose, payload only. Nothing measured.</div>`
+   /* THE MODEL'S OWN ANSWER, next to the formula's. The formula weighs the arm at 0 kg and uses a
+      hand-written lever; the MuJoCo body has real link mass and real geometry, and it is HARSHER.
+      Shown together on purpose -- correcting the formula silently would hide that it was optimistic. */
+   +(hw.measured_torque?(
+      row('from the model',`${hw.poses_within_rating} of ${hw.poses_swept} swept poses hold `
+        +`${hw.measured_torque.payload_kg}kg`)
+     +hw.measured_torque.joints.filter(j=>j.required_kgcm>0.001).map(j=>{const bad=!j.ok;
+       return `<div class="row"><span class="k">${j.joint} <span class="tag">model</span></span>`+
+        `<span class="v" style="color:${bad?'var(--red)':'var(--grn)'}">`+
+        `${j.required_kgcm.toFixed(2)} / ${j.rated_kgcm.toFixed(2)}`+
+        `${j.margin_x!==null?'  '+j.margin_x.toFixed(2)+'×':''}${bad?' UNDER':''}</span></div>`;}).join('')
+     +`<div class="note">MuJoCo gravity load over a ${Math.round(Math.sqrt(hw.poses_swept))}×`
+      +`${Math.round(Math.sqrt(hw.poses_swept))} shoulder×elbow sweep, arm mass included. `
+      +`${(hw.underpowered_measured||[]).length?'UNDERPOWERED: '+hw.underpowered_measured.join(', ')+'. ':''}`
+      +`Still a target, not a sensor: nothing here is built.</div>`
+   ):row('from the model','unavailable - no mujoco, formula only'))
+   /* HOW TO MAKE IT BUILDABLE. The plan lists five ways out; which COMBINATIONS suffice is
+      arithmetic, and the headline is that the original spec is not among them. */
+   +(hw.buildable_recipes&&hw.buildable_recipes.length?(
+      row('buildable',`${hw.buildable_count} of ${hw.buildable_tried} configurations, `
+        +`none keeping 300mm AND 0.5kg`)
+     +hw.buildable_recipes.slice(0,3).map(c=>
+       `<div class="row"><span class="k">${c.payload_kg}kg @ ${c.reach_mm}mm</span>`+
+       `<span class="v">${c.extra_reduction}:1${c.counterbalance?' +cbal':''}`+
+       `${c.parallel_shoulder>1?' +2nd servo':''}  ${c.tightest_margin_x}× ${c.tightest_joint}</span></div>`
+      ).join('')
+     +`<div class="note">Extra reduction appears in every feasible configuration; without it nothing `
+      +`closes. A second shoulder servo does not help the elbow, which is what binds.</div>`
+   ):'');
  }
 
  /* NEUROMODULATORS */
