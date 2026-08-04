@@ -234,3 +234,10 @@ recommended. Two failures of identical shape are evidence about the architecture
 candidates, and the cheaper question is why growth carries no information here at all.
 
 Unaffected and still the recommended work: T009, T011, and the whole of Phase 4 (T018-T036).
+
+
+> **BASELINE CORRECTED 2026-08-03.** Any `0 of 88` / `88 of 93` / `5 of 93` figure in this
+> document is a SEED-0 measurement and is NOT representative. Ten-seed sweep: growth moves a
+> non-tautological field on **7 of 10 seeds** at the shipped width (mean 1.10) and **9 of 10**
+> at init 32 (mean 1.30). SC-001 already passes on most seeds. See the third AMENDMENT in
+> spec.md.

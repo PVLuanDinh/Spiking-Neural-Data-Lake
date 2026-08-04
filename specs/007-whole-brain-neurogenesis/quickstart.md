@@ -158,3 +158,10 @@ criterion and violates P3's honesty guard and Standing Invariant 2.
 The test: **would this consumer exist, and read this quantity, if the feature had never been
 written?** If not, report P1 blocked and amend the spec. Do not add an artificial branch so the
 number moves.
+
+
+> **BASELINE CORRECTED 2026-08-03.** Any `0 of 88` / `88 of 93` / `5 of 93` figure in this
+> document is a SEED-0 measurement and is NOT representative. Ten-seed sweep: growth moves a
+> non-tautological field on **7 of 10 seeds** at the shipped width (mean 1.10) and **9 of 10**
+> at init 32 (mean 1.30). SC-001 already passes on most seeds. See the third AMENDMENT in
+> spec.md.

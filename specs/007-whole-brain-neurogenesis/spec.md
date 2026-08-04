@@ -489,3 +489,53 @@ US2's floor programme and the standalone P1 fixes (T009, T011) remain valid and 
 does NOT follow is that a third producer should be probed next -- two failures with the same shape
 suggest measuring WHY growth carries no information in this architecture before hunting a third
 candidate.
+
+---
+
+## AMENDMENT 2026-08-03 (third): the founding baseline was a SEED-0 ARTIFACT, and US1 is UNBLOCKED
+
+**The `0 of 88 non-tautological fields` figure that motivates this entire specification is wrong.**
+It was measured at seed 0 and never swept. Ten seeds, growth ON vs OFF, 300 ticks, hermetic, matched
+A/A control at 0 throughout:
+
+```
+init 64 (shipped)  SC-001 passes 7 of 10 seeds   per-seed [0,0,2,1,2,1,1,2,2,0]  mean 1.10
+init 32            SC-001 passes 9 of 10 seeds   per-seed [1,1,2,1,2,1,1,2,2,0]  mean 1.30
+fields moved: acc_conflict (6 of 10 seeds), learned_latency (5 of 10 seeds)
+```
+
+**Growth already changes non-tautological downstream outcomes on 7 of 10 seeds at the shipped
+width.** "The brain grows and nothing notices" is false as a general statement; it is true only at
+seed 0, which is the seed every measurement in this feature happened to use.
+
+### What this reverses
+
+- **SC-001 is NOT unachievable. It already passes on 7 of 10 seeds.** The correct baseline is a
+  distribution, not a point: `mean 1.10 non-tautological fields, passing on 7 of 10 seeds`.
+- **US1 is UNBLOCKED.** The second amendment recorded it BLOCKED because no natural cross-region
+  consumer of the timing estimate could be found. That search was sound and its 18-of-18 result
+  stands, but its premise -- that nothing downstream moves -- was seed-0. `acc_conflict` and
+  `learned_latency` do move, on most seeds, through the existing path.
+- **The "growth is dormant under P3" claim is withdrawn.** A mechanism that changes a downstream
+  outcome on 7 of 10 seeds is charged, not dormant. P3 is satisfied here and was never violated.
+
+### What still stands
+
+- **`n_cells=64` at `cortex/brain.py:757` is still a P1 defect** and now a measured one: initialising
+  at 32 raises the pass rate from 7 of 10 to 9 of 10 seeds and the mean from 1.10 to 1.30. The
+  effect is real and MODEST -- an earlier single-seed run suggested 0 -> 1, which overstated it.
+  The initial width should be earned rather than declared, exactly as the growth increments are.
+- **The six coarsening boundaries are all still real.** They were each measured independently.
+  What is withdrawn is the inference that they are why growth appears inert -- growth is not inert.
+- **US2's per-region floor programme is unaffected.**
+
+### How this happened, and the rule it violated
+
+The constitution's Standing Invariant 5 is "verify the verifier", and the project's own standing
+rule is to sweep seeds before letting a numeric result become load-bearing. I measured once at seed
+0, wrote the number into spec.md, plan.md, research.md, quickstart.md, tasks.md and the contract,
+and built three amendments on top of it. Every downstream artifact inherited a point estimate as if
+it were a property of the brain.
+
+The tell was available and ignored: a baseline of exactly 0 is the kind of clean number that should
+invite a second seed rather than a specification.

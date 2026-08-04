@@ -114,3 +114,10 @@ existing specs/003 charge test reported success while 88 of 93 downstream fields
 
 Specifying these now would be deciding by assertion what the plan requires be decided by
 measurement.
+
+
+> **BASELINE CORRECTED 2026-08-03.** Any `0 of 88` / `88 of 93` / `5 of 93` figure in this
+> document is a SEED-0 measurement and is NOT representative. Ten-seed sweep: growth moves a
+> non-tautological field on **7 of 10 seeds** at the shipped width (mean 1.10) and **9 of 10**
+> at init 32 (mean 1.30). SC-001 already passes on most seeds. See the third AMENDMENT in
+> spec.md.
