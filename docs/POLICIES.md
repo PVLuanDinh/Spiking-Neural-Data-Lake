@@ -408,6 +408,42 @@ between 32,768 and 262,144. The run was under machine load, which penalises nump
 this errs in the conservative direction. The practical consequence is unchanged and now has more
 headroom: live populations of 24-240 are nowhere near it.
 
+**RE-MEASURED AT TARGET SCALE 2026-08-03, AND THE PRACTICAL CONSEQUENCE INVERTS.** Every
+measurement above is correct and every one of them is about populations of 24-240. The owner
+corrected the premise on 2026-08-03: **the live tick is meant to grow past 24,576 and far beyond,
+and the neuron population should already be at least 1,000,000.** Under that target the sentence
+"live populations of 24-240 are nowhere near it" describes the DEFECT, not the design. Measured on
+the RTX 5070 (12.8 GB), torch 2.11.0+cu128, elementwise LIF tick (decay, threshold, reset):
+
+| N | numpy CPU | torch CPU | torch CUDA | CUDA vs torch-CPU |
+|---:|---:|---:|---:|---|
+| 240 | 0.003 ms | 0.013 ms | 0.037 ms | 0.3x -- CPU wins, the toy regime |
+| 24,576 | 0.017 ms | 0.055 ms | 0.033 ms | 1.7x |
+| 1,000,000 | 4.761 ms | 0.265 ms | 0.088 ms | 3.0x (and **54x** vs numpy) |
+| 4,000,000 | 18.639 ms | 2.310 ms | 0.189 ms | 12.2x |
+| 16,000,000 | 77.674 ms | 15.711 ms | 1.552 ms | 10.1x |
+
+**SPARSE IS NOT AN OPTIMISATION AT THIS SCALE, IT IS THE ONLY REPRESENTATION THAT FITS.** Synaptic
+connectivity at fanout 100:
+
+| N | dense weight matrix | sparse COO | sparse matvec |
+|---:|---:|---:|---:|
+| 100,000 | 40 GB | 0.120 GB | 13.1 ms |
+| 1,000,000 | **4000 GB** | **1.200 GB** | 11.3 ms |
+
+A dense 1M x 1M matrix is 4000 GB against 12.8 GB of VRAM -- impossible by ~300x. And spike vectors
+at biological firing rates compress hard: at 1 percent firing, COO is 33.3x smaller than dense
+(0.12 MB vs 4.00 MB); at 2 percent, 16.7x.
+
+**What this changes, and what it does not.** The live tick at its DESIGN width is a GPU target, and
+`specs/008-vectorize-scalar-paths` carries that as a requirement rather than an option. What does
+NOT change: the deterministic CPU gate stays authoritative, `run_selfchecks` and `pytest` MUST
+remain runnable without a GPU because CI has none, and GPU reduction order is not deterministic in
+general. If reproducibility at scale and determinism cannot be reconciled, the answer is a CPU gate
+at small width plus a separately-validated GPU path at scale -- never a weakened determinism
+requirement. This entry is the re-measurement this policy asked for, applied to the target
+population rather than the current one.
+
 **CUDA GRAPHS TESTED 2026-07-28 — they move the crossover 6-8x, and the conclusion still holds.**
 The measurements above are EAGER torch, where each tiny op pays a separate kernel launch. CUDA graphs
 capture a whole op sequence and replay it with a single `cudaGraphLaunch`, which is aimed exactly at

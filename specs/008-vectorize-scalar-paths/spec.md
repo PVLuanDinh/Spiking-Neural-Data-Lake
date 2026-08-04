@@ -246,3 +246,93 @@ its occupancy is recorded, and its storage choice matches what the occupancy imp
   with its own measurement.
 - Fixing behaviour defects discovered during conversion. They are recorded and handled separately,
   so that equivalence remains the acceptance test.
+
+---
+
+## AMENDMENT 2026-08-03: GPU is REQUIRED, sparse is MANDATORY, and the target is 1M+ neurons
+
+**Owner correction**: the live tick is meant to grow past N=24,576 and far beyond; the neuron
+population should already be at least 1 million. The original spec measured the CURRENT 24-240
+widths and concluded CPU-only with GPU out of scope. **That inverted the causality: 24-240 is the
+defect this project is trying to fix, not the constraint the design must respect.**
+
+This is also P5 operating exactly as written. P5 says the crossover is decided by measurement and
+**"Re-measure when populations grow."** This is that re-measurement.
+
+### Measured, toy scale through target scale
+
+Elementwise LIF tick, ms per tick, RTX 5070 (12.8 GB), torch 2.11.0+cu128:
+
+```
+         N   numpy CPU   torch CPU   torch CUDA   CUDA speedup
+       240       0.003       0.013        0.037         0.3x   <- the regime the original spec measured
+    24,576       0.017       0.055        0.033         1.7x   <- the documented crossover, confirmed
+   100,000       0.056       0.154        0.082         1.9x
+ 1,000,000       4.761       0.265        0.088         3.0x
+ 4,000,000      18.639       2.310        0.189        12.2x
+16,000,000      77.674      15.711        1.552        10.1x
+```
+
+Against the numpy path this feature was originally scoped to build, CUDA at 1M is **54x faster**
+(4.761 ms vs 0.088 ms), and at 16M it is **50x** (77.674 ms vs 1.552 ms).
+
+### Sparse is not an optimization at this scale -- it is the only representation that fits
+
+Synaptic connectivity, fanout 100:
+
+```
+         N   dense weight matrix   sparse COO   sparse matvec
+   100,000              40 GB        0.120 GB       13.1 ms
+ 1,000,000            4000 GB        1.200 GB       11.3 ms
+```
+
+A dense 1M x 1M weight matrix is **4000 GB** against 12.8 GB of VRAM -- impossible by a factor of
+about 300. Sparse is mandatory, not preferable.
+
+Spike vectors at biological firing rates:
+
+```
+  rate 1.0%   active   10,000   dense 4.00 MB   COO 0.12 MB   33.3x smaller
+  rate 2.0%   active   20,000   dense 4.00 MB   COO 0.24 MB   16.7x smaller
+  rate 5.0%   active   50,000   dense 4.00 MB   COO 0.60 MB    6.7x smaller
+```
+
+**The earlier "sparse would cost MORE memory here" finding is superseded.** It was measured on a
+D=64 bipolar code at 48 percent occupancy -- a toy width. At 1M neurons with 1-2 percent firing,
+COO is 17x to 33x smaller. Both measurements are correct at their own scale; only one of them is
+about the system being built.
+
+### What changes in this specification
+
+- **FR-014 is REPLACED.** It said no site moves to GPU without a measurement at its real width, and
+  that the suite must run without a GPU. The second half stands -- CI has no GPU and the
+  deterministic gate must remain CPU-runnable. The first half is now SATISFIED for the live tick by
+  the table above: **the live tick is a GPU target**, because its design width is 1M+, not 240.
+- **FR-009 is STRENGTHENED.** Sparse storage was permitted only where occupancy justified it. At the
+  synaptic matrix it is now REQUIRED, because dense does not fit in any available memory. Occupancy
+  measurement still governs the spike vectors and every other site.
+- **Out of Scope is CORRECTED.** "Moving the live tick to the GPU" was listed out of scope on the
+  strength of a 0.01x measurement at width 38. That measurement is real and irrelevant: it describes
+  the toy. Moving the live tick to the GPU is now IN scope and is the point.
+- **A scale target is added.** The population is a first-class requirement, not an emergent property:
+  the live tick must reach **at least 1,000,000 neurons**, and the representation must not be the
+  thing that stops it.
+
+### New success criteria
+
+- **SC-009**: The live tick runs at a population of at least 1,000,000 neurons.
+- **SC-010**: At 1,000,000 neurons the tick uses the GPU tier and is faster than the CPU path,
+  reported as a ratio measured on this machine.
+- **SC-011**: Synaptic connectivity at 1,000,000 neurons fits in available VRAM, which requires a
+  sparse representation; the memory figure is recorded.
+- **SC-012**: The deterministic CPU gate still runs the full suite without a GPU. Scale is the
+  live-path target; reproducibility on CI hardware is not negotiable and is what keeps the gates
+  meaningful.
+
+### The honest note on determinism at scale
+
+GPU reductions are not order-deterministic in general, and this project's gates depend on identical
+seeds producing identical structure. That tension is real and unresolved here: the deterministic
+CPU gate remains authoritative (SC-012), and any claim that the GPU path is reproducible must be
+measured, not assumed. If the two cannot be reconciled, the correct outcome is a CPU gate at small
+width plus a separately-validated GPU path at scale -- not a weakened determinism requirement.
