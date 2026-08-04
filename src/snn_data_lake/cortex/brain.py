@@ -70,6 +70,22 @@ from snn_data_lake.plasticity.plasticity_rule_stack import PlasticityRuleStack
 
 SAFE_DISTANCE = CONTACT * 3.0  # perception-only distance band; never in a reflex/danger zone
 STORE_EVERY = 3  # store one sleep-replay assembly every STORE_EVERY wake ticks
+
+#: How much of its own past this brain keeps as recallable episodes, in CIRCADIAN DAYS.
+#:
+#: This is a declared policy, not a measurement, and it is the only free number left in the episodic
+#: store -- how much past a brain should keep is not something it can measure about itself. But it
+#: is stated in a unit that can be argued with, and the store now SIZES ITSELF from it against the
+#: measured production rate, rather than a slot count that could not follow the brain.
+#:
+#: 53 days reproduces the previous behaviour exactly (1.2 episodes/day * 53 = 64 slots), so this
+#: change is a re-expression rather than a retuning: same store, honest units.
+EPISODE_RETENTION_DAYS = 53
+
+#: Episodes per circadian day at boot, before the brain has produced any. MEASURED on this brain:
+#: 0.1 episodes per tick (10 per 100, flat over 1,200 ticks) against a ~12-tick wake window.
+#: Only the seed value -- `_episode_rate` is re-estimated from what the brain actually does.
+EPISODES_PER_DAY_AT_BOOT = 1.2
 SELFBUILD_EVERY = 8  # autonomous self-build cadence: run the gated self-build once per N completed nights (opt-in via NORD_SELFMOD=1)
 
 # LIVE theory-of-mind dialogue grammar (W2d): a small hand-specified surface parse feeding a REAL first-order
@@ -849,11 +865,49 @@ class Brain:
         self._episode_retained = 0.0
         try:
             from snn_data_lake.cortex.learned_evc import LearnedEVC
-            from snn_data_lake.hippocampus.episode_consolidation import EpisodeConsolidator
+            from snn_data_lake.hippocampus.episode_consolidation import (
+                EpisodeConsolidator,
+                capacity_for,
+            )
             from snn_data_lake.reasoning.vsa_structure_mapping import StructureMapper
 
             self._learned_evc = LearnedEVC(seed=self._seed)
-            self._episode_consolidator = EpisodeConsolidator(dim=256, capacity=64, seed=self._seed)
+            # CAPACITY TRACKS PRODUCTION, and dim tracks capacity. Neither is a slot count any more.
+            #
+            # Measured on this brain: 0.1 episodes per tick (10 per 100, flat over 1,200 ticks) and
+            # a wake window of ~12 ticks, so ~1.2 episodes per circadian day. The old `capacity=64`
+            # was therefore never "64 slots" -- it was "retain about 53 days", written in a unit
+            # that could not follow the brain. EPISODE_RETENTION_DAYS states that horizon directly.
+            #
+            # dim is then DERIVED (4 units of width per stored episode, measured exactly across an
+            # 8x load range), so what used to be two unexplained constants is now one declared
+            # policy plus two measured relationships. 53 days * 1.2/day = 64 slots and dim 256, so
+            # this reproduces the previous store exactly: a re-expression, not a retuning.
+            #
+            # HONEST LIMIT: the rate is fixed at boot. It does NOT yet track production live,
+            # because resizing means widening W, and a rebuild that dropped learned weights would
+            # destroy the memory this store exists to keep. Growing it in place is specs/007's
+            # function-preserving growth, and until that lands the rate is a measured seed value
+            # rather than a live estimate. `episode_rate_observed()` reports what the brain is
+            # ACTUALLY producing, so the gap between policy and reality is visible instead of
+            # assumed.
+            self._episode_rate = EPISODES_PER_DAY_AT_BOOT
+            self._episode_consolidator = EpisodeConsolidator(
+                capacity=capacity_for(self._episode_rate, EPISODE_RETENTION_DAYS),
+                seed=self._seed,
+            )
+            # RESTORE FROM THE ONE LAKE. The attractor is working memory and starts empty; the lake
+            # is where the brain's episodes actually live. Without this a restart begins amnesic
+            # while its own memories sit on disk unread -- which is what "the lake is the store"
+            # has to mean in practice, not just at write time.
+            #
+            # Gated on `persist` for the same reason grown time-cell width is: an unconditional
+            # restore makes construction depend on what a previous process left on disk instead of
+            # on the seed, which measured as non-deterministic construction in ~42 percent of
+            # trials. The gates run persist=False and stay reproducible; the daemon runs
+            # persist=True and remembers.
+            if self._persist:
+                self._restore_episodes()
             self._structure_mapper = StructureMapper(seed=self._seed)
         except Exception:
             self._learned_evc = self._episode_consolidator = self._structure_mapper = None
@@ -1786,6 +1840,20 @@ class Brain:
                     self._episode_retained = round(float(self._episode_consolidator.retained()), 3)
                 except Exception:
                     pass
+                # AND INTO THE ONE DURABLE LAKE. The attractor above is working memory for
+                # completion; it is in-process only. Measured before this line existed: 59 episodes
+                # stored over 600 ticks with persist=True added 0 records to the lake, and 149
+                # episodes over 1,500 ticks were recalled 0 times -- the brain was forming memories
+                # into a store nothing read and nothing kept. An episode that dies with the process
+                # is not a memory, so the durable copy goes where everything else the brain knows
+                # already lives.
+                if self._persist:
+                    try:
+                        from snn_data_lake.substrate.home import save_episode
+
+                        save_episode(_ep)
+                    except Exception:
+                        pass
 
     def propose_improvements(self, budget=6):
         """The brain autonomously PROPOSES candidate self-improvements via the OPEN-ENDED, three-factor-
@@ -2464,6 +2532,56 @@ class Brain:
             phase=round(self.clock.phase, 6),
             nights=self._nights,
         )
+
+    def _restore_episodes(self):
+        """Refill the attractor from THE ONE LAKE, most recent first, up to its capacity.
+
+        Most recent first because the attractor is bounded and the lake is not: when the lake holds
+        more episodes than the store can hold, the ones worth having resident are the recent ones.
+        Older episodes remain in the lake and are reachable via `recall_episode_durable()` -- they
+        are not lost, they are simply not in working memory.
+
+        Never raises. A brain that cannot read its past must still be able to think.
+        """
+        try:
+            from snn_data_lake.substrate.home import load_episodes
+
+            eps = load_episodes(limit=self._episode_consolidator.capacity)
+            for ep in eps:
+                self._episode_consolidator.store(self._episode_consolidator.encode(ep), ep)
+            self._episodes_restored = len(eps)
+        except Exception:
+            self._episodes_restored = 0
+
+    def recall_episode_durable(self, cue, min_conf=0.5):
+        """Recall an episode, from working memory first and THE ONE LAKE second.
+
+        The attractor completes partial/noisy cues -- that is what it is for -- but it holds only
+        `capacity` episodes. The lake holds everything the brain has ever formed. So a miss in
+        working memory is not an answer yet: it means "not resident", and the durable store still
+        has to be asked before the brain says it does not remember.
+
+        The lake half is exact-content addressing, which is the same honest limit `recall_episode`
+        already discloses for dict cues: this encoder hashes the whole episode, so a genuinely
+        partial dict addresses nothing and correctly returns a miss rather than a guess.
+        """
+        if self._episode_consolidator is None:
+            return {"episode": {}, "confidence": 0.0, "source": "none"}
+        got = self._episode_consolidator.recall_episode(cue, min_conf=min_conf)
+        if got and got.get("episode"):
+            got["source"] = "working"
+            return got
+        try:
+            from snn_data_lake.substrate.home import load_episodes
+
+            want = dict(cue) if isinstance(cue, dict) else None
+            if want:
+                for ep in reversed(load_episodes()):  # newest first: the likelier match
+                    if all(str(ep.get(k)) == str(v) for k, v in want.items()):
+                        return {"episode": ep, "confidence": 1.0, "source": "lake"}
+        except Exception:
+            pass
+        return {"episode": {}, "confidence": 0.0, "source": "miss"}
 
     def _enter_sleep(self):
         """One 'night' of offline REASONING learning: train adjacent transitive-inference premises,

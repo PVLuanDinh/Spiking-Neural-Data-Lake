@@ -379,6 +379,44 @@ process-wide singleton (the daemon, a chat session, and a test each legitimately
 **Honesty guard:** before retiring a replica, port its unique capability into the canonical path and
 verify nothing is lost (P2 discipline).
 
+### P4b — THE DURABLE LAKE IS PART OF THE BRAIN
+
+**Owner directive, 2026-08-04: the one durable lake is not storage the brain writes to, it is part
+of the brain. Every build must respect it.**
+
+"One brain" and "one lake" are the same rule seen from two sides. A build that keeps its own memory
+somewhere else has replicated the brain's memory exactly as surely as a second `Brain` class would
+replicate its cognition -- and it is harder to see, because a private store still *works* right up
+until the process exits.
+
+**What respecting the lake means, concretely:**
+
+- **What the brain learns goes IN the lake.** Facts, chat, grown substrate, episodes -- each under
+  its own record tag in `brain_lake.bin`. Not a sidecar file, not a JSON blob, not an in-memory
+  structure that happens to survive as long as the process does.
+- **What the brain recalls comes FROM the lake.** An in-memory index is working memory -- fine, and
+  often necessary for speed -- but it is a CACHE over the lake, never the source of truth. A miss in
+  working memory means "not resident", not "never happened", and the durable store must still be
+  asked before the brain reports that it does not remember.
+- **A restart is not amnesia.** A brain constructed over an existing lake starts with what that lake
+  holds. Restore is gated on `persist` so the deterministic gates stay reproducible, but a
+  persistent brain that boots empty beside its own full lake has failed this policy.
+- **Foreign records are preserved, never dropped.** Each tenant reads only its own tag and passes
+  the rest through, so a new record type cannot destroy an old one.
+
+**The measurement that produced this policy.** `hippocampus/episode_consolidation` formed real
+autobiographical episodes into an in-memory attractor for months of development. Measured
+2026-08-04: **59 episodes stored over 600 ticks with `persist=True` added 0 records to the lake**,
+and **149 episodes over 1,500 ticks were recalled 0 times**. The brain was forming memories into a
+second store that nothing read and nothing kept, and every one died with the process. It looked
+healthy from every angle except the one that mattered -- `retained()` reported 1.000 throughout,
+because the store was perfectly recalling episodes it was about to lose entirely.
+
+**Honesty guard:** "it persists" is a claim about a NEW process, not about the object in front of
+you. Prove it by reading the lake back from disk after the writer is gone, not by inspecting the
+writer's own state. `retained()` reporting 1.000 while the lake held 0 records is what this guard
+exists to catch.
+
 ## P5 — Use the GPU for everything it actually speeds up
 
 **Standing owner authorization (2026-07-27): the RTX 5070 is available to the whole project, and any
