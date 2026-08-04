@@ -100,6 +100,40 @@ MIN_EPISODE_CONF = 0.5  # confidence floor for recall_episode; below it we repor
 ENC_CACHE_MULT = 8  # encode-side pattern->episode cache size, as a multiple of capacity
 
 
+#: Units of store width required per stored episode. MEASURED, not chosen: the smallest `dim` that
+#: retains 1.000 is exactly this multiple of the load at every load tested, over an 8x range
+#: (load 16/32/64/128 -> dim 64/128/256/512, ratio 4.0 at each). It follows from the sparse
+#: auto-associator's capacity relation at this activity level (ACTIVE_FRAC = 0.08), which is why it
+#: is flat rather than drifting.
+#:
+#: This is the ONE number that used to be two: `dim=256, capacity=64` encoded exactly this ratio
+#: without saying so, so a caller could change one and silently break the store. Re-measure this if
+#: ACTIVE_FRAC changes -- the two are coupled, and this constant is only honest while that holds.
+DIM_PER_EPISODE = 4
+
+
+def required_dim(capacity):
+    """Smallest store width that holds `capacity` episodes at full recall. See DIM_PER_EPISODE."""
+    return max(MIN_ACTIVE * DIM_PER_EPISODE, DIM_PER_EPISODE * int(capacity))
+
+
+def capacity_for(episodes_per_day, retention_days):
+    """Slots needed to retain `retention_days` of episodes at the MEASURED production rate.
+
+    This replaces a bare slot count with the quantity that actually has meaning. `capacity=64` was
+    not chosen as 64 slots -- measured, this brain produces 1.2 episodes per circadian day (0.1 per
+    tick over 1,200 ticks, and a wake window of ~12 ticks), so 64 slots is "retain about 53 days".
+    Stated as a slot count that is opaque and cannot follow the brain; stated as a horizon it tracks
+    production automatically, which is the property that matters: if the brain starts living a
+    busier day, the store sizes itself up rather than silently evicting more.
+
+    `retention_days` remains a declared policy, and deliberately so -- how much of its past a brain
+    should keep is not something the brain can measure about itself. But it is a MEANINGFUL policy
+    in units anyone can argue with, which a slot count is not.
+    """
+    return max(MIN_ACTIVE, int(round(float(episodes_per_day) * float(retention_days))))
+
+
 def _canon(episode):
     """Deterministic canonical string for an episode dict (sorted role=filler slots)."""
     return "\x1e".join(f"{k}\x1f{v}" for k, v in sorted(episode.items()))
@@ -120,20 +154,123 @@ class EpisodeConsolidator:
     Deterministic given `seed`. dim units, `active`=K spikes per assembly, `capacity` episodes held.
     """
 
-    def __init__(self, dim=256, capacity=64, seed=0, active=None):
-        self.dim = int(dim)
+    def __init__(self, dim=None, capacity=64, seed=0, active=None, fanout=None):
+        #: `dim=None` DERIVES the store's width from its capacity instead of taking a second
+        #: independent constant. The two were never independent: measured, the smallest width that
+        #: retains 1.000 is exactly DIM_PER_EPISODE * load at every load over an 8x range
+        #:
+        #:     load  16 -> min dim  64      load  64 -> min dim 256
+        #:     load  32 -> min dim 128      load 128 -> min dim 512
+        #:
+        #: so `dim=256, capacity=64` was one measured relationship written as two magic numbers,
+        #: and a caller could silently violate it by changing one of them. Passing `dim` explicitly
+        #: is still allowed (the self-check and the sweeps need it) but it is no longer the default
+        #: path, and a width below what the capacity needs is refused rather than half-working.
         self.capacity = int(capacity)
+        self.dim = int(dim) if dim is not None else required_dim(self.capacity)
+        if self.dim < required_dim(self.capacity):
+            raise ValueError(
+                f"dim={self.dim} cannot hold capacity={self.capacity}: measured minimum is "
+                f"{required_dim(self.capacity)} (DIM_PER_EPISODE={DIM_PER_EPISODE}). A store too "
+                "narrow for its capacity does not degrade gracefully -- it drops to ~0.10 retained."
+            )
         self.seed = int(seed)
         self.K = int(active) if active else max(MIN_ACTIVE, round(self.dim * ACTIVE_FRAC))
         self.a = self.K / self.dim  # mean activity (sparsity), the covariance-rule baseline
         self.rng = np.random.default_rng(self.seed)  # replay noise only; per-instance
         self.W = np.zeros((self.dim, self.dim))  # recurrent covariance weights (zero diagonal)
+        #: SPARSE CONNECTIVITY (specs/009). `fanout=None` keeps the historical all-to-all wiring.
+        #: An integer F wires each unit to F others, chosen uniform-random k-out and seeded, so
+        #: connection memory becomes O(dim * F) instead of O(dim^2).
+        #:
+        #: F IS NOT DEFAULTED TO A NUMBER, and that is deliberate. specs/009 research measured that
+        #: the knee depends on STORED LOAD, not on width or density -- at fixed load F* falls
+        #: 176 -> 128 over a 64x width range, while at load proportional to the population the
+        #: uniform-random knee grows as N^0.68. No closed form survived: every formula attempted
+        #: relocated the constant it was meant to remove. So F is measured per deployment by
+        #: `tools/fanout_bisect.py` (bracketed bisection against this module's own retained()) and
+        #: passed in. A default here would be exactly the magic constant P1 forbids.
+        #:
+        #: Uniform random is not a fallback: encode() draws assemblies with rng.sample(range(dim)),
+        #: so unit index order is an arbitrary permutation and NO metric exists over it. Any ring,
+        #: distance kernel or small-world construction over these indices would be decoration.
+        self.fanout = None if fanout is None else max(1, min(int(fanout), self.dim - 1))
+        self._mask = self._wire() if self.fanout is not None else None
         self.codes = []  # per stored episode: frozenset of active unit indices
         self.patterns = []  # per stored episode: its binary {0,1} assembly vector
         self.keys = []  # per stored episode: crc32 of its assembly (stable content key)
         self.episodes = []  # per stored episode: the ORIGINAL dict (None if stored unlabelled)
         self._enc_cap = max(64, ENC_CACHE_MULT * self.capacity)
         self._enc_seen = {}  # encode-side key -> episode dict, bounded FIFO (labels store())
+
+    # ---- connectivity ------------------------------------------------------------------------
+    def _wire(self):
+        """Symmetric uniform-random k-out adjacency, zero diagonal, derived from `seed` alone.
+
+        Symmetric because the covariance rule this feeds is symmetric: a one-way connection would
+        let unit i drive j while j cannot drive i, which is not a thinned version of the dense
+        dynamics but a different system. Symmetrising raises the realised degree slightly above
+        `fanout` (a unit keeps its own F picks plus whoever picked it), so `degree()` reports what
+        was actually built rather than what was asked for -- the two are not the same number and
+        the honest one is the measured one.
+
+        Uses `random.Random(seed)`, not the instance's numpy generator, so wiring cannot consume
+        draws that replay noise depends on: identical seeds must give identical wiring AND identical
+        replay, and sharing a stream would couple them.
+        """
+        rng = random.Random(self.seed)
+        m = np.zeros((self.dim, self.dim), dtype=bool)
+        others = list(range(self.dim))
+        for i in range(self.dim):
+            others[i], others[-1] = others[-1], others[i]  # exclude self without rebuilding
+            picks = rng.sample(others[:-1], self.fanout)
+            others[i], others[-1] = others[-1], others[i]
+            m[i, picks] = True
+        m |= m.T  # symmetric; the diagonal stays False because i was never a candidate
+        return m
+
+    def episode_rate_observed(self, ticks_elapsed, ticks_per_day, retention_days):
+        """Episodes actually stored per circadian day, and the capacity that rate would ask for.
+
+        The store is sized at boot from a DECLARED retention horizon against a MEASURED production
+        rate, and the rate is not re-estimated live (widening the store means widening W, and a
+        rebuild that dropped learned weights would destroy the memory it exists to keep). This
+        reports what the brain is actually producing so the gap between the sizing assumption and
+        reality is VISIBLE rather than assumed -- an over-full store silently evicting more than
+        intended looks identical to a correctly sized one from the outside.
+
+        Returns (per_day, capacity_the_rate_implies) against the DECLARED `retention_days`.
+        `per_day` is None before a full day has elapsed -- a rate estimated over less than one
+        circadian period is noise, and reporting it as a number would invite acting on it.
+
+        The horizon must be passed in: computing it from this store's own capacity would make the
+        implied capacity algebraically equal to the current one, which is a tautology that always
+        reports agreement no matter how far the real rate has drifted.
+        """
+        if not ticks_elapsed or not ticks_per_day or ticks_elapsed < ticks_per_day:
+            return None, self.capacity
+        days = float(ticks_elapsed) / float(ticks_per_day)
+        per_day = len(self.keys) / days if days else 0.0
+        return per_day, capacity_for(per_day, retention_days)
+
+    def degree(self):
+        """(mean, max) realised connections per unit. Dense wiring reports (dim - 1, dim - 1)."""
+        if self._mask is None:
+            return float(self.dim - 1), self.dim - 1
+        d = self._mask.sum(axis=1)
+        return float(d.mean()), int(d.max())
+
+    def _zero_offmask(self):
+        """Zero the diagonal, and -- when wired sparsely -- every absent connection.
+
+        Every weight update in this class routes through here rather than through
+        `np.fill_diagonal`, so a new update site cannot silently reintroduce all-to-all
+        connectivity by forgetting to prune. The covariance rule writes a full outer product; the
+        mask is what makes the store actually sparse rather than merely sparse-looking.
+        """
+        np.fill_diagonal(self.W, 0.0)
+        if self._mask is not None:
+            self.W *= self._mask
 
     # ---- encoding: episode dict -> sparse cell assembly -------------------------------------
     def encode(self, episode):
@@ -175,7 +312,7 @@ class EpisodeConsolidator:
         key = self._pattern_key(x)
         d = x - self.a
         self.W += np.outer(d, d)
-        np.fill_diagonal(self.W, 0.0)
+        self._zero_offmask()
         self.codes.append(frozenset(np.flatnonzero(x).tolist()))
         self.patterns.append(x)
         self.keys.append(key)
@@ -187,7 +324,7 @@ class EpisodeConsolidator:
             self.episodes.pop(0)  # evicting the pattern evicts its episode
             do = old - self.a
             self.W -= np.outer(do, do)
-            np.fill_diagonal(self.W, 0.0)
+            self._zero_offmask()
         return len(self.codes) - 1
 
     # ---- completion: k-WTA attractor settle -------------------------------------------------
@@ -296,7 +433,7 @@ class EpisodeConsolidator:
                 if len(active & self.codes[j]) >= REACTIVATE_MIN * self.K:
                     d = s - self.a
                     self.W += LR_REPLAY * np.outer(d, d)
-                    np.fill_diagonal(self.W, 0.0)
+                    self._zero_offmask()
                     consolidated += 1
         return consolidated
 
@@ -312,7 +449,7 @@ class EpisodeConsolidator:
             s = self._settle(self._kwta(field), SETTLE_ITERS)
             d = s - self.a
             self.W += lr * np.outer(d, d)
-            np.fill_diagonal(self.W, 0.0)
+            self._zero_offmask()
         return steps
 
     # ---- read-out / diagnostics -------------------------------------------------------------
