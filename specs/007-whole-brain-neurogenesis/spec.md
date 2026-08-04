@@ -539,3 +539,60 @@ it were a property of the brain.
 
 The tell was available and ignored: a baseline of exactly 0 is the kind of clean number that should
 invite a second seed rather than a specification.
+
+---
+
+## AMENDMENT 2026-08-04 (fourth): the SC-001 null was an INSTRUMENT ARTIFACT. Growth is charged.
+
+specs/008's Phase 0 research established that `Brain.state()` rounds to 3-6 decimals, returns ~114
+scalar leaves, and does not reach most of the object graph -- it is a **false-null instrument**.
+Every null in this specification was measured through it. Re-run against a deep unrounded
+object-graph fingerprint (`tools/deep_fingerprint.py`), 300 ticks, hermetic, matched A/A control:
+
+```
+seed   deep A/B differing        A/A control    via Brain.state()
+   0     83 of 127,818          0 of 127,833      5 of 114
+   1     78 of 136,265          0 of 136,277      4 of 114
+   2    129 of 130,616          0 of 130,655      6 of 114
+   3    129 of 135,255          0 of 135,282      5 of 114
+   4    145 of 135,978          0 of 136,011      5 of 114
+```
+
+At seed 0 the differing leaves reach, among others:
+
+```
+brain.brain.arm             13 leaves    <- the ARM, a different region entirely
+brain._drive_w              10 leaves    <- the drive weights
+brain._task_set._shifter     2 leaves
+max abs divergence      1.485245e+01     <- not 1e-16 noise; a real behavioural difference
+integer leaves moved              29     <- discrete state changed, not float drift
+```
+
+**SC-001 passes on 5 of 5 seeds.** Growth reaches the arm, the drive weights and the task-set
+shifter. The value chain this specification described as broken at every link is not broken.
+
+### What this reverses, again
+
+- **"The brain grows and nothing notices" is FALSE.** It was the founding premise of this feature.
+  It survived because it was measured once at seed 0 through an instrument that could not see the
+  effect, and every later amendment inherited it.
+- **The third amendment's correction was RIGHT but for an incomplete reason.** It found the seed-0
+  problem. It did not find the instrument problem underneath, because it re-measured through the
+  same instrument.
+- **P3 dormancy: growth was never dormant.** Withdrawn for the second and final time.
+
+### What still stands, and is now better supported
+
+- **The P6 null HOLDS.** Permuting the workspace winner identity gives `0 of 127,833` differing
+  leaves, max abs divergence `0.000000e+00`, A/A at 0. Commit 337191db is CONFIRMED, not overturned.
+  This contrast is also the instrument's own validation: it finds 83 leaves where there is an effect
+  and exactly 0 where there is not, so it discriminates rather than merely detecting noise.
+- **`n_cells=64` above the knee** remains a real P1 defect.
+- **US2's per-region floor programme** is unaffected.
+
+### The rule this establishes for the rest of the project
+
+**A null measured through `Brain.state()` is not a null.** Any A/B in this repo that reports "no
+downstream change" must be re-run against `tools/deep_fingerprint.py` with a matched A/A control
+before that null is believed. Positive findings through `state()` remain valid -- a difference seen
+through a coarse instrument is still a difference. It is only the ABSENCES that were never evidence.
