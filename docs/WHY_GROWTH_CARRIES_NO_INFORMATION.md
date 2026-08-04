@@ -121,3 +121,95 @@ The unifying claim -- that these six are one architectural defect rather than si
 an INFERENCE from the six measurements, not itself a measurement. The prediction it makes, and the
 way to falsify it: a consumer that takes structure rather than a scalar should show growth moving a
 downstream outcome. If one is built and growth still changes nothing, this explanation is wrong.
+
+---
+
+# CORRECTION 2026-08-03: the scalar-channel inference is WRONG. The brain starts past the knee.
+
+The document above named its own falsifier: *"build a consumer that takes structure rather than a
+scalar, and if growth still moves nothing, this explanation is wrong."* The owner proposed exactly
+that -- multidimensional arrays and sparse tensors. Testing it falsified the inference, and produced
+a better answer.
+
+## The sparse channel is not better than the scalar one
+
+Task: recover the true elapsed interval (10 classes, chance 0.100) from the clock's state, comparing
+the SCALAR channel the brain consumes today (the decoded `(est, sd)` pair) against a SPARSE
+population code (which cells have fired, dim = n_cells), nearest-neighbour, held-out halves:
+
+```
+width   scalar-channel acc   sparse-channel acc
+   32        0.7950               0.7400
+   64        0.9800               0.9450
+  128        0.9900               0.9850
+  256        0.9900               0.9850
+  512        0.9800               0.9800
+```
+
+**The scalar decode is as good as, or better than, the sparse population code at every width.** Two
+floats carry the interval information that 512 sparse dimensions carry. The channel is not the
+bottleneck for this quantity.
+
+The int cast was measured separately and is also not the bottleneck in principle -- it costs 0.0400
+at width 64 and 0.0050 at width 128.
+
+## What the same experiment revealed instead
+
+Read the first column again. **Growth DOES carry information**: accuracy rises 0.7950 -> 0.9900 as
+width goes 32 -> 128. The earlier finding that "growth does not improve the clock" was measured on
+`sd`, and **`sd` was the wrong observable.** On a task the clock actually performs, growth helps a
+lot.
+
+And then it stops helping, because the curve saturates by 128 and is already at 0.9800 by 64.
+
+**`cortex/brain.py:757` constructs `TimeCellClock(n_cells=64, seed=self._seed)`.**
+
+The brain is initialised at 64, where the task is already 98% solved. Growth from 64 to 69 -- the
+measured live behaviour -- moves along the flat top of the curve. It carries no information *because
+there is none left to carry at that width*, not because a channel destroys it.
+
+That also makes `n_cells=64` a P1 violation of a particularly consequential kind: a hardcoded
+constant that determines whether an entire self-improvement avenue can do anything at all.
+
+## The corrected answer
+
+**Growth carries no information because the populations are constructed above the knee of their own
+utility curve.** Not because interfaces are scalar. The scalar-channel story was an inference from
+six coarsening boundaries, and it was wrong -- those boundaries are real, but they are not what is
+suppressing growth.
+
+Predicted, falsifiable: initialise the clock at 32 instead of 64 and growth from 32 to 64 should
+move interval discrimination by about +0.185, which is 4x the entire loss attributable to the int
+cast. If that does not reproduce in the live brain, this explanation is wrong too.
+
+## Where structure DOES still help, honestly measured
+
+The owner's proposal is not dead -- it is aimed at a different quantity. Structure preserves
+IDENTITY, which no scalar can carry. Measured over 140 live workspace broadcasts:
+
+```
+KEY   (identity)  distinct 11   entropy 1.5555 bits
+VALUE (magnitude) distinct 45   entropy 3.1807 bits
+PAIR  (both)      distinct 58   entropy 3.5007 bits
+-> information discarded by dropping the key: 0.3201 bits per broadcast
+```
+
+Real, and modest. A vector- or dict-valued channel would carry it; `max(rb.values())` cannot. So the
+recommendation splits cleanly:
+
+- **Precision** (the timing case): a scalar carries it fine. Structure buys nothing. Fix the WIDTH,
+  not the channel.
+- **Identity** (the P6 case): a scalar cannot carry it at all. Structure is the only fix, worth
+  0.3201 bits per broadcast.
+
+## What this costs, and the honest accounting
+
+Three explanations were falsified before this one, and now a fourth -- my own -- has been falsified
+by the owner's suggestion. The pattern in all four: I measured a quantity that was easy to reach
+(`sd`, cosine saturation, arrival order, channel shape) rather than the quantity the mechanism is
+FOR (can it tell intervals apart?). Every wrong answer came from an observable chosen for
+convenience.
+
+The doc above is kept unedited rather than rewritten, because the sequence of wrong answers is more
+useful than a clean final one -- particularly the part where a "flat" curve was flat only because it
+was measured at 64 and above.
