@@ -336,3 +336,149 @@ seeds producing identical structure. That tension is real and unresolved here: t
 CPU gate remains authoritative (SC-012), and any claim that the GPU path is reproducible must be
 measured, not assumed. If the two cannot be reconciled, the correct outcome is a CPU gate at small
 width plus a separately-validated GPU path at scale -- not a weakened determinism requirement.
+
+---
+
+## AMENDMENT 2026-08-03 (second): 1,000,000 is NOT a cap. The population is unbounded.
+
+**Owner correction**: "the 1 million neuron population is not the cap, an unbounded and ever
+expanding population is the goal." The previous amendment set 1M as a target, which is still a
+fixed number and therefore still the wrong shape of requirement. Unbounded is a STRUCTURAL
+constraint, not a bigger target: it forbids any fixed allocation anywhere on the growth path, and it
+means VRAM cannot be the store.
+
+### Measured: where the walls actually are
+
+**VRAM caps the population well below "unbounded", and the cap depends on connectivity** (sparse
+COO, 12 B per synapse):
+
+```
+ fanout   bytes/neuron   max N in 12.8 GB
+     10            120        106,666,666
+    100          1,200         10,666,666
+   1000         12,000          1,066,666      <- biological fanout: ~1M, the number quoted
+  10000        120,000            106,666      <- cortical pyramidal: ~107k
+```
+
+The 1M figure is roughly what VRAM allows at biological fanout. It is a hardware artifact, not a
+design goal -- which is exactly why it must not be the requirement.
+
+**Growth must be chunked, never reallocate-and-copy.** Warmed, 20 reps:
+
+```
+           N   realloc+copy   chunk append    ratio
+     100,000       0.0208 ms      0.0089 ms     2.3x
+   1,000,000       0.0195 ms      0.0488 ms     0.4x    (noise)
+   4,000,000       0.0608 ms      0.0346 ms     1.8x
+  16,000,000       0.5647 ms      0.0538 ms    10.5x
+```
+
+Realloc-and-copy is O(N) per growth event, so it must lose at scale, and by 16M it does by 10.5x.
+The small-N ratios are noise. (An earlier unwarmed run reported 247x at 100k and 1.9x at 1M --
+non-monotonic, the signature of allocator warmup rather than of the mechanism. Discarded.)
+
+**Host and disk are fast enough to be the real store**: host-to-GPU 16.3-18.0 GB/s, GPU-to-host
+20.1-20.3 GB/s over pinned memory.
+
+### The architecture unbounded actually implies
+
+**Bound the ACTIVE set, not the population.** At biological firing rates only a small fraction of
+neurons spike per tick, and only those need to be resident:
+
+```
+        total N     2% firing     active-set VRAM
+      1,000,000        20,000             0.02 GB
+    100,000,000     2,000,000             2.40 GB     <- comfortably resident
+  1,000,000,000    20,000,000            24.00 GB     <- exceeds 12.8 GB
+  6,000,000,000   120,000,000           144.00 GB
+```
+
+So a 12.8 GB card supports a total population into the hundreds of millions before even the firing
+subset overflows. Tiering the whole population onto storage the project already has:
+
+```
+  GPU-resident only              :      10,666,666 neurons
+  + 64 GB host                   :      64,000,000
+  + 64 GB host + 2 TB disk       :   1,730,666,666
+  + 64 GB host + 8 TB disk       :   6,730,666,666
+```
+
+This maps onto the existing architecture rather than requiring a new one: the project already keeps
+exactly ONE durable store (the spike lake), and the lake becomes the population's backing store with
+VRAM as its hot cache.
+
+### What this replaces in this specification
+
+- **SC-009 is REPLACED.** "The live tick runs at a population of at least 1,000,000 neurons" is a
+  cap by another name. The requirement is that **no fixed limit exists in the design**: the
+  population grows until storage is exhausted, and the component that stops it must be a measured
+  resource, never a constant or an allocation shape.
+- **Growth must be chunked/paged.** No growth path may reallocate-and-copy the population, because
+  that is O(N) per growth event and makes ever-expanding quadratic in total.
+- **VRAM is a cache, not the store.** Residency is decided by activity: the firing set is hot, the
+  rest is paged. The durable population lives in the one lake.
+- **Sparsity is now doubly load-bearing.** It is required for the synaptic matrix to fit at all
+  (dense 1M x 1M is 4000 GB), and it is what makes the active-set argument work -- 2 percent firing
+  is what keeps a billion-neuron population's hot set inside a 12.8 GB card.
+
+### New success criteria, replacing SC-009
+
+- **SC-009**: No fixed population limit exists in the design. Growing the population past any
+  previously-run size requires no code change, and the ceiling that is eventually hit is a MEASURED
+  resource exhaustion, reported with the resource named.
+- **SC-013**: Growth is chunked: the per-growth-event cost does not scale with total population
+  size. Measured across at least a 100x range of population sizes.
+- **SC-014**: Population residency is decided by activity, not by capacity. The resident set is
+  reported as "N of M neurons resident" and M is not bounded by VRAM.
+- **SC-015**: The active-set fraction is measured, not assumed. If real firing rates are far above
+  the 1-2 percent biological figure, the tiering argument weakens proportionally and the measured
+  rate must be reported alongside the ceiling it implies.
+
+### The honest caveat
+
+The active-set argument assumes firing rates stay low. That is biologically motivated but is NOT
+yet measured on this brain -- SC-015 exists to force it. If this brain's populations fire at 20
+percent rather than 2 percent, every ceiling above drops by 10x and the tiering design needs
+revisiting. The measurement is cheap and must be taken before the design is committed, not after.
+
+### SC-015 MEASURED IMMEDIATELY, and the assumption was wrong by 5x
+
+The caveat above asked for the firing rate to be measured before the design is committed. Taken at
+once, instrumenting `LIFNeuron.step` over a 200-tick live run at seed 0:
+
+```
+LIFNeuron.step calls over 200 ticks : 2,379,940
+calls that produced a spike         :   249,560
+MEASURED FIRING RATE                : 10.49%
+```
+
+**Not 2 percent. 10.49 percent** -- about 5x the biological figure the tiering argument assumed.
+The consequence, at 12 B per synapse and fanout 100:
+
+```
+                 total N     active set    active VRAM   verdict
+MEASURED 10.49%    1,000,000       104,859       0.13 GB   fits
+                 100,000,000    10,485,978      12.58 GB   fits, with 0.22 GB to spare
+               1,000,000,000   104,859,786     125.83 GB   EXCEEDS VRAM by 10x
+
+assumed 2%       100,000,000     2,000,000       2.40 GB   fits
+               1,000,000,000    20,000,000      24.00 GB   exceeds by 1.9x
+```
+
+**The active-set ceiling on this card is therefore about 100,000,000 neurons, not the ~500,000,000
+the 2 percent assumption implied.** Still unbounded in the sense that matters -- the population
+itself lives on disk and the design carries no fixed limit -- but the hot-set ceiling is 5x lower
+than the previous paragraph claimed, and 100M is uncomfortably close to the 12.58 GB of 12.8 GB it
+consumes.
+
+Two consequences the plan must carry:
+
+1. **The active set itself needs tiering above ~100M total population**, not just the cold
+   population. Hot/warm/cold rather than hot/cold.
+2. **Firing rate is now a first-class design parameter.** At 10.49 percent it is high enough that
+   reducing it -- if the brain's dynamics permit -- buys ceiling proportionally. Whether 10.49
+   percent is correct for this brain or is itself a defect is a SEPARATE question this spec does not
+   answer, but it is worth asking: biological cortex runs far sparser, and a 5x gap is the kind of
+   number that is usually telling you something.
+
+This is recorded as a measurement, not a target. It replaces the assumed figure everywhere above.
