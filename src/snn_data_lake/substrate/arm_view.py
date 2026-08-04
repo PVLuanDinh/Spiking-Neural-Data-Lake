@@ -86,12 +86,35 @@ class ArmView:
         self._revision = 0
         self._requested_at = None
         self._unavailable = None
+        #: Viewpoint, steered from the cockpit. Plain floats written from the request thread and
+        #: read on the tick thread: a torn read costs one frame at a slightly wrong angle, which is
+        #: not worth a lock on the render path. None until first set, so MuJoCo's default framing
+        #: is used until somebody actually drags -- an unrequested camera should not override the
+        #: model's own sensible defaults.
+        self._cam = None
 
     # ---- demand ------------------------------------------------------------------------
 
     def request(self):
         """Record that somebody wants to see the arm. Safe from any thread."""
         self._requested_at = self._clock()
+
+    def look(self, azimuth=None, elevation=None, distance=None):
+        """Steer the viewpoint. Safe from any thread; takes effect on the next rendered frame.
+
+        Elevation is clamped to keep the camera off the poles, where azimuth stops meaning
+        anything and dragging feels like it has stuck. Distance is clamped positive because a
+        non-positive distance puts the eye inside the arm and renders nothing recognisable.
+        """
+        cam = dict(self._cam or {"azimuth": 90.0, "elevation": -20.0, "distance": 1.6})
+        if azimuth is not None:
+            cam["azimuth"] = float(azimuth) % 360.0
+        if elevation is not None:
+            cam["elevation"] = max(-89.0, min(89.0, float(elevation)))
+        if distance is not None:
+            cam["distance"] = max(0.15, min(12.0, float(distance)))
+        self._cam = cam
+        return dict(cam)
 
     def wanted(self):
         return self._requested_at is not None and (self._clock() - self._requested_at) <= self.ttl_s
@@ -119,7 +142,20 @@ class ArmView:
 
                 self._renderer = mujoco.Renderer(model, height=self.height, width=self.width)
                 self._owner = me
-            self._renderer.update_scene(data)
+            if self._cam is None:
+                self._renderer.update_scene(data)
+            else:
+                import mujoco
+
+                cam = mujoco.MjvCamera()
+                mujoco.mjv_defaultFreeCamera(model, cam)
+                c = self._cam  # one read: the dict is replaced wholesale, never mutated in place
+                cam.azimuth, cam.elevation, cam.distance = (
+                    c["azimuth"],
+                    c["elevation"],
+                    c["distance"],
+                )
+                self._renderer.update_scene(data, camera=cam)
             pixels = self._renderer.render()
         except Exception as exc:  # no GL, no display, driver refusal -- all the same to us
             self._unavailable = f"{UNAVAILABLE_NO_GL} ({type(exc).__name__}: {exc})"
@@ -238,10 +274,24 @@ def main():
         f"live render : {'OK, revision advanced' if rendered else 'unavailable (reported, not raised)'}"
     )
     print("thread rule : renderer bound to its creating thread; other threads refused")
+
+    # Camera: the cockpit steers this from the request thread, so the clamps are the only thing
+    # standing between a dragged mouse and a degenerate viewpoint that renders nothing.
+    cv = ArmView()
+    assert cv._cam is None, "an untouched view must use MuJoCo's own framing, not ours"
+    c = cv.look(azimuth=370.0, elevation=-140.0, distance=-3.0)
+    assert c["azimuth"] == 10.0, c  # wrapped, not clamped: azimuth is periodic
+    assert c["elevation"] == -89.0, c  # clamped off the pole, where azimuth stops meaning anything
+    assert c["distance"] == 0.15, c  # clamped positive: the eye must not sit inside the arm
+    c2 = cv.look(azimuth=45.0)
+    assert (c2["elevation"], c2["distance"]) == (-89.0, 0.15), "a partial look must not reset axes"
+    print(
+        f"camera      : wrap+clamp OK, az/el/d = {c2['azimuth']}/{c2['elevation']}/{c2['distance']}"
+    )
     print("=" * 60)
     print(
         "self-check OK: PNG chunk CRCs verified and pixels round-trip; demand gate expires; "
-        "missing GL degrades to a reason; revision advances per frame"
+        "missing GL degrades to a reason; revision advances per frame; camera wraps and clamps"
     )
 
 

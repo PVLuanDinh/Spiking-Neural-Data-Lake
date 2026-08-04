@@ -252,6 +252,25 @@ def _handler(get_snap, turns, get_view=None, acts=None):
                         # be indistinguishable from a genuinely grey arm.
                         return self._send(503, json.dumps({"error": rev}))
                     return self._send(200, png, "image/png")
+                if path == "/api/look":
+                    # VIEWPOINT ONLY. Steers the camera, never the arm -- there is no path from
+                    # here to a motor command, which is why it needs no allow-list. Bad numbers
+                    # are clamped by ArmView.look() rather than rejected, so a dragged cockpit
+                    # cannot 400 mid-gesture.
+                    look_view = get_view() if get_view is not None else None
+                    if look_view is None:
+                        return self._send(404, json.dumps({"error": "no arm view"}))
+                    q = dict(p.split("=", 1) for p in qs.split("&") if "=" in p)
+
+                    def _f(name):
+                        try:
+                            return float(q[name]) if name in q else None
+                        except ValueError:
+                            return None
+
+                    cam = look_view.look(_f("az"), _f("el"), _f("d"))
+                    look_view.request()  # a drag is also a statement that somebody is watching
+                    return self._send(200, json.dumps(cam))
                 if path == "/api/act":
                     tid = dict(p.split("=", 1) for p in qs.split("&") if "=" in p).get("id", "")
                     rec = acts.result(tid) if (acts is not None and tid.isdigit()) else None
@@ -397,6 +416,14 @@ h2{font:600 13px/1 ui-monospace,Consolas,monospace;letter-spacing:.06em;color:rg
 #armImg{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;
  border-radius:6px;background:#0b0f16}
 #armNone{position:absolute;font-size:12px;color:var(--grey);letter-spacing:.06em}
+#armStage{cursor:grab}#armStage.drag{cursor:grabbing}
+#armCtl{position:absolute;right:12px;top:10px;z-index:4;display:flex;flex-direction:column;
+ gap:4px;align-items:stretch;width:118px}
+#armCtl button{background:rgba(0,200,220,.12);border:1px solid var(--edge);color:var(--cy);
+ border-radius:4px;padding:4px 6px;cursor:pointer;font:11px ui-monospace,Consolas,monospace}
+#armCtl button:hover{background:rgba(0,200,220,.24)}
+#armCtl button.estop{background:rgba(255,70,70,.14);border-color:rgba(255,90,90,.55);color:#ff8a8a}
+#armCtl #actMsg{font-size:10px;color:var(--grey);min-height:12px;word-break:break-word}
 #brain3d{position:absolute;inset:0;width:100%;height:100%;cursor:grab}
 #brain3d:active{cursor:grabbing}
 #cam{position:absolute;left:12px;top:10px;font-size:11px;color:var(--grey);z-index:3}
@@ -446,8 +473,19 @@ canvas{display:block}
    <span id="berr" style="color:var(--red)"></span></div>
 
  <div id="scene" class="plate">
-   <div id="armStage"><img id="armImg" alt="live arm" style="display:none">
+   <div id="armStage"><img id="armImg" alt="live arm" style="display:none" draggable="false">
      <div id="armNone">arm view unavailable</div></div>
+   <div id="armCtl">
+     <button data-cmd="HOME">HOME</button>
+     <button data-cmd="JOINT_SHOULDER_PAN_ROTATE(+6deg)">pan +</button>
+     <button data-cmd="JOINT_SHOULDER_PAN_ROTATE(-6deg)">pan -</button>
+     <button data-cmd="JOINT_SHOULDER_LIFT_ROTATE(+6deg)">lift +</button>
+     <button data-cmd="JOINT_SHOULDER_LIFT_ROTATE(-6deg)">lift -</button>
+     <button data-cmd="JOINT_ELBOW_FLEX_ROTATE(+6deg)">elbow +</button>
+     <button data-cmd="JOINT_ELBOW_FLEX_ROTATE(-6deg)">elbow -</button>
+     <button data-cmd="EMERGENCY_STOP" class="estop">E-STOP</button>
+     <span id="actMsg"></span>
+   </div>
    <div id="cam"><b>ARM</b> &middot; <span id="camtxt">camera rotating</span><br>
      <span style="color:#4d5a70">MuJoCo, drawn on the tick thread on demand. the frame counter
      in the ARM panel is the only thing telling a live picture from a frozen one.</span></div>
@@ -647,19 +685,15 @@ function paint(d){
   /* ARM -- the picture, plus the counter that says whether it is still moving.
      A frozen renderer and a stationary arm are pixel-identical; without the revision
      nothing on this page could tell them apart, which is the failure PROVENANCE exists for. */
+  /* armFrame() owns the <img> -- it fetches blobs at 5 Hz and also holds the demand gate
+     open. paint() only tracks the REVISION, which is the honesty counter: the picture and
+     the counter are deliberately fed by different paths, so a frozen renderer showing a
+     plausible still cannot also fake the number that would expose it. */
   const av=d.arm_view||{}, arev=av.arm_view_revision;
-  const aimg=$('armImg'), anone=$('armNone');
-  if(av.arm_view_available){
-    /* cache-bust on the revision, so the browser cannot show a stale frame forever */
-    aimg.src='/api/arm.png?r='+(arev||0); aimg.style.display='';
-    if(anone) anone.style.display='none';
-    if(arev!==LAST_AREV){LAST_AREV=arev; LAST_AREV_T=Date.now();}
-  }else{
-    aimg.style.display='none';
-    if(anone) anone.style.display='';
-    /* still poll, so the demand gate stays open and the tick thread keeps drawing */
-    fetch('/api/arm.png').catch(function(){});
+  if(!av.arm_view_available){
+    $('armImg').style.display='none'; $('armNone').style.display='';
   }
+  if(arev!==LAST_AREV){LAST_AREV=arev; LAST_AREV_T=Date.now();}
   const stale=(LAST_AREV_T&&(Date.now()-LAST_AREV_T)>4000);
   $('wArm').innerHTML =
     row('frames rendered',arev===undefined?null:arev)
@@ -815,6 +849,56 @@ window.addEventListener('mousemove',e=>{if(!DRAG)return;
  AZ=DRAG[2]+(e.clientX-DRAG[0])*0.01; EL=Math.max(-1.4,Math.min(1.4,DRAG[3]-(e.clientY-DRAG[1])*0.01));});
 bc.addEventListener('dblclick',()=>{SPIN=!SPIN;});
 
+/* ---- THE MUJOCO STAGE IS INTERACTIVE -------------------------------------------------
+   Drag orbits the camera, wheel dollies it. Both go to /api/look, which steers the
+   VIEWPOINT only -- there is no path from this handler to a motor command. Arm motion is
+   the separate, allow-listed /api/act below. */
+let CAM={az:90,el:-20,d:1.6}, CDRAG=null, CAM_PEND=false;
+const stage=$('armStage');
+function pushCam(){
+  if(CAM_PEND) return;                      /* one flight at a time: a drag emits far more
+                                               events than the tick thread can render */
+  CAM_PEND=true;
+  fetch('/api/look?az='+CAM.az.toFixed(1)+'&el='+CAM.el.toFixed(1)+'&d='+CAM.d.toFixed(3))
+    .then(r=>r.json()).then(c=>{if(c&&c.azimuth!==undefined){CAM.az=c.azimuth;CAM.el=c.elevation;CAM.d=c.distance;}})
+    .catch(()=>{}).then(()=>{CAM_PEND=false;});
+}
+stage.addEventListener('mousedown',e=>{CDRAG=[e.clientX,e.clientY,CAM.az,CAM.el];
+  stage.classList.add('drag'); e.preventDefault();});
+window.addEventListener('mouseup',()=>{if(CDRAG){CDRAG=null;stage.classList.remove('drag');}});
+window.addEventListener('mousemove',e=>{if(!CDRAG)return;
+  CAM.az=CDRAG[2]-(e.clientX-CDRAG[0])*0.4;
+  CAM.el=Math.max(-89,Math.min(89,CDRAG[3]+(e.clientY-CDRAG[1])*0.3));
+  pushCam();});
+stage.addEventListener('wheel',e=>{e.preventDefault();
+  CAM.d=Math.max(0.15,Math.min(12,CAM.d*(e.deltaY>0?1.1:0.9))); pushCam();},{passive:false});
+
+/* ---- ACTUATION ----------------------------------------------------------------------
+   Owner-authorised 2026-08-03. The button only POSTs a string; every command is checked
+   against the wire allow-list server-side and executed on the tick thread, never here.
+   A latched arm accepts the ticket and does not move, and says so -- "ran" and "was
+   swallowed" must not look the same. */
+document.querySelectorAll('#armCtl button').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    const cmd=btn.getAttribute('data-cmd'), msg=$('actMsg');
+    msg.textContent='...';
+    fetch('/api/act',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({command:cmd})})
+      .then(r=>r.json().then(j=>({ok:r.ok,j:j})))
+      .then(function(res){
+        if(!res.ok){msg.textContent='refused: '+(res.j.error||'?'); return;}
+        const id=res.j.id;
+        setTimeout(function(){
+          fetch('/api/act?id='+id).then(r=>r.json()).then(function(rec){
+            if(rec.pending){msg.textContent='queued';}
+            else if(rec.stopped){msg.textContent='SWALLOWED (arm latched)';}
+            else{msg.textContent=cmd.split('(')[0].toLowerCase()+' ok';}
+          }).catch(()=>{msg.textContent='?';});
+        },400);
+      }).catch(function(){msg.textContent='send failed';});
+  });
+});
+
 async function loop(){
  try{
   if(!GEOM){try{GEOM=await (await fetch('/api/geom')).json();}catch(e){}}
@@ -823,7 +907,31 @@ async function loop(){
  }catch(e){$('berr').textContent='disconnected';}
 }
 function spin(){ if(SPIN&&!DRAG)AZ+=0.0016; requestAnimationFrame(spin); }
+
+/* The arm gets its own faster loop. /api/all runs at 1 Hz, which is fine for numbers and
+   far too slow for a moving arm; and because rendering is DEMAND-GATED (arm_view.request()
+   with a TTL), a slow poll does not merely look choppy -- it lets the gate lapse and the
+   tick thread stops drawing at all. Fetching as a blob and swapping object URLs avoids
+   both the browser cache and a flash of empty <img> between frames. */
+let ARM_URL=null, ARM_BUSY=false;
+function armFrame(){
+  if(ARM_BUSY) return;                       /* never queue behind a slow render */
+  ARM_BUSY=true;
+  fetch('/api/arm.png?t='+Date.now())
+    .then(function(r){ return r.ok?r.blob():null; })
+    .then(function(b){
+      if(b){
+        const u=URL.createObjectURL(b), img=$('armImg');
+        img.src=u; img.style.display=''; $('armNone').style.display='none';
+        if(ARM_URL) URL.revokeObjectURL(ARM_URL);   /* or the tab leaks one blob per frame */
+        ARM_URL=u;
+      }
+    })
+    .catch(function(){})
+    .then(function(){ ARM_BUSY=false; });
+}
 loop(); setInterval(loop,1000); spin();
+armFrame(); setInterval(armFrame,200);
 </script>
 """
 

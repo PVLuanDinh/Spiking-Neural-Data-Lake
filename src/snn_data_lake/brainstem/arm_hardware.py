@@ -404,12 +404,36 @@ def buildable_configurations(grid=21):
     return {"tried": tried, "buildable": len(out), "configurations": out}
 
 
+#: Memo for `state()`. NOT an optimisation looking for a problem: py-spy on the live daemon
+#: (pid 36224, 2,248 samples over 30 s, 2026-08-04) put `_worst_torque` at 15.6 + 1.8 + 1.1
+#: percent, `model_budget` at 2.4 and `buildable_configurations` at 1.3 -- about 22 percent of
+#: every tick spent re-deriving a 625-pose torque sweep and a 21-grid recipe search.
+#:
+#: The result is a pure function of module-level constants: the arm does not exist (`built` is
+#: False), TARGET and the MuJoCo model geometry do not change at runtime, and nothing here reads
+#: live arm state. So the answer is identical on every call, and computing it once per process is
+#: not a cache-coherency risk -- it is the same value, arrived at 300 times less often.
+#:
+#: If any input above ever DOES become runtime-variable, this memo becomes wrong and the fix is to
+#: key it on that input, not to delete the assertion that catches it.
+_STATE_MEMO = None
+
+
 def state():
-    """The hardware section for telemetry. Explicitly a TARGET; `built` is False."""
+    """The hardware section for telemetry. Explicitly a TARGET; `built` is False.
+
+    Memoised: see `_STATE_MEMO`. The sweep behind this was ~22 percent of the live tick.
+    """
+    global _STATE_MEMO
+    if _STATE_MEMO is not None:
+        # Shallow copy: a caller that adds or drops a key must not corrupt every later snapshot.
+        # ponytail: nested values are still shared. Telemetry only serialises this, so a deep copy
+        # would cost more than it protects -- if a caller ever mutates a nested list, deepcopy here.
+        return dict(_STATE_MEMO)
     rows = budget()
     measured = model_budget()
     recipes = buildable_configurations()
-    return {
+    out = {
         "built": False,  # nothing here is measured; this is a plan
         "target_dof": TARGET["dof"],
         "reach_mm": TARGET["reach_mm"],
@@ -439,6 +463,8 @@ def state():
         "sim_units": SIM_GAP["sim_units"],
         "sim_has_dynamics": SIM_GAP["sim_has_dynamics"],
     }
+    _STATE_MEMO = out
+    return out
 
 
 def main():
