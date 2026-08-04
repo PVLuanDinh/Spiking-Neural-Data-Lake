@@ -293,3 +293,76 @@ target width bit-identity is not available at all.
 Both failure modes present as "no output", which is why C4 requires proof the swap is CHARGED rather
 than proof it did not fail. An uninstrumented swap and a dead process are indistinguishable from a
 passing run.
+
+---
+
+## THE CONNECTIVITY LAW, MEASURED 2026-08-04 -- it is O(N^2), and it invalidates every ceiling above
+
+Decision 3 blocked the tiering design on this and said every ceiling divides by it. Measured now.
+
+**Method**: construct `hippocampus/episode_consolidation.EpisodeConsolidator` at six widths, train
+each with 40 stored episodes, count nonzeros in its weight matrix.
+
+```
+  dim N   rows   cols          nnz   nnz/row   dens%   nnz/N^2
+     16     16     16          240      15.0   93.8%    0.9375
+     32     32     32          896      28.0   87.5%    0.8750
+     64     64     64        3,680      57.5   89.8%    0.8984
+    128    128    128       16,256     127.0   99.2%    0.9922
+    256    256    256       65,280     255.0   99.6%    0.9961
+    512    512    512      261,632     511.0   99.8%    0.9980
+```
+
+**`nnz/row = N - 1` exactly.** Fanout is not a constant -- **it IS the width**. And density RISES
+toward 100 percent as N grows (93.8 -> 99.8), so the problem worsens with scale rather than
+improving.
+
+Corroborated independently by a census of the LIVE brain's object graph, 172 two-dimensional weight
+structures over a 200-tick run:
+
+```
+total matrix cells : 400,878
+total nonzeros     : 396,813    density 98.99%
+brain._pc_cortex._W[0]          2312 x 128   100.0% dense
+brain._episode_consolidator.W    256 x 256    99.6% dense
+brain._grid_can.VMe               16 x  16   100.0% dense
+```
+
+### What this invalidates
+
+Every ceiling in this spec's amendments assumed constant fanout 100. Under the measured law
+(`nnz = N^2`, CSR32 at about 8 B per synapse):
+
+```
+store               max N (MEASURED law)   max N (assumed F=100)   error
+VRAM 12.8 GB                      40,000              10,666,666    267x
++ 64 GB host                      97,979              64,000,000    653x
++ 2 TB disk                      509,901           1,733,333,333  3,399x
++ 8 TB disk                    1,004,987           6,733,333,333  6,700x
+```
+
+**A fully-connected 1,000,000-neuron brain needs 8.0 TB of synapses.** The "1M neurons" figure this
+spec adopted as a target, and then as a floor, is not reachable on this hardware with this
+architecture -- it would consume an entire 8 TB disk for connectivity alone.
+
+**And sparse format does not rescue it.** At 99.8 percent density, CSR's index overhead makes it
+strictly WORSE than dense storage. Decision 2's CSR-int32 recommendation is correct for a SPARSE
+matrix and irrelevant to this one; it was measured at an assumed fanout of 100, which this brain
+does not have.
+
+### What this means for the feature
+
+**The blocker is architectural, not representational.** An unbounded population is impossible while
+connectivity is all-to-all, whatever the storage format. Reaching even 10^6 requires connectivity
+that is genuinely sparse -- local or distance-dependent wiring, small-world topology, or explicit
+fanout bounds -- and that is a change to what the brain IS, not to how it is stored.
+
+This is the third time in this feature that a representation question turned out to be an
+architecture question underneath. It is also why Decision 3 refused to commit a tier design: the
+design would have been built on a fanout assumption wrong by between 267x and 6,700x.
+
+### What would falsify this
+
+A connectivity-bearing module whose nnz/row stays flat as its width grows. One was looked for and
+not found: 26 of 172 live structures are square, and the largest non-square ones
+(`_pc_cortex._W[0]` at 2312 x 128) are 100 percent dense as well.
