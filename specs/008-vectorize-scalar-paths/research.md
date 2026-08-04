@@ -256,3 +256,40 @@ must be measured before it is trusted.
   resident per channel.
 - **"Chunking is faster."** 1.04x to 5.33x SLOWER at 100M nnz. It is justified by construction peak
   alone.
+
+---
+
+## T4 GATE RESULT 2026-08-04: the numpy swap passes the full suite
+
+Decision 1's protocol ends at T4 -- both gate arms, with printed proof the swap reached the
+subprocess. Run in the main session with `_mathutils.dot` replaced by a numpy pairwise dot via a
+`sitecustomize.py` on `PYTHONPATH` (the repo itself untouched):
+
+```
+pytest exit                : 0
+tests collected            : 687
+[SWAP] numpy dot calls     : 9,543,154
+coverage                   : 92.81 percent  (baseline 92.85)
+```
+
+**Left-fold to pairwise summation breaks 0 of 687 tests.** The 9,543,154 call count is the part
+that makes this evidence rather than an assumption -- see below.
+
+**This does NOT mean the change is invisible.** The deep fingerprint measures 1,713 of 98,320 leaves
+moving on the same swap, contained to two prefixes, max divergence 2.775558e-16, 0 integer leaves,
+growth linear in tick count. So this is precisely FR-002's case: the difference is REAL, MEASURED,
+and shown not to move any gate or seeded outcome. It is not the FR-001 bit-identity case, and at
+target width bit-identity is not available at all.
+
+**The instrument failed twice before it worked, and both failures looked like success.**
+
+1. The first harness silently did not install -- `_SWAPPED: False`, `0` calls. Running pytest
+   against it would have exercised the UNMODIFIED code and reported a clean pass. The call counter
+   is the only reason this was caught.
+2. The second attempt appeared to die: log frozen at 73 percent, no python process, no exit record.
+   It had in fact completed; the notification arrived late. A run was nearly re-done on a false
+   reading of its own absence.
+
+Both failure modes present as "no output", which is why C4 requires proof the swap is CHARGED rather
+than proof it did not fail. An uninstrumented swap and a dead process are indistinguishable from a
+passing run.
