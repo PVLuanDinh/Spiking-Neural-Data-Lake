@@ -390,13 +390,21 @@ h2{font:600 13px/1 ui-monospace,Consolas,monospace;letter-spacing:.06em;color:rg
 #prog{flex:1;height:2px;background:#16203a;border-radius:2px;overflow:hidden}
 #prog i{display:block;height:100%;background:var(--cy);width:0}
 #scene{grid-area:scene;position:relative;overflow:hidden}
+/* ARM IS THE MAIN STAGE. The arm picture fills the scene; the anatomy render is demoted to a
+   mini alongside WORKSPACE and REGIONS. object-fit:contain so the MuJoCo frame keeps its aspect
+   instead of being stretched into a lie about the arm's proportions. */
+#armStage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+#armImg{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;
+ border-radius:6px;background:#0b0f16}
+#armNone{position:absolute;font-size:12px;color:var(--grey);letter-spacing:.06em}
 #brain3d{position:absolute;inset:0;width:100%;height:100%;cursor:grab}
 #brain3d:active{cursor:grabbing}
 #cam{position:absolute;left:12px;top:10px;font-size:11px;color:var(--grey);z-index:3}
 #cam b{color:var(--cy)}
 #trace{position:absolute;left:12px;right:12px;bottom:12px;height:86px;z-index:2}
 .mini{position:absolute;bottom:110px;width:196px;height:196px;z-index:2}
-#mmWorld{left:12px}#mmBrain{left:216px}
+#mmWorld{left:12px}#mmBrain{left:216px}#mmAnat{left:420px}
+#mmAnat{overflow:hidden;border-radius:6px}
 .mini canvas{width:100%;height:100%;display:block;border-radius:6px}
 .mini .lbl{position:absolute;left:8px;top:6px;font-size:11px;letter-spacing:.10em;z-index:1}
 #widgets{grid-area:widgets;display:flex;flex-direction:column;gap:6px;overflow:hidden}
@@ -438,21 +446,22 @@ canvas{display:block}
    <span id="berr" style="color:var(--red)"></span></div>
 
  <div id="scene" class="plate">
-   <canvas id="brain3d"></canvas>
-   <div id="cam"><b>ANATOMY</b> &middot; <span id="camtxt">camera rotating</span><br>
-     <span style="color:#4d5a70">positions are hand-authored anatomy, not measured.
-     tracts are the real connectome. colour+size = live rate.</span></div>
+   <div id="armStage"><img id="armImg" alt="live arm" style="display:none">
+     <div id="armNone">arm view unavailable</div></div>
+   <div id="cam"><b>ARM</b> &middot; <span id="camtxt">camera rotating</span><br>
+     <span style="color:#4d5a70">MuJoCo, drawn on the tick thread on demand. the frame counter
+     in the ARM panel is the only thing telling a live picture from a frozen one.</span></div>
    <div class="mini plate" id="mmWorld"><div class="lbl" style="color:var(--cy)">WORKSPACE</div>
      <canvas id="cvWorld"></canvas></div>
    <div class="mini plate" id="mmBrain"><div class="lbl" style="color:var(--vio)">REGIONS</div>
      <canvas id="cvBrain"></canvas></div>
+   <div class="mini plate" id="mmAnat"><div class="lbl" style="color:var(--cy)">ANATOMY</div>
+     <canvas id="brain3d"></canvas></div>
    <canvas id="trace" class="plate"></canvas>
  </div>
 
  <div id="widgets">
-   <div class="plate" style="flex:4"><h2>ARM</h2><img id="armImg" alt="live arm"
-   style="width:100%;border-radius:6px;background:#0b0f16;display:none">
-   <div id="wArm"></div></div>
+   <div class="plate" style="flex:2"><h2>ARM</h2><div id="wArm"></div></div>
 <div class="plate" style="flex:3"><h2>MOTOR MIX</h2><div id="wMotor"></div></div>
    <div class="plate" style="flex:4"><h2>BEHAVIOR &amp; EMOTION</h2><div id="wBeh"></div></div>
    <div class="plate" style="flex:5"><h2>HARDWARE TARGET &mdash; NOT BUILT</h2><div id="wHw"></div></div>
@@ -639,13 +648,15 @@ function paint(d){
      A frozen renderer and a stationary arm are pixel-identical; without the revision
      nothing on this page could tell them apart, which is the failure PROVENANCE exists for. */
   const av=d.arm_view||{}, arev=av.arm_view_revision;
-  const aimg=$('armImg');
+  const aimg=$('armImg'), anone=$('armNone');
   if(av.arm_view_available){
     /* cache-bust on the revision, so the browser cannot show a stale frame forever */
     aimg.src='/api/arm.png?r='+(arev||0); aimg.style.display='';
+    if(anone) anone.style.display='none';
     if(arev!==LAST_AREV){LAST_AREV=arev; LAST_AREV_T=Date.now();}
   }else{
     aimg.style.display='none';
+    if(anone) anone.style.display='';
     /* still poll, so the demand gate stays open and the tick thread keeps drawing */
     fetch('/api/arm.png').catch(function(){});
   }
