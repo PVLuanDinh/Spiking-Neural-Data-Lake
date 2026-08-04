@@ -34,7 +34,13 @@ import json
 import os
 import sys
 
-from snn_data_lake.substrate.binlog import BinLog, pack_fact, unpack_fact
+from snn_data_lake.substrate.binlog import (
+    BinLog,
+    pack_episode,
+    pack_fact,
+    unpack_episode,
+    unpack_fact,
+)
 
 # The ONE brain lake is RAW BINARY (symbolic facts + chat turns ride as compact pack_fact byte-records).
 # Each record carries a 1-byte TYPE tag so the symbolic view (KnowledgeLog) reads only its own records
@@ -60,6 +66,13 @@ _T_SPIKE = b"\x02"
 # through a rewrite. That behaviour is self-checked (commit 9f620246), which is why this needed no
 # change to either method.
 _T_GROWTH = b"\x03"
+# _T_EPISODE added 2026-08-04. Autobiographical episodes were being stored ONLY in
+# hippocampus/episode_consolidation's in-memory attractor: measured, 59 episodes stored over 600
+# ticks with persist=True added 0 records to the lake, and 149 episodes over 1,500 ticks were
+# recalled 0 times. So the brain was forming memories into a second store that nothing read and
+# nothing persisted, and every one died with the process. Episodes now land in THE ONE LAKE, where
+# they survive a restart and can be recalled from the same store as everything else the brain knows.
+_T_EPISODE = b"\x04"
 
 
 def home():
@@ -86,6 +99,37 @@ def state_path(name):
     return os.path.join(home(), name)
 
 
+#: One BinLog per (path, dedup). Constructing a BinLog is O(file) TWICE -- a full tail-repair scan
+#: plus the boot-time replay that builds its dedup set -- measured at 708 ms on the live 425 MB /
+#: 80,853-record lake. `save_growth()` used to pay that to append ONE record, and py-spy on the live
+#: daemon put the resulting `write` + `_repair_torn_tail` + `rewrite` at about 20 percent of the tick.
+#:
+#: Sharing is also more correct than not: two instances over one file hold two divergent dedup sets,
+#: so a payload could be written twice, each instance believing it was new.
+#:
+#: ponytail: the cache is keyed on the path string as given. Two spellings of the same file (relative
+#: vs absolute, differing case on Windows) would key separately and reintroduce the split-dedup
+#: problem. Every caller here goes through knowledge_path(), so today they cannot diverge; normalise
+#: with os.path.realpath if a caller ever passes a path from outside.
+_LOG_CACHE = {}
+
+
+def _log(path=None, dedup=True):
+    """The shared BinLog for `path`, rebuilt if the file changed underneath it.
+
+    The staleness check is NOT optional. A cached instance never re-runs `_repair_torn_tail()`, so
+    without it a crash-torn tail is never repaired and the next append lands behind the torn frame
+    and is lost -- the exact failure that repair exists to prevent. `BinLog.stale()` compares the
+    on-disk size against what this instance last wrote, which costs a stat (microseconds) against
+    the 742 ms full construction it avoids.
+    """
+    key = (path or knowledge_path(), bool(dedup))
+    log = _LOG_CACHE.get(key)
+    if log is None or log.stale():
+        log = _LOG_CACHE[key] = BinLog(key[0], dedup=key[1])
+    return log
+
+
 class KnowledgeLog:
     """The symbolic VIEW of the ONE durable brain lake -- a raw-BINARY, append-only, deduped, crash-safe,
     cross-process never-forget store (substrate/binlog.BinLog at <home>/brain_lake.bin). Shared by the
@@ -108,7 +152,7 @@ class KnowledgeLog:
     """
 
     def __init__(self, path=None, dedup=True):
-        self._bin = BinLog(path or knowledge_path(), dedup=dedup)
+        self._bin = _log(path, dedup=dedup)
         # symbolic (FACT) record count -- excludes any spiking records sharing the one lake
         self._count = sum(1 for p in self._bin.replay() if p[:1] == _T_FACT)
 
@@ -202,7 +246,35 @@ def save_growth(blob, path=None):
     otherwise restore an empty engine with a confident accuracy beside it."""
     if not blob:
         return 0
-    return BinLog(path or knowledge_path()).append(_T_GROWTH + bytes(blob))
+    return _log(path).append(_T_GROWTH + bytes(blob))
+
+
+def save_episode(episode, path=None):
+    """Append one autobiographical episode to THE ONE LAKE. True if written, False if a duplicate.
+
+    The lake, not a sidecar and not an in-memory attractor, because an episode that does not
+    survive the process is not a memory. Deduping is the BinLog's, on the packed bytes, and
+    pack_episode sorts its slots so the same episode is the same bytes.
+    """
+    if not episode:
+        return False
+    return _log(path).append(_T_EPISODE + pack_episode(episode))
+
+
+def load_episodes(path=None, limit=None):
+    """Every episode in the lake, oldest first. The durable half of episodic memory.
+
+    Foreign record types are skipped, exactly as KnowledgeLog skips non-FACT records -- one lake,
+    several tenants, each reading only its own.
+    """
+    out = []
+    for payload in _log(path).replay():
+        if payload[:1] == _T_EPISODE:
+            try:
+                out.append(unpack_episode(payload[1:]))
+            except Exception:
+                continue  # a record we cannot read must not stop the ones after it
+    return out[-limit:] if limit else out
 
 
 def load_growth(path=None):
@@ -212,7 +284,7 @@ def load_growth(path=None):
     (`Brain._make_neuro`) treats it as "start ungrown" -- so an old lake behaves exactly as it did
     before, which is the backward-compatibility requirement."""
     latest = None
-    for payload in BinLog(path or knowledge_path()).replay():
+    for payload in _log(path).replay():
         if payload[:1] == _T_GROWTH:
             latest = payload[1:]
     return latest

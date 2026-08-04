@@ -20,6 +20,7 @@ Zero runtime deps (struct + os). dedup=True skips a byte-identical record so the
 
 import os
 import struct
+import threading
 
 _MAGIC = b"SNDLBIN1"  # 8-byte file magic: a raw-binary knowledge log, format v1
 _LEN = struct.Struct("<I")  # u32 little-endian per-record length prefix
@@ -32,6 +33,7 @@ class BinLog:
     def __init__(self, path, dedup=True):
         self.path = path
         self.dedup = bool(dedup)
+        self._lock = threading.Lock()  # see append(): instances are shared across threads
         if not os.path.exists(path) or os.path.getsize(path) == 0:
             with open(path, "wb") as f:  # create: write the magic header once
                 f.write(_MAGIC)
@@ -45,6 +47,27 @@ class BinLog:
         payloads = list(self.replay())  # the one boot-time full pass
         self._seen = set(payloads) if self.dedup else None
         self._count = len(payloads)  # maintained -> count() is O(1), not a re-replay
+        self._size = os.path.getsize(self.path)  # see stale(): the cache's validity check
+
+    def stale(self):
+        """True if the file changed underneath this instance, so its state can no longer be trusted.
+
+        substrate/home.py caches BinLog instances, and a cached instance NEVER re-runs
+        `_repair_torn_tail()`. That is a durability hole, not an optimisation detail: the self-check
+        truncates the lake to simulate a crash mid-append and then expects the next construction to
+        repair it. Served from cache, the repair is skipped, the append lands BEHIND the torn frame,
+        and the record is silently lost -- which is precisely what `_repair_torn_tail` exists to
+        prevent. Caught by tests/test_selfchecks.py::...[substrate.home].
+
+        Size is sufficient because every legitimate change goes through `append()`, which updates
+        `_size` under the same lock as the write. Any other size -- truncation, an external writer,
+        a restored backup -- means this instance's `_seen`/`_count` describe a file that no longer
+        exists, and the caller must rebuild rather than trust them.
+        """
+        try:
+            return os.path.getsize(self.path) != self._size
+        except OSError:
+            return True  # deleted or unreadable: certainly not the file we replayed
 
     def _repair_torn_tail(self):
         """A crash mid-append can leave a partial length/payload frame at the end. replay() stops at it
@@ -74,17 +97,25 @@ class BinLog:
         if not isinstance(payload, (bytes, bytearray)):
             raise TypeError("BinLog.append: payload must be bytes")
         payload = bytes(payload)
-        if self.dedup and payload in self._seen:
-            return False
-        with open(self.path, "ab") as f:
-            f.write(
-                _LEN.pack(len(payload)) + payload
-            )  # ONE write: a second process cannot interleave
-            f.flush()  # between the length and the payload and tear a frame
-            os.fsync(f.fileno())  # durable past process death
-        if self.dedup:
-            self._seen.add(payload)
-        self._count += 1
+        # A BinLog is now SHARED (substrate/home.py caches one per path, because constructing one
+        # costs a full tail-repair scan plus a full replay -- 708 ms on a 425 MB lake). Shared means
+        # the daemon's tick thread and its request threads can append concurrently, so the
+        # check-then-write and the bookkeeping have to be one critical section: without it two
+        # threads can both miss the same payload in `_seen` and write it twice, which is exactly
+        # the duplicate `dedup` exists to prevent.
+        with self._lock:
+            if self.dedup and payload in self._seen:
+                return False
+            with open(self.path, "ab") as f:
+                f.write(
+                    _LEN.pack(len(payload)) + payload
+                )  # ONE write: a second process cannot interleave
+                f.flush()  # between the length and the payload and tear a frame
+                os.fsync(f.fileno())  # durable past process death
+            if self.dedup:
+                self._seen.add(payload)
+            self._count += 1
+            self._size = os.path.getsize(self.path)  # keep stale() honest about our own writes
         return True
 
     def extend(self, payloads):
@@ -180,6 +211,34 @@ def pack_fact(rec):
     out += _s(rec.get("answer", ""))
     out += struct.pack("<B", len(trip)) + b"".join(_s(t) for t in trip)
     out += _s(rec.get("src", ""))
+    return out
+
+
+def pack_episode(episode):
+    """Serialize an episode dict {role: filler, ...} to RAW BINARY bytes.
+
+    Episodes are role=filler slot maps (who/what/where/when/affect), not facts, so they get their
+    own encoding rather than being bent into pack_fact's cue/answer/triple shape. Slots are written
+    in SORTED order so the same episode always produces the same bytes -- BinLog dedups on the
+    payload, and an unstable field order would store the same memory repeatedly.
+    """
+    slots = sorted((str(k), str(v)) for k, v in dict(episode).items())
+    out = struct.pack("<B", min(len(slots), 255))
+    for k, v in slots[:255]:
+        out += _s(k) + _s(v)
+    return out
+
+
+def unpack_episode(payload):
+    """Inverse of pack_episode: raw binary bytes -> {role: filler, ...}."""
+    i = 0
+    (n,) = struct.unpack_from("<B", payload, i)
+    i += 1
+    out = {}
+    for _ in range(n):
+        k, i = _read_s(payload, i)
+        v, i = _read_s(payload, i)
+        out[k] = v
     return out
 
 
