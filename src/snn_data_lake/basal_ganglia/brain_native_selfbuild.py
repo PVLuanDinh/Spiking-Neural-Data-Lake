@@ -366,9 +366,16 @@ class ThresholdRecalibrationSource(SelfBuildSource):
     # no live decision depends on it. If a real target lands, this becomes live P1 debt to re-open.
     MIN_SAMPLES = 50
 
-    def __init__(self, recalibs=None, calib_path=None):
+    # P4b, 2026-08-05 -- `calib_path` is GONE, and it was a SECOND wrong location, not merely a
+    # redundant one. It defaulted to `<repo>/data/signal_calib.json`: REPO-relative (so it ignored
+    # NORD_HOME, exactly as `data/selfbuild_state.json` did before `_T_SELFBUILD` closed it) and NOT
+    # the file `cortex/brain.py` wrote, which was `<home>/signal_calib.json`. So this source read a
+    # path the brain never wrote, and the honest-nulls below were honest for the wrong reason.
+    # `lake_path=None` now means THE ONE LAKE; a path is an ISOLATED LAKE, which is what the
+    # self-check uses so a gate run cannot write probe records into the operator's real lake.
+    def __init__(self, recalibs=None, lake_path=None):
         self._recalibs = tuple(recalibs) if recalibs is not None else RECALIB_TARGETS
-        self._calib_path = calib_path
+        self._lake_path = lake_path
         for r in self._recalibs:
             if _forbidden(r["target"]):
                 raise ValueError(
@@ -378,13 +385,12 @@ class ThresholdRecalibrationSource(SelfBuildSource):
     def candidates(self, repo):
         from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
-        path = self._calib_path or os.path.join(repo, "data", "signal_calib.json")
         out = []
         for r in self._recalibs:
             is_applied = _is_applied_fn(r["target"], r["marker"])
             if is_applied(repo):
                 continue  # already data-calibrated -> not a candidate (drains toward honest-null)
-            res = SignalCalibrator.load_result(path, r["signal"])
+            res = SignalCalibrator.load_result(r["signal"], self._lake_path)
             if not res or res["value"] is None or res["n"] < self.MIN_SAMPLES:
                 continue  # HONEST-NULL: no / too little recorded data -> propose NOTHING (no fabricated value)
             val = round(max(r["lo"], min(r["hi"], float(res["value"]))), 4)
@@ -1035,15 +1041,20 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
             "lo": 0.02,
             "hi": 0.98,
         }
-        calib_path = os.path.join(work, "signal_calib.json")
-        rc = ThresholdRecalibrationSource(recalibs=(synth,), calib_path=calib_path)
+        # An ISOLATED LAKE, not a temp sidecar (P4b, 2026-08-05). The isolation is not optional and it
+        # is not cosmetic: with `lake_path=None` this block would write `probe_th` records INTO the
+        # operator's real brain_lake.bin on every gate run, and the honest-null asserts below would be
+        # contaminable by a `probe_th` left there by a previous run -- i.e. they would go green for a
+        # reason that has nothing to do with the mechanism under test.
+        calib_lake = os.path.join(work, "calib_lake.bin")
+        rc = ThresholdRecalibrationSource(recalibs=(synth,), lake_path=calib_lake)
         assert rc.candidates(fake) == [], (
-            "recalibration must honest-null with NO recorded data (no file)"
+            "recalibration must honest-null with NO recorded data (empty lake)"
         )
         sc = SignalCalibrator("probe_th", p=0.75)
         for _ in range(10):
             sc.observe(0.4)  # below MIN_SAMPLES
-        SignalCalibrator.save_all(calib_path, [sc])
+        SignalCalibrator.save_all([sc], calib_lake)
         assert rc.candidates(fake) == [], (
             "must honest-null below MIN_SAMPLES (no smuggled seed constant)"
         )
@@ -1051,7 +1062,7 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
         sc2 = SignalCalibrator("probe_th", p=0.75)
         for i in range(200):
             sc2.observe(0.30 + 0.40 * ((i % 5) / 4.0))  # spread ~[0.3,0.7], P75 ~0.6
-        SignalCalibrator.save_all(calib_path, [sc2])
+        SignalCalibrator.save_all([sc2], calib_lake)
         rel = synth["target"]
         dst = os.path.join(fake, *rel.split("/"))
         os.makedirs(os.path.dirname(dst), exist_ok=True)

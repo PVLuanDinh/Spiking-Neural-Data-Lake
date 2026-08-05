@@ -984,10 +984,14 @@ class Brain:
         self._lc_base = (
             None  # running EMA of LC level -> baseline-relative phasic AROUSAL for the AJC gain
         )
-        # DATA SELF-RECALIBRATION (live): record the salience drive fed to the LC (below, _w8_tick) as a
-        # durable running quantile AND consume it LIVE -- _w8_tick sets self._lc.salience_th to this quantile
-        # every tick, so the LC gate is baseline-relative instead of a frozen literal. Supersedes the nightly
-        # source-edit path (reasoning/brain_native_selfbuild.ThresholdRecalibrationSource, now target-less).
+        # DATA SELF-RECALIBRATION (live): record the salience drive fed to the LC (below) as a durable
+        # running quantile AND consume it LIVE -- `_tick_ensemble` sets self._lc.salience_th to this
+        # quantile every tick, so the LC gate is baseline-relative instead of a frozen literal.
+        # (This comment named `_w8_tick` as the ASSIGNING frame until 2026-08-05. `_w8_tick` is the
+        # CALLER; the assignment is one frame down, in `_tick_ensemble`.) Supersedes the nightly
+        # source-edit path (`basal_ganglia/brain_native_selfbuild.ThresholdRecalibrationSource`, now
+        # target-less; this said `reasoning/`, a path the P4c promotion wave retired).
+        # P4b: the quantile state lives IN THE ONE LAKE under _T_STATE, never in a sidecar JSON.
         self._salience_calib = None
         self._recall_conf_calib = None
         try:
@@ -999,12 +1003,7 @@ class Brain:
             # set each wake tick) into a running 25th-percentile calibrator, consumed as that gate below.
             self._recall_conf_calib = SignalCalibrator("recall_conf_th", p=0.25)
             if self._persist:
-                from snn_data_lake.substrate.home import state_path
-
-                SignalCalibrator.load_into(
-                    state_path("signal_calib.json"),
-                    [self._salience_calib, self._recall_conf_calib],
-                )
+                SignalCalibrator.load_into([self._salience_calib, self._recall_conf_calib])
         except Exception:
             self._salience_calib = None
             self._recall_conf_calib = None
@@ -3820,14 +3819,16 @@ class Brain:
         except Exception:
             pass
         try:  # Step-0: persist the recorded signal-calibration quantiles (resumable across restarts)
+            # P4b: INTO THE ONE LAKE (_T_STATE, name "signal_calib.json"), not the sidecar file this
+            # wrote until 2026-08-05. This is the ONLY write of the calibration state in the tree, it
+            # fires via atexit from the daemon, and it sits inside a bare `except Exception` -- so if
+            # it ever silently stops firing, `n` resets to 0 on every boot and the LC salience gate
+            # cold-starts at its module default forever, with nothing reporting anything wrong.
+            # tests/test_signal_calibrator_lake.py is what makes that audible.
             if self._persist and getattr(self, "_salience_calib", None) is not None:
-                from snn_data_lake.substrate.home import state_path
                 from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
-                SignalCalibrator.save_all(
-                    state_path("signal_calib.json"),
-                    [self._salience_calib, self._recall_conf_calib],
-                )
+                SignalCalibrator.save_all([self._salience_calib, self._recall_conf_calib])
         except Exception:
             pass
         try:
