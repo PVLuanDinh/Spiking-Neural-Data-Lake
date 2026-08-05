@@ -44,7 +44,7 @@ layer -> a scalar leaky readout (+bias), on a tiny seeded store-and-recall task 
 `random` + `math`, ASCII output, deterministic. Additive research
 module; touches no core or safety-envelope file.
 
-  Run: python eprop.py        # (also run by run_selfchecks.py)
+  Run: PYTHONPATH=src python -m snn_data_lake.reasoning.eprop   # (also run by run_selfchecks.py)
 """
 
 import math

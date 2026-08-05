@@ -84,9 +84,14 @@ _BRAIN = None
 def live_brain_solver(train, test_input, attempts=2):
     global _BRAIN
     if _BRAIN is None:
-        from snn_data_lake.cortex.brain import Brain
+        # P4: `make_brain()` is the ONE sanctioned construction path. This called `Brain()` directly
+        # until 2026-08-04 -- the same defect tools/charge_probe.py records fixing in itself, in a
+        # tool whose whole job is to produce a number about the brain. `persist=False` is now
+        # explicit rather than inherited from the module-scope NORD_PERSIST default above, so the
+        # baseline cannot read or write the operator's durable lake even if that env var is set.
+        from snn_data_lake.cortex.brain import make_brain
 
-        _BRAIN = Brain()
+        _BRAIN = make_brain(seed=0, persist=False)
     reply = _BRAIN.respond(_as_task_text(train, test_input))
     if isinstance(reply, dict):
         reply = reply.get("reply") or reply.get("text") or ""

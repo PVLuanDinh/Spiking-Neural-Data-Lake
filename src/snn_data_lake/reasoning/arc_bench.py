@@ -150,7 +150,14 @@ def main():
             ok = False
 
     # An oracle that reads the answer must score 100% -- proves the harness can register a success.
-    def oracle(train, test_input, attempts=2, _tasks=dict(tasks)):  # noqa: B006,B008 -- deliberate: snapshots `tasks` at def time so the oracle cannot see later mutations
+    # NOTE: this signature carried a `_tasks=dict(tasks)` default plus a `# noqa: B006,B008`
+    # justifying it as "snapshots `tasks` at def time so the oracle cannot see later mutations".
+    # The body never referenced `_tasks` -- it closes over `tasks` -- so the snapshot was never
+    # taken and the comment asserted a property the code did not have. Deleted rather than wired
+    # up: `tasks` is not rebound between this def and the `score()` call below, so the snapshot
+    # protected nothing, and the two mutable-default warnings the noqa suppressed were only ever
+    # about the unused argument itself.
+    def oracle(train, test_input, attempts=2):
         for _tid, t in tasks:
             for p in t.get("test", []):
                 if _grids_equal(p["input"], test_input):

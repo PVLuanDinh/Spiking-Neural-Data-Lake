@@ -19,8 +19,9 @@ and E_SYNOP_LOIHI), so results are bit-for-bit identical to the in-VRAM version 
 streaming changes only WHERE the weights live, never the computation.
 
 Concept credit: AirLLM (weight/layer streaming); Loihi/Akida AER routing architecture;
-energy constants from energy.py (Horowitz 2014, arXiv:2210.13107); LIF dynamics match
-neuro_chip_gpu.NeuroChipGPU exactly, vectorized as tensor ops.
+energy constants IMPORTED from neuro_chip_gpu, which imports them from
+snn_data_lake.substrate.energy (Horowitz 2014, arXiv:2210.13107) -- one definition, not three;
+LIF dynamics match neuro_chip_gpu.NeuroChipGPU exactly, vectorized as tensor ops.
 
 CEILING (honest): same functional/architectural ceiling as neuro_chip_gpu -- NOT
 cycle-accurate silicon, NOT AirLLM-the-library, NOT an LLM. Streaming trades VRAM
@@ -32,8 +33,10 @@ an on-device budget (~80% of free VRAM on CUDA; 0 on CPU so CPU always streams a
 run() loads every shard ONCE and keeps it resident -- no per-tick disk reload + host->device
 copy, and no per-tick torch.cuda.empty_cache(). Only a matrix that EXCEEDS the budget falls
 back to the original per-tick out-of-core streaming (the module's reason to exist). The
-device comes from the shared NORD_GPU/NORD_DEVICE selector (research/torch_device.py),
-default CPU (opt-in GPU). On CUDA the per-core W_c.T @ spikes matmul runs under bf16 autocast
+device comes from NORD_DEVICE / NORD_GPU, default CPU (opt-in GPU) -- see _pick_device; this
+sentence used to credit "the shared NORD_GPU/NORD_DEVICE selector (research/torch_device.py)",
+a file that does not exist and an import that never once resolved.
+On CUDA the per-core W_c.T @ spikes matmul runs under bf16 autocast
 (Blackwell tensor cores), accumulated in fp32; pass run(autocast=False) for bit-for-bit fp32
 agreement with neuro_chip_gpu (what the agreement self-check uses). CPU is byte-identical to
 before: autocast is ignored and the budget is 0, so CPU still streams in fp32.
@@ -63,29 +66,44 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 
-# Energy constants (cited, from energy.py) -- hardcoded to keep zero-dep on the core
-E_AC_FP32_45NM = 0.9e-12      # accumulate-only op, 45 nm CMOS (Horowitz 2014)
-E_SYNOP_LOIHI = 23.6e-12      # per-SynOp on Loihi incl. routing (arXiv:2210.13107)
+# Energy constants: ONE definition, taken from the module this file exists to reproduce
+# bit-for-bit. neuro_chip_gpu imports them from snn_data_lake.substrate.energy; both files used to
+# carry their own literal copy under the comment "hardcoded to keep zero-dep on the core", which
+# P7's abolition of the zero-dependency rule (2026-07-20) voided and P2 forbids -- three live
+# definitions of two numbers, in a file whose entire claim is byte-for-byte agreement with one of
+# the other two. Measured before the swap: all three copies were already equal, so no number moves.
+# Both documented invocations are covered: the docstring's
+# `from research.neuromorphic_torch.neuro_chip_gpu_stream import ...` (package form, relative
+# import) and `python research/neuromorphic_torch/neuro_chip_gpu_stream.py` (script form, where
+# __package__ is empty and only the flat name resolves). The except is narrow and the fallback
+# imports the SAME names, so a genuine failure still raises -- from the second attempt, loudly.
+try:
+    from .neuro_chip_gpu import E_AC_FP32_45NM, E_SYNOP_LOIHI  # noqa: E402
+except ImportError:
+    from neuro_chip_gpu import E_AC_FP32_45NM, E_SYNOP_LOIHI  # noqa: E402
 
 
 def _pick_device():
-    """Device via the shared NORD_GPU/NORD_DEVICE selector (research/torch_device.py),
-    defaulting to CPU (opt-in GPU). Falls back to a local CPU-default resolver if that
-    shared module is not importable. ASCII-only output."""
+    """Device from NORD_DEVICE / NORD_GPU, defaulting to CPU (opt-in GPU). ASCII-only output.
+
+    REWRITTEN 2026-08-04. This used to try `from torch_device import resolve_device` first, after
+    putting research/ on sys.path, and described that module in the file's own docstring as "the
+    shared NORD_GPU/NORD_DEVICE selector (research/torch_device.py)". THERE IS NO SUCH FILE --
+    research/ holds no top-level .py at all (it has three subdirectories). So the import raised on
+    every single call, was swallowed by a bare `except Exception:`, and the fallback below is what
+    has actually resolved the device for the life of the feature, while the docstring credited a
+    module that does not exist. That is this repo's silent-degradation shape exactly: a stage fails,
+    swallows it, and the placeholder path returns a plausible answer. The swallow also left a
+    permanent sys.path entry behind on behalf of a module it never found.
+    The fallback was correct, so the fix is to make it the ONLY path and say so.
+    """
     import torch  # guaranteed present: the constructor guards on TORCH_AVAILABLE first
-    try:
-        research_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if research_dir not in sys.path:
-            sys.path.insert(0, research_dir)
-        from torch_device import resolve_device
-        return resolve_device()
-    except Exception:
-        want = os.environ.get("NORD_DEVICE")
-        if not want and os.environ.get("NORD_GPU") == "1":
-            want = "cuda"
-        if want and want.startswith("cuda") and torch.cuda.is_available():
-            return want
-        return "cpu"
+    want = os.environ.get("NORD_DEVICE")
+    if not want and os.environ.get("NORD_GPU") == "1":
+        want = "cuda"
+    if want and want.startswith("cuda") and torch.cuda.is_available():
+        return want
+    return "cpu"
 
 
 def _resident_budget_bytes(device, override=None):

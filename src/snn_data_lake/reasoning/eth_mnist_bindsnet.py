@@ -62,7 +62,13 @@ from bindsnet.encoding import PoissonEncoder
 from bindsnet.network.monitors import Monitor
 from bindsnet.evaluation import all_activity, assign_labels
 
-torch.manual_seed(0)
+# `torch.manual_seed(0)` MOVED into main() 2026-08-04. It was an IMPORT-TIME reseed of torch's
+# GLOBAL RNG, so importing this module silently reset the stream for every module loaded after it --
+# the same defect class as the module-scope `random.seed(0)` calls deleted from ten reasoning/
+# modules under specs/010 C33, and the one the learn_daemon promotion exposed (run_selfchecks runs
+# part of the suite in ONE process). Unlike those, this file DOES depend on the seed, so it is
+# scoped rather than deleted: determinism of the run is unchanged, the side effect on importers is
+# gone. (The torch._six shim above must stay at module scope -- the bindsnet imports below need it.)
 
 
 def _ei(k, d):
@@ -136,9 +142,10 @@ def make_dataset(train):
 
 
 def main():
+    torch.manual_seed(0)  # scoped here, NOT at module import -- see the note beside the imports
     device = resolve_device()
     print("=" * 60)
-    print("BindsNET Diehl & Cook (eth_mnist) — conductance-based")
+    print("BindsNET Diehl & Cook (eth_mnist) -- conductance-based")
     print("=" * 60)
     print(
         f"neurons={N}  time={TIME}ms  train={N_TRAIN}  test={N_TEST}  epochs={N_EPOCHS}  batch={BATCH}  device={device}"
@@ -148,7 +155,7 @@ def main():
         "bottleneck (batch_size=1 left the GPU ~98% idle); ~10-50x throughput on a GPU, same method."
     )
     if N >= 1600 and device == "cpu":
-        print("WARNING: large network on CPU — expect a multi-hour (likely overnight) run.")
+        print("WARNING: large network on CPU -- expect a multi-hour (likely overnight) run.")
         print("         Pass --gpu on a CUDA machine (RTX 5070: needs cu128 torch).")
     print()
 
@@ -258,8 +265,10 @@ def main():
         + "%)"
     )
     print("=" * 60)
-    assert acc_all >= 10.0, "below chance — wiring broken"
-    print("self-check OK: ran end-to-end, accuracy computed")
+    # 10.0 is not "above chance", it IS chance for 10 balanced classes -- so this only catches a
+    # totally broken wiring, which is what its message says and all it should be read as claiming.
+    assert acc_all >= 10.0, "below chance -- wiring broken"
+    print("self-check OK: ran end-to-end, accuracy computed (>= the 10% 10-class chance floor)")
 
 
 if __name__ == "__main__":

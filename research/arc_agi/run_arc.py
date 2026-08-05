@@ -56,7 +56,7 @@ def main():
     print("ARC-AGI-3-STYLE interactive-reasoning harness  (REPRESENTATIVE analogs)")
     print("NOT the official ARC-AGI-3 eval. Solve rates are brain-player vs RANDOM baseline")
     print("on these hand-authored toy games only -- no claim about the real ARC-AGI-3 benchmark.")
-    print("player = zero-dep brain cognition: population spike-code perception + CuriosityDrive")
+    print("player = the brain's own cognition: population spike-code perception + CuriosityDrive")
     print("Go-Explore + model-based value iteration + spiking RaceAccumulator action selection.")
     print("=" * 78)
     print("%-16s %8s %8s %8s   %s" % ("game", "seeds", "brain", "random", "verdict"))

@@ -5,9 +5,19 @@ PROMOTED from research/ into the product (v0.88, additive). Pure Hebbian potenti
 weights and firing rate run away. Turrigiano's fix is MULTIPLICATIVE synaptic scaling: the neuron
 measures its own rate and rescales all its synapses toward a set-point, holding the rate steady while
 preserving the RELATIVE weight pattern (unlike subtractive normalization). `stabilize` exposes that as
-a wrapper other learners can opt into. The repo's own learners (valence_stdp's RPE, snn_classifier's
-delta rule) already self-stabilize, so this is an optional tool, not wired into any default. Refs:
+a wrapper other learners can opt into. Refs:
 Turrigiano et al., Nature 391 (1998); Turrigiano, "The self-tuning neuron", Cell 135 (2008).
+
+WIRING (corrected 2026-08-04 -- this docstring said "an optional tool, not wired into any default"
+and that has been false since the plasticity stacks landed). `stabilize` is the POST phase of
+`plasticity/homeostatic_plasticity_stack._HomeostaticScaling`, which `plasticity_rule_stack`
+subclasses and `cortex/brain.py:273-278` constructs and attaches to the canonical brain's
+interaction learner (`brain._ixn.stack = ...`). MEASURED CHARGE on that real consumer, 40 epochs
+on its own task: attaching the stack moves the learner's weights by max|dw| 15.30 against
+`stack=None`, and the rule stack's extras move them a further 0.95 beyond the base stack.
+Stated precisely, because the distinction is the point: that is charge in the WEIGHTS. Held-out
+routing accuracy is 1.000 in every condition, so this task is at ceiling and the stack is NOT
+shown to change the OUTCOME here -- only the state the outcome is read from.
 
   python -m snn_data_lake.plasticity.homeostatic_scaling        # (also run by run_selfchecks.py)
 """
@@ -70,7 +80,7 @@ def main():
     drift = max(abs(a - b) for a, b in zip(ratios_before, ratios_after))
 
     print("=" * 60)
-    print("HOMEOSTATIC SCALING — additive rate-stabilizer (driven by a real shape)")
+    print("HOMEOSTATIC SCALING -- additive rate-stabilizer (driven by a real shape)")
     print("=" * 60)
     print(
         f"input: classifier shape ({len(x)} synapses, {int(sum(x))} active), target rate {hn.target:.1f}, 300 steps"

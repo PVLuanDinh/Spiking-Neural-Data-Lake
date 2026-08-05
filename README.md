@@ -7,10 +7,11 @@
 
 A Python toolkit for event-driven (spiking) computation, in three parts:
 
-- **A neuromorphic primitive library:** 373 modules under `src/snn_data_lake/`, 187 of them mapped
-  into the brain atlas,
-  organized by brain anatomy (cortex, hippocampus, basal_ganglia, amygdala, cerebellum, brainstem,
-  thalamus, neuromodulation, plasticity, and a non-anatomical substrate tier), wired by an explicit
+- **A neuromorphic primitive library:** 376 modules under `src/snn_data_lake/`, 202 of them mapped
+  into the brain atlas across 17 regions
+  (cortex, hippocampus, basal_ganglia, amygdala, cerebellum, brainstem, thalamus, hypothalamus,
+  midbrain, pons, medulla, epithalamus, olfactory, claustrum, neuromodulation, plasticity, and a
+  non-anatomical substrate tier), wired by an explicit
   `connectome`. Integrate-and-fire and
   adaptive-threshold neurons, STDP/BCM/e-prop/ReSuMe plasticity, WTA and reservoir networks, spike
   encoders/decoders, and streaming sketches. Each module is importable as
@@ -19,15 +20,26 @@ A Python toolkit for event-driven (spiking) computation, in three parts:
 - **A spike-native data lakehouse:** sparse `.spk` event storage with windowed queries, an
   in-storage coincidence/temporal-order query engine (Paradigm B), a VSA/hyperdimensional
   relational-reasoning layer (Paradigm C), and a Bronze→Silver→Gold Medallion pipeline.
-- **A simulated 2-DOF robot-arm control loop:** gesture recognition → command → reward learning,
-  with a reflex, a population-coded PID, and neuromodulation, where every motor command passes a
-  safety gate (`ArmSim.apply()`) and the real serial path is disabled until explicitly calibrated.
+- **A 6-DOF SO-101 robot-arm control loop (MuJoCo body, real serial path):** gesture recognition →
+  command → reward learning, with a reflex, a population-coded PID, and neuromodulation, where every
+  motor command passes the `So101Arm.apply()` safety gate
+  (`src/snn_data_lake/brainstem/so101_arm.py`, `class So101Arm` / `def apply`) and the real serial
+  path is disabled until explicitly calibrated (`serial_arm.assert_calibrated`).
 
-`numpy` and `torch` are core dependencies (`dependencies = ["torch", "numpy"]`) — the former
+  *(Corrected 2026-08-04: this line said "simulated 2-DOF" and named the gate `ArmSim.apply()` — a
+  class absent from `src/` entirely, and a DOF count belonging to the retired `arm_sim.py`. The
+  envelope code is unchanged; only its description was wrong, which is its own hazard: this is the
+  README's one sentence telling a reader which code gates every motor command, and it named a file
+  that does not exist. `SECURITY.md`'s table and `docs/POLICIES.md` already had the live five.)*
+
+`torch`, `numpy` and `mujoco==3.11.0` are the core dependencies — **three, not two** (`pyproject.toml`
+`dependencies`; mujoco is exact-pinned because the solver version IS the physics). The former
 zero-dependency-core contract was removed project-wide on 2026-07-20, and its last mechanism, the
 `NORD_TORCH=0` off-switch, was removed on 2026-07-29. There is no torch-free mode: if torch is
 missing the install is broken, and the brain's stdlib fallback exists to keep that survivable rather
-than to make it a supported configuration. Optional integrations (real
+than to make it a supported configuration. Per **P7** (`docs/POLICIES.md`) any dependency that helps
+this become a phenomenal brain is accepted, and "it would be another dependency" is not a valid
+reason to reject one. Optional integrations (real
 hardware, Parquet/Delta, GPU training, on-device LLM) live behind extras. Every efficiency figure
 below is measured against a dense baseline and reproduced by running the referenced module.
 
@@ -54,13 +66,21 @@ snn-loop     # full closed loop: gesture -> command -> reward -> learn
 python learn_daemon.py      # the always-on brain; serves the cockpit -- the ONE frontend --
                             # at http://127.0.0.1:8137/ (live brain, arm, hardware target, chat)
 
-python run_selfchecks.py    # run every module's self-check (277; 278 with nengo, 271 torch-free)
+python run_selfchecks.py    # run every registered module's self-check; the runner is the one
+                            # source of truth for the list (no count is quoted here -- it went
+                            # stale at "277" and five documents had copied it)
 ```
 
 ## Results (measured)
 
 All figures are reproduced by running the referenced module. Compute = synaptic operations
-(SynOps); storage = bytes. These three tables run in CI on the torch-free matrix job (numpy only).
+(SynOps); storage = bytes. These three tables run in CI on the `self-checks` matrix job
+(`{ubuntu, windows} x {3.11, 3.12, 3.13}`, full dependency set).
+
+*(Corrected 2026-08-04: this said "the torch-free matrix job (numpy only)". That job was DELETED on
+2026-07-29 — see the comment at the top of `.github/workflows/ci.yml` — because it asserted the
+brain still works without one of its hard dependencies, a contract the project no longer has. The
+matrix it carried moved into `self-checks`.)*
 
 **Data lake: store, search, reason**
 
@@ -100,36 +120,68 @@ Dreamer-lite 1.03→0.48 m), and MNIST (unsupervised STDP 82.3% CPU; conductance
 ## Repository layout
 
 ```
-src/snn_data_lake/   373 modules; 187 of them mapped into the brain atlas across 17 regions (cortex,
+src/snn_data_lake/   376 modules; 202 of them mapped into the brain atlas across 17 regions (cortex,
                      hippocampus, basal_ganglia, amygdala, cerebellum, brainstem, thalamus,
                      neuromodulation, plasticity, substrate, ...) + brain_atlas.py (region->module
                      map) + connectome.py (region->region wiring) + lakehouse/ (Medallion
-                     Bronze→Gold) + reasoning/ (folded research builds; ruff- and coverage-excluded)
-research/            benchmarks and experiments, kept for reproducibility (ruff-excluded, not the product)
+                     Bronze→Gold) + reasoning/ (161 modules; still outside the three P3 gates,
+                     ruff and the coverage denominator -- P4c debt, target zero, being promoted)
+research/            benchmarks and experiments (ruff-excluded) -- P4c debt on the same terms
 tests/               pytest suite (>=70% coverage)
 integrations/        packaging/ (daemon + cockpit -> standalone Windows .exe, PyInstaller + Inno Setup),
                      local_llm/ (optional on-device NL interface, AirLLM backend, [llm] extra, no cloud),
                      deploy/ (ESP32 actuator firmware, fail-safe, echo-only by default), robot arm/
 docs/                install, hardware setup, storage formats, architecture notes
+tools/               gates run by CI's lint job (citation_guard, red_reachability, dependency_ledger)
+                     + built-but-unregistered gates (doc_command_guard -- P4c debt) + measurement
+                     harnesses (charge_probe, p6_gate)
 run_selfchecks.py    canonical self-check runner (single source of truth for the module list)
 ```
+
+**P4c: there is no "outside the brain" in this tree.** `research/`, `reasoning/`, `integrations/`
+and `tools/` are ruff- or gate-excluded *tiers*, which is a fact about the build config, never a
+disposition. Every file here is part of the brain or retired — "it is only a benchmark / only the
+launcher" is not a third category. The exclusions above are recorded **debt**, not design.
+*(Corrected 2026-08-04: this block described `research/` as "not the product", the exact framing
+P4c abolishes.)*
 
 Safety-critical arm code (`brainstem/reflex.py`, `brainstem/serial_arm.py`, `brainstem/so101_arm.py`,
 `brainstem/arm_config.py`, `brainstem/interpreter.py`) is documented in [SECURITY.md](SECURITY.md).
 
 ## Testing & CI
 
-Four gates, all green on every push:
-
 ```bash
-python run_selfchecks.py               # 277 module self-checks (deterministic, assert-based)
-pytest                                 # unit suite, >=70% line coverage gate (currently 90.19%)
-python -m ruff check .                 # lint (E, F, I, UP, B)
-python -m ruff format --check src tests   # formatting (CI checks this scope exactly)
+python run_selfchecks.py                     # every registered module's self-check (deterministic, assert-based)
+pytest                                       # unit suite, >=70% line coverage gate (the gate is the number; CI prints the rest)
+python -m ruff check .                       # lint (E, F, I, UP, B)
+python -m ruff format --check src tests tools   # formatting (CI checks THIS scope exactly)
 ```
 
-CI runs the matrix `{ubuntu, windows} × {3.11, 3.12, 3.13}` plus lint and coverage. See
-[CONTRIBUTING.md](CONTRIBUTING.md) to add a module.
+CI (`.github/workflows/ci.yml`) runs four jobs, not four commands:
+
+- **`self-checks`** — `{ubuntu, windows} × {3.11, 3.12, 3.13}`, full dependency set, `MUJOCO_GL=disable`.
+- **`wheel`** — asserts the vendored SO-101 model (`scene.xml` + 13 STL meshes) is inside the built wheel.
+- **`lint`** — `ruff check` + `ruff format --check src tests tools`, then three repo/policy gates:
+  `tools/citation_guard.py` (a tracked file may not cite an untracked `.py` as runnable),
+  `tools/red_reachability.py --assert` (**P8** — a success criterion with no reachable red is deleted,
+  not weakened), and `tools/dependency_ledger.py` (**P7** — every import declared, every declaration
+  used; report-only pending specs/010 T021/T062).
+- **`test`** — pytest + coverage.
+
+`tools/doc_command_guard.py` (a documented `python -m` command must be runnable) is **built, clean
+and NOT in CI** — run it by hand. Registering it is open P4c work.
+
+*(Corrected 2026-08-04: this section said "Four gates, all green on every push" and listed the format
+scope as `src tests`. CI's scope is `src tests tools`; the `--check` would pass locally and fail in CI.
+It also quoted `277` self-checks and `90.19%` coverage — both stale, and both the kind of number that
+goes stale on any promotion, so they now point at the gate instead of restating its output.
+**Corrected again 2026-08-05:** the same pass then listed `doc_command_guard` as a fourth lint gate.
+Measured against `.github/workflows/ci.yml`, the lint job has five steps — `ruff check`,
+`ruff format --check`, `citation_guard`, `red_reachability --assert`, `dependency_ledger` — and
+`doc_command_guard` appears in no workflow, in `run_selfchecks.py`, in `.pre-commit-config.yaml` or
+in `pyproject.toml`. Counting a gate CI does not run is the same error as the "277" it replaced.)*
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) to add a module.
 
 ## Limitations & open problems
 

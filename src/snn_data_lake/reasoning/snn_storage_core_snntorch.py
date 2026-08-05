@@ -16,7 +16,7 @@ spiking_storage_prototype.py (stdlib-only, no deps).
 import torch
 import torch.nn as nn
 import snntorch as snn
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 
 
 # 1. Define a simple Spiking Storage Core architecture

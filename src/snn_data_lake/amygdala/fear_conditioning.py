@@ -4,17 +4,26 @@ Spiking CS-US fear conditioning -- the amygdala as a real learned threat detecto
 LIVE STATUS, MEASURED 2026-07-28 (v4.78): on the running brain `threat()` is called 38 times per 80
 wake ticks and returns EXACTLY 0.0 every time. The amygdala never learns, and three downstream signals
 are constant as a result -- every stored episode's arousal tag, the LC salience quantile, and the
-workspace threat bid (`autonomous_loop.py:1004`).
+workspace threat bid (`brainstem/autonomous_loop.AutonomousArm.step`, the `salience = threat ...`
+broadcast).
 
 The cause is NOT a bug, and the distinction matters because a coverage audit proposed "fixing" it.
-`pair()` has exactly one live call site, `autonomous_loop.py:1108`, and it sits INSIDE the SAFETY-FIRST
-early return at `:1102` -- it fires only when `distance < CONTACT`, i.e. only on a real contact event
-that also trips the reflex E-STOP. That is correct fear-conditioning semantics: fear binds to actual
-aversive events, not to safe exploration. Meanwhile `cortex/brain.py:898` feeds all three rotating
-explore stimuli at `SAFE_DISTANCE = CONTACT * 3.0`, and `brainstem/arm_config.py:32` still has
-`SAFETY_CALIBRATED = False` because the arm has not been physically built. So there are no aversive
-events to condition on, and a threat readout of 0.0 is the HONEST output of a brain that has never
-been hurt.
+`pair()` has exactly one live call site -- inside `AutonomousArm.step`'s SAFETY-FIRST contact branch
+(`if distance is not None and (not math.isfinite(distance) or distance < CONTACT)`), so it fires only
+on a real contact event that also trips the reflex E-STOP. That is correct fear-conditioning
+semantics: fear binds to actual aversive events, not to safe exploration. Meanwhile
+`cortex/brain.py::SAFE_DISTANCE` is `CONTACT * 3.0` and feeds all three rotating explore stimuli, and
+`brainstem/arm_config.SAFETY_CALIBRATED` is still `False` because the arm has not been physically
+built. So there are no aversive events to condition on, and a threat readout of 0.0 is the HONEST
+output of a brain that has never been hurt.
+
+(All five line citations in the two paragraphs above were re-checked 2026-08-04 and every one had
+drifted: `autonomous_loop.py:1004`/`:1108`/`:1102` landed on comment text, `cortex/brain.py:898` on
+an episode-store sizing comment, and `brainstem/arm_config.py:32` on a BLANK line -- re-resolved
+2026-08-04b; this note said ":32 on a reach comment", which is `:31`, so the correction itself was
+off by one, in the sentence about coordinates being wrong. The FINDINGS were re-verified against the
+tree and are unchanged; only the coordinates were wrong. They are now named by SYMBOL, which is what
+does not rot.)
 
 DISPOSITION: P3 "exempt -- awaiting a prerequisite" (a real proximity sensor and a real body), NOT
 "wire it". The proposed wire was to bind `pair()` to the negative-reward signal cortisol already
@@ -29,10 +38,19 @@ mirror the amygdala micro-circuit:
   BLA (basolateral amygdala) -- an associative LIF readout. Conditioned-stimulus (CS) features
       (a "tone" pattern, deterministically latency-encoded) drive a leaky integrate-and-fire
       neuron through plastic weights w_exc. A three-factor Hebbian rule BINDS the CS to the
-      unconditioned aversive stimulus (US, "shock"): w_exc[i] += lr * US * cs_active[i] * bound.
-      The US is the third factor (the aversive teaching signal); potentiation happens ONLY when
-      a CS feature is active AND the US co-occurs. Same style as basal_ganglia/valence_stdp.py
-      (three-factor plasticity) but keyed on CS-US COINCIDENCE.
+      unconditioned aversive stimulus (US, "shock"). The US is the third factor (the aversive
+      teaching signal) and it is BINARY, carried by WHICH method is called rather than by a
+      magnitude: `pair()` is the US-present trial and applies
+          w_exc[i] += LR_EXC * (1 - w_exc[i]/W_MAX)   for every CS feature active on that trial
+      while `expose()` is the US-absent trial and applies NOTHING. So potentiation happens ONLY
+      when a CS feature is active AND the US co-occurs, which is the CS-US coincidence gate --
+      but note honestly that a GRADED US is not representable: there is no `us` magnitude
+      argument, and a stronger shock cannot condition faster than a weaker one. (This paragraph
+      previously wrote the rule as `w_exc[i] += lr * US * cs_active[i] * bound`, a formula the
+      code has never contained; corrected 2026-08-04 to the rule `pair()` actually applies.
+      Grading the US is open work -- it is a signature effect of real conditioning and the
+      per-category `us_id` channel below already gives it somewhere to live.) Same style as
+      basal_ganglia/valence_stdp.py (three-factor plasticity) but keyed on CS-US COINCIDENCE.
 
   CeA (central nucleus) -- a threshold readout. It emits a THREAT signal (scalar in [0, 1];
       >= THETA_CEA == "conditioned response") from the BLA spike response, GATED DOWN by a

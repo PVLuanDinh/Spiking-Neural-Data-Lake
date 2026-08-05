@@ -30,7 +30,7 @@ The loop is OPEN-ENDED and SELF-DIRECTED: it keeps choosing new digits, growing,
 every digit is mastered (or a cycle budget is hit). Observation / cognition only -- no actuator route.
 
 Needs the torch venv:
-    D:\AI-project\spiking-neural-data-lake\.venv-cu128\Scripts\python research\developmental_loop.py
+    D:\AI-project\spiking-neural-data-lake\.venv-cu128\Scripts\python -m snn_data_lake.reasoning.developmental_loop
 Scale knobs (env): NORD_CYCLES, NORD_GROW (neurons/cycle), NORD_PER (train imgs/digit), NORD_PROBE
                    (probe imgs/digit), NORD_REPLAY (exemplars/digit), NORD_CAP (max consecutive revisits),
                    NORD_GPU=1.
@@ -55,10 +55,6 @@ import os
 import sys
 import time
 
-_here = os.path.dirname(os.path.abspath(__file__))
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-
 import torch
 
 from snn_data_lake.reasoning.snn_mnist_stdp import (
@@ -76,7 +72,7 @@ from snn_data_lake.reasoning.snn_mnist_stdp import (
     WMAX,
     load_mnist,
 )
-from snn_data_lake.reasoning.torch_device import enable, resolve_device
+from snn_data_lake.substrate.device import enable, resolve_device
 
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive, SpikingCurriculum

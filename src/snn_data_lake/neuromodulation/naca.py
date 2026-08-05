@@ -39,6 +39,7 @@ Refs: Zhang, Zeng et al., Sci. Adv. 2023 (adi2947); Izhikevich 2007 (the R-STDP 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.naca
 """
 
+import math
 import random
 
 ETA = 0.5  # neuromodulatory correction gain (how strongly the broadcast reshapes the local delta)
@@ -129,7 +130,10 @@ _LR = 0.06
 
 
 def _psp(dt):
-    return 2.718281828 ** (-dt / _TAU) if dt > 0.0 else 0.0
+    # `2.718281828 ** (-dt/_TAU)` until 2026-08-04 -- a hand-truncated `e` that cost ~9 significant
+    # figures against math.exp for no reason anyone would defend. math.exp is stdlib, exact to the
+    # last ulp, and faster. Verified NOT to move any self-check number (see main()).
+    return math.exp(-dt / _TAU) if dt > 0.0 else 0.0
 
 
 def _drive(neuron, code):

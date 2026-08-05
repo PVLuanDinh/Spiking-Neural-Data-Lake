@@ -18,9 +18,9 @@ The zoo REUSES (import + adapt, never rewrite) the repo's own neuron models:
   * cortex.alif_neuron.ALIFNeuron      -- adaptive-threshold LIF (LSNN) (native step/reset_state)
   * cortex.autapse_neuron.AutapseNeuron-- one neuron, delayed self-loops(native step/reset_state)
   * cortex.dendritic_neuron.DendriticNeuron -- two-compartment BAC cell (2-arg step -> adapter)
-  * reasoning.adex_neuron.AdEx         -- adaptive exponential I&F      (units + reset() -> adapter)
-  * reasoning.resonate_and_fire.ResonateFire -- frequency-selective     (units + reset() -> adapter)
-  * reasoning.srm_neuron.SRMNeuron     -- kernel/soft-reset spike model (event API -> adapter)
+  * cortex.adex_neuron.AdEx            -- adaptive exponential I&F      (units + reset() -> adapter)
+  * cortex.resonate_and_fire.ResonateFire -- frequency-selective        (units + reset() -> adapter)
+  * cortex.srm_neuron.SRMNeuron        -- kernel/soft-reset spike model (event API -> adapter)
 
 DEFAULT-SAFE population = the six always-finite point/reduced models above (SRM is a
 kernel model included in the safe set). Two BIOPHYSICAL models integrate forward-Euler ODEs that can
@@ -47,15 +47,15 @@ wall-clock. ASCII-only output.
 import math
 import random
 
+from snn_data_lake.cortex.adex_neuron import AdEx
 from snn_data_lake.cortex.alif_neuron import ALIFNeuron
 from snn_data_lake.cortex.autapse_neuron import AutapseNeuron
 from snn_data_lake.cortex.dendritic_neuron import DendriticNeuron
 from snn_data_lake.cortex.hodgkin_huxley import HodgkinHuxley
 from snn_data_lake.cortex.izhikevich_neuron import REGIMES as _IZHI_REGIMES
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
-from snn_data_lake.reasoning.adex_neuron import AdEx
-from snn_data_lake.reasoning.resonate_and_fire import ResonateFire
-from snn_data_lake.reasoning.srm_neuron import SRMNeuron
+from snn_data_lake.cortex.resonate_and_fire import ResonateFire
+from snn_data_lake.cortex.srm_neuron import SRMNeuron
 
 # --- input-scale constants: the zoo presents ONE "current" in LIF units (thresholds ~1.0). Models that
 #     work in other native units (pA for AdEx, arbitrary drive for the resonator, uA/cm^2 for HH, the

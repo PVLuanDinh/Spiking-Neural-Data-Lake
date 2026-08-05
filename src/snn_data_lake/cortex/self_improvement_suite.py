@@ -4,8 +4,11 @@ Self-improvement SUITE -- compose every self-improvement RUNG into ONE program.
 WHAT THIS IS (read this first, honestly). The brain has grown a whole LADDER of
 self-improvement rungs, each shipped as its own module with its own heavyweight,
 un-riggable __main__ self-check (controls, honest-negatives, the full quantitative
-proof). Those live as ~16 disconnected demo files that the 198-check gate runs one
-at a time. This module is the missing COMPOSITION layer: a single deterministic
+proof). Those live as disconnected demo files that the self-check gate runs one at a
+time. (This read "the 198-check gate" until 2026-08-04. The gate has not had 198 checks
+for a long time -- an unreproducible count in a docstring is a stale citation that
+happens to have no filename in it, so the number is dropped rather than re-quoted at a
+figure that will rot again.) This module is the missing COMPOSITION layer: a single deterministic
 `census(seed=0) -> dict` that exercises the REAL code path of each rung at REDUCED
 SCALE, in-process, under ONE seed -- so the unified Brain can run and report them all
 as ONE program instead of sixteen separate demos.

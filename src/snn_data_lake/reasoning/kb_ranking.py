@@ -17,7 +17,7 @@ HONEST SCOPE: a compact numpy DistMult over a few epochs will not hit published 
 for tuned models); the claim is that a real ranking head learns real relational structure and beats
 random ranking decisively, at open-vocab scale a classifier cannot touch.
 
-  PYTHONPATH=src .venv-lake/Scripts/python research/kb_ranking.py
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.kb_ranking
   Knobs: NORD_DIM(50) NORD_EPOCHS(8) NORD_BATCH(1024) NORD_LR(0.1) NORD_EVAL(1500)
          NORD_FB_TRAIN(url) NORD_FB_TEST(url)
 Deps: numpy (+ stdlib). Reuses world_kb_stream bundled facts as the offline fallback.

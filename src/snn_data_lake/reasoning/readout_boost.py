@@ -13,7 +13,7 @@ vs the linear / RBF-ensemble reference points. Feature learning stays unsupervis
 readout changes -- so any gain is honestly attributable to the decoder, and bounded by the 98.2%
 feature ceiling (the audit's key caveat: past this, only a better ENCODER helps -- see Tier 3).
 
-  NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/readout_boost.py
+  NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.readout_boost
   Knobs: NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_RFF(2000) NORD_TRAIN(12000) NORD_TEST(2000)
 Deps: numpy torch torchvision snntorch (feature extraction) + numpy readouts.
 """
@@ -23,7 +23,7 @@ import os
 import numpy as np
 import torch
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.fast_features import batched_features
@@ -93,8 +93,12 @@ class MLPHead:
 
 
 def main():
+    # `resolve_device()` was called a SECOND time here with the comment "called for its
+    # device-selection side effect; the handle is unused here". It has no side effect --
+    # substrate/device.resolve_device is a pure query ("'cuda[:N]' when a GPU is wanted and
+    # present, else 'cpu'"); `enable()` on the line above is the call that does the routing.
+    # The line was a no-op justified by a false comment. Removed 2026-08-04.
     enable(resolve_device())
-    resolve_device()  # called for its device-selection side effect; the handle is unused here
     torch.manual_seed(0)
     C1 = _envi("NORD_C1", 30)
     T_LAT = _envi("NORD_T", 15)

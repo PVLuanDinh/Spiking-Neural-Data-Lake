@@ -16,6 +16,21 @@ GENUINELY fails):
     j's own s_bar + EMA stats + frozen (stop-grad) lagged "echo". CONTROL: with the top frozen the bottom
     STILL learns from its own local loss; a weight-transport surrogate (bottom gated on the top's update)
     does NOT.
+    **THIS CLAIM WAS FALSE UNTIL 2026-08-04, and the correction is recorded rather than quietly applied.**
+    The three-factor BACKBONE rule above was always local -- but the JEPA head feeding it was not, in two
+    places, and both read a forward weight matrix transposed to carry error backward:
+      (a) `dL/dz = gp + Wz^T gp` in train_step, the same site `docs/POLICIES.md` names as an open
+          violation in the sibling `jepa_world_model`; and
+      (b) `_readout_grad`'s top-down modulator `gsbar = sum(dldu[i] * Wr[i][j])`, whose own docstring
+          asserted it was "a broadcast error, not weight transport" while computing exactly that.
+    Both are fixed. (a) keeps only the residual skip (a broadcast error; the recurrent term measured
+    HARMFUL as well as non-local -- see jepa_world_model._feedback_gz). (b) has no residual skip, so
+    dropping it would delete the top-down signal; it now uses FEEDBACK ALIGNMENT -- a fixed random `_Br`
+    (Lillicrap 2016), drawn from a crc32-derived stream so every existing weight stays byte-identical.
+    A self-check assert below now guards both, with its RED constructed and run.
+    Note what the shipped claim-2 CONTROL could and could not see: it gates the bottom layer on the top's
+    update, so it caught inter-LAYER transport and was blind to transport inside the head. An honest
+    control that tests the wrong axis is still a control that passes.
   * TRACKS ACTION-CONDITIONED LATENT DYNAMICS AT THE IDENTITY MAP'S ERROR SCALE (claim 4, weakened
     honestly). The bounded action-conditioned latent map predict(state, command) -- a spectrally-
     contractive LINEAR residual (row-abs-sum < rho_max, clamp +/- z_clip; copied from jepa_world_model,
@@ -202,6 +217,14 @@ class SpikingJEPA:
         self.br = [0.0] * self.L
         self.Wr_t = [row[:] for row in self.Wr]
         self.br_t = self.br[:]
+        # FIXED RANDOM feedback matrix for the top-down modulator (feedback alignment; see
+        # _readout_grad). Drawn from a crc32-DERIVED stream, never `self.rng`, so adding it leaves
+        # Wff/Wrec/Wr/Wz/Wa byte-identical to a model built before it existed. Same scale as Wr's
+        # init so the top-down term keeps its magnitude band.
+        _fb = random.Random(zlib.crc32(b"spiking-jepa-Br") ^ int(seed))
+        self._Br = [
+            [_fb.uniform(-1.0, 1.0) * sr for _ in range(self.sizes[-1])] for _ in range(self.L)
+        ]
 
         # bounded action-conditioned predictor (Wz small + contractive, Wa, b) -- copied shapes/limits
         self.Wz = [[r.uniform(-1.0, 1.0) * 0.02 for _ in range(self.L)] for _ in range(self.L)]
@@ -330,9 +353,34 @@ class SpikingJEPA:
         n = math.sqrt(sum(c * c for c in t)) or 1.0
         return [c / n for c in t]
 
+    def _feedback_gz(self, gp):
+        """dL/dz through the residual predictor, as a BROADCAST error with NO path through Wz.
+
+        p = (I + Wz)z + const, so the exact derivative is gp + Wz^T gp. The `Wz^T` half read the
+        FORWARD matrix transposed -- weight transport, which this module's own headline claim
+        ("NO backprop and NO weight transport") denied it was doing. Only the residual skip
+        survives, which is structure rather than a weight. Same definition and same measurement as
+        `cerebellum/jepa_world_model._feedback_gz`; see that docstring for the 5-seed benchmark."""
+        return list(gp)
+
     def _readout_grad(self, gz, s_bar_top, wr, br):
-        """Backprop dL/dz (=gz) through z = unit(tanh(Wr@s_bar+br)) to (dWr, dbr, dL/ds_bar_top). The last is
-        the top-down JEPA modulator delivered to the top LIF layer (a broadcast error, not weight transport)."""
+        """Backprop dL/dz (=gz) through z = unit(tanh(Wr@s_bar+br)) to (dWr, dbr, dL/ds_bar_top).
+
+        The last return is the top-down JEPA modulator delivered to the top LIF layer, and it is the
+        reason this method needed a fix rather than a deletion. It USED to be computed as
+        `sum(dldu[i] * wr[i][j])` -- the forward readout matrix read transposed, i.e. exactly the
+        weight transport the docstring here claimed it was not ("a broadcast error, not weight
+        transport"). That sentence was false for the life of the feature.
+
+        Unlike the predictor path there is NO residual skip to fall back on, so dropping the term
+        would delete the top-down signal entirely rather than localise it. The e-prop-compatible fix
+        is therefore FEEDBACK ALIGNMENT (Lillicrap 2016): a FIXED RANDOM `_Br` carries the error
+        down instead of the transposed forward weights. It is local, needs no weight symmetry, and
+        keeps a genuine top-down modulator. `_Br` is drawn from a crc32-derived stream, never the
+        instance rng, so every existing weight stays byte-identical.
+
+        dWr / dbr are unchanged: they are outer products of the local error with the local
+        presynaptic activity, which is the eligibility term, not transport."""
         big_l = self.L
         h = self.sizes[-1]
         u = [dot(wr[i], s_bar_top) + br[i] for i in range(big_l)]
@@ -346,7 +394,8 @@ class SpikingJEPA:
             dldu[i] = dldt * (1.0 - t[i] * t[i])
         gwr = [[dldu[i] * s_bar_top[j] for j in range(h)] for i in range(big_l)]
         gbr = dldu[:]
-        gsbar = [sum(dldu[i] * wr[i][j] for i in range(big_l)) for j in range(h)]
+        br_fb = self._Br
+        gsbar = [sum(dldu[i] * br_fb[i][j] for i in range(big_l)) for j in range(h)]
         return gwr, gbr, gsbar
 
     # ---- bounded predictor (copied from jepa_world_model) ----------------------------------------------
@@ -535,12 +584,7 @@ class SpikingJEPA:
         r = [p[i] - z_tgt[i] for i in range(big_l)]
         loss_inv = sum(ri * ri for ri in r)
         gp = [2.0 * r[i] for i in range(big_l)]
-        gz = [0.0] * big_l  # dL/dz through the predictor (pre-update)
-        for k in range(big_l):
-            acc = gp[k]
-            for i in range(big_l):
-                acc += gp[i] * self.Wz[i][k]
-            gz[k] = acc
+        gz = self._feedback_gz(gp)  # broadcast error; NO transposed read of Wz (see _feedback_gz)
         gwr, gbr, gsbar_top = self._readout_grad(gz, sbx[-1], self.Wr, self.br)
 
         top_l1 = 0.0
@@ -814,6 +858,15 @@ class SpikingJEPA:
         self.cov = [[[0.0] * n for _ in range(n)] for n in self.sizes]
         self._buf = []
         self._neg = [[] for _ in self.sizes]
+        # Re-shape the fixed random feedback matrix to the LOADED geometry. It is not a learned
+        # weight so it is deliberately NOT serialized -- any fixed random B satisfies feedback
+        # alignment -- but it must match (L x sizes[-1]) or _readout_grad would index off the end
+        # whenever a file's geometry differs from the constructing instance's.
+        _sr = 1.0 / math.sqrt(self.sizes[-1])
+        _fb = random.Random(zlib.crc32(b"spiking-jepa-Br") ^ int(self.seed))
+        self._Br = [
+            [_fb.uniform(-1.0, 1.0) * _sr for _ in range(self.sizes[-1])] for _ in range(self.L)
+        ]
 
 
 # =========================================================================================================
@@ -1216,6 +1269,57 @@ def main():
     )
     assert d_prim > 100.0 * (d_ctrl + 1e-30), (
         "local bottom-learning must dwarf the transport control"
+    )
+
+    # ---- (2b) NO WEIGHT TRANSPORT INSIDE THE HEAD -- the axis the control above cannot see ----
+    # The claim-2 control gates the BOTTOM layer on the TOP's update, so it tests inter-LAYER
+    # transport only. Both head paths (dL/dz through Wz, and the top-down modulator through Wr)
+    # were transposed forward reads and passed it. Guard them directly.
+    #
+    # The two probes differ, and the reason is worth stating because the naive version of the
+    # second one is WRONG and was caught by constructing its red. dL/dz takes only gp, so
+    # perturbing Wz is a clean test. gsbar CANNOT be tested that way: its `dldu` comes from the
+    # FORWARD activations u = Wr @ s_bar + br, so gsbar legitimately moves when Wr moves under
+    # BOTH implementations. Re-measured 2026-08-05 with the perturbation STATED (it was not, and
+    # one of the two figures did not reproduce without it): replacing `wr` with the all-0.35
+    # matrix -- the same shape of perturbation used on Wz below -- moves gsbar by 1.435e+00
+    # shipped and 1.490e+00 pre-fix. (The comment previously read 1.435 as "1.450e+00".) Both
+    # move, so that probe cannot tell the two implementations apart at all. The discriminating
+    # probe is the opposite one: perturb the FEEDBACK matrix _Br and require gsbar to MOVE,
+    # which only a Br-carried signal can do.
+    #
+    # REDS CONSTRUCTED AND RUN at this exact seed/probe (re-verified 2026-08-05 by monkeypatching
+    # the pre-fix bodies back in and running these exact lines):
+    #   dL/dz  : pre-fix (Wz^T) dep 2.756e+00 -> FIRES;  shipped 0.000e+00 -> passes.
+    #   gsbar  : pre-fix (Wr^T) ignores _Br, dep 0.000e+00 -> FIRES;  shipped 2.910e+00 -> passes.
+    #
+    # A THIRD assert stood here -- `assert any(v != 0.0 for v in gs_before)`, messaged "the
+    # top-down modulator must still CARRY a signal ... it does not delete the term". DELETED
+    # 2026-08-05 under P8 falsifier F11: it has NO reachable red IN SITU. Its named red is the
+    # DELETED-term implementation, and in that implementation gs_flip is zero too, so `dep_br > 0`
+    # one line above fires FIRST and the third assert never executes. Swept four implementations
+    # -- linear (shipped), deleted, even-in-_Br (`_Br[i][j]**2`), and rectified
+    # (`max(0.0, sum(...))`, chosen because a nonlinearity is the only shape that could zero
+    # gs_before while leaving gs_flip nonzero) -- and in all four `A3 fires only where A2 fires`:
+    #   linear dep_br 2.910e+00 A2 pass A3 pass | deleted 0.000e+00 A2 FIRE A3 fire
+    #   squared 0.000e+00 A2 FIRE A3 pass       | rectified 1.455e+00 A2 pass A3 pass
+    # It restated the assert above it, which is the same defect this pass deleted from
+    # `cerebellum/synfire_chain.py`. Deleted, not weakened (F11).
+    ep = SpikingJEPA(_ACTIONS, retina=retina, seed=5)
+    gp_probe = [0.1 * (i + 1) for i in range(ep.L)]
+    sbar_probe = [0.3] * ep.sizes[-1]
+    gz_before = ep._feedback_gz(gp_probe)
+    _, _, gs_before = ep._readout_grad(gp_probe, sbar_probe, ep.Wr, ep.br)
+    ep.Wz = [[0.35] * ep.L for _ in range(ep.L)]
+    gz_after = ep._feedback_gz(gp_probe)
+    dep_z = max(abs(a - b) for a, b in zip(gz_before, gz_after))
+    ep._Br = [[-v for v in row] for row in ep._Br]  # flip the FEEDBACK matrix only; Wr untouched
+    _, _, gs_flip = ep._readout_grad(gp_probe, sbar_probe, ep.Wr, ep.br)
+    dep_br = max(abs(a - b) for a, b in zip(gs_before, gs_flip))
+    assert dep_z == 0.0, f"dL/dz must not read Wz (weight transport); Wz moved it by {dep_z:.3e}"
+    assert dep_br > 0.0, (
+        f"the top-down modulator must ride the FIXED random _Br, not Wr transposed -- flipping "
+        f"_Br moved it by {dep_br:.3e} (a transported signal ignores _Br entirely)"
     )
 
     # HONEST NOTE (the claim-4 ORDERINGS are refuted across seeds -- measured, not assumed). The old

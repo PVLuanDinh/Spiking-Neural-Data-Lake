@@ -2,7 +2,7 @@
 SORN -- a self-organizing recurrent network that BEATS a static random reservoir on sequence
 prediction (Lazar, Pipa & Triesch, Front. Comput. Neurosci. 3:23, 2009).
 
-The repo already has a fixed random spiking reservoir -- research/spiking_ssm.py, a Liquid State
+The repo already has a fixed random spiking reservoir -- reasoning/spiking_ssm.py, a Liquid State
 Machine whose recurrent weights and thresholds are frozen at random init and only a linear readout
 is trained. It also has the individual plasticity primitives (intrinsic_plasticity, homeostatic_scaling,
 valence_stdp / bcm_plasticity) as standalone single-cell/single-rule demos. What it did NOT have is the
@@ -36,11 +36,15 @@ An identical-architecture STATIC reservoir (same size, same random wiring/init, 
 SAME ridge readout trained on the SAME data is the fair control -- the ONLY difference is whether SORN's
 three rules ran.
 
-  python research/sorn.py       # (also run by run_selfchecks.py, root on PYTHONPATH)
+  PYTHONPATH=src python -m snn_data_lake.reasoning.sorn   # (also run by run_selfchecks.py)
+
+(the path the module is at TODAY; the previous line named `research/sorn.py`, retired in v3.78.)
 """
 
 import math
 import random
+
+import numpy as np
 
 # ---- network / task sizes (small: whole experiment runs twice in a few seconds) ----
 N_E = 100  # excitatory binary threshold units
@@ -260,24 +264,51 @@ def probe_rates(net, stream):
 
 
 def _solve(a, b):
-    """Solve A X = B (A n x n, B n x m) by Gaussian elimination with partial pivoting."""
-    n, m = len(a), len(b[0])
-    aug = [a[r][:] + b[r][:] for r in range(n)]
-    for c in range(n):
-        p = max(range(c, n), key=lambda r: abs(aug[r][c]))
-        aug[c], aug[p] = aug[p], aug[c]
-        piv = aug[c][c] or 1e-12
-        inv = 1.0 / piv
-        row = aug[c]
-        for k in range(c, n + m):
-            row[k] *= inv
-        for r in range(n):
-            if r != c and aug[r][c]:
-                f = aug[r][c]
-                ar = aug[r]
-                for k in range(c, n + m):
-                    ar[k] -= f * row[k]
-    return [[aug[r][n + col] for col in range(m)] for r in range(n)]
+    """Solve A X = B (A n x n, B n x m). Thin wrapper over `numpy.linalg.solve`.
+
+    P7/P2, 2026-08-04. This WAS a hand-written Gaussian elimination with partial pivoting -- one of
+    the three such solvers `docs/POLICIES.md` names under P7 as what the retired zero-dependency
+    rule cost this tree (`nef_compute._solve`, `pc_active_inference._solve`, and this function),
+    against `cerebellum/wavefront_planner.py`'s damped-least-squares step doing the same job in one
+    numpy line. numpy has been an UNCONDITIONAL core dependency since 2026-07-20, so nothing was
+    left to justify a second implementation.
+
+    **NUMBERS RE-MEASURED 2026-08-05 and CORRECTED -- the first set recorded here did not
+    reproduce, and the error was 115x in the flattering direction.** It read "hand 56.888 ms /
+    numpy 0.099 ms -> 577x". Re-run in `.venv-lake` (python 3.11.15, numpy 2.4.6) on the REAL
+    shape this module builds (A 101x101 from a sparse binary Gram, B 101x8), 61 interleaved reps,
+    two independent runs:
+
+        hand-rolled Gaussian elimination : median 21.2 / 23.1 ms   (best 20.4 / 21.1)
+        _solve() AS SHIPPED              : median  4.7 /  4.1 ms   (best  2.5 /  2.3)
+        -> median 4.5-5.6x, best 8.0-9.4x
+
+    The 0.099 ms was the giveaway: it can only have timed `np.linalg.solve` on arrays that were
+    ALREADY numpy. `_solve` takes lists, so the shipped cost includes `np.asarray` + `.tolist()`.
+    Decomposed on this box: bare solve on pre-converted arrays 3.06 ms, list->array conversion
+    0.22 ms, shipped wrapper 3.68 ms -- so the conversion is NOT the gap; this LAPACK build is
+    simply slow on a 101x101 dgesv. Either way the recorded speedup must be the SHIPPED function's.
+
+    P2's adopt decision is unchanged and the evidence for it is behavioural, not the ratio:
+    over 6 seeds (7, 1, 2, 3, 11, 23) of the full self-organize + collect pipeline, max
+    |W_hand - W_numpy| = **5.773e-15** (float roundoff; the 3.803e-15 recorded here was from
+    an unstated seed set) and `accuracy()` was IDENTICAL to all printed digits on all 6.
+    The module self-check's whole stdout is byte-identical before and after the swap -- RE-RUN
+    2026-08-05, HEAD version vs this one, string-compared: identical.
+
+    One deliberate behaviour change, disclosed because it is not a pure port, and CONSTRUCTED AND
+    RUN rather than argued: the old code fudged a zero pivot with `piv = aug[c][c] or 1e-12` and
+    returned a garbage solution -- on A = [[1,2],[2,4]], b = [[1],[2]] it returns [[1.0], [0.0]],
+    which is not a solution of anything. `np.linalg.solve` raises `LinAlgError("Singular matrix")`.
+    Silently returning nonsense from a singular system is the fail-green shape this project treats
+    as a defect. The only caller is `train_readout` (verified: `_solve` has exactly one call site,
+    in this module), which adds `RIDGE` to the diagonal of a Gram matrix -- positive-definite for
+    RIDGE > 0 -- so the raising path is reachable only at RIDGE = 0, where a loud failure is the
+    correct answer. Boundary check, run: with RIDGE subtracted back off the real Gram matrix,
+    `_solve` raises `LinAlgError` (it does NOT return a plausible-looking wrong answer), and the
+    1x1 case `_solve([[2.0]], [[4.0]])` returns [[2.0]] as expected.
+    """
+    return np.linalg.solve(np.asarray(a, dtype=float), np.asarray(b, dtype=float)).tolist()
 
 
 def train_readout(feats, labels):

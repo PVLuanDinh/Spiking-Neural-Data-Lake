@@ -111,7 +111,7 @@ against a benchmark on the real workload.* Not: move a narrow brain and call `cu
 speedup.
 
 Also unresolved and prior to any of this: the live tick is **891 ms** after two unbounded O(n^2) growths
-were removed (from 90,000 ms), and that 891 ms is **unattributed**. `learn_daemon.py:61` still claims
+were removed (from 90,000 ms), and that 891 ms is **unattributed**. `substrate/learn_daemon.py` still claims
 `~33 ms`. The project's own rule applies — *neuter it and measure the delta; a cProfile ranking once
 sent a whole optimisation plan after the wrong function.*
 
@@ -161,7 +161,7 @@ Each phase ends with a measurement, and a phase that moves nothing is reported a
 |---|---|---|
 | 1 | **Instrument** | `tools/coverage_score.py` re-derives a per-category % from tracked evidence files; refuses band-41+ without an A/B artifact and band-81+ without held-out evidence; the count of currently-unbacked category scores is published |
 | 2 | **Dependency + env** | one environment runs daemon, self-checks, pytest and ruff; zero-dep machinery gone; the added dependency list is recorded with a justification each |
-| 3 | **Attribute the tick** | where the 891 ms goes, by neuter-and-measure, not by profiler ranking; `learn_daemon.py:61` made true |
+| 3 | **Attribute the tick** | where the 891 ms goes, by neuter-and-measure, not by profiler ranking; `substrate/learn_daemon.py` made true |
 | 4 | ~~**Widen + fuse**~~ **REFUTED, done differently** | The widening premise was wrong and the measurement said so: the whole live brain holds **132** LIF cells, all per-tick neuron state fuses to ~1,700–3,500 elements (*inside* the crossover, not past it), and `AutonomousArm.step()` is **0.00%** of the profile — so fusing neurons would have optimised nothing. The real hot path was `coincidence`, a Python loop run once per stored episode per tick at **74.5%**. Fused bit-exactly via `(D + a·b)/2`: `complete()` 59.9 → 0.9 ms at N=2,000, and linear-in-N → **flat**. Shipped on CPU; this GEMV's measured crossover is ~1,600–2,000 rows, so a captured CUDA graph is a *loss* at our widths, and numba beats one by 16× on fused LIF. See P5. |
 | 5 | **Charge the dormant** — **FIRST PASS DONE 2026-07-31** (`specs/001-charge-the-dormant`) | the open P3 findings resolved as wired-and-charged / retired / exempt-with-reason, each with a neuter-A/B. Never a dead consumer to silence a gate. **Outcome: 9 rules adjudicated at runtime. 2 permanent exemptions (dormant AND correct to be dormant); 4 OPEN exemptions carrying a disposition + port finding; 3 measured called-but-inert. NOTHING was wired or retired — every port check found a live class or an unported capability, and P2 forbids deleting either. No band moved; all five affected rows were already ≤40, so nine inert rules had inflated nothing.** Instrument fixes it forced: class-granular exemption keys (`n_defs` 56→58, two defs had been overwriting each other) and a graded observable in `charge_probe` (the flip counts were argmax tests over eleven sources and reported live faculties as inert). Still open: `IntrinsicPlasticity.adapt` measures 0 invocations at 400 ticks, contradicting an earlier CALLED_BUT_DISCARDED verdict — both readings recorded, neither deleted. |
 | 6 | **Capability** — **SATISFIED AS A NULL, 2026-07-31** | the two ceiling categories attacked where they are actually blocked: a real-scale AR spiking LM for Language, perceptual predicate induction for Gf. Held-out numbers or an honest null. **Both halves were attacked and both returned measured results below the bar, which is what this criterion asks for — it says "held-out numbers OR an honest null", not "a capability".** LANGUAGE: a real 10.3M-parameter AR spiking LM trained on 119.6M chars of WikiText-103, held-out disjointness PROVEN not assumed (`tools/ar_lm_disjoint.py`, 0 of 3350 BLiMP sentences occur in the exposure); BLiMP did not move — every model row sits between the 29.4% length prior and the 53.0% char-level bar, at or below the 50% chance line (`docs/DEPTH_CEILINGS.md`). Gf: the ARC solver on the **evaluation split, 400 held-out tasks, 12/400 = 3.00%** (`gf_arc_eval_lib_off.txt`), and the cross-task library null is stronger than an equal score — `lib=on` solves **the identical twelve task IDs** as `lib=off` (`gf_arc_eval_lib_on.txt`), so the library changes not just how many but *which*, which is nothing. Banded 10 and 0 respectively. **NO CAPABILITY IS CLAIMED BY THIS ROW.** Closing phase 6 means the ceiling was measured, not raised: the honest Gf figure is ~3% held-out and the honest Language figure is chance. What would raise them is a training run measured in GPU-hours, and that is the next arc, not this one. |
@@ -227,7 +227,7 @@ and makes the in-process 8..120 bound real. But it makes the restart finding wor
 bounded live population that is rebuilt from nothing is not a substrate that compounds.
 
 **The daemon's persistence claim is true of what it names and false of what a reader will assume.**
-`learn_daemon.py:149` reports "brain durable save + chat lake flushed" and `:20` states that state
+`substrate/learn_daemon.py` reports "brain durable save + chat lake flushed" and `:20` states that state
 "survives the restart via persist/reload". That holds for the durable lake, the chat store and the npz
 weights. It does not hold for the grown neural substrate, because the owning engine has nowhere to save
 to. Same shape as every other defect in this document: a claim accurate about its component and wrong
@@ -243,7 +243,7 @@ as-capability failure P0's own honesty guard names, one level deeper than the ce
 
 1. **Enumerate what actually persists** across a restart versus what is rebuilt — the lake, chat, npz
    weights, prototypes, curriculum, *and* the grown units — and write it down. The claim at
-   `learn_daemon.py:20` needs to become specific or go.
+   `substrate/learn_daemon.py` needs to become specific or go.
 2. **Give the grown substrate a home in the one durable lake.** `_T_FACT` and `_T_SPIKE` already exist in
    the BinLog container (`substrate/home.py:45-46`), `_T_SPIKE` has just been freed by `SpikeLake`'s
    retirement and is kept as a reserved tag, and the format's foreign-tag skip/preserve behaviour is now

@@ -416,12 +416,40 @@ def main():
 
     sweep_trace = cpg_sweep(So101Arm(), steps=400)
     assert max(sweep_trace) - min(sweep_trace) > 15.0, "--sweep produced no rhythmic joint motion"
+    # E-STOP freezes a CPG-driven arm. THIS ASSERT WAS VACUOUS UNTIL 2026-08-05 and it is the only
+    # end-to-end E-STOP proof in the repo, so the failure is recorded rather than quietly patched.
+    #
+    # It drove the latched arm with the literal "JOINT_A_ROTATE(+5deg)". There is no joint "A": the
+    # arm has 6 joints and that exact string is the ONLY `JOINT_...` token anywhere in
+    # brainstem/interpreter.py, i.e. a placeholder that parses to nothing. MEASURED with the control
+    # this test never had -- an UNLATCHED arm, driven 50x with that literal, moved 0 of 6 joints
+    # (theta_deg identical to 4 decimal places), while JOINT_0_ROTATE(+5deg), SHOULDER_PAN(+5deg)
+    # and MOVE(+5,0,0) each moved it. So the old assert compared a frozen arm against a command that
+    # freezes nothing: it passed for every possible state of the E-STOP latch, including a broken
+    # one, and would have gone on passing if the latch were deleted outright.
+    #
+    # The fix is the CONTROL, not a different literal: assert first that the command moves an
+    # UNLATCHED arm (which makes the red reachable and keeps it reachable if the command vocabulary
+    # ever drifts again), then that the same command moves nothing once latched.
+    _MOTION_CMD = "JOINT_0_ROTATE(+5deg)"  # verified to move an unlatched arm, by the control below
+
+    control_arm = So101Arm()
+    cpg_sweep(control_arm, steps=120)
+    before_ctrl = list(control_arm.state()["theta_deg"])
+    for _ in range(50):
+        control_arm.apply(_MOTION_CMD)
+    assert list(control_arm.state()["theta_deg"]) != before_ctrl, (
+        f"CONTROL FAILED: {_MOTION_CMD} moves an UNLATCHED arm not at all, so the E-STOP assert "
+        "below would pass vacuously. Fix the command, not this assert -- a frozen arm and an inert "
+        "command are indistinguishable, which is exactly the defect this control exists to catch."
+    )
+
     estop_arm = So101Arm()
     cpg_sweep(estop_arm, steps=120)
     estop_arm.apply("EMERGENCY_STOP")
     frozen = estop_arm.state()["theta_deg"]
     for _ in range(50):
-        estop_arm.apply("JOINT_A_ROTATE(+5deg)")
+        estop_arm.apply(_MOTION_CMD)
     assert estop_arm.state()["theta_deg"] == frozen, (
         "EMERGENCY_STOP failed to freeze the CPG-driven arm"
     )

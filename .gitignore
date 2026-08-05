@@ -72,8 +72,43 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Local-only — kept on disk, not published to the public repo
-/AGENTS.md
+# AGENTS.md IS NO LONGER IGNORED (2026-08-05, P4c). It was `/AGENTS.md` on the list below, so a
+# governing onboarding document -- the one that tells an agent which five files are the safety
+# envelope, which gates must pass, and how to register a module -- existed in NO clone. Measured
+# before the change: `git check-ignore -v AGENTS.md` -> `.gitignore:76:/AGENTS.md`, and
+# `git ls-files --error-unmatch AGENTS.md` -> "did not match any file(s) known to git", i.e. ignored
+# AND untracked. Two named gates were blind to it as a direct consequence: tools/citation_guard.py
+# scans `git ls-files` only, so nothing it says about this file's citations was ever computed; and
+# tools/doc_command_guard.py names `AGENTS.md` LITERALLY in its own SCOPE tuple, so it counts a
+# document that no clone has. RE-RUN 2026-08-05 rather than quoted: the gate prints
+# `scanned 55 documents; 51 python -m command(s)` on this working machine, and AGENTS.md
+# contributes 1 document + 1 command (its `python -m snn_data_lake.brainstem.reflex`; the three
+# `python -m ruff` lines do not count -- the gate's CMD regex matches `-m snn_data_lake.<...>`
+# only). CORRECTION FOUND BY RE-RUNNING: docs/POLICIES.md states the clean-clone figure as
+# "54 / 50". The command count is right and the document count is off by one, because `CLAUDE.md`
+# is ALSO in that SCOPE tuple and is ALSO gitignored+untracked (it holds 0 counted commands). A
+# clean clone therefore measures 53 / 50, not 54 / 50. THAT SUBTRACTION ONLY HOLDS IF THOSE TWO ARE
+# THE ONLY UNCLONABLE DOCUMENTS IN SCOPE, which the first draft asserted without checking. Checked
+# 2026-08-05 by walking all 55 SCOPE matches against `git ls-files`: exactly two are absent from it,
+# AGENTS.md and CLAUDE.md, so 55-2 = 53 documents and 51-1 = 50 commands. (The gate's printed
+# command figure is net of its 2 EXEMPT entries -- the raw regex matches 53 -- so the arithmetic is
+# done on the printed number throughout.) Under P4c "a build the gates cannot see is
+# not a build the project can claim", and that applies to a governing document as hard as to code.
+# WHAT THIS CHANGE DOES AND DOES NOT DO, stated exactly: it makes the file ADDABLE. It does not
+# track it -- the file stays untracked, absent from every clone and invisible to citation_guard,
+# until someone runs `git add AGENTS.md`. That step is deliberately left to the owner.
+# NOT DISPOSITIONED HERE: the `/CLAUDE.md` PATTERN below is the identical defect -- likewise ignored
+# and untracked, 26,756 bytes of project governance (re-measured 2026-08-05). DELIBERATELY CITED BY
+# PATTERN AND CARRYING NO LINE NUMBER, which is this block's own correction and was earned twice.
+# The first draft wrote `.gitignore:77:/CLAUDE.md`: true at HEAD, already false once this comment was
+# inserted above it. The fix for that then wrote the re-measured line instead -- and inserting THAT
+# sentence moved the target again, so the replacement was stale before it was saved. A comment
+# sitting above the line it cites, in the same file, invalidates its own citation on every edit; the
+# only stable reference is the pattern itself. Re-derive with `git check-ignore -v CLAUDE.md`.
+# It is left ignored because the blocker this change answers named AGENTS.md only, and widening the
+# call unilaterally is not this change's to make -- it is escalated, not resolved.
+
+# Local-only -- kept on disk, not published to the public repo
 /CLAUDE.md
 /assets/
 /gpu_scaling_sweep.sh

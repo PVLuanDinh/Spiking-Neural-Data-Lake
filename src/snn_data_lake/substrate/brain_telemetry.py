@@ -36,12 +36,25 @@ THE HONESTY CONTRACT (the whole point -- read before adding a panel)
 
        This exists because rule 2 was not enough. An audit of this file's own dashboard found four
        signals being drawn as live bars that are nothing of the kind: `integration_competence` is
-       assigned only inside `Brain.__init__` (brain.py:362, and its except-branch sibling) and never again; `pci` is computed
-       only inside the sleep tick and only when `nights % 4 == 0` (brain.py:2279); `spikes.midbrain`
-       reduces to a constant 0.05 because its `novelty` term is written only under a `_salience_on`
-       flag that is never enabled (autonomous_loop.py:1124); and `spikes.substrate` is the SAME
-       expression as `spikes.hippocampus` (live_brain.py:255,:276), so the two bars are byte-identical
-       every tick and only one of them is a region.
+       assigned only inside `Brain.__init__` (brain.py:394, and its except-branch sibling at :403)
+       and never again; `pci` is computed only inside the sleep tick and only when `nights % 4 == 0`
+       (`Brain._sleep_tick`, brain.py:2519); `spikes.midbrain` reduces to a constant 0.05 because its
+       `novelty` term is written only under a `_salience_on` flag that is never enabled
+       (`AutonomousArm.__init__` sets it from the `salience_novelty=False` kwarg at
+       autonomous_loop.py:242, and `cortex/brain.py:241` records deliberately NOT passing it; it is
+       read at :1170 and :1325 -- the previous note said ":1170" was "the only consumer", which is
+       one read short and was corrected 2026-08-05 while re-resolving the rest of this paragraph);
+       and `spikes.substrate` is the SAME expression as `spikes.hippocampus`
+       (live_brain.py:255,:276), so the two bars are byte-identical every tick and only one of them
+       is a region.
+
+       EVERY LINE CITE IN THIS FILE WAS RE-RESOLVED 2026-08-04 AND MOST HAD DRIFTED -- the four
+       above pointed at `try:`, `except Exception:`, `return bias` and a `svec` list element
+       respectively, in code with nothing to do with the claim. The CLAIMS all re-verified against
+       the tree; only the coordinates were wrong, which is the failure mode that makes a stale cite
+       worse than none: it reads as evidence and resolves to something. `tools/citation_guard.py`
+       does not catch this class (it gates untracked citations, not drifted line numbers), so
+       cites here now name the enclosing SYMBOL wherever one exists.
 
        A number that has not changed since construction, drawn as a live bar, is a lie told slowly.
        Being in the snapshot was never the same as being alive, and this table is where the
@@ -122,15 +135,17 @@ DASHBOARD_SECTION_KEYS = {
 # Deleting an entry is how a future build declares a signal fixed; adding one is how it stays honest.
 # Every claim here was verified against the cited source line, not inferred.
 PROVENANCE = {
-    # assigned once inside Brain.__init__ and never touched by any tick (brain.py:362 + its except-branch sibling -> state() at :2621)
+    # assigned once inside Brain.__init__ (brain.py:394, except-branch sibling :403) and never
+    # touched by any tick -- read out by Brain.state() at :2930
     "integration_competence": "frozen at construction",
     "integration_gain": "frozen at construction",
     "integration_retention": "frozen at construction",
     "integration_ok": "frozen at construction",
-    # written only in the sleep tick; pci additionally only when nights % 4 == 0 (pci brain.py:2279; criticality brain.py:2353)
+    # written only in the sleep tick; pci additionally only when nights % 4 == 0
+    # (pci brain.py:2519; criticality brain.py:2650 -- it is ALSO set once at birth, :367)
     "pci": "sleep-only, refreshes every 4th night",
     "criticality": "sleep-only",
-    # string/bool literals in state(), not readings (brain.py:2583,:2716)
+    # string/bool literals in state(), not readings (goal brain.py:2892; reflex_armed :3055)
     "goal": "hardcoded literal",
     "reflex_armed": "hardcoded literal",
     # spike-section rows that are not independent live regions
@@ -142,11 +157,21 @@ PROVENANCE = {
         "+8.4% tick cost. Left off deliberately (v4.78)"
     ),
     "spikes.substrate": "duplicate of hippocampus (same expression)",
+    # STRUCTURAL CENSUS, not a live reading: these count MODULES ON DISK via the static import
+    # graph, computed once per process and never recomputed. They are constant for the entire life
+    # of the daemon, and the cockpit drew all three untagged (specs/010, C30). They are honest and
+    # load-bearing as a census -- what they must not read as is a live coverage level that could
+    # rise while you watch it.
+    "coverage_reachable": "structural census of modules on disk, computed once per process",
+    "coverage_total": "structural census of modules on disk, computed once per process",
+    "coverage_dormant": "structural census of modules on disk, computed once per process",
     # STRUCTURAL, not live: reverberation() resets the router, drives a FIXED seed at a fixed 1.0 for a
     # fixed count and restores -- it never reads the live drive, so it is a pure function of the
     # connectome topology. Proven identical (0.25) across five different live states; it was being
     # recomputed every 5 ticks at 0.43 ms a call to produce the same number. Now computed once
-    # (brain.py:2021). The graded live counterpart is `connectome_propagation` (v4.79).
+    # (the `self._connectome_router.reverberation(seed, 6)` call at brain.py:2215, stored as
+    # `_connectome_reverb` and read by state() at :3023). The graded live counterpart is
+    # `connectome_propagation` (v4.79).
     "connectome_reverberation": "structural: topology only, computed once, cannot vary",
 }
 
@@ -323,10 +348,18 @@ def snapshot(brain):
 
     # ---- gated: NOT routed to any action -- and, it turns out, not computed either. ----
     # These were labelled "computed but not applied" until an audit checked the write sites: all three
-    # are assigned only inside blocks guarded by `_gain_on` / `_dev_on` (autonomous_loop.py:1505,:1542),
-    # and those flags come from LiveBrain kwargs that Brain never passes (brain.py:197-209). So they
-    # hold their init 0.0 forever. `computed` records that, because "a gain that is never applied" and
-    # "a gain that was never calculated" are different failures and the second one is worse.
+    # are assigned only inside blocks guarded by `_dev_on` (autonomous_loop.py:1714) and `_gain_on`
+    # (:1751), which are set from the `develop_env` / `gain_adapt` kwargs at :404 and :457.
+    #
+    # The evidence that Brain never enables them is an ABSENCE, so it is stated as one rather than
+    # cited to a line: re-derived 2026-08-04, `cortex/brain.py` contains NO occurrence of either
+    # `gain_adapt` or `develop_env`, tree-wide the only `develop_env=True` sites are inside
+    # `cortex/live_brain.py`'s own `main()` (:809, :838), and `gain_adapt` is never passed True
+    # anywhere. (The old cite here, `brain.py:197-209`, points at the NORD_PERSIST block and never
+    # mentioned either kwarg -- an absence cannot have a line number, which is presumably how it
+    # acquired the wrong one.) So they hold their init 0.0 forever. `computed` records that, because
+    # "a gain that is never applied" and "a gain that was never calculated" are different failures
+    # and the second one is worse.
     a = arm_obj
     if a is not None:
         for key, attr, flag in (

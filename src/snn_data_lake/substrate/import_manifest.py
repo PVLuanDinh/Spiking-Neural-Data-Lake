@@ -3,8 +3,42 @@ import_manifest -- the CROSS-TIER canary. Policy 3, the half no other gate cover
 
 THE DEFECT THIS EXISTS FOR. The governed tiers (cortex/, thalamus/, substrate/, brainstem/, ...) reach
 into the UNGOVERNED tiers (reasoning/, training/) through LAZY imports that sit inside bare
-`except Exception:` swallows. `cortex/brain.py` alone holds 67 such swallows. Delete or break one of
-those targets and:
+`except Exception:` swallows.
+
+Those imports come in TWO SHAPES and until 2026-08-05 this gate could only see one. The in-package
+shape is prefixed (`snn_data_lake.reasoning.rose_language`). The ROOT shape is a bare top-level name,
+because the root tier is not inside the package at all: `from training.eprop_nmnist import
+EpropEncoder` (cortex/brain.py:594). `UNGOVERNED_ROOT` below is that second shape, and it is not a
+minor omission -- the three modules it makes visible carry the brain's ENTIRE perception tier, and
+they are reached on the CONSTRUCTION path.
+
+All three sit in the body of ONE `try` inside `cortex/brain.py::Brain.__init__` (the try spans
+:557-643; the SYMBOL is given first because POLICIES.md records brain.py line cites rotting twice
+within a day, and `ast` puts the enclosing symbol beyond doubt -- it is also why "reached on the
+CONSTRUCTION path" above is a measurement and not a guess) under a single `except Exception`
+with no `as name` -- a swallow by this module's own definition, VERIFIED by `ast` rather than by
+reading, after a first draft of this paragraph guessed "each inside its own" and was wrong. One
+shared handler is the worse arrangement, not the milder one: the vision import at :594 is the first
+of the three, so breaking it aborts the whole block and takes the AUDIO tier at :628 with it, in
+silence.
+
+RE-COUNTED 2026-08-04, WITH THE DEFINITION STATED, because the figure here was unreproducible. This
+said "`cortex/brain.py` alone holds 67 such swallows" and a paragraph below said "nine swallows" --
+two numbers for one quantity, neither saying what it counted. POLICIES.md records the same figure
+being wrong and re-derived once already. Counted by `ast`: a handler is a SWALLOW when it is
+`except Exception:` with no `as name`; it is IMPORT-WRAPPING when its `try` BODY contains an
+`Import`/`ImportFrom` node. On this tree: `cortex/brain.py` holds **116** swallows, **44** of them
+import-wrapping; across the governed tier, **166** swallows and **58** import-wrapping.
+
+The DENOMINATOR needs the same treatment the numerator just got, and did not get it: this said
+"across the 223 governed-tier files" and 223 is not reproducible by any definition tried. Re-derived
+2026-08-05, both readings stated because they differ: `dormancy_gate.BRAIN_MODULES` (REGIONS +
+TORCH_TIER) is **205** modules, all 205 resolving to a file on disk; every `.py` in the directories
+those modules live in, `__init__.py` included, is **220**. Both give the SAME 166 / 58, because the
+15 `__init__` files hold no swallows -- which is why an unreproducible denominator survived beside
+two exact numerators. Re-derive rather than inherit; the definition above is the whole instrument.
+
+Delete or break one of those targets and:
 
   run_selfchecks    green -- the module is simply no longer in the list
   pytest            green -- pyproject omits */reasoning/* and */training/* from the coverage denominator
@@ -13,15 +47,23 @@ those targets and:
   replication_guard green -- it only matches three exact class names
 
 ...while the brain silently loses the faculty. `Brain.__init__` sets the attribute to None, every tick
-after that runs without it, and a static reader still credits the faculty as wired. Two of the targets
-(`self_build_loop`, `self_mod_harness`) ARE Policy 0's self-building-code avenue, so the whole avenue
-can be deleted with every gate green. One (`rose_language`) is the language faculty.
+after that runs without it, and a static reader still credits the faculty as wired. Three of the
+targets (`reasoning.godel_machine` and `reasoning.self_improve`, both from `substrate/self_mod_harness`,
+plus `reasoning.impact_analysis` from `basal_ganglia/brain_native_selfbuild`) ARE Policy 0's
+self-building-code avenue, so the whole avenue can be deleted with every gate green. One
+(`rose_language`) is the language faculty, and THREE are the perception tier (see `UNGOVERNED_ROOT`).
+(This said "Two of the targets (`self_build_loop`, `self_mod_harness`)" until 2026-08-05 and named the
+wrong side of the edge: both are governed IMPORTERS -- `self_build_loop` was promoted into
+`basal_ganglia/` and is not a target at all, and `self_mod_harness` is the substrate module doing the
+importing. Re-derived by reading this gate's own printed output rather than inherited.)
 
 WHAT THIS ASSERTS. Every ungoverned module that a governed module imports must still be IMPORTABLE.
 That is deliberately the weaker of the two claims available -- it proves the target exists and loads,
 NOT that its output changes behaviour. Charge is Policy 3's second tier and is proven per faculty by
-the runtime neuter-A/B, not here. Import-ability is exactly the property the nine swallows destroy
-silently, and it is the property a deletion breaks, so it is the one worth a gate.
+the runtime neuter-A/B (`tools/charge_probe.py`), not here. Import-ability is exactly the property
+those swallows destroy silently, and it is the property a deletion breaks, so it is the one worth a
+gate. ("the nine swallows" stood here against "67" four paragraphs up -- the second of the two
+irreconcilable counts the re-derivation above replaces.)
 
 The manifest is DERIVED by AST walk, never hand-maintained -- the lesson from
 dormancy_gate._external_roots(): a hand-written list cannot see a wire nobody wrote down.
@@ -32,6 +74,7 @@ dormancy_gate._external_roots(): a hand-written list cannot see a wire nobody wr
 import ast
 import importlib
 import os
+import sys
 
 # The tiers Policy 3 mechanizes (REGIONS keys + the top-level modules). A module here is covered by
 # brain_atlas parity, the dormancy gate, ruff and the coverage denominator.
@@ -55,16 +98,42 @@ GOVERNED = (
 )
 
 # The tiers no gate covers. A governed -> ungoverned edge is what this module protects.
+# IN-PACKAGE shape: matched as the prefix `snn_data_lake.<u>`.
 UNGOVERNED = ("reasoning", "training")
 
+# ROOT shape: tiers that live OUTSIDE the package, so a governed module names them by their BARE
+# top-level name and the prefixed test above can never match. ADDED 2026-08-05: `cortex/brain.py`
+# builds the perception tier from `training.eprop_nmnist` (:594), `training.surrogate_snn` (:606) and
+# `training.eprop_shd` (:628) -- all three line citations re-resolved against the file today, all
+# three in the body of the ONE `try` at brain.py:557-643 (`ast`-verified) -- and all three were
+# invisible to the one gate built for exactly this failure. Widening the scan is what makes them
+# visible; it does NOT make brain.py's own import CWD-proof (see broken()).
+# The four-gates-green list above holds for them VERBATIM: coverage `omit` is
+# the glob `*/training/*`, and ruff `extend-exclude` names the root `"training"` entry explicitly.
+#
+# MEASURED, not listed by hope. An AST survey of EVERY import in the governed tier found `training`
+# to be the only root tier imported by bare name; re-running the widened scan with
+# ("training", "research", "integrations") produced the IDENTICAL 14 targets / 15 sites, so the other
+# two would be allowlist entries that can never match -- and an entry that cannot match is a gate
+# claiming coverage it does not have. Add a name here only when a bare-name import of it is measured.
+UNGOVERNED_ROOT = ("training",)
+
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# <repo>, the parent of `src/`. Pure path arithmetic evaluated at import -- no side effect (nothing is
+# inserted on sys.path here; see broken(), which scopes and undoes that itself).
+_ROOT_DIR = os.path.dirname(os.path.dirname(_PKG_DIR))
 
 
 def _targets(tree):
-    """Every `snn_data_lake.<ungoverned>...` module named by an import in one parsed file.
+    """Every ungoverned module named by an import in one parsed file -- BOTH shapes: the in-package
+    `snn_data_lake.<UNGOVERNED>...` prefix and a bare `<UNGOVERNED_ROOT>[.sub]` root name.
     Covers `import a.b`, `from a.b import c`, and the LAZY/GUARDED forms (an import nested inside a
     function or a try block is an ordinary ast.Import node -- ast.walk sees it either way, which is
-    the entire point)."""
+    the entire point).
+
+    The root test is `m == r or m.startswith(f"{r}.")`, deliberately NOT `m.startswith(r)`: the loose
+    form would also claim a third-party `trainingkit`, which is a gate reporting on a module nobody
+    in this tree imports."""
     for n in ast.walk(tree):
         names = []
         if isinstance(n, ast.ImportFrom) and n.module:
@@ -72,7 +141,9 @@ def _targets(tree):
         elif isinstance(n, ast.Import):
             names = [a.name for a in n.names]
         for m in names:
-            if any(m.startswith(f"snn_data_lake.{u}") for u in UNGOVERNED):
+            if any(m.startswith(f"snn_data_lake.{u}") for u in UNGOVERNED) or any(
+                m == r or m.startswith(f"{r}.") for r in UNGOVERNED_ROOT
+            ):
                 yield m, n.lineno
 
 
@@ -101,14 +172,64 @@ def manifest():
 def broken(man=None):
     """The manifest entries that do NOT import. Each is a silent faculty loss on the live brain.
     A real import, not importlib.util.find_spec: find_spec would catch a DELETED target but not a
-    BROKEN one, and the swallows hide both identically."""
+    BROKEN one, and the swallows hide both identically.
+
+    COST OF THE ROOT TIER, MEASURED so it is not discovered as a mystery slowdown. All three
+    `training.*` modules `import torch` at module scope, which the 11 `reasoning.*` targets did not
+    pull in: measured by calling this function with the manifest filtered both ways in one process,
+    `'torch' in sys.modules` is False after the 11 `reasoning.*` targets and True after all 14.
+    RE-MEASURED 2026-08-05 and the previous figure here (`1.83s -> 7.27s`) did NOT reproduce -- it
+    also never said WHICH span it timed, which is why it could not be checked. Both spans, stated so
+    the next reader re-derives rather than inherits; fair alternating A/B, 4 runs each, same
+    interpreter and invocation, median of the middle two, WARM filesystem cache:
+      this function alone, 11 targets -> 14:  0.17s -> 1.40s
+      whole-process `python -m ...`, 11 -> 14: 1.03s -> 2.60s
+    Cache state moves these (a cold first torch import is several times either figure), so the
+    durable reading is the RATIO and the sign, not the seconds. That is torch's import, paid once
+    per process. It is NOT worth avoiding with
+    find_spec -- proving these modules LOAD is the entire assertion, and find_spec would green a
+    module whose body raises, which is a constructed and RUN red for this gate (a `training/` whose
+    `eprop_nmnist.py` raises at import is caught here as `RuntimeError`, and find_spec would miss
+    it). Green under NORD_TORCH=0
+    as well, because that is a runtime off-switch, not an uninstall: torch is an unconditional core
+    dependency, so if it is ever absent these three targets correctly report BROKEN.
+
+    The ROOT tier is resolved against `_ROOT_DIR`, never against the CWD. MEASURED 2026-08-05 with
+    `PYTHONPATH=src`: `training.eprop_nmnist` imports when the process starts in the repo root
+    (`python -m` puts the CWD at sys.path[0] -- printed 'D:\\AI-project\\spiking-neural-data-lake')
+    and raises `ModuleNotFoundError: No module named 'training'` from any other directory. A
+    CWD-resolved gate would therefore report all three perception modules BROKEN whenever it ran from
+    elsewhere: a red about the caller, not about the tree, and a gate whose colour depends on the CWD
+    is not an instrument. The insert is function-scoped and undone in `finally` -- there is
+    deliberately no module-scope sys.path mutation, because run_selfchecks runs part of the suite in
+    one process.
+
+    NOT COVERED, and it is a real defect in a file this gate does not own: the LIVE
+    `from training....` in `cortex/brain.py::Brain.__init__` (:594/:606/:628) resolves only if the REPO ROOT is on
+    sys.path, which `PYTHONPATH=src` alone does not put there -- it arrives as sys.path[0], set from
+    the start directory at interpreter start. A brain whose process did not start in the repo root
+    therefore drops its whole perception tier into the single `except Exception` at brain.py:557-643
+    and ticks on at the fallback tier. MEASURED, and the invocation form decides it, so do not
+    generalise either way: under `-m` or `script.py` sys.path[0] is an ABSOLUTE path fixed at
+    interpreter start, and a later `os.chdir` to the repo root does NOT repair the import (printed
+    `sys.path unchanged by chdir: True`, then `ModuleNotFoundError: No module named 'training'`);
+    under `python -c` sys.path[0] is `''`, which re-resolves against the CWD, so there the same chdir
+    DOES repair it. This gate proves those modules EXIST AND LOAD; it does not prove brain.py can
+    reach them from an arbitrary CWD, and it must not be read as if it did."""
     man = manifest() if man is None else man
     bad = {}
-    for m in man:
-        try:
-            importlib.import_module(m)
-        except Exception as e:  # noqa: BLE001 -- the point is to REPORT it, which the callers don't
-            bad[m] = f"{type(e).__name__}: {e}"
+    added = _ROOT_DIR not in sys.path
+    if added:
+        sys.path.insert(0, _ROOT_DIR)
+    try:
+        for m in man:
+            try:
+                importlib.import_module(m)
+            except Exception as e:  # noqa: BLE001 -- the point is to REPORT it, callers don't
+                bad[m] = f"{type(e).__name__}: {e}"
+    finally:
+        if added:
+            sys.path.remove(_ROOT_DIR)
     return bad
 
 
@@ -117,7 +238,44 @@ def main():
     # A manifest that has gone empty means the scan broke, not that the coupling vanished -- a
     # constant where a computed value belongs is this project's recurring silent-degradation tell.
     assert man, "manifest is EMPTY -- the AST scan is broken, not the coupling"
-    assert len(man) >= 10, f"manifest collapsed to {len(man)} targets -- scan regression?"
+    # COUNTED BEFORE IT WAS MADE TO ASSERT (the project rule: a widened gate is counted first, and a
+    # rubber-stamp-sized list of failures would condemn the gate, not the tree). MEASURED 2026-08-05
+    # on this tree: 14 targets / 15 call sites, of which 11/12 are `reasoning.*` (unchanged) and 3/3
+    # are the newly visible root tier -- and 0 BROKEN. Three real modules, not an allowlist.
+    # The floor is 13, not 14, and not the old 10:
+    #   - 13 keeps exactly the one-target slack the previous 10-against-11 pair had, because
+    #     promotion out of `reasoning/` into a governed region legitimately SHRINKS this manifest
+    #     (P4c's stated target is zero `reasoning/`), and a floor with no slack turns every correct
+    #     promotion into a red.
+    #   - dropping the `UNGOVERNED_ROOT` tuple outright also trips this line today, because the
+    #     count falls 14 -> 11 (constructed and RUN). But that is a COINCIDENCE of the current
+    #     `reasoning.*` count, not a property: this floor is a collapse detector, and the assert
+    #     below is what actually watches the root tier. Leaving the floor at 10 would have let a
+    #     collapse recur silently.
+    assert len(man) >= 13, f"manifest collapsed to {len(man)} targets -- scan regression?"
+
+    # ROOT-TIER COVERAGE, asserted STRUCTURALLY so that no COUNT arbitrates it. The comment above
+    # used to claim the floor of 13 was "also the value that makes root-tier blindness itself red".
+    # Measured true today and fragile by construction: it holds only while `reasoning.*` happens to
+    # number 11, and P4c's stated target is to drive that count to ZERO. Whoever lowers the floor
+    # during the next correct promotion would silently delete the blindness detector along with it
+    # -- this tree's recurring silent-weakening shape, and the reason the two jobs are now two lines.
+    #
+    # This also MECHANIZES the rule `UNGOVERNED_ROOT`'s own comment states and could until now only
+    # ask for ("Add a name here only when a bare-name import of it is measured"): a declared root
+    # tier that no governed module actually imports by bare name is a gate claiming coverage it does
+    # not have. Adding "research" or "integrations" -- which two audits proposed -- now fails here
+    # instead of passing as an inert allowlist entry.
+    #
+    # Empty `UNGOVERNED_ROOT` is vacuously clean ON PURPOSE, checked because a new criterion owes its
+    # zero/empty case: if `training/` is ever promoted INTO the package, removing the name is the
+    # correct edit and must not leave an assert that can never again be satisfied.
+    unmatched = sorted(set(UNGOVERNED_ROOT) - {m.split(".")[0] for m in man})
+    assert not unmatched, (
+        f"declared root tier(s) {unmatched} appear in UNGOVERNED_ROOT but are imported by NO "
+        "governed module -- either the bare-name branch of _targets() has regressed (the perception "
+        "tier goes invisible again) or the name was added on hope rather than on a measurement"
+    )
 
     bad = broken(man)
 

@@ -21,7 +21,7 @@ HOW THIS DIFFERS from the reward-learning already in the repo (do not confuse th
   * src/snn_data_lake/r_stdp.py -- reward-modulated STDP: a LOCAL eligibility trace written by
     pre/post spike TIMING, then gated into w by a delayed reward. The credit signal is the
     LOCAL coincidence trace; the reward only gates it. NO gradient of anything is estimated.
-  * research/eprop.py -- e-prop: an ONLINE TRUE-GRADIENT rule (eligibility traces that are the
+  * reasoning/eprop.py -- e-prop: an ONLINE TRUE-GRADIENT rule (eligibility traces that are the
     exact factorised gradient of the loss); it computes the analytic gradient, just forward-in-time.
   * THIS -- weight perturbation: GRADIENT-FREE. It never forms a gradient analytically and uses
     no timing trace; it ESTIMATES the gradient stochastically from (reward, noise) correlations.
@@ -49,7 +49,7 @@ Additive research module (random + math), deterministic.
 Ref: Fiete, I.R. & Seung, H.S. (2006), "Gradient Learning in Spiking Neural Networks by Dynamic
 Perturbation of Conductances", Physical Review Letters 97:048104, DOI 10.1103/PhysRevLett.97.048104.
 
-  PYTHONPATH=src python research/weight_perturbation.py      # (also run by run_selfchecks.py)
+  PYTHONPATH=src python -m snn_data_lake.reasoning.weight_perturbation  # (also run by run_selfchecks.py)
 """
 
 import math

@@ -1,5 +1,5 @@
 """
-Polychronization — memory stored in spike TIMING, not weights or rates (pure Python, no tensors).
+Polychronization -- memory stored in spike TIMING, not weights or rates.
 
 Izhikevich (2006) showed that a network with heterogeneous axonal CONDUCTION DELAYS supports Polychronous
 Neuronal Groups (PNGs): sets of neurons that fire at distinct ABSOLUTE times but whose delayed spikes
@@ -9,15 +9,35 @@ count -- a combinatorial memory whose key is the TIMING pattern, not which neuro
 the network-scale form of this repo's thesis ("reason in spike timing"): the store recalls a group only when
 the anchor spikes arrive in the exact relative order the delays complement. Reuses the stdlib `LIFNeuron` as a
 coincidence detector (short tau_m -> spread-out inputs leak away, only coincident inputs cross threshold).
-Pure standard library, deterministic. On-thesis with delay_learning / izhikevich_neuron / spike_preprocessing.
+Deterministic. On-thesis with delay_learning / izhikevich_neuron / spike_preprocessing.
 
-  python -m research.polychronization        # (also run by run_selfchecks.py, root on PYTHONPATH)
+PROMOTED to cerebellum/ 2026-08-04 (owner directive: every build enters the governed tier the moment
+it lands). It had sat in `reasoning/`, which is outside all three P3 gates, ruff-excluded and out of
+the coverage denominator -- so two separate audits could record it dormant
+(`docs/coverage/SpatialTemporal.md:19` scored it 15, tagged "STATIC ONLY, not runtime"; `:274` said
+"I did not run polychronization") and nothing was obliged to happen. Cerebellum is the anatomically
+correct home: this is the timing structure, and `cerebellum/synfire_chain.py:37` already
+cross-references this module to distinguish zero-lag synchrony from delay-matched convergence.
+
+The docstring used to end "Pure standard library, deterministic." That was a ZERO-DEPENDENCY
+COMPROMISE, not a design property -- the rule it served was abolished 2026-07-20 and P7 now states
+that "it would be another dependency" is not a reason to reject anything. Determinism is kept and is
+real; the stdlib boast is gone. See the numpy note on `DelayNetwork.run`.
+
+*(Corrected 2026-08-05: the paragraph above claimed "the stdlib boast is gone" while the FIRST LINE
+of this docstring still read "(pure Python, no tensors)" -- which by then was also FALSE, since this
+module imports numpy. A file asserting its own cleanup two paragraphs below the residue is the
+"a claim living in two places, only one corrected" failure `docs/POLICIES.md` names. The headline
+also carried a non-ASCII em dash.)*
+
+  python -m snn_data_lake.cerebellum.polychronization    # self-check; also run by run_selfchecks.py
 """
 
 from collections import defaultdict
 
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-from snn_data_lake.lif_neuron import LIFNeuron  # noqa: E402
+import numpy as np
+
+from snn_data_lake.cortex.lif_neuron import LIFNeuron
 
 
 class DelayNetwork:
@@ -31,24 +51,42 @@ class DelayNetwork:
         self.out[src].append((dst, weight, delay))
 
     def run(self, forced, steps):
-        """forced: {neuron: set(times)} anchor spikes injected externally. Returns {neuron: [spike times]}."""
+        """forced: {neuron: set(times)} anchor spikes injected externally. Returns {neuron: [spike times]}.
+
+        THE INBOX IS A NUMPY ARRAY, not the nested `defaultdict(lambda: defaultdict(float))` this
+        used to carry. That dict-of-dicts was a ZERO-DEPENDENCY COMPROMISE -- the module's docstring
+        used to advertise "pure standard library" as though it were a design property, when it was
+        obedience to a rule abolished 2026-07-20. numpy is an unconditional core dependency and a
+        delay inbox is exactly a (time x neuron) matrix, which is what `connectome_router` already
+        uses for the same job ("numpy-vectorized across the whole connectome").
+
+        BIT-EXACT, and the arithmetic order is why: arrivals are accumulated with `+=` in the same
+        source order as before (outer loop t, inner loop dst, then this neuron's out-edges), so the
+        float additions happen in an identical sequence -- an array indexed [t, dst] simply replaces
+        a dict keyed [t][dst]. The self-check asserts the exact spike-time dict, so a reordering
+        would show up as a changed group.
+
+        The LIF integration itself is deliberately NOT vectorized here: `LIFNeuron.step` is the
+        canonical dynamics (P2 -- do not re-implement it), and the per-neuron loop is what lets an
+        anchor override a neuron mid-step.
+        """
         for nrn in self.neurons:
             nrn.reset_state()
-        inbox = defaultdict(
-            lambda: defaultdict(float)
-        )  # inbox[t][dst] += weight (delayed arrivals)
+        n = len(self.neurons)
+        horizon = steps + max((dl for edges in self.out for _, _, dl in edges), default=0) + 1
+        inbox = np.zeros((horizon, n), dtype=float)  # inbox[t, dst] += weight (delayed arrivals)
         spikes = defaultdict(list)
         for t in range(steps):
-            for dst in range(len(self.neurons)):
+            for dst in range(n):
                 if t in forced.get(dst, ()):  # anchor: emit a spike regardless of current
                     self.neurons[dst].reset_state()
                     fired = 1
                 else:
-                    fired = self.neurons[dst].step(inbox[t].get(dst, 0.0))
+                    fired = self.neurons[dst].step(float(inbox[t, dst]))
                 if fired:
                     spikes[dst].append(t)
                     for d2, w, dl in self.out[dst]:  # propagate along delayed axons (dl >= 1)
-                        inbox[t + dl][d2] += w
+                        inbox[t + dl, d2] += w
         return {k: v for k, v in spikes.items()}
 
 
@@ -90,7 +128,7 @@ def main():
     )  # same anchors fire TOGETHER (rate pattern, no order)
 
     print("=" * 60)
-    print("POLYCHRONIZATION — memory in spike timing (delay-matched groups)")
+    print("POLYCHRONIZATION -- memory in spike timing (delay-matched groups)")
     print("=" * 60)
     print(
         f"G1 key [0,1,2]: T1 fires {g1.get(T1)}, D1 fires {g1.get(D1)}  | T2 {g1.get(T2)}, D2 {g1.get(D2)}"

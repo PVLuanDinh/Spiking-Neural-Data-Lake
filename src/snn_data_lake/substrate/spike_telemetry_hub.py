@@ -29,8 +29,10 @@ import struct
 from array import array
 from bisect import bisect_left
 
-# no import-time random.seed() (a process-global side effect); main() seeds locally for its own
-# synthetic-store generation. The store format + query paths themselves use no randomness.
+# No global `random.seed()` ANYWHERE, at import time or in main(): synth() draws from its own
+# `random.Random(seed)`. Seeding the module-global stream inside main() is not safe either, because
+# run_selfchecks runs self-checks in one process -- see the note in main(). The store format + query
+# paths themselves use no randomness.
 
 _MAGIC = b"SPK1"
 _HEADER = struct.Struct("<4sII")  # magic, n_channels, duration
@@ -212,24 +214,54 @@ def dense_csv_to_hub(path, threshold=0.5):
 
 
 # ---- demo + measure ---------------------------------------------------------
-def synth(n_channels, duration, rate, burst_channels, burst_win):
+def synth(n_channels, duration, rate, burst_channels, burst_win, seed=0):
     """simulate sparse multi-channel telemetry; inject a dense burst on a few
-    channels inside burst_win (the 'anomaly' to be detected/queried)."""
+    channels inside burst_win (the 'anomaly' to be detected/queried).
+
+    Draws from a PER-CALL `random.Random(seed)`, never the module-global stream -- see main().
+
+    BIT-EXACT against what it replaced, which is the burden P2 puts on any swap and which the swap
+    did not originally state. `random.seed(0)` and `random.Random(0)` drive the same Mersenne
+    Twister from the same seed, so the draw sequence is identical: verified 2026-08-05, two
+    `sample(range(100000), 3)` calls give [[50494, 99346, 55125], [5306, 33936, 67013]] either way.
+    Every store this builds, and every self-check assertion over it, is unchanged; what changed is
+    only that the process-wide stream is no longer touched. The four external callers
+    (`cortex/paradigm_b_engine`, `cortex/paradigm_b_matcher`, `lakehouse/medallion`,
+    `reasoning/paradigm_b_genn`) pass no seed and so get the same default-0 stream they used to
+    inherit -- all four self-checks re-run green."""
+    rng = random.Random(seed)
     hub = SpikeTelemetryHub(n_channels, duration)
     for c in range(n_channels):
         k = max(1, int(rate * duration))
-        times = sorted(random.sample(range(duration), k))
+        times = sorted(rng.sample(range(duration), k))
         if c in burst_channels:  # add a dense burst
             b0, b1 = burst_win
-            # set(): a neuron fires at most once per step (canonical AER) — the burst sample
+            # set(): a neuron fires at most once per step (canonical AER) -- the burst sample
             # can land on a baseline time, and a duplicate (t,channel) is not a real 2nd spike.
-            times = sorted(set(times + random.sample(range(b0, b1), (b1 - b0) // 3)))
+            times = sorted(set(times + rng.sample(range(b0, b1), (b1 - b0) // 3)))
         hub.ingest(c, times)
     return hub
 
 
 def main():
-    random.seed(0)  # local, deterministic synthetic store (not an import-time side effect)
+    # `random.seed(0)` stood here, defended as "not an import-time side effect". True and beside
+    # the point: `run_selfchecks.py` runs module self-checks IN-PROCESS via runpy, so seeding the
+    # module-global Mersenne Twister here re-seeds it for every module that runs AFTERWARDS.
+    #
+    # MEASURED, and stated as a RUNNABLE derivation rather than a pair of bare triples -- the
+    # numbers first recorded here ("[0.41662, 0.010169, 0.825207] to [0.303313, 0.476597,
+    # 0.583382]") do not reproduce from anything the comment named, which is the defect this whole
+    # audit line exists to catch. One process, three runs, `.venv-lake`, 2026-08-05:
+    #
+    #   random.seed(4242); random.random(); random.random()   # stand-in for "whatever ran before"
+    #   then a later consumer drawing three values gets  [0.028451, 0.390264, 0.320989]
+    #   insert `random.seed(0)` before it (what this line did) ->  [0.844422, 0.757954, 0.420572]
+    #   insert `random.Random(0)` + 50 draws instead          ->  [0.028451, 0.390264, 0.320989]
+    #
+    # The global reseed OVERWRITES a later module's stream and pins it to seed(0)'s prefix; the
+    # per-instance form leaves it byte-identical. CLAUDE.md's rule is `random.Random(seed)` per
+    # instance, and the hazard it guards is exactly this one -- "import-time" was never the whole
+    # of it.
     N, DUR, RATE = 256, 100_000, 0.004  # 256 channels, ~400 spikes each
     BURST_CH, BURST = {7, 99}, (50_000, 52_000)
     hub = synth(N, DUR, RATE, BURST_CH, BURST)

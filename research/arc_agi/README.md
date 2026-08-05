@@ -1,13 +1,19 @@
 # ARC-AGI-3 (research/arc_agi)
 
 Two ways an SNDL brain touches the [ARC Prize](https://docs.arcprize.org) ARC-AGI-3
-interactive-reasoning benchmark. Quarantined in `research/` (not part of the zero-dep core gate).
+interactive-reasoning benchmark.
+
+> Corrected 2026-08-04: this line read *"Quarantined in `research/` (not part of the zero-dep core
+> gate)"*. There is no zero-dep core gate — the zero-dependency rule was abolished project-wide on
+> 2026-07-20 and replaced by P7 — and under P4c *"it is only a benchmark"* is not a disposition.
+> These files drive real brain faculties on the live construction path's own classes; that they are
+> not yet in `run_selfchecks.py` is debt. `rule_inducer.py` self-checks and passes today (run below).
 
 ## 1. Self-contained representative harness (no network, no key)
 
 - `env.py` — 4 hand-authored ARC-AGI-3-STYLE interactive grid games (key_door, push_box,
   color_lock, toggle_to_goal), each a deterministic env with a hidden rule to discover.
-- `brain_player.py` — a Go-Explore player over the brain's zero-dep cognition (CuriosityDrive +
+- `brain_player.py` — a Go-Explore player over the brain's cognition (CuriosityDrive +
   snapshot/restore Go-Explore + model-based value iteration + spiking RaceAccumulator).
 - `run_arc.py` — `python research/arc_agi/run_arc.py` reports per-game brain-vs-random solve rate.
 
@@ -25,9 +31,15 @@ four (1.00 vs 0.50 / 0.13 / 0.70 / 0.28); makes no claim about the real leaderbo
   and the COMPLEX ACTION6 click(x,y) (tiles the frame into KxK click targets). Value/representation-only:
   imports nothing from `brainstem/`, emits only legal actions.
 
-Honest scope: the brain's torch LANGUAGE (SpikeGPT = conversation) and PERCEPTION (N-MNIST 34x34 encoder)
-tiers do NOT apply to arcade gameplay and don't co-install with `arc-agi`'s numpy>=2.2 — so "all tiers"
-for PLAYING is the full zero-dep COGNITIVE stack above.
+Honest scope: the brain's LANGUAGE and PERCEPTION (N-MNIST 34x34 encoder) tiers do NOT apply to
+arcade gameplay and don't co-install with `arc-agi`'s numpy>=2.2 — so "all tiers" for PLAYING is the
+full COGNITIVE stack above.
+
+> Corrected 2026-08-04: this said *"the brain's torch LANGUAGE (SpikeGPT = conversation)"*. The
+> SpikeGPT-216M organ was **scrapped in v3.77** — `cortex/brain.py` says so at the language-organ
+> block, and conversation now comes from the acquired organ (`cortex/language_acquisition`, built
+> lazily in `_lm_serve`). Naming a deleted component as the reason for a scope limit makes the limit
+> unverifiable. `play_brain.py`'s own docstring carried the same stale name and is corrected too.
 
 ### Setup + run
 

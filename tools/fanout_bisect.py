@@ -29,9 +29,16 @@ Run: python tools/fanout_bisect.py            (self-check)
      python tools/fanout_bisect.py --brain    (measure at the brain's real configuration)
 """
 
+import os
 import sys
 
-sys.path.insert(0, "src")
+# Derived from __file__, not the literal "src". A relative sys.path entry is resolved against
+# whatever the cwd is at import time, so `python tools/fanout_bisect.py` worked only from the repo
+# root and silently imported nothing (or something else) from anywhere else.
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_SRC = os.path.join(_ROOT, "src")
+if _SRC not in sys.path:
+    sys.path.insert(0, _SRC)
 
 #: Pre-registered in specs/009 research.md BEFORE any sweep. Do not tune to fit a result.
 MEAN_TOL = 0.02
@@ -118,20 +125,39 @@ def report(name, baseline, rows):
 
 
 def _brain_config():
-    """Measure F* at the configuration cortex/brain.py actually constructs."""
-    from snn_data_lake.hippocampus.episode_consolidation import EpisodeConsolidator
+    """Measure F* at the configuration cortex/brain.py actually constructs.
 
-    DIM, CAP = 256, 64  # brain.py:856
+    CAPACITY IS DERIVED FROM THE BRAIN'S OWN SOURCE, not typed here. It was `DIM, CAP = 256, 64
+    # brain.py:856` until 2026-08-04, and both halves of that line were wrong by then: `:856` had
+    drifted onto an unrelated assignment, and the brain no longer passes either number. It calls
+    `EpisodeConsolidator(capacity=capacity_for(EPISODES_PER_DAY_AT_BOOT, EPISODE_RETENTION_DAYS))`
+    and lets `dim` DERIVE from capacity, so a hardcoded 256/64 here would have kept reporting an F*
+    for a store the brain had stopped building the moment either constant moved -- silently, since
+    nothing compares the two. That is the whole failure mode this tool exists to avoid one level
+    down (a fanout that holds at one capacity destroys memory at a larger one), so importing the
+    numbers is not tidiness; it is the same rule applied to the instrument.
+    """
+    from snn_data_lake.cortex.brain import EPISODE_RETENTION_DAYS, EPISODES_PER_DAY_AT_BOOT
+    from snn_data_lake.hippocampus.episode_consolidation import EpisodeConsolidator, capacity_for
+
+    CAP = capacity_for(EPISODES_PER_DAY_AT_BOOT, EPISODE_RETENTION_DAYS)
 
     def build(fanout, seed):
-        e = EpisodeConsolidator(dim=DIM, capacity=CAP, seed=seed, fanout=fanout)
+        # dim=None on purpose: the brain does not pass one either, so the width under test is the
+        # width the brain gets. Passing a dim would measure a store that does not exist.
+        e = EpisodeConsolidator(capacity=CAP, seed=seed, fanout=fanout)
         for i in range(CAP):  # the brain's real load is its capacity
             ep = {"who": f"a{i}", "what": f"w{i}", "where": f"p{i % 7}", "when": str(i)}
             e.store(e.encode(ep), ep)
         return e
 
+    dim = build(None, 0).dim
     baseline, rows = sweep(build, lambda m: m.retained())
-    return report(f"EpisodeConsolidator dim={DIM} capacity={CAP} load={CAP}", baseline, rows)
+    return report(
+        f"EpisodeConsolidator dim={dim} capacity={CAP} load={CAP} (derived from cortex.brain)",
+        baseline,
+        rows,
+    )
 
 
 def _selfcheck():

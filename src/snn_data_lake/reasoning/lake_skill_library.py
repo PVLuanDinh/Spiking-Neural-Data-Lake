@@ -43,22 +43,13 @@ the routing skills survive a lake close+reopen (durable in the data lake, not RA
 COMPOSITION (averaged logits) on an input between two task regions.
 
 Run (GPU on the RTX 5070):
-  NORD_GPU=1 PYTHONPATH=src python research/lake_skill_library.py
+  NORD_GPU=1 PYTHONPATH=src python -m snn_data_lake.reasoning.lake_skill_library
 CPU (byte-identical logic, slower, needs the [train] extra for torch):
-  PYTHONPATH=src python research/lake_skill_library.py
+  PYTHONPATH=src python -m snn_data_lake.reasoning.lake_skill_library
 """
 
 import os
 import random
-import sys
-
-# ---- import bootstrap: runnable as `python research/lake_skill_library.py` from the repo root ----
-_HERE = os.path.dirname(os.path.abspath(__file__))
-if _HERE not in sys.path:
-    pass  # migrated: sys.path bootstrap removed (now an importable package)
-_SRC = os.path.join(os.path.dirname(_HERE), "src")
-if os.path.isdir(_SRC) and _SRC not in sys.path:
-    pass  # migrated: sys.path bootstrap removed (now an importable package)
 
 from snn_data_lake.reasoning.brain_adapters.lake_memory import (
     LakeMemory,
@@ -66,7 +57,7 @@ from snn_data_lake.reasoning.brain_adapters.lake_memory import (
 from snn_data_lake.hippocampus.sleep_consolidation import (
     SleepConsolidator,
 )  # named-skill registry API
-from snn_data_lake.reasoning.torch_device import (
+from snn_data_lake.substrate.device import (
     resolve_device,
 )  # opt-in GPU (NORD_GPU=1), CPU default
 
@@ -329,7 +320,7 @@ def main():
         f"no retraining)"
     )
     print("-" * 78)
-    print(f"(d) KEY COMPARISON on the heterogeneous mixed stream:")
+    print("(d) KEY COMPARISON on the heterogeneous mixed stream:")
     print(f"      routed expert library       : {routed_acc:.2f}")
     print(f"      ONE shared model (same arch) : {shared_acc:.2f}")
     print(

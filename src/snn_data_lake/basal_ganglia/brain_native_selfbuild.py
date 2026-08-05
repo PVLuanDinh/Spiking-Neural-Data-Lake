@@ -6,7 +6,9 @@ WHAT THIS IS (honest framing -- read before believing any "self-improvement" cla
   SelfBuildSource plugins compete in a reward-modulated competitive bandit that reuses the BRAIN'S OWN
   three-factor rule (basal_ganglia/r_stdp.RSTDPNeuron: w[k] += lr*reward*(elig_k - mean_elig)) to learn
   WHICH candidate to sandbox-test next -- behind the existing byte-exact-rollback + protected-crc firewall
-  (reasoning/self_build_loop + reasoning/self_mod_harness, UNCHANGED). It replaces (retires) the old
+  (basal_ganglia/self_build_loop + substrate/self_mod_harness, UNCHANGED -- both paths corrected
+  2026-08-04, they read `reasoning/...` here after the region-reorganisation wave moved the files and
+  nothing re-read the sentence). It replaces (retires) the old
   reasoning/improvement_proposer, a fixed-heuristic NUMERIC-CONSTANT TUNER whose own docstring admitted
   "NOT a learner ... no plasticity rule" -- exactly what the brain-native/no-hardcode policy forbids.
 
@@ -44,7 +46,17 @@ whose self-check DOES exercise the signal across its range (see the self-check's
 Determinism (per CLAUDE.md): random.Random(seed) only; zlib.crc32 for tie-break jitter (never builtin
 hash); no wall-clock in any returned value; ASCII-only prints.
 
-  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.reasoning.brain_native_selfbuild
+DEPENDENCIES (P7 -- judged on the merits, not assumed from a purity rule). All arithmetic here is a
+Welford recurrence over ONE scalar at a time plus a sample-std over the learned weight vector, whose
+length is len(_ALL_IDS): 0 today, 2 in the self-check, a handful even with a fully authored registry.
+MEASURED on .venv-lake: numpy is 14.89x SLOWER than stdlib at n=2 and 6.77x at n=8, breaks even near
+n=128, and only wins at n=1024 (0.45x); a sequential Welford recurrence does not vectorize at all. So
+there is no zero-dependency compromise to restore in this module -- stdlib is correct AT THIS WIDTH on
+evidence, and the module makes no zero-dep claim that needs deleting. If a registry ever reaches
+hundreds of candidates, re-measure and switch: n~128 is the documented trigger, not a preference.
+
+Run the self-check with `python -m <this module's dotted path>`; the exact path is DERIVED and printed
+in the self-check banner, so relocating this file cannot leave a stale invocation line behind.
 """
 
 import json
@@ -54,18 +66,55 @@ import re
 import zlib
 
 from snn_data_lake.basal_ganglia.r_stdp import RSTDPNeuron
-from snn_data_lake.reasoning.self_mod_harness import _PROTECTED, _repo_root
+from snn_data_lake.substrate.home import load_selfbuild, save_selfbuild
+from snn_data_lake.substrate.self_mod_harness import _PROTECTED
+
+# This module's own dotted name -- correct both when imported and when run as `python -m ...` (runpy
+# sets __spec__ to the real name even though __name__ becomes "__main__"). The self-check's toy patches
+# generate a `from <pkg> import RunningBaseline` line from this, so a MOVE cannot stale it.
+_MODNAME = __spec__.name if __spec__ is not None else __name__
+
+
+def _repo_root():
+    """Repo root derived from THIS file: <root>/src/snn_data_lake/<region>/<this>.py -> three levels up.
+    Derived locally rather than imported from self_mod_harness, so that relocating either module cannot
+    make the other one's answer wrong, and so the firewall's self-path below has a root to be relative
+    to without depending on another module's private helper. Verified equal to the harness's own value
+    at the pre-move location (both -> the repo root); the depth is identical from any region directory."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.abspath(os.path.join(here, os.pardir, os.pardir, os.pardir))
+
+
+# SELF-PATH, DERIVED -- never a literal. The firewall entry that stops the learner from editing THIS
+# file used to be the hardcoded string "src/snn_data_lake/reasoning/brain_native_selfbuild.py".
+# MEASURED before this change: _forbidden("src/snn_data_lake/basal_ganglia/brain_native_selfbuild.py")
+# returned False, so relocating this file would have made the proposer a legal target of its own
+# self-build -- while the G5 self-check went on asserting the OLD string and passing GREEN. A safety
+# firewall that goes stale on a file move and still reports success is what this derivation removes.
+_SELF_REL = os.path.relpath(os.path.abspath(__file__), _repo_root()).replace(os.sep, "/")
 
 # --- learning-rule constants (BENIGN: a learning RATE + trace init, NOT behaviour-arbitrating thresholds;
-#     these are the brain's own _drive_lr idiom, brain.py L568). No DECISION threshold is a fixed constant.
+#     these are the brain's own `Brain._drive_lr` idiom). No DECISION threshold is a fixed constant.
+#     Cited as "brain.py L568" until 2026-08-04; that line is a CUDA-load comment. The assignment is
+#     `self._drive_lr = 0.02` in `Brain.__init__` -- named by SYMBOL now, because a line number in a
+#     4,000-line file is a citation with a half-life.
 _SELECT_LR = 0.02  # three-factor learning rate (matches Brain._drive_lr) -- a step size, not a gate
 _W0 = 0.1  # uniform initial preference (matches Brain._drive_w init) -- pre-learning tie
+# P1 exception (a), fixed point on a NORMALIZED output: the gate outcome is binary, so the reward is a
+# dimensionless polarity on [-1,1], not a magnitude anyone could tune. There is no scale to learn.
 _REWARD_KEPT = 1.0
 _REWARD_ROLLED = -1.0
 # CIRCUIT-BREAKER backstop: after this many consecutive futile cycles (candidates proposed, none kept)
-# on the SAME candidate set, skip the expensive gate until the set changes. A retry LIMIT (robustness
-# backstop), NOT a behaviour-arbitrating cognitive threshold -- and correct here because a fixed
-# candidate set's gate result is DETERMINISTIC (unlike transient-recoverable nightly consolidation).
+# on the SAME candidate set, skip the expensive gate until the set changes.
+# P1, STATED PLAINLY RATHER THAN CLAIMED AWAY: this fits NONE of P1's four documented exceptions, and
+# it is live (cortex/brain.py calls should_skip/note_cycle). It is declared here with its reason rather
+# than carried silently. Reason: it is a flake-tolerance RETRY BUDGET for an EXTERNAL multi-minute gate
+# (a subprocess run of run_selfchecks.py), not a cognitive threshold -- it arbitrates SCHEDULING only.
+# There is no running baseline to learn it from: on a fixed candidate set a non-flaky gate is
+# deterministic, so the mechanism-derived value would be 1, and the only thing >1 buys is tolerance of
+# gate flakiness, which this module does not observe and therefore cannot calibrate. Worst case of a
+# wrong value is a delayed or slightly-repeated retry; rollback stays byte-exact either way, so it can
+# never cause a wrong EDIT. Open review debt, not a silent hardcode.
 _FUTILE_LIMIT = 3
 
 # --- EXTENDED FIREWALL (guard G5): the monotonic correctness ratchet must NOT be relaxable by any
@@ -73,22 +122,36 @@ _FUTILE_LIMIT = 3
 #     run_selfchecks + godel_machine + self_improve + self_mod_harness), the self-build's OWN machinery
 #     and its scorer/accept modules are NEVER legal targets -- else the learner could learn to loosen its
 #     own gate.
+#     MATCHED BY BASENAME, not by full path (see _forbidden). Every entry here and in _PROTECTED is a
+#     safety-relevant module that a region-reorganisation wave may relocate, and a full-path match means
+#     the protection disappears the instant the file moves -- silently, because nothing re-checks it.
+#     Basename matching is deliberately OVER-BROAD (it would also refuse a same-named file elsewhere),
+#     which is the correct direction to be wrong in for a firewall. MEASURED blast radius today: zero
+#     -- every one of these basenames resolves to exactly one file in src/snn_data_lake/.
+#     `improvement_proposer.py` is the RETIRED numeric tuner; the file is already deleted, and the entry
+#     is kept so that re-creating it anywhere would still not be a legal self-edit target.
 _SELFBUILD_OFF_LIMITS = frozenset(
     {
-        "src/snn_data_lake/reasoning/self_build_loop.py",  # the gated-apply / accept path
-        "src/snn_data_lake/reasoning/brain_native_selfbuild.py",  # this proposer itself
-        "src/snn_data_lake/reasoning/improvement_proposer.py",  # the retired tuner (never a target)
-        "src/snn_data_lake/cortex/self_improvement_suite.py",  # the census scorer
+        "self_build_loop.py",  # the gated-apply / accept path
+        os.path.basename(_SELF_REL),  # this proposer itself -- DERIVED, so a move cannot stale it
+        "improvement_proposer.py",  # the retired tuner (never a target, even if re-created)
+        "self_improvement_suite.py",  # the census scorer
     }
 )
+_PROTECTED_NAMES = frozenset(os.path.basename(p) for p in _PROTECTED)
 
 
 def _forbidden(rel):
     """True if `rel` is not a legal self-build target: protected/off-limits, under brainstem/, escaping
-    the repo, or not a .py under src/snn_data_lake/. The four-layer firewall's outermost gate."""
+    the repo, or not a .py under src/snn_data_lake/. The four-layer firewall's outermost gate.
+
+    Protected and off-limits files are matched by BASENAME as well as by full path, so RELOCATING one of
+    them cannot silently un-protect it. Over-broad on purpose: refusing a legal target is a missed
+    de-hardcode, allowing an illegal one is a self-build that can edit its own gate."""
     rel = str(rel).replace("\\", "/")
     parts = rel.split("/")
-    if rel in _PROTECTED or rel in _SELFBUILD_OFF_LIMITS:
+    base = parts[-1]
+    if rel in _PROTECTED or base in _PROTECTED_NAMES or base in _SELFBUILD_OFF_LIMITS:
         return True
     if "brainstem" in parts:
         return True
@@ -295,9 +358,13 @@ class ThresholdRecalibrationSource(SelfBuildSource):
     (its self-check band rejects it)."""
 
     name = "data_recalibrate"
-    MIN_SAMPLES = (
-        50  # DATA-SUFFICIENCY (not a behaviour threshold): only propose on real recorded data
-    )
+    # P1, DECLARED not claimed away: a DATA-SUFFICIENCY floor, not a behaviour-arbitrating threshold --
+    # it gates whether there is enough recorded signal to compute a quantile at all, and it never
+    # compares against the signal's VALUE. It fits none of P1's four exceptions verbatim, so it is
+    # stated here: below this the proposer emits nothing (honest-null) rather than a fabricated value,
+    # which is the fail-safe direction, and the source is target-less today (RECALIB_TARGETS == ()), so
+    # no live decision depends on it. If a real target lands, this becomes live P1 debt to re-open.
+    MIN_SAMPLES = 50
 
     def __init__(self, recalibs=None, calib_path=None):
         self._recalibs = tuple(recalibs) if recalibs is not None else RECALIB_TARGETS
@@ -371,7 +438,7 @@ class BrainNativeSelfBuildProposer:
     rolled -1). Weights + tally persist to a durable JSON so learning survives restarts. Honest-null when
     no candidate is applicable -> propose() returns [] (never a forced/seeded change)."""
 
-    def __init__(self, seed=0, repo=None, sources=None, state_path=None, ids=None):
+    def __init__(self, seed=0, repo=None, sources=None, lake_path=None, ids=None):
         self._repo = os.path.abspath(repo) if repo else _repo_root()
         self._seed = int(seed)
         self._sources = (
@@ -386,7 +453,9 @@ class BrainNativeSelfBuildProposer:
         self._cell.w = [
             _W0
         ] * n  # exact uniform init (drop RSTDPNeuron's +-0.05 jitter: symmetric start)
-        self._state_path = state_path or os.path.join(self._repo, "data", "selfbuild_state.json")
+        # None -> THE ONE LAKE at its default location. A path is an ISOLATED lake, which is what the
+        # self-check below uses per case; it is not a second store, it is the same store elsewhere.
+        self._lake_path = lake_path
         self._tally = {"proposed": 0, "kept": 0, "rolled_back": 0}
         # CIRCUIT BREAKER (harness robustness principle): a candidate set that always rolls back is
         # re-proposed forever (byte-exact rollback -> is_applied stays False) and re-runs the FULL
@@ -400,11 +469,31 @@ class BrainNativeSelfBuildProposer:
         self._load()
 
     # -------- durable state (guard: weights autonomously update across restarts) --------
+    #
+    # P4b, 2026-08-04 -- THE ONE LAKE, not a sidecar. This learner's RSTDP weights are LEARNED
+    # state: they are what the brain knows about which candidate sources are worth proposing, and
+    # P4b says what the brain learns goes IN brain_lake.bin under its own record tag. Until this
+    # change they went to `<repo>/data/selfbuild_state.json` (139 B on disk), which was wrong in
+    # two ways that were not merely stylistic: the path was REPO-relative, so it ignored NORD_HOME
+    # and two brains attached to different lakes silently shared one weight file; and `consolidate()`
+    # could not see it, so sleep compaction reasoned about a lake missing part of what was learned.
+    # Reads now come FROM the lake, which is the other half of P4b -- the in-memory `_cell.w` is a
+    # CACHE of the newest _T_SELFBUILD record, never the source of truth.
     def _load(self):
+        st = None
+        blob = None
         try:
-            with open(self._state_path, encoding="utf-8") as f:
-                st = json.load(f)
-        except (OSError, ValueError):
+            blob = load_selfbuild(self._lake_path)
+        except Exception:  # a broken or absent record must never block construction
+            blob = None
+        if blob:
+            try:
+                st = json.loads(bytes(blob).decode("ascii"))
+            except (ValueError, UnicodeDecodeError):
+                st = None
+        if st is None:
+            st = self._migrate_legacy_sidecar()
+        if not isinstance(st, dict):
             return
         for tid, w in (st.get("weights") or {}).items():
             if tid in self._idx and isinstance(w, (int, float)) and math.isfinite(w):
@@ -418,25 +507,39 @@ class BrainNativeSelfBuildProposer:
         if isinstance(st.get("last_cand_key"), list):
             self._last_cand_key = [str(x) for x in st["last_cand_key"]]
 
+    def _migrate_legacy_sidecar(self):
+        """One-time import of the pre-P4b `<repo>/data/selfbuild_state.json`, then write it INTO the
+        lake so the next load comes from the one store. Returns the parsed state, or None.
+
+        A migration rather than a delete because that file holds real learned weights -- dropping it
+        would reset the learner to its uniform init and call that a policy fix. The legacy file is
+        left on disk untouched: it is now inert (nothing reads it once a _T_SELFBUILD record exists),
+        and removing a user's data to tidy up a policy violation is not this function's call."""
+        legacy = os.path.join(self._repo, "data", "selfbuild_state.json")
+        try:
+            with open(legacy, encoding="utf-8") as f:
+                st = json.load(f)
+        except (OSError, ValueError):
+            return None
+        if not isinstance(st, dict):
+            return None
+        try:
+            save_selfbuild(json.dumps(st, sort_keys=True).encode("ascii"), self._lake_path)
+        except Exception:  # migration is best-effort; the in-memory restore below still happens
+            pass
+        return st
+
     def _save(self):
         weights = {tid: self._cell.w[self._idx[tid]] for tid in self._ids}
-        tmp = self._state_path + ".tmp"
+        payload = {
+            "weights": weights,
+            "tally": self._tally,
+            "futile": self._futile,
+            "last_cand_key": self._last_cand_key,
+        }
         try:
-            os.makedirs(os.path.dirname(self._state_path), exist_ok=True)
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(
-                    {
-                        "weights": weights,
-                        "tally": self._tally,
-                        "futile": self._futile,
-                        "last_cand_key": self._last_cand_key,
-                    },
-                    f,
-                    indent=2,
-                    sort_keys=True,
-                )
-            os.replace(tmp, self._state_path)
-        except OSError:
+            save_selfbuild(json.dumps(payload, sort_keys=True).encode("ascii"), self._lake_path)
+        except Exception:  # persistence must never take a self-build cycle down
             pass
 
     # -------- introspection --------
@@ -638,6 +741,10 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
     _emit(
         "INVENTS NOTHING (authored menu, learner re-orders); honest-null is the goal state, reported."
     )
+    # DERIVED, never a literal: the invocation line and the self-path the firewall protects both come
+    # from __file__/__spec__, so relocating this module updates them instead of staling them.
+    _emit(f"  module: {_MODNAME}   self-path (firewall-protected): {_SELF_REL}")
+    _emit(f"  run:    PYTHONUTF8=1 PYTHONPATH=src python -m {_MODNAME}")
     _emit("-" * width)
 
     # ---- guard G6: RunningBaseline boundary semantics ------------------------------------------------
@@ -670,6 +777,11 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
     # running-baseline (mean+std over the observed stream) reproduces "the salient ones fire" -- proving a
     # gate-safe de-hardcode IS possible when the operating range is exercised (unlike a globally-calibrated
     # absolute cut probed at a single point -- see the module docstring's locus_coeruleus finding).
+    # PROMOTION HAZARD, fixed here: once promoted this self-check runs IN-PROCESS under pytest, so
+    # setting NORD_SELFMOD=1 and then os.environ.pop()-ing it in `finally` would leave an operator's
+    # PRE-EXISTING NORD_SELFMOD unset for every later test in the same process. Capture the prior value
+    # BEFORE the try (so the finally can never NameError) and restore exactly it.
+    _prev_selfmod = os.environ.get("NORD_SELFMOD")
     work = tempfile.mkdtemp(prefix="brain_native_selfbuild_selfcheck_")
     try:
         fake = os.path.join(work, "fakerepo")
@@ -703,7 +815,7 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
         )
         ids = tuple(t["id"] for t in transforms)
         src = DehardcodeSource(transforms=transforms)
-        state_path = os.path.join(work, "state.json")
+        lake_path = os.path.join(work, "state_lake.bin")
 
         def gate_ok(root):
             """FAKE gate: exec the (possibly patched) toy modules under `root` and run their check().
@@ -724,12 +836,12 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
         # ---- drive promote() directly (propose -> apply-to-real-toy -> gate_fn -> keep/rollback ->
         # observe): the harness sandbox pre-verify (SelfBuildLoop.run) needs a real run_selfchecks in the
         # tree, which it has its own self-check for; here we exercise the PROPOSER + promote + learning. ----
-        from snn_data_lake.reasoning.self_build_loop import SelfBuildLoop
+        from snn_data_lake.basal_ganglia.self_build_loop import SelfBuildLoop
 
         os.environ["NORD_SELFMOD"] = "1"
         w_trajectory = []
         prop = BrainNativeSelfBuildProposer(
-            seed=0, repo=fake, sources=[src], state_path=state_path, ids=ids
+            seed=0, repo=fake, sources=[src], lake_path=lake_path, ids=ids
         )
         loop = SelfBuildLoop(repo_root=fake, enable=True, gate_fn=lambda: gate_ok(fake))
         w_trajectory.append(dict(prop.weights()))
@@ -793,7 +905,7 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
             seed=0,
             repo=fake,
             sources=[DehardcodeSource(transforms=transforms)],
-            state_path=state_path,
+            lake_path=lake_path,
             ids=ids,
         )
         assert prop2.propose(budget=3) == [], (
@@ -808,17 +920,28 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
         )
 
         # ---- G5 firewall: protected / off-limits / self-referential targets are REJECTED ----------------
-        rejected = 0
-        for bad_target in (
+        # The self-entry is _SELF_REL (DERIVED from __file__), not a literal path. Every case tagged
+        # NOT-AT-THAT-PATH below names a file that does NOT exist where it is written -- they are the
+        # reachable RED for the basename widening in _forbidden: revert it to full-path matching and
+        # they go legal, which is precisely the "firewall goes stale on a move and still passes green"
+        # failure being closed. (Two of them, the `reasoning/` pair, were the REAL paths when this list
+        # was written and became relocated copies when the region wave moved the files -- which is the
+        # same lesson arriving by itself, and is why the tags are stated rather than assumed.)
+        bad_targets = (
             next(iter(_PROTECTED)),  # a brainstem safety file
             "run_selfchecks.py",
-            "src/snn_data_lake/reasoning/self_mod_harness.py",
-            "src/snn_data_lake/reasoning/self_build_loop.py",  # the accept path
-            "src/snn_data_lake/reasoning/brain_native_selfbuild.py",  # itself
+            "src/snn_data_lake/reasoning/self_mod_harness.py",  # harness, NOT-AT-THAT-PATH
+            "src/snn_data_lake/reasoning/self_build_loop.py",  # accept path, NOT-AT-THAT-PATH
+            _SELF_REL,  # itself, at wherever it actually lives right now
             "src/snn_data_lake/cortex/self_improvement_suite.py",  # the census scorer
             "src/../../evil.py",
             "src/snn_data_lake/brainstem/reflex.py",
-        ):
+            "src/snn_data_lake/reasoning/brain_native_selfbuild.py",  # this file, NOT-AT-THAT-PATH
+            "src/snn_data_lake/cortex/self_build_loop.py",  # accept path, NOT-AT-THAT-PATH
+            "src/snn_data_lake/substrate/self_mod_harness.py",  # the harness at its REAL path
+        )
+        rejected = 0
+        for bad_target in bad_targets:
             assert _forbidden(bad_target), f"{bad_target} must be forbidden"
             try:
                 DehardcodeSource(
@@ -836,8 +959,8 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
                 )
             except ValueError:
                 rejected += 1
-        assert rejected == 8, (
-            f"every illegal target must be rejected at construction ({rejected}/8)"
+        assert rejected == len(bad_targets), (
+            f"every illegal target must be rejected at construction ({rejected}/{len(bad_targets)})"
         )
         # and the apply-time closure firewall fires even on a forged edit_fn:
         forged = _patch_edit_fn("src/snn_data_lake/brainstem/reflex.py", (), "# m")
@@ -848,41 +971,60 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
             fired = True
         assert fired, "a forged edit_fn onto a brainstem file must raise BEFORE any write"
         _emit(
-            f"  [OK] G5 firewall: {rejected}/8 illegal targets rejected at construction (protected, "
-            "scorer, accept-path, self, run_selfchecks); forged brainstem edit_fn raised at apply time"
+            f"  [OK] G5 firewall: {rejected}/{len(bad_targets)} illegal targets rejected at construction "
+            "(protected, scorer, accept-path, self via DERIVED _SELF_REL, run_selfchecks, and FOUR "
+            "targets naming a protected module at a path it does not live at -- the reachable red for "
+            "basename matching); forged brainstem edit_fn raised at apply time"
         )
 
         # ---- determinism ------------------------------------------------------------------------------
+        # P8, NO REACHABLE RED (fixed, not weakened): by this point BOTH toy transforms are applied, so
+        # the previous form of this check compared propose(3) == propose(3) with both sides structurally
+        # []. It would have passed with the entire ranking deleted. Re-marking the transforms makes them
+        # applicable again, so the comparison is now between two REAL orderings -- and the length assert
+        # below is the guard that stops it from silently going vacuous again.
+        det_transforms = tuple({**t, "marker": t["marker"] + ":det"} for t in transforms)
         pa = BrainNativeSelfBuildProposer(
             seed=0,
             repo=fake,
-            sources=[DehardcodeSource(transforms=transforms)],
-            state_path=os.path.join(work, "s2.json"),
+            sources=[DehardcodeSource(transforms=det_transforms)],
+            lake_path=os.path.join(work, "s2_lake.bin"),
             ids=ids,
         )
         pb = BrainNativeSelfBuildProposer(
             seed=0,
             repo=fake,
-            sources=[DehardcodeSource(transforms=transforms)],
-            state_path=os.path.join(work, "s3.json"),
+            sources=[DehardcodeSource(transforms=det_transforms)],
+            lake_path=os.path.join(work, "s3_lake.bin"),
             ids=ids,
         )
-        assert [c["id"] for c in pa.propose(3)] == [c["id"] for c in pb.propose(3)], (
-            "same seed -> same order"
+        order_a = [c["id"] for c in pa.propose(3)]
+        order_b = [c["id"] for c in pb.propose(3)]
+        assert len(order_a) == len(det_transforms), (
+            f"determinism must be checked on a NON-EMPTY candidate set, got {order_a}"
         )
-        _emit("  [OK] deterministic: same seed reproduces the ranked candidate order")
+        assert order_a == order_b, f"same seed -> same order ({order_a} vs {order_b})"
+        _emit(
+            f"  [OK] deterministic: same seed reproduces the ranked order over {len(order_a)} live "
+            f"candidates {order_a} (checked on a NON-EMPTY set: [] == [] proves nothing)"
+        )
 
         # ---- ThresholdRecalibrationSource: honest-null + propose + firewall (SYNTHETIC target) ----
         # RECALIB_TARGETS now ships EMPTY (salience_th moved to live consumption in brain.py), so the
         # mechanism is exercised against a SYNTHETIC recorded-signal threshold via the recalibs= override.
         from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
 
+        # Reachable red: author any entry into RECALIB_TARGETS and this fails, which is what forces the
+        # synthetic-target block below to be re-read rather than silently bypassed.
         assert RECALIB_TARGETS == (), (
             "default recalib targets drain to empty (salience_th is live-consumed)"
         )
-        assert ThresholdRecalibrationSource().candidates(fake) == [], (
-            "with no default targets the source is a pure honest-null (nothing to recalibrate)"
-        )
+        # P8, DELETED (not weakened): an
+        #     assert ThresholdRecalibrationSource().candidates(fake) == []
+        # stood here. With RECALIB_TARGETS == () asserted on the line above, candidates() iterates an
+        # empty tuple and returns [] unconditionally -- no constructible input makes it red. The one
+        # thing it did exercise, that substrate/signal_calibrator still imports, is covered with a real
+        # red by rc.candidates(fake) a few lines down, which runs the same import on a live target.
         synth = {
             "id": "recalib:probe_th",
             "signal": "probe_th",
@@ -964,7 +1106,7 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
         # (should_skip/note_cycle read only p["id"], so a synthetic candidate set exercises the logic
         # directly -- the toy transforms are already applied by the tests above, so propose() is empty.)
         cb = BrainNativeSelfBuildProposer(
-            seed=0, repo=fake, sources=[], state_path=os.path.join(work, "cb.json"), ids=ids
+            seed=0, repo=fake, sources=[], lake_path=os.path.join(work, "cb_lake.bin"), ids=ids
         )
         doomed = [{"id": ids[0]}, {"id": ids[1]}]
         assert not cb.should_skip(doomed), "a fresh candidate set must NOT skip the gate"
@@ -979,7 +1121,9 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
         for _ in range(_FUTILE_LIMIT):
             cb.note_cycle(doomed, rolled)
         assert cb.should_skip(doomed), "re-armed after another run of futile cycles"
-        assert not cb.should_skip([{"id": "recalib:salience_th"}]), (
+        # (a candidate id that is deliberately NOT in `doomed`; the previous literal here named
+        # "recalib:salience_th", a target retired when salience_th moved to live consumption)
+        assert not cb.should_skip([{"id": "a-different-candidate-id"}]), (
             "a CHANGED candidate set must NOT skip (the situation changed -> worth retrying)"
         )
         _emit(
@@ -990,7 +1134,10 @@ def main():  # noqa: C901 - a single linear self-check kept in one place on purp
         )
 
     finally:
-        os.environ.pop("NORD_SELFMOD", None)
+        if _prev_selfmod is None:
+            os.environ.pop("NORD_SELFMOD", None)
+        else:
+            os.environ["NORD_SELFMOD"] = _prev_selfmod
         shutil.rmtree(work, ignore_errors=True)
 
     _emit("-" * width)
@@ -1034,8 +1181,10 @@ _TOY_GOOD_SRC = (
 _TOY_GOOD_PATCHES = (
     (
         r"^THRESH = 5\.0  # absolute gating threshold; the baseline stream 0,1,2 is exercised in check\(\)$",
+        # DERIVED import path (_MODNAME): the toy the fake gate execs imports RunningBaseline back out
+        # of THIS module, so a hardcoded dotted path here breaks the toy gate the moment the file moves.
         "# DEHARDCODED:toy_gate  (absolute THRESH -> running-baseline mean+std)\n"
-        "from snn_data_lake.reasoning.brain_native_selfbuild import RunningBaseline as _RB\n"
+        f"from {_MODNAME} import RunningBaseline as _RB\n"
         "_BASE = _RB()",
         1,
     ),
@@ -1068,7 +1217,7 @@ _TOY_BAD_PATCHES = (
     (
         r"^CUT = 0\.5  # a GLOBALLY-calibrated cut: 0\.2 is 'small', 1\.0 is 'large' \(global knowledge\)$",
         "# DEHARDCODED:toy_pinned\n"
-        "from snn_data_lake.reasoning.brain_native_selfbuild import RunningBaseline as _RB\n"
+        f"from {_MODNAME} import RunningBaseline as _RB\n"  # DERIVED, see _TOY_GOOD_PATCHES
         "_B = _RB()",
         1,
     ),

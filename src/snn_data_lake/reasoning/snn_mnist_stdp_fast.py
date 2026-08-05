@@ -37,9 +37,11 @@ from snn_data_lake.reasoning.snn_mnist_stdp import (
     THETA_PLUS,
     THETA_DECAY,
 )
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 
-torch.manual_seed(0)
+# Determinism: `torch.manual_seed(0)` used to run HERE, at MODULE SCOPE, so importing this module
+# (`snn_mnist_stdp_genn.py` imports its FAST_* constants) re-seeded the process-global torch RNG.
+# Now seeded inside main(). The importer takes constants only, so nothing downstream changes.
 # v0.17 defaults = the gap-closer config (76.0% at M=300/6k, vs 68.8% pure latency).
 # Set FAST_BURST=1 FAST_XTAR=0 FAST_THRESH=0.7 FAST_LR=0.10 to recover v0.16 pure latency.
 FAST_THRESH = float(os.environ.get("FAST_THRESH", "2.0"))  # higher: burst raises membrane current
@@ -65,7 +67,7 @@ POST_DECAY = float(torch.exp(torch.tensor(-1.0 / TAU_POST)))
 def encode_latency(img):
     """Deterministic latency encoding. FAST_BURST=1 -> one spike/pixel (brighter =
     earlier). FAST_BURST>1 -> graded burst: a bright pixel emits up to FAST_BURST
-    spikes (count ∝ intensity) starting at its latency, restoring magnitude info and
+    spikes (count proportional to intensity) starting at its latency, restoring magnitude info and
     a stronger STDP trace while staying deterministic."""
     idx_all = (img >= FLOOR).nonzero(as_tuple=True)[0]
     base = ((1.0 - img[idx_all]) * (T - 1)).round().long()
@@ -156,6 +158,7 @@ def fast_eval(net, enc, Y, asg):
 
 
 def main():
+    torch.manual_seed(0)  # deterministic run + self-check (script path only, never at import)
     enable(resolve_device())
     print("=" * 64)
     print("v0.16  PRECOMPUTED LATENCY STDP vs RATE STDP")
@@ -202,7 +205,7 @@ def main():
     if rate:
         ra, rt, rs = rate
         print(
-            f"  accuracy   : rate {ra:.1%}   vs   fast {fast_acc:.1%}   (Δ {100 * (fast_acc - ra):+.1f} pts)"
+            f"  accuracy   : rate {ra:.1%}   vs   fast {fast_acc:.1%}   (delta {100 * (fast_acc - ra):+.1f} pts)"
         )
         print(
             f"  train time : rate {rt:.1f}s  vs   fast {fast_train:.1f}s  ({rt / max(0.01, fast_train):.1f}x)"

@@ -37,8 +37,11 @@ Reuses (does NOT reimplement):
 
 Self-contained: integrate() takes the four scalar neuromodulator signals directly, so this
 runs without the full brain. REPRESENTATION-ONLY: it computes a felt-affect readout; it holds
-no actuator route and imports nothing under brainstem/. Pure standard library, ASCII output,
-deterministic (random.Random(seed) per instance; zlib.crc32 for the persisted-state fingerprint).
+no actuator route and imports nothing under brainstem/. ASCII output, deterministic
+(random.Random(seed) per instance; zlib.crc32 for the persisted-state fingerprint).
+(The line above read "Pure standard library" until 2026-08-04; under P7 a stdlib-purity boast is
+residue of the abolished zero-dependency rule, not a design property. The pools here are 6-8 units
+wide, where plain arithmetic is simply the right tool -- a statement about the width, not a rule.)
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.neuromodulation.affect_integrator
 """

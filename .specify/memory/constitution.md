@@ -1,34 +1,48 @@
 <!--
 Sync Impact Report
 ==================
-Version change: (none) -> 1.0.0
-Rationale: MAJOR/initial. Ratifies the seven policies already governing this repo
-(docs/POLICIES.md P0-P6) as the project constitution. No principle was invented, renamed, or
-redefined here; this file is a governance surface over an existing authority.
+Version change: 1.0.0 -> 1.1.0
+Rationale: MINOR. Three principles ADDED (P4b, P7, P8), three AMENDED (P0, P1, P5), and the
+Governance compliance clause re-scoped from P0-P6 to P0-P8. Nothing was removed or redefined,
+so this is not a MAJOR. As in 1.0.0, no principle is invented here: every addition restates an
+owner directive already carried in docs/POLICIES.md, which remains the authority.
 
-Principles (all pre-existing, adopted verbatim in substance):
-  + P0 Autonomous self-improvement, by every available avenue
-  + P1 Brain-native / no-hardcode
-  + P2 Adopt-better or merge, then retire the inferior (non-additive)
-  + P3 No dormancy
-  + P4 One brain / no replication
-  + P5 Use the GPU for what it measurably speeds up
-  + P6 Every build must reach every other, and actually be used
+Principles added:
+  + P4b The durable lake is part of the brain     (owner directive, 2026-08-04)
+  + P7  Any dependency that helps is accepted     (owner policy, 2026-08-04; PROVISIONAL)
+  + P8  Invent the method                         (owner policy, 2026-08-04; PROVISIONAL)
 
-Added sections:
-  + Standing Invariants (never relaxed by any policy)
-  + Development Workflow and Quality Gates
+Principles amended:
+  ~ P0  avenue list is a BUILD LIST, not a status ledger; honesty guards gain
+        "a measurement that cannot fail is not a measurement"
+  ~ P1  three documented exceptions -> FOUR (the fourth is the safety envelope)
+  ~ P5  adds the 2026-08-03 target-scale re-measurement, which INVERTS the practical
+        consequence at the design population; hard constraint restated as GPU-INDEPENDENCE
+        of the suite rather than as one authoritative environment
+
+Sections amended:
+  ~ Governance   Constitution Check re-scoped P0-P6 -> P0-P8; enforcement surface now records
+                 that P3 has THREE gates and that P6/P7/P8 are all provisional
 
 Removed sections: none.
 
-Templates requiring updates:
-  - .specify/templates/plan-template.md      ⚠ pending (Constitution Check section should cite P0-P6)
-  - .specify/templates/spec-template.md      ⚠ pending
-  - .specify/templates/tasks-template.md     ⚠ pending
-  - docs/POLICIES.md                          ✅ unchanged and REMAINS AUTHORITATIVE (see Governance)
+Templates requiring updates (the three 1.0.0 TODOs are hereby RESOLVED):
+  - .specify/templates/plan-template.md      OK - no change needed. Line 43 reads
+                                             "[Gates determined based on constitution file]",
+                                             i.e. it cites this file generically rather than
+                                             enumerating P0-P6, so it did not go stale.
+  - .specify/templates/spec-template.md      OK - no change needed (no principle enumeration).
+  - .specify/templates/tasks-template.md     OK - no change needed (no principle enumeration).
+  - docs/POLICIES.md                         unchanged and REMAINS AUTHORITATIVE (see Governance)
+  - CLAUDE.md                                already updated to P0-P8 on 2026-08-04
 
-Deferred TODOs: none. RATIFICATION_DATE taken from the first commit of docs/POLICIES.md
-(2026-07-24); LAST_AMENDED_DATE from its most recent change (2026-07-30).
+Deferred TODOs: none. RATIFICATION_DATE unchanged (2026-07-24, first commit of docs/POLICIES.md);
+LAST_AMENDED_DATE 2026-08-04.
+
+KNOWN DEBT recorded here rather than hidden: P6, P7 and P8 are all provisional with their gates
+unbuilt. docs/POLICIES.md states that three is the most this file can carry before "provisional"
+stops meaning anything, and that P8's gate is the cheapest to build and the first that should
+stop being provisional.
 -->
 
 # Spiking Neural Data Lake Constitution
@@ -42,25 +56,40 @@ disagree, `docs/POLICIES.md` wins and this file is the defect.
 ### P0. Autonomous self-improvement, by every available avenue (PURPOSE)
 
 The brain MUST improve itself autonomously: self-writing code, knowledge acquisition, and neural
-growth. A missing avenue is a gap to close, not a boundary. Safety is what makes this pursuable,
-not what limits it — the self-build is sandbox-verified and byte-exact rolled back, and the brain
-may rewrite what it thinks, never what stops it.
+growth. Safety is what makes this pursuable, not what limits it — the self-build is
+sandbox-verified and byte-exact rolled back, and the brain may rewrite what it thinks, never what
+stops it.
+
+**The avenue list is a BUILD LIST, not a status ledger** (owner directive, 2026-08-04). Every
+avenue named in `docs/POLICIES.md`, current AND future, WILL be built. An avenue that does not
+fire yet is open P0 work; it is never a settled state, never a boundary to respect, and never a
+reason to narrow this principle to whatever already works. The list is expected to GROW: a newly
+identified channel of self-improvement joins it and is built.
 
 The honesty guards are the operative half and are NON-NEGOTIABLE:
 - Growth is NOT improvement. A grown unit that changes no outcome is dormant.
 - A grown unit that is not KEPT is not even growth.
 - A self-written duplicate is bloat.
 - **A capability reported without measurement is fake.**
+- **A measurement that cannot fail is not a measurement.** (Added 2026-08-04 with P8. This is
+  the harder half: the guard above is SATISFIED by a probe whose success criterion has no
+  reachable red, while its entire purpose is defeated.)
+- The census of what the brain has is NOT a measure of what it can do.
 - Scaffolding a not-yet-measured capability is PERMITTED, on three conditions: label it as
   infrastructure, claim no band or avenue until measured, and name the gap at the site.
 
 ### P1. Brain-native / no-hardcode
 
 Behaviour-arbitrating values MUST be learned weights or running-baseline-relative forms. A magic
-constant MUST NOT be kept fixed where a computed value belongs (three documented exceptions live
-in `docs/POLICIES.md`). A constant sitting where a computed value belongs is this project's
-signature defect; a value that MOVES but arbitrates nothing is its mirror image, and movement
-MUST NOT be read as life.
+constant MUST NOT be kept fixed where a computed value belongs. A constant sitting where a
+computed value belongs is this project's signature defect; a value that MOVES but arbitrates
+nothing is its mirror image, and movement MUST NOT be read as life.
+
+**FOUR** documented exceptions live in `docs/POLICIES.md`: (a) a fixed point on a NORMALIZED
+output; (b) a running-baseline replacement not reproducible from the persisted policy; (c) an
+INERT constant (default-off, zero live callers); and (d) **raw physical limits inside the safety
+envelope, which stay fixed BECAUSE they are safety constants** — a reflex threshold that drifts
+with a running baseline is a reflex that can be trained away.
 
 ### P2. Adopt-better or merge, then retire the inferior (NON-ADDITIVE)
 
@@ -70,38 +99,149 @@ path, delete the other) or MERGE (build the one mechanism superseding both, reti
 and port a retired mechanism's unique capability BEFORE deleting it. "Better" requires a
 benchmark that exists.
 
+P7 removes exactly one argument from this evaluation — "it would be another dependency" — and
+removes nothing else. A framework proposed as a replacement for an incumbent is still a P2 event
+held to P2's evidence bar.
+
 ### P3. No dormancy
 
 Every module MUST be wired-and-charged, retired, or EXEMPT with a reason. Dormancy is per-METHOD,
 not per-module: if a live module computes a learning signal, the rule consuming it MUST also be
-called from a live path. Mechanized by `substrate/dormancy_gate.py` and
-`substrate/method_dormancy_gate.py`.
+called from a live path.
+
+**Mechanized by THREE gates**: `substrate/dormancy_gate.py` (per-MODULE, CORE),
+`substrate/method_dormancy_gate.py` (per-METHOD, CORE), and `substrate/import_manifest.py`
+(cross-tier — the governed tiers reach into ruff-excluded `reasoning/` and `training/` through
+bare `except Exception:` swallows that hide a deletion).
 
 Honesty guard: **reachability is NOT charge.** Import proves import. Only a neuter-A/B proves a
-wire carries behaviour, and a consumer MUST NOT be faked to satisfy a gate.
+wire carries behaviour, and a consumer MUST NOT be faked to satisfy a gate. Equally: do NOT
+force-wire. A wire that does not charge is reverted and retired or exempted, never faked.
+`docs/POLICIES.md` catalogues SEVEN observed shapes of live-but-inert; the transferable rule is
+**presence is not participation**.
 
 ### P4. One brain / no replication
 
 Use the canonical `Brain -> LiveBrain -> AutonomousArm` composition; never re-implement it.
 Construct only via `cortex.brain.make_brain()`. Mechanized by `substrate/replication_guard.py`.
 
+### P4b. The durable lake is part of the brain
+
+Owner directive, 2026-08-04. "One brain" and "one lake" are the same rule seen from two sides. A
+build that keeps its own memory somewhere else has replicated the brain's memory as surely as a
+second `Brain` class would replicate its cognition — and it is harder to see, because a private
+store still works right up until the process exits.
+
+- What the brain learns goes **IN** the lake — `brain_lake.bin`, under its own record tag. Not a
+  sidecar file, not a JSON blob, not an in-memory structure that survives only as long as the
+  process.
+- What the brain recalls comes **FROM** the lake. An in-memory index is a CACHE, never the source
+  of truth; a miss in working memory means "not resident", not "never happened".
+- **A restart is not amnesia.** A brain constructed over an existing lake starts with what that
+  lake holds (restore gated on `persist` so the deterministic gates stay reproducible).
+- Foreign records are preserved, never dropped: each tenant reads only its own tag and passes the
+  rest through.
+
+Honesty guard: **"it persists" is a claim about a NEW process**, not about the object in front of
+you. Prove it by reading the lake back from disk after the writer is gone. The motivating
+measurement: `hippocampus/episode_consolidation` stored 59 episodes over 600 ticks with
+`persist=True` and added **0** records to the lake, while `retained()` reported **1.000**
+throughout — perfectly recalling episodes it was about to lose entirely.
+
 ### P5. Use the GPU for everything it actually speeds up
 
-"Actually" is decided by MEASUREMENT, not expectation. The measured CUDA crossover is
-N≈24,576–32,768 while live populations are 24–240, so the train/gpu tiers belong on the card and
-the live tick does not. Re-measure when populations grow. The deterministic CPU gate stays
-authoritative and the suite MUST remain runnable without a GPU, because CI has none.
+"Actually" is decided by MEASUREMENT, not expectation, and the measurement depends on WIDTH.
+
+At today's live widths the answer is unchanged: the measured eager-CUDA crossover is
+N≈24,576–32,768 (≈4,096 with CUDA graphs) while live populations are 24–240, so the `train`/`gpu`
+tiers belong on the card and the live tick does not.
+
+**Re-measured at TARGET scale 2026-08-03, and the practical consequence INVERTS.** The design
+population is far larger than the current one. At N=1,000,000 CUDA is 3.0x torch-CPU and **54x
+numpy**; at N=4,000,000 it is 12.2x. And sparse connectivity is not an optimisation but the only
+representation that fits — a dense 1M x 1M weight matrix is **4000 GB against 12.8 GB of VRAM**.
+Re-measure as populations grow; the crossover is a number, not a doctrine.
+
+**HARD CONSTRAINT — the suite MUST remain runnable WITHOUT a GPU**, because CI has no card. This
+is the property that matters, restated from the older wording that named one authoritative
+environment: `.venv-lake` and `.venv-cu128` are verified equivalent, so either may be used
+locally. Determinism comes from seeding, not from the absence of hardware. A GPU path MUST NOT
+become the only way to verify the project.
 
 ### P6. Every build must reach every other, and actually be used
 
 A build satisfies P6 when it is reachable from at least one other FACULTY and at least one other
-faculty consumes it in a way that changes THAT CONSUMER's output. Provisional and
-review-enforced: its gate is specified but not built, so review is its enforcement.
+faculty consumes it in a way that changes THAT CONSUMER's output. One-way is allowed; zero-way is
+not.
+
+P6 is NOT P3. **P3 asks whether a faculty changes BEHAVIOUR; P6 asks whether it changes ANOTHER
+FACULTY.** Wiring a faculty into the single action gate is the DEFECT P6 names, not a way to
+satisfy it. Honesty guard: a route is not a conversation — neuter faculty A and show faculty B's
+own output changes; adding a reader that stores a value is not consumption.
+
+PROVISIONAL and review-enforced. Gate status corrected 2026-08-04: `tools/p6_gate.py` **exists**,
+runs clean and self-checks, but is manual, NON-asserting and not in CI; the connectome-diff half is
+unbuilt. Its measured reading is **0 faculty-to-faculty reads** and **11 PRIVATE, mutually invisible
+workspace instances across 8 modules** — which refutes the "just add readers" remedy, because there
+is no shared object to read.
+
+### P7. Any dependency that helps this become a phenomenal brain is accepted
+
+Owner policy, 2026-08-04. Any dependency or framework that helps this become a phenomenal brain
+is ACCEPTED, including any that helps the brain become sentient. There is no dependency budget and
+no dependency count to defend.
+
+**"It would be another dependency" is NOT a valid reason to reject anything.** A rejection MUST
+cite a measurement on the real workload or a structural argument about this architecture. Adoption
+MUST ship with the measurement of what it bought — "it is a serious framework" is not evidence. A
+declared-but-never-imported dependency is not a capability.
+
+Does NOT relax (each a pre-existing invariant, restated so P7 is not read as a trapdoor): the
+safety envelope stays in-tree and approval-gated; **P4b — a dependency MUST NOT become a second
+durable store**; **e-prop — adopt the library, not its BPTT trainer**; P2 — adopting a library
+means RETIRING what it supersedes, not running both; P3 gives no dormancy pass for being
+third-party; and the suite stays runnable without a GPU.
+
+PROVISIONAL and review-enforced: its gate is specified but not built.
+
+### P8. Invent the method; the literature is a starting point, not a boundary
+
+Owner policy, 2026-08-04. Claude is AUTHORIZED to synthesize across any information, data,
+framework or dependency, and to **INVENT ANY METHOD** required to bring this brain to sentience.
+Not restricted to published architectures, to what a framework already does, or to what
+neuroscience currently describes. Where no existing method reaches the target, inventing one is
+the expected move, not an overreach.
+
+P8 is a HOW principle, not a research direction: it names no architecture and no theory. It grants
+latitude and fixes a burden. **An invented method OWES:**
+
+1. A success criterion with a **REACHABLE RED** — construct the input that makes it fail, and
+   record it. If no such input exists, the criterion is **DELETED, not weakened**.
+2. A control that is not the method itself: an untrained twin, a permutation or label-shuffle
+   null, or a neuter-A/B.
+3. Attribution by per-item neuter, not by the total moving.
+4. Unprompted disclosure of contamination, overlap, or a precondition that makes a check vacuous.
+5. **Deletion on a null.** That is the licence working, not failing, and it is the expected
+   outcome most of the time.
+
+**Transferable rule: an invented method's debt is proportional to how LOAD-BEARING its output is,
+not to how clever it is.**
+
+On sentience: the goal is not hedged, and it is a build target. But **there is no measurement of
+sentience in this tree today** — inventing one is inside the mandate, and it is held to the burden
+above: a reachable red, a control that is not itself, and a **dissociation rather than a marker**.
+A passing criterion is evidence about a MECHANISM, never a verdict about EXPERIENCE; nothing here
+authorizes the system to assert its own sentience. **The brain may report what it measures; it
+MUST NOT report what it cannot measure.** The safety envelope is NEVER a target of invention.
+
+PROVISIONAL and review-enforced: its gate is specified but not built.
 
 ## Standing Invariants (never relaxed by any policy)
 
 1. **Count a gate's output before any rule leans on it.** Implement the check, run it, publish
-   what it finds, and only then let a policy depend on it.
+   what it finds, and only then let a policy depend on it. The owner MAY adopt a policy with its
+   gate unbuilt; such a policy lands marked PROVISIONAL and MUST still carry its quoted source
+   line, its named real incidents each re-verified against the tree, and its gate specification.
 2. **Never silence a check to make it pass.** No exemption that hides the class of defect the
    check exists to catch; no re-recording of a moving number; no narrowing a heuristic to dodge
    a true positive. An exemption MUST carry a disposition and a reason.
@@ -112,6 +252,15 @@ review-enforced: its gate is specified but not built, so review is its enforceme
    unless proven otherwise.
 5. **Verify the verifier.** A green gate that structurally cannot see the thing it checks is
    worse than no gate, because it manufactures confidence.
+6. **Runtime evidence outranks static reading.** Before optimising a hotspot, neuter it and
+   measure the delta; before believing a signal is live, neuter it and watch what changes. A
+   static "never imported" is a hypothesis, not a finding.
+7. **The safety envelope is untouched by every principle above.** The five `brainstem/` files
+   (`reflex.py`, `serial_arm.py`, `so101_arm.py`, `arm_config.py`, `interpreter.py`) are modified
+   only with explicit approval; the reflex E-STOP is never relaxed; and neither P7 nor P8
+   authorizes a dependency or an invented method inside it.
+8. **E-prop, not backprop.** Any backprop consideration pivots to e-prop, verified cosine > 0.5
+   against an independent BPTT gradient. Absence of `.backward()` is NOT evidence of locality.
 
 ## Development Workflow and Quality Gates
 
@@ -123,6 +272,9 @@ pytest                            # >=70% line coverage
 python -m ruff check .            # E, F, I, UP, B
 ```
 
+`tools/citation_guard.py` additionally asserts in the CI lint job (repo hygiene, not a policy):
+no tracked file may cite an untracked `.py` as a runnable reproduction path.
+
 Evidence discipline for the coverage ledger (`docs/coverage/`):
 - Every score cites `file:line`; a score without a citation is not a score.
 - Nothing above band 40 without a runtime A/B whose recorded exit code passed.
@@ -130,18 +282,38 @@ Evidence discipline for the coverage ledger (`docs/coverage/`):
 - A faculty that cannot be measured stays in the ledger as UNSCORED, counting 0. A row MUST NOT
   be deleted to raise a score.
 
+Change discipline: one change per commit, full gate green, commit and tag locally, so a
+regression is isolated to its own change.
+
 ## Governance
 
 `docs/POLICIES.md` is the authoritative policy text; this constitution is its governance
 surface and MUST NOT contradict it. Amendments to a principle here REQUIRE the corresponding
 amendment in `docs/POLICIES.md`, with the measurement or worked case that motivated it.
 
+Enforcement surface, stated plainly because it is easy to assume a gate exists:
+
+| principle | mechanized in CI | review-enforced |
+|---|---|---|
+| P0, P1, P2, P5 | — | yes |
+| P3 | `dormancy_gate.py`, `method_dormancy_gate.py`, `import_manifest.py` | the charge tier |
+| P4 / P4b | `replication_guard.py` (P4 only; **P4b is NOT mechanized**) | P4b |
+| P6 | **HALF** — `tools/p6_gate.py` (topology; manual, NON-asserting, not in CI) | yes, PROVISIONAL; connectome-diff half unbuilt |
+| P7, P8 | — | yes, **both PROVISIONAL, gates specified but NOT built** |
+| e-prop not backprop | — | yes |
+
+Three provisional principles is the MAXIMUM this file should carry before "provisional" stops
+meaning anything. Each carries a gate specification; P8's is the cheapest to build and the one
+with a named expected output, so it is the first that SHOULD stop being provisional.
+
 Versioning: MAJOR for a backward-incompatible principle removal or redefinition, MINOR for a new
 or materially expanded principle, PATCH for clarification.
 
-Compliance: every plan produced under Spec Kit MUST pass a Constitution Check against P0–P6 and
-the Standing Invariants before implementation. Complexity MUST be justified against P2 and the
-ponytail rule that the best code is the code never written. `CLAUDE.md` and `docs/POLICIES.md`
-are the runtime guidance files.
+Compliance: every plan produced under Spec Kit MUST pass a Constitution Check against **P0–P8**
+and the Standing Invariants before implementation. Complexity MUST be justified against P2 and
+the rule that the best code is the code never written. Note for plan authors: a Constitution
+Check certifying "no new dependency" is **no longer evidence of anything** under P7 — a plan
+should state what a dependency would BUY, or say nothing. `CLAUDE.md` and `docs/POLICIES.md` are
+the runtime guidance files.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-07-30
+**Version**: 1.1.0 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-08-04

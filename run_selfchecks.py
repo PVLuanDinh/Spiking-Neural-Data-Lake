@@ -1,11 +1,11 @@
-"""
-v0.50 — single canonical runner for every module self-check.
+﻿"""
+v0.50 â€” single canonical runner for every module self-check.
 
 (Said "every pure-stdlib self-check" until 2026-07-29, contradicting its own paragraph four lines
 down. That was backlog M52: the phrase outlived the rule by nine days.)
 
 The CI module list used to live hand-typed in BOTH .github/workflows/ci.yml and
-docs/RUNNING.md — add or rename a module and the two silently drift. This is the ONE
+docs/RUNNING.md â€” add or rename a module and the two silently drift. This is the ONE
 source of truth: CI runs `python run_selfchecks.py`, docs point here. Each module's
 `if __name__ == "__main__"` block is its own assert-based test; this runs them as
 subprocesses (isolation) and fails loudly if any non-zero exits.
@@ -24,7 +24,7 @@ import sys
 import subprocess
 import tempfile
 
-# children print Unicode (φ, −, …); force UTF-8 so a Windows cp1252 console can't crash them.
+# children print Unicode (Ï†, âˆ’, â€¦); force UTF-8 so a Windows cp1252 console can't crash them.
 # PYTHONPATH="src" so `snn_data_lake` (the package) + research/ modules importing it resolve.
 #
 # NORD_HOME added 2026-07-31: an ISOLATED home for the whole gate run. Without it every child
@@ -46,13 +46,13 @@ _ENV = {
     "NORD_HOME": _HOME,
 }
 
-# CORE — the product: arm-loop + data-lake, clone-and-run (root). As of 3.0 organized by
+# CORE â€” the product: arm-loop + data-lake, clone-and-run (root). As of 3.0 organized by
 # anatomical brain region (src/snn_data_lake/<region>/<module>.py); run as
 # `-m snn_data_lake.<region>.<module>`. snn_data_lake.brain_atlas renders + verifies the map.
 CORE = [
     "brain_atlas",
     "connectome",
-    # cortex — sensing/encoding, cortical neuron models, microcircuit dynamics, readout, language
+    # cortex â€” sensing/encoding, cortical neuron models, microcircuit dynamics, readout, language
     "cortex.rank_order_coding",
     "cortex.population_encoding",
     "cortex.multimodal_encoder",
@@ -92,6 +92,9 @@ CORE = [
     "cortex.self_model",
     "cortex.reasoning_curriculum",
     "cortex.autapse_neuron",
+    "cortex.adex_neuron",
+    "cortex.resonate_and_fire",
+    "cortex.srm_neuron",
     "cortex.metacognitive_monitor",
     "cortex.wholistic_loop",
     "cortex.autotelic_goals",
@@ -112,7 +115,7 @@ CORE = [
     "cortex.second_order_access",  # C2 r2: LIF metacognition OF access reliability (knowing THAT it knows)
     "cortex.heterogeneous_microcircuit",  # Brain-Cog-adopted: LIF+Izhikevich+AdEx composed live under a local rule
     "cortex.percept_surprise",  # loop C2: online unsupervised Oja-PCA reconstruction-residual surprise (orienting drive)
-    # hippocampus — memory formation, spatial coding, replay
+    # hippocampus â€” memory formation, spatial coding, replay
     "hippocampus.grid_cells",
     "hippocampus.experience_replay",
     "hippocampus.sleep_replay",
@@ -128,17 +131,23 @@ CORE = [
     "hippocampus.spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
     "hippocampus.episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
     "hippocampus.lake_consolidation",  # sleep-time PRUNE of the symbolic durable lake (cap re-derivable bulk, keep learned) -> live + bounded
-    # basal ganglia — action selection, reward-modulated learning, decision, Go/NoGo gating
+    "hippocampus.spiking_storage_prototype",  # factored associative memory; criteria judged vs a do-nothing cue control + permutation null, each with an executed red
+    # basal ganglia â€” action selection, reward-modulated learning, decision, Go/NoGo gating
     "basal_ganglia.evidence_accumulation",
     "basal_ganglia.r_stdp",
     "basal_ganglia.valence_stdp",
     "basal_ganglia.action_gating",
     "basal_ganglia.latent_q",
     "basal_ganglia.mlp_q",
-    # amygdala — aversive/threat learning (CS-US fear conditioning)
+    # PROMOTED from RESEARCH 2026-08-04. Reward-modulated action selection over its own candidate
+    # set: the three-factor RSTDP weights are driven by the GATE verdict (kept +1 / rolled_back -1).
+    # Reachable on the live sleep path but only under NORD_SELFMOD=1, so charge is UNMEASURED here.
+    "basal_ganglia.self_build_loop",
+    "basal_ganglia.brain_native_selfbuild",
+    # amygdala â€” aversive/threat learning (CS-US fear conditioning)
     "amygdala.fear_conditioning",
     "amygdala.affective_appraisal",  # C1: learned multi-dim affective appraisal (three-factor)
-    # cerebellum — motor coordination, timing, forward/inverse models, oscillators
+    # cerebellum â€” motor coordination, timing, forward/inverse models, oscillators
     "cerebellum.forward_model",
     "cerebellum.spiking_pid",
     "cerebellum.synfire_chain",
@@ -147,7 +156,12 @@ CORE = [
     "cerebellum.hjepa_serve",
     "cerebellum.spiking_jepa",
     "cerebellum.gain_adaptation",
-    # brainstem + spinal cord — reflexes, actuation, sensorimotor loops, motor pattern generation
+    # PROMOTED from RESEARCH 2026-08-04. It was "reasoning.polychronization" in the RESEARCH list
+    # below, which runs it as an isolated subprocess and leaves it outside all three P3 gates. It
+    # holds the only delay-matched coincidence detector in the tree; keeping it ungoverned is how
+    # two prior audits could record it dormant and nothing was obliged to happen.
+    "cerebellum.polychronization",
+    # brainstem + spinal cord â€” reflexes, actuation, sensorimotor loops, motor pattern generation
     # (the safety envelope lives here)
     "brainstem.reflex",
     "brainstem.serial_arm",
@@ -161,30 +175,30 @@ CORE = [
     "brainstem.autonomous_loop",
     "brainstem.signal_loop",
     "brainstem.cpg_oscillator",
-    # thalamus — the relay + global-broadcast hub (GWT) + reticular attentional gate
+    # thalamus â€” the relay + global-broadcast hub (GWT) + reticular attentional gate
     "thalamus.global_workspace",
     "thalamus.reticular_gate",
     "thalamus.reentrant_workspace",  # W8: de-saturated competitive ignition + re-entry
     "thalamus.connectome_router",  # C1 batch-3: live signed/delayed spike propagation over the connectome graph
-    # hypothalamus — homeostatic timing (the SCN circadian clock)
+    # hypothalamus â€” homeostatic timing (the SCN circadian clock)
     "hypothalamus.circadian_clock",
     "hypothalamus.set_points",
     "hypothalamus.homeostatic_drives",  # W8: drives as percepts
-    # midbrain — dopamine source nuclei (VTA/SNc RPE) + superior-colliculus orienting + deep gaze layers
+    # midbrain â€” dopamine source nuclei (VTA/SNc RPE) + superior-colliculus orienting + deep gaze layers
     "midbrain.dopamine_nuclei",
     "midbrain.superior_colliculus",
     "midbrain.sc_deep_layers",
     "midbrain.multisensory_integration",
-    # pons — cortico-ponto-cerebellar relay + the ascending reticular activating system (ARAS)
-    # medulla — the autonomic vital nuclei (respiratory / cardiac CPG) + interoceptive arousal
+    # pons â€” cortico-ponto-cerebellar relay + the ascending reticular activating system (ARAS)
+    # medulla â€” the autonomic vital nuclei (respiratory / cardiac CPG) + interoceptive arousal
     "medulla.vital_nuclei",
     "medulla.interoceptive_arousal",
-    # epithalamus — the lateral habenula (anti-reward / negative RPE)
+    # epithalamus â€” the lateral habenula (anti-reward / negative RPE)
     "epithalamus.habenula",
-    # olfactory — bulb decorrelation + piriform association
-    # claustrum — cortical synchrony / salience hub
+    # olfactory â€” bulb decorrelation + piriform association
+    # claustrum â€” cortical synchrony / salience hub
     "claustrum.claustrum",
-    # neuromodulation — diffuse chemical modulators + glia (LC noradrenaline, raphe serotonin)
+    # neuromodulation â€” diffuse chemical modulators + glia (LC noradrenaline, raphe serotonin)
     "neuromodulation.acetylcholine",
     "neuromodulation.astrocyte_modulation",
     "neuromodulation.cortisol",
@@ -198,8 +212,9 @@ CORE = [
     "neuromodulation.empowerment",
     "neuromodulation.developmental_envelope",
     "neuromodulation.affect_integrator",  # C1 batch-2: spiking neuromod fusion -> coupled affect + self-organized emotions
-    # plasticity — Hebbian/STDP, homeostatic, developmental learning rules
+    # plasticity â€” Hebbian/STDP, homeostatic, developmental learning rules
     "plasticity.bcm_plasticity",
+    "plasticity.oja_pca",
     "plasticity.homeostatic_scaling",
     "plasticity.inhibitory_stdp",
     "plasticity.intrinsic_plasticity",
@@ -212,7 +227,7 @@ CORE = [
     "plasticity.benna_fusi",
     "plasticity.homeostatic_plasticity_stack",
     "plasticity.plasticity_rule_stack",
-    # substrate — the spiking data-lake, telemetry, and infra (not a brain region)
+    # substrate â€” the spiking data-lake, telemetry, and infra (not a brain region)
     "substrate._mathutils",
     "substrate.spike_stream_sketch",
     "substrate.spike_cardinality",
@@ -242,6 +257,10 @@ CORE = [
     "substrate.lake_working_memory",
     "substrate.chat_memory",
     "substrate.signal_calibrator",
+    "substrate.device",
+    # PROMOTED from RESEARCH 2026-08-04. Infra, not a brain region: subprocesses + tree copies +
+    # crc32, no weight anywhere. Owns _PROTECTED (the 9-file firewall) and the anchored _repo_root().
+    "substrate.self_mod_harness",
     "substrate.home",
     "substrate.binlog",
     "substrate.growable",
@@ -250,6 +269,9 @@ CORE = [
     "substrate.brain_telemetry",  # snapshot contract + recorder + /api/state (no-orphan-panel gate)
     "substrate.brain_geometry",  # anatomical layout (hand-authored coords, REAL connectome tracts)
     "substrate.cockpit",  # THE one frontend: page + contract gate + queued-not-raced chat turn
+    # P4c 2026-08-04: the brain's DRIVE, promoted from the repo root where no gate reached it. Its
+    # __main__ is a self-check that never starts the loop (--serve does that), so this entry is safe.
+    "substrate.learn_daemon",
     "substrate.dormancy_gate",  # Policy 3: assert every brain module is reachable from a live path or EXEMPT
     "substrate.replication_guard",  # Policy 4: assert one canonical Brain/LiveBrain/AutonomousArm (no replica)
     "substrate.import_manifest",  # Policy 3: assert every reasoning/ module the live brain lazily imports still imports
@@ -260,9 +282,8 @@ CORE = [
     "substrate.basic_components",  # Brain-Cog-adopted composition interface (node + local-rule + connection palette)
     "substrate.similarity_sized_growth",  # Brain-Cog SCA-adopted: novelty-sized recruit cap + frozen-expert reuse
 ]
-# RESEARCH — benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
+# RESEARCH â€” benchmarks / storage / KG demos (research/), run with root on PYTHONPATH.
 RESEARCH = [
-    "reasoning.spiking_storage_prototype",
     "reasoning.test_prototype",
     "reasoning.hopfield_baseline",
     "reasoning.dense_associative_memory",
@@ -281,21 +302,17 @@ RESEARCH = [
     "reasoning.mcr_hdc",
     "reasoning.bayesian_snn",
     "reasoning.nmnist_ingest",
-    "reasoning.srm_neuron",
     "reasoning.nef_compute",
     "reasoning.nef_integrator",
     "reasoning.stats_bounds",
     "reasoning.loop_latency",
     "reasoning.delay_learning",
     "reasoning.eprop",
-    "reasoning.polychronization",
+    # "reasoning.polychronization" -> PROMOTED to CORE as "cerebellum.polychronization" (2026-08-04)
     "reasoning.sn_p_system",
-    "reasoning.oja_pca",
-    "reasoning.resonate_and_fire",
     "reasoning.free_energy_control",
     "reasoning.pc_active_inference",
     "reasoning.dishbrain_learning",
-    "reasoning.adex_neuron",
     "reasoning.triplet_stdp",
     "reasoning.cellular_neural_network",
     "reasoning.random_boolean_network",
@@ -334,15 +351,12 @@ RESEARCH = [
     "reasoning.vsa_synthesize",  # OUT-OF-GRAMMAR Gf: synthesizes novel rules as VSA spike-op programs (no fixed menu)
     "reasoning.semantic_memory",  # W6: VSA meaning-based recall (paraphrase-invariant, beyond the lexical crc32 gate)
     "reasoning.pragmatics",  # W8: speech-act recognition + Gricean implicature + indirect-request detection
-    "reasoning.brain_native_selfbuild",  # OPEN-ENDED brain-native self-build: three-factor-learned de-hardcode proposer (retired the numeric tuner)
     "reasoning.impact_analysis",  # pre-mutation blast radius (harness LSP principle, native ast + graphify) -> self-build prefers surgical changes
     "reasoning.ar_spiking_lm_serve",  # forward-only Spiking-RWKV serve: order-sensitive logprob (the BLiMP lever)
     "reasoning.eprop_lm_serve",  # BRAIN-NATIVE e-prop recurrent-spiking LM serve: order-sensitive logprob (no backprop)
     "reasoning.eprop_lm_alif_serve",  # deep-ALIF e-prop LM serve: adaptive-threshold long-range, order-sensitive logprob
     "reasoning.self_improve",
     "reasoning.godel_machine",
-    "reasoning.self_mod_harness",
-    "reasoning.self_build_loop",
     "reasoning.content_signature",
     # the two OUTSIDE yardsticks the depth ceilings are measured against. Both SKIP-with-notice when
     # their dataset is not downloaded (data/ is gitignored), so CI stays green either way -- which is

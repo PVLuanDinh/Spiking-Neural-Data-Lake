@@ -64,6 +64,20 @@ def test_the_recorded_command_after_dashdash_is_not_validated():
     assert cs._unknown_arg(argv) is None
 
 
+def test_record_without_the_double_dash_refuses_instead_of_raising(capsys):
+    """`record` with no `--` raised a bare `ValueError: '--' is not in list` out of `argv.index`.
+
+    Added 2026-08-05 to give that 2026-08-04 fix a reachable red: delete the guard and this test
+    gets a ValueError instead of an exit code. The behaviour under test is CONSISTENCY, not the
+    crash -- every other refusal in this CLI names a reason and exits 2, and one path escaping as a
+    traceback is what makes an operator think they hit a bug rather than a bad invocation.
+    """
+    assert cs.main(["record", "--name", "n"]) == 2
+    out = capsys.readouterr().out
+    assert "needs the probe command after" in out, out
+    assert "usage:" in out, "a refusal must show the shape it wanted"
+
+
 def test_main_refuses_with_exit_2_and_runs_nothing(capsys, monkeypatch):
     """The whole point: a bad invocation must not reach report() and print a coverage table."""
     monkeypatch.setattr(cs, "report", lambda *a, **k: pytest.fail("report() must not run"))

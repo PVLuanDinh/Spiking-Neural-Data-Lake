@@ -14,7 +14,11 @@ factor delay learning rules for spiking neural networks"; +20% over weights-only
 
 import random
 
-random.seed(0)
+# random.seed(0) DELETED 2026-08-04 (specs/010, C33): it was an IMPORT-TIME global reseed that
+# clobbered any caller's seed, and it was VESTIGIAL here -- every RNG use in this module already
+# goes through a per-instance `random.Random(seed)`, so nothing read the global stream it set.
+# Verified by AST: no module-level statement and no function in this file touches the global
+# random API. Deterministic behaviour is unchanged; the side effect on importers is gone.
 
 T = 50  # time window
 GAP = 8  # true lead/lag between the two channels
@@ -71,7 +75,9 @@ def main():
     print(f"task: ch0-leads vs ch1-leads by GAP={GAP} (jittered), coincidence window W={W}")
     print(f"learned delay d0 = {d0:.2f}  (target ~ GAP={GAP} to align the leading channel)")
     print(f"order-classification accuracy : pre {pre:.0%} -> post {post:.0%}  (chance 50%)")
-    print("delay is a LEARNED parameter (three-factor: eligibility × reward) — timing, not weight.")
+    print(
+        "delay is a LEARNED parameter (three-factor: eligibility x reward) -- timing, not weight."
+    )
     print("=" * 58)
 
     # ---- self-check: one runnable assert-based check; deterministic ----

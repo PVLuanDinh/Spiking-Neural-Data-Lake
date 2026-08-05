@@ -30,9 +30,13 @@ recall path (naive exp(β·dot) overflows once β·dot > ~709).
 import math
 import random
 
-import snn_data_lake.reasoning.stats_bounds as sb  # research/ is on sys.path when run as a script (B5: mean±std bands)
+import snn_data_lake.reasoning.stats_bounds as sb  # B5: mean +/- std bands
 
-random.seed(0)  # module-level determinism; per-run seeds below are fixed too
+# random.seed(0) DELETED 2026-08-04 (specs/010, C33): it was an IMPORT-TIME global reseed that
+# clobbered any caller's seed, and it was VESTIGIAL here -- every RNG use in this module already
+# goes through a per-instance `random.Random(seed)`, so nothing read the global stream it set.
+# Verified by AST: no module-level statement and no function in this file touches the global
+# random API. Deterministic behaviour is unchanged; the side effect on importers is gone.
 
 N = 48  # neurons; small enough that the n=4 sweep stays fast in CI
 FLIP = round(0.10 * N)  # cue corruption before recall
@@ -157,28 +161,36 @@ def main():
     dm, ds = sb.mean_std(dense_hi)
     cm, cs = sb.mean_std(classical_hi)
 
+    # ASCII-ONLY PRINTS (CLAUDE.md determinism/style invariant). This block used to print em
+    # dashes, `±`, `·` and `×`. MEASURED 2026-08-04, because the invariant states a mechanism and
+    # the mechanism is worth checking rather than quoting: under `PYTHONIOENCODING=cp1252:strict`
+    # the module still exits 0 (all four glyphs exist in cp1252), but under `cp437:strict` -- the
+    # default console codepage on a US Windows install -- it dies with
+    # `UnicodeEncodeError: 'charmap' codec can't encode character '—'` and exit code 1.
+    # run_selfchecks hid this because its `_ENV` forces PYTHONUTF8=1/PYTHONIOENCODING=utf-8; a user
+    # running `python -m snn_data_lake.reasoning.dense_associative_memory` directly does not.
     print("=" * 64)
-    print("DENSE ASSOCIATIVE MEMORY — capacity above the classical Hopfield bound")
+    print("DENSE ASSOCIATIVE MEMORY -- capacity above the classical Hopfield bound")
     print("=" * 64)
-    print(f"N={N}  cue corruption={FLIP}/{N}  seeds={len(list(SEEDS))}  (mean overlap ± std)")
+    print(f"N={N}  cue corruption={FLIP}/{N}  seeds={len(list(SEEDS))}  (mean overlap +/- std)")
     print("\n  P/N     P    n=2 (classical)      n=4 (dense)")
     for f in SWEEP:
         m2, s2 = sb.mean_std(table[(2, f)])
         m4, s4 = sb.mean_std(table[(4, f)])
         print(
-            f"  {f:>4.1f}  {round(f * N):>4}    {m2:>6.1%} ± {s2:>4.1%}       {m4:>6.1%} ± {s4:>4.1%}"
+            f"  {f:>4.1f}  {round(f * N):>4}    {m2:>6.1%} +/- {s2:>4.1%}     {m4:>6.1%} +/- {s4:>4.1%}"
         )
     print()
     print(
-        f"classical (n=2) empirical capacity : ~{classical_cap} patterns (~{classical_cap / N:.2f}·N,"
-        f" bound 0.138·N — see hopfield_baseline.py)"
+        f"classical (n=2) empirical capacity : ~{classical_cap} patterns (~{classical_cap / N:.2f}*N,"
+        f" bound 0.138*N -- see hopfield_baseline.py)"
     )
     print(
-        f"at P=2·N={round(2 * N)}:  classical {cm:.1%} ± {cs:.1%}   vs   dense {dm:.1%} ± {ds:.1%}"
+        f"at P=2*N={round(2 * N)}:  classical {cm:.1%} +/- {cs:.1%}   vs   dense {dm:.1%} +/- {ds:.1%}"
     )
     print(
-        "spectrum: classical 0.138·N  ->  k-WTA factored prototype (80 patterns @ N=256, 874×"
-        " smaller storage)  ->  distributed-dense (n=4, clean past 2·N). Factoring vs dense"
+        "spectrum: classical 0.138*N  ->  k-WTA factored prototype (80 patterns @ N=256, 874x"
+        " smaller storage)  ->  distributed-dense (n=4, clean past 2*N). Factoring vs dense"
         " nonlinearity are orthogonal wins."
     )
     print("=" * 64)
@@ -198,7 +210,7 @@ def main():
     lsr_big = mean_recall_modern(pats, lambda d: lsr_weights(d, beta=big), N, rng)
 
     print(
-        f"modern energies @ P=2·N: softmax {sm:.1%} | log-sum-ReLU {lsr:.1%}  (both dense-capacity)"
+        f"modern energies @ P=2*N: softmax {sm:.1%} | log-sum-ReLU {lsr:.1%}  (both dense-capacity)"
     )
     print(
         f"robustness @ beta={big:.0f}: naive exp overflows={overflowed} | guarded-softmax {sm_big:.1%}"
@@ -207,15 +219,21 @@ def main():
     print("=" * 64)
 
     # ---- self-check: one runnable assert-based check; deterministic seeds ----
+    # ASSERT MESSAGES ARE OUTPUT TOO (fixed 2026-08-05). The prints above were ASCII-ified while
+    # these four kept a middle dot; an assert message is the ONE string this module emits on the
+    # path that matters -- a failing gate -- so the invariant binds here at least as hard.
+    # MEASURED, not assumed: `·` happens to encode in both cp1252 and cp437 so it was not
+    # crashing, but `—` and `×` (still present in this file's docstring) encode in
+    # NEITHER-and-cp437 respectively, so "the assert messages are fine" was luck, not a property.
     assert round(0.03 * N) <= classical_cap <= round(0.30 * N), (
-        f"n=2 should behave ~linearly (capacity {classical_cap} not near 0.138·N)"
+        f"n=2 should behave ~linearly (capacity {classical_cap} not near 0.138*N)"
     )
-    assert dm >= THRESH, f"dense (n=4) should still recall cleanly at 2·N: {dm:.2f}"
-    assert cm <= 0.75, f"classical (n=2) should be broken down at 2·N: {cm:.2f}"
-    # clean statistical separation (mean±3σ bands do not overlap) — the B5 reuse
+    assert dm >= THRESH, f"dense (n=4) should still recall cleanly at 2*N: {dm:.2f}"
+    assert cm <= 0.75, f"classical (n=2) should be broken down at 2*N: {cm:.2f}"
+    # clean statistical separation (mean +/- 3 sigma bands do not overlap) -- the B5 reuse
     d_lo, _ = sb.bound(dense_hi, k=3.0)
     _, c_hi = sb.bound(classical_hi, k=3.0)
-    assert d_lo > c_hi, f"dense/classical capacity bands overlap at 2·N ({d_lo:.2f} !> {c_hi:.2f})"
+    assert d_lo > c_hi, f"dense/classical capacity bands overlap at 2*N ({d_lo:.2f} !> {c_hi:.2f})"
     assert sm >= THRESH and lsr >= THRESH, (
         f"modern energies not dense-capacity: sm={sm:.2f} lsr={lsr:.2f}"
     )
@@ -226,7 +244,7 @@ def main():
         f"log-sum-ReLU must stay robust (exp-free) at large beta: {lsr_big:.2f}"
     )
     print(
-        "self-check OK: n=2 == classical; n=4 + modern softmax/LSR store past 2·N; "
+        "self-check OK: n=2 == classical; n=4 + modern softmax/LSR store past 2*N; "
         "LSR matches softmax capacity exp-free (robust where naive exp overflows)"
     )
 

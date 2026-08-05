@@ -13,22 +13,15 @@ Prints each tier's REAL output (predicted digits + accuracy, generated text, gro
 the brain's "full potential": all torch tiers active on genuine inputs, none faked. Needs the TORCH venv
 (both torch AND the model checkpoints -- surrogate_nmnist.pth, pc_cortex_nmnist.json, models/spikegpt/):
 
-    D:\AI-project\spiking-neural-data-lake\.venv-cu128\Scripts\python research\full_brain_experience.py
+    PYTHONPATH=src .venv-cu128\Scripts\python -m snn_data_lake.reasoning.full_brain_experience
 
 Observation / cognition only -- no actuator route (perception + language + growth never send a motor command).
 """
 
-import os
 import sys
 import time
 
-_here = os.path.dirname(os.path.abspath(__file__))
-_root = os.path.join(_here, "..")
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-
-from snn_data_lake.cortex.brain import Brain
+from snn_data_lake.cortex.brain import make_brain
 
 
 def _bar(title):
@@ -39,7 +32,10 @@ def _bar(title):
 
 def main():
     _bar("FULL-BRAIN EXPERIENCE -- all torch tiers on REAL data (no forcing)")
-    b = Brain(seed=0, day_period=12)
+    # P4: the ONE sanctioned construction path. This called `Brain(seed=0, day_period=12)` directly
+    # until 2026-08-04 -- a second construction path is exactly what make_brain() exists to prevent,
+    # and replication_guard cannot see it because reasoning/ is outside the gated tiers.
+    b = make_brain(seed=0, day_period=12)
     st = b.state()
     results = {}
     print("torch tiers loaded on the brain:")

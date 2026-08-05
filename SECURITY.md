@@ -1,14 +1,23 @@
 # Security & Safety
 
-This project simulates and can drive a physical 2-DOF robot arm. The arm control path is
+This project simulates and can drive a physical **6-DOF SO-101** robot arm. The arm control path is
 safety-critical: a defect can command real servos. This document describes the safety envelope
 and how to change it responsibly.
 
 ## Safety envelope
 
-Five modules form the envelope. Every motor command flows through the `ArmSim.apply()` gate,
-which enforces the emergency-stop latch, joint limits, and command grammar before anything
-reaches a servo.
+Five modules form the envelope. Every motor command flows through the `So101Arm.apply()` gate
+(`src/snn_data_lake/brainstem/so101_arm.py`, `class So101Arm` → `def apply`), which enforces the
+emergency-stop latch, joint limits, and command grammar before anything reaches a servo.
+
+*(Corrected 2026-08-04, twice over. First: this line named `ArmSim.apply()`, a class that does not
+exist anywhere in `src/`, so the security document's one-line summary and its own table disagreed
+about which code gates every motor command. Second, in the same pass: the opening sentence still
+said **2-DOF**, a fact about the retired `arm_sim.py` — `so101_arm.py` asserts `len(theta_deg) == 6`
+in its own self-check. The `:144` / `:268` line numbers were also dropped in favour of the SYMBOLS,
+because a line citation in a safety document rots silently on the next edit and nothing in CI
+resolves it. Nothing in the envelope changed — only its description; that is its own hazard, since
+this is the paragraph telling a reader which code is approval-gated.)*
 
 | File | Role |
 |------|------|
@@ -40,8 +49,8 @@ this gate.
   pytest tests/test_so101_arm.py tests/test_reflex.py tests/test_interpreter.py tests/test_arm_config.py tests/test_serial_arm.py tests/test_arm_vocabulary.py
   ```
 - Do not weaken an assertion, remove a limit check, or add a bypass path to make a demo pass.
-- The simulator's gate must stay at least as strict as the hardware path — the sim is the
-  safety mirror.
+- The simulated body's gate (`So101Arm.apply()`) must stay at least as strict as the hardware path
+  — the sim is the safety mirror.
 
 ## Reporting a vulnerability
 

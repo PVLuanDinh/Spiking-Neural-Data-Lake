@@ -25,8 +25,13 @@ Imports no brainstem, routes no actuator.
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.reasoning.raven_bench
 """
 
-# ruff: noqa: UP031  -- %-format is the hand-aligned house style of every sibling in reasoning/
-# (which the repo excludes from `ruff check .`); kept for consistency, not reflowed to f-strings.
+# %-format is the hand-aligned house style of every sibling in reasoning/; kept for consistency,
+# not reflowed to f-strings. The file-level ruff blanket-suppression of UP031 that stood here was
+# DELETED 2026-08-04 as doubly wrong: its parenthetical claimed the repo "excludes [reasoning/] from
+# `ruff check .`", which has been FALSE since 2026-07-28 (pyproject's own comment records the
+# change), and UP031 is already in the `src/snn_data_lake/reasoning/**` per-file-ignores list, so
+# the directive suppressed nothing that was not suppressed anyway. Verified by running ruff on
+# this file with the line removed: 0 findings.
 import json
 import os
 import random
@@ -149,13 +154,36 @@ def load_tasks(split="synthetic", limit=None):
 
 
 def score_task(solver, task):
-    """True iff the solver's answer_idx matches the held-out answer. A solver that raises or returns
-    junk simply scores False -- never crashes the run."""
+    """(correct, known) for ONE task, from a SINGLE solve. A solver that raises or returns junk
+    scores (False, False) -- never crashes the run.
+
+    This returned only `correct` and `score()` called `solve` a SECOND time to read `known`.
+    Two defects in one (fixed 2026-08-04): it doubled the solve cost of every bench run, and --
+    the reason it is a correctness bug and not just a slow one -- a solver carrying state sees a
+    DIFFERENT internal state on the two calls, so `accuracy` and `known_frac` were measured on
+    two different runs of the same task set. `RandomSolver` in this very file is exactly that:
+    its `self.rng` advances per solve, so accuracy read draws 1,3,5,... and known_frac read
+    2,4,6,.... One solve, one pair of numbers.
+
+    WHAT THIS CHANGED, MEASURED AND RECORDED 2026-08-05 because the fix moved a PUBLISHED number
+    and the fix itself did not say so. Both versions were run on this tree, same seed, limit=60:
+
+        solve calls in main()   240 -> 120   (60 -> 30 per score() call for a stateful solver)
+        RpmSolver accuracy      98.3% -> 98.3%   known 96.7% -> 96.7%   (stateless: unchanged)
+        random-control accuracy 11.7% -> 8.3%    (RandomSolver draws 1,3,5,... -> 1,2,3,...)
+        const-control accuracy  15.0% -> 15.0%   (stateless: unchanged)
+
+    The new 8.3% is the honest number -- it is the control measured on the same draws the accuracy
+    column reports -- and it sits further BELOW the 12.5% chance line, so every assert below keeps
+    its margin. But `docs/DEPTH_CEILINGS.md` records "controls: random 11.7% | constant 15.0%" and
+    that line is now unreproducible from this file. Correcting it is outside this module and is
+    handed back rather than left implied: a bench fix that silently invalidates a published control
+    is how an unreproducible number gets into the docs in the first place."""
     try:
         res = solver.solve(task["context"], task["candidates"])
-        return int(res.get("answer_idx", -1)) == int(task["answer"])
+        return int(res.get("answer_idx", -1)) == int(task["answer"]), bool(res.get("known"))
     except Exception:
-        return False
+        return False, False
 
 
 def score(solver, split="synthetic", limit=50):
@@ -164,13 +192,9 @@ def score(solver, split="synthetic", limit=50):
     solved = 0
     known = 0
     for _tid, task in tasks:
-        if score_task(solver, task):
-            solved += 1
-        try:
-            if solver.solve(task["context"], task["candidates"]).get("known"):
-                known += 1
-        except Exception:
-            pass
+        correct, is_known = score_task(solver, task)
+        solved += correct
+        known += is_known
     n = len(tasks)
     return {
         "split": split,

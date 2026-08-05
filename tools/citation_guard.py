@@ -3,11 +3,28 @@
 VERDICT: THE BROAD RULE IS DEAD, THE NARROW ONE IS ADOPTED AND NOW ASSERTS.
 
   STRICT (cited as a runnable reproduction path):    0 violations + 1 exemption  <- ASSERTING GATE
-  BROAD  (cited anywhere in a tracked file)      : ~452 across 127 files, 2026-07-30  <- report only
+  BROAD  (cited anywhere in a tracked file)      : ALLOWLIST-SIZED; RUN IT       <- report only
 
 The BROAD figure is a DATED OBSERVATION, not an invariant -- it moves with every changelog entry and
 every doc edit, and nothing asserts on it. Do not "fix" it when it drifts; re-date it if you re-measure.
 The STRICT line is the one that must stay at 0-unexempted, and the gate below enforces that.
+
+THE BROAD HEADLINE NO LONGER CARRIES A NUMBER, and the reason is a measurement. It was re-measured
+2026-08-04 as "721 tracked text files, 3,202 .py citations, BROAD 600 across 169" -- correcting a
+line that had said "~452 across 127 files" while the paragraph below it said "474 violations across
+126 files ... out of 1,431 .py citations in 574 tracked text files", both dated 2026-07-30 and
+disagreeing with each other. RE-RUN 2026-08-05, the next morning, in .venv-lake: **721 tracked text
+files, 3,321 .py citations, BROAD 519 across 120, STRICT 0 unexempted with 1 exemption** -- and
+again about an hour later, unchanged command, **BROAD 510 across 115**. Nothing was "fixed" between
+those runs by anyone editing this file: a concurrent audit pass was correcting citations across
+docs/ and specs/ while every one of those readings was taken, so the count moved by 81 violations
+and 49 files inside a day, then by 9 more inside an hour. A figure with that half-life does not
+belong in a headline
+where the next reader will quote it -- so the headline states the SHAPE, which is the only part of
+it the argument ever used, and the number lives where it is produced: in the tool's own output.
+The 474/126/1,431/574 figures below are LEFT as written because they are quoted verbatim in
+docs/POLICIES.md's account of why the broad rule died; that argument rests on the count being
+allowlist-sized rather than on its exact value, and every reading since has been allowlist-sized.
 
 The strict scope is what the broad scope's own output argued for, and counting both is what made the
 difference visible. 21 was adoptable because it named five documents, each with a specific broken

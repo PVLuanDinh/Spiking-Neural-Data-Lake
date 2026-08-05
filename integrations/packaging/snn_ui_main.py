@@ -89,8 +89,18 @@ def main():
     opener = threading.Thread(target=_wait_and_open, args=(port,), daemon=True)
     opener.start()
 
-    # Imported here, not at module scope: learn_daemon chdir's and edits sys.path at IMPORT time,
-    # so it must not run before the paths above are in place.
+    # Imported here, not at module scope: the root `learn_daemon.py` edits sys.path at IMPORT time
+    # (it prepends <repo>/src so it can reach the package), so it must not run before the paths set
+    # up above are in place.
+    #
+    # CORRECTED 2026-08-04: this comment also said learn_daemon "chdir's ... at IMPORT time". It no
+    # longer does, and had not since the P4c promotion moved the daemon into
+    # src/snn_data_lake/substrate/learn_daemon.py and left a shim here. That move deleted three
+    # module-scope side effects -- os.chdir, sys.path.insert and
+    # os.environ.setdefault("NORD_GPU","1") -- into main(), and the root file is now 33 lines with a
+    # single sys.path.insert and no chdir (grep: zero column-0 os.chdir/os.environ in either file).
+    # A stale reason for a correct line is still a defect: the next reader deletes the deferral
+    # because the chdir it names is gone, and takes the sys.path ordering with it.
     import learn_daemon
 
     learn_daemon.main()

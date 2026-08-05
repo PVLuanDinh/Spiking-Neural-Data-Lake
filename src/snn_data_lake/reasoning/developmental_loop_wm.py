@@ -15,7 +15,7 @@ pointer (wm.goal) and act on THAT. Measures: WM-hold rate (goal survives the mai
 persistence over a long delay (delayed recall), distractor robustness (attractor stability), and
 that final accuracy HOLDS (this is an architectural-faithfulness faculty, not an accuracy lever).
 
-Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/developmental_loop_wm.py
+Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.developmental_loop_wm
 Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NORD_REPLAY(150)
        NORD_SGD(300) NORD_MAINTAIN(20) NORD_TRAIN(10000) NORD_TEST(2000)
 Deps: numpy torch torchvision snntorch
@@ -23,7 +23,7 @@ Deps: numpy torch torchvision snntorch
 
 import torch
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.cortex.prefrontal_executive import PrefrontalExecutive

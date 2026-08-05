@@ -411,10 +411,20 @@ def _try_train_inline(art, text):
         import torch  # noqa: F401  (probe only; this module never depends on torch)
     except Exception:
         return False
+    # sys.path is RESTORED, not left mutated (fixed 2026-08-05). This used to `sys.path.insert(0,
+    # <repo>/training)` and never remove it, so one self-check permanently re-pointed the import
+    # search order of the WHOLE process -- the module-scope-side-effect defect P4c records against
+    # the daemon. Invisible under `run_selfchecks.run_all()` (subprocess per module), live under
+    # `run_one_in_process()` (the frozen-app path, one process), where `training/` would then
+    # shadow same-named top-level modules for every module that ran afterwards.
+    # Removing it after the import is safe: `training/ar_spiking_lm.py` imports only stdlib, torch
+    # and `snn_data_lake.*` at module scope (verified 2026-08-05), and the module object is cached
+    # in `sys.modules` -- `trainer.train()` below never re-searches the path.
+    tdir = os.path.join(_ROOT, "training")
+    _inserted = tdir not in sys.path
+    if _inserted:
+        sys.path.insert(0, tdir)
     try:
-        tdir = os.path.join(_ROOT, "training")
-        if tdir not in sys.path:
-            sys.path.insert(0, tdir)
         import ar_spiking_lm as trainer
 
         trainer.train(text, dim=24, layers=2, ctx=48, steps=200, seed=0, out_path=art, log_every=0)
@@ -424,6 +434,12 @@ def _try_train_inline(art, text):
             f"  [note] inline torch train unavailable ({type(exc).__name__}); using random-init artifact"
         )
         return False
+    finally:
+        if _inserted:
+            try:
+                sys.path.remove(tdir)
+            except ValueError:  # someone else already removed it -- nothing to undo
+                pass
 
 
 def _selfcheck(with_train=False):

@@ -1,0 +1,952 @@
+[
+{
+"f": "research/neuromorphic_torch/neuro_chip_gpu.py",
+"l": 220,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "research/neuromorphic_torch/neuro_chip_gpu_stream.py",
+"l": 395,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/basal_ganglia/valence_stdp.py",
+"l": 99,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/brainstem/arm_bridge.py",
+"l": 117,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/brainstem/arm_config.py",
+"l": 308,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/brainstem/autonomous_loop.py",
+"l": 1933,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/brainstem/closed_loop.py",
+"l": 139,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/brainstem/cpg_oscillator.py",
+"l": 129,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/brainstem/live_arm.py",
+"l": 307,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/brainstem/serial_arm.py",
+"l": 168,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/gesture_recognition.py",
+"l": 111,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/is_snn_forward.py",
+"l": 207,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/izhikevich_neuron.py",
+"l": 55,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/lca_sparse_coding.py",
+"l": 126,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/learned_matcher.py",
+"l": 133,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/lif_neuron.py",
+"l": 76,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/paradigm_b_engine.py",
+"l": 98,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/paradigm_b_matcher.py",
+"l": 126,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/paradigm_b_matcher.py",
+"l": 155,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/paradigm_b_matcher.py",
+"l": 158,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/paradigm_b_matcher.py",
+"l": 161,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/rank_order_coding.py",
+"l": 90,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/cortex/tempotron.py",
+"l": 115,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/hippocampus/ring_attractor.py",
+"l": 168,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/lakehouse/delta_demo.py",
+"l": 69,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/plasticity/bcm_plasticity.py",
+"l": 86,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/plasticity/homeostatic_scaling.py",
+"l": 73,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/plasticity/intrinsic_plasticity.py",
+"l": 78,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/plasticity/short_term_plasticity.py",
+"l": 63,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/delay_learning.py",
+"l": 74,
+"cp": [
+"0xd7",
+"0x2014"
+],
+"name": [
+"U+00D7",
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/dense_associative_memory.py",
+"l": 161,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/dense_associative_memory.py",
+"l": 163,
+"cp": [
+"0xb1"
+],
+"name": [
+"U+00B1"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/dense_associative_memory.py",
+"l": 172,
+"cp": [
+"0xb7",
+"0x2014"
+],
+"name": [
+"U+00B7",
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/dense_associative_memory.py",
+"l": 176,
+"cp": [
+"0xb1",
+"0xb7"
+],
+"name": [
+"U+00B1",
+"U+00B7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/dense_associative_memory.py",
+"l": 179,
+"cp": [
+"0xb7",
+"0xd7"
+],
+"name": [
+"U+00B7",
+"U+00D7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/dense_associative_memory.py",
+"l": 200,
+"cp": [
+"0xb7"
+],
+"name": [
+"U+00B7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/dense_associative_memory.py",
+"l": 228,
+"cp": [
+"0xb7"
+],
+"name": [
+"U+00B7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/dense_associative_memory.py",
+"l": 168,
+"cp": [
+"0xb1"
+],
+"name": [
+"U+00B1"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/eth_mnist_bindsnet.py",
+"l": 141,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/eth_mnist_bindsnet.py",
+"l": 151,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/fly_hash.py",
+"l": 97,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/hopfield_baseline.py",
+"l": 120,
+"cp": [
+"0xb7"
+],
+"name": [
+"U+00B7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/hopfield_baseline.py",
+"l": 127,
+"cp": [
+"0xb7"
+],
+"name": [
+"U+00B7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/hopfield_baseline.py",
+"l": 133,
+"cp": [
+"0xb2"
+],
+"name": [
+"U+00B2"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/hopfield_baseline.py",
+"l": 135,
+"cp": [
+"0xd7"
+],
+"name": [
+"U+00D7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/hopfield_baseline.py",
+"l": 136,
+"cp": [
+"0xb7"
+],
+"name": [
+"U+00B7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/hopfield_baseline.py",
+"l": 139,
+"cp": [
+"0xb7",
+"0x2014"
+],
+"name": [
+"U+00B7",
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/hopfield_baseline.py",
+"l": 153,
+"cp": [
+"0xb2",
+"0xb7",
+"0x2014"
+],
+"name": [
+"U+00B2",
+"U+00B7",
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/nef_compute.py",
+"l": 106,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/nef_integrator.py",
+"l": 73,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/oja_pca.py",
+"l": 86,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/paradigm_b_genn.py",
+"l": 143,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/polychronization.py",
+"l": 93,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/resonate_and_fire.py",
+"l": 69,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/resonator_network.py",
+"l": 98,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/resonator_network.py",
+"l": 110,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_dreamer_6dof.py",
+"l": 249,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_dreamer_6dof.py",
+"l": 268,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_mnist_dc.py",
+"l": 188,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_mnist_stdp_fast.py",
+"l": 204,
+"cp": [
+"0x394"
+],
+"name": [
+"U+0394"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_mnist_stdp_genn.py",
+"l": 117,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_mnist_stdp_genn.py",
+"l": 104,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_motor_control.py",
+"l": 158,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_motor_control.py",
+"l": 161,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_motor_control.py",
+"l": 166,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_motor_control.py",
+"l": 186,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_ssm_shd.py",
+"l": 167,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_world_model_rl.py",
+"l": 142,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/snn_world_model_rl.py",
+"l": 158,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/sparse_distributed_memory.py",
+"l": 92,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_bloom.py",
+"l": 84,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_compression.py",
+"l": 103,
+"cp": [
+"0xd7"
+],
+"name": [
+"U+00D7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_compression.py",
+"l": 106,
+"cp": [
+"0xd7"
+],
+"name": [
+"U+00D7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_compression.py",
+"l": 107,
+"cp": [
+"0xd7"
+],
+"name": [
+"U+00D7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_compression.py",
+"l": 118,
+"cp": [
+"0xd7"
+],
+"name": [
+"U+00D7"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_kg.py",
+"l": 171,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_kg.py",
+"l": 183,
+"cp": [
+"0x3b4",
+"0x2212"
+],
+"name": [
+"U+03B4",
+"U+2212"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_kg.py",
+"l": 311,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_kg.py",
+"l": 449,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_kg.py",
+"l": 460,
+"cp": [
+"0x3c6",
+"0x2212",
+"0x2248"
+],
+"name": [
+"U+03C6",
+"U+2212",
+"U+2248"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_kg.py",
+"l": 461,
+"cp": [
+"0xb7",
+"0x3c6",
+"0x2248"
+],
+"name": [
+"U+00B7",
+"U+03C6",
+"U+2248"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_kg.py",
+"l": 462,
+"cp": [
+"0x3c6",
+"0x2248"
+],
+"name": [
+"U+03C6",
+"U+2248"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spike_kg.py",
+"l": 463,
+"cp": [
+"0x3c0",
+"0x2014",
+"0x2248"
+],
+"name": [
+"U+03C0",
+"U+2014",
+"U+2248"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spiking_som.py",
+"l": 97,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spiking_ssm.py",
+"l": 143,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/spiking_ssm.py",
+"l": 148,
+"cp": [
+"0xb1"
+],
+"name": [
+"U+00B1"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/temporal_coding_storage.py",
+"l": 154,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/reasoning/test_prototype.py",
+"l": 74,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/substrate/demo.py",
+"l": 200,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/substrate/nir_export.py",
+"l": 168,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/substrate/sensor_csv_ingest.py",
+"l": 91,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+},
+{
+"f": "src/snn_data_lake/substrate/spike_stream_sketch.py",
+"l": 117,
+"cp": [
+"0x2014"
+],
+"name": [
+"U+2014"
+]
+}
+]

@@ -26,7 +26,11 @@ import random
 
 from snn_data_lake._mathutils import softmax
 
-random.seed(0)  # deterministic run + self-check
+# random.seed(0) MOVED into main() 2026-08-04 (specs/010, C33). It was an IMPORT-TIME global
+# reseed: importing this module silently clobbered the importer's RNG stream. Unlike the ten
+# vestigial cases, this file DOES use the global random API, so the seed could not simply be
+# deleted -- the self-check's determinism rides on it. Moving it into main() keeps the
+# self-check byte-identical while removing the side effect on every importer.
 
 N = 64  # input neurons
 C = 5  # classes
@@ -116,6 +120,7 @@ def infer_ttfs(W, x, thresh):
 
 # ---- run + measure ----------------------------------------------------------
 def main():
+    random.seed(0)  # deterministic self-check; scoped to main() so importing is side-effect free
     protos = prototypes()
     train_data = dataset(TRAIN_PER, protos)
     test_data = dataset(TEST_PER, protos)

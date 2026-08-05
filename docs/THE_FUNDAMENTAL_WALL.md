@@ -68,7 +68,11 @@ oracle or a hypercomputer.
 
 open_gf's searched grammar (for reference):
 `E := n | t1 | t2 | c | E+E | E-E | E*E | E//E | E%E`  (constants `c in {1,2,3}`; `//` and `%`
-widen the closure to division/modulo families — `_OPS` at `research/open_gf.py:36`).
+widen the closure to division/modulo families — the `_OPS` table, formerly `research/open_gf.py:36`).
+*(Citation corrected 2026-08-04: `open_gf.py` does not exist anywhere in the tree — not under
+`research/`, not under `src/snn_data_lake/reasoning/`, and no `_OPS` symbol survives in either. The
+`research/` -> `reasoning/` move of v3.78 is not the explanation here; the file is simply gone. Named
+descriptively rather than repointed, because there is nothing to repoint it to.)*
 
 ---
 

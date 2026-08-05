@@ -1,9 +1,14 @@
 """
 CPU-only environment smoke check for the neuromorphic_torch subproject.
 
-Verifies the torch/SpikingJelly/cupy environment and prints the phase map. Skips cleanly if a dependency
-is absent (prints NOT available), so it can never fail hard. This subproject is NOT run by
-run_selfchecks.py and NOT part of the core CI matrix; run it manually inside .venv-neuro.
+Verifies the torch/SpikingJelly/cupy environment and prints the phase map. Skips cleanly if a
+dependency is absent (prints NOT available), so it can never fail hard.
+
+This subproject is not run by run_selfchecks.py and not part of the CI matrix. Under P4c that is
+DEBT to be closed, not a property to state approvingly -- "a build the gates cannot see is not a
+build the project can claim". The blocker is real and worth naming so it is actionable: the four
+phase smokes need SpikingJelly, and CI installs `-e .` plus `[dev]` only, so registering them today
+would turn the gate RED rather than SKIP. Run it manually inside .venv-neuro until that is fixed.
 
   python smoke_check.py
 """
@@ -37,12 +42,15 @@ def main():
 
     print("-" * 66)
     print("phase map:")
-    print("  P1 (core, stdlib): snn_data_lake.spike_preprocessing (van_rossum, encode_latency,")
-    print("                     victor_purpura) + snn_data_lake.proximity_index")
+    print("  P1 (in the core): snn_data_lake.spike_preprocessing (van_rossum, encode_latency,")
+    print("                    victor_purpura) + snn_data_lake.proximity_index")
     print("  P2: encoding/spikeslicer.py       (SpikeSlicer + SPA-Loss)")
     print("  P3: embedding/is_snn.py           (IS-SNN, surrogate-grad STBP, cupy backend)")
     print("  P4: memory/lt_gate.py, memory/maxformer_pool.py")
-    print("reuses stdlib core: van_rossum/encode_latency (spike_preprocessing), population_encoding")
+    # "reuses stdlib core" until 2026-08-04 -- the word "stdlib" was retired-rule residue (P7).
+    # The reuse itself is the point and is real (P2: one definition).
+    print("reuses the core: van_rossum/encode_latency (spike_preprocessing), population_encoding,")
+    print("                 energy constants (substrate.energy -> neuro_chip_gpu*)")
     print("=" * 66)
     if torch is None or sj is None:
         print("NOTE: install requirements.txt into .venv-neuro to run the phase modules.")

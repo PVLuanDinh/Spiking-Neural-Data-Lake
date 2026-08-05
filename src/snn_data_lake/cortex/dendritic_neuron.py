@@ -3,7 +3,7 @@ Two-compartment dendritic neuron with BAC firing -- the core's first NONLINEAR D
 
 Every other neuron in this package is a POINT neuron: a single compartment that integrates one input
 current and fires -- lif_neuron (leaky integrate-and-fire) and izhikevich_neuron in the product,
-srm / adex / resonate_and_fire in research/. This module adds the first neuron with a real *dendrite*:
+srm / adex / resonate_and_fire alongside them. This module adds the first neuron with a real *dendrite*:
 a reduced two-compartment pyramidal cell (soma/basal + apical tuft) that performs nonlinear dendritic
 coincidence detection via BAC firing -- "Backpropagation-Activated Ca2+ spike firing" (Larkum).
 

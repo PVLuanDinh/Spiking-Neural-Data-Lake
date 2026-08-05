@@ -30,10 +30,23 @@ import os
 import torch
 import snntorch as snn
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist  # reuse the MNIST loader (v0.3)
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 
-_DEVICE = enable(resolve_device())
-torch.manual_seed(0)
+# MODULE SCOPE: resolve only. `enable()` calls `torch.set_default_device()`, which is
+# PROCESS-GLOBAL -- calling it here meant merely IMPORTING this module re-routed every tensor
+# built by every module loaded afterwards. MEASURED 2026-08-05 with NORD_DEVICE=meta on the three
+# sibling files whose bodies run without torchvision: importing any of them took the process
+# default device from 'cpu' to 'meta'. Same defect class as the three module-scope side effects
+# the daemon promotion exposed (docs/POLICIES.md P4c). `resolve_device()` is a pure env read, so
+# `_DEVICE` keeps its value and every `torch.Generator(device=_DEVICE)` call site is unchanged;
+# the routing now happens in main(), on the script path. (This file's body needs `torchvision`,
+# absent from `.venv-lake`, so this edit is verified by `ruff` + `py_compile` and by the identical
+# edit executing clean in its three siblings -- NOT by running this module. Stated rather than
+# implied.)
+_DEVICE = resolve_device()
+# Determinism: `torch.manual_seed(0)` used to run HERE, at MODULE SCOPE -- importing this module
+# re-seeded the process-global torch RNG. Now seeded inside main(); the per-call draws already use
+# a per-instance `torch.Generator` (see `g = torch.Generator(...).manual_seed(seed)` below).
 
 
 def _env(key, default):
@@ -119,6 +132,8 @@ def route(experts, image, usage):
 
 
 def main():
+    enable(_DEVICE)  # route torch factories to the device -- script path only, never at import
+    torch.manual_seed(0)  # deterministic run + self-check (script path only, never at import)
     print("=" * 60)
     print("v0.6  MoE + STDP HYBRID on MNIST  (firing-rate routing)")
     print("=" * 60)

@@ -39,20 +39,24 @@ WHY PROXIMITY RETRIEVAL FEEDING SLDA REMOVES THE -3.1 CONTAMINATION COST (the 12
      while ADDING the durable, content-addressable long-term store the no-lake SLDA lacked.
 
 Feature learning stays UNSUPERVISED (frozen conv1). Only the SLDA readout is supervised.
-CORE untouched; research/GPU tier, ruff-excluded. ONE new file.
+[train]/[gpu] tier. NOT "outside the core": this module is in src/snn_data_lake/reasoning/ and is
+part of the brain (P4c); it is ruff-LINTED (with per-file ignores) and its absence from
+run_selfchecks.py is debt, not a design.
 
-Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/developmental_loop_lake_slda.py
+Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.developmental_loop_lake_slda
 Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(400) NORD_KREPLAY(150)
        NORD_RFF(2000) NORD_GAMMA(0.02) NORD_SHRINK(0.1) NORD_PROTO(0) NORD_TRAIN(12000)
        NORD_TEST(2000) NORD_GAMMA_SWEEP("g1,g2,...")
-Deps: numpy torch torchvision snntorch  (research/GPU tier; core untouched)
+Deps: numpy torch torchvision snntorch  ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+         and imports from the package -- P4c, every build is part of the brain.)
 """
 
 import os
+import tempfile
 
 import torch
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.fast_features import batched_features_and_keys
@@ -62,6 +66,16 @@ from snn_data_lake.reasoning.developmental_loop_slda import (
     SLDA_RFF,
     _acc,
 )  # reuse the RFF+streaming-LDA readout + learned-aware acc
+
+#: The bar this loop has to clear, and the ONLY place the number is written. It is a REFERENCE
+#: MEASUREMENT, not a tuned threshold: the accuracy the sibling `developmental_loop_lake.py`
+#: (continual LINEAR head on the same lake) reports. Named because it was previously three
+#: disagreeing literals in one block -- `assert final > 0.90`, a failure message saying "90.2%",
+#: and a success line computing its delta against `0.902` -- so a run at 0.901 passed the assert
+#: and printed "0.901 > 90.2% (-0.1 pts)". NOT re-run in this session: re-deriving it means
+#: running that sibling module, which is open work, so it is quoted as a citation, not as a
+#: measurement made here.
+LINEAR_LAKE_REF = 0.902
 
 
 def main():
@@ -80,7 +94,11 @@ def main():
     PROTO = _envi("NORD_PROTO", 0) == 1  # LEVER 3: prototype replay instead of raw exemplars
     TRAIN_N = _envi("NORD_TRAIN", 12000)
     TEST_N = _envi("NORD_TEST", 2000)
-    scratch = os.environ.get("TEMP", ".")
+    # NOTE: this was os.environ.get("TEMP", ".") -- a WINDOWS-only variable. On the Linux/macOS
+    # CI runners TEMP is unset, so the "." fallback fired and this file was written into the
+    # process WORKING DIRECTORY (the repo checkout). tempfile.gettempdir() honours TMPDIR/TEMP/TMP
+    # on every platform and never falls back to ".".
+    scratch = tempfile.gettempdir()
     lake_path = os.path.join(scratch, "sndl_devloop_lake_slda.spkl")
     # a fresh lake per run (avoid resuming a stale store from a previous invocation)
     if os.path.exists(lake_path):
@@ -230,10 +248,18 @@ def main():
     print("RESULT -- lake-backed SLDA-RFF continual loop")
     print("-" * 92)
     print(f"  SLDA-RFF on the durable lake        : {final:.1%}   (gamma={GAMMA}, proto={PROTO})")
-    print(f"  reference: lake LINEAR head         : 90.2%   (-1.8 forgetting + -3.1 contamination)")
-    print(f"  reference: SLDA-RFF (no lake)       : 94.8%")
-    print(f"  reference: static RBF ensemble      : 98.2%")
-    print(f"  HONEST DELTA vs the linear lake     : {(final - 0.902) * 100:+.1f} pts vs 90.2%")
+    # These three are CITED reference measurements from sibling modules, not measured by this run,
+    # and the labels now say so -- printing a number a run did not produce next to one it did is
+    # how "reference" gets read as "measured here". The linear-lake bar is quoted from the ONE
+    # constant that also arbitrates the assert below (it used to be a separate literal here).
+    print(
+        f"  cited (developmental_loop_lake.py)  : {LINEAR_LAKE_REF:.1%}   (-1.8 forgetting + -3.1 contamination)"
+    )
+    print("  cited (developmental_loop_slda.py)  : 94.8%   SLDA-RFF, no lake")
+    print("  cited (static RBF ensemble)         : 98.2%")
+    print(
+        f"  HONEST DELTA vs the linear lake     : {(final - LINEAR_LAKE_REF) * 100:+.1f} pts vs {LINEAR_LAKE_REF:.1%}"
+    )
     print("-" * 92)
     print("  LEVER 2 -- RFF gamma sweep (re-streamed on cached features; order-invariant):")
     for g, a in sweep:
@@ -275,11 +301,21 @@ def main():
             f"lake durable across restart. Compare to raw retrieval for the sign of the effect."
         )
     else:
-        # DEFAULT: raw retrieval feeding order-invariant SLDA MUST beat the 90.2% linear lake loop.
-        assert final > 0.90, f"lake-SLDA {final:.2f} did not beat the 90.2% linear lake loop"
+        # DEFAULT: raw retrieval feeding order-invariant SLDA MUST beat the linear lake loop.
+        # CORRECTED 2026-08-05: this read `assert final > 0.90` under the message "did not beat the
+        # 90.2% linear lake loop", and the success print below says "> 90.2%" while computing the
+        # delta against 0.902. Three literals for one baseline, and they disagree: final == 0.901
+        # PASSED the assert and then printed "0.901 > 90.2% (-0.1 pts)" -- a self-contradicting
+        # verdict, the same shape as an assert whose message names a property the code does not
+        # check. Now ONE named baseline arbitrates and is quoted, so the assert, its failure
+        # message and the success line cannot drift apart again (P1/P2: one definition of an
+        # arbitrating value). Tightened, not loosened: the bar moved 0.900 -> 0.902.
+        assert final > LINEAR_LAKE_REF, (
+            f"lake-SLDA {final:.1%} did not beat the {LINEAR_LAKE_REF:.1%} linear lake loop"
+        )
         print(
-            f"self-check OK: lake-backed SLDA-RFF {final:.1%} > 90.2% linear lake "
-            f"({(final - 0.902) * 100:+.1f} pts); proximity replay feeds order-invariant statistics with "
+            f"self-check OK: lake-backed SLDA-RFF {final:.1%} > {LINEAR_LAKE_REF:.1%} linear lake "
+            f"({(final - LINEAR_LAKE_REF) * 100:+.1f} pts); proximity replay feeds order-invariant statistics with "
             f"TRUE labels (contamination stays correctly-labelled, no forgetting); {dur['n_stored']} "
             f"exemplars durable across a lake restart."
         )

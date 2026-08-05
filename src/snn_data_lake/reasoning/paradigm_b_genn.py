@@ -43,8 +43,21 @@ except Exception as _e:  # noqa: BLE001 — any import failure -> stub
     _HAVE_GENN = False
     _IMPORT_ERR = _e
 
-pass  # migrated: sys.path bootstrap removed (now an importable package)
 from snn_data_lake.spike_telemetry_hub import disk_query, synth
+
+
+def _say(msg):
+    """print(), with the project's ASCII-only output invariant asserted at the point of emission.
+
+    This module printed a U+2014 EM DASH for the life of the feature and no gate saw it: MEASURED
+    2026-08-04, `PYTHONIOENCODING=ascii python -m snn_data_lake.reasoning.paradigm_b_genn` exited 1 with
+    `UnicodeEncodeError: 'ascii' codec can't encode character '\\u2014'`. Under the default Windows
+    console cp1252 an em dash happens to encode, which is exactly why it survived -- the invariant
+    is ASCII, not "whatever this console tolerates". Reachable red: put a non-ASCII character in any
+    _say() below and this raises here, naming the line. Same shape as nightly_skills.main::say and
+    rose_language.main::say, which is where the pattern comes from."""
+    msg.encode("ascii")
+    print(msg)
 
 
 def build_and_run(spk_path, channels, window, k, weight=1.0):
@@ -139,13 +152,13 @@ def build_and_run(spk_path, channels, window, k, weight=1.0):
 
 def main():
     if not _HAVE_GENN:
-        print("=" * 60)
-        print("PARADIGM B on GeNN — toolchain not present on this machine")
-        print("=" * 60)
-        print(f"  import failed: {type(_IMPORT_ERR).__name__}: {_IMPORT_ERR}")
-        print("  GeNN needs CUDA 12.8+ (RTX 5070 = Blackwell/sm_120), a C++ compiler,")
-        print("  and pygenn. On your GPU box:  pip install pygenn  then re-run.")
-        print("  Verified CPU equivalent: python paradigm_b_matcher.py")
+        _say("=" * 60)
+        _say("PARADIGM B on GeNN -- toolchain not present on this machine")
+        _say("=" * 60)
+        _say(f"  import failed: {type(_IMPORT_ERR).__name__}: {_IMPORT_ERR}")
+        _say("  GeNN needs CUDA 12.8+ (RTX 5070 = Blackwell/sm_120), a C++ compiler,")
+        _say("  and pygenn. On your GPU box:  pip install pygenn  then re-run.")
+        _say("  Verified CPU equivalent: python paradigm_b_matcher.py")
         return
 
     path = os.path.join(__import__("tempfile").mkdtemp(prefix="snn_sc_"), "telemetry.spk")
@@ -154,8 +167,8 @@ def main():
         synth(256, 100_000, 0.004, {7, 99}, (50_000, 52_000)).save(path)
     matches = build_and_run(path, channels={7, 99}, window=50, k=2)
     in_burst = [m for m in matches if 50_000 <= m < 52_000]
-    print(f"GeNN matches: {len(matches)}  ({len(in_burst)} in burst window)")
-    print("(compare against paradigm_b_matcher.py on the same store)")
+    _say(f"GeNN matches: {len(matches)}  ({len(in_burst)} in burst window)")
+    _say("(compare against paradigm_b_matcher.py on the same store)")
 
 
 if __name__ == "__main__":

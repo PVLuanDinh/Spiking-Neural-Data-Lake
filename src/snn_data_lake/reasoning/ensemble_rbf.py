@@ -12,7 +12,7 @@ the SAME frozen unsupervised conv1 features (C1=30, spatial), plus pairwise erro
 Feature learning stays UNSUPERVISED (conv1 latency-STDP, frozen); only the readouts see labels.
 No leakage: readouts train/fit on the train cache, scored on the held-out test cache.
 
-Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/ensemble_rbf.py
+Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.ensemble_rbf
 Knobs: NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(4) NORD_TRAIN(10000) NORD_TEST(2000)
        NORD_HIDDEN(32) NORD_CYCLES(15) NORD_SGD(300) NORD_PER(300) NORD_REPLAY(200)
 Deps: numpy torch torchvision snntorch scikit-learn
@@ -27,7 +27,7 @@ import torch.nn.functional as F
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.brain_adapters.laminar_readout import LaminarColumns
@@ -172,11 +172,12 @@ def main():
     print(f"    columns vs RBF            : {both_wrong(P_col, P_rbf):.1%}")
     print("=" * 76)
     best = max(a_lin, a_col, a_rbf, e_old, e_new, e_lr, e_cr)
+    # ASSERT BEFORE the OK line (was after it, so a failure printed "self-check OK" and then raised).
+    assert a_rbf > 0.5, f"RBF-SVM failed to beat chance ({a_rbf:.3f} <= 0.5, chance is 0.10)"
     print(
         f"self-check OK: best single RBF {a_rbf:.1%}; best ensemble {max(e_old, e_new, e_lr, e_cr):.1%}; "
         f"overall best {best:.1%} (honest -- ensemble helps only if it beats {a_rbf:.1%})"
     )
-    assert a_rbf > 0.5, "RBF-SVM failed to beat chance"
 
 
 if __name__ == "__main__":

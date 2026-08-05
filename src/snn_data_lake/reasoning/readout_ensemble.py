@@ -16,10 +16,18 @@ the supervised readouts). No leakage: readouts train only on train-cache rows, m
 held-out test cache; replay pools are held-out train rows.
 
 Run (from repo root; GPU; C1=100 conv is slower to pre-train):
-    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/readout_ensemble.py
+    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.readout_ensemble
 Knobs: NORD_C1(100) NORD_CYCLES(15) NORD_PER(300) NORD_REPLAY(200) NORD_SGD(300) NORD_HIDDEN(32)
        NORD_T(15) NORD_L1_EPOCHS(3) NORD_TRAIN(8000) NORD_TEST(2000)
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core is untouched)
+Deps: numpy torch torchvision snntorch (the GPU/train tier -- P5: this trains, so it belongs
+on the card, and the suite must stay runnable without one).
+
+P4c (2026-08-04): this line read "research/GPU tier; core is untouched". Both halves were
+wrong. `research/` was retired in v3.78, and "core is untouched" asserts an outside-the-brain
+category P4c says does not exist. P3 DISPOSITION, stated because this file has none: it has
+ZERO importers tree-wide and is registered in NEITHER run_selfchecks list, so its asserts have
+never run in a gate. That is dormancy, not a tier. Registering it is an edit to a shared file
+and is handed back rather than taken here.
 """
 
 import os
@@ -28,7 +36,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.brain_adapters.laminar_readout import LaminarColumns

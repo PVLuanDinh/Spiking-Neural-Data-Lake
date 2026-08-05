@@ -209,12 +209,20 @@ B2 `conflict=0`, C both -- which is the B1-against-B2 comparison neither two-arm
 
 - **Every citation in the table resolves to what it claims**, not merely to a line that exists (which
   is all `_cite_ok` can check). All 21 were opened: `prefrontal_executive.py:349` is
-  `def top_down_bias`, `executive_control.py:80` is `def conflict`, `:149` is `def plan_sequence`,
+  `def top_down_bias`, `cortex/executive_control.py:80` is `def conflict`, `:149` is `def plan_sequence`,
   `task_set.py:159` is `def bias`, `:213` is the `_bad_streak >= patience` shift trigger, `:221` is
   `def shift`, `brain.py:1608` is the `taskset_a` drive term, `:1912` is `_task_pref =
   task_set.bias(feat)`, `:2401` is the once-per-night learn gate, `:2949` is `respond()`'s abstain
   branch, `autonomous_loop.py:1418` is the `_n_ovr >= 10 and _n_hab >= 10` guard on the `pfc_gain`
   update. No drift found.
+  *(Disambiguation CORRECTED 2026-08-05, and it had been made worse before it was made better.
+  `executive_control.py` names two different modules — `cortex/executive_control.py` (428 lines)
+  and `reasoning/brain_adapters/executive_control.py` (645). A 2026-08-04 pass qualified this cite
+  to the `reasoning/brain_adapters/` one; re-resolved, that file's `:80` is a numpy timing comment
+  and its `:149` is `directory = os.path.dirname(directory)`. **`def conflict` is at
+  `cortex/executive_control.py:80` and `def plan_sequence` at `:149`** — both exact. The bare cite
+  was ambiguous-but-right; qualifying it to the wrong module made it unambiguous-and-wrong, which
+  is the worse failure, because the next reader stops checking once a path looks specific.)*
 - **The rule-4 zero (`task_set_shifting`) and the three sub-40 rows are the audit's, re-read but not
   re-measured.** A refuter's mandate is the band-41+ claims; re-deriving conservative low bands would
   spend the budget in the direction that cannot inflate a score. If any of them is wrong it is wrong

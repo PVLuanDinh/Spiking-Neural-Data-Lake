@@ -85,11 +85,35 @@ class Empowerment:
 
     def reward(self, z_before, z_after):
         """Empowerment GAIN E(z_after) - E(z_before): opening up the future is rewarded, walking into
-        a trap (fewer reachable futures) is penalized."""
+        a trap (fewer reachable futures) is penalized.
+
+        DISPOSITION (P3, re-verified 2026-08-04). `docs/POLICIES.md` lists this method as "genuinely
+        dead ... a retire candidate". The dead half is CONFIRMED: a tree-wide search for `.reward(`
+        on an Empowerment instance, including getattr/string-name dispatch, finds ZERO call sites
+        outside this module's own `main()`. The live path is `step_reward` alone
+        (`brainstem/autonomous_loop.py:1465`, reached because `cortex/brain.py:237` sets
+        `empowerment=True`).
+
+        It is NOT retired here, and the reason is a correction to the "recomputes rather than
+        delegating" reading. These are not two implementations of one job: both are a single
+        subtraction over the SAME primitive, `empowerment()`, and they differ in a way that matters
+        -- `reward` evaluates two ARBITRARY states (two full rollouts), `step_reward` evaluates one
+        and reuses a cached previous value for a stream. Collapsing `step_reward` into `reward`
+        would DOUBLE the live per-tick cost of the most expensive call in this module (|A|^H rollouts
+        through the world model) to remove one subtraction. P2 asks that a merge REDUCE; that one
+        would not.
+
+        What it actually is: an unconsumed capability, which is P0 open work rather than P2 bloat.
+        Arbitrary-pair empowerment gain is exactly what a PLANNER would consume -- score candidate
+        futures by the controllability they open up, not just the state just visited -- and nothing
+        in the tree plans over it yet. Wiring that consumer lives outside this module."""
         return self.empowerment(z_after) - self.empowerment(z_before)
 
     def step_reward(self, z):
-        """Streaming intrinsic reward = empowerment gain vs the last state seen (0.0 on the first)."""
+        """Streaming intrinsic reward = empowerment gain vs the last state seen (0.0 on the first).
+
+        THE live path (autonomous_loop binds this to the JEPA latent every tick). One `empowerment()`
+        evaluation per call by design; see `reward` for why it is not folded into that method."""
         e = self.empowerment(z)
         r = 0.0 if self._prev is None else e - self._prev
         self._prev = e

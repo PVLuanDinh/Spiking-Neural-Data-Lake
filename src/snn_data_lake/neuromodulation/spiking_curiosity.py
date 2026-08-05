@@ -6,12 +6,51 @@ off EMITTED SPIKE COUNTS of leaky integrate-and-fire pools, never off a rate EMA
 potential. Roadmap item SI-1 "SPIKE-LP".
 
 Honest framing (read this first). This is a PURITY conversion, NOT a new capability. On a stationary
-or decaying task it behaves like the rate CuriosityDrive it replaces -- same anti-noisy-TV ordering,
-same self-paced graduation -- the win is that the mechanism now lives in spikes, so the live-loop
+or decaying task it behaves like the rate CuriosityDrive it replaces -- the win is that the mechanism
+now lives in spikes, so the live-loop
 self-improvement primitive stops being a rate-ANN drift inside an otherwise spiking brain. The
 spiking margin is HONESTLY SMALLER than the rate version's (rectification of two noisy spike-rate
 estimates leaves a small residual bias on flat noise); the measured margin is printed, not faked.
 It holds no world model and makes no action decision -- it is the CONSUMER of a surprise signal.
+
+WHAT THE DROP-IN COSTS BEHAVIOURALLY -- measured 2026-08-04, and the claim above used to be wider.
+This paragraph said "same anti-noisy-TV ordering, same self-paced graduation". The graduation half
+holds. The ordering half was never re-measured against the rate original at the level that matters,
+because THIS module's self-check has no exploration test while `intrinsic_motivation`'s does
+(`_run_explorer`, which asserts `visits["learnable"] > visits["noisy"]`). Running that same
+curiosity-greedy explorer against both -- `_run_explorer(Drive(seed=s), 48, greedy=True)` for
+s in 0..11, splits written learnable/mastered/noisy (RE-DERIVED 2026-08-05):
+
+    chases the learnable frontier   rate 11/12 seeds     spiking 10/12 seeds
+    seed-0 visit split              rate 46/1/1          spiking 27/6/15
+    MEAN split over the 12 seeds    rate 41.8/1.5/4.7    spiking 24.1/6.8/17.1
+      curiosity-blind random control (greedy=False), same 12 seeds: mean 16.5/14.8/16.7
+
+So the ordering is NOT the same. The spiking drive still beats the blind control and still prefers
+the frontier on most seeds, but its preference is far weaker -- the unlearnable-noisy candidate
+takes 17.1 of 48 visits on average against the rate drive's 4.7 (and against 1 of 48 on the rate
+drive's modal 46/1/1 seeds) -- and it loses the property on one more seed. Recorded as an honest
+negative rather than smoothed into the sentence above.
+
+*(Two figures were CORRECTED here on 2026-08-05 by re-running them. The random-control split was
+recorded as "13/19/16"; that split occurs at no seed in 0..7 for either drive class, and the
+protocol behind it was not recorded -- it is replaced above by the 12-seed mean, whose protocol is.
+A sentence claiming "the spiking margin ran 6.7x-248x (mean 61.6x) against the rate drive's flat
+18.2x" was DELETED: it recorded no accumulation protocol, so it is not re-derivable, and every
+best-faith reconstruction is dominated by a near-zero denominator on the noisy arm and returns
+values spanning ten orders of magnitude. The margin this module can honestly quote is the one its
+own self-check PRINTS on every run -- "MEASURED margin 16.9x" at (2) below -- because that one is
+re-derived by the gate rather than by a comment.)*
+
+P2 STATUS, stated because two mechanisms for one job is the defect P2 names. Both drives are live:
+`brainstem/autonomous_loop.py` selects between them with a `spiking_curiosity` flag and
+`cortex/brain.py` sets it True, so the canonical brain runs this one while the rate original stays
+constructible with its own importers. P2 calls a flag that keeps both paths "additive with extra
+steps". This is NOT resolved here -- the resolution spans a file outside this module, and the
+measurement above does not support retiring EITHER (the spiking one is not better on the behaviour,
+the rate one is not spiking, and spiking-ness is a project thesis rather than a benchmark result).
+Recorded as open P2 debt with its evidence attached, which is what P2 asks for when neither
+mechanism dominates.
 
 The key idea (unchanged from the rate version). Rewarding raw surprise (high prediction error)
 gets permanently stuck on unpredictable NOISE -- a screen of static has maximal error forever (the
@@ -431,12 +470,31 @@ def main():
     lp_matches = (
         abs(lp_from_spikes - dstruct.learning_progress("hot")) < 1e-12
     )  # ... it equals learning_progress()
-    membrane_readout = [
-        nrn.v for nrn in st["fast"]
-    ]  # CONTROL: membrane potentials are CONTINUOUS ...
-    membrane_is_integer = all(
-        isinstance(v, int) for v in membrane_readout
-    )  # ... so a .v-based LP FAILS the int-count test
+    # CONTROL that LP reads SPIKE COUNTS and not membranes. The previous control here asked whether
+    # the membranes were ints (`all(isinstance(v, int) for v in [nrn.v ...])`) and asserted they
+    # were not. That had NO reachable red -- LIFNeuron's v_reset/v_rest default to 0.0 so a membrane
+    # list is float on every input, and the pool is never empty (12 units) so `all()` cannot go
+    # vacuously True either. Deleted under P8 falsifier F11 and replaced by a NEUTER: scramble every
+    # membrane WITHOUT touching the recorded spike-count windows, and require LP to be bit-identical.
+    #
+    # Two properties of the neuter are load-bearing and were BOTH got wrong on the first attempt
+    # (the red would not fire), so they are stated rather than left implicit:
+    #   * it must run on a FALLING error stream, where LP is genuinely non-zero. On the flat 0.9
+    #     drive above LP is ~0 BY DESIGN, and a neuter applied to a zero signal cannot move it
+    #     under any implementation -- it would have looked like a pass while testing nothing.
+    #   * it must drive the two pools APART. Writing identical values into both leaves any
+    #     difference-based membrane readout (rs - rf) unchanged at 0, which is the same failure.
+    neut = SpikingCuriosityDrive(seed=1)
+    for _t in range(20):
+        neut.observe("falling", 0.9**_t)  # LP measured 0.2625 here -- a live signal to move
+    _nst = neut._ctx["falling"]
+    lp_pre_neuter = neut.learning_progress("falling")
+    for _i, _nrn in enumerate(_nst["fast"]):
+        _nrn.v = 0.1 + 0.01 * _i
+    for _i, _nrn in enumerate(_nst["slow"]):
+        _nrn.v = 9.0 + 0.01 * _i
+    lp_post_neuter = neut.learning_progress("falling")
+    membrane_neuter_moved = lp_post_neuter != lp_pre_neuter
 
     # ---- (4) DETERMINISM (curiosity): two seed=7 drives, same stream -> identical LP + reward ----
     det_stream = [("x", 0.9), ("x", 0.7), ("x", 0.55), ("x", 0.4), ("x", 0.3), ("x", 0.25)]
@@ -519,7 +577,8 @@ def main():
     print("-" * 92)
     print(
         f"(1) structural  : LP from INTEGER spike counts={counts_are_int}  pools spiked={pools_spiked}  "
-        f"LP==spike-count value={lp_matches}  (membrane .v is int={membrane_is_integer} -> control fails)"
+        f"LP==spike-count value={lp_matches}  (NEUTER: scrambling every membrane moved LP="
+        f"{membrane_neuter_moved} -> LP ignores .v)"
     )
     print(
         f"(2) anti-noisyTV: learnable spiking-LP {learn_lp:.3f}  vs  noisy {noisy_lp:.3f}   "
@@ -556,8 +615,21 @@ def main():
     assert lp_matches, (
         "learning_progress must EQUAL the spike-count-derived value (LP IS a function of spike counts)"
     )
-    assert not membrane_is_integer, (
-        "CONTROL: membrane .v is continuous (float), so a .v-based LP FAILS the integer-spike-count structural test"
+    # NEUTER control: scrambling every membrane must NOT move LP (it is a spike-count function).
+    # RED constructed and run (re-verified 2026-08-05) against a membrane-reading LP variant --
+    # `mean(nrn.v for nrn in st["slow"]) - mean(nrn.v for nrn in st["fast"])`, the same rs-rf shape
+    # as the real rule with `.v` substituted for the spike counts. The variant is STATED because
+    # without it the figures are not re-derivable: it moves LP 0.316718 -> 8.900000 and this assert
+    # FIRES. (This comment read "0.021015 -> 8.900000"; the post value reproduces to the digit, the
+    # pre value did not reproduce under any reconstruction.) The shipped spike-count LP moves by
+    # exactly 0.0 from a live 0.262500.
+    assert lp_pre_neuter > 0.0, (
+        f"the neuter must be applied to a LIVE signal, else it cannot fail under any "
+        f"implementation (LP {lp_pre_neuter:.6f})"
+    )
+    assert not membrane_neuter_moved, (
+        f"LP must be a function of SPIKE COUNTS only -- scrambling the pool membranes moved it "
+        f"{lp_pre_neuter:.6f} -> {lp_post_neuter:.6f}"
     )
 
     # ---- (2) ANTI-NOISY-TV -- learnable clearly positive, noisy near-zero ABSOLUTE (catches rectification bias) ----

@@ -6,7 +6,7 @@ ONLY to MEASURE how well it clustered (cluster PURITY + NMI + a reference accura
 way to know it discovered digits. The intrinsic learning-progress is the label-free signal that actually
 DROVE the loop.
 
-This is the label-free sibling of research/developmental_loop.py. That loop still peeks at labels to pick
+This is the label-free sibling of reasoning/developmental_loop.py. That loop still peeks at labels to pick
 the next DIGIT objective and to score competence each cycle; here NOTHING but the final metric ever touches
 a label. The loop reuses (does not reinvent) that file's verified pieces:
 
@@ -35,9 +35,9 @@ LABEL-FREE CONTROL FLOW (one cycle):
   4. SCORING -- THE ONLY PLACE LABELS ARE TOUCHED, and only to MEASURE (never fed back): see score().
 
 Needs the torch venv:
-    D:\AI-project\spiking-neural-data-lake\.venv-cu128\Scripts\python research\developmental_loop_unsupervised.py
+    D:\AI-project\spiking-neural-data-lake\.venv-cu128\Scripts\python -m snn_data_lake.reasoning.developmental_loop_unsupervised
   or on GPU:
-    NORD_GPU=1 <python> research\developmental_loop_unsupervised.py
+    NORD_GPU=1 <python> reasoning/developmental_loop_unsupervised.py
 Scale knobs (env): NORD_CYCLES, NORD_BATCH (raw imgs/cycle), NORD_GROW (per-cycle recruit cap),
                    NORD_VIG (ART vigilance), NORD_PROBE (labelled probe imgs/digit -- SCORING ONLY),
                    NORD_EXTRA (consolidation passes), NORD_CONVK (converged after K flat-LP cycles),
@@ -49,20 +49,24 @@ import os
 import sys
 from collections import Counter, deque
 
-_here = os.path.dirname(os.path.abspath(__file__))
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-
 import torch
 
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
-from snn_data_lake.reasoning.torch_device import enable, resolve_device
+from snn_data_lake.substrate.device import enable, resolve_device
 
 from snn_data_lake.reasoning.developmental_loop import GrowableSTDP
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus
 from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDrive
 
-torch.manual_seed(0)  # deterministic run + self-check
+# `torch.manual_seed(0)` USED TO RUN HERE, AT MODULE SCOPE. It is the torch twin of the three
+# `random.seed(0)` import-time reseeds deleted 2026-08-04 (specs/010, C33) from bayesian_snn /
+# delay_learning / dense_associative_memory, and it is worse than those were: those were vestigial
+# (nothing in their file read the global stream), whereas this one is READ -- every `torch.rand`
+# in GrowableSTDP.run draws from the global generator. So merely IMPORTING this module silently
+# reseeded torch for its importer. `main()` seeds per cycle (`torch.manual_seed(cyc)`) anyway, so
+# the deterministic run is unchanged; the side effect on importers is gone. Also deleted here: a
+# dead `_here = os.path.dirname(...)` and two bare `pass  # migrated: sys.path bootstrap removed`
+# statements left over from the research/ -> package migration.
 
 
 def _envi(k, d):
@@ -142,6 +146,7 @@ def score(net, probe_imgs, probe_lbls):
 def main():
     enable(resolve_device())
     dev = resolve_device()
+    torch.manual_seed(0)  # deterministic run + self-check (was a module-scope reseed; see above)
     CYCLES = _envi("NORD_CYCLES", 20)  # max cycles (loop may STOP earlier on intrinsic convergence)
     BATCH = _envi("NORD_BATCH", 300)  # RAW images streamed per cycle (labels NEVER indexed)
     GROW = _envi(

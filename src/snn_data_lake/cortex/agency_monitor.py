@@ -1,6 +1,9 @@
 r"""
 LIVE STATUS, MEASURED 2026-07-28 (v4.80): write-only, and NOT a wire candidate. `observe()` runs every
-tick (`autonomous_loop.py:1498`) and nothing reads `agency()` / `controllability()` / `status()`. The
+tick from `brainstem/autonomous_loop.AutonomousArm.step` (guarded by its `agency_monitor=` flag, which
+`cortex/brain.py` sets True), and nothing reads `agency()` / `controllability()` / `status()`. The
+line cite this row carried (`autonomous_loop.py:1498`) had drifted onto an unrelated comment about
+delivering a raw magnitude; naming the SYMBOL instead is what stops it drifting again. The
 obvious P3 fix -- consume `route_around` into action selection -- was investigated and REJECTED on the
 measurement, not on taste.
 
@@ -118,19 +121,35 @@ class AgencyMonitor:
         high_thresh=0.55,
         delay=48,
         recover_n=32,
-        warmup=120,
+        warmup=None,
         var_floor=1e-4,
         eps=1e-9,
         seed=0,
     ):
         self.alpha = float(alpha)  # EMA rate (~1/alpha tick memory)
+        if not 0.0 < self.alpha <= 1.0:
+            # `warmup` is derived by DIVIDING by alpha below, so alpha == 0 is a singularity and a
+            # negative alpha is an EMA that runs backwards. Refuse at the boundary rather than
+            # producing an infinite settle window nothing would ever clear.
+            raise ValueError(f"alpha must be in (0, 1] -- got {self.alpha}")
         self.dead_thresh = float(dead_thresh)  # controllability below this = a "low" reading
         self.high_thresh = float(
             high_thresh
         )  # controllability at/above this = a "high" reading (> dead_thresh: dead-band)
         self.delay = int(delay)  # consecutive low readings before declaring 'lost'
         self.recover_n = int(recover_n)  # consecutive high readings before reviving 'lost' -> 'ok'
-        self.warmup = int(warmup)  # per-channel observations before any scoring (EMA settle)
+        # PER-CHANNEL SETTLE WINDOW, DERIVED FROM alpha (P1). This was the literal 120, while the
+        # module docstring above states what that number MEANS: "~2.4x the EMA memory implied by
+        # alpha=0.02, which is a principled settle criterion in units of OBSERVATIONS". A derived
+        # quantity written as a literal is a constant waiting to go stale -- change alpha and the
+        # docstring's justification silently stops describing the code. 2.4/0.02 == 120.0, so the
+        # default is numerically unchanged (verified: this module's self-check output is
+        # byte-identical). An explicit `warmup=` still overrides, for the same reason the other
+        # thresholds are arguments.
+        self._warmup_ema_multiple = 2.4  # settle criterion in EMA memories (docstring's "~2.4x")
+        self.warmup = (
+            int(round(self._warmup_ema_multiple / self.alpha)) if warmup is None else int(warmup)
+        )
         self.var_floor = float(
             var_floor
         )  # command variance below this -> channel not exercised -> unscored

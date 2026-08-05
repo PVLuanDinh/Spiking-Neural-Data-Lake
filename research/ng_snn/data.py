@@ -10,8 +10,25 @@ The number of time bins T is the ONE method-dependent knob: SET IT FROM THE NG-S
 else here (loading, disk caching, streaming, pinned GPU transfer, worker prefetch) is
 method-independent and stays as the paper fixes the model.
 
-NOT zero-dep -- torch/GPU TRAINING TIER only (needs tonic + torch). Runs in .venv-cu128 on the
-RTX 5070; the zero-dep core NEVER imports this. Windows note: num_workers>0 spawns processes, so the
+Torch/GPU TRAINING TIER (needs tonic + torch). Runs in .venv-cu128 on the RTX 5070.
+
+TWO CLAIMS IN THIS PARAGRAPH WERE WRONG AND ARE CORRECTED 2026-08-04. It said "NOT zero-dep" and
+"the zero-dep core NEVER imports this". (1) There is no zero-dep core: the zero-dependency rule was
+abolished project-wide on 2026-07-20 and P7 replaced it, so "not zero-dep" is not a caveat about
+anything. (2) The no-importers claim is FALSE and matters, because it is what makes this file look
+detachable: `training/surrogate_snn.py::ng_snn_data_file` and `training/eprop_nmnist.py::_ng_snn_dir`
+both locate THIS FILE by walking up from their own `__file__`, and those two modules are the vision
+encoders `cortex/brain.py` loads on the live construction path (`SNN_EPROP_CKPT` first,
+`SNN_PERCEPTION_CKPT` as the fallback). Deleting or renaming this file breaks the brain's perception
+tier, and no gate would say so -- `substrate/import_manifest.py`, the cross-tier canary built for
+exactly that failure, does not see `training.*` at all (it matches `snn_data_lake.<ungoverned>` and
+these are bare `training.` imports).
+
+NOTE: this file is DUPLICATED at src/snn_data_lake/reasoning/ng_snn/data.py -- AST-identical with
+docstrings stripped, measured 2026-08-04. See research/README.md for why the duplicate is not
+retired yet. This correction applies to the twin as well.
+
+Windows note: num_workers>0 spawns processes, so the
 frame->tensor transform is a module-level CLASS (picklable, not a lambda) and the smoke is guarded by
 __main__.
 

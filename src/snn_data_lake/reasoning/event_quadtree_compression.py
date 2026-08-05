@@ -8,15 +8,19 @@ encodes empty regions in one bit and only recurses into occupied quadrants, so a
 compresses far below the per-channel codec. Lossless. Refs: arXiv:2411.07155 (low-complexity lossless
 event compression; the learned octree/hyperprior variant arXiv:2411.03010 is the torch-tier ceiling).
 
-  Run: python event_quadtree_compression.py       # (also run by run_selfchecks.py)
+  Run: PYTHONPATH=src python -m snn_data_lake.reasoning.event_quadtree_compression  # (also in run_selfchecks)
 """
 
 import gzip
 import random
 
-import snn_data_lake.reasoning.spike_compression as sc  # research/ on sys.path; reuse the 1-D delta+varint baseline
+import snn_data_lake.reasoning.spike_compression as sc  # reuse the 1-D delta+varint baseline
 
-random.seed(0)
+# random.seed(0) DELETED 2026-08-04 (specs/010, C33): it was an IMPORT-TIME global reseed that
+# clobbered any caller's seed, and it was VESTIGIAL here -- every RNG use in this module already
+# goes through a per-instance `random.Random(seed)`, so nothing read the global stream it set.
+# Verified by AST: no module-level statement and no function in this file touches the global
+# random API. Deterministic behaviour is unchanged; the side effect on importers is gone.
 
 C, T = 64, 256  # channels × time bins (both powers of two)
 

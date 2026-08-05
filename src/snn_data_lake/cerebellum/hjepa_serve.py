@@ -1,13 +1,23 @@
 r"""
-Zero-dep forward SERVER for a torch-trained 2-level Hierarchical H-JEPA (`snn_hjepa/1`).
+Forward SERVER for a torch-trained 2-level Hierarchical H-JEPA (`snn_hjepa/1`).
 
 Honest framing (read this first). The deep, nonlinear, 2-level H-JEPA is TRAINED in the torch
 tier (research/hjepa_torch.py: deep ReLU-MLP encoders at L0/L1, an EMA/stop-grad target, VICReg
 anti-collapse, action-conditioned residual/pure-MLP predictors) and EXPORTED as an `snn_hjepa/1`
-JSON artifact. This module is the matching PURE-STDLIB core SERVER: it LOADS that artifact and
-replays the forward with NO torch, NO numpy -- forward-serve only, no training here. It is the
+JSON artifact. This module is the matching core SERVER: it LOADS that artifact and replays the
+forward -- forward-serve only, no training here. It is the
 H-JEPA analogue of cerebellum/jepa_world_model.py's `snn_jepa/2` served/frozen deep encoder, one
 level up: two levels (fine L0 obs latent + abstract L1 window latent) instead of one.
+
+DEPENDENCIES (P7). This file used to open "Zero-dep forward SERVER", call itself the "PURE-STDLIB
+core SERVER" that "replays the forward with NO torch, NO numpy", and sign off "Pure stdlib". All
+four were residue of the zero-dependency rule ABOLISHED 2026-07-20; P7 (2026-08-04) makes a
+stdlib-purity boast a defect rather than a feature, and none of those sentences described a design
+decision anyone would defend on a measurement. What is TRUE and worth keeping is the narrower
+claim: the served forward is a handful of small dense matvecs over a JSON artifact, at which width
+a numpy round-trip buys nothing, so it is written in plain arithmetic. That is a statement about
+the workload, not about a rule. If the served geometry ever grows, P7 says reach for numpy and
+measure it -- exactly as `plasticity/oja_pca.py` did when its consumer turned out to be numpy.
 
 The forward replicated here is byte-for-byte the torch `_HJepa` (research/hjepa_torch.py):
   * mlp(layers, x)     -- ordered Linear layers; ReLU BETWEEN layers, RAW (no activation) after
@@ -32,7 +42,7 @@ tag, the positive integer geometry, the action lists, and EVERY Linear layer's s
 dims, and the predictor input widths must equal latent + |actions|), raising ValueError on any
 mismatch. save()/round-trip is intentionally NOT provided -- this is a serve-only loader.
 
-Pure stdlib (math, json + shared _mathutils dot/mean/unit), ASCII-only prints, deterministic.
+Imports math + json + the shared _mathutils dot/mean/unit. ASCII-only prints, deterministic.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cerebellum.hjepa_serve
 """
@@ -103,7 +113,7 @@ def _validate_stack(name, layers, in_dim, out_dim):
 
 
 class HJepaServe:
-    """A pure-stdlib forward server for a torch-trained 2-level H-JEPA exported as `snn_hjepa/1`.
+    """A forward server for a torch-trained 2-level H-JEPA exported as `snn_hjepa/1`.
 
     load() reads + trust-validates the artifact. encode0()/encode1() are the L0 fine and L1 abstract
     encoders; predict0()/predict1() are the fine (residual) and coarse (pure-MLP) action-conditioned
@@ -460,7 +470,7 @@ def main():
     reject_shape_ok = _expect_valueerror(_bad_shape)
 
     print("=" * 78)
-    print("H-JEPA SERVE -- zero-dep forward server for a torch-trained 2-level snn_hjepa/1")
+    print("H-JEPA SERVE -- forward server for a torch-trained 2-level snn_hjepa/1")
     print("=" * 78)
     print(
         f"config      : in_dim={srv.in_dim} K={srv.K} latent0={srv.latent0} latent1={srv.latent1} "
@@ -497,7 +507,7 @@ def main():
     assert reject_shape_ok, "load must raise ValueError on a wrong-shape layer"
 
     print(
-        "self-check OK: snn_hjepa/1 forward served pure-stdlib and matches the torch _HJepa forward "
+        "self-check OK: snn_hjepa/1 forward served and matches the torch _HJepa forward "
         "(encode0/encode1/predict0/predict1); dual-window encode1, predict==predict1, and a validating loader"
     )
 

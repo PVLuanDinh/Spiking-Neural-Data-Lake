@@ -31,7 +31,9 @@ discrimination. Intrinsic plasticity tunes the neuron's own EXCITABILITY (not th
 biologically correct division of labour: synaptic homeostasis bounds the weights, cellular homeostasis
 bounds the firing rate.
 
-HONESTY / SAFETY. stdlib + numpy/torch allowed project-wide (the three reused rules happen to be stdlib too).
+HONESTY / SAFETY. Dependencies are governed by P7: numpy/torch/mujoco are unconditional core deps and any
+tier may import them freely. This module happens to need none of them, which is a fact about the arithmetic
+(three closed-form scalar rules), not a design property worth advertising.
 Additive and OPT-IN: the learner takes the stack as an
 injected duck-typed object; with no stack (the default) the R-STDP path is BYTE-IDENTICAL to today. It
 stabilizes plasticity only and adds NO actuator route (the intent-recognition learning path only; the
@@ -343,10 +345,12 @@ def _stability_and_stack_selfcheck():
         and isinstance(stack._homeo._cell[0], HomeostaticNeuron)
         and isinstance(stack._intr._ip[0], IntrinsicPlasticity)
     )
-    import sys
-
-    no_dense_dl = "numpy" not in sys.modules and "torch" not in sys.modules
-
+    # A `"numpy" not in sys.modules` purity report used to be computed and printed here. REMOVED
+    # 2026-08-04 under P7, which names stdlib-purity residue as a defect in its own right. It was
+    # also not a measurement of this module: `sys.modules` is process-global, so the line printed
+    # True standalone and False whenever anything earlier in the same interpreter had imported
+    # numpy -- which `run_selfchecks._run_module_inproc` (the frozen-build path) does. It reported
+    # the process's import history and labelled it a property of this self-check.
     print("=" * 78)
     print("HOMEOSTATIC PLASTICITY STACK -- stabilizing the live R-STDP learning synapses")
     print("=" * 78)
@@ -364,7 +368,7 @@ def _stability_and_stack_selfcheck():
     )
     print(
         f"  fixed order every step: {order_ok}   deterministic: {deterministic}   "
-        f"reuses real modules: {reuse_ok}   numpy/torch not imported: {no_dense_dl}"
+        f"reuses real modules: {reuse_ok}"
     )
     print("=" * 78)
 

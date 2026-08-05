@@ -7,7 +7,11 @@ used for spatial downsampling instead of average pooling so that high-frequency 
 resolution reduction. Multi-step over a spiking feature map (T, B, C, H, W). Refs: Max-Former
 (max-pool downsampling to preserve high-frequency features in spiking transformers).
 
-Quarantined: needs torch + SpikingJelly (own venv). NOT part of the zero-dep core / CI.
+Needs torch (a core dependency) + SpikingJelly, installed in this subproject's own venv rather than
+in the deterministic gate env. SpikingJelly is an ADOPTED dependency (P7 -- docs/POLICIES.md records
+the adoption into this directory, 2026-07-02), not a quarantine, and under P4c there is no "outside
+the brain" category: the venv split exists because CI has no GPU and the gate must stay
+deterministic, not because this file is exempt from anything.
 
   python memory/maxformer_pool.py        # CPU smoke: max-pool retains high-freq peaks vs avg-pool
 """

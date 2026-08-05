@@ -364,6 +364,21 @@ Reportability is the defining criterion of access consciousness, so it is scored
   (`consciousness_probe.py:52-62`). The brain is reporting unit-test outcomes about its module class
   definitions, not the state of its own workspace. It is a P0 honesty hazard in the making: a 4/4
   self-report that no live measurement backs.
+
+  **RESOLVED 2026-08-04 (specs/010, findings C08 + C09) -- this row called it, and it was worse than
+  "in the making": it was live.** Under P8 the two markers with no reachable red were **DELETED, not
+  re-thresholded** (falsifier F11): BINDING scored exactly 1.000 across 300 random object sets, and
+  RE-ENTRY was arithmetic over three literals (`0.40 < 0.55 < 0.70`) with no brain input and no RNG.
+  INTEGRATION was KEPT because it already had a red -- it reads ABSENT on **10 of 20** seeds -- and
+  the defect was that the shipped call pinned `seed=0`, a seed that passes; it now reports the
+  distribution. ACCESS now **takes the brain as an argument** and returns UNKNOWN without one.
+  The chat reply no longer emits a tally: measured live, `known` is now `False` and `coverage` `0.0`
+  where they were hardcoded `True` and `1.0`.
+
+  One thing this row did not know, found while fixing it: **`LakeChat` holds no brain reference at
+  all** -- there is no `self.brain` anywhere in the class -- so the faculty that answers "are you
+  conscious" is not connected to the brain in the first place. That is why ACCESS honestly reports
+  UNKNOWN rather than a verdict, and it is a P6 gap (faculty-to-faculty), not merely a P0 one.
 * What *is* genuinely reportable is one bit, via the narrator: measured reply text includes
   `"Right now ignited on"`. The workspace **content** (`_access_hold["content"]`, e.g. `digit-7`) never
   reaches any reply.
@@ -374,7 +389,10 @@ Reportability is the defining criterion of access consciousness, so it is scored
 `global_workspace.py:321-396` implements binding-by-synchrony (theta-gamma phase multiplexing) with a
 rate control, and `:605` makes "spikes beat rate at K=2" a permanent assertion. Every one of those
 functions is called only from `main()` and from `consciousness_probe.probe_binding`. Nothing live binds
-multiple contents into the broadcast. Note the overlap: `COVERAGE_RUBRIC.md:28` assigns "multimodal
+multiple contents into the broadcast. **Updated 2026-08-04: `probe_binding` is DELETED (specs/010,
+C08), so that second caller is gone and these functions are now reached only from their own
+`main()`.** This does not lower the row -- the score was already counting them as unreached by
+anything live -- but it removes the last thing that made them look consumed. Note the overlap: `COVERAGE_RUBRIC.md:28` assigns "multimodal
 binding" to **Perception**; this row scores only the binding of *workspace broadcast* contents, and a
 Perception auditor scoring `CrossModalBinder` is scoring a different mechanism.
 

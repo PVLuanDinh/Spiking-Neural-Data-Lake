@@ -10,7 +10,7 @@ brain had no perception of that domain at all: the measured baseline of every li
 This module is the same induction idiom transplanted to the grid domain:
 
   1. PERCEPTION  : a grid is parsed into OBJECTS (connected components with colour/bbox/size/shape).
-                   The component parser EXTENDS arc_agi/rule_inducer.py's connected_components /
+                   The component parser EXTENDS research/arc_agi/rule_inducer.py's connected_components /
                    parse_objects / cells_by_color (same BFS, same attribute style; re-implemented here
                    because that module's top-level `import env` makes it un-importable as a package
                    module -- adds 8-connectivity and multi-colour variants they lack).

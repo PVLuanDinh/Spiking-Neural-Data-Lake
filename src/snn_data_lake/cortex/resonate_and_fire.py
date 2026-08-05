@@ -9,7 +9,16 @@ different frequencies is a neuromorphic spectral analyser: it reads the oscillat
 stream (a CPG gait rhythm, a periodic telemetry channel) directly in spikes, no FFT. Pure standard library,
 deterministic. On-thesis with cpg_oscillator / izhikevich_neuron / spike_preprocessing.
 
-  python -m research.resonate_and_fire        # (also run by run_selfchecks.py, root on PYTHONPATH)
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.resonate_and_fire        # (also run by run_selfchecks.py)
+
+
+P7 NOTE (2026-08-04, on promotion into cortex/): the phrase "pure standard library" above
+described obedience to the zero-dependency rule, abolished 2026-07-20. The stdlib implementation
+is KEPT because it is correct on its merits here, not because a rule requires it: this is a
+SCALAR single-neuron model with a few floats of state, stepped per-neuron, exactly like its now
+sibling `cortex/lif_neuron.py`. numpy pays off on populations, not on one neuron -- vectorizing a
+scalar step would be slower and would duplicate dynamics P2 says must have one definition. What
+was removed is the BOAST, not the design.
 """
 
 import math

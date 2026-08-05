@@ -34,7 +34,9 @@ DISTINCTNESS (kuramoto_sync / neuronal_avalanches / delay_learning / polychroniz
 - `neuronal_avalanches.py` is a STOCHASTIC branching cascade whose signature is a scale-free POWER-LAW
   size distribution. A synfire volley is the OPPOSITE: a stable, near-deterministic packet locked to an
   attractor, not a scale-free cascade.
-- research `delay_learning.py` / `polychronization.py` are DELAY-based coincidence groups (spikes
+- `cerebellum/polychronization.py` (PROMOTED out of research/ 2026-08-04; this line still said
+  "research ... polychronization.py" until 2026-08-05) and `reasoning/delay_learning.py` are
+  DELAY-based coincidence groups (spikes
   converge because of matched conduction DELAYS). A synfire chain is FEEDFORWARD SYNCHRONY -- a zero-lag
   volley propagating pool to pool with no delay lines. Not `htm_sequence_memory.py` (SDR sequence
   prediction), not `theta_gamma_code.py` (discrete phase slots).
@@ -235,9 +237,11 @@ def main():
         f"strong synchronous packet must propagate near saturation ({strong_a}/{w})"
     )
     assert weak_a == 0, f"weak packet must extinguish to zero activity ({weak_a})"
-    assert strong_a > 0.7 * w and weak_a == 0, (
-        "same chain must give opposite fates for strong vs weak"
-    )
+    # `assert strong_a > 0.7*w and weak_a == 0` stood here. DELETED 2026-08-04 (P8 falsifier F11):
+    # it was the conjunction of the two asserts immediately above it, so no input could make it
+    # fire once they had passed -- a criterion with no reachable red, deleted rather than weakened.
+    # The property it named (SAME chain, opposite fates) is carried by `chain` being the one object
+    # both traces came from, which is a fact about lines 191-192, not something an assert can add.
     assert sigF < sig0 - 0.5, f"surviving packet's timing must sharpen ({sig0:.2f} -> {sigF:.2f})"
     assert max(tail_a) - min(tail_a) <= 2, f"activity must settle to an attractor (tail {tail_a})"
     assert dispersed_a == 0, (

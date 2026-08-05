@@ -12,9 +12,13 @@ Mechanism (Go/NoGo disinhibition -- Mink 1996; Frank 2005; Redgrave 1999):
   - INDIRECT pathway (D2, "NoGo"): excited by cortex, EXCITES GPi/SNr on its own channel.
   - GPi/SNr hold the thalamus under strong TONIC INHIBITION. A channel is RELEASED only by
     DISINHIBITION: Go lowers its GPi output (thalamic relay is freed to spike), NoGo raises it.
-  - Winner-take-all: lateral inhibition in the striatum (k-WTA, k=1, the same primitive used
-    in research/fly_hash.py and hippocampus/hippocampus.py) lets only the strongest candidate
-    open its Go gate, so at most one channel is ever disinhibited -- the disinhibition bottleneck.
+  - Winner-take-all: lateral inhibition in the striatum (`kwta` below, k=1) lets only the strongest
+    candidate open its Go gate, so at most one channel is ever disinhibited -- the disinhibition
+    bottleneck. `kwta` is THE definition of this primitive for the selection circuits (P2): it was
+    duplicated byte-for-byte in `midbrain/superior_colliculus.SuperiorColliculus`, which now imports
+    it. (Citation corrected 2026-08-04: this named `research/fly_hash.py`, which moved to
+    `reasoning/fly_hash.py` in v3.78 and carries its own top-k, and `hippocampus/hippocampus.py`,
+    which was RETIRED in the Policy-3 wave -- see `hippocampus/__init__.py`. Neither resolved.)
   - Dopamine sets the D1/D2 balance: high DA raises the Go gain and suppresses NoGo (the RPE
     from valence_stdp would supply this level); DA=0 is an SNc lesion (Parkinsonian).
 
@@ -37,6 +41,18 @@ is a disinhibition event in a spiking circuit, nothing more.
 """
 
 import random
+
+
+def kwta(values, k):
+    """Indices of the k largest values (lateral-inhibition winner-take-all), as a set.
+
+    Deterministic tie-break by LOWEST index. THE single definition of this primitive for the brain's
+    selection circuits: `midbrain/superior_colliculus` imports it rather than keeping the
+    byte-identical copy it used to hold (P2 -- two mechanisms for one job is the defect, and a
+    comment asserting "these two agree" is not a mechanism that makes them agree).
+    """
+    order = sorted(range(len(values)), key=lambda i: (values[i], -i), reverse=True)
+    return set(order[:k])
 
 
 class BasalGangliaGate:
@@ -70,15 +86,6 @@ class BasalGangliaGate:
         self.k = k  # k-WTA winners allowed to open a Go gate (bottleneck = 1)
         self.steps = steps  # max integration steps per selection
 
-    @staticmethod
-    def _kwta(values, k):
-        """Indices of the k largest values (lateral-inhibition winner-take-all).
-
-        Deterministic tie-break by lowest index, matching fly_hash.py / hippocampus.py.
-        """
-        order = sorted(range(len(values)), key=lambda i: (values[i], -i), reverse=True)
-        return set(order[:k])
-
     def _striatum(self, drive, da, tonic=None):
         """Cortex -> D1/D2 -> GPi outputs. Returns (go, nogo, gpi) per channel.
 
@@ -89,7 +96,7 @@ class BasalGangliaGate:
         tonic = self.tonic if tonic is None else tonic
         go = [d * (self.d1_base + self.da_gain * da) for d in drive]
         nogo = [d * max(0.0, self.d2_base - self.da_gain * da) for d in drive]
-        winners = self._kwta(go, self.k)
+        winners = kwta(go, self.k)
         gpi = []
         for j in range(len(drive)):
             go_eff = go[j] if j in winners else 0.0  # losers: lateral inhibition shuts Go

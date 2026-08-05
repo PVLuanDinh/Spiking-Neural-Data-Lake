@@ -90,7 +90,7 @@ def main():
     print(f"windows      : {stats['events']} (window={WINDOW}, 2ch) -> lake {len(lake)} encoded")
     print(
         f"vs robot lib : {stats['matched']} matched / {stats['rejected']} novel "
-        f"(novel expected — wrong domain)"
+        f"(novel expected -- wrong domain)"
     )
     print(
         f"discovered   : {len(promoted)} recurring sensor regimes ({n_clusters} clusters, "

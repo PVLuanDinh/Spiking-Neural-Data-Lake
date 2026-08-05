@@ -7,8 +7,14 @@ and bias b so the output firing-rate DISTRIBUTION approaches a target exponentia
 distribution for a fixed mean, so it maximizes information per spike under a metabolic budget), and it
 does so INPUT-SCALE INVARIANTLY — change the input gain and it re-tunes a to hold its output. `adapt`
 runs the Triesch rule; here it is driven by scalar projections of noisy `snn_classifier` shapes (real
-product data). Additive/opt-in; no existing default changes. Refs: Triesch, ICANN 2005; Stemmler &
+product data). Refs: Triesch, ICANN 2005; Stemmler &
 Koch, Nat. Neurosci. 2 (1999).
+
+WIRING (corrected 2026-08-04 -- "Additive/opt-in; no existing default changes" was stale). `adapt`
+is the cellular-homeostasis POST phase of `homeostatic_plasticity_stack._IntrinsicPlasticity`,
+which reaches the canonical brain through `plasticity_rule_stack` and `cortex/brain.py:273-278`.
+Measured charge on that consumer is recorded in `homeostatic_scaling.py`'s wiring note (the two
+phases share the same stack and the same measurement).
 
   python -m snn_data_lake.plasticity.intrinsic_plasticity        # (also run by run_selfchecks.py)
 """
@@ -75,7 +81,7 @@ def main():
     mean_scaled = _mean_out(ip_s, [3.0 * x for x in test])
 
     print("=" * 60)
-    print("INTRINSIC PLASTICITY (Triesch) — excitability self-tuning on shape drives")
+    print("INTRINSIC PLASTICITY (Triesch) -- excitability self-tuning on shape drives")
     print("=" * 60)
     print(f"target mean rate mu = {mu}")
     print(f"output mean : {mean_before:.3f} (before) -> {mean_after:.3f} (after)")

@@ -26,16 +26,19 @@ is gated on the hit (structured) or is simply never delivered (control).
 
 DISTINCT from the repo's other free-energy / reward modules (this is NOT a scalar-reward rule and IS
 embodied in a task world -- do not duplicate):
-  - research/free_energy_control.py : a single spike fires only if it lowers prediction error
+  - reasoning/free_energy_control.py : a single spike fires only if it lowers prediction error
       -- spike-level control, NO embodiment, NO task.
-  - src/snn_data_lake/closed_loop.py: dopamine/cortisol learning from a graded SCALAR reward.
-  - src/snn_data_lake/r_stdp.py, valence_stdp.py: reward-modulated STDP with an explicit scalar
-      reward / reward-prediction-error.
+  - brainstem/closed_loop.py: dopamine/cortisol learning from a graded SCALAR reward.
+  - basal_ganglia/r_stdp.py, basal_ganglia/valence_stdp.py: reward-modulated STDP with an explicit
+      scalar reward / reward-prediction-error.
+    (These three were cited as the FLAT pre-3.0 paths `src/snn_data_lake/{closed_loop,r_stdp,
+    valence_stdp}.py`, which resolve to nothing since the anatomical-region reorganisation. Verified
+    against the tree 2026-08-04.)
 Here the network NEVER sees a reward number. Its ONLY learning signal is whether the sensory
 feedback it gets back is a CONSISTENT replay or a SCRAMBLED random pattern, and it self-organises
 (free-energy principle) to keep that feedback consistent.
 
-  python research/dishbrain_learning.py        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.reasoning.dishbrain_learning        # (also run by run_selfchecks.py)
 """
 
 import random

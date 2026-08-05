@@ -15,7 +15,41 @@ literal -- is the inferior, superseded mechanism (it remains only as a target-le
 HONEST: this is plumbing, not learning. It records the brain's own signal distribution and reports a
 percentile of it -- a data operating point. Whether recalibrating a threshold TO that point is an
 improvement is decided elsewhere (the gate certifies compatibility, not correctness). Deterministic
-(P2 has no RNG); persistence is a plain JSON of the estimator markers; ASCII-only prints.
+(P2 has no RNG); ASCII-only prints.
+
+OPEN P4b VIOLATION -- STATED HERE BECAUSE IT LIVES HERE (found 2026-08-04, STILL OPEN 2026-08-05,
+and it is now the LAST JSON member of a family that has otherwise been closed).
+`save_all` writes `json.dump` to a path the brain gives it as `<home>/signal_calib.json`: a SIDECAR
+FILE beside `brain_lake.bin`, holding LEARNED state. P4b names that in its own words -- "what the
+brain learns goes IN the lake... not a sidecar file, not a JSON blob" -- and the state is not inert:
+`cortex/brain.py` restores it at construction and CONSUMES it on the live wake tick (`self._lc.
+salience_th = float(r["value"])`), so a running-baseline value that ARBITRATES the LC salience gate
+is kept outside the one lake. It is the same defect `data/selfbuild_state.json` was, with the same
+two costs: a second file that does not follow NORD_HOME, and a store `consolidate()` cannot see.
+
+WHY IT IS STILL NOT FIXED, restated after a second attempt on 2026-08-05, because the reason has
+CHANGED and the new one is sharper. The lake-side channel is no longer a bespoke `_T_CALIB` pair --
+that was retired unwritten -- it is `home.save_named_state("signal_calib.json", blob)` /
+`load_named_state(...)`, the same generic record the six other sidecars moved onto, and the second
+of those already imports this exact 950-byte file on first read. So the destination is built,
+proven cross-process, and free.
+
+WHAT BLOCKS IT IS THE SIGNATURE, and specifically that EVERY method here takes an explicit `path`:
+  * `cortex/brain.py` passes `state_path("signal_calib.json")` at both call sites, and BOTH sit
+    inside bare `except Exception: pass`. A signature change made from this file alone would not
+    fail loudly -- it would SILENTLY stop persisting and cold-start the LC gate every boot.
+  * `basal_ganglia/brain_native_selfbuild.py`'s `ThresholdRecalibrationSource` self-check passes a
+    TEMP `calib_path` and asserts an honest-null "with NO recorded data". Ignoring that path and
+    reading the one lake instead would (a) make that assert contaminable by a `probe_th` record left
+    by a previous run and (b) write probe records INTO the operator's real 516 MB brain_lake.bin
+    during a gate run. Dropping the argument instead makes `save_all(calib_path, [sc])` pass a
+    string where the calibrator list is expected -- a loud break in another module's self-check.
+Both files are outside this one's area. The honest disposition is therefore: destination built and
+proven, call sites owed, and this paragraph is the label until they land. The edit, for whoever owns
+them, is `save_all(calibrators)` / `load_into(calibrators)` / `load_result(name)` here, the two
+`brain.py` sites dropping their `state_path(...)` argument, and `brain_native_selfbuild`'s
+self-check setting an isolated NORD_HOME instead of a temp `calib_path` -- that last one is not
+optional, it is where this change goes wrong if it is applied in pieces.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.signal_calibrator
 """
@@ -70,7 +104,14 @@ class SignalCalibrator:
     # ---- durable multi-signal persistence (a plain JSON keyed by signal name) ----
     @staticmethod
     def save_all(path, calibrators):
-        """Atomically persist a list of SignalCalibrators to `path` (JSON: name -> P2 state)."""
+        """Atomically persist a list of SignalCalibrators to `path` (JSON: name -> P2 state).
+
+        THIS IS THE P4b VIOLATION the module docstring names: a sidecar JSON holding learned state.
+        The replacement is `home.save_named_state("signal_calib.json", blob)` (tag `_T_STATE`, the
+        one record type every other former sidecar now uses, and it migrates this file on first
+        read). Switching to it is a coordinated edit with `cortex/brain.py` and
+        `basal_ganglia/brain_native_selfbuild.py` -- see the module docstring for why the `path`
+        argument, not the destination, is what is blocking."""
         tmp = path + ".tmp"
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(tmp, "w", encoding="utf-8") as f:

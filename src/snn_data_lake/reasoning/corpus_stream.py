@@ -17,13 +17,21 @@ SAME code path scales to millions of tokens when pointed at a real corpus URL.
 This is NOT toy scale: default targets are the full CMUdict and a multi-megabyte plain-text corpus
 (Project Gutenberg / text8-derived). The bundled fallback exists only so the offline self-check runs.
 
-  python research/corpus_stream.py        # self-check (offline sample or cached real corpus)
+  python -m snn_data_lake.reasoning.corpus_stream        # self-check (offline sample or cached real corpus)
 """
 
 import os
 import re
+import tempfile
 
 from snn_data_lake.substrate.web_ingest import fetch_corpus
+
+# Cache directory for the fetched corpus + CMUdict. This was `os.environ.get("TEMP", ".")`, which
+# is a WINDOWS-only variable: on the Linux and macOS CI runners TEMP is unset, so the fallback
+# fired and both caches were written into the PROCESS WORKING DIRECTORY -- i.e. into the repo
+# checkout. `tempfile.gettempdir()` honours TMPDIR/TEMP/TMP on every platform and never falls back
+# to `.`. These are caches, not learned state, so they are correctly outside the one lake (P4b).
+_CACHE_DIR = tempfile.gettempdir()
 
 # 39-phone ARPABET inventory (CMUdict stress digits stripped). The phonetics level's response set.
 ARPABET = [
@@ -158,13 +166,18 @@ _SAMPLE_DICT = {
     "garden": ["G", "AA", "R", "D", "AH", "N"],
     "by": ["B", "AY"],
     "gate": ["G", "EY", "T"],
-    "over_the": ["OW", "V", "ER"],
-    "runs_after": ["R", "AH", "N", "Z"],
-    "sun_sets": ["S", "AH", "N"],
-    "shells_shine": ["SH", "EH", "L", "Z"],
     "pickled": ["P", "IH", "K", "AH", "L", "D"],
+    # `pepper` is NOT in _SAMPLE_TEXT (which has only "peppers"), but it is NOT dead either: the
+    # two fallbacks are independent -- `load_cmudict` can drop to this bundled dict while
+    # `load_text` streams a REAL corpus -- so a lookup for "pepper" is reachable. Kept, and the
+    # distinction is recorded because five neighbours here were not reachable and were deleted:
+    # `over_the`, `runs_after`, `sun_sets`, `shells_shine`, `of_pickled` (removed 2026-08-05).
+    # They were underscore-joined bigrams, and `_tokenize` is `re.findall(r"[a-z]+", ...)`, so no
+    # token it can ever emit contains "_" -- unreachable by construction from ANY corpus, not just
+    # from the sample (P3 dead code). Their values were wrong as bigrams anyway (`over_the` was
+    # pronounced "over"). MEASURED before deleting: keys 82, distinct sample tokens 76, dead keys
+    # exactly those 5 + `pepper`, and sample tokens with no dict entry 0 -- so nothing lost coverage.
     "pepper": ["P", "EH", "P", "ER"],
-    "of_pickled": ["AH", "V"],
 }
 
 # public-domain plain-text corpus + CMUdict mirrors (real-scale defaults). Override via env.
@@ -183,7 +196,7 @@ def _strip_stress(phones):
 def load_cmudict(path=None, url=DEFAULT_CMUDICT_URL, max_bytes=6_000_000):
     """word -> [ARPABET phones] (stress stripped). Fetches the real CMUdict once (cached), or falls
     back to the bundled sample dict when offline. Real: ~134k words."""
-    path = path or os.path.join(os.environ.get("TEMP", "."), "sndl_cmudict.dict")
+    path = path or os.path.join(_CACHE_DIR, "sndl_cmudict.dict")
     if not (os.path.exists(path) and os.path.getsize(path) > 0):
         try:
             # CMUdict is BSD-2-Clause (cmusphinx/cmudict LICENSE).
@@ -219,7 +232,7 @@ def load_cmudict(path=None, url=DEFAULT_CMUDICT_URL, max_bytes=6_000_000):
 
 def load_text(path=None, url=DEFAULT_CORPUS_URL, max_bytes=8_000_000):
     """A lowercased word-token list from a REAL text corpus (cached), or the bundled sample offline."""
-    path = path or os.path.join(os.environ.get("TEMP", "."), "sndl_corpus.txt")
+    path = path or os.path.join(_CACHE_DIR, "sndl_corpus.txt")
     if not (os.path.exists(path) and os.path.getsize(path) > 0):
         try:
             # Project Gutenberg text: public domain in the US (PG 1342, Pride and Prejudice).

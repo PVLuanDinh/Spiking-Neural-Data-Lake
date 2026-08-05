@@ -67,8 +67,16 @@ arcade. A caveat also holds for the tabular control: given a FRESH, LARGE budget
 instance it would of course solve these tiny MDPs -- the point is that it does not GENERALIZE across
 instances, so under a fixed transfer budget it fails while the relational rule does not.
 
-Constraints: pure stdlib; per-instance random.Random(seed); zlib.crc32 (never hash()); no wall-clock
-/ no global RNG; ASCII-only prints; deterministic (same seed -> byte-identical run).
+Constraints: per-instance random.Random(seed); zlib.crc32 (never hash()); no wall-clock / no global
+RNG; ASCII-only prints; deterministic (same seed -> byte-identical run, asserted by re-running the
+whole proof and comparing solve rates).
+
+This file happens to need no third-party package, which is a fact about the algorithm and NOT a
+constraint it is held to. The word "pure stdlib" used to head this list and was backed by an
+`assert "numpy" not in sys.modules` in the self-check; both are gone under P7 (the zero-dependency
+rule was abolished 2026-07-20 and surviving purity asserts are named as defects). The assert was
+pointed at this module's own dependencies -- it imports two snn_data_lake faculties, either of which
+is free to adopt numpy -- so it would have reddened this gate for a permitted change.
 
   PYTHONUTF8=1 PYTHONPATH=src:. python research/arc_agi/rule_inducer.py
   (Windows bash: if the ':' path separator fails, use  PYTHONPATH="src;."  ; the file also
@@ -698,7 +706,6 @@ def main():
         a = results[game_cls.name]
         for k in ("ind_held", "ind_scaled", "tab_scaled", "shuf_scaled"):
             det_ok = det_ok and abs(a[k] - res2[k]) < 1e-12
-    no_tensor = "numpy" not in sys.modules and "torch" not in sys.modules
 
     print("\n" + "=" * 90)
     print("VERDICT (un-riggable proof)")
@@ -724,7 +731,18 @@ def main():
             gname, ind_s, shuf_s)
 
     assert det_ok, "two full runs must reproduce byte-identical solve rates (deterministic)"
-    assert no_tensor, "pure stdlib: numpy / torch must be absent"
+    # DELETED 2026-08-04 (P7): `assert no_tensor, "pure stdlib: numpy / torch must be absent"`,
+    # over `no_tensor = "numpy" not in sys.modules and "torch" not in sys.modules`.
+    # P7 abolished the zero-dependency rule project-wide and names surviving purity asserts as the
+    # residue to remove; docs/POLICIES.md lists three (laminar_local_readout x2,
+    # vsa_structure_mapping) and does not know about this fourth one. It was worse than dead weight:
+    # this module imports snn_data_lake.cortex.vsa_reasoning and
+    # snn_data_lake.basal_ganglia.evidence_accumulation, so the day either of those (or anything
+    # they reach) imports numpy -- which P7 explicitly permits and P5 may require -- this self-check
+    # goes RED for a purity reason and not a correctness one. It was an anti-P7 tripwire aimed at
+    # the project's own core. Nothing is lost: what this file actually needs is DETERMINISM, and
+    # that is asserted directly on the line above by re-running the whole proof and comparing solve
+    # rates bit-for-bit -- a criterion about behaviour rather than about an import.
 
     kd, pb = results["key_door"]["ind_scaled"], results["push_box"]["ind_scaled"]
     kt, pt = results["key_door"]["tab_scaled"], results["push_box"]["tab_scaled"]
@@ -732,8 +750,8 @@ def main():
     print("\nself-check OK: rule-inducer SCALED solve key_door %.2f / push_box %.2f  >>  "
           "tabular %.2f / %.2f  >>  shuffle %.2f / %.2f;" % (kd, pb, kt, pt, ks, ps))
     print("  relational rules TRANSFER to bigger grids & new layouts; the tabular table does not "
-          "(unseen states); shuffling action->effect destroys induction; deterministic; spiking "
-          "RaceAccumulator selects; no numpy/torch.")
+          "(unseen states); shuffling action->effect destroys induction; deterministic (two full "
+          "runs byte-identical); spiking RaceAccumulator selects.")
     print("  HONEST: toy games have learnable relational rules by construction -- this does NOT solve "
           "frontier ARC-AGI-3 (richer rule classes + long horizons uncovered); the claim is only that")
     print("  relational induction generalizes where tabular coverage explodes.")

@@ -9,7 +9,6 @@ batches N to the GPU); the grown S is (60000, L<=2000) < 0.5 GB.
 
   PYTHONUTF8=1 .venv-cu128/Scripts/python research/ng_snn/grow_head_nmnist.py
 """
-import os
 import sys
 import time
 from pathlib import Path
@@ -19,7 +18,12 @@ import torch
 
 from model import NGSNN
 
-os.environ.setdefault("PYTHONUTF8", "1")
+# `os.environ.setdefault("PYTHONUTF8", "1")` stood here. DELETED 2026-08-04: PYTHONUTF8 is read by
+# the interpreter at STARTUP, so setting it from inside a running process changes nothing at all --
+# an inert module-scope environment write, which is the worst combination of the two defect classes
+# this project tracks (a side effect on import, and a control that is not a control). The stdout
+# reconfigure below is what actually makes the output cp1252-safe here, and it still runs; the
+# documented invocation sets PYTHONUTF8 in the environment, where it works.
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except AttributeError:

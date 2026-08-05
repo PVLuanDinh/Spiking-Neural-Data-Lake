@@ -19,17 +19,19 @@ Feature learning stays UNSUPERVISED (frozen conv1). Only the linear readout is s
 The honest test: does content-addressable proximity replay from the durable lake HOLD the deep
 loop's ~93.3% (vs random RAM replay), while proving the memory is durable?
 
-Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/developmental_loop_lake.py
+Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.developmental_loop_lake
 Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NORD_REPLAY(150)
        NORD_SGD(300) NORD_TRAIN(10000) NORD_TEST(2000)
-Deps: numpy torch torchvision snntorch  (research/GPU tier; core untouched)
+Deps: numpy torch torchvision snntorch  ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+         and imports from the package -- P4c, every build is part of the brain.)
 """
 
 import os
+import tempfile
 
 import torch
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
@@ -52,7 +54,11 @@ def main():
     SGD = _envi("NORD_SGD", 300)
     TRAIN_N = _envi("NORD_TRAIN", 10000)
     TEST_N = _envi("NORD_TEST", 2000)
-    scratch = os.environ.get("TEMP", ".")
+    # NOTE: this was os.environ.get("TEMP", ".") -- a WINDOWS-only variable. On the Linux/macOS
+    # CI runners TEMP is unset, so the "." fallback fired and this file was written into the
+    # process WORKING DIRECTORY (the repo checkout). tempfile.gettempdir() honours TMPDIR/TEMP/TMP
+    # on every platform and never falls back to ".".
+    scratch = tempfile.gettempdir()
     lake_path = os.path.join(scratch, "sndl_devloop_lake.spkl")
 
     print("=" * 84)

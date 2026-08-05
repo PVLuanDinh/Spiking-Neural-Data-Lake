@@ -1,6 +1,7 @@
 """
-Global Workspace -- a SPIKING Global-Workspace / global-broadcast attention mechanism
-(stdlib + numpy/torch allowed project-wide; uses only `math` + `random`).
+Global Workspace -- a SPIKING Global-Workspace / global-broadcast attention mechanism.
+(Dependencies are governed by P7; this module imports `random` only. The line here used to say
+"uses only `math` + `random`", and `math` has never been imported.)
 
 Global Workspace Theory (Baars 1988; Dehaene & Changeux's Global Neuronal Workspace,
 Neuron 70:200, 2011): many specialist modules run in parallel and post candidate "contents";

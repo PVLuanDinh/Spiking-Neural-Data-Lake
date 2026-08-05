@@ -497,7 +497,7 @@ be the P1 defect this program audits. Region IDs in one namespace: **CP**=cortex
   better: it is not merely a tick-lagged memory cue, it is an action-gate term.
 - **The prerequisite that is cheaper than the wire.** `recognize()` is called inside
   `def state(self)` (`:2720`), *"Telemetry for /api/state"*, which is also called out of band
-  by `substrate/brain_telemetry.py:212`, `learn_daemon.py:319` and
+  by `substrate/brain_telemetry.py:212`, `substrate/learn_daemon.py` and
   `substrate/nengo_bridge.py:307`. So the affect-to-memory route executes only because
   something polls, and its lag is a full tick. Move the `recognize()` call into `_c1_tick`
   immediately after `:1981`, one line, and A/B that alone: `_emotion` sequence, `rec["key"]`,

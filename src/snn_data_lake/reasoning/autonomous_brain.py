@@ -25,22 +25,23 @@ every faculty genuinely active and measurable on MNIST digits (WM 18/18, 10x neu
 exemplars durable, self-directed curriculum). Understanding lands ~47% here, NOT because the loop is
 broken but because ONLINE single-pass grow-and-freeze is a genuinely weak readout: the frozen-hidden /
 plastic-output MLP still forgets earlier classes, and curiosity fixates on one hard digit late. The
-accuracy-optimal enclosed loop is research/developmental_loop_lake_slda.py (SLDA-RFF readout, ~94.9%),
+accuracy-optimal enclosed loop is reasoning/developmental_loop_lake_slda.py (SLDA-RFF readout, ~94.9%),
 which is order-invariant so it does NOT forget -- but it does not grow neurons. That tension (genuine
 online neurogenesis vs. forgetting-free accuracy) is the honest finding, not a bug to paper over.
 Feature learning is unsupervised; only the readout is supervised.
 
-Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/autonomous_brain.py
+Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.autonomous_brain
 Knobs: NORD_CYCLES(18) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NORD_KREPLAY(60)
        NORD_HIDDEN(32) NORD_GROW_K(16) NORD_HIDDEN_CAP(200) NORD_MAINTAIN(20) NORD_TRAIN(10000) NORD_TEST(2000)
 Deps: numpy torch torchvision snntorch
 """
 
 import os
+import tempfile
 
 import torch
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.fast_features import batched_features_and_keys
@@ -73,7 +74,11 @@ def main():
     GROW_K = envi("NORD_GROW_K", 16)
     HIDDEN_CAP = envi("NORD_HIDDEN_CAP", 200)
     MAINTAIN = envi("NORD_MAINTAIN", 20)
-    lake_path = os.path.join(os.environ.get("TEMP", "."), "sndl_autonomous_brain.spkl")
+    # NOTE: this was os.environ.get("TEMP", ".") -- a WINDOWS-only variable. On the Linux/macOS
+    # CI runners TEMP is unset, so the "." fallback fired and this file was written into the
+    # process WORKING DIRECTORY (the repo checkout). tempfile.gettempdir() honours TMPDIR/TEMP/TMP
+    # on every platform and never falls back to ".".
+    lake_path = os.path.join(tempfile.gettempdir(), "sndl_autonomous_brain.spkl")
 
     print("=" * 92)
     print(

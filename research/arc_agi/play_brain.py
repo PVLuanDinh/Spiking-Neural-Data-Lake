@@ -1,11 +1,17 @@
 """Wire the SNDL brain's FULL cognitive decision-stack to the LIVE ARC-AGI-3 arcade for REAL benchmarks.
 
 HONEST SCOPE (read first). "All tiers" for PLAYING means the full COGNITIVE stack -- every faculty
-that maps to choosing a game action. The brain's torch LANGUAGE tier (SpikeGPT) is conversation, not
-a game policy; its torch PERCEPTION tier is trained on 34x34 N-MNIST event data and would not transfer
-to 64x64 arcade grids -- and neither co-installs with arc-agi's numpy>=2.2. So they are deliberately
-NOT used here; using them would be theatre, not function. What DOES play, composed below, is the brain's
-real zero-dep cognition:
+that maps to choosing a game action. The brain's LANGUAGE tier is conversation, not a game policy;
+its torch PERCEPTION tier is trained on 34x34 N-MNIST event data and would not transfer to 64x64
+arcade grids -- and neither co-installs with arc-agi's numpy>=2.2. So they are deliberately NOT used
+here; using them would be theatre, not function.
+(Corrected 2026-08-04: this named the language tier "SpikeGPT". That organ was SCRAPPED in v3.77 --
+see the language-organ block in cortex/brain.py -- and conversation now comes from the ACQUIRED
+organ, cortex/language_acquisition, built lazily in _lm_serve. A scope limit justified by a deleted
+component cannot be checked. "zero-dep cognition" below was also retired-rule residue: P7 abolished
+the zero-dependency rule on 2026-07-20, and what is actually true is that this file needs nothing
+beyond arc-agi and the four faculties named.)
+What DOES play, composed below, is the brain's own cognition:
   * exploration  -- neuromodulation/intrinsic_motivation.CuriosityDrive (learning-progress + novelty)
                     + neuromodulation/generalizing_novelty.GeneralizingNovelty (SimHash pseudo-count);
   * rule discovery -- an online world model T (transitions) + model-based value iteration (planning);
@@ -21,7 +27,7 @@ them, so the agent's real action set per step is {simple legal actions} + {click
 Value/representation-ONLY: imports NOTHING from brainstem/; emits only LEGAL arcade actions; no actuator.
 Real arcade, real scorecard, NO overclaim -- ARC-AGI-3 is very hard; we report whatever the brain scores.
 
-Run (in the arc venv, with src on the path so the zero-dep brain modules import):
+Run (in the arc venv, with src on the path so the brain modules import):
     ARC_API_KEY=<key> PYTHONPATH=src .venv-arc/Scripts/python research/arc_agi/play_brain.py ls20 400
 """
 import os

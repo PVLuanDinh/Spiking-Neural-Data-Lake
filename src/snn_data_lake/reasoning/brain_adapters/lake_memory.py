@@ -32,22 +32,74 @@ partitions them by medoids of the Victor-Purpura spike-train distance). retrieve
 the SAME way and calls index.nearest(query, k, probe) -> the payloads of the k nearest stored
 exemplars: content-addressable recall, the loop's drop-in replacement for random.sample().
 
-durability_check() proves persistence: it snapshots n_events + the reconstructed patterns, CLOSES the
-hub, REOPENS the same `.spkl` with resume=True (StreamingHub replays the durable log from disk with
-the RAM index thrown away), and re-reads every exemplar's band back off disk -- asserting the event
-count and every latency pattern survive the restart. Contents that survive discarding RAM + replaying
-the file genuinely live in the data lake, not the process.
+durability_check() snapshots n_events + the reconstructed patterns, CLOSES the hub, REOPENS the same
+`.spkl` with resume=True (StreamingHub replays the durable log from disk with the RAM index thrown
+away), and re-reads every exemplar's band back off disk -- asserting the event count and every
+latency pattern survive the restart.
 
-Run:  PYTHONPATH=src python research/brain_adapters/lake_memory.py
+P4b -- WHY THAT IS NOT ENOUGH, AND WHAT WAS BUILT (2026-08-04). This docstring used to close
+"Contents that survive discarding RAM + replaying the file genuinely live in the data lake, not the
+process." It does not follow from durability_check(), because that check never leaves the process:
+the same interpreter, the same imported modules and the same OS page cache serve both halves of it.
+P4b's honesty guard is explicit -- *"it persists" is a claim about a NEW process ... prove it by
+reading the lake back from disk after the writer is gone* -- and the failure it was written from
+(59 episodes stored, 0 lake records, `retained()` reporting 1.000) is exactly a same-process check
+that could not see its own gap. `cross_process_durability_check()` is that missing measurement: it
+CLOSES the hub, launches a FRESH `sys.executable` on `--readback`, and compares a `zlib.crc32`
+digest of every reconstructed latency pattern computed in that other interpreter against the digest
+of the patterns THIS OBJECT BELIEVES IT STORED. The writer is gone when the reader runs.
+
+Corrected 2026-08-05: the parent side of that comparison was itself a second read of the same file,
+which made `ok` a pure function of the bytes on both sides -- measured, 60 of 120 exemplars held in
+RAM and never written to the lake passed it with `ok=True`. It now compares RAM against disk, which
+is the direction P4b's guard is about. Two reachable REDs ship with it and both are run by the
+self-check: a TRUNCATED copy of the lake, and one exemplar in `_patterns` that never reached the
+hub -- P4b's own motivating shape.
+
+Run:  PYTHONPATH=src python -m snn_data_lake.reasoning.brain_adapters.lake_memory
 """
 
 import os
 import random
+import subprocess
+import sys
 import tempfile
+import zlib
 
 from snn_data_lake.cortex.spike_preprocessing import N, T, encode_latency
 from snn_data_lake.substrate.proximity_index import ProximityIndex
 from snn_data_lake.substrate.streaming_hub import StreamingHub
+
+
+def _patterns_digest(patterns):
+    """zlib.crc32 over the reconstructed latency patterns -- a persisted-value digest, so
+    `zlib.crc32` and never builtin `hash()` (PYTHONHASHSEED randomises the latter, and this
+    number is compared ACROSS processes, which is precisely where builtin hash breaks)."""
+    crc = 0
+    for pattern in patterns:
+        for t, channel in pattern:
+            crc = zlib.crc32(f"{t},{channel};".encode("ascii"), crc)
+        crc = zlib.crc32(b"|", crc)
+    return crc & 0xFFFFFFFF
+
+
+def _readback_digest(path, n_stored, band, n_channels, packed):
+    """Reopen an EXISTING `.spkl` read-only and return (n_events, patterns digest).
+
+    This is the function the child interpreter runs under `--readback`. It constructs nothing
+    but a StreamingHub over the file on disk: no LakeMemory, no in-RAM patterns, nothing the
+    writer left behind. That is what makes the digest it returns evidence about the LAKE rather
+    than about the object that wrote it."""
+    hub = StreamingHub(path, n_channels, resume=True, packed=packed)
+    try:
+        patterns = []
+        for e in range(n_stored):
+            base = e * band
+            ev = hub.query_window(base, base + band)
+            patterns.append(sorted((t - base, c) for t, c in ev))
+        return hub.n_events(), _patterns_digest(patterns)
+    finally:
+        hub.close()
 
 
 def _to_floats(vec):
@@ -254,11 +306,100 @@ class LakeMemory:
             "n_stored": self.n_stored,
         }
 
+    # ---- P4b: the SAME check, run from a process that never wrote the lake ----
+    def cross_process_durability_check(self, path=None):
+        """Prove persistence the way P4b requires: from a NEW process, after the writer is gone.
+
+        Computes the in-process (n_events, digest) over `path` (default: this instance's own
+        lake), CLOSES the hub so no handle or buffered write survives, then runs a FRESH
+        `sys.executable -m <this module> --readback ...` which opens only the file on disk and
+        prints its own digest. Returns a dict; `ok` is True iff the two agree.
+
+        Why this is not durability_check() with extra steps: durability_check() closes and
+        reopens inside the SAME interpreter, so the module state, the import graph and the
+        object that produced the patterns are all still resident. Nothing about it can
+        distinguish "the bytes are on disk" from "the writer still remembers". The child here
+        shares nothing with the writer except the path.
+
+        **THE PARENT SIDE IS THE WRITER'S OWN MEMORY, NOT A SECOND DISK READ. Corrected
+        2026-08-05, and the bug was the policy's own failure shape.** This method first computed
+        `before_digest` by calling `_readback_digest(target, ...)` -- i.e. it re-read the same
+        FILE the child would read. Both halves were then a pure function of the same bytes, so
+        `ok` answered "do two processes decode this file the same way" (yes, always) instead of
+        "did the lake keep what the brain learned". MEASURED: with 60 of 120 exemplars appended to
+        `_patterns` but never written to the hub -- literally P4b's "59 episodes stored, 0 lake
+        records" -- `ok` came back **True**, `events_child` came back **1341 > 0**, and BOTH
+        asserts in the self-check stayed green while half the memory was absent from the lake.
+        The digest that reddens is the WRITER'S: `_patterns_digest(self._patterns)` was 750563058
+        against the lake's 924405719 on that run, and identical (774847069 both sides) on the
+        honest one. So `before_digest` is now what this object believes it remembers and
+        `before_events` is its own hub count; `path` selects only which FILE the child reads.
+
+        Reachable RED (constructed and run by the self-check, not asserted from prose): (a) pass a
+        TRUNCATED copy of the same lake as `path` -- the child replays fewer records and returns a
+        different digest, so `ok` goes False; (b) add an exemplar to `_patterns` that was never
+        appended to the hub -- the RAM digest moves and the lake's does not, so `ok` goes False.
+        (b) is the one the old parent-reads-disk form could not reach."""
+        target = self.path if path is None else path
+        before_events = self.hub.n_events()  # what the WRITER counts
+        before_digest = _patterns_digest(self._patterns)  # what the WRITER believes it remembers
+        self.hub.close()  # the writer is gone before the child opens the file
+        try:
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "snn_data_lake.reasoning.brain_adapters.lake_memory",
+                    "--readback",
+                    target,
+                    str(self.n_stored),
+                    str(self.band),
+                    str(self.n),
+                    "1" if self.packed else "0",
+                ],
+                capture_output=True,
+                text=True,
+                env=_child_env(),
+                timeout=180,
+            )
+            line = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
+            if proc.returncode != 0 or not line.startswith("READBACK "):
+                raise RuntimeError(
+                    f"child readback failed (rc={proc.returncode}): {proc.stderr.strip()[:400]}"
+                )
+            _, ev_s, dig_s = line.split()
+            child_events, child_digest = int(ev_s), int(dig_s)
+        finally:
+            # restore this instance's own handle so the object stays usable after the check
+            self.hub = StreamingHub(self.path, self.n, resume=True, packed=self.packed)
+        return {
+            "ok": child_events == before_events and child_digest == before_digest,
+            "path": target,
+            "events_parent": before_events,
+            "events_child": child_events,
+            "digest_parent": before_digest,
+            "digest_child": child_digest,
+            "pid_parent": os.getpid(),
+        }
+
     def close(self, remove=False):
         """Release the lake handle; if `remove` and this instance made a temp file, delete it."""
         self.hub.close()
         if remove and self._created_temp and os.path.exists(self.path):
             os.remove(self.path)
+
+
+def _child_env():
+    """Environment for the readback child: this package's import root prepended to PYTHONPATH,
+    DERIVED from __file__ (never a hardcoded 'src'), so the check works from any CWD and does not
+    break if the package is relocated."""
+    directory = os.path.dirname(os.path.abspath(__file__))
+    while os.path.isfile(os.path.join(directory, "__init__.py")):
+        directory = os.path.dirname(directory)
+    env = dict(os.environ)
+    existing = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = directory + (os.pathsep + existing if existing else "")
+    return env
 
 
 def main():
@@ -307,6 +448,30 @@ def main():
         got_after = mem.retrieve(jitter(protos[0]), k=k, probe=4)
         recall_after_ok = sum(1 for p in got_after if p == 0) >= (k // 2)
 
+        # ---- PROPERTY 2b (P4b): the SAME readback from a process that never wrote the lake ----
+        xproc = mem.cross_process_durability_check()
+        # RED for 2b, constructed and run rather than argued: hand the child a TRUNCATED copy of
+        # the same lake. The file still opens and StreamingHub still resumes, so this is not an
+        # "unreadable file" red -- it is a lake with records missing, which is the failure mode
+        # P4b actually cares about, and the digest must diverge.
+        truncated = mem.path + ".red"
+        with open(mem.path, "rb") as _src, open(truncated, "wb") as _dst:
+            _blob = _src.read()
+            _dst.write(_blob[: len(_blob) // 2])
+        xproc_red = mem.cross_process_durability_check(path=truncated)
+        os.remove(truncated)
+        # RED 2, the one the OLD parent-reads-disk form could not reach: put an exemplar in the
+        # writer's own memory that never reached the lake. This is P4b's motivating shape exactly
+        # ("59 episodes stored ... added 0 lake records"), and it must turn `ok` False.
+        _ghost = mem._encode(jitter(protos[0]))
+        mem._patterns.append(_ghost)  # in RAM, deliberately NOT appended to the hub
+        mem._payloads.append(0)
+        mem._features.append(jitter(protos[0]))
+        xproc_ghost = mem.cross_process_durability_check()
+        mem._patterns.pop()  # restore the honest state
+        mem._payloads.pop()
+        mem._features.pop()
+
         print("=" * 66)
         print("LAKE MEMORY -- lake-consolidated, proximity-addressable replay memory")
         print("=" * 66)
@@ -337,6 +502,21 @@ def main():
             f"recall after reopen  : query near cluster 0 -> {got_after} "
             f"(recall survives restart = {recall_after_ok})"
         )
+        print(
+            f"PROPERTY 2b P4b     : NEW-PROCESS readback (writer pid {xproc['pid_parent']} closed "
+            f"first) -> events {xproc['events_parent']} vs {xproc['events_child']}, crc32 "
+            f"{xproc['digest_parent']} vs {xproc['digest_child']}, ok = {xproc['ok']}"
+        )
+        print(
+            f"  RED control 1     : same child against a TRUNCATED copy -> {xproc_red['events_child']} "
+            f"events / crc32 {xproc_red['digest_child']}, vs the writer's "
+            f"{xproc['events_parent']} / {xproc['digest_parent']} -> ok = {xproc_red['ok']} (want False)"
+        )
+        print(
+            f"  RED control 2     : one exemplar in RAM only, never written to the lake (P4b's own "
+            f"failure shape) -> child crc32 {xproc_ghost['digest_child']} vs writer "
+            f"{xproc_ghost['digest_parent']} -> ok = {xproc_ghost['ok']} (want False)"
+        )
         print("=" * 66)
 
         # ---- self-checks (deterministic asserts) --------------------------------
@@ -351,15 +531,62 @@ def main():
         assert dur["events_after"] > 0, "durable lake is empty -- nothing was consolidated"
         assert dur["patterns_match"], "latency patterns did not survive the reopen"
         assert recall_after_ok, "proximity recall broke after reopening the durable lake"
+        # PROPERTY 2b (P4b): "it persists" is a claim about a NEW process. The assert above is
+        # satisfied by a same-process reopen and cannot distinguish a durable lake from a writer
+        # that still remembers; this one can, because the reader shares nothing with the writer.
+        assert xproc["ok"], f"cross-process readback disagreed with the writer: {xproc}"
+        assert xproc["events_child"] > 0, "the new process read an EMPTY lake -- nothing persisted"
+        # ...and the two controls proving that assert is an instrument rather than decoration.
+        # Both assert on `ok` ITSELF -- the same criterion the line above passes on -- because a
+        # control that exercises a DIFFERENT expression than the criterion is not a control of it.
+        # (History, kept because it is the correction that mattered: until 2026-08-05 the parent
+        # side of cross_process_durability_check() was a second read of the same FILE, so `ok` was
+        # a pure function of the bytes on both sides and `xproc_red["ok"]` was True by
+        # construction. The control then had to be weakened to a digest-inequality, which tests
+        # `_readback_digest`'s sensitivity and NOT the assert above it. The parent side now
+        # compares the writer's OWN patterns, so the natural control works and the weaker one is
+        # gone -- this is the "do not weaken, fix the criterion" direction of F11.)
+        assert not xproc_red["ok"], (
+            f"control failed: a TRUNCATED lake still satisfied the cross-process check {xproc_red} "
+            f"-- the check cannot detect lost records"
+        )
+        assert xproc_red["events_child"] < xproc["events_parent"], (
+            f"control failed: the truncated lake replayed {xproc_red['events_child']} events, not "
+            f"fewer than the writer's {xproc['events_parent']} -- the truncation did not take"
+        )
+        assert not xproc_ghost["ok"], (
+            f"control failed: an exemplar held in RAM and NEVER written to the lake still passed "
+            f"the cross-process check {xproc_ghost} -- this is exactly the P4b failure (episodes "
+            f"stored, 0 lake records, retained() reporting 1.000) and the check must see it"
+        )
+        assert xproc_ghost["events_child"] == xproc["events_parent"], (
+            "control 2 must differ from control 1: no EVENT was lost here, only a pattern the "
+            "writer believes it stored -- if the event count moved, the RED is the wrong one"
+        )
 
         print(
             f"self-check OK: proximity recall {precision:.0%} >> chance {chance:.0%} "
             f"(content-addressable); {dur['n_stored']} exemplars + {dur['events_after']} events "
-            f"survive close+reopen (durable in the data lake, not RAM); recall works post-restart"
+            f"survive close+reopen (durable in the data lake, not RAM); recall works post-restart; "
+            f"and a NEW PROCESS re-read the same {xproc['events_child']} events off disk to crc32 "
+            f"{xproc['digest_child']}, matching what the WRITER believed it remembered, after the "
+            f"writer closed (P4b) -- with both reds run: a truncated lake and an exemplar held in "
+            f"RAM only each turn that check False"
         )
     finally:
         mem.close(remove=True)
 
 
 if __name__ == "__main__":
-    main()
+    # `--readback <path> <n_stored> <band> <n_channels> <packed>` is the CHILD half of
+    # cross_process_durability_check(): a fresh interpreter that opens only the lake on disk and
+    # prints its own (n_events, crc32) so the parent can compare. It constructs no LakeMemory,
+    # so nothing the writer held in RAM can leak into the number.
+    if len(sys.argv) > 1 and sys.argv[1] == "--readback":
+        _path, _n_stored, _band, _n_ch, _packed = sys.argv[2:7]
+        _events, _digest = _readback_digest(
+            _path, int(_n_stored), int(_band), int(_n_ch), _packed == "1"
+        )
+        print(f"READBACK {_events} {_digest}")
+    else:
+        main()

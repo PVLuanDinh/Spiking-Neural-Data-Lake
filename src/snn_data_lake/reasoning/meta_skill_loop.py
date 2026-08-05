@@ -2,7 +2,7 @@ r"""
 META SKILL LOOP -- a STANDING, open-ended multi-domain loop where the brain builds its own skills
 across LANGUAGE, MATH, and PHYSICS, choosing which to work on next by cross-domain learning-progress.
 
-This is the standing version of research/skill_builder.py. Instead of building each skill once, a
+This is the standing version of reasoning/skill_builder.py. Instead of building each skill once, a
 top-level SpikingCuriosityDrive keyed on DOMAIN id runs an open-ended loop: every cycle it picks the
 domain with the highest learning-progress (the frontier), streams ONE MORE slice of that domain into
 that skill's PERSISTENT order-invariant readout (SLDA-RFF -- continual == joint, so accumulation
@@ -24,7 +24,7 @@ engine with per-skill learning curves; competence rides the strong readout (the 
 It does NOT solve any domain. Physics here is DISCRETIZED next-state prediction (well-posed for a
 low-dim ODE); the JEPA latent-rollout variant for high-dim/continuous dynamics is the next slice.
 
-  PYTHONPATH=src .venv-lake/Scripts/python research/meta_skill_loop.py
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.meta_skill_loop
   Knobs: NORD_CTX(3) NORD_CYCLES(24) NORD_SLICE(1500) NORD_RFF(1200) NORD_GAMMA(0.15)
 Deps: numpy (+ stdlib). Reuses corpus_stream, language_self_build, language_readout_slda, skill_builder.
 """

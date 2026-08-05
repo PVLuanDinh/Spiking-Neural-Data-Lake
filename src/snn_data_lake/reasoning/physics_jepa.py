@@ -29,7 +29,7 @@ It is NOT an accurate simulator and will not roll out precise trajectories or ma
 solver. Physics discretized-next-state (target-encoder A) already runs in meta_skill_loop; this is the
 latent variant for the continuous case.
 
-  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python research/physics_jepa.py
+  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.physics_jepa
 Deps: numpy (probe) + stdlib (JepaWorldModel is stdlib). Reuses lake_memory + skill_builder.signature.
 """
 

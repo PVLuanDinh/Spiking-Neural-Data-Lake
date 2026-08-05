@@ -10,12 +10,16 @@ noise-driven twitching, so it degrades gracefully under sensor noise where an al
 controller jitters every step. Refs: arXiv:2603.09729 (2026, "Efficient and robust control with spikes
 that constrain free energy").
 
-  Run: python free_energy_control.py       # (also run by run_selfchecks.py)
+  Run: PYTHONPATH=src python -m snn_data_lake.reasoning.free_energy_control  # (also in run_selfchecks)
 """
 
 import random
 
-random.seed(0)
+# random.seed(0) DELETED 2026-08-04 (specs/010, C33): it was an IMPORT-TIME global reseed that
+# clobbered any caller's seed, and it was VESTIGIAL here -- every RNG use in this module already
+# goes through a per-instance `random.Random(seed)`, so nothing read the global stream it set.
+# Verified by AST: no module-level statement and no function in this file touches the global
+# random API. Deterministic behaviour is unchanged; the side effect on importers is gone.
 
 TARGET = 1.0
 STEPS = 60

@@ -21,7 +21,9 @@ DISTINCTNESS (this is a different neural code from the repo's other attractor / 
     ANGLE and integrates a scalar ANGULAR velocity into a 1D angle. This module is 2D SPATIAL path
     integration whose firing is a HEXAGONAL lattice tiling a plane (position, not heading), built by
     oscillatory interference -- a 2D periodic code, not a single 1D bump.
-  - NOT hippocampus.py (DG/CA3 pattern separation / completion of discrete memories).
+  - NOT episodic_recall.py / sleep_replay.py (pattern separation / completion of DISCRETE memories).
+    (This row named `hippocampus.py`, RETIRED in the Policy-3 wave; see `hippocampus/__init__.py`.
+    Corrected 2026-08-04.)
   - NOT theta_gamma_code.py (phase-multiplexed working-memory buffer of ordered items).
 
 A reduced/idealized interference model on synthetic trajectories -- analytic plane-wave rate

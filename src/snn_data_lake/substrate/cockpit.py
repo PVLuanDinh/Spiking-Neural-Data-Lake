@@ -86,6 +86,12 @@ class Acts:
     def __init__(self):
         self._q = queue.Queue()
         self._done = {}
+        # BOUNDED, like Turns. `_done` was written on every pump and never trimmed, so an
+        # always-on daemon accumulated one record per arm command for the life of the process --
+        # an unbounded dict inside the thing whose whole job is to keep running. Turns already
+        # carries exactly this eviction (`_order` + _REPLY_KEEP) and Acts did not, which is the
+        # kind of gap two near-identical classes produce.
+        self._order = []
         self._lock = threading.Lock()
         self._n = 0
         self.applied = 0
@@ -143,6 +149,9 @@ class Acts:
                 rec = {"command": cmd, "applied": False, "reason": str(e)}
             with self._lock:
                 self._done[tid] = rec
+                self._order.append(tid)
+                while len(self._order) > _REPLY_KEEP:
+                    self._done.pop(self._order.pop(0), None)
         return n
 
 
@@ -366,7 +375,18 @@ def serve(brain, port=8137, turns=None, block=True, acts=None):
         except Exception:
             return None
 
-    srv = _Server(("127.0.0.1", int(port)), _handler(lambda: snapshot(brain), turns, _view))
+    # `acts` MUST be forwarded: `_handler` 404s /api/act when it is None, so omitting it here made
+    # every cockpit arm button -- including EMERGENCY_STOP -- a no-op while the daemon was correctly
+    # passing a queue in (`substrate/learn_daemon.py`, the `serve(...)` call in `main()`). The
+    # actuation tests all construct Acts() directly and never traverse serve(), so they proved the
+    # mechanism and said nothing about production.
+    #
+    # That cite was a line number into `learn_daemon.py` until 2026-08-04, and it resolved against
+    # the 32-line ROOT SHIM -- a file with no such line at all, since the daemon moved into the
+    # package under P4c. Naming the symbol instead, per the lesson `self_mod_harness.py` records.
+    # (The stale number is deliberately not repeated here: a corrected cite that still contains a
+    # resolvable-looking `file.py:NNN` token re-arms every scanner that looks for one.)
+    srv = _Server(("127.0.0.1", int(port)), _handler(lambda: snapshot(brain), turns, _view, acts))
     srv.turns = turns
     # the BOUND port, not the requested one: port=0 means "OS, pick one", and printing the request
     # would tell the reader to open http://127.0.0.1:0/
@@ -405,7 +425,6 @@ h2{font:600 13px/1 ui-monospace,Consolas,monospace;letter-spacing:.06em;color:rg
 #brand{grid-area:brand;display:flex;align-items:center;gap:14px;padding:0 12px;
  background:rgba(8,10,16,.63);border:1px solid rgba(0,200,220,.20);border-radius:4px;font-size:12px}
 #brand b{color:var(--cy);letter-spacing:.14em}
-#brand .sep{color:#2a3purple}
 #prog{flex:1;height:2px;background:#16203a;border-radius:2px;overflow:hidden}
 #prog i{display:block;height:100%;background:var(--cy);width:0}
 #scene{grid-area:scene;position:relative;overflow:hidden}
@@ -544,7 +563,12 @@ function bar(k,v,col,pk){
  if(v===null||v===undefined||typeof v!=='number'||!isFinite(v))return row(k,v,3,pk);
  const p=Math.max(0,Math.min(1,v))*100;
  return row(k,v,3,pk)+`<div class="bar"><i style="width:${p}%;background:${col||'var(--cy)'}"></i></div>`;}
-function big(v,d,col){return `<div class="big"${col?` style="color:${col}"`:''}>${fmt(v,d)}</div>`;}
+/* `pk` added 2026-08-04 (specs/010, C30). `big` had NO provenance slot, so the LARGEST number on
+   the page was the one value that structurally could not carry a tag -- and `access_index` was
+   drawn by it directly above two `row()`s that do carry one, making the untagged headline read as
+   the more trustworthy of the three. A renderer that cannot express "this cannot vary" guarantees
+   the most prominent number never says it. */
+function big(v,d,col,pk){return `<div class="big"${col?` style="color:${col}"`:''}>${fmt(v,d)}${tag(pk||'')}</div>`;}
 function sub(t){return `<div class="sub">${t}</div>`;}
 
 /* threshold recolouring, mhflocke's convention */
@@ -803,8 +827,8 @@ function paint(d){
    +row('grown units',s.grown_units)+row('reasoning acc',s.reasoning_accuracy)
    +row('reliability',s.reliability);
  $('bLake').innerHTML=big(dv.lake_events,0)+sub('lake working-memory events')
-   +row('reachable',(dv.coverage_reachable===undefined?null:dv.coverage_reachable+' / '+dv.coverage_total))
-   +row('dormant',dv.coverage_dormant)
+   +row('reachable',(dv.coverage_reachable===undefined?null:dv.coverage_reachable+' / '+dv.coverage_total),undefined,'coverage_reachable')
+   +row('dormant',dv.coverage_dormant,undefined,'coverage_dormant')
    +`<div class="note">reachable, not proven to charge behaviour.</div>`;
 }
 
@@ -988,8 +1012,52 @@ def main():
     # NORD_TORCH=0 dropped 2026-07-29 with the zero-dependency rule: this self-check now builds the
     # brain in the configuration users actually get. NORD_PERSIST stays -- it guards the durable lake,
     # which is a real invariant and has nothing to do with dependencies.
-    os.environ.setdefault("NORD_PERSIST", "0")  # a self-check must never write the durable lake
-    brain = make_brain(seed=0)
+    #
+    # SCOPED 2026-08-04 (specs/010, C34). This was a bare `os.environ.setdefault("NORD_PERSIST","0")`
+    # that was never restored, so running this self-check disabled durability for EVERY consumer in
+    # the process afterwards -- the same unscoped-environment defect `home.main()`'s `finally` block
+    # had already been fixed for, one module over ("restored in the finally, NOT popped").
+    # `tests/test_selfchecks.py` runs every module's `__main__` in ONE interpreter, which is exactly
+    # the shape that turns a local convenience into a global one.
+    #
+    # `persist=False` is now passed EXPLICITLY rather than leaned on via the environment: it states
+    # the invariant this self-check actually wants ("never write the durable lake") at the call
+    # site, and it no longer depends on a global that anything else can observe.
+    # ---- Acts._done is BOUNDED (added 2026-08-05) --------------------------------------------
+    # The eviction landed the day before with no criterion of any kind, in the always-on daemon,
+    # where "grows forever" is the whole failure mode. P8: every criterion owes a reachable red.
+    # RED, CONSTRUCTED AND RUN: delete the three eviction lines in `Acts.pump` and this fires with
+    # len(_done)=200; shrink the retention and it fires the other way. It runs BEFORE the brain is
+    # built so a stub arm is enough -- pump() only needs `brain.brain.arm.arm.apply`.
+    class _StubArm:
+        @staticmethod
+        def apply(cmd):
+            return {"stopped": False, "theta_deg": []}
+
+    class _StubBrain:
+        class brain:  # noqa: N801 -- mirrors the real attribute chain pump() walks
+            class arm:  # noqa: N801
+                arm = _StubArm
+
+    _bounded = Acts()
+    for _ in range(_REPLY_KEEP * 3 + 8):
+        _bounded.submit("HOLD")
+    _bounded.pump(_StubBrain, budget=_REPLY_KEEP * 3 + 8)
+    assert _bounded.applied == _REPLY_KEEP * 3 + 8, (
+        f"the pump must have run every queued command ({_bounded.applied})"
+    )
+    assert len(_bounded._done) == _REPLY_KEEP and len(_bounded._order) == _REPLY_KEEP, (
+        "Acts._done must be BOUNDED at _REPLY_KEEP like Turns -- an always-on daemon that keeps one"
+        f" record per arm command forever leaks: got {len(_bounded._done)}/{len(_bounded._order)}"
+    )
+    assert _bounded.result(_REPLY_KEEP * 3 + 8) is not None, (
+        "the NEWEST reply must survive eviction"
+    )
+    assert _bounded.result(1) is None, "the OLDEST reply must be the one evicted, not the newest"
+
+    _prior_persist = os.environ.get("NORD_PERSIST")
+    os.environ["NORD_PERSIST"] = "0"
+    brain = make_brain(seed=0, persist=False)
     for _ in range(8):
         brain.tick()
 
@@ -1061,6 +1129,14 @@ def main():
         srv.shutdown()
         srv.server_close()
         brain.close()
+        # RESTORE, not pop -- popping would drop a value the CALLER set, which is the precise
+        # mistake `home.main()`'s own `finally` records having made ("restored in the finally, NOT
+        # popped"). Cited by SYMBOL: the old `home.py:311` resolved onto an unrelated docstring
+        # line inside `save_selfbuild`, three hundred lines from the block it meant.
+        if _prior_persist is None:
+            os.environ.pop("NORD_PERSIST", None)
+        else:
+            os.environ["NORD_PERSIST"] = _prior_persist
 
     print(
         f"cockpit OK: page served, {len(geom['modules'])} modules / {len(geom['edges'])} tracts, "

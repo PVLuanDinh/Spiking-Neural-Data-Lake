@@ -79,7 +79,25 @@ NODES = {
 }
 
 
-def _e(source, target, tract, sign, cls, loop=None, weight=1.0):
+def _e(source, target, tract, sign, cls, loop=None, weight=1.0, delay=1):
+    """One long-range projection.
+
+    `delay` is CONDUCTION DELAY in ticks, added 2026-08-04. Until then this constructor had seven
+    fields and none of them was delay, so every tract in the brain -- thalamocortical radiation,
+    corticostriatal, pallidothalamic -- arrived in exactly one tick. In biology these differ by an
+    order of magnitude, and conduction delay is what STDP and coincidence detection are FOR.
+
+    The consumer was already here and complete: `thalamus/connectome_router.py:83` reads
+    `e.get("delay", default_delay)` and `:101` sizes a ring buffer to the longest delay. It has
+    simply never been handed a value -- a consumer waiting on a producer that did not exist, which
+    is P6 seen from the structural side.
+
+    DEFAULT IS 1, deliberately: adding the field changes no behaviour on its own. Varied values are
+    an EXPERIMENT (see the A/B in `tools/ab_connectome_delay.py`) and are not adopted here. If the
+    A/B shows delay variation charges an outcome, then supplying real per-tract values becomes a P1
+    obligation and they must come from anatomy (the 2024 multi-scale human cortex model is
+    DTI-derived and open source), NOT from numbers chosen to make a demo work.
+    """
     return {
         "source": source,
         "target": target,
@@ -88,6 +106,7 @@ def _e(source, target, tract, sign, cls, loop=None, weight=1.0):
         "cls": cls,
         "loop": loop,
         "weight": weight,
+        "delay": delay,
     }
 
 

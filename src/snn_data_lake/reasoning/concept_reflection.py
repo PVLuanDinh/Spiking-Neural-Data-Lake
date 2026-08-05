@@ -1,14 +1,14 @@
 r"""
 CONCEPT REFLECTION -- the developmental loop THINKS about what it just learned.
 
-The autonomous developmental loop (research/autonomous_brain_recovered.py) PERCEIVES -> holds an
+The autonomous developmental loop (reasoning/autonomous_brain_recovered.py) PERCEIVES -> holds an
 objective in WM -> LEARNS a new concept (order-invariant readout) -> grows neurons -> consolidates to
 the lake. It monitors HOW WELL it learns (MetacognitiveMonitor: confidence/surprise/learning-progress)
 -- but it never reflects on the CONTENT: what the new concept is, how it relates to what it already
 knows. A general learning/thinking brain should THINK about what it is learning.
 
 This module adds that reflection, THROUGH THE SPIKING GLOBAL WORKSPACE, reusing the serial re-entrant
-train of thought (research/train_of_thought.py) that a feedforward J-space cannot form internally:
+train of thought (reasoning/train_of_thought.py) that a feedforward J-space cannot form internally:
 
   learn a new concept c  ->  REFLECT(c):
     ignite c in the workspace -> its nearest ALREADY-LEARNED concept (by feature-prototype proximity)
@@ -25,7 +25,7 @@ understanding and NOT a language model. The contribution is: the loop now runs a
 train of thought over its own concepts when it learns, and wires the ones it thinks about together.
 The association is proximity; the workspace supplies the ignition-gated serial chaining + hold.
 
-  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python research/concept_reflection.py
+  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.concept_reflection
 Deps: numpy + stdlib. Reuses train_of_thought (spiking GlobalWorkspace); zero core edits.
 """
 
@@ -60,10 +60,26 @@ class ConceptReflector:
         self.protos[str(concept)] = np.asarray(prototype, dtype=float)
         return self
 
-    def _associate(self):
+    def _associate(self, rheobase):
         """associate(broadcast, chain) -> [(concept, salience), ...]: the nearest OTHER learned concepts
         by prototype cosine, above threshold, mapped to a supra-rheobase workspace drive. Only concepts
-        related enough IGNITE (come to mind); unrelated ones stay sub-threshold."""
+        related enough IGNITE (come to mind); unrelated ones stay sub-threshold.
+
+        `rheobase` is the ignition threshold READ OFF the workspace this train of thought will drive
+        (see `reflect`), never a literal. It used to be `min(1.0, 0.55 + 0.44 * sim)` with a comment
+        naming 0.55 as "rheobase" -- a second, silent copy of
+        `thalamus/global_workspace.GlobalWorkspace.ignition_threshold`. Two definitions of one value
+        is the P2 defect, and the tree already carries the correct idiom
+        (`spike_chat_lake.LakeChat.__init__`: `self._rheobase = self._new_workspace().ignition_threshold`).
+        The affine map is now derived from it rather than hand-tuned to it: sim in [threshold, 1]
+        lands in (rheobase, 1.0], so every candidate that clears the similarity gate is
+        supra-threshold BY CONSTRUCTION at any rheobase, instead of only at 0.55.
+
+        Boundary-checked (a P1 rewrite that divides by a running quantity is how the last one
+        introduced a singularity): there is no division here. rheobase=0.0 -> sal == sim > 0;
+        rheobase=1.0 -> sal == 1.0, which ignites nothing -- correct, since a workspace whose
+        rheobase is 1.0 cannot be ignited by any salience in [0,1] at all. Monotone in `sim`, so the
+        candidate ORDER (and hence the workspace competition) is unchanged from the old form."""
 
         def associate(broadcast, chain):
             if broadcast not in self.protos:
@@ -76,9 +92,7 @@ class ConceptReflector:
                     continue
                 sim = _cos(v, p)
                 if sim >= self.threshold:
-                    sal = min(
-                        1.0, 0.55 + 0.44 * sim
-                    )  # sim in [thr,1] -> salience above rheobase (0.55)
+                    sal = min(1.0, rheobase + (1.0 - rheobase) * sim)
                     cands.append((c, sal))
             cands.sort(key=lambda x: (-x[1], x[0]))
             return cands[: self.top_k]
@@ -91,7 +105,18 @@ class ConceptReflector:
         the brain thought about (>=1; just the seed if nothing related ignites)."""
         c = str(new_concept)
         tot = TrainOfThought(seed=self.seed)
-        chain = tot.think(c, self._associate(), max_steps=max_steps)
+        # The rheobase of the workspace this thought will actually run in. `think()` rebuilds
+        # `tot.ws` from the same constructor, so reading it here is the value that will gate.
+        # Read DIRECTLY, not `getattr(..., 0.55)` (corrected 2026-08-05). That default was the same
+        # literal 0.55 the P1 fix above exists to delete -- a second, silent copy of
+        # `GlobalWorkspace.ignition_threshold` surviving as a fallback -- and it was DEAD: measured,
+        # `TrainOfThought.__init__` and `.think()` both assign `self.ws = GlobalWorkspace(...)`,
+        # which always defines the attribute. A workspace that ever lacked it should raise here, not
+        # silently revert every reflection in the brain to a hardcoded threshold that no longer
+        # matches the one doing the gating. Tightening, not a loosening: nothing that reached the
+        # old default reaches anything different now.
+        rheobase = float(tot.ws.ignition_threshold)
+        chain = tot.think(c, self._associate(rheobase), max_steps=max_steps)
         for a, b in zip(chain, chain[1:]):  # fire together, wire together
             k = frozenset((a, b))
             self.hebb[k] = self.hebb.get(k, 0.0) + 1.0

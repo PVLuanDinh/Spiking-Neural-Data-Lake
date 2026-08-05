@@ -96,6 +96,22 @@ jobs:
       - name: Citations resolve (no tracked file cites an untracked .py as runnable)
         run: python tools/citation_guard.py
 
+      # P8 (specs/010): a success criterion with no reachable RED is worthless and is DELETED, not
+      # weakened. ASSERTING from the start because it is clean on this tree with zero findings to
+      # disposition -- and because it has been proven able to fire: tests/test_red_reachability.py
+      # reconstructs the pre-fix consciousness_probe and checks every bucket lights up. A gate that
+      # has only ever been seen green is indistinguishable from one that cannot see.
+      - name: Criteria can fail (no zero-argument or self-asserting success criterion)
+        run: python tools/red_reachability.py --assert
+
+      # P7 (specs/010): every import declared, every declaration used. REPORT-ONLY for now -- it
+      # exits 1 on four real, undispositioned findings (arcengine + nir undeclared; pillow +
+      # pyarrow unused). Turning on --assert before those are resolved would redden the build for
+      # findings nobody has decided about, which is not the same as enforcing a rule. Flip to
+      # --assert as the last step of specs/010 tasks T021/T062.
+      - name: Dependency ledger (report only until T021/T062 land)
+        run: python tools/dependency_ledger.py
+
   test:
     name: tests + coverage
     runs-on: ubuntu-latest

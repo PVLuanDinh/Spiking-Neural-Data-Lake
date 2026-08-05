@@ -18,7 +18,9 @@ What this instrument refuses to do is more important than what it does:
   and it is a valid end state for the whole feature.
 
 Split, ported discipline not position: teach on one portion, judge on a disjoint remainder, refuse
-when either is too small (`reasoning/ng_snn.py:178-201`). The POSITION does not transfer onto the
+when either is too small (`hippocampus/ng_snn.py:178-201`, its held-out prune -- this said
+`reasoning/ng_snn.py` until 2026-08-04, a path that has not existed since the v3.78 promotion;
+the LINES still resolve, only the tier was wrong). The POSITION does not transfer onto the
 raw interval axis -- MEASURED, a literal trailing-20% split leaves only 4 of 63 gaps able to move
 the metric and a stride over the integer axis gives 15 of 63, while the gap-major grid used here
 gives 63 of 63. The universe is derived from the population's OWN ladder: 10 points per gap at
@@ -26,8 +28,10 @@ gives 63 of 63. The universe is derived from the population's OWN ladder: 10 poi
 (`index % 5 == 4` -> TEST). No RNG, so determinism semantics survive.
 
 Statistic ported from `scratchpad/grow_on_top_nonstationary.py:130-137` (population-agnostic
-arithmetic; the file itself is gitignored and `tools/citation_guard.py:320` forbids a tracked file
-citing an untracked .py as a reproduction path, so it is re-derived here rather than imported).
+arithmetic; the file itself is gitignored and `tools/citation_guard.py`'s STRICT assert -- the
+`assert not unexempt` in its `main()` -- forbids a tracked file citing an untracked .py as a
+reproduction path, so it is re-derived here rather than imported. Named by symbol: this said
+`:320`, which is the neighbouring stale-exemption assert).
 Two deliberate changes: tie counts print UNCONDITIONALLY -- MEASURED 10 of 30 paired differences
 were exactly 0.0, and a mean/se hiding 33% zero-inflation overstates its own power -- and every
 count prints as `N of M`, never `N/M`, because the coverage-artifact fingerprint harvests bare

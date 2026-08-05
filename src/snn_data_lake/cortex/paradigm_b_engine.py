@@ -16,7 +16,7 @@ emitting ONLY matches to the host:
                                   This is what distinguishes Paradigm B from a coincidence
                                   filter: [5->17->42] matches, [42->17->5] does not.
 
-Run:  python paradigm_b_engine.py
+Run:  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.paradigm_b_engine
 """
 
 import os

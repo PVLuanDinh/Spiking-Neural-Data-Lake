@@ -18,7 +18,19 @@ a seed sweep showed those single-split numbers were coin flips, so they are now 
 cross-validation folds / repeated replications (the SEED SWEEP note in each main() carries the
 numbers, including the two claims that turned out to be weaker than the origin module said).
 
-Run:  python research/spike_kg.py [--model {transe,rotate,relations,all}]
+Run:  PYTHONPATH=src python -m snn_data_lake.reasoning.spike_kg [--model {transe,rotate,relations,all}]
+
+(the path the module is at TODAY; the previous line named `research/spike_kg.py`, retired in
+v3.78 -- a documented command that cannot run is the same fail-green shape as a stale citation.
+This one survived the 2026-08-04 pass that corrected seven sibling commands, which is why the
+class is closed by re-deriving rather than by copying the list.)
+
+ASCII note: the remaining non-ASCII characters in this file are all in `#` COMMENTS, never in a
+`print()` or an f-string. Source is decoded as UTF-8 by the interpreter (PEP 3120); only stdout
+goes through the console codec, which is cp1252 on Windows. The seven stdout-reaching sites were
+cleared 2026-08-04 after the `relations` self-check was shown to die with UnicodeEncodeError on
+any run whose stdout is not a UTF-8 console (re-reproduced 2026-08-05 under PYTHONIOENCODING=cp1252
+on the pre-fix file, and this file now exits 0 under the same setting).
 """
 
 import argparse
@@ -114,7 +126,7 @@ def run_transe():
 
     # ---- relational inference + anomaly scoring ---------------------------------
     def score(E, R, h, r, t):
-        """spike-time mismatch ||s_h + δ_r − s_t|| — low = plausible triple."""
+        """spike-time mismatch ||s_h + delta_r - s_t|| -- low = plausible triple."""
         return norm(sub(add(E[h], R[r]), E[t]))
 
     def evaluate(E, R, test):
@@ -180,7 +192,7 @@ def run_transe():
         print(f"  Hits@3 : {h3:.1%}")
         print(f"  MRR    : {mrr:.3f}")
         print()
-        print("ANOMALY SCORING (||s_h + δ_r − s_t||, lower = plausible):")
+        print("ANOMALY SCORING (||s_h + delta_r - s_t||, lower = plausible):")
         print(f"  mean score, true triples  : {true_d:.3f}")
         print(f"  mean score, random triples: {false_d:.3f}  ({false_d / true_d:.1f}x higher)")
         print("=" * 60)
@@ -398,7 +410,7 @@ def run_relations():
         return by_rel
 
     def circ(a, b):
-        """mean circular distance between two phase vectors, in [0, π]."""
+        """mean circular distance between two phase vectors, in [0, pi]."""
         return sum(abs(wrap(a[d] - b[d])) for d in range(D)) / D
 
     def main():
@@ -457,14 +469,16 @@ def run_relations():
             print(f"  {r:6} (shift {SHIFT[r]:+d}) : {hits[r]:5.0%}")
         print()
         print(f"Learned-phase ALGEBRA (mean circular error over {n_runs} runs, lower better):")
-        print(f"  inverse      φ(F_inv) ≈ −φ(F) : {inv_err:.3f} rad")
-        print(f"  symmetric    2·φ(S) ≈ 0       : {sym_err:.3f} rad")
-        print(f"  composition  φ(C) ≈ φ(A)+φ(B) : {comp_err:.3f} rad")
-        print(f"  (random baseline ≈ {math.pi / 2:.2f} rad; symmetric is looser — two basins 0/π)")
+        print(f"  inverse      phi(F_inv) ~ -phi(F) : {inv_err:.3f} rad")
+        print(f"  symmetric    2*phi(S)    ~ 0      : {sym_err:.3f} rad")
+        print(f"  composition  phi(C) ~ phi(A)+phi(B): {comp_err:.3f} rad")
+        print(
+            f"  (random baseline ~ {math.pi / 2:.2f} rad; symmetric is looser -- two basins 0/pi)"
+        )
         print("=" * 60)
 
         assert all(h >= 0.8 for h in hits.values()), f"a relation type failed: {hits}"
-        # inverse/composition recover tightly; symmetric (self-inverse, 2φ≡0) is looser but
+        # inverse/composition recover tightly; symmetric (self-inverse, 2*phi == 0) is looser but
         # still well below the random ~1.57 rad baseline.
         assert inv_err < 0.4 and comp_err < 0.4 and sym_err < 0.7, (
             f"phase algebra not recovered: inv={inv_err:.2f} sym={sym_err:.2f} comp={comp_err:.2f}"

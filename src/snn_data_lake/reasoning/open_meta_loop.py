@@ -2,8 +2,8 @@ r"""
 OPEN META LOOP -- the standing multi-domain loop with an OPEN-ENDED FRONTIER: new skills are
 DISCOVERED and SPAWNED during the loop, not hand-coded.
 
-research/meta_skill_loop.py runs a standing loop over a FIXED frontier (language / math / physics /
-world-kb) chosen by cross-domain learning-progress. research/open_world_loop.py DISCOVERS domains from
+reasoning/meta_skill_loop.py runs a standing loop over a FIXED frontier (language / math / physics /
+world-kb) chosen by cross-domain learning-progress. reasoning/open_world_loop.py DISCOVERS domains from
 a mixed unlabeled stream (no fixed count). THIS wires the discovery INTO the standing loop: the loop
 starts with a few SEED skills, but a mixed UNLABELED stream flows through the open-world discovery
 controller each cycle; when a coherent NOVEL cluster appears (a kind of data no current skill covers),
@@ -24,7 +24,7 @@ beats its own next-token baseline, but the loop DISCOVERS + ROUTES + GROWS skill
 or "understand" any domain. The contribution is: the frontier is genuinely open -- new skills spawn from
 unlabeled data during the standing loop and are studied like the seeds.
 
-  PYTHONPATH=src .venv-lake/Scripts/python research/open_meta_loop.py
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.open_meta_loop
   Knobs: NORD_CTX(3) NORD_CYCLES(14) NORD_SLICE(800) NORD_RFF(800) NORD_GAMMA(0.15) NORD_PERSRC(900)
 Deps: numpy (+ stdlib). Reuses meta_skill_loop (Domain/physics_stream), open_world_loop
       (OpenWorldController/dna_stream), skill_builder, corpus_stream, lake_memory, spiking_curiosity.

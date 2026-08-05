@@ -133,6 +133,8 @@ package, no new directory, no new dependency. The harness goes in `tools/` rathe
 because `scratchpad/` is gitignored and `tools/citation_guard.py:320` forbids a tracked file citing an
 untracked `.py` as a reproduction path.
 
+> **P7 VOID (annotated 2026-08-04).** The sentence above certifies "no new dependency" as a constitution check. **That is not a criterion under P7** (`docs/POLICIES.md`), which states that *"it would be another dependency" is NOT a valid reason to reject anything* and requires a rejection to cite a measurement on the real workload or a structural argument. No library was evaluated here, so the check scored nothing. Left in place rather than deleted because this file records a decision that was made; annotated because P7 names these certifications as live residue of the zero-dependency rule abolished 2026-07-20. `specs/010/plan.md` is the first plan to decline the certification on purpose.
+
 ## Execution Order
 
 Deliberately not the spec's priority order — see research.md, "Cross-cutting".

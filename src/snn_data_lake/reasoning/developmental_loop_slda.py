@@ -16,7 +16,7 @@ Two optimizations from the loop audit/research (v3.72):
 
 Feature learning stays UNSUPERVISED (frozen conv1); only the SLDA readout is supervised.
 
-Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/developmental_loop_slda.py
+Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.developmental_loop_slda
 Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(400) NORD_RFF(2000)
        NORD_GAMMA(0.02) NORD_SHRINK(0.1) NORD_TRAIN(12000) NORD_TEST(2000)
 Deps: numpy torch torchvision snntorch
@@ -26,7 +26,7 @@ import os
 
 import torch
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.fast_features import batched_features

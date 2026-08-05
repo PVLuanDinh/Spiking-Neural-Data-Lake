@@ -61,7 +61,12 @@ def test_deterministic_across_instances():
 
 
 def test_works_at_native_resonator_dim_512():
-    # dim == vsa.D exercises the direct resonator_network.cleanup_project reuse path.
+    # dim == vsa.D used to exercise a direct resonator_network.cleanup_project reuse path. The
+    # 2026-08-04 promotion redesign of vsa_structure_mapping parameterised cleanup by dimension in
+    # its own _cleanup_project, so there is no longer a separate dim==512 branch to reach and this
+    # case is now the same code path as every other dim. Kept anyway: 512 is the native resonator
+    # width, so it is still a worthwhile width to pin, and a test that keeps passing for a NEW
+    # reason should say so rather than keep advertising the old one.
     mapper = sm.StructureMapper(dim=512, seed=0)
     assert mapper.map(CHAIN_BASE, CHAIN_TGT) == {"A": "X", "B": "Y", "C": "Z"}
 

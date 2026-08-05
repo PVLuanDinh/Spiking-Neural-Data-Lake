@@ -8,10 +8,16 @@ absolute angle -- dead-reckoning with no encoder (head-direction cells / arXiv:2
 
 PRODUCT integration (additive, opt-in, read-only): `ProprioceptiveEstimator` drives the ring from the arm's
 COMMANDED joint deltas, giving a spiking estimate of the joint angle that never reads the joint sensor. Because
-an uncommanded disturbance (`ArmSim.perturb`) is never fed to it, the estimate then DIVERGES from the true angle
--> a joint-level slip/disturbance signal that complements the end-effector-level `ArmSim.deviation()`. It is a
-pure observer: it issues no commands and never touches the collision / EMERGENCY_STOP / trajectory-reflex path,
-so the arm's safety envelope and default behaviour are unchanged. Deterministic.
+an uncommanded disturbance (`So101Arm.inject_disturbance`) is never fed to it, the estimate then DIVERGES from
+the true angle -> a joint-level slip/disturbance signal that complements the end-effector-level
+`So101Arm.deviation()`. It is a pure observer: it issues no commands and never touches the collision /
+EMERGENCY_STOP / trajectory-reflex path, so the arm's safety envelope and default behaviour are unchanged.
+Deterministic.
+
+(Corrected 2026-08-04: this paragraph named `ArmSim.perturb` and `ArmSim.deviation()`. `ArmSim` is not
+defined anywhere in `src/` -- it is the same phantom class `CLAUDE.md` had to correct in the safety-envelope
+list. The live body is `brainstem/so101_arm.So101Arm`, which the code below has always imported and which
+carries both methods under the names used here.)
 
   python -m snn_data_lake.hippocampus.ring_attractor        # (also run by run_selfchecks.py)
 """

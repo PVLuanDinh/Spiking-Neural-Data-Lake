@@ -5,8 +5,11 @@ Brain-Cog's SCA-SNN has one genuine lever worth taking (and NOTHING of its conv/
 new task's FRESH capacity by how DISSIMILAR it is to what the brain already knows, and when a task
 is SIMILAR to a learned one, REUSE + FREEZE the prior sub-net instead of growing -- fewer new units,
 and old skills cannot be overwritten (no catastrophic forgetting). SCA-SNN spells the sizing as
-`channel_number = base * (1 - exp(-5 * min_dist))` (network.py:247-262) and the reuse as "freeze the
-prior experts, train only the newest" (incmodel.py:114-116). This module is that lever, brain-native.
+`channel_number = base * (1 - exp(-5 * min_dist))` and the reuse as "freeze the prior experts, train
+only the newest". (Those two cites read `network.py:247-262` and `incmodel.py:114-116` -- files in
+BRAIN-COG's SCA-SNN, not in this tree, where a reader following them finds nothing. Qualified rather
+than deleted: the attribution is real and worth keeping, the bare filenames were not.)
+This module is that lever, brain-native.
 
 It BUILDS ON the growth signals we already compute -- it does NOT reinvent them:
   * NOVELTY / SIMILARITY = the ART developmental match we already run. `GrowingLearner._best`

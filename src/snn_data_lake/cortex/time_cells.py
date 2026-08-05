@@ -71,7 +71,9 @@ import bisect as _bisect
 import math
 import random
 
-# The held-out interval grid, and the split ratio ported from `reasoning/ng_snn.py:178` -- the
+# The held-out interval grid, and the split ratio ported from `hippocampus/ng_snn.py`'s
+# `NGSNN.prune_unearned` (`n_val = max(8, int(0.2 * N))`) -- the cite read `reasoning/ng_snn.py:178`,
+# a path with no file behind it since the promotion into hippocampus/. The
 # DISCIPLINE transfers (teach on one portion, judge on a disjoint remainder, refuse when either is
 # too small), the POSITION does not. MEASURED at n=64: a literal trailing-20% split leaves only 4 of
 # 63 gaps able to move the metric and a stride over the raw integer axis gives 15 of 63, while this
@@ -117,8 +119,10 @@ class TimeCellClock:
         if float(drive) <= 0.0:
             # decode() divides every nominal latency by `drive`; a non-positive drive makes the ramp
             # never advance (or advance backwards) and turns that division into a sign flip or a
-            # ZeroDivisionError deep inside the live tick, where brain.py:1934's bare handler would
-            # swallow it and freeze the clock. Refuse at the boundary instead.
+            # ZeroDivisionError deep inside the live tick, where the bare `except Exception` that
+            # wraps the clock in `Brain._c1_tick` would swallow it and freeze the clock. Refuse at
+            # the boundary instead. (Cited as `brain.py:1934` until 2026-08-04; that line is now
+            # `self._pc_surprise = round(pcs, 4)`, which is not a handler at all.)
             raise ValueError("drive must be > 0")
         self.n_cells = n_cells
         self.seed = seed
@@ -284,7 +288,8 @@ class TimeCellClock:
 
         `n_fired` carries a dual role -- a count AND a sorted index into `thresholds` -- so inserting
         below the ramp mid-interval either leaves `spike_tick[j] = None` (MEASURED: TypeError in
-        decode()'s deviations loop, swallowed by brain.py:1934's bare handler, which silently freezes
+        decode()'s deviations loop, swallowed by the bare `except Exception` around the clock in
+        `Brain._c1_tick`, which silently freezes
         the clock) or fabricates a crossing time (MEASURED: shifts the live-consumed `sd` by +0.005256
         with zero ticks elapsed). At a boundary the fired set is empty and neither can arise."""
         return self.n_fired == 0 and self.v == 0.0 and all(s is None for s in self.spike_tick)
@@ -460,19 +465,44 @@ class TimeCellClock:
     # ---------------------------------------------------------------- persistence
     def save(self, name=STATE_NAME):
         """Persist the LEARNED state -- the threshold vector and the lineage keys that make it
-        interpretable -- as a small atomic JSON blob.
+        interpretable -- INTO the one durable lake. Returns True if written, False if unchanged.
 
-        NOT the lake, and the lake's own owning file states the rule (`substrate/home.py:41-42`:
-        weights/calibration stay separate STATE, never in the memory lake). A threshold vector IS the
-        learned weight set. Three measurements agree: appending a clock-shaped npz under `_T_GROWTH`
+        P4b VIOLATION CLOSED 2026-08-05. This paragraph twice argued the sidecar was correct, on the
+        authority of `substrate/home.py`'s record-tag header -- *"weights/calibration stay separate
+        STATE, never in the memory lake"* -- and that sentence was RETRACTED in `home.py` as "the
+        exact arrangement P4b forbids". A threshold vector IS the learned weight set and
+        `home.save_state` WAS the `json.dump` P4b names. It is no longer: `save_state` now writes a
+        `_T_STATE` record into `brain_lake.bin` under this same `name`, and imports the existing
+        `<home>/time_cells.json` (2,031 B on the operator's home, left on disk inert) the first time
+        it is read. Not one line here changed, which is what closing a SEVEN-caller family by fixing
+        the mechanism looks like from the caller's side.
+
+        THE THREE MEASUREMENTS THAT USED TO SIT HERE were arguments against reusing `_T_GROWTH`, and
+        the fix honours all three by NOT reusing it: appending a clock-shaped npz under `_T_GROWTH`
         makes `restore_growth_state()` return False and the NG-SNN silently start ungrown, swallowed
-        by `brain.py:984`'s bare handler; `growth_state_bytes()` returns None when `_model is None`,
-        so on the NORD_TORCH=0 job the clock's state would have no carrier at all; and `_T_GROWTH` is
-        180.0 of 187.5 MB (96.0%) of the real lake, whose prune policy is unbuilt. `load_state` costs
-        0.110 ms against `load_growth`'s 0.400 s and 187.5 MB resident PER BRAIN CONSTRUCTION.
+        by the bare `except Exception` around `load_growth()` in `Brain._make_neuro`;
+        `growth_state_bytes()` returns None when `_model is None`, so with torch absent the clock's
+        state would have no carrier; and `_T_GROWTH` dominates the lake (RE-MEASURED 2026-08-05 by a
+        read-only frame scan of the live 516,810,138 B lake: 73,081 growth records / 505,367,813 B,
+        97.8%, against 21,033 FACT and 29,005 EPISODE -- the "180.0 of 187.5 MB (96.0%)" that stood
+        here was measured on a smaller lake and is superseded, not contradicted; re-scanned
+        independently hours later at 519,646,815 B / 124,536 records the daemon had moved every
+        count -- 73,490 growth / 508,082,042 B / 97.77%, 21,040 FACT, 30,005 EPISODE -- so the RATIO
+        is the durable claim here and the absolute counts are a timestamp). `_T_STATE` is
+        clock-sized, keyed by name, and shares nothing with the growth blob but the file.
 
-        Overwrite IS the prune policy, so FR-014 is satisfied without introducing a retention
-        constant to tune (P1).
+        WHAT IT NOW COSTS, stated because it is a real regression and the alternative was staying
+        non-compliant: a load is a replay of the one lake. One full pass over that 516.8 MB lake
+        measured 349 / 376 / 378 ms, and 250 / 271 / 279 ms on a re-scan of the (larger) lake hours
+        later -- cache- and load-dependent, so a quarter to four tenths of a second is the honest
+        statement -- against the ~0.1 ms this used to pay for a 2 KB file read.
+        `home._state_index` pays it ONCE per BinLog instance, so the growth path here -- which calls
+        `save()` on every tick the clock earns a cell (`cortex/brain.py`, in the wake tick's
+        `grow_if_earned` branch) -- pays it once, not per call.
+
+        Overwrite IS the prune policy for the clock's own state, so FR-014 is satisfied without a
+        retention constant to tune (P1). At the lake level the record is append-only, and an
+        UNCHANGED vector is not re-appended at all.
 
         Per-trial state (`v`, `fired`, `spike_tick`, `n_fired`, `t`) is deliberately NOT persisted:
         it describes an interval in progress, that interval ended when the process died, and
@@ -609,6 +639,51 @@ def main():
     assert error_post < error_pre, (
         f"learn_interval must reduce interval-reproduction error ({error_pre:.4f} -> {error_post:.4f})"
     )
+
+    # ---- 4. P4b: the learned thresholds live IN the one lake, proven ACROSS A PROCESS BOUNDARY ----
+    # There was no persistence check here at all before 2026-08-05, while `save()` carried three
+    # paragraphs arguing about WHERE to persist. A store nothing exercises is a store nothing can
+    # certify, and P4b is explicit that an in-process re-read certifies nothing.
+    import os
+    import shutil
+    import subprocess
+    import sys
+    import tempfile
+
+    from snn_data_lake.substrate import home
+
+    src_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    prior_home = os.environ.get("NORD_HOME")  # restored, never popped (in-process gate runs)
+    work = tempfile.mkdtemp(prefix="time_cells_home_")
+    try:
+        os.environ["NORD_HOME"] = work
+        grown = TimeCellClock(n_cells=64, seed=0)
+        grown.grow("interior", gap=10)  # a learned threshold no fresh clock has
+        assert grown.n_cells == 65, grown.n_cells
+        assert grown.save() is True, "the first save of a grown ladder must write a lake record"
+        assert grown.save() is False, "an unchanged ladder must not be re-appended to the one lake"
+        assert not os.path.exists(home.state_path(STATE_NAME)), (
+            "learned thresholds must go IN brain_lake.bin -- no time_cells.json sidecar"
+        )
+        child = (
+            f"import sys; sys.path.insert(0, {src_root!r})\n"
+            f"import os; os.environ['NORD_HOME'] = {work!r}\n"
+            "from snn_data_lake.cortex.time_cells import TimeCellClock\n"
+            "back, why = TimeCellClock(n_cells=64, seed=0).restored()\n"
+            "assert why == '', why\n"
+            f"assert back.thresholds == {grown.thresholds!r}, back.thresholds\n"
+            "print('  4 durable   : child rebuilt %d thresholds from brain_lake.bin alone'"
+            " % back.n_cells)\n"
+        )
+        rc = subprocess.run([sys.executable, "-c", child]).returncode
+        assert rc == 0, f"the learned ladder did not survive into a SEPARATE process (rc={rc})"
+    finally:
+        if prior_home is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
+            os.environ["NORD_HOME"] = prior_home
+        shutil.rmtree(work, ignore_errors=True)
+
     print(
         f"self-check OK: decode tracks elapsed monotonically (err {final_err:.2f}/50, monotonic={monotonic}); "
         f"sd grows with duration (sd@10={sd_short:.4f} -> sd@50={sd_long:.4f}, Weber law); learn_interval "

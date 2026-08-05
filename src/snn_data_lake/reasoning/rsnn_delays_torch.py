@@ -8,7 +8,7 @@ heterogeneous TRAINABLE membrane time constants -- the ICLR-2024 recipe (Hammoua
 Masquelier, "Learning Delays in Spiking Neural Networks using Dilated Convolutions with Learnable
 Spacings", arXiv:2306.17670) that reaches SOTA on the temporal SHD/SSC benchmarks WITHOUT recurrence.
 Delays SHINE on temporal (audio) data, so the target is SHD (Spiking Heidelberg Digits, 20-class, via
-tonic); it FALLS BACK to N-MNIST (via research/ng_snn/data.py) and to a self-contained SYNTHETIC
+tonic); it FALLS BACK to N-MNIST (via reasoning/ng_snn/data.py) and to a self-contained SYNTHETIC
 temporal dataset (no download) so the trainer runs standalone for the CPU smoke.
 
 Bridge to the zero-dep core (mirrors jepa_scaffold_torch.py -> cerebellum/jepa_world_model.py):
@@ -24,7 +24,7 @@ Bridge to the zero-dep core (mirrors jepa_scaffold_torch.py -> cerebellum/jepa_w
     reference on probe samples (spike counts EXACT, currents within tol; the reference is pinned to CPU).
 
 CONTROLS reported (honest, un-riggable) -- all on the SAME held-out set, features -> a generalized
-SLDA-RFF readout (the readout research/developmental_loop_slda.py uses, generalized to n_cls):
+SLDA-RFF readout (the readout reasoning/developmental_loop_slda.py uses, generalized to n_cls):
   * DELAYS ON vs OFF   -- freeze every delay to 0 and retrain (expect >= +3% from learned delays).
   * ADAPTIVE tau ON vs OFF -- heterogeneous trainable beta+adaptation vs a homogeneous fixed-tau plain LIF.
   * RANDOM-INIT encoder -- a FROZEN UNTRAINED RSNN's features + SLDA-RFF must LOSE to the trained one by a
@@ -34,15 +34,26 @@ SLDA-RFF readout (the readout research/developmental_loop_slda.py uses, generali
     image-only and cannot process audio SHD; see the report caveat).
 
 torch is imported LAZILY inside the functions/main (never at module top), so this file imports cleanly
-with no torch installed and `python research/rsnn_delays_torch.py` exits 0 with a guidance banner. All
+with no torch installed and `python -m snn_data_lake.reasoning.rsnn_delays_torch` exits 0 with a guidance banner. All
 printed numbers are REAL (computed by the run); nothing is hard-coded.
 
-Run (GPU, real dataset):  NORD_GPU=1 NORD_DATASET=shd PYTHONPATH=src .venv-cu128/Scripts/python research/rsnn_delays_torch.py
-Run (CPU smoke, tiny):    NORD_SMOKE=1 PYTHONPATH=src .venv-cu128/Scripts/python research/rsnn_delays_torch.py
-Run (no torch):           python research/rsnn_delays_torch.py   -> guidance, exit 0
+Run (GPU, real dataset):  NORD_GPU=1 NORD_DATASET=shd PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.rsnn_delays_torch
+Run (CPU smoke, tiny):    NORD_SMOKE=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.rsnn_delays_torch
+Run (no torch):           python -m snn_data_lake.reasoning.rsnn_delays_torch   -> guidance, exit 0
 Knobs: NORD_DATASET(synthetic|shd|nmnist) NORD_T NORD_HIDDEN NORD_MAXDELAY NORD_EPOCHS NORD_BATCH
        NORD_TRAIN NORD_TEST NORD_RFF NORD_LR NORD_SMOKE(=1 tiny) NORD_GPU NORD_DATA_DIR
-Deps: torch (+ tonic/torchvision for shd/nmnist). research/GPU tier; the served core stays zero-dep.
+Deps: torch (+ tonic/torchvision for shd/nmnist). The GPU/train tier; the suite stays runnable
+      without a card (P5), which is what the no-torch guidance path below exists for.
+
+CORRECTED 2026-08-05. This line read "research/GPU tier; the served core stays zero-dep" -- two
+retired claims in one sentence, both missed by the 2026-08-04 sweep that fixed the six `research/`
+run commands directly above it. `research/` was retired in v3.78 (P4c: there is no tier outside the
+brain), and "zero-dep" is P7 residue: the zero-dependency rule was abolished project-wide on
+2026-07-20 and numpy/torch are core.
+P3 DISPOSITION, stated because this file has none: MEASURED 2026-08-05 by AST over the tree, it has
+ZERO importers and is registered in NEITHER `run_selfchecks.py` list, so its asserts -- including
+the bit-exactness check against the served reference -- have never run in any gate. Registering it
+edits a shared file and is handed back.
 """
 
 import json
@@ -381,7 +392,7 @@ def load_dataset(name, T, n_train, n_test, data_dir, seed=0):
         common = dict(batch_size=128, num_workers=0, drop_last=False)
         # DataLoader(shuffle=True)'s RandomSampler calls torch.randperm(generator=...); under
         # set_default_device(cuda) that generator must be on cuda too (the documented device trap).
-        from snn_data_lake.reasoning.torch_device import resolve_device as _rdev
+        from snn_data_lake.substrate.device import resolve_device as _rdev
 
         gen = torch.Generator(device=_rdev())
         tr = DataLoader(tr_ds, shuffle=True, generator=gen, **common)
@@ -620,18 +631,22 @@ def main():
     try:
         import torch
     except ImportError:
+        # These four lines PRINTED a retired directory ("research/") and the abolished
+        # zero-dependency rule three times, at runtime, on the one path a reader reaches when
+        # something is already wrong. Corrected 2026-08-05: `research/` was retired in v3.78 and
+        # P7 abolished the zero-dep rule project-wide on 2026-07-20.
         print("=" * 74)
-        print("RSNN DELAYS TORCH TRAINER (research/, not CI) -- torch is NOT installed")
+        print("RSNN DELAYS TORCH TRAINER (GPU/train tier, not in CI) -- torch is NOT installed")
         print("=" * 74)
-        print("Torch training tier for the zero-dep core cortex/rsnn_encoder.py (snn_rsnn/1):")
+        print("Torch training tier for the served core cortex/rsnn_encoder.py (snn_rsnn/1):")
         print("DCLS learnable delays + adaptive-LIF, surrogate-gradient BPTT on SHD/N-MNIST.")
-        print("Without torch there is nothing to train; the zero-dep core is what CI covers.")
+        print("Without torch there is nothing to train; CI covers the served core instead.")
         print("needs torch (+tonic): pip install '.[gpu]'  (and '.[nmnist]' for shd/nmnist)")
         print("Exiting cleanly (0).")
         return 0
 
     import tempfile
-    from snn_data_lake.reasoning.torch_device import resolve_device, enable
+    from snn_data_lake.substrate.device import resolve_device, enable
 
     smoke = os.environ.get("NORD_SMOKE") == "1"
     device = enable(resolve_device())

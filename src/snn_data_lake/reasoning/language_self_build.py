@@ -14,8 +14,12 @@ THREE LEVELS (each an assembly pool + a spiking learning rule, all reused from t
              below); self-supervised next-word (spiking distributional semantics = Hebbian
              co-occurrence read out by spike timing).
   SYNTAX     order sensitivity: the same spike-timing readout on ORDER-PRESERVING context vs a
-             SHUFFLED-order context; a real syntax signal must prefer legal order. (Local order
-             only -- long-range/compositional syntax is the honest ceiling, see below.)
+             SHUFFLED-order context. **MEASURED NULL, 2026-08-04** -- swept over training seeds 0..5
+             the ordered-minus-shuffled delta is +0.21/+0.34 on two seeds and negative on four
+             (mean -0.30 pts), so the sign is chosen by the seed. The two numbers are still computed
+             and printed, labelled as a null; the assert that rode on the shipped seed is DELETED
+             (P8: a criterion the seed decides is not a measurement). Long-range/compositional
+             syntax was already the stated ceiling; local order is now measured to be one too.
 
 AUTONOMY: a SpikingCuriosityDrive picks which level to study next by spike-count learning-progress
 (the frontier, not noise); a SpikingCurriculum graduates PHONETICS->SEMANTICS->SYNTAX when a level's
@@ -30,9 +34,9 @@ spike-timing readout underperforms -- the readout-is-the-lever ceiling seen acro
 far below a transformer LM -- the value is the emergent, self-supervised, spiking assembly-formation
 loop with measurable learning curves and un-riggable controls, NOT competence or SOTA perplexity.
 
-  NORD ...  PYTHONPATH=src python research/language_self_build.py
+  PYTHONPATH=src python -m snn_data_lake.reasoning.language_self_build
   Knobs: NORD_CTX(3) NORD_NIN(48) NORD_CYCLES(12) NORD_PER(400) NORD_VOCAB(60) NORD_LIMIT(0=all)
-Deps: stdlib (reuses src/ spiking primitives + research/brain_adapters/lake_memory).
+Deps: reuses src/ spiking primitives + reasoning/brain_adapters/lake_memory.
 """
 
 import os
@@ -122,11 +126,19 @@ def _cos_dist(a, b):
     return 1.0 - dot / (na * nb)
 
 
-def _assembly_separation(learner, responses):
+def _assembly_separation(learner):
     """Inter/intra assembly separation ratio over the learned response units. Each unit's weight
-    vector is its cell assembly's tuning; measure mean cosine distance BETWEEN distinct assemblies vs
+    vector is its cell assembly's tuning; measure mean COSINE distance BETWEEN distinct assemblies vs
     a within-assembly jitter baseline. Ratio >> 1 => the assemblies acquired distinct, separated
-    tunings (they are not all the same vector)."""
+    tunings (they are not all the same vector).
+
+    Read the scale honestly: the intra baseline is a +/-0.01 jitter of the unit's OWN vector, so it
+    is ~1e-3 and the ratio lands in the tens (measured: 56.9 phonetics, 52.1 semantics). The
+    `> 1.2` assert in main() therefore has a reachable red only in the degenerate case where every
+    assembly ends up the SAME vector (inter -> 0); it is a not-all-identical check, not a
+    calibrated separation threshold, and it should not be read as one.
+
+    (The `responses` parameter was dropped 2026-08-04: it was never read.)"""
     W = [list(n.w) for n in learner.neurons]
     inter = [_cos_dist(W[i], W[j]) for i in range(len(W)) for j in range(i + 1, len(W))]
     rng = random.Random(0)
@@ -180,13 +192,16 @@ def main():
     ph_first, ph_last, ph_final, ph_learn = _train_eval(ph_pairs, ARPABET, CTX, PER, seed=0)
     ph_shuf = _train_eval(ph_pairs, ARPABET, CTX, PER, seed=0, shuffle_labels=True)[1]
     ph_bigram = _bigram_baseline(ph_pairs)
-    ph_sep = _assembly_separation(ph_learn, ARPABET)
+    ph_sep = _assembly_separation(ph_learn)
     curiosity.observe("phonetics", 1.0 - ph_final)
     print(
         f"  next-phoneme held-out: first-third {ph_first:.1%} -> last-third {ph_last:.1%}  "
         f"(bigram {ph_bigram:.1%}, shuffled-teach control {ph_shuf:.1%})"
     )
-    print(f"  assembly separation (inter/intra van Rossum): {ph_sep:.2f}")
+    # "van Rossum" was WRONG here until 2026-08-04: _assembly_separation computes COSINE distance
+    # (_cos_dist) over the response units' weight vectors and never touches a spike-train metric.
+    # The label is the measurement's name, so a wrong one is a wrong report, not a typo.
+    print(f"  assembly separation (inter/intra cosine): {ph_sep:.2f}")
 
     print(
         "\n[SEMANTICS] self-supervised next-word over the %d most frequent words, R-STDP..." % VOCAB
@@ -194,7 +209,7 @@ def main():
     wd_first, wd_last, wd_final, wd_learn = _train_eval(wd_pairs, freq_words, CTX, PER, seed=1)
     wd_shuf = _train_eval(wd_pairs, freq_words, CTX, PER, seed=1, shuffle_labels=True)[1]
     wd_uni = _unigram_baseline(wd_pairs, freq_words)
-    wd_sep = _assembly_separation(wd_learn, freq_words)
+    wd_sep = _assembly_separation(wd_learn)
     curiosity.observe("semantics", 1.0 - wd_final)
     print(
         f"  next-word held-out: first-third {wd_first:.1%} -> last-third {wd_last:.1%}  "
@@ -210,7 +225,15 @@ def main():
     )
     print(
         f"  order-sensitivity delta: {(syn_ordered - syn_shuffled) * 100:+.1f} pts "
-        f"(> 0 => the readout uses WORD ORDER, i.e. local syntax)"
+        f"-- NULL: the sign is seed-dependent (see the seed sweep below), so this is NOT evidence "
+        f"that the readout uses word order"
+    )
+    print(
+        "  seed sweep 0..5 (measured 2026-08-04, PER=400): deltas -0.77 -0.34 +0.21 -0.17 -1.04 "
+        "+0.34 pts -> 2 of 6 positive, mean -0.30 pts. The shipped seed=2 is one of the two that"
+    )
+    print(
+        "  land positive. Reported as a null rather than a finding; see the SYNTAX note in main()."
     )
 
     # ---- CONSOLIDATE the learned assemblies to the durable lake (content-addressable, durable) ----
@@ -233,15 +256,14 @@ def main():
     )
     print(
         f"  SYNTAX    : order-sensitivity {(syn_ordered - syn_shuffled) * 100:+.1f} pts "
-        f"(ordered {syn_ordered:.1%} > shuffled {syn_shuffled:.1%})"
+        f"(ordered {syn_ordered:.1%} vs shuffled {syn_shuffled:.1%}) -- NULL, sign is seed-dependent"
     )
     print(
         f"  LAKE      : {lake.n_stored} phoneme assemblies consolidated; durable across restart = {dur['ok']}"
     )
     print("-" * 94)
-    print(
-        "  honest scope: local-order syntax only; cross-level theta-gamma/workspace binding is the NEXT slice."
-    )
+    print("  honest scope: the local-order (syntax) result is a NULL, not a win; cross-level")
+    print("  theta-gamma/workspace binding is the NEXT slice.")
     print("=" * 94)
 
     # ---- HONEST NEGATIVE (printed, not asserted): the single-layer spiking readout does NOT beat the
@@ -267,14 +289,23 @@ def main():
     assert wd_last > wd_shuf, (
         f"semantics no better than shuffled-teaching control ({wd_last:.3f} vs {wd_shuf:.3f})"
     )
-    assert syn_ordered >= syn_shuffled, (
-        f"syntax: ordered context not >= shuffled ({syn_ordered:.3f} vs {syn_shuffled:.3f})"
-    )
+    # SYNTAX: the `assert syn_ordered >= syn_shuffled` that stood here is DELETED, not weakened.
+    # Measured 2026-08-04 by sweeping the training seed 0..5 at the shipped PER=400 (every other
+    # parameter unchanged), ordered-minus-shuffled next-word accuracy in points:
+    #     seed 0 -0.77 | seed 1 -0.34 | seed 2 +0.21 | seed 3 -0.17 | seed 4 -1.04 | seed 5 +0.34
+    # 2 of 6 positive, mean -0.30 pts. The assert passed only because the shipped seed=2 is one of
+    # the two that land positive -- it goes RED on four of six seeds, which makes it a statement
+    # about the seed rather than about word order. P8: a criterion whose verdict is chosen by the
+    # seed is not a measurement, and the disposition for a null is deletion, not a lower threshold.
+    # The two numbers are still COMPUTED and PRINTED above, labelled as the null they are: that is
+    # the honest record. Re-establishing a real order-sensitivity claim needs a criterion that
+    # survives a seed sweep (e.g. a paired sign test over >=10 seeds), which is open work.
     assert dur["ok"], "consolidated language assemblies did not survive the lake restart"
     print(
         f"self-check OK: assemblies FORMED + separated (phon {ph_sep:.1f}, sem {wd_sep:.1f}); phonetics "
         f"learned above the shuffle control ({ph_first:.1%}->{ph_last:.1%} vs shuffle {ph_shuf:.1%}); "
-        f"syntax prefers legal order; {lake.n_stored} assemblies durable -- the skill built itself, no "
+        f"SYNTAX order-sensitivity is a NULL (seed-dependent sign, mean -0.30 pts over seeds 0..5); "
+        f"{lake.n_stored} assemblies durable -- the skill built itself, no "
         f"labels. Competence below n-grams (honest spiking-readout ceiling)."
     )
     lake.close()

@@ -13,7 +13,11 @@ SNNs, DATE 2024).
 
 import random
 
-random.seed(0)
+# random.seed(0) DELETED 2026-08-04 (specs/010, C33): it was an IMPORT-TIME global reseed that
+# clobbered any caller's seed, and it was VESTIGIAL here -- every RNG use in this module already
+# goes through a per-instance `random.Random(seed)`, so nothing read the global stream it set.
+# Verified by AST: no module-level statement and no function in this file touches the global
+# random API. Deterministic behaviour is unchanged; the side effect on importers is gone.
 
 FEAT, CLASSES, PASSES, KEEP = 24, 3, 25, 0.6
 

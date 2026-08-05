@@ -1,13 +1,17 @@
 """
 Two-STAGE unsupervised conv-STDP + GLOBAL pooling + SVM readout on MNIST -- the
 Kheradpisheh-2018 ~98% recipe, and an honest test of whether it beats the
-single-stage conv1 ceiling (~95%, v3.53).  (torch/GPU tier, ruff-excluded; the
-CORE is untouched -- this file imports nothing from src/ and edits
-nothing there.)
+single-stage conv1 ceiling (~95%, v3.53).  ([train]/[gpu] tier.)
+
+CORRECTED 2026-08-04: this header used to read "ruff-excluded; the CORE is untouched -- this file
+imports nothing from src/ and edits nothing there." All three clauses were false against the very
+next block of code -- the file IS in `src/snn_data_lake/reasoning/`, ruff LINTS it (with per-file
+ignores), and it imports `snn_data_lake.substrate.device` plus four `snn_data_lake.reasoning`
+modules below. Under P4c "it is outside the core" is not a disposition anyway.
 
 WHY THIS FILE EXISTS (vs the earlier FAILED 2-stage)
 ----------------------------------------------------
-research/deep_stdp_2stage.py stacked a second conv-STDP stage but did TWO things
+reasoning/deep_stdp_2stage.py stacked a second conv-STDP stage but did TWO things
 that threw away the win:
   1. it SPATIALLY max-pooled conv2 down to a small ~4x4 grid, then FLATTENED that
      grid (conv2.feat_dim = C2 * ph * ph) -- discarding resolution AND coupling the
@@ -65,10 +69,11 @@ NOT assert 2-stage > conv1.
 
 Run (defaults; conv training dominates, SVM fit on cached features is fast; a smoke
 run finishes in ~30-60 min on GPU):
-    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/deep_stdp_2stage_svm.py
+    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.deep_stdp_2stage_svm
 Scale knobs : NORD_C1(30) NORD_C2(150) NORD_T(15) NORD_L1_EPOCHS(4) NORD_L2_EPOCHS(4)
               NORD_POOL1(2) NORD_K2 NORD_TRAIN(15000) NORD_TEST(3000) NORD_GPU
-Deps: numpy torch torchvision snntorch scikit-learn  (research/GPU tier; core untouched)
+Deps: numpy torch torchvision snntorch scikit-learn  ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+         and imports from the package -- P4c, every build is part of the brain.)
 """
 
 import os
@@ -80,7 +85,7 @@ import torch.nn.functional as F
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import LinearSVC, SVC
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.deep_stdp_2stage import ConvLatencyStdp2, _stage1_volley, _train2

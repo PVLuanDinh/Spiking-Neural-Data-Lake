@@ -9,7 +9,11 @@ BatchNorm, avoiding catastrophic firing-rate decay. Multi-step SpikingJelly LIF;
 readout is the embedding a downstream Victor-Purpura / Van Rossum index (core, stdlib) can store.
 Refs: STBP (Wu et al., Front. Neurosci. 2018); intrinsically-stable SNN init.
 
-Quarantined: needs torch + SpikingJelly (own venv). NOT part of the zero-dep core / CI.
+Needs torch (a core dependency) + SpikingJelly, installed in this subproject's own venv rather than
+in the deterministic gate env. SpikingJelly is an ADOPTED dependency (P7 -- docs/POLICIES.md records
+the adoption into this directory, 2026-07-02), not a quarantine, and under P4c there is no "outside
+the brain" category: the venv split exists because CI has no GPU and the gate must stay
+deterministic, not because this file is exempt from anything.
 
   python embedding/is_snn.py        # tiny CPU STBP smoke (cupy backend used automatically if present)
 """

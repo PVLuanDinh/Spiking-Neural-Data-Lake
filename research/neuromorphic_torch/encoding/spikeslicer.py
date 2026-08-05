@@ -9,7 +9,11 @@ at each optimal slice boundary. SPA-Loss has two terms: a membrane-potential-dri
 readout membrane above threshold at target boundaries, below it elsewhere) and a count regularizer
 (match the number of cuts to the target). Refs: SpikeSlicer (Cao et al., NeurIPS 2024).
 
-Quarantined: needs torch + SpikingJelly (own venv). NOT part of the zero-dep core / CI.
+Needs torch (a core dependency) + SpikingJelly, installed in this subproject's own venv rather than
+in the deterministic gate env. SpikingJelly is an ADOPTED dependency (P7 -- docs/POLICIES.md records
+the adoption into this directory, 2026-07-02), not a quarantine, and under P4c there is no "outside
+the brain" category: the venv split exists because CI has no GPU and the gate must stay
+deterministic, not because this file is exempt from anything.
 
   python encoding/spikeslicer.py        # tiny CPU smoke train (no cupy needed)
 """

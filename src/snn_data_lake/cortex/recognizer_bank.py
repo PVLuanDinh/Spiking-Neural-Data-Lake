@@ -8,7 +8,7 @@ that decides a label for a feature vector on its OWN terms and then goes dark:
   - cortex/tempotron.py              Gutig-Sompolinsky spike-TIMING neuron (one-vs-rest)
   - cortex/lca_sparse_coding.py      LCA sparse coding by lateral INHIBITION (dominant atom)
   - reasoning/snn_moe_classifier.py  firing-rate ROUTED mixture-of-experts (top-k sparse)
-  - reasoning/spiking_storage_prototype.py  Hopfield ASSOCIATIVE-memory attractor recall
+  - hippocampus/spiking_storage_prototype.py  FACTORED k-WTA associative-memory recall
   - cortex/paradigm_b_matcher.py     LIF COINCIDENCE detector (spike-stream channel overlap)
 
 This module is the MERGE: one ensemble, one contract -- recognize(features) -> (label, confidence,
@@ -230,7 +230,7 @@ class StorageRecognizer:
     name, module, source, uses = "assoc-storage", "spiking_storage_prototype", "reason", "stdlib"
 
     def __init__(self, library, k=12, n=FEATURES, steps=8):
-        from snn_data_lake.reasoning import spiking_storage_prototype as S
+        from snn_data_lake.hippocampus import spiking_storage_prototype as S
 
         self._S = S
         self.labels = list(library)
@@ -498,14 +498,44 @@ def main():
     print("out-of-distribution rejection (uniform-random vectors -> honest known=False):")
     ood_rng = random.Random(424242)
     ood_rejected = 0
-    # OOD rejection is a RATE, not all-or-nothing, and four draws cannot see that. Measured over 200
-    # uniform-random vectors at three bank seeds x four ood seeds the rate is 0.840-0.935 (mean 0.886),
-    # so the old `ood_trials = 4` + `ood_rejected == ood_trials` was a 0.886^4 ~ 62% coin flip: under a
-    # seed sweep of this self-check it held 3/7 and returned 3/4 on the rest. 64 draws against a floor
-    # of 0.70 measures the same claim -- the panel rejects the great majority of garbage rather than
-    # fabricating a label for it -- 16x more finely, and the worst rate seen above sits >3 sigma above
-    # that floor at this n. Costs ~2.5 s.
-    ood_trials = 64
+    # OOD rejection is a RATE, not all-or-nothing, and four draws cannot see that. The old
+    # `ood_trials = 4` + `ood_rejected == ood_trials` was a 0.886^4 ~ 62% coin flip: under a seed
+    # sweep of this self-check it held 3/7 and returned 3/4 on the rest. Measuring a RATE against a
+    # floor tests the same claim -- the panel rejects the great majority of garbage rather than
+    # fabricating a label for it -- far more finely.
+    #
+    # RE-MEASURED 2026-08-04, and the previous numbers here are RETIRED, not merely refreshed.
+    # They were taken before hippocampus/spiking_storage_prototype.py and reasoning/
+    # snn_moe_classifier.py were redesigned for promotion. The MoE now draws its Poisson spikes as
+    # one `rng.random((STEPS, N)) < rates` instead of 1280 scalar random() calls; that is a 9.8x
+    # speedup and a DIFFERENT RANDOM STREAM, so every downstream float in this panel moved. Old
+    # vs new, same design (3 bank seeds x 4 ood seeds, n=200 draws per cell):
+    #       old build   0.840-0.935   mean 0.886
+    #       this build  0.775-0.925   mean 0.860
+    # The 0.026 mean shift is well inside the 0.15 cell-to-cell spread and a paired t over the 12
+    # cells is not significant, so this is NOT a capability regression -- in-distribution
+    # recognition is 30/30 on both builds and no cell approaches the floor. What DID regress is
+    # this gate's own reliability, which is why n changed. Exact binomial P(a run trips the 0.70
+    # floor) on the worst observed cell:
+    #       n= 64   old p=0.840 -> 0.18%      this build p=0.797 -> 2.57%    <- 14x flakier
+    #       n=200   old p=0.840 -> 0.00002%   this build p=0.775 -> 0.54%
+    #       n=200 at the n=64 worst cell (p=0.797)                -> 0.042%
+    # 64 draws would have made this a ~1-in-39 flake on an unlucky seed. Raising it to 200 buys
+    # back a better margin than the old build ever had, and the MoE speedup PAYS FOR IT: 64 draws
+    # cost 2.5 s on the old build and 0.26 s now, so n=200 costs 0.83 s -- still 3x cheaper than
+    # what this check used to cost at a third of the resolution.
+    #
+    # RED, EXECUTED 2026-08-04 (not asserted -- a floor whose red was never reached is not a
+    # criterion). Replacing RecognizerBank._run with a stub in which all six members vote the same
+    # label at score 1.0 / applicability 1.0 and every member claims gatekeeper=True destroys the
+    # panel's novelty behaviour while touching nothing in the assert:
+    #       A / live             0.875
+    #       B / novelty neutered 0.000   <- assert fires
+    #       A / restored         0.875
+    # The floor is 0.70 because that is the "great majority" claim the docstring makes, not a
+    # number fitted to the observed 0.86 -- fitting it to the observation is what would make it
+    # unfalsifiable.
+    ood_trials = 200
     for t in range(ood_trials):
         garbage = [ood_rng.random() for _ in range(FEATURES)]
         got, conf, known = bank.recognize(garbage)

@@ -2,7 +2,7 @@ r"""
 AUTONOMOUS BRAIN (RECOVERED) -- the enclosed self-directed loop, with the accuracy recovered from
 47.4% to ~95% online (and ~98% via a sleep-consolidation RBF refit), WITHOUT dropping any faculty.
 
-WHY THE ORIGINAL (research/autonomous_brain.py) LANDS AT 47.4%
+WHY THE ORIGINAL (reasoning/autonomous_brain.py) LANDS AT 47.4%
 -------------------------------------------------------------
 Its UNDERSTANDING readout is a backprop MLP (brain_adapters.growable_readout.GrowableReadout) grown
 and frozen per new digit. In CLASS-INCREMENTAL testing (argmax over all 10 classes, no task id) the
@@ -27,22 +27,33 @@ THE RECOVERY -- every faculty stays genuinely active
                   workspace) and WIRES what it thought about together (concept-association graph).
   SLEEP -> 98%    a sleep consolidation refits an RBF-SVM on ALL lake-consolidated exemplars.
 
-THIS FILE IS NOW A THIN WRAPPER: the loop body lives in research/developmental_core.py
-(`develop_cycles`) so the standalone benchmark and the unified always-on Brain
-(research/brain_loop.py) share ONE source of truth. This wrapper runs the loop with its own temp lake
-and re-runs the SAME regression asserts (online > 90%, sleep-refit > 90%, durable, faculties active).
+THIS FILE IS NOW A THIN WRAPPER: the loop body lives in reasoning/developmental_core.py
+(`develop_cycles`) so the standalone benchmark and its second caller share ONE source of truth.
+That second caller was `reasoning/brain_loop.py` -- **RETIRED**, and it no longer exists anywhere in
+the tree (`substrate/replication_guard.py` records the retirement: "reasoning/brain_loop.Brain was
+retired once every capability was verified canonical"). Its role is the canonical
+`cortex.brain.Brain` composition reached through `make_brain()` (P4). So `develop_cycles`'s `lake=` /
+`emit=` injection points currently have NO in-tree caller: that is OPEN P3 work, recorded here rather
+than papered over, and it is why the standalone path below is the only one exercised.
+This wrapper runs the loop with its own temp lake and re-runs the SAME regression asserts
+(online > 90%, sleep-refit > 90%, durable, faculties active).
 
-Feature learning stays UNSUPERVISED (frozen conv1); only the readout is supervised. The CORE is
-untouched: this file lives under research/ (ruff-excluded) and edits neither run_selfchecks nor pyproject.
+Feature learning stays UNSUPERVISED (frozen conv1); only the readout is supervised.
 
-Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/autonomous_brain_recovered.py
+P4c: this file used to close with "the CORE is untouched: this file lives under research/
+(ruff-excluded) and edits neither run_selfchecks nor pyproject." Every clause of that is now false OR
+forbidden -- it lives in `src/snn_data_lake/reasoning/`, ruff DOES lint it (with per-file ignores),
+and "it is outside the governed tree" is not a disposition. It is part of the brain; being absent
+from `run_selfchecks.py` is DEBT, not a design.
+
+Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.autonomous_brain_recovered
 Knobs: NORD_CYCLES(18) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(400) NORD_KREPLAY(150)
        NORD_RFF(2000) NORD_GROW_RFF(200) NORD_GAMMA(0.04) NORD_SHRINK(0.1) NORD_MAINTAIN(20)
        NORD_TRAIN(12000) NORD_TEST(2000) NORD_REFLECT_THR(0.55)
 Deps: numpy torch torchvision snntorch scikit-learn
 """
 
-from snn_data_lake.reasoning.torch_device import resolve_device
+from snn_data_lake.substrate.device import resolve_device
 from snn_data_lake.reasoning.developmental_core import cfg_from_env, develop_cycles
 
 

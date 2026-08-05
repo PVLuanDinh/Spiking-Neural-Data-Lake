@@ -460,7 +460,13 @@ def main():
     import sys
     from pathlib import Path
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # repo root -> import research.*
+    # Repo root on sys.path. The comment here read "-> import research.*" until 2026-08-04, which
+    # was stale: the import on the very next line goes to `snn_data_lake.reasoning.nef_compute`,
+    # the FOLDED reasoning tier, as its own trailing comment already said. Nothing in this module
+    # imports `research.*`. Corrected while retiring `research/brain_adapters/` -- a stale comment
+    # naming a directory being deleted is exactly how a safe deletion gets mistaken for a breaking
+    # one, and vice versa.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
     import snn_data_lake.reasoning.nef_compute as nef  # the zero-dep NEF ground truth (folded reasoning tier)
     from snn_data_lake.cortex.lif_neuron import LIFNeuron  # the discrete brain LIF
 

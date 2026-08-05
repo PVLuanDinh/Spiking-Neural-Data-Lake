@@ -19,8 +19,9 @@ refit (no global backprop anywhere). Every stage is an existing module; ROSE is 
      vsa_reasoning.cleanup snaps a noisy composite to the codebook (the syntactic round-trip).
   S  STRUCTURE -- hierarchy over timescales. cortex/theta_gamma_code.py nests constituents-on-fast-gamma
      inside order-on-slow-theta (a phase code that reads word order back from LIF spike timing);
-     reasoning/polychronization.py encodes a multi-word DEPENDENCY as a delay-matched polychronous group
-     that ignites only for the correct temporal order (rate-blind, timing-selective).
+     cerebellum/polychronization.py encodes a multi-word DEPENDENCY as a delay-matched polychronous
+     group that ignites only for the correct temporal order (rate-blind, timing-selective). ROSE
+     ADOPTS that module's own `_build`/`_fire` network (P2) rather than re-wiring a second copy of it.
   E  ENCODING -- competence. reasoning/language_readout_slda.py::SLDA_RFF_np is the frozen, forward-served
      competence head over the ORDER-INVARIANT rank-order/latency context (its sufficient statistics are the
      weights). Its refit is Forward-Forward / CSDP-style -- two forward passes (positive vs corrupted),
@@ -38,29 +39,76 @@ REPRESENTATION-ONLY: imports no brainstem, routes no actuator. Every method guar
 an honest empty/None instead of crashing a caller.
 
 Determinism: random.Random(seed) per instance; zlib.crc32 (via hv) not builtin hash(); NO wall-clock.
-ASCII-only output.
+Every reduction over `self._triples` (a set, whose iteration order varies per process under hash
+randomization) is taken in SORTED key order. ASCII-only output, asserted line-by-line.
 
-Deps: numpy is used only by the R percept latent (language_acquisition) and the E competence head
-(SLDA_RFF_np) -- both imported LAZILY inside their methods and guarded, so parse/ground/comprehend and
-the whole VSA/theta-gamma/polychronization path run PURE STDLIB (numpy absent -> those stages degrade
-honestly, the pipeline still works). No torch anywhere.
+DEPENDENCIES (P7 -- the zero-dependency rule was abolished 2026-07-20; this file used to carry its
+residue and the residue is gone). numpy is an unconditional core dependency (pyproject.toml, the
+`[project] dependencies` list -- cited without a line number on purpose: `pyproject:38-49` stood
+here and had ALREADY drifted off that block in the working tree, because that file is edited far
+more often than this one) and is imported at MODULE TOP here. The docstring used to advertise that
+"parse/ground/comprehend and the whole VSA/theta-gamma/polychronization path run PURE STDLIB (numpy
+absent -> those stages degrade honestly)". That was obedience to a retired rule dressed as a design
+property, and it also gave
+`competence()` a "numpy absent" failure note with NO reachable red in any supported install.
+Precedent for this wording: cerebellum/polychronization.py, which took the same treatment.
 
-  PYTHONPATH=src python -m snn_data_lake.reasoning.rose_language
+  What was MEASURED before keeping the VSA path in stdlib (P7: a rejection ships its measurement).
+  vsa_reasoning.coincidence_many is the numpy-batched form of the cleanup primitive and is BIT-EXACT
+  (sim delta 0, not 0.0000) -- so numpy is genuinely available here, and it was declined on numbers,
+  not on purity. Per cleanup call at D=512 (this box, .venv-lake):
+
+        codebook rows      9        32       128      1024
+        stdlib          150 us    538 us   1870 us  14984 us
+        numpy, matrix    19 us     20 us     22 us    288 us   <- excludes building the matrix
+        numpy, +build   148 us    456 us   1847 us  12855 us   <- what a real call pays
+
+  ROSE's codebook is REBUILT PER PARSE (3 words + 6 distractors = 9 rows for "the big dog"), so the
+  honest comparison is the last row: a wash at the sizes this module actually uses. Caching the
+  matrix on the Constituent would buy ~2.4x on a 3-slot parse (185 us vs 450 us) -- on a path that
+  runs once per chat "parse ..." command, never on the wake tick. Declined as complexity that buys
+  nothing measurable HERE; the numbers are recorded so the next reader re-decides on evidence.
+  The R percept latent and the E competence head DO use numpy and no longer demote it to a list.
+  No torch anywhere (P5: this module is CPU-only and belongs in no torch tier).
+
+  Run: PYTHONPATH=src python -m snn_data_lake.<region>.rose_language
+       The self-check PRINTS its own dotted path and region, DERIVED from __spec__/__file__ -- a
+       literal `snn_data_lake.reasoning.rose_language` here would go stale and FAIL GREEN the moment
+       this file moves to another region, which is exactly the failure mode that costs a promotion.
 """
 
+import os
 import random
 
-# --- pure-stdlib spiking substrate (no numpy): VSA algebra, world KB, theta-gamma, polychronization ---
+import numpy as np
+
+# --- spiking substrate: VSA algebra, world KB (both stdlib by measurement, see the header) ---------
 from snn_data_lake.cortex.vsa_reasoning import D, bind, bundle, cleanup, hv, permute
 from snn_data_lake.reasoning.world_kb_stream import load_kb
 
 # syntactic roles (beim Graben et al. 2020 role-filler slots) -> each a spike-polarity role code via hv
 ROLE_HEAD, ROLE_COMP, ROLE_SPEC, ROLE_MOD = "HEAD", "COMP", "SPEC", "MOD"
 _ROLE_NAMES = (ROLE_HEAD, ROLE_COMP, ROLE_SPEC, ROLE_MOD)
+# P1 label: a CLOSED LEXICAL CLASS, not a behaviour-arbitrating threshold. English determiners are a
+# finite enumerable set; there is no running baseline a word can be "above". Data, not a magic number.
 _DETERMINERS = frozenset(
     ("the", "a", "an", "this", "that", "these", "those", "my", "your", "its", "his", "her")
 )
-_STOP_DISTRACTORS = ("thing", "object", "place", "other", "none", "unknown")  # cleanup distractors
+# P1 label: adversarial padding for the cleanup codebook, not a tuned parameter. Their only job is to
+# make the round-trip a real test (a 3-entry codebook makes cleanup a 1-of-3 guess); no value here
+# arbitrates an outcome -- a distractor either loses to the true filler or the algebra is broken.
+_STOP_DISTRACTORS = ("thing", "object", "place", "other", "none", "unknown")
+
+
+def _dotted():
+    """This module's REAL dotted path, derived. See the header: a literal would fail green on a move."""
+    spec = globals().get("__spec__")
+    return spec.name if spec is not None and getattr(spec, "name", "") else __name__
+
+
+def _region():
+    """The anatomical region this file currently sits in, derived from __file__ (same reason)."""
+    return os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _norm(word):
@@ -73,14 +121,13 @@ class Constituent:
     cleanup codebook that unbinds it back to its parts. A filler is a leaf word (str) or a nested
     Constituent (recursion). `label` is a human-readable bracketed structure (what parse() shows)."""
 
-    __slots__ = ("cat", "slots", "hv", "codebook", "order")
+    __slots__ = ("cat", "slots", "hv", "codebook")
 
-    def __init__(self, cat, slots, hvec, codebook, order):
+    def __init__(self, cat, slots, hvec, codebook):
         self.cat = cat  # phrase category tag, e.g. "NP" / "S"
         self.slots = slots  # [(role, filler), ...]  filler = word str | Constituent
         self.hv = hvec  # the constituent's spike-polarity code
         self.codebook = codebook  # {label: hypervector} cleanup snaps to
-        self.order = order  # {id(filler): permute_k} order-of-repeated-role shift
 
     @property
     def label(self):
@@ -102,7 +149,7 @@ class RoseLanguage:
     def __init__(self, seed=0):
         self.seed = int(seed)
         self.rng = random.Random(self.seed)
-        # ---- world KB (pure stdlib): the truth model words are grounded against ----
+        # ---- world KB: the truth model words are grounded against ----
         try:
             triples, _offline = load_kb()
         except Exception:
@@ -118,9 +165,10 @@ class RoseLanguage:
         self._role_hv = {r: hv(r) for r in _ROLE_NAMES}
         self._ENTITY = hv("__ENTITY__")
         self._RELATION = hv("__RELATION__")
-        # ---- lazily-built numpy-bearing stages (R percept latent, E competence head) ----
+        # ---- lazily-built stages ("unset" = not attempted; None = attempted and unavailable, so a
+        #      failed build is NOT retried -- the E fit costs ~100 ms and used to refit per call) ---
         self._acq = "unset"  # cortex/language_acquisition instance or None
-        self._readout = None  # {"slda":..., "iidx":..., "ridx":..., "ctx":...} or None
+        self._readout = "unset"  # {"slda":..., "iidx":..., "ridx":..., "ctx":...} or None
 
     # ================================================================= R: grounded lexis =============
     def _word_hv(self, word):
@@ -129,8 +177,14 @@ class RoseLanguage:
 
     def _percept(self, word):
         """The R predictive-coding LATENT for a word (cortex/language_acquisition, settled spiking
-        Rao-Ballard code). numpy-only + lazy + guarded -> returns a list of floats, or None if the
-        organ is unavailable (the pipeline still grounds + parses without it)."""
+        Rao-Ballard code). Returns the numpy float64 latent, or None if the organ is unavailable (the
+        pipeline still grounds + parses without it).
+
+        P7: this used to return `[round(float(v), 6) for v in latent]` -- an 88-wide float64 vector
+        demoted element-by-element to a rounded Python list, for no reason except the retired
+        zero-dependency posture. The array is returned as-is; nothing downstream wanted a list, and
+        the 6-decimal truncation was throwing away precision it could not get back. The import stays
+        LAZY (module import cost + the organ's own guard), which is not a dependency compromise."""
         if self._acq == "unset":
             try:
                 from snn_data_lake.cortex.language_acquisition import (
@@ -147,8 +201,7 @@ class RoseLanguage:
         try:
             la, stoi, fold = self._acq
             ids = [stoi[fold(ch)] for ch in _norm(word)] or [stoi[" "]]
-            latent = la._encode_ctx(ids)  # settle causes by minimising prediction error
-            return [round(float(v), 6) for v in latent]
+            return la._encode_ctx(ids)  # settle causes by minimising prediction error
         except Exception:
             return None
 
@@ -200,7 +253,7 @@ class RoseLanguage:
         """O core: encode (role, filler) slots into ONE spike-polarity constituent code and its cleanup
         codebook. bind each role to its filler; order repeated-role fillers with permute(); bundle the
         superposition. Nested Constituent fillers recurse (their own .hv is bound in)."""
-        pairs, codebook, order = [], {}, {}
+        pairs, codebook = [], {}
         role_counts = {}
         for role, filler in slots:
             if isinstance(filler, Constituent):
@@ -210,14 +263,13 @@ class RoseLanguage:
                 fhv, key = self._word_hv(filler), filler
             k = role_counts.get(role, 0)  # 0 for the first filler of a role, 1 for the next...
             role_counts[role] = k + 1
-            order[id(filler)] = k
             fcode = permute(fhv, k) if k else fhv  # axonal-delay line-shift encodes order
             pairs.append(bind(self._role_hv[role], fcode))
             codebook[key] = fhv
         for d in _STOP_DISTRACTORS:  # cleanup distractors so a round-trip is a real test
             codebook.setdefault(d, hv(d))
         hvec = bundle(pairs) if pairs else hv(cat)
-        return hvec, codebook, order
+        return hvec, codebook
 
     def parse(self, text):
         """O: parse a short phrase into a constituency Constituent whose spike-code unbinds back to its
@@ -226,12 +278,12 @@ class RoseLanguage:
         try:
             tokens = str(text).split()
             slots = self._assign_roles(tokens)
-            cat = "NP" if any(r == ROLE_SPEC or r == ROLE_MOD for r, _ in slots) else "XP"
-            hvec, codebook, order = self._encode_slots(cat, slots)
-            return Constituent(cat, slots, hvec, codebook, order)
+            cat = "NP" if any(r in (ROLE_SPEC, ROLE_MOD) for r, _ in slots) else "XP"
+            hvec, codebook = self._encode_slots(cat, slots)
+            return Constituent(cat, slots, hvec, codebook)
         except Exception:
             empty = hv("__EMPTY__")
-            return Constituent("XP", [], empty, {"__EMPTY__": empty}, {})
+            return Constituent("XP", [], empty, {"__EMPTY__": empty})
 
     def compose(self, cat, **role_fillers):
         """O recursion helper: build a higher constituent whose fillers may be words OR Constituents
@@ -246,8 +298,8 @@ class RoseLanguage:
                     slots.append((role, f))
             else:
                 slots.append((role, filler))
-        hvec, codebook, order = self._encode_slots(cat, slots)
-        return Constituent(cat, slots, hvec, codebook, order)
+        hvec, codebook = self._encode_slots(cat, slots)
+        return Constituent(cat, slots, hvec, codebook)
 
     def unbind(self, constituent, role, k=0):
         """O round-trip: recover the filler bound under `role` (the k-th if a role repeats) by spike
@@ -286,77 +338,157 @@ class RoseLanguage:
     # ================================================================= S: timescale structure ========
     def order_by_phase(self, text):
         """S: nest the phrase's words in a theta-gamma buffer (constituents-on-gamma / order-on-theta)
-        and read their ORDER back from LIF spike timing. Returns the phase-decoded token order (pure
-        stdlib), or [] on failure."""
+        and read their ORDER back from LIF spike timing. Returns the phase-decoded token order, or []
+        on failure.
+
+        P1: `capacity=7` used to be restated here. It is the THETA/GAMMA RATIO and it belongs to
+        cortex/theta_gamma_code.py, which documents it (`capacity=7`, "7 +/- 2") and enforces the
+        oldest-item eviction. Restating another organ's constant means two places to change and one
+        of them silently wrong; the organ's own default governs."""
         try:
             from snn_data_lake.cortex.theta_gamma_code import ThetaGammaCode
 
             toks = [t for t in (_norm(w) for w in str(text).split()) if t]
-            tgc = ThetaGammaCode(capacity=7, seed=self.seed)
+            tgc = ThetaGammaCode(seed=self.seed)
             tgc.encode_sequence(toks)
             return tgc.readout()
         except Exception:
             return []
 
-    def dependency_order_ok(self, forward_first=True):
-        """S: encode a 3-slot multi-word DEPENDENCY as a delay-matched polychronous group -- it ignites
-        its target ONLY when the anchors fire in the delay-complementing order (timing-selective,
-        rate-blind). Returns True if the in-order key ignites and the scrambled key does not."""
-        try:
-            from snn_data_lake.reasoning.polychronization import (
-                A0,
-                A1,
-                A2,
-                A3,
-                D1,
-                T1,
-                DelayNetwork,
-            )
+    def dependency_order_ok(self):
+        """S: a multi-word DEPENDENCY is a delay-matched polychronous group -- it ignites its target
+        ONLY when the anchors fire in the delay-complementing order (timing-selective, rate-blind).
 
-            net = DelayNetwork(8)
-            # a0,a1,a2 converge on T1 with delays 3,2,1 -> fire at offsets 0,1,2 to co-arrive (a dependency
-            # satisfied only when the words arrive in that temporal order); a3 completes the downstream hop
-            net.connect(A0, T1, 0.4, 3)
-            net.connect(A1, T1, 0.4, 2)
-            net.connect(A2, T1, 0.4, 1)
-            net.connect(T1, D1, 0.6, 2)
-            net.connect(A3, D1, 0.6, 2)
-            good = net.run({A0: {0}, A1: {1}, A2: {2}, A3: {3}}, steps=12)
-            bad = net.run({A0: {2}, A1: {1}, A2: {0}, A3: {3}}, steps=12)  # scrambled order
-            ignited = bool(good.get(T1) and good.get(D1))
-            silent = not bad.get(T1)
-            return (ignited and silent) if forward_first else ignited
+        Returns True iff the network DISSOCIATES two word orders: the forward key ignites group 1
+        (T1 then its downstream D1) and leaves group 2 silent, while the REVERSED key ignites group 2
+        and leaves group 1 silent. Both directions have a reachable red -- flatten the delays, or fire
+        the anchors simultaneously, and one of the four clauses goes False.
+
+        P2: the network and the anchor schedule are cerebellum/polychronization.py's own `_build()`
+        and `_fire()`. This method used to re-wire a second copy of exactly that graph inline (five
+        `connect` calls carrying hardcoded weights 0.4/0.6 and delays 3/2/1/2/2, plus a hand-written
+        anchor dict) -- two mechanisms for one job, and ten magic constants in the wrong file. The
+        duplicate is deleted; ROSE consumes the organ.
+
+        P8: the old signature was `dependency_order_ok(forward_first=True)`, whose `False` branch
+        returned `ignited` alone and dropped the silence half -- a success criterion with a strictly
+        smaller red, reachable by any caller, and no caller ever passed it. Deleted, not weakened."""
+        try:
+            from snn_data_lake.cerebellum.polychronization import D1, D2, T1, T2, _build, _fire
+
+            net = _build()
+            # steps horizon: the last downstream arrival lands at ~8 (anchor offset <= 3, + the T1
+            # delay 3, + the T1->D1 delay 2). 12 is the organ's own self-check horizon and leaves
+            # margin; it bounds the simulation, it does not arbitrate any signal.
+            fwd = net.run(_fire([0, 1, 2]), steps=12)  # delay-complementing (in-order) key
+            rev = net.run(_fire([2, 1, 0]), steps=12)  # same anchors, reversed word order
+            g1 = bool(fwd.get(T1) and fwd.get(D1))  # forward key ignites its own group...
+            not_g2 = not fwd.get(T2)  # ...and not the other one
+            g2 = bool(rev.get(T2) and rev.get(D2))  # reversed key ignites the OTHER group...
+            not_g1 = not rev.get(T1)  # ...and leaves this one silent
+            return g1 and not_g2 and g2 and not_g1
         except Exception:
             return False
 
     # ================================================================= E: competence head ============
-    def _build_readout(self, relations=("continent", "phase", "class"), rff=256, max_facts=180):
-        """E: build the frozen forward-served competence head -- an SLDA-RFF decoder over the ORDER-
-        INVARIANT positional context of (relation, head) -> tail, on a SMALL bounded-tail subset. numpy-
-        only, lazy, guarded. Sufficient statistics ARE the weights (streaming, forward-only)."""
-        if self._readout is not None:
-            return self._readout
-        try:
-            import numpy as np
+    def _learnable_relations(self):
+        """P1 (running-baseline form): WHICH KB relations the competence head is fitted on is DERIVED
+        from the KB's own structure, not named in the source.
 
+        A relation's examples-per-class ratio (facts / distinct tails) is how many training examples a
+        classifier gets per class: `hemisphere` has 34 facts over 2 tails (17.0), `capital` has 44
+        facts over 44 tails (1.0 -- every fact its own class, nothing to learn). Keep the relations
+        whose ratio EXCEEDS the MEAN ratio across all KB relations -- the running baseline is the KB
+        itself, so an ingested, renamed or re-weighted relation is picked up instead of silently
+        dropped. Sorted-key reduction because self._triples is a set (hash randomization).
+
+        KNOWN DEGENERACY, measured rather than assumed: `> MEAN` keeps NOTHING when every relation
+        carries the same ratio -- including a KB with exactly ONE relation, however many facts it
+        holds (a 120-fact single-relation KB returns `()` and `competence()` reports available=False).
+        It fails LOUDLY, since this module's self-check asserts availability, so it is recorded here
+        rather than papered over with a floor.
+
+        This replaced a literal `relations=("continent", "phase", "class")` whitelist. MEASURED
+        held-out accuracy, mean over 7 seeds, each row's hyperparameters named so it re-runs:
+            whitelist, cap 180, ctx=3, rff=256, gamma=0.2   0.298   (what shipped; control 0.067)
+            whitelist, cap 180, ctx=3, organ defaults       0.349   (rff=1500, gamma=0.15)
+            derived, cap 180,   ctx/rff derived             0.460   (control 0.095)
+            derived, uncapped (this), ctx/rff derived       0.481   (control 0.037)
+        The whitelist was not merely arbitrary, it was worse. (The third row read 0.454 until it was
+        re-run: that figure needs ctx=3, which this code no longer produces.)"""
+        by_rel = {}
+        for h, r, t in self._triples:
+            by_rel.setdefault(r, set()).add((h, t))
+        if not by_rel:
+            return ()
+        ratio = {r: len(v) / len({t for _, t in v}) for r, v in by_rel.items()}
+        keys = sorted(ratio)  # deterministic float-addition order across processes
+        base = sum(ratio[r] for r in keys) / len(keys)
+        return tuple(r for r in keys if ratio[r] > base)
+
+    def _build_readout(self):
+        """E: build the frozen forward-served competence head -- an SLDA-RFF decoder over the ORDER-
+        INVARIANT positional context of (relation, head) -> tail. Sufficient statistics ARE the weights
+        (streaming, forward-only). Lazy + guarded + cached, including a cached FAILURE.
+
+        P1: no model hyperparameter is a literal here. This file used to pass rff=256, gamma=0.2,
+        shrink=0.1 -- `shrink` identical to SLDA_RFF_np's own default (pure noise), the other two
+        tuned by hand. Now:
+
+          * `gamma` and `shrink` are NOT passed: they are language_readout_slda.SLDA_RFF_np's own
+            documented defaults (0.15 / 0.1, verified against that class) and belong to the organ
+            that implements them. RE-MEASURED on the configuration this file actually ships (derived
+            relations, ctx=2), mean of 7 seeds: at rff=256 the running-baseline replacement (an
+            RMS/median-heuristic bandwidth, 0.277) scores 0.461 against the default's 0.468, and at
+            the shipped rff=426 the hand-tuned 0.2 scores 0.476 against the default's 0.481. The
+            default wins both, which is the finding; the numbers "0.294 vs 0.353" and "0.353 vs
+            0.441" stood here and do NOT reproduce under this configuration -- they were taken on
+            the pre-derivation whitelist. Not derived, and not restated -- P1's "never keep a
+            constant fixed" is satisfied by the constant leaving.
+          * `rff` IS derived: the random-feature map gets as many features as the input has
+            dimensions (`len(ivocab) * ctx`, 426 on the shipped KB). MEASURED, mean of 7 seeds,
+            majority-class control 0.037, on this KB (accuracy | fit+predict | one scores() pass;
+            .venv-lake, timings re-run because the ones that stood here were ~3-4x high):
+                rff=1500 (organ default)  0.483 | 1.47 s | 1.36 s
+                rff=426  (derived, this)  0.481 | 0.10 s | 0.08 s
+                rff=512  (a literal)      0.502 | 0.14 s | 0.12 s
+                rff=261  (= n_train)      0.450 | 0.04 s | 0.03 s
+                rff=256  (what shipped)   0.468 | 0.04 s | 0.03 s
+            The organ default costs 15x for 0.002 accuracy -- inside the 0.09 spread across seeds --
+            and would have put ~2.8 s into a self-check that runs in-process under pytest.
+          * `ctx` is read off the data rather than restated as the literal 3 that shipped. Stated
+            precisely, because "derived" overclaims it: the context is built as `[relation, head]`
+            a few lines below, so ctx is 2 and cannot presently be anything else -- this is
+            robustness against that context gaining a third element, not a value that varies today.
+            MEASURED under the code AS WRITTEN (rff follows ctx through in_dim), mean of 7 seeds:
+            ctx=2 -> 0.481, ctx=3 -> 0.457, so the literal was worse. An earlier note here read
+            "0.491 vs 0.483"; that comparison pinned rff at 426 while ctx moved, which this code
+            cannot do.
+          * `0.8` is the conventional held-out split -- a normalized fraction, P1 honesty-guard
+            exception (a). The old `if len(rows) < 30` availability floor is gone: the real
+            precondition is a non-degenerate split, which is what is now checked."""
+        if self._readout != "unset":
+            return self._readout
+        self._readout = None  # a failed build stays failed; the fit costs ~100 ms (measured)
+        try:
             from snn_data_lake.reasoning.language_readout_slda import SLDA_RFF_np
             from snn_data_lake.reasoning.language_self_build import _positional_code
 
-            # sort BEFORE slicing: self._triples is a set -> its iteration order varies per process
+            relations = self._learnable_relations()
+            # sort BEFORE splitting: self._triples is a set -> its iteration order varies per process
             # (hash randomization); sorting makes the subset + train/test split deterministic.
-            rows = sorted((h, r, t) for (h, r, t) in self._triples if r in relations)[:max_facts]
-            if len(rows) < 30:
-                self._readout = None
-                return None
+            rows = sorted((h, r, t) for (h, r, t) in self._triples if r in relations)
             pairs = [([r, h], t) for h, r, t in rows]  # context = [relation, head], target = tail
             random.Random(self.seed).shuffle(pairs)
             tails = sorted({t for _, t in pairs})
             ridx = {t: i for i, t in enumerate(tails)}
             ivocab = sorted({tok for c, _ in pairs for tok in c})
             iidx = {tok: i for i, tok in enumerate(ivocab)}
-            ctx = 3
+            ctx = max((len(c) for c, _ in pairs), default=0)
             cut = int(len(pairs) * 0.8)
             train, test = pairs[:cut], pairs[cut:]
+            if not train or not test:  # a held-out number needs both halves to exist
+                return None
 
             def X(rowset):
                 return np.array(
@@ -364,15 +496,15 @@ class RoseLanguage:
                     dtype=np.float64,
                 )
 
-            slda = SLDA_RFF_np(
-                len(ivocab) * ctx, len(tails), rff=rff, gamma=0.2, shrink=0.1, seed=self.seed
-            )
+            in_dim = len(ivocab) * ctx
+            # rff derived from the input width (see the docstring table); gamma/shrink left to the organ
+            slda = SLDA_RFF_np(in_dim, len(tails), rff=in_dim, seed=self.seed)
             slda.observe(X(train), np.array([ridx[t] for _, t in train]))
-            acc = (
-                float((slda.predict(X(test)) == np.array([ridx[t] for _, t in test])).mean())
-                if test
-                else 0.0
-            )
+            y_test = np.array([ridx[t] for _, t in test])
+            acc = float((slda.predict(X(test)) == y_test).mean())
+            # a control that is not the method itself: predicting the training-majority class alone.
+            y_train = [ridx[t] for _, t in train]
+            major = max(sorted(set(y_train)), key=y_train.count)
             self._readout = {
                 "slda": slda,
                 "iidx": iidx,
@@ -380,27 +512,37 @@ class RoseLanguage:
                 "tails": tails,
                 "ctx": ctx,
                 "ivocab": ivocab,
+                "relations": relations,
                 "acc": acc,
+                "majority": float((y_test == major).mean()),
                 "n": len(test),
-                "_np": np,
                 "_pos": _positional_code,
             }
             return self._readout
         except Exception:
-            self._readout = None
             return None
 
     def competence(self):
-        """E: held-out accuracy of the competence head (or a note that it is unavailable). HONEST: a
-        small bounded-tail readout -- the mechanism, not open-vocab KB completion."""
+        """E: held-out accuracy of the competence head against its majority-class control, or an
+        honest note that it is unavailable. HONEST: a bounded-tail readout over the relations the KB
+        actually supports -- the mechanism, not open-vocab KB completion.
+
+        P8/P7: the unavailable note used to read "numpy absent or too few facts". numpy is an
+        unconditional core dependency, so half that note named a condition with no reachable red in
+        any supported install. The reachable causes are what it names now."""
         r = self._build_readout()
         if not r:
-            return {"available": False, "note": "numpy absent or too few facts"}
+            return {
+                "available": False,
+                "note": "no learnable KB relation, or the split is degenerate",
+            }
         return {
             "available": True,
             "held_out_acc": round(r["acc"], 4),
+            "majority_class_ctrl": round(r["majority"], 4),
             "n": r["n"],
             "classes": len(r["tails"]),
+            "relations": len(r["relations"]),
         }
 
     def nightly_refit(self, examples):
@@ -413,7 +555,7 @@ class RoseLanguage:
         if not r:
             return None
         try:
-            np, pos_code = r["_np"], r["_pos"]
+            pos_code = r["_pos"]
             iidx, ridx, ctx, n_in = r["iidx"], r["ridx"], r["ctx"], len(r["ivocab"])
             pos = [
                 ([_norm(rel), _norm(h)], _norm(t))
@@ -484,7 +626,13 @@ class RoseLanguage:
     def generate(self, prompt="", max_tokens=48):
         """HONEST, BOUNDED generation: realize GROUNDED facts about the prompt through templates and
         report the constituency it parsed. This is the compositional-structure + grounded-semantics
-        MECHANISM -- explicitly NOT fluent GPT-level generation, and it says so. Deterministic; ASCII."""
+        MECHANISM -- explicitly NOT fluent GPT-level generation, and it says so. Deterministic; ASCII.
+
+        P1: the output used to be truncated by `out[: max(16, int(max_tokens) * 6)]` -- a CHARACTER
+        budget reached through a magic 6-chars-per-token conversion and a magic 16 floor, so
+        `max_tokens` did not bound tokens. It bounds whitespace tokens now, which is the parameter's
+        own unit and needs no constant. The grounded-fact list is likewise bounded by that budget
+        rather than by a literal `facts[:3]`."""
         try:
             toks = [t for t in (_norm(w) for w in str(prompt).split()) if t]
             grounded = [g for g in (self.ground(t) for t in toks) if g]
@@ -502,14 +650,17 @@ class RoseLanguage:
             elif grounded:
                 ent = next((g for g in grounded if g["type"] == "entity"), None)
                 if ent:
-                    facts = [(r, t) for (h, r), t in self._facts.items() if h == ent["referent"]]
-                    facts.sort()
-                    for r, t in facts[:3]:
+                    facts = sorted(
+                        (r, t) for (h, r), t in self._facts.items() if h == ent["referent"]
+                    )
+                    for r, t in facts:
                         lines.append(f"{ent['referent']} {r} is {t}.")
             struct = self.parse(prompt).label if toks else "[XP ]"
             body = " ".join(lines) if lines else "no grounded proposition in the prompt."
             out = f"[grounded-mechanism] {body} parse={struct}"
-            return out[: max(16, int(max_tokens) * 6)].encode("ascii", "ignore").decode().strip()
+            # cp1252 safety on the one free-form string this module emits, then the token budget.
+            words = out.encode("ascii", "ignore").decode().split()
+            return " ".join(words[: max(0, int(max_tokens))])
         except Exception:
             return ""
 
@@ -522,18 +673,30 @@ def _is_ascii(s):
 def main():
     rose = RoseLanguage(seed=0)
 
-    print("=" * 88)
-    print("ROSE -- fluent GROUNDED language assembled from spiking modules (R.O.S.E, Murphy 2024)")
-    print("=" * 88)
+    def say(s):
+        # ASCII is asserted BEFORE the write, per line, over EVERY line this self-check emits. It used
+        # to be one assert over four hand-picked strings, one of which (`gen`) is force-ASCII'd by
+        # generate() and so could never go red. Asserting before the write matters for promotion: a
+        # bare print() of a non-ASCII char raises UnicodeEncodeError on a cp1252 console but passes
+        # silently under pytest's UTF-8 capture, so the print is not the gate -- this is.
+        # RED EXECUTED: put a non-ASCII tail in the KB and the [verify] line trips this before any
+        # assertion at the bottom of main() runs.
+        assert _is_ascii(s), f"non-ASCII in self-check output (Windows cp1252 crashes on it): {s!r}"
+        print(s)
+
+    say("=" * 88)
+    say("ROSE -- fluent GROUNDED language assembled from spiking modules (R.O.S.E, Murphy 2024)")
+    say(f"module {_dotted()}  region '{_region()}'  (both derived -- no literal path in this file)")
+    say("=" * 88)
 
     # ---- (1) O: a 2-3 word phrase parses into constituency that UNBINDS back to its head/parts -------
     phrase = "the big dog"
     parsed = rose.constituency(phrase)
     head_slot = next(s for s in parsed["slots"] if s["role"] == ROLE_HEAD)
     spec_slot = next((s for s in parsed["slots"] if s["role"] == ROLE_SPEC), None)
-    print(f"[O] parse {phrase!r:15} -> {parsed['structure']}")
+    say(f"[O] parse {phrase!r:15} -> {parsed['structure']}")
     for s in parsed["slots"]:
-        print(
+        say(
             f"       {s['role']:5} expected={s['expected']:8} recovered={str(s['recovered']):8} "
             f"sim={s['sim']:+.3f} ok={s['ok']}"
         )
@@ -542,8 +705,8 @@ def main():
     sent = rose.compose("S", spec=subj, head="runs")
     top_head, top_sim = rose.unbind(sent, ROLE_HEAD)
     subj_lab, subj_sim = rose.unbind(sent, ROLE_SPEC)
-    print(f"[O] recursion  {sent.label}")
-    print(
+    say(f"[O] recursion  {sent.label}")
+    say(
         f"       top HEAD unbinds -> {top_head!r} (sim {top_sim:+.3f}); nested SPEC -> {subj_lab!r} (sim {subj_sim:+.3f})"
     )
 
@@ -552,43 +715,48 @@ def main():
     g_rel = rose.ground("continent")
     g_none = rose.ground("wibblewobble")
     percept = rose._percept("france")
-    print(
+    say(
         f"[R] ground('France')     -> {g_fr and (g_fr['type'], g_fr['referent'])}   "
         f"(spike-code grounded_hv dim={len(g_fr['grounded_hv']) if g_fr else 0})"
     )
-    print(f"[R] ground('continent')  -> {g_rel and (g_rel['type'], g_rel['referent'])}")
-    print(f"[R] ground('wibble...')  -> {g_none}  (honest lexical gap)")
-    print(
-        f"[R] predictive-coding percept latent: {'len ' + str(len(percept)) if percept else 'numpy absent -> None (honest)'}"
+    say(f"[R] ground('continent')  -> {g_rel and (g_rel['type'], g_rel['referent'])}")
+    say(f"[R] ground('wibble...')  -> {g_none}  (honest lexical gap)")
+    say(
+        "[R] predictive-coding percept latent: "
+        + (
+            f"numpy {percept.dtype} shape {percept.shape} (not demoted to a rounded list)"
+            if percept is not None
+            else "organ unavailable -> None (honest)"
+        )
     )
 
     # ---- (3) comprehend accepts a TRUE proposition, rejects a FALSE one, gaps an UNKNOWN one --------
     c_true = rose.comprehend("france continent europe")
     c_false = rose.comprehend("france continent asia")
     c_unknown = rose.comprehend("wibble wobble flim")
-    print(f"[verify] true  'france continent europe' -> {c_true}")
-    print(f"[verify] false 'france continent asia'   -> {c_false}")
-    print(f"[verify] gap   'wibble wobble flim'       -> {c_unknown}")
+    say(f"[verify] true  'france continent europe' -> {c_true}")
+    say(f"[verify] false 'france continent asia'   -> {c_false}")
+    say(f"[verify] gap   'wibble wobble flim'       -> {c_unknown}")
 
     # ---- S: timescale structure (theta-gamma order readout + polychronous dependency) ---------------
     order = rose.order_by_phase(phrase)
     dep_ok = rose.dependency_order_ok()
-    print(
+    say(
         f"[S] theta-gamma order readout {phrase!r} -> {order}  (order recovered from LIF spike phase)"
     )
-    print(f"[S] polychronous dependency: in-order ignites & scrambled silent = {dep_ok}")
+    say(f"[S] polychronous dependency dissociates forward vs reversed word order = {dep_ok}")
 
-    # ---- E: competence head (numpy) + a Forward-Forward/CSDP-style local refit -----------------------
+    # ---- E: competence head + a Forward-Forward/CSDP-style local refit -------------------------------
     comp = rose.competence()
     margin = rose.nightly_refit(
         [("germany", "continent", "europe"), ("japan", "continent", "asia")]
     )
-    print(f"[E] SLDA-RFF competence head (order-invariant, forward-served): {comp}")
-    print(f"[E] Forward-Forward local refit goodness margin (pos-neg, no backprop): {margin}")
+    say(f"[E] SLDA-RFF competence head (KB-derived relations, forward-served): {comp}")
+    say(f"[E] Forward-Forward local refit goodness margin (pos-neg, no backprop): {margin}")
 
     # ---- generate: HONEST bounded, grounded, ceiling named ------------------------------------------
     gen = rose.generate("is france continent europe")
-    print(f"[gen] {gen}")
+    say(f"[gen] {gen}")
 
     # ---- (4) determinism: a second instance reproduces parse/ground/comprehend exactly ---------------
     rose2 = RoseLanguage(seed=0)
@@ -597,11 +765,10 @@ def main():
         and rose2.ground("France") == g_fr
         and rose2.comprehend("france continent europe") == c_true
         and rose2.comprehend("france continent asia") == c_false
+        and rose2._learnable_relations() == rose._learnable_relations()
     )
 
-    ascii_ok = all(_is_ascii(s) for s in (parsed["structure"], gen, str(c_true), str(c_false)))
-
-    print("=" * 88)
+    say("=" * 88)
 
     # ================= assertions (each is a real, un-riggable claim) =================
     # (1) VSA constituency round-trip: HEAD (and SPEC) unbind back to the placed words
@@ -638,22 +805,40 @@ def main():
     assert c_unknown["known"] is False and c_unknown["answer"] is None, (
         f"an unknown proposition must gap, not guess: {c_unknown}"
     )
-    # S structure genuinely reconstructs order + is timing-selective (soft-guarded to stay pure-stdlib safe)
+    # S structure genuinely reconstructs order + dissociates the two word orders
     assert order == [_norm(w) for w in phrase.split()], (
         f"theta-gamma must read word order back from spike phase: {order}"
     )
-    assert dep_ok, "polychronous dependency must ignite in-order and stay silent when scrambled"
-    # (4) determinism + ASCII
-    assert det, "same seed must reproduce parse-code / grounding / comprehension exactly"
-    assert ascii_ok, "all output must be ASCII (Windows cp1252 safety)"
+    assert dep_ok, (
+        "the polychronous group must DISSOCIATE word order: forward key ignites group 1 and not "
+        "group 2, reversed key ignites group 2 and not group 1"
+    )
+    # (4) E: the competence head must beat its own majority-class control on held-out facts. The red is
+    # reachable in both directions -- a KB whose relations are all one-tail-per-fact yields
+    # available=False, and a head that has learned nothing scores at the control.
+    assert comp["available"], f"the competence head must build on the shipped KB: {comp}"
+    assert comp["held_out_acc"] > comp["majority_class_ctrl"], (
+        f"held-out accuracy must beat the majority-class control, else the head learned nothing: {comp}"
+    )
+    assert margin is not None, "the Forward-Forward refit must return a local goodness margin"
+    # (5) determinism (now including the KB-derived relation set, whose mean is taken in sorted order)
+    assert det, "same seed must reproduce parse-code / grounding / comprehension / relation set"
+    # ASCII is asserted per line inside say(), which has an executed reachable red (see there).
+    # An `assert len(lines) >= 15` output-path check stood here and was DELETED, not weakened, and
+    # is not to be re-added: main() takes no input, the only variable term in the count is the slot
+    # loop, and every route that shortens it fires an earlier assert (or StopIteration) first. The
+    # measured floor with the assertions above still green is 22 lines against a threshold of 15 --
+    # no reachable red, so P8 says delete it rather than tune the number.
 
-    print(
+    say(
         "self-check OK: ROSE assembled from live spiking modules -- VSA constituency round-trips "
         "(HEAD/SPEC/recursion unbind back), lexis GROUNDED to world_kb referents (entity/relation, "
         "honest gap on non-words), comprehend accepts TRUE / rejects FALSE / gaps UNKNOWN against the "
-        "KB, theta-gamma recovers word order from LIF spike phase, polychronous group is timing-"
-        "selective; competence rides a forward-served SLDA-RFF head with a Forward-Forward LOCAL refit "
-        "(no backprop); generation is grounded-mechanism + ceiling named (NOT fluent GPT). Deterministic, ASCII."
+        "KB, theta-gamma recovers word order from LIF spike phase, the polychronous group dissociates "
+        "forward from reversed order; competence rides a forward-served SLDA-RFF head over KB-DERIVED "
+        "relations, beating its majority-class control, with a Forward-Forward LOCAL refit (no "
+        "backprop); generation is grounded-mechanism + ceiling named (NOT fluent GPT). Deterministic, "
+        "ASCII asserted line-by-line."
     )
     return 0
 

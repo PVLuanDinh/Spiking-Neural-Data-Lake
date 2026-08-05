@@ -28,7 +28,7 @@ numpy-only, ASCII-only, deterministic (per-instance seeds; no global RNG).
 
 import numpy as np
 
-from snn_data_lake.reasoning.oja_pca import OjaNeuron
+from snn_data_lake.plasticity.oja_pca import OjaNeuron
 
 
 class PerceptSurprise:
@@ -87,13 +87,15 @@ class PerceptSurprise:
         residual -- the Sanger stack. Surprise is read off the CURRENT (just-updated) components,
         and the residual baseline self-calibrates AFTER the read."""
         xv = self._prep(x)
-        residual = xv.tolist()
+        # NUMPY THROUGHOUT since 2026-08-04 (P7, completing the redesign at the boundary). This read
+        # `residual = xv.tolist()` and deflated with a Python loop over `range(self.in_dim)` -- a
+        # per-sample demotion of a numpy vector, at in_dim=2312, existing ONLY because OjaNeuron held
+        # its weights as a Python list under the retired zero-dependency rule. OjaNeuron is now
+        # numpy-backed, so the conversion has nothing left to serve.
+        residual = xv
         for nrn in self._neurons:
             y = nrn.learn(residual)  # Oja rule lives entirely in OjaNeuron; we never reimplement it
-            wj = nrn.w
-            residual = [
-                residual[i] - y * wj[i] for i in range(self.in_dim)
-            ]  # deflate for the next PC
+            residual = residual - y * nrn.w  # deflate for the next PC
         s, res = self._surprise(xv)
         d = self.baseline_decay
         if self._mu is None:
@@ -183,19 +185,32 @@ def main():
         # counted as verified. An unverifiable check must be loud, not quiet.
         #
         # This will go RED on any checkout without models/nmnist_pack.npz, and that is the point:
-        # the pack has FIVE reader sites (this module, cortex/brain.py:583+599,
-        # reasoning/reservoir_eprop.py, reasoning/brain_adapters/laminar_local_readout.py) and NO
-        # producer anywhere in the tree -- no savez of it in src/, training/, tools/, integrations/
-        # or research/. It is a build artifact that only exists on a machine where someone made it
-        # by hand, while reservoir_eprop.py:43 calls it "the committed pack" and models/ is
-        # untracked. Generating it is a separate job for whoever owns training/; this check's job is
-        # to stop hiding that it is missing.
+        # a CORE self-check whose only real input is absent must be loud, not quiet.
+        #
+        # RE-VERIFIED 2026-08-04, and the census this comment used to carry was wrong on both of its
+        # load-bearing claims -- recorded rather than quietly deleted, because both are the shape of
+        # error this project keeps finding in its own notes:
+        #   * "FIVE reader sites ... cortex/brain.py:583+599, reasoning/reservoir_eprop.py" -- the
+        #     brain's reader is `brain.py`'s `SNN_PERCEPTION_PACK` default, not either cited line
+        #     (:583 is `_load_enc`, :599 is the unrelated `SNN_PERCEPTION_CKPT`), and
+        #     `reservoir_eprop.py` reads models/**shd_pack**.npz, a DIFFERENT artifact. Its ":43
+        #     calls it 'the committed pack'" quote is about that other pack. Actual nmnist_pack
+        #     readers: THIS module, `cortex/brain.py` (SNN_PERCEPTION_PACK) and
+        #     `reasoning/brain_adapters/laminar_local_readout.py` (_PACK_REL) -- three, not five.
+        #   * "NO producer anywhere in the tree" -- `training/make_packs.py` produces BOTH packs
+        #     from tonic and is referenced by `run_selfchecks.py` for exactly this check. The claim
+        #     was true when written and went stale when make_packs landed.
+        #   * "models/ is untracked" -- `.gitignore` excludes `models/*` and then re-includes
+        #     `!models/nmnist_pack.npz` and `!models/shd_pack.npz`. These two ARE tracked.
+        # What survives is the only part that matters here: without the pack, nothing below is
+        # tested, so this must fail rather than SKIP (a SKIP exits 0 and run_selfchecks scores exit
+        # status alone, which made every claim in this file unverified-and-counted-as-verified).
         raise AssertionError(
             "percept_surprise CANNOT VERIFY: models/nmnist_pack.npz is absent, so none of this "
             "module's four claims were tested. Previously this printed SKIP and exited 0, which the "
-            "self-check runner scores as PASS. The pack has five readers and no producer in the "
-            "tree -- see the comment at this line. Provide the pack (or a producer for it) before "
-            "trusting any percept-surprise number."
+            "self-check runner scores as PASS. Produce it with "
+            "`python -m training.make_packs` (it writes models/nmnist_pack.npz and "
+            "models/shd_pack.npz) before trusting any percept-surprise number."
         )
     x_all, y_all = loaded
     in_dim = x_all.shape[1]

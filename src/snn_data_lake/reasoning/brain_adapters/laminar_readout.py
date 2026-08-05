@@ -57,30 +57,36 @@ and that requires touching THREE matrices, not one:
 The Adam moment buffers for W23/b23/W5/W6 are extended in lockstep (block-copy of the old
 top-left region; padded entries zero) so training resumes with existing momentum intact.
 
-Torch/GPU tier. Built on resolve_device() (research/torch_device.py) with an explicit
+Torch/GPU tier. Built on resolve_device() (`snn_data_lake.substrate.device`) with an explicit
 .to(device) on every parameter -- it does NOT rely on set_default_device (that quirk lands
 torch.normal / freshly-wrapped nn.Parameter on CPU even under a cuda default). Deterministic
-(torch.manual_seed + per-instance generators). ASCII-only prints. CORE untouched:
-this file lives under research/, imports nothing from src/, edits neither run_selfchecks nor
-pyproject.
+from PER-INSTANCE generators alone. ASCII-only prints.
 
-  NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/brain_adapters/laminar_readout.py
+P4c (2026-08-04). This header used to read "CORE untouched: this file lives under research/,
+imports nothing from src/, edits neither run_selfchecks nor pyproject." All three clauses were
+false -- the file is at `src/snn_data_lake/reasoning/brain_adapters/` and it imports
+`snn_data_lake.substrate.device` -- and "it is only research" is not a disposition. It is part
+of the brain. OPEN DEBT, stated rather than wired: it is registered in neither `REGIONS` nor
+`run_selfchecks.py`, so no gate sees it; and P2 owes a decision between this BACKPROP readout
+and `laminar_local_readout.LaminarLocalReadout`, which was built as its no-backprop drop-in
+(same public interface) and is the one on the live wake tick (`cortex/brain.py`). Two
+mechanisms for one job is the P2 defect; retiring this one needs its three importers
+(`developmental_loop_brain`, `ensemble_rbf`, `readout_ensemble`) repointed first.
+
+Determinism (2026-08-04): `torch.manual_seed(seed)` used to run inside BOTH constructors,
+re-seeding the PROCESS-GLOBAL torch RNG for every module built afterwards. It was redundant --
+every draw here already passes `generator=` -- and `run_selfchecks.py` runs part of the suite in
+one process, so a constructor was reaching outside itself. Removed; self-check output is
+byte-identical before and after (verified by A/B on the full main()).
+
+  PYTHONPATH=src python -m snn_data_lake.reasoning.brain_adapters.laminar_readout
 """
-
-import os
-import sys
-
-# Make research/torch_device.py importable both when run as a script (only the script's own
-# dir research/brain_adapters/ is on sys.path) and when imported as a module.
-_RESEARCH_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _RESEARCH_DIR not in sys.path:
-    pass  # migrated: sys.path bootstrap removed (now an importable package)
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from snn_data_lake.reasoning.torch_device import resolve_device
+from snn_data_lake.substrate.device import resolve_device
 
 
 class LaminarReadout(nn.Module):
@@ -93,7 +99,8 @@ class LaminarReadout(nn.Module):
 
     def __init__(self, in_dim, n_classes=10, n4=96, n23=64, seed=0, use_l6=True):
         super().__init__()
-        torch.manual_seed(seed)
+        # NO torch.manual_seed() here: a constructor may not re-seed the process-global RNG
+        # (run_selfchecks runs part of the suite in one process). All draws are per-instance.
         self.in_dim = in_dim
         self.n_classes = n_classes
         self.n4 = n4
@@ -368,12 +375,13 @@ class LaminarColumns(nn.Module):
     readout for drop-in use. Torch/GPU tier: built on resolve_device() with an explicit
     .to(device) on every parameter (NOT set_default_device -- torch.normal(generator=...) and
     freshly-wrapped nn.Parameter can silently stay on CPU under a cuda default). Deterministic
-    (torch.manual_seed + per-instance generators). ASCII-only prints. CORE untouched.
+    from per-instance generators alone (no global seeding). ASCII-only prints.
     """
 
     def __init__(self, in_dim, n_classes=10, n4=48, n23=32, seed=0):
         super().__init__()
-        torch.manual_seed(seed)
+        # NO torch.manual_seed() here: a constructor may not re-seed the process-global RNG
+        # (run_selfchecks runs part of the suite in one process). All draws are per-instance.
         self.in_dim = in_dim
         self.n_classes = n_classes
         self.n4 = n4
@@ -646,7 +654,8 @@ def _make_col_blobs(n_per=120, in_dim=12, n_classes=6, sep=3.0, seed=0):
 
 
 def main():
-    torch.manual_seed(0)
+    # No global torch.manual_seed(): every dataset builder and every model below draws from
+    # its own torch.Generator, so the run is deterministic without touching the global RNG.
     in_dim, n_classes = 8, 2
     X, y = _make_bands(n=600, in_dim=in_dim, n_bands=6, seed=0)
     chance = 1.0 / n_classes

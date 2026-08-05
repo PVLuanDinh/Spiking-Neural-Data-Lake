@@ -111,12 +111,16 @@ def main():
 
     # ---- (a) rising competence curve -> noise strictly DOWN, gain strictly UP --
     n = 60
-    noises, gains, mixes = [], [], []
+    # Endpoints deliberately NOT (0.0, 1.0): mix(0,1) reduces to forward_model_gain exactly, so a
+    # trace recorded that way can only restate the `gains` assert below (that is the vacuous check
+    # deleted under F11). Distinct endpoints make the convex-combination property observable.
+    MIX_LO, MIX_HI = 0.2, 0.9
+    noises, gains, brackets = [], [], []
     for i in range(n):
         env.update((i + 1) / n)  # strictly rising competence 1/n .. 1
         noises.append(env.explore_noise)
         gains.append(env.forward_model_gain)
-        mixes.append(env.mix(reactive=0.0, predictive=1.0))  # == gain: reactive->predictive shift
+        brackets.append(env.mix(reactive=MIX_LO, predictive=MIX_HI))
 
     # ---- (b) mature state: drive competence=1 to saturation -> precise + predictive
     for _ in range(400):
@@ -172,10 +176,23 @@ def main():
     # (c) mix shifts from reactive toward predictive as competence grows
     assert math.isclose(neo_mix, 0.2, abs_tol=1e-6), "neonate mix must be ~the reactive value"
     assert math.isclose(mat_mix, 0.9, abs_tol=1e-3), "mature mix must be ~the predictive value"
-    for k in range(1, n):
-        assert mixes[k] > mixes[k - 1], (
-            "mix(reactive,predictive) must shift toward predictive as competence rises"
+    # A `for k: assert mixes[k] > mixes[k-1]` loop stood here over mix(0.0, 1.0). DELETED 2026-08-04
+    # (P8 falsifier F11): mix(0.0, 1.0) == (1-gain)*0 + gain*1 == forward_model_gain BIT-EXACTLY
+    # (verified on all 60 steps), so it re-asserted the `gains[k] > gains[k-1]` loop a few lines up
+    # on identical values -- no reachable red. The comment at its recording site even said "== gain".
+    # Replaced by the property mix() actually owns and the gain loop cannot cover: that it is a
+    # genuine CONVEX combination of its two endpoints across the whole competence range, never an
+    # extrapolation. RED constructed and run against an extrapolating variant
+    # ((1+g)*reactive - g*predictive): measured worst escape 0.4885, assert FIRES; shipped 0.0000.
+    for k, mk in enumerate(brackets):
+        assert MIX_LO - 1e-12 <= mk <= MIX_HI + 1e-12, (
+            f"mix must stay a convex combination of (reactive, predictive), never extrapolate: "
+            f"step {k} -> {mk:.6f} outside [{MIX_LO}, {MIX_HI}]"
         )
+    assert brackets[-1] > brackets[0], (
+        f"mix must travel from the reactive end toward the predictive end as competence rises "
+        f"({brackets[0]:.4f} -> {brackets[-1]:.4f})"
+    )
 
     # (d) determinism
     assert stream_a == stream_b, "same seed must give identical babbling"

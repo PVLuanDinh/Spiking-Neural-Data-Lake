@@ -7,8 +7,14 @@ a rate neuron self-organize to respond to ONE input pattern among several compet
 single repeated pattern gets depressed, and near-identical patterns collapse it — so it needs
 separable inputs. `develop_selectivity` presents several patterns to one BCM unit and returns the one
 it became selective to; here it runs on `snn_classifier`'s distinct 8x8 shape templates (the trainable
-classifier's real inputs). Additive/opt-in: nothing in the recognition path changes. Refs:
+classifier's real inputs). Refs:
 Bienenstock, Cooper & Munro, J. Neurosci. 2 (1982); Cooper & Bear, Nat. Rev. Neurosci. 13 (2012).
+
+WIRING (corrected 2026-08-04 -- "Additive/opt-in: nothing in the recognition path changes" was
+stale). `BCMNeuron`'s sliding threshold theta is the metaplastic variable of
+`plasticity_rule_stack._BCMMetaGate`, which gates the effective learning rate on the canonical
+brain's interaction learner (`cortex/brain.py:273-278`). The RECOGNITION path is indeed untouched;
+the LEARNING path is not. Measured charge is in `homeostatic_scaling.py`'s wiring note.
 
   python -m snn_data_lake.plasticity.bcm_plasticity        # (also run by run_selfchecks.py)
 """
@@ -83,7 +89,7 @@ def main():
     sel_after = _selectivity(resp_after)
 
     print("=" * 60)
-    print("BCM SELECTIVITY — one unit self-organizes to a single shape input")
+    print("BCM SELECTIVITY -- one unit self-organizes to a single shape input")
     print("=" * 60)
     print(f"{len(names)} distinct classifier shapes")
     print(f"responses before : {[round(r, 2) for r in resp_before]}  selectivity {sel_before:.2f}")

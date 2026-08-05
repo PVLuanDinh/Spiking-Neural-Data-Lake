@@ -14,11 +14,28 @@ Rate-mode recurrent integrator (identity feedback + input, per-timestep decode) 
 principle in discrete rate form. The finite-population decode error shows up as a small, bounded memory DRIFT,
 exactly as a real neural integrator leaks; not the continuous-time spiking simulation Nengo runs.
 
-  python -m research.nef_integrator        # (also run by run_selfchecks.py, root on PYTHONPATH)
+  PYTHONPATH=src python -m snn_data_lake.reasoning.nef_integrator   # (also run by run_selfchecks.py)
+
+(The 2026-08-04 sweep rewrote the dead `python -m research.nef_integrator` here but kept its
+trailing "root on PYTHONPATH", which was true of `research.` and is false of the package path --
+`src` is what has to be on PYTHONPATH now. Corrected 2026-08-05, verified by running it.)
 """
 
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-from snn_data_lake.reasoning.nef_compute import NEFEnsemble  # noqa: E402
+from snn_data_lake.reasoning.nef_compute import NEFEnsemble
+
+
+def _say(msg):
+    """print(), with the project's ASCII-only output invariant asserted at the point of emission.
+
+    This module printed a U+2014 EM DASH for the life of the feature and the gate never saw it:
+    MEASURED 2026-08-04, `PYTHONIOENCODING=ascii python -m snn_data_lake.reasoning.nef_integrator`
+    exited 1 with `UnicodeEncodeError: 'ascii' codec can't encode character '\\u2014'`. Under the
+    default Windows console cp1252 the em dash happens to encode, which is exactly why the defect
+    survived -- the invariant is ASCII, not "whatever this console tolerates". Reachable red: put a
+    non-ASCII character in any _say() below and this raises here, naming the line. Same shape as
+    nightly_skills.main::say and rose_language.main::say, which is where the pattern comes from."""
+    msg.encode("ascii")
+    print(msg)
 
 
 class NEFIntegrator:
@@ -69,15 +86,15 @@ def main():
     integ.run([-0.5] * 8)
     back = integ.state
 
-    print("=" * 60)
-    print("NEF INTEGRATOR — spiking working memory via recurrent dynamics")
-    print("=" * 60)
-    print(
+    _say("=" * 60)
+    _say("NEF INTEGRATOR -- spiking working memory via recurrent dynamics")
+    _say("=" * 60)
+    _say(
         f"integration : 8 steps of u=0.5 -> state {ramp[-1]:.3f} (expected ~{expected:.2f}), monotone {monotone}"
     )
-    print(f"working mem : held {held0:.3f}, drift over 30 zero-input steps {drift:+.3f}")
-    print(f"reversible  : +8 then -8 steps -> {back:+.3f} (~0)")
-    print("=" * 60)
+    _say(f"working mem : held {held0:.3f}, drift over 30 zero-input steps {drift:+.3f}")
+    _say(f"reversible  : +8 then -8 steps -> {back:+.3f} (~0)")
+    _say("=" * 60)
 
     # ---- self-check: deterministic asserts ----
     assert monotone and abs(ramp[-1] - expected) < 0.1, (
@@ -90,7 +107,7 @@ def main():
     integ.reset(0.0)
     again = integ.run([0.5] * 8)
     assert again == ramp, "same input -> identical trajectory (deterministic)"
-    print(
+    _say(
         f"self-check OK: integrates input (state {ramp[-1]:.2f}~{expected:.2f}), holds it as working memory "
         f"(drift {drift:+.2f} over 30 steps), reversible ({back:+.2f}); deterministic"
     )

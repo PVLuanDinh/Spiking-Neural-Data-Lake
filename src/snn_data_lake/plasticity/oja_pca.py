@@ -1,5 +1,5 @@
 """
-Oja's rule — unsupervised principal-component extraction in one neuron (pure Python, no tensors).
+Oja's rule -- unsupervised principal-component extraction in one neuron (numpy-backed).
 
 A plain Hebbian synapse (w += lr * y * x, y = w.x) grows without bound; Oja (1982) added a decay term that
 normalizes the weight on the fly -- w += lr * y * (x - y * w) -- so a single linear neuron's weight vector
@@ -7,31 +7,51 @@ converges to the TOP PRINCIPAL COMPONENT of its input stream (the max-variance d
 without any explicit renormalization. Stacked with Gram-Schmidt deflation (Sanger's rule) the same local update
 extracts the top-k components in order. This is the neuromorphic route to unsupervised feature learning /
 whitening: a self-organizing dimensionality reducer built only from local Hebbian plasticity, distinct from
-bcm_plasticity (which learns selectivity, not variance directions). Pure standard library, deterministic.
+bcm_plasticity (which learns selectivity, not variance directions). Deterministic.
 On-thesis with bcm_plasticity / intrinsic_plasticity / population_encoding.
 
-  python -m research.oja_pca        # (also run by run_selfchecks.py, root on PYTHONPATH)
+  python -m snn_data_lake.plasticity.oja_pca    # self-check; also run by run_selfchecks.py
 """
 
 import math
 import random
 
-from snn_data_lake._mathutils import dot, unit
+import numpy as np
+
+from snn_data_lake.substrate._mathutils import dot, unit
 
 
 class OjaNeuron:
-    """Linear neuron whose weight converges to the top principal component via Oja's local rule."""
+    """Linear neuron whose weight converges to the top principal component via Oja's local rule.
+
+    NUMPY-BACKED since 2026-08-04 (P7 redesign, applied BEFORE promotion into `plasticity/`).
+
+    WHAT THE ZERO-DEP RULE COST HERE, and why this one is a real compromise unlike the scalar
+    neuron models: `self.w` was a Python list and the update ran as a list comprehension over
+    `zip(self.w, x)`. The live consumer is numpy -- `cortex/percept_surprise.py` holds a numpy
+    residual and had to call `.tolist()` purely to DEMOTE it so this class could eat it, then
+    re-promote afterwards. That is a conversion per sample, at `in_dim=2312`, in both directions,
+    existing only to satisfy a rule abolished 2026-07-20. numpy is an unconditional core dependency
+    and 2312 elements is squarely a vector op, so the dependency genuinely buys something -- which
+    is the P7 test, not whether the docstring says "stdlib".
+
+    NUMERICS ARE NOT BIT-IDENTICAL, and that is disclosed rather than discovered later. The old path
+    accumulated strictly left-to-right via `_mathutils.dot`; numpy sums pairwise. The measured effect
+    on the consumer's four reported statistics is recorded in the promotion note in
+    `src/snn_data_lake/__init__.py`. `unit()` is deliberately KEPT for the seeded init so the
+    starting weight vector is byte-identical to the old one -- only the update arithmetic moves.
+    """
 
     def __init__(self, dim, lr=0.01, seed=0):
         rng = random.Random(seed)
-        self.w = unit([rng.uniform(-1, 1) for _ in range(dim)])
+        # `unit()` (stdlib, left-to-right) retained on purpose: identical seeded start vector.
+        self.w = np.asarray(unit([rng.uniform(-1, 1) for _ in range(dim)]), dtype=float)
         self.lr = lr
 
     def learn(self, x):
-        y = dot(self.w, x)
-        self.w = [
-            wi + self.lr * y * (xi - y * wi) for wi, xi in zip(self.w, x)
-        ]  # Oja: Hebb + self-normalizing decay
+        xv = np.asarray(x, dtype=float)
+        y = float(self.w @ xv)
+        self.w = self.w + self.lr * y * (xv - y * self.w)  # Oja: Hebb + self-normalizing decay
         return y
 
     def run(self, data, epochs=1):
@@ -83,7 +103,7 @@ def main():
     cos_2nd = _abs_cos(comps[1], e2)
 
     print("=" * 60)
-    print("OJA'S RULE — unsupervised top principal component in one neuron")
+    print("OJA'S RULE -- unsupervised top principal component in one neuron")
     print("=" * 60)
     print(f"data: {len(data)} samples in R^{dim}; planted variance e1 >> e2 >> noise")
     print(f"Oja neuron : |cos(w, e1)| = {cos1:.3f}, ||w|| = {norm:.3f} (self-normalized)")
@@ -96,7 +116,10 @@ def main():
     assert cos_top > 0.95 and cos_2nd > 0.9, (
         f"Sanger must extract PC1,PC2 in order ({cos_top:.3f}, {cos_2nd:.3f})"
     )
-    assert OjaNeuron(dim, seed=0).run(data, epochs=8) == w, (
+    # `==` on two ndarrays is ELEMENTWISE and raises "truth value is ambiguous" under assert.
+    # This was a list comparison before the 2026-08-04 numpy redesign; np.array_equal is the
+    # same assertion, and still bit-exact rather than approximate.
+    assert np.array_equal(OjaNeuron(dim, seed=0).run(data, epochs=8), w), (
         "same data -> identical weight (deterministic)"
     )
     print(

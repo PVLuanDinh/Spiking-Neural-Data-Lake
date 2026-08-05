@@ -33,9 +33,12 @@ test split's does, for all 256/256), the sample choice is `random.Random(0).samp
 and regenerating on that basis reproduces both committed packs BYTE-FOR-BYTE -- as of 2026-07-30 that
 is true of the FILES and not merely of the arrays inside them, which is a correction, not a boast:
 write_pack used np.savez where the artifacts are savez_compressed, so the claim held cell-for-cell
-while every rebuilt .npz came out 45x too large. See write_pack. EXPECTED_CRC32 below
+while every rebuilt .npz came out 45x too large. See write_pack. `SPECS[kind]["crc32"]` below
 records each pack's fingerprint so that equality is a gate, not a claim: a rebuild that does not
-reproduce it REFUSES TO WRITE. A pack that loads but encodes differently would silently move every
+reproduce it REFUSES TO WRITE. (This sentence, and the one in `fingerprint`, both named a constant
+called EXPECTED_CRC32 -- corrected 2026-08-04: no such name exists anywhere in the repo, and
+`run_build` was already citing the real one correctly two hundred lines below. Naming the SYMBOL a
+reader can grep for is the point of the citation.) A pack that loads but encodes differently would silently move every
 perception number in the project, which is strictly worse than having no producer.
 
 DOWNLOAD -- EXERCISED, not asserted. `data/` is gitignored, so a fresh clone has neither dataset.
@@ -130,7 +133,8 @@ def fingerprint(frames, labels):
 
     Shape and dtype are folded in first so a reshaped or re-typed pack cannot collide with the
     original, and dtype.str carries endianness ('<f4'), so the digest is portable rather than
-    accidentally x86-specific. zlib.crc32, never hash(): this value is persisted in EXPECTED_CRC32.
+    accidentally x86-specific. zlib.crc32, never hash(): this value is persisted in
+    `SPECS[kind]["crc32"]` and gated against a rebuild in `run_build`.
     """
     head = "%s|%s|%s|%s" % (frames.shape, frames.dtype.str, labels.shape, labels.dtype.str)
     c = zlib.crc32(head.encode("ascii"))

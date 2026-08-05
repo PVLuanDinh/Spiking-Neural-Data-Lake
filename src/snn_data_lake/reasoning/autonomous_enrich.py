@@ -4,7 +4,7 @@ knowledge on the internet, so the chat learns new concepts BETWEEN sessions inst
 
 WHAT IT DOES: each round it CURIOSITY-picks a topic from a frontier (preferring topics it has not
 learned yet), fetches that topic's short encyclopedic summary from Wikipedia through the ONE guarded
-doorway (research/web_ingest_gate.py: host allowlist + SSRF firewall + hard size cap + provenance log),
+doorway (reasoning/web_ingest_gate.py: host allowlist + SSRF firewall + hard size cap + provenance log),
 and stores it as ONE durable fact in the shared KnowledgeLog (substrate/home.py). Dedup keeps the lake
 lean -- re-seeing a known topic never writes it twice. Because the log is append-only + fsynced, a fact
 learned in one run is REPLAYED by every later process: the brain never forgets what it learned.
@@ -15,24 +15,25 @@ background, or register it as a Windows Scheduled Task so the OS keeps it runnin
 
   schtasks /Create /SC ONLOGON /TN snn-enrich /TR ^
     "cmd /c cd /d D:\AI-project\spiking-neural-data-lake && set PYTHONUTF8=1 && set PYTHONPATH=src && ^
-     .venv-lake\Scripts\python research\autonomous_enrich.py --forever"
+     .venv-lake\Scripts\python -m snn_data_lake.reasoning.autonomous_enrich --forever"
 
-  (or just: `PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python research/autonomous_enrich.py --forever &`)
+  (or just: `PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.autonomous_enrich --forever &`)
 
 SOURCES & LICENCE -- HONEST: it fetches SHORT encyclopedic summaries from Wikipedia (CC BY-SA) for
 PERSONAL LOCAL use only -- not republishing, not the full article. Every fetch is scholarly and
 allowlisted, and passes the SSRF firewall + size cap before a byte is read; the provenance log records
 host + bytes + source. Sources: en.wikipedia.org / simple.wikipedia.org REST summary API.
 
-  PYTHONPATH=src .venv-lake/Scripts/python research/autonomous_enrich.py             # offline self-check demo
-  PYTHONPATH=src .venv-lake/Scripts/python research/autonomous_enrich.py --once      # learn ONE new topic (live)
-  PYTHONPATH=src .venv-lake/Scripts/python research/autonomous_enrich.py --rounds 20 # learn N topics (live)
-  PYTHONPATH=src .venv-lake/Scripts/python research/autonomous_enrich.py --forever   # learn at all times (Ctrl-C to stop)
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.autonomous_enrich             # offline self-check demo
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.autonomous_enrich --once      # learn ONE new topic (live)
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.autonomous_enrich --rounds 20 # learn N topics (live)
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.autonomous_enrich --forever   # learn at all times (Ctrl-C to stop)
 Deps: stdlib only. Reuses web_ingest_gate.WebAccessGate (the doorway) + substrate.home.KnowledgeLog (durable memory).
 """
 
 import argparse
 import os
+import random
 import re
 import sys
 import time
@@ -165,7 +166,7 @@ class AutonomousEnricher:
         self.frontier = list(frontier if frontier is not None else SEED_FRONTIER)
         self.expand = bool(expand)
         self.max_frontier = int(max_frontier)
-        self._rng = __import__("random").Random(seed)
+        self._rng = random.Random(seed)  # per-instance RNG, never the module-global stream
         self._attempted = set()  # topics tried this session
         # SEED curiosity from what the lake ALREADY knows: any topic whose src is on disk is "learned".
         self._learned_src = {r.get("src") for r in self.log.replay() if r.get("src")}
@@ -281,6 +282,13 @@ def _selfcheck():
     from snn_data_lake.substrate.home import KnowledgeLog as _KLog
 
     work = tempfile.mkdtemp(prefix="snn_enrich_")
+    # Save-and-RESTORE, not set-and-pop. The teardown below used to `os.environ.pop("NORD_HOME")`
+    # unconditionally, which DELETES a pre-existing value instead of putting it back -- and
+    # NORD_HOME is what selects the one durable lake, so a caller that had it set (run_selfchecks
+    # sets it for every module; the daemon sets it for the live brain) would silently fall back to
+    # the DEFAULT home for everything it did afterwards. Harmless under run_all()'s subprocess
+    # isolation, not harmless under run_one_in_process() (the frozen-app path, one process).
+    _prev_home = os.environ.get("NORD_HOME")
     os.environ["NORD_HOME"] = work  # isolate: never touch the real home
     try:
         summaries = _BUNDLED_SUMMARIES
@@ -383,7 +391,10 @@ def _selfcheck():
         )
         return 0
     finally:
-        os.environ.pop("NORD_HOME", None)
+        if _prev_home is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
+            os.environ["NORD_HOME"] = _prev_home
         shutil.rmtree(work, ignore_errors=True)
 
 

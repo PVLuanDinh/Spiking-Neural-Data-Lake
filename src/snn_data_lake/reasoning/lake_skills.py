@@ -26,15 +26,24 @@ CLUSTERING APPROACH -- direct signature distance (cosine), NOT ProximityIndex:
   come from connected components of the Hebbian weight graph -- the part that actually "wires".
 
 Reuses:
-  research/skill_builder.py :: signature(tokens) -> list[float] length 64 (crc32 bag-of-tokens,
-  normalized to [0,1]); crc32 is the project's persistence-stable hash, never builtin hash().
+  snn_data_lake/reasoning/skill_builder.py :: signature(tokens) -> list[float] length 64 (crc32
+  bag-of-tokens, normalized to [0,1]); crc32 is the project's persistence-stable hash, never
+  builtin hash().
+
+  PYTHONPATH=src python -m snn_data_lake.reasoning.lake_skills
+
+DISPOSITION (P3/P4c, recorded 2026-08-04 rather than left implicit): this module has ZERO importers
+tree-wide and is NOT registered in run_selfchecks.py, so the self-check below never runs in CI and
+nothing consumes SkillMap. Charge is therefore UNMEASURED -- not refuted, unmeasured. Under P4c that
+is a disposition owed (wire it to a consumer, or retire it), not a settled state; it is recorded
+here so the gap is countable instead of invisible. Note the P2 question it raises: this file and
+lake_skill_library.py both route an input to a "skill" by content proximity, and exactly one of
+those should survive.
 """
 
 import numpy as np
 
-# research/ is sys.path[0] when run as a script, but be explicit so imports are robust.
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-from snn_data_lake.reasoning.skill_builder import signature  # noqa: E402  (path set up above)
+from snn_data_lake.reasoning.skill_builder import signature
 
 
 class SkillMap:

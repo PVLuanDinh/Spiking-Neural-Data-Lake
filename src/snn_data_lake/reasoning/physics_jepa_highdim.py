@@ -17,7 +17,7 @@ LEARNED encoder -- the honest positive that physics_jepa.py's linear world could
 Un-riggable: (1) invariance loss drops; (2) no collapse vs the anti_collapse=False ablation;
 (3) the probe: learned latent decodes next-state BETTER than a random encoder, by a real margin.
 
-  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python research/physics_jepa_highdim.py
+  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.physics_jepa_highdim
   Knobs: NORD_STEPS(9000) NORD_NOISE(40) NORD_LAT(16)
 Deps: numpy (probe) + stdlib (JepaWorldModel). Reuses the physics dynamics from physics_jepa.
 """

@@ -14,7 +14,7 @@ at the same `per`:
   * SLDA-RFF (rate decoder over the SAME positional spiking context code)
   * bigram / trigram (most-frequent next given the last 1 / 2 tokens)   [same per, not full train]
 
-  PYTHONPATH=src .venv-lake/Scripts/python research/readout_fair_compare.py
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.readout_fair_compare
   Knobs: NORD_CTX(3) NORD_PERS("400,1200,3600,6000") NORD_RFF(1500) NORD_GAMMA(0.15)
 Deps: numpy (+ stdlib). Reuses corpus_stream, language_self_build, language_readout_slda.
 """

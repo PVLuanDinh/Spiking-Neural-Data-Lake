@@ -165,7 +165,7 @@ def main():
     js = g.to_json(indent=2)
 
     print("=" * 62)
-    print("NIR EXPORT — trained spiking classifier -> Neuromorphic IR graph")
+    print("NIR EXPORT -- trained spiking classifier -> Neuromorphic IR graph")
     print("=" * 62)
     print(
         f"classifier: {len(W)} classes x {len(W[0])} inputs -> NIR "

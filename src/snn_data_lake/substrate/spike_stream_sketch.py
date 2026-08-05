@@ -114,7 +114,7 @@ def main():
     one_sided = all(hh.cms.estimate(k) >= truth[k] for k in truth)
 
     print("=" * 60)
-    print("SPIKE-STREAM SKETCH — Count-Min heavy-hitter motif detection")
+    print("SPIKE-STREAM SKETCH -- Count-Min heavy-hitter motif detection")
     print("=" * 60)
     print(
         f"stream: {n} events, {distinct} distinct patterns; sketch {hh.cms.counters()} counters + top-3"

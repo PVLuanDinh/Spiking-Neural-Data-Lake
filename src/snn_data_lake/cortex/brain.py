@@ -198,9 +198,25 @@ class Brain:
         # selfchecks/pytest stay byte-identical + hermetic); an explicit persist=False also forces off.
         import os
 
-        self._persist = (True if persist is None else bool(persist)) and os.environ.get(
-            "NORD_PERSIST"
-        ) != "0"
+        # AN EXPLICIT `persist=` NOW WINS OVER THE ENV OFF-SWITCH. Corrected 2026-08-04 (specs/010,
+        # C34) after it silently produced the exact defect P4b exists to prevent.
+        #
+        # This read `(True if persist is None else bool(persist)) and NORD_PERSIST != "0"`, so
+        # `make_brain(persist=True)` returned a brain with `_persist = False` whenever anything had
+        # put NORD_PERSIST=0 in the environment -- no error, no warning, memories formed and
+        # dropped. It is how `tests/test_episode_durability.py` failed in the full suite while
+        # passing in isolation: the brain formed 39 episodes and the lake took 8 bytes (header
+        # only). The leak is unscoped and permanent -- `substrate/cockpit.py:1000` does
+        # `os.environ.setdefault("NORD_PERSIST", "0")` inside a self-check and never restores it,
+        # so one self-check disables durability for every consumer in the process afterwards.
+        #
+        # The env var is a DEFAULT for callers who did not say, never an override of callers who
+        # did. Hermetic gates are unaffected: they call `make_brain(seed=...)` with no `persist`
+        # argument, which still resolves to False under NORD_PERSIST=0.
+        if persist is None:
+            self._persist = os.environ.get("NORD_PERSIST") != "0"
+        else:
+            self._persist = bool(persist)
 
         # ---- the full live brain: PROVEN self-improve config ----
         # jepa=True is REQUIRED or the spiking curiosity yields no intrinsic reward.
@@ -1866,7 +1882,7 @@ class Brain:
         (reasoning/improvement_proposer): the self-build is now brain-native (learned, not hardcoded)."""
         try:
             if self._selfbuild_proposer is None:
-                from snn_data_lake.reasoning.brain_native_selfbuild import (
+                from snn_data_lake.basal_ganglia.brain_native_selfbuild import (
                     BrainNativeSelfBuildProposer,
                 )
 
@@ -2781,7 +2797,7 @@ class Brain:
             import subprocess as _sp
             import sys as _sys
 
-            from snn_data_lake.reasoning.self_build_loop import SelfBuildLoop
+            from snn_data_lake.basal_ganglia.self_build_loop import SelfBuildLoop
 
             def _gate():
                 # CRITICAL: run the correctness gate with NORD_SELFMOD UNSET, so the gate's own in-process
@@ -3775,7 +3791,7 @@ class Brain:
         an accepted proposal remains a separate, human-gated step. HONEST: a verifier-gated proposer, not
         an autonomous intelligence explosion; it can only ever tighten non-safety reasoning code."""
         try:
-            from snn_data_lake.reasoning.self_mod_harness import SelfModHarness
+            from snn_data_lake.substrate.self_mod_harness import SelfModHarness
 
             h = SelfModHarness(
                 enable=True, seed=self._seed, require_improvement=True, require_ruff=True

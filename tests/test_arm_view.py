@@ -1,9 +1,12 @@
 """The offscreen arm view: encoder correctness, demand gating, and honest unavailability.
 
-The encoder tests decode the PNG by hand rather than with PIL. That is the point: PIL is
-importable in `.venv-cu128` but declared only under the `[hf]` extra, so a test that used it
-would pass here and fail on a clean install -- and it would also be checking the encoder
-against a library rather than against the format.
+The encoder tests decode the PNG by hand rather than with PIL, and the reason that survives is
+the second one: it checks the encoder against the FORMAT rather than against a library. A test
+that agrees with PIL proves the two agree, not that either is right.
+
+The clean-install argument that used to sit here was retired 2026-08-04 under P7 -- "it would be
+another dependency" is not a valid reason to reject anything, and the purity gate that enforced
+it (`test_png_encoder_does_not_use_pil`) is deleted below with its reasoning.
 """
 
 import struct
@@ -57,26 +60,30 @@ def test_png_encoder_roundtrip():
         assert raw[y * (stride + 1) + 1 : (y + 1) * (stride + 1)] == rows[y]
 
 
-def test_png_encoder_does_not_use_pil():
-    """The encoder must not have reached for an undeclared dependency.
-
-    Checked over the IMPORT GRAPH, not the text. A substring search hits the module docstring,
-    which names PIL on purpose to record why it is not used -- so the naive version of this
-    test fails on the very comment that documents the rule it enforces.
-    """
-    import ast
-    import pathlib
-
-    tree = ast.parse(pathlib.Path(av.__file__).read_text(encoding="utf-8"))
-    imported = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            imported.update(a.name.split(".")[0] for a in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            imported.add(node.module.split(".")[0])
-
-    assert "PIL" not in imported, f"arm_view imports PIL: {sorted(imported)}"
-    assert {"zlib", "struct"} <= imported, "the encoder must use the stdlib primitives"
+# DELETED 2026-08-04 (specs/010, finding C06): `test_png_encoder_does_not_use_pil`.
+#
+# It asserted `"PIL" not in imported` and `{"zlib","struct"} <= imported` over arm_view's import
+# graph -- a pure-stdlib purity gate, MECHANIZED (ci.yml:111 runs bare pytest), landed 2026-08-01,
+# twelve days AFTER the zero-dependency rule was abolished project-wide. P7 (2026-08-04):
+# "A rejection that cites dependency count, install weight, or purity is not a rejection; it is a
+# reflex, and this policy overrides it."
+#
+# The available defence -- "this is a packaging gate, core src/ must not import an extra-only
+# dependency, which is a STRUCTURAL argument and therefore a permitted P7 rejection" -- was tested
+# and fails on three counts. (a) The test keys on the literal string "PIL", never on declaration
+# status: it does not read pyproject at all, so promoting pillow to a core dependency would still
+# fail it. (b) The second assert pins the IMPLEMENTATION to stdlib primitives, which is not a
+# packaging constraint under any reading, and the P2-correct port-then-delete would fail BOTH
+# asserts. (c) docs/POLICIES.md already adjudicates this exact file, in P7's incident table -- the
+# "hand-written PNG encoder" row, incident #4 of six, with pillow-declared-and-unimported named as
+# its counterpart. (That was cited as `POLICIES.md:819` until 2026-08-04; line 819 is a P6
+# paragraph about tools/p6_gate.py and has nothing to do with this. Naming the SECTION is what
+# stops it drifting again -- citation_guard checks that a cited file exists, never that a cited
+# line still says what it said.) A documented design reason cannot exempt a file from P7 when that
+# reason IS P7's named incident.
+#
+# `test_png_encoder_roundtrip` is KEPT: decoding by hand checks the encoder against the FORMAT
+# rather than against a library, which is a real reason that survives P7 untouched.
 
 
 def test_viewer_unavailable_degrades():

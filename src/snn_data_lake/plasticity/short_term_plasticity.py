@@ -6,8 +6,15 @@ streams; a DEPRESSING synapse turns one into an onset detector for free — each
 depletes release resources, so a burst of closely-spaced spikes fades while a spike arriving after a
 gap (an onset) rings out at full strength. `novelty_filter` runs a channel's spike stream through a
 Tsodyks-Markram depressing synapse and returns a per-spike novelty weight, so a downstream query can
-weight onsets over sustained activity. Additive and opt-in: streaming_hub's default store/query path
-is untouched. Refs: Tsodyks & Markram, PNAS 94 (1997); Markram, Wang & Tsodyks, PNAS 95 (1998).
+weight onsets over sustained activity. Refs: Tsodyks & Markram, PNAS 94 (1997); Markram, Wang &
+Tsodyks, PNAS 95 (1998).
+
+WIRING (corrected 2026-08-04). "Additive and opt-in: streaming_hub's default store/query path is
+untouched" remains true OF STREAMING_HUB, but it read as "this module is unwired", and that is
+false: `DynamicSynapse` is the PRE phase of `homeostatic_plasticity_stack._ShortTermGain`, which
+reaches the canonical brain through `plasticity_rule_stack` and `cortex/brain.py:273-278`. The
+precise split is that `novelty_filter` -- the streaming_hub-facing helper -- has no live consumer;
+the CLASS does. Measured charge for the stack path is in `homeostatic_scaling.py`'s wiring note.
 
   python -m snn_data_lake.plasticity.short_term_plasticity        # (also run by run_selfchecks.py)
 """
@@ -60,7 +67,7 @@ def main():
     burst_w = [weights[t] for t in burst]
 
     print("=" * 60)
-    print("SHORT-TERM PLASTICITY — onset/novelty filter over a streamed channel")
+    print("SHORT-TERM PLASTICITY -- onset/novelty filter over a streamed channel")
     print("=" * 60)
     print(f"stream: {len(baseline)} sparse + {len(burst)} burst spikes on channel 0")
     print(f"sparse (onset) weights : {[round(w, 3) for w in base_w]}")

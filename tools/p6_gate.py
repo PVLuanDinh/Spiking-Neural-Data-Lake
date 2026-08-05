@@ -26,34 +26,53 @@ WRITER faculty and show the READER faculty's own output changes. If it does not,
 reverted and the faculty is exempted with a reason, exactly as under P3.
 
 --------------------------------------------------------------------------------------------------
-MEASURED 2026-08-02 on HEAD 95c3f806 + working tree. Every number below is reproduced by running
-this file; none of it is quoted from the prior reading.
+RE-MEASURED 2026-08-04 by running this file. THE PREVIOUS BLOCK'S NUMBERS AND CITATIONS HAD BOTH
+ROTTED, and it said "Every number below is reproduced by running this file" while none of them was
+-- which is the sentence a reader trusts, so it is the sentence that had to be checked. What
+follows is a DATED reading; re-derive it rather than quoting it.
 
-  42 workspace writes across 10 modules, 9 reads across 5 modules, 10 subscribe registrations.
-  25 of the 42 writes are inside the two workspace modules' own self-checks (global_workspace 14,
-  reentrant_workspace 11), so real broadcast is 17 writes from 8 modules.
-  CROSS-MODULE reads: 1 of 9 -- `cortex/live_brain.py:287`, and live_brain is the tick driver.
-  FACULTY-to-FACULTY reads: 0 of 9.
+  46 workspace writes across 10 modules, 9 reads across 5 modules, 10 subscribe registrations.
+  25 of the 46 writes are inside the two workspace modules' own self-checks (global_workspace 14,
+  reentrant_workspace 11), so real broadcast is 21 writes from 8 modules.
+  CROSS-MODULE reads: 1 of 9 -- `cortex/live_brain.py:287` (`self.arm.workspace.broadcast()`), and
+  live_brain is the tick driver.
+  FACULTY-to-FACULTY reads: 0 of 9.   WRITERS READ BY NOBODY: 7 of 10.
+
+  Against the 2026-08-02 reading recorded here (42 writes / 9 reads / 10 subscribes): the delta is
+  +4 writes, all in `reasoning/brain_adapters/executive_control.py`, which now writes 7 -- its
+  2026-08-04 promotion redesign added self-check broadcasts. Reads did not move. The CONCLUSION did
+  not move either, and that is the point: more shouting into the same sink is not progress, and
+  this gate is built so that adding a `submit()` moves the number that does not matter.
 
 THE VERDICT IS UNCHANGED AND THE NUMBERS ARE NOT. P6's 2026-07-31 reading recorded "36 writes across
 8 modules, 2 reads across 2". Four differences, each a finding about the INSTRUMENT rather than about
-the tree, because git blame dates every affected line to 2026-07-21 -- ten days BEFORE that reading:
+the tree, because git blame dates every affected line to 2026-07-21 -- ten days BEFORE that reading.
+Every site below is named by SYMBOL and by its CURRENT line, re-verified 2026-08-04; the line numbers
+this paragraph carried before that date had all drifted onto unrelated code, which is the same rot
+these bullets were written to describe:
 
-  1. `cortex/brain.py` writes the bus THREE times (`:1733 :1738 :1742`, `self._reentrant.submit`) and
-     was absent from the prior module list entirely. The receiver is named `_reentrant`, not
-     `workspace`/`ws`/`_ws`; a walk keyed on those names cannot see it. This is the single largest
-     correction: 8 writer modules were really 9 on that same tree.
-  2. `cortex/brain.py:1610` `self._reentrant.broadcast_to("action")` is a REAL read, and a consuming
-     one -- it feeds `elig["reroute"]` into the three-factor drive-weight update at `:1615-1620`. The
-     prior reading did not have it, so "2 reads" was really 3 on that same tree.
-  3. `reasoning/developmental_loop_brain.py:295` was counted as one of the two READS. It is a WRITE.
-     The receiver is `WorkspaceBroadcast` (`reasoning/brain_adapters/executive_control.py:90`), a
-     wrapper whose `broadcast(source, content, salience)` calls `_ws.submit()` then `_ws.step()`. The
-     giveaway is arity: `GlobalWorkspace.broadcast()` takes ZERO arguments, so a 3-argument
-     `.broadcast(` is a submit wearing a reader's name. This gate splits them on arity, which is why
-     it is the one distinction hard-coded into the API table below.
-  4. `executive_control.py:231` and `:234` are two more writes of the same wrapper shape, uncounted
-     before for the same reason.
+  1. `cortex/brain.py` writes the bus THREE times (`self._reentrant.submit` at `:1816 :1821 :1825`,
+     sources `percept` / `self` / `salience`) and was absent from the prior module list entirely.
+     The receiver is named `_reentrant`, not `workspace`/`ws`/`_ws`; a walk keyed on those names
+     cannot see it. This is the single largest correction: 8 writer modules were really 9 on that
+     same tree. (Cited as `:1733 :1738 :1742` until 2026-08-04 -- by then those lines were a
+     place-guard, a comment and a percept-value lookup.)
+  2. `cortex/brain.py` `self._reentrant.broadcast_to("action")` (now `:1693`) is a REAL read, and a
+     consuming one -- it feeds `elig["reroute"]` into the three-factor drive-weight update a few
+     lines below. The prior reading did not have it, so "2 reads" was really 3 on that same tree.
+     (Cited as `:1610` until 2026-08-04.)
+  3. `reasoning/developmental_loop_brain.py` `workspace.broadcast(...)` (this gate reports it at
+     `:292`; it was written here as `:291`, the line the assignment STARTS on, which is a reminder
+     that a line cite disagrees with its own instrument as easily as with the tree) was counted as
+     one of the two READS. It is a WRITE. The receiver is `WorkspaceBroadcast`
+     (`reasoning/brain_adapters/executive_control.py`, see the class by name -- it was cited as
+     `:90`, then `:227`, and naming the symbol rather than the line is what stops this drifting
+     again), a wrapper whose `broadcast(source, content, salience)` calls `_ws.submit()` then
+     `_ws.step()`. The giveaway is arity: `GlobalWorkspace.broadcast()` takes ZERO arguments, so a
+     3-argument `.broadcast(` is a submit wearing a reader's name. This gate splits them on arity,
+     which is why it is the one distinction hard-coded into the API table below.
+  4. `executive_control.py`'s `WorkspaceBroadcast.broadcast` sites (six of them today, in its own
+     self-check) are writes of the same wrapper shape, uncounted before for the same reason.
 
   So the prior headline was low on both sides -- it missed a writer module and a read, and it counted
   a write as a read. Netting to a small number by two errors in opposite directions is exactly the
@@ -67,23 +86,32 @@ the tree, because git blame dates every affected line to 2026-07-21 -- ten days 
   vector (`:240`, `thought_on` -> a region-activation dict) and a chat string (`:402`). So no faculty
   reads another faculty's contribution: zero-way at the faculty level, precisely what P6 forbids.
 
-THE SHARPER FINDING THE RATIO HIDES: THERE IS NO BUS. There are 26 workspace INSTANTIATION sites
-across 10 modules -- 11 of them outside the two bus modules' self-checks, across 8 modules -- and
-each faculty constructs its OWN private workspace object: `train_of_thought` `self.ws`,
-`access_consciousness` `self._ws`, `rpm_solver` a function-local `ws`, `spike_chat_lake` a
-function-local `ws`, `WorkspaceBroadcast` `self._ws`, `brain` `self._reentrant`, `autonomous_loop`
-`self.workspace`. Faculty A's `submit()` is not merely unread by faculty B; it is INVISIBLE to it,
-because they are different objects. `cortex/brain.py:2299-2307` already records half of this
+THE SHARPER FINDING THE RATIO HIDES: THERE IS NO BUS. Re-measured 2026-08-04: 31 workspace
+INSTANTIATION sites across 9 modules -- 16 of them outside the two bus modules' self-checks, across
+7 modules -- and each faculty constructs its OWN private workspace object: `train_of_thought`
+`self.ws`, `access_consciousness` `self._ws`, `rpm_solver` a function-local `ws`, `spike_chat_lake`
+a function-local `ws`, `WorkspaceBroadcast` `self._ws`, `brain` `self._reentrant`,
+`autonomous_loop` `self.workspace`. Faculty A's `submit()` is not merely unread by faculty B; it is
+INVISIBLE to it, because they are different objects. (Read 26 / 11 / 8 on 2026-08-02; the rise is
+executive_control's promotion redesign adding self-check instances, so it is instrument arithmetic,
+not a worse tree -- and it is still eight separate buses with one writer each either way.)
+`cortex/brain.py`'s `AccessConsciousness` persistence comment already records half of this
 discovery from the runtime side (25 GlobalWorkspace constructions over 40 ticks against ONE
-ReentrantWorkspace). The remedy POLICIES.md proposes -- "faculties should READ the workspace, not
-only submit() to it" -- therefore cannot be done by adding a reader alone. There is no shared `it` to
-read. Sharing one instance is the prerequisite, and it is the cheaper half of the work.
+ReentrantWorkspace; it was cited as `:2299-2307` until 2026-08-04, by which time that range had
+drifted onto an unrelated surprise comment -- search the comment, not the line). The remedy
+POLICIES.md proposes -- "faculties should READ the workspace, not only submit() to it" -- therefore
+cannot be done by adding a reader alone. There is no shared `it` to read. Sharing one instance is
+the prerequisite, and it is the cheaper half of the work.
 
-TWO SIGHTINGS OF THE FAILURE THE HONESTY GUARD PREDICTS, both surfaced by running this file:
+TWO SIGHTINGS OF THE FAILURE THE HONESTY GUARD PREDICTS, both surfaced by running this file. Both
+re-verified 2026-08-04 -- the first one's two line numbers had BOTH drifted:
 
-  * `cortex/brain.py:714` subscribes TWO specialists, "action" and "language". Only "action" is ever
-    drained (`:1610`). "language" is a registered subscriber whose inbox nothing reads -- a route that
-    carries nothing, which POLICIES.md says is reverted and exempted, not counted.
+  * `cortex/brain.py:759` subscribes TWO specialists, "action" and "language", in one loop. Only
+    "action" is ever drained (`self._reentrant.broadcast_to("action")`, now `:1693`). "language" is
+    a registered subscriber whose inbox nothing reads -- a route that carries nothing, which
+    POLICIES.md says is reverted and exempted, not counted. This gate still reports it, by name,
+    under NEVER DRAINED. (Cited as `:714` and `:1610` until 2026-08-04; `:714` had become a bare
+    `except Exception:`.)
   * `thalamus/reentrant_workspace.py:399-409` ships `_Specialist.emit()`, a WORKING example of one
     faculty consuming another's broadcast (`bias = ws.broadcast_to(self.name)`, added to its next
     output). It exists only inside the bus's own self-check. The pattern P6 asks for is already
@@ -155,6 +183,11 @@ DEFAULT_ROLE = ("FACULTY", "not the bus and not the action path")
 # The self-check's floor. Recorded 2026-08-02 from this walk's own output, and asserted as a MINIMUM
 # so that adding a write is fine and losing sight of one is red. It is a liveness assertion about the
 # INSTRUMENT: a broken walk resolves to zero findings, which reads exactly like a clean tree.
+#
+# These are FLOORS and are deliberately NOT re-pinned to the 2026-08-04 re-measurement.
+# `executive_control.py` writes 7 today against the floor of 3 -- raising the floor to 7 would make
+# this gate red on a legitimate removal of a self-check broadcast, which is the opposite of what a
+# liveness floor is for. Raise an entry only when the OLD value can no longer be reached.
 KNOWN_WRITERS = {
     "thalamus/global_workspace.py": 14,
     "thalamus/reentrant_workspace.py": 11,

@@ -7,7 +7,11 @@ continuous ingestion the slow branch preserves long-range structure, mitigating 
 forgetting that a single fast time-constant would suffer. Surrogate-gradient trainable (the gate and
 downstream weights). Refs: LT-Gate dual-timescale neurons for continual spiking learning.
 
-Quarantined: needs torch + SpikingJelly (own venv). NOT part of the zero-dep core / CI.
+Needs torch (a core dependency) + SpikingJelly, installed in this subproject's own venv rather than
+in the deterministic gate env. SpikingJelly is an ADOPTED dependency (P7 -- docs/POLICIES.md records
+the adoption into this directory, 2026-07-02), not a quarantine, and under P4c there is no "outside
+the brain" category: the venv split exists because CI has no GPU and the gate must stay
+deterministic, not because this file is exempt from anything.
 
   python memory/lt_gate.py        # CPU smoke: slow branch retains input longer than a fast-only neuron
 """

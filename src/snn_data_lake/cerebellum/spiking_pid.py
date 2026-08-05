@@ -207,10 +207,15 @@ _PID_INDEX = next(j.qpos_index for j in arm_config.JOINTS if j.name == _PID_JOIN
 def drive_to(
     target_deg, steps=60, noise=0.0, spiking=True, seed=0, perturb_at=None, perturb_deg=25.0
 ):
-    """Drive arm_sim joint A to target_deg; return (error trace, final angle, breach count).
-    If perturb_at is set, an external shove is injected at that step and arm_sim's
-    trajectory-deviation comparator (v0.51) flags the off-path event -- the controller then
-    drives the joint back. Controller + edge safety reflex working together."""
+    """Drive the So101Arm's `_PID_JOINT` to target_deg; return (error trace, final angle, breaches).
+    If perturb_at is set, an external shove is injected at that step and the arm's
+    trajectory-deviation comparator flags the off-path event -- the controller then
+    drives the joint back. Controller + edge safety reflex working together.
+
+    (Named `arm_sim joint A` until 2026-08-04. `brainstem/arm_sim.py` does not exist -- it was
+    REPLACED by `so101_arm.py` under specs/004 -- and "joint A" predates the named-joint move that
+    put `_PID_JOINT = "shoulder_lift"` below. A stale citation to a deleted module sends a reader
+    looking for something that is not there; `citation_guard` does not catch prose like this.)"""
     rng = random.Random(seed)
     arm = So101Arm()
     # One simulated second per control step -- the body's own derived ceiling. This demo
@@ -288,7 +293,7 @@ def main():
     _, dist_none = _disturbed_plant("none")
 
     print("=" * 66)
-    print("SPIKING PID (LIF-population) -- drive arm_sim joint A to setpoint")
+    print(f"SPIKING PID (LIF-population) -- drive So101Arm {_PID_JOINT} to setpoint")
     print("=" * 66)
     print(f"target             : {target} deg")
     print(f"spiking PID        : final {final_s:.2f} deg | settle RMSE {_rmse(errs_s):.2f}")

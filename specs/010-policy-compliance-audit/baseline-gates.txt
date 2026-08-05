@@ -1,0 +1,48 @@
+Baseline gate state — specs/010-policy-compliance-audit
+Captured 2026-08-04. Env: .venv-lake (torch 2.13.0+cpu, numpy 2.4.6), HEAD a80ae90d.
+
+T002. Recorded AFTER the Phase 2 fixes rather than before them, which is a real gap in this
+feature's own process and is stated rather than hidden: the pre-change full-suite pytest was never
+run, so the "before" column below is reconstructed from a clean-HEAD worktree control run executed
+2026-08-04 during the C34 investigation, not from a capture taken at T002 time.
+
+=========================================================================
+GATE                       CLEAN HEAD (control)      AFTER PHASE 2 FIXES
+=========================================================================
+run_selfchecks.py          278/278 pass              278/278 pass
+                           (exit 0)                  (exit 0)
+
+pytest                     FAIL - exit 1             FAIL - exit 1
+                           2 failed                  2 failed
+                           coverage 92.38%           coverage 92.78%
+
+ruff check .               All checks passed         All checks passed
+ruff format --check        463 files formatted       463 files formatted
+  src tests tools
+
+citation_guard.py          exit 0                    exit 0
+                           STRICT 0 unexempted       STRICT 0 unexempted
+                           1 exemption               1 exemption
+                           BROAD 566 / 159 files     BROAD 566 / 159 files
+                           (report only)             (report only)
+
+pyproject.toml             parses                    parses
+=========================================================================
+
+THE TWO PYTEST FAILURES ARE PRE-EXISTING AND IDENTICAL IN BOTH COLUMNS:
+
+  FAILED tests/test_episode_durability.py::test_episodes_reach_the_lake_and_survive_the_writer
+  FAILED tests/test_episode_durability.py::test_a_restarted_brain_is_not_amnesic
+
+Causation established by control, not assumed:
+  - pass in isolation (6 passed, exit 0)
+  - pass adjacent to the modified file (12 passed with test_cockpit_actuation.py)
+  - fail in the full suite on this feature's tree
+  - fail identically in the full suite on a clean HEAD git worktree, same `..FFs` position at 41%
+
+Tracked as finding C34 / task T061. Until diagnosed, P4b's guarantee is UNPROVEN in CI.
+
+SELF-CHECK COUNT NOTE: 278 here in .venv-lake. The documented split is 278 (.venv-cu128) vs 277
+(.venv-lake) because nengo present in the CUDA env runs NENGO_GATED instead of skipping. This run
+reads 278 in .venv-lake, so nengo is installed in this env too. A CHANGED count is the signal; the
+count did not change across this feature's edits.

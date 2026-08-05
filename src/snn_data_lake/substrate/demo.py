@@ -1,9 +1,7 @@
 """
-demo.py — Spiking Neural Data Lake -> robot arm, the whole loop in ONE runnable file.
+demo.py -- Spiking Neural Data Lake -> robot arm, the whole loop in ONE runnable file.
 
-Download this single file and run it. No dependencies, no other files, no hardware:
-
-    python demo.py
+    PYTHONPATH=src python -m snn_data_lake.substrate.demo
 
 It walks the full reaction loop on embedded sample sensor data (an ultrasonic-distance +
 IR-temperature rig, the reference format):
@@ -12,19 +10,34 @@ IR-temperature rig, the reference format):
         ->  Interpreter (gesture -> robot command)  ->  arm motion
         ->  contact reflex (object at the sensor -> EMERGENCY_STOP)
 
-This file is a self-contained MIRROR of the real modules (signal_loop / gesture_recognition /
-paradigm_b_engine / interpreter / arm_sim) so it runs standalone — the full repo has the
-production versions, tests, lakehouse, GPU training, and the live `--serial` path.
+The RECOGNITION half is a self-contained mirror of the real modules (brainstem/signal_loop,
+cortex/gesture_recognition, cortex/paradigm_b_engine, brainstem/interpreter); the ARM half is not a
+mirror at all -- it drives the ONE real arm, `brainstem/so101_arm.So101Arm`.
+
+CORRECTED 2026-08-04. This header opened "Download this single file and run it. No dependencies, no
+other files, no hardware", and named `arm_sim` as one of the modules it mirrors:
+  * it imports `snn_data_lake.brainstem.so101_arm`, so it is neither single-file nor
+    dependency-free (mujoco is an unconditional core dependency -- see P7);
+  * `arm_sim` does not exist anywhere in `src/`. That is the same phantom module CLAUDE.md records
+    correcting out of its safety-envelope list, surviving here;
+  * "no dependencies" as a selling point is exactly the retired zero-dependency rule P7 abolished,
+    and this file is where its removal was PAID FOR -- the private arm it used to carry was a third
+    E-STOP implementation (POLICIES.md P7, incident 1).
 
 Optional live hardware (needs `pip install pyserial`):
-    python demo.py --serial COM8
+    python -m snn_data_lake.substrate.demo --serial COM8
 """
 
-import math
 import sys
 
+from snn_data_lake.brainstem import arm_config as _arm_config
+from snn_data_lake.brainstem.arm_config import CONTACT  # the ONE contact threshold
+
 W = 8  # samples per window
-CONTACT = 0.04  # distance (m) -> reflex EMERGENCY_STOP
+# CONTACT is IMPORTED, not redefined. This file carried its own `CONTACT = 0.04` -- a second copy of
+# a safety-envelope constant (`brainstem/arm_config.py:27`), which P1's fourth exception protects
+# precisely BECAUSE it is a safety constant, and which P2 says must exist once. Two copies of a
+# reflex threshold is one copy that can drift out of the envelope without anything noticing.
 NEAR, MID, FAR = 0, 1, 2
 
 # gesture -> robot command (approach grabs the incoming object, retreat releases)
@@ -79,6 +92,12 @@ class _RetiredArm:
     existed so this demo could run without dependencies; the zero-dependency rule was removed
     project-wide in 2026-07 and mujoco is a core dependency now, so that reason no longer
     describes anything. The demo drives the one real arm instead.
+
+    THE BODIES ARE GONE TOO, 2026-08-04. `ee()` and `apply()` survived the retirement -- including
+    the `if cmd == "EMERGENCY_STOP": self.stopped = True` branch, i.e. the second E-STOP itself,
+    still on disk inside the marker announcing its removal. `__init__` raising makes them
+    unreachable by construction, not absent: `_RetiredArm.apply(obj, "EMERGENCY_STOP")` still ran
+    them. P2 says count the survivors, and a retirement marker needs its reason, not its code.
     """
 
     def __init__(self, *_a, **_k):
@@ -86,23 +105,6 @@ class _RetiredArm:
             "demo.Arm is retired: there is exactly one arm (brainstem/so101_arm.So101Arm). "
             "Constructing a private arm here would re-implement the safety gate."
         )
-
-    def ee(self):
-        a, b = self.theta[0], self.theta[0] + self.theta[1]
-        return (
-            round(self.l1 * math.cos(a) + self.l2 * math.cos(b), 2),
-            round(self.l1 * math.sin(a) + self.l2 * math.sin(b), 2),
-        )
-
-    def apply(self, cmd):
-        if cmd == "EMERGENCY_STOP":
-            self.stopped = True
-        elif cmd == "ENGAGE":
-            self.effector = 1.0
-        elif cmd == "RELEASE":
-            self.effector = 0.0
-        # HOLD -> nothing
-        return cmd
 
 
 # ---- sample data (embedded: the reference gesture shapes) ---------------
@@ -197,9 +199,27 @@ def main():
     assert "ENGAGE" in seen, "approach did not grab"
     assert "RELEASE" in seen, "retreat did not release"
     assert "EMERGENCY_STOP" in seen and arm.stopped, "contact did not trip the reflex"
+
+    # THE RETIRED ARM CARRIES NO BODY. `_RetiredArm.apply()` and `.ee()` survived the retirement
+    # with their code intact -- including `if cmd == "EMERGENCY_STOP": self.stopped = True`, the
+    # SECOND E-STOP that POLICIES.md P7 names as its sharpest incident -- inside the marker
+    # announcing their removal. A raising `__init__` made them unreachable by construction, not
+    # absent: `_RetiredArm.apply(obj, "EMERGENCY_STOP")` still executed them. Deleted 2026-08-04;
+    # this assert is what stops them coming back, because `tests/test_arm_vocabulary.py` only
+    # checks that CONSTRUCTION raises and would pass with either body present.
+    # RED, CONSTRUCTED AND RUN: restoring either method makes this fire.
+    _leftover = [m for m in ("apply", "ee", "theta", "l1", "l2") if m in vars(_RetiredArm)]
+    assert not _leftover, (
+        f"_RetiredArm still carries {_leftover} -- a retirement marker keeps its REASON, never its"
+        " code, and the code here is a second implementation of the arm safety gate"
+    )
+    assert CONTACT is _arm_config.CONTACT, (
+        "CONTACT must stay the ONE imported safety constant, never a local copy that can drift"
+    )
+
     print(
-        "self-check OK: recognized gestures, mapped to commands, moved the arm, "
-        "reflex stopped on contact — the whole loop ran from one file."
+        "self-check OK: recognized gestures, mapped to commands, moved the ONE arm, reflex stopped "
+        "on contact; the retired private arm carries no body and CONTACT is imported, not copied."
     )
 
 

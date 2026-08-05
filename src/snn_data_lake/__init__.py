@@ -1,4 +1,10 @@
-"""snn_data_lake -- a zero-dependency neuromorphic library organized by brain anatomy.
+"""snn_data_lake -- a neuromorphic library organized by brain anatomy.
+
+Core dependencies are torch, numpy and mujoco. This line described the package as
+"zero-dependency" until 2026-08-04, fifteen days after that contract was abolished project-wide
+(2026-07-20) -- the single most-read description of the package advertised a property it no
+longer had. Per P7, any dependency that helps this become a phenomenal brain is accepted.
+
 
 As of 3.0 the modules live in anatomical region subpackages -- cortex, hippocampus,
 basal_ganglia, cerebellum, brainstem, neuromodulation, plasticity, and substrate (the
@@ -61,6 +67,11 @@ REGIONS = {
         "self_improvement_suite",
         "wholistic_loop",
         "autapse_neuron",
+        # PROMOTED from reasoning/ 2026-08-04: the three neuron models `neuron_zoo`
+        # composes. They fed a GOVERNED module from outside the gate.
+        "adex_neuron",
+        "resonate_and_fire",
+        "srm_neuron",
         "integration_measure",
         "agency_monitor",
         "affect_core",
@@ -97,6 +108,15 @@ REGIONS = {
         "spiking_grid_can",  # C1: continuous-attractor SPIKING grid network (bump path integration)
         "episode_consolidation",  # C1 batch-4: systems-consolidation of real episodes (sparse attractor + sleep replay)
         "lake_consolidation",  # sleep-time prune of the symbolic durable lake (cap re-derivable bulk, keep learned)
+        # Promoted from reasoning/ 2026-08-04 after an in-place P7/P1/P8 redesign. FACTORED
+        # k-WTA associative memory: the P sparse patterns ARE the memory (O(P*k)), so there is
+        # no N x N weight matrix to store. WIRED AND CHARGED, measured not assumed -- neutering
+        # S.recall to a pass-through costs its live consumer (cortex/recognizer_bank.py:233
+        # StorageRecognizer) 3 of its 64 out-of-distribution rejections, 0.844 -> 0.797. That is
+        # P6 one-way as well: a hippocampus faculty whose output moves a cortex faculty's output.
+        # Honest qualifier: the bank builds lazily and fires only on an explicit "recognize:"
+        # query, so the path is charged but query-gated, not exercised on an ordinary tick.
+        "spiking_storage_prototype",  # factored k-WTA associative memory; denoising content-addressable recall
     ],
     "basal_ganglia": [
         "evidence_accumulation",
@@ -105,6 +125,23 @@ REGIONS = {
         "action_gating",
         "latent_q",
         "mlp_q",
+        # Promoted from reasoning/ 2026-08-04. Both belong in basal_ganglia because both LEARN FROM
+        # OUTCOME: self_build_loop is the correctness-gated apply/rollback path, and
+        # brain_native_selfbuild picks WHICH candidate to propose using the brain's own three-factor
+        # RSTDP rule driven by the gate verdict (kept +1 / rolled_back -1), which is reward-modulated
+        # action selection in the literal sense -- not a census, not a heuristic ranking.
+        #
+        # LIVE, and the honest limit of that claim: brain.py::_enter_wake reaches both once every
+        # SELFBUILD_EVERY=8 nights, but ONLY under NORD_SELFMOD=1 (the daemon sets it, CI does not),
+        # so under `pytest` / `run_selfchecks.py` neither fires and CHARGE IS UNMEASURED. Registered
+        # as reachable-and-operator-gated, NOT as charge-proven.
+        #
+        # brain_native_selfbuild's learned weights moved INTO the one lake under _T_SELFBUILD as part
+        # of this promotion (P4b) -- they were in <repo>/data/selfbuild_state.json, a second durable
+        # store. Cross-process round-trip proven: writer pid wrote w=0.77/0.11, a separate reader
+        # process read them back after the writer exited.
+        "self_build_loop",
+        "brain_native_selfbuild",
     ],
     "amygdala": ["fear_conditioning", "affective_appraisal"],
     "cerebellum": [
@@ -116,6 +153,12 @@ REGIONS = {
         "hjepa_serve",
         "spiking_jepa",
         "gain_adaptation",
+        # PROMOTED from reasoning/ 2026-08-04 (owner directive: every build is promoted into the
+        # governed tier the moment it lands; reasoning/ is outside all three P3 gates, which is
+        # where dormancy hides). Cerebellum is the anatomically correct home -- this is the timing
+        # structure, and synfire_chain.py:37 already cross-references it to distinguish zero-lag
+        # synchrony from delay-matched convergence.
+        "polychronization",
     ],
     "brainstem": [
         "reflex",
@@ -160,6 +203,22 @@ REGIONS = {
         "affect_integrator",  # C1 batch-2: spiking neuromod fusion -> coupled affect + self-organized emotions
     ],
     "plasticity": [
+        # PROMOTED from reasoning/ 2026-08-04, AFTER its P7 redesign (owner rule: redesign
+        # first, promote second). Oja (1982) is a HEBBIAN RULE with a normalizing decay term,
+        # w += lr*y*(x - y*w): no membrane, no threshold, no spike. A plasticity rule, not a
+        # neuron model. Sole governed importer: cortex/percept_surprise.py.
+        #
+        # P7: the compromise was at the BOUNDARY -- percept_surprise held a numpy residual and
+        # called .tolist() per sample, at in_dim=2312, purely so a list-based OjaNeuron could
+        # eat it. Both sides are numpy now. NOT bit-exact (pairwise vs left-to-right sums):
+        # measured max |dw| = 1.47e-15, relative error 3.8e-16 (one ULP of float64), and the
+        # consumer's four reported statistics are unchanged (first20 0.2218, last20 0.0442,
+        # offdist 0.2036, novelty_corr 0.2594).
+        #
+        # NOT CLAIMED LIVE. docs/coverage/artifacts/surprise_60.txt records the neuter-A/B:
+        # the orienting signal changed 0 of 60 act/hold decisions. Promotion makes it VISIBLE
+        # to the P3 gates; it does not make it charged, and P3 forbids force-wiring it.
+        "oja_pca",
         "bcm_plasticity",
         "homeostatic_scaling",
         "inhibitory_stdp",
@@ -175,6 +234,16 @@ REGIONS = {
         "plasticity_rule_stack",
     ],
     "substrate": [
+        # PROMOTED 2026-08-04: P2 merge of training/device.py (GPU-first, measured) with the
+        # retired reasoning/torch_device.py (had the users + enable()). Infra, not a brain region.
+        "device",
+        # Promoted from reasoning/ 2026-08-04. SUBSTRATE, not basal_ganglia (an earlier plan said
+        # basal_ganglia): this module spawns subprocesses, copies a directory tree and checksums
+        # files. It contains no neuron, no weight and no learning rule -- its own docstring says it
+        # "gates source edits, it does not update a weight" -- so it is infra by the same test that
+        # puts `device` here. It also owns _PROTECTED, the 9-file firewall the self-build path
+        # enforces, and _repo_root(), which three other modules import.
+        "self_mod_harness",
         "_mathutils",
         "arm_view",
         "spike_stream_sketch",
@@ -214,6 +283,12 @@ REGIONS = {
         "brain_telemetry",  # the ONE snapshot contract + JSONL recorder + provenance table
         "brain_geometry",  # hand-authored anatomical layout + the REAL connectome tracts (stdlib)
         "cockpit",  # THE one frontend: live brain + arm + hardware target + chat, one page
+        # PROMOTED from the repo root 2026-08-04 under P4c: the daemon is the brain's DRIVE (wake/
+        # sleep cycle, tick loop, continuity), not a launcher beside it. It was 370 lines outside the
+        # package in no gate, with no self-check and not one assert. `learn_daemon.py` at the root is
+        # now a thin shim so the documented command still works. Its __main__ is a self-check, NOT
+        # the drive loop -- run_selfchecks executes __main__ and a forever-loop would hang the gate.
+        "learn_daemon",
         "dormancy_gate",  # Policy 3: the no-silent-dormancy CI gate (reachable-or-EXEMPT over REGIONS)
         "replication_guard",  # Policy 4: the one-brain guard (canonical stack classes defined once)
         "import_manifest",  # Policy 3: the cross-tier canary (governed -> ungoverned lazy imports)

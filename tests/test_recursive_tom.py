@@ -2,8 +2,12 @@
 Edge tests for recursive_tom: N-agent, depth-k recursive Theory of Mind over VSA role-filler
 propositions read out by a spiking LIF winner-take-all. Covers the behaviors the __main__ self-check
 exercises -- false-belief transfer (an absent agent's belief stays stale), a divergent second-order
-belief, non-location attitudes (wants/knows) with nesting, depth-3 nesting, determinism, and
-zero-dependency purity.
+belief, non-location attitudes (wants/knows) with nesting, depth-3 nesting, and determinism.
+
+(This list ended "and zero-dependency purity" until 2026-08-04. No test in this file has ever
+asserted that, and P7 abolished the rule it named -- so the docstring was advertising coverage that
+does not exist, for a property the project no longer holds. Both halves are wrong independently,
+which is why it goes rather than gets a purity test written for it.)
 
 Run: pytest tests/test_recursive_tom.py
 """

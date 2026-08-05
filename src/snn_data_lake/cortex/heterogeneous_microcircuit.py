@@ -16,24 +16,25 @@ contract `step(current)->spike, reset()` (we do NOT edit the cell files):
   - cortex/lif_neuron.LIFNeuron           : already step(current)->0/1, reset_state -> reset shim
   - cortex/izhikevich_neuron              : only a simulate() fn + REGIMES params -> a stepping shim that
                                             mirrors its per-dt (v,u) dynamics, sub-stepped within a tick
-  - reasoning/adex_neuron.AdEx            : step(I)->0/1, reset(); sub-stepped within a tick
+  - cortex/adex_neuron.AdEx               : step(I)->0/1, reset(); sub-stepped within a tick
 
 Population encoding reuses cortex/population_encoding (its RBF receptive fields). Learning reuses the
 local STDP/covariance rule from substrate/basic_components -- no loss.backward, no autograd, no surrogate
 gradients: the weights autonomously diverge from init under the local rule.
 
-  python -m snn_data_lake.cortex.heterogeneous_microcircuit        # self-check
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.heterogeneous_microcircuit
 """
 
 import random
 
 import numpy as np
 
+from snn_data_lake.cortex.adex_neuron import AdEx
+
 # REGIMES = canonical Izhikevich parameter sets, reused from the existing cell (do NOT re-hardcode them)
 from snn_data_lake.cortex.izhikevich_neuron import REGIMES
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.cortex.population_encoding import PopulationEncoder
-from snn_data_lake.reasoning.adex_neuron import AdEx
 from snn_data_lake.substrate.basic_components import (
     Connection,
     STDPRule,

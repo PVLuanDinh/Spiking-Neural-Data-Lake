@@ -24,7 +24,20 @@ LIF (integrate -> spike -> sustained-firing readout), deterministic, core-promot
 gwt_deep.py. NOT a claim of phenomenal consciousness -- it names one dynamics: recurrent top-down
 amplification enabling all-or-none access. Open question, actively built toward, neither denied nor claimed.
 
-  python research/gwt_reentry.py
+  PYTHONPATH=src python -m snn_data_lake.reasoning.gwt_reentry
+
+REACHABLE REDS, added 2026-08-04. docs/POLICIES.md names this module under P8: the live
+`reasoning/consciousness_probe.py` RE-ENTRY marker is "arithmetic over literals -- gwt_reentry.py
+:32,83,84 give 0.40 < 0.55 < 0.70, no brain input, no RNG", i.e. a marker that reports 4/4 with no
+input that could make it report otherwise. That criticism is CORRECT about the probe and it was
+half-true here: the four claims below are functions of (bottom_up, prior, reentry), so a red exists,
+but main() only ever ran the one literal triple that passes -- and P8 asks for the failing input to
+be CONSTRUCTED AND RUN, not merely to exist. `_reds()` below now does that: it drives each claim
+with the input that breaks it and asserts the mechanism reports the failure. If a future edit makes
+this module's dynamics vacuous (e.g. ignition regardless of drive), those reds stop firing and the
+self-check fails. This does NOT fix consciousness_probe -- that module builds its own fresh objects
+at a fixed seed and is outside this file -- but it removes the "no reachable red" half of the
+finding at the source, so the probe's remaining gap is squarely the probe's own.
 """
 
 _T = 40  # settling micro-steps per workspace tick
@@ -77,6 +90,44 @@ def run_gap(bottom_up, prior, reentry, on=4, gap=6):
         if t >= on and broadcasting:
             held += 1
     return held
+
+
+def _reds():
+    """CONSTRUCT AND RUN the input that makes each claim below FAIL, and assert it fails (P8/F11).
+
+    Each row is the counterfactual for one claim in main(): if the mechanism were vacuous -- if
+    ignition did not depend on total drive, or if the loop carried nothing -- the corresponding row
+    would stop failing and this function would raise. Returns a list of (name, went_red) for the
+    banner so the reds are visible, not just enforced."""
+    rows = []
+    # (1) "weak bottom-up alone must stay subliminal" goes RED once the evidence alone clears
+    #     rheobase: 0.60 > _LEAK * _V_TH == 0.55.
+    rows.append(("weak-alone stays subliminal", run_loop(0.60, prior=0.0, reentry=True)[0]))
+    # (2) "expectation ALONE must NOT ignite" (the no-hallucination guard) goes RED for a
+    #     supra-threshold prior -- the guard is about SUB-threshold expectation, and it must be
+    #     possible to violate it or it is not a guard.
+    rows.append(("prior-alone does not ignite", run_loop(0.0, prior=0.60, reentry=True)[0]))
+    # (3) "weak + expectation through the CLOSED loop ignites" goes RED when the pair still sums
+    #     below rheobase (0.20 + 0.20 = 0.40 < 0.55): completion needs real evidence, not the loop.
+    rows.append(("weak+expected ignites", not run_loop(0.20, prior=0.20, reentry=True)[0]))
+    # (4) "with the loop OPEN the same input stays subliminal" goes RED when the bottom-up evidence
+    #     alone already ignites -- then the loop was never what did it.
+    rows.append(("loop is load-bearing", run_loop(0.60, prior=0.30, reentry=False)[0]))
+    # (5) "re-entry sustains longer than feedforward" goes RED when re-entry carries nothing
+    #     (prior 0 and the self-sustain current alone left below rheobase is not reachable without
+    #     touching _SELF, so drive the honest counterfactual: no top-down at all on both arms).
+    rows.append(
+        (
+            "re-entry outlasts feedforward",
+            run_gap(0.80, 0.0, reentry=True) <= run_gap(0.80, 0.0, reentry=False),
+        )
+    )
+    for name, went_red in rows:
+        assert went_red, (
+            f"NO REACHABLE RED for '{name}': the constructed failing input did not make the "
+            f"mechanism report a failure, so that claim cannot go red and is worthless (P8/F11)"
+        )
+    return rows
 
 
 def main():
@@ -141,6 +192,12 @@ def main():
     assert held_on > held_off, (
         f"re-entry must sustain across an input gap longer than feedforward ({held_on} vs {held_off})"
     )
+    # Every claim above is now shown to be FALSIFIABLE by running the input that breaks it.
+    reds = _reds()
+    print("-" * 88)
+    print("  reachable reds (the constructed input that makes each claim FAIL, run every time):")
+    for name, _ in reds:
+        print(f"    [RED OK] {name}")
     print(
         "self-check OK: closed GNW re-entrant loop gives PREDICTIVE COMPLETION (weak+expected ignites) with "
         "NO hallucination (expectation alone stays subliminal), the loop is load-bearing (open -> no completion), "

@@ -40,19 +40,54 @@ import time
 import urllib.request
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if _ROOT not in sys.path:
-    sys.path.insert(0, _ROOT)
+
+# `if _ROOT not in sys.path: sys.path.insert(0, _ROOT)` stood here. DELETED 2026-08-05, for the
+# SAME reason `_prefer_discrete_gpu` below exists: a module-scope write to process-global state.
+# It was also DEAD. MEASURED before deletion: importing this module added
+# '<repo>' to sys.path for the rest of the process, and this module imports NOTHING from the repo
+# ('snn_data_lake' not in sys.modules after import -- verified). `_ROOT` is still used, for the
+# daemon's script path and its cwd, and neither needs the path entry.
+# This is the third of the three side effects P4c's daemon promotion named (os.chdir /
+# sys.path.insert / os.environ.setdefault); the environ one was moved into main() in the same pass
+# that left this one at column 0.
+
+# Snapshots taken BEFORE anything below can mutate them. The smoke asserts both are unchanged,
+# which is what "importing this module has no side effects" means as a MEASUREMENT rather than as a
+# comment -- and unlike the `_GPU_ARGS_APPLIED` sentinel these fire for ANY module-scope write, not
+# only for one that remembers to set the sentinel. Reds for both were constructed and measured; see
+# the assert block in main().
+_SYS_PATH_AT_IMPORT = tuple(sys.path)
+_WEBVIEW2_ENV_AT_IMPORT = os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")
 
 PORT = int(os.environ.get("NORD_TELEMETRY_PORT", "8137"))
 URL = f"http://127.0.0.1:{PORT}/"
 BOOT_TIMEOUT = 180.0  # a cold first boot builds the whole brain before the port binds
 
-# Ask WebView2 for the discrete GPU and enable the modern graphics stack. Chromium reads these from
-# the environment at launch; pywebview passes them through to the WebView2 host.
-os.environ.setdefault(
-    "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-    "--enable-features=Vulkan,WebGPU --use-angle=d3d11 --force_high_performance_gpu",
-)
+# Chromium reads these from the environment at launch; pywebview passes them through to the WebView2
+# host. Ask it for the discrete GPU and the modern graphics stack.
+_WEBVIEW2_GPU_ARGS = "--enable-features=Vulkan,WebGPU --use-angle=d3d11 --force_high_performance_gpu"
+
+
+def _prefer_discrete_gpu():
+    """Set the WebView2 launch arguments. Called from main(), NOT at module scope.
+
+    This was a bare module-scope `os.environ.setdefault(...)`, which is the same latent bug the P4c
+    promotion of the daemon found and removed three times over (`os.chdir`, `sys.path.insert`,
+    `os.environ.setdefault("NORD_GPU","1")` -- POLICIES.md P4c). Importing a module must not change
+    the process environment for everything imported after it: `run_selfchecks.py` drives part of the
+    suite through runpy in ONE process, so an import-time environment write here would apply to every
+    module that follows. Under P4c this file is part of the brain and is a candidate for exactly that
+    kind of registration, so the side effect had to go before it becomes reachable rather than after.
+    Only the desktop process wants this, and only when it is about to open a window.
+    """
+    global _GPU_ARGS_APPLIED
+    os.environ.setdefault("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", _WEBVIEW2_GPU_ARGS)
+    _GPU_ARGS_APPLIED = True
+
+
+# False until main() opens a window. The smoke asserts it is still False, which is what "importing
+# this module has no side effects" means as a MEASUREMENT rather than as a comment.
+_GPU_ARGS_APPLIED = False
 
 
 def cockpit_is_up(port=PORT):
@@ -125,11 +160,44 @@ def main():
         # window, spawning a brain, or writing the durable lake.
         assert URL.startswith("http://127.0.0.1:"), URL
         assert isinstance(cockpit_is_up(), bool)
+        # The GPU arguments must NOT be applied by the smoke: it opens no window, and applying them
+        # would be the module-scope environment write this file just removed, relocated into a
+        # verification path. RED is reachable: call _prefer_discrete_gpu() before main() and this
+        # fires. MEASURED 2026-08-05 by doing exactly that -- AssertionError, exit 1.
+        assert not _GPU_ARGS_APPLIED, (
+            "the WebView2 GPU arguments were applied without a window being opened -- importing or "
+            "smoke-checking this module must not write the process environment"
+        )
+        # The sentinel above is NOT sufficient on its own, and saying so is the point of these two.
+        # It only fires when someone calls `_prefer_discrete_gpu()`; a bare
+        # `os.environ.setdefault(...)` or `sys.path.insert(...)` re-added at column 0 -- the exact
+        # defect shape this file was edited to remove, and the one P4c's daemon promotion found
+        # three times -- leaves the sentinel False and would pass. These compare against snapshots
+        # taken at the top of the module, so they catch the write itself rather than one caller of
+        # it. Neither can false-red on a pre-existing external value: the snapshot IS whatever the
+        # environment already held.
+        # REDS CONSTRUCTED AND MEASURED 2026-08-05, by re-adding each removed line below its
+        # snapshot: `sys.path.insert(0, _ROOT)` -> the sys.path assert fires;
+        # `os.environ.setdefault("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", _WEBVIEW2_GPU_ARGS)` ->
+        # the environ assert fires. Both were run.
+        assert tuple(sys.path) == _SYS_PATH_AT_IMPORT, (
+            "sys.path changed between importing this module and its smoke -- a module-scope "
+            "sys.path write is a process-global side effect (P4c); run_selfchecks drives part of "
+            "the suite through runpy in ONE process"
+        )
+        assert (
+            os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS") == _WEBVIEW2_ENV_AT_IMPORT
+        ), (
+            "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS changed between importing this module and its "
+            "smoke -- importing must not write the process environment"
+        )
         import webview  # noqa: F401  -- import must work or the app cannot open
 
         print(f"cockpit_desktop smoke OK: url={URL}, pywebview importable, no window, no brain")
+        print("  import-time process writes: none (sys.path and WEBVIEW2 env both unchanged since import)")
         return 0
 
+    _prefer_discrete_gpu()
     import webview
 
     where = ensure_daemon()

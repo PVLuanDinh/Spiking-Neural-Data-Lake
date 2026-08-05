@@ -1,15 +1,24 @@
 """
-v0.37 — closed-loop driver: ARM signal -> loop -> Interpreter -> reward -> loop.
+v0.37 -- closed-loop driver: ARM signal -> loop -> Interpreter -> reward -> loop.
 
 Wires signal_loop's pieces (reflex, encode -> lake -> match, valence/dopamine, cortisol) to
 the Interpreter end to end, IN-PROCESS, feeding the Interpreter's OUTCOME reward straight back
 into dopamine + cortisol every tick. This is the schematic's full reaction loop on one machine
-— no FIFO/socket needed. The live deployment splits the same pieces across processes:
+-- no FIFO/socket needed. The live deployment splits the same pieces across processes:
 
     signal_loop.py --serial COM3 --feedback | interpreter.py --pipe --outcome loop_in
 
+WHERE THE LEARNED VALUE FUNCTION LIVES (P4b, corrected 2026-08-05): in `brain_lake.bin`, under a
+`_T_STATE` record named "valence.json". It used to be a JSON SIDECAR of that name beside the lake,
+which P4b forbids in its own words, and the self-check below made that worse rather than visible:
+it was titled "DURABLE never-forget: the learned valence policy SURVIVES a restart" and proved
+round-trip fidelity of the sidecar -- durability of the WRONG STORE, in the same process, which is
+exactly the `retained() == 1.000` shape P4b was written from. The call sites did not change;
+`substrate/home.save_state` did. The check now hands the lake to a CHILD INTERPRETER and makes it
+reconstruct the policy from disk, because "it persists" is a claim about a NEW process.
+
 Run:
-  python closed_loop.py        # scripted episode + self-check
+  python -m snn_data_lake.brainstem.closed_loop        # scripted episode + self-check
 """
 
 from snn_data_lake import arm_bridge as AB
@@ -48,13 +57,13 @@ def run_episode(
         if p is None:
             continue
 
-        # reflex (threshold sharpened by cortisol) — instinct preempts cognition
+        # reflex (threshold sharpened by cortisol) -- instinct preempts cognition
         reflex.threshold = base_threshold * cort.reflex_threshold_scale()
         ract = reflex.step(p)
         if ract:
             cmd, reward = itp.interpret({"reflex": ract})
             cort.step(1.0)  # danger = stressor (raises cortisol)
-            # NOTE: we do NOT punish the previous gesture's value here — a collision is its
+            # NOTE: we do NOT punish the previous gesture's value here -- a collision is its
             # own danger signal, not necessarily caused by the last action. Causal credit
             # assignment ("did that command cause the danger?") is a separate open problem.
             if trace is not None:
@@ -136,7 +145,7 @@ def main():
     val, cort = state["valence"], state["cortisol"]
 
     print("=" * 60)
-    print("CLOSED LOOP — signal -> match -> command -> reward -> learn")
+    print("CLOSED LOOP -- signal -> match -> command -> reward -> learn")
     print("=" * 60)
     first, last, collision = trace[0], trace[29], trace[30]
     print(f"first  : match={first['match']} cmd={first['command']} value={first['value']:+.2f}")
@@ -177,37 +186,69 @@ def main():
         f"value(ENGAGE)={bstate['valence'].valence(good_win):+.2f} (loop still closes)"
     )
 
-    # ---- DURABLE never-forget: the learned valence policy SURVIVES a restart ----
+    # ---- DURABLE never-forget: the learned valence policy SURVIVES A REAL RESTART ----
     # (isolated temp home so the deterministic self-check never touches the real ~/.snn_data_lake)
+    #
+    # The reload runs in a SEPARATE PYTHON PROCESS. Until 2026-08-05 it ran here, in the same
+    # interpreter that had just written the policy, which would pass identically against a pure
+    # in-memory store -- and the store it was actually certifying was a JSON sidecar, not the lake.
+    # P4b's honesty guard is the whole point: "it persists" is a claim about a NEW process.
     import shutil
+    import subprocess
     import tempfile
 
+    src_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     _prev, _tmp = os.environ.get("NORD_HOME"), tempfile.mkdtemp(prefix="snn_loop_home_")
     os.environ["NORD_HOME"] = _tmp
     try:
         s1 = run_episode([good_line] * 30, lib=lib, assume_success=True)  # learn from scratch
-        home.save_state("valence.json", s1["valence"].w)  # persist the learned policy
+        wrote = home.save_state("valence.json", s1["valence"].w)  # INTO the one lake (_T_STATE)
         v_saved = s1["valence"].valence(good_win)
-        w_reload = home.load_state("valence.json")
-        s2 = run_episode([], lib=lib, valence_init=w_reload)  # FRESH loop, NO signals: pure reload
-        v_reload = s2["valence"].valence(good_win)
-        assert w_reload is not None and s2["valence"].act(good_win)[0] == "APPROACH", (
-            "a reloaded loop must already value the learned gesture (durable policy)"
+        assert wrote is True, "the first save of a learned policy must write a lake record"
+        assert not os.path.exists(home.state_path("valence.json")), (
+            "the learned policy must go IN brain_lake.bin -- no valence.json sidecar may be created"
         )
-        assert abs(v_reload - v_saved) < 1e-9, (
-            f"the learned valence was FORGOTTEN across a restart: reloaded {v_reload:+.4f} != saved {v_saved:+.4f}"
+        assert os.path.exists(home.knowledge_path()), "the one lake was never created"
+
+        # a child interpreter that has never seen s1 rebuilds the policy from brain_lake.bin alone
+        child = (
+            f"import sys; sys.path.insert(0, {src_root!r})\n"
+            f"import os; os.environ['NORD_HOME'] = {_tmp!r}\n"
+            "from snn_data_lake.brainstem.closed_loop import run_episode\n"
+            "from snn_data_lake.substrate import home\n"
+            "from snn_data_lake import signal_loop as S\n"
+            "w = home.load_state('valence.json')\n"
+            "assert w is not None, 'the child read NO policy back from the lake'\n"
+            "lib = S.build_default_library()\n"
+            "win = S.normalize(S.resize_to_n(lib['ENGAGE']))\n"
+            "s2 = run_episode([], lib=lib, valence_init=w)\n"
+            "assert s2['valence'].act(win)[0] == 'APPROACH', s2['valence'].act(win)\n"
+            f"assert abs(s2['valence'].valence(win) - {v_saved!r}) < 1e-9, s2['valence'].valence(win)\n"
+            "print('%.6f' % s2['valence'].valence(win))\n"
+        )
+        done = subprocess.run(
+            [sys.executable, "-c", child], capture_output=True, text=True, check=False
+        )
+        assert done.returncode == 0, (
+            "the learned valence was FORGOTTEN across a real restart "
+            f"(child rc={done.returncode}): {done.stderr.strip()[-400:]}"
+        )
+        print(
+            f"durable: policy value(ENGAGE)={v_saved:+.4f} rebuilt as "
+            f"{done.stdout.strip()} by a SEPARATE process, from brain_lake.bin alone"
         )
     finally:
-        os.environ.pop("NORD_HOME", None)
-        if _prev is not None:
+        if _prev is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
             os.environ["NORD_HOME"] = _prev
         shutil.rmtree(_tmp, ignore_errors=True)
 
     print(
         "self-check OK: gesture -> command, reward raised its value to APPROACH, "
         "collision -> EMERGENCY_STOP + stress -> sharpened reflex, UDP back-channel transparent (loop closed); "
-        "learned valence policy SURVIVES a restart (durable home, resumed by a fresh loop). "
-        "Launch with --persist to accumulate it across runs."
+        "learned valence policy SURVIVES a restart -- stored IN the one lake (_T_STATE, P4b) and "
+        "rebuilt by a SEPARATE process. Launch with --persist to accumulate it across runs."
     )
 
 

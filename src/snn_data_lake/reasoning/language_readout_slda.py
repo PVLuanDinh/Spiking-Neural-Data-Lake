@@ -1,8 +1,9 @@
 r"""
 LANGUAGE READOUT (STRONG) -- close the n-gram gap the pure-spiking readout could not.
 
-research/language_self_build.py honestly showed the single-layer spike-timing R-STDP readout forms
-separated assemblies but scores BELOW n-gram counts (phonetics ~7% vs bigram ~20%) -- the
+reasoning/language_self_build.py honestly showed the single-layer spike-timing R-STDP readout forms
+separated assemblies but scores BELOW n-gram counts (phonetics 7.1% vs bigram 20.5%, both RE-RUN and
+reproduced 2026-08-04 at the shipped defaults, so the two figures below are measured not inherited) -- the
 readout-is-the-lever ceiling seen all across this project. This file applies the SAME fix that won
 everywhere else in the recovered loop: an SLDA-on-Random-Fourier-Features decoder (order-invariant,
 RBF-kernel-approx) over the SPIKING context code. Same spiking representation (the positional
@@ -18,7 +19,7 @@ The torch SLDA_RFF in developmental_loop_slda is hardcoded to 10 classes; langua
 K words, so this ports the identical math to numpy with a general class count (research tier -- numpy
 is allowed; CORE untouched).
 
-  PYTHONPATH=src python research/language_readout_slda.py
+  PYTHONPATH=src python -m snn_data_lake.reasoning.language_readout_slda
   Knobs: NORD_CTX(3) NORD_PER(6000) NORD_VOCAB(60) NORD_RFF(1500) NORD_GAMMA(0.15) NORD_SHRINK(0.1)
 Deps: numpy (+ stdlib). Reuses corpus_stream + language_self_build's positional code + baselines.
 """
@@ -97,20 +98,14 @@ class SLDA_RFF_np:
         return sc
 
     def predict(self, F):
-        Z = self._rff(F)
-        cnt = np.clip(self.cnt_c, 1e-6, None)
-        mu = self.sum_c / cnt[:, None]
-        n = max(1.0, self.cnt_c.sum())
-        S = self.ZZt - (self.cnt_c[:, None] * mu).T @ mu
-        cov = S / n
-        cov += self.shrink * np.eye(self.M) * np.trace(cov) / self.M
-        cinv = np.linalg.pinv(cov)
-        W = mu @ cinv
-        bias = -0.5 * (W * mu).sum(1)
-        seen = self.cnt_c > 0
-        scores = Z @ W.T + bias
-        scores[:, ~seen] = -1e30
-        return scores.argmax(1)
+        """argmax of the discriminant. P2: this had a SECOND, line-for-line copy of `scores`'
+        whole computation (RFF, shrunk shared covariance, pinv, bias, unseen-class mask) until
+        2026-08-04 -- two implementations of one job, which is the defect P2 names, and a place
+        where a fix to the discriminant could silently land in one path only. Merged into the one
+        definition after proving them equivalent, not before: on three random fits (D=12/30/8,
+        C=5/9/3, each with an unseen class so the -1e30 mask is exercised) `predict(F)` and
+        `scores(F).argmax(1)` agreed on every row, max |diff| = 0."""
+        return self.scores(F).argmax(1)
 
 
 def _slda_acc(pairs, responses, ctx, per, rff, gamma, shrink, seed=0):

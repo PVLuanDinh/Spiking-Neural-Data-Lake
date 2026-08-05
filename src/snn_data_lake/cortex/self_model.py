@@ -506,7 +506,11 @@ def main():
     assert sa != sb, "the two traces produced the same summary (still a fixed template)"
     assert ov < 0.60, f"summaries share too many tokens ({ov:.2f}) -- not varying enough"
     assert sa != FIXED and sb != FIXED, "summary collapsed onto the old fixed template"
-    assert FIXED == FIXED, "control invariant"  # the old template never varies
+    # DELETED, not weakened (P8 falsifier F11): this line read `assert FIXED == FIXED` -- a local
+    # string literal compared with itself. It has no reachable red: no change to SelfModel,
+    # SelfNarrator or the traces above could ever make it fire, so it measured nothing while
+    # reading as a "control invariant". The real control it was gesturing at is the line above it
+    # (the two live summaries must differ from the fixed template) plus the overlap bound.
 
     # (2) SIGNALS REFLECT REALITY -----------------------------------------------------------
     m2 = SelfModel(seed=0)

@@ -14,8 +14,13 @@ ALREADY accepts, or to a structured lake query, or REJECTS it. Key properties:
     unknown label or a command that fails the allow-list -> {"kind": "reject"} (no action).
   * interpret() only PARSES + VALIDATES + CLASSIFIES. It never drives the arm and never
     reads the lake -- execution stays in the existing safety-gated paths (Interpreter ->
-    ArmSim/SerialArm.apply() enforce reflex / E-STOP / collision; spike_telemetry_hub
+    So101Arm/SerialArm.apply() enforce reflex / E-STOP / collision; spike_telemetry_hub
     .disk_query runs the lake read). So nothing here can bypass the envelope.
+    (This line named `ArmSim` until 2026-08-04. No such class exists anywhere in `src/`: the
+    live body is `brainstem/so101_arm.So101Arm` and every motion passes its `apply()` gate.
+    CLAUDE.md carried the same dead name and corrected it the same day -- in a paragraph whose
+    whole job is to tell a reviewer WHICH gate enforces the envelope, naming a file that is not
+    there both under-protects the live gate and sends the reviewer somewhere else.)
 
 Backend contract: any object with `.complete(prompt: str) -> str` returning a single label.
 StubBackend is the default AND the offline / no-GPU fallback: a deterministic

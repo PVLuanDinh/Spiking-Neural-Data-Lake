@@ -1,7 +1,10 @@
 """
 NeuroChip GPU — torch/GPU-accelerated vectorized twin of neuro_chip.py
 
-This is the torch-vectorized, GPU-scalable sibling of src/snn_data_lake/neuro_chip.py.
+This is the torch-vectorized, GPU-scalable sibling of src/snn_data_lake/substrate/neuro_chip.py.
+(Path corrected 2026-08-04: it read src/snn_data_lake/neuro_chip.py, which the v3.78 region reorg
+moved under substrate/. The import name still resolves through the back-compat alias layer, so
+nothing broke -- but a reader following the cited PATH finds no file.)
 Same functional/architectural emulator (event-driven cores + AER spike routing + SynOp/energy/
 latency accounting), but VECTORIZED in torch so neurons and synapses run as tensor operations.
 Reproduces the SAME execution model and semantics: per-timestep LIF dynamics on flattened
@@ -13,8 +16,10 @@ vectorization of the stdlib emulator to fixed GPU/CPU backends for scaling to th
 neurons and running inference fast. The ceiling is the same: functional/architectural, not
 physics-level fidelity.
 
-Credit: Loihi/Akida AER routing architecture; energy constants from energy.py (Horowitz 2014,
-arXiv:2210.13107); LIF dynamics match lif_neuron.LIFNeuron exactly, vectorized as tensor ops.
+Credit: Loihi/Akida AER routing architecture; energy constants LOADED from
+snn_data_lake.substrate.energy (Horowitz 2014, arXiv:2210.13107) rather than copied -- see
+`_load_energy` below for why that changed and why it loads by FILE PATH rather than by putting the
+package on sys.path; LIF dynamics match lif_neuron.LIFNeuron exactly, vectorized as tensor ops.
 
 Usage:
   import torch
@@ -29,6 +34,7 @@ Torch is imported lazily (guarded). If torch is absent, the module itself remain
 but run() will fail gracefully. The smoke check skips if torch is not available.
 """
 
+import os
 import sys
 import time
 import math
@@ -40,9 +46,63 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 
-# Energy constants (cited, from energy.py) — hardcoded to keep zero-dep on the core
-E_AC_FP32_45NM = 0.9e-12      # accumulate-only op, 45 nm CMOS (Horowitz 2014)
-E_SYNOP_LOIHI = 23.6e-12      # per-SynOp on Loihi incl. routing (arXiv:2210.13107)
+def _energy_py():
+    """<repo>/src/snn_data_lake/substrate/energy.py, located by walking UP to the repo marker.
+
+    Same reasoning as training/surrogate_snn._repo_root: a fixed `..` count encodes this file's own
+    directory depth and retargets silently if the file moves, and a `sys.path.insert` of a path that
+    does not exist raises nothing at all. The walk has no hop count to get wrong.
+    """
+    d = os.path.dirname(os.path.abspath(__file__))
+    while True:
+        cand = os.path.join(d, "src", "snn_data_lake", "substrate", "energy.py")
+        if os.path.isfile(os.path.join(d, "pyproject.toml")) and os.path.isfile(cand):
+            return cand
+        parent = os.path.dirname(d)
+        if parent == d:
+            raise RuntimeError(
+                f"repo root not found above {os.path.abspath(__file__)} "
+                f"(looked for a directory holding both pyproject.toml and "
+                f"src/snn_data_lake/substrate/energy.py)")
+        d = parent
+
+
+def _load_energy():
+    """Load energy.py BY FILE PATH, under a private module name, touching nothing global.
+
+    WHY NOT `sys.path.insert(...)` + `from snn_data_lake.substrate.energy import ...`: that is a
+    MODULE-SCOPE SIDE EFFECT, and this repo names it as a defect class in three places -- P4c's
+    record of the daemon promotion (`os.chdir`, `sys.path.insert`,
+    `os.environ.setdefault("NORD_GPU","1")` all at column 0), the sibling
+    `neuro_chip_gpu_stream._pick_device` (whose own docstring condemns leaving "a permanent sys.path
+    entry behind"), and `integrations/desktop/cockpit_desktop._prefer_discrete_gpu`. MEASURED here
+    before this change: importing this module appended `<repo>/src` to `sys.path` for the whole
+    process, so anything imported afterwards resolved against the package whether it asked to or
+    not. A file-path load has none of that reach.
+
+    It is safe precisely because of what energy.py is: MEASURED 2026-08-05 in `.venv-lake` --
+    **0 import statements**, 47.6 ms, and it does not pull torch. So there is no package
+    initialisation to miss and nothing to put on the path for.
+
+    P2/P7, unchanged by this edit: ONE definition. Both constants were LITERAL COPIES here and in
+    neuro_chip_gpu_stream.py under the comment "hardcoded to keep zero-dep on the core" -- a THIRD
+    copy of `substrate/energy.py`'s `E_AC_FP32_45NM` / `E_SYNOP_LOIHI` (lines 46-47, re-resolved
+    2026-08-05). P7 abolished the zero-dependency rule on 2026-07-20, so the stated reason describes
+    nothing. MEASURED 2026-08-05: the retired literals `0.9e-12` / `23.6e-12` compare `==` to the
+    core's values, so no number moves -- what is removed is the way they could stop matching without
+    anything noticing.
+    """
+    import importlib.util
+    path = _energy_py()
+    spec = importlib.util.spec_from_file_location("_snn_energy_consts", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.E_AC_FP32_45NM, mod.E_SYNOP_LOIHI
+
+
+E_AC_FP32_45NM, E_SYNOP_LOIHI = _load_energy()
+# E_AC_FP32_45NM: accumulate-only op, 45 nm CMOS (Horowitz 2014)
+# E_SYNOP_LOIHI:  per-SynOp on Loihi incl. routing (arXiv:2210.13107)
 
 
 class NeuroChipGPU:

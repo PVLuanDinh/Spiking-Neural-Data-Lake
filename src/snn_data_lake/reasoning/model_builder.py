@@ -15,7 +15,8 @@ the same serial re-entrant loop the chat thinks with, pointed at a build plan.
   ModelBuilder().save_obj(mesh, "s.obj")       -> a valid Wavefront OBJ file
   ModelBuilder().knowledge("spaceship", path)  -> (cue, answer, triple) facts for the KnowledgeLog
 
-Deps: stdlib + train_of_thought (research). Deterministic: same thing -> byte-identical OBJ.
+Deps: stdlib + reasoning/train_of_thought.py. Deterministic: same thing -> byte-identical OBJ.
+(The "(research)" tag here named a directory retired in v3.78; corrected 2026-08-04.)
 """
 
 import math

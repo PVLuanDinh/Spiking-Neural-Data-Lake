@@ -51,7 +51,7 @@ in this file:
    `_perceiving_audio` are both `False`. Measured: `perceived_digit=None`, `perception_unified=False`,
    `attention_real=None`, `real_perception_units=0`, `crossmodal_objects=0`, `_percept_value` empty.
 2. **Daemon shape** -- repo root *and* `src` importable, which is what `python learn_daemon.py` from
-   the repo root actually produces (`learn_daemon.py:42` inserts `"src"`; the interpreter has already
+   the repo root actually produces (`substrate/learn_daemon.py` inserts `"src"`; the interpreter has already
    put the script's directory, the repo root, at `sys.path[0]`). Measured: `perception_tier="eprop-snn"`,
    `perception_acc=1.0`, `audio_perception_acc=0.6667`, all ten digits perceived, `perception_unified=True`,
    `real_perception_units=18`, `crossmodal_objects=5`, `_percept_value` 16-28 pairs.

@@ -28,6 +28,48 @@ features a linear Q lacks. This is textbook NONLINEAR value-function approximati
 ch. 9-10: a nonlinear function approximator for the action-value); the hidden layer is the ONLY
 structural change from LatentQ, and the API is identical so it drops into the same wiring.
 
+OPEN e-PROP VIOLATION, NAMED HERE BECAUSE THIS MODULE PERFORMS IT (audit 2026-08-04). The `dh` line
+below reads the FORWARD read-out weights `W2[a]` transposed to carry error backward into the shared
+hidden layer. That is WEIGHT TRANSPORT -- structurally the same defect `docs/POLICIES.md` records at
+`cerebellum/jepa_world_model.py:275-278`, and hand-writing it in stdlib rather than calling autograd
+changes nothing about that ("absence of `.backward()` is NOT evidence of locality"). It is not on the
+live tick today -- `AutonomousArm` defaults `mlp_q=False` -- but it is one constructor argument away,
+so it is a latent violation, not a non-issue.
+
+MEASURED, so the fix is a decision rather than a guess. POLICIES prescribes FEEDBACK ALIGNMENT
+(Lillicrap 2016) for exactly this shape: replace `W2[a][j]` in `dh` with a FIXED RANDOM feedback
+matrix `B[a][j]`, which is local and needs no weight symmetry. The FA twin is a SCRATCH benchmark and
+is deliberately not shipped beside `MlpQ` (P2: a second live head for one job is the additive failure),
+so its construction is stated here in full and is the only thing a re-derivation needs: `B` is drawn
+ONCE per instance from `random.Random(bseed)` as `uniform(-1,1)/sqrt(hidden)` -- the same scale `W2`
+uses -- and the ONE changed line is `dh[j] = err*B[i][j]*relu'(pre[j])`; nothing else differs.
+Fixtures are main()'s own (400 train / 300 held-out, hidden=32, lr=0.1, 30 passes, model seed 0).
+Held-out accuracy, FA swept over EIGHT feedback draws (bseed 1..8) because a single draw is a coin
+flip, not a measurement -- the discipline POLICIES already applied to jepa's six `Bz` draws:
+
+    rule                 weight transport   feedback alignment      linear LatentQ
+    XOR (non-linear)          0.993          0.990  [0.980-0.997]        0.467
+    linearly separable        0.983          0.993  [0.990-0.993]        0.993
+
+The transport and LatentQ columns are main()'s own printed numbers, so they are re-derived on every
+gate run. (Corrected 2026-08-04b: this table shipped `0.990/0.990/0.990` on the linear row, which the
+self-check twelve lines below contradicts in its own output -- MlpQ measures 0.983 and LatentQ 0.993
+there, and the docstring above has said `0.983 vs 0.993` since the module was written. Two cells wrong
+in a table whose point was to be a measurement.)
+
+So feedback alignment CLEARS both of this module's shipped gates (>0.85 held-out, >0.30 over the
+linear control) on every draw -- it costs ~0.3 points on XOR and GAINS 1.0 on the linear rule. It is
+NOT adopted here, and the reason is a measurement rather than caution: the cross-cutting invariant
+asks for **cosine > 0.5** against an independent gradient, and the FA hidden-gradient direction misses
+that bar in BOTH directions -- swept over the same eight draws it lands in **[-0.472, +0.279], and
+|cosine| exceeds 0.5 in 0 of 8**. That sweep is re-run live in main() rather than quoted, because the
+quantity is essentially cos(W2[a], B[a]) under the relu mask (`err` cancels), so it is a property of
+the DRAW and a single value reported as "the" mean cosine is unreproducible. Swapping would therefore
+trade one failed clause of the invariant for another, which is not a fix. Recorded as OPEN work -- the
+honest resolutions are (a) accept FA and amend what the cosine clause means for a non-gradient
+alignment rule, or (b) retire this head under P2 in favour of the linear `LatentQ`, which has no
+hidden layer and therefore no backward pass at all. Deciding that is a policy call, not an edit.
+
 The learning rule is the same semi-gradient delta step toward a scalar `target` that the arm and
 LatentQ use (q += lr*(r - q)), backpropagated BY HAND (no autograd / torch) through the hidden layer:
 
@@ -141,7 +183,10 @@ class MlpQ:
         err = target - (dot(self.W2[i], h) + self.b2[i])
         lr = self.lr
         w2i = self.W2[i]
-        # hidden-activation gradient dh[j] from the PRE-update read-out weights (relu' gates dead units to 0)
+        # hidden-activation gradient dh[j] from the PRE-update read-out weights (relu' gates dead units to 0).
+        # THIS LINE IS THE WEIGHT TRANSPORT the module docstring names as an open e-prop violation:
+        # w2i is the FORWARD weight vector, read transposed to carry error backward. See the docstring
+        # for the measured feedback-alignment alternative and why it is not simply swapped in.
         dh = [err * w2i[j] if pre[j] > 0.0 else 0.0 for j in range(self.hidden)]
         # read-out update (taken action only): b2[a] += lr*err ; W2[a][j] += lr*err*h[j]
         self.b2[i] += lr * err
@@ -312,6 +357,56 @@ def main():
     # (4) DETERMINISM: identical seed + stream => byte-identical weights and identical greedy choices.
     assert same_w, "two MlpQ(seed=11) on the same stream must have byte-identical weights"
     assert same_greedy, "two MlpQ(seed=11) must make identical greedy choices"
+
+    # ---- (5) the e-prop cosine the docstring's OPEN violation rests on, MEASURED not quoted -------
+    # The docstring declines the feedback-alignment fix because FA's hidden-gradient direction misses
+    # the cross-cutting invariant's cosine > 0.5 bar. That number is a property of the random feedback
+    # DRAW (err cancels in a cosine, so this is cos(W2[a], B[a]) under the relu mask), so one draw
+    # quoted in prose is unreproducible. Swept over eight draws here instead, on the model main()
+    # already trained -- no second live head is constructed (P2).
+    def _dh(model, z, i, target, feedback):
+        """The hidden-layer error direction update() computes, with `feedback` in place of W2[a]."""
+        pre, h = model._forward(z)
+        err = target - (dot(model.W2[i], h) + model.b2[i])
+        return [err * feedback[j] if pre[j] > 0.0 else 0.0 for j in range(model.hidden)]
+
+    def _cos(a, b):
+        na, nb = math.sqrt(sum(x * x for x in a)), math.sqrt(sum(x * x for x in b))
+        return None if na <= 0.0 or nb <= 0.0 else sum(x * y for x, y in zip(a, b)) / (na * nb)
+
+    def _mean_cos(feedback_of):
+        vals = []
+        for z, opt in nl_test[:200]:
+            for i in range(len(ACTIONS)):
+                t = 1.0 if i == opt else -1.0
+                c = _cos(_dh(mlp, z, i, t, mlp.W2[i]), _dh(mlp, z, i, t, feedback_of(i)))
+                if c is not None:
+                    vals.append(c)
+        return sum(vals) / len(vals)
+
+    s2 = 1.0 / math.sqrt(HIDDEN)
+    fa_cos = []
+    for bseed in range(1, 9):  # per-instance Random, never module-scope seeding
+        brng = random.Random(bseed)
+        B = [[brng.uniform(-1.0, 1.0) * s2 for _ in range(HIDDEN)] for _ in range(len(ACTIONS))]
+        fa_cos.append(_mean_cos(lambda i, B=B: B[i]))
+    worst = max(abs(c) for c in fa_cos)
+    # REACHABLE RED, constructed and run: make the feedback BE the forward weight (i.e. weight
+    # transport, the rule this module actually ships) and the same criterion reads 1.0 and fires.
+    transport_cos = _mean_cos(lambda i: mlp.W2[i])
+    assert abs(transport_cos - 1.0) < 1e-12, (
+        f"positive control: feedback == the forward weight IS the transport gradient, so this must "
+        f"read 1.0 -- got {transport_cos!r}; the cosine harness is not measuring what it claims"
+    )
+    assert transport_cos >= 0.5 > worst, (
+        f"the FA cosine criterion must be able to FAIL: transport scores {transport_cos:.3f} (>=0.5) "
+        f"while the random-feedback draws top out at {worst:.4f}"
+    )
+    print(
+        f"(5) e-prop cosine vs the transport gradient over 8 feedback draws x 200 held-out inputs: "
+        f"[{min(fa_cos):+.4f}, {max(fa_cos):+.4f}], |cos| > 0.5 in {sum(1 for c in fa_cos if abs(c) > 0.5)} of 8 "
+        f"-> FA misses the >0.5 bar (red reachable: transport feedback reads {transport_cos:.3f})"
+    )
 
     print(
         f"self-check OK: MlpQ learns the XOR rule on held-out latents ({mlp_nl:.3f}) while the linear "

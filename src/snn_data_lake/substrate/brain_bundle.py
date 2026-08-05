@@ -162,7 +162,21 @@ def main():
 
     from snn_data_lake import snn_classifier as scl
 
-    random.seed(0)  # local, deterministic data generation
+    # `random.seed(0)` stood here, labelled "local, deterministic data generation". It is not local:
+    # `run_selfchecks.py` runs module self-checks IN-PROCESS via runpy, so this re-seeded the
+    # module-global Mersenne Twister for every module executed afterwards.
+    #
+    # MEASURED, as a runnable derivation -- the triples first recorded here ("[0.41662, 0.010169,
+    # 0.825207] to [0.303313, 0.476597, 0.583382]") reproduce from nothing the comment named, and an
+    # unreproducible number in a comment is the thing this project keeps catching. One process,
+    # `.venv-lake`, 2026-08-05: after `random.seed(4242)` and two draws, a later consumer's next
+    # three values are [0.028451, 0.390264, 0.320989]; insert `random.seed(0)` in front of it and
+    # they become [0.844422, 0.757954, 0.420572]; insert `random.Random(0)` instead and they are
+    # unchanged. `snn_classifier` takes no rng argument, so the local form here is save/restore of
+    # the global state -- which bounds the side effect to this function, where the label already
+    # claimed it was.
+    _rng_state = random.getstate()
+    random.seed(0)
     temps = scl.templates()
     C = len(temps)
     train_data = scl.dataset(scl.TRAIN_PER_CLASS, temps)
@@ -279,6 +293,7 @@ def main():
             assert rejected, f"{bad} must be rejected by load_bundle"
     finally:
         shutil.rmtree(work, ignore_errors=True)
+        random.setstate(_rng_state)  # leave the process RNG exactly as this self-check found it
 
     print(
         f"self-check OK: bundle packages {len(manifest['skills'])} SEPARATE trained skills "

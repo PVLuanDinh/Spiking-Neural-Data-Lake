@@ -33,6 +33,37 @@ def test_packing_is_slot_order_independent():
     assert a == b, "slot order changed the bytes; dedup would store this memory twice"
 
 
+def _where_did_it_go(H):
+    """Diagnostics for the P4b assertions, because 'the lake holds 0' does not say WHICH lake.
+
+    Added 2026-08-04 (specs/010, C34). These two tests passed in isolation, passed with the 23
+    preceding files, passed under coverage, and failed only in the full suite -- and every cheap
+    hypothesis (stale imports, the BinLog cache, wall-clock circadian timing, collection order,
+    test subdirectories) was falsified by measurement. A failure message that cannot say where the
+    bytes went makes the next round of that guessing inevitable, so it says.
+    """
+    import os
+
+    lines = []
+    try:
+        kp = H.knowledge_path()
+        lines.append(f"  NORD_HOME env  = {os.environ.get('NORD_HOME')!r}")
+        lines.append(f"  knowledge_path = {kp!r}")
+        lines.append(f"  exists         = {os.path.exists(kp)}")
+        if os.path.exists(kp):
+            lines.append(f"  size           = {os.path.getsize(kp)} bytes")
+        d = os.path.dirname(kp)
+        if os.path.isdir(d):
+            entries = sorted(os.listdir(d))[:12]
+            lines.append(f"  dir contents   = {entries}")
+        cache = getattr(H, "_LOG_CACHE", None)
+        if cache is not None:
+            lines.append(f"  _LOG_CACHE keys= {sorted(str(k) for k in cache)[:6]}")
+    except Exception as e:  # diagnostics must never mask the real assertion
+        lines.append(f"  (diagnostic failed: {e!r})")
+    return "\n".join(lines)
+
+
 def test_episodes_reach_the_lake_and_survive_the_writer(tmp_path, monkeypatch):
     """P4b: what the brain learns goes IN the lake. Asserted from a RE-READ, not from the brain."""
     monkeypatch.setenv("NORD_HOME", str(tmp_path))
@@ -54,7 +85,8 @@ def test_episodes_reach_the_lake_and_survive_the_writer(tmp_path, monkeypatch):
     assert formed > 0, "the brain formed no episodes; this test would pass vacuously"
     assert len(on_disk) >= formed, (
         f"the brain formed {formed} episodes but the lake holds {len(on_disk)}. This is the exact "
-        "defect P4b exists for: a second store that nothing persists."
+        "defect P4b exists for: a second store that nothing persists.\n"
+        f"{_where_did_it_go(H)}"
     )
     assert all(isinstance(e, dict) and e for e in on_disk), "episodes must read back as dicts"
 
@@ -74,7 +106,7 @@ def test_a_restarted_brain_is_not_amnesic(tmp_path, monkeypatch):
         first.tick()
     first.close()
     stored = len(H.load_episodes())
-    assert stored > 0
+    assert stored > 0, f"the lake holds nothing after 400 ticks\n{_where_did_it_go(H)}"
 
     second = make_brain(seed=0, persist=True)
     restored = getattr(second, "_episodes_restored", 0)

@@ -43,9 +43,24 @@ honest gap / None, never raises.
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.reasoning.pc_abduction
 """
 
-import math
-import random
-import zlib
+import sys
+
+# Captured BEFORE EVERY OTHER IMPORT IN THIS MODULE -- the position is load-bearing, not stylistic.
+# It records whether a CALLER already had torch loaded, which makes criterion (7) in main() exact
+# and structural: "torch is loaded now AND was not loaded before us" means THIS module's closure
+# dragged it in, which is the only thing that criterion claims.
+#
+# Two earlier drafts of this were wrong and both were caught by running the constructed red rather
+# than by reading: (a) gating the assert on `len(sys.modules) < 400`, a magic constant arbitrating
+# whether a check runs at all, which is what P1 forbids; (b) placing this capture BELOW the stdlib
+# import block, where an `import torch` added among them would execute first and set the flag True,
+# so the criterion would report "preloaded by caller" about an import in its own file and pass.
+# Only `sys` may precede this line, and stdlib `sys` cannot pull torch.
+_TORCH_PRELOADED = "torch" in sys.modules
+
+import math  # noqa: E402
+import random  # noqa: E402
+import zlib  # noqa: E402
 
 # Relations that license a cause->effect reading for the AbductionExpert. (Kept local + explicit so the
 # module stays self-contained; a triple whose relation is not genuinely causal is not turned into an
@@ -503,14 +518,41 @@ def main():
         "stdlib",
     ), "expert must expose the router protocol attrs"
 
-    # ---- (7) ASCII-only; the abduction path stays off the TRAINING tier. numpy is no longer
-    # checked: the zero-dependency rule was removed project-wide and the predictive-coding settle
-    # this path calls is now vectorised, so "no numpy" became permanently False -- a stale probe
-    # reporting a policy that no longer exists. torch is still the meaningful line: models are
-    # SERVED frozen, so the always-on abduction path must not drag in the training tier.
-    pure = "torch" not in sys.modules
+    # ---- (7) the abduction path stays off the TRAINING tier.
+    #
+    # This was `pure = "torch" not in sys.modules` followed by a print of the result, and NOTHING
+    # ELSE -- no assert. P8: a criterion that cannot go red is not a criterion, and this one could
+    # not even go red in principle, because both outcomes printed and both passed. Worse, the
+    # variable was named `pure`, which is the vocabulary of the zero-dependency rule abolished on
+    # 2026-07-20; P7 lists surviving `"torch" not in sys.modules` probes as live residue by name.
+    #
+    # Kept and PROMOTED TO A CRITERION rather than deleted, because unlike a purity boast the
+    # underlying claim is structural and P7-legitimate: torch here would be the TRAINING tier, and
+    # this module sits on the always-on abduction path where models are SERVED FROZEN. Importing a
+    # trainer to answer "why is the ground wet" costs VRAM and import time for arithmetic it would
+    # not accelerate. That is a statement about THIS path's workload, which is the form P7 requires
+    # of a rejection -- not "one fewer dependency".
+    #
+    # SCOPE, stated because it is what makes the criterion honest rather than a purity score: this
+    # says NOTHING about `run_selfchecks`, which imports torch through other modules in the same
+    # process and SHOULD -- P7 abolished the purity rule. The claim is only about what THIS
+    # module's own import closure drags in, so it is measured exactly that way, against
+    # `_TORCH_PRELOADED` captured at the top of this file before any local import. No threshold, no
+    # module count, nothing to tune.
+    #
+    # REACHABLE RED, constructed and run 2026-08-04: adding `import torch` to this module's import
+    # block makes `dragged_in` True and this assert exits 1.
+    torch_loaded = "torch" in sys.modules
+    dragged_in = torch_loaded and not _TORCH_PRELOADED
     print("-" * 92)
-    print(f"(7) imports   : no torch (training tier) imported in the abduction path = {pure}")
+    print(
+        f"(7) imports   : torch (training tier) loaded={torch_loaded} "
+        f"preloaded_by_caller={_TORCH_PRELOADED} -> dragged in by this module = {dragged_in}"
+    )
+    assert not dragged_in, (
+        "the always-on abduction path must not import the TRAINING tier: torch was NOT in "
+        "sys.modules before this module's imports and IS now, so this module's closure pulled it in"
+    )
 
     print("=" * 92)
     print(

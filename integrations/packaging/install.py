@@ -164,7 +164,13 @@ def main():
     print("  snn-arm --help            # live/replay gesture -> arm (--serial COMx = hardware)")
     print("  python run_selfchecks.py  # run every core module's self-check")
     print("  pytest                    # the test suite (needs the 'dev' extra)")
-    print("  # research/ (needs the 'gpu' extra):  python research/<module>.py")
+    # Corrected 2026-08-04: this line read `python research/<module>.py`, which has not been a
+    # runnable shape since the v3.78 reorg moved every top-level research module into
+    # src/snn_data_lake/reasoning/. research/ now holds only SUBDIRECTORIES (arc_agi, ng_snn,
+    # neuromorphic_torch), so there is no `research/<module>.py` to run, and the trainers the
+    # 'gpu'/'train' extras are actually for live in training/.
+    print("  # trainers ('train'/'gpu' extras):    python training/<module>.py")
+    print("  # research subprojects:               python research/<subdir>/<module>.py")
     print("=" * 72)
     return 0
 

@@ -1,14 +1,19 @@
 r"""
 DEVELOPMENTAL CORE -- the enclosed digit-curriculum loop, extracted as ONE reusable function.
 
-The loop body previously lived inline in research/autonomous_brain_recovered.py's main(). It is
+The loop body previously lived inline in reasoning/autonomous_brain_recovered.py's main(). It is
 extracted here VERBATIM so two callers share ONE source of truth:
 
-  * research/autonomous_brain_recovered.py -- the standalone recovery benchmark (a thin wrapper that
+  * reasoning/autonomous_brain_recovered.py -- the standalone recovery benchmark (a thin wrapper that
     runs the same banner + the same regression asserts: online > 90%, sleep-refit > 90%).
-  * research/brain_loop.py -- the unified always-on Brain, which injects its OWN durable SSD lake +
-    reflector and receives every newly-learned concept through `emit`, so the perceptual concepts the
-    loop learns become facts the chat can converse from.
+  * ~~reasoning/brain_loop.py~~ -- **RETIRED and absent from the tree.** It was the second caller,
+    injecting its OWN durable lake + reflector and receiving each newly-learned concept through
+    `emit`. `substrate/replication_guard.py` records why it went (P4: its capabilities were verified
+    canonical in `cortex.brain.Brain`). Stated plainly rather than deleted, because the consequence
+    is a live P3 finding: `develop_cycles`'s `lake=`, `reflector=` and `emit=` parameters now have
+    ZERO in-tree callers, so the only exercised path is the standalone `lake=None` branch. Re-homing
+    that injection onto the canonical brain is open work; do not read the signature as evidence it
+    is wired.
 
   perceive (conv1 latency-STDP, unsupervised + frozen) -> hold objective in prefrontal WM ->
   LEARN (SLDA-RFF, order-invariant => no forgetting) -> GROW the RFF basis (neurogenesis) ->
@@ -19,15 +24,16 @@ TORCH TIER: this module imports torch at module load, so it is imported LAZILY b
 (never at its top level) -- that is what lets the Brain boot + converse under the torch-free
 .venv-lake while the perceptual develop runs under .venv-cu128 against the SAME SSD home.
 
-  Standalone: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/autonomous_brain_recovered.py
+  Standalone: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.autonomous_brain_recovered
 Deps: numpy torch torchvision snntorch scikit-learn
 """
 
 import os
+import tempfile
 
 import torch
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.fast_features import batched_features_and_keys
@@ -98,7 +104,11 @@ def develop_cycles(cfg, *, lake=None, reflector=None, emit=None, quiet=False):
 
     own_lake = lake is None
     if own_lake:
-        lake_path = os.path.join(os.environ.get("TEMP", "."), "sndl_autonomous_recovered.spkl")
+        # NOTE: this was os.environ.get("TEMP", ".") -- a WINDOWS-only variable. On the Linux/macOS
+        # CI runners TEMP is unset, so the "." fallback fired and this file was written into the
+        # process WORKING DIRECTORY (the repo checkout). tempfile.gettempdir() honours TMPDIR/TEMP/TMP
+        # on every platform and never falls back to ".".
+        lake_path = os.path.join(tempfile.gettempdir(), "sndl_autonomous_recovered.spkl")
         if os.path.exists(lake_path):
             os.remove(lake_path)
         lake = LakeMemory(path=lake_path, seed=0)

@@ -2,10 +2,23 @@
 
 Three things here are load-bearing and none of them are obvious:
 
-1. THE ENCODER IS STDLIB. PNG is written with `zlib` and `struct` and nothing else. PIL is
-   importable in `.venv-cu128` but is declared only under the `[hf]` extra, so reaching for it
-   would make the cockpit depend on a package the project does not require -- it would work on
-   the developer's machine and fail on a clean install, which is the worst failure shape.
+1. THE ENCODER IS STDLIB, AND THAT IS NOW A DEFAULT RATHER THAN A RULE. PNG is written with
+   `zlib` and `struct` and nothing else. This paragraph used to justify that by dependency
+   avoidance -- pillow "would make the cockpit depend on a package the project does not require".
+   **Retired 2026-08-04 under P7**, which states that "it would be another dependency" is not a
+   valid reason to reject anything, and which names this very encoder as an incident in its
+   "Real past incidents" table: a hand-written PNG encoder shipped while `pillow` sits declared
+   in `pyproject.toml`'s `[hf]` extra (:94) and imported nowhere. (Both cites were wrong until
+   2026-08-05 and were re-resolved against the tree: `POLICIES.md:819` is a BLANK LINE inside the
+   P6 section, and `pyproject.toml:84` is a ruff-exclusion comment. Re-verified while correcting
+   them -- `pillow`/`PIL` is imported in no file under `src/`, `tests/` or `tools/`, so the CLAIM
+   holds and only its coordinates were false.)
+
+   What stands: the encoder WORKS, it is small, and replacing it buys nothing measured yet. What
+   is no longer a reason: that pillow is a dependency. Adopting pillow here is P7-legitimate and
+   is tracked as specs/010 task T021 -- and per P2 it would mean DELETING this encoder, not
+   running both. The purity gate that enforced the old rule
+   (`tests/test_arm_view.py::test_png_encoder_does_not_use_pil`) is deleted.
 
 2. THE RENDERER BELONGS TO ONE THREAD. MuJoCo's `Renderer` owns a GL context, and a GL context
    belongs to the thread that made it. Rendering from another thread does not raise: it returns
@@ -44,7 +57,11 @@ UNAVAILABLE_NO_FRAME = "no frame yet: the viewer has not been requested"
 
 
 def encode_png(pixels, width, height):
-    """Encode an HxWx3 uint8 buffer as PNG bytes. Stdlib only.
+    """Encode an HxWx3 uint8 buffer as PNG bytes. Uses stdlib `zlib`/`struct`.
+
+    "Stdlib only" used to be an assertion of policy here; under P7 (2026-08-04) it is merely a
+    description of what this happens to use. See the module docstring.
+
 
     `pixels` may be a numpy array or any nested sequence; it is consumed row by row through
     `bytes()`, so anything supporting the buffer protocol or yielding ints works.

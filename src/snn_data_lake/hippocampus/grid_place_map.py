@@ -24,9 +24,11 @@ consolidated by a running average on re-observation. This is LOCAL plasticity: N
 no loss anywhere -- so there is no BPTT/e-prop cosine to report (that check applies only to gradient rules).
 
 DISTINCTNESS. REUSES GridCell from grid_cells.py for every hexagonal firing field (does NOT reimplement the
-grid math). Not ring_attractor.py (1-D heading integrator), not hippocampus.py (DG/CA3 discrete-memory
-separation/completion). ZERO coupling to the arm / safety envelope: it imports only grid_cells (which is
-pure math/random) and receives a plain (x, y) from the caller (e.g. AllocentricMap.position).
+grid math). Not ring_attractor.py (1-D heading integrator), not episodic_recall.py / sleep_replay.py
+(DISCRETE-memory separation/completion; this named `hippocampus.py`, RETIRED in the Policy-3 wave --
+see `hippocampus/__init__.py` -- corrected 2026-08-04). ZERO coupling to the arm / safety envelope: it
+imports only grid_cells (which is pure math/random) and receives a plain (x, y) from the caller (e.g.
+AllocentricMap.position).
 
 HONEST SCOPE. 2-D TOY positions from the arm loop, NOT real navigation. Grid and place cells are analytic
 RATE units -- rate/prototype coding, which is the spiking-native mode chosen here; a deterministic

@@ -11,8 +11,14 @@ and is not exempted FAILS this self-check in CI -- so dormancy cannot ship silen
 Honest framing (this is the guard that keeps Policy 3 from manufacturing theater): reachability proves
 a module is IMPORTED by a live path; it does NOT prove the module's output changes behaviour. "Utilized
 appropriately" (does the wire actually charge behaviour) is proven separately, per faculty, by the
-runtime neuter-A/B probe (scratchpad/smoke_drive_charge.py) during a wiring wave -- too expensive for
-CI. So this gate is the CHEAP first tier (catch built-but-never-imported); the A/B is the second tier.
+runtime neuter-A/B probe (`tools/charge_probe.py`) during a wiring wave -- too expensive for CI. So
+this gate is the CHEAP first tier (catch built-but-never-imported); the A/B is the second tier.
+
+(That citation read `scratchpad/smoke_drive_charge.py` until 2026-08-04. `scratchpad/` is gitignored,
+so the file named here as the runtime instrument is ABSENT FROM A CLONE -- the same dead citation
+POLICIES.md records correcting in its own text and in this file, where it survived. It is the exact
+defect `tools/citation_guard.py`'s narrow rule exists for, and the guard does not catch it here
+because a prose mention is outside its STRICT scope. The tracked instrument is `tools/charge_probe.py`.)
 
 The EXEMPT allowlist is the honest record of "not reachable from a live path, and why": every entry is
 one of three dispositions -- "retire" (superseded, pending deletion in a Policy-2/3 wave), "wire"
@@ -212,16 +218,18 @@ def _mpath(pyfile):
 
 
 def _all_paths():
-    paths, pkgs = set(), set()
+    """Every in-package module path on disk (packages excluded -- an `__init__` is not a target)."""
+    paths = set()
     for root, _d, files in os.walk(_PKG_DIR):
         for f in files:
-            if f.endswith(".py"):
-                mp = _mpath(os.path.join(root, f))
-                (pkgs.add(mp[: -len(".__init__")]) if f == "__init__.py" else paths.add(mp))
-    return paths, pkgs
+            if f.endswith(".py") and f != "__init__.py":
+                paths.add(_mpath(os.path.join(root, f)))
+    return paths
 
 
-_ALL_PATHS, _PKG_PATHS = _all_paths()
+# The second element of the old (paths, pkgs) return was bound to `_PKG_PATHS` and read by nothing
+# tree-wide -- a computed value with no consumer, which is the shape this very gate exists to name.
+_ALL_PATHS = _all_paths()
 
 
 def _resolve(dotted, names):

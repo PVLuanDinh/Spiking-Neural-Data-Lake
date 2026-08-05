@@ -48,8 +48,12 @@ def pop_opt(argv, name, default):
 
 def build_acquired_lm():
     """Expose the online learner to text, then freeze it for read-only scoring."""
-    import numpy as np
-
+    # RESIDUE REMOVED 2026-08-04: this imported numpy and then did `_ = np  # numpy is a hard dep of
+    # this path; surfaced explicitly`. Nothing in this function used it. That line is a zero-
+    # dependency-era artifact -- announcing a dependency was the ritual when having one was a cost
+    # -- and P7 (2026-08-04) abolished the rule it belonged to. An import whose only consumer is a
+    # discard is dead code, and dead code that exists to make a point about dependencies is exactly
+    # the residue P7 names.
     from snn_data_lake.cortex import language_acquisition as LA
 
     lm = LA.load_lm(seed=0, expose_rounds=3)
@@ -65,7 +69,6 @@ def build_acquired_lm():
             ctx = ctx[1:] + [t]
         return total / max(1, len(ids))  # length-normalised, per BLiMP's LM method
 
-    _ = np  # numpy is a hard dep of this path; surfaced explicitly
     return sentence_logprob
 
 

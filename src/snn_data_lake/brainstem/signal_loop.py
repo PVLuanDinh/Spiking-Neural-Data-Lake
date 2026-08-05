@@ -1,16 +1,39 @@
 """
-v0.32 — real-time signal loop: Arduino signal -> spike encoding -> data lake ->
+v0.32 -- real-time signal loop: Arduino signal -> spike encoding ->
         find matching signature -> emit to Interpreter.
 
 This is the "my part" of the robot-arm processing loop:
 
-  Arduino signal  ->  [encode]  ->  [data lake]  ->  [match]  ->  Interpreter
-   (windowed          encode_latency   .spc lake     Van Rossum    JSON line
-    samples)          (deterministic)  (audit/query) nearest ref   on stdout
+  Arduino signal  ->  [encode]  ->  [match]  ->  Interpreter
+   (windowed          encode_latency  Van Rossum    JSON line
+    samples)          (deterministic) nearest ref   on stdout
 
-It owns three boxes and nothing else: it does NOT drive servos, run the
+It owns these boxes and nothing else: it does NOT drive servos, run the
 Interpreter, or flash the Arduino. Input = signal windows; output = a matched
 signature label the Interpreter maps to a robot command.
+
+WHERE THIS MODULE'S STATE LIVES (P4b, corrected 2026-08-05). It used to declare THREE stores at
+module scope, all `./data/...` -- CWD-relative, so none of them followed NORD_HOME and the brain's
+learned gestures depended on which directory the daemon was started from:
+
+  * `./data/signatures.json` -- the LEARNED signature library, the gestures this loop DISCOVERED and
+    promoted (`learn_unknowns` -> `save_library`). Measured 2026-08-04 with NORD_HOME and CWD in
+    different empty dirs: learning promoted DISCOVERED_1 into a 10,406-byte sidecar and added ZERO
+    records to `brain_lake.bin`, which was never even created. It is now a `_T_STATE` record IN the
+    one lake, named "signatures.json", via `substrate.home.save_state`.
+  * `./data/lake.spc` -- a SECOND GZIP LAKE this module's own docstring called "the data lake".
+    RETIRED (P2: one store survives, and it is `brain_lake.bin`). See `flush_lake`'s marker.
+  * `./data/unknowns.jsonl` -- the novel-signal queue. Moved under `home()`. It stays a FILE and the
+    reason is stated at `unknowns_path()`: it is not learned state, it is the raw input queue that
+    `learn_unknowns` CONSUMES and truncates; what is learned from it goes into the lake.
+
+ORPHANED, DISCLOSED RATHER THAN DELETED OR SILENTLY IMPORTED. Two files under the repo's gitignored
+`./data/` are no longer read: `lake.spc` (2,279 B, the retired second lake -- it had no reader
+before this either) and `unknowns.jsonl` (2,717 B of queued novel windows). No `./data/
+signatures.json` exists, so no LEARNED library is stranded -- checked, not assumed. A CWD-relative
+one-time import is deliberately NOT added: reading from the CWD is the exact fragility this removes,
+and it would only ever fire for a daemon started in the repo root. Anyone who wants those queued
+unknowns copies the file to `<home>/unknowns.jsonl`; it is one command and no code.
 
 Matching: each incoming window is encoded and compared (Van Rossum distance) to a
 library of enrolled REFERENCE signatures (1 per command). Nearest wins; a Lowe-style
@@ -18,7 +41,7 @@ ratio test rejects ambiguous/novel signals (best must clearly beat 2nd-best) so 
 loop stays silent rather than firing a wrong command.
 
 Matcher: the HYBRID (learned spiking classifier + Van Rossum novelty gate) is the
-default — strongest under noise (see learned_matcher.py). `--fast` selects the
+default -- strongest under noise (see learned_matcher.py). `--fast` selects the
 zero-startup template baseline.
 
   python signal_loop.py                       # simulated + hybrid + self-check
@@ -28,7 +51,7 @@ zero-startup template baseline.
   cat windows.csv | python signal_loop.py --stdin  # exercise the wire contract, no hardware
   python signal_loop.py --serial COM3 --reflex     # instinctive STOP/WITHDRAW on danger channels
   python signal_loop.py --serial COM3 --reflex --feedback   # full closed loop (below)
-  python signal_loop.py --enroll ENGAGE     # record a reference into signatures.json
+  python signal_loop.py --enroll ENGAGE     # record a reference into the one lake
 
 Feedback loop (--feedback): the Interpreter sends outcomes BACK into the loop's input
 as `OUTCOME <reward>` lines (reward in [-1,+1], good=+, bad=-), applied to the last acted
@@ -36,9 +59,9 @@ signal. These drive dopamine learning (RPE) and a cortisol stress level; cortiso
 modulates the reflex threshold (hypervigilance) and the matcher's caution bias LIVE. Mix
 signal lines and OUTCOME lines on the same input stream.
 
-Continual learning: non-matching (novel) signals are recorded to data/unknowns.jsonl.
+Continual learning: non-matching (novel) signals are recorded to <home>/unknowns.jsonl.
 A signal that recurs >= MIN_SUPPORT times can be clustered and promoted into a new
-signature — the loop grows its own vocabulary instead of silently dropping unknowns.
+signature -- the loop grows its own vocabulary instead of silently dropping unknowns.
   python signal_loop.py --learn                    # cluster unknowns -> new DISCOVERED_n signatures
   python signal_loop.py --learn-as WAVE            # name the largest discovered cluster 'WAVE'
 
@@ -49,7 +72,6 @@ Arduino wire contract (full spec + example sketch in docs/arduino_contract.md):
   unparseable lines skipped.
 """
 
-import gzip
 import json
 import math
 import os
@@ -70,9 +92,14 @@ from snn_data_lake.neuromodulation.cortisol import (
     Cortisol,  # slow tonic stress (leaf: only os/math)
 )
 
-SIG_PATH = os.path.join(".", "data", "signatures.json")
-LAKE_PATH = os.path.join(".", "data", "lake.spc")
-UNK_PATH = os.path.join(".", "data", "unknowns.jsonl")  # novel signals, awaiting learning
+# SIG_PATH / LAKE_PATH / UNK_PATH -- three `./data/...` module constants, RETIRED 2026-08-05. They
+# were CWD-relative, so the brain's learned gestures lived wherever the daemon happened to be
+# started from rather than under NORD_HOME. Successors: the learned library is a `_T_STATE` record
+# in the one lake under SIG_STATE; the second gzip lake is gone (see `flush_lake`); the unknowns
+# queue is `unknowns_path()`. Nothing outside this module ever read the three names (measured: a
+# tree-wide grep for SIG_PATH / LAKE_PATH / UNK_PATH and for save_library / load_library /
+# flush_lake / learn_unknowns / record_unknown_line found call sites in this file only).
+SIG_STATE = "signatures.json"  # the record NAME in brain_lake.bin, and the sidecar it migrates from
 RATIO = 0.85  # match only if best < RATIO*second
 NOISE = 0.08  # simulated sensor jitter
 MIN_SUPPORT = 3  # repeats before a novel -> new signature
@@ -93,7 +120,7 @@ def normalize(vec):
 
 def _proto(label, rng):
     """Deterministic reference vector for a command label. crc32 (not hash()) so it is
-    stable across processes — a saved signatures.json must reproduce next run."""
+    stable across processes -- a saved signatures.json must reproduce next run."""
     r = random.Random(zlib.crc32(label.encode()))
     return [r.random() if r.random() < 0.45 else 0.0 for _ in range(N)]
 
@@ -157,7 +184,7 @@ def line_windows(raw_rows, window=1, n=N):
 def serial_stream(port, baud, window=1, reflex=None, on_reflex=None):
     """Read float windows from a serial port (real Arduino). Guarded import.
     If a Reflex is given, it monitors the RAW sample stream ahead of windowing."""
-    import serial  # pyserial — only needed on hardware
+    import serial  # pyserial -- only needed on hardware
 
     def rows():
         ser = serial.Serial(port, baud, timeout=1)
@@ -171,18 +198,57 @@ def serial_stream(port, baud, window=1, reflex=None, on_reflex=None):
 
 
 def stdin_stream(window=1, reflex=None, on_reflex=None):
-    """Same wire contract, read from stdin — exercise the loop with no hardware."""
+    """Same wire contract, read from stdin -- exercise the loop with no hardware."""
     raw = (p for line in sys.stdin if (p := parse_line(line)) is not None)
     src = reflex_guard(raw, reflex, on_reflex) if reflex else raw
     yield from line_windows(src, window)
 
 
-# ---- signature library (data lake of enrolled references) -------------------
+# ---- signature library (IN the one durable lake) ----------------------------
+def unknowns_path():
+    """`<home>/unknowns.jsonl` -- the novel-signal queue, under home() so it follows NORD_HOME.
+
+    IT STAYS A FILE, and P4b is why rather than in spite of: this is not what the brain has learned,
+    it is the raw input queue that `learn_unknowns` reads once, clusters, and TRUNCATES. The learned
+    product -- the promoted signature -- goes into `brain_lake.bin`. Putting an append-per-event
+    queue in an append-only lake that `consolidate()` preserves forever would store every rejected
+    sensor window for the life of the brain in order to keep the handful that become gestures."""
+    from snn_data_lake.substrate.home import state_path
+
+    return state_path("unknowns.jsonl")
+
+
 def load_library():
-    if os.path.exists(SIG_PATH):
-        with open(SIG_PATH) as f:
-            return {k: v for k, v in json.load(f).items()}
-    return build_default_library()
+    """The enrolled + LEARNED signature library, from THE ONE LAKE (falling back to the defaults).
+
+    `home.load_state` reads a `_T_STATE` record named SIG_STATE, importing a pre-P4b
+    `<home>/signatures.json` once if one is there. A library that was never saved reads back as
+    None, which is a cold start, which is the default library -- the same behaviour the missing
+    `./data/signatures.json` produced.
+
+    TWO EDGES, both measured 2026-08-05 rather than reasoned about, because this function moved
+    from a CWD file read to a lake read and neither survived the move unchanged:
+
+    * AN EMPTY SAVED LIBRARY NOW COMES BACK AS THE DEFAULTS. `saved` is tested for truth, so a
+      stored `{}` falls through to `build_default_library()`; the pre-P4b `json.load` returned the
+      empty dict, and `build_matcher({})` would then have divided by an empty best/second pair.
+      Falling back is the safer of the two and is why the test is truth rather than `is None` -- but
+      it IS a behaviour change and no live path can produce an empty library anyway (`--enroll` and
+      `--learn` both write a superset of the defaults).
+    * IT READS WHATEVER HOME IS SET WHEN IT IS CALLED, and `main()` calls it on its first line --
+      BEFORE the default branch scopes an isolated NORD_HOME. So `python -m
+      snn_data_lake.brainstem.signal_loop` with no NORD_HOME set opens the operator's real
+      `brain_lake.bin` (519,646,815 B on 2026-08-05) and replays it once, which is a quarter to
+      four tenths of a second plus the BinLog construction. Not a correctness bug and not a write:
+      `run_selfchecks.py` sets NORD_HOME for the whole gate run, and no `<home>/signatures.json`
+      exists to migrate (checked). Left as-is deliberately: hoisting the isolation above this line
+      means deciding "is this the default branch" from a LIST of mode flags kept in step by hand,
+      and a flag that fell off that list would run `--enroll` against a temp home and silently
+      discard an enrolled signature. A slow manual run is the cheaper failure."""
+    from snn_data_lake.substrate.home import load_state
+
+    saved = load_state(SIG_STATE)
+    return dict(saved) if saved else build_default_library()
 
 
 def build_default_library():
@@ -190,9 +256,10 @@ def build_default_library():
 
 
 def save_library(lib):
-    os.makedirs(os.path.dirname(SIG_PATH), exist_ok=True)
-    with open(SIG_PATH, "w") as f:
-        json.dump(lib, f, indent=2)
+    """Persist the signature library INTO the one lake. True if written, False if unchanged."""
+    from snn_data_lake.substrate.home import save_state
+
+    return save_state(SIG_STATE, lib)
 
 
 # ---- match: encoded live signal -> nearest enrolled reference ---------------
@@ -213,7 +280,7 @@ def build_matcher(library):
 
 def build_learned_matcher(library):
     """Stronger: supervised spiking classifier picks the command, Van Rossum
-    distance gate vetoes novel signals (hybrid — see learned_matcher.py). Trains
+    distance gate vetoes novel signals (hybrid -- see learned_matcher.py). Trains
     at build time. Returns the same (label, dist, ref, encoded) shape as build_matcher."""
     from snn_data_lake import (
         learned_matcher as L,  # lazy: avoids the signal_loop<->learned_matcher cycle
@@ -237,9 +304,14 @@ def build_learned_matcher(library):
 
 
 # ---- continual learning: record non-matching signals, cluster, promote ------
-def record_unknown_line(seq, dist, window, path=UNK_PATH):
-    """Append one novel/rejected window to the unknowns store for later learning."""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+def record_unknown_line(seq, dist, window, path=None):
+    """Append one novel/rejected window to the unknowns store for later learning.
+
+    `path` defaults to `unknowns_path()` at CALL time, not at import time: the former module-level
+    default froze the location into the function signature, so a caller that set NORD_HOME after
+    import still wrote to wherever the constant had pointed."""
+    path = unknowns_path() if path is None else path
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
         f.write(
             json.dumps({"seq": seq, "dist": round(dist, 4), "vec": [round(v, 4) for v in window]})
@@ -253,8 +325,13 @@ def _mean(vecs):
 
 
 def _auto_radius(library):
-    """Typical same-gesture Van Rossum distance (ref vs a jittered copy) x2.5 —
-    the cluster radius scales with the data, not a magic constant."""
+    """Typical same-gesture Van Rossum distance (ref vs a jittered copy) x1.5 --
+    the cluster radius scales with the data, not a magic constant.
+
+    (This line said "x2.5" until 2026-08-05 while the code returned `* 1.5` and the inline comment
+    three lines down said x1.5: a 1.67x disagreement inside one function, on the constant that
+    decides whether a recurring novel signal is promoted into a new learned signature. The CODE was
+    right and is unchanged; only this summary was wrong.)"""
     rng = random.Random(0)
     ds = []
     for v in library.values():
@@ -297,9 +374,10 @@ def cluster_unknowns(rows, library, min_support=MIN_SUPPORT, radius=None):
 def learn_unknowns(library, persist=True, label=None):
     """Cluster the recorded unknowns; promote recurring ones into the signature
     library (the 'learned' step). Optional `label` names the largest new cluster."""
-    if not os.path.exists(UNK_PATH):
+    unk = unknowns_path()
+    if not os.path.exists(unk):
         return {}, 0, 0
-    with open(UNK_PATH, encoding="utf-8") as f:
+    with open(unk, encoding="utf-8") as f:
         rows = [json.loads(line) for line in f if line.strip()]
     promoted, n_clusters, _ = cluster_unknowns(rows, library)
     base = sum(1 for k in library if k.startswith("DISCOVERED_"))
@@ -310,33 +388,52 @@ def learn_unknowns(library, persist=True, label=None):
         added[name] = p["size"]
     if persist and added:
         save_library(library)
-        open(UNK_PATH, "w").close()  # consumed -> avoid re-discovering
+        with open(unk, "w", encoding="utf-8"):
+            pass  # consumed -> avoid re-discovering
     return added, len(rows), n_clusters
 
 
-# ---- data lake: persist the encoded incoming stream (audit / re-query) ------
-def flush_lake(events):
-    """Append the session's encoded windows to a gzip .spc lake (storage-cheap)."""
-    os.makedirs(os.path.dirname(LAKE_PATH), exist_ok=True)
-    buf = bytearray()
-    for ev in events:
-        buf += len(ev).to_bytes(4, "little")
-        for t, i in ev:
-            buf += t.to_bytes(2, "little") + i.to_bytes(2, "little")
-    raw = bytes(buf)
-    with open(LAKE_PATH, "wb") as f:
-        f.write(gzip.compress(raw, 9))
-    return len(raw), os.path.getsize(LAKE_PATH)
+# `flush_lake(events)` -> `./data/lake.spc` RETIRED 2026-08-05 (P4b + P2). It gzipped the session's
+# encoded windows into a SECOND durable store beside `brain_lake.bin`, and the module docstring
+# called that file "the data lake". P2 says exactly one mechanism survives and the survivor is
+# `brain_lake.bin`. Two facts made this a retirement rather than a port: its return value had
+# exactly ONE consumer tree-wide, `main()`'s own reporting line and the `assert gz < raw` beside it;
+# and the lake-side equivalent is `_T_SPIKE`, which `substrate/home.py` RETIRED on 2026-07-29 for
+# the reason that applies here verbatim -- there is no live producer of AER exemplars worth keeping
+# across a restart, so there is nothing to store. The compression assertion went with it rather than
+# being kept pointing at a store that no longer exists. Reinstating it means writing _T_SPIKE
+# records into the one lake, not recreating a .spc file.
 
 
 # ---- the loop ---------------------------------------------------------------
 def run(source, library, matcher=None, emit=True, on_unknown=None):
+    """Drive `source` through match -> emit. Returns `(stats, encoded)`.
+
+    `encoded` is every window this call encoded, in order. IT IS UNBOUNDED, and on the live
+    `--serial` path -- which never returns -- it grows for the life of the process. That is a real
+    hazard and it is stated rather than removed, because removing it is a TWO-FILE edit and the
+    other file is not this one:
+
+        substrate/sensor_csv_ingest.py  `stats, lake = S.run(src, lib, emit=False, on_unknown=...)`
+
+    is a FOURTH call site outside this module (the other three are `main()`'s `--serial` and
+    `--stdin` branches, which discard it, and `_selfcheck`) and it prints `len(lake)`. The
+    2026-08-05 P4b change dropped the second return value on the belief that
+    `flush_lake` was its only consumer; MEASURED afterwards, `python -m
+    snn_data_lake.substrate.sensor_csv_ingest` exited 1 with `ValueError: too many values to unpack
+    (expected 2)`, and that module is a CORE entry in run_selfchecks.py -- so the gate went red. The
+    two-value contract is restored here rather than papered over with an empty list, which would
+    have made that module print a silently wrong window count.
+
+    TO CLOSE THE UNBOUNDED GROWTH (one commit, both files): `sensor_csv_ingest` wants a COUNT, and
+    the count it wants is already `stats["events"]` -- change its line to `stats = S.run(...)` and
+    its report to `stats['events']`, then drop `encoded` here. Do not do half of that."""
     match = matcher or build_matcher(library)
-    lake = []
+    encoded = []
     stats = {"events": 0, "matched": 0, "correct": 0, "rejected": 0, "labeled": 0}
     for true_lab, window in source:
-        label, d, d2, q = match(window)
-        lake.append(q)
+        label, d, _d2, q = match(window)
+        encoded.append(q)
         stats["events"] += 1
         if label is not None:
             stats["matched"] += 1
@@ -360,7 +457,7 @@ def run(source, library, matcher=None, emit=True, on_unknown=None):
                 )
             )
             sys.stdout.flush()
-    return stats, lake
+    return stats, encoded
 
 
 # ---- outcome feedback channel (Interpreter -> loop) -------------------------
@@ -461,7 +558,9 @@ def main():
         _, window = next(src)
         library[label] = normalize(window) if max(window) > 1.0 else window
         save_library(library)
-        print(f"enrolled '{label}' -> {SIG_PATH} ({len(library)} signatures)")
+        from snn_data_lake.substrate.home import knowledge_path
+
+        print(f"enrolled '{label}' -> {knowledge_path()} ({len(library)} signatures)")
         return
 
     if "--learn" in args or "--learn-as" in args:
@@ -542,16 +641,40 @@ def main():
         )  # EOF
         return
 
-    # default: simulated stream + report + self-check
-    if os.path.exists(UNK_PATH):
-        open(UNK_PATH, "w").close()  # fresh unknowns bin for the demo
+    # default: simulated stream + report + self-check.
+    # ISOLATED HOME, and it is not optional now that the stores follow NORD_HOME: this branch WRITES
+    # (the unknowns queue, and the learned-library round-trip below), so without it the self-check
+    # would append to the operator's live `~/.snn_data_lake` on every gate run. NORD_HOME is RESTORED
+    # rather than popped -- tests/test_selfchecks.py runs every module's __main__ in ONE interpreter,
+    # and a bare pop un-isolates every module after this one (home.py records that exact incident).
+    import shutil
+    import tempfile
+
+    _prior_home = os.environ.get("NORD_HOME")
+    _work = tempfile.mkdtemp(prefix="signal_loop_home_")
+    os.environ["NORD_HOME"] = _work
+    try:
+        _selfcheck(library, matcher, matcher_name)
+    finally:
+        if _prior_home is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
+            os.environ["NORD_HOME"] = _prior_home
+        shutil.rmtree(_work, ignore_errors=True)
+
+
+def _selfcheck(library, matcher, matcher_name):
+    """The default-branch demo + asserts, split out so main() can scope NORD_HOME around it."""
+    unk = unknowns_path()
+    if os.path.exists(unk):
+        with open(unk, "w", encoding="utf-8"):
+            pass  # fresh unknowns bin for the demo
     src = simulated_stream(library, 40, seed=0)
-    stats, lake = run(src, library, matcher, emit=True, on_unknown=record_unknown_line)
-    raw, gz = flush_lake(lake)
+    stats, encoded = run(src, library, matcher, emit=True, on_unknown=record_unknown_line)
     acc = stats["correct"] / max(1, stats["labeled"])
 
     sys.stderr.write("=" * 60 + "\n")
-    sys.stderr.write("SIGNAL LOOP  (encode -> lake -> match -> Interpreter)\n")
+    sys.stderr.write("SIGNAL LOOP  (encode -> match -> Interpreter)\n")
     sys.stderr.write("=" * 60 + "\n")
     sys.stderr.write(f"matcher      : {matcher_name}\n")
     sys.stderr.write(f"library      : {len(library)} signatures {list(library)}\n")
@@ -561,20 +684,78 @@ def main():
     )
     sys.stderr.write(f"matched      : {stats['matched']}  rejected: {stats['rejected']}\n")
     sys.stderr.write(
-        f"recorded     : {stats['rejected']} novel -> {UNK_PATH} "
-        f"(run `--learn` to cluster + enroll them)\n"
+        f"recorded     : {stats['rejected']} novel -> {unk} (run `--learn` to cluster + enroll)\n"
     )
     sys.stderr.write(f"accuracy     : {acc:.0%} on known signals (chance {1 / len(library):.0%})\n")
-    sys.stderr.write(f"data lake    : {len(lake)} encoded windows, {raw} B -> {gz} B gzip\n")
     sys.stderr.write("=" * 60 + "\n")
 
     # ---- self-checks --------------------------------------------------------
     assert stats["events"] == 40, "stream did not produce all events"
+    # `run`'s second return value is one encoded window PER EVENT. This is the invariant that makes
+    # the standing two-file cleanup in `run`'s docstring safe -- `sensor_csv_ingest` prints
+    # `len(lake)`, and it can only switch to `stats['events']` if the two are the same number.
+    # REACHABLE RED, constructed and run 2026-08-05: with `encoded.append(q)` deleted this fires
+    # with `0 != 40`, and with it moved inside the `if label is not None` branch, `35 != 40`.
+    assert len(encoded) == stats["events"], (
+        f"run() must encode exactly one window per event: {len(encoded)} != {stats['events']}"
+    )
     assert acc >= 0.85, f"known-signal matching too weak: {acc:.2f}"
     # novel signals must mostly be rejected, not fired as a command
     novel = stats["events"] - stats["labeled"]
     assert stats["rejected"] >= novel * 0.5, "loop fires commands on novel signals"
-    assert gz < raw, "lake gzip did not shrink the encoded stream"
+
+    # ---- P4b: the LEARNED library lives IN the one lake, proven in a SEPARATE PROCESS ---------
+    # This is the store `learn_unknowns` promotes a discovered gesture into. Measured 2026-08-04,
+    # before the fix: promoting DISCOVERED_1 wrote a 10,406-byte `./data/signatures.json` and added
+    # ZERO records to brain_lake.bin, which was never created. An in-process reload would have
+    # passed against that sidecar too, which is why the check below hands the lake to a child.
+    import shutil
+    import subprocess
+    import tempfile
+
+    from snn_data_lake.substrate.home import state_path
+
+    taught = dict(library)
+    taught["DISCOVERED_SELFCHECK"] = _proto("DISCOVERED_SELFCHECK", None)
+    assert save_library(taught) is True, "the first save of a learned library must write a record"
+    assert save_library(taught) is False, "an unchanged library must not be re-appended to the lake"
+    assert not os.path.exists(state_path(SIG_STATE)), (
+        "the learned library must go IN brain_lake.bin -- no signatures.json sidecar may be created"
+    )
+    # An `assert os.path.exists(knowledge_path())` stood here and was DELETED, not weakened (P8
+    # F11). The two `save_library` asserts above can only pass if the lake machinery ran, and
+    # constructing the BinLog is what creates the file -- so no input makes this one fire first.
+    # MEASURED with a totally inert writer: the red landed on "an unchanged library must not be
+    # re-appended", never here. `closed_loop.py` keeps the same check because there it IS reachable.
+    src_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    child = (
+        f"import sys; sys.path.insert(0, {src_root!r})\n"
+        f"import os; os.environ['NORD_HOME'] = {os.environ['NORD_HOME']!r}\n"
+        "from snn_data_lake.brainstem.signal_loop import load_library\n"
+        "lib = load_library()\n"
+        "assert 'DISCOVERED_SELFCHECK' in lib, sorted(lib)\n"
+        f"assert lib['DISCOVERED_SELFCHECK'] == {taught['DISCOVERED_SELFCHECK']!r}, 'vector changed'\n"
+    )
+    rc = subprocess.run([sys.executable, "-c", child]).returncode
+    assert rc == 0, f"a learned signature did not survive into a SEPARATE process (rc={rc})"
+    # MIGRATION, not deletion: a pre-P4b sidecar in a fresh home is imported and left on disk.
+    legacy_home = tempfile.mkdtemp(prefix="signal_loop_legacy_")
+    _outer_home = os.environ["NORD_HOME"]
+    try:
+        os.environ["NORD_HOME"] = legacy_home
+        with open(os.path.join(legacy_home, SIG_STATE), "w", encoding="ascii") as f:
+            json.dump({"LEGACY_GESTURE": [0.0] * N}, f)
+        assert "LEGACY_GESTURE" in load_library(), "a pre-P4b signatures.json was not imported"
+        assert os.path.exists(os.path.join(legacy_home, SIG_STATE)), (
+            "the legacy sidecar must be left on disk, inert -- migrating is not deleting"
+        )
+    finally:
+        os.environ["NORD_HOME"] = _outer_home
+        shutil.rmtree(legacy_home, ignore_errors=True)
+    sys.stderr.write(
+        "P4b OK: the learned signature library is a _T_STATE record in brain_lake.bin, read back by "
+        "a SEPARATE process; a pre-P4b signatures.json is imported once and left in place\n"
+    )
 
     # ---- Arduino wire-contract self-check (no hardware needed) ---------------
     assert parse_line("# comment") is None and parse_line("   ") is None
@@ -588,7 +769,8 @@ def main():
     wins = list(line_windows([[float(i)] for i in range(3 * N)], window=N))
     assert len(wins) == 3 and all(len(w[1]) == N for w in wins), "windower shape wrong"
     sys.stderr.write(
-        "self-check OK: known matched, novel rejected, lake stored, wire contract parses\n"
+        "self-check OK: known matched, novel rejected, library durable in the ONE lake, "
+        "wire contract parses\n"
     )
 
     # ---- continual-learning self-check: novel recurring gesture -> learn -> match

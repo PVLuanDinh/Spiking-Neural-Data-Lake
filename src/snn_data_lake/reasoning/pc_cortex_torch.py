@@ -1,5 +1,5 @@
 r"""
-[GPU-VERIFY]  research/pc_cortex_torch.py -- GPU-batched trainer for a DEEP spiking
+[GPU-VERIFY]  reasoning/pc_cortex_torch.py -- GPU-batched trainer for a DEEP spiking
 predictive-coding cortex (exports `snn_pcnet/1` for src/.../cortex/pc_cortex_serve.py).
 
 Honest framing. This is the torch TRAINING side of the deep spiking Rao-Ballard predictive
@@ -43,10 +43,10 @@ NOT zero-dep -- torch/GPU TRAINING TIER only. The zero-dep core NEVER imports th
 orchestrator runs the full GPU pass.
 
   # CPU smoke (tiny, MNIST-rate, no tonic, proves it runs + exports a server-loadable checkpoint):
-  PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python research/pc_cortex_torch.py --smoke
+  PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.pc_cortex_torch --smoke
 
   # full GPU run (N-MNIST; orchestrator runs this):
-  NORD_GPU=1 PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python research/pc_cortex_torch.py
+  NORD_GPU=1 PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.pc_cortex_torch
 """
 
 import argparse
@@ -57,8 +57,7 @@ import time
 
 import torch
 
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-from snn_data_lake.reasoning.torch_device import enable, resolve_device  # noqa: E402
+from snn_data_lake.substrate.device import enable, resolve_device  # noqa: E402
 
 THETA = 0.5
 LEAK = 0.02
@@ -430,7 +429,12 @@ def main():
     surro_acc = None
     if os.path.exists(surro):
         try:
-            obj = torch.load(surro, map_location="cpu", weights_only=False)
+            # weights_only=True (was False, 2026-08-04): this branch reads only scalar accuracy
+            # fields out of the checkpoint, so it needs no arbitrary-object unpickling, and
+            # weights_only=False executes whatever the pickle names. If a checkpoint genuinely
+            # needs the permissive loader it raises here and the existing except-branch below
+            # already degrades to "unlabeled reference" -- the honest outcome either way.
+            obj = torch.load(surro, map_location="cpu", weights_only=True)
             if isinstance(obj, dict):
                 for k in ("test_acc", "acc", "accuracy", "best_acc"):
                     if k in obj and isinstance(obj[k], (int, float)):

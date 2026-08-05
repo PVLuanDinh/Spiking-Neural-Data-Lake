@@ -43,6 +43,8 @@ threshold-crossing spike in a small LIF winner-take-all array, nothing more.
 
 import random
 
+from snn_data_lake.basal_ganglia.action_gating import kwta
+
 
 class SuperiorColliculus:
     """Retinotopic salience map: contrast current -> LIF neurons + lateral inhibition -> spiking WTA.
@@ -76,14 +78,6 @@ class SuperiorColliculus:
             readout_window  # steps to keep integrating after the winner first spikes
         )
         self.rng = random.Random(seed)
-
-    @staticmethod
-    def _kwta(values, k):
-        """Indices of the k largest values (winner-take-all), tie-break by lowest index.
-
-        Matches basal_ganglia/action_gating._kwta so the two competition circuits agree."""
-        order = sorted(range(len(values)), key=lambda i: (values[i], -i), reverse=True)
-        return set(order[:k])
 
     def _lateral(self, salience):
         """Salience -> rectified per-location INPUT CURRENT via surround (lateral) inhibition. A
@@ -121,7 +115,7 @@ class SuperiorColliculus:
                 v[i] = vi if vi > 0.0 else 0.0
                 inh[i] *= self.inhib_decay
             # threshold crossings become discrete spikes (deterministic order: strongest membrane
-            # first, tie -> lowest index, matching _kwta so the two competition circuits agree).
+            # first, tie -> lowest index, matching `kwta` so the two competition circuits agree).
             fired = sorted((i for i in range(n) if v[i] >= self.theta), key=lambda i: (-v[i], i))
             for i in fired:
                 spikes[i] += 1
@@ -136,7 +130,7 @@ class SuperiorColliculus:
                 stop_at = t + self.readout_window  # keep integrating to build the spike raster
             if target is not None and t >= stop_at:
                 break
-        argmax = next(iter(self._kwta(salience, 1)))
+        argmax = next(iter(kwta(salience, 1)))
         return {
             "target": target,
             "latency": latency,

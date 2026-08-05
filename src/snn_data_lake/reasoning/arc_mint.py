@@ -884,10 +884,16 @@ def main():
     import json
     import os
 
-    os.chdir(
-        os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        )
+    # Repo root, DERIVED -- never entered. This used to be `os.chdir(<repo root>)`, whose only job
+    # was to make the relative `scratchpad/oracle_dev.json` below resolve. A self-check that changes
+    # the PROCESS working directory is the module-scope-side-effect defect P4c records against the
+    # daemon (`os.chdir` / `sys.path.insert` / `os.environ.setdefault` at import): `run_selfchecks`
+    # spawns subprocesses so it was invisible there, but `run_selfchecks.run_one_in_process()` (the
+    # frozen-app path, which has no interpreter to spawn) runs modules with `runpy` in ONE process --
+    # so every module after this one would have inherited a different cwd. Resolving the path
+    # absolutely does the same work and leaves the process alone.
+    _repo_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     )
     width = 96
     _emit("=" * width)
@@ -944,7 +950,10 @@ def main():
     try:
         from snn_data_lake.reasoning.arc_bench import load_tasks
 
-        dev = json.load(open("scratchpad/oracle_dev.json", encoding="utf-8"))
+        with open(
+            os.path.join(_repo_root, "scratchpad", "oracle_dev.json"), encoding="utf-8"
+        ) as _f:
+            dev = json.load(_f)
         eval_tasks = dict(load_tasks("evaluation"))
     except Exception as e:  # noqa: BLE001
         _emit(

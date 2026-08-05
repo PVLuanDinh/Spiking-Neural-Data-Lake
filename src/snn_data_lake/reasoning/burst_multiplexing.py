@@ -23,7 +23,7 @@ signals AND spike generation), ASCII-only.
 Reference: Naud, R. & Sprekeler, H. (2018), "Sparse bursts optimize information transmission in a multiplexed
 neural code", PNAS 115(27):E6329-E6338, DOI 10.1073/pnas.1720995115.
 
-  python research/burst_multiplexing.py        # (also run by run_selfchecks.py, root on PYTHONPATH)
+  python -m snn_data_lake.reasoning.burst_multiplexing        # (also run by run_selfchecks.py, root on PYTHONPATH)
 """
 
 import math

@@ -1,7 +1,11 @@
 """
-v2.67 -- ReSuMe: supervised learning of a PRECISE target output spike train (research tier).
+v2.67 -- ReSuMe: supervised learning of a PRECISE target output spike train.
 
-The tempotron (src/snn_data_lake/tempotron.py, Gutig & Sompolinsky 2006) learns a BINARY
+P4c: "research tier" was struck from this line on 2026-08-04. There is no tier outside the brain --
+a file in this tree is part of the brain or it is retired, and this one is registered in
+run_selfchecks.py and runs on every gate. The words described a directory that no longer exists.
+
+The tempotron (src/snn_data_lake/cortex/tempotron.py, Gutig & Sompolinsky 2006) learns a BINARY
 decision: adjust the weights so the neuron's peak sub-threshold voltage crosses (or does not
 cross) threshold -- fire vs. stay silent for a whole pattern. It says nothing about WHEN the
 spike lands.
@@ -41,7 +45,7 @@ Ref: Ponulak, F. & Kasinski, A. (2010), "Supervised Learning in Spiking Neural N
 ReSuMe: Sequence Learning, Classification, and Spike Shifting", Neural Computation 22(2):467-510,
 DOI 10.1162/neco.2009.11-08-901.
 
-  python research/resume_learning.py        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.reasoning.resume_learning        # (also run by run_selfchecks.py)
 """
 
 import math

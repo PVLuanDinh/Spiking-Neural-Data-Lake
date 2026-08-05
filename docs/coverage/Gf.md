@@ -192,7 +192,7 @@ and the sweep's own evidence directory is currently failing it. Promoting every 
 
 `gf_reply_ab.py` runs two arms of a `make_brain(seed=0)` brain (Policy 4), neuters one faculty's entry
 points **in the module the live route imports them from**, and compares the reply string that
-`Brain.respond` returns -- the method `learn_daemon.py:245` pumps cockpit chat into. The rubric puts
+`Brain.respond` returns -- the method `substrate/learn_daemon.py` pumps cockpit chat into. The rubric puts
 that at band 41-60: *"changes an internal read -- the output demonstrably alters something the brain
 itself later reads -- a reply, a memory write, a self-model term"* (`COVERAGE_RUBRIC.md:53`).
 
@@ -350,7 +350,7 @@ is not.
 - **Whether anything reads the schema write back.** I proved the durable write differs under neuter; I
   did not trace a later retrieval consuming it. That is the gap between 45 and a 61 claim for that row.
 - **The daemon in situ.** I drove `make_brain` directly. I did not run `learn_daemon.py` and type into
-  the cockpit, so "the daemon pumps this path" is read from `learn_daemon.py:245`, statically.
+  the cockpit, so "the daemon pumps this path" is read from `substrate/learn_daemon.py`, statically.
 - **Cross-domain transfer.** I found no mechanism that carries an induced rule from one domain's library
   to another, so there was nothing to A/B. Absent rather than dormant; no row, because inventing a 0 row
   for an unimplemented faculty is as arbitrary as omitting one.

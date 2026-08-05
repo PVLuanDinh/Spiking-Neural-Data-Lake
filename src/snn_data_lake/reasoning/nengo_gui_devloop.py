@@ -3,7 +3,7 @@ NENGO-GUI DEVELOPMENTAL LOOP -- watch the loop's REAL spikes drive a live Nengo 
 
 WHAT THIS IS
 ------------
-research/developmental_loop_deep.py runs the autonomous developmental cycle -- spiking curiosity
+reasoning/developmental_loop_deep.py runs the autonomous developmental cycle -- spiking curiosity
 picks the next objective digit, a locus-coeruleus noradrenaline burst boosts the learning gain,
 a CONTINUAL linear readout learns it on FROZEN unsupervised conv1 latency-STDP features, replay
 consolidates old digits, competence feeds the next decision. This file wires that loop THROUGH
@@ -13,7 +13,7 @@ neuromodulation / competence / accuracy signals. Each output drives its own LABE
 `nengo.Ensemble`, so NengoGUI draws a live spike raster per signal -- the headline being the
 "perception (conv1 feature spikes)" population.
 
-This follows research/nengo_gui_brain.py exactly (module-level `model`, one Node driving labelled
+This follows reasoning/nengo_gui_brain.py exactly (module-level `model`, one Node driving labelled
 ensembles, spikes + decoded probes) and reuses the substrate/nengo_bridge idiom of turning a numeric
 signal vector into its own spiking NEF Ensemble.
 
@@ -42,7 +42,7 @@ ONLY -- no actuator / motor route. Deployable to NengoLoihi as a monitoring laye
 
 LAUNCH THE GUI (from the repo root; needs the TORCH venv, which also has nengo)
 ------------------------------------------------------------------------------
-    .venv-cu128\Scripts\nengo.exe -P 8765 research\nengo_gui_devloop.py
+    .venv-cu128\Scripts\nengo.exe -P 8765 src/snn_data_lake/reasoning/nengo_gui_devloop.py
 Notes: the port flag is CAPITAL -P (lowercase -p is password); default port 8080 is blocked on this
 Windows box, so pass -P 8765. The browser opens at http://localhost:8765 . Press play, then right-click
 the "perception (conv1 feature spikes)" ensemble for its spike raster. The module-level conv1 pre-train
@@ -51,7 +51,7 @@ responsive; shrink those envs if your machine imports slowly.
 
 HEADLESS VERIFY (no GUI socket needed -- how the main agent checks it)
 ---------------------------------------------------------------------
-    NORD_GPU=1 PYTHONPATH=src .venv-cu128\Scripts\python research\nengo_gui_devloop.py
+    NORD_GPU=1 PYTHONPATH=src .venv-cu128\Scripts\python -m snn_data_lake.reasoning.nengo_gui_devloop
 main() builds `model`, runs a headless nengo.Simulator(model) for sim.run(0.2), and ASSERTS the spike
 probes recorded > 0 spikes across the ensembles (proving the loop drives real Nengo spikes), printing
 n signals / total spikes / per-ensemble spike counts.
@@ -59,15 +59,25 @@ n signals / total spikes / per-ensemble spike counts.
 Scale knobs (env): NORD_C1 (16) NORD_T (15) NORD_L1_EPOCHS (2) NORD_TRAIN (3000) NORD_TEST (800)
                    NORD_SGD (60) NORD_CYCLE_EVERY (40) NORD_PER (200) NORD_REPLAY (100) NORD_CAP (1)
                    NORD_GPU=1
-Deps: numpy torch torchvision snntorch nengo   (research/GPU+nengo tier; the core is untouched)
+Deps: numpy torch torchvision snntorch nengo (the GPU/train + nengo tier -- P5: this trains and
+      renders, so it belongs on the card, and the suite must stay runnable without one).
+
+P4c (2026-08-05): this line read "research/GPU+nengo tier; the core is untouched". Both halves were
+wrong and the 2026-08-04 path sweep corrected the same sentence in `readout_ensemble.py` while
+leaving this copy standing -- "a claim living in two places, only one corrected", which is the
+failure `docs/POLICIES.md` names under P6. `research/` was retired in v3.78, and "the core is
+untouched" asserts an outside-the-brain category P4c says does not exist.
+P3 DISPOSITION, stated because this file has none: MEASURED 2026-08-05 by AST over the tree, it has
+ZERO importers and is registered in NEITHER `run_selfchecks.py` list, so its asserts have never run
+in any gate. That is dormancy, not a tier. Registering it edits a shared file and is handed back.
 """
 
 import os
 import sys
 
-_here = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-pass  # migrated: sys.path bootstrap removed (now an importable package)
+# `_here = os.path.dirname(...)` and two `pass  # migrated` no-ops stood here. `_here` was assigned
+# and never read anywhere in the file, and the passes were residue of the package migration.
+# Removed 2026-08-04.
 
 import math  # noqa: E402
 
@@ -79,7 +89,7 @@ import torch.nn.functional as F  # noqa: E402
 import nengo  # noqa: E402
 
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist  # noqa: E402
-from snn_data_lake.reasoning.torch_device import enable, resolve_device  # noqa: E402
+from snn_data_lake.substrate.device import enable, resolve_device  # noqa: E402
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp  # noqa: E402
 
 from snn_data_lake.neuromodulation.locus_coeruleus import LocusCoeruleus  # noqa: E402
@@ -111,9 +121,40 @@ PER = _envi("NORD_PER", 200)  # objective-digit train features per cycle
 REPLAY = _envi("NORD_REPLAY", 100)  # replayed feature rows stored + rehearsed per learned digit
 CAP = _envi("NORD_CAP", 1)  # max consecutive revisits of the same digit (anti-fixation)
 
-torch.manual_seed(0)  # determinism
-_DEV = resolve_device()
-enable(_DEV)  # route torch factories to GPU when NORD_GPU=1 (else CPU)
+_DEV = resolve_device()  # a PURE query ("'cuda[:N]' when wanted and present, else 'cpu'")
+
+# P4c / determinism, 2026-08-04. These two lines stood HERE, at module scope:
+#     torch.manual_seed(0)   # determinism
+#     enable(_DEV)           # route torch factories to GPU when NORD_GPU=1 (else CPU)
+# Both mutate PROCESS-GLOBAL torch state, so merely IMPORTING this module reseeded torch's global
+# RNG and re-pointed the default device for EVERY module imported after it in the same process.
+# That is the exact shape P4c records as three latent bugs in `learn_daemon.py` -- `os.chdir`,
+# `sys.path.insert` and `os.environ.setdefault("NORD_GPU", "1")` at module scope -- and
+# `run_selfchecks.py` runs part of the suite in ONE process. A global reseed from an import is also
+# the project's determinism invariant read backwards: "use random.Random(seed) per instance; never
+# module-level import-time seeding" is stated for `random` and the reason is identical for torch.
+#
+# BE PRECISE ABOUT WHAT THIS CHANGE DID AND DID NOT DO, because "moved into a function" reads as a
+# fix and here it is only half of one. The two mutations now live in ONE named place,
+# _configure_torch(), instead of being loose module statements -- but it is still CALLED at module
+# scope, immediately before the eager MNIST load + conv1 pre-train further down, because that
+# pre-train needs the device routed and is itself still eager. So the IMPORT-TIME TIMING IS
+# UNCHANGED: importing this module still reseeds global torch RNG and still re-points the default
+# device. What changed is that there is now a single site to move, and moving it is a one-line
+# change once the pre-train is deferred.
+#
+# The pre-train was NOT deferred, and the reason is a verification limit rather than a judgement:
+# this file's NengoGUI contract is a module-level `model`, it has ZERO importers, it is in neither
+# run_selfchecks list, and NEITHER `nengo` NOR the torch tier is installed in `.venv-lake` -- so
+# nothing in this file could be executed here to show a restructure preserved its behaviour. P2's
+# honesty guard says prove behaviour-equivalence before swapping; that proof is not available in
+# this environment, so the restructure is handed back as open work rather than done blind.
+
+
+def _configure_torch():
+    """Global torch setup, deferred out of module scope. Idempotent; call before building."""
+    torch.manual_seed(0)  # determinism
+    enable(_DEV)  # route torch factories to GPU when NORD_GPU=1 (else CPU)
 
 
 def _accuracy(clf, feats, labels, idx):
@@ -144,6 +185,7 @@ def _perception_spikes(conv, image):
 # ---------------------------------------------------------------------------------------------------
 # MODULE-LEVEL PRE-TRAIN (runs once at import) -- unsupervised conv1, then cache features + demo digits
 # ---------------------------------------------------------------------------------------------------
+_configure_torch()  # seeds torch + routes the default device; see the note at its definition
 print("[nengo_gui_devloop] loading MNIST + pre-training conv1 (unsupervised, once at import)...")
 _Xtr, _Ytr, _Xte, _Yte = load_mnist(TRAIN_N, TEST_N)
 
@@ -353,7 +395,10 @@ def main():
         f"{per_ens['perception (conv1 feature spikes)']} spikes. Observation-only, no actuator route; "
         f"deployable to NengoLoihi."
     )
-    print("Launch the GUI:  .venv-cu128\\Scripts\\nengo.exe -P 8765 research\\nengo_gui_devloop.py")
+    print(
+        "Launch the GUI:  .venv-cu128\\Scripts\\nengo.exe -P 8765 "
+        "src\\snn_data_lake\\reasoning\\nengo_gui_devloop.py"
+    )
     print("=" * 88)
     return 0
 

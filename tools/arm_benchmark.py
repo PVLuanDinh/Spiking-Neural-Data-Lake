@@ -1,17 +1,28 @@
-"""Compare the MuJoCo SO-101 against the incumbent ArmSim, on the same inputs.
+"""Measure the live MuJoCo SO-101 body: holding torque, reach, and what the retired arm could not say.
 
 WHY THIS EXISTS. P2 is non-additive: when two mechanisms do the same job exactly one survives,
-and "better" requires a benchmark that exists. None did. This is that benchmark, and it is the
+and "better" requires a benchmark that exists. None did. This is that benchmark, and it was the
 precondition for retiring `brainstem/arm_sim.py` -- not a report written after the decision.
 
-It deliberately does NOT depend on the new gate. It drives a bare MuJoCo body and the existing
-ArmSim directly, so it can run before any of the replacement is built and can therefore license
-or refuse that work.
+THE A/B IS OVER; THIS IS ITS SURVIVING HALF. The docstring said "Compare the MuJoCo SO-101 against
+the incumbent ArmSim" and "drives a bare MuJoCo body and the existing ArmSim directly" until
+2026-08-04. Neither is true: `arm_sim.py` was DELETED under specs/004, `probe_armsim` went with it,
+and `tests/test_arm_benchmark.py::test_benchmark_no_longer_probes_the_retired_arm` asserts by AST
+that neither name comes back. Re-printing the incumbent's numbers here would be a transcription no
+run could refute, so the recorded comparison stays in
+`specs/004-mujoco-so101-arm/benchmark.md` and this file measures the LIVE body only. A benchmark
+whose header describes an arm that no longer exists is the same defect as a stale citation, one
+level up: it tells a reader the run answers a question the run cannot ask.
 
-WHAT IS AND IS NOT COMPARABLE. The two bodies are not commensurable: 2 joints against 6,
-dimensionless links against metres, teleport against dynamics. Reporting a single "winner"
-number would be dishonest. So each row states what each arm CAN report and names what it
-STRUCTURALLY CANNOT -- the capability delta is the finding, not a score.
+It deliberately does NOT depend on the arm's gate. It drives a bare MuJoCo body, so it measures the
+BODY rather than the safety envelope wrapped around it -- which is what makes the E-STOP note below
+a statement about `brainstem/so101_arm.py` and not about anything measured here.
+
+WHAT IS AND IS NOT COMPARABLE, kept because it is why no single number is printed. The two bodies
+were never commensurable: 2 joints against 6, dimensionless links against metres, teleport against
+dynamics. Reporting a "winner" number would have been dishonest. So each row states what the live
+arm CAN report and names what the retired one STRUCTURALLY COULD NOT -- the capability delta is the
+finding, not a score.
 
 THE PAYLOAD IS APPLIED ANALYTICALLY, NOT BY EDITING THE MODEL. Holding torque for a mass at the
 tool centre point is tau = qfrc_bias + J_site^T . F, with F the payload weight. That is exact for
@@ -41,7 +52,9 @@ G = 9.81
 KGCM_PER_NM = 100.0 / 9.81  # 1 N*m = 10.197 kg*cm
 
 
-# ---- the incumbent ---------------------------------------------------------------------
+# ---- the live body ---------------------------------------------------------------------
+# (This header read "the incumbent" until 2026-08-04, above code that loads the CANDIDATE. The
+# incumbent's probe was deleted with `arm_sim.py`; only its section heading survived.)
 
 
 def _model():
@@ -72,7 +85,7 @@ def hold_torque(m, d, payload_kg=0.0):
 
 
 def probe_mujoco(payload_kg):
-    m, d = _model(), None
+    m = _model()
     d = mujoco.MjData(m)
     mujoco.mj_resetData(m, d)
     mujoco.mj_forward(m, d)

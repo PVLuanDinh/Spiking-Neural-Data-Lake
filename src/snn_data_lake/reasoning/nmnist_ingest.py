@@ -40,6 +40,20 @@ T = int(os.environ.get("NMNIST_T", 6))  # time bins (ToFrame n_time_bins)
 SEED = int(os.environ.get("NMNIST_SEED", 0))
 
 
+def _say(msg):
+    """print(), with the project's ASCII-only output invariant asserted at the point of emission.
+
+    This module printed a U+2014 EM DASH for the life of the feature and no gate saw it: MEASURED
+    2026-08-04, `PYTHONIOENCODING=ascii python -m snn_data_lake.reasoning.nmnist_ingest` exited 1 with
+    `UnicodeEncodeError: 'ascii' codec can't encode character '\\u2014'`. Under the default Windows
+    console cp1252 an em dash happens to encode, which is exactly why it survived -- the invariant
+    is ASCII, not "whatever this console tolerates". Reachable red: put a non-ASCII character in any
+    _say() below and this raises here, naming the line. Same shape as nightly_skills.main::say and
+    rose_language.main::say, which is where the pattern comes from."""
+    msg.encode("ascii")
+    print(msg)
+
+
 # ---- data source: real N-MNIST via Tonic, else synthetic events -------------
 def _synth_sample(label, rng, n_events=600):
     """Deterministic class-separable event blob: each digit fires around a unique
@@ -85,7 +99,7 @@ def load_events(n_train, n_test):
         tr = [(_synth_sample(i % C, rng), i % C) for i in range(n_train)]
         te = [(_synth_sample(i % C, rng), i % C) for i in range(n_test)]
         reason = "tonic missing" if isinstance(exc, ImportError) else f"tonic error: {exc}"
-        return tr, te, f"synthetic events ({reason} — `pip install tonic` for real N-MNIST)"
+        return tr, te, f"synthetic events ({reason} -- `pip install tonic` for real N-MNIST)"
 
 
 # ---- BRONZE: raw immutable events -> compact gzip store ---------------------
@@ -173,28 +187,56 @@ def main():
 
     sparsity = sum(1 for v in train_feats[0][0] if v > 0) / len(train_feats[0][0])
 
-    print("=" * 62)
-    print("N-MNIST EVENT INGESTION  (events -> Bronze -> raster -> classify)")
-    print("=" * 62)
-    print(f"source        : {source}")
-    print(f"samples       : {len(train)} train / {len(test)} test, {n_ev:,} events")
-    print(
+    _say("=" * 62)
+    _say("N-MNIST EVENT INGESTION  (events -> Bronze -> raster -> classify)")
+    _say("=" * 62)
+    _say(f"source        : {source}")
+    _say(f"samples       : {len(train)} train / {len(test)} test, {n_ev:,} events")
+    _say(
         f"BRONZE store  : {len(raw) / 1024:.1f} KB raw  -> {raw_gz / 1024:.1f} KB gzip "
         f"({len(raw) / max(1, raw_gz):.1f}x)"
     )
-    print(f"SILVER raster : {T}x{P}x{H}x{W}  ICR={sample_icr:.3f}  (lower = more structured)")
-    print(f"GOLD feature  : {P * H * W}-d rate vector, {sparsity * 100:.0f}% active (sparse=cheap)")
-    print(f"ACCURACY      : {acc * 100:.1f}%   (chance = {100 / C:.0f}%)")
-    print("=" * 62)
+    _say(f"SILVER raster : {T}x{P}x{H}x{W}  ICR={sample_icr:.3f}  (lower = more structured)")
+    _say(f"GOLD feature  : {P * H * W}-d rate vector, {sparsity * 100:.0f}% active (sparse=cheap)")
+    _say(f"ACCURACY      : {acc * 100:.1f}%   (chance = {100 / C:.0f}%)")
+    _say("=" * 62)
 
     # ---- self-checks --------------------------------------------------------
     assert n_ev > 0, "no events ingested"
     assert len(raster_bytes(to_frames(test[0][0]))) == T * P * H * W, "raster shape wrong"
     assert 0.0 < sample_icr < 1.0, f"ICR out of range: {sample_icr}"
-    # roundtrip: Bronze byte store decodes to the same event count
-    assert len(raw) // struct.calcsize("<HHIB") == n_ev, "Bronze store lost events"
+    # ROUND-TRIP: decode the Bronze byte store back to events and compare against the source.
+    #
+    # What stood here was `len(raw) // struct.calcsize("<HHIB") == n_ev`, and it was TRUE BY
+    # CONSTRUCTION: `bronze_bytes` packs exactly one fixed-width 9-byte record per event and
+    # `n_ev` counts the same list, so len(raw) is 9*n_ev for every possible input -- there is no
+    # constructible red. Worse, the success line beside it printed "Bronze roundtrip intact"
+    # while NOTHING in this module ever decoded a byte back. That is a claim the measurement did
+    # not support, which is the thing P8 forbids, and deleting the assert (F11's default) would
+    # have left the false sentence standing. So the criterion is made REAL instead: unpack the
+    # store and compare the recovered events to the originals.
+    #
+    # REACHABLE RED, constructed and run 2026-08-04. The red has to be chosen carefully, and the
+    # first one tried was NOT discriminating -- recording that because it is the whole point:
+    #   * narrowing the record to "<HHHB" fires this assert (exit 1), but the OLD assert catches
+    #     it too (7-byte records against a 9-byte calcsize changes the count). Not evidence.
+    #   * transposing two fields of the SAME width -- pack(..., y, x, t, p) -- is the real red.
+    #     len(raw) is unchanged, so the old criterion reads True and the run stayed GREEN with a
+    #     systematically corrupted store; this assert exits 1. Both measured.
+    # That second case is the silent corruption "Bronze store lost events" always claimed to be
+    # about and never tested: a store that is the right SIZE and the wrong CONTENT.
+    rec = struct.calcsize("<HHIB")
+    assert len(raw) % rec == 0, (
+        f"Bronze store is not a whole number of records ({len(raw)} % {rec})"
+    )
+    decoded = [struct.unpack_from("<HHIB", raw, i * rec) for i in range(len(raw) // rec)]
+    source_events = [ev for evs, _ in (train + test) for ev in evs]
+    assert decoded == source_events, (
+        f"Bronze store did not round-trip: {sum(1 for a, b in zip(decoded, source_events) if a != b)} "
+        f"of {len(source_events)} events differ after decode"
+    )
     assert acc >= 0.30, f"accuracy {acc:.2f} below 0.30 (pipeline broken?)"
-    print(
+    _say(
         f"self-check OK: {n_ev:,} events ingested, raster + ICR valid, "
         f"Bronze roundtrip intact, accuracy {acc * 100:.0f}% > chance"
     )

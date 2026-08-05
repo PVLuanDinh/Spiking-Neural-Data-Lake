@@ -7,8 +7,9 @@ chance 5%) on a capped 500-sample / 12-epoch run — full-SHD SOTA needs a GPU b
 longer training. The CI-covered mechanism is spiking_ssm.py.
 
 Deep spiking SSMs are the current best for long event sequences (SpikingSSMs, AAAI 2025; P-SpikeSSM,
-ICLR 2025; FLAMES, arXiv:2504.01257): a linear state-space recurrence h_t = A⊙h_{t-1} + B·x_t carries
-long-range memory cheaply, a LIF spiking nonlinearity on C·h_t keeps activations sparse/binary, and the
+ICLR 2025; FLAMES, arXiv:2504.01257): a linear state-space recurrence h_t = A*h_{t-1} + B*x_t (A applied
+elementwise) carries long-range memory cheaply, a LIF spiking nonlinearity on C*h_t keeps activations
+sparse/binary, and the
 whole stack is trained by BPTT with snnTorch's surrogate gradient. This file trains a small stacked
 spiking-SSM classifier and reports accuracy + spike SPARSITY + SynOps (piped through energy.py).
 
@@ -17,8 +18,12 @@ sequence), or the real **SHD** (Spiking Heidelberg Digits, 20-class spoken digit
 Env knobs: SSM_DIM, SSM_LAYERS, SSM_STEPS, SSM_EPOCHS.
 
 Run (own venv, from repo root so snn_data_lake resolves):
-  PYTHONPATH=src .venv-gpu/Scripts/python research/snn_ssm_shd.py            # synthetic long-range task
-  PYTHONPATH=src .venv-gpu/Scripts/python research/snn_ssm_shd.py --shd      # real SHD via Tonic
+  PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.snn_ssm_shd         # synthetic
+  PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.snn_ssm_shd --shd   # real SHD
+
+(both lines corrected 2026-08-05: they named `research/snn_ssm_shd.py`, retired in v3.78, AND
+`.venv-gpu`, which does not exist on this tree at all -- the verified GPU env is `.venv-cu128`
+per docs/POLICIES.md P5. Two dead tokens in one documented command.)
 """
 
 import os
@@ -29,9 +34,16 @@ import torch.nn as nn
 import torch.nn.functional as F  # noqa: N812
 import snntorch as snn
 from snntorch import surrogate
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 
-_DEVICE = enable(resolve_device())
+# MODULE SCOPE: resolve only. `enable()` calls `torch.set_default_device()`, which is
+# PROCESS-GLOBAL -- calling it here meant merely IMPORTING this module re-routed every tensor
+# built by every module loaded afterwards. MEASURED 2026-08-05 with NORD_DEVICE=meta: importing
+# this module took the process default device from 'cpu' to 'meta'. Same defect class as the three
+# module-scope side effects the daemon promotion exposed (docs/POLICIES.md P4c). `resolve_device()`
+# is a pure env read, so `_DEVICE` keeps its value and every `torch.Generator(device=_DEVICE)`
+# call site is unchanged; the routing now happens in main(), on the script path.
+_DEVICE = resolve_device()
 
 DIM = int(os.environ.get("SSM_DIM", 128))
 LAYERS = int(os.environ.get("SSM_LAYERS", 2))
@@ -139,6 +151,7 @@ def run(x, y, xt, yt, n_classes):
 
 
 def main():
+    enable(_DEVICE)  # route torch factories to the device -- script path only, never at import
     gen = torch.Generator(device=_DEVICE).manual_seed(SEED)
     if "--shd" in sys.argv:
         mode = "real SHD (Tonic)"

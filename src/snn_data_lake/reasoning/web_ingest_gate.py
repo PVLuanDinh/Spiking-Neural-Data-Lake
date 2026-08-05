@@ -2,7 +2,7 @@ r"""
 WEB ACCESS GATE -- the ONE controlled doorway through which the brain loop pulls knowledge from the
 web to self-enrich, with WordNet as its first source.
 
-The brain converses from its lifelong LAKE (research/spike_chat_lake.py). This gate lets the loop GROW
+The brain converses from its lifelong LAKE (reasoning/spike_chat_lake.py). This gate lets the loop GROW
 that lake from real online knowledge, safely. Every fetch passes THREE checks before a byte is read:
 
   1. HOST ALLOWLIST -- only curated knowledge sources (WordNet/dictionary/corpus mirrors), nothing else.
@@ -20,7 +20,7 @@ answers "what is X" from the real dictionary, and the database grows to tens of 
 HONEST: this is a KNOWLEDGE gate (fetch text -> parse -> store facts), not general web browsing or code
 execution. It reads allowlisted static knowledge files and turns them into lake facts, nothing more.
 
-  PYTHONPATH=src .venv-lake/Scripts/python research/web_ingest_gate.py            # gate + WordNet ingest demo
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.web_ingest_gate  # gate + WordNet demo
   Knobs: NORD_WORDNET_URL(jsdelivr data.noun) NORD_WN_LIMIT(4000) NORD_WEB_MAXBYTES(16000000)
 Deps: stdlib (+ numpy via spike_chat_lake). Reuses substrate.web_ingest (SSRF firewall) + spike_chat_lake.
 """
@@ -289,9 +289,59 @@ def main():
     assert redirect_refused, (
         "a redirect to a non-allowlisted public host must be refused by the gate"
     )
-    assert (
-        _ValidatingRedirectHandler(gate._require_allowed)._extra_check is gate._require_allowed
-    ), "the gate must wire its allowlist into the redirect handler (else redirects escape it)"
+    # The line above only proves the gate REFUSES an off-allowlist host when asked directly. The
+    # criterion that matters is whether that refusal is actually REACHED from a 30x, so it is
+    # EXERCISED here rather than introspected.
+    #
+    # This assert read, until 2026-08-05:
+    #     assert _ValidatingRedirectHandler(gate._require_allowed)._extra_check is gate._require_allowed
+    # and it was **UNCONDITIONALLY FALSE**, so `python -m snn_data_lake.reasoning.web_ingest_gate`
+    # exited 1 on every run. `gate._require_allowed` is a BOUND METHOD: attribute access builds a
+    # fresh `method` object each time, so `x is x` is False for two separate accesses (MEASURED:
+    # `gate._require_allowed is gate._require_allowed` -> False, `==` -> True, distinct ids). It
+    # was also near-tautological even had it worked -- `Handler(x)._extra_check is x` tests that
+    # `__init__` performs an assignment, not that the GATE wires anything.
+    #
+    # What replaces it drives the real path. `_ValidatingRedirectHandler.redirect_request` runs
+    # `validate_url(newurl)` FIRST, and an off-allowlist hostname that does not resolve dies there
+    # (MEASURED: 'evil.example.com' raised ValueError "cannot resolve host" and `_extra_check` was
+    # never called, which is why the original author reached for introspection). So the SSRF half is
+    # stubbed out for the length of this check and the ALLOWLIST half is driven for real.
+    import snn_data_lake.substrate.web_ingest as _wi
+
+    # `redirect_request` only BUILDS the follow-up Request -- it performs no I/O -- so driving it
+    # with a real Request off an allowlisted origin is offline and exercises the whole path.
+    _real_validate = _wi.validate_url
+    _wi.validate_url = lambda _u: None  # neuter the SSRF half; the allowlist half is under test
+
+    def _follows_redirect(handler):
+        """True iff `handler` FOLLOWS a 302 off the allowlist (i.e. does not refuse it)."""
+        req = urllib.request.Request(DEFAULT_WORDNET_URL)
+        try:
+            handler.redirect_request(req, None, 302, "", {}, "https://evil.example.com/pwn")
+            return True  # a follow-up Request was built: the redirect escaped
+        except PermissionError:
+            return False
+
+    try:
+        followed_wired = _follows_redirect(_ValidatingRedirectHandler(gate._require_allowed))
+        # RED CONTROL: the SAME call through a handler with NO allowlist wired in must FOLLOW.
+        # Without it, `followed_wired` could be False for a reason having nothing to do with the
+        # gate, and this assert would be the decoration the one it replaced actually was.
+        followed_unwired = _follows_redirect(_ValidatingRedirectHandler())
+    finally:
+        _wi.validate_url = _real_validate
+    assert not followed_wired, (
+        "the gate must wire its allowlist into the redirect handler: a 302 from an allowlisted "
+        "host to 'evil.example.com' was FOLLOWED, so a redirect escapes the allowlist"
+    )
+    assert followed_unwired, (
+        "control failed: a handler with NO allowlist wired in ALSO refused the redirect, so the "
+        "assert above is not measuring the gate's wiring. Reachable red, constructed and run "
+        "2026-08-05: dropping the `_extra_check(newurl)` call from "
+        "`web_ingest._ValidatingRedirectHandler.redirect_request` -- which leaves the refusal "
+        "itself intact, so the assert above THIS block still passes -- fires the first assert."
+    )
     assert chat.n_known == before + n_core + n_web, (
         "the gate must ingest every fetched definition into the lake"
     )

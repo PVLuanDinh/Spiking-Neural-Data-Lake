@@ -367,7 +367,13 @@ def main():
     fams = sorted(set(DESCRIPTOR_FAMILY))
     _emit(f"  families ({len(fams)}): {', '.join(fams)}")
 
-    ok = True
+    # This block used to carry `ok = True`, never reassigned, and closed with
+    # `_emit("RESULT: " + ("PASS" if ok else "FAIL"))` / `return 0 if ok else 1`. `ok` had no
+    # reachable False, so "RESULT: PASS" was a constant wearing a signal's clothes (P3 shape 5) --
+    # a printed verdict that could not report a failure. The `assert`s below are the actual gate:
+    # they raise, the process exits non-zero, and run_selfchecks scores FAIL on the exit status.
+    # Removed rather than wired up, because a second verdict channel beside the asserts is exactly
+    # the extra moving part P2 forbids.
 
     # ---- the alphabet is a well-formed versioned enumeration ---------------------------------------
     assert [pid for pid, _n, _f in DESCRIPTORS] == list(range(N_DESCRIPTORS)), "ids must be dense"
@@ -432,9 +438,9 @@ def main():
     _emit("  [OK] families_for() pays only for the referenced measurements (unrequested -> None)")
 
     _emit("=" * width)
-    _emit("RESULT: " + ("PASS" if ok else "FAIL"))
+    _emit("RESULT: every assert above held (a failure raises and exits non-zero)")
     _emit("=" * width)
-    return 0 if ok else 1
+    return 0
 
 
 if __name__ == "__main__":

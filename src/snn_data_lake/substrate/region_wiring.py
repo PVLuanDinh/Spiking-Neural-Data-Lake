@@ -29,8 +29,15 @@ faculty never stops the loop or blocks the others; pure registry, no wall-clock 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.substrate.region_wiring
 """
 
-# registry of (name, region, charge_fn, value). Module-global so `wire()` at import time (in
-# wired_faculties) accumulates the whole set; the daemon reads it via charge_all()/coverage().
+# Registry of (name, region, charge_fn, value). Module-global so `wire()` calls made at import time
+# by whatever registers adapters accumulate into one set; the daemon reads it via
+# charge_all()/coverage().
+#
+# This comment named `wired_faculties` as that registrar until 2026-08-04. THERE IS NO
+# `wired_faculties` MODULE -- the docstring above says so in full and this line went on asserting
+# the opposite twenty lines later, which is precisely the "fixing one copy is not fixing it" drift
+# POLICIES.md records. The honest state is unchanged and is stated once, up there: nothing calls
+# wire() outside the self-check, and filling this registry is open P3 work.
 _WIRED = []
 
 

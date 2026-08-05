@@ -35,7 +35,17 @@ Godel machine facing safety-critical code must be.
 
 Deps: stdlib + git (subprocess). The self-check builds a HERMETIC throwaway git repo and drives the
 full worktree protocol on it (fast, touches nothing real); `attempt_on_repo` is the real-repo adapter.
-  PYTHONPATH=src .venv-lake/Scripts/python research/godel_machine.py     # protocol on a temp git repo
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.godel_machine  # temp git repo
+
+OPEN P0 WORK, recorded here rather than only in docs/POLICIES.md so it is visible at the site:
+`attempt_on_repo` (the real-repo adapter below) has ZERO call sites tree-wide -- re-verified
+2026-08-04 across src/, tests/, tools/ and run_selfchecks.py, including importlib / __import__ /
+getattr and string-name dispatch. The MODULE is imported live (substrate/self_mod_harness.py) and
+registered in run_selfchecks, so this is P3 shape 1 -- imported but never invoked -- not absence.
+P0 lists self-building code as an avenue and the avenue list is a BUILD LIST: the protocol below is
+proven on a hermetic repo by main(), and wiring it to the real repo is scheduled work, not a
+boundary. The wiring belongs in the CALLER (self_mod_harness / self_build_loop), which is why it is
+not done in this file.
 """
 
 import os
@@ -217,8 +227,13 @@ def _probe_source():
 
 
 def _measure(worktree):
-    """Run the pinned probe against the worktree from OUTSIDE; return accuracy or None on failure."""
-    probe = os.path.join(tempfile.gettempdir(), "godel_probe.py")
+    """Run the pinned probe against the worktree from OUTSIDE; return accuracy or None on failure.
+
+    The probe file is pid-tagged like the branch names in `attempt`: it used a FIXED name in the
+    shared temp dir, so two concurrent runs (run_selfchecks in one process, a self-build in another)
+    would overwrite each other's kernel-owned probe -- the one file whose whole purpose is that the
+    code under test cannot tamper with it."""
+    probe = os.path.join(tempfile.gettempdir(), f"godel_probe_{os.getpid()}.py")
     with open(probe, "w") as f:
         f.write(_probe_source())
     r = subprocess.run(
@@ -248,7 +263,7 @@ def main():
         _git(repo, *_GIT_ID, "commit", "--quiet", "-m", "seed: system v0")
 
         def verify(wt):  # a gate: the module must import and predict an int, no crash
-            probe = os.path.join(tempfile.gettempdir(), "godel_gate.py")
+            probe = os.path.join(tempfile.gettempdir(), f"godel_gate_{os.getpid()}.py")
             with open(probe, "w") as f:
                 f.write(
                     "import sys; sys.path.insert(0,'.')\nimport system\nassert isinstance(system.predict(0), int)\n"

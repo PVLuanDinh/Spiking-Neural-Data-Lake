@@ -14,8 +14,10 @@ ARC-AGI-3 leaderboard, nor about generalization to the official tasks.
 
 Design constraints (all games)
 ------------------------------
-- Pure standard library (random, collections); per-instance random.Random(seed); no wall-clock,
-  no global RNG; deterministic (same seed -> byte-identical episode).
+- Per-instance random.Random(seed); no wall-clock, no global RNG; deterministic (same seed ->
+  byte-identical episode). (These games import only `random` -- a fact about what they need, not a
+  purity constraint: P7 abolished the zero-dependency rule on 2026-07-20 and the previous wording,
+  "Pure standard library", read as one of the design constraints they are held to.)
 - Colored INTEGER grid, small (<= 10x10), discrete action set.
 - A HIDDEN rule that can only be found by INTERACTING (bumping a closed door does nothing until
   you carry the key; a wrong-colored tile just won't let you step; etc.).

@@ -213,15 +213,33 @@ def main():
     assert naive_cue_rate < baseline_rate + 0.05, "naive cue carries no surprise yet (no burst)"
     assert tr_cue_rate > baseline_rate + 0.3, "after learning the cue must carry the phasic burst"
     assert tr_cue_rate > tr_rew_rate + 0.3, "trained: burst is at the cue, not the reward"
-    # Determinism: same seed -> identical learned values and identical rates.
+    # Determinism: same seed -> identical rates. The RATE is the seed-dependent half (the population's
+    # per-cell thresholds and its readout noise stream are both drawn from `seed`), so these two are
+    # the checks that carry the claim.
     other = DopamineNuclei(seed=0)
-    other.phasic(0.0)
     o_naive = other.present(CUED_REWARD, learn=False)
     _train(other, CUED_REWARD, n_train)
     o_trained = other.present(CUED_REWARD, learn=False)
-    assert other._value("CUE") == nuc._value("CUE"), "same seed must reproduce learned values"
     assert other.phasic(o_naive["REWARD"]) == naive_rew_rate, "same seed must reproduce rates"
     assert other.phasic(o_trained["CUE"]) == tr_cue_rate, "same seed must reproduce transfer rate"
+    # DELETED 2026-08-04 (P8/F11: no reachable red -> deleted, not weakened):
+    #     assert other._value("CUE") == nuc._value("CUE"), "same seed must reproduce learned values"
+    # `present()` consumes NO randomness -- the TD recurrence is pure arithmetic over `self.v` -- so
+    # the value cache is identical for EVERY seed, not just for a matching one. MEASURED: after 80
+    # trials, V(CUE) is 0.8999999999871269 at seed=0 and 0.8999999999871269 at seed=1. The assert
+    # was labelled "same seed must reproduce" while testing something no seed could falsify.
+    # REACHABLE RED for the two rate asserts that remain, constructed and run rather than asserted:
+    # a DIFFERENT seed gives a different population, so the rates move. This is what makes the two
+    # lines above measurements rather than restatements of `phasic`'s own determinism.
+    seed_sensitive = DopamineNuclei(seed=1).phasic(0.0) != baseline_rate
+    assert seed_sensitive, (
+        "the rate determinism asserts must be able to FAIL: a different seed left the tonic rate "
+        "unchanged, so 'same seed reproduces the rate' certifies nothing"
+    )
+    print(
+        f"determinism red is reachable: tonic rate {baseline_rate:.3f} (seed 0) vs "
+        f"{DopamineNuclei(seed=1).phasic(0.0):.3f} (seed 1)"
+    )
 
     print(
         f"self-check OK: baseline {baseline_rate:.3f}; UNPREDICTED reward bursts {naive_rew_rate:.3f} "

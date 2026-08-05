@@ -1,12 +1,18 @@
-"""Brain-player adapter: drives the Spiking Neural Data Lake's ZERO-DEP cognition to PLAY the
-ARC-AGI-3-STYLE grid games in env.py.
+"""Brain-player adapter: drives the Spiking Neural Data Lake's cognition to PLAY the ARC-AGI-3-STYLE
+grid games in env.py.
 
 HONEST FRAMING
 --------------
 This is a REPRESENTATIVE harness, not the official ARC-AGI-3 eval (see env.py). The player below
-uses the brain's pure-stdlib cognitive machinery directly -- it does NOT import `cortex.brain.Brain`
-(that needs torch) and imports NOTHING from brainstem/ (no arm, no actuator). It is VALUE- and
-REPRESENTATION-ONLY.
+drives the brain's real cognitive modules directly -- it does NOT construct `cortex.brain.Brain`
+(this is not the one brain; per P4 a consumer that stood up its own would be a replica) and imports
+NOTHING from brainstem/ (no arm, no actuator). It is VALUE- and REPRESENTATION-ONLY.
+
+(Retired 2026-08-04: this said "ZERO-DEP cognition" / "pure-stdlib cognitive machinery", and gave
+"that needs torch" as the reason for not importing Brain. Both are residue of the zero-dependency
+rule abolished on 2026-07-20 -- torch is now an unconditional core dependency, so "needs torch" is
+not a reason to avoid anything (P7). The real reason to avoid constructing a Brain here is P4, and
+it is stated above.)
 
 What real brain modules it drives
 ---------------------------------
@@ -57,7 +63,7 @@ PALETTE = 16          # fixed color palette for the one-hot spike encoder (all g
 
 
 class BrainPlayer:
-    """Curiosity-driven Go-Explore player over the brain's zero-dep cognition.
+    """Curiosity-driven Go-Explore player over the brain's own cognition modules.
 
     solve(game) -> bool : discover the hidden rule by interacting, then try to reach the goal.
     Returns True iff the exploit rollout reaches a rewarding terminal within game.max_steps."""

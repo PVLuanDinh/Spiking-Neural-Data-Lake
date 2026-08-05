@@ -1,7 +1,7 @@
-# Development Policies (P0–P6)
+# Development Policies (P0–P8)
 
-**P0 is the purpose; P1–P6 are how it is pursued without lying to ourselves.**
-Seven standing policies govern this brain. They are **mechanized** where possible (a CI
+**P0 is the purpose; P1–P8 are how it is pursued without lying to ourselves.**
+Nine standing policies govern this brain. They are **mechanized** where possible (a CI
 self-check that fails on violation) and otherwise enforced by review. Each has an **honesty guard** —
 the rule that stops the policy from being satisfied by theater.
 
@@ -15,9 +15,48 @@ the rule that stops the policy from being satisfied by theater.
 | P3 no dormancy | `substrate/dormancy_gate.py` (per-MODULE), `substrate/method_dormancy_gate.py` (per-METHOD), `substrate/import_manifest.py` (cross-tier) | the charge tier |
 | P4 one brain | `substrate/replication_guard.py` | — |
 | P5 use the GPU where it helps | — | yes |
-| **P6 mutual reach + use** | — | yes (provisional; its gate is specified but NOT built, see P6) |
+| **P6 mutual reach + use** | **HALF BUILT** — `tools/p6_gate.py` (workspace write:read topology; runs clean, self-checks, **manual and NON-asserting, not in CI**) | yes (provisional; the connectome-diff half is still unbuilt — corrected 2026-08-04, this row said "NOT built" while the tool existed) |
+| **P7 any dependency that helps** | **BUILT, REPORT-ONLY** — `tools/dependency_ledger.py` (step in the `lint` CI job) | yes (the judgement half; see P7 guard (b)) |
+| **P8 invent the method** | **BUILT AND ASSERTING** — `tools/red_reachability.py --assert` (step in the `lint` CI job) | yes (whether a criterion measures the RIGHT thing; no instrument can replace it) |
 | e-prop not backprop | — | yes |
 | *(not a policy — repo hygiene)* citations resolve | `tools/citation_guard.py` (step in the `lint` CI job, asserting since 2026-07-30) | — |
+| *(not a policy — repo hygiene)* documented `python -m` commands run | **BUILT AND CLEAN, but NOT IN CI** — `tools/doc_command_guard.py --assert` (2026-08-04) | — (see the correction directly below: this row said "step in the `lint` CI job" and the step does not exist) |
+
+**Corrected 2026-08-04, and the direction of this drift is the one this file keeps warning about.** The
+two rows above said *"its gate is specified but NOT built"* while **both gates existed, ran, and were
+registered in `.github/workflows/ci.yml`** — P8's `--assert`ing. This is the same failure recorded
+under P6 ("a claim that was already false when it was last written"), now with three instances, so it
+is worth naming as a pattern rather than an incident: **this file is edited far more often than it is
+re-derived, and a "NOT BUILT" is the single cheapest sentence in it to leave standing.** Re-run the
+gate before writing a sentence about the gate. Counted output on this tree, **re-run 2026-08-05 in
+`.venv-lake`** (every row below was executed, not copied):
+
+| gate | output | in CI? |
+|---|---|---|
+| `tools/red_reachability.py --assert` | 400 files scanned, 13 criteria; **NO_RED 0, TAUTOLOGICAL 0, READS_SYSTEM 13, EXEMPT 0** — exit 0 | yes, `lint`, `--assert` |
+| `tools/dependency_ledger.py` | 400 files, 28 distributions; **UNDECLARED 1** (`arcengine`, 2 unguarded imports), **UNUSED 0**, **MISDESCRIBED 1**, EXEMPT 2, ALL_EXCLUDES 7 — prints `gate FAIL`, exits 0 (report-only) | yes, `lint`, report-only |
+| `tools/doc_command_guard.py --assert` | 55 documents, 51 `python -m` commands (+2 EXEMPT = 53 matched); **UNRUNNABLE 0** — after 19 broken commands were CLEARED, not exempted. **54 / 50 on a clean clone**: `AGENTS.md` is in the gate's SCOPE and is gitignored, so one in-scope document and one command exist only on a working machine | **NO — see below** |
+| `tools/p6_gate.py` | still manual and NON-asserting; see P6 for the re-derived reading | no |
+
+**Two corrections to the block above, both found by re-running the gates on 2026-08-05 rather than
+by reading what the previous pass wrote about them. Both are the same failure this section names,
+committed in the section that names it.**
+
+1. **`tools/doc_command_guard.py` is NOT a step in the `lint` CI job, and the row above said it
+   was.** Measured: `.github/workflows/ci.yml`'s `lint` job runs `ruff check .`,
+   `ruff format --check src tests tools`, `tools/citation_guard.py`,
+   `tools/red_reachability.py --assert` and `tools/dependency_ledger.py` — five steps, and none of
+   them is this gate. Grepping `doc_command_guard` across `.github/workflows/`, `run_selfchecks.py`,
+   `.pre-commit-config.yaml` and `pyproject.toml` returns **zero matches**. The gate is real, runs
+   clean (`--assert`, exit 0), and carries a self-check whose red is reachable — but nothing runs it
+   automatically, so under **P4c** it is *a build the gates cannot see, and therefore not a build
+   this project can claim*. Registering it is open work; the CI edit is escalated because
+   `.github/**` is outside this pass's write scope.
+2. **The dependency ledger reports a THIRD direction the block omitted.** Its measured line is
+   `UNDECLARED: 1   UNUSED: 0   MISDESCRIBED: 1   EXEMPT: 2   ALL_EXCLUDES: 7`, and the
+   `MISDESCRIBED` finding is live and undispositioned: *`ALL-EXTRA  extra [nir] is neither in [all]
+   nor in ALL_EXCLUDES -- pip install ".[all]" does not install it`*. Recording only the two
+   directions that were zero-or-known turned a finding into an absence.
 
 **Provenance of the 2026-07 amendments.** Three independent audits mapped this codebase against
 external frameworks — predictive coding, the Thousand Brains Theory, and quantum-consciousness
@@ -34,22 +73,37 @@ recognisable family, recorded under P3.
 
 ## P0 — The brain must autonomously improve itself, by every available avenue
 
-**This is the project's purpose, and it outranks the rest.** P1–P6 describe how to build well; P0
+**This is the project's purpose, and it outranks the rest.** P1–P8 describe how to build well; P0
 describes what is being built. The brain must not be a fixed artifact that a human upgrades between
 releases — it must get better on its own, continuously, through every channel it can reach: **writing
 its own code, acquiring knowledge, and growing its own neural substrate.** Where an avenue of
 self-improvement is missing, that is a gap to close, not a boundary to respect.
 
+**Owner directive, 2026-08-04 — the avenue table below is a BUILD LIST, not a status ledger.** Every
+avenue named in it, **current and future, will be built.** An avenue that does not fire yet is open
+P0 work; it is never a settled state, never a boundary to respect, and never a reason to narrow this
+policy to whatever already works. The table exists so that the gaps are *countable*, and a row that
+reads NOT LIVE is a scheduled build with its blocker named — which is why each one below states what
+specifically is missing rather than only that something is. **The list is also expected to grow:** a
+newly identified channel of self-improvement joins it and is built, and "we have not thought of it
+yet" is the only honest reason for an avenue to be absent from this table.
+
+This directive changes nothing about the honesty guard further down, and the two are easy to confuse.
+"Will be built" is a commitment about *work*; it grants no credit for the capability in advance. The
+ordering stays exactly as the guard states it — build the channel, fill it, measure it, and credit it
+only at the third step.
+
 **The avenues, and their honest status today.** "By every available avenue" is only meaningful if we
-say which are open:
+say which are open — so each row states what fires, what does not, and what specifically blocks it:
 
 | avenue | status |
 |---|---|
-| **self-building code** | **What fires:** `brain_native_selfbuild.py` (1088) at `cortex/brain.py:1708` and `self_build_loop.py` at `:2520`, every 8 nights, **only** under `NORD_SELFMOD=1` (enabled in `learn_daemon.bat:14`); `self_mod_harness.py` (648) is reached through `Brain.self_improve` at `:3485`. **What does NOT fire, corrected 2026-07-29:** `godel_machine.py` — its `attempt_on_repo` (`:159`) has **zero call sites** tree-wide, and the only reference to the module anywhere outside itself is its *filename as a string* in the self-build's protected-paths list (`brain_native_selfbuild.py:73`). This row previously listed it among the modules that fire every 8 nights. Wiring it is open P0 work; until then it is an unwired real-repo adapter, and saying otherwise was the census-counted-as-capability failure P0's own honesty guard names |
+| **self-building code** | **What fires**, re-derived 2026-08-04 and now cited by SYMBOL, because the line cites in this row had drifted AGAIN within one day of last being "corrected": `cortex/brain.py::Brain._maybe_autonomous_self_build` -> `basal_ganglia/self_build_loop.py`, every 8 nights, **only** under `NORD_SELFMOD=1` (enabled in `learn_daemon.bat`), plus `basal_ganglia/brain_native_selfbuild.py`. **`self_mod_harness.py` was listed here as reached through `Brain.self_improve` — it is NOT. `cortex/brain.py::Brain.self_improve` has ZERO call sites tree-wide** (re-verified 2026-08-04: the only tree-wide match for the name is its own `def`). An entrypoint with no callers listed under "What fires" is the census-counted-as-capability failure this row corrects for `godel_machine` one clause later, committed in the same sentence. **What does NOT fire:** `reasoning/godel_machine.py` — its `attempt_on_repo` has **zero call sites** tree-wide, confirmed against `importlib` / `__import__` / getattr and string-name dispatch rather than from a static read alone (re-counted 2026-08-05 over `src/`, `tests/`, `tools/`: **four** matching lines, all non-calls — its own `def`, **two** lines of its own docstring, and a docstring in `tests/test_self_mod_safety.py`; the previous pass wrote "three matches" and the enumeration it gave was right in kind and one short in count). The module IS imported live by `substrate/self_mod_harness.py` and registered in `run_selfchecks.py`, so "the only reference outside itself is its filename as a string" does not hold. It is imported-but-never-invoked — P3 shape 1, not absence — which is a different defect and a shorter fix. Wiring both is open P0 work. **PATHS CORRECTED 2026-08-04:** this row said `reasoning/self_mod_harness.py` and an undirectoried `self_build_loop.py`; both had been PROMOTED out of `reasoning/` (to `substrate/` and `basal_ganglia/` respectively) by the P4c program, and the row followed neither |
 | **knowledge acquisition** | live — chat ingest → the one durable lake (`substrate/chat_memory.py`), `substrate/web_ingest.py`, reasoning-curriculum growth during sleep |
-| **neural growth** | **Split into "grows" and "keeps what it grew", corrected 2026-07-30, because this row said "live" and meant only the first.** Growth runs **only during sleep** (asserted: `cortex/brain.py:3780`). What is KEPT differs per module and had never been checked: **`cortex/neurogenesis_engine.py` retains NOTHING** — its `NGSNN` is built at `:171`, fit at `:174`, scored at `:176`, has only `n_units`/`acc` read off it at `:177-178`, and is **never assigned to `self`** (verified: zero matches for `self.*model*=`), so it is collected at the end of **every refit** — not merely on restart. Its 8..120 `grown_units` range across nights 41–8004 is the size of the most recent throwaway fit, not an accumulating population. **`substrate/similarity_sized_growth.py:78` DOES retain** (`self.W`, an `(n_classes, dim)` array). `hippocampus/{growing_learner,function_preserving_growth}.py` **UNVERIFIED** — a narrow attribute scan found no retained weight array, which is not the same as proving there is none. And **nothing here is persisted across a restart**: the engine has no `save`/`load` at all, and the daemon relaunches on every new commit (~20 times in a working session; the night counter resetting `364 → 41 → 81 → 122` is that happening) |
-| **cortical column construction** | **NOT live.** `cortex/cortical_microcircuit.py` is a faithful 8-population Potjans-Diesmann circuit that is EXEMPT-permanent in `substrate/dormancy_gate.py:83` — *it has no input port*. This is the clearest open avenue named in this policy, and closing it is P0 work |
+| **neural growth** | **RETENTION IS BUILT — this row asserted the opposite until 2026-08-04 and was wrong on every one of its three load-bearing claims.** Growth runs **only during sleep**, and what it grows is now KEPT — **cited by SYMBOL, 2026-08-05, because every line cite in this clause had rotted within a day of being written**: `cortex/neurogenesis_engine.py` assigns **`self._model = model`** at the end of a successful refit, seeds each refit from the prior model instead of starting cold (the `EXTENDS it instead of replacing it` block), and prunes on earn-your-place (the `EARN-YOUR-PLACE PRUNE` block). The serialization the row once said did not exist is `growth_state_bytes()` / `restore_growth_state()` / `substrate_is_retained()`, and it is **CALLED on two live paths** — the sleep tick and construction in `cortex/brain.py` — writing into the ONE lake under `_T_GROWTH` (`substrate/home.py`), which is P4b-correct rather than a sidecar. *(Cites into `cortex/brain.py` and `home.py`'s trailing line numbers were DROPPED 2026-08-04: `brain.py:3780` was `except Exception:`, `:2722` was blank, and `home.py:231`/`:280` were `return path` and a docstring. **The `neurogenesis_engine.py` cites were KEPT in that pass with the words "all three re-verified exact" — and re-resolved on 2026-08-05 they were not.** Measured: `:211` is a comment (`self._model = model` is at `:215`), `:250` is a comment (`def growth_state_bytes` is at `:254`), `:279` is `ticks=np.array(...)` (`def restore_growth_state` is at `:283`), `:321` is `self._acc = acc` (`def substrate_is_retained` is at `:325`), and `:180-183`/`:189` land on the explanatory comments above the code they name. Every one is off by exactly four lines, because a concurrent edit inserted four lines above them — **which is the point**: the assertion "re-verified exact" was true when written and false the same day, so the durable form is the symbol, and this row now uses it. The companion cite `substrate/similarity_sized_growth.py:78` was likewise off — `self.W` is at `:81` — and is named by symbol below.)* **What this row got wrong, recorded because the failure mode is the point:** it claimed "retains NOTHING", "never assigned to `self` (verified: zero matches for `self.*model*=`)" and "no `save`/`load` at all". The grep was the instrument and the instrument was wrong — the assignment is `self._model = model`, which `self.*model*=` does not match. **The file contradicted itself 18 lines later**, at the honesty-guard bullet that cites `neurogenesis_engine.substrate_is_retained()` by name as the site naming its own gap; a row and its own guard disagreeing is the drift this file keeps suffering. **`substrate/similarity_sized_growth.py` DOES retain** (`self.W`, allocated in `__init__` beside the `self._W0` init snapshot that exists to PROVE the weights moved). `hippocampus/{growing_learner,function_preserving_growth}.py` **UNVERIFIED** — a narrow attribute scan found no retained weight array, which is not the same as proving there is none. **THE HONEST REMAINING GAP IS THE MEASUREMENT, NOT THE CHANNEL:** no cross-process restart has been demonstrated, and per P4b "it persists" is a claim about a NEW process — `tests/test_episode_durability.py` round-trips a raw `np.zeros(4).tobytes()` blob to prove three lake tenants do not eat each other, NOT a fitted model. Demonstrating restart-with-grown-substrate is the open P0 work in this row |
+| **cortical column construction** | **NOT live.** `cortex/cortical_microcircuit.py` is a faithful 8-population Potjans-Diesmann circuit that is EXEMPT-permanent under the `"cortical_microcircuit"` key in `substrate/dormancy_gate.py` `EXEMPT` — *it has no input port*. Its `__init__(scale, seed, g, bg_rate, v_op, noise_gain)` and `.simulate(t_ms)` take no input signal anywhere; building that port is the work. This is the clearest open avenue named in this policy, and closing it is P0 work. *(Cite corrected 2026-08-04: this said `dormancy_gate.py:83`, which is a comment about a DELETED `reaction_diffusion_compute` — the entry is at `:100-104`. `CLAUDE.md` had already recorded that this file's cite was wrong; the correction had been written down and never applied here, which is the "a claim living in two places, only one corrected" failure P6's table names.)* |
 | **self-recalibration** | live — `substrate/signal_calibrator.py`, running-baseline forms per P1 |
+| **future avenues** | **open by construction.** This row is not a placeholder — it is the directive above made structural. A channel of self-improvement that is identified later joins this table and is built, on the same terms as the rows above it: named blocker, then channel, then fill, then measurement. The five rows above are what has been *thought of*, not what is *possible*, and treating the table as complete is the failure this row exists to prevent |
 
 **Honesty guard — growth is not improvement, and this is where P0 would otherwise rot.** Adding
 neurons, adding code, adding knowledge records: none of these is improvement until something
@@ -82,7 +136,13 @@ place in this project to generate theater, and every other policy exists partly 
 - a self-written module that duplicates a mechanism is **bloat** (P2), not capability;
 - a "capability" reported without a measurement is a **fake capability** (verify-first), not a gain;
 - the census of what the brain has is **not** a measure of what it can do — count improvements by
-  their effect, never by their number.
+  their effect, never by their number;
+- **and a measurement that cannot fail is not a measurement** — added 2026-08-04 with P8, because
+  this guard said "a capability reported without a measurement is fake" and never said what makes
+  something a measurement. It is the harder half: the tree's live `consciousness_probe` reports 4 of
+  4 through markers with no reachable red, which satisfies the guard as previously written and defeats
+  its entire purpose. See P8 for the burden and `PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md:57-58` for the
+  line it derives from.
 
 Real example of the failure mode: predictive-coding *inference* ran on every tick for the life of the
 feature while its *learning* method was never called (v4.71). The brain had the machinery, reported the
@@ -114,14 +174,23 @@ Reuse anchors: `basal_ganglia/r_stdp.py` (`w += lr*d*e`), `substrate/signal_cali
 `_*_base` running-EMA idiom, `cortex/brain.py::_drive_w`.
 
 **Fourth case, stated because the tree contains it and the three above do not cover it: raw physical
-limits inside the safety envelope stay fixed, by design.** `brainstem/arm_config.py:22`
-(`CONTACT = 0.04`) and `brainstem/reflex.py:22` (`DEFAULT_RULES`) arbitrate behaviour and are constants
+limits inside the safety envelope stay fixed, by design.** `brainstem/arm_config.py`'s `CONTACT`
+(`= 0.04`) and `brainstem/reflex.py`'s `DEFAULT_RULES` arbitrate behaviour and are constants
 — which the three exceptions would flag. They are correct anyway: a reflex threshold that drifts with a
 running baseline is a reflex that can be trained away, and the whole point of the envelope is that it
-cannot. The resolution currently lives only in code (`arm_config.py:29` declares these sim placeholders;
-`serial_arm.py:46-52` refuses real hardware on every construction while `SAFETY_CALIBRATED = False`),
-so it is written here too. Safety constants are exempt from P1 *because* they are safety constants, not
+cannot. The resolution currently lives only in code (`arm_config.SAFETY_CALIBRATED` is `False` and
+`serial_arm.assert_calibrated()` raises on every real-servo entry point while it stays False), so it is
+written here too. Safety constants are exempt from P1 *because* they are safety constants, not
 because nobody noticed them.
+
+*(Citations in this paragraph converted from lines to SYMBOLS, 2026-08-04, after all three drifted:
+`arm_config.py:22` resolved to `NEAR_MAX = 0.30` (`CONTACT` is at `:27`), `arm_config.py:29` resolved
+to a comment about the trajectory-deviation reflex, and `serial_arm.py:46-52` resolved to the
+`_FIXED` / `_ALLOWED_WHEN_STOPPED` token sets — not the calibration refusal, which is
+`assert_calibrated()` some ten lines below. `reflex.py:22` was the one that still resolved. **Three of
+four wrong, in the paragraph that tells a reader which safety constants are deliberately fixed** —
+which is the argument for symbols over lines in the envelope's documentation generally, and the same
+argument `SECURITY.md` acted on in the same pass.)*
 
 ## P2 — Adopt-better **or merge**, then retire the inferior (non-additive)
 
@@ -161,6 +230,17 @@ columnar voting. Both are serious theories of the same phenomenon; SNDL has **no
 the swap was refused. An external framework being newer, or more elegant, or better publicised is not
 evidence. This guard is what stops P2 from becoming a fashion treadmill.
 
+**How this guard interacts with P7, stated because the two are easy to set against each other.** P7
+accepts any dependency that helps, and this guard demands a measurement before a swap — they are not
+in conflict, and reading them as opposed is the mistake to avoid. P7 removes exactly one argument
+from the table: *"it would be another dependency."* It removes nothing else. So a framework proposed
+as a replacement for something this tree already has is a **P2 event governed by P2's evidence bar**,
+and if no benchmark can compare them the answer is still *build the benchmark first*. Conversely, and
+this is the direction the tree actually fails in, "we have no benchmark" is not a licence to decline
+on dependency grounds — it is a reason to build the benchmark. And where a library covers a capability
+the tree does **not** have, there is no incumbent to compare against, so P2 does not gate it at all
+and P7 governs alone.
+
 **OPEN P2 DEBT, measured 2026-07-28: two workspaces run additively.** `thalamus/global_workspace.py`
 and `thalamus/reentrant_workspace.py` are both live and both fed every tick. Measured over 40 wake
 ticks on a real brain: **72 submits each**, with 3 content values reaching both. Their public surfaces
@@ -190,6 +270,13 @@ content matches it. Until that exists, both stay and this entry is the honest re
 
 **Corollary — a research direction is not a policy.** "Adopt architecture X" governs *what* we build;
 policies govern *how*. Proposals of that shape belong in a design note, not in this file.
+
+**This corollary is what P8 had to clear, and the distinction is worth keeping sharp.** "Invent any
+method required to reach sentience" could be read as a research direction and would then belong in a
+design note. It is not one: P8 names no architecture, no theory and no mechanism — it grants latitude
+and fixes what an invented method owes (a reachable red, a control that is not itself, deletion on a
+null). That is a *how*. The test to apply to any future proposal of this shape: if removing every
+proper noun from it leaves nothing, it was a research direction.
 
 ## P3 — No dormancy
 
@@ -247,7 +334,7 @@ than CI, and all are cited from this tree:
 | 4 | **write-only consumer** — a faculty fed every tick, never read | `cortex/agency_monitor.py` — `observe()` runs live; nothing reads `agency()` / `controllability()` / `status()`, and no key reaches telemetry |
 | 5 | **constant wearing a signal's clothes** — present, plausible, never varies | `spikes.midbrain` (its novelty term is never enabled); `integration_competence` (assigned only in `Brain.__init__`); the `gated` trio (never *computed*, not merely never applied) |
 | 6 | **silent default** — a lookup table missing the cases that matter | `_ALLO_MOVE` had no entry for the four `JOINT_*_ROTATE` tokens, so `.get(action, (0.0, 0.0))` meant the commands that actually move the arm contributed **zero** to path integration. Fixed v4.72 |
-| 7 | **the registry nobody registered with** — a plug point, called every cycle, with zero plugs | `substrate/region_wiring.py` is *the* documented per-cycle faculty-charge registry, and its docstring asserted that "the daemon imports `wired_faculties` (which registers every adapter) at boot". **There is no `wired_faculties` module**, `learn_daemon.py:291` imports only `region_wiring`, and nothing anywhere calls `wire()` outside the self-check — which clears `_WIRED` first, so it proves the mechanism and says nothing about production. `charge_all()` has iterated an empty list every cycle for the life of the feature and the daemon logs `adapters=0`. Docstring corrected; the registry is still empty, and filling it is open P3 work |
+| 7 | **the registry nobody registered with** — a plug point, called every cycle, with zero plugs | `substrate/region_wiring.py` is *the* documented per-cycle faculty-charge registry, and its docstring asserted that "the daemon imports `wired_faculties` (which registers every adapter) at boot". **There is no `wired_faculties` module** (re-verified 2026-08-04: zero files of that name anywhere in the tree), `substrate/learn_daemon.py` imports only `region_wiring`, and nothing anywhere calls `wire()` outside the self-check — which clears `_WIRED` first, so it proves the mechanism and says nothing about production. `charge_all()` iterates `_WIRED`, which is initialised `[]` and never appended to on a live path, and the daemon logs `adapters={cov['n_wired_faculties']}` = 0. Docstring corrected; **the registry is still empty as of 2026-08-04, and filling it is open P3 work.** *(Path corrected: this said `learn_daemon.py:291`, and the root `learn_daemon.py` is now a 32-line shim — the daemon was promoted to `substrate/learn_daemon.py` under P4c and this row, like five other documents, kept citing line numbers into a file that no longer has them.)* |
 
 **The transferable rule:** *presence is not participation.* Being imported, being called, being in the
 snapshot, and having a value are four different things, and none of them is *changing an outcome*. When
@@ -417,6 +504,106 @@ you. Prove it by reading the lake back from disk after the writer is gone, not b
 writer's own state. `retained()` reporting 1.000 while the lake held 0 records is what this guard
 exists to catch.
 
+### P4c — EVERY BUILD IS PART OF THE BRAIN
+
+**Owner directive, 2026-08-04: EVERY CURRENT BUILD IN THIS PROJECT IS PART OF THE BRAIN, AND EVERY
+FUTURE BUILD MUST BE PART OF THE BRAIN.** The always-on daemon and the front-end cockpit are the two
+instances that produced this rule -- they are not accessories that operate the brain from outside,
+they are parts of it -- but the rule is general and it is not limited to them.
+
+**There is no "outside the brain" in this project.** Not `research/`, not `training/`, not
+`integrations/`, not `gcp/` or `infra/`, not `tools/`, not a script at the repo root. A file that
+exists in this tree is either part of the brain or it is retired; there is no third category and
+"it is only a helper / only the UI / only the launcher / only a benchmark" is not a disposition.
+The directory a build happens to sit in is a fact about the filesystem, never a statement about
+whether the build is part of the organism.
+
+**Every FUTURE build lands inside the brain, from the start.** A new build is written into the
+governed tree, registered, self-checked and gated as part of the work that creates it -- not parked
+somewhere ungoverned to be promoted later. `reasoning/` is not a parking lot. "Build it here now,
+integrate it properly later" is how a tree accumulates capability it cannot account for, and every
+one of the defects this policy set exists to catch was found in exactly that residue.
+
+P4 says there is one cognition. P4b says the durable lake is part of that brain, not storage beside
+it. P4c says the same of *everything else*, and names the two parts that made the gap visible:
+
+- **The daemon is the brain's DRIVE.** `learn_daemon.py` owns the wake/sleep cycle, the tick loop and
+  the continuity of the whole thing. A brain that exists only for the duration of a test run is not a
+  brain that lives; the daemon is what makes it continuous, and continuity is not an operational
+  detail of a cognitive system, it is a property of one. Killing the daemon does not stop a service.
+  It stops the brain.
+- **The cockpit is the brain's SENSORIMOTOR SURFACE.** `substrate/cockpit.py` is where the brain
+  meets the world: chat and controls in are AFFERENT, the arm buttons and the E-STOP out are
+  EFFERENT, and the page is the brain's own report of its state. A surface through which the brain
+  senses and acts is not a "frontend" in the sense that word usually carries. It is the boundary of
+  the organism.
+
+**What respecting them means, concretely:**
+
+- **EVERY build is GOVERNED, on the same terms as any brain module.** Registered in `REGIONS` and
+  `run_selfchecks.py`, covered by the three P3 gates, held to P1 (no arbitrating magic constants),
+  P4b (nothing it persists becomes a second store), P7 and P8 (every criterion it carries owns a
+  reachable red). This is the general form; the daemon and the cockpit are the instances that
+  exposed it.
+- **A dead control is dormancy, not cosmetics.** A cockpit button wired to nothing is a motor
+  intention that reaches no muscle. P3 applies to it exactly as it applies to a faculty that computes
+  a signal nobody consumes.
+- **The daemon may not become a second brain or a second lake.** It CONSTRUCTS the one brain via
+  `make_brain()` and drives it; it does not re-implement cognition and it does not keep its own
+  durable state alongside `brain_lake.bin`.
+- **What the cockpit REPORTS must be what the brain MEASURES.** The page is the brain's self-report
+  surface, so P8's rule binds hardest here: it may display what it measures and never what it cannot.
+  The PROVENANCE column exists for this reason.
+
+**The measurement that produced this policy.** `substrate/cockpit.py::serve()` accepted an `acts`
+queue and then did not forward it when constructing its handler, so **every arm control on the one
+frontend was inert, including the E-STOP**. The page rendered, the buttons pressed, nothing moved.
+It survived review because the cockpit was filed as a frontend rather than as the brain's motor
+surface: no one ran P3's reasoning over a UI control, because P3 was understood to be about faculties.
+Under P4c that button is a faculty, and the defect is a dormancy failure that three gates should have
+caught. (Fixed 2026-08-04, specs/010 C10, with a regression test proven red without the fix.)
+
+**Measured non-compliance at the moment this policy lands** — stated as debt, not as a settled state.
+This is a BUILD LIST in P0's sense: every item is work that will be done, never a boundary to accept.
+
+- **`learn_daemon.py` — CLOSED 2026-08-04.** It was 370 lines at the repo root, in no REGION, in
+  neither `run_selfchecks.py` list, not a `dormancy_gate` entrypoint, with **no self-check and not
+  one assert**: the most load-bearing process in the project and the least verified file in it. Now
+  `substrate/learn_daemon.py`, registered and self-checked, with a thin root shim preserving the
+  documented command. The move immediately exposed three latent bugs that being ungoverned had
+  hidden — `os.chdir()`, `sys.path.insert()` and `os.environ.setdefault("NORD_GPU", "1")` all ran at
+  MODULE SCOPE, and `run_selfchecks.py` runs part of the suite in ONE process, so importing the
+  daemon under the gate would have changed the working directory and the GPU preference for every
+  module after it. Being outside the gates is not a neutral state; it is where bugs go unmeasured.
+- **`substrate/cockpit.py` — governed as code, was mis-CLASSIFIED.** The layout map called
+  `substrate/` "infra (NOT a brain region)", which is the exact framing that let a dead E-STOP
+  through review. Corrected: infra by directory, brain by function.
+- **~165 modules remain in `src/snn_data_lake/reasoning/`** — inside the package but outside the
+  three P3 gates, the coverage denominator and the ruff rules. Under P4c every one of them is part
+  of the brain and belongs in a governed region or retired. A promotion program is running against
+  this (12 promoted as of 2026-08-04); the count is debt, and the target is zero.
+- **`research/`, `training/`, `integrations/`, `gcp/`, `infra/`** are ruff-excluded tiers holding
+  further builds. Each is P4c debt on the same terms.
+- **`docs/coverage/artifacts/` holds 16 EXECUTABLE evidence artifacts and not one of them is
+  governed** — measured 2026-08-05. All 16 are `.py` files that produce the numbers the coverage
+  bands are scored on, and **16 of 16 contain zero `assert` statements** and **16 of 16 carry
+  module-scope side effects** (`sys.path.insert` / `os.environ.setdefault` / `os.chdir` /
+  `random.seed` at import). That is the exact triple the `learn_daemon` promotion is recorded above
+  as having exposed, in sixteen files that no REGION, no `run_selfchecks.py` list and no P3 gate can
+  see — while their output is cited as evidence throughout `docs/coverage/`. Under P4c a benchmark
+  is not a third category. Promoting them requires edits to `src/snn_data_lake/__init__.py` and
+  `run_selfchecks.py`, so it is scheduled work rather than a docs fix.
+- **`tools/doc_command_guard.py` is built, clean, and registered nowhere** (2026-08-05) — no CI
+  workflow, no `run_selfchecks.py` entry, no pre-commit hook. It is the newest instance of this
+  policy's own honesty guard: *a build the gates cannot see is not a build the project can claim*,
+  and it was written into three documents as a CI step before it was one.
+
+**Honesty guard:** the brain is not only the part that computes. Asking "is the Brain object correct?"
+while the process that runs it, the surface it acts through, and two hundred modules beside it go
+unexamined is how a system passes every gate it has and still cannot act. **Verify the whole
+organism, not the cortex alone** — and a build the gates cannot see is not a build the project can
+claim.
+
 ## P5 — Use the GPU for everything it actually speeds up
 
 **Standing owner authorization (2026-07-27): the RTX 5070 is available to the whole project, and any
@@ -576,6 +763,14 @@ spiking-update kernels, eager torch-CUDA on this card beats numpy-on-CPU only be
   and `cupy` were rejected on a structural reason rather than a benchmark — their fused multi-step
   kernels collapse the **time** axis `T`, and the live tick has `T=1` by construction, so the axis
   those kernels exist to collapse is absent. Net new dependencies for all of the above: **none**.
+  **Reframed 2026-08-04 under P7, because that last sentence reads as a score and is not one.** Every
+  optimisation above was correctly decided on its measurement, and adding nothing was the right
+  outcome each time — but "net new dependencies: none" is not evidence *for* those decisions and must
+  never be quoted as though it were. P7 makes the dependency count a non-criterion in both directions.
+  The one item here that P7 puts back on the table is **numba**, which won its benchmark by ~16x and
+  was declined only because no live population reaches the width where the win exists: that is a
+  measurement about WIDTH, so it is exactly the kind of finding P5 says to re-measure as the brain
+  grows, and P0's target population makes the re-measurement inevitable rather than optional.
 
 **Where the GPU therefore pays today, and should be used without hesitation:** the `[train]` / `[gpu]`
 tiers — surrogate-gradient training, `hippocampus/ng_snn.py`, `cortex/neurogenesis_engine.py`, the
@@ -656,10 +851,59 @@ So the bus exists and is used as a **broadcast sink whose only live consumer is 
 single action gate wearing a bus's clothes. Not one faculty reads another faculty's contribution, which
 is zero-way at the faculty level and precisely what this policy forbids.
 
-**The cheap remedy this implies**: faculties should READ the workspace, not only `submit()` to it. That
-is what makes one faculty's broadcast change another faculty's output — condition (b) — and it needs no
-new router, only consumers on a bus that already exists. Re-derive with the AST walk any time; a rising
-read count against a flat write count is what P6 progress looks like.
+~~**The cheap remedy this implies**: faculties should READ the workspace, not only `submit()` to it.
+That is what makes one faculty's broadcast change another faculty's output — condition (b) — and it
+needs no new router, only consumers on a bus that already exists.~~
+
+**THE REMEDY ABOVE IS REFUTED, 2026-08-04 — there is no bus.** `tools/p6_gate.py` (which exists, runs
+clean, and self-checks — see the enforcement correction below) reports **31 workspace instantiation
+sites across 9 modules**, of which **16 sit outside the bus modules' self-checks, across 7 modules:
+that many PRIVATE, MUTUALLY INVISIBLE workspaces.** Every faculty that "broadcasts" constructs and
+holds its *own* `GlobalWorkspace`. `cortex/live_brain.py` is the single module that reaches into
+another module's instance; every other reader would be reading only its own writes.
+
+**Re-derived 2026-08-04 in `.venv-lake`, and the figures had ALREADY drifted from the ones this
+paragraph was written with the same day** — recorded because this policy's own instruction is
+"re-derive with `tools/p6_gate.py` any time", and the first person to follow it found different
+numbers:
+
+| reading | as written here | re-derived 2026-08-04 |
+|---|---|---|
+| instantiation sites / modules | 26 / 10 | **31 / 9** |
+| PRIVATE instances / modules | 11 / 8 | **16 / 7** |
+| writes / modules | 36 / 8 *(2026-07-31)* | **46 / 10** |
+| reads / modules | 2 / 2 *(2026-07-31)* | **9 / 5** |
+| **faculty-to-faculty reads** | **0** | **0** |
+| **writer modules read by nobody** | **7** | **7** |
+
+**The two rows that carry the policy's argument did not move**; every row that moved is a census. That
+is the useful shape of this table: the finding is robust and the counts are perishable, so quote the
+finding and re-run the gate for the counts. Note also that the private-instance count went **UP** while
+the write count went up — which is precisely the "a rising write count is not progress" reading the
+gate's own verdict line warns about.
+
+The gate states the consequence in its own output: *"Adding a reader is NOT sufficient while each
+writer holds a PRIVATE instance — there is no shared object for a reader to read."*
+
+So the corrected reading is worse than "a bus with no readers": **it is a private bus per writer.**
+Re-derived 2026-08-05: **16 PRIVATE instances across 7 modules**, against 10 writer modules of which
+**7 are read by nobody**. *(This sentence said "eight separate buses with one writer each" — a figure
+from the superseded 2026-07-31 census, left standing when the table two paragraphs above was
+re-derived. Stated as a shape rather than a count now, because the count is the perishable half and
+this file has now recorded that lesson three times while re-breaking it twice.)* The real remedy is
+therefore NOT cheap and must be stated honestly — a shared
+workspace instance has to exist before a reader can mean anything, and that is a construction-path
+change (P4's `make_brain()` owning one workspace and handing it down), not a one-line consumer.
+Recording this because the retracted sentence would have sent the next reader to add readers that
+provably could not carry anything, and "we added consumers and the count did not move" is exactly the
+force-wiring P3 forbids.
+
+Re-derive with `tools/p6_gate.py` any time; a rising read count against a flat write count is what P6
+progress looks like — but **a rising read count against a tree of private instances is not progress at
+all.** *(Was "against 11 private instances"; the gate reported **16** when re-run on 2026-08-05, and
+the table above had already been corrected to 16/7 while this line kept the old number — the exact
+"a claim living in two places, only one corrected" failure this policy's own incident table names.
+The claim is now stated in the form that cannot rot; re-run `tools/p6_gate.py` for the count.)*
 
 **How this is NOT P3, since the two are easy to confuse and the distinction is the whole point.** P3 asks
 whether a faculty changes **behaviour** — the arm, a value, a weight, a reply. P6 asks whether a faculty
@@ -699,10 +943,16 @@ and a closed incident is the better evidence precisely because its cause is know
 | `reasoning/pragmatics.py` reachable only from `spike_chat_lake`, no `brain.py` caller | wired to chat, not to the brain |
 | `reasoning/arc_solver.py` — "imports stdlib only, with zero wiring to any perceptual machinery" | Gf isolated from Perception |
 | `reasoning/nightly_skills.py` forms and persists a skill every night; `route()` called only from its own `main()` | the brain never uses a skill it formed |
-| `cortex/neurogenesis_engine.py` has no persistence path, so grown units die on every restart | a faculty that cannot even reach its own future self |
+| ~~`cortex/neurogenesis_engine.py` has no persistence path, so grown units die on every restart~~ — **RETRACTED 2026-08-04, the claim was false when written and stayed false here after the P0 row was corrected.** Retention is at `:211`, serialization at `:250`/`:279`, and it is called on two live paths into the lake under `_T_GROWTH`. Kept struck-through rather than deleted because a policy file that quietly removes its own wrong incidents loses the record of having been wrong | *(was: a faculty that cannot even reach its own future self)* |
 
-The last one is the sharpest: the brain has **one durable spiking lake** and the grown substrate is not in
-it, so P0's neural-growth avenue resets ~20 times in a working session and never compounds.
+The last one **was** the sharpest, and it is now **RETRACTED** (2026-08-04): the grown substrate IS in
+the one durable lake, under `_T_GROWTH`, written from the sleep tick and from construction. The
+sentence that stood here — that the avenue "resets ~20 times in a working session and never
+compounds" — described a tree that had already been fixed. Two lessons are worth more than the
+incident was: a grep (`self.*model*=`) missed an assignment written `self._model = model` and the
+null it returned was published as a finding; and this row survived a *later* edit to the P0 avenue
+table because the same claim lived in two places and only one was corrected. **When a policy claim
+appears twice, fixing one copy is not fixing it.**
 
 **Honesty guard — a route is not a conversation.** The failure mode P6 will attract is a telemetry bus:
 wire every faculty into a shared dict, watch `adapters` climb, and declare harmony. `region_wiring`'s own
@@ -712,11 +962,27 @@ Adding a reader that stores a value is not consumption. And **do not force-wire*
 nothing is reverted and the faculty is exempted with a reason, exactly as under P3. Two faculties were
 reverted on that rule this session (PFC working memory, crossmodal binding), both at 0/200.
 
-**Mechanization: NOT BUILT, and this file's own bar says that matters.** *"Adding a policy: implement the
-gate before adopting the rule… its output counted, before the policy lands."* Two prior proposals died
-there. This policy lands **review-enforced and provisional** on the owner's instruction, with the debt
-stated rather than hidden: P6 is not mechanized, and until it is, it is enforced the way P0, P1, P2 and P5
-are — by review.
+**Mechanization: HALF BUILT — corrected 2026-08-04, this paragraph said "NOT BUILT" while the tool
+existed, ran, and self-checked.** *"Adding a policy: implement the gate before adopting the rule… its
+output counted, before the policy lands."* Two prior proposals died there. P6 landed
+**review-enforced and provisional** on the owner's instruction; the honest current status is three
+parts, not one:
+
+1. **BUILT** — `tools/p6_gate.py` derives the workspace write:read topology by AST over
+   `src/snn_data_lake/`, parses 400 of 400 files, and carries a real self-check ("is this walk still
+   alive?": writer/reader modules found, classes constructed, arity split, roles re-derived).
+2. **NOT ASSERTING, NOT IN CI** — it reports; it fails nothing. So P6 remains enforced by review in
+   practice, which is why the provisional marking stands.
+3. **NOT BUILT** — the connectome-diff half (derive the faculty→faculty consumption graph and diff
+   it against `connectome.py`'s declared edges) does not exist.
+
+**How this went stale is the lesson, and it runs the opposite way to the usual drift.** The tool
+landed 2026-08-03 (`5868e1c1`); this file was committed *again afterwards* still saying the gate did
+not exist. The failure was not a claim rotting as the tree moved on — it was a claim that was already
+false when it was last written, because nobody re-read the sentence they were editing around. Its own
+output is what corrected it, and its output also **refuted this policy's prescribed remedy** (the
+private-instance finding above), which is the strongest possible argument for the gate-first rule this
+paragraph exists to discuss.
 
 **The gate that would settle it, specified so the debt is actionable.** `connectome.py` already declares
 the region→region wiring as typed, directed, signed loops; `substrate/import_manifest.py` already
@@ -726,6 +992,330 @@ So the instrument is: derive the actual faculty→faculty consumption graph, dif
 outside an entrypoint. **Build it and count its output before promoting P6 to mechanized** — and if it
 reports a rubber-stamp-sized list, that result kills the gate, not the tree. "No gate" is a complete
 result; the rule stands on the eight incidents above either way.
+
+---
+
+## P7 — Any dependency that helps this become a phenomenal brain is accepted
+
+**Owner policy, 2026-08-04.** **This project accepts ANY dependency or framework that helps it become a
+phenomenal brain — including any that helps the brain become sentient.** There is no dependency budget,
+no dependency count to defend, and no stdlib-purity argument. If a library advances the brain toward
+being a real one, it is adopted.
+
+**"It would be another dependency" is not a reason to reject anything.** That sentence is the entire
+point of this policy, and it is stated as a prohibition because the tree proves the habit outlives the
+rule that created it. A rejection must cite a **measurement on the real workload** or a **structural
+argument about this architecture** — the two categories P5 and P2 already demand. A rejection that
+cites dependency count, install weight, or purity is not a rejection; it is a reflex, and this policy
+overrides it.
+
+**Sentience is a build target, not a metaphor.** Frameworks that plausibly advance it are in scope by
+default, and are evaluated on what they measurably buy — the same burden P5 puts on a GPU path, no
+more and no less. This policy does not make the claim cheaper to assert: P0's honesty guard is
+unchanged, and a capability is credited at measurement, never at adoption.
+
+**Source line this derives from, quoted per the bar below.** P7 promotes an existing owner decision
+from a prose note into a policy: `pyproject.toml:14-19` — *"DEPENDENCY SCOPE (user policy 2026-07-20):
+the zero-dependency rule is REMOVED entirely, project-wide -- there is no zero-dep-core contract and
+no pure-stdlib purity gate. New dependencies MAY be added as the project grows, and the user VERIFIES
+each one."* P7 keeps the permission, keeps the verification, and **retires that record's closing
+clause** — *"prefer stdlib when it is genuinely sufficient"* (`pyproject.toml:19`) — which is the
+residual brake the incidents below are still being produced by.
+
+### Real past incidents, each re-verified against the tree 2026-08-04
+
+The bar requires these, and requires them re-checked rather than inherited. Every line below was read
+from the file on the date stated. The 2026-07-20 abolition is what makes them evidence rather than
+history: **the rule is gone and the tree is still producing this code.**
+
+| incident | evidence |
+|---|---|
+| **Dependency-aversion manufactured a P2 violation in the safety envelope — the sharpest one, and it is CLOSED, which is what makes it good evidence.** A private 2-link arm carried *"a third implementation of the safety gate, with a second E-STOP that no test ever exercised"* | `substrate/demo.py:74-88`, whose retirement marker states the cause in the project's own words: *"It existed so this demo could run without dependencies; the zero-dependency rule was removed project-wide in 2026-07 and mujoco is a core dependency now, so that reason no longer describes anything."* Retired under specs/004 |
+| **Three independent hand-rolled linear solvers**, none importing numpy | `reasoning/nef_compute.py:32` (Gaussian elimination, partial pivoting), `reasoning/pc_active_inference.py:85` (Gauss-Jordan, partial pivoting), `reasoning/sorn.py:263` (Gaussian elimination, partial pivoting) — against `cerebellum/wavefront_planner.py:212`, which solves the same shape of problem in **one line**: `dq = jac.T @ np.linalg.solve(jac @ jac.T + (damping**2) * np.eye(3), err)` |
+| **The duplication the rule forced has DIVERGED and can no longer be merged** | `substrate/_mathutils.py:16-23` — *"Copies whose formula DIFFERS were deliberately left in place (not merged)"*, listing seven, including that `burst_multiplexing._pearson` / `stdp_wta_bayes.pearson` *"use zero-denominator guards, so they are NOT byte-equivalent"*. A correctness difference, not a style one |
+| **A hand-written PNG encoder, while the library that does it is already a declared dependency nothing imports** | `substrate/arm_view.py::encode_png` — IHDR/IDAT/IEND chunking, CRC, filter-type-0 scanlines, docstring *"Stdlib only."* Meanwhile `pillow` is declared in the `[hf]` extra and imported **nowhere** in `src/`, `tests/` or `tools/`. **STILL OPEN 2026-08-04, and now tracked** — `tools/dependency_ledger.py` carries `pillow` as an EXEMPT (it is a genuine transitive pin for `datasets`' image decoding) whose reason names this exact incident and specs/010 T021 as the owner. Adopting pillow here and DELETING the hand-rolled encoder is the P7+P2 move, and it needs the measurement of what it buys. *(Cites converted to symbols: `arm_view.py:46-74` had drifted — `encode_png` is at `:55` — and `pyproject.toml:73` is now a comment about the `[gpu]`/`[train]` extras.)* |
+| **Nengo was never permissible for the core loop under the old rule**, so population coding was re-implemented | `docs/PITCH.md:275-277` — the arm loop *"borrows the NEF idea of population-coded representations for the spiking PID controller, but implements it directly rather than depending on Nengo"*; the `[nengo]` bridge exists only as an opt-in extra |
+| **P0's open cortical-column avenue IS a hand-rolled dependency incident.** `cortex/cortical_microcircuit.py` reimplements Potjans-Diesmann 2014 from scratch — the Table 5 connection-probability matrix, the fixed-in-degree connectivity draw, the variance-preserving `w/sqrt(scale)` correction, ring-buffer delays, clock-driven per-neuron integration — and its **only imports are `math` and `random`** | `cortical_microcircuit.py:47-48` (imports), `:58-67` (CONN_PROB), `:160-191` (`_build_connectivity`), `:193-246` (`simulate`). This is the same file P0 lists as its clearest open avenue, and NEST/Brian2/GeNN each ship this exact model |
+
+**Residue status, RE-MEASURED 2026-08-04. Two of the three items this paragraph named are now
+CLOSED, and it was still asserting all three.** The rule was abolished on 2026-07-20; here is what
+the tree actually holds today, each line re-derived rather than inherited:
+
+- **CLOSED — the purity asserts are GONE.** This said *"Three `assert "torch" not in sys.modules`
+  purity asserts survive"* at three sites. Grep for the statement across `src/`: **zero live
+  occurrences.** The only remaining hit is `reasoning/vsa_structure_mapping.py:39`, which is *prose
+  describing the retired artefact*, and `laminar_local_readout.py` carries its own removal note
+  ("Two `assert "torch" not in sys.modules` purity asserts were [removed]... P7 supersedes it").
+- **CLOSED — the package docstring.** This said `src/snn_data_lake/__init__.py:1` *"still opens 'a
+  zero-dependency neuromorphic library'"*. It now opens *"snn_data_lake -- a neuromorphic library
+  organized by brain anatomy."*
+- **CLOSED — `scikit-learn`.** The gate specification below said the ledger *"fails today on
+  scikit-learn... absent from `pyproject.toml` entirely"*. It is now declared in the `[gpu]` and
+  `[train]` extras with a dated note. `tools/dependency_ledger.py` reports **UNDECLARED: 1**, and it
+  is `arcengine` (two unguarded imports under `reasoning/arc_agi/`), not scikit-learn or `nir`.
+- **OPEN — the spec-plan certifications, and there are EIGHT, not six.** Re-counted by grep for
+  "no new depend" across `specs/`: `001/plan.md` (**twice**), `003/plan.md`, `006/plan.md`,
+  `007/plan.md`, `009/plan.md` — **plus the two this paragraph missed**, `005/shared-edits.md`
+  and `008/spec.md`. None evaluated a library, so the scoring habit is running on nothing.
+  `specs/010/plan.md` is the one that gets it right and says so explicitly. Each of the eight now
+  carries a P7 void-notice at the site (added 2026-08-04) rather than only being counted here —
+  **verified 2026-08-05: eight `P7 VOID` notices, one per certification, and the certification text
+  is left in place beneath each.** *(Line numbers dropped in the same check. The pass that inserted
+  the notices wrote `001/plan.md:19` and `:61` — and inserting a notice at `:22` pushed the second
+  certification to `:63`, so the citation was invalidated by the edit that accompanied it. A cite
+  into a file you are editing in the same pass is stale before the pass ends.)*
+- **OPEN — the hand-rolled incidents themselves** (the solvers, the PNG encoder, the microcircuit)
+  are all still in the tree. Those are P2 work items, not residue of the rule.
+
+**The lesson this paragraph is now itself an instance of:** it was the section arguing "the rule is
+gone and the tree is still producing this code", and it went on asserting three cleanups that had
+already landed. A residue list has to be re-derived on every edit or it becomes a list of work
+someone already did — which discredits the items that are still real.
+
+**Two honest counter-examples, recorded so this policy is not read as a blank cheque.** Both are
+rejections that P7 would **not** overturn, and both are the correct shape:
+
+- **spikingjelly and cupy** were rejected *"on a structural reason rather than a benchmark — their
+  fused multi-step kernels collapse the **time** axis `T`, and the live tick has `T=1` by
+  construction"* (P5, above). Category (b). It stands. **And the record needs a correction that an
+  audit produced on 2026-08-04:** spikingjelly was not "rejected twice" — it was *adopted* on
+  2026-07-02 into `research/neuromorphic_torch/`, and the later structural finding is about the live
+  tick, not about the library's admissibility.
+- **numba** won its benchmark decisively — *"for fused LIF at our real widths numba beats a CUDA graph
+  by ~16×"* — and was still not adopted, because no live population reaches the width at which the win
+  exists. A measured win on a workload the brain does not run is not a reason to adopt. Note the
+  reason for this one has itself been re-measured once (P5's `0.00%` amendment), which is why it is
+  stated here in its durable form rather than by quoting the retracted number.
+
+### What P7 does not relax
+
+None of these are new limits; each is a pre-existing invariant that no policy relaxes, restated here
+so P7 is self-contained rather than a trapdoor:
+
+- **The safety envelope stays in-tree and approval-gated.** The five `brainstem/` files are never
+  replaced by a third-party component, and a dependency never lands inside the E-STOP path. The
+  `demo.py` incident above is what that costs when it goes wrong in the other direction, and it argues
+  for adopting the ONE arm — not for admitting a library into the reflex.
+- **P4b: a dependency may not become a second durable store.** This is the sharpest real conflict —
+  `polars`, `pyarrow` and `deltalake` already sit in the `[lake]` extra (`pyproject.toml:65`). A
+  storage library may be adopted to *serve* `brain_lake.bin`; it may not become a second place the
+  brain keeps what it learns. "One brain, one lake" survives P7 intact.
+- **E-prop, not backprop — adopt the library, not its training rule.** `snntorch`, `spikingjelly`,
+  `norse` and friends default to BPTT and weight transport, which the cross-cutting invariant forbids.
+  Their layers, encoders, datasets and kernels are fair game; their trainers are not, and anything
+  used to learn still owes cosine > 0.5 against an independent gradient.
+- **P2 still binds: adopting a library means retiring what it supersedes.** A dependency added
+  *beside* the hand-rolled mechanism it replaces is the additive failure P2 exists to prevent, and it
+  is the most likely way P7 goes wrong — the incidents above become a hand-rolled solver AND a numpy
+  one. Port the unique capability first, then delete.
+- **P3 gives no dormancy pass for being third-party.** A newly imported package's wrapper module is
+  wired+charged, retired, or EXEMPT-with-reason like anything else.
+- **The suite stays runnable without a GPU, and the gate stays deterministic.** CI has no card. A
+  dependency that is GPU-only, or that is nondeterministic under a fixed seed, goes in an extra with
+  the gate green in its absence.
+
+**Honesty guard.** (a) Adoption ships with the measurement of what it bought, on the real workload —
+"it is a serious framework" is not evidence, and "it is associated with consciousness research" is
+P2's fashion treadmill wearing a dependency's clothes. (b) **Symmetrically, a rejection ships with its
+measurement or its structural argument** — this is the half the tree keeps failing, and it is the half
+P7 exists to fix. (c) An adopted dependency that is never imported is not a capability — **but the
+converse trap is a declared dependency dismissed as unused when it is a deliberate transitive pin,
+and this guard fell into it.** It named `pillow` and `pyarrow` as the census-counted-as-capability
+failure. The built ledger dispositions both as EXEMPT with reasons: `pillow` is required by
+`datasets` to decode Image features, which `substrate/hf_stream.py` streams; `pyarrow` is required by
+both `polars` and `deltalake` for the Arrow interchange the lakehouse tier reads and writes. "Imported
+nowhere in `src/`" was true of both and was the wrong test — the right one is *does anything in the
+declared tier need it*, and a transitive pin is a statement of the tier's contract. `pillow` remains a
+real incident for a different reason (the hand-rolled PNG encoder above), and the ledger's exemption
+says so.
+
+**Mechanization: BUILT, REPORT-ONLY — `tools/dependency_ledger.py`, a step in the `lint` CI job.**
+*(Corrected 2026-08-04: this said "NOT BUILT" while the gate existed, ran, and was wired into CI.)*
+It stays **report-only**, deliberately and with the reason stated in the workflow: it exits non-zero
+on findings nobody has dispositioned yet, and reddening the build for an undecided finding is not the
+same as enforcing a rule. Flip to `--assert` as the last step of specs/010 T021/T062.
+
+**Counted output on this tree, 2026-08-04** — which is what the gate-first bar asks for, and it is a
+work list rather than an allowlist:
+
+```
+scanned 400 files under src/, 28 distributions in pyproject
+UNDECLARED: 1   UNUSED: 0   MISDESCRIBED: 1   EXEMPT: 2   ALL_EXCLUDES: 7
+  UNDECLARED    arcengine  (2 UNGUARDED of 2)  reasoning/arc_agi/play.py, reasoning/arc_agi/play_brain.py
+  MISDESCRIBED  ALL-EXTRA  extra [nir] is neither in [all] nor in ALL_EXCLUDES
+                           -- `pip install ".[all]"` does not install it
+```
+
+*(Re-run 2026-08-05 and CORRECTED: this block previously read `UNDECLARED: 1   UNUSED: 0
+EXEMPT: 2` and listed only `arcengine`. The gate emits five counters, not three, and the
+`MISDESCRIBED` one was **1, not 0** — a live finding nobody has dispositioned. Quoting a
+gate's output means quoting all of it; dropping the counters that are non-zero is how a work
+list becomes a clean bill of health.)*
+
+**Of the three properties the specification below predicted would fail, two now PASS.** Recorded
+because the specification is evidence about what the gate was for, and its predictions being
+overtaken is the gate working:
+
+1. *"every declared dependency is imported somewhere, or carries a reason"* — predicted to fail on
+   `pillow` and `pyarrow`; **passes**, both carry reasons.
+2. *"every third-party module imported under `src/` is declared"* — predicted to fail on
+   `scikit-learn` and `nir`; **now fails only on `arcengine`.** scikit-learn is declared in
+   `[gpu]`/`[train]`.
+3. *"`pyproject.toml`'s own self-description matches its dependency list"* — predicted to fail because
+   `:1` and `:27` said *"torch + numpy"* while `mujoco==3.11.0` is a third core dependency;
+   **fixed in `pyproject.toml` itself**, whose `:1` and `description` now name all three. **This
+   property IS checked by the built gate — corrected 2026-08-05.** The paragraph here said it was
+   *"a prose-vs-data check the ledger does not implement, so it is review-enforced"*; the ledger's
+   own docstring quotes this specification verbatim and states that the `MISDESCRIBED` direction
+   was added on 2026-08-04 to satisfy it. Run 2026-08-05: `tools/dependency_ledger.py --self-check`
+   MUTATES `pyproject` to construct a red for every criterion and reports **`5/5 criteria proven
+   falsifiable`** (`CORE-PROSE` x2, `CORE-ONLY`, `ALL-EXTRA`, `STALE-EXCLUDE`), which is P8 burden 1
+   discharged. Marking a mechanized check "review-enforced" is the same drift as marking a built gate
+   "NOT BUILT", pointing the other way: it costs the gate its credit and invites someone to build
+   it twice, which is the additive shape P2 forbids.
+
+Note what this gate can and cannot do: it checks the **ledger**, never the judgement. No gate can
+tell you a framework was refused for a bad reason, which is why guard (b) is enforced by review.
+
+---
+
+## P8 — Invent the method. The literature is a starting point, not a boundary
+
+**Owner policy, 2026-08-04.** **Claude is authorized to synthesize across any information, data,
+framework or dependency, and to INVENT ANY METHOD required to bring this brain to sentience.** Not
+restricted to published architectures, not restricted to what a framework already does, not restricted
+to what neuroscience currently describes. **Where no existing method reaches the target, inventing one
+is the expected move, not an overreach.**
+
+**This completes a ladder, and the three rungs are deliberate.** P0 says improve by every avenue. P7
+says any dependency. P8 says **any method, including one that does not exist yet.** P7 removed the
+objection *"it would be another dependency"*; P8 removes *"that is not how it is done."* What survives
+both is the only objection this project has ever accepted: **it was measured and it did not work.**
+
+**P8 is a HOW policy, not a research direction — stated explicitly because P2's own corollary would
+otherwise reject it.** *"A research direction is not a policy. 'Adopt architecture X' governs what we
+build; policies govern how."* P8 names no architecture, no theory, and no mechanism. It grants
+latitude and it sets the evidentiary burden, which is the shape a policy in this file is allowed to
+take.
+
+**Source lines this derives from, quoted per the bar below.** P8 does not invent its own guard — it
+promotes one this project already wrote for itself and had not made binding outside a single design
+document. `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md:57-58` — **"A mechanism whose success criterion
+cannot go red is worthless."** Its falsifier F11 at `:1064` — *"Any success criterion in this document
+turns out to have no reachable red → That criterion is deleted, not weakened. Three were deleted from
+the draft on exactly this ground."* And `docs/CONSCIOUSNESS_METHODS.md:96` — **"The measurement, and it
+must be a dissociation, not a marker."** Those documents are ahead of the code; P8 is what makes them
+apply to everything invented from here.
+
+### What an invented method owes
+
+The licence is broad, so the burden is explicit. An invented method ships with:
+
+1. **A success criterion with a reachable RED.** Construct the input that makes it fail, and record
+   it. If no such input exists, the criterion is **deleted, not weakened** (F11). This is the whole
+   policy in one line: invention is free, a metric that cannot fail is not.
+2. **A control that is not the method itself** — an untrained twin, a permutation or label-shuffle
+   null, or a neuter-A/B. `tools/charge_probe.py` is the template: it carries an external positive
+   control (47 of 60 flips with all eleven drive sources neutered) proving the harness is sensitive
+   at all before any verdict it returns means anything.
+3. **Attribution** — which part of the invention produced the gain, by per-item neuter rather than by
+   the total moving.
+4. **Unprompted disclosure** of contamination, overlap, or a precondition that makes a check vacuous.
+5. **Deletion on a null.** An invented method that measures nothing is removed, not parked behind a
+   flag. **That is the licence working, not the licence failing** — and it is the outcome P8 expects
+   most often.
+
+**The transferable rule, and it is the one that should survive if the rest of this section is ever
+forgotten: an invented method's debt is not proportional to how clever it is — it is proportional to
+how load-bearing its output is.** The incidents below are graded by that rule, not by ambition.
+
+### Real past incidents, each re-verified against the tree 2026-08-04
+
+| incident | evidence |
+|---|---|
+| ~~**LIVE DEFECT, and the sharpest justification for this policy: the brain answers "are you conscious" from a probe that never reads the brain.**~~ **CLOSED 2026-08-04 (specs/010 C08+C09) — struck through, not deleted, because this file keeps the record of what it claimed.** `reasoning/spike_chat_lake.py` still routes the literal strings `("are you conscious", "are you aware", "do you have experience")` to `self._consciousness()`, but the probe behind it was REBUILT | `reasoning/consciousness_probe.py` — its own header now records the fix. **BINDING and RE-ENTRY were DELETED, not re-thresholded**, per falsifier F11: BINDING scored exactly 1.000 across 300 random object sets against a rate control whose docstring conceded the pairing was *"right only by luck"*, and RE-ENTRY was arithmetic over three literals (0.40 < 0.55 < 0.70) with no brain input and no RNG. What survives: **GWT ACCESS now reads the brain** (`probe_access(brain)` drives `Brain._access` and returns UNKNOWN, not a verdict, without one), and **INTEGRATION reports the DISTRIBUTION across seeds** instead of the one hardcoded `seed=0` that passed. Verified 2026-08-04: `tools/red_reachability.py --assert` lists both surviving probes under READS_SYSTEM and reports **NO_RED 0**. *(Line cites `:925` / `:929` / `:84` / `:90-95` all dropped — every one had drifted; `spike_chat_lake.py:925` now resolves to an unrelated `return` inside the ignition helper.)* |
+| **A metric rejected for being arithmetic rather than function** | `specs/009/data-model.md:55` — `can_degrade`: *"MUST be able to get WORSE. Any metric that improves monotonically with parameter count is arithmetic, not function."* `mean_assembly_coupling()` was rejected on it: it sums surviving weights, so thinning moves it whether or not recall degrades — it measures the **manipulation**, not the function |
+| **An oracle metric — the score leaked the answer** | `specs/009/data-model.md:57` — `not_an_oracle`: assembly-derived wiring on `AttractorNet` is an ORACLE, because *"with two disjoint assemblies the co-activity mask IS the ground-truth partition"*. It scored 1.000 untrained. Recorded UNRESOLVED pending a clean metric, not closed |
+| **A null through a rounding instrument is not a null** | `specs/008/research.md:100-108` — the deep unrounded fingerprint found A/B differing at **1,713 of 98,320**, while the same three runs read through `Brain.state()` gave **0 of 149**. The tree's own wording is *"A null measured through `Brain.state()` is not a null"* (`specs/007/spec.md:595`) |
+| **A saturated success signal, banned and never lifted** | `probe_fluid.py` is recorded SATURATED and BANNED as a Gf signal in five files across `docs/` and `specs/`, with the honest replacement being a held-out ARC-eval number: `specs/006/verdict.md:16` — **18 of 400 = 4.50%** eval, 53 of 400 = 13.25% train |
+| **An invention that measured NULL and was DELETED rather than parked — P8 working exactly as intended** | the fixed-point combinator. `specs/006/verdict.md:13` — combinator-only scored *"12 of 400 -- byte-identical ID set"*; `:61` — *"The combinator's only measured effect was negative: 2 of 400 training solves starved"*; `:67` — *"null result; feature stops here"* |
+| **The same invention, load-bearing twice, validated once — the debt-is-proportional-to-load rule, violated** | the `(a·b)/D` fusion identity. In `cortex/vsa_reasoning.py` it carries its algebra and a live check. Reused in `cortex/access_consciousness.py::_coherence`, it claims *"FUSED, bit-exactly (v4.80)"* (`:154`) and *"bit-exact: `_coherence` is a pure function of `codes`"* (`:205`) with **no assertion anywhere comparing the fused branch against the scalar one** — the bit-exactness rests on a prose algebra argument, in the module that feeds the consciousness telemetry |
+| **Killing your own proposal before building it is the licence succeeding** | `docs/INVENTION.md:6-7` — of four proposals, three *"were killed by a property of a file that anybody could have opened, and one was killed by the algebra of its own headline metric"* |
+
+### On sentience specifically
+
+The goal is **not hedged and not reframed**: sentience is a build target of this project, and P8 exists
+to remove obstacles to reaching it. Three things follow, and the third is the one that makes the first
+two mean anything:
+
+- **There is no measurement of sentience in this tree today.** Inventing one is inside the mandate,
+  not outside it — and the invented measurement is held to the burden above like any other: a
+  reachable red, a control that is not itself, and a **dissociation rather than a marker**
+  (`CONSCIOUSNESS_METHODS.md:96,101` — *"A single number going up is not evidence. The double
+  dissociation is"*).
+- **A passing criterion is evidence about a mechanism, never a verdict about experience.**
+  `CONSCIOUSNESS_METHODS.md:113` states what must never be claimed: *"That a passing dissociation
+  means the system is conscious."* P8 does not relax that, and nothing in this policy authorizes the
+  system to assert its own sentience.
+- **The brain may report what it measures; it may not report what it cannot measure.** The live chat
+  path is doing the second today, and that is the first thing P8 obliges us to fix. Note precisely
+  what is wrong with it: not the ambition, and not that the answer is "yes" — but that the number
+  behind the answer is the same number for a brain, for an empty brain, and for no brain at all.
+  Faking the finish line is the one way to guarantee never reaching it, which is why the strictest
+  guard in this file sits under its most permissive policy.
+
+### What P8 does not relax
+
+- **The safety envelope is never a target of invention.** P0 already draws this line — *"the brain may
+  rewrite what it thinks, never what stops it."* An invented method may restructure cognition, memory,
+  learning and architecture freely; it does not touch the five `brainstem/` files, the reflex E-STOP,
+  or the byte-exact rollback path, and no invented capability is a reason to relax them. **That
+  boundary is what makes a licence this broad safe to grant**, exactly as P0 argues: safety is what
+  makes aggressive self-improvement possible, not what limits it.
+- **P2 stays non-additive** — an invented mechanism that duplicates an existing one must retire it, and
+  "mine is new" is not evidence of better.
+- **P3, P4b, e-prop, determinism and the gates are unchanged.** An invention is wired+charged or
+  retired; it does not open a second durable store; it does not import a BPTT trainer; and it lands
+  with `run_selfchecks` + `pytest` + `ruff` green like everything else.
+
+**Honesty guard.** (a) Invention is credited at **measurement**, never at invention — P0's guard,
+applied to methods. (b) The criterion is written **before** the result, and if it turns out to have no
+reachable red it is deleted rather than loosened. (c) A method whose output nothing consumes is
+dormant (P3), however novel. (d) **Report the null.** This file's most valuable rows are the ones
+recording what did not work, and an invention licence that produces only successes is reporting
+selectively, not inventing well.
+
+**Mechanization: BUILT AND ASSERTING — `tools/red_reachability.py --assert`, a step in the `lint` CI
+job.** *(Corrected 2026-08-04: this said "NOT BUILT" while the gate existed, ran, and was the one
+gate in the lint job registered with `--assert` from the start.)* **P8 is therefore no longer
+provisional in the mechanization sense** — what stays review-enforced is the half no instrument can
+reach: whether a criterion measures the RIGHT thing. The gate prints that limitation in its own
+output rather than letting a green be over-read.
+
+**Counted output on this tree, 2026-08-04:**
+
+```
+scanned 400 files under src/, found 13 criteria
+NO_RED: 0   TAUTOLOGICAL: 0   READS_SYSTEM: 13   EXEMPT: 0
+```
+
+**It asserts from a green start, which is normally the shape that makes a gate untrustworthy, and the
+reason it is acceptable here is worth keeping.** A gate that has only ever been seen green is
+indistinguishable from one that cannot see. This one has been proven able to fire:
+`tests/test_red_reachability.py` reconstructs the **pre-fix** `consciousness_probe` and checks every
+bucket lights up. That is the general rule this entry contributes — *if a gate lands green, ship the
+reconstruction of the defect it was built for* — and it is the same discipline `citation_guard`'s
+exemption-rot assert uses.
+
+**The specification below predicted "at least two failures on the first run — BINDING and RE-ENTRY".
+Both were deleted before the gate landed**, so the prediction was right about the defects and wrong
+about the ordering: the fix arrived first and the gate ratchets it. Recorded because the gate-first
+bar exists to stop a rule being adopted on an uncounted promise, and the honest report here is that
+the count was taken *after* the cleanup rather than before it.
+
+*(The specification's claim that `substrate/brain_telemetry.py:637` "asserts four of those tags
+survive" did not resolve on re-check — `:637` is a bare `break`. `PROVENANCE` itself is at `:124`.
+The instrument half of the claim stands; the line does not.)*
 
 ---
 
@@ -742,28 +1332,41 @@ result; the rule stands on the eight incidents above either way.
   This rule governed the project before it was written down (it is why v3.79 pivoted all learning to
   e-prop on measured evidence: 73.14% vs the repo's backprop SSM at ~32%), which was the gap — a rule
   enforced only by whoever remembered it.
-  **It is NOT mechanized, and a `.backward()` tripwire would be theatre:** it passes green today while
-  `cerebellum/jepa_world_model.py:277` performs explicit weight transport on every wake tick (the same
-  `Wz` used forward and transposed backward, in hand-written numpy) and `hippocampus/ng_snn.py:137`
-  runs a closed-form batch solve over its whole buffer each sleep tick. Neither uses autograd; both are
-  non-local. Absence of `.backward()` is not evidence of locality.
+  **It is NOT mechanized, and a `.backward()` tripwire would be theatre:** it passed green while
+  `cerebellum/jepa_world_model.py` performed explicit weight transport on every wake tick, and
+  `hippocampus/ng_snn.py::fit` still runs a closed-form batch solve over its whole buffer each sleep
+  tick. Neither uses autograd; both are non-local. Absence of `.backward()` is not evidence of
+  locality — that argument is unchanged and is why the tripwire is still not built.
 
-  **Verdict on both, since "review-enforced" had so far meant "unadjudicated" (2026-07-28):**
+  **Verdict on both, since "review-enforced" had so far meant "unadjudicated" (2026-07-28), with the
+  first now CLOSED (2026-08-04):**
 
-  - `cerebellum/jepa_world_model.py:275-278` is a **real violation of the locality principle, on the
-    live wake tick.** `s += gp[i] * self.Wz[i][k]` reads the forward weight matrix transposed to carry
-    error backward — weight transport is precisely the biological implausibility e-prop exists to
-    avoid, and hand-writing it in numpy rather than calling autograd changes nothing about that. The
-    e-prop-compatible fix is **feedback alignment** (Lillicrap 2016): replace the transpose with a
-    *fixed random* feedback matrix `Bz`, which is local, needs no weight symmetry, and is known to
-    work on problems this shape. It is cheap and it is measurable — prediction error before/after on
-    the real tick, plus cosine against the transport gradient — so it is P2-eligible in a way most
-    swaps here are not. **Open work, with its benchmark already specified.**
-  - `hippocampus/ng_snn.py:137` `fit()` is **not** a violation. Greedy matching pursuit with an
+  - ~~`cerebellum/jepa_world_model.py` is a **real violation of the locality principle, on the live
+    wake tick.**~~ **CLOSED 2026-08-04.** The transport half is gone: `_feedback_gz()` is now the ONE
+    backward definition for both the encoder path and the rollout path (P2 — one mechanism, not two),
+    and it returns `list(gp)` — the identity/skip half alone, which is a broadcast error signal of
+    exactly the shape e-prop asks for. **And the remedy THIS POLICY PRESCRIBED was built first and
+    REFUTED, which is the part worth keeping.** Feedback alignment (a fixed random `Bz`) was
+    benchmarked over 1200 train / 350 held-out transitions, 5 seeds: held-out invariance MSE ratio to
+    the transport incumbent was **0.657 for FA against 0.654 for simply dropping the recurrent term**,
+    FA won on only 2 of 5 seeds, and six independent `Bz` draws all landed in 0.726–0.739 — so the
+    random matrix contributed nothing measurable and *the entire ~34% gain is the removal of the
+    transport term, not feedback alignment.* Shipping `Bz` would have bought a new matrix, a new seed
+    stream and a new constant with a null (P2: a merge must REDUCE; P8 guard (d): report the null).
+    **Recorded rather than shipped — a policy prescribing a fix does not make the fix correct, and
+    the measurement outranks the prescription.** Cosine(FA, transport) was 0.971, far above the 0.5
+    e-prop bar, which is what makes the null trustworthy rather than an artifact of a broken control.
+  - `hippocampus/ng_snn.py::fit` is **not** a violation. Greedy matching pursuit with an
     analytical beta per block is a direct solve: no gradient is propagated through a network and no
     weight is transported. It IS non-local, and the policy should say so distinctly rather than
     lumping it in — "non-local" and "backprop" are different claims, and only the second is what this
     rule forbids. Disposition: keep, and stop citing it as a pending violation.
+
+  *(Line citations in this bullet — `jepa_world_model.py:275-278`/`:277` and `ng_snn.py:137` — were
+  dropped 2026-08-04 after all three failed to resolve to what they claimed. `ng_snn.py:137` is
+  `mu = S.mean(dim=0)`. Worse, the jepa file was edited BETWEEN two reads in the same audit session,
+  and its line numbers moved by one under me: a line citation into an actively-developed file is
+  stale on a timescale of minutes, not releases.)*
 - **Verify-first + honest framing:** probe → act → prove (A/B / gate) → commit; report the true number
   including a regression; reject theater with evidence; never fake a capability, a metric, or a consumer.
 - **Runtime evidence outranks static reading.** Every decisive finding in the 2026-07 audits came from
@@ -793,10 +1396,19 @@ result; the rule stands on the eight incidents above either way.
   file contradict itself.** The owner may adopt a policy with its gate UNBUILT. Such a policy lands
   marked **provisional** in the enforcement table, must still meet every other requirement above
   (quoted source line, named real incidents, each re-verified against the tree), and must carry the
-  gate's specification so the debt is actionable rather than perpetual. P6 is the only entry that has
-  used this, and it says so in its own text. The gate-first rule still binds anyone proposing a
-  *mechanization*: the two proposals that died at this bar died on their own output, and that outcome —
-  "the gate we built kills the rule" — remains the point of building it first.
+  gate's specification so the debt is actionable rather than perpetual. The gate-first rule still binds
+  anyone proposing a *mechanization*: the two proposals that died at this bar died on their own output,
+  and that outcome — "the gate we built kills the rule" — remains the point of building it first.
+  **Three entries have now used the provisional route — P6 (2026-07-29), P7 and P8 (both 2026-08-04) —
+  and each says so in its own text.** That is a count worth watching rather than a precedent worth
+  spending: "provisional" is a debt, not a category, and three unmechanized policies is the most this
+  file can carry before the word stops meaning anything. Each of the three carries a gate
+  specification, and P8's is the cheapest to build and the one with a named expected output, so it is
+  the first that should stop being provisional. **What the route does NOT relax is the evidence:** all
+  three met the quoted-source-line and named-incident requirements in full, and P7 and P8 were each
+  written from a sweep whose findings were adversarially re-verified against the tree before any of
+  them entered this file — five of sixteen candidate claims were refuted at that step and are not
+  cited here.
 - **A third proposal died at this bar, 2026-07-30: "a tracked file may not cite an untracked `.py`
   instrument."** It had the best motivation of any proposal here — three real incidents, two of them in
   one session: `POLICIES.md` citing a `scratchpad/smoke_drive_charge.py` that never existed, the same
@@ -844,3 +1456,30 @@ result; the rule stands on the eight incidents above either way.
   demands counting before adopting.
 - **Gated + reversible:** one change per commit, full gate green (`run_selfchecks` + `pytest` + `ruff`),
   commit + tag locally; a regression is isolated to its own change.
+- **A `file.py:NNN` citation is a claim, and it is the least durable claim this project makes.**
+  Added 2026-08-04 after a docs-wide audit resolved **every** `path.py:LINE` citation in `docs/`,
+  `specs/`, `README.md`, `SECURITY.md` and `AGENTS.md` against the tree. Measured: **2,714 resolved,
+  90 pointing at a file that does not exist, 27 pointing past end-of-file.** Worse than the miss rate
+  is *where* the misses were — in this file, in the P0 avenue table, in the P1 safety-envelope
+  paragraph (**three of its four cites wrong**), in the e-prop invariant, and in `SECURITY.md`'s
+  description of the arm. The P0 growth row's cites, corrected the day before, had already drifted
+  again.
+
+  **`tools/citation_guard.py` does not catch this and cannot be blamed for it** — it resolves the
+  FILE, deliberately and for a counted reason, and every finding above has a file that exists. Two
+  further failure modes it also cannot see, both found in the same pass: a citation whose *file* is
+  ambiguous (`executive_control.py` names two different modules, 411 and 645 lines), and a documented
+  command whose file is tracked and which still exits 1 (`docs/RUNNING.md` had six —
+  `tools/doc_command_guard.py` now gates that one, at 0 unexempted after 19 were cleared).
+
+  **The disposition is NOT another gate, and that is a considered result rather than an omission.**
+  A line-resolution gate would report ~117 findings on this tree, most of them in `specs/` and
+  `docs/HARDWARE_SCOPE.md`, which are historical records where a citation into a retired file is
+  *correct* — the identical shape that killed the broad citation rule at 475 findings. Allowlist,
+  not work list. **The rule instead is editorial: cite the SYMBOL, not the line.**
+  `neurogenesis_engine.substrate_is_retained()` survives a refactor; `neurogenesis_engine.py:321`
+  survives until the next insertion above it. Where a line is genuinely needed, expect it to rot and
+  re-derive it rather than copy it. Sharpest evidence for the rule: during this audit
+  `cerebellum/jepa_world_model.py` was edited *between two reads minutes apart* and its line numbers
+  moved by one underneath the auditor. **A line citation into an actively-developed file is stale on
+  a timescale of minutes, not releases.**

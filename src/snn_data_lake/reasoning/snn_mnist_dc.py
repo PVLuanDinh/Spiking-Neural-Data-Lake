@@ -40,9 +40,13 @@ import os
 import torch
 import snntorch as snn  # noqa: F401  (kept: same LIF lineage as the rest of the lake)
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 
-torch.manual_seed(0)
+# Determinism: `torch.manual_seed(0)` used to run HERE, at MODULE SCOPE -- so merely IMPORTING
+# this module re-seeded the process-global torch RNG for everything constructed afterwards. It is
+# now seeded inside main(), where the script path actually needs it. (Same defect and same fix as
+# the three latent module-scope side effects the daemon promotion exposed; see docs/POLICIES.md
+# P4c. This module has zero importers today, which is why it was still latent.)
 
 
 def _ei(k, d):
@@ -153,6 +157,7 @@ def evaluate(net, X, Y, assignment):
 
 
 def main():
+    torch.manual_seed(0)  # deterministic run + self-check (script path only, never at import)
     enable(resolve_device())
     print("=" * 60)
     print("v0.8  PROPER DIEHL & COOK STDP on MNIST")

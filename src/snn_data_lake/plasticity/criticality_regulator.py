@@ -338,7 +338,24 @@ def main():
     assert det_final == reg_sub_final and det_knob == reg_sub.inhib_gain, (
         "same seed -> identical regulated outcome"
     )
-    assert isinstance(reg_sub.measure()[0], float), "sigma is computed from integer spike cascades"
+    # `assert isinstance(reg_sub.measure()[0], float)` stood here, messaged "sigma is computed from
+    # integer spike cascades". REPLACED 2026-08-04 (P8 falsifier F11): measured_branching_ratio
+    # returns a float on every input including an empty trace (checked: [] -> 0.0, [(0,0)] -> 0.0,
+    # [(10,12)] -> 1.2), so the criterion had NO reachable red -- and isinstance-float cannot test
+    # the sentence it carried in any case. This asserts the claim the message actually makes: the
+    # raster sigma is derived from is a sequence of INTEGER per-step spike counts. RED: a graded
+    # (non-spiking) pool would put floats in the raster and this fires.
+    _raster, _resp = reg_sub._cascade(reg_sub._seed_units("assert"))
+    assert _raster and all(isinstance(a, int) for a in _raster), (
+        f"sigma must be computed from INTEGER spike counts; raster carries "
+        f"{sorted({type(a).__name__ for a in _raster})}"
+    )
+    # `_resp and` added 2026-08-05: `all()` over an empty sequence is vacuously True, and the
+    # sibling assert above guards its sequence while this one did not. RED re-run for both:
+    # returning a float raster fires the first only; a float response fires this one only.
+    assert _resp and all(isinstance(c, int) for c in _resp), (
+        "the per-neuron stimulus response must be integer spike counts"
+    )
 
     print(
         f"self-check OK: subcritical {sub_sigma0:.2f} -> regulated {reg_sub_final:.3f} (band); "

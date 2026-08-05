@@ -2,11 +2,19 @@
 CHAT MEMORY -- a noise-filtered, content-addressable VIEW over the ONE durable brain lake.
 
 The project has ONE durable data lake for the entire brain (substrate/home.py: the shared
-`KnowledgeLog` at <home>/knowledge.jsonl, replayed at every boot). This module no longer keeps a
-SEPARATE store: it is a thin writer/reader over that one lake. A real conversational turn is written
-as a lake record {"cue": content-words, "answer": text, "src": "chat:<role>"} -- the SAME record shape
-taught facts use -- so LakeChat (which replays the same KnowledgeLog) converses from what the daemon
-learned. There is no off-home `.spkl` and no sidecar index any more; the one lake is the only store.
+`KnowledgeLog`, a raw-binary BinLog at <home>/brain_lake.bin, replayed at every boot). This module no
+longer keeps a SEPARATE store: it is a thin writer/reader over that one lake. A real conversational
+turn is written as a lake record {"cue": content-words, "answer": text, "src": "chat:<role>"} -- the
+SAME record shape taught facts use -- so LakeChat (which replays the same KnowledgeLog) converses from
+what the daemon learned. There is no off-home `.spkl` and no sidecar index any more; the one lake is
+the only store.
+
+(This file named the lake `<home>/knowledge.jsonl` in five places until 2026-08-04. That file is
+RETIRED -- `home.knowledge_path()` says so in its own docstring: "The former knowledge.jsonl is
+retired into this file", the binary `brain_lake.bin`. Naming a retired path as THE ONE LAKE is a
+P4b-shaped documentation defect: the store a reader goes looking for is not the store the brain
+uses, and under a policy whose whole content is "there is exactly one, and it is this one", the
+name is the load-bearing part.)
 
 Mechanism (deterministic, storage-only):
   1. is_real_memory(role, text): a NOISE FILTER. Tool/system chatter, code dumps, JSON/path-heavy
@@ -23,7 +31,7 @@ Fair control (un-riggable):
     counts over a real transcript both exceed 0 (a filter that accepts/rejects everything does not
     discriminate).
   - Durability + ONE lake: after a fresh process, a new DurableChatMemory over the same home finds
-    the same memories -- they were replayed from the shared knowledge.jsonl, not a private store; and
+    the same memories -- they were replayed from the shared brain_lake.bin, not a private store; and
     a LakeChat over the same home surfaces them too (proved in the self-check).
   - Content-addressable: recall(query) is scored by hashed-token overlap with the QUERY; an unrelated
     query scores lower than the turn it was copied from.
@@ -131,7 +139,7 @@ class DurableChatMemory:
 
     remember() drops noise and appends a real turn to the one lake; recall() scores every chat record
     in the one lake by hashed-token overlap with the query. No private store: the shared
-    knowledge.jsonl is the only durable home, so LakeChat (same home) converses from these turns."""
+    brain_lake.bin is the only durable home, so LakeChat (same home) converses from these turns."""
 
     def __init__(self, path=None, n_channels=512, seed=0, log=None):
         # `path` is accepted for backward-compat but IGNORED -- there is one lake now (home KnowledgeLog).
@@ -140,13 +148,13 @@ class DurableChatMemory:
         self.n = int(n_channels)
         self.seed = seed
         self.log = log if log is not None else KnowledgeLog(knowledge_path())
-        # STORED, NEVER READ (verified tree-wide, v4.78). The comment here used to describe it as an
-        # index "rebuilt" over the chat records -- it is assigned empty once and nothing ever writes
-        # or reads it, so the description asserted a mechanism that does not exist. Channel filtering
-        # actually runs off `self._chats` below. Left in place with an honest label rather than
-        # deleted, because an index keyed by record identity is the right shape if channel lookup ever
-        # needs to stop being a linear scan.
-        self._chan = {}  # STORED, NOT READ -- not an index; nothing populates or consults it
+        # `self._chan = {}` stood here, labelled "STORED, NEVER READ -- not an index; nothing
+        # populates or consults it", kept on the argument that it was "the right shape if channel
+        # lookup ever needs to stop being a linear scan". DELETED 2026-08-04: an attribute that
+        # nothing writes and nothing reads is dormancy (P3) and speculative structure (P2), and an
+        # empty dict is not a head start on an index nobody has designed. Re-verified before
+        # removing: `_chan` had no reader anywhere in src/, tests/ or tools/. Channel filtering runs
+        # off `self._chats`, which is the real index.
         self._chats = []  # the chat records currently in the one lake (role, text, channels)
         self._reindex()
 
@@ -359,7 +367,7 @@ def main():
         print("-" * width)
         print(
             "self-check OK: chat memory is a noise-filtered, content-addressable VIEW over the ONE "
-            "durable brain lake (home knowledge.jsonl) -- no private store; taught facts + chat turns "
+            "durable brain lake (home brain_lake.bin) -- no private store; taught facts + chat turns "
             "share the one lake so LakeChat converses from what the daemon learned; dedup keeps it lean."
         )
         return 0

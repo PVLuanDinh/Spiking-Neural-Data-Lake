@@ -31,7 +31,7 @@ neuron, so a nondeterministic configuration fails loudly instead of silently pic
 
 Pure standard library (collections only), no randomness, ASCII-only output.
 
-  python research/sn_p_system.py        # (also run by run_selfchecks.py)
+  PYTHONPATH=src python -m snn_data_lake.reasoning.sn_p_system   # (also run by run_selfchecks.py)
 
 Paper: Ionescu, M., Paun, Gh., Yokomori, T. (2006), "Spiking Neural P Systems",
 Fundamenta Informaticae 71(2-3):279-308.

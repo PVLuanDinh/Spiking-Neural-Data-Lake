@@ -8,15 +8,19 @@ irrelevant — so sorting then delta-coding the gaps + varint (order-invariant c
 below fixed 4-byte ids, losslessly, at zero query cost. Refs: arXiv:2501.10479 (Meta, "Lossless
 Compression of Vector IDs for ANN Search", ~7x on ids).
 
-  Run: python index_compression.py       # (also run by run_selfchecks.py)
+  Run: PYTHONPATH=src python -m snn_data_lake.reasoning.index_compression  # (also in run_selfchecks)
 """
 
 import gzip
 import random
 
-import snn_data_lake.reasoning.spike_compression as sc  # research/ on sys.path; reuse the LEB128 varint
+import snn_data_lake.reasoning.spike_compression as sc  # reuse the LEB128 varint
 
-random.seed(0)
+# random.seed(0) DELETED 2026-08-04 (specs/010, C33): it was an IMPORT-TIME global reseed that
+# clobbered any caller's seed, and it was VESTIGIAL here -- every RNG use in this module already
+# goes through a per-instance `random.Random(seed)`, so nothing read the global stream it set.
+# Verified by AST: no module-level statement and no function in this file touches the global
+# random API. Deterministic behaviour is unchanged; the side effect on importers is gone.
 
 ID_SPACE = 100_000
 

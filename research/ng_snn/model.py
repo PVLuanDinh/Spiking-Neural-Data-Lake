@@ -23,8 +23,9 @@ Faithful to the paper:
     (c1=1, k=0.1, c0=1e-4), Gamma = diag(gamma), beta = (S^T S + Gamma)^{-1} S^T Y  (Eq. 12).
   * Grow one neuron at a time until train RMSE < eps_tol (~1e-2) or L_max reached (Sec 4.1).
 
-NOT zero-dep -- torch/GPU training tier only. Runs in .venv-cu128 on the RTX 5070; the zero-dep core
-never imports this.
+Torch/GPU training tier. Runs in .venv-cu128 on the RTX 5070. (Was "NOT zero-dep ... the zero-dep
+core never imports this" -- retired 2026-08-04: P7 abolished the zero-dependency rule project-wide
+on 2026-07-20, so there is no zero-dep core for the sentence to be about.)
 
   PYTHONUTF8=1 .venv-cu128/Scripts/python research/ng_snn/model.py        # synthetic self-check
 """

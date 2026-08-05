@@ -1,13 +1,30 @@
 r"""ARM-NATIVE 2-level nonlinear H-JEPA (PyTorch trainer) -- trained so it can be SERVED.
 
-**UNVERIFIED ON HARDWARE -- run on the RTX 5070 to measure whether the temporal hierarchy
-beats a flat single frame on the ARM world.** There is no GPU/torch in the environment this
-file was written in, so NOTHING below was executed end-to-end here. Every torch-specific
-behaviour is flagged ``# VERIFY(torch):``. No loss/accuracy/MSE numbers are hard-coded
-anywhere -- the [GPU-VERIFY] banner prints only values a real run computed. Target: the
-user's RTX 5070 (``NORD_GPU=1 python research/hjepa_arm_torch.py``).
+**RUN 2026-08-04, AND THE PRIMARY CLAIM MEASURED FALSE.** The "UNVERIFIED ON HARDWARE / there is
+no GPU/torch in the environment this file was written in, so NOTHING below was executed" banner
+that stood here was STALE -- torch is an unconditional core dependency now (pyproject.toml), and
+this file runs end-to-end and exits 0. Executed on torch 2.13.0+cpu, device=cpu, at the shipped
+defaults (450 steps, DECODE_N=1024):
 
-WHY THIS FILE (vs research/hjepa_torch.py). The v3.13 H-JEPA (hjepa_torch.py) is trained on a
+    learned L1 abstract (K-pool)  regime decode  MSE=0.0985  acc=0.923
+    flat single-frame z0          regime decode  MSE=0.0966  acc=0.815
+    raw windowed averaging (64d)  regime decode  MSE=0.0000  acc=1.000
+    PRIMARY claim (mse_hier < mse_flat) -> FALSE          secondary (vs raw pool) -> FALSE
+
+So the temporal-abstraction win this file was built to show DOES NOT HOLD on MSE, and the
+un-learned raw window average decodes the regime PERFECTLY (MSE 0.0000, acc 1.000) while the
+learned abstraction does not. Note also that the two observables DISAGREE in direction -- z1 is
+worse on MSE (0.0985 vs 0.0966) and better on accuracy (0.923 vs 0.815) -- so which claim you
+report is decided by which of two available numbers you pick, and this file picks MSE. Read the
+"EXPECTED TO HOLD by construction" paragraph below against that: the pooling CAPACITY is present
+by construction, and the SSL objective demonstrably does not realise it here.
+
+Every torch-specific behaviour is still flagged ``# VERIFY(torch):``. No loss/accuracy/MSE numbers
+are hard-coded in the code path -- the [GPU-VERIFY] banner prints only values a real run computed;
+the figures above are a recorded result, re-derivable with the command at the bottom of this
+docstring. The GPU (RTX 5070) run has NOT been done; the numbers above are CPU.
+
+WHY THIS FILE (vs reasoning/hjepa_torch.py). The v3.13 H-JEPA (hjepa_torch.py) is trained on a
 toy XOR world with FLIP0/FLIP1/KEEP actions -- USELESS for the arm, whose action set is
 {ENGAGE, RELEASE, HOLD} and whose observations are the encode_multimodal
 [0,1]^64 banded vector. This trainer reuses that file's architecture WHOLESALE (the _HJepa
@@ -59,9 +76,14 @@ does the learned ABSTRACT z1 (pooled over the window) decode the slow regime r b
     exactly what the GPU run measures.
 
 torch is imported LAZILY inside functions/main (module top imports stdlib json/math/os/tempfile
-only), so this file imports cleanly with no torch and ``python research/hjepa_arm_torch.py``
-exits 0 with a guidance banner. The nn.Module is defined INSIDE build_hjepa_arm() for the same
-reason. research/ is ruff-excluded and NOT in CI.
+only), so this file imports cleanly with no torch and ``python -m
+snn_data_lake.reasoning.hjepa_arm_torch`` exits 0 with a guidance banner. (Said ``python
+research/hjepa_arm_torch.py`` until 2026-08-05 -- no such file exists in a clone; the same stale
+command was also being PRINTED by the no-torch banner below.)
+The nn.Module is defined INSIDE build_hjepa_arm() for the same
+reason. (The claim "research/ is ruff-excluded and NOT in CI" was removed 2026-08-04: this file
+lives in reasoning/, which HAS been ruff-linted since 2026-07-28. Not in run_selfchecks, though --
+so nothing gates the measurement above, which is why it is written down here.)
 
 References:
   H-JEPA  -- LeCun, "A Path Towards Autonomous Machine Intelligence", 2022 (Hierarchical JEPA:
@@ -70,8 +92,8 @@ References:
   VICReg  -- Bardes, Ponce, LeCun, "VICReg: Variance-Invariance-Covariance Regularization for
              Self-Supervised Learning", ICLR 2022.
 
-Run (own venv, torch installed):  NORD_GPU=1 .venv-arm/Scripts/python research/hjepa_arm_torch.py
-Run (no torch):                   python research/hjepa_arm_torch.py  -> guidance, exit 0
+Run:  NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.hjepa_arm_torch
+CPU:  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.hjepa_arm_torch
 """
 
 import json
@@ -124,7 +146,7 @@ def build_hjepa_arm(
     tau=DEFAULT_TAU,
 ):
     """Build the 2-level nonlinear H-JEPA (arm action/obs dims). Architecture is REUSED wholesale
-    from research/hjepa_torch.py's _HJepa. torch/nn imported lazily; the nn.Module is defined
+    from reasoning/hjepa_torch.py's _HJepa. torch/nn imported lazily; the nn.Module is defined
     INSIDE so importing this file never requires torch."""
     import torch
     import torch.nn as nn
@@ -261,7 +283,9 @@ class ArmTwoTimescaleWorld:
         self.amp, self.audio_step, self.p_flip, self.noise = amp, audio_step, p_flip, noise
         self.centers = torch.linspace(0.0, 1.0, band, device=device)  # [band] band centers
         self.sigma = 1.5 / max(1, band - 1)  # RBF width ~ band spacing
-        # audio-band phase advance per arm action: CLOSE +step, OPEN -step, HOLD 0
+        # audio-band phase advance per arm action: ENGAGE +step, RELEASE -step, HOLD 0.
+        # (Said "CLOSE / OPEN" until 2026-08-04 -- neither is in ARM_ACTIONS, so the comment named
+        # commands the interpreter does not have; the ORDER it describes is correct.)
         self.eff_audio = torch.tensor([audio_step, -audio_step, 0.0], device=device)
         # running trajectory state for the contiguous coarse stream (next_coarse_batch)
         self.regime = (torch.rand(batch, generator=gen, device=device) < 0.5).float()  # r in {0,1}
@@ -495,7 +519,7 @@ def evaluate_abstract_vs_flat(model, world, n=DECODE_N):
 
 def export_hjepa_arm(model, path):
     """Dump BOTH levels' weights as an snn_hjepa/1 JSON artifact for the zero-dep core server
-    src/snn_data_lake/cerebellum/hjepa_serve.py. Layout matches research/hjepa_torch.export_hjepa:
+    src/snn_data_lake/cerebellum/hjepa_serve.py. Layout matches reasoning/hjepa_torch.export_hjepa:
     nn.Linear weights are [out][in] via .tolist() (no transpose); enc0/enc1/pred0/pred1 in
     application order, plus EMA targets. Keys are arm-native (in_dim=64, arm action sets, regime
     map). Returns the written dict."""
@@ -614,7 +638,7 @@ def main():
     except ImportError:
         print("=" * 72)
         print(
-            "ARM-NATIVE HIERARCHICAL H-JEPA TORCH TRAINER (research/, not CI) -- torch NOT installed"
+            "ARM-NATIVE HIERARCHICAL H-JEPA TORCH TRAINER (not in run_selfchecks) -- torch NOT installed"
         )
         print("=" * 72)
         print(
@@ -624,7 +648,10 @@ def main():
         print("space, so the exported snn_hjepa/1 artifact can be SERVED in the live arm brain.")
         print("Needs a GPU + torch to train and measure -- nothing to run without torch.")
         print("needs torch: pip install '.[gpu]'")
-        print("run on the RTX 5070: NORD_GPU=1 python research/hjepa_arm_torch.py")
+        print(
+            "run on the RTX 5070: NORD_GPU=1 PYTHONPATH=src python -m "
+            "snn_data_lake.reasoning.hjepa_arm_torch"
+        )
         print("")
         print("What the GPU run MEASURES ([GPU-VERIFY]): does the learned pooled abstraction z1")
         print("decode the SLOW arm regime r better than (i) the flat single-frame z0 and (ii) raw")
@@ -639,7 +666,7 @@ def main():
         print("Exiting cleanly (0).")
         return 0
 
-    from snn_data_lake.reasoning.torch_device import (
+    from snn_data_lake.substrate.device import (
         enable,
         resolve_device,
     )  # shared cpu/cuda selector
@@ -664,7 +691,7 @@ def main():
     export_hjepa_arm(model, export_path)
 
     print("=" * 72)
-    print("ARM-NATIVE HIERARCHICAL H-JEPA TORCH TRAINER -- 2-level nonlinear H-JEPA, UNVERIFIED")
+    print("ARM-NATIVE HIERARCHICAL H-JEPA TORCH TRAINER -- 2-level nonlinear H-JEPA")
     print("=" * 72)
     print(f"backend      : torch {torch.__version__}  device={device}  amp={is_cuda}")
     print(
@@ -706,6 +733,22 @@ def main():
     print(
         "[GPU-VERIFY]   pooling is a strong baseline (no XOR floor here). Not rigged -- report as-is."
     )
+    if not res["claim_beats_flat"]:
+        # P8 (d): report the null, and report it where a reader cannot miss it. This module has NO
+        # assert on its own primary claim and is not in run_selfchecks, so without this line it
+        # prints "False" once in a table and exits 0 -- indistinguishable from a pass.
+        print("[GPU-VERIFY]   *** NULL: the PRIMARY claim FAILED on this run. The learned pooled")
+        print(
+            f"[GPU-VERIFY]   *** abstraction (MSE {res['mse_hier']:.4f}) did NOT beat the flat single"
+        )
+        print(f"[GPU-VERIFY]   *** frame (MSE {res['mse_flat']:.4f}), and raw windowed averaging")
+        print(
+            f"[GPU-VERIFY]   *** (MSE {res['mse_raw']:.4f}) beat both. The pooling CAPACITY is present"
+        )
+        print(
+            "[GPU-VERIFY]   *** by construction; the SSL objective did not realise it. Not a crash,"
+        )
+        print("[GPU-VERIFY]   *** not a pass -- a measured null. See the docstring.")
     print("-" * 72)
     verify_transfer_hjepa(model, export_path)
     print("-" * 72)
@@ -714,12 +757,14 @@ def main():
         f"(in_dim=64, arm actions, enc0/enc1/pred0/pred1 + EMA targets; for cerebellum/hjepa_serve.py)"
     )
     print(
-        "NOTE: UNVERIFIED ON HARDWARE. The pooling capacity to beat a flat single frame is present"
+        "NOTE: the pooling capacity to beat a flat single frame is present by construction; whether"
     )
     print(
-        "by construction; whether the SSL objective (which never sees r) REALIZES it is what THIS"
+        "the SSL objective (which never sees r) REALIZES it is what the [GPU-VERIFY] block measures."
     )
-    print("GPU run measures (see [GPU-VERIFY]).")
+    print(
+        "Measured 2026-08-04 on torch-CPU at the shipped defaults: it did NOT -- see the docstring."
+    )
     return 0
 
 

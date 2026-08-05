@@ -222,37 +222,27 @@ class AttractorNet:
             scores.append(inside - outside)
         return scores.index(max(scores))
 
-    def accuracy(self, patterns, seed_base):
-        """Recall accuracy over TEST_TRIALS partial cues per pattern -- all trials in ONE array pass.
+    def _trials(self, patterns, seed_base):
+        """The (class index, cue set) trial list, in classify()'s own draw order.
 
-        WHY THIS IS BATCHED AND recall()/classify() ARE NOT
-            The trials are mutually independent (each gets a fresh neuron set and its own cue), so they
-            are the only genuine batch dimension in the brain. Measured: this is 720 of the 756
-            LIF steps on a sleep tick, ~49% of it. recall() and classify() stay scalar -- they are the
-            readable reference and the B=1 public API, and nothing calls them in a hot loop.
-
-        BIT-EXACTNESS IS THE CONTRACT, NOT CLOSENESS
-            Verified elementwise against the scalar path over 432 trials (trained + random weights x 6
-            seeds): identical final states, identical returned float. Three things make that hold, and
-            each will silently break it if edited carelessly:
-
-            1. The cue draws happen in the same order, with the same per-trial random.Random(seed).
-            2. The accumulation is k-OUTER, not `Z @ W.T`. It adds the same values in the same
-               ascending-k order the scalar loop does, so it is exact BY CONSTRUCTION. (Measured
-               aside: matmul happens to agree bit-for-bit here too, because the mean active count is
-               ~2 and there is nothing for reassociation to reorder -- but that is a property of the
-               current sparsity, not of the code. This form does not depend on it.)
-            3. The scoring stays in Python, including `scores.index(max(scores))`, so ties break
-               toward the first pattern exactly as classify() does.
-        """
-        import numpy as np
-
+        ONE definition, shared by the batched accuracy() below and by the equivalence check in
+        main(). Extracted 2026-08-04 so the two cannot silently disagree about WHICH cues they are
+        comparing -- a check that draws its own cues would pass whatever the fused path did."""
         ncue = max(1, int(K * CUE_FRAC))
-        trials = []  # (class index, cue set) in classify()'s own draw order
+        trials = []
         for ci, p in enumerate(patterns):
             for tr in range(TEST_TRIALS):
                 rng = random.Random(seed_base + ci * 97 + tr)
                 trials.append((ci, set(rng.sample(sorted(p), ncue))))
+        return trials
+
+    def _batch_states(self, trials):
+        """Run every trial's cue -> free-run in ONE array pass; return the (B, N) final firing state.
+
+        This is the fused twin of `recall()`, extracted from accuracy() so the equivalence between
+        them is CHECKABLE rather than merely asserted in prose (see main()). Every statement is the
+        transcription it always was; nothing about the arithmetic or its order changed."""
+        import numpy as np
 
         B = len(trials)
         W = np.array(self.W, dtype=np.float64)  # W[i][k] = weight into i from k
@@ -279,7 +269,52 @@ class AttractorNet:
             sp = v >= V_TH
             v = np.where(sp, 0.0, v)
             z = sp.astype(np.int64)
+        return z
 
+    def accuracy(self, patterns, seed_base):
+        """Recall accuracy over TEST_TRIALS partial cues per pattern -- all trials in ONE array pass.
+
+        WHY THIS IS BATCHED AND recall()/classify() ARE NOT
+            The trials are mutually independent (each gets a fresh neuron set and its own cue), so they
+            are the only genuine batch dimension in the brain. Measured: this is 720 of the 756
+            LIF steps on a sleep tick, ~49% of it. recall() and classify() stay scalar -- they are the
+            readable reference and the B=1 public API, and nothing calls them in a hot loop.
+
+        EQUIVALENCE WITH THE SCALAR PATH IS NOW CHECKED, NOT ONLY CLAIMED
+            This docstring used to assert "BIT-EXACTNESS IS THE CONTRACT" and cite a one-time
+            elementwise verification over 432 trials -- with no assertion anywhere in the tree
+            comparing the fused branch against the scalar one. That is the shape P8's incident table
+            names for `access_consciousness._coherence`: a bit-exactness claim resting on a prose
+            argument, in a module the sleep tick depends on. main() now compares
+            `_batch_states(...)` against `recall()` CELL BY CELL and records the input that makes it
+            fail.
+
+            Three things make the equivalence hold, and each will silently break it if edited
+            carelessly:
+
+            1. The cue draws happen in the same order, with the same per-trial random.Random(seed).
+            2. The accumulation is k-OUTER, not `Z @ W.T`. It adds the same values in the same
+               ascending-k order the scalar loop does, so it is exact BY CONSTRUCTION. (Measured
+               aside: matmul happens to agree bit-for-bit here too, because the mean active count is
+               ~2 and there is nothing for reassociation to reorder -- but that is a property of the
+               current sparsity, not of the code. This form does not depend on it.)
+            3. The scoring stays in Python, including `scores.index(max(scores))`, so ties break
+               toward the first pattern exactly as classify() does.
+
+            WHAT THE CHECK CERTIFIES, AND WHAT IT DOES NOT -- measured 2026-08-04, because a check
+            whose resolution is unstated is the next thing to go stale. At STATE resolution it goes
+            red on a transposed cue-seed formula (92 of 1,152 cells differ) and on a halved TAU_M
+            (45 of 1,152), so it genuinely certifies points 1 and 3 and the transcription of the
+            dynamics. It does NOT resolve a last bit: a 1e-9 relative perturbation of the decay, and
+            swapping the k-outer accumulation for `Z @ W.T`, both leave the states IDENTICAL. And
+            the same comparison at ACCURACY resolution is worthless -- the returned float is
+            unmoved by the transposed cue order AND by the halved TAU_M, so an
+            `accuracy() == scalar_accuracy()` assert would have had no reachable red at all and was
+            deliberately NOT written (P8/F11: a criterion that cannot go red is deleted, not
+            shipped). Point 2 therefore remains a structural argument, and is labelled as one.
+        """
+        trials = self._trials(patterns, seed_base)
+        z = self._batch_states(trials)
         correct = 0
         for b, (ci, _) in enumerate(trials):
             st = z[b]
@@ -289,7 +324,7 @@ class AttractorNet:
                 outside = sum(int(st[i]) for i in range(N) if i not in q) / (N - len(q))
                 scores.append(inside - outside)
             correct += 1 if scores.index(max(scores)) == ci else 0
-        return correct / B
+        return correct / len(trials)
 
     def sleep(self, seed, episodes=SLEEP_EPISODES, learn=True, record=None):
         """Noise-driven spontaneous replay. Each episode: reset, seed a couple of neurons, run
@@ -516,6 +551,54 @@ def main():
     )
     assert post >= pre - 0.10, (
         "pruning the WEAKEST synapses must not degrade recall of a strong assembly (energy saved, memory kept)"
+    )
+
+    # ---- FUSED vs SCALAR: the equivalence accuracy() rests on, CHECKED (P8) --------------------
+    # accuracy() runs every trial in one array pass; recall() is the readable scalar reference the
+    # whole module is written against. Until 2026-08-04 the claim that they agree lived only in a
+    # docstring. Compared here CELL BY CELL over 48 trials x 24 neurons, with the red recorded.
+    # BOTH weight regimes, because the retired docstring's one-time verification covered "trained +
+    # random weights x 6 seeds" and a check that only ever sees a trained net silently narrows that:
+    # the k-outer-vs-matmul argument (property 2) is about SPARSITY, and an untrained net is the
+    # denser regime. Measured 2026-08-04b over 12 seeds x {trained, random} = 24 configs, 27,648
+    # cells: zero mismatches, so the two nets kept here are a representative pair, not a lucky one.
+    eq = AttractorNet(0)
+    for _p in (P_A0, P_A1):
+        eq.store(_p, STORE_REPS_A)
+    untrained = AttractorNet(1)  # random weights, never stored into -> the denser activity regime
+    eq_trials = eq._trials(PATTERNS, 100)
+    fused_rows = [[int(x) for x in row] for row in eq._batch_states(eq_trials)]
+    scalar_rows = [eq.recall(c) for _ci, c in eq_trials]
+    un_trials = untrained._trials(PATTERNS, 314)
+    un_fused = [[int(x) for x in row] for row in untrained._batch_states(un_trials)]
+    un_scalar = [untrained.recall(c) for _ci, c in un_trials]
+    assert fused_rows == scalar_rows, (
+        "the batched accuracy() path must land on the SAME final firing state as the scalar recall() "
+        "it replaces, for every trial"
+    )
+    assert un_fused == un_scalar, (
+        "fused == scalar must also hold on UNTRAINED (random) weights -- the denser regime, where the "
+        "k-outer accumulation order is the thing actually being relied on"
+    )
+    # REACHABLE RED, constructed and run: transpose the per-trial cue-seed formula (property 1 in
+    # accuracy()'s docstring) and the states diverge. Measured: 92 of 1,152 cells. This is what makes
+    # the assert above a measurement rather than a restatement.
+    _ncue = max(1, int(K * CUE_FRAC))
+    red_trials = [
+        (ci, set(random.Random(100 + tr * 97 + ci).sample(sorted(p), _ncue)))
+        for ci, p in enumerate(PATTERNS)
+        for tr in range(TEST_TRIALS)
+    ]
+    red_rows = [[int(x) for x in row] for row in eq._batch_states(red_trials)]
+    n_red = sum(1 for a, b in zip(red_rows, scalar_rows) for x, y in zip(a, b) if x != y)
+    assert n_red > 0, (
+        "the fused-vs-scalar check must be able to FAIL: a wrong cue-seed order left the states "
+        "identical, so the assert above certifies nothing"
+    )
+    print(
+        f"  fused==scalar: {len(fused_rows) + len(un_fused)} trials x {N} cells identical between "
+        f"the batched accuracy() path and scalar recall(), on TRAINED and on UNTRAINED weights; "
+        f"red reachable ({n_red} cells differ under a transposed cue-seed order)"
     )
 
     assert identical, "determinism: same seed must reproduce the result byte-identically"

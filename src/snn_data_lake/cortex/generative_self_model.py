@@ -170,8 +170,7 @@ def _rotation_trajectory(n_cycles, dim):
 
 
 def main():
-    import sys
-
+    # (`import sys` lived here only to feed the retired sys.modules purity boast at claim 5.)
     dim = 4
     lines = []
 
@@ -265,10 +264,18 @@ def main():
 
     # (5) SPIKING + NO BPTT + NON-NEGATIVE. --------------------------------------
     all_nonneg = all(s >= 0.0 for s in surprises + [s_novel])
-    no_tensors = "numpy" not in sys.modules and "torch" not in sys.modules
+    # RETIRED 2026-08-04 (P7), following the same correction vsa_reasoning.py made to its own copy:
+    #     no_tensors = "numpy" not in sys.modules and "torch" not in sys.modules
+    # was COMPUTED and PRINTED as a claim and never asserted. It is P7 residue twice over -- the
+    # zero-dependency rule it descends from was abolished project-wide in 2026-07, and numpy is now
+    # an unconditional core dependency -- and it was not even a claim about this module: sys.modules
+    # is PROCESS-wide, so the line reads True or False according to what ran before it in the same
+    # interpreter. Under run_selfchecks' in-process runpy path it would simply have printed False.
+    # What is worth checking here is that self_surprise is a settled SPIKE RATE, which the
+    # non-negativity assert below states directly.
     emit("-" * 78)
     emit("(5) SPIKING SELF-SURPRISE + NO BPTT")
-    emit(f"    every self_surprise >= 0: {all_nonneg}; numpy/torch absent: {no_tensors}")
+    emit(f"    every self_surprise >= 0: {all_nonneg}")
     assert all_nonneg, "self_surprise must be a non-negative scalar (it is a settled spike rate)"
 
     emit("=" * 78)

@@ -19,6 +19,8 @@ measuring device never rides along with a change to the thing measured.
 **Primary Dependencies**: numpy, torch (both unconditional core deps). No new dependency is added
 by this feature — net-new dependency count for this project stays zero.
 
+> **P7 VOID (annotated 2026-08-04).** The sentence above certifies "no new dependency" as a constitution check. **That is not a criterion under P7** (`docs/POLICIES.md`), which states that *"it would be another dependency" is NOT a valid reason to reject anything* and requires a rejection to cite a measurement on the real workload or a structural argument. No library was evaluated here, so the check scored nothing. Left in place rather than deleted because this file records a decision that was made; annotated because P7 names these certifications as live residue of the zero-dependency rule abolished 2026-07-20. `specs/010/plan.md` is the first plan to decline the certification on purpose.
+
 **Storage**: the one durable lake (`<NORD_HOME>/brain_lake.bin`). Every measurement here points
 `NORD_HOME` at a temp dir; the operator's live lake is never written.
 
@@ -60,6 +62,8 @@ artifact header, because at least one finding is tier-dependent.
 
 **Post-Phase-1 re-check**: unchanged. The design adds no new module, no new dependency, and no new
 mechanism beside an existing one.
+
+> **P7 VOID (annotated 2026-08-04).** The sentence above certifies "no new dependency" as a constitution check. **That is not a criterion under P7** (`docs/POLICIES.md`), which states that *"it would be another dependency" is NOT a valid reason to reject anything* and requires a rejection to cite a measurement on the real workload or a structural argument. No library was evaluated here, so the check scored nothing. Left in place rather than deleted because this file records a decision that was made; annotated because P7 names these certifications as live residue of the zero-dependency rule abolished 2026-07-20. `specs/010/plan.md` is the first plan to decline the certification on purpose.
 
 ## Project Structure
 

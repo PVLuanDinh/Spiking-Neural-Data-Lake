@@ -39,7 +39,9 @@ no rewrite): bcm_plasticity.BCMNeuron (theta as the metaplastic threshold), inhi
 (the Vogels E/I controller), benna_fusi.BennaFusiSynapse (the coupled-beaker cascade). The base sandwich is
 inherited unchanged.
 
-HONESTY / SAFETY. stdlib + numpy/torch allowed project-wide (all reused rules happen to be stdlib).
+HONESTY / SAFETY. Dependencies are governed by P7: numpy/torch/mujoco are unconditional core deps and any
+tier may import them freely. This module happens to need none, which is a fact about the arithmetic rather
+than a property to advertise.
 OPT-IN: the learner takes the stack as an injected duck-typed object; with
 no stack (the default) the R-STDP path is BYTE-IDENTICAL to today, and attaching this one changes nothing
 until it is enabled. It stabilizes/consolidates PLASTICITY only and adds NO actuator route (the intent-
@@ -566,7 +568,6 @@ def _equivalence_and_determinism_selfcheck():
 
     equivalent = off_w == base_w and off_g == base_g
     deterministic = on1_w == on2_w
-    reuse_ok = True
     r = PlasticityRuleStack(1, seed=seed)
     r.stabilize(0, [0.3] * n_in, activity)  # size the lazy structures
     reuse_ok = (
@@ -574,10 +575,10 @@ def _equivalence_and_determinism_selfcheck():
         and isinstance(r._ei._ctrl[0], InhibitorySTDP)
         and isinstance(r._cons._cas[0][0], BennaFusiSynapse)
     )
-    import sys
-
-    stdlib_ok = "numpy" not in sys.modules and "torch" not in sys.modules
-
+    # A `"numpy" not in sys.modules` purity report used to be computed and printed here. REMOVED
+    # 2026-08-04 under P7 (stdlib-purity residue is itself the defect). It was also not a property
+    # of this self-check: `sys.modules` is process-global, so it printed True standalone and False
+    # under any in-process runner that had already imported numpy.
     print()
     print("=" * 78)
     print("DROP-IN EQUIVALENCE + DETERMINISM + REUSE")
@@ -587,7 +588,6 @@ def _equivalence_and_determinism_selfcheck():
     )
     print(f"extras ON deterministic (same seed -> identical trajectory): {deterministic}")
     print(f"reuses real modules (BCMNeuron / InhibitorySTDP / BennaFusiSynapse): {reuse_ok}")
-    print(f"numpy / torch not imported in this self-check: {stdlib_ok}")
     print("=" * 78)
 
     assert equivalent, "with all extras OFF the superset must be byte-identical to the base stack"

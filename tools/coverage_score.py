@@ -773,6 +773,16 @@ def main(argv):
     )
     evdir = os.path.abspath(_opt(argv, "--evidence") or os.path.join(root, "docs", "coverage"))
     if "record" in argv:
+        if "--" not in argv:
+            # `record` with no `--` used to raise a bare `ValueError: '--' is not in list` out of
+            # argv.index. Everything else in this CLI refuses with a named reason and exit 2 (see
+            # _unknown_arg and the bare --rerun guard); one path escaping as a traceback is the
+            # inconsistency, not the crash. The command to run IS the artifact's provenance, so
+            # there is nothing sensible to default to.
+            print("record needs the probe command after `--`, e.g.")
+            print("  coverage_score.py record --name drive_60 -- tools/charge_probe.py drive 60")
+            print(_USAGE)
+            return 2
         i = argv.index("--")
         return record(
             root,

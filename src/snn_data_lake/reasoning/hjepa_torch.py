@@ -1,10 +1,23 @@
 r"""Hierarchical (2-level) nonlinear H-JEPA (PyTorch trainer) -- designed to BEAT flat.
 
-**UNVERIFIED ON HARDWARE -- run on the RTX 5070 to measure whether the hierarchy beats
-flat.** There is no GPU/torch in the environment this file was written in, so NOTHING below
-was executed end-to-end here. Every torch-specific behaviour is flagged ``# VERIFY(torch):``.
-No loss/accuracy/MSE numbers are hard-coded anywhere -- the banner prints only values a real
-run computed. Target: the user's RTX 5070 (``NORD_GPU=1 python research/hjepa_torch.py``).
+**RUN 2026-08-04 AND BOTH CLAIMS HOLD.** The "UNVERIFIED ON HARDWARE / there is no GPU/torch in
+the environment this file was written in, so NOTHING below was executed" banner that stood here was
+STALE -- torch is an unconditional core dependency now. Executed on torch 2.13.0+cpu, device=cpu,
+at the shipped defaults (400 steps):
+
+    claim (a)  learned L1 abstract XOR-regime decode MSE = 0.0000
+               flat linear pooled-obs                MSE = 0.2576
+               raw windowed averaging                MSE = 0.2502   (linear-additive floor 0.25)
+               -> HOLDS: L1 beats BOTH, and both baselines sit at their provable floor.
+    claim (b)  L1 coarse-roll  (6 coarse steps) regime MSE = 0.0215
+               L0 fine-roll   (48 fine ticks)   regime MSE = 0.4375
+               -> HOLDS.
+
+Both are now ASSERTED in main() rather than printed as booleans and discarded; until 2026-08-04
+`res["claim_a"]` and `res["claim_b"]` were computed, printed, and never checked, so this module
+exited 0 whether they held or not. The GPU (RTX 5070) run has NOT been done; the above is CPU.
+Every torch-specific behaviour is still flagged ``# VERIFY(torch):`` and no loss/MSE number is
+hard-coded in the code path -- the banner prints only values a real run computed.
 
 Honest starting point (the negative result this file answers, not repeats). A minimal
 2-level *LINEAR* H-JEPA (once in the zero-dep core, now removed) did NOT beat flat baselines,
@@ -48,10 +61,16 @@ Method (I-JEPA / V-JEPA in a two-timescale action setting):
     (variance hinge gamma=1 + off-diagonal covariance). Standard autograd; optional AMP on CUDA.
 
 torch is imported LAZILY inside the functions/main (never at module top), so this file imports
-cleanly with no torch and ``python research/hjepa_torch.py`` exits 0 with a guidance banner.
-The nn.Module is defined inside build_hjepa() for the same reason. research/ is ruff-excluded
-and NOT in CI; this is a trainer, not a shipped core module -- the core serves single-level
-snn_jepa/1,2 only, so no core loader is required for the snn_hjepa/1 artifact export below.
+cleanly with no torch and ``python -m snn_data_lake.reasoning.hjepa_torch`` exits 0 with a guidance
+banner. (This said ``python research/hjepa_torch.py`` until 2026-08-05 -- the module moved to
+``reasoning/`` in v3.78 and there is no such file in a clone, so it was a run command a reader
+could not run. Two more of the same, one of them PRINTED by the no-torch banner below, were fixed
+in the same pass.)
+The nn.Module is defined inside build_hjepa() for the same reason. This is a trainer, not a shipped
+core module -- the core serves single-level snn_jepa/1,2 only, so no core loader is required for the
+snn_hjepa/1 artifact export below. (The claim "research/ is ruff-excluded and NOT in CI" was removed
+2026-08-04: this file is in reasoning/, ruff-linted since 2026-07-28. It is genuinely not in
+run_selfchecks, so nothing gates the asserts below -- run it directly.)
 
 NOTE ON AirLLM: deliberately NOT used. AirLLM is disk-streaming INFERENCE for VRAM-too-big
 LLMs; it has no training path and would only slow a compute-bound H-JEPA. The only performance
@@ -65,8 +84,8 @@ References:
   VICReg  -- Bardes, Ponce, LeCun, "VICReg: Variance-Invariance-Covariance Regularization
              for Self-Supervised Learning", ICLR 2022.
 
-Run (own venv, torch installed):  NORD_GPU=1 .venv-arm/Scripts/python research/hjepa_torch.py
-Run (no torch):                   python research/hjepa_torch.py  -> guidance, exit 0
+Run:  NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.hjepa_torch
+CPU:  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.hjepa_torch
 """
 
 import json
@@ -556,12 +575,15 @@ def main():
         import torch
     except ImportError:
         print("=" * 72)
-        print("HIERARCHICAL H-JEPA TORCH TRAINER (research/, not CI) -- torch NOT installed")
+        print("HIERARCHICAL H-JEPA TORCH TRAINER (not in run_selfchecks) -- torch NOT installed")
         print("=" * 72)
         print("A 2-level NONLINEAR H-JEPA (LeCun 2022 H-JEPA / V-JEPA 2024 / VICReg 2022).")
         print("Needs a GPU + torch to train and measure -- nothing to run without torch.")
         print("needs torch: pip install '.[gpu]'")
-        print("run on the RTX 5070: NORD_GPU=1 python research/hjepa_torch.py")
+        print(
+            "run on the RTX 5070: NORD_GPU=1 PYTHONPATH=src python -m "
+            "snn_data_lake.reasoning.hjepa_torch"
+        )
         print("")
         print("Two claims this file MEASURES on the GPU (the minimal LINEAR H-JEPA FAILED BOTH):")
         print("  (a) the learned nonlinear L1 abstract latent decodes the XOR regime BETTER than")
@@ -598,7 +620,7 @@ def main():
     import os
     import tempfile
 
-    from snn_data_lake.reasoning.torch_device import (
+    from snn_data_lake.substrate.device import (
         enable,
         resolve_device,
     )  # shared cpu/cuda selector
@@ -625,7 +647,7 @@ def main():
     )  # called for the export side effect; the returned blob is unused
 
     print("=" * 72)
-    print("HIERARCHICAL H-JEPA TORCH TRAINER -- 2-level nonlinear H-JEPA, UNVERIFIED")
+    print("HIERARCHICAL H-JEPA TORCH TRAINER -- 2-level nonlinear H-JEPA")
     print("=" * 72)
     print(f"backend      : torch {torch.__version__}  device={device}  amp={is_cuda}")
     print(
@@ -661,14 +683,49 @@ def main():
     )
     print(f"[GPU-VERIFY]   claim (b) HOLDS (L1 coarse-roll beats L0 fine-roll): {res['claim_b']}")
     print("-" * 72)
+
+    # ---- self-check. Until 2026-08-04 claim_a / claim_b / finite were computed, printed and then
+    # DISCARDED, so this module exited 0 with its own headline claims reading False.
+    #
+    # REACHABLE REDS, CONSTRUCTED AND RUN 2026-08-05 -- and one half of what stood here was wrong.
+    # This comment said "a collapsed OR untrained encoder leaves the L1 readout at the
+    # linear-additive XOR floor (0.25), which fails (a)". Measured:
+    #   * COLLAPSED L1 encoder (encode1 -> a constant vector): mse_hier 0.2504 vs flat 0.2541 and
+    #     raw 0.2504 -- claim (a) FAILS. The stated red is real. [verified]
+    #   * UNTRAINED twin (DEFAULT_STEPS = 1): mse_hier 0.0326 vs flat 0.2516 and raw 0.2502 --
+    #     claim (a) still HOLDS. The stated red is FALSE for this half. [refuted]
+    # The refutation is the more useful result and is disclosed here rather than quietly dropped
+    # (P8 guard 4): claim (a) is satisfied by a RANDOM nonlinear encoder, so what it measures is
+    # that the readout path is NONLINEAR -- the XOR floor of 0.25 binds a linear readout and not a
+    # random 2-hidden-layer one. It is NOT evidence about what the SSL objective learned. Claim (b)
+    # is the criterion that discriminates training: the same 1-step twin fails it outright
+    # (coarse-roll 33.4925 vs fine-roll 7.9793). Both asserts are kept -- each has a red that was
+    # run -- but (a) must be read as the weaker of the two. ----
+    assert res["finite"], f"non-finite decode MSE -- the measurement is meaningless: {res}"
+    assert res["claim_a"], (
+        f"claim (a) FAILED: the learned L1 abstraction (MSE {res['mse_hier']:.4f}) must beat BOTH "
+        f"the flat linear pooled-obs readout ({res['mse_flat']:.4f}) and raw windowed averaging "
+        f"({res['mse_raw']:.4f}) on the XOR regime -- the linear-additive floor is "
+        f"{XOR_LINEAR_FLOOR:.2f}, so a baseline at the floor means the abstraction is trivial"
+    )
+    assert res["claim_b"], (
+        f"claim (b) FAILED: the L1 coarse-roll over {res['h']} coarse steps (MSE "
+        f"{res['mse_l1_roll']:.4f}) must beat the L0 fine-roll over the same {res['fine_ticks']} "
+        f"fine ticks ({res['mse_l0_roll']:.4f}) -- otherwise the predictors saturated, which is the "
+        f"exact failure mode of the linear H-JEPA this file replaces"
+    )
+    print(
+        f"self-check OK: claim (a) HOLDS (L1 {res['mse_hier']:.4f} < flat {res['mse_flat']:.4f} and "
+        f"< raw {res['mse_raw']:.4f}); claim (b) HOLDS (coarse-roll {res['mse_l1_roll']:.4f} < "
+        f"fine-roll {res['mse_l0_roll']:.4f})."
+    )
+    print("-" * 72)
     print(
         f"exported     : {HJEPA_FORMAT} -> {export_path} "
         f"(enc0/enc1/pred0/pred1 + EMA targets; research artifact, no core loader)"
     )
-    print("NOTE: UNVERIFIED ON HARDWARE. Capacity to beat flat is present by construction; whether")
-    print(
-        "the SSL objective REALIZES both claims is what THIS GPU run measures (see [GPU-VERIFY])."
-    )
+    print("NOTE: capacity to beat flat is present by construction; whether the SSL objective")
+    print("REALIZES both claims is what the run measures, and both are now ASSERTED above.")
     return 0
 
 

@@ -8,9 +8,25 @@ WHAT THIS IS (honest framing, read before believing any "self-modifying brain" c
   mutates the real tree, NEVER touches the safety envelope or the verifier, and NEVER applies anything
   live -- turning a proposal into a real commit is a SEPARATE, human-gated step the main agent owns.
 
-WHAT THIS IS NOT: it is not wired into any tick/sleep/loop; it does not auto-run; it is not an
-  intelligence explosion. It is inert by default and, even when enabled, is bounded by the gate + the
-  fixed protected set + the fact that it only ever writes into a temp sandbox.
+WHERE IT IS WIRED (corrected 2026-08-04. The previous text here read "it is not wired into any
+  tick/sleep/loop; it does not auto-run", and that was FALSE -- AUDIT_BACKLOG M44):
+    cortex/brain.py::_enter_wake -> _maybe_autonomous_self_build   (brain.py:2784)
+      -> SelfBuildLoop(enable=True, gate_fn=_gate).run(props)      (brain.py:2823)
+      -> SelfBuildLoop.harness -> SelfModHarness(enable=True)      (self_build_loop.py, in `harness`)
+      -> SelfModHarness.propose(...)                               (self_build_loop.py, in `promote`)
+    (Citations here name the enclosing SYMBOL, not a line number. The two that used to sit here --
+     ":70" and ":129" -- were wrong when written: :70 was the closing paren of SELF_BUILD_LOOP_REL
+     and :129 was `def _is_enabled`. They were introduced by the very edit whose stated purpose was
+     correcting false documentation, and they drifted again during the 2026-08-04 promotion work.
+     `tools/citation_guard.py` does not catch this class -- it gates untracked citations, not stale
+     line numbers -- so a symbol name is the honest granularity for a hand-maintained reference.)
+  It IS constructed and driven on the live sleep path, once every SELFBUILD_EVERY=8 nights
+  (brain.py:89) -- but ONLY when the operator has set NORD_SELFMOD=1 (learn_daemon.bat:14 sets it;
+  with it unset _maybe_autonomous_self_build returns before this module is even imported). What is
+  still true is the BOUND, not the inertness: even auto-running, it only ever writes into a temp
+  sandbox and hands back a proposal. Applying one to the real tree is SelfBuildLoop.promote()'s
+  separate step, gated the same way and rolled back byte-exact on any gate failure. Not an
+  intelligence explosion -- a bounded proposer that a human switched on.
 
 DOUBLE OFF-SWITCH (both required before it will ever attempt anything):
   1. constructor argument   enable=True
@@ -36,16 +52,33 @@ THE PROTECTED SET it enforces (the exact immutable files -- a rewrite may touch 
   godel_machine._SAFETY_KERNEL  = the 5 brainstem arm-safety files (so101_arm replaced the
                                 incoming gate, protected before it goes live)
                                     (reflex.py, serial_arm.py, so101_arm.py, arm_config.py, interpreter.py)
-                                  + run_selfchecks.py + reasoning/godel_machine.py
-  PLUS reasoning/self_improve.py  (the bounded-self-improvement verifier)
-  PLUS reasoning/self_mod_harness.py  (this proposer itself)
+                                  + run_selfchecks.py + godel_machine.py
+  PLUS self_improve.py  (the bounded-self-improvement verifier)  -- path DERIVED from the module
+  PLUS THIS FILE        (the proposer protects itself)           -- path DERIVED from __file__
   = 9 files total. None is ever a legal target; touching any (even as a side effect) fails the gate.
 
-Deps: stdlib (os, re, shutil, subprocess, sys, tempfile, zlib, random) + the sibling modules
-  reasoning/godel_machine.py (for _SAFETY_KERNEL) and reasoning/self_improve.py (SelfImprover, Change).
-  REPRESENTATION-ONLY: imports nothing from brainstem, no actuator route.
+  THE LAST TWO ARE DERIVED, NOT WRITTEN DOWN, and that is the point. A protected entry is a STRING.
+  A firewall that hardcodes its own location stops protecting the instant the file moves: the entry
+  goes on naming a path that no longer exists, the live file is unguarded, and every membership
+  assertion about it still passes. It fails GREEN. Deriving the two self-referential paths means a
+  move cannot break the firewall quietly, and the self-check additionally asserts that EVERY protected
+  path RESOLVES to a real file -- so a stale entry anywhere, including inside the imported
+  _SAFETY_KERNEL, is RED. Repo root is likewise anchored on markers, never counted in "../.." levels.
 
-  PYTHONPATH=src python -m snn_data_lake.reasoning.self_mod_harness   # the DISABLED-by-default self-check
+DEPENDENCIES (P7 -- the zero-dependency rule was abolished 2026-07-20): this module is stdlib-only ON
+  THE MERITS, not out of purity. It spawns subprocesses, copies a directory tree and checksums files;
+  there is no array, no vector demoted per sample, no numeric kernel anywhere in it, so numpy/torch
+  would buy nothing measurable and would add import cost to the module the safety firewall runs on.
+  The former "Deps: stdlib (os, re, shutil, ...)" line is DELETED rather than the code: it advertised
+  a retired rule as a virtue, which is the compromise P7 actually names here.
+  Sibling imports: godel_machine (_SAFETY_KERNEL) and self_improve (SelfImprover, Change).
+  REPRESENTATION-ONLY: imports nothing from brainstem, no actuator route. P4b: no second durable store
+  -- the sandbox gate runs with NORD_HOME pointed at a throwaway temp dir, so brain_lake.bin is never
+  opened, read or written by anything here. E-PROP: no .backward(), no BPTT, no backprop, and this
+  module sits on no learning path at all -- it gates source edits, it does not update a weight.
+
+  The self-check prints this module's own dotted path and its own repo-relative path; run it with
+    PYTHONPATH=src python -m <that dotted path>          # the DISABLED-by-default self-check
 """
 
 import os
@@ -57,16 +90,77 @@ import tempfile
 import zlib
 from random import Random
 
+from snn_data_lake.reasoning import self_improve as _self_improve_mod
 from snn_data_lake.reasoning.godel_machine import _SAFETY_KERNEL
 from snn_data_lake.reasoning.self_improve import Change, SelfImprover
 
-# extra immutable files beyond godel_machine's arm-safety kernel: the bounded-improvement verifier and
+# Markers that identify the repo root WITHOUT counting directory levels. Counting ("../../..") is only
+# correct while this file sits at src/snn_data_lake/<region>/, which is precisely the assumption a move
+# invalidates -- and _repo_root() is exported to three other modules, so a silently wrong root there is
+# a silently wrong protected set here.
+_ROOT_MARKERS = ("run_selfchecks.py", "src")
+
+
+def _repo_root():
+    """The repo root, ANCHORED rather than counted: walk up from this file until a directory holding
+    every marker in _ROOT_MARKERS is found. Falls back to <this file>/../../.. (the historical
+    src/snn_data_lake/<region>/ layout) for an installed copy that has no run_selfchecks.py beside it."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    d = here
+    for _ in range(6):
+        if all(os.path.exists(os.path.join(d, m)) for m in _ROOT_MARKERS):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return os.path.abspath(os.path.join(here, "..", "..", ".."))
+
+
+def _rel_to_repo(path, repo=None):
+    """A path -> the repo-relative POSIX form the protected/whitelist entries are written in.
+
+    Returns the ABSOLUTE posix path instead when `path` is not under `repo`. Two reasons, both found by
+    staging the move rather than by reading: on Windows os.path.relpath RAISES ValueError across drive
+    letters, and this function now runs at IMPORT time to build _EXTRA_PROTECTED -- an import-time raise
+    in the module three others import would take the whole self-build avenue down. A "../.." result is
+    equally useless as a protected/whitelist key. Either way an out-of-repo target matches no whitelist
+    entry and is REJECTED, which is the same verdict the pre-derivation code reached."""
+    p = os.path.abspath(path)
+    try:
+        rel = os.path.relpath(p, repo or _repo_root())
+    except ValueError:
+        return p.replace(os.sep, "/")
+    return p.replace(os.sep, "/") if rel.startswith(os.pardir) else rel.replace(os.sep, "/")
+
+
+# Extra immutable files beyond godel_machine's arm-safety kernel: the bounded-improvement verifier and
 # THIS proposer. Together with _SAFETY_KERNEL these form the exact protected set enforced below.
+# BOTH ARE DERIVED from the modules themselves -- never spelled out. See the module docstring: a
+# self-referential firewall that hardcodes its own path keeps guarding the old location after a move,
+# leaves the live file unguarded, and passes every assert while doing it.
 _EXTRA_PROTECTED = (
-    "src/snn_data_lake/reasoning/self_improve.py",
-    "src/snn_data_lake/reasoning/self_mod_harness.py",
+    _rel_to_repo(_self_improve_mod.__file__),
+    _rel_to_repo(__file__),
 )
+_SELF_REL = _EXTRA_PROTECTED[-1]  # this file, repo-relative: the entry a move would have staled
 _PROTECTED = tuple(dict.fromkeys((*_SAFETY_KERNEL, *_EXTRA_PROTECTED)))  # de-duped, order-stable
+
+# The tier whose modules are legal REWRITE TARGETS. It names what may be rewritten, not where the
+# rewriter lives, so it stays the reasoning/ tier wherever this module is filed.
+_TARGET_TIER = "src/snn_data_lake/reasoning"
+
+# --- P1 declaration for the three constants that arbitrate this module's behaviour ---------------
+# All three are BOUNDS ON THE SELF-REWRITE LOOP, not cognitive parameters, and they take P1's FOURTH
+# documented exception by its own reasoning (POLICIES.md: "a reflex threshold that drifts with a
+# running baseline is a reflex that can be trained away, and the whole point of the envelope is that
+# it cannot"). This module is the thing that rewrites the brain: an attempt budget the brain could
+# learn upward is the runaway bound trained away, and a gate timeout it could learn upward is a hang.
+# They are fixed BY DESIGN, and are named here rather than carried silently across the tier boundary.
+_MAX_ATTEMPTS = 8  # per-instance cap on candidate edits -- the runaway bound
+_GATE_TIMEOUT_S = 900  # hard wall on ONE sandbox gate subprocess -- a hung gate must not hang us
+_RUFF_PROBE_TIMEOUT_S = 60  # hard wall on the `import ruff` probe (kept separate so it cannot mask)
+# seed=0 below is DETERMINISM, not behaviour: the RNG only picks the sandbox directory's name.
 
 # heavy / irrelevant trees skipped when copying the real repo into a sandbox (the self-checks are
 # hermetic, so none of these is needed to run the gate). A tiny hermetic test repo matches none of them.
@@ -95,17 +189,11 @@ _COPY_IGNORE = shutil.ignore_patterns(
 _PASS_RE = re.compile(r"(\d+)\s*/\s*\d+\s+self-checks passed")  # run_selfchecks.py's summary line
 
 
-def _repo_root():
-    # self_mod_harness.py -> reasoning -> snn_data_lake -> src -> REPO ROOT
-    here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.abspath(os.path.join(here, "..", "..", ".."))
-
-
 def _rel(repo, target):
     """Normalize `target` (absolute OR repo-relative) to a repo-relative POSIX path, matching the way
     the protected/whitelist entries are written."""
     t = target if os.path.isabs(target) else os.path.join(repo, target)
-    return os.path.relpath(t, repo).replace(os.sep, "/")
+    return _rel_to_repo(t, repo)
 
 
 def _crc_map(root, rels):
@@ -136,8 +224,8 @@ class SelfModHarness:
         repo=None,
         protected=None,
         sandbox_root=None,
-        max_attempts=8,
-        timeout=900,
+        max_attempts=_MAX_ATTEMPTS,
+        timeout=_GATE_TIMEOUT_S,
         require_improvement=False,
         require_ruff=True,
     ):
@@ -163,17 +251,23 @@ class SelfModHarness:
     # -------------------------------------------------------------------- configuration helpers ----
 
     def _default_whitelist(self):
-        """Auto-build the candidate set: every reasoning/ module EXCEPT the verifier / self-improvement
-        machinery and anything in the protected set. Read-only scan; returns () on any failure."""
-        base = "src/snn_data_lake/reasoning"
-        never = {"self_improve.py", "godel_machine.py", "self_mod_harness.py", "__init__.py"}
+        """Auto-build the candidate set: every module in the candidate tier EXCEPT the verifier /
+        self-improvement machinery and anything protected. Read-only scan; returns () on any failure.
+
+        The former hand-listed exclusion set ({self_improve.py, godel_machine.py, self_mod_harness.py})
+        is gone: those three are already IN the module-level _PROTECTED, which is now derived, so the
+        filter below excludes them by path without a second list of filenames that a move would have
+        made stale while leaving this scan silently green. _PROTECTED is checked ALONGSIDE the
+        (overridable) self._protected deliberately -- a caller passing a narrower `protected=` must not
+        be able to widen the auto-whitelist onto the verifier or onto this proposer itself."""
+        base = _TARGET_TIER
         try:
             d = os.path.join(self._repo, *base.split("/"))
             wl = []
             for f in sorted(os.listdir(d)):
-                if f.endswith(".py") and f not in never:
+                if f.endswith(".py") and f != "__init__.py":
                     rel = base + "/" + f
-                    if rel not in self._protected:
+                    if rel not in self._protected and rel not in _PROTECTED:
                         wl.append(rel)
             return tuple(wl)
         except OSError:
@@ -245,7 +339,7 @@ class SelfModHarness:
                 cwd=path,
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=_RUFF_PROBE_TIMEOUT_S,
             )
             if probe.returncode != 0:
                 return True  # ruff absent in this env -> selfchecks still gate
@@ -467,6 +561,10 @@ def _build_tiny_repo(root):
 def main():
     _emit("=" * 96)
     _emit("SELF-MOD HARNESS -- DISABLED-by-default, sandboxed, verifier-gated PROPOSER (Wave 4B)")
+    # printed, not written down: after any move these two lines are the run command and the firewall
+    # entry, with no docstring left to go stale.
+    _emit(f"module   : {__spec__.name if __spec__ else __name__}")
+    _emit(f"self-path: {_SELF_REL}   (DERIVED from __file__, not hardcoded)")
     _emit("=" * 96)
 
     repo = _repo_root()
@@ -564,9 +662,10 @@ def main():
         assert r_ok["sandbox"] and os.path.isdir(r_ok["sandbox"]), (
             "accepted proposal keeps its sandbox for review"
         )
-        assert r_ok["sandbox"] != tiny and os.path.abspath(r_ok["sandbox"]) != os.path.abspath(
-            tiny
-        ), "sandbox is a COPY"
+        # P8: this was `r_ok["sandbox"] != tiny and os.path.abspath(...) != os.path.abspath(tiny)`.
+        # The raw string compare had NO reachable red of its own -- every input that reddens it also
+        # reddens the abspath compare, which is strictly stronger. Deleted rather than weakened.
+        assert os.path.abspath(r_ok["sandbox"]) != os.path.abspath(tiny), "sandbox is a COPY"
         _emit(
             f"  [OK] enabled + benign edit ACCEPTED in sandbox (util {r_ok['utility_before']}->{r_ok['utility_after']}), real tree untouched"
         )
@@ -601,28 +700,68 @@ def main():
         # the exact protected set it enforces (reported for the audit trail)
         default_state = SelfModHarness(enable=False).state()
         assert default_state["enabled"] is False, "state() reflects the disabled default"
-        assert "src/snn_data_lake/brainstem/reflex.py" in _PROTECTED, (
-            "the arm-safety kernel is protected"
+
+        # ---- (6) THE PROTECTED SET RESOLVES -- the assert a file move is supposed to trip ----
+        # A protected entry is a STRING. Move the file it names and the string goes on matching
+        # nothing: the firewall guards a path that is not there, the live file is unguarded, and every
+        # membership assertion still passes. It fails GREEN, which is the worst way for a safety check
+        # to fail. So assert the property a move actually breaks -- every protected path RESOLVES.
+        # Reachable RED: point any entry (here, or in the imported _SAFETY_KERNEL) at a path not in the
+        # tree, or move a protected file without updating the constant, and this fails on the next run.
+        for rel in _PROTECTED:
+            assert os.path.isfile(os.path.join(repo, *rel.split("/"))), (
+                f"STALE protected path: {rel} resolves to nothing under {repo}. The firewall is "
+                "naming a file that has moved or been deleted -- without this check that is GREEN."
+            )
+        # ...and this file's own DERIVED entry really is THIS file, not a same-named file elsewhere.
+        # Reachable RED: break _repo_root() or _rel_to_repo() and the two stop being the same file.
+        assert os.path.samefile(os.path.join(repo, *_SELF_REL.split("/")), __file__), (
+            f"self-path derivation is wrong: {_SELF_REL} is not this file"
         )
-        assert "src/snn_data_lake/reasoning/self_improve.py" in _PROTECTED, (
+        # Kernel CONTENT. Reachable RED: drop an entry from godel_machine._SAFETY_KERNEL or from
+        # _EXTRA_PROTECTED and the matching identity check below fails.
+        #
+        # THESE ARE IDENTITY CHECKS, NOT SUFFIX CHECKS (tightened 2026-08-04). They were briefly
+        # `any(r.endswith("brainstem/reflex.py") for r in _PROTECTED)` and friends, which traded away
+        # a red that the previous exact-string form had: a decoy at
+        # `src/snn_data_lake/reasoning/brainstem/reflex.py` also ends with "brainstem/reflex.py", so
+        # repointing the kernel at the decoy left the REAL reflex.py unprotected while this
+        # self-check stayed GREEN (constructed and measured: old form RED, suffix form exit 0).
+        # Suffix matching was chosen to survive a legitimate region move; resolving through
+        # importlib gets that property WITHOUT the false positive, because a decoy is a different
+        # file and `samefile` compares inode identity rather than spelling. So this is neither the
+        # brittle literal nor the weakened suffix -- it asks the question both were proxies for:
+        # is the file the import system actually resolves this module to inside _PROTECTED?
+        import importlib.util
+
+        def _protects(dotted):
+            spec = importlib.util.find_spec(dotted)  # no import side effects
+            if spec is None or not spec.origin:
+                return False
+            for r in _PROTECTED:
+                p = os.path.join(repo, *r.split("/"))
+                if os.path.exists(p) and os.path.samefile(p, spec.origin):
+                    return True
+            return False
+
+        assert _protects("snn_data_lake.brainstem.reflex"), "the arm-safety kernel is protected"
+        assert "run_selfchecks.py" in _PROTECTED and _protects(
+            "snn_data_lake.reasoning.godel_machine"
+        ), "verifier + godel kernel protected"
+        assert _protects("snn_data_lake.reasoning.self_improve"), (
             "the bounded-improvement verifier is protected"
         )
-        assert "src/snn_data_lake/reasoning/self_mod_harness.py" in _PROTECTED, (
-            "the proposer protects itself"
-        )
-        assert (
-            "run_selfchecks.py" in _PROTECTED
-            and "src/snn_data_lake/reasoning/godel_machine.py" in _PROTECTED
-        ), "verifier + godel kernel protected"
         assert len(_PROTECTED) == 9, (
-            "exactly the 9 immutable files (5 brainstem + run_selfchecks + godel + self_improve "
-            "+ self_mod). Back to 9 as this assertion always said it would be: arm_sim.py was "
-            "retired (specs/004) and so101_arm.py took its place, so the brainstem count is "
-            "unchanged at 5 and the fifth file is now the MuJoCo gate. It was protected BEFORE "
-            "it went live, because the gap between 'is the live gate' and 'is immutable' is a "
-            "gap in which the self-rewrite harness could rewrite an E-STOP."
+            "exactly the 9 immutable files (5 brainstem + run_selfchecks + godel_machine + "
+            "self_improve + this proposer). The count is the ratchet: adding a protected file is a "
+            "deliberate act that must be visible here, and losing one must never be silent. The "
+            "fifth brainstem file is so101_arm.py, the MuJoCo gate, protected BEFORE it went live -- "
+            "the gap between 'is the live gate' and 'is immutable' is a gap in which this harness "
+            "could rewrite an E-STOP."
         )
-        _emit(f"  [OK] deterministic; PROTECTED set = {len(_PROTECTED)} immutable files enforced")
+        _emit(
+            f"  [OK] deterministic; PROTECTED = {len(_PROTECTED)} immutable files, every path RESOLVES"
+        )
 
     finally:
         # restore env exactly as we found it, then remove ALL temp state

@@ -23,10 +23,11 @@ depth -- was the bottleneck. If it does NOT rise, depth genuinely does not help 
 the right readout. Either way is an honest, reported result.
 
 Run (from the repo root; a few minutes on GPU):
-    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/deep_stdp_readout.py
+    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.deep_stdp_readout
 Scale knobs: NORD_C1 NORD_C2 NORD_TRAIN NORD_TEST NORD_T NORD_L1_EPOCHS NORD_L2_EPOCHS
              NORD_POOL1 NORD_READEP (linear-readout epochs)
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
+Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+         and imports from the package -- P4c, every build is part of the brain.)
 """
 
 import os
@@ -35,7 +36,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.deep_stdp_2stage import ConvLatencyStdp2, _train2

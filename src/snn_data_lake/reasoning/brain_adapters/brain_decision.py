@@ -21,8 +21,13 @@ cycle with `SpikingCuriosityDrive.most_curious(candidates)` filtered by a
 The loop KEEPS owning its curiosity drive + curriculum and passes their per-candidate
 curiosity signal into choose(); this adapter only fuses value + metacognition on top.
 
-This is a RESEARCH-tier adapter: it lives outside src/ and only imports/composes the
-shipped modules. It does not edit the core, run_selfchecks, or pyproject.
+P4c. This paragraph used to read "This is a RESEARCH-tier adapter: it lives outside src/ and
+only imports/composes the shipped modules." The first clause was FALSE -- the file is at
+`src/snn_data_lake/reasoning/brain_adapters/` -- and "research-tier" is not a disposition:
+under P4c this adapter is part of the brain. What is true is the composition claim (it wraps
+`basal_ganglia.latent_q` and `cortex.metacognitive_monitor`, re-implementing neither). Its open
+debt: registered in neither `REGIONS` nor `run_selfchecks.py`, so no gate sees it, and its one
+importer is `reasoning/developmental_loop_brain.py`.
 
 Mappings (competence -> module inputs), stated once and used everywhere below:
   z   (LatentQ latent state)  = the length-`state_dim` competence vector, as-is.
@@ -40,7 +45,7 @@ Mappings (competence -> module inputs), stated once and used everywhere below:
 Deterministic: per-instance random.Random(seed); LatentQ and the
 monitor are seeded from the same seed. ASCII-only prints.
 
-  PYTHONPATH=src python research/brain_adapters/brain_decision.py
+  PYTHONPATH=src python -m snn_data_lake.reasoning.brain_adapters.brain_decision
 """
 
 import random

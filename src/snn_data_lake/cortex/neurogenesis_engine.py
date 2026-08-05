@@ -24,9 +24,13 @@ Mechanism:
     transition structure is learned.
 
 Safety: PERCEPTION / next-perception self-model ONLY. This engine never constructs a motor
-command, never calls ArmSim / serial_arm / reflex, and has no actuator route -- it sits BESIDE
+command, never calls So101Arm / serial_arm / reflex, and has no actuator route -- it sits BESIDE
 the live brain's gated-arm + E-STOP path and cannot touch it. `distance` is pinned to a SAFE
 value (CONTACT * 3.0), well outside any reflex band, purely as a perceptual channel.
+(Named `ArmSim` here until 2026-08-04; that class does not exist anywhere in `src/` -- the live
+body is `brainstem/so101_arm.So101Arm` and every motion passes its `apply()` gate. CLAUDE.md
+carried the same dead name and corrected it the same day; a safety-scope sentence naming a file
+that is not there sends a reviewer looking for the wrong gate.)
 
 Runs in the torch tier (.venv-cu128); deterministic via random.Random(seed) (Markov chain) and
 torch.Generator(seed) inside NG-SNN. Device = cuda if available else cpu.
@@ -345,6 +349,157 @@ class NeurogenesisSelfImprove:
 
 
 # -------------------------------------------------------------------------------------------------
+# CROSS-PROCESS RESTART PROOF (P4b: "it persists" is a claim about a NEW PROCESS)
+# -------------------------------------------------------------------------------------------------
+# docs/POLICIES.md names this as the open P0 work on the neural-growth avenue: retention is built,
+# `growth_state_bytes` / `restore_growth_state` are called on two live paths into the ONE lake under
+# `_T_GROWTH` -- and NO CROSS-PROCESS RESTART HAD EVER BEEN DEMONSTRATED. The existing durability
+# test round-trips a raw `np.zeros(4).tobytes()` blob to prove three lake tenants do not eat each
+# other; it says nothing about a FITTED MODEL. Until now, both call sites lived in `cortex/brain.py`
+# and neither serialisation method had a single assertion anywhere in the tree.
+#
+# P4b's honesty guard is explicit about what would settle it: "prove it by reading the lake back from
+# disk after the writer is gone, not by inspecting the writer's own state." So the parent fits an
+# engine, writes it through `substrate.home.save_growth` into an ISOLATED NORD_HOME, and exits that
+# object's scope; a genuinely SEPARATE interpreter then boots, calls `load_growth()` +
+# `restore_growth_state()`, and prints the fingerprint of what it restored. The parent compares.
+# In-process restore is deliberately NOT the check: it cannot fail for the reason that matters.
+_PROBE_FLAG = "--restart-probe"
+
+
+def growth_fingerprint(engine):
+    """crc32 over the grown tensors + the counters that interpret them (never builtin hash()).
+
+    Covers W / b / beta byte-exactly plus n_units and the accuracy those weights were fit at, so a
+    restore that drops a tensor, transposes one, or pairs the weights with a different fit's accuracy
+    changes the fingerprint. Returns None when there is no substrate."""
+    import zlib
+
+    m = engine.grown_model
+    if m is None or m.W is None or m.b is None or m.beta is None:
+        return None
+    acc = 0
+    for t in (m.W, m.b, m.beta):
+        acc = zlib.crc32(t.detach().cpu().numpy().tobytes(), acc)
+    tail = (
+        f"|{int(engine.grown_units)}|{float(engine.predict_accuracy):.9f}|{int(m.d_in)}|{int(m.m)}"
+    )
+    return zlib.crc32(tail.encode("ascii"), acc)
+
+
+def _restart_probe(seed, **cfg):
+    """Run in a NEW PROCESS: restore the grown substrate from the lake `NORD_HOME` points at and
+    print `RESTORED <fingerprint> <n_units> <acc>` (or `RESTORED none ...`). ASCII, one line."""
+    from snn_data_lake.substrate.home import load_growth
+
+    eng = NeurogenesisSelfImprove(seed=seed, **cfg)
+    ok = eng.restore_growth_state(load_growth())
+    fp = growth_fingerprint(eng)
+    print(
+        f"RESTORED {ok} {fp if fp is not None else 'none'} "
+        f"{eng.grown_units} {eng.predict_accuracy:.9f}"
+    )
+
+
+def _cross_process_restart(seed, cfg, ticks=140):
+    """Fit an engine, persist it into an isolated lake, and read it back FROM A NEW INTERPRETER.
+
+    Returns a dict of the parent-side and child-side fingerprints plus the lake size, so the caller
+    can assert they agree AND that the lake was genuinely written."""
+    import json
+    import os
+    import shutil
+    import subprocess
+    import sys
+    import tempfile
+
+    work = tempfile.mkdtemp(prefix="snn_growth_restart_")
+    prior = os.environ.get("NORD_HOME")
+    try:
+        os.environ["NORD_HOME"] = work
+        from snn_data_lake.substrate.home import knowledge_path, save_growth
+
+        eng = _run(NeurogenesisSelfImprove(seed=seed, **cfg), ticks)
+        retained = eng.substrate_is_retained()
+        blob = eng.growth_state_bytes()
+        parent_fp = growth_fingerprint(eng)
+        parent_units, parent_acc = eng.grown_units, eng.predict_accuracy
+        wrote = bool(save_growth(blob))
+        lake_bytes = os.path.getsize(knowledge_path()) if os.path.exists(knowledge_path()) else 0
+        del eng  # the writer is gone before anything reads the lake back
+
+        # A GENUINELY SEPARATE INTERPRETER. Same NORD_HOME, nothing else shared -- no module state,
+        # no live object, no warm import. This is the only configuration in which "it persists" is
+        # a statement about persistence rather than about the object still being in RAM.
+        env = dict(os.environ)
+        env["NORD_HOME"] = work
+        env["PYTHONUTF8"] = "1"
+        # PYTHONPATH is DERIVED, not inherited (fixed 2026-08-05). Inheriting it made this probe
+        # depend on how its PARENT happened to be launched: `run_selfchecks.py` sets PYTHONPATH=src
+        # for every child, so the probe passed there, while `tests/test_selfchecks.py` runs the same
+        # self-check IN PROCESS under pytest -- which puts src on sys.path but NOT in the environment
+        # -- so the child died with `ModuleNotFoundError: No module named 'snn_data_lake'`, printed
+        # no RESTORED line, and was scored as `child_units = -1`, i.e. "the substrate did not
+        # survive a restart". The failure looked like a P4b persistence regression and was actually
+        # an unimportable child; the lake round-trip was verified intact throughout.
+        #
+        # That distinction matters more than the fix: a probe whose NEGATIVE result can be produced
+        # by its own harness failing cannot tell "persistence is broken" from "I could not start".
+        # The package root is derived from this file (cortex/ -> snn_data_lake/ -> src/) so the child
+        # can import regardless of the parent's launcher, and the child now reports a start failure
+        # distinctly rather than silently scoring as a persistence failure.
+        _src_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        env["PYTHONPATH"] = (
+            _src_root + os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else _src_root
+        )
+        env["NORD_GROWTH_PROBE_CFG"] = json.dumps({"seed": seed, **cfg})
+        proc = subprocess.run(
+            [sys.executable, "-m", "snn_data_lake.cortex.neurogenesis_engine", _PROBE_FLAG],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=env,
+        )
+        line = ""
+        for ln in (proc.stdout or "").splitlines():
+            if ln.startswith("RESTORED "):
+                line = ln.strip()
+        parts = line.split()
+        # A child that never STARTED is not evidence about persistence. Distinguish the two loudly:
+        # without this, an unimportable child prints no RESTORED line, scores child_units = -1, and
+        # claim 5 reports "the grown substrate did NOT survive a new process" -- a false negative
+        # about the brain caused by a broken harness. That is the inverse of the vacuous-assert
+        # defect this project keeps finding, and it is just as misleading.
+        if not line and proc.returncode != 0:
+            raise AssertionError(
+                "the restart PROBE failed to start, which says nothing about persistence: child "
+                f"rc={proc.returncode}. This is a harness fault, not a P4b result. stderr tail:\n"
+                f"{(proc.stderr or '')[-500:]}"
+            )
+        return {
+            "retained": retained,
+            "blob_bytes": len(blob) if blob else 0,
+            "wrote": wrote,
+            "lake_bytes": lake_bytes,
+            "parent_fp": parent_fp,
+            "parent_units": parent_units,
+            "parent_acc": parent_acc,
+            "child_rc": proc.returncode,
+            "child_line": line or (proc.stderr or "")[-300:],
+            "child_ok": len(parts) == 5 and parts[1] == "True",
+            "child_fp": int(parts[2]) if len(parts) == 5 and parts[2] != "none" else None,
+            "child_units": int(parts[3]) if len(parts) == 5 else -1,
+            "child_acc": float(parts[4]) if len(parts) == 5 else float("nan"),
+        }
+    finally:
+        if prior is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
+            os.environ["NORD_HOME"] = prior
+        shutil.rmtree(work, ignore_errors=True)
+
+
+# -------------------------------------------------------------------------------------------------
 # __main__ un-riggable self-check: each claim + a CONTROL that MUST fail.
 # -------------------------------------------------------------------------------------------------
 def _run(engine, n_ticks):
@@ -417,6 +572,19 @@ def main():
     accs_match = all(abs(x - y) < 1e-6 for x, y in zip(accs_a, accs_b, strict=True))
     c4_pass = (units_a == units_b) and accs_match
 
+    # claim 5: THE GROWN SUBSTRATE SURVIVES A NEW PROCESS (P4b). Fit, persist into an isolated lake,
+    # drop the writer, and read it back from a separate interpreter -- the only form in which
+    # "it persists" is a claim about persistence.
+    rs = _cross_process_restart(seed=7, cfg=cfg, ticks=140)
+    c5_pass = (
+        rs["retained"]
+        and rs["blob_bytes"] > 0
+        and rs["wrote"]
+        and rs["child_ok"]
+        and rs["child_fp"] == rs["parent_fp"]
+        and rs["child_units"] == rs["parent_units"]
+    )
+
     # ---- ASCII report ---------------------------------------------------------------------------
     rows = [
         (
@@ -442,6 +610,12 @@ def main():
             "deterministic trajectory (seed=7)",
             f"units {units_a == units_b} + accs match",
             c4_pass,
+        ),
+        (
+            5,
+            "grown substrate survives a NEW PROCESS",
+            f"{rs['parent_units']}u crc {rs['parent_fp']} -> child {rs['child_units']}u",
+            c5_pass,
         ),
     ]
     line = "+" + "-" * 4 + "+" + "-" * 42 + "+" + "-" * 34 + "+" + "-" * 6 + "+"
@@ -476,7 +650,31 @@ def main():
     # at every difficulty tried, using 2-6x FEWER units.
     assert units_600 <= _bound, f"growth must stay bounded by the data (got {units_600} > {_bound})"
     assert c4_pass, "claim4: two seed=7 engines must give identical grown_units + accuracy"
+    # claim 5 -- P4b's honesty guard, executed rather than asserted in prose.
+    assert rs["retained"] and rs["blob_bytes"] > 0, (
+        f"nothing was grown to persist (retained={rs['retained']}, blob={rs['blob_bytes']} B) -- "
+        "the restart proof is vacuous without substrate"
+    )
+    assert rs["wrote"] and rs["lake_bytes"] > 0, (
+        f"the grown substrate must reach the ONE lake on disk (wrote={rs['wrote']}, "
+        f"lake={rs['lake_bytes']} B)"
+    )
+    assert rs["child_rc"] == 0 and rs["child_ok"], (
+        f"a NEW PROCESS must restore the grown substrate from the lake "
+        f"(rc={rs['child_rc']}, line={rs['child_line']!r})"
+    )
+    assert rs["child_fp"] == rs["parent_fp"] and rs["child_units"] == rs["parent_units"], (
+        f"the restored substrate must be the SAME substrate: parent crc {rs['parent_fp']} "
+        f"({rs['parent_units']}u, acc {rs['parent_acc']:.6f}) vs child crc {rs['child_fp']} "
+        f"({rs['child_units']}u, acc {rs['child_acc']:.6f})"
+    )
+    assert c5_pass, "claim5: the grown substrate must survive a new process"
 
+    print(
+        f"restart proof: {rs['parent_units']} grown units -> {rs['blob_bytes']} B under _T_GROWTH "
+        f"in a {rs['lake_bytes']} B lake -> a SEPARATE interpreter restored crc {rs['child_fp']} "
+        f"({rs['child_units']}u, acc {rs['child_acc']:.4f}), byte-equal to the writer's."
+    )
     print("self-check OK: the brain self-improves by GROWING NG-SNN neurons to predict its own")
     print("next perception; held-out accuracy rises above chance as it grows (shuffled control")
     print("stays at chance); a genuine neurogenesis-driven self-improvement loop, perception-only")
@@ -486,4 +684,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    if _PROBE_FLAG in sys.argv:
+        # The CHILD half of the cross-process restart proof (see _cross_process_restart). Never
+        # reached by run_selfchecks, which invokes this module with no arguments.
+        import json
+        import os
+
+        _cfg = json.loads(os.environ.get("NORD_GROWTH_PROBE_CFG") or "{}")
+        _restart_probe(int(_cfg.pop("seed", 7)), **_cfg)
+    else:
+        main()

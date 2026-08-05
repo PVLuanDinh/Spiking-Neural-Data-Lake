@@ -12,7 +12,7 @@ Honesty: "stronger" is a claim, so this BENCHMARKS both matchers on the SAME
 windows across a rising-noise sweep and reports who wins where. Low noise: a tie
 (both ~100%). The learned model earns its keep as noise grows.
 
-  python learned_matcher.py
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.learned_matcher
 """
 
 import random
@@ -115,7 +115,15 @@ def acc_rej(label_fn, labels, known, novel):
 
 
 def main():
-    C.random.seed(0)
+    # (was `C.random.seed(0)` here) DELETED 2026-08-04. It reached into snn_classifier's imported
+    # `random` module and seeded the PROCESS-GLOBAL Mersenne Twister -- the exact side effect
+    # snn_classifier.py:28 warns against, moved from import time to call time. It was also DEAD:
+    # every RNG this function reaches is per-instance (`train_learned`/`calibrate_gate`/
+    # `make_windows` each build their own `random.Random(seed)`, and `C.forward` seeds itself from
+    # the sample), so nothing here consumed the global stream. Removing it leaves this module's
+    # output byte-identical (verified) and stops it perturbing every module that runs after it in
+    # the same process -- run_selfchecks has an in-process runpy path, and pytest imports are
+    # in-process by construction.
     library = build_default_library()
     nC = len(library)
     refs_enc = [encode_latency(v) for v in library.values()]

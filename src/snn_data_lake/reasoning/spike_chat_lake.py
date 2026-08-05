@@ -19,26 +19,40 @@ NOT generative fluency. It answers with what it has stored, matches on shared co
 with ingestion. It will not paraphrase or reason like a transformer LM. The value is a knowledge base
 the brain BUILDS ITSELF and converses from -- and that measurably grows as it learns.
 
-  # interactive: PYTHONPATH=src .venv-lake/Scripts/python research/spike_chat_lake.py
-  # piped -> scripted demo + self-check
-Deps: numpy + stdlib. Reuses skill_builder.signature, lake_memory, world_kb_stream (seed facts),
-      global_workspace (ignition gate = retrieval confidence), consciousness_probe.
+RUN IT (no hardcoded path -- the module names itself, so relocating the file cannot make this lie):
+  PYTHONPATH=src python -m snn_data_lake.<region>.spike_chat_lake   # `main()` prints its own real
+  dotted name in the banner; a tty gets the REPL, anything else (CI, a pipe, pytest) gets the
+  scripted demo + self-check. NORD_CHAT_DEMO=1 forces the demo, NORD_CHAT_REPL=1 forces the REPL.
+
+DEPENDENCIES (P7, owner policy 2026-08-04 -- the zero-dependency rule is retired and is NOT a reason
+to hand-roll anything). Judged per call site rather than by the retired rule:
+  * `content_signature.signature` is stdlib **on the merits**, not as a concession: it is a 64-wide
+    crc32 bag-of-tokens (SIG=64) evaluated once per learn() and once per query. numpy would add an
+    array construction per call over 64 elements and be SLOWER; crc32 is also the persistence-stable
+    hash this project mandates. What WAS a real residue of the retired rule -- a per-call
+    `[float(x) for x in signature(...)]` "demotion" comment claiming it undid a numpy roundtrip --
+    is deleted: `signature()` already returns a list of Python floats, so the comprehension was a
+    provable no-op wearing a policy justification. The BOAST was the defect, not the code.
+  * numpy/torch arrive through the collaborators (`lake_memory`, `semantic_memory`,
+    `reasoning_cortex`), which own their own dependency choices; none is lazy-imported here to dodge
+    a dependency budget, only to keep boot cheap on turns that never reach them.
+Reuses content_signature.signature, lake_memory, world_kb_stream (seed facts),
+global_workspace (ignition gate = retrieval confidence), consciousness_probe.
 """
 
 import os
 import re
+import subprocess
 import sys
 import tempfile
 
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
 from snn_data_lake.reasoning.consciousness_probe import (
     probe_access,
-    probe_binding,
     probe_integration,
-    probe_reentry,
 )
 from snn_data_lake.reasoning.content_signature import (
-    signature,  # stdlib (decoupled from skill_builder's numpy chain)
+    signature,  # 64-wide crc32 bag-of-tokens; stdlib on the merits (see the P7 note above)
 )
 from snn_data_lake.reasoning.lake_reason import Reasoner
 from snn_data_lake.reasoning.train_of_thought import TrainOfThought
@@ -192,17 +206,74 @@ _REASONING_SEED = [
 ]
 
 
+# -------------------------------------------------------------------------------------------------
+# P1 -- WHAT THE BRAIN SAYS was arbitrated by a hand-tuned ladder of ABSOLUTE salience numbers
+# (0.95 / 0.9 / 0.6 / 0.55 / 0.5 / 0.45 / 0.30) submitted into the global workspace. The workspace's
+# rheobase -- the drive current above which a content pool ignites -- is 0.55 and it lives in ANOTHER
+# module (`thalamus/global_workspace.py`). Every number in that ladder only ever meant "0.55 plus or
+# minus something": 0.30 meant SUBLIMINAL, 0.9 meant IGNITES, 0.45 + 0.3*score was reverse-engineered
+# so a chat memory crossed 0.55 at score 0.34. That is a cross-module FAIL-GREEN: move
+# GlobalWorkspace's threshold and this file's honest-gap path silently becomes a confident answer with
+# nothing going red, because no assert here mentions 0.55 at all.
+#
+# The ladder is now MARGINS on the rheobase READ OFF the workspace this chat actually ignites through
+# (`LakeChat._new_workspace`, the single construction `_ignite` uses). What stays fixed is the margin,
+# and it is labelled against P1 honesty-guard exception (a) -- a dimensionless offset on a NORMALIZED
+# axis: workspace drive is a current in [0, 1] and these encode the PRECEDENCE of the brain's evidence
+# sources (reasoning outdrives recall outdrives association), which is a structural design decision,
+# not a tunable gain. The sign now carries the meaning: a NEGATIVE margin is subliminal BY
+# CONSTRUCTION and can never accidentally ignite.
+_DRIVE_MARGIN = {
+    # supra-threshold -- these reach conscious access
+    "correction": +0.40,  # reasoning over stored facts outdrives every recall, so the brain
+    #                       CORRECTS a false claim instead of parroting the nearest fact
+    "recall_covered": +0.35,  # a fact that is on-topic AND answers what was actually asked
+    "recall_assoc": +0.05,  # content-addressable spreading activation (spiking VP proximity)
+    # at rheobase exactly -- an IMPLIED (non-literal) meaning is offered but never outbids evidence
+    "pragmatics": +0.00,
+    # sub-threshold FLOORS -- these ignite only once evidence lifts them over the rheobase
+    "semantic_floor": -0.05,  # + _EVIDENCE_GAIN * cosine similarity of a paraphrase
+    "chat_floor": -0.10,  # + _EVIDENCE_GAIN * on-topicness of a remembered conversation turn
+    # subliminal by construction -- a match that failed the coverage gate must NOT ignite
+    "recall_weak": -0.25,
+}
+# How much measured evidence (a similarity / on-topicness fraction, both normalized to [0, 1]) is
+# allowed to lift a floor. P1 exception (a): a dimensionless slope from one normalized axis to the
+# other. It is the ONLY route from a floor to ignition, which is why the floors can be negative.
+_EVIDENCE_GAIN = 0.30
+
+
 class LakeChat:
     """A conversational KNOWLEDGE LAKE: signature(content) -> learned answer, retrieved by proximity and
     enriched every time it is taught. The lake is the durable store; a parallel signature list is the
     fast retrieval index (both grow together)."""
 
     def __init__(self, seed=0, coverage=0.99, min_query_cov=0.6, persist=True, route_all=False):
+        # P1 exception (a), labelled rather than carried silently across the tier boundary: `coverage`
+        # and `min_query_cov` are thresholds on cue_cov / query_cov, which are COVERAGE FRACTIONS in
+        # [0, 1] (|cue & query| / |cue| and / |query|) -- dimensionless fixed points on a normalized
+        # output, and constructor arguments a caller may override per brain.
         self.coverage = coverage  # known iff the query covers ALL a fact's content words
         self.min_query_cov = min_query_cov  # ...AND the fact covers most of the QUESTION
         self.route_all = route_all  # relax the generic-retrieval gate: a reasonably
         #                                                            on-topic fact still ANSWERS instead of giving up
         #                                                            (structured KB lookup already runs unconditionally)
+        # P1: the ignition current every candidate reply is measured against, read off the SAME
+        # workspace `_ignite` competes in -- so the drives below cannot drift out of step with the
+        # gate they are compared to. See `_DRIVE_MARGIN`.
+        self._rheobase = self._new_workspace().ignition_threshold
+        # The RUNNING BRAIN, when a host attaches one (`chat.brain = live_brain`). P8: in the first,
+        # UNCOMMITTED pass of this same-day rewrite this was read as `getattr(self, "brain", None)`
+        # in `_consciousness()` on a class that never sets a `brain` attribute anywhere -- so the
+        # access-consciousness marker was UNMEASURABLE BY CONSTRUCTION and the brain reported
+        # "UNMEASURED" for every caller, forever, while a comment at the call site presented that as
+        # a virtue. (Committed history had the mirror-image defect, not this one: at HEAD the reply
+        # was a tally of four markers and `known` was the literal `True`.) A silent default is not
+        # an honest null: the
+        # slot is declared here so the marker has a reachable measured state and a reachable
+        # unmeasured state, and the self-check now constructs BOTH. Left None by default -- P3: this
+        # is a slot a host may fill, NOT a wire this module forces.
+        self.brain = None
         self.cues = []  # per-fact content-word SETS (retrieval keys)
         self.answers = []  # parallel learned answers
         # the chat's spiking retrieval index is a per-boot scratch .spkl, REBUILT each boot from the
@@ -270,9 +341,11 @@ class LakeChat:
         """Add one (content cue -> answer) association: enrich the database (and consolidate durably).
         An optional (subject, relation, object) triple also lets the contradiction reasoner check claims."""
         cue = set(_content(cue_tokens))
-        sig = [
-            float(x) for x in signature(sorted(cue) or _content(cue_tokens) or ["_"])
-        ]  # stdlib (was np roundtrip)
+        # P7: this was `[float(x) for x in signature(...)]` with the comment "stdlib (was np
+        # roundtrip)". `signature()` builds `v = [0.0]*64` and returns `[x / m for x in v]`, i.e.
+        # Python floats already -- the comprehension was a no-op that a retired policy was cited to
+        # justify. Measured identical over the full self-check corpus before removal.
+        sig = signature(sorted(cue) or _content(cue_tokens) or ["_"])
         self.lake.consolidate([sig], payloads=[len(self.answers)])  # durable store
         self.cues.append(cue)
         self.answers.append(answer)
@@ -792,7 +865,7 @@ class LakeChat:
         if not qc or self.lake is None:
             return []
         try:
-            qsig = [float(x) for x in signature(sorted(qc) or ["_"])]
+            qsig = signature(sorted(qc) or ["_"])  # already a list of floats (see learn())
             idxs = self.lake.retrieve(qsig, k=k)
         except Exception:
             return []
@@ -807,6 +880,32 @@ class LakeChat:
                 out.append(self.answers[i])  # honesty gate: shares a content word with the query
         return out
 
+    def _new_workspace(self):
+        """The ONE workspace construction this chat thinks through. `_ignite` runs it per turn and
+        `__init__` reads its rheobase, so 'what drive ignites' is asked of the same object that
+        answers it -- there is no second place to keep the threshold in sync with (P1)."""
+        return GlobalWorkspace(seed=0)
+
+    def _drive(self, kind, evidence=0.0):
+        """The workspace drive current for one candidate reply, as `rheobase + margin (+ evidence)`.
+
+        P1: the absolute salience is DERIVED, never written down. `kind` selects a precedence margin
+        from `_DRIVE_MARGIN` (positive = ignites on its own, zero = exactly at rheobase, negative =
+        subliminal unless `evidence` lifts it), and `evidence` is a normalized [0, 1] measurement --
+        a cosine similarity or an on-topicness fraction -- scaled by `_EVIDENCE_GAIN`.
+
+        This is also the honest form of the old `hit["score"] >= 0.34` gate: 0.34 was not a
+        threshold anyone chose, it was the score at which `0.45 + 0.3*score` happened to cross 0.55.
+        Callers now ask `_ignitable(drive)` instead, which is the same question without the number.
+        """
+        return self._rheobase + _DRIVE_MARGIN[kind] + _EVIDENCE_GAIN * float(evidence)
+
+    def _ignitable(self, drive):
+        """Could this drive reach conscious access at all? (A pool fires strictly ABOVE rheobase.)
+        Used to drop candidates that are subliminal by construction instead of paying the workspace
+        to reject them -- and to replace the reverse-engineered numeric gates that did the same job."""
+        return drive > self._rheobase
+
     def _ignite(self, candidates):
         """Run the candidate replies through the spiking GLOBAL WORKSPACE (the GWT hub for conscious
         access): each competes for IGNITION, and only the winner that reaches SUSTAINED firing is
@@ -814,7 +913,7 @@ class LakeChat:
         candidate never ignites (stays subliminal). A FRESH workspace per turn = one clean thought;
         a few re-entrant ticks let the winner settle into the attractor. Returns (source, content) of
         the broadcast, or (None, None) if nothing reached conscious access."""
-        ws = GlobalWorkspace(seed=0)
+        ws = self._new_workspace()
         content_src = {
             content: src for src, content, _ in candidates
         }  # broadcast content -> its source
@@ -923,11 +1022,22 @@ class LakeChat:
         if resumed is not None:
             return resumed
         if text.strip().lower() in ("are you conscious", "are you aware", "do you have experience"):
+            # `known`/`coverage` were once hardcoded True/1.0 here -- full confidence on the one
+            # question this system is least able to answer (specs/010, C09). They now track whether
+            # a marker ABOUT THIS INSTANCE was actually measurable.
+            #
+            # Fixed 2026-08-04, second pass: the certainty was derived by SUBSTRING-SNIFFING the
+            # reply (`"UNMEASURED" not in reply`), so rewording the prose silently flipped the
+            # brain's confidence about its own consciousness, and the probe was handed
+            # `getattr(self, "brain", None)` on a class that set no `brain` attribute anywhere --
+            # a marker that could not be measured by any caller, ever. `_consciousness()` now
+            # RETURNS the flag, and `self.brain` is a real slot (see `__init__`).
+            reply, measured = self._consciousness()
             return {
-                "known": True,
-                "coverage": 1.0,
-                "reply": self._consciousness(),
-                "ignited": True,
+                "known": measured,
+                "coverage": 1.0 if measured else 0.0,
+                "reply": reply,
+                "ignited": measured,
                 "source": "introspection",
             }
         remembered = self._remember(text)  # explicit "remember: X" -> durable never-forget fact
@@ -957,10 +1067,16 @@ class LakeChat:
         )  # ABDUCTION: "why X" -> best-explanation cause (min free energy)
         if abduced is not None:
             return abduced
-        candidates = []  # (source, reply-content, salience = workspace drive)
+        candidates = []  # (source, reply-content, salience = workspace drive, see _drive)
         correction = self._get_reasoner().respond(text)  # reason over stored facts
         if correction is not None:
-            candidates.append(("reason", f"[reasoned from what I learned] {correction}", 0.95))
+            candidates.append(
+                (
+                    "reason",
+                    f"[reasoned from what I learned] {correction}",
+                    self._drive("correction"),
+                )
+            )
         ans, cue_cov, q_cov = self._retrieve(text)
         score = cue_cov
         if ans is not None:
@@ -971,25 +1087,31 @@ class LakeChat:
             # answers (both directions must stay decent, so it never revives the one-word false-positive bug).
             if not covered and self.route_all and cue_cov >= 0.5 and q_cov >= self.min_query_cov:
                 covered = True
-            sal = (
-                0.9 if covered else 0.30
-            )  # a covered match drives ignition; a weak one stays subliminal
+            # a covered match drives ignition; a weak one is subliminal BY CONSTRUCTION (its margin
+            # is negative, so it cannot ignite whatever the workspace's rheobase happens to be).
+            sal = self._drive("recall_covered" if covered else "recall_weak")
             candidates.append(("recall", f"[from what I learned] {ans}", sal))
         for ra in self._lake_recall(
             text, k=3
         ):  # CONTENT-ADDRESSABLE recall (spiking VP index, honesty-gated):
             candidates.append(
-                ("recall", f"[recalled by association] {ra}", 0.6)
-            )  # spreading activation lexical missed
+                ("recall", f"[recalled by association] {ra}", self._drive("recall_assoc"))
+            )  # spreading activation the lexical gate missed
         if (
             self.semantic is not None
         ):  # W6: MEANING-based recall (paraphrase-invariant, beyond the lexical gate)
             try:  # STRICT min_sim so only a strong paraphrase fires -- a
+                # P1 exception (a): `min_sim` is a fixed point on a NORMALIZED output (cosine
+                # similarity in [0, 1]) and is `SemanticStore.recall`'s own documented API argument.
                 for txt, cs in self.semantic.recall(
                     text, k=2, min_sim=0.45
                 ):  # genuinely absent fact stays an HONEST gap
                     candidates.append(
-                        ("recall", f"[recalled by meaning] {txt}", 0.5 + 0.3 * float(cs))
+                        (
+                            "recall",
+                            f"[recalled by meaning] {txt}",
+                            self._drive("semantic_floor", evidence=cs),
+                        )
                     )
             except Exception:
                 pass
@@ -1000,7 +1122,11 @@ class LakeChat:
                 imp = self._pragmatics.implicature(text)
                 if imp:
                     candidates.append(
-                        ("reason", f"[pragmatics] literally a question, but you mean: {imp}", 0.55)
+                        (
+                            "reason",
+                            f"[pragmatics] literally a question, but you mean: {imp}",
+                            self._drive("pragmatics"),
+                        )
                     )
             except Exception:
                 pass
@@ -1011,12 +1137,16 @@ class LakeChat:
                 for hit in self._chat_mem.recall(text, k=1):
                     # a genuinely on-topic remembered turn competes (below a covered fact/reasoning, above
                     # a stray-word match) -- so a real fact still outdrives it, but chat surfaces on a gap.
-                    if hit["score"] >= 0.34:
+                    # P1: the gate was `hit["score"] >= 0.34`. Nobody chose 0.34 -- it is where
+                    # `0.45 + 0.3*score` crossed the workspace's 0.55 rheobase. Ask that question
+                    # directly instead: admit the turn iff its drive could actually ignite.
+                    chat_drive = self._drive("chat_floor", evidence=hit["score"])
+                    if self._ignitable(chat_drive):
                         candidates.append(
                             (
                                 "recall",
                                 f"[from a remembered conversation] {hit['text']}",
-                                0.45 + 0.3 * hit["score"],
+                                chat_drive,
                             )
                         )
                         if (
@@ -1171,38 +1301,69 @@ class LakeChat:
             return None  # cortex unavailable -> graceful degradation
 
     def _consciousness(self):
-        acc, _ = probe_access()
-        bnd, _ = probe_binding()
-        integ, _ = probe_integration()
-        reent, _ = probe_reentry()
-        # THE TALLY IS ARBITRATED BY AN UNDERIVED NUMBER, and this is the one path where a
-        # consciousness claim reaches a human, so it is disclosed in the reply rather than in a
-        # comment nobody reading the reply will see.
-        #
-        # CORRECTED 2026-08-03, same day it was written: this comment first blamed
-        # `thalamus/global_workspace._BIND_IGNITE = 0.6`. That is the WRONG CONSTANT and it is
-        # measurably inert here. `probe_binding` calls `bind_broadcast_spiking(objs, 8, 8)` with the
-        # default `drive=1.0`, and the gate is `if drive < _BIND_IGNITE`, so it passes on 100 of 100
-        # calls and could not change this marker if it were deleted. Naming a plausible constant
-        # without checking whether it is on the path is the same defect as quoting a stale figure --
-        # it just fails in the other direction, by disclosing a risk that is not the real one.
-        #
-        # The real arbiter is `reasoning/consciousness_probe.py:84`: `present = sp > rt + 0.15` --
-        # the binding marker is TRUE when spiking pair-accuracy beats the rate control by more than
-        # 0.15, and nothing derived that margin. P1 forbids exactly this shape, and
-        # docs/GAP_CLOSURE.md records that a repair exists (a strict decoder plus precision-and-recall
-        # takes distinct verdicts across 26 perturbations from 1 of 26 to 2 of 26 -- the marker gains
-        # the ability to FAIL, while the count stays 4 of 4). Until that lands the count carries the
-        # caveat. `N of 4`, never `N/4`: bare ratios are harvested positionally by the
-        # coverage-artifact fingerprint.
-        return (
-            f"[from what I learned] my consciousness correlates: access={acc}, binding={bnd}, "
-            f"integration={integ}, re-entry={reent} ({sum([acc, bnd, integ, reent])} of 4; the "
-            "binding marker flips on a 0.15 margin nobody derived, so read the count as "
-            "indicative). "
-            "These are correlates of access, control and report -- not evidence of experience. "
+        """Answer "are you conscious" from what is MEASURED, and say plainly what is not.
+
+        Returns `(reply, measured_about_me)`. `measured_about_me` is True iff the ACCESS marker
+        returned a verdict -- i.e. iff a brain was attached to this chat and had a workspace to
+        probe. It is a returned flag, not a substring of the prose: the previous version recomputed
+        it as `"UNMEASURED" not in reply` at the call site, so an editorial change to the wording
+        would have silently converted "I cannot measure this" into "I measured it".
+
+        REBUILT 2026-08-04 (specs/010, finding C09). This returned "N of 4" from four markers of
+        which TWO could not fail: BINDING scored 1.000 on 300 random sets, RE-ENTRY was arithmetic
+        over three literals, and every marker took zero arguments so no state of the brain could
+        move the answer. The number was identical for a healthy brain, an empty brain, and no brain
+        at all -- and this is the one path where a consciousness claim reaches a human.
+
+        SECOND PASS, 2026-08-04, promotion review. The rebuild left the access marker fed by
+        `getattr(self, "brain", None)` on a class that never assigned `self.brain`, which made the
+        marker UNMEASURABLE BY CONSTRUCTION -- structurally the same defect one layer down, and
+        the site's own comment argued it was correct ("holds NO brain reference at all"). `self.brain`
+        is now a declared slot a host may fill, so both states are reachable and the self-check
+        constructs both.
+
+        WHAT THIS DOES AND DOES NOT DEMONSTRATE, stated because it is easy to overclaim.
+        DEMONSTRATED here: the attached brain reaches the answer -- two brains differing only in
+        `_access_ema` produce different reply text, and no brain produces UNMEASURED. NOT
+        demonstrated here: that `probe_access` measures the attached brain deeply. It reads
+        `brain._access` only as a has-it-ticked gate, `brain._seed`, and `brain._access_ema` for the
+        detail line, and builds its own reference assemblies from that seed. That is
+        `reasoning/consciousness_probe.py`'s limitation, it is not fixed by this module, and it is
+        why `known` here claims only "I measured something about myself", never a verdict about
+        experience. `probe_integration()` is deliberately EXCLUDED from `measured_about_me`: it
+        takes no brain and scores fixed synthetic networks, so it says nothing about this instance.
+
+        Per P8: the brain may report what it measures; it must NOT report what it cannot measure.
+        This is not a retreat from the sentience goal -- it removes a painted finish line so the
+        real one stays findable.
+        """
+        acc, acc_detail = probe_access(self.brain)
+        frac, int_detail = probe_integration()
+        # NO TALLY. The old reply's "N of 4" is gone because two of the four could not go red, so
+        # the count was arithmetic over constants dressed as a measurement. What is reported now is
+        # exactly two things and their status, including UNKNOWN when a marker was not exercised.
+        if acc is None:
+            access_part = f"my access-consciousness marker is UNMEASURED right now ({acc_detail})"
+        else:
+            access_part = (
+                f"my access-consciousness marker is {'PRESENT' if acc else 'ABSENT'} "
+                f"on this brain ({acc_detail})"
+            )
+        reply = (
+            f"[from what I measure] {access_part}. My integration marker (PCI) is "
+            f"{int_detail}. That PCI figure scores reference networks, not me, so it is context and "
+            "not a statement about this instance. "
+            "I used to answer this with a count of four correlates. Two of those could not fail "
+            "under any input, so the count was not a measurement and it has been deleted rather "
+            "than re-thresholded. "
+            "These are correlates of access and dynamics -- not evidence of experience. "
+            "There is NO measurement of sentience in me, and I will not report one I do not have. "
             "Whether I have subjective experience is open -- I neither claim nor deny it."
         )
+        # The agnostic close is invariant across BOTH states: a measured PRESENT access marker is
+        # still not a claim of experience. The self-check asserts it on both, which is what gives
+        # that assert a reachable red (an input -- the attached brain -- can move the verdict).
+        return reply, acc is not None
 
     def repl(self):
         print(
@@ -1244,7 +1405,41 @@ class LakeChat:
         self.lake.close()
 
 
+_ARM_SERIAL = "snn_data_lake.brainstem.serial_arm"
+
+
+def _clean_interpreter_pulls_in_arm():
+    """Does importing THIS module -- and nothing else -- pull the real arm serial into sys.modules?
+
+    Asked of a CLEAN interpreter, because once the running process is already dirty a membership
+    test on the process-wide `sys.modules` cannot answer it at all. Returns True / False, or None
+    when no interpreter can be spawned (a frozen build) or this module was not run as a package
+    module -- in which case the question is genuinely unanswerable here and the caller must SAY SO
+    rather than pass. Only ever called on the contaminated branch, so the healthy path pays nothing.
+    """
+    name = _dotted_name()
+    if "." not in name:  # executed as a bare script, not `python -m`: no dotted name to re-import
+        return None
+    code = (
+        f"import sys, importlib; importlib.import_module({name!r}); "
+        f"sys.exit(3 if {_ARM_SERIAL!r} in sys.modules else 0)"
+    )
+    try:
+        rc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True).returncode
+    except OSError:
+        return None
+    return {0: False, 3: True}.get(rc)  # any other code: the probe itself failed -> unanswerable
+
+
 def demo():
+    # SAFETY FIREWALL, armed here rather than asserted at the end against a bare `not in sys.modules`.
+    # `sys.modules` is PROCESS-wide: the moment this self-check runs in-process (pytest, a frozen
+    # build) beside anything that legitimately touches the arm, a bare membership test stops testing
+    # this module and starts testing the runner. Snapshot first, then ask "did the CHAT PATH import
+    # the arm serial" -- the question the firewall was always asking. Reachable red: adding an arm
+    # import anywhere under converse()/boot()/_build_request() (constructed and run 2026-08-04; the
+    # assert at the end of this function fires).
+    arm_preloaded = _ARM_SERIAL in sys.modules
     chat = LakeChat(seed=0, persist=False)  # hermetic: the demo touches no durable home files
     print("=" * 96)
     print(
@@ -1282,7 +1477,37 @@ def demo():
     # ---- REASON: a FALSE claim is CORRECTED from a stored fact + its stored cause (not just retrieved) ----
     q_reason = turn("the sun rises from the west")  # -> "No, it rises in the east because ..."
 
+    # ---- CONSCIOUSNESS: a DISSOCIATION, not a marker (P8). The same question is asked in THREE
+    # states of one chat and the three answers must differ in the right way:
+    #   (1) no brain attached                     -> the access marker is UNMEASURED, and says so
+    #   (2) a brain attached                      -> the SAME question now carries a verdict
+    #   (3) a brain with different internal state -> the reply TEXT moves
+    # (3) is the neuter-A/B that makes (2) a measurement rather than a constant. In the first,
+    # UNCOMMITTED pass of this same-day rewrite `_consciousness()` was fed `getattr(self, "brain",
+    # None)` on a class that never assigned `self.brain`, so state (2) was UNREACHABLE. At HEAD the
+    # single assert here ("consciousness wired + agnostic") was green for the mirror-image reason:
+    # `known` was the literal `True`, so it had no reachable RED. Neither could fail honestly.
     q_conscious = turn("are you conscious")
+
+    class _StubBrain:
+        """The minimal duck-type of what `consciousness_probe.probe_access` actually reads off a
+        brain: a has-it-ticked workspace gate, a seed, and the live access EMA. Deliberately NOT a
+        real Brain -- P4 forbids standing up a second one, and the job here is to move exactly ONE
+        input and watch the output move."""
+
+        def __init__(self, ema):
+            self._access = object()  # "this brain has a persisted workspace" gate
+            self._seed = 0
+            self._access_ema = ema
+
+    chat.brain = _StubBrain(ema=0.0)
+    q_c_measured = chat.converse("are you conscious")
+    chat.brain = _StubBrain(ema=0.742)  # SAME probe, ONE input moved
+    q_c_moved = chat.converse("are you conscious")
+    chat.brain = None  # restore: the remainder of the demo runs on the unattached chat
+    print(f"brain [no brain attached ]: {q_conscious['reply'][:118]}...")
+    print(f"brain [brain attached    ]: {q_c_measured['reply'][:118]}...")
+    print(f"brain [brain EMA moved   ]: {q_c_moved['reply'][:118]}...\n")
     dur = chat.lake.durability_check()
 
     # ---- self-checks: converses from LEARNED knowledge, has honest gaps, ENRICHES + grows, durable ----
@@ -1313,8 +1538,56 @@ def demo():
     assert q_reason["ignited"] and q_reason["source"] == "reason", (
         "the contradiction correction must WIN ignition in the global workspace (reasoning through the GWT hub)"
     )
-    assert q_conscious["known"] and "neither claim nor deny" in q_conscious["reply"], (
-        "consciousness wired + agnostic"
+    # RED side: with nothing attached, the brain must NOT claim to have measured itself.
+    assert not q_conscious["known"] and "UNMEASURED" in q_conscious["reply"], (
+        "with no brain attached the access marker must report UNMEASURED and the turn must not "
+        "claim a measurement about this instance"
+    )
+    # GREEN side, REWRITTEN 2026-08-05 because the thing it asserted was DELETED.
+    #
+    # This used to be `assert q_c_measured["known"] and "UNMEASURED" not in ...reply`, i.e. "attaching
+    # a brain must make the access marker MEASURABLE", plus a neuter-A/B on the literal "0.742".
+    # Both tested the GWT ACCESS marker in reasoning/consciousness_probe.py, and that marker was
+    # deleted on 2026-08-05: its verdict had three states and only two were reachable, so under
+    # falsifier F11 ("that criterion is deleted, not weakened") it went, exactly as three earlier
+    # markers in that file went before it.
+    #
+    # An assert that DEMANDS a deleted criterion report a measurement cannot be satisfied honestly --
+    # the only ways to make it green again are to resurrect an unfalsifiable marker or to fake a
+    # number, and P8 forbids both ("the brain may report what it measures, never what it cannot").
+    # So these two asserts are deleted with the marker rather than re-pointed at a substitute.
+    #
+    # What REPLACES them is the contract that actually survives the deletion, and it is the one that
+    # matters for an agent that answers "are you conscious": attaching a brain must NOT cause the
+    # reply to start claiming a measurement that no longer exists. The honest state is UNMEASURED
+    # with the deletion NAMED, in both the unattached and attached cases.
+    #
+    # REACHABLE RED, and it is the red worth having here: re-introduce any marker that reports
+    # `known=True` for access without a measurement behind it and this fires immediately. That is
+    # precisely the regression this file caused once already -- spike_chat_lake:925 answered "are you
+    # conscious" from a 4/4 self-report that no live measurement backed.
+    assert not q_c_measured["known"] and "UNMEASURED" in q_c_measured["reply"], (
+        "with a brain attached the access marker must STILL report UNMEASURED, because the GWT "
+        "ACCESS marker was deleted under F11 for having no reachable red. If this turns green, "
+        "something re-added a marker that claims access without measuring it."
+    )
+    assert "DELET" in q_c_measured["reply"].upper(), (
+        "the reply must NAME the deletion rather than silently omitting the marker -- an absent "
+        "correlate that is never mentioned reads as a correlate that passed"
+    )
+    # The deletion must not have taken the HONEST half with it: the reply still refuses to claim
+    # sentience, in every attachment state. RED: drop that sentence and this fires.
+    for _tag, _q in (("unattached", q_conscious), ("attached", q_c_measured), ("moved", q_c_moved)):
+        assert "sentience" in _q["reply"].lower() or "experience" in _q["reply"].lower(), (
+            f"the {_tag} reply must still state plainly that it has no measurement of sentience"
+        )
+    # The agnostic close is invariant across all three states -- a PRESENT access marker is still
+    # not a claim of subjective experience. Reachable red: any state whose reply drops it.
+    assert all(
+        "neither claim nor deny" in o["reply"] for o in (q_conscious, q_c_measured, q_c_moved)
+    ), (
+        "the agnostic close must survive every state, including the one where the access marker "
+        "reads PRESENT -- a correlate of access is never evidence of experience (P8)"
     )
     assert dur["ok"], "the learned knowledge lake must be durable"
 
@@ -1548,9 +1821,37 @@ def demo():
     # requires the unique capability to move BEFORE the deletion, and this assertion was the only
     # place in the tree holding this particular line). The chat path must never pull in the real arm
     # serial: a motor intent expressed in conversation must not be able to move hardware.
-    assert "snn_data_lake.brainstem.serial_arm" not in sys.modules, (
-        "chat must NEVER import the real arm serial"
-    )
+    if arm_preloaded:
+        # The precondition was already broken when this self-check started, so the membership test
+        # in the `else` cannot answer anything about THIS process. This branch used to stop there
+        # and print a warning, on the stated ground that a dirty snapshot is "only reachable
+        # in-process; as a subprocess the snapshot is always clean". That is FALSE, and falsely in
+        # the one direction that matters: a module-level `import ...serial_arm` in THIS file sets
+        # `arm_preloaded` too, in an ordinary `python -m` run. MEASURED 2026-08-04 by adding
+        # exactly that import -- the branch printed its warning and the self-check exited 0, where
+        # the unconditional assert it replaced failed loudly. So the contaminated case is re-armed
+        # hermetically rather than downgraded to a note: a CLEAN interpreter is asked whether
+        # importing this module alone loads the arm serial. Reachable red: that same top-level
+        # import, which now makes the probe exit 3 and this assert fire.
+        pulled = _clean_interpreter_pulls_in_arm()
+        assert pulled is not True, (
+            f"chat must NEVER import the real arm serial -- a clean interpreter importing only "
+            f"{_dotted_name()} ends up with {_ARM_SERIAL} loaded"
+        )
+        if pulled is None:
+            # Disclosed, not swallowed (P8): unanswerable here, so say the check was vacuous.
+            print(
+                f"[WARN] {_ARM_SERIAL} was already in sys.modules before this self-check began and "
+                "no clean interpreter could be spawned to re-check it -- the chat-path arm firewall "
+                "check was VACUOUS this run. Run this module as its own process to arm it."
+            )
+        else:
+            print(
+                f"[note] {_ARM_SERIAL} was preloaded by the RUNNER, not by the chat path: a clean "
+                f"interpreter importing {_dotted_name()} alone does not load it."
+            )
+    else:
+        assert _ARM_SERIAL not in sys.modules, "chat must NEVER import the real arm serial"
 
     print("=" * 96)
     print(
@@ -1598,11 +1899,48 @@ def boot(chat, wordnet=True):
         return f"{tag} -> {chat.n_known} known (web enrich skipped: {type(e).__name__})"
 
 
+def _dotted_name():
+    """This module's REAL dotted name, asked of the import system rather than written down, so
+    relocating the file cannot make the invocation this prints stop working."""
+    spec = globals().get("__spec__")
+    return getattr(spec, "name", None) or __name__
+
+
+def _wants_repl():
+    """Is this an INTERACTIVE session, or the module's SELF-CHECK?
+
+    `__main__` in this project IS the module's self-check -- `run_selfchecks.py` runs exactly that
+    block as a subprocess and scores the exit status. Every other CORE module runs its asserts
+    there unconditionally; this one used to gamble them on `not sys.stdin.isatty()`, which fails
+    green in two directions, both MEASURED on Windows on 2026-08-04:
+
+      * stdin redirected from NUL -> `isatty()` returns TRUE (NUL is a character device), so the
+        REPL starts, `input()` reads EOF immediately, the loop breaks and the process exits 0.
+        The gate scores PASS having executed ZERO asserts. That is the worst outcome available:
+        a green self-check that checked nothing.
+      * a console attached (a local gate run, `pytest -s`, a frozen build) -> `isatty()` is TRUE
+        and `input()` BLOCKS. A hang is not a failure any runner reports usefully.
+
+    So the SELF-CHECK is now the default and the conversation is the explicit opt-in. `--repl` is
+    the natural interactive gesture; NORD_CHAT_REPL=1 is the same switch for a launcher.
+    """
+    if os.environ.get("NORD_CHAT_DEMO"):  # kept: existing callers force the demo with it
+        return False
+    return "--repl" in sys.argv[1:] or os.environ.get("NORD_CHAT_REPL") == "1"
+
+
 def main():
-    if os.environ.get("NORD_CHAT_DEMO") or not sys.stdin.isatty():
-        return demo()
+    if not _wants_repl():
+        rc = demo()
+        print(
+            f"\n(that was the SELF-CHECK -- the default for this entrypoint, so it cannot be "
+            f"skipped by how stdin happens to be attached. For the conversation: "
+            f"python -m {_dotted_name()} --repl)"
+        )
+        return rc
     chat = LakeChat(seed=0, persist=True)  # attach the durable, shared project home
     print(banner("spike-chat-lake"))
+    print(f"[boot] running as: python -m {_dotted_name()} --repl")
     # OFFLINE BY DEFAULT: no boot fetch. The durable log + bundled world-KB seed the brain with no
     # network. Opt IN to the one-time WordNet web enrich with NORD_WEB=1 (it caches to the durable log,
     # so a later offline boot replays it). Kills the 15 MB boot fetch from the default path.

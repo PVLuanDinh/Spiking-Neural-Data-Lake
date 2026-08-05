@@ -18,7 +18,7 @@ HONEST SCOPE: this is 1-step latent prediction on a chaotic system, not long-hor
 makes accurate rollout impossible for anyone). The claim is that JEPA's predict-in-latent extracts
 the predictable part of a genuinely chaotic world; it is not a claim to have tamed chaos.
 
-  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python research/double_pendulum_jepa.py
+  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.double_pendulum_jepa
   Knobs: NORD_STEPS(9000) NORD_NOISE(24) NORD_LAT(16) NORD_TRAJ(300)
 Deps: numpy (probe) + stdlib (JepaWorldModel).
 """

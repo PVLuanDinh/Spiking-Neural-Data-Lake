@@ -22,13 +22,19 @@ or any step is an honest gap -- ``solve`` returns ``None`` so the caller's hones
 gap stands. It never fabricates an answer and it never invents an operator the
 experts do not already have.
 
-Pure-stdlib at the module level (``random`` + ``re``); the numeric stack, if any,
-is pulled only by ``build_default_cortex`` when the caller constructs the cortex.
-No torch, no brainstem import, no actuator route.
+DEPENDENCIES (P7, 2026-08-04). This paragraph used to read "Pure-stdlib at the module
+level (``random`` + ``re``) ... No torch" -- a purity boast left behind by the
+zero-dependency rule abolished project-wide on 2026-07-20, and exactly the residue P7
+names as a defect. The import set is unchanged and it is the RIGHT one, but for a
+measured reason rather than a purity one: this module does string decomposition and
+dispatch only -- ``_SPLIT.split``, one regex substitution per step, and a dict handoff
+to ``cortex.route`` -- so there is no array or tensor arithmetic here for numpy or torch
+to accelerate. The numeric stack is pulled by ``build_default_cortex`` when the caller
+constructs the cortex, which is where the arithmetic actually lives. No brainstem
+import, no actuator route (that is a safety-envelope statement, not a dependency one).
 """
 
-import random
-import re
+import re  # `import random` went with the dead `self._rng` it was the only user of
 
 # tokens that, inside a later sub-step, refer back to the previous step's answer (the scratchpad
 # binding). Ordered most-specific first so "<prev>" / "result" win before the bare pronouns.
@@ -67,7 +73,9 @@ def _extract_answer(reply):
 
 class CompositionalSolver:
     """Multi-step reasoning by COMPOSING the single-shot cortex router (each step still one best
-    expert). Deterministic: no wall-clock, no global RNG, ``random.Random(seed)`` per instance;
+    expert). Deterministic: no wall-clock, no RNG AT ALL -- this class has no stochastic step
+    (the docstring claimed ``random.Random(seed)`` per instance, describing an attribute that was
+    stored and never read; both are gone as of 2026-08-04, see __init__);
     the chain order and the cortex routing are the only state. Honest gap (``None``) when no
     confident chain forms -- this composes the bounded expert grammar, it does not synthesise new
     operators.
@@ -75,18 +83,38 @@ class CompositionalSolver:
 
     def __init__(self, cortex, records=None, seed=0):
         self.cortex = cortex  # from build_default_cortex(...)
-        # BOTH of these are stored and NEVER READ (verified tree-wide, v4.78). They are kept rather
-        # than deleted because `records` has a LIVE caller that believes otherwise:
-        # reasoning/spike_chat_lake.py:1087 passes `records=self.records`, i.e. LakeChat hands this
+        # `records` is stored and NEVER READ (re-verified tree-wide 2026-08-04). It is kept rather
+        # than deleted because it has a LIVE caller that believes otherwise:
+        # `LakeChat._compose_reply` in reasoning/spike_chat_lake.py passes `records=self.records`,
+        # i.e. the chat hands this
         # solver its knowledge base expecting the chain to consult it. It does not -- routing goes
-        # through `self.cortex` alone. Deleting the parameter would break that call site and hide the
-        # mismatch; the honest state is that the caller's expectation is unmet. Either wire `records`
-        # into _route()'s miss path or drop the argument at :1087 -- but do not leave a third reader
-        # believing a KB is in play.
+        # through `self.cortex` alone. Deleting the parameter would break that call site and hide
+        # the mismatch; the honest state is that the caller's expectation is unmet. Either wire
+        # `records` into _route()'s miss path or drop the argument at the call site -- but do not
+        # leave a third reader believing a KB is in play.
+        #
+        # STALE LINE CITATION, corrected 2026-08-04: this comment cited
+        # "reasoning/spike_chat_lake.py:1087". That line is a COMMENT about `route_all` coverage
+        # thresholds and has nothing to do with this class; the real construction site is :1217.
+        # Naming the SYMBOL instead of the line, because a line number in a 1200-line file that is
+        # edited far more often than this one is a citation that rots -- which is exactly what
+        # happened here, and `tools/citation_guard.py` does not catch it (it resolves FILES, never
+        # line numbers).
+        #
+        # SYMBOL CORRECTED 2026-08-05: the replacement symbol was `LakeChat._compose`, and there is
+        # NO SUCH METHOD -- `grep "def _compose\b"` over spike_chat_lake.py returns zero matches.
+        # The method is `LakeChat._compose_reply` (`def` at :1203; the construction is at :1217,
+        # which does resolve). Swapping a rotting line number for a symbol only helps if the symbol
+        # is checked against the tree, and this one was not: the fix for a citation defect shipped
+        # the same defect in the more durable form, which is the worse outcome of the two.
         self.records = list(records or [])  # STORED, NOT READ -- see above
-        self._rng = random.Random(
-            seed
-        )  # STORED, NOT READ -- no stochastic step exists in this class
+        # `self._rng = random.Random(seed)` stood here marked "STORED, NOT READ". Unlike `records`
+        # it had no caller expectation to preserve: the ONLY two construction sites tree-wide are
+        # this module's own self-check and `LakeChat._compose_reply`, and NEITHER passes `seed`. There is
+        # no stochastic step anywhere in this class, so the object was dead in every sense. Deleted
+        # 2026-08-04 (P3: retire, do not keep a dead attribute that suggests a randomised path).
+        # `seed` stays in the signature -- it costs nothing, both callers omit it, and removing a
+        # public parameter is a breaking change for a property this class does not need.
 
     def _route(self, text):
         """Dispatch ONE sub-step through the existing cortex router, guarded so a broken expert or a

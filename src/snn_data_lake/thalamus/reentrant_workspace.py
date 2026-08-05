@@ -1,5 +1,9 @@
 """
-Re-entrant, NON-saturated Global Neuronal Workspace (stdlib + numpy/torch allowed project-wide; uses only `random`).
+Re-entrant, NON-saturated Global Neuronal Workspace.
+(Dependencies are governed by P7; this module imports `random` only. The line here used to open
+"stdlib + numpy/torch allowed project-wide; uses only `random`" -- the same dependency-scope boast
+that was removed from the sibling `thalamus/global_workspace.py` on 2026-08-04 and left standing
+here, in a file edited in the same pass. P7 names a stdlib-scope claim as residue, not a feature.)
 
 WHY THIS EXISTS -- the honest defect it fixes
 ==============================================
@@ -315,8 +319,20 @@ class ReentrantWorkspace:
         return reached / len(self._subs)
 
     # -- read-only introspection (functional only; no phenomenal field, ever) ---------------------
+    # P3 DISPOSITION for the two accessors below, measured 2026-08-04 by an AST census over all 400
+    # files under `src/snn_data_lake/` (attribute uses AND string-literal/getattr uses, because a
+    # name-only grep misses dynamic dispatch): `association` and `inbox` have **ZERO** readers
+    # outside this module -- shape 4 of the dormancy family, a faculty that is fed and never read.
+    # They are NOT force-wired, which P3 explicitly forbids ("a wire that does not charge is
+    # reverted and retired/exempted, never faked with a dead consumer"), and NOT retired, because
+    # both are genuine read-only introspection over state the module already maintains for its own
+    # live path: `_assoc` IS read every tick by `_deliver` (it scales the broadcast bias), and
+    # `_subs[...]["inbox"]` IS written every tick. What is dormant is the public ACCESSOR, not the
+    # mechanism behind it. Recorded as open P3 work at the accessor tier.
     def association(self, source, content):
-        """The learned Hebbian re-entry weight for a (source, content) pair in [0,1] (0 if none)."""
+        """The learned Hebbian re-entry weight for a (source, content) pair in [0,1] (0 if none).
+
+        No external reader (see the census note above); exercised by this module's self-check."""
         return self._assoc.get((str(source), content), 0.0)
 
     def access_strength(self):
@@ -348,6 +364,54 @@ class ReentrantWorkspace:
         supported. Access still DECAYS as the re-entrant sustain fades under weak/masked input,
         which is the property this measure exists to provide.
 
+        CHARGE, MEASURED (P3: reachability is not charge). Reachable at `cortex/brain.py`
+        `Brain._c1_tick` -> `self._reentrant_strength = round(float(...access_strength()), 3)`,
+        consumed by `_self_model` (`access_index` / `confidence`), by the region-coherence readout,
+        and by `Brain.state()`. Proven decisive by a NEUTER-A/B: pin this method to the constant
+        1.000 it replaced and re-run.
+
+        HARNESS, RE-DERIVED 2026-08-05 and stated because it was NOT recorded and the figures
+        below therefore could not be re-derived at all -- `make_brain(seed=S, persist=False)` under
+        a fresh `NORD_HOME`, 40 `tick()`s, comparing TOP-LEVEL `Brain.state()` keys (114 of them;
+        flattening the four nested dicts gives 133, so the basis matters).
+
+        | reading | seed 0 | seed 1 |
+        |---|---|---|
+        | ticks where `_reentrant_strength` differs | 37 of 40 | 40 of 40 |
+        | TOP-LEVEL `state()` keys that move | **5** of 114 | **5** of 114 |
+        | distinct `access_strength()` returns | 10 | 8 |
+        | pinned distinct returns | 1 | 1 |
+
+        The five keys are the same at both seeds: `reentrant_strength`, `region_coherence`,
+        `reliability`, `self_state` (its `confidence` and `access_index`) and `synfire_bound`.
+        **This was recorded as "3 of 114" naming only the first, second and fourth** -- understating
+        a neuter's blast radius is the direction that matters, because the two unnamed keys are two
+        more faculties this readout reaches. The per-key BEFORE/AFTER values are deliberately not
+        quoted: they are seed-dependent and not even sign-stable (`region_coherence` goes
+        0.347 -> 0.477 at seed 0 and 0.378 -> 0.227 at seed 1), so the previously recorded
+        "0.545 -> 0.572 / 0.203 -> 0.213 / 0.406 -> 0.426" reproduced at neither seed. Per
+        `docs/POLICIES.md` -- quote the finding, re-run for the counts.
+
+        THE FINDING, which is what survives re-derivation: this is NOT telemetry. It changes
+        another faculty's own output, which is the stricter P6 bar as well as P3's, and it
+        de-saturates -- 8 to 10 distinct values where the pinned version takes exactly one.
+
+        OPEN P1 (recorded, deliberately not rewritten blind). `_ACC_LO` / `_ACC_HI` are fixed
+        constants that ARBITRATE this readout, which P1 normally forbids -- it wants a learned or
+        running-baseline-relative form. Two things argue for recording rather than converting:
+        exception (b) applies on its face (a running band is not reproducible from the persisted
+        policy, so the deterministic gates would stop reproducing), and a running-baseline rewrite
+        of exactly this shape elsewhere in the tree introduced a division singularity at the empty
+        /silent boundary. Converting it needs the boundary cases (zero drive, dark tick, first tick)
+        constructed and run FIRST. The band is at least honestly derived and still fits, and that
+        was CHECKED rather than assumed on 2026-08-05: over the A/B runs above the readout's
+        non-zero returns span 0.2812-0.5312 (seed 0) and 0.3125-0.5000 (seed 1), so it never
+        reaches 32/32 and there is no clipping at the `_ACC_HI` end. The 0.0 values are the
+        dark-tick / zero-drive early returns above, not clipping at `_ACC_LO`. *(Worth stating
+        explicitly: `Brain.__init__` seeds `_reentrant_strength = 1.0` as a default, so reading
+        THAT attribute shows a 1.000 which is the default and not a saturated readout -- a
+        confusion this note nearly recorded as a P1 finding.)*
+
         FUNCTIONAL access strength -- how strongly content holds the workspace. NOT a claim about
         phenomenal experience."""
         if not self._last.get("ignited"):
@@ -374,7 +438,9 @@ class ReentrantWorkspace:
         return round(sustained / self._ACC_N, 4)
 
     def inbox(self, name):
-        """The sequence of broadcasts a subscribed specialist has received (None on a dark tick)."""
+        """The sequence of broadcasts a subscribed specialist has received (None on a dark tick).
+
+        No external reader (see the census note above); exercised by this module's self-check."""
         s = self._subs.get(str(name))
         return list(s["inbox"]) if s is not None else []
 

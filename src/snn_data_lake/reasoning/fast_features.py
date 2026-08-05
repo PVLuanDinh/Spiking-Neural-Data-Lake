@@ -1,9 +1,11 @@
 """
 Batched conv1 feature extractor -- a drop-in, numerically-equivalent, far faster
 replacement for the per-image `torch.stack([conv.features(img) for img in X])`
-loop that dominates the SNDL developmental-loop runtime.  (torch/GPU tier,
-ruff-excluded; this file is ADDITIVE and imports the
-frozen `ConvLatencyStdp` from research/deep_stdp_latency.py, editing nothing.)
+loop that dominates the SNDL developmental-loop runtime.  (torch/GPU tier; this
+file is ADDITIVE and imports the frozen `ConvLatencyStdp` from
+`snn_data_lake/reasoning/deep_stdp_latency.py`, editing nothing.)
+("ruff-excluded" was removed 2026-08-04: reasoning/ has been linted since
+2026-07-28 -- see the per-file-ignores in pyproject.toml.)
 
 WHY THIS FILE EXISTS
 --------------------
@@ -44,9 +46,9 @@ Result: `batched_features(conv, X)` returns a [N, feat_dim] tensor identical (to
 within GPU conv float noise, < 1e-4) to `torch.stack([conv.features(x) for x in X])`.
 
 Run the correctness + speed self-check:
-    NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python research/fast_features.py
+    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.fast_features
 Knobs: NORD_C NORD_T NORD_TRAIN NORD_CORRECT NORD_SPEED NORD_BATCH NORD_GPU
-Deps: numpy torch torchvision snntorch   (research/GPU tier)
+Deps: numpy torch torchvision snntorch   (GPU tier)
 """
 
 import os
@@ -55,7 +57,7 @@ import time
 import torch
 import torch.nn.functional as F
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, DOG_SIZE, DOG_THRESH
 
@@ -66,9 +68,10 @@ def _env(key, default):
 
 
 def _sync(device):
-    """Make GPU timing honest -- wait for queued kernels before reading the clock."""
-    if torch.is_tensor(device):
-        device = device
+    """Make GPU timing honest -- wait for queued kernels before reading the clock.
+
+    (A `if torch.is_tensor(device): device = device` no-op was removed 2026-08-04; it assigned a
+    name to itself, so the branch did nothing at all. `str(device)` already handles every form.)"""
     if str(device).startswith("cuda"):
         torch.cuda.synchronize()
 

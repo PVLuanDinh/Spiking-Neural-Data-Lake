@@ -1,8 +1,16 @@
 """
 Reward-modulated STDP (R-STDP) with a decaying eligibility trace -- the distal-reward rule.
 
-A new member of the plasticity family (additive, opt-in; changes no existing behaviour). This
-is the classic Izhikevich (2007) solution to the DISTAL-REWARD problem: spike-timing
+THE three-factor rule for DISTAL reward in this brain -- one mechanism, eight importers, not an
+extra beside another one. (Framing corrected 2026-08-04b: this opened "a new member of the
+plasticity family (additive, opt-in; changes no existing behaviour)", which is the disposition P2
+forbids in those exact words -- and it was also no longer true. `docs/POLICIES.md` names this module
+as the REUSE ANCHOR for three-factor plasticity, and it is imported by `brain_native_selfbuild`,
+`cortex/interaction_learning`, `cortex/task_set`, `neuromodulation/naca` and four others. What makes
+that P2-clean is NOT that it is opt-in; it is the DISTINCTNESS argument three paragraphs below --
+this rule and `valence_stdp` do different jobs on two independent axes, so neither supersedes the
+other and there is nothing to retire.) This is the classic Izhikevich (2007) solution to the
+DISTAL-REWARD problem: spike-timing
 coincidences leave a slowly-decaying ELIGIBILITY TRACE at each synapse, so a reward arriving
 many timesteps AFTER the causal pre-before-post pairing can still reinforce the CORRECT
 synapse -- even though many other spikes happened in between. Mechanism (BrainCog learning
@@ -23,7 +31,7 @@ pairing and a LATER raw reward d via the decaying eligibility trace. Different o
 Honesty: this improves temporal CREDIT ASSIGNMENT (distal reward) via a synaptic eligibility
 trace. It is not cognition/AGI.
 Single-layer, few-synapse rate-timing caricature on synthetic spike trains -- no
-deep multi-step credit assignment, no hidden layers. Additive/opt-in new plasticity member.
+deep multi-step credit assignment, no hidden layers.
 Refs: Zeng et al., BrainCog, Patterns 2023 (rule #5, R-STDP); Izhikevich, "Solving the distal
 reward problem through STDP and dopamine", Cereb. Cortex 2007.
 

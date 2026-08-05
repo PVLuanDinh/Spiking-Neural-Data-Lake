@@ -21,10 +21,14 @@ asserted rather than described.
 Run: pytest tests/test_cockpit_actuation.py
 """
 
+import json
+import urllib.error
+import urllib.request
+
 import pytest
 
 from snn_data_lake.cortex.brain import make_brain
-from snn_data_lake.substrate.cockpit import Acts
+from snn_data_lake.substrate.cockpit import Acts, serve
 
 #: Strings that must never reach the arm. `HOME; EMERGENCY_STOP` is a concatenation attempt and
 #: `JOINT_GRIPPER_ROTATE(+30deg)` is the token so101_arm's own history records as once accepted by
@@ -100,6 +104,33 @@ def test_client_can_trip_the_estop(brain):
     assert tid is not None, "EMERGENCY_STOP must be an allow-listed command"
     acts.pump(brain, budget=4)
     assert arm.state()["stopped"] is True, "a queued EMERGENCY_STOP must latch the arm"
+
+
+def test_serve_forwards_the_queue_so_the_buttons_actually_reach_it(brain):
+    """5. THE WIRE FROM THE PAGE TO THE QUEUE EXISTS -- through serve(), not around it.
+
+    Every other test in this file constructs `Acts()` and calls it directly, which proves the
+    mechanism and says NOTHING about production. `serve()` took `acts` and did not forward it to
+    `_handler`, so `/api/act` answered 404 "actuation not enabled" for every request the real
+    cockpit made -- including EMERGENCY_STOP -- while all four tests above stayed green and
+    `learn_daemon.py` correctly passed a queue in. Presence is not participation: this asserts the
+    HTTP path a browser button actually takes.
+    """
+    acts = Acts()
+    srv = serve(brain, port=0, acts=acts, block=False)
+    try:
+        url = f"http://127.0.0.1:{srv.server_address[1]}/api/act"
+        req = urllib.request.Request(
+            url, data=json.dumps({"command": "EMERGENCY_STOP"}).encode(), method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            body = json.loads(resp.read())
+        assert body.get("queued") is True, f"/api/act refused the command: {body}"
+        assert body.get("id") is not None, "a queued command must return a ticket"
+        assert acts.pending() == 1, "the command reached serve() but never reached the queue"
+    finally:
+        srv.shutdown()
+        srv.server_close()
 
 
 def test_pump_is_bounded(brain):

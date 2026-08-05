@@ -5,7 +5,7 @@ hierarchy (Kheradpisheh-2018 SDNN style, pool-between-conv-layers), and an hones
 
 WHY THIS FILE EXISTS
 --------------------
-research/deep_stdp_latency.py built the WORKING single conv-STDP stage (the
+reasoning/deep_stdp_latency.py built the WORKING single conv-STDP stage (the
 diversity-creating DoG + latency + first-spike two-axis WTA + multiplicative
 soft-bound STDP machinery). It is a 2-layer network (one conv stage + FC). This
 file STACKS a SECOND latency conv-STDP stage on top of that frozen first stage,
@@ -76,12 +76,13 @@ a small subset -- the two-stage cascade mechanism, not paper-scale numbers, is t
 deliverable.
 
 Run (defaults finish a smoke run in a few minutes on GPU; run from the repo root):
-    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/deep_stdp_2stage.py
+    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.deep_stdp_2stage
 Scale knobs : NORD_C1 NORD_C2 NORD_M NORD_TRAIN NORD_TEST NORD_T NORD_GPU
 Stage knobs : NORD_L1_EPOCHS NORD_L2_EPOCHS NORD_POOL1
 Stage-2 calibration (optional): NORD_K2 NORD_CTHRESH2 NORD_KWINNER2 NORD_RINH2
                                 NORD_APLUS2 NORD_AMINUS2
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
+Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+         and imports from the package -- P4c, every build is part of the brain.)
 """
 
 import os
@@ -89,7 +90,7 @@ import os
 import torch
 import torch.nn.functional as F
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp import FcStdp, OneLayerNet, assign_labels, evaluate
 from snn_data_lake.reasoning.deep_stdp_latency import (

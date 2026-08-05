@@ -48,7 +48,8 @@ Env: NG_SNN_ST_T (default 15, event-frame time bins) | NG_SNN_ST_POOL (mean|mean
      NG_SNN_ST_UNSUP_BS (default 16 samples -> B*T frames/update) | NG_SNN_ST_EXTRACT_BS (default 64)
      NG_SNN_WORKERS (default 4) | NG_SNN_POOL (default 20001) | NG_SNN_HEAD_T (default 15).
 ASCII-only output (cp1252-safe). Files written under data/ng_snn/ + research/ng_snn/ only.
-Runs in .venv-cu128 on the RTX 5070 (torch/GPU training tier); the zero-dep core never imports this.
+Runs in .venv-cu128 on the RTX 5070 (torch/GPU training tier). ("the zero-dep core never imports
+this" retired 2026-08-04 -- P7 abolished the zero-dependency rule on 2026-07-20.)
 DO NOT run without a GPU (the coordinator runs it).
 """
 import os

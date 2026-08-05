@@ -15,7 +15,7 @@ neuromorphic way to feed continuous signals (joint angle, distance, IR) into an 
 Does NOT replace the verified distance-bin path in arm_config /
 gesture_recognition — it's an additional, noise-robust front-end for downstream SNN consumers.
 
-  python population_encoding.py        # self-check
+  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.population_encoding   # self-check
 """
 
 import math
@@ -90,10 +90,18 @@ def main():
     # ---- self-checks --------------------------------------------------------
     assert mean_err < 0.05, f"clean round-trip too lossy: {mean_err:.4f}"
     assert pop_mean < sng_mean, "population code should beat single-neuron under noise"
-    assert enc.decode(enc.encode(5.0)) is None or enc.decode([0] * enc.n) is None, (
-        "all-silent population must decode to None (out of range)"
+    # Two SEPARATE claims. They used to be one `or`, whose right-hand side (`decode([0]*n) is None`)
+    # is TRUE BY CONSTRUCTION -- decode() returns None the moment sum(counts) == 0 -- so the `or`
+    # short-circuited the only clause that says anything about `encode`, and the assert could not go
+    # red however far out of range the input was.
+    assert enc.decode([0] * enc.n) is None, "an all-silent population must decode to None"
+    assert enc.decode(enc.encode(5.0)) is None, (
+        f"an out-of-range value must excite no neuron -> decode None (got {enc.encode(5.0)})"
     )
-    assert enc.encode(1.0)[enc.n // 2 - 1 : enc.n // 2 + 1], "mid-range must excite middle neurons"
+    # A non-empty SLICE of a list of ints is always truthy, so the previous form of this line
+    # asserted the slice existed, not that the neurons fired. Assert the activations.
+    _mid = enc.encode(1.0)[enc.n // 2 - 1 : enc.n // 2 + 1]
+    assert _mid and all(k > 0 for k in _mid), f"mid-range must excite the middle neurons ({_mid})"
     print(f"self-check OK: round-trip {mean_err:.4f}, noise-robust ({pop_mean:.4f}<{sng_mean:.4f})")
 
 

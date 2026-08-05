@@ -451,7 +451,7 @@ def main():
         return 0
 
     # ---- torch IS present: build, run a few REAL steps, sample. Numbers here are measured. ----
-    from snn_data_lake.reasoning.torch_device import (
+    from snn_data_lake.substrate.device import (
         resolve_device,  # lazy; the ONE device selector (Policy 2, v4.78)
     )
     device = resolve_device()

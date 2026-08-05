@@ -16,19 +16,20 @@ linear-vs-RBF gap). This file closes both, on the same durable lake:
 Reports both the fast continual-linear head AND the RBF sleep-refit head, vs the 90.2% baseline and
 the 98.2% static ceiling. Feature learning stays unsupervised; only the readouts are supervised.
 
-Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/developmental_loop_lake99.py
+Run: NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.developmental_loop_lake99
 Knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NORD_REPLAY(300)
        NORD_KREPLAY(100) NORD_SGD(300) NORD_KEYDIM(48) NORD_TRAIN(12000) NORD_TEST(2000)
 Deps: numpy torch torchvision snntorch scikit-learn
 """
 
 import os
+import tempfile
 
 import torch
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp, _train
 from snn_data_lake.reasoning.brain_adapters.lake_memory import LakeMemory
@@ -71,7 +72,11 @@ def main():
     KEYDIM = _envi("NORD_KEYDIM", 48)  # richer proximity key dim (<=64)
     TRAIN_N = _envi("NORD_TRAIN", 12000)
     TEST_N = _envi("NORD_TEST", 2000)
-    lake_path = os.path.join(os.environ.get("TEMP", "."), "sndl_lake99.spkl")
+    # NOTE: this was os.environ.get("TEMP", ".") -- a WINDOWS-only variable. On the Linux/macOS
+    # CI runners TEMP is unset, so the "." fallback fired and this file was written into the
+    # process WORKING DIRECTORY (the repo checkout). tempfile.gettempdir() honours TMPDIR/TEMP/TMP
+    # on every platform and never falls back to ".".
+    lake_path = os.path.join(tempfile.gettempdir(), "sndl_lake99.spkl")
 
     print("=" * 88)
     print("LAKE LOOP -> 99: richer projected proximity KEY + RBF SLEEP-REFIT on the lake replay")

@@ -1,5 +1,36 @@
 # Robot-Arm Hardware Specification & Scope
 
+> # SUPERSEDED — DO NOT READ THIS AS AUTHORITATIVE
+>
+> **Status as of 2026-08-04 (version 4.80.0): this document describes `brainstem/arm_sim.py`, a
+> 2-link planar arm that NO LONGER EXISTS IN THE TREE.** It was retired under `specs/004-mujoco-so101-arm`
+> and replaced by the **6-DOF MuJoCo SO-101** (`brainstem/so101_arm.py`), whose own self-check asserts
+> `len(theta_deg) == 6`. Counted on 2026-08-04 over the historical text below: **48 `arm_sim.py:LINE`
+> citations, 53 mentions of `arm_sim.py`, and 8 of the class `ArmSim` — every one of them resolving
+> to nothing, because neither the file nor the class exists anywhere in `src/`.**
+>
+> **This is the most dangerous stale document in the tree, and the reason is its own opening
+> sentence.** It called itself "the authoritative statement of what the robot-arm subsystem CAN and
+> CANNOT do" for a *safety-critical* subsystem — so a reader trusting it would come away believing
+> the arm has 2 joints, no mass, no contact dynamics, and a gate called `ArmSim.apply()`. The live
+> arm has six joints, MuJoCo rigid-body physics, and the `So101Arm.apply()` gate. A safety document
+> that is confidently wrong is worse than no document, which is why this banner is a stop sign rather
+> than a footnote.
+>
+> **Where to look instead:**
+> - [SECURITY.md](../SECURITY.md) — the live five-module safety envelope and the re-test commands.
+> - `specs/004-mujoco-so101-arm/spec.md` and `contracts/so101_arm.md` — the SO-101 contract.
+> - `src/snn_data_lake/brainstem/so101_arm.py` — the code, which is authoritative over any document.
+>
+> **Kept rather than deleted**, on this file's own standing rule (*"if this document and the code ever
+> disagree, the code is correct and this document is stale"*) and on the precedent that a record of a
+> tree that existed is correct as a record. It is a historical description of the retired arm, and
+> everything below this banner should be read in the past tense. The version claim it carried
+> (*"repo version 2.70, `pyproject.toml:11`"*) was doubly stale: the version is `4.80.0`, and
+> `pyproject.toml:11` is a comment about the removed `NORD_TORCH` flag.
+
+*(Historical text follows, unmodified.)*
+
 This document is the authoritative statement of what the Spiking Neural Data Lake
 robot-arm subsystem CAN and CANNOT do, as implemented in code today (repo version
 2.70, `pyproject.toml:11`). Every claim below cites `file:line`. Where the code

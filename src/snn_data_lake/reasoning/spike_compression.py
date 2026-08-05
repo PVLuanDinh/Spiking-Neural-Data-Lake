@@ -15,7 +15,11 @@ both the fixed 4-byte store and generic gzip, losslessly. Refs: lossless event c
 import gzip
 import random
 
-random.seed(0)
+# random.seed(0) DELETED 2026-08-04 (specs/010, C33): it was an IMPORT-TIME global reseed that
+# clobbered any caller's seed, and it was VESTIGIAL here -- every RNG use in this module already
+# goes through a per-instance `random.Random(seed)`, so nothing read the global stream it set.
+# Verified by AST: no module-level statement and no function in this file touches the global
+# random API. Deterministic behaviour is unchanged; the side effect on importers is gone.
 
 
 def synth_spikes(n_channels=64, duration=20000, active=0.04):

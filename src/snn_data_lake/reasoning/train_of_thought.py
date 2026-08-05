@@ -49,7 +49,7 @@ conscious. The re-entry-adds-chaining result is the honest, narrow claim; the "s
 is one contested solution (Baars/Dehaene GNW; the binding-by-synchrony story is Singer/Gray vs
 Shadlen-Movshon), demonstrated on a toy symbolic graph, nothing more.
 
-    set PYTHONUTF8=1 & set PYTHONPATH=src & python research/train_of_thought.py
+    set PYTHONPATH=src & python -m snn_data_lake.reasoning.train_of_thought
 """
 
 from snn_data_lake.thalamus.global_workspace import GlobalWorkspace

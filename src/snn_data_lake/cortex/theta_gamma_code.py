@@ -20,13 +20,15 @@ DISTINCT from existing core modules (read them):
 - hippocampus.py / hopfield attractor recall: pattern completion of ONE stored attractor. This multiplexes
   SEVERAL items by phase and reads back their ORDER from LIF spike timing.
 - lif_neuron.py: the single-neuron LIF primitive. This composes item-specific LIF POPULATIONS driven by a
-  nested theta/gamma oscillation into a phase-coded working-memory buffer.
+  nested theta/gamma oscillation into a phase-coded working-memory buffer. It now genuinely composes it
+  (`from ... .lif_neuron import LIFNeuron`); until 2026-08-05 this line claimed composition while a
+  private `_LIFNeuron` re-declared the same dynamics fifteen lines below -- see the P2 note there.
 
 Genuinely spiking: each item is a population of LIF neurons (membrane leak + current integration + threshold
 spike + reset + refractory); items fire discrete spikes at item-specific gamma phases; recall reads spike
-timing; capacity is the theta/gamma ratio. Additive / opt-in: imports nothing but math + random, changes no
-existing behaviour. Deterministic (seeded via random.Random per instance; no module-level seed; no builtin
-hash()). Credit Lisman & Idiart 1995 / Lisman & Jensen 2013.
+timing; capacity is the theta/gamma ratio. Additive / opt-in: stdlib plus the repo's own LIF primitive,
+changes no existing behaviour. Deterministic (seeded via random.Random per instance; no module-level
+seed; no builtin hash()). Credit Lisman & Idiart 1995 / Lisman & Jensen 2013.
 
   PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.theta_gamma_code
 """
@@ -34,41 +36,28 @@ hash()). Credit Lisman & Idiart 1995 / Lisman & Jensen 2013.
 import math
 import random
 
+from snn_data_lake.cortex.lif_neuron import LIFNeuron
+
 
 def _stable_key(item):
     """Deterministic integer key for any item (no builtin hash): char-sum of its repr, stable across runs."""
     return sum((i + 1) * ord(ch) for i, ch in enumerate(repr(item)))
 
 
-class _LIFNeuron:
-    """Minimal discrete-time leaky integrate-and-fire unit: V leaks toward 0, integrates current, spikes+resets.
-
-    Inlined (not imported) so this module stays self-contained. step(current) -> 1 if it fired this step else 0."""
-
-    __slots__ = ("decay", "vth", "vreset", "refr_len", "v", "_refr")
-
-    def __init__(self, tau_m, v_threshold, v_reset, refractory):
-        self.decay = math.exp(-1.0 / tau_m)  # membrane leak per timestep
-        self.vth = v_threshold
-        self.vreset = v_reset
-        self.refr_len = refractory
-        self.v = 0.0
-        self._refr = 0
-
-    def step(self, current):
-        """Advance one timestep with input `current`; return 1 if the neuron spiked else 0."""
-        if self._refr > 0:  # refractory: clamped, integrates nothing
-            self._refr -= 1
-            self.v = self.vreset
-            return 0
-        self.v = self.v * self.decay + current  # leak toward rest + integrate the drive current
-        if self.v >= self.vth:  # threshold crossing -> discrete spike
-            self.v = self.vreset
-            self._refr = self.refr_len
-            return 1
-        return 0
-
-
+# RETIRED 2026-08-05 (P2): a private `_LIFNeuron` lived here, a second definition of the LIF
+# dynamics `cortex/lif_neuron.LIFNeuron` already owns, kept with the reason *"Inlined (not imported)
+# so this module stays self-contained."* Self-containment is not a P2 exception -- two definitions
+# of one dynamics IS the defect P2 names -- and the module docstring three dozen lines above already
+# said this module "composes" lif_neuron, which it did not.
+#
+# ADOPTED, not merged, because the incumbent dominates: `LIFNeuron` is the canonical primitive, is
+# self-checked in its own right, and adds `v_rest` + `reset_state()` + `run()` that the private copy
+# lacked. A/B FIRST, per P2's honesty guard: over the 27 (tau_m, v_threshold, refractory)
+# combinations this module can construct x 400 random drive steps each, the two produce **0
+# spike-train mismatches and a max |v_a - v_b| of exactly 0.0** -- the private `step` was
+# `v*decay + current` and `LIFNeuron`'s is `v_rest + (v - v_rest)*decay + current`, which at the
+# `v_rest=0.0` this module always used is the same arithmetic, not merely the same answer. This
+# module's self-check output is byte-identical across the swap (verified).
 class ThetaGammaCode:
     """Phase-multiplexed working memory: up to K items, one LIF population per gamma slot, ordered by theta phase.
 
@@ -110,7 +99,15 @@ class ThetaGammaCode:
             vth = (
                 0.9 + 0.2 * rng.random()
             )  # heterogeneous threshold in [0.9, 1.1); still fires by step 2
-            neurons.append(_LIFNeuron(self.tau_m, vth, 0.0, self.refractory))
+            neurons.append(
+                LIFNeuron(
+                    tau_m=self.tau_m,
+                    v_threshold=vth,
+                    v_reset=0.0,
+                    v_rest=0.0,
+                    refractory=self.refractory,
+                )
+            )
         return neurons
 
     def _simulate(self, n_cycles=1):

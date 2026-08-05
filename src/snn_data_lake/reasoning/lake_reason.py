@@ -28,7 +28,7 @@ Records consumed (the chat-lake schema): {"cue":[...], "answer":"...",
 The structured "triple" is what makes contradiction reasoning possible.
 
 Deps: stdlib (re). No imported language model.
-Self-check: PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python research/lake_reason.py
+Self-check: PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.lake_reason
 """
 
 import re
@@ -318,8 +318,6 @@ def _self_check():
     assert r.respond("the sun does not rise in the west") is None, (
         "a negated claim must be abstained on, not falsely corrected"
     )
-
-    # and no imported language model anywhere in the path
 
     print(
         "self-check OK: corrects contradictions from STORED facts (sun 'west' -> "

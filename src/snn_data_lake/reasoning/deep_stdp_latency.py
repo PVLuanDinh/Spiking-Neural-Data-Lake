@@ -4,7 +4,7 @@ that PREVENTS map collapse.  (torch/GPU tier, ruff-excluded; core untouched.)
 
 WHY THIS FILE EXISTS
 --------------------
-research/deep_stdp.py built a SIMPLIFIED deep unsupervised conv-STDP and it
+reasoning/deep_stdp.py built a SIMPLIFIED deep unsupervised conv-STDP and it
 COLLAPSED to chance: RATE (Poisson) coding + a single greedy most-spikes winner
 + ADDITIVE STDP drove all C conv maps to near-identical filters (pairwise cosine
 similarity ~0.96), so the pooled features carried no class information. This file
@@ -81,11 +81,12 @@ sane baseline on a small subset -- the mechanisms, not paper-scale numbers, are
 the deliverable.
 
 Run (defaults finish a smoke run in a few minutes on GPU):
-    NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python research/deep_stdp_latency.py
+    NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python -m snn_data_lake.reasoning.deep_stdp_latency
 Scale knobs: NORD_C NORD_M NORD_TRAIN NORD_TEST NORD_GPU NORD_T
 Calibration knobs (optional): NORD_L1_EPOCHS NORD_CTHRESH NORD_KWINNER NORD_RINH
                               NORD_APLUS NORD_AMINUS
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
+Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+         and imports from the package -- P4c, every build is part of the brain.)
 """
 
 import os
@@ -93,7 +94,7 @@ import os
 import torch
 import torch.nn.functional as F
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
 from snn_data_lake.reasoning.deep_stdp import FcStdp, OneLayerNet, assign_labels, evaluate
 

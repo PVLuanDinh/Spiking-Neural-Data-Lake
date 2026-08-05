@@ -22,10 +22,13 @@ CONTRACT (mirrors reasoning/ar_spiking_lm_serve.SpikingLMServe: guarded, numpy-l
     .generate(prompt, max_tokens) -> str deterministic (seeded) sample; "" when unavailable
   Higher .logprob == more acceptable, so it drops straight into a full-sentence scorer.
 
-FORWARD-ONLY, NO TORCH AT LOAD. Importing this module pulls only stdlib; numpy is imported lazily and,
-if absent, the server degrades to unavailable rather than raising. torch is NEVER imported here -- the
-only torch touch is the OPTIONAL inline-train path in the __main__ self-check (guarded), which reuses
-training/eprop_lm.py to produce a trained artifact for the strict order proof.
+FORWARD-ONLY. Importing this module pulls only stdlib; numpy is imported lazily and, if absent, the
+server degrades to unavailable rather than raising. The serve forward is numpy, not torch -- the only
+torch touch is the OPTIONAL inline-train path in the __main__ self-check (guarded), which reuses
+training/eprop_lm.py to produce a trained artifact for the strict order proof. (Stated as a fact
+about where the compute is, not as a purity claim: P7 abolished the zero-dependency rule and torch
+is an unconditional core dependency. Two self-check lines that PRINTED "torch not in sys.modules"
+as a proof, with nothing checking it, were deleted 2026-08-04 -- see the note in _selfcheck.)
 
 DETERMINISM. The serve path over frozen weights is fully deterministic (pure numpy float ops; seeded
 sampling in generate). Hashing uses zlib.crc32, never builtin hash(). ASCII-only output.
@@ -285,8 +288,6 @@ def _selfcheck(with_train=False):
     print("order lever, and the model was trained the brain-native way (e-prop, no BPTT)")
     print("=" * 92)
 
-    # torch-absence proof #1: importing + being about to USE the serve pulls no torch.
-
     workdir = tempfile.mkdtemp()
     art = os.path.join(workdir, "tiny_eprop_lm.npz")
     text = _TINY_TEXT
@@ -335,10 +336,15 @@ def _selfcheck(with_train=False):
         "  honest-unavailable: missing artifact -> available()=False, logprob()=None (no fake score)."
     )
 
-    # torch-absence proof #2: the full serve path (load + logprob + generate) imported no torch.
-    if not with_train:
-        print("  torch-absent: 'torch' not in sys.modules after import + logprob + generate.")
-    else:
+    # The two "torch-absence proof" lines that stood here were DELETED 2026-08-04. They were labelled
+    # proofs and printed `"torch" not in sys.modules` as a finding, with NOTHING checking it -- the
+    # report-a-capability-without-a-measurement failure, in the one place a reader would trust it.
+    # They are deleted rather than turned into an assert because P7 names exactly that assert as
+    # residue of the abolished zero-dependency rule (three such purity asserts still survive
+    # elsewhere in reasoning/), and torch-absence is not a property this module owes anyone. What IS
+    # load-bearing -- the serve forward runs on numpy alone, so it works in the CPU gate env, and it
+    # degrades to available()=False rather than raising -- is asserted above and stated below.
+    if with_train:
         print(
             "  note: --train imported torch ONLY to TRAIN the artifact; the serve forward stays numpy."
         )

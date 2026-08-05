@@ -159,7 +159,13 @@ def run_controls(pairs, out):
 
     Returns (results, disqualified). `disqualified` is True when a control PASSED where it must
     FAIL -- which means the restriction introduced a leak and the set cannot carry a verdict (A7).
-    The fourth control (an unexposed organ) needs an organ and runs in tools/lang_organ_ab.py."""
+
+    THE FOURTH CONTROL (an unexposed organ) IS NOT BUILT. This said it "runs in
+    tools/lang_organ_ab.py"; there is no such file, and there never has been -- a capability
+    reported before it exists, which is exactly what P0's honesty guard forbids and what
+    citation_guard cannot catch, because it only resolves .py names that appear as reproduction
+    paths in MARKDOWN. It needs an organ, and specs/005-language-organ has not produced one, so it
+    is OPEN WORK named here rather than a file name that reads like a location."""
     results = {}
     disqualified = False
     if not pairs:

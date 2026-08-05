@@ -5,10 +5,10 @@ loop's curiosity / curriculum / replay drive a CONTINUAL linear readout on froze
 
 WHAT THIS FILE IS (and what it replaces)
 ----------------------------------------
-research/developmental_loop.py runs the full autonomous cycle -- spiking curiosity picks the
+reasoning/developmental_loop.py runs the full autonomous cycle -- spiking curiosity picks the
 next objective digit, the STDP learner grows neurons (neurogenesis), replay consolidates old
 digits, competence feeds the next decision -- but its ACCURACY path is the STDP-prototype +
-neuron-label VOTE readout, which plateaus at ~88% (best 88.8%). research/deep_stdp_readout.py
+neuron-label VOTE readout, which plateaus at ~88% (best 88.8%). reasoning/deep_stdp_readout.py
 (v3.53) showed the CAP was the readout, not the features: a LINEAR readout on the SAME frozen
 unsupervised conv1 features reaches 95.1% (static, joint over all digits at once).
 
@@ -54,27 +54,24 @@ Train and test feature caches are kept strictly separate: the readout is trained
 cache; competence is measured ONLY on the held-out test cache. No train/test row ever mixes.
 
 Needs the torch venv (GPU strongly recommended; the conv is pre-trained ONCE, per-cycle is fast):
-    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/developmental_loop_deep.py
+    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.developmental_loop_deep
 Scale knobs (env): NORD_CYCLES (15, >10 so phase-2 revisits) NORD_C1 (30) NORD_T (15)
                    NORD_L1_EPOCHS (3) NORD_PER (300) NORD_REPLAY (200) NORD_SGD (300)
                    NORD_CAP (1, anti-fixation) NORD_TRAIN (10000) NORD_TEST (2000) NORD_GPU
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
+Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+         and imports from the package -- P4c, every build is part of the brain.)
 """
 
 import os
 import sys
 import time
 
-_here = os.path.dirname(os.path.abspath(__file__))
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
-from snn_data_lake.reasoning.torch_device import enable, resolve_device
+from snn_data_lake.substrate.device import enable, resolve_device
 
 from snn_data_lake.reasoning.deep_stdp_latency import ConvLatencyStdp
 

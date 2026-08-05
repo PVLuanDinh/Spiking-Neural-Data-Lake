@@ -36,7 +36,7 @@ Ref: Nessler, B., Pfeiffer, M., Buesing, L. & Maass, W. (2013), "Bayesian Comput
 Cortical Microcircuits through Spike-Timing-Dependent Plasticity", PLoS Comput Biol 9(4):e1003037,
 DOI 10.1371/journal.pcbi.1003037.
 
-  python research/stdp_wta_bayes.py        # (also run by run_selfchecks.py)
+  PYTHONPATH=src python -m snn_data_lake.reasoning.stdp_wta_bayes  # (also run by run_selfchecks.py)
 """
 
 import itertools

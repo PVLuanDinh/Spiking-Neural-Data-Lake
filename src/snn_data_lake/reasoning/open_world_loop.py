@@ -30,7 +30,7 @@ DRIFT is invisible (it silently corrupts an expert); the count is sensitive to l
 domain" is a region of signature space, not a clean human domain, so purity is structurally < 100%.
 This discovers, routes, and grows domains; it does not "understand" any of them.
 
-  PYTHONPATH=src .venv-lake/Scripts/python research/open_world_loop.py
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.open_world_loop
   Knobs: NORD_CTX(3) NORD_LAM(1.7) NORD_HARVEST(240) NORD_MINEV(25) NORD_CAP(10) NORD_PERSRC(1200)
 Deps: numpy (+ stdlib). Reuses corpus_stream, skill_builder, meta_skill_loop, language_readout_slda, lake_memory.
 """
@@ -118,7 +118,10 @@ class OpenWorldController:
         self.buffer = []  # [(sig, context, next, true_label)]
         self.spawn_log = []  # (stream_pos, did) for growth-stability
 
-    def _spawn(self, sig, seed_items, pos):
+    def _spawn(self, sig, pos):
+        # `seed_items` was a third parameter here, passed None by its ONE call site (_harvest) and
+        # never read in the body. Removed 2026-08-04 -- a parameter a caller must supply and nothing
+        # consumes is the shape that makes a reader believe seeding happens when it does not.
         if len(self.cents) >= self.cap:
             return None  # cap: force-route, never spawn
         did = (max(self.cents) + 1) if self.cents else 0
@@ -142,7 +145,7 @@ class OpenWorldController:
             idx = [i for i in range(len(sigs)) if assign[i] == c]
             if len(idx) >= self.min_ev:
                 mean = np.mean([sigs[i] for i in idx], axis=0)
-                did = self._spawn(mean, None, pos)
+                did = self._spawn(mean, pos)
                 if did is not None:
                     for i in idx:
                         _, ctx, nx, lbl = self.buffer[i]
@@ -346,8 +349,15 @@ def main():
     )
     assert dur["ok"], "discovered-skill index did not survive the lake restart"
     print(
+        # "growth stopped (0 late spawns)" stood here as a LITERAL and was corrected 2026-08-04.
+        # The assert above was deliberately relaxed from `late_spawns == 0` to
+        # `late_spawns < early_spawns` because the strict form held on only 3 of 7 seeds -- the
+        # comment at that assert records spawn fractions of .727-.836 straddling the .75 cut. This
+        # line then went on announcing the retracted number, so on any seed where late_spawns is 1
+        # or 2 the module printed "0 late spawns" as a success. P8: report what is measured.
         f"self-check OK: discovered {dhat} domains from a mixed unlabeled stream (true {true_k}); routing "
-        f"purity {purity:.0%} >> chance {1 / true_k:.0%}; growth stopped (0 late spawns); controls fail "
+        f"purity {purity:.0%} >> chance {1 / true_k:.0%}; growth DECELERATED ({late_spawns} spawns in the "
+        f"final quarter vs {early_spawns} in the first); controls fail "
         f"correctly (inf->1 domain, shuffle->{pur_shuf:.0%}); {lake.n_stored} discovered skills durable. "
         f"The meta-layer built ITSELF, no labels, no fixed domain count."
     )

@@ -1,5 +1,5 @@
 """
-research/brain_adapters/hippocampal_memory.py
+snn_data_lake/reasoning/brain_adapters/hippocampal_memory.py
 
 WHAT THIS IS. A thin, faithful adapter that lets the developmental / NG-SNN training loop
 REPLACE its hand-rolled python replay buffer with the brain's ACTUAL hippocampus. The loop
@@ -46,7 +46,11 @@ CONSOLIDATE -- how the sleep pass rides SleepConsolidator:
   retention level (the module itself flags that as seed-dependent).
 --------------------------------------------------------------------------------------------
 
-  PYTHONUTF8=1 PYTHONPATH=src python research/brain_adapters/hippocampal_memory.py
+  PYTHONPATH=src python -m snn_data_lake.reasoning.brain_adapters.hippocampal_memory
+
+(the path the module is at TODAY; the previous command named `research/brain_adapters/...`,
+which has not existed since v3.78 -- a documented command that cannot run is the same
+fail-green shape as a stale citation.)
 """
 
 import random

@@ -144,6 +144,23 @@ class AccessConsciousness:
         return v
 
     # -- coherence / integration proxies ----------------------------------------------------------
+    #: How many times `_coherence` has taken the FUSED matrix branch, process-wide.
+    #
+    # ADDED 2026-08-05 because the self-check's fused-vs-scalar battery could NOT see the branch it
+    # was written to validate. It re-derived the branch PREDICATE from the probe data
+    # (`all(x in (1, -1) ...)`) and called that "the fused branch was exercised" -- a statement about
+    # the INPUTS, never about the code. MEASURED: replacing `_coherence` with a plain delegation to
+    # `_coherence_scalar` (the fusion deleted outright) left the whole self-check GREEN, because
+    # `coh_drift` then compared the scalar definition against itself and the "took the fast path"
+    # count never looked. That is the vacuous-precondition failure P8 guard (4) names, in the assert
+    # added to close a P8 incident. The counter is what makes `coh_drift == 0.0` a measurement.
+    #
+    # It changes no return value, so the bit-exactness argument in `_coherence` is untouched: the
+    # method is still a pure function of `hvs` in the only sense that claim uses (same codes -> same
+    # float, no dependence on anything else). One int increment per ignition-cycle bind, against the
+    # O(M^2 * D) matrix product it sits beside.
+    _fused_calls = 0
+
     @staticmethod
     def _coherence(hvs):
         """Mean pairwise POSITIVE spike-coincidence similarity among member codes, in [0,1].
@@ -160,7 +177,15 @@ class AccessConsciousness:
         every partial sum of at most M^2/2 of them -- the sum is therefore order-independent and
         the closing division is the same single rounding the scalar loop performed. Codes that are
         not +-1 (no caller produces any) take the scalar path rather than silently relying on an
-        identity that requires them."""
+        identity that requires them.
+
+        THE BIT-EXACTNESS IS NOW ASSERTED, NOT ARGUED (2026-08-04). `docs/POLICIES.md` lists this
+        method under P8 as a live incident: the same `(a.b)/D` identity carries its algebra AND a
+        live check in `cortex/vsa_reasoning.py` (`coincidence_many` vs `coincidence`), and was
+        reused here claiming "FUSED, bit-exactly" with *no assertion anywhere comparing the fused
+        branch against the scalar one*. The scalar definition is now `_coherence_scalar` -- ONE
+        definition, used both as this method's fallback and as the control the self-check diffs
+        against on the real member codes."""
         if len(hvs) < 2:
             return 0.0
         try:
@@ -168,9 +193,24 @@ class AccessConsciousness:
             if m.ndim == 2 and m.shape[1] == D and bool(np.all(np.abs(m) == 1.0)):
                 g = (m @ m.T) / D  # g[i, j] == sim(hvs[i], hvs[j]), exactly
                 pos = np.maximum(g[np.triu_indices(m.shape[0], 1)], 0.0)
+                AccessConsciousness._fused_calls += (
+                    1  # observed by the self-check, see _fused_calls
+                )
                 return float(pos.sum()) / int(pos.size)
         except (TypeError, ValueError):
             pass  # ragged / non-numeric codes -> the scalar definition below
+        return AccessConsciousness._coherence_scalar(hvs)
+
+    @staticmethod
+    def _coherence_scalar(hvs):
+        """The SCALAR definition of `_coherence`: mean pairwise positive `sim` over member codes.
+
+        This is the fallback path of `_coherence` AND the control the self-check compares the fused
+        matrix branch against. It is one definition rather than two (P2): the fused branch is an
+        optimisation of THIS, and the assertion in main() is what makes that a measured claim
+        instead of a prose one."""
+        if len(hvs) < 2:
+            return 0.0
         tot = 0.0
         n = 0
         for i in range(len(hvs)):
@@ -344,6 +384,39 @@ def main():
     coalition.bind_assembly([f"bird#{i}" for i in range(3, 6)])
     coalition.step()
 
+    # ---- (4b) THE FUSED COHERENCE IS BIT-EXACT vs THE SCALAR DEFINITION. --------------------------
+    # POLICIES.md P8 names this file: the (a.b)/D fusion identity was reused here with the claim
+    # "FUSED, bit-exactly" and NO assertion comparing the two branches. This is that assertion, on
+    # the real member codes the live tick produces (coherent, scrambled, mixed, and the boundary
+    # sizes 2 and 1), plus the max observed drift so a regression reports a number rather than a
+    # bare False.
+    coh_probe = []
+    for maker in (_coherent("cat", 5), _coherent("dog", 12), _scrambled(9)):
+        ac_p = _fresh()
+        ac_p.bind_assembly(maker)
+        coh_probe.append([h for _, h in ac_p._members])
+    mixed = _fresh()
+    mixed.bind_assembly(_coherent("bird", 4))
+    mixed.bind_assembly(_scrambled(4))
+    coh_probe.append([h for _, h in mixed._members])
+    coh_probe.append(coh_probe[0][:2])  # the len==2 boundary
+    coh_probe.append(coh_probe[0][:1])  # the len<2 early return
+    # `fused_eligible` is a property of the PROBE CORPUS (are these codes the +-1 shape the identity
+    # needs?); `fused_took_fast_path` is a property of the CODE (did _coherence actually take that
+    # branch?). They must be counted separately and compared. Counting only the first -- which this
+    # block did until 2026-08-05 -- makes `coh_drift == 0.0` vacuous the moment the fused branch stops
+    # being reached, and MEASURED, deleting the fusion outright left the whole self-check green.
+    fused_eligible = sum(
+        1 for c in coh_probe if len(c) >= 2 and all(x in (1, -1) for h in c for x in h)
+    )
+    _fused_before = AccessConsciousness._fused_calls
+    coh_drift = 0.0
+    for codes in coh_probe:
+        fused = AccessConsciousness._coherence(codes)
+        scalar = AccessConsciousness._coherence_scalar(codes)
+        coh_drift = max(coh_drift, abs(fused - scalar))
+    fused_took_fast_path = AccessConsciousness._fused_calls - _fused_before
+
     # ---- (5) HONEST CEILING + DETERMINISM. --------------------------------------------------------
     st = strong.state()
     gate = 1.0 if st["ignited"] else 0.0
@@ -397,6 +470,10 @@ def main():
         f"{', '.join(f'{x:.3f}' for x in trend)}"
     )
     print(
+        f"coherence fusion: fused vs scalar max|d| = {coh_drift:.1e} over {len(coh_probe)} member "
+        f"sets ({fused_took_fast_path} of {fused_eligible} eligible OBSERVED taking the fused branch)"
+    )
+    print(
         "MEASURES ACCESS (global availability / ignition), NOT phenomenal experience "
         "-- no subjective-experience claim."
     )
@@ -435,6 +512,23 @@ def main():
     )
     assert coalition.ignited() and coalition.n_bound() == 2, (
         "two coherent assemblies must fuse (n_bound==2)"
+    )
+    # (4b) the fused matrix branch must EQUAL the scalar definition, bit for bit.
+    #      Two separate preconditions before the equality means anything, and conflating them is what
+    #      made the first version of this block unfalsifiable (see `_fused_calls`):
+    assert fused_eligible >= 4, (
+        f"the probe corpus must contain at least 4 member sets of the +-1 shape the fused identity "
+        f"requires, or the comparison below is scalar-vs-scalar (eligible {fused_eligible}/"
+        f"{len(coh_probe)})"
+    )
+    assert fused_took_fast_path == fused_eligible, (
+        f"_coherence must ACTUALLY take the fused branch on every eligible probe -- observed "
+        f"{fused_took_fast_path} of {fused_eligible}. A fused branch that is never reached makes the "
+        f"bit-exactness assert below compare _coherence_scalar against itself"
+    )
+    assert coh_drift == 0.0, (
+        f"_coherence's fused branch must be BIT-EXACT against _coherence_scalar "
+        f"(max |fused - scalar| = {coh_drift:.3e} over {len(coh_probe)} member sets)"
     )
     # (5) honest ceiling: no phenomenal field; index reproduces from the 3 functional measures alone.
     assert no_phenomenal_key, f"state() must contain NO phenomenal key {_BANNED}: {list(st)}"

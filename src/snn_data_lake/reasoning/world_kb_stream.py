@@ -20,7 +20,7 @@ currencies, planet order, class-level properties (for multi-hop), numeric parity
 are added by `_extra_facts()`. `load_kb(url=...)` parses a real "head<TAB>relation<TAB>tail" triples
 file if given, else uses the bundled facts (so the self-check is deterministic offline).
 
-  PYTHONPATH=src .venv-lake/Scripts/python research/world_kb_stream.py
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.world_kb_stream
 Deps: numpy (+ stdlib) for the masked-slot demo ONLY (imported inside main()). `load_kb` /
 `_bundled` / `_extra_facts` do not import numpy at module scope -- the two-world reasoning bridge imports them without pulling numpy.
 """

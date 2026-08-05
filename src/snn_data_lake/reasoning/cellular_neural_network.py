@@ -49,7 +49,7 @@ the pixelwise complement -- a second independent closed-form assert.
 
 Pure standard library (no imports needed), no randomness, ASCII-only output.
 
-  python research/cellular_neural_network.py        # (also run by run_selfchecks.py)
+  python -m snn_data_lake.reasoning.cellular_neural_network        # (also run by run_selfchecks.py)
 
 Papers: Chua, L.O. & Yang, L. (1988), "Cellular Neural Networks: Theory", IEEE Trans. Circuits
 and Systems 35(10):1257-1272. Roska, T. & Chua, L.O. (1993), "The CNN Universal Machine: An

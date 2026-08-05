@@ -54,9 +54,30 @@ def record_key(record):
 class RecallTrace:
     """The 'USE IT' half of use-it-or-lose-it: a durable per-record recall counter. Every time a stored
     record is RETRIEVED as an answer, bump() increments its count; sleep consolidation then prunes the
-    NEVER-recalled learned records first (not merely the oldest). Persisted as a JSON state blob under the
-    home (substrate.home.save_state / load_state), so the utility signal survives restarts like the lake it
-    ranks. In-RAM bump is cheap; save() is called on the daemon's persist / sleep, not per retrieval."""
+    NEVER-recalled learned records first (not merely the oldest). In-RAM bump is cheap; save() is called
+    on the daemon's persist / sleep, not per retrieval.
+
+    P4b VIOLATION CLOSED 2026-08-05, and the shape of the fix is worth keeping. These counts are
+    LEARNED state -- they are what the brain has found worth keeping, and `LakeConsolidation.consolidate`
+    uses them to decide which lake records SURVIVE the night -- and they were persisted to
+    `<home>/recall_trace.json`, a JSON sidecar beside `brain_lake.bin`, which is what P4b forbids in its
+    own words ("not a sidecar file, not a JSON blob"). It was LIVE, not hypothetical:
+    `reasoning/spike_chat_lake` bumps it on the recall path and saves it, and `cortex/brain.py`'s sleep
+    tick reads it back to rank the survivors.
+
+    THE LINES BELOW DID NOT CHANGE. `substrate.home.save_state`/`load_state` did: they now write a
+    `_T_STATE` record INTO the one lake, keyed by the name the caller already passes, and import an
+    existing sidecar once on first read (2,505 B of real recall history on the operator's home). The
+    audit that found this proposed a dedicated `_T_RECALL` tag plus a `save_recall_trace`/
+    `load_recall_trace` pair here; that would have been the fifth near-identical channel for one job,
+    so the mechanism moved instead of the caller (P2: exactly one survives).
+
+    What that buys, concretely, is the cost `_T_SELFBUILD` was created to fix for the self-build
+    learner's weights: `consolidate()` can now SEE the trace, so sleep-time compaction no longer ranks
+    the lake by a signal the lake does not contain, and a foreign-record rewrite keeps the two in step
+    because there are no longer two stores. Proven across a process boundary in main() below -- "it
+    persists" is a claim about a NEW process, and inspecting this object's own `_counts` proves
+    nothing."""
 
     def __init__(self, counts=None):
         if counts is not None:
@@ -82,10 +103,14 @@ class RecallTrace:
         self._counts = {k: v for k, v in self._counts.items() if k in live}
 
     def save(self):
-        """Persist the trace under the home (atomic JSON state blob)."""
+        """Persist the trace INTO the one durable lake (`_T_STATE`, name "recall_trace.json").
+
+        Returns True if a record was written, False if the trace was unchanged since the last save --
+        the lake is append-only and sleep consolidation preserves every non-FACT record, so re-storing
+        an identical trace on every sleep tick would grow the one store and add nothing."""
         from snn_data_lake.substrate.home import save_state
 
-        save_state("recall_trace.json", self._counts)
+        return save_state("recall_trace.json", self._counts)
 
 
 class LakeConsolidation:
@@ -219,12 +244,97 @@ def main():
         f"v2 (use-it-or-lose-it) should keep the RECALLED record, not the newest: {v2}"
     )
     assert trace.get(lg[0]) == 5 and trace.get(lg[1]) == 0, "recall trace counts wrong"
-    # trace persists across a fresh instance + prune_to drops entries for gone records
+    # prune_to drops trace entries for records no longer in the lake, and keeps the live ones.
+    # REACHABLE RED, constructed and run (P8/F11) -- 2026-08-04b. The previous form pruned a record
+    # whose count was ALREADY 0, so `get(lg[1]) == 0` held whether or not prune_to did anything:
+    # MEASURED, the assert passed with prune_to replaced by a no-op. lg[1] is therefore bumped FIRST,
+    # so the drop is observable -- a no-op prune_to leaves 3 here and the assert fires.
+    # A comment here used to say the durable round-trip was "not testable from this module today",
+    # because the trace's durable path was the sidecar. It is testable now and it is tested below,
+    # in a SEPARATE PROCESS -- which is the only form of the claim P4b accepts.
+    trace.bump(lg[1], by=3)
+    assert trace.get(lg[1]) == 3, "setup: the record about to be pruned must carry a nonzero count"
     trace.prune_to([lg[0]])
     assert trace.get(lg[1]) == 0 and trace.get(lg[0]) == 5, "prune_to must keep live, drop gone"
     print(
         "  [OK] v2 use-it-or-lose-it: a RECALLED old record beats a newer never-recalled one under the cap"
     )
+
+    # ---- P4b: the trace is IN the one lake, proven ACROSS A PROCESS BOUNDARY -------------------
+    # "It persists" is a claim about a NEW process. This one writes the trace here, EXITS nothing --
+    # it hands the lake to a child interpreter that has never seen this object -- and the child has
+    # to rebuild the same counts from `brain_lake.bin` alone. An in-process re-read would pass
+    # against a pure RAM store and is what `retained() == 1.000` looked like over an empty lake.
+    import json
+    import os
+    import shutil
+    import subprocess
+    import sys
+    import tempfile
+
+    src_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    prior_home = os.environ.get("NORD_HOME")  # restored, never popped: an in-process gate run
+    work = tempfile.mkdtemp(prefix="lake_consol_home_")  # shares one interpreter across modules
+    legacy_home = tempfile.mkdtemp(prefix="lake_consol_legacy_")  # bound BEFORE the try: the
+    try:  # finally cleans both, and a failure above must not raise NameError over the real one
+        os.environ["NORD_HOME"] = work
+        from snn_data_lake.substrate.home import KnowledgeLog, state_path
+
+        rec = {"cue": ["one", "lake"], "answer": "one durable lake for the whole brain."}
+        KnowledgeLog().append(rec)  # a FOREIGN (FACT) record written BEFORE the trace
+        durable = RecallTrace()
+        assert durable.get(rec) == 0, (
+            "a fresh home must start with an empty trace, not a fabricated one"
+        )
+        for _ in range(3):
+            durable.bump(rec)
+        assert durable.save() is True, "the first save of a nonempty trace must write a record"
+        assert durable.save() is False, "an unchanged trace must not be re-appended to the one lake"
+
+        child = (
+            f"import sys; sys.path.insert(0, {src_root!r})\n"
+            f"import os; os.environ['NORD_HOME'] = {work!r}\n"
+            "from snn_data_lake.hippocampus.lake_consolidation import RecallTrace\n"
+            "from snn_data_lake.substrate.home import KnowledgeLog\n"
+            f"rec = {rec!r}\n"
+            "t = RecallTrace()\n"
+            "assert t.get(rec) == 3, ('recall count lost across the process boundary', t.get(rec))\n"
+            "assert KnowledgeLog().count() == 1, 'a _T_STATE write dropped a FACT record'\n"
+            "print('  [OK] child process rebuilt count=3 from brain_lake.bin alone; 1 FACT intact')\n"
+        )
+        rc = subprocess.run([sys.executable, "-c", child]).returncode
+        assert rc == 0, f"a SEPARATE process could not read the trace back from the lake (rc={rc})"
+        assert not os.path.exists(state_path("recall_trace.json")), (
+            "the trace must go IN brain_lake.bin -- no recall_trace.json sidecar may be created"
+        )
+        # An `assert os.path.exists(knowledge_path())` stood here and was DELETED, not weakened
+        # (P8 F11): the `KnowledgeLog().append(rec)` eight lines up creates that file
+        # unconditionally, so no constructible input makes it fire, and no mutation reaches it --
+        # every neuter that could leave the lake uncreated trips an earlier assert first. Measured.
+        # `closed_loop.py` keeps the same check because there it IS reachable (nothing else in that
+        # self-check writes to the lake) and the red was constructed and run.
+
+        # sleep consolidation rewrites the FACT side; the trace is a foreign record and must survive.
+        klog = KnowledgeLog()
+        klog.consolidate(list(klog.replay()))
+        assert RecallTrace().get(rec) == 3, "sleep consolidation of the FACT side dropped the trace"
+
+        # MIGRATION, not deletion: a pre-P4b sidecar in a fresh home is imported and left on disk.
+        os.environ["NORD_HOME"] = legacy_home
+        with open(os.path.join(legacy_home, "recall_trace.json"), "w", encoding="ascii") as f:
+            f.write(json.dumps({record_key(rec): 9}))
+        assert RecallTrace().get(rec) == 9, "a pre-P4b recall_trace.json sidecar was not imported"
+        assert os.path.exists(os.path.join(legacy_home, "recall_trace.json")), (
+            "the legacy sidecar must be left on disk, inert -- migrating is not deleting"
+        )
+        print("  [OK] pre-P4b recall_trace.json imported into the lake; the file is left in place")
+    finally:
+        if prior_home is None:
+            os.environ.pop("NORD_HOME", None)
+        else:
+            os.environ["NORD_HOME"] = prior_home
+        shutil.rmtree(work, ignore_errors=True)
+        shutil.rmtree(legacy_home, ignore_errors=True)
 
     print("-" * width)
     print(
@@ -237,6 +347,12 @@ def main():
         "half that keeps a never-off brain's symbolic lake LIVE + BOUNDED. v2 RecallTrace adds use-it-or-"
     )
     print("lose-it: a recalled learned record survives the cap over a newer never-recalled one.")
+    print(
+        "The trace itself lives IN brain_lake.bin under _T_STATE (P4b), proven by a SEPARATE process"
+    )
+    print(
+        "rebuilding it from disk, and it survives the FACT-side sleep rewrite as a foreign record."
+    )
     return 0
 
 

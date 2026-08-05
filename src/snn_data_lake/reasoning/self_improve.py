@@ -32,7 +32,11 @@ adapter (documented, not run in CI) wires verify -> subprocess(run_selfchecks + 
 probes), isolate -> a git worktree, apply -> the brain's proposal.
 
 Deps: stdlib + (optional) the graphify self-map JSON.
-  PYTHONPATH=src .venv-lake/Scripts/python research/self_improve.py     # the protocol self-check
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.self_improve
+
+(the module path it is at TODAY. The previous line named `research/self_improve.py`, which has
+not existed since v3.78 -- the same stale-path class the PROTECTED entry below was found to have
+on 2026-08-01, in the one file whose whole job is to protect paths.)
 """
 
 import copy
@@ -122,6 +126,28 @@ class SelfImprover:
         return accepted, reason
 
 
+def _self_pkg_relpath():
+    """This module's own path RELATIVE TO THE PACKAGE ROOT, derived from `__file__` by walking up
+    past `__init__.py` -- never written down.
+
+    This exists so the PROTECTED check below can go RED. The obvious form of that check,
+    `assert "reasoning/self_improve.py" in PROTECTED`, is true by construction: PROTECTED is a
+    literal set in the same function, so the assert restates the line that created it and no input
+    can make it fail. Deriving the path from the FILESYSTEM makes the two sides independent -- the
+    literal is what a human typed, this is where the file actually is -- so renaming or moving this
+    module reddens it. That is exactly the failure that shipped here once: the entry read
+    `research/self_improve.py` after the tree moved, so the self-modifier was not protecting its own
+    proposer, and nothing went red for it.
+    """
+    directory, base = os.path.split(os.path.abspath(__file__))
+    parts = [base]
+    while os.path.isfile(os.path.join(directory, "__init__.py")):
+        directory, name = os.path.split(directory)
+        parts.append(name)
+    parts.pop()  # drop the package root itself -- entries are package-RELATIVE
+    return "/".join(reversed(parts))
+
+
 def self_map(graph_path="graphify-out/graph.json"):
     """The brain's model of ITSELF: how many nodes/edges its own architecture graph has. Reading its
     own graphify graph is the 'knows its own codebase' half -- a proposal generator queries this to
@@ -162,9 +188,12 @@ def main():
         "brainstem/interpreter.py",
         # Was research/self_improve.py (no such file) -- the self-modifier was not in fact
         # protecting its own proposer. Package-relative now, like every other entry.
-        # Found 2026-08-01 by tests/test_self_mod_safety.py. Do not write paths in quotes
-        # inside this block: it is parsed for entries, and a quoted path in a comment reads
-        # as a real one.
+        # Found 2026-08-01 by tests/test_self_mod_safety.py, which parses this block out of the
+        # source (the set is a function local and cannot be imported). That parser now STRIPS
+        # comments before extracting entries, so a quoted path in a comment here is no longer read
+        # as a real one -- the warning that used to sit on this line said the opposite and was
+        # stale. What still matters: keep the block a single flat `{...}` with one quoted path per
+        # entry, because `PROTECTED = \{(.*?)\}` is how it is found.
         "reasoning/self_improve.py",
     }
 
@@ -220,10 +249,37 @@ def main():
     assert all(b >= a for a, b in zip(fits, fits[1:])), (
         "fitness must be MONOTONIC non-decreasing (no regression ever)"
     )
-    # the verifier + safety files are un-writable by construction (they are in PROTECTED)
-    assert "reasoning/self_improve.py" in PROTECTED, (
-        "the brain must not be able to rewrite its own verifier"
+    # The verifier must be un-writable -- and this check has to be able to FAIL (P8 item 1).
+    # It used to read `assert "reasoning/self_improve.py" in PROTECTED`, which is a tautology: the
+    # literal on the left was typed into the literal set on the right fifty lines above, so no
+    # input could redden it. The DERIVED form below compares the set against the filesystem, so
+    # moving or renaming this module fires it -- which is precisely the state the tree was in
+    # before 2026-08-01, when the entry named a `research/` path that no longer existed.
+    #
+    # THE RED WAS CONSTRUCTED AND RUN, 2026-08-05, not argued from the prose above. This module's
+    # source was planted into a throwaway package tree at three locations and main() executed from
+    # each:
+    #   <pkg>/reasoning/self_improve.py    -> relpath 'reasoning/self_improve.py'    -> PASSED
+    #   <pkg>/research/self_improve.py     -> relpath 'research/self_improve.py'     -> RED
+    #   <pkg>/reasoning/self_improve_v2.py -> relpath 'reasoning/self_improve_v2.py' -> RED
+    # The first is the positive control (the harness can pass at all); the second is the exact
+    # pre-2026-08-01 state; the third is a rename the self-builder could itself propose.
+    me = _self_pkg_relpath()
+    assert me in PROTECTED, (
+        f"the brain must not be able to rewrite its own verifier: this module is at {me!r}, which "
+        f"is NOT in PROTECTED {sorted(PROTECTED)} -- the entry is stale, so the file is unprotected"
     )
+    # TWO "RED CONTROL" asserts stood here until 2026-08-05 and were DELETED, not weakened (F11),
+    # because neither could be reddened by any input:
+    #   `assert "research/self_improve.py" not in PROTECTED` -- both operands are literals in THIS
+    #     function, so it restates its own input. That is the same tautology shape as the assert it
+    #     was added alongside to replace.
+    #   `assert _self_pkg_relpath() != "research/self_improve.py"` -- DOMINATED. It can only fire
+    #     when the relpath IS the research/ path, and in that state the assert above has already
+    #     fired: proven by the planted-at-research/ run, whose AssertionError was the `me in
+    #     PROTECTED` message, never this one.
+    # Deleting them is the point of F11: a control that cannot fail is not a control, and leaving
+    # it in place makes this block LOOK better covered than the one real assert it surrounds.
 
     print(
         "\nSELF-CHECK PASSED: bounded self-improvement -- accepts only green, strictly-improving, "

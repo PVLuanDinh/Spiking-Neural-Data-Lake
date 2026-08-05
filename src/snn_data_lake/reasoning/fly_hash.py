@@ -10,7 +10,7 @@ lookup (the exact matcher then rescoring only the candidates). Additive and opt-
 default matcher/cluster path changes. Refs: Dasgupta, Stevens & Navlakha, "A neural algorithm for a
 fundamental computing problem", Science 358 (2017); BioHash, Ryali et al., ICML 2020 (arXiv:2001.04907).
 
-  python -m snn_data_lake.fly_hash        # (also run by run_selfchecks.py)
+  PYTHONPATH=src python -m snn_data_lake.reasoning.fly_hash   # (also run by run_selfchecks.py)
 """
 
 import random
@@ -94,7 +94,7 @@ def main():
     )
 
     print("=" * 60)
-    print("FLYHASH INDEX — bio-inspired LSH candidate filter over stored windows")
+    print("FLYHASH INDEX -- bio-inspired LSH candidate filter over stored windows")
     print("=" * 60)
     print(f"{len(index.entries)} enrolled windows, tag = {fh.k}/{fh.m} winners")
     print(f"approx-NN recall@1 (top candidate shares the command): {recall:.0%}")

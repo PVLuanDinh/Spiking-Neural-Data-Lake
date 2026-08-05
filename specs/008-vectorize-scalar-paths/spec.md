@@ -237,6 +237,8 @@ its occupancy is recorded, and its storage choice matches what the occupancy imp
   representation, never semantics -- a bug found during conversion is reported, not fixed in the
   same change, so equivalence stays checkable.
 
+> **P7 VOID (annotated 2026-08-04).** The sentence above certifies "no new dependency" as a constitution check. **That is not a criterion under P7** (`docs/POLICIES.md`), which states that *"it would be another dependency" is NOT a valid reason to reject anything* and requires a rejection to cite a measurement on the real workload or a structural argument. No library was evaluated here, so the check scored nothing. Left in place rather than deleted because this file records a decision that was made; annotated because P7 names these certifications as live residue of the zero-dependency rule abolished 2026-07-20. `specs/010/plan.md` is the first plan to decline the certification on purpose.
+
 ## Out of Scope
 
 - Moving the live tick to the GPU. Measured 0.01x at width 38; revisit only if populations approach

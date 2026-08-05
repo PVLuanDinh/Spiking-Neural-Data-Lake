@@ -285,7 +285,17 @@ def main():
     )  # easy decision (low conflict) -> withhold
     g_more = ec.evc(conflict=0.90, value_gain=1.0, cost=0.10)  # more conflict -> more control
     g_less = ec.evc(conflict=0.50, value_gain=1.0, cost=0.10)  # less conflict -> less control
-    boundary = 0.80 * 1.0 > 0.79  # engage iff conflict*value_gain > cost
+    # THE ENGAGE BOUNDARY, exercised through evc() itself. This line used to read
+    #     boundary = 0.80 * 1.0 > 0.79
+    # which is a literal arithmetic tautology evaluated before evc() is ever called: it asserted
+    # that 0.8 > 0.79, not that the CONTROLLER engages there. It could not go red if evc() inverted
+    # its comparison, dropped the rectifier, or ignored `cost` entirely. Straddle the boundary
+    # instead -- benefit == conflict*value_gain == 0.80, so cost just below it must ENGAGE and cost
+    # just above it must WITHHOLD.
+    g_just_under = ec.evc(conflict=0.80, value_gain=1.0, cost=0.79)
+    g_just_over = ec.evc(conflict=0.80, value_gain=1.0, cost=0.81)
+    g_exact = ec.evc(conflict=0.80, value_gain=1.0, cost=0.80)  # net == 0 -> withheld
+    boundary = g_just_under > 0.0 and g_just_over == 0.0 and g_exact == 0.0
 
     # ---- (3) sequence planner finds the delayed reward a 1-step greedy MISSES ----------------------
     depth = 3
@@ -335,6 +345,10 @@ def main():
         f"    gating       : low conflict 0.05 -> gain {g_loweasy:.3f} (WITHHELD); "
         f"more conflict 0.90 -> {g_more:.3f} > 0.50 -> {g_less:.3f}"
     )
+    print(
+        f"    boundary     : benefit 0.80 vs cost 0.79 -> {g_just_under:.3f} (ENGAGE), "
+        f"0.80 -> {g_exact:.3f}, 0.81 -> {g_just_over:.3f} (WITHHELD)"
+    )
     print("-" * 84)
     print(f"(3) planner      : delayed-reward valley {LANDSCAPE}, depth {depth}")
     print(
@@ -372,7 +386,10 @@ def main():
     assert g_loweasy == 0.0, "an easy (low-conflict) decision must get no extra control"
     assert g_more > g_less > 0.0, "control must scale with conflict in the worth-it region"
     assert g_worth < ec.control_max, "the control gain must stay bounded below its ceiling"
-    assert boundary, "control engages exactly when conflict*value_gain exceeds cost"
+    assert boundary, (
+        f"control must engage exactly when conflict*value_gain exceeds cost: cost 0.79 -> "
+        f"{g_just_under:.3f} (>0), cost 0.80 -> {g_exact:.3f} (==0), cost 0.81 -> {g_just_over:.3f} (==0)"
+    )
 
     # (3) the sequence planner finds the delayed reward that a 1-step greedy misses
     assert planned == ["advance", "advance", "advance"], (

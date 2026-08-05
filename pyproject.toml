@@ -1,4 +1,4 @@
-# Installable src/ package (snn_data_lake). torch + numpy are UNCONDITIONAL core dependencies, so
+# Installable src/ package (snn_data_lake). torch + numpy + mujoco are UNCONDITIONAL core dependencies, so
 # `pip install .` gives the full brain tier out of the box. `pip install ".[all]"` adds every addon
 # (arm+lake+gpu+nmnist+train); training is a first-class GPU tier (.[train] -> snn-train).
 #
@@ -16,7 +16,18 @@
 # dependencies MAY be added as the project grows, and the user VERIFIES each one. numpy is a core dep
 # (the brain-native language acquisition + growth/learning tiers use it); the interactive-viz stack
 # (matplotlib/netplotbrain/pandas/scikit-image/nibabel/templateflow) lives in the [viz] extra. Keep
-# every addition justified and surfaced for verification; prefer stdlib when it is genuinely sufficient.
+# every addition justified and surfaced for verification.
+#
+# SUPERSEDED BY P7 (owner policy 2026-08-04, docs/POLICIES.md): any dependency or framework that helps
+# this become a phenomenal brain is ACCEPTED, including any that helps the brain become sentient.
+# This comment's closing clause used to read "prefer stdlib when it is genuinely sufficient"; P7
+# retires it by name, because it is the residual brake that was still producing hand-rolled code
+# twelve days after the rule above was abolished (three hand-written linear solvers, a hand-written
+# PNG encoder while pillow sits declared-and-unimported below, a from-scratch Potjans-Diesmann column
+# importing only math and random). "It would be another dependency" is NOT a reason to reject
+# anything: a rejection must cite a measurement on the real workload or a structural argument about
+# this architecture. Adoption still ships with the measurement of what it bought, and a dependency
+# may never become a second durable store (P4b) nor carry its own BPTT trainer into a learning path.
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -24,7 +35,7 @@ build-backend = "hatchling.build"
 [project]
 name = "spiking-neural-data-lake"
 version = "4.80.0"
-description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch + numpy are core dependencies."
+description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy and mujoco are core dependencies."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -63,10 +74,21 @@ dependencies = [
 [project.optional-dependencies]
 arm = ["pyserial"]                                                       # live_arm --serial / --actuate
 lake = ["polars", "pyarrow", "deltalake"]                               # lakehouse/medallion + delta_demo
-gpu = ["torch", "torchvision", "snntorch==1.0.0", "bindsnet", "numpy"]   # research/ GPU training
-train = ["torch", "torchvision", "snntorch>=0.9", "numpy"]              # GPU trainers (snn-train; training/surrogate_snn.py hybrid N-MNIST perception encoder, +[nmnist] for tonic) -> export weights to the Brain's OPTIONAL torch perception tier; the default install never imports it
+gpu = ["torch", "torchvision", "snntorch==1.0.0", "bindsnet", "numpy", "scikit-learn"]   # research/ GPU training
+train = ["torch", "torchvision", "snntorch>=0.9", "numpy", "scikit-learn"]              # GPU trainers (snn-train; training/surrogate_snn.py hybrid N-MNIST perception encoder, +[nmnist] for tonic) -> export weights to the Brain's OPTIONAL torch perception tier; the default install never imports it
+# scikit-learn ADDED 2026-08-04 (specs/010, finding C07). It was imported UNGUARDED at module top in
+# four `reasoning/` modules -- deep_stdp_2stage_svm.py:80-81, developmental_loop_lake99.py:28-29,
+# ensemble_rbf.py:27-28, ng_snn/validate_uci.py:18-19 -- and declared NOWHERE, so `pip install .`
+# produced a tree where `import snn_data_lake.reasoning.ensemble_rbf` raised ModuleNotFoundError.
+# CI never caught it: ci.yml installs only `-e .` and `-e ".[dev]"`, and the module gate scopes
+# `reasoning/` out entirely. Placed in the EXTRAS rather than core deliberately: those four modules
+# already sit beside snntorch/torchvision imports, so an extra matches the tier they actually live
+# in, and core placement would not have made them importable anyway (they fail earlier on snntorch).
+# Per P7 this needs no justification beyond what it buys: SVC/StandardScaler for the SVM readouts.
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
 nengo = ["nengo"]                                                       # substrate/nengo_bridge: run the brain's NEF/LIF substrate on Nengo (sim + NengoLoihi deploy); nengo-gated, the default install never imports it
+nir = ["nir", "numpy"]                                                   # substrate/nir_export.to_nir_graph -> canonical NIR HDF5 for Loihi 2 / SpiNNaker 2 / Speck / Xylo. ADDED 2026-08-04 (specs/010, P7): the import at nir_export.py:121 is lazy and raises a helpful ImportError, but it was declared NOWHERE, so `pip install ".[all]"` could not produce a tree where the export path runs. Distribution name confirmed from the module's own install hint ("pip install nir numpy"), not guessed.
+arc = ['arcengine; python_version >= "3.12"']                            # src/snn_data_lake/reasoning/arc_agi/{play,play_brain}.py: the ARC-AGI-3 arcade bridge. ADDED 2026-08-05 (P7 ledger): `from arcengine import GameAction, GameState` is UNGUARDED at module top in BOTH, and both SHIP IN THE WHEEL (`[tool.hatch.build.targets.wheel] packages = ["src/snn_data_lake"]`), so `pip install .` produced a tree where `import snn_data_lake.reasoning.arc_agi.play` raised ModuleNotFoundError -- RE-RUN 2026-08-05 in .venv-lake, it does. DECLARED rather than guarded/retired: under P4c `reasoning/` is part of the brain and not a parking lot, so the honest fix for an unguarded import of a real distribution is to declare it; under P7 "it would be another dependency" is not a reason to reject one. Distribution name read from the INSTALLED metadata (.venv-arc/Lib/site-packages/arcengine-0.9.3.dist-info/METADATA -> `Name: arcengine`, `Author: arcprizefoundation`, INSTALLER `pip`, no direct_url.json so it came from an index, not a local path), NOT from play.py's docstring, which names the SIBLING `arc-agi` distribution (`Name: arc-agi` 0.9.9, `Requires-Dist: arcengine>=0.9.3`) that merely depends on it -- declaring on the docstring's word would have manufactured the false entry this file's ledger warns about. THE MARKER IS LOAD-BEARING AND MEASURED: arcengine declares `Requires-Python: >=3.12` while this project declares `requires-python = ">=3.11"` and the CPU gate env .venv-lake IS 3.11.15, so an unmarked spec makes `pip install ".[arc]"` unresolvable on a supported interpreter. AND THE MARKER'S PRICE, measured 2026-08-05 and written here so this declaration is never read as more than it is: `Requirement('arcengine; python_version >= "3.12"').marker.evaluate()` is False on 3.9/3.10/3.11 and True on 3.12/3.13/3.14, so on THIS PROJECT'S OWN FLOOR -- and in .venv-lake, the CPU gate env -- `pip install ".[arc]"` resolves BY INSTALLING NOTHING, and both modules still raise ModuleNotFoundError. There is no install command that makes them importable on 3.11. Declaring closes the ledger's UNDECLARED finding, which is a finding about pyproject naming its imports; it does NOT by itself make a clean 3.11 tree import them, and tools/dependency_ledger.py's docstring now says so at the definition of UNDECLARED rather than leaving green to be over-read. SCOPE, stated so the extra is not mistaken for a working path: it makes the two modules IMPORTABLE (on 3.12+), not runnable -- `play()` calls `arc_agi.Arcade()` where `arc_agi` is bound to the FIRST-PARTY package (`reasoning/arc_agi/__init__.py` is one docstring line, no `Arcade`), which is a separate defect in a file this change does not touch.
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
 genn = ["pygenn", "ml_genn"]                                             # research/*_genn + training/mnist_genn GPU trainer (needs a C++ compiler + CUDA)
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe (build-time only)
@@ -84,7 +106,7 @@ dev = ["pytest>=7.0", "pytest-cov", "ruff==0.15.20", "pre-commit"]       # tests
 # a whole-tree reformat diff, arriving as a mysterious `ruff format --check` failure. A formatter's
 # version is part of the format. Bump this pin and the pre-commit rev together, deliberately, or not
 # at all.
-all = ["spiking-neural-data-lake[arm,lake,gpu,nmnist,train]"]             # every addon (genn excluded — needs a compiler)
+all = ["spiking-neural-data-lake[arm,lake,gpu,nir,nmnist,train]"]        # every addon EXCEPT the ones in tools/dependency_ledger.ALL_EXCLUDES, each of which carries a written reason there (RE-DERIVED 2026-08-05 from tomllib + the tool, not quoted: 8 entries -- dev, exe, genn, llm, desktop, hf, nengo, arc -- against 6 extras reachable from here, and 6+8 leaves the uncovered set EMPTY. Stated unambiguously because the first draft said "14 declared in total" and the obvious re-measurement, `len(project.optional-dependencies)`, prints 15: there are 15 KEYS, of which 14 are extras besides [all] itself, and it is those 14 that split 6/8). The comment this replaces read "every addon (genn excluded -- needs a compiler)": it named ONE of eight exclusions and so read as complete, which is how [nir] sat outside [all] unnoticed. `nir` ADDED to [all] 2026-08-05: its own declaration above justifies its existence by "`pip install \".[all]\"` could not produce a tree where the export path runs" -- and it STILL could not, because nothing ever put it here, so the declaration bought nothing it claimed. Enforced from now on by tools/dependency_ledger.py's ALL-EXTRA check, which fails any extra that is in neither [all] nor ALL_EXCLUDES (and, symmetrically, any ALL_EXCLUDES entry that is in [all] or names no extra at all).
 
 # GPU wheel note (the [gpu]/[train] extras pin bare `torch`, so `pip install` pulls the DEFAULT-index wheel):
 # on recent NVIDIA GPUs the default CPU/older-CUDA wheel will NOT run the training/research tier. Install the

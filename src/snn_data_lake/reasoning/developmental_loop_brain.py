@@ -2,7 +2,7 @@ r"""
 BRAIN-INTEGRATED DEVELOPMENTAL LOOP (Slice 1) -- the deep developmental loop (v3.54) with its
 hand-rolled parts replaced by the brain's REAL subsystems, wired through thin adapters.
 
-  perception    : conv1 latency-STDP (unsupervised, frozen)          [research/deep_stdp_latency]
+  perception    : conv1 latency-STDP (unsupervised, frozen)          [reasoning/deep_stdp_latency]
   memory        : HippocampalMemory  = real ReplayBuffer + SleepConsolidator   [brain_adapters]
   readout       : GrowableReadout    = MLP grown function-preservingly (Net2Net) [brain_adapters]
   decision      : SpikingCuriosity + SpikingCurriculum + BrainDecision (LatentQ value + Metacog) [brain_adapters]
@@ -40,25 +40,22 @@ is an opt-in knob that only overfits the MLP.
 The self-check asserts the loop beats the vote loop (>0.85) + chance and prints the signed gap to v3.54's 93.5%.
 
 Run (from repo root; GPU strongly recommended):
-    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/developmental_loop_brain.py
+    NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python -m snn_data_lake.reasoning.developmental_loop_brain
 Scale knobs: NORD_CYCLES(15) NORD_C1(30) NORD_T(15) NORD_L1_EPOCHS(3) NORD_PER(300) NORD_REPLAY(200)
              NORD_SGD(300) NORD_CAP(1) NORD_TRAIN(10000) NORD_TEST(2000) NORD_HIDDEN(64) NORD_GROW_K(4)
              NORD_HIDDEN_CAP(160) NORD_GPU
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
+Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+         and imports from the package -- P4c, every build is part of the brain.)
 """
 
 import os
 import sys
 import time
 
-_here = os.path.dirname(os.path.abspath(__file__))
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-pass  # migrated: sys.path bootstrap removed (now an importable package)
-
 import torch
 
 from snn_data_lake.reasoning.snn_mnist_stdp import load_mnist
-from snn_data_lake.reasoning.torch_device import enable, resolve_device
+from snn_data_lake.substrate.device import enable, resolve_device
 
 import torch.nn as nn
 import torch.nn.functional as F

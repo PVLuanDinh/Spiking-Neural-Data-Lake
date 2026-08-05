@@ -59,9 +59,13 @@ class BinLog:
         and the record is silently lost -- which is precisely what `_repair_torn_tail` exists to
         prevent. Caught by tests/test_selfchecks.py::...[substrate.home].
 
-        Size is sufficient because every legitimate change goes through `append()`, which updates
-        `_size` under the same lock as the write. Any other size -- truncation, an external writer,
-        a restored backup -- means this instance's `_seen`/`_count` describe a file that no longer
+        Size is sufficient because every legitimate change goes through `append()`, `extend()` or
+        `rewrite()`, each of which updates `_size` under the same lock as the write. (This sentence
+        named `append()` ALONE until 2026-08-05, and it was accurate when written and wrong by the
+        time the other two took the lock -- extend/rewrite maintained no `_size` at all, so every
+        call left this instance permanently stale. A docstring that names one of three writers is
+        how the omission stayed invisible.) Any other size -- truncation, an external writer, a
+        restored backup -- means this instance's `_seen`/`_count` describe a file that no longer
         exists, and the caller must rebuild rather than trust them.
         """
         try:
@@ -126,23 +130,39 @@ class BinLog:
         Same durability contract for the batch as a whole: once this returns, every record in it survives
         a crash. Skips byte-identical duplicates when dedup. Returns the number written."""
         written = 0
-        with open(self.path, "ab") as f:
-            for payload in payloads:
-                if not isinstance(payload, (bytes, bytearray)):
-                    raise TypeError("BinLog.extend: every payload must be bytes")
-                payload = bytes(payload)
-                if self.dedup and payload in self._seen:
-                    continue
-                f.write(
-                    _LEN.pack(len(payload)) + payload
-                )  # ONE write per record (atomic-append friendly)
-                if self.dedup:
-                    self._seen.add(payload)
-                written += 1
-            if written:
-                f.flush()
-                os.fsync(f.fileno())  # ONE fsync for the whole batch
-        self._count += written
+        # SAME CRITICAL SECTION AS append(), added 2026-08-04. This method held no lock while
+        # append() held one, and the justification append() gives applies here verbatim: the
+        # instance is SHARED (substrate/home.py caches one per path), so an unlocked
+        # check-then-write on `_seen` lets two threads both miss the same payload and store it
+        # twice -- the duplicate `dedup` exists to prevent. It also did not maintain `_size`,
+        # so every extend() left the cached instance permanently `stale()` and forced home._log()
+        # to rebuild it (a full tail-repair scan plus a full replay) on the very next call,
+        # defeating the cache the comment above it exists to justify. RE-MEASURED 2026-08-05 with
+        # the conditions stated, because "708 ms on the live lake" was inherited from a comment
+        # written against a 425 MB / 80,853-record lake and quoted here as a present-tense fact:
+        # on the live lake as it stands TODAY (513.1 MB, 121,177 records, .venv-lake, three
+        # consecutive constructions) `BinLog(path)` costs 1316 / 1420 / 1307 ms. The cost is a
+        # function of lake SIZE, so quote the derivation, not the number -- it grows as the brain
+        # learns, which is the direction that makes losing the cache worse over time, not better.
+        with self._lock:
+            with open(self.path, "ab") as f:
+                for payload in payloads:
+                    if not isinstance(payload, (bytes, bytearray)):
+                        raise TypeError("BinLog.extend: every payload must be bytes")
+                    payload = bytes(payload)
+                    if self.dedup and payload in self._seen:
+                        continue
+                    f.write(
+                        _LEN.pack(len(payload)) + payload
+                    )  # ONE write per record (atomic-append friendly)
+                    if self.dedup:
+                        self._seen.add(payload)
+                    written += 1
+                if written:
+                    f.flush()
+                    os.fsync(f.fileno())  # ONE fsync for the whole batch
+            self._count += written
+            self._size = os.path.getsize(self.path)  # keep stale() honest about our own writes
         return written
 
     def replay(self):
@@ -177,17 +197,27 @@ class BinLog:
         Returns the new record count."""
         survivors = [bytes(p) for p in survivors]
         tmp = self.path + ".compact.tmp"
-        with open(tmp, "wb") as f:
-            f.write(_MAGIC)
-            for p in survivors:
-                f.write(_LEN.pack(len(p)) + p)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(
-            tmp, self.path
-        )  # atomic swap: readers see either the whole old or the whole new log
-        self._seen = set(survivors) if self.dedup else None
-        self._count = len(survivors)
+        # UNDER THE SAME LOCK as append()/extend(), added 2026-08-04. This ran unlocked on a SHARED
+        # instance while the sleep tick calls it (cortex/brain.py, `klog.consolidate(survivors)`).
+        # An append that landed between building `tmp` and the os.replace was written to the file
+        # this call is about to REPLACE, so the record was durably written and then durably
+        # destroyed -- on the one lake, which is the store P4b says is part of the brain. Today
+        # every lake writer runs on the daemon's tick thread, so this was latent rather than live;
+        # it is the kind of latency that ends the moment a second writer is added, and append()'s
+        # own docstring already assumes request threads write here.
+        with self._lock:
+            with open(tmp, "wb") as f:
+                f.write(_MAGIC)
+                for p in survivors:
+                    f.write(_LEN.pack(len(p)) + p)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(
+                tmp, self.path
+            )  # atomic swap: readers see either the whole old or the whole new log
+            self._seen = set(survivors) if self.dedup else None
+            self._count = len(survivors)
+            self._size = os.path.getsize(self.path)  # a rewrite changes the size; keep stale() true
         return self._count
 
 

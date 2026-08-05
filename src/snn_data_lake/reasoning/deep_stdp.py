@@ -55,9 +55,10 @@ scaffold for that future work. The developmental loop keeps its single-layer
 STDP learner (accuracy lever = neuron SCALE, ~88% -> ~95% at 6400).
 
 Run (defaults finish a smoke run in a few minutes on GPU):
-    NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python research/deep_stdp.py
+    NORD_GPU=1 PYTHONPATH=src ../.venv-cu128/Scripts/python -m snn_data_lake.reasoning.deep_stdp
 Scale knobs: NORD_C NORD_M NORD_TRAIN NORD_TEST NORD_GPU NORD_CTHRESH
-Deps: numpy torch torchvision snntorch   (research/GPU tier; core untouched)
+Deps: numpy torch torchvision snntorch   ([train]/[gpu] extras. NOT "outside the core": this module lives in src/snn_data_lake/reasoning/
+         and imports from the package -- P4c, every build is part of the brain.)
 """
 
 import os
@@ -66,7 +67,7 @@ import torch
 import torch.nn.functional as F
 import snntorch as snn
 
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 from snn_data_lake.reasoning.snn_mnist_stdp import (
     BETA,
     LR,

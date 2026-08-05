@@ -18,7 +18,7 @@ Implements the three recommended next steps:
      `van_rossum_distance` is the L2 between two filtered trains. This is how an
      incoming QUERY is matched against STORED data with plain numeric ops.
 
-Run:  python spike_preprocessing.py
+Run:  PYTHONUTF8=1 PYTHONPATH=src python -m snn_data_lake.cortex.spike_preprocessing
 """
 
 import math

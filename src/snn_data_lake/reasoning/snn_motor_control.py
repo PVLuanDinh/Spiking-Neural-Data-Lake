@@ -21,9 +21,16 @@ import torch
 import torch.nn as nn
 import snntorch as snn
 from snntorch import surrogate
-from snn_data_lake.reasoning.torch_device import resolve_device, enable
+from snn_data_lake.substrate.device import resolve_device, enable
 
-_DEVICE = enable(resolve_device())
+# MODULE SCOPE: resolve only. `enable()` calls `torch.set_default_device()`, which is
+# PROCESS-GLOBAL -- calling it here meant merely IMPORTING this module re-routed every tensor
+# built by every module loaded afterwards. MEASURED 2026-08-05 with NORD_DEVICE=meta: importing
+# this module took the process default device from 'cpu' to 'meta'. Same defect class as the three
+# module-scope side effects the daemon promotion exposed (docs/POLICIES.md P4c). `resolve_device()`
+# is a pure env read, so `_DEVICE` keeps its value and every `torch.Generator(device=_DEVICE)`
+# call site is unchanged; the routing now happens in main(), on the script path.
+_DEVICE = resolve_device()
 
 L1, L2 = 1.0, 1.0  # link lengths (match arm_sim)
 
@@ -122,6 +129,7 @@ def model_based_reach(fm, gen, plan_steps=25):
 
 
 def main():
+    enable(_DEVICE)  # route torch factories to the device -- script path only, never at import
     torch.manual_seed(0)
     gen = torch.Generator(device=_DEVICE).manual_seed(0)
     net = SpikingNet(scale=0.3)  # reactive policy: bounded joint deltas (rad)

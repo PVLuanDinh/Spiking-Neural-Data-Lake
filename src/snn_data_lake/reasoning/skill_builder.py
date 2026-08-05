@@ -2,7 +2,7 @@ r"""
 SKILL BUILDER -- one domain-agnostic autonomous loop that BUILDS its own skill for ANY domain
 castable as a stream, gives it competence, and INDEXES it in the durable lake for reuse.
 
-This generalizes research/language_self_build.py (which built a LANGUAGE skill) into a
+This generalizes reasoning/language_self_build.py (which built a LANGUAGE skill) into a
 domain-independent mechanism. The universal move (per the research): any domain becomes a stream of
 (context, next-token) pairs; the SAME loop consumes every domain:
 
@@ -26,7 +26,7 @@ is below n-gram, as language_self_build showed). It does NOT solve math or langu
 measurable, reusable, honestly-scoped skills and a router over them. Physics (JEPA latent next-state)
 and proofs (verifier-reward) are the next adapters, not built here.
 
-  PYTHONPATH=src .venv-lake/Scripts/python research/skill_builder.py
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.skill_builder
   Knobs: NORD_CTX(3) NORD_PER(6000) NORD_RFF(1500) NORD_GAMMA(0.15) NORD_MATHN(4000)
 Deps: numpy (+ stdlib). Reuses corpus_stream, language_self_build, language_readout_slda, lake_memory.
 """

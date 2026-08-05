@@ -28,6 +28,7 @@ Run: python tools/deep_fingerprint.py
 """
 
 import math
+import os
 import sys
 
 #: Leaves whose path contains any of these belong to a growth mechanism's own bookkeeping and
@@ -145,7 +146,11 @@ def _selfcheck():
 
 if __name__ == "__main__":
     if "--demo" in sys.argv:
-        sys.path.insert(0, "src")
+        # Derived from __file__, not the literal "src": a relative sys.path entry resolves against
+        # the cwd, so --demo worked only from the repo root and imported nothing anywhere else.
+        _src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
+        if _src not in sys.path:
+            sys.path.insert(0, _src)
         from snn_data_lake.cortex.brain import make_brain
 
         def run():

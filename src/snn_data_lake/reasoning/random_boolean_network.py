@@ -7,7 +7,7 @@ p = 0.5 = unbiased). Update is SYNCHRONOUS: every node recomputes from its K inp
 This is the dry abstraction of a gene-regulatory network (Kauffman's original motivation) -- a fixed
 random recurrent Boolean substrate. Tuned to the "edge of chaos" it is a usable RESERVOIR: its fading,
 high-dimensional state separates temporal structure for a cheap trained readout. The spiking cousin
-in this repo is the Liquid State Machine in research/spiking_ssm.py (a spiking reservoir); this is the
+in this repo is the Liquid State Machine in reasoning/spiking_ssm.py (a spiking reservoir); this is the
 Boolean-logic reservoir, and its phase diagram is exactly solvable.
 
 THE DEFINING PROPERTY (Derrida's annealed approximation, the honesty crux):
@@ -28,9 +28,16 @@ a number read back from a run -- so it proves the transition emerges from real r
 Determinism: a SINGLE per-instance random.Random(seed) is threaded through all wiring, truth tables,
 initial states and perturbations, in a fixed call order. Python's Mersenne Twister is identical across
 CPython 3.11/3.12/3.13, so a fixed seed + fixed call order gives byte-identical results across the CI
-matrix. Pure standard library, ASCII-only output.
+matrix. ASCII-only output.
 
-  python research/random_boolean_network.py       # (also run by run_selfchecks.py)
+DEPENDENCIES (P7, 2026-08-04): "Pure standard library" stood here and was a boast left by the
+zero-dependency rule abolished project-wide on 2026-07-20, not a design statement. The import set
+is unchanged and is correct on its own terms, which is the form P7 asks a rejection to take: the
+whole model is integer bit-twiddling over per-node truth-table lookups (`addr |= state[j] << b`)
+at N=200 with a 2^K table, so there is no float array here for numpy to vectorise. That is an
+argument about the shape of the arithmetic, not about a dependency count.
+
+  python -m snn_data_lake.reasoning.random_boolean_network       # (also run by run_selfchecks.py)
 
 Paper: Kauffman, S.A. (1969), "Metabolic stability and epigenesis in randomly constructed genetic nets",
 J. Theoretical Biology 22(3):437-467.

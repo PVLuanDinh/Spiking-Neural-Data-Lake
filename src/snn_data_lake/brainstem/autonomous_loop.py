@@ -587,14 +587,62 @@ class AutonomousArm:
         self._last_ee = (float(ee[0]), float(ee[1]))
         if st.get("collision"):
             return -1.0  # deliberately UNCHANGED and still the strongest negative
-        if st.get("blocked"):
-            # The command was accepted and the arm did not arrive -- pressed into a limit, into
-            # itself, or into the floor without registering contact. Measured on this body it
-            # fires on 28% of in-limit targets, so leaving it unconsumed meant the arm had no
-            # way to learn that a whole quarter of its reachable-looking commands do nothing.
-            # Ranked below stillness (it spent the tick pushing) and far above a collision.
-            self._blocked_ticks = getattr(self, "_blocked_ticks", 0) + 1
-            return -0.30
+        # NO `blocked` BRANCH, AND THE NULL IS THE POINT (measured 2026-08-05, P8 guard (d)).
+        #
+        # A -0.30 branch lived here, directly below the collision return, and NEVER FIRED.
+        # `So101Arm.state()` computes blocked = (not reached) and (collision is not None or
+        # any(saturated)) and not moving. So the branch was reachable only on
+        # `blocked and collision is None`, i.e. only via the `saturated`-ALONE disjunct -- and
+        # on this body that disjunct never co-occurs with the other two conjuncts -- and the
+        # reason is in the MODEL, not in the sampling. Read off the scene: actuator_forcerange
+        # 3.35 Nm, dof_frictionloss 0.052, dof_damping 0.6, so a saturated joint in free space
+        # settles at (3.35 - 0.052) / 0.6 = 5.50 rad/s, while `moving` trips at
+        # ||droop_tol|| = 7.15e-4 rad/s -- about 7,700x lower. (An arithmetic bound from the
+        # model, not an observed peak.) A saturated joint in free space therefore CANNOT be
+        # stationary: something has to be holding it, the only thing on this body that can is
+        # contact, and the line above already pays -1.0 for that. `blocked`
+        # is therefore a strict SUBSET of `collision` here, and the collision branch shadows all
+        # of it. Its own counter `_blocked_ticks` was never even created (0 readers tree-wide
+        # either way -- `brain_telemetry` reads `_covered`/`_last_disp`/`_ignitions`, not it).
+        #
+        # Three independent measurements, all re-run for this deletion:
+        #   * LIVE, 3 seeds x 600 ticks with this function as the reward_fn (what
+        #     `cortex/brain.py::Brain._wake_tick` passes on every wake tick), driven by a
+        #     random.Random(seed) visual/temperature/audio/distance stream: 538 blocked states
+        #     (0, 263, 275 by seed), ZERO of them collision-free, -0.30 returned 0 times. The
+        #     COUNT is protocol-dependent and must not be quoted as if it were not: an
+        #     independent audit of the same nominal "3 seeds x 600 live ticks" read 784 blocked
+        #     (37, 196, 551) off a different driving stream. It is the ZERO that is load-bearing
+        #     and the zero is what both readings agree on.
+        #   * CONSTRUCTED, a sweep of every rotatable joint across its full commandable range at
+        #     5 actuation rates x 2 settle depths plus a gripper stall, 656 samples: 20 blocked,
+        #     332 saturated-and-collision-free, and 0 blocked-and-collision-free.
+        #   * ADVERSARIAL, five protocols aimed at DIFFERENT stall mechanisms (full-range MOVETO
+        #     sweep; 100,000 single-step ticks hunting the overshoot turnaround, where a
+        #     saturating servo's ||qvel|| crosses zero with the error still large; gripper
+        #     stall; E-STOP mid-flight, which returns state() without stepping; random command
+        #     streams): 114,835 samples, 7,840 blocked, 12,314 saturated-and-collision-free,
+        #     0 blocked-and-collision-free. That last pair is the empirical half of the argument
+        #     above -- saturation without contact is COMMON, and it was moving every time.
+        #
+        # The comment that justified the branch claimed the flag "fires on 28% of in-limit
+        # targets". The FLAG does fire (263/600 and 275/600 on two of three live seeds); the
+        # BRANCH consumed 0% of it. The 28% itself did not reproduce under any protocol
+        # constructed here -- the sweep above reads 3.0% (20/656).
+        #
+        # DELETED rather than weakened, per P8 falsifier F11. The deletion is behaviour-neutral
+        # by MEASUREMENT, not by inference: the pre-edit function (loaded from the git blob) and
+        # this one were driven with the same seeded stream for 3 x 600 ticks and produced an
+        # identical reward at every single tick, an identical final joint pose, and an identical
+        # covered-cell count. Two tempting "fixes" are both
+        # wrong and are named so they are not re-attempted: reordering this above the collision
+        # return would demote the strongest negative, and relaxing `moving` or a joint's droop
+        # tolerance to let saturation alone count as obstruction is what once made the objective
+        # pay -0.30 for an ordinary accelerating move and +0.15 for standing still (see
+        # `test_blocked_is_false_while_the_arm_accelerates`). Saturation is not obstruction.
+        # If `blocked` is ever to be paid for, the reachable condition is
+        # `blocked and collision is None`, and it must be MEASURED non-zero BEFORE the branch is
+        # written back -- it was 0 of 1,800 live ticks and 0 of 656 constructed samples here.
         if fresh:
             return 1.0
         return -0.02 if moved else -0.10  # re-tread beats stillness; both far above a collision
@@ -1930,7 +1978,7 @@ def main():
     ]  # opt-in: a default arm broadcasts nothing
 
     print("=" * 62)
-    print("AUTONOMOUS ARM — grows from multimodal data + learns actions, safely")
+    print("AUTONOMOUS ARM -- grows from multimodal data + learns actions, safely")
     print("=" * 62)
     print(f"growth      : 3 distinct multimodal contexts -> {grew_to} grown units")
     print(

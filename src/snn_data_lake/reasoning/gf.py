@@ -43,7 +43,7 @@ mixed +/x per-step, anything needing a primitive the grammar lacks) still return
 gap. Widening the grammar/budget moves the wall; it never removes it.
 
 Deps: stdlib (numpy/torch allowed project-wide).
-  PYTHONPATH=src .venv-lake/Scripts/python research/program_inducer.py     # probe + self-check
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.gf     # probe + self-check
 """
 import sys
 
@@ -291,8 +291,22 @@ This makes that wall MOVE instead of sit still -- three levers, none of which is
      as a NAMED PRIMITIVE. Future searches include the library as extra terminals -- so the searchable
      space grows super-linearly with what it has learned. n^6 is out of budget from scratch, but after
      it learns `cube` from n^3, n^6 = cube*cube is one step away. The rule count is not fixed.
-  3. DURABLE. The library persists to the home lake, so competence ACCUMULATES across sessions and (as
-     the Godel machine proves) the reasoning CODE itself can be extended when even the closure is short.
+  3. DURABLE. The library persists across sessions, so competence ACCUMULATES and (as the Godel
+     machine proves) the reasoning CODE itself can be extended when even the closure is short.
+
+     **P4b VIOLATION CLOSED 2026-08-05.** This line said "persists to the home lake" and it did
+     NOT: `save_state`/`load_state` (substrate/home.py) wrote `<NORD_HOME>/gf_library.json`, a plain
+     JSON file BESIDE `brain_lake.bin`. It was proven across a process boundary on 2026-08-04 -- a
+     writer learned `p0 = n*(n*n)` with persist=True and exited, and the only artifact in NORD_HOME
+     was `gf_library.json` (41 B), with `brain_lake.bin` never created. The learned Gf grammar is
+     exactly "what the brain learns" -- one of P0's self-improvement channels -- so under P4b it
+     belongs IN the one lake under a record tag. It is there now, and NEITHER `_STATE` NAME NOR ANY
+     LINE OF THIS FILE CHANGED: `save_state` writes a `_T_STATE` record keyed by that name, so both
+     libraries here (`gf_library.json` and `active_learner`'s `active_library.json`, further down)
+     moved with the mechanism. The escalation asked for a `_T_GFLIB` tag plus a save/load pair; that
+     would have been the sixth near-identical channel for one job, and P2 says one survives. The
+     same-process durability the escape blocks below exercise is now backed by a NEW-PROCESS
+     round-trip in main(), which is the only form of the claim P4b accepts.
 
 HONEST CEILING (unchanged, and stated): this is unbounded in the OPEN-ENDED sense -- no fixed menu,
 depth, or library size; the boundary moves with learning. It is NOT omniscient: a genuinely
@@ -300,8 +314,8 @@ non-computable target, or one outside the closure of its primitives, still gaps 
 it says so rather than bluffing. "Unbounded" here means self-extending, not all-knowing.
 
 Grammar: E := n | t[n-1] | t[n-2] | c(1,2,3) | <learned primitive> | E+E | E-E | E*E. Leave-one-out
-guards overfit; a program is learned only if it COMPRESSES (nodes < #terms). Deps: stdlib + home.
-  PYTHONPATH=src .venv-lake/Scripts/python research/open_gf.py     # open-ended growth self-check
+guards overfit; a program is learned only if it COMPRESSES (nodes < #terms).
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.gf     # open-ended growth self-check
 """
 import time
 
@@ -583,6 +597,32 @@ def main_ogf():
         assert transferred is not None and transferred[0] == 117649, (
             "accumulated competence must transfer"
         )
+        # P4b: the two lines above share ONE interpreter, so they would pass against a pure RAM
+        # store -- which is what this check certified while the library was a JSON sidecar. A
+        # SEPARATE process now has to rebuild the library from `brain_lake.bin` alone, and the
+        # sidecar must not exist at all.
+        import subprocess
+        import sys
+
+        from snn_data_lake.substrate import home as _home
+
+        assert not os.path.exists(_home.state_path(OpenGf._STATE)), (
+            "the learned library must go IN brain_lake.bin -- no gf_library.json sidecar"
+        )
+        _src_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        child = (
+            f"import sys; sys.path.insert(0, {_src_root!r})\n"
+            f"import os; os.environ['NORD_HOME'] = {tmp!r}\n"
+            "from snn_data_lake.reasoning.gf import OpenGf\n"
+            "c = OpenGf(budget=7, persist=True)\n"
+            f"assert sorted(c.lib) == {sorted(b.lib)!r}, sorted(c.lib)\n"
+            f"got = c.solve({n6!r}, learn=False)\n"
+            "assert got is not None and got[0] == 117649, got\n"
+            "print('  [durable] a SEPARATE process reloaded %s from the lake and solved n^6'"
+            " % sorted(c.lib))\n"
+        )
+        rc = subprocess.run([sys.executable, "-c", child]).returncode
+        assert rc == 0, f"the learned library did not survive into a NEW process (rc={rc})"
     finally:
         os.environ.pop("NORD_HOME", None)
         if prev is not None:
@@ -646,7 +686,7 @@ HONEST CEILING (measured, not hidden -- the probe asserts these GAP rather than 
   fluid reasoning. The ordinality of the space is a built-in prior; the rule over it is induced.
 
 Deps: stdlib + the brain's own snn_data_lake.cortex.vsa_reasoning (no LLM).
-  PYTHONPATH=src .venv-lake/Scripts/python research/gf_inducer.py    # scripted probe + self-check
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.gf    # scripted probe + self-check
 """
 import re
 import string
@@ -928,7 +968,10 @@ def _variable_shift_next(letters):
     per-transition shifts as a plain integer sequence and hand THAT to the general, leave-one-out
     guarded program-inducer (induce_program): any shift-growth law expressible in its grammar (linear,
     quadratic, ...) is reached, not just a hardcoded arithmetic-shift case. The induced next shift is
-    applied to the final letter; a result that would run off the alphabet is an honest gap, not a wrap."""
+    applied to the final letter; a result that would run off the alphabet is an honest gap, not a wrap.
+    A symbol outside a..z gaps too (None) rather than raising ValueError -- see letter_series."""
+    if any(c not in _LETTERS for c in letters):
+        return None
     idx = [_LETTERS.index(c) for c in letters]
     shifts = [b - a for a, b in zip(idx, idx[1:])]
     got = induce_program(shifts)
@@ -1035,7 +1078,18 @@ def letter_series(letters):
     """Extrapolate a letter succession the same way, reading out over the a..z spike codebook. A shift
     that runs off the end of the alphabet re-encodes inexactly -> honest gap (never a wrapped letter).
     Falls back to a POSITION-DEPENDENT shift search (_variable_shift_next) when no single constant
-    shift fits every transition."""
+    shift fits every transition.
+
+    A symbol outside the a..z codebook is an HONEST GAP (None), not an exception -- the same
+    disposition analogy_over already takes (`except KeyError -> None`). This is load-bearing rather
+    than defensive: letter_series is the one Gf entry on the LIVE chat path, and
+    spike_chat_lake._gf_request selects its tokens with `str.isalpha()`, which is True for uppercase
+    and for accented / non-Latin letters. Measured 2026-08-04: a turn whose tokens included such a
+    character reached `_LETTER_BOOK[c]` and raised an uncaught KeyError out of the reply path
+    (_gf_request is called unguarded at spike_chat_lake.py, in respond's Gf branch) instead of
+    declining to answer."""
+    if any(c not in _LETTER_BOOK for c in letters):
+        return None
     codes = [_LETTER_BOOK[c] for c in letters]
     s = induce_shift(codes)
     if s is not None and all(
@@ -1189,6 +1243,14 @@ def main_gfi():
         "analogy unequal len": letter_analogy("ab", "abc", "ij"),
         "raven not dist-3": raven_dist3([["a", "b", "c"], ["a", "b", "d"], ["a", "b", None]]),
         "symbol outside alphabet": analogy_over(list("abc"), "a", "b", "z"),
+        # THE REACHABLE RED for letter_series' off-alphabet guard. Both inputs are shapes the LIVE
+        # chat path can hand it: spike_chat_lake._gf_request keeps single-character tokens by
+        # `str.isalpha()`, which is True for uppercase and for accented / non-Latin letters. Delete
+        # either guard and these rows stop being GAPs and become an uncaught KeyError (letter_series)
+        # or ValueError (_variable_shift_next) -- verified by removing them, 2026-08-04.
+        "letter series, uppercase": letter_series("ABC"),
+        "letter series, non-latin": letter_series("ab\u00e9"),
+        "letter series, off-alpha variable-shift path": letter_series("abd\u00e9"),
     }
     for name, got in ceiling.items():
         print(f"  [{'GAP ' if got is None else 'BLUFF'}] {name:36s} -> {got!r}")
@@ -1260,7 +1322,7 @@ genuinely outside its grammar and queries run out, it reports the irreducible am
 
 Deps: stdlib + snn_data_lake.substrate.home (durable library). Grammar is closed-form in the index n
 (so any position is directly queryable): E := n | c | lib | E+E | E-E | E*E.
-  PYTHONPATH=src .venv-lake/Scripts/python research/active_learner.py     # the 3-escape self-check
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.gf     # the 3-escape self-check
 """
 
 
@@ -1373,8 +1435,15 @@ class World:
 
 
 class Library:
-    """The GROWING set of learned primitives (name -> program), persisted durably so competence
-    accumulates across problems and sessions (escaping any fixed train-time distribution)."""
+    """The GROWING set of learned primitives (name -> program), persisted so competence accumulates
+    across problems and sessions (escaping any fixed train-time distribution).
+
+    P4b VIOLATION CLOSED 2026-08-05, exactly as recorded at OpenGf's `_STATE` above and by the same
+    single edit: `save_state`/`load_state` no longer write `<NORD_HOME>/active_library.json`, they
+    write a `_T_STATE` record keyed by that name INSIDE `brain_lake.bin`, and import the existing
+    sidecar once on first read. `_STATE` is now a record NAME rather than a filename; it is left
+    spelled with the .json suffix on purpose, so the name a lake record carries and the sidecar it
+    was migrated from are the same string and the mapping needs no translation table."""
 
     _STATE = "active_library.json"
 
@@ -1571,6 +1640,33 @@ def main_al():
         assert w6i and _matches(w6, lambda n: n**6, reloaded, range(6, 10)), (
             "reloaded competence must transfer"
         )
+        # P4b: `Library.load()` above runs in the SAME interpreter that just saved, so it proves
+        # nothing about durability on its own. A SEPARATE process must rebuild it from the lake,
+        # and no `active_library.json` sidecar may exist.
+        import subprocess
+        import sys
+
+        from snn_data_lake.substrate import home as _home
+
+        assert not os.path.exists(_home.state_path(Library._STATE)), (
+            "the active library must go IN brain_lake.bin -- no active_library.json sidecar"
+        )
+        _src_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        child = (
+            f"import sys; sys.path.insert(0, {_src_root!r})\n"
+            f"import os; os.environ['NORD_HOME'] = {tmp!r}\n"
+            "from snn_data_lake.reasoning.gf import Library\n"
+            "back = Library.load()\n"
+            "assert 'cube' in back, list(back)\n"
+            # compared against the PARENT's reloaded value, not against `cube_expr`: this library is
+            # stored as JSON, which has no tuple, so a round-tripped expression is a list of lists
+            # either way. The claim under test is "the child reads what the parent stored", and
+            # asserting the pre-serialisation tuple would fail on the encoding, not on durability.
+            f"assert back['cube'] == {reloaded['cube']!r}, back['cube']\n"
+            "print('  [escape 2] a SEPARATE process reloaded %s from the lake' % list(back))\n"
+        )
+        rc = subprocess.run([sys.executable, "-c", child]).returncode
+        assert rc == 0, f"the active library did not survive into a NEW process (rc={rc})"
     finally:
         os.environ.pop("NORD_HOME", None)
         if prev is not None:
@@ -1620,10 +1716,25 @@ HONEST SCOPE: the MLP here is deliberately small and trained briefly so the self
 its in-distribution accuracy is a demonstration, not a benchmark. The measured OOD failure is the
 structural claim and it does NOT depend on model size.
 
-Deps: numpy (already used across research/) + stdlib + program_inducer.
-  PYTHONPATH=src .venv-lake/Scripts/python research/sequence_learner.py     # train + contrast + check
+Deps: numpy + stdlib + program_inducer.
+
+numpy is imported at MODULE scope here. It was `global np` + a lazy `import numpy as np` inside
+main_sl(), commented "keep gf.py import numpy-free so the chat bridge stays pure" -- a purity
+argument, which P7 does not accept, and it cost real correctness: `MLP` and `_corpus` read the
+module-global `np`, which did not exist until main_sl() had run, so `gf.MLP(rng)` raised
+`NameError: name 'np' is not defined` for any other caller (verified 2026-08-04).
+
+Measured before changing it, per P7's requirement that a dependency decision ship a measurement on
+the real workload rather than a preference: bare interpreter 41.1 ms, +import gf 137.8 ms, and
+importing numpy first adds 83.4 ms -- but numpy is ALREADY in sys.modules by the time either
+importer of this module reaches it (verified for `cortex.brain` and for the chat module the comment
+named). So the laziness bought 0 ms on the workload it cited, and numpy is an unconditional core
+dependency in pyproject.toml regardless.
+  PYTHONPATH=src .venv-lake/Scripts/python -m snn_data_lake.reasoning.gf     # train + contrast + check
 """
 
+
+import numpy as np
 
 WINDOW = 4  # the model sees 4 consecutive terms, predicts the 5th
 
@@ -1692,9 +1803,6 @@ class MLP:
 
 
 def main_sl():
-    global np
-    import numpy as np  # lazy: keep gf.py import numpy-free so the chat bridge stays pure
-
     print("=" * 96)
     print(
         "LARGE LEARNED MODEL vs PROGRAM-INDUCER -- does learning at scale buy fluid intelligence?"

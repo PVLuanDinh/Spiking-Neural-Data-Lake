@@ -40,30 +40,35 @@ function-preserving growth the core module also ships as `add_unit_gradmax`. So 
 guarantee here is EXACT to floating point (< 1e-6 in practice, asserted < 1e-4) AND the
 capacity is real -- both, honestly, rather than a halve that looks tidy but adds nothing.
 
-Torch/GPU tier. Built on `resolve_device()` (from research/torch_device.py) with an
+Torch/GPU tier. Built on `resolve_device()` (`snn_data_lake.substrate.device`) with an
 explicit `.to(device)` on every parameter -- it does NOT rely on set_default_device
 (that quirk lands `torch.normal` / freshly-wrapped `nn.Parameter` on CPU even under a
-cuda default). Deterministic (torch.manual_seed + per-instance generators). ASCII-only
-prints. CORE is untouched: this file lives under research/, imports nothing
-from src/, and edits neither run_selfchecks nor pyproject.
+cuda default). Deterministic from PER-INSTANCE generators alone. ASCII-only prints.
 
-  NORD_GPU=1 PYTHONPATH=src .venv-cu128/Scripts/python research/brain_adapters/growable_readout.py
+P4c (2026-08-04). This header used to read "CORE is untouched: this file lives under
+research/, imports nothing from src/, and edits neither run_selfchecks nor pyproject."
+All three clauses were false and the framing was the defect P4c names: the file lives at
+`src/snn_data_lake/reasoning/brain_adapters/`, it imports `snn_data_lake.substrate.device`,
+and "it is only a research helper" is not a disposition. It is part of the brain; its open
+debt is that it is registered in neither `REGIONS` nor `run_selfchecks.py` (see the P3/P4c
+note on `LaminarReadout` -- both readouts carry the same debt, and P2 owes a decision
+between this backprop readout and `laminar_local_readout.LaminarLocalReadout`).
+
+Determinism (2026-08-04): `torch.manual_seed(seed)` used to run inside `__init__`, which
+re-seeded the PROCESS-GLOBAL torch RNG for every module constructed afterwards --
+`run_selfchecks.py` runs part of the suite in ONE process, so a constructor was silently
+reaching outside itself. It was also redundant: every random draw in this class already
+passes `generator=self._init_gen` / `self._grow_gen`. Removed; the self-check output is
+byte-identical before and after (verified by A/B on the full main()).
+
+  PYTHONPATH=src python -m snn_data_lake.reasoning.brain_adapters.growable_readout
 """
-
-import os
-import sys
-
-# Make research/torch_device.py importable when run as a script (the script's own dir
-# research/brain_adapters/ is on sys.path, not research/), and when imported as a module.
-_RESEARCH_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _RESEARCH_DIR not in sys.path:
-    pass  # migrated: sys.path bootstrap removed (now an importable package)
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from snn_data_lake.reasoning.torch_device import resolve_device
+from snn_data_lake.substrate.device import resolve_device
 
 
 class GrowableReadout(nn.Module):
@@ -76,7 +81,9 @@ class GrowableReadout(nn.Module):
 
     def __init__(self, in_dim, n_classes=10, hidden=64, seed=0):
         super().__init__()
-        torch.manual_seed(seed)
+        # NO torch.manual_seed() here: a constructor may not re-seed the process-global RNG
+        # (run_selfchecks runs part of the suite in one process). Every draw below is
+        # per-instance via generator=.
         self.in_dim = in_dim
         self.n_classes = n_classes
         self._seed = seed
@@ -463,7 +470,8 @@ def _cf_run(mode, X, y, in_dim, n_classes, hidden0, grow_k, seed, replay_n=30):
 
 
 def main():
-    torch.manual_seed(0)
+    # No global torch.manual_seed(): every dataset builder and every model below draws from
+    # its own torch.Generator, so the run is deterministic without touching the global RNG.
     in_dim, n_classes = 8, 2
     X, y = _make_bands(n=600, in_dim=in_dim, n_bands=6, seed=0)
     chance = 1.0 / n_classes
