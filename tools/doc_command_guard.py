@@ -55,12 +55,23 @@ PKG = ROOT / "src" / "snn_data_lake"
 # Documents whose commands are addressed to a reader. CHANGELOG.md is deliberately absent:
 # a changelog entry describes a tree that existed, so a command that no longer runs is
 # CORRECT there -- the same reasoning that killed the broad citation rule at 475 findings.
+# CLAUDE.md was REMOVED from this tuple 2026-08-05, and the reason is about the GATE, not the file.
+# This scope is a FILESYSTEM GLOB (see _iter_docs below), so it is git-independent -- unlike
+# tools/citation_guard.py, which walks `git ls-files` and therefore sees only tracked files. CLAUDE.md
+# is deliberately gitignored (`.gitignore`, "local-only -- kept on disk, not published to the public
+# repo"), so naming it here made this gate scan a document that EXISTS IN NO CLONE: 55 documents on
+# the owner's machine, 54 in CI and for every other reader. A gate whose corpus depends on who runs it
+# cannot be used to compare two runs, which is most of what a gate is for.
+# Dropping it costs no coverage, measured: CLAUDE.md contains 0 matches for the CMD regex below
+# (it has no `python -m snn_data_lake.<...>` invocations), so the delta is 1 document and 0 commands.
+# What IS lost is real and is recorded rather than hidden: CLAUDE.md carries 18 `file.py:NNN`
+# citations that no gate checks, because citation_guard skips untracked files by construction. That
+# is an accepted, documented exception under P4c -- see docs/POLICIES.md -- not an oversight.
 SCOPE = (
     "README.md",
     "SECURITY.md",
     "AGENTS.md",
     "CONTRIBUTING.md",
-    "CLAUDE.md",
     "docs/**/*.md",
 )
 

@@ -94,9 +94,12 @@ Thumbs.db
 # command figure is net of its 2 EXEMPT entries -- the raw regex matches 53 -- so the arithmetic is
 # done on the printed number throughout.) Under P4c "a build the gates cannot see is
 # not a build the project can claim", and that applies to a governing document as hard as to code.
-# WHAT THIS CHANGE DOES AND DOES NOT DO, stated exactly: it makes the file ADDABLE. It does not
-# track it -- the file stays untracked, absent from every clone and invisible to citation_guard,
-# until someone runs `git add AGENTS.md`. That step is deliberately left to the owner.
+# WHAT THIS CHANGE DID AND DID NOT DO, stated exactly: it made the file ADDABLE. (It did not track
+# it; that step was left to the owner, and the owner took it -- AGENTS.md was added and committed in
+# bcad89ea on 2026-08-05, so it is now tracked and citation_guard scans it for the first time. The
+# two sentences above described the state between those two events and are kept, past-tensed, rather
+# than deleted: the sequence is the point, because "un-ignored" and "governed" are different states
+# and the gap between them is where a governance file can sit looking fixed while nothing reads it.)
 # NOT DISPOSITIONED HERE: the `/CLAUDE.md` PATTERN below is the identical defect -- likewise ignored
 # and untracked, 26,756 bytes of project governance (re-measured 2026-08-05). DELIBERATELY CITED BY
 # PATTERN AND CARRYING NO LINE NUMBER, which is this block's own correction and was earned twice.
@@ -105,8 +108,16 @@ Thumbs.db
 # sentence moved the target again, so the replacement was stale before it was saved. A comment
 # sitting above the line it cites, in the same file, invalidates its own citation on every edit; the
 # only stable reference is the pattern itself. Re-derive with `git check-ignore -v CLAUDE.md`.
-# It is left ignored because the blocker this change answers named AGENTS.md only, and widening the
-# call unilaterally is not this change's to make -- it is escalated, not resolved.
+# DISPOSITIONED 2026-08-05 (owner decision): CLAUDE.md STAYS IGNORED AND UNTRACKED, deliberately.
+# Tracking it would publish 26,756 bytes to a public repo, which is a disclosure decision rather than
+# a hygiene one, and the "local-only" marking below is the owner's answer to it. The consequence is
+# accepted and written down instead of being left to look like an oversight: its 18 `file.py:NNN`
+# citations are checked by NOTHING, because citation_guard scans `git ls-files` and an untracked file
+# is not in it. Recorded as a named exception under P4c in docs/POLICIES.md.
+# The corresponding gate fix went the OTHER way: tools/doc_command_guard.py globs the filesystem
+# rather than git, so it was scanning CLAUDE.md and reporting 55 documents here against 54 in CI and
+# in every clone. CLAUDE.md is removed from its SCOPE so the gate measures one corpus everywhere.
+# That costs 0 commands (CLAUDE.md contains no `python -m snn_data_lake.<...>` invocations).
 
 # Local-only -- kept on disk, not published to the public repo
 /CLAUDE.md

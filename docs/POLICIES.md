@@ -584,6 +584,21 @@ This is a BUILD LIST in P0's sense: every item is work that will be done, never 
   this (12 promoted as of 2026-08-04); the count is debt, and the target is zero.
 - **`research/`, `training/`, `integrations/`, `gcp/`, `infra/`** are ruff-excluded tiers holding
   further builds. Each is P4c debt on the same terms.
+- **`CLAUDE.md` is UNGOVERNED BY CHOICE — the one named exception to P4c, owner decision 2026-08-05.**
+  P4c says a file is part of the brain or retired, with no third category. This is a third category,
+  and it is written here rather than left silent because a documented exception is auditable and an
+  undocumented one is just a gap. The file is gitignored as local-only and is NOT published to the
+  public repo; tracking it would be a disclosure decision, not a hygiene fix, and the owner declined
+  it. **The accepted cost, stated exactly: its 18 `file.py:NNN` citations are checked by nothing.**
+  `tools/citation_guard.py` scans `git ls-files`, so an untracked file is invisible to it by
+  construction — the same property that makes the guard trustworthy on tracked files makes it blind
+  here. Anyone editing `CLAUDE.md` owns the accuracy of its citations personally, and this project
+  has already found that hand-maintained line numbers rot faster than anything else in it.
+  The GATE-side half of this was fixed rather than accepted: `tools/doc_command_guard.py` globs the
+  filesystem instead of git, so it had been scanning `CLAUDE.md` and reporting **55 documents on the
+  owner's machine against 54 in CI and in every clone**. A gate whose corpus depends on who runs it
+  cannot compare two runs, so `CLAUDE.md` is out of its `SCOPE`. Measured delta: 1 document,
+  0 commands.
 - **`docs/coverage/artifacts/` holds 16 EXECUTABLE evidence artifacts and not one of them is
   governed** — measured 2026-08-05. All 16 are `.py` files that produce the numbers the coverage
   bands are scored on, and **16 of 16 contain zero `assert` statements** and **16 of 16 carry
