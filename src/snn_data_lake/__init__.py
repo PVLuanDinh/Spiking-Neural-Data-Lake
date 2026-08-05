@@ -1,5 +1,19 @@
 """snn_data_lake -- a neuromorphic library organized by brain anatomy.
 
+REQUIRES THE FREE-THREADED (PEP 703) INTERPRETER. Owner decision 2026-08-05: the brain runs on
+CPython 3.14 built with --disable-gil (ABI tag cp314t), and `_require_free_threaded()` below
+REFUSES TO IMPORT under a GIL-enabled build. `pyproject.toml` carries `requires-python = ">=3.14"`,
+which is the most the packaging metadata can say -- free-threading is a BUILD, not a language
+level, so there is no marker for it and the check has to be at runtime.
+
+The guard is loud on purpose. A silent fallback to the GIL build is the failure this project would
+NOT notice: every self-check would pass, single-threaded, the parallelism would simply be absent,
+and the only symptom would be a performance number nobody was watching. That is the same shape as
+the defects this tree keeps finding -- a thing that looks live, passes its gate, and does nothing.
+Verified before the floor moved: torch 2.13.0, mujoco 3.11.0 and numpy 2.5.1 all publish
+cp314t win_amd64 wheels, and a same-seed 25-tick brain produced a BYTE-IDENTICAL state hash under
+both builds, so the determinism invariants survive removing the GIL.
+
 Core dependencies are torch, numpy and mujoco. This line described the package as
 "zero-dependency" until 2026-08-04, fifteen days after that contract was abolished project-wide
 (2026-07-20) -- the single most-read description of the package advertised a property it no
@@ -19,7 +33,49 @@ snn_data_lake.brain_atlas for the rendered map and a back-compat self-check.
 import importlib
 import importlib.abc
 import importlib.machinery
+import os
 import sys
+import sysconfig
+
+
+def _require_free_threaded():
+    """Refuse to import under a GIL-enabled interpreter. See the module docstring for WHY loud.
+
+    WHY THIS IS A RUNTIME CHECK AND NOT PACKAGING METADATA: free-threading is a BUILD of CPython
+    (PEP 703, `--disable-gil`, ABI tag cp314t), not a language level, so `requires-python` cannot
+    express it. `pip install` on a GIL-enabled 3.14 succeeds and every self-check passes -- the
+    parallelism is simply absent, silently. This project's recurring defect is exactly that shape,
+    so the requirement is enforced where it can actually be observed.
+
+    ESCAPE HATCH, deliberate and narrow: `NORD_ALLOW_GIL=1` downgrades the refusal to a stderr
+    warning. It exists because the SNN work is the reason for free-threading, not the whole tree --
+    a contributor bisecting an unrelated bug on a GIL build should not be blocked, and CI may need
+    to prove the guard itself fires. It is NOT a supported runtime mode: the brain's parallel paths
+    fall back to serial under it, so any timing measured with it set is measuring the wrong thing.
+
+    REACHABLE RED, constructed and run 2026-08-05: executing this under the standard (GIL-enabled)
+    3.14 build raises RuntimeError; under the cp314t build it returns silently. Both were observed.
+    """
+    if sysconfig.get_config_var("Py_GIL_DISABLED"):
+        return
+    msg = (
+        "snn_data_lake requires the FREE-THREADED CPython build (PEP 703, ABI tag cp314t).\n"
+        f"  running: {sys.version.splitlines()[0]}\n"
+        f"  Py_GIL_DISABLED={sysconfig.get_config_var('Py_GIL_DISABLED')!r} "
+        f"(1 = free-threaded, 0/None = GIL build)\n"
+        "  install:  uv python install 3.14+freethreaded\n"
+        "            <that python> -m venv .venv-lake && .venv-lake/Scripts/pip install -e '.[dev]'\n"
+        "  A GIL build imports and passes every self-check with the parallelism silently absent,\n"
+        "  which is why this refuses instead of warning. Set NORD_ALLOW_GIL=1 to downgrade to a\n"
+        "  warning for unrelated work -- never for a timing measurement."
+    )
+    if os.environ.get("NORD_ALLOW_GIL") == "1":
+        print(f"[snn_data_lake] WARNING: GIL build; parallel paths run SERIAL.\n{msg}", file=sys.stderr)
+        return
+    raise RuntimeError(msg)
+
+
+_require_free_threaded()
 
 # region -> modules  (single source of truth for the anatomical layout)
 REGIONS = {

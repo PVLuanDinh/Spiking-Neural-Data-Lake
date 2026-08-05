@@ -32,19 +32,33 @@ jobs:
       fail-fast: false                       # one cell failing must not mask the others
       matrix:
         os: [ubuntu-latest, windows-latest]  # the product is Windows-first (record_and_run.ps1, COMx)
-        # 3.11 LEG REMOVED 2026-08-05 with the requires-python floor raise (pyproject.toml, which
-        # carries the reason and the cost). A cell on an interpreter the package's own metadata
-        # excludes cannot run: pip refuses at install time, not at import time. Measured in
-        # .venv-lake (Python 3.11.15, pip 24.0) against a wheel differing only in that field:
-        # `Requires-Python: >=3.12` -> "ERROR: Package 'reqpy-floor312' requires a different
-        # Python: 3.11.15 not in '>=3.12'", exit 1; the `>=3.11` control installed, exit 0.
-        python-version: ["3.12", "3.13"]
+        # COLLAPSED TO A SINGLE FREE-THREADED CELL 2026-08-05 (owner decision). The 3.11 leg went
+        # first with the >=3.12 floor; 3.12 and 3.13 went with the >=3.14 floor the same day. A cell
+        # on an interpreter the package's own metadata excludes cannot run at all -- pip refuses at
+        # INSTALL time, not import time. Measured against a wheel differing only in that field:
+        # `Requires-Python: >=3.12` -> "ERROR: ... requires a different Python: 3.11.15 not in
+        # '>=3.12'", exit 1; the `>=3.11` control installed, exit 0.
+        #
+        # AND THE VERSION IS NOT THE REQUIREMENT. The brain requires the FREE-THREADED build (PEP
+        # 703, ABI tag cp314t): src/snn_data_lake/__init__.py::_require_free_threaded raises on a
+        # GIL-enabled interpreter. `actions/setup-python` serves the GIL build for "3.14", so this
+        # matrix names "3.14t" -- the free-threaded variant -- and NOT "3.14". Using "3.14" here
+        # would fail every job at import, which is the guard working, but it would look like a
+        # broken CI rather than a wrong pin.
+        python-version: ["3.14t"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+      # PROVE THE INTERPRETER BEFORE TRUSTING THE RUN. If setup-python ever serves a GIL build for
+      # "3.14t", every self-check below would still pass -- single-threaded, with the parallelism
+      # silently absent. That is the failure this project would not otherwise notice, so it is
+      # asserted here rather than assumed. Red: swap "3.14t" for "3.14" above and this step exits 1.
+      - name: Assert the interpreter is free-threaded (cp314t)
+        run: |
+          python -c "import sys,sysconfig; ft=sysconfig.get_config_var('Py_GIL_DISABLED'); print(sys.version); print('Py_GIL_DISABLED=',ft,'gil_enabled=',sys._is_gil_enabled()); raise SystemExit(0 if ft else 1)"
       - run: python -m pip install -e .    # torch + numpy are DEFAULT deps -> the full tier runs
       - name: Run every self-check with the full dependency set
         run: python run_selfchecks.py       # canonical module list lives in run_selfchecks.py
@@ -61,7 +75,7 @@ jobs:
           # project, so pip's Requires-Python check is not on its path and it would most likely have
           # kept passing. It is bumped because building the distribution on an interpreter the
           # distribution's own metadata excludes is a stale declaration, not because a red was run.
-          python-version: "3.12"
+          python-version: "3.14t"
           cache: pip
       - run: python -m pip install build
       - name: Build the wheel
@@ -96,7 +110,7 @@ jobs:
           # 3.11 runner: measured in .venv-lake (3.11.15, pip 24.0), "ERROR: Package ... requires a
           # different Python: 3.11.15 not in '>=3.12'", exit 1. Leaving this pin would have reddened
           # the whole lint job -- including the two gates added below it.
-          python-version: "3.12"
+          python-version: "3.14t"
           cache: pip
       - run: python -m pip install -e ".[dev]"
       - run: ruff check .
@@ -163,7 +177,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           # 3.11 -> 3.12: same proven break as `lint` -- this job also runs `pip install -e ".[dev]"`.
-          python-version: "3.12"
+          python-version: "3.14t"
           cache: pip
       - run: python -m pip install -e ".[dev]"
       - run: pytest   # addopts in pyproject run --cov with a >=70% gate

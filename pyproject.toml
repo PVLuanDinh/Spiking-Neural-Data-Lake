@@ -37,7 +37,18 @@ name = "spiking-neural-data-lake"
 version = "4.80.0"
 description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy and mujoco are core dependencies."
 readme = "README.md"
-requires-python = ">=3.12"
+# FLOOR RAISED 3.12 -> 3.14, 2026-08-05 (owner decision), and this floor is NOT the whole
+# requirement. The project requires the FREE-THREADED (PEP 703) build, and `requires-python` cannot
+# express that: free-threading is a BUILD of an interpreter, not a language level. `>=3.14` is the
+# half the packaging metadata can carry; the other half is a RUNTIME guard in
+# `src/snn_data_lake/__init__.py` that refuses to import under a GIL-enabled interpreter, because a
+# silent fallback to the GIL build is precisely the failure this project would not notice -- every
+# self-check would pass, single-threaded, and the parallelism would simply not be there.
+# The ABI tag for the required build is cp314t. Verified available on win_amd64 for all three core
+# dependencies before this floor moved: torch-2.13.0-cp314-cp314t-win_amd64.whl,
+# mujoco-3.11.0-cp314-cp314t-win_amd64.whl, numpy-2.5.1-cp314-cp314t-win_amd64.whl. The mujoco one
+# was the gating question, since that pin is exact BECAUSE the solver version is the physics.
+requires-python = ">=3.14"
 # FLOOR RAISED 3.11 -> 3.12, 2026-08-05 (owner decision). The reason is the [arc] extra below:
 # `arcengine` declares `Requires-Python: >=3.12`, so under a ">=3.11" floor its spec needed the
 # environment marker `python_version >= "3.12"` to stay resolvable -- and that marker evaluates
@@ -75,8 +86,16 @@ keywords = ["spiking-neural-network", "neuromorphic", "robotics", "data-lakehous
 # Classifiers track the CI matrix, which is {3.12, 3.13} as of this commit (.github/workflows/ci.yml,
 # job `self-checks`). This list read "Python :: 3.11" alone while the matrix tested three versions.
 classifiers = [
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
+    # 3.12 and 3.13 REMOVED 2026-08-05 with the >=3.14 floor: `requires-python` already excludes
+    # them, so leaving the classifiers would have advertised support the metadata refuses to install.
+    # The gate env `.venv-lake` IS 3.14.6 free-threading, so this is not aspirational -- it names the
+    # interpreter every number in docs/ is now measured on.
+    "Programming Language :: Python :: 3.14",
+    # There is NO classifier for the free-threaded build, which is why the real requirement lives in
+    # `src/snn_data_lake/__init__.py::_require_free_threaded` and in ci.yml's explicit
+    # Py_GIL_DISABLED assertion. Recorded here so a reader of this list does not conclude that a
+    # GIL-enabled 3.14 is supported: it installs, and then refuses to import.
+    "Programming Language :: Python :: Free Threading :: 3 - Stable",
     "License :: OSI Approved :: MIT License",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
@@ -149,7 +168,7 @@ arc = ["arcengine"]                                                      # src/s
 # Fixing `Arcade` and the sibling imports is out of scope for the floor change and is open work in
 # files this commit does not touch. Declaring the dependency closes the P7 ledger's UNDECLARED
 # finding -- a finding about pyproject naming its imports -- and that is the whole of what it closes.
-llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
+llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference â€” no cloud)
 genn = ["pygenn", "ml_genn"]                                             # research/*_genn + training/mnist_genn GPU trainer (needs a C++ compiler + CUDA)
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe (build-time only)
 hf = ["datasets", "huggingface-hub", "pillow"]                            # substrate/hf_stream.py: streamed licensed datasets -> features
@@ -223,7 +242,7 @@ source = ["snn_data_lake"]
 omit = ["*/reasoning/*", "*/training/*"]
 
 # ruff: scoped to the core + tests. research/ and the standalone "robot arm/" sketch are
-# excluded on purpose (linting them means editing quarantined / optional-dep code — out of scope
+# excluded on purpose (linting them means editing quarantined / optional-dep code â€” out of scope
 # here; see docs/IMPROVEMENTS.md A4).
 [tool.ruff]
 line-length = 100

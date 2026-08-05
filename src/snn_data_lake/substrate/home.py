@@ -34,6 +34,7 @@ boot. Zero runtime deps (stdlib json + os); the data lake never touches torch. A
 import json
 import os
 import sys
+import threading
 
 from snn_data_lake.substrate.binlog import (
     BinLog,
@@ -221,6 +222,37 @@ def state_path(name):
 #: with os.path.realpath if a caller ever passes a path from outside.
 _LOG_CACHE = {}
 
+#: Guards the check-then-construct in `_log()`. The cache above is READ and WRITTEN by every lake
+#: caller, and under free-threading (3.14 `Py_GIL_DISABLED`) those callers run simultaneously.
+#:
+#: MEASURED, not reasoned about -- 40 trials x 12 threads on an isolated scratch lake, 2026-08-05,
+#: `.venv-lake` free-threaded build: WITHOUT this lock `_log()` handed out up to **12 distinct
+#: BinLog instances over the ONE file** (40/40 trials split), and because each instance carries its
+#: own `_seen` set, the SAME payload was durably written to the lake up to **5 times with
+#: dedup=True** (40/40 trials produced a duplicate). That is the precise failure the comment above
+#: predicts in the abstract -- "two instances over one file hold two divergent dedup sets" -- now
+#: reproduced. It is worse than a duplicate record, too: `BinLog.__init__` runs `_repair_torn_tail()`,
+#: which TRUNCATES, so the unlocked path also had 13 concurrent constructions racing to truncate the
+#: one lake while other threads appended to it.
+#:
+#: COST, measured on the same build over 5 x 200,000 steady-state (cache-hit) calls: `_log()` costs
+#: 38.526 us/call with the lock against 36.789 us/call without it, so the lock itself is
+#: **1.737 us/call, +4.7 percent of a `_log()`** -- and a `_log()` is dominated by the
+#: `os.path.getsize` in `stale()`, not by anything this lock added. Against the operation a `_log()`
+#: exists to serve, one durable `append()` at 498 us/record (measured, same build), the lock is
+#: **0.35 percent**. Quote the pair, not the percentage alone: the ratio moves with lake size
+#: because `stale()` does not, and this file has already had three numbers rot for that reason.
+#:
+#: Holding it ACROSS the construction is deliberate and is not a pessimisation: the unlocked code
+#: did that 388-538 ms construction (124k-record / 522 MB scratch lake) 12 times in parallel and
+#: corrupted the lake; this does it once while the others wait and then hands them the same instance.
+#:
+#: A PLAIN Lock, not an RLock, because no path re-enters: `load_named_state` calls `_log()` and only
+#: then calls `_migrate_sidecar` -> `save_named_state` -> `_log()`, which is sequential, not nested,
+#: and nothing inside `BinLog.__init__` calls back into this module. A future re-entrant caller must
+#: revisit this line; a deadlock here is loud, which is the safer failure for the one durable store.
+_LOG_LOCK = threading.Lock()
+
 
 def _log(path=None, dedup=True):
     """The shared BinLog for `path`, rebuilt if the file changed underneath it.
@@ -233,12 +265,17 @@ def _log(path=None, dedup=True):
     lake as it stands (513.1 MB, 121,177 records, `.venv-lake`). The bare "742 ms" that stood here,
     and the "708 ms" two comments up, were both measured on a 425 MB / 80,853-record lake; the cost
     is a function of lake SIZE and the lake grows, so state the conditions or the number rots.
+
+    The check and the construction are ONE critical section under `_LOG_LOCK` -- see that lock for
+    the measured duplicate-record red this closes. Splitting them is what made a shared cache hand
+    out unshared instances.
     """
     key = (path or knowledge_path(), bool(dedup))
-    log = _LOG_CACHE.get(key)
-    if log is None or log.stale():
-        log = _LOG_CACHE[key] = BinLog(key[0], dedup=key[1])
-    return log
+    with _LOG_LOCK:
+        log = _LOG_CACHE.get(key)
+        if log is None or log.stale():
+            log = _LOG_CACHE[key] = BinLog(key[0], dedup=key[1])
+        return log
 
 
 class KnowledgeLog:
@@ -1114,6 +1151,69 @@ def main():
                 )
             else:
                 raise AssertionError(f"{why} must be refused by _state_key, not stored")
+
+        # ---- THE SHARED LOG CACHE IS ONE CRITICAL SECTION (`_LOG_LOCK`) ---------------------------
+        # The lake is reachable from more than one thread (the daemon's tick thread and its request
+        # threads), and on a free-threaded build those threads run simultaneously rather than
+        # interleaved. `_log()` is a check-then-construct over a shared dict, so without the lock
+        # each racing caller builds its OWN BinLog over the ONE file -- and each instance carries
+        # its own `_seen` set, so `dedup=True` stops deduping and the same payload is durably
+        # written more than once.
+        #
+        # REACHABLE RED, CONSTRUCTED AND RUN 2026-08-05 on the free-threaded `.venv-lake`
+        # (3.14.6, `sys._is_gil_enabled()` False), 40 trials x 12 threads on an isolated scratch
+        # lake: with the `with _LOG_LOCK:` removed from `_log()`, `_log()` returned up to 12
+        # DISTINCT instances (40/40 trials split) and the victim payload landed in the lake up to
+        # 5 times (40/40 trials duplicated). With the lock: 1 instance, 1 record, every trial.
+        # The assert below is the same probe, shrunk to run inside the self-check budget.
+        #
+        # It asserts the RECORD COUNT rather than the instance identity on purpose. Identity is the
+        # mechanism and the count is the harm, and a future cache keyed differently could legitimately
+        # hand out a fresh instance while still deduping correctly -- that must not fail this check.
+        #
+        # IT RUNS `_RACE_TRIALS` TRIALS, NOT ONE, AND THAT COUNT IS DERIVED RATHER THAN PICKED. A
+        # single trial of this probe was measured firing in only 1 of 3 runs against the unlocked
+        # code: the scratch lake is small, so a BinLog construction is quick and the window a racing
+        # caller has to slip into is narrow. One trial is therefore a ~1/3-sensitive guard for a
+        # defect that corrupts the one durable store, which is not good enough to stand as the only
+        # criterion. At the measured per-trial rate, 10 trials miss with probability (2/3)**10, about
+        # 2 percent. NOTE THE DIRECTION OF THE FLAKINESS, because it decides whether this is
+        # tolerable: it can only ever produce a FALSE NEGATIVE (fail to notice a broken lock), never
+        # a false positive -- with the lock held, one instance serves every caller and one record is
+        # the invariant, not the likely outcome. A green here is weak evidence; a red is conclusive.
+        _RACE_TRIALS = 10
+        n_threads = 12
+        for trial in range(_RACE_TRIALS):
+            race_path = os.path.join(work, f"race_lake{trial}.bin")
+            _LOG_CACHE.clear()
+            BinLog(race_path).append(pack_fact({"cue": ["seed"], "answer": "seed"}))
+            _log(race_path)  # prime the cache...
+            BinLog(race_path).append(pack_fact({"cue": ["ext"], "answer": "ext"}))  # ...go stale
+            assert _LOG_CACHE[(race_path, True)].stale(), (
+                "precondition: the cached instance must be stale, or this probe proves nothing"
+            )
+            victim = _T_FACT + pack_fact({"cue": ["race"], "answer": "written exactly once"})
+            gate = threading.Barrier(n_threads)
+
+            def _racer(p=race_path, v=victim, g=gate):
+                g.wait()  # release all threads together, so the window is actually contended
+                _log(p).append(v)
+
+            racers = [threading.Thread(target=_racer) for _ in range(n_threads)]
+            for t in racers:
+                t.start()
+            for t in racers:
+                t.join()
+            n_victim = sum(1 for p in BinLog(race_path).replay() if p == victim)
+            assert n_victim == 1, (
+                f"trial {trial}: {n_threads} threads sharing the one lake through _log() stored "
+                f"the same payload {n_victim} times -- dedup is broken because the cache handed "
+                "out more than one BinLog over one file, and each has its own _seen set"
+            )
+        print(
+            f"shared log cache  : {_RACE_TRIALS} trials x {n_threads} concurrent _log() callers "
+            f"-> 1 BinLog, 1 record each (dedup held under threads)"
+        )
 
         # ---- one-time MIGRATION of a pre-P4b sidecar, and the file is LEFT ON DISK ----------------
         legacy = state_path("legacy_probe.json")
