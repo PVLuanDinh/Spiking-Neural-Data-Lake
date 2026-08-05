@@ -37,12 +37,46 @@ name = "spiking-neural-data-lake"
 version = "4.80.0"
 description = "Neuromorphic gesture -> robot-arm control loop + spiking data lakehouse. torch, numpy and mujoco are core dependencies."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
+# FLOOR RAISED 3.11 -> 3.12, 2026-08-05 (owner decision). The reason is the [arc] extra below:
+# `arcengine` declares `Requires-Python: >=3.12`, so under a ">=3.11" floor its spec needed the
+# environment marker `python_version >= "3.12"` to stay resolvable -- and that marker evaluates
+# False on 3.11, so `pip install ".[arc]"` resolved BY INSTALLING NOTHING while
+# reasoning/arc_agi/{play,play_brain}.py import `arcengine` UNGUARDED at module top and ship in the
+# wheel. There was no install command that made them importable on a supported interpreter. Raising
+# the floor makes the marker vacuously true on every supported interpreter, so the marker is gone.
+#
+# THE PRICE, WRITTEN DOWN RATHER THAN PAPERED OVER: THE CPU GATE VENV NO LONGER CONFORMS TO THIS
+# FLOOR. `.venv-lake` is **Python 3.11.15** -- measured 2026-08-05, twice: `.venv-lake/pyvenv.cfg`
+# reads `version = 3.11.15`, and `.venv-lake/Scripts/python.exe --version` prints `Python 3.11.15`.
+# That venv is the deterministic CPU gate env named throughout docs/POLICIES.md P5 and
+# docs/RUNNING.md, and EVERY MEASUREMENT RECORDED IN THIS REPO WAS TAKEN IN IT.
+#
+# The consequence is MEASURED, not predicted -- pip enforces this field and refuses the install.
+# Constructed and RUN 2026-08-05 in `.venv-lake` (pip 24.0) against two hand-built wheels differing
+# in nothing but this one metadata line:
+#     Requires-Python: >=3.11  ->  "Would install reqpy-floor311-0.0.1"                     exit 0
+#     Requires-Python: >=3.12  ->  "ERROR: Package 'reqpy-floor312' requires a different
+#                                   Python: 3.11.15 not in '>=3.12'"                        exit 1
+# (Both lines RE-RUN independently 2026-08-05 by a second pass, from wheels rebuilt from scratch, and
+# the control/red pair reproduces exactly. One transcription error was found and fixed doing it: this
+# block quoted `"Would install reqpy_floor311-0.0.1"` with an UNDERSCORE. pip prints the DISTRIBUTION
+# name, which is hyphenated -- `reqpy-floor311-0.0.1`; the underscore is the wheel FILENAME's
+# normalization. A quoted-verbatim line has to be pasted from the run, not reconstructed from the
+# artifact's filename, or it is a paraphrase wearing quotation marks.)
+# So `pip install -e .` and `pip install -e ".[dev]"` into `.venv-lake` FAIL from this commit
+# forward. The venv is deliberately NOT recreated here -- that is the orchestrator's call, and
+# recreating it invalidates the measurement baseline of every number in docs/. Until it is
+# recreated on 3.12, the gate env and the declared floor DISAGREE, and that disagreement is a known
+# open item recorded here rather than an oversight discovered later.
 license = "MIT"
 authors = [{ name = "Aighluvsekks" }]
 keywords = ["spiking-neural-network", "neuromorphic", "robotics", "data-lakehouse", "stdp"]
+# Classifiers track the CI matrix, which is {3.12, 3.13} as of this commit (.github/workflows/ci.yml,
+# job `self-checks`). This list read "Python :: 3.11" alone while the matrix tested three versions.
 classifiers = [
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: MIT License",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
@@ -88,7 +122,33 @@ train = ["torch", "torchvision", "snntorch>=0.9", "numpy", "scikit-learn"]      
 nmnist = ["tonic"]                                                       # research/nmnist_ingest real data
 nengo = ["nengo"]                                                       # substrate/nengo_bridge: run the brain's NEF/LIF substrate on Nengo (sim + NengoLoihi deploy); nengo-gated, the default install never imports it
 nir = ["nir", "numpy"]                                                   # substrate/nir_export.to_nir_graph -> canonical NIR HDF5 for Loihi 2 / SpiNNaker 2 / Speck / Xylo. ADDED 2026-08-04 (specs/010, P7): the import at nir_export.py:121 is lazy and raises a helpful ImportError, but it was declared NOWHERE, so `pip install ".[all]"` could not produce a tree where the export path runs. Distribution name confirmed from the module's own install hint ("pip install nir numpy"), not guessed.
-arc = ['arcengine; python_version >= "3.12"']                            # src/snn_data_lake/reasoning/arc_agi/{play,play_brain}.py: the ARC-AGI-3 arcade bridge. ADDED 2026-08-05 (P7 ledger): `from arcengine import GameAction, GameState` is UNGUARDED at module top in BOTH, and both SHIP IN THE WHEEL (`[tool.hatch.build.targets.wheel] packages = ["src/snn_data_lake"]`), so `pip install .` produced a tree where `import snn_data_lake.reasoning.arc_agi.play` raised ModuleNotFoundError -- RE-RUN 2026-08-05 in .venv-lake, it does. DECLARED rather than guarded/retired: under P4c `reasoning/` is part of the brain and not a parking lot, so the honest fix for an unguarded import of a real distribution is to declare it; under P7 "it would be another dependency" is not a reason to reject one. Distribution name read from the INSTALLED metadata (.venv-arc/Lib/site-packages/arcengine-0.9.3.dist-info/METADATA -> `Name: arcengine`, `Author: arcprizefoundation`, INSTALLER `pip`, no direct_url.json so it came from an index, not a local path), NOT from play.py's docstring, which names the SIBLING `arc-agi` distribution (`Name: arc-agi` 0.9.9, `Requires-Dist: arcengine>=0.9.3`) that merely depends on it -- declaring on the docstring's word would have manufactured the false entry this file's ledger warns about. THE MARKER IS LOAD-BEARING AND MEASURED: arcengine declares `Requires-Python: >=3.12` while this project declares `requires-python = ">=3.11"` and the CPU gate env .venv-lake IS 3.11.15, so an unmarked spec makes `pip install ".[arc]"` unresolvable on a supported interpreter. AND THE MARKER'S PRICE, measured 2026-08-05 and written here so this declaration is never read as more than it is: `Requirement('arcengine; python_version >= "3.12"').marker.evaluate()` is False on 3.9/3.10/3.11 and True on 3.12/3.13/3.14, so on THIS PROJECT'S OWN FLOOR -- and in .venv-lake, the CPU gate env -- `pip install ".[arc]"` resolves BY INSTALLING NOTHING, and both modules still raise ModuleNotFoundError. There is no install command that makes them importable on 3.11. Declaring closes the ledger's UNDECLARED finding, which is a finding about pyproject naming its imports; it does NOT by itself make a clean 3.11 tree import them, and tools/dependency_ledger.py's docstring now says so at the definition of UNDECLARED rather than leaving green to be over-read. SCOPE, stated so the extra is not mistaken for a working path: it makes the two modules IMPORTABLE (on 3.12+), not runnable -- `play()` calls `arc_agi.Arcade()` where `arc_agi` is bound to the FIRST-PARTY package (`reasoning/arc_agi/__init__.py` is one docstring line, no `Arcade`), which is a separate defect in a file this change does not touch.
+arc = ["arcengine"]                                                      # src/snn_data_lake/reasoning/arc_agi/{play,play_brain}.py: the ARC-AGI-3 arcade bridge. ADDED 2026-08-05 (P7 ledger): `from arcengine import GameAction, GameState` is UNGUARDED at module top in BOTH, and both SHIP IN THE WHEEL (`[tool.hatch.build.targets.wheel] packages = ["src/snn_data_lake"]`), so `pip install .` produced a tree where `import snn_data_lake.reasoning.arc_agi.play` raised ModuleNotFoundError -- RE-RUN 2026-08-05 in .venv-lake, it does. DECLARED rather than guarded/retired: under P4c `reasoning/` is part of the brain and not a parking lot, so the honest fix for an unguarded import of a real distribution is to declare it; under P7 "it would be another dependency" is not a reason to reject one. Distribution name read from the INSTALLED metadata (.venv-arc/Lib/site-packages/arcengine-0.9.3.dist-info/METADATA -> `Name: arcengine`, `Author: arcprizefoundation`, INSTALLER `pip`, no direct_url.json so it came from an index, not a local path), NOT from play.py's docstring, which names the SIBLING `arc-agi` distribution (`Name: arc-agi` 0.9.9, `Requires-Dist: arcengine>=0.9.3`) that merely depends on it -- declaring on the docstring's word would have manufactured the false entry this file's ledger warns about.
+# THE MARKER IS GONE, 2026-08-05, AND THE COMMENT THAT JUSTIFIED IT WAS REWRITTEN RATHER THAN LEFT
+# TO ROT. This spec read `arcengine; python_version >= "3.12"` for as long as requires-python was
+# ">=3.11", and the paragraph here explained why: arcengine declares `Requires-Python: >=3.12`, so
+# an unmarked spec was unresolvable on 3.11. It then recorded the marker's price in its own words --
+# *"There is no install command that makes them importable on 3.11"* -- which was TRUE while the
+# floor was 3.11 and is FALSE now that the floor is 3.12. That sentence is deleted, not softened:
+# with `requires-python = ">=3.12"` (see the block beside it above) the marker is vacuously true on
+# every supported interpreter, so it buys nothing and is removed, and `pip install ".[arc]"` now
+# installs arcengine on every interpreter this project supports.
+#
+# WHAT THAT DOES *NOT* BUY -- THE MODULES ARE NOW IMPORTABLE AND ARE STILL NOT RUNNABLE. Raising the
+# floor fixes an INSTALL defect and nothing else. Both modules remain broken on 3.12 with arcengine
+# present, for reasons that have nothing to do with the interpreter, each MEASURED in .venv-lake on
+# 2026-08-05 rather than read off the source:
+#   * `play.py` binds `import snn_data_lake.reasoning.arc_agi as arc_agi` -- the FIRST-PARTY package
+#     -- and `play()` then calls `arc_agi.Arcade()`. `reasoning/arc_agi/__init__.py` is a single
+#     docstring line and defines no `Arcade`; measured, `hasattr(arc_agi, "Arcade")` is False, so
+#     that call raises AttributeError on 3.12 with arcengine installed exactly as it would on 3.11.
+#   * `play_brain.py` does bare `from play import _BY_VALUE, play` and `from rule_inducer import
+#     ...` after its sys.path bootstrap was gutted to a bare `pass` ("migrated: sys.path bootstrap
+#     removed"). There are no top-level `play` / `rule_inducer` distributions: measured,
+#     `importlib.util.find_spec("play")` and `find_spec("rule_inducer")` are both None, so it cannot
+#     resolve its siblings from an installed wheel at all, on any interpreter.
+# Fixing `Arcade` and the sibling imports is out of scope for the floor change and is open work in
+# files this commit does not touch. Declaring the dependency closes the P7 ledger's UNDECLARED
+# finding -- a finding about pyproject naming its imports -- and that is the whole of what it closes.
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference — no cloud)
 genn = ["pygenn", "ml_genn"]                                             # research/*_genn + training/mnist_genn GPU trainer (needs a C++ compiler + CUDA)
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe (build-time only)
@@ -167,7 +227,15 @@ omit = ["*/reasoning/*", "*/training/*"]
 # here; see docs/IMPROVEMENTS.md A4).
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+# py311 -> py312, 2026-08-05, tracking `requires-python` above. This is the pyupgrade (UP) target: a
+# stale `py311` here holds UP back from rules that assume 3.12 on a project that no longer supports
+# 3.11, which is a check silently left loose rather than a neutral leftover. MEASURED BEFORE BEING
+# APPLIED, on this tree in .venv-lake with ruff 0.15.20 -- `ruff check .` exits 0 under BOTH
+# `--target-version py311` and `--target-version py312` (zero new findings), and
+# `ruff format --check src tests tools` prints "474 files already formatted" under both, so the bump
+# reformats nothing and reddens nothing. It TIGHTENS the ruleset; if it ever reddens later that is a
+# real UP finding on new code, not this line misbehaving.
+target-version = "py312"
 extend-exclude = ["research", "integrations", "src/snn_data_lake/training", "training", "scratchpad"]
 
 [tool.ruff.lint]

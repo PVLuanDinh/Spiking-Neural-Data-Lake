@@ -16,7 +16,7 @@ the rule that stops the policy from being satisfied by theater.
 | P4 one brain | `substrate/replication_guard.py` | — |
 | P5 use the GPU where it helps | — | yes |
 | **P6 mutual reach + use** | **HALF BUILT** — `tools/p6_gate.py` (workspace write:read topology; runs clean, self-checks, **manual and NON-asserting, not in CI**) | yes (provisional; the connectome-diff half is still unbuilt — corrected 2026-08-04, this row said "NOT built" while the tool existed) |
-| **P7 any dependency that helps** | **BUILT, REPORT-ONLY** — `tools/dependency_ledger.py` (step in the `lint` CI job) | yes (the judgement half; see P7 guard (b)) |
+| **P7 any dependency that helps** | **BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` **and** `--self-check` (two steps in the `lint` CI job, both added 2026-08-05; this row read "BUILT, REPORT-ONLY" and the step it described ran the tool BARE, which `main()` makes incapable of a non-zero exit) | yes (the judgement half; see P7 guard (b)) |
 | **P8 invent the method** | **BUILT AND ASSERTING** — `tools/red_reachability.py --assert` (step in the `lint` CI job) | yes (whether a criterion measures the RIGHT thing; no instrument can replace it) |
 | e-prop not backprop | — | yes |
 | *(not a policy — repo hygiene)* citations resolve | `tools/citation_guard.py` (step in the `lint` CI job, asserting since 2026-07-30) | — |
@@ -34,7 +34,8 @@ gate before writing a sentence about the gate. Counted output on this tree, **re
 | gate | output | in CI? |
 |---|---|---|
 | `tools/red_reachability.py --assert` | 400 files scanned, 13 criteria; **NO_RED 0, TAUTOLOGICAL 0, READS_SYSTEM 13, EXEMPT 0** — exit 0 | yes, `lint`, `--assert` |
-| `tools/dependency_ledger.py` | 400 files, 28 distributions; **UNDECLARED 1** (`arcengine`, 2 unguarded imports), **UNUSED 0**, **MISDESCRIBED 1**, EXEMPT 2, ALL_EXCLUDES 7 — prints `gate FAIL`, exits 0 (report-only) | yes, `lint`, report-only |
+| `tools/dependency_ledger.py --assert` | 400 files scanned, **29** distributions; **UNDECLARED 0, UNUSED 0, MISDESCRIBED 0**, EXEMPT 2, ALL_EXCLUDES 8 — prints `gate OK`, exit 0. **This row said `UNDECLARED 1` / `MISDESCRIBED 1` / `ALL_EXCLUDES 7` and "prints `gate FAIL`, exits 0 (report-only)"; re-run 2026-08-05 in `.venv-lake`, all three counts are 0/0/8 and the tool prints `gate OK`.** The parenthetical *"exits 0 (report-only)"* was the more damaging half and it was not a stale measurement but a structural fact nobody had checked: `main()` returns 1 only under `if do_assert and failed`, so the CI step — which invoked the tool with no flag — could not have reddened the build on ANY finding. Both are fixed together: the flag is added and the counts are re-derived | yes, `lint`, **`--assert`** |
+| `tools/dependency_ledger.py --self-check` | 5 MISDESCRIBED criteria mutated against a string copy of `pyproject.toml`: **RED OK 5, NO RED 0, BROKEN 0**; unmutated tree reports 0 findings — `self-check OK: 5/5 criteria proven falsifiable`, exit 0 | yes, `lint` (**registered 2026-08-05**; it had run nowhere, so its own "5/5 proven falsifiable" line was a claim no gate re-derived) |
 | `tools/doc_command_guard.py --assert` | 55 documents, 51 `python -m` commands (+2 EXEMPT = 53 matched); **UNRUNNABLE 0** — after 19 broken commands were CLEARED, not exempted. **54 / 50 on a clean clone**: `AGENTS.md` is in the gate's SCOPE and is gitignored, so one in-scope document and one command exist only on a working machine | **NO — see below** |
 | `tools/p6_gate.py` | still manual and NON-asserting; see P6 for the re-derived reading | no |
 
@@ -45,18 +46,30 @@ committed in the section that names it.**
 1. **`tools/doc_command_guard.py` is NOT a step in the `lint` CI job, and the row above said it
    was.** Measured: `.github/workflows/ci.yml`'s `lint` job runs `ruff check .`,
    `ruff format --check src tests tools`, `tools/citation_guard.py`,
-   `tools/red_reachability.py --assert` and `tools/dependency_ledger.py` — five steps, and none of
-   them is this gate. Grepping `doc_command_guard` across `.github/workflows/`, `run_selfchecks.py`,
+   `tools/red_reachability.py --assert` and `tools/dependency_ledger.py` — five checking steps, and
+   none of them is this gate. **That enumeration was invalidated later the same day by the pass that
+   wrote it**, which added `--assert` to the ledger step and registered
+   `tools/dependency_ledger.py --self-check` beside it; RE-DERIVED by parsing the YAML, the `lint`
+   job now has **9 steps, 6 of them checking steps** (the other three are `checkout`,
+   `setup-python` and `pip install -e ".[dev]"`). The conclusion is unchanged and re-measured —
+   `doc_command_guard` is still in none of them — but a count of CI steps written in a pass that
+   edits CI goes stale before the pass ends, and this block is where that lesson is supposed to live. Grepping `doc_command_guard` across `.github/workflows/`, `run_selfchecks.py`,
    `.pre-commit-config.yaml` and `pyproject.toml` returns **zero matches**. The gate is real, runs
    clean (`--assert`, exit 0), and carries a self-check whose red is reachable — but nothing runs it
    automatically, so under **P4c** it is *a build the gates cannot see, and therefore not a build
    this project can claim*. Registering it is open work; the CI edit is escalated because
    `.github/**` is outside this pass's write scope.
-2. **The dependency ledger reports a THIRD direction the block omitted.** Its measured line is
-   `UNDECLARED: 1   UNUSED: 0   MISDESCRIBED: 1   EXEMPT: 2   ALL_EXCLUDES: 7`, and the
-   `MISDESCRIBED` finding is live and undispositioned: *`ALL-EXTRA  extra [nir] is neither in [all]
-   nor in ALL_EXCLUDES -- pip install ".[all]" does not install it`*. Recording only the two
-   directions that were zero-or-known turned a finding into an absence.
+2. **The dependency ledger reports a THIRD direction the block omitted** — `MISDESCRIBED`. When this
+   correction was written its measured line was
+   `UNDECLARED: 1   UNUSED: 0   MISDESCRIBED: 1   EXEMPT: 2   ALL_EXCLUDES: 7`, and the live finding
+   was *`ALL-EXTRA  extra [nir] is neither in [all] nor in ALL_EXCLUDES -- pip install ".[all]" does
+   not install it`*. Recording only the two directions that were zero-or-known turned a finding into
+   an absence. **CLOSED, re-run 2026-08-05 in `.venv-lake`:** `nir` is now a member of `[all]` and
+   `arcengine` is declared, so the line reads
+   `UNDECLARED: 0   UNUSED: 0   MISDESCRIBED: 0   EXEMPT: 2   ALL_EXCLUDES: 8`. The point survives
+   the fix and is why this entry is amended rather than deleted: the omission was of a *direction*,
+   not of a number, and a report that names only the directions it expects to be clean will hide the
+   next one exactly as it hid this one.
 
 **Provenance of the 2026-07 amendments.** Three independent audits mapped this codebase against
 external frameworks — predictive coding, the Thousand Brains Theory, and quantum-consciousness
@@ -627,6 +640,21 @@ idle out of habit, and do not treat CUDA as a special-occasion tier. Hardware: R
 `2.11.0+cu128`, verified `cuda.is_available() == True`. Env `NORD_GPU=1`; the verified environment is
 `.venv-cu128` (the CPU gate env `.venv-lake` stays for deterministic `run_selfchecks`/`pytest`).
 
+**OPEN, 2026-08-05 — THE CPU GATE ENV NO LONGER CONFORMS TO THE PROJECT'S OWN FLOOR, and it is
+recorded here because this is the section that names `.venv-lake` as the gate env.** `pyproject.toml`
+raised `requires-python` from `">=3.11"` to `">=3.12"` on 2026-08-05 (the reason and the full
+measurement live in the comment block beside that field). `.venv-lake` is **Python 3.11.15** —
+measured twice, `pyvenv.cfg` reads `version = 3.11.15` and `.venv-lake/Scripts/python.exe --version`
+prints `Python 3.11.15`. pip enforces the field, so `pip install -e .` into `.venv-lake` now FAILS:
+constructed and run in that venv against two wheels differing only in that metadata line, the
+`>=3.11` control printed `Would install` and exited 0 while the `>=3.12` case printed
+`ERROR: Package 'reqpy-floor312' requires a different Python: 3.11.15 not in '>=3.12'` and exited 1.
+**Every measurement recorded in this file was taken in that venv.** It is deliberately NOT recreated
+as part of the floor change — recreating it is an owner decision and it re-bases the environment
+behind every number in `docs/`. Until it is recreated on 3.12 the gate env and the declared floor
+disagree, and an already-installed `.venv-lake` keeps running (the check is at install time, not at
+import time), which is precisely why this could sit unnoticed if it were not written down.
+
 **"That it actually speeds up" is the operative clause, and it is decided by measurement, not by
 assumption.** Ship the GPU path when a benchmark on the real workload shows it faster; do not ship it
 because CUDA is available. This is P2's "better requires a measurement that exists" applied to hardware.
@@ -1066,8 +1094,13 @@ the tree actually holds today, each line re-derived rather than inherited:
   organized by brain anatomy."*
 - **CLOSED — `scikit-learn`.** The gate specification below said the ledger *"fails today on
   scikit-learn... absent from `pyproject.toml` entirely"*. It is now declared in the `[gpu]` and
-  `[train]` extras with a dated note. `tools/dependency_ledger.py` reports **UNDECLARED: 1**, and it
-  is `arcengine` (two unguarded imports under `reasoning/arc_agi/`), not scikit-learn or `nir`.
+  `[train]` extras with a dated note. **CLOSED FURTHER, re-run 2026-08-05:** this line then read
+  *"`tools/dependency_ledger.py` reports **UNDECLARED: 1**, and it is `arcengine` (two unguarded
+  imports under `reasoning/arc_agi/`)"*, which was overtaken by the `[arc]` declaration in the same
+  day's floor-raise pass. Re-derived, the tool reports **UNDECLARED: 0** — `arcengine` is declared
+  and its marker is gone. The two unguarded imports are unchanged and still real
+  (`reasoning/arc_agi/play.py` and `play_brain.py`, `from arcengine import GameAction, GameState` at
+  module top in both); what changed is that pyproject now names the distribution they need.
 - **OPEN — the spec-plan certifications, and there are EIGHT, not six.** Re-counted by grep for
   "no new depend" across `specs/`: `001/plan.md` (**twice**), `003/plan.md`, `006/plan.md`,
   `007/plan.md`, `009/plan.md` — **plus the two this paragraph missed**, `005/shared-edits.md`
@@ -1144,28 +1177,59 @@ declared tier need it*, and a transitive pin is a statement of the tier's contra
 real incident for a different reason (the hand-rolled PNG encoder above), and the ledger's exemption
 says so.
 
-**Mechanization: BUILT, REPORT-ONLY — `tools/dependency_ledger.py`, a step in the `lint` CI job.**
-*(Corrected 2026-08-04: this said "NOT BUILT" while the gate existed, ran, and was wired into CI.)*
-It stays **report-only**, deliberately and with the reason stated in the workflow: it exits non-zero
-on findings nobody has dispositioned yet, and reddening the build for an undecided finding is not the
-same as enforcing a rule. Flip to `--assert` as the last step of specs/010 T021/T062.
+**Mechanization: BUILT AND ASSERTING** — `tools/dependency_ledger.py --assert` and
+`tools/dependency_ledger.py --self-check`, two steps in the `lint` CI job.
+*(Corrected 2026-08-04: this said "NOT BUILT" while the gate existed, ran, and was wired into CI.
+**Corrected again 2026-08-05, and this paragraph is now the third instance of the drift the top of
+this file names.** It read "BUILT, REPORT-ONLY … It stays **report-only**, deliberately and with the
+reason stated in the workflow: it exits non-zero on findings nobody has dispositioned yet … Flip to
+`--assert` as the last step of specs/010 T021/T062." Two separate defects in those two sentences:*
 
-**Counted output on this tree, 2026-08-04** — which is what the gate-first bar asks for, and it is a
-work list rather than an allowlist:
+1. *The flag was flipped earlier the same day, and the row in the enforcement table at the top of
+   this file was updated while this paragraph — P7's own mechanization statement — was not. A claim
+   living in two places with only one corrected is the failure P6's table names, and here both
+   places are in this one file.*
+2. *The justification was **structurally false when it was written**, not merely stale. The bare
+   invocation could never exit non-zero on anything: `main()` returns 1 only under
+   `if do_assert and failed`, and `do_assert` is `"--assert" in sys.argv`. RUN rather than read —
+   `main()` driven against a mutated string copy of `pyproject.toml` (`nir` removed from `[all]`,
+   which re-opens the ALL-EXTRA finding recorded as CLOSED above) returns **rc=1 with `--assert` and
+   rc=0 bare**, printing the identical `gate FAIL: the dependency ledger does not balance` in both.
+   So "reddening the build for an undecided finding is not the same as enforcing a rule" described a
+   trade-off that was not on the table: the step was a log line either way.)*
+
+Both steps re-run in `.venv-lake` after the flip: `--assert` exits 0 (`gate OK`) and `--self-check`
+exits 0 (`5/5 criteria proven falsifiable`). **Each was also proven able to FAIL, which is what the
+2026-08-04 version of this paragraph never established for the step it described.** `--assert`:
+rc=1 on the mutated copy above. `--self-check`: rc=1 on **both** of its failure paths — an anchor
+that no longer matches prints `BROKEN` (mutating `arm = ["pyserial"]` to single quotes) and a
+criterion whose mutation cannot fire prints `NO RED` (dropping `mujoco==3.11.0` from
+`[project.dependencies]`, after which neither `CORE-PROSE` red can light). A gate that has only ever
+been seen green is indistinguishable from one that cannot see.
+
+**Counted output on this tree, RE-RUN 2026-08-05 in `.venv-lake` after the `arc` declaration and the
+`requires-python` floor raise** — which is what the gate-first bar asks for:
 
 ```
-scanned 400 files under src/, 28 distributions in pyproject
-UNDECLARED: 1   UNUSED: 0   MISDESCRIBED: 1   EXEMPT: 2   ALL_EXCLUDES: 7
-  UNDECLARED    arcengine  (2 UNGUARDED of 2)  reasoning/arc_agi/play.py, reasoning/arc_agi/play_brain.py
-  MISDESCRIBED  ALL-EXTRA  extra [nir] is neither in [all] nor in ALL_EXCLUDES
-                           -- `pip install ".[all]"` does not install it
+scanned 400 files under src/, 29 distributions in pyproject
+UNDECLARED: 0   UNUSED: 0   MISDESCRIBED: 0   EXEMPT: 2   ALL_EXCLUDES: 8
+gate OK: every import is declared, every declaration is used, prose matches lists
 ```
 
-*(Re-run 2026-08-05 and CORRECTED: this block previously read `UNDECLARED: 1   UNUSED: 0
+*(Re-run 2026-08-05 and CORRECTED TWICE. First: this block read `UNDECLARED: 1   UNUSED: 0
 EXEMPT: 2` and listed only `arcengine`. The gate emits five counters, not three, and the
-`MISDESCRIBED` one was **1, not 0** — a live finding nobody has dispositioned. Quoting a
-gate's output means quoting all of it; dropping the counters that are non-zero is how a work
-list becomes a clean bill of health.)*
+`MISDESCRIBED` one was **1, not 0** — a live finding nobody had dispositioned. Quoting a gate's
+output means quoting all of it; dropping the counters that are non-zero is how a work list becomes a
+clean bill of health. Second, later the same day: the block was then left asserting
+`28 / 1 / 1 / 7` and the two findings below it — `arcengine` UNDECLARED and the `[nir]` ALL-EXTRA —
+**after both were closed in this same file**, once in the gate table near the top and once in the
+"Two corrections" entry beside it. Three copies of one measurement, two re-derived and one not, and
+this was the copy captioned "Counted output on this tree", i.e. the one a reader would trust most.
+The durable fix is not a better caption: **quote a gate by re-running it, or do not quote it.**)*
+
+*Its work-list character is not lost by the counts going to zero — what makes the ledger a work list
+is that `EXEMPT` and `ALL_EXCLUDES` carry written dispositions that must each still match a real
+violation, and the gate fails loudly on one that blesses nothing.*
 
 **Of the three properties the specification below predicted would fail, two now PASS.** Recorded
 because the specification is evidence about what the gate was for, and its predictions being
@@ -1174,8 +1238,12 @@ overtaken is the gate working:
 1. *"every declared dependency is imported somewhere, or carries a reason"* — predicted to fail on
    `pillow` and `pyarrow`; **passes**, both carry reasons.
 2. *"every third-party module imported under `src/` is declared"* — predicted to fail on
-   `scikit-learn` and `nir`; **now fails only on `arcengine`.** scikit-learn is declared in
-   `[gpu]`/`[train]`.
+   `scikit-learn` and `nir`; **now passes.** scikit-learn is declared in `[gpu]`/`[train]`, `nir` in
+   `[nir]` and in `[all]`, `arcengine` in `[arc]`. *(This item read "now fails only on `arcengine`"
+   until 2026-08-05, when the floor raise declared it; re-derived, `UNDECLARED` is 0. Note what the
+   green does and does not prove — the ledger's own docstring is explicit that a distribution
+   declared only in an EXTRA is green here while a plain `pip install .` still raises
+   ModuleNotFoundError, which is exactly `arcengine`'s shape.)*
 3. *"`pyproject.toml`'s own self-description matches its dependency list"* — predicted to fail because
    `:1` and `:27` said *"torch + numpy"* while `mujoco==3.11.0` is a third core dependency;
    **fixed in `pyproject.toml` itself**, whose `:1` and `description` now name all three. **This

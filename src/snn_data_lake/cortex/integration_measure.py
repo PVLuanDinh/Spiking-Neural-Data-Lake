@@ -25,6 +25,38 @@ There is NO consciousness threshold here, no "distance_to_consciousness", no cla
 the system is or is not conscious. This is an honest, agnostic step of the project's consciousness program
 -- it neither denies nor claims consciousness; it reports a dynamics property and names it exactly.
 
+ONE PCI NUMBER, ON ITS OWN, IS NOT A REPORTABLE QUANTITY. ONLY CONTRASTS ARE. (Added 2026-08-05 after the
+defect below.) There is no calibration set for perturbational complexity on an ARTIFICIAL substrate --
+Casali's scale was normed on human sleep, anaesthesia and disorders of consciousness, and none of that
+transfers to a twelve-unit LIF net. No calibration set means no cutoff, which means an absolute value
+supports no verdict about ANOTHER system at all: it can only ever be telemetry. What this module is FOR is
+the comparison -- which is why everything below it is built as one: the load-bearing assertions in the
+self-check are ORDERINGS between regimes that share a substrate (integrated vs independent-noise vs
+synchronous vs silent) plus a firing-rate control proving the gap is integration and not activity. Read
+`pci()`'s return that way: it is one arm of an experiment, not a score.
+
+That sentence said "EVERY assertion in the self-check is an ORDERING" until it was checked against the
+self-check, which is the failure this whole paragraph is about, committed in the paragraph about it.
+COUNTED 2026-08-05: `main()` carries 13 asserts, and SIX of them are absolute cutoffs on a single number
+-- `mean_pci_integ > 0.25`, `pci_indep < 0.15`, `pci_silent < 1e-9`, `rate_silent == 0.0`,
+`pci_sync < 0.05`, `rate_sync > 0.2`. They are legitimate and they are NOT a counter-example to the rule
+above, for a reason worth stating rather than assuming: each is a cutoff on a FIXED synthetic regime
+built by this module's own factories with fixed seeds, so it is a regression check on a constant this
+file owns, not a verdict about a system it did not construct. An absolute number is barred as a claim
+ABOUT SOMETHING ELSE. It is fine as a tripwire on your own fixture.
+
+THE WORKED CASE, because it was live in this tree for the life of the feature. `cortex/brain.py` built a
+fresh 10-unit instance of this class every 4th night and published its `pci()` as the brain's own `pci`
+telemetry. Two things were wrong and the second is the general one: (1) the coupling it passed was
+`1.0 + max(0.0, min(0.6, criticality))` where the converged regulator holds `criticality` just under 1.0
+(MEASURED [0.98, 1.003] across seeds; nothing clamps it there, so this is empirical and not structural),
+so the clamp pinned coupling at 1.6 and the "reading" was a pure function of the brain's seed -- MEASURED,
+1 distinct value (0.4068) over 900 ticks and 37 nights at seed 0; (2) even had it varied, an absolute PCI off a
+synthetic net says nothing about the system reporting it, because THIS CLASS HAS NO PORT through which an
+external system's state can enter -- `_run()` builds its own neurons from its own weight matrix and
+pre-draws its own noise. Deleted 2026-08-05. A future caller wanting to say something about the brain owes
+the port first, and a contrast second; neither is optional.
+
 WHY IT IS UN-RIGGABLE (the noise trap, and how the causal-footprint step defeats it)
 ====================================================================================
 The classic failure mode of any "complexity" measure is the NOISE TRAP: a bank of INDEPENDENT random

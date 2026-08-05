@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/actions/workflows/ci.yml/badge.svg)](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/tag/Aighluvsekks/Spiking-Neural-Data-Lake?label=release)](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 A Python toolkit for event-driven (spiking) computation, in three parts:
@@ -52,7 +52,9 @@ pip install -e .            # core (pulls torch + numpy)
 pip install -e ".[all]"     # + optional extras (arm, lake, gpu, nmnist, llm, ...)
 ```
 
-Python 3.11+. Full guide, including per-extra notes, in [docs/INSTALL.md](docs/INSTALL.md).
+Python 3.12+ (`pyproject.toml` `requires-python`; raised from 3.11 on 2026-08-05 — the reason and the
+cost are in the comment beside that field). Full guide, including per-extra notes, in
+[docs/INSTALL.md](docs/INSTALL.md).
 GPU / accelerator notes (opt-in CUDA for training) in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 Train on a GPU and export weights back to the core: [docs/TRAINING.md](docs/TRAINING.md).
 
@@ -75,7 +77,8 @@ python run_selfchecks.py    # run every registered module's self-check; the runn
 
 All figures are reproduced by running the referenced module. Compute = synaptic operations
 (SynOps); storage = bytes. These three tables run in CI on the `self-checks` matrix job
-(`{ubuntu, windows} x {3.11, 3.12, 3.13}`, full dependency set).
+(`{ubuntu, windows} x {3.12, 3.13}`, full dependency set — the 3.11 leg was removed on 2026-08-05
+with the `requires-python` floor raise).
 
 *(Corrected 2026-08-04: this said "the torch-free matrix job (numpy only)". That job was DELETED on
 2026-07-29 — see the comment at the top of `.github/workflows/ci.yml` — because it asserted the
@@ -159,13 +162,14 @@ python -m ruff format --check src tests tools   # formatting (CI checks THIS sco
 
 CI (`.github/workflows/ci.yml`) runs four jobs, not four commands:
 
-- **`self-checks`** — `{ubuntu, windows} × {3.11, 3.12, 3.13}`, full dependency set, `MUJOCO_GL=disable`.
+- **`self-checks`** — `{ubuntu, windows} × {3.12, 3.13}`, full dependency set, `MUJOCO_GL=disable`.
 - **`wheel`** — asserts the vendored SO-101 model (`scene.xml` + 13 STL meshes) is inside the built wheel.
-- **`lint`** — `ruff check` + `ruff format --check src tests tools`, then three repo/policy gates:
+- **`lint`** — `ruff check` + `ruff format --check src tests tools`, then four repo/policy gates:
   `tools/citation_guard.py` (a tracked file may not cite an untracked `.py` as runnable),
   `tools/red_reachability.py --assert` (**P8** — a success criterion with no reachable red is deleted,
-  not weakened), and `tools/dependency_ledger.py` (**P7** — every import declared, every declaration
-  used; report-only pending specs/010 T021/T062).
+  not weakened), `tools/dependency_ledger.py --assert` (**P7** — every import declared, every
+  declaration used) and `tools/dependency_ledger.py --self-check` (**P8** applied to the ledger's own
+  criteria — each is mutated against a string copy of `pyproject.toml` and must fire).
 - **`test`** — pytest + coverage.
 
 `tools/doc_command_guard.py` (a documented `python -m` command must be runnable) is **built, clean
@@ -176,10 +180,20 @@ scope as `src tests`. CI's scope is `src tests tools`; the `--check` would pass 
 It also quoted `277` self-checks and `90.19%` coverage — both stale, and both the kind of number that
 goes stale on any promotion, so they now point at the gate instead of restating its output.
 **Corrected again 2026-08-05:** the same pass then listed `doc_command_guard` as a fourth lint gate.
-Measured against `.github/workflows/ci.yml`, the lint job has five steps — `ruff check`,
+Measured against `.github/workflows/ci.yml`, the lint job had five checking steps — `ruff check`,
 `ruff format --check`, `citation_guard`, `red_reachability --assert`, `dependency_ledger` — and
 `doc_command_guard` appears in no workflow, in `run_selfchecks.py`, in `.pre-commit-config.yaml` or
-in `pyproject.toml`. Counting a gate CI does not run is the same error as the "277" it replaced.)*
+in `pyproject.toml`. Counting a gate CI does not run is the same error as the "277" it replaced.
+**Corrected a third time, later on 2026-08-05, and this one was self-inflicted:** the
+`requires-python` floor-raise pass edited the `lint` job in the same commit — adding `--assert` to
+the ledger step and registering `dependency_ledger.py --self-check` as a new one — and left both the
+bullet above ("three repo/policy gates", `dependency_ledger` "report-only") and this enumeration
+standing. RE-DERIVED by parsing the YAML rather than reading it: the `lint` job now has **9 steps**,
+of which **6 are checking steps** — `ruff check .`, `ruff format --check src tests tools`,
+`citation_guard`, `red_reachability --assert`, `dependency_ledger --assert`,
+`dependency_ledger --self-check` — the other three being `checkout`, `setup-python` and
+`pip install -e ".[dev]"`. A count of CI steps written in a pass that edits CI is stale before the
+pass ends, which is the same shape recorded against `specs/001/plan.md` under P7's residue list.)*
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to add a module.
 
@@ -207,8 +221,12 @@ Numbers are fixed-seed; rerun to reproduce.
 A standalone executable is published on the
 [v3.27 release](https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake/releases/tag/v3.27): unzip
 and run `snn-ui.exe`, which starts the brain daemon and opens the cockpit in your browser (verify
-headlessly with `snn-ui.exe --smoke`). A full-source zip is also attached there for a Python 3.11+
-install via `install.bat` / `install.sh`.
+headlessly with `snn-ui.exe --smoke`). A full-source zip is also attached there for a source install
+via `install.bat` / `install.sh`. **That "3.11+" was left standing here and is now scoped rather than
+edited into a falsehood:** it describes the source zip attached to the **v3.27** release, whose
+`requires-python` genuinely was `">=3.11"`. The CURRENT tree requires **3.12+** (floor raised
+2026-08-05), so a source install from `main` needs 3.12; the v3.27 artifact is unchanged and still
+installs on 3.11.
 
 ## Provenance & license
 

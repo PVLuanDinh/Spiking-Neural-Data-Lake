@@ -194,7 +194,15 @@ class BinLog:
         bytes, in the order given). This is the mechanism the brain's SLEEP consolidation uses to PRUNE +
         CONSOLIDATE the durable lake: replay -> a policy selects/merges survivors -> rewrite. Atomic (temp
         file + fsync + os.replace), so a crash mid-compaction leaves the OLD log intact -- never a half lake.
-        Returns the new record count."""
+        Returns the new record count.
+
+        NOTE FOR CALLERS THAT CACHE ANYTHING DERIVED FROM THIS LOG: `_size` is maintained here, so
+        `stale()` deliberately reports False after a rewrite -- this instance IS current, it is the
+        one that wrote the file. A caller that hung a derived index off this instance therefore gets
+        no signal that the records it was built from are gone, and has to drop it itself;
+        `home.KnowledgeLog.consolidate` does exactly that for its `_snn_state_index`. Clearing it
+        here instead would be the wrong side of the boundary -- a payload is opaque bytes to BinLog,
+        and it stays that way."""
         survivors = [bytes(p) for p in survivors]
         tmp = self.path + ".compact.tmp"
         # UNDER THE SAME LOCK as append()/extend(), added 2026-08-04. This ran unlocked on a SHARED

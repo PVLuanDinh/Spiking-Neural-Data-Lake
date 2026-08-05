@@ -10,8 +10,17 @@ where dynamic range and stimulus separability are maximal. Real cortex self-regu
 
 This closes the open loop noted in docs/SELF_IMPROVEMENT_RESEARCH.md (L7 / SI-11): the validated homeostats
 (homeostatic_scaling, intrinsic_plasticity, inhibitory_stdp) and the branching-ratio measurement
-(neuronal_avalanches) both existed but were IMPORTED NOWHERE -- nothing measured the regime from the live
+(neuronal_avalanches) both existed but were IMPORTED NOWHERE -- nothing measured the regime from a spiking
 raster and fed it back. Here we do:
+
+WHOSE RASTER -- read this before quoting the loop as closed (wording corrected 2026-08-05; the sentence
+above said "the LIVE raster", which invites exactly one misreading and this tree has already paid for it
+once elsewhere). The raster measured here is THIS OBJECT'S OWN pool, built in __init__ below. The loop is
+genuinely closed -- sigma measured off spikes drives the knob that changes those spikes -- but it is closed
+on a self-contained pool, NOT on the Brain's LiveBrain neurons. `cortex/brain.py` constructs one of these
+(n=64) as a MONITORED SIDE-POOL and reports its sigma as `criticality`; that number describes this pool's
+regime, never the brain's. Regulating the brain's own neurons would need an input port this class does not
+have, and building one is open work -- not something the sentence above should be read as claiming.
 
   1. a recurrent LIF pool (reuses cortex.lif_neuron.LIFNeuron) with sparse random heterogeneous
      excitatory weights and E/I-balanced, activity-proportional global inhibition; seed a cascade, step
@@ -51,8 +60,12 @@ def _child_seed(base, tag):
 
 
 class CriticalityRegulator:
-    """Recurrent LIF pool whose branching ratio sigma is measured from the live raster and held in a
-    slightly-subcritical band by a slow homeostatic integrator on ONE global inhibitory-gain knob.
+    """Recurrent LIF pool whose branching ratio sigma is measured from THIS POOL'S OWN raster and held
+    in a slightly-subcritical band by a slow homeostatic integrator on ONE global inhibitory-gain knob.
+
+    ("the live raster" stood here until 2026-08-05. The module docstring's identical wording was
+    corrected in the same pass that left this copy standing -- one claim in two places, one of them
+    fixed, which is the drift `docs/POLICIES.md` names by that description. See WHOSE RASTER above.)
 
     The knob (`inhib_gain`) scales E/I-balanced, activity-proportional global inhibition: every neuron
     gets -inhib_gain * (spikes_last_step / n) of inhibitory current, so the more the pool fired, the

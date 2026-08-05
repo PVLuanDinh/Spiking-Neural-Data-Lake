@@ -32,7 +32,13 @@ jobs:
       fail-fast: false                       # one cell failing must not mask the others
       matrix:
         os: [ubuntu-latest, windows-latest]  # the product is Windows-first (record_and_run.ps1, COMx)
-        python-version: ["3.11", "3.12", "3.13"]
+        # 3.11 LEG REMOVED 2026-08-05 with the requires-python floor raise (pyproject.toml, which
+        # carries the reason and the cost). A cell on an interpreter the package's own metadata
+        # excludes cannot run: pip refuses at install time, not at import time. Measured in
+        # .venv-lake (Python 3.11.15, pip 24.0) against a wheel differing only in that field:
+        # `Requires-Python: >=3.12` -> "ERROR: Package 'reqpy-floor312' requires a different
+        # Python: 3.11.15 not in '>=3.12'", exit 1; the `>=3.11` control installed, exit 0.
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -50,7 +56,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          # 3.11 -> 3.12 with the floor raise. STATED HONESTLY: unlike `lint` and `test` below, this
+          # job was NOT proven to break on 3.11 -- `python -m build --wheel` never INSTALLS the
+          # project, so pip's Requires-Python check is not on its path and it would most likely have
+          # kept passing. It is bumped because building the distribution on an interpreter the
+          # distribution's own metadata excludes is a stale declaration, not because a red was run.
+          python-version: "3.12"
           cache: pip
       - run: python -m pip install build
       - name: Build the wheel
@@ -80,7 +91,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          # 3.11 -> 3.12, AND THIS ONE IS A PROVEN BREAK, not a tidy-up. With
+          # `requires-python = ">=3.12"` the very next step (`pip install -e ".[dev]"`) fails on a
+          # 3.11 runner: measured in .venv-lake (3.11.15, pip 24.0), "ERROR: Package ... requires a
+          # different Python: 3.11.15 not in '>=3.12'", exit 1. Leaving this pin would have reddened
+          # the whole lint job -- including the two gates added below it.
+          python-version: "3.12"
           cache: pip
       - run: python -m pip install -e ".[dev]"
       - run: ruff check .
@@ -104,13 +120,38 @@ jobs:
       - name: Criteria can fail (no zero-argument or self-asserting success criterion)
         run: python tools/red_reachability.py --assert
 
-      # P7 (specs/010): every import declared, every declaration used. REPORT-ONLY for now -- it
-      # exits 1 on four real, undispositioned findings (arcengine + nir undeclared; pillow +
-      # pyarrow unused). Turning on --assert before those are resolved would redden the build for
-      # findings nobody has decided about, which is not the same as enforcing a rule. Flip to
-      # --assert as the last step of specs/010 tasks T021/T062.
-      - name: Dependency ledger (report only until T021/T062 land)
-        run: python tools/dependency_ledger.py
+      # P7 (specs/010): every import declared, every declaration used.
+      #
+      # NOW ASSERTING. This step ran BARE until 2026-08-05, and the comment here justified that with
+      # "it exits 1 on four real, undispositioned findings (arcengine + nir undeclared; pillow +
+      # pyarrow unused)". BOTH HALVES OF THAT WERE FALSE BY THE TIME ANYONE READ THEM:
+      #   (1) the findings are gone -- re-run 2026-08-05 in .venv-lake, `dependency_ledger.py`
+      #       prints "UNDECLARED: 0   UNUSED: 0   MISDESCRIBED: 0   EXEMPT: 2   ALL_EXCLUDES: 8"
+      #       and "gate OK". arcengine and nir are declared; pillow and pyarrow are dispositioned
+      #       EXEMPT with written reasons;
+      #   (2) the bare form NEVER exited 1 in the first place, and that is not a stale number but a
+      #       structural fact: `main()` returns 1 only under `if do_assert and failed`, and
+      #       `do_assert` is `"--assert" in sys.argv`. RUN 2026-08-05, not read -- a mutated STRING
+      #       COPY of pyproject (a `zzznew` extra in neither [all] nor ALL_EXCLUDES) fed to the same
+      #       `main()` gives rc=1 with `--assert` and **rc=0 bare**, both printing the identical
+      #       "gate FAIL: the dependency ledger does not balance". So this step could not redden the
+      #       build no matter what it found. A gate that cannot fail is not a gate; it is a log
+      #       line, and `dependency_ledger` is named in 9 tracked `.md` documents.
+      # The flag is added, not deferred to T021/T062, because the findings it was waiting on are
+      # already at zero and a green-by-construction step is exactly what P8 forbids.
+      - name: Dependency ledger (every import declared, every declaration used)
+        run: python tools/dependency_ledger.py --assert
+
+      # ...and the ledger's OWN criteria must be falsifiable, which is the other half P8 asks for.
+      # `--self-check` mutates a STRING COPY of pyproject (nothing on disk is touched) once per
+      # MISDESCRIBED criterion and requires each mutation to make its criterion fire; it also fails
+      # loudly on a mutation that changed nothing, so a rotted anchor cannot present as a vacuous
+      # green. It has run NOWHERE until now -- not in CI, not in run_selfchecks.py, not in
+      # pre-commit -- so the "5/5 criteria proven falsifiable" line it prints was a claim nothing
+      # re-derived. Registered here on the pattern the red_reachability step above already uses.
+      # Measured 2026-08-05 in .venv-lake: 5 RED OK, 0 NO RED, 0 BROKEN, exit 0.
+      - name: Dependency ledger criteria can fail (--self-check)
+        run: python tools/dependency_ledger.py --self-check
 
   test:
     name: tests + coverage
@@ -121,7 +162,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          # 3.11 -> 3.12: same proven break as `lint` -- this job also runs `pip install -e ".[dev]"`.
+          python-version: "3.12"
           cache: pip
       - run: python -m pip install -e ".[dev]"
       - run: pytest   # addopts in pyproject run --cov with a >=70% gate

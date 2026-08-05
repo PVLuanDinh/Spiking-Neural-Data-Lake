@@ -356,9 +356,49 @@ class Brain:
         self._ll_units = 0  # bounded by grow<->prune
 
         # ---- CRITICALITY (ladder L7): a self-regulated spiking pool the brain holds at the EDGE OF
-        # CHAOS (branching ratio ~0.97-0.99, slightly sub-critical) so its substrate stays maximally
-        # learnable. Converged at birth + maintained each night. A monitored substrate-HEALTH pool
-        # (not a global regulation of every LiveBrain neuron); reported as `criticality`. Guarded.
+        # CHAOS (slightly sub-critical) so its substrate stays maximally learnable. Converged at
+        # birth + maintained each night. A monitored substrate-HEALTH pool (NOT a global regulation
+        # of every LiveBrain neuron, and NOT measured from this brain's raster -- `CriticalityRegulator`
+        # runs a fixed deterministic battery of seeded cascades through its OWN 64-unit LIF pool, as
+        # its own `measure()` docstring says); reported as `criticality`. Guarded.
+        #
+        # RANGE RE-MEASURED 2026-08-05, because the figure here said "~0.97-0.99" and the lower bound
+        # was never observed. Over 900 real `tick()`s / 37 nights at seed 0: 14 distinct values, all
+        # in [0.9827, 0.9951]. Across seeds {0,1,2,3,7} at birth and over 6 further nights the full
+        # span is [0.98, 1.0030] -- so it runs slightly ABOVE 0.99 far more often than below 0.98.
+        #
+        # DISPOSITION, stated because P3 requires one and this signal has no consumer. As of
+        # 2026-08-05 `self._criticality` is written here, in the except-branch, and in `_enter_sleep`,
+        # and READ in exactly one place: `state()`. It is telemetry with zero computational consumers.
+        # It did not become that when `pci` was deleted -- it already was. The one link it had was
+        # `cpl = 1.0 + max(0.0, min(0.6, self._criticality))`, and `min(0.6, .)` clamps every value in
+        # the measured range above to 0.6, so the coupling it "fed" was the constant 1.6 on every
+        # night the branch ran. `criticality` could only ever have reached that consumer through the
+        # except-branch, i.e. only when the regulator FAILED to construct.
+        #
+        # It is KEPT, and the asymmetry with `pci` is deliberate rather than squeamish:
+        #   * it VARIES (14 values / 37 nights) where `pci` took one;
+        #   * its estimator is accurate in the use it actually has -- measured against known-sigma
+        #     Galton-Watson ground truth it is unbiased with sampling noise: max |err| 0.0074 at
+        #     seed 0 over sigma in [0.7, 1.2], and 0.0117 across seeds 0..11 (this clause said
+        #     "|err| <= 0.008" and that was one draw quoted as a bound; see the SUBSAMPLING note in
+        #     cortex/neuronal_avalanches.measured_branching_ratio for the condition under which even
+        #     that stops holding, which no live path here violates);
+        #   * a branching ratio has a PRINCIPLED within-system reference point -- sigma = 1 is the
+        #     critical point of the process itself, not an externally calibrated cutoff -- so "is my
+        #     pool above or below its own critical point" is the within-system contrast that an
+        #     absolute PCI could not be;
+        #   * and the MECHANISM is charged even though the readout is not: `run(regulate=True)` feeds
+        #     sigma back into the inhibitory-gain knob at birth and every night, so the number does
+        #     change an outcome -- the pool's own dynamics. What has no consumer is the brain's COPY.
+        # P3 disposition: EXEMPT-with-reason (telemetry). Note what that does and does not mean here:
+        # P3's exempt lists are `dormancy_gate.EXEMPT` (per MODULE) and `method_dormancy_gate.
+        # EXEMPT_METHOD` (per METHOD), and `_criticality` is an ATTRIBUTE, so there is no gate slot to
+        # register it in and none has been claimed -- this comment IS the record, and nothing
+        # mechanically enforces it. It is deliberately NOT wired to a consumer to clear the label:
+        # P3's own guard forbids exactly that ("a wire that does not charge is reverted and
+        # retired/exempted, never faked with a dead consumer" -- quoted exactly; the "/exempted" was
+        # dropped when this was first written, and it is the half naming the disposition taken here).
         try:
             from snn_data_lake.plasticity.criticality_regulator import CriticalityRegulator
 
@@ -446,7 +486,7 @@ class Brain:
         self._interval_timer = (
             0  # INTERVAL TIMING (gap #12): wake ticks since the last salient event
         )
-        self._pci = 0.0  # agnostic perturbational-complexity readout (integration; NOT phenomenal)
+        # (`self._pci` was initialised here; deleted 2026-08-05 with its producer and its state key.)
         # LIVE THEORY OF MIND (gap #9): model the USER as an agent whose knowledge is tracked SEPARATELY
         # from the world, so the brain can tell when the user's belief differs from reality (false belief).
         # Representation-only; inferred (not certain). Full per-agent affect/empathy is a follow-up.
@@ -2497,9 +2537,79 @@ class Brain:
         try:
             s = self._seed * 7 + self._sleep_ticks + 1
             self.attractor.sleep(seed=s, episodes=3, learn=True)
-            self._shy = (
-                self.attractor.downscale_prune()
-            )  # SHY: hard-prune the weakest synapses (energy saved)
+            # Zero the sub-eps synapses, then renormalize so the freed budget goes to the survivors.
+            #
+            # RE-LABELLED 2026-08-05. This line read "SHY: hard-prune the weakest synapses (energy
+            # saved)". Neither half was something this code had earned: (a) named a live and
+            # unsettled biological hypothesis as its warrant, (b) named a quantity nothing here
+            # measures. The MECHANISM IS LEFT EXACTLY AS IT WAS -- only the warrant is corrected.
+            #
+            # (a) "SHY" cited the Synaptic Homeostasis Hypothesis, i.e. a BIOLOGICAL warrant, and a
+            #     contested one. RESOLVED AGAINST THE SOURCES 2026-08-05, because the first version of
+            #     this clause said "a literature sweep found SHY's STRUCTURAL leg does not hold" and
+            #     one of the three papers it cited for that says the opposite in its own abstract:
+            #       * doi:10.1093/sleep/zsaf146 (SLEEP 2025, systematic review + meta-analysis)
+            #         AGAINST the structural leg at short timescales -- "5090 records were screened,
+            #         yielding 30 full texts"; "current evidence does not support an effect from 24
+            #         hours or less of SD on dendritic structure". Quoted correctly.
+            #       * doi:10.1016/j.tins.2020.03.010 (TINS 2020) argues sleep loss and waking
+            #         experience are confounded in the evidence base. A caution, not a refutation.
+            #       * doi:10.1371/journal.pbio.3003816 (PLOS Biol, [18F]SynVesT-1 PET, n=40) is FOR
+            #         SHY, not against it: ~28 h of wakefulness RAISED the SV2A synaptic-density
+            #         marker (thalamus +4.6%, hippocampus +5.6%, parietal +3.2%) and the paper
+            #         concludes it provides "in vivo support for the synaptic homeostasis hypothesis
+            #         in humans". This comment cited it as "the OPPOSITE SIGN in humans", which
+            #         inverts it. Re-checked against the published abstract; the error was the
+            #         citation, not the paper.
+            #     So the honest state of the biology is MIXED, not settled either way, and that is
+            #     exactly why the label had to go: a line in a sleep tick may not import a live
+            #     scientific controversy as its justification, in either direction. Nothing in this
+            #     tree measures synaptic homeostasis in a brain, so nothing here can adjudicate it.
+            #     The code stays; only the warrant is corrected. (b) is the load-bearing half.
+            # (b) "energy saved" was never measured. Nothing in this tree measures energy; the
+            #     telemetry this returns is {pruned, total, weight_removed, frac_pruned}, all counts.
+            #
+            # WHAT IT ACTUALLY DOES, measured 2026-08-05 (900 ticks/brain, isolated NORD_HOME):
+            #   * it is NOT inert. Over ~455 prune calls per brain it removed something on 12.4-19.7%
+            #     of calls, 95-216 synapse-zeroings in total against 552 off-diagonal synapses, with
+            #     cumulative removed weight 0.040-0.113 (5 seeds).
+            #   * but it does NOT measurably change the one outcome measured beside it. Neuter-A/B on
+            #     `_consolidation_acc`, 10 seeds, three arms -- A live, B prune+renormalize both
+            #     neutered, C renormalize only (isolating the hard-prune limb):
+            #         A-B  mean -0.0250  sd 0.1382  t(9) = -0.572   signs +3/-6/0:1
+            #         A-C  mean -0.0444  sd 0.1362  t(9) = -1.032   signs +2/-6/0:2
+            #     Two-sided t crit at df=9 is 2.262, so NEITHER is distinguishable from zero, and the
+            #     point estimate for the hard-prune limb is slightly NEGATIVE. Stated plainly, as P3
+            #     requires: the prune does real work to the weight matrix and has no demonstrated
+            #     benefit to the only outcome available to score it against.
+            #
+            # HOW BIG AN EFFECT THIS NULL CAN ACTUALLY EXCLUDE -- added 2026-08-05 on independent
+            # re-run, because "no demonstrated benefit" above says nothing about the power of the
+            # instrument that failed to demonstrate it, and this project has already been burned by a
+            # negative produced by its own harness dying.
+            #   * REPRODUCED. A separately written harness (same neuter points, five arms) returned
+            #     the identical per-seed A/B/C on all three published seeds -- 0: 0.444444 /
+            #     0.583333 / 0.444444; 3: 0.388889 / 0.527778 / 0.611111; 6: 0.583333 / 0.333333 /
+            #     0.333333. Exact. The rows above are real measurements, not transcription.
+            #   * THE HARNESS IS NOT DEAD. A positive control that neuters `AttractorNet.sleep`
+            #     outright (no offline replay learning at all) pins `_consolidation_acc` at exactly
+            #     0.333333 on 7 of 7 seeds completed, while the live arm ranges 0.305556-0.583333
+            #     over the same seeds. The observable does move when something large is removed.
+            #   * BUT IT IS COARSE, AND THAT BOUNDS THE CLAIM. `_consolidation_acc` is
+            #     `attractor.accuracy(self._patterns, 100)` over 3 patterns x TEST_TRIALS=12 = 36
+            #     trials, so it is QUANTIZED at 1/36 = 0.0278, and at sd 0.1382 with n=10 the
+            #     smallest mean difference this design could have called significant is
+            #     2.262 * 0.1382 / sqrt(10) = 0.0989 -- about 3.6 of the 36 trials. So the honest
+            #     reading is "no effect larger than ~0.10 accuracy", NOT "no effect". A real benefit
+            #     of one or two trials is entirely compatible with everything measured here, and
+            #     nothing above excludes it. Raising the power is cheap and unattempted: average
+            #     `_consolidation_acc` across all ~37 nights instead of reading only the last one.
+            #
+            # This is a P3 finding, not a resolution. It is NOT deleted here: hippocampus/sleep_replay.py
+            # is outside this pass's write scope, and an n=10 null is not on its own a deletion
+            # warrant. Escalated: the `downscale_prune` docstring in that file still asserts the SHY
+            # framing and calls the hard-prune "the load-bearing, energy-saving effect".
+            self._shy = self.attractor.downscale_prune()
             if self._stored_any:
                 self._consolidation_acc = self.attractor.accuracy(self._patterns, 100)
         except Exception:
@@ -2508,21 +2618,44 @@ class Brain:
             self.buffer.replay(self.brain.arm.q, self.brain.arm.lr)  # value only
         except Exception:
             pass
-        try:  # GWT/integration: an agnostic PERTURBATIONAL-COMPLEXITY
-            if self._nights % 4 == 0:  # readout (offline, occasional -> bounded cost). Coupling
-                from snn_data_lake.cortex.integration_measure import (
-                    PerturbationalComplexity,  # tracks the brain's
-                )
-
-                cpl = 1.0 + max(0.0, min(0.6, float(self._criticality)))  # own dynamical regime.
-                self._pci = round(
-                    PerturbationalComplexity(n=10, coupling=cpl, noise=0.45, seed=self._seed).pci(
-                        trials=3, n_perturb=2, steps=40
-                    )[0],
-                    4,
-                )
-        except Exception:  # HONEST: measures substrate integration, NOT phenomenal experience
-            pass
+        # DELETED 2026-08-05 -- the `pci` readout that stood here, and the reasons are worth keeping
+        # because two of them are shapes this tree keeps re-growing.
+        #
+        # It built a FRESH 10-unit synthetic `PerturbationalComplexity` net every 4th night and
+        # reported its score as this brain's `pci`. It never touched this brain: `_run()` constructs
+        # its own LIFNeuron list from its own weight matrix and pre-draws its own noise, so there is
+        # no port through which this brain's state could enter it.
+        #
+        # (1) IT COULD NOT VARY. Its coupling was `1.0 + max(0.0, min(0.6, self._criticality))`, and
+        #     `_criticality` is a branching ratio the CONVERGED regulator holds just under 1.0 --
+        #     EMPIRICALLY, not by construction, and this clause said "by construction" until it was
+        #     checked. Nothing clamps sigma: `CriticalityRegulator` bounds its KNOB (`g_lo, g_hi =
+        #     0.0, 120.0`) and `band=(0.95, 1.02)` is a target, read only by `cortex/wholistic_loop.py`
+        #     (its `_fidelity` map and its `in_band` flag) and never applied to sigma anywhere.
+        #     RE-MEASURED on the brain's own n=64 pool with regulation
+        #     OFF: inhib_gain 35 -> sigma 0.1111 (cpl 1.1111, NOT 1.6) and 90 -> sigma 0.0000
+        #     (cpl 1.0). The deletion does not rest on that stronger claim and did not need it -- what
+        #     it rests on is the measurement below, over the values the regulator actually produces.
+        #     MEASURED over 900 real ticks / 37 nights at seed 0: criticality took 14
+        #     distinct values in [0.9827, 0.9951] and `min(0.6, .)` clamped every one of them to 0.6,
+        #     so coupling was 1.6 on every night the branch ever ran. With coupling pinned and the
+        #     seed fixed, `pci` was a pure function of `self._seed`: 1 distinct value over those 900
+        #     ticks (0.4068), and 0.1017 at seed 3. P3 shape 5 -- a constant wearing a signal's
+        #     clothes -- on a quantity the cockpit drew beside `access_index`.
+        # (2) AN ABSOLUTE PCI IS NOT A REPORTABLE QUANTITY HERE. There is no calibration set for
+        #     perturbational complexity on an artificial substrate, so there is no cutoff, so the
+        #     number can support no verdict -- and per P8 falsifier F11 a criterion with no reachable
+        #     red is DELETED, not re-thresholded. This project already deleted a GWT access marker on
+        #     that rule. `docs/PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md` had already carried both halves
+        #     of this as VERIFIED ("a synthetic surrogate, stale 3 nights in 4"; "a closed toy with no
+        #     `system` port") -- the finding was adjudicated and the code outlived it.
+        #
+        # `cortex/integration_measure.py` itself is KEPT and is not the defect. Its own self-check is
+        # built on WITHIN-SYSTEM CONTRASTS with controls (integrated vs independent-noise vs
+        # synchronous vs silent, plus a firing-rate control proving the gap is integration and not
+        # activity), which is the honest shape; it stays reachable through `substrate/region_coherence.py`
+        # and `reasoning/consciousness_probe.py`. What was invalid was lifting ONE absolute number off
+        # a synthetic instance of it and reporting it as this brain's.
         self._observe_self_sleep()  # night growth -> self-model episode
         self._sleep_ticks += 1
         return self.state()
@@ -2909,7 +3042,16 @@ class Brain:
             "curiosity_mag": round(
                 float(getattr(self.brain.arm, "_cur_mag", 0.0) or 0.0), 4
             ),  # running |curiosity| -- the unit intrinsic reward is normalised by
-            "shy_energy_saved": self._shy,  # SHY offline synaptic downscale-prune telemetry (last night)
+            # RENAMED from "shy_energy_saved" 2026-08-05, in the same pass that struck "(energy
+            # saved)" off the producer in _sleep_tick. Leaving the KEY named after a quantity nothing
+            # in this tree measures, while the comment beside the producer says so, is the "a claim
+            # living in two places, only one corrected" failure -- and a state key is the half a
+            # dashboard can render. What it carries is {pruned, total, weight_removed, frac_pruned},
+            # all counts. Verified consumer-free before renaming: `git grep shy_energy_saved` over the
+            # whole tree returned ONE line, this definition -- no cockpit row, not in
+            # brain_telemetry.DASHBOARD_KEYS, not in PROVENANCE, no test. brain_telemetry and cockpit
+            # self-checks re-run after the rename, both "contract clean", exit 0.
+            "shy_prune": self._shy,  # offline downscale + weak-synapse hard-prune telemetry (last night)
             "brain_alive": self.brain.alive(),
             "regions_live": sorted(self._regions_live),
             "n_regions_live": len(self._regions_live),
@@ -2925,7 +3067,13 @@ class Brain:
             "reliability": self._metacog_rel,  # metacognitive reliability (spike-count; L10)
             "metacog_hold": self._metacog_hold,  # confidence-based HOLD/abstain gate
             "metacog_explore": self._metacog_explore,  # explore-vs-exploit gate
-            "criticality": self._criticality,  # substrate branching-ratio (edge of chaos; L7)
+            # Branching ratio of the MONITORED 64-unit side-pool (edge of chaos; L7) -- NOT of this
+            # brain's raster, and with no computational consumer (see the disposition at __init__).
+            # brain_telemetry.PROVENANCE tags this "sleep-only", which is true and is not the
+            # load-bearing half: a reader of the cockpit row cannot tell from that tag that the
+            # number describes a separate pool rather than the brain. Widening that tag is escalated,
+            # brain_telemetry.py not being this pass's to edit.
+            "criticality": self._criticality,
             "integration_competence": self._integration_competence,  # L13: informative sub-ceiling (~0.83, real hard task)
             "integration_gain": self._integration_gain,  # L13: whole-minus-un-arbitrated-sum competence
             "integration_retention": self._integration_retention,  # L13: old-task retained (non-regression)
@@ -3075,7 +3223,22 @@ class Brain:
             "bound_modalities": int(
                 getattr(self.brain.arm, "_bound_modalities", 0)
             ),  # claustrum cross-modal binding count
-            "pci": self._pci,  # agnostic perturbational-complexity (substrate integration; explicitly NOT a phenomenal/consciousness claim)
+            # `pci` was reported here until 2026-08-05. DELETED with its producer in _sleep_tick --
+            # see the block there for the measurement. The key is GONE rather than zeroed: the
+            # cockpit renders an absent key as an em-dash ("absent renders as an em-dash, never a
+            # zero bar", cockpit.py `fmt`), so removing it degrades to "no reading", whereas a
+            # retained 0.0 would have drawn as a real low integration score. Two consumers outside
+            # this file still refer to it and are NOT this pass's to edit: the `PCI` row in
+            # substrate/cockpit.py and the "pci" entry in substrate/brain_telemetry.py PROVENANCE
+            # (whose self-check asserts that entry is present -- it asserts on PROVENANCE, not on
+            # state(), so it still passes). Neither breaks: `brain_telemetry.snapshot()` copies
+            # PROVENANCE wholesale (`out["provenance"] = dict(PROVENANCE)`) and never cross-checks it
+            # against `state()`, and `verify_contract` only looks up DASHBOARD_KEYS, which has never
+            # contained "pci". VERIFIED BY RUNNING both, 2026-08-05, not by reading:
+            # `python -m snn_data_lake.substrate.brain_telemetry` -> "contract clean", exit 0, and
+            # `python -m snn_data_lake.substrate.cockpit` -> "contract clean", exit 0. Both are now
+            # stale and want removing -- the PROVENANCE tag in particular still promises a reading
+            # "sleep-only, refreshes every 4th night" beside a row that can now only be an em-dash.
             "tom_false_belief": self._tom_ok,  # birth false-belief CAPABILITY proof (Sally-Anne; the tracker works)
             "tom_live": self._tom_live(),  # LIVE dialogue-driven belief vs reality (None when idle; updated from chat)
             "schemas": self._schemas,  # SCHEMA INDUCTION: derived prototype/schema triples kept last consolidation (ART+DistMult gated)

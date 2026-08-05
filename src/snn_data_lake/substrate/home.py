@@ -64,16 +64,18 @@ from snn_data_lake.substrate.binlog import (
 # Backlog H4/#10 named the missing prerequisite: a live producer of AER exemplars worth keeping across a
 # restart. Until one exists there is nothing to store, so the dead write path is retired instead of kept
 # as a format nobody writes. The tag stays reserved, every view SKIPS foreign records and consolidate()
-# PRESERVES them, so a historical lake containing spike records still replays fine -- and the class is
-# one git revert away if the prerequisite ever materializes.
+# PRESERVES an unrecognised tag (its one prune is _T_STATE-only), so a historical lake containing spike
+# records still replays fine -- and the class is one git revert away if the prerequisite materializes.
 _T_FACT = b"\x01"
 _T_SPIKE = b"\x02"
 # _T_GROWTH added 2026-07-30: the grown neural substrate, in THE ONE LAKE rather than a sidecar file
 # (owner decision). Safe as an additive tag because the existing readers already ignore what they do
-# not recognise -- KnowledgeLog.replay filters on `payload[:1] == _T_FACT`, and consolidate() keeps
-# `p for p in ... if p[:1] != _T_FACT`, so a foreign record is skipped by the FACT view and PRESERVED
-# through a rewrite. That behaviour is self-checked (commit 9f620246), which is why this needed no
-# change to either method.
+# not recognise -- KnowledgeLog.replay filters on `payload[:1] == _T_FACT`, and consolidate() starts
+# from `p for p in ... if p[:1] != _T_FACT`, so a foreign record is skipped by the FACT view and
+# PRESERVED through a rewrite. That behaviour is self-checked (commit 9f620246), which is why this
+# needed no change to either method. (consolidate() gained ONE deletion in 2026-08-05,
+# `_prune_state_history`, and it is scoped to _T_STATE precisely so this tag's history stays whole --
+# see that function and the _T_STATE comment for why growth history is kept and state history is not.)
 _T_GROWTH = b"\x03"
 # _T_EPISODE added 2026-08-04. Autobiographical episodes were being stored ONLY in
 # hippocampus/episode_consolidation's in-memory attractor: measured, 59 episodes stored over 600
@@ -91,8 +93,9 @@ _T_EPISODE = b"\x04"
 # follow NORD_HOME and two brains pointed at different lakes still shared one weight file; and
 # `consolidate()` could not see it, so sleep-time compaction reasoned about a lake that was missing
 # part of what the brain had learned. Same additive-tag safety argument as _T_GROWTH -- the FACT
-# view filters on `payload[:1] == _T_FACT` and consolidate() PRESERVES every non-FACT record, so
-# existing readers skip this and a rewrite keeps it.
+# view filters on `payload[:1] == _T_FACT` and consolidate() PRESERVES this tag (its one prune is
+# _T_STATE-only, and this history is deliberately outside it), so existing readers skip this and a
+# rewrite keeps it.
 _T_SELFBUILD = b"\x05"
 # _T_CALIB was added 2026-08-04 as a per-caller channel for ONE sidecar (`signal_calib.json`) and is
 # RETIRED 2026-08-05 WITHOUT EVER BEING WRITTEN, superseded by the generic `_T_STATE` record below.
@@ -110,8 +113,8 @@ _T_SELFBUILD = b"\x05"
 # (Do the scan read-only, frame by frame -- constructing a BinLog over the live lake would run
 # `_repair_torn_tail` and TRUNCATE it under the running daemon.) The byte stays RESERVED (never
 # reused) exactly as _T_SPIKE does, so a lake written by an intermediate build still replays: every
-# view skips foreign records and consolidate() preserves them. Successor for anyone holding the
-# queued consumer edit: `save_named_state("signal_calib.json", blob)` / `load_named_state(...)`.
+# view skips foreign records and consolidate() preserves an unrecognised tag. Successor for anyone
+# holding the queued consumer edit: `save_named_state("signal_calib.json", blob)` / `load_named_state`.
 _T_CALIB = b"\x06"
 # _T_STATE added 2026-08-05. THE ONE named-state record, and the close of the P4b sidecar FAMILY --
 # not one violation, seven. `save_state()`/`load_state()` used to be `json.dump` to `<home>/<name>`,
@@ -146,23 +149,28 @@ _T_CALIB = b"\x06"
 # as a constant. That is why `_state_index()` exists -- the pass happens once per BinLog instance,
 # and `_log()` already replaces the instance whenever the file changed underneath it. Same
 # additive-tag safety argument as _T_GROWTH: the FACT view filters on `payload[:1] == _T_FACT` and
-# consolidate() PRESERVES every non-FACT record, asserted below.
+# consolidate() preserves every foreign record EXCEPT superseded _T_STATE history (below), both
+# asserted in main().
 #
-# WHAT THIS TRADED AWAY, and it is not free: a sidecar was OVERWRITTEN in place, so it held exactly
-# one copy of the state. A _T_STATE record is APPENDED, and nothing prunes the superseded copies --
-# `consolidate()` is the only compaction in the tree and it preserves every non-FACT record by
-# design. MEASURED 2026-08-05: 50 saves of a CHANGED ~2 KB blob under one name left 50 records, and
-# a full `consolidate()` afterwards pruned 0 of them. The unchanged-blob skip in `save_named_state`
-# bounds a state that stops moving; it does nothing for one that keeps moving, and the live callers
-# keep moving -- `cortex/brain.py` saves a 76 KB `reasoning_curriculum.json` on the sleep tick and
+# WHAT THIS TRADED AWAY -- CLOSED 2026-08-05 by `_prune_state_history`, and the trade is recorded
+# because the fix is scoped to ONE tag and the reason it is scoped is the load-bearing part. A
+# sidecar was OVERWRITTEN in place, so it held exactly one copy of the state. A _T_STATE record is
+# APPENDED, and nothing pruned the superseded copies. MEASURED on a scratch lake 2026-08-05, before
+# the fix: 50 saves of a CHANGED 2,048 B blob under one name left 50 records (51 _T_STATE records
+# with a second name beside them) and a full `consolidate()` afterwards pruned 0 of them; RE-RUN
+# after the fix, the same input leaves 2 -- one per name -- and `load_named_state` returns the
+# 50th blob, not the 1st. The unchanged-blob skip in `save_named_state` bounds a state that stops
+# moving; it did nothing for one that keeps moving, and the live callers keep moving --
+# `cortex/brain.py` saves a 76 KB `reasoning_curriculum.json` on the sleep tick and
 # `RecallTrace.save()` runs beside it. This is the exact shape that made _T_GROWTH 73,490 records /
-# 508,082,042 B, 97.8 percent of the operator's lake. It is recorded here rather than fixed because
-# "does the brain keep the HISTORY of its own state" is an owner call, not a refactor: _T_GROWTH
-# and _T_SELFBUILD both argue IN WRITING that their history is the more useful artefact, and a
-# latest-wins compaction added here would silently delete learned state on a sleep tick for all
-# three. Whoever takes it: the compaction is one line in `consolidate()` (keep only the last record
-# per name among the _T_STATE foreigners) and it owes a constructed red for "a rewrite kept the
-# newest state" before it ships.
+# 508,082,042 B, 97.8 percent of the operator's lake.
+#
+# _T_GROWTH AND _T_SELFBUILD ARE DELIBERATELY NOT PRUNED, and that asymmetry is an owner decision
+# rather than an oversight: both argue IN WRITING (see `save_growth` / `save_selfbuild`) that their
+# older records are the growth/learning HISTORY -- the evidence a weight moved at all -- while a
+# named state's older records are bytes no read path can reach again, because `load_named_state`
+# and `_state_index` both take the last record under the name. "Latest-wins on read" is what makes
+# the prune lossless here and is exactly what does not hold for the other two.
 _T_STATE = b"\x07"
 
 
@@ -298,15 +306,43 @@ class KnowledgeLog:
 
     def consolidate(self, keep_records):
         """SLEEP CONSOLIDATION: replace the durable FACT records with `keep_records` (the survivors a
-        consolidation policy chose -- redundant merged, re-derivable/stale pruned), preserving any non-FACT
-        (spiking) records in the one lake untouched. Atomic compaction via BinLog.rewrite. This is the PRUNE
-        half of sleep consolidation -- without it the symbolic lake only ever grows. Returns (kept, dropped)."""
-        foreign = [
-            p for p in self._bin.replay() if p[:1] != _T_FACT
-        ]  # spike/array records stay as-is
+        consolidation policy chose -- redundant merged, re-derivable/stale pruned), preserving every
+        foreign record in the one lake EXCEPT superseded _T_STATE history. Atomic compaction via
+        BinLog.rewrite. This is the PRUNE half of sleep consolidation -- without it the symbolic lake
+        only ever grows. Returns (kept, dropped), both counting FACT records only.
+
+        `_prune_state_history` is the ONLY thing this drops besides facts, and it is scoped to
+        _T_STATE deliberately: a named state has exactly one current value, so every earlier record
+        under that name is superseded bytes that `load_named_state` will never return again.
+        _T_GROWTH and _T_SELFBUILD are latest-wins in the same way and are NOT pruned, because both
+        argue in writing (see `save_growth` / `save_selfbuild`) that their history is the evidence
+        their learning moved at all -- that is an owner call about what the brain keeps, not a
+        property of the record layout, and it is why this is a per-tag prune and not a general one.
+        """
+        foreign = _prune_state_history(
+            [p for p in self._bin.replay() if p[:1] != _T_FACT]  # growth/episode/spike stay as-is
+        )
         before = self._count
         self._bin.rewrite(foreign + [_T_FACT + pack_fact(r) for r in keep_records])
         self._count = self._bin.count() - len(foreign)
+        # The cached {name: (seq, blob)} index is DERIVED from the _T_STATE records this rewrite
+        # just replaced, and nothing else drops it: `BinLog.rewrite` maintains `_size`, so
+        # `stale()` stays False and `_log()` hands the same instance -- and its index -- straight
+        # back. Invalidating belongs here rather than in `rewrite()` because a _T_STATE record is a
+        # home.py concept; BinLog carries opaque payloads and must not learn what is inside them.
+        #
+        # STATED HONESTLY, because the neuter was run rather than reasoned about: with the prune
+        # rule as written this line is a NO-OP. `_state_index` points at the last record per name
+        # and `_prune_state_history` keeps exactly that record, so the cache cannot disagree with
+        # the lake -- measured 2026-08-05 with this line neutered, across save/consolidate/save/
+        # revert/consolidate, cached == disk (a separate process) at every step, 0 divergences.
+        # It is kept as a COUPLING BREAKER, and the coupling is one token wide: with the same
+        # neuter and `last[got[0]] = i` changed to `last.setdefault(got[0], i)`, the same probe
+        # prints `cached=b'v3'  disk=b'v1'` -- a live process serving named state that is no longer
+        # in the lake. Two functions ninety lines apart currently agree by construction; this line
+        # is what stops that agreement from being load-bearing. The cost is one extra replay on the
+        # sleep tick that just paid for a full replay and a full rewrite of the same file.
+        self._bin.__dict__.pop("_snn_state_index", None)
         return self._count, before - self._count
 
 
@@ -327,6 +363,71 @@ def _state_key(name):
     return raw
 
 
+def _unpack_state(payload):
+    """`(name, seq, blob)` for ONE _T_STATE record, or None if its layout does not parse.
+
+    THE parser for the layout documented at the `_T_STATE` tag -- tag + [u8 len(name)] + name +
+    [u32 seq little-endian] + blob. `_state_index` builds its cache with it and
+    `_prune_state_history` decides what to delete with it, so the two cannot disagree about which
+    record is the newest under a name by disagreeing about where that name ends.
+
+    `name` comes back as the ascii BYTES `_state_key` writes, never as a `str`, and that is the
+    prune's safety rather than a style choice: `decode("ascii", "replace")` maps EVERY non-ascii
+    byte to one U+FFFD, so two names that `_state_key` would both refuse would compare EQUAL and
+    the prune would delete one as superseded history of the other. Nothing this module writes can
+    produce such a name; the prune reads a lake that other builds also write to.
+
+    None means UNPARSEABLE -- a foreign record wearing this tag, a build writing a different
+    layout, a restored backup. NOT a torn append: `_repair_torn_tail` truncates at the first short
+    FRAME and `replay` stops at one, so the only malformed record that reaches here is a
+    well-framed payload this module cannot read, and nothing downstream will remove it for us.
+    Both callers treat it as "not one of mine": the index skips it, the prune KEEPS it. Preserving
+    a record we cannot read is the recoverable direction; deleting it is not. (`_state_index`
+    indexed such a record on garbage offsets until 2026-08-05, and a 1-byte payload raised
+    IndexError out of it -- both re-measured 2026-08-05, and the prune inherits the same parser, so
+    the pre-2026-08-05 form takes a lake of 6 `moving.json` records + one such payload from 7
+    _T_STATE records to 1. Reddened in main().)
+    """
+    n = payload[1] if len(payload) > 1 else 0
+    if n == 0 or len(payload) < 6 + n:
+        return None
+    return payload[2 : 2 + n], int.from_bytes(payload[2 + n : 6 + n], "little"), payload[6 + n :]
+
+
+def _prune_state_history(payloads):
+    """`payloads` with every SUPERSEDED _T_STATE record dropped -- the LAST per name survives.
+
+    The compaction half of `_T_STATE`. A named state has one current value: `load_named_state`
+    returns the last record under the name and `_state_index` indexes only that one, so every
+    earlier record is bytes no read path can ever reach again. Without this the one lake grows by a
+    full copy of the state on every sleep tick that changes it -- MEASURED on a scratch lake
+    2026-08-05, 50 saves of a CHANGED 2,048 B blob under one name left 50 records and a full
+    `consolidate()` pruned 0 of them. The same shape is what made _T_GROWTH 97.8 percent of the
+    operator's lake at the 2026-08-05 scan recorded under `_T_STATE`; do not read that ratio as
+    current -- a `stat` of the same file later the same day returned 835,315,078 B against the
+    519,646,815 B of that scan, and the tag census behind the ratio was NOT re-derived (a BinLog
+    over the live lake would run `_repair_torn_tail` and truncate it under the running daemon).
+
+    Order is preserved and only _T_STATE records are considered, so every other tenant comes back
+    in the sequence it went in -- which `load_growth` / `load_selfbuild` depend on, both taking the
+    LAST record of their own tag. A record whose layout `_unpack_state` cannot parse is KEPT.
+    """
+    last = {}
+    for i, payload in enumerate(payloads):
+        if payload[:1] == _T_STATE:
+            got = _unpack_state(payload)
+            if got is not None:
+                last[got[0]] = i  # a later record under the same name supersedes this one
+    out = []
+    for i, payload in enumerate(payloads):
+        if payload[:1] == _T_STATE:
+            got = _unpack_state(payload)
+            if got is not None and last[got[0]] != i:
+                continue
+        out.append(payload)
+    return out
+
+
 def _state_index(log):
     """{name: (seq, blob)} for `log` -- built once per BinLog instance, maintained on our appends.
 
@@ -335,6 +436,12 @@ def _state_index(log):
     underneath it -- so records written by another process are picked up by the rebuild rather than
     missed. Attached to the instance rather than kept in a dict keyed by path precisely so that
     "the log was rebuilt" and "the index is void" are the same event and cannot drift apart.
+
+    THE ONE PATH THAT BREAKS THAT EQUIVALENCE is a rewrite of the lake by THIS process:
+    `BinLog.rewrite` maintains `_size`, so `stale()` stays False and `_log()` hands the same
+    instance -- and this index -- back over a file whose _T_STATE records it did not choose. That
+    is why `KnowledgeLog.consolidate` drops the attribute itself after compacting; see the comment
+    at that call for why the invalidation lives in home.py and not in `rewrite()`.
 
     Why it exists at all: one full replay of the operator's live lake (516,810,138 B / 123,120
     records) measured 349 / 376 / 378 ms on 2026-08-05, and `cortex/brain.py` calls
@@ -346,11 +453,9 @@ def _state_index(log):
         for payload in log.replay():
             if payload[:1] != _T_STATE:
                 continue
-            n = payload[1]
-            idx[payload[2 : 2 + n].decode("ascii", "replace")] = (
-                int.from_bytes(payload[2 + n : 6 + n], "little"),
-                payload[6 + n :],
-            )
+            got = _unpack_state(payload)  # ONE parser, shared with the prune -- see _unpack_state
+            if got is not None:
+                idx[got[0].decode("ascii", "replace")] = (got[1], got[2])
         log._snn_state_index = idx
     return idx
 
@@ -361,10 +466,16 @@ def save_named_state(name, blob, path=None):
     False means one of two things, both deliberate. A falsy blob is REFUSED, for the reason
     `save_growth` refuses one: persisting "nothing" as though it were a measurement restores an
     empty learner with a confident tally beside it. An UNCHANGED blob is also not written -- the
-    lake is append-only and consolidate() preserves every non-FACT record forever, so re-storing a
-    byte-identical state on every sleep tick would grow the one store without adding one bit of
+    lake is append-only and the only compaction runs on a sleep tick, so re-storing a byte-identical
+    state every time would grow the one store between two sleeps without adding one bit of
     information. A CHANGED state always lands, including a change back to an earlier value (see the
-    `seq` field in the _T_STATE tag comment)."""
+    `seq` field in the _T_STATE tag comment).
+
+    (That second sentence read "consolidate() preserves every non-FACT record forever" until
+    2026-08-05, when `_prune_state_history` made it false for exactly this tag. The skip is still
+    worth having and its justification is now the weaker one written above: consolidate bounds this
+    growth at each sleep, the skip bounds it continuously, and a brain can go a long time between
+    sleeps.)"""
     key = _state_key(name)
     if not blob:
         return False
@@ -408,8 +519,10 @@ def _migrate_sidecar(name):
     on a stale file is not.
 
     IT VALIDATES NOTHING, and that is a real edge this carries rather than a claim it makes. It
-    imports whatever bytes are at `<home>/<name>`, permanently, and `consolidate()` then preserves
-    them forever. MEASURED 2026-08-05: a `<home>/corrupt.json` containing `{not json` is imported as
+    imports whatever bytes are at `<home>/<name>`, permanently: the imported record is the newest
+    under its name, so `consolidate()`'s _T_STATE prune keeps it until a real save supersedes it,
+    and a name nothing ever saves keeps its junk forever. MEASURED 2026-08-05: a
+    `<home>/corrupt.json` containing `{not json` is imported as
     a _T_STATE record and `load_state` thereafter returns `default` (a cold start) while the junk
     stays in the lake; a BINARY sidecar imports whole. It cannot validate -- it is the raw-bytes
     carrier, and its JSON-shaped callers come through `load_state`, which is where the parse lives.
@@ -695,8 +808,36 @@ def main():
         # above). What must survive is the CONTAINER contract that let two views share one file: a
         # record of an unknown/foreign type never leaks into the FACT view and is never dropped by the
         # symbolic sleep prune, so any historical lake holding such records still replays fine.
+        #
+        # EXTENDED 2026-08-05 from the reserved tag ALONE to EVERY tenant, because `consolidate()`
+        # stopped being a pure preserver on that date: it now deletes superseded _T_STATE history
+        # (`_prune_state_history`). One reserved-tag record could not tell "the prune is scoped to
+        # _T_STATE" apart from "the prune eats whatever it does not recognise" -- both leave a
+        # _T_SPIKE record standing, and only the first is correct. Each tenant below is written
+        # TWICE, so a prune that generalised to latest-wins across tags would halve them and be
+        # caught here rather than by a brain that boots without its grown substrate.
+        def _tag_census(p):
+            """{tag byte: count} over every record in the lake at `p` -- read-only, frame by frame."""
+            out = {}
+            for rec in BinLog(p).replay():
+                out[rec[:1]] = out.get(rec[:1], 0) + 1
+            return out
+
         foreign_rec = _T_SPIKE + b"reserved-tag payload (retired AER exemplar shape)"
+        unknown_rec = b"\x7f" + b"an UNKNOWN tag: no tenant in this module owns 0x7f"
         assert BinLog(kpath).append(foreign_rec), "foreign record append failed"
+        assert BinLog(kpath).append(foreign_rec + b" (second)"), "second foreign record failed"
+        assert BinLog(kpath).append(unknown_rec), "unknown-tag record append failed"
+        assert BinLog(kpath).append(unknown_rec + b" (second)"), "second unknown-tag record failed"
+        assert save_growth(b"grown-substrate v1") and save_growth(b"grown-substrate v2"), (
+            "growth history must be two DISTINCT records for the prune to be able to eat one"
+        )
+        assert save_selfbuild(b'{"w": [0.1]}') and save_selfbuild(b'{"w": [0.2]}'), (
+            "self-build history must be two DISTINCT records"
+        )
+        assert save_episode({"who": "spike", "what": "watched a consolidation"}), "episode 1"
+        assert save_episode({"who": "spike", "what": "watched another one"}), "episode 2"
+        tenants_before = _tag_census(kpath)
         facts_now = (
             KnowledgeLog().count()
         )  # the FACT view reads ONLY facts (foreign records are skipped)
@@ -705,9 +846,36 @@ def main():
             KnowledgeLog()
         )  # sleep consolidation of the FACT side must PRESERVE the foreign records
         klog.consolidate(list(klog.replay()))
+        tenants_after = _tag_census(kpath)
         assert any(p == foreign_rec for p in BinLog(kpath).replay()), (
             "sleep consolidation of facts dropped a foreign (reserved-tag) record"
         )
+        assert any(p == unknown_rec for p in BinLog(kpath).replay()), (
+            "sleep consolidation of facts dropped a record whose tag it does not recognise"
+        )
+        for tag, who in (
+            (_T_GROWTH, "_T_GROWTH (the grown substrate)"),
+            (_T_SELFBUILD, "_T_SELFBUILD (the self-build learner)"),
+            (_T_EPISODE, "_T_EPISODE (autobiographical episodes)"),
+            (_T_SPIKE, "_T_SPIKE (reserved)"),
+            (b"\x7f", "an unknown/reserved tag"),
+        ):
+            assert tenants_after.get(tag, 0) == tenants_before.get(tag, 0) == 2, (
+                f"consolidate must leave {who} untouched: "
+                f"{tenants_before.get(tag, 0)} -> {tenants_after.get(tag, 0)}, expected 2 -> 2"
+            )
+        # ORDER, not just count: `load_growth` / `load_selfbuild` take the LAST record of their tag
+        # and `load_episodes` returns oldest-first, so a compaction that preserved every record but
+        # resequenced them would restore the brain's PREVIOUS substrate while every count above
+        # stayed green. RED, run: `return out[::-1]` at the end of `_prune_state_history`.
+        assert load_growth() == b"grown-substrate v2", "the newest growth record must still be last"
+        assert load_selfbuild() == b'{"w": [0.2]}', (
+            "the newest self-build record must still be last"
+        )
+        assert [e["what"] for e in load_episodes()] == [
+            "watched a consolidation",
+            "watched another one",
+        ], f"consolidate resequenced or dropped an episode: {load_episodes()}"
         assert KnowledgeLog().count() == 4, "sleep consolidation lost facts"
 
         # PROPERTY 3 again, now that a consolidation has run over the lake: the learned state written
@@ -752,8 +920,10 @@ def main():
         assert sum(1 for p in BinLog(kpath).replay() if p[:1] == _T_STATE) == 4, (
             "state must be append-only history (valence + 2 calib + other), not an in-place overwrite"
         )
-        # UNCHANGED state is not re-stored: the lake is append-only and consolidate() keeps every
-        # foreign record forever, so a sleep tick that saves an identical blob must add nothing.
+        # UNCHANGED state is not re-stored: the lake is append-only between two sleep ticks, so
+        # saving an identical blob in that window must add nothing. (This comment said "consolidate()
+        # keeps every foreign record forever" until `_prune_state_history` landed; the skip still
+        # earns its place, on the narrower justification written in `save_named_state`.)
         assert save_named_state("other.json", b"unrelated") is False, (
             "an unchanged state must not be appended again"
         )
@@ -773,6 +943,153 @@ def main():
         assert load_named_state("revert.json") == b"A", (
             "a state that reverted to an earlier value read back as the intermediate one"
         )
+
+        # ---- SLEEP CONSOLIDATION PRUNES SUPERSEDED _T_STATE HISTORY (`_prune_state_history`) -----
+        # The one deletion `consolidate()` performs outside the FACT side. A named state has ONE
+        # current value, so every earlier record under that name is bytes no read path can reach
+        # again -- and leaving them there is what made _T_GROWTH 97.8 percent of the operator's lake.
+        # MEASURED on a scratch lake before this landed: 50 saves of a CHANGED 2,048 B blob under one
+        # name left 50 records and a full consolidate() pruned 0 of them.
+        #
+        # THE ASSERT THAT CARRIES THIS IS THE VALUE ONE, NOT THE COUNT ONE, and the two are separated
+        # deliberately: keeping the FIRST record per name also leaves exactly one record per name, so
+        # the count assert passes against a prune that threw the current state away and restored an
+        # old one. Both reds were CONSTRUCTED AND RUN 2026-08-05, on this self-check:
+        #   * `return list(payloads)` (no prune -- the pre-2026-08-05 behaviour) -> the count assert
+        #     fires: "13 records in, 13 out, expected 13 -> 5";
+        #   * `last[got[0]] = i` -> `last.setdefault(got[0], i)` (keep the FIRST record per name) ->
+        #     the count assert stays GREEN at 13 -> 5 and the VALUE assert below fires. That is the
+        #     whole reason the value assert exists as a separate line.
+        for i in range(6):
+            assert save_named_state("moving.json", bytes([i]) * 64) is True, (
+                f"a CHANGED state must always be written (save {i} was skipped)"
+            )
+        newest_state = bytes([5]) * 64
+        census_before = _tag_census(kpath)
+        state_before = census_before.get(_T_STATE, 0)
+        klog = KnowledgeLog()
+        kept, dropped = klog.consolidate(list(klog.replay()))
+        census_after = _tag_census(kpath)
+        # THE RETURN VALUE, and it is a criterion the prune created rather than inherited. `_count`
+        # is recomputed as `self._bin.count() - len(foreign)` where `foreign` is the PRUNED list;
+        # against the PRE-prune list it would subtract the deleted _T_STATE records from the FACT
+        # tally, and the tuple is what `cortex/brain.py` binds to `self._lake_kept` /
+        # `self._lake_pruned` on the sleep tick. RED, constructed and run 2026-08-05: with
+        # `len(foreign)` replaced by the pre-prune length, this call returns (-4, 8) -- a NEGATIVE
+        # count of surviving facts, and 8 phantom facts dropped where none were -- while every
+        # other assert in this file stays green.
+        assert (kept, dropped) == (4, 0), (
+            "consolidate() must report the FACT tally only, unaffected by the _T_STATE records it "
+            f"pruned: returned kept={kept} dropped={dropped}, expected (4, 0)"
+        )
+        # BOTH numbers in ONE assert on purpose. The 13 is the PRECONDITION -- 5 names carrying 13
+        # records -- and on its own it has no red this file can reach that the `is True` loop above
+        # does not fire on first, so it is not a separate criterion; folded in here it is what stops
+        # `-> 5` from passing vacuously against a lake that never accumulated any history to prune.
+        assert (state_before, census_after.get(_T_STATE, 0)) == (13, 5), (
+            "consolidate must leave exactly ONE _T_STATE record per name (valence, signal_calib, "
+            f"other, revert, moving): {state_before} records in, "
+            f"{census_after.get(_T_STATE, 0)} out, expected 13 -> 5"
+        )
+        assert load_named_state("moving.json") == newest_state, (
+            "the prune kept a _T_STATE record for the name, but NOT the newest one -- the brain "
+            "would boot on state it had already superseded"
+        )
+        # the other names are untouched, each still reading back its own newest value
+        assert load_named_state("other.json") == b"unrelated", "the prune disturbed a second name"
+        assert load_named_state("revert.json") == b"A", "the prune undid a revert"
+        assert load_named_state("signal_calib.json") == b'{"salience_th": 0.72}', (
+            "the prune took an older calibration record"
+        )
+        assert load_state("valence.json") == {"ENGAGE": 0.83, "RELEASE": -0.11}, (
+            "the prune took an older valence record"
+        )
+        # ...and NOTHING ELSE moved: the prune is scoped to _T_STATE, not to "latest wins per tag".
+        for tag, who in (
+            (_T_FACT, "_T_FACT"),
+            (_T_GROWTH, "_T_GROWTH"),
+            (_T_EPISODE, "_T_EPISODE"),
+            (_T_SELFBUILD, "_T_SELFBUILD"),
+            (_T_SPIKE, "_T_SPIKE (reserved)"),
+            (b"\x7f", "an unknown tag"),
+        ):
+            assert census_after.get(tag, 0) == census_before.get(tag, 0), (
+                f"the _T_STATE prune also ate {who}: "
+                f"{census_before.get(tag, 0)} -> {census_after.get(tag, 0)}"
+            )
+        # P4b's honesty guard: "it persists" is a claim about a NEW PROCESS. The in-process read
+        # above goes through the `_snn_state_index` cache; this one cannot.
+        child_pruned = (
+            f"import sys; sys.path.insert(0, {src_root!r})\n"
+            "from snn_data_lake.substrate.home import load_named_state\n"
+            f"got = load_named_state('moving.json', {kpath!r})\n"
+            f"assert got == {newest_state!r}, ('a NEW process read the wrong record', got[:1])\n"
+        )
+        rc_p = subprocess.run([sys.executable, "-c", child_pruned]).returncode
+        assert rc_p == 0, (
+            f"after the prune a SEPARATE process did not read back the newest state (rc={rc_p})"
+        )
+        print(
+            f"state prune       : {state_before} _T_STATE records -> "
+            f"{census_after.get(_T_STATE, 0)} (one per name); newest value intact, "
+            f"{sum(census_before.values())} -> {sum(census_after.values())} records in the lake"
+        )
+
+        # ---- AN UNPARSEABLE _T_STATE RECORD IS KEPT, AND ITS NAME IS NOT GUESSED ----------------
+        # `_unpack_state` returning None is the prune's whole safety margin, and until this block
+        # existed NOTHING in the tree could fail if that branch were removed: every _T_STATE record
+        # the self-check wrote was well formed, so the pre-2026-08-05 parser passed all of the
+        # asserts above. The prune's one act is irreversible, so the parser it decides with owes the
+        # unreadable case a criterion of its own.
+        #
+        # The record below claims an 11-byte name and then stops -- no seq, no blob, 13 bytes where
+        # the layout needs 17. Its FRAME is complete, and that is the point: `_repair_torn_tail`
+        # truncates at the first short frame and `BinLog.replay` stops at one, so a genuinely torn
+        # append can never reach the prune. A well-framed record carrying a payload this module
+        # cannot read can -- another build writing tag 0x07, a layout change, a restored backup --
+        # and nothing downstream will ever remove it for us.
+        #
+        # RED, constructed and RUN 2026-08-05: replace `_unpack_state` with the parser this file
+        # shipped before that date (`n = payload[1]`, no None branch) and the FIRST assert below is
+        # the one that fires -- it is the direct criterion on the parser, so it fires before the
+        # damage happens and masks the rest. The damage was therefore measured SEPARATELY rather
+        # than asserted from, on an isolated lake carrying 6 `moving.json` records + this one: the
+        # old parser reads `(b'moving.json', 0, b'')` off the short buffer -- the name of a LIVE
+        # state -- calls this record the newest under that name, and the prune takes _T_STATE from
+        # 7 to 1 while `load_named_state('moving.json')` returns b''. The shipped parser takes the
+        # same lake 7 -> 2 and reads the newest blob back. A bare 1-byte `b'\x07'` payload raises
+        # IndexError straight out of the old parser inside the prune, which is the other half of
+        # why the branch is a `return None` and not a guess.
+        #
+        # The other three asserts are not decoration -- each owns a red the ones above it do not,
+        # all three CONSTRUCTED AND RUN 2026-08-05. (a) a prune that DROPS what it cannot parse
+        # instead of keeping it -> the `any(...)` assert. (b) `_state_index` alone reverted to its
+        # own inline parser, the prune left correct -- the exact drift `_unpack_state` was made THE
+        # single parser to prevent -- leaves the parse assert and the census green and fires the
+        # `load_named_state` assert, which is the only one that sees it. (c) a prune that keeps
+        # this record but loses one good survivor beside it -> `6 -> 5` on the count.
+        unreadable_state = _T_STATE + bytes([len(b"moving.json")]) + b"moving.json"
+        assert _unpack_state(unreadable_state) is None, (
+            "a _T_STATE record too short to hold its own seq field must not parse"
+        )
+        assert BinLog(kpath).append(unreadable_state), "unreadable-state record append failed"
+        unreadable_before = _tag_census(kpath).get(_T_STATE, 0)
+        klog = KnowledgeLog()
+        klog.consolidate(list(klog.replay()))
+        unreadable_after = _tag_census(kpath).get(_T_STATE, 0)
+        assert any(p == unreadable_state for p in BinLog(kpath).replay()), (
+            "the prune DELETED a _T_STATE record it could not parse -- unreadable is not the same "
+            "as superseded, and only one of the two directions is recoverable"
+        )
+        assert load_named_state("moving.json") == newest_state, (
+            "an unreadable _T_STATE record was parsed on garbage offsets and its guessed name "
+            "shadowed a live state"
+        )
+        assert (unreadable_before, unreadable_after) == (6, 6), (
+            "the unreadable record must be carried through the prune beside the 5 good ones: "
+            f"{unreadable_before} -> {unreadable_after}, expected 6 -> 6"
+        )
+
         # a new tenant must not disturb the others (the additive-tag contract, re-asserted)
         assert KnowledgeLog().count() == 4, "_T_STATE records leaked into the FACT view"
         assert any(p == foreign_rec for p in BinLog(kpath).replay()), (
@@ -829,8 +1146,9 @@ def main():
             "self-check OK: knowledge appended in one process is REPLAYED in a separate process (never "
             "forgotten across a restart); append-only; dedup; RAW-BINARY one lake (brain_lake.bin) with "
             "torn-tail recovery; LEARNED STATE lives IN the lake under _T_STATE (cross-process proven, "
-            "latest-wins per name, revert-safe, survives sleep consolidation) and a pre-P4b sidecar is "
-            "imported once and left on disk. The ONE shared home every entrypoint boots into."
+            "latest-wins per name, revert-safe; sleep consolidation KEEPS the newest record per name "
+            "and prunes the superseded ones, leaving every other tenant untouched) and a pre-P4b "
+            "sidecar is imported once and left on disk. The ONE shared home every entrypoint boots into."
         )
     finally:
         # RESTORE the caller's NORD_HOME, do not just drop it. A bare pop deletes the value the

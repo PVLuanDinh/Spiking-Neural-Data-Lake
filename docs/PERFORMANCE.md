@@ -168,6 +168,14 @@ the CUDA path is not executed here — smoke-test it on your CUDA machine on fir
 Measured before touching anything, per the neuter-and-measure rule. Live daemon (pid 804, wake+sleep,
 45 s py-spy @ 200 Hz, 7,319 samples) plus offline benchmarks on `.venv-lake` (Python 3.11, NVMe).
 
+*(The "Python 3.11" here is a record of the interpreter these numbers were measured on and is
+deliberately NOT edited — re-labelling a past measurement with a version it did not run under would
+be a fabrication. It is flagged instead: `pyproject.toml` raised `requires-python` to `">=3.12"` on
+2026-08-05 and `.venv-lake` is Python 3.11.15, so the env every figure on this page was taken in no
+longer satisfies the project's own floor. Nothing here is invalidated — the measurements happened —
+but a re-run after `.venv-lake` is recreated on 3.12 is a re-measurement on a different interpreter,
+not a reproduction, and should be reported as such. See `docs/POLICIES.md` P5 for the open item.)*
+
 **Disk is NOT a live-tick bottleneck — that is the headline null result.**
 
 - Wake ticks: **0.00%** of samples in any I/O-classified leaf frame. The wake tick is compute

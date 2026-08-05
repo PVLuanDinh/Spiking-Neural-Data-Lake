@@ -20,9 +20,21 @@ Run everything on one machine.
 ```bash
 git clone https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake.git
 cd Spiking-Neural-Data-Lake
-python --version          # need 3.11+
+python --version          # need 3.12+  (pyproject requires-python, raised from 3.11 on 2026-08-05)
 pip install -e .          # editable install (core = torch + numpy + mujoco==3.11.0)
 ```
+
+**The version check above is not advisory — pip enforces it and refuses.** Measured 2026-08-05 on a
+3.11.15 interpreter against a package declaring `Requires-Python: >=3.12`:
+`ERROR: Package '...' requires a different Python: 3.11.15 not in '>=3.12'`, exit 1. Note the
+`mujoco==3.11.0` on the next line is a *package* version and has nothing to do with the interpreter
+floor; the two 3.11s on this page mean different things.
+
+**Known open item, stated here because this page is where a contributor sets up their env:** the
+repo's own CPU gate venv `.venv-lake` is **Python 3.11.15** and therefore no longer satisfies this
+floor — an already-created `.venv-lake` keeps working (the check happens at install time, not at
+import time), but `pip install -e .` into it now fails. Recreating it on 3.12 is an owner decision
+and re-bases the environment behind every measurement in `docs/`; see `docs/POLICIES.md` P5.
 
 ### 1. Core self-checks
 Every registered module runs standalone with an assert-based self-check — the fastest way to see

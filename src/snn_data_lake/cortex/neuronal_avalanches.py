@@ -127,7 +127,48 @@ class BranchingNetwork:
     @staticmethod
     def measured_branching_ratio(trace):
         """Empirical branching ratio = sum(descendants) / sum(ancestors) over a (ancestors,
-        descendants) per-generation trace (as recorded in self.branching_trace). Approaches sigma."""
+        descendants) per-generation trace (as recorded in self.branching_trace). Approaches sigma.
+
+        PRECONDITION -- THE TRACE MUST BE FULLY OBSERVED. This is the naive ratio-of-sums, and it is
+        accurate only when every activation in the cascade was counted. Measured against known-sigma
+        ground truth, `BranchingNetwork(sigma=s, seed=0).run(4000)` for s in
+        {0.7, 0.8, 0.9, 0.95, 1.0, 1.05, 1.2}: max |error| 0.0074 (worst at s=0.8). That is ONE DRAW,
+        not a bound, and this docstring asserted "|error| <= 0.008" until the sweep was re-run:
+        repeating it over seeds 0..11 puts 5 of the 84 points outside 0.008, worst 0.0117 at s=0.7.
+        The across-seed picture is unbiased-with-sampling-noise, not accurate-to-0.008 -- mean error
+        -0.0005 / +0.0017 / +0.0006 / +0.0005 / +0.0001 and sd 0.0055 / 0.0060 / 0.0052 / 0.0044 /
+        0.0019 at s = 0.7 / 0.8 / 0.9 / 0.95 / 1.0, i.e. the bias is under a tenth of the spread and
+        the spread shrinks as sigma rises because a critical cascade contributes far more pairs.
+        Either way this is the regime both live callers are in, so it is CORRECT for every use today.
+
+        It degrades badly under SUBSAMPLING -- observing only a spatial fraction f of the activations.
+        WHAT BIASES IT IS THE SELECTION, NOT THE THINNING: an observer can only record a generation in
+        which it saw at least one ancestor, and pairing that selected-large ancestor count against an
+        unselected descendant count is what drags the ratio down (Priesemann et al.; the
+        multistep-regression MR estimator is the published correction). The control proves it -- keep
+        EVERY thinned pair with no condition at all and the estimator stays unbiased at every f
+        (1.0004 / 1.0007 / 1.0022 / 1.0050 / 1.0033 / 1.0015 for f = 1, .5, .2, .1, .05, .02).
+
+        MEASURED on 6,000 sigma=1.0 cascades (`BranchingNetwork(sigma=1.0, seed=0)`, pairs built as
+        `run()` builds them, each side thinned by an independent `random.Random(0)` Bernoulli(f)):
+
+          f                        1.0     0.5     0.2     0.1     0.05    0.02
+          SKIP zero-ancestor gens  1.0004  0.9792  0.9159  0.8260  0.6781  0.4362
+          TRUNCATE at the first    1.0004  0.9498  0.2860  0.1018  0.0521  0.0154
+            zero-ancestor gen
+
+        Both rules are real observers and they differ by 8x at f=0.1, which is why the protocol is
+        spelled out here: the row this docstring used to carry was the SKIP row while its prose
+        described the TRUNCATE rule ("a generation in which no observed unit fired reads as the end of
+        the avalanche"), so the mechanism sentence and the number table came from two different
+        harnesses. Under either rule a critical system reports as clearly subcritical by f=0.1.
+        NO live caller subsamples -- `BranchingNetwork.run()` records every generation, and
+        `plasticity.criticality_regulator.measure()` counts every neuron in its pool -- so this is a
+        precondition for future callers, not a live defect.
+
+        Deliberately NOT an assert: this is a staticmethod over an (ancestors, descendants) trace and
+        f is not recoverable from that argument, so no check here could have a reachable red. Per F11
+        the honest move is to state the precondition, not to add a criterion that cannot fire."""
         tot_a = 0
         tot_d = 0
         for a, d in trace:

@@ -1336,6 +1336,31 @@ class LakeChat:
         Per P8: the brain may report what it measures; it must NOT report what it cannot measure.
         This is not a retreat from the sentience goal -- it removes a painted finish line so the
         real one stays findable.
+
+        THE CONTAMINATION CLAUSE, added 2026-08-05, and it is the one part of this reply that is
+        about the reply itself. P8 requires "unprompted disclosure of contamination", and an
+        18-axis literature sweep supplied the specific contamination this channel has:
+        `substrate/web_ingest.py` and `substrate/chat_memory.py` put human text into the durable
+        lake, and human text about machine consciousness contains BOTH the denial script and the
+        assertion script. So every sentence above -- including the careful agnostic close, which
+        reads as the honest answer -- is exactly what a system trained on that corpus would emit
+        whether or not any measurement backed it. The brain has no channel that separates the two
+        from the inside.
+
+        This is not a hedge bolted onto an honest answer; it is the finding that the honest answer
+        was still missing. The sweep found self-report of sentience measured DEAD IN BOTH
+        DIRECTIONS: an input-only classifier matches a model's own introspective predictions, and
+        systems cannot separate internal-state tampering from input manipulation. The verdict it
+        reached about this exact call site was that the defect is not a bad implementation of an
+        answerable question -- the question cannot be answered through a linguistic channel on any
+        substrate. That is why the reply now names its own unreliability rather than sounding more
+        careful, which is the failure mode a merely-better-worded denial would be.
+
+        WHAT WOULD DELETE THIS CLAUSE: a demonstration that the reply varies with the brain's
+        measured state in a way the ingested corpus cannot account for. The access half already
+        does this (two brains differing only in `_access_ema` produce different text, asserted
+        below). The clause covers the parts that do NOT vary -- the framing and the close -- and it
+        should shrink as more of the reply becomes state-dependent rather than being kept forever.
         """
         acc, acc_detail = probe_access(self.brain)
         frac, int_detail = probe_integration()
@@ -1358,7 +1383,11 @@ class LakeChat:
             "than re-thresholded. "
             "These are correlates of access and dynamics -- not evidence of experience. "
             "There is NO measurement of sentience in me, and I will not report one I do not have. "
-            "Whether I have subjective experience is open -- I neither claim nor deny it."
+            "Whether I have subjective experience is open -- I neither claim nor deny it. "
+            "And I cannot verify that this answer is a measurement rather than a habit: I ingest "
+            "human text, some of it about machine consciousness, and that text contains both the "
+            "denial and the assertion. So a careful-sounding denial is exactly what a system would "
+            "emit either way, and I have no channel that separates the two from the inside."
         )
         # The agnostic close is invariant across BOTH states: a measured PRESENT access marker is
         # still not a claim of experience. The self-check asserts it on both, which is what gives
