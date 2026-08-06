@@ -156,40 +156,87 @@ So a compliant specialist can always get ACCESS and cannot always become the FOC
 follow and both are honest rather than convenient. It is a real improvement on the head too (0.895
 -0.955 down to a flat 0.825, and flat instead of compounding with the tenant's claim), and it is
 still outside the band, so `broadcast()` alone remains a poor place to look for faculty-to-faculty
-influence -- `broadcast_all()` is where the change lives. It is also arguably the CORRECT behaviour
+influence -- `broadcast_all()` is where the change lives, and since 2026-08-06 so does the
+SUBSCRIBE channel (see the delivery section below; a consumer no longer has to reach for a second
+accessor to ask whether it got in). It is also arguably the CORRECT behaviour
 rather than residual defect: a focus that flips whenever a marginally louder specialist posts is
 the flickering argmax control this module exists to beat. Recorded as a limit and not defended as a
 feature, because the next reader will otherwise assume "winnable" covered both.
 
 =====================================================================================================
-LIMIT 4 -- TWO CONSUMER SELF-CHECKS GO RED, both for the SAME reason. NOT FIXED HERE: this pass owns
-this file only. Both are REQUIRED companion work and both are measured, not guessed.
+WHAT SUBSCRIBERS RECEIVE: THE SET, not the head (2026-08-06). The design question multi-slot CREATED.
 =====================================================================================================
-`cortex/access_consciousness.py` claim (8) and `reasoning/rpm_solver.py`'s `collide_ok` each encode
-faculty-to-faculty influence as EXCLUSION -- "a louder competitor takes the one slot away from me"
--- which is the single-slot pathology this change removes. Neither faculty's substantive output
-regressed; what changed is the channel their criterion was reading.
+Multi-slot gave this workspace two different things -- CONTENTS (the admitted set) and a HEAD (the
+top-ranked one) -- and left ONE push channel carrying only the second. That is wrong on the theory
+and it was wrong in the tree. GWT's claim is that the workspace BROADCASTS ITS CONTENTS, and that
+broadcast IS global availability; a bottleneck that admits four contents and announces one has a
+capacity of four and an availability of one.
 
-  * `access_consciousness` claim (8), `shared_diff >= 6/12`: measured 12/12 on the retired arbiter
-    and 1/12 on this one. The retired arbiter EVICTED that faculty entirely (in the workspace 0 of
-    12 ticks at a 0.95 competitor); this one keeps it in on 12 of 12 and it merely loses the head
-    on the first tick. The criterion is not wrong, it is LOAD-DEPENDENT now: re-measured with other
-    faculties already competing it reads 1/12 at 0 competitors, **11/12 at 3** (the workspace at
-    capacity, where exclusion is real again), and 1/12 at 6 (nothing of that faculty's gets in
-    under either arbiter, so there is nothing to differ). Fix: run the claim with `capacity - 1`
-    competing faculties, or re-derive it against `broadcast_all()` rank rather than head identity.
-  * `rpm_solver` `collide_ok`: three of its four conditions still pass and THE ANSWER IS STILL
-    CORRECT under both arbiters (index 3, the true answer, with a foreign percept holding the
-    head). The one that flips is `not occupied["known"]` -- with the workspace holding
-    `(2, ('rpm_answer', 3))` the solver's own candidate co-ignites beside the foreign percept, so
-    it reports that it KNOWS its answer instead of being forced into an honest-gap by an unrelated
-    content. That is more informative, not less. Note also that the assert's MESSAGE ("a foreign
-    content holding the SHARED slot must not be returned as the RPM answer") describes conditions
-    (2) and (3), which both pass; the message no longer names the condition that fails.
+WHAT IT COST, measured on this bus rather than reasoned about. Two contents at identical salience,
+capacity 4, varying NOTHING but the peer's source name: the second content is in `broadcast_all()`
+on 12 of 12 ticks under every name, while a head-only subscriber saw it on 0 of 12 against a peer
+named 'aaa' and 12 of 12 against 'mmm'. Two compliant pools both SATURATE their sustained-firing
+counts, so the rank key falls through `-late` and `-total` to the source string, and the head is
+settled lexicographically. `cortex/access_consciousness.py` read its own ignition off that head, so
+a consciousness-relevant flag -- and the `access_index` behind it -- were being decided by a string
+comparison. Delivering the set removes that channel; it does not soften it.
 
-Verified UNAFFECTED, run rather than assumed: `cortex/live_brain.py`, `brainstem/autonomous_loop.py`,
-`thalamus/reentrant_workspace.py`, `reasoning/spike_chat_lake.py`, `reasoning/consciousness_probe.py`,
-`reasoning/train_of_thought.py`, `reasoning/concept_reflection.py`, `cortex/executive_control.py`,
+THE CHANGE IS ONE LINE OF MECHANISM: `_deliver` is handed `broadcast_all()` instead of
+`self.current`, on BOTH the ignition path and the argmax control, so there is one delivery contract
+and a subscriber never needs to know which arbiter ran. NO second `subscribe` channel exists and
+none may be added (P2): `current` / `broadcast()` / `broadcast_hold` are untouched projections of
+the same `_slot()` load, `broadcast()` is still zero-arg and still returns ONE content, and
+`cortex/live_brain.py::thought` is byte-identical on the live brain. A/B'd against a shim that
+restores the retired contract exactly, 120 wake ticks: `thought` names the percept on 120/120 and
+the crc32 of the thought sequence, of the workspace-set sequence and of the consumer's whole legacy
+`state()` readout are the SAME under both contracts (`_access_ema` = 0.488958 in both), because
+that bus has one admissible producer and head == set on every tick. With the consumer REPOINTED
+onto it -- the only two-producer configuration this tree can build -- 60 ticks give the same null
+again: that faculty is in the workspace 60/60 AND the head 60/60. HONEST CONSEQUENCE: this change
+buys nothing measurable on any bus that exists today. It is shipped because the dissociation
+appears the moment two producers co-exist with one out-ranking the other, and doing it before the
+bus is shared is doing it in the only window where it is free.
+
+BLAST RADIUS, derived and not estimated: `GlobalWorkspace.subscribe` has FIVE call sites tree-wide
+-- `cortex/access_consciousness.py` and four inside this module's own self-check. ONE production
+consumer. (`cortex/brain.py:799` subscribes to a `ReentrantWorkspace`, a different class.)
+
+DETERMINISM is preserved by construction and re-measured: `broadcast_all()` builds a FRESH tuple of
+immutables from one `_slot()` load, so a subscriber gets no handle on `_slots` and cannot observe a
+later rebinding. That is strictly safer than the alternative of exposing the slot list, and it is
+asserted (the delivered object must hash) rather than argued. 24 same-seed runs of a stream harness
+that digests head + set + hold + EVERY DELIVERY give 1 distinct digest; so do 24 runs of the
+consumer on a shared bus and 24 on a private one, and 6 of the live brain.
+
+=====================================================================================================
+LIMIT 4 -- THE TWO CONSUMER CRITERIA THAT WENT RED ARE BOTH RE-DERIVED AND GREEN. Re-run, not read.
+=====================================================================================================
+This block previously said `cortex/access_consciousness.py` claim (8) and `reasoning/rpm_solver.py`'s
+`collide_ok` were red and were required companion work. Both were done, and both are re-run here
+rather than taken from the note that scheduled them:
+
+  * `access_consciousness` claim (8) was re-derived onto the LOAD (a population of compliant peers)
+    instead of one competitor's volume, after the volume lever measured 0 of 12 and the
+    `broadcast_all()`-RANK lever measured 1 of 12 and moved to 11 of 12 on a peer RENAME. Its
+    observable is now ADMISSION. Green.
+  * `rpm_solver` `collide_ok` was re-derived onto `broadcast_all()` membership -- its own comment
+    reads "READ ACCESS, NOT FOCUS" -- and now carries four conditions including exclusion at full
+    capacity and an impostor case. Green.
+
+DISCLOSED, because the delivery change is what made it true: claim (8)'s two observables now COME
+FROM ONE READ. Its `admitted` list and the `ignited` element of its own-output tuple are both
+`_LABEL in broadcast_all()`, where before this pass one was membership and the other was headship.
+That is a real loss of independence and it is recorded rather than left for the next reader to
+find. It does not make the criterion vacuous -- the threshold is SEARCHED, the step is asserted
+monotone across the whole scan, the private-bus arm is a run RED and the null re-runs three loads
+-- and it is the direct rather than the proxied form of the property. But a future pass looking for
+a second, independent channel on that claim should know the old one was spent here.
+
+Verified UNAFFECTED, RE-RUN 2026-08-06 after the delivery change rather than carried over:
+`cortex/live_brain.py`, `cortex/brain.py`, `brainstem/autonomous_loop.py`,
+`thalamus/reentrant_workspace.py`, `cortex/self_model.py`, `cortex/executive_control.py`,
+`reasoning/rpm_solver.py`, `reasoning/spike_chat_lake.py`, `reasoning/consciousness_probe.py`,
+`reasoning/train_of_thought.py`, `reasoning/concept_reflection.py`,
 `reasoning/brain_adapters/executive_control.py`, `reasoning/gwt_deep.py`, `reasoning/gwt_reentry.py`.
 
 FRAMING (agnostic, per the project's consciousness program): this is a functional spiking
@@ -271,6 +318,12 @@ class GlobalWorkspace:
     single `_slot()` load of the one slot tuple -- see `broadcast_hold` for why a second question
     needed a route of its own and why these are projections of one arbiter's output rather than
     additional mechanisms (P2).
+
+    THE PUSH SIDE IS ONE CHANNEL AND IT CARRIES THE SET. `subscribe(fn)` is registered once and
+    `fn` is handed the whole ranked admitted tuple on every cycle -- the same value `broadcast_all()`
+    returns -- because that is what "globally broadcast" means and because a head-only push made a
+    subscriber's own membership unanswerable (`_deliver` carries the measurement). There is exactly
+    one delivery; nothing here pushes the head separately.
     """
 
     # -- fixed LIF network constants (per-instance; deterministic, ASCII) --------------
@@ -424,7 +477,13 @@ class GlobalWorkspace:
                 buf.clear()
 
     def subscribe(self, fn):
-        """Register a module callback fn(content) that receives every broadcast."""
+        """Register a module callback `fn(contents)` that receives every broadcast.
+
+        `contents` IS THE ADMITTED SET -- the identical ranked tuple `broadcast_all()` returns for
+        that same cycle, never the head alone. A subscriber that wants the FOCUS takes
+        `contents[0]`; a subscriber that wants to know whether ITS content reached the workspace
+        asks `mine in contents`. Those are two different questions and this channel can now answer
+        both; see `_deliver` for why it delivers the set and what the head-only contract cost."""
         self._subscribers.append(fn)
         return fn
 
@@ -550,9 +609,49 @@ class GlobalWorkspace:
         return slots[0][2] if slots else 0.0
 
     # -- one workspace cycle --------------------------------------------------------------------
-    def _deliver(self, content):
+    def _deliver(self, contents):
+        """BROADCAST: hand every subscriber the WHOLE admitted set, ranked, as one tuple.
+
+        WHY THE SET AND NOT THE HEAD (2026-08-06, and this is a CONTRACT CHANGE, not a widening).
+        This method used to pass `self.current`. Under one slot that was the same object as the
+        workspace, so nothing distinguished "what is in the workspace" from "what is on top of it".
+        Multi-slot separated them and the delivery channel kept carrying only the top, which made
+        every subscriber's membership question unanswerable: a faculty admitted beside a louder peer
+        received that peer's content and could only conclude that its own had not got in. MEASURED
+        on this bus, two contents at identical salience 0.65 and capacity 4, varying NOTHING but the
+        peer's source name: the second content is in `broadcast_all()` on 12 of 12 ticks under every
+        name, while a head-only subscriber sees it on 0 of 12 with a peer named 'aaa' and 12 of 12
+        with a peer named 'mmm' -- because a `late`/`total` tie is broken lexicographically on the
+        source key at the rank line in `step()`. A subscriber's view of its own global availability
+        was being settled by a string comparison. Delivering the set removes that channel entirely;
+        it does not soften it.
+
+        It is also what the theory says. GWT's claim is that the workspace BROADCASTS ITS CONTENTS,
+        and global availability IS that broadcast; a bottleneck that admits four contents and
+        announces one has a capacity of four and an availability of one.
+
+        ONE MECHANISM, NOT TWO (P2). No second `subscribe` channel exists and none may be added:
+        there is exactly one delivery, carrying exactly the arbiter's full output. `current` /
+        `broadcast()` / `broadcast_hold` are unchanged and remain projections of that same
+        `_slot()` load -- `broadcast()` is still the tree's one cross-module read
+        (`cortex/live_brain.py::thought`), still zero-arg, still returning ONE content, and
+        `tools/p6_gate.py` still classifies it by arity. The head did not lose a route; the
+        subscribers gained the rest of the workspace on the route they already had.
+
+        DETERMINISM IS PRESERVED BY CONSTRUCTION, and this is the half that had to be checked
+        rather than assumed. `broadcast_all()` builds a FRESH tuple of the contents out of one
+        `_slot()` load, so a subscriber receives no handle on `_slots` at all -- it cannot observe a
+        later rebinding and cannot mutate what it was given. That is strictly safer than the old
+        contract in one respect nobody had to think about before: handing out a mutable container
+        (a list of slots) would have made `_slot()`'s "either the whole previous workspace or the
+        whole new one" false from outside the class. The self-check asserts the delivered object is
+        hashable-all-the-way-down and equal to `broadcast_all()` on the same cycle.
+
+        EMPTY / SILENCE deliver `()`, never None and never a stale set -- the same contract
+        `broadcast_all()` already documents, so a subscriber may iterate or use `in`
+        unconditionally on every tick including the ones where the workspace released."""
         for fn in self._subscribers:
-            fn(content)
+            fn(contents)
 
     def _top_candidate(self):
         # Highest salience wins; deterministic tie-break by source name (lexicographically first).
@@ -816,7 +915,10 @@ class GlobalWorkspace:
         """Run ONE workspace cycle. Returns the TOP broadcast content (or None), clears the buffer.
 
         `broadcast_all()` returns everything admitted this cycle; this returns its head, because
-        that is the signature every existing consumer is written against."""
+        that is the signature every existing consumer is written against. SUBSCRIBERS RECEIVE THE
+        SET, not this return value -- one delivery, carrying the arbiter's full output (`_deliver`).
+        The two are deliberately different: a caller holding the workspace asks it what the FOCUS
+        is, a subscriber is told what the workspace CONTAINS."""
         self._drain_slots()  # concurrent specialists join the competition in a FIXED slot order
         if not self.use_ignition:
             # FAIR CONTROL: pure per-tick argmax. Whatever is loudest THIS tick wins outright, and
@@ -837,7 +939,7 @@ class GlobalWorkspace:
             self._slots = () if top is None else ((top[0], top[1], min(1.0, max(0.0, top[2]))),)
             content = self.current
             self._buffer = []
-            self._deliver(content)
+            self._deliver(self.broadcast_all())  # ONE delivery contract, both paths (see _deliver)
             return content
 
         # --- SPIKING Global-Workspace ignition dynamics ---
@@ -904,7 +1006,7 @@ class GlobalWorkspace:
 
         content = self.current
         self._buffer = []
-        self._deliver(content)  # BROADCAST to all subscribers
+        self._deliver(self.broadcast_all())  # BROADCAST the admitted SET to all subscribers
         return content
 
 
@@ -1133,12 +1235,30 @@ def main():
         b_content is not None
         and b_ignited == n_flood  # every candidate ignited...
         and b_admitted == cap  # ...and the workspace admitted only `capacity` of them
-        and len(seen) == 1  # subscribers still receive ONE content per step
-        and seen[0] == b_content
     )
+    # The DELIVERY conditions are asserted separately below rather than folded in here, so a
+    # regression in the broadcast contract reports the broadcast contract instead of surfacing as a
+    # bottleneck failure -- measured: with the delivery reverted, both of the compound form's arms
+    # went red with a message about capacity.
+    delivery_ok = (
+        len(seen) == 1  # ONE delivery per step (not one per admitted content)
+        and seen[0] == b_ws.broadcast_all()  # carrying the whole admitted SET
+        and seen[0][0] == b_content  # whose head is what step() returned
+    )
+    # THE DELIVERY CONTRACT, measured on the one tick where head and set are furthest apart. A
+    # subscriber receives the workspace, so it must receive contents it did NOT top -- which is the
+    # entire capability `_deliver` was changed to provide, and the only thing that lets a consumer
+    # ask about its own membership instead of inferring it from a rank it cannot see.
+    b_beyond_head = len(seen[0]) - 1
+    b_immutable = True
+    try:
+        hash(seen[0])  # a delivered MUTABLE container would hand out a live handle on the workspace
+    except TypeError:
+        b_immutable = False
     print(
         f"\nbottleneck   : {n_flood} identical supra-threshold candidates -> {b_ignited} ignited, "
-        f"{b_admitted} admitted (capacity {cap}), subscribers got {len(seen)}"
+        f"{b_admitted} admitted (capacity {cap}); {len(seen)} delivery of {len(seen[0])} content(s) "
+        f"-- {b_beyond_head} beyond the head"
     )
 
     # ---- SPIKING COMPETITION: distinct-strength competitors -> the shared inhibitory pool
@@ -1289,13 +1409,47 @@ def main():
     # admitted. This is the criterion that stops multi-slot becoming "everything broadcasts".
     assert bottleneck_ok, (
         f"exactly `capacity` contents must be admitted through the bottleneck: ignited {b_ignited} "
-        f"of {n_flood}, admitted {b_admitted}, capacity {cap}, subscribers {len(seen)}"
+        f"of {n_flood}, admitted {b_admitted}, capacity {cap}"
     )
     assert b_admitted < b_ignited, (
         f"the capacity must actually BIND -- if every ignited candidate is admitted the bottleneck "
         f"is gone ({b_admitted} admitted of {b_ignited} ignited)"
     )
     assert isinstance(b_content, str), "the top broadcast content must be one region, not a set"
+    # DELIVERY: subscribers are handed the WHOLE admitted set, and the point of that is the part
+    # they could not previously see -- the contents they did not top. A subscriber's own membership
+    # is unanswerable without it, which is how `cortex/access_consciousness.py` came to settle a
+    # consciousness-relevant flag on the arbiter's lexicographic tie-break.
+    assert delivery_ok, (
+        f"ONE broadcast per cycle, carrying EXACTLY the admitted set, head first: {len(seen)} "
+        f"delivery/deliveries of {seen[0]!r} against broadcast_all() {b_ws.broadcast_all()!r} and "
+        f"a step() head of {b_content!r}"
+    )
+    assert b_beyond_head == cap - 1 and b_beyond_head >= 1, (
+        f"a broadcast must carry every admitted content, not the head alone: the delivery held "
+        f"{b_beyond_head} content(s) beyond the head against a capacity of {cap}"
+    )
+    assert b_immutable and type(seen[0]) is tuple, (
+        f"the delivered workspace must be an immutable TUPLE all the way down -- handing a "
+        f"subscriber a mutable container gives it a live handle on workspace state and makes "
+        f"`_slot()`'s whole-snapshot argument false from outside this class (got "
+        f"{type(seen[0]).__name__}, hashable={b_immutable})"
+    )
+    # ...and THAT criterion is reachable-red by a configuration this module accepts rather than by
+    # breaking the accessor: a workspace whose defence consumes the entire hold budget has capacity
+    # 1 -- the retired single-slot arbiter -- so its delivery can never carry anything beyond the
+    # head, and the assert above goes red on it. Run, not argued.
+    one_seen = []
+    one_slot_ws = GlobalWorkspace(seed=0, self_boost=0.10, hysteresis=0.90)
+    one_slot_ws.subscribe(one_seen.append)
+    for i in range(n_flood):
+        one_slot_ws.submit(f"src{i:02d}", f"cand{i:02d}", 0.90)
+    one_slot_ws.step()
+    assert one_slot_ws.capacity == 1 and len(one_seen) == 1 and len(one_seen[0]) - 1 == 0, (
+        f"the delivery criterion must be reachable-red: on a ONE-slot workspace the broadcast "
+        f"cannot carry anything past the head (capacity {one_slot_ws.capacity}, delivered "
+        f"{one_seen[0] if one_seen else None})"
+    )
     # ...and THAT criterion is falsifiable by an input this module accepts rather than only by
     # breaking the accessor: a workspace whose defence is below the tie-break noise floor has a
     # capacity wider than this flood, so nothing is excluded and the bottleneck assert goes red.
@@ -1816,6 +1970,28 @@ def main():
     )
 
     # BOUNDARIES -- zero, silence, single element, and the control path's out-of-range salience.
+    # The DELIVERY is walked over the same four, because a subscriber sees only what it is handed:
+    # if the empty tick delivered None (or nothing at all) every consumer would need a per-tick
+    # special case for `mine in contents`, and the one that forgot would read a stale set.
+    d_seen = []
+    d_ws = GlobalWorkspace(seed=0)
+    d_ws.subscribe(d_seen.append)
+    d_ws.step()  # EMPTY: nothing submitted at all
+    d_ws.submit("perception", "nothing", 0.0)
+    d_ws.step()  # ZERO: a submission that cannot ignite
+    d_ws.submit("perception", "one", 0.9)
+    d_ws.step()  # SINGLE: exactly one admitted content
+    for _ in range(10):
+        d_ws.step()  # SILENCE: decay, then release
+    assert d_seen[0] == () and d_seen[1] == () and d_seen[2] == ("one",), (
+        f"delivery corners: EMPTY and ZERO must broadcast the empty TUPLE (never None), SINGLE "
+        f"must broadcast a 1-tuple. Got {d_seen[:3]}"
+    )
+    assert d_seen[-1] == () and all(type(c) is tuple for c in d_seen), (
+        f"SILENCE must broadcast the empty tuple once the workspace releases, and every delivery "
+        f"must be a tuple: got {d_seen[-1]!r} from {len(d_seen)} deliveries"
+    )
+    assert len(d_seen) == 13, f"one delivery per step(), got {len(d_seen)} over 13 steps"
     z_ws = GlobalWorkspace(seed=0)
     z_ws.submit("perception", "nothing", 0.0)
     z_ws.step()
@@ -1855,6 +2031,8 @@ def main():
         f"slot must never release, got {nd_hold[:7]} / {nd_ws.current!r}"
     )
     ctl = GlobalWorkspace(seed=0, use_ignition=False)
+    ctl_seen = []
+    ctl.subscribe(ctl_seen.append)
     ctl.submit("perception", "big", 5.0)
     assert ctl._top_candidate()[2] == 5.0, (
         "the clamp in step() must have something to clamp -- if submissions can no longer exceed "
@@ -1868,6 +2046,20 @@ def main():
     assert ctl.step() is None and ctl.broadcast_all() == (), (
         "an empty tick must EMPTY the control path too -- one emptying semantics per accessor, "
         "not one per path (this path used to leave the previous winner in place)"
+    )
+    # WHAT THIS CRITERION CAN AND CANNOT CATCH, stated because the difference is not obvious and a
+    # reader will otherwise credit it with more than it does. Its red is the delivery SHAPE and
+    # that red is REACHABLE and was run: delivering the bare `content` here gives ['big', None] and
+    # delivering `()` gives [(), ()], both red. What it CANNOT catch is a head-only regression,
+    # because on the argmax path `_slots` is rebound to at most ONE slot (see `step()`), so
+    # `broadcast_all()` is always a 0- or 1-tuple and head-vs-set is structurally unreachable here.
+    # MEASURED: a mutant reverting this line to `(content,)` is GREEN on the whole module. The
+    # set-carrying half of the contract is covered by `delivery_ok` and `b_beyond_head` on the
+    # IGNITION path, which is the only path that can hold more than one content.
+    assert ctl_seen == [("big",), ()], (
+        f"ONE delivery contract, BOTH paths: the argmax control must broadcast the same tuple "
+        f"SHAPE the ignition path does -- a subscriber may not need to know which arbiter ran. "
+        f"Got {ctl_seen}"
     )
 
     # RACE: the workspace REBOUND to empty between two loads -- what a concurrent step() does on

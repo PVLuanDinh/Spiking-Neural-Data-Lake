@@ -48,6 +48,55 @@ The pipeline:
      Phi-like PROXY = coherence x completeness of the ignited content -- explicitly a PROXY,
      NOT IIT Phi). It RISES as more coherent neurons are grown and bundled into the workspace.
 
+ACCESS IS NOT FOCUS -- the dissociation this module can now state (2026-08-06)
+=============================================================================
+`thalamus/global_workspace.py` holds up to `capacity` contents at once and RANKS them. Those are
+two different facts about one workspace and this file reports them as two:
+
+  * `ignited()` / `state()["ignited"]` -- ACCESS. My content holds a workspace slot, so it was
+    broadcast to every subscriber. This is Dehaene's global availability and it is what
+    `access_index` is gated on.
+  * `focused()` / `state()["focused"]` -- FOCUS. My content is the RANKED HEAD: what the brain is
+    currently thinking about, the same quantity `cortex/live_brain.py::thought` reads.
+
+UNDER ONE SLOT THEY WERE THE SAME SENTENCE, which is exactly why this file got it wrong. When the
+workspace went multi-slot, `_ignited` kept reading the head and silently stopped meaning access.
+MEASURED then: with one peer faculty on the bus this faculty was in `broadcast_all()` on 12 of 12
+ticks while `ignited()` read False on 12 of 12, and renaming that peer moved it to True on 11 of 12
+-- because two compliant pools SATURATE their sustained-firing counts, so the arbiter's rank key
+falls through to the source string and the head is settled lexicographically. A
+consciousness-relevant flag, and the `access_index` behind it (0.000000 <-> 0.839103), were being
+decided by a string comparison.
+
+FIXING THE FLAG ALONE WOULD HAVE BEEN THEATRE, and claim (10) runs that failure rather than
+describing it. The bus delivered only the head to subscribers, so on precisely the ticks where this
+faculty is admitted-but-not-head every tap held somebody else's content, `global_availability` read
+0.0, and `access_index = gate * availability * integration` stayed 0.0 -- "ignited" beside no
+reach. So the BUS now delivers its admitted SET on the one channel it already had, and this file's
+tap scan asks the question that channel can answer.
+
+WHAT CLAIM (10) MEASURES, all run: with the peer neutered this faculty has ACCESS and FOCUS on 12
+of 12 ticks; with a 0.95 peer sorting before it, ACCESS WITHOUT FOCUS on 12 of 12 with the
+`access_index` UNCHANGED on 12 of 12; renaming that peer to sort after it moves FOCUS on 11 of 12
+and the ACCESS readout on 0 of 12. Two REDs run beside it -- a ONE-slot bus never separates the two
+(0 of 12), and the retired head-only delivery keeps membership at 12 of 12 while zeroing the index
+on all of them.
+
+IS THE DEFECT FIRING ON THE LIVE BRAIN TODAY? NO -- ARMED AND LATENT, in BOTH configurations, and
+saying so is the point of measuring it. A/B'd on the canonical brain against a shim that restores
+the retired contract exactly (head-only delivery AND `_ignited` reading the head): un-repointed, 120
+wake ticks, `thought` names the percept on 120/120 and the crc32 of the thought sequence, of the
+workspace-set sequence and of the whole legacy `state()` readout are IDENTICAL between the two
+contracts, `_access_ema` = 0.488958 in both -- because `cortex/brain.py::_update_access` builds this
+faculty with no `ws=`, so its bus has ONE submitter and the workspace is a 1-tuple on every tick.
+REPOINTED onto the arm's own bus, 60 ticks: this faculty is in the workspace on 60/60 and is ALSO
+the head on 60/60, so the two contracts are byte-identical there too. So this fix buys nothing
+measurable on either bus this tree can currently build, and it is shipped anyway for the reason the
+audit gave: the dissociation appears the moment two producers CO-EXIST with one out-ranking the
+other, that is the shared-instance construction P6 names as the next step, and fixing the readout
+before the bus is shared is fixing it in the only window where it is free. Credit is claimed for
+the criterion, never for a live gain that was measured at zero.
+
 WHICH BUS THIS RUNS ON (P6), and the MEASURED NULL that goes with it
 ====================================================================
 `__init__` takes `ws=`. Default None -> this faculty builds its own workspace, which is what it
@@ -78,7 +127,10 @@ are recorded here, because a route that carries nothing is the force-wiring P6 f
     150** and `ignited` on **150 of 150**. Same null, opposite reason: it used to be "the producer
     cannot change an output that never happens", and it is now "the producer cannot change an
     output that happens anyway". A null re-read without re-deriving it would have carried the old
-    explanation onto a bus where it is false.
+    explanation onto a bus where it is false. **STILL VALID AFTER `_ignited` BECAME MEMBERSHIP**,
+    stated rather than assumed: in that repointed replay this faculty held the HEAD on 150 of 150
+    ticks -- which is why `thought` read 'GLOBAL' there -- so headship and membership AGREED across
+    the whole run and every number in this bullet is untouched by the 2026-08-06 readout fix.
   * THE HARNESS IS NOT DEAD -- the positive control that makes the null trustworthy. **Measured on
     the RETIRED arbiter and NOT re-derived here; it is labelled rather than dropped because it is
     still the evidence that the probe can move at all.** Pinning the same producer ABOVE its live
@@ -139,7 +191,7 @@ class AccessConsciousness:
     integration -- and makes NO phenomenal / subjective-experience claim (see module docstring).
     """
 
-    _LABEL = "GLOBAL"  # hashable workspace handle for the (single) conscious-content slot
+    _LABEL = "GLOBAL"  # hashable workspace handle for this faculty's conscious-content candidate
     _SRC = "coalition"  # workspace source name for the grown assembly coalition
 
     def __init__(
@@ -222,7 +274,8 @@ class AccessConsciousness:
         self._n_assemblies = 0
         self._content_hv = None  # the bundled conscious-content spike code
         # last-step functional readout.
-        self._ignited = False
+        self._ignited = False  # ACCESS: this content held a workspace slot
+        self._focus = False  # FOCUS: this content was the RANKED HEAD of the workspace
         self._availability = 0.0
         self._integration = 0.0
         self._n_bound = 0
@@ -405,45 +458,71 @@ class AccessConsciousness:
     # -- one ignition cycle -----------------------------------------------------------------------
     def step(self):
         """Advance the workspace one tick: ignition competition + all-or-none global broadcast.
-        Returns whether THIS faculty's content ignited (True/False) and refreshes the readout.
+        Returns whether THIS faculty's content reached the workspace (True/False) and refreshes the
+        readout.
 
-        IGNITION IS THE WINNER'S IDENTITY, NOT MERELY A NON-EMPTY SLOT. `_ws.step()` returns
-        whichever content seized the single slot; this faculty is access-conscious of its own
-        coalition only when that winner IS its coalition. On a private bus the two tests are the
-        same test -- this class submits under exactly one content handle, so the slot holds
-        `_LABEL` or nothing -- and `main()` claim (7) asserts that equivalence by counting, rather
-        than asserting it in prose. On a SHARED bus they come apart, and that difference is the
-        whole point of the injection: another faculty's louder submission takes the slot and this
-        faculty's coalition stays local, which is what "competition for a limited-capacity
-        workspace" means and what the private instance made structurally impossible.
+        ACCESS IS MEMBERSHIP, FOCUS IS HEADSHIP, AND THIS METHOD MEASURES BOTH SEPARATELY
+        (2026-08-06). `_ignited` is `_LABEL in _ws.broadcast_all()` -- "is my content in the
+        limited-capacity workspace at all", which is exactly Dehaene's global availability and
+        exactly what this module's name, docstring and `access_index` have always said they meant.
+        `_focus` is `_ws.step() == _LABEL` -- "am I what the brain is currently thinking about".
 
-        The tap scan is unchanged in kind and now names the content it is looking for. A tap that
-        last received somebody ELSE's broadcast has not received THIS content, so counting `is not
-        None` would report global availability of 1.0 for a coalition that never ignited the moment
-        the bus carries anyone else's traffic.
+        THE DEBT THIS PAYS, and it is recorded rather than deleted because the defect is the whole
+        argument for the change. Between the workspace going multi-slot and this fix, `_ignited`
+        was `content == _LABEL` against the head, so it silently stopped measuring access. MEASURED
+        on the arbiter as it then stood, one peer faculty at identical salience: this faculty was in
+        `broadcast_all()` on 12 of 12 ticks while `ignited()` read False on 12 of 12, and renaming
+        that peer 'aaa' -> 'mmm' -- changing nothing else -- moved `ignited()` to True on 11 of 12,
+        because rank among co-admitted contents is broken lexicographically on the source key. A
+        consciousness-relevant flag was being settled by a string comparison, and `access_index`
+        moved 0.000000 -> 0.839103 with it. Under ONE slot the two statements were the same
+        statement (claim (7) still asserts that equivalence, and it is the RED that keeps the
+        dissociation honest); four slots dissociated them.
 
-        OPEN DEBT, DISCLOSED HERE BECAUSE IT IS THIS METHOD'S AND IT CANNOT BE PAID FROM THIS FILE
-        (2026-08-06, found while re-deriving claim (8)). Since `thalamus/global_workspace.py`
-        became multi-slot, `_ws.step()` returns the RANKED HEAD of a workspace that may hold up to
-        `capacity` contents, so `_ignited` above now tests HEADSHIP -- "am I what the brain is
-        thinking about" -- and no longer tests ACCESS -- "is my content in the workspace at all".
-        Under one slot those were the same question, which is what claim (7) asserts; they come
-        apart now, and this readout follows the head. MEASURED: with one peer faculty on the bus
-        this faculty is in `broadcast_all()` on 12 of 12 ticks while `ignited()` reads False on 12
-        of 12, and renaming that peer from 'aaa' to 'mmm' -- changing nothing else -- moves
-        `ignited()` to True on 11 of 12, because rank among co-admitted contents is settled by the
-        arbiter's lexicographic tie-break. WHY IT IS NOT FIXED HERE, structurally and not as a
-        preference: `GlobalWorkspace.step()` delivers ONLY the head to subscribers
-        (`_deliver(self.current)`), so a tap can never receive a content this faculty was admitted
-        with but did not top. Switching `_ignited` to membership would leave `global_availability`
-        at 0.0 for exactly those ticks and `access_index` = gate * availability * integration would
-        stay 0.0 anyway -- a readout that says "ignited" while reporting no reach. Paying this debt
-        means the BUS delivering its admitted set, which is `thalamus/global_workspace.py`. Until
-        then claim (8) measures access through `broadcast_all()` rather than through this flag, and
-        says so."""
-        content = self._ws.step()  # broadcasts to every subscribed tap
-        self._ignited = content is not None and content == self._LABEL
-        received = sum(1 for tap in self._taps if tap and tap[-1] == self._LABEL)
+        THE HALF THAT COULD NOT BE FIXED FROM THIS FILE, AND WAS. Switching this flag alone would
+        have been theatre: the bus delivered only the head to subscribers, so on precisely the
+        ticks where this faculty is admitted-but-not-head every tap holds somebody else's content,
+        `global_availability` reads 0.0, and `access_index = gate * availability * integration`
+        stays 0.0 -- a readout that says "ignited" while reporting no reach. So the bus now
+        delivers its ADMITTED SET (`thalamus/global_workspace.py::_deliver`, one channel, not a
+        second one), and the tap scan below asks the question that channel can now answer: did the
+        workspace this tap was handed CONTAIN my content. Claim (10) runs the head-only delivery
+        back as a shim and shows the index collapsing to 0.0 -- the trap, measured rather than
+        described.
+
+        AVAILABILITY IS DERIVED, NOT REDEFINED (P1). It is the same ratio it always was --
+        `|taps whose delivered workspace contained this content| / n_taps` -- over the same taps,
+        with no new constant and no new scale. Only the meaning of "received" moved, and it moved
+        because the delivery did. Corners, all asserted in `main()`: ZERO taps cannot occur
+        (`n_taps` floors at 2 in `__init__`, so there is no empty denominator); an EMPTY workspace
+        and SILENCE both deliver `()`, membership is False and availability is 0.0; a
+        SINGLE-ELEMENT workspace delivers `(mine,)` and reads 1.0, which is bit-for-bit the answer
+        the head-only contract gave -- which is why the live brain's numbers do not move at all
+        (60/60 ticks byte-identical, its bus having one admissible producer).
+
+        The tap test is a membership test on the delivered TUPLE, and that the delivered value IS
+        the workspace tuple is pinned by claim (3) rather than assumed: a bare string delivered in
+        its place would make `'GLOBAL' in 'GLOBAL'` true by substring and this scan would report
+        reach it never had."""
+        head = self._ws.step()  # advance the bus; it broadcasts the admitted SET to every tap
+        admitted = self._ws.broadcast_all()
+        self._ignited = self._LABEL in admitted  # ACCESS -- in the workspace
+        self._focus = head is not None and head == self._LABEL  # FOCUS -- on top of it
+        received = sum(1 for tap in self._taps if tap and self._LABEL in tap[-1])
+        # The `if self._ignited` gate is MEASURED INERT under the current delivery contract, and is
+        # KEPT rather than deleted. Why inert: `:507` steps the bus, which broadcasts the admitted
+        # SET to every tap, and `:508` reads that same set back -- so `tap[-1]` and `admitted` come
+        # from one cycle, `received > 0` implies `_LABEL in tap[-1]` implies `_LABEL in admitted`
+        # implies `_ignited`, and the false branch cannot be reached. A mutant deleting the gate is
+        # GREEN on every criterion in this module and in thalamus/global_workspace.py -- found by
+        # adversarial review, recorded here rather than left for the next reader to mistake for a
+        # live guard. Why kept anyway: it is inert only BECAUSE delivery carries the set. Under the
+        # retired head-only contract `tap[-1]` was a bare head, and this gate is what stopped a
+        # faculty that had lost the focus from reporting the reach of whoever took it. It is one
+        # conditional standing between a changed delivery contract and a consciousness-relevant
+        # readout claiming availability it does not have, so P8's delete-a-criterion-with-no-red
+        # rule is not the applicable one: this is a control proven insensitive, which is a
+        # disclosure and not a licence to drop it.
         self._availability = (received / self.n_taps) if self._ignited else 0.0
         if self._ignited:
             codes = [h for _, h in self._members]
@@ -458,11 +537,36 @@ class AccessConsciousness:
 
     # -- purely functional readout (NO phenomenal / subjective-experience field, ever) ------------
     def ignited(self):
-        """True iff the content crossed the all-or-none ignition threshold and was broadcast."""
+        """ACCESS. True iff the content crossed the all-or-none ignition threshold AND held one of
+        the limited-capacity workspace's slots, so it was broadcast to every subscriber.
+
+        This is membership, not rank. A content can be globally available while another content is
+        the focus -- that is what a capacity of more than one MEANS -- and `focused()` is the other
+        half. Under a one-slot workspace the two collapse into one statement, which is the RED
+        claim (10) uses to show the dissociation is real."""
         return self._ignited
 
+    def focused(self):
+        """FOCUS. True iff the content is the RANKED HEAD of the workspace -- what the brain is
+        currently thinking about, the same quantity `cortex/live_brain.py::thought` reads.
+
+        NOT a second competition and NOT a second quantity (P1/P2): it is one boolean over the
+        arbiter's existing head, read from the same `step()` return the workspace already gives
+        every caller. It is reported SEPARATELY from `ignited()` rather than folded into it,
+        because folding them is exactly the defect this file carried: rank among co-admitted
+        contents is settled by the arbiter's lexicographic tie-break on the source name, so a
+        readout that reports headship where it means access is settled by a string comparison.
+        `access_index` is gated on ACCESS, never on this."""
+        return self._focus
+
     def global_availability(self):
-        """Fraction in [0,1] of subscribed downstream taps that received the broadcast this tick."""
+        """Fraction in [0,1] of subscribed downstream taps whose delivered workspace CONTAINED this
+        content this tick -- global reach, all-or-none across taps.
+
+        Same ratio, same taps, no new constant: what moved is that the bus delivers its admitted
+        set, so "received" can now mean "my content was in the broadcast" on a tick where another
+        content is the head. See `step()` for the derivation and the ZERO/EMPTY/SILENCE/SINGLE
+        corners."""
         return self._availability
 
     def n_bound(self):
@@ -475,17 +579,29 @@ class AccessConsciousness:
         return self._integration
 
     def access_index(self):
-        """Honest ACCESS-consciousness index in [0,1] = ignition(all-or-none gate) *
+        """Honest ACCESS-consciousness index in [0,1] = ignition(all-or-none ACCESS gate) *
         global_availability * integration. RISES as more coherent neurons are grown and bundled.
-        Measures global availability only -- it is NOT a measure of phenomenal experience."""
+        Measures global availability only -- it is NOT a measure of phenomenal experience.
+
+        The gate is `ignited()` -- workspace MEMBERSHIP -- and deliberately not `focused()`. An
+        index called `access_index`, whose own docstring says global availability, gated on being
+        the top-ranked content would be measuring focus and reporting access. That is the defect
+        this file carried for the life of the multi-slot arbiter and it is the reason claim (10)
+        exists."""
         gate = 1.0 if self._ignited else 0.0
         return max(0.0, min(1.0, gate * self._availability * self._integration))
 
     def state(self):
         """Functional snapshot. NO 'conscious'/'sentient'/'phenomenal'/'subjective'/'aware'/
-        'feels'/'qualia' field -- access consciousness only (see module docstring + claim 5)."""
+        'feels'/'qualia' field -- access consciousness only (see module docstring + claim 5).
+
+        `ignited` is ACCESS (in the workspace) and `focused` is FOCUS (on top of it). They are
+        reported as two keys because they are two facts; a consumer that wants the old single-slot
+        reading of "ignited" wants `focused`, and every consumer that reads this dict for global
+        availability wants `ignited`."""
         return {
             "ignited": self._ignited,
+            "focused": self._focus,
             "global_availability": self._availability,
             "n_bound": self._n_bound,
             "integration": self._integration,
@@ -609,13 +725,100 @@ def _slot_after_threat(claim, threat=0.95, warm=8, psal=0.6):
     return ws.step()
 
 
+def _peer_names():
+    """The two peer source names claim (10) renames between, DERIVED from this faculty's own
+    `_SRC` rather than written down.
+
+    The arbiter's rank key ends in the full `(source, content)` pair, so among co-admitted contents
+    whose sustained-firing counts TIE the head is settled lexicographically on the source string.
+    Claim (10) uses that as its lever, so it needs one name that sorts before `_SRC` and one that
+    sorts after -- and if they were literals they could silently stop straddling the day `_SRC`
+    changed, which would turn the whole claim green-and-meaningless. Stepping one character either
+    side of `_SRC`'s first letter moves with it; `main()` asserts the straddle before using it."""
+    c = AccessConsciousness._SRC[0]
+    return chr(ord(c) - 1) * 3, chr(ord(c) + 1) * 3
+
+
+def _focus_run(peer_claim, peer_src=None, ws=None, n=12):
+    """Replay the live two-step cadence with ONE peer faculty posting `peer_claim` every tick, and
+    record ACCESS, FOCUS, the index and the reach SEPARATELY on every tick.
+
+    Deliberately not a variant of `_contended_run`, because the two claims pull the two different
+    levers this bus has. Claim (8) sweeps the peer POPULATION at a compliant claim, and measured
+    that the population is what decides ADMISSION (one competitor's volume moves it on 0 of 12
+    ticks). This one holds the population at one and changes what decides the HEAD. Using the
+    population lever here would measure nothing: at the loads where admission moves, the faculty is
+    out, and a faculty that is out has neither access nor focus.
+
+    `peer_claim = 0.0` is the peer NEUTERED -- sub-rheobase, never in the workspace -- so the arms
+    of the dissociation are ONE harness with one variable each, not several harnesses.
+
+    THE INDEX AND THE REACH ARE RECORDED AT FULL PRECISION, NOT ROUNDED, and that is a criterion
+    strength decision rather than a formatting one. Claim (10)'s load-bearing assert is that the
+    ACCESS readout is IDENTICAL across the peer rename; recording `round(x, 6)` would have made
+    that assert mean "identical to six decimal places", leaving a blind window in which a
+    headship-dependent term could enter the index and every gate stay green. MEASURED rather than
+    assumed in both directions: the three arms are BIT-identical (equal `float.hex()` on 12 of 12
+    ticks, not merely equal to 6dp), so the tightening costs nothing and is not a threshold; and a
+    mutant that subtracts 1e-9 from the index when this faculty is NOT the head passed the rounded
+    form and is RED against this one (at 1e-4 both are red -- the rounded form's blind window is
+    the whole interval below ~5e-7). Rounding belongs at the PRINT, and is applied there."""
+    ws = _bus() if ws is None else ws
+    ac = AccessConsciousness(seed=0, ws=ws)
+    claim = ac._max_claim()
+    src = _peer_names()[0] if peer_src is None else peer_src
+    out = []
+    for _ in range(n):
+        _post(ws, [(src, "peer", peer_claim)])
+        ws.step()
+        ac.bind_assembly(_coherent("cat", 3), salience=claim)
+        ac.step()
+        out.append(
+            (
+                ac.ignited(),
+                ac.focused(),
+                ac.access_index(),  # FULL precision -- see the docstring; rounding here would
+                ac.global_availability(),  # narrow claim (10)'s invariance to 6dp
+            )
+        )
+    return out
+
+
+def _head_only(ws):
+    """THE RETIRED HEAD-ONLY DELIVERY, re-expressed on the CURRENT bus: subscribers are handed
+    `contents[:1]` where they are now handed `contents`.
+
+    Same arbiter, same route, same type, same competition -- the ONLY variable is how much of the
+    workspace the broadcast carries. That is what makes it the RED for the delivery contract rather
+    than a second implementation of it, and it is why the shim slices the tuple instead of
+    reconstructing the old `_deliver(self.current)` signature: reverting the SHAPE too would have
+    made a passing arm ambiguous between 'the head is all that arrived' and 'the tap could not read
+    what arrived'. Returns the bus."""
+    real = ws._deliver
+
+    def head_only(contents):
+        real(contents[:1])
+
+    ws._deliver = head_only
+    return ws
+
+
 def main():
     # ---- (1) IGNITION IS ALL-OR-NONE: coherent+salient ignites (reaches >=2 taps); weak/incoherent
     #          does NOT. The control (a scrambled assembly) proves ignition is a real threshold. ----
     strong = _fresh()
     strong.bind_assembly(_coherent("cat", 5))  # 5 coincident neurons -> supra-threshold
     strong.step()
-    strong_reach = sum(1 for tap in strong._taps if tap and tap[-1] is not None)
+    # A tap now holds the DELIVERED WORKSPACE (a ranked tuple), so reach is a membership test --
+    # `is not None` would be true on every tick including the empty ones, because `()` is not None.
+    strong_reach = sum(1 for tap in strong._taps if tap and AccessConsciousness._LABEL in tap[-1])
+    # ...and what a tap receives must BE the workspace tuple, checked rather than assumed: a bare
+    # string delivered instead would satisfy the membership scan above by SUBSTRING ('GLOBAL' in
+    # 'GLOBAL'), which is a silently wrong reach reading rather than a loud one.
+    tap_payload = strong._taps[0][-1]
+    tap_is_workspace = (
+        type(tap_payload) is tuple and tap_payload == strong.workspace.broadcast_all()
+    )
 
     weak = _fresh()
     weak.bind_assembly(_scrambled(5))  # 5 orthogonal neurons -> sub-threshold
@@ -718,18 +921,26 @@ def main():
     # both tap sets were registered on the one object.
     inj_a.bind_assembly(_coherent("cat", 5))
     inj_a.step()
-    cross_tap = bool(inj_b._taps[0]) and inj_b._taps[0][-1] == AccessConsciousness._LABEL
+    cross_tap = bool(inj_b._taps[0]) and AccessConsciousness._LABEL in inj_b._taps[0][-1]
     # the rheobase is read OFF the bus, so the anchor cortex/brain.py uses is the pool's own. RED by
     # construction: the constructor argument says 0.55 and the bus says 0.42.
     odd_ws = _bus(ignition_threshold=0.42)
     odd_ac = AccessConsciousness(seed=0, ignition_threshold=0.55, ws=odd_ws)
     threshold_readthrough = odd_ac.ignition_threshold == 0.42
 
-    # ---- (7) THE WINNER-IDENTITY IGNITION TEST IS BEHAVIOUR-NEUTRAL ON A PRIVATE BUS. ------------
+    # ---- (7) THE HEAD TEST IS BEHAVIOUR-NEUTRAL ON A PRIVATE BUS. --------------------------------
     # `content is not None` and `content == _LABEL` are the same test when this faculty is the only
     # submitter, and a DIFFERENT test the moment it is not. Both halves are counted: agreement on
     # the private bus, and at least one DISAGREEMENT on a shared one -- without which the first
     # assert is vacuous (the `_fused_calls` lesson, applied to a second claim in this file).
+    #
+    # WHAT THIS CLAIM IS NOW FOR, since `_ignited` no longer reads the head at all (see `step()`).
+    # It is the control claim (10) leans on: it is the reason a single-submitter bus cannot tell
+    # ACCESS from FOCUS, and therefore the reason the dissociation had to be built on a bus with a
+    # second producer. It also pins the live brain's own regime -- `cortex/brain.py::_update_access`
+    # constructs this faculty with no `ws=`, so its bus has exactly one submitter and the two
+    # readouts agree there on every tick, which is why the delivery change moves NOTHING on the
+    # live path (measured: 60 of 60 wake ticks byte-identical on thought, workspace set and index).
     priv_seen = []
     priv_ac = _fresh()
     _record_slot(priv_ac, priv_seen)
@@ -869,6 +1080,90 @@ def main():
     cap_floor = cap_floor_ac._max_claim()
     cap_open = AccessConsciousness(seed=0, ws=_bus(self_boost=0.0, hysteresis=0.0))._max_claim()
 
+    # ---- (10) ACCESS vs FOCUS -- THE DISSOCIATION, CONSTRUCTED AND MEASURED. ---------------------
+    # `docs/CONSCIOUSNESS_METHODS.md` asks for a dissociation and not a marker, and until this
+    # workspace had more than one slot the tree could not state one: "my content is in the
+    # workspace" and "my content is what the brain is thinking about" were the SAME sentence. That
+    # is exactly what claim (7) counts, which is why it is this claim's control rather than a
+    # relic. Two slots or more and they are two sentences. Three arms on ONE bus, ONE variable
+    # each, and every number below was RUN:
+    #
+    #   peer NEUTERED (0.00, sub-rheobase) -> IN the workspace and ON TOP of it   access+focus
+    #   peer LOUD, sorting BEFORE this faculty -> IN the workspace, NOT on top    ACCESS, no focus
+    #   the SAME loud peer RENAMED to sort after -> IN, and on top again          access+focus
+    #
+    # THE RENAME IS THE LEVER, and choosing it is the whole point rather than a convenience. Among
+    # co-admitted contents that both saturate their sustained-firing counts -- which two compliant
+    # pools on this bus do -- the arbiter's rank key falls through to the source string, so the HEAD
+    # is decided by a name. That was this file's defect wearing its most embarrassing form: with
+    # `_ignited` reading the head, a consciousness-relevant flag and the `access_index` behind it
+    # were settled by a lexicographic comparison. So the criterion is stated ON that lever: the
+    # ACCESS readout -- flag, reach and index together -- must be BYTE-IDENTICAL across the rename,
+    # while the FOCUS readout must actually move, or the rename is not a lever and the invariance
+    # is vacuous. Both halves are counted.
+    #
+    # The load-bearing number is the index. It must be the SAME in the access-without-focus arm as
+    # in the access-with-focus arm: it is an ACCESS index, so losing the head to a louder peer may
+    # not change it. That single quantity is what BOTH failure modes destroy, in opposite
+    # directions, and both are run below as RED arms rather than described -- reading the head
+    # zeroes it when a peer out-ranks this faculty, and switching the flag to membership while the
+    # BUS still delivers only the head zeroes it through `global_availability` instead.
+    peer_lo, peer_hi = _peer_names()
+    peer_straddle = peer_lo < AccessConsciousness._SRC < peer_hi
+    diss_quiet = _focus_run(0.0, peer_src=peer_lo)
+    diss_lo = _focus_run(0.95, peer_src=peer_lo)
+    diss_hi = _focus_run(0.95, peer_src=peer_hi)
+    n_both = sum(1 for a, f, _i, _v in diss_quiet if a and f)
+    n_access_only = sum(1 for a, f, _i, _v in diss_lo if a and not f)
+    idx_access_only = min(i for _a, _f, i, _v in diss_lo)
+    idx_invariant = sum(1 for x, y in zip(diss_quiet, diss_lo) if x[2] == y[2])
+    # the rename A/B: ACCESS (flag, index, reach) must not see it; FOCUS must.
+    access_same = sum(
+        1 for x, y in zip(diss_lo, diss_hi) if (x[0], x[2], x[3]) == (y[0], y[2], y[3])
+    )
+    focus_moved = sum(1 for x, y in zip(diss_lo, diss_hi) if x[1] != y[1])
+    # RED (i) -- CAPACITY. The identical replay on a ONE-slot workspace, rebuilt from the shipped
+    # defence proportion exactly as claim (8) rebuilds it. There, ACCESS and FOCUS are one
+    # statement and cannot come apart on any tick, which is what makes the dissociation above a
+    # property of the multi-slot bottleneck rather than of two accessors that happen to differ.
+    diss_one = _focus_run(0.95, peer_src=peer_lo, ws=_bus(**one_slot))
+    n_one_apart = sum(1 for a, f, _i, _v in diss_one if a != f)
+    # RED (ii) -- DELIVERY. The identical replay with the bus handed back its retired head-only
+    # broadcast. Membership is untouched (this faculty is admitted just the same) and the ACCESS
+    # readout collapses anyway, because no tap was ever told the workspace contained it. This is
+    # the trap in explicit form: switching the flag WITHOUT the delivery change buys a flag that
+    # says "ignited" beside a reach of 0.0 and an index of 0.0.
+    diss_head_only = _focus_run(0.95, peer_src=peer_lo, ws=_head_only(_bus()))
+    n_ho_access = sum(1 for a, _f, _i, _v in diss_head_only if a)
+    idx_ho = max(i for _a, _f, i, _v in diss_head_only)
+    # THE REPORTING SURFACE, and it is checked rather than assumed because it was policed by
+    # NOTHING. Everything above reads the two ACCESSORS; every consumer outside this file reads the
+    # `state()` DICT, and `state()["focused"]` is the whole reason the focus question is answerable
+    # for them. MEASURED, not reasoned: deleting the `focused` key outright, and separately wiring
+    # it to `self._ignited`, each left this module's self-check green AND
+    # `reasoning/consciousness_probe.py` green -- so the key the fix was justified by could report
+    # the wrong quantity with every gate passing. Both halves are counted, so this cannot pass
+    # vacuously: the dict must MIRROR the accessors, and the two keys must actually COME APART.
+    st_ws = _bus()
+    st_ac = AccessConsciousness(seed=0, ws=st_ws)
+    st_claim = st_ac._max_claim()
+    st_rows = []
+    for _ in range(12):
+        _post(st_ws, [(peer_lo, "peer", 0.95)])
+        st_ws.step()
+        st_ac.bind_assembly(_coherent("cat", 3), salience=st_claim)
+        st_ac.step()
+        st_rows.append((st_ac.state(), st_ac.ignited(), st_ac.focused()))
+    # `"focused" in s` is tested BEFORE it is read so a DELETED key fails this criterion by its own
+    # message rather than by a bare KeyError three frames down -- the red must name the contract it
+    # broke, not merely happen.
+    state_mirrors = all(
+        "focused" in s and s["ignited"] is i and s["focused"] is f for s, i, f in st_rows
+    )
+    state_two_facts = sum(
+        1 for s, _i, _f in st_rows if s["ignited"] != s.get("focused", s["ignited"])
+    )
+
     # ---- (5) HONEST CEILING + DETERMINISM. --------------------------------------------------------
     st = strong.state()
     gate = 1.0 if st["ignited"] else 0.0
@@ -948,6 +1243,18 @@ def main():
         f"open={cap_open}"
     )
     print(
+        f"ACCESS vs FOCUS: neutered peer -> access+focus {n_both}/{len(diss_quiet)}; a 0.95 peer "
+        f"named {peer_lo!r} -> ACCESS WITHOUT FOCUS {n_access_only}/{len(diss_lo)}, access_index "
+        f"unchanged on {idx_invariant}/{len(diss_lo)} (>= {idx_access_only:.6f}); renaming it "
+        f"{peer_hi!r} moves FOCUS on {focus_moved}/{len(diss_hi)} and ACCESS on "
+        f"{len(diss_hi) - access_same}/{len(diss_hi)}"
+    )
+    print(
+        f"   REDs: a 1-slot bus never separates them ({n_one_apart}/{len(diss_one)} apart); "
+        f"head-only delivery keeps access {n_ho_access}/{len(diss_head_only)} and zeroes the index "
+        f"(max {idx_ho})"
+    )
+    print(
         "MEASURES ACCESS (global availability / ignition), NOT phenomenal experience "
         "-- no subjective-experience claim."
     )
@@ -959,6 +1266,12 @@ def main():
         "a strong, coherent bundled assembly must IGNITE (all-or-none broadcast)"
     )
     assert strong_reach >= 2, f"ignition must broadcast to >=2 downstream taps, got {strong_reach}"
+    assert tap_is_workspace, (
+        f"a subscribed tap must receive the WORKSPACE TUPLE the same cycle's broadcast_all() "
+        f"returns -- the reach scan is a membership test, and a bare content delivered in its "
+        f"place would satisfy it by SUBSTRING and report reach that never happened. Got "
+        f"{type(tap_payload).__name__} {tap_payload!r} against {strong.workspace.broadcast_all()!r}"
+    )
     assert not weak.ignited(), (
         "a weak/incoherent assembly must NOT ignite (ignition is a real threshold)"
     )
@@ -1079,6 +1392,68 @@ def main():
         f"(ignited={cap_floor_ignites})"
     )
     assert cap_open == 1.0, f"a bus with no incumbent defence caps at 1.0, got {cap_open}"
+    # (10) ACCESS and FOCUS are two facts and this faculty reports them as two -- with BOTH REDs run.
+    assert peer_straddle, (
+        f"claim (10)'s lever is the rank tie-break on the SOURCE NAME, so its two peer names must "
+        f"straddle this faculty's own {AccessConsciousness._SRC!r}: got {peer_lo!r} / {peer_hi!r}"
+    )
+    assert n_both == len(diss_quiet), (
+        f"with the peer NEUTERED this faculty must be BOTH in the workspace and its head, or the "
+        f"focus arm is not measuring focus: {n_both}/{len(diss_quiet)}"
+    )
+    assert n_access_only == len(diss_lo), (
+        f"THE DISSOCIATION: against a 0.95 peer that out-ranks it, this faculty must hold a "
+        f"workspace slot while NOT being the head, on every tick. Anything else means access and "
+        f"focus have re-collapsed and this module is back to reporting headship where it means "
+        f"access: {n_access_only}/{len(diss_lo)} (raw {diss_lo[:3]})"
+    )
+    assert idx_access_only > 0.0 and idx_invariant == len(diss_lo), (
+        f"an ACCESS index must not depend on holding the FOCUS -- losing the head to a louder peer "
+        f"must leave it exactly where it was: unchanged on {idx_invariant}/{len(diss_lo)} ticks, "
+        f"minimum {idx_access_only}"
+    )
+    assert access_same == len(diss_lo) and focus_moved >= 1, (
+        f"THE STRING TEST, and it is the defect this claim exists to close. Renaming the peer "
+        f"{peer_lo!r} -> {peer_hi!r} changes nothing about any competition, so the ACCESS readout "
+        f"(flag, index, reach) must be identical on every tick -- got {access_same}/{len(diss_lo)}. "
+        f"FOCUS must move on at least one tick ({focus_moved}), or the rename is not a lever and "
+        f"the invariance above is vacuous"
+    )
+    assert n_one_apart == 0, (
+        f"RED (i): on a ONE-slot workspace 'in the workspace' and 'is the head' are the SAME "
+        f"statement and must never disagree -- if they do, the dissociation above is a property of "
+        f"these two accessors rather than of the capacity, and claim (7) is wrong too: "
+        f"{n_one_apart}/{len(diss_one)} ticks disagreed"
+    )
+    # RED (ii) is SPLIT rather than compound, because a single message on a two-condition assert
+    # names a cause it has not established. Measured: under an unrelated `gw-reordered` delivery
+    # mutant the compound form fired and printed "handed back its retired HEAD-ONLY broadcast ...
+    # must collapse to 0.0 (max 0.8660714285714286)" -- no head-only revert had happened, and the
+    # printed number contradicted the sentence demanding it. That is the defect this file's own
+    # LIMIT 4 records against rpm_solver, committed in the file that names it. Each half now
+    # reports only what it measured.
+    assert n_ho_access == len(diss_head_only), (
+        f"RED (ii-a), MEMBERSHIP: under head-only delivery this faculty is still ADMITTED on every "
+        f"tick -- got {n_ho_access}/{len(diss_head_only)}. If admission itself moved, the arm is not "
+        f"isolating delivery and the index reading below is about the wrong variable"
+    )
+    assert idx_ho == 0.0, (
+        f"RED (ii-b), REACH: with the bus handed back its retired HEAD-ONLY broadcast, admission is "
+        f"unchanged (see ii-a) and access_index must therefore collapse to 0.0 -- got max {idx_ho}. "
+        f"If it does not, the delivery change in thalamus/global_workspace.py is buying nothing here "
+        f"and should be reverted rather than believed. NOTE this asserts the value under the "
+        f"HEAD-ONLY shim only; a non-zero here means either the shim did not apply or availability "
+        f"stopped depending on the delivered payload -- check `_deliver` before believing either"
+    )
+    assert state_mirrors and state_two_facts == len(st_rows), (
+        f"THE REPORTING SURFACE must carry the dissociation, not just the accessors. `state()` is "
+        f"what every consumer outside this file reads, so its 'ignited' and 'focused' keys must "
+        f"MIRROR ignited()/focused() on every tick AND must actually disagree on the "
+        f"access-without-focus arm -- a 'focused' key that echoes 'ignited' is this claim's "
+        f"collapse wearing the readout instead of the flag, and a missing one makes the question "
+        f"unanswerable for the eight live consumers of this dict "
+        f"(mirrors={state_mirrors}, keys disagreed on {state_two_facts}/{len(st_rows)} ticks)"
+    )
     # (5) honest ceiling: no phenomenal field; index reproduces from the 3 functional measures alone.
     assert no_phenomenal_key, f"state() must contain NO phenomenal key {_BANNED}: {list(st)}"
     assert abs(st["access_index"] - reproduced) < 1e-9, (
