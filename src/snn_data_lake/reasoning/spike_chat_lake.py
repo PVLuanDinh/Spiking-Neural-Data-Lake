@@ -883,12 +883,67 @@ class LakeChat:
     def _new_workspace(self):
         """The ONE workspace construction this chat thinks through. `_ignite` runs it per turn and
         `__init__` reads its rheobase, so 'what drive ignites' is asked of the same object that
-        answers it -- there is no second place to keep the threshold in sync with (P1)."""
+        answers it -- there is no second place to keep the threshold in sync with (P1).
+
+        THIS INSTANCE STAYS PRIVATE, AND THE REASON IS A MEASUREMENT, NOT A PREFERENCE. The P6
+        worklist proposed repointing it onto the shared handle (`brain.workspace`) so `_ignite`
+        would think on the one bus. That was tested rather than argued -- `make_brain(seed=0,
+        refit_every=10, persist=False)`, 60 wake ticks, brain attached, `_new_workspace` repointed to
+        return `brain.workspace`, then five `converse()` turns -- and it is REFUTED on two counts:
+
+          * THE CHAT ANSWERS WITH THE ARM'S PERCEPT. `converse("what is the capital of france")`
+            returned the INT `0` -- the arm's perception unit index, sitting in the slot defended by
+            its own hysteresis -- where the private-workspace control returned a string. `_ignite`
+            competes candidate replies against whatever already occupies the slot, so on the shared
+            bus the winner can be a quantity with no lexical relation to the question at all. That is
+            the force-wire P6's honesty guard names: noise wearing a conversation's clothes.
+          * IT DESTROYS THE PRODUCER'S BROADCAST. The arm's slot measured `(0, 0.476305)` before the
+            turns and `(None, 0.0)` after them, against a control that was `(0, 0.476305)` both
+            times. `_ignite` is a WRITE-AND-STEP path (3 re-entrant `step()` calls per turn), and
+            `step()` is the tick operation `brainstem/autonomous_loop.py` owns -- a tenant of the one
+            bus must not drive its clock.
+
+        Two further reasons that need no measurement. It would RAISE the write count while
+        faculty-to-faculty reads stayed flat, which `tools/p6_gate.py` states in its own verdict line
+        is not progress. And on this free-threaded build `GlobalWorkspace.submit()` is documented
+        SINGLE-THREADED ONLY because buffer order is observable, so a chat turn posting from off the
+        tick thread would make the symmetry-break jitter depend on which thread won a race -- the
+        nondeterminism the workspace's own determinism self-check forbids.
+
+        The P6 direction this module DOES take is therefore the read side, not the write side: see
+        `_attended`, which adopts the shared instance, constructs nothing and submits nothing."""
         return GlobalWorkspace(seed=0)
 
     def _attended(self):
-        """What the brain's ONE Global Workspace is broadcasting RIGHT NOW -- the single content
-        currently globally available -- or None when no brain is attached or nothing has ignited.
+        """What the brain's ONE Global Workspace is broadcasting RIGHT NOW and HOW STRONGLY it is
+        still holding it, as `(content, hold)` -- or `(None, 0.0)` when no brain is attached or
+        nothing has ignited.
+
+        WHY THE HOLD IS READ AT ALL, and it is the defect this method carried until now rather than
+        an enrichment. Measured on the LIVE brain, `make_brain(seed=0, refit_every=10,
+        persist=False)`, clock.phase forced to 0.25, 150/150 wake ticks, brain attached by hand:
+        `_attended()` returned '0' on EVERY tick -- 1 distinct, 0 changes -- and
+        `_attended_clause()` was therefore ONE constant string, 1 distinct / 0 changes, for the whole
+        run. A consumer whose own output cannot move is P3 shape 5 (a constant wearing a signal's
+        clothes) no matter how live the object it reads. Over the SAME 150 ticks `broadcast_hold` was
+        150 distinct / 149 changes, so the only quantity on that bus that moved was the one this
+        method was not reading. Both numbers are re-derived by this module's own pass notes; neither
+        is inherited.
+
+        TWO QUESTIONS ABOUT ONE SLOT, NOT TWO BUSES (P2). `broadcast()` and `broadcast_hold` are both
+        declared accessors over the single `_slot()` load of the single incumbent -- the workspace's
+        own docstring makes that argument at the source. Nothing is constructed here, nothing is
+        submitted, and no second route to the content exists: this reads the ONE object
+        `brainstem/autonomous_loop.py` owns, so `tools/p6_gate.py`'s instance census and its WRITE
+        count are unchanged and only its READ count moves.
+
+        WHY THIS RETURNS A PAIR WHILE `GlobalWorkspace.broadcast()` DELIBERATELY DOES NOT. The
+        workspace rejected folding (content, hold) into its own return because that would change the
+        return type of the tree's one cross-module read (`cortex/live_brain.py::thought`) and of
+        every `is not None` test written against it. That objection does not transfer: `_attended()`
+        is private to this class and has exactly ONE caller (`_attended_clause`), so folding costs no
+        consumer and buys the property the workspace asks for by name -- a reader that needs both
+        answers from the SAME tick takes them from one snapshot instead of two independent reaches.
 
         P6 CONSUMER, and the only one this module has. Every other workspace touch in this file is a
         WRITE into a workspace this chat built for ITSELF (`_new_workspace`, a fresh instance per
@@ -908,10 +963,11 @@ class LakeChat:
         clothes. It is REPORTED instead, at the two places where the honest answer is about the brain
         rather than about the lake (the gap turn and the access-consciousness turn).
 
-        None is the honest answer in three situations the caller cannot tell apart, and does not need
-        to: no brain attached (`self.brain` is None, the default), a brain whose arm was built with
-        workspace=False, and a brain whose workspace has not ignited yet. All three mean "nothing is
-        globally available to report".
+        A None content is the honest answer in three situations the caller cannot tell apart, and
+        does not need to: no brain attached (`self.brain` is None, the default), a brain whose arm
+        was built with workspace=False, and a brain whose workspace has not ignited yet. All three
+        mean "nothing is globally available to report", and all three carry hold 0.0 -- the
+        workspace's own contract for an empty slot.
 
         TWO MEASURED LIMITATIONS, recorded here because both are easy to leave as silent assumptions.
 
@@ -923,53 +979,83 @@ class LakeChat:
         module this pass does not own. Stated as a gap rather than implied: the CONSUMER half is
         here and proven; the attachment is escalated.
 
-        HOW BIG THAT GAP IS, MEASURED rather than characterised (adversarial re-run 2026-08-05,
-        `make_brain(seed=0, persist=False)`, 8 wake ticks, one arm per process): with the brain
-        attached by hand the producer submits 16 times, `broadcast()` is non-None on 8 of 8 ticks
-        and `_attended()` on 8 of 8, and `converse("what is a quokka")["reply"]` is 346 bytes.
-        Neuter the producer -- `workspace.submit` pinned to a no-op from tick 0 -- and it is 0 / 0
-        / 0 and 156 bytes. A rebuilt LIVE arm reproduces the 346-byte reply exactly, so the control
-        is not silently taking the treatment's path. *(The pass that wrote this docstring recorded
-        `broadcast()` = 4 for the LIVE arm; re-run under the harness stated above it is 8 of 8. The
-        conclusion is unchanged and the number was not.)* THE NUMBER THAT MATTERS IS THE THIRD ONE:
-        an UNATTACHED chat -- which is every production caller today -- yields a reply BYTE-IDENTICAL
-        to the fully neutered arm (156 bytes, verified `==`). So on the live path this consumer's
-        charge is exactly zero, and the 346-vs-156 difference is a property of the hand attachment,
-        not of the tree as it ships. That is the honest shape of this wire until the escalated line
-        lands.
+        HOW BIG THAT GAP IS, MEASURED rather than characterised. RE-RUN 2026-08-06 over 150 wake
+        ticks (`make_brain(seed=0, refit_every=10, persist=False)`, clock.phase forced to 0.25, one
+        brain per arm), three arms:
 
-        (2) `tools/p6_gate.py` COUNTS this read and MIS-ATTRIBUTES it, re-derived from the gate's own
-        `resolve_owner` rather than assumed. Reads go 10 -> 11 with writes flat at 46 and the
-        instance census flat at 34/16, which is the direction P6 calls progress -- but the read is
-        bucketed as a SELF-read, so FACULTY-to-FACULTY stays 0. The reason is mechanical: the
-        resolver walks one hop through `self.<attr> = SomeClass(...)`, and `self.brain` is assigned
-        `None` here (a slot a host fills, by design), so it falls back to matching the bare token
-        `workspace` -- which `brainstem/autonomous_loop.py` and `reasoning/developmental_loop_brain.py`
-        BOTH bind, leaving it ambiguous and unattributed. At RUNTIME the object is provably the arm's
-        (`brain.workspace is live_brain.workspace is arm.workspace` -> True), so the read is
-        cross-module in fact and self-read only in the census. The gate is not patched to fix this:
-        adjusting an instrument to improve one's own number is the failure this project logs most
-        often, and the gate is outside this pass's ownership.
+            arm                      _attended() content   hold        clause        gap reply
+            LIVE                     1 distinct / 0 chg    150 / 149   150 / 149     430 bytes
+            PRODUCER NEUTERED        1 distinct / 0 chg    1 / 0       1 / 0 ('')    156 bytes
+            SALIENCE PINNED to 0.6   1 distinct / 0 chg    3 / 149     3 / 149       428 bytes
 
-        AND THE WHOLE-PASS DELTA, because `10 -> 11` is this wire's MARGINAL number and a reader
-        will take it for the headline. Re-derived by running `tools/p6_gate.py` against a pristine
-        HEAD tree and against this one: reads 9 -> 11, writes 46 -> 46, subscribes 10 -> 10,
-        instance census 34/16 -> 34/16. Reads up on a flat write count and a flat census is the
-        direction the gate calls progress, and it is the only P6 number that moved. Cross-module
-        reads stayed at 1, FACULTY-to-FACULTY stayed at 0, and WRITERS READ BY NOBODY stayed at
-        7 of 10. Of the two new reads, THIS one is the only one on a production path: the other is
-        `cortex/brain.py`, inside that module's own `main()` self-check, which the gate counts at
-        full weight because its self-check discount applies to BUS-module WRITES only. So the read
-        count rose by two and the number of faculties reading another faculty in production rose
-        by zero. Recording that here rather than leaving the marginal figure to stand alone.
+        The neuter is source-selective -- only submissions from 'perception' and 'salience' are
+        dropped, so it silences the ARM and nothing else -- and its positive control is that the
+        neutered bus reports `broadcast()=None hold=0.0` against the live bus's `0 / 0.476...`. The
+        third arm is the per-item attribution: the producer still submits, only the DERIVED percept
+        salience is pinned back to the literal 0.6 it used to be, and the consumer's own output
+        collapses from 150 distinct clauses to 3 (the period-3 decay/refresh cycle 0.6 -> 0.51 ->
+        0.4335). So this consumer carries the signal phase's derived salience specifically, not
+        merely the producer's presence. *(An earlier pass recorded 346 bytes for the LIVE arm over 8
+        ticks; the reply is 430 now because the clause reports the charge as well as the content.
+        The 156-byte figure is unchanged and was re-verified.)*
 
-        CONCURRENCY, stated because this is the free-threaded build (Py_GIL_DISABLED=1): two
-        attribute loads and a zero-argument accessor that returns the incumbent's content. It mutates
-        nothing and takes no lock, so it can introduce no race of its own -- and it does not make
-        GlobalWorkspace thread-safe or claim to."""
-        if getattr(self.brain, "workspace", None) is None:
-            return None
-        return self.brain.workspace.broadcast()
+        THE NUMBER THAT MATTERS IS STILL THE LAST ONE: an UNATTACHED chat -- which is every
+        production caller today -- yields a reply BYTE-IDENTICAL to the fully neutered arm (156
+        bytes, re-verified `==`, and its clause is '' on 150 of 150 ticks). So on the live path this
+        consumer's charge is exactly zero, and the 430-vs-156 difference is a property of the hand
+        attachment, not of the tree as it ships. That is the honest shape of this wire until the
+        escalated line lands, and widening the read did not change it.
+
+        (2) `tools/p6_gate.py` COUNTS ONLY HALF OF THIS READ, AND MIS-ATTRIBUTES THE HALF IT SEES --
+        both re-derived from the gate's own source rather than assumed, and both are limits of the
+        instrument, not of the wire.
+
+        The half it cannot see: the gate's read vocabulary is `broadcast()` at arity 0,
+        `broadcast_to`, `inbox`, and the `current` property (`READ_ATTR = "current"`).
+        `broadcast_hold` is in none of them, so the second declared read added here is invisible to
+        the census -- this module's row reads 1 write / 1 read both before and after the change.
+        The half it sees, it buckets as a SELF-read, so FACULTY-to-FACULTY stays 0. The reason is
+        mechanical: the resolver walks one hop through `self.<attr> = SomeClass(...)`, and
+        `self.brain` is assigned `None` here (a slot a host fills, by design), so it falls back to
+        matching the bare token `workspace` -- which `brainstem/autonomous_loop.py` and
+        `reasoning/developmental_loop_brain.py` BOTH bind, leaving it ambiguous and unattributed. At
+        RUNTIME the object is provably the arm's (`brain.workspace is live_brain.workspace is
+        arm.workspace` -> True, asserted by identity and by `id()`), so the read is cross-module in
+        fact and self-read only in the census.
+
+        THE GATE IS NOT PATCHED FOR EITHER, and that is a deliberate refusal rather than an
+        omission: adjusting an instrument to improve one's own number is the failure this project
+        logs most often, the gate is outside this pass's ownership, and a read teaching the gate to
+        count `broadcast_hold` would raise a number this pass has an interest in.
+
+        WHAT THIS PASS'S P6 DELTA THEREFORE IS, stated exactly: **zero on every gate counter.** No
+        instance is constructed, no submission is added, and the one read the gate can see was
+        already there. Tree-wide totals are deliberately NOT quoted here -- measured twice inside one
+        session on 2026-08-06 they moved (instances 40 -> 47, private 16 -> 23, writes 52 -> 60,
+        reads flat at 18) with every increment coming from OTHER modules being edited concurrently.
+        Re-run the gate for counts; what belongs in this docstring is the per-module row, which did
+        not move. The progress this pass claims is not a gate number at all: it is that the
+        consumer's own output stopped being a CONSTANT, which the gate does not measure and only a
+        live neuter-A/B can show.
+
+        CONCURRENCY, stated because this is the free-threaded build (Py_GIL_DISABLED=1): attribute
+        loads and two zero-state accessors over one incumbent tuple. It mutates nothing and takes no
+        lock, so it can introduce no race of its own -- and it does not make GlobalWorkspace
+        thread-safe or claim to. Two things are now stronger than they were. (i) The handle is bound
+        ONCE. The previous form evaluated `self.brain.workspace` twice -- once in the `is None`
+        guard, once in the return -- so a host rebinding `chat.brain = None` between them raised
+        `AttributeError` on a path documented as returning None; the local binding removes that
+        window, which is the same two-loads defect `GlobalWorkspace._slot()` was added to close one
+        level down. (ii) `broadcast()` and `broadcast_hold` are still TWO loads of the incumbent, and
+        the workspace states plainly that cross-accessor coherence is the weaker guarantee. The
+        bounded consequence is stated rather than implied: a `step()` landing between them can pair a
+        content with a neighbouring tick's charge in a REPORTED SENTENCE. It cannot raise (an emptied
+        slot yields hold 0.0, never a subscript on None), it mutates nothing, and it reaches no
+        decision -- `known`, `ignited` and `source` are untouched by this method."""
+        ws = getattr(self.brain, "workspace", None)
+        if ws is None:
+            return (None, 0.0)
+        return (ws.broadcast(), float(ws.broadcast_hold))
 
     def _attended_clause(self):
         """The measured one-sentence report of `_attended()`, or '' when nothing is globally
@@ -981,7 +1067,7 @@ class LakeChat:
         consumer existed. That is deliberate: it keeps the deterministic gates byte-identical and it
         makes the neuter-A/B one-sided in the right direction (the clause can only ever APPEAR when a
         producer actually broadcast something)."""
-        content = self._attended()
+        content, hold = self._attended()
         if content is None:
             return ""
         # `ascii()`, not `!r`: the measured contents are a perception unit INDEX and the literals
@@ -989,10 +1075,18 @@ class LakeChat:
         # ASCII-only (Windows cp1252 crashes otherwise), and what a future producer puts in that slot
         # is not this module's to promise. `ascii()` makes the guarantee structural instead of
         # depending on a producer in another file staying well-behaved.
+        #
+        # `%.6g` on the charge, and the width is a MEASURED choice, not a display preference: this
+        # clause is the consumer's own output, so a rounding instrument that flattens the producer's
+        # variation would manufacture exactly the null this read exists to remove ("a null through a
+        # rounding instrument is not a null", P8). Measured on the live 150-tick sequence, 6
+        # significant digits preserve 150 of 150 distinct values; the self-check re-runs that check
+        # against a pinned sequence so a narrower format cannot be introduced silently.
         return (
             f" Right now the brain I am attached to is holding {ascii(content)} in its one global "
-            "workspace slot -- that is what it is currently attending to, read off that workspace "
-            "rather than inferred from this turn."
+            f"workspace slot at attractor charge {hold:.6g} -- that is what it is currently "
+            "attending to and how strongly the slot is still holding it, both read off that one "
+            "workspace rather than inferred from this turn."
         )
 
     def _drive(self, kind, evidence=0.0):
@@ -1669,16 +1763,20 @@ def demo():
     # delete it rather than count it.
     class _StubWorkspace:
         """The minimal duck-type of what `_attended` reads off a workspace: a zero-argument
-        `broadcast()`. PINNED on purpose -- a criterion whose OFF state is produced by a real
-        workspace failing to ignite cannot tell a neutered producer from a broken harness, which is
-        the false-negative shape this project has been bitten by. Also deliberately not a real
-        `GlobalWorkspace`: constructing one here would add a PRIVATE instance to
-        `tools/p6_gate.py`'s census and a `submit` to its write count -- the two numbers this wire
+        `broadcast()` and a `broadcast_hold`. PINNED on purpose -- a criterion whose OFF state is
+        produced by a real workspace failing to ignite cannot tell a neutered producer from a broken
+        harness, which is the false-negative shape this project has been bitten by. Also
+        deliberately not a real `GlobalWorkspace`: constructing one here would add a PRIVATE instance
+        to `tools/p6_gate.py`'s census and a `submit` to its write count -- the two numbers this wire
         exists to leave flat. The REAL producer is exercised outside this hermetic self-check,
-        against a live brain, exactly as `_StubBrain` above stands in for a real one."""
+        against a live brain, exactly as `_StubBrain` above stands in for a real one.
 
-        def __init__(self, content):
+        `hold` defaults to the value an EMPTY slot reports, so a stub written for the content
+        question alone still obeys GlobalWorkspace's contract rather than inventing a charge."""
+
+        def __init__(self, content, hold=0.0):
             self._content = content
+            self.broadcast_hold = hold
 
         def broadcast(self):
             return self._content
@@ -1691,10 +1789,30 @@ def demo():
     attended_brain.workspace = _StubWorkspace(None)  # PRODUCER NEUTERED: the slot is empty
     q_gap_neut = chat.converse("what is a quokka")
     q_c_neut = chat.converse("are you conscious")
+    # PER-ITEM NEUTER ATTRIBUTION (P8 item 3). The clause carries TWO declared reads of the ONE slot,
+    # so each is neutered on its own. Above, the CONTENT was removed. Below the content is held
+    # IDENTICAL and only the slot's attractor charge moves -- the state the clause could not
+    # distinguish at all until 2026-08-06, because it read `broadcast()` alone and that returned the
+    # same value on 150 of 150 live wake ticks while the charge changed on 149 of them.
+    attended_brain.workspace = _StubWorkspace("threat", hold=0.4335)
+    q_gap_hold_lo = chat.converse("what is a quokka")
+    attended_brain.workspace = _StubWorkspace("threat", hold=0.6)
+    q_gap_hold_hi = chat.converse("what is a quokka")
+    attended_brain.workspace = _StubWorkspace("threat", hold=0.6)  # CONTROL: nothing moved at all
+    q_gap_hold_same = chat.converse("what is a quokka")
+    # FORMAT REDS. The charge is reported through `%.6g`, which is an instrument sitting between the
+    # producer and this consumer's output, so it gets its own two-sided check: a 1e-9 wobble MUST
+    # collapse (that is what the format is for) and a difference the producer actually made MUST NOT.
+    attended_brain.workspace = _StubWorkspace("threat", hold=0.4335 + 1e-9)
+    q_gap_hold_eps = chat.converse("what is a quokka")
+    attended_brain.workspace = _StubWorkspace("threat", hold=0.4336)
+    q_gap_hold_near = chat.converse("what is a quokka")
     chat.brain = None
     q_gap_off = chat.converse("what is a quokka")  # no brain at all: the pre-consumer bytes
     print(f"brain [gap, ws broadcasting]: ...{q_gap_live['reply'][-96:]}")
-    print(f"brain [gap, producer neuter]: ...{q_gap_neut['reply'][-96:]}\n")
+    print(f"brain [gap, producer neuter]: ...{q_gap_neut['reply'][-96:]}")
+    print(f"brain [gap, charge 0.4335  ]: ...{q_gap_hold_lo['reply'][-96:]}")
+    print(f"brain [gap, charge 0.6     ]: ...{q_gap_hold_hi['reply'][-96:]}\n")
 
     dur = chat.lake.durability_check()
 
@@ -1795,7 +1913,30 @@ def demo():
     assert q_gap_neut["reply"] == q_gap_off["reply"], (
         "a neutered producer must leave the reply EXACTLY where an unattached chat leaves it -- so "
         "the difference above is carried by the producer and not by the attachment. RED: emit any "
-        "text when `_attended()` is None"
+        "text when `_attended()` reports no content"
+    )
+    # PER-ITEM ATTRIBUTION for the SECOND declared read (the slot's attractor charge).
+    assert q_gap_hold_lo["reply"] != q_gap_hold_hi["reply"], (
+        "with the CONTENT pinned identical, moving only the slot's attractor charge must still "
+        "change this consumer's own output. This is the read's whole justification: measured on the "
+        "live brain over 150 wake ticks the content was 1 distinct value / 0 changes while the "
+        "charge was 150 / 149, so a clause built on the content alone was a CONSTANT -- P3 shape 5, "
+        "a constant wearing a signal's clothes. RED: drop the charge from the clause"
+    )
+    assert q_gap_hold_hi["reply"] == q_gap_hold_same["reply"], (
+        "CONTROL for the line above: an unchanged content AND an unchanged charge must reproduce "
+        "byte-identically, so the difference is carried by the charge and not by turn order or by "
+        "state this chat accumulated between the two turns"
+    )
+    assert q_gap_hold_lo["reply"] == q_gap_hold_eps["reply"], (
+        "the reported charge is a 6-significant-digit read of a float, so a 1e-9 wobble must NOT be "
+        "reported as a different brain state. RED: interpolate the raw float"
+    )
+    assert q_gap_hold_lo["reply"] != q_gap_hold_near["reply"], (
+        "...and symmetrically a difference the producer actually made (0.4335 vs 0.4336) must "
+        "SURVIVE that format. RED: narrow it to %.2g -- a rounding instrument that flattens the "
+        "producer's variation would manufacture exactly the null this read exists to remove (P8, "
+        "'a null through a rounding instrument is not a null')"
     )
     assert "'threat'" in q_c_live["reply"] and "'threat'" not in q_c_neut["reply"], (
         "the same neuter-A/B on the access-consciousness turn: what is globally available in me is "

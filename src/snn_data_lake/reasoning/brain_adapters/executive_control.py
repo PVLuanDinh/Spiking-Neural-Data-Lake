@@ -39,11 +39,17 @@ P2 -- what already exists, checked before proposing promotion rather than after:
     MANDATES a private one. Retire it once that import is repointed.
     THE COST OF THAT REDESIGN, DISCLOSED BECAUSE IT MOVED THE INSTRUMENT THE WRONG WAY. P6's census
     is RE-DERIVED here rather than quoted, which is what `docs/POLICIES.md` instructs
-    ("Re-derive with it rather than quoting a figure"): `python tools/p6_gate.py` on this working
-    tree reads **31 instantiation sites across 9 modules, 16 of them private and mutually
-    invisible**, not the 26 / 11 that POLICIES.md records and that an earlier draft of this
-    paragraph copied. THIS FILE holds 9 of those 31 -- the wrapper's own `_ws`, plus `probe`,
-    `wb_hi`, `wb_lo`, `wb_at`, `wb_under`, `shared_ws`, `share_a`, `share_b` in the self-check
+    ("Re-derive with it rather than quoting a figure"). **The tree-wide totals this paragraph used
+    to carry are DELETED rather than updated, because they were re-derived twice inside a single
+    session on 2026-08-06 and moved both times**: the sentence here read "31 instantiation sites
+    across 9 modules, 16 of them private" (itself a correction of POLICIES.md's 26 / 11); measured
+    at the start of that session it was 40 / 9 with 16 private, and measured an hour later 47 / 9
+    with 23 private -- with **every one of those increments coming from OTHER modules** being edited
+    concurrently, none from this file. A tree-wide count written down here is therefore not stale
+    from age, it is stale from the tree having more than one author, which no re-derivation cadence
+    fixes. What is durable and is what a reader needs from this paragraph: THIS FILE holds **9** of
+    them -- the wrapper's own `_ws`, plus `probe`, `wb_hi`, `wb_lo`, `wb_at`, `wb_under`,
+    `shared_ws`, `share_a`, `share_b` in the self-check
     (named rather than cited by line, because writing a line number here is the drift this file
     already refuses for its own module path; `python tools/p6_gate.py` prints all nine with their
     current lines). That is up from 3 at HEAD, and every one of the six new ones is a self-check
@@ -55,7 +61,11 @@ P2 -- what already exists, checked before proposing promotion rather than after:
     count against a flat WRITE count is progress; a rising write count is not" -- this file's WRITE
     count went 3 -> 7 with faculty-to-faculty reads flat at 0 of 9. Net: the `ws=` parameter is a
     real channel, and the self-check demonstrating it made the measured P6 number worse. Both halves
-    belong in the promotion decision.
+    belong in the promotion decision -- and a THIRD half was added 2026-08-06: the channel was
+    finally driven against the LIVE shared bus and its CHARGE measured (the wrapper's own ignition
+    verdict flips at the rheobase when the arm's producer is neutered), together with the reason it
+    is still not shipped live (`broadcast()` steps a clock it does not own). Both measurements, with
+    their harnesses and their control, are recorded on `WorkspaceBroadcast` itself rather than here.
   * DopamineModulator is NOT a duplicate, but half of it is. `brainstem/autonomous_loop.py:1585-
     1617` already runs RPE -> `DopamineNuclei.da_level` on the live tick -- and stores the result as
     TELEMETRY (`self._da_level`) while the learning rate is scaled by `cort.learn_rate_scale(r)`
@@ -238,9 +248,52 @@ class WorkspaceBroadcast:
     `GlobalWorkspace` itself plus one expression, and constructing its own workspace makes it one of
     the private, mutually invisible instances `tools/p6_gate.py` counts. Passing `ws` shares an
     existing workspace instead -- that is the construction-path change P6 says must come before any
-    faculty can read another's broadcast. It is a channel, not yet a wire: no live path shares one
-    today, and this class should be retired outright once its one importer is repointed at
-    `GlobalWorkspace`."""
+    faculty can read another's broadcast. It is a channel, not yet a wire, and this class should be
+    retired outright once its one importer is repointed at `GlobalWorkspace`.
+
+    THE CHANNEL CHARGES -- MEASURED 2026-08-06 ON THE LIVE SHARED BUS, not asserted. Until now the
+    paragraph above said only that the channel existed; P6's honesty guard asks for the other half
+    (neuter faculty A, show faculty B's OWN output changes), so it was run. Harness:
+    `make_brain(seed=0, refit_every=10, persist=False)`, clock.phase forced to 0.25, 60 wake ticks,
+    then `WorkspaceBroadcast(seed=0, ws=brain.workspace)` with the identity asserted
+    (`wrapper._ws is brain.workspace` -> True). The producer neuter drops ONLY the arm's sources
+    ('perception', 'salience') and leaves every other submitter reaching the bus, so the wrapper's
+    OWN write is not silenced by its own control. Three saliences, expressed against the bus's own
+    rheobase:
+
+        salience      producer LIVE                 producer NEUTERED
+        thr * 0.5     0            ignited=False    None            ignited=False
+        thr * 1.0     0            ignited=False    study_digit_7   ignited=True
+        thr * 1.6     study_digit_7 ignited=True    study_digit_7   ignited=True
+
+    All three outputs differ, and the middle row is the one that carries the claim: AT the rheobase
+    the wrapper's own ignition VERDICT flips, because the arm's perception is holding the slot with
+    `self_boost + hysteresis` behind it and denies an at-threshold challenger. Remove the producer
+    and the identical submission ignites. That is P6 condition (b) satisfied by the handle alone,
+    with no new code -- the wrapper consumes another faculty's output whether or not it reads a
+    value. Harness sensitivity control, run in the same pass: the neutered bus reports
+    `broadcast()=None hold=0.0` against the live bus's `broadcast()=0 hold=0.476...`, so the neuter
+    demonstrably lands.
+
+    AND THE SAME MEASUREMENT FOUND WHY THE LIVE REPOINT IS NOT SHIPPED HERE. `broadcast()` calls
+    `self._ws.step()`, and `step()` is the tick operation `brainstem/autonomous_loop.py` owns. On a
+    private workspace that is the whole mechanism; on the SHARED one it advances a competition the
+    wrapper does not drive. Measured over 20 arm ticks with the wrapper writing every 5th tick,
+    against an identical control that writes nothing: at `thr * 1.6` the arm's own
+    (content, hold) differs on 20 of 20 ticks -- its percept never regains the slot -- and even at a
+    SUB-threshold `thr * 0.5`, which cannot ignite anything, it still differs on 3 of 20 purely
+    because the out-of-band `step()` decays every attractor. A tenant of the one bus must not drive
+    its clock, and fixing that is a contract change to `broadcast()` (submit-and-read rather than
+    submit-and-step) that this file's own self-check pins -- so it is named here and escalated, not
+    smuggled in.
+
+    NOTHING CONSTRUCTS THIS CLASS ON A PRODUCTION PATH, re-derived 2026-08-06 rather than inferred
+    from the gate's census. Tree-wide, `WorkspaceBroadcast(` appears at nine sites: eight in this
+    module's own `main()` and one at `reasoning/developmental_loop_brain.py:262`, which sits inside
+    that module's `main()` too (`def main` at `:138`, `if __name__` at `:444`). So there is no live
+    caller to hand the shared handle to, and manufacturing one would be the force-wire P6 forbids.
+    The disposition is unchanged and now rests on a measurement: the channel is real, it charges,
+    its live use needs the `step()` contract fixed first, and the class is a retire candidate."""
 
     def __init__(self, seed=0, ws=None):
         self.seed = seed

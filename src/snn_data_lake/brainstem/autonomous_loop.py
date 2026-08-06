@@ -244,6 +244,13 @@ class AutonomousArm:
         )  # opt-in bottom-up novelty salience -> a GWT competitor
         self._sal_ema = None  # running percept expectation (the habituation substrate)
         self._novelty = 0.0  # last bottom-up salience (deviance vs expectation)
+        # The DERIVED salience perception submits to the one shared bus, and the running mean that
+        # scales it. Exact running mean (sum-free Welford form), so there is no tau to pick -- see
+        # _percept_salience for why a mean and not an EMA. `_sal_n == 0` means "no percept has been
+        # scored yet"; the first sample IS its own mean, which is the honest "no baseline exists".
+        self._percept_sal = 0.0
+        self._sal_base = 0.0
+        self._sal_n = 0
         # opt-in DOPAMINERGIC reward loop (gap #4): a spiking TD-RPE broadcast (midbrain VTA/SNc) with an
         # OPPONENT anti-reward channel (lateral habenula -> RMTg -> DA below baseline) driving a three-factor
         # DA-gated striatal valence learner. REPRESENTATION-ONLY: it learns an affective value over contexts
@@ -1205,15 +1212,105 @@ class AutonomousArm:
         self._sal_ema = [0.9 * e + 0.1 * p for e, p in zip(self._sal_ema, pattern)]
         return min(1.0, dev)
 
+    def _percept_salience(self, deviance):
+        """Perception's claim on the single workspace slot, DERIVED from the percept itself.
+
+        THE DEFECT THIS REPLACES, measured before the edit on 150 LIVE wake ticks of the canonical
+        brain (`make_brain()` + `Brain.tick()`, subjective day forced): every submission reaching
+        the one shared bus was `("perception", 0..3, 0.6)` -- salience distinct=1, n_changes=0 --
+        and the broadcast content was the same value on all 150 ticks. A bus carrying a literal is
+        a bus carrying no information, so every downstream read of it was inert BY CONSTRUCTION,
+        and adding readers to it would have raised a read count without moving anything (the
+        force-wiring P6 explicitly forbids). The signal had to be fixed before any route could mean
+        anything.
+
+        Two halves, both DERIVED, neither hand-picked:
+
+        * WHERE IN THE BAND -- `deviance / (deviance + mu)`, with `mu` the EXACT running mean of the
+          deviance INCLUDING this sample. Baseline-relative per P1, and a running mean is chosen
+          over an EMA precisely because it has no rate constant to pick: there is no tau in here to
+          be a magic number in disguise. It reads 0.5 on the first sample by construction (one
+          sample is its own mean), which is the honest value for "no baseline exists yet"; it rises
+          toward 1 as the percept deviates further ABOVE its own history and falls toward 0 as it
+          settles below it.
+        * HOW WIDE THE BAND IS -- read off the CONSUMER's own declared parameters, not chosen here.
+          `ignition_threshold` is the bus's rheobase: a pool driven below it emits no spike at all
+          (`global_workspace` sets `_v_th = ignition_threshold / _LEAK` for exactly this), so
+          nothing below it is a claim at all. `1 - (self_boost + hysteresis)` is the strongest claim
+          a percept may make while an incumbent holding the slot can still be DISPLACED by a
+          maximal competitor -- the invariant that keeps a proximity threat able to seize the
+          workspace. Sizing the band from the bus's own constants is what makes this a derivation
+          rather than a second guess at 0.6.
+
+        THE BAND IS VERIFIED, NOT ONLY DERIVED, because the linear drive arithmetic underestimates
+        an incumbent's advantage. Swept against the real `GlobalWorkspace` at defaults, first-tick
+        perception salience 0.05..1.00 in steps of 0.05 followed by a threat submission at 0.95 AND
+        at 1.00: salience <= 0.50 never ignites at all, salience >= 0.85 makes the incumbent
+        percept indisplaceable by EITHER threat value, and the admissible window is exactly
+        [0.55, 0.80]. The band this returns is [0.55, 0.75] on the defaults -- inside it with
+        margin, by construction rather than by luck.
+
+        A RUNNING MEAN AND NOT SOMETHING CLEVERER, decided by measurement and recorded so it is not
+        re-litigated. The live deviance series is right-skewed and opens with a one-off onset of
+        1.0, so a mean-relative ratio sits below 0.5 and uses only about half the band -- which
+        looks like a reason to reach for a median or a rank. All three were built and replayed
+        through the REAL `GlobalWorkspace` on the SAME captured 150-tick live series: running mean
+        gave salience in [0.5684, 0.6672] / 150 distinct, a P2 running median [0.5834, 0.6772] /
+        149, and a uniform rank over a 64-deep window [0.5500, 0.7387] / 94 -- and **all three
+        broadcast exactly ONE content value with ZERO flips**, the same as the pinned literal. The
+        extra machinery buys nothing measurable, so the form with no parameters at all is the one
+        that ships (P2: the mechanism that wins is the one shown better, and none of them was).
+
+        WHY THE BROADCAST CONTENT STILL CANNOT MOVE, and it is NOT this signal's fault -- stated
+        because the next reader will otherwise try to fix it here. The bus gives its incumbent
+        `self_boost + hysteresis = 0.25` of defence, while the widest claim a compliant producer
+        may make above the rheobase is `hi - lo = 0.20`. The defence is LARGER THAN THE WHOLE BAND,
+        so a challenger cannot out-drive a freshly refreshed incumbent no matter what it submits.
+        Measured, not deduced: driving the same workspace with a producer that ALTERNATES between
+        the two band extremes on consecutive ticks does flip the content (40 flips in 119), so the
+        flip is reachable and the harness is not degenerate -- it just needs a swing no real signal
+        makes. The same arithmetic caps what this channel can offer a downstream reader at 0.20,
+        against the > 0.30 shift `cortex/access_consciousness` was measured to need before its own
+        output moves. Both ceilings are properties of `thalamus/global_workspace.py`'s constants,
+        which this pass does not own; the signal here is now real, and that is the half that was
+        missing.
+
+        Checked at the four degenerate inputs, because a P1 rewrite in this tree already shipped a
+        `mu/1e-12 = 1e12` singularity onto a live path. ZERO deviance -> ratio 0 -> the bare
+        rheobase: a percept identical to its own expectation makes the minimum claim. SILENCE
+        (zero deviance AND a zero baseline, i.e. an unvarying stream from the first tick) -> the
+        sum is exactly 0 and the guard returns the rheobase instead of dividing. SINGLE sample ->
+        exactly 0.5 as above. An EMPTY pattern -> `_percept_novelty` already floors its divisor at
+        1, so the deviance is 0 and this is the ZERO case. There is no epsilon anywhere in here:
+        the only guard is an exact `> 0.0` test, so there is no denominator that can be small
+        rather than zero."""
+        ws = self.workspace
+        if ws is None:
+            return 0.0
+        dev = float(deviance)
+        self._sal_n += 1
+        self._sal_base += (dev - self._sal_base) / self._sal_n
+        total = dev + self._sal_base
+        ratio = (dev / total) if total > 0.0 else 0.0
+        lo = float(ws.ignition_threshold)  # the bus's rheobase: below it, nothing is a claim
+        hi = 1.0 - (float(ws.self_boost) + float(ws.hysteresis))  # stays displaceable by a maximum
+        if hi <= lo:  # a bus configured with no room between "audible" and "displaceable"
+            return lo
+        return lo + (hi - lo) * ratio
+
     def _workspace_broadcast(self, percept, threat_salience):
         """Additive Global-Workspace tick: brain regions (perception + a salience/threat detector)
         compete for the single workspace slot and the winner is broadcast to all. READ-ONLY
         annotation -- it selects no action, gates no motion, and never touches the reflex/E-STOP.
-        Returns the broadcast content, or None when there is no workspace."""
+        Returns the broadcast content, or None when there is no workspace.
+
+        Perception's salience is DERIVED per tick (see _percept_salience); it was the literal 0.6
+        until this pass. The threat channel carries the amygdala's REAL learned output and always
+        did -- see the caller in step() for the measured reason it reads 0.0 on this brain."""
         if self.workspace is None:
             return None
         if percept is not None:
-            self.workspace.submit("perception", percept, 0.6)  # normally holds the slot when safe
+            self.workspace.submit("perception", percept, self._percept_sal)
         self.workspace.submit("salience", "threat", threat_salience)
         if self._salience_on:
             self.workspace.submit(
@@ -1369,12 +1466,23 @@ class AutonomousArm:
 
         # 2. perceive -> grow a unit on a novel multimodal context
         pattern = self._context_pattern(visual, temperature, audio, distance)
-        if (
-            self._salience_on and self.workspace is not None
-        ):  # novelty's only consumer is the GWT competitor
-            self._novelty = self._percept_novelty(
-                pattern
-            )  # bottom-up salience updates each perceived tick
+        if self.workspace is not None:
+            # ONE deviance computation per tick, and it now has a consumer that is always live:
+            # perception's own claim on the single workspace slot (_percept_salience). It used to be
+            # computed ONLY under `salience_novelty`, whose sole consumer was a separate GWT
+            # competitor -- so on a default brain the bus's own drive was a literal while the
+            # stimulus-derived signal that should have set it was never computed at all.
+            #
+            # `self._novelty` stays gated exactly as before, deliberately. It is a TELEMETRY row
+            # (live_brain.spike_snapshot -> spikes.midbrain), that row is tagged constant in
+            # brain_telemetry.PROVENANCE with a measurement behind the tag, and un-gating it here
+            # would also charge `_attend`'s `0.3 * self._novelty` term -- a different wire, in a
+            # different lane, that would change what the LEARNER sees. One deviance, one new
+            # consumer, no collateral rewiring.
+            nov = self._percept_novelty(pattern)
+            self._percept_sal = self._percept_salience(nov)
+            if self._salience_on:
+                self._novelty = nov  # bottom-up salience updates each perceived tick
         percept = pattern
         if self._attn_on:  # covert attention: readout + APPLY to the LEARNER's percept
             self._attend(visual, temperature, audio, distance)
@@ -1814,9 +1922,28 @@ class AutonomousArm:
                     pp, pa, pattern, reward=pr
                 )  # SSL update (+ reward-shaping when pr is a task reward)
             self._jepa_prev = (pattern, action, r_ext_step)
-        # workspace: perception (the current unit) competes with the amygdala's threat salience (the
-        # REAL learned threat when the amygdala is wired in, else a low background constant) -> broadcast.
-        salience = threat if self.amyg is not None else 0.2
+        # workspace: perception (the current unit, at its DERIVED claim) competes with the
+        # amygdala's threat salience -> broadcast.
+        #
+        # THE `else 0.2` IS GONE. An arm with no amygdala has no threat detector, so the honest
+        # threat on that arm is the absence of one, and `_threat()` already returns exactly 0.0
+        # there; the 0.2 was a background literal standing in for a faculty that is not present.
+        # Removing it removes a constant AND removes the only case where this channel reported a
+        # threat nothing had detected.
+        #
+        # THE CHANNEL ALREADY CARRIES THE REAL AMYGDALA OUTPUT -- and on this brain that output is
+        # 0.0, which is a MEASURED NULL and not a literal. Measured over 150 live wake ticks: the
+        # amygdala's `w_exc` and `w_inh` are still ALL ZERO at the end of the run, i.e. `pair()` was
+        # never called once. The reason is structural and upstream: `pair()` fires only inside the
+        # reflex branch of this method (`distance < CONTACT`), and `Brain._safe_ctx()` says in its
+        # own docstring that it pins distance SAFE so the E-STOP never trips. So nothing on the
+        # live wake path ever presents a US, the amygdala never conditions, and the channel
+        # correctly reports no threat. It is NOT structurally incapable of carrying one: driven
+        # with real danger contexts the same channel reaches 0.90 and wins the slot (see the
+        # threat-channel check in main()). Making this channel "vary" by feeding it interoceptive
+        # load or cortisol would be a signal wearing another faculty's name, which is the shape
+        # this file is being cleaned of, so it is left honest and the null is reported.
+        salience = threat
         broadcast = self._workspace_broadcast(
             unit, salience
         )  # additive annotation; drives no motion
@@ -2037,6 +2164,145 @@ def main():
     assert ws_danger == "threat", "a proximity threat must ignite + be broadcast by the workspace"
     assert ws_frozen, (
         "the E-STOP freeze must hold with the Global Workspace active (additive, gate untouched)"
+    )
+
+    # 8b. THE SALIENCE REACHING THE SHARED BUS VARIES WITH LIVE STATE (P1 + P6).
+    #
+    # Until this pass perception submitted the literal 0.6 on every tick: measured over 150 LIVE
+    # wake ticks of the canonical brain, the perception channel had distinct=1 / n_changes=0 and
+    # the broadcast content never changed once. A bus carrying a constant is a bus carrying no
+    # information, so every declared read of it was inert BY CONSTRUCTION -- which is why adding
+    # readers to it could never have been progress.
+    #
+    # ITS REACHABLE RED IS CONSTRUCTED AND RUN (P8), not asserted: the identical stream, the
+    # identical seed and the identical scoring, on an arm whose _percept_salience is PINNED to the
+    # incumbent's 0.6, must collapse back to one distinct value. A green above a control that
+    # cannot go red proves nothing, and this control is the constant this pass removed.
+    def _bus_salience_trace(bot, n=120):
+        seen = []
+        real_submit = bot.workspace.submit
+
+        def spy(source, content, salience):
+            if source == "perception":
+                seen.append(round(float(salience), 6))
+            return real_submit(source, content, salience)
+
+        bot.workspace.submit = spy
+        srng = random.Random(4)  # per-call instance rng -> both arms see the SAME stream
+        for _ in range(n):
+            bot.step(
+                visual=[srng.random() for _ in range(4)],
+                temperature=[srng.random()],
+                audio=[srng.random() for _ in range(4)],
+                distance=safe_d,
+                reward_fn=bot.coverage_reward,
+            )
+        bot.workspace.submit = real_submit
+        return seen
+
+    sal_live = _bus_salience_trace(AutonomousArm(seed=0, workspace=True))
+    sal_pin_arm = AutonomousArm(seed=0, workspace=True)
+    sal_pin_arm._percept_salience = lambda _dev: 0.6  # the incumbent literal == the RED control
+    sal_pinned = _bus_salience_trace(sal_pin_arm)
+    sal_n = len(set(sal_live))
+    sal_ch = sum(1 for x, y in zip(sal_live, sal_live[1:]) if x != y)
+    red_n = len(set(sal_pinned))
+    red_ch = sum(1 for x, y in zip(sal_pinned, sal_pinned[1:]) if x != y)
+    ws_lo = wsa.workspace.ignition_threshold
+    ws_hi = 1.0 - (wsa.workspace.self_boost + wsa.workspace.hysteresis)
+    assert red_n == 1 and red_ch == 0, (
+        f"the RED control must reproduce the constant this pass removed "
+        f"({red_n} distinct, {red_ch} changes) -- if it does not, this harness cannot fail"
+    )
+    assert sal_n > 1 and sal_ch > 0, (
+        f"the perception salience reaching the shared bus must VARY with live state "
+        f"({sal_n} distinct, {sal_ch} changes over {len(sal_live)} ticks)"
+    )
+    assert min(sal_live) >= ws_lo, (
+        f"a claim below the bus's own rheobase is not a claim ({min(sal_live)} < {ws_lo})"
+    )
+    assert max(sal_live) <= ws_hi, (
+        f"perception must stay DISPLACEABLE by a maximal competitor ({max(sal_live)} > {ws_hi}) -- "
+        "above this bound an incumbent percept cannot be seized from by a proximity threat"
+    )
+
+    # P1 demands the new baseline be checked at its degenerate inputs, and this tree has already
+    # shipped a mu/1e-12 = 1e12 singularity onto a live path, so they are RUN rather than reasoned.
+    deg = AutonomousArm(seed=0, workspace=True)
+    deg_single = deg._percept_salience(1.0)  # SINGLE sample: it is its own mean -> exactly mid-band
+    deg_zero = deg._percept_salience(0.0)  # ZERO deviance against a live baseline -> rheobase
+    sil = AutonomousArm(seed=0, workspace=True)
+    deg_silence = [sil._percept_salience(0.0) for _ in range(4)]  # SILENCE: 0 signal AND 0 baseline
+    emp = AutonomousArm(seed=0, workspace=True)
+    emp._percept_novelty([])  # onset seeds the (empty) expectation
+    deg_empty = emp._percept_salience(emp._percept_novelty([]))  # EMPTY pattern -> 0 deviance
+    assert deg_single == ws_lo + (ws_hi - ws_lo) * 0.5, (
+        f"one sample is its own mean, so the first claim must be mid-band ({deg_single})"
+    )
+    assert deg_zero == ws_lo and deg_empty == ws_lo, (
+        f"ZERO deviance and an EMPTY pattern must return the bare rheobase "
+        f"({deg_zero}, {deg_empty})"
+    )
+    assert all(v == ws_lo for v in deg_silence) and all(math.isfinite(v) for v in deg_silence), (
+        f"SILENCE must return the rheobase rather than divide by a vanishing baseline "
+        f"({deg_silence})"
+    )
+
+    # 8c. THE THREAT CHANNEL IS A MEASURED NULL, NOT A DEAD WIRE.
+    #
+    # It carries the amygdala's REAL learned output and always did. On the canonical brain that
+    # output is 0.0 for a structural, upstream reason: `pair()` fires only inside this method's
+    # reflex branch (distance < CONTACT), and `Brain._safe_ctx()` pins distance SAFE so the reflex
+    # never trips -- verified by reading the amygdala after 150 live wake ticks, where `w_exc` and
+    # `w_inh` were still entirely zero. Nothing on the live wake path presents a US, so there is no
+    # threat to report and the channel correctly reports none.
+    #
+    # Both directions are RUN here so the null is proven to BE a null: conditioned with real danger
+    # the SAME channel carries a learned, non-zero threat; a never-endangered arm keeps reporting
+    # exactly 0.0 on the same bus.
+    thr_ctx_danger = _ctx(0.2, 0.8, 0.3, danger_d)
+    thr_ctx_recall = _ctx(0.2, 0.8, 0.3, safe_d)  # same context, no longer dangerous
+    thr_seen = []
+
+    def _thr_trace(bot, ticks):
+        real_submit = bot.workspace.submit
+
+        def spy(source, content, salience):
+            if content == "threat":
+                thr_seen.append(round(float(salience), 6))
+            return real_submit(source, content, salience)
+
+        bot.workspace.submit = spy
+        for ctx in ticks:
+            bot.step(**ctx)
+        bot.workspace.submit = real_submit
+
+    thr_arm = AutonomousArm(seed=0, workspace=True, amygdala=True)
+    _thr_trace(thr_arm, [thr_ctx_danger] * 12)  # each danger tick pairs the context with the US
+    thr_arm.arm.apply("HOME")  # the sanctioned latch clear, so a safe tick scores normally
+    thr_seen.clear()
+    _thr_trace(thr_arm, [thr_ctx_recall])  # SAFE tick, conditioned context -> real learned threat
+    thr_learned = thr_seen[-1]
+    thr_seen.clear()
+    thr_naive = AutonomousArm(seed=0, workspace=True, amygdala=True)
+    _thr_trace(thr_naive, [thr_ctx_recall])  # never endangered -> the honest zero
+    thr_null = thr_seen[-1]
+    assert thr_null == 0.0, (
+        f"an amygdala that has never been paired must report NO threat, not a background "
+        f"literal ({thr_null})"
+    )
+    assert thr_learned > 0.0, (
+        f"the threat channel must be able to carry a REAL learned threat -- a null that cannot "
+        f"become non-zero is a dead wire, not a null ({thr_learned})"
+    )
+    assert thr_learned == round(thr_arm._threat(thr_arm._context_pattern(**thr_ctx_recall)), 6), (
+        "the value on the threat channel must BE the amygdala's own output"
+    )
+    print(
+        f"bus salience: perception submits {sal_n} distinct values / {sal_ch} changes over "
+        f"{len(sal_live)} ticks in [{min(sal_live):.4f}, {max(sal_live):.4f}]; the PINNED-0.6 "
+        f"control gives {red_n} distinct / {red_ch} changes (the RED is reachable). Threat channel: "
+        f"{thr_null:.4f} unconditioned, {thr_learned:.4f} after real danger (a measured null)"
     )
     assert learned == "RELEASE", (
         f"the arm must LEARN the rewarded action, not use a fixed map ({learned})"

@@ -64,6 +64,7 @@ from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 RULE_ORDER = ("constant", "progression", "arithmetic", "distribute3")
 RULE_PRIORITY = {"constant": 4.0, "progression": 3.0, "arithmetic": 2.0, "distribute3": 1.0}
 
+_ANSWER = "rpm_answer"  # namespace tag on the content this solver posts into the (shared) slot
 _POS = hv("RPM_POS0")  # the single object-position ROLE (fillers = the attribute codes)
 _POOL = tuple(range(1, 9))  # candidate value pool for the self-check's synthetic distractors
 _ROLE_CACHE = {}  # attribute -> its ROLE spike code (crc32-seeded, deterministic)
@@ -106,9 +107,19 @@ class RpmSolver:
     gf.code); no wall-clock, no global RNG. Guarded: any failure returns an honest gap, never raises.
     """
 
-    def __init__(self, seed=0):
+    def __init__(self, seed=0, workspace=None):
+        """`workspace` ADOPTS the one shared GlobalWorkspace instead of building a private one per
+        solve. Hand it `Brain.workspace` / `LiveBrain.workspace` -- the single instance
+        `brainstem/autonomous_loop.py` constructs -- and the candidate answers compete for the SAME
+        slot the brain's perception and salience channels post into. None keeps the per-call private
+        instance this class always built, so every existing caller is byte-identical.
+
+        The handle is held on the INSTANCE and read inside `_solve`, because the workspace there is
+        function-local and re-created on every call: a constructor that only built a private object
+        once would still hand each solve a fresh private bus."""
         self.seed = seed
         self.rng = random.Random(seed)
+        self.workspace = workspace
         self.bg = BasalGangliaGate(seed=seed)  # spiking Go/NoGo rule selection (stateless select)
 
     # -- codebooks ------------------------------------------------------------------------------
@@ -302,17 +313,25 @@ class RpmSolver:
 
         # SPIKING candidate selection: each candidate's panel salience competes in the thalamic global
         # workspace; the one that crosses the all-or-none ignition threshold is broadcast as the answer.
-        ws = GlobalWorkspace(seed=self.seed)
+        # ADOPTS the one shared bus when this solver was handed it (P6), else builds the private
+        # per-call instance it always built. On the shared bus the competition also contains whatever
+        # the rest of the brain is holding, so a candidate must out-drive the live incumbent's
+        # cross-tick attractor to ignite -- which is the consumption, not an added reader.
+        ws = GlobalWorkspace(seed=self.seed) if self.workspace is None else self.workspace
         for i, s in enumerate(saliences):
-            ws.submit("c%d" % i, i, s)
-        ignited = ws.step()  # broadcast content = winning index, or None
-        answer_idx = ignited if isinstance(ignited, int) else argmax
+            ws.submit("c%d" % i, (_ANSWER, i), s)
+        ignited = ws.step()  # broadcast content = OUR winning index, another faculty's, or None
+        # The content key is NAMESPACED because the shared slot is shared: the brain's perception
+        # channel broadcasts small ints (0..3) that would otherwise be indistinguishable from a
+        # candidate index and would be returned as this solver's ANSWER. Behaviour-neutral on the
+        # private path -- the drives, the jitter draw order and the sorted pool order are all keyed
+        # on the source label "c%d", which is unchanged.
+        won = ignited if (isinstance(ignited, tuple) and ignited[:1] == (_ANSWER,)) else None
+        answer_idx = won[1] if won is not None else argmax
 
         srt = sorted(saliences, reverse=True)
         confidence = round(srt[0] - (srt[1] if len(srt) > 1 else 0.0), 3)
-        known = (
-            len(winners) == 1 and best_m == n_ruled and ignited is not None and answer_idx == argmax
-        )
+        known = len(winners) == 1 and best_m == n_ruled and won is not None and answer_idx == argmax
 
         rule_txt = ", ".join(
             "%s:%s" % (a, rules_a[0]) for a, rules_a in sorted(induced["rules"].items())
@@ -367,8 +386,10 @@ class RpmExpert:
 
     name, module, source, uses = "rpm-raven", "rpm_solver", "gf", "stdlib"
 
-    def __init__(self, seed=0):
-        self._solver = RpmSolver(seed=seed)
+    def __init__(self, seed=0, workspace=None):
+        # `workspace` is threaded straight through to the solver so an expert built from a live
+        # brain answers on the ONE bus rather than on a private one (P6). None = unchanged.
+        self._solver = RpmSolver(seed=seed, workspace=workspace)
 
     def score(self, q):
         t = getattr(q, "low", "").strip()
@@ -552,6 +573,46 @@ def main():
         % ("PASS" if det_ok else "FAIL")
     )
 
+    # ---- P6: the ADOPTED workspace, and the collision the shared slot introduces ---------------
+    # A handed-in bus must survive every solve (the workspace here is function-local and rebuilt
+    # per call, so a constructor that merely stored a private object would still hand each solve a
+    # fresh private one). And the shared slot carries OTHER faculties' contents: perception
+    # broadcasts small ints, which are exactly the shape of a candidate index. This drives that
+    # collision deliberately -- it is the RED the namespace guard in _solve exists to answer, and
+    # without the guard `ignited if isinstance(ignited, int) else argmax` returns the PERCEPT as
+    # the RPM answer.
+    shared = GlobalWorkspace(seed=0)
+    ctx_s, cand_s, idx_s, _a = _build_task("progression", random.Random(7))
+    shared_solver = RpmSolver(seed=0, workspace=shared)
+    adopt_ok = shared_solver.workspace is shared
+    clean = shared_solver.solve(ctx_s, cand_s)  # empty slot: must match the private answer exactly
+    adopt_ok = adopt_ok and shared_solver.workspace is shared
+    private_same = RpmSolver(seed=0).solve(ctx_s, cand_s)
+    foreign = idx_s ^ 1  # a live-percept-shaped int that is NOT this matrix's answer
+    for _ in range(3):
+        shared.submit("perception", foreign, 1.0)
+        shared.step()  # a foreign content now holds the slot with a maximal attractor
+    held = shared.broadcast()
+    occupied = shared_solver.solve(ctx_s, cand_s)
+    collide_ok = (
+        held == foreign
+        and occupied["answer_idx"] != held  # the guard refused the percept as an answer
+        and occupied["answer_idx"] == clean["answer_idx"]
+        and not occupied["known"]  # nothing of OURS ignited, so the answer is not claimed as known
+    )
+    print(
+        "  [%s] shared bus    -> adopted=%s; empty slot reproduces the private answer #%d; a "
+        "foreign percept %r holding the slot yields known=%s answer #%d (not the percept)"
+        % (
+            "PASS" if (adopt_ok and collide_ok) else "FAIL",
+            adopt_ok,
+            clean["answer_idx"],
+            held,
+            occupied["known"],
+            occupied["answer_idx"],
+        )
+    )
+
     n_pass = sum(passed)
     print("-" * 78)
     print(
@@ -567,13 +628,24 @@ def main():
     assert bind_ok, "role-filler object binding must recover a filler by spike cleanup"
     assert gap_ok, "a grid with no NVSA rule must return an HONEST gap (known=False), never a bluff"
     assert det_ok, "the solver must be deterministic under a fixed seed"
+    assert adopt_ok, "a handed-in workspace must be THE object every solve competes in (identity)"
+    assert clean == private_same, (
+        "an adopted but EMPTY workspace must reproduce the private-bus result exactly -- if it "
+        "does not, adoption changed the answer rather than only changing who else can see it"
+    )
+    assert collide_ok, (
+        "a foreign content holding the SHARED slot must not be returned as the RPM answer: the "
+        "brain's percept contents are small ints and so are candidate indices"
+    )
 
     print("=" * 78)
     print(
         "self-check OK: spiking NVSA RPM solver -- role-filler object codes, example->rule induction "
         "(distribute-three / progression / constant / arithmetic) executed as spike-XOR/permute/"
         "cleanup ops, basal-ganglia rule gate + global-workspace answer ignition; 4/4 regimes solved "
-        "(>> 12.5%% chance), honest gap on a no-rule grid, deterministic."
+        "(>> 12.5%% chance), honest gap on a no-rule grid, deterministic; a handed-in workspace is "
+        "adopted by identity and reproduces the private answer, and a foreign content holding the "
+        "SHARED slot is refused as an answer."
     )
     return 0
 

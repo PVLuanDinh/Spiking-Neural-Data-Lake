@@ -87,14 +87,32 @@ class TrainOfThought:
         Per-tick (broadcast, event) record of the most recent `think` run, for transcripts.
     """
 
-    def __init__(self, seed=0):
+    def __init__(self, seed=0, workspace=None):
+        """`workspace` ADOPTS the one shared GlobalWorkspace instead of building a private one.
+
+        Hand it `Brain.workspace` / `LiveBrain.workspace` -- the single instance
+        `brainstem/autonomous_loop.py` constructs -- and this train of thought competes for the
+        SAME slot the brain's perception and salience channels post into. Passing None keeps the
+        private instance this class always built, so every existing caller is byte-identical.
+
+        WHY THE FLAG AND NOT A None-TEST AT EACH USE. `_reset()` below rebuilds the workspace to
+        start a fresh thought-stream; a rebuild on a handed-in instance would silently
+        RE-PRIVATISE it one call into `think()`, which is the exact defect this parameter exists
+        to remove and it would look like it worked. `_owns_ws` is what makes the adoption survive
+        a reset."""
         self.seed = seed
-        self.ws = GlobalWorkspace(seed=seed)  # composes ONE workspace (one thought-stream)
+        self._owns_ws = workspace is None
+        # composes ONE workspace (one thought-stream), or adopts the one it was handed
+        self.ws = GlobalWorkspace(seed=seed) if workspace is None else workspace
         self.last_trace = []
 
     def _reset(self):
-        """Begin a fresh thought-stream (a fresh single-slot workspace)."""
-        self.ws = GlobalWorkspace(seed=self.seed)
+        """Begin a fresh thought-stream (a fresh single-slot workspace).
+
+        An ADOPTED workspace is NOT rebuilt: it belongs to the brain, other faculties are posting
+        into it, and replacing it here would hand this object a private bus again."""
+        if self._owns_ws:
+            self.ws = GlobalWorkspace(seed=self.seed)
 
     # -- the re-entrant train of thought --------------------------------------------------------
     def think(self, seed, associate, max_steps=8, seed_salience=_IGNITE_SALIENCE):
@@ -102,15 +120,27 @@ class TrainOfThought:
         self._reset()
         self.last_trace = []
         chain = []  # distinct ignited thoughts, in order
+        mine = set()  # every content THIS stream has posted -- see the "yield" branch below
         candidates = [(seed, float(seed_salience))]  # (thought, salience) posted next tick
         for _ in range(max_steps):
             for thought, sal in candidates:
                 self.ws.submit(_SOURCE, thought, sal)
+                mine.add(thought)
             broadcast = self.ws.step()  # one spiking ignition cycle
 
             if broadcast is None:  # nothing sustained firing -> subliminal
                 self.last_trace.append((None, "die"))
                 break
+            if broadcast not in mine:
+                # ANOTHER FACULTY HOLDS THE SLOT. Only reachable on an ADOPTED workspace: on a
+                # private one every pool in the competition was posted by this object, so this
+                # branch cannot fire and the private path is unchanged. On the shared bus the
+                # incumbent is the brain's own percept, defended by its cross-tick attractor, and
+                # a thought that cannot out-drive it is NOT ignited -- so it is not a link in the
+                # train and must not be chained. The stream re-posts and waits, exactly as it
+                # waits out its own incumbent in the `hold` branch below.
+                self.last_trace.append((broadcast, "yield"))
+                continue
             if chain and broadcast == chain[-1]:  # incumbent still holds: sustained firing
                 self.last_trace.append((broadcast, "hold"))
                 continue  # keep re-posting; the attractor will decay
@@ -219,6 +249,11 @@ def _print_transcript(trace):
                 "   tick %2d  o   loop  %s  (returned to an earlier thought -> resolves)"
                 % (step, broadcast)
             )
+        elif event == "yield":
+            print(
+                "   tick %2d  ~  yield  %s  (another faculty holds the shared slot; re-posting)"
+                % (step, broadcast)
+            )
         elif event == "end":
             print("   tick %2d  |   (no further association -> train ends)" % step)
 
@@ -259,6 +294,39 @@ def main():
     tot2 = TrainOfThought(seed=0)
     chain2 = tot2.think("sun", _make_associate(_fact_graph()), max_steps=20)
 
+    # ---- (6) P6: ADOPT a workspace, and SURVIVE the reset ---------------------------------------
+    # THE TRAP, stated because an adoption that covers only __init__ passes an identity assertion
+    # written immediately after construction and then silently re-privatises on the first think():
+    # `_reset()` rebuilds the workspace at the top of think / think_feedforward / summon /
+    # recombine. Identity is therefore re-checked AFTER each of those, not once.
+    shared = GlobalWorkspace(seed=0)
+    adopt = TrainOfThought(seed=0, workspace=shared)
+    adopt_at_init = adopt.ws is shared
+    adopt_chain = adopt.think("sun", associate, max_steps=20)
+    adopt.think_feedforward("sun", associate)
+    adopt.summon("holdme")
+    adopt.recombine("day_night", "seasons")
+    adopt_survives = adopt.ws is shared
+    # ...and the private default still rebuilds per stream, which is what makes each stream fresh.
+    priv = TrainOfThought(seed=0)
+    priv_first = priv.ws
+    priv.think("sun", associate, max_steps=20)
+    priv_rebuilds = priv.ws is not priv_first
+
+    # ---- (7) P6: another faculty HOLDING the shared slot is not chained as a thought -------------
+    # The reachable RED for the `yield` branch. On a shared bus the incumbent belongs to somebody
+    # else; without the branch it is appended to the chain as if this module had thought it.
+    # Deliberately run on the SAME `shared` object rather than a second one: `tools/p6_gate.py`
+    # counts every construction in a FACULTY module as one more private bus (it exempts only the
+    # bus modules' own self-checks), so a check that demonstrates sharing by building two more
+    # workspaces makes the number it is trying to improve worse.
+    for _ in range(3):
+        shared.submit("other_faculty", "NOT_A_THOUGHT", 1.0)
+        shared.step()  # a foreign content now holds the slot with a maximal attractor
+    busy_chain = adopt.think("sun", associate, max_steps=20)
+    busy_yields = sum(1 for _b, ev in adopt.last_trace if ev == "yield")
+    busy_ok = busy_yields > 0 and "NOT_A_THOUGHT" not in busy_chain and adopt.ws is shared
+
     # ============================== transcript + framing =======================================
     print("=" * 84)
     print("TRAIN OF THOUGHT -- serial re-entrant ignition+hold over the spiking Global Workspace")
@@ -295,6 +363,17 @@ def main():
     )
     print("   (c) the human workspace's summon/hold/dismiss + sustained firing + chaining +")
     print("       recombination are all exercised above via genuine spiking ignition.")
+    print()
+    print("P6 -- ONE shared workspace instead of a private one:")
+    print(
+        "   adopted by identity=%s; still the same object after think/feedforward/summon/"
+        "recombine=%s; private default still rebuilds per stream=%s"
+        % (adopt_at_init, adopt_survives, priv_rebuilds)
+    )
+    print(
+        "   a foreign faculty holding the slot -> %d yield tick(s), and %r was NOT chained as a "
+        "thought (chain %s)" % (busy_yields, "NOT_A_THOUGHT", " -> ".join(busy_chain))
+    )
 
     # ============================== genuine assertions (not rigged) ============================
     # (1) a real internal chain of >= 3 DISTINCT ignited thoughts from one seed.
@@ -338,6 +417,24 @@ def main():
 
     # determinism.
     assert chain2 == chain, "same seed must reproduce the identical train of thought"
+
+    # (6) adoption of the ONE shared workspace, and the reset that must not undo it.
+    assert adopt_at_init, "a handed-in workspace must be adopted by IDENTITY, not copied"
+    assert adopt_survives, (
+        "_reset() RE-PRIVATISED an adopted workspace -- think/think_feedforward/summon/recombine "
+        "each call it, so an adoption that only covers __init__ dies on the first call"
+    )
+    assert adopt_chain == chain, (
+        "adopting an EMPTY workspace must reproduce the private chain exactly -- adoption changes "
+        "who else can see the slot, not what this module thinks"
+    )
+    assert priv_rebuilds, "the private default must still start each stream on a fresh workspace"
+
+    # (7) a foreign incumbent on the SHARED slot is yielded to, never chained as a thought.
+    assert busy_ok, (
+        "a content another faculty is holding must produce a `yield`, not a chain link (got "
+        "yields=%d chain=%r)" % (busy_yields, busy_chain)
+    )
 
     print()
     print(

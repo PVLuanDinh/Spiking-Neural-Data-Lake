@@ -104,6 +104,12 @@ class GlobalWorkspace:
     `use_ignition=False` is the FAIR CONTROL: the spiking dynamics are switched off and `step()`
     becomes a pure per-tick argmax over the submissions (no LIF, no attractor, no inhibition).
     Everything else -- the same submissions, the same competition of candidates -- is identical.
+
+    THE DECLARED READ SURFACE IS TWO QUESTIONS ABOUT ONE SLOT, not two buses. `current` /
+    `broadcast()` answer WHAT occupies the slot; `broadcast_hold` answers HOW STRONGLY it is still
+    held. Both go through the single `_slot()` load of the one incumbent -- see `broadcast_hold`
+    for why the second question needed a route of its own and why adding it is not a second
+    mechanism (P2).
     """
 
     # -- fixed LIF network constants (per-instance; deterministic, ASCII) --------------
@@ -136,7 +142,7 @@ class GlobalWorkspace:
             ignition_threshold / self._LEAK
         )  # membrane threshold s.t. rheobase == ignition_threshold
         self._rng = random.Random(seed)  # per-instance RNG (deterministic symmetry-break jitter)
-        self._incumbent = None  # (source, content, g) occupying the slot, or None
+        self._incumbent = None  # (source, content, hold) occupying the slot, or None; see _slot()
         self._buffer = []  # this tick's submitted candidates
         self._subscribers = []  # module callbacks receiving each broadcast
         self._g = {}  # (source, content) -> cross-tick attractor memory in [0,1]
@@ -195,14 +201,87 @@ class GlobalWorkspace:
         self._subscribers.append(fn)
         return fn
 
+    # -- the DECLARED read surface: WHAT is in the slot, and HOW STRONGLY it is held -------------
+    def _slot(self):
+        """ONE load of `self._incumbent` -- the single point at which every declared read observes
+        the slot, and the reason each of them is race-free on the free-threaded build.
+
+        CONCURRENCY, stated as the argument rather than as a hope (this is cp314t, Py_GIL_DISABLED):
+        `_incumbent` is only ever REBOUND (`self._incumbent = ...`), never mutated in place, and it
+        holds a tuple of immutables. A load therefore sees either the whole previous slot or the
+        whole new one -- there is no torn read, and no lock is needed to take that snapshot. What
+        DOES need care is loading it TWICE. `self._incumbent[1] if self._incumbent is not None else
+        None` -- the form `current` carried until this accessor was added -- evaluates its test on
+        one load and its subscript on ANOTHER, so a concurrent `step()` that empties the slot between
+        them raises `TypeError: 'NoneType' object is not subscriptable`. The self-check constructs
+        exactly that interleaving deterministically and shows the old form raising on it.
+
+        Cross-ACCESSOR coherence is a separate and weaker guarantee, stated rather than implied: two
+        accessor calls are two loads, so a reader that needs `current` and `broadcast_hold` from the
+        SAME tick must take them from the same tick -- which the live wake tick, single-threaded
+        through `step()`, already does. This snapshot removes the race INSIDE a read; it does not
+        make the workspace thread-safe and does not claim to (`submit()` says the same)."""
+        return self._incumbent
+
     @property
     def current(self):
         """The single content currently occupying the workspace (globally available), or None."""
-        return self._incumbent[1] if self._incumbent is not None else None
+        inc = self._slot()
+        return inc[1] if inc is not None else None
 
     def broadcast(self):
         """The current workspace content -- what every module can see right now."""
         return self.current
+
+    @property
+    def broadcast_hold(self):
+        """HOW STRONGLY the workspace is still holding the content `broadcast()` names: the ignited
+        pool's cross-tick attractor charge, in [0,1]. 0.0 when the slot is empty.
+
+        WHAT THIS VALUE IS, named for its meaning rather than for where it sat. It is `self._g` for
+        the winning pool -- the same attractor memory that builds that pool's drive current on the
+        next tick. It RISES to the salience of a fresh submission of that content and DECAYS by
+        `decay` on every tick the content is not re-posted, so it is the workspace's own running,
+        refresh-relative measure of how loudly and how RECENTLY the broadcast content was asserted.
+        It is not a parameter and not a constant: it is a live trace of live submissions, which is
+        why exposing it needs no threshold, no scale factor and no hand-picked number of its own
+        (P1 -- the accessor introduces no arbitrating value, and reads one that is already a running
+        form).
+
+        WHY IT NEEDED A ROUTE. Measured on the LIVE brain over 150 wake ticks, before this accessor
+        existed: `broadcast()` returned '0' on EVERY tick -- 1 distinct value, 0 changes -- while
+        this quantity cycled 0.6 -> 0.51 -> 0.4335 -- 3 distinct values, 149 changes -- because the
+        two submitters post literal constant saliences and the incumbent's hysteresis holds the same
+        content while its charge decays and refreshes underneath. Same slot, same tick: WHAT was
+        pinned and HOW STRONGLY was the only thing on the bus that moved, and it was private with no
+        declared accessor, so no faculty could consume it.
+
+        WHY THIS IS NOT A SECOND READ PATH (P2, one mechanism). There is one bus, one slot, one
+        `_slot()` load behind all three accessors, and no second copy of the content route:
+        `current` / `broadcast()` remain THE answer to WHAT, and this is the ONLY answer to HOW
+        STRONGLY. Folding the two into one return value instead -- `broadcast()` yielding a
+        (content, hold) pair -- was rejected because it changes the return type of the tree's one
+        cross-module workspace read (`cortex/live_brain.py::thought`) and of every `is not None`
+        test written against it, which buys no signal and breaks the consumers this exists to serve.
+
+        HONEST LIMIT, MEASURED rather than inherited, so a consumer is not misled by its own read.
+        On the live brain this spans 0.4335..0.6. Sweeping `cortex/access_consciousness.py` at
+        constant salience 0.00..1.00 in steps of 0.01, its `ignited` flips exactly once, at 0.54 --
+        which the live range straddles. It still cannot move it: fed the live cycle
+        0.6/0.51/0.4335 against a pinned 0.6 for 150 ticks, that consumer's outputs are IDENTICAL
+        (`ignited` [True] / 0 changes in both; `access_index` 46 distinct / 149 changes in both, and
+        equal element-wise -- its variation comes from its own coalition dynamics, not from the
+        salience), because once a content has ignited the incumbent's `self_boost + hysteresis`
+        defence keeps it ignited whether the drive sits above or below rheobase. So: this quantity
+        varies, it is now readable, and straddling a consumer's threshold is NOT the same as moving
+        it. Making it decisive somewhere is that consumer's work, not this accessor's, and claiming
+        it here would be the force-wire P6 forbids.
+
+        In the `use_ignition=False` control there is no attractor at all, so the slot's third
+        element is the winning SALIENCE, clamped in `step()` to this same [0,1] -- the same question,
+        and the only answer that path can give."""
+        inc = self._slot()
+        return 0.0 if inc is None else inc[2]
 
     # -- one workspace cycle --------------------------------------------------------------------
     def _deliver(self, content):
@@ -462,7 +541,13 @@ class GlobalWorkspace:
             # FAIR CONTROL: pure per-tick argmax. Whatever is loudest THIS tick wins outright.
             top = self._top_candidate()
             if top is not None:
-                self._incumbent = top
+                # The slot's third element is what `broadcast_hold` reads, and on the ignition path
+                # it is `_g` -- already clamped to [0,1]. `submit()` accepts any float, so the
+                # control path would otherwise hand a reader a raw 5.0 under a [0,1] contract.
+                # Clamping HERE keeps ONE meaning for one accessor instead of a caveat per path, and
+                # it is behaviour-neutral: nothing else in this module reads `_incumbent[2]` (the
+                # drives are built from `self._g`), which the self-check checks rather than asserts.
+                self._incumbent = (top[0], top[1], min(1.0, max(0.0, top[2])))
             content = self.current
             self._buffer = []
             self._deliver(content)
@@ -1062,6 +1147,145 @@ def main():
         f"{bind[2][0]:.2f} vs {bind[2][1]:.2f}"
     )
     assert bind[4][0] > 0.9, f"spiking multi-item binding must stay high at K=4 ({bind[4][0]:.2f})"
+
+    # (e) THE DECLARED READ SURFACE: `current` says WHAT, `broadcast_hold` says HOW STRONGLY -----
+    # The defect this section exists to catch, MEASURED on the live brain before the accessor
+    # existed: over 150 wake ticks `broadcast()` returned '0' every tick (1 distinct value, 0
+    # changes) while the slot's attractor charge cycled 0.6 -> 0.51 -> 0.4335 (3 distinct, 149
+    # changes) with no declared way to read it. That live shape is reproduced here exactly --
+    # constant salience, cycling content, incumbent hysteresis holding the slot -- so the
+    # dissociation is a property of this module rather than an anecdote about one brain run.
+    e_ws = GlobalWorkspace(seed=0)
+    assert e_ws.current is None and e_ws.broadcast_hold == 0.0, (
+        "an EMPTY workspace must read as (None, 0.0) -- never raise, never a stale number"
+    )
+    hold_seq, content_seq = [], []
+    for t in range(120):
+        e_ws.submit("perception", t % 3, 0.6)  # the LIVE shape: constant salience, cycling content
+        e_ws.step()
+        content_seq.append(e_ws.current)
+        hold_seq.append(e_ws.broadcast_hold)
+    hold_changes = count_switches(hold_seq)
+    content_changes = count_switches(content_seq)
+    assert content_changes == 0 and len(set(content_seq)) == 1, (
+        "this criterion is only about the DISSOCIATION -- if the content route has started varying "
+        f"on this input, re-derive the whole section rather than keeping it (got {content_changes} "
+        f"changes over {sorted(set(content_seq))})"
+    )
+    assert hold_changes >= 100 and len(set(hold_seq)) >= 3, (
+        f"the slot's hold must be readable AND moving where the content route is frozen: "
+        f"{hold_changes} changes, {len(set(hold_seq))} distinct in 120 ticks"
+    )
+    assert all(0.0 <= h <= 1.0 for h in hold_seq), (
+        "broadcast_hold must stay inside its [0,1] contract"
+    )
+
+    # REACHABLE RED for that criterion: the same 120 ticks with the content REFRESHED every tick.
+    # `g` is then pinned at the submitted salience and the hold cannot move -- so the assertion
+    # above is falsifiable by an input this module accepts, not merely by breaking the accessor.
+    red_ws = GlobalWorkspace(seed=0)
+    red_hold = []
+    for _ in range(120):
+        red_ws.submit("perception", "same", 0.6)  # refreshed every tick -> no decay, no movement
+        red_ws.step()
+        red_hold.append(red_ws.broadcast_hold)
+    assert count_switches(red_hold) == 0 and len(set(red_hold)) == 1, (
+        f"the RED must actually be red: a never-decaying hold must report 0 changes, got "
+        f"{count_switches(red_hold)} over {sorted(set(red_hold))}"
+    )
+
+    # BOUNDARIES -- zero, silence, single element, and the control path's out-of-range salience.
+    z_ws = GlobalWorkspace(seed=0)
+    z_ws.submit("perception", "nothing", 0.0)
+    z_ws.step()
+    assert z_ws.current is None and z_ws.broadcast_hold == 0.0, (
+        "a zero-salience submission must leave the slot empty and the hold at exactly 0.0"
+    )
+    s_ws2 = GlobalWorkspace(seed=0)
+    s_ws2.submit("solo", "solo", 0.9)
+    s_ws2.step()
+    assert s_ws2.broadcast_hold == 0.9, (
+        f"a single ignited pool's hold is its own attractor charge, got {s_ws2.broadcast_hold}"
+    )
+    sil = []
+    for _ in range(10):
+        s_ws2.step()  # SILENCE: nothing refreshes it -> decay, then release
+        sil.append((s_ws2.current, s_ws2.broadcast_hold))
+    assert sil[-1] == (None, 0.0), (
+        f"a released slot must read as (None, 0.0), not a stale charge, got {sil[-1]}"
+    )
+    assert [h for _c, h in sil][0] > [h for _c, h in sil][6] > 0.0, (
+        "the hold must DECAY monotonically through silence before the release"
+    )
+    # ...and THAT criterion is falsifiable by an input this module accepts rather than only by
+    # breaking the accessor: at decay=1.0 the attractor never fades, so the hold is flat through
+    # silence and the slot is never released. Run, not argued.
+    nd_ws = GlobalWorkspace(seed=0, decay=1.0)
+    nd_ws.submit("memory", "trace", 0.95)
+    nd_ws.step()
+    nd_hold = [nd_ws.broadcast_hold]
+    for _ in range(10):
+        nd_ws.step()
+        nd_hold.append(nd_ws.broadcast_hold)
+    assert nd_hold[0] == nd_hold[6] and nd_ws.current == "trace", (
+        f"the decay criterion must be reachable-red: at decay=1.0 the hold must stay flat and the "
+        f"slot must never release, got {nd_hold[:7]} / {nd_ws.current!r}"
+    )
+    ctl = GlobalWorkspace(seed=0, use_ignition=False)
+    ctl.submit("perception", "big", 5.0)
+    assert ctl._top_candidate()[2] == 5.0, (
+        "the clamp in step() must have something to clamp -- if submissions can no longer exceed "
+        "1.0 this guard is decoration and should be deleted"
+    )
+    ctl.step()
+    assert ctl.current == "big" and ctl.broadcast_hold == 1.0, (
+        f"the control path must honour the same [0,1] hold contract, got {ctl.broadcast_hold}"
+    )
+
+    # RACE: the slot REBOUND to None between two loads -- what a concurrent step() does on cp314t.
+    # The red is run, not argued: the two-load form `current` used to carry raises TypeError on this
+    # exact interleaving, and the single-load form cannot.
+    class _RacingSlot(GlobalWorkspace):
+        """`_incumbent` is emptied by a 'concurrent step()' immediately after the FIRST load."""
+
+        def __init__(self, **kw):
+            self._race = None
+            super().__init__(**kw)
+
+        @property
+        def _incumbent(self):
+            v = self._race
+            self._race = None  # the racing step() lands here, between the caller's two loads
+            return v
+
+        @_incumbent.setter
+        def _incumbent(self, v):
+            self._race = v
+
+    def _two_load_current(ws):
+        """The form this module carried before `_slot()` -- kept ONLY as the control."""
+        return ws._incumbent[1] if ws._incumbent is not None else None
+
+    race = _RacingSlot(seed=0)
+    race._incumbent = ("perception", "scene", 0.7)
+    assert race.current == "scene", "a single-load read must survive a slot emptied under it"
+    race._incumbent = ("perception", "scene", 0.7)
+    assert race.broadcast_hold == 0.7, "broadcast_hold must take the same single snapshot"
+    race._incumbent = ("perception", "scene", 0.7)
+    try:
+        _two_load_current(race)
+        raise AssertionError(
+            "the two-load read must FAIL on this interleaving -- if it no longer can, `_slot()` is "
+            "protecting nothing and its concurrency argument should be deleted"
+        )
+    except TypeError:
+        pass  # the RED, reached: 'NoneType' object is not subscriptable
+    print(
+        f"\nread surface : over 120 ticks of constant-salience/cycling-content input the content "
+        f"route reports {len(set(content_seq))} distinct value(s) / {content_changes} changes while "
+        f"broadcast_hold reports {len(set(hold_seq))} / {hold_changes}; refresh-every-tick RED "
+        f"reports {len(set(red_hold))} / {count_switches(red_hold)}"
+    )
 
     print(
         "\nself-check OK: "

@@ -123,7 +123,35 @@ class LocusCoeruleus:
         input trace first relaxes toward the tonic baseline; a supra-threshold (salient/target) event
         then adds a PHASIC current kick on top -> a synchronized spike burst. A sub-threshold
         (non-target) event adds nothing. The LC pool is read out and NA = the population's windowed
-        spike RATE. Returns the NA level (that spike rate)."""
+        spike RATE. Returns the NA level (that spike rate).
+
+        MEASURED 2026-08-05 AND DELIBERATELY NOT CHANGED -- recorded here because the next reader
+        will otherwise reach for this module when they find the LC reporting a constant, and the
+        measurement says the cause is not here.
+
+        (1) THE LC'S LIVE INPUT IS A LITERAL. Captured at the call site over 120 live wake ticks of
+        the canonical brain: the argument `cortex/brain.py` passes -- `max(threat, novelty,
+        min(1.0, _pc_surprise_ema))` -- was 0.0 on the first tick and then exactly 1.0 on the other
+        119 (distinct=2, n_changes=1). `_pc_surprise_ema` measured 1.019 to 1.046, so the
+        `min(1.0, ...)` clamp converts a varying signal into a constant, while `threat` and
+        `novelty` are both 0.0 on that path. A constant input gives a constant output whatever this
+        module does; the live `level` was pinned at 1.0 (distinct=3 / n_changes=2 across the whole
+        run, the two changes being the initial rise). The fix belongs to that clamp, in a file this
+        pass does not own.
+
+        (2) THE PHASIC TRACE WINDS UP, and clamping it does NOT restore dynamic range -- which is
+        why nothing was changed. Under a sustained supra-threshold drive the trace is an unbounded
+        geometric series converging on `kick / (1 - decay)` = 0.60 / 0.2212 = 2.71, while
+        `_population_spikes` clamps its input to [0,1]; live, `phasic` reached 2.712487 for an
+        `input_drive` of 2.9125 against a ceiling of 1.0, with `last_spikes` 1280 of a 1280-slot
+        window (every cell, every micro-step). An anti-windup ceiling at `1 - tonic` was built and
+        measured against the un-clamped rule as its control: recovery to the tonic rate after a
+        40-tick burst improved from 43 ticks to 38, and under a VARYING supra-threshold drive
+        (uniform 0.5..1.0, 120 ticks) BOTH gave distinct=2 / n_changes=1 -- identical. The
+        saturation is the pool's gain, not the windup: `LEAK = 0.10` puts the steady-state membrane
+        at 10x the input current, so any drive above roughly 0.85 pins every cell. A 5-tick latency
+        gain, zero live effect, and a blast radius of ten-plus `reasoning/` consumers is not a trade
+        worth making on this evidence, so the finding is reported and the module is left alone."""
         drive = max(0.0, min(1.0, salience))
         self.phasic *= self.decay  # phasic drive relaxes back toward tonic
         if drive >= self.salience_th:

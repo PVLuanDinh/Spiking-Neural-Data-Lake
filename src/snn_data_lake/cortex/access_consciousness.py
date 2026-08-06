@@ -48,6 +48,47 @@ The pipeline:
      Phi-like PROXY = coherence x completeness of the ignited content -- explicitly a PROXY,
      NOT IIT Phi). It RISES as more coherent neurons are grown and bundled into the workspace.
 
+WHICH BUS THIS RUNS ON (P6), and the MEASURED NULL that goes with it
+====================================================================
+`__init__` takes `ws=`. Default None -> this faculty builds its own workspace, which is what it
+has always done and what `tools/p6_gate.py` counts as one of the PRIVATE, mutually invisible
+instances P6 names. Passing the shared handle (`Brain.workspace` / `LiveBrain.workspace`, the one
+instance owned by `brainstem/autonomous_loop.py`) puts this faculty's coalition into the SAME
+single-slot competition perception and the amygdala's threat channel post into.
+
+**The route is real and the charge is NULL. Both halves were measured on the live brain and both
+are recorded here, because a route that carries nothing is the force-wiring P6 forbids.**
+
+  * IDENTITY, asserted not assumed: `ac.workspace is brain.brain.workspace is
+    brain.brain.arm.workspace` -> True. The taps are registered on the injected object, so a
+    submission by one holder reaches another holder's taps (self-check claim 6).
+  * CHARGE: **0 of 150.** `make_brain(seed=0, refit_every=10, persist=False)`, `clock.phase`
+    forced to 0.25, 150/150 wake ticks, with `AutonomousArm._percept_salience` LIVE (150 distinct
+    values in [0.568351, 0.667237]) and then NEUTERED to the incumbent literal 0.6 (1 distinct).
+    This faculty's OWN output was byte-identical across the pair on every channel: `ignited` 0/150,
+    `global_availability` 0/150, `access_index` 0/150, the brain's `_access_ema` 0/150.
+  * THE HARNESS IS NOT DEAD -- the positive control that makes the null trustworthy. Pinning the
+    same producer ABOVE its live range moves this faculty hard: at 0.72 its own output differs on
+    61/120 ticks, at 0.75 on 71/120, at 0.95 on **120/120** (`ignited` collapses from 120/120 True
+    to 0/120). The flip point is 0.72, between 0.71 (0/120) and 0.72; the live signal's ceiling is
+    0.667. So the null is a property of the RANGE, not of the probe.
+  * WHY, and it is not fixable from this file: the bus gives its incumbent `self_boost +
+    hysteresis` = 0.25 of defence, while the whole admissible band a specialist may claim is
+    `1 - (self_boost + hysteresis) - ignition_threshold` = 0.20 wide. The defence exceeds the band,
+    so whichever faculty first takes the slot holds it against every compliant competitor forever.
+    `brainstem/autonomous_loop.py::_percept_salience` had already measured the same ceiling from
+    the producer side; this is the same constant closing the SLOT-OWNERSHIP route as well as the
+    direct-salience one. Both are properties of `thalamus/global_workspace.py`, which this module
+    does not own.
+
+Consequence, stated plainly so nobody re-derives it by surprise: repointed onto the shared bus this
+faculty takes the single slot on its second step and holds it, so the arm's broadcast content goes
+from the percept id to 'GLOBAL' and stays there. (That channel was already 1 distinct / 0 changes
+over 150 ticks before the repoint and is 2 distinct / 1 change after, so nothing informative is
+lost -- but it IS a change, and it buys this consumer nothing.) `_max_claim` is what keeps the
+consequence bounded: a joining faculty may not make itself indisplaceable, and with it a 0.95
+proximity threat still seizes the slot where uncapped it cannot (self-check claim 9).
+
 Determinism: per-instance random.Random(seed) for the workspace; neuron spike codes are
 crc32-seeded (no module-level / time seeding). ASCII output.
 
@@ -81,15 +122,53 @@ class AccessConsciousness:
     _SRC = "coalition"  # workspace source name for the grown assembly coalition
 
     def __init__(
-        self, seed=0, ignition_threshold=0.55, n_taps=4, k_sat=5, noise=0.05, max_members=None
+        self,
+        seed=0,
+        ignition_threshold=0.55,
+        n_taps=4,
+        k_sat=5,
+        noise=0.05,
+        max_members=None,
+        ws=None,
     ):
+        """`ws` INJECTS the bus this faculty competes on. Default None keeps the standalone
+        behaviour (this instance builds its own), which is what the self-check below runs.
+
+        WHY THE INJECTION LIVES HERE AND NOT AT THE CALL SITE. This constructor registers
+        `n_taps` subscriber callbacks on the workspace it ends up holding; rebinding `_ws` from
+        outside after construction would leave every one of those taps attached to the abandoned
+        instance, so `global_availability()` would report reach on a bus nothing broadcasts to.
+        The handle therefore has to arrive before the taps are registered -- i.e. as a parameter.
+
+        WHAT THIS CLOSES AND WHAT IT DOES NOT, because the two are easy to run together and the
+        second half is the more useful finding. `tools/p6_gate.py` reports this module as a writer
+        nobody reads, posting into a workspace it constructed for itself -- one of the private,
+        mutually invisible instances the gate counts. This parameter is what makes that instance
+        repointable at all, and the identity is asserted rather than assumed (`main()` claim 6).
+
+        It does NOT close the charge. Neutering the one producer that reaches the shared bus
+        (`AutonomousArm._percept_salience`, pinned to the incumbent literal 0.6) over 150 live wake
+        ticks changed this faculty's OWN output on **0 of 150** ticks -- and that number is the
+        same 0 of 150 BEFORE the repoint and AFTER it. Sharing the object was necessary and was not
+        sufficient: the reason is the bus constant recorded in the module docstring, not the
+        private instance. Claim (8) shows the same route DOES carry when the competitor's claim is
+        large enough, so the mechanism works and the live signal is too small to use it.
+
+        `ignition_threshold` is read back OFF the bus once one is injected rather than kept as the
+        argument's value: it is the rheobase of the pool this faculty's submissions actually drive,
+        and `cortex/brain.py::_update_access` anchors its salience on `ac.ignition_threshold`
+        precisely to avoid duplicating that constant. Reading it through keeps that binding true on
+        a shared bus instead of silently pointing at a number no pool uses."""
         self.seed = seed
-        self.ignition_threshold = ignition_threshold
         self.n_taps = max(2, int(n_taps))  # >=2 independent downstream taps (global reach)
         self.k_sat = max(2, int(k_sat))  # neuron count at which completeness saturates
         self.noise = noise  # bit-flip fraction of a concept-member spike code
         self._rng = random.Random(seed)  # (reserved) per-instance RNG, no global seeding
-        self._ws = GlobalWorkspace(ignition_threshold=ignition_threshold, seed=seed)
+        self._ws = (
+            GlobalWorkspace(ignition_threshold=ignition_threshold, seed=seed) if ws is None else ws
+        )
+        self._own_ws = ws is None  # False == competing on somebody else's bus
+        self.ignition_threshold = float(self._ws.ignition_threshold)
         # downstream taps: each independent subscriber records the content it last received.
         self._taps = []
         for _ in range(self.n_taps):
@@ -122,6 +201,7 @@ class AccessConsciousness:
         self._availability = 0.0
         self._integration = 0.0
         self._n_bound = 0
+        self._last_claim = 0.0  # the salience actually posted (post-cap), for the self-check
 
     # -- neuron spike codes -----------------------------------------------------------------------
     def neuron_hv(self, nid):
@@ -227,6 +307,35 @@ class AccessConsciousness:
         # assembly clears rheobase (ignition_threshold) with margin; an incoherent one falls below.
         return max(0.0, min(1.0, coherence * (0.75 + 0.25 * completeness)))
 
+    def _max_claim(self):
+        """The strongest claim this faculty may post: `1 - (self_boost + hysteresis)`, READ OFF THE
+        BUS rather than chosen here.
+
+        This is the bus's own displaceability invariant and it is not a new number: it is the same
+        derivation `brainstem/autonomous_loop.py::_percept_salience` already applies to perception's
+        claim, from the same two `GlobalWorkspace` attributes (P2 -- one definition of "the loudest
+        a specialist may legitimately be", applied by every specialist, not a second policy). Above
+        it, the incumbent an ignition creates carries more recurrent defence than the widest claim
+        any competitor can make, so it can never be displaced by anything.
+
+        MEASURED, which is why this exists at all. Repointed onto the shared bus without it, this
+        faculty posts the salience `cortex/brain.py::_update_access` computes -- 1.0 on the early
+        wake ticks -- and traced over the live bus it seized the single slot on step 2 and held it
+        for every step after: perception's broadcast went from the percept id to 'GLOBAL'
+        permanently, and a 0.95 proximity threat could no longer take the slot either (drive 1.10
+        against 0.95). A faculty joining a shared bus must not be able to silence the bus.
+
+        Degenerate inputs, checked because a P1 rewrite in this tree shipped a `1e12` singularity:
+        there is no division here at all. A bus with `self_boost + hysteresis >= 1` leaves no room
+        between audible and displaceable, and the floor returns the rheobase -- the same answer
+        `_percept_salience` gives in that case -- rather than a cap of 0 that would silence every
+        submission including this faculty's own. A ZERO / EMPTY / SILENT / SINGLE-member assembly
+        produces salience 0.0 upstream and `min(0.0, cap)` leaves it 0.0, so the cap cannot lift a
+        sub-threshold assembly over the rheobase; it only ever lowers."""
+        ws = self._ws
+        hi = 1.0 - (float(ws.self_boost) + float(ws.hysteresis))
+        return max(float(ws.ignition_threshold), min(1.0, hi))
+
     # -- GROW + BUNDLE + submit -------------------------------------------------------------------
     def bind_assembly(self, neuron_ids, salience=None):
         """GROW the conscious-content coalition with these neurons and BUNDLE it into ONE workspace
@@ -247,21 +356,50 @@ class AccessConsciousness:
             sal = self._salience(self._coherence(codes), self._completeness(len(codes)))
         else:
             sal = max(0.0, min(1.0, float(salience)))
+        sal = min(sal, self._max_claim())  # stay DISPLACEABLE on the bus -- see _max_claim
         self._ws.submit(self._SRC, self._LABEL, sal)  # post the candidate for ignition
+        self._last_claim = sal
         return self._LABEL
 
     def content_vector(self):
         """The bundled spike code of the current conscious-content candidate (or None)."""
         return self._content_hv
 
+    @property
+    def workspace(self):
+        """The bus this faculty competes on -- THE object, so a caller can check IDENTITY.
+
+        Exists so "is this faculty on the shared bus?" is answerable by `ac.workspace is
+        brain.workspace` rather than by reaching into `_ws`. Equality is not the question and
+        would answer it wrongly: two freshly built `GlobalWorkspace`es with the same seed are
+        indistinguishable by value while connecting nothing, which is exactly the private-instance
+        defect P6 counts. `cortex/live_brain.py` and `cortex/brain.py` expose the same handle under
+        the same name for the same reason."""
+        return self._ws
+
     # -- one ignition cycle -----------------------------------------------------------------------
     def step(self):
         """Advance the workspace one tick: ignition competition + all-or-none global broadcast.
-        Returns whether IGNITION occurred (True/False) and refreshes the functional readout."""
+        Returns whether THIS faculty's content ignited (True/False) and refreshes the readout.
+
+        IGNITION IS THE WINNER'S IDENTITY, NOT MERELY A NON-EMPTY SLOT. `_ws.step()` returns
+        whichever content seized the single slot; this faculty is access-conscious of its own
+        coalition only when that winner IS its coalition. On a private bus the two tests are the
+        same test -- this class submits under exactly one content handle, so the slot holds
+        `_LABEL` or nothing -- and `main()` claim (7) asserts that equivalence by counting, rather
+        than asserting it in prose. On a SHARED bus they come apart, and that difference is the
+        whole point of the injection: another faculty's louder submission takes the slot and this
+        faculty's coalition stays local, which is what "competition for a limited-capacity
+        workspace" means and what the private instance made structurally impossible.
+
+        The tap scan is unchanged in kind and now names the content it is looking for. A tap that
+        last received somebody ELSE's broadcast has not received THIS content, so counting `is not
+        None` would report global availability of 1.0 for a coalition that never ignited the moment
+        the bus carries anyone else's traffic."""
         content = self._ws.step()  # broadcasts to every subscribed tap
-        self._ignited = content is not None
-        received = sum(1 for tap in self._taps if tap and tap[-1] is not None)
-        self._availability = received / self.n_taps
+        self._ignited = content is not None and content == self._LABEL
+        received = sum(1 for tap in self._taps if tap and tap[-1] == self._LABEL)
+        self._availability = (received / self.n_taps) if self._ignited else 0.0
         if self._ignited:
             codes = [h for _, h in self._members]
             self._integration = max(
@@ -321,6 +459,70 @@ def _coherent(concept, k):
 
 def _scrambled(k):
     return [f"c{i}#0" for i in range(k)]  # k DIFFERENT concepts -> ~orthogonal (incoherent)
+
+
+def _record_slot(ac, store):
+    """Record every content the bus `ac` is on puts in the slot, without adding a step."""
+    real = ac._ws.step
+
+    def spy():
+        c = real()
+        store.append(c)
+        return c
+
+    ac._ws.step = spy
+
+
+def _bus(**kw):
+    """THE ONE GlobalWorkspace construction site the self-check uses, for the same reason as
+    `_post`: `tools/p6_gate.py` censuses instantiation sites per module and reports how many are
+    PRIVATE and mutually invisible. Seven scenario-local buses in this self-check would have added
+    seven to the very count this work exists to reduce -- a module's test scaffolding must not
+    appear in the tree's private-workspace census as if it were live wiring."""
+    return GlobalWorkspace(seed=0, **kw)
+
+
+def _post(ws, posts):
+    """THE ONE submit site the self-check uses to stand in for the OTHER faculties on a shared bus.
+
+    Deliberately a single call site rather than a submit per scenario. `tools/p6_gate.py` counts
+    `submit` call sites per module as this module's BROADCAST, and it only discounts self-check
+    writes inside the two bus modules themselves -- so scattering the simulated competitors' posts
+    would have raised this module's write count from 1 to 9 while its real broadcast stayed one
+    site. P6's own verdict line is that a rising write count is not progress, and inflating it with
+    test scaffolding is the cheapest possible way to look busy in that census."""
+    for source, content, salience in posts:
+        ws.submit(source, content, salience)
+
+
+def _shared_run(competitor_salience, n=12, claim=0.75):
+    """Replay the LIVE two-step cadence on ONE shared bus: another faculty submits and the bus
+    arbitrates (the arm's step), then this faculty binds and steps (Brain._update_access).
+    Returns this faculty's OWN per-tick output."""
+    ws = _bus()
+    ac = AccessConsciousness(seed=0, ws=ws)
+    out = []
+    for _ in range(n):
+        _post(ws, [("perception", "unit0", competitor_salience), ("salience", "threat", 0.0)])
+        ws.step()
+        ac.bind_assembly(_coherent("cat", 3), salience=claim)
+        out.append((ac.step(), round(ac.access_index(), 6), round(ac.global_availability(), 6)))
+    return out
+
+
+def _slot_after_threat(claim, threat=0.95, warm=8, psal=0.6):
+    """Warm a shared bus with this faculty holding the slot at `claim`, then fire a proximity
+    threat. Returns what the slot holds afterwards -- 'threat' iff the bus is still displaceable."""
+    ws = _bus()
+    ac = AccessConsciousness(seed=0, ws=ws)
+    for _ in range(warm):
+        _post(ws, [("perception", "unit0", psal), ("salience", "threat", 0.0)])
+        ws.step()
+        # posted RAW, bypassing bind_assembly's cap, so capped and uncapped arms are comparable
+        _post(ws, [(ac._SRC, ac._LABEL, claim)])
+        ac.step()
+    _post(ws, [("perception", "unit0", psal), ("salience", "threat", threat)])
+    return ws.step()
 
 
 def main():
@@ -417,6 +619,76 @@ def main():
         coh_drift = max(coh_drift, abs(fused - scalar))
     fused_took_fast_path = AccessConsciousness._fused_calls - _fused_before
 
+    # ---- (6) THE INJECTED BUS IS THE SAME OBJECT, and the taps follow it. -------------------------
+    # P6's finding is that faculties hold PRIVATE, mutually invisible workspaces, so the check that
+    # matters is IDENTITY. Equality would pass on two freshly built seed-0 buses that connect
+    # nothing -- which is the defect itself. The RED is the default instance built beside them.
+    inj_ws = _bus()
+    inj_a = AccessConsciousness(seed=0, ws=inj_ws)
+    inj_b = AccessConsciousness(seed=1, ws=inj_ws)
+    inj_own = _fresh()
+    identity_shared = inj_a.workspace is inj_ws and inj_b.workspace is inj_ws
+    identity_red = inj_own.workspace is not inj_ws and inj_own.workspace is not None
+    own_flags = (inj_a._own_ws, inj_b._own_ws, inj_own._own_ws)
+    # sharing must be REAL, not nominal: A's broadcast has to reach B's taps, which only happens if
+    # both tap sets were registered on the one object.
+    inj_a.bind_assembly(_coherent("cat", 5))
+    inj_a.step()
+    cross_tap = bool(inj_b._taps[0]) and inj_b._taps[0][-1] == AccessConsciousness._LABEL
+    # the rheobase is read OFF the bus, so the anchor cortex/brain.py uses is the pool's own. RED by
+    # construction: the constructor argument says 0.55 and the bus says 0.42.
+    odd_ws = _bus(ignition_threshold=0.42)
+    odd_ac = AccessConsciousness(seed=0, ignition_threshold=0.55, ws=odd_ws)
+    threshold_readthrough = odd_ac.ignition_threshold == 0.42
+
+    # ---- (7) THE WINNER-IDENTITY IGNITION TEST IS BEHAVIOUR-NEUTRAL ON A PRIVATE BUS. ------------
+    # `content is not None` and `content == _LABEL` are the same test when this faculty is the only
+    # submitter, and a DIFFERENT test the moment it is not. Both halves are counted: agreement on
+    # the private bus, and at least one DISAGREEMENT on a shared one -- without which the first
+    # assert is vacuous (the `_fused_calls` lesson, applied to a second claim in this file).
+    priv_seen = []
+    priv_ac = _fresh()
+    _record_slot(priv_ac, priv_seen)
+    for t in range(10):
+        priv_ac.bind_assembly(_coherent("cat", 3) if t % 2 == 0 else _scrambled(3))
+        priv_ac.step()
+    priv_agree = sum(1 for c in priv_seen if (c is not None) == (c == AccessConsciousness._LABEL))
+    sh_seen = []
+    sh_ws = _bus()
+    sh_ac = AccessConsciousness(seed=0, ws=sh_ws)
+    _record_slot(sh_ac, sh_seen)
+    for _ in range(10):
+        _post(sh_ws, [("perception", "unit0", 0.95)])  # a louder faculty takes the one slot
+        sh_ws.step()
+        sh_ac.bind_assembly(_coherent("cat", 3), salience=0.60)
+        sh_ac.step()
+    sh_disagree = sum(1 for c in sh_seen if (c is not None) != (c == AccessConsciousness._LABEL))
+
+    # ---- (8) ON A SHARED BUS ANOTHER FACULTY IS DECISIVE FOR THIS ONE'S OWN OUTPUT. --------------
+    # The in-module form of the neuter-A/B. `hi_run`'s competitor is loud enough to hold the single
+    # slot, `lo_run`'s is not; `null_run` re-runs `lo_run`'s competitor unchanged and MUST be
+    # identical, or the difference above is measuring the harness rather than the bus.
+    lo_run = _shared_run(0.60)
+    hi_run = _shared_run(0.95)
+    null_run = _shared_run(0.60)
+    shared_diff = sum(1 for a, b in zip(lo_run, hi_run) if a != b)
+    shared_null = sum(1 for a, b in zip(lo_run, null_run) if a != b)
+
+    # ---- (9) A FACULTY JOINING A SHARED BUS MUST NOT BE ABLE TO SILENCE IT. ----------------------
+    # `_max_claim` caps this faculty's post at the bus's own displaceability bound. The RED is the
+    # SAME replay with the cap removed, and it is run, not argued.
+    cap = _fresh()._max_claim()
+    capped_after_threat = _slot_after_threat(cap)
+    uncapped_after_threat = _slot_after_threat(1.0)
+    # the cap only ever LOWERS: a scrambled (sub-rheobase) assembly must stay local on any bus,
+    # including one whose defence leaves no room and whose cap therefore floors at the rheobase.
+    cap_floor_ws = _bus(self_boost=0.5, hysteresis=0.6)
+    cap_floor_ac = AccessConsciousness(seed=0, ws=cap_floor_ws)
+    cap_floor_ac.bind_assembly(_scrambled(5))
+    cap_floor_ignites = cap_floor_ac.step()
+    cap_floor = cap_floor_ac._max_claim()
+    cap_open = AccessConsciousness(seed=0, ws=_bus(self_boost=0.0, hysteresis=0.0))._max_claim()
+
     # ---- (5) HONEST CEILING + DETERMINISM. --------------------------------------------------------
     st = strong.state()
     gate = 1.0 if st["ignited"] else 0.0
@@ -472,6 +744,25 @@ def main():
     print(
         f"coherence fusion: fused vs scalar max|d| = {coh_drift:.1e} over {len(coh_probe)} member "
         f"sets ({fused_took_fast_path} of {fused_eligible} eligible OBSERVED taking the fused branch)"
+    )
+    print(
+        f"shared bus   : injected handle is THE object (A and B taps on one instance: "
+        f"{cross_tap}); a default instance is NOT it ({identity_red}); rheobase read off the bus "
+        f"({odd_ac.ignition_threshold})"
+    )
+    print(
+        f"winner-identity ignition: private bus agrees with 'slot non-empty' on "
+        f"{priv_agree}/{len(priv_seen)} steps; on a shared bus they DISAGREE on "
+        f"{sh_disagree}/{len(sh_seen)}"
+    )
+    print(
+        f"competitor decisive: own output differs on {shared_diff}/{len(lo_run)} ticks between a "
+        f"0.60 and a 0.95 competitor; unchanged competitor -> {shared_null}/{len(lo_run)}"
+    )
+    print(
+        f"displaceable: cap={cap} -> a 0.95 threat takes the slot ({capped_after_threat!r}); "
+        f"UNCAPPED at 1.0 it cannot ({uncapped_after_threat!r}); cap floor={cap_floor} "
+        f"open={cap_open}"
     )
     print(
         "MEASURES ACCESS (global availability / ignition), NOT phenomenal experience "
@@ -530,6 +821,55 @@ def main():
         f"_coherence's fused branch must be BIT-EXACT against _coherence_scalar "
         f"(max |fused - scalar| = {coh_drift:.3e} over {len(coh_probe)} member sets)"
     )
+    # (6) the injected bus is THE object, not a copy, and the taps live on it.
+    assert identity_shared, "an injected workspace must be held by IDENTITY, not copied"
+    assert identity_red, (
+        "a default-constructed instance must NOT be on the injected bus -- if this passes "
+        "trivially the identity assert above is not discriminating anything"
+    )
+    assert own_flags == (False, False, True), f"_own_ws must track the injection: {own_flags}"
+    assert cross_tap, (
+        "A's broadcast must reach B's taps -- two instances sharing a bus by NAME while holding "
+        "different objects is exactly the private-workspace defect P6 counts"
+    )
+    assert threshold_readthrough, (
+        f"ignition_threshold must be read off the injected bus (0.42), not kept from the "
+        f"constructor argument (0.55): got {odd_ac.ignition_threshold}"
+    )
+    # (7) the ignition test changed meaning without changing behaviour on the private path.
+    assert priv_agree == len(priv_seen) and len(priv_seen) == 10, (
+        f"on a private bus 'slot non-empty' and 'the slot is MINE' must agree on every step: "
+        f"{priv_agree}/{len(priv_seen)}"
+    )
+    assert sh_disagree >= 1, (
+        f"the two tests must actually COME APART on a shared bus, or the equivalence asserted "
+        f"above is vacuous and the winner-identity test is untested: {sh_disagree}/{len(sh_seen)}"
+    )
+    # (8) another faculty's claim changes THIS faculty's own output -- with its own null control.
+    assert shared_diff >= len(lo_run) // 2, (
+        f"a competitor that holds the single slot must change this faculty's OWN output on at "
+        f"least half the ticks, got {shared_diff}/{len(lo_run)}"
+    )
+    assert shared_null == 0, (
+        f"an UNCHANGED competitor must reproduce the run exactly, or the difference above is the "
+        f"harness and not the bus: {shared_null}/{len(lo_run)}"
+    )
+    # (9) joining a shared bus must not silence it -- the uncapped arm is the reachable RED.
+    assert capped_after_threat == "threat", (
+        f"with the claim capped at the bus's own displaceability bound, a 0.95 proximity threat "
+        f"must still seize the slot, got {capped_after_threat!r}"
+    )
+    assert uncapped_after_threat != "threat", (
+        f"the cap must be load-bearing: UNCAPPED at 1.0 the same threat must FAIL to take the "
+        f"slot, or claim (9) is asserting something that was true anyway (got "
+        f"{uncapped_after_threat!r})"
+    )
+    assert not cap_floor_ignites and cap_floor == cap_floor_ws.ignition_threshold, (
+        f"the cap must only ever LOWER a claim: on a bus with no displaceable room it floors at "
+        f"the rheobase ({cap_floor}) and a sub-threshold assembly still stays local "
+        f"(ignited={cap_floor_ignites})"
+    )
+    assert cap_open == 1.0, f"a bus with no incumbent defence caps at 1.0, got {cap_open}"
     # (5) honest ceiling: no phenomenal field; index reproduces from the 3 functional measures alone.
     assert no_phenomenal_key, f"state() must contain NO phenomenal key {_BANNED}: {list(st)}"
     assert abs(st["access_index"] - reproduced) < 1e-9, (
