@@ -146,27 +146,139 @@ content this stream had already retracted; given an 8-tick budget instead, the s
 thoughts against 7. (CORRECTED 2026-08-06 by an adversarial re-run -- this read "managed 6", which
 is neither the same-budget figure nor the same-chain figure.)
 
-STILL LIVE AND DELIBERATELY NOT FIXED HERE -- THE RANK TIE-BREAK, AND IT IS A REAL DEFECT.
+THE RANK TIE-BREAK: MEASURED IN FULL, REPAIR FOUND, AND NOT SHIPPED. Every number below was RUN.
 `(-late[k], -total[k], k)` falls through to the source string when two pools tie on both spike
-counts. MEASURED post-fix on an exhaustive two-producer grid -- warmups {0,1,2,3} x 51 x 51 salience
-pairs on a 0.01 grid over [0.50, 1.00], scoring the tick AFTER the warmup: 3,576 co-admissions of
-which 1,941 -- 54.3% -- are settled lexicographically. Scoring EVERY tick instead of only the last
-gives 8,940 / 4,848 -- 54.2%, so the figure is a property of the arbiter and not of the counting
-convention. (CORRECTED 2026-08-06 by an adversarial re-run: this paragraph first read "5,365 / 2,438
--- 45.4%", which reproduces under neither convention; the construction is spelled out here so the
-next reader re-derives it instead of quoting it. The corrected figure is the SAME 3,576 / 1,941 the
-defect report measured PRE-fix, which is the honest headline -- `_defended` did not move this census
-at all, because it changes which pools are subsidised and not how ties among them are broken.) It
-does NOT reach the
-live arm bus, and that is checked rather than assumed: occupancy there is 1 of 4 on 120 of 120
-ticks, so there is no tick on which two contents are ranked at all and `thought` above is decided by
-the ignition dynamics. THE REPAIR IS IDENTIFIED AND PRICED: ranking co-saturated pools by attractor
-charge (`-self._g[k]` before `k`) costs this module NOTHING -- the head-capture table is
-byte-identical at [0.72, 0.825, 0.825, 0.825, 0.825] -- and it REDDENS `cortex/access_consciousness`
-claim (10), whose FOCUS lever IS a peer rename and which therefore has no green state on an arbiter
-that does not read the source string. That claim has to be re-derived onto the peer VOLUME lever it
-already runs in its own quiet-peer arm before the tie-break can be closed, and that is a file this
-pass does not own. Recorded with its number so the next pass inherits a measurement, not a hunch.
+counts. The census is re-derived rather than quoted -- exhaustive two-producer grid, warmups
+{0,1,2,3} x 51 x 51 salience pairs on a 0.01 grid over [0.50, 1.00], scoring the tick AFTER the
+warmup: 3,576 co-admissions of which 1,941 -- 54.3% -- are settled lexicographically. `_defended`
+did not move this census at all, because it changes which pools are subsidised and not how ties
+among them are broken.
+
+IT IS NOT CONFINED TO THE HEAD, and that is the half every prior pass of this header got wrong.
+`step()` admits `fired[:cap]`, and `_defended` then grants every ADMITTED occupant `self_boost +
+hysteresis` on the NEXT tick -- so whatever settles the rank on tick t settles who is SUBSIDISED on
+tick t+1, and a subsidised pool silences an unsubsidised one through the shared inhibition. The
+string therefore decides ACCESS, not merely order. MEASURED, and the construction is spelled out
+because the METRIC has a trap in it: six co-saturating producers into a capacity of 4 over 20
+ticks, arm A naming them in loudness order and arm B in reverse, comparing the set of admitted
+CLAIMS -- never the set of admitted NAMES, which differs between the arms whatever the arbiter does
+and so reports a finding that is not there. Swept over 21 top claims x 7 spacings, keeping the 123
+loads whose weakest claim stays >= 0.55:
+
+    loads where the NAME changes the admitted CLAIM set   SHIPPED   -`_g`   -`_last_v`
+    all 123                                                  24        0         0
+    of those fully compliant (top claim <= 0.75)             13        0         0
+    control: the same six producers spread at 0.04            0        0         0
+
+At top 0.650 / spacing 0.005 -- every claim compliant -- the LOUDEST producer holds a slot on 20 of
+20 ticks under one naming and 0 of 20 under the other, having changed nothing but its name. This is
+the entrenchment shape `_defended` closed for retracted content, one level up, the alphabet
+choosing who is subsidised. (CORRECTED 2026-08-06 by an adversarial re-run: this block first
+carried a two-row table of name TUPLES and the counts "28 loads / SEVEN compliant" with no grid
+stated. The phenomenon reproduces and is the finding; those counts do not, because they are
+properties of a sweep grid rather than of the arbiter, and a name-tuple comparison cannot tell the
+finding apart from the rename itself.)
+
+THE PRECONDITION, stated so the finding is not overstated: it needs MORE co-saturating pools than
+slots -- at least `capacity + 1` producers whose claims sit within roughly 0.005..0.02 of each
+other. Compliant producers SPREAD across the band are separated by the competition itself: six of
+them at 0.04 spacing leave ONE content in the workspace under both namings. And none of it reaches
+the live arm bus, checked rather than assumed: occupancy there is 1 of 4 on 120 of 120 ticks, so no
+tick ranks two contents at all and `thought` is decided by the ignition dynamics.
+
+THE THREE DIRECTIONS, MEASURED, so none of them has to be re-run. The test is two-sided -- a rename
+must not move the head, AND a pool that genuinely out-drives another must take it. A rule that
+ignores names by ignoring everything passes the first half and fails the second, so both halves are
+counted on the same 3,576-pair grid.
+
+  (b) MORE MICRO-STEPS -- DEAD, and the premise under it is false. `late` is not three-valued
+      because the window is short; it SATURATES, because a pool in the high-firing attractor fires
+      on EVERY micro-step of the second half. On the SAME full grid as the census: _T=60 and _T=120
+      each read exactly three values ({0, _T/4, _T/2}) and give the SAME 1,941 of 3,576 -- 54.28% --
+      so DOUBLING the micro-steps moves the tie count by ZERO, not by approximately zero. On an
+      11x11 subsample the value set stays {0, _T/4, _T/2} and the rate stays flat through _T=960.
+      _T=30 is the lone exception and it goes the WRONG way: seven values ({0,1,2,7,8,14,15}, the
+      four extras appearing 21 times in 20,808 readings) and still 1,962 of 3,604 -- 54.44%, worse
+      than _T=60. The cost is linear: 0.1415 -> 1.7808 ms per 5-pool step, 12.6x (measured 2026-08-06
+      and not re-derived since). Raising _T buys resolution only for a readout that is not already
+      clipped. (CORRECTED 2026-08-06 by an adversarial re-run: this read "the values are always
+      {0, _T/4, _T/2}", which is false at _T=30, and quoted a rate row "54.8 / 54.4 / 54.4 ..."
+      whose _T=60 entry contradicts this header's own census three paragraphs up. The NULL survives
+      unchanged; the numbers under it did not.)
+  (c) EARLIEST IGNITION / LONGEST SUSTAINED -- DEAD for the same reason. Recording the first and the
+      last spike micro-step per pool and ranking on either separates 0 of the 1,941 tied pairs and
+      leaves the name-flip count at 1,941: co-saturating pools ignite on the same micro-step and
+      fire to the same last one. Principled, and constant across exactly the population that needs
+      breaking.
+  (a) A FINER READOUT -- the only direction that works, and one term is enough. Half 2 is scored as
+      "the head went to the pool with the higher `drives`", stated because an earlier scoring
+      counted the 176 EXACTLY-EQUAL-claim configs as MISSES, where neither pool out-drives the other
+      and the half has no content to test:
+        -`_g[k]`      (attractor charge) 1,941 -> 176 name-flips (4.9%), out-drive-head 75.2% ->
+                      100%, ACCESS arm 24 -> 0 loads. PARTIAL: a previous version of this header
+                      called it "the repair", and it is not -- `_g` still ties on 9.1% of the tied
+                      set (176 of 1,941), and those 176 are exactly the equal-claim configs. It
+                      leaves this module's head-capture TABLE byte-identical; it does NOT leave the
+                      module's figures byte-identical, and the earlier wording generalised a true
+                      narrow claim into a false broad one -- the 48-tick head trace moves and "the
+                      HEAD changed on 17 ticks" becomes 14.
+        -`_last_v[k]` (final membrane) 1,941 -> 0 name-flips, out-drive-head 100%, ACCESS arm 0.
+                      Already stored, already policed by the determinism check, and the right
+                      quantity on the physics: a pool firing every micro-step settles to a residual
+                      of `2 * (cur - v_th)` after the subtract-threshold reset, so the membrane
+                      carries LINEARLY the drive excess that the clipped integer count discards.
+      Ranking on the raw drive scores identically (0 name-flips / 100%) and is REJECTED: `drives` is
+      the INPUT to the competition and carries `_jitter_for`, so it never ties because the
+      SYMMETRY-BREAK NOISE never ties. That swaps one arbitrary tie-break for another and stops the
+      settle deciding anything. `_last_v` is the network's OUTPUT, after the inhibition and the
+      self-excitation have run -- BUT ONLY PARTLY, and the limit is measured rather than argued:
+      two pools claiming exactly 0.70 settle to membranes 3.46e-03 apart with the jitter live and
+      EXACTLY 0.0 apart under `_JITTER = 0`. So on the 176 equal-claim configs `-_last_v` is the
+      same symmetry-break noise laundered through the LIF, and its "never ties" is inherited rather
+      than earned. It beats `-drives` on the other 3,400, where the claims genuinely differ and the
+      settle has something to amplify -- which is the whole of the case for it.
+
+WHAT THE REPAIR WOULD COST, which is why it is recorded here instead of shipped. The tick cost is
+nil (0.1340 -> 0.1321 ms per 5-pool step -- one dict lookup inside a sort key), determinism holds (1
+digest over 24 same-seed runs hashing the membrane FLOATS), and the live brain is BYTE-IDENTICAL:
+`thought` 4 distinct values / 55 changes / names the submitted percept on 56 of 56 posting ticks
+under both arbiters, on `make_brain(seed=0, refit_every=10, persist=False)` with `clock.phase =
+0.25` over 120 ticks, `_access_state` and `_access_ema` (0.488958) identical to 6 dp. (A bare
+"crc32 eb70d8f5" stood here until 2026-08-06 and was REMOVED rather than re-quoted: it never said
+what had been hashed, so it could not be re-derived, and an unre-derivable digest is decoration.)
+Slot winnability stays [0.72 x5], the capacity still binds (40
+at 0.70 -> 4), the silent-source hold still releases after 7, `_defended` is untouched. THREE things
+do move, and all three are recorded with the exact assert that fires:
+
+  1. `cortex/access_consciousness.py` claim (10): `focus_moved >= 1` goes to 0. Its FOCUS lever IS a
+     peer rename, so its green state REQUIRES the head to be name-decided and there is no arbiter
+     that is both correct and green on it. Its ACCESS half is untouched (`access_same` 12 of 12
+     under both), and claim (8) reads identically under both. Re-derive (10) onto the peer VOLUME
+     lever it already runs in its own quiet-peer arm.
+  2. `reasoning/rpm_solver.py` `collide_ok` case (ii): `ws_seq.broadcast() == stale` goes False.
+     THIS BLOCKER WAS NOT PREVIOUSLY RECORDED. The precondition -- "the previous matrix's answer
+     holds the HEAD" -- is itself manufactured by the string compare: measured, the stale pool holds
+     the head on `_g` 0.850000 and membrane 0.613777 against this solve's own candidate at 1.000000
+     and 0.904735, purely because source 'c0' sorts before 'c7'. Under the repair the fresher pool
+     correctly takes the head and the case's own non-vacuity check fails. Its LOAD-BEARING half is
+     unchanged (answer #7, known=True under both), so this is a precondition to reconstruct, not a
+     behaviour to restore.
+  3. THIS MODULE'S OWN head-capture table, [0.72, 0.825, 0.825, 0.825, 0.825] -> [0.805, 0.835,
+     0.910, 0.955, None]. That is not a regression the repair introduces; it is the repair
+     WITHDRAWING a credit this header was taking for the alphabet. The flat 0.825 is the challenger
+     'chal' sorting before the tenant 't0'. Once the head is dynamic, becoming the FOCUS costs what
+     out-driving a defended tenant actually costs, and against a tenant at the band ceiling (drive
+     1.00) it is impossible -- LIMIT 3's ceiling, one level deeper. The self-check cannot see this:
+     it asserts only `any(h is None or h > band_hi)`, which BOTH tables satisfy, so that table is
+     printed evidence and only weakly asserted.
+
+NOT SHIPPED, deliberately and not silently. The repair buys nothing measurable on any bus that
+exists today -- live occupancy is 1 of 4 and `thought` is byte-identical -- and it reddens two
+self-checks in files this pass does not own, one of them under a concurrent lane. Both of those
+criteria have their green state only on the defect, which P8 answers by DELETING and re-deriving
+them, never by loosening a bound; doing that is work for their owners. What is NOT yet measured, and
+is the honest gap in this block: whether any repair exists that leaves the head-capture table where
+it is, since item 3 above is a consequence of correctness rather than of the particular key chosen.
 
 =====================================================================================================
 WHAT THIS BUYS ON THE LIVE BRAIN, AND WHAT IT DOES NOT. Measured, 2026-08-06, on the canonical
@@ -237,8 +349,15 @@ different question from access. Swept the same way as the winnability table abov
     (retired arbiter) 0.735    0.735    0.895   0.950   0.955     <- slot and head were one thing
 
 So a compliant specialist can always get ACCESS and cannot always become the FOCUS. Two things
-follow and both are honest rather than convenient. It is a real improvement on the head too (0.895
--0.955 down to a flat 0.825, and flat instead of compounding with the tenant's claim), and it is
+follow and both are honest rather than convenient. The head row LOOKS like an improvement too
+(0.895-0.955 down to a flat 0.825, flat instead of compounding with the tenant's claim) -- but that
+credit is WITHDRAWN as of 2026-08-06 and the reason is measured, not argued: the flat 0.825 is the
+challenger source 'chal' sorting before the tenant 't0' at the rank line, not the challenger
+out-driving it. On a name-blind arbiter the same sweep reads [0.805, 0.835, 0.910, 0.955, None] --
+AT OR ABOVE the retired arbiter's head row [0.735, 0.735, 0.895, 0.950, 0.955] at every one of the
+five points, so the multi-slot head is not cheaper than the one it replaced once the alphabet stops
+paying for it. See the tie-break block above; the number to quote about the head is that it is
+currently decided by a string. It is
 still outside the band, so `broadcast()` alone remains a poor place to look for faculty-to-faculty
 influence -- `broadcast_all()` is where the change lives, and since 2026-08-06 so does the
 SUBSCRIBE channel (see the delivery section below; a consumer no longer has to reach for a second
@@ -1140,8 +1259,14 @@ class GlobalWorkspace:
         #    empties (release).
         #
         #    The rank key is the one this module always used, with the full key as its final
-        #    tie-break instead of the source alone. HONEST STATUS, measured rather than argued:
-        #    this is hardening with NO reachable red, and the "determinism hole" it was written to
+        #    tie-break instead of the source alone. THE FALL-THROUGH TO `k` IS A LIVE DEFECT and the
+        #    module header carries the whole measurement: `late` saturates, so 1,941 of 3,576
+        #    co-admissions are settled by the SOURCE STRING, and because `fired[:cap]` decides who
+        #    `_defended` subsidises next tick, that string decides ACCESS and not just order.
+        #    Ranking on `-self._last_v[k]` before `k` takes both counts to 0 at no tick cost; it is
+        #    not applied here because it reddens two self-checks in files this pass does not own.
+        #    HONEST STATUS of the `k`-vs-source part alone, measured rather than argued:
+        #    that is hardening with NO reachable red, and the "determinism hole" it was written to
         #    close does not exist. `late` is keyed in `sorted(drives)` order on BOTH settle paths
         #    and `sorted` is stable, so the source-only key already resolved every tie identically
         #    -- 0 disagreements over four tie-heavy loads (one source with 4, 8 and 40 identical
