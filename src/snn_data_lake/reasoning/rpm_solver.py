@@ -34,8 +34,9 @@ DESIGN (all over vsa_reasoning primitives):
     fitting rule types' evidence through the spiking basal-ganglia Go/NoGo gate
     (basal_ganglia.action_gating.BasalGangliaGate.select -- disinhibition WTA). The winning ANSWER
     among the 8 candidates is chosen by the spiking thalamic global workspace
-    (thalamus.global_workspace.GlobalWorkspace) -- each candidate's rule-match salience competes and
-    the one that crosses the all-or-none IGNITION threshold is broadcast as the answer.
+    (thalamus.global_workspace.GlobalWorkspace) -- each candidate's rule-match salience competes,
+    and a candidate that crosses the all-or-none IGNITION threshold and ranks inside the workspace's
+    capacity is ADMITTED to a slot; the highest-ranked admitted candidate of ours is the answer.
   * SOLVE. RPM is 8-choice: score every candidate by the induced per-attribute predictions
     (spike sim + cleanup), ignite the winner, and return {answer_idx, confidence, rule, known}.
 
@@ -52,6 +53,7 @@ none of these four rules returns an HONEST gap (known=False), never a bluffed ch
 # (which the repo excludes from `ruff check .`); kept for consistency, not reflowed to f-strings.
 import random
 import re
+import zlib
 
 from snn_data_lake.basal_ganglia.action_gating import BasalGangliaGate
 from snn_data_lake.cortex.vsa_reasoning import bind, bundle, cleanup, hv, permute, sim
@@ -64,10 +66,56 @@ from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
 RULE_ORDER = ("constant", "progression", "arithmetic", "distribute3")
 RULE_PRIORITY = {"constant": 4.0, "progression": 3.0, "arithmetic": 2.0, "distribute3": 1.0}
 
-_ANSWER = "rpm_answer"  # namespace tag on the content this solver posts into the (shared) slot
+_ANSWER = "rpm_answer"  # namespace tag on the contents this solver posts into the (shared) slots
 _POS = hv("RPM_POS0")  # the single object-position ROLE (fillers = the attribute codes)
 _POOL = tuple(range(1, 9))  # candidate value pool for the self-check's synthetic distractors
 _ROLE_CACHE = {}  # attribute -> its ROLE spike code (crc32-seeded, deterministic)
+
+
+def _solve_tag(context_cells, candidates):
+    """The per-QUESTION token this solve stamps on every content it posts into the workspace.
+
+    WHY A BARE `_ANSWER` TAG IS NOT ENOUGH ON A SHARED BUS, measured rather than argued. The tag
+    alone namespaces this solver against OTHER FACULTIES (a percept posting a small int cannot be
+    mistaken for a candidate index). It does not namespace this solve against ANOTHER SOLVE, and
+    the workspace holds a content's attractor charge ACROSS ticks -- so a previous matrix's winner
+    is still in the bus when the next matrix is posed, wearing the identical `('rpm_answer', i)`
+    shape. Measured on two ordinary consecutive `solve()` calls on one shared bus, no adversary
+    involved: matrix A's winner held the rank-1 slot at charge 0.85 and matrix B, whose own answer
+    is #7, returned #0 -- A's answer, read back as B's. That is a foreign content returned as the
+    RPM answer, which is exactly what this solver's shared-bus criterion forbids.
+
+    The token is a crc32 over the QUESTION (its context cells and its candidates, attribute-sorted
+    so dict order cannot reach it), so it identifies the competition rather than the caller: two
+    solves of the SAME matrix legitimately share pools and their attractor persistence is
+    meaningful, while two DIFFERENT matrices get disjoint pools because they are different
+    competitions. crc32 rather than the builtin `hash()` per the house determinism rule -- a
+    namespace that changes between processes is not a namespace.
+
+    TWO HONEST LIMITS, disclosed here rather than left to be discovered later.
+
+    (1) IT IS A NAMESPACE, NOT A SIGNATURE, and is not claimed as one. The content is unforgeable
+    only against a poster that does not know the matrix; anything that DOES know the matrix is
+    posting this matrix's own answer, which is not the contamination this guards. What it buys is
+    provenance against the contents that actually share this bus -- other faculties, and this
+    solver's own earlier questions.
+
+    (2) IT COSTS POOLS ON A SHARED BUS, measured against the retired untagged shape rather than
+    estimated. Distinct matrices no longer reuse one set of 8 pools, and a pool survives ~85
+    workspace STEPS (`decay` 0.85 down to the 1e-6 prune). WORST CASE -- this solver is the only
+    thing stepping the bus and every solve is a different matrix -- 160 back-to-back solves plateau
+    at 519 live pools and 17.2 ms/solve against 8 pools and 11.5 ms untagged: 1.5x, and it
+    PLATEAUS rather than growing, because the prune keeps pace from ~80 solves on. It drains as
+    soon as anything else ticks the bus, which on the live brain is every wake tick: the same 160
+    solves peak at 279 pools with 1 brain tick between them, 102 with 5, and 33 with 20. The cost
+    is therefore paid in full only by a bench harness and is near-zero in production. It is the
+    direct price of not conflating two different questions in one competition, which is what the
+    untagged shape did and what the measurement above shows it getting wrong."""
+    parts = [
+        ",".join("%s=%r" % (a, cell[a]) for a in sorted(cell))
+        for cell in list(context_cells) + list(candidates)
+    ]
+    return zlib.crc32("|".join(parts).encode("utf-8"))
 
 
 def _role(attr):
@@ -111,8 +159,9 @@ class RpmSolver:
         """`workspace` ADOPTS the one shared GlobalWorkspace instead of building a private one per
         solve. Hand it `Brain.workspace` / `LiveBrain.workspace` -- the single instance
         `brainstem/autonomous_loop.py` constructs -- and the candidate answers compete for the SAME
-        slot the brain's perception and salience channels post into. None keeps the per-call private
-        instance this class always built, so every existing caller is byte-identical.
+        limited-capacity slots the brain's perception and salience channels post into. None keeps
+        the per-call private instance this class always built, so every existing caller is
+        byte-identical.
 
         The handle is held on the INSTANCE and read inside `_solve`, because the workspace there is
         function-local and re-created on every call: a constructor that only built a private object
@@ -312,22 +361,47 @@ class RpmSolver:
         argmax = winners[0]
 
         # SPIKING candidate selection: each candidate's panel salience competes in the thalamic global
-        # workspace; the one that crosses the all-or-none ignition threshold is broadcast as the answer.
-        # ADOPTS the one shared bus when this solver was handed it (P6), else builds the private
-        # per-call instance it always built. On the shared bus the competition also contains whatever
-        # the rest of the brain is holding, so a candidate must out-drive the live incumbent's
-        # cross-tick attractor to ignite -- which is the consumption, not an added reader.
+        # workspace; a candidate that crosses the all-or-none ignition threshold and ranks inside the
+        # capacity is ADMITTED to a slot, and the highest-ranked admitted candidate of OURS is the
+        # answer. ADOPTS the one shared bus when this solver was handed it (P6), else builds the
+        # private per-call instance it always built. On the shared bus the competition also contains
+        # whatever the rest of the brain is holding, so a candidate must out-drive the live tenants'
+        # cross-tick attractors to ignite -- which is the consumption, not an added reader.
         ws = GlobalWorkspace(seed=self.seed) if self.workspace is None else self.workspace
+        tag = _solve_tag(context_cells, candidates)
         for i, s in enumerate(saliences):
-            ws.submit("c%d" % i, (_ANSWER, i), s)
-        ignited = ws.step()  # broadcast content = OUR winning index, another faculty's, or None
-        # The content key is NAMESPACED because the shared slot is shared: the brain's perception
-        # channel broadcasts small ints (0..3) that would otherwise be indistinguishable from a
-        # candidate index and would be returned as this solver's ANSWER. Behaviour-neutral on the
-        # private path -- the drives, the jitter draw order and the sorted pool order are all keyed
-        # on the source label "c%d", which is unchanged.
-        won = ignited if (isinstance(ignited, tuple) and ignited[:1] == (_ANSWER,)) else None
-        answer_idx = won[1] if won is not None else argmax
+            ws.submit("c%d" % i, (_ANSWER, tag, i), s)
+        ws.step()  # settle the competition; the workspace now holds whatever was admitted
+        # READ ACCESS, NOT FOCUS -- and read only contents THIS SOLVE POSTED.
+        #
+        # `step()` returns the ranked HEAD, and on a multi-slot bus the head is a different question
+        # from access: a compliant specialist can always win a SLOT and cannot always become the
+        # FOCUS (`thalamus/global_workspace.py`, limit 3). Reading the head therefore reports an
+        # honest gap whenever any louder faculty is also in the workspace, which is the single-slot
+        # "a competitor took the one slot away from me" pathology and not a fact about this solver.
+        # `broadcast_all()` is the arbiter's full ranked output and is the read that matches the
+        # bottleneck we are actually competing in.
+        #
+        # The token match is the provenance half and it is doing the safety work: `broadcast_all()`
+        # reports CONTENTS, not sources, so a content that merely LOOKS like one of ours -- another
+        # faculty's, or this solver's own answer to a previous matrix still holding its charge --
+        # is indistinguishable from a candidate by shape alone. Matching the per-question token
+        # means `won` can only be a content this solve posted, so `answer_idx` and `known` below
+        # are statements about OUR candidate winning access and never about who else is on the bus.
+        # BEHAVIOUR-NEUTRAL ON THE PRIVATE PATH, which is every existing caller (`workspace=None`),
+        # and that is MEASURED rather than argued: A/B'd against a copy of this file carrying the
+        # exact retired read, 250 fresh-solver matrices across all five regimes and 200 more on a
+        # REUSED instance gave 0 differing result dicts. The reason it holds is that the drives,
+        # the jitter draw order and the sorted pool order are all keyed on the source label "c%d",
+        # which is unchanged, and a private workspace holds nothing but this solve's own contents
+        # so its ranked head IS its top candidate.
+        mine = [
+            c
+            for c in ws.broadcast_all()
+            if isinstance(c, tuple) and len(c) == 3 and c[:2] == (_ANSWER, tag)
+        ]
+        won = mine[0] if mine else None  # our highest-RANKED admitted candidate, or None
+        answer_idx = won[2] if won is not None else argmax
 
         srt = sorted(saliences, reverse=True)
         confidence = round(srt[0] - (srt[1] if len(srt) > 1 else 0.0), 3)
@@ -573,43 +647,218 @@ def main():
         % ("PASS" if det_ok else "FAIL")
     )
 
-    # ---- P6: the ADOPTED workspace, and the collision the shared slot introduces ---------------
+    # ---- P6: the ADOPTED workspace, and what a SHARED bus can and cannot do to this solver ------
     # A handed-in bus must survive every solve (the workspace here is function-local and rebuilt
     # per call, so a constructor that merely stored a private object would still hand each solve a
-    # fresh private one). And the shared slot carries OTHER faculties' contents: perception
-    # broadcasts small ints, which are exactly the shape of a candidate index. This drives that
-    # collision deliberately -- it is the RED the namespace guard in _solve exists to answer, and
-    # without the guard `ignited if isinstance(ignited, int) else argmax` returns the PERCEPT as
-    # the RPM answer.
+    # fresh private one), and an EMPTY adopted bus must reproduce the private answer exactly.
+    #
+    # RE-DERIVED 2026-08-06 FOR THE MULTI-SLOT ARBITER. The property being measured is unchanged
+    # and is the one this check has always been about:
+    #
+    #     THIS SOLVER'S ANSWER AND ITS `known` FLAG MUST BE PRODUCED BY ITS OWN CANDIDATE WINNING
+    #     ACCESS ON THIS SOLVE -- never by a foreign content that happens to be on the bus.
+    #
+    # Only the MEASUREMENT changed, because the old one measured that property through a proxy the
+    # arbiter no longer supports. Under the retired SINGLE-SLOT workspace, "a foreign content holds
+    # the slot" and "nothing of mine is in the workspace" were THE SAME FACT, so `not known` was a
+    # sound reading of own-provenance. A limited-capacity workspace separates them, and it does so
+    # in BOTH directions -- so the proxy is now wrong in both, which is why it is replaced rather
+    # than relaxed:
+    #
+    #   * ours can be in the workspace WITH a foreign content -- the old check then demanded an
+    #     honest gap that is no longer honest, which is the FALSE FAIL that prompted this pass;
+    #   * a foreign content can be in the workspace with NOTHING of ours -- and that case is where
+    #     the hazard actually lives. Measured before this criterion was written: with the capacity
+    #     full of foreign contents, ZERO slots held by this solver's own candidate pools, and one
+    #     foreign content merely SHAPED like a candidate, the solver reported known=True. The
+    #     contamination the old criterion existed to catch is real, reachable, and was NOT what the
+    #     old criterion was catching.
+    #
+    # So the discriminating variable is OUR OWN PRESENCE IN THE WORKSPACE, and the four cases below
+    # drive it in both directions against a foreign content that is present in all four.
+    #
+    # PER-CONJUNCT REACHABLE RED, mutated on a copy of this file and RUN rather than argued (P8
+    # burdens 1 and 3 -- which conjunct catches what, by mutation, not by the total going red):
+    #
+    # RE-DERIVED by running THIS `main()` on each mutant rather than a replica of it, so the table
+    # reports the shipped criterion and not a transcription of it:
+    #
+    #     mutation of _solve's workspace read        (i)coex (ii)stale (iii)excl (iv)impostor
+    #     M1 shape-only match, no token               ok      RED       ok        RED
+    #     M2 head-identity read, token kept           RED     RED       ok        ok
+    #     M3 the retired form: head + shape           RED     RED       ok        RED
+    #     M4 untagged contents                        RED     RED       ok        RED
+    #     M5 claim only if the bus is EXCLUSIVELY     RED     RED       ok        ok
+    #        ours -- the LAZY FIX, single-slot
+    #        exclusion re-imposed under the new
+    #        arbiter
+    #     M6 step() called, its output DISCARDED,     ok      ok        RED       RED
+    #        `known` from the rule match alone
+    #     M7 the RETIRED c2 DEFECT, in the only       ok      ok        RED       ok
+    #        shape that reaches a live path: the
+    #        private path is byte-identical and
+    #        ONLY the excluded case falls back to
+    #        the workspace head
+    #     M8 shape guard dropped from the read,       RED     ok        RED       RED
+    #        token kept
+    #     M10 token present but CONSTANT              RED     RED       ok        ok
+    #
+    # Every conjunct has a reachable red. Three readings are owed honestly rather than left for the
+    # next reader to find.
+    #
+    # (a) M5 is the mutation this whole pass exists to refuse -- it keeps the token AND the access
+    #     read and still throws away what the multi-slot arbiter bought, and ONLY (i) and (ii) see
+    #     it; a criterion built from (iii) and (iv) alone would have rubber-stamped it.
+    # (b) M7 is why (iii)'s tenants are BARE INTS and is the correction this criterion needed most.
+    #     As first written this case filled the capacity with `("percept", j)` TUPLES, and against
+    #     that shape M7 -- which returns the live percept as the RPM answer whenever nothing of
+    #     ours is admitted, i.e. verbatim the thing the RETIRED assert message forbade -- PASSED
+    #     ALL FOUR CASES. With the live shape it is RED on (iii) and on nothing else. So the row
+    #     that used to read "(iii) has no independent red, it is shared with (iv), and is NOT
+    #     credited as independently falsifiable" was not a property of the case; it was a symptom
+    #     of testing exclusion with a content shape the bus does not carry.
+    # (c) EXACTLY ONE case is uniquely load-bearing, and saying so is more useful than claiming all
+    #     four are. Deleting (iii) loses M7 outright; deleting any of (i), (ii) or (iv) loses no
+    #     mutant, because every mutant they catch is also caught elsewhere. They are kept for
+    #     per-conjunct ATTRIBUTION (P8 burden 3 -- which half of the read failed, not merely that
+    #     one did), which is a different job from adding a catch, and they are not credited as one.
+    #     Recorded rather than pruned: an equivalent mutant, reading `mine[-1]` instead of
+    #     `mine[0]`, is caught by nothing here and is not a gap -- `|mine|` is 1 on every reachable
+    #     input measured (private bus and shared bus alike), so the two forms are the same program.
     shared = GlobalWorkspace(seed=0)
     ctx_s, cand_s, idx_s, _a = _build_task("progression", random.Random(7))
     shared_solver = RpmSolver(seed=0, workspace=shared)
     adopt_ok = shared_solver.workspace is shared
-    clean = shared_solver.solve(ctx_s, cand_s)  # empty slot: must match the private answer exactly
+    clean = shared_solver.solve(ctx_s, cand_s)  # empty bus: must match the private answer exactly
     adopt_ok = adopt_ok and shared_solver.workspace is shared
     private_same = RpmSolver(seed=0).solve(ctx_s, cand_s)
+    ours = (_ANSWER, _solve_tag(ctx_s, cand_s), clean["answer_idx"])
+
+    # (i) CO-EXISTENCE. A percept-shaped int is warmed into the bus and is still posting in the
+    #     SAME tick as the solve, so it holds the HEAD and our candidate wins access BENEATH it.
+    #     Our answer must be unchanged and it must still be claimed as KNOWN: we won access, and a
+    #     louder faculty being present is not our gap. THIS IS THE CASE THE RETIRED PROXY GOT
+    #     BACKWARDS -- it read the foreign content's mere presence as proof that nothing of ours
+    #     had ignited.
+    #
+    #     THE BUS IS FRESH, and that is load-bearing rather than tidiness. This case was first
+    #     written to warm the foreign into `shared`, the bus `clean` had already solved on -- and
+    #     measured on that bus OUR content was STILL RESIDENT from that earlier solve after all
+    #     three warm ticks (`broadcast_all()` = `(2, ('rpm_answer', <tag>, 3))`). The token is
+    #     per-QUESTION, so a re-solve of the same matrix posts the identical content: `ours in
+    #     broadcast_all()` was therefore satisfiable by the PREVIOUS solve's residue and proved
+    #     nothing about this one, which is a weaker reading of own-provenance than the case claims
+    #     to make. On a bus this matrix has never been posted to it proves exactly what it says.
     foreign = idx_s ^ 1  # a live-percept-shaped int that is NOT this matrix's answer
+    ws_co = GlobalWorkspace(seed=0)
+    co_solver = RpmSolver(seed=0, workspace=ws_co)
     for _ in range(3):
-        shared.submit("perception", foreign, 1.0)
-        shared.step()  # a foreign content now holds the slot with a maximal attractor
-    held = shared.broadcast()
-    occupied = shared_solver.solve(ctx_s, cand_s)
-    collide_ok = (
-        held == foreign
-        and occupied["answer_idx"] != held  # the guard refused the percept as an answer
-        and occupied["answer_idx"] == clean["answer_idx"]
-        and not occupied["known"]  # nothing of OURS ignited, so the answer is not claimed as known
+        ws_co.submit("perception", foreign, 1.0)
+        ws_co.step()  # a foreign content takes a slot and warms its attractor
+    ws_co.submit("perception", foreign, 1.0)  # ... and is still posting when we solve
+    coexist = co_solver.solve(ctx_s, cand_s)
+    coexist_ok = (
+        ws_co.broadcast() == foreign  # the foreign content really does hold the HEAD
+        and ours in ws_co.broadcast_all()  # ... ours won access beneath it, on THIS solve
+        and coexist == private_same  # ... and it cost us nothing, `known` included
     )
+
+    # (ii) IMPERSONATION UNDER A FOREIGN HEAD, WITH NO ADVERSARY AT ALL -- two ordinary solves on
+    #      one bus. The previous matrix's winner is still holding charge, wears the identical
+    #      content SHAPE, and RANKS ABOVE this matrix's candidate. Shape alone cannot tell it from
+    #      one of ours and the ranked HEAD is not ours, so this single case is the reachable red
+    #      for both halves of the read: a head-identity read reports a false gap here, and a
+    #      shape-only match returns the PREVIOUS matrix's answer as this one's.
+    #
+    #      The head assertion is the case's non-vacuity check, not decoration: if our own candidate
+    #      took the head, a head-identity read would pass too and the case would prove nothing.
+    ctx_o, cand_o, idx_o, _a = _build_task("distribute3", random.Random(5))
+    ws_seq = GlobalWorkspace(seed=0)
+    seq_solver = RpmSolver(seed=0, workspace=ws_seq)
+    first = seq_solver.solve(ctx_o, cand_o)
+    stale = (_ANSWER, _solve_tag(ctx_o, cand_o), first["answer_idx"])
+    second = seq_solver.solve(ctx_s, cand_s)
+    stale_ok = (
+        idx_o != idx_s  # the two matrices disagree, so inheriting is DETECTABLE
+        and first["answer_idx"] == idx_o
+        and ws_seq.broadcast() == stale  # the previous answer is the HEAD this solve reads past
+        and ours in ws_seq.broadcast_all()  # ours won access beneath it
+        and second == private_same  # ... and the stale head changed nothing
+    )
+
+    # (iii) EXCLUSION -- the honest gap, now forced by the mechanism that actually forces it. The
+    #       capacity is FULL of foreign contents, so no candidate of ours is admitted. With nothing
+    #       of ours in the workspace the answer falls back to the rule-match argmax, must NOT be
+    #       claimed as known, and must not be one of the foreign contents.
+    #
+    #       THE TENANTS ARE BARE INTS, which is the ONE thing the retired criterion tested that a
+    #       tuple-shaped tenant does not. `broadcast_all` documents perception as the live producer
+    #       on this bus and it posts SMALL INTS -- the retired assert message says so in as many
+    #       words ("the brain's percept contents are small ints and so are candidate indices") --
+    #       and its `occupied["answer_idx"] != held` conjunct existed precisely to forbid returning
+    #       one. Measured with `("percept", j)` TUPLES here instead, a mutation that reads a bare
+    #       int head as the answer passed all four cases while returning the PERCEPT as the RPM
+    #       answer under exclusion (answer #0 against a true #3); with bare ints it is red on this
+    #       case and on (i). The warm count is 5 and is NOT arbitrating -- 1 through 8 give the
+    #       identical outcome on every conjunct of (iii) and (iv), measured, so it is a settling
+    #       margin rather than a tuned number.
+    ws_full = GlobalWorkspace(seed=0)
+    full_solver = RpmSolver(seed=0, workspace=ws_full)
+    for _ in range(5):
+        for j in range(ws_full.capacity):
+            ws_full.submit("percept%d" % j, j, 1.0)
+        ws_full.step()
+    excluded = full_solver.solve(ctx_s, cand_s)
+    exclude_ok = (
+        not any(  # nothing of OURS got in
+            isinstance(c, tuple) and c[:1] == (_ANSWER,) for c in ws_full.broadcast_all()
+        )
+        and excluded["answer_idx"] == clean["answer_idx"]
+        and not excluded["known"]
+    )
+
+    # (iv) THE DECISIVE CASE: IMPERSONATION *UNDER* EXCLUSION. One of the foreign tenants is shaped
+    #      exactly like one of our candidates AND names our own answer index, and the capacity is
+    #      full so nothing of ours is admitted. Every observable a shape-matching reader has says
+    #      "my answer ignited"; nothing of ours did. `known` must be False here, and this is the
+    #      condition (i) and the retired single-slot proxy both call the same thing and cannot tell
+    #      apart. Measured red: with the shape test in place of the provenance test, this reads
+    #      known=True.
+    ws_imp = GlobalWorkspace(seed=0)
+    imp_solver = RpmSolver(seed=0, workspace=ws_imp)
+    impostor = (_ANSWER, _solve_tag(ctx_o, cand_o), clean["answer_idx"])
+    tenants = [impostor] + list(range(ws_imp.capacity - 1))  # look-alike + live-shaped percepts
+    for _ in range(5):
+        for j, c in enumerate(tenants):
+            ws_imp.submit("foreign%d" % j, c, 1.0)
+        ws_imp.step()
+    impersonated = imp_solver.solve(ctx_s, cand_s)
+    impostor_ok = (
+        impostor in ws_imp.broadcast_all()  # the look-alike really is holding a slot
+        and ours not in ws_imp.broadcast_all()  # and nothing of ours is
+        and impersonated["answer_idx"] == clean["answer_idx"]  # no tenant became the answer
+        and not impersonated["known"]  # and nothing may be claimed as known
+    )
+
+    collide_ok = coexist_ok and stale_ok and exclude_ok and impostor_ok
     print(
-        "  [%s] shared bus    -> adopted=%s; empty slot reproduces the private answer #%d; a "
-        "foreign percept %r holding the slot yields known=%s answer #%d (not the percept)"
+        "  [%s] shared bus    -> adopted=%s; empty bus reproduces the private answer #%d; a "
+        "foreign percept %r co-resident leaves known=%s answer #%d; a previous matrix's answer #%d "
+        "holding the HEAD leaves this one at #%d known=%s; capacity full of foreign -> known=%s; a "
+        "look-alike naming #%d with nothing of ours admitted -> known=%s"
         % (
             "PASS" if (adopt_ok and collide_ok) else "FAIL",
             adopt_ok,
             clean["answer_idx"],
-            held,
-            occupied["known"],
-            occupied["answer_idx"],
+            foreign,
+            coexist["known"],
+            coexist["answer_idx"],
+            first["answer_idx"],
+            second["answer_idx"],
+            second["known"],
+            excluded["known"],
+            impostor[2],
+            impersonated["known"],
         )
     )
 
@@ -634,8 +883,19 @@ def main():
         "does not, adoption changed the answer rather than only changing who else can see it"
     )
     assert collide_ok, (
-        "a foreign content holding the SHARED slot must not be returned as the RPM answer: the "
-        "brain's percept contents are small ints and so are candidate indices"
+        "this solver's answer and its `known` flag must be produced by ITS OWN candidate winning "
+        "access on THIS solve, never by a foreign content sharing the bus. Four cases, and the "
+        "message names the condition each one actually drives, because the retired single-slot "
+        "form named conditions that could not fail: (i) co-existence -- a percept-shaped int holds "
+        "the HEAD on a bus we have never posted to and our candidate wins a slot beneath it, which "
+        "must not turn our won access into a gap; (ii) impersonation -- a previous matrix's "
+        "answer, still charged and identically shaped, must not become this matrix's answer; "
+        "(iii) exclusion -- with the capacity full of live-shaped percepts and nothing of ours "
+        "admitted, the answer must be the private one and `known` must be False; (iv) "
+        "impersonation UNDER exclusion -- a foreign content shaped like our candidate and naming "
+        "our own index must not produce `known`, nor the answer, while nothing of ours is in the "
+        "workspace. coexist=%s stale=%s exclude=%s impostor=%s"
+        % (coexist_ok, stale_ok, exclude_ok, impostor_ok)
     )
 
     print("=" * 78)
@@ -644,8 +904,11 @@ def main():
         "(distribute-three / progression / constant / arithmetic) executed as spike-XOR/permute/"
         "cleanup ops, basal-ganglia rule gate + global-workspace answer ignition; 4/4 regimes solved "
         "(>> 12.5%% chance), honest gap on a no-rule grid, deterministic; a handed-in workspace is "
-        "adopted by identity and reproduces the private answer, and a foreign content holding the "
-        "SHARED slot is refused as an answer."
+        "adopted by identity and reproduces the private answer, and on the SHARED multi-slot bus "
+        "this solver's answer and its `known` flag come from its own candidate winning access -- "
+        "co-existing under a louder foreign head still counts, and a foreign content is refused "
+        "whether it is percept-shaped, is a previous matrix's answer, or is shaped like one of our "
+        "own candidates while nothing of ours is admitted."
     )
     return 0
 

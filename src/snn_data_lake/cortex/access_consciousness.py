@@ -51,10 +51,12 @@ The pipeline:
 WHICH BUS THIS RUNS ON (P6), and the MEASURED NULL that goes with it
 ====================================================================
 `__init__` takes `ws=`. Default None -> this faculty builds its own workspace, which is what it
-has always done and what `tools/p6_gate.py` counts as one of the PRIVATE, mutually invisible
-instances P6 names. Passing the shared handle (`Brain.workspace` / `LiveBrain.workspace`, the one
-instance owned by `brainstem/autonomous_loop.py`) puts this faculty's coalition into the SAME
-single-slot competition perception and the amygdala's threat channel post into.
+has always done, what the live path still does (`cortex/brain.py::_update_access` constructs
+`AccessConsciousness(seed=...)` with no `ws`), and what `tools/p6_gate.py` counts as one of the
+PRIVATE, mutually invisible instances P6 names. Passing the shared handle (`Brain.workspace` /
+`LiveBrain.workspace`, the one instance owned by `brainstem/autonomous_loop.py`) puts this
+faculty's coalition into the SAME limited-capacity competition perception and the amygdala's
+threat channel post into.
 
 **The route is real and the charge is NULL. Both halves were measured on the live brain and both
 are recorded here, because a route that carries nothing is the force-wiring P6 forbids.**
@@ -62,32 +64,51 @@ are recorded here, because a route that carries nothing is the force-wiring P6 f
   * IDENTITY, asserted not assumed: `ac.workspace is brain.brain.workspace is
     brain.brain.arm.workspace` -> True. The taps are registered on the injected object, so a
     submission by one holder reaches another holder's taps (self-check claim 6).
-  * CHARGE: **0 of 150.** `make_brain(seed=0, refit_every=10, persist=False)`, `clock.phase`
-    forced to 0.25, 150/150 wake ticks, with `AutonomousArm._percept_salience` LIVE (150 distinct
-    values in [0.568351, 0.667237]) and then NEUTERED to the incumbent literal 0.6 (1 distinct).
-    This faculty's OWN output was byte-identical across the pair on every channel: `ignited` 0/150,
-    `global_availability` 0/150, `access_index` 0/150, the brain's `_access_ema` 0/150.
-  * THE HARNESS IS NOT DEAD -- the positive control that makes the null trustworthy. Pinning the
-    same producer ABOVE its live range moves this faculty hard: at 0.72 its own output differs on
-    61/120 ticks, at 0.75 on 71/120, at 0.95 on **120/120** (`ignited` collapses from 120/120 True
-    to 0/120). The flip point is 0.72, between 0.71 (0/120) and 0.72; the live signal's ceiling is
-    0.667. So the null is a property of the RANGE, not of the probe.
-  * WHY, and it is not fixable from this file: the bus gives its incumbent `self_boost +
-    hysteresis` = 0.25 of defence, while the whole admissible band a specialist may claim is
-    `1 - (self_boost + hysteresis) - ignition_threshold` = 0.20 wide. The defence exceeds the band,
-    so whichever faculty first takes the slot holds it against every compliant competitor forever.
-    `brainstem/autonomous_loop.py::_percept_salience` had already measured the same ceiling from
-    the producer side; this is the same constant closing the SLOT-OWNERSHIP route as well as the
-    direct-salience one. Both are properties of `thalamus/global_workspace.py`, which this module
-    does not own.
+  * CHARGE: **0 of 150, and RE-DERIVED 2026-08-06 on the multi-slot arbiter rather than inherited
+    from the single-slot one.** `make_brain(seed=0, refit_every=10, persist=False)`, `clock.phase`
+    forced to 0.25, 150/150 wake ticks, repointed onto `brain.brain.arm.workspace`, with
+    `AutonomousArm._percept_salience` LIVE (150 distinct values in [0.568351, 0.667237]) and then
+    NEUTERED to the incumbent literal 0.6 (1 distinct). This faculty's OWN output is byte-identical
+    across the pair on every channel: `ignited` 0/150, `global_availability` 0/150, `access_index`
+    0/150, the brain's `_access_ema` 0/150 -- and the workspace SET (`broadcast_all()`) is
+    identical on 150/150 too.
+  * **THE NUMBER SURVIVED THE ARBITER CHANGE AND ITS CAUSE INVERTED, which is the part worth
+    keeping.** Under the retired single-slot bus the null was 0/150 because this faculty was
+    EVICTED -- in the workspace 0 of 150 ticks. Under this one it is in the workspace **150 of
+    150** and `ignited` on **150 of 150**. Same null, opposite reason: it used to be "the producer
+    cannot change an output that never happens", and it is now "the producer cannot change an
+    output that happens anyway". A null re-read without re-deriving it would have carried the old
+    explanation onto a bus where it is false.
+  * THE HARNESS IS NOT DEAD -- the positive control that makes the null trustworthy. **Measured on
+    the RETIRED arbiter and NOT re-derived here; it is labelled rather than dropped because it is
+    still the evidence that the probe can move at all.** Pinning the same producer ABOVE its live
+    range moved this faculty hard: at 0.72 its own output differed on 61/120 ticks, at 0.75 on
+    71/120, at 0.95 on 120/120. The in-module positive control that IS current is self-check claim
+    (8), which is run on every gate.
+  * WHY, and it is still not fixable from this file, but the reason changed completely.
+    **RETIRED, and recorded because this module quoted it as a permanent property:** the bus used
+    to grant its one incumbent `self_boost + hysteresis` = 0.25 of defence while the whole band a
+    compliant specialist may claim is 0.20 wide, so the first tenant held the single slot forever.
+    `thalamus/global_workspace.py` FIXED exactly that on 2026-08-06 (multi-slot, capacity
+    `floor(1 / defence)` = 4, lateral inhibition divided across the capacity), and a compliant
+    challenger now wins a slot against any compliant tenant. **The live null therefore no longer
+    has a bus defect behind it.** What is behind it now is the producer population: with room for
+    four contents and one admissible producer beside this faculty, both are in every tick, so a
+    producer that changes its volume inside the band changes nothing about a consumer that had
+    access either way. That is `thalamus/global_workspace.py`'s own measured finding on this bus
+    ("THE CAPACITY IS NOT THE BINDING CONSTRAINT ON THAT BUS TODAY; THE PRODUCER POPULATION IS"),
+    reached independently from the consumer side here.
 
-Consequence, stated plainly so nobody re-derives it by surprise: repointed onto the shared bus this
-faculty takes the single slot on its second step and holds it, so the arm's broadcast content goes
-from the percept id to 'GLOBAL' and stays there. (That channel was already 1 distinct / 0 changes
-over 150 ticks before the repoint and is 2 distinct / 1 change after, so nothing informative is
-lost -- but it IS a change, and it buys this consumer nothing.) `_max_claim` is what keeps the
-consequence bounded: a joining faculty may not make itself indisplaceable, and with it a 0.95
-proximity threat still seizes the slot where uncapped it cannot (self-check claim 9).
+Consequence of repointing, RE-MEASURED 2026-08-06 on the same 150-tick replay because the arbiter
+change could have removed it and did not: this faculty posts a novelty-gated 0.507583..0.75 (135
+distinct) through `cortex/brain.py::_update_access`, takes the head, and the arm's percept holds a
+slot beside it on only **1 of 150** ticks, so `cortex/live_brain.py::thought` reads 'GLOBAL' on
+150/150 where the un-repointed brain reads the percept id on 150/150. Multi-slot did NOT make the
+repoint free -- it made it survivable in principle (the arbiter measures the percept staying in on
+40/40 against a faculty pinned at a compliant 0.65) while this faculty's own live claim is high
+enough in the band to push it out anyway. `_max_claim` is what keeps the consequence bounded: a
+joining faculty may not make itself indisplaceable, and with it a 0.95 proximity threat still
+seizes the top slot where uncapped it cannot (self-check claim 9).
 
 Determinism: per-instance random.Random(seed) for the workspace; neuron spike codes are
 crc32-seeded (no module-level / time seeding). ASCII output.
@@ -149,10 +170,14 @@ class AccessConsciousness:
         It does NOT close the charge. Neutering the one producer that reaches the shared bus
         (`AutonomousArm._percept_salience`, pinned to the incumbent literal 0.6) over 150 live wake
         ticks changed this faculty's OWN output on **0 of 150** ticks -- and that number is the
-        same 0 of 150 BEFORE the repoint and AFTER it. Sharing the object was necessary and was not
-        sufficient: the reason is the bus constant recorded in the module docstring, not the
-        private instance. Claim (8) shows the same route DOES carry when the competitor's claim is
-        large enough, so the mechanism works and the live signal is too small to use it.
+        same 0 of 150 BEFORE the repoint and AFTER it, and the same again after the workspace went
+        multi-slot (re-derived 2026-08-06; see the module docstring for the inverted cause).
+        Sharing the object was necessary and was not sufficient. Claim (8) shows what the route
+        DOES carry, and what it carries is no longer what this sentence used to say: it is not that
+        a LOUDER competitor takes the slot -- measured, sweeping one competitor across the whole
+        compliant band changes this faculty's admission on 0 of 12 ticks -- it is that a POPULATION
+        of competitors fills the workspace and excludes it. The mechanism works and the live bus has
+        one other admissible producer where it needs two.
 
         `ignition_threshold` is read back OFF the bus once one is injected rather than kept as the
         argument's value: it is the rheobase of the pool this faculty's submissions actually drive,
@@ -395,7 +420,27 @@ class AccessConsciousness:
         The tap scan is unchanged in kind and now names the content it is looking for. A tap that
         last received somebody ELSE's broadcast has not received THIS content, so counting `is not
         None` would report global availability of 1.0 for a coalition that never ignited the moment
-        the bus carries anyone else's traffic."""
+        the bus carries anyone else's traffic.
+
+        OPEN DEBT, DISCLOSED HERE BECAUSE IT IS THIS METHOD'S AND IT CANNOT BE PAID FROM THIS FILE
+        (2026-08-06, found while re-deriving claim (8)). Since `thalamus/global_workspace.py`
+        became multi-slot, `_ws.step()` returns the RANKED HEAD of a workspace that may hold up to
+        `capacity` contents, so `_ignited` above now tests HEADSHIP -- "am I what the brain is
+        thinking about" -- and no longer tests ACCESS -- "is my content in the workspace at all".
+        Under one slot those were the same question, which is what claim (7) asserts; they come
+        apart now, and this readout follows the head. MEASURED: with one peer faculty on the bus
+        this faculty is in `broadcast_all()` on 12 of 12 ticks while `ignited()` reads False on 12
+        of 12, and renaming that peer from 'aaa' to 'mmm' -- changing nothing else -- moves
+        `ignited()` to True on 11 of 12, because rank among co-admitted contents is settled by the
+        arbiter's lexicographic tie-break. WHY IT IS NOT FIXED HERE, structurally and not as a
+        preference: `GlobalWorkspace.step()` delivers ONLY the head to subscribers
+        (`_deliver(self.current)`), so a tap can never receive a content this faculty was admitted
+        with but did not top. Switching `_ignited` to membership would leave `global_availability`
+        at 0.0 for exactly those ticks and `access_index` = gate * availability * integration would
+        stay 0.0 anyway -- a readout that says "ignited" while reporting no reach. Paying this debt
+        means the BUS delivering its admitted set, which is `thalamus/global_workspace.py`. Until
+        then claim (8) measures access through `broadcast_all()` rather than through this flag, and
+        says so."""
         content = self._ws.step()  # broadcasts to every subscribed tap
         self._ignited = content is not None and content == self._LABEL
         received = sum(1 for tap in self._taps if tap and tap[-1] == self._LABEL)
@@ -495,19 +540,58 @@ def _post(ws, posts):
         ws.submit(source, content, salience)
 
 
-def _shared_run(competitor_salience, n=12, claim=0.75):
-    """Replay the LIVE two-step cadence on ONE shared bus: another faculty submits and the bus
-    arbitrates (the arm's step), then this faculty binds and steps (Brain._update_access).
-    Returns this faculty's OWN per-tick output."""
-    ws = _bus()
-    ac = AccessConsciousness(seed=0, ws=ws)
-    out = []
+def _contended_run(n_peers, ws, n=12, shared=True):
+    """Replay the LIVE two-step cadence with `n_peers` OTHER faculties competing on ONE bus: the
+    peers submit and the bus arbitrates (the arm's step), then this faculty binds and steps
+    (`cortex/brain.py::_update_access`). Returns (own, admitted) -- this faculty's OWN per-tick
+    output tuple, and whether its content held a workspace slot on that tick.
+
+    THE SWEPT VARIABLE IS THE LOAD, NOT ONE COMPETITOR'S VOLUME, and choosing that is the whole
+    re-derivation of claim (8) -- the measurements that forced it are recorded at the claim. A peer
+    that is not posting is a NEUTERED competitor, so sweeping `n_peers` IS the neuter-A/B this
+    claim has always been the in-module form of: same bus, same cadence, same claim, one faculty's
+    worth of competition removed.
+
+    Every peer posts EXACTLY what this faculty is capped at (`_max_claim()`, read off the bus), so
+    the load is a population of COMPLIANT specialists and nothing wins by breaking the bus's own
+    displaceability bound. It also introduces no number of its own: the claim is derived from the
+    bus and MOVES with it, so a workspace reconfigured to hold one content re-derives the peers'
+    claim too.
+
+    `shared=False` builds this faculty its own workspace while the peers still post and the bus is
+    still stepped -- the identical replay with two objects instead of one, which is the RED for the
+    whole claim.
+    """
+    ac = AccessConsciousness(seed=0, ws=ws if shared else None)
+    claim = ac._max_claim()
+    own, admitted = [], []
     for _ in range(n):
-        _post(ws, [("perception", "unit0", competitor_salience), ("salience", "threat", 0.0)])
+        _post(ws, [(f"peer{b}", f"peer{b}", claim) for b in range(n_peers)])
         ws.step()
         ac.bind_assembly(_coherent("cat", 3), salience=claim)
-        out.append((ac.step(), round(ac.access_index(), 6), round(ac.global_availability(), 6)))
-    return out
+        own.append((ac.step(), round(ac.access_index(), 6), round(ac.global_availability(), 6)))
+        # ADMISSION, not head identity: `broadcast_all()` is the multi-slot read, and asking it
+        # about THIS faculty's own content is asking whether this faculty got access. Read off
+        # `ac.workspace` rather than off `ws` so the private-bus RED arm asks the same question of
+        # the bus this faculty is actually on, instead of trivially reporting False.
+        admitted.append(AccessConsciousness._LABEL in ac.workspace.broadcast_all())
+    return own, admitted
+
+
+def _access_by_load(bus_kw, limit, shared=True):
+    """`_contended_run` at every peer load 0..limit inclusive, each on a FRESH bus."""
+    return [_contended_run(k, _bus(**bus_kw), shared=shared) for k in range(limit + 1)]
+
+
+def _first_denied(runs):
+    """The smallest peer load that denies this faculty the workspace on EVERY tick -- SEARCHED
+    across the scan, never assumed and never a constant of this file. None when no load inside the
+    scan denies it, which is the reading a PRIVATE bus gives, so the search returns it rather than
+    raising: 'there is no such load' is a result claim (8) has to be able to state."""
+    for k, (_own, admitted) in enumerate(runs):
+        if not any(admitted):
+            return k
+    return None
 
 
 def _slot_after_threat(claim, threat=0.95, warm=8, psal=0.6):
@@ -664,15 +748,111 @@ def main():
         sh_ac.step()
     sh_disagree = sum(1 for c in sh_seen if (c is not None) != (c == AccessConsciousness._LABEL))
 
-    # ---- (8) ON A SHARED BUS ANOTHER FACULTY IS DECISIVE FOR THIS ONE'S OWN OUTPUT. --------------
-    # The in-module form of the neuter-A/B. `hi_run`'s competitor is loud enough to hold the single
-    # slot, `lo_run`'s is not; `null_run` re-runs `lo_run`'s competitor unchanged and MUST be
-    # identical, or the difference above is measuring the harness rather than the bus.
-    lo_run = _shared_run(0.60)
-    hi_run = _shared_run(0.95)
-    null_run = _shared_run(0.60)
-    shared_diff = sum(1 for a, b in zip(lo_run, hi_run) if a != b)
-    shared_null = sum(1 for a, b in zip(lo_run, null_run) if a != b)
+    # ---- (8) THE OTHER FACULTIES ON A SHARED BUS DECIDE THIS ONE'S OWN ACCESS TO IT. -------------
+    # RE-DERIVED 2026-08-06, after `thalamus/global_workspace.py` replaced single-slot winner-take-
+    # all with a limited-capacity multi-slot workspace. The PROPERTY is unchanged and is the P6 one:
+    # this faculty is a competitor in a SHARED bottleneck, so what else is in the workspace decides
+    # what it gets. What changed is that the old criterion read that property through a single-slot
+    # proxy -- "a louder competitor takes THE slot away from me" -- and scored this faculty being
+    # THROWN OUT as influence. Under the new arbiter it is not thrown out -- measured here: in the
+    # workspace on 12 of 12 ticks against the same 0.95 competitor, where `thalamus/
+    # global_workspace.py` records 0 of 12 for the retired one -- so the old count fell to 1/12.
+    # The property survived; the channel it was read through did not.
+    #
+    # TWO CANDIDATE RE-DERIVATIONS WERE BUILT AND SWEPT. Both lost, and both losses are measurements
+    # rather than preferences:
+    #
+    #   * KEEP THE COMPETITOR'S VOLUME AS THE LEVER, ADD `capacity - 1` COMPETING FACULTIES. It does
+    #     reach 11/12 -- and it reaches it BACKWARDS. Traced: with 3 background faculties the 0.60
+    #     competitor leaves this faculty OUT on 12/12 and the 0.95 competitor leaves it IN on 12/12,
+    #     because a 0.95 pool silences the background through the shared inhibition and CLEARS THE
+    #     FIELD. A criterion that passes because the louder rival granted this faculty access is no
+    #     longer measuring its own message. Volume also fails on its own terms here: at the shipped
+    #     capacity, sweeping one competitor 0.55 -> 0.95 changes this faculty's ADMISSION on 0 of 12
+    #     ticks; only a claim of 1.00, above every specialist's `_max_claim`, excludes it.
+    #   * SWAP HEAD IDENTITY FOR `broadcast_all()` RANK. Right instinct, wrong observable. At the
+    #     shipped load rank buys literally nothing -- with two contents in the workspace rank 0 IS
+    #     the head, so it re-measures 1/12. Worse, rank among CO-ADMITTED peers is settled by the
+    #     arbiter's lexicographic tie-break on the source key: renaming the peer faculty from 'aaa'
+    #     to 'mmm', changing nothing else, moves this faculty's `ignited` from 0/12 to 11/12.
+    #     MEMBERSHIP is the half of `broadcast_all()` that is stable -- identical across three name
+    #     prefixes, four bus seeds and 6/12/24/40-tick runs.
+    #
+    # SO THE LEVER IS THE LOAD AND THE OBSERVABLE IS ADMISSION. `_first_denied` SEARCHES for the
+    # smallest peer population that denies this faculty the workspace; nothing here is a chosen
+    # number. The scan runs to twice the capacity so "denied" has to STAY denied, and the two arms
+    # of the neuter-A/B are the empty bus and that population. Its NULL re-runs THREE arms and the
+    # third one is load-bearing -- see `k_co` below, where the arm-by-arm measurement is recorded.
+    shipped_bus = _bus()
+    k_scan = 2 * shipped_bus.capacity  # scan well past the capacity -- derived, not picked
+    load_runs = _access_by_load({}, k_scan)
+    k_out = _first_denied(load_runs)
+    k_use = k_scan if k_out is None else k_out
+    # The RETIRED single-slot workspace, rebuilt as a CONFIGURATION of the same arbiter rather than
+    # as a memory of one: the entire unit hold budget spent on a single content, in the shipped
+    # defence proportion, so `capacity` derives 1. This is where the old criterion's content is
+    # preserved -- on a one-slot bus a SINGLE other faculty must deny this one access, which is
+    # exactly the eviction 12/12 measured before.
+    #
+    # HOW CAPACITY REACHES THIS THRESHOLD, measured because the assert below used to say capacity
+    # IS the threshold and that is not what the bus does. At the shipped `k_out` the workspace holds
+    # TWO contents with TWO SLOTS FREE -- this faculty is denied by the shared lateral inhibition
+    # silencing its pool, not by the capacity bound being reached. Capacity is still what sets the
+    # threshold, because the inhibition each pool applies is `_G_INH / capacity`: swept over legal
+    # defences, capacity 1/2/3 -> k_out 1, capacity 4 -> 2, capacity 6 -> 3, capacity 8 -> never
+    # denied inside the scan. So the relation is causal and monotone, and it is NOT equality --
+    # a criterion asserting `k_out == capacity` would be red on a correct bus.
+    _defence = shipped_bus.self_boost + shipped_bus.hysteresis
+    one_slot = {
+        "self_boost": shipped_bus.self_boost / _defence,
+        "hysteresis": shipped_bus.hysteresis / _defence,
+    }
+    k_out_one = _first_denied(_access_by_load(one_slot, k_scan))
+    # THE RED, run and not argued: the identical replay with this faculty on its OWN workspace.
+    k_out_priv = _first_denied(_access_by_load({}, k_scan, shared=False))
+    alone_own = load_runs[0][0]
+    crowd_own = load_runs[k_use][0]
+    load_diff = sum(1 for a, b in zip(alone_own, crowd_own) if a != b)
+    # THE NULL RE-RUNS THREE ARMS, and WHICH arms is the entire content of this control. Measured
+    # per arm rather than argued, because the two-arm form (empty + crowded) shipped here first and
+    # was WEAKER than the single-arm null it replaced -- the one direction F11 does not allow.
+    #
+    # The arms are EMPTY (k=0), CO-OCCUPIED (`k_co` -- the largest load at which this faculty is
+    # still admitted, derived from the SEARCHED `k_out` and not chosen) and CROWDED (`k_use`).
+    # Three re-runs of each, against two nondeterminism defects injected into `bind_assembly`
+    # (per-tick disagreements with the first run; 0 is a clean null):
+    #
+    #     defect                  retired null   EMPTY   CO-OCCUPIED   CROWDED
+    #     posted-claim jitter          10          0          4           0
+    #     coalition-size jitter        33         36         32           0
+    #
+    # The CROWDED arm is vacuous on both, and it is KEPT and labelled rather than deleted: an
+    # excluded faculty emits the same (False, 0.0, 0.0) on every tick, so it reproduces itself under
+    # almost any perturbation, and that is a disclosure (P8 guard 4) rather than a reason to drop a
+    # control. The EMPTY arm sees the coalition defect and NOT the claim defect -- with nothing else
+    # competing this faculty holds the head at ANY audible claim, so its own output cannot depend on
+    # how loudly it posted. Only the CO-OCCUPIED arm sees both. That is also exactly why the retired
+    # null was sensitive: it re-ran an arm with a competitor PRESENT, and empty+crowded dropped the
+    # only regime this faculty shares the workspace in.
+    k_co = max(0, k_use - 1)
+    load_null = (
+        sum(1 for a, b in zip(alone_own, _contended_run(0, _bus())[0]) if a != b)
+        + sum(1 for a, b in zip(load_runs[k_co][0], _contended_run(k_co, _bus())[0]) if a != b)
+        + sum(1 for a, b in zip(crowd_own, _contended_run(k_use, _bus())[0]) if a != b)
+    )
+    priv_diff = sum(
+        1
+        for a, b in zip(
+            _contended_run(0, _bus(), shared=False)[0],
+            _contended_run(k_use, _bus(), shared=False)[0],
+        )
+        if a != b
+    )
+    # Admission must be a monotone STEP in the load, not a count that happens to land at one point:
+    # in on EVERY tick below the threshold (the search only proves ONE tick), out on every tick from
+    # it to the end of the scan (the search proves nothing above it at all).
+    in_below = all(all(load_runs[k][1]) for k in range(k_use))
+    out_above = all(not any(load_runs[k][1]) for k in range(k_use, k_scan + 1))
 
     # ---- (9) A FACULTY JOINING A SHARED BUS MUST NOT BE ABLE TO SILENCE IT. ----------------------
     # `_max_claim` caps this faculty's post at the bus's own displaceability bound. The RED is the
@@ -756,8 +936,11 @@ def main():
         f"{sh_disagree}/{len(sh_seen)}"
     )
     print(
-        f"competitor decisive: own output differs on {shared_diff}/{len(lo_run)} ticks between a "
-        f"0.60 and a 0.95 competitor; unchanged competitor -> {shared_null}/{len(lo_run)}"
+        f"load decisive: a {shipped_bus.capacity}-slot bus admits this faculty below {k_out} peer "
+        f"faculties and denies it from {k_out} through {k_scan}; own output differs "
+        f"{load_diff}/{len(alone_own)} ticks (unchanged load, 3 arms incl. co-occupancy at {k_co} "
+        f"-> {load_null}); a ONE-slot bus denies at {k_out_one}; on a PRIVATE bus no load ever "
+        f"does ({k_out_priv}, own diff {priv_diff})"
     )
     print(
         f"displaceable: cap={cap} -> a 0.95 threat takes the slot ({capped_after_threat!r}); "
@@ -845,14 +1028,40 @@ def main():
         f"the two tests must actually COME APART on a shared bus, or the equivalence asserted "
         f"above is vacuous and the winner-identity test is untested: {sh_disagree}/{len(sh_seen)}"
     )
-    # (8) another faculty's claim changes THIS faculty's own output -- with its own null control.
-    assert shared_diff >= len(lo_run) // 2, (
-        f"a competitor that holds the single slot must change this faculty's OWN output on at "
-        f"least half the ticks, got {shared_diff}/{len(lo_run)}"
+    # (8) the other faculties on the shared bus decide this one's ACCESS -- with its own null and
+    #     its own RED, both run.
+    assert k_out is not None, (
+        f"some population of competing faculties must be able to deny this faculty the shared "
+        f"workspace: no load from 0 to {k_scan} peers did, so nothing on this bus is decisive for "
+        f"it and it is a private workspace wearing a shared one's name"
     )
-    assert shared_null == 0, (
-        f"an UNCHANGED competitor must reproduce the run exactly, or the difference above is the "
-        f"harness and not the bus: {shared_null}/{len(lo_run)}"
+    assert in_below and out_above, (
+        f"admission must be a MONOTONE STEP in the load, or the threshold is a coincidence of one "
+        f"configuration rather than the bottleneck binding: admitted on every tick below {k_out} "
+        f"peers = {in_below}; denied on every tick from {k_out} through {k_scan} = {out_above}"
+    )
+    assert load_diff == len(alone_own), (
+        f"filling the shared workspace with other faculties must change this faculty's OWN output "
+        f"on EVERY tick against an empty one, got {load_diff}/{len(alone_own)}"
+    )
+    assert load_null == 0, (
+        f"an UNCHANGED load must reproduce ALL THREE arms exactly -- empty, CO-OCCUPIED ({k_co} "
+        f"peers, the only regime in which this faculty shares the workspace) and crowded -- or the "
+        f"difference above is the harness and not the bus: {load_null}/{3 * len(alone_own)}"
+    )
+    assert k_out_priv is None and priv_diff == 0, (
+        f"THE RED: the identical replay with this faculty on its OWN workspace must be untouched "
+        f"by the load -- no peer count may deny it access (got {k_out_priv}) and its own output "
+        f"must not move (got {priv_diff}/{len(alone_own)}). A private instance that moves means "
+        f"this claim is measuring the harness, which is the defect the injection exists to remove"
+    )
+    assert k_out_one == 1 and k_out_one < k_out, (
+        f"CAPACITY is what this faculty gets from the shared bus, so it must be what MOVES the "
+        f"threshold (it does not equal it -- see above): on a ONE-slot workspace a SINGLE other "
+        f"faculty must deny this one access "
+        f"(got {k_out_one} -- that IS the eviction the retired single-slot criterion measured), "
+        f"and the shipped {shipped_bus.capacity}-slot bus must tolerate STRICTLY more before "
+        f"denying it (got {k_out}). Equality means multi-slot bought this faculty nothing"
     )
     # (9) joining a shared bus must not silence it -- the uncapped arm is the reachable RED.
     assert capped_after_threat == "threat", (

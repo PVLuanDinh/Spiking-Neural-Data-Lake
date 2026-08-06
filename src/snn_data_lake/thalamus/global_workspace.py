@@ -5,8 +5,8 @@ Global Workspace -- a SPIKING Global-Workspace / global-broadcast attention mech
 
 Global Workspace Theory (Baars 1988; Dehaene & Changeux's Global Neuronal Workspace,
 Neuron 70:200, 2011): many specialist modules run in parallel and post candidate "contents";
-they COMPETE for a single limited-capacity workspace; a winner that crosses an all-or-none
-IGNITION threshold seizes the slot and is BROADCAST back to every module (global availability);
+they COMPETE for a LIMITED-CAPACITY workspace; a candidate that crosses an all-or-none
+IGNITION threshold takes a slot and is BROADCAST back to every module (global availability);
 the content is SUSTAINED by recurrent self-amplification and DECAYS once it is no longer refreshed.
 This is the "conscious access = global broadcast" bottleneck.
 
@@ -18,22 +18,179 @@ Here that bottleneck is implemented with GENUINE SPIKING neurons -- not scalar t
     ignition non-linearity (a pool driven below rheobase never fires and stays purely local).
   * RECURRENT SELF-EXCITATION: an active pool feeds its own spikes back as excitatory current
     (a within-tick synaptic trace) and carries a cross-tick attractor memory `g` -- this is the
-    attractor that SUSTAINS an ignited content and gives the incumbent its hysteresis.
+    attractor that SUSTAINS an ignited content and gives a slot occupant its hysteresis.
   * A SHARED INHIBITORY POOL: every excitatory spike drives one global inhibitory pool whose
     output subtracts from EVERY content pool (global lateral inhibition). This is the
-    competition: the strongest pool keeps firing while it silences the rest -> a single winner.
-  * IGNITION = SUSTAINED FIRING: a content ignites (wins the slot + is broadcast) only if it is
+    competition: strong pools keep firing while they silence the rest.
+  * IGNITION = SUSTAINED FIRING: a content ignites (is eligible for a slot) only if it is
     still spiking in the SECOND HALF of the settling window -- i.e. it survived the competition
     and is in the high-firing attractor. A pool that fires a few transient spikes and is then
     inhibited to silence does NOT ignite; it stays local.
+  * CAPACITY: the ignited set is admitted in competition rank order up to `capacity` slots.
+    Everything past the capacity is ignited-but-not-accessed: it keeps its attractor charge and
+    competes again next tick, but it is not broadcast and it earns no hold.
 
 So: weak input -> the pool never crosses v_th (or is inhibited to silence) -> stays local, no
 broadcast. Strong input -> the pool ignites into sustained firing, recruits its self-excitation,
-silences competitors through the shared inhibitory pool, and is broadcast globally. That
-all-or-none ignition is the un-riggable anchor, checked against a FAIR CONTROL (`use_ignition=
-False`) that is a pure per-tick argmax with no spiking, no attractor, no inhibition: the control
-FLICKERS on noise; the spiking workspace is STABLE and only a genuinely stronger, supra-threshold
-signal takes over.
+suppresses competitors through the shared inhibitory pool, and -- if it ranks inside the capacity
+-- is broadcast globally. That all-or-none ignition is the un-riggable anchor, checked against a
+FAIR CONTROL (`use_ignition=False`) that is a pure per-tick argmax with no spiking, no attractor,
+no inhibition: the control FLICKERS on noise; the spiking workspace is STABLE and only a
+genuinely stronger, supra-threshold signal takes a slot.
+
+=====================================================================================================
+WHY THIS IS MULTI-SLOT, AND WHAT IT REPLACED (2026-08-06). All numbers below were RUN, not deduced.
+=====================================================================================================
+This module was SINGLE-SLOT winner-take-all, and the slot was measurably UNWINNABLE. `step()`
+computed the ignited SET (`late[k] > 0`, one flag per pool) and then threw all but one member away
+with an argmax. Meanwhile the one incumbent was granted `self_boost + hysteresis = 0.25` of extra
+drive, while the entire band a compliant specialist may claim -- `[ignition_threshold, 1 -
+(self_boost + hysteresis)]` = [0.55, 0.75], the derivation `brainstem/autonomous_loop.py::
+_percept_salience` and `cortex/access_consciousness.py::_max_claim` both apply -- is 0.20 WIDE.
+THE DEFENCE EXCEEDED THE WHOLE BAND. Measured on the old arbiter, incumbent warmed 5 ticks and
+still posting, challenger swept 0.55..1.00 in steps of 0.002:
+
+    incumbent claim  0.550  0.600  0.667  0.700  0.750
+    challenger needs 0.734  0.734  0.892  0.948  0.952      <- compliant ceiling is 0.75
+
+so a compliant challenger could take the slot only from an incumbent at the very bottom of its
+range, and never from one at 0.667 or above. The live producer range is 0.5797..0.6573, which
+straddles that boundary: the bus was winnable on some ticks and structurally frozen on others,
+and no amount of tuning fixes it, because `hi` is DEFINED as `1 - defence`, so an incumbent that
+itself claimed `hi` carries `hi + defence == 1.0` -- exactly the maximum any challenger can post.
+
+THE FIX IS NOT A NUMBER, IT IS THE COUPLING (P1's corollary: when a hardcode resists replacement
+the blocking constraint is the bug). Two changes, both inside the one arbiter:
+
+  1. `step()` KEEPS the ignited set instead of argmaxing it. This required no new mechanism --
+     `late[k] > 0` was already computed per pool and discarded.
+  2. The shared lateral inhibition is DIVIDED ACROSS THE CAPACITY: `_G_INH / capacity`. The old
+     dynamics gave the incumbent's defence a second, hidden effect -- more drive meant more
+     spikes, which meant more drive into the SHARED inhibitory pool, which suppressed everyone
+     else. Stability and winnability were therefore coupled through `_G_INH` and were provably
+     DISJOINT: swept over defence 0.12..0.30 there was no setting that was both stable (the
+     module's own `switches` criterion) and winnable inside the band. A workspace with C slots
+     applies 1/C of its lateral budget to each, so holding a slot costs a SLOT, not the silence
+     of every competitor.
+
+MEASURED CONSEQUENCE, same sweep on the new arbiter:
+
+    tenant claim     0.550  0.5797  0.6573  0.700  0.750     (all inside the compliant band)
+    challenger wins  0.720   0.720   0.720  0.720  0.720     <- flat, and inside the 0.75 ceiling
+
+The defence no longer compounds into unwinnability. A compliant specialist wins a slot against
+ANY compliant tenant, which is the entire point of this change.
+
+A NULL WORTH RECORDING (P8 guard (d)). The obvious alternative fix -- decouple the defence from
+the pool's inhibitory EXPORT, so a held pool contributes to the shared inhibitory pool only in
+proportion to its own claim -- was BUILT and swept alongside the above. It buys winnability at
+some gains and it costs stability: at the gain this module ships (0.60) it moved the workspace's
+switch count 3 -> 7 while the divided-budget form alone already reached 0.72/0.72. Two mechanisms
+where one suffices is the additive failure P2 forbids, so the export decoupling is NOT here.
+
+WHAT DID NOT CHANGE, deliberately. `ignition_threshold`, `decay`, `hysteresis` and `self_boost`
+keep their exact defaults. `brainstem/autonomous_loop.py::_percept_salience` and
+`cortex/access_consciousness.py::_max_claim` READ those three attributes off this object at
+runtime and size their own admissible band from them, and `autonomous_loop`'s self-check ASSERTS
+its live saliences land inside it. Moving any of them here would move a producer's range in
+another file and could redden a self-check this module does not own.
+
+=====================================================================================================
+WHAT THIS BUYS ON THE LIVE BRAIN, AND WHAT IT DOES NOT. Measured, 2026-08-06, on the canonical
+`LiveBrain` composition -- 60 wake ticks, `.venv-lake`.
+=====================================================================================================
+WITH THE TREE AS IT STANDS: NOTHING, and that is the honest result. The arm bus has exactly ONE
+admissible producer. Spied over 60 live ticks, `perception` posts in [0.55, 0.65] every tick and
+`salience`/threat posts a structural 0.000000 every tick (the amygdala is never paired on the wake
+path; `autonomous_loop` documents and proves that null in both directions). K slots over one
+admissible candidate broadcast one content: `broadcast_all()` returned a 1-tuple on 60 of 60 ticks
+and `cortex/live_brain.py::thought` named the percept on 60 of 60 -- unchanged, which is the
+requirement, not the achievement. THE CAPACITY IS NOT THE BINDING CONSTRAINT ON THAT BUS TODAY;
+THE PRODUCER POPULATION IS, and fixing that is not this module's work.
+
+WHAT IT BUYS THE MOMENT A SECOND FACULTY JOINS, which is the whole point and is measured rather
+than asserted. `cortex/access_consciousness.AccessConsciousness` was put on the arm's OWN bus
+object (identity-checked, not a copy) and posted at a compliant 0.65:
+
+    arbiter              workspace         percept still in it   producer B in it
+    retired single-slot  ('GLOBAL',)             0 / 40 ticks       40 / 40 ticks
+    this one             ('GLOBAL', 0)          40 / 40 ticks       40 / 40 ticks
+
+The retired arbiter DESTROYED the percept -- which is precisely why a prior pass declined to ship
+that repoint, having watched the arm's broadcast go '0' -> 'GLOBAL' permanently. Under this one the
+percept is still in the workspace on every tick. That is the capability the change exists to buy.
+
+THE HARNESS WAS PROVEN ABLE TO GO RED BEFORE ANY OF THIS WAS BELIEVED, because the first run of it
+returned a null on BOTH arbiters and the null was an artefact: AccessConsciousness's own computed
+salience on this brain is 0.007..0.140, entirely below the 0.55 rheobase, so producer B never made
+an audible claim and no arbiter could have differed. Swept across the band the harness reads 0/40
+consumer-output changes at claims 0.55 and 0.60 and 40/40 at 0.65 and above -- a red and a green
+from the same instrument.
+
+FOUR LIMITS, disclosed rather than discovered later. (1) CO-EXISTENCE ON THE LIVE BUS IS ONE STEP
+WIDE, re-measured 2026-08-06 by sweeping the claim in 0.01 rather than reading the band ends.
+Against a perception claiming 0.5500-0.6500, producer B co-exists on 40 of 40 ticks at a claim of
+0.65 and EVICTS the percept on 40 of 40 at 0.66 -- and at 0.67, 0.68, 0.69, 0.70, 0.72 and 0.75,
+all of which read percept 0/40. The retired arbiter evicts at 0.65 as well, so the window this
+change opens on that bus is real and is exactly one 0.01 step of the 0.20-wide band. The eviction
+is the shared inhibition silencing the weaker pool with THREE SLOTS STILL FREE -- competition
+working rather than the capacity binding -- but this limit previously said the loser only loses at
+the band CEILING, which was a single point read as a range. The sweep is the honest form. (2)
+`tools/p6_gate.py` matches an explicit `(method, arity)` table that does not contain
+`broadcast_all`, so the tree's P6 READ count does not move because this accessor exists. Adding it
+there is work in a file this pass does not own. (3) and (4) are the two that matter and they get
+their own blocks below.
+
+=====================================================================================================
+LIMIT 3 -- THE SLOT IS WINNABLE; THE *HEAD* IS NOT. Do not read one as the other.
+=====================================================================================================
+`broadcast()` / `current` / `live_brain.thought` return the RANKED HEAD, and the head is a
+different question from access. Swept the same way as the winnability table above:
+
+    tenant claim      0.550   0.5797   0.6573   0.700   0.750     compliant ceiling 0.75
+    win a SLOT at     0.720    0.720    0.720   0.720   0.720     <- inside the band, every tenant
+    become HEAD at    0.720    0.825    0.825   0.825   0.825     <- ABOVE the band from 0.5797 up
+    (retired arbiter) 0.735    0.735    0.895   0.950   0.955     <- slot and head were one thing
+
+So a compliant specialist can always get ACCESS and cannot always become the FOCUS. Two things
+follow and both are honest rather than convenient. It is a real improvement on the head too (0.895
+-0.955 down to a flat 0.825, and flat instead of compounding with the tenant's claim), and it is
+still outside the band, so `broadcast()` alone remains a poor place to look for faculty-to-faculty
+influence -- `broadcast_all()` is where the change lives. It is also arguably the CORRECT behaviour
+rather than residual defect: a focus that flips whenever a marginally louder specialist posts is
+the flickering argmax control this module exists to beat. Recorded as a limit and not defended as a
+feature, because the next reader will otherwise assume "winnable" covered both.
+
+=====================================================================================================
+LIMIT 4 -- TWO CONSUMER SELF-CHECKS GO RED, both for the SAME reason. NOT FIXED HERE: this pass owns
+this file only. Both are REQUIRED companion work and both are measured, not guessed.
+=====================================================================================================
+`cortex/access_consciousness.py` claim (8) and `reasoning/rpm_solver.py`'s `collide_ok` each encode
+faculty-to-faculty influence as EXCLUSION -- "a louder competitor takes the one slot away from me"
+-- which is the single-slot pathology this change removes. Neither faculty's substantive output
+regressed; what changed is the channel their criterion was reading.
+
+  * `access_consciousness` claim (8), `shared_diff >= 6/12`: measured 12/12 on the retired arbiter
+    and 1/12 on this one. The retired arbiter EVICTED that faculty entirely (in the workspace 0 of
+    12 ticks at a 0.95 competitor); this one keeps it in on 12 of 12 and it merely loses the head
+    on the first tick. The criterion is not wrong, it is LOAD-DEPENDENT now: re-measured with other
+    faculties already competing it reads 1/12 at 0 competitors, **11/12 at 3** (the workspace at
+    capacity, where exclusion is real again), and 1/12 at 6 (nothing of that faculty's gets in
+    under either arbiter, so there is nothing to differ). Fix: run the claim with `capacity - 1`
+    competing faculties, or re-derive it against `broadcast_all()` rank rather than head identity.
+  * `rpm_solver` `collide_ok`: three of its four conditions still pass and THE ANSWER IS STILL
+    CORRECT under both arbiters (index 3, the true answer, with a foreign percept holding the
+    head). The one that flips is `not occupied["known"]` -- with the workspace holding
+    `(2, ('rpm_answer', 3))` the solver's own candidate co-ignites beside the foreign percept, so
+    it reports that it KNOWS its answer instead of being forced into an honest-gap by an unrelated
+    content. That is more informative, not less. Note also that the assert's MESSAGE ("a foreign
+    content holding the SHARED slot must not be returned as the RPM answer") describes conditions
+    (2) and (3), which both pass; the message no longer names the condition that fails.
+
+Verified UNAFFECTED, run rather than assumed: `cortex/live_brain.py`, `brainstem/autonomous_loop.py`,
+`thalamus/reentrant_workspace.py`, `reasoning/spike_chat_lake.py`, `reasoning/consciousness_probe.py`,
+`reasoning/train_of_thought.py`, `reasoning/concept_reflection.py`, `cortex/executive_control.py`,
+`reasoning/brain_adapters/executive_control.py`, `reasoning/gwt_deep.py`, `reasoning/gwt_reentry.py`.
 
 FRAMING (agnostic, per the project's consciousness program): this is a functional spiking
 attention/broadcast bottleneck (integrate -> spike -> compete -> ignite -> broadcast -> decay), a
@@ -89,27 +246,31 @@ def _fold_parts(parts):
 
 
 class GlobalWorkspace:
-    """A single limited-capacity workspace of competing LIF pools with all-or-none ignition.
+    """A LIMITED-CAPACITY workspace of competing LIF pools with all-or-none ignition.
 
-    Capacity is ONE content at a time -- that single slot IS the bottleneck. Specialists call
-    `submit(source, content, salience)` to post candidates for the current tick; `step()` runs one
-    settle-to-ignition cycle of the spiking network and returns the broadcast content (or None).
-    `subscribe(fn)` registers a module callback that receives every broadcast (global reach).
+    Capacity is a small number of contents at a time -- that bound IS the bottleneck, and it is
+    what distinguishes a workspace from a message bus. Specialists call `submit(source, content,
+    salience)` to post candidates for the current tick; `step()` runs one settle-to-ignition cycle
+    of the spiking network and returns the TOP broadcast content (or None). `broadcast_all()`
+    returns everything in the workspace. `subscribe(fn)` registers a module callback that receives
+    every broadcast (global reach).
 
     The salience of a submission is the EXTERNAL CURRENT driving that content's LIF pool. A pool
     fires only above rheobase (`leak * v_th == ignition_threshold`), so a sub-threshold salience
     never ignites; a supra-threshold one integrates to a spike, recruits recurrent self-excitation,
-    and -- if it wins the shared-inhibition competition -- reaches SUSTAINED firing and is broadcast.
+    and -- if it survives the shared-inhibition competition and ranks inside the capacity --
+    reaches SUSTAINED firing and is broadcast.
 
     `use_ignition=False` is the FAIR CONTROL: the spiking dynamics are switched off and `step()`
-    becomes a pure per-tick argmax over the submissions (no LIF, no attractor, no inhibition).
-    Everything else -- the same submissions, the same competition of candidates -- is identical.
+    becomes a pure per-tick argmax over the submissions (no LIF, no attractor, no inhibition, one
+    content). Everything else -- the same submissions, the same candidates -- is identical.
 
-    THE DECLARED READ SURFACE IS TWO QUESTIONS ABOUT ONE SLOT, not two buses. `current` /
-    `broadcast()` answer WHAT occupies the slot; `broadcast_hold` answers HOW STRONGLY it is still
-    held. Both go through the single `_slot()` load of the one incumbent -- see `broadcast_hold`
-    for why the second question needed a route of its own and why adding it is not a second
-    mechanism (P2).
+    THE DECLARED READ SURFACE IS THREE QUESTIONS ABOUT ONE WORKSPACE, not three buses. `current` /
+    `broadcast()` answer WHAT is at the top; `broadcast_all()` answers WHAT ELSE is available;
+    `broadcast_hold` answers HOW STRONGLY the top content is still held. All three go through the
+    single `_slot()` load of the one slot tuple -- see `broadcast_hold` for why a second question
+    needed a route of its own and why these are projections of one arbiter's output rather than
+    additional mechanisms (P2).
     """
 
     # -- fixed LIF network constants (per-instance; deterministic, ASCII) --------------
@@ -119,8 +280,8 @@ class GlobalWorkspace:
     _TAU_SELF = 0.6  # within-tick self-excitation synaptic-trace decay
     _K_INH = 0.30  # excitatory-spike -> shared inhibitory-pool drive
     _LEAK_INH = 0.5  # shared inhibitory-pool leak
-    _G_INH = 2.4  # inhibitory-pool -> content-pool feedback gain (mutual/lateral)
-    _JITTER = 0.02  # tiny deterministic symmetry-break so exact ties yield ONE winner
+    _G_INH = 2.4  # TOTAL lateral-inhibition budget; each slot gets _G_INH/capacity (see `capacity`)
+    _JITTER = 0.02  # tiny deterministic symmetry-break so exact ties resolve to a fixed order
 
     def __init__(
         self,
@@ -135,14 +296,15 @@ class GlobalWorkspace:
             ignition_threshold  # rheobase current: a pool fires iff drive > this
         )
         self.decay = decay  # cross-tick attractor decay (persistence fade)
-        self.hysteresis = hysteresis  # incumbent's extra recurrent defence current...
+        self.hysteresis = hysteresis  # a slot occupant's extra recurrent defence current...
         self.self_boost = self_boost  # ...(self_boost + hysteresis) holds the attractor
         self.use_ignition = use_ignition
         self._v_th = (
             ignition_threshold / self._LEAK
         )  # membrane threshold s.t. rheobase == ignition_threshold
         self._rng = random.Random(seed)  # per-instance RNG (deterministic symmetry-break jitter)
-        self._incumbent = None  # (source, content, hold) occupying the slot, or None; see _slot()
+        self._slots = ()  # ranked tuple of (source, content, hold) occupying the workspace
+        self._g_lat = self._G_INH / self.capacity  # per-slot share of the lateral budget
         self._buffer = []  # this tick's submitted candidates
         self._subscribers = []  # module callbacks receiving each broadcast
         self._g = {}  # (source, content) -> cross-tick attractor memory in [0,1]
@@ -153,6 +315,71 @@ class GlobalWorkspace:
         self._sim_par_eff = 1.0  # running-EMA fraction of IDEAL parallel savings actually achieved
         self._slot_buf = []  # per-submitter staging buffers for CONCURRENT specialists
         self._last_v = {}  # (source, content) -> final membrane float (determinism self-check)
+
+    # -- the capacity of the bottleneck ----------------------------------------------------------
+    @property
+    def capacity(self):
+        """How many contents this workspace can hold at once. DERIVED, not picked.
+
+        THE DERIVATION. `self_boost + hysteresis` is what it COSTS to hold a slot: it is the extra
+        recurrent drive a slot occupant is granted, on this module's normalized [0,1] drive scale
+        (the same scale `_g` is clamped to, `broadcast_hold` contracts to, and `1 - defence` is the
+        band ceiling of). A workspace whose total recurrent hold budget is one unit of that scale
+        can therefore hold `floor(1 / defence)` contents. At the defaults that is
+        `floor(1 / 0.25)` = 4.
+
+        WHY THAT IS A DERIVATION AND NOT A HAND-PICKED 4 (P1). It introduces NO new constant: both
+        the budget (1.0, the module's normalized ceiling -- P1 honesty guard case (a), a fixed
+        point on a normalized scale) and the cost (`self_boost + hysteresis`) already exist and
+        already arbitrate. It MOVES when they move, which is the falsifier and is asserted in the
+        self-check: defence 0.25 -> 4, 0.33 -> 3, 0.50 -> 2, 1.00 -> 1. It is also the parameter
+        this module's own defect was about -- the defence was previously free to the incumbent and
+        is now what a slot costs -- so capacity and winnability are derived from the same quantity
+        rather than tuned against each other.
+
+        The number it lands on is corroborated rather than justified by Cowan (2001, Behav Brain
+        Sci 24:87, "the magical number 4") and Luck & Vogel (1997, Nature 390:279): the capacity of
+        conscious access measures ~4 items. GNWT itself is explicit that the workspace is
+        capacity-LIMITED and never states a number -- Dehaene & Changeux (PLoS Biol 3(5):e141,
+        2005) describe "a single limited-capacity serial workspace" -- so the literature fixes the
+        SHAPE of this quantity and not its value, which is exactly why it has to be derived here.
+
+        WHAT WOULD FALSIFY IT: a measurement showing this brain's specialists carry more (or
+        fewer) simultaneously usable contents than the defence budget affords. Nothing in this tree
+        measures that today -- there is no consensus benchmark (P2's standing note on this very
+        module) -- so the derivation stands on its own terms and the number is not credited beyond
+        them.
+
+        DEGENERATE INPUTS, checked because a P1 rewrite in this tree shipped a `mu/1e-12 = 1e12`
+        singularity onto a live path. There is no unbounded denominator here: the divisor is a
+        MAXIMUM, so it cannot approach zero. ZERO defence -> nothing is held at all, so there is no
+        multi-tick workspace, only a per-tick competition, and this returns 1 -- the maximally
+        selective answer, which is the safe direction for a bottleneck. A defence BELOW the
+        symmetry-break jitter cannot hold a content against this workspace's own tie-break noise,
+        so `_JITTER` floors the cost and bounds the count at 49; a workspace configured there is
+        not a bottleneck and this module does not pretend otherwise. EMPTY / SILENCE / SINGLE do
+        not enter: capacity is a property of the workspace, never of the load -- a workspace does
+        not become more selective because less is competing, and making the lateral gain depend on
+        the competitor count was measured to destroy winnability (0.72 -> None) and is why this is
+        a property rather than a per-tick computation.
+
+        THE DIVISOR IS THE FLOAT DEFENCE, NOT THE DECIMAL ONE, and the gap shows up at exactly the
+        values a reader is most likely to try. `1.0 // d` floors the quotient of the two DOUBLES,
+        so a defence whose decimal reciprocal is a whole number but which is not exactly
+        representable in binary lands one BELOW the decimal reading: measured, 0.20 -> 4 (not 5),
+        0.10 -> 9 (not 10), 0.05 -> 19, 0.04 -> 24, 0.02 -> 49 (not 50). Dyadic defences agree
+        exactly (0.25 -> 4, 0.125 -> 8, 0.50 -> 2), which is why the SHIPPED default is unaffected.
+        This is the correct floor for the defence the workspace ACTUALLY holds -- `fl(0.20)` is
+        0.2000000000000000111, and five slots of it overspend the unit budget -- so it is
+        documented rather than rounded away into a capacity that would spend more than there is.
+        The rounding MODE is falsifiable rather than assumed: the table in the self-check carries a
+        defence of 0.15, where floor gives 6 and round gives 7. Every other row in it (0.25, 0.33,
+        0.50, 1.00) is a value at which floor and round agree, so before that row existed a
+        mutation replacing `//` with `round` passed the entire self-check -- run, not argued."""
+        defence = self.self_boost + self.hysteresis
+        if defence <= 0.0:
+            return 1
+        return max(1, int(1.0 // max(defence, self._JITTER)))
 
     # -- specialist / module interface ----------------------------------------------------------
     def submit(self, source, content, salience):
@@ -201,42 +428,76 @@ class GlobalWorkspace:
         self._subscribers.append(fn)
         return fn
 
-    # -- the DECLARED read surface: WHAT is in the slot, and HOW STRONGLY it is held -------------
+    # -- the DECLARED read surface: WHAT is in the workspace, and HOW STRONGLY it is held --------
     def _slot(self):
-        """ONE load of `self._incumbent` -- the single point at which every declared read observes
-        the slot, and the reason each of them is race-free on the free-threaded build.
+        """ONE load of `self._slots` -- the single point at which every declared read observes the
+        workspace, and the reason each of them is race-free on the free-threaded build.
 
-        CONCURRENCY, stated as the argument rather than as a hope (this is cp314t, Py_GIL_DISABLED):
-        `_incumbent` is only ever REBOUND (`self._incumbent = ...`), never mutated in place, and it
-        holds a tuple of immutables. A load therefore sees either the whole previous slot or the
-        whole new one -- there is no torn read, and no lock is needed to take that snapshot. What
-        DOES need care is loading it TWICE. `self._incumbent[1] if self._incumbent is not None else
-        None` -- the form `current` carried until this accessor was added -- evaluates its test on
-        one load and its subscript on ANOTHER, so a concurrent `step()` that empties the slot between
-        them raises `TypeError: 'NoneType' object is not subscriptable`. The self-check constructs
-        exactly that interleaving deterministically and shows the old form raising on it.
+        CONCURRENCY, stated as the argument rather than as a hope (this is cp314t, Py_GIL_DISABLED).
+        THIS ARGUMENT IS UNCHANGED BY THE MOVE TO MULTIPLE SLOTS, and keeping it unchanged is why
+        the slots are a TUPLE rather than a list or a dict. `_slots` is only ever REBOUND
+        (`self._slots = (...)`), never mutated in place, and it holds tuples of immutables all the
+        way down. A load therefore sees either the whole previous workspace or the whole new one --
+        there is no torn read, no partially-filled workspace is ever observable, and no lock is
+        needed to take that snapshot. A list of slots mutated in place would have made every one of
+        those sentences false, which is the thing multi-slot most easily gets wrong: more slots is
+        a strictly larger shared-mutable surface unless the whole set is swapped at once.
+
+        What DOES need care is loading it TWICE. `self._slots[0][1] if self._slots else None`
+        evaluates its test on one load and its subscript on ANOTHER, so a concurrent `step()` that
+        empties the workspace between them raises `IndexError: tuple index out of range`. The
+        self-check constructs exactly that interleaving deterministically and shows the two-load
+        form raising on it.
 
         Cross-ACCESSOR coherence is a separate and weaker guarantee, stated rather than implied: two
         accessor calls are two loads, so a reader that needs `current` and `broadcast_hold` from the
         SAME tick must take them from the same tick -- which the live wake tick, single-threaded
         through `step()`, already does. This snapshot removes the race INSIDE a read; it does not
         make the workspace thread-safe and does not claim to (`submit()` says the same)."""
-        return self._incumbent
+        return self._slots
 
     @property
     def current(self):
-        """The single content currently occupying the workspace (globally available), or None."""
-        inc = self._slot()
-        return inc[1] if inc is not None else None
+        """The TOP content in the workspace (the highest-ranked broadcast), or None if empty."""
+        slots = self._slot()
+        return slots[0][1] if slots else None
 
     def broadcast(self):
-        """The current workspace content -- what every module can see right now."""
+        """The top workspace content -- what every module can see right now.
+
+        ZERO-ARG AND STAYING THAT WAY. This is the tree's ONE genuine cross-module workspace read
+        (`cortex/live_brain.py::thought` -> `self.arm.workspace.broadcast()`), and `tools/p6_gate.py`
+        classifies `broadcast` BY ARITY -- 0 arguments is this reader, 3 is a submit wearing a
+        reader's name. Its return type is a single content, and every `is not None` test in the tree
+        is written against that. Widening it to return the whole workspace would break both."""
         return self.current
+
+    def broadcast_all(self):
+        """EVERY content in the workspace, ranked, as a tuple -- the multi-slot read.
+
+        `broadcast()` answers "what is the brain thinking about"; this answers "what ELSE is
+        available at the same time", which is the question a single slot could not be asked. It is
+        the arbiter's full output; `broadcast()` and `broadcast_hold` are projections of that same
+        one result (P2 -- one arbiter, three questions, no second mechanism and no second
+        competition). Empty workspace -> `()`, never None, so a caller may iterate unconditionally.
+
+        HONEST LIMIT ON WHAT THIS BUYS TODAY, so a reader is not misled by the accessor's
+        existence. Two things it does NOT do. (1) It is invisible to `tools/p6_gate.py`: that gate
+        matches an explicit `(method, arity)` table which has `("broadcast", 0)` and does not have
+        this name, so the tree's P6 read count does NOT move because this exists. Adding it there
+        is work in a file this change does not own. (2) On the live arm bus it currently returns
+        one content, because only one producer is admissible: measured over 60 live `AutonomousArm`
+        ticks, `perception` posts in [0.5798, 0.6573] every tick and `salience`/threat posts a
+        structural 0.0 (the amygdala is never paired on the wake path -- `autonomous_loop`
+        documents and proves that null in both directions). K slots over one admissible candidate
+        broadcast one content. The capacity is not the binding constraint on that bus today; the
+        producer population is, and fixing that is not this module's work."""
+        return tuple(entry[1] for entry in self._slot())
 
     @property
     def broadcast_hold(self):
-        """HOW STRONGLY the workspace is still holding the content `broadcast()` names: the ignited
-        pool's cross-tick attractor charge, in [0,1]. 0.0 when the slot is empty.
+        """HOW STRONGLY the workspace is still holding the content `broadcast()` names: that
+        pool's cross-tick attractor charge, in [0,1]. 0.0 when the workspace is empty.
 
         WHAT THIS VALUE IS, named for its meaning rather than for where it sat. It is `self._g` for
         the winning pool -- the same attractor memory that builds that pool's drive current on the
@@ -256,13 +517,18 @@ class GlobalWorkspace:
         pinned and HOW STRONGLY was the only thing on the bus that moved, and it was private with no
         declared accessor, so no faculty could consume it.
 
-        WHY THIS IS NOT A SECOND READ PATH (P2, one mechanism). There is one bus, one slot, one
-        `_slot()` load behind all three accessors, and no second copy of the content route:
-        `current` / `broadcast()` remain THE answer to WHAT, and this is the ONLY answer to HOW
-        STRONGLY. Folding the two into one return value instead -- `broadcast()` yielding a
-        (content, hold) pair -- was rejected because it changes the return type of the tree's one
-        cross-module workspace read (`cortex/live_brain.py::thought`) and of every `is not None`
-        test written against it, which buys no signal and breaks the consumers this exists to serve.
+        WHY THIS IS NOT A SECOND READ PATH (P2, one mechanism). There is one bus, one arbiter, one
+        `_slot()` load behind all four accessors, and no second copy of the content route:
+        `current` / `broadcast()` remain THE answer to WHAT, `broadcast_all()` is the ONLY answer
+        to WHAT ELSE, and this is the ONLY answer to HOW STRONGLY. Folding them into one return
+        value instead -- `broadcast()` yielding a (content, hold) pair -- was rejected because it
+        changes the return type of the tree's one cross-module workspace read
+        (`cortex/live_brain.py::thought`) and of every `is not None` test written against it, which
+        buys no signal and breaks the consumers this exists to serve.
+
+        IT REPORTS THE TOP SLOT, and that is a deliberate narrowing rather than an oversight. A
+        per-slot hold vector would be a fourth accessor answering a question nothing in this tree
+        asks; `_slot()` already exposes the triples for anything that later needs them.
 
         HONEST LIMIT, MEASURED rather than inherited, so a consumer is not misled by its own read.
         On the live brain this spans 0.4335..0.6. Sweeping `cortex/access_consciousness.py` at
@@ -280,8 +546,8 @@ class GlobalWorkspace:
         In the `use_ignition=False` control there is no attractor at all, so the slot's third
         element is the winning SALIENCE, clamped in `step()` to this same [0,1] -- the same question,
         and the only answer that path can give."""
-        inc = self._slot()
-        return 0.0 if inc is None else inc[2]
+        slots = self._slot()
+        return slots[0][2] if slots else 0.0
 
     # -- one workspace cycle --------------------------------------------------------------------
     def _deliver(self, content):
@@ -327,10 +593,11 @@ class GlobalWorkspace:
         total = [0] * m
         late = [0] * m
         half = self._T // 2
+        glat = self._g_lat  # this workspace's PER-SLOT share of the lateral budget (see `capacity`)
         a_inh = sync(si, -1)  # register this chunk; shared pool starts silent
         for t in range(self._T):
             for i in range(m):
-                lateral = self._G_INH * max(0.0, a_inh - si[i])  # inhibition from OTHER pools
+                lateral = glat * max(0.0, a_inh - si[i])  # inhibition from OTHER pools
                 cur = dr[i] + self._W_SELF * trace[i] - lateral  # LIF input current
                 v[i] = v[i] + (cur - self._LEAK * v[i])  # leaky integration
                 if v[i] < 0.0:
@@ -359,10 +626,19 @@ class GlobalWorkspace:
         own recurrent self-excitation (within-tick trace), MINUS the shared inhibitory pool's
         feedback. The shared inhibitory pool `a_inh` sums EVERY excitatory spike; each content pool
         `self_k` tracks only its OWN contribution to it, so the inhibition actually applied to pool
-        k is `g_inh * (a_inh - self_k)` -- the drive from every OTHER pool. That is the global
+        k is `g_lat * (a_inh - self_k)` -- the drive from every OTHER pool. That is the global
         lateral inhibition (each pool inhibits the others through the shared pool): a lone pool
         inhibits only itself so it is barely damped and ignites, but among competitors the strongest
-        pool's spikes suppress the rest to silence -> a single sustained winner.
+        pools' spikes suppress the rest to silence.
+
+        `g_lat` is `_G_INH / capacity` -- the workspace divides ONE lateral budget across the slots
+        it can hold, so a wider workspace competes less fiercely per slot and a capacity-1 workspace
+        reduces to `_G_INH` exactly. That division is what un-froze this bus; see the module header
+        for the measurement, and note that it is a property of the WORKSPACE, not of the load. It
+        was also measured the other way: making the divisor the number of competitors instead made
+        the gain depend on how many pools happened to be posting, and winnability went 0.72 -> None
+        because the same workspace competed at gain 2.4 while warming one tenant and 1.2 on the
+        tick a challenger arrived.
 
         PARALLEL ABOVE A MEASURED CROSSOVER. The pools partition into contiguous chunks of the sorted
         key order; each chunk is a `_settle_chunk` on its own thread. The shared inhibitory pool is a
@@ -388,10 +664,12 @@ class GlobalWorkspace:
         reproducible, and a cold process pays it on every fresh instance.
 
         The LIVE brain runs about 5 candidate pools, ~100x below the crossover, so the gate keeps
-        production on the serial path today -- correctly. What would move it is P6: there are 26
-        workspace instantiation sites in this tree, 11 of them private and mutually invisible, and
+        production on the serial path today -- correctly. What would move it is P6: this tree holds
+        dozens of workspace instantiation sites, most of them private and mutually invisible, and
         consolidating them onto one shared bus is what puts hundreds of candidates in one
-        competition.
+        competition. Re-derive that census with `tools/p6_gate.py` rather than quoting it -- the
+        figures this paragraph used to carry (26 sites, 11 private) were already stale when they
+        were written.
 
         Returns {key: total_spikes}, {key: second_half_spikes} -- discrete integer spike counts."""
         keys = sorted(drives)  # deterministic evaluation order
@@ -535,19 +813,28 @@ class GlobalWorkspace:
         return total, late
 
     def step(self):
-        """Run ONE workspace cycle. Returns the broadcast content (or None) and clears the buffer."""
+        """Run ONE workspace cycle. Returns the TOP broadcast content (or None), clears the buffer.
+
+        `broadcast_all()` returns everything admitted this cycle; this returns its head, because
+        that is the signature every existing consumer is written against."""
         self._drain_slots()  # concurrent specialists join the competition in a FIXED slot order
         if not self.use_ignition:
-            # FAIR CONTROL: pure per-tick argmax. Whatever is loudest THIS tick wins outright.
+            # FAIR CONTROL: pure per-tick argmax. Whatever is loudest THIS tick wins outright, and
+            # exactly one content is held -- no spiking, no attractor, no inhibition, so there is
+            # no competition for a second slot to arbitrate. That is what makes it the control.
             top = self._top_candidate()
-            if top is not None:
-                # The slot's third element is what `broadcast_hold` reads, and on the ignition path
-                # it is `_g` -- already clamped to [0,1]. `submit()` accepts any float, so the
-                # control path would otherwise hand a reader a raw 5.0 under a [0,1] contract.
-                # Clamping HERE keeps ONE meaning for one accessor instead of a caveat per path, and
-                # it is behaviour-neutral: nothing else in this module reads `_incumbent[2]` (the
-                # drives are built from `self._g`), which the self-check checks rather than asserts.
-                self._incumbent = (top[0], top[1], min(1.0, max(0.0, top[2])))
+            # A slot's third element is what `broadcast_hold` reads, and on the ignition path it is
+            # `_g` -- already clamped to [0,1]. `submit()` accepts any float, so the control path
+            # would otherwise hand a reader a raw 5.0 under a [0,1] contract. Clamping HERE keeps
+            # ONE meaning for one accessor instead of a caveat per path, and it is behaviour-neutral:
+            # nothing else in this module reads a slot's third element (the drives are built from
+            # `self._g`), which the self-check checks rather than asserts.
+            #
+            # An empty tick EMPTIES the workspace on this path too. It previously left the previous
+            # winner in place, so the two paths had different emptying semantics behind one
+            # accessor; nothing depended on that (the control's stream posts every region every
+            # tick, and `sw_without` is unchanged at 27), and one meaning per accessor is the point.
+            self._slots = () if top is None else ((top[0], top[1], min(1.0, max(0.0, top[2]))),)
             content = self.current
             self._buffer = []
             self._deliver(content)
@@ -572,14 +859,22 @@ class GlobalWorkspace:
                 self._g[key] = min(1.0, max(0.0, sal))
         self._g = {k: v for k, v in self._g.items() if v > 1e-6}
 
-        # 2. Build each pool's external drive current: attractor memory + (for the incumbent) its
-        #    recurrent self-excitation defence (self_boost + hysteresis, the attractor hold) + a
-        #    tiny deterministic symmetry-break jitter.
-        inc_key = (self._incumbent[0], self._incumbent[1]) if self._incumbent is not None else None
+        # 2. Set the competition's fierceness from the workspace's own capacity, then build each
+        #    pool's external drive current: attractor memory + (for a pool ALREADY HOLDING A SLOT)
+        #    its recurrent self-excitation defence (self_boost + hysteresis, the attractor hold) +
+        #    a tiny deterministic symmetry-break jitter.
+        #
+        #    EVERY slot occupant carries the defence, not one privileged incumbent -- that is what
+        #    makes this a multi-slot workspace rather than one slot with spectators, and it is why
+        #    the capacity has to be paid for: the defence is the per-slot cost `capacity` divides
+        #    the unit budget by, so granting it to C occupants is exactly the budget being spent.
+        cap = self.capacity
+        self._g_lat = self._G_INH / cap  # read by _settle_chunk; set before any thread fans out
+        held = {(entry[0], entry[1]) for entry in self._slots}
         drives = {}
         for key, g in self._g.items():
             d = g
-            if key == inc_key:
+            if key in held:
                 d += self.self_boost + self.hysteresis
             d += self._jitter_for(key)
             drives[key] = d
@@ -589,14 +884,23 @@ class GlobalWorkspace:
         self._last_total = total
         self._last_late = late
 
-        # 4. IGNITION: the winner is the pool still firing in the second half (survived competition
-        #    into the high-firing attractor). None sustaining -> the workspace empties (release).
-        fired = [k for k in late if late[k] > 0]
-        if fired:
-            winner = min(fired, key=lambda k: (-late[k], -total[k], k[0]))
-            self._incumbent = (winner[0], winner[1], self._g[winner])
-        else:
-            self._incumbent = None
+        # 4. IGNITION -> ADMISSION. Every pool still firing in the second half has ignited (it
+        #    survived the competition into the high-firing attractor); the workspace then admits
+        #    them in competition rank order up to `capacity`. Nothing sustaining -> the workspace
+        #    empties (release).
+        #
+        #    The rank key is the one this module always used, with the full key as its final
+        #    tie-break instead of the source alone. HONEST STATUS, measured rather than argued:
+        #    this is hardening with NO reachable red, and the "determinism hole" it was written to
+        #    close does not exist. `late` is keyed in `sorted(drives)` order on BOTH settle paths
+        #    and `sorted` is stable, so the source-only key already resolved every tie identically
+        #    -- 0 disagreements over four tie-heavy loads (one source with 4, 8 and 40 identical
+        #    contents; two sources x 4) x six seeds, and a mutation reverting it passes this whole
+        #    self-check. Kept because it costs nothing and does not depend on the settle paths
+        #    continuing to hand back sorted keys; recorded as criterion-less per P8 rather than
+        #    credited as a fix.
+        fired = sorted((k for k in late if late[k] > 0), key=lambda k: (-late[k], -total[k], k))
+        self._slots = tuple((k[0], k[1], self._g[k]) for k in fired[:cap])
 
         content = self.current
         self._buffer = []
@@ -630,24 +934,59 @@ def build_stream(n_ticks, seed=0):
 
 
 def run_stream(stream, use_ignition, **params):
-    """Feed a stream through a workspace tick by tick; return the list of broadcast contents."""
+    """Feed a stream through a workspace tick by tick.
+
+    Returns (heads, sets): the top broadcast content per tick, and the FULL workspace per tick.
+    Both are needed because they answer different questions -- see `count_churn`."""
     ws = GlobalWorkspace(use_ignition=use_ignition, **params)
-    broadcasts = []
+    heads, sets = [], []
     for tick in stream:
         for region, salience in tick.items():
             ws.submit(region, region, salience)  # content == region label
-        broadcasts.append(ws.step())
-    return broadcasts
+        heads.append(ws.step())
+        sets.append(ws.broadcast_all())
+    return heads, sets
 
 
 def count_switches(seq):
-    """Number of ticks whose broadcast content differs from the previous tick (flicker measure)."""
+    """Number of ticks whose value differs from the previous tick."""
     return sum(1 for a, b in zip(seq, seq[1:]) if a != b)
+
+
+def count_churn(sets):
+    """FLICKER, for a workspace that holds a SET: contents ENTERING or LEAVING, summed over ticks.
+
+    THIS REPLACES `count_switches` ON THE HEAD AS THE STABILITY MEASURE, and the replacement is
+    forced rather than convenient. Under one slot the two coincide exactly -- the head changing IS
+    a content leaving. Under multiple slots they come apart, and measured on this module's own
+    48-tick stream they come apart completely: the head changed on 17 ticks and the previous head
+    was STILL IN THE WORKSPACE on 47 of 47 of them. Not one of those 17 was a content losing
+    access; every one was a rank swap inside a stable set. So `count_switches(heads)` no longer
+    measures flicker on this arbiter, and keeping it as the stability criterion would have meant
+    loosening its bound from 6 to something that admits 17 -- which is the weakening P8 forbids
+    ("if a criterion turns out not to measure the right thing it is deleted, not weakened").
+
+    Symmetric difference, not a boolean "did the set change": a workspace that swaps one of four
+    contents has churned less than one that empties, and the criterion should be able to say so."""
+    return sum(len(set(a) ^ set(b)) for a, b in zip(sets, sets[1:]))
+
+
+def count_retained(heads, sets):
+    """Ticks where the PREVIOUS head is still somewhere in the workspace -- what a single slot
+    could not do, and the evidence that `count_switches(heads)` is rank churn rather than flicker.
+    The argmax control is its reachable red: there `broadcast_all()` is the head, so this can only
+    equal the no-switch count."""
+    return sum(1 for a, b in zip(heads, sets[1:]) if a is not None and a in b)
 
 
 def _fmt(seq):
     """Compact ASCII trace: initials of the broadcast region per tick, '.' for an empty workspace."""
     return "".join((c[0].upper() if c is not None else ".") for c in seq)
+
+
+def _fmt_set(slots):
+    """Compact ASCII trace of ONE tick's whole workspace: sorted initials, '.' when empty."""
+    return "".join(sorted(c[0].upper() for c in slots)) or "."
 
 
 # ======================================================================================================
@@ -742,37 +1081,71 @@ def main():
     # ---- FAIR CONTROL: same stream, spiking ignition ON vs OFF (pure per-tick argmax) ----------
     n_ticks = 48
     stream = build_stream(n_ticks, seed=0)
-    with_ig = run_stream(stream, use_ignition=True, seed=0)
-    without = run_stream(stream, use_ignition=False, seed=0)
-    sw_with = count_switches(with_ig)
-    sw_without = count_switches(without)
+    with_ig, set_ig = run_stream(stream, use_ignition=True, seed=0)
+    without, set_no = run_stream(stream, use_ignition=False, seed=0)
+    churn_with = count_churn(set_ig)
+    churn_without = count_churn(set_no)
+    kept_with = count_retained(with_ig, set_ig)
+    kept_without = count_retained(without, set_no)
+    sw_with = count_switches(with_ig)  # HEAD switches -- rank churn, NOT flicker; see count_churn
+    # ONE default-parameter workspace read by every section below that needs the shipped constants.
+    # `tools/p6_gate.py` censuses instantiation sites per module, and four separate constructions of
+    # an object built only to read three attributes off it would add four to the very count this
+    # work exists to reduce -- the same reason `cortex/access_consciousness.py::_bus` exists.
+    _defaults = GlobalWorkspace()
+    cap = _defaults.capacity
+    band_lo = _defaults.ignition_threshold
+    band_hi = 1.0 - (_defaults.self_boost + _defaults.hysteresis)
 
     print("=" * 74)
-    print("SPIKING GLOBAL WORKSPACE -- LIF pools -> compete -> ignite -> broadcast -> decay")
+    print("MULTI-SLOT GLOBAL WORKSPACE -- LIF pools -> compete -> ignite -> admit -> decay")
     print("=" * 74)
     print("regions: perception(P) memory(M) salience/threat(S) language(L) motor(O); '.' = empty")
+    print(f"capacity = floor(1 / (self_boost + hysteresis)) = {cap} slots")
     print("threat burst (region 'salience') at ticks 30-35\n")
-    print(f"WITH ignition  (spiking LIF + inhibition): {_fmt(with_ig)}  switches={sw_with}")
-    print(f"WITHOUT (pure per-tick argmax control)   : {_fmt(without)}  switches={sw_without}")
+    print(f"WITH ignition  (spiking LIF + inhibition): {_fmt(with_ig)}  churn={churn_with}")
+    print(f"WITHOUT (pure per-tick argmax control)   : {_fmt(without)}  churn={churn_without}")
+    print("workspace sets  : " + " ".join(_fmt_set(s) for s in set_ig))
     print(
-        f"\n-> the spiking ignition non-linearity cut workspace switches from {sw_without} (flicker) "
-        f"to {sw_with} (stable)"
+        f"\n-> the spiking ignition non-linearity cut workspace CHURN from {churn_without} (flicker) "
+        f"to {churn_with} (stable). The HEAD changed on {sw_with} ticks and the previous head was "
+        f"still in the workspace on {kept_with}/{len(with_ig) - 1} of them (control: "
+        f"{kept_without}), so head switches are RANK churn here and not flicker at all"
     )
 
     # threat must actually break through: a genuinely stronger supra-threshold signal ignites.
     threat_broadcast = any(c == "salience" for c in with_ig[30:36])
 
-    # ---- ANCHOR (i) BOTTLENECK: many supra-threshold candidates -> exactly ONE seizes the slot --
+    # ---- ANCHOR (i) BOTTLENECK: many supra-threshold candidates -> at most `capacity` admitted --
+    # This is the criterion that stops "multi-slot" from becoming "everything broadcasts". The
+    # candidates are IDENTICAL, so the spiking competition cannot separate them and every one of
+    # them ignites -- which is exactly the case where only the capacity can be the bottleneck.
     seen = []
     b_ws = GlobalWorkspace(seed=0)
     b_ws.subscribe(seen.append)
-    for r in REGIONS:
-        b_ws.submit(r, r, 0.90)  # five simultaneous supra-threshold posts
+    n_flood = 40
+    for i in range(n_flood):
+        b_ws.submit(f"src{i:02d}", f"cand{i:02d}", 0.90)  # 40 simultaneous supra-threshold posts
     b_content = b_ws.step()
-    bottleneck_ok = b_content is not None and len(seen) == 1 and seen[0] == b_content
+    b_ignited = sum(1 for v in b_ws._last_late.values() if v > 0)
+    b_admitted = len(b_ws.broadcast_all())
+    bottleneck_ok = (
+        b_content is not None
+        and b_ignited == n_flood  # every candidate ignited...
+        and b_admitted == cap  # ...and the workspace admitted only `capacity` of them
+        and len(seen) == 1  # subscribers still receive ONE content per step
+        and seen[0] == b_content
+    )
+    print(
+        f"\nbottleneck   : {n_flood} identical supra-threshold candidates -> {b_ignited} ignited, "
+        f"{b_admitted} admitted (capacity {cap}), subscribers got {len(seen)}"
+    )
 
-    # ---- SPIKING WTA: distinct-strength competitors -> the shared inhibitory pool SILENCES the
-    #      weaker ones (0 sustained spikes) and only the strongest ignites (genuine competition) ---
+    # ---- SPIKING COMPETITION: distinct-strength competitors -> the shared inhibitory pool
+    #      SILENCES the weaker ones (0 sustained spikes) and only the strongest ignites. Note this
+    #      is UNDER the capacity (3 candidates, 4 slots), so a free slot is NOT a free pass: the
+    #      spiking competition still excludes them. Capacity bounds the workspace; competition
+    #      fills it. Both have to be real or the mechanism is gone.
     g_ws = GlobalWorkspace(seed=0)
     g_ws.submit("strong", "strong", 0.90)
     g_ws.submit("mid", "mid", 0.68)
@@ -780,7 +1153,12 @@ def main():
     g_content = g_ws.step()
     wta_winner_late = g_ws._last_late["strong", "strong"]
     wta_losers_late = g_ws._last_late["mid", "mid"] + g_ws._last_late["weak", "weak"]
-    wta_ok = g_content == "strong" and wta_winner_late > 0 and wta_losers_late == 0
+    wta_ok = (
+        g_content == "strong"
+        and wta_winner_late > 0
+        and wta_losers_late == 0
+        and g_ws.broadcast_all() == ("strong",)  # 3 candidates, 4 slots, ONE admitted
+    )
 
     # ---- ANCHOR (ii) ALL-OR-NONE IGNITION: sub-threshold stays local, supra-threshold ignites --
     w_ws = GlobalWorkspace(seed=0)
@@ -854,9 +1232,20 @@ def main():
     c_ws.submit("salience", "threat", 0.95)  # danger tick: only the threat is posted
     contract_danger = c_ws.step()  # -> the threat ignites + is broadcast
 
-    # ---- DETERMINISM: identical stream+seed -> identical broadcasts and counts -----------------
-    with_ig2 = run_stream(build_stream(n_ticks, seed=0), use_ignition=True, seed=0)
-    deterministic = with_ig2 == with_ig and count_switches(with_ig2) == sw_with
+    # ---- DETERMINISM: identical stream+seed -> byte-identical over MANY runs -------------------
+    # 24 runs, not 2. The arbiter now publishes a SET, so the digest covers the whole workspace per
+    # tick (head + full set + hold) rather than the head alone -- a reordering inside the set would
+    # be invisible to a head-only comparison, and reordering is the failure mode multiple slots
+    # introduce. Byte-identical means one distinct repr across every run.
+    det_runs = []
+    for _ in range(24):
+        h2, s2 = run_stream(build_stream(n_ticks, seed=0), use_ignition=True, seed=0)
+        det_runs.append(repr([(a, b) for a, b in zip(h2, s2)]))
+    deterministic = (
+        len(set(det_runs)) == 1
+        and det_runs[0] == repr([(a, b) for a, b in zip(with_ig, set_ig)])
+        and count_switches(with_ig) == sw_with
+    )
 
     print(
         f"\nlive contract : safe tick broadcasts {contract_safe!r}; "
@@ -874,22 +1263,57 @@ def main():
     # ============================ genuine self-checks (not rigged) ==============================
     # (a) FUNCTION -----------------------------------------------------------------------------
     # the spiking ignition stabilises the workspace vs the pure-argmax control, by a real margin.
-    assert sw_without > sw_with, f"argmax control must flicker more ({sw_without} vs {sw_with})"
-    assert sw_without >= 3 * max(sw_with, 1), (
-        f"stabilisation must be large, not marginal: with={sw_with} without={sw_without}"
+    # Measured on CHURN (contents entering/leaving), which is what flicker means for a set -- see
+    # `count_churn` for why the head-switch count was retired rather than re-thresholded.
+    assert churn_without > churn_with, (
+        f"argmax control must flicker more ({churn_without} vs {churn_with})"
     )
-    assert sw_with <= 6, (
-        f"spiking workspace must be stable WITH ignition (few switches), got {sw_with}"
+    assert churn_without >= 3 * max(churn_with, 1), (
+        f"stabilisation must be large, not marginal: with={churn_with} without={churn_without}"
     )
-    # bottleneck: exactly one content broadcast despite five supra-threshold candidates.
+    assert churn_with <= 12, (
+        f"spiking workspace must be stable WITH ignition (little churn), got {churn_with}"
+    )
+    # ...and the head-switch count is NOT flicker on this arbiter, which is the measurement that
+    # forced the criterion above. Every tick whose head changed still had the previous head in the
+    # workspace. Its RED is the argmax control, where one slot makes the two measures identical.
+    assert kept_with == len(with_ig) - 1, (
+        f"a multi-slot workspace must not DROP the previous broadcast when its rank changes: "
+        f"retained {kept_with} of {len(with_ig) - 1}"
+    )
+    assert kept_without < len(without) - 1, (
+        "the retention criterion must be reachable-red -- the single-content argmax control MUST "
+        f"fail it, and it retained {kept_without} of {len(without) - 1}"
+    )
+    # bottleneck: 40 identical supra-threshold candidates all ignite, and only `capacity` are
+    # admitted. This is the criterion that stops multi-slot becoming "everything broadcasts".
     assert bottleneck_ok, (
-        "exactly one content must seize + be broadcast through the single-slot bottleneck"
+        f"exactly `capacity` contents must be admitted through the bottleneck: ignited {b_ignited} "
+        f"of {n_flood}, admitted {b_admitted}, capacity {cap}, subscribers {len(seen)}"
     )
-    assert isinstance(b_content, str), "the single broadcast content must be one region, not a set"
+    assert b_admitted < b_ignited, (
+        f"the capacity must actually BIND -- if every ignited candidate is admitted the bottleneck "
+        f"is gone ({b_admitted} admitted of {b_ignited} ignited)"
+    )
+    assert isinstance(b_content, str), "the top broadcast content must be one region, not a set"
+    # ...and THAT criterion is falsifiable by an input this module accepts rather than only by
+    # breaking the accessor: a workspace whose defence is below the tie-break noise floor has a
+    # capacity wider than this flood, so nothing is excluded and the bottleneck assert goes red.
+    # Run, not argued.
+    nocap = GlobalWorkspace(seed=0, self_boost=0.0, hysteresis=1e-9)
+    for i in range(n_flood):
+        nocap.submit(f"src{i:02d}", f"cand{i:02d}", 0.90)
+    nocap.step()
+    assert nocap.capacity > n_flood and len(nocap.broadcast_all()) == n_flood, (
+        f"the bottleneck criterion must be reachable-red: at a sub-jitter defence the capacity is "
+        f"{nocap.capacity} and all {len(nocap.broadcast_all())} candidates broadcast"
+    )
     # genuine spiking competition: among distinct-strength pools, the shared inhibitory pool leaves
-    # only the strongest in sustained firing; the weaker pools are silenced (not merely out-ranked).
+    # only the strongest in sustained firing; the weaker pools are silenced (not merely out-ranked)
+    # and are excluded even though THREE free slots remain.
     assert wta_ok, (
-        "the shared inhibitory pool must silence weaker pools so only the strongest ignites"
+        "the shared inhibitory pool must silence weaker pools so only the strongest ignites, even "
+        f"with {cap - 1} slots free (got {g_ws.broadcast_all()})"
     )
     # all-or-none ignition non-linearity: sub-threshold excluded, supra admitted, no summation.
     assert sub is None, f"a sub-threshold candidate must NOT ignite the workspace (got {sub!r})"
@@ -910,6 +1334,202 @@ def main():
     )
     assert contract_danger == "threat", (
         "a proximity threat must ignite + be broadcast (ws_danger == 'threat')"
+    )
+
+    # (a2) WINNABILITY -- the defect this arbiter replaced, and the A/B that retires the old one --
+    # THE OLD SINGLE-SLOT ARBITER, kept ONLY here as the control (P2: the superseded behaviour is
+    # reachable for comparison in the self-check, never on the live path). It is the current
+    # arbiter with its capacity pinned at one, which is exactly what the old code did: one slot,
+    # one incumbent carrying the whole defence, and the undivided `_G_INH` lateral gain. Nothing
+    # about the old dynamics is reconstructed by hand -- pinning the capacity IS the old dynamics,
+    # which is itself the evidence that the capacity is the thing that changed.
+    class _SingleSlotControl(GlobalWorkspace):
+        """The retired winner-take-all arbiter: capacity 1, undivided lateral gain."""
+
+        @property
+        def capacity(self):
+            return 1
+
+    def _in_slot(w):
+        return "CHAL" in w.broadcast_all()
+
+    def _is_head(w):
+        return w.current == "CHAL"
+
+    def _lowest_win(cls, tenant_claim, ceiling, warm=6, tenants=1, test=None):
+        """Lowest salience a challenger must post to WIN A SLOT beside warmed tenant(s).
+
+        Returns None if no salience at or below `ceiling` gets in. Sweeps in steps of 0.005; the
+        tenants keep posting on the challenge tick, so this is a live incumbent, not a stale one."""
+        s = band_lo
+        while s <= ceiling + 1e-9:
+            w = cls(seed=0)
+            for _ in range(warm):
+                for i in range(tenants):
+                    w.submit(f"t{i}", f"T{i}", tenant_claim)
+                w.step()
+            for i in range(tenants):
+                w.submit(f"t{i}", f"T{i}", tenant_claim)
+            w.submit("chal", "CHAL", s)
+            w.step()
+            if (test or _in_slot)(w):
+                return round(s, 3)
+            s += 0.005
+        return None
+
+    # The live producer range, measured on 60 real AutonomousArm ticks, plus the band extremes.
+    win_claims = (band_lo, 0.5797, 0.6573, 0.700, band_hi)
+    win_new = [_lowest_win(GlobalWorkspace, c, 1.0) for c in win_claims]
+    win_old = [_lowest_win(_SingleSlotControl, c, 1.0) for c in win_claims]
+    print("\nwinnability  : lowest salience a compliant challenger needs to WIN A SLOT")
+    print(
+        f"   compliant band = [ignition_threshold, 1 - (self_boost + hysteresis)] = "
+        f"[{band_lo:.2f}, {band_hi:.2f}]  (defence {band_hi and 1.0 - band_hi:.2f})"
+    )
+    print(f"   {'tenant claim':>13} | {'OLD 1-slot':>10} | {'NEW multi':>9}")
+    for c, o, nw in zip(win_claims, win_old, win_new):
+        print(
+            f"   {c:>13.4f} | {str(o):>10} | {str(nw):>9}"
+            f"{'' if (nw is not None and nw <= band_hi) else '   <- OUTSIDE BAND'}"
+        )
+
+    # THE CRITERION: a compliant specialist must be able to win a slot against ANY compliant
+    # tenant. `<= band_hi` is not a number chosen here -- it is the ceiling every producer in this
+    # tree already derives from these same two attributes (`autonomous_loop::_percept_salience`,
+    # `access_consciousness::_max_claim`), so a challenger above it is not a compliant specialist.
+    assert all(w is not None and w <= band_hi + 1e-9 for w in win_new), (
+        f"a compliant specialist must win a slot against every compliant tenant, inside the band "
+        f"ceiling {band_hi:.2f}: needed {win_new} for tenants {[round(c, 4) for c in win_claims]}"
+    )
+    # ...and the OLD arbiter must FAIL it, or this change bought nothing and should be reverted.
+    # This is the A/B P2 demands before retiring a mechanism, run rather than argued.
+    assert any(w is None or w > band_hi + 1e-9 for w in win_old), (
+        f"the retired single-slot arbiter must be measurably WORSE on this criterion -- if it "
+        f"passes, the multi-slot replacement is unjustified. Got {win_old}"
+    )
+    # REACHABLE RED for the winnability criterion itself, by an input this module accepts rather
+    # than by breaking the accessor: a tenant claiming ABOVE the band monopolises the workspace,
+    # exactly as `access_consciousness::_max_claim` says it would. That is what the band is FOR,
+    # and it is why this criterion cannot be satisfied by simply widening the capacity.
+    over_band = _lowest_win(GlobalWorkspace, 1.0, band_hi)
+    assert over_band is None, (
+        f"the winnability criterion must be reachable-red: a tenant claiming 1.00 (above the "
+        f"{band_hi:.2f} ceiling) must NOT be joinable by a compliant challenger, got {over_band}"
+    )
+
+    # WINNING A SLOT MUST NOT MEAN EVICTING THE TENANT -- that would be single-slot with extra
+    # steps, and it is the specific regression a prior pass declined to ship: repointing a second
+    # faculty onto the shared bus made the arm's broadcast go '0' -> 'GLOBAL' PERMANENTLY and the
+    # percept vanished from the workspace entirely. Measured on the LIVE brain with the real
+    # `cortex/access_consciousness` faculty sharing the arm's own bus object at a compliant 0.65
+    # claim: the retired arbiter kept the percept in the workspace on 0 of 40 ticks, this one on
+    # 40 of 40. The mechanism-level form of that measurement is asserted here.
+    def _coexist(cls, tenant_claim, challenger):
+        w = cls(seed=0)
+        for _ in range(6):
+            w.submit("t0", "T0", tenant_claim)
+            w.step()
+        w.submit("t0", "T0", tenant_claim)
+        w.submit("chal", "CHAL", challenger)
+        w.step()
+        return w.broadcast_all()
+
+    # WINNING A SLOT IS NOT BECOMING THE HEAD, and the header's LIMIT 3 rests on that dissociation.
+    # Asserted so the limit cannot go quietly stale in either direction: if the head ever becomes
+    # winnable inside the band this fires and the header must be re-derived rather than left
+    # standing, which is the exemption-rot discipline `tools/citation_guard.py` uses. Its RED is the
+    # retired arbiter, where one slot makes "in the workspace" and "is the head" the SAME question.
+    win_head = [_lowest_win(GlobalWorkspace, c, 1.0, test=_is_head) for c in win_claims]
+    head_old = [_lowest_win(_SingleSlotControl, c, 1.0, test=_is_head) for c in win_claims]
+    print(f"   winning a SLOT {win_new}  vs becoming the HEAD {win_head}")
+    assert any(h is None or h > band_hi + 1e-9 for h in win_head), (
+        f"LIMIT 3 in the module header states the HEAD is not winnable inside the band while a "
+        f"SLOT is. If that has stopped being true the header is stale and must be re-derived, not "
+        f"left standing: head {win_head} against ceiling {band_hi:.2f}"
+    )
+    assert head_old == win_old, (
+        f"the dissociation must be reachable-red -- on the retired single-slot arbiter 'in the "
+        f"workspace' and 'is the head' are the SAME question and must give the SAME sweep: "
+        f"slot {win_old} vs head {head_old}"
+    )
+    coex_claim = max(win_new)
+    coex_new = _coexist(GlobalWorkspace, 0.6573, coex_claim)
+    coex_old = _coexist(_SingleSlotControl, 0.6573, coex_claim)
+    print(f"   co-existence at {coex_claim}: NEW {coex_new} | retired arbiter {coex_old}")
+    assert "T0" in coex_new and "CHAL" in coex_new, (
+        f"a challenger winning a slot must not EVICT the tenant -- both must stay available, got "
+        f"{coex_new}"
+    )
+    assert len(coex_old) == 1, (
+        f"the co-existence criterion must be reachable-red -- the retired single-slot arbiter "
+        f"cannot hold two contents and MUST fail it, got {coex_old}"
+    )
+    # A FULL workspace is FULL -- capacity is a real constraint, not a formality. With every slot
+    # held by a compliant tenant, a compliant challenger cannot get in; admission then costs a
+    # genuinely exceptional claim, which is the 0.95 proximity threat the live contract posts.
+    full_compliant = _lowest_win(GlobalWorkspace, 0.6573, band_hi, tenants=cap)
+    full_strong = _lowest_win(GlobalWorkspace, 0.6573, 1.0, tenants=cap)
+    print(
+        f"   full workspace ({cap} compliant tenants at 0.6573): compliant challenger "
+        f"{full_compliant}, admitted at {full_strong}"
+    )
+    assert full_compliant is None and full_strong is not None, (
+        f"a FULL workspace must exclude a compliant challenger and admit an exceptional one: "
+        f"compliant {full_compliant}, exceptional {full_strong}"
+    )
+
+    # (a3) THE CAPACITY IS DERIVED, NOT PICKED (P1) ----------------------------------------------
+    # If this number cannot move it is a hardcode wearing a derivation's clothes. It is computed
+    # from `self_boost + hysteresis`, so changing them MUST change it -- run, not asserted in prose.
+    cap_rows = [
+        (0.05, 0.20, 4),  # the shipped defaults
+        (0.05, 0.28, 3),
+        (0.05, 0.45, 2),
+        (0.10, 0.90, 1),  # a defence that consumes the whole budget -> the single-slot workspace
+        (0.00, 0.00, 1),  # ZERO: nothing is held, so there is no multi-tick workspace at all
+        # The ROUNDING MODE is a free parameter of this derivation and the four rows above cannot
+        # see it: floor and round agree at every one of 0.25 / 0.33 / 0.50 / 1.00, and a mutation
+        # swapping `//` for `round` passed this whole self-check. 0.15 separates them (floor 6,
+        # round 7), so the mode is now asserted rather than assumed.
+        (0.05, 0.10, 6),
+        # ...and the divisor is the FLOAT defence, so a non-dyadic value whose decimal reciprocal
+        # is a whole number lands one below the decimal reading. 0.20 -> 4, NOT the 5 a reader
+        # computes by hand; documented in `capacity` and pinned here so it cannot drift silently.
+        (0.00, 0.20, 4),
+    ]
+    print("\ncapacity     : derived from the defence, not chosen (P1)")
+    cap_measured = []
+    for sb, hy, want in cap_rows:
+        k = GlobalWorkspace(seed=0, self_boost=sb, hysteresis=hy)
+        cap_measured.append(k.capacity)
+        print(
+            f"   self_boost {sb:.2f} + hysteresis {hy:.2f} = defence {sb + hy:.2f} -> "
+            f"capacity {k.capacity}, lateral gain {k._G_INH}/{k.capacity} = "
+            f"{k._G_INH / k.capacity:.2f}"
+        )
+        assert k.capacity == want, (
+            f"capacity must be floor(1/defence): defence {sb + hy:.2f} gave {k.capacity}, want {want}"
+        )
+    # MEASURED capacities, not the wanted column. A set built from the table's own literals is
+    # >= 3 whatever the code does, so the previous form of this guard could not fail at all.
+    assert len(set(cap_measured)) >= 3, (
+        f"the capacity criterion must be non-vacuous -- if every defence gives the same capacity "
+        f"this is a constant with a derivation written beside it and should be deleted. Got "
+        f"{sorted(set(cap_measured))} from {len(cap_rows)} defences"
+    )
+    # SINGLE and SILENCE for the capacity: it is a property of the WORKSPACE, never of the load,
+    # so it does not move when one pool competes, when none does, or when the workspace is empty.
+    quiet = GlobalWorkspace(seed=0)
+    assert quiet.capacity == cap, "capacity must not depend on an empty workspace"
+    quiet.submit("solo", "solo", 0.9)
+    quiet.step()
+    assert quiet.capacity == cap and len(quiet.broadcast_all()) == 1, (
+        "capacity must not depend on the number of competitors (a single pool fills one slot)"
+    )
+    for _ in range(12):
+        quiet.step()
+    assert quiet.capacity == cap and quiet.broadcast_all() == (), (
+        "capacity must survive SILENCE unchanged while the workspace itself empties"
     )
 
     # (b) GENUINELY SPIKING --------------------------------------------------------------------
@@ -1010,7 +1630,7 @@ def main():
         for t in range(ws._T):
             spikes = {}
             for k in keys:
-                lateral = ws._G_INH * max(0.0, a_inh - self_i[k])
+                lateral = ws._g_lat * max(0.0, a_inh - self_i[k])
                 cur = drives[k] + ws._W_SELF * trace[k] - lateral
                 v[k] += cur - ws._LEAK * v[k]
                 if v[k] < 0.0:
@@ -1156,8 +1776,9 @@ def main():
     # constant salience, cycling content, incumbent hysteresis holding the slot -- so the
     # dissociation is a property of this module rather than an anecdote about one brain run.
     e_ws = GlobalWorkspace(seed=0)
-    assert e_ws.current is None and e_ws.broadcast_hold == 0.0, (
-        "an EMPTY workspace must read as (None, 0.0) -- never raise, never a stale number"
+    assert e_ws.current is None and e_ws.broadcast_hold == 0.0 and e_ws.broadcast_all() == (), (
+        "an EMPTY workspace must read as (None, 0.0, ()) -- never raise, never a stale number, and "
+        "the multi-slot accessor must give an empty TUPLE rather than None so a caller may iterate"
     )
     hold_seq, content_seq = [], []
     for t in range(120):
@@ -1198,21 +1819,23 @@ def main():
     z_ws = GlobalWorkspace(seed=0)
     z_ws.submit("perception", "nothing", 0.0)
     z_ws.step()
-    assert z_ws.current is None and z_ws.broadcast_hold == 0.0, (
-        "a zero-salience submission must leave the slot empty and the hold at exactly 0.0"
+    assert z_ws.current is None and z_ws.broadcast_hold == 0.0 and z_ws.broadcast_all() == (), (
+        "a zero-salience submission must leave the workspace empty and the hold at exactly 0.0"
     )
+    assert GlobalWorkspace(seed=0).step() is None, "an EMPTY tick must broadcast nothing, not raise"
     s_ws2 = GlobalWorkspace(seed=0)
     s_ws2.submit("solo", "solo", 0.9)
     s_ws2.step()
-    assert s_ws2.broadcast_hold == 0.9, (
-        f"a single ignited pool's hold is its own attractor charge, got {s_ws2.broadcast_hold}"
+    assert s_ws2.broadcast_hold == 0.9 and s_ws2.broadcast_all() == ("solo",), (
+        f"a single ignited pool fills ONE of {cap} slots and its hold is its own attractor charge, "
+        f"got {s_ws2.broadcast_all()} / {s_ws2.broadcast_hold}"
     )
     sil = []
     for _ in range(10):
         s_ws2.step()  # SILENCE: nothing refreshes it -> decay, then release
         sil.append((s_ws2.current, s_ws2.broadcast_hold))
-    assert sil[-1] == (None, 0.0), (
-        f"a released slot must read as (None, 0.0), not a stale charge, got {sil[-1]}"
+    assert sil[-1] == (None, 0.0) and s_ws2.broadcast_all() == (), (
+        f"a released workspace must read as (None, 0.0, ()), not a stale charge, got {sil[-1]}"
     )
     assert [h for _c, h in sil][0] > [h for _c, h in sil][6] > 0.0, (
         "the hold must DECAY monotonically through silence before the release"
@@ -1238,48 +1861,97 @@ def main():
         "1.0 this guard is decoration and should be deleted"
     )
     ctl.step()
-    assert ctl.current == "big" and ctl.broadcast_hold == 1.0, (
-        f"the control path must honour the same [0,1] hold contract, got {ctl.broadcast_hold}"
+    assert ctl.current == "big" and ctl.broadcast_hold == 1.0 and ctl.broadcast_all() == ("big",), (
+        f"the control path must honour the same [0,1] hold contract and hold ONE content, got "
+        f"{ctl.broadcast_all()} / {ctl.broadcast_hold}"
+    )
+    assert ctl.step() is None and ctl.broadcast_all() == (), (
+        "an empty tick must EMPTY the control path too -- one emptying semantics per accessor, "
+        "not one per path (this path used to leave the previous winner in place)"
     )
 
-    # RACE: the slot REBOUND to None between two loads -- what a concurrent step() does on cp314t.
-    # The red is run, not argued: the two-load form `current` used to carry raises TypeError on this
-    # exact interleaving, and the single-load form cannot.
+    # RACE: the workspace REBOUND to empty between two loads -- what a concurrent step() does on
+    # cp314t. The red is run, not argued: a two-load read raises IndexError on this exact
+    # interleaving and the single-load form cannot. Multiple slots make this MORE important, not
+    # less: `_slots` is a tuple swapped whole, so a reader still sees one consistent workspace.
     class _RacingSlot(GlobalWorkspace):
-        """`_incumbent` is emptied by a 'concurrent step()' immediately after the FIRST load."""
+        """`_slots` is emptied by a 'concurrent step()' immediately after the FIRST load."""
 
         def __init__(self, **kw):
-            self._race = None
+            self._race = ()
             super().__init__(**kw)
 
         @property
-        def _incumbent(self):
+        def _slots(self):
             v = self._race
-            self._race = None  # the racing step() lands here, between the caller's two loads
+            self._race = ()  # the racing step() lands here, between the caller's two loads
             return v
 
-        @_incumbent.setter
-        def _incumbent(self, v):
+        @_slots.setter
+        def _slots(self, v):
             self._race = v
 
     def _two_load_current(ws):
-        """The form this module carried before `_slot()` -- kept ONLY as the control."""
-        return ws._incumbent[1] if ws._incumbent is not None else None
+        """A two-load read of the workspace -- kept ONLY as the control."""
+        return ws._slots[0][1] if ws._slots else None
+
+    def _two_load_all(ws):
+        """The same mistake on the multi-slot accessor."""
+        return tuple(e[1] for e in ws._slots) if ws._slots else ()
 
     race = _RacingSlot(seed=0)
-    race._incumbent = ("perception", "scene", 0.7)
-    assert race.current == "scene", "a single-load read must survive a slot emptied under it"
-    race._incumbent = ("perception", "scene", 0.7)
+    race._slots = (("perception", "scene", 0.7), ("memory", "trace", 0.4))
+    assert race.current == "scene", "a single-load read must survive a workspace emptied under it"
+    race._slots = (("perception", "scene", 0.7), ("memory", "trace", 0.4))
     assert race.broadcast_hold == 0.7, "broadcast_hold must take the same single snapshot"
-    race._incumbent = ("perception", "scene", 0.7)
+    race._slots = (("perception", "scene", 0.7), ("memory", "trace", 0.4))
+    assert race.broadcast_all() == ("scene", "trace"), (
+        "broadcast_all must take ONE snapshot of the whole workspace -- a partially-observed set "
+        "is the failure mode multiple slots introduce"
+    )
+    race._slots = (("perception", "scene", 0.7),)
     try:
         _two_load_current(race)
         raise AssertionError(
             "the two-load read must FAIL on this interleaving -- if it no longer can, `_slot()` is "
             "protecting nothing and its concurrency argument should be deleted"
         )
+    except IndexError:
+        pass  # the RED, reached: tuple index out of range
+    race._slots = (("perception", "scene", 0.7),)
+    assert _two_load_all(race) == (), (
+        "the two-load multi-slot read must silently report an EMPTY workspace where the single-load "
+        "form reports the real one -- a wrong answer rather than a raise, which is why it is worse"
+    )
+    # THE SLOT SET MUST BE IMMUTABLE, and this criterion was ADDED because a mutation harness found
+    # that nothing here could see it: rebinding `_slots` as a LIST passed every other assert in this
+    # file while destroying the entire concurrency argument above. On cp314t a list is mutated in
+    # place, so a reader can observe a half-filled workspace and `_slot()`'s "either the whole
+    # previous set or the whole new one" becomes false -- and multiple slots is precisely where that
+    # goes wrong, because there is now a set to be half-observed. `hash()` is the check rather than
+    # `isinstance`: it proves immutability all the way DOWN, so a tuple of lists fails it too.
+    imm = GlobalWorkspace(seed=0)
+    for sal in (0.90, 0.80, 0.70, 0.60):
+        imm.submit(f"s{sal}", f"c{sal}", sal)
+    imm.step()
+    assert len(imm._slots) > 1, (
+        "the immutability criterion must be non-vacuous -- a one-element or empty workspace would "
+        f"satisfy it trivially, got {imm.broadcast_all()}"
+    )
+    hash(imm._slots)  # RED: TypeError the moment any level of the slot set becomes mutable
+    assert type(imm._slots) is tuple and all(type(e) is tuple for e in imm._slots), (
+        f"the workspace must be a TUPLE of TUPLES rebound whole, never a container mutated in "
+        f"place -- got {type(imm._slots).__name__} of "
+        f"{sorted({type(e).__name__ for e in imm._slots})}"
+    )
+    try:
+        imm._slots[0] = ("x", "x", 0.0)
+        raise AssertionError(
+            "the workspace must REFUSE in-place assignment -- if it accepts one, `_slot()`'s "
+            "lock-free snapshot argument is false and should be deleted rather than believed"
+        )
     except TypeError:
-        pass  # the RED, reached: 'NoneType' object is not subscriptable
+        pass  # the RED, reached: 'tuple' object does not support item assignment
     print(
         f"\nread surface : over 120 ticks of constant-salience/cycling-content input the content "
         f"route reports {len(set(content_seq))} distinct value(s) / {content_changes} changes while "
@@ -1289,10 +1961,14 @@ def main():
 
     print(
         "\nself-check OK: "
-        f"spiking ignition switches {sw_with} vs argmax {sw_without} (>=3x stabler); "
-        f"single-slot bottleneck; spiking WTA silences losers; all-or-none (sub spikes={weak_spikes}, "
-        f"supra spikes={strong_spikes}); global-reach; persist {persisted}->release; threat ignited; "
-        f"live-contract holds; deterministic; BINDING spiking-vs-rate control honest "
+        f"capacity {cap} (derived from defence {band_hi and 1.0 - band_hi:.2f}); churn {churn_with} "
+        f"vs argmax {churn_without} (>=3x stabler), previous broadcast retained {kept_with}/"
+        f"{len(with_ig) - 1} vs {kept_without}; bottleneck {b_admitted} of {b_ignited} ignited; "
+        f"WINNABLE at {max(w for w in win_new):.3f} <= band ceiling {band_hi:.2f} where the retired "
+        f"single-slot arbiter needed {win_old}; competition still excludes losers with slots free; "
+        f"all-or-none (sub spikes={weak_spikes}, supra spikes={strong_spikes}); global-reach; "
+        f"persist {persisted}->release; threat ignited; live-contract holds; deterministic over 24 "
+        f"runs; BINDING spiking-vs-rate control honest "
         f"(K1 tie {bind[1][0]:.0%}/{bind[1][1]:.0%}, K2 spikes {bind[2][0]:.0%}>{bind[2][1]:.0%})"
     )
 
