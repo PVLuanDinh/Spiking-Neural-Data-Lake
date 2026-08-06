@@ -17,8 +17,27 @@ How it embodies the project's storage method:
     only when an input pixel fires. Reported against the dense same-architecture
     cost (T * 784 * M), which the sparse version beats by ~1/spike_rate.
 
-Run (after deps):  ../.venv/Scripts/python snn_mnist_stdp.py
-Deps: numpy torch torchvision snntorch   (CPU build is fine)
+Run (after deps):  .venv-lake/Scripts/python -m snn_data_lake.reasoning.snn_mnist_stdp
+Deps, and the two tiers are NOT the same (corrected 2026-08-06 -- this line read
+"numpy torch torchvision snntorch" flat, which hid which one actually blocks the module):
+  CORE, always installed : numpy, torch, snntorch  (snntorch promoted to core 2026-08-06 under P7;
+    it is a 133 KB pure-Python `py2.py3-none-any` wheel with zero transitive deps, so the module-top
+    import at the `import snntorch as snn` line below is unguarded ON PURPOSE -- guarding an
+    unconditional core dependency is the additive shape P2 forbids, exactly as for torch above it.)
+  EXTRA `[gpu]`/`[train]` : torchvision -- and THIS is what keeps this module unimportable.
+MEASURED 2026-08-06 by importing all 152 `reasoning/` modules in isolated subprocesses: this file
+is a HUB. 17 other modules fail to import solely because they import it, and after snntorch went
+core their blocker RE-LABELLED from snntorch to torchvision rather than clearing. torchvision was
+adjudicated and REJECTED for core on a structural argument, not on dependency count (P7 forbids
+that reason): `pip install torchvision` on cp314t resolves torchvision-0.28.0, which pins
+`torch==2.13.0` and would replace the gate env's torch 2.11.0+cu128 with the default-index CPU
+build, silently removing the GPU from the one environment P5 names.
+DELIBERATELY NOT GUARDED HERE, and this is a disposition rather than an omission: a guard would
+make this module and its 17 dependents IMPORT while `load_mnist` -- the only data path any of them
+has -- still raised at call time. That is P3 shape 1 (imported-but-inert), and it would turn a
+loud import failure into a green import gate over a subtree that still cannot run. Deciding
+torchvision is its own P7 adjudication (which index, and whether it is pinned against the cu128
+torch); it is open work, recorded here at the site rather than half-fixed in passing.
 
 Honest scope: simplified vs full Diehl&Cook (hard k-WTA instead of an explicit
 inhibitory population; fixed thresholds, no adaptive homeostasis). Upgrade path
