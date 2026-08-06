@@ -112,6 +112,55 @@ jobs:
           # the whole lint job -- including the two gates added below it.
           python-version: "3.14t"
           cache: pip
+
+      # P4c (every build is part of the brain) -- THE RATCHET. P4c's forward-looking half, "every
+      # FUTURE build lands inside the governed tree from the start", was enforced by REVIEW ONLY,
+      # and review is precisely what let 259 ungoverned builds accumulate. This step does not
+      # promote or disposition anything; it asserts one thing only: the per-zone count of builds
+      # outside REGIONS/TORCH_TIER may FALL and may never RISE.
+      #
+      # `--assert` IS NOT OPTIONAL, for the reason this file now records three times: a gate wired
+      # in BARE is a log line wearing a gate's clothes (`dependency_ledger.py` ran that way for
+      # weeks and could not redden the build no matter what it found).
+      #
+      # PROVEN ABLE TO FIRE against the REAL tree, constructed and run 2026-08-06 in .venv-lake --
+      # not reasoned about from the source. Four probes, each created on disk, gate run, probe
+      # deleted, gate re-run: (1) research/_p4c_red_probe.py -> "research: 26 > baseline 25", exit
+      # 1; (2) src/snn_data_lake/cortex/_p4c_red_probe.py -> "src/snn_data_lake/cortex: 1 >
+      # baseline 0", exit 1 -- a file INSIDE a governed region directory still fires, because
+      # registration is the test and location is not; (3) a brand-new top-level skunkworks/ ->
+      # exit 1 on an implicit baseline of 0; (4) `--update-baseline` REFUSED to absorb probe 3,
+      # exit 1, so the regeneration flag cannot launder a violation into the baseline. Every probe
+      # removal returned the same command to exit 0.
+      #
+      # PLACED BEFORE `pip install` DELIBERATELY, and this is the load-bearing half of the
+      # placement: the gate is stdlib-only and reads REGIONS with `ast` rather than importing
+      # `snn_data_lake`, so it needs no torch, no numpy, no GPU and no Brain -- running it before
+      # the install PROVES that structurally instead of asserting it in a comment. It also removes
+      # any chance an editable-install artifact lands an untracked .py in the tree and inflates the
+      # corpus. (Measured on a tree that already carries an editable install: `git ls-files
+      # --cached` = 547 and `--cached --others --exclude-standard` = 547, delta 0. Belt and braces.)
+      # It needs the git index, which actions/checkout provides; the default shallow fetch is fine,
+      # exactly as for the citation guard below.
+      - name: P4c ratchet (builds outside the governed tree may only go DOWN)
+        run: python tools/p4c_ratchet.py --assert
+
+      # ...and the ratchet's OWN criteria must be falsifiable, which is the other half P8 asks for.
+      # `--self-check` mutates synthetic in-memory counts (nothing on disk is read or written) once
+      # per criterion and requires each mutation to move its criterion; a mutation that changed
+      # nothing is reported BROKEN rather than passing quietly. It leads with a SENSITIVITY CONTROL
+      # -- an unmutated corpus must produce zero findings, because a comparator that fires on a
+      # clean tree makes every red below it meaningless -- and it carries the two directions that
+      # matter as explicit controls: a legitimate promotion (a count going DOWN) must stay GREEN,
+      # and cross-zone laundering (retire 5 in reasoning/, add 5 in tools/, total unchanged) must
+      # still FIRE. Measured 2026-08-06 in .venv-lake: 7 RED OK, 0 NO RED, 0 BROKEN, exit 0.
+      # The self-check was itself mutation-tested: four broken comparators (always-green,
+      # always-red, `>=` for `>`, and absent-zone-treated-as-unbounded) were injected in memory and
+      # `--self-check` went red on 4 of 4, so it has discriminating power rather than a standing
+      # green.
+      - name: P4c ratchet criteria can fail (--self-check)
+        run: python tools/p4c_ratchet.py --self-check
+
       - run: python -m pip install -e ".[dev]"
       - run: ruff check .
       - run: ruff format --check src tests tools   # whole tree is ruff-formatted (2026-07-20 project-wide format)
@@ -166,6 +215,56 @@ jobs:
       # Measured 2026-08-05 in .venv-lake: 5 RED OK, 0 NO RED, 0 BROKEN, exit 0.
       - name: Dependency ledger criteria can fail (--self-check)
         run: python tools/dependency_ledger.py --self-check
+
+      # P6 (every build must reach every other AND actually use it). Was the last policy whose gate
+      # existed but enforced nothing: `tools/p6_gate.py` ran clean, self-checked, and was MANUAL,
+      # NON-ASSERTING and not in CI, so P6 stayed review-enforced and provisional.
+      #
+      # `--assert` IS THE WHOLE POINT AND IT IS NOT OPTIONAL HERE. The lesson is recorded twice on
+      # this file already: `dependency_ledger.py` ran BARE for weeks, returned 1 only under
+      # `if do_assert and failed`, and therefore COULD NOT REDDEN THE BUILD no matter what it found.
+      # A gate wired into CI without its assert flag is a log line wearing a gate's clothes.
+      #
+      # PROVEN ABLE TO FIRE, end to end, not by reading the code. Seven regressions were each
+      # injected ON DISK into a `git archive` copy of 4fc5fb1c, one at a time, and this exact
+      # command was run over the result with --root: (1) a new faculty holding its own private
+      # GlobalWorkspace, (2) that faculty submitting with no reader, (3) live_brain repointed off
+      # the arm's bus onto its own, (4) the one cross-module read deleted outright, (5) an
+      # amygdala->cerebellum import with no declared pathway, (6) THE SAME WIRE SPELLED AS A
+      # RELATIVE IMPORT, (7) a connectome edge no import implements. All seven exit 1; the same
+      # command on the real tree exits 0. Separately, a single file that merely FAILS TO PARSE (a
+      # UTF-8 BOM) also exits 1 -- before that fix a dropped file made every count SMALLER, so the
+      # tree looked CLEANER.
+      #
+      # THE OTHER DIRECTION WAS MEASURED TOO, and it is the half that nearly shipped broken. Three
+      # pieces of CORRECT work were constructed the same way and required to stay GREEN: a new
+      # faculty submitting into the one SHARED bus live_brain reads (the P6 fix itself), a
+      # behaviour-preserving hoist of that read into an attribute, and one more private-bus SITE
+      # inside an already-private module. The first two were RED before this revision -- the gate
+      # fired on the fix and on a no-op refactor -- which is the property this project rejected the
+      # private-instance SITE count for. Both are now pinned as controls inside --self-check.
+      #
+      # AST-only and stdlib-only by construction: no GPU, no torch, no Brain, and it never imports
+      # the package under test (verified by running main() in-process and inspecting sys.modules:
+      # zero of torch/numpy/snn_data_lake/mujoco/sklearn/scipy present). Determinism: 11 runs,
+      # including one from a different working directory, gave byte-identical stdout. Measured wall
+      # time in .venv-lake on the free-threaded interpreter: 3.3s for --assert, 35s for
+      # --self-check, which re-walks the 400-file tree once per constructed mutation and control.
+      - name: P6 gate (workspace topology + connectome diff, ratchets must not regress)
+        run: python tools/p6_gate.py --assert
+
+      # ...and the P6 gate's OWN criteria must be falsifiable, which is the other half P8 asks for.
+      # `--self-check` proves the walk is still SEEING (a broken walk resolves to zero findings, which
+      # reads exactly like a clean tree) and then CONSTRUCTS AND RUNS one mutation per asserting
+      # criterion against an in-memory overlay of the tree -- nothing on disk is touched, the same
+      # string-copy discipline the dependency-ledger self-check uses on pyproject. A mutation that
+      # moves no number fails loudly, so a rotted anchor cannot present as a vacuous green. It then
+      # runs the GREEN CONTROLS: correct work that must NOT fire, because a criterion red on a
+      # regression and red on the fix has no green state and so no discriminating power.
+      # Measured 2026-08-06 in .venv-lake: 6 of 6 mutations fired across 5 of 5 criteria, 3 of 3
+      # controls stayed green, exit 0.
+      - name: P6 gate criteria can fail (--self-check)
+        run: python tools/p6_gate.py --self-check
 
   test:
     name: tests + coverage
