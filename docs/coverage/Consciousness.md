@@ -15,7 +15,7 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | global_availability | 25 | src/snn_data_lake/thalamus/reentrant_workspace.py:315#_deliver; src/snn_data_lake/cortex/access_consciousness.py:224#step | - | opus-5 / scratchpad measure_consciousness3.py, 62 wake ticks | 2026-07-30 |
 | integration_measure_pci | 22 | src/snn_data_lake/cortex/brain.py:2422#_sleep_tick; src/snn_data_lake/cortex/brain.py:2932#state | - | opus-5 / scratchpad measure_consciousness2.py, 200 ticks / 8 nights | 2026-07-30 |
 | arm_workspace_broadcast | 21 | src/snn_data_lake/brainstem/autonomous_loop.py:1174#_workspace_broadcast; src/snn_data_lake/cortex/live_brain.py:92#__init__ | - | opus-5 / scratchpad measure_consciousness4.py, 240 ticks | 2026-07-30 |
-| reentrant_predictive_completion | 15 | src/snn_data_lake/reasoning/gwt_reentry.py:50#run_loop; src/snn_data_lake/reasoning/consciousness_probe.py:102#probe_reentry | - | opus-5 / static reachability + live respond() probe | 2026-07-30 |
+| reentrant_predictive_completion | 15 | src/snn_data_lake/thalamus/reentrant_workspace.py#expect | - | opus-5 / static reachability + live respond() probe | 2026-07-30 (site repointed 2026-08-06, see below) |
 | reportability_of_access_content | 12 | src/snn_data_lake/cortex/live_brain.py:365; src/snn_data_lake/reasoning/spike_chat_lake.py:929#converse | - | opus-5 / live respond() on the three consciousness phrases | 2026-07-30 |
 | binding_of_broadcast_content | 10 | src/snn_data_lake/thalamus/global_workspace.py:335#bind_broadcast_spiking; src/snn_data_lake/thalamus/global_workspace.py:605#main | - | opus-5 / static call-site search (self-check only) | 2026-07-30 |
 
@@ -341,13 +341,38 @@ over 240 ticks** (`0` on 237, `None` on 3), and `_ignitions` -- the only quantit
 no reader, and the one derived number that does reach telemetry moved once in 240 ticks.
 
 ### reentrant_predictive_completion -- 15
-`reasoning/gwt_reentry.py` is the only implementation of re-entrant **predictive completion** (weak
-bottom-up evidence + a matching top-down prior crossing ignition together) with an explicit
-no-hallucination guard -- a capability the live `ReentrantWorkspace` does not have. It is not
-registered in `REGIONS`, so `dormancy_gate` never looks at it. It is reachable, but only thinly:
-`consciousness_probe.py:102` imports `run_loop`, and `consciousness_probe` is imported by
-`reasoning/spike_chat_lake.py`, which `live_brain.py:450` loads. So its live reach is a boolean printed
-inside one fixed-phrase chat reply. It changes nothing. 15 = built, effectively not live.
+**SETTLED 2026-08-06 (P2). The capability moved; the duplicate is gone.** Predictive completion --
+weak bottom-up evidence plus a matching top-down prior crossing ignition together, with an explicit
+no-hallucination guard -- now lives in the governed `thalamus/reentrant_workspace.py` as
+`expect(content, magnitude)`, and `reasoning/gwt_reentry.py` is DELETED. Exactly one mechanism
+survives, which is what backlog item 7 below asked for.
+
+What was measured before the port, driving the GOVERNED module against the prototype's four claims:
+no-hallucination reproduced, sustain-across-dropout reproduced (3 ON vs 0 OFF), **predictive
+completion did NOT** -- `step()` assembled coalition drive by `max()` over submissions with no
+exogenous top-down channel, so 0.40 evidence and 0.30 expectation could not sum past the 0.55
+rheobase. Every top-down term the module had was its own prior ignition fed back. After the port,
+measured in `reentrant_workspace.main()` section (7): weak 0.40 alone `False`, expectation 0.30
+alone `False`, **weak+expectation loop-CLOSED `True`**, loop-OPEN `False`. The guard is now
+STRUCTURAL rather than a magnitude -- an expectation joins a coalition only where bottom-up support
+exists -- so an expectation of **10.0** on an unposted content still ignites nothing, which the
+prototype's magnitude-based guard could not claim.
+
+Two corrections this settlement forced, both found by re-deriving rather than by reading:
+1. The prototype ALSO carried a fix rather than a capability -- `_reds()`, which constructs and RUNS
+   the failing input for every claim. A capability audit would have deleted it with the file.
+   `reentrant_workspace` had **zero** constructed reds before this; it now runs **11** every
+   self-check, and a neuter-A/B confirms they are load-bearing: making `expect()` a no-op is caught
+   by the row *"expectation alone does not ignite"* (the anti-vacuity row -- a `expect()` that does
+   nothing satisfies the forward assert perfectly), and removing the structural guard makes the
+   10.0-expectation assert go red.
+2. **The reachability sentence in this section was stale.** It said `consciousness_probe.py:102`
+   imports `run_loop`, giving the module a thin live reach through the chat path. Re-derived at
+   `b1095d43`: `consciousness_probe.py` imports only `access_consciousness`, `integration_measure`
+   and `global_workspace`; there is no `probe_reentry` function in it at all (`probe_access` and
+   `probe_integration` are the two that exist), and `run_loop` appears nowhere in the file. The
+   prototype had **zero** importers tree-wide when it was deleted -- so the "15 = built, effectively
+   not live" score was right about the conclusion and wrong about the route.
 
 ### reportability_of_access_content -- 12
 Reportability is the defining criterion of access consciousness, so it is scored. What runs:
@@ -417,8 +442,10 @@ whole thing (F3). One line per file -- capability, then whether it is live.
   what supplies a real self-surprise. LIVE.
 * `cortex/integration_measure.py` -- perturbational complexity / normalized LZ. LIVE on sleep, every 4th
   night.
-* `reasoning/gwt_reentry.py` -- re-entrant predictive completion + the no-hallucination guard. NOT live
-  except as a boolean inside one chat probe.
+* `thalamus/reentrant_workspace.py::expect` -- re-entrant predictive completion + the no-hallucination
+  guard. Ported here 2026-08-06 from `reasoning/gwt_reentry.py`, which is DELETED (P2). Live on the
+  wake tick with the rest of the workspace; the capability itself has no caller yet, which is open P3
+  work at the accessor tier and is NOT force-wired.
 * `reasoning/consciousness_probe.py` -- a 4-way present/absent self-check bundle. Chat path only, and it
   re-runs self-checks rather than reading the live brain.
 * `docs/coverage/artifacts/consciousness_ab_probe.py` -- neuters the two non-drive-source faculties
@@ -432,9 +459,11 @@ whole thing (F3). One line per file -- capability, then whether it is live.
 **Two P2 observations, reported not acted on.** (1) There are **three** live global-workspace
 instances -- `AutonomousArm.workspace`, `AccessConsciousness._ws`, and `Brain._reentrant` -- with two
 different ignition behaviours (never fails vs fails 13%). P2 says exactly one mechanism should survive.
-(2) `gwt_reentry.run_loop` and `ReentrantWorkspace` both implement re-entry; the live one lacks the
-prototype's predictive-completion capability, so a straight retirement would lose a capability -- P2's
-port-before-retire case.
+(2) **CLOSED 2026-08-06.** `gwt_reentry.run_loop` and `ReentrantWorkspace` both implemented re-entry
+and the live one lacked predictive completion, so a straight retirement would have lost a capability
+-- P2's port-before-retire case. The capability (and the prototype's `_reds()` harness, which was a
+FIX and would have died in a capability audit) was ported into `ReentrantWorkspace` and the prototype
+deleted. One mechanism survives.
 
 ---
 
@@ -568,7 +597,9 @@ not a low row I endorse.
 5. **Wire `decision_margin` into `self_model.observe`** -- one of three confidence factors is a constant
    0.5 live.
 6. **Make PCI vary or retire the number.** One value over 8 nights, no consumer.
-7. **Port predictive completion into `ReentrantWorkspace`, then retire `gwt_reentry`** (P2).
+7. ~~**Port predictive completion into `ReentrantWorkspace`, then retire `gwt_reentry`** (P2).~~
+   **DONE 2026-08-06** -- `ReentrantWorkspace.expect()` + 11 constructed reds; `gwt_reentry.py`
+   deleted. See the `reentrant_predictive_completion` section above for the before/after measurement.
 8. **Decide what `_reentrant_strength` is allowed to mean, in one place.** Three live readers take it
    with three different fallbacks -- 1.0 at `brain.py:2137`, 0.0 at `:2040`, 0.0 at `:2843` -- and the
    `:2040` reader routes it through the synfire binding gate into the workspace's own

@@ -64,7 +64,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 pass  # migrated: sys.path bootstrap removed (now an importable package)
 from softhebb_mnist import HebbConv2d, Triangle, SoftHebbBlock  # noqa: E402  (math UNCHANGED)
 from data import _make_dataset  # noqa: E402  (reuses disk cache)
-from model import NGSNN  # noqa: E402  (faithful LIF + ridge)
+from snn_data_lake.hippocampus.ng_snn import NGSNN  # noqa: E402  (faithful LIF + ridge)
 
 PROJECT_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 DATA_ROOT = os.path.join(PROJECT_ROOT, "data")

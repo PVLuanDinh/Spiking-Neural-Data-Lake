@@ -34,6 +34,34 @@ THE THREE PROPERTIES (Dehaene-Changeux Global Neuronal Workspace; Baars Global W
       (a genuine re-route). An un-subscribed specialist receives nothing (the control). A local
       HEBBIAN association strengthens the bias for a source that repeatedly co-ignites a content
       (adaptive re-route) -- and stays at baseline for one that never wins.
+  (d) PREDICTIVE COMPLETION, WITHOUT HALLUCINATION. A specialist may post a top-down EXPECTATION
+      (`expect(content, magnitude)`) BEFORE the competition settles. Weak bottom-up evidence that
+      alone stays subliminal IGNITES when a matching expectation meets it through the loop -- the
+      Dehaene-Changeux crossing of bottom-up evidence with re-entrant top-down amplification. The
+      guard that separates completion from hallucination is STRUCTURAL, not a magnitude: an
+      expectation is added to a coalition's drive ONLY where bottom-up support already exists, so no
+      prior of any size can conjure a content nobody posted. With `reentry=False` the expectation is
+      cut along with the rest of the loop -- so the control shows the loop, not the summed current,
+      is what completes.
+
+PORTED CAPABILITY (2026-08-06, P2). Property (d) and the `_reds()` harness below came from
+`reasoning/gwt_reentry.py`, which implemented re-entrant predictive completion as a standalone LIF
+loop (`run_loop(bottom_up, prior, reentry)`) sharing this module's exact constants -- rheobase 0.55,
+leak 0.5, membrane threshold = rheobase/leak, second-half-sustained-firing ignition readout, and a
+`reentry=False` fair control. Two mechanisms answering one question is the P2 debt;
+`docs/coverage/Consciousness.md` names the resolution ("port predictive completion into
+ReentrantWorkspace, then retire gwt_reentry"). Measured before the port, driving THIS module against
+that module's four claims: no-hallucination reproduced, sustain-across-dropout reproduced (3 ON vs 0
+OFF), PREDICTIVE COMPLETION did NOT -- coalition drive was assembled by `max()` over submissions
+with no exogenous top-down channel at all, so sub-threshold evidence and a sub-threshold expectation
+could not sum into ignition (0.40 and 0.30 both lost to a `max` that returned 0.40). Every "top-down"
+term the module had (`_SUSTAIN`, `_REENTRY_GAIN`, `broadcast_to`) was the workspace's own PRIOR
+IGNITION fed back, never an expectation from outside. That gap is what (d) closes, and closing it is
+also what makes the load-bearing control non-vacuous: before the port the re-entry-OFF arm proved
+nothing, because the ON arm did not ignite either. The retired module ALSO carried a fix rather than
+a capability -- a `_reds()` function that CONSTRUCTS AND RUNS the failing input for every claim --
+and a fix survives no capability audit, so it is ported explicitly below rather than left to be
+noticed. `reasoning/gwt_reentry.py` is deleted in the same change: exactly one mechanism survives.
 
 LEARNING RULE (brain-native, NO gradient). The re-entry association `assoc[(source, content)]` is a
 local three-factor-free HEBBIAN potentiation: on ignition, every source that CONTRIBUTED to the
@@ -117,6 +145,7 @@ class ReentrantWorkspace:
         )  # membrane threshold s.t. rheobase == threshold
         self._rng = random.Random(seed)  # per-instance RNG (deterministic jitter)
         self._buffer = []  # this tick's submissions: (source, content, salience)
+        self._priors = {}  # this tick's top-down expectations: content -> magnitude
         self._subs = {}  # name -> {"inbox": [...], "bias": {content: magnitude}}
         self._assoc = {}  # (source, content) -> Hebbian re-entry weight in [0,1]
         self._order = {}  # content -> first-seen index (deterministic tie-break)
@@ -135,6 +164,30 @@ class ReentrantWorkspace:
         if c not in self._order:
             self._order[c] = len(self._order)
         self._buffer.append((str(source), c, float(salience)))
+
+    def expect(self, content, magnitude):
+        """Post a top-down EXPECTATION (a prior) for `content` into this tick's competition.
+
+        This is the exogenous half of re-entry, and it is a DIFFERENT quantity from everything else
+        top-down in this class: `_SUSTAIN`, `_REENTRY_GAIN` and `broadcast_to` all carry the
+        workspace's OWN prior ignition back to itself, whereas an expectation arrives from a
+        specialist that has not (and may not) post evidence. Without it a coalition's drive is a
+        `max()` over submissions and predictive completion is structurally unreachable -- which is
+        what was measured before this method existed.
+
+        Competing expectations for the same content take the strongest, mirroring `submit`'s
+        coalition rule. Expectations last exactly one tick, like submissions: an expectation that
+        persisted would become a second incumbent mechanism beside `_g_reentry`.
+
+        NO MAGNITUDE THRESHOLD, and that is deliberate (P1). The no-hallucination guard is
+        STRUCTURAL -- see `step()`, where an expectation is added only where bottom-up support
+        already exists -- so it does not depend on the prior being small enough. A guard that holds
+        because a number happens to be sub-threshold stops holding when a caller passes a bigger one.
+        """
+        c = content
+        if c not in self._order:
+            self._order[c] = len(self._order)
+        self._priors[c] = max(self._priors.get(c, 0.0), float(magnitude))
 
     def subscribe(self, name):
         """Register a named specialist to receive the broadcast + a top-down re-route bias."""
@@ -201,10 +254,11 @@ class ReentrantWorkspace:
         return total, late
 
     def step(self):
-        """Run ONE workspace cycle. Groups submissions into coalitions, adds the re-entrant sustain
-        current to the incumbent, settles the competition, and -- if a coalition sustains firing above
+        """Run ONE workspace cycle. Groups submissions into coalitions, adds the two top-down currents
+        (the re-entrant sustain on the incumbent, and any `expect()`ed expectation on a coalition that
+        has bottom-up support), settles the competition, and -- if a coalition sustains firing above
         rheobase -- IGNITES it, broadcasts it, and closes the loop. Returns {ignited, winner,
-        availability}; clears the submission buffer."""
+        availability}; clears the submission buffer AND the expectations."""
         # 1. group submissions into coalitions by content; base drive = strongest supporter + a small
         #    bonus per additional supporting specialist (a broader coalition drives harder).
         base = {}
@@ -215,11 +269,24 @@ class ReentrantWorkspace:
         for content in list(base):
             base[content] = min(1.2, base[content] + self._COAL_BONUS * (len(sources[content]) - 1))
 
-        # 2. build each coalition's drive: bottom-up base + (incumbent only, re-entry ON) the decaying
-        #    re-entrant top-down sustain current + a tiny deterministic symmetry-break jitter.
+        # 2. build each coalition's drive: bottom-up base + (re-entry ON) the two top-down currents --
+        #    the decaying self-sustain on the incumbent, and any exogenous EXPECTATION on a coalition
+        #    that has bottom-up support -- plus a tiny deterministic symmetry-break jitter.
         drives = dict(base)
-        if self.reentry and self._g_reentry > 1e-6 and self._incumbent is not None:
-            drives[self._incumbent] = drives.get(self._incumbent, 0.0) + self._g_reentry
+        if self.reentry:
+            if self._g_reentry > 1e-6 and self._incumbent is not None:
+                drives[self._incumbent] = drives.get(self._incumbent, 0.0) + self._g_reentry
+            # PREDICTIVE COMPLETION + THE NO-HALLUCINATION GUARD, in one line and in that order.
+            # `if content in base` is the guard: an expectation reaches the competition only where a
+            # specialist actually posted evidence for that content, so weak-but-real evidence gets
+            # completed and an expectation with nothing under it reaches nothing. Structural rather
+            # than a magnitude test on purpose -- a guard that holds because the prior happens to sit
+            # below rheobase stops holding the first time a caller passes a larger one, and this
+            # project's record on thresholds-standing-in-for-mechanisms is bad enough already.
+            # Cut entirely when reentry is False, with the rest of the loop: that is the fair control.
+            for content, prior in self._priors.items():
+                if content in base:
+                    drives[content] = drives.get(content, 0.0) + prior
         for content in drives:
             drives[content] += self._jitter_for(content)
 
@@ -266,6 +333,7 @@ class ReentrantWorkspace:
         availability = self._deliver(winner, ignited)
         self._last = {"ignited": ignited, "winner": winner, "availability": availability}
         self._buffer = []
+        self._priors = {}  # expectations are per-tick, exactly like submissions
         return dict(self._last)
 
     # -- re-entry plumbing ------------------------------------------------------------------------
@@ -481,6 +549,144 @@ def _mean(xs):
     return sum(xs) / len(xs) if xs else 0.0
 
 
+def run_completion(bottom_up, prior, reentry, ticks=10, seed=0):
+    """Drive ONE content with `bottom_up` evidence and a top-down `prior` expectation for `ticks`
+    workspace cycles; return True iff it is still winning access in the second half of the run.
+
+    This is the predictive-completion probe ported from `reasoning/gwt_reentry.py::run_loop`, whose
+    signature it deliberately mirrors -- same three arguments, same second-half-sustained readout --
+    so the retired module's four claims are asked of THIS mechanism in the same terms rather than in
+    terms chosen to make them pass. `bottom_up <= 0` posts no submission at all, which is what makes
+    the no-hallucination row a real question: there is then no coalition for an expectation to join.
+    """
+    ws = ReentrantWorkspace(reentry=reentry, seed=seed)
+    lit = []
+    for _ in range(ticks):
+        if bottom_up > 0.0:
+            ws.submit("percept", "C", bottom_up)
+        if prior > 0.0:
+            ws.expect("C", prior)
+        r = ws.step()
+        lit.append(bool(r["ignited"] and r["winner"] == "C"))
+    return any(lit[ticks // 2 :])
+
+
+def _reds():
+    """CONSTRUCT AND RUN the input that makes each claim in main() FAIL, and assert it fails (P8).
+
+    Ported from `reasoning/gwt_reentry.py::_reds` along with predictive completion itself. This half
+    of that module was a FIX, not a capability -- it does not add behaviour, it proves the behaviour
+    can be contradicted -- so a capability audit would have deleted it with the file and nobody would
+    have noticed. This module's self-check was seven forward demonstrations and zero constructed reds
+    before this function existed: every assert ran the one input that passes.
+
+    Each row is (name, went_red). `went_red` is True when the criterion, evaluated on the input built
+    to break it, reports a FAILURE. A row that stops going red means its claim can no longer be
+    contradicted by any input -- P8 says such a criterion is deleted, never weakened, so this raises
+    rather than warns.
+    """
+    rows = []
+
+    # (1) "a subliminal stream FAILS to reach access" (anti-saturation) goes RED on a supra-threshold
+    #     stream -- if 0.85 also failed, the mechanism would be dark for everything.
+    supra = [r["availability"] for r in run_stream([{"scene": 0.85} for _ in range(12)])]
+    rows.append(("subliminal stream fails access", not (_mean(supra) < 1.0)))
+
+    # (2) "the masked moderate target NEVER wins access" goes RED when the target is the STRONGER of
+    #     the pair -- masking is a fact about the competition, not about the word 'target'.
+    unmasked = run_stream([{"target": 0.92, "distractor": 0.62} for _ in range(12)])
+    rows.append(
+        ("masked target never wins", _mean([r["winner"] == "target" for r in unmasked]) > 0.0)
+    )
+
+    # (3) "the loser is SILENCED by shared inhibition" goes RED when the same coalition is posted
+    #     ALONE: 0.66 is supra-threshold, so it ignites with nothing to compete against. main() has
+    #     asserted the silencing since it was written and stated this counterfactual only in a
+    #     comment ("weak alone WOULD ignite") -- an unrun control is the shape P8 exists to catch,
+    #     because a coalition that could never fire at all would satisfy the assert just as well.
+    ws_alone = ReentrantWorkspace(seed=0)
+    ws_alone.submit("v", "weak", 0.66)
+    ws_alone.step()
+    rows.append(("loser silenced by competition", ws_alone._last_late.get("weak", 0) > 0))
+
+    # (4) "T2 is BLINKED at short lag" goes RED with the loop OFF: nothing occupies the workspace, so
+    #     T2 gets in. The blink is caused by re-entry or it is not caused by anything here.
+    ws_b = ReentrantWorkspace(reentry=False, seed=0)
+    ws_b.submit("t1", "T1", 0.66)
+    ws_b.step()
+    ws_b.submit("t2", "T2", 0.62)
+    r_b = ws_b.step()
+    rows.append(("T2 blinked at short lag", bool(r_b["ignited"] and r_b["winner"] == "T2")))
+
+    # (5) "the broadcast RE-ROUTES a subscribed specialist" goes RED for an UN-subscribed one holding
+    #     identical evidence -- it keeps its own argmax, so the re-route is the subscription.
+    ws_r = ReentrantWorkspace(seed=0)
+    ws_r.subscribe("subbed")
+    for _ in range(3):
+        ws_r.submit("driver1", "B", 0.80)
+        ws_r.submit("driver2", "B", 0.80)
+        ws_r.step()
+    rows.append(
+        (
+            "broadcast re-routes subscriber",
+            _Specialist("nope", {"A": 0.50, "B": 0.48}).emit(ws_r) == "A",
+        )
+    )
+
+    # (6) "the re-entry association GROWS with co-ignition" goes RED for a source whose content never
+    #     ignites: no co-ignition, no potentiation, association pinned at its baseline 0.
+    ws_h = ReentrantWorkspace(seed=0)
+    traj = []
+    for _ in range(8):
+        ws_h.submit("loser", "Y", 0.40)  # sub-rheobase -> never wins
+        ws_h.step()
+        traj.append(ws_h.association("loser", "Y"))
+    rows.append(("association grows with co-ignition", not (traj[-1] > traj[0])))
+
+    # (7) "re-entry SUSTAINS a content across a bottom-up dropout" goes RED when both arms are
+    #     feedforward -- then ON cannot outlast OFF, because there is no ON.
+    def _gap(reentry, on=3, gap=6):
+        ws = ReentrantWorkspace(reentry=reentry, seed=0)
+        held = 0
+        for t in range(on + gap):
+            if t < on:
+                ws.submit("percept", "held", 0.80)
+            r = ws.step()
+            if t >= on and r["ignited"] and r["winner"] == "held":
+                held += 1
+        return held
+
+    rows.append(("re-entry outlasts feedforward", not (_gap(False) > _gap(False))))
+
+    # ---- the four PORTED completion claims, in gwt_reentry's own terms -----------------------------
+    # (8) "weak bottom-up ALONE stays subliminal" goes RED once the evidence alone clears rheobase:
+    #     0.60 > 0.55, so there is nothing left for an expectation to complete.
+    rows.append(("weak evidence alone stays subliminal", run_completion(0.60, 0.0, True)))
+
+    # (9) "expectation ALONE does not ignite" (the no-hallucination guard) cannot be broken by
+    #     MAGNITUDE here -- the guard is structural, and a prior of 10.0 on an unposted content still
+    #     ignites nothing. That is a stronger guard than gwt_reentry's, and it is also exactly how a
+    #     guard turns vacuous: `expect()` doing NOTHING satisfies it perfectly. So the constructed red
+    #     is the one that separates the two readings -- the SAME expectation attached to real weak
+    #     evidence must ignite. Neuter `expect()` and this row stops going red.
+    rows.append(("expectation alone does not ignite", run_completion(0.40, 0.30, True)))
+
+    # (10) "weak + expectation IGNITES through the closed loop" goes RED when the pair still sums
+    #      below rheobase (0.20 + 0.20 = 0.40 < 0.55): completion needs real evidence, not the loop.
+    rows.append(("weak + expectation completes", not run_completion(0.20, 0.20, True)))
+
+    # (11) "with the loop OPEN the same input stays subliminal" goes RED when the bottom-up evidence
+    #      alone already ignites -- then the loop was never what did it.
+    rows.append(("loop is load-bearing", run_completion(0.60, 0.30, False)))
+
+    for name, went_red in rows:
+        assert went_red, (
+            f"NO REACHABLE RED for '{name}': the constructed failing input did not make the "
+            f"mechanism report a failure, so that claim cannot go red and is worthless (P8)"
+        )
+    return rows
+
+
 def main():
     print("=" * 82)
     print(
@@ -617,7 +823,24 @@ def main():
         f"(never co-ignited -> baseline)"
     )
 
-    # ---- (7) determinism ---------------------------------------------------------------
+    # ---- (7) PREDICTIVE COMPLETION (ported capability) + the structural no-hallucination guard ----
+    WEAK, PRIOR, HUGE = 0.40, 0.30, 10.0  # both sub-rheobase alone; HUGE is the guard's stress test
+    weak_alone = run_completion(WEAK, 0.0, reentry=True)  # evidence, no expectation
+    prior_alone = run_completion(0.0, PRIOR, reentry=True)  # expectation, NO evidence
+    huge_prior_alone = run_completion(0.0, HUGE, reentry=True)  # the guard is not a magnitude test
+    completed_on = run_completion(WEAK, PRIOR, reentry=True)  # loop CLOSED -> completion
+    completed_off = run_completion(WEAK, PRIOR, reentry=False)  # loop OPEN  -> nothing
+    print("\n(7) predictive completion (weak evidence 0.40 + expectation 0.30, both sub-rheobase):")
+    print(
+        f"    weak evidence alone -> ignited={weak_alone} ;  expectation alone -> ignited={prior_alone} ;"
+        f"  expectation 10.0 alone -> ignited={huge_prior_alone}"
+    )
+    print(
+        f"    weak + expectation, loop CLOSED -> ignited={completed_on}  <- completion ;"
+        f"  loop OPEN -> ignited={completed_off}  (loop load-bearing)"
+    )
+
+    # ---- (8) determinism ---------------------------------------------------------------
     rerun = [r["availability"] for r in run_stream(subliminal_stream)]
     deterministic = rerun == subl_av
 
@@ -692,8 +915,31 @@ def main():
         f"a source that never co-ignites must stay at baseline association (got {lose_assoc})"
     )
 
-    # (7) determinism + agnostic (no phenomenal claim is even representable here).
+    # (7) PREDICTIVE COMPLETION -- the ported claim, in the retired module's own terms.
+    assert not weak_alone, "weak bottom-up evidence alone must stay subliminal"
+    assert not prior_alone, (
+        "top-down expectation ALONE must NOT ignite (no hallucination -- the honest guard)"
+    )
+    assert not huge_prior_alone, (
+        f"the no-hallucination guard must be STRUCTURAL, not a magnitude: expectation {HUGE} on a "
+        "content nobody posted must still ignite nothing"
+    )
+    assert completed_on, (
+        "weak evidence + top-down expectation through the CLOSED loop must ignite (completion)"
+    )
+    assert not completed_off, (
+        "with the loop OPEN the same weak+expected input must stay subliminal (loop load-bearing)"
+    )
+
+    # (8) determinism + agnostic (no phenomenal claim is even representable here).
     assert deterministic, "same seed + stream must reproduce identical availability"
+
+    # Every claim above is now shown FALSIFIABLE by running the input that breaks it (P8).
+    reds = _reds()
+    print("-" * 82)
+    print("  reachable reds (the constructed input that makes each claim FAIL, run every time):")
+    for name, _ in reds:
+        print(f"    [RED OK] {name}")
 
     print(
         "self-check OK: anti-saturation (supra avail 1.00 vs subliminal 0.00 = real access FAILURES; "

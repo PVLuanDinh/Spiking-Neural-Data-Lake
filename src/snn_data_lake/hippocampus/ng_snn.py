@@ -50,6 +50,76 @@ stdlib core never imports this.
 import torch
 
 
+# ---------------------------------------------------------------------------------------------------
+# INPUT ENCODERS -- ported 2026-08-06 from `reasoning/ng_snn/model.py`, which is DELETED (P2).
+#
+# That file was a second NGSNN of the same mechanism: same class name, same paper, same Eq. 2-5 /
+# 6-7 / 9-12. A/B'd on this module's own `_make_task`, seeds 0/1/2, this module's own self-check
+# config (l_max PINNED to 200 on both, T=15, t_cand=40, r=0.9, eps_tol=0.20, seed=7), .venv-lake +
+# CUDA: grown size 30/30/32 on BOTH and held-out accuracy 0.9563/0.9250/0.9375 on BOTH -- IDENTICAL
+# on 3 of 3. So "the math is UNCHANGED from that validated model" above is VERIFIED, not asserted,
+# and the direction of the twin was checked rather than assumed (this project has already had a
+# retirement verdict get a twin backwards).
+#
+# WHAT DOES NOT REPRODUCE, recorded because the tidy version of this claim is the tempting one. The
+# adjudication that scoped this retirement reported the pinned A/B as 200/200/200 units at
+# 0.9937/1.0000/0.9937, and reported the free comparison as "fewer units, higher accuracy" for this
+# module. The CONCLUSION (identical mechanism) reproduces; those FIGURES do not, because they were
+# taken at a different `eps_tol` -- growth stops on train RMSE, so the stopping config decides the
+# unit count, and quoting a unit count without it says nothing. Re-measured at each module's OWN
+# default (this one derives l_max, the twin pins 200): seed 0 28u@0.9438 vs 30u@0.9563, seed 1
+# 26u@0.9187 vs 30u@0.9250, seed 2 33u@0.9500 vs 32u@0.9375. Honest reading: this module is
+# consistently the SMALLER model and is ahead on accuracy in only 1 of 3 seeds, by 0.0125 -- a
+# 2-4 unit / ~1 point trade on a 520-row synthetic task, which is not evidence that either is more
+# accurate. What justifies the retirement is that the two are the same mechanism and one of them
+# carries strictly more (`prune_unearned`, `init_W`/`init_b` growth-state seeding, `patience`,
+# `return_state`, and the derived rather than fixed capacity bound `fit()` documents at length
+# below) -- not a benchmark win that the benchmark does not support.
+#
+# These two functions were the ONE thing the twin had that this module did not, so they are ported
+# before it is deleted. They are not decoration: without them nothing in the governed tree ever
+# builds a (N, T, d) spike SEQUENCE, and `_rates`'s sequence branch (the `einsum` arm) is therefore
+# never executed -- both live consumers (`cortex/neurogenesis_engine.py`, `tools/capacity_curve.py`)
+# pass 2-D features. Claim 5 of the self-check below drives that branch through these encoders, so
+# the port arrives with a consumer instead of becoming the next dormant symbol.
+#
+# NOT PORTED, and named rather than left to be discovered: the twin's `fit()` opened `X = X.float()`
+# where this one opens `X = X.to(self.device).float()`, i.e. it left X on the caller's device and let
+# `_rates` stream it batch-by-batch. That is a VRAM-footprint difference, not a capability gap --
+# both accept X on any device and return the same result -- and no caller exercised it (the twin's
+# own large-scale driver did `Xtr.to(DEV)` itself before calling `fit`). Adopting it would move a
+# full-X host-to-device copy from once per `fit` to once per candidate block, which is a regression
+# for every caller that exists. There is no benchmark in this repo measuring an out-of-core fit, so
+# per P2 the honest disposition is to record the difference, not to swap on it.
+# ---------------------------------------------------------------------------------------------------
+def poisson_encode(feats, T, generator=None):
+    """Rate/Poisson-encode normalized features [0,1]^(N,d) into a spike sequence {0,1}^(N,T,d): each
+    feature value is the per-step Bernoulli firing probability (Sec 4.1, end-to-end mode). STOCHASTIC
+    -- deterministic only given a `generator`, which is why every use here passes one.
+
+    Honest note carried over from the retired module: at small T the sampling noise is large and this
+    underperforms `current_encode` on the paper's UCI reproduction. It is kept because it is the
+    genuinely SPIKING encoder -- the input really is a train of binary events -- and `current_encode`
+    is a deterministic rate approximation of it."""
+    N, d = feats.shape
+    p = feats.clamp(0, 1).unsqueeze(1).expand(N, T, d)
+    return torch.bernoulli(p, generator=generator)
+
+
+def current_encode(feats, T):
+    """Deterministic rate coding: hold the normalized feature as a CONSTANT input current over T
+    steps (no Poisson sampling noise), so the LIF firing rate is a clean nonlinear function of the
+    feature -- a random-feature expansion the analytical ridge reads out. This is the encoding that
+    reproduced the paper's UCI numbers where Poisson sampling underperformed.
+
+    Returns the same (N, T, d) SEQUENCE shape as `poisson_encode` on purpose: it is the noise-free
+    CONTROL for it, and a control that differs in shape as well as in content controls nothing.
+    (Passing raw 2-D features to `fit`/`_rates` reaches the same dynamics by the feature-mode branch
+    without materialising the sequence -- that is the path both live consumers take.)"""
+    N, d = feats.shape
+    return feats.clamp(0, 1).unsqueeze(1).expand(N, T, d).contiguous()
+
+
 class NGSNN:
     """NG-SNN spike classifier: contribution-grown LIF hidden layer + one-shot analytical readout.
 
@@ -558,6 +628,34 @@ def main():
     sub_consistent = sub_acc >= c_acc - 0.10
     c4_pass = bounded and deterministic and delta_consistent and sub_consistent
 
+    # ---- claim 5: SPIKE-SEQUENCE mode (the ported encoders drive `_rates`'s einsum branch) ----------
+    # Claims 1-4 all run FEATURE mode, and so do both live consumers, so the (N,T,d) branch of
+    # `_rates` had no exerciser anywhere in the governed tree until the encoders were ported in.
+    # Poisson is the genuinely spiking encoder (binary events, seeded); current_encode is its
+    # noise-free control. CONTROL that must FAIL: the same pipeline on a CONSTANT input carries no
+    # label information, so it cannot beat the majority class.
+    seq_g = torch.Generator(device=dev).manual_seed(11)
+    Str_p = poisson_encode(Xtr, 15, generator=seq_g)  # (ntr, 15, d) binary spike trains
+    Ste_p = poisson_encode(Xte, 15, generator=seq_g)
+    Str_c = current_encode(Xtr, 15)  # (ntr, 15, d) constant-current control
+    Ste_c = current_encode(Xte, 15)
+    seq_is_3d = Str_p.ndim == 3 and Str_c.ndim == 3  # the einsum branch is the one being taken
+    spikes_binary = bool(torch.equal(Str_p, (Str_p > 0).float()))  # Poisson output really is {0,1}
+    poi = NGSNN(seed=7, **cfg).fit(Str_p, ytr)
+    cur = NGSNN(seed=7, **cfg).fit(Str_c, ytr)
+    poi_acc, cur_acc = _acc(poi, Ste_p, yte), _acc(cur, Ste_c, yte)
+    flat = current_encode(torch.full_like(Xtr, 0.5), 15)  # CONTROL: label-free constant input
+    flat_te = current_encode(torch.full_like(Xte, 0.5), 15)
+    flat_acc = _acc(NGSNN(seed=7, **cfg).fit(flat, ytr), flat_te, yte)
+    floor = float(torch.bincount(yte).max().item()) / float(yte.numel())  # majority-class rate
+    c5_pass = (
+        seq_is_3d
+        and spikes_binary
+        and poi_acc > floor + 0.10
+        and cur_acc > floor + 0.10
+        and flat_acc <= floor + 1e-6
+    )
+
     # ---- ASCII report table ------------------------------------------------------------------------
     line = "+" + "-" * 4 + "+" + "-" * 46 + "+" + "-" * 34 + "+" + "-" * 6 + "+"
     print("=" * 94)
@@ -583,10 +681,14 @@ def main():
         f"| {4:>2} | {'bounded + deterministic + delta/sub':<44} | "
         f"{f'<lmax={bounded} det={deterministic} d5={blk_acc:.2f} sub={sub_acc:.2f}':<32} | {str(c4_pass):<4} |"
     )
+    print(
+        f"| {5:>2} | {'SPIKE-SEQUENCE mode via ported encoders':<44} | "
+        f"{f'poisson {poi_acc:.2f} cur {cur_acc:.2f} flat {flat_acc:.2f}':<32} | {str(c5_pass):<4} |"
+    )
     print(line)
     print(
         "CONTROLS (must FAIL): novelty over-grows; random beta ~chance; float membrane V is not "
-        "an integer spike count."
+        f"an integer spike count; a CONSTANT spike sequence cannot beat the majority class {floor:.2f}."
     )
     print("=" * 94)
 
@@ -608,10 +710,24 @@ def main():
         f"claim4 bounded/det: <lmax={bounded} det={deterministic} d5={blk_acc:.2f} sub={sub_acc:.2f}"
     )
     assert bounded and deterministic, "growth must saturate under l_max and be seed-deterministic"
+    assert seq_is_3d and spikes_binary, (
+        f"claim5: the ported encoders must emit a BINARY (N,T,d) spike sequence "
+        f"(3d={seq_is_3d} binary={spikes_binary}) -- that is what selects _rates's einsum branch"
+    )
+    assert c5_pass, (
+        f"claim5 sequence mode: poisson {poi_acc:.2f} / current {cur_acc:.2f} must beat the "
+        f"majority floor {floor:.2f}, constant-input control {flat_acc:.2f} must not"
+    )
+    assert flat_acc <= floor + 1e-6, (
+        f"CONTROL: a label-free CONSTANT spike sequence must not beat the majority class "
+        f"({flat_acc:.2f} vs {floor:.2f}) -- if it does, the sequence path is reading something "
+        "other than the input"
+    )
 
     print("self-check OK: torch core NG-SNN -- contribution-grown spiking classifier, single-shot")
-    print("analytical weights (no backprop), block-neurogenesis, deterministic. A MECHANISM demo;")
-    print("dataset SOTA (Iris/Wine/MNIST/N-MNIST) lives in research/ng_snn/.")
+    print("analytical weights (no backprop), block-neurogenesis, deterministic, and BOTH input")
+    print("modes exercised (2-D features + Poisson/constant-current (N,T,d) spike sequences).")
+    print("A MECHANISM demo; dataset SOTA (Iris/Wine/MNIST/N-MNIST) lives in research/ng_snn/.")
 
 
 if __name__ == "__main__":

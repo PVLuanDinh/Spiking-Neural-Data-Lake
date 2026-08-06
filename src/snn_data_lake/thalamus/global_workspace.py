@@ -440,7 +440,12 @@ Verified UNAFFECTED, RE-RUN 2026-08-06 after the delivery change rather than car
 `thalamus/reentrant_workspace.py`, `cortex/self_model.py`, `cortex/executive_control.py`,
 `reasoning/rpm_solver.py`, `reasoning/spike_chat_lake.py`, `reasoning/consciousness_probe.py`,
 `reasoning/train_of_thought.py`, `reasoning/concept_reflection.py`,
-`reasoning/brain_adapters/executive_control.py`, `reasoning/gwt_deep.py`, `reasoning/gwt_reentry.py`.
+`reasoning/brain_adapters/executive_control.py`, `reasoning/gwt_deep.py`. (`reasoning/gwt_reentry.py`
+stood here and was RETIRED 2026-08-06 under P2 -- its predictive-completion capability ported into
+`thalamus/reentrant_workspace.py::expect` first, verified by a neuter-A/B that flips the ported claim
+and leaves the other four rows unmoved. Corrected here rather than left dangling: a prose list naming
+a path that no longer exists reads as coverage nobody has, and no gate reads this list, so nothing
+would have caught it.)
 
 FRAMING (agnostic, per the project's consciousness program): this is a functional spiking
 attention/broadcast bottleneck (integrate -> spike -> compete -> ignite -> broadcast -> decay), a

@@ -32,7 +32,7 @@ import time
 import numpy as np
 import torch
 
-from model import NGSNN
+from snn_data_lake.hippocampus.ng_snn import NGSNN
 
 FDIR = "../../data/ng_snn"
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
