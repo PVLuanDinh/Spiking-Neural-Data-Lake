@@ -28,6 +28,12 @@ THE DESIGN IS BORROWED, THE HONESTY MODEL IS NOT
     -- frozen at construction, sleep-only, a literal, a duplicate -- is drawn with its
     brain_telemetry.PROVENANCE tag beside it. A dashboard is the easiest place in a project to lie.
 
+    ONE SECTION IS NOT BRAIN STATE, and it is named here rather than left for a reader to discover:
+    `device`, the DEVICE ROUTING plate, comes from `substrate/device.decisions()`. A routing
+    decision is a fact about the PROCESS, so `snapshot(brain)` -- which is handed a Brain -- has
+    nothing to read it from. See `_snapshot` for why that does not weaken brain_telemetry's rule 1
+    and for the measurement that fixes what its tag is allowed to say.
+
 NOT A SECOND BRAIN (Policy 4)
     `serve()` never constructs a Brain. It is handed the live one. `main()` is the only place that may
     build a brain, and it takes the daemon's single-instance lock first, so a cockpit and a daemon can
@@ -48,12 +54,14 @@ from __future__ import annotations
 import json
 import os
 import queue
+import re
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from snn_data_lake.brainstem.serial_arm import is_valid_command
 from snn_data_lake.substrate.brain_telemetry import snapshot, verify_contract
+from snn_data_lake.substrate.device import decisions
 
 # The longest an allow-listed command token can be. Not a policy choice -- the allow-list itself is
 # the policy, and this only stops an unbounded string from being copied before it is rejected.
@@ -229,6 +237,46 @@ def _geometry():
     return brain_geometry.layout()
 
 
+# The ONE section of the served payload that is not brain state, and why it is assembled here
+# rather than inside `brain_telemetry.snapshot()`: `snapshot(brain)` is handed a Brain, and a
+# routing decision is a fact about the PROCESS -- there is no attribute on the brain to read it
+# from. brain_telemetry's rule 1 ("snapshot() is the ONLY source a panel may read") is kept where
+# it bites: every BRAIN number on this page still comes from snapshot() and nowhere else, this one
+# section comes from a single named public accessor, and it is tagged through the SAME provenance
+# table as everything else rather than being given a private honesty mechanism of its own.
+#
+# WHAT THE TAG HAS TO SAY, and it is the part that took measuring rather than wiring. The stated
+# purpose of `device.decisions()` was "so the cockpit can answer 'why is the GPU idle'". Measured
+# over 200 ticks of a live `make_brain()` process: ONE workload reaches the router, while
+# `Brain._perception_device` is set to 'cuda' by an availability check that never calls `select()`,
+# and peak CUDA allocation is 3,147,264 bytes. The GPU is NOT idle, so a plate captioned with that
+# question would be false on its face. It is captioned as what it is -- a log of the choices that
+# asked the router -- and the tag carries the rest.
+#
+# THE TAG IS SHORT ON PURPOSE, and the first version of it was not. `tag()` renders inline inside
+# `big()`, in a bottom-bar cell one eighth of the page wide, so the 360-character paragraph this
+# started as measured a 1,921px scrollHeight in a 108px cell -- against 146-365px for the seven
+# cells beside it. The number it was supposed to qualify was pushed out of the plate entirely, so
+# the honesty tag defeated the panel it was attached to. `spikes.midbrain` is the tree's only other
+# long PROVENANCE string and it is never rendered through `tag()` at all -- `drawRegions` uses it
+# as a BOOLEAN (`flagged=!!PROV[...]`) -- so it was not the precedent it looked like. The tag
+# carries the claim; the plate's `note` carries the consequence; the measurement behind both is in
+# the block above and in `device.decisions()`.
+_DEVICE_PROV = "router log, not a GPU census"
+
+
+def _snapshot(brain):
+    """`brain_telemetry.snapshot()` plus the `device` section the DEVICE ROUTING plate draws.
+
+    Every served endpoint goes through this, including the offline `_http_get` used by the
+    self-check, so the payload the criterion inspects is the payload a browser receives.
+    """
+    snap = snapshot(brain)
+    snap["device"] = decisions()
+    snap["provenance"] = {**(snap.get("provenance") or {}), "device_routing": _DEVICE_PROV}
+    return snap
+
+
 def _handler(get_snap, turns, get_view=None, acts=None):
     class H(BaseHTTPRequestHandler):
         def _send(self, code, body, ctype="application/json"):
@@ -386,7 +434,7 @@ def serve(brain, port=8137, turns=None, block=True, acts=None):
     # package under P4c. Naming the symbol instead, per the lesson `self_mod_harness.py` records.
     # (The stale number is deliberately not repeated here: a corrected cite that still contains a
     # resolvable-looking `file.py:NNN` token re-arms every scanner that looks for one.)
-    srv = _Server(("127.0.0.1", int(port)), _handler(lambda: snapshot(brain), turns, _view, acts))
+    srv = _Server(("127.0.0.1", int(port)), _handler(lambda: _snapshot(brain), turns, _view, acts))
     srv.turns = turns
     # the BOUND port, not the requested one: port=0 means "OS, pick one", and printing the request
     # would tell the reader to open http://127.0.0.1:0/
@@ -469,7 +517,7 @@ h2{font:600 13px/1 ui-monospace,Consolas,monospace;letter-spacing:.06em;color:rg
 #cs{background:rgba(0,200,220,.14);border:1px solid var(--edge);color:var(--cy);border-radius:4px;
  padding:6px 12px;cursor:pointer;font:13px ui-monospace,monospace}
 #cs:disabled{opacity:.45;cursor:default}
-#bottom{grid-area:bottom;display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+#bottom{grid-area:bottom;display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
 #bottom>div{overflow:hidden;position:relative}
 .row{display:flex;justify-content:space-between;gap:8px;padding:1px 12px;font-size:12px}
 .row .k{color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -540,6 +588,7 @@ canvas{display:block}
    <div class="plate"><h2>ACCESS</h2><div id="bAcc"></div></div>
    <div class="plate"><h2>LIFE</h2><div id="bLife"></div></div>
    <div class="plate"><h2>LAKE &amp; CENSUS</h2><div id="bLake"></div></div>
+   <div class="plate"><h2>DEVICE ROUTING</h2><div id="bDev"></div></div>
  </div>
 </div>
 <script>
@@ -830,6 +879,21 @@ function paint(d){
    +row('reachable',(dv.coverage_reachable===undefined?null:dv.coverage_reachable+' / '+dv.coverage_total),undefined,'coverage_reachable')
    +row('dormant',dv.coverage_dormant,undefined,'coverage_dormant')
    +`<div class="note">reachable, not proven to charge behaviour.</div>`;
+ /* DEVICE ROUTING -- substrate/device.decisions(), the choices that ASKED the measured router.
+    The headline is the COUNT of workloads that asked, not a device: a device drawn large would
+    read as "this is where the brain runs", and the tag exists because it is not. `why` is the
+    router's own recorded reason, rendered verbatim rather than re-derived here -- a page that
+    recomputed it could disagree with the decision it is describing. Empty is drawn as a sentence,
+    never as a zero device: "nothing asked" and "everything chose CPU" are different facts. */
+ const rt=d.device||{}, rk=Object.keys(rt).sort();
+ $('bDev').innerHTML=big(rk.length,0,undefined,'device_routing')
+   +sub('workloads routed by measurement')
+   +(rk.length
+      ? rk.map(k=>row(k,rt[k].device+'  n='+fmt(rt[k].n,0))
+          +`<div class="note">${rt[k].why}</div>`).join('')
+      : `<div class="note">nothing has asked the router in this process yet.</div>`)
+   +`<div class="note">only work that calls device.select() appears here; _perception_device is
+      chosen outside it, so a cpu row is not a claim that the GPU is idle.</div>`;
 }
 
 /* ---------- chat: post a ticket, poll for the reply ---------- */
@@ -975,7 +1039,7 @@ def _http_get(brain, path):
         except Exception:
             return None
 
-    base = _handler(lambda: snapshot(brain), Turns(), _view)
+    base = _handler(lambda: _snapshot(brain), Turns(), _view)
 
     class _Offline(base):
         def __init__(self):  # deliberately NOT calling BaseHTTPRequestHandler.__init__
@@ -1086,9 +1150,130 @@ def main():
 
     # the page must reference only keys the contract knows about -- a panel naming a key that no
     # longer exists is exactly the silent blank this gate is for
-    for key in ("cells_covered", "cpg_weight", "td_flipped", "coverage_reachable", "provenance"):
+    for key in (
+        "cells_covered",
+        "cpg_weight",
+        "td_flipped",
+        "coverage_reachable",
+        "provenance",
+        "device_routing",
+    ):
         assert key in COCKPIT_HTML, f"cockpit page lost its reference to {key}"
     assert "make_brain" not in COCKPIT_HTML, "the page must never imply it constructs a brain"
+
+    # EVERY PANEL THE SCRIPT WRITES TO MUST EXIST, derived rather than listed. The loop above is a
+    # SUBSTRING test, which cannot tell "the plate is on the page" from "the plate's name appears
+    # somewhere on the page" -- deleting the <div id="bDev"> plate while `$('bDev')` stays in the
+    # script passed it. That is not cosmetic: `paint()` runs inside `loop()`'s try/catch, so one
+    # null target throws, the catch writes 'disconnected', and EVERY panel silently stops
+    # refreshing while the error strip blames the connection. `bDev` was listed above and is not
+    # any more -- this subsumes it and covers the other 32 the list never named.
+    _writes = set(re.findall(r"\$\('([A-Za-z0-9_]+)'\)", COCKPIT_HTML))
+    _ids = set(re.findall(r'id="([A-Za-z0-9_]+)"', COCKPIT_HTML))
+    assert not (_writes - _ids), (
+        f"the script writes to element(s) the page does not define: {sorted(_writes - _ids)}. "
+        "paint() would throw on a null target and the whole dashboard would freeze reading "
+        "'disconnected'"
+    )
+
+    # ---- DEVICE ROUTING: the page shows what the ROUTER decided, and FOLLOWS it ----------------
+    # P3 disposition for `substrate/device.decisions()` (2026-08-06). RETIRE was refused on
+    # evidence rather than taste: `cortex/neurogenesis_engine.main()`'s claim 6 already reads it
+    # and asserts the refit is WIDTH-routed, so deleting the function deletes a criterion that HAS
+    # a reachable red -- and P8 deletes criteria with no red, never ones with one. What was
+    # genuinely missing was the REPORT half, and this plate is it. A report is not a P6
+    # faculty-to-faculty read: no faculty's own output changes because a page renders this, and it
+    # raises no P6 count.
+    #
+    # THE CRITERION IS NOT "THE SECTION EXISTS". A hardcoded 'cpu', a value re-derived from
+    # `cuda_available()`, and a section captured once at import all render identically to a live
+    # one right up until the decision moves. So the decision is MOVED and the payload is compared
+    # against `decisions()` -- never against itself, which is the shape that cannot fail.
+    #
+    # CARD-INDEPENDENT BY CONSTRUCTION (P5: CI has no GPU), and this is also what nearly made it
+    # vacuous. With no CUDA present `select(w, n=1)` and `select(w, n=None)` take the SAME branch
+    # and record the SAME reason, so a probe built on width alone would compare two identical
+    # values on CI and pass while proving nothing. The override path differs on every machine, so
+    # the second probe pins `explicit=` instead.
+    from snn_data_lake.substrate.device import cuda_available, select
+
+    def _served():
+        _c, _b = _http_get(brain, "/api/all")
+        assert _c == 200, f"/api/all did not serve (got {_c})"
+        return json.loads(_b)
+
+    _pay = _served()
+    assert "device" in _pay, (
+        "the served payload carries no `device` section -- the plate would draw an empty state "
+        "indistinguishable from 'nothing has asked the router'"
+    )
+    assert _pay.get("provenance", {}).get("device_routing"), (
+        "the routing section reached the page WITHOUT its provenance tag. An untagged router log "
+        "reads as a census of where the brain runs, and measurement says it is not one: one "
+        "workload asks the router while _perception_device is set to 'cuda' outside it"
+    )
+    # PRESENT IS NOT TRUE. Checking only that the tag is a non-empty string accepts its own
+    # inversion: setting it to "a complete census of every device this brain uses" -- the exact
+    # claim the measurement above was taken to REFUSE -- passed. P4c puts the whole weight of this
+    # panel's honesty on the provenance column, so a truthiness test is the wrong instrument. Two
+    # things are pinned instead, and neither judges English:
+    #   (1) the tag the page SERVES is the tag reviewed here, so nothing in the serving path can
+    #       swap it;
+    #   (2) `_perception_device` -- the thing the tag and the plate note both CITE as the choice
+    #       made outside this router -- actually exists on the brain. If it is renamed or removed,
+    #       the note names nothing and the tag becomes unfalsifiable rather than merely wrong.
+    # What stays review-enforced, stated so it is not mistaken for covered: no assertion can tell
+    # whether the SENTENCE in `_DEVICE_PROV` is honest. It pins the constant, not its meaning.
+    assert _pay["provenance"]["device_routing"] == _DEVICE_PROV, (
+        f"the served provenance tag is not the one this module declares: "
+        f"{_pay['provenance']['device_routing']!r} != {_DEVICE_PROV!r}"
+    )
+    assert getattr(brain, "_perception_device", None) is not None, (
+        "the plate note and the tag both cite `_perception_device` as the device choice made "
+        "outside this router. That attribute is gone, so the page now cites nothing and the "
+        "'not a GPU census' claim can no longer be checked against anything"
+    )
+
+    # EVERY FIELD IS READ WITH `.get()`, and that is not defensive style -- it is what keeps the
+    # diagnostic. Read with `[...]`, a payload MISSING a field dies of KeyError before its
+    # assertion can evaluate, so the mutant that drops width and reason (see `availability` below)
+    # fails the self-check with a bare `KeyError: 'n'` instead of the sentence naming the defect.
+    # Measured: that mutant scored BROKEN rather than RED in the no-card configuration until this
+    # changed. A criterion whose negative is a crash is one this project has recorded being fooled
+    # by before.
+    _dev_a = select("cockpit_probe", n=1)
+    _seen_a = _served()["device"].get("cockpit_probe")
+    assert _seen_a is not None, "a decision select() recorded never reached the served payload"
+    assert _seen_a.get("device") == _dev_a, (
+        f"the page shows device {_seen_a.get('device')!r} where the router decided {_dev_a!r}"
+    )
+    assert _seen_a.get("n") == 1 and _seen_a.get("why") == decisions()["cockpit_probe"]["why"], (
+        f"the served row is not the router's own record: {_seen_a}. A panel that re-derives the "
+        "device from cuda_available() carries no width and no reason, and looks right until asked "
+        "why -- which is the only question this section exists to answer"
+    )
+
+    # MOVE THE DECISION. Pinning via `explicit` changes which RULE fires, so the reason differs on
+    # a card and without one; the width differs either way.
+    _dev_b = select("cockpit_probe", n=7, explicit="cpu")
+    _seen_b = _served()["device"]["cockpit_probe"]
+    assert _seen_b.get("why") != _seen_a.get("why") and _seen_b.get("n") == 7, (
+        f"the served routing did not follow the router when the decision changed: {_seen_a} -> "
+        f"{_seen_b}. A section captured once renders exactly like a live one until this moves"
+    )
+    assert _seen_b.get("device") == _dev_b, (
+        f"the page shows {_seen_b.get('device')!r} where the router decided {_dev_b!r}"
+    )
+    if cuda_available():
+        # Only a machine with a card can make the DEVICE COLUMN ITSELF differ -- without one every
+        # answer is 'cpu' and there is no flip to observe. Named rather than silently skipped, and
+        # the two asserts above are what carry this criterion on a cardless CI runner.
+        _dev_c = select("cockpit_probe", n=None)
+        _seen_c = _served()["device"]["cockpit_probe"]
+        assert _dev_c == "cuda" and _seen_c.get("device") == "cuda", (
+            f"unbounded work must reach the card and the page must say so: router {_dev_c!r}, "
+            f"page {_seen_c.get('device')!r}"
+        )
 
     turns = Turns()
     # port=0 -> OS-assigned. A hardcoded port makes a self-check fail for reasons unrelated to what it

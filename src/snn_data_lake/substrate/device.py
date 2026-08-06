@@ -64,8 +64,12 @@ WHAT WAS DORMANT HERE, AND WHAT IS CHARGED NOW (P3 / P5a, 2026-08-05)
         live path is width-routed rather than availability-routed. Before that edit the refit ran on
         the card at ~60k elements against a measured crossover of 262,144 -- the 0.01x regime P5a
         was written to prevent.
-    STILL OPEN, stated so it is not read as finished: nothing CONSUMES `decisions()` (see its own
-    docstring), and one width-routed call site is one, not the tick path in general.
+    STILL OPEN, stated so it is not read as finished: one width-routed call site is one, not the
+    tick path in general. ("nothing CONSUMES `decisions()`" stood here too and was FALSE WHEN
+    WRITTEN -- `cortex/neurogenesis_engine.py:51` has imported it since 6b33a45d, well before this
+    paragraph was added. It is the same error as the `decisions()` docstring it cross-referenced,
+    and it survived that docstring's correction on 2026-08-06 because only the sentence that was
+    looked for got fixed. Corrected here; see `decisions()` for both consumers.)
 
 HONEST ABOUT WHAT THIS BUYS TODAY: NOTHING VISIBLE, AND THAT IS THE CORRECT RESULT
     Every live width in this tree (24-240 for populations, ~60k elements for a neurogenesis refit)
@@ -75,14 +79,29 @@ HONEST ABOUT WHAT THIS BUYS TODAY: NOTHING VISIBLE, AND THAT IS THE CORRECT RESU
     expectation. Lowering the crossover, or adding a width constant, to make the flip visible today
     would be fitting a threshold to produce a demo; that is the defect this project deletes.
 
-    `decisions()` additionally carried a claim about a consumer that does not exist: its docstring
-    said it is "exported so the cockpit can answer 'why is the GPU idle'". The cockpit reads only
-    `substrate/brain_telemetry.snapshot()`, `decisions` appears in neither DASHBOARD_KEYS nor
-    DASHBOARD_SECTION_KEYS, and no panel references it. That is `region_wiring`'s defect exactly --
-    a docstring asserting a wire nobody built -- so the claim is corrected at the site rather than
-    satisfied by adding a panel over a dict that is empty because nothing calls `select()`. Wiring
-    a reader to an always-empty producer is the force-wiring P3 forbids; the honest order is
-    consumers for `select()` first, telemetry second. Both are open work.
+    `decisions()` additionally carried a claim about a consumer that did not exist: its docstring
+    said it is "exported so the cockpit can answer 'why is the GPU idle'". That was corrected at
+    the site rather than satisfied by adding a panel over a dict that was empty because nothing
+    called `select()` -- "wiring a reader to an always-empty producer is the force-wiring P3
+    forbids; the honest order is consumers for `select()` first, telemetry second."
+
+    THE ORDER WAS HONOURED AND THE SECOND HALF IS NOW DONE (2026-08-06). The precondition was
+    measured before the reader was built, which is the only thing that distinguishes this from the
+    force-wire the paragraph above refuses: in a `make_brain()` process the dict is NON-EMPTY from
+    tick 40 onward (`neurogenesis_refit`, via `_refit`'s `select()` call), and over 1,200 ticks
+    sampled every 20 it takes 30 distinct widths and 30 distinct reasons. So there is something
+    real to read. `substrate/cockpit.py` reads it and draws the DEVICE ROUTING plate.
+    **That is a REPORT, not a P6 faculty-to-faculty charge** -- no faculty's output changes because
+    a page renders this -- and it is not counted as one.
+
+    WHAT THE READER IS NOT ALLOWED TO CLAIM, and this is the half that needed measuring rather than
+    wiring. "Why is the GPU idle" is more than this dict can answer. Measured in one 200-tick
+    process: exactly ONE workload reaches `decisions()`, while `Brain._perception_device` is set to
+    'cuda' by an availability check that never calls `select()`, and `torch.cuda`'s peak allocation
+    over those ticks is 3,147,264 bytes. The GPU is not idle, and one 'cpu' row does not say it is.
+    The plate is therefore captioned DEVICE ROUTING rather than with that question, tagged
+    "router log, not a GPU census", and carries a note naming `_perception_device` as the choice
+    made outside this router.
 """
 
 from __future__ import annotations
@@ -215,14 +234,37 @@ def select(workload, n=None, explicit=None):
 def decisions():
     """Every routing decision this process made: {workload: {device, n, why}}.
 
-    STILL NO TELEMETRY CONSUMER. This said it was "exported so the cockpit can answer 'why is the
-    GPU idle'"; the cockpit does not read it and never has (see the module docstring). What HAS
-    changed as of 2026-08-05 is the producer side: it is no longer empty outside this module's own
-    self-check, because `resolve_device()` routes through `select()` and every one of the 41
-    modules that imports it therefore records its decision here. Charge on the READ side remains
-    UNMEASURED -- a populated dict nobody reads is progress on exactly one of the two halves, and
-    saying so is cheaper than discovering it later."""
-    return {k: {"device": d, "n": n, "why": w} for k, (d, n, w) in _DECISIONS.items()}
+    READ SIDE CLOSED 2026-08-06. There are TWO consumers and they are different in kind; saying
+    which is which is the point, because collapsing them is how "it has a reader" becomes a claim
+    nobody measured:
+
+      * A CRITERION reads it, and always did. `cortex/neurogenesis_engine.main()`'s claim 6 asserts
+        the recorded width IS the fit tensor's own element count and that the recorded device
+        follows the measured crossover -- the only proof in this tree that `_refit` routes on
+        WIDTH rather than on availability, and its own comment records it firing red against a
+        width taken from the wrong entry. **That consumer already existed while this docstring
+        said "STILL NO TELEMETRY CONSUMER"**, which was true as written (no *telemetry* consumer)
+        and false as it was read (nothing at all reads it). It is why retiring this function was
+        REFUSED: deleting it deletes a criterion that has a reachable red, and P8 deletes criteria
+        that have NO red, never ones that do.
+      * A REPORT reads it, as of 2026-08-06. `substrate/cockpit.py` serves it as the `device`
+        section and draws the DEVICE ROUTING plate. A page rendering a number is not a faculty
+        consuming a signal, so this is NOT a P6 read and no count is raised by it.
+
+    WHAT THIS DICT IS NOT -- measured, because the sentence it used to carry ("so the cockpit can
+    answer 'why is the GPU idle'") promises more than it can pay. Over 200 ticks of a `make_brain()`
+    process: ONE workload lands here, `Brain._perception_device` is 'cuda' from an availability
+    check that never calls `select()`, and peak CUDA allocation is 3,147,264 bytes. This is a LOG
+    OF THE CHOICES THAT ASKED THE ROUTER, not a census of GPU use; a 'cpu' row does not license
+    "the GPU is idle". The cockpit tags it "router log, not a GPU census" and its plate note names
+    `_perception_device` as a choice made outside this router, so the page cannot imply otherwise.
+
+    READS A COPY, and that is not defensive habit. The tick thread writes `_DECISIONS` while the
+    cockpit's HTTP handler thread reads it, on a free-threaded interpreter (Py_GIL_DISABLED=1), so
+    comprehending over the live dict is a "dictionary changed size during iteration" waiting for
+    the first new workload key -- which is precisely what a growing brain produces. `.copy()` runs
+    under the dict's own lock; the comprehension then walks a private snapshot."""
+    return {k: {"device": d, "n": n, "why": w} for k, (d, n, w) in _DECISIONS.copy().items()}
 
 
 # --- PORTED from reasoning/torch_device.py, which is RETIRED (P2 merge, 2026-08-04) -------------
@@ -244,7 +286,11 @@ def decisions():
 # about, committed three lines later: 3 is the GOVERNED-importer count, not the call-site count.
 # RE-COUNTED 2026-08-05 by AST over `src/` + `tests/` + `tools/`: **42 import statements across 41
 # modules**, all of them under `reasoning/` or `training/`, import `resolve_device` and/or `enable`
-# from here; nothing imports `select`/`crossover`/`decisions`. The figure recorded one day earlier
+# from here. ("nothing imports `select`/`crossover`/`decisions`" followed that clause and was
+# already FALSE when written: `cortex/neurogenesis_engine.py:51` imports all three, added in
+# 6b33a45d. Re-derived 2026-08-06 -- the governed importers of those three are
+# `cortex/neurogenesis_engine.py` and, since the DEVICE ROUTING plate landed,
+# `substrate/cockpit.py`.) The figure recorded one day earlier
 # was "41 / 40" and it was already one short -- `reasoning/rsnn_delays_torch.py` carries TWO such
 # imports, and a per-module count and a per-statement count are not the same number. Re-derive with
 # the walk above rather than inheriting this; the repoint sweep was still landing when it was taken.
