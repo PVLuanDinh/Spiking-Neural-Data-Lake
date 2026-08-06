@@ -9,7 +9,8 @@ hand-rolled parts replaced by the brain's REAL subsystems, wired through thin ad
   neurogenesis  : readout.grow() fired by the MetacognitiveMonitor grow_trigger  [brain the brain grows its own readout neurons]
   neuromod      : LocusCoeruleus (readout lr gain)                    [neuromodulation]
 
-vs v3.54 (developmental_loop_deep.py): the loop's AUTONOMY + accuracy path is now driven by the actual
+vs v3.54 (developmental_loop_deep.py, RETIRED 2026-08-06 -- superseded by this file, which carries
+its control flow; its reference number survives as DEEP_LOOP_REF below): the loop's AUTONOMY + accuracy path is now driven by the actual
 brain modules (hippocampal replay/consolidation, basal-ganglia value, metacognitive control, function-
 preserving neurogenesis) instead of a python replay dict + a plain nn.Linear + curiosity alone. Feature
 learning stays UNSUPERVISED (frozen conv1); only the readout is supervised (the accepted thesis tradeoff).
@@ -109,7 +110,10 @@ from snn_data_lake.neuromodulation.spiking_curiosity import SpikingCuriosityDriv
 VOTE_LOOP_BAR = (
     0.85  # developmental_loop.py STDP-prototype + neuron-label VOTE readout (best 88.8%)
 )
-DEEP_LOOP_REF = 0.935  # developmental_loop_deep.py (v3.54) conv1 + continual LINEAR readout
+# The v3.54 deep-loop result. Its producing module (developmental_loop_deep.py) was RETIRED
+# 2026-08-06 under P2; this constant is where the measurement now lives, so it is a citation of a
+# recorded result rather than a number re-derivable in-tree.
+DEEP_LOOP_REF = 0.935  # v3.54 deep loop: conv1 + continual LINEAR readout
 BASE_LR = 0.01
 
 

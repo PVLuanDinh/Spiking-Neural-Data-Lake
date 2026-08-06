@@ -47,8 +47,10 @@ def free():
 
 
 def load_norm():
-    """Load frozen 3-conv features, per-feature min-max to [0,1] fit on TRAIN (same as train_mnist.py
-    / extend_3conv.py). Features kept on CPU (float32); _rates streams batches to the GPU."""
+    """Load frozen 3-conv features, per-feature min-max to [0,1] fit on TRAIN (same as
+    extend_3conv.py; train_mnist.py used the identical normalisation and was RETIRED 2026-08-06
+    under P2, hippocampus/ng_snn.py carrying the mechanism it drove). Features kept on CPU
+    (float32); _rates streams batches to the GPU."""
     tr = np.load(f"{FDIR}/mnist_feats3_train.npy")
     ytr = np.load(f"{FDIR}/mnist_feats3_train_labels.npy")
     te = np.load(f"{FDIR}/mnist_feats3_test.npy")

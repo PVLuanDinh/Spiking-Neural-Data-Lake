@@ -29,7 +29,7 @@ numbers of record exactly. Request the GPU with an environment variable (or the 
 # RTX 5070 = Blackwell sm_120 -> the cu128 wheel (the repo's ONE gate env = .venv-lake, torch 2.11.0+cu128 on free-threaded 3.14; .venv-cu128 retired 2026-08-05):
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install -e ".[gpu]"          # or ".[train]" -- torch already satisfied by the cu128 build above
-NORD_GPU=1 python -m snn_data_lake.reasoning.snn_mnist_dc     # or NORD_DEVICE=cuda:0
+NORD_GPU=1 python -m snn_data_lake.reasoning.snn_mnist_stdp_fast   # or NORD_DEVICE=cuda:0
 ```
 
 > Path corrected 2026-07-30: `research/` became `src/snn_data_lake/reasoning/` in v3.78 (`627b2e2b`),
@@ -42,9 +42,15 @@ calls `torch.set_default_device(...)` so every tensor and module built afterward
 GPU. Scripts that construct an explicit `torch.Generator()` bind it to the resolved device so the
 RNG matches the tensors.
 
-Covered scripts: `snn_mnist_dc`, `snn_mnist_stdp`, `snn_mnist_stdp_fast`, `snn_moe_stdp_mnist`,
-`snn_motor_control`, `snn_world_model_rl`, `snn_dreamer_6dof`, `snn_storage_core_snntorch`,
-`snn_ssm_shd` (via the shared helper), and `eth_mnist_bindsnet` (its own `--gpu` flag).
+Covered scripts: `snn_mnist_stdp`, `snn_mnist_stdp_fast`, `snn_motor_control`,
+`snn_world_model_rl`, `snn_dreamer_6dof`, `snn_ssm_shd` (via the shared helper), and
+`eth_mnist_bindsnet` (its own `--gpu` flag).
+
+> Three names left this list on 2026-08-06 -- `snn_mnist_dc`, `snn_moe_stdp_mnist` and
+> `snn_storage_core_snntorch` were RETIRED under P2 (superseded respectively by the surviving
+> Diehl & Cook line, by `snn_moe_classifier` which is live via `cortex/recognizer_bank.py`, and by
+> `hippocampus/spiking_storage_prototype.py` + `cortex/lif_neuron.py`). The shared-helper coverage
+> they demonstrated is unchanged; only the demonstrating scripts are gone.
 
 ## The GeNN ports
 

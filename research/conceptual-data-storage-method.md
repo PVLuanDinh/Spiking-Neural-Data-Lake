@@ -45,3 +45,23 @@ Here is a simple python architectural blueprint using standard deep learning blo
 Python
 import torchimport torch.nn as nnimport snntorch as snn# 1. Define a simple Spiking Storage Core architectureclass SpikingStorageCore(nn.Module):    def __init__(self, input_dim, latent_dim):        super().__init__()        # Linear mapping to project data into structural weights        self.fc = nn.Linear(input_dim, latent_dim)        # Leaky Integrate-and-Fire neuron to handle temporal state (RAM emulation)        self.lif = snn.Leaky(beta=0.9, init_hidden=True)            def forward(self, spike_train_in, steps):        # Initialize the internal membrane potential state        mem = self.lif.init_leaky()        spike_record = []                # Step through time to process temporal inputs        for step in range(steps):            cur = self.fc(spike_train_in[step])            spk, mem = self.lif(cur, mem)            spike_record.append(spk)                    return torch.stack(spike_record), mem# This architecture allows a dense data stream to be converted into sparse # temporal spike trains, utilizing structural weights for memory extraction.
 Would you like to dive deeper into configuring local SNN simulation frameworks (like snnTorch or Intel's Lava), or explore the exact mathematics of how data is encoded into temporal spike frequencies?
+
+> **CORRECTION to the snippet above (recovered 2026-08-06 — do not copy it as written).**
+> `snn.Leaky(beta=0.9, init_hidden=True)` **contradicts the body that follows it.** With
+> `init_hidden=True` snnTorch owns the membrane state internally and the layer returns the spike
+> ALONE, so `spk, mem = self.lif(cur, mem)` cannot unpack and the explicit
+> `mem = self.lif.init_leaky()` is redundant. The snippet threads `mem` by hand, so the correct
+> argument is **`init_hidden=False`**.
+>
+> This is a restored fix, not a new finding. `reasoning/snn_storage_core_snntorch.py` had already
+> caught it and shipped `snn.Leaky(beta=0.9, init_hidden=False)  # doc had True; False to thread mem
+> manually`. That module was RETIRED on 2026-08-06 under P2 — its own docstring disclaimed the
+> capability ("does NOT store/recall data"), and both halves are superseded by
+> `hippocampus/spiking_storage_prototype.py` (the storage demo, CORE) and `cortex/lif_neuron.py` (the
+> LIF pass). Its deletion left this file as the only surviving copy of the blueprint, carrying the
+> defect the retired module had fixed.
+>
+> Recorded because it is the general hazard in a port-before-retire: the adversarial pass that
+> verified those nine deletions found this by asking not only "is the CAPABILITY superseded" but
+> "did the retiree CORRECT something its superseder never knew was wrong". A fix is not a
+> capability, so it survives no capability audit.

@@ -4,7 +4,8 @@ order-INVARIANT SLDA-on-RFF readout, removing BOTH costs the linear lake loop pa
 
 WHERE THIS SITS
 ---------------
-  * developmental_loop_lake.py  (90.2%) -- a CONTINUAL LINEAR head trained by SGD on proximity-
+  * developmental_loop_lake.py  (90.2%) -- RETIRED 2026-08-06 under P2 (superseded by this file
+    and developmental_loop_lake99.py). A CONTINUAL LINEAR head trained by SGD on proximity-
     retrieved replay batches. It eats two penalties: -1.8% continual FORGETTING (SGD drifts as new
     digits arrive) and -3.1% replay CONTAMINATION (proximity retrieval returns some off-query rows,
     and the SGD head is trained on those imperfect batches, order-dependently).
@@ -72,9 +73,15 @@ from snn_data_lake.reasoning.developmental_loop_slda import (
 #: (continual LINEAR head on the same lake) reports. Named because it was previously three
 #: disagreeing literals in one block -- `assert final > 0.90`, a failure message saying "90.2%",
 #: and a success line computing its delta against `0.902` -- so a run at 0.901 passed the assert
-#: and printed "0.901 > 90.2% (-0.1 pts)". NOT re-run in this session: re-deriving it means
-#: running that sibling module, which is open work, so it is quoted as a citation, not as a
-#: measurement made here.
+#: and printed "0.901 > 90.2% (-0.1 pts)". It is quoted as a citation, not as a measurement made
+#: here.
+#:
+#: PROVENANCE HARDENED 2026-08-06. This comment said re-deriving the number "means running that
+#: sibling module, which is open work" -- that sentence stopped being true the moment the sibling
+#: was RETIRED under P2 (superseded by this file and developmental_loop_lake99.py). The number is
+#: no longer re-derivable in-tree at all, so it is now a RECORDED RESULT rather than a deferred
+#: measurement, and this file is the last place it is written. Stated plainly because "open work"
+#: and "impossible" carry very different weights on an assert that gates a self-check.
 LINEAR_LAKE_REF = 0.902
 
 
@@ -253,7 +260,7 @@ def main():
     # how "reference" gets read as "measured here". The linear-lake bar is quoted from the ONE
     # constant that also arbitrates the assert below (it used to be a separate literal here).
     print(
-        f"  cited (developmental_loop_lake.py)  : {LINEAR_LAKE_REF:.1%}   (-1.8 forgetting + -3.1 contamination)"
+        f"  cited (linear lake loop, retired)   : {LINEAR_LAKE_REF:.1%}   (-1.8 forgetting + -3.1 contamination)"
     )
     print("  cited (developmental_loop_slda.py)  : 94.8%   SLDA-RFF, no lake")
     print("  cited (static RBF ensemble)         : 98.2%")

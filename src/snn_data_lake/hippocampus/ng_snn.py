@@ -17,6 +17,16 @@ NG-SNN (research/ng_snn/model.py -- UCI Iris ~95.6% / Wine ~97.2%, MNIST 99.14% 
 scale) so the contribution-grown spiking classifier is a first-class brain-region module. The math
 is UNCHANGED from that validated model.
 
+PORTED MEASUREMENT (2026-08-06): on the 3-conv SoftHebb mean+max N-MNIST features, the LINEAR
+readout ceiling is 99.42% against the 98.84% random-LIF head quoted above. That pair is what makes
+either number readable -- 98.84% is only interesting as a distance from the ceiling a plain linear
+readout on the same features already reaches. The ceiling was carried as `LINEAR_CEIL = 99.42` in
+`reasoning/ng_snn/grow_head_nmnist.py`, a driver script RETIRED under P2 because this module carries
+the mechanism it exercised (`NGSNN.fit(..., delta=1, score_subsample=None)`); the script held no
+mechanism, but it did hold this number, and it was the ONLY site in the governed tree that did.
+Recorded here as prose rather than as a constant deliberately: nothing consumes it, so a module-level
+`LINEAR_CEIL` would be a dormant symbol (P3) where a measurement is what actually needed keeping.
+
 Method (faithful to Tang, Li, Zhang, Zeng, "NG-SNN", Neural Networks 199 (2026) 108656):
   * LIF hidden neuron, discrete Euler (Eq. 2): V[t]=(1-lam)V[t-1]+lam(W x[t]+b), lam=dt/tau_m;
     spike o=1 at V>=v_th, hard reset V<-0 (Eq. 3-4); response s=mean_t o (Eq. 5). In feature mode a

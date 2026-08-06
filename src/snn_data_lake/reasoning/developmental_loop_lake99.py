@@ -1,7 +1,9 @@
 r"""
 LAKE LOOP -> toward 99%: fix the proximity KEY + add an RBF SLEEP-REFIT on the lake replay.
 
-developmental_loop_lake.py hit 90.2% because (a) it keyed proximity retrieval on a COARSE 30-dim
+developmental_loop_lake.py (RETIRED 2026-08-06; superseded by this file and by
+developmental_loop_lake_slda.py, which carries its 90.2% as LINEAR_LAKE_REF) hit 90.2% because
+(a) it keyed proximity retrieval on a COARSE 30-dim
 global feature (contaminated replay, -3.1%) and (b) it used a continual LINEAR head (the 93->98
 linear-vs-RBF gap). This file closes both, on the same durable lake:
 

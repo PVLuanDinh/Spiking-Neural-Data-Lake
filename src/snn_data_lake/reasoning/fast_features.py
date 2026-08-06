@@ -249,7 +249,9 @@ def main():
 
     # -------- ONE-PASS spatial+keys (byte-equivalence gate) --------
     def _ref_global_key(c, img):
-        """Reference per-image key -- exact copy of developmental_loop_lake._global_key."""
+        """Reference per-image key -- was an exact copy of developmental_loop_lake._global_key,
+        which was RETIRED 2026-08-06 under P2. This IS the surviving definition of that key, so it
+        is the reference itself now rather than a copy of one kept elsewhere."""
         st = c._dog_latency(img)
         fired, _ = c._forward(st)
         val = torch.where(
