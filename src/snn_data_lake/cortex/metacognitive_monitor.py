@@ -53,9 +53,71 @@ old novelty-threshold-only policy. A lesioned monitor is byte-identical downstre
 having no monitor at all -- so the self-check can prove the GATES (not some incidental
 plumbing) are what improve learning.
 
+P6 -- WHAT THIS MONITOR CONSUMES, and it consumed nothing until 2026-08-05. It was a pure
+PRODUCER: brain.py reads reliability/hold/explore/learn_gate and second_order_access.py reads the
+reliability, while every input arrived pre-chewed from the self-model. It now CONSUMES another
+faculty's output -- `cortex/executive_control.ExecutiveControl.conflict()`, the ACC response
+conflict computed on every live wake tick, whose only readers were the ACTION path (the STN
+hyperdirect brake) and `cortex/learned_evc`. `surprise` is PERCEPTUAL uncertainty; conflict is
+DECISION uncertainty, and a monitor that decides whether to COMMIT had none.
+
+MEASURED CHARGE, closed loop, on a real `make_brain(seed=0, persist=False)` over 300 ticks, one arm
+per PROCESS, with two independent LIVE processes proven byte-identical before any arm was compared:
+
+  A vs B  producer PINNED to a constant (it is still constructed, still called, still returns a
+          float, and can no longer say anything) -- reliability differs 295/300, learn_gate 296/300,
+          hold flips 38, explore flips 76.
+  A vs C  the NEW EDGE alone cut (w_conflict=0; the producer and its pre-existing readers, the STN
+          brake and learned_evc, are untouched) -- reliability 296/300, learn_gate 296/300, hold
+          flips 47, explore flips 134. This is the per-item attribution: the edge, not the producer's
+          other routes, is what moves this monitor.
+  HOLD ticks 63/300 live against 16/300 with the edge cut; mean reliability 0.1329 against 0.2591.
+
+INDEPENDENTLY REPRODUCED 2026-08-05 by a pass that did not write the wire, and every figure above
+came back to the digit -- 295/296/38/76, 296/296/47/134, 63 vs 16, 0.1329 vs 0.2591, and the
+last-third 100/41/0 below. Two things that reproduction had to discover the hard way are therefore
+added here, because the block as first written did not state them and neither run reproduces without
+them:
+
+  * THE CIRCADIAN CLOCK MUST RUN NATURALLY -- `b.tick()` with the phase left alone. Driving the same
+    300 ticks with the phase FORCED to wake (`b.clock.phase = 0.25` before each tick, which is how
+    several probes in this repo drive a brain) gives hold flips 7 and explore flips 109 for A vs B,
+    against 38 and 76 here: a 5x swing on the number that reaches a GATE, from a knob the numbers
+    were silent about. Same brain, same seed, same neuter, same tick count.
+  * THE NEUTER IS APPLIED BEFORE THE FIRST TICK, at the CLASS (`ExecutiveControl.conflict`), not to
+    the arm's already-bound instance. Binding the instance costs a warm-up tick, and a warm-up in
+    one arm and not another is the control-takes-a-different-path failure wearing a helpful face.
+
+  AND IT REACHES AN OUTPUT, which the block above did not claim and which is the strongest evidence
+  for the wire. Sampling `Brain.respond("what should I do next")` every 10 ticks over the same 300
+  (natural clock, one arm per process): the LIVE arm takes the `Gf (metacognitive hold: abstain)`
+  route -- the branch `cortex/brain.py` selects on `_metacog_hold` -- on 3 of 30 samples; with the
+  NEW EDGE ALONE CUT it takes it 0 times. Route differs 3/30 and reply text 23/30 on that per-item
+  attribution. So the charge is not a float that stops at telemetry: it changes which reply the
+  brain speaks. What it does NOT do, also measured, is change `_ll_i` / `_ll_retention` /
+  `_ll_units` -- the lifelong-learner branch `learn_gate()` gates at `cortex/brain.py` never fires
+  in this configuration, in ANY arm, so `learn_gate` differing on 296/300 ticks charges nothing
+  there. That consumer is inert for reasons that predate this wire, and it is recorded rather than
+  counted.
+
+DISCLOSED LIMITATION, because the first pass of this measurement was WRONG and the way it was wrong
+is the useful part. It was taken with the default `persist` (NORD_PERSIST unset -> True), so every
+arm read and wrote the real `brain_lake.bin` and each arm saw a different lake; two runs of the same
+comparison returned hold flips 17 and 133. The numbers above are the hermetic re-run. Second
+disclosure: the excess term is zero-mean only ASYMPTOTICALLY. Conflict starts at 0.0 (before the
+executive binds) and jumps to ~0.95, and a tau=0.02 baseline lags that step, so over this 300-tick
+window the term is NET INHIBITORY (excess mean +0.2859, range -0.1315..+0.8501, 5 sign changes) and
+the ~4x rise in HOLD is partly that transient: over the LAST THIRD alone the edge still moves
+reliability 100/100 and explore 41/100, but hold flips 0/100. The transient is inherent to a running
+baseline meeting a step change and is the same property `brain.py::_margin_base` has; it is recorded
+rather than tuned away. What is NOT claimed: that abstaining more often is BETTER. That is a
+measured behavioural change, not a proven improvement, and it is safe-by-construction only in the
+sense that HOLD adds caution and never releases an action.
+
 Reuses (does NOT reimplement): cortex/lif_neuron.LIFNeuron (the spiking pool),
 substrate/_mathutils.{mean,sigmoid}, substrate/signal_calibrator.SignalCalibrator (the O(1)
-running quantile that is the HOLD bar). The self-check additionally drives
+running quantile that is the HOLD bar), cortex/executive_control.ExecutiveControl (the consumed
+conflict; this module computes no conflict of its own). The self-check additionally drives
 hippocampus/growing_learner.GrowingLearner (a real neurogenesis learner whose capacity
 the monitor gates) and neuromodulation/intrinsic_motivation.CuriosityDrive (the honest
 learning-progress / novelty source), keyed off a coarse, label-free input bucket.
@@ -68,6 +130,7 @@ zlib.crc32 for bucketing (never hash()), ASCII-only prints, deterministic.
 
 import math
 
+from snn_data_lake.cortex.executive_control import ExecutiveControl
 from snn_data_lake.cortex.lif_neuron import LIFNeuron
 from snn_data_lake.substrate._mathutils import sigmoid
 from snn_data_lake.substrate.signal_calibrator import SignalCalibrator
@@ -105,6 +168,8 @@ class MetacognitiveMonitor:
         nov_hi=0.4,
         lp_eps=1e-6,
         hold_p=0.10,
+        w_conflict=None,
+        conflict_tau=0.02,
         lesion=False,
         seed=0,
     ):
@@ -158,26 +223,66 @@ class MetacognitiveMonitor:
         # comment claimed and the old mechanism did not have.
         self.hold_p = float(hold_p)
         self._rel_q = SignalCalibrator("metacog_reliability", p=self.hold_p)
+        # P6 -- THE FACULTY THIS MONITOR CONSUMES. Until this landed the monitor was a pure
+        # PRODUCER: `cortex/brain.py` read its reliability/hold/explore/learn_gate and
+        # `cortex/second_order_access.py` read its reliability, while it consumed nothing any other
+        # faculty computed (LIFNeuron and SignalCalibrator are primitives, not faculties). It now
+        # consumes `cortex/executive_control.ExecutiveControl.conflict()` -- the ACC response
+        # conflict already computed live on every wake tick and, until now, read only by the ACTION
+        # path (the STN hyperdirect brake) and by `cortex/learned_evc`. That is the direction P6
+        # asks for: `surprise` is PERCEPTUAL uncertainty, response conflict is DECISION uncertainty,
+        # and a monitor whose job is "should I commit / learn / explore" had no decision-uncertainty
+        # input at all (Botvinick, Braver & Cohen 2001; Yeung, Botvinick & Cohen 2004 -- conflict is
+        # the ACC's error-likelihood signal and the canonical precursor of a control adjustment).
+        #
+        # P1: the term is RELATIVE, never absolute -- conflict minus a running EMA of this monitor's
+        # OWN conflict history, so it is zero-mean by construction and cannot act as a hidden
+        # constant offset. That is the repo's `brain.py::_margin_base` / `_lg_base` idiom
+        # (0.98*base + 0.02*x) and it is the SAME relative form the STN brake already applies to
+        # this very signal ("conflict above its own running baseline, so the trigger is
+        # relative/adaptive, not a magic cutoff"). No new arbitrating constant is introduced: the
+        # weight DEFAULTS TO `w_surprise`, because conflict and surprise are both normalized-[0,1]
+        # uncertainty signals inhibiting the same pool, so the wire adds a channel, not a knob.
+        self.w_conflict = self.w_surprise if w_conflict is None else float(w_conflict)
+        self.conflict_tau = float(conflict_tau)  # EMA rate of the OWN-conflict baseline
+        self._conf_base = None  # running baseline of the consumed conflict (None = no sample yet)
+        self._conflict = 0.0  # last consumed conflict (telemetry / self-check)
+        self._conflict_excess = 0.0  # conflict MINUS its own baseline -- the term that charges
 
-    def update(self, confidence, surprise, learning_progress, novelty=0.0):
+    def update(self, confidence, surprise, learning_progress, novelty=0.0, conflict=0.0):
         """Fuse one set of reliability signals into a spike-count reliability state.
 
         Drives every LIF neuron for `steps` timesteps with a current that is EXCITED by
         confidence + learning progress and INHIBITED by surprise that comes WITHOUT
         progress (surprise * (1 - lp) -- learnable surprise is not penalized, noisy
-        surprise is). Reliability is the windowed spike-count firing rate read from the
-        EMITTED spikes. Returns the reliability."""
+        surprise is) and by UNUSUAL RESPONSE CONFLICT. Reliability is the windowed
+        spike-count firing rate read from the EMITTED spikes. Returns the reliability.
+
+        `conflict` is `cortex/executive_control.ExecutiveControl.conflict(drives)` in [0,1] --
+        DECISION uncertainty, as distinct from the PERCEPTUAL uncertainty `surprise` carries. It
+        enters as `conflict - EMA(conflict)`, so a conflict stream that never varies contributes
+        EXACTLY ZERO and the default `conflict=0.0` leaves every pre-existing caller byte-identical
+        (both properties are asserted, with their reds run, in this module's self-check)."""
         c = _clamp01(confidence)
         s = _clamp01(surprise)
         lp = max(0.0, float(learning_progress))
         nov = _clamp01(novelty)
         self._conf, self._surprise, self._lp, self._nov = c, s, lp, nov
-        # excite by confidence + rising LP; inhibit by persistent-surprise-WITHOUT-progress
+        cf = _clamp01(conflict)
+        if self._conf_base is None:  # first sample IS the baseline -> excess 0, no free offset
+            self._conf_base = cf
+        self._conflict = cf
+        self._conflict_excess = cf - self._conf_base
+        self._conf_base = (1.0 - self.conflict_tau) * self._conf_base + self.conflict_tau * cf
+        # excite by confidence + rising LP; inhibit by persistent-surprise-WITHOUT-progress and by
+        # response conflict ABOVE this monitor's own running baseline (an unusually conflicted
+        # decision is an unreliable one; an unusually CLEAN one disinhibits, hence the signed term)
         drive = (
             self.base
             + self.w_conf * c
             + self.w_lp * lp
             - self.w_surprise * s * (1.0 - min(1.0, lp))
+            - self.w_conflict * self._conflict_excess
         )
         spikes = 0
         memsum = 0.0
@@ -198,6 +303,12 @@ class MetacognitiveMonitor:
     def reliability(self):
         """Fused reliability in [0,1] -- the windowed spike-count firing rate of the LIF pool."""
         return self._rel
+
+    def conflict_excess(self):
+        """The consumed executive conflict MINUS this monitor's own running baseline of it -- the
+        signed term by which `cortex/executive_control` charges this faculty. 0.0 while no conflict
+        has been supplied, and 0.0 for any conflict stream that never varies."""
+        return self._conflict_excess
 
     def _reliability_from_membrane(self):
         """CONTROL ONLY -- a (worse) reliability read from the subthreshold MEMBRANE, not
@@ -541,6 +652,119 @@ def _experiment(seed):
     }
 
 
+def _p6_signal_stream(n, seed):
+    """A deterministic (confidence, surprise, learning_progress, novelty) stream. IDENTICAL for
+    every arm of the P6 section, so the ONLY thing that can differ between arms is the conflict
+    channel -- the per-item neuter attribution P8 demands."""
+    import random
+
+    rng = random.Random(seed)
+    return [
+        (
+            rng.uniform(0.30, 0.75),  # confidence
+            rng.uniform(0.00, 0.40),  # surprise
+            rng.uniform(0.00, 0.05),  # learning progress
+            rng.uniform(0.00, 0.60),  # novelty
+        )
+        for _ in range(n)
+    ]
+
+
+def _p6_conflict_stream(n, seed):
+    """Response conflict produced by the REAL faculty -- cortex/executive_control.ExecutiveControl
+    read over competing action-drive vectors, alternating near-ties (high conflict) with clear
+    winners (~0). Not a hand-written number sequence: if the producer's conflict maths changed, this
+    stream changes with it, which is what makes the section an edge test rather than a fixture."""
+    import random
+
+    rng = random.Random(seed)
+    ec = ExecutiveControl(seed=seed)
+    out = []
+    for i in range(n):
+        if i % 3 == 0:  # two drives near-tied -> strong response conflict
+            drives = [1.0, rng.uniform(0.88, 0.99), rng.uniform(0.0, 0.05)]
+        else:  # one dominant drive -> essentially no conflict
+            drives = [1.0, rng.uniform(0.0, 0.08), rng.uniform(0.0, 0.05)]
+        out.append(ec.conflict(drives))
+    return out
+
+
+def _p6_drive(conflicts, signals, seed, weight=None):
+    """Drive one monitor over `signals`, feeding `conflicts[i]` (or None -> omit the kwarg entirely).
+    Returns the monitor's OWN outputs per tick: (reliability, hold, explore, learn_gate)."""
+    kw = {} if weight is None else {"w_conflict": weight}
+    mon = MetacognitiveMonitor(base=0.4, seed=seed, **kw)
+    out = []
+    for i, (c, s, lp, nov) in enumerate(signals):
+        if conflicts is None:
+            mon.update(c, s, lp, nov)  # the pre-P6 call shape -- kwarg omitted entirely
+        else:
+            mon.update(c, s, lp, nov, conflict=conflicts[i])
+        out.append(
+            (round(mon.reliability(), 9), mon.hold(), mon.explore(), round(mon.learn_gate(), 9))
+        )
+    return out
+
+
+def _p6_diff(a, b):
+    """(reliability-differs, hold-flips, explore-flips, learn_gate-differs, max |d reliability|)."""
+    return (
+        sum(1 for x, y in zip(a, b) if x[0] != y[0]),
+        sum(1 for x, y in zip(a, b) if x[1] != y[1]),
+        sum(1 for x, y in zip(a, b) if x[2] != y[2]),
+        sum(1 for x, y in zip(a, b) if x[3] != y[3]),
+        max((abs(x[0] - y[0]) for x, y in zip(a, b)), default=0.0),
+    )
+
+
+def _p6_experiment(seed=0, n=180):
+    """P6 -- the executive->metacognition edge, exercised end to end through the REAL producer.
+
+    Four arms over ONE identical signal stream, differing only in the conflict channel:
+      OMITTED  the pre-P6 call shape (no `conflict=` argument at all)
+      PINNED   conflict pinned to a CONSTANT (the neuter: the producer still exists, but it can no
+               longer say anything -- exactly the shape tools/charge_probe.py uses)
+      LIVE     conflict from ExecutiveControl.conflict() over real competing drives
+      GAIN0    LIVE conflict but w_conflict=0 -- the channel present with the wire cut
+
+    A `conflict=0.0` arm was DRAFTED AND DELETED rather than kept as a fifth criterion. Under a
+    baseline-relative term ANY constant input is inert by construction, so "omitting the kwarg
+    equals passing 0.0" has no reachable red -- no single mutation can separate them. P8 says a
+    criterion with no red is deleted, not weakened, so the backward-compatibility claim is carried
+    by OMITTED-vs-PINNED instead, which does have one (use the raw conflict instead of the excess).
+    """
+    signals = _p6_signal_stream(n, 909 + seed)
+    conflicts = _p6_conflict_stream(n, 131 + seed)
+    pinned = sum(conflicts) / float(len(conflicts))
+    omitted = _p6_drive(None, signals, seed)
+    neutered = _p6_drive([pinned] * n, signals, seed)
+    live = _p6_drive(conflicts, signals, seed)
+    off = _p6_drive(conflicts, signals, seed, weight=0.0)  # channel present, gain 0 == no wire
+    # SIGN: two monitors warmed to the SAME low conflict baseline, then one tick that is unusually
+    # conflicted vs one that is not. Unusual conflict must LOWER reliability, not raise it.
+    warm = [(0.60, 0.10, 0.0, 0.20)] * 24
+    hi = MetacognitiveMonitor(base=0.4, seed=seed)
+    lo = MetacognitiveMonitor(base=0.4, seed=seed)
+    for c, s, lp, nov in warm:
+        hi.update(c, s, lp, nov, conflict=0.20)
+        lo.update(c, s, lp, nov, conflict=0.20)
+    hi.update(0.60, 0.10, 0.0, 0.20, conflict=0.95)  # UNUSUALLY conflicted decision
+    lo.update(0.60, 0.10, 0.0, 0.20, conflict=0.20)  # business as usual
+    return {
+        "n": n,
+        "rel_unusual_conflict": hi.reliability(),
+        "rel_baseline_conflict": lo.reliability(),
+        "excess_unusual": round(hi.conflict_excess(), 6),
+        "excess_baseline": round(lo.conflict_excess(), 6),
+        "conflict_span": max(conflicts) - min(conflicts),
+        "conflict_distinct": len(set(round(c, 9) for c in conflicts)),
+        "pinned": pinned,
+        "constant_is_inert": _p6_diff(omitted, neutered),  # must be all-zero
+        "charge": _p6_diff(live, neutered),  # THE BAR -- must NOT be zero
+        "gain0_is_inert": _p6_diff(off, neutered),  # must be all-zero
+    }
+
+
 def _p(lines, s):
     """Append an ASCII-only line (Windows cp1252 safety)."""
     if any(ord(ch) > 127 for ch in s):
@@ -594,6 +818,31 @@ def main():
     )
     _p(lines, f"    lesion==ungated : byte-identical downstream={r['lesion_byte_identical']}")
     _p(lines, f"(4) determinism     : two seed=0 runs identical={_experiment(0) == r}")
+    _p(lines, "-" * 78)
+    q = _p6_experiment(0)
+    _p(
+        lines,
+        f"(5) P6 executive->metacognition : producer cortex/executive_control.conflict over "
+        f"{q['n']} ticks, span {q['conflict_span']:.3f}, {q['conflict_distinct']} distinct",
+    )
+    _p(
+        lines,
+        f"    CHARGE (live vs producer PINNED to {q['pinned']:.4f}) : reliability differs "
+        f"{q['charge'][0]}/{q['n']} (max |d| {q['charge'][4]:.4f}), hold flips {q['charge'][1]}, "
+        f"explore flips {q['charge'][2]}, learn_gate differs {q['charge'][3]}",
+    )
+    _p(
+        lines,
+        f"    INERT CONTROLS  : pre-P6 call shape vs PINNED conflict differs "
+        f"{q['constant_is_inert'][0]}; w_conflict=0 vs PINNED differs {q['gain0_is_inert'][0]}  "
+        f"(both must be 0)",
+    )
+    _p(
+        lines,
+        f"    SIGN            : unusually conflicted tick rel {q['rel_unusual_conflict']:.4f} "
+        f"< baseline-conflict tick {q['rel_baseline_conflict']:.4f} "
+        f"(excess {q['excess_unusual']:+.4f} vs {q['excess_baseline']:+.4f})",
+    )
     _p(lines, "=" * 78)
     for line in lines:
         print(line)
@@ -634,6 +883,46 @@ def main():
     # ---- (4) DETERMINISM ----
     assert _experiment(0) == r, "two seed=0 runs must be byte-for-byte identical"
 
+    # ---- (5) P6: THE EXECUTIVE->METACOGNITION EDGE ----
+    # Every assert below owes a reachable RED (P8), and each red was CONSTRUCTED AND RUN against a
+    # mutated copy of this file rather than reasoned about. The mutation that reddens each:
+    #   vacuity   : make both branches of _p6_conflict_stream clear winners -> span collapses
+    #   inertness : use the raw conflict instead of the excess in the drive term
+    #   gain0     : ignore the w_conflict argument (always use w_surprise)
+    #   charge    : default w_conflict to 0.0 -- the channel with the wire cut
+    #   sign      : flip the drive term to `+ self.w_conflict * self._conflict_excess`
+    #   baseline  : seed the baseline at 0.0 instead of at the first sample
+    assert q["conflict_span"] > 0.5 and q["conflict_distinct"] > q["n"] // 2, (
+        f"VACUITY GUARD: the producer must actually vary, else every arm below is the same "
+        f"experiment (span {q['conflict_span']:.3f}, {q['conflict_distinct']} distinct)"
+    )
+    assert q["constant_is_inert"] == (0, 0, 0, 0, 0.0), (
+        f"the pre-P6 call shape and a PINNED (constant) conflict must be byte-identical -- the term "
+        f"is relative to its own running baseline, not absolute {q['constant_is_inert']}"
+    )
+    assert q["gain0_is_inert"] == (0, 0, 0, 0, 0.0), (
+        f"w_conflict=0 must reproduce the neutered monitor exactly {q['gain0_is_inert']}"
+    )
+    assert q["charge"][0] > q["n"] // 4 and q["charge"][3] > q["n"] // 4, (
+        f"P6 CHARGE: neutering cortex/executive_control must change THIS monitor's own output -- "
+        f"reliability {q['charge'][0]}/{q['n']}, learn_gate {q['charge'][3]}/{q['n']}"
+    )
+    assert q["charge"][1] + q["charge"][2] > 0, (
+        f"the charge must reach a GATE, not only the float: hold flips {q['charge'][1]}, explore "
+        f"flips {q['charge'][2]} (a reliability that moves but decides nothing is P3 shape 5)"
+    )
+    assert q["rel_unusual_conflict"] < q["rel_baseline_conflict"], (
+        f"unusual response conflict must LOWER reliability ({q['rel_unusual_conflict']:.4f}) below "
+        f"the baseline-conflict tick ({q['rel_baseline_conflict']:.4f}), not raise it"
+    )
+    # A sixth criterion -- `abs(excess_baseline) < 1e-9`, i.e. a tick AT the running baseline carries
+    # zero excess -- was DRAFTED AND DELETED. Its red was run (seed `_conf_base` at 0.0 instead of at
+    # the first sample) and the mutation reddens `constant_is_inert` FIRST, every time: under a
+    # baseline-relative term a mis-seeded baseline necessarily breaks constant-inertness, so the
+    # criterion has no INDEPENDENT red and is a weaker restatement of one already asserted above.
+    # P8: delete, never weaken. `excess_baseline` is still PRINTED, because a number a reader can
+    # see is worth keeping even when it is not a criterion.
+
     print(
         f"self-check OK: GATING lifts held-out {r['l_acc']:.3f}->{r['g_acc']:.3f} while cutting units "
         f"{r['l_units']}->{r['g_units']} (abstained on {r['g_abstains']} noise);"
@@ -645,7 +934,13 @@ def main():
     )
     print(
         "  membrane-read control FAILS the structural spike-count assert and mis-reads a silent pool; "
-        "lesion==ungated; deterministic"
+        "lesion==ungated; deterministic;"
+    )
+    print(
+        f"  P6 this monitor now CONSUMES cortex/executive_control.conflict -- pinning that producer "
+        f"changes this monitor's OWN output on {q['charge'][0]}/{q['n']} ticks "
+        f"({q['charge'][1]} hold flips, {q['charge'][2]} explore flips), while a CONSTANT conflict "
+        f"stream and w_conflict=0 are both byte-identical to no wire at all"
     )
 
 

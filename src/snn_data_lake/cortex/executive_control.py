@@ -37,6 +37,36 @@ The three faculties (Botvinick, Braver, Cohen 2001; Shenhav, Botvinick, Cohen 20
      delayed-reward landscape this finds a multi-step plan that a 1-step greedy MISSES: it will
      accept an immediate LOSS to reach a later jackpot.
 
+P6 -- WHAT THIS FACULTY CONSUMES AND WHAT CONSUMES IT, re-derived at runtime 2026-08-05 rather than
+assumed, because the brief this pass started from said "read by nobody" and that is false:
+
+  CONSUMES  cerebellum/jepa_world_model -- `plan_sequence` is called live with `transition_fn =
+            jepa.predict` and `value_fn = jepa.make_goal_value(z_goal)`, so the search runs over
+            another faculty's LEARNED latent world model, not over developer estimates.
+            cortex/learned_evc -- the live `evc()` call takes its `cost` and `value_gain` from the
+            cortex's learned three-factor EVC when that has been pushed, and only falls back to
+            constants before it has.
+  PRODUCES  `conflict(drives)` -> the ACTION path (the STN hyperdirect brake), cortex/learned_evc,
+            and -- ADDED THIS PASS -- cortex/metacognitive_monitor, which now consumes it as
+            DECISION uncertainty. That third reader is the one that satisfies P6 condition (b):
+            the first is the single action gate P6 explicitly names as the DEFECT, not the remedy.
+
+The measured charge of the new reader is in `cortex/metacognitive_monitor.py`'s docstring and is
+re-proven by that module's self-check on every run: pin this faculty's `conflict` to a constant and
+the monitor's own reliability changes on 295/300 live ticks with 38 HOLD flips. Both figures were
+re-derived 2026-08-05 by a pass that did not write the wire, and both came back exact -- see that
+docstring for the two harness conditions (natural circadian clock; neuter applied at the class
+before tick 1) without which they do not reproduce. That pass also carried the charge one step
+further than this block claimed: cutting the metacognition edge ALONE changes which route
+`Brain.respond()` takes on 3 of 30 sampled turns and the reply text on 23 of 30, so this faculty's
+output reaches spoken behaviour through its new reader and not only through the action gate.
+
+Note what is NOT claimed: none of these routes goes through the shared GlobalWorkspace, so
+`tools/p6_gate.py` -- which counts workspace verbs only -- cannot see any of them and reports this
+module as a non-participant either way. That is a limit of the instrument, not of the wiring, and it
+is stated here so the next reader does not "fix" a number by pushing these signals through a bus
+that would only raise the WRITE count the gate itself says is not progress.
+
 Learning rule: NONE by design -- no-gradient, no trained weights, no backprop. All three faculties
 are FIXED dynamics (Hopfield-energy conflict, EVC arithmetic, deterministic search) over injected
 value/transition estimates. This satisfies the brain-native constraint by preferring fixed dynamics

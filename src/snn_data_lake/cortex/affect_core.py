@@ -49,6 +49,25 @@ and it makes no claim of phenomenal affect.  It models THAT affect sorts into ca
 agent's affect can be pulled by another's, and that a belief can be held about a belief -- not
 WHAT any of that is like.  Toy scenarios, near-tabular readouts.
 
+P6 -- MEASURED NULL, 2026-08-05, recorded because it is the result rather than the absence of one.
+This module was examined for a faculty-to-faculty read in the same pass that wired
+cortex/metacognitive_monitor.py to cortex/executive_control.py, and NO wire was shipped here. The
+reason is a measurement, not a judgement: this faculty's OWN affect is a live CONSTANT.  Measured on
+a hermetic brain (`make_brain(seed=0, persist=False)`, 300 ticks, one process): `affect()` returns
+(0.0, 0.5) on 300/300 ticks -- ONE distinct value.  The cause is structural, not a tuning accident:
+`own_v` / `own_a` are written ONLY by `empathize()`, whose single live call site is inside
+`Brain.respond()` and fires only when a chat turn mentions another agent's affect, so a tick run
+never touches them.  And the reads are worse than the writes -- tree-wide, `own_emotion()` and
+`affect()` have ZERO callers outside this module's own self-check.  What brain.py actually consumes
+is `recognize(valence, arousal)`, a STATELESS call whose arguments come from the self-model and the
+arm's RPE, bypassing own affect entirely.
+
+So feeding a peer faculty's output into own affect would move a value that nothing reads -- P6's
+"a route that carries nothing", and P3 shape 5 (a constant wearing a signal's clothes) sitting
+underneath it.  The honest disposition is: this is P3 shape-5 dormancy in `own_v`/`own_a`, the fix
+is a CONSUMER for own affect rather than another producer into it, and until that consumer exists
+no wire in is shippable.  That is open work, not a settled state.
+
 Determinism / style: per-instance random.Random(seed); ASCII-only output; NO import-time side
 effects (all work is under __main__ / explicit calls).  Additive and safety-inert: this module
 imports NOTHING from brainstem, touches no actuator and no safety-envelope file, never selects an

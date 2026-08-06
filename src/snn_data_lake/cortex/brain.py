@@ -1086,6 +1086,38 @@ class Brain:
         self._last_res = {}
         self._regions_live = set()
 
+    # ---- THE ONE WORKSPACE (P6 prerequisite) ----------------------------------------------------
+    @property
+    def workspace(self):
+        """THE one Global Workspace of the one brain, reached through the sanctioned construction
+        path: make_brain() -> Brain -> LiveBrain -> AutonomousArm, which builds it.
+
+        It ADOPTS that instance and CONSTRUCTS NOTHING (P2: exactly one mechanism survives, so this
+        adds no instantiation site to `tools/p6_gate.py`'s census -- the point is to REMOVE private
+        instances, never to add a bus beside them). P6's blocker is object IDENTITY, not missing
+        readers: the gate reports many private workspaces, and a faculty holding its own object
+        cannot see any other faculty's submit() no matter how many readers are added. Handing this
+        one object to a faculty is what makes a read POSSIBLE; whether such a read CHARGES is a
+        separate question that owes a neuter-A/B, and nothing here forces a faculty to read.
+
+        NOT the same object as `self._reentrant`. That is a ReentrantWorkspace -- a different class,
+        the one workspace this module builds for itself, and the P2 debt between the two (see
+        docs/POLICIES.md, "two workspaces run additively") is unresolved for want of a consensus
+        benchmark. It is left exactly as it was; picking a winner here would be the fashion-treadmill
+        move P2 forbids.
+
+        None when there is no live brain or the arm was built with workspace=False, so a consumer
+        null-checks rather than assumes.
+
+        CONCURRENCY, stated because this is the free-threaded build (Py_GIL_DISABLED=1): a pure
+        attribute read -- no state, no mutation, no lock -- so it introduces no race of its own, and
+        a same-seed brain stays byte-identical. It does NOT make GlobalWorkspace thread-safe and does
+        not claim to: `submit()` is single-threaded by its own contract because buffer order is
+        observable, and a concurrent specialist writes through the workspace's OWN collect-then-apply
+        path, `open_slots()` + `submit_from()`, which splices the per-slot staging buffers in
+        ASCENDING SLOT ORDER so thread completion order cannot decide what the brain sees."""
+        return getattr(getattr(self, "brain", None), "workspace", None)
+
     # ---- construction helpers ------------------------------------------------------------------
     @staticmethod
     def _try(factory):
@@ -2061,11 +2093,21 @@ class Brain:
                 dm if self._margin_base is None else 0.98 * self._margin_base + 0.02 * dm
             )
             decision_conf = min(1.0, dm / self._margin_base) if self._margin_base > 1e-9 else 1.0
+            # P6 (2026-08-05): hand the monitor the EXECUTIVE's response conflict as well. This is
+            # the one line outside cortex/metacognitive_monitor.py that the executive->metacognition
+            # edge needs, and without it the consumer's new input would be a parameter nobody fills
+            # (P3 shape 1). `_conflict` is cortex/executive_control.ExecutiveControl.conflict(drive)
+            # computed on the live tick at brainstem/autonomous_loop.py; until now its only readers
+            # were the ACTION path (the STN hyperdirect brake) and cortex/learned_evc, so no faculty
+            # consumed it as EVIDENCE. The monitor takes it relative to its own running baseline, so
+            # a conflict stream that never varies contributes exactly zero -- see that module's
+            # self-check, where the neuter, its controls and each criterion's red are all run.
             self._metacog.update(
                 confidence=st["confidence"] * decision_conf,
                 surprise=float(st["surprise"][0]),
                 learning_progress=float(st["learning_progress"][0]),
                 novelty=min(1.0, float(st["surprise"][0]) + 0.3 * pc_dev),
+                conflict=float(getattr(self.brain.arm, "_conflict", 0.0) or 0.0),
             )  # perceptual surprise SPIKE raises uncertainty; a conflicted BG decision lowers confidence
             self._metacog_rel = round(self._metacog.reliability(), 4)
             self._metacog_hold = bool(self._metacog.hold())
@@ -4256,6 +4298,36 @@ def main():
         )
     )
 
+    # ---- claim 9: ONE SHARED WORKSPACE ON THE CONSTRUCTION PATH (P6 prerequisite) ----
+    # TWO sub-claims, each with its OWN reachable red (P8: a criterion whose red is only reachable
+    # through another criterion's red is not a second criterion -- it is the first one restated).
+    # (a) SAME: what the one brain exposes must BE the object the arm writes into, at every level of
+    #     the composition. Identity, not equality -- a freshly built workspace compares equal on an
+    #     empty slot while connecting nothing, which is the whole defect. RED: return a shallow COPY
+    #     of the arm's workspace; `broadcast()` still matches (shared incumbent) and this goes False.
+    # (b) LIVE: the shared handle must actually be the bus the producer writes to, not an inert
+    #     object that happens to be shared. RED: neuter the producer -- pin the arm's submits to a
+    #     no-op -- and `broadcast()` falls to None while (a) stays True.
+    # Three clauses were drafted; a STABLE clause (`ws is brain.workspace` twice) was DELETED rather
+    # than weakened, per P8/F11: every mutation that reddens it also reddens (a), so it could not
+    # fail alone and was the first clause restated. An `== brain.brain.thought` term was dropped for
+    # the same reason -- given (a) it is Python object identity, not a measurement.
+    # Forced day tick first, so (b) is not vacuously None after claim 2's forced night.
+    brain.clock.phase = 0.25
+    brain.tick()
+    ws = brain.workspace
+    ws_same = ws is not None and ws is brain.brain.workspace and ws is brain.brain.arm.workspace
+    ws_live = ws is not None and ws.broadcast() is not None
+    c9_pass = ws_same and ws_live
+    rows.append(
+        (
+            9,
+            "one brain exposes ONE workspace: the arm's own instance",
+            f"same={ws_same}; live={ws_live}",
+            c9_pass,
+        )
+    )
+
     # ---- ASCII report ----
     line = "+" + "-" * 4 + "+" + "-" * 60 + "+" + "-" * 30 + "+" + "-" * 6 + "+"
     print("=" * 106)
@@ -4289,6 +4361,9 @@ def main():
     assert rows[6][3], "claimB: 'are you evil?' must answer with 'not evil'"
     assert rows[7][3], (
         "claimC: PC-cortex perception must be opt-in, return a right-length latent when loaded, degrade to None otherwise, and never touch the safety path"
+    )
+    assert rows[8][3], (
+        "claim9: Brain.workspace must BE the one GlobalWorkspace the arm writes into (same object at every level of the composition) and that object must be live (broadcasting)"
     )
 
     grown = brain.state()["grown_units"]

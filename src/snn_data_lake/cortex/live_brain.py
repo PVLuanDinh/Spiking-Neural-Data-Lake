@@ -282,6 +282,32 @@ class LiveBrain:
         return self.arm.pfc.goal
 
     @property
+    def workspace(self):
+        """THE one Global Workspace of this brain -- the instance `self.arm` constructed -- exposed so
+        a faculty can be HANDED the SAME object instead of building a private one.
+
+        It ADOPTS that instance and CONSTRUCTS NOTHING (P2: one mechanism survives), so
+        `tools/p6_gate.py`'s instance census gains no site from this accessor. It exists because P6's
+        blocker is object IDENTITY, not missing readers: every faculty that "broadcasts" today builds
+        its own GlobalWorkspace, so faculty A's submit() is not merely unread by faculty B, it is
+        INVISIBLE to it. This makes a read POSSIBLE; it asserts nothing about charge and forces no
+        faculty to read. `thought` below reaches the same object through `self.arm` directly and is
+        deliberately left alone -- it is the tree's ONE cross-module workspace read, and renaming its
+        receiver would move a gate number without moving the tree.
+
+        None only for an arm built with workspace=False; LiveBrain always passes True. Consumers
+        null-check rather than assume.
+
+        CONCURRENCY, stated because this is the free-threaded build (Py_GIL_DISABLED=1): this is a
+        pure attribute read -- no state, no mutation, no lock -- so it can introduce no race of its
+        own. It does NOT make GlobalWorkspace thread-safe and does not claim to. `submit()` is
+        documented single-threaded because buffer order is observable; a concurrent specialist uses
+        the workspace's OWN collect-then-apply path, `open_slots()` + `submit_from()`, which splices
+        the per-slot staging buffers in ASCENDING SLOT ORDER so thread completion order cannot decide
+        what the brain sees."""
+        return getattr(self.arm, "workspace", None)
+
+    @property
     def thought(self):
         """The Global Workspace's current broadcast -- what is globally available right now, or None."""
         return self.arm.workspace.broadcast()
@@ -599,6 +625,18 @@ def main():
     )
     assert greedy == "RELEASE", f"the brain must pursue its goal action ({greedy})"
     assert thought is not None, "the Global Workspace must be broadcasting a live content"
+    # P6 prerequisite: `workspace` must BE the arm's own GlobalWorkspace, by IDENTITY. Equality is
+    # not the property under test -- a per-call construction or a copy would compare equal on an
+    # empty workspace and still connect nothing, which is exactly the defect (16 private, mutually
+    # invisible instances) this accessor exists to stop growing. Its red is reachable and was run:
+    # return a shallow copy of the arm's workspace and this fires.
+    # A companion `brain.workspace.broadcast() == thought` assertion was DRAFTED AND DELETED, not
+    # weakened (P8/F11). Given the identity above, `thought` reads the very same object through the
+    # very same call, so the comparison is Python object identity wearing a measurement's clothes --
+    # no input reddens it that does not first redden the assertion above it.
+    assert brain.workspace is not None and brain.workspace is brain.arm.workspace, (
+        "LiveBrain.workspace must BE the arm's one GlobalWorkspace instance, not a copy"
+    )
     # safety: the arm-envelope is untouched by running the whole brain live.
     assert ev["action"] == "EMERGENCY_STOP" and ev["reflex"], (
         "danger must trip the reflex E-STOP with the whole brain live"
