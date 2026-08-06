@@ -386,10 +386,34 @@ def main():
         assert nxt in edges, "hop %r -> %r must be a real association edge" % (prev, nxt)
     # the spiking WTA SELECTED the strong branch: the weak associate never ignited into the chain.
     assert "coriolis" not in chain, "the weak (0.6) associate must lose the WTA and NOT ignite"
-    # the trace actually contains HOLD ticks -> transitions are re-entrant, not instantaneous.
-    assert any(ev == "hold" for _, ev in trace), (
-        "thoughts must be HELD (sustained firing) between hops"
-    )
+    # DELETED 2026-08-06, NOT WEAKENED (P8 falsifier F11), and this is the only edit this pass makes
+    # outside `thalamus/global_workspace.py`. The line here was:
+    #
+    #     assert any(ev == "hold" for _, ev in trace), \
+    #         "thoughts must be HELD (sustained firing) between hops"
+    #
+    # A `hold` tick is one where the workspace kept broadcasting the PREVIOUS thought while this
+    # stream was already posting its successor. That was never sustained firing -- it was
+    # `thalamus/global_workspace.py` paying `self_boost + hysteresis` to a content THIS STREAM HAD
+    # ALREADY RETRACTED, against this stream's own fresh claim. MEASURED on that arbiter, one source
+    # posting 'A' at 0.95 then 'B' at 0.95: the two pools carry `g` A=0.8075 / B=0.9500 and BOTH
+    # saturate at late=30, and the head was 'A' -- the retracted content, holding the workspace with
+    # LESS attractor charge than the live one. `GlobalWorkspace._defended` closed that (a tenancy is
+    # held by a SOURCE, so a source posting a different content has withdrawn the old one) and the
+    # same probe now reads head='B' with the `g` values UNCHANGED.
+    #
+    # It is deleted rather than re-derived because the property its message NAMES is already asserted
+    # eleven lines below, on the input where "sustained firing" is what is actually happening:
+    # `held_ok` summons a thought, stops posting entirely, and requires it to survive. That is
+    # UNAFFECTED -- `hold(ticks=3)` returns ['holdme', 'holdme', 'holdme'] under both arbiters,
+    # byte-identical. Restating it here would be a second copy of one criterion, not a second
+    # criterion. And the chain got FASTER on the module's own headline claim, not shorter: on this
+    # module's `max_steps=20` call the same seed and graph reach the same 7 distinct ignited
+    # thoughts in a trace of 8 ticks that the subsidised arbiter took 13 ticks to reach, spending 5
+    # of them holding a content this stream had already retracted; on an 8-tick budget instead it
+    # gets 5 thoughts against 7. The ticks it spent lagging its own source are now hops.
+    # (CORRECTED 2026-08-06 by an adversarial re-run -- this read "7 in 8 ticks where the subsidised
+    # arbiter managed 6", which is neither the same-budget nor the same-chain comparison.)
 
     # (2) the FEEDFORWARD control cannot chain: at most one thought.
     assert len(ff) <= 1, "the feedforward control must yield <= 1 thought (no re-entry), got %r" % (

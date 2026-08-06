@@ -96,6 +96,79 @@ its live saliences land inside it. Moving any of them here would move a producer
 another file and could redden a self-check this module does not own.
 
 =====================================================================================================
+THE TENANCY IS SCOPED TO THE SOURCE (2026-08-06). The defect above, one level up, and it was LIVE.
+=====================================================================================================
+The fix above stopped a defence exceeding the whole band for equal compliant PEERS. It did not stop
+the same subsidy being paid to a content THE PRODUCER ITSELF HAD ALREADY RETRACTED, and on the live
+bus that is what actually held the workspace shut. `_g` is keyed by `(source, content)`, and
+perception's content key ROTATES over the percept ids -- so each fresh percept opened a NEW pool at
+its own salience while the entrenched pool drew `self_boost + hysteresis` and decayed only `decay`
+per tick between refreshes. FIRST TENANT, FOREVER.
+
+MEASURED on `make_brain(seed=0, refit_every=10, persist=False)`, `clock.phase = 0.25`, 120 live
+ticks. `cortex/live_brain.py::thought` -- THE TREE'S ONE GENUINE CROSS-MODULE WORKSPACE READ --
+carried the int 0 on 120 of 120 ticks while perception submitted FOUR distinct contents at 56
+DISTINCT saliences, and workspace occupancy was 1 of 4 on 120 of 120 with three slots never used.
+The proof that this was ENTRENCHMENT and not a quiet bus is in the final pool state:
+
+    pool                    _g          late spikes
+    ('perception', 3)   0.621394             0        <- the LIVE percept
+    ('perception', 0)   0.544709            30        <- the tenant, holding the workspace
+
+The fresh content held MORE attractor charge than the one occupying the workspace and still fired
+nothing, because +0.25 of tenancy took the tenant to a drive the challenger could not survive the
+shared inhibition against. `GlobalWorkspace._defended` carries the fix and the full derivation: a
+tenancy is held by a SOURCE, so a source posting a DIFFERENT content has WITHDRAWN the old one and
+stops paying for it. Same run after the change: `thought` takes 4 distinct values, changes 55 times,
+and NAMES THE CONTENT SUBMITTED THIS TICK on 56 of 56 posting ticks (holding the last percept on all
+64 silent ticks). The pre-fix arbiter, reconstructed and re-run as the RED: 1 distinct, 0 changes,
+19 of 56.
+
+NOTHING PUBLISHED BY THIS MODULE MOVED, re-run rather than argued: winning a SLOT is still a flat
+[0.72, 0.72, 0.72, 0.72, 0.72] and becoming the HEAD still [0.72, 0.825, 0.825, 0.825, 0.825] across
+the same five tenant claims; a 40-content flood still admits 4; a silent source still holds 7 ticks
+then releases; churn is still 9 against the argmax control's 54. Every one of those harnesses has
+its tenant RE-POSTING THE SAME CONTENT, which is the branch this change leaves untouched -- that is
+why they are unchanged, and it is the reason the change is safe rather than a coincidence.
+
+WHAT IT COSTS, disclosed rather than found later. The workspace no longer damps a source's own
+content changes -- it damps competition BETWEEN sources, which is what `count_churn` measures and
+what is unchanged. One consumer relied on the intra-source damping: `reasoning/train_of_thought.py`
+asserted its `think()` trace contains HOLD ticks, and a HOLD tick was the workspace lagging behind
+the very stream that was driving it. Measured, one source posting 'A' at 0.95 then 'B' at 0.95: `g`
+reads A=0.8075 / B=0.9500, both pools saturate at late=30, and the old head was 'A' -- the retracted
+content, on less charge. That assertion was DELETED at the site per F11 (its message named
+"sustained firing", which is measured eleven lines below it by summoning a thought and then posting
+NOTHING -- `hold(3)` returns the same thought under both arbiters, byte-identical). On the module's
+own `max_steps=20` call the same seed and graph now chain the same 7 distinct ignited thoughts in a
+trace of 8 ticks that the subsidised bus took 13 ticks to reach, spending 5 of them holding a
+content this stream had already retracted; given an 8-tick budget instead, the subsidised bus gets 5
+thoughts against 7. (CORRECTED 2026-08-06 by an adversarial re-run -- this read "managed 6", which
+is neither the same-budget figure nor the same-chain figure.)
+
+STILL LIVE AND DELIBERATELY NOT FIXED HERE -- THE RANK TIE-BREAK, AND IT IS A REAL DEFECT.
+`(-late[k], -total[k], k)` falls through to the source string when two pools tie on both spike
+counts. MEASURED post-fix on an exhaustive two-producer grid -- warmups {0,1,2,3} x 51 x 51 salience
+pairs on a 0.01 grid over [0.50, 1.00], scoring the tick AFTER the warmup: 3,576 co-admissions of
+which 1,941 -- 54.3% -- are settled lexicographically. Scoring EVERY tick instead of only the last
+gives 8,940 / 4,848 -- 54.2%, so the figure is a property of the arbiter and not of the counting
+convention. (CORRECTED 2026-08-06 by an adversarial re-run: this paragraph first read "5,365 / 2,438
+-- 45.4%", which reproduces under neither convention; the construction is spelled out here so the
+next reader re-derives it instead of quoting it. The corrected figure is the SAME 3,576 / 1,941 the
+defect report measured PRE-fix, which is the honest headline -- `_defended` did not move this census
+at all, because it changes which pools are subsidised and not how ties among them are broken.) It
+does NOT reach the
+live arm bus, and that is checked rather than assumed: occupancy there is 1 of 4 on 120 of 120
+ticks, so there is no tick on which two contents are ranked at all and `thought` above is decided by
+the ignition dynamics. THE REPAIR IS IDENTIFIED AND PRICED: ranking co-saturated pools by attractor
+charge (`-self._g[k]` before `k`) costs this module NOTHING -- the head-capture table is
+byte-identical at [0.72, 0.825, 0.825, 0.825, 0.825] -- and it REDDENS `cortex/access_consciousness`
+claim (10), whose FOCUS lever IS a peer rename and which therefore has no green state on an arbiter
+that does not read the source string. That claim has to be re-derived onto the peer VOLUME lever it
+already runs in its own quiet-peer arm before the tie-break can be closed, and that is a file this
+pass does not own. Recorded with its number so the next pass inherits a measurement, not a hunch.
+
+=====================================================================================================
 WHAT THIS BUYS ON THE LIVE BRAIN, AND WHAT IT DOES NOT. Measured, 2026-08-06, on the canonical
 `LiveBrain` composition -- 60 wake ticks, `.venv-lake`.
 =====================================================================================================
@@ -107,6 +180,17 @@ admissible candidate broadcast one content: `broadcast_all()` returned a 1-tuple
 and `cortex/live_brain.py::thought` named the percept on 60 of 60 -- unchanged, which is the
 requirement, not the achievement. THE CAPACITY IS NOT THE BINDING CONSTRAINT ON THAT BUS TODAY;
 THE PRODUCER POPULATION IS, and fixing that is not this module's work.
+
+CORRECTION, 2026-08-06, and it is the sharpest lesson in this header. The sentence above --
+"`thought` named the percept on 60 of 60" -- is the phrasing THREE separate commits used as the
+safety property they had preserved. It was true and it was nearly empty: over those 60 ticks
+`thought` carried ONE distinct value, so "named the percept" meant "named the percept that ignited
+on tick 0 and was never displaced". A preserved constant reads exactly like a preserved invariant,
+and 60-of-60 reads like strong evidence when the quantity behind it cannot vary. The block above
+diagnoses why it could not, and `_defended` fixes it; what is worth carrying forward is the
+INSTRUMENT rule rather than the incident: an agreement count over a sequence is worth nothing until
+the DISTINCT-VALUE count of that sequence is printed beside it, which is why every table in this
+header now carries one.
 
 WHAT IT BUYS THE MOMENT A SECOND FACULTY JOINS, which is the whole point and is measured rather
 than asserted. `cortex/access_consciousness.AccessConsciousness` was put on the arm's OWN bus
@@ -911,6 +995,70 @@ class GlobalWorkspace:
         self._last_v = last_v
         return total, late
 
+    def _defended(self, submitted):
+        """The slot occupants that still carry the tenancy defence this tick.
+
+        A TENANCY IS HELD BY A SOURCE, NOT BY A (source, content) STRING PAIR -- and that one
+        distinction is the whole of this method. `self_boost + hysteresis` is a SPECIALIST'S grip on
+        a slot: it exists so that a content which has already ignited is not knocked out by a
+        marginally louder RIVAL, which is the flicker the argmax control demonstrates and this
+        workspace exists to beat. It was never meant to defend a content against ITS OWN AUTHOR. A
+        specialist that posts a DIFFERENT content this tick has WITHDRAWN the one it was posting;
+        the old content is not a rival's claim being out-shouted, it is a RETRACTED claim, and
+        subsidising it against the fresh claim from the same source is the workspace propping up
+        something nobody is asserting any more.
+
+        So the defence is withheld from a held `(src, content)` exactly when `src` is posting this
+        tick and is NOT posting that content. Three cases, and the two that are not the defect are
+        deliberately untouched:
+
+          * `(src, content)` IS submitted -> the source re-asserts its own tenancy -> DEFENDED.
+            Every winnability figure this module publishes is measured on a tenant that re-posts the
+            same content every tick, so this branch is the one they all run through and none of them
+            moves. Re-run after the change: the challenger still wins a slot at a flat 0.720 against
+            tenants at 0.550/0.5797/0.6573/0.700/0.750, and still becomes the head at 0.720/0.825/
+            0.825/0.825/0.825. Byte-identical to the table in the module header.
+          * `src` submitted NOTHING this tick -> silent, not superseding -> DEFENDED. This is the
+            hysteresis-across-a-quiet-tick that "ignited content is HELD across ticks, not rebuilt
+            from scratch each tick" names, and the persist/release criterion measures it (7 held
+            ticks then release). An EMPTY tick supersedes nothing at all, so a workspace with no
+            submissions behaves exactly as before.
+          * `src` submitted something ELSE -> superseded -> NOT DEFENDED. The retracted content
+            keeps its attractor charge `_g` and keeps competing on it; it loses only the subsidy.
+            It is still free to win on its own charge, which is what makes this a narrowing of who
+            pays for a slot rather than an eviction rule.
+
+        THE MEASUREMENT THAT FORCED IT, on `make_brain(seed=0, refit_every=10, persist=False)` with
+        `clock.phase = 0.25`, 120 live ticks. `cortex/live_brain.py::thought` -- the tree's ONE
+        genuine cross-module workspace read -- carried the int 0 on 120 of 120 ticks while
+        `perception` submitted FOUR distinct contents at 56 DISTINCT saliences. The final pool state
+        is the proof that this was entrenchment and not a quiet bus: `_g[('perception', 3)]` was
+        0.621394 against the incumbent `_g[('perception', 0)]` at 0.544709 -- THE FRESH CONTENT HELD
+        MORE ATTRACTOR CHARGE THAN THE ONE OCCUPYING THE WORKSPACE -- and the fresh pool still fired
+        0 sustained spikes against the incumbent's 30, because +0.25 of tenancy defence took the
+        incumbent to a drive the challenger could not survive the shared inhibition against.
+        Workspace occupancy was 1 of 4 on 120 of 120 ticks with the other three slots never used.
+
+        Note the shape rather than the numbers, because the numbers are the perishable half: the
+        content key ROTATES, so a fresh percept always starts a NEW pool at its own salience while
+        the entrenched pool draws a defence and decays only `decay` per tick between refreshes. This
+        is the SAME defect class as the one the defence-exceeds-band fix closed for equal compliant
+        PEERS, one level up -- there the winner was decided by a subsidy no challenger could match,
+        here by a subsidy paid to a claim that had already been withdrawn.
+
+        DEGENERATE INPUTS. ZERO/EMPTY submissions -> `active` is empty, no source supersedes, every
+        occupant keeps its defence (unchanged behaviour). SILENCE (a source posting only
+        sub-rheobase claims) still counts as posting: an audible-or-not submission is still the
+        source stating what it is currently asserting, and `_g` already decides audibility. SINGLE
+        occupant re-posting itself -> defended, as above. An EMPTY workspace -> the comprehension is
+        over `self._slots`, so it returns an empty set without touching `submitted`."""
+        active = {src for src, _content in submitted}
+        return {
+            (src, content)
+            for src, content, _hold in self._slots
+            if (src, content) in submitted or src not in active
+        }
+
     def step(self):
         """Run ONE workspace cycle. Returns the TOP broadcast content (or None), clears the buffer.
 
@@ -972,7 +1120,7 @@ class GlobalWorkspace:
         #    the unit budget by, so granting it to C occupants is exactly the budget being spent.
         cap = self.capacity
         self._g_lat = self._G_INH / cap  # read by _settle_chunk; set before any thread fans out
-        held = {(entry[0], entry[1]) for entry in self._slots}
+        held = self._defended(submitted)
         drives = {}
         for key, g in self._g.items():
             d = g
@@ -1923,20 +2071,31 @@ def main():
     assert bind[4][0] > 0.9, f"spiking multi-item binding must stay high at K=4 ({bind[4][0]:.2f})"
 
     # (e) THE DECLARED READ SURFACE: `current` says WHAT, `broadcast_hold` says HOW STRONGLY -----
-    # The defect this section exists to catch, MEASURED on the live brain before the accessor
-    # existed: over 150 wake ticks `broadcast()` returned '0' every tick (1 distinct value, 0
-    # changes) while the slot's attractor charge cycled 0.6 -> 0.51 -> 0.4335 (3 distinct, 149
-    # changes) with no declared way to read it. That live shape is reproduced here exactly --
-    # constant salience, cycling content, incumbent hysteresis holding the slot -- so the
-    # dissociation is a property of this module rather than an anecdote about one brain run.
+    # RE-DERIVED 2026-08-06, ONTO A DIFFERENT INPUT, AND THE RE-DERIVATION IS THE POINT. This
+    # section used to drive the dissociation with CYCLING CONTENT at a constant salience and assert
+    # that `current` reported ONE distinct value over 120 ticks. That assertion was true, and what
+    # made it true was the ENTRENCHMENT `_defended` now closes -- a superseded content held the
+    # workspace against its own author's fresh claim. So the criterion was measuring the defect and
+    # scoring it as the feature, and its own failure message said what to do about that ("re-derive
+    # the whole section rather than keeping it"); it fired on exactly the input it named. It is
+    # re-derived here, NOT weakened: the assertion `current` reports 1 distinct value / 0 changes is
+    # kept VERBATIM and moved onto the input where it is a statement about the read surface --
+    # ONE content re-asserted at a VARYING claim, which is what a specialist that keeps attending
+    # the same thing actually does. That input also makes the A/B one-variable for the first time:
+    # the RED below is the same content at a CONSTANT claim, so green and red now differ ONLY in
+    # whether the claim moves, where before they differed in the content cycling as well.
     e_ws = GlobalWorkspace(seed=0)
     assert e_ws.current is None and e_ws.broadcast_hold == 0.0 and e_ws.broadcast_all() == (), (
         "an EMPTY workspace must read as (None, 0.0, ()) -- never raise, never a stale number, and "
         "the multi-slot accessor must give an empty TUPLE rather than None so a caller may iterate"
     )
+    e_lo = e_ws.ignition_threshold  # the claim band this module is written against, read off itself
+    e_hi = 1.0 - (e_ws.self_boost + e_ws.hysteresis)
     hold_seq, content_seq = [], []
     for t in range(120):
-        e_ws.submit("perception", t % 3, 0.6)  # the LIVE shape: constant salience, cycling content
+        # ONE content, a claim that MOVES inside the compliant band: WHAT is pinned, HOW STRONGLY
+        # is not. Re-asserting the same content is the branch `_defended` leaves untouched.
+        e_ws.submit("perception", "same", e_lo + (e_hi - e_lo) * ((t % 7) / 6.0))
         e_ws.step()
         content_seq.append(e_ws.current)
         hold_seq.append(e_ws.broadcast_hold)
@@ -1955,18 +2114,91 @@ def main():
         "broadcast_hold must stay inside its [0,1] contract"
     )
 
-    # REACHABLE RED for that criterion: the same 120 ticks with the content REFRESHED every tick.
-    # `g` is then pinned at the submitted salience and the hold cannot move -- so the assertion
-    # above is falsifiable by an input this module accepts, not merely by breaking the accessor.
+    # REACHABLE RED for that criterion: the same 120 ticks with the claim held CONSTANT. `g` is then
+    # pinned at the submitted salience and the hold cannot move -- so the assertion above is
+    # falsifiable by an input this module accepts, not merely by breaking the accessor.
     red_ws = GlobalWorkspace(seed=0)
     red_hold = []
     for _ in range(120):
-        red_ws.submit("perception", "same", 0.6)  # refreshed every tick -> no decay, no movement
+        red_ws.submit("perception", "same", 0.6)  # constant claim -> no decay, no movement
         red_ws.step()
         red_hold.append(red_ws.broadcast_hold)
     assert count_switches(red_hold) == 0 and len(set(red_hold)) == 1, (
         f"the RED must actually be red: a never-decaying hold must report 0 changes, got "
         f"{count_switches(red_hold)} over {sorted(set(red_hold))}"
+    )
+
+    # (e2) THE CONTENT ROUTE TRACKS A SUPERSEDING SOURCE -- the criterion `_defended` owes, on the
+    # input the block above was retired from. A source that posts a DIFFERENT content is retracting
+    # the one it was posting, so the workspace must follow it rather than subsidise the retracted
+    # claim. Asserted as CORRESPONDENCE and not as variety: `current` must BE the content submitted
+    # this tick, on every tick. A route that merely CHANGES would pass a workspace cycling through
+    # stale contents in some other order, which is the thing this claim must be able to reject.
+    e2_seq = []
+    e2_ws = GlobalWorkspace(seed=0)
+    for t in range(120):
+        e2_ws.submit("perception", t % 3, 0.6)  # constant claim, CYCLING content: the live shape
+        e2_ws.step()
+        e2_seq.append(e2_ws.current)
+    assert e2_seq == [t % 3 for t in range(120)], (
+        f"a superseded content must not hold the workspace against its own author: `current` must "
+        f"name the content submitted this tick on all 120, got {count_switches(e2_seq)} changes "
+        f"over {sorted(set(e2_seq))}"
+    )
+    # ITS RED, CONSTRUCTED AND RUN: the same 120 ticks with the pre-fix tenancy restored, where
+    # EVERY occupant is defended unconditionally. This is the arbiter that produced the live
+    # measurement in `_defended`'s docstring, so the red here is the defect itself and not a
+    # sabotage of the accessor.
+    e2_red_ws = GlobalWorkspace(seed=0)
+    e2_red_ws._defended = lambda submitted: {(s, c) for s, c, _h in e2_red_ws._slots}
+    e2_red = []
+    for t in range(120):
+        e2_red_ws.submit("perception", t % 3, 0.6)
+        e2_red_ws.step()
+        e2_red.append(e2_red_ws.current)
+    assert count_switches(e2_red) == 0 and len(set(e2_red)) == 1, (
+        f"the RED must actually be red: under unconditional tenancy the first content must hold all "
+        f"120 ticks, got {count_switches(e2_red)} changes over {sorted(set(e2_red))}"
+    )
+
+    # (e3) THE DEFENCE FOLLOWS THE SOURCE ON EVERY SLOT, NOT JUST ON THE HEAD -- the half of
+    # `_defended`'s rule that (e2) structurally cannot reach. (e2) drives ONE source, so its
+    # workspace never holds more than one content and nothing above this line ever presents
+    # `_defended` with an occupant that is not the head. MEASURED gap this closes, by mutating and
+    # RUNNING rather than by reading: a tenancy that withholds the defence from the head occupant
+    # only and leaves every lower-ranked occupant subsidised passed the ENTIRE rest of this
+    # self-check, while producing a different workspace on 20 of 40 ticks of a five-source
+    # superseding load (SHIPPED admitted ('a2',) where the mutant admitted ('b1', 'a2') -- 'b1'
+    # being a content its own source had already retracted). `_defended` is a pure function of
+    # (`_slots`, `submitted`), so the rule is asserted here DIRECTLY on a four-slot state carrying
+    # all three documented cases at once, with a superseded occupant BELOW the head.
+    e3_slots = (
+        ("a", "old_a", 0.9),  # slot 0, the HEAD: its source posts something else -> superseded
+        ("b", "keep_b", 0.8),  # slot 1: its source re-asserts this content       -> defended
+        ("c", "old_c", 0.7),  # slot 2: superseded, and NOT the head             -> superseded
+        ("d", "quiet_d", 0.6),  # slot 3: its source is silent this tick           -> defended
+    )
+    e3_sub = {("a", "new_a"): 0.9, ("b", "keep_b"): 0.8, ("c", "new_c"): 0.7}
+    e3_ws = GlobalWorkspace(seed=0)
+    e3_ws._slots = e3_slots
+    assert e3_ws._defended(e3_sub) == {("b", "keep_b"), ("d", "quiet_d")}, (
+        f"the tenancy defence must follow the SOURCE on every slot -- a re-asserted or silent "
+        f"occupant keeps it and a superseded one loses it wherever it sits in the rank; got "
+        f"{sorted(map(repr, e3_ws._defended(e3_sub)))}"
+    )
+    # ITS RED, CONSTRUCTED AND RUN: the same state under a tenancy that withholds the defence from
+    # the head occupant ONLY. That is the mutant this criterion exists to reject, and until this
+    # line it had no reachable red anywhere in this file.
+    e3_red_ws = GlobalWorkspace(seed=0)
+    e3_red_ws._slots = e3_slots
+    e3_red_ws._defended = lambda submitted: {
+        (s, c)
+        for i, (s, c, _h) in enumerate(e3_red_ws._slots)
+        if i > 0 or (s, c) in submitted or s not in {src for src, _content in submitted}
+    }
+    assert ("c", "old_c") in e3_red_ws._defended(e3_sub), (
+        "the RED must actually be red: a head-only tenancy must still subsidise the superseded "
+        "content sitting BELOW the head"
     )
 
     # BOUNDARIES -- zero, silence, single element, and the control path's out-of-range salience.
@@ -2145,10 +2377,22 @@ def main():
     except TypeError:
         pass  # the RED, reached: 'tuple' object does not support item assignment
     print(
-        f"\nread surface : over 120 ticks of constant-salience/cycling-content input the content "
-        f"route reports {len(set(content_seq))} distinct value(s) / {content_changes} changes while "
-        f"broadcast_hold reports {len(set(hold_seq))} / {hold_changes}; refresh-every-tick RED "
+        f"\nread surface : over 120 ticks of ONE content at a MOVING claim the content route "
+        f"reports {len(set(content_seq))} distinct value(s) / {content_changes} changes while "
+        f"broadcast_hold reports {len(set(hold_seq))} / {hold_changes}; constant-claim RED "
         f"reports {len(set(red_hold))} / {count_switches(red_hold)}"
+    )
+    print(
+        f"tenancy      : on CYCLING content the route now TRACKS its source -- "
+        f"{sum(1 for t, c in enumerate(e2_seq) if c == t % 3)}/120 ticks name the content just "
+        f"submitted ({len(set(e2_seq))} distinct / {count_switches(e2_seq)} changes); the pre-fix "
+        f"unconditional-tenancy RED reports {len(set(e2_red))} / {count_switches(e2_red)}"
+    )
+    print(
+        f"             : and it follows the SOURCE on EVERY slot -- a 4-slot state of "
+        f"superseded/re-asserted/superseded/silent occupants defends "
+        f"{len(e3_ws._defended(e3_sub))} of 4, where the head-only RED defends "
+        f"{len(e3_red_ws._defended(e3_sub))}"
     )
 
     print(

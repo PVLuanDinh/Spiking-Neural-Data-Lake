@@ -208,10 +208,27 @@ class AutonomousArm:
         self._cover_new = (
             0  # newly-reached cells this run -- the honest "is it getting better" line
         )
-        # Global-Workspace ignitions: how many times the single broadcast slot changed hands. A
-        # running count of "something new became globally available", which is a different claim from
-        # access_index (how available) or pci (how integrated) -- both of which can sit high while the
-        # same content is held. Counted in _workspace_tick, the one place the workspace steps.
+        # Global-Workspace ignitions: how many times the broadcast HEAD changed hands (the workspace
+        # holds up to `capacity` contents; this counts the top one). A running count of "something
+        # new became globally available", which is a different claim from access_index (how
+        # available) or pci (how integrated) -- both of which can sit high while the same content is
+        # held. Counted in _workspace_tick, the one place the workspace steps.
+        #
+        # THIS COUNTER WAS STRUCTURALLY PINNED AT 1 AND IS NOW LIVE, which is worth knowing before
+        # comparing it against any figure recorded before 2026-08-06. The bus used to subsidise a
+        # content perception had already superseded, so the head never changed after the first
+        # ignition: READ OFF `_ignitions` over 120 live ticks of `make_brain(seed=0, refit_every=10,
+        # persist=False)` at `clock.phase = 0.25`, it was 1 -- the None -> first-percept transition
+        # and nothing after it. With `thalamus/global_workspace.py::_defended` scoping that subsidy
+        # to a tenancy the source still asserts, the same run counts 56. A rise here is the counter
+        # starting to work, not the workspace becoming unstable -- inter-source competition is
+        # unchanged (the workspace's own churn criterion still reads 9 against the argmax control's
+        # 54); what moved is that perception's own percept changes now reach the head.
+        #
+        # Both numbers are READ FROM THIS ATTRIBUTE, not inferred from `thought`'s change count.
+        # They differ from it (55 changes over the same run) because this is incremented only on the
+        # wake ticks where `_workspace_broadcast` runs, and the first increment is the transition out
+        # of None. A count taken on a different tick population is a different count.
         self._ignitions = 0
         self._prev_thought = None
         self._allo_last_ee = None  # previous end-effector pose, for _self_motion's dead reckoning
@@ -1213,7 +1230,7 @@ class AutonomousArm:
         return min(1.0, dev)
 
     def _percept_salience(self, deviance):
-        """Perception's claim on the single workspace slot, DERIVED from the percept itself.
+        """Perception's claim on the workspace, DERIVED from the percept itself.
 
         THE DEFECT THIS REPLACES, measured before the edit on 150 LIVE wake ticks of the canonical
         brain (`make_brain()` + `Brain.tick()`, subjective day forced): every submission reaching
@@ -1250,30 +1267,51 @@ class AutonomousArm:
         [0.55, 0.80]. The band this returns is [0.55, 0.75] on the defaults -- inside it with
         margin, by construction rather than by luck.
 
-        A RUNNING MEAN AND NOT SOMETHING CLEVERER, decided by measurement and recorded so it is not
-        re-litigated. The live deviance series is right-skewed and opens with a one-off onset of
-        1.0, so a mean-relative ratio sits below 0.5 and uses only about half the band -- which
-        looks like a reason to reach for a median or a rank. All three were built and replayed
-        through the REAL `GlobalWorkspace` on the SAME captured 150-tick live series: running mean
-        gave salience in [0.5684, 0.6672] / 150 distinct, a P2 running median [0.5834, 0.6772] /
-        149, and a uniform rank over a 64-deep window [0.5500, 0.7387] / 94 -- and **all three
-        broadcast exactly ONE content value with ZERO flips**, the same as the pinned literal. The
-        extra machinery buys nothing measurable, so the form with no parameters at all is the one
-        that ships (P2: the mechanism that wins is the one shown better, and none of them was).
+        A RUNNING MEAN AND NOT SOMETHING CLEVERER -- RE-DERIVED 2026-08-06, BECAUSE THE NULL THAT
+        USED TO JUSTIFY IT IS DEAD AND ITS REPLACEMENT POINTS THE OTHER WAY. The live deviance
+        series is right-skewed and opens with a one-off onset of 1.0, so a mean-relative ratio sits
+        below 0.5 and uses only about half the band -- which looks like a reason to reach for a
+        median or a rank. This paragraph used to answer that with a null: all three forms replayed
+        through the REAL `GlobalWorkspace` "broadcast exactly ONE content value with ZERO flips",
+        so the extra machinery bought nothing and the parameter-free form shipped by default.
+        THAT MEASUREMENT WAS TAKEN ON AN ARBITER THAT COULD NOT HAVE DISTINGUISHED THEM. It held a
+        content its own source had already superseded (`thalamus/global_workspace.py::_defended`
+        records the defect and the fix), so EVERY producer-side form was going to read one content
+        and zero flips -- the null was a property of the consumer, and reading it as a verdict on
+        these three forms was measuring the bus and scoring the signal.
 
-        WHY THE BROADCAST CONTENT STILL CANNOT MOVE, and it is NOT this signal's fault -- stated
-        because the next reader will otherwise try to fix it here. The bus gives its incumbent
-        `self_boost + hysteresis = 0.25` of defence, while the widest claim a compliant producer
-        may make above the rheobase is `hi - lo = 0.20`. The defence is LARGER THAN THE WHOLE BAND,
-        so a challenger cannot out-drive a freshly refreshed incumbent no matter what it submits.
-        Measured, not deduced: driving the same workspace with a producer that ALTERNATES between
-        the two band extremes on consecutive ticks does flip the content (40 flips in 119), so the
-        flip is reachable and the harness is not degenerate -- it just needs a swing no real signal
-        makes. The same arithmetic caps what this channel can offer a downstream reader at 0.20,
-        against the > 0.30 shift `cortex/access_consciousness` was measured to need before its own
-        output moves. Both ceilings are properties of `thalamus/global_workspace.py`'s constants,
-        which this pass does not own; the signal here is now real, and that is the half that was
-        missing.
+        RE-RUN on the fixed arbiter, same three forms, same captured live series (74 wake ticks,
+        4 contents), and the comparison now discriminates -- so it is a real P2 result rather than
+        a tie broken on parsimony:
+
+            form             salience range        distinct   heads  flips  TRACKS the percept
+            running mean     [0.5684, 0.6716]            74       4     73     74/74
+            running median   [0.5834, 0.6806]            71       4     73     74/74
+            rank(64 deep)    [0.5500, 0.7395]            63       4     59     60/74
+
+        The same three on the PRE-FIX arbiter read 1/0, 1/0 and 3/8 heads/flips and tracked 25, 25
+        and 26 of 74 -- which is the old null, reproduced, and the reason it must not be quoted.
+        The running mean is TIED-BEST at 74/74 and the rank form LOSES 14 ticks: its window puts a
+        rank-0 sample at exactly the rheobase, where the percept makes no audible claim at all and
+        the workspace keeps broadcasting the previous one. So the form with no parameters is now
+        the form that is at least as good AND has no parameters, which is a stronger reason to ship
+        it than the one this paragraph used to give.
+
+        WHAT THIS CHANNEL CAN NOW MOVE -- the paragraph here used to open "WHY THE BROADCAST CONTENT
+        STILL CANNOT MOVE, and it is NOT this signal's fault", and that is CLOSED. It was true, and
+        its cause was one level up: the bus paid its occupant `self_boost + hysteresis = 0.25` of
+        defence while the widest claim a compliant producer may make above the rheobase is
+        `hi - lo = 0.20`, and the occupant kept that subsidy even after perception had moved to a
+        different percept. With the subsidy scoped to a tenancy the source is still asserting, the
+        broadcast follows this signal: measured over 120 live ticks of `make_brain(seed=0,
+        refit_every=10, persist=False)` at `clock.phase = 0.25`, `cortex/live_brain.py::thought`
+        takes 4 distinct values with 55 changes and NAMES THE PERCEPT SUBMITTED THIS TICK on 56 of
+        56 posting ticks (and holds the last one on all 64 ticks where perception is silent, which
+        is the hysteresis working rather than failing). The same run on the pre-fix bus: 1 distinct
+        value, 0 changes, 19 of 56. What is still capped is the RANGE, not the content -- this
+        channel offers a downstream reader at most `hi - lo = 0.20` of swing, against the > 0.30
+        shift `cortex/access_consciousness` was measured to need before its own output moves, and
+        that ceiling is a property of `thalamus/global_workspace.py`'s constants.
 
         Checked at the four degenerate inputs, because a P1 rewrite in this tree already shipped a
         `mu/1e-12 = 1e12` singularity onto a live path. ZERO deviance -> ratio 0 -> the bare
@@ -1300,13 +1338,21 @@ class AutonomousArm:
 
     def _workspace_broadcast(self, percept, threat_salience):
         """Additive Global-Workspace tick: brain regions (perception + a salience/threat detector)
-        compete for the single workspace slot and the winner is broadcast to all. READ-ONLY
-        annotation -- it selects no action, gates no motion, and never touches the reflex/E-STOP.
-        Returns the broadcast content, or None when there is no workspace.
+        compete for the workspace's slots and the ranked head is returned. READ-ONLY annotation --
+        it selects no action, gates no motion, and never touches the reflex/E-STOP.
+        Returns the head broadcast content, or None when there is no workspace.
 
         Perception's salience is DERIVED per tick (see _percept_salience); it was the literal 0.6
         until this pass. The threat channel carries the amygdala's REAL learned output and always
-        did -- see the caller in step() for the measured reason it reads 0.0 on this brain."""
+        did -- see the caller in step() for the measured reason it reads 0.0 on this brain.
+
+        OCCUPANCY ON THIS BUS IS 1 OF 4, MEASURED, and that is a producer fact rather than a
+        capacity one: `perception` is the only admissible submitter, because `salience`/threat posts
+        a structural 0.0 on every wake tick (the amygdala is never paired on the wake path -- the
+        self-check proves that null in both directions). So the head IS the whole workspace here,
+        `broadcast_all()` returns a 1-tuple, and no tick of this bus is decided by a rank tie-break.
+        Adding a second admissible producer is what would change that, and it is not this method's
+        work."""
         if self.workspace is None:
             return None
         if percept is not None:
