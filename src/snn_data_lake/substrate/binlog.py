@@ -77,7 +77,35 @@ class BinLog:
         """A crash mid-append can leave a partial length/payload frame at the end. replay() stops at it
         (short read), but a later append() writes at physical EOF -- BEHIND the torn frame -- so every
         future record would be orphaned on replay. Truncate to the last COMPLETE frame so appends land
-        in a readable position. Never-forget must survive a crash, not just a clean exit."""
+        in a readable position. Never-forget must survive a crash, not just a clean exit.
+
+        `valid` IS AN ARITHMETIC RUNNING OFFSET, NOT `f.tell()`, and that is a measurement rather
+        than a style preference. This loop read `valid = f.tell()` per frame until 2026-08-05.
+        `BufferedReader.tell()` is `raw.tell() + buffer_offset` and `raw.tell()` is an lseek, so the
+        shipped form paid ONE SYSCALL PER RECORD to re-derive a number this loop already knows: both
+        `read` calls above are guarded (`len(head) < _LEN.size` and `len(f.read(n)) < n` both break),
+        so when control reaches here EXACTLY `_LEN.size + n` bytes were consumed, and the sum from
+        `len(_MAGIC)` is the same position `tell()` would return. MEASURED on isolated scratch lakes,
+        `.venv-lake` free-threaded (3.14.6, `sys._is_gil_enabled()` False), min of 3 warmed runs:
+        this scan costs **76.0 -> 25.9 ms at 100k x 64 B (2.94x), 708.1 -> 240.2 ms at 1M x 64 B
+        (2.95x), and 886.4 -> 366.0 ms at 1M x 500 B / 504 MB (2.42x)**, taking a full `BinLog(path)`
+        construction from 1562.1 to 1041.7 ms (1.50x) at that scale -- which is 86 percent of the
+        live operator lake, 586,919,858 B measured 2026-08-05, so read it as a floor that the lake
+        grows past rather than as today's exact figure. RE-VERIFIED INDEPENDENTLY the same day on
+        the same env (2.98x / 2.97x / 2.34x on the scan; 2.06x / 2.03x / 1.69x on construction with
+        `dedup=False`), and the mechanism was confirmed by isolating what was removed: 1,000,000
+        `f.tell()` calls cost 321.8 ms against 16.5 ms for the additions that replaced them, which
+        accounts for the whole 356.9 ms saved at 1M records. That per-record 305 ns is a syscall on
+        an already-open fd, so it is CACHE-INDEPENDENT: a cold page cache does not shrink the
+        absolute saving, it only grows the denominator. The ratios above are therefore the WARM
+        (optimistic) end and the milliseconds saved are the honest invariant. The
+        returned `valid` was byte-identical at all three scales and at nine constructed edge cases
+        (empty file, magic only, one record, clean, torn payload, torn header, zero-length frame,
+        zero-length-then-data, wrong magic). Two variants were measured and REJECTED: skipping the
+        payload with `f.seek()` instead of reading it is SLOWER (2.13-2.57x, because each seek
+        discards the read-ahead buffer), and merging this scan with `replay()` into one pass is
+        faster still (2.3x on construction) but restructures the crash-recovery path, which is not
+        a change to make in passing -- it is recorded as available, not taken."""
         valid = len(_MAGIC)
         with open(self.path, "rb") as f:
             f.seek(len(_MAGIC))
@@ -90,7 +118,7 @@ class BinLog:
                     n == 0 or len(f.read(n)) < n
                 ):  # zero-length or torn payload -> stop (both undecodable)
                     break
-                valid = f.tell()
+                valid += _LEN.size + n  # == f.tell(); see the docstring for why it is not f.tell()
         if valid < os.path.getsize(self.path):
             with open(self.path, "r+b") as f:
                 f.truncate(valid)
@@ -100,6 +128,17 @@ class BinLog:
         Flush + fsync so it survives a crash. Returns True if written, False if a duplicate."""
         if not isinstance(payload, (bytes, bytearray)):
             raise TypeError("BinLog.append: payload must be bytes")
+        if not payload:
+            # A u32 length of 0 is how this FORMAT spells "torn frame", not "empty record":
+            # replay() stops at one and _repair_torn_tail() TRUNCATES there. Writing one is
+            # therefore not storing nothing, it is capping the lake -- measured 2026-08-05, five
+            # records appended after an accepted append(b"") were destroyed by the next
+            # construction (362 -> 188 bytes, 0/5 survived) while count() reported all eleven.
+            # See PROPERTY 9 in main() for the constructed red. Refused here rather than at the
+            # callers because the one durable lake is the thing being protected.
+            raise ValueError(
+                "BinLog.append: payload must be non-empty (a 0 length is a torn frame)"
+            )
         payload = bytes(payload)
         # A BinLog is now SHARED (substrate/home.py caches one per path, because constructing one
         # costs a full tail-repair scan plus a full replay -- 708 ms on a 425 MB lake). Shared means
@@ -128,7 +167,54 @@ class BinLog:
         the speedup (~32x for 300 records there; an isolated write-only benchmark showed far more -- the
         ratio depends on the disk and the batch size, so the check asserts a floor, not a headline number).
         Same durability contract for the batch as a whole: once this returns, every record in it survives
-        a crash. Skips byte-identical duplicates when dedup. Returns the number written."""
+        a crash. Skips byte-identical duplicates when dedup. Returns the number written.
+
+        THE CROSSOVER IS N=2, MEASURED, AND THERE IS NO WIDTH AT WHICH THIS LOSES. Swept on isolated
+        scratch lakes, `.venv-lake` free-threaded (3.14.6), N x `append()` against ONE `extend(N)`,
+        every pair verified byte-identical on disk: N=1 **1.0x** (a tie -- one record, one fsync,
+        the same call), N=2 1.9x, N=4 3.5x, N=8 7.3x, N=16 9.9x, N=32 21.3x, N=64 34.8x, N=128
+        69.7x, N=256 81.6x, N=1024 346.7x, N=4096 1084x, N=10,000 1341x. Per-record cost falls
+        738.8 -> 0.334 us and FLATTENS at 0.264 us/rec from N=100,000 (identical at N=1,000,000),
+        which is the floor left once the fsync is fully amortised. For contrast a per-record
+        `append()` measured 459.0 us/rec with the same payloads, of which **fsync is 77.9 percent**,
+        open/close 13.4 percent, `os.path.getsize` 3.2 percent and the lock 0.015 percent. So the
+        gate on batching is NOT a width -- it is the durability paragraph below.
+
+        READ THE MULTIPLES AS AN ORDER, NOT AS CONSTANTS. Re-swept independently 2026-08-05 on the
+        same machine and env: the SHAPE reproduced exactly -- N=1 a tie (1.00x on min, 0.99x on
+        median over 60 alternating trials, so the "never loses" claim survives the single-shot
+        noise that first showed 0.8x there), first win at N=2, monotone after, byte-identical on
+        disk at every N -- and `append()` re-measured at 452 us/rec against the 459 above. But the
+        RATIOS came in roughly half: 1.4x at N=2, 2.1x at N=4, 11.0x at N=32, 196.7x at N=1024.
+        The whole difference is on the `extend()` side, which is fsync-bound and therefore a
+        property of the disk's state on the day, not of this code. What is stable and load-bearing
+        is the crossover (N=2), the monotonicity, and the byte-equality; a specific multiple is
+        not, so do not build a threshold on one.
+
+        WHAT BATCHING COSTS, STATED AND BOUNDED, because it is a real durability trade and not a
+        free win. `append()` fsyncs per record, so a record is durable the instant its own call
+        RETURNS. `extend()` fsyncs once, so NO record in the batch is durable until the whole call
+        returns, and a crash before that can lose **any subset of the batch, up to all N of them**
+        (the OS may have flushed some pages and not others; nothing here orders them). The bound is
+        therefore the BATCH, and for a caller that accumulates records over time the window is its
+        buffering interval, not its batch size. Two consequences worth naming:
+          * batching is safe where the records already exist before the call -- a bulk import, a
+            night's derived schema triples, a replayed corpus -- because the window is microseconds
+            and the caller had nothing durable to lose during it;
+          * batching is NOT safe by buffering ACROSS ticks anything whose loss breaks P4b's "a
+            restart is not amnesia". Autobiographical episodes (`home.save_episode`, one record per
+            wake tick) are exactly that: buffering 32 of them to earn the 21.3x above would mean a
+            crash costs the brain 32 ticks of memory it believes it formed. Do not.
+
+        LIVE CALLERS TODAY: NONE. Measured 2026-08-05 -- the only `.extend(` on a lake object
+        anywhere in `src/`, `tests/` or `tools/` is `home.KnowledgeLog.extend` (which forwards
+        here) and this module's own self-check, and `KnowledgeLog.extend` has no caller either. So
+        the batched mechanism is built, is up to 1341x faster, and is P3 shape 1 (method never
+        called) while the unbatched path is the one in use. The nearest live N-per-tick append loop
+        is `cortex/brain.py`'s schema induction, which calls `log.append(...)` once per derived
+        triple under `budget=32` on every fourth night -- N up to 32, measured 21.3x, and it is the
+        record set this paragraph's first bullet describes. Changing it is a one-line edit in a file
+        this pass does not own; it is reported, not made."""
         written = 0
         # SAME CRITICAL SECTION AS append(), added 2026-08-04. This method held no lock while
         # append() held one, and the justification append() gives applies here verbatim: the
@@ -149,6 +235,10 @@ class BinLog:
                 for payload in payloads:
                     if not isinstance(payload, (bytes, bytearray)):
                         raise TypeError("BinLog.extend: every payload must be bytes")
+                    if not payload:  # same torn-frame refusal as append(); see PROPERTY 9
+                        raise ValueError(
+                            "BinLog.extend: every payload must be non-empty (a 0 length is a torn frame)"
+                        )
                     payload = bytes(payload)
                     if self.dedup and payload in self._seen:
                         continue
@@ -167,7 +257,25 @@ class BinLog:
 
     def replay(self):
         """Yield every stored record's payload bytes, in append order. A torn trailing record (a crash
-        mid-append) is detected by a short read and stops the replay cleanly -- the log never corrupts."""
+        mid-append) is detected by a short read and stops the replay cleanly -- the log never corrupts.
+
+        THIS DOES NOT PARALLELISE, AND THAT IS A STRUCTURAL RESULT, NOT A WIDTH TO OUTGROW. Swept
+        2026-08-05 on `.venv-lake` free-threaded (3.14.6, `sys._is_gil_enabled()` False, 28 cores)
+        and re-run independently the same day: a sequential frame-offset scan followed by DISJOINT
+        frame ranges sliced per thread, against the best serial parse, at thread counts
+        {2,4,8,14,28}. Best parallel time at each width, as a fraction of serial:
+        10k x 64 B **0.54x**, 100k x 64 B 0.57x, 1M x 64 B 0.53x, 100k x 500 B 0.71x,
+        1M x 500 B / 504 MB **0.59x**. More threads never helped at any width. Parallel output was
+        compared element-by-element against serial at every width and thread count and was
+        identical, so this is a speed null and not a correctness one.
+        CAUSE: each record's u32 length determines the NEXT offset, so frame parsing is inherently
+        sequential; only the slice-and-copy half can be split and that half is memory-bandwidth
+        bound. Adding cores does not add bandwidth. Unlike the neuron/synapse updates this build
+        parallelises, there is no independence here to exploit -- so do not gate it on a width.
+        THE NULL IS NOT AN ARTEFACT OF A DEAD POOL: the same threading pattern running a CPU-bound
+        spin scaled 2.00x / 3.80x / 6.49x / 8.23x / 9.68x at 2 / 4 / 8 / 14 / 28 threads in the
+        same process, and a per-thread start/stop witness recorded up to 27 genuinely concurrent
+        workers during the replay runs. The pool runs; the work does not divide."""
         if not os.path.exists(self.path):
             return
         with open(self.path, "rb") as f:
@@ -476,6 +584,109 @@ def main():
         )
         print(
             f"float16 weights    : {len(w)} floats -> {len(pk) - _LEN.size} B (float32 would be {f32_bytes} B; halved)"
+        )
+
+        # ---- PROPERTY 8: ONE BinLog, MANY THREADS -- append() is one critical section -----------
+        # `self._lock` has guarded append()/extend()/rewrite() since 2026-08-04 and NOTHING in this
+        # tree could fail if it were deleted. `substrate/home.py` carries a race probe, but it
+        # covers `_LOG_LOCK` -- the CACHE that decides how many BinLog objects exist -- and passes
+        # with a single shared instance whose own writer is unguarded. This is the criterion for
+        # the WRITER, and P8's rule is why it is here: an unmeasured guard on the one durable store
+        # is a claim, not a mechanism.
+        #
+        # REACHABLE RED, CONSTRUCTED AND RUN 2026-08-05 on the free-threaded `.venv-lake` (3.14.6,
+        # `sys._is_gil_enabled()` False, 28 cores), 40 trials x 16 threads on isolated scratch
+        # lakes, with `self._lock` swapped for a no-op context manager:
+        #     append: 40/40 trials stored the SAME payload more than once (worst 5 copies on disk),
+        #             and 40/40 had `_count` disagree with the lake (`+=` is not atomic);
+        #     extend: 0/40 duplicated -- ONE record per call leaves almost no window -- but 3/40
+        #             still lost a `_count` update, so its lock is load-bearing on a narrower
+        #             observable rather than on none.
+        # With the lock held: 0/40 and 0/40, both modes. That asymmetry is why the assert below
+        # tests append() and checks BOTH the lake and the counter.
+        #
+        # The flakiness can only produce a FALSE NEGATIVE (miss a broken lock), never a false
+        # positive: with the lock held, one record is the invariant and not the likely outcome. A
+        # green here is weak evidence; a red is conclusive. The measured per-trial red rate is
+        # 40/40, so the trial count is small on purpose -- it buys margin, not sensitivity.
+        _LOCK_TRIALS, _LOCK_THREADS = 6, 12
+        for _trial in range(_LOCK_TRIALS):
+            race_path = os.path.join(work, f"lock_race{_trial}.bin")
+            shared = BinLog(race_path, dedup=True)
+            victim = pack_fact({"cue": ["race", str(_trial)], "answer": "written exactly once."})
+            gate = threading.Barrier(_LOCK_THREADS)
+
+            def _racer(log=shared, v=victim, g=gate):
+                g.wait()  # release every thread together, so the window is actually contended
+                log.append(v)
+
+            threads = [threading.Thread(target=_racer) for _ in range(_LOCK_THREADS)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            on_disk = sum(1 for p in BinLog(race_path).replay() if p == victim)
+            assert on_disk == 1, (
+                f"trial {_trial}: {_LOCK_THREADS} threads appending one payload to ONE BinLog "
+                f"stored it {on_disk} times -- the check-then-write on _seen is not a critical "
+                "section, so dedup does not hold and the one durable lake carries duplicates"
+            )
+            assert shared.count() == 1, (
+                f"trial {_trial}: the lake holds 1 record but count() reports {shared.count()} -- "
+                "`_count += 1` lost an update, so an O(1) counter the daemon polls per round "
+                "disagrees with the store it describes"
+            )
+        print(
+            f"concurrent append  : {_LOCK_TRIALS} trials x {_LOCK_THREADS} threads on ONE BinLog "
+            f"-> 1 record, count()==1 (dedup + counter held under free threading)"
+        )
+
+        # ---- PROPERTY 9: the WRITER must refuse a zero-length payload ---------------------------
+        # A u32 length of 0 is how this format spells "torn frame": replay() stops at one and
+        # _repair_torn_tail() TRUNCATES there. The torn-tail checks above test that from the
+        # CORRUPTION side -- an externally written zero prefix must stop a replay. Nothing tested
+        # the other side, that BinLog's own writer cannot MAKE one, and until 2026-08-05 it could.
+        #
+        # REACHABLE RED, CONSTRUCTED AND RUN 2026-08-05 with the two guards removed, isolated
+        # scratch lake: 5 real records, then append(b"") -> returned True (a durable-write claim),
+        # then 5 more real records. count() reported 11; a fresh reader replayed 5; the next
+        # construction truncated the file 362 -> 188 bytes and 0/5 of the records written after
+        # the empty one survived. extend([...b"" in the middle...]) lost 4 of 7 the same way.
+        # With the guards in place both calls raise and nothing reaches the file. That is P4b's
+        # "a restart is not amnesia" failing on a write the API ACCEPTED, which is why the refusal
+        # belongs at the writer and not in a caller's docstring.
+        #
+        # LATENT, NOT LIVE, AND SAID PLAINLY: no caller can hit it today -- every home.py record
+        # carries a 1-byte type tag and the smallest packer output (pack_episode({})) is 1 byte --
+        # so this closes a hole in the store rather than fixing an observed loss.
+        p_zero = os.path.join(work, "zero_len.bin")
+        zl = BinLog(p_zero)
+        for i in range(3):
+            zl.append(pack_fact({"cue": ["keep", str(i)], "answer": f"keep {i}."}))
+        for label, call in (
+            ("append", lambda: zl.append(b"")),
+            ("extend", lambda: zl.extend([b""])),
+        ):
+            try:
+                call()
+                refused = False
+            except ValueError:
+                refused = True
+            assert refused, (
+                f"BinLog.{label} accepted a ZERO-LENGTH payload. That frame is indistinguishable "
+                "from a torn write, so replay() stops at it and the next construction TRUNCATES "
+                "the lake there -- every record appended afterwards is destroyed while count() "
+                "still reports them. The one durable lake must refuse the write, not absorb it"
+            )
+        zl.append(pack_fact({"cue": ["after"], "answer": "after the refusal."}))
+        kept = [unpack_fact(p)["answer"] for p in BinLog(p_zero).replay()]
+        assert len(kept) == 4 and kept[-1] == "after the refusal." and zl.count() == 4, (
+            f"a refused zero-length payload must leave the lake untouched: expected 4 records with "
+            f"the post-refusal one last, got {kept} and count()={zl.count()}"
+        )
+        print(
+            f"zero-length payload: append/extend both refuse it; lake intact at {len(kept)} records "
+            f"(a 0 length prefix is a torn frame, so writing one caps the log)"
         )
 
         print(

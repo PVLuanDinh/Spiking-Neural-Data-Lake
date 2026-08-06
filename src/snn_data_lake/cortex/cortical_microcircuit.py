@@ -323,6 +323,33 @@ class CorticalMicrocircuit:
         rng = random.Random((self.seed * 1000003 + 101) & 0x7FFFFFFF)
         gauss = rng.gauss
 
+        # THIS LOOP IS NOT PARALLELISED, AND THAT IS A MEASURED RESULT, NOT AN OVERSIGHT.
+        #
+        # It is the largest population update in the tree (618 neurons at the default scale, 77169
+        # at scale 1.0) and therefore the obvious first target for the free-threaded build, so the
+        # numbers are recorded here to stop the next reader paying for the experiment twice.
+        # A BYTE-IDENTICAL parallel form exists and was built and run: three phases per step --
+        # (A) draw gauss serially for exactly the non-refractory neurons in index order, so the
+        # draw STREAM is unchanged; (B) integrate + threshold across threads over disjoint index
+        # ranges; (C) scatter the fired synapses serially in index order, so the float-addition
+        # order into `fut` is unchanged. It reproduced the serial spike trains exactly.
+        #
+        # It loses anyway, structurally. MEASURED (3.14.6, Py_GIL_DISABLED=1, 28 logical CPUs):
+        #   phase split      scale 0.008 (n=618)   scale 0.1 (n=7717)
+        #   rng.gauss             73.6%                 69.0%       <- MUST stay serial for identity
+        #   synaptic scatter       0.9%                  5.2%       <- MUST stay serial for identity
+        #   parallelisable        25.5%                 25.8%
+        #   Amdahl ceiling        1.34x                 1.35x       <- at INFINITE threads
+        # and end to end, against serial simulate(): 0.39x / 0.18x / 0.09x at 4 / 8 / 14 threads
+        # (scale 0.008), 0.39x / 0.13x / 0.07x (scale 0.1). Widening the column does not rescue it:
+        # the ceiling is a property of the ALGORITHM -- one shared RNG stream consumed in neuron
+        # order -- not of the population size, so it is 1.34x at every scale including full.
+        #
+        # Per-partition RNG streams would lift that ceiling and are the obvious next idea. They
+        # would also change every number this module produces, and its layer-specificity assert was
+        # calibrated over six columns of THIS stream (see PORT_SEEDS), so that is a re-baselining
+        # exercise with a fitted criterion attached, not a speedup. Not done, and not smuggled in.
+        # The population update that DID pay is the independent-cell one in cortex/neuron_zoo.py.
         for step in range(total_steps):
             slot = step % ring
             buf = pending[slot]

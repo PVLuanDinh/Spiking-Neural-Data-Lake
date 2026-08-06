@@ -39,7 +39,11 @@ reward problem through STDP and dopamine", Cereb. Cortex 2007.
 """
 
 import math
+import os
 import random
+import threading
+import time
+from typing import NamedTuple
 
 LR = 0.1
 A_PLUS = 1.0
@@ -110,6 +114,425 @@ class RSTDPNeuron:
         for i in range(self.n):
             self.w[i] += deltas[i]
         return deltas
+
+
+# ======================================================================================
+# POPULATION BROADCAST -- the parallel surface of the three-factor rule.
+#
+# A weight update here depends on its OWN eligibility trace and a BROADCAST SCALAR d, so
+# updates are independent within a timestep. Under the free-threaded build (3.14,
+# Py_GIL_DISABLED=1) that independence is finally expressible as parallelism. What follows
+# is the measured account of WHERE it pays, because only one of the two obvious partitions
+# actually does.
+#
+# ---- MEASURED, 2026-08-05, 28-core box, .venv-lake 3.14.6 free-threaded (sys._is_gil_enabled()
+#      == False). All timings min-of-5 trials. ----
+#
+# PARTITION A -- across SYNAPSE INDEX inside one neuron. REFUTED, and it is structural.
+#   `self.w` is a single Python list. Free-threaded CPython guards list mutation with a
+#   per-object critical section, so every thread writing w[i] serializes on ONE mutex and then
+#   pays cache-line contention on top. Measured `w[i] += k*e[i]` over a shared list, serial vs
+#   threaded, at the fairest form (locals hoisted):
+#         width       serial      T=2       T=4       T=8
+#         10,000       514us     818us    1,848us   6,964us
+#        100,000     5,247us   8,182us   20,075us  84,684us
+#      1,000,000    53,347us  80,900us  221,122us 837,129us
+#   Parallel LOSES at every width and every thread count, by 1.5x to 15.7x (and to 86x at
+#   T=28). This is NOT a free-threading limit: the control that isolates it -- the identical
+#   loop over PRIVATE per-thread lists -- scales 1.94x / 3.28x / 4.37x at T=2/4/8 on the same
+#   1,000,000 elements. The blocker is the SHARED LIST OBJECT, nothing else. No gate can
+#   rescue partition A, so none is offered.
+#
+# PARTITION B -- across whole NEURONS. This is what ships. Each thread owns entire neurons,
+#   so no two threads ever touch the same weight list, and byte-identity is structural rather
+#   than argued: every neuron's reward(d) executes the same code on the same object in the
+#   same order it would serially, and nothing is reduced across threads. Measured, us/call:
+#      synapses (shape)          serial     best-parallel   speedup
+#           960 (  4n x 240s)      60.1u      62.8u (T=2)     1.00x   <- below crossover
+#         1,536 ( 64n x  24s)     108.4u      78.5u (T=4)     1.38x
+#         6,144 (256n x  24s)     437.0u     190.4u (T=4)     2.30x
+#        15,360 ( 64n x 240s)     993.3u     400.8u (T=4)     2.48x
+#        98,304 (4096n x 24s)   7,008.3u   1,504.1u (T=14)    4.66x
+#       591,872 (256n x2312s)  42,206.1u   9,288.4u (T=14)    4.54x
+#       983,040 (4096n x240s)  91,897.2u  16,690.1u (T=14)    5.51x
+#     2,367,488 (1024n x2312s) 172,075.1u  37,360.5u (T=14)   4.61x
+#
+# EXECUTOR: a persistent barrier pool, NOT ThreadPoolExecutor. Measured head-to-head on the
+#   identical workload (16,384 synapses), TPE.map is 0.69x-0.80x at T=2/4 -- SLOWER than
+#   serial -- because it allocates a Future per chunk and pushes it through a lock-guarded
+#   queue; the barrier pool is a stable 1.38x-2.70x on the same shapes. Picking the wrong
+#   executor does not merely cost speed here, it inverts the sign of the result.
+#
+# THE GATE IS DERIVED, NEVER HARDCODED (P1). `calibrate()` times three things on the host that
+#   will run the rule -- the fork/join floor F, the serial per-synapse rate r_ser, and the
+#   parallel per-synapse rate r_par -- and solves S* = F / (r_ser - r_par). If r_ser <= r_par
+#   there is no crossover and the plan is serial forever (honest null, reachable red below).
+#   Stability of the derived S*, 7 independent calibrations: T=2 882..939, T=4 959..1017,
+#   T=8 1842..2348, T=14 3399..3683 -- +-5%, zero non-finite. It agrees with the empirical
+#   table above: S*(T=4) = 992 predicts the win starting just under 1,000 synapses, and the
+#   960-synapse shape measured a wash while 1,536 won 1.38x.
+#   An EARLIER draft of this calibration used TPE and returned "no crossover" in 4 of 7 runs;
+#   that reading was TRUE OF TPE rather than noise, and it is recorded because a gate that
+#   silently reports "always serial" is the failure mode this whole section is exposed to.
+#
+# HONEST STATUS -- read this before crediting anything. `reward_population` has ZERO live
+#   callers today. Every RSTDPNeuron in this tree is a SINGLE neuron: interaction_learning
+#   rewards one neuron of n_in=52 per deposit, task_set holds one of n_sets, benna_fusi one,
+#   brain_native_selfbuild one. The live path is therefore ~52 synapses against a crossover of
+#   ~1,000, three orders of magnitude below it, and the gate will correctly choose serial for
+#   all of them. This is the channel, built and measured, for a population that does not exist
+#   yet (P0 permits scaffolding on exactly these terms: label it, measure it, credit nothing
+#   until a consumer exists). It buys the brain NOTHING at today's width and that is not a
+#   claim being hedged -- it is the measurement.
+#
+#   AND IT IS INVISIBLE TO BOTH P3 GATES, which is the part worth saying out loud. `dormancy_gate`
+#   is per-MODULE and r_stdp is reachable, so it passes on the module's account, not this
+#   function's. `method_dormancy_gate` audits learning-verb METHODS inside classes, and
+#   `reward_population` is a module-level function, so it is out of that gate's scope by
+#   construction rather than by adjudication -- both gates run clean over this addition while
+#   neither has an opinion about it. Under P4c that makes it a build the gates cannot see, and
+#   the disposition is therefore carried here in prose: it is P3 shape 1 (present, importable,
+#   never invoked) until a population consumer adopts it. The consumers that would are
+#   `cortex/interaction_learning`, `cortex/task_set`, `plasticity/benna_fusi` and
+#   `neuromodulation/naca`, none of which is in this lane's write scope, and none of which has a
+#   broadcast-to-many shape today anyway -- adopting this is a change to what those modules DO,
+#   not a call site to add.
+# ======================================================================================
+
+# Explicit documented cap, not a behaviour arbiter -- and the distinction is exact here, not a
+# plea: because both paths are byte-identical, NO constant in this section can change a single
+# weight. It can only change how long the update takes. P1 governs values that arbitrate
+# BEHAVIOUR; nothing below can.
+# 4 is the measured best value on the dev box: S*=992 at 2.68x, against S*=915 at 1.50x (T=2),
+# S*=2094 at 3.16x (T=8) and S*=3501 at 2.63x (T=14) -- the lowest crossover with near-best
+# speedup, which is the right trade for a population that has to GROW past the crossover before
+# any of this matters.
+# WHAT THE CAP COSTS, stated because it is a real forgone win rather than a free choice: at large
+# populations more workers keep paying, and T=14 measured 4.66x at 98,304 synapses and 5.51x at
+# 983,040 where T=4 was ~2.5-3x. A caller that knows it is at that scale should pass `workers=`
+# explicitly; the crossover is re-derived per worker count, so overriding it stays measured
+# rather than guessed.
+_WORKER_CAP = 4
+# Calibration workload, and its SIZE is the whole ballgame. S* = F/(r_ser - r_par) recovers r_par
+# by subtracting the fork/join floor from the parallel timing, so the parallel region has to be
+# comfortably larger than that floor or the remainder is mostly noise. A first draft used 4,096
+# synapses: split 4 ways that is ~1,024 synapses (~66us) per thread against a ~40us floor, i.e.
+# the measurement was only ~1.6x the thing being subtracted, and cold calibrations returned "never
+# pays" often enough to matter. 16,384 synapses gives ~4,096 (~262us) per thread against the same
+# floor -- ~6.5x -- which is what the lab sweep measured stable (7 runs, S* 893..1010, zero
+# non-finite). Reps and trials are cut to keep the total near the smaller version's cost.
+_CAL_NEURONS, _CAL_SYN = 64, 256
+_CAL_REPS, _CAL_TRIALS, _FLOOR_REPS = 3, 2, 200
+# MEDIAN OF THREE INDEPENDENT SOLVES. S* = F/(r_ser - r_par) divides by the difference of two
+# measured numbers, so a solve taken while the machine is busy -- where r_par drifts up toward
+# r_ser -- does not degrade gracefully, it explodes or goes non-finite. The first solve in a
+# process is the one cached for the life of that process, which is exactly the wrong place for a
+# fragile reading. Kept as a median rather than as a clamp on the measured efficiency, because a
+# clamp would also manufacture a finite crossover on a host where fan-out genuinely never pays,
+# destroying the honest null.
+#
+# HOW STABLE IT ACTUALLY IS, measured cold in fresh processes (this is the number to trust, not
+# the mechanism's plausibility). 16 back-to-back launches at the shipped constants: S* = 898, 912,
+# 914, 933, 934, 947, 949, 954, 959, 964, 980, 986, 1026, 1049, 1077 -- 15 of 16 inside 898..1077,
+# every one consistent with the empirical crossover (the 960-synapse shape measured a wash, 1,536
+# won 1.38x). 10 launches spaced 1.5s apart at the earlier, smaller constants were likewise all
+# usable (853..1464). The 16th was process #1 of a batch started while the previous batch was
+# still tearing down, and it came back "never pays"; its calibration took 270ms against the
+# others' ~130ms, i.e. the retry below fired and the machine was still busy when it re-measured.
+# That is a sustained-load artifact of the launcher, not a signal-to-noise problem in the solve --
+# enlarging the calibration population 4x tightened the good runs and did not remove it, and
+# neither the warm-up nor the retry is claimed to.
+# DISCLOSED PLAINLY because it is the defect class this project hunts: when it happens, the gate
+# reports "serial at every size" and the parallel path is off for that whole process. The
+# direction is conservative -- an over-large or non-finite S* keeps the serial path, which is
+# never slower than serial, so nothing is ever made worse -- and it is inspectable and
+# recoverable rather than silent: `calibrate(workers).crossover_synapses` shows it and
+# `calibrate(workers, force=True)` re-measures.
+_CAL_SOLVES = 3
+
+_POOL_LOCK = threading.Lock()
+_POOLS = {}  # workers -> _FanOut          (lazy; nothing is constructed at module scope)
+_CALIBRATIONS = {}  # workers -> Calibration
+# Which pool (if any) the CURRENT thread is a worker of. Written once by each worker at the top
+# of its loop, read only by that same thread, so it needs no lock and cannot race. It exists to
+# turn nested fan-out from a silent permanent hang into an immediate error -- see _FanOut.run.
+_LOCAL = threading.local()
+
+
+class Calibration(NamedTuple):
+    """What the host measured. `crossover_synapses` is math.inf when parallel never pays."""
+
+    workers: int
+    floor_us: float
+    serial_ns_per_syn: float
+    parallel_ns_per_syn: float
+    crossover_synapses: float
+
+
+class ParallelPlan(NamedTuple):
+    """The decision for one call. `path` is 'serial' or 'parallel' -- exposed so a caller (and
+    this module's own self-check) can assert which branch ran, rather than trusting that a pool
+    silently did something."""
+
+    path: str
+    workers: int
+    total_synapses: int
+    crossover_synapses: float
+
+
+class _FanOut:
+    """Persistent workers joined by two barriers -- the fork/join handshake that measured
+    1.38x-2.70x where ThreadPoolExecutor.map measured 0.69x-0.80x on the same workload.
+
+    One call at a time per pool (`_run_lock`): concurrent population updates on the same worker
+    count serialize rather than racing on the shared job slot. Threads are daemons and are never
+    reclaimed; the pool is process-lifetime, created on first use and reused.
+
+    A WORKER MUST REACH `_done` ON EVERY PATH, INCLUDING A RAISING ONE. This is the whole
+    fragility of a barrier pool and it was a live defect here until 2026-08-05: `_loop` called
+    `self._fn(k)` unguarded, so a job that raised killed its worker thread, the remaining parties
+    never reached `Barrier(workers + 1)`, and the caller blocked FOREVER -- with the pool
+    permanently destroyed for the life of the process. MEASURED before the fix, on plain
+    `RSTDPNeuron`s with a plain bad broadcast value: `reward_population(pop, None, path="serial")`
+    raised `TypeError` in microseconds while `path="parallel"` on identical input never returned.
+    Two paths documented as byte-identical diverged into "raises" versus "hangs", and the
+    byte-identity harness could not see it because it only ever compared SUCCESSFUL runs. The
+    exception is now caught, parked per worker, and re-raised in the caller.
+
+    NOT RE-ENTRANT: a worker that calls `run` on its OWN pool would block on `_run_lock` while the
+    caller holds it and waits at `_done`. That used to be a documented deadlock; it now raises
+    immediately (`_LOCAL.pool`). Nothing in this tree does it -- there is no population consumer at
+    all yet -- but a hang is the one failure mode that gives a reader nothing to work from, and
+    `run_selfchecks.py` runs part of the suite in ONE process, where a hung pool takes the whole
+    gate with it rather than failing one module."""
+
+    def __init__(self, workers):
+        self.workers = workers
+        self._fn = None
+        self._n_jobs = 0
+        self._err = [None] * workers
+        self._start = threading.Barrier(workers + 1)
+        self._done = threading.Barrier(workers + 1)
+        self._run_lock = threading.Lock()
+        self._threads = [
+            threading.Thread(target=self._loop, args=(k,), daemon=True, name=f"rstdp-{k}")
+            for k in range(workers)
+        ]
+        for t in self._threads:
+            t.start()
+
+    def _loop(self, k):
+        _LOCAL.pool = self  # thread-local; only this thread ever reads it (see run())
+        while True:
+            self._start.wait()  # barrier gives happens-before on _fn / _n_jobs / _err
+            try:
+                if k < self._n_jobs:
+                    self._fn(k)
+            except BaseException as exc:  # noqa: BLE001 -- see the class docstring: a worker that
+                self._err[k] = exc  # does not reach _done hangs the caller forever
+            self._done.wait()
+
+    def run(self, fn, n_jobs):
+        """Call fn(k) for k in range(n_jobs) across the workers; returns when all have finished.
+
+        If a job raises, every worker still reaches the join barrier (so the pool stays usable)
+        and the LOWEST-k exception is re-raised here. Lowest-k is what keeps the error path
+        deterministic AND serial-identical: `partition` chunks are contiguous and order-preserving,
+        so the lowest failing chunk contains exactly the element the serial comprehension would
+        have failed on -- same exception, same offender, either path."""
+        if n_jobs > self.workers:
+            raise ValueError(f"n_jobs {n_jobs} exceeds workers {self.workers}")
+        if getattr(_LOCAL, "pool", None) is self:
+            raise RuntimeError(
+                f"nested fan-out on the same {self.workers}-worker pool: a worker called run() on "
+                f"its own pool, which would deadlock. Use a different worker count, or run serially."
+            )
+        with self._run_lock:
+            self._fn, self._n_jobs = fn, n_jobs
+            self._err = [None] * self.workers
+            self._start.wait()
+            self._done.wait()
+            err = next((e for e in self._err if e is not None), None)
+        if err is not None:
+            raise err
+
+
+def default_workers():
+    """Worker count for an uncapped call: the measured cap, never more than the machine has."""
+    return max(1, min(_WORKER_CAP, os.cpu_count() or 1))
+
+
+def partition(seq, k):
+    """Split `seq` into at most k contiguous, DISJOINT, order-preserving chunks; empty chunks are
+    dropped so k > len(seq) is not an error. Disjointness is what makes the parallel path
+    byte-identical -- two threads must never hold the same neuron."""
+    n = len(seq)
+    if k < 1:
+        raise ValueError(f"k must be >= 1 ({k})")
+    step, rem = divmod(n, k)
+    out, lo = [], 0
+    for j in range(k):
+        hi = lo + step + (1 if j < rem else 0)
+        if hi > lo:
+            out.append(seq[lo:hi])
+        lo = hi
+    return out
+
+
+def _fanout(workers):
+    with _POOL_LOCK:
+        pool = _POOLS.get(workers)
+        if pool is None:
+            pool = _POOLS[workers] = _FanOut(workers)
+        return pool
+
+
+def _time_us(fn, reps, trials):
+    for _ in range(3):
+        fn()  # wake the pool threads BEFORE the timed region (cold-wake skews short runs)
+    best = None
+    for _ in range(trials):
+        t0 = time.perf_counter()
+        for _ in range(reps):
+            fn()
+        dt = (time.perf_counter() - t0) / reps * 1e6
+        best = dt if best is None else min(best, dt)
+    return best
+
+
+def calibrate(workers=None, force=False):
+    """MEASURE this host; do not assume it. Times the fork/join floor, the serial per-synapse
+    rate and the parallel per-synapse rate on a throwaway population, then solves the crossover
+    S* = F / (r_ser - r_par). Repeated `_CAL_SOLVES` times and medianed (see that constant for
+    the outlier that made it necessary). Cached per worker count for the life of the process.
+
+    Costs ~130ms on first use for a given worker count (~270ms in the rare case the
+    self-consistency retry fires). `reward_population` avoids paying it at all when the
+    population cannot be partitioned (fewer than 2 neurons).
+
+    Returns a Calibration. `crossover_synapses` is math.inf when the parallel form is no faster
+    per synapse than the serial one -- on a single core, at workers=1, or on any host where the
+    fan-out does not pay. That is the honest null and the plan is then 'serial' at every size."""
+    w = default_workers() if workers is None else int(workers)
+    if w < 1:
+        raise ValueError(f"workers must be >= 1 ({w})")
+    if not force:
+        hit = _CALIBRATIONS.get(w)
+        if hit is not None:
+            return hit
+
+    pop = [RSTDPNeuron(_CAL_SYN, seed=i) for i in range(_CAL_NEURONS)]
+    for cell in pop:
+        for i in range(_CAL_SYN):
+            cell.e[i] = 1e-6  # tiny: calibration must not produce a meaningful weight change
+    total = _CAL_NEURONS * _CAL_SYN
+    parts = partition(pop, w)
+    pool = _fanout(w)
+
+    def _chunk(k):
+        for cell in parts[k]:
+            cell.reward(1e-9)
+
+    def _solve():
+        floor = _time_us(lambda: pool.run(lambda k: None, len(parts)), _FLOOR_REPS, _CAL_TRIALS)
+        par = _time_us(lambda: pool.run(_chunk, len(parts)), _CAL_REPS, _CAL_TRIALS)
+        ser = _time_us(lambda: [cell.reward(1e-9) for cell in pop], _CAL_REPS, _CAL_TRIALS)
+        r_ser = ser / total
+        r_par = max(0.0, par - floor) / total
+        star = math.inf if r_ser <= r_par else floor / (r_ser - r_par)
+        return floor, r_ser, r_par, star
+
+    # WARM-UP, untimed. The threads were created moments ago and the process itself may still be
+    # settling (imports, first-touch page faults, whatever launched it). Stated honestly: this did
+    # NOT measurably change the spoiled-calibration rate under launch contention (see _CAL_SOLVES);
+    # it is kept because timing a thread pool on its first fan-out is wrong regardless.
+    for _ in range(5):
+        pool.run(_chunk, len(parts))
+        for cell in pop:
+            cell.reward(1e-9)
+
+    solves = [_solve() for _ in range(_CAL_SOLVES)]
+    if not 0.0 < sorted(s[3] for s in solves)[_CAL_SOLVES // 2] < total:
+        # SELF-CONSISTENCY, not a threshold on the host's speed, so it needs no constant. The
+        # calibration population IS `total` synapses, so a solve returning S* >= total has just
+        # claimed that the very population it timed would not benefit from fanning out -- while
+        # timing it fan out. One retry at bounded cost. Measured honestly: this rescues a solve
+        # spoiled by a brief disturbance, and does NOT rescue one spoiled by a sustained busy
+        # machine (a contended launch defeated the retry too, ~1 in 20). If the retry agrees, the
+        # answer is accepted as-is -- on a host where fan-out really does not pay at this size
+        # that is the CORRECT answer, and accepting it only ever costs a foregone win: an
+        # over-large S* keeps the serial path, which is never slower than serial.
+        solves = [_solve() for _ in range(_CAL_SOLVES)]
+    # median per term. `statistics.median` on an even count would average two solves; _CAL_SOLVES
+    # is odd so every reported term is one solve's real measurement, never a blend of two.
+    floor = sorted(s[0] for s in solves)[_CAL_SOLVES // 2]
+    r_ser = sorted(s[1] for s in solves)[_CAL_SOLVES // 2]
+    r_par = sorted(s[2] for s in solves)[_CAL_SOLVES // 2]
+    star = sorted(s[3] for s in solves)[_CAL_SOLVES // 2]
+    cal = Calibration(w, floor, r_ser * 1000.0, r_par * 1000.0, star)
+    _CALIBRATIONS[w] = cal
+    return cal
+
+
+def parallel_plan(n_neurons, total_synapses, workers=None):
+    """Which path a population of this shape takes, WITHOUT running it. Exposed so the decision
+    is inspectable: a pool that silently falls back to serial is the defect class this project
+    hunts, and this is how a caller proves which branch it got."""
+    w = default_workers() if workers is None else int(workers)
+    if n_neurons < 2 or w < 2 or total_synapses <= 0:
+        # Cannot partition, or nothing to do. Serial WITHOUT paying for a calibration.
+        return ParallelPlan("serial", w, int(total_synapses), math.inf)
+    star = calibrate(w).crossover_synapses
+    path = "parallel" if total_synapses > star else "serial"
+    return ParallelPlan(path, w, int(total_synapses), star)
+
+
+def reward_population(neurons, d, workers=None, path=None):
+    """Apply ONE broadcast reward d across a population of RSTDPNeuron.
+
+    BYTE-IDENTICAL to `[n.reward(d) for n in neurons]` -- same weights, same returned deltas, in
+    the same order -- on both paths. That is structural, not a hope: the partition hands each
+    thread whole neurons, so no two threads touch the same weight list and nothing is reduced
+    across threads (float addition is not associative, so a parallel REDUCTION would not have
+    this property and none is performed).
+
+    Chooses serial or parallel from `parallel_plan`, whose threshold is measured on this host.
+    `path` overrides that choice ('serial' / 'parallel') and exists because byte-identity makes
+    the choice behaviour-neutral: the self-check forces BOTH branches and compares them exactly,
+    so "the pool quietly stopped running in parallel" cannot pass as a green gate.
+
+    ON FAILURE the two paths raise the SAME exception for the same offending neuron (see
+    `_FanOut.run` for why lowest-k gives that), but they do NOT leave the population in the same
+    state, and this is the one place the byte-identity claim above stops applying. Serial mutates
+    neurons before the offender and none after; parallel additionally mutates whichever neurons
+    the other threads had already reached. That is inherent to fanning out -- undoing it would
+    need a transaction, and this rule has no rollback -- so the honest statement is that
+    byte-identity is a claim about SUCCESSFUL updates only. `workers=1` with `path="parallel"`
+    also runs serially: one worker cannot partition, and the result is identical either way.
+
+    Returns the list of per-synapse delta lists, one per neuron, in input order."""
+    if path not in (None, "serial", "parallel"):
+        raise ValueError(f"path must be None, 'serial' or 'parallel' ({path!r})")
+    pop = list(neurons)
+    if len(pop) < 2:
+        return [cell.reward(d) for cell in pop]
+
+    if path is None:
+        plan = parallel_plan(len(pop), sum(cell.n for cell in pop), workers=workers)
+    else:
+        w = default_workers() if workers is None else int(workers)
+        plan = ParallelPlan(path, w, sum(cell.n for cell in pop), math.nan)
+    if plan.path == "serial" or plan.workers < 2:
+        return [cell.reward(d) for cell in pop]
+
+    parts = partition(pop, plan.workers)
+    out = [None] * len(parts)
+
+    def _chunk(k):
+        out[k] = [cell.reward(d) for cell in parts[k]]
+
+    _fanout(plan.workers).run(_chunk, len(parts))
+    return [deltas for sub in out for deltas in sub]
 
 
 def _run(seed):
@@ -184,6 +607,88 @@ def main():
     # 5. DETERMINISM: same seed -> identical final weights across two fresh instances.
     w_a, w_b = _run(7), _run(7)
     print(f"5 determinism         : two seed=7 runs identical = {w_a == w_b}")
+
+    # 6. POPULATION BROADCAST: serial vs parallel, compared EXACTLY (not approximately).
+    #    Float addition is not associative, so "close enough" would hide exactly the defect
+    #    this check exists to catch. Both branches are FORCED so neither can be vacuous.
+    n_cpu = os.cpu_count() or 1
+    workers = default_workers()
+    syn, n_big = 64, 64
+
+    def _fresh(n, k, seed0=11):
+        pop = [RSTDPNeuron(k, seed=seed0 + i) for i in range(n)]
+        for j, cell in enumerate(pop):
+            for i in range(k):
+                cell.e[i] = ((i * 7 + j * 13) % 21 - 10) / 100.0  # mixed signs, exact binaries
+        return pop
+
+    pop_s, pop_p = _fresh(n_big, syn), _fresh(n_big, syn)
+    d_s = reward_population(pop_s, 0.37, workers=workers, path="serial")
+    d_p = reward_population(pop_p, 0.37, workers=workers, path="parallel")
+    w_par = [list(c.w) for c in pop_p]
+    identical = [list(c.w) for c in pop_s] == w_par and d_s == d_p
+    # and against the plain reference the docstring claims equivalence to
+    pop_r = _fresh(n_big, syn)
+    d_r = [c.reward(0.37) for c in pop_r]
+    vs_reference = [list(c.w) for c in pop_r] == w_par and d_r == d_p
+
+    # proof the forced-parallel branch really ran on more than one OS thread
+    seen = set()
+    if workers >= 2:
+        _fanout(workers).run(lambda k: seen.add(threading.get_ident()), workers)
+
+    # THE GATE'S DECISION IS TESTED AGAINST AN INJECTED CALIBRATION, NOT AGAINST THE HOST'S
+    # CURRENT SPEED. An earlier version of this self-check asserted `math.isfinite(star)` on the
+    # live measurement and went RED on a busy machine -- turning a load artifact into a gate
+    # failure, which is a flaky test, not a real criterion. What must be correct here is the
+    # DECISION LOGIC (does the comparison flip at the crossover, and does a "never pays"
+    # calibration stay serial at any size); that is deterministic and is what is asserted. The
+    # live measurement is REPORTED below instead, because it is evidence about this host, not a
+    # property of the code.
+    probe_w = 3 if workers != 3 else 2
+    _saved = _CALIBRATIONS.get(probe_w)
+    try:
+        _CALIBRATIONS[probe_w] = Calibration(probe_w, 40.0, 64.0, 20.0, 1000.0)
+        plan_below = parallel_plan(64, 1000, workers=probe_w)  # not strictly above -> serial
+        plan_above = parallel_plan(64, 1001, workers=probe_w)
+        _CALIBRATIONS[probe_w] = Calibration(probe_w, 40.0, 64.0, 64.0, math.inf)
+        plan_null = parallel_plan(64, 10**9, workers=probe_w)  # "never pays" -> serial forever
+    finally:
+        if _saved is None:
+            _CALIBRATIONS.pop(probe_w, None)  # leave no poisoned cache for the rest of the process
+        else:
+            _CALIBRATIONS[probe_w] = _saved
+
+    plan_small = parallel_plan(2, 2, workers=workers)
+    # the live host measurement: reported, and checked only for self-consistency with the plan
+    cal = calibrate(workers)
+    star = cal.crossover_synapses
+    big_total = n_big * syn
+    plan_live = parallel_plan(n_big, big_total, workers=workers)
+    # whatever the gate picks, it must still equal forced-serial byte-for-byte
+    pop_g = _fresh(n_big, syn)
+    reward_population(pop_g, 0.37, workers=workers)
+    gate_matches = [list(c.w) for c in pop_g] == w_par
+
+    print("=" * 70)
+    print(
+        f"6 population broadcast: {n_big} neurons x {syn} syn = {big_total} synapses; "
+        f"serial == parallel byte-exact = {identical}; gate-chosen == forced = {gate_matches}"
+    )
+    print(
+        f"  gate LOGIC (injected crossover 1000): 1000 syn -> {plan_below.path}, "
+        f"1001 syn -> {plan_above.path}, never-pays -> {plan_null.path}"
+    )
+    star_txt = f"{star:.0f}" if math.isfinite(star) else "none (host too busy to measure)"
+    print(
+        f"  gate MEASURED on this host (T={cal.workers}): floor {cal.floor_us:.1f}us, serial "
+        f"{cal.serial_ns_per_syn:.1f}ns/syn, parallel {cal.parallel_ns_per_syn:.1f}ns/syn "
+        f"-> crossover {star_txt}"
+    )
+    print(
+        f"  plan: {big_total} syn -> {plan_live.path}, 2 syn -> {plan_small.path}; "
+        f"pool ran on {len(seen)} distinct threads (cpus={n_cpu})"
+    )
     print("=" * 70)
 
     # ---- self-check (deterministic asserts, ASCII) ----
@@ -197,10 +702,174 @@ def main():
     )
     assert neg < 0, f"negative reward must flip the causal update downward ({neg:+.4f})"
     assert w_a == w_b, "same seed must give identical final weights (determinism)"
+
+    # ---- population broadcast asserts ----
+    assert identical, "parallel weight update must be BYTE-IDENTICAL to serial, not close to it"
+    assert vs_reference, "both paths must equal the plain [n.reward(d) for n in pop] reference"
+    assert gate_matches, "the gate-chosen path must match the forced paths byte-for-byte"
+    assert plan_small.path == "serial", (
+        f"a 2-synapse population must not fan out ({plan_small.path})"
+    )
+    # the gate's DECISION LOGIC, deterministic (injected calibration, no timing involved)
+    assert plan_below.path == "serial", (
+        f"total == crossover must NOT fan out ({plan_below.path}); the gate is strictly-above"
+    )
+    assert plan_above.path == "parallel", (
+        f"one synapse above the crossover must fan out ({plan_above.path}) -- a gate stuck on "
+        f"'serial' is the silent-fallback defect this project hunts"
+    )
+    assert plan_null.path == "serial", (
+        f"a 'never pays' calibration must stay serial at any size ({plan_null.path})"
+    )
+    # zero / empty / one, per the new-baseline rule
+    assert reward_population([], 0.5) == [], "empty population must return []"
+    _one = RSTDPNeuron(3, seed=1)
+    assert len(reward_population([_one], 0.5)) == 1, "single neuron must still be rewarded"
+    assert parallel_plan(1, 52, workers=workers).path == "serial", "one neuron cannot partition"
+    assert parallel_plan(8, 0, workers=workers).path == "serial", "zero synapses cannot pay"
+    assert reward_population([RSTDPNeuron(0, seed=2), RSTDPNeuron(0, seed=3)], 0.5) == [[], []], (
+        "zero-synapse neurons must round-trip as empty delta lists"
+    )
+    # partition: disjoint, total, order-preserving -- the property byte-identity rests on
+    _seq = list(range(37))
+    for _k in (1, 2, 4, 8, 40):
+        _chunks = partition(_seq, _k)
+        assert [x for c in _chunks for x in c] == _seq, f"partition must preserve order (k={_k})"
+        assert sum(len(c) for c in _chunks) == len(_seq), f"partition must cover all (k={_k})"
+        assert all(_chunks), f"partition must not emit empty chunks (k={_k})"
+    if workers >= 2:
+        assert len(seen) >= 2, f"forced-parallel pool must use >1 thread ({len(seen)})"
+        # the live plan must AGREE with the live measurement -- consistency, not a speed target
+        assert plan_live.path == ("parallel" if big_total > star else "serial"), (
+            f"plan {plan_live.path} disagrees with the measured crossover {star} at {big_total}"
+        )
+    else:
+        print(
+            f"  NOTE: {n_cpu}-cpu host -- workers={workers}, so the parallel branch is "
+            f"unreachable here and its thread assert did NOT run. Byte-identity and the gate "
+            f"logic above still ran (the latter on an injected calibration)."
+        )
+    if not math.isfinite(star):
+        print(
+            "  NOTE: the crossover could not be MEASURED on this host right now (the parallel "
+            "calibration timed no faster than the serial one, which happens under sustained "
+            "load). The gate therefore selects serial at every size for this process -- "
+            "conservative, never slower than serial, and re-measurable via calibrate(force=True). "
+            "The gate LOGIC asserts above ran regardless, on an injected calibration."
+        )
+
+    # ---- REACHABLE RED: construct and RUN the input that makes each criterion FIRE ----
+    reds = []
+    # (a) byte-identity criterion must reject a ONE-ULP difference, not tolerate it
+    a_pop, b_pop = _fresh(4, 8), _fresh(4, 8)
+    reward_population(a_pop, 0.37, path="serial")
+    reward_population(b_pop, 0.37, path="serial")
+    b_pop[2].w[5] = math.nextafter(b_pop[2].w[5], math.inf)
+    reds.append(("byte-identity", [list(c.w) for c in a_pop] != [list(c.w) for c in b_pop]))
+    # (b) the deltas half of the same criterion, perturbed on a REAL returned delta list.
+    #     (This compared two literals until 2026-08-05, which tested Python's `!=` rather than
+    #     anything in this module -- a red that cannot fail for a reason the module controls is
+    #     the tautological-criterion shape `tools/red_reachability.py` exists to catch.)
+    d_a = reward_population(_fresh(4, 8), 0.37, path="serial")
+    d_b = reward_population(_fresh(4, 8), 0.37, path="parallel")
+    _ok_delta = d_a == d_b
+    d_b[1][2] = math.nextafter(d_b[1][2], math.inf)
+    reds.append(("delta-identity", _ok_delta and d_a != d_b))
+    # (c) the gate must flip at the crossover -- BOTH sides constructed and run, no timing
+    reds.append(("gate-flips", plan_below.path == "serial" and plan_above.path == "parallel"))
+    # (d) partition's coverage criterion must reject a partition that drops an element -- run
+    #     against REAL `partition` output, not a hand-written literal (same fix as (b)).
+    _cov = partition(list(range(37)), 4)
+    _drop = [c[1:] if j == 1 else c for j, c in enumerate(_cov)]
+    reds.append(
+        (
+            "partition-covers",
+            [x for c in _cov for x in c] == list(range(37))
+            and [x for c in _drop for x in c] != list(range(37)),
+        )
+    )
+    # (e) the honest null, reached two independent ways: a 'never pays' calibration, and
+    #     workers=1 (cannot partition at all). Both must be serial at an absurd size.
+    reds.append(
+        (
+            "no-crossover-null",
+            plan_null.path == "serial" and parallel_plan(4096, 10**9, workers=1).path == "serial",
+        )
+    )
+    # (f) `path=` must reject a typo rather than silently running serial -- a silent fallback
+    #     on a bad argument is the same defect class as a silent fallback on a bad measurement
+    try:
+        reward_population(_fresh(2, 2), 0.5, path="paralel")
+        reds.append(("path-validated", False))
+    except ValueError:
+        reds.append(("path-validated", True))
+
+    # (g) A RAISING JOB MUST RAISE, NOT HANG -- the defect this pool actually had (see
+    #     `_FanOut`). Bounded in a helper thread so that a REGRESSION fails this gate with a
+    #     message instead of hanging `run_selfchecks.py` forever, which is what the unfixed pool
+    #     did. Both paths must raise the SAME exception type on the SAME offending neuron.
+    def _bounded(fn, timeout=30.0):
+        box = {}
+
+        def go():
+            try:
+                box["v"] = ("returned", fn())
+            except BaseException as exc:  # noqa: BLE001 -- classifying, not swallowing
+                box["v"] = ("raised", exc)
+
+        t = threading.Thread(target=go, daemon=True)
+        t.start()
+        t.join(timeout)
+        return box.get("v", ("hung", None))
+
+    if workers >= 2:
+        bad = [RSTDPNeuron(4, seed=i) for i in range(2 * workers)]
+        ser_out = _bounded(
+            lambda: reward_population(list(bad), None, workers=workers, path="serial")
+        )
+        par_out = _bounded(
+            lambda: reward_population(list(bad), None, workers=workers, path="parallel")
+        )
+        reds.append(
+            (
+                "worker-exception-raises",
+                ser_out[0] == "raised"
+                and par_out[0] == "raised"
+                and type(ser_out[1]) is type(par_out[1]),
+            )
+        )
+        # ...and the pool must still be USABLE afterwards: a dead worker would leave the barrier
+        # short a party forever, so this call is exactly what hung before the fix.
+        after = _bounded(
+            lambda: reward_population(_fresh(8, 4), 0.37, workers=workers, path="parallel")
+        )
+        reds.append(("pool-survives-exception", after[0] == "returned"))
+        # (h) nested fan-out must RAISE rather than deadlock on its own _run_lock
+        nested = _bounded(
+            lambda: _fanout(workers).run(
+                lambda k: reward_population(_fresh(4, 2), 0.5, workers=workers, path="parallel"), 1
+            )
+        )
+        reds.append(
+            ("nested-fanout-raises", nested[0] == "raised" and isinstance(nested[1], RuntimeError))
+        )
+        print(
+            f"  failure paths: serial {ser_out[0]} {type(ser_out[1]).__name__}, parallel "
+            f"{par_out[0]} {type(par_out[1]).__name__}; pool after failure: {after[0]}; "
+            f"nested fan-out: {nested[0]} {type(nested[1]).__name__}"
+        )
+    assert all(ok for _, ok in reds), f"unreachable red: {[n for n, ok in reds if not ok]}"
+
     print(
         f"self-check OK: causal {causal:+.4f}, anti {anti:+.4f}, distal paired {paired_gain:+.4f} "
         f"beats distractor {distractor_gain:+.4f}, neg-reward {neg:+.4f}; eligibility trace bridges "
         f"the reward delay; additive; deterministic"
+    )
+    print(
+        f"self-check OK: population broadcast byte-identical serial vs parallel over "
+        f"{big_total} synapses (weights AND deltas, exact ==); gate DERIVED from a host "
+        f"measurement (crossover {star_txt}, not a constant) and its decision logic proven "
+        f"deterministically; {len(reds)}/{len(reds)} criteria proven falsifiable"
     )
 
 

@@ -26,7 +26,7 @@ numbers of record exactly. Request the GPU with an environment variable (or the 
 
 ```bash
 # recent NVIDIA cards need the matching CUDA wheel FIRST (the extras pin bare `torch`).
-# RTX 5070 = Blackwell sm_120 -> the cu128 wheel (the repo's verified GPU env = .venv-cu128, torch 2.11.0+cu128):
+# RTX 5070 = Blackwell sm_120 -> the cu128 wheel (the repo's ONE gate env = .venv-lake, torch 2.11.0+cu128 on free-threaded 3.14; .venv-cu128 retired 2026-08-05):
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install -e ".[gpu]"          # or ".[train]" -- torch already satisfied by the cu128 build above
 NORD_GPU=1 python -m snn_data_lake.reasoning.snn_mnist_dc     # or NORD_DEVICE=cuda:0

@@ -19,8 +19,8 @@ tier an unreproducible claim. Perception needs **two kinds of artifact**, and bo
 **1. The encoder weights** (`.pt`) — what does the perceiving:
 
 ```bash
-.venv-cu128/Scripts/python training/eprop_nmnist.py    # -> models/eprop_nmnist.pt  (vision, N-MNIST)
-.venv-cu128/Scripts/python training/eprop_shd.py       # -> models/eprop_shd.pt     (audio, SHD)
+.venv-lake/Scripts/python training/eprop_nmnist.py    # -> models/eprop_nmnist.pt  (vision, N-MNIST)
+.venv-lake/Scripts/python training/eprop_shd.py       # -> models/eprop_shd.pt     (audio, SHD)
 ```
 
 **2. The event-frame packs** (`.npz`) — what gets perceived. The encoders alone are not enough:
@@ -32,7 +32,7 @@ had **five readers and no producer anywhere in the tree**, so this section regen
 what perception needs. The producer:
 
 ```bash
-.venv-cu128/Scripts/python training/make_packs.py           # -> models/nmnist_pack.npz + models/shd_pack.npz
+.venv-lake/Scripts/python training/make_packs.py           # -> models/nmnist_pack.npz + models/shd_pack.npz
 .venv-lake/Scripts/python training/make_packs.py --smoke    # self-check: no tonic, no dataset, no network
 ```
 
@@ -50,7 +50,7 @@ move every perception number — use `--allow-drift` only if that change is inte
 prints the full generated-vs-existing comparison; `--dry-run` builds and compares without writing.
 
 All of the above need their datasets on disk (`data/NMNIST`, `data/SHD`; the `.pt` trainers also use
-`data/nmnist_cache`) and the GPU env `.venv-cu128`. To point the brain at checkpoints elsewhere, set
+`data/nmnist_cache`) and the ONE gate env `.venv-lake` (which now carries CUDA; `.venv-cu128` was retired 2026-08-05). To point the brain at checkpoints elsewhere, set
 `SNN_EPROP_CKPT` / `SNN_EPROP_AUDIO_CKPT`. Anything that reports a perception number should say which
 of these states it measured in — see [`COVERAGE_BASELINE.md`](COVERAGE_BASELINE.md).
 

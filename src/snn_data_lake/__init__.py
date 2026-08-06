@@ -70,7 +70,10 @@ def _require_free_threaded():
         "  warning for unrelated work -- never for a timing measurement."
     )
     if os.environ.get("NORD_ALLOW_GIL") == "1":
-        print(f"[snn_data_lake] WARNING: GIL build; parallel paths run SERIAL.\n{msg}", file=sys.stderr)
+        print(
+            f"[snn_data_lake] WARNING: GIL build; parallel paths run SERIAL.\n{msg}",
+            file=sys.stderr,
+        )
         return
     raise RuntimeError(msg)
 

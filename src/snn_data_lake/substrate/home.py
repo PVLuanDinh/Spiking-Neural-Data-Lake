@@ -315,7 +315,21 @@ class KnowledgeLog:
         return written
 
     def extend(self, records):
-        """Durably append many records (one fsync at the end -- for bulk import). Returns #written."""
+        """Durably append many records (one fsync at the end -- for bulk import). Returns #written.
+
+        MEASURED 2026-08-05 and stated here because the number is large and the method is unused:
+        one `extend(N)` against N x `append()` on isolated scratch lakes is a TIE at N=1, 1.9x at
+        N=2, 21.3x at N=32 and 1341x at N=10,000 -- the crossover is N=2 and there is no width at
+        which batching loses. The full sweep, the cost breakdown of an `append()`, and the
+        DURABILITY WINDOW batching buys (a crash can lose any subset of the batch, up to all of it,
+        so an episode stream must NOT be buffered across ticks) live on `BinLog.extend`.
+
+        THIS METHOD HAS NO LIVE CALLER, and neither does the `BinLog.extend` it forwards to --
+        measured the same day: the only `.extend(` on a lake object in `src/`, `tests/` or `tools/`
+        is this line and binlog's own self-check. So the fast path is P3 shape 1 (method never
+        called) while the slow one is in use; `cortex/brain.py`'s schema induction is the live loop
+        that would fit it (up to `budget=32` `log.append(...)` calls per fourth night, 21.3x at that
+        width). Recorded rather than wired: that edit is in a file this pass does not own."""
         payloads = []
         for record in records:
             if not isinstance(record, dict):

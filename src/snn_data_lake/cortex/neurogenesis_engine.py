@@ -32,10 +32,13 @@ body is `brainstem/so101_arm.So101Arm` and every motion passes its `apply()` gat
 carried the same dead name and corrected it the same day; a safety-scope sentence naming a file
 that is not there sends a reviewer looking for the wrong gate.)
 
-Runs in the torch tier (.venv-cu128); deterministic via random.Random(seed) (Markov chain) and
-torch.Generator(seed) inside NG-SNN. Device = cuda if available else cpu.
+Runs in the torch tier; deterministic via random.Random(seed) (Markov chain) and torch.Generator(seed)
+inside NG-SNN. DEVICE IS MEASURED, NOT ASSUMED (P5a, 2026-08-05): this line read "cuda if available
+else cpu", which is exactly what `_refit` used to do -- it sent a ~60,000-element fit to a card whose
+measured crossover on this machine is 262,144. The refit now hands its real element count to
+`substrate/device.select`, and the env named here was `.venv-cu128`, retired the same day.
 
-  PYTHONUTF8=1 PYTHONPATH=src .venv-cu128/Scripts/python.exe -m snn_data_lake.cortex.neurogenesis_engine
+  PYTHONUTF8=1 PYTHONPATH=src .venv-lake/Scripts/python.exe -m snn_data_lake.cortex.neurogenesis_engine
 """
 
 import random
@@ -45,6 +48,7 @@ import torch
 from snn_data_lake.brainstem.arm_config import CONTACT
 from snn_data_lake.cortex.multimodal_encoder import encode_multimodal
 from snn_data_lake.hippocampus.ng_snn import NGSNN
+from snn_data_lake.substrate.device import crossover, decisions, select
 
 SAFE_DISTANCE = CONTACT * 3.0  # 0.12 m -- perception-only channel, never in a reflex/danger band
 
@@ -173,8 +177,28 @@ class NeurogenesisSelfImprove:
         y = torch.tensor(self._buf_y, dtype=torch.long)
         x_tr, y_tr = x[: n - holdout], y[: n - holdout]
         x_te, y_te = x[n - holdout :], y[n - holdout :]
+        # MEASURED ROUTING, not availability routing (P5a, 2026-08-05). `self.device` is
+        # "cuda if a card exists" -- decided by `torch.cuda.is_available()` at construction, before
+        # anything knows how big the work is. This refit's element count is not a guess: it is
+        # exactly `x_tr.numel()` (rows in the buffer x the 64-wide multimodal feature), so it is
+        # handed to `substrate.device.select`, which routes on the crossover THIS machine measured
+        # rather than on the card being plugged in.
+        #
+        # HONEST ABOUT TODAY'S EFFECT: with buffer_cap=1000 and 64 features the widest refit this
+        # engine can ever run is 64,000 elements, and the crossover measured here is 262,144 -- so
+        # `select` answers 'cpu', every time, and the visible change is that a refit which used to
+        # run on the card now runs on the CPU. That is the correct answer at this width and NOT a
+        # speed claim; what is bought is that the answer is measured and flips on its own when the
+        # buffer or the feature width grows past the crossover.
+        #
+        # An engine explicitly pinned to CPU stays pinned -- `explicit` is `select`'s own override
+        # slot, so the constructor's `device="cpu"` still wins and there is no second override path.
+        # NGSNN moves seeded weights with `init_W.to(self.device)`, so a refit landing on a
+        # different device from the retained model is safe rather than merely unlikely.
+        pin = self.device if self.device == "cpu" else None
+        dev = select("neurogenesis_refit", n=int(x_tr.numel()), explicit=pin)
         model = NGSNN(
-            l_max=self._l_max, eps_tol=self._eps_tol, T=self._T, device=self.device, seed=self.seed
+            l_max=self._l_max, eps_tol=self._eps_tol, T=self._T, device=dev, seed=self.seed
         )
         # GROW-ON-TOP (2026-07-30). Seed from the substrate this engine already earned, so a refit
         # EXTENDS it instead of replacing it. Until now `fit` always started from zero units, which is
@@ -525,6 +549,11 @@ def main():
     # claim 1: SELF-IMPROVEMENT -- held-out next-mode accuracy RISES from ~chance as it grows.
     # early/late are averaged over first-2 / last-3 refits (the held-out slice is small -> noisy).
     eng = _run(NeurogenesisSelfImprove(seed=7, **cfg), 600)
+    # P5a: snapshot the routing decision THIS run's last refit made, before claims 2-5 build further
+    # engines and overwrite it -- `decisions()` is keyed by workload and is last-write-wins by design.
+    # Read live rather than assumed: claim 6 first failed against a width derived from `buffer_cap`,
+    # because the entry it read belonged to claim 5's 140-tick restart probe (n=6,016, not 60,160).
+    _route, _route_rows = decisions().get("neurogenesis_refit"), len(eng._buf_x)
     traj = eng.trajectory
     accs = [ac for (_, _, ac) in traj]
     # THIRDS of the trajectory, not its first two points. `early` used to be mean(accs[:2]): two
@@ -669,6 +698,34 @@ def main():
         f"({rs['child_units']}u, acc {rs['child_acc']:.6f})"
     )
     assert c5_pass, "claim5: the grown substrate must survive a new process"
+
+    # claim 6: THE REFIT IS WIDTH-ROUTED, NOT AVAILABILITY-ROUTED (P5a, 2026-08-05). This reads the
+    # decision the refits ABOVE actually made -- it does not re-derive one -- so it fails if `_refit`
+    # stops routing, if it routes on a placeholder width, or if the answer stops following the
+    # measurement. The expected width is derived from cfg and the feature encoder, never written down.
+    _feat = len(_mode_features(0, cfg["k_modes"]))
+    _expect_n = (_route_rows - min(60, _route_rows // 3)) * _feat
+    _rt = _route
+    assert _rt is not None, (
+        "the refit must route through substrate.device.select(); nothing recorded"
+    )
+    assert _rt["n"] == _expect_n, (
+        f"the routed width must be the fit tensor's own element count {_expect_n}, got {_rt['n']} -- "
+        "a router given the wrong n decides the wrong thing while looking perfectly healthy"
+    )
+    _xo = crossover()
+    assert _rt["device"] == ("cuda" if (_xo is not None and _rt["n"] >= _xo) else "cpu"), (
+        f"refit at n={_rt['n']} routed to {_rt['device']} against measured crossover {_xo} -- "
+        "that is availability routing wearing the router's clothes"
+    )
+    # That the answer FLIPS above the crossover is asserted where its red lives, in
+    # substrate/device.py's own self-check; repeating it here would be a second copy of one
+    # criterion, and the copy in the module that cannot break it is the one with no reachable red.
+    print(
+        f"routing: refit n={_rt['n']} -> {_rt['device']} ({_rt['why']}); crossover {_xo}. "
+        "NOT a speedup claim -- at this width CPU is the measured answer, and the point is that it "
+        "is measured and flips on its own when the buffer or the feature width grows."
+    )
 
     print(
         f"restart proof: {rs['parent_units']} grown units -> {rs['blob_bytes']} B under _T_GROWTH "

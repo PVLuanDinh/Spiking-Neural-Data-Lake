@@ -634,11 +634,76 @@ claim.
 
 ## P5 — Use the GPU for everything it actually speeds up
 
+### P5a — TWO AXES, NEITHER SUBSTITUTES FOR THE OTHER (owner directive, 2026-08-05)
+
+**The brain runs on BOTH free-threading and CUDA, and they are not alternatives.** This is the
+standing configuration for the whole project, not a per-module choice:
+
+- **FREE-THREADING (PEP 703, cp314t) takes the EVENT-DRIVEN axis.** Per-neuron state updates and
+  per-synapse plasticity are independent within a timestep, which is what makes an SNN parallel in
+  the first place. That work spreads across cores (28 logical on this box) with no GIL serializing
+  it regardless of how the code is written. Required, not optional: see `requires-python` and
+  `snn_data_lake/__init__.py::_require_free_threaded`.
+- **CUDA takes the DENSE-THROUGHPUT axis, ABOVE A MEASURED WIDTH.** At N=1,000,000 CUDA is 3.0x
+  torch-CPU and **54x numpy**; below the crossover it LOSES, measured at 0.01x at width 38.
+  **THE CROSSOVER ON THIS MACHINE IS 262,144, RE-MEASURED 2026-08-05** by running
+  `python -m snn_data_lake.substrate.device` on the unified env (3.14.6 free-threading,
+  torch 2.11.0+cu128, RTX 5070). It routes `live_tick` n=240 -> cpu, `population_encode` n=4096 ->
+  cpu, `dataset_pass` n=262144 -> cuda.
+  **This supersedes the "N is about 24,000" figure carried in this file and in session notes**, which
+  is roughly 10x too low against today's measurement. The older number was taken on a different torch
+  build and interpreter; it was quoted as current when it was not. Do not quote either figure --
+  `crossover()` measures it per process for exactly this reason, and the module's own docstring
+  already says "the crossover is a number, not a doctrine". Re-derive, never cite.
+- **Neither covers the other's regime.** Threads do not help a dense matmul that one kernel does
+  better; a GPU does not help 240 independent scalar updates whose dispatch cost exceeds their work.
+  A design that picks one and calls it done is leaving the other axis unexploited.
+
+**THE ROUTING MUST BE MEASURED, NOT ASSUMED — and this is where the tree is currently WRONG.**
+`substrate/device.py` already provides the correct mechanism: `crossover()` MEASURES the width above
+which CUDA beats numpy on THIS machine, once per process, using the same shape a tick runs, and
+`select()` routes on it. **Measured 2026-08-05: NOTHING IMPORTS `select` OR `crossover`.** Every
+caller imports `resolve_device`/`enable`, which route on AVAILABILITY ("cuda if present"), not on
+width. So the brain currently sends narrow work to the card — precisely the 0.01x case this policy
+was written to prevent — and the measured router is P3-dormant (computed, not consumed).
+Wiring `select()` into the tick path is OPEN P5a work. Until it is wired, the GPU half of this
+configuration is a capability the project HAS and does not USE, which is exactly the shape P3 names.
+
+**Re-measure as the population grows; the crossover is a number, not a doctrine.** The live widths
+(24-240) are NOT the criterion — the population is expected to grow exponentially, and a crossover
+above today's width is a reason to build the gated path, never a reason to discard it.
+
 **Standing owner authorization (2026-07-27): the RTX 5070 is available to the whole project, and any
 work that the GPU genuinely accelerates SHOULD use it.** Default to GPU for that work; do not leave it
 idle out of habit, and do not treat CUDA as a special-occasion tier. Hardware: RTX 5070, 12 GB, torch
-`2.11.0+cu128`, verified `cuda.is_available() == True`. Env `NORD_GPU=1`; the verified environment is
-`.venv-cu128` (the CPU gate env `.venv-lake` stays for deterministic `run_selfchecks`/`pytest`).
+`2.11.0+cu128`, verified `cuda.is_available() == True`. Env `NORD_GPU=1`.
+
+**`.venv-cu128` IS RETIRED, 2026-08-05, and the gate env `.venv-lake` now carries CUDA itself.**
+Measured on the unified env: `python 3.14.6 free-threading build` / `_is_gil_enabled() False` /
+`torch 2.11.0+cu128` / `cuda.is_available() True` / `NVIDIA GeForce RTX 5070`. One environment with
+both capabilities supersedes two with half each, which is P2 (adopt-or-merge, then retire the
+inferior) applied to environments rather than modules.
+
+**WHY IT HAD TO BE RETIRED RATHER THAN KEPT, and the sequence is recorded because it was a
+self-inflicted break.** `requires-python` went to `">=3.14"` and `snn_data_lake/__init__.py` gained a
+runtime refusal on GIL-enabled interpreters (both 2026-08-05, free-threading is now REQUIRED).
+`.venv-cu128` is **Python 3.11.15**, so from that moment the package could neither be installed into
+it (pip refuses on the floor) nor imported there (the guard raises). The GPU became UNREACHABLE, and
+the commit that did it claimed the adoption cost nothing — the claim was written without checking.
+The fix was a wheel that had to be looked for rather than assumed:
+`torch-2.11.0+cu128-cp314-cp314t-win_amd64.whl`, a CUDA build for the FREE-THREADED ABI, from
+`https://download.pytorch.org/whl/cu128`. The default PyPI index serves CPU-only torch on Windows,
+which is why a plain `pip install -e .` had silently produced `2.13.0+cpu` with `cuda False`.
+
+**Install command for the GPU tier (the default index will NOT give you CUDA):**
+`pip install --index-url https://download.pytorch.org/whl/cu128 "torch==2.11.0+cu128"`
+
+**P5's HARD CONSTRAINT IS UNCHANGED AND THIS DOES NOT RELAX IT: the suite must stay runnable WITHOUT
+a GPU, because CI has no card.** CI installs from the default index and therefore gets CPU torch on
+the same free-threaded interpreter; that is the supported configuration, not a degraded one. Note the
+consequence honestly — CI runs a different torch build (CPU) from the local gate (cu128), so a
+numeric assertion that depends on the torch build can be green in one and red in the other. That is a
+real skew introduced by this change and it is named rather than discovered later.
 
 **OPEN, 2026-08-05 — THE CPU GATE ENV NO LONGER CONFORMS TO THE PROJECT'S OWN FLOOR, and it is
 recorded here because this is the section that names `.venv-lake` as the gate env.** `pyproject.toml`

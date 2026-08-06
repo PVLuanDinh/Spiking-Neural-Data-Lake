@@ -162,11 +162,24 @@ numpy**; at N=4,000,000 it is 12.2x. And sparse connectivity is not an optimisat
 representation that fits — a dense 1M x 1M weight matrix is **4000 GB against 12.8 GB of VRAM**.
 Re-measure as populations grow; the crossover is a number, not a doctrine.
 
-**HARD CONSTRAINT — the suite MUST remain runnable WITHOUT a GPU**, because CI has no card. This
-is the property that matters, restated from the older wording that named one authoritative
-environment: `.venv-lake` and `.venv-cu128` are verified equivalent, so either may be used
-locally. Determinism comes from seeding, not from the absence of hardware. A GPU path MUST NOT
-become the only way to verify the project.
+**HARD CONSTRAINT — the suite MUST remain runnable WITHOUT a GPU**, because CI has no card.
+Determinism comes from seeding, not from the absence of hardware. A GPU path MUST NOT become the
+only way to verify the project.
+
+**AMENDED 2026-08-05: there is now ONE environment, not two.** `.venv-cu128` is RETIRED and
+`.venv-lake` carries CUDA itself — `python 3.14.6 free-threading` / `GIL False` /
+`torch 2.11.0+cu128` / `cuda True` / RTX 5070. The previous sentence here said the two envs "are
+verified equivalent, so either may be used locally"; that is now FALSE in a way worth stating,
+because it was false for a period before it was noticed. Free-threading became REQUIRED
+(`requires-python = ">=3.14"` plus a runtime guard refusing GIL builds), which made the 3.11-based
+`.venv-cu128` both uninstallable and unimportable — two envs that had been equivalent became one
+working env and one dead one, with the GPU briefly unreachable.
+
+The hard constraint above is UNCHANGED by that merge and is the reason this is safe: CI installs
+from the default index, which serves CPU-only torch on Windows, so CI verifies on a GPU-free
+free-threaded interpreter exactly as before. What the merge DOES introduce, stated rather than
+discovered later: CI and the local gate now run different torch BUILDS (cpu vs cu128), so a
+build-sensitive numeric assertion can be green in one and red in the other.
 
 ### P6. Every build must reach every other, and actually be used
 

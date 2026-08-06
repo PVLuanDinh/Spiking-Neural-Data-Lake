@@ -22,6 +22,8 @@ sink pools like any other, integrating spikes but commanding nothing.
 """
 
 import math
+import threading
+import time
 
 import numpy as np
 
@@ -91,6 +93,11 @@ class ConnectomeRouter:
         self._inh = sgn == _SIGN_INH
         self._nmod = np.isin(sgn, _NEUROMOD)
         self._maxdelay = int(self._delay.max()) if self._delay.size else 1
+        # running-EMA cost of one neuron's LIF update, seconds -- the P1 baseline the parallel gate
+        # weighs against this machine's measured thread floor. 0.0 means "not measured yet", and the
+        # gate treats that as SERIAL rather than guessing.
+        self._lif_per_elem_s = 0.0
+        self._lif_par_eff = 1.0  # running-EMA fraction of IDEAL parallel savings actually achieved
 
         self.reset_state()
 
@@ -117,6 +124,105 @@ class ConnectomeRouter:
         gain = 1.0 + self.nmod_gain * nmod_in  # neuromodulation scales excitatory gain
         return gain * (self.drive_scale * drive + self.syn_scale * exc_in) - self.syn_scale * inh_in
 
+    def _lif_update(self, current):
+        """The LIF pool update: leak toward rest + integrate, then spike and reset the neurons that
+        cross their (heterogeneous) threshold. Returns the new membrane array and the per-node rate.
+
+        ROW-PARTITIONED ABOVE A MEASURED CROSSOVER. Every node's pool is independent here -- row i
+        reads only `v[i]`, `current[i]`, `thr[i]` and writes only `v[i]` and `rate[i]`. There is no
+        cross-row reduction at all (`mean(axis=1)` reduces WITHIN a row), so threads own disjoint
+        contiguous row blocks and the result is elementwise identical to the whole-array form; there
+        is no float-addition order to change. The one genuinely cross-node step -- the delayed,
+        signed synaptic scatter-add in `_node_current` -- stays serial, and it is not the cost: at
+        width 960,000 it measured 12 us against this function's 5,577 us.
+
+        The crossover is measured, not written down: `region_wiring.pick_thread_count` weighs this
+        instance's running-EMA cost per neuron against this machine's measured thread floor and the
+        efficiency this kernel has actually been achieving. Measured end-to-end through `step()` on a
+        28-core free-threaded 3.14.6 box, this is a MODEST win that arrives LATE -- width 960 stays
+        serial, 480,000 1.27x, 960,000 1.6-2.0x, 4,800,000 2.5-2.8x, 10,000,000 2.5-2.9x. It
+        saturates near 2.5-2.9x because the kernel is memory-bandwidth bound, not compute bound, and
+        the back-solved efficiency sits around 0.5-0.75.
+
+        Width 96,000 is the honest edge case and this row used to read "0.99x (gate: serial)". That
+        is true only of a WARM gate: re-measured cold, the gate picks 2-4 threads there and runs
+        0.62-0.66x -- a 35-40% REGRESSION -- and it is `realized_efficiency` feeding that result
+        back that returns it to serial afterwards. The cost is bounded (one mispriced call per fresh
+        instance) and self-correcting, but stating it as "serial" hid a loss that is real,
+        reproducible, and sits only ~100x above the live width rather than safely beyond the
+        crossover.
+
+        The live brain builds this router at pool_size=24 over 40 nodes = width 960, which is ~500x
+        below the crossover, so in production today the gate says serial and that is the correct
+        answer. The path exists because the gate is what makes outgrowing it safe -- and note the
+        width knob here is `pool_size`, which nothing in the live tree currently raises, so this is
+        the weakest-standing of the three parallel paths on present evidence."""
+        n = self.v.shape[0]
+        nt = 1
+        est = self.v.size * self._lif_per_elem_s
+        if n >= 2 and self._lif_per_elem_s > 0.0:
+            from snn_data_lake.substrate import region_wiring as _rw
+
+            nt = min(_rw.pick_thread_count(est, mode="threads", efficiency=self._lif_par_eff), n)
+        if nt < 2:
+            t0 = time.perf_counter()
+            v = self.v * self.decay + current[:, None]
+            spikes = v >= self.thr
+            v = np.where(spikes, 0.0, v)
+            rate = spikes.mean(axis=1)  # fraction of the pool that fired this tick
+            dt = (time.perf_counter() - t0) / max(1, self.v.size)
+            self._lif_per_elem_s = (
+                dt
+                if self._lif_per_elem_s <= 0.0
+                else 0.75 * self._lif_per_elem_s + 0.25 * dt  # running baseline (P1)
+            )
+            return v, rate
+
+        from snn_data_lake.substrate import region_wiring as _rw
+
+        t0 = time.perf_counter()
+        out_v = np.empty_like(self.v)
+        rate = np.empty(n, dtype=np.float64)
+
+        bounds = _rw.blocks(n, nt)
+        errors = [None] * len(bounds)
+
+        # `out_v` / `rate` are UNINITIALISED memory. A worker that raises before writing its rows
+        # dies inside threading, which prints a traceback and swallows the exception -- `join()`
+        # then returns normally and this function would hand back whatever those bytes happened to
+        # hold. Measured before this guard: killing one worker returned pool rates of [0, 0, 0]
+        # where the truth was [0.766, 0.766, 0.0] -- no exception, no NaN, nothing out of range,
+        # and the wrong rates go straight into `_hist` and drive every downstream node. Silent
+        # plausible garbage is strictly worse than a crash, so every block records its exception
+        # and the caller re-raises rather than returning a partially-written buffer.
+        def block(i, a, b):  # writes ONLY rows [a, b) of out_v / rate -- disjoint across threads
+            try:
+                v = self.v[a:b] * self.decay + current[a:b, None]
+                spikes = v >= self.thr[a:b]
+                np.copyto(out_v[a:b], np.where(spikes, 0.0, v))
+                rate[a:b] = spikes.mean(axis=1)
+            except BaseException as exc:  # noqa: BLE001 -- recorded, then re-raised by the caller
+                errors[i] = exc
+
+        threads = [
+            threading.Thread(target=block, args=(i, a, b), name=f"cr-lif-{i}")
+            for i, (a, b) in enumerate(bounds)
+            if i > 0
+        ]
+        for th in threads:
+            th.start()
+        block(0, *bounds[0])  # the caller takes the first block rather than idling
+        for th in threads:
+            th.join()
+        for exc in errors:  # ascending block order -> deterministic choice when several fail
+            if exc is not None:
+                raise exc
+        # Feed the ACHIEVED scaling back: this kernel is memory-bandwidth bound, so ideal scaling is
+        # never reached and assuming it made the gate thread a 96,000-neuron update for a 0.67x loss.
+        eff = _rw.realized_efficiency(est, time.perf_counter() - t0, nt, mode="threads")
+        self._lif_par_eff = 0.5 * self._lif_par_eff + 0.5 * eff
+        return out_v, rate
+
     def step(self, region_drive=None):
         """Advance one tick. `region_drive` maps region->drive in [0,1]. Returns {region: rate}."""
         drive = np.zeros(self.n, dtype=np.float64)
@@ -127,13 +233,7 @@ class ConnectomeRouter:
                     drive[i] = float(d)
 
         current = self._node_current(drive)
-
-        # LIF pool update (vectorized over n nodes x K neurons): leak toward rest + integrate,
-        # spike and reset the neurons that cross their (heterogeneous) threshold.
-        self.v = self.v * self.decay + current[:, None]
-        spikes = self.v >= self.thr
-        self.v = np.where(spikes, 0.0, self.v)
-        rate = spikes.mean(axis=1)  # fraction of the pool that fired this tick
+        self.v, rate = self._lif_update(current)
 
         L = self._maxdelay + 1
         self._hist[self._t % L] = rate  # publish this tick's rates for delayed downstream reads
@@ -221,6 +321,106 @@ def main():
     ).reverberation("ec", 25)
     assert same_step and same_rev, "same seed must give identical outputs"
 
+    # ---------- (e) the ROW-PARTITIONED LIF update is BYTE-IDENTICAL to the whole-array form
+    # Forced both ways rather than left to the measured gate, so the comparison happens on every run
+    # at a width where the gate itself would (correctly) choose serial.
+    from snn_data_lake.substrate import region_wiring as _rw
+
+    # The drive is deliberately WEAK (0.2, not 1.0). At saturating drive every neuron in a pool
+    # clears every threshold, the per-neuron threshold spread stops mattering, and a comparison of
+    # the two paths passes even if one of them ignores `thr` entirely -- measured, not assumed. The
+    # graded regime below is the one where the heterogeneity is load-bearing, and the assert on
+    # `n_graded` keeps it that way if the dynamics ever shift.
+    graded_drive = {"ctx_sensory": 0.2, "ec": 0.14}
+    p = ConnectomeRouter(seed=11, pool_size=64)
+    p._lif_per_elem_s = 0.0  # cold EMA -> the gate must refuse to guess and take the serial path
+    for _ in range(5):
+        p.step(graded_drive)  # settle into the graded regime
+    pdrive = np.zeros(p.n, dtype=np.float64)
+    for _r, _d in graded_drive.items():
+        pdrive[p._idx[_r]] = _d
+    cur = p._node_current(pdrive)
+    v_ser, rate_ser = p._lif_update(cur)
+    n_graded = int(((rate_ser > 0.02) & (rate_ser < 0.98)).sum())
+    assert n_graded >= 3, (
+        f"the byte-identity comparison must run where per-neuron thresholds MATTER; only "
+        f"{n_graded} pools are firing at a graded rate, so the comparison would be vacuous"
+    )
+    assert p._lif_per_elem_s > 0.0, "a serial LIF update must record its own per-neuron cost (P1)"
+    assert _rw.pick_thread_count(0.0, mode="threads") == 1, (
+        "with no measured cost the gate must return 1 (serial), never a guess"
+    )
+    p._lif_per_elem_s = 1.0  # an absurd cost -> the gate must now choose threads
+    forced_nt = _rw.pick_thread_count(p.v.size * p._lif_per_elem_s, mode="threads")
+    v_par, rate_par = p._lif_update(cur)
+    identical = v_par.tobytes() == v_ser.tobytes() and rate_par.tobytes() == rate_ser.tobytes()
+    assert forced_nt >= 2, f"a huge measured cost must select >= 2 threads, got {forced_nt}"
+    assert identical, (
+        "the row-partitioned LIF update must be BYTE-identical to the whole-array form -- rows are "
+        "independent and mean(axis=1) reduces within a row, so any difference is a real defect"
+    )
+
+    # REACHABLE RED for the worker-failure path. `out_v` / `rate` are UNINITIALISED memory, so a
+    # worker that dies before writing its rows leaves them holding whatever bytes were there --
+    # and threading swallows the exception, so `join()` returns and the caller gets plausible
+    # garbage. MEASURED before the re-raise guard: killing one worker returned pool rates of
+    # [0.0, 0.0, 0.0] where the truth was [0.765625, 0.765625, 0.0], with no exception, no NaN and
+    # nothing out of range -- wrong rates that flow straight into `_hist` and drive every
+    # downstream node. Poison exactly one block's threshold slice, and a WORKER's rather than the
+    # caller's, so this tests the thread that cannot raise into the caller by itself.
+    class _PoisonThr:
+        """Delegates to the real threshold array, but raises for ONE row block."""
+
+        def __init__(self, real, lo):
+            self._real, self._lo = real, lo
+
+        def __getitem__(self, k):
+            if isinstance(k, slice) and k.start == self._lo:
+                raise MemoryError("simulated mid-tick failure in one worker block")
+            return self._real[k]
+
+    q = ConnectomeRouter(seed=11, pool_size=64)
+    q._lif_per_elem_s = 1.0
+    q_nt = min(_rw.pick_thread_count(q.v.size * 1.0, mode="threads"), q.v.shape[0])
+    q_bounds = _rw.blocks(q.v.shape[0], q_nt)
+    assert len(q_bounds) >= 2, f"this RED needs a real worker thread to kill: {q_bounds}"
+    q_real_thr = q.thr
+    q.thr = _PoisonThr(q_real_thr, q_bounds[1][0])  # block 1 runs on a worker, never the caller
+    try:
+        q._lif_update(q._node_current(np.zeros(q.n)))
+        raise AssertionError(
+            "a worker block that raises must PROPAGATE -- never return a partially-written buffer"
+        )
+    except MemoryError:
+        pass
+    finally:
+        q.thr = q_real_thr
+
+    # zero / one: a single-node partition and an empty drive must survive the same path
+    p1 = ConnectomeRouter(seed=5, pool_size=1)
+    p1._lif_per_elem_s = 1.0
+    v1, r1 = p1._lif_update(p1._node_current(np.zeros(p1.n)))
+    assert v1.shape == p1.v.shape and r1.shape == (p1.n,), (v1.shape, r1.shape)
+
+    # and the whole tick agrees end to end, serial vs forced-parallel, over a real trajectory
+    def _trace(force):
+        rr = ConnectomeRouter(seed=11, pool_size=64)
+        rr._lif_per_elem_s = 1.0 if force else 0.0
+        out = []
+        for i in range(12):
+            out.append(rr.step(graded_drive if i < 8 else None))
+            if force:
+                rr._lif_per_elem_s = 1.0  # keep the gate pinned to parallel across the trajectory
+        return out
+
+    t_ser, t_par = _trace(False), _trace(True)
+    assert t_ser == t_par, (
+        "12 ticks of step() must agree exactly between the serial and parallel LIF"
+    )
+    assert any(0.02 < x < 0.98 for tick in t_ser for x in tick.values()), (
+        "the 12-tick trajectory comparison must include graded rates, or it too is vacuous"
+    )
+
     n_edges = int(r._src.size)
     print("=" * 70)
     print("CONNECTOME ROUTER -- signed, delayed spike propagation over the wiring schematic")
@@ -234,6 +434,10 @@ def main():
     )
     print(f"(c) reverberation    loop(ec)={rev_loop:.4f}  no-loop(actuator)={rev_none:.4f}")
     print("(d) determinism      same seed -> identical step + reverberation")
+    print(
+        f"(e) parallel LIF     row-partitioned on {forced_nt} threads == whole-array, byte-identical "
+        f"(v + rate); 12 ticks agree end to end"
+    )
     print("=" * 70)
     print(
         f"self-check OK: driving ec propagates to dg/ca3 (ob/pir isolated); inhibitory edge reduces "
