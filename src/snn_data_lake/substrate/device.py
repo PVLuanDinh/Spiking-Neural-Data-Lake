@@ -18,8 +18,12 @@ WHY A ROUTER AT ALL, AND WHY IT DID NOT EXIST
     `neurogenesis_engine` cite was corrected in the SAME pass that claimed to correct them and was
     left at `:116`, which is `self.peak = float(peak)` -- the check is at `:120`. Re-resolved
     2026-08-05: :186 `device="cuda",`; :574/:581 the two `self._perception_device` assignments;
-    :120 `self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")`; ng_snn :88
-    `self.device = device if (torch.cuda.is_available() or device == "cpu") else "cpu"`.)
+    ng_snn :88 `self.device = device if (torch.cuda.is_available() or device == "cpu") else "cpu"`.
+    The `neurogenesis_engine` cite is now given by SYMBOL -- `NeurogenesisSelfImprove.__init__`'s
+    `self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")` -- because :120 went
+    stale the same day it was re-resolved: adding an import and four docstring lines to that file
+    moved it to :124. It is also no longer the whole story there, and that is the point of this
+    pass: the attribute still records an availability guess, but `_refit` no longer routes on it.)
 
 WHAT IS MEASURED, AND WHY IT IS NOT A CONSTANT
     The crossover between numpy and CUDA is a property of THIS machine and THIS population width, and
@@ -41,15 +45,35 @@ HONEST LIMIT
     encoders are transfer-bound for exactly that reason. Routing a multi-op pipeline needs a
     measurement of the PIPELINE, and this module does not pretend to have one.
 
-WHAT IS DORMANT HERE, STATED RATHER THAN IMPLIED (P3, re-derived 2026-08-04)
-    `select()`, `crossover()` and `decisions()` -- the measured GPU-first router this module exists
-    to BE -- have ZERO callers tree-wide outside this file's own self-check (re-derived by AST over
-    `src/` + `tests/` + `tools/` 2026-08-05: no module imports any of the three, and every bare
-    `select(` call site found belongs to an unrelated method -- `basal_ganglia/action_gating.py`,
-    `brainstem/autonomous_loop.py`, `lakehouse/medallion.py`, `reasoning/rpm_solver.py`). What the
-    importers below actually use is `resolve_device` / `enable`, the compatibility surface ported in
-    from the retired `reasoning/torch_device.py`. So the module is reachable, the merge is real, and
-    the headline capability is uncharged.
+WHAT WAS DORMANT HERE, AND WHAT IS CHARGED NOW (P3 / P5a, 2026-08-05)
+    Until 2026-08-05 `select()`, `crossover()` and `decisions()` -- the measured GPU-first router
+    this module exists to BE -- had ZERO callers tree-wide outside this file's own self-check
+    (derived by AST over `src/` + `tests/` + `tools/`: no module imported any of the three, and
+    every bare `select(` call site found belonged to an unrelated method --
+    `basal_ganglia/action_gating.py`, `brainstem/autonomous_loop.py`, `lakehouse/medallion.py`,
+    `reasoning/rpm_solver.py`). What the importers used was `resolve_device` / `enable`, the
+    compatibility surface ported in from the retired `reasoning/torch_device.py`, and that surface
+    routed on AVAILABILITY. So the module was reachable, the merge was real, and the headline
+    capability was uncharged.
+
+    CLOSED on the producer side by two edits, not by adding importers to 41 modules:
+      * `resolve_device()` no longer decides -- it resolves INTENT and calls `select()`. Every
+        module that already imported it now routes through the measured path, and every one of
+        their choices lands in `decisions()`.
+      * `cortex/neurogenesis_engine._refit()` passes a REAL width (`x_tr.numel()`), so at least one
+        live path is width-routed rather than availability-routed. Before that edit the refit ran on
+        the card at ~60k elements against a measured crossover of 262,144 -- the 0.01x regime P5a
+        was written to prevent.
+    STILL OPEN, stated so it is not read as finished: nothing CONSUMES `decisions()` (see its own
+    docstring), and one width-routed call site is one, not the tick path in general.
+
+HONEST ABOUT WHAT THIS BUYS TODAY: NOTHING VISIBLE, AND THAT IS THE CORRECT RESULT
+    Every live width in this tree (24-240 for populations, ~60k elements for a neurogenesis refit)
+    is below the crossover measured on this machine, so `select()` answers 'cpu' everywhere it is
+    asked. The gain is not speed -- it is that the answer is now MEASURED instead of ASSUMED, and it
+    flips to 'cuda' on its own when a population grows past the crossover, which P5a says is the
+    expectation. Lowering the crossover, or adding a width constant, to make the flip visible today
+    would be fitting a threshold to produce a demo; that is the defect this project deletes.
 
     `decisions()` additionally carried a claim about a consumer that does not exist: its docstring
     said it is "exported so the cockpit can answer 'why is the GPU idle'". The cockpit reads only
@@ -146,20 +170,30 @@ def crossover(force=False):
     return _CROSSOVER
 
 
-def select(workload, n=None):
+def select(workload, n=None, explicit=None):
     """The device `workload` should run on. GPU-FIRST: returns 'cuda' unless CPU is measured faster.
 
     `n` is the element count of the work. Omit it for workloads that are not width-bounded (training,
-    neurogenesis refits, dataset passes) -- those go to the GPU whenever one exists, which is the
-    whole point of having one.
+    dataset passes) -- those go to the GPU whenever one exists, which is the whole point of having
+    one. ("neurogenesis refits" stood in that list until 2026-08-05 and was wrong: a refit fits an
+    NG-SNN over a CONCRETE buffer, so its element count is `x_tr.numel()` and it is width-bounded
+    like anything else. `cortex/neurogenesis_engine._refit` now passes it.)
 
-    Explicit override wins over measurement, both directions: NORD_DEVICE=cpu|cuda, and NORD_GPU=0
-    forces CPU. An operator who has a reason beats a benchmark."""
-    forced = (os.environ.get("NORD_DEVICE") or "").strip().lower()
+    Explicit override wins over measurement, both directions: the `explicit` ARGUMENT first, then
+    NORD_DEVICE=cpu|cuda, then NORD_GPU=0 forces CPU. An operator who has a reason beats a benchmark.
+
+    `explicit` exists so `resolve_device` -- the compatibility surface 41 modules already import --
+    can route THROUGH this function instead of re-deciding availability and precedence itself (P2:
+    one mechanism, not two). It occupies the same slot as NORD_DEVICE and OUTRANKS it, because that
+    is `resolve_device`'s pre-existing precedence (its argument beat the environment) preserved
+    rather than changed. Passing `explicit` pins the answer, so the width test does not run -- which
+    is the same rule NORD_DEVICE already had, applied to the argument that stands in front of it."""
+    src = "explicit argument" if explicit else "NORD_DEVICE"
+    forced = (explicit or os.environ.get("NORD_DEVICE") or "").strip().lower()
     if forced in ("cpu", "cuda"):
-        dev, why = (forced, "NORD_DEVICE override")
+        dev, why = (forced, f"{src} override")
         if dev == "cuda" and not cuda_available():
-            dev, why = "cpu", "NORD_DEVICE=cuda but no CUDA device present"
+            dev, why = "cpu", f"{src}=cuda but no CUDA device present"
     elif os.environ.get("NORD_GPU") == "0":
         dev, why = "cpu", "NORD_GPU=0 override"
     elif not cuda_available():
@@ -181,10 +215,13 @@ def select(workload, n=None):
 def decisions():
     """Every routing decision this process made: {workload: {device, n, why}}.
 
-    NO CONSUMER TODAY. This said it was "exported so the cockpit can answer 'why is the GPU idle'";
-    the cockpit does not read it and never has (see the module docstring). It is empty in any
-    process that does not call `select()`, which today is every process but this one's self-check.
-    Kept because it is the right shape for that answer and costs nothing; charge UNMEASURED."""
+    STILL NO TELEMETRY CONSUMER. This said it was "exported so the cockpit can answer 'why is the
+    GPU idle'"; the cockpit does not read it and never has (see the module docstring). What HAS
+    changed as of 2026-08-05 is the producer side: it is no longer empty outside this module's own
+    self-check, because `resolve_device()` routes through `select()` and every one of the 41
+    modules that imports it therefore records its decision here. Charge on the READ side remains
+    UNMEASURED -- a populated dict nobody reads is progress on exactly one of the two halves, and
+    saying so is cheaper than discovering it later."""
     return {k: {"device": d, "n": n, "why": w} for k, (d, n, w) in _DECISIONS.items()}
 
 
@@ -213,32 +250,65 @@ def decisions():
 # the walk above rather than inheriting this; the repoint sweep was still landing when it was taken.
 
 
-def resolve_device(explicit=None):
-    """'cuda[:N]' when a GPU is wanted and present, else 'cpu'. Compatibility surface.
+def resolve_device(explicit=None, workload="resolve_device", n=None):
+    """'cuda[:N]' when a GPU is wanted and `select()` agrees, else 'cpu'. Compatibility surface.
 
     Preserves `torch_device.resolve_device`'s contract for its existing callers -- an explicit
     argument or NORD_DEVICE / NORD_GPU=1 asks for CUDA, absence of CUDA falls back with a message
-    rather than raising. It no longer re-implements the availability check: it defers to
-    `cuda_available()` so this module has ONE answer to "is there a GPU", not two.
+    rather than raising.
 
-    Note the default DIFFERS from the retired module and that is deliberate, not an oversight:
-    torch_device defaulted to CPU because it predated P5's "default to GPU for work it
-    accelerates". An explicit `NORD_GPU=0` or `NORD_DEVICE=cpu` still forces CPU.
+    WHAT CHANGED 2026-08-05, AND WHY IT IS THIS FUNCTION THAT CHANGED (P5a). This used to decide for
+    itself: it read the env, called `cuda_available()`, and returned. `select()` -- the router that
+    decides the same question by MEASUREMENT -- had zero importers tree-wide, so the whole tree
+    routed on AVAILABILITY while the measured router sat dormant (P3: computed, never consumed).
+    Repointing 41 modules at `select()` would have been 41 edits; repointing THIS function is one,
+    because it is what all 41 already import. So it now resolves INTENT only (which device is being
+    asked for, and by whom) and hands the actual decision to `select()`, which owns the override
+    precedence, the availability check and the width test. P2: one mechanism, not two.
+
+    PRECEDENCE, PRESERVED EXACTLY RATHER THAN TIDIED. The argument outranks NORD_DEVICE, which
+    outranks NORD_GPU. That was already true here -- `resolve_device("cuda")` returned 'cuda' under
+    NORD_DEVICE=cpu and under NORD_GPU=0 -- and it survives because the argument is passed into
+    `select(explicit=...)`, the slot that stands in front of NORD_DEVICE. It is deliberately NOT
+    "fixed" to let the env win: 41 callers depend on today's answer, and changing an override rule
+    while claiming a behaviour-preserving refactor is how a silent regression ships.
+
+    NORD_GPU=1 IS AN ENABLE, NOT A PIN, and that distinction is what makes the width test reachable
+    from here at all. An argument or NORD_DEVICE pins the device (measurement skipped, per the rule
+    `select()` already had). NORD_GPU=1 only expresses "a GPU is wanted", so it is NOT forwarded as
+    a pin, and `select()` still applies the measured crossover to any caller that supplies `n`.
+
+    THE DEFAULT IS CPU, and the paragraph that used to stand here said the opposite -- "the default
+    DIFFERS from the retired module ... torch_device defaulted to CPU because it predated P5". The
+    code it described has always returned 'cpu' when nothing asks for a GPU (`if not want ...`), so
+    the claimed difference did not exist. Corrected rather than implemented: making the default GPU
+    would silently move 41 modules onto the card, which is the opposite of what P5a is for.
+
+    `workload` names the entry in `decisions()`; `n` is the element count when the caller knows it.
     """
     want = explicit or os.environ.get("NORD_DEVICE")
+    pinned = bool(want)  # an argument or NORD_DEVICE is an OVERRIDE; NORD_GPU=1 is only an ENABLE
     if not want and os.environ.get("NORD_GPU") == "1":
         want = "cuda"
-    if not want or want == "cpu":
-        return "cpu"
-    if want.startswith("cuda"):
+    if not want:
+        want, pinned = "cpu", True  # the documented default: CPU unless something asks otherwise
+    base = "cuda" if want.startswith("cuda") else want
+    if base not in ("cpu", "cuda"):
+        return want  # an unknown accelerator string ('mps', ...) passes through, as it always did
+    dev = select(workload, n, explicit=base if pinned else None)
+    if dev == "cuda":
+        print(f"GPU: {device_name()} -> device={want}")
+        return want
+    if base == "cuda":
         if cuda_available():
-            print(f"GPU: {device_name()} -> device={want}")
-            return want
-        print(
-            f"WARNING: device '{want}' requested but no CUDA device is present; falling back to CPU."
-        )
-        return "cpu"
-    return want
+            # A card exists and the router still said CPU -- only reachable when the caller passed a
+            # width. The old text ("no CUDA device is present") would be a lie here, so it is not used.
+            print(f"NOTE: device '{want}' requested; routed to CPU -- {_DECISIONS[workload][2]}")
+        else:
+            print(
+                f"WARNING: device '{want}' requested but no CUDA device is present; falling back to CPU."
+            )
+    return "cpu"
 
 
 def enable(device):
@@ -269,7 +339,10 @@ def main():
     for workload, n in (
         ("live_tick", 240),
         ("population_encode", 4096),
-        ("neurogenesis_refit", None),
+        (
+            "training_epoch",
+            None,
+        ),  # was "neurogenesis_refit" -- that one IS width-bounded, see select()
         ("dataset_pass", 262144),
     ):
         d = select(workload, n)
@@ -300,9 +373,60 @@ def main():
     # the ported surface must work too, or the P2 merge dropped something
     assert resolve_device("cpu") == "cpu", "explicit cpu must resolve to cpu"
     assert enable("cpu") == "cpu", "enable('cpu') is a no-op returning its argument"
+
+    # --- resolve_device DEFERS to select(), and behaves exactly as it did before it did (P5a) ----
+    # EIGHT assertions, not the full 45-cell override matrix, and the difference is deliberate. The
+    # matrix was proven byte-identical before/after by running every cell -- 45 with a card and 45
+    # with `cuda_available` patched False -- which is evidence a self-check cannot carry cheaply.
+    # What stays here is one assertion per DISTINCT rule, each with its own constructed red: a
+    # summary assertion that only restates its neighbours has no independent red, which is the
+    # tautological shape P8 forbids, so the one that did (narrow.device != wide.device) was cut.
+    # `_gpu` is 'cpu' where no card exists, so this block runs unchanged on CI -- P5's hard
+    # constraint, satisfied by construction rather than by a skip.
+    _cuda = cuda_available()
+    _gpu = "cuda" if _cuda else "cpu"
+    _prior_dev, _prior_gpu = os.environ.get("NORD_DEVICE"), os.environ.get("NORD_GPU")
+    try:
+        for _k in ("NORD_DEVICE", "NORD_GPU"):
+            os.environ.pop(_k, None)
+        assert resolve_device() == "cpu", "no request and no env must stay on CPU (the default)"
+        assert resolve_device("cuda") == _gpu, "an explicit cuda request follows the card"
+        assert resolve_device("cuda:1") == ("cuda:1" if _cuda else "cpu"), (
+            "the ':N' suffix must survive the round trip through select(), which only speaks "
+            "'cpu'/'cuda' -- losing it would silently move work to device 0"
+        )
+        os.environ["NORD_DEVICE"] = "cpu"
+        assert resolve_device("cuda") == _gpu, "the ARGUMENT outranks NORD_DEVICE, as it always did"
+        del os.environ["NORD_DEVICE"]
+        os.environ["NORD_GPU"] = "0"
+        assert resolve_device("cuda") == _gpu, "the ARGUMENT outranks NORD_GPU=0, as it always did"
+        os.environ["NORD_GPU"] = "1"
+        assert resolve_device() == _gpu, "NORD_GPU=1 asks for the card"
+
+        # NORD_GPU=1 is an ENABLE, not a pin -- so a caller that supplies a WIDTH is still measured.
+        # These are the assertions about the new capability rather than the preserved one.
+        assert resolve_device(workload="narrow_probe", n=1) == "cpu", (
+            "width 1 must route to CPU even under NORD_GPU=1: one element is below any crossover, "
+            "and an enable that pinned the device would make the measurement unreachable"
+        )
+        assert decisions()["narrow_probe"]["n"] == 1, (
+            "the width must reach decisions(), not be lost"
+        )
+        if _cuda:  # no card -> no crossover to straddle, and nothing this can say
+            assert resolve_device(workload="wide_probe", n=crossover()) == "cuda", (
+                f"at the measured crossover ({crossover()}) the same call must reach the card; a "
+                "router whose answer never changes with n is not routing"
+            )
+    finally:
+        for _k, _v in (("NORD_DEVICE", _prior_dev), ("NORD_GPU", _prior_gpu)):
+            if _v is None:
+                os.environ.pop(_k, None)
+            else:
+                os.environ[_k] = _v
+
     print(
         f"self-check OK: {len(decisions())} routing decisions recorded, overrides honoured; "
-        "ported resolve_device/enable live"
+        "resolve_device defers to select() and its width reaches decisions()"
     )
 
 
