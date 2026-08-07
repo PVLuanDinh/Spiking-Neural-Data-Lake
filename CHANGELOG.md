@@ -9,6 +9,27 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- gwt_deep's binding half passes the test that killed the workspace family (2026-08-07j)
+
+The ledger's `gwt_deep` row owed a K-pair binding benchmark; the honest scorer built at the
+`bind_*` retirement is that benchmark, and it was run in the identical form (Jaccard, 120
+trials/K, all-fired-pairs strawman, baseline-relative margin). PRE-REGISTERED as the OPPOSITE of
+the family's null -- `gwt_deep` fixed both halves of that defect on 2026-08-04 (only the in-slot
+object is driven per tick; F1 scorer; the pre-fix cross-product broadcast reconstructed and run
+as a red on every self-check) -- and the prediction held:
+
+    K   spiking   rate     margin    control sd    strawman
+    1   1.0000    1.0000   +0.0000     0.0000      1.0000
+    2   1.0000    0.5083   +0.4917     0.5020      0.5000
+    4   1.0000    0.1829   +0.8171     0.2175      0.2500
+
+The spiking decoder recovers EXACTLY the presented pairs at every K and beats its own strawman at
+K>=2 -- the separation the retired family never had. The K=4 margin is 3.8x the control's spread;
+the K=2 margin's softness matches what `gwt_deep`'s `_reds()` already disclosed. **Verdict: the
+binding half is CREDITED and the split-verdict MERGE activates** -- retire the ignition/re-entry
+half that duplicates `reentrant_workspace`, keep the binding half. That surgery is its own
+measured pass (the self-check interleaves both halves).
+
 ## [Unreleased] -- P4c: two unrecorded NO-GOs get their reasons, and one of them retires (2026-08-07i)
 
 `f299b631` kept `deep_stdp_2stage_svm` and `ensemble_rbf` out of its 9-module retirement with no
