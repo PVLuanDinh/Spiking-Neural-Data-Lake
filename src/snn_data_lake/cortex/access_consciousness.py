@@ -211,7 +211,7 @@ from collections import deque
 import numpy as np
 
 from snn_data_lake.cortex.vsa_reasoning import D, bundle, cleanup, hv, sim
-from snn_data_lake.thalamus.global_workspace import GlobalWorkspace
+from snn_data_lake.thalamus.global_workspace import GlobalWorkspace, OneSubsidyArbiter
 
 # phenomenal-consciousness vocabulary that MUST NEVER appear in the functional readout (claim 5).
 _BANNED = ("conscious", "sentient", "phenomenal", "subjective", "aware", "feels", "qualia")
@@ -582,7 +582,28 @@ class AccessConsciousness:
         and it would report reach that never happened. Since `content_key` made the key a TUPLE that
         failure is now loud rather than silent -- `key in "some string"` raises -- which is why the
         namespace tag is kept and the key is not a bare int."""
-        head = self._ws.step()  # advance the bus; it broadcasts the admitted SET to every tap
+        # WHO CLOCKS THE ARBITER. A faculty that BUILT this bus is its only producer, so it advances
+        # it. A faculty handed SOMEBODY ELSE'S bus submits into it and lets the owner run the one
+        # competition per cycle -- `_own_ws` has recorded that distinction since the injection
+        # parameter landed and, until 2026-08-07, nothing acted on it (its value was asserted and
+        # its consequence was nowhere: P3 shape 5, a flag that changes no outcome).
+        #
+        # THE DEFECT THAT MADE IT LOAD-BEARING. Repointed onto the arm's bus, this faculty called
+        # `_ws.step()` here while `brainstem/autonomous_loop.py::_workspace_broadcast` called it too,
+        # so ONE brain tick ran TWO competitions. Instrumented over 40 live ticks, competition 1 saw
+        # `('perception', 'salience')` and competition 2 saw `('coalition',)` ALONE, on 40 of 40.
+        # The two producers never met: each won an uncontested competition and evicted the other's
+        # content by default, which is the "the producers alternate" reading that three sessions
+        # attributed to the band, the capacity and the lateral inhibition in turn. A bus with two
+        # producers and two clocks is two buses taking turns.
+        #
+        # THE ONE-CYCLE LAG IS FORCED, NOT A SHORTCUT, and it is the honest part of this. The
+        # coalition's claim is derived from THIS tick's percept, which the arm produces by stepping;
+        # so the claim cannot exist before the competition it would join. Submitting it into the
+        # NEXT cycle is the only ordering the data dependency allows, and a delayed re-entrant
+        # projection is what the biology does anyway. The readout below therefore reports on the
+        # competition this faculty's PREVIOUS submission entered.
+        head = self._ws.step() if self._own_ws else self._ws.current
         admitted = self._ws.broadcast_all()
         # THE KEY POSTED THIS TICK, never the class label: `content_key` rotates with the bundle, so
         # "is my content in the workspace" has to be asked about the content this faculty is
@@ -768,6 +789,22 @@ def _contended_run(n_peers, ws, n=12, shared=True):
         _post(ws, [(f"peer{b}", f"peer{b}", claim) for b in range(n_peers)])
         ws.step()
         ac.bind_assembly(_coherent("cat", 3), salience=claim)
+        # `ac.step()` no longer clocks a bus it does not own (see `AccessConsciousness.step`), so
+        # the clock it used to supply is now EXPLICIT here. Behaviour is unchanged -- this is the
+        # same two-competition cadence this harness has always run, with the second competition
+        # spelled out instead of hidden inside a faculty's readout.
+        #
+        # NOT CHANGED TO ONE COMPETITION, deliberately, and the reason is worth recording. Making
+        # the peers and this faculty settle TOGETHER is the cadence the live brain now runs, and it
+        # was tried here: `k_out` moves 2 -> 5 and the admission profile over 0..8 peers becomes
+        # `# # # # # . # . .` -- not monotone, because every peer posts EXACTLY `_max_claim()` and
+        # so does this faculty, and `_jitter_for` draws in first-encounter order, so adding a peer
+        # re-draws this faculty's tie-break instead of only raising the load. Claim (10)'s
+        # name-blindness RED also goes unreachable, because a peer and this faculty in ONE
+        # competition no longer co-saturate. Re-deriving three criteria of this module at once, in
+        # the same pass that changes the mechanism they judge, is the failure mode where one author
+        # writes both the code and its criterion. It is left as separate, named work.
+        ws.step()
         own.append((ac.step(), round(ac.access_index(), 6), round(ac.global_availability(), 6)))
         # ADMISSION, not head identity: `broadcast_all()` is the multi-slot read, and asking it
         # about THIS faculty's own content is asking whether this faculty got access. Read off
@@ -793,21 +830,26 @@ def _first_denied(runs):
     return None
 
 
-def _slot_after_threat(claim, threat=0.95, warm=8, psal=0.6):
+def _slot_after_threat(claim, threat=0.95, warm=8, psal=0.6, bus=None):
     """Warm a shared bus with this faculty holding the slot at `claim`, then fire a proximity
-    threat. Returns what the slot holds afterwards -- 'threat' iff the bus is still displaceable."""
-    ws = _bus()
+    threat. Returns what the slot holds afterwards -- 'threat' iff the bus is still displaceable.
+
+    `bus` selects the ARBITER, defaulting to the shipped one. Claim (9)'s red passes
+    `thalamus/global_workspace.OneSubsidyArbiter` -- see the criterion for why the red moved off
+    the uncapped arm and onto the arbiter."""
+    ws = _bus() if bus is None else bus(seed=0)
     ac = AccessConsciousness(seed=0, ws=ws)
     ac.bind_assembly(_coherent("cat", 3))  # establish this faculty's real content key ONCE...
     key = ac.content_key()
     for _ in range(warm):
-        _post(ws, [("perception", "unit0", psal), ("salience", "threat", 0.0)])
-        ws.step()
         # ...then post it RAW, bypassing bind_assembly's cap, so capped and uncapped arms are
         # comparable. The key is CONSTANT across the warm loop on purpose: a faculty re-asserting
         # one content is the branch `_defended` subsidises, which is the HARDEST case for
         # displaceability and therefore the right one for this criterion.
+        _post(ws, [("perception", "unit0", psal), ("salience", "threat", 0.0)])
+        ws.step()
         _post(ws, [(ac._SRC, key, claim)])
+        ws.step()  # the clock `ac.step()` used to supply, now explicit -- behaviour unchanged
         ac.step()
     _post(ws, [("perception", "unit0", psal), ("salience", "threat", threat)])
     return ws.step()
@@ -852,6 +894,7 @@ def _own_stale_head(lo=0.55, hi=0.75, step=0.0025, warm=6, tenant=0.75):
             ws.step()
         _post(ws, [(ac._SRC, fresh, round(s, 4))])
         ac._key = fresh  # what this faculty is asserting NOW
+        ws.step()  # the OWNER settles it -- `ac.step()` no longer clocks a bus it does not own
         ac.step()
         if ac.ignited() and not ac.focused() and ws.broadcast() == old:
             return round(s, 4), old, fresh
@@ -892,6 +935,7 @@ def _focus_run(peer_claim, peer_src=None, ws=None, n=12, who=None):
         _post(ws, [(src, "peer", peer_claim)])
         ws.step()
         ac.bind_assembly(_coherent("cat", 3), salience=claim)
+        ws.step()  # the clock `ac.step()` used to supply, now explicit -- behaviour unchanged
         ac.step()
         if who is not None:
             # WHAT HOLDS THE HEAD, and this faculty's own key, recorded per tick. Claim (10) asserts
@@ -926,12 +970,20 @@ def _name_ranked(ws):
     Why it is the red this claim needs. Two compliant pools SATURATE their sustained-firing counts,
     so under the retired key the head was settled lexicographically -- and this file's FOCUS readout
     read that head. Renaming a peer therefore moved a consciousness-relevant flag while changing no
-    claim, no content and no competition. Returns the bus."""
+    claim, no content and no competition. Returns the bus.
+
+    BOTH ORDERINGS ARE RESTORED, and that became load-bearing on 2026-08-07. The arbiter now
+    decides ADMISSION with `_rank_key` and the HEAD with `_focus_key` (the hold/grip split -- see
+    `thalamus/global_workspace.py::grip`), and this file's FOCUS readout reads the head. Overriding
+    `_rank_key` alone therefore left the head on the REPAIRED key and the red went green: measured,
+    the rename moved FOCUS on 0 of 12 in both arms, which is a control that has quietly stopped
+    being one. A red has to reconstruct the retired behaviour on the path the criterion reads."""
 
     def rank(k):
         return (-ws._last_late[k], -ws._last_total[k], k)
 
     ws._rank_key = rank
+    ws._focus_key = rank
     return ws
 
 
@@ -1071,13 +1123,47 @@ def main():
     # sharing must be REAL, not nominal: A's broadcast has to reach B's taps, which only happens if
     # both tap sets were registered on the one object.
     inj_a.bind_assembly(_coherent("cat", 5))
-    inj_a.step()
+    inj_a.step()  # SUBMITS; on a bus it does not own it no longer clocks it (see `step`)
+    inj_ws.step()  # ...so the OWNER runs the one competition. This line is the change made visible:
+    # it used to be implicit inside `inj_a.step()`, which is exactly the double-clocking that made a
+    # shared bus behave as two buses taking turns on the live brain.
     cross_tap = bool(inj_b._taps[0]) and inj_a.content_key() in inj_b._taps[0][-1]
     # the rheobase is read OFF the bus, so the anchor cortex/brain.py uses is the pool's own. RED by
     # construction: the constructor argument says 0.55 and the bus says 0.42.
     odd_ws = _bus(ignition_threshold=0.42)
     odd_ac = AccessConsciousness(seed=0, ignition_threshold=0.55, ws=odd_ws)
     threshold_readthrough = odd_ac.ignition_threshold == 0.42
+
+    # ---- (6b) A FACULTY DOES NOT CLOCK A BUS IT DOES NOT OWN. -----------------------------------
+    # Sharing the OBJECT is claim (6); this is sharing the CLOCK, and it is a separate failure that
+    # claim (6) passes straight through. Measured on the live brain before the fix: repointed onto
+    # the arm's bus, this faculty called `_ws.step()` while `brainstem/autonomous_loop.py` called it
+    # too, so ONE wake tick ran TWO competitions -- instrumented over 40 ticks, competition 1 saw
+    # `('perception','salience')` and competition 2 saw `('coalition',)` ALONE, 40 of 40. Two
+    # producers on one object that never meet is not a shared bus; it is two buses taking turns, and
+    # it is why co-occupancy read 0/120 with the identity assert above passing.
+    # After: ONE step per tick, and 39 of 40 competitions carry all three submitters together.
+    #
+    # The RED is `_own_ws` flipped on the SAME instance and the same bus -- one attribute, so what
+    # it isolates is the ownership test and not some other difference between two harnesses.
+    clock_ws = _bus()
+    clock_ac = AccessConsciousness(seed=0, ws=clock_ws)
+    clock_ac.bind_assembly(_coherent("cat", 3))
+    _clock_n = [0]
+    _clock_real = clock_ws.step
+
+    def _counted_step():
+        _clock_n[0] += 1
+        return _clock_real()
+
+    clock_ws.step = _counted_step
+    clock_ac.step()
+    guest_clocks = _clock_n[0]  # a GUEST must not advance the arbiter
+    _clock_n[0] = 0
+    clock_ac._own_ws = True  # THE RED: the same faculty, now claiming to own the same bus
+    clock_ac.step()
+    owner_clocks = _clock_n[0]  # an OWNER must
+    clock_ws.step = _clock_real
 
     # ---- (7) WHAT MAKES ACCESS AND FOCUS THE SAME QUESTION IS ONE CONTENT, NOT ONE SOURCE. --------
     # RE-DERIVED 2026-08-06, and the re-derivation is the finding. This claim asserted that on a
@@ -1244,6 +1330,15 @@ def main():
     # Admission must be a monotone STEP in the load, not a count that happens to land at one point:
     # in on EVERY tick below the threshold (the search only proves ONE tick), out on every tick from
     # it to the end of the scan (the search proves nothing above it at all).
+    #
+    # KNOWN AND NOT CLOSED HERE (2026-08-07): this step holds on THIS harness's two-competition
+    # cadence, in which the peers settle and then this faculty settles alone. Run with ONE
+    # competition -- the cadence the live brain now uses -- `k_out` moves 2 -> 5 and the profile
+    # over 0..8 peers becomes `# # # # # . # . .`, which is not monotone, because every peer and
+    # this faculty all post EXACTLY `_max_claim()` and `_jitter_for` draws in first-encounter order,
+    # so adding a peer re-draws this faculty's tie-break rather than only raising the load. The
+    # criterion is left as it is rather than re-derived in the pass that changed the mechanism it
+    # judges. See the note in `_contended_run`.
     in_below = all(all(load_runs[k][1]) for k in range(k_use))
     out_above = all(not any(load_runs[k][1]) for k in range(k_use, k_scan + 1))
 
@@ -1253,6 +1348,18 @@ def main():
     cap = _fresh()._max_claim()
     capped_after_threat = _slot_after_threat(cap)
     uncapped_after_threat = _slot_after_threat(1.0)
+    # THE RED MOVED, 2026-08-07, and where it moved to is the finding. It used to be the UNCAPPED
+    # arm: at a claim of 1.0 this faculty drove 1.0 + hold = 1.25 against the threat's 0.95 and the
+    # threat was blocked, so the cap was what bought displaceability. `global_workspace` then SPLIT
+    # the incumbent's subsidy -- the HOLD still sustains an admitted assembly, but the head is
+    # ordered by a far smaller GRIP (`hold / capacity`) -- and the arbiter itself now guarantees
+    # what the cap was guaranteeing: measured, the threat takes the head on the uncapped arm too
+    # (1.0 decays to 0.85, + grip 0.0625 = 0.9125 < 0.95). So the uncapped arm went GREEN, which
+    # reads exactly like a criterion losing its red and is the opposite -- the hazard it was built
+    # to detect was removed. Weakening or deleting the criterion would have thrown away the only
+    # thing in this module that tests the guarantee, so the red is RE-POINTED at the mechanism that
+    # now buys it: the same uncapped replay on the pre-split arbiter, which still blocks the threat.
+    uncapped_one_subsidy = _slot_after_threat(1.0, bus=OneSubsidyArbiter)
     # the cap only ever LOWERS: a scrambled (sub-rheobase) assembly must stay local on any bus,
     # including one whose defence leaves no room and whose cap therefore floors at the rheobase.
     cap_floor_ws = _bus(self_boost=0.5, hysteresis=0.6)
@@ -1373,6 +1480,7 @@ def main():
         _post(st_ws, [(peer_lo, "peer", 0.95)])
         st_ws.step()
         st_ac.bind_assembly(_coherent("cat", 3), salience=st_claim)
+        st_ws.step()  # the clock `st_ac.step()` used to supply, now explicit -- behaviour unchanged
         st_ac.step()
         st_rows.append((st_ac.state(), st_ac.ignited(), st_ac.focused()))
     # `"focused" in s` is tested BEFORE it is read so a DELETED key fails this criterion by its own
@@ -1444,7 +1552,8 @@ def main():
     print(
         f"shared bus   : injected handle is THE object (A and B taps on one instance: "
         f"{cross_tap}); a default instance is NOT it ({identity_red}); rheobase read off the bus "
-        f"({odd_ac.ignition_threshold})"
+        f"({odd_ac.ignition_threshold}); a GUEST clocks it {guest_clocks}x, its OWNER "
+        f"{owner_clocks}x -- one competition per cycle, not one per producer"
     )
     print(
         f"one content vs two: ONE content re-asserted agrees with 'slot non-empty' on "
@@ -1459,9 +1568,10 @@ def main():
         f"does ({k_out_priv}, own diff {priv_diff})"
     )
     print(
-        f"displaceable: cap={cap} -> a 0.95 threat takes the slot ({capped_after_threat!r}); "
-        f"UNCAPPED at 1.0 it cannot ({uncapped_after_threat!r}); cap floor={cap_floor} "
-        f"open={cap_open}"
+        f"displaceable: cap={cap} -> a 0.95 threat takes the head ({capped_after_threat!r}); "
+        f"UNCAPPED at 1.0 it still does ({uncapped_after_threat!r}) because the hold/grip split "
+        f"makes that the ARBITER's guarantee; the RED is the pre-split arbiter, where uncapped it "
+        f"cannot ({uncapped_one_subsidy!r}); cap floor={cap_floor} open={cap_open}"
     )
     print(
         f"ACCESS vs FOCUS: neutered peer -> access+focus {n_both}/{len(diss_quiet)}; a 0.95 peer "
@@ -1552,6 +1662,14 @@ def main():
         "trivially the identity assert above is not discriminating anything"
     )
     assert own_flags == (False, False, True), f"_own_ws must track the injection: {own_flags}"
+    assert guest_clocks == 0 and owner_clocks == 1, (
+        f"a faculty handed SOMEBODY ELSE'S bus must submit into it and let the owner run the one "
+        f"competition per cycle, or one tick runs two competitions with one submitter each and the "
+        f"producers never meet (measured live: co-occupancy 0/120 with the identity assert above "
+        f"passing). Guest advanced the arbiter {guest_clocks} time(s), owner {owner_clocks}. "
+        f"`_own_ws` had recorded this distinction since the injection parameter landed and nothing "
+        f"acted on it -- a flag whose value was asserted and whose consequence was nowhere"
+    )
     assert cross_tap, (
         "A's broadcast must reach B's taps -- two instances sharing a bus by NAME while holding "
         "different objects is exactly the private-workspace defect P6 counts"
@@ -1616,10 +1734,17 @@ def main():
         f"with the claim capped at the bus's own displaceability bound, a 0.95 proximity threat "
         f"must still seize the slot, got {capped_after_threat!r}"
     )
-    assert uncapped_after_threat != "threat", (
-        f"the cap must be load-bearing: UNCAPPED at 1.0 the same threat must FAIL to take the "
-        f"slot, or claim (9) is asserting something that was true anyway (got "
+    assert uncapped_after_threat == "threat", (
+        f"...and on the SPLIT arbiter it must do so even UNCAPPED -- head displaceability is the "
+        f"arbiter's guarantee now, not the faculty's own restraint, so a faculty that ignores the "
+        f"cap entirely still cannot hold the focus against a threat (got "
         f"{uncapped_after_threat!r})"
+    )
+    assert uncapped_one_subsidy != "threat", (
+        f"claim (9) must be reachable-red, and its red is the PRE-SPLIT ARBITER: with the head "
+        f"ranked on the HOLD instead of the GRIP, an uncapped faculty drives 1.0 + hold against "
+        f"the threat's 0.95 and the threat must FAIL to take the head, or this claim is asserting "
+        f"something that was true anyway (got {uncapped_one_subsidy!r})"
     )
     assert not cap_floor_ignites and cap_floor == cap_floor_ws.ignition_threshold, (
         f"the cap must only ever LOWER a claim: on a bus with no displaceable room it floors at "

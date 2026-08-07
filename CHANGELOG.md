@@ -9,6 +9,95 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- one subsidy was doing two jobs, so attention could not be captured (2026-08-07)
+
+Defect #16, the last open item from the P6 arc: **no compliant specialist anywhere in the band could
+take the HEAD of the global workspace from any other.** `live_brain.thought` reads that head, so the
+first tenant to arrive held what the brain was attending to, permanently.
+
+- **The arithmetic, and why no parameter fixes it.** A slot occupant was granted
+  `self_boost + hysteresis = 0.25` of extra drive while the whole band a compliant specialist may
+  claim -- `[ignition_threshold, 1 - defence]` = [0.55, 0.75] -- is 0.20 wide. An incumbent at the
+  band FLOOR therefore drove 0.80 against a 0.75 ceiling. Displaceability needs
+  `defence < (1 - lo)/2 = 0.225`, and the sweep confirms the boundary to within one 0.005 step. But
+  the same quantity is what `capacity = floor(1/defence)` divides, so lowering it widens the
+  workspace: at capacity 5 an above-band tenant becomes joinable by a compliant challenger and at
+  capacity 6 a FULL workspace admits one. **The candidate `(1 - lo)/3 = 0.15` reddens five criteria
+  across three modules.** Inside the window that leaves, `(0.2000, 0.2250)`, EVERY value costs churn
+  9 -> 15 (criterion: <= 12) and retention 47/47 -> 45/47 -- measured band-relative as well as
+  absolute, so it is the workspace and not the instrument. **Churn-clean and head-displaceable are
+  disjoint on that axis, and the rheobase axis has no admissible value at all.**
+- **The fix is the SPLIT, not the number.** One subsidy was sustaining an admitted assembly AND
+  deciding which assembly is broadcast; those jobs want opposite magnitudes. Admission still ranks on
+  the full HOLD (`_rank_key`), so churn, retention, capacity, lateral gain and the entire SLOT row
+  `[0.72 x5]` are byte-unchanged. The head is ordered over the admitted set by `_focus_key` carrying
+  only `grip = hold / capacity` -- this module's own division-across-capacity principle, no new
+  constant. Head row `[0.805, 0.835, 0.910, 0.955, None]` -> `[0.720, 0.720, 0.725, 0.765, None]`,
+  **0 of 5 tenants displaceable -> 3 of 5**, at a cost of two head switches (10 -> 12) on the
+  48-tick stream. The biology it answers to: recurrent excitation sustains a cortical assembly, but
+  which one DOMINATES is set by afferent drive under biased competition.
+- **`_G_INH = 2.4` RETIRED (P1).** The "TOTAL lateral-inhibition budget" was exactly
+  `_W_SELF * capacity` -- an EXACT float identity, `2.4 / 4 == 0.6 == _W_SELF` -- i.e. the per-slot
+  E/I balance multiplied back up by the capacity it was about to be divided by again. `_lateral_gain`
+  is now `_W_SELF` and the shipped workspace is byte-identical without the constant.
+- **Three criteria, and two of them are controls that had quietly stopped being controls.**
+  `access_consciousness` claim (10)'s `_name_ranked` and this module's `_NameRanked` each override
+  `_rank_key` only, so with the head moved to `_focus_key` both reds went GREEN -- the rename moved
+  focus on 0 of 12 in both arms. Restored on both paths. **A control has to reconstruct the retired
+  behaviour on the path the criterion actually reads.** Claim (9)'s red moved for the opposite
+  reason: the 0.95 proximity threat now takes the head even from an UNCAPPED faculty, because the
+  guarantee moved from the faculty's own claim cap to the arbiter. Re-pointed at `OneSubsidyArbiter`,
+  the pre-split arbiter kept as one shared, running control.
+- **New criterion** `focus capture` with its red: 3 of 5 tenants displaceable against the
+  one-subsidy control's 0 of 5. Its complement, `LIMIT 3`, is an `any()` and could only ever police
+  the ceiling -- it was green throughout the period when no point of the band was winnable.
+- Gates: ruff clean, **280/280** self-checks, pytest 93.05%, and all nine asserting CI gates exit 0.
+
+### ...and the two producers were never in the same competition
+
+`Brain._update_access` built `AccessConsciousness` with no `ws=`, so the coalition producer sat on a
+PRIVATE workspace and **live co-occupancy was 0/120**. Every figure ever recorded for that
+comparison came from an out-of-tree edit; there was no runnable harness for any of it.
+
+- **Repointing alone does not fix it, and this is the part three sessions got wrong.** Instrumented
+  over 40 live ticks, the brain tick called `ws.step()` **TWICE** -- competition 1 saw
+  `('perception','salience')`, competition 2 saw `('coalition',)` **alone**, on 40 of 40. Each
+  producer won an uncontested competition and evicted the other's content by default. "The
+  producers alternate" had been attributed to the band, then the capacity, then the lateral
+  inhibition; it was **two clocks on one bus**, which is two buses taking turns.
+- **`_own_ws` was a flag whose value was asserted and whose consequence was nowhere** -- P3 shape 5,
+  present since the injection parameter landed. It is now load-bearing: a faculty handed somebody
+  else's bus SUBMITS into it and the owner runs the one competition per cycle. After: **1 step per
+  tick, and 39 of 40 competitions carry all three submitters together.**
+- **The one-cycle lag is forced, not a shortcut.** The coalition's claim derives from this tick's
+  percept, which the arm produces by stepping, so the claim cannot exist before the competition it
+  would join. A delayed re-entrant projection is what the biology does anyway.
+- **Measured live, 120 wake ticks:** co-occupancy **0 -> 3**, access-without-focus **0 -> 2** (the
+  ACCESS/FOCUS dissociation now OCCURS on the live brain, where it was 0 across 174 configurations),
+  perception in the workspace 120 -> 96 and holding the head 95, coalition 27 and holding it 25.
+  **Stated cost, not hidden: `live_brain.thought` names the percept 120/120 -> 95/120.** That is the
+  expected consequence of a second producer legitimately competing -- and it is decided by afferent
+  claim now, not by whoever stepped last, which is what the 2-step arm gave (coalition head 41/120).
+- **New criterion (6b)** with its red: a GUEST advances the arbiter 0 times, its OWNER 1 -- the red
+  is `_own_ws` flipped on the same instance and the same bus, so it isolates the ownership test.
+- **Four self-check harnesses now spell out the clock they were getting implicitly** from
+  `ac.step()`. Behaviour is byte-unchanged (`k_out` still 2, every claim's numbers identical): the
+  second competition is written down instead of hidden inside a faculty's readout.
+- **NOT done in this pass, deliberately, and named so it is not lost.** Those harnesses still run
+  the two-competition cadence the live brain no longer runs. Converting them to one competition was
+  tried and REVERTED: `k_out` moves 2 -> 5, the admission profile over 0..8 peers becomes
+  `# # # # # . # . .` (not monotone -- every peer and the faculty post exactly `_max_claim()`, so
+  the forced tie is settled by `_jitter_for`, drawn in first-encounter order, and adding a peer
+  re-draws the faculty's tie-break), and claim (10)'s name-blindness red goes unreachable because a
+  peer and the faculty in ONE competition no longer co-saturate. **Re-deriving three criteria of
+  this module inside the pass that changes the mechanism they judge is the failure where one author
+  writes both the code and its criterion.** Separate work, with its evidence already gathered.
+- `tools/p6_gate.py` counters do NOT move: it is a static AST walk and
+  `AccessConsciousness.__init__` still contains the `ws=None` fallback construction. The gate's own
+  disclosure covers this. The change is measured at runtime, and this row exists so the flat gate is
+  not read as the change having done nothing.
+- Gates: ruff clean, **280/280** self-checks, pytest **93.08%**, all seven asserting CI gates exit 0.
+
 ## [v4.81] -- the population grows itself, and the first three stop-rules could not stop (2026-08-02)
 
 specs/003 implemented end to end, from a spec parked at Phase 1. The feature is real and small; the

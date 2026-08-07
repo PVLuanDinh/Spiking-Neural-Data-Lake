@@ -39,6 +39,40 @@ no inhibition: the control FLICKERS on noise; the spiking workspace is STABLE an
 genuinely stronger, supra-threshold signal takes a slot.
 
 =====================================================================================================
+THE INCUMBENT'S SUBSIDY IS SPLIT IN TWO (2026-08-07): a HOLD on the slot, a GRIP on the head.
+=====================================================================================================
+The block below diagnoses the single-slot arbiter with the sentence "THE DEFENCE EXCEEDED THE WHOLE
+BAND" and then fixes the SLOT half of it. The FOCUS half survived that repair and is fixed here:
+`self_boost + hysteresis` was doing two jobs at once -- sustaining an admitted assembly and deciding
+which assembly is broadcast -- and at 0.25 against a 0.20-wide band no compliant tenant anywhere in
+the band could be displaced from the head by any compliant rival. `live_brain.thought` reads that
+head, so the first tenant to arrive held what the brain was attending to, permanently.
+
+The block below already says why no parameter fixes this ("no amount of tuning fixes it, because
+`hi` is DEFINED as `1 - defence`"), and that was re-measured the long way before the split was
+built: the admissible defence window is `(0.2000, 0.2250)`, and EVERY value in it costs churn
+9 -> 15 and retention 47/47 -> 45/47, while `(1 - lo)/3 = 0.15` reddens five criteria across three
+modules by taking the capacity to 6 and stopping the bottleneck binding. Churn-clean and
+head-displaceable are DISJOINT on that axis. The rheobase axis has no admissible value at all.
+
+So the parameter was never the problem. ADMISSION still ranks on the full hold (`_rank_key`),
+which is why churn, retention, the capacity, the lateral gain and the whole SLOT row are
+BYTE-UNCHANGED; the head is ordered over the admitted set by `_focus_key`, carrying only
+`grip = hold / capacity`. Measured, same five tenants, same 0.75 ceiling:
+
+    become HEAD at    0.805  0.835  0.910  0.955  None     <- one subsidy: outside the band, 0 of 5
+    become HEAD at    0.720  0.720  0.725  0.765  None     <- split: inside the band, 3 of 5
+
+Its reachable red is `OneSubsidyArbiter`, the pre-split arbiter kept as a running control. The
+biology it answers to: recurrent excitation is what sustains a cortical assembly, but which
+assembly DOMINATES is set by afferent drive under biased competition -- an arbiter where the sitting
+tenant's reverberation also decides what is attended to is one whose attention cannot be captured.
+
+Retired in the same pass: `_G_INH = 2.4`, the "TOTAL lateral-inhibition budget", which was exactly
+`_W_SELF * capacity` -- the per-slot E/I balance multiplied back up by the capacity it was about to
+be divided by again. See `_lateral_gain`; the shipped workspace is byte-identical without it.
+
+=====================================================================================================
 WHY THIS IS MULTI-SLOT, AND WHAT IT REPLACED (2026-08-06). All numbers below were RUN, not deduced.
 =====================================================================================================
 This module was SINGLE-SLOT winner-take-all, and the slot was measurably UNWINNABLE. `step()`
@@ -360,6 +394,30 @@ their own blocks below.
 =====================================================================================================
 LIMIT 3 -- THE SLOT IS WINNABLE; THE *HEAD* IS NOT. Do not read one as the other.
 =====================================================================================================
+**SUPERSEDED 2026-08-07, AND KEPT BECAUSE THE REASONING BELOW IS WHY THE FIX EXISTS.** Everything in
+this block was correct about the arbiter it described, and the four grounds it defends the `None` row
+on are still sound as far as they go. What it did not see is that it was defending a DEFECT. The head
+was unwinnable because ONE subsidy was doing two jobs: `self_boost + hysteresis` sustained an
+admitted assembly AND decided which assembly was broadcast. Those jobs want opposite magnitudes, so
+the head row sat outside the band at every point, and the ground-1 argument ("it is not a cost the
+repair introduced, it is a credit this header was TAKING for the alphabet") explains why the row
+moved without asking whether where it landed was right.
+
+The subsidies are now SPLIT -- see `grip`. Admission still ranks on the full hold, so every number
+this block cites for the SLOT is unchanged; the head is ordered by `hold / capacity` and the row
+below now reads `[0.72, 0.72, 0.725, 0.765, 0.815]` against the same 0.75 ceiling, i.e. inside the
+band for three of the five tenants instead of none of them. Ground 3 ("THE FOCUS IS MEASURABLY MORE
+STABLE FOR IT") survives at a measured cost of two: head switches on the 48-tick stream are 12 where
+they were 10, with churn 9 and retention 47/47 both unchanged. Ground 4 is the one that inverted and
+it is the important one: `access_consciousness` claim (9) no longer NEEDS the faculty's own claim cap
+to let a 0.95 proximity threat take the head -- measured, the threat takes it even from an UNCAPPED
+faculty, and the claim's reachable red is now the pre-split arbiter (`OneSubsidyArbiter`) rather than
+the uncapped arm. The safety-shaped property got stronger, not weaker.
+
+The text that follows is the pre-split record. Read it as the argument that a `None` at the ceiling
+is correct -- which it still is, since `hi + hold == 1.0` identically -- and NOT as a statement that
+the whole band is undisplaceable, which is what it says and which stopped being true.
+
 `broadcast()` / `current` / `live_brain.thought` return the RANKED HEAD, and the head is a
 different question from access. Swept the same way as the winnability table above:
 
@@ -614,8 +672,10 @@ class GlobalWorkspace:
     _TAU_SELF = 0.6  # within-tick self-excitation synaptic-trace decay
     _K_INH = 0.30  # excitatory-spike -> shared inhibitory-pool drive
     _LEAK_INH = 0.5  # shared inhibitory-pool leak
-    _G_INH = 2.4  # TOTAL lateral-inhibition budget; each slot gets _G_INH/capacity (see `capacity`)
     _JITTER = 0.02  # tiny deterministic symmetry-break so exact ties resolve to a fixed order
+    # `_G_INH = 2.4  # TOTAL lateral-inhibition budget` was RETIRED here: it was exactly
+    # `_W_SELF * capacity`, i.e. the per-slot E/I balance multiplied back up by the capacity it was
+    # about to be divided by. See `_lateral_gain`, which is byte-identical at the shipped capacity.
 
     def __init__(
         self,
@@ -638,7 +698,8 @@ class GlobalWorkspace:
         )  # membrane threshold s.t. rheobase == ignition_threshold
         self._rng = random.Random(seed)  # per-instance RNG (deterministic symmetry-break jitter)
         self._slots = ()  # ranked tuple of (source, content, hold) occupying the workspace
-        self._g_lat = self._G_INH / self.capacity  # per-slot share of the lateral budget
+        self._g_lat = self._lateral_gain  # per-slot inhibition, E/I balanced (see `_lateral_gain`)
+        self._last_focus = {}  # (source, content) -> this tick's FOCUS drive (claim + grip)
         self._buffer = []  # this tick's submitted candidates
         self._subscribers = []  # module callbacks receiving each broadcast
         self._g = {}  # (source, content) -> cross-tick attractor memory in [0,1]
@@ -649,6 +710,78 @@ class GlobalWorkspace:
         self._sim_par_eff = 1.0  # running-EMA fraction of IDEAL parallel savings actually achieved
         self._slot_buf = []  # per-submitter staging buffers for CONCURRENT specialists
         self._last_v = {}  # (source, content) -> final membrane float (determinism self-check)
+
+    # -- the two subsidies an occupant carries, and why they are two ------------------------------
+    @property
+    def _lateral_gain(self):
+        """Per-slot lateral inhibition. EXCITATION AND INHIBITION ARE BALANCED PER SLOT, so this is
+        `_W_SELF` -- the same gain the pool's own recurrent self-excitation carries.
+
+        THIS RETIRED A TYPED CONSTANT (P1). It read `_G_INH / capacity` with
+        `_G_INH = 2.4  # TOTAL lateral-inhibition budget`, and 2.4 was never independent: measured,
+        `2.4 == _W_SELF * capacity` exactly at the shipped capacity, and `2.4 / 4 == 0.6 == _W_SELF`
+        is an EXACT float identity, not a near-miss. So the "total budget" was the per-slot balance
+        multiplied back up by the capacity it was about to be divided by again, and the 2.4 was
+        that round trip written down as a number. The shipped workspace is BYTE-IDENTICAL under
+        this form; what changes is that a workspace of any other capacity stays E/I balanced
+        instead of inheriting one capacity's arithmetic.
+
+        The division-across-capacity property the multi-slot repair was built on is unchanged and
+        is now structural rather than arithmetic: each slot gets one unit of inhibition against one
+        unit of self-excitation, so holding a slot costs A SLOT and not the silence of every
+        competitor."""
+        return self._W_SELF
+
+    @property
+    def grip(self):
+        """An incumbent's advantage in the contest for the HEAD -- and it is NOT its hold on the
+        slot. `hold / capacity`. DERIVED; it introduces no constant.
+
+        THE DEFECT THIS SPLIT REPAIRS (#16). One subsidy, `self_boost + hysteresis`, used to do two
+        jobs: sustain an admitted assembly (retention) AND decide which assembly is broadcast
+        (dominance). Those jobs want opposite magnitudes, and with one number they cannot both be
+        served -- which is provable rather than a matter of taste:
+
+          * A defended incumbent claiming `c` ranked at `c + hold`; the loudest a COMPLIANT rival
+            may claim is `hi = 1 - hold`. It out-ranks the incumbent only where `c < 1 - 2*hold`,
+            which intersects the band at all only when `hold < (1 - lo)/2`. At the shipped
+            `hold = 0.25` against `lo = 0.55` that bound is 0.225, so NO tenant anywhere in the
+            band was displaceable from the head by any compliant rival. Measured on this module's
+            own sweep, the head row read `[0.805, 0.835, 0.910, 0.955, None]` against a 0.75
+            ceiling -- outside the band at all five points. The first tenant held the focus
+            permanently, and `live_brain.thought` reads the head.
+          * Lowering `hold` to satisfy that bound was BUILT AND MEASURED AND REJECTED. The hold is
+            also what `capacity` divides the unit budget by, so lowering it widens the workspace,
+            and past capacity 4 the bottleneck stops binding: at capacity 5 an above-band tenant
+            becomes joinable by a compliant challenger (the `over_band` criterion loses its red)
+            and at capacity 6 a FULL workspace admits one. The candidate `(1 - lo)/3 = 0.15` --
+            the value making exactly half the band displaceable -- reddens five criteria across
+            three modules. Inside the window that leaves, `(0.2000, 0.2250)`, EVERY value costs
+            workspace churn 9 -> 15 on this module's own 48-tick stream (its criterion is <= 12)
+            and retention 47/47 -> 45/47, because entrenchment is what buys stability and
+            entrenchment is precisely what the defect is made of. Churn-clean and #16-clean are
+            DISJOINT on that axis: 0.2500 fails #16, 0.2250 fails both, everything below fails
+            churn. Swept, and the rheobase axis has no admissible value at all.
+
+        So the parameter was not the problem; ONE subsidy doing two jobs was. Splitting them costs
+        nothing on either side: admission still ranks on the full hold, so retention, churn and the
+        capacity are untouched, and only the ordering of the already-admitted set changes.
+
+        WHY `hold / capacity` AND NOT ANOTHER FRACTION. It is this module's own division principle,
+        reused rather than re-invented: the lateral budget is what one slot's share of a
+        workspace-wide entitlement looks like, and the grip is the same shape -- a workspace-wide
+        hold, divided by the number of occupants entitled to it. A wider workspace grips its focus
+        more weakly, which is the same sentence as "a wider workspace competes less fiercely per
+        slot" and falls out of the same division. It also lands, unforced, well inside the bound
+        the first bullet derives: `lo + grip` is 0.6125 against a 0.75 ceiling.
+
+        THE BIOLOGY IT ANSWERS TO, since this is the part a single subsidy got wrong. Recurrent
+        excitation is what sustains a cortical assembly -- that is the hold, and it is large. Which
+        assembly DOMINATES is set by afferent drive under biased competition, not by how long the
+        incumbent has been there. An arbiter in which the sitting tenant's reverberation also
+        decides what is attended to is one where attention cannot be captured, and a brain whose
+        focus cannot be captured by a stronger signal is not a brain that can be startled."""
+        return (float(self.self_boost) + float(self.hysteresis)) / self.capacity
 
     # -- the capacity of the bottleneck ----------------------------------------------------------
     @property
@@ -1167,9 +1300,11 @@ class GlobalWorkspace:
         inhibits only itself so it is barely damped and ignites, but among competitors the strongest
         pools' spikes suppress the rest to silence.
 
-        `g_lat` is `_G_INH / capacity` -- the workspace divides ONE lateral budget across the slots
-        it can hold, so a wider workspace competes less fiercely per slot and a capacity-1 workspace
-        reduces to `_G_INH` exactly. That division is what un-froze this bus; see the module header
+        `g_lat` is `_lateral_gain` -- one unit of inhibition per slot against one unit of recurrent
+        self-excitation, E/I balanced. It read `_G_INH / capacity` until that typed total was shown
+        to be `_W_SELF * capacity` exactly and retired; the per-slot value is unchanged, so a wider
+        workspace still competes less fiercely in TOTAL while each slot stays balanced. See the
+        `_lateral_gain` docstring for the identity, and the module header
         for the measurement, and note that it is a property of the WORKSPACE, not of the load. It
         was also measured the other way: making the divisor the number of competitors instead made
         the gain depend on how many pools happened to be posting, and winnability went 0.72 -> None
@@ -1372,8 +1507,31 @@ class GlobalWorkspace:
         the rename criterion, exactly as `_SingleSlotControl` restores the retired capacity.
 
         `k` stays as the final term: it costs nothing, it is unreachable whenever the membranes
-        differ, and it keeps the order total if a future readout ever ties on all three."""
+        differ, and it keeps the order total if a future readout ever ties on all three.
+
+        THIS ORDERS ADMISSION ONLY. The head is ordered by `_focus_key` over the set this one
+        admits -- see there, and see `grip`, for the defect that split them."""
         return (-self._last_late[k], -self._last_total[k], -self._last_v[k], k)
+
+    def _focus_key(self, k):
+        """THE order of the ADMITTED SET -- who is the head, i.e. what the brain is attending to.
+
+        `_rank_key` above decides ACCESS and carries the full HOLD; this decides FOCUS and carries
+        only the `grip`. Everything about why is in `grip`'s docstring; what matters here is that
+        the two are separate methods over the same settle, so there is one competition and two
+        readouts of it (P2 -- no second arbiter, no second simulation).
+
+        The terms, in order. The pool's own AFFERENT CLAIM plus its grip if it holds a slot, which
+        is the quantity this key exists to rank on. Then the settled membrane `-_last_v`, which
+        carries the HOLD and so breaks an exact claim tie in the incumbent's favour -- hysteresis
+        where the afferent evidence is genuinely equal, which is the one place it belongs. Then
+        `k`, unreachable whenever anything above it differs, kept so the order stays total.
+
+        NAME-BLINDNESS IS INHERITED, NOT RE-EARNED, and that is worth stating because this key is
+        new and the name-decided arbiter is the defect this module most recently removed: `k` sits
+        below two continuous floats here exactly as it does above, and `main()` runs the rename
+        sweep through the head accessor, which reads THIS key."""
+        return (-self._last_focus[k], -self._last_v[k], k)
 
     def _defended(self, submitted):
         """The slot occupants that still carry the tenancy defence this tick.
@@ -1500,15 +1658,21 @@ class GlobalWorkspace:
         #    the capacity has to be paid for: the defence is the per-slot cost `capacity` divides
         #    the unit budget by, so granting it to C occupants is exactly the budget being spent.
         cap = self.capacity
-        self._g_lat = self._G_INH / cap  # read by _settle_chunk; set before any thread fans out
+        self._g_lat = self._lateral_gain  # read by _settle_chunk; set before any thread fans out
         held = self._defended(submitted)
+        grip = self.grip
         drives = {}
+        focus = {}
         for key, g in self._g.items():
             d = g
+            r = g
             if key in held:
-                d += self.self_boost + self.hysteresis
-            d += self._jitter_for(key)
-            drives[key] = d
+                d += self.self_boost + self.hysteresis  # the HOLD -- sustains the assembly
+                r += grip  # the GRIP -- a far smaller advantage in the contest for DOMINANCE
+            j = self._jitter_for(key)
+            drives[key] = d + j
+            focus[key] = r + j
+        self._last_focus = focus
 
         # 3. Settle the spiking network; read out sustained (second-half) firing.
         total, late = self._simulate(drives)
@@ -1531,13 +1695,37 @@ class GlobalWorkspace:
         #    the drive excess the clipped integer count discards. It is read BEFORE `k`, so the counts
         #    still decide wherever they can and the name decides nothing that the physics can.
         #    Re-derive the census with the header's grid rather than quoting it.
+        #
+        #    TWO ORDERINGS, NOT ONE, and the split is the whole of defect #16. `_rank_key` decides
+        #    ADMISSION and carries the full HOLD, so a sustained assembly keeps its slot exactly as
+        #    before. `_focus_key` then orders the ADMITTED SET for the head and carries only the
+        #    GRIP. See `grip` for why one subsidy cannot do both jobs.
         fired = sorted((k for k in late if late[k] > 0), key=self._rank_key)
-        self._slots = tuple((k[0], k[1], self._g[k]) for k in fired[:cap])
+        admitted = sorted(fired[:cap], key=self._focus_key)
+        self._slots = tuple((k[0], k[1], self._g[k]) for k in admitted)
 
         content = self.current
         self._buffer = []
         self._deliver(self.broadcast_all())  # BROADCAST the admitted SET to all subscribers
         return content
+
+
+class OneSubsidyArbiter(GlobalWorkspace):
+    """THE PRE-#16 ARBITER, kept as a running control: one subsidy doing both jobs.
+
+    `_focus_key` is restored to `_rank_key`, so the HOLD that sustains an assembly also decides
+    which assembly is broadcast. Nothing else changes -- same hold, same band, same capacity, same
+    lateral gain -- so an A/B against this isolates the SPLIT and not the parameters.
+
+    IT IS MODULE-SCOPE AND EXPORTED BECAUSE TWO SELF-CHECKS NEED IT (P2 -- one definition of "the
+    retired arbiter", not one per consumer). `main()` here runs it as the reachable red for the
+    focus-capture criterion; `cortex/access_consciousness.py` runs it as the red for claim (9),
+    whose displaceability guarantee moved from the faculty's own claim cap to this split. A control
+    that two criteria describe differently is two controls, which is how an A/B stops comparing
+    what it says it compares."""
+
+    def _focus_key(self, k):
+        return self._rank_key(k)
 
 
 def build_stream(n_ticks, seed=0):
@@ -2164,6 +2352,61 @@ def main():
         f"slot {win_old} vs head {head_old}"
     )
 
+    # (a2c) DEFECT #16 -- THE FOCUS MUST BE CAPTURABLE, and the assert above cannot see it. --------
+    # That one is an `any()` over the sweep, and the point at the band CEILING is unwinnable by
+    # construction at every setting this module can take, because `hi` is DEFINED as `1 - hold`, so
+    # `hi + hold == 1.0` identically. It was therefore GREEN throughout the period when NO point of
+    # the band was winnable, and stays green now that three of five are: it can only ever police the
+    # ceiling. This is its complement and the pair is the honest statement -- the ceiling is
+    # undisplaceable, the rest of the band must not be.
+    #
+    # THE RED IS ONE SUBSIDY DOING BOTH JOBS, which is the pre-split arbiter exactly: restore
+    # `_focus_key` to `_rank_key` and the head is ranked on `claim + hold` again. Nothing else about
+    # the module changes, so this isolates the split rather than the parameters -- the hold, the
+    # band, the capacity and the lateral gain are all the shipped ones in both arms.
+    red_head = [_lowest_win(OneSubsidyArbiter, c, 1.0, test=_is_head) for c in win_claims]
+    in_band = [h for h in win_head if h is not None and h <= band_hi + 1e-9]
+    red_in_band = [h for h in red_head if h is not None and h <= band_hi + 1e-9]
+    print(
+        f"   focus capture: hold {_defaults.self_boost + _defaults.hysteresis:.4f} holds the SLOT, "
+        f"grip {_defaults.grip:.4f} contests the HEAD -> {len(in_band)} of {len(win_claims)} "
+        f"compliant tenants displaceable; ONE-SUBSIDY red {red_head} -> {len(red_in_band)}"
+    )
+    assert in_band, (
+        f"defect #16: a compliant challenger must be able to take the HEAD from a compliant tenant "
+        f"somewhere inside the band, or the first tenant to arrive holds the focus permanently and "
+        f"a stronger signal cannot capture attention. grip {_defaults.grip:.4f}, head {win_head} "
+        f"against ceiling {band_hi:.4f}"
+    )
+    assert not red_in_band, (
+        f"the focus-capture criterion must be reachable-red, and its red is ONE SUBSIDY DOING BOTH "
+        f"JOBS: with the head ranked on `claim + hold` instead of `claim + grip`, an incumbent at "
+        f"the band FLOOR drives {band_lo + _defaults.self_boost + _defaults.hysteresis:.4f} against "
+        f"a ceiling of {band_hi:.4f} and NO compliant tenant may be displaceable, or this criterion "
+        f"is asserting something that was true anyway. Got {red_head}"
+    )
+    # ...and the arithmetic the split answers, stated as the inequality rather than only its symptom.
+    _hold = float(_defaults.self_boost) + float(_defaults.hysteresis)
+    assert band_lo + _defaults.grip < band_hi, (
+        f"the GRIP must fit inside the range a compliant challenger can move in: lo {band_lo:.4f} "
+        f"+ grip {_defaults.grip:.4f} = {band_lo + _defaults.grip:.4f} must be < ceiling "
+        f"{band_hi:.4f}"
+    )
+    assert band_lo + _hold >= band_hi, (
+        f"...and the HOLD must NOT, or the split this criterion guards bought nothing and should be "
+        f"reverted (P2): lo {band_lo:.4f} + hold {_hold:.4f} = {band_lo + _hold:.4f} against "
+        f"ceiling {band_hi:.4f}. If the hold ever fits, `grip` is redundant -- delete it"
+    )
+    # THE GRIP IS DERIVED, NOT TYPED (P1): it MOVES with the hold and the capacity it comes from.
+    _grips = [
+        round(GlobalWorkspace(seed=0, self_boost=0.0, hysteresis=h).grip, 4)
+        for h in (0.20, 0.33, 0.5)
+    ]
+    assert len(set(_grips)) == len(_grips), (
+        f"the grip derivation must move with the hold it is derived from -- if it does not it is a "
+        f"typed constant wearing a derivation's clothes and should be deleted. Got {_grips}"
+    )
+
     # (a2b) THE ARBITER IS NAME-BLIND -- the criterion the rank repair owes, with its red run. ------
     # The assert above (`any(h is None or h > band_hi)`) is satisfied by BOTH the repaired sweep and
     # the name-decided one it replaced, so it could never see the defect. This is the one that can:
@@ -2176,9 +2419,18 @@ def main():
     # so a challenger that sorts AFTER the tenant needs a strictly higher claim than one that sorts
     # before it -- which is a specialist's global availability being decided by what it is called.
     class _NameRanked(GlobalWorkspace):
-        """The retired rank key: the clipped spike counts, then the source name."""
+        """The retired rank key: the clipped spike counts, then the source name.
+
+        BOTH orderings are restored, and that is required rather than tidy. The retired arbiter had
+        ONE key deciding admission and head alike; restoring only `_rank_key` leaves the head being
+        decided by the repaired `_focus_key`, so the red goes GREEN and the criterion silently
+        stops testing anything -- measured, the two rename sweeps came back byte-identical. A
+        control has to reconstruct the retired behaviour on the path the criterion actually reads."""
 
         def _rank_key(self, k):
+            return (-self._last_late[k], -self._last_total[k], k)
+
+        def _focus_key(self, k):
             return (-self._last_late[k], -self._last_total[k], k)
 
     lo_src, hi_src = "aaa", "zzz"  # sort BEFORE and AFTER the tenants' "t0"
@@ -2263,8 +2515,8 @@ def main():
         cap_measured.append(k.capacity)
         print(
             f"   self_boost {sb:.2f} + hysteresis {hy:.2f} = defence {sb + hy:.2f} -> "
-            f"capacity {k.capacity}, lateral gain {k._G_INH}/{k.capacity} = "
-            f"{k._G_INH / k.capacity:.2f}"
+            f"capacity {k.capacity}, lateral gain {k._lateral_gain:.2f} (E/I balanced), "
+            f"grip {k.grip:.4f}"
         )
         assert k.capacity == want, (
             f"capacity must be floor(1/defence): defence {sb + hy:.2f} gave {k.capacity}, want {want}"

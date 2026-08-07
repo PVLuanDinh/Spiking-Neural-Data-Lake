@@ -187,6 +187,28 @@ the persisted policy** (e.g. a durable-reload contract persists weights but not 
 Reuse anchors: `basal_ganglia/r_stdp.py` (`w += lr*d*e`), `substrate/signal_calibrator.py`, the
 `_*_base` running-EMA idiom, `cortex/brain.py::_drive_w`.
 
+**WORKED CASE, 2026-08-07 — a hardcode retired by discovering it was already a derivation, and a
+second one that could NOT be retired by tuning.** Both are in `thalamus/global_workspace.py` and
+together they are what the corollary above means in practice.
+
+- **`_G_INH = 2.4`, the "TOTAL lateral-inhibition budget", was `_W_SELF * capacity`** — an EXACT
+  float identity (`2.4 / 4 == 0.6 == _W_SELF`), i.e. the per-slot excitation/inhibition balance
+  multiplied back up by the capacity it was about to be divided by again. The constant was the round
+  trip written down as a number. Retired; the shipped workspace is byte-identical without it, and a
+  workspace at any OTHER capacity now stays E/I balanced instead of inheriting one capacity's
+  arithmetic. **The tell was not the value, it was that the value only ever appeared divided.**
+- **The incumbent's defence could not be fixed by any value, and that is the corollary's other
+  half.** `self_boost + hysteresis = 0.25` exceeded the 0.20-wide band it operated in, so no
+  compliant specialist could take the workspace head from any other. Displaceability needs
+  `defence < (1 - lo)/2`; the same quantity is what `capacity = floor(1/defence)` divides, so every
+  value satisfying it widens the workspace past the point where the bottleneck binds. Swept: the
+  admissible window `(0.2000, 0.2250)` costs churn 9 → 15 and retention 47/47 → 45/47 at EVERY value
+  in it, and the rheobase axis has no admissible value at all. **Churn-clean and displaceable are
+  disjoint.** The blocking constraint was the bug exactly as this policy says: ONE subsidy was doing
+  two jobs (sustaining an assembly, and deciding which assembly is broadcast), which want opposite
+  magnitudes. Splitting them cost nothing on either side. A constant that resists every value is not
+  a tuning problem, and sweeping it is how you prove that rather than assume it.
+
 **Fourth case, stated because the tree contains it and the three above do not cover it: raw physical
 limits inside the safety envelope stay fixed, by design.** `brainstem/arm_config.py`'s `CONTACT`
 (`= 0.04`) and `brainstem/reflex.py`'s `DEFAULT_RULES` arbitrate behaviour and are constants

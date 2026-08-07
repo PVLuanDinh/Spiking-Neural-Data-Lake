@@ -2593,7 +2593,27 @@ class Brain:
             # across ticks, not rebuilt from scratch each tick" -- while the object holding it was
             # discarded on every tick. The arm's own GlobalWorkspace was persistent all along.
             if getattr(self, "_access", None) is None:
-                self._access = AccessConsciousness(seed=self._seed)
+                # ON THE ONE BUS, not a private one. `AutonomousArm` is the sole owner and the only
+                # constructor of this workspace on the whole construction path
+                # (`make_brain` -> Brain -> LiveBrain -> AutonomousArm), and `Brain.workspace`
+                # adopts it without constructing anything. Handing it here is what makes this
+                # faculty's broadcast reach the same arbiter perception competes in; without it
+                # `AccessConsciousness.__init__` builds its own, which is one of the PRIVATE,
+                # mutually invisible instances `tools/p6_gate.py` counts, and the two producers were
+                # measurably never in the same competition (perception 120/120 in the workspace,
+                # coalition 0/120, co-occupancy 0/120 over 120 live wake ticks).
+                #
+                # THE HANDLE HAS TO ARRIVE AS A PARAMETER, not by rebinding `_access.workspace`
+                # afterwards: the constructor registers `n_taps` subscriber callbacks on whatever
+                # bus it is holding, so a later rebind leaves every tap on the abandoned instance
+                # and `global_availability()` reports reach on a bus nothing broadcasts to.
+                #
+                # `_own_ws` is False for an injected bus, which is what stops this faculty ALSO
+                # clocking the arbiter -- see `AccessConsciousness.step`. The arm's
+                # `_workspace_broadcast` runs the one competition per tick; this faculty submits
+                # into it. Falls back to a private bus when the arm carries none, because a faculty
+                # with no bus at all would be a harder failure than a private one.
+                self._access = AccessConsciousness(seed=self._seed, ws=self.workspace)
             ac = self._access
             # ACCESS CAN FAIL: the co-active assembly is coherent by construction, so with the
             # default coherence-driven salience it ignited by FIAT on every tick -- global
