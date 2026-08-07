@@ -9,6 +9,28 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- the live occupancy harness, and the trigger it stands guard on (2026-08-07e)
+
+`tests/test_workspace_occupancy.py` -- the runnable source the workspace docstrings' live figures
+never had ("there was no runnable harness for any of it" is this file's own prior entry), and the
+standing guard on the rheobase's deletion-on-null clause.
+
+- **The trigger does NOT fire, measured the day the kernel landed:** live occupancy pinned at
+  exactly `capacity` on **3 of 120** wake ticks (2%) against the 95% revert threshold. The
+  capacity bound binds only when reached; the formula is not inert.
+- **What the rheobase bought on the live brain**, same seed-0 / forced-DAY / 120-tick protocol as
+  every prior figure: occupancy histogram `{1: 117, 2: 3}` -> `{1: 14, 2: 57, 3: 46, 4: 3}`;
+  co-occupancy **3 -> 106** of 120; both producers hold slots (perception 185 slot-ticks,
+  coalition 93) and both take the head (97 / 23); `thought` runs 21 distinct values over 117
+  changes. Access-without-focus occurs (1/120; it was 2 -- the dissociation is measured as
+  OCCURRING, and its magnitude is not credited beyond that).
+- **Harness discipline:** identity asserted before any number (`ws is b.brain.arm.workspace`),
+  guest asserted (`_own_ws is False`), and `_access_state` asserted non-empty because
+  `Brain._update_access` swallows exceptions into empty state -- a silent failure must not read
+  as a quiet brain. Asserts are direction-and-floor, never exact counts: CI's torch build differs
+  from the local gate's (P5), and the floors sit between the pre-rheobase pathology and the
+  measured baselines. 52 ms/tick measured, so the full 120 ticks cost ~7 s in the suite.
+
 ## [Unreleased] -- the honest binding benchmark was run, and the null retired the family (2026-08-07d)
 
 P2's bar for the deferred three-way merge was "a measurement that exists"; P8's burden 5 is
