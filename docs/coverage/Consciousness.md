@@ -17,7 +17,7 @@ as `UNSCORED`, which counts as 0. Bands above 40 require an A/B artifact; above 
 | arm_workspace_broadcast | 21 | src/snn_data_lake/brainstem/autonomous_loop.py:1174#_workspace_broadcast; src/snn_data_lake/cortex/live_brain.py:92#__init__ | - | opus-5 / scratchpad measure_consciousness4.py, 240 ticks | 2026-07-30 |
 | reentrant_predictive_completion | 15 | src/snn_data_lake/thalamus/reentrant_workspace.py#expect | - | opus-5 / static reachability + live respond() probe | 2026-07-30 (site repointed 2026-08-06, see below) |
 | reportability_of_access_content | 12 | src/snn_data_lake/cortex/live_brain.py:365; src/snn_data_lake/reasoning/spike_chat_lake.py:929#converse | - | opus-5 / live respond() on the three consciousness phrases | 2026-07-30 |
-| binding_of_broadcast_content | 10 | src/snn_data_lake/thalamus/global_workspace.py:335#bind_broadcast_spiking; src/snn_data_lake/thalamus/global_workspace.py:605#main | - | opus-5 / static call-site search (self-check only) | 2026-07-30 |
+| binding_of_broadcast_content | 10 | ~~src/snn_data_lake/thalamus/global_workspace.py#bind_broadcast_spiking~~ **RETIRED 2026-08-07**: the `bind_*` family was deleted on the honest benchmark's pre-registered null (the spiking decoder's Jaccard equals an all-fired-pairs strawman at every K -- it recovered membership, never pairing). This row's mechanism no longer exists; the capability is honestly ABSENT, not low-band. | - | fable-5 / honest Jaccard benchmark, 120 trials/K, recorded at the retirement site in global_workspace.py | 2026-07-30 / 2026-08-07 |
 
 **Category score: 26.7** = 320 / 12, **down from the audited 28.4 after an adversarial pass in which
 both band-41+ rows fell** (55 -> 42 and 50 -> 42). Two rows still clear 40 on recorded neuter-A/Bs, but

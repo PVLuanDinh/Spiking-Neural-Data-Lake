@@ -103,7 +103,7 @@ read.
 | `GenerativeSelfModel.KAPPA = 0.5` is a literal | VERIFIED | `cortex/generative_self_model.py:70`; trace form `:101-105`, update `:144-145` |
 | Instrumented tick is 27.78 ms | VERIFIED | `docs/POLICIES.md:496` |
 | `_BIND_IGNITE = 0.6` sits under a "used only by the self-check" header | VERIFIED | `thalamus/global_workspace.py:311-318`, branched `:339`, `:376` |
-| **...but it reaches a live user-facing consciousness self-report** | VERIFIED -- **new finding, section 8 offender 4** | `reasoning/spike_chat_lake.py:34` imports `probe_binding`; `reasoning/consciousness_probe.py:72-85` calls `bind_broadcast_spiking`, which branches on `_BIND_IGNITE`; `spike_chat_lake.py:1173-1182` tallies it into a reply; that reply is returned on the live chat path at `:925-931` for "are you conscious". |
+| **...but it reaches a live user-facing consciousness self-report** | VERIFIED -- **new finding, section 8 offender 4** | `reasoning/spike_chat_lake.py:34` imports `probe_binding`; `reasoning/consciousness_probe.py:72-85` calls `bind_broadcast_spiking`, which branches on `_BIND_IGNITE`; `spike_chat_lake.py:1173-1182` tallies it into a reply; that reply is returned on the live chat path at `:925-931` for "are you conscious". **[DEAD ROUTE, 2026-08-07: `consciousness_probe.py`'s call went with its F11 deletion on 2026-08-04, and the `bind_*` family itself -- `_BIND_IGNITE` included -- was retired 2026-08-07 when the honest precision-bearing benchmark returned its pre-registered null. The row is kept as the finding it was; nothing it cites still exists on a live path.]** |
 
 ---
 
@@ -857,6 +857,11 @@ only to the experimenter.
    The reply text itself is honest ("I neither claim nor deny it"), but under this document's own
    framing a literal gating a reported consciousness marker on a live path is a **more** serious
    offender than one gating behaviour, not a less serious one. It stays on the list, reclassified.
+   **[CLOSED 2026-08-07 by deletion, not by derivation: the probe's call to `bind_broadcast_spiking`
+   went with the F11 deletion of the BINDING marker (2026-08-04), and the `bind_*` family --
+   `_BIND_IGNITE` with it -- was retired 2026-08-07 when the honest benchmark returned its
+   pre-registered null (the spiking decoder scored identically to an all-fired-pairs strawman at
+   every K). The literal no longer exists, and neither does the marker it gated.]**
 
 5. **`_ACC_N = 32`, `_ACC_LO = 0.85`, `_ACC_HI = 1.90`** at `reentrant_workspace.py:99-101`, and
    `_SUSTAIN = 1.10`, which sits inside the measured band. Block 2.

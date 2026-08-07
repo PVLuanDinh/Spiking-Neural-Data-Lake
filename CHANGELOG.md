@@ -9,6 +9,36 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- the honest binding benchmark was run, and the null retired the family (2026-08-07d)
+
+P2's bar for the deferred three-way merge was "a measurement that exists"; P8's burden 5 is
+"deletion on a null". The measurement now exists and the null landed.
+
+- **The benchmark.** Jaccard (`|true & got| / |true | got|`; F1 reported beside it, agreeing
+  directionally), 120 trials per K, the same object/broadcast/decoder protocol the old criterion
+  ran, a baseline-relative margin (the rate control's own per-trial spread), and the all-pairs
+  strawman as the reachable red. Pre-registered from `docs/GAP_CLOSURE.md`'s own numbers: NULL.
+- **The result, sharper than the prediction.** Spiking Jaccard 1.0000 / 0.5000 / 0.2500 at
+  K = 1/2/4 -- **equal to the all-fired-pairs strawman at every K**, because the decoder returns
+  the full cross product; phase multiplexing recovered membership, never pairing. At K=2 the rate
+  control is nominally BETTER (0.5083 vs 0.5000); at K=4 the +0.0671 margin sits inside the
+  control's own 0.2175 spread. There is no effect to guard.
+- **The disposition (P8 burden 5): DELETED, not tuned.** `bind_objects`,
+  `bind_broadcast_spiking/rate`, `bind_decode_spiking/rate`, `_bind_pair_acc`, `_bind_step`, the
+  four `_BIND_*` constants, the undeclared `0.55` re-entry sustain that produced the cross
+  product, the self-check harness and the ignition assert that rode on them -- all retired (zero
+  external callers, swept including importlib/string dispatch; `consciousness_probe.py`'s call
+  died with its 2026-08-04 F11 deletion). The measurement is preserved verbatim at the retirement
+  record in `global_workspace.py`. **The three-way P2 merge (workspace binding / `bind_*` /
+  `ThetaGammaCode`) is REFUTED rather than deferred** -- there is no measured binding capability
+  to merge -- and `gwt_deep`'s binding half now owes the same honest-scorer test before credit
+  (`docs/P4C_BACKLOG.md`).
+- **Docs squared with the deletion**: `PHENOMENAL_CONSCIOUSNESS_ALGORITHM.md` offender 4 closed
+  by deletion (the `_BIND_IGNITE` literal and the marker it gated are both gone);
+  `coverage/Consciousness.md`'s `binding_of_broadcast_content` row marked RETIRED -- the
+  capability is honestly ABSENT, not low-band.
+- Gates: ruff clean, 280/280 self-checks, pytest 93.08%, five asserting CI tools exit 0.
+
 ## [Unreleased] -- two criteria that could not fail, deleted rather than kept (2026-08-07c)
 
 Pure deletion (P8/F11): no mechanism moves, and each deletion carries its strawman run in the code.
