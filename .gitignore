@@ -28,6 +28,18 @@ chat_learn.log
 .venv-arm/
 # any nested per-subproject venv (e.g. research/neuromorphic_torch/.venv-neuro)
 **/.venv-*/
+# The four below are ALREADY covered by the `**/.venv-*/` glob above for git's
+# purposes and are listed redundantly for graphify, which honours explicit
+# directory lines but not the `**/` prefix form. Measured 2026-08-07: exactly
+# these four leaked 651 nodes into graphify-out/graph.json (.venv-lake-py311
+# alone contributed 635, which is why `graphify query "k largest values"`
+# answered with bottle.py from a vendored web framework). graphify's own
+# _SKIP_DIRS (detect.py:651) matches ".venv" exactly and *_venv/*_env by
+# suffix, so a `.venv-` PREFIX variant is never pruned by it either.
+.venv-arc/
+.venv-build/
+.venv-lake-gil/
+.venv-lake-py311/
 venv/
 env/
 
