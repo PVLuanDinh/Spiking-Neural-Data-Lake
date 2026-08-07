@@ -39,6 +39,49 @@ H01-derived, and would carry the authority of a measurement it does not have.
 
 ---
 
+## Phase 0: BLOCKING PRE-FLIGHT — re-check this plan against POLICIES.md before writing any code
+
+**Do not start T001 until T000 passes.** This spec was written 2026-08-06; `docs/POLICIES.md` and
+`CLAUDE.md` are living documents and the tree moves under them. Every measured figure below is a
+claim about a tree that has since changed, and this project's own rule is **re-derive, never quote**.
+
+- [ ] T000 Re-read `docs/POLICIES.md` and `CLAUDE.md` IN FULL, then re-derive every gate baseline and
+  confirm each of the following against the CURRENT tree, recording the result in
+  `specs/011-h01-neurogenesis-prior/preflight.md`. **Any mismatch means this plan is re-opened, not
+  worked around.**
+  - **P0** — is "cortical column construction" still listed as OPEN? If Phase A already shipped in
+    some other form, US4 is done and must not be rebuilt.
+  - **P1** — the movability mechanism (prior read ONCE at construction, never on a live path) is the
+    load-bearing claim of this whole feature. Confirm nothing has introduced a live-path re-read.
+  - **P2** — confirm `cortex/cortical_microcircuit.py` is still the ONLY layered-population
+    mechanism, and that none of the ten existing gates (dormancy_gate, method_dormancy_gate,
+    import_manifest, replication_guard, citation_guard, red_reachability, dependency_ledger,
+    doc_command_guard, p6_gate, p4c_ratchet) already does what this feature proposes to add.
+  - **P3** — confirm the neuter-A/B (SC-006) is still the bar, and that placement-that-changes-no-
+    outcome would still be reported as inert.
+  - **P4b** — confirm the reference-data-vs-learned-state split still holds: the prior lives with the
+    code, grown state goes to the ONE lake, and "it persists" still means a NEW process.
+  - **P4c** — **re-run `tools/p4c_ratchet.py` and record the CURRENT count.** The spec assumes 248
+    total / 150 in `reasoning/`. If it has fallen, T015's registration requirement is unchanged but
+    the baseline in this file is stale; if it has RISEN, something regressed and that is a finding.
+  - **P5** — confirm the suite still runs without a GPU (CI has no card) and that nothing here needs
+    one.
+  - **P7** — confirm no dependency is needed. If one now WOULD help, say what it buys; do not carry a
+    "no new dependency" certification either way.
+  - **P8** — **re-check every one of the eleven success criteria for a reachable red**, and
+    specifically re-check that none of them measures a defect and scores it as the feature. This tree
+    caught **seven** instances of that shape in one session, including one written by the author of
+    this spec. SC-005 in particular must still fail in BOTH directions.
+  - **The five brainstem safety files** are still report-only, and still the same five.
+  - **`.venv-lake`** is still the one gate env and still free-threaded with CUDA.
+
+- [ ] T000b Re-derive the four H01 figures this spec leans on, against the source files rather than
+  against this document: the 100.0% join coverage on `agglo_seg`, the seven-value `cortical layer`
+  column, layer 1's zero excitatory somata, and the E/I column being INCOMING SYNAPSES rather than
+  cell counts. **A figure quoted from a spec is a figure nobody has checked.**
+
+---
+
 ## Phase 1: Setup
 
 - [ ] T001 Verify the environment and record the pre-feature baseline in `specs/011-h01-neurogenesis-prior/baseline.md`: interpreter version and `Py_GIL_DISABLED`, the four gate numbers (self-check count, coverage %, ungoverned count total and per zone, p6_gate census), so every later claim of "unchanged" has something to be unchanged against.
@@ -201,7 +244,8 @@ proxy for a physiological one. The feature does not depend on it.
 ## Dependencies
 
 ```
-Phase 1 (T001-T002)
+Phase 0 (T000, T000b)  ── BLOCKING. Nothing starts until the plan is re-checked
+   └─▶ Phase 1 (T001-T002)
    └─▶ Phase 2 decisions (T003-T005)
           ├─▶ T003 gates ALL of Phase B
           ├─▶ T004 gates T014
