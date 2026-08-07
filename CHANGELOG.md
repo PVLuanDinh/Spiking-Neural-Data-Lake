@@ -9,6 +9,28 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- P4c: two unrecorded NO-GOs get their reasons, and one of them retires (2026-08-07i)
+
+`f299b631` kept `deep_stdp_2stage_svm` and `ensemble_rbf` out of its 9-module retirement with no
+recorded per-module reason -- the ledger pointed at the commit, the commit listed them bare under
+"Also kept". A disposition that exists nowhere is not a disposition (the ledger's own founding
+rule), so both were derived fresh:
+
+- **`deep_stdp_2stage_svm`: RETIRED** (11th of the 16). A completed experiment whose verdict is
+  fully preserved in CHANGELOG v3.63 (global pooling FAILS on digits, 56.7%/63.9%; the RBF-SVM
+  lever delivered 96.2% on conv1 SPATIAL). Zero importers, zero registrations, docs and symbol
+  sweeps clear, corrects nothing any survivor needs. `reasoning/` p4c count 149 -> 148.
+- **`ensemble_rbf`: RECLASSIFIED out of RETIRE, not deleted.** It is the harness that produced
+  the tree's 98.2% Kheradpisheh-class headline, and it imports `LaminarColumns` as a MEMBER it
+  measures -- the same inferior-imports-superior inversion that already un-classified
+  `readout_ensemble`. `laminar_readout.py:74` names it a consumer to repoint before any move; its
+  lane belongs to that settlement.
+- The ledger also now carries, as rows rather than commit archaeology: `readout_boost` and
+  `readout_ensemble` reclassified (f299b631's findings promoted from message to ledger),
+  `autonomous_brain` kept as the control half of a live A/B, and `snn_mnist_stdp_genn` flagged as
+  the one holdout needing an OWNER mandate (an unbuilt port whose `burst_xtar_rule` GeNN codegen
+  exists nowhere else -- finish or retire is not a lane's call).
+
 ## [Unreleased] -- P2: the third NG-SNN mechanism copy is gone (2026-08-07h)
 
 `research/ng_snn/model.py` deleted; `hippocampus/ng_snn.py` is the ONE surviving mechanism (it
