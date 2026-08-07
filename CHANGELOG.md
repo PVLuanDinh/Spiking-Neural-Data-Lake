@@ -9,6 +9,39 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- two criteria that could not fail, deleted rather than kept (2026-08-07c)
+
+Pure deletion (P8/F11): no mechanism moves, and each deletion carries its strawman run in the code.
+
+- **`cortex/theta_gamma_code.py`: the ratio round-trip.** `ratio_cap = steps_per_theta //
+  steps_per_gamma` asserted `== k` -- but `__init__` defines `steps_per_theta = k *
+  steps_per_gamma`, so the quotient is `k` identically for every integer input. No input can
+  redden it; the assert checked that a multiplication round-trips. Its comment ("capacity EMERGES
+  from the theta/gamma ratio") and the module docstring stated the causal arrow BACKWARDS:
+  capacity is a hardcoded kwarg (`capacity=7`) and the ratio is derived from it. Both corrected.
+  The tell, same as `_G_INH = 2.4`: the quantity only ever appears divided by what defines it.
+- **`thalamus/global_workspace.py`: the spiking-beats-rate binding margins -- and this is the
+  SECOND deletion of the same criterion.** `reasoning/consciousness_probe.py` deleted it under
+  F11 on 2026-08-04; this copy was missed and then read as independent corroboration
+  (deletion-applied-per-site). Run before deleting: `_bind_pair_acc` is `|true & got| / |true|`
+  (recall, no precision), `bind_decode_spiking` returns K^2 pairs for K true (4-for-2, 16-for-4),
+  and an ALL-PAIRS strawman decoder scores **1.0000** on the same scorer. "Spikes WIN at K>=2"
+  was a property of the scorer. The transcript now prints the recall numbers with the disclosure
+  instead of asserting a margin; the all-or-none ignition of the binding broadcast stays
+  asserted. The bare `0.55` out-of-slot sustain and the `bind_*` family go with the honest
+  benchmark's verdict (next build; pre-registered expectation from `docs/GAP_CLOSURE.md` is a
+  NULL, in which case the family retires and the three-way merge is refuted).
+- **`docs/P4C_BACKLOG.md` gains three measured rows**: `ThetaGammaCode` has zero non-self-check
+  callers tree-wide (P3 dormancy question BEFORE any P2 merge question); `_settle_chunk` is
+  another inline LIF declaration (and `reentrant_workspace.py` a third, still pre-rheobase) --
+  MERGE candidate, never a bare ADOPT, because subtract-threshold is what makes `-_last_v` the
+  drive-excess readout that closed the 1,941-name-flip defect; and the three-way P2 debt's
+  TRIGGER (decidable when the honest benchmark lands, not before).
+- **Instrument honesty:** `red_reachability` did NOT move on these deletions and should not have
+  -- its census counts probe/verdict-shaped functions, and both criteria were `main()`-local
+  asserts below its resolution. Recorded here so the flat gate is not read as a failed deletion.
+- Gates: ruff clean, 280/280 self-checks, pytest 93.09%, five asserting CI tools exit 0.
+
 ## [Unreleased] -- the inhibitory pool gets the threshold every other unit has (2026-08-07b)
 
 `thalamus/global_workspace.py` derives `capacity = floor(1/defence) = 4`, and **on the live brain it

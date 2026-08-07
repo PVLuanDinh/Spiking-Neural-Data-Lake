@@ -644,15 +644,20 @@ neither denied nor claimed here. "ignition" and "broadcast" name the information
 
 DEEPENING + the SPIKING-vs-RATE CONTROL (functions + self-check below): the argmax control above
 stabilises the workspace but strips spikes AND cross-tick memory AND inhibition together, so it does
-NOT isolate whether SPIKES are load-bearing. A binding test does. The workspace must BIND K objects,
-each a (color, shape) pair, and broadcast the pairings. The spiking path phase-multiplexes them
-(Lisman-Jensen theta-gamma: each object in its own gamma slot, its color+shape firing SYNCHRONOUSLY
-so a reader recovers the pairing from synchrony); a RATE path with the SAME hysteresis superposes the
-activations and loses which color binds which shape (the classic binding problem). Honest result,
-asserted below: they TIE at K=1 (spikes are NOT needed for single-item selection) and spikes WIN at
-K>=2 (multi-item binding via synchrony) -- the specific, honest answer to "what do spikes buy." This
-is contested (Singer/Gray vs Shadlen-Movshon), reader-dependent, and one solution among several; it
-distinguishes the spiking workspace from the rate one on this task, nothing more.
+NOT isolate whether SPIKES are load-bearing. A binding test could -- the workspace must BIND K
+objects, each a (color, shape) pair, and broadcast the pairings; the spiking path phase-multiplexes
+them (Lisman-Jensen theta-gamma) while a RATE path with the SAME hysteresis superposes the
+activations and loses which color binds which shape (the classic binding problem). THE MARGIN
+CRITERIA THAT STOOD ON THIS ARE DELETED (2026-08-07, P8/F11) and the headline they asserted is
+WITHDRAWN: `_bind_pair_acc` is recall with no precision term, `bind_decode_spiking` returns K^2
+pairs for K true, and an all-pairs strawman decoder scores 1.0000 on the same scorer -- so "spikes
+WIN at K>=2" was a property of the scorer, not of synchrony. The same criterion had already been
+deleted once under F11 at `reasoning/consciousness_probe.py` (2026-08-04) and this copy was missed,
+after which it read as independent corroboration. What remains asserted is only the all-or-none
+ignition of the binding broadcast. Whether phase multiplexing beats rate on an honest
+precision-bearing scorer is an OPEN measurement (the pre-registered expectation from
+`docs/GAP_CLOSURE.md`'s own Jaccard numbers is a NULL); building that benchmark decides whether the
+bind_* family is rebuilt or retired.
 
   set PYTHONUTF8=1 & set PYTHONPATH=src & python -m snn_data_lake.thalamus.global_workspace
 """
@@ -2219,11 +2224,15 @@ def main():
     # all-or-none: the binding broadcast ignites on strong drive, stays subliminal below threshold.
     bind_ig_strong, _ = bind_broadcast_spiking(bind_objects(8, 8, 2, brng), 8, 8, drive=1.0)
     bind_ig_weak, _ = bind_broadcast_spiking(bind_objects(8, 8, 2, brng), 8, 8, drive=0.4)
-    print("\nbinding (spiking vs rate control, pair-accuracy):")
+    print(
+        "\nbinding (RECALL-ONLY scorer -- disclosed, not asserted; see the deletion note in (d)):"
+    )
     for k in (1, 2, 4):
         s, r = bind[k]
-        tag = "tie (spikes not needed)" if abs(s - r) < 0.05 else f"spikes +{(s - r) * 100:.0f} pts"
-        print(f"   K={k}: spiking {s:.0%}  rate {r:.0%}  -> {tag}")
+        print(
+            f"   K={k}: spiking {s:.0%}  rate {r:.0%}   <- the spiking decoder returns K^2 pairs "
+            f"for {k} true; an all-pairs strawman scores 100% on this scorer"
+        )
 
     # ---- LIVE CONTRACT: the exact submit/step sequences autonomous_loop + live_brain rely on ----
     c_ws = GlobalWorkspace(seed=0)
@@ -3246,17 +3255,21 @@ def main():
         f"exactly; {n_trials} threaded submission trials all matched the serial order"
     )
 
-    # (d) DEEPENING: the SPIKING-vs-RATE control is a PERMANENT GUARD -- honest about where spikes help.
+    # (d) DEEPENING: binding broadcast ignition stays asserted; the spiking-beats-rate MARGIN
+    # criteria are DELETED 2026-08-07 (P8/F11), and this is the SECOND deletion of the same
+    # criterion -- `reasoning/consciousness_probe.py` deleted it under falsifier F11 on
+    # 2026-08-04 and this copy was missed, after which it read as independent corroboration.
+    # Why it cannot fail, run rather than argued: `_bind_pair_acc` is `|true & got| / |true|` --
+    # RECALL with no precision term -- and `bind_decode_spiking` unions every fired color x fired
+    # shape across micro-steps, returning K^2 pairs for K true (measured: 4-for-2, 16-for-4,
+    # decoder 1.0000 at both). An ALL-PAIRS strawman decoder scores 1.0000 on the same scorer, so
+    # the asserts that stood here ("spikes must beat rate by +0.15 at K=2", "stay high at K=4")
+    # could not distinguish phase multiplexing from a decoder that binds NOTHING. The +0.15
+    # margin was itself underived, and `docs/GAP_CLOSURE.md` already measured the K=2 verdict
+    # flipping PRESENT -> ABSENT under Jaccard. The honest precision-bearing benchmark, with a
+    # pre-registered null, is the next build; per its outcome the bind_* family is either
+    # rebuilt on a scorer that can fail or retired entirely.
     assert bind_ig_strong and not bind_ig_weak, "binding broadcast ignition must be all-or-none"
-    assert bind[1][0] - bind[1][1] < 0.05, (
-        f"at K=1 spikes must NOT beat rate (single-item binding needs no spikes): "
-        f"{bind[1][0]:.2f} vs {bind[1][1]:.2f}"
-    )
-    assert bind[2][0] > bind[2][1] + 0.15, (
-        f"at K=2 the spiking workspace must bind better than the rate control (synchrony is load-bearing): "
-        f"{bind[2][0]:.2f} vs {bind[2][1]:.2f}"
-    )
-    assert bind[4][0] > 0.9, f"spiking multi-item binding must stay high at K=4 ({bind[4][0]:.2f})"
 
     # (e) THE DECLARED READ SURFACE: `current` says WHAT, `broadcast_hold` says HOW STRONGLY -----
     # RE-DERIVED 2026-08-06, ONTO A DIFFERENT INPUT, AND THE RE-DERIVATION IS THE POINT. This
@@ -3599,8 +3612,8 @@ def main():
         f"single-slot arbiter needed {win_old}; competition still excludes losers with slots free; "
         f"all-or-none (sub spikes={weak_spikes}, supra spikes={strong_spikes}); global-reach; "
         f"persist {persisted}->release; threat ignited; live-contract holds; deterministic over 24 "
-        f"runs; BINDING spiking-vs-rate control honest "
-        f"(K1 tie {bind[1][0]:.0%}/{bind[1][1]:.0%}, K2 spikes {bind[2][0]:.0%}>{bind[2][1]:.0%})"
+        f"runs; BINDING margin criteria deleted per F11 (recall-only scorer, all-pairs strawman "
+        f"scores 1.0000; ignition all-or-none still asserted; honest rebuild pending)"
     )
 
 

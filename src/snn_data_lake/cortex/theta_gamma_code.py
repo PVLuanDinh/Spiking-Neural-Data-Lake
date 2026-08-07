@@ -7,9 +7,12 @@ slots. Each held item is a POPULATION of leaky integrate-and-fire (LIF) neurons 
 its own gamma window, so it INTEGRATES its input current and FIRES a discrete spike at that item's gamma
 phase within the theta cycle -- spike TIMING is which slot. Item i fires in gamma slot i, at theta phase
 2*pi*i/K. Recall RE-RUNS the oscillation and reads the items back by the gamma window (spike PHASE) in which
-each population fires: the ordered set is decoded from spike timing, not from a Python list. The number of
-gamma cycles that fit in one theta cycle (steps_per_theta / steps_per_gamma) sets the working-memory CAPACITY
-(~7 +/- 2); a K+1-th item evicts the OLDEST. The populations re-fire every theta cycle -> active maintenance.
+each population fires: the ordered set is decoded from spike timing, not from a Python list. The capacity K
+(~7 +/- 2) is a CONSTRUCTOR KWARG and the oscillation geometry is derived FROM it -- `steps_per_theta =
+K * steps_per_gamma`, one theta cycle nesting exactly K gamma windows. The causal arrow runs capacity ->
+ratio; this line long stated the reverse ("the ratio sets the capacity"), corrected 2026-08-07 with the
+F11 deletion in the self-check. A K+1-th item evicts the OLDEST. The populations re-fire every theta
+cycle -> active maintenance.
 
 DISTINCT from existing core modules (read them):
 - ring_attractor.py: a continuous attractor network holds ONE self-sustaining bump and integrates angular
@@ -26,7 +29,8 @@ DISTINCT from existing core modules (read them):
 
 Genuinely spiking: each item is a population of LIF neurons (membrane leak + current integration + threshold
 spike + reset + refractory); items fire discrete spikes at item-specific gamma phases; recall reads spike
-timing; capacity is the theta/gamma ratio. Additive / opt-in: stdlib plus the repo's own LIF primitive,
+timing; the theta/gamma ratio is derived from the capacity. Additive / opt-in: stdlib plus the repo's own
+LIF primitive,
 changes no existing behaviour. Deterministic (seeded via random.Random per instance; no module-level
 seed; no builtin hash()). Credit Lisman & Idiart 1995 / Lisman & Jensen 2013.
 
@@ -228,14 +232,21 @@ def main():
     monotonic = all(phs[i] < phs[i + 1] for i in range(len(phs) - 1))
     distinct_phase = len(set(phs)) == len(phs)
 
-    # ---- 3. CAPACITY (theta/gamma ratio, 7 +/- 2): overflow evicts the OLDEST, most-recent K survive in order ----
+    # ---- 3. CAPACITY (7 +/- 2): overflow evicts the OLDEST, most-recent K survive in order ----
     over = ThetaGammaCode(capacity=7)
     over.encode_sequence(list(range(10)))  # push 10 into K=7 -> drop 0,1,2
     survivors = over.readout()
     dropped = list(over.evicted)
-    ratio_cap = (
-        tgc.steps_per_theta // tgc.steps_per_gamma
-    )  # capacity EMERGES from the theta/gamma ratio
+    # DELETED 2026-08-07 (P8/F11): `ratio_cap = steps_per_theta // steps_per_gamma` and its assert
+    # `ratio_cap == k` ("capacity must equal the theta/gamma ratio"). `__init__` defines
+    # `steps_per_theta = k * steps_per_gamma`, so that quotient is `k` IDENTICALLY for every
+    # integer input -- no input can redden it, and a criterion with no reachable red is deleted,
+    # not weakened. Its comment ("capacity EMERGES from the theta/gamma ratio") stated the causal
+    # arrow backwards: `capacity` is a hardcoded kwarg and the ratio is derived FROM it. The tell
+    # is WHERE the quantity appears: `steps_per_theta` is only ever WRITTEN as that product, so
+    # dividing it back out asserts that multiplication round-trips -- an identity wearing a
+    # derivation's clothes. The genuinely derived workspace capacity, with the falsifier that
+    # moves, is `thalamus/global_workspace.py::capacity`.
 
     # ---- 4. GENUINELY SPIKING: LIF populations fire discrete spikes at discrete gamma phases, only in their window ----
     events = tgc.spike_events(n_cycles=1)  # (cycle, gamma_window, theta_phase, neuron_id)
@@ -272,7 +283,7 @@ def main():
     print("THETA-GAMMA CODE -- spiking working memory by LIF gamma-phase multiplexing")
     print("=" * 72)
     print(
-        f"capacity K (gamma cycles per theta) : {tgc.k}   (== steps_per_theta/steps_per_gamma = {ratio_cap})"
+        f"capacity K (constructor kwarg)      : {tgc.k}   (the theta/gamma ratio is DERIVED from it)"
     )
     print(
         f"theta cycle geometry                : {tgc.steps_per_theta} steps = K x {tgc.steps_per_gamma} gamma steps"
@@ -311,7 +322,6 @@ def main():
         f"overflow keeps the most-recent K in order ({survivors})"
     )
     assert dropped == [0, 1, 2], f"overflow evicts the OLDEST items first ({dropped})"
-    assert ratio_cap == tgc.k, f"capacity must equal the theta/gamma ratio ({ratio_cap} != {tgc.k})"
     assert slot_reads_own, (
         "separation: each occupied gamma window must read back exactly the item placed there"
     )
