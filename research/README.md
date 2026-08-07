@@ -38,19 +38,18 @@ PYTHONPATH=src .venv-lake/Scripts/python research/arc_agi/run_arc.py           #
 
 ## Open P4c debt in this directory, stated rather than filed away
 
-- **`ng_snn/` is duplicated into `src/snn_data_lake/reasoning/ng_snn/`, and both copies are live.**
-  Measured 2026-08-04 by parsing both and comparing ASTs with docstrings stripped: **7 of 12 files
-  are AST-identical**; 4 of the remaining 5 differ ONLY by the governed copy having dropped an unused
-  `import sys` and replaced `sys.path.insert(0, HERE)` with `pass  # migrated: ...`; the fifth
-  (`softhebb_mnist.py`) has an identical body and only unused imports removed. So they are the same
-  code — P2's "two mechanisms for one job" in its purest form.
-  It is **not resolved here**, because P2's honesty guard forbids deleting before the survivor is
-  proven equivalent-or-better and the *governed* copy is currently the WORSE one: dropping the
-  `sys.path` bootstrap broke its own drivers, which still do `from model import NGSNN` by bare name
-  (`docs/AUDIT_BACKLOG.md` H10 records this — four drivers raise `ModuleNotFoundError`, and
-  `DATA_ROOT`/`CACHE_DIR` resolve into a `src/snn_data_lake/data` that does not exist). Retiring the
-  working copy in favour of a broken one would be a regression wearing P2's clothes. Fixing the
-  governed copy's imports is the prerequisite, and it lives in `reasoning/`.
+- **The NG-SNN MECHANISM copies are settled; the DRIVER duplication remains.** The 2026-08-04
+  measurement (7 of 12 files AST-identical between `ng_snn/` here and
+  `src/snn_data_lake/reasoning/ng_snn/`) stands, but both of its blockers have since cleared:
+  the governed drivers were repointed to `snn_data_lake.hippocampus.ng_snn` (the ONE surviving
+  mechanism — it carries strictly more than either deleted copy: derived-not-fixed capacity,
+  `prune_unearned`, growth-state seeding), `reasoning/ng_snn/model.py` was retired 2026-08-06,
+  and **`research/ng_snn/model.py` was retired 2026-08-07** with this directory's seven drivers
+  repointed the same way (verified: the target exports `NGSNN`, `current_encode`,
+  `poisson_encode`; all seven compile; kwarg compatibility incl. `l_max=0` pinning checked
+  against the governed `is None` gate before the swap). **Remaining P2 debt: the near-identical
+  DRIVER sets in both directories.** Not settled here because it needs its own measured pass, and
+  because deletion is not free in either direction — see the next bullet.
 - **`research/ng_snn/data.py` has two consumers outside this directory** —
   `training/surrogate_snn.py::ng_snn_data_file` and `training/eprop_nmnist.py::_ng_snn_dir`, both of
   which locate it by walking up from `__file__`. Those are the two encoders `cortex/brain.py` loads

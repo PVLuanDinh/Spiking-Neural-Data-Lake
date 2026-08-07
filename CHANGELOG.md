@@ -9,6 +9,21 @@ All notable changes to the Spiking Neural Data Lake. Format loosely follows
 > of them is in `git show <tag>`. A changelog that silently stops is its own kind of silent degradation:
 > nothing failed, and the record simply stopped being true.
 
+## [Unreleased] -- P2: the third NG-SNN mechanism copy is gone (2026-08-07h)
+
+`research/ng_snn/model.py` deleted; `hippocampus/ng_snn.py` is the ONE surviving mechanism (it
+carries strictly more: derived-not-fixed capacity, `prune_unearned`, growth-state seeding). The
+ledger row's 8 mechanical edits, executed with the direction checked first: all 7 research
+drivers repointed to `snn_data_lake.hippocampus.ng_snn` (the row under-counted the surface --
+`validate_uci` imports `current_encode` as well as `NGSNN`; the governed copy exports both plus
+`poisson_encode`), kwarg compatibility verified including the `l_max=0` pinning case against the
+governed `is None` gate, all 7 compile, and the identical repoint already runs in
+`reasoning/ng_snn/`. `research/README.md`'s open-debt section re-derived: its 2026-08-04
+blockers (governed drivers broken by the dropped `sys.path` bootstrap) had already cleared when
+those drivers were repointed. Remaining, recorded not hidden: the near-AST-identical DRIVER sets
+in `research/ng_snn/` vs `reasoning/ng_snn/` -- a separate measured pass, and no blanket
+deletion is available because `research/ng_snn/data.py` feeds the live perception tier.
+
 ## [Unreleased] -- P4c: the 10th RETIRE lands, and its dependency goes with it (2026-08-07g)
 
 `reasoning/eth_mnist_bindsnet.py` was RETIRE-classified on 2026-08-06 and kept only because
