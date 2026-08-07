@@ -2605,23 +2605,70 @@ class Brain:
             # real signal (novelty + perception presence), not a fabricated dropout. Functional
             # access only; no phenomenal claim.
             nov = float(self._real_novelty or 0.0)
-            real = 1.0 if (self._perceiving_real and self._perceived_digit is not None) else 0.0
-            # RELATIVE-baseline salience (the same self-calibrating idiom as the exploration and
-            # reward-onset thresholds), not a magic floor. Anchor salience AT the rheobase (0.55)
-            # when novelty sits at its running baseline `_nov_base`: a percept MORE novel than the
-            # brain has habituated to clears threshold and reaches access; a repeated, below-baseline
-            # one falls under it and LAPSES (repetition suppression). A real percept adds a small
-            # bump. Self-calibrating means access stays selective as the novelty distribution drifts,
-            # instead of a fixed floor that flips the whole regime (0.40 -> 90% lapse, 0.50 -> 0%).
-            rheobase = (
-                ac.ignition_threshold
-            )  # anchor salience AT the workspace's OWN ignition rheobase
-            #   (bound to the gate's source-of-truth, not a duplicated 0.55 literal). With novelty at its
-            #   running baseline this lands strength on the gate boundary, so ignition reduces to the
-            #   already-baseline-relative test 0.5*(nov - _nov_base) + 0.15*real > 0.
-            strength = max(
-                0.0, min(1.0, rheobase + 0.5 * (nov - float(self._nov_base or 0.0)) + 0.15 * real)
-            )
+            # `real = 1.0 if (self._perceiving_real and self._perceived_digit is not None) else 0.0`
+            # stood here and fed a `0.15 * real` term. DELETED with that term 2026-08-06 -- and the
+            # binding going dead the moment the term went is itself the evidence it was a standalone
+            # nudge rather than something the rest of this block depended on. If percept strength
+            # should modulate access it belongs as its OWN submission to the workspace, competing on
+            # the same band as everything else, not as a hand-weighted addend inside another
+            # producer's claim.
+            # RELATIVE-baseline salience, not a magic floor: a percept MORE novel than the brain has
+            # habituated to reaches access, a repeated below-baseline one LAPSES (repetition
+            # suppression). Self-calibrating, so access stays selective as the novelty distribution
+            # drifts rather than flipping the whole regime the way a fixed floor does (a 0.40 floor
+            # measured 90% lapse, a 0.50 floor 0%). That intent is UNCHANGED; what changed is the map.
+            #
+            # THE CLAIM IS BAND-DERIVED 2026-08-06, and the two hand-picked gains are GONE.
+            # It was `rheobase + 0.5*(nov - nov_base) + 0.15*real` clamped to [0,1]: two magic
+            # constants (P1), and -- the part that actually broke things -- NOT BOUNDED BY THE BUS'S
+            # BAND at all, so this faculty rode a separate cap while perception was confined to
+            # [0.568, 0.667]. Measured on the shared bus: this faculty held the workspace 80 of 120
+            # ticks and pushed perception out on 79, taking `live_brain.thought` from naming the
+            # percept 120/120 to 41/120. Occupancy stayed 1 of 4 because ONE PRODUCER WAS
+            # STRUCTURALLY ALWAYS LOUDER, not because the capacity was too small.
+            # `band_claim` is the ONE shared derivation (thalamus/global_workspace.py) that
+            # `_percept_salience` also calls, so both producers now map their own running signal
+            # into the same band by the same sentence. It introduces no constant and is bounded
+            # ABOVE by the displaceable ceiling by construction.
+            # The SIGNAL stays this faculty's own: novelty against its own running baseline. The
+            # `real` percept-strength term is dropped rather than re-scaled -- it was a second,
+            # differently-weighted signal folded into one number, and folding two signals with two
+            # hand-picked weights is the shape P1 forbids. If percept strength should modulate
+            # access it belongs as its own submission, not as a 0.15 nudge inside someone else's.
+            # The band comes from the bus this faculty is actually ON -- private today, shared if it
+            # is ever repointed -- so the claim tracks whichever workspace it must compete in.
+            # `band_bid`, NOT `band_claim`: this is a request that may be REFUSED. It is CENTRED on
+            # the rheobase rather than floored at it, so novelty at its running baseline lands
+            # exactly on the gate boundary (the anchor this block has always described) and
+            # BELOW-baseline novelty falls under it and LAPSES -- repetition suppression, which is
+            # the mechanism this block exists to implement. Measured: mapping this through the
+            # floored `band_claim` took `ignited` from 96/120 to 120/120 and the EMA from 0.287282
+            # back to 0.488958, i.e. it could no longer fail at all. A floored map deletes the lapse.
+            # THE BID GETS ITS OWN BASELINE, GROWN UNDER THE SHARED RULE, and this is the half that
+            # sharing the MAP did not fix. `_nov_base` is an EMA with a fixed `_base_tau`; an EMA
+            # LAGS a rising signal, so its ratio sits persistently above 0.5 while perception's
+            # converging running mean sits below 0.5 by the signal's skew. Two producers whose
+            # baselines are computed by different rules are NOT comparable however identical the map
+            # they share -- measured, symmetrising only the map left the repoint byte-identical
+            # (perception 41/120, coalition 80/120, co-occupancy 1/120).
+            # `_nov_base` is deliberately LEFT ALONE: its other consumer is the explore/fidget
+            # decision, which asks "more novel than RECENTLY?" and a lagging estimator answers that
+            # correctly. Access asks "more novel than TYPICALLY?". Different questions, different
+            # estimators -- what was wrong was answering the second with the first's, by accident.
+            # A DEDICATED RUNNING-MEAN BASELINE FOR THE BID WAS BUILT, MEASURED AND REVERTED HERE.
+            # Rationale looked sound: `next_baseline` is parameter-free where the EMA carries a time
+            # constant, and identical baseline rules are what make two ratios comparable. MEASURED
+            # over 120 live ticks it took `ignited` from 96/120 to 13/120 on the private bus and to
+            # 0/120 on the shared one, with the EMA at 0.164 and 0.0 -- ACCESS ESSENTIALLY NEVER
+            # SUCCEEDED. Cause, and it is structural rather than a tuning miss: `band_bid` is
+            # CENTRED, so a bid is audible only when its ratio EXCEEDS 0.5, while `band_claim` is
+            # FLOORED and audible at any ratio. Give both producers the same converging baseline and
+            # the bidder is systematically quieter BY CONSTRUCTION -- on a right-skewed novelty
+            # signal, far less than half the time. The EMA's lag was accidentally compensating for
+            # that, which is not a reason to keep an accident but IS a reason not to remove it
+            # without replacing what it was doing. Reverted on the null (P8 burden 5); the
+            # co-occupancy question is a signal-statistics problem, not a baseline-rule one.
+            strength = ac.workspace.band_bid(nov, float(self._nov_base or 0.0))
             ac.bind_assembly([f"p{p}#{i}" for i in range(k)], salience=strength)
             ac.step()  # ignition + all-or-none broadcast (may FAIL when strength is low)
             self._access_state = ac.state()

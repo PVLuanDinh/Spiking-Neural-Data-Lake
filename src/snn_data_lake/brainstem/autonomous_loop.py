@@ -1327,14 +1327,22 @@ class AutonomousArm:
             return 0.0
         dev = float(deviance)
         self._sal_n += 1
-        self._sal_base += (dev - self._sal_base) / self._sal_n
-        total = dev + self._sal_base
-        ratio = (dev / total) if total > 0.0 else 0.0
-        lo = float(ws.ignition_threshold)  # the bus's rheobase: below it, nothing is a claim
-        hi = 1.0 - (float(ws.self_boost) + float(ws.hysteresis))  # stays displaceable by a maximum
-        if hi <= lo:  # a bus configured with no room between "audible" and "displaceable"
-            return lo
-        return lo + (hi - lo) * ratio
+        # The baseline RULE moved to `GlobalWorkspace.next_baseline` 2026-08-06 and is now shared
+        # with the access bid. This line's arithmetic is unchanged -- it was already the running
+        # mean, and it is the form the shared rule adopted, because a running mean carries no time
+        # constant while an EMA does (P1). Sharing the MAP was not enough: two producers computing
+        # `baseline` by different rules feed ratios that are not on one scale, and the shared map
+        # inherits that difference intact. Measured: symmetrising only the map left the repoint
+        # byte-identical.
+        self._sal_base = ws.next_baseline(self._sal_base, dev, self._sal_n)
+        # The band map MOVED to `thalamus/global_workspace.py::band_claim` 2026-08-06 and is now
+        # SHARED with cortex/brain.py::_update_access -- not copied, called. This method's arithmetic
+        # is byte-for-byte what it was (same floor, same ceiling, same self-normalising ratio, same
+        # hi<=lo guard, same total<=0 guard); what changed is that ONE definition of "a compliant
+        # claim" now serves every producer, so two producers are finally competing in the same
+        # coordinate system. P2: the derivation exists once. Keeping a second copy here -- even an
+        # identical one -- is how the two drifted apart in the first place.
+        return ws.band_claim(dev, self._sal_base)
 
     def _workspace_broadcast(self, percept, threat_salience):
         """Additive Global-Workspace tick: brain regions (perception + a salience/threat detector)

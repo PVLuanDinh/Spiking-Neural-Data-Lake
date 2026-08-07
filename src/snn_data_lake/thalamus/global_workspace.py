@@ -834,6 +834,160 @@ class GlobalWorkspace:
         producer population is, and fixing that is not this module's work."""
         return tuple(entry[1] for entry in self._slot())
 
+    def band_claim(self, signal, baseline):
+        """THE ONE derivation of a compliant claim from a producer's own running signal.
+
+        WHY THIS LIVES HERE AND IS SHARED. The admissible band is a property of THIS BUS -- its
+        floor is the rheobase below which nothing is audible, and its ceiling is `1 - (self_boost +
+        hysteresis)`, above which a submission is no longer displaceable by a compliant rival. Two
+        producers that map their signals into that band by DIFFERENT rules are not competing in the
+        same coordinate system, and the louder rule wins every tick regardless of what either
+        producer actually measured. That is not competition; it is a fixed ordering wearing
+        competition's clothes.
+
+        MEASURED, and it is why this exists (2026-08-06, 120 live ticks). `brainstem/
+        autonomous_loop.py::_percept_salience` mapped deviance through `lo + (hi-lo)*ratio` and
+        occupied [0.568, 0.667]. `cortex/brain.py::_update_access` mapped novelty through
+        `rheobase + 0.5*(nov - nov_base) + 0.15*real` clamped to [0,1] -- TWO HAND-PICKED GAINS, and
+        NOT BOUNDED BY THE BAND AT ALL, so it rode its separate cap. The faculty therefore sat at or
+        above perception's maximum on essentially every tick: repointed onto the shared bus it held
+        the workspace 80 of 120 ticks and pushed perception out of it on 79, taking
+        `live_brain.thought` from naming the percept 120/120 down to 41/120. Occupancy stayed 1 of 4
+        because one producer was structurally always louder, not because the capacity was too small.
+
+        THE FORM. `lo + (hi - lo) * signal / (signal + baseline)`, where `baseline` is the
+        producer's OWN running mean of its OWN signal. It introduces NO constant (P1): the floor and
+        ceiling are read off this bus, and the ratio is self-normalising, so a producer whose signal
+        sits at its running baseline claims the MIDPOINT of the band and one at twice its baseline
+        claims two thirds of the way up. What a claim means is now the same sentence for every
+        producer, which is the property, and the only thing a producer supplies is a signal and its
+        own history.
+
+        THIS IS NOT A CLAIM THAT THE BAND IS OCCUPIED EVENLY. A right-skewed signal sits below its
+        own running mean most ticks, so a producer's claims concentrate in the LOWER half. That is a
+        property of the signal, not a defect of this map, and it is the same for every producer --
+        which is exactly what makes them comparable. Widening a single producer's spread to "use the
+        whole band" would restore the asymmetry this removes.
+
+        DEGENERATE INPUTS, checked, because a P1 rewrite in this tree already shipped a
+        `mu/1e-12 = 1e12` singularity onto a live path. Both non-positive (an unvarying stream from
+        the first tick) -> the denominator is not formed at all and the RHEOBASE is returned, which
+        is the honest reading: no signal, no claim above the floor. SIGNAL zero with a positive
+        baseline -> ratio 0 -> exactly `lo`, audible but minimal. BASELINE zero with a positive
+        signal -> ratio 1 -> exactly `hi`, the loudest compliant claim, never above it. A bus
+        configured with no room between audible and displaceable (`hi <= lo`) -> `lo`.
+
+        THE CEILING IS STRUCTURAL, and that is the half the previous faculty form did not have: the
+        return is bounded ABOVE by `hi` by construction, so a producer using this cannot make an
+        undisplaceable claim even if its signal explodes. A `min()` after the fact would be a second
+        mechanism; this is one."""
+        lo, hi = self._band()
+        if hi <= lo:
+            return lo
+        r = self._band_ratio(signal, baseline)
+        if r is None:
+            return lo
+        return lo + (hi - lo) * r
+
+    def _band(self):
+        """The admissible band, read off THIS bus. `lo` is the rheobase below which nothing is
+        audible; `hi` is `1 - (self_boost + hysteresis)`, above which a submission is no longer
+        displaceable by a compliant rival. ONE definition, shared by every mapping below."""
+        return float(self.ignition_threshold), 1.0 - (
+            float(self.self_boost) + float(self.hysteresis)
+        )
+
+    @staticmethod
+    def next_baseline(previous, sample, n):
+        """THE ONE rule for "a producer's own running baseline": the running MEAN, `prev + (x -
+        prev)/n`. Parameter-free.
+
+        WHY THIS IS SHARED AND WHY IT IS THE FINISH OF THE BAND WORK. Mapping two producers into one
+        band through one derivation is NOT enough to make them comparable, and this tree measured
+        that the expensive way: after both were routed through the same map, the repoint outcome was
+        BYTE-IDENTICAL (perception in the workspace 41/120, coalition 80/120, co-occupancy 1/120).
+        The ratio each producer feeds the map is `signal / (signal + baseline)`, so IF THEY COMPUTE
+        `baseline` DIFFERENTLY THE RATIOS ARE NOT ON ONE SCALE and the shared map inherits the
+        difference intact.
+
+        They did. `brainstem/autonomous_loop.py::_percept_salience` used a true running mean
+        (`base += (dev - base)/n`); `cortex/brain.py`'s novelty baseline is an EMA with a fixed
+        `_base_tau`. AN EMA LAGS A RISING SIGNAL, so its ratio sits persistently ABOVE 0.5; a
+        converging running mean sits BELOW 0.5 by whatever the signal's skew is. One producer was
+        therefore structurally louder than the other no matter what map they shared.
+
+        WHY THE RUNNING MEAN AND NOT THE EMA: the EMA carries a time constant, and a time constant is
+        a hand-picked number that arbitrates (P1). The running mean has none -- it is the
+        arithmetic mean of everything seen, computed incrementally, and its only input is the count.
+
+        THIS DOES NOT REPLACE EVERY BASELINE IN THE TREE, and that restraint is deliberate. The
+        novelty EMA at `cortex/brain.py:1777` has a SECOND consumer -- the explore/fidget decision --
+        which asks "is this more novel than RECENTLY?", a question a lagging estimator answers
+        correctly. Access asks "is this more novel than TYPICALLY?". Those are different questions
+        and they legitimately want different estimators; what is NOT legitimate is answering the
+        second with the first's estimator by accident, which is what was happening. So the EMA stays
+        where it belongs and access grows its own baseline under this rule.
+
+        DEGENERATE INPUTS: n <= 0 returns the sample itself (the first observation IS its own
+        baseline, with no division). n == 1 returns the sample exactly, so a single-sample baseline
+        gives ratio 0.5 and a claim at the band's midpoint -- the honest reading of one observation.
+        """
+        k = int(n)
+        if k <= 1:
+            return float(sample)
+        p = float(previous)
+        return p + (float(sample) - p) / float(k)
+
+    @staticmethod
+    def _band_ratio(signal, baseline):
+        """`signal / (signal + baseline)` in [0,1], or None when neither is positive. Self-
+        normalising, so it needs no constant and no scale: at its own running baseline a signal
+        gives exactly 0.5."""
+        s = float(signal)
+        b = float(baseline)
+        total = s + b
+        if total <= 0.0:
+            return None
+        return s / total
+
+    def band_bid(self, signal, baseline):
+        """A claim from a producer WHOSE ACCESS MAY FAIL -- centred on the rheobase, not floored at
+        it. Same band, same ratio, different question, and the difference is the whole point.
+
+        WHY THIS IS SEPARATE FROM `band_claim`, and why it is NOT the flag P2 forbids. These map two
+        genuinely different quantities. A PERCEPT is always present: perception posts on every wake
+        tick and the only question is how loud, so flooring it at the rheobase is correct and it
+        should never fall silent. An ACCESS BID is a request that may be REFUSED: a stimulus no more
+        novel than the brain has habituated to SHOULD fail to reach access, which is repetition
+        suppression and is the mechanism `_update_access` exists to implement. One band, two
+        mappings, each named for the quantity it maps -- not one mapping behind a switch.
+
+        MEASURED, and this method exists because the first attempt got it wrong. Mapping the access
+        bid through `band_claim` (floored) took the faculty from `ignited 96/120` to `120/120` and
+        `_access_ema` from 0.287282 back to 0.488958 -- IT COULD NO LONGER LAPSE AT ALL, because a
+        floored map is bounded below by the rheobase by construction. "Access can fail" had been
+        reported as a gain one commit earlier and a floored map silently deletes it.
+
+        THE FORM. `lo + (hi - lo) * (2r - 1)`, r the same self-normalising ratio. At the running
+        baseline (r = 0.5) it returns EXACTLY the rheobase, which is the anchor `_update_access`'s
+        own comment has always described: at baseline novelty, ignition reduces to the gate boundary.
+        Above baseline it rises toward `hi` and is bounded there -- so a bid cannot become
+        undisplaceable however large the signal. Below baseline it falls BELOW the rheobase and the
+        bid LAPSES, which is the property. It is deliberately NOT clamped at the bottom: clamping
+        would restore the defect this method was written to fix.
+
+        DEGENERATE INPUTS: neither positive -> the rheobase (no signal, no bid above the floor, and
+        no lapse either -- an unvarying stream is not evidence of habituation). Signal zero with a
+        positive baseline -> `lo - (hi - lo)`, the deepest lapse. Baseline zero with a positive
+        signal -> exactly `hi`. `hi <= lo` -> `lo`."""
+        lo, hi = self._band()
+        if hi <= lo:
+            return lo
+        r = self._band_ratio(signal, baseline)
+        if r is None:
+            return lo
+        return lo + (hi - lo) * (2.0 * r - 1.0)
+
     @property
     def broadcast_hold(self):
         """HOW STRONGLY the workspace is still holding the content `broadcast()` names: that
@@ -2260,6 +2414,59 @@ def main():
         f"identical membranes ({nojit_dv:.3e}), the key falls through to `k`, and the workspace "
         f"still admits a content rather than raising. If this ever stops being 0.0 the header's "
         f"'9.1% of the separation is jitter' paragraph is wrong and must be re-derived"
+    )
+
+    # (c1c) THE TWO BAND MAPPINGS -- one band, two questions, and the DIFFERENCE is the criterion.
+    # `band_claim` is for a producer that is always present (a percept): FLOORED at the rheobase,
+    # so it can never fall silent. `band_bid` is for a request that may be REFUSED: CENTRED on the
+    # rheobase, so below-baseline signal LAPSES. Shipping the bid through the floored map is exactly
+    # what this pass did first, and it took the faculty from `ignited` 96/120 to 120/120 -- a floored
+    # map DELETES the lapse. That is the red this criterion exists to catch.
+    bw = GlobalWorkspace(seed=0)
+    b_lo, b_hi = bw._band()
+    assert b_lo < b_hi, "the band must have room between audible and displaceable"
+    # at its own running baseline: claim sits MID-band, bid sits EXACTLY on the rheobase
+    assert abs(bw.band_claim(1.0, 1.0) - (b_lo + 0.5 * (b_hi - b_lo))) < 1e-12, (
+        "a signal AT its own baseline must claim the MIDPOINT of the band"
+    )
+    assert abs(bw.band_bid(1.0, 1.0) - b_lo) < 1e-12, (
+        "a bid AT its own baseline must land EXACTLY on the rheobase -- the anchor "
+        "cortex/brain.py::_update_access has always described"
+    )
+    # THE PROPERTY: the bid can lapse, the claim cannot. Below-baseline signal, both maps.
+    lapse_bid = bw.band_bid(0.2, 1.0)
+    floor_claim = bw.band_claim(0.2, 1.0)
+    assert lapse_bid < b_lo, (
+        f"a BELOW-baseline bid must fall UNDER the rheobase and lapse (repetition suppression), "
+        f"got {lapse_bid:.6f} against a rheobase of {b_lo:.6f}. If this ever passes it means the "
+        f"bid was floored, which is the defect measured at ignited 96/120 -> 120/120"
+    )
+    assert floor_claim >= b_lo, (
+        f"a percept CLAIM must stay audible however quiet: {floor_claim:.6f} < {b_lo:.6f}"
+    )
+    # BOTH are bounded ABOVE by the displaceable ceiling -- structurally, not by a later clamp.
+    # This is the half the retired `rheobase + 0.5*dnov + 0.15*real` form did not have: it clamped
+    # to [0,1], so a large signal could make an UNDISPLACEABLE claim.
+    for huge in (10.0, 1e6):
+        assert bw.band_claim(huge, 1e-9) <= b_hi + 1e-12, "a claim must never exceed the ceiling"
+        assert bw.band_bid(huge, 1e-9) <= b_hi + 1e-12, "a bid must never exceed the ceiling"
+    # DEGENERATE INPUTS (P1: a rewrite in this tree already shipped a mu/1e-12 singularity live).
+    assert bw.band_claim(0.0, 0.0) == b_lo and bw.band_bid(0.0, 0.0) == b_lo, (
+        "neither positive is NOT evidence of habituation -- both map to the rheobase, and the bid "
+        "must NOT lapse there"
+    )
+    assert abs(bw.band_claim(0.0, 1.0) - b_lo) < 1e-12, "zero signal claims exactly the floor"
+    assert abs(bw.band_claim(1.0, 0.0) - b_hi) < 1e-12, "zero baseline claims exactly the ceiling"
+    # A bus with no room between audible and displaceable collapses both maps onto the floor.
+    flat = GlobalWorkspace(seed=0, self_boost=0.30, hysteresis=0.30)
+    f_lo, f_hi = flat._band()
+    assert f_hi <= f_lo and flat.band_claim(5.0, 1.0) == f_lo and flat.band_bid(5.0, 1.0) == f_lo, (
+        "a bus configured with no admissible band must not invent one"
+    )
+    print(
+        f"  (c1c) band [{b_lo:.4f}, {b_hi:.4f}]: at-baseline claim={bw.band_claim(1.0, 1.0):.4f} "
+        f"(mid) bid={bw.band_bid(1.0, 1.0):.4f} (rheobase); below-baseline bid={lapse_bid:.4f} "
+        f"LAPSES while claim={floor_claim:.4f} stays audible; both capped at {b_hi:.4f}"
     )
 
     # (c2) PARALLEL SETTLING is BYTE-IDENTICAL to serial settling ------------------------------
