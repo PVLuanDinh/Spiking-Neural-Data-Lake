@@ -241,7 +241,7 @@ arc = ["arcengine"]                                                      # src/s
 # files this commit does not touch. Declaring the dependency closes the P7 ledger's UNDECLARED
 # finding -- a finding about pyproject naming its imports -- and that is the whole of what it closes.
 llm = ["airllm", "torch"]                                               # local_llm/ on-device NL interface (AirLLM layer-by-layer local inference â€” no cloud)
-genn = ["pygenn", "ml_genn"]                                             # research/*_genn + training/mnist_genn GPU trainer (needs a C++ compiler + CUDA)
+genn = ["pygenn @ https://github.com/genn-team/genn/archive/refs/tags/5.4.0.zip", "ml_genn @ https://github.com/genn-team/ml_genn/archive/refs/tags/ml_genn_2_4_0.zip#subdirectory=ml_genn"]  # NEITHER is on PyPI (measured 2026-08-07: /pypi/pygenn/json -> 404, ml-genn "from versions: none"; GitHub releases carry no wheels) -- both install from source per GeNN's own docs, needs a C++ compiler + CUDA. Consumers: plasticity/snn_mnist_stdp_genn + reasoning/paradigm_b_genn + training/mnist_genn
 exe = ["pyinstaller"]                                                   # build a standalone Windows .exe (build-time only)
 hf = ["datasets", "huggingface-hub", "pillow"]                            # substrate/hf_stream.py: streamed licensed datasets -> features
 desktop = ["pywebview"]                                                 # integrations/desktop/cockpit_desktop.py: the cockpit in a native GPU-composited window
@@ -285,6 +285,12 @@ Homepage = "https://github.com/Aighluvsekks/Spiking-Neural-Data-Lake"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/snn_data_lake"]
+
+[tool.hatch.metadata]
+# The [genn] extra is a PEP 508 direct reference (pygenn is not on PyPI -- see the extra's
+# comment). Hatchling refuses direct references without this switch; the package is not
+# published to an index, so the direct-reference restriction protects nothing here.
+allow-direct-references = true
 
 # ---- dev tooling (all in the `dev` extra; never a runtime dep) ------------------
 # pytest: the debuggable/coverable suite beside run_selfchecks.py's smoke gate.
